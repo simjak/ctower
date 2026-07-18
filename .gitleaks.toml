@@ -1,0 +1,10 @@
+title = "ctower secret detection policy"
+
+[extend]
+useDefault = true
+
+[allowlist]
+description = "Only deterministic fake values in isolated repository-policy fixtures"
+paths = [
+  '''tests/repository/fixtures/''',
+]

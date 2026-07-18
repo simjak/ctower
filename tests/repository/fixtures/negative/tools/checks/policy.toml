@@ -1,0 +1,48 @@
+[source]
+extensions = [".py"]
+exclude = []
+protected_roots = ["app", "consumer"]
+
+[architecture]
+forbidden_module_stems = ["common", "helpers", "manager", "utils"]
+non_waivable_rules = ["generated.drift", "generated.manifest"]
+
+[budgets.file]
+warning = 500
+failure = 600
+[budgets.function]
+warning = 40
+failure = 60
+[budgets.complexity]
+warning = 8
+failure = 10
+[budgets.nesting]
+warning = 2
+failure = 3
+[budgets.public_exports]
+warning = 15
+failure = 25
+[budgets.class_methods]
+warning = 10
+failure = 15
+[budgets.dependency_fanout]
+warning = 8
+failure = 12
+
+[generated]
+manifest = "generated/.generated-manifest.json"
+
+[profiles]
+staged = ["source", "ownership"]
+fast = ["source", "ownership"]
+full = ["source", "ownership", "generated"]
+
+[[ownership]]
+name = "fixture-app"
+paths = ["app/**"]
+allowed_dependencies = []
+
+[[ownership]]
+name = "fixture-consumer"
+paths = ["consumer/**"]
+allowed_dependencies = ["fixture-app"]

@@ -1,0 +1,64 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://ctower.local/contracts/company/company-bundle.schema.json",
+  "title": "CompanyBundle",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema", "company", "component_refs", "assignments", "secret_binding_refs"],
+  "properties": {
+    "schema": { "const": "ctower.company-bundle/v1" },
+    "company": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["key", "display_name"],
+      "properties": {
+        "key": { "type": "string", "pattern": "^[a-z][a-z0-9-]{2,63}$" },
+        "display_name": { "type": "string", "minLength": 1, "maxLength": 128 }
+      }
+    },
+    "component_refs": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/componentRef" },
+      "uniqueItems": true
+    },
+    "assignments": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["subject", "slot", "component"],
+        "properties": {
+          "subject": { "type": "string", "minLength": 1 },
+          "slot": { "type": "string", "minLength": 1 },
+          "component": { "$ref": "#/$defs/componentRef" }
+        }
+      }
+    },
+    "secret_binding_refs": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["name", "reference_class"],
+        "properties": {
+          "name": { "type": "string", "pattern": "^[A-Z][A-Z0-9_]{2,127}$" },
+          "reference_class": { "type": "string", "enum": ["os-credential", "vault-path", "runtime-binding"] }
+        }
+      },
+      "uniqueItems": true
+    }
+  },
+  "$defs": {
+    "componentRef": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["kind", "key", "revision", "content_digest"],
+      "properties": {
+        "kind": { "type": "string", "minLength": 1 },
+        "key": { "type": "string", "minLength": 1 },
+        "revision": { "type": "integer", "minimum": 1 },
+        "content_digest": { "type": "string", "pattern": "^sha256:[a-f0-9]{64}$" }
+      }
+    }
+  }
+}

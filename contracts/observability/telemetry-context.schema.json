@@ -1,0 +1,44 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://ctower.local/contracts/observability/telemetry-context.schema.json",
+  "title": "TelemetryContext",
+  "description": "Strict propagation context. Values provide correlation only and never authority.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema",
+    "trace_id",
+    "span_id",
+    "trace_flags",
+    "correlation_id",
+    "causation_id",
+    "tenant_id",
+    "actor_id",
+    "command_id"
+  ],
+  "properties": {
+    "schema": { "const": "ctower.telemetry-context/v1" },
+    "trace_id": { "type": "string", "pattern": "^[a-f0-9]{32}$" },
+    "span_id": { "type": "string", "pattern": "^[a-f0-9]{16}$" },
+    "trace_flags": { "type": "integer", "minimum": 0, "maximum": 255 },
+    "trace_state": { "type": ["string", "null"], "maxLength": 512 },
+    "correlation_id": { "$ref": "#/$defs/id" },
+    "causation_id": { "$ref": "#/$defs/id" },
+    "tenant_id": { "$ref": "#/$defs/id" },
+    "actor_id": { "$ref": "#/$defs/id" },
+    "command_id": { "$ref": "#/$defs/id" },
+    "ticket_id": { "$ref": "#/$defs/nullableId" },
+    "workflow_run_id": { "$ref": "#/$defs/nullableId" },
+    "stage_attempt_id": { "$ref": "#/$defs/nullableId" },
+    "job_id": { "$ref": "#/$defs/nullableId" },
+    "runner_id": { "$ref": "#/$defs/nullableId" },
+    "fencing_token": { "type": ["integer", "null"], "minimum": 1 },
+    "effect_id": { "$ref": "#/$defs/nullableId" },
+    "component_revision_id": { "$ref": "#/$defs/nullableId" },
+    "deployment_id": { "$ref": "#/$defs/nullableId" }
+  },
+  "$defs": {
+    "id": { "type": "string", "minLength": 1, "maxLength": 128 },
+    "nullableId": { "type": ["string", "null"], "minLength": 1, "maxLength": 128 }
+  }
+}

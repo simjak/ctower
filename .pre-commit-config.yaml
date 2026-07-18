@@ -1,0 +1,59 @@
+default_install_hook_types: [pre-commit, pre-push]
+default_stages: [pre-commit]
+fail_fast: true
+
+repos:
+  - repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v5.0.0
+    hooks:
+      - id: check-added-large-files
+        args: [--maxkb=1024]
+      - id: check-ast
+      - id: check-json
+        exclude: ^generated/
+      - id: check-merge-conflict
+      - id: check-toml
+      - id: check-yaml
+        args: [--unsafe]
+      - id: end-of-file-fixer
+      - id: mixed-line-ending
+        args: [--fix=no]
+      - id: trailing-whitespace
+
+  - repo: https://github.com/astral-sh/ruff-pre-commit
+    rev: v0.12.9
+    hooks:
+      - id: ruff-check
+        args: [--fix]
+      - id: ruff-format
+
+  - repo: https://github.com/gitleaks/gitleaks
+    rev: v8.28.0
+    hooks:
+      - id: gitleaks
+
+  - repo: local
+    hooks:
+      - id: repository-policy
+        name: repository policy (staged profile)
+        entry: python3 -m tools.checks --root . --profile staged
+        language: system
+        pass_filenames: false
+      - id: prettier-check
+        name: prettier check
+        entry: pnpm run format:check
+        language: system
+        pass_filenames: false
+        files: \.(ts|tsx|js|mjs|cjs|json)$
+      - id: eslint-check
+        name: eslint check
+        entry: pnpm run lint
+        language: system
+        pass_filenames: false
+        files: \.(ts|tsx)$
+      - id: full-check
+        name: full warm gate
+        entry: just check
+        language: system
+        pass_filenames: false
+        stages: [pre-push]

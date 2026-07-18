@@ -1,0 +1,11 @@
+schema: ctower.gate-policy/v1
+status: draft
+key: engineering.software-factory.gates
+revision: 1
+workflow_ref: engineering.software-factory@1
+independence:
+  author_may_not_review_own_candidate: true
+  effective_identity_fields: [principal, harness, session, workspace, provider, isolation_domain]
+gates: []
+evidence_invalidation: []
+note: Skeleton only; verdicts and evidence are runtime records, never policy payload fields.

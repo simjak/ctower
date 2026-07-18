@@ -1,0 +1,1 @@
+"""Authored contract tests."""

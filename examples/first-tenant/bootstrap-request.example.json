@@ -1,0 +1,22 @@
+{
+  "schema": "ctower.bootstrap.first-tenant-request/v1",
+  "tenant": {
+    "key": "jakit-labs",
+    "display_name": "Jakit Labs"
+  },
+  "initial_operator": {
+    "external_subject": "local-admin:simonas",
+    "display_name": "Simonas"
+  },
+  "durable_commander": {
+    "key": "commander",
+    "display_name": "Commander"
+  },
+  "vault_binding_refs": [
+    {
+      "name": "SOURCE_PROVIDER",
+      "reference_class": "vault-path",
+      "reference": "vault://ctower/bootstrap/source-provider"
+    }
+  ]
+}

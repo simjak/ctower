@@ -1,0 +1,31 @@
+schema: ctower.workflow/v1
+status: draft
+key: engineering.software-factory
+revision: 1
+input_contract: software-change-ticket-v1
+terminal_contract: verified-release-and-retro-v1
+policy_refs:
+  execution: engineering.software-factory.execution@1
+  gates: engineering.software-factory.gates@1
+stages:
+  - intake
+  - think
+  - plan
+  - design
+  - implement
+  - local-verification-qa
+  - risk-derived-review
+  - documentation
+  - release-preflight
+  - merge
+  - staging-deploy
+  - staging-qa
+  - production-deploy
+  - production-smoke-live-qa
+  - retro
+  - resolve-close
+transitions: []
+failure_routes: []
+note: >-
+  Skeleton only. Publication requires explicit typed transitions, contracts, failure routes,
+  invalidation, skip predicates, and conformance evidence from SPEC.

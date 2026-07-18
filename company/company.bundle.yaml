@@ -1,0 +1,28 @@
+schema: ctower.company-bundle/v1
+company:
+  key: example-company
+  display_name: Example Company
+component_refs:
+  - kind: workflow
+    key: engineering.software-factory
+    revision: 1
+    content_digest: sha256:0000000000000000000000000000000000000000000000000000000000000000
+  - kind: execution_policy
+    key: engineering.software-factory.execution
+    revision: 1
+    content_digest: sha256:0000000000000000000000000000000000000000000000000000000000000000
+  - kind: gate_policy
+    key: engineering.software-factory.gates
+    revision: 1
+    content_digest: sha256:0000000000000000000000000000000000000000000000000000000000000000
+assignments:
+  - subject: project:ctower
+    slot: workflow
+    component:
+      kind: workflow
+      key: engineering.software-factory
+      revision: 1
+      content_digest: sha256:0000000000000000000000000000000000000000000000000000000000000000
+secret_binding_refs:
+  - name: SOURCE_CONTROL_TOKEN
+    reference_class: runtime-binding

@@ -1,0 +1,15 @@
+schema: ctower.execution-policy/v1
+status: draft
+key: engineering.software-factory.execution
+revision: 1
+workflow_ref: engineering.software-factory@1
+hard_automatic_ceiling: 5
+risk_defaults:
+  low: {passing_rounds: 1, max_round_executions: 1, repair_attempts_per_lineage: 1}
+  standard: {passing_rounds: 2, max_round_executions: 2, repair_attempts_per_lineage: 2}
+  elevated: {passing_rounds: 3, max_round_executions: 3, repair_attempts_per_lineage: 3}
+  critical: {passing_rounds: 3, max_round_executions: 3, repair_attempts_per_lineage: 3}
+participant_resolution: []
+placement_rules: []
+escalation_rules: []
+note: Skeleton only; clients never author consumed review or repair counters.

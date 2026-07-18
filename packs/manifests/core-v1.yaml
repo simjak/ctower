@@ -1,0 +1,14 @@
+schema: ctower.component-manifest/v1
+status: draft
+manifest_key: core
+revision: 1
+components:
+  - kind: workflow
+    key: engineering.software-factory
+    source: packs/workflows/engineering.software-factory/v1.yaml
+  - kind: execution_policy
+    key: engineering.software-factory.execution
+    source: packs/policies/execution/software-factory-v1.yaml
+  - kind: gate_policy
+    key: engineering.software-factory.gates
+    source: packs/policies/gates/software-factory-v1.yaml

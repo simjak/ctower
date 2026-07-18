@@ -1,0 +1,30 @@
+name: verify
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+jobs:
+  repository-bootstrap:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+      - name: Compile repository policy
+        run: python3 -m compileall -q tools/checks
+      - name: Test repository policy
+        run: python3 -m unittest discover -s tests/repository -v
+      - name: Install bootstrap contract validator
+        run: python3 -m pip install --disable-pip-version-check 'jsonschema>=4.25,<5'
+      - name: Enforce full repository policy
+        run: python3 -m tools.checks --root . --profile full
+      - name: Enforce versioned verification scope
+        run: python3 -m tools.checks --root . --profile full --execute-suites
+      - name: Verify clean patch
+        run: git diff --check
+
+  # CT-L0-007 replaces this bootstrap job with frozen uv/pnpm installs followed by the
+  # exact `just check` and `just verify` recipes after runtime/toolchain locks are accepted.

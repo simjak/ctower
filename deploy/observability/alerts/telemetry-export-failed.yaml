@@ -1,0 +1,11 @@
+schema: ctower.alert-definition/v1
+status: draft
+key: telemetry-export-failed
+condition: telemetry_export_failed == 1
+for: 30s
+severity: warning
+owner: platform-operations
+effect:
+  health_dimension: completeness
+  display_state: STATE_UNKNOWN
+note: Draft contract; provider-specific alert syntax is generated after the observability Adapter is selected.
