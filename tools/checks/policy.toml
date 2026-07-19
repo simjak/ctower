@@ -80,9 +80,14 @@ paths = ["tests/compatibility/**"]
 allowed_dependencies = ["compatibility-tools"]
 
 [[ownership]]
+name = "http-client-codegen"
+paths = ["tools/codegen/**"]
+allowed_dependencies = ["repository-policy"]
+
+[[ownership]]
 name = "contract-tests"
 paths = ["tests/contracts/**"]
-allowed_dependencies = ["repository-policy"]
+allowed_dependencies = ["http-client-codegen", "repository-policy"]
 
 [[ownership]]
 name = "web"

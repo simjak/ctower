@@ -8,13 +8,13 @@ default:
     @just --list
 
 # Warm, non-mutating developer and CI gate.
-check: python-check web-check docs-check workflow-check version-check repository-tests contract-tests traceability-check secrets-intended-tree
+check: python-check web-check docs-check workflow-check version-check repository-tests contract-tests codegen-check traceability-check secrets-intended-tree
     {{python}} -m tools.checks --root . --profile fast
 
 python-check: compatibility-coverage
-    {{python}} -m ruff format --check tools/checks tools/compatibility tests/repository tests/contracts tests/compatibility
-    {{python}} -m ruff check --no-cache tools/checks tools/compatibility tests/repository tests/contracts tests/compatibility
-    {{python}} -m mypy --no-incremental tools/checks tools/compatibility tests/repository tests/contracts tests/compatibility
+    {{python}} -m ruff format --check tools/checks tools/codegen tools/compatibility tests/repository tests/contracts tests/compatibility
+    {{python}} -m ruff check --no-cache tools/checks tools/codegen tools/compatibility tests/repository tests/contracts tests/compatibility
+    {{python}} -m mypy --no-incremental tools/checks tools/codegen tools/compatibility generated/python tests/repository tests/contracts tests/compatibility
 
 compatibility-coverage:
     @coverage_file="$(mktemp)"; trap 'rm -f "$coverage_file"' EXIT; COVERAGE_FILE="$coverage_file" {{python}} -m pytest -p no:cacheprovider --cov=tools.compatibility --cov-branch --cov-fail-under=90 tests/compatibility
@@ -42,6 +42,11 @@ repository-tests:
 
 contract-tests:
     {{python}} -m unittest discover -s tests/contracts/l0 -v
+    {{python}} -m pytest tests/contracts/domain tests/contracts/http -q
+
+codegen-check:
+    {{python}} -m tools.codegen --root . --check
+    {{python}} -m compileall -q generated/python
 
 traceability-check:
     {{python}} -m tools.checks.traceability --root . --check

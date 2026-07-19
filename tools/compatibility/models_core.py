@@ -39,6 +39,7 @@ UuidText = Annotated[
 EXPECTED_REQUIREMENTS = (
     "build==1.5.0",
     "fastapi==0.139.2",
+    "httpx==0.28.1",
     "jsonschema==4.26.0",
     "mypy==1.20.2",
     "opentelemetry-api==1.44.0",
@@ -51,6 +52,7 @@ EXPECTED_REQUIREMENTS = (
     "setuptools==83.0.0",
     "types-jsonschema==4.26.0.20260518",
     "uv==0.11.29",
+    "uvicorn==0.51.0",
     "wheel==0.47.0",
 )
 EXPECTED_OBSERVATIONS: tuple[ObservationName, ...] = (

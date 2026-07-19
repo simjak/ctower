@@ -1,0 +1,48 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://ctower.dev/contracts/domain/events/event-envelope.schema.json",
+  "title": "CtowerEventEnvelope",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "actor_principal_id",
+    "aggregate_id",
+    "client_command_id",
+    "correlation_id",
+    "event_id",
+    "kind",
+    "origin",
+    "payload",
+    "prev_hash",
+    "request_sha256",
+    "schema_version",
+    "sequence",
+    "server_time",
+    "stream_id",
+    "tenant_id"
+  ],
+  "properties": {
+    "actor_principal_id": {"type": "string", "format": "uuid"},
+    "aggregate_id": {"type": "string", "format": "uuid"},
+    "causation_id": {"type": ["string", "null"], "format": "uuid"},
+    "client_command_id": {"type": "string", "format": "uuid"},
+    "correlation_id": {"type": "string", "format": "uuid"},
+    "event_id": {"type": "string", "format": "uuid"},
+    "kind": {
+      "type": "string",
+      "enum": ["ticket.created", "ticket.custody_transferred"]
+    },
+    "origin": {"type": "string", "enum": ["api", "bootstrap"]},
+    "payload": {"type": "object"},
+    "prev_hash": {"$ref": "#/$defs/sha256"},
+    "request_sha256": {"$ref": "#/$defs/sha256"},
+    "schema_version": {"const": 1},
+    "sequence": {"type": "integer", "minimum": 1},
+    "server_time": {"type": "string", "format": "date-time"},
+    "stream_id": {"type": "string", "pattern": "^ticket:[0-9a-f-]{36}$"},
+    "tenant_id": {"type": "string", "format": "uuid"}
+  },
+  "$defs": {
+    "sha256": {"type": "string", "pattern": "^sha256:[0-9a-f]{64}$"}
+  }
+}

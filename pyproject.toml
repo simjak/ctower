@@ -1,9 +1,15 @@
 [project]
 name = "ctower-workspace"
 version = "0.0.0"
-description = "Docs-first bootstrap and repository policy for ctower"
+description = "Ctower durable-work control plane"
 requires-python = ">=3.12,<3.15"
-dependencies = []
+dependencies = [
+  "fastapi>=0.115,<1",
+  "httpx>=0.28,<1",
+  "psycopg[binary,pool]>=3.2,<4",
+  "pydantic>=2.11,<3",
+  "uvicorn>=0.34,<1",
+]
 
 [dependency-groups]
 dev = [
@@ -39,7 +45,7 @@ ignore = ["D", "PLR0913", "TRY003"]
 "tests/**/*.py" = ["S101"]
 
 [tool.ruff.lint.isort]
-known-first-party = ["tools"]
+known-first-party = ["ctower_api", "ctower_client", "ctower_kernel", "ctowerctl", "tools"]
 
 [tool.ruff.format]
 docstring-code-format = true
@@ -53,7 +59,7 @@ warn_unreachable = true
 warn_unused_configs = true
 show_error_codes = true
 pretty = true
-exclude = ["generated/", "tests/repository/fixtures/"]
+exclude = ["tests/repository/fixtures/"]
 
 [tool.pydantic-mypy]
 init_forbid_extra = true

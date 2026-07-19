@@ -83,8 +83,8 @@
       "properties": {
         "direct_versions": {
           "type": "array",
-          "minItems": 15,
-          "maxItems": 15,
+          "minItems": 17,
+          "maxItems": 17,
           "items": {"$ref": "#/$defs/resolvedDependency"}
         }
       }
@@ -298,7 +298,7 @@
       "properties": {
         "lock": {
           "type": "array",
-          "minItems": 15,
+          "minItems": 17,
           "uniqueItems": true,
           "items": {
             "type": "string",

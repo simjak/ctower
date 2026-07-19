@@ -1,0 +1,352 @@
+{
+  "openapi": "3.1.0",
+  "info": {
+    "title": "ctower first durable-ticket slice",
+    "version": "0.0.0"
+  },
+  "servers": [{"url": "http://127.0.0.1:8080"}],
+  "paths": {
+    "/v1/bootstrap/first-tenant": {
+      "post": {
+        "operationId": "bootstrapFirstTenant",
+        "x-ctower-cli": "bootstrap first-tenant",
+        "parameters": [
+          {"$ref": "#/components/parameters/IdempotencyKey"},
+          {"$ref": "#/components/parameters/BootstrapCapability"}
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {"schema": {"$ref": "#/components/schemas/BootstrapRequest"}}
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "First tenant committed with durability pending",
+            "content": {
+              "application/json": {"schema": {"$ref": "#/components/schemas/BootstrapReceipt"}}
+            }
+          },
+          "403": {"$ref": "#/components/responses/ProblemResponse"},
+          "409": {"$ref": "#/components/responses/ProblemResponse"},
+          "410": {"$ref": "#/components/responses/ProblemResponse"},
+          "422": {"$ref": "#/components/responses/ProblemResponse"}
+        }
+      }
+    },
+    "/v1/tickets": {
+      "post": {
+        "operationId": "createTicket",
+        "x-ctower-cli": "ticket create",
+        "security": [{"bearerAuth": []}],
+        "parameters": [{"$ref": "#/components/parameters/IdempotencyKey"}],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {"schema": {"$ref": "#/components/schemas/TicketCreateRequest"}}
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Ticket committed with durability pending",
+            "content": {
+              "application/json": {"schema": {"$ref": "#/components/schemas/TicketCommandResult"}}
+            }
+          },
+          "401": {"$ref": "#/components/responses/ProblemResponse"},
+          "404": {"$ref": "#/components/responses/ProblemResponse"},
+          "409": {"$ref": "#/components/responses/ProblemResponse"},
+          "422": {"$ref": "#/components/responses/ProblemResponse"}
+        }
+      }
+    },
+    "/v1/tickets/{ticket_id}": {
+      "get": {
+        "operationId": "getTicket",
+        "x-ctower-cli": "ticket show",
+        "security": [{"bearerAuth": []}],
+        "parameters": [{"$ref": "#/components/parameters/TicketId"}],
+        "responses": {
+          "200": {
+            "description": "Tenant-scoped ticket",
+            "content": {
+              "application/json": {"schema": {"$ref": "#/components/schemas/TicketResource"}}
+            }
+          },
+          "401": {"$ref": "#/components/responses/ProblemResponse"},
+          "404": {"$ref": "#/components/responses/ProblemResponse"}
+        }
+      }
+    },
+    "/v1/tickets/{ticket_id}/timeline": {
+      "get": {
+        "operationId": "getTicketTimeline",
+        "x-ctower-cli": "ticket timeline",
+        "security": [{"bearerAuth": []}],
+        "parameters": [{"$ref": "#/components/parameters/TicketId"}],
+        "responses": {
+          "200": {
+            "description": "Ordered tenant-scoped timeline",
+            "content": {
+              "application/json": {"schema": {"$ref": "#/components/schemas/TimelineResponse"}}
+            }
+          },
+          "401": {"$ref": "#/components/responses/ProblemResponse"},
+          "404": {"$ref": "#/components/responses/ProblemResponse"}
+        }
+      }
+    },
+    "/v1/tickets/{ticket_id}/custody": {
+      "post": {
+        "operationId": "transferTicketCustody",
+        "x-ctower-cli": "ticket assign",
+        "security": [{"bearerAuth": []}],
+        "parameters": [
+          {"$ref": "#/components/parameters/TicketId"},
+          {"$ref": "#/components/parameters/IdempotencyKey"}
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {"schema": {"$ref": "#/components/schemas/CustodyTransferRequest"}}
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Custody committed with durability pending",
+            "content": {
+              "application/json": {"schema": {"$ref": "#/components/schemas/TicketCommandResult"}}
+            }
+          },
+          "401": {"$ref": "#/components/responses/ProblemResponse"},
+          "404": {"$ref": "#/components/responses/ProblemResponse"},
+          "409": {"$ref": "#/components/responses/ProblemResponse"},
+          "422": {"$ref": "#/components/responses/ProblemResponse"}
+        }
+      }
+    }
+  },
+  "components": {
+    "securitySchemes": {
+      "bearerAuth": {"type": "http", "scheme": "bearer", "bearerFormat": "opaque"}
+    },
+    "parameters": {
+      "BootstrapCapability": {
+        "name": "X-Ctower-Bootstrap-Capability",
+        "in": "header",
+        "required": true,
+        "schema": {"type": "string", "minLength": 32, "maxLength": 256}
+      },
+      "IdempotencyKey": {
+        "name": "Idempotency-Key",
+        "in": "header",
+        "required": true,
+        "schema": {"type": "string", "format": "uuid"}
+      },
+      "TicketId": {
+        "name": "ticket_id",
+        "in": "path",
+        "required": true,
+        "schema": {"type": "string", "format": "uuid"}
+      }
+    },
+    "responses": {
+      "ProblemResponse": {
+        "description": "RFC 9457 problem",
+        "content": {
+          "application/problem+json": {"schema": {"$ref": "#/components/schemas/Problem"}}
+        }
+      }
+    },
+    "schemas": {
+      "BootstrapRequest": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "commander_name",
+          "commander_vault_ref",
+          "operator_credential_ref",
+          "operator_name",
+          "operator_vault_ref",
+          "tenant_name",
+          "tenant_slug"
+        ],
+        "properties": {
+          "commander_name": {"type": "string", "minLength": 1, "maxLength": 120},
+          "commander_vault_ref": {"type": "string", "pattern": "^vault-ref:[a-z0-9/_-]+$"},
+          "operator_credential_ref": {"type": "string", "pattern": "^credential-ref:[a-z0-9/_-]+$"},
+          "operator_name": {"type": "string", "minLength": 1, "maxLength": 120},
+          "operator_vault_ref": {"type": "string", "pattern": "^vault-ref:[a-z0-9/_-]+$"},
+          "tenant_name": {"type": "string", "minLength": 1, "maxLength": 120},
+          "tenant_slug": {"type": "string", "pattern": "^[a-z][a-z0-9-]{1,62}$"}
+        }
+      },
+      "BootstrapReceipt": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "command_id",
+          "commander_id",
+          "durability_state",
+          "event_ids",
+          "operator_id",
+          "receipt_digest",
+          "tenant_id"
+        ],
+        "properties": {
+          "command_id": {"type": "string", "format": "uuid"},
+          "commander_id": {"type": "string", "format": "uuid"},
+          "durability_state": {"$ref": "#/components/schemas/DurabilityState"},
+          "event_ids": {"type": "array", "minItems": 1, "items": {"type": "string", "format": "uuid"}},
+          "operator_id": {"type": "string", "format": "uuid"},
+          "receipt_digest": {"type": "string", "pattern": "^sha256:[0-9a-f]{64}$"},
+          "tenant_id": {"type": "string", "format": "uuid"}
+        }
+      },
+      "CustodyTransferRequest": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["expected_version", "from_custodian_id", "protected_transfer", "reason", "to_custodian_id"],
+        "properties": {
+          "expected_version": {"type": "integer", "minimum": 1},
+          "from_custodian_id": {"type": "string", "format": "uuid"},
+          "protected_transfer": {"type": "boolean"},
+          "reason": {"type": "string", "minLength": 1, "maxLength": 500},
+          "to_custodian_id": {"type": "string", "format": "uuid"}
+        }
+      },
+      "DurabilityState": {"type": "string", "enum": ["durability_pending"]},
+      "Priority": {"type": "string", "enum": ["P0", "P1", "P2"]},
+      "Problem": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["code", "detail", "status", "title", "type"],
+        "properties": {
+          "code": {
+            "type": "string",
+            "enum": [
+              "bootstrap-consumed",
+              "bootstrap-expired",
+              "bootstrap-origin",
+              "idempotency-conflict",
+              "tenant-scope-denied",
+              "unauthorized",
+              "version-conflict"
+            ]
+          },
+          "command_id": {"type": ["string", "null"], "format": "uuid"},
+          "current_version": {"type": ["integer", "null"], "minimum": 1},
+          "detail": {"type": "string"},
+          "status": {"type": "integer", "minimum": 400, "maximum": 599},
+          "title": {"type": "string"},
+          "type": {"type": "string", "format": "uri"}
+        }
+      },
+      "SourceReference": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["kind", "ref"],
+        "properties": {
+          "kind": {"type": "string", "minLength": 1, "maxLength": 64},
+          "ref": {"type": "string", "minLength": 1, "maxLength": 256}
+        }
+      },
+      "TicketCreateRequest": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["initial_custodian_id", "priority", "source", "title"],
+        "properties": {
+          "initial_custodian_id": {"type": "string", "format": "uuid"},
+          "priority": {"$ref": "#/components/schemas/Priority"},
+          "source": {"$ref": "#/components/schemas/SourceReference"},
+          "title": {"type": "string", "minLength": 1, "maxLength": 200}
+        }
+      },
+      "TicketResource": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "created_at",
+          "custodian_id",
+          "durability_state",
+          "priority",
+          "source",
+          "ticket_id",
+          "title",
+          "version"
+        ],
+        "properties": {
+          "created_at": {"type": "string", "format": "date-time"},
+          "custodian_id": {"type": "string", "format": "uuid"},
+          "durability_state": {"$ref": "#/components/schemas/DurabilityState"},
+          "priority": {"$ref": "#/components/schemas/Priority"},
+          "source": {"$ref": "#/components/schemas/SourceReference"},
+          "ticket_id": {"type": "string", "format": "uuid"},
+          "title": {"type": "string"},
+          "version": {"type": "integer", "minimum": 1}
+        }
+      },
+      "TicketCommandResult": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["command_id", "durability_state", "event_ids", "ticket"],
+        "properties": {
+          "command_id": {"type": "string", "format": "uuid"},
+          "durability_state": {"$ref": "#/components/schemas/DurabilityState"},
+          "event_ids": {"type": "array", "minItems": 1, "items": {"type": "string", "format": "uuid"}},
+          "ticket": {"$ref": "#/components/schemas/TicketResource"}
+        }
+      },
+      "TicketCreatedPayload": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["custodian_id", "priority", "source", "title"],
+        "properties": {
+          "custodian_id": {"type": "string", "format": "uuid"},
+          "priority": {"$ref": "#/components/schemas/Priority"},
+          "source": {"$ref": "#/components/schemas/SourceReference"},
+          "title": {"type": "string"}
+        }
+      },
+      "CustodyTransferredPayload": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["from_custodian_id", "reason", "to_custodian_id"],
+        "properties": {
+          "from_custodian_id": {"type": "string", "format": "uuid"},
+          "reason": {"type": "string"},
+          "to_custodian_id": {"type": "string", "format": "uuid"}
+        }
+      },
+      "TimelineEvent": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["actor_principal_id", "command_id", "event_id", "kind", "occurred_at", "payload", "sequence"],
+        "properties": {
+          "actor_principal_id": {"type": "string", "format": "uuid"},
+          "command_id": {"type": "string", "format": "uuid"},
+          "event_id": {"type": "string", "format": "uuid"},
+          "kind": {"type": "string", "enum": ["ticket.created", "ticket.custody_transferred"]},
+          "occurred_at": {"type": "string", "format": "date-time"},
+          "payload": {
+            "oneOf": [
+              {"$ref": "#/components/schemas/TicketCreatedPayload"},
+              {"$ref": "#/components/schemas/CustodyTransferredPayload"}
+            ]
+          },
+          "sequence": {"type": "integer", "minimum": 1}
+        }
+      },
+      "TimelineResponse": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["durability_state", "events", "ticket_id"],
+        "properties": {
+          "durability_state": {"$ref": "#/components/schemas/DurabilityState"},
+          "events": {"type": "array", "items": {"$ref": "#/components/schemas/TimelineEvent"}},
+          "ticket_id": {"type": "string", "format": "uuid"}
+        }
+      }
+    }
+  }
+}

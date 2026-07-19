@@ -32,6 +32,46 @@
       ]
     },
     {
+      "path": "contracts/domain/events/canonical-vectors.json",
+      "references": [
+        "SPEC#canonical-event-and-command-contract",
+        "INV-05",
+        "AC-DUR-03"
+      ]
+    },
+    {
+      "path": "contracts/domain/events/event-envelope.schema.json",
+      "references": [
+        "SPEC#canonical-event-and-command-contract",
+        "INV-03",
+        "INV-04",
+        "INV-05",
+        "AC-DUR-02",
+        "AC-DUR-03"
+      ]
+    },
+    {
+      "path": "contracts/domain/tickets/ticket-event.schema.json",
+      "references": [
+        "SPEC#canonical-event-and-command-contract",
+        "INV-06",
+        "INV-09",
+        "AC-PROD-04"
+      ]
+    },
+    {
+      "path": "contracts/http/openapi.yaml",
+      "references": [
+        "SPEC#canonical-event-and-command-contract",
+        "SPEC#client-acknowledgement-and-offline-behavior",
+        "INV-03",
+        "AC-ADM-02",
+        "AC-DUR-01",
+        "AC-DUR-02",
+        "AC-QUAL-05"
+      ]
+    },
+    {
       "path": "contracts/components/versioned-component.schema.json",
       "references": [
         "SPEC#universal-versionedcomponent-catalog-and-company-desired-state",
