@@ -12,6 +12,7 @@ from support.postgres import (
     start_postgres,
     stop_postgres,
 )
+from support.tenant_fixture import TenantFixture, create_first_tenant
 
 __all__: tuple[str, ...] = ()
 
@@ -33,3 +34,10 @@ def database(postgres_17: None) -> Iterator[DatabaseFixture]:
     fixture = create_database()
     yield fixture
     drop_database(fixture)
+
+
+@pytest.fixture
+def tenant(database: DatabaseFixture) -> TenantFixture:
+    """Provide one authenticated, bootstrap-created tenant."""
+
+    return create_first_tenant(database)

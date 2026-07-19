@@ -8,7 +8,7 @@ import json
 from collections.abc import Callable
 from datetime import UTC, datetime
 
-from ctower_kernel.record import BootstrapCommand, BootstrapReceipt, BootstrapRecord, RecordProblem
+from ctower_kernel.record import Actor, BootstrapCommand, BootstrapReceipt, Record, RecordProblem
 
 __all__ = ["Access", "digest_capability"]
 
@@ -18,7 +18,7 @@ class Access:
 
     def __init__(
         self,
-        record: BootstrapRecord,
+        record: Record,
         *,
         clock: Callable[[], datetime] | None = None,
     ) -> None:
@@ -51,6 +51,18 @@ class Access:
             now=self._clock(),
         )
 
+    def authenticate(self, authorization: str | None) -> Actor | RecordProblem:
+        """Resolve one opaque bearer credential without retaining plaintext."""
+
+        prefix = "Bearer "
+        if authorization is None or not authorization.startswith(prefix):
+            return _unauthorized()
+        credential = authorization.removeprefix(prefix)
+        if not credential or credential.strip() != credential:
+            return _unauthorized()
+        actor = self._record.actor_for_credential(hashlib.sha256(credential.encode()).digest())
+        return actor if actor is not None else _unauthorized()
+
 
 def digest_capability(capability: str) -> bytes:
     """Reduce plaintext bootstrap authority to its one-way Record representation."""
@@ -74,3 +86,12 @@ def _canonical_json(payload: dict[str, str]) -> bytes:
         separators=(",", ":"),
         sort_keys=True,
     ).encode()
+
+
+def _unauthorized() -> RecordProblem:
+    return RecordProblem(
+        code="unauthorized",
+        detail="A valid tenant credential is required.",
+        status=401,
+        title="Authentication refused",
+    )

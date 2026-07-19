@@ -10,18 +10,44 @@ from fastapi import FastAPI, Header, Request
 from fastapi.responses import JSONResponse
 
 from ctower_client.models import BootstrapReceipt as HttpBootstrapReceipt
-from ctower_client.models import BootstrapRequest, Problem
+from ctower_client.models import (
+    BootstrapRequest,
+    Problem,
+    TicketCreateRequest,
+    TicketResource,
+    TimelineResponse,
+)
+from ctower_client.models import TicketCommandResult as HttpTicketCommandResult
 from ctower_kernel.access import Access
-from ctower_kernel.record import BootstrapCommand, BootstrapReceipt, BootstrapRecord, RecordProblem
+from ctower_kernel.record import (
+    BootstrapCommand,
+    BootstrapReceipt,
+    Record,
+    RecordProblem,
+    SourceReference,
+    Ticket,
+    TicketCommand,
+    TicketCommandResult,
+    TicketTimeline,
+)
+from ctower_kernel.work import Work
 
 __all__ = ["create_app"]
 
 
-def create_app(record: BootstrapRecord) -> FastAPI:
+def create_app(record: Record) -> FastAPI:
     """Compose the private command API without embedding durable decisions."""
 
     app = FastAPI(title="ctower control API", version="0.0.0")
     access = Access(record)
+    _install_bootstrap_route(app, access)
+    _install_ticket_create_route(app, access, Work(record))
+    _install_ticket_read_routes(app, access, record)
+    return app
+
+
+def _install_bootstrap_route(app: FastAPI, access: Access) -> None:
+    """Bind the local-only bootstrap transport Adapter."""
 
     @app.post("/v1/bootstrap/first-tenant", status_code=201)
     def bootstrap_first_tenant(
@@ -45,20 +71,97 @@ def create_app(record: BootstrapRecord) -> FastAPI:
             capability=capability,
             origin=origin,
         )
-        return _response(outcome)
-
-    return app
+        return _bootstrap_response(outcome)
 
 
-def _response(outcome: BootstrapReceipt | RecordProblem) -> JSONResponse:
+def _install_ticket_create_route(app: FastAPI, access: Access, work: Work) -> None:
+    """Bind the authenticated ticket command Adapter."""
+
+    @app.post("/v1/tickets", status_code=201)
+    async def create_ticket(
+        request: Request,
+        command_id: Annotated[UUID, Header(alias="Idempotency-Key")],
+        authorization: Annotated[str | None, Header(alias="Authorization")] = None,
+    ) -> JSONResponse:
+        payload = TicketCreateRequest.model_validate_json(await request.body())
+        actor = access.authenticate(authorization)
+        if isinstance(actor, RecordProblem):
+            return _problem_response(actor)
+        outcome = work.create_ticket(
+            actor,
+            TicketCommand(
+                client_command_id=command_id,
+                initial_custodian_id=payload.initial_custodian_id,
+                priority=payload.priority.value,
+                source=SourceReference(payload.source.kind, payload.source.ref),
+                title=payload.title,
+            ),
+        )
+        return _ticket_command_response(outcome)
+
+
+def _install_ticket_read_routes(app: FastAPI, access: Access, record: Record) -> None:
+    """Bind tenant-scoped ticket and timeline queries."""
+
+    @app.get("/v1/tickets/{ticket_id}")
+    def get_ticket(
+        ticket_id: UUID,
+        authorization: Annotated[str | None, Header(alias="Authorization")] = None,
+    ) -> JSONResponse:
+        actor = access.authenticate(authorization)
+        if isinstance(actor, RecordProblem):
+            return _problem_response(actor)
+        return _ticket_response(record.get_ticket(actor, ticket_id))
+
+    @app.get("/v1/tickets/{ticket_id}/timeline")
+    def get_ticket_timeline(
+        ticket_id: UUID,
+        authorization: Annotated[str | None, Header(alias="Authorization")] = None,
+    ) -> JSONResponse:
+        actor = access.authenticate(authorization)
+        if isinstance(actor, RecordProblem):
+            return _problem_response(actor)
+        return _timeline_response(record.ticket_timeline(actor, ticket_id))
+
+
+def _bootstrap_response(outcome: BootstrapReceipt | RecordProblem) -> JSONResponse:
     payload = outcome.response_payload()
     encoded = json.dumps(payload, separators=(",", ":"), sort_keys=True)
     if isinstance(outcome, BootstrapReceipt):
         receipt_boundary = HttpBootstrapReceipt.model_validate_json(encoded)
         return JSONResponse(status_code=201, content=receipt_boundary.model_dump(mode="json"))
-    problem_boundary = Problem.model_validate_json(encoded)
+    return _problem_response(outcome)
+
+
+def _ticket_command_response(outcome: TicketCommandResult | RecordProblem) -> JSONResponse:
+    if isinstance(outcome, RecordProblem):
+        return _problem_response(outcome)
+    boundary = HttpTicketCommandResult.model_validate_json(_encoded(outcome.response_payload()))
+    return JSONResponse(status_code=201, content=boundary.model_dump(mode="json"))
+
+
+def _ticket_response(outcome: Ticket | RecordProblem) -> JSONResponse:
+    if isinstance(outcome, RecordProblem):
+        return _problem_response(outcome)
+    boundary = TicketResource.model_validate_json(_encoded(outcome.response_payload()))
+    return JSONResponse(status_code=200, content=boundary.model_dump(mode="json"))
+
+
+def _timeline_response(outcome: TicketTimeline | RecordProblem) -> JSONResponse:
+    if isinstance(outcome, RecordProblem):
+        return _problem_response(outcome)
+    boundary = TimelineResponse.model_validate_json(_encoded(outcome.response_payload()))
+    return JSONResponse(status_code=200, content=boundary.model_dump(mode="json"))
+
+
+def _problem_response(problem: RecordProblem) -> JSONResponse:
+    problem_boundary = Problem.model_validate_json(_encoded(problem.response_payload()))
     return JSONResponse(
-        status_code=outcome.status,
+        status_code=problem.status,
         content=problem_boundary.model_dump(mode="json", by_alias=True, exclude_none=True),
         media_type="application/problem+json",
     )
+
+
+def _encoded(payload: dict[str, object]) -> str:
+    return json.dumps(payload, separators=(",", ":"), sort_keys=True)

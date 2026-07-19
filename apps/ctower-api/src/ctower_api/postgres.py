@@ -8,23 +8,32 @@ import json
 import secrets
 from dataclasses import dataclass
 from datetime import UTC, datetime
-from pathlib import Path
-from typing import TextIO, cast
+from typing import cast
 from uuid import UUID
 
 import psycopg
 from psycopg.rows import dict_row
 from psycopg.types.json import Jsonb
 
-from ctower_kernel.access import digest_capability
-from ctower_kernel.record import BootstrapCommand, BootstrapReceipt, RecordProblem
+from ctower_api._setup_sql import apply_migrations, provision_bootstrap
+from ctower_api._ticket_sql import actor_for_credential as _actor_for_credential
+from ctower_api._ticket_sql import create_ticket as _create_ticket
+from ctower_api._ticket_sql import get_ticket as _get_ticket
+from ctower_api._ticket_sql import ticket_timeline as _ticket_timeline
+from ctower_kernel.record import (
+    Actor,
+    BootstrapCommand,
+    BootstrapReceipt,
+    RecordProblem,
+    Ticket,
+    TicketCommand,
+    TicketCommandResult,
+    TicketTimeline,
+)
 
 __all__ = ["PostgresRecord", "apply_migrations", "provision_bootstrap"]
 
-ROOT = Path(__file__).parents[4]
-MIGRATIONS = ROOT / "packages/ctower-kernel/migrations"
 ZERO_HASH = bytes(32)
-MINIMUM_CAPABILITY_LENGTH = 32
 
 
 @dataclass(frozen=True, slots=True)
@@ -77,48 +86,38 @@ class PostgresRecord:
                 return refusal
             return _commit_bootstrap(connection, command, request_digest=request_digest, now=now)
 
+    def actor_for_credential(self, credential_digest: bytes) -> Actor | None:
+        """Resolve one active principal through the credential index."""
 
-def apply_migrations(dsn: str) -> None:
-    """Verify and apply the authored checksum-ordered plain SQL migration set."""
+        return _actor_for_credential(self._dsn, credential_digest)
 
-    manifest = cast(
-        dict[str, object], json.loads((MIGRATIONS / "manifest.json").read_text(encoding="utf-8"))
-    )
-    entries = cast(list[dict[str, str]], manifest["migrations"])
-    scripts: list[str] = []
-    for entry in entries:
-        content = (MIGRATIONS / entry["path"]).read_bytes()
-        actual = f"sha256:{hashlib.sha256(content).hexdigest()}"
-        if not hmac.compare_digest(actual, entry["sha256"]):
-            raise ValueError(f"migration checksum mismatch: {entry['path']}")
-        scripts.append(content.decode())
-    with psycopg.connect(dsn) as connection:
-        connection.execute("SELECT pg_advisory_xact_lock(712040119)")
-        for script in scripts:
-            connection.execute(script)
+    def create_ticket(
+        self,
+        actor: Actor,
+        command: TicketCommand,
+        *,
+        request_digest: bytes,
+        now: datetime,
+    ) -> TicketCommandResult | RecordProblem:
+        """Append or replay one ticket transaction."""
 
-
-def provision_bootstrap(
-    dsn: str,
-    *,
-    capability_input: TextIO,
-    allowed_origin: str,
-    expires_at: datetime,
-) -> None:
-    """Read one capability from a local stream and persist only its digest."""
-
-    capability = capability_input.readline().rstrip("\r\n")
-    if len(capability) < MINIMUM_CAPABILITY_LENGTH:
-        raise ValueError("bootstrap capability must have at least 32 characters")
-    with psycopg.connect(dsn) as connection:
-        connection.execute(
-            """
-            INSERT INTO bootstrap_capability (
-                singleton, capability_digest, allowed_origin, expires_at
-            ) VALUES (true, %s, %s, %s)
-            """,
-            (digest_capability(capability), allowed_origin, expires_at),
+        return _create_ticket(
+            self._dsn,
+            actor,
+            command,
+            request_digest=request_digest,
+            now=now,
         )
+
+    def get_ticket(self, actor: Actor, ticket_id: UUID) -> Ticket | RecordProblem:
+        """Read one tenant-scoped ticket."""
+
+        return _get_ticket(self._dsn, actor, ticket_id)
+
+    def ticket_timeline(self, actor: Actor, ticket_id: UUID) -> TicketTimeline | RecordProblem:
+        """Read one tenant-scoped event timeline."""
+
+        return _ticket_timeline(self._dsn, actor, ticket_id)
 
 
 def _bootstrap_refusal(

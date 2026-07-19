@@ -100,14 +100,19 @@ paths = ["packages/ctower-kernel/src/ctower_kernel/access/**"]
 allowed_dependencies = ["kernel-record"]
 
 [[ownership]]
+name = "kernel-work"
+paths = ["packages/ctower-kernel/src/ctower_kernel/work/**"]
+allowed_dependencies = ["kernel-record"]
+
+[[ownership]]
 name = "control-api"
 paths = ["apps/ctower-api/src/**"]
-allowed_dependencies = ["kernel-access", "kernel-record"]
+allowed_dependencies = ["kernel-access", "kernel-record", "kernel-work"]
 
 [[ownership]]
 name = "increment-1-acceptance-tests"
 paths = ["tests/acceptance/increment-1/**"]
-allowed_dependencies = ["control-api", "kernel-access", "kernel-record"]
+allowed_dependencies = ["control-api", "kernel-access", "kernel-record", "kernel-work"]
 
 [[ownership]]
 name = "web"
