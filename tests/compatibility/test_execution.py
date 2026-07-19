@@ -320,7 +320,13 @@ class LocalProcessBoundaryTests(unittest.TestCase):
 
     def test_local_metadata_adapter_is_explicit(self) -> None:
         port = LocalExecutionPort()
-        self.assertIsNotNone(port.resolve_tool("python"))
+        with tempfile.TemporaryDirectory() as directory:
+            executable = Path(directory) / "ctower-test-tool"
+            executable.write_bytes(b"")
+            executable.chmod(0o700)
+            with patch.dict(os.environ, {"PATH": directory}):
+                self.assertEqual(port.resolve_tool(executable.name), str(executable))
+                self.assertIsNone(port.resolve_tool("ctower-missing-tool"))
         self.assertEqual(port.distribution_version("pydantic"), "2.13.4")
         with self.assertRaisesRegex(CompatibilityError, "expected Python"):
             port.runtime_details("3.12.13")
