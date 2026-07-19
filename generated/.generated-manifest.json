@@ -1,4 +1,44 @@
 {
-  "schema": "ctower.generated-manifest/v1",
-  "artifacts": []
+  "_notice": "DO NOT EDIT: generated file; regenerate from declared inputs.",
+  "artifacts": [
+    {
+      "command": "python3 -m tools.checks.traceability --root . --write",
+      "generator": "tools.checks.traceability",
+      "id": "contract-traceability-index",
+      "inputs": [
+        {
+          "path": "SPEC.md",
+          "sha256": "sha256:19274419cef656d42c771861b0a05aea7d748291c3c43c3e7434995930dd1804"
+        },
+        {
+          "path": "contracts/traceability/sources.json",
+          "sha256": "sha256:5a9227cd9d603347d1ebc807523a8d35cde05820bec78c3270f446b6b1fd6153"
+        },
+        {
+          "path": "contracts/traceability/traceability-sources.schema.json",
+          "sha256": "sha256:fdc10eae276f143766702e7c5356c6032e14bd2c42311156987dc1d8d4609b0e"
+        },
+        {
+          "path": "tools/checks/_impl/generated.py",
+          "sha256": "sha256:02d4b0b19671b2967723ca087974d69d5bacd3e90fc6fabb448b2e79ec661626"
+        },
+        {
+          "path": "tools/checks/_impl/traceability.py",
+          "sha256": "sha256:0c38c8cf0a682c0beec3cf7c2112e1dbca40b575a8b75b6a6ca8fc56004f7c92"
+        },
+        {
+          "path": "tools/checks/traceability.py",
+          "sha256": "sha256:a0e94dd83f7451d98700ea647f586bdfb50ff1175cd155a644cffa8738ca7980"
+        }
+      ],
+      "outputs": [
+        {
+          "path": "generated/traceability-index.json",
+          "sha256": "sha256:4e63a0f2d44b2c92e47a5ea118205a06489130967fe3d429f48f9f728adaa6cc"
+        }
+      ],
+      "tool_version": "2"
+    }
+  ],
+  "schema": "ctower.generated-manifest/v1"
 }

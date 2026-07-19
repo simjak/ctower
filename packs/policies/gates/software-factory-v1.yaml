@@ -1,11 +1,135 @@
-schema: ctower.gate-policy/v1
-status: draft
-key: engineering.software-factory.gates
-revision: 1
-workflow_ref: engineering.software-factory@1
-independence:
-  author_may_not_review_own_candidate: true
-  effective_identity_fields: [principal, harness, session, workspace, provider, isolation_domain]
-gates: []
-evidence_invalidation: []
-note: Skeleton only; verdicts and evidence are runtime records, never policy payload fields.
+{
+  "schema": "ctower.gate-policy/v1",
+  "status": "draft",
+  "key": "engineering.software-factory.gates",
+  "revision": 1,
+  "workflow_ref": "engineering.software-factory@1",
+  "independence": {
+    "author_may_not_review_own_candidate": true,
+    "effective_identity_fields": [
+      "principal",
+      "harness",
+      "session",
+      "workspace",
+      "provider",
+      "isolation_domain"
+    ]
+  },
+  "review_plans": {
+    "low": {
+      "schema": "ctower.review-plan/v1",
+      "workflow_ref": "engineering.software-factory@1",
+      "policy_ref": "engineering.software-factory.gates@1",
+      "required_perspectives": [
+        {
+          "name": "code-review",
+          "workflow_ref": "engineering.software-factory@1#risk-derived-review",
+          "policy_ref": "engineering.review.code-review@1"
+        }
+      ],
+      "additional_perspectives": [],
+      "limits": {
+        "max_nonpassing_rounds": 1,
+        "max_repairs_per_lineage": 1,
+        "max_candidate_generations": 2
+      }
+    },
+    "standard": {
+      "schema": "ctower.review-plan/v1",
+      "workflow_ref": "engineering.software-factory@1",
+      "policy_ref": "engineering.software-factory.gates@1",
+      "required_perspectives": [
+        {
+          "name": "code-review",
+          "workflow_ref": "engineering.software-factory@1#risk-derived-review",
+          "policy_ref": "engineering.review.code-review@1"
+        }
+      ],
+      "additional_perspectives": [],
+      "limits": {
+        "max_nonpassing_rounds": 2,
+        "max_repairs_per_lineage": 2,
+        "max_candidate_generations": 4
+      }
+    },
+    "elevated": {
+      "schema": "ctower.review-plan/v1",
+      "workflow_ref": "engineering.software-factory@1",
+      "policy_ref": "engineering.software-factory.gates@1",
+      "required_perspectives": [
+        {
+          "name": "code-review",
+          "workflow_ref": "engineering.software-factory@1#risk-derived-review",
+          "policy_ref": "engineering.review.code-review@1"
+        }
+      ],
+      "additional_perspectives": [
+        {
+          "perspective": {
+            "name": "security",
+            "workflow_ref": "engineering.software-factory@1#risk-derived-review",
+            "policy_ref": "engineering.review.security@1"
+          },
+          "applicability": {
+            "mode": "conditional",
+            "predicate_ref": "engineering.change.security-sensitive@1"
+          }
+        },
+        {
+          "perspective": {
+            "name": "rendered-design",
+            "workflow_ref": "engineering.software-factory@1#risk-derived-review",
+            "policy_ref": "engineering.review.rendered-design@1"
+          },
+          "applicability": {
+            "mode": "conditional",
+            "predicate_ref": "engineering.change.user-interface@1"
+          }
+        }
+      ],
+      "limits": {
+        "max_nonpassing_rounds": 2,
+        "max_repairs_per_lineage": 2,
+        "max_candidate_generations": 4
+      }
+    },
+    "critical": {
+      "schema": "ctower.review-plan/v1",
+      "workflow_ref": "engineering.software-factory@1",
+      "policy_ref": "engineering.software-factory.gates@1",
+      "required_perspectives": [
+        {
+          "name": "code-review",
+          "workflow_ref": "engineering.software-factory@1#risk-derived-review",
+          "policy_ref": "engineering.review.code-review@1"
+        },
+        {
+          "name": "security",
+          "workflow_ref": "engineering.software-factory@1#risk-derived-review",
+          "policy_ref": "engineering.review.security@1"
+        }
+      ],
+      "additional_perspectives": [
+        {
+          "perspective": {
+            "name": "rendered-design",
+            "workflow_ref": "engineering.software-factory@1#risk-derived-review",
+            "policy_ref": "engineering.review.rendered-design@1"
+          },
+          "applicability": {
+            "mode": "conditional",
+            "predicate_ref": "engineering.change.user-interface@1"
+          }
+        }
+      ],
+      "limits": {
+        "max_nonpassing_rounds": 1,
+        "max_repairs_per_lineage": 1,
+        "max_candidate_generations": 3
+      }
+    }
+  },
+  "gates": [],
+  "evidence_invalidation": [],
+  "note": "Draft example only. Each ReviewPlan is identified solely by its review_plans map name inside this pinned gate-policy revision and addressed as <gate-policy-key>@<revision>#review-plans.<name>; it has no independent key, revision, status, or VersionedComponent identity. The base code-review perspective covers correctness and maintainability. Automatic spin is bounded by nonpassing rounds, per-lineage repairs, and candidate generations; total executions remain immutable server-owned audit state. The platform schema contains no engineering personas or cross-plan ceiling."
+}

@@ -13,6 +13,8 @@ from pathlib import Path
 
 from tools.checks import verify
 
+_GENERATED_NOTICE = "DO NOT EDIT: generated file; regenerate from declared inputs."
+
 
 class RepositoryPolicyTests(unittest.TestCase):
     fixtures = Path(__file__).parent / "fixtures"
@@ -89,7 +91,9 @@ class RepositoryPolicyTests(unittest.TestCase):
 
     def test_generated_digest_drift_is_non_waivable(self) -> None:
         with self._temporary_positive() as root:
+            (root / "generated/output.py").write_text("VALUE = 1\n", encoding="utf-8")
             manifest = {
+                "_notice": _GENERATED_NOTICE,
                 "schema": "ctower.generated-manifest/v1",
                 "artifacts": [
                     {
@@ -98,7 +102,12 @@ class RepositoryPolicyTests(unittest.TestCase):
                         "tool_version": "1",
                         "command": "fixture generate",
                         "inputs": [],
-                        "outputs": [{"path": "app/public.py", "sha256": "sha256:invalid"}],
+                        "outputs": [
+                            {
+                                "path": "generated/output.py",
+                                "sha256": f"sha256:{'0' * 64}",
+                            }
+                        ],
                     }
                 ],
             }

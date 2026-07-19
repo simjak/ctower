@@ -3,8 +3,20 @@ title = "ctower secret detection policy"
 [extend]
 useDefault = true
 
-[allowlist]
+[[allowlists]]
 description = "Only deterministic fake values in isolated repository-policy fixtures"
 paths = [
   '''tests/repository/fixtures/''',
 ]
+
+[[rules]]
+id = "generic-api-key"
+
+  [[rules.allowlists]]
+  description = "Reviewed lifecycle prose in the append-only architecture decision log"
+  condition = "AND"
+  regexTarget = "line"
+  paths = ['''^DECISIONS\.md$''']
+  regexes = [
+    '''The reusable-image lifecycle is setup -> capture -> scrub -> secret scan -> SBOM/vulnerability scan ->''',
+  ]

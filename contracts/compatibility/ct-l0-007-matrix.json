@@ -1,0 +1,64 @@
+{
+  "schema": "ctower.compatibility-input/v1",
+  "matrix_id": "ct-l0-007-python-2026-07-19",
+  "uv_version": "0.11.29",
+  "requirements": [
+    "build==1.5.0",
+    "fastapi==0.139.2",
+    "jsonschema==4.26.0",
+    "mypy==1.20.2",
+    "opentelemetry-api==1.44.0",
+    "opentelemetry-sdk==1.44.0",
+    "psycopg==3.3.4",
+    "psycopg-binary==3.3.4",
+    "psycopg-pool==3.3.1",
+    "pydantic==2.13.4",
+    "ruff==0.15.22",
+    "setuptools==83.0.0",
+    "types-jsonschema==4.26.0.20260518",
+    "uv==0.11.29",
+    "wheel==0.47.0"
+  ],
+  "required_observations": [
+    "runtime",
+    "dependency_resolution",
+    "pydantic",
+    "fastapi",
+    "psycopg",
+    "opentelemetry",
+    "ruff",
+    "mypy_pydantic_plugin",
+    "jsonschema",
+    "wheel"
+  ],
+  "product_artifacts": ["release_helper_wheel", "generated_clients"],
+  "candidates": [
+    {
+      "version": "3.12.13",
+      "gil": "required",
+      "release_date": "2026-03-03",
+      "release_url": "https://www.python.org/downloads/release/python-31213/",
+      "source_url": "https://www.python.org/ftp/python/3.12.13/Python-3.12.13.tgz",
+      "source_sha256": "0816c4761c97ecdb3f50a3924de0a93fd78cb63ee8e6c04201ddfaedca500b0b",
+      "linux_image": "docker.io/library/python@sha256:57cd7c3a7a273101a6485ba99423ee568157882804b1124b4dd04266317710de"
+    },
+    {
+      "version": "3.13.14",
+      "gil": "required",
+      "release_date": "2026-06-10",
+      "release_url": "https://www.python.org/downloads/release/python-31314/",
+      "source_url": "https://www.python.org/ftp/python/3.13.14/Python-3.13.14.tgz",
+      "source_sha256": "5ae535a36af0ebca6fca176ecb8197f5db9c1cb8c8f0cd12cdf1787046db1f41",
+      "linux_image": "docker.io/library/python@sha256:6771159cd4fa5d9bba1258caf0b82e6b73458c694d178ad97c5e925c2d0e1a91"
+    },
+    {
+      "version": "3.14.6",
+      "gil": "required",
+      "release_date": "2026-06-10",
+      "release_url": "https://www.python.org/downloads/release/python-3146/",
+      "source_url": "https://www.python.org/ftp/python/3.14.6/Python-3.14.6.tgz",
+      "source_sha256": "74d0d71d0600e477651a077101d6e62d1e2e69b8e992ba18c993dd643b7ba222",
+      "linux_image": "docker.io/library/python@sha256:cea0e6040540fb2b965b6e7fb5ffa00871e632eef63719f0ea54bca189ce14a6"
+    }
+  ]
+}

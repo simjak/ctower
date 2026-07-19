@@ -1,57 +1,80 @@
 # ctower
 
-ctower is a greenfield, durable control tower for human operators and replaceable AI-agent runtimes. The canonical product, architecture, workflow, verification, and build contract is [`SPEC.md`](SPEC.md). Historical design rationale is append-only in [`DECISIONS.md`](DECISIONS.md). The terminal-safe [`ARCHITECTURE.md`](ARCHITECTURE.md) is a derived operator/implementer atlas and never overrides the SPEC. The proposed dogfood sequence lives in [`IMPLEMENTATION-ROADMAP.md`](IMPLEMENTATION-ROADMAP.md); it is non-normative and does not authorize work or override the SPEC.
+ctower is an open-source control plane for durable work performed by humans and replaceable AI agents.
+It keeps one authoritative, evidence-backed ticket journey from request through execution, verification,
+release, production proof, retro, and closure.
 
-This repository is currently in the **docs-first L0 bootstrap**. It contains the repository boundaries, authored contracts, declarative component examples, and executable repository-quality policy. It does not yet contain control-plane, runner, CLI, release-helper, or browser product behavior.
+Agent harnesses are useful execution environments, but their processes, terminals, and context windows are
+temporary. ctower is designed to preserve the work: ownership, workflow position, decisions, attempts,
+artifacts, evidence, effects, and the complete audit trail survive agent, model, machine, and process changes.
 
-## Architecture at a glance
+> [!IMPORTANT]
+> ctower is currently a **docs-first pre-alpha project**. The specification, architecture, contracts,
+> declarative packs, repository policy, bootstrap tests, and a Python compatibility preflight exist. The
+> API, kernel, ticket store, runner, CLI, web UI, and release runtime are not implemented yet. There is no
+> installable product today.
 
-- Python owns the trusted control plane, runner, CLI, and separately isolated release helper.
-- TypeScript owns the browser application; no frontend framework has been selected.
-- `contracts/` is the only authored schema home; `generated/` is machine-owned.
-- `packages/ctower-kernel` is the modular-monolith authority boundary.
-- `packages/ctower-runner-sdk` defines replaceable harness/supervisor/target/workspace/telemetry seams without record-tier authority.
-- `packs/` contains versioned desired-state components; prose and YAML never advance runtime state by themselves.
-- `tools/checks` is one deep Repository Policy Module used by hooks, local commands, and CI.
+## What ctower is designed to provide
 
-See [`ARCHITECTURE.md`](ARCHITECTURE.md) for the control/record/worker/effect and heartbeat/cron views,
-then read the boundary READMEs under `apps/`, `packages/`, `contracts/`, `packs/`, and `deploy/`
-before adding files.
+- Durable tickets with independent Kanban status and workflow stage.
+- Versioned workflows that define legal stages, transitions, and failure routes.
+- Versioned execution policies that select agents, models, environments, gates, limits, and escalations.
+- A persistent Commander principal that leads work until verified closure while execution agents remain
+  replaceable.
+- Evidence-driven verification and bounded repair loops instead of status updates based on agent claims.
+- Local or remote runtime adapters without giving an agent harness authority over the system of record.
+- An operator attention queue that surfaces only decisions automation cannot safely make.
 
-## Runtime pin status
+The first production workflow is a software factory, but the domain model is intentionally generic enough
+for workflows such as accounting, operations, research, and compliance.
 
-There is intentionally no `.python-version`, `uv.lock`, or Python image pin yet. Decision D6 retains Python 3.12 as the exact historical authority until CT-L0-007 records a compatibility matrix for 3.12, 3.13.14, and standard-GIL 3.14.6 and the operator accepts an append-only supersession. Adding an exact runtime file before that decision would misrepresent durable decision history.
+## Start here
 
-The root `pyproject.toml` therefore declares the compatibility window `>=3.12,<3.15` and configures tools against the 3.12 language floor. The compatibility evidence belongs under `contracts/compatibility/`. Lockfiles are generated and committed only after one exact runtime/toolchain is accepted. The Node patch and pnpm lock are similarly deferred to the browser L0 toolchain review; this does not select a browser framework.
+- [Public documentation](https://simjak.github.io/ctower/)
+- [System specification](SPEC.md) — canonical semantics, requirements, acceptance criteria, and KPIs
+- [Architecture atlas](ARCHITECTURE.md) — compact derived system and infrastructure views
+- [Decision log](DECISIONS.md) — append-only architectural history
+- [Implementation roadmap](IMPLEMENTATION-ROADMAP.md) — dogfooding sequence under the specification
+- [Contributing guide](CONTRIBUTING.md) and [coding standards](docs/contributing/CODING_STANDARDS.md)
 
-## Quality contract
+The specification is authoritative. Exact machine contracts live in `contracts/`, concrete versioned
+workflow and policy values live in `packs/`, and generated artifacts live in `generated/`.
 
-After the development tools are installed from the accepted locks:
+## Use the repository today
 
-```text
-just check    # warm, non-mutating gate
-just verify   # full, non-mutating gate including clean-diff proof
-```
-
-The dependency-light bootstrap validation available now is:
+Clone the repository and run the dependency-light bootstrap checks:
 
 ```bash
-python3 -m compileall -q tools/checks
+git clone git@github.com:simjak/ctower.git
+cd ctower
 python3 -m unittest discover -s tests/repository -v
-python3 -m tools.checks --root . --profile full
 python3 -m tools.checks --root . --profile full --expected-suites
-uv run --no-project --with 'jsonschema>=4.25,<5' python -m tools.checks --root . --profile full --execute-suites
-uv run --no-project --with 'jsonschema>=4.25,<5' python -m unittest discover -s tests/contracts/l0 -v
 ```
 
-`tools/checks/expected-suites.toml` is the versioned verification-scope source. Current suites must contain executable, unskipped tests and their shell-free argv commands must pass within the declared timeout; later increment suites remain visibly `not_yet_required` and are never executed or presented as passes.
+These commands validate the repository foundation; they do not start ctower. See the
+[getting-started guide](https://simjak.github.io/ctower/getting-started/) for the current development
+workflow, the observed compatibility evidence, and its unresolved runtime-selection gaps.
 
-Repository limits, exceptions, typing, observability, generation, and review laws are normative in [`docs/contributing/CODING_STANDARDS.md`](docs/contributing/CODING_STANDARDS.md).
+## Implementation path
 
-## Bootstrap boundaries
+1. Establish reproducible toolchains, required CI checks, and architectural boundary gates.
+2. Build one durable ticket vertical and prove backup, restore, replay, and idempotency.
+3. Add the CLI and thin Board/Ticket UI, then cut ctower's own backlog over without dual writes.
+4. Add the generic workflow engine, durable runtime, Commander automation, and protected effects.
+5. Use ctower to plan, implement, verify, document, release, and retro its own first production feature.
 
-Do not add live ticket-state files, another architecture/diagram document, another implementation roadmap,
-a `Factory` service, a generic plugin host, raw secrets, mutable `latest` references, or provider-specific
-authority. `ARCHITECTURE.md` is the sole derived atlas and must stay subordinate to `SPEC.md`.
-`IMPLEMENTATION-ROADMAP.md` is the sole proposed sequencing document and remains subordinate to the SPEC.
-Implementation begins from the stable IDs in SPEC's bootstrap backlog after the L0 contracts are reviewed.
+See the [implementation roadmap](IMPLEMENTATION-ROADMAP.md) for the phase exits and dogfooding maturity
+model. Deferred integrations—including remote execution providers, reusable sandbox images, and runtime
+catalogs—must earn a real interface after the local walking skeleton works.
+
+## Contributing and security
+
+ctower is being developed in public. Issues and pull requests are welcome, especially those that sharpen
+the durability model, reduce operator attention, or prove a complete vertical path. Please read
+[CONTRIBUTING.md](CONTRIBUTING.md) before opening a pull request.
+
+Do not report vulnerabilities in public issues. Follow [SECURITY.md](SECURITY.md) for private reporting.
+
+## License
+
+Apache License 2.0. See [LICENSE](LICENSE).

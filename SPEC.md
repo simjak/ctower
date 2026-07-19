@@ -3,8 +3,8 @@
 | Field | Value |
 |---|---|
 | Status | Canonical target-system truth |
-| Version | 1.6 |
-| Date | 2026-07-17 |
+| Version | 1.7 |
+| Date | 2026-07-18 |
 | Owners | Operator/CEO (product and human gates), Commander (orchestration contract), Engineering Manager (architecture and risk contract) |
 | Decision authority | [`DECISIONS.md`](DECISIONS.md) |
 
@@ -12,7 +12,7 @@
 
 ## Executive summary
 
-ctower is the durable trust and orchestration layer for teams of human operators and replaceable AI-agent runtimes. It turns an inbound conversation, command, or external event into a permanent, inspectable work record; moves valuable work through a versioned software-factory workflow; binds every completion claim to evidence; controls real external effects at the capability boundary; survives runner, process, and host loss; and asks for human attention only when policy says human judgment is necessary.
+ctower is the durable trust, task-management, and orchestration layer for teams of human operators and replaceable AI-agent runtimes. It turns an inbound conversation, command, or external event into a permanent, inspectable ticket; moves valuable work through any compatible versioned Workflow; binds completion claims to evidence; controls real external effects at the capability boundary; survives runner, process, and host loss; and asks for human attention only when policy says human judgment is necessary. The software factory is the first packaged Workflow, not a platform-wide process model.
 
 The product contract is intentionally simple for the operator. There are five and only five primary surfaces:
 
@@ -39,23 +39,33 @@ strongest available healthy general-reasoning profile for each fresh Commander j
 or Codex xhigh-class profile may qualify, but no vendor/model is permanently privileged. The same Commander
 principal retains orchestration ownership across model, process, harness, and context-window replacement
 until verified production, retro, and resolve/close. It delegates heavy implementation while recording a
-versioned `orchestration_plan`: risk facts, `mandatory_stage_gates`, `review_round_topology`, review-round
-execution/pass requirements, repair-attempt limits, and rationale. Consumed round and repair counts are
-append-only server facts, never plan-authored values. The workflow engine enforces floors, evidence,
-independence, stable cross-digest failure lineage, effects, and the hard anti-spin ceiling; the Commander
-applies judgment inside those bounds.
+versioned `orchestration_plan`: risk and context facts, the pinned policy choice, `required_perspectives`,
+`max_nonpassing_rounds`, `max_repairs_per_lineage`, `max_candidate_generations`, and rationale. Every
+consumed count, including `total_executions`, is an append-only server-owned fact; the plan and ReviewPlan
+v1 never author, cap, or reset it. The workflow engine enforces the selected finite
+policy bounds, evidence, independence, stable cross-digest failure lineage, and fail-closed anti-spin;
+concrete values belong to the pinned Workflow/Execution Policy rather than one platform-wide tier table.
 
 The trusted control plane runs on an authenticated private VPS. Python is the sole trusted implementation language for the control plane, runner, CLI, and release helper; TypeScript is used only for the browser UI. FastAPI, strict Pydantic v2 contracts, psycopg3, and plain SQL provide one server-side command model to both web and CLI clients. Standard CPython 3.14.6 is the recommended greenfield pin, subject to the L0 compatibility gate and append-only supersession of D6; 3.13.14 is the explicit fallback, while 3.12 remains the historical locked pin until that gate is accepted. Postgres is the transactional record tier. Every authoritative mutation passes through one authenticated, idempotent append path that serializes per aggregate, checks idempotency before compare-and-swap, extends a hash chain, and writes an outbox row in the same transaction. `NOTIFY` is a latency hint, never the durable queue. Content-addressed object storage holds bytes; Postgres holds immutable digests and provenance; a vault holds secrets while ctower stores only references.
 
-The worker plane is replaceable. Increment 2 wraps the existing `bin/mux`/tmux substrate behind a durable runner protocol. Every attempt pins an immutable composition of `HarnessSpec`, `SupervisorSpec`, `TargetSpec`, `WorkspaceSpec`, and `TelemetrySpec`, plus an `EnvironmentRevision`, `ImageRevision`, and `PlacementDecision`. Tmux is one Supervisor Adapter and optional same-host continuity view; it is never ticket identity, durable completion proof, or audit authority. Later VPS and sandbox runners use the same outbound-connected protocol, but real remote pools remain outside the first two increments. Jobs have accepted, leased, running, and terminal states; leases carry fencing tokens; structured events and active log chunks carry ordered cursors; reconnect replays from the last acknowledged cursor; steer, cancel, and checkpoint are durable commands. A vendor or provider session ID is only a resume/allocation hint, never identity.
+The worker plane is replaceable. I2 wraps local `bin/mux`/tmux behind a durable runner protocol and pins each attempt's harness, supervisor, target, workspace, telemetry, and build digest. Tmux is optional same-host continuity, never ticket identity or proof. Jobs, fenced leases, structured cursors, replay, steer, cancel, and checkpoint are durable; vendor sessions are hints. Remote/image placement remains deferred until real Adapters earn its Seam.
 
 Ctower begins in a brand-new `ctower` monorepo. Mission Control and the inspected Paperclip/Crabbox sources are migration or research provenance only, not runtime dependencies. The trusted control plane is a Python modular monolith: `ctower-api` and its control worker share one kernel artifact; `ctower-runner`, `ctower-web`, and `ctowerctl` are separately deployable clients of authored contracts. One deep Catalog Module applies a universal `VersionedComponent` envelope to workflows, policies, profiles, skills, tools, environments, images, placement, extensions, cadence, and integrations. A secret-free `CompanyBundle` is portable desired-state authoring over the same authenticated command API as the UI, never a file-watched control plane.
 
-Ctower is extension-ready, not extension-led. The trusted kernel alone owns ticket, workflow, policy, evidence, gate, Attention, job, effect, and secret truth. One deep **Extension Host Module** verifies revision-pinned data-only manifests, separates requested capabilities from grants, and invokes only scoped isolated work. The first two increments implement only the runner, evidence, provider, and ingress Seams required by the golden path; arbitrary plugin workers, executable third-party UI, broad connectors, and a marketplace are deferred.
+Ctower is extension-ready, not extension-led. The trusted kernel alone owns ticket, workflow, policy, proof, Attention, job, effect, and secret truth. I1/I2 allow host-rendered revision-pinned declarative slots and denial contracts only; executable workers, third-party UI, connectors, and a marketplace are deferred until real Adapters earn an Extension Host Seam.
 
-Trust is earned, not inferred. Acceptance criteria are frozen before implementation. Evidence binds criterion, artifact digest, source revision, command, environment, producer, verifier, and time. Artifact changes invalidate dependent proof. Authors cannot approve their own work. Elevated and critical review can be sealed and double-blind. Normal staging and production promotion is autonomous only after the required gates pass; no runner has standing production authority. The effect broker issues a short-lived scoped grant and records an immutable receipt at the actual deploy, send, IAM, or destructive boundary. A production verification failure becomes an incident and rollback/triage path, never an ordinary retry.
+Trust is earned, not inferred. Evidence binds criterion, artifact digest, source revision, command, environment, producer, verifier, and time; changed inputs invalidate dependent proof. Authors cannot approve their own work, and pinned policies may require sealed independent review. Promotion is autonomous only after required gates pass; no runner has standing production authority. The effect broker issues a scoped grant and records the external receipt. Production verification failure becomes incident/rollback/triage, never ordinary retry.
 
-Rollout is intentionally narrow. **Increment 1** preserves the locked trust-spine wedge: authenticated ticket log, criteria/evidence/gates, Needs You, spool-backed CLI, health, backup/restore, and one freeze/import/rewire cutover with no dual write. **Increment 2** executes exactly one real software-factory ticket end to end on `bin/mux`, including workflow stages, durable jobs, independent gates, effect-brokered staging and production, live verification, runner-loss recovery, retro, and closure. General-purpose Catalog editors, a marketplace, remote runner pools, sandbox fleets, visual workflow editors, broad analytics, and multi-tenant commercialization wait.
+Rollout is intentionally narrow. **Increment 1** dogfoods the trust spine: authenticated durable tickets,
+P0/P1/P2 and orthogonal Board/task facts, criteria/evidence/gates, spool-backed CLI, thin Board/Ticket views,
+off-host-acknowledged durability, isolated restore, and then one freeze/import/rewire cutover that makes the
+ctower project itself use ctower as its only writable work source. A four-stage workflow fixture proves the
+same generic engine contract that Increment 2 completes; it is not a temporary special-case engine.
+**Increment 2** adds the production generic Workflow/Runtime/Commander/release path and executes one real
+software-factory ticket end to end on `bin/mux`, including independent gates, effect-brokered staging and
+production, live verification, runner-loss recovery, retro, and closure. General-purpose Catalog editors,
+a marketplace, remote runner pools, sandbox fleets, visual workflow editors, broad analytics, and
+multi-tenant commercialization wait.
 
 The north star is **operator attention minutes per verified resolved ticket**, always paired with throughput, escaped defects, and time-to-detection so silence cannot game the result. ctower succeeds when the operator can trust Home in under ten seconds, ordinary transitions proceed autonomously, every side effect reconciles to authority, and process improvements measurably reduce future attention or defects.
 
@@ -83,8 +93,10 @@ This file is the single current product, UX, domain, architecture, workflow, sec
 When sources differ, use this order:
 
 1. A later operator-locked decision in `DECISIONS.md`.
-2. This `SPEC.md`, version 1.3 or a later reviewed version.
-3. Executable contracts generated from this spec: migrations, OpenAPI, workflow schemas, policy fixtures, and conformance tests.
+2. This `SPEC.md`, version 1.7 or a later reviewed version, for human-visible semantics and invariants.
+3. Reviewed executable artifacts referenced by this spec for exact mechanics: migrations, OpenAPI,
+   schemas, packs, fixtures, and conformance tests. They may refine representation but may not contradict
+   a requirement, acceptance criterion, or invariant.
 4. `ARCHITECTURE.md` as a compact derived explanation of this specification; it never defines behavior or wins a conflict.
 5. Historical architecture, design, engineering-plan, review, kickoff, vision, and research documents for provenance only.
 6. Legacy implementation behavior, only where this specification explicitly adopts it as an Increment 1 or Increment 2 adapter.
@@ -99,7 +111,7 @@ No historical document is an alternate implementation spec. If executable code a
 | `DECISIONS.md` | Append-only operator decisions and rationale, including superseded reasoning | Append only; prior entries are never rewritten |
 | `ARCHITECTURE.md` | One compact, terminal-safe ASCII atlas derived from this specification | Updated with `SPEC.md`; never creates requirements, execution authority, or a second architecture truth |
 | Temporary bootstrap backlog in this file | Stable work IDs, dependency order, ownership, exit evidence, and designated validation commands before ctower has a ticket API | One-time imported into ctower; after import, ticket state lives only in ctower and this section retains definitions, not live status |
-| Executable contracts | DDL, OpenAPI, schemas, policy fixtures, protocol conformance tests | Generated or reviewed against the corresponding stable backlog item |
+| Executable contracts and traceability index | Exact DDL, OpenAPI, schemas, packs, policy fixtures, protocol conformance tests, and generated SPEC/AC/INV links | Authored in their one declared home; reviewed against stable IDs; the sole generated index is never hand-edited |
 | Historical documents | Provenance, discarded alternatives, research evidence, and review history | Read-only except for the standardized historical banner |
 
 ### Reality and evidence labels
@@ -118,7 +130,7 @@ Durable and trackable completion of work, with feedback and an improvement loop,
 1. Capture every accepted inbound message or event durably before reasoning begins.
 2. Keep one permanent ticket identity for each independently valuable outcome.
 3. Make the full work journey reconstructable without relying on chat memory, terminal scrollback, a vendor session, or a living process.
-4. Execute a versioned software-factory workflow with typed attempts, deterministic gates, bounded repair, and explicit escalation.
+4. Execute arbitrary compatible versioned Workflows with typed attempts, deterministic gates, finite policy-declared anti-spin bounds, and explicit escalation; ship the software factory as the first package.
 5. Prove completion with criterion-bound evidence and independent verdicts.
 6. Enforce authorization at both record transitions and real-world effect boundaries.
 7. Survive runner, model, process, network, and host loss through leases, checkpoints, replay, reconciliation, and restore.
@@ -170,12 +182,12 @@ Each story names observable user value and links to pass/fail acceptance criteri
 | US-OP-04 | Operator/CEO | I interrupt or reassign work and see exactly who retained ticket accountability, who executed each attempt, and why custody changed. | [AC-PROD-04](#ac-prod-04), [AC-WF-05](#ac-wf-05), [AC-RUN-04](#ac-run-04) |
 | US-OP-05 | Operator/CEO | I approve, revise, reject, defer, or explicitly waive a policy-declared human gate from Needs You and the workflow resumes idempotently from that protected decision without fabricating evidence. | [AC-WF-07](#ac-wf-07), [AC-WF-16](#ac-wf-16), [AC-EVD-04](#ac-evd-04), [AC-UX-04](#ac-ux-04) |
 | US-OP-06 | Operator/CEO | I can distinguish merged, staging verified, production verified, rolled back, and incident states without relying on wording such as “shipped.” | [AC-REL-01](#ac-rel-01), [AC-REL-04](#ac-rel-04), [AC-UX-06](#ac-ux-06) |
-| US-OP-07 | Operator/CEO | **Pending recommendation:** I use a familiar Board without losing factory truth: priority, queue lane, precise stage, blockers, accountable custody, active assignment, and delivery milestone remain separate and explainable. | [AC-TM-01](#ac-tm-01), [AC-TM-02](#ac-tm-02), [AC-TM-05](#ac-tm-05) |
+| US-OP-07 | Operator/CEO | I use a familiar Board without losing process truth: priority, queue lane, arbitrary workflow stage/activity, blockers, accountable custody, active assignment, and typed delivery milestone remain separate and explainable. | [AC-TM-01](#ac-tm-01), [AC-TM-02](#ac-tm-02), [AC-TM-05](#ac-tm-05) |
 | US-CMD-01 | Commander | Every accepted command is deduplicated, durably classified, and routed to a pinned workflow before I dispatch work, so process death cannot drop intent. | [AC-DUR-01](#ac-dur-01), [AC-WF-01](#ac-wf-01), [AC-RUN-01](#ac-run-01) |
 | US-CMD-02 | Commander | I plan and decompose an outcome using relations; I create child tickets only for independently valuable work and preserve blocker and provenance graphs. | [AC-PROD-02](#ac-prod-02), [AC-WF-02](#ac-wf-02) |
-| US-CMD-03 | Commander | I resolve the strongest healthy permitted reasoning profile, select and explain a pinned workflow and versioned `orchestration_plan`, and choose review/repair rigor while the server enforces mandatory floors and the automatic ceiling. | [AC-WF-03](#ac-wf-03), [AC-WF-11](#ac-wf-11), [AC-WF-12](#ac-wf-12), [AC-WF-19](#ac-wf-19), [AC-WF-21](#ac-wf-21), [AC-WF-22](#ac-wf-22), [AC-WF-24](#ac-wf-24), [AC-SEC-03](#ac-sec-03), [AC-RUN-02](#ac-run-02) |
+| US-CMD-03 | Commander | I resolve the strongest healthy permitted reasoning profile, select and explain a pinned Workflow and versioned `orchestration_plan`, and choose a policy-permitted perspective/anti-spin plan while the server enforces its declared bounds. | [AC-WF-03](#ac-wf-03), [AC-WF-11](#ac-wf-11), [AC-WF-12](#ac-wf-12), [AC-WF-19](#ac-wf-19), [AC-WF-21](#ac-wf-21), [AC-WF-22](#ac-wf-22), [AC-WF-24](#ac-wf-24), [AC-SEC-03](#ac-sec-03), [AC-RUN-02](#ac-run-02) |
 | US-CMD-04 | Commander | After my process/model/session dies or an executor changes, a fenced replacement reconstructs context from durable state and continues my accountable orchestration ownership through verified production and retro/close without duplicate dispatch. | [AC-DUR-04](#ac-dur-04), [AC-WF-20](#ac-wf-20), [AC-RUN-05](#ac-run-05), [AC-OPS-04](#ac-ops-04) |
-| US-CMD-05 | Commander | I distinguish review-round executions from per-lineage repair attempts, amend their versioned limits only with evidence, and receive one deduplicated escalation when a selected budget/no-progress limit is exhausted rather than spinning across changed digests. | [AC-WF-08](#ac-wf-08), [AC-WF-14](#ac-wf-14), [AC-WF-21](#ac-wf-21), [AC-WF-23](#ac-wf-23), [AC-UX-04](#ac-ux-04) |
+| US-CMD-05 | Commander | I distinguish total review executions, nonpassing rounds, candidate generations, and per-lineage repairs; amend only policy-permitted limits with evidence; and receive one deduplicated escalation at any finite bound instead of spinning across changed digests. | [AC-WF-08](#ac-wf-08), [AC-WF-14](#ac-wf-14), [AC-WF-21](#ac-wf-21), [AC-WF-23](#ac-wf-23), [AC-UX-04](#ac-ux-04) |
 | US-AGT-01 | Assignee agent | I claim one stage attempt with a fenced lease, receive a complete versioned stage contract and context manifest, and know the exact entry checklist, exit evidence, timeout, permissions, and validation command. | [AC-WF-04](#ac-wf-04), [AC-WF-13](#ac-wf-13), [AC-RUN-01](#ac-run-01), [AC-RUN-02](#ac-run-02) |
 | US-AGT-02 | Assignee agent | I can checkpoint, reconnect, replay ordered commands, and continue after runner or vendor-session loss without pretending the old session is identity. | [AC-DUR-04](#ac-dur-04), [AC-RUN-03](#ac-run-03), [AC-RUN-05](#ac-run-05) |
 | US-AGT-03 | Assignee agent | I upload artifacts and evidence once by digest, link them to criteria and my attested run, and receive explicit invalidation if dependencies change. | [AC-EVD-01](#ac-evd-01), [AC-EVD-02](#ac-evd-02), [AC-EVD-03](#ac-evd-03) |
@@ -183,7 +195,7 @@ Each story names observable user value and links to pass/fail acceptance criteri
 | US-AGT-05 | Assignee agent | I receive the same stage/job contract on local, VPS, or sandbox capacity and can inspect the exact harness, supervisor, target, workspace, telemetry, environment, image, and placement revisions without changing ticket semantics. | [AC-RUN-07](#ac-run-07), [AC-RUN-10](#ac-run-10), [AC-RUN-11](#ac-run-11) |
 | US-ENG-01 | Engineer/maintainer | From a clean clone I get one fast command and one full command that enforce strict types, formatting, lint, Module boundaries, source-size/complexity limits, generated drift, observability, secrets, Interface tests, and Adapter conformance identically in hooks and CI; any exception is exact, visible, independently approved, and expiring. | [AC-QUAL-02](#ac-qual-02), [AC-QUAL-03](#ac-qual-03), [AC-QUAL-04](#ac-qual-04), [AC-QUAL-05](#ac-qual-05), [AC-QUAL-06](#ac-qual-06), [AC-QUAL-07](#ac-qual-07), [AC-QUAL-08](#ac-qual-08) |
 | US-REV-01 | Reviewer/QA/CSO/Engineering Manager | I receive an immutable review input digest and cannot be assigned to review my own authored output. | [AC-EVD-04](#ac-evd-04), [AC-WF-06](#ac-wf-06) |
-| US-REV-02 | Reviewer/QA/CSO/Engineering Manager | For elevated or critical work, I submit a sealed verdict without seeing the other reviewer’s report; conflicts are revealed only after both verdicts and resolved independently. | [AC-WF-06](#ac-wf-06), [AC-EVD-05](#ac-evd-05) |
+| US-REV-02 | Reviewer/QA/CSO/Engineering Manager | When the pinned policy requires sealed review, I submit a verdict without seeing the other reviewer’s report; conflicts are revealed only after all required verdicts and resolved independently. | [AC-WF-06](#ac-wf-06), [AC-EVD-05](#ac-evd-05) |
 | US-REV-03 | Reviewer/QA/CSO/Engineering Manager | I verify code, UI use, tenant isolation, architecture, security, or documentation against declared criteria and attach reproducible evidence rather than a prose assertion. | [AC-EVD-01](#ac-evd-01), [AC-EVD-05](#ac-evd-05), [AC-WF-07](#ac-wf-07), [AC-WF-17](#ac-wf-17) |
 | US-REV-04 | Reviewer/QA/CSO/Engineering Manager | When an artifact digest changes, every verdict that depended on it becomes invalid before the workflow can advance; an implementation repair after review must obtain fresh QA before re-review. | [AC-EVD-03](#ac-evd-03), [AC-WF-09](#ac-wf-09), [AC-WF-15](#ac-wf-15) |
 | US-OPS-01 | DevOps/release runner | I perform staging or production promotion only through a short-lived effect grant bound to the release digest, target, policy, and idempotency key. | [AC-REL-02](#ac-rel-02), [AC-REL-03](#ac-rel-03), [AC-REL-08](#ac-rel-08), [AC-SEC-04](#ac-sec-04) |
@@ -197,9 +209,9 @@ Each story names observable user value and links to pass/fail acceptance criteri
 | US-ADM-04 | Platform administrator | I reconcile external effects, detect bypasses, restore from PITR/object backups, and surface any incomplete state as degraded rather than healthy. | [AC-SEC-06](#ac-sec-06), [AC-OPS-03](#ac-ops-03), [AC-OPS-05](#ac-ops-05) |
 | US-ADM-05 | Platform administrator | I upgrade schema, service, workflow, policy, and runner protocol revisions with compatibility checks and a rollback path that preserves accepted events. | [AC-DUR-06](#ac-dur-06), [AC-REL-08](#ac-rel-08), [AC-OPS-08](#ac-ops-08) |
 | US-ADM-06 | Platform administrator | I validate, semantically plan, apply, and export a secret-free CompanyBundle through the same command API as the web UI; published resource revisions and exact run pins remain attributable after Git/YAML changes. | [AC-ADM-01](#ac-adm-01), [AC-COMP-01](#ac-comp-01), [AC-COMP-03](#ac-comp-03) |
-| US-ADM-07 | Platform administrator | I publish, supersede, revoke, roll back, and garbage-collect execution-environment and image revisions while accepted/running attempts remain pinned to immutable digests. | [AC-RUN-12](#ac-run-12), [AC-SEC-09](#ac-sec-09), [AC-OPS-11](#ac-ops-11) |
+| US-ADM-07 | Future platform administrator | When reusable-image administration is later introduced, I publish, supersede, revoke, roll back, and garbage-collect environment/image revisions while accepted/running attempts remain pinned to immutable digests. | [AC-RUN-12](#ac-run-12), [AC-SEC-09](#ac-sec-09), [AC-OPS-11](#ac-ops-11) |
 | US-ADM-08 | First operator/platform administrator | From a genuinely empty installation, I use one short-lived local/private bootstrap capability exactly once to create the first tenant, my operator/admin identity, the durable Commander principal, and vault-binding references in one audited transaction; replay, remote origin, expiry, or a second bootstrap is refused. | [AC-ADM-02](#ac-adm-02), [AC-SEC-03](#ac-sec-03), [AC-DUR-02](#ac-dur-02) |
-| US-SEC-01 | Security reviewer | I can prove reusable images, warm capacity, caches, terminal sessions, and extension invocations contain no standing credentials or login sessions and cannot cross tenant, kernel, or provider boundaries. | [AC-EXT-01](#ac-ext-01), [AC-EXT-03](#ac-ext-03), [AC-SEC-09](#ac-sec-09), [AC-SEC-10](#ac-sec-10), [AC-SEC-11](#ac-sec-11) |
+| US-SEC-01 | Security reviewer | Before any deferred reusable-image, warm-capacity, setup-terminal, or executable-extension runtime can ship, I can prove that it contains no standing credentials/login sessions and cannot cross tenant, kernel, or provider boundaries. | [AC-EXT-01](#ac-ext-01), [AC-EXT-03](#ac-ext-03), [AC-SEC-09](#ac-sec-09), [AC-SEC-10](#ac-sec-10), [AC-SEC-11](#ac-sec-11) |
 | US-LEARN-01 | Operator and Commander | After release or incident, I receive a retro linked to measurable defects, retries, attention, and cost; accepted improvements version future workflows, skills, or policy and are later evaluated. | [AC-WF-10](#ac-wf-10), [AC-PROD-05](#ac-prod-05), [AC-OPS-08](#ac-ops-08) |
 
 ## Human information architecture
@@ -241,55 +253,51 @@ such as `ticket.context_panel`, `ticket.timeline_annotation`, `ticket.artifact_r
 `fleet.adapter_health`, `analytics.readonly_widget`, or `admin.extension_settings`; they cannot create routes,
 write projections, mount inside Needs You, replace Ticket history, or hide `STATE UNKNOWN`.
 
-#### Recommended task-management projection (pending operator confirmation)
+#### Task-management foundation
 
-The following is a cohesive target contract and is testable in L0, but its product shape remains an
-**architecture recommendation until the operator explicitly confirms it**. It is not an operator-locked
-decision in `DECISIONS.md`.
+Task management is a kernel capability, not a software-factory view. Four axes are independently authored,
+queried, and audited:
 
-Three axes remain orthogonal:
-
-| Axis | Values | Authority |
+| Axis | Canonical values or facts | Authority |
 |---|---|---|
-| Priority | `P0`, `P1`, `P2` | Append-only Work facts; P0 requires incident/security/production-critical or explicitly authorized urgent-business evidence |
-| Board lane | `Backlog`, `To Do`, `In Progress`, `In Review`, `Blocked`, `Done` | Deterministic rebuildable server projection; never a client-authored status |
-| Factory stage | `Think -> Plan -> Design -> Implement -> Local QA -> Review -> Docs -> Release -> Staging QA -> Production release -> Production QA -> Retro` | Pinned Workflow run and stage instances |
+| Priority | `P0 | P1 | P2` | Append-only Work facts; P0 requires declared urgent evidence or authorization and never changes risk or permission |
+| Board lane | `backlog | ready | in_progress | in_review | blocked | complete` | Deterministic rebuildable projection; UI labels may say Backlog, To Do, In Progress, In Review, Blocked, Done |
+| Workflow stage | Arbitrary stage keys plus required stage activity metadata | The exact pinned Workflow run; no global engineering-stage enum |
+| Delivery | Typed facts such as `change_merged`, `staging_verified`, `production_verified`, `rolled_back`, and `incident_open` | Linked SCM, release, environment-verification, effect-receipt, and incident records; never wording or capitalization |
 
-If this recommendation is confirmed, actionable ticket/episode creation atomically appends its first
-priority fact. The server default is `P2`; an authenticated caller may request `P1`, while `P0` still needs
-the declared urgent evidence/authorization. No actionable episode can exist between creation and that
-initial fact, and reopen appends the new episode's initial priority from explicit policy/current-priority
-carry-forward rather than silently inheriting mutable state.
+Actionable ticket creation atomically appends its first priority fact. The default is P2; an authenticated
+caller may request P1, while P0 needs policy evidence/authority. Reopen creates a new episode and appends
+that episode's initial priority under explicit carry-forward policy. Priority, lifecycle, workflow stage,
+Board lane, blocker, delivery, custody, assignment, and runner lease never imply or mutate one another.
 
-The lane fold is exact and versioned:
+Every Workflow stage declares `activity_class: work|verification` (or a future schema-compatible value with
+an explicit Board mapping). The generic Board fold is versioned and does not inspect stage names:
 
-1. A terminal resolved/closed lifecycle episode derives `Done`; cancellation is a separate terminal
-   disposition and is excluded from the default six-lane Board.
-2. Any open effective blocker with Board impact derives `Blocked` while preserving the exact resume stage
-   and otherwise-derived lane.
-3. Active `Local QA`, `Review`, `Staging QA`, and `Production QA` derive `In Review`.
-4. Every other active stage/attempt derives `In Progress`.
-5. Admitted and logically ready work waiting for a WIP/capacity slot derives `To Do`.
-6. Accepted work not yet admitted/committed to execution derives `Backlog`.
+1. A resolved or closed episode derives `complete`; cancellation is a separate terminal disposition and is
+   excluded from the default six-lane Board.
+2. Any effective Board-impacting blocker derives `blocked` while preserving resume stage and underlying lane.
+3. An active stage whose pinned metadata says `activity_class=verification` derives `in_review`.
+4. Any other active stage derives `in_progress`.
+5. Admitted, logically ready work waiting for capacity derives `ready`.
+6. Accepted work not yet admitted derives `backlog`.
 
-Queueing is not blocking. `Blocked` requires one or more durable blocker records, each with type/reason
-class, owner, source, affected stage, open time, resolution condition, next check/SLA, dependency/reference,
-and resolution evidence. All effective blockers must clear; only operator-action blockers qualify for Needs
-You. Watchdogs recheck, age, and escalate blockers rather than parking them silently.
+This works unchanged for a legal-review, hiring, research, incident, or software workflow. Workflow
+publication fails if a stage lacks recognized activity metadata or an explicit mapping. Queueing is not a
+blocker. A blocker records type/reason, owner, source, affected stage, open time, resolution condition,
+next check/SLA, dependency/reference, Board impact, and resolution evidence; all effective blockers clear
+before resume, and only operator-action blockers qualify for Needs You.
 
-Board drag/drop and CLI moves issue typed intents—`admit`, `defer`, `block`, `unblock`, or `reopen`—with
-expected version and reason. The server may refuse with the exact unmet checklist and an unchanged state
-version; there is no unrestricted `PATCH status`. Priority changes similarly record from/to, actor, reason,
-policy, and command. Agents cannot self-escalate to P0. Scheduling first enforces capability, trust,
-readiness, gates, environment/image, WIP, quota, and no-colocation constraints, then applies priority with
-bounded aging/fairness. Preemption is permitted only at a safe checkpoint and never bypasses verification or
-effect policy.
+Board drag/drop and CLI actions emit typed intents—`admit`, `defer`, `block`, `unblock`, or `reopen`—with
+expected version and reason. There is no unrestricted status patch. The server either appends the typed
+facts or returns an exact no-mutation unmet checklist. Scheduling first enforces capability, trust,
+readiness, gates, environment, WIP, quota, and isolation, then applies P0/P1/P2 with bounded aging; priority
+cannot bypass a gate or reset fairness.
 
-Board cards show priority, precise factory stage, `ticket_custodian`, `current_assignee`, blocker age/reason,
-risk, and delivery milestone. Filters/grouping include project, goal, stage, priority, owner, and risk.
-Ticket detail owns the full stage stepper plus blocker and priority histories. Board `Done` is a task-lifecycle
-projection; governing delivery `DONE` means staging verified. A ticket may be delivery `DONE` while Board is
-still `In Progress` during production release, production QA, retro, and resolve/close.
+Board cards show the UI lane label plus canonical enum, priority, stage label/activity, ticket custodian,
+current assignee, blocker age/reason, risk, and typed delivery milestone. Ticket detail owns full histories.
+A card can be in the complete lane without a production delivery requirement, or remain in progress after
+`staging_verified` while a Workflow still requires production verification and retro. No semantic
+distinction depends on writing “done” in upper- versus lower-case.
 
 ### Omnibox classification and promotion
 
@@ -408,7 +416,7 @@ flowchart TD
     G --> H[Artifact or dependency digest changes]
     H --> I[Invalidate only dependent evidence and gate instances]
     I --> A
-    E -->|no, no-progress, or ceiling reached| J[One deduplicated escalation and Attention item]
+    E -->|no, no-progress, or bound reached| J[One deduplicated escalation and Attention item]
     C --> K{All required gates valid on current digest set?}
     K -->|yes| L[Advance]
     K -->|no| A
@@ -420,8 +428,8 @@ The server deterministically keeps the same lineage for the same stage, failure 
 verifier rule revision, and environment class across `d1 -> d2 -> d3`; only a policy-declared split rule or
 an independent lineage adjudicator may create a child lineage linked to its predecessor. Verifier prose or
 a new digest cannot mint capacity. Two genuinely unrelated lineages do not consume one another’s budget.
-The Commander selects limits inside the policy floor and hard automatic ceiling, while append-only server
-events own consumption; reassignment, prose, or a new reasoning session cannot reset it. A repair never
+The Commander selects limits permitted by the pinned Execution Policy, while append-only server events own
+consumption; reassignment, prose, or a new reasoning session cannot reset it. A repair never
 overwrites old attempts; it creates new artifacts and invalidates the exact downstream proof graph that
 depended on changed digests.
 
@@ -508,13 +516,13 @@ An aggregate owns only the invariants that must be transactional together. Cross
 | **Inbound thread / conversation** | Durable channel-neutral thread, participants, source scope, ordered inbound/outbound command events, classification, and promotion provenance | May link zero or more tickets; source event IDs are immutable aliases |
 | **Inbound conversation/command event** | Original payload reference, authenticated or source-verified actor, taint level, idempotency key, classification result, and append position | Belongs to one thread; may promote/link a ticket or attach to another aggregate |
 | **Ticket** | Permanent ID, tenant/project scope, promised outcome, lifecycle episode pointer, accountable owner, aggregate version, and ticket-event hash-chain head | Links relations, workflow runs, criteria, attention, changes, costs, and retros; does not own their internal state |
-| **Priority fact / blocker (pending recommendation)** | Append-only priority changes and durable typed unmet conditions with owner, source, affected stage, resolution contract, next check/SLA, and evidence | Work truth is orthogonal to risk, stage, Board lane, delivery, and Attention; multiple effective blockers coexist |
+| **Priority fact / blocker** | Append-only P0/P1/P2 changes and durable typed unmet conditions with owner, source, affected stage, resolution contract, next check/SLA, and evidence | Work truth is orthogonal to risk, stage, Board lane, delivery, and Attention; multiple effective blockers coexist |
 | **Ticket relation** | Typed edge with source, target, actor, rationale, and validity; `parent_of`, `depends_on`, `blocks`, `duplicates`, `relates_to`, `caused_by` | Parent graph and blocker graph are separately cycle-checked; child tickets require independent value |
 | **Lifecycle episode** | One open-to-terminal interval with opening event, outcome, resolution/closure/cancellation facts, and optional next episode | `reopened` closes no history; it starts a new numbered episode on the same ticket |
 | **Workflow component revision** | Immutable named stage graph, roles, capabilities, contracts, transitions, retry policy, failure routes, and gate policy inside the universal component envelope | One workflow run pins one revision/digest; revisions are never edited in place |
-| **Execution policy revision** | Participant/capability resolution, activated optional gates, review/repair limits, timeouts, model/harness/environment placement, budgets, escalation, and waiver constraints | A run pins a compatible revision; policy may narrow/select within a Workflow but cannot invent a stage, edge, or terminal condition |
+| **Execution policy revision** | Participant/capability resolution, activated gates, `required_perspectives`, finite nonpassing-round/repair/candidate-generation bounds, timeouts, placement, budgets, escalation, and waiver constraints | A run pins a compatible revision; values are workflow/domain specific, and policy may narrow/select within a Workflow but cannot invent a stage, edge, or terminal condition |
 | **Workflow run** | Application of one workflow version to one lifecycle episode, desired/observed state, and terminal disposition | Owns stage instances; links ticket episode and policy snapshot |
-| **Commander orchestration plan / revision** | Immutable per-ticket revision naming resolved Commander capability/profile, risk facts, `mandatory_stage_gates`, `review_round_topology`, selected maximum round executions/current-digest pass requirement, per-lineage repair-attempt limits, rationale, evidence, and superseded revision | One active revision per workflow run; owns limits/topology/rationale only. It may carry a labeled non-authoritative counter snapshot at an event watermark, but never accepts or owns consumed counts. |
+| **Commander orchestration plan / revision** | Immutable per-run revision naming resolved Commander capability/profile, context/risk facts, pinned policy option, required perspectives, selected nonpassing-round/repair/candidate-generation bounds, rationale, evidence, and superseded revision | One active revision per workflow run; proposes only policy-permitted choices. It never accepts consumption; `total_executions` and all other counters are server-owned facts. |
 | **Stage definition** | Immutable node within a workflow version, including entry/exit contracts and allowed parallelism | Copied by reference into stage instances; never derives from ticket status |
 | **Stage instance** | One logical occurrence of a stage in a workflow run, dependency readiness, required gates, and terminal result | Owns ordered attempts; parallel instances only where graph permits |
 | **Stage attempt** | One execution/verification attempt, input digest manifest, executor, failure occurrence/lineage references, timeout, output digest manifest, and disposition | Links one or more durable jobs/runs and evidence; does not transfer ticket custody |
@@ -541,7 +549,7 @@ An aggregate owns only the invariants that must be transactional together. Cross
 | **Effect grant / receipt** | Short-lived authorization and immutable result for deploy, send, publish, payment, IAM, or destructive action at the actual boundary | Grant binds ticket/stage/policy/digest/target/idempotency; receipt binds external audit ID |
 | **Incident** | Detection, severity, affected environment/effect, containment, rollback, communications, root cause, and resolution | Production verification failures create or link incidents before repair routing |
 | **Routine / trigger** | Versioned scheduled, webhook, event, or manual trigger; catch-up, concurrency, scope, and idempotency policy | Creates inbound events or durable jobs through ordinary command paths |
-| **Extension revision / grant / invocation** | Content-addressed data-only manifest, requested capabilities, separately approved scoped grant, lifecycle/active pointer, invocation identity, contextual contributions, health, and tombstone | Extension Host invokes through kernel commands/jobs only; no kernel-table, standing-secret, primary-route, or direct effect authority |
+| **Extension revision / grant / future invocation** | Content-addressed data-only manifest, requested capabilities, separately approved scoped grant, lifecycle/active pointer, contextual contributions, and tombstone; invocation identity/health are reserved future facts | Any future Extension Host invokes through kernel commands/jobs only; no kernel-table, standing-secret, primary-route, or direct effect authority |
 | **Cost allocation** | Usage/currency/source record and explicit fractional allocation to ticket, workflow, stage, run, and project | Allocation fractions sum to 1 per cost record; shared sessions never double count |
 | **Retro / process improvement** | Evidence-backed comparison of expected and actual outcome; defect/retry/attention/cost findings; proposed workflow/skill/policy change; owner and effectiveness window | Accepted improvement creates a linked ticket/change and a new immutable configuration revision |
 
@@ -657,7 +665,7 @@ identity, lifecycle, compatibility, provenance, pinning, and revocation.
 schema: ctower.versioned-component/v1
 kind: workflow
 key: engineering.software-factory
-scope: {tenant: jakit-labs, project: null}
+scope: {tenant: example-company, project: null}
 revision: 1
 content_digest: sha256:<canonical-payload-digest>
 schema_ref: ctower.workflow/v1
@@ -683,7 +691,7 @@ and cannot rewrite consumed work, evidence, verdicts, or already-resolved placem
 | Company Bundle | Declarative authoring/export container | Desired references and assignments only; not runtime truth, a job, or a second Catalog |
 | Project | Declarative scoped configuration | Repository/outcome/config references; not ticket lifecycle |
 | Workflow and Stage | Executable kernel interpretation | Declared graph, legal transitions/failure routes, gate locations, terminal conditions; Stage is a payload child/revision reference, not a second engine |
-| Execution Policy | Executable kernel interpretation | Participant/capability selection, optional gates, limits, timeouts, placement, budgets, escalation/waiver constraints; cannot invent Workflow nodes or edges |
+| Execution Policy | Executable kernel interpretation | Participant/capability selection, optional gates, domain-specific perspectives and finite anti-spin bounds, timeouts, placement, budgets, escalation/waiver constraints; cannot invent Workflow nodes or edges |
 | Gate/Evidence Policy | Executable kernel interpretation | Evidence contracts, verifier independence, invalidation, gate topology; never a verdict |
 | Agent Profile, Persona | Declarative content resolved by Runtime | Soul/instructions/model/harness/tool/placement rules; never durable principal or assignment truth |
 | Skill | Declarative content/materialization | Immutable instructions, schemas, fixtures, provenance; prose cannot advance Workflow state |
@@ -722,16 +730,19 @@ separately pinned Execution Policy plus Gate/Evidence policies and content revis
 stage graph, legal edges/failure routes, gate locations, and terminal contract. Execution Policy owns who
 may execute, activated optional gates, review/repair maxima, timeouts, budgets, model/harness/environment
 placement, escalation, and waiver constraints; it can only select or narrow behavior declared by Workflow.
+Another package may use completely different stages, perspective keys, participants, and bounds while the
+same engine preserves independence, stable lineages, immutable consumption, fail-closed advancement, and
+authenticated waiver semantics.
 
 The current `paperclip-company/skills/company/JAK/software-factory-process/SKILL.md` is migration
 provenance and human guidance. Its durable rules become machine-checkable payloads/checklists: every ticket
 serves a goal; one ticket is one end-to-end outcome; work class selects the appropriate route; acceptance
 criteria are frozen and evidence-bound; artifacts exist before approval; routine handoffs are stages;
 autonomous gates proceed without operator status chasing; taste/business/architecture/new-security-boundary/
-destructive forks remain operator gates. Its fixed `<=2` round prose and old “DONE only after prod” wording
-are deliberately not imported: D9 risk-scaled server-owned limits/lineages and the canonical MERGED/DONE/
-RELEASED plus Board-close definitions govern. A generated SKILL may explain a pinned Workflow, but prose is
-never Workflow authority.
+destructive forks remain operator gates. Its fixed `<=2` round prose and ambiguous “done only after prod”
+wording are deliberately not imported: the package's versioned Execution Policy, server-owned
+lineage/generation/round facts, and typed `change_merged`/`staging_verified`/`production_verified` delivery
+facts govern. A generated SKILL may explain a pinned Workflow, but prose is never Workflow authority.
 
 #### First-tenant trust-root ceremony
 
@@ -826,7 +837,7 @@ The ticket is the human join point, not the transaction boundary for the entire 
 |---|---|---|
 | Ticket lifecycle | `open`, `active`, `waiting`, `resolved`, `closed`, `cancelled` | Outcome state for the current lifecycle episode. `resolved` means criteria/gates/delivery contract passed; `closed` means administratively complete; `cancelled` means intentionally stopped without the promised outcome. |
 | Priority | `P0`, `P1`, `P2` facts | Recommended operator/business ordering; never risk, stage, or permission. Every change is append-only and P0 is evidence/authority restricted. |
-| Board lane | `Backlog`, `To Do`, `In Progress`, `In Review`, `Blocked`, `Done` projection | Recommended deterministic projection over admission/readiness, stage, blockers, and terminal lifecycle; never a writable generic status. |
+| Board lane | `backlog`, `ready`, `in_progress`, `in_review`, `blocked`, `complete` projection | Deterministic projection over admission/readiness, pinned stage activity metadata, blockers, and terminal lifecycle; never a writable generic status. UI labels may use familiar title case. |
 | Blockers | Typed `opened`, `rechecked`, `resolved`, `expired`, `superseded` facts | Explicit unmet conditions; queueing is not blocking and multiple effective blockers may coexist. |
 | Reopen | `reopened` event | Starts episode N+1 on the same permanent ticket, records reason and prior episode, and never rewrites prior resolution evidence. It is not a stable status. |
 | Workflow run | `pending`, `running`, `waiting`, `succeeded`, `failed`, `cancelled` | Overall execution of a pinned workflow version for one episode. |
@@ -875,15 +886,15 @@ The ticket is the human join point, not the transaction boundary for the entire 
 33. **INV-33 — Explicit cost allocation.** Each shared usage/cost record is fractionally allocated exactly once; ticket totals cannot double count a run spanning multiple tickets.
 34. **INV-34 — Projections are disposable.** Board, Home, Fleet, Analytics, search, and activity views are rebuildable and never accepted as authoritative write targets.
 35. **INV-35 — No dual write after cutover.** Mission Control JSONL, Paperclip, status files, and ctower cannot all accept ticket mutations; after the barrier every mutation goes through ctower.
-36. **INV-36 — Accepted writes are recoverable.** A successful command response corresponds to committed record state and outbox; an offline client record is either acknowledged later or visibly quarantined, never silently dropped.
+36. **INV-36 — Acceptance includes disaster durability.** A command is authoritative/accepted only after its record transaction and required off-host durable acknowledgement satisfy the active durability policy. At source-of-truth cutover that policy is RPO 0 for record truth. Before off-host acknowledgement the API returns an explicit `durability_pending` non-accepted result that is safe to replay; an offline client record is acknowledged later or visibly quarantined, never silently dropped.
 37. **INV-37 — Tenant/project scope.** Every scoped aggregate and object carries tenant identity; project scope is explicit where applicable; cross-scope access is server-authorized and audited.
 38. **INV-38 — Retention separates bytes from audit.** Sensitive bytes can expire or be crypto-erased while non-sensitive digest/provenance/tombstone metadata remains auditable according to policy.
 39. **INV-39 — Delivery is not inferred.** Merge, staging deployment, staging QA, production deployment, production verification, rollback, and incident are separate facts.
 40. **INV-40 — Retro closes the loop.** A released feature or incident produces a retro; a process defect yields either a linked improvement with an evaluation window or an evidence-backed no-change decision.
 41. **INV-41 — Strongest-capability Commander.** Each Commander reasoning job resolves the strongest available healthy general-reasoning profile permitted by the versioned capability policy and records candidates, exclusions, selection, and failover; token price cannot outrank capability for this seat.
 42. **INV-42 — Commander accountable until terminal.** One durable Commander principal owns orchestration from accepted intent through verified production and retro/resolve/close or explicit cancellation; changing the model, harness, process, executor, or context window never silently transfers or ends that accountability.
-43. **INV-43 — Versioned rigor plan; server-owned consumption.** The active `orchestration_plan` records risk-derived `mandatory_stage_gates`, `review_round_topology`, round execution/pass requirements, per-lineage repair limits, independence, evidence, and rationale. Append-only review/repair events and their monotonic projections exclusively own consumed counts; a plan command cannot author or reset them.
-44. **INV-44 — Hard automatic ceiling.** Low has floor/default 1, standard 2, elevated 3, and critical 3 for review and ordinary repair budgeting. The Commander may justify a raise through 5; the engine refuses automatic work above ceiling 5, and exhaustion creates one deduplicated escalation. Operator authorization is required to exceed the ceiling or lower/waive a waivable floor.
+43. **INV-43 — Versioned rigor plan; server-owned consumption.** The active `orchestration_plan` records the pinned policy option, `required_perspectives`, finite `max_nonpassing_rounds`, `max_repairs_per_lineage`, `max_candidate_generations`, independence, evidence, and rationale. Append-only execution, nonpassing-round, repair, and generation facts exclusively own consumed counts; a client, policy, ReviewPlan v1, or plan cannot author, cap, or reset them, and `total_executions` remains an observed audit/cost fact only.
+44. **INV-44 — Configurable but finite anti-spin.** Every executable policy declares finite automatic bounds appropriate to its Workflow/domain. Advancement fails closed when a required perspective is missing/nonpassing or any applicable bound/no-progress rule is exhausted, producing one deduplicated escalation. No platform-wide low/standard/elevated/critical number exists; authenticated operator action may change only policy-declared waivable bounds and never fabricates proof, resets consumption, or waives independence/hard safety invariants.
 45. **INV-45 — Universal component pinning.** Every published configuration category uses the same immutable `VersionedComponent` envelope; runtime pins exact revision/digest and no category invents a parallel lifecycle or active-pointer authority.
 46. **INV-46 — Workflow/policy separation.** Workflow alone declares stages, legal edges, failure routes, gate locations, and terminal conditions. Execution Policy may select, constrain, budget, or activate declared options but cannot create a missing node or edge.
 47. **INV-47 — CompanyBundle is transport.** YAML/Git validate, plan, apply, and export through authenticated commands; they contain no secrets/runtime state and are never watched or needed for liveness.
@@ -896,92 +907,84 @@ The ticket is the human join point, not the transaction boundary for the entire 
 54. **INV-54 — Active pointers are future-only.** Moving a component/environment/image active pointer never mutates an accepted/running attempt, checkpoint, proof, or historical run. A material change creates a new attempt and invalidates declared dependent evidence.
 55. **INV-55 — No secret-bearing reusable state.** Images, caches, warm entries, checkpoints, logs, and setup sessions cannot retain long-lived credentials, CLI/browser login state, private keys, tokens, or PII. Secrets are projected just in time after boot and revoked/scrubbed at end.
 56. **INV-56 — Provider observations are not transitions.** Remote providers and Crabbox return scoped observations/receipts only. Ctower validates/appends them; provider success, disappearance, cleanup, or image capture cannot advance Workflow, satisfy evidence, or promote an image.
-57. **INV-57 — Board/task axes remain orthogonal.** If the recommended task-management contract is confirmed, priority, Board lane, blocker, detailed stage, lifecycle, delivery, custody, assignment, and runner lease remain independently attributable; Board controls emit typed intents rather than status patches.
+57. **INV-57 — Board/task axes remain orthogonal.** Priority, Board lane, blocker, arbitrary workflow stage/activity, lifecycle, typed delivery, custody, assignment, and runner lease remain independently attributable; Board controls emit typed intents rather than status patches, and lane semantics never depend on delivery wording or capitalization.
 
 ## Workflow and verification architecture
 
 ### Versioned Workflow and Execution Policy contract
 
-A Workflow definition is immutable after publication. Editing creates a new revision. A Workflow run stores
-the exact Workflow, Execution Policy, Gate/Evidence Policy, risk, component, and resolved role/capability
-digests. In-flight runs stay on their pins unless an authorized migration command names source/destination
-revisions, stage mapping, compatibility proof, evidence invalidation, and rollback. The named
-`engineering.software-factory` package is the first Workflow, never another engine.
+A Workflow revision is an immutable typed stage graph. A run pins exact Workflow, Execution, Gate/Evidence,
+component, and resolved participant digests. An authorized migration must name source/destination revisions,
+stage mapping, compatibility proof, invalidations, and rollback; otherwise in-flight work stays pinned.
+Stage keys and order are domain-defined. The first package is `engineering.software-factory`; the engine has
+no built-in engineering stages or review vocabulary.
 
-The implementation schema must validate at least this shape:
+Exact schemas live in `contracts/workflow/`; executable packages live in `packs/workflows/` and
+`packs/policies/`. At minimum they express:
 
 ```yaml
 workflow:
   key: engineering.software-factory
-  version: 1
-  status: published
-  input_contract: software_change_ticket_v1
-  terminal_contract: verified_release_and_retro_v1
-  policy_refs:
-    execution: software-factory-execution-v1
-    risk: engineering-risk-v1
-    gates: software-factory-gates-v1
-    commander_capability: commander-capability-v1
-  defaults:
-    lease_seconds: 90
-    heartbeat_seconds: 20
-    timeout_route: reconcile_then_escalate
-  budget_policy:
-    hard_automatic_ceiling: 5
-    tier_floors_and_defaults:
-      low: {passing_current_digest_rounds: 1, max_round_executions: 1, repair_attempts_per_lineage: 1}
-      standard: {passing_current_digest_rounds: 2, max_round_executions: 2, repair_attempts_per_lineage: 2}
-      elevated: {passing_current_digest_rounds: 3, max_round_executions: 3, repair_attempts_per_lineage: 3}
-      critical: {passing_current_digest_rounds: 3, max_round_executions: 3, repair_attempts_per_lineage: 3}
-  orchestration_plan:
-    schema: ctower.orchestration-plan/v1
-    required:
-      - commander_profile_resolution
-      - risk_facts_and_policy_floor
-      - mandatory_stage_gates
-      - review_round_topology
-      - passing_current_digest_rounds_required
-      - max_review_round_executions
-      - repair_attempt_limit_policy_by_lineage
-      - rationale
+  revision: 1
   stages:
     - key: implement
-      depends_on: [design]
-      role: engineer_or_designer
-      capabilities: [source.read, source.write, tests.run]
+      activity_class: work
       entry: [criteria_frozen, design_contract_satisfied]
-      outputs: [change_manifest, implementation_summary]
-      exit: [candidate_digest_recorded]
-      timeout: PT48H
-      failures:
-        verification_failure:
-          route: implement
-          invalidate: [candidate_and_downstream]
-        requirement_defect:
-          route: plan
-          invalidate: [plan_and_downstream]
-      gates: []
+      outputs: [candidate_manifest]
+      failures: {implementation_defect: implement, requirement_defect: plan}
+    - key: review
+      activity_class: verification
+      depends_on: [local_qa]
   transitions:
-    - from: implement
-      to: local_verification_qa
-      when: stage_passed
-  parallel_groups: []
+    - {from: implement, to: local_qa, when: stage_passed}
+
+execution_policy:
+  key: software-factory.elevated-ui
+  required_perspectives:
+    - {key: code-review, capability: independent_review, independent_of: [candidate_authors]}
+    - {key: rendered-design, capability: design_review, independent_of: [ui_authors]}
+    - {key: security, capability: security_review, independent_of: [candidate_authors]}
+  max_nonpassing_rounds: 2
+  max_repairs_per_lineage: 2
+  max_candidate_generations: 4
 ```
 
-The published definition includes JSON Schema for inputs/outputs, a normalized failure taxonomy, allowed transition predicates, capability names, evidence contracts, timeouts, compensation, policy overlays, and the `orchestration_plan` contract. Free-form agent prose may explain work but cannot add a transition, reset a counter, or create authority not present in the pinned definition.
+The four required configurable controls and the separate observed execution count have precise meanings:
 
-The Commander appends orchestration-plan revision 1 before execution. It records the eligible Commander
-profiles and why the strongest available healthy one won, risk inputs, `mandatory_stage_gates` that must
-pass once for each relevant current digest/environment, the independent participants repeated inside
-`review_round_topology`, the required count of passing topologies on the current digest, the maximum total
-round executions, per-lineage repair-attempt limits, evidence, and rationale. It never accepts a consumed
-count from a client. The floor/default is low=1, standard=2, elevated=3, and critical=3 for both required
-passing rounds/initial maximum executions and ordinary lineage repair limits. New evidence may justify a
-later revision that adds a reviewer or raises an execution/repair limit through the hard automatic ceiling
-of 5. The engine rejects a plan below the policy floor, above 5, missing a mandatory gate/reviewer, carrying
-a client-authored consumption field, or setting a limit below already consumed server facts. Exceeding 5
-or lowering/waiving a waivable floor requires an authenticated operator decision; hard invariants remain
-non-waivable.
+- `required_perspectives` is the complete set of independently attributable verdict perspectives required
+  on one current candidate digest. A perspective may bind any domain capability; it is not assumed to mean
+  code review.
+- `max_nonpassing_rounds` caps terminal review rounds whose required perspective set does not all pass.
+- `max_repairs_per_lineage` caps mutations for each server-normalized stable failure lineage.
+- `max_candidate_generations` caps the initial candidate plus subsequent governed candidate mutations
+  across all lineages, preventing lineage fan-out from creating an unbounded global loop.
+- `total_executions` is an immutable server-owned audit/cost count of every started perspective execution,
+  whatever its outcome. It is never a client-authored field or a limit in ReviewPlan v1.
+
+Every executable policy declares finite applicable bounds and a no-progress rule. Concrete values, tier
+names, and perspective keys belong to that pinned package or to separately enforced tenant/system resource
+quotas. The platform supplies no universal low/standard/elevated/critical pass count
+or ceiling. A review round passes when all required perspectives have current passing verdicts with zero
+blockers on the exact digest—not by accumulating repeated identical passes.
+
+A future domain-specific aggregate execution cost/resource stop requires a real use case, a separately
+versioned policy component, and an executable semantic validator before publication. It is not a
+ReviewPlan v1 field, and this specification deliberately defines neither its fields nor arithmetic now.
+
+A ReviewPlan is a named child revision owned by one pinned Gate Policy component, not an independent
+`VersionedComponent`. Its canonical reference is `<gate-policy-key>@<gate-policy-revision>#review-plans.<name>`;
+the parent revision and digest own the child bytes, and the enclosing `review_plans` map name supplies the
+child identity. The child has no independent key, revision, status, or standalone reference form.
+
+Before dispatch, the Commander appends an immutable `orchestration_plan` selecting one policy-permitted
+option and recording context/risk facts, resolved participants, required perspectives, selected bounds,
+evidence, and rationale. It contains no consumed values. Server events own candidate generation,
+nonpassing-round, repair, and total-execution counts. Plan revision, reassignment, changed prose/digest,
+model/harness replacement, restart, or reopen cannot erase them. A protected operator command may change a
+waivable policy choice only within declared governance; it remains audited, never rewrites prior facts or a
+failed gate as passed, and cannot waive independence, tenant isolation, receipt integrity, or another hard
+invariant. Missing perspective, ambiguous lineage, stale evidence, an exhausted bound, or unknown policy
+state fails closed and creates one deduplicated escalation.
 
 ### Workflow and stage state machine
 
@@ -1035,687 +1038,247 @@ The required default path is:
 
 “Design” is always evaluated but may produce a reasoned `not_applicable` artifact for a non-UI, non-architecture change. “Production deploy” remains a distinct stage even for an internal service. A stage may be skipped only when the pinned definition names the skip predicate and evidence; an agent cannot declare a stage irrelevant ad hoc.
 
-### ASCII enforcement model: how autonomous movement is enforced
+### ASCII enforcement model: autonomous movement and bounded verification
 
-This subsection is the terminal-safe explanation of the default path above. The diagrams are explanatory views of the same versioned workflow, stage, evidence, and effect contracts; they do not define an alternate state machine. The [stage contracts](#stage-contracts), [risk policy](#deterministic-risk-and-review-policy), [transition transaction](#transition-transaction), and [acceptance criteria](#acceptance-criteria) remain normative.
+These terminal-safe views explain the same generic Workflow, policy, Proof, Runtime, and Effects contracts.
+Only committed facts trigger reconciliation; prompts, terminal lines, timers, callbacks, and client-side
+state never advance authoritative work.
 
-Automatic progression follows one trigger law: **a committed event triggers the reconciler; no agent comment, wall-clock timer, terminal line, or uncommitted callback alone advances authoritative state**. A timer may request reconciliation, and a comment may be committed as an inbound command event, but only the resulting committed facts can make a stage ready. On every committed event, the reconciler evaluates the pinned graph and current evidence, dispatches each newly eligible stage, or records the exact reason it cannot.
+#### Generic engine law
 
-#### Full feature/request factory
+~~~text
++--------------------+       +-------------------------+
+| committed command  |------>| reconcile pinned graph  |
+| or verifier fact   |       | + policy + evidence     |
++--------------------+       +------------+------------+
+                                          |
+                         +----------------+----------------+
+                         |                                 |
+                    NOT READY                           READY
+                         |                                 |
+              +----------v-----------+          +----------v---------+
+              | record exact unmet   |          | create durable job |
+              | checklist; no change |          | accepted -> lease  |
+              +----------------------+          +----------+---------+
+                                                           |
+                                                +----------v---------+
+                                                | attempt artifacts, |
+                                                | evidence, digests   |
+                                                +----------+---------+
+                                                           |
+                                   +-----------------------+---------------------+
+                                   |                       |                     |
+                                 PASS               REPAIRABLE FAIL       HUMAN DECISION
+                                   |                       |                     |
+                         +---------v---------+     +-------v----------+   +------v------+
+                         | commit transition |     | stable lineage + |   | Needs You + |
+                         | and next readiness|     | bounded route    |   | protected cmd|
+                         +-------------------+     +-------+----------+   +-------------+
+                                                           |
+                                      +--------------------+-------------------+
+                                      | finite capacity remains                 | exhausted
+                                      v                                         v
+                               [new candidate]                       [one escalation; stop]
+~~~
 
-```text
-[DURABLE COMMANDER PRINCIPAL: strongest healthy profile per reasoning wake]
-          | owns orchestration through verified production + retro/close
-          v
-[authenticated request]
-          |
-          v
-+----------------+   +------+   +--------------------+   +-----------+
-| INTAKE + THINK |-->| PLAN |-->| DESIGN + DESIGN QA|-->| IMPLEMENT |
-+----------------+   +------+   +--------------------+   +-----------+
-       | material business/taste -> [Needs You: operator]     |
-                                                               v
-                 +----------+   +----------------+   +---------------+
-                 | LOCAL QA |-->| RISK REVIEW(S)|-->| DOCUMENTATION |
-                 +----------+   +----------------+   +---------------+
-                                                               |
-                                                               v
-                                                     [RELEASE PREFLIGHT]
-                                                               |
-                                                               v
-              [MERGE] -> [STAGING DEPLOY] -> [STAGING QA]
-                                                     | pass
-                                                     v
-                                           [PRODUCTION DEPLOY]
-                                                     |
-                                                     v
-                                        [PRODUCTION SMOKE + LIVE QA]
-                                             | pass          | fail
-                                             v               v
-                                          [RETRO]   [INCIDENT + REVOKE]
-                                             |               |
-                                             v               v
-                                      [RESOLVE/CLOSE] [CONTAIN + ROLLBACK]
-                                                             |
-                                                             v
-                                                  [VERIFY CONTAINMENT]
-                                                             |
-                                                             v
-                                                         [TRIAGE]
-                                                             |
-                                                             v
- +-----------------------------------------------------------------------+
- | TYPED FAILURE ROUTER (server policy chooses exactly one owning stage) |
- +-----------------------------------------------------------------------+
-   | requirement -> PLAN             | design -> DESIGN
-   | implementation/product -> IMPLEMENT
-   | documentation-only -> DOCUMENTATION
-   | release/config/environment -> RELEASE PREFLIGHT / OPERATIONS
-   | production -> INCIDENT / CONTAIN / VERIFIED ROLLBACK / TRIAGE first
+The engine is domain-neutral. A hiring Workflow may use source, interview, reference-check, and offer stages;
+a research Workflow may use frame, collect, synthesize, and challenge. Their stage keys, perspectives,
+participants, and finite limits differ, while the transaction, independence, lineage, counter, evidence,
+and fail-closed laws stay unchanged.
 
- All non-production stage failures enter the router directly. Production failure reaches
- it only after incident containment is verified and triage records the owning repair stage.
-```
+#### Software-factory package
 
-The default is forward motion without a human shepherd: a passing gate commits a verdict event, the reconciler observes it, marks the declared successor ready, creates its durable job, and eligible runners compete for the fenced lease. This is the autonomous transition contract, not a client-side convention. Failure is also motion: a structured finding/repair packet names the failure occurrence and stable lineage, responsible stage, invalidated proof, remaining server-owned budget, and deterministic next transition.
+The first package declares this path; it is not compiled into the engine:
 
-#### Pre-build design loop and capability routing
+~~~text
+[INTAKE/THINK] -> [PLAN] -> [DESIGN + PRE-BUILD QA] -> [IMPLEMENT]
+                                                          |
+                                                          v
+ [RETRO/CLOSE] <- [PRODUCTION VERIFY] <- [RELEASE] <- [DOCS + REVIEW]
+                         |
+                         +-- failure -> [INCIDENT -> REVOKE/CONTAIN
+                                         -> ROLLBACK VERIFY -> TRIAGE]
+~~~
 
-```text
-[ticket intent]
-      |
-      v
-[office-hours@rev] --Commander/strongest healthy profile--> [operator intent]
-      |
-      v
-[plan-ceo-review@rev] ---> [human CEO decision if business/taste is material]
-      |
-      v
-[plan-eng-review@rev] --Engineering Manager/Opus--> [architecture risk verdict]
-      |
-      v
-[plan-design-review@rev] --Designer A/Sonnet--> [design brief]
-      |
-      +--> [design-shotgun@rev: option A]
-      +--> [design-shotgun@rev: option B]
-      +--> [design-shotgun@rev: option C]
-      |
-      v
-[material taste?] -- yes --> [Needs You: operator selects direction]
-      | no                         |
-      +--> [policy-selected direction] <---+
-      |
-      v
-[design-html@rev: inspectable mockup by Designer A/Sonnet]
-      |
-      v
-[independent pre-build Design QA: Designer B/Sonnet]
-      | PASS                                  | FAIL + findings
-      v                                       +------------------+
-[implementation-ready design digest]                             |
-      |                                                          |
-      v                                                          |
-[IMPLEMENTATION]                           [return to design] <---+
-```
+A fuller package stage order is intake, think, plan, design, implement, local QA, risk-selected review,
+documentation, release preflight, merge, staging deploy, staging QA, production deploy, production
+smoke/live QA, retro, and resolve/close. Design may emit a reasoned not-applicable artifact only when its
+pinned predicate and evidence allow it. Every stage declares activity metadata for the generic Board fold.
 
-Skills are **versioned capabilities, not agents**. A stage contract requires skill revisions; the scheduler binds those capabilities to an eligible, independently authorized agent profile and concrete harness/model. Changing a skill creates a new revision and affects only newly bound attempts unless the workflow is explicitly migrated. A persona is an authorization and responsibility class; a harness/model is an execution placement choice; neither substitutes for the skill contract.
+The software-factory skill bindings are versioned package data:
 
-| Skill or gate capability | Default responsible persona / harness | Authority and independence rule |
+| Package capability | Default binding | Hard rule |
 |---|---|---|
-| `office-hours@revision` | Commander / strongest available healthy general-reasoning profile | Shapes intent; the operator owns business, value, scope, and taste calls. The resolved profile and rationale are recorded. |
-| `plan-ceo-review@revision` | Commander / strongest available healthy general-reasoning profile | Prepares the decision packet but never impersonates the human CEO. A required CEO verdict is an authenticated operator event. |
-| `plan-eng-review@revision` | Engineering Manager / Opus | Reviews architecture and risk before build. A new architecture direction remains an operator gate. |
-| `plan-design-review@revision` | Designer / Sonnet | Produces a design critique or brief; a satisfying reviewer cannot be the design author. |
-| `design-shotgun@revision` or `design-shotguns@revision` | Designer / Sonnet | Produces genuinely different options. Material taste selection belongs to the operator. |
-| `design-html@revision` | Designer / Sonnet | Produces the inspectable pre-build mockup and design contract. |
-| Pre-build `design-review@revision` (**Design QA**) | Independent Designer / Sonnet | Must not be the design author. Fable may assist as a non-authoritative scout/summarizer only; it is neither accountable Commander nor authoritative Design QA/final gate. |
-| Post-build rendered `design-review@revision` | Independent Designer / Sonnet | Judges screenshot fidelity, hierarchy, controls, units, bounded content, and visible defects; not the UI author. |
-| Functional `ui-qa@revision` | QA / Codex xhigh | Uses every control, proves its outcome and tenant isolation in a browser; never merely loads the page. |
-| Backend implementation capabilities | Engineer / Codex, effort scaled to risk | Owns non-UI code and tests. Codex never receives `apps/ctower-web` implementation under current routing. |
-| `apps/ctower-web` implementation capabilities | Designer / Sonnet | All frontend implementation remains Designer/Sonnet, including UI bug fixes. |
-| Independent code review | Review / Codex xhigh | Cannot review its own authored diff; elevated work uses the policy-selected sealed bundle. |
-| Security review | CSO / Codex xhigh; Opus escalation | Independent of author; a new security boundary requires Opus analysis and the human operator decision. |
-| Documentation | Tech-writer / Pi, or Codex when code truth requires it | Documentation is verified against the current candidate digest. |
-| Release and operations | DevOps / Hermes | Persistent reconciliation and brokered deployment only; ordinary runner credentials have no production authority. |
-| High-judgment release/taste decision | Opus analysis and/or human operator as policy states | Opus can advise; only the authenticated operator supplies a required taste/business/protected waiver verdict. |
+| office-hours and plan CEO packet | Durable Commander on strongest healthy eligible profile | Shapes intent; never impersonates the human CEO |
+| engineering plan review | Engineering Manager / high-judgment profile | New architecture direction remains an operator gate |
+| design options and HTML mockup | Designer / visual-capable profile | Material taste selection belongs to operator |
+| pre-build and rendered design review | Independent visual reviewer | Not the design/UI author; Fable may scout/summarize only, never issue the satisfying verdict |
+| implementation | Eligible Engineer or UI-author persona per package | Exact source scopes and skills are policy data |
+| functional UI QA | Independent QA with browser capability | Uses every control and proves outcome/tenant isolation |
+| code review and conditional security review | Independent Review owns `code-review`; CSO owns `security` when triggered | `code-review` covers correctness plus maintainability; authors cannot satisfy their own perspective; sealed access when declared |
+| documentation | Writer or code-truth-capable verifier | Binds the current candidate behavior |
+| release/operations | Effect-brokered release runner | No standing production authority |
 
-Every name above must resolve before a workflow can publish or dispatch. L0 materializes canonical
-digest-addressed definitions for `office-hours`, `plan-ceo-review`, `plan-eng-review`,
-`plan-design-review`, singular `design-shotgun` (with `design-shotguns` accepted only as an import alias),
-`design-html`, `design-review`, and `ui-qa`. Each revision stores content, schema, fixtures, source
-provenance, owning persona, required inputs/outputs, and adapter-rendering rules in the ctower skill
-catalog. Existing repository skills are imported with source digest; missing commands receive reviewed
-first-class definitions rather than placeholder references. Persona adapters materialize the immutable
-revision into their native harness form and record the output digest. Publication and dispatch fail if a
-workflow skill reference lacks content, provenance, conformance fixtures, or a reproducible adapter
-materialization.
+Publication and dispatch fail if referenced skill content, provenance, fixtures, materialization, capability,
+or independence cannot resolve. Personas define responsibility/authorization, skills define versioned
+procedure, profiles select models/harnesses, and assignments bind them to an attempt; none substitutes for
+another.
 
-#### Implementation, QA, review, and repair
+#### Verification and repair accounting
 
-```text
-Actors:  AUTHOR = implementation persona
-         QA     = independent QA/Codex xhigh
-         REVIEW = independent Review/Codex xhigh
-
- [AUTHOR implements digest d1]
-              |
-              v
- [QA verifies d1] -- FAIL occurrence o1 / lineage L1 --> [repair packet L1]
-       | PASS                          |
-       v                               v
- [REVIEW sees d1]              [AUTHOR changes to d2]
-       |                               |
-       |                               +--> invalidates QA(d1), REVIEW(d1)
-       |                                    |
-       |                                    v
-       |                              [fresh QA verifies d2]
-       |                                    |
-       +-- FAIL F2 --> [AUTHOR changes to d3]
-                              |
-                              +--> invalidates QA(d2), REVIEW(d2)
-                                   |
-                                   v
-                             [fresh QA verifies d3]
-                                   |
-                                   v
-                             [fresh REVIEW sees d3]
-                                   |
-                                   v
-                                  PASS
-
- REVIEW ROUND r = complete review_round_topology on one current digest
- REPAIR ATTEMPT k = one mutation for one server-owned failure_lineage_key
-
- k < selected plan limit (policy floor <= limit <= 5) -> repair and fresh proof
- exhausted / no progress -> one deduplicated escalation -> STOP automatic repair
-```
-
-An implementation mutation after QA or review normally invalidates the candidate-dependent QA evidence and all later review evidence. “Only declared downstream proof” prevents unrelated proof from being discarded, but the default software-factory dependency graph declares source, build, functional QA, and code-review digests as dependent. The engine therefore cannot route a repaired candidate directly back to Review; fresh QA must pass first. The Commander decides whether the evidence justifies the next repair and review round inside the active `orchestration_plan`; the engine owns counter integrity, floors, the ceiling, and invalidation.
-
-#### Enforcement engine
-
-```text
- [risk facts + evidence] --> [Commander orchestration_plan revision]
+~~~text
+candidate d1 (generation 1)
+        |
+        v
+[mandatory stage QA] --fail L1--> [consume repair L1] --> candidate d2 (generation 2)
+        | pass
+        v
++---------------- REVIEW ROUND ----------------+
+| dispatch each required perspective on digest |
+| each start: total_executions += 1             |
++----------------------+------------------------+
+             pass all  |  any nonpass/error
+                       |             |
+                       v             v
+                    advance   nonpassing_rounds += 1
                                       |
- [policy floors + ceiling 5] ---------+--> [engine validates plan]
-                                                   |
- [append-only round/repair events] --> [monotonic counter projections]
-                                                   |
- [versioned stage contract + checklist] -----------+
-                                                   |
-                                                   v
- [readiness evaluation on committed state]
-       | NOT READY                    | READY
-       v                              v
- [exact unmet checklist]      [durable job: accepted]
+                           [stable lineage + repair?]
+                              | yes              | exhausted/no progress
+                              v                  v
+                       candidate dN       one escalation; stop
+
+Every started perspective execution contributes immutable total_executions audit/cost.
+Only nonpassing terminal rounds consume max_nonpassing_rounds.
+Every candidate, including d1, consumes max_candidate_generations.
+Every mutation consumes the affected lineage's max_repairs_per_lineage first.
+ReviewPlan v1 never turns total_executions into plan-authored capacity.
+~~~
+
+A candidate mutation invalidates declared candidate-dependent QA and review proof. In the software-factory
+package a repaired candidate therefore returns through fresh QA before a new review round. Unrelated
+evidence remains valid. The server derives a stable lineage from stage, typed failure class, normalized
+subject, verifier-rule revision, environment class, and policy split discriminator; candidate digest,
+prose, model, executor, session, and time cannot mint a new budget. Only a deterministic pinned split rule
+or independent adjudicator may create a linked child lineage.
+
+#### Commander, operator, and engine
+
+~~~text
+OPERATOR                         COMMANDER                         ENGINE
+business/taste decisions         strongest healthy profile        validates pinned graph/policy
+new architecture/security        accountable until terminal       checks proof/independence
+destructive/irreversible         decomposes/routes/reassigns       owns counters/lineages
+protected waivers                proposes plan revisions           fences jobs/brokers effects
+          \                         |                                 /
+           +---- authenticated, idempotent commands ----------------+
                                       |
-                                      v
-                          [lease + fencing token]
-                                      |
-                                      v
-                         [attempt submits artifacts,
-                          evidence, and output digests]
-                                      |
-                                      v
-                              [gate evaluation]
-                   +------------------+------------------+
-                   |                  |                  |
-                 PASS          REPAIRABLE FAIL       HUMAN FLOOR
-                   |                  |                  |
-                   v                  v                  v
-          [commit transition] [finding/repair packet] [Needs You]
-                   |                  |                  |
-                   v                  v                  |
-          [reconciler dispatches] [budget available?]    |
-             [next stage]          | yes     | no        |
-                                   v         v           |
-                              [return] [escalate once] <--+
+                       accepted -> committed facts
+                       refused  -> exact unmet checklist, zero change
+~~~
 
- Protected external effect path:
- [all gates valid] -> [short-lived grant] -> [effect boundary]
-     -> [immutable receipt] -> [external audit reconciliation]
-```
+The Commander may select among policy-permitted perspectives and bounds, add rigor, reassign executors,
+pause/resume, or request a declared edge with evidence and rationale. It cannot author consumed counts,
+remove a required perspective, self-issue an independent verdict, reset lineage/generation/round history,
+mint evidence/receipts, or force a transition. There is no advance-force command. A protected operator
+waiver binds the exact ticket, run, requirement, policy/input digests, reason, scope, expiry/use, alternatives,
+and accepted risk; it is displayed through retro and never renders the waived gate as passed.
 
-Every published stage carries a complete, versioned contract and checklist. The minimum implementation shape is:
+Ticket custody, stage execution, review, and runner leases are distinct:
 
-```yaml
-stage_contract:
-  schema_version: ctower.stage-contract/v1
-  workflow_key: engineering.software-factory
-  workflow_revision: 1
-  orchestration_plan_ref: orchestration-plan-revision-id
-  stage_id: local_verification_qa
-  contract_revision: 3
-  eligible_capability_persona:
-    capabilities: [ui-qa]
-    personas: [qa]
-  required_skill_revisions:
-    - skill: ui-qa
-      revision: sha256:skill-revision-digest
-  model_harness_policy:
-    allowed:
-      - harness: codex
-        model_class: xhigh
-    forbidden_authoring_scopes: [apps/ctower-web]
-  independence_constraints:
-    not_artifact_author: true
-    not_design_author: true
-    effective_identity_distinct_from: [implementation_executor]
-  inputs:
-    schema: ui_qa_input/v1
-    required: [candidate_digest, environment_manifest, criteria_revision]
-  entry_checklist:
-    - candidate_digest_is_current
-    - reproducible_environment_is_ready
-    - independent_qa_is_eligible
-  output_artifacts:
-    schema: ui_qa_output/v1
-    required: [browser_recording, screenshots, control_outcome_report, tenant_isolation_report]
-  evidence_requirements:
-    - criterion_binding
-    - command_and_environment
-    - producer_and_verifier_attestation
-    - exact_candidate_digest
-  gate_policy:
-    policy_revision: ui-gates-v3
-    verdicts_required: [functional_ui_qa]
-  pass_fail_transitions:
-    pass: risk_derived_review
-    fail:
-      implementation_defect: implement
-      design_defect: design
-      requirement_defect: plan
-  invalidation_dependencies:
-    invalidated_by: [candidate_digest, ui_contract_digest, api_contract_digest, tenant_fixture_digest]
-    invalidates_on_failure_or_change: [ui_qa_verdict, downstream_review, release_preflight]
-  failure_lineage_budget:
-    policy_floor_from_risk: 2
-    selected_limit_from_plan: 2
-    hard_automatic_ceiling: 5
-    consumed_attempts_are_immutable: true
-    occurrence_fields: [stage_id, failure_class, normalized_subject, verifier_rule_revision, relevant_input_digest, environment_class]
-    lineage_fields: [stage_id, failure_class, normalized_subject, verifier_rule_revision, environment_class]
-    lineage_resolver: server_policy
-    split_authority: deterministic_policy_or_independent_adjudicator
-    consumed_source: append_only_repair_attempt_events
-  timeout:
-    duration: PT4H
-    action: reconcile_then_escalate
-  escalation_owner: commander
-  effect_permissions: []
-```
+~~~text
+ticket custodian:   Commander C0 =====================================> close
+reasoning jobs:       profile A ---- profile B ---- profile C
+stage executors:     planner -> designer -> author -> QA -> reviewer -> release
+review assignments:                         Q1    R1/S1
+runner leases:         lease7 -> fenced -> lease9 -> ...
 
-The contract revision is immutable after publication. A stage attempt stores the contract digest, active
-orchestration-plan revision, and fully resolved capability/profile/run manifest. Entry checklist, lineage
-resolution, and budget evaluation are server-side; a runner receives the result but cannot change it.
-`selected_limit_from_plan` is illustrative for a standard ticket and is not a global constant. The exact
-input digest belongs to the immutable occurrence but is deliberately absent from `lineage_fields`, so the
-same unresolved defect on `d1`, `d2`, and `d3` spends one counter. Effect permissions enumerate only effects
-that stage may request through the broker; an empty list means no external side effect authority.
+ordinary reassign: close executor interval + fence old lease + open eligible interval
+custody transfer:  protected atomic C0 -> C1 with checkpoint/context and no owner gap
+~~~
 
-#### Commander versus workflow engine
+Changing an assignee does not change custody, priority, Board lane by fiat, stage truth, delivery, or
+counters. Every interval records from/to, actor, reason, command, scope, and fence result.
 
-```text
- HUMAN OPERATOR                         COMMANDER (durable principal)
- owns business/taste,                   strongest healthy profile each wake
- architecture/security-boundary,        owns orchestration until terminal
- destructive and waiver decisions       versions workflow/risk/reviewer/
-          |                              round/repair plan + rationale;
-          |                              may raise rigor, reassign, pause,
-          |                              resume, or request a transition
-          +-------------------+-------------------+
-                              | authenticated commands
-                              v
-                 +------------+-------------+
-                 | CTOWER WORKFLOW ENGINE   |
-                 | - pins plan/policy revs  |
-                 | - enforces rigor floors  |
-                 | - checks evidence        |
-                 | - checks independence    |
-                 | - counts review/repair   |
-                 | - caps automation at 5   |
-                 | - fences leases          |
-                 | - brokers effects        |
-                 +------------+-------------+
-                              |
-              +---------------+----------------+
-              | accepted transition            | refused command
-              v                                v
-       [committed event]              [exact unmet checklist]
-              |                       [no state mutation]
-              v
-       [reconciler drives]
+#### Worked UI example with exact execution accounting
 
- Rule: Commander proposes and explains; the server decides whether movement is legal.
-```
+Target trace CT-EXAMPLE-UI-001 adds a tenant-scoped date filter. The pinned software-factory
+elevated-UI policy requires perspectives `code-review`, `rendered-design`, and `security`; mandatory stage
+gates include pre-build Design QA, functional UI QA, docs truth, preflight, staging QA, and production live
+QA. The selected finite bounds are max_nonpassing_rounds=2, max_repairs_per_lineage=2,
+and max_candidate_generations=4. ReviewPlan v1 defines no aggregate execution limit;
+`total_executions` remains an immutable observed audit/cost fact only. These are package values, not platform defaults. The
+plan contains no consumption.
 
-Commander commands are validated requests, never raw updates to a `state` column:
+| Step | Committed facts and automatic result |
+|---|---|
+| 1. Intent/plan/design | C0 records outcome and policy choice; Engineering Manager passes plan; operator decides only material filter placement; independent Design QA passes the mockup. |
+| 2. Candidate d1 | UI author produces generation 1. Functional QA finds dead control occurrence o1 under lineage L1. Server consumes repair 1/2, produces d2 generation 2, and invalidates candidate-dependent proof. |
+| 3. QA d2 | Fresh functional QA uses the filter, checks totals/table/empty/error states and Alpha/Beta isolation, then passes. |
+| 4. Review round 1 | All three perspectives inspect d2. Their three started jobs make `total_executions=3`. Rendered-design finds a bytes-versus-MB mismatch L2, so the server records `nonpassing_rounds=1/2` and repair L2=1/2. |
+| 5. Candidate d3 | Author fixes units, producing generation 3/4. Fresh functional QA passes; old QA/review remains immutable but invalid. |
+| 6. Review round 2 | All three required perspectives pass on d3. Their three jobs make `total_executions=6`; `nonpassing_rounds` remains 1/2. One current all-perspective pass advances; no ceremonial repeat is scheduled. |
+| 7. Delivery | Docs and preflight pass; typed facts progress through change_merged, staging_verified, and production_verified. A live failure would enter incident/containment before any repair. |
+| 8. Terminal | C0 records retro and requests server-validated resolve/close against current criteria, proof, delivery, and workflow facts. |
 
-| Command | Valid effect | Required refusal behavior |
-|---|---|---|
-| `advance` | Requests one declared successor after re-evaluating current exit, evidence, gates, dependencies, policy, and expected version. | `422 transition_refused` with machine-readable and human-readable unmet checklist naming each missing/invalid item and owning stage; no partial transition. |
-| `return` | Requests a declared repair/requirement/design route and commits the contract-defined downstream invalidations. | Refuse an undeclared edge, a stale expected version, or a return that would preserve proof declared dependent on the mutation. |
-| `reassign` | Closes the current executor interval, fences the old lease, and selects an eligible replacement without changing ticket custody unless separately requested. | Refuse an ineligible capability/persona, author-as-reviewer, scope mismatch, or unsafe non-checkpointable handoff; name the violated constraints. |
-| `pause` | Prevents new dispatch/effects at the next safe contract boundary and records who, why, and what remains active. | Refuse any representation that an already-started external effect was paused; reconcile or contain that effect first. |
-| `resume` | Re-evaluates policy, freshness, lease, environment, and entry checklist before dispatch. | Refuse stale evidence, expired grants, unresolved incident/security state, or unmet entry items with the exact checklist. |
+At this early success the immutable audit reports six started perspective executions, while one
+nonpassing round, one candidate generation, and one repair on each used lineage remain available. If
+review round 2 had repeated L2 instead, the server would record `nonpassing_rounds=2/2`, consume repair
+L2=2/2, create d4 generation 4/4, require fresh QA, and allow a current-digest review to pass. Conversely,
+a later policy-permitted d4 created after the d3 pass would invalidate that passing proof and require fresh
+QA and review; its executions would continue increasing the observed total, which is never ReviewPlan capacity.
+No repeated pass is required. Automation still terminates through nonpassing-round, per-lineage repair,
+candidate-generation, no-progress, deadline, quota, and hard-safety bounds. Exhausting any applicable
+bound yields one escalation. A protected amendment may change only a policy-declared waivable value and
+never erases consumed facts.
 
-The Commander may raise the risk tier, add a reviewer/gate, or append an evidence-backed
-`orchestration_plan` revision that increases maximum review-round executions, current-digest passing-round
-requirements, or a per-lineage repair-attempt limit through 5. The prior plan remains immutable; consumed
-round and repair facts live only in append-only server events/projections. Review rounds and repair attempts
-are different ledgers: a review round is one execution of `review_round_topology` on one current digest; a
-repair attempt is one mutation for one stable failure lineage. The Commander cannot submit consumed values,
-silently lower a computed tier or policy floor, remove a mandatory participant, mark evidence valid, satisfy
-independence, reset either counter, mint an effect receipt, or force a state transition. `advance --force`
-does not exist.
+#### Compact end-to-end operating simulation
 
-Lowering or waiving a required, policy-waivable gate requires a separate protected `gate.waive` command authenticated as the human operator. The waiver binds ticket, workflow/stage/gate instance, exact input and policy digests, waived requirement, reason, considered alternatives, risk accepted, scope, expiry or one-use limit, and command ID. The engine records a `gate_waived` fact and audit entry; it never rewrites the gate as passed or fabricates evidence. The UI labels the waiver through release and retro, and any bound digest change invalidates it. Core identity, tenant isolation, append/idempotency, non-forgeable receipts, and other declared hard invariants are non-waivable; the refusal identifies that floor. A model, Commander, reviewer, or runner can recommend a waiver but cannot authorize one.
+~~~text
++---------------- COMPANY SETUP ----------------+
+| first-tenant bootstrap -> CompanyBundle       |
+| goals/projects + principals + profiles/skills |
+| Workflow + Execution/Gate/Evidence policies   |
+| conformance -> atomic future pointer           |
++-------------------------+----------------------+
+                          v
++---------------- DURABLE INTAKE ----------------+
+| request commit -> classify/dedupe -> ticket    |
+| episode=1, priority=P2, custodian=C0            |
++-------------------------+----------------------+
+                          v
++---------------- WORKFLOW ----------------------+
+| plan -> design -> implement -> QA/review       |
+| owner intervals and every refused edge visible |
+| comment/direct steering -> durable command ACK  |
++-------------------------+----------------------+
+                          v
++---------------- DELIVERY ----------------------+
+| docs -> preflight -> change_merged              |
+| staging receipt + QA -> staging_verified        |
+| production receipt + live QA -> production_verified |
++-------------------------+----------------------+
+                          v
++---------------- RETRO + CLOSE -----------------+
+| outcome/attention/cost/defects -> improvement  |
+| criteria + proof + terminal contract -> resolve |
+| administrative close releases C0 custody       |
++------------------------------------------------+
+~~~
 
-#### Risk-scaled review profiles
-
-```text
- observed change facts
-          |
-          v
- +--------+----------------------------------------------------------+
- | LEAN / LOW      floor/default 1 round + 1 repair/lineage          |
- |                 deterministic checks + independent Review         |
- | STANDARD        floor/default 2 rounds + 2 repairs/lineage        |
- |                 independent QA + Review + docs verification       |
- | UI OVERLAY      Designer/Sonnet author                            |
- |                 + independent pre-build Design QA                 |
- |                 + QA/Codex-xhigh functional browser proof         |
- |                 + independent rendered design review              |
- |                 + operator taste gate when material               |
- | ELEVATED        floor/default 3 rounds + 3 repairs/lineage        |
- |                 Standard + applicable UI/EngMgr/CSO overlays      |
- |                 + sealed independent verdicts where required      |
- | CRITICAL        floor/default 3 rounds + 3 repairs/lineage        |
- |                 sealed Review + CSO + relevant QA/EngMgr          |
- |                 + operator for new boundary/destructive decision  |
- +--------+----------------------------------------------------------+
-          |
-          v
- highest matching floor wins; Commander may justify raises through ceiling 5
-```
-
-| Profile | Passing-current-digest rounds / max executions / repair floor and default | `mandatory_stage_gates` (once per relevant current digest/environment) | `review_round_topology` (repeated per round execution) | Automatic progress condition |
-|---|---|---|---|---|
-| **Lean / low** | 1 / 1 / 1 per lineage | Declared deterministic checks and any docs/applicability gate | Independent Review/Codex xhigh on the exact digest | One current-digest passing topology, all stage gates current, and no runtime/UI/security/data/effect trigger. |
-| **Standard** | 2 / 2 / 2 per lineage | Independent functional QA appropriate to behavior, docs code-truth verification, release preflight, and environment QA at their stages | Independent Review/Codex xhigh; any policy-added perspective is named in the plan | Two complete passing topologies on the same current digest, all stage gates current, and zero blocking findings. |
-| **UI overlay** | Inherits the base tier; never lowers it | Independent pre-build Design QA, functional browser/tenant QA, docs/preflight/environment QA, and operator taste only when material | Base topology plus independent post-build rendered Design Review/Designer-Sonnet | Mockup gate precedes implementation; functional and visual proof binds the current rendered candidate/environment. |
-| **Elevated** | 3 / 3 / 3 per lineage | Standard gates plus applicable Engineering Manager plan gate, CSO threat gate, UI/data/migration gates, and protected operator gate only when policy requires it | Independent Review plus every applicable repeated CSO/rendered-design/additional perspective named by policy; sealed where required | Three passing topologies on the same current digest, all overlays current, and effective identities satisfy the sealed graph. |
-| **Critical** | 3 / 3 / 3 per lineage; incident/security zero-repair overrides may be stricter | Elevated gates plus the human operator for the triggering architecture/security/destructive/business decision and independent production live QA | Sealed Review/Codex xhigh plus CSO/Codex xhigh and any policy-selected additional perspective, all from independent effective identities | Three current-digest passing topologies and every non-waived gate are current; effect-broker policy separately passes. Model-family diversity applies only if an explicit policy selects distinct eligible profiles. |
-
-The UI overlay composes with the base tier; it does not reduce an elevated or critical change to “UI.”
-Likewise, an operator taste approval does not replace functional QA, code review, CSO review, or the
-effect boundary. Every round execution consumes one append-only round fact whether it passes, fails, or is
-later invalidated; only a complete pass on the currently active digest counts toward
-`passing_current_digest_rounds_required`. A digest mutation invalidates candidate-dependent passing rounds.
-If remaining execution capacity cannot produce the required current-digest passes, the Commander must
-append an evidence-backed raise within ceiling 5 or the engine exhausts once; it cannot ignore a failed
-round. A stricter zero-ordinary-repair incident/security rule is containment, not a waiver of review rigor.
-
-Independent effective identities are always mandatory where the table says independent. Model-family
-diversity is not implied by two Codex assignments and is not part of the base critical bundle. A versioned
-policy may additionally require diversity only by selecting at least two distinct eligible profile families;
-the resolver then rejects same-family placement and the conformance suite exercises that negative fixture.
-
-#### Ticket custody versus stage handoffs
-
-```text
- TICKET CT-123: accountable orchestration custody (one durable principal)
-
- [Commander: profile A]====[fresh job/profile B]====[fresh job/profile C]====> terminal
-         same principal and orchestration_plan; model/session changes are not transfers
-
- [operator-authorized Commander transfer, if any] -> atomic, reasoned, audited interval
- [operator emergency suspension, if any]          -> operator custody; autonomous progress paused
-
- STAGE EXECUTION: separate short-lived assignment intervals
-
- plan       [Engineering Manager/Opus]
- design             [Designer A/Sonnet]
- design QA                    [Designer B/Sonnet]
- implement                              [Designer A/Sonnet]
- functional QA                                    [QA/Codex xhigh]
- review                                                   [Review/Codex xhigh]
- docs                                                             [Writer/Pi]
- release                                                                  [DevOps/Hermes]
-
- REVIEW CUSTODY: a third assignment kind
- - never implies ticket ownership
- - never authorizes source mutation
- - must satisfy author/effective-identity independence
-
- A stage handoff changes executor/reviewer intervals, not ticket custody.
- A ticket-custody transfer does not silently reassign an active leased job.
-```
-
-Commander accountability persists across the whole outcome through production verification and
-retro/close; fresh reasoning jobs and stronger-profile failover continue the same principal. Stage
-executors own only the bounded attempt and its output; reviewers own only the verdict assignment; the
-effect broker owns only enforcement of a granted external effect. Every true interval transfer records
-from/to, actor, reason, command, stage/run context, and fencing result. The UI shows all three without
-collapsing them into a single “assignee.” An eligible `ticket_custodian` is a tenant/project-authorized
-durable Commander principal resolved by capability policy. The sole exception is an explicit protected
-operator suspension, which pauses new autonomous dispatch until custody is atomically transferred to an
-eligible Commander. Reviewer, executor, runner, model profile, session, and provider identities are always
-ineligible. The protected transfer command locks the episode and current interval, verifies `from` and
-version, checkpoints/fences the old Commander job, closes and opens intervals in the same transaction, and
-only then permits context rehydration; a crash cannot expose a zero-custodian committed state.
-
-#### Worked UI-feature example: tenant-scoped usage filter
-
-This example is a target execution trace, not a claim that the ctower runtime already implements it. Ticket `CT-EXAMPLE-UI-001` asks for a tenant-scoped date filter on a Usage page. Changing the filter must refresh totals and the bounded table, keep units honest, preserve tenant isolation, and expose no dead control. The deterministic tenant-sensitive data rule classifies it as **elevated + UI overlay**, even though no new architecture/security boundary is assumed. The elevated policy floor/default begins at three passing current-digest review rounds, three maximum round executions, and three ordinary repair attempts per stable failure lineage, with hard automatic ceiling 5.
-
-| Step | Pinned skill/persona/harness | Gate, committed fact, and automatic transition |
-|---|---|---|
-| 1. Intent | `office-hours@r4`, durable Commander principal; capability policy resolves the strongest healthy permitted general-reasoning profile | The resolution event records ranked eligible profiles, health/exclusions, and selection. Operator confirms the observable outcome and comparison period. `intent_accepted` makes plan ready. |
-| 2. Business packet | `plan-ceo-review@r2`, same Commander principal on a fresh reasoning job if needed | No impersonated CEO verdict: the operator accepts the product constraint. A model/session replacement does not end Commander accountability. |
-| 3. Plan and budget | Commander publishes `orchestration_plan@rev1`; `plan-eng-review@r7`, Engineering Manager/Opus | Plan records elevated+UI facts; `mandatory_stage_gates=[prebuild_design_qa,functional_ui_qa,docs_code_truth,release_preflight,staging_qa,production_live_qa]`; `review_round_topology=[code_review,rendered_design_review]`; `passing_current_digest_rounds_required=3`; `max_review_round_executions=3`; `repair_attempts_per_lineage=3`; independence; ceiling 5; evidence; and rationale. It contains no consumed counts. Engine validation makes design ready. |
-| 4. Options and mockup | `plan-design-review@r5`, `design-shotgun@r3`, and `design-html@r6`, Designer A/Sonnet | Designer A produces three filter placements and an inspectable mockup. Operator selects the attached-to-table option because placement is material taste. |
-| 5. Pre-build Design QA | `design-review@r8`, independent Designer B/Sonnet | Checks one card level, control attachment, hierarchy, strict columns, units, bounded table, and complete states. Pass on mockup digest commits `design_gate_passed`; implementation becomes ready. |
-| 6. UI implementation | `apps.ctower-web.implement@r9`, Designer A/Sonnet | Current routing forbids Codex frontend authorship. The durable job is leased to Designer A; source/build manifests produce candidate `d1`. |
-| 7. Functional UI QA | `ui-qa@r11`, independent QA/Codex xhigh | QA uses the filter as tenant Alpha, verifies the API request, totals/table change, refresh persistence, empty/error states, and isolation from tenant Beta. This mandatory stage gate runs once per current candidate/environment digest and is not repeated merely because a review round executes. |
-| 8. Independent review rounds | `code-review@r10`, Review/Codex xhigh; post-build `design-review@r8`, independent Designer C/Sonnet | Each execution runs exactly `review_round_topology` on one digest. Round 1 fails and consumes execution 1 but supplies no passing-current-digest credit. The unit mismatch is new evidence: plan rev2 raises only `max_review_round_executions` from 3 to 4, retains the elevated requirement of three passing rounds and the three-repair lineage floor, and adds no consumed values. After repair and fresh QA, complete rounds 2, 3, and 4 all pass on `d3`. |
-| 9. Docs and release | `docs@r3`, Tech-writer/Pi; `release@r12`, DevOps/Hermes; independent staging/production QA | With fresh QA, clean current-digest rounds 2–4, and zero blocking findings, docs bind current behavior. Preflight causes brokered merge, staging deploy, independent staging QA, production deploy, production smoke, and independent live QA on the exact deployed digest and real URL to dispatch in order. Failure of smoke or live QA opens incident containment; neither routes directly to repair. |
-| 10. Close | Accountable Commander plus server resolution validator | The same durable Commander principal reconciles both production smoke and independent live-QA evidence, records the retro and budget outcomes, and requests resolution/close only when the complete criterion/evidence manifest is current. |
-
-The trace deliberately exercises two repair loops:
-
-1. **Repair loop one — QA failure.** On candidate `d1`, QA clicks the filter and the table does not refresh. QA submits failure class `ui.control.dead`, normalized subject `usage.date_filter`, verifier-rule revision `control_changes_bounded_table@2`, and candidate/environment digests. The server records occurrence `o1(d1)` and resolves stable lineage `L1=(local_qa,ui.control.dead,usage.date_filter,control_changes_bounded_table@2,browser_tenant_fixture)`. The Commander judges a repair warranted inside plan rev1; the server appends repair-consumed event 1 of limit 3 for `L1` and routes to Designer A. Candidate `d2` invalidates QA(`d1`) and all downstream proof; fresh QA on `d2` passes before Review can become ready. Because this isolated defect adds no broader risk evidence, the Commander records no budget raise.
-2. **Repair loop two — review failure and rigor amendment.** Review-round execution 1 on `d2` finds totals use bytes while the table label says MB. The server records occurrence `o2(d2)` under distinct stable lineage `L2=(risk_review,ui.unit_mismatch,usage.units,presentation_units_match@4,local_render)`. Round execution 1 is append-only consumed and does not satisfy the three-pass current-digest requirement. The Commander judges repair attempt 1 of limit 3 warranted. Because the mismatch crossed summary/table representations, it appends plan rev2 with evidence/rationale, raising maximum round executions from 3 to 4 (still below ceiling 5) while keeping three required passing rounds. Designer A emits `d3`; that invalidates QA(`d2`) and Review(`d2`). The reconciler dispatches fresh functional QA on `d3` before review-round execution 2, then the complete topology runs cleanly in executions 2, 3, and 4 on `d3`. No mandatory stage gate or reviewer is removed.
-
-If the same dead-control defect survives `d1 -> d2 -> d3 -> d4`, the server records four occurrences with
-different input digests but the same `L1`: repairs after the first three failures append attempts 1, 2, and
-3, while the fourth identical failure finds the selected lineage limit exhausted, creates exactly one
-deduplicated escalation, and dispatches no fourth repair. Reassignment, a new Commander profile, new prose,
-or changed digests cannot reset either ledger. The Commander could raise an unexhausted limit through 5 only
-with new evidence; beyond 5 requires an authenticated operator decision. If production smoke or independent
-live QA failed instead, the engine would commit an incident, revoke unused grants, request brokered
-containment and rollback, verify the rollback/containment on the real environment, and only then create
-triage naming an owning stage; it would not send the candidate directly back to implementation.
-
-#### End-to-end operating simulation: company bootstrap to production close
-
-This target-system simulation follows `CT-USAGE-042`, a tenant-scoped Usage date filter and CSV export,
-from an empty company to terminal close. It is a concise, reconstructable form of the 53-step committed-fact
-trace. The five ASCII diagrams are explanatory views of the same domain states, commands, events, evidence,
-and projections defined elsewhere in this specification; they are **not new state machines or sources of
-truth**.
-
-The fixture is elevated with UI and security overlays. Its initial plan requires three current-digest passing
-review rounds, allows three round executions and three repairs per stable lineage, and retains ceiling 5.
-`C0` is the durable Commander principal; changing its resolved model/job does not change custody. `E1` is
-Engineer, `D1` UI author, `D2/D3` independent design reviewers, `Q1` QA, `RV1` Review, `S1` CSO, `W1`
-Tech-writer, and `O1` DevOps.
-
-**View 1 — company and software-factory bootstrap**
-
-```text
-+---------------- CompanyBundle apply ----------------+
-| tenant + goals + projects + repositories             |
-| identities + C0 Commander + scoped secret bindings   |
-+---------------------------+---------------------------+
-                            v
-+---------------- VersionedComponent Catalog -----------+
-| Workflow + Execution/Gate/Evidence policies           |
-| profiles + personas + skills + tools/capabilities     |
-| environments/images + placement + effect providers   |
-+---------------------------+---------------------------+
-                            v
-+---------------- execution composition ----------------+
-| Harness | Supervisor | Target | Workspace | Telemetry |
-+---------------------------+---------------------------+
-                            v
-+---------------- conformance and activation ------------+
-| refs/digests/signatures/compatibility/independence     |
-| recovery + no-effect dry run: PASS -> atomic pointer   |
-| any failure -> exact refusal; no partial activation    |
-+-------------------------------------------------------+
-```
-
-**View 2 — durable intake through approved design**
-
-```text
-[OP request]
-     |
-     v
-+-- commit inbound event + command result + outbox --+
-     |
- [classify/dedupe] --match--> [link existing]
-     | none
-     v
-[create CT-USAGE-042; custody=C0; pin Workflow/Policy]
-     |
-[goal + Think + frozen criteria + elevated plan]
-     |
-[EM review] -> [D1 three options + inspectable HTML]
-     |                  |
-     |          material taste -> Needs You/OP
-     +------------------+
-                        v
-               [D2 Design QA passes]
-                        |
-                  [Implement ready]
-```
-
-**View 3 — implementation, QA, review, release, and incident branch**
-
-```text
-[E1 API/export + D1 UI] -> d1 -> [Q1 Local QA FAIL L1]
-                                  |
-                           repair 1/3 -> d2
-                                  |
-                     fresh QA(d2) PASS
-                                  |
-        [round 1: RV1 + S1 + D3 FAIL L2]
-                                  |
-                plan rev2 max 3->4; repair -> d3
-                                  |
-                   fresh QA(d3) PASS
-                                  |
-              [rounds 2,3,4 PASS on d3]
-                                  |
- [Docs -> preflight -> MERGED -> staging deploy/QA -> DONE]
-                                  |
-                  [production deploy + smoke/live QA]
-                       | PASS                 | FAIL
-                       v                      v
-                   RELEASED       incident -> revoke -> contain/
-                       |            rollback -> verify -> triage
-                       v
-                [retro -> resolve -> close]
-```
-
-**View 4 — custody, assignment, ownership, review, and lease are separate**
-
-```text
-ticket_custodian:  C0 ================================================= close
-stage_executor:    C0 -> EM1 -> D1 -> E1/D1 -> Q1 -> RV1/S1/D3 -> W1 -> O1 -> C0
-stage:              Think  Plan  Design Implement  QA     Review      Docs Release  Retro
-reviewer_assignment:    EM1   D2         Q1    RV1/S1/D3           Q1/live-QA
-runner_lease_owner:  RC1 RL3 RL4 RL7 -> RL8 RL9..RL15 RVPS2/RVPS3 RC6
-
-This is a derived schematic, not a second event log. Steps 18, 23, 24/28, 30/33/38, 34/39-41, 42,
-43-50, and 51 supply the named stage-executor, reviewer, and runner assignments; only steps 24 and 28
-change the current implementation assignee. Routine executor/reviewer changes append typed assignment
-intervals and create no handoff ticket. Ticket custody does not move in this fixture.
-C0/job-A === C0/job-B === C0/job-C is one principal across profile/session failover.
-```
-
-**View 5 — durable control plane, replaceable data plane, observation, and steering**
-
-```text
-Operator: Home / Ticket / ctowerctl
-             | command + Idempotency-Key
-             v
-+---------------- TRUSTED CONTROL PLANE ----------------+
-| authz -> append/hash/outbox -> Workflow/Policy/Proof  |
-| -> Runtime jobs/leases/fencing -> Effects/Attention   |
-| projections <- durable events/cursors/log refs        |
-+----------------------+--------------------------------+
-                       | outbound authenticated protocol
-=======================+=================================
-                       v
-+---------------- REPLACEABLE DATA PLANE ----------------+
-| ctower-runner -> Supervisor -> Target -> Harness       |
-| Workspace materialize/checkpoint + Telemetry uploader |
-+-------------------------------------------------------+
-
-LIVE_INPUT: commit -> queued -> delivered -> harness ACK | rejected | expired
-INTERRUPT_AND_RESUME: commit -> checkpoint -> interrupt/fence -> new attempt -> replay
-WebSocket/tmux terminal is a view; cursor replay is truth. `send-keys` success is not an ACK.
-```
-
-The chronological contract is:
-
-| # | Committed command or fact | Resulting authoritative state / automatic next action |
-|---:|---|---|
-| 1 | `bootstrap.first_tenant(client_command_id=boot-001)` from the root-owned local socket using the one-use instance capability | One serializable transaction creates `jakit-labs`, disabled historical actor `B0`, operator/admin `OP`, durable Commander `C0`, vault-binding refs, canonical events/outbox, and the exact command result. |
-| 2 | `bootstrap.capability.consumed(receipt=BR-1)` | Capability/B0 are disabled, the route is permanently closed because a tenant exists, exact replay returns BR-1, and wrong-origin/expired/second-use attempts produce no mutation. |
-| 3 | `goal_project_repository.created` | Business outcome and source scope resolve. |
-| 4 | `profiles_personas_skills.published` | Immutable content revisions/provenance become resolvable. |
-| 5 | `execution_components.published` | Harness/Supervisor/Target/Workspace/Telemetry revisions and digests exist. |
-| 6 | `targets_environments.registered` | Local runner plus staging/production target isolation is recorded. |
-| 7 | `secret_bindings.created` | Vault refs/JIT policy validate; no plaintext enters bundle or record. |
-| 8 | `workflow_and_policies.published@1` | Named software-factory Workflow awaits conformance. |
-| 9 | `factory_conformance.passed` | Composition, authz, recovery, independence, and fake effects pass. |
-| 10 | `company_bundle.activated@1` | Atomic future pointer moves; new tickets may pin exact revisions. |
-| 11 | `inbound.accepted` | Source event, payload digest, command result, hash, and outbox commit. |
-| 12 | `inbound.classified(actionable,no_match)` | Idempotent ticket creation becomes eligible. |
-| 13 | `ticket.created(CT-USAGE-042)` | Episode 1 opens with `ticket_custodian=C0`. |
-| 14 | `workflow.pinned@1` | Think becomes ready with exact Workflow/Execution/Gate/Evidence pins. |
-| 15 | `commander_profile.resolved` | Strongest healthy eligible profile starts a job for principal C0. |
-| 16 | `intent.accepted` | Observable behavior/non-goals/material-taste fact committed. |
-| 17 | `orchestration_plan.published@rev1` | Elevated+UI+security topology and limits 3/3/3, ceiling 5; no consumed fields. |
-| 18 | `plan_eng_review.passed` | Architecture/authz/rollback/test packet accepted by EM1. |
-| 19 | `criteria.frozen` | Filter, totals, CSV, tenant isolation, states, and units become immutable requirements. |
-| 20 | `design_options.uploaded` | D1 attaches three options/rationale; taste predicate evaluates true. |
-| 21 | `attention.decided(select-attached-filter)` | OP taste verdict commits; C0 custody does not move. |
-| 22 | `design_html.uploaded` | Inspectable selected mockup and data contract bind to digest. |
-| 23 | `prebuild_design_qa.passed` | D2 verifies hierarchy, units, bounded table, and error/empty states. |
-| 24 | `current_assignee.changed(C0,E1)` | Implement begins; stage owner Engineer; runner `RL7/epoch12`. |
-| 25 | `checkpoint.saved(cp-9)` | Source, patch, and object manifest are durable. |
-| 26 | `lease.expired(RL7/epoch12)` | Old epoch fenced; job returns to recoverable queue; ownership/counters unchanged. |
-| 27 | `lease.granted(RL8/epoch14)` | Checkpoint/cursors restore; late epoch12 result is rejected. |
-| 28 | `current_assignee.changed(E1,D1)` | Backend complete; UI work continues in same ticket/stage contract. |
-| 29 | `candidate.published(d1)` | Deterministic tests pass; Local QA becomes ready. |
-| 30 | `qa.failed(o1 -> L1)` | Dead filter routes to D1; no generic retry/status patch. |
-| 31 | `repair.consumed(L1,1/3)` | Consumption commits before repair dispatch. |
-| 32 | `candidate.published(d2)` | Candidate-dependent QA/review(d1) invalidates; fresh QA required. |
-| 33 | `functional_ui_qa.passed(d2)` | Real controls/export/Alpha-Beta isolation pass; Review ready. |
-| 34 | `review_round.1.failed(d2)` | RV1/S1/D3 find CSV formula injection `L2`; round execution 1 consumed. |
-| 35 | `orchestration_plan.published@rev2` | New evidence raises max executions 3->4; required passes remains 3. |
-| 36 | `repair.consumed(L2,1/3)` | E1 receives exact finding and owning-stage route. |
-| 37 | `candidate.published(d3)` | QA/review(d2) invalidates; round/repair consumption remains. |
-| 38 | `functional_ui_qa.passed(d3)` | Fresh current-digest functional/tenant/security checks pass. |
-| 39 | `review_round.2.passed(d3)` | Full sealed topology passes once on current digest. |
-| 40 | `review_round.3.passed(d3)` | Second current-digest passing credit. |
-| 41 | `review_round.4.passed(d3)` | Third required pass; Docs becomes ready. |
-| 42 | `docs_code_truth.passed` | Docs/API/UI/runbook/release-note digests agree. |
-| 43 | `release_preflight.passed(REL-42)` | CI, rollback predecessor, and current gates allow scoped merge effect. |
-| 44 | `merge.receipt` | Status is **MERGED only**; staging deployment becomes ready. |
-| 45 | `staging_deploy.receipt` | Exact digest observed; staging QA ready; still not DONE. |
-| 46 | `production.promote` refused | `staging_qa_missing` and `e2e_current_digest_missing`; before=after; no grant/job. |
-| 47 | `staging_qa.passed` | Real URL/control/export/screenshots/isolation pass; delivery is **DONE**. |
-| 48 | `production_deploy.receipt` | Exact prod digest/predecessor/audit ID; not RELEASED. |
-| 49 | `production_smoke.passed` | Critical probes/user path pass; independent live QA continues. |
-| 50 | `production_live_qa.passed` | Exact production flow and tenant checks pass; delivery is **RELEASED**. |
-| 51 | `retro.recorded` | Attention, waits, L1/L2, rounds, recovery, cost, and improvement window recorded. |
-| 52 | `ticket.resolve` | Server proves current criteria/evidence/gates/delivery/retro; episode resolved. |
-| 53 | `ticket.close` | Terminal close releases C0 custody; later work reopens episode 2, never rewrites this trace. |
-
-At every requested edge, unmet readiness returns RFC 9457 `transition_refused` with requested edge,
-rule/policy revisions, exact unmet codes/owners/evidence, and identical before/after versions. It creates no
-grant, job, or state mutation. Production smoke/live-QA failure instead commits incident -> revokes unused
-grants -> brokered containment/rollback -> exact-environment verification -> triage -> typed owning-stage
-repair. It never routes directly to implementation.
+The operator tracks the same permanent ticket across Board and Ticket detail. An executor change appends a
+new assignment interval; a Commander model/job change preserves C0; only a protected custody transfer can
+replace C0. Live views may stream structured events and optional terminal bytes, but cursor replay is truth
+and tmux/send-keys is neither ACK nor proof. At every edge, a refusal records requested edge, policy/rule
+revisions, input digest, unmet items/owners, and identical before/after versions. Production verification
+failure records incident, revocation, containment/rollback receipt, exact-environment verification, and
+triage before a responsible stage may mutate work.
 
 ### Stage contracts
 
-Timeouts below are initial policy values for the golden path. A timeout creates a reconciliation action; it does not by itself authorize duplicate execution. Review rounds and repair attempts use the active `orchestration_plan`: low=1, standard=2, elevated=3, and critical=3 are policy floors/defaults; the Commander may justify a raise through the hard automatic ceiling of 5. A stricter zero-repair incident/security route overrides ordinary repair without weakening required review.
+The table below is the human-readable contract for the software-factory package; non-engineering Workflows
+publish their own stage contracts. Exact stage schemas and package values live in `contracts/workflow/` and
+`packs/workflows/engineering.software-factory/`. A timeout requests reconciliation and never authorizes
+duplicate execution. Review/repair/generation bounds come only from the pinned Execution Policy.
 
 | Stage | Entry criteria | Required artifacts and exit evidence | Executor / capability | Timeout | Typed failure route, invalidation, and escalation |
 |---|---|---|---|---|---|
@@ -1736,96 +1299,100 @@ Timeouts below are initial policy values for the golden path. A timeout creates 
 | **Retro** | Production verified or incident contained; actual telemetry complete | Expected-vs-actual report, attention/retry/defect/cost analysis, causes, improvement or no-change decision, evaluation window | Commander + relevant leads; operator only for business judgment | 24 h | Missing telemetry -> operations data repair; process defect -> linked improvement; retro cannot rewrite delivery truth. |
 | **Resolve/close** | Terminal workflow contract; all criteria/gates/current evidence valid; required retro recorded | Server-generated resolution event, criterion/evidence manifest, final delivery summary; later administrative close event | Server-validated command; accountable owner may request | 5 min | 422 unmet list routes to exact owning stage; close denied until resolution or authorized cancellation. Reopen later starts a new episode. |
 
-### Deterministic risk and review policy
+### Software-factory risk and review policy
 
-Risk derives from observed change properties and requested capabilities, not a self-selected ticket label. The policy stores the facts and rule IDs that produced the tier.
+Risk tiers are local vocabulary of the versioned software-factory policy package. They are not platform
+enums and do not constrain other Workflows. Classification derives from observed change/capability facts,
+records rule IDs, and chooses the highest matching package tier. The package's initial defaults are:
 
-#### Base tiers
-
-| Tier | Deterministic classification | Passing-current-digest rounds / max executions / repair policy floor/default | Minimum independent gate bundle |
+| Package tier | Deterministic software-change classification | Base required perspectives | max nonpassing / repairs per lineage / candidate generations |
 |---|---|---|---|
-| **Low** | Documentation, tests, or mechanical refactor only; no runtime behavior, dependency, schema, auth, secret, infrastructure, UI behavior, external effect, or protected data change | 1 / 1 / 1 per lineage | One independent Review on exact digest plus declared deterministic checks |
-| **Standard** | Bounded runtime behavior change with reversible rollout; no elevated/critical trigger | 2 / 2 / 2 per lineage | Independent Review + independent QA appropriate to the behavior + docs verification |
-| **Elevated** | Any auth/authorization logic; secret or PII handling; database/schema migration with tested rollback; cross-service API; shared infrastructure; concurrency/durability; tenant-sensitive UI/data; material architecture implementation; high blast-radius capability | 3 / 3 / 3 per lineage | Standard bundle + applicable CSO/Engineering Manager/UI overlays; two sealed independent verdicts when two model-based gates inspect the same artifact |
-| **Critical** | New security/trust boundary; production IAM/network/firewall/DNS/key-management change; irreversible/destructive data action; payment/publish/send authority; public external surface; rollback-impossible migration; incident recovery with material uncertainty | 3 / 3 / 3 per lineage; stricter zero-repair incident routes allowed | Sealed double-blind Review and CSO from independent effective identities, relevant QA/Engineering Manager, and operator gate for the triggering human-only decision; family diversity only when an explicit policy selects distinct eligible profiles |
+| Low | Docs, tests, or mechanical refactor only; no runtime, schema, UI, security, data, infra, or effect change | One scoped `code-review` perspective | 1 / 1 / 2 |
+| Standard | Bounded reversible runtime behavior with no elevated/critical trigger | One `code-review` perspective covering correctness plus maintainability | 2 / 2 / 4 |
+| Elevated | Auth/PII/schema/concurrency/durability/tenant-sensitive UI/shared infra/material architecture or high blast radius | `code-review`, plus `security` and/or `rendered-design` when their triggers apply | 2 / 2 / 4 |
+| Critical | New trust boundary, destructive/irreversible action, production IAM/network/key/payment/publish/send, public surface, or materially uncertain incident recovery | `code-review` plus `security`, with `rendered-design` when UI/design applies; human decisions remain stage gates | 1 / 1 / 3 |
 
-If multiple rules match, the highest tier wins. The Commander chooses and explains the exact review topology
-and budgets at or above that floor in a versioned plan; it may raise them through 5 as evidence evolves. A
-policy change cannot lower the tier/floor of an in-flight run without an operator-authorized verdict
-recorded against the old and new policies.
+These numbers are defaults inside this package's revision. A later package revision or another Workflow may
+use different values, names, or no risk tiers at all. ReviewPlan v1 defines no aggregate execution stop;
+automation remains finite through the tabled bounds plus no-progress, deadline, quota, and hard-safety
+enforcement. A future aggregate cost/resource stop requires a separately versioned policy component, a
+real use case, and an executable semantic validator before publication. A plan can select only a policy-declared option or protected
+operator-authorized waiver; it cannot lower a hard requirement, fall below consumption, or reset facts.
+Higher risk may add perspectives while deliberately reducing repair latitude.
 
-#### Mandatory overlays
+#### Package overlays
 
 | Overlay | Trigger | Additional contract |
 |---|---|---|
-| **UI** | Any user-visible layout, control, navigation, data presentation, or browser behavior | Designer owns UI implementation; operator taste approves mockup where taste is material; local UI QA uses every control and proves outcome/tenant isolation; rendered screenshot design review checks hierarchy, units, bounded tables, no dead controls, no unresolved template text, and approved-mockup fidelity. |
-| **Architecture** | New module boundary, persistent model, cross-service protocol, infra topology, or deep refactor | Engineering Manager reviews plan before build; a new system/data/infra direction is an operator architecture gate. |
-| **Security** | Auth, scopes, secrets, PII, ingress, egress, tool exposure, runner trust, effect capability | CSO reviews threat model and implementation; a new security boundary is operator-only. |
-| **Data/migration** | Schema/data transform or retention/erasure change | Backup/restore proof, forward/backward compatibility, dry-run counts, rollback or compensating plan, and post-change reconciliation. |
-| **Release/effect** | Merge, deploy, send, publish, payment, IAM, destructive action | Effect broker grant/receipt, external audit reconciliation, target/digest binding, and rollback/compensation. |
-| **Incident** | Production verification failure or unmatched protected effect | Immediate incident/containment path, loud Attention item, grant revocation, rollback assessment, and post-incident retro. |
+| UI | User-visible layout, control, navigation, data presentation, or browser behavior | Independent pre-build Design QA, functional browser/tenant QA, rendered-design perspective, and operator taste only when material |
+| Architecture | New Module boundary, persistent model, protocol, topology, or deep refactor | Engineering Manager plan gate; a genuinely new direction is operator-owned |
+| Security | Auth/scopes/secrets/PII/ingress/egress/tool/runner/effect capability | CSO perspective; a new security boundary is operator-owned |
+| Data/migration | Schema/data transform or retention/erasure change | Backup/restore, compatibility, dry-run counts, rollback/compensation, reconciliation |
+| Release/effect | Merge, deploy, send, publish, payment, IAM, destructive action | Scoped grant/receipt, audit reconciliation, target/digest binding, rollback/compensation |
+| Incident | Production verification failure or unmatched protected effect | Immediate incident, revoke/contain/rollback assessment, triage, and retro; no ordinary direct repair |
 
-#### Sealed double-blind behavior
+Overlays add mandatory stage gates and/or named review perspectives as the package declares. A stage gate
+such as functional QA, documentation truth, preflight, or environment QA is not repeated merely because a
+review round executes.
 
-1. The gate engine selects reviewers; the author cannot nominate a satisfying reviewer.
-2. Each reviewer receives the same immutable artifact/evidence digest manifest and policy questions, without the other reviewer’s identity, notes, or verdict.
-3. Verdict attempts are encrypted or access-restricted until all required sealed submissions arrive or their deadlines expire.
-4. The gate engine then reveals both records atomically. Agreement is evaluated mechanically; disagreement creates an independent conflict-resolution assignment that cannot be held by the author or either original reviewer.
-5. A verdict binds the reviewer’s effective identity, model/harness family where applicable, input digests, evidence, and policy version.
-6. Changes requested return through the typed failure route. Reviewers do not edit the authored artifact inside their gate attempt.
-7. A changed input digest invalidates the old gate instance; reviewers receive a new instance and cannot rubber-stamp by reference alone.
+#### Sealed independent review
+
+1. The engine selects eligible reviewers; an author cannot nominate or become a satisfying reviewer.
+2. Each reviewer receives the same exact digest and only its perspective contract; sealed peers' identities,
+   work products, and verdicts remain hidden until all required submissions or deadlines.
+3. Reveal is atomic. A conflict creates an independent adjudication assignment held by neither author nor
+   original reviewer.
+4. Verdicts bind effective identity, applicable model/harness family, inputs, evidence, and policy revision.
+   Family diversity applies only when the pinned policy explicitly requires it.
+5. A changed input invalidates the instance; a prior report cannot be rubber-stamped by reference.
 
 ### Operator-only gates
 
-The operator/CEO is reserved for product/business taste, a genuinely new architecture direction, a new security boundary, destructive or irreversible action, external business commitments such as pay/publish/send when policy requires it, ambiguous incident choices, explicit prioritization/scope decisions, authorizing automatic review/repair beyond ceiling 5, and lowering/waiving a waivable policy floor. Normal code review, staging, and production promotion are not per-deploy operator gates when the full automated policy has passed and the effect is rollback-ready. Policy can still classify a particular production action as operator-only because of its capabilities or irreversibility.
+Operator authority is reserved for product/business taste, new architecture direction, new security
+boundary, destructive/irreversible action, policy-selected external commitments, ambiguous incidents,
+explicit priority/scope choices, and protected waivers. Routine review and rollback-ready staging/production
+promotion proceed when machine-enforced gates pass. A waiver is exact-scope, idempotent, auditable, and
+invalidated by bound digest changes; it never fabricates evidence or a passing verdict.
 
-### Review rounds, failure lineages, and budgets
+### Review rounds, lineages, generations, and budgets
 
-A **review-round execution** runs exactly `review_round_topology`—the independent reviewers and repeated
-perspectives selected by policy/Commander—against one immutable artifact/evidence digest manifest. It does
-not implicitly rerun `mandatory_stage_gates` such as functional QA, documentation verification, preflight,
-staging QA, or production live QA. Those gates must separately be current for their declared candidate or
-environment digest. Each started round appends one immutable execution/terminal event and consumes total
-execution capacity whether it passes, fails, errors, or is later invalidated. It supplies passing credit only
-when its complete topology passes with zero blocking findings and its digest is still current. Advancement
-requires both: all mandatory stage gates current and at least
-`passing_current_digest_rounds_required` passing executions on the same current digest. A digest mutation
-invalidates affected passing credit but never erases the consumed execution fact.
+A review round evaluates all required_perspectives on one immutable candidate/evidence digest. It passes
+only when every perspective has a current passing verdict and no blocker. Mandatory stage gates remain
+separate and must also be current. One all-perspective current-digest pass is sufficient; repeated identical
+passes are never a gate requirement.
 
-A **failure occurrence fingerprint** (the per-occurrence failure fingerprint) identifies one verifier
-observation and therefore includes its exact
-input digest:
-`sha256(stage_definition_id + failure_class_id + normalized_subject_id + verifier_rule_revision + relevant_input_digest + environment_class)`.
-It is evidence, not the budget key. The server resolves the budget key as
-`failure_lineage_key = sha256(stage_definition_id + failure_class_id + normalized_subject_id + verifier_rule_revision + environment_class + policy_split_discriminator)`
-after validating and normalizing every field against the pinned taxonomy. The ordinary split discriminator
-is fixed to `root`, so the same unresolved defect across `d1`, `d2`, and `d3` maps to one lineage/counter.
-Clients and verifiers cannot submit a lineage key or arbitrary discriminator.
+The server appends immutable facts for every started/terminal perspective execution. `total_executions` is
+the audit/cost observation across those jobs, including passes, failures, errors, and later invalidations;
+it is not a ReviewPlan v1 limit and cannot be authored, capped, or reset by a client or plan. A nonpassing
+terminal round additionally increments nonpassing_rounds. A policy caps that dimension with
+max_nonpassing_rounds. Any future aggregate cost/resource stop must be a separately versioned policy
+component with a real use case, executable semantic validator, and actual enforcement before publication;
+ReviewPlan v1 defines no such field or arithmetic.
 
-A new lineage requires either (a) a deterministic pinned-policy split rule whose structured predicate is
-true, or (b) a `lineage_split_adjudicated` event from an independently assigned adjudicator who is neither
-the author nor the failing verifier. That event references the parent lineage, both occurrence digests,
-rule/policy revision, evidence, and rationale. The engine rejects an unlinked split and a split whose only
-difference is candidate digest, prose, run/model/session ID, or timestamp. Conformance must prove that the
-same defect surviving `d1 -> d2 -> d3` consumes one lineage to exhaustion.
+Every initial or mutated candidate increments candidate_generations; generation one is the initial
+candidate. The global max_candidate_generations stops multiple lineages from each consuming apparently
+valid repair capacity forever. Before a mutation, the server also appends one repair-consumed event for its
+stable failure lineage and enforces max_repairs_per_lineage.
 
-A **repair attempt** is one mutating response to one stable lineage. The active orchestration-plan revision
-supplies its selected limit at or above the risk floor and at most 5; the server appends a repair-consumed
-event before dispatch and updates one monotonic CAS projection. Plan revisions own limits/topology/rationale
-only. They never accept authoritative consumed values; an optional displayed counter snapshot is explicitly
-non-authoritative and names its event watermark. Reassignment, a Commander/model restart, changed prose, or
-candidate mutation resets neither round nor repair accounting.
+A failure occurrence fingerprint binds exact input digest and is immutable evidence. Its budget key excludes
+candidate digest:
 
-The Commander may append a plan revision that raises an unexhausted maximum-execution or repair limit
-through 5 only when new evidence justifies it; prior selections and server consumption events remain
-visible. Under-floor, mandatory-gate/reviewer-removing, client-authored-count, below-consumed-limit, and
-over-ceiling plans are rejected. If remaining round capacity cannot meet the required current-digest passes,
-or a lineage/no-progress limit is exhausted, the engine creates exactly one escalation keyed by
-`(ticket, workflow_run, stage, failure_lineage_key|review_budget)` and blocks further automatic dispatch.
-Later duplicate occurrences attach evidence to that escalation rather than paging or cycling. Operator
-authorization is required beyond 5 or to lower/waive a waivable floor.
+~~~text
+lineage = hash(stage + typed_failure + normalized_subject
+               + verifier_rule + environment_class + split_rule)
+~~~
 
-Production incidents, credential compromise, hash-chain failure, cross-tenant access, and unmatched effects have zero ordinary repair budget: they enter incident/security handling immediately.
+Clients cannot submit the lineage key or split discriminator. The same unresolved defect on d1, d2, and d3
+therefore spends one lineage. A new lineage requires a true deterministic pinned split predicate or a linked
+independent adjudication; prose, time, model, session, executor, or digest is insufficient.
+
+Plan revisions own selected bounds/perspectives/rationale only and may not accept counter values. A
+policy-permitted evidence-backed amendment preserves prior selections and consumption. Reassignment,
+Commander/model restart, candidate mutation, or context restart resets nothing. Exhausting any applicable
+round, lineage, generation, no-progress, deadline, quota, or hard-safety bound creates
+exactly one escalation keyed to the run and bound/lineage, blocks further automatic dispatch, and attaches
+later duplicate evidence to that escalation. Production incidents, credential compromise, hash failure,
+cross-tenant access, and unmatched effects bypass ordinary repair and enter incident/security handling.
 
 ### Verification loops at every layer
 
@@ -1873,8 +1440,8 @@ The six loops have different authorities: the agent may repair within its attemp
 | Loop | Trigger | State read | Permitted action | Stop/escalation |
 |---|---|---|---|---|
 | Within an agent run | Agent has not met its declared goal/check | Current stage context, workspace, command results | Inspect, edit, run checks, checkpoint | Turn/time/tool budget or cancellation; never self-declare protected pass |
-| Stage verification and repair | Attempt submits output or times out | Entry/exit contract, output digests, verifier results, stable lineage, append-only repair events, monotonic counter projection, plan revision | Pass attempt or append consumption and create typed repair route within selected lineage limit | Selected per-lineage limit/no-progress, hard ceiling 5, then one escalation |
-| Independent review/gate | Review becomes ready | Current input digest, policy, evidence, `review_round_topology`, `mandatory_stage_gates`, append-only round executions and current-digest passing credit | Execute topology; pass/fail/changes/abstain; Commander may evidence-raise maximum executions or topology | Required current-digest passing rounds and all stage gates current, or exhaustion/deadline/conflict/operator-only gate |
+| Stage verification and repair | Attempt submits output or times out | Entry/exit contract, output digests, verifier results, stable lineage, generation and repair facts, plan/policy revision | Pass attempt or atomically consume lineage/generation capacity and create the typed repair route | Any applicable lineage/generation/no-progress bound, then one escalation |
+| Independent review/gate | Review becomes ready | Current input digest, policy, evidence, required perspectives, mandatory stage gates, execution/nonpassing facts | Execute each required perspective once; pass/fail/changes/abstain; Commander may propose a policy-permitted evidence-backed amendment | One current all-perspective pass plus current stage gates, or any declared exhaustion/deadline/conflict/operator-only gate |
 | Release/staging/production | Release candidate ready | Gate snapshot, release digest, environment state | Grant effect, deploy, verify, rollback/contain | Production failure always incident; no quiet retry |
 | Watchdog/reconciler | Timer, heartbeat loss, outbox lag, state mismatch | Desired jobs/runs, leases, cursors, runners, receipts | Fence, requeue, replay, alert, reconcile | Bounded recovery; unknown state is loud |
 | Retro/process improvement | Release verified or incident resolved | Expected/actual telemetry, evidence, attention, defects, costs | Create improvement/no-change record; publish new revisions | Effectiveness window closes only with measured subsequent outcomes |
@@ -2094,7 +1661,7 @@ and records the external result before delivery state can advance.
 
 ### Required stack and deployment posture
 
-- **Runtime:** Python for the trusted control plane, runner, CLI, and release helper; TypeScript for the browser. Standard GIL CPython 3.14.6 is the recommended exact build/image pin after the L0 compatibility fixture and append-only D6 supersession; 3.13.14 is the recorded fallback. FastAPI, Pydantic v2, and uvicorn remain fixed. Increment 1 uses one application worker because wake/outbox jobs are initially co-located, while database leases/advisory locks still prevent duplicate ownership.
+- **Runtime:** The two-language decision and exact compatibility gate are specified below. I1 uses one application worker; database leases/advisory locks still prevent duplicate ownership.
 - **Database:** Postgres 17; psycopg3 with explicit pools; plain SQL migrations, folds, and commands. No ORM is required. No generic event-sourcing framework is introduced in the first two increments.
 - **Migrations:** a one-shot `ctower_admin` migrator under a global advisory lock with immutable migration checksums. The long-running `ctower_svc` role has no migration credentials.
 - **Messaging:** transactional outbox and job tables are durable. Postgres `NOTIFY` is a hint that prompts a drain; startup and periodic cursor-based drains guarantee recovery.
@@ -2112,17 +1679,15 @@ ctower deliberately uses two implementation languages, not a language per subsys
 
 | Surface | Language | Architectural reason |
 |---|---|---|
-| `ctower-kernel`, API, control worker | Python | Transaction- and policy-heavy work benefits from strict runtime contracts, explicit psycopg3 transactions, and rapid versioned policy development. |
-| Runner, `ctowerctl`, `systemd-vps` release helper | Python | Shared generated contracts and failure semantics keep the first real runner/effect Adapters local. The privileged helper is a tiny separately packaged process behind a typed Unix-socket Interface, not a general Python plugin host. |
-| Browser web application | TypeScript | Strict browser view models, accessibility tooling, and the generated TypeScript API client. The browser remains outside the trusted authority boundary. |
-| Future narrow provider/runner helper | Go or Rust only after a new decision | A single-binary, performance, or privilege-isolation case must be measured and must sit behind an already justified Seam. Neither language is part of Increment 1 or 2. |
+| `ctower-kernel`, API, control worker | Python | Strict runtime contracts and explicit transactions suit policy-heavy authority. |
+| Runner, `ctowerctl`, release helper | Python | Shared generated contracts and failure semantics; the privileged helper stays a tiny typed Unix-socket process. |
+| Browser web application | TypeScript | Strict browser models, accessibility tooling, and generated client; no authority. |
+| Future narrow helper | Go or Rust only after a new decision | Requires measured need and an already justified Seam; neither is in I1/I2. |
 
-The L0 runtime compatibility gate installs and imports FastAPI, Pydantic plus its mypy plugin, psycopg3,
-uv, Ruff, mypy, OpenTelemetry API/SDK/contrib at composition roots, schema/OpenAPI generation, and the
-release-helper package; builds all wheels and Linux images; and runs the contract skeleton under standard
-CPython 3.14.6. A failure records the exact incompatible dependency and selects 3.13.14. There is no silent
-runtime fallback and no initial free-threaded-build matrix. D6 remains historical and authoritative for the
-old 3.12 pin until the compatibility evidence and append-only decision are accepted.
+L0 imports the full FastAPI/Pydantic-mypy/psycopg3/uv/Ruff/mypy/OpenTelemetry/codegen/release lock, builds
+Linux artifacts, and runs contracts on standard CPython 3.14.6. An incompatibility record selects 3.13.14;
+there is no silent or free-threaded fallback. D6's old 3.12 pin remains historical authority until that
+evidence and an append-only supersession are accepted.
 
 #### Deep Module rule
 
@@ -2277,10 +1842,17 @@ Increment 2 pins one named live adapter alongside its deterministic fake:
 process being upgraded. It exposes an allowlisted root-owned Unix socket to the effect broker identity; the
 application and general runners hold neither root nor `systemctl`/release-directory credentials. A
 short-lived grant binds environment, action, release/bundle/config/schema digests, predecessor, maximum use,
-and idempotency key. The supervisor verifies the immutable bundle, writes and fsyncs a `started` receipt to
-its root-owned hash-chained journal, installs into a digest-addressed release directory, atomically switches
-the environment symlink, restarts only the allowlisted unit, probes the observed release ID, and writes a
-terminal receipt. The returned external audit ID is the journal sequence/hash.
+and idempotency key. That application-authored digest authorizes intent only; it does not establish artifact
+provenance. Before installation, the supervisor independently verifies bytes/digest, signature and
+attestation envelope, SBOM/provenance subjects, and trusted builder/workflow identity against the root-owned
+policy installed at `/etc/ctower/release-trust-policy.yaml`. The application/effect broker cannot write that
+file or its trust keys. Exact schemas live in `contracts/effects/release-attestation.schema.json`; the
+deployable policy source lives in `deploy/systemd/release-trust-policy.yaml` and is installed root-owned.
+Unknown key/builder, missing or mismatched subject, untrusted builder workflow, expired/revoked signature,
+or grant/attestation digest mismatch appends a refusal to the root journal and performs no install/switch.
+Only after verification does the supervisor fsync a `started` receipt, install into a digest-addressed
+directory, atomically switch the environment symlink, restart only the allowlisted unit, probe the observed
+release ID, and write a terminal receipt. The external audit ID is the journal sequence/hash.
 
 For ctower self-upgrade, the supervisor remains alive while FastAPI drains and restarts. If the new service
 does not report the expected release/health before deadline, the supervisor switches to the recorded
@@ -2304,9 +1876,9 @@ Interface or in the named application composition root.
 |---|---|---|---|
 | Ingress adapter | `ctower-api` composition -> Access/Work Interfaces | Source auth, normalization, dedupe keys, taint/quarantine, attachment upload, inbound command | Ticket classification truth outside the command response; direct runner prompts |
 | Command API | `ctower-api` composition -> Access/Record Interfaces | Authentication, authorization, request validation, idempotency, CAS, append transaction, stable error model | Long-running execution inside transactions |
-| Commander capability resolver/controller | Workflow with Catalog/Runtime Interfaces | Strongest-healthy profile resolution, durable per-ticket orchestration accountability/lease, fresh reasoning jobs, context manifests, versioned `orchestration_plan` limit/topology/rationale proposals, response to stage outcomes through terminal verification | Heavy implementation, canonical state in model memory, consumed-count authorship, direct database writes, gate verdict forgery, counter reset, or bypass of floors/ceiling |
+| Commander capability resolver/controller | Workflow with Catalog/Runtime Interfaces | Strongest-healthy profile resolution, durable per-ticket orchestration accountability/lease, fresh reasoning jobs, context manifests, versioned plan/perspective/bound/rationale proposals, response to stage outcomes through terminal verification | Heavy implementation, canonical state in model memory, consumed-count authorship, direct database writes, gate verdict forgery, reset, or bypass of pinned policy bounds |
 | Workflow orchestration | Workflow | Pinned graph, readiness, immutable accepted/refused transition evaluations, stage/attempt transitions, typed owning-stage routes, invalidation, terminal contract | Runner process lifecycle internals or human UI state |
-| Risk/policy evaluation | Workflow | Deterministic tier facts, overlays, separate stage-gate/round requirements, stable lineage normalization/split policy, human-only rules, policy version | Self-reported risk labels/lineage keys as authority |
+| Policy evaluation | Workflow | Arbitrary package facts, perspectives, finite anti-spin bounds, stage-gate requirements, stable lineage normalization/split policy, human-only rules, policy version | Platform-hardcoded engineering tiers or self-reported lineage/counters as authority |
 | Gate evaluation | Proof; Workflow owns only round/route accounting | Gate instances, reviewer assignment, sealed access, verdict attempts, conflicts, expiry/invalidation; Workflow consumes immutable Proof decisions into round facts | Artifact mutation, plan-authored consumed counts, or external effects |
 | Scheduling/job control | Runtime | Durable accepted jobs, priorities, capability matching, leases, fencing, command cursors, cancellation | Ticket ownership or gate verdicts |
 | Reconciliation/watchdog | Runtime for jobs/cursors; Effects for receipts; Projections for view watermarks | Desired-vs-observed state, lease expiry, cursor/receipt/projection reconciliation, synthetic checks behind the owning Interfaces | Guessing success from process absence or creating a cross-Module manager |
@@ -2318,654 +1890,178 @@ Interface or in the named application composition root.
 
 ### Greenfield monorepo and deep-Module boundaries
 
-Implementation starts in a new repository named `ctower`. No Mission Control, Paperclip, or Crabbox source
-is copied into the kernel. Their pinned commits and exports remain provenance for requirements, selective
-Adapter implementation, and one-time migration. The trusted control plane is a modular monolith, not a set
-of domain microservices: `ctower-api` and `ctower-control-worker` are separate process entry points from the
-same control artifact; `ctower-runner`, `ctower-web`, and `ctowerctl` are separately deployable clients of
-versioned contracts. The root-owned release supervisor remains an Effect Provider Adapter.
+Implementation starts in a new repository named ctower. Mission Control, Paperclip, and Crabbox source are
+provenance only and are not copied into the trusted kernel. The control plane is a Python modular monolith:
+API and control-worker entry points share one kernel artifact; runner, browser, CLI, and root release
+supervisor are separately deployable contract clients/Adapters.
 
-The complete initial repository tree at architecture granularity is:
+The repository has these durable homes; subtrees evolve behind their owned Interfaces rather than being
+frozen by a mechanical file listing in this document:
 
-```text
-ctower/
-├── CLAUDE.md
-├── AGENTS.md -> CLAUDE.md
-├── README.md
-├── SPEC.md
-├── DECISIONS.md
-├── .python-version
-├── .node-version
-├── .editorconfig
-├── .gitignore
-├── .pre-commit-config.yaml
-├── .gitleaks.toml
-├── pyproject.toml
-├── uv.lock
-├── package.json
-├── pnpm-workspace.yaml
-├── pnpm-lock.yaml
-├── tsconfig.base.json
-├── eslint.config.mjs
-├── prettier.config.mjs
-├── justfile
-├── playwright.config.ts
-├── apps/
-│   ├── ctower-api/
-│   │   ├── pyproject.toml
-│   │   └── src/ctower_api/
-│   │       ├── http.py
-│   │       ├── worker.py
-│   │       ├── wiring.py
-│   │       └── settings.py
-│   ├── ctower-runner/
-│   │   ├── pyproject.toml
-│   │   └── src/ctower_runner/
-│   │       ├── daemon.py
-│   │       ├── compose.py
-│   │       ├── cli.py
-│   │       └── adapters/
-│   │           ├── harness/
-│   │           ├── supervisor/
-│   │           ├── target/
-│   │           ├── workspace/
-│   │           └── telemetry/
-│   ├── ctower-web/
-│   │   ├── package.json
-│   │   ├── tsconfig.json
-│   │   ├── public/
-│   │   └── src/
-│   │       ├── bootstrap.ts
-│   │       ├── routes.ts
-│   │       ├── shared/
-│   │       └── surfaces/
-│   │           ├── home/
-│   │           ├── board/
-│   │           ├── ticket/
-│   │           ├── fleet/
-│   │           └── analytics/
-│   └── ctowerctl/
-│       ├── pyproject.toml
-│       └── src/ctowerctl/
-│           ├── cli.py
-│           ├── spool.py
-│           ├── replay.py
-│           └── commands/
-├── packages/
-│   ├── ctower-kernel/
-│   │   ├── pyproject.toml
-│   │   ├── migrations/
-│   │   └── src/ctower_kernel/
-│   │       ├── interface.py
-│   │       ├── access/
-│   │       ├── record/
-│   │       ├── catalog/
-│   │       ├── work/
-│   │       ├── proof/
-│   │       ├── attention/
-│   │       ├── runtime/
-│   │       ├── effects/
-│   │       ├── workflow/
-│   │       ├── extension_host/
-│   │       ├── projections/
-│   │       └── _adapters/
-│   ├── ctower-runner-sdk/
-│   │   ├── pyproject.toml
-│   │   └── src/ctower_runner_sdk/
-│   │       ├── manifest.py
-│   │       ├── protocol.py
-│   │       ├── registry.py
-│   │       ├── testing.py
-│   │       ├── harness/interface.py
-│   │       ├── supervisor/interface.py
-│   │       ├── target/interface.py
-│   │       ├── workspace/interface.py
-│   │       └── telemetry/interface.py
-│   └── ctower-systemd-vps/
-│       ├── pyproject.toml
-│       └── src/ctower_systemd_vps/
-│           ├── adapter.py
-│           ├── fake.py
-│           └── supervisor/
-├── contracts/
-│   ├── components/
-│   │   ├── versioned-component.schema.json
-│   │   ├── category-registry.schema.json
-│   │   └── catalog.openapi.yaml
-│   ├── company/company-bundle.schema.json
-│   ├── domain/
-│   │   ├── events/
-│   │   └── task-management/
-│   ├── http/
-│   ├── workflow/
-│   ├── evidence/
-│   ├── runner/
-│   ├── execution/
-│   │   ├── environment-revision.schema.json
-│   │   ├── image-revision.schema.json
-│   │   ├── placement-decision.schema.json
-│   │   └── remote-provider-adapter.schema.json
-│   ├── effects/
-│   ├── observability/
-│   │   └── telemetry-context.schema.json
-│   ├── extensions/
-│   ├── packs/
-│   ├── compatibility/
-│   └── codegen/
-├── generated/
-│   ├── .generated-manifest.json
-│   ├── python/ctower-contracts/
-│   ├── python/ctower-client/
-│   └── typescript/ctower-client/
-├── company/
-│   ├── company.bundle.yaml
-│   └── docs/
-│       ├── goals.md
-│       └── operating-model.md
-├── packs/
-│   ├── manifests/core-v1.yaml
-│   ├── workflows/engineering.software-factory/v1.yaml
-│   ├── policies/
-│   │   ├── execution/software-factory-v1.yaml
-│   │   ├── risk/software-factory-v1.yaml
-│   │   ├── gates/software-factory-v1.yaml
-│   │   ├── scheduling/priority-fair-v1.yaml
-│   │   ├── effects/systemd-vps-v1.yaml
-│   │   └── capability/commander-v1.yaml
-│   ├── personas/<persona>/v1/
-│   ├── skills/<skill>/v1/
-│   ├── checklists/
-│   └── ui/contextual-slots-v1.yaml
-├── tests/
-│   ├── repository/
-│   ├── contracts/
-│   │   ├── components/
-│   │   ├── company/
-│   │   ├── repository/
-│   │   ├── task-management/
-│   │   ├── execution/
-│   │   └── extensions/
-│   ├── modules/
-│   │   ├── record/
-│   │   ├── catalog/
-│   │   ├── work/
-│   │   ├── proof/
-│   │   ├── attention/
-│   │   ├── workflow/
-│   │   ├── runtime/
-│   │   ├── effects/
-│   │   ├── extension_host/
-│   │   └── projections/
-│   ├── conformance/
-│   │   ├── http/
-│   │   ├── runner/
-│   │   │   ├── harness/
-│   │   │   ├── supervisor/
-│   │   │   ├── target/
-│   │   │   ├── workspace/
-│   │   │   ├── telemetry/
-│   │   │   └── composition/
-│   │   ├── remote-provider/
-│   │   └── effect-provider/
-│   ├── acceptance/increment-1/
-│   ├── acceptance/increment-2/
-│   ├── e2e/golden-ticket/
-│   ├── e2e/task-management/
-│   ├── chaos/
-│   └── fixtures/
-├── deploy/
-│   ├── compose/dev.yaml
-│   ├── postgres/roles.sql
-│   ├── systemd/
-│   │   ├── ctower-api.service
-│   │   ├── ctower-control-worker.service
-│   │   ├── ctower-runner.service
-│   │   ├── ctower-web.service
-│   │   └── ctower-release-supervisor.service
-│   ├── vps/
-│   ├── private-edge/
-│   └── observability/
-│       ├── otel-collector.yaml
-│       ├── dashboards/
-│       └── alerts/
-├── images/
-│   ├── control/Dockerfile
-│   ├── runner/Dockerfile
-│   └── web/Dockerfile
-├── tools/
-│   ├── codegen/
-│   ├── checks/
-│   │   ├── __init__.py
-│   │   ├── __main__.py
-│   │   ├── interface.py
-│   │   ├── policy.toml
-│   │   ├── expected-suites.toml
-│   │   ├── exceptions.yaml
-│   │   └── _impl/
-│   ├── migration/mission-control/
-│   └── release/
-├── docs/
-│   ├── runbooks/
-│   ├── operations/
-│   ├── security/
-│   └── contributing/
-├── examples/
-│   ├── http/
-│   ├── runner-component/
-│   └── declarative-pack/
-└── .github/workflows/
-    ├── verify.yml
-    ├── conformance.yml
-    ├── acceptance.yml
-    └── release.yml
-```
+| Root | Normative owner and contents |
+|---|---|
+| apps/ | API/control-worker composition, runner daemon, five-surface web, and ctowerctl entry points |
+| packages/ctower-kernel/ | Access, Record, Catalog, Work, Proof, Attention, Workflow, Runtime, Effects, declarative extension registry, Projections; exact SQL migrations |
+| packages/ctower-runner-sdk/ | Earned local runner component Interfaces and shared conformance helpers |
+| packages/ctower-systemd-vps/ | Root-supervisor Effect Provider Adapter and fault-injection test Adapter |
+| contracts/ | Sole authored cross-process/schema authority, partitioned by domain/http/workflow/evidence/runner/effects/company/observability |
+| packs/ | Reviewed Workflow, Execution/Gate/Evidence policy, persona, profile, skill, capability, and UI-slot resources |
+| generated/ | Manifested Python/TypeScript clients/models plus the generated traceability index; never hand-edited |
+| tests/ | Repository, contract, Module-Interface, earned-Adapter conformance, acceptance, chaos, fixture, and E2E evidence |
+| deploy/, images/ | Private-VPS/systemd/Postgres/observability manifests and reproducible control/runner/web artifacts |
+| tools/ | One Repository Policy implementation, code generation, migration, release, and verification entry points |
+| docs/ | Runbooks, operations, security, contributing/coding standards; never a competing product/system spec |
 
-The frontend framework is deliberately unselected until its L0 review; TypeScript/pnpm and the five-route
-contract are fixed, but React, Vite, Next, or another framework is not silently chosen by this tree. A real
-remote Target may later add `images/sandbox/<target-key>/`; that directory is absent until an Adapter passes
-the unchanged conformance suite, so the tree does not pretend remote runtime scope exists.
+Dependency direction is acyclic:
 
-Dependency direction is structural and acyclic:
+~~~text
+contracts -> generated models/clients -> apps
+packs -----^                         -> API composition -> kernel Interfaces
+runner app -> runner SDK -> generated runner contracts
+effect Adapter -> Effects port + generated effect contracts
 
-```text
-contracts -> generated contracts/clients -> apps
-packs -----^                              |
-                                             v
-ctower-web/ctowerctl ----------------> generated clients
-ctower-runner -> runner-sdk ---------> generated contracts
-ctower-api -> kernel ----------------> generated contracts
-ctower-api -> injected effect Adapter
+FORBIDDEN: kernel -> app/web/CLI/runner/provider implementation
+FORBIDDEN: web/CLI/runner/provider/import/extension -> record-tier connection
+FORBIDDEN: generated output -> policy/server implementation
+~~~
 
-FORBIDDEN: kernel -> app/runner/web/CLI/provider implementation
-FORBIDDEN: runner/provider/web/CLI/import/extension -> Postgres record tier
-FORBIDDEN: generated clients -> server or policy implementation
-```
+Work owns ticket/lifecycle/custody/priority/blocker commands; Workflow owns generic graph/readiness/routes
+and policy counters; Proof owns criteria/artifacts/evidence/gates; Runtime owns jobs/leases/fencing/cursors
+and only the local execution Seams earned by two real Adapters; Effects owns grants/receipts/releases/
+incidents; Projections owns all five rebuildable surfaces. There is no Factory, TaskManager, generic provider
+manager, status service, or service-per-table authority.
 
-| Deep Module | Small Interface and owned complexity | Forbidden ownership |
+### Executable authority and requirement traceability
+
+This specification owns semantics; executable artifacts own exact representations:
+
+| Exact detail | Sole authored location | Accountable owner |
 |---|---|---|
-| Record | `transact` plus cursor reads; idempotency-before-CAS, locks, hash, exact replay, outbox | Domain policy or client rendering |
-| Access | `authorize(actor, action, scope, facts)`; identity, tenant/project scope, default deny | Payload-supplied actor/scope |
-| Catalog | `stage/publish/resolve/supersede/deprecate/revoke`; universal component lifecycle and pins | Category business interpretation or arbitrary code execution |
-| Work | Ticket/lifecycle/custody/relations and recommended priority/blocker commands | Workflow stage, Board projection, runner lease |
-| Proof | Criteria, artifacts, evidence, attestations, gates, dependency invalidation | Artifact authors self-verifying or external effects |
-| Attention | Qualification/open/decide/dedupe/recipient lifecycle | A second notifications-owned Needs You truth |
-| Workflow | Evaluate/reconcile/route generic pinned graph, stage/attempt, readiness, lineage/budgets | Provider lifecycle, proof internals, or named Factory engine |
-| Runtime | Profiles, jobs, leases/fencing, effective manifests, cursors/checkpoints, fair scheduling | Ticket/gate/effect authority |
-| Effects | Exact grants/receipts, environments, releases, reconciliation, incidents/rollback | Standing credentials or policy self-approval |
-| Extension Host | Verify data-only manifest, grant, isolate, invoke, audit, disable/rollback | Kernel tables, transitions, gate/evidence minting, effects, secrets, primary navigation |
-| Projections | Rebuild Home/Board/Ticket/Fleet/Analytics and watermarks | Any authoritative mutation |
+| Tables, columns, constraints, privileges, indexes | packages/ctower-kernel/migrations/ | Record/owning Module + independent database/security review |
+| Domain/event/object schemas and canonical vectors | contracts/domain/ and contracts/evidence/ | Record/Work/Proof |
+| Workflow, stage, plan, counter, lineage schemas | contracts/workflow/ | Workflow |
+| Concrete Workflow and policy values | packs/workflows/ and packs/policies/ | Package owner + Workflow/Proof review |
+| HTTP operations, problem types, pagination | contracts/http/openapi.yaml | API composition + owning Module |
+| Runner frames and earned component contracts | contracts/runner/ | Runtime |
+| Effect grants/receipts/provider operations | contracts/effects/ | Effects + CSO |
+| CompanyBundle/component resources | contracts/company/ and contracts/components/ | Catalog |
+| Generated clients/models | generated/ with generated/.generated-manifest.json | Codegen; byte-for-byte drift gate |
+| Acceptance/conformance behavior | tests/acceptance/, tests/conformance/, tests/chaos/ | QA plus owning Module/Adapter |
+| Deployment/runtime units | deploy/ and images/ | DevOps + CSO |
 
-These Interfaces are the test surfaces. Private implementation stays inside its Module. The deletion test
-justifies each: removing Record, Catalog, Proof, Workflow, Runtime, Effects, or Extension Host redistributes
-hard invariants across many callers. A catch-all utils package, service-per-noun, generic plugin worker,
-remote manager, second scheduler, or package-per-Adapter fails the current deletion/two-real-Adapter test.
-One durable home is mandatory: authored schemas in `contracts/`, migrations in kernel `migrations/`,
-generated clients in `generated/`, fixtures in `tests/fixtures/`, conformance by Seam in
-`tests/conformance/`, deployment manifests in `deploy/`, and import compatibility in
-`tools/migration/mission-control/`.
+`contracts/traceability/sources.json` is the one authored traceability link map. It links the current
+normative contract schemas and packages to stable SPEC section, AC-*, and INV-* IDs; individual artifacts
+do not embed or compete as authoritative link maps. `tools/checks` requires every current normative contract
+schema and package exactly once, resolves every ID, verifies every declared artifact exists, and fails
+omissions, unknown IDs, duplicate authored homes, missing artifacts, generated drift, or manifest drift. It
+generates the sole derived index at `generated/traceability-index.json` and owns its input/output digest in
+`generated/.generated-manifest.json`.
 
-### Physical schema inventory
+OpenAPI operations, migrations, deployment manifests, and other future artifact classes enter the same
+authored map and generator coverage in the change that introduces them. Until then, the index does not claim
+those absent classes are covered or that every AC already has executable evidence. An AC gains executable
+evidence ownership only when its real test/evidence artifact is introduced and mapped. The generated index
+is navigation, not authority. Git history retains the removed v1.6 endpoint, payload, column, and
+repository-tree illustrations.
 
-All IDs exposed through APIs are UUIDv7 or stable human ticket IDs. `created_at` and `updated_at` are server timestamps in UTC. Every tenant-scoped table has `tenant_id NOT NULL` even where omitted below for brevity, and foreign keys include tenant consistency through composite keys or constraint triggers. Soft deletion is used only for projections/configuration; immutable evidence and event history use tombstones and retention policies.
+### Persistence authority
 
-Authority is explicit and closed over this inventory:
+Exact physical DDL lives only in kernel migrations and its generated catalog index. The human contract is:
 
-| Ownership class | Meaning | Storage rule |
-|---|---|---|
-| **Authoritative current/configuration** | Stable identities and server-controlled current pointers such as tenants, projects, principals, tickets, workflow runs, jobs, leases, environments, and provider targets | Mutated only by authenticated commands/CAS; every referenced FK target appears in this inventory. |
-| **Immutable revision/fact** | Published policies/skills/workflows/profiles/plans, domain events, occurrences, consumption events, verdicts, receipts, aliases/import dispositions, and transition evaluations | Insert-only after publication/commit; correction appends a successor or tombstone. |
-| **Rebuildable projection** | Home/Board/Ticket/Fleet/Analytics views, round/repair totals, delivery summaries, and consumer watermarks | Rebuilt from immutable facts; never accepted as command input or authority. |
-| **External authoritative bytes/effects** | Object bytes and provider-side effects/audit records | Postgres stores immutable digest/provenance/receipt metadata and reconciles external authority; it never infers success. |
+| Ownership class | Rule |
+|---|---|
+| Authoritative current/configuration | Stable identities and current pointers mutate only through authenticated idempotent commands/CAS |
+| Immutable revision/fact | Published components/plans, events, occurrences, counters, verdicts, receipts, aliases, and evaluations are insert-only; corrections append successors/tombstones |
+| Rebuildable projection | Home/Board/Ticket/Fleet/Analytics, delivery summaries, counters, and watermarks rebuild from facts and are never command input |
+| External bytes/effects | Object/provider systems own bytes/effects; ctower retains immutable digest/provenance/receipt metadata and reconciles rather than infers |
 
-Schema conformance enumerates every actual FK and fails if its target table/key is absent here. References
-that are intentionally polymorphic use a declared `(subject_type, subject_id)` registry plus a constraint
-trigger, not a pretend SQL FK. No JSON field may hide a required authority that the inventory leaves unnamed.
-Unless a row names a runtime-specific immutable record such as an orchestration plan or artifact revision,
-`Workflow revision`, `policy revision`, `skill revision`, `profile revision`, `environment revision`,
-`image revision`, and analogous `*-revision FK` phrases below are typed foreign keys to
-`component_revisions` with a matching `component_definitions.kind`; they do not imply parallel
-category-specific revision tables.
+All public IDs are UUIDv7 or permanent human ticket IDs; time is server UTC. Every tenant-scoped table has
+non-null tenant identity and tenant-consistent references. Every actual FK target, polymorphic subject
+registry, uniqueness/partial constraint, immutability privilege, and projection owner must appear in the
+migration-generated catalog and match the ownership manifest. Required authority cannot hide in anonymous
+JSON. Component kinds share component_definitions/component_revisions rather than parallel revision tables.
+Service roles cannot update/delete immutable records; web, CLI, runners, providers, extensions, and importers
+have no direct database credential.
 
-#### Identity, ingress, tickets, and events
+The minimum record families are identity/bootstrap/scope; inbound/command/ticket/lifecycle/assignment/
+priority/blocker; Catalog/component/bundle; Workflow/stage/plan/lineage/counter; Runtime/job/lease/run/
+cursor/checkpoint; Proof/object/artifact/evidence/gate; Attention; change/release/deployment/verification/
+grant/receipt/incident; Routine/cost/retro; outbox/projection/provider-audit/anchor/reconciliation. The
+generated DDL catalog, not this list, is exhaustive.
 
-| Table | Primary/foreign/unique constraints | Critical indexes and checks |
-|---|---|---|
-| `instance_bootstrap_capabilities` | singleton `id PK`; token digest unique; optional consumed tenant/bootstrap-principal/command-result refs populated atomically | only deliberate instance-scoped trust-root row; local/private origin, created/expiry/used/revoked, receipt digest; usable only while tenant count is zero; no plaintext token and no reset/delete after consumption |
-| `tenants` | `id PK`; `slug UNIQUE` | active/status index; no cross-tenant implicit default |
-| `projects` | `id PK`; tenant and Project component-definition FKs; one-to-one definition binding | authoritative runtime scope/status and relationships only; authored project config/revisions remain in Catalog; disabled projects cannot receive new work/effects |
-| `repositories` | `id PK`; project/provider-target FKs; `UNIQUE(provider_target_id, external_repository_id)` | canonical clone/source identity; source URL is metadata, not credential |
-| `provider_targets` | `id PK`; tenant FK; stable provider/adapter/target key unique per tenant | authoritative adapter/action allowlist, audit-feed kind, credential `vault_ref`, status, reconciliation SLO; no plaintext secret |
-| `environments` | `id PK`; project/provider-target FKs; `UNIQUE(project_id, environment_key)` | authoritative `staging|production|test` class, endpoint/probe refs, isolation scope, deploy action, credential policy, audit cursor source |
-| `principals` | `id PK`; `tenant_id FK`; `UNIQUE(tenant_id, kind, external_subject)` | `(tenant_id, status)`; kinds include bootstrap_installer, operator, commander, agent, reviewer, runner, gateway, service, admin; bootstrap_installer exists disabled only for first-tenant attribution |
-| `principal_credentials` | `id PK`; `principal_id FK`; `vault_ref NOT NULL`; `UNIQUE(principal_id, credential_version)` | expiry/revocation partial index; check that no plaintext-value column exists |
-| `inbound_threads` | `id PK`; `tenant_id FK`; `UNIQUE(tenant_id, source_kind, source_thread_ref)` | `(tenant_id, last_event_at DESC)` |
-| `inbound_events` | `id PK`; `thread_id FK`; `UNIQUE(thread_id, seq)`; `UNIQUE(tenant_id, source_kind, source_event_ref)` when source ref exists | `(classification, created_at)`; payload digest required; taint/trust enum check |
-| `command_results` | `PRIMARY KEY(principal_id, client_command_id)`; principal FK; request hash, canonical HTTP status/headers/body or compact exact-replay tombstone | immutable dedupe authority; same key with different request hash is conflict; tombstone retains stable exact outcome through audit retention |
-| `tickets` | human `id PK`; `tenant_id FK`; `current_episode_id FK`; accountable principal FK; `UNIQUE(tenant_id, source_kind, source_ref)` where direct source exists | `(tenant_id, lifecycle_summary, updated_at DESC)`; `version >= 0`; `head_hash` required after first event |
-| `ticket_events` | internal `id PK`; ticket FK; `UNIQUE(ticket_id, seq)`; `(principal_id, client_command_id) FK command_results`; command event ordinal unique; optional causation-event FK | `(ticket_id, kind, seq)`; every event references its originating command; first event iff `prev_hash IS NULL`; insert-only grants |
-| `event_schemas` | `PRIMARY KEY(kind, schema_version)`; schema digest unique | published schemas immutable; append validates kind/version |
-| `ticket_relations` | `id PK`; source/target ticket FKs; `UNIQUE(source_ticket_id, relation_type, target_ticket_id, episode_scope)` | source and target indexes; no self-edge; cycle checks for parent and dependency graphs |
-| `lifecycle_episodes` | `id PK`; ticket FK; `UNIQUE(ticket_id, episode_number)` | one current episode partial unique; terminal timestamps/outcome checks |
-| `assignment_intervals` | `id PK`; principal FK; subject ID/type; source command/event FKs | partial unique on current `(subject_type, subject_id, assignment_kind)`; interval end after start; constraint trigger requires exactly one gapless eligible `ticket_custodian` for every nonterminal actionable episode and atomic terminal release/transfer |
-| `acceptance_criteria` | `id PK`; ticket/episode FK; stable key and version; `UNIQUE(ticket_id, episode_id, criterion_key, version)` | one active version partial unique; frozen/superseded checks |
-| `import_runs` | `id PK`; importer-principal FK; source-system/snapshot digest/watermark unique | immutable freeze/import manifest, start/end/result/counts; correction is a new run linked to predecessor |
-| `source_aliases` | `id PK`; import-run/ticket/reviewer-principal FKs; `UNIQUE(tenant_id, source_system, source_id)` | immutable source digest, disposition, imported time; duplicate/link/exclusion target uses the declared polymorphic subject registry |
+### Canonical event and command contract
 
-#### Workflow, jobs, agents, and execution
+Exact event JSON Schema and cross-language vectors live under contracts/domain/events/. Every event binds
+event/tenant/stream/aggregate identity, server sequence/time, schema kind/version, authenticated actor,
+client command/request digest, causation/correlation, origin, typed links/payload, previous hash, and hash.
+Canonical bytes use RFC 8785 over all fields except hash; timestamps are server UTC RFC 3339 with six
+fractional digits, digests are lowercase sha256, and hash-critical schemas use integers/decimal strings
+rather than floats. Sensitive payload bytes are object-referenced while the non-sensitive envelope remains
+hashable.
 
-| Table | Primary/foreign/unique constraints | Critical indexes and checks |
-|---|---|---|
-| `component_definitions` | `id PK`; tenant/scope FKs; `UNIQUE(scope, kind, component_key)` | universal stable identity for every `VersionedComponent` category; no category-specific definition table |
-| `component_revisions` | `id PK`; definition/author/source-object FKs; `UNIQUE(definition_id, revision)`; content digest unique per scope/kind | immutable envelope/payload/schema/compatibility/provenance/supersedes/lifecycle; publication conformance required |
-| `component_dependencies` | source/target component-revision FKs; relation; composite PK | exact compatible pins; cycle and revoked/incompatible dependency checks at publication |
-| `component_active_pointers` | scope/definition PK; current component-revision FK; expected version | CAS future-only pointer; moving it never mutates accepted/running/history pins |
-| `company_bundle_applications` | `id PK`; bundle component-revision/actor FKs; command-result FK; previous/current pointer versions | immutable validate/plan/apply/export provenance, semantic diff, checks, staged revisions, atomic activation result |
-| `skill_materializations` | `id PK`; skill/profile component-revision FKs; harness Adapter component revision; output-object FK | immutable materialized digest/provenance; dispatch requires compatible current pins; no skill-specific revision authority |
-| `workflow_stage_definitions` | `id PK`; workflow and Stage component-revision FKs; `UNIQUE(workflow_revision_id, stage_key)` | immutable binding of a typed Stage contract into one Workflow graph; Workflow owns placement/edges/terminal semantics and Stage is not a second engine |
-| `workflow_transitions` | workflow component-revision and from/to stage-definition FKs; unique normalized predicate | graph validation at publish; Execution Policy cannot add absent edges |
-| `workflow_runs` | `id PK`; ticket episode, Workflow component-revision, Execution Policy, Gate/Evidence Policy FKs; `UNIQUE(ticket_episode_id, run_number)` | exact component digests; one active primary run per episode unless Workflow declares auxiliary run |
-| `orchestration_plan_revisions` | `id PK`; workflow-run/Commander-principal/Execution-Policy component-revision FKs; `UNIQUE(workflow_run_id, revision)`; supersedes FK | immutable risk facts, separate mandatory-stage-gate/review-topology digests, passing/max round limits, per-lineage repair limits, evidence/rationale; schema rejects consumed fields |
-| `commander_profile_resolutions` | `id PK`; orchestration-plan/workflow-run/Agent-Profile component-revision FKs; resolution sequence unique per run | candidate/exclusion/health/capability-policy digests; selected profile highest eligible rank; failover reason/time |
-| `review_round_events` | `id PK`; workflow-run/plan-revision FKs; `UNIQUE(workflow_run_id, round_number, event_ordinal)` | append-only started/terminal/invalidated facts with topology/input digests; terminal pass requires complete topology and zero blockers |
-| `review_round_counters` | workflow-run PK/FK; last round-event FK; total executions/current-digest passing counts | rebuildable monotonic projection only; CAS watermark; never client-authored or copied into plan authority |
-| `failure_lineages` | `id PK`; workflow-run/stage-definition/policy-revision FKs; lineage key unique per run | server-normalized fields exclude candidate digest; optional parent/split-event FK; client cannot supply key/discriminator |
-| `failure_occurrences` | `id PK`; lineage/stage-attempt/verifier-principal FKs; `UNIQUE(lineage_id, occurrence_fingerprint)` | immutable exact input digest, rule revision, evidence and finding packet; same defect across changed digests retains lineage FK |
-| `lineage_split_events` | `id PK`; parent/child-lineage, policy-revision, adjudicator-principal FKs | immutable deterministic-rule or independent-adjudication authority; author/failing-verifier overlap denied |
-| `repair_attempt_events` | `id PK`; lineage/occurrence/plan-revision/stage-attempt FKs; attempt number unique per lineage | append-only `consumed|terminal|invalidated` facts; dispatch requires atomic consumed event first; no update/delete |
-| `repair_budget_counters` | lineage PK/FK; last repair-event FK; selected-limit plan-revision FK | rebuildable monotonic projection; consumed attempts, exhaustion, ceiling; one open escalation key; never plan/client authority |
-| `stage_instances` | `id PK`; workflow-run and stage-definition FKs; `UNIQUE(workflow_run_id, stage_key, occurrence)` | `(workflow_run_id, state)`; readiness/dependency index |
-| `stage_attempts` | `id PK`; stage-instance FK; `UNIQUE(stage_instance_id, attempt_number)`; executor-assignment FK; optional parent occurrence/lineage FKs | `(state, timeout_at)`; input/output manifest digests; failure lineage/occurrence indexes |
-| `durable_jobs` | `id PK`; stage-attempt FK; command digest; state; fencing counter | partial indexes for accepted priority queue and nonterminal jobs; terminal outcome only when state terminal |
-| `job_leases` | `id PK`; job/runner FKs; fencing token; `UNIQUE(job_id, fencing_token)` | one unexpired/current lease partial unique; `(lease_expires_at)` for reaper |
-| `job_commands` | `id PK`; job FK; `(principal_id, client_command_id) FK command_results`; `UNIQUE(job_id, command_cursor)` | undelivered cursor index; immutable delivery/ack facts; command replay is governed by the same command result |
-| `runners` | `id PK`; runner principal FK; registration key unique; trust/status fields | `(status, last_heartbeat_at)`; capability GIN index; quarantine/revocation checks |
-| `runner_protocol_sessions` | `id PK`; runner FK; connection nonce unique; protocol version | active connection partial index; last acknowledged server/runner cursor |
-| `execution_runs` | `id PK`; job, runner, Agent-Profile component-revision, effective-run-manifest, placement-resolution FKs; effective context digest; terminal outcome | `(job_id, started_at)`; exact component/environment/image pins, usage, termination reason; one attempt never mutates pins |
-| `execution_sessions` | `id PK`; execution-run FK; provider/harness; external handle encrypted/reference; `UNIQUE(run_id, sequence)` | handle never used as FK identity elsewhere; expiry index |
-| `execution_events` | `id PK`; execution-run FK; `UNIQUE(run_id, event_cursor)`; payload/object digest | `(run_id, event_kind, event_cursor)`; structured events retained independently of raw logs |
-| `workspaces` | `id PK`; provider-target/repository/project FKs; current owner-assignment FK | unique provider external ID; `(state, cleanup_after)`; no cleanup with uncheckpointed sole copy; tmux/Paperclip handles are metadata only |
-| `checkpoints` | `id PK`; workspace/run/stage-attempt FKs; manifest digest unique per workspace revision | `(workspace_id, created_at DESC)`; verified object refs required |
+All mutations require Idempotency-Key (canonical client_command_id); state-dependent commands require
+expected_version. Success returns the command ID, affected versions, event IDs, acceptance/durability state,
+and projection watermark. Failure is RFC 9457 with stable type/code and zero partial mutation. Exact replay
+checks idempotency before CAS and returns the original outcome; a same-key different request is conflict.
+Lossless command-result tombstones outlive the maximum 30-day offline replay horizon.
 
-#### Work management, compositional execution, extensions, and remote placement
+Exact operations live only in contracts/http/openapi.yaml. The required operation families cover bootstrap,
+ingress, tickets/priority/typed intents/custody/criteria, Workflow/plans/stages, objects/evidence/gates,
+Attention, jobs/steer/cancel, releases/effects/incidents, runners, components/CompanyBundle, reconciliation,
+streams, and health. The OpenAPI registry includes CLI mapping metadata; parity CI fails any non-exempt
+mutating operation without a ctowerctl mapping. Web and CLI use generated clients and never reimplement
+authorization, readiness, policy, or transition logic.
 
-The following tables close the new authority boundaries. Remote/image records are L0 contract targets;
-Increment 2 exercises their local/fake path only. General extension runtime records likewise define a
-fail-closed target without claiming arbitrary extension execution exists. The priority, blocker, admission,
-and priority-aware scheduling rows are the proposed AC-TM schema and remain conditional on operator
-confirmation; their presence here is a testable architecture recommendation, not implementation authority.
+### Client acknowledgement and offline behavior
 
-| Table | Primary/foreign/unique constraints | Critical indexes and checks |
-|---|---|---|
-| `ticket_priority_events` | `id PK`; ticket/episode/actor/command-result FKs; sequence unique per episode | append-only from/to `P0|P1|P2`, reason/policy/evidence; P0 authorization predicate; no update/delete |
-| `ticket_blockers` / `ticket_blocker_events` | blocker PK with ticket/stage/owner/source/dependency refs; event sequence unique | typed reason, resolution condition, next check/SLA, Board impact; multiple open; resolved requires evidence; operator-action flag alone feeds Needs You |
-| `admission_events` | `id PK`; ticket/episode/actor/command FKs | typed `admit|defer|unblock|reopen` intent/result; refusal links unchanged transition evaluation |
-| `scheduling_decisions` | `id PK`; policy component-revision, job, selected runner/target FKs; candidate-set object | eligibility exclusions, priority, age/fairness credit, WIP/preemption/checkpoint result; rebuildable queue never authority |
-| `effective_run_manifests` | `id PK`; stage-attempt/job and every component-revision FK; digest unique per attempt | `HarnessSpec`, `SupervisorSpec`, `TargetSpec`, `WorkspaceSpec`, `TelemetrySpec`, resolved capabilities/config digests, secrets/egress/resources; immutable |
-| `supervisor_handles` | `id PK`; run/runner-incarnation/target-incarnation/lease FKs; opaque encrypted/reference handle | scoped PID/tmux/provider/session metadata; cannot satisfy success/health; stale epoch rejected |
-| `job_command_events` | `id PK`; job-command/lease FKs; command state and event cursor unique | append-only `queued|delivered|acknowledged|rejected|expired|superseded`; delivery mode `LIVE_INPUT|INTERRUPT_AND_RESUME` |
-| `execution_log_chunks` | `id PK`; run/lease FKs; stream; first/last cursor; byte range; object FK; content hash | acknowledged chunks durable before broadcast; exact ordering, redaction policy, retention; immutable |
-| `execution_log_gaps` | `id PK`; run/stream/lease FKs; first/last cursor or byte range; reason | conspicuous durable gap; proof requiring complete logs cannot pass |
-| `extension_installations` | `id PK`; Extension component-revision/scope FKs; active-pointer and lifecycle version | data-only manifest digest/signature/provenance; code never executes during parse; uninstall tombstone preserves audit |
-| `extension_capability_requests` / `extension_grants` | request/revision FKs; grant actor/policy/scope/expiry/resource/egress/quota | request is never grant; no canonical mutation, kernel DB, standing secret, primary route, or unscoped effect capability |
-| `extension_invocations` | `id PK`; installation/revision/grant/job/attempt FKs; invocation nonce unique | short-lived identity, exact scope/expiry/lease epoch; durable job/cursor/audit; revoked token rejected |
-| `extension_contributions` | `id PK`; extension revision/slot schema FKs; unique slot key per revision | host-rendered contextual allowlist only; route/Needs You/projection replacement rejected |
-| `execution_environment_materializations` | Environment component-revision PK/FK; generated normalized payload/object FKs | read-only derived OS/arch/toolchain/image/network/resources/secret/cache/reuse/attestation/placement fields; authority remains the component revision and universal active pointer; distinct from release environments |
-| `placement_policy_materializations` | Placement-Policy component-revision PK/FK | read-only normalized hard constraints, no-colocation, precedence/waiver, and soft scorer; authority remains the component revision; a soft preference cannot relax a hard constraint |
-| `execution_targets` | `id PK`; provider-target and Target Adapter component-revision FKs; stable scoped key | capabilities/trust/region/account/status/reconcile freshness; provider metadata is observation only |
-| `target_incarnations` | `id PK`; target/allocation FKs; unique provider immutable ref+generation | boot/host/isolation-domain IDs, observed image digest, provider cursors/state; old generation fenced |
-| `target_allocations` | `id PK`; job/attempt/placement/environment/image/target/incarnation FKs; operation ID unique | ctower lease/fencing authority, desired/observed state, deadline; provider lease is metadata |
-| `placement_resolutions` | `id PK`; attempt/policy/environment/image/adapter refs; digest unique | all input revisions, candidate/exclusion reasons, scorer, winner/rationale, no-colocation proof; immutable `PlacementDecision` |
-| `image_materializations` | Image component-revision PK/FK; provider-object/base/capture object FKs | read-only scrub/SBOM/vulnerability/conformance/attestation/provenance facts and reference count; authority/lifecycle/supersession remain in the component revision; no mutable `latest` |
-| `image_activation_events` | image component-revision/scope/actor/command-result FKs; activation sequence unique per scope | append-only promote/rollback/revoke decisions; current future-only pointer is `component_active_pointers`; rollback re-verifies object/digest/policy before CAS |
-| `image_operations` | `id PK`; image/setup/allocation/actor refs; operation ID unique | setup/capture/scrub/scan/conformance/attest/promote/rollback/revoke/delete desired/observed facts and receipts |
-| `warm_pool_entries` / `warm_pool_events` | compatibility-key + incarnation generation unique; append-only transitions | atomic borrow token; `warming|ready|allocated|scrubbing|draining|stale|quarantined|destroyed`; reuse requires finalize/revoke/scrub receipt |
-| `cache_revisions` / `cache_attachments` | exact compatibility digest and provider ref; allocation link | rebuildable/non-authoritative; cannot hold sole work, secrets, evidence, logs, or release artifacts |
-| `provider_inventory_cursors` / `provider_observations` | provider target/partition cursor PK; exact external identity and operation refs | gaps/rewinds make scope unknown; unknown objects quarantine/report-only; no delete by name/prefix |
+A browser command is never shown as accepted merely because Fetch was invoked or optimistic UI changed.
+Before send it receives a stable local idempotency key and renders visibly as unsent/sending. It becomes
+accepted only on the server's authoritative accepted response; durability_pending, disconnect, timeout, or
+reload remains visibly unsent/pending retry and uses the same key. The browser preserves the draft/key in
+origin-scoped storage until accepted or explicitly discarded, shows stale cached reads as stale, and never
+projects an unaccepted command into canonical Board/Ticket truth. If safe local persistence fails, submit is
+blocked and the draft remains visible.
 
-#### Artifacts, evidence, gates, attention, and delivery
+ctowerctl's offline spool is a local durability boundary, not a plaintext convenience file. It uses an
+OS-keyring-bound AEAD key, owner-only directory/files, single-writer locking, monotonic sequence/hash and
+checksums, write-fsync-atomic-rename-directory-fsync, bounded size/retention, and redacted diagnostics.
+Bootstrap tokens, resolved secrets, and reusable credentials are never spooled. A record is removed only
+after an exact authoritative accepted response is durably recorded; ambiguous responses replay the same
+key. Expired, corrupt, schema-unknown, unauthorized, or permanently rejected records move to a visible
+quarantine with reason/evidence and require explicit disposition—never deletion or silent skip.
 
-| Table | Primary/foreign/unique constraints | Critical indexes and checks |
-|---|---|---|
-| `objects` | `id PK`; tenant/uploader-principal FKs; content digest unique per tenant; optional provider-target FK | immutable size/media/trust/encryption/retention/provenance metadata; storage key verifies digest; tombstone preserves non-sensitive audit metadata |
-| `object_references` | `id PK`; object FK; declared `(subject_type, subject_id)` registry; purpose | reverse indexes; constraint trigger requires registered subject; one object may be safely reused by digest |
-| `artifacts` | `id PK`; stable kind; declared polymorphic owner registry; optional ticket/stage FKs | `(ticket_id, kind)`; trust disposition index |
-| `artifact_revisions` | `id PK`; artifact FK; `UNIQUE(artifact_id, revision)`; content digest and object FK | digest index; approved/locked revisions immutable |
-| `document_annotations` | `id PK`; artifact-revision and author FKs; anchor digest | open-thread index; replies/resolution preserve history |
-| `evidence_items` | `id PK`; criterion, stage-attempt, producer-run, verifier FKs; evidence digest | `(criterion_id, validity)`; input manifest and environment digest indexes |
-| `attestations` | `id PK`; evidence/runner/principal FKs; signature and statement digest unique | trust/expiry/revocation indexes; signature verification status |
-| `evidence_dependencies` | evidence FK plus declared polymorphic dependency-registry kind/ID/digest; composite PK | reverse lookup by dependency digest for invalidation |
-| `gate_instances` | `id PK`; ticket/stage-instance/policy-revision FKs; unique gate key + input-manifest digest + occurrence | `(state, deadline)`; immutable required role and sealed flag |
-| `reviewer_assignments` | `id PK`; gate/principal FKs; unique gate/principal | author-overlap constraint; sealed-access state |
-| `verdict_attempts` | `id PK`; gate/reviewer-assignment FKs; `UNIQUE(assignment_id, attempt_number)` | `(gate_id, created_at)`; authenticated principal matches assignment; input digest equality |
-| `attention_items` | `id PK`; owner-principal and qualifying-policy-revision FKs; subject uses declared registry; dedupe key unique while open | `(owner_id, state, rank, deadline)`; only policy-qualified operator decisions/incidents project to Needs You; resolution event required to close |
-| `transition_evaluations` | `id PK`; command-result/workflow-run/stage-instance/policy-revision FKs; requested edge and result | immutable input digest, unmet-items object, owners/evidence, before/after versions/time; refused result requires identical before/after state versions |
-| `changes` | `id PK`; repository/provider-target FKs; external ID unique per provider target; author set and digest | commit/diff digest indexes; merge fact separate |
-| `ticket_changes` | composite PK ticket/change/relation | ticket and change reverse indexes; allocation/provenance required |
-| `releases` | `id PK`; project and predecessor-release FKs; release digest unique within project | state is derived from delivery facts; rollback predecessor index |
-| `release_changes` | composite PK release/change | change reverse index; included digest fixed after candidate publication |
-| `deployment_attempts` | `id PK`; release/environment/provider-target/effect-grant FKs; idempotency key unique | `(environment_id, started_at DESC)`; observed digest and terminal outcome checks; action must be allowed by environment target |
-| `environment_verifications` | `id PK`; deployment-attempt/verifier FKs; verification type and digest | `(environment_id, validity, created_at)`; exact deployed digest required |
-| `effect_grants` | `id PK`; policy-revision/ticket/stage/principal/provider-target FKs; grant nonce unique | expiry/use/revocation indexes; target/action/digest scopes required; use count bounded |
-| `effect_receipts` | `id PK`; grant/provider-target FK; external audit ID unique per target; request idempotency unique | immutable outcome/observed target/digest; reconciliation status index |
-| `incidents` | `id PK`; ticket/environment/effect-receipt/deployment-attempt FKs; human incident key unique | `(severity, state, detected_at)`; containment/resolution facts and attention-item FK |
-
-#### Routines, cost, learning, projections, and operations
-
-| Table | Primary/foreign/unique constraints | Critical indexes and checks |
-|---|---|---|
-| `routines` | `id PK`; tenant and Sprint/Cadence component-revision FKs; stable key unique per tenant | active/status index; authored trigger/concurrency/catch-up authority remains the pinned component revision |
-| `triggers` | `id PK`; routine and Notification/Integration component-revision FKs; source key unique; secret reference only | next fire/event cursor indexes; replay-window check |
-| `routine_runs` | `id PK`; routine/component-revision/source occurrence unique | exact cadence/integration pins, outcome and scheduled-for indexes; catch-up dedupe |
-| `cost_records` | `id PK`; provider-target FK; external usage ID unique per provider target; currency/amount/units | `(occurred_at, provider_target_id)`; nonnegative amount check |
-| `cost_allocations` | cost/ticket/run/stage/project FKs; composite PK allocation ID | per-cost sum fraction equals 1 by deferred constraint/validation; reverse indexes |
-| `retros` | `id PK`; ticket/release/incident refs; version and artifact revision | due/state indexes; one required terminal retro per released ticket/incident policy |
-| `process_improvements` | `id PK`; retro FK; target kind/key; linked ticket/change; evaluation window | status/owner/due indexes; measured result or no-change rationale required |
-| `outbox_messages` | `id PK`; source command-result/object FKs; source stream type/aggregate/sequence registry; topic; payload-object FK; dedupe key | immutable general transactional outbox row inserted with every authoritative mutation; undelivered topic/created index; wake/notification/job/projector messages all use it |
-| `outbox_delivery_events` | `id PK`; outbox-message/consumer-principal FKs; delivery attempt/cursor | append-only offered/acknowledged/failed facts; unique consumer/message successful ACK |
-| `outbox_delivery_cursors` | consumer-principal + partition PK; last delivery-event/outbox-message FKs | rebuildable monotonic delivery watermark; CAS advance; gaps block healthy completeness |
-| `projection_definitions` | `id PK`; tenant FK; stable projection key unique per tenant; published query/version digest | authoritative registry for Home, Board, Ticket, Fleet, Analytics, and operational projections |
-| `projection_cursors` | projection-definition FK; `PRIMARY KEY(projection_id, partition_key)`; last source stream/aggregate/sequence registry tuple and health | rebuildable projection watermark; stale/lag index; advances transactionally with projection writes |
-| `provider_audit_cursors` | provider-target FK; `PRIMARY KEY(provider_target_id, partition_key)`; last external cursor, observed time, health | authoritative reconciliation checkpoint from provider/supervisor audit feed; gap/rewind is incident-worthy |
-| `audit_anchors` | `id PK`; watermark; root/chain digest; external location/commit unique | cadence/missing-anchor alert index |
-| `reconciliation_findings` | `id PK`; provider-target/effect-receipt/provider-audit-cursor FKs where applicable; external ID; dedupe key | open severity index; unmatched protected effect creates incident |
-| `operator_attention_events` | `id PK`; principal FK; kind sweep_open/sweep_close/bypass/gate_interaction | `(principal_id, occurred_at)`; explicit classification and source required |
-
-### Canonical domain-event envelope
-
-All aggregate event tables use the same logical envelope. Increment 1 physically stores ticket events in `ticket_events`; later aggregate streams may use dedicated partitions/tables, but all pass through the same `EventAppender` code path and canonical hashing contract.
-
-```json
-{
-  "event_id": "0198a981-4a47-7e12-b7af-d456b01f0001",
-  "tenant_id": "0198a970-7b32-7fa1-9508-8d10c11a0001",
-  "stream_type": "ticket",
-  "aggregate_id": "TKT-000042",
-  "seq": 17,
-  "kind": "criteria_frozen",
-  "schema_version": 1,
-  "actor_principal_id": "0198a972-ea11-70fa-a2ad-3078f2010001",
-  "effective_role": "operator",
-  "occurred_at": "2026-07-17T12:00:00.000000Z",
-  "client_command_id": "0198a980-b820-73c2-9846-77a1aa010001",
-  "request_hash": "sha256:1457c1c9871c4cc5cba378d65fbf576f26d4f8f933ef3a41f41ac7b7dbf8785c",
-  "causation_id": "0198a97f-e21a-7f45-9cc5-2f784d010001",
-  "correlation_id": "0198a97a-ae24-7aa6-a513-a0fda1010001",
-  "origin": "api",
-  "links": {
-    "workflow_run_id": "0198a979-c618-7e01-bc21-32075a010001",
-    "stage_attempt_id": null,
-    "execution_run_id": null
-  },
-  "payload": {
-    "episode": 1,
-    "criterion_ids": ["AC-TKT42-01", "AC-TKT42-02"],
-    "criterion_manifest_digest": "sha256:7d3bbbd71c769c0f30f94eeea80cf6a8253f73a95daeb0f9d056625f7cc6b132"
-  },
-  "prev_hash": "sha256:a45326ba4dbca1f1655a02238af3f0618ef8da5aec2f2f23dc0267776f8f8693",
-  "hash": "sha256:be3e509e420af20df457c22d6e62bdeab7d324226b7af63948d2c8bc5f771120"
-}
-```
-
-Canonical bytes are RFC 8785 JSON Canonicalization Scheme over all envelope fields except `hash`, including `prev_hash`; timestamps are server-generated UTC RFC 3339 with six fractional digits; binary digests use lowercase `sha256:<hex>`; floats are forbidden in hash-critical payload schemas in favor of integers/decimal strings. L0 publishes cross-language test vectors. Sensitive payloads use a payload-object reference and digest while the non-sensitive envelope remains hashable.
-
-### Representative REST/command API
-
-All mutating requests require `Idempotency-Key`, carry `expected_version` when state-dependent, and return RFC 9457 `application/problem+json` on failure. A successful response includes `command_id`, affected aggregate versions, appended event IDs, and projection freshness watermark.
-
-`Idempotency-Key` is the wire spelling of canonical `client_command_id`; the API validates one value (ASCII,
-1–128 bytes) and stores that same value with the authenticated principal and request hash. It is not copied
-into a second independently generated ID. Internal/gateway/runner command sources use the same field in
-their authenticated envelope. Every event produced by the command references `(principal_id,
-client_command_id)` plus a command-local event ordinal, including events across multiple aggregates.
-
-The permitted `ctl` offline-spool replay horizon is 30 days from durable local capture. Older records remain
-visible but enter poison/expired quarantine and require an explicit new command; they are never silently
-replayed. The server retains the hot full canonical command response for at least seven days, then may
-compact it to an immutable, lossless dedupe tombstone retained for the governing event audit period
-(default seven years, therefore longer than the 30-day replay horizon). The
-tombstone preserves principal/key, request hash, HTTP status, stable headers, canonical response bytes or an
-equivalent lossless outcome payload, event IDs, affected versions, and result digest, so exact replay still
-returns the original result. Pruning may remove auxiliary traces but never the dedupe key or exact-replay
-outcome. A contract fixture compacts the hot result after day 7 and replays the still-permitted spool record
-at day 29; a second fixture replays a command that atomically touched multiple aggregates. Both must return
-the original result with zero new events.
-
-The priority, typed-intent, and Board endpoints below are conditional AC-TM contract shapes. They are not
-registered as product operations until the operator confirms the recommendation; all other endpoints remain
-independent of that choice.
-
-| Endpoint | Representative request fields | Representative response fields / semantics |
-|---|---|---|
-| `POST /v1/bootstrap/first-tenant` | one-use capability via protected header, `Idempotency-Key`, tenant/operator/Commander identities, vault-binding refs; local socket/private origin only | atomic tenant + disabled `B0` attribution principal + operator/admin + Commander + refs + receipt; exact replay stable; wrong origin/expiry/use/existing tenant produces zero mutation and permanently closed route after success |
-| `POST /v1/inbound/events` | `source_kind`, `source_event_ref`, `thread_ref`, `payload|payload_object`, `attachments[]`, `source_auth_context` | inbound event/thread IDs, classification state, quarantine state; source retries dedupe |
-| `POST /v1/inbound/events/{id}/classify` | `classification`, `reason_codes`, `ticket_match`, `expected_version` | discussion/link/create result and provenance edge; Commander/service-authorized |
-| `POST /v1/tickets` | `source_event_ids[]`, `title`, `outcome`, `scope`, `initial_custodian`, `workflow_key`; conditional AC-TM `initial_priority` defaults P2 | permanent ticket ID, episode 1, gapless eligible custody, created event, pinned workflow candidate, and—only if AC-TM is activated—atomic initial priority fact |
-| `GET /v1/tickets/{id}` | `include=workflow,evidence,delivery,timeline`, optional `after_cursor` | composed canonical ticket journey plus health/completeness watermark |
-| `GET /v1/tickets` | lifecycle, stage, owner, risk, attention, project, relation, text filters; cursor/limit | stable cursor page used by Board; no offset pagination for mutable feeds |
-| `POST /v1/tickets/{id}/events` | allowed unprotected `kind`, versioned payload, expected ticket version | append replay/result; protected kinds rejected and routed to command endpoints |
-| `POST /v1/tickets/{id}/assign` | non-custody `assignment_kind`, `from`, `to`, stage/run scope, reason, expected version | atomically closes/opens an eligible executor/collaborator interval and appends assignment facts; cannot change ticket custody |
-| `POST /v1/tickets/{id}/custody/transfer` | protected `from`, eligible Commander `to` or explicit operator suspension, reason, expected episode/ticket version, old Commander lease/fence and handoff checkpoint/context digest | atomically fences old reasoning ownership and closes/opens gapless custody; stale/ineligible/reviewer target, unsafe active work, gap, or overlap is refused with zero mutation |
-| `POST /v1/tickets/{id}/priority` | `from`, `to=P0|P1|P2`, reason/evidence/policy, expected version | append-only authorized priority fact; no risk/stage/gate mutation; P0 may be refused |
-| `POST /v1/tickets/{id}/intents/{admit|defer|block|unblock}` | typed reason, blocker/resolution contract/evidence, affected stage, expected version | accepted command or exact no-mutation unmet checklist; there is no generic status endpoint |
-| `GET /v1/views/board` | project, goal, stage, priority, owner, risk filters; cursor/limit/watermark | deterministic lane plus derivation inputs, blocker/resume facts, delivery; rebuildable and read-only |
-| `POST /v1/tickets/{id}/criteria` | stable key, exact criterion, evidence contract, expected version | criterion version and event; disallowed after freeze except authorized revision command |
-| `POST /v1/tickets/{id}/criteria/freeze` | criterion manifest digest, expected version | authenticated protected event and frozen set |
-| `POST /v1/tickets/{id}/resolve` | expected version, episode, requested evidence/gate manifest | server validates and returns resolution or `422 unmet[]` with responsible stage IDs |
-| `POST /v1/tickets/{id}/reopen` | reason, new outcome delta, prior episode, expected version | `reopened` event, new episode number, new workflow run binding |
-| `POST /v1/workflow-runs` | ticket/episode, workflow version, policy revisions, expected ticket version | workflow run and stage instances; pinned digests |
-| `POST /v1/workflow-runs/{id}/orchestration-plans` | expected plan revision, resolved Commander profile, risk facts, `mandatory_stage_gates`, `review_round_topology`, passing/max round limits, per-lineage repair limits, evidence/rationale | immutable limits/topology revision; schema rejects consumed fields; exact under-floor/missing-gate/below-server-consumed/over-ceiling refusal; operator authorization required outside bounds |
-| `POST /v1/stage-instances/{id}/attempts` | input manifest, executor/capability request, failure-parent | stage attempt and accepted durable job IDs |
-| `POST /v1/gates/{id}/verdicts` | reviewer assignment, input manifest digest, verdict, rationale, evidence IDs | immutable verdict attempt; sealed until reveal; conflicts stable |
-| `POST /v1/artifacts` | kind, owner refs, content digest, metadata, trust disposition | presigned/streaming upload contract and artifact ID |
-| `PUT /v1/objects/sha256/{digest}` | bytes; content type/length headers | digest verification, durable-storage status, object ID; mismatch rejected |
-| `POST /v1/evidence` | criterion/stage/gate refs, input/output digests, command, environment, producer run, attestation | evidence ID and validity; upload existence alone cannot pass verifier policy |
-| `GET /v1/views/needs-you` | owner, rank/page cursor | durable Attention rows plus health/completeness block |
-| `POST /v1/attention/{id}/decide` | action, rationale, expected version, defer-until when applicable | attention resolution and linked gate/question/incident command result |
-| `POST /v1/jobs/{id}/steer` | stage/run target and ordered input; `Idempotency-Key` supplies `client_command_id` | durable job-command cursor; delivery/ack exposed separately |
-| `POST /v1/jobs/{id}/cancel` | reason, expected fencing token, checkpoint request | cancellation command and new fencing token/reconciliation state |
-| `POST /v1/releases` | change IDs/digests, artifact manifest, predecessor, rollback manifest | immutable release candidate ID/digest |
-| `POST /v1/releases/{id}/promotions` | environment, gate snapshot, expected release digest | policy evaluation and either effect grant/job or unmet gates |
-| `POST /v1/effects/{grant_id}/execute` | grant nonce, idempotency key, target action parameters digest | immutable receipt or stable replay; callable only by broker identity |
-| `POST /v1/incidents` | detection source, severity, affected refs, evidence | incident and urgent attention/reconciliation actions |
-| `POST /v1/runners/register` | one-time bootstrap, workload identity proof, protocol/capability manifest | runner ID, trust class, client certificate/rotation contract |
-| `POST /v1/components/{kind}/{key}/revisions` | `VersionedComponent` envelope/payload, expected definition version | validated staged/published immutable revision or typed compatibility/security/conformance refusal |
-| `POST /v1/company-bundles/{validate|plan|apply|export}` | canonical bundle or active pointer; apply includes expected pointer version | read-only diagnostics/diff or atomic staged-revision activation; normalized secret-free export |
-| `GET /v1/execution-environments|placement-policies|targets|allocations|placement-resolutions` | scoped filters, exact revision/digest/cursor | immutable execution/placement history and current observed health; target runtime may be not exercised |
-| `POST /v1/images/setup-sessions|{id}/promote|{id}/rollback|{id}/revoke` | exact image/environment/policy digest, expected version, operation/idempotency ID | protected lifecycle command; capture never implies promotion; runtime deferred until conformance |
-| `POST /v1/providers/{target}/reconcile` | expected target/Adapter scope and after cursor | bounded exact-ID observations/gaps/findings; no provider-side ticket mutation |
-| `POST /v1/extensions/{id}/stage|enable|disable|invoke` | data-only revision digest, grant/scope/job/expiry, expected version | Extension Host decision; arbitrary runtime deferred and forbidden capabilities refused before invocation |
-| `GET /v1/streams/{stream}` | cursor, limit, filters | immutable cursor-paginated domain/audit events; distinct from friendly activity projection |
-| `GET /v1/health` | authenticated detail or shallow unauthenticated liveness | database, migration, outbox, projections, objects, jobs, reconciliation, backup, synthetic state |
-
-### API/CLI parity
-
-`ctl` is generated or hand-checked against the same OpenAPI command registry. It never reimplements authorization or transition policy.
-
-| API capability | CLI shape | Parity verification |
-|---|---|---|
-| First-install trust root | `ctowerctl bootstrap first-tenant --token-stdin`, then receipt query/exact retry only | Local/private origin, one-use/expiry/tenant-zero checks, exact replay receipt, no token in argv/log; after success all non-identical bootstrap attempts are permanently disabled |
-| Inbound capture/classify | `ctl capture`, `ctl intake classify` | OpenAPI operation IDs have command mappings; capture supports durable local spool |
-| Ticket query/mutation | `ctl ticket show/list/comment/assign/custody-transfer/criteria/freeze/resolve/reopen` | Golden request/response fixtures match API semantics, eligible gapless custody, and exit codes |
-| Workflow/stage/orchestration plan | `ctl workflow show/start/plan`, `ctl stage show/attempt` | Same schema, versioned budget, floor/ceiling, and policy errors |
-| Evidence/artifacts | `ctl artifact put`, `ctl evidence attach/verify` | Blob is verified before evidence command is released from spool |
-| Gates/attention | `ctl gate decide`, `ctl needs-you`, `ctl attention decide` | Principal restrictions and idempotent result identical |
-| Jobs/live control | `ctl run watch/steer/cancel/checkpoint` | Structured cursor replay; raw terminal optional |
-| Release/incident | `ctl release create/promote/show`, `ctl incident open/show` | Effects still execute only through broker; CLI cannot obtain standing credential |
-| Task management recommendation | `ctl ticket priority/admit/defer/block/unblock/reopen`, `ctl board` | Typed intent and exact refusal; Board remains a projection; pending operator product confirmation |
-| Company/component configuration | `ctowerctl company bundle validate/plan/apply/export`, `ctowerctl component show/publish/revoke` | Same OpenAPI command IDs and revision facts as Admin UI; no YAML watcher, secret value, or direct file authority |
-| Execution/image/provider administration | `ctowerctl environment execution`, `ctowerctl placement explain`, `ctowerctl target`, `ctowerctl image`, `ctowerctl provider reconcile` | Exact revisions/digests/expected versions; contract/fake may be present while real remote runtime is deferred |
-| Administration | `ctowerctl agent`, `ctowerctl runner`, `ctowerctl routine`, `ctowerctl policy`, `ctowerctl extension`, `ctowerctl audit` | Server-side default deny and audit; executable general extensions deferred |
-
-Machine output is JSON with stable schemas; human output is a rendering. Exit codes distinguish validation, authorization, conflict, unavailable/spooled, and permanent quarantine. Parity CI fails if a published mutating OpenAPI operation lacks a CLI mapping or explicit admin-only exemption.
+Outbox consumers follow the same fail-closed law. A malformed, schema-unknown, unauthorized, or repeatedly
+failing message is durably marked outbox_poisoned with source row/digest, consumer, attempts, and reason;
+the partition cursor does not advance past it, dependent projection/notification completeness becomes
+STATE UNKNOWN, and no consumer invents success. An authenticated repair/replay or policy-authorized
+tombstone decision is append-only and independently audited.
 
 ### Runner protocol
 
-#### Transport and identity
+Exact frame schemas, command/event enums, compatibility vectors, and generated models live under
+`contracts/runner/`; `tests/conformance/runner/` is the interface test surface. The human contract is:
 
-Runners initiate an outbound TLS connection to `/v1/runner/connect` using mTLS workload identity or an equivalent short-lived OIDC-bound certificate. A mutually authenticated WebSocket is the primary duplex transport; HTTPS cursor polling is the recovery fallback. Registration and certificate rotation are server-authorized. A runner is tenant/project scoped, capability-declared, versioned, capacity-limited, and revocable.
-
-Every protocol frame includes:
-
-```json
-{
-  "protocol_version": 1,
-  "message_id": "0198a990-51fc-7d2a-b6ad-46889b010001",
-  "runner_id": "rnr-local-mux-01",
-  "connection_id": "0198a98f-372c-70bf-9e2c-7e7b23010001",
-  "direction_cursor": 1042,
-  "type": "lease.heartbeat",
-  "job_id": "0198a98a-1c1e-793c-8d42-530b8f010001",
-  "lease_id": "0198a98b-7611-7995-9d56-8a1a5a010001",
-  "fencing_token": 9,
-  "sent_at": "2026-07-17T12:02:20.000000Z",
-  "payload": {"last_runner_event_cursor": 88, "checkpoint_digest": "sha256:5a7f5fbb1f6b29d1027f23f02f84c8fae8a81f48f5df2f3140d21639ab8a223d"}
-}
-```
-
-#### Control-plane commands
-
-| Command | Required semantics |
-|---|---|
-| `job.offer` | Describes job ID, command/context digest, capability/environment/image/placement needs, allocation offer ID, resource limits, and offer expiry; does not create a lease by itself |
-| `lease.granted` | Carries lease ID/deadline/fencing token, immutable `PlacementDecision`, target/allocation/adapter/environment/image revisions, expected isolation domain, and first server command cursor after idempotent accept |
-| `run.start` | Carries distinct `HarnessSpec`, `SupervisorSpec`, `TargetSpec`, `WorkspaceSpec`, and `TelemetrySpec`; runner echoes the full effective manifest, target incarnation/boot/isolation IDs, and observed image digest before tools/secrets execute |
-| `run.resume` | Names checkpoint digest, last accepted runner/server cursors, and reconstruction instructions; vendor session handle is optional |
-| `input.steer` | Durable ordered input names `LIVE_INPUT` or `INTERRUPT_AND_RESUME`; every state/ACK is replayable and send/injection success alone is not delivery |
-| `run.cancel` | Carries reason, deadline, checkpoint policy, and new/revoked fencing information |
-| `checkpoint.request` | Names required manifest class and deadline; no destructive cleanup implied |
-| `lease.revoke` | Immediately invalidates token for state-changing results; runner may upload forensic terminal/log tail only |
-| `runner.drain` | Stops new offers and gives deadlines for current jobs; used for upgrade/quarantine |
-| `supervisor.probe/observe` | Re-establishes scoped handle state and requests ordered observations after cursor; process/session existence cannot reconcile terminal outcome |
-| `supervisor.interrupt/terminate/snapshot/adopt` | Idempotent command ID plus current epoch; stale epoch is rejected; adoption requires probe, cursor observation, and terminal reconciliation |
-| `allocation.cancel/destroy/reconcile` | Separates prompt execution fencing from asynchronous provider cleanup; exact expected provider identity required |
-
-#### Runner events
-
-| Event | Required semantics |
-|---|---|
-| `job.accepted` / `job.rejected` | Idempotent offer response; rejection includes typed capacity/capability/retry-after reason |
-| `run.started` | Echoed immutable five-component manifest, agent/profile/context, `EnvironmentRevision`, `ImageRevision`, `PlacementDecision`, target/allocation/incarnation, actual boot digest, tool/secret/egress/resource policy, and fencing token |
-| `lease.heartbeat` | Current cursors, progress class, resource usage, checkpoint digest, health; renews only if token is current |
-| `output.event` | Structured progress/tool/result event with runner cursor; persistence precedes live broadcast |
-| `input.ack` | Command ID, mode, epoch, and `queued|delivered|acknowledged|rejected|expired|superseded` state; only a capable harness may acknowledge live input |
-| `log.chunk` / `log.gap` | Ordered hashed active-stream byte range/object ref or explicit missing range/reason; acknowledged metadata is durable before broadcast |
-| `artifact.declared` / `artifact.uploaded` | Digest, size, kind, trust, producer; uploaded means object store verified it |
-| `checkpoint.saved` | Durable manifest digest and restoration requirements |
-| `run.terminal` | Outcome, termination reason, output/evidence manifests, final cursor; idempotent and accepted only with current token |
-| `runner.capacity` / `runner.health` | Version, slots, resources, degradation, clock skew, storage, provider health; used for placement and Fleet truth |
-| `allocation.rejected` / `incarnation.replaced` / `image.mismatch` | Typed placement/target/image failure under exact manifest and epoch; never silently selects another provider/image in the same attempt |
-| `provider.observation` / `provider.reconciliation_finding` | Exact external identity, operation, generation, cursor and desired/observed delta; observation cannot transition ticket/workflow directly |
-
-#### Job-state rules
-
-1. Server acceptance into the queue creates `accepted`.
-2. An idempotent claim plus lease row changes `accepted -> leased` and increments the fencing token.
-3. A valid `run.started` changes `leased -> running`.
-4. Only a valid current-token `run.terminal` or server cancellation/loss reconciliation changes to `terminal` with an explicit outcome.
-5. Missed heartbeat marks observed health suspect but leaves the durable job state unchanged until the lease expires.
-6. Expiry atomically closes the lease, increments fencing, and returns the job to `accepted` or terminal `lost` according to retry policy.
-7. A runner reconnects with both directional cursors; each side replays frames after the last acknowledged cursor and deduplicates by message ID.
-8. A stale runner may upload forensic logs/artifacts to quarantine but cannot attach satisfying evidence or transition the job.
+- A runner initiates outbound mutually authenticated TLS. Duplex ordered transport is primary and HTTPS
+  cursor polling is recovery; registration, protocol version, scope, capacity, rotation, drain, quarantine,
+  and revoke are server-authorized.
+- Every frame binds protocol/message/connection identity, direction cursor, job/lease, fencing token, time,
+  type, and typed payload. Each side persists before broadcast, acknowledges a contiguous cursor, replays
+  after reconnect, and deduplicates message identity.
+- Offer is not lease; lease is not running; process existence is not completion. Only an atomic current-token
+  claim creates a lease, acknowledged start creates running state, and a current-token terminal event or
+  server reconciliation creates an explicit terminal outcome.
+- Commands cover offer/lease, start/resume, steer, cancel, checkpoint, revoke/drain, and supervisor lifecycle.
+  Steer is delivered only after harness ACK; injection success is not ACK. Every mutation carries one stable
+  command ID and current epoch.
+- Events cover acceptance/refusal, start, lease heartbeat, structured output, input ACK, log chunk/gap,
+  artifact/checkpoint, terminal result, capacity/health, and typed reconciliation findings. Missing bytes are
+  visible `log_gap`, never silently omitted proof.
+- Lease expiry closes the old lease and increments fencing before requeue/loss policy. A stale runner may
+  upload quarantined forensic bytes but cannot ACK commands, attach satisfying evidence, transition work, or
+  perform effects.
+- Every exercised start echoes the immutable local harness/supervisor/target/workspace/telemetry manifest and
+  observed build/target incarnation before tools or secrets enable. Future remote/image fields extend the
+  same envelope only after their Seams are earned.
 
 #### Local runner with tmux Supervisor Adapter
 
@@ -3006,84 +2102,42 @@ The local mapping is:
 - Killing tmux or rebooting/replacing the host fences/requeues from durable checkpoint/state; old incarnations cannot ACK or submit accepted results. Recovery must pass with the tmux session destroyed.
 - Runner restart reconstructs active jobs from ctower, not `crew-log` memory; legacy logs remain provenance only.
 
-#### Remote execution provider and custom image contracts
+#### Deferred remote execution and reusable-image boundary
 
-Remote execution is a target contract, not an Increment 2 production claim. `RemoteExecutionProviderAdapter`
-composes through Target/Supervisor/Workspace/Telemetry Interfaces and never replaces Runtime leases,
-fencing, evidence, or audit. Crabbox commit `cf5081fcc116f8d28983b265652b8abf9ed24f5e` is optional Adapter
-provenance, not a dependency. Its provider breadth, exact-ID lifecycle, bounded delegated execution, cache,
-and capture mechanics may be wrapped after conformance; its coordinator, cooperative-team isolation,
-brokered-only history, provider run IDs, and image promotion are not ctower authority.
+Increment 1 freezes only durable data/invariant schemas for EnvironmentRevision, ImageRevision,
+PlacementDecision, provider observation, and exact external-resource binding under contracts/execution/.
+Increment 2 exercises the local process/tmux Targets. It does **not** publish a wide remote-provider or image
+administration Interface, implement a fake as if that earned a Seam, hold provider credentials, or expose a
+setup terminal. A public remote/image Seam requires at least two independently valuable real Adapters, an
+unchanged shared conformance suite, and an append-only scope decision. Crabbox commit
+cf5081fcc116f8d28983b265652b8abf9ed24f5e remains optional provenance for that future review.
 
-```text
-RemoteExecutionProviderAdapter v1
-  identity() -> key/version/digest/provider-account scope
-  capabilities() -> immutable manifest + observed freshness
-  validate(spec) -> supported | typed incompatibilities              # no effect
-  resolve_or_provision(allocation, operation_id, fence) -> observation
-  inspect(external_ref, expected_identity, after_cursor) -> observations
-  execute(allocation, normalized_exec) -> handle + stream capabilities
-  observe_execution(handle, after_cursor) -> ordered events/result | gap
-  cancel(external_ref, operation_id, deadline, expected_identity) -> receipt
-  destroy(external_ref, operation_id, expected_identity) -> receipt | pending
-  reconcile(scope, after_cursor) -> bounded inventory/gaps/orphan candidates
-  prepare_workspace(allocation, manifest, scoped_download_grants) -> digest
-  finalize_workspace(allocation, checkpoint_policy, scoped_upload_grants) -> manifest
-  capture_image(source_incarnation, operation_id, requested_name) -> observation
-  inspect_image(provider_object_ref) -> immutable identity/digest/availability
-  delete_image(provider_object_ref, operation_id, expected_identity) -> receipt | pending
-```
+The deferred implementation must preserve these already-locked invariants:
 
-Every mutation carries a ctower operation ID and exact expected provider identity; argv is shell-free and
-output bounded if a CLI Adapter is used. Ctower's outer `TargetAllocation` lease/fence remains authoritative;
-provider leases are resource metadata. Provider `succeeded`, disappearance, cleanup, or capture never means
-command success, workspace finalization, evidence validity, image promotion, or Workflow advancement.
-Direct/delegated modes must still feed ctower's cursor/ACK/log protocol; absence of provider history is not a
-waiver.
+- Every attempt pins exact environment, image, target/allocation/incarnation, Adapter, placement inputs,
+  exclusions, isolation domain, resource/egress, and fencing facts before provision; active pointers affect
+  future attempts only.
+- Ctower's outer job lease/fence and operation ID remain authority. Provider IDs, status, disappearance,
+  capture, cleanup, and success are observations and cannot advance Workflow, satisfy Proof, or imply
+  terminal execution.
+- Every provider mutation is idempotent and exact-identity scoped. Reconciliation uses bounded cursors and
+  quarantines unknown resources; deletion by prefix or inference from absence is forbidden.
+- Missing capability/attestation, stale inventory, mutable image reference, unknown isolation, digest
+  mismatch, ambiguous cancellation/finalization/capture, or log gap fails closed as STATE UNKNOWN or a typed
+  incident/escalation.
+- Workspace finalization/checkpoint preserves sole work before cleanup. A stale generation may upload only
+  quarantined forensic material and cannot ACK, attach satisfying evidence, or perform effects.
+- Reusable images are immutable digest-addressed supply-chain artifacts. Capture is only an unverified
+  candidate; scrub, secret/PII scan, SBOM, vulnerability policy, fresh-boot conformance, independent
+  attestation, and protected future-pointer promotion are required before use.
+- Images, caches, warm entries, checkpoints, setup sessions, and browser/CLI profiles contain no credentials,
+  cookies, OAuth/device tokens, SSH material, login state, production sessions, PII, or sole work. Secrets
+  arrive just in time after verified boot and are revoked/scrubbed at finalization.
+- Revoke/rollback/GC never rewrites accepted run pins. GC requires zero live evidence/checkpoint/release/
+  rollback/investigation/retention references and an exact delete receipt/tombstone.
 
-`EnvironmentRevision` declares immutable OS/architecture, toolchain and `ImageRevision` digests, workspace/
-checkpoint policy, egress/ingress, resources/devices, region/residency, post-boot secret classes, cache/reuse/
-scrub, trust/isolation, attestation policy, and Placement Policy. `PlacementDecision` intersects tenant,
-project, stage, profile, environment, security, no-colocation, capability, resource, health, and budget hard
-constraints; only then may it score cost/latency/warmth. It records inputs, candidates, exclusion codes,
-winner, isolation domain, policy/Adapter/image digests, rationale, allocation, and fence. Missing capability,
-stale inventory, mutable image ref, unknown host/isolation fact, or unattested digest fails closed.
-
-Custom image publication is a supply chain, not a capture button:
-
-```text
-setup_provisioning -> setup_ready -> capture_requested -> captured_unverified
-  -> secret_scrub -> SBOM -> vulnerability_scan -> conformance_qa -> attested
-  -> candidate -> protected CAS promotion -> active
-
-active -> superseded | revoked | gc_pending -> gc_complete
-failure at any pre-active step -> failed/quarantined
-rollback -> inspect prior object/digest + current policy/conformance -> future-pointer CAS
-```
-
-Captured images may contain runtimes, tools, and non-sensitive rebuildable caches. They may never contain
-standing credentials, CLI/browser login state, cookies, OAuth/device tokens, SSH keys/agents, `.env`, browser
-profiles, production sessions, checkouts with sole work, or mutable `latest` identity. Before capture the
-builder closes terminals, revokes/unmounts handles, stops processes/listeners, scrubs histories/auth files/
-caches, scans secrets/PII, and records signed evidence. SBOM, pinned vulnerability result/exceptions,
-provider-neutral fresh-boot conformance, observed digest, builder/scanner/verifier identities, and provenance
-form the attestation. Only an independently verified candidate may move the future active pointer. Existing
-attempts remain pinned; revoke may fence affected work according to risk; GC requires zero run/checkpoint/
-evidence/release/rollback/investigation/retention references and an exact delete receipt/tombstone.
-
-Image setup terminal access uses a one-use exchange token of at most five minutes and a short-lived server
-session bound to actor/scope/setup/target/device/origin, absolute and idle TTL, viewer limit, workload/host
-identity, and allowlisted network. Input/output uses cursor-audited redacted/encrypted chunks. Tokens or SSH
-commands never appear in URLs, argv, task files, events, logs, images, or checkpoints. Secrets are projected
-only after ordinary run boot and revoked/scrubbed at end; setup egress denies metadata, auth, and production
-destinations. Raw long-lived SSH fallback is not the default.
-
-Provider loss, missing/revoked image, boot digest mismatch, target/host loss, runner restart, workspace-
-finalization ambiguity, log gaps, stale provider lease/generation, ambiguous/incomplete capture, cancellation
-without ACK, and inventory mismatch all fail closed. Recovery fences stale work; replays from durable cursors;
-preserves sole-copy workspace until finalize/checkpoint; inspects exact operation/resource IDs rather than
-blindly retrying; quarantines unknown resources; and exposes `STATE UNKNOWN` or typed incident/escalation.
-No disappearance implies success and no provider claim advances a ticket without ctower proof and gates.
+These are platform trust constraints, not a promise that remote allocation, custom-image capture, warm
+pools, or browser terminal UX exists in either increment.
 
 ### Authorization matrix
 
@@ -3098,7 +2152,7 @@ Authorization is default deny and evaluates principal, tenant/project, command, 
 | Assign stage executor/collaborator | Yes | Yes within plan/policy | Hand back only | Assigned-gate scope only | No | No | No | Yes | No |
 | Add criterion before freeze | Yes | Yes | Scoped | Reviewer comment only | No | No | No | Yes | No |
 | Freeze/revise criteria | Yes | Policy-authorized | No | Gate recommendation | No | No | No | Governance scope | No |
-| Publish/amend orchestration plan | Outside-bound decision/waiver only | Yes within policy floor and ceiling | No | Evidence/recommendation only | No | No | No | Emergency governance | No |
+| Publish/amend orchestration plan | Outside-bound decision/waiver only | Yes within pinned policy options/bounds | No | Evidence/recommendation only | No | No | No | Emergency governance | No |
 | Create stage attempt/job | No direct runner choice | Yes via workflow | No | No | No | No | No | Emergency admin command | No |
 | Submit execution events/result | No | No | Through runner | Through runner | Current leased job only | Through runner | No | No | No |
 | Attach artifact/evidence | Yes | Yes | Assigned scope | Assigned gate scope | Upload for current job | Assigned scope | Quarantine input only | Yes | Receipt evidence only |
@@ -3187,70 +2241,45 @@ Structured execution events are the control protocol. A terminal transcript may 
 - Raw execution logs default to 30 days. Logs linked as incident/evidence inputs inherit that record’s retention or are reduced to a sanitized derivative.
 - General artifacts default to 365 days after ticket closure; release artifacts and rollback manifests remain while their release is deployed plus the defined rollback window.
 - Sensitive payloads and object bytes are encrypted with per-tenant or per-object data keys. Erasure deletes the object/key and leaves a tombstone containing digest, reason, authority, and time, not recoverable plaintext.
-- Backups contain encrypted Postgres data, object manifests/bytes, configuration, migration checksums, and audit anchors. Vault backup/escrow follows the vault’s separate process; database dumps never contain raw long-lived secrets.
-- Postgres uses continuous WAL archiving plus daily verified base/dump backups to off-host versioned object storage; local backups rotate at 14 days and off-host policy retains at least 35 days of PITR.
-- Target whole-host objectives are RPO at most five minutes and RTO at most four hours; process-crash RPO is zero for acknowledged transactions. Reboot reconciliation target is five minutes.
-- A monthly restore drill builds an isolated environment, verifies chain anchors and object digests, runs the synthetic lifecycle and runner recovery tests, records actual RPO/RTO, then destroys the drill environment through an authorized cleanup command.
-- Erasure jobs and backup expiration are themselves auditable routines. Restoring an old backup must reapply tombstone/erasure ledgers before the restored environment can serve reads.
+- Backups contain encrypted Postgres state, object bytes/manifests, configuration, migration checksums, audit anchors, and the references needed to recover vault/KMS keys. Vault/key backup or escrow is a separate access-controlled system; database dumps never contain raw long-lived secrets, and a restore without verified key recovery is unusable rather than partially healthy.
+- At source-of-truth cutover, `durability_policy=cutover-rpo0` requires the commit LSN/record root to receive an off-host durable acknowledgement (synchronous standby or equivalently proven off-host WAL sink) before the command becomes authoritative `accepted`. Until then it is `durability_pending`, excluded from effects and accepted projections, and safely replayable under the same key. No timeout promotes it optimistically.
+- Continuous WAL plus daily verified base/dump/object backups go to off-host versioned storage. Record-truth RPO is zero for accepted commands; larger artifact/raw-log classes may declare RPO at most five minutes. Whole-host RTO is at most four hours and reboot reconciliation target is five minutes.
+- Every restore carries a signed expected-source inventory revision naming each authoritative external journal,
+  its trust root, activation state, and expected cursor or explicit zero-source declaration. I1 lists the
+  root-supervisor, effect, and provider sources as `not_exercised` with zero-source declarations; omitting a
+  source is never evidence of success. A missing, unreadable, or gapped activated source fails closed. Before
+  I2 activates any root/effect source, the activation transaction commits a signed expected-source inventory
+  revision that marks it active, before any grant or effect can execute.
+- A monthly drill restores into an effect-disabled isolated network, recovers/validates vault keys, reapplies erasure tombstones, verifies chains/anchors/objects, then validates every signed expected-source inventory entry and reconciles each activated external effect-provider or root release-supervisor journal from its trusted cursor. Ordinary reads and all effects remain disabled while any activated source is missing, unreadable, gapped, or unreconciled. Quarantine preserves evidence and a degraded state but cannot turn absence into restore success; explicit `not_exercised`/zero-source entries remain auditable rather than disappearing.
+- Only after journal reconciliation does the drill run the synthetic lifecycle and runner recovery tests, record actual RPO/RTO, and destroy the environment through an authorized cleanup command. Erasure and backup expiration remain auditable routines.
 
 ## Security, trust, and operations
 
-### Trusted Extension Host boundary
+### Deferred Extension Host boundary
 
-The Extension Host is one deep trusted Module with the small Interface
-`stage | approve | enable | invoke | disable | upgrade | inspect | uninstall`. It hides artifact verification,
-requested-versus-granted capabilities, isolated invocation, quotas, contribution validation, storage
-ownership, lifecycle, health, audit, drain, and rollback. The kernel remains the only interpreter and writer
-of ticket, Workflow, policy, Proof, Attention, Runtime, effect, and secret truth.
+The kernel alone interprets and writes ticket, Workflow, policy, Proof, Attention, Runtime, effect, and
+secret truth. L0 freezes only a data-only manifest/lifecycle/grant denial schema under
+contracts/extensions/ and the following invariants; neither increment publishes a general invocation
+Interface, worker, storage API, migration API, marketplace, connector SDK, or executable UI. A public Seam
+waits for two independently valuable real Adapters and one unchanged conformance suite.
 
-General extension manifests are canonical JSON/YAML data and are parsed in quarantine without importing or
-executing package code. Artifact digest, publisher signature, SBOM/provenance, host/runner protocol
-compatibility, config schema, requested capabilities, resource/egress policy, and contribution schemas are
-verified before a revision can be installed disabled. A requested capability is never a grant. An effective
-grant binds exact extension revision/digest, tenant/project/environment/resource selectors, quota, allowed
-egress, expiry, and policy/approver; each invocation then receives a one-job token bound to command, lease
-epoch, nonce, and audience.
+- Manifests are canonical content-addressed data parsed in quarantine without importing/executing package
+  code. Requested capabilities are distinct from independently approved, exact-revision, scoped, expiring,
+  revocable grants.
+- No extension capability can directly transition a ticket/Workflow, pass a gate, verify evidence, resolve
+  Attention, write policy/projections/kernel tables, read raw secrets, access host/Docker/tmux/database
+  sockets, or execute an unscoped effect. It may submit a typed observation or intent for kernel decision.
+- Any future invocation uses isolated identity, default-deny egress, explicit mounts/resources/quota/time,
+  core lease/fencing/cursor protocol, and no ambient DB credential, host home, standing secret, or scheduler.
+  Disable/revoke fences new authority while retaining immutable manifest/grant/job/receipt/audit facts.
+- Both increments permit only host-rendered, schema-validated content in the named contextual slots
+  ticket.context_panel, ticket.timeline_annotation, ticket.artifact_renderer, fleet.adapter_health,
+  analytics.readonly_widget, and admin.extension_settings. No sixth primary route, same-origin third-party
+  script, Needs You replacement, or canonical projection write is possible.
+- Capability increase, unknown compatibility/signature/provenance, migration request, or isolation failure
+  leaves the old pointer unchanged and fails closed. Purge remains a separate destructive operator action.
 
-There are no extension capabilities equivalent to `ticket.transition`, `workflow.advance`, `gate.pass`,
-`evidence.verify`, `attention.resolve`, `policy.write`, unscoped `effect.execute`, kernel-table access, or raw
-secret read. Extensions may submit authenticated inbound facts, candidate observations/attestations, or
-effect intents. The kernel validates and decides whether they produce authoritative facts. Capability,
-health, or provider claims never grant themselves authority.
-
-When a future general worker is justified, it runs under a separate UID/container/VM/WASI boundary with a
-read-only content-addressed image, default-deny egress, explicit mounts, resource/time limits, invocation
-identity, and no host home, environment, DB credential, Docker/tmux socket, or standing secret. Jobs use the
-core lease/fencing/cursor protocol rather than an extension scheduler. Future extension storage uses a DB
-role only inside the trusted Extension Host and is exposed to workers solely through a scoped Storage
-Interface; an extension receives no database credential, connection, SQL surface, or direct projection
-write. Structural confinement and mediated reads are mandatory; regex parsing alone is not a security
-boundary. Webhooks are authenticated, replay-deduplicated, bounded, and quarantined by trusted ingress
-before extension invocation.
-
-Executable extension UI is absent in both increments. Only host-rendered declarative contextual schemas
-are accepted. If later justified, executable UI must use a separate-origin sandboxed iframe with strict CSP,
-no ambient cookies/storage or `allow-same-origin`, a typed message Interface, and a short-lived grant; same-
-origin JavaScript is forbidden. The host retains layout, accessibility, error/unknown state, and exactly five
-primary routes.
-
-Lifecycle is append-only:
-
-```text
-discovered -> quarantined -> verified -> approval_required | rejected
-  -> installed_disabled -> canary -> enabled -> draining -> disabled
-  -> quarantined_error | uninstalled_tombstone
-
-enabled(old) -> upgrade_staged(new) -> compatibility/conformance/capability-delta
-  -> migration_prepared -> canary(new) -> atomic active-pointer switch -> drain old
-```
-
-Code cannot execute before verification and grant. Capability increase or migration/conformance failure
-leaves the old revision active. Disable/revoke stops token issuance and fences/drains outstanding work while
-retaining manifests, grants, jobs, receipts, logs, and audit. Purge is a separate destructive operator
-decision. The deletion test justifies this Module; the two-real-Adapter rule limits implementation: only
-runner, evidence/verifier, ingress, vault/auth, and `systemd-vps` provider Seams needed by the golden path are
-public. A marketplace, arbitrary workers, third-party migrations, executable UI, broad connector SDK, and
-primary-route contributions remain deferred.
+These constraints reserve a safe future boundary without pretending an extension platform has been earned.
 
 ### Security objectives
 
@@ -3325,11 +2354,17 @@ The UI may say “All clear” only when all three are green for the relevant sc
 
 ### Observability and SLOs
 
+Performance claims use the committed `tests/fixtures/performance/design-load-v1.yaml`: one tenant, 25
+projects, 100,000 tickets (10,000 nonterminal), 5,000,000 domain events, 50 registered runners, 100
+concurrent jobs, 50 simple commands/s sustained for 15 minutes with a 200/s one-minute burst, 500 runner
+frames/s, and a 100-row filtered Board page. The fixture pins hardware class, dataset seed, query mix,
+warm/cold rules, and measurement method; changing it creates v2 rather than silently moving the target.
+
 | SLO/indicator | Target | Alert and evidence |
 |---|---|---|
 | Command API availability | 99.9% monthly after Increment 2 | Synthetic authenticated create/read plus service metrics |
-| Accepted command durability | 100% committed or acknowledged quarantine | Command-result/event/outbox reconciliation |
-| Command latency | p95 reads <300 ms; p95 simple appends <500 ms at design load | Server traces and Postgres query metrics |
+| Accepted command durability | 100% record truth RPO 0 after off-host durable ACK; otherwise explicit non-accepted `durability_pending` or quarantine | Command/event/outbox/LSN off-host-ack reconciliation |
+| Command latency | At design-load-v1, p95 reads <300 ms; p95 simple local commit <500 ms; acceptance latency separately reports off-host ACK | Server traces and Postgres/off-host durability metrics |
 | Needs You freshness | qualifying item visible within 60 s; transport/completeness health within 30 s | Source event to projection latency histogram and synthetic gate |
 | Outbox/projection lag | p95 <10 s; page becomes unknown at 60 s | Cursor/watermark metrics |
 | Runner-loss detection | <60 s | Lease/heartbeat timeline |
@@ -3337,36 +2372,18 @@ The UI may say “All clear” only when all three are green for the relevant sc
 | Protected effect reconciliation | 100% receipts/audit feed matched; alert within 5 min | Provider audit cursor and reconciliation finding |
 | Production incident detection | p95 <60 s after failing smoke/health signal | Verification/incident timestamps |
 | Reboot recovery | control/record healthy and active work reconciled within 5 min | Quarterly real reboot drill evidence |
-| Backup | continuous WAL healthy; daily base/dump/object manifest; no missed backup >26 h | Backup job receipts and off-host object check |
-| Restore | monthly isolated restore; RPO <=5 min and RTO <=4 h target | Signed drill report, chain/object/synthetic results |
+| Backup | synchronous accepted-record off-host ACK healthy; continuous WAL; daily base/dump/object manifest; no missed backup >26 h | LSN acknowledgements, backup receipts, vault/key escrow and off-host object checks |
+| Restore | monthly isolated restore; accepted-record RPO 0, declared artifact RPO <=5 min, RTO <=4 h | Signed drill report, vault/key recovery, chain/object/tombstone and provider/effect-journal reconciliation before read-enable |
 
 Alerts route to the appropriate operations/Commander principal and only to the operator when policy classifies an incident, exhausted recovery, or human judgment. Logs redact secret and sensitive fields before export. Trace sampling must retain all protected effects, authorization denials, gate decisions, incidents, and reconciliation failures.
 
 ### Resource quotas and scheduling
 
-Quotas exist per tenant, project, agent profile, runner pool, and job: concurrent jobs, CPU, memory, disk, object bytes, egress destinations/bytes, tool calls, tokens, currency budget, wall time, and effect count. Reservation occurs before lease; actual usage streams during the run. A hard quota breach cancels or pauses according to policy and creates a typed budget/resource event, not a silently stranded job. Critical incident work may use an audited emergency reserve.
+Versioned quotas cover tenant/project/profile/job concurrency, CPU, memory, disk, object bytes, egress, tool/model use, currency, wall time, and effects. Reservation precedes lease; actual usage is recorded. A hard breach deterministically pauses or cancels and emits a typed fact. Emergency reserve is incident-only and audited.
 
-Placement resolves before provision. Precedence is authenticated one-run override within non-waivable
-policy, then stage requirements, profile plus `EnvironmentRevision`, project Placement Policy, tenant
-policy, and system policy. Lower layers may narrow but never relax higher requirements. The resolver
-intersects trust, tenant/project/data class, author/reviewer independence, capability, Adapter revision,
-target/incarnation/image attestation, OS/architecture/device, workspace/checkpoint, egress/ingress, region/
-residency, isolation, no-colocation, resource/quota, provider-health freshness, and blast-radius constraints.
-Only the survivors are scored by cost, startup latency, warm capacity, carbon/region preference, provider
-diversity, and checkpoint locality. It persists all inputs, candidates, exclusion codes, fairness/resource
-facts, winner, and rationale before atomically creating the allocation/fence.
+The implemented local scheduler first applies capability, trust, independence/no-colocation, egress, resource, quota, health-freshness, and fencing constraints, then a priority-aware fair queue with bounded aging. P0 changes order but never bypasses a gate or safety rule; sustained P0 cannot starve eligible P1/P2, and restart/reassignment cannot reset age or fairness credit. Preemption requires a durable checkpoint.
 
-No-colocation is a hard rule where policy requires different tenants/protected-data domains, author versus
-sealed reviewer/CSO, hostile input versus high-trust evidence/release, production effect helper versus
-general execution, named incidents/projects, or one critical job per physical isolation domain. A provider
-must attest a stable host/isolation-domain ID and confidence class; different sandbox names on an unknown
-shared host are not proof.
-
-If the recommended P0/P1/P2 task contract is confirmed, Runtime first filters the same hard eligibility and
-WIP constraints, then uses a versioned priority-aware fair queue with bounded aging. P0 improves service
-order but cannot bypass a gate, quota, image, no-colocation, or lease invariant. Sustained P0 traffic cannot
-starve eligible P1/P2 work. Reassignment/restart cannot reset queue age/fairness credit, and preemption is
-allowed only after a safe durable checkpoint.
+Future remote placement must preserve the same interface outcomes and additionally record every candidate, exclusion, exact provider/allocation/isolation identity, winner rationale, and cleanup fence. Unprovable physical separation is ineligible where policy requires it. These are deferred invariants, not an I1/I2 provider Seam or warm-capacity product.
 
 ### Upgrade and rollback
 
@@ -3381,67 +2398,44 @@ allowed only after a safe durable checkpoint.
 
 ### Backup, restore, and reboot drills
 
-Monthly restore and quarterly real reboot drills are workflow tickets with frozen criteria and evidence. The drill must restore Postgres plus objects into an isolated network, replay erasure tombstones, verify event chains against external anchors, validate principal/tenant isolation, run one synthetic ticket and one runner-loss scenario, measure RPO/RTO, and prove the environment cannot execute protected effects. The drill ticket cannot resolve from a backup-job “success” flag alone.
+Monthly restore and quarterly real reboot drills are workflow tickets with frozen criteria and evidence. The
+restore must recover Postgres, objects, and vault/KMS access into an isolated network; replay erasure
+tombstones; verify chains/anchors; load and verify the signed expected-source inventory; prove every inactive
+I1 root/effect/provider journal as explicit `not_exercised`/zero-source; reconcile every activated effect-provider
+and root-supervisor journal before enabling ordinary reads; fail closed when an expected activated source is
+absent or incomplete; validate tenant/principal isolation; run a synthetic ticket and runner-loss scenario;
+measure RPO/RTO; and prove protected effects remain disabled. A backup-job success flag cannot resolve it.
 
 ## Paperclip and legacy boundary
 
-### Boundary rule
+Paperclip and Crabbox are pinned research provenance, not dependencies or alternate control planes. The inspected commits are Paperclip `5d42382df4c5724085967027485fcd39b91b01ae` and Crabbox `cf5081fcc116f8d28983b265652b8abf9ed24f5e`. Mechanics may be ported only behind ctower-owned module interfaces and conformance tests; upstream tables, issue states, coordinators, activity, sessions, or provider history never become ticket, Workflow, proof, or audit authority.
 
-Paperclip may provide documented patterns or selectively ported mechanics behind ctower-owned interfaces. It is never a writable ticket source after cutover. Mission Control JSONL, Paperclip issues/activity, `.task.md`/`.status.md`, raw terminal history, and vendor session IDs are import, adapter, or provenance inputs only. ctower owns the permanent ticket, workflow, stage, gate, evidence, attention, delivery, effect, and event semantics. The inspected Paperclip commit `5d42382df4c5724085967027485fcd39b91b01ae` and Crabbox commit `cf5081fcc116f8d28983b265652b8abf9ed24f5e` are pinned research provenance only; neither is a runtime or source dependency.
+| Disposition | Scope |
+|---|---|
+| **Build ctower-native** | Permanent tickets/events, orthogonal task facts, Workflow/Execution Policy, proof/gates, Attention, jobs/fencing, delivery/effects/incidents, KPIs/retro, and five-surface UX. |
+| **Wrap for cutover** | `bin/mux` becomes the first local runner Adapter. Legacy commands become generated ctower clients; task/status files and terminal output become artifacts/provenance. |
+| **Study after I2** | Paperclip extension/image ideas and Crabbox remote execution inform deferred invariants only. A real use case plus two justified real Adapters must earn each public Seam. |
+| **Reject** | Legacy ticket SSOT or dual write; generic issue status as Workflow; process-local authority; executable manifest import; ambient extension authority; plaintext/standing secrets; unpinned revisions; provider capture-to-active; session/comment/process disappearance as completion; any hidden legacy fallback. |
 
-### Adopt, wrap, build native, reject
+For the I1 ctower-project cutover, relevant Mission Control JSONL/boards, Paperclip IDs, task/status files, terminal logs, tmux/cmux names, and vendor session IDs are frozen import inputs. Exact source IDs and digests survive as aliases. Files and issue records may remain searchable read-only, but they cannot accept new ticket/workflow/proof state; task/status files and terminal logs cannot establish assignment, command ordering, or completion.
 
-| Disposition | Mechanics | ctower treatment and boundary |
-|---|---|---|
-| **Adopt/port behind ctower interfaces** | Atomic checkout/stale-lock adoption; revisioned lockable documents; annotations; structured interactions/recovery records; routine concurrency/catch-up; cost records; secret references; scoped keys; selected workspace/sandbox providers | Port implementation or semantics only after conformance tests. Use ctower IDs, authz, events, evidence, leases, and API. No Paperclip table becomes the orchestration source of truth. |
-| **Study/adopt extension mechanics selectively** | Data-only declaration shape, company invocation scope, install records, lifecycle diagnostics, job/webhook/log history, migration checksum ideas, namespaced contributions | Re-express behind the universal Catalog and trusted Extension Host; requested capabilities remain separate grants; storage is structurally isolated; UI is host-rendered/contextual. |
-| **Study/adopt remote/image mechanics selectively** | Crabbox capability declarations, exact-ID destructive fencing, bounded delegated execution, cache keys, provider rollback; Paperclip setup state, provider capability negotiation, short terminal token, future active pointer | Re-express behind Target/Supervisor/Workspace/Telemetry and remote-provider contracts. Capture yields quarantined image candidate; ctower scrub/SBOM/scan/conformance/attestation governs promotion. |
-| **Wrap temporarily** | Existing `bin/mux`; Mission Control `tools/req`/crew tooling; task/status files; local Control Tower terminal view; selected Paperclip adapter code | `bin/mux` is the first runner backend. Legacy tools become API clients at cutover. Task files are rendered job inputs; status files and terminal logs become artifacts/provenance. Any Paperclip runtime adapter receives ctower durable jobs and returns ctower protocol events. |
-| **Build ctower-native** | Inbound thread/promotion, permanent ticket stream, lifecycle episodes, workflow/stage/attempt model, deterministic risk overlays, typed evidence/attestation, gate instances/verdicts, Attention, durable dispatch/fencing, runner protocol, delivery aggregates, effect broker, incident path, analytics/KPIs, retro improvements, five-surface UX | These semantics are the product’s trust boundary and cannot be delegated to generic Paperclip issue status, approval, Activity, or UI. |
-| **Reject** | Paperclip as ticket SSOT; bidirectional ticket adapter; generic issue status as Workflow; executable manifest import; unsandboxed/same-origin extension code; capability-as-grant; in-process third-party Adapter; plaintext secret resolution; process-local job/event authority; unpinned package drift; non-atomic upgrade; regex-only DB isolation; navigation slots that add primary routes; best-effort Activity/audit; Crabbox coordinator/history as ctower truth; cooperative-team isolation as tenant proof; provider capture-to-active; captured CLI/browser logins; agent comment/process disappearance as done | Rejected behavior must not remain as a hidden fallback. Historical upstream IDs survive only as aliases/provenance. |
+### One ctower-project source-of-truth barrier
 
-### Legacy source roles
-
-| Legacy source | One-time or adapter use | Forbidden post-cutover use |
-|---|---|---|
-| `state/requests.jsonl` / rendered request board | Freeze, import selected open logical requests, retain source digest/line/ID alias | New/updated ticket state |
-| `state/crew-log.jsonl` | Import active custody/run provenance; help create initial runner/profile aliases | Fleet/run source of truth |
-| `state/tasks.jsonl`, task board | Dedupe and import independently valuable open work; preserve strategic provenance | Live workflow state |
-| `coordination/*.task.md` | Rendered prompt/context artifact for `bin/mux` adapter | Queue or assignment authority |
-| `coordination/*.status.md` | Attempt artifact and legacy completion claim requiring verification | Terminal job or ticket resolution authority |
-| Raw terminal/pipe-pane logs | Forensic artifact, optional live compatibility view | Command/event ordering, ownership, or proof by itself |
-| cmux/tmux session names | Runner adapter aliases and live-process hints | Agent, job, ticket, or custody identity |
-| Vendor session IDs | Optional resume handle linked to an execution session | Durable task identity or required recovery path |
-| Paperclip issue/run/activity/document IDs | Import alias, provenance, or selectively ported adapter mechanics | Writable ticket/workflow/audit source |
-
-### One freeze, dedupe, import, rewire barrier
-
-```mermaid
-flowchart LR
-    A[Inventory JSONL, board, crew log, Paperclip, live sessions] --> B[Freeze all legacy ticket mutations]
-    B --> C[Hash snapshots and export candidate open records]
-    C --> D[Build reviewed logical-request clusters]
-    D --> E[Choose one authoritative open representation per cluster]
-    E --> F[Create stable alias and provenance map]
-    F --> G[Idempotent import into ctower]
-    G --> H[Compare open tickets, owners, relations, and health]
-    H --> I[Atomically rewire web, CLI, tools, Commander, and runners]
-    I --> J[Legacy views read-only; ctower only writer]
+```text
+inventory -> freeze relevant legacy writers -> hash/export -> reviewed dedupe/alias map
+          -> idempotent restricted import -> reconcile -> atomic client rewire -> seal read-only
 ```
 
-The barrier is a planned maintenance event, not a multi-day dual-write migration. It covers both Mission Control and any live-looking Paperclip state so importing both cannot duplicate work.
+The barrier is one maintenance event, never multi-day dual write:
 
-1. **Inventory:** enumerate frozen file revisions/digests, Paperclip export watermark, live crews, open requests/tasks/issues, and outstanding external effects.
-2. **Freeze:** stop legacy mutating commands and Paperclip issue writes. Clients either wait/spool for ctower or fail visibly. No old-source write is accepted after the freeze timestamp.
-3. **Dedupe:** cluster records using exact aliases first, then source refs, explicit links, title/body digest, project, and human review. No fuzzy match auto-merges two potentially independent outcomes.
-4. **Select:** for each logical request, choose one canonical open representation; closed history remains in the frozen archive unless required as provenance for an open item.
-5. **Alias map:** write immutable rows such as `(source_system, source_id, source_digest, ctower_ticket_id, disposition, reviewer, imported_at)`. Dispositions include imported, linked-provenance, closed-history-only, duplicate-of, and excluded-with-reason.
-6. **Import:** use one restricted migration principal. It may create/link tickets, source aliases, initial custody, and provenance events but cannot forge gate verdicts, verified evidence, protected effects, or resolved state.
-7. **Verify:** compare counts and a human-readable list of every imported open outcome, accountable owner, relation, source alias, and active runner claim. Re-run proves idempotency.
-8. **Rewire atomically:** `tools/req`, crew lifecycle tools, Commander reads/writes, Control Tower, and runner adapter switch to ctower API in the same barrier. CLI offline spool becomes the only temporary write buffer.
-9. **Seal:** keep exports and frozen sources read-only and searchable. Monitor filesystem/Paperclip audit for any attempted post-cutover mutation; treat one as a split-brain incident.
+1. Freeze only mutation paths that can write ctower-project work; clients visibly spool or refuse.
+2. Export source watermarks/digests, open records, owners, relations, live attempts, and outstanding effects.
+3. Cluster by exact aliases/links/digests first. Human review resolves ambiguity; fuzzy matching never merges automatically.
+4. Import with a restricted principal that may create tickets, aliases, custody, relations, and provenance but cannot forge evidence, gates, effects, delivery, or resolution. Exact replay creates nothing new.
+5. Reconcile every selected item, disposition, owner, relation, alias, and active claim; then atomically rewire web, CLI, Commander, and runner clients to the generated ctower interface.
+6. Seal exports read-only and monitor for post-barrier legacy writes. Any write is a split-brain incident.
 
-Rollback before rewire discards the incomplete import database and unfreezes the legacy system because ctower has accepted no authoritative writes. Rollback after rewire never resumes dual writing: restore the prior ctower service/database version, keep clients spooling, or enter an explicit emergency read-only operating mode. Legacy data remains evidence and recovery reference, not a writable fallback.
+Before rewire, rollback discards the incomplete import and unfreezes scoped legacy tools. After rewire, rollback means a compatible ctower build/restore or explicit read-only mode while clients spool; it never resumes dual writing. An omission is corrected by an authenticated provenance-bearing ctower command.
 
 ## Acceptance criteria
 
@@ -3454,11 +2448,12 @@ Each criterion is pass/fail. Evidence must be attached to the ctower build ticke
 | <a id="ac-adm-01"></a>AC-ADM-01 | From an empty tenant, publish company/goal/project identities, profiles/personas/skills/tools, all five execution-component classes, local targets/environments/image pins, policies, and the named software-factory Workflow; activation succeeds atomically only when references, digests/signatures, compatibility, grants, independence, recovery, and no-effect conformance pass. Any unknown/mismatch leaves the previous pointer active with no partial use. | CompanyBundle command/event trace, activation manifest, unknown-component refusal, no-effect dry-run and attribution query |
 | <a id="ac-adm-02"></a>AC-ADM-02 | From an instance with zero tenants, one unexpired one-use capability accepted only over the root-owned local/private bootstrap channel creates exactly one tenant, disabled historical B0 actor, initial operator/admin, durable Commander, vault-binding refs, command result/events/outbox, and receipt in one serializable transaction, then permanently closes the route. Exact replay returns the same receipt; wrong origin, expiry, changed-body replay, second use, existing tenant, crash, and concurrent attempts create no duplicate/partial authority, and the plaintext token appears in no argv/URL/env/log/event/artifact. | Install/bootstrap transcript with redaction, concurrent/crash/replay negative matrix, database/command/event/receipt query, permanent-disable and secret-scan proof |
 | <a id="ac-comp-01"></a>AC-COMP-01 | Every declared category validates through one `VersionedComponent` envelope and Catalog Interface; exact pins resolve identically; no parallel category revision/active-pointer primitive or table exists. | Parameterized category lifecycle suite, DDL/type/import inventory, exact-pin vectors |
-| <a id="ac-comp-02"></a>AC-COMP-02 | `engineering.software-factory` is one Workflow component with compatible Execution/Gate/Evidence policies; no Factory aggregate/table/Interface/worker exists, and D9 risk budgets override contradictory migrated skill prose. | Workflow trace at all risk tiers, forbidden-schema/import checks, source-provenance snapshot |
+| <a id="ac-comp-02"></a>AC-COMP-02 | `engineering.software-factory` is one Workflow component with compatible Execution/Gate/Evidence policies; no Factory aggregate/table/Interface/worker exists. A non-engineering fixture uses different stages, perspectives, and finite bounds on the same engine, and migrated skill prose cannot override the pinned package. | Both workflow traces, forbidden-schema/import checks, source-provenance snapshot |
 | <a id="ac-comp-03"></a>AC-COMP-03 | A docs-first CompanyBundle validates, plans, applies through normal authenticated commands, exports canonically, and replans with zero semantic diff; all secret forms, mutable `latest`, and runtime/record facts are rejected. | Generated-client/API trace, canonical round-trip diff, malicious YAML matrix, no-direct-state-change proof for validate/plan |
 | <a id="ac-arch-01"></a>AC-ARCH-01 | Repository imports match the allowed DAG: no app imported by a package, no kernel dependency on runner/web/CLI/provider implementations, no record-tier DB client outside kernel, no cross-Module private import, and no cycle. | Machine dependency graph, forbidden-import fixtures, ownership check |
 | <a id="ac-arch-02"></a>AC-ARCH-02 | Every migration, authored schema, generated client, pack, fixture, conformance suite, deploy manifest, doc, example, and import adapter resolves to exactly one declared path; hand-edited generated or duplicate truth fails CI. | Ownership manifest, clean deterministic codegen, duplicate-schema fixture |
 | <a id="ac-arch-03"></a>AC-ARCH-03 | A clean checkout with pinned uv/pnpm locks produces reproducible control/runner/web/CLI/provider artifacts and one release manifest binding source, schema, config, protocol, image/package, predecessor, SBOM, and provenance digests; API and control worker use one control artifact. | Two-build digest comparison, release manifest and artifact inventory |
+| <a id="ac-adm-03"></a>AC-ADM-03 | On a clean supported private VPS, a first operator can install, bootstrap, apply the minimal CompanyBundle, capture one ticket, and complete the four-stage I1 fixture through thin Board/Ticket and CLI in at most 60 minutes of operator elapsed time, with no direct database/legacy write or hidden recovery step. This is an Increment-1 acceptance target, not a claim of current implementation. | Timed clean-room recording, command/event/evidence trace, environment manifest and operator-action log |
 
 ### Language and repository quality
 
@@ -3473,17 +2468,15 @@ Each criterion is pass/fail. Evidence must be attached to the ctower build ticke
 | <a id="ac-qual-07"></a>AC-QUAL-07 | A clean checkout with frozen installs passes non-mutating `just check` and `just verify`; a versioned expected-suite manifest makes every current-scope suite present/nonempty/required while later suites are explicitly not-yet-required, and each backlog item expands it monotonically. Pre-commit, pre-push, and required CI invoke the same Repository Policy/lint/type/codegen/test/security implementations, use pinned tools/actions, and leave tracked files clean. | Hook and CI logs, expected-suite manifest/current-scope missing-suite negative fixture, clean diff, exact tool/action inventory, bypass-negative fixture |
 | <a id="ac-qual-08"></a>AC-QUAL-08 | Every public Interface command has success, denial, idempotency, stale-state, authorization, and applicable recovery/rebuild tests; every real Seam runs one shared conformance suite across justified Adapters; critical decision Modules meet their stricter branch target. | Interface-to-test inventory, branch coverage, property/state-machine reports, Adapter conformance matrix |
 
-### Task management recommendation (pending operator confirmation)
-
-These criteria specify the proposed contract without representing it as an operator-locked product decision.
+### Task management
 
 | ID | Pass condition | Evidence capture |
 |---|---|---|
 | <a id="ac-tm-01"></a>AC-TM-01 | Every actionable episode has exactly one current `P0|P1|P2`; every change records from/to, actor, reason/evidence, command, policy, and version. P0 authorization is enforced and priority changes alter no risk, lifecycle, Workflow stage, gate, delivery, or counter. | Work Interface properties, authorization negatives, timeline/state diff |
-| <a id="ac-tm-02"></a>AC-TM-02 | Exhaustive admission/readiness/stage/attempt/blocker/lifecycle fixtures derive exactly six Board lanes by the published mapping; active verification maps to In Review, effective blocker overrides while preserving resume facts, cancellation is not Done, and rebuild at one watermark is identical. | Fold truth table, rebuild comparison, six-lane screenshot |
+| <a id="ac-tm-02"></a>AC-TM-02 | Exhaustive admission/readiness/stage-activity/blocker/lifecycle fixtures derive exactly six canonical Board lanes; any active stage declared `activity_class=verification` maps to `in_review` regardless of stage key, a blocker overrides while preserving resume facts, cancellation is not `complete`, and rebuild at one watermark is identical. | Cross-domain fold truth table, rebuild comparison, six-lane screenshot |
 | <a id="ac-tm-03"></a>AC-TM-03 | Each blocker has type/reason class, owner, source, affected stage, open time, resolution condition, next check/SLA, dependency/reference, Board impact, and resolution evidence; multiple coexist and all effective blockers clear before resume. Queueing alone creates none; only operator-action blockers reach Needs You. | Multi-blocker E2E, watchdog/aging trace, Needs You inclusion/exclusion query |
 | <a id="ac-tm-04"></a>AC-TM-04 | Board/CLI actions issue only `admit|defer|block|unblock|reopen` typed intents; invalid intents return exact unmet conditions with no mutation; no `PATCH status` or projection write exists. | OpenAPI/CLI registry, refusal snapshots, DB privilege/state diff |
-| <a id="ac-tm-05"></a>AC-TM-05 | Board/Ticket expose priority, precise stage, custodian, current assignee, blocker age/reason, risk, delivery, and lane derivation with project/goal/stage/priority/owner/risk filters. Fixtures prove Board Done without delivery, delivery DONE while Board is In Progress, and RELEASED before retro/close without false Board closure. | API snapshots, Playwright recording and copy assertions |
+| <a id="ac-tm-05"></a>AC-TM-05 | Board/Ticket expose priority, precise stage/activity, custodian, assignee, blocker, risk, typed delivery facts, and lane derivation with project/goal/stage/priority/owner/risk filters. Fixtures prove `complete` without a delivery requirement, `staging_verified` while lane remains `in_progress`, and `production_verified` before retro/close without false closure; capitalization changes no semantics. | API snapshots, Playwright recording and copy assertions |
 | <a id="ac-tm-06"></a>AC-TM-06 | Scheduler dispatches only hard-eligible work, improves service order for higher priority, gives eligible P1/P2 service within the published bound under sustained P0 load, preserves age/fairness across restart/reassignment, and preempts only from a verified checkpoint. | Deterministic-clock queue properties, P0 flood/restart/preemption trace and selection explanations |
 
 ### Product
@@ -3501,26 +2494,27 @@ These criteria specify the proposed contract without representing it as an opera
 
 | ID | Pass condition | Evidence capture |
 |---|---|---|
-| <a id="ac-dur-01"></a>AC-DUR-01 | Every successful mutating response maps to committed command result, aggregate event, and required outbox row; offline writes are later acknowledged or visibly quarantined with zero silent loss under chaos tests. | Database reconciliation query and spool kill/disk/full/poison test reports |
+| <a id="ac-dur-01"></a>AC-DUR-01 | Every authoritative accepted response maps to committed command/event/outbox plus the policy-required off-host durable ACK. At cutover the accepted-record RPO is zero; loss/delay returns explicit non-accepted `durability_pending`, safely replayable by the same key. Offline writes are accepted later or visibly quarantined with zero silent loss. | Database/LSN/off-host reconciliation plus host-loss, spool kill/disk/full/poison traces |
 | <a id="ac-dur-02"></a>AC-DUR-02 | HTTP `Idempotency-Key` maps exactly to canonical `client_command_id`; every emitted event references it. Exact retries return the original result, same key with different body returns 409, and 100 concurrent appends preserve sequence/CAS. After full-result compaction, a late replay within the 30-day spool horizon and a multi-aggregate replay return the original status/body/event IDs with zero new events. | Concurrency/idempotency report, prune-then-late-replay fixture, multi-aggregate event query |
 | <a id="ac-dur-03"></a>AC-DUR-03 | Event chains verify from genesis through current heads, external anchors cover every scheduled watermark, and deliberate event mutation is detected. | Cross-process hash vectors, anchor job receipt, tamper test |
 | <a id="ac-dur-04"></a>AC-DUR-04 | Killing API, Commander, runner, and vendor session at declared points loses no ticket/job/command state; a fresh process reconstructs the same desired work without duplicate dispatch. | Chaos timeline with command/job IDs and rejected stale-token result |
-| <a id="ac-dur-05"></a>AC-DUR-05 | Isolated restore passes monthly with measured whole-host RPO <=5 min and RTO <=4 h; process-crash RPO is zero; event chains, objects, tombstones, and synthetic flow verify. | Restore drill artifact and timestamps |
+| <a id="ac-dur-05"></a>AC-DUR-05 | Monthly isolated restore proves accepted-record RPO 0, declared artifact RPO <=5 min, and RTO <=4 h; recovers vault/KMS access, verifies chains/objects/tombstones, verifies the signed expected-source inventory, records I1 root/effect/provider sources explicitly as `not_exercised`/zero-source, and reconciles every activated journal before ordinary reads or effects can enable. Absence never passes; a missing or incomplete activated source fails closed. | Restore drill, signed inventory revision, key-recovery evidence, journal cursor/zero-source findings report, enablement denial and timestamps |
 | <a id="ac-dur-06"></a>AC-DUR-06 | One backward/forward service+schema upgrade and rollback preserves all accepted events, supports negotiated runner versions, and leaves in-flight workflows pinned. | Upgrade matrix test, migration checksum report, before/after event counts |
 | <a id="ac-dur-07"></a>AC-DUR-07 | Physical DDL declares every FK target and authority class, including objects, policy/skill revisions, projects, environments/provider targets, import runs/source aliases, and general outbox delivery; immutable/current/projection writes obey their declared owner. | Generated FK-to-inventory diff, privilege/immutability tests, projection rebuild comparison |
+| <a id="ac-dur-08"></a>AC-DUR-08 | Browser commands remain visibly unsent/pending until authoritative acceptance and replay one stable key after disconnect/reload; the encrypted owner-only CLI spool survives crash/torn-write/concurrent-writer/disk-full tests, removes nothing before accepted ACK, and quarantines corrupt/expired/permanent records without leaking bootstrap tokens or secrets. | Browser offline/reload recording, spool filesystem/crypto/chaos report, secret scan and quarantine inventory |
 
 ### Workflow
 
 | ID | Pass condition | Evidence capture |
 |---|---|---|
 | <a id="ac-wf-01"></a>AC-WF-01 | Every active ticket episode has exactly one pinned primary workflow version/policy snapshot; definition edits do not alter it. | SQL constraint query and version-change test |
-| <a id="ac-wf-02"></a>AC-WF-02 | Default path contains every required stage in order and only declared graph edges/parallel groups activate. | Published workflow digest, graph validation, transition trace |
-| <a id="ac-wf-03"></a>AC-WF-03 | 100% of golden-path tickets record deterministic risk tier, matching rule IDs, overlays, and gate bundle; raising a risk fact raises or preserves tier. | Policy fixture matrix and ticket risk explanation |
+| <a id="ac-wf-02"></a>AC-WF-02 | The software-factory package contains every declared stage/edge, while a different four-stage fixture uses the same final generic evaluator; only the pinned graph's edges/parallel groups activate and every stage carries valid Board activity metadata. | Both published digests, graph/activity validation, transition traces, forbidden stage-name branch check |
+| <a id="ac-wf-03"></a>AC-WF-03 | Every run records its package-specific classification facts/rules, required perspectives, mandatory stage gates, and finite anti-spin selections. A non-engineering fixture has no forced engineering tier vocabulary. | Cross-package policy fixture matrix and run explanations |
 | <a id="ac-wf-04"></a>AC-WF-04 | Every stage attempt exposes entry, exit, role/capability, timeout, evidence, retry/failure route, and exact input/output manifests before execution. | Stage API snapshot and schema validation suite |
 | <a id="ac-wf-05"></a>AC-WF-05 | Ticket owner, active stage executor, and reviewer assignments remain separate; parallel attempts exist only where declared. | Constraint query and reassignment/parallelism tests |
-| <a id="ac-wf-06"></a>AC-WF-06 | Author/self-review is rejected; elevated/critical sealed reviewers use independent effective identities and cannot see each other before reveal; conflict resolution uses a third identity. Same model family is allowed unless a pinned policy explicitly selects distinct eligible families, in which case same-family placement is rejected. | Negative auth tests, sealed-access audit, forced disagreement E2E, optional diversity-policy placement fixture |
+| <a id="ac-wf-06"></a>AC-WF-06 | Author/self-review is rejected. Whenever a pinned policy requires sealed review, reviewers use independent effective identities and cannot see sealed peers before reveal; conflict resolution uses a third identity. Same model family is allowed unless that policy explicitly selects distinct eligible families, in which case same-family placement is rejected. | Negative auth tests, sealed-access audit, forced disagreement E2E, optional diversity-policy placement fixture |
 | <a id="ac-wf-07"></a>AC-WF-07 | Each required human/automated gate binds policy/input digests, accepts idempotent verdicts, and resumes or failure-routes exactly once. | Gate API integration and Needs You decision recording |
-| <a id="ac-wf-08"></a>AC-WF-08 | Server normalization maps the same defect observed on `d1`, `d2`, and `d3` to one stable failure lineage and counter despite distinct occurrence fingerprints; only deterministic policy or independent linked adjudication may split it. The selected limit never exceeds 5 automatically and exhaustion/no-progress creates exactly one escalation. | Cross-digest failure-injection trace, rejected client/split requests, lineage/occurrence/counter history, open Attention count |
+| <a id="ac-wf-08"></a>AC-WF-08 | Server normalization maps the same defect on `d1`, `d2`, and `d3` to one stable lineage despite distinct occurrences; only deterministic policy or independent linked adjudication may split it. Every pinned policy has finite applicable bounds, and exhaustion/no-progress creates exactly one escalation. | Cross-digest failure trace, rejected client/split requests, lineage/generation/counter history, open Attention count |
 | <a id="ac-wf-09"></a>AC-WF-09 | Changing an artifact/dependency digest invalidates all and only declared dependent evidence/gates before any transition. | Dependency graph property tests and invalidation timeline |
 | <a id="ac-wf-10"></a>AC-WF-10 | Retro-approved process change creates a new immutable workflow/skill/policy revision; historical runs retain old revisions; effectiveness is evaluated on the declared later cohort. | Revision linkage and KPI cohort report |
 | <a id="ac-wf-11"></a>AC-WF-11 | A committed event causes the reconciler to evaluate readiness and dispatch the next eligible durable job exactly once; an agent comment, terminal output, timer tick, or uncommitted callback alone causes zero authoritative transitions. | Transaction/outbox trace plus negative comment, terminal, timer, and rollback-before-commit tests |
@@ -3528,15 +2522,15 @@ These criteria specify the proposed contract without representing it as an opera
 | <a id="ac-wf-13"></a>AC-WF-13 | Published stage-contract schema requires stage ID, eligible capability/persona, skill revisions, model/harness policy, independence, inputs, entry checklist, artifacts, evidence, gate policy, transitions, invalidations, server-owned lineage/repair budget, timeout, escalation owner, and effect permissions; omission prevents publication. | Schema conformance suite with one negative fixture per required field and a golden resolved contract snapshot |
 | <a id="ac-wf-14"></a>AC-WF-14 | Every gate failure emits an occurrence plus server-resolved stable lineage and deterministic owning-stage route; each lineage obeys its selected repair limit, exhaustion creates one deduplicated escalation, and digest/prose/reassignment/model restart cannot reset the counter. | Variable-limit cross-digest failure E2E, lineage split-negative fixtures, restart/reassignment, and Attention dedupe query |
 | <a id="ac-wf-15"></a>AC-WF-15 | In the default factory, a candidate mutation after QA or Review invalidates current candidate-dependent QA and Review proof; the repaired digest cannot enter Review until fresh QA passes, while unrelated declared-independent evidence remains valid. | Digest dependency property test and recorded `d1 -> QA -> Review fail -> d2 -> fresh QA -> fresh Review` trace |
-| <a id="ac-wf-16"></a>AC-WF-16 | `advance`, `return`, `reassign`, `pause`, and `resume` reject invalid requests without state mutation and return an exact unmet checklist; lowering/waiving a waivable required gate succeeds only through an authenticated operator protected command bound to reason, scope, policy/input digests, and audit, and never represents the gate as passed. | Command authorization/state-diff suite, refusal payload snapshots, waiver audit E2E, and non-waivable-floor negative tests |
+| <a id="ac-wf-16"></a>AC-WF-16 | `advance`, `return`, `reassign`, `pause`, and `resume` reject invalid requests without state mutation and return an exact unmet checklist; lowering/waiving a waivable required gate succeeds only through an authenticated operator protected command bound to reason, scope, policy/input digests, and audit, and never represents the gate as passed. | Command authorization/state-diff suite, refusal payload snapshots, waiver audit E2E, and non-waivable-requirement negatives |
 | <a id="ac-wf-17"></a>AC-WF-17 | A UI fixture resolves and executes content-bearing immutable revisions for `office-hours`, `plan-ceo-review`, `plan-eng-review`, `plan-design-review`, `design-shotgun`, `design-html`, `design-review`, and `ui-qa`; provenance/materialization/conformance are present, author independence holds, and an operator taste verdict appears only when the material-taste predicate is true. | Skill publication/materialization fixtures, full UI trace, missing-content denial, negative independence assignment, material/no-material taste cases |
 | <a id="ac-wf-18"></a>AC-WF-18 | Forced production smoke or independent live-QA failure commits an incident before any repair route, revokes unused grants, completes brokered containment/rollback and exact-environment verification, then records triage before an owning-stage repair can dispatch. | Production smoke/live-QA failure E2E with incident, grant, broker, rollback verification, provider audit, triage, and denied direct-repair records |
 | <a id="ac-wf-19"></a>AC-WF-19 | Given ranked eligible Commander profiles and injected health changes, each reasoning wake selects the strongest healthy policy-permitted profile, records candidates/exclusions/rationale, and fails over to the next strongest while preserving the same Commander principal; a support-only profile cannot claim the seat. | Capability-policy fixture matrix and Commander profile-resolution/failover event trace |
 | <a id="ac-wf-20"></a>AC-WF-20 | One eligible Commander principal remains the exactly-one ticket custodian from actionable episode creation through verified production and retro/resolve/close across session/model restarts and all executor/reviewer reassignments. An operator-authorized Commander transfer atomically fences/checkpoints the old reasoning job and rehydrates the new principal with no committed custody gap, unsafe active job, duplicate dispatch, or counter reset; operator emergency custody visibly pauses autonomous progress. | End-to-end custody/orchestration timeline with zero-owner/reviewer-target negatives, forced process/profile/executor replacement, protected Commander transfer, and crash-at-every-transaction-boundary matrix |
-| <a id="ac-wf-21"></a>AC-WF-21 | Every `orchestration_plan` revision contains risk facts, policy floor, separate `mandatory_stage_gates`/`review_round_topology`, passing/max round limits, per-lineage repair limits, new evidence, and rationale—but no authoritative consumed fields. Prior revisions remain queryable; optional snapshots are labeled non-authoritative with an event watermark. | Plan-schema rejection of consumed fields, immutable revision history, and elevated-ticket `rev1 max=3`, evidence-backed `rev2 max=4` trace |
-| <a id="ac-wf-22"></a>AC-WF-22 | The engine rejects low below 1, standard below 2, elevated/critical below 3, missing mandatory gate/reviewer, client-authored consumption, a limit below server-consumed facts, and any automatic limit above 5; authenticated operator authority is required beyond ceiling or for a waivable floor and never fabricates a pass. | Boundary suite, gate-removal/client-count/below-consumed denials, and protected operator-decision audit |
-| <a id="ac-wf-23"></a>AC-WF-23 | Round executions and per-lineage repairs are separate append-only facts. Failed/invalidated rounds consume maximum executions but do not satisfy current-digest pass requirements; restart/reassignment/digest change resets neither. Insufficient capacity or lineage/no-progress exhaustion yields one escalation and zero further dispatch. | Counter property tests plus `round1 fail -> repair/fresh QA -> rounds2..4 pass` and cross-digest chaos traces |
-| <a id="ac-wf-24"></a>AC-WF-24 | Every risk-profile fixture and the elevated+UI worked fixture publish distinct `mandatory_stage_gates` and `review_round_topology`; QA/docs/preflight/environment QA run at their stage/digest, while only named review participants repeat per round. | Profile fixture snapshots, dispatch-count assertions, invalidation matrix, and elevated+UI 3/3 trace |
+| <a id="ac-wf-21"></a>AC-WF-21 | Every plan revision contains context/risk facts, policy option, separate mandatory stage gates and `required_perspectives`, selected `max_nonpassing_rounds`, `max_repairs_per_lineage`, `max_candidate_generations`, evidence, and rationale—but no consumed field. Prior revisions remain queryable. | Schema rejection of consumption, immutable revision history, and software/non-engineering plan fixtures |
+| <a id="ac-wf-22"></a>AC-WF-22 | The engine rejects a missing perspective/gate, non-finite applicable ReviewPlan v1 bound, client-authored or reset `total_executions`, any field outside the exact ReviewPlan v1 vocabulary, a limit below consumption, an undeclared policy choice, or a non-independent reviewer. A future aggregate stop remains outside ReviewPlan v1 until a separate versioned policy component has a real use case, executable semantic validator, and actual enforcement. A protected operator waiver changes only declared waivable scope and never fabricates a pass; no universal tier number or cap is assumed. | Removal/count/below-consumed and unknown-field denials, future-component publication guard, and protected decision audit |
+| <a id="ac-wf-23"></a>AC-WF-23 | `total_executions`, nonpassing rounds, candidate generations, and per-lineage repairs are distinct append-only facts. Only nonpassing terminal rounds consume their bound; every candidate consumes generation; restart/reassignment/digest change resets none. Any applicable ReviewPlan, no-progress, deadline, quota, or hard-safety exhaustion yields one escalation and zero further dispatch. | Counter properties plus `d1 QA fail -> d2 review fail -> d3 all-perspective pass` and multi-lineage chaos traces |
+| <a id="ac-wf-24"></a>AC-WF-24 | Software-factory and non-engineering fixtures publish distinct mandatory stage gates, required perspectives, stages, and finite limits. Stage QA/docs/environment gates execute at their stage/digest; one all-perspective current-digest pass advances without repeated ceremonial passes. | Cross-package snapshots, dispatch counts, invalidation matrix, coherent elevated-UI trace |
 
 ### Evidence
 
@@ -3560,7 +2554,7 @@ These criteria specify the proposed contract without representing it as an opera
 | <a id="ac-rel-05"></a>AC-REL-05 | Forced production smoke or live-QA failure opens an incident, revokes unused grants, executes safe containment/rollback, verifies the resulting environment, and blocks ordinary repair until triage names an owning stage. | Incident/rollback/verification/triage E2E timeline |
 | <a id="ac-rel-06"></a>AC-REL-06 | Every production promotion has a tested rollback predecessor/plan; rollback receipt and post-rollback verification are recorded in the drill. | Rollback drill evidence |
 | <a id="ac-rel-07"></a>AC-REL-07 | 100% of protected provider audit records reconcile to a valid receipt; injected unmatched effect creates an incident within 5 min. | Reconciliation report and injected bypass test |
-| <a id="ac-rel-08"></a>AC-REL-08 | The golden path deploys the named `ctower-staging` and `ctower-production` environment records through live `systemd-vps/v1`; the external release supervisor preserves receipts across ctower restart, reconciles by provider cursor, reports release/predecessor identity, and proves self-upgrade rollback. Deterministic fake crash fixtures also pass but cannot substitute for live evidence. | Environment/provider records, fake matrix, supervisor journal/receipts, restart reconciliation trace, real staging/production live verification |
+| <a id="ac-rel-08"></a>AC-REL-08 | The golden path deploys named staging/production records through live `systemd-vps/v1`. Before install, the root supervisor independently verifies artifact bytes, signature/attestation, subjects, and trusted builder/workflow identity against its root-owned trust policy; an application digest is intent only. Wrong/missing/untrusted/revoked provenance performs no install. Receipts survive ctower restart, reconcile by cursor, and prove rollback. | Root trust policy/keys, signed and negative artifact matrix, supervisor journal/receipts, restart reconciliation, real staging/production verification |
 
 ### Runtime recovery
 
@@ -3572,14 +2566,14 @@ These criteria specify the proposed contract without representing it as an opera
 | <a id="ac-run-04"></a>AC-RUN-04 | Interrupt/reassign increments fencing; stale terminal result is rejected; forensic upload remains quarantined; replacement starts from current checkpoint. | Reassignment chaos timeline |
 | <a id="ac-run-05"></a>AC-RUN-05 | Runner loss is detected within 60 s and p95 checkpointable golden-path work resumes within 5 min with zero orphaned nonterminal jobs. | Recovery benchmark and orphan invariant query |
 | <a id="ac-run-06"></a>AC-RUN-06 | Unregistered/revoked/quarantined/wrong-scope runners cannot claim; rotation and protocol drain complete without lost jobs. | Registration/rotation/quarantine conformance suite |
-| <a id="ac-run-07"></a>AC-RUN-07 | Every attempt exposes immutable pinned `HarnessSpec`, `SupervisorSpec`, `TargetSpec`, `WorkspaceSpec`, and `TelemetrySpec` revisions/digests/capabilities. Codex passes process+tmux, tmux passes Codex+Claude, substitutions preserve kernel job/ticket semantics, and unknown/incompatible/mismatched components fail closed. | Effective manifests, deletion/two-Adapter registry and composition conformance matrix |
+| <a id="ac-run-07"></a>AC-RUN-07 | Every attempt exposes immutable pinned `HarnessSpec`, `SupervisorSpec`, `TargetSpec`, `WorkspaceSpec`, and `TelemetrySpec` revisions/digests/capabilities. I2 exercises the local Codex/Claude harness and process/tmux supervisor compositions required by the golden path; substitutions preserve kernel job/ticket semantics, and unknown/incompatible/mismatched revisions fail closed. | Effective manifests, deletion test, justified-Adapter registry, and local composition conformance matrix |
 | <a id="ac-run-08"></a>AC-RUN-08 | Client detach/SSH loss preserves a same-host run; wrapper restart adopts only after probe+cursor/terminal reconciliation under a new epoch; tmux loss and host reboot/replacement fence/requeue from durable checkpoint; old incarnations cannot ACK or return an accepted result. | Tmux/host fault matrix with epochs, checkpoint and stale-result denial |
 | <a id="ac-run-09"></a>AC-RUN-09 | Structured events, command ACK state, terminal result, and raw-log chunk metadata persist before broadcast; socket/control/uploader restart replays without duplicates; missing bytes create a visible bounded `log_gap`; live input requires harness ACK or uses `INTERRUPT_AND_RESUME`. | WebSocket/control/uploader chaos, cursor audit, gap and steer UI recording |
-| <a id="ac-run-10"></a>AC-RUN-10 | Every accepted attempt exposes exact `EnvironmentRevision`, Placement Policy, provider Adapter, target/allocation/incarnation, `ImageRevision`, candidate/exclusion set, winner rationale, isolation-domain proof, and fence. Changing any creates a new attempt; stale inventory, missing attestation, or digest mismatch blocks tools/secrets. | Placement snapshots, immutable-history properties and negative capability/image fixtures |
-| <a id="ac-run-11"></a>AC-RUN-11 | Deterministic fake `RemoteExecutionProviderAdapter` implements validate/provision/inspect/execute/observe/cancel/destroy/reconcile/workspace/image operations with operation replay and exact-identity denial; local and fake-remote compositions preserve Workflow/ticket semantics. Real remote runtime is explicitly `not exercised` in I1/I2. | Provider contract suite, fake fault/composition matrix and deferred-runtime manifest |
-| <a id="ac-run-12"></a>AC-RUN-12 | Run A pins image `d1`; moving the active pointer to `d2` leaves A on d1 and only new Run B resolves d2. Boot mismatch blocks release of tools/secrets; revoke/rollback/GC never rewrites history and follow current risk/reference policy. | Concurrent pointer/run property test, actual-boot mismatch and revoke fixtures |
-| <a id="ac-run-13"></a>AC-RUN-13 | Warm borrow is atomic; return without workspace finalize, secret revocation, process/network teardown, scrub, conformance, or matching compatibility tuple drains/quarantines. Cache deletion loses no source/work/proof/audit and cache cannot satisfy a criterion. Runtime is `not exercised` until a real remote target earns scope. | Pool race/kill/scrub and cache-deletion/cross-scope residue fixtures |
-| <a id="ac-run-14"></a>AC-RUN-14 | Provider/control/runner/network/host loss, ambiguous capture, missing/revoked image, stale result, stream gap, finalize failure, and inventory mismatch converge fail closed with no inferred success, silent provider/image change, or destroyed sole-copy work. | Deterministic recovery matrix, allocation/job invariant query and timeline |
+| <a id="ac-run-10"></a>AC-RUN-10 | Every exercised attempt exposes the exact local environment, target, workspace, image/base digest when applicable, incarnation, telemetry, and fence. Any future remote placement package must additionally pin provider/allocation, candidate/exclusion rationale, and isolation proof; changing an effective revision creates a new attempt and stale or unverifiable facts block tools/secrets. | Local effective-manifest snapshots plus deferred remote/image invariant fixtures |
+| <a id="ac-run-11"></a>AC-RUN-11 | I1/I2 publish no general remote-execution-provider Seam. A later proposal must justify the Seam with at least two real Adapters and prove idempotent provision/observe/cancel/destroy/reconcile, exact-identity deletion, durable operation replay, and preserved Workflow/ticket semantics; a fake Adapter alone never earns the Seam. | Deferred-capability manifest, interface-deletion review, and future conformance entry criteria |
+| <a id="ac-run-12"></a>AC-RUN-12 | If reusable images are introduced, Run A pinned to image `d1` remains on `d1` when the future pointer moves to `d2`; actual-boot mismatch blocks tools/secrets, and revoke/rollback/GC never rewrites history. I1/I2 exercise only pinned control/local-runner build digests, not a custom-image product. | Current local-build pin test plus deferred image pointer/revoke fixtures |
+| <a id="ac-run-13"></a>AC-RUN-13 | Warm pools and shared caches are absent in I1/I2. A future implementation must atomically borrow, finalize/revoke/scrub/conformance-check before return, quarantine any uncertainty, and prove cache deletion loses no source/work/proof/audit or criterion evidence. | Absence assertion and deferred pool/cache safety fixture |
+| <a id="ac-run-14"></a>AC-RUN-14 | Exercised control/runner/network/host loss, stale result, stream gap, and finalize failure converge fail closed with no inferred success or destroyed sole-copy work. Future provider/image failure classes inherit the same invariant before their runtime can be published. | Local deterministic recovery matrix plus deferred provider/image invariant catalog |
 
 ### Security
 
@@ -3593,20 +2587,20 @@ These criteria specify the proposed contract without representing it as an opera
 | <a id="ac-sec-06"></a>AC-SEC-06 | External protected effects reconcile within 5 min; mismatches and hash-anchor failures create incidents and fail closed. | Reconciliation/integrity injection tests |
 | <a id="ac-sec-07"></a>AC-SEC-07 | Forged/replayed gateway events fail source auth; prompt-injection/malware samples stay tainted/quarantined and cannot alter authoritative instructions. | Ingress adversarial corpus report |
 | <a id="ac-sec-08"></a>AC-SEC-08 | Erasure removes sensitive bytes/keys, leaves authorized tombstone/digest metadata, and restored backups reapply erasure before serving. | Erasure-and-restore drill |
-| <a id="ac-sec-09"></a>AC-SEC-09 | Every active/resolved reusable image binds observed/base digests, scrub report, SBOM, vulnerability policy, conformance, provenance, builder/verifier identities, and signature. Seeded tokens, CLI/browser login state, keys, `.env`, cookies, PII, or credential fixtures block promotion and trigger containment/rotation policy. | Seeded-secret corpus, attestation verification and promotion-denial records |
-| <a id="ac-sec-10"></a>AC-SEC-10 | Image-setup terminal token is one-use, <=5 minutes, replay/wrong-scope/origin fails, idle/absolute TTL and finish/cancel/shutdown close the session and revoke handles; egress blocks metadata/production/auth targets; no credential enters URL, argv, ordinary event/log, image, or checkpoint. | Terminal adversarial/egress suite, cursor audit and secret scan |
-| <a id="ac-sec-11"></a>AC-SEC-11 | Scheduler rejects cross-tenant, author/reviewer, hostile/trusted, protected-effect/general, and policy-named jobs on a prohibited isolation domain; unprovable host separation is ineligible and exact-ID mismatch blocks destruction. | No-colocation matrix, provider-host fixtures and deletion negatives |
+| <a id="ac-sec-09"></a>AC-SEC-09 | Any future reusable-image revision must bind observed/base digests, scrub report, SBOM, vulnerability policy, conformance, provenance, builder/verifier identities, and signature. Seeded tokens, CLI/browser login state, keys, `.env`, cookies, PII, or credential fixtures block promotion and trigger containment/rotation policy. I1/I2 make no custom-image-runtime claim. | Deferred seeded-secret corpus, attestation verification, promotion-denial contract, and explicit not-exercised manifest |
+| <a id="ac-sec-10"></a>AC-SEC-10 | A future browser image-setup terminal must use one-use <=5-minute scoped tokens; replay/wrong-scope/origin fails, session end revokes handles, egress blocks metadata/production/auth targets, and no credential enters URL, argv, ordinary event/log, image, or checkpoint. No such terminal is exposed in I1/I2. | Deferred terminal adversarial/egress contract and current route-absence assertion |
+| <a id="ac-sec-11"></a>AC-SEC-11 | Every exercised scheduler rejects author/reviewer and protected-effect/general no-colocation conflicts. Any future multi-tenant or remote placement package must also reject prohibited tenant/trust/provider-host pairings, treat unprovable separation as ineligible, and require exact identity before destruction. | Local independence matrix plus deferred isolation/deletion negatives |
 
 ### Extension contract (design now; general runtime deferred)
 
 | ID | Pass condition | Evidence capture |
 |---|---|---|
 | <a id="ac-ext-01"></a>AC-EXT-01 | 100% of extension attempts to mutate ticket/Workflow/policy/Attention, mint evidence/gates, access kernel tables, execute unscoped effects, or read standing secrets are denied before mutation with actor/revision/scope/reason audit and empty authoritative diff. | Capability/DB privilege/effect/no-plaintext negative matrix |
-| <a id="ac-ext-02"></a>AC-EXT-02 | Canonical manifest parsing executes no package code; accepted revisions are content-addressed and signature/provenance verified; requested capabilities differ from immutable grants; invocation token binds revision/grant/scope/job/expiry/epoch and fails after revoke. | Executable-manifest trap, signature/capability/revocation vectors |
-| <a id="ac-ext-03"></a>AC-EXT-03 | A hostile future worker cannot access host home/env/DB/Docker/tmux sockets or undeclared egress, and executable UI cannot obtain ambient origin authority. Crash/resource exhaustion is invocation-local and core jobs recover it. Runtime portions remain explicit `not exercised` until built. | Red-team contract fixtures, mount/egress report, iframe/host-schema and deferred labels |
-| <a id="ac-ext-04"></a>AC-EXT-04 | No code executes before verified/granted; a capability-increasing or migration/conformance-failing upgrade leaves old revision active; disable fences/drains invocation, uninstall retains tombstone/audit, and purge is a separate destructive decision. General runtime is deferred except Adapter revision pin/rollback exercised in I2. | Lifecycle fault model, atomic pointer and provider rollback trace |
+| <a id="ac-ext-02"></a>AC-EXT-02 | Canonical manifest parsing executes no package code; accepted host-rendered declarative revisions are content-addressed and provenance verified. Future executable revisions must separate requested capabilities from immutable grants and bind invocation revision/grant/scope/job/expiry/epoch; no general executable-extension token/runtime is exposed in I1/I2. | Executable-manifest trap, declarative revision vectors, route absence, and deferred capability schema |
+| <a id="ac-ext-03"></a>AC-EXT-03 | The future-worker contract forbids host home/env/DB/Docker/tmux sockets, undeclared egress, and ambient browser-origin authority. I1/I2 exercise schema and denial fixtures only; they do not claim a hostile-worker sandbox. | Static capability/host-schema negatives and explicit not-exercised evidence |
+| <a id="ac-ext-04"></a>AC-EXT-04 | No future package code may execute before verified/granted; capability-increasing or conformance-failing upgrade must leave the old revision active, and disable/uninstall/purge remain separately authorized lifecycle actions. General executable extension lifecycle is deferred in I1/I2. | Deferred lifecycle state model, atomic-pointer contract, and current absence assertion |
 | <a id="ac-ext-05"></a>AC-EXT-05 | Route inventory remains exactly Home, Board, contextual Ticket detail, Fleet, Analytics; contributions cannot write Needs You/Board/Ticket authority, replace history, or hide unknown health; I1/I2 accept host-rendered declarative schemas only. | Route inventory, malicious slot fixtures, screenshots and projection-source query |
-| <a id="ac-ext-06"></a>AC-EXT-06 | Every public Seam has two justified Adapters or is labeled internal/deferred. Codex/Claude harness, process/tmux/fake supervisor, command/live evidence/verifier, vault/test, and `systemd-vps` fake/live matrices preserve kernel semantics; unknown Adapter key fails closed. | Seam registry with deletion tests and conformance results |
+| <a id="ac-ext-06"></a>AC-EXT-06 | Every public Seam has at least two justified real Adapters or is labeled internal/deferred. I1/I2 expose the local process/tmux Supervisor Seam earned by two real Adapters. The golden path's one live `systemd-vps/v1` integration plus fault-injection test implementation remains an internal Effects boundary, not a generalized public provider Seam. Remote execution, custom-image, and executable-extension variation stays deferred; every unknown Adapter key fails closed. | Seam registry, deletion tests, rationale, and conformance results |
 | <a id="ac-ext-07"></a>AC-EXT-07 | Implemented extension-class work uses core jobs/leases/fencing/cursors; webhook authentication/idempotency precedes dispatch; acknowledged observations/log chunks survive restart or expose a gap; no process-local bus is the only copy. | Duplicate webhook/restart/stale-lease/gap fixtures; unbuilt classes marked deferred |
 
 ### UX and navigation
@@ -3621,16 +2615,17 @@ These criteria specify the proposed contract without representing it as an opera
 | <a id="ac-ux-06"></a>AC-UX-06 | UI labels use exact `merged`, `staging verified`, `production verified`, `rolled back`, and `incident` facts; no merge-only state is called done/released/live. | Copy/assertion test and screenshots |
 | <a id="ac-ux-07"></a>AC-UX-07 | Ticket detail renders the latest accepted and refused transition/readiness evaluations with requested edge, result, rule/policy revisions, input digest, every unmet item/owner, evaluation time, linked evidence, and before/after versions; a refused fixture changes no authoritative state. | Accepted/refused API snapshots, state-diff assertion, and E2E screenshots |
 | <a id="ac-ux-08"></a>AC-UX-08 | Needs You contains 100% only current open policy-qualified operator-owned decisions/incidents and excludes informational, Commander-owned, service-recovery, resolved, expired, and superseded fixtures; ownership/qualification changes remove or coalesce rows within 60 s. | Positive/negative projection fixtures for every class, precision query, freshness clock test, and Home screenshots |
+| <a id="ac-ux-09"></a>AC-UX-09 | A browser command remains visibly `unsent` or `durability pending` until authoritative acceptance, preserves one stable command ID across disconnect/reload, and never paints optimistic state as accepted. Retry, refusal, and quarantine are distinguishable without inspecting developer tools. | Offline/reconnect/reload recording, accessibility assertions, and authoritative state diff |
 
 ### Migration
 
 | ID | Pass condition | Evidence capture |
 |---|---|---|
-| <a id="ac-mig-01"></a>AC-MIG-01 | Mission Control and Paperclip mutation paths are frozen at one recorded timestamp and snapshot digests/watermarks verify. | Freeze manifest and attempted-write denial |
+| <a id="ac-mig-01"></a>AC-MIG-01 | Every legacy path able to mutate ctower-project work is frozen at one timestamp with verified snapshot digests/watermarks. | Freeze manifest and attempted-write denial |
 | <a id="ac-mig-02"></a>AC-MIG-02 | Every candidate open record has a reviewed logical cluster and stable alias disposition; no fuzzy auto-merge remains unreviewed. | Alias map and reviewer sign-off |
 | <a id="ac-mig-03"></a>AC-MIG-03 | One restricted, idempotent import creates every selected open ticket/custody/relation/provenance exactly once and creates no forged gate/evidence/resolution. | Two-run import diff and negative privilege tests |
-| <a id="ac-mig-04"></a>AC-MIG-04 | Web, CLI, tools, Commander, and runner adapter rewire in the same barrier; post-cutover legacy writes are rejected/detected; ctower is the only writer. | Cutover checklist, client endpoint logs, split-brain monitor |
-| <a id="ac-mig-05"></a>AC-MIG-05 | Imported open list, owners, relations, aliases, and active work match the reviewed freeze manifest; frozen sources remain readable and export works. | Human-readable reconciliation report |
+| <a id="ac-mig-04"></a>AC-MIG-04 | All ctower-project web, CLI, Commander, and runner clients rewire in one barrier; legacy writes are rejected and ctower is the sole writer. | Cutover checklist, endpoint logs, split-brain monitor |
+| <a id="ac-mig-05"></a>AC-MIG-05 | Imported open items, owners, relations, aliases, and active work match the reviewed freeze manifest; frozen sources remain readable. | Human-readable reconciliation report |
 
 ### Operations
 
@@ -3640,27 +2635,28 @@ These criteria specify the proposed contract without representing it as an opera
 | <a id="ac-ops-02"></a>AC-OPS-02 | Outbox/projection p95 lag <10 s and Needs You qualifying items appear within 60 s under load; cursor rebuild produces identical views. | Load test, lag histogram, rebuild comparison |
 | <a id="ac-ops-03"></a>AC-OPS-03 | Any missing completeness/integrity signal within thresholds renders degraded/unknown and pages the right service owner without false operator calm. | Fault-injection routing and screenshots |
 | <a id="ac-ops-04"></a>AC-OPS-04 | Killing Commander mid-decision releases/expires its job lease, resolves the next strongest healthy eligible profile, and starts one fresh job under the same accountable Commander principal/plan without duplicate command/dispatch or reset counters. | Commander capability-resolution and failover trace |
-| <a id="ac-ops-05"></a>AC-OPS-05 | Backup, restore, real reboot, and rollback drills meet recorded targets and produce protected-effect-disabled isolated evidence. | Monthly/quarterly drill tickets |
+| <a id="ac-ops-05"></a>AC-OPS-05 | Backup, restore, real reboot, and rollback drills meet recorded targets. Restore recovers vault/KMS material, verifies chains/objects/tombstones and the signed expected-source inventory, proves inactive journals through explicit `not_exercised`/zero-source entries, reconciles activated journals to known cursors, and keeps ordinary reads/effects disabled while any authoritative finding remains unresolved. Quarantine remains degraded and cannot turn a missing activated source into a successful empty result. | Monthly/quarterly drill tickets, signed inventory revision, key-recovery record, zero-source/journal reconciliation report, and enablement denial |
 | <a id="ac-ops-06"></a>AC-OPS-06 | Concurrency/resource/cost/egress quotas stop or pause jobs deterministically and emit typed events/Attention only per policy. | Quota stress test and event records |
 | <a id="ac-ops-07"></a>AC-OPS-07 | Agent/profile/runner/routine revisions are immutable, attributable, and reflected in Fleet; deleting/disabling config preserves historical runs/costs. | Revision/tombstone tests and Fleet capture |
 | <a id="ac-ops-08"></a>AC-OPS-08 | Service/schema/protocol/policy upgrade and retro improvement both have versioned rollout, compatibility check, live verification, and rollback/effectiveness evidence. | Upgrade and improvement evaluation artifacts |
 | <a id="ac-ops-09"></a>AC-OPS-09 | Unresolved-WIP-age reporting includes every nonterminal actionable episode, count/p50/p90/oldest by risk/type, initial policy thresholds, source watermark, and drill-down to permanent ticket/source provenance; injected old work cannot disappear through reassignment or stage change. | Versioned KPI query test, aged fixtures, watermark, and ticket drill-down report |
-| <a id="ac-ops-10"></a>AC-OPS-10 | Provider inventory cursor replay is idempotent; gaps/rewinds make scope unknown; exact known orphans clean only under retained binding; unknown resources remain report-only/quarantined. Killing control/Adapter during provision/cancel/delete/capture converges without duplicate paid resource or unsafe deletion. | Provider inventory crash matrix and zero-unowned-delete assertion |
-| <a id="ac-ops-11"></a>AC-OPS-11 | Image rollback verifies prior object/digest/current policy before moving the future pointer; GC refuses every live run/evidence/checkpoint/release/rollback/investigation/retention ref and records exact delete receipt/tombstone; delete failure remains pending/visible. | Reference-graph/clock tests, missing-image rollback denial and delete-retry receipt |
-| <a id="ac-ops-12"></a>AC-OPS-12 | Ticket run view reconstructs normalized events, command ACKs, chunks/gaps, placement, incarnation, image, checkpoint, provider cleanup, and terminal reconciliation after WebSocket/control/Adapter/runner restart; a remote provider cannot bypass this by lacking its own history. | Restart/replay recording, cursor audit and direct/delegated fake modes |
+| <a id="ac-ops-10"></a>AC-OPS-10 | A future remote provider must expose durable inventory cursors: replay is idempotent, gaps/rewinds make scope unknown, exact known orphans clean only under retained binding, and unknown resources remain report-only/quarantined. I1/I2 publish no such provider Seam and make no cleanup claim. | Deferred provider invariant suite and current capability-absence manifest |
+| <a id="ac-ops-11"></a>AC-OPS-11 | A future custom-image runtime must verify prior object/digest/current policy before pointer rollback; GC must refuse every live evidence/checkpoint/release/rollback/investigation/retention reference and preserve delete receipts/tombstones. I1/I2 exercise only ordinary referenced-object GC. | Current object-GC tests plus deferred image rollback/reference-graph contract |
+| <a id="ac-ops-12"></a>AC-OPS-12 | Ticket run view reconstructs every exercised normalized event, command ACK, chunk/gap, local target/incarnation, checkpoint, and terminal reconciliation after WebSocket/control/runner restart. Future remote/image fields must join this same durable timeline and cannot rely on provider-only history. | Local restart/replay recording and cursor audit; deferred field-presence contract |
 | <a id="ac-ops-13"></a>AC-OPS-13 | A revision-pinned Routine with cron/timezone materializes each logical due occurrence once across duplicate scans and scheduler/outbox restart; UTC and local civil time, DST gap/repeat result, concurrency/catch-up decision, component pins, and every queued/coalesced/skipped/refused outcome remain inspectable. Long downtime obeys its explicit cap and cannot silently flood jobs. | Fake-clock timezone/DST matrix, duplicate/crash/replay test, revision-edit isolation, occurrence ledger and Fleet capture |
 | <a id="ac-ops-14"></a>AC-OPS-14 | Assignment, mention, gate resolution, steering, retry, reconciliation, and Routine occurrence create durable idempotent wake intents before dispatch; wake intent, bounded execution run, lease heartbeat, and scheduler scan remain distinct. A stale/cancelled run or fencing token cannot mutate work/proof/effects, while a fresh runner reconstructs without tmux or vendor-session state. | Wake dedupe/coalesce and continuation transaction tests; cancellation/fencing negatives; process/session/runner-loss replay trace |
 | <a id="ac-ops-15"></a>AC-OPS-15 | Scheduler completeness, runner liveness, ticket progress, and control/effect reconciliation expose independent watermarks and fail health/Fleet to degraded or `STATE UNKNOWN` when stale. The same stopped-state fingerprint creates at most one watchdog review; changed state creates a new fingerprint; custom instructions cannot expand authority or ticket scope. | Detector fault matrix, watermark/unknown screenshots, stable-fingerprint suppression and changed-fingerprint/authority-denial tests |
+| <a id="ac-ops-16"></a>AC-OPS-16 | A permanently invalid or repeatedly failing outbox record becomes a typed, visible poison item after its declared attempts; the cursor does not silently skip it, dependent completeness remains degraded, replay is idempotent, and only an authenticated repair/quarantine disposition can unblock the stream. | Poison-before/after-cursor crash matrix, health/Attention screenshots, and zero-silent-drop query |
 
 ## KPIs
 
-Metric definitions are versioned SQL/query artifacts with explicit cohorts, exclusions, time zones, and source watermarks. Reports show median and p90/p95 where useful; averages alone are insufficient. Baseline comparison begins only after at least 30 comparable verified resolved tickets unless the row defines an absolute safety target.
-Backlog/To Do/WIP/blocked/flow/priority rows define the measurement contract for the pending AC-TM
-recommendation and activate only if that product shape is confirmed; they do not silently lock it.
+Metric definitions are versioned SQL/query artifacts with explicit cohorts, exclusions, time zones, and source watermarks. Reports show median and p90/p95 where useful; averages alone are insufficient. The approved priority, lifecycle, Board-lane, blocker, workflow-stage, and delivery axes are measured independently.
+
+Before ctower becomes the writable source for its own project, the operator captures ten working days of legacy work—or every available day with a hard minimum of five—using explicit `sweep_open`/`sweep_close`, `status_chase`, gate-decision, steering, and incident-interaction events. The versioned query, event schema, cohort, source watermarks, exclusions, and input digest are frozen in `evidence/baselines/operator-attention-v1.json`. Until 30 comparable post-cutover tickets exist, ctower reports the sample as provisional and must meet the absolute targets below: median attention <=15 minutes per verified resolved ticket, p90 <=45 minutes, status chasing <=1 interruption per working week, and healthy Home sweep p95 <=10 seconds. After 30 comparable tickets, the relative target also applies: median attention <=70% of the frozen baseline without regressing throughput or quality. If the baseline artifact is missing, no relative-improvement claim is allowed; the absolute targets still apply.
 
 | KPI | Formula | Authoritative data sources | Target / guardrail | Cadence |
 |---|---|---|---|---|
-| **Operator attention minutes per verified resolved ticket** | Sum of classified operator interaction durations for a cohort / count of tickets resolved with current proof | `operator_attention_events`, gate/attention interactions, resolved episodes | Median at least 30% below pre-ctower baseline after 30 comparable tickets; p90 reported; only count verified resolutions | Weekly, monthly cohort |
+| **Operator attention minutes per verified resolved ticket** | Sum of duration from paired, classified operator interaction open/close events for a cohort / count of tickets resolved with current proof | `operator_attention_events`, gate/attention interactions, resolved episodes, frozen baseline artifact | Before 30 tickets: median <=15 min and p90 <=45 min. At/after 30: also median <=70% of frozen baseline. Only verified resolutions count. | Weekly, monthly cohort |
 | **Interruptions/day** | Count of unplanned operator interruptions by reason / operator-days | Attention/notification delivery and explicit classification | Status-chasing interruptions <=1 per working week; genuine gates/incidents/steering shown separately | Daily/weekly |
 | **Status-chasing count** | Operator interactions classified `status_chase` with no policy-declared action | Attention events and ticket timeline | Trend to zero; any recurrence links the missing projection/notification cause | Weekly |
 | **Morning sweep time** | Time from healthy Home open to sweep close/correct action identification | sweep events + usability check | p95 <=10 s; invalid when completeness is unknown rather than counted as fast | Daily and weekly p95 |
@@ -3669,10 +2665,10 @@ recommendation and activate only if that product shape is confirmed; they do not
 | **Needs You recall** | Qualifying human gates/questions/incidents/exhausted escalations visible within 60 s / all qualifying events | Source events, Attention, projection cursors | 100%; zero false All clear during degraded completeness | Continuous/daily |
 | **Needs You precision** | Current open policy-qualified operator-owned rows / all rows displayed in Needs You | Attention policy qualification/ownership/state events, incident/gate links, projection cursor | 100%; zero informational, Commander-owned, service-recovery, resolved, expired, or superseded rows; stale removal/coalescing <=60 s | Continuous/daily with weekly negative-fixture report |
 | **Cycle time** | Resolved time - actionable ticket creation time, by risk/type | Ticket/lifecycle/workflow events | p50/p90 non-regression while quality guardrails pass; improve after stable baseline | Weekly/monthly |
-| **Unresolved WIP age** | For every nonterminal actionable lifecycle episode, `now - actionable_ticket_created_at` (or `now - current_episode_opened_at` after reopen); report count, p50, p90, and oldest by risk/type | Ticket creation/promotion, lifecycle episode, workflow/attention/custody events and source-alias provenance with query watermark | Initial stale thresholds: low 14 d, standard 7 d, elevated 3 d, critical 24 h; zero over-threshold item without current owner plus recovery/escalation action; every aggregate drills to permanent ticket and source provenance | Daily; weekly cohort and monthly trend |
+| **Unresolved WIP age** | For every nonterminal actionable lifecycle episode, `now - actionable_ticket_created_at` (or `now - current_episode_opened_at` after reopen); report count, p50, p90, and oldest by priority/type | Ticket creation/promotion, lifecycle episode, workflow/attention/custody events and source-alias provenance with query watermark | Initial review thresholds: P0 24 h, P1 7 d, P2 14 d; zero over-threshold item without current owner plus recovery/escalation action; every aggregate drills to permanent ticket and source provenance | Daily; weekly cohort and monthly trend |
 | **Stage wait time** | Sum or percentile of ready-to-active duration by stage/role | Stage state events and assignments | p90 reviewed per bottleneck; >2x baseline opens capacity/process analysis | Weekly |
 | **Bounded-loop compliance** | Stable failure lineages stopped/escalated within configured budget / lineages reaching budget | Failure lineages/occurrences, append-only repair events, round events, Attention | 100%; zero cross-digest reset or unbounded automatic loop | Continuous/weekly |
-| **Rigor-plan validity and yield** | Valid orchestration-plan selections/amendments within floor/ceiling and with cited evidence / all plan revisions; correlate added rounds with blocking findings/escaped defects | Plan revisions, append-only review-round/repair events, counter projections, findings, incidents | 100% policy-valid; zero client-authored/reset consumption or gate removal; added rigor without new findings is reviewed in retro | Per ticket/weekly |
+| **Rigor-plan validity and yield** | Valid orchestration-plan selections/amendments within pinned policy-declared bounds and with cited evidence / all plan revisions; correlate added rounds with blocking findings/escaped defects | Plan revisions, append-only review-round/repair events, counter projections, findings, incidents | 100% policy-valid; zero client-authored/reset consumption or required-gate removal; added rigor without new findings is reviewed in retro | Per ticket/weekly |
 | **Escalation rate** | Unique exhausted failure lineages or round budgets / workflow runs | Lineage/round events and Attention | Observe by stage; sustained >10% in a stage triggers retro, not hidden retries | Weekly |
 | **Escaped defect rate** | Verified post-stage or post-release defects attributable to earlier passed gate / verified releases | Incidents, QA findings, gate/evidence lineage | No worse than baseline; severity-weighted critical escapes target zero | Weekly/monthly |
 | **Rollback/incident rate** | Production rollbacks or release incidents / production deployments | Deployments, receipts, environment verification, incidents | Report by cause/risk; any critical repeat lineage requires process improvement | Per release/monthly |
@@ -3692,13 +2688,10 @@ recommendation and activate only if that product shape is confirmed; they do not
 | **WIP and cycle by priority** | Count of active episodes and actionable-to-resolved duration by priority/risk/type | Lifecycle, stage, priority histories and evidence-valid resolution | Published WIP limits; p50/p90 non-regression with quality guardrails | Daily/weekly |
 | **Blocked time and reason** | Sum/percent of episode time under one or more effective blockers, deduplicated across overlaps | Blocker open/recheck/resolve facts | Every stale blocker has owner/next check; operator blockers measured separately | Daily/weekly |
 | **Flow efficiency** | Active execution+verification time / nonterminal elapsed time, by priority/risk/type | Stage/attempt/job/blocker/admission events | Trend only after stable cohort; never improved by hiding queue/blocker state | Weekly/monthly |
-| **Priority fairness** | Eligible P1/P2 jobs served within policy bound under sustained higher-priority load / eligible cohort | Scheduling candidate/selection facts, age/fairness credits | 100%; zero restart/reassignment age reset; P0 bypass count zero | Continuous/weekly |
-| **Placement explainability / violations** | Complete input/candidate/exclusion/winner records / allocations; accepted runs violating a hard rule | Placement decisions, manifests, allocation/target observations | 100% explainable; zero hard/no-colocation/image violations | Per allocation/daily |
-| **Image trust coverage / mismatch** | Active/resolved images with current scrub+SBOM+scan+conformance attestation; started runs with wrong boot digest | Image revisions/attestations, run.started observations | 100% trust coverage; zero secret/tool release after mismatch | Continuous/daily |
-| **Provider reconciliation completeness** | Protected targets current to inventory cursor and exact resources matched | Provider cursors/observations/findings | 100% current within SLO; unknown resources visible, never silently deleted | Continuous/daily |
-| **Warm reuse safety** | Reused entries with current finalize/revoke/scrub/conformance receipt / reused entries | Warm-pool events and allocation manifests | 100%; zero cross-scope residue fixtures; runtime labeled not exercised until built | Per reuse/weekly |
+| **Priority fairness** | Eligible P1/P2 jobs served within policy bound under sustained higher-priority load / eligible cohort | Scheduling candidate/selection facts, age/fairness credits | 100%; zero restart/reassignment age reset; zero undocumented priority bypass | Continuous/weekly |
+| **Placement explainability / violations** | Complete input/candidate/exclusion/winner records / exercised allocations; accepted runs violating a hard rule | Placement decisions, effective manifests, target observations | 100% explainable for implemented local placement; zero hard-rule violations. Future remote/image metrics are added only with their real Adapters. | Per allocation/daily |
 | **Stream completeness** | Acknowledged chunks replayed plus explicit represented gaps / expected ranges | Execution cursors/chunks/gaps | 100% acknowledged replay; every missing range visible and proof-aware | Continuous/weekly |
-| **Extension boundary integrity** | Denied forbidden extension operations and scoped invocations with valid grant/audit / attempted invocations | Extension grants/invocations/denials and kernel state diffs | 100% forbidden attempts denied with zero diff; runtime classes not built reported not exercised | Continuous/monthly |
+| **Extension boundary integrity** | Denied forbidden extension operations / attempted declarative operations; future invocation ratio only when a runtime exists | Extension grants/denials and kernel state diffs; future invocations only after scope is earned | 100% forbidden attempts denied with zero diff; unbuilt runtime classes reported not exercised | Continuous/monthly |
 
 ### Anti-gaming rules
 
@@ -3708,129 +2701,130 @@ Operator attention metrics are never reported alone. The primary scorecard alway
 
 ### Scope law and sequencing
 
-There are exactly two product increments in this specification. **Contract Level 0 (L0)** is a build precondition inside Increment 1, not a third product increment: it freezes schemas, OpenAPI, hashing, policy fixtures, and test vectors so independent lanes do not invent incompatible contracts.
+There are exactly two product increments. **Contract Level 0 (L0)** is a precondition inside Increment 1, not a third product increment. It freezes the smallest authoritative contracts, repository policy, and test vectors needed for independent work. L0 records durable invariants for future remote execution, custom images, and executable extensions but creates no public Seam for them; a later Seam must be earned by at least two justified real Adapters.
 
 ```mermaid
 flowchart LR
-    L0[L0 contracts: repository, schemas, DDL, OpenAPI, vectors, policies, conformance]
-    K[I1 kernel: Record, Access, Catalog, Work, Proof, Attention]
-    B[I1 control backend and workers: API, append, outbox, health, backup]
-    C[I1 ctowerctl spool + CompanyBundle + import/rewire]
-    A[I2 real Adapters: runner/bin-mux + systemd-vps; fake remote/image]
-    U[I2 thin five-surface UI over proven Interfaces]
-    G[I2 golden request-to-production trace]
+    L0[L0: authority, events, task axes, workflow/policy schemas, repository gates]
+    R[I1: Record + Work + Proof]
+    D[I1: off-host acceptance + restore]
+    C[I1: spool-backed CLI]
+    U[I1: thin Home + Board + Ticket]
+    F[I1: four-stage trust-spine fixture on the final generic evaluator]
+    X[I1: ctower-project cutover and dogfood]
+    W[I2: complete generic Workflow + Commander + Runtime]
+    A[I2: local harness/supervisor and root-owned release Adapter]
+    S[I2: software-factory package + verified production golden path]
 
-    L0 --> K --> B --> C --> A --> U --> G
+    L0 --> R --> D --> C --> U --> F --> X --> W --> A --> S
 ```
 
-The order is normative: contracts/schema/kernel -> control-plane backend and workers -> CLI -> real
-runner/effect Adapters -> thin five-surface UI -> golden trace. Increment 1 may ship the minimal Home/Needs
-You and five-route shell required to cut over safely, but broad Ticket/Fleet/Analytics behavior does not
-precede the Runtime/Effects Interfaces it renders. Increment 1 makes ctower trustworthy enough to become the
-writable ticket source. Increment 2 proves one complete Workflow/release outcome. A second Workflow,
-production remote provider, image factory, or general extension runtime waits until the golden retro and a
-second real Adapter justify a Seam.
+The order is normative. ctower first proves that it can durably accept, restore, expose, and operate its own tickets. Only then does the ctower project freeze its legacy writers and use ctower as its sole writable source. Increment 2 adds autonomous orchestration behind the same generic evaluator and ticket authority. A production remote provider, custom-image runtime, warm pool, or executable-extension host waits until a real use case and a second real Adapter earn its Seam.
 
-### Increment 1 — trust-spine wedge
+### Increment 1 — durable task-management dogfood
 
 #### I1 outcome
 
-The operator can durably capture and inspect live tickets, criteria, evidence, protected gates, custody, and Needs You from the authenticated private ctower service; agents use a spool-backed `ctl`; health cannot look calm when incomplete; accepted state is backed up/restorable; and one reviewed freeze/import/rewire barrier makes ctower the only writable source of ticket truth.
+The operator can create, prioritize, assign, block, inspect, prove, and close ctower-project tickets through an authenticated private service, spool-backed CLI, and thin Board/Ticket UI. An accepted write already has its policy-required off-host durable acknowledgement; backup/restore and key recovery are proven before cutover. A reviewed one-time barrier then makes ctower the only writable task source for the ctower project while legacy records remain read-only provenance.
+
+#### I1 four-stage fixture
+
+Increment 1 publishes `ctower.trust-spine-four-stage@1` at `packs/workflows/ctower.trust-spine-four-stage/v1.yaml`:
+
+```text
+capture [work]
+   │ ticket accepted off-host; priority, custodian, and source recorded
+   ▼
+frame [work]
+   │ criteria frozen; required evidence and gate declared
+   ▼
+verify [verification]
+   │ current-digest evidence and protected verdict recorded
+   ▼
+close [work]
+     server proves criteria + gate, then resolves and closes
+```
+
+The fixture is interpreted by the final generic Workflow Module interface—not a temporary hard-coded state machine. I1 implements only the evaluator capabilities this graph needs: pinned graph/version, legal transition evaluation, `activity_class`, entry/exit checks, current proof, protected verdict, and append-only transition facts. I2 deepens the same module with stage jobs, Commander planning, typed failure routing, independent review topologies, bounded repair, and effects. A test rejects any implementation that branches on these four stage names.
 
 #### I1 included scope
 
-1. L0 greenfield repository ownership/DAG, Repository Policy Module, coding standards, strict Python/TypeScript configs, pre-commit/security/generated-drift gates, typed telemetry contract/collector fixture, `just check`/`just verify`, Python runtime compatibility evidence, universal `VersionedComponent`/CompanyBundle, event envelope, canonical hash vectors, closed authority/FK DDL, OpenAPI/RFC 9457, Workflow/Execution Policy, compositional runner, remote environment/image/placement, Extension Host denial, task-management recommendation, authorization, and conformance fixtures. Remote/general-extension runtime remains `not exercised`.
-2. Accepted exact Python runtime after the L0 compatibility/decision gate, with FastAPI/Pydantic v2/psycopg3/plain-SQL service; TypeScript web; Postgres; separate checksum-locked migrator and least-privilege service role; and the one-use local/private first-tenant bootstrap ceremony with permanent disable receipt.
-3. Principals, tickets, ticket events, lifecycle episode 1, exactly-one eligible gapless custody intervals, protected Commander transfer, separate executor/reviewer assignments, criteria/freeze, digest-addressed objects, evidence metadata, human gate request/verdict, server-validated resolution/close, command idempotency, per-ticket CAS/sequence/hash chain.
-4. Transactional outbox plus `NOTIFY` hint, recipient router, pure SQL ticket/Needs You projections, command/event cursor queries, and explicit completeness health.
-5. `ctowerctl` (`ctl` executable) capture/query/comment/assign/criteria/evidence/gate/resolve and CompanyBundle validate/plan/apply/export operations with checksummed ordered offline spool, 30-day maximum replay horizon, per-record acknowledgment, and visible poison/expired quarantine.
-6. Home Needs You inside Control Tower with server-side API proxy, locked five-route navigation frame, positive healthy empty state, and loud `STATE UNKNOWN`.
-7. Private authenticated VPS deployment units, TLS/private access, Postgres/object backup, external chain anchor, health/watchdog, daily synthetic lifecycle, monthly restore drill, and real reboot proof.
-8. One freeze/dedupe/open-only import/alias map/same-barrier rewire for Mission Control and Paperclip sources. No dual write and no tailer.
+1. L0 repository ownership and dependency law; Python/TypeScript coding standards; strict Ruff/format/mypy/Pydantic/pre-commit/file-size/complexity/security/observability gates; canonical event/hash/idempotency vectors; DDL authority; OpenAPI and generated clients; approved P0/P1/P2 plus orthogonal lifecycle, Board lane, workflow stage, blocker, assignment, and delivery contracts; domain-neutral Workflow/Execution Policy and revision-pinned Routine/trigger schemas; and explicit deferred-capability manifests.
+2. FastAPI/Pydantic v2/psycopg3/plain-SQL control application, Postgres, digest-addressed object storage, checksum-locked least-privilege migrator, authenticated private VPS deployment, and one-use first-tenant trust-root bootstrap with permanent-disable receipt.
+3. Deep Access, Record, Work, Proof, Catalog, and Attention modules: tickets, lifecycle episodes, custody, executor/reviewer assignments, relations, criteria/freeze, artifacts, evidence, human gates, typed blockers/intents, priorities, Board projection, server resolution/close, transactional outbox, cursors, and completeness health.
+4. Policy-required off-host acknowledgement before an accepted authoritative response; explicit `durability_pending` otherwise; deterministic Routine occurrences for synthetic/backup work; encrypted object/database backup; external hash anchor; vault/KMS recovery; isolated restore; signed expected-source inventory with root/effect/provider sources explicitly `not_exercised`/zero-source in I1; fail-closed journal reconciliation; real reboot proof; and poison-outbox fail-closed recovery.
+5. `ctowerctl`/`ctl` capture, query, comment, assign, prioritize, block/unblock, criteria, evidence, gate, transition, resolve, and CompanyBundle validate/plan/apply/export operations through the generated client. Its encrypted owner-only ordered spool preserves one command ID through crash, concurrent-writer, torn-write, disk-full, retry, and quarantine paths.
+6. Thin Home, Board, and contextual/direct-ID Ticket surfaces inside the locked five-surface shell. Board derives its six lanes from lifecycle/blockers/readiness plus stage `activity_class`; Ticket shows custody, assignments, stage, criteria/evidence/gates, blockers, typed delivery, command acceptance, and the ordered timeline. Browser commands remain visibly unsent or durability-pending until accepted.
+7. The four-stage fixture above, a daily synthetic run, health/watchdog, backup/restore evidence, and operator-attention baseline instrumentation.
+8. A reviewed freeze/export/alias/import/rewire barrier for **ctower-project records only**. The import uses the generated HTTP client, writes no forged proof, records source digests/dispositions, rejects post-barrier legacy mutation, and establishes ctower as the project source of truth. No dual write and no tailer.
 
-Increment 1 has no general workflow engine, no stage-attempt runner dispatch, and no production effect capability. Its protected gate/resolution commands establish record trust only; external effects remain outside scope until Increment 2 brokers them.
-
-Passing extension, remote Target, placement, or image contract tests does not imply those general runtimes
-exist. Increment 1 exposes no arbitrary extension activation, third-party migration/code/UI, remote provider
-credential, custom-image setup terminal, warm pool, or image-admin runtime.
+Increment 1 has no agent stage dispatch, autonomous Commander loop, production effect grant, remote provider, custom-image product, warm pool, or executable-extension runtime.
 
 #### I1 exit evidence
 
-- All [Language and repository quality](#language-and-repository-quality), [Product](#product), [Durability](#durability), [Evidence](#evidence), [Security](#security), [UX and navigation](#ux-and-navigation), [Migration](#migration), and [Operations](#operations) criteria applicable to Increment 1 pass; workflow/release/runner criteria are explicitly marked not exercised in the evidence manifest rather than implied.
-- Negative authorization matrix proves crews/importer cannot forge actor, criteria freeze, gate verdict, resolution, or tenant scope.
-- Daily synthetic ticket completes create -> criteria -> freeze -> gate request -> operator verdict -> evidence -> resolve -> close for five consecutive scheduled runs.
-- Chaos suite proves idempotency-before-CAS, prune-then-late and multi-aggregate exact replay, 100 concurrent append ordering, general-outbox recovery after lost `NOTIFY`, spool crash/replay/expiry/poison behavior, object corruption rejection, and service restart.
-- Home usability/health evidence proves under-ten-second healthy morning glance and no false All clear under each injected degradation.
-- One isolated restore and one real VPS reboot meet the recorded targets.
-- Import comparison and alias map account for every selected open logical request; post-cutover mutation monitor shows zero legacy writes.
+- Repository, product, task-management, durability, evidence, security, UX, migration, and operations criteria applicable to I1 pass; every deferred capability is explicitly `not exercised`.
+- A host-loss test proves an accepted authoritative write survives because off-host acknowledgement preceded acceptance; injected acknowledgement loss returns only replayable `durability_pending`.
+- An isolated restore meets RPO 0 for accepted records, recovers vault/KMS access, verifies objects/chains/tombstones and the signed expected-source inventory, proves every inactive I1 root/effect/provider source through an explicit `not_exercised`/zero-source entry, and refuses normal reads/effects if any activated source is missing, incomplete, or unreconciled.
+- CLI and browser chaos prove stable command IDs, no optimistic acceptance, no silent spool/outbox loss, and visible quarantine/degradation.
+- The final generic evaluator runs the four-stage fixture end to end; Board uses `activity_class`, and forbidden stage-name branching fails.
+- Timed UI evidence proves the operator can find, reprioritize, reassign, block/unblock, inspect proof, and close a ticket through Board/Ticket without another ledger.
+- The frozen baseline artifact contains at least five legacy working days. The clean-install first-success trial meets [AC-ADM-03](#ac-adm-03).
+- Import reconciliation accounts for every selected ctower-project item, creates each stable alias once, and records zero legacy writes after cutover.
 
 #### I1 designated validation commands
-
-These commands are part of the L0 contract and must exist before the corresponding implementation item can close:
 
 ```bash
 just check
 just verify
-uv run pytest tests/contracts/runtime/test_python_compatibility.py -q
-uv run pytest tests/acceptance/increment-1 -q
-uv run pytest tests/contracts -q
+uv run pytest tests/contracts tests/acceptance/increment-1 -q
 uv run python -m ctower_contracts verify --all
-ctowerctl synthetic run --scenario trust-spine --wait --assert resolved,closed
-ctowerctl ops restore-drill verify --latest
-ctowerctl migration verify --freeze-manifest state/ctower-cutover/freeze-manifest.json
+ctowerctl synthetic run --workflow ctower.trust-spine-four-stage@1 --wait --assert resolved,closed
+ctowerctl ops restore-drill verify --latest --require accepted-rpo=0,keys-recovered,journals-reconciled
+ctowerctl migration verify --scope ctower-project --freeze-manifest state/ctower-cutover/freeze-manifest.json
 ```
 
 #### I1 rollback
 
-- Before the cutover rewire, stop the incomplete service and unfreeze legacy tools; no ctower write is authoritative yet.
-- After the rewire, never resume dual writing. Roll back service/config to the last compatible build, restore Postgres/objects when required, and let `ctl` spool new commands until health returns. If integrity is uncertain, enter explicit read-only emergency mode and open an incident.
-- A failed import before rewire is discarded and rerun idempotently from the same freeze manifest. A discovered import omission after rewire is corrected through an authenticated import-correction command with provenance; it is not fixed in JSONL/Paperclip.
+Before the source-of-truth barrier, stop ctower and unfreeze the legacy ctower-project tools; no ctower write is yet authoritative for that project. After the barrier, never resume dual writing. Roll back to the last compatible ctower build, keep clients in explicit spool/read-only mode, restore accepted records if required, reconcile journals, and re-enable writes only after integrity is known. An import omission after cutover is repaired through an authenticated provenance-bearing correction command, never by editing the legacy source.
 
-### Increment 2 — exactly one end-to-end software-factory golden path on `bin/mux`
+### Increment 2 — autonomous generic workflow and one software-factory golden path
 
 #### I2 outcome
 
-One permanent ticket moves through every default software-factory stage on the local `bin/mux` runner, survives a forced runner loss, passes independent review/QA, produces versioned docs and criterion-bound evidence, merges, deploys through effect-brokered staging and production, passes live verification, records a retro, resolves, and closes without operator status chasing.
+The same generic Workflow Module now drives arbitrary versioned graphs and policies. A capability-resolved Commander retains ticket custody, dispatches local durable agent jobs, evaluates current proof, applies package-specific bounded verification/repair, brokers release effects, and continues through production verification and retro. One permanent software-factory ticket proves the whole path without operator status chasing.
 
 #### The one golden ticket
 
-`CT-I2-010` is the golden ticket and has the concrete outcome: **add an authenticated read-only `GET /v1/meta/build` endpoint and matching `ctl meta build` command that report service version, source digest, database schema version, runner-protocol version, deployed environment, and current release ID.**
+`CT-I2-010` adds an authenticated read-only `GET /v1/meta/build` operation and matching `ctl meta build` command reporting service version, source digest, database schema version, runner-protocol version, deployed environment, and current release ID.
 
-This is a real, independently valuable operational feature with API/CLI parity, tests, documentation, staging/prod verification, and no UI taste or new architecture/security-boundary decision. It receives the **standard** policy floor: the strongest-healthy Commander records an initial two-round/two-repair `orchestration_plan`, mandatory independent Review, API/CLI QA, documentation verification, release preflight, staging QA, production smoke/live QA, and retro; it may raise rigor through 5 only if evidence warrants it. The deploy effects are brokered. Exactly one forced `bin/mux` runner-loss/recovery event occurs during implementation and must resume from a durable checkpoint, while Commander accountability survives its own forced reasoning-job failover.
+The pinned `engineering.software-factory@1` policy selects, for this ticket only, one required `code-review` perspective covering correctness plus maintainability, `max_nonpassing_rounds: 2`, `max_repairs_per_lineage: 2`, and `max_candidate_generations: 4`. Every started review job increments the immutable observed `total_executions`; it is never plan-authored capacity. These are software-package values, not platform tiers, and automation is additionally bounded by no-progress, deadline, quota, and hard-safety rules. One current-digest `code-review` pass advances the review bundle immediately; only a terminal nonpassing round consumes `max_nonpassing_rounds`. API/CLI QA, documentation verification, release preflight, staging QA, production smoke/live QA, and retro remain mandatory stage gates rather than extra review perspectives; the ticket also forces one local runner loss and one Commander reasoning-job failover.
 
 #### I2 included scope
 
-1. One published `engineering.software-factory@1` Workflow `VersionedComponent` plus separately pinned Execution/Gate/Evidence policies containing only the required default graph, stage contracts, typed failure routes, D9 Commander-selected limits with low=1, standard=2, elevated/critical=3 floors and ceiling 5, and fixed risk/overlay hooks. No Factory aggregate/service or visual/general policy editor.
-2. Workflow runs, stage definitions/instances/attempts, separate accountable owner/executor/reviewer assignments, criteria/evidence dependency invalidation, immutable gate instances/verdict attempts, and fixed sealed-review support.
-3. Minimal keyed document/artifact revisions for think, plan, design applicability, implementation summary, documentation, release manifest, and retro.
-4. Versioned Commander capability resolution/orchestration plans plus content-bearing Persona/Skill/Profile materializations and per-attempt `HarnessSpec` + `SupervisorSpec` + `TargetSpec` + `WorkspaceSpec` + `TelemetrySpec`, local `EnvironmentRevision`/`ImageRevision`, and `PlacementDecision` pins sufficient for the golden roles.
-5. Durable accepted/leased/running/terminal queue, leases/fencing, cursors, command ACKs, continuous log chunks/gaps, capability-aware `LIVE_INPUT`/`INTERRUPT_AND_RESUME`, checkpoint/reconciler, one real local Target with `bin/mux` tmux Supervisor, and deterministic fake remote/image provider fixtures. No real remote provider or image factory.
-6. Thin built-in five-surface UI over proven Interfaces, with full Ticket journey: stage map, structured replay plus optional terminal compatibility, ACK/gap/placement/component facts, comments/steer, five assignment lanes, documents, criteria/evidence, gates, latest accepted/refused readiness evaluation, delivery/incidents, cost, timeline, and retro. Extensions cannot add routes or write views.
-7. Deterministic standard risk bundle plus UI/architecture/security overlay hooks; author independence and sealed reveal mechanics needed by the golden path tests. No automatic risk classifier or generic rule editor.
-8. Changes, release candidate, named `ctower-staging`/`ctower-production` environments, live `systemd-vps/v1` release-supervisor integration plus deterministic fake, deployment/verification, effect grant/receipt, provider cursor reconciliation across self-restart, incident/rollback path, and rollback verification.
-9. Cost/usage capture and explicit allocation for the one ticket; attention, retry, wait, recovery, defect, effect, and retro KPI source events.
-10. The golden ticket itself, including live staging and production evidence, forced runner loss, retro, resolution, closure, and a post-run trace audit.
-
-General Extension Host execution, marketplace, arbitrary workers/migrations/UI, production remote Targets,
-Crabbox, custom-image capture/admin, warm pools, and broad connectors remain `not exercised`; the golden
-trace makes no claim otherwise. Only the real Seams required above have two justified Adapters/conformance.
+1. Complete the deep generic Workflow Module behind the I1 interface: arbitrary pinned graphs, stage attempts/jobs, package-defined classification, required perspectives and gates, configurable finite bounds, stable failure lineages, candidate/nonpassing/repair/execution facts, selective proof invalidation, typed routes, operator waivers, and readiness explanations.
+2. Versioned Commander capability resolution, durable accountable custody, orchestration-plan revisions, strongest-healthy profile selection, wake/reasoning jobs, checkpoints, escalation, and recovery without counter or ownership reset.
+3. Content-bearing Persona/Skill/Profile materialization; full evidence attestations and dependency graph; independent/sealed review where the pinned package requires it.
+4. Durable accepted/leased/running/terminal jobs, leases/fencing, cursors, ACKs, continuous structured chunks and explicit gaps, checkpoint/reconciliation, and the local Codex/Claude harness plus process/tmux supervisor compositions required by the golden ticket. No general remote-provider or image Seam.
+5. Complete the thin five-surface experience over proven module interfaces: Home, Board, contextual Ticket, Fleet, and Analytics, including live structured run, steering, readiness refusal, current proof, delivery/incidents, cost, and retro.
+6. Changes/release candidate, named staging and production environments, scoped effect grants/receipts, one live `systemd-vps/v1` integration, and its fault-injection test implementation. This remains an internal Effects boundary rather than a generalized provider Seam. The root release supervisor independently verifies bytes, signature/attestation, subject, and trusted builder/workflow against root-owned policy before install; the application digest is intent only.
+7. Production smoke/live-QA incident, grant revoke, safe containment/rollback, exact-environment verification, triage-before-repair, and append-only retro/improvement evaluation.
+8. The golden ticket itself, including current-digest review/QA, forced losses, docs, signed release, staging/production proof, rollback rehearsal, retro, resolution, closure, and one compact traceability report.
 
 #### I2 exit evidence
 
-- Every [Workflow](#workflow), [Release](#release), and [Runtime recovery](#runtime-recovery) criterion passes for the fixed path, plus every cross-cutting criterion used by the ticket.
-- Ticket detail reconstructs the complete journey without legacy ledgers, task/status files, raw terminal logs, or vendor session state.
-- Forced runner death is detected within 60 seconds; replacement fencing rejects the stale result and resumes within five minutes from the checkpoint.
-- Review/QA identities differ from the author; input digests match; a deliberate pre-gate artifact edit invalidates proof and blocks progression in a test run.
-- Commander capability resolution selects the strongest healthy eligible profile, forced Commander-job loss continues the same accountable principal, and plan selection/amendment/counters survive restart without reset; under-floor, removed-gate, and over-ceiling plans are denied.
-- Staging and production deploy each use the named environment/provider records and have grant, supervisor receipt/audit ID, observed digest, and independent environment verification. Fake crash fixtures pass; live evidence proves ctower self-restart receipt recovery. Injected smoke/live-QA failure creates an incident, verified rollback, and triage before the successful production attempt.
-- The real production `GET /v1/meta/build` and `ctl meta build` outputs agree on all fields and report the release ID/digest that the ticket delivered.
-- Retro records attention, cost, stage wait, retries, runner recovery, gate outcomes, release evidence, and one evidence-backed process-improvement or no-change decision.
+- Generic software and non-engineering fixtures prove stage names, classification, perspectives, gates, and finite limits are package data rather than engine branches or universal tiers.
+- Every plan field is policy-valid; consumed facts are server-owned and survive restart/reassignment. Missing required gates/perspectives, invalid bounds, client counters, non-independent reviewers, and exhausted lineages fail closed with one escalation.
+- Ticket detail reconstructs the journey without legacy ledgers, task/status files, raw terminal state, or vendor session state.
+- Forced runner loss is detected within 60 seconds, stale fencing is rejected, and checkpointable work resumes within five minutes. Commander-job loss preserves the same accountable principal and plan history.
+- Review/QA identities differ from the author, input digests match, and a deliberate candidate mutation invalidates exactly dependent proof.
+- Root-owned trust policy rejects wrong, missing, revoked, or untrusted release provenance before install. Staging and production have distinct grants, receipts, observed digests, and independent live verification; injected smoke failure creates an incident and verified rollback before the successful attempt.
+- `GET /v1/meta/build` and `ctl meta build` agree, and the retro records attention, cost, wait, retries, recovery, gate yield, release evidence, and an evidence-backed improvement or no-change decision.
 
 #### I2 designated validation commands
 
 ```bash
 uv run pytest tests/acceptance/increment-2 -q
-uv run pytest tests/conformance/runner tests/conformance/effect-provider tests/conformance/remote-provider -q
+uv run pytest tests/conformance/runner tests/conformance/effect-provider -q
 uv run python -m ctower_contracts workflow validate packs/workflows/engineering.software-factory/v1.yaml
 ctowerctl ticket verify CT-I2-010 --require workflow-complete,evidence-current,gates-valid,staging-verified,production-verified,retro,resolved,closed
 ctowerctl run recovery-report --ticket CT-I2-010 --require loss-detected-under=60s,resumed-under=5m,orphans=0
@@ -3839,47 +2833,31 @@ ctowerctl release live-verify --ticket CT-I2-010 --endpoint /v1/meta/build
 
 #### I2 rollback
 
-- A server feature flag stops new workflow starts and runner offers while preserving all recorded tickets/runs. Active work is drained or cancelled through durable commands; no workflow history is deleted.
-- A runner-adapter defect falls back to manual `bin/mux` operation **through ctower job/command records**, not through legacy ticket state. The operator sees degraded automation and explicit recovery ownership.
-- A failed staging/production release follows effect-receipt reconciliation and the tested release rollback/incident path. Database/event records are forward-preserved even when application binaries roll back.
-- If the fixed workflow contract is defective, publish a corrected version and explicitly migrate or restart the non-production run. The golden production ticket remains pinned to the version that actually executed.
+A feature flag stops new workflow starts and job offers while preserving every ticket/run. Active jobs drain or cancel through durable commands. A local runner defect falls back to manual `bin/mux` operation through ctower job/command records, not legacy ticket state. A release failure follows receipt reconciliation and the tested incident/rollback path. A defective Workflow or policy is superseded by a new version; historical and production runs retain the version that actually executed.
 
 ### Explicit do-not-build-yet list
 
-The following wait until both increments pass and the golden-path retro justifies them:
+Until both increments and the golden-path retro justify expansion, do not build:
 
-- A second workflow/domain template or general service catalog.
-- Visual workflow, risk, gate, or policy editors.
-- Automatic LLM risk classification as authority.
-- General double-blind review marketplaces beyond the fixed engine mechanics.
-- Registered multi-host placement pools, remote VPS runners, Kubernetes, Daytona, Modal, Sprites, or other sandbox catalogs.
-- Production Crabbox/provider credentials, custom-image builder/browser terminal, warm pools/caches, and general environment/image Admin runtime; only L0 contracts and fake conformance are in scope.
-- Rich structured livestream collaboration, transcript search, or browser IDE replacement.
-- Full Fleet administration/editor UX, org-chart navigation, goals/projects top-level pages, or broad Analytics suite.
-- General effect brokerage beyond the staging/production integration proven by the golden ticket.
-- Broad inbound gateways/connectors, multi-domain routines, and night-watch automation.
-- gbrain/knowledge-base automation beyond linking a retro artifact.
-- Multi-tenant commercialization, public signup, HA control plane, arbitrary extension workers, executable third-party UI/migrations, plugin SDK/marketplace, advanced chargeback, or generalized legal-retention tooling.
+- a second production workflow package, visual workflow/risk/gate/policy editor, or automatic LLM classification authority;
+- registered multi-host pools, remote VPS runners, Crabbox/provider credentials, Kubernetes/sandbox catalogs, custom-image builder/browser terminal, warm pools, or shared caches;
+- rich transcript search, browser IDE replacement, full Fleet administration, org-chart/goals/projects top-level surfaces, or broad Analytics;
+- general effect brokerage beyond the staging/production integration;
+- broad inbound connectors, generalized routines, or knowledge-base automation;
+- arbitrary extension workers, executable third-party UI/migrations, plugin marketplace, multi-tenant commercialization, public signup, HA control plane, advanced chargeback, or generalized legal-retention tooling.
 
-No additional operator decision is required to begin the unconditional L0, Increment 1, or Increment 2
-work as specified. CT-L0-008 and the task-management portion of CT-I2-009 remain explicitly conditional on
-operator confirmation and must not become product behavior from this document alone. Operator taste remains
-an ordinary gate for the Home implementation, and any newly discovered architecture/security boundary
-follows the operator-only gate rule; those are execution gates, not missing specification choices.
+No additional operator decision is required to start L0, I1, or I2 as written. The task-management model is approved. Operator taste remains a normal gate for material UI choices; a newly discovered architecture/security boundary or destructive action remains an operator-only gate.
 
 ## Temporary bootstrap backlog
 
 ### Contract and import rule
 
 ctower has no ticket API yet. The 27 stable IDs below—9 L0 preconditions, 8 I1 items, and 10 I2
-items—are therefore the temporary source of implementation work. They are **not claims that tickets already
-exist**. Each item must be captured into the current durable request/crew process while building I1. Once
-the ctower ticket API and cutover exist, import these IDs exactly once as external aliases, record each
-item's current disposition, and move all live status/comments/assignments/evidence into ctower. After import,
-this section retains dependency and increment definitions only; it is never updated as a competing board.
-CT-L0-008 records the pending task-management recommendation and does not authorize product implementation
-until operator confirmation; its contract fixtures may still prove the proposed axes do not corrupt core
-authority.
+items—are therefore the temporary source of implementation work; they are not claims that tickets already
+exist. Each is captured in the current durable request process until I1 can import every ID exactly once as
+an external alias with its disposition, status, comments, assignments, and evidence. After the ctower-project
+source-of-truth barrier, this section retains dependency and increment definitions only and is never updated
+as a competing board. The task-management model in CT-L0-008 is operator-approved.
 
 Each validation command below is designated as part of the item’s deliverable. A missing test/module is a failing item, not a reason to substitute an ad hoc command.
 
@@ -3887,15 +2865,15 @@ Each validation command below is designated as part of the item’s deliverable.
 
 | Stable ID | Goal | Dependencies | Owning capability/persona | Files/components | Exit evidence | Designated validation command |
 |---|---|---|---|---|---|---|
-| CT-L0-001 | Freeze the closed DDL/authority/FK inventory for kernel record, component Catalog, tickets/task facts, Workflow/Proof, Runtime/effective manifests, remote environment/image/placement/provider observations, effects, imports, outbox, and projections. | None | Engineer + Engineering Manager + CSO review | `packages/ctower-kernel/migrations/`; `contracts/domain/`; `contracts/execution/` | FK/owner equality, privileges/immutability, future-pointer/reference-safe-GC, projection rebuild | `uv run pytest tests/contracts/repository tests/contracts/execution tests/modules/record -q` |
+| CT-L0-001 | Freeze authoritative DDL/FKs for Record, Catalog, Work, Workflow/Proof, Runtime, effects, imports, outbox, and projections; record only durable invariant fields needed to add future placement/image packages without publishing their Seams. | None | Engineer + Engineering Manager + CSO review | `packages/ctower-kernel/migrations/`; `contracts/domain/`; `contracts/execution/` | FK/owner equality, privileges/immutability, reference-safe GC, projection rebuild | `uv run pytest tests/contracts/repository tests/contracts/execution tests/modules/record -q` |
 | CT-L0-002 | Freeze canonical event bytes/hash chain, `Idempotency-Key=client_command_id`, replay tombstones, CAS, and cross-process vectors. | CT-L0-001 | Engineer + Review | `contracts/domain/events/`; `tests/contracts/events/` | Mutation proof, day29/multi-aggregate exact replay and conflict vectors | `uv run pytest tests/contracts/events -q` |
 | CT-L0-003 | Freeze canonical OpenAPI/RFC 9457, operation IDs, generated clients, CLI parity registry, and protected-command schemas. | CT-L0-001 | Engineer + Tech-writer | `contracts/http/`; `generated/`; `tests/conformance/http/` | Lint/examples, clean codegen, zero unmapped nonexempt operations | `just codegen-check && uv run pytest tests/conformance/http -q` |
-| CT-L0-004 | Freeze generic Workflow/Execution/Gate/Evidence policies, D9 plan/counters/lineages, wake/reasoning-run/lease-heartbeat/scheduler-beat vocabulary, versioned Routine/cron/watchdog contracts, five-component runner protocol, `RemoteExecutionProviderAdapter`, placement/image/no-colocation, ACK/cursor/gap, and fail-closed composition. | CT-L0-001..003 | Engineering Manager + Engineer + CSO | `contracts/workflow/`; `contracts/runner/`; `contracts/execution/`; `contracts/runtime/`; `packs/workflows/`; `packs/policies/`; `packs/routines/` | Floors/ceiling/no-reset; clock/timezone/DST/catch-up/restart/watchdog vectors; component/remote fake vectors; exact-ID, stale epoch, image mismatch and no-colocation negatives | `uv run pytest tests/contracts/workflow tests/contracts/execution tests/contracts/runtime tests/conformance/runner -q` |
-| CT-L0-005 | Build one canonical acceptance/chaos fixture corpus and evidence-manifest format for both increments, including provider/capture/image/terminal/host/log/finalize/GC failures. | CT-L0-001..004 | QA + Engineer | `tests/fixtures/`; `tests/chaos/`; `contracts/evidence/` | Deterministic tenant/principal/provider/clock corpus, seeded-secret and fault manifests | `uv run pytest tests/contracts/evidence tests/chaos/contracts -q` |
+| CT-L0-004 | Freeze domain-neutral Workflow/Execution/Gate/Evidence schemas, configurable plan fields, server-owned counters/stable lineages, revision-pinned Routine/trigger and wake/job/lease/cursor/ACK/gap vocabulary, four-stage fixture, and local execution composition. Record remote/image/extension fail-closed invariants as deferred; create no general provider Seam. | CT-L0-001..003 | Engineering Manager + Engineer + CSO | `contracts/workflow/`; `contracts/runner/`; `contracts/execution/`; `contracts/runtime/`; `packs/workflows/`; `packs/policies/`; `packs/routines/` | Cross-package/no-reset/exhaustion and clock/DST/restart vectors; forbidden stage-name branch; local composition; deferred capability manifest | `uv run pytest tests/contracts/workflow tests/contracts/execution tests/contracts/runtime tests/conformance/runner -q` |
+| CT-L0-005 | Build the canonical acceptance/chaos fixture corpus and evidence-manifest format for both increments, including off-host acknowledgement, restore/key/journal, browser/CLI/outbox poison, local host/log/finalize, and deferred-capability failures. | CT-L0-001..004 | QA + Engineer | `tests/fixtures/`; `tests/chaos/`; `contracts/evidence/` | Deterministic tenant/principal/clock corpus, acceptance-loss and fault manifests | `uv run pytest tests/contracts/evidence tests/chaos/contracts -q` |
 | CT-L0-006 | Publish all required Persona/Skill/Profile component revisions, migration provenance, fixtures, aliases, and harness materializations; reject unresolved content refs. | CT-L0-003, CT-L0-004 | Engineering Manager + owning personas + Review | `packs/personas/`; `packs/skills/`; `tests/contracts/components/` | Content for office-hours/plan/design/review/ui-qa; source digests; missing-content/alias/conformance denials | `uv run pytest tests/contracts/components/test_materialization.py -q` |
 | CT-L0-007 | Establish the docs-first monorepo skeleton, Repository Policy Module, coding standards, strict lint/type/format/security/pre-commit/observability configs, manifest-scoped `just check`/`just verify`, Python compatibility gate, dependency/ownership rules, universal `VersionedComponent` Catalog, CompanyBundle and first-tenant bootstrap schemas/examples, generated-client path, and deployment homes. | None | Engineering Manager + Engineer + CSO | Root manifests/configs; `docs/contributing/CODING_STANDARDS.md`; `tools/checks/`; `tests/repository/`; `contracts/observability/`; `deploy/observability/`; `contracts/components/`; `contracts/company/`; `company/` | AC-ADM/COMP/ARCH/QUAL vectors, exact runtime report, expected-suite manifest, bootstrap authority/replay/disable matrix, bundle round trip/no-secret/no-runtime matrix, Interface/deletion/size/complexity/exception/telemetry/cycle/owner/codegen clean | `just check && just verify` |
-| CT-L0-008 | Freeze the pending task-management recommendation: P0/P1/P2, typed blockers/intents, deterministic six-lane Board fold, delivery/stage orthogonality, five assignment lanes, and starvation-bound scheduling. Do not implement product behavior before operator confirmation. | CT-L0-001, CT-L0-003, CT-L0-004, CT-L0-007 | Engineer + Engineering Manager + QA | `contracts/domain/task-management/`; `packs/policies/scheduling/`; `tests/contracts/task-management/` | AC-TM truth tables, no-status-patch, rebuild, fairness/restart and DONE-vs-Done vectors | `uv run pytest tests/contracts/task-management -q` |
-| CT-L0-009 | Freeze trusted Extension Host authority, data-only manifests, request/grant, isolation/lifecycle/rollback, contextual five-surface slots, and deletion/two-Adapter registry; no general runtime. | CT-L0-003..007 | CSO + Engineer + Designer/Review | `contracts/extensions/`; `tests/contracts/extensions/`; `packs/ui/contextual-slots-v1.yaml` | AC-EXT authority denial, no-code parse, revoke, five-route, deferred-evidence and Seam registry | `uv run pytest tests/contracts/extensions -q` |
+| CT-L0-008 | Freeze approved P0/P1/P2, typed blockers/intents, lifecycle, deterministic six-lane Board fold from readiness/blockers/stage `activity_class`, workflow-stage and typed-delivery orthogonality, five assignment lanes, and starvation-bound scheduling. | CT-L0-001, CT-L0-003, CT-L0-004, CT-L0-007 | Engineer + Engineering Manager + QA | `contracts/domain/task-management/`; `packs/policies/scheduling/`; `tests/contracts/task-management/` | AC-TM truth tables, no-status-patch, rebuild, fairness/restart, and no-label-casing semantics | `uv run pytest tests/contracts/task-management -q` |
+| CT-L0-009 | Freeze host-rendered declarative extension authority and denial plus deferred executable-extension invariants. Maintain a deletion/Adapter registry; publish no general executable-extension Seam/runtime. | CT-L0-003..007 | CSO + Engineer + Designer/Review | `contracts/extensions/`; `tests/contracts/extensions/`; `packs/ui/contextual-slots-v1.yaml` | Authority denial, no-code parse, five-route lock, explicit deferred evidence, and Seam registry | `uv run pytest tests/contracts/extensions -q` |
 
 ### I1 implementation backlog
 
@@ -3903,27 +2881,27 @@ Each validation command below is designated as part of the item’s deliverable.
 |---|---|---|---|---|---|---|
 | CT-I1-001 | Deliver pinned control artifact and composition roots for `ctower-api`/control worker, Postgres migrator/service/projection roles, one-use local/private first-tenant trust-root ceremony, dev compose, and private VPS deploy units. | CT-L0-001, CT-L0-003, CT-L0-007 | Engineer + DevOps + CSO | `apps/ctower-api/`; `packages/ctower-kernel/`; `contracts/http/`; `deploy/`; `images/control/` | Clean atomic bootstrap/permanent disable, checksum/privilege/dependency tests, private TLS health | `uv run pytest tests/acceptance/increment-1/test_bootstrap.py tests/modules/record -q` |
 | CT-I1-002 | Implement Access/Record/Work append, dedupe/tombstones-before-CAS, hash/outbox/cursors, ticket/lifecycle/custody/relations, and Catalog pins needed by I1. | CT-I1-001, CT-L0-002, CT-L0-007 | Engineer + independent Review | Kernel `access/`, `record/`, `work/`, `catalog/` | Concurrency, exact replay, authz/hash, outbox gap/rebuild, component pin proofs | `uv run pytest tests/modules/record tests/modules/work tests/modules/catalog -q` |
-| CT-I1-003 | Implement Proof basics: criteria/freeze, digest objects/artifacts, evidence, human gates, invalidation, and server resolve/close. | CT-I1-002, CT-L0-005 | Engineer + QA + CSO | Kernel `proof/`; `contracts/evidence/`; object Adapter | No-proof-no-done, protected-event, corrupt-object, dependency invalidation suite | `uv run pytest tests/modules/proof tests/acceptance/increment-1/test_resolution.py -q` |
+| CT-I1-003 | Implement Proof basics plus the final generic evaluator subset for `ctower.trust-spine-four-stage@1`: criteria/freeze, artifacts/evidence, human gates, invalidation, legal edges, activity metadata, and server resolve/close. | CT-I1-002, CT-L0-004..005 | Engineer + QA + CSO | Kernel `proof/`, `workflow/`; `contracts/evidence/`; four-stage pack | No-proof-no-close, protected-event, corrupt-object, invalidation, graph interpretation, and forbidden-name-branch suite | `uv run pytest tests/modules/proof tests/modules/workflow tests/acceptance/increment-1/test_four_stage_workflow.py -q` |
 | CT-I1-004 | Implement `ctowerctl`/`ctl`, generated API client, ordered spool/ACK/quarantine, CompanyBundle validate/plan/apply/export, and API/CLI parity. | CT-L0-003, CT-L0-007, CT-I1-002 | Engineer + QA | `apps/ctowerctl/`; `generated/python/ctower-client/`; `contracts/company/` | Kill/replay/two-writer/disk/poison chaos plus AC-COMP-03 | `uv run pytest tests/acceptance/increment-1/test_ctl.py tests/contracts/company -q` |
-| CT-I1-005 | Implement minimal Home omnibox/strict Needs You and locked exactly-five-route shell with trustworthy health/unknown; extension slots remain host-rendered and non-authoritative. | CT-I1-002, CT-I1-003, CT-L0-009 | Designer + UI QA; operator taste gate when material | `apps/ctower-web/src/surfaces/home/`; `routes.ts`; kernel `attention/`, `projections/` | Precision/recall, <=60 s coalesce/removal, route lock, every-control UI QA, <10 s and unknown screenshots | `uv run pytest tests/acceptance/increment-1/test_needs_you.py && pnpm exec playwright test tests/acceptance/increment-1` |
-| CT-I1-006 | Implement scheduler/wake/outbox/projection/health loops, Routine occurrence and continuation transactions, lease/ticket/effect watchdog detectors, backups/anchors, synthetic lifecycle, restore and reboot drills. | CT-I1-001..005 | DevOps + Engineer + independent QA | `apps/ctower-api/src/ctower_api/worker.py`; kernel runtime/projections/attention; `deploy/`; `docs/runbooks/` | Duplicate/DST/catch-up/restart recovery; detector fingerprints/watermarks; five synthetic runs; restore/reboot targets and anchors | `uv run pytest tests/acceptance/increment-1/test_operations.py -q` |
-| CT-I1-007 | Execute frozen-source export/cluster/alias/import/correction, atomically rewire clients, and detect split brain; import uses generated HTTP client only. | CT-I1-004..006 | Engineer + Commander verification + Review | `tools/migration/mission-control/`; generated client | Reviewed dispositions, two-run diff, correction provenance, zero legacy writes | `uv run pytest tests/acceptance/increment-1/test_cutover.py -q` |
-| CT-I1-008 | Archive complete I1 contracts, security, extension-denial/deferred, chaos, UX, restore, migration, and operations evidence; issue go/no-go. | CT-L0-001..009, CT-I1-001..007 | Independent QA + Review + CSO | `tests/acceptance/increment-1/`; evidence objects | Applicable ACs pass/no red gate; remote/general extension runtime explicitly not exercised | `uv run pytest tests/acceptance/increment-1 tests/contracts -q` |
+| CT-I1-005 | Implement thin Home, Board, and contextual/direct Ticket inside the five-surface shell, with trustworthy health, priority/owner/blocker controls, `activity_class` lane fold, proof, typed delivery, timeline, and visibly pending browser commands. | CT-I1-002..003, CT-L0-008..009 | Designer + UI QA; operator taste gate when material | `apps/ctower-web/src/surfaces/{home,board,ticket}/`; `routes.ts`; kernel `attention/`, `projections/` | Every-control UI QA, Board truth table, command reconnect, <10 s Home, and unknown screenshots | `uv run pytest tests/acceptance/increment-1/test_needs_you.py tests/acceptance/increment-1/test_board.py && pnpm exec playwright test tests/acceptance/increment-1` |
+| CT-I1-006 | Implement off-host-ack acceptance, Routine occurrence/scheduler, outbox/projection/health loops, backups/anchors, encrypted artifacts, vault/KMS recovery, poison handling, synthetic four-stage lifecycle, signed restore expected-source inventory, fail-closed isolated journal reconciliation, and real reboot drills. | CT-I1-001..005 | DevOps + Engineer + independent QA | Control worker; kernel record/runtime/projections/attention; `packs/routines/`; `deploy/`; runbooks | Host-loss RPO0, `durability_pending`, duplicate/DST/restart and poison visibility, five synthetic runs, key restore, explicit I1 root/effect/provider `not_exercised`/zero-source entries, activated-source absence denial, reboot targets | `uv run pytest tests/acceptance/increment-1/test_operations.py -q` |
+| CT-I1-007 | Freeze/export/alias/import/correct and atomically rewire **ctower-project** clients; detect split brain and reject legacy writes. Import uses the generated HTTP client only. | CT-I1-004..006 | Engineer + Commander verification + Review | `tools/migration/ctower-project/`; generated client | Reviewed dispositions, two-run diff, correction provenance, exact aliases, and zero post-barrier legacy writes | `uv run pytest tests/acceptance/increment-1/test_cutover.py -q` |
+| CT-I1-008 | Archive complete I1 contracts, security, deferred-capability, chaos, UX, first-success, restore, migration, baseline, and operations evidence; issue ctower-project dogfood go/no-go. | CT-L0-001..009, CT-I1-001..007 | Independent QA + Review + CSO | `tests/acceptance/increment-1/`; evidence objects | Applicable ACs pass/no red gate; future remote/image/executable-extension runtime explicitly not exercised | `uv run pytest tests/acceptance/increment-1 tests/contracts -q` |
 
 ### I2 implementation backlog
 
 | Stable ID | Goal | Dependencies | Owning capability/persona | Files/components | Exit evidence | Designated validation command |
 |---|---|---|---|---|---|---|
-| CT-I2-001 | Implement generic Workflow Module plus named `engineering.software-factory` Workflow/Execution/Gate/Evidence components, D9 limits/topology, append-only rounds/repairs, stable lineage, typed routes and readiness evaluations. | CT-I1-008, CT-L0-004, CT-L0-006, CT-L0-007 | Engineer + Engineering Manager | Kernel `workflow/`; `packs/workflows/`; `packs/policies/execution/` | AC-COMP-02, graph/lineage/no-reset/round/refusal/single-escalation proofs | `uv run pytest tests/modules/workflow tests/acceptance/increment-2/test_workflow.py -q` |
+| CT-I2-001 | Deepen the generic Workflow Module and publish `engineering.software-factory@1` Workflow/Execution/Gate/Evidence revisions: arbitrary stages, package classification, `required_perspectives`, configurable finite bounds, append-only facts, stable lineages, typed routes, and readiness evaluations. | CT-I1-008, CT-L0-004, CT-L0-006..007 | Engineer + Engineering Manager | Kernel `workflow/`; `packs/workflows/`; `packs/policies/execution/` | Cross-package graph/lineage/no-reset/refusal/single-escalation proofs | `uv run pytest tests/modules/workflow tests/acceptance/increment-2/test_workflow.py -q` |
 | CT-I2-002 | Implement keyed documents/artifacts, full evidence/attestations/dependencies/invalidation, gate instances and sealed verdict attempts. | CT-I2-001, CT-I1-003 | Engineer + Review + CSO | Kernel `proof/`; `contracts/evidence/` | Self-review denial, sealed reveal, selective invalidation, quarantine promotion | `uv run pytest tests/modules/proof tests/acceptance/increment-2/test_gates.py -q` |
-| CT-I2-003 | Implement strongest-healthy Commander profile resolution and effective manifests pinning all five execution components, local environment/image/placement, secret refs, egress/resources, and provenance. | CT-I2-001, CT-L0-007 | Engineer + CSO | Kernel `catalog/`, `runtime/`; `packs/personas/`; `apps/ctower-runner/compose.py` | Selection/failover, support-only denial, immutable pins, actual image and no-plaintext scans | `uv run pytest tests/modules/catalog tests/modules/runtime/test_profiles.py -q` |
-| CT-I2-004 | Implement Runtime jobs/leases/fencing/cursors/ACKs/log chunks/gaps/checkpoints/reconciler, local runner with process/tmux Supervisors and Codex/Claude Harnesses, plus deterministic fake remote/image provider faults. | CT-I2-001, CT-I2-003, CT-L0-009 | Engineer + DevOps + QA | Kernel `runtime/`; `packages/ctower-runner-sdk/`; `apps/ctower-runner/`; root conformance tests | AC-RUN-07..14; forced loss/resume, stale denial, zero orphans; real remote explicitly not exercised | `uv run pytest tests/conformance/runner tests/conformance/remote-provider tests/chaos -q` |
-| CT-I2-005 | Implement thin five-surface built-in UI and Ticket journey with manifest/placement/ACK/gap facts, comments/steering, five ownership lanes, proof/delivery timeline, and readiness refusal. | CT-I2-002, CT-I2-004, CT-L0-009 | Designer + UI QA | `apps/ctower-web/src/surfaces/`; generated TS client | Exactly-five routes, every-control trace, replay/gap/steer modes, accepted/refused zero-diff screenshots | `pnpm exec playwright test tests/acceptance/increment-2` |
-| CT-I2-006 | Implement risk/overlay and Execution Policy evaluation, mandatory stage gates versus review topology, Commander-selected limits, independence/conflict/diversity, ceiling/waiver, standard/elevated fixtures. | CT-I2-002, CT-I2-003 | Engineering Manager + Engineer + CSO | Kernel `workflow/`, `access/`; policy packs | Floor/ceiling/removal/client-count denials, 3/3 then max4 trace and dispatch counts | `uv run pytest tests/modules/workflow/test_risk_policy.py -q` |
-| CT-I2-007 | Implement Effects releases/environments and `systemd-vps/v1` real + fake Adapters, scoped grants/receipts, self-restart journal recovery, and provider reconciliation. | CT-I2-006, CT-I2-004 | DevOps + Engineer + CSO | Kernel `effects/`; `packages/ctower-systemd-vps/`; `deploy/systemd/`; effect conformance | Wrong-target/expired/direct denials, fake crash matrix, real staging/prod digest and self-upgrade recovery | `uv run pytest tests/modules/effects tests/conformance/effect-provider -q` |
+| CT-I2-003 | Implement strongest-healthy Commander profile resolution and effective manifests pinning the local harness/supervisor/target/workspace/telemetry revisions, secret refs, egress/resources, and provenance. | CT-I2-001, CT-L0-007 | Engineer + CSO | Kernel `catalog/`, `runtime/`; `packs/personas/`; `apps/ctower-runner/compose.py` | Selection/failover, support-only denial, immutable local pins, and no-plaintext scans | `uv run pytest tests/modules/catalog tests/modules/runtime/test_profiles.py -q` |
+| CT-I2-004 | Implement Runtime jobs/leases/fencing/cursors/ACKs/log chunks/gaps/checkpoints/reconciler and the justified local process/tmux plus Codex/Claude compositions. Publish no general remote/image Seam. | CT-I2-001, CT-I2-003 | Engineer + DevOps + QA | Kernel `runtime/`; `packages/ctower-runner-sdk/`; `apps/ctower-runner/`; conformance tests | Forced loss/resume, stale denial, zero orphans, local composition; remote/image absent and not exercised | `uv run pytest tests/conformance/runner tests/chaos -q` |
+| CT-I2-005 | Complete Fleet/Analytics and the rich Ticket journey over I1 surfaces with run manifest, local placement, ACK/gap, steering, readiness refusal, cost, incidents, and retro. | CT-I2-002, CT-I2-004, CT-L0-009 | Designer + UI QA | `apps/ctower-web/src/surfaces/`; generated TS client | Exactly-five routes, every-control trace, replay/gap/steer modes, accepted/refused zero-diff screenshots | `pnpm exec playwright test tests/acceptance/increment-2` |
+| CT-I2-006 | Implement package-defined classification/overlays and Execution Policy evaluation, mandatory stage gates, required perspectives, configurable limits, independence/conflict/diversity, protected waivers, and software/non-engineering fixtures. | CT-I2-002..003 | Engineering Manager + Engineer + CSO | Kernel `workflow/`, `access/`; policy packs | Missing/invalid-bound/removal/client-count/independence denials and coherent current-digest traces | `uv run pytest tests/modules/workflow/test_execution_policy.py -q` |
+| CT-I2-007 | Implement Effects releases/environments, one live `systemd-vps/v1` integration plus its fault-injection test implementation, scoped grants/receipts, root-owned artifact trust verification, self-restart journal recovery, and effect reconciliation. Activation must commit the signed expected-source inventory revision before the first grant/effect. Keep the boundary internal until a second real provider Adapter earns a public Seam. | CT-I2-006, CT-I2-004 | DevOps + Engineer + CSO | Kernel `effects/`; `packages/ctower-systemd-vps/`; `deploy/systemd/`; effect conformance | Wrong-target/expired/direct/provenance denials, pre-activation inventory-update proof, missing-source restore denial, crash matrix, real staging/prod digest, self-upgrade recovery, and no generalized provider Seam | `uv run pytest tests/modules/effects tests/conformance/effect-provider -q` |
 | CT-I2-008 | Implement production smoke/live-QA incident -> grant revoke -> safe containment/rollback -> exact verification -> triage-before-repair and retro linkage. | CT-I2-007 | DevOps + CSO + QA | Kernel `effects/`, `attention/`, `workflow/`; runbooks | Injected smoke/live-QA failures, rollback receipt/verification, direct-repair denial | `uv run pytest tests/acceptance/increment-2/test_incident_rollback.py -q` |
-| CT-I2-009 | Implement Projections/Analytics for cost allocation, strict Needs You, WIP age, stage/recovery/release/stream/placement KPIs, retro/improvements; implement AC-TM Board/priority/blockers only after operator confirmation. | CT-I2-001..008 | Engineer + Commander/Tech-writer review | Kernel `projections/`, `work/`; `apps/ctower-web/src/surfaces/analytics/` and conditional `board/` | Allocation=1, precision, WIP provenance, KPI watermarks, retro; conditional AC-TM evidence or explicit pending label | `uv run pytest tests/modules/projections tests/acceptance/increment-2/test_metrics.py -q` |
-| CT-I2-010 | Execute one golden ticket with Commander continuity, versioned budgets, forced Commander/runner loss, `/v1/meta/build` + `ctowerctl`, independent gates, live systemd staging/prod effects, smoke/live QA, failure/rollback/triage rehearsal, retro/resolve/close and full 53-step audit. | CT-I2-001..009 | Commander accountable to terminal; Engineer author; independent Review/QA/DevOps | Whole `ctower` deployment | All I2 evidence, component/placement pins, failover/receipts, permanent journey; no remote/general-extension runtime claim | `ctowerctl ticket verify CT-I2-010 --require workflow-complete,evidence-current,gates-valid,staging-verified,production-verified,retro,resolved,closed` |
+| CT-I2-009 | Implement Projections/Analytics for cost allocation, attention baseline, approved task-flow/priority/blocker measures, stage/recovery/release/stream/local-placement KPIs, retro, and improvement evaluation. | CT-I2-001..008 | Engineer + Commander/Tech-writer review | Kernel `projections/`, `work/`; Analytics surface | Allocation=1, precision, WIP provenance, KPI watermarks, baseline/absolute targets, and retro evaluation | `uv run pytest tests/modules/projections tests/acceptance/increment-2/test_metrics.py -q` |
+| CT-I2-010 | Execute the golden ticket with Commander continuity, configurable policy fields, forced Commander/runner loss, `/v1/meta/build` + `ctowerctl`, independent gates, signed root-verified systemd staging/prod effects, incident/rollback rehearsal, retro, resolve, close, and compact traceability audit. | CT-I2-001..009 | Commander accountable to terminal; Engineer author; independent Review/QA/DevOps | Whole `ctower` deployment | All I2 evidence, local component pins, failover/receipts, permanent journey; no remote/image/executable-extension claim | `ctowerctl ticket verify CT-I2-010 --require workflow-complete,evidence-current,gates-valid,staging-verified,production-verified,retro,resolved,closed` |
 
 ### Bootstrap backlog import completion
 

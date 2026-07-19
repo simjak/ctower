@@ -1,0 +1,69 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://ctower.dev/contracts/compatibility/matrix-input/v1",
+  "title": "ctower runtime compatibility matrix input",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema",
+    "matrix_id",
+    "uv_version",
+    "requirements",
+    "required_observations",
+    "product_artifacts",
+    "candidates"
+  ],
+  "properties": {
+    "schema": {"const": "ctower.compatibility-input/v1"},
+    "matrix_id": {"type": "string", "pattern": "^[a-z0-9][a-z0-9._-]+$"},
+    "uv_version": {"type": "string", "pattern": "^[0-9]+\\.[0-9]+\\.[0-9]+$"},
+    "requirements": {
+      "type": "array",
+      "minItems": 1,
+      "uniqueItems": true,
+      "items": {"type": "string", "pattern": "^[A-Za-z0-9_.-]+(?:\\[[A-Za-z0-9_,.-]+\\])?==[^=]+$"}
+    },
+    "required_observations": {
+      "type": "array",
+      "minItems": 1,
+      "uniqueItems": true,
+      "items": {"type": "string", "pattern": "^[a-z][a-z0-9_]+$"}
+    },
+    "product_artifacts": {
+      "type": "array",
+      "minItems": 1,
+      "uniqueItems": true,
+      "items": {"enum": ["release_helper_wheel", "generated_clients"]}
+    },
+    "candidates": {
+      "type": "array",
+      "minItems": 3,
+      "maxItems": 3,
+      "items": {"$ref": "#/$defs/candidate"}
+    }
+  },
+  "$defs": {
+    "candidate": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "version",
+        "gil",
+        "release_date",
+        "release_url",
+        "source_url",
+        "source_sha256",
+        "linux_image"
+      ],
+      "properties": {
+        "version": {"enum": ["3.12.13", "3.13.14", "3.14.6"]},
+        "gil": {"const": "required"},
+        "release_date": {"type": "string", "format": "date"},
+        "release_url": {"type": "string", "format": "uri", "pattern": "^https://www\\.python\\.org/"},
+        "source_url": {"type": "string", "format": "uri", "pattern": "^https://www\\.python\\.org/"},
+        "source_sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+        "linux_image": {"type": "string", "pattern": "^docker\\.io/library/python@sha256:[0-9a-f]{64}$"}
+      }
+    }
+  }
+}

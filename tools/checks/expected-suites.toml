@@ -10,7 +10,7 @@ phase = "CT-L0-007"
 status = "required"
 path = "tests/repository"
 patterns = ["test_*.py"]
-command = ["python3", "-m", "unittest", "discover", "-s", "tests/repository", "-v"]
+command = ["{python}", "-m", "unittest", "discover", "-s", "tests/repository", "-v"]
 timeout_seconds = 120
 
 [[suite]]
@@ -20,7 +20,17 @@ phase = "CT-L0-007"
 status = "required"
 path = "tests/contracts/l0"
 patterns = ["test_*.py"]
-command = ["python3", "-m", "unittest", "discover", "-s", "tests/contracts/l0", "-v"]
+command = ["{python}", "-m", "unittest", "discover", "-s", "tests/contracts/l0", "-v"]
+timeout_seconds = 120
+
+[[suite]]
+id = "runtime-compatibility-contract"
+owner = "CT-L0-007"
+phase = "CT-L0-007"
+status = "required"
+path = "tests/compatibility"
+patterns = ["test_*.py"]
+command = ["{python}", "-m", "unittest", "discover", "-s", "tests/compatibility", "-v"]
 timeout_seconds = 120
 
 [[suite]]
@@ -30,7 +40,7 @@ phase = "CT-I1-008"
 status = "deferred"
 path = "tests/acceptance/increment-1"
 patterns = ["test_*.py"]
-command = ["python3", "-m", "pytest", "tests/acceptance/increment-1", "-q"]
+command = ["{python}", "-m", "pytest", "tests/acceptance/increment-1", "-q"]
 timeout_seconds = 900
 
 [[suite]]
@@ -40,5 +50,5 @@ phase = "CT-I2-010"
 status = "deferred"
 path = "tests/acceptance/increment-2"
 patterns = ["test_*.py"]
-command = ["python3", "-m", "pytest", "tests/acceptance/increment-2", "-q"]
+command = ["{python}", "-m", "pytest", "tests/acceptance/increment-2", "-q"]
 timeout_seconds = 1800

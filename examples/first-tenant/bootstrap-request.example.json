@@ -1,12 +1,12 @@
 {
   "schema": "ctower.bootstrap.first-tenant-request/v1",
   "tenant": {
-    "key": "jakit-labs",
-    "display_name": "Jakit Labs"
+    "key": "example-company",
+    "display_name": "Example Company"
   },
   "initial_operator": {
-    "external_subject": "local-admin:simonas",
-    "display_name": "Simonas"
+    "external_subject": "local-admin:operator-1",
+    "display_name": "Operator One"
   },
   "durable_commander": {
     "key": "commander",

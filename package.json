@@ -9,7 +9,7 @@
     "format:check": "prettier --check apps/ctower-web/src apps/ctower-web/package.json apps/ctower-web/tsconfig.json tsconfig.base.json eslint.config.mjs prettier.config.mjs playwright.config.ts",
     "lint": "eslint apps/ctower-web/src playwright.config.ts",
     "typecheck": "pnpm --filter @ctower/web typecheck",
-    "test:e2e": "playwright test --pass-with-no-tests"
+    "test:e2e": "python3 -B -m tools.checks.playwright"
   },
   "devDependencies": {
     "@eslint/js": ">=9.32 <10",

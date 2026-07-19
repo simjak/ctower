@@ -1,0 +1,109 @@
+{
+  "_notice": "DO NOT EDIT: generated file; regenerate from declared inputs.",
+  "references": {
+    "AC-ADM-02": [
+      "contracts/bootstrap/first-tenant-request.schema.json"
+    ],
+    "AC-COMP-01": [
+      "contracts/components/versioned-component.schema.json",
+      "packs/manifests/core-v1.yaml"
+    ],
+    "AC-COMP-03": [
+      "contracts/company/company-bundle.schema.json"
+    ],
+    "AC-OPS-01": [
+      "contracts/observability/telemetry-context.schema.json"
+    ],
+    "AC-QUAL-01": [
+      "contracts/compatibility/matrix-input.schema.json",
+      "contracts/compatibility/matrix-result.schema.json"
+    ],
+    "AC-TM-02": [
+      "contracts/workflow/workflow.schema.json",
+      "packs/workflows/engineering.software-factory/v1.yaml"
+    ],
+    "AC-WF-02": [
+      "contracts/workflow/workflow.schema.json",
+      "packs/workflows/engineering.software-factory/v1.yaml"
+    ],
+    "AC-WF-06": [
+      "packs/policies/gates/software-factory-v1.yaml"
+    ],
+    "AC-WF-22": [
+      "contracts/workflow/review-plan.schema.json",
+      "packs/policies/execution/software-factory-v1.yaml",
+      "packs/policies/gates/software-factory-v1.yaml"
+    ],
+    "AC-WF-23": [
+      "contracts/workflow/review-plan.schema.json",
+      "packs/policies/execution/software-factory-v1.yaml",
+      "packs/policies/gates/software-factory-v1.yaml"
+    ],
+    "INV-02": [
+      "contracts/bootstrap/first-tenant-request.schema.json"
+    ],
+    "INV-19": [
+      "packs/policies/gates/software-factory-v1.yaml"
+    ],
+    "INV-28": [
+      "contracts/observability/telemetry-context.schema.json"
+    ],
+    "INV-43": [
+      "contracts/workflow/review-plan.schema.json",
+      "packs/policies/execution/software-factory-v1.yaml",
+      "packs/policies/gates/software-factory-v1.yaml"
+    ],
+    "INV-44": [
+      "contracts/workflow/review-plan.schema.json",
+      "packs/policies/execution/software-factory-v1.yaml",
+      "packs/policies/gates/software-factory-v1.yaml"
+    ],
+    "INV-45": [
+      "contracts/components/versioned-component.schema.json",
+      "packs/manifests/core-v1.yaml"
+    ],
+    "INV-46": [
+      "contracts/workflow/workflow.schema.json",
+      "packs/workflows/engineering.software-factory/v1.yaml"
+    ],
+    "INV-47": [
+      "contracts/company/company-bundle.schema.json"
+    ],
+    "INV-57": [
+      "contracts/workflow/workflow.schema.json",
+      "packs/workflows/engineering.software-factory/v1.yaml"
+    ],
+    "SPEC#companybundle-validate-plan-apply-and-export": [
+      "contracts/company/company-bundle.schema.json"
+    ],
+    "SPEC#first-tenant-trust-root-ceremony": [
+      "contracts/bootstrap/first-tenant-request.schema.json"
+    ],
+    "SPEC#language-allocation-and-runtime-acceptance": [
+      "contracts/compatibility/matrix-input.schema.json",
+      "contracts/compatibility/matrix-result.schema.json"
+    ],
+    "SPEC#observability-from-day-one": [
+      "contracts/observability/telemetry-context.schema.json"
+    ],
+    "SPEC#review-rounds-lineages-generations-and-budgets": [
+      "contracts/workflow/review-plan.schema.json",
+      "packs/policies/execution/software-factory-v1.yaml",
+      "packs/policies/gates/software-factory-v1.yaml"
+    ],
+    "SPEC#task-management-foundation": [
+      "contracts/workflow/workflow.schema.json",
+      "packs/workflows/engineering.software-factory/v1.yaml"
+    ],
+    "SPEC#universal-versionedcomponent-catalog-and-company-desired-state": [
+      "contracts/components/versioned-component.schema.json",
+      "packs/manifests/core-v1.yaml"
+    ],
+    "SPEC#versioned-workflow-and-execution-policy-contract": [
+      "contracts/workflow/workflow.schema.json",
+      "packs/workflows/engineering.software-factory/v1.yaml"
+    ]
+  },
+  "schema": "ctower.traceability-index/v1",
+  "source": "contracts/traceability/sources.json"
+}

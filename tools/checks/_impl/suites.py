@@ -5,6 +5,7 @@ from __future__ import annotations
 import ast
 import asyncio
 import re
+import sys
 import tomllib
 from collections.abc import Mapping
 from dataclasses import dataclass
@@ -18,6 +19,8 @@ _MAX_TIMEOUT_SECONDS = 3600
 _MANIFEST_FIELDS = {"schema", "manifest_version", "active_phase", "phase_order", "suite"}
 _BACKLOG_ID = re.compile(r"^CT-(?:L0|I[1-9][0-9]*)-[0-9]{3}$")
 _SUITE_ID = re.compile(r"^[a-z][a-z0-9-]{2,63}$")
+_PORTABLE_COMMAND_TOKEN = re.compile(r"^\{[a-z][a-z0-9_-]*\}$")
+_PORTABLE_PYTHON = "{python}"
 _SUITE_FIELDS = {
     "id",
     "owner",
@@ -167,7 +170,7 @@ def _parse_suite(value: object, index: int) -> _SuiteSpec:
         status=status,
         path=path,
         patterns=patterns,
-        command=_string_tuple(value["command"], f"suite[{index}].command"),
+        command=_command(value["command"], index),
         timeout_seconds=_timeout(value["timeout_seconds"], index),
     )
 
@@ -207,6 +210,26 @@ def _timeout(value: object, index: int) -> int:
             f"{_MAX_TIMEOUT_SECONDS}"
         )
     return value
+
+
+def _command(value: object, index: int) -> tuple[str, ...]:
+    command = _string_tuple(value, f"suite[{index}].command")
+    for position, argument in enumerate(command):
+        if argument == _PORTABLE_PYTHON:
+            if position != 0:
+                raise ExpectedSuitesConfigurationError(
+                    f"suite[{index}].command portable Python token must be the executable"
+                )
+            continue
+        if _PORTABLE_PYTHON in argument:
+            raise ExpectedSuitesConfigurationError(
+                f"suite[{index}].command portable Python token must be an exact argv element"
+            )
+        if _PORTABLE_COMMAND_TOKEN.fullmatch(argument) is not None:
+            raise ExpectedSuitesConfigurationError(
+                f"suite[{index}].command contains unsupported portable token {argument!r}"
+            )
+    return command
 
 
 def _validate_relative_path(value: str, label: str) -> None:
@@ -347,8 +370,9 @@ async def _execute_required_suites(
 
 
 async def _execute_suite(root: Path, suite: _SuiteSpec) -> SuiteResult:
+    command = _execution_command(suite.command)
     try:
-        process = await asyncio.create_subprocess_exec(*suite.command, cwd=root)
+        process = await asyncio.create_subprocess_exec(*command, cwd=root)
         return_code = await asyncio.wait_for(process.wait(), timeout=suite.timeout_seconds)
     except TimeoutError:
         process.kill()
@@ -359,6 +383,12 @@ async def _execute_suite(root: Path, suite: _SuiteSpec) -> SuiteResult:
     if return_code != 0:
         return _failure(suite, f"command failed with exit code {return_code}")
     return _result(suite, SuiteDisposition.PASSED, "current required suite command passed")
+
+
+def _execution_command(command: tuple[str, ...]) -> tuple[str, ...]:
+    if command[0] == _PORTABLE_PYTHON:
+        return (sys.executable, *command[1:])
+    return command
 
 
 def _failure(suite: _SuiteSpec, message: str) -> SuiteResult:

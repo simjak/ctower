@@ -1,0 +1,51 @@
+site_name: ctower
+site_description: Durable task and workflow control for humans and replaceable AI agents
+site_url: https://simjak.github.io/ctower/
+repo_name: simjak/ctower
+repo_url: https://github.com/simjak/ctower
+edit_uri: edit/main/docs/
+strict: true
+
+theme:
+  name: material
+  language: en
+  font: false
+  features:
+    - navigation.indexes
+    - navigation.sections
+    - navigation.top
+    - search.highlight
+    - search.suggest
+    - content.code.copy
+
+plugins:
+  - search
+
+markdown_extensions:
+  - admonition
+  - attr_list
+  - def_list
+  - footnotes
+  - md_in_html
+  - tables
+  - toc:
+      permalink: true
+
+nav:
+  - Home: index.md
+  - Project status: project-status.md
+  - Getting started: getting-started.md
+  - Core concepts: concepts.md
+  - Development:
+      - Development guide: contributing/development.md
+      - Coding standards: contributing/CODING_STANDARDS.md
+      - Releases: contributing/releases.md
+  - Operations:
+      - Observability: operations/observability.md
+  - Security:
+      - Secret handling: security/secret-handling.md
+  - Canonical design:
+      - System specification: https://github.com/simjak/ctower/blob/main/SPEC.md
+      - Architecture atlas: https://github.com/simjak/ctower/blob/main/ARCHITECTURE.md
+      - Decision log: https://github.com/simjak/ctower/blob/main/DECISIONS.md
+      - Implementation roadmap: https://github.com/simjak/ctower/blob/main/IMPLEMENTATION-ROADMAP.md

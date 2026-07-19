@@ -20,6 +20,14 @@ class OwnershipRule:
 
 
 @dataclass(frozen=True, slots=True)
+class GeneratedPathPolicy:
+    manifest_path: str
+    output_root: str
+    input_roots: tuple[str, ...]
+    input_files: tuple[str, ...]
+
+
+@dataclass(frozen=True, slots=True)
 class PolicyConfig:
     source_extensions: tuple[str, ...]
     excludes: tuple[str, ...]
@@ -28,7 +36,7 @@ class PolicyConfig:
     non_waivable_rules: tuple[str, ...]
     budgets: dict[str, Budget]
     ownership: tuple[OwnershipRule, ...]
-    manifest_path: str
+    generated: GeneratedPathPolicy
     profiles: dict[str, tuple[str, ...]]
 
 

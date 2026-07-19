@@ -1,0 +1,40 @@
+name: conventional pull request title
+
+on:
+  pull_request:
+    types: [opened, edited, synchronize, reopened]
+
+permissions: {}
+
+jobs:
+  title:
+    name: conventional title
+    runs-on: ubuntu-24.04
+    env:
+      PR_TITLE: ${{ github.event.pull_request.title }}
+    steps:
+      - name: Validate squash-commit title
+        shell: bash
+        run: |
+          python3 - <<'PY'
+          import os
+          import re
+          import sys
+
+          title = os.environ["PR_TITLE"]
+          pattern = re.compile(
+              r"^(?:build|chore|ci|deps|docs|feat|fix|perf|refactor|revert|style|test)"
+              r"(?:\([a-z0-9][a-z0-9._/-]*\))?!?: [^\s].+$"
+          )
+          if pattern.fullmatch(title):
+              print(f"valid Conventional Commit title: {title}")
+              raise SystemExit(0)
+
+          print(
+              "Invalid pull request title. Expected "
+              "type(optional-scope)[!]: summary, for example "
+              "feat(cli): add ticket assignment.",
+              file=sys.stderr,
+          )
+          raise SystemExit(1)
+          PY

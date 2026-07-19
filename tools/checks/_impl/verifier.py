@@ -341,5 +341,5 @@ def _evaluate_checks(
             item for metric in sources for item in _ownership_findings(root, metric, policy)
         )
     if "generated" in checks:
-        findings.extend(verify_generated_manifest(root, policy.manifest_path))
+        findings.extend(verify_generated_manifest(root, policy.generated))
     return findings

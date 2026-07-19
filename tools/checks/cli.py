@@ -72,7 +72,10 @@ def _selected_suites(args: argparse.Namespace) -> ExpectedSuitesReport | None:
 
 
 def _print_reports(
-    report: PolicyReport, suites: ExpectedSuitesReport | None, *, as_json: bool
+    report: PolicyReport,
+    suites: ExpectedSuitesReport | None,
+    *,
+    as_json: bool,
 ) -> None:
     if as_json:
         payload: dict[str, object] = {"repository_policy": report.to_dict()}

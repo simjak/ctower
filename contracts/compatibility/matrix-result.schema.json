@@ -1,0 +1,72 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://ctower.dev/contracts/compatibility/matrix-result/v1",
+  "title": "ctower runtime compatibility evidence",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema", "input_digest", "matrix_id", "runs"],
+  "properties": {
+    "schema": {"const": "ctower.compatibility-result/v1"},
+    "input_digest": {"type": "string", "pattern": "^sha256:[0-9a-f]{64}$"},
+    "matrix_id": {"type": "string"},
+    "runs": {
+      "type": "array",
+      "minItems": 3,
+      "items": {"$ref": "#/$defs/run"}
+    }
+  },
+  "$defs": {
+    "status": {"enum": ["passed", "failed", "not_exercised"]},
+    "observation": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "status", "duration_ms", "details"],
+      "properties": {
+        "id": {"type": "string"},
+        "status": {"$ref": "#/$defs/status"},
+        "duration_ms": {"type": "integer", "minimum": 0},
+        "details": {"type": "object"},
+        "reason": {"type": "string", "minLength": 1}
+      }
+    },
+    "artifact": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["status", "reason_code"],
+      "properties": {
+        "status": {"const": "not_exercised"},
+        "reason_code": {"const": "artifact_absent"}
+      }
+    },
+    "run": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["version", "environment", "status", "interpreter", "observations", "product_artifacts"],
+      "properties": {
+        "version": {"type": "string"},
+        "environment": {"enum": ["macos-host", "linux-container"]},
+        "status": {"$ref": "#/$defs/status"},
+        "interpreter": {
+          "type": "object",
+          "additionalProperties": true,
+          "required": ["version", "free_threaded"],
+          "properties": {
+            "version": {"type": "string"},
+            "free_threaded": {"type": "boolean"}
+          }
+        },
+        "image": {"type": "string", "pattern": "@sha256:[0-9a-f]{64}$"},
+        "observations": {"type": "array", "minItems": 1, "items": {"$ref": "#/$defs/observation"}},
+        "product_artifacts": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["release_helper_wheel", "generated_clients"],
+          "properties": {
+            "release_helper_wheel": {"$ref": "#/$defs/artifact"},
+            "generated_clients": {"$ref": "#/$defs/artifact"}
+          }
+        }
+      }
+    }
+  }
+}
