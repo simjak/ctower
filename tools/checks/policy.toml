@@ -90,6 +90,26 @@ paths = ["tests/contracts/**"]
 allowed_dependencies = ["http-client-codegen", "repository-policy"]
 
 [[ownership]]
+name = "kernel-record"
+paths = ["packages/ctower-kernel/src/ctower_kernel/__init__.py", "packages/ctower-kernel/src/ctower_kernel/record/**"]
+allowed_dependencies = []
+
+[[ownership]]
+name = "kernel-access"
+paths = ["packages/ctower-kernel/src/ctower_kernel/access/**"]
+allowed_dependencies = ["kernel-record"]
+
+[[ownership]]
+name = "control-api"
+paths = ["apps/ctower-api/src/**"]
+allowed_dependencies = ["kernel-access", "kernel-record"]
+
+[[ownership]]
+name = "increment-1-acceptance-tests"
+paths = ["tests/acceptance/increment-1/**"]
+allowed_dependencies = ["control-api", "kernel-access", "kernel-record"]
+
+[[ownership]]
 name = "web"
 paths = ["apps/ctower-web/**"]
 allowed_dependencies = []

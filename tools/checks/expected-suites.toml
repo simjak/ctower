@@ -1,6 +1,6 @@
 schema = "ctower.expected-suites/v1"
 manifest_version = 1
-active_phase = "CT-L0-003"
+active_phase = "CT-I1-001"
 phase_order = [
   "CT-L0-007",
   "CT-L0-001",
@@ -92,6 +92,22 @@ path = "tests/modules/work"
 patterns = ["test_*.py"]
 command = ["{python}", "-m", "pytest", "tests/modules/work", "-q"]
 timeout_seconds = 300
+
+[[suite]]
+id = "bootstrap-acceptance"
+owner = "CT-I1-001"
+phase = "CT-I1-001"
+status = "required"
+path = "tests/acceptance/increment-1"
+patterns = ["test_bootstrap.py"]
+command = [
+  "{python}",
+  "-m",
+  "pytest",
+  "tests/acceptance/increment-1/test_bootstrap.py",
+  "-q",
+]
+timeout_seconds = 900
 
 [[suite]]
 id = "bootstrap-ticket-acceptance"
