@@ -17,7 +17,7 @@ python-check: compatibility-coverage
     mypy --no-incremental tools/checks tools/compatibility tests/repository tests/contracts tests/compatibility
 
 compatibility-coverage:
-    @coverage_file="$$(mktemp)"; trap 'rm -f "$$coverage_file"' EXIT; COVERAGE_FILE="$$coverage_file" {{python}} -m pytest -p no:cacheprovider --cov=tools.compatibility --cov-branch --cov-fail-under=90 tests/compatibility
+    @coverage_file="$(mktemp)"; trap 'rm -f "$coverage_file"' EXIT; COVERAGE_FILE="$coverage_file" {{python}} -m pytest -p no:cacheprovider --cov=tools.compatibility --cov-branch --cov-fail-under=90 tests/compatibility
 
 web-check:
     pnpm run format:check
@@ -26,7 +26,7 @@ web-check:
 
 # Documentation builds outside the worktree so checks never create or clean `site/`.
 docs-check:
-    @site_dir="$$(mktemp -d)"; trap 'rm -rf -- "$$site_dir"' EXIT; {{python}} -m mkdocs build --strict --site-dir "$$site_dir"
+    @site_dir="$(mktemp -d)"; trap 'rm -rf -- "$site_dir"' EXIT; {{python}} -m mkdocs build --strict --site-dir "$site_dir"
 
 docs-serve:
     {{python}} -m mkdocs serve --strict
@@ -53,12 +53,12 @@ _verify-clean-tree:
 # Scan exactly Git's tracked plus nonignored-untracked intended tree. Building an external
 # view avoids traversing `.git`, ignored dependency trees, caches, or runtime state.
 secrets-intended-tree:
-    @scan_root="$$(mktemp -d)"; config_path="$$(pwd -P)/.gitleaks.toml"; trap 'rm -rf -- "$$scan_root"' EXIT; while IFS= read -r -d '' file_path; do target="$$scan_root/$$file_path"; mkdir -p -- "$$(dirname -- "$$target")"; if [[ -L "$$file_path" ]]; then readlink "$$file_path" > "$$target"; elif [[ -f "$$file_path" ]]; then cp -p -- "$$file_path" "$$target"; fi; done < <(git ls-files --cached --others --exclude-standard -z); cd "$$scan_root"; {{gitleaks}} dir . --config "$$config_path" --no-banner --redact --verbose
+    @scan_root="$(mktemp -d)"; config_path="$(pwd -P)/.gitleaks.toml"; trap 'rm -rf -- "$scan_root"' EXIT; while IFS= read -r -d '' file_path; do target="$scan_root/$file_path"; mkdir -p -- "$(dirname -- "$target")"; if [[ -L "$file_path" ]]; then readlink "$file_path" > "$target"; elif [[ -f "$file_path" ]]; then cp -p -- "$file_path" "$target"; fi; done < <(git ls-files --cached --others --exclude-standard -z); cd "$scan_root"; {{gitleaks}} dir . --config "$config_path" --no-banner --redact --verbose
 
 # Full, non-mutating release gate. CT-L0-007 makes CI invoke this exact recipe.
 verify: secrets-intended-tree _verify-clean-tree check
     {{python}} -m tools.checks --root . --profile full --execute-suites
-    @coverage_file="$$(mktemp)"; trap 'rm -f "$$coverage_file"' EXIT; COVERAGE_FILE="$$coverage_file" {{python}} -m pytest -p no:cacheprovider --cov=tools.checks --cov-branch --cov-fail-under=90 tests/repository
+    @coverage_file="$(mktemp)"; trap 'rm -f "$coverage_file"' EXIT; COVERAGE_FILE="$coverage_file" {{python}} -m pytest -p no:cacheprovider --cov=tools.checks --cov-branch --cov-fail-under=90 tests/repository
     pnpm run test:e2e
     {{gitleaks}} git . --no-banner --redact --verbose
     git diff --check
