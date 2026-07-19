@@ -1,9 +1,11 @@
 from __future__ import annotations
 
+import gc
 import os
 import sys
 import tempfile
 import unittest
+import warnings
 from pathlib import Path
 from typing import TYPE_CHECKING, Any, cast
 from unittest.mock import patch
@@ -242,10 +244,14 @@ class LocalProcessBoundaryTests(unittest.TestCase):
 
     def test_output_is_bounded_and_start_failure_is_typed(self) -> None:
         port = LocalExecutionPort()
-        output = port.run(_request("print('x' * 5000)", output_limit_bytes=1024))
+        with warnings.catch_warnings(record=True) as observed:
+            warnings.simplefilter("always", ResourceWarning)
+            output = port.run(_request("print('x' * 5000)", output_limit_bytes=1024))
+            gc.collect()
         self.assertTrue(output.stdout_truncated)
         self.assertEqual(output.failure_reason, "output_limit")
         self.assertLessEqual(len(output.stdout.encode()), 1024)
+        self.assertFalse([warning for warning in observed if warning.category is ResourceWarning])
 
         request = ProcessRequest(
             operation="probe-subprocess",

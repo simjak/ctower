@@ -139,14 +139,24 @@ class _BoundedCapture:
 
 def _run_bounded(request: ProcessRequest) -> ProcessResult:
     process = _start_process(request)
-    if process.stdout is None or process.stderr is None:
+    stdout_stream = process.stdout
+    stderr_stream = process.stderr
+    if stdout_stream is None or stderr_stream is None:
+        _terminate_group(process, request)
+        _close_streams(stdout_stream, stderr_stream)
         raise CompatibilityError("process output pipes were not created")
-    stdout = _BoundedCapture(process.stdout, request.output_limit_bytes)
-    stderr = _BoundedCapture(process.stderr, request.output_limit_bytes)
-    failure, termination = _supervise_process(process, request, stdout, stderr)
-    output = stdout.finish(request.terminate_grace_ms / 1000)
-    error = stderr.finish(request.terminate_grace_ms / 1000)
-    returncode = process.wait(timeout=request.terminate_grace_ms / 1000)
+    try:
+        stdout = _BoundedCapture(stdout_stream, request.output_limit_bytes)
+        stderr = _BoundedCapture(stderr_stream, request.output_limit_bytes)
+        failure, termination = _supervise_process(process, request, stdout, stderr)
+        output = stdout.finish(request.terminate_grace_ms / 1000)
+        error = stderr.finish(request.terminate_grace_ms / 1000)
+        returncode = process.wait(timeout=request.terminate_grace_ms / 1000)
+    except BaseException:
+        _terminate_group(process, request)
+        raise
+    finally:
+        _close_streams(stdout_stream, stderr_stream)
     return ProcessResult(
         argv=request.argv,
         returncode=returncode,
@@ -158,6 +168,12 @@ def _run_bounded(request: ProcessRequest) -> ProcessResult:
         stderr_truncated=error[1],
         failure_reason=failure,
     )
+
+
+def _close_streams(*streams: IO[bytes] | None) -> None:
+    for stream in streams:
+        if stream is not None:
+            stream.close()
 
 
 def _start_process(request: ProcessRequest) -> subprocess.Popen[bytes]:
