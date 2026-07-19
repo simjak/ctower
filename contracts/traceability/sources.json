@@ -1,0 +1,113 @@
+{
+  "schema": "ctower.traceability-sources/v1",
+  "artifacts": [
+    {
+      "path": "contracts/bootstrap/first-tenant-request.schema.json",
+      "references": [
+        "SPEC#first-tenant-trust-root-ceremony",
+        "INV-02",
+        "AC-ADM-02"
+      ]
+    },
+    {
+      "path": "contracts/company/company-bundle.schema.json",
+      "references": [
+        "SPEC#companybundle-validate-plan-apply-and-export",
+        "INV-47",
+        "AC-COMP-03"
+      ]
+    },
+    {
+      "path": "contracts/compatibility/matrix-input.schema.json",
+      "references": [
+        "SPEC#language-allocation-and-runtime-acceptance",
+        "AC-QUAL-01"
+      ]
+    },
+    {
+      "path": "contracts/compatibility/matrix-result.schema.json",
+      "references": [
+        "SPEC#language-allocation-and-runtime-acceptance",
+        "AC-QUAL-01"
+      ]
+    },
+    {
+      "path": "contracts/components/versioned-component.schema.json",
+      "references": [
+        "SPEC#universal-versionedcomponent-catalog-and-company-desired-state",
+        "INV-45",
+        "AC-COMP-01"
+      ]
+    },
+    {
+      "path": "contracts/observability/telemetry-context.schema.json",
+      "references": [
+        "SPEC#observability-from-day-one",
+        "INV-28",
+        "AC-OPS-01"
+      ]
+    },
+    {
+      "path": "contracts/workflow/review-plan.schema.json",
+      "references": [
+        "SPEC#review-rounds-lineages-generations-and-budgets",
+        "INV-43",
+        "INV-44",
+        "AC-WF-22",
+        "AC-WF-23"
+      ]
+    },
+    {
+      "path": "contracts/workflow/workflow.schema.json",
+      "references": [
+        "SPEC#versioned-workflow-and-execution-policy-contract",
+        "SPEC#task-management-foundation",
+        "INV-46",
+        "INV-57",
+        "AC-WF-02",
+        "AC-TM-02"
+      ]
+    },
+    {
+      "path": "packs/manifests/core-v1.yaml",
+      "references": [
+        "SPEC#universal-versionedcomponent-catalog-and-company-desired-state",
+        "INV-45",
+        "AC-COMP-01"
+      ]
+    },
+    {
+      "path": "packs/policies/execution/software-factory-v1.yaml",
+      "references": [
+        "SPEC#review-rounds-lineages-generations-and-budgets",
+        "INV-43",
+        "INV-44",
+        "AC-WF-22",
+        "AC-WF-23"
+      ]
+    },
+    {
+      "path": "packs/policies/gates/software-factory-v1.yaml",
+      "references": [
+        "SPEC#review-rounds-lineages-generations-and-budgets",
+        "INV-19",
+        "INV-43",
+        "INV-44",
+        "AC-WF-06",
+        "AC-WF-22",
+        "AC-WF-23"
+      ]
+    },
+    {
+      "path": "packs/workflows/engineering.software-factory/v1.yaml",
+      "references": [
+        "SPEC#versioned-workflow-and-execution-policy-contract",
+        "SPEC#task-management-foundation",
+        "INV-46",
+        "INV-57",
+        "AC-WF-02",
+        "AC-TM-02"
+      ]
+    }
+  ]
+}

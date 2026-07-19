@@ -14,6 +14,9 @@ from pathlib import Path
 
 from tools.checks import verify
 
+_GENERATED_NOTICE = "DO NOT EDIT: generated file; regenerate from declared inputs."
+_GENERATED_SCHEMA = "ctower.generated-manifest/v1"
+
 
 class RepositoryPolicyEdgeTests(unittest.TestCase):
     fixtures = Path(__file__).parent / "fixtures"
@@ -44,6 +47,34 @@ class RepositoryPolicyEdgeTests(unittest.TestCase):
                 "source.public-exports",
             }.issubset(rules)
         )
+
+    def test_effective_public_exports_include_reexports_and_declared_all(self) -> None:
+        imported = ", ".join(f"name_{index} as export_{index}" for index in range(26))
+        declared = ", ".join(repr(f"declared_{index}") for index in range(26))
+        cases = {
+            "imported reexports": f"from package import {imported}\n",
+            "declared all": f"__all__ = [{declared}]\n",
+            "annotated declared all": f"__all__: tuple[str, ...] = ({declared})\n",
+        }
+        for label, source in cases.items():
+            with self.subTest(label):
+                with self._repository() as root:
+                    (root / "app/public.py").write_text(source, encoding="utf-8")
+                    report = verify(root, "fast")
+                self.assertIn("source.public-exports", {item.rule_id for item in report.errors})
+
+    def test_dynamic_all_and_star_reexports_fail_closed(self) -> None:
+        cases = {
+            "dynamic all": "__all__ = make_exports()\n",
+            "annotated dynamic all": "__all__: tuple[str, ...] = make_exports()\n",
+            "star reexport": "from package import *\n",
+        }
+        for label, source in cases.items():
+            with self.subTest(label=label):
+                with self._repository() as root:
+                    (root / "app/public.py").write_text(source, encoding="utf-8")
+                    report = verify(root, "fast")
+                self.assertIn("source.parse", {item.rule_id for item in report.errors})
 
     def test_parse_error_warning_budget_and_ambiguous_owner_are_visible(self) -> None:
         with self._repository() as root:
@@ -120,18 +151,29 @@ class RepositoryPolicyEdgeTests(unittest.TestCase):
 
     def test_generated_manifest_all_invalid_shapes_and_matching_digest(self) -> None:
         cases: list[object] = [
-            {"schema": "wrong", "artifacts": []},
-            {"schema": "ctower.generated-manifest/v1", "artifacts": {}},
-            {"schema": "ctower.generated-manifest/v1", "artifacts": ["bad"]},
-            {"schema": "ctower.generated-manifest/v1", "artifacts": [{}]},
-            {
-                "schema": "ctower.generated-manifest/v1",
-                "artifacts": [self._artifact(inputs={}, outputs=[])],
-            },
-            {
-                "schema": "ctower.generated-manifest/v1",
-                "artifacts": [self._artifact(inputs=[{}], outputs=[])],
-            },
+            {"schema": _GENERATED_SCHEMA, "artifacts": []},
+            self._manifest([], schema="wrong"),
+            self._manifest({}),
+            self._manifest(["bad"]),
+            self._manifest([{}]),
+            self._manifest([self._artifact(inputs={}, outputs=[])]),
+            self._manifest([self._artifact(inputs=[{}], outputs=[])]),
+            {**self._manifest([]), "unknown": True},
+            self._manifest([self._artifact(inputs=[], outputs=[], unknown=True)]),
+            self._manifest(
+                [
+                    self._artifact(
+                        inputs=[],
+                        outputs=[
+                            {
+                                "path": "generated/output.py",
+                                "sha256": f"sha256:{'0' * 64}",
+                                "unknown": True,
+                            }
+                        ],
+                    )
+                ]
+            ),
         ]
         for index, payload in enumerate(cases):
             with self.subTest(index=index):
@@ -148,17 +190,33 @@ class RepositoryPolicyEdgeTests(unittest.TestCase):
             generated = root / "generated/output.py"
             generated.write_text("VALUE = 1\n", encoding="utf-8")
             digest = f"sha256:{hashlib.sha256(generated.read_bytes()).hexdigest()}"
-            payload = {
-                "schema": "ctower.generated-manifest/v1",
-                "artifacts": [
+            payload = self._manifest(
+                [
                     self._artifact(
                         inputs=[], outputs=[{"path": "generated/output.py", "sha256": digest}]
                     )
-                ],
-            }
+                ]
+            )
             self._write_generated(root, payload)
             report = verify(root, "full")
         self.assertTrue(report.ok, report.findings)
+
+    def test_generated_json_output_requires_exact_do_not_edit_notice(self) -> None:
+        with self._repository() as root:
+            generated = root / "generated/output.json"
+            generated.write_text('{"value": 1}\n', encoding="utf-8")
+            self._write_output_manifest(root, generated)
+            missing = verify(root, "full")
+
+            generated.write_text(
+                json.dumps({"_notice": _GENERATED_NOTICE, "value": 1}) + "\n",
+                encoding="utf-8",
+            )
+            self._write_output_manifest(root, generated)
+            present = verify(root, "full")
+
+        self.assertIn("generated.notice", {item.rule_id for item in missing.errors})
+        self.assertTrue(present.ok, present.findings)
 
     @contextmanager
     def _repository(self) -> Iterator[Path]:
@@ -192,8 +250,8 @@ class RepositoryPolicyEdgeTests(unittest.TestCase):
             json.dumps(payload), encoding="utf-8"
         )
 
-    def _artifact(self, *, inputs: object, outputs: object) -> dict[str, object]:
-        return {
+    def _artifact(self, *, inputs: object, outputs: object, **unknown: object) -> dict[str, object]:
+        artifact: dict[str, object] = {
             "id": "fixture",
             "generator": "fixture",
             "tool_version": "1",
@@ -201,6 +259,34 @@ class RepositoryPolicyEdgeTests(unittest.TestCase):
             "inputs": inputs,
             "outputs": outputs,
         }
+        artifact.update(unknown)
+        return artifact
+
+    def _manifest(self, artifacts: object, *, schema: str = _GENERATED_SCHEMA) -> dict[str, object]:
+        return {
+            "_notice": _GENERATED_NOTICE,
+            "schema": schema,
+            "artifacts": artifacts,
+        }
+
+    def _write_output_manifest(self, root: Path, output: Path) -> None:
+        digest = f"sha256:{hashlib.sha256(output.read_bytes()).hexdigest()}"
+        self._write_generated(
+            root,
+            self._manifest(
+                [
+                    self._artifact(
+                        inputs=[],
+                        outputs=[
+                            {
+                                "path": output.relative_to(root).as_posix(),
+                                "sha256": digest,
+                            }
+                        ],
+                    )
+                ]
+            ),
+        )
 
 
 if __name__ == "__main__":

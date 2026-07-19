@@ -2,14 +2,21 @@
 
 from __future__ import annotations
 
+import json
+import os
+import signal
+import sys
 import tempfile
 import textwrap
+import time
 import unittest
 from collections.abc import Iterator
 from contextlib import contextmanager
 from pathlib import Path
 
 from tools.checks import SuiteDisposition, verify_expected_suites
+
+__all__ = ()
 
 
 class ExpectedSuitesTests(unittest.TestCase):
@@ -83,11 +90,45 @@ class ExpectedSuitesTests(unittest.TestCase):
             self.assertFalse(report.ok)
             self.assertIn("exit code 7", report.failures[0].message)
 
+    def test_portable_python_token_uses_invoking_interpreter_without_changing_report(self) -> None:
+        with self._repository() as root:
+            self._write_test(
+                root, "tests/current/test_current.py", "def test_current():\n    pass\n"
+            )
+            self._write_manifest(
+                root,
+                self._suite_table(
+                    suite_id="current",
+                    phase="CT-L0-007",
+                    status="required",
+                    path="tests/current",
+                    command=(
+                        '["{python}", "-c", "from pathlib import Path; '
+                        "import sys; Path('suite-ran').write_text(sys.executable, "
+                        "encoding='utf-8')\"]"
+                    ),
+                ),
+            )
+            report = verify_expected_suites(root, execute=True)
+            marker = (root / "suite-ran").read_text(encoding="utf-8")
+
+        self.assertTrue(report.ok, report.to_dict())
+        self.assertEqual(marker, sys.executable)
+        self.assertEqual(
+            report.suites[0].command,
+            (
+                "{python}",
+                "-c",
+                "from pathlib import Path; import sys; "
+                "Path('suite-ran').write_text(sys.executable, encoding='utf-8')",
+            ),
+        )
+
     def test_command_not_found_and_timeout_fail_closed(self) -> None:
         cases = {
             "missing": ('["ctower-command-that-does-not-exist"]', 30, "cannot execute"),
             "timeout": (
-                '["python3", "-c", "import time; time.sleep(2)"]',
+                '["{python}", "-c", "import time; time.sleep(2)"]',
                 1,
                 "timed out",
             ),
@@ -110,6 +151,54 @@ class ExpectedSuitesTests(unittest.TestCase):
                     report = verify_expected_suites(root, execute=True)
                 self.assertFalse(report.ok)
                 self.assertIn(expected, report.failures[0].message)
+
+    def test_leader_exit_and_timeout_cannot_leave_a_descendant_alive(self) -> None:
+        child = "import signal,time; signal.signal(signal.SIGTERM, signal.SIG_IGN); time.sleep(60)"
+        prefix = (
+            "import subprocess,sys,time; from pathlib import Path; "
+            f"child=subprocess.Popen([sys.executable, '-c', {child!r}]); "
+            "Path('descendant.pid').write_text(str(child.pid), encoding='utf-8'); "
+        )
+        for label, suffix, timeout, expected_ok in (
+            ("leader exit", "", 30, True),
+            ("leader timeout", "time.sleep(60)", 1, False),
+        ):
+            with self.subTest(label=label):
+                self._assert_group_descendant_absent(
+                    prefix + suffix, timeout, expected_ok=expected_ok
+                )
+
+    def _assert_group_descendant_absent(
+        self, leader: str, timeout: int, *, expected_ok: bool
+    ) -> None:
+        command = json.dumps(["{python}", "-c", leader])
+        pid = 0
+        with self._repository() as root:
+            self._write_test(
+                root, "tests/current/test_current.py", "def test_current():\n    pass\n"
+            )
+            self._write_manifest(
+                root,
+                self._suite_table(
+                    suite_id="current",
+                    phase="CT-L0-007",
+                    status="required",
+                    path="tests/current",
+                    command=command,
+                    timeout=timeout,
+                ),
+            )
+            try:
+                report = verify_expected_suites(root, execute=True)
+                pid = int((root / "descendant.pid").read_text(encoding="utf-8"))
+                deadline = time.monotonic() + 1.0
+                while _pid_exists(pid) and time.monotonic() < deadline:
+                    time.sleep(0.02)
+                self.assertEqual(report.ok, expected_ok, report.to_dict())
+                self.assertFalse(_pid_exists(pid), "suite descendant survived leader completion")
+            finally:
+                if pid and _pid_exists(pid):
+                    os.kill(pid, signal.SIGKILL)
 
     def test_manifest_header_and_suite_field_errors_fail_closed(self) -> None:
         valid = textwrap.dedent(self._header()) + self._one_suite_manifest()
@@ -245,9 +334,9 @@ class ExpectedSuitesTests(unittest.TestCase):
         timeout: int = 30,
     ) -> str:
         command_value = command or (
-            f'["python3", "-c", "raise SystemExit({command_exit})"]'
+            f'["{{python}}", "-c", "raise SystemExit({command_exit})"]'
             if command_exit is not None
-            else f'["python3", "-m", "unittest", "discover", "-s", "{path}", "-v"]'
+            else f'["{{python}}", "-m", "unittest", "discover", "-s", "{path}", "-v"]'
         )
         return textwrap.dedent(
             f"""
@@ -263,6 +352,54 @@ class ExpectedSuitesTests(unittest.TestCase):
             timeout_seconds = {timeout}
             """
         )
+
+
+class PortableCommandValidationTests(unittest.TestCase):
+    def test_only_exact_python_token_in_executable_position_is_supported(self) -> None:
+        cases = {
+            "misplaced": '["echo", "{python}"]',
+            "embedded": '["/opt/{python}/bin/python"]',
+            "unsupported": '["{node}", "--version"]',
+        }
+        for label, command in cases.items():
+            with self.subTest(label), tempfile.TemporaryDirectory() as name:
+                root = Path(name)
+                manifest_path = root / "tools/checks/expected-suites.toml"
+                manifest_path.parent.mkdir(parents=True)
+                manifest_path.write_text(
+                    textwrap.dedent(
+                        f"""
+                        schema = "ctower.expected-suites/v1"
+                        manifest_version = 1
+                        active_phase = "CT-L0-007"
+                        phase_order = ["CT-L0-007"]
+
+                        [[suite]]
+                        id = "current"
+                        owner = "CT-L0-007"
+                        phase = "CT-L0-007"
+                        status = "required"
+                        path = "tests/current"
+                        patterns = ["test_*.py"]
+                        command = {command}
+                        timeout_seconds = 30
+                        """
+                    ),
+                    encoding="utf-8",
+                )
+                report = verify_expected_suites(root)
+
+            self.assertFalse(report.ok)
+            self.assertTrue(report.manifest_errors)
+            self.assertIn("token", report.manifest_errors[0])
+
+
+def _pid_exists(pid: int) -> bool:
+    try:
+        os.kill(pid, 0)
+    except ProcessLookupError:
+        return False
+    return True
 
 
 if __name__ == "__main__":

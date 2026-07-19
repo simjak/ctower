@@ -16,6 +16,7 @@ forbidden_module_stems = ["common", "helpers", "manager", "utils"]
 non_waivable_rules = [
   "generated.drift",
   "generated.manifest",
+  "generated.notice",
   "security.secret",
 ]
 
@@ -49,6 +50,9 @@ failure = 12
 
 [generated]
 manifest = "generated/.generated-manifest.json"
+output_root = "generated"
+input_roots = ["contracts", "tools"]
+input_files = ["SPEC.md"]
 
 [profiles]
 staged = ["source", "ownership"]
@@ -66,9 +70,19 @@ paths = ["tests/repository/**"]
 allowed_dependencies = ["repository-policy"]
 
 [[ownership]]
+name = "compatibility-tools"
+paths = ["tools/compatibility/**"]
+allowed_dependencies = []
+
+[[ownership]]
+name = "compatibility-tests"
+paths = ["tests/compatibility/**"]
+allowed_dependencies = ["compatibility-tools"]
+
+[[ownership]]
 name = "contract-tests"
 paths = ["tests/contracts/**"]
-allowed_dependencies = []
+allowed_dependencies = ["repository-policy"]
 
 [[ownership]]
 name = "web"

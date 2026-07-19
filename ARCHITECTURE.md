@@ -2,397 +2,409 @@
 
 | Field | Value |
 |---|---|
-| Status | Derived operator and implementer map |
-| Normative authority | [`SPEC.md`](SPEC.md) |
+| Status | Compact derived operator and implementer map |
+| Normative authority | [`SPEC.md`](SPEC.md), version 1.7 |
 | Decision history | [`DECISIONS.md`](DECISIONS.md) |
-| Last reviewed | 2026-07-17 |
+| Last reviewed | 2026-07-18 |
 
-This file is the one compact, terminal-safe architecture atlas requested by the operator. It does not
-create a second specification. It explains the current `SPEC.md` with ASCII views and implementation
-boundaries. If this atlas and the SPEC disagree, the SPEC wins and this file must be repaired.
+This is the sole terminal-safe derived architecture atlas. It explains the canonical specification; it
+does not add requirements, authorize work, or define exact schemas, operations, DDL, package values, or
+deployment manifests. If this file and `SPEC.md` disagree, `SPEC.md` wins and this file is stale.
 
-## System architecture
+Implementation labels are strict:
 
-The durable boundary is deliberate: Postgres and content-addressed objects hold accepted truth; models,
-sessions, processes, tmux panes, sandboxes, remote providers, and VPS workers are replaceable capacity.
+- **Current/verified** means the legacy local Mission Control/Control Tower substrate only.
+- **I1** and **I2** are committed target increments, not claims that product behavior exists today.
+- **Deferred** means invariants may be recorded, but the runtime, product surface, and public Seam do not
+  exist in I1/I2.
 
-```text
-┌──────────────────────────────────────────────────────────────────────────────────────────────┐
-│                                      OPERATOR PLANE                                          │
-│                                                                                              │
-│  ┌────────────────────┐  ┌────────────────────┐  ┌────────────────────┐                     │
-│  │ ctower-web         │  │ ctowerctl / ctl    │  │ Slack/Git/Webhooks │                     │
-│  │ board · ticket     │  │ capture · inspect  │  │ ingress/attention  │                     │
-│  │ fleet · live steer │  │ approve · steer    │  │ adapters           │                     │
-│  └─────────┬──────────┘  └─────────┬──────────┘  └─────────┬──────────┘                     │
-└────────────┼───────────────────────┼───────────────────────┼────────────────────────────────┘
-             └───────────────────────┴───────────────────────┘
-                                             │ authenticated commands / event streams
-                                             ▼
-┌──────────────────────────────────────────────────────────────────────────────────────────────┐
-│                              TRUSTED CONTROL PLANE — Python                                   │
-│                                                                                              │
-│  ┌────────────────────┐  ┌──────────────────────┐  ┌──────────────────────────────────────┐ │
-│  │ Access + Command   │  │ Commander / Custody  │  │ Workflow + Policy                   │ │
-│  │ authz · idempotency│  │ smartest model seat  │  │ stage graph · risk tier · gates     │ │
-│  │ CAS · validation   │  │ plan · route · steer │  │ rounds · budgets · escalation       │ │
-│  └─────────┬──────────┘  └──────────┬───────────┘  └──────────────────┬───────────────────┘ │
-│            └────────────────────────┴──────────────────────────────────┘                     │
-│                                             │                                                │
-│  ┌──────────────────────────────────────────▼──────────────────────────────────────────────┐ │
-│  │ ORCHESTRATION KERNEL                                                                    │ │
-│  │ Work · Catalog · Workflow · Proof · Runtime · Effects · Attention · Projections         │ │
-│  │ tickets, revisions, assignments, gates, leases, receipts, alerts, read models            │ │
-│  └─────────────┬───────────────────────┬──────────────────────────┬──────────────────────────┘ │
-│                │                       │                          │                            │
-│     ┌──────────▼──────────┐ ┌──────────▼──────────┐   ┌──────────▼──────────┐                │
-│     │ Scheduler / Jobs    │ │ Proof / Gate engine │   │ Extension Host      │                │
-│     │ lease · fence · ACK │ │ evidence · verdicts │   │ signed data-only    │                │
-│     │ retry · reconcile   │ │ invalidation        │   │ manifests + grants  │                │
-│     └──────────┬──────────┘ └─────────────────────┘   └─────────────────────┘                │
-└────────────────┼─────────────────────────────────────────────────────────────────────────────┘
-                 │ committed jobs / fenced leases
-                 ▼
-       ┌────────────────────────────────────────────┐
-       │            DURABLE RECORD PLANE            │
-       │                                            │
-       │  ┌──────────────┐    ┌──────────────────┐ │
-       │  │ PostgreSQL   │    │ Object storage   │ │
-       │  │ events/CAS   │    │ artifacts/logs   │ │
-       │  │ jobs/outbox  │    │ screenshots      │ │
-       │  │ projections  │    │ evidence         │ │
-       │  └──────┬───────┘    └────────┬─────────┘ │
-       │         └──────────┬───────────┘           │
-       │           PITR backup + restore drills     │
-       └────────────────────┼───────────────────────┘
-                            │
-                            ▼
-┌──────────────────────────────────────────────────────────────────────────────────────────────┐
-│                         REPLACEABLE WORKER / EXECUTION PLANE                                  │
-│                                                                                              │
-│  ┌──────────────────────────── Runner Supervisor ──────────────────────────────────────────┐ │
-│  │ lease heartbeat · epoch fencing · cursor · cancel · logs · checkpoint · final receipt   │ │
-│  └───────────────┬──────────────────────┬──────────────────────┬────────────────────────────┘ │
-│                  │                      │                      │                              │
-│      ┌───────────▼──────────┐ ┌────────▼─────────┐ ┌──────────▼────────────────┐             │
-│      │ Local/VPS adapter    │ │ Sandbox adapter  │ │ Crabbox-compatible remote│             │
-│      │ process/tmux/systemd │ │ image + terminal │ │ execution provider       │             │
-│      └───────────┬──────────┘ └────────┬─────────┘ └──────────┬────────────────┘             │
-│                  └──────────────────────┴──────────────────────┘                              │
-│                                         │                                                    │
-│                      ┌──────────────────▼──────────────────┐                                 │
-│                      │ Immutable execution capsule         │                                 │
-│                      │ harness + model/profile + skills    │                                 │
-│                      │ workspace/image digest + limits     │                                 │
-│                      │ NO standing credentials             │                                 │
-│                      └──────────────────┬──────────────────┘                                 │
-└─────────────────────────────────────────┼────────────────────────────────────────────────────┘
-                                          │ proposed artifacts/evidence/effects
-                                          ▼
-┌──────────────────────────────────────────────────────────────────────────────────────────────┐
-│                              PROTECTED EFFECT / RELEASE PLANE                                 │
-│                                                                                              │
-│  ┌─────────────────┐    short-lived grant    ┌──────────────────────┐                       │
-│  │ Effect Broker   ├────────────────────────►│ SCM / CI / registry  │                       │
-│  │ policy + JIT    │                         └──────────┬───────────┘                       │
-│  │ secrets + dedupe│                                    │ verified immutable candidate       │
-│  └────────┬────────┘                         ┌──────────▼───────────┐                       │
-│           │ immutable receipt                │ Staging deploy + QA  │                       │
-│           │                                  └──────────┬───────────┘                       │
-│           │                                  ┌──────────▼───────────┐                       │
-│           └─────────────────────────────────►│ Production + smoke   │                       │
-│                                              │ rollback on failure  │                       │
-│                                              └──────────────────────┘                       │
-└──────────────────────────────────────────────────────────────────────────────────────────────┘
-```
+## Authority and system context
 
-## Day-one infrastructure
+The ticket is the human join point. Postgres, immutable object metadata, and acknowledged off-host copies
+hold authority. Models, sessions, processes, tmux panes, runners, and providers are replaceable capacity.
 
 ```text
-┌──────────────────────────────── PRIVATE VPS ──────────────────────────────────────────────────┐
-│ Private edge: Tailscale/private TLS · no public DB · root-owned bootstrap Unix socket        │
-│                                                                                              │
-│ systemd                                                                                      │
-│ ├── ctower-api.service              API + authenticated commands                             │
-│ ├── ctower-worker.service           outbox, scheduler, wake dispatcher, projections          │
-│ ├── ctower-reconciler.service       leases, cursors, receipts, provider observations         │
-│ ├── ctower-runner-supervisor        local/VPS runner connections                             │
-│ ├── ctower-release-supervisor       root-owned privileged release seam                       │
-│ ├── ctower-maintenance.timer        redundant scheduler/reconciler kick, not routine truth   │
-│ └── ctower-backup.timer             backup, anchor, restore-drill jobs                        │
-│                                                                                              │
-│ containers / durable volumes                                                                      │
-│ ├── Postgres + WAL/PITR             ├── S3-compatible object store                           │
-│ ├── vault/secret provider           └── OpenTelemetry Collector                              │
-│                                                                                              │
-│ telemetry                                                                                     │
-│ └── logs + metrics + traces + completeness alerts + dashboards                              │
-└──────────────────────────────────────────────────────────────────────────────────────────────┘
-                                           │ outbound mTLS / short-lived OIDC
-                ┌──────────────────────────┼──────────────────────────┐
-                ▼                          ▼                          ▼
-       local runner/tmux          another owned VPS          sandbox/Crabbox provider
+  operator / admin                   signed source
+  web + ctowerctl                         |
+          | authenticated commands       |
+          +---------------+---------------+
+                          v
+  +---------------- PRIVATE TRUSTED CONTROL PLANE ----------------+
+  | Access + Record          authenticated append, CAS, dedupe     |
+  | Catalog + Work           revisions, ticket, custody, task axes |
+  | Proof + Attention        criteria, evidence, gates, Needs You  |
+  | Workflow + Runtime       graph decisions, jobs, leases, replay |
+  | Effects + Projections    grants/receipts, five read surfaces   |
+  +-----------+-------------------+--------------------+-----------+
+              |                   |                    |
+              v                   v                    v
+       +-------------+     +-------------+      +-------------+
+       | Postgres 17 |     | digest      |      | vault/KMS   |
+       | facts/outbox|     | object bytes|      | references  |
+       +------+------+     +------+------+      +-------------+
+              |                   |
+              +---------+---------+
+                        v off-host durable ACK / backup / anchors
+                +------------------+
+                | independent store|
+                +------------------+
+
+       committed jobs                 protected effect intent
+              |                                |
+              v                                v
+  +-------------------------+       +-----------------------------+
+  | replaceable worker plane|       | root/effect integration     |
+  | runner -> local process |       | verify grant + provenance   |
+  |        -> local tmux    |       | apply -> receipt -> reconcile|
+  +-------------------------+       +-----------------------------+
 ```
 
-Routine schedules do **not** become one operating-system cron entry per routine. Postgres owns due
-occurrences. A logical scheduler inside `ctower-worker` claims them transactionally. The systemd timer is
-only a redundant wake/recovery mechanism if the continuous worker is restarted or idle.
+Only control-plane Modules can authorize canonical mutations. A runner can return observations,
+artifacts, attestations, and requested transitions; none becomes ticket, Workflow, Proof, or delivery
+truth until the owning Module validates and appends it. External systems remain authoritative for their
+own effects, while ctower retains grants, receipts, and reconciliation findings.
 
-## Work state is orthogonal
+## Deployment topology by increment
+
+Logical Modules are not deployment units. Exact units live in `deploy/`; this atlas names only the
+topology fixed by the SPEC.
+
+### I1: co-located trust spine
 
 ```text
-priority:       P0 / P1 / P2
-Board lane:     Backlog / To Do / In Progress / In Review / Blocked / Done
-factory stage:  Think → Plan → Design → Implement → QA → Review → Docs → Release → QA → Retro
-custody:        Commander C0
-executor:       E1 / D1 / Q1 / ...
-reviewer:       independent R1
-runner:         fenced lease RL42 on runner incarnation RI7
-delivery:       unmerged / merged / staging-verified / production-verified / incident
+  private TLS edge
+         |
+         v
+  +------------------------- private VPS --------------------------+
+  |                                                               |
+  |  +----------------------+   +-------------------------------+  |
+  |  | ctower-api           |   | one application control worker|  |
+  |  | command/query + auth |   | outbox, projection, scheduler |  |
+  |  +----------+-----------+   | health and recovery loops     |  |
+  |             |               +---------------+---------------+  |
+  |             +-------------------------------+                  |
+  |                    same verified control artifact              |
+  |                              |                                 |
+  |  +-------------+  +----------v---------+  +----------------+  |
+  |  | Postgres 17 |  | digest object store|  | OTel collector |  |
+  |  +-------------+  +--------------------+  +----------------+  |
+  |              vault/KMS references + off-host ACK/backups       |
+  +---------------------------------------------------------------+
 ```
 
-Changing an executor, reviewer, runner, model, process, or session does not move ticket custody and does
-not silently change Board lane, workflow stage, priority, proof, or delivery truth.
+I1 has no agent stage dispatch, autonomous Commander loop, runner daemon, or production effect grant.
+The API composition and one control worker share one kernel artifact; Access, Record, Catalog, Work,
+Proof, Attention, the limited generic Workflow evaluator, and Projections remain logical responsibilities
+behind Module Interfaces. Service-per-noun units such as a separate reconciler are not implied.
 
-## Heartbeats, wakes, routines, and cron
-
-Paperclip usefully demonstrates that agents should sleep until real work arrives, but the word
-“heartbeat” is overloaded in agent systems. ctower separates five concepts:
-
-| Concept | Durable meaning | Explicit non-meaning |
-|---|---|---|
-| Trigger | A versioned reason work may become due: event, assignment, mention, gate resolution, schedule, webhook, manual command, retry, or reconciliation | Not a model invocation |
-| Wake intent | Idempotent committed request to create or coalesce a bounded job with exact cause and context pins | Not proof that a worker received it |
-| Reasoning heartbeat | Operator-friendly name for one bounded execution run that claims a wake job, makes progress, records events/checkpoints, and terminates | Not identity or durable memory |
-| Lease heartbeat | A runner liveness/progress frame that may renew only the current fenced lease | Not an instruction to reason or a success fact |
-| Scheduler beat | A deterministic scan/kick that materializes due routine occurrences | Not one cron process per agent |
-
-The authoritative entity behind a reasoning heartbeat is an **Execution run**. The friendly term may
-appear in the UI, but schemas and events say `wake_intent`, `job`, `execution_run`,
-`lease.heartbeat`, or `scheduler.scan` so operators and implementers cannot confuse them.
-
-### Event-driven default
-
-- New agent profiles have periodic timer wakes off.
-- Assignment, comment/mention, gate resolution, explicit steering, retry, and routine occurrence create
-  event-driven wake intents.
-- Recurring business work is a versioned Routine with a schedule trigger, not “wake every agent every N
-  seconds to see if anything happened.”
-- A periodic agent poll is allowed only when the source has no webhook/event interface. It is represented
-  as a named Routine with an explicit cost, staleness goal, owner, and disable switch.
-- Pausing a schedule trigger stops new schedule occurrences. Pausing an agent blocks all new execution
-  claims for that agent. These are different commands and are displayed separately.
-
-### Routine definition
-
-A Routine is a stable key whose immutable revisions pin:
-
-- title/instructions template and typed variables;
-- tenant, project, goal, optional parent ticket, and default stage/capability assignment;
-- schedule, signed webhook, event, or manual triggers;
-- IANA timezone and daylight-saving policy;
-- concurrency, catch-up, idempotency, maximum backlog, timeout, cost, and escalation policy;
-- referenced Profile, Skill, Workflow, Execution Policy, environment, and secret **references**.
-
-Every occurrence pins the exact Routine and component revision. Editing or rolling back creates a new
-revision; it cannot rewrite an in-flight or historical occurrence.
-
-### Cron firing transaction
+### I2/target: separately deployable contract clients
 
 ```text
-system clock / event
-        │
-        ▼
-┌───────────────────┐   SELECT ... FOR UPDATE SKIP LOCKED   ┌────────────────────────┐
-│ scheduler scan    ├───────────────────────────────────────►│ due trigger revision   │
-└───────────────────┘                                        └───────────┬────────────┘
-                                                                          ▼
-                                                               compute due occurrence(s)
-                                                                          │
-                                                                          ▼
-┌────────────────────────────────── ONE DATABASE TRANSACTION ────────────────────────────────┐
-│ 1. insert unique occurrence(trigger_revision_id, scheduled_for)                            │
-│ 2. apply catch-up and concurrency policy                                                    │
-│ 3. append received / coalesced / skipped / queued outcome                                  │
-│ 4. create ticket, inbound event, or wake job when required                                 │
-│ 5. write outbox message                                                                     │
-│ 6. advance next_fire_at under compare-and-swap                                              │
-└────────────────────────────────────────┬────────────────────────────────────────────────────┘
-                                         │ commit before dispatch
-                                         ▼
-                               outbox dispatcher → wake/job queue
+  web / ctowerctl
+         |
+         v
+  +------------------------- private VPS --------------------------+
+  | ctower-api deployment      control-worker deployment           |
+  |          \                 /                                   |
+  |           +-- exact same verified control artifact --+         |
+  |                                                      |         |
+  | Postgres + objects + vault refs + off-host durability |         |
+  |                                                      |         |
+  | ctower-runner -- local process Adapter                |         |
+  |               \- local tmux Adapter                  |         |
+  |                                                               |
+  | ctower-release-supervisor.service  [root-owned, separate]      |
+  |              | allowlisted install/switch/restart/rollback     |
+  |              +--> ctower-staging.service                       |
+  |              \--> ctower.service                               |
+  +---------------------------------------------------------------+
 ```
 
-The occurrence key makes restart and duplicate scans idempotent. Scheduling uses database time and stores
-both the UTC instant and original local civil time/timezone. The default DST policy is
-`wall_clock_once`: a nonexistent civil time is recorded as skipped and an ambiguous repeated civil time
-fires once at the earlier offset. Fixed elapsed-time polling uses a UTC interval trigger instead.
+`ctower-runner` is a protocol client with no record-tier credential. The root release supervisor stays
+alive while ctower upgrades itself, independently verifies artifact bytes, signatures/attestations,
+subjects, and trusted builder/workflow identity, and writes a hash-chained receipt journal. The one live
+`systemd-vps/v1` integration plus its fault-injection implementation is an internal Effects boundary, not
+a generalized provider Seam.
 
-Concurrency policy is one of:
-
-- `coalesce_if_active` — attach the new occurrence to the active execution and queue no duplicate;
-- `skip_if_active` — record a skipped occurrence with reason;
-- `serialize_one_pending` — retain exactly one pending follow-up;
-- `always_enqueue_bounded` — create distinct work up to a server/policy cap.
-
-Catch-up policy is one of:
-
-- `skip_missed` — record the missed window and advance;
-- `coalesce_latest` — materialize one occurrence representing all missed windows;
-- `enqueue_missed_with_cap` — materialize each missed occurrence up to a declared ceiling and record how
-  many were dropped.
-
-Defaults are `coalesce_if_active` and `skip_missed`. Every tick remains visible even when skipped or
-coalesced. No restart may create a silent flood.
-
-### Wake and reasoning-heartbeat flow
+## Deep Modules and dependency direction
 
 ```text
-assignment / comment / gate / routine / manual / retry / reconcile
-                              │
-                              ▼
-                    ┌────────────────────┐
-                    │ committed wake     │  dedupe/coalesce, policy, budget,
-                    │ intent + outbox    │  cooldown, capability, current state
-                    └─────────┬──────────┘
-                              ▼
-                    ┌────────────────────┐
-                    │ accepted job       │
-                    └─────────┬──────────┘
-                              ▼ lease + fencing token
-                    ┌────────────────────┐
-                    │ execution run      │──── structured events/log cursors ───► live view
-                    │ bounded heartbeat  │──── checkpoints/artifacts ───────────► object store
-                    └─────────┬──────────┘
-                              ▼
-                  terminal result / wait / typed failure
-                              │
-                              ▼
-          Workflow + Proof evaluate; they do not trust process exit
+ authored contracts ---> generated models/clients ---> app composition roots
+        |                                                    |
+        +---------------------> kernel Module Interfaces <----+
+
+ runner app ---> runner SDK ---> generated runner contracts
+ systemd-vps Adapter ----------> Effects port + generated effect contracts
+
+ forbidden:
+   kernel -> app, web, CLI, runner, or provider implementation
+   web/CLI/runner/provider/extension -> record-tier connection
+   generated output -> policy or server implementation
 ```
 
-Every reasoning heartbeat follows this server-enforced protocol:
+| Deep Module | Authority hidden behind its Interface |
+|---|---|
+| Access / Record | Authentication, authorization, idempotency-before-CAS, streams, hash chain, outbox, durability result |
+| Catalog | One `VersionedComponent` lifecycle, compatibility, provenance, exact pins, future-only active pointers |
+| Work | Permanent tickets, lifecycle episodes, custody, relations, priorities, blockers, typed Board intents |
+| Proof | Criteria, artifacts, evidence DAG, independence, gate instances/verdicts, invalidation |
+| Attention | Exact policy-qualified human actions and Needs You projection inputs |
+| Workflow | Arbitrary pinned graph readiness, legal edges, policy selection, routes, bounds, terminal decisions |
+| Runtime | Accepted jobs, leases, fencing, cursors, ACKs, checkpoints, local execution composition |
+| Effects | Grants, releases, provider observations, receipts, incidents, rollback, reconciliation |
+| Projections | Rebuildable Home, Board, Ticket, Fleet, Analytics, watermarks, KPIs |
 
-1. Claim one accepted job under a current lease/fencing token.
-2. Pin the exact Profile, Persona, Skill, Workflow, policy, harness/model, environment, image, workspace,
-   context manifest, and wake-cause revisions.
-3. Re-fetch current ticket/job/cancellation state; a stale wake cannot authorize work.
-4. Read the specific cause first, then the compact eligible inbox; checkout/claim before mutation.
-5. Execute bounded work while emitting ordered progress events and checkpoints.
-6. Commit ticket comments, outputs, evidence declarations, and requested transitions through authenticated
-   idempotent commands.
-7. Emit one terminal result or explicit waiting/blocked result; process exit alone proves nothing.
-8. Reconcile touched effects and release the lease. A stale process may upload quarantined forensics only.
+There is no `Factory`, `TaskManager`, status service, generic provider manager, or microservice per table.
+The software factory is data interpreted by Workflow. Public Interfaces stay small; private validators,
+folds, SQL, and Adapter mechanics remain local to the owning Module.
 
-A profile may include a revision-pinned `HEARTBEAT.md` checklist, as Paperclip does. That file is useful
-role procedure, not scheduler, workflow, gate, counter, assignment, or completion authority.
-
-### Continuations and steering
-
-Resolving a human gate, approval, or structured question commits the result and an optional continuation
-wake in the same authoritative transaction. The continuation names the exact ticket, interaction revision,
-result digest, intended assignee/capability, and idempotency key. Live steering is a durable ordered command
-with `queued → delivered → acknowledged|rejected|expired|superseded`; injecting text into a terminal is
-never delivery proof.
-
-### Watchdogs and reconciliation
-
-ctower uses four separate deterministic detectors:
-
-| Detector | Observes | Automatic action |
-|---|---|---|
-| Scheduler completeness | due occurrences, scan watermark, clock skew, outbox lag | claim/replay due work; degrade health on gaps |
-| Runner liveness | current lease heartbeat, cursor progress, checkpoint, incarnation | suspect, expire, fence, requeue/resume |
-| Ticket progress | stage age, blocker SLA, stopped subtree, no-progress lineage | re-evaluate or create one scoped watchdog-review job |
-| Control/effect reconciliation | projections, receipts, provider inventory, backups, synthetics | replay, quarantine, incident, or owner alert |
-
-An agent watchdog is a reviewer of a **detected condition**, not the liveness clock itself. Its input is a
-fingerprinted desired/observed state. The same unchanged fingerprint is reviewed once, so a quiet failure
-does not create endless duplicate comments or expensive wakes. Custom instructions may narrow review but
-cannot expand authority, bypass a typed gate, approve a protected decision, or leave the ticket subtree.
-
-### Health and operator surfaces
-
-Fleet shows routines and heartbeat/run state without requiring terminal access:
-
-- enabled/paused state, next due time, timezone, last occurrence, last success, backlog, and owner;
-- every received/coalesced/skipped/queued/running/completed/failed occurrence;
-- current agent run, wake reason, profile/model/harness, cost, timestamps, logs/events, checkpoint, touched
-  tickets, cancellation, retry/resume, and terminal reconciliation;
-- scheduler scan watermark, clock skew, due lag, outbox lag, leases, runner health, and unknown state;
-- scoped “disable schedule,” “pause agent,” “cancel run,” “drain runner,” and audited emergency stop.
-
-CLI and web call the same commands. There is no routine operation that edits the database directly. A
-root-owned break-glass helper may submit a signed emergency command through the local control socket, and
-its result is appended and visible like every other protected command.
-
-## Autonomous verification loop
+## Workflow and Execution Policy compose at runtime
 
 ```text
-dispatch ──► execute ──► evidence ──► QA/review gate ──PASS──► next stage
-                              ▲               │
-                              │               └──FAIL──► bounded repair attempt
-                              │                                │
-                              └────────────────────────────────┘
-                                               retry ceiling reached ──► Needs You
+  immutable Workflow revision             compatible Execution Policy revision
+  +----------------------------------+     +------------------------------------+
+  | stages + activity metadata       |     | participants/capabilities          |
+  | legal edges + parallelism        |     | mandatory stage gates              |
+  | typed failure routes             |     | required review perspectives       |
+  | gate locations                   |     | finite nonpass/repair/generation    |
+  | terminal conditions              |     | timeouts, placement, escalation     |
+  +----------------+-----------------+     +------------------+-----------------+
+                   \                                      /
+                    +---------------+----------------------+
+                                    v
+                       orchestration plan revision
+                       selects only permitted options;
+                       records rationale, never consumption
+                                    |
+                                    v
+                       +-----------------------------+
+                       | generic Workflow evaluator  |
+                       | exact digest + current facts |
+                       +--------------+--------------+
+                                      |
+                      +---------------+----------------+
+                      |                                |
+                  READY                            NOT READY
+                      |                                |
+             append job/transition        append exact unmet checklist;
+                                           authoritative state unchanged
 ```
 
-The Commander selects the strongest healthy capable reasoning profile and proposes the risk-scaled review
-topology. The kernel enforces gate floors, independence, current-digest proof, repair lineage accounting,
-and the automatic ceiling. The Commander can raise rigor with evidence; it cannot fabricate a verdict,
-reset consumption, or bypass an operator-only decision.
+Every Workflow chooses its stage vocabulary and order. Every compatible Execution Policy chooses who
+executes and reviews, which declared gates activate, and which finite bounds apply. A policy can select or
+narrow declared behavior; it cannot invent a missing stage or edge. `engineering.software-factory` is the
+first package, not the engine's built-in process.
 
-## Paperclip prior art: adopt and harden
+A ReviewPlan is a named child revision inside its pinned Gate Policy component. The only reference form is
+`<gate-policy-key>@<gate-policy-revision>#review-plans.<name>`; the parent revision/digest owns its bytes, so
+the enclosing `review_plans` map name is its identity and it has no independent key, revision, status, or
+`VersionedComponent`.
 
-The heartbeat design was checked against the complete relevant Paperclip documentation under
-`paperclip-docs/`: heartbeat/routine guides, daily routine and stuck-heartbeat recipes, task watchdogs,
-agent/run/activity surfaces, agent and routine API/CLI references, continuation interactions, execution
-policy, and scheduler settings.
+## Enforced verification and repair
 
-Adopt:
+```text
+ current candidate digest
+          |
+          v
+ [mandatory stage gates] -- fail --> typed failure lineage
+          | pass                         |
+          v                              v
+ +---------- one terminal review round on this digest ----------+
+ | dispatch every required/applicable independent perspective   |
+ | each started job appends one observed total_executions fact   |
+ +-------------------------------+-------------------------------+
+                                 |
+                +----------------+----------------+
+                |                                 |
+        every perspective passes          any nonpass/error/blocker
+                |                                 |
+                v                                 v
+             ADVANCE                    nonpassing_rounds += 1
+                                                  |
+                                      consume stable-lineage repair
+                                                  |
+                              +-------------------+------------------+
+                              | finite capacity                      | exhausted,
+                              v                                      | no progress,
+                       mutate candidate                              | deadline/quota
+                       generation += 1                               v
+                              |                         one deduplicated escalation;
+                              +--> invalidate declared proof         stop automation
+                                   -> fresh required gates/review
+```
 
-- event-driven wakes and timer-off defaults;
-- versioned routines with cron/timezone, webhooks, manual runs, variables, and secret refs;
-- explicit concurrency and catch-up policy;
-- idempotent manual firing, run attribution, coalesced/skipped outcomes, revision-pinned runs;
-- wake context, short-lived run credentials, visible live runs, cancellation, retry/resume;
-- continuation wakes after gate decisions;
-- stopped-state fingerprinting for watchdog review;
-- a mechanical per-role heartbeat checklist.
+One current-digest terminal round advances exactly when every required/applicable perspective passes;
+there is no generic `required_passing_rounds` field. Only a terminal nonpassing round consumes
+`max_nonpassing_rounds`. Candidate generations, per-lineage repairs, and the observed execution total are
+separate append-only facts and survive reassignment, restart, model change, and digest change.
 
-Harden:
+`total_executions` is immutable observed audit/cost, not plan-authored capacity; ReviewPlan v1 cannot author,
+cap, or reset it. Current automation terminates through nonpassing-round, per-lineage repair,
+candidate-generation, no-progress, deadline, quota, and hard-safety enforcement. A future aggregate
+cost/resource stop requires a real use case, a separately versioned policy component, executable semantic
+validation, and actual enforcement before publication. ReviewPlan v1 deliberately defines no field or
+arithmetic for that future component.
 
-- Paperclip documentation sometimes uses “heartbeat” for both a scheduled alarm and any event-driven run;
-  ctower uses the five distinct concepts above.
-- Routine-level versus trigger-level delivery policy is inconsistent across Paperclip API and CLI prose;
-  ctower keeps it in the immutable Routine revision and records trigger-specific overrides explicitly.
-- A resumed vendor session is a convenience hint, not durable memory; ctower rehydrates from committed
-  state and pins context by digest.
-- Cancellation cannot wait for “the next heartbeat”; it revokes/fences state-changing authority now.
-- Full transcripts are not permanent truth and may contain sensitive content; ctower preserves redacted
-  structured events, byte/object cursors, evidence, and receipts under explicit retention.
-- Direct database maintenance commands are not normal control paths.
-- Agent status, ticket status, workflow stage, run state, health, and delivery remain orthogonal.
+For the software-factory package, `code-review` is the base perspective and covers correctness plus
+maintainability. `security` and `rendered-design` activate only when their package predicates apply.
+Functional QA, documentation truth, release preflight, staging QA, production smoke/live QA, and retro
+remain stage gates rather than duplicate review perspectives.
+
+## One ticket, orthogonal state and changing owners
+
+```text
+ permanent ticket CT-42 / lifecycle episode 1
+ ------------------------------------------------------------------------>
+ priority facts:     P2 -------- P1 ------------------------------------->
+ Board lane:         backlog -> ready -> in_progress -> in_review -> ...
+ Workflow stage:     arbitrary package stage keys + activity metadata --->
+ custody:            Commander C0 ================================ close
+ executors:          E1 -------- E2 -------- QA1 -------- release1 ------>
+ reviewers:                                  R1 / conditional S1 -------->
+ runner leases:      lease7 --fenced--> lease9 -------------------------->
+ delivery facts:     change_merged -> staging_verified -> production_verified
+```
+
+Reassignment closes one interval and opens another with actor, reason, command, scope, and fence result.
+It does not mutate custody, priority, stage, Board lane, evidence, delivery, age, or counters. Only a
+protected atomic Commander-custody transfer can replace C0, with no gap and with checkpoint/context handoff.
+
+Canonical Board lanes are `backlog`, `ready`, `in_progress`, `in_review`, `blocked`, and `complete`.
+Priority is `P0|P1|P2`. The Board derives verification from stage `activity_class`, not stage names. Merge,
+staging verification, production verification, rollback, and incident remain separate typed delivery facts.
+
+## Durable wake, Routine, and run flow
+
+```text
+ assignment / mention / gate / Routine / retry / reconciliation
+                              |
+                              v
+              committed wake_intent + outbox
+                    dedupe/coalesce/policy
+                              |
+                              v
+                        accepted job
+                              |
+                   lease + fencing token
+                              v
+                       execution_run
+                 events + ACKs + checkpoints
+                              |
+                              v
+            explicit terminal / waiting / typed failure
+                              |
+                              v
+                 Workflow + Proof evaluate facts
+```
+
+A trigger is why work may become due. A wake intent is the durable request. A reasoning heartbeat is the
+operator-facing name for one bounded `execution_run`. A lease heartbeat renews only a current fenced
+lease. A scheduler beat materializes due Routine occurrences. None substitutes for another.
+
+Routine occurrence, concurrency/catch-up outcome, ordinary command/job, outbox row, and `next_fire_at`
+commit before dispatch. One logical scheduler owns Routine truth; there is no OS cron process per agent or
+Routine. Scheduler completeness, runner liveness, ticket progress, and effect/reconciliation watermarks
+are independent and make health `STATE UNKNOWN` when stale.
+
+## Disaster-safe acceptance, restore, and cutover
+
+```text
+ command transaction commits
+          |
+          v
+ off-host record ACK obtained? ---- no ----> durability_pending
+          | yes                              non-accepted; replay same key
+          v
+ authoritative accepted response
+          |
+          v
+ encrypted WAL/base/object/anchor backups
+          |
+          v
+ +---------------- isolated restore ----------------+
+ | recover vault/KMS access                          |
+ | verify events, chains, anchors, objects, digests  |
+ | replay erasure tombstones                         |
+ | load signed expected-source inventory             |
+ | inactive source -> explicit not_exercised/zero     |
+ | active source -> import/reconcile trusted journal |
+ | missing active source -> fail closed              |
+ +-------------------------+--------------------------+
+                           |
+             +-------------+-------------+
+             |                           |
+        findings remain              all reconciled
+             |                           |
+   reads/effects stay disabled            v
+   explicit degraded state       synthetic lifecycle + runner tests
+                                         |
+                                         v
+                                 record measured RPO/RTO
+```
+
+At the ctower-project source-of-truth barrier, accepted record truth has RPO 0 because an off-host durable
+ACK precedes acceptance. A monthly restore is unusable until key recovery, object/tombstone verification,
+and validation of every signed expected-source inventory entry finish. I1 inventories root/effect/provider
+sources explicitly as `not_exercised` with zero-source declarations; their absence is never success. Any
+missing, unreadable, or gapped activated source fails closed. I2 commits a signed inventory revision marking
+a source active before the first associated grant/effect. Ordinary reads and all effects remain disabled
+while any activated source is absent or unreconciled; quarantine remains degraded evidence and never turns
+absence into restore success.
+
+The cutover is therefore ordered:
+
+```text
+prove acceptance + backup + isolated restore
+  -> prove CLI/UI/four-stage generic evaluator
+  -> inventory and freeze ctower-project legacy writers
+  -> hash/export + reviewed alias map
+  -> idempotent restricted import + reconciliation
+  -> atomic client rewire
+  -> seal legacy inputs read-only; any later write is an incident
+```
+
+There is no dual-write period. After rewire, rollback means a compatible ctower build/restore or explicit
+read-only/spool mode, never restarting legacy mutation.
+
+## Build sequence and earned Seams
+
+```text
+I1: L0 contracts/repository gates
+     -> Record + Work + Proof
+     -> off-host acceptance + restore
+     -> spool-backed CLI
+     -> thin Home + Board + Ticket
+     -> capture -> frame -> verify -> close on final generic evaluator
+     -> ctower-project cutover/dogfood
+
+I2: deepen generic Workflow + Proof
+     -> durable Runtime and local process/tmux recovery
+     -> activate unattended Commander on the proven always-on substrate
+     -> complete five surfaces + Effects/release
+     -> one software-factory production golden ticket
+```
+
+The direct-process and tmux Supervisor Adapters both pass one conformance suite, so their local public Seam
+is earned. The systemd release integration remains internal because one live Adapter plus a test fake does
+not justify a general provider Interface. Remote execution, Crabbox, reusable custom images, warm pools,
+general effect providers, and executable extensions remain deferred until a real use case and at least two
+independently valuable real Adapters earn each Seam. Current evidence says `not exercised`.
 
 ## Required failure proofs
 
-Before scheduling and heartbeat support is called complete, tests must prove:
+Before either increment is complete, applicable tests must show that:
 
-1. Duplicate scheduler scans, webhook retries, manual retries, and outbox replay create one logical
-   occurrence and no duplicate effect.
-2. A restart between occurrence insert and dispatch replays the outbox without losing or duplicating work.
-3. Timezone, DST gap/repeat, clock skew, long downtime, and catch-up caps produce the declared outcomes.
-4. Routine/profile edits do not alter already-created occurrences or execution manifests.
-5. Agent pause, routine pause, project pause, budget stop, and runner drain have distinct fail-closed
-   behavior and visible reasons.
-6. Missed lease heartbeats never imply job success; stale fencing tokens cannot mutate ticket/proof/effect
-   state.
-7. Cancellation prevents new state-changing commands and protected effects from an old run.
-8. The same stopped-state watchdog fingerprint creates one review; changed evidence creates a new one.
-9. Scheduler/outbox/projection completeness loss renders Fleet and health degraded or `STATE UNKNOWN`.
-10. A worker, tmux session, sandbox, remote provider, or whole VPS can disappear without losing accepted
-    ticket, wake, occurrence, proof, checkpoint, or effect-receipt truth.
+1. Duplicate commands, scheduler scans, webhook retries, and outbox replay converge without duplicate truth.
+2. Loss of off-host acknowledgement returns only replayable `durability_pending`.
+3. API/control-worker restart, host reboot, and isolated restore lose no accepted record.
+4. Reads/effects cannot enable before key, object, tombstone, signed expected-source inventory, and activated-journal reconciliation; absent sources never count as success.
+5. Runner/tmux loss fences stale authority and resumes from durable state without inferred success.
+6. A candidate mutation invalidates exactly dependent proof and requires fresh applicable gates/review.
+7. Author/self-review, missing perspectives, invalid bounds, and stale evidence fail closed.
+8. Production verification failure enters incident, revocation, containment/rollback, verification, then triage.
+9. Unknown scheduler, projection, runner, backup, telemetry, or reconciliation state is visibly degraded.
+10. Remote/image/extension fixtures cannot be presented as an exercised runtime or public Seam.
 
-tmux therefore remains useful for same-host continuity and visibility, but it is only one Supervisor
-Adapter. Durability comes from committed commands/events, occurrence keys, outbox replay, leases and
-fencing, replayable cursors, immutable evidence, checkpoints, and external-effect receipts.
+Tmux is useful for same-host continuity and operator visibility. Durability comes from acknowledged records,
+committed events/outbox entries, fenced leases, replayable cursors, immutable evidence, checkpoints,
+off-host backups, and reconciled external receipts.

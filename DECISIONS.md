@@ -463,3 +463,104 @@ continuation wakes, and mechanical `HEARTBEAT.md` procedure. Ctower hardens thos
 four overloaded runtime terms above, committing occurrence/outbox truth before dispatch, treating session
 resume as optional acceleration, fencing cancellation immediately, retaining structured/redacted durable
 records rather than trusting full transcripts, and forbidding routine direct-database control paths.
+
+## D17 — Configurable rigor, task-first dogfood, acknowledged durability, and earned Seams (locked 2026-07-18, operator)
+
+The operator approved the task-management shape and the revised direction to proceed. This entry preserves
+D1–D16 as history while superseding only their conflicting implementation details. In particular, it
+supersedes D9/D15's universal risk-tier floors, fixed review counts, and platform-wide ceiling; D13's
+predeclared general remote-provider Interface and fake-provider L0 scope; and D13's statement that the
+task-management model remained pending. The durable principles behind those entries remain: accountable
+Commander custody, independent verification, protected waivers, append-only server facts, stable failure
+lineages, bounded automation, immutable pins, exact-identity cleanup, and fail-closed recovery.
+
+1. **Workflow and Execution Policy remain domain-neutral.** A Workflow declares stages, activity metadata,
+   legal edges, failure routes, and terminal conditions. A pinned Execution Policy and orchestration-plan
+   revision declare participants, mandatory stage gates, `required_perspectives`,
+   `max_nonpassing_rounds`, `max_repairs_per_lineage`, `max_candidate_generations`, and optionally
+   `max_total_executions` only when the domain independently needs a cost/resource stop. `total_executions`
+   and all consumed counts are immutable server facts used for audit, cost, and exhaustion checks; clients
+   and plan prose cannot author or reset them. Every applicable policy must be finite, but ctower has no
+   universal low/standard/elevated/critical numbers or automatic ceiling. Concrete values belong to the
+   pinned domain package; the default `engineering.software-factory` examples deliberately omit a total
+   cap and remain finite through nonpassing-round, repair, candidate-generation, no-progress, deadline,
+   quota, and hard-safety bounds. If another domain selects a total cap, policy publication requires at
+   least one maximum co-active perspective round plus adjudication reserve, and a resolved ticket requires
+   at least its active perspective round plus reserve. The cap may independently stop work while other
+   bounds retain capacity; it does not promise that every independent bound can be consumed simultaneously.
+   One all-perspective pass on the current digest advances; only a terminal nonpassing round consumes
+   `max_nonpassing_rounds`. Candidate generation, review outcome, lineage repair, and observed execution
+   total are separate dimensions. A later candidate may invalidate a prior pass and require fresh review,
+   but no repeated passing round is required.
+2. **Task management is approved as orthogonal facts, not one overloaded status.** Priority is P0/P1/P2.
+   Lifecycle, blockers, workflow stage, assignments, Board lane, and delivery facts are independent.
+   Canonical Board lanes are `backlog`, `ready`, `in_progress`, `in_review`, `blocked`, and `complete`, with
+   familiar UI labels allowed. The Board fold derives verification versus work from each stage's
+   `activity_class`; the engine never branches on software-factory stage names. Delivery uses typed facts
+   such as `change_merged`, `staging_verified`, and `production_verified`; capitalization of “done” has no
+   semantic authority. Reassignment changes custody/executor/reviewer intervals without erasing history,
+   age, proof, or counters.
+3. **The build order is task-first and self-dogfooding.** L0 freezes only the smallest contracts and
+   repository gates. I1 builds Record/Work/Proof, policy-required off-host acceptance, backup/restore and
+   key/journal recovery, the protected CLI spool, thin Home/Board/Ticket, and a four-stage
+   `capture -> frame -> verify -> close` fixture interpreted by the final generic Workflow Module
+   interface. Only after those pass does the ctower project freeze/import/rewire and make ctower its sole
+   writable task source. I2 deepens that same Workflow Module with generic stage jobs, Commander planning,
+   Runtime, independent verification, Effects, release, and one software-factory production golden path.
+   There is no temporary hard-coded workflow engine.
+4. **Acceptance means disaster-recoverable acknowledgement.** At cutover, an authoritative accepted record
+   has RPO 0 because the response is not accepted until the policy-required off-host durable ACK commits.
+   If that ACK is unavailable, the response is explicit non-accepted `durability_pending` and safely
+   replayable under the same command key. Restore recovers vault/KMS material, verifies events/objects/
+   tombstones, and reconciles root-supervisor, effect, and provider journals before ordinary reads or effects
+   enable. Artifact bytes may retain a separately declared RPO no worse than five minutes; they cannot be
+   misrepresented as accepted authoritative records.
+5. **Release trust is independently rooted.** The application submits desired artifact identity only. A
+   root-owned release supervisor verifies artifact bytes, signature/attestation, subjects, and trusted
+   builder/workflow identity against root-owned policy before installation. Missing, wrong, revoked, or
+   untrusted provenance performs no install. Supervisor/effect journals and receipts survive ctower restart
+   and participate in restore reconciliation.
+6. **Public Seams are earned.** I1/I2 implement the local process/tmux Supervisor Seam justified by two real
+   Adapters. The golden path also implements one live `systemd-vps` integration and a fault-injection test
+   implementation behind an internal Effects boundary; that pair does not become a generalized public
+   provider Seam. General remote execution, Crabbox, custom images, warm pools, executable extensions, and
+   a generalized effect-provider Seam keep only durable invariant/deferred-capability contracts at L0.
+   Each gains a public Seam only when a real use case and at least two justified real Adapters exist; a fake
+   alone never earns indirection or product scope. Current evidence must say `not exercised`, not imply a
+   runtime from contract fixtures.
+7. **Operational correctness starts on day one.** Browser writes remain visibly unsent or
+   durability-pending until accepted. The encrypted owner-only CLI spool and poison outbox paths fail closed
+   under crash, disk, corruption, and permanent-delivery failures. The exact design-load fixture is a
+   versioned repository artifact. Before project cutover, at least five and preferably ten working days of
+   instrumented legacy operator-attention data are frozen; provisional absolute targets apply until 30
+   comparable post-cutover tickets permit the relative target. A clean install's first verified success has
+   its own timed acceptance criterion.
+8. **The canonical spec stays readable and executable mechanics stay owned.** `SPEC.md` owns requirements,
+   architecture, user flows, acceptance criteria, KPIs, and increment intent. Schemas, OpenAPI, migrations,
+   package YAML, fixtures, and validation commands own mechanical detail in their exact repository homes.
+   Generated SPEC/AC/INV traceability indexes prove coverage and drift; they do not create another source of
+   truth. `ARCHITECTURE.md` remains the one compact derived atlas allowed by D16 and loses every conflict with
+   the SPEC.
+
+## D18 — ReviewPlan v1 ownership, observed execution facts, and restore-source inventory (locked 2026-07-18, operator)
+
+This entry preserves D1–D17 as history and supersedes **only** D17.1's optional aggregate-execution-cap
+clause and its associated publication arithmetic. Every other D17 decision remains in force.
+
+1. **ReviewPlan v1 has no aggregate execution limit.** It owns `required_perspectives`,
+   `max_nonpassing_rounds`, `max_repairs_per_lineage`, and `max_candidate_generations`.
+   `total_executions` remains an immutable server-owned audit/cost observation for every started
+   perspective execution; neither policy input nor an orchestration plan can author, cap, or reset it. A
+   future aggregate cost/resource stop requires a real use case, a separately versioned policy component,
+   an executable semantic validator, and actual enforcement before publication. No field or arithmetic for
+   that future component is decided now.
+2. **A ReviewPlan is a named child revision.** It lives inside one pinned Gate Policy component and is
+   addressed only as `<gate-policy-key>@<gate-policy-revision>#review-plans.<name>`. The parent revision and
+   digest own the child bytes, and the enclosing `review_plans` map name is the child identity. A ReviewPlan
+   has no independent key, revision, status, `VersionedComponent` identity, or standalone reference form.
+3. **Restore success requires a signed expected-source inventory.** Each inventory revision names every
+   authoritative root-supervisor, effect, and provider journal plus its activation state and trusted cursor
+   or zero-source declaration. I1 records these unactivated sources explicitly as `not_exercised`/zero-source;
+   absence is never success. A missing, unreadable, or gapped activated source fails closed. Before I2
+   activates a root/effect source, the activation transaction commits a signed inventory revision marking
+   it active before any associated grant or effect can execute.

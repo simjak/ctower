@@ -21,6 +21,8 @@ from tools.checks._impl.model import (
 from tools.checks._impl.source import analyze_source, discover_sources
 from tools.checks.report import Finding, PolicyReport, Severity
 
+__all__ = ["run_verification"]
+
 
 def _finding(
     rule_id: str,
@@ -341,5 +343,5 @@ def _evaluate_checks(
             item for metric in sources for item in _ownership_findings(root, metric, policy)
         )
     if "generated" in checks:
-        findings.extend(verify_generated_manifest(root, policy.manifest_path))
+        findings.extend(verify_generated_manifest(root, policy.generated))
     return findings

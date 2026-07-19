@@ -1,0 +1,167 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://ctower.dev/contracts/compatibility/matrix-input/v1",
+  "title": "ctower fixed L0 runtime compatibility matrix input",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema",
+    "matrix_id",
+    "uv_version",
+    "requirements",
+    "required_observations",
+    "product_artifacts",
+    "candidates"
+  ],
+  "properties": {
+    "schema": {"const": "ctower.compatibility-input/v1"},
+    "matrix_id": {"const": "ct-l0-007-python-2026-07-19"},
+    "uv_version": {"const": "0.11.29"},
+    "requirements": {
+      "type": "array",
+      "const": [
+        "build==1.5.0",
+        "fastapi==0.139.2",
+        "jsonschema==4.26.0",
+        "mypy==1.20.2",
+        "opentelemetry-api==1.44.0",
+        "opentelemetry-sdk==1.44.0",
+        "psycopg==3.3.4",
+        "psycopg-binary==3.3.4",
+        "psycopg-pool==3.3.1",
+        "pydantic==2.13.4",
+        "ruff==0.15.22",
+        "setuptools==83.0.0",
+        "types-jsonschema==4.26.0.20260518",
+        "uv==0.11.29",
+        "wheel==0.47.0"
+      ]
+    },
+    "required_observations": {
+      "type": "array",
+      "const": [
+        "runtime",
+        "dependency_resolution",
+        "pydantic",
+        "fastapi",
+        "psycopg",
+        "opentelemetry",
+        "ruff",
+        "mypy_pydantic_plugin",
+        "jsonschema",
+        "wheel"
+      ]
+    },
+    "product_artifacts": {
+      "type": "array",
+      "const": ["release_helper_wheel", "generated_clients"]
+    },
+    "candidates": {
+      "type": "array",
+      "minItems": 3,
+      "maxItems": 3,
+      "prefixItems": [
+        {"$ref": "#/$defs/python31213"},
+        {"$ref": "#/$defs/python31314"},
+        {"$ref": "#/$defs/python3146"}
+      ],
+      "items": false
+    }
+  },
+  "$defs": {
+    "candidateBase": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "version",
+        "gil",
+        "release_date",
+        "release_url",
+        "source_url",
+        "source_sha256",
+        "linux_image"
+      ],
+      "properties": {
+        "version": {"enum": ["3.12.13", "3.13.14", "3.14.6"]},
+        "gil": {"const": "required"},
+        "release_date": {"type": "string", "format": "date"},
+        "release_url": {"type": "string", "format": "uri"},
+        "source_url": {"type": "string", "format": "uri"},
+        "source_sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+        "linux_image": {
+          "type": "string",
+          "pattern": "^docker\\.io/library/python@sha256:[0-9a-f]{64}$"
+        }
+      }
+    },
+    "python31213": {
+      "allOf": [
+        {"$ref": "#/$defs/candidateBase"},
+        {
+          "properties": {
+            "version": {"const": "3.12.13"},
+            "release_date": {"const": "2026-03-03"},
+            "release_url": {
+              "const": "https://www.python.org/downloads/release/python-31213/"
+            },
+            "source_url": {
+              "const": "https://www.python.org/ftp/python/3.12.13/Python-3.12.13.tgz"
+            },
+            "source_sha256": {
+              "const": "0816c4761c97ecdb3f50a3924de0a93fd78cb63ee8e6c04201ddfaedca500b0b"
+            },
+            "linux_image": {
+              "const": "docker.io/library/python@sha256:57cd7c3a7a273101a6485ba99423ee568157882804b1124b4dd04266317710de"
+            }
+          }
+        }
+      ]
+    },
+    "python31314": {
+      "allOf": [
+        {"$ref": "#/$defs/candidateBase"},
+        {
+          "properties": {
+            "version": {"const": "3.13.14"},
+            "release_date": {"const": "2026-06-10"},
+            "release_url": {
+              "const": "https://www.python.org/downloads/release/python-31314/"
+            },
+            "source_url": {
+              "const": "https://www.python.org/ftp/python/3.13.14/Python-3.13.14.tgz"
+            },
+            "source_sha256": {
+              "const": "5ae535a36af0ebca6fca176ecb8197f5db9c1cb8c8f0cd12cdf1787046db1f41"
+            },
+            "linux_image": {
+              "const": "docker.io/library/python@sha256:6771159cd4fa5d9bba1258caf0b82e6b73458c694d178ad97c5e925c2d0e1a91"
+            }
+          }
+        }
+      ]
+    },
+    "python3146": {
+      "allOf": [
+        {"$ref": "#/$defs/candidateBase"},
+        {
+          "properties": {
+            "version": {"const": "3.14.6"},
+            "release_date": {"const": "2026-06-10"},
+            "release_url": {
+              "const": "https://www.python.org/downloads/release/python-3146/"
+            },
+            "source_url": {
+              "const": "https://www.python.org/ftp/python/3.14.6/Python-3.14.6.tgz"
+            },
+            "source_sha256": {
+              "const": "74d0d71d0600e477651a077101d6e62d1e2e69b8e992ba18c993dd643b7ba222"
+            },
+            "linux_image": {
+              "const": "docker.io/library/python@sha256:cea0e6040540fb2b965b6e7fb5ffa00871e632eef63719f0ea54bca189ce14a6"
+            }
+          }
+        }
+      ]
+    }
+  }
+}

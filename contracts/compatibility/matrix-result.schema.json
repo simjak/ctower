@@ -1,0 +1,442 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://ctower.dev/contracts/compatibility/matrix-result/v1",
+  "title": "ctower runtime compatibility evidence",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema", "evidence_scope", "input_digest", "matrix_id", "telemetry", "runs"],
+  "properties": {
+    "schema": {"const": "ctower.compatibility-result/v1"},
+    "evidence_scope": {"const": "external-runner-noncanonical"},
+    "input_digest": {"$ref": "#/$defs/digest"},
+    "matrix_id": {"const": "ct-l0-007-python-2026-07-19"},
+    "telemetry": {
+      "$ref": "https://ctower.local/contracts/observability/telemetry-context.schema.json"
+    },
+    "runs": {
+      "type": "array",
+      "minItems": 6,
+      "maxItems": 6,
+      "prefixItems": [
+        {"$ref": "#/$defs/python31213Macos"},
+        {"$ref": "#/$defs/python31213Linux"},
+        {"$ref": "#/$defs/python31314Macos"},
+        {"$ref": "#/$defs/python31314Linux"},
+        {"$ref": "#/$defs/python3146Macos"},
+        {"$ref": "#/$defs/python3146Linux"}
+      ],
+      "items": false
+    }
+  },
+  "$defs": {
+    "sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+    "digest": {"type": "string", "pattern": "^sha256:[0-9a-f]{64}$"},
+    "version": {"enum": ["3.12.13", "3.13.14", "3.14.6"]},
+    "machine": {"enum": ["amd64", "arm64"]},
+    "runtimeDetails": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "version",
+        "implementation",
+        "free_threaded",
+        "gil_enabled",
+        "system",
+        "platform",
+        "machine",
+        "soabi",
+        "cache_tag",
+        "py_gil_disabled",
+        "executable_sha256"
+      ],
+      "properties": {
+        "version": {"$ref": "#/$defs/version"},
+        "implementation": {"const": "CPython"},
+        "free_threaded": {"const": false},
+        "gil_enabled": {"const": true},
+        "system": {"enum": ["Darwin", "Linux"]},
+        "platform": {"enum": ["linux-amd64", "linux-arm64", "macos-amd64", "macos-arm64"]},
+        "machine": {"$ref": "#/$defs/machine"},
+        "soabi": {"enum": [
+          "cpython-312-aarch64-linux-gnu", "cpython-312-darwin", "cpython-312-x86_64-linux-gnu",
+          "cpython-313-aarch64-linux-gnu", "cpython-313-darwin", "cpython-313-x86_64-linux-gnu",
+          "cpython-314-aarch64-linux-gnu", "cpython-314-darwin", "cpython-314-x86_64-linux-gnu"
+        ]},
+        "cache_tag": {"enum": ["cpython-312", "cpython-313", "cpython-314"]},
+        "py_gil_disabled": {"const": 0},
+        "executable_sha256": {"$ref": "#/$defs/sha256"}
+      }
+    },
+    "resolvedDependency": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["name", "version"],
+      "properties": {
+        "name": {"type": "string", "pattern": "^[a-z0-9][a-z0-9.-]+$"},
+        "version": {"type": "string", "pattern": "^[0-9][A-Za-z0-9.+!-]*$"}
+      }
+    },
+    "dependencyDetails": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["direct_versions"],
+      "properties": {
+        "direct_versions": {
+          "type": "array",
+          "minItems": 15,
+          "maxItems": 15,
+          "items": {"$ref": "#/$defs/resolvedDependency"}
+        }
+      }
+    },
+    "pydanticDetails": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["extra_fields", "frozen"],
+      "properties": {
+        "extra_fields": {"const": "forbidden"},
+        "frozen": {"const": true}
+      }
+    },
+    "fastapiDetails": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["version", "openapi", "schema_sha256"],
+      "properties": {
+        "version": {"const": "0.139.2"},
+        "openapi": {"type": "string", "pattern": "^3\\.[01]\\.[0-9]+$"},
+        "schema_sha256": {"$ref": "#/$defs/sha256"}
+      }
+    },
+    "psycopgDetails": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["psycopg", "psycopg_pool"],
+      "properties": {
+        "psycopg": {"const": "3.3.4"},
+        "psycopg_pool": {"const": "3.3.1"}
+      }
+    },
+    "opentelemetryDetails": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["api", "spans"],
+      "properties": {
+        "api": {"const": "1.44.0"},
+        "spans": {"const": 1}
+      }
+    },
+    "commandDetails": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["exit_code"],
+      "properties": {"exit_code": {"const": 0}}
+    },
+    "mypyDetails": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["valid", "invalid_exit_code", "extra_field_rejected"],
+      "properties": {
+        "valid": {"$ref": "#/$defs/commandDetails"},
+        "invalid_exit_code": {"const": 1},
+        "extra_field_rejected": {"const": true}
+      }
+    },
+    "jsonschemaDetails": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["version", "schema_sha256"],
+      "properties": {
+        "version": {"const": "4.26.0"},
+        "schema_sha256": {"$ref": "#/$defs/sha256"}
+      }
+    },
+    "wheelDetails": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["wheel_sha256", "build", "install", "imported"],
+      "properties": {
+        "wheel_sha256": {"$ref": "#/$defs/sha256"},
+        "build": {"$ref": "#/$defs/commandDetails"},
+        "install": {"$ref": "#/$defs/commandDetails"},
+        "imported": {"const": true}
+      }
+    },
+    "observationEnvelope": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "status", "duration_ms", "details"],
+      "properties": {
+        "id": {"type": "string"},
+        "status": {"const": "passed"},
+        "duration_ms": {"type": "integer", "minimum": 0, "maximum": 900000},
+        "details": {"type": "object"}
+      }
+    },
+    "observation": {
+      "oneOf": [
+        {"$ref": "#/$defs/runtimeObservation"},
+        {"$ref": "#/$defs/dependencyObservation"},
+        {"$ref": "#/$defs/pydanticObservation"},
+        {"$ref": "#/$defs/fastapiObservation"},
+        {"$ref": "#/$defs/psycopgObservation"},
+        {"$ref": "#/$defs/opentelemetryObservation"},
+        {"$ref": "#/$defs/ruffObservation"},
+        {"$ref": "#/$defs/mypyObservation"},
+        {"$ref": "#/$defs/jsonschemaObservation"},
+        {"$ref": "#/$defs/wheelObservation"}
+      ]
+    },
+    "runtimeObservation": {
+      "allOf": [
+        {"$ref": "#/$defs/observationEnvelope"},
+        {"properties": {"id": {"const": "runtime"}, "details": {"$ref": "#/$defs/runtimeDetails"}}}
+      ]
+    },
+    "dependencyObservation": {
+      "allOf": [
+        {"$ref": "#/$defs/observationEnvelope"},
+        {"properties": {"id": {"const": "dependency_resolution"}, "details": {"$ref": "#/$defs/dependencyDetails"}}}
+      ]
+    },
+    "pydanticObservation": {
+      "allOf": [
+        {"$ref": "#/$defs/observationEnvelope"},
+        {"properties": {"id": {"const": "pydantic"}, "details": {"$ref": "#/$defs/pydanticDetails"}}}
+      ]
+    },
+    "fastapiObservation": {
+      "allOf": [
+        {"$ref": "#/$defs/observationEnvelope"},
+        {"properties": {"id": {"const": "fastapi"}, "details": {"$ref": "#/$defs/fastapiDetails"}}}
+      ]
+    },
+    "psycopgObservation": {
+      "allOf": [
+        {"$ref": "#/$defs/observationEnvelope"},
+        {"properties": {"id": {"const": "psycopg"}, "details": {"$ref": "#/$defs/psycopgDetails"}}}
+      ]
+    },
+    "opentelemetryObservation": {
+      "allOf": [
+        {"$ref": "#/$defs/observationEnvelope"},
+        {"properties": {"id": {"const": "opentelemetry"}, "details": {"$ref": "#/$defs/opentelemetryDetails"}}}
+      ]
+    },
+    "ruffObservation": {
+      "allOf": [
+        {"$ref": "#/$defs/observationEnvelope"},
+        {"properties": {"id": {"const": "ruff"}, "details": {"$ref": "#/$defs/commandDetails"}}}
+      ]
+    },
+    "mypyObservation": {
+      "allOf": [
+        {"$ref": "#/$defs/observationEnvelope"},
+        {"properties": {"id": {"const": "mypy_pydantic_plugin"}, "details": {"$ref": "#/$defs/mypyDetails"}}}
+      ]
+    },
+    "jsonschemaObservation": {
+      "allOf": [
+        {"$ref": "#/$defs/observationEnvelope"},
+        {"properties": {"id": {"const": "jsonschema"}, "details": {"$ref": "#/$defs/jsonschemaDetails"}}}
+      ]
+    },
+    "wheelObservation": {
+      "allOf": [
+        {"$ref": "#/$defs/observationEnvelope"},
+        {"properties": {"id": {"const": "wheel"}, "details": {"$ref": "#/$defs/wheelDetails"}}}
+      ]
+    },
+    "observationSet": {
+      "type": "array",
+      "minItems": 10,
+      "maxItems": 10,
+      "prefixItems": [
+        {"$ref": "#/$defs/runtimeObservation"},
+        {"$ref": "#/$defs/dependencyObservation"},
+        {"$ref": "#/$defs/pydanticObservation"},
+        {"$ref": "#/$defs/fastapiObservation"},
+        {"$ref": "#/$defs/psycopgObservation"},
+        {"$ref": "#/$defs/opentelemetryObservation"},
+        {"$ref": "#/$defs/ruffObservation"},
+        {"$ref": "#/$defs/mypyObservation"},
+        {"$ref": "#/$defs/jsonschemaObservation"},
+        {"$ref": "#/$defs/wheelObservation"}
+      ],
+      "items": false
+    },
+    "probeCore": {
+      "type": "object",
+      "required": ["version", "status", "interpreter", "observations", "telemetry"],
+      "properties": {
+        "version": {"$ref": "#/$defs/version"},
+        "status": {"const": "passed"},
+        "interpreter": {"$ref": "#/$defs/runtimeDetails"},
+        "observations": {"$ref": "#/$defs/observationSet"},
+        "telemetry": {
+          "$ref": "https://ctower.local/contracts/observability/telemetry-context.schema.json"
+        }
+      }
+    },
+    "probe_result": {
+      "allOf": [{"$ref": "#/$defs/probeCore"}],
+      "unevaluatedProperties": false
+    },
+    "hostIdentity": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["system", "machine"],
+      "properties": {
+        "system": {"enum": ["Darwin", "Linux"]},
+        "machine": {"$ref": "#/$defs/machine"}
+      }
+    },
+    "resolution": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["lock", "lock_sha256"],
+      "properties": {
+        "lock": {
+          "type": "array",
+          "minItems": 15,
+          "uniqueItems": true,
+          "items": {
+            "type": "string",
+            "minLength": 3,
+            "maxLength": 256,
+            "pattern": "^[a-z0-9](?:[a-z0-9.-]*[a-z0-9])?==[0-9][A-Za-z0-9.!+]*$"
+          }
+        },
+        "lock_sha256": {"$ref": "#/$defs/sha256"}
+      }
+    },
+    "imageIdentity": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "requested",
+        "image_id",
+        "os",
+        "architecture"
+      ],
+      "properties": {
+        "requested": {
+          "type": "string",
+          "pattern": "^docker\\.io/library/python@sha256:[0-9a-f]{64}$"
+        },
+        "image_id": {"$ref": "#/$defs/digest"},
+        "os": {"const": "linux"},
+        "architecture": {"enum": ["amd64", "arm64"]}
+      }
+    },
+    "artifact": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["status", "reason_code"],
+      "properties": {
+        "status": {"const": "not_exercised"},
+        "reason_code": {"const": "artifact_absent"}
+      }
+    },
+    "productArtifacts": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["release_helper_wheel", "generated_clients"],
+      "properties": {
+        "release_helper_wheel": {"$ref": "#/$defs/artifact"},
+        "generated_clients": {"$ref": "#/$defs/artifact"}
+      }
+    },
+    "run": {
+      "allOf": [
+        {"$ref": "#/$defs/probeCore"},
+        {
+          "type": "object",
+          "required": [
+            "environment",
+            "host_identity",
+            "resolution",
+            "product_artifacts",
+            "image_identity"
+          ],
+          "properties": {
+            "environment": {"enum": ["macos-host", "linux-container"]},
+            "host_identity": {"$ref": "#/$defs/hostIdentity"},
+            "resolution": {"$ref": "#/$defs/resolution"},
+            "product_artifacts": {"$ref": "#/$defs/productArtifacts"},
+            "image_identity": {
+              "oneOf": [{"$ref": "#/$defs/imageIdentity"}, {"type": "null"}]
+            }
+          }
+        }
+      ],
+      "unevaluatedProperties": false
+    },
+    "python31213Macos": {
+      "allOf": [
+        {"$ref": "#/$defs/run"},
+        {"properties": {
+          "version": {"const": "3.12.13"},
+          "environment": {"const": "macos-host"},
+          "host_identity": {"properties": {"system": {"const": "Darwin"}}},
+          "image_identity": {"type": "null"}
+        }}
+      ]
+    },
+    "python31213Linux": {
+      "allOf": [
+        {"$ref": "#/$defs/run"},
+        {"properties": {
+          "version": {"const": "3.12.13"},
+          "environment": {"const": "linux-container"},
+          "host_identity": {"properties": {"system": {"const": "Linux"}}},
+          "image_identity": {"properties": {"requested": {"const": "docker.io/library/python@sha256:57cd7c3a7a273101a6485ba99423ee568157882804b1124b4dd04266317710de"}}}
+        }}
+      ]
+    },
+    "python31314Macos": {
+      "allOf": [
+        {"$ref": "#/$defs/run"},
+        {"properties": {
+          "version": {"const": "3.13.14"},
+          "environment": {"const": "macos-host"},
+          "host_identity": {"properties": {"system": {"const": "Darwin"}}},
+          "image_identity": {"type": "null"}
+        }}
+      ]
+    },
+    "python31314Linux": {
+      "allOf": [
+        {"$ref": "#/$defs/run"},
+        {"properties": {
+          "version": {"const": "3.13.14"},
+          "environment": {"const": "linux-container"},
+          "host_identity": {"properties": {"system": {"const": "Linux"}}},
+          "image_identity": {"properties": {"requested": {"const": "docker.io/library/python@sha256:6771159cd4fa5d9bba1258caf0b82e6b73458c694d178ad97c5e925c2d0e1a91"}}}
+        }}
+      ]
+    },
+    "python3146Macos": {
+      "allOf": [
+        {"$ref": "#/$defs/run"},
+        {"properties": {
+          "version": {"const": "3.14.6"},
+          "environment": {"const": "macos-host"},
+          "host_identity": {"properties": {"system": {"const": "Darwin"}}},
+          "image_identity": {"type": "null"}
+        }}
+      ]
+    },
+    "python3146Linux": {
+      "allOf": [
+        {"$ref": "#/$defs/run"},
+        {"properties": {
+          "version": {"const": "3.14.6"},
+          "environment": {"const": "linux-container"},
+          "host_identity": {"properties": {"system": {"const": "Linux"}}},
+          "image_identity": {"properties": {"requested": {"const": "docker.io/library/python@sha256:cea0e6040540fb2b965b6e7fb5ffa00871e632eef63719f0ea54bca189ce14a6"}}}
+        }}
+      ]
+    }
+  }
+}

@@ -1,0 +1,11 @@
+blank_issues_enabled: false
+contact_links:
+  - name: Documentation
+    url: https://simjak.github.io/ctower/
+    about: Read the project status, concepts, and development guides.
+  - name: Questions and design discussion
+    url: https://github.com/simjak/ctower/discussions
+    about: Ask public questions or discuss an idea before proposing a large change.
+  - name: Private vulnerability report
+    url: https://github.com/simjak/ctower/security/advisories/new
+    about: Report security vulnerabilities privately; never disclose them in an issue.

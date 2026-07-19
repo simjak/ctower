@@ -4,7 +4,7 @@ fail_fast: true
 
 repos:
   - repo: https://github.com/pre-commit/pre-commit-hooks
-    rev: v5.0.0
+    rev: cef0300fd0fc4d2a87a85fa2093c6b283ea36f4b # v5.0.0
     hooks:
       - id: check-added-large-files
         args: [--maxkb=1024]
@@ -21,19 +21,19 @@ repos:
       - id: trailing-whitespace
 
   - repo: https://github.com/astral-sh/ruff-pre-commit
-    rev: v0.12.9
+    rev: 2700fd5671c633760d912769c041bfcde2b9a01b # v0.15.22
     hooks:
       - id: ruff-check
         args: [--fix]
       - id: ruff-format
 
-  - repo: https://github.com/gitleaks/gitleaks
-    rev: v8.28.0
-    hooks:
-      - id: gitleaks
-
   - repo: local
     hooks:
+      - id: gitleaks-staged
+        name: gitleaks (staged changes)
+        entry: gitleaks git . --staged --config .gitleaks.toml --no-banner --redact
+        language: system
+        pass_filenames: false
       - id: repository-policy
         name: repository policy (staged profile)
         entry: python3 -m tools.checks --root . --profile staged

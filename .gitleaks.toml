@@ -3,8 +3,25 @@ title = "ctower secret detection policy"
 [extend]
 useDefault = true
 
-[allowlist]
-description = "Only deterministic fake values in isolated repository-policy fixtures"
+[[allowlists]]
+description = "One deterministic detector-shaped token used by the secret-gate proof"
+condition = "AND"
+regexTarget = "line"
 paths = [
-  '''tests/repository/fixtures/''',
+  '''^tests/repository/fixtures/secret-scan/exact-fake\.txt$''',
 ]
+regexes = [
+  '''^fixture-token = glpat-0123456789abcdefghij$''',
+]
+
+[[rules]]
+id = "generic-api-key"
+
+  [[rules.allowlists]]
+  description = "One reviewed lifecycle sentence in the append-only decision log"
+  condition = "AND"
+  regexTarget = "line"
+  paths = ['''^DECISIONS\.md$''']
+  regexes = [
+    '''\A(?:\r?\n)?The reusable-image lifecycle is setup -> capture -> scrub -> secret scan -> SBOM/vulnerability scan ->\z''',
+  ]

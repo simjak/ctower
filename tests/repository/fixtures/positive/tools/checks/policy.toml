@@ -5,7 +5,7 @@ protected_roots = ["app", "consumer"]
 
 [architecture]
 forbidden_module_stems = ["common", "helpers", "manager", "utils"]
-non_waivable_rules = ["generated.drift", "generated.manifest"]
+non_waivable_rules = ["generated.drift", "generated.manifest", "generated.notice"]
 
 [budgets.file]
 warning = 500
@@ -31,6 +31,9 @@ failure = 12
 
 [generated]
 manifest = "generated/.generated-manifest.json"
+output_root = "generated"
+input_roots = ["app", "consumer"]
+input_files = []
 
 [profiles]
 staged = ["source", "ownership"]

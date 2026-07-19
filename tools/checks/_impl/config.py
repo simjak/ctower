@@ -6,10 +6,18 @@ import json
 import tomllib
 from collections.abc import Mapping
 from datetime import UTC, date, datetime
-from pathlib import Path
+from pathlib import Path, PurePosixPath
 from typing import Any
 
-from tools.checks._impl.model import Budget, ExceptionRecord, OwnershipRule, PolicyConfig
+from tools.checks._impl.model import (
+    Budget,
+    ExceptionRecord,
+    GeneratedPathPolicy,
+    OwnershipRule,
+    PolicyConfig,
+)
+
+__all__ = ["PolicyConfigurationError", "load_exceptions", "load_policy"]
 
 
 class PolicyConfigurationError(ValueError):
@@ -38,6 +46,44 @@ def _budget(value: object, label: str) -> Budget:
     if not isinstance(warning, int) or not isinstance(failure, int) or warning >= failure:
         raise PolicyConfigurationError(f"{label} needs integer warning < failure")
     return Budget(warning=warning, failure=failure)
+
+
+def _repository_paths(value: object, label: str) -> tuple[str, ...]:
+    values = _strings(value, label)
+    if len(values) != len(set(values)):
+        raise PolicyConfigurationError(f"{label} must not contain duplicates")
+    for item in values:
+        path = PurePosixPath(item)
+        if not path.parts or path.is_absolute() or ".." in path.parts or str(path) != item:
+            raise PolicyConfigurationError(
+                f"{label} entries must be normalized repository-relative paths"
+            )
+    return values
+
+
+def _generated_policy(value: Mapping[str, Any]) -> GeneratedPathPolicy:
+    required = {"manifest", "output_root", "input_roots", "input_files"}
+    if set(value) != required:
+        raise PolicyConfigurationError(f"generated fields must be exactly {sorted(required)}")
+    manifest = _repository_paths([value["manifest"]], "generated.manifest")[0]
+    output_root = _repository_paths([value["output_root"]], "generated.output_root")[0]
+    input_roots = _repository_paths(value["input_roots"], "generated.input_roots")
+    input_files = _repository_paths(value["input_files"], "generated.input_files")
+    if output_root != "generated":
+        raise PolicyConfigurationError("generated.output_root must be canonical 'generated'")
+    output_path = PurePosixPath(output_root)
+    if not PurePosixPath(manifest).is_relative_to(output_path) or manifest == output_root:
+        raise PolicyConfigurationError("generated.manifest must be below generated.output_root")
+    if any(PurePosixPath(path).is_relative_to(output_path) for path in input_roots + input_files):
+        raise PolicyConfigurationError(
+            "generated inputs must be authored paths outside output_root"
+        )
+    return GeneratedPathPolicy(
+        manifest_path=manifest,
+        output_root=output_root,
+        input_roots=input_roots,
+        input_files=input_files,
+    )
 
 
 def load_policy(root: Path) -> PolicyConfig:
@@ -77,7 +123,7 @@ def load_policy(root: Path) -> PolicyConfig:
         ),
         budgets={name: _budget(value, f"budgets.{name}") for name, value in budget_data.items()},
         ownership=ownership,
-        manifest_path=str(generated.get("manifest", "generated/.generated-manifest.json")),
+        generated=_generated_policy(generated),
         profiles={
             name: _strings(value, f"profiles.{name}") for name, value in profiles_data.items()
         },

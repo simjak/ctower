@@ -1,479 +1,396 @@
-# ctower dogfood-first implementation roadmap
+# ctower derived checkpoint roadmap
 
-> **Status:** Proposed implementation sequencing
->
-> **Normative authority:** [`SPEC.md`](SPEC.md)
->
-> **Decision history:** [`DECISIONS.md`](DECISIONS.md)
->
-> **Last reviewed:** 2026-07-18
+| Field | Value |
+|---|---|
+| Status | Non-normative execution sequence derived from `SPEC.md` 1.7 |
+| Product increments | Exactly two: Increment 1 and Increment 2 |
+| Work authority before cutover | SPEC temporary bootstrap backlog |
+| Work authority after cutover | ctower tickets only |
+| Last reviewed | 2026-07-18 |
 
-This document proposes how to build ctower as a sequence of vertical, usable increments.
-It is deliberately non-normative: it does not approve scope, change architecture, create
-live tickets, or supersede the bootstrap backlog in `SPEC.md`. If this roadmap conflicts
-with `SPEC.md`, the SPEC wins. A proposed increment becomes committed work only after the
-operator approves it and its scope is reflected in the canonical SPEC and durable ctower
-tickets.
+This roadmap makes the normative build order easier to execute. It does not create a third scope model,
+approve work, mirror ticket status, or override the stable IDs, acceptance criteria, validation commands,
+or two product increments in [`SPEC.md`](SPEC.md). [`DECISIONS.md`](DECISIONS.md) preserves rationale.
+No extra operator decision is required to begin L0, I1, or I2 as specified; normal operator-only gates still
+apply to material taste, a newly discovered architecture/security direction, destructive action, or incident.
 
-## 1. Sequencing principle
+## One checkpoint sequence
 
-Do not build the whole control tower and only then try it. Each increment must transfer
-one real responsibility from Mission Control to ctower and prove that responsibility under
-restart and failure. The source-of-truth transfer is one-way: once ctower owns a concern,
-the previous system becomes read-only for that concern.
+Contract Level 0 is the opening checkpoint group inside I1, not a product increment.
 
 ```text
-┌───────────────────────────────┐
-│ Mission Control builds        │
-│ the bootstrap                 │
-└───────────────┬───────────────┘
-                │
-                ▼
-┌───────────────────────────────┐
-│ ctower owns TICKETS           │
-└───────────────┬───────────────┘
-                │
-                ▼
-┌───────────────────────────────┐
-│ ctower owns AGENT RUNS        │
-└───────────────┬───────────────┘
-                │
-                ▼
-┌───────────────────────────────┐
-│ ctower owns QA + GATES        │
-└───────────────┬───────────────┘
-                │
-                ▼
-┌───────────────────────────────┐
-│ ctower COMMANDER drives work  │
-└───────────────┬───────────────┘
-                │
-                ▼
-┌───────────────────────────────┐
-│ ctower deploys CTOWER         │
-└───────────────┬───────────────┘
-                │
-                ▼
-┌───────────────────────────────┐
-│ Remote runners and other      │
-│ business workflows            │
-└───────────────────────────────┘
+INCREMENT 1 — durable task-management dogfood
+
+ [L0 contracts + repository gates]
+              |
+ [co-located control + bootstrap]
+              |
+ [Record + Work + Proof + evaluator subset]
+              |
+ [off-host acceptance + isolated restore]
+              |
+ [spool-backed CLI]
+              |
+ [thin Home + Board + Ticket]
+              |
+ [four-stage fixture on final generic evaluator]
+              |
+ [ctower-project cutover + I1 archive]
+              |
+============== SOURCE-OF-TRUTH BARRIER ==============
+              |
+INCREMENT 2 — autonomous generic workflow + one golden path
+
+ [deepen generic Workflow + Proof/policy]
+              |
+ [durable Runtime + local process/tmux recovery]
+              |
+ [activate durable Commander orchestration]
+              |
+ [complete five surfaces + Effects/release]
+              |
+ [one software-factory production golden ticket]
 ```
 
-The first usable slice is not merely “ticket creation plus assignee.” It is:
+The order matters. Disaster-recoverable record truth precedes project cutover. Always-on scheduling,
+reconciliation, restart, and restore proof precede unattended Commander autonomy. The I1 fixture uses the
+same generic Workflow Module Interface that I2 deepens; no temporary stage-name engine is allowed.
+
+## Checkpoint exit contract
+
+A checkpoint is complete only when all applicable conditions hold:
+
+1. Its stable backlog item contracts and designated validation commands pass.
+2. Authored schemas, package values, generated output, tests, and documentation remain in their sole homes.
+3. At least one real vertical behavior is observed through the public Interface; private database edits or
+   process/session state are not evidence.
+4. Each new durability or authority claim has an injected failure plus restart/replay/recovery evidence.
+5. Acceptance criteria bind exact artifacts, digests, actors, environments, and current verdicts.
+6. Unknown or incomplete state fails closed and is visible; no self-report, terminal exit, or screenshot
+   alone establishes completion.
+7. A retro or checkpoint review turns a process defect into a linked improvement or an evidence-backed
+   no-change decision.
+8. Later checkpoint suites remain `not_yet_required`; no placeholder test is presented as passing.
+
+Execution status belongs to the temporary SPEC backlog before cutover and to ctower tickets afterward.
+This file records sequence and exit logic only.
+
+## Increment 1 — durable task-management dogfood
+
+### I1.0 — Contract Level 0
+
+**Stable work:** `CT-L0-001` through `CT-L0-009`.
+
+Freeze the smallest contracts needed for independent work:
+
+- authority/ownership, DDL and privilege homes, canonical events/hash/idempotency, OpenAPI and codegen;
+- P0/P1/P2, typed blockers/intents, six Board lanes, arbitrary stage `activity_class`, assignment kinds,
+  delivery facts, and scheduling fairness;
+- domain-neutral Workflow, Execution/Gate/Evidence policy, Routine, wake/job/lease/cursor vocabulary;
+- strict Python/TypeScript boundaries, Repository Policy, Ruff/format/mypy/Pydantic, file/function/complexity
+  gates, observability, secrets, hooks, CI, deterministic generation, and expected-suite scope;
+- one `VersionedComponent` envelope, CompanyBundle schemas, first-tenant bootstrap contract, and package
+  materialization/provenance;
+- denial/deferred-capability contracts for remote execution, images, and executable extensions without
+  claiming public Seams.
+
+**Exit:** `just check` and the L0-scoped `just verify` contract are real, non-mutating, and fail missing,
+empty, drifted, oversized, cyclic, secret-bearing, shallow pass-through, or unowned current-scope work.
+The exact Python pin remains gated by D14 compatibility evidence; no `uv.lock` is created prematurely.
+
+### I1.1 — Co-located trusted control and first-tenant bootstrap
+
+**Stable work:** `CT-I1-001`.
+
+Build one private-VPS control artifact used by the `ctower-api` composition and one application control
+worker. Add the checksum-locked migrator, least-privilege Postgres roles, digest object store, vault/KMS
+references, private TLS edge, telemetry, and one-use local/private first-tenant trust-root ceremony.
+
+The bootstrap transaction creates the tenant, disabled historical bootstrap actor, initial operator/admin,
+durable Commander principal, vault bindings, events/outbox, receipt, and permanent disable atomically.
+It creates no ticket, profile, workflow, credential value, or runtime state.
+
+**Exit:** crash, replay, concurrent use, expiry, wrong origin, changed body, and second-use tests create no
+duplicate or partial authority; the token appears in no argv, URL, environment, log, event, or artifact.
+
+### I1.2 — Record, Work, Proof, and the generic evaluator subset
+
+**Stable work:** `CT-I1-002`, `CT-I1-003`, and applicable L0 contracts.
+
+Implement the first deep Modules behind small Interfaces:
+
+- Access/Record: authenticated append, idempotency before CAS, hash chain, outbox, cursors, replay tombstones;
+- Catalog/Work: exact component pins, permanent ticket identity, lifecycle episodes, custody, assignment
+  intervals, relations, P0/P1/P2, blockers, typed Board intents, resolution/close;
+- Proof/Attention: criteria freeze/revision, content-addressed artifacts, evidence, protected verdicts,
+  invalidation, exact human actions;
+- Workflow evaluator subset: pinned graph, activity metadata, legal edge, entry/exit, gate and terminal
+  decisions for arbitrary definitions, with a test that rejects branching on fixture stage names.
+
+**Exit:** no-proof/no-close, self-verdict denial, corrupt-object, selective invalidation, exact replay,
+cross-tenant, concurrency, projection rebuild, and accepted/refused transition tests pass through Interfaces.
+
+### I1.3 — Acknowledged durability and disaster-safe operations
+
+**Stable work:** durability spine of `CT-I1-006`, completed with the later I1 surfaces before final exit.
+
+Make acceptance mean recoverability:
 
 ```text
-ticket creation
-  + durable timeline
-  + accountable custody
-  + current executor assignment
-  + explicit result/evidence
+record commit -> required off-host ACK -> accepted
+             \-> ACK unavailable -> durability_pending (safe replay)
 ```
 
-Assignment must not be modeled as one overloaded `assignee_id`:
+Add off-host WAL/record acknowledgement, encrypted database/object backups, external anchors, vault/KMS
+recovery, Routine occurrences for synthetic/backup work, poison-outbox handling, completeness watermarks,
+real reboot recovery, and isolated restore. Restore must verify chains, anchors, objects, and erasure
+tombstones, then verify a signed expected-source inventory. I1 lists root-supervisor, effect, and provider
+journals explicitly as `not_exercised`/zero-source; absence is not success. Every activated source must be
+present and reconciled from its trusted cursor before ordinary reads or effects can enable.
 
-- **Custodian:** the Commander or human role accountable for bringing the ticket to a
-  terminal outcome.
-- **Executor:** the agent or human currently performing the work; this can change.
-- **Reviewer / QA:** independent gate participants added when verification exists.
-- **Runner lease:** ephemeral execution ownership; never business accountability.
+**Exit:** host-loss accepted-record RPO is 0; artifact RPO is explicitly separate and no worse than the
+SPEC target. Restore records measured RPO/RTO. Missing keys, objects, receipts, cursors, or journal matches
+keep the environment isolated and visibly degraded. A missing activated inventory source fails closed. This
+proof is mandatory before source-of-truth cutover.
 
-## 2. Increment contract
+### I1.4 — Protected spool-backed CLI and CompanyBundle path
 
-Every phase must finish with all of the following:
+**Stable work:** `CT-I1-004`.
 
-1. Automated contract, integration, and end-to-end checks appropriate to the increment.
-2. At least one real ctower-development ticket completed through the new capability.
-3. One relevant injected failure, not only a happy-path demonstration.
-4. Restart, replay, or recovery evidence for every durable claim introduced by the phase.
-5. A retrospective that records escaped defects and process friction.
-6. Improvement findings converted into the next durable tickets.
-7. The previous source of truth made read-only for the capability transferred to ctower.
+Implement `ctowerctl`/`ctl` through the generated OpenAPI client. The encrypted owner-only spool preserves
+one command ID across crash, torn write, concurrent writer, disk full, timeout, replay, rejection, and
+quarantine. It removes nothing until authoritative acceptance. CompanyBundle validate, semantic plan,
+apply, and canonical export use the same authenticated command path as UI changes; YAML is never watched
+and contains no secrets, counters, sessions, receipts, or live work.
 
-An increment is incomplete when it only renders UI, produces a passing unit test, or
-records an agent self-report. The proof is a user-visible outcome backed by authoritative
-events and independent evidence.
+**Exit:** API/CLI parity, kill/replay, two-writer, disk, poison, secret, and zero-semantic-diff round-trip
+tests pass. `durability_pending` remains a non-accepted replayable result.
 
-## 3. Phase 0 — walking skeleton
+### I1.5 — Thin trustworthy Home, Board, and Ticket
 
-**Purpose:** prove the smallest durable command path before product behavior exists.
+**Stable work:** `CT-I1-005` plus the I1 projection/health part of `CT-I1-006`.
 
-Mission Control remains the source of truth and builds this phase.
+Ship only the thin I1 portion of the five-surface shell:
 
-### Build
+- Home with omnibox, policy-qualified Needs You, and completeness/integrity health;
+- Board with the six derived lanes and independent priority, stage/activity, blocker, custody, assignee,
+  risk, and typed delivery facts;
+- contextual/direct-ID Ticket with ordered timeline, criteria/evidence/gates, custody/assignment history,
+  blockers, typed delivery, accepted/refused transitions, and pending command state.
 
-- Establish the accepted Python and browser toolchains, locks, repository gates, and CI.
-- Start local PostgreSQL and run forward migrations.
-- Implement a one-use bootstrap path for one company and one project.
-- Seed Operator, Commander, and Engineer principals.
-- Expose one authenticated command endpoint and matching `ctowerctl` command.
-- Persist a command, append its event, and publish its outbox record atomically.
-- Enforce idempotency keys and compare-and-swap aggregate versions.
-- Add health endpoints, structured logs, traces, and minimum service metrics.
+Browser writes remain `unsent` or `durability pending` until authoritative acceptance and preserve one key
+through reload. Board controls issue typed intents, never `PATCH status`. Material UI taste remains an
+operator gate; every visible control must be wired and independently exercised.
 
-### Explicitly defer
+**Exit:** Board truth-table, tenant isolation, reconnect/reload, every-control UI QA, Needs You precision,
+`STATE UNKNOWN`, and healthy-Home under-ten-seconds evidence pass.
 
-- Board UI.
-- Workflow engine.
-- Agent execution.
-- Generic company administration.
+### I1.6 — Four-stage trust-spine fixture on the final evaluator
 
-### Exit proof
-
-Submit one command, terminate and restart the API, replay the record, and observe exactly
-one authoritative event. The health surface must become degraded when PostgreSQL or outbox
-progress stops; it must not report false green.
-
-## 4. Phase 1 — tracking minimum working product
-
-**Purpose:** ctower tracks the work used to build ctower.
-
-### Build
-
-- Create, list, inspect, update, resolve, close, and cancel tickets.
-- Record every accepted mutation in an append-only ticket timeline.
-- Support comments and typed artifact/reference links.
-- Keep lifecycle (`open`, `resolved`, `closed`, `cancelled`) separate from projections.
-- Record Commander custody separately from executor assignment.
-- Assign and reassign an executor while retaining complete assignment history.
-- Block and unblock a ticket with a reason, owner, and next action.
-- Support the minimal accepted priority vocabulary.
-- Derive the six-lane Board projection rather than storing a second generic status truth.
-- Provide thin Board and Ticket pages plus CLI parity for every mutation.
-- Provide bounded search and filters needed for daily dogfooding.
-
-Company, project, and initial principals are seeded in this phase. A general company CRUD
-console is not required.
+**Stable work:** the integrated fixture in `CT-I1-003`, `CT-I1-006`, and `CT-I1-008`.
 
 ```text
-┌─────────────────────────────────────────────────────┐
-│ CT-12  Build local runner adapter              P1   │
-├─────────────────────────────────────────────────────┤
-│ Lifecycle: open       Board lane: In Progress       │
-│ Custodian: Commander  Executor: Engineer-Codex      │
-│ Blocker: none         Workflow stage: not attached  │
-├─────────────────────────────────────────────────────┤
-│ Timeline                                            │
-│ 10:02 ticket.created                                │
-│ 10:04 executor.assigned                             │
-│ 10:17 comment.added                                 │
-└─────────────────────────────────────────────────────┘
+capture [work] -> frame [work] -> verify [verification] -> close [work]
 ```
 
-### Dogfood gate
+Run `ctower.trust-spine-four-stage@1` through the public generic Workflow Interface. `capture` records the
+off-host-accepted ticket, priority, source, and custodian. `frame` freezes criteria/evidence/gate contracts.
+`verify` records current-digest evidence and a protected verdict. `close` resolves and administratively
+closes only after server validation. Board derives `in_review` from activity metadata, not the word verify.
 
-- Create all Phase 2 work as ctower tickets.
-- Complete at least five real ctower tickets.
-- Reassign at least one ticket and preserve both owners in the timeline.
-- Block and unblock at least one ticket with an actionable reason.
-- Restart ctower during active tracking and lose no event, comment, or assignment.
+**Exit:** daily synthetic runs, restore/reboot, browser/CLI, Proof, and forbidden-stage-name tests all pass.
+The clean-install first-success trial meets AC-ADM-03: on a supported private VPS, a first operator installs,
+bootstraps, applies the minimal CompanyBundle, captures one ticket, and completes this fixture through CLI
+and thin Board/Ticket within 60 minutes of operator elapsed time, without direct DB/legacy writes or hidden
+recovery. This is an acceptance target, not current behavior.
 
-### Source-of-truth cutover
+### I1.7 — ctower-project source-of-truth barrier and I1 archive
 
-ctower becomes the ticket source of truth for the ctower project. Agents may still be
-started manually; their authoritative work request and result are linked to ctower tickets.
+**Stable work:** `CT-I1-007`, `CT-I1-008`.
 
-## 5. Phase 2 — local agent execution
-
-**Purpose:** launch one real agent from a ctower ticket and observe its complete run.
-
-### Build
-
-- Immutable Agent and AgentProfile revisions.
-- One local Codex harness adapter.
-- A tmux-backed Supervisor Adapter for process durability and operator attachment.
-- Durable job states: accepted, leased, running, and explicit terminal outcomes.
-- A manual **Run agent** command on an assigned ticket.
-- Structured progress, logs, checkpoints, and terminal result ingestion.
-- Artifact, commit, pull-request, test, and evidence references.
-- Operator steer, cancel, and bounded retry commands.
-- A run view showing executor, harness, environment, lease, progress, and evidence.
-
-Do not add Commander auto-routing, remote execution, or the full software-factory workflow
-yet. The first automated task should be low-risk and independently verifiable, such as a
-small `ctowerctl` query.
-
-### Exit proof
-
-Assign a ticket, launch the local agent, deliver a typed task contract, observe progress,
-and receive a commit or pull request plus test evidence and an explicit terminal result.
-The ticket must remain open until a separate acceptance action; an agent saying “done” is
-not an accepted ticket outcome.
-
-### Source-of-truth cutover
-
-ctower owns agent dispatch and run history for ctower work. Out-of-band launches are
-break-glass operations and must be reconciled back to a ticket.
-
-## 6. Phase 3 — durable execution and recovery
-
-**Purpose:** prove that execution survives process and infrastructure failure.
-
-### Build
-
-- Lease heartbeats, expiry, fencing tokens, and runner incarnations.
-- Cursor acknowledgment and replay for streamed run events.
-- Durable checkpoints and resume contracts.
-- Wake requests through the outbox, never in-memory-only scheduling.
-- Reconciliation of orphan jobs, processes, leases, and workspaces.
-- API, worker, runner, and supervisor restart recovery.
-- Cancellation fencing so stale work cannot commit a later result.
-- A watchdog surface for stuck jobs, stalled outbox delivery, and unknown state.
+Only after acknowledged durability, isolated restore, CLI/UI, and the four-stage fixture pass:
 
 ```text
-┌───────────────┐     kill process      ┌──────────────────────┐
-│ Agent working │ ────────────────────► │ Lease stops renewing │
-└───────────────┘                       └──────────┬───────────┘
-                                                 │ expires
-                                                 ▼
-                                      ┌──────────────────────┐
-                                      │ Stale runner fenced  │
-                                      └──────────┬───────────┘
-                                                 │
-                                                 ▼
-                                      ┌──────────────────────┐
-                                      │ New run claims job   │
-                                      │ and restores state   │
-                                      └──────────────────────┘
+inventory -> freeze ctower-project legacy writers -> hash/export
+          -> reviewed alias/dedupe map -> idempotent restricted import
+          -> reconcile every disposition/owner/relation/claim
+          -> atomic web/CLI/Commander/runner client rewire
+          -> seal legacy inputs read-only
 ```
 
-### Exit proof
+There is no tailer or dual-write interval. The importer uses the generated HTTP client and cannot forge
+proof, gates, effects, delivery, resolution, or closure. Before rewire, rollback may discard the incomplete
+import and unfreeze scoped legacy tools. After rewire, rollback is a compatible ctower restore/build or
+explicit read-only/spool mode; legacy mutation never resumes.
 
-Kill tmux and ctower worker processes during a real ticket. Recover from the last durable
-checkpoint without duplicating the accepted result. Prove that the fenced runner cannot
-submit progress, effects, or completion after a replacement owns the lease.
+**Exit:** every selected ctower-project item and stable alias is accounted for exactly once, zero
+post-barrier legacy writes occur, the attention baseline is frozen, and applicable I1 evidence is archived.
+From this point, ctower tickets—not this file or the SPEC table—own implementation status.
 
-### Source-of-truth cutover
+## Increment 2 — autonomous generic workflow and one factory golden path
 
-All subsequent ctower engineering execution runs through ctower.
+### I2.1 — Deepen generic Workflow and Proof/policy
 
-## 7. Phase 4 — minimal verification workflow
+**Stable work:** `CT-I2-001`, `CT-I2-002`, `CT-I2-006`.
 
-**Purpose:** enforce one small, real feedback loop before encoding the full factory.
+Deepen the same I1 Workflow Interface with arbitrary stage attempts/jobs, package-defined classification,
+mandatory stage gates, required perspectives, finite anti-spin bounds, stable cross-digest failure lineages,
+candidate/nonpassing/repair/execution facts, typed failure routes, selective Proof invalidation, sealed
+review, readiness explanations, and protected waivers. A different four-stage non-engineering package must
+run on the same evaluator with different stages, participants, perspectives, gates, and bounds.
+
+**Exit:** no engine branch or platform default depends on software-factory stage/tier vocabulary; missing
+perspectives/gates, client-authored counters, self-review, invalid bounds, no-progress, and exhaustion fail
+closed with one deduplicated escalation.
+
+### I2.2 — Durable Runtime and local execution continuity
+
+**Stable work:** runtime/materialization parts of `CT-I2-003`, all of `CT-I2-004`.
+
+Implement accepted/leased/running/terminal jobs, exclusive leases/fencing, cursor replay, durable command
+ACKs, structured chunks/gaps, checkpoints, cancellation, reconciliation, and immutable effective manifests.
+Exercise the local Codex/Claude Harness compositions and the direct-process and tmux Supervisor Adapters
+through one conformance suite. Unknown component revisions fail closed.
+
+Kill the wrapper, runner, tmux server, network, and host at declared points. A replacement must reconstruct
+from ctower state, reject old epochs, preserve sole-copy work, and resume checkpointable work within the
+specified recovery SLO. Pane/process/session existence is not health, ACK, terminal result, or evidence.
+
+**Exit:** the worker substrate can operate unattended across restart/loss with zero orphaned nonterminal
+jobs. This is the activation gate for autonomous Commander reasoning; Commander is not asked to compensate
+for missing scheduler, lease, checkpoint, or reconciliation durability.
+
+### I2.3 — Activate the durable Commander
+
+**Stable work:** Commander/capability part of `CT-I2-003` and orchestration across `CT-I2-001..006`.
+
+Resolve the strongest healthy policy-permitted general-reasoning profile for each bounded reasoning job,
+while one durable Commander principal keeps accountable ticket custody through verified production,
+retro, resolve, and close. Persist orchestration-plan revisions, context/risk facts, selected policy options,
+participants, gates, perspectives, finite bounds, evidence, and rationale. The plan never authors consumed
+counts. Delegate implementation and independent verdicts; do not make the Commander a heavy worker.
+
+**Exit:** forced model/process/context replacement preserves the same principal, custody, plan history,
+counters, checkpoints, and exactly-once dispatch. No eligible strong profile, policy ambiguity, or exhausted
+automation becomes one precise operator action rather than status-chasing noise.
+
+### I2.4 — Complete five surfaces, observability, and improvement views
+
+**Stable work:** `CT-I2-005`, `CT-I2-009`.
+
+Complete Home, Board, contextual Ticket, Fleet, and Analytics over generated clients and rebuildable
+projections. Ticket adds live structured run/steering/ACK/gap, manifest, current proof, readiness refusals,
+delivery/incidents, cost, and retro. Fleet shows profiles, runners, jobs, workspaces, routines, capacity,
+budgets, and health without treating terminals as truth. Analytics versions attention, flow, quality,
+recovery, cost, release, and improvement queries with watermarks and anti-gaming guardrails.
+
+**Exit:** exactly five primary surfaces, complete run reconstruction after restart, allocation fractions=1,
+Needs You precision/recall, no false calm, and KPI drill-down to permanent tickets/provenance all pass.
+
+### I2.5 — Effects, root-owned release trust, and incident recovery
+
+**Stable work:** `CT-I2-007`, `CT-I2-008`.
+
+Implement changes/releases, distinct staging/production environments, scoped grants, receipts, the live
+`systemd-vps/v1` integration, and its fault-injection implementation behind the internal Effects boundary.
+The separately supervised root helper verifies artifact bytes, signature/attestation, subjects, and trusted
+builder/workflow identity against root-owned policy before install. General runners hold no production or
+root credentials. Before the first grant/effect, activation commits a signed expected-source inventory
+revision that changes the root/effect journal from `not_exercised` to active and pins its trusted cursor.
+
+Production smoke/live-QA failure must create an incident, revoke unused grants, contain or safely roll back,
+verify the exact resulting environment, and record triage before repair can dispatch. Ctower restart must
+reconcile root-supervisor receipts by cursor before inferring an effect result.
+
+**Exit:** wrong/missing/revoked/untrusted provenance performs no install; staging and production have
+separate receipts and live evidence; an injected failure proves verified rollback and no direct repair.
+
+### I2.6 — One software-factory production golden ticket
+
+**Stable work:** `CT-I2-010`, after `CT-I2-001..009`.
+
+Use one permanent software-factory ticket to add `GET /v1/meta/build` and matching `ctl meta build`. The
+package, not the engine, declares the full path from think/plan/design through implementation, local QA,
+review, docs, release preflight, merge, staging, production verification, retro, resolve, and close.
+
+The golden policy selects one base `code-review` perspective covering correctness plus maintainability,
+with package-specific finite nonpassing, repair, and candidate-generation bounds. Conditional `security`
+or `rendered-design` activates only when its predicate applies. API/CLI QA, docs truth, release preflight,
+staging QA, production smoke/live QA, and retro remain mandatory stage gates, not duplicate perspectives.
+ReviewPlan v1 never treats `total_executions` as a limit; it remains an immutable observed audit/cost fact.
+
+Force one runner loss, one Commander reasoning-job failover, one candidate invalidation, and one production
+failure/rollback rehearsal. Release the root-verified signed artifact to distinct staging and production,
+verify the real endpoint/digest independently, record the retro, and server-validate resolution/closure.
+
+**Exit:** `GET /v1/meta/build` and `ctl meta build` agree with the deployed release; every gate/effect/failure
+is reconstructable from ctower IDs without Mission Control ledgers, task/status files, raw terminal state,
+or vendor sessions; the production golden ticket passes the exact I2 validation contract in the SPEC.
+
+## Workflow and Execution Policy are different configuration concepts
+
+Every package composes the same two platform concepts:
+
+| Concept | Answers | Never owns |
+|---|---|---|
+| Workflow | Which stages and activity classes exist? Which edges, parallel groups, failure routes, gate locations, and terminal conditions are legal? | Participants, model choice, consumed counters, or undeclared edges |
+| Execution Policy | Who may execute/review? Which declared gates/perspectives activate? What finite bounds, timeouts, placement, budgets, escalation, and waiver constraints apply? | New Workflow nodes/edges, verdicts, evidence, or server-owned consumption |
+
+The software factory is one versioned package using those concepts. A research, hiring, legal, incident,
+or accounting package may choose completely different stage keys and review perspectives without changing
+the engine.
+
+## ReviewPlan accounting law
+
+For one immutable candidate digest, one terminal review round dispatches every required/applicable
+independent perspective. The round advances immediately when all of them pass with no blocker. There is no
+generic `required_passing_rounds`, platform tier table, fixed-two rule, or automatic ceiling.
+
+A ReviewPlan is a named child revision of one pinned Gate Policy component. Its only reference form is
+`<gate-policy-key>@<gate-policy-revision>#review-plans.<name>`; the parent revision/digest owns the bytes, so
+the enclosing `review_plans` map name is the child identity and it has no independent key, revision, status,
+or `VersionedComponent`.
+
+- Only a terminal nonpassing round consumes `max_nonpassing_rounds`.
+- Each governed mutation consumes `max_candidate_generations` and one stable lineage's
+  `max_repairs_per_lineage` as applicable.
+- Candidate mutation invalidates declared dependent QA/review proof; a later pass is fresh proof, not a
+  repeated-pass requirement.
+- `total_executions` is an append-only server fact for every started perspective job. Plans cannot author or
+  cap, or reset it; ReviewPlan v1 defines no aggregate execution-limit field.
+- A future aggregate cost/resource stop requires a real use case, a separately versioned policy component,
+  an executable semantic validator, and actual enforcement before publication. No field or arithmetic is
+  specified before then.
+- Any applicable bound, no-progress rule, deadline, quota, or hard-safety stop yields one deduplicated
+  escalation and no further automatic dispatch.
+
+## Earned extension points and deferred scope
+
+I1/I2 expose only what real variation justifies:
+
+- **Earned public Seam:** local Supervisor Interface, with direct-process and tmux real Adapters plus one
+  shared conformance suite.
+- **Internal integration:** `systemd-vps/v1` plus a fault-injection implementation inside Effects; one live
+  integration and one fake do not earn a generalized provider Seam.
+- **Deferred:** Crabbox/remote runners, reusable custom images/setup terminal, warm pools/shared caches,
+  generalized effect providers, executable Extension Host/workers, plugin marketplace, visual workflow
+  editor, second production workflow, broad connectors, public SaaS, and HA control plane.
+
+Deferred contracts preserve immutable pins, exact-identity cleanup, secret-free reusable state, fencing,
+reconciliation, and fail-closed observations. They must be reported `not exercised`. A future public Seam
+requires a real use case, at least two independently valuable real Adapters, and an unchanged conformance
+suite; a fake alone is hypothetical indirection.
+
+## Validation ownership
+
+This roadmap does not duplicate command truth. The stable backlog row in `SPEC.md` owns each checkpoint's
+designated validation command. The repository-wide handoff remains:
 
 ```text
-┌────────┐    ┌───────────┐    ┌────────┐    ┌──────┐
-│  Plan  │ ─► │ Implement │ ─► │ Verify │ ─► │ Done │
-└────────┘    └─────▲─────┘    └───┬────┘    └──────┘
-                    │              │ FAIL
-                    └──────────────┘
+just check     warm non-mutating quality gate
+just verify    full manifest-scoped, drift/cleanliness/conformance/acceptance gate
 ```
 
-### Build
-
-- A versioned four-stage workflow definition.
-- Validated transition commands and explicit failure routes.
-- Ticket acceptance criteria and stage input/output contracts.
-- Immutable artifact versions, evidence digests, and provenance.
-- Independent QA or Review assignment; authors cannot approve their own work.
-- A maximum of two repair cycles before escalation.
-- Gate verdicts with findings and structured failure reasons.
-- Evidence invalidation when relevant inputs change.
-
-### Exit proof
-
-Introduce an intentionally broken change. Verification must fail it, route the ticket back
-to the executor, and retain the failed evidence. After repair, fresh QA and independent
-review must pass before the ticket can enter Done.
-
-### Source-of-truth cutover
-
-ctower becomes authoritative for verification state and gate outcomes.
-
-## 8. Phase 5 — Commander automation
-
-**Purpose:** the smartest reasoning seat drives tickets to completion while bounded policy
-enforces safety and independent evidence.
-
-### Build
-
-- Request intake and automatic Commander custody.
-- Planning, decomposition, routing, and capability-based executor selection.
-- Durable Commander wake and reasoning runs.
-- Automatic executor assignment and legal workflow transitions.
-- Risk classification and review-depth selection.
-- A **Needs You** queue for genuine human judgment gates.
-- Bounded retry, repair, and escalation behavior.
-- Minimal immutable Persona and Skill revisions.
-- Commander replacement without losing ticket or reasoning history.
-
-```text
-┌──────────────┐
-│ User request │
-└──────┬───────┘
-       ▼
-┌──────────────────────────┐
-│ Commander plans + routes │
-└──────┬───────────────────┘
-       ▼
-┌──────────────┐   findings   ┌──────────────┐
-│ Implementation│ ◄────────── │ QA / Review  │
-└──────┬───────┘              └──────▲───────┘
-       └──────────────────────────────┘
-                    pass
-                      │
-                      ▼
-               ┌─────────────┐
-               │ Merge-ready │
-               └─────────────┘
-```
-
-### Exit proof
-
-Give the Commander a real ctower feature request. It must decompose, route, recover from a
-failed verification round, and reach merge-ready with no status-chasing. The target is at
-most one genuine operator judgment gate, not a human approval at every transition.
-
-## 9. Phase 6 — always-on ctower
-
-**Purpose:** move the control plane from a developer session to durable private operation.
-
-### Build
-
-- Private VPS deployment with systemd-managed API, worker, reconciler, and runner.
-- PostgreSQL backups plus a regularly exercised isolated restore.
-- Versioned routines, cron triggers, scheduler leases, and exactly-once materialization.
-- Watchdog watermarks for routines, heartbeats, outbox, reconciliation, and execution.
-- Health states including explicit **STATE UNKNOWN** when proof is absent.
-- Minimal Fleet, cost, usage, and failure surfaces.
-- Reboot, upgrade, restore, and rollback runbooks.
-
-### Exit proof
-
-Reboot the VPS during active work, restore an isolated backup, prove one scheduled routine
-materializes exactly once across restart, and operate continuously for at least seven days
-without an unreconciled loss.
-
-## 10. Phase 7 — full software factory
-
-**Purpose:** expand the proven four-stage loop into the complete versioned factory.
-
-```text
-Think → Plan → Design → Implement → QA → Review
-      → Docs → Release-ready → QA → Retro
-```
-
-### Build
-
-- Office-hours and planning skills.
-- Engineering and CEO plan-review gates where policy requires them.
-- Design artifacts, design review, design QA, and screenshot evidence.
-- Risk overlays for low, normal, high, and critical review depth.
-- Independent and double-blind review where risk requires it.
-- Documentation and release-readiness gates.
-- Cross-stage evidence invalidation and bounded failure loops.
-- Retrospectives that create durable process-improvement tickets.
-- Richer workflow, ticket, evidence, and live-run UI.
-
-### Exit proof
-
-Run one real ctower UI or operations feature through every stage. Do not choose more
-orchestration machinery as the test feature; the factory must deliver user value.
-
-## 11. Phase 8 — self-release
-
-**Purpose:** ctower releases ctower through controlled, auditable effects.
-
-### Build
-
-- Isolated release helper and Effect Broker.
-- Just-in-time deployment grants and narrowly scoped credentials.
-- Immutable staging and production release records.
-- Deployment receipts, environment identity, and build provenance.
-- Browser-driven staging and production QA.
-- Automated rollback, incident creation, and release reconciliation.
-
-```text
-┌─────────────────────────────────────────────────────────────┐
-│ ctower ticket                                               │
-│   → ctower agent changes ctower                             │
-│   → ctower QA and Review approve                            │
-│   → ctower deploys itself to staging                        │
-│   → ctower verifies staging                                 │
-│   → ctower deploys itself to production                     │
-│   → ctower verifies production                              │
-│   → ctower records the retro and closes the ticket          │
-└─────────────────────────────────────────────────────────────┘
-```
-
-A small build-identity endpoint, such as `/v1/meta/build`, is a suitable first self-release
-because its expected production result is exact and cheap to verify.
-
-### Exit proof
-
-Complete the golden flow above with real staging and production URLs, signed receipts,
-screenshots, rollback readiness, and a durable retrospective.
-
-## 12. Phase 9 — remote execution
-
-**Purpose:** run the same agent contract in separate remote environments without changing
-ticket, workflow, or verification semantics.
-
-### Build
-
-- A second harness or target adapter proving replaceability.
-- A Crabbox-compatible execution provider.
-- Ephemeral sandboxes and reusable immutable custom images.
-- Workspace provisioning, placement policy, and capacity admission.
-- Just-in-time secret references and revocable grants.
-- Remote checkpoint, log, artifact, and evidence streaming.
-- Cleanup, expiry, reconciliation, and cost attribution.
-
-### Exit proof
-
-Run the same workflow once locally and once remotely. The kernel must observe the same
-typed run and evidence contracts; only provider-specific worker details may differ.
-
-## 13. Phase 10 — platform extensibility
-
-**Purpose:** prove ctower is a general durable work platform after its kernel has survived
-self-hosting.
-
-### Build
-
-- Versioned CompanyBundle administration and reconciliation.
-- Agent, profile, persona, skill, and policy management.
-- Capability-granted Extension Host boundaries.
-- Ingress and effect adapters with explicit grants and receipts.
-- Workflow and execution-policy authoring/versioning surfaces.
-- An accounting workflow pack with separation of duties and approval policy.
-- Routines, analytics, and domain-specific views built from projections.
-
-```text
-Capture → Classify → Reconcile → Exception Review
-        → Approve → Post → Close → Retro
-```
-
-### Exit proof
-
-Run the accounting workflow without changing the kernel state machine or granting a plugin
-record-tier access. This demonstrates extensibility through contracts rather than a generic
-in-process plugin system.
-
-## 14. Deliberately not early
-
-The following are valuable but should not precede the self-hosting ladder:
-
-- Full company and org-chart administration UI.
-- The entire ten-stage factory before the four-stage verification loop works.
-- A skill or plugin marketplace.
-- Remote sandboxes and custom-image management.
-- Broad analytics and cost dashboards.
-- A visual workflow editor.
-- Production credentials or autonomous deployment authority.
-- Complete Mission Control or Paperclip migration.
-- Multiple business workflows.
-- Public SaaS, multi-region, or high-availability topology.
-
-## 15. Recommended first approval boundary
-
-Approve only Phases 0 and 1 as the first delivery boundary. Before implementation:
-
-1. Resolve the accepted priority vocabulary and six Board lanes in the canonical SPEC.
-2. Keep Board lane a derived projection, not a second mutable status field.
-3. Activate only the stable bootstrap ticket IDs needed for the walking skeleton and
-   tracking minimum working product.
-4. Create later-phase work as backlog tickets only when ctower itself can hold them.
-
-The practical target is simple: **use ctower to track the work that adds its first agent
-runner, then use ctower to run the work that adds its first verification loop.**
+Every checkpoint extends the committed expected-suite manifest in the same change that makes its suite
+current. The source-of-truth barrier imports every stable backlog ID exactly once; after that, ctower ticket
+history is the only live implementation board.

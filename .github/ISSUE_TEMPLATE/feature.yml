@@ -1,0 +1,43 @@
+name: Feature proposal
+description: Propose a focused outcome or capability.
+title: "feature: "
+labels:
+  - enhancement
+body:
+  - type: textarea
+    id: problem
+    attributes:
+      label: Problem
+      description: Describe the operator or contributor problem without prescribing a solution.
+    validations:
+      required: true
+  - type: textarea
+    id: outcome
+    attributes:
+      label: Desired outcome
+      description: What observable result would solve the problem?
+    validations:
+      required: true
+  - type: textarea
+    id: evidence
+    attributes:
+      label: Evidence and use cases
+      description: Who needs this, how often, and what current workaround exists?
+    validations:
+      required: true
+  - type: textarea
+    id: constraints
+    attributes:
+      label: Constraints and failure cases
+      description: Include durability, security, restart, and compatibility concerns when relevant.
+  - type: checkboxes
+    id: checks
+    attributes:
+      label: Scope checks
+      options:
+        - label: I searched existing issues, decisions, and the specification.
+          required: true
+        - label: I understand that a new public Seam requires at least two real implementations.
+          required: true
+        - label: This proposal contains no private or sensitive information.
+          required: true

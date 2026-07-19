@@ -1,0 +1,101 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://ctower.invalid/contracts/workflow/review-plan.schema.json",
+  "title": "ReviewPlan",
+  "description": "Domain-neutral, revision-pinned review topology and anti-spin policy.",
+  "$comment": "A ReviewPlan is a named child of the gate-policy revision in policy_ref. Its enclosing review_plans map key and parent revision are its sole identity; it has no independent key, revision, or status. total_executions is immutable server-owned observation only; ReviewPlan v1 defines no aggregate-execution limit.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema",
+    "workflow_ref",
+    "policy_ref",
+    "required_perspectives",
+    "additional_perspectives",
+    "limits"
+  ],
+  "properties": {
+    "schema": {"const": "ctower.review-plan/v1"},
+    "workflow_ref": {"$ref": "#/$defs/versionedReference"},
+    "policy_ref": {"$ref": "#/$defs/versionedReference"},
+    "required_perspectives": {
+      "type": "array",
+      "minItems": 1,
+      "uniqueItems": true,
+      "items": {"$ref": "#/$defs/perspectiveReference"}
+    },
+    "additional_perspectives": {
+      "type": "array",
+      "uniqueItems": true,
+      "items": {"$ref": "#/$defs/additionalPerspective"}
+    },
+    "limits": {"$ref": "#/$defs/limits"},
+    "total_executions": false
+  },
+  "$defs": {
+    "versionedReference": {
+      "type": "string",
+      "pattern": "^[a-z][a-z0-9._-]*@[1-9][0-9]*(#[a-z][a-z0-9._-]*)?$"
+    },
+    "perspectiveReference": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["name", "workflow_ref", "policy_ref"],
+      "properties": {
+        "name": {
+          "type": "string",
+          "pattern": "^[a-z][a-z0-9._-]*$"
+        },
+        "workflow_ref": {"$ref": "#/$defs/versionedReference"},
+        "policy_ref": {"$ref": "#/$defs/versionedReference"}
+      }
+    },
+    "additionalPerspective": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["perspective", "applicability"],
+      "properties": {
+        "perspective": {"$ref": "#/$defs/perspectiveReference"},
+        "applicability": {
+          "oneOf": [
+            {"$ref": "#/$defs/optionalApplicability"},
+            {"$ref": "#/$defs/conditionalApplicability"}
+          ]
+        }
+      }
+    },
+    "optionalApplicability": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["mode", "activation_policy_ref"],
+      "properties": {
+        "mode": {"const": "optional"},
+        "activation_policy_ref": {"$ref": "#/$defs/versionedReference"}
+      }
+    },
+    "conditionalApplicability": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["mode", "predicate_ref"],
+      "properties": {
+        "mode": {"const": "conditional"},
+        "predicate_ref": {"$ref": "#/$defs/versionedReference"}
+      }
+    },
+    "limits": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "max_nonpassing_rounds",
+        "max_repairs_per_lineage",
+        "max_candidate_generations"
+      ],
+      "properties": {
+        "max_nonpassing_rounds": {"type": "integer", "minimum": 0},
+        "max_repairs_per_lineage": {"type": "integer", "minimum": 0},
+        "max_candidate_generations": {"type": "integer", "minimum": 1},
+        "total_executions": false
+      }
+    }
+  }
+}
