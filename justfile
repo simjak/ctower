@@ -12,9 +12,9 @@ check: python-check web-check docs-check workflow-check version-check repository
     {{python}} -m tools.checks --root . --profile fast
 
 python-check: compatibility-coverage
-    ruff format --check tools/checks tools/compatibility tests/repository tests/contracts tests/compatibility
-    ruff check --no-cache tools/checks tools/compatibility tests/repository tests/contracts tests/compatibility
-    mypy --no-incremental tools/checks tools/compatibility tests/repository tests/contracts tests/compatibility
+    {{python}} -m ruff format --check tools/checks tools/compatibility tests/repository tests/contracts tests/compatibility
+    {{python}} -m ruff check --no-cache tools/checks tools/compatibility tests/repository tests/contracts tests/compatibility
+    {{python}} -m mypy --no-incremental tools/checks tools/compatibility tests/repository tests/contracts tests/compatibility
 
 compatibility-coverage:
     @coverage_file="$(mktemp)"; trap 'rm -f "$coverage_file"' EXIT; COVERAGE_FILE="$coverage_file" {{python}} -m pytest -p no:cacheprovider --cov=tools.compatibility --cov-branch --cov-fail-under=90 tests/compatibility

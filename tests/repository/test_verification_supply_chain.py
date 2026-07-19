@@ -111,6 +111,21 @@ class VerificationSupplyChainTests(unittest.TestCase):
         self.assertIn("workflow-check", check.partition(":")[2].split())
         self.assertEqual(self._recipe_body(justfile, "workflow-check"), ["actionlint"])
 
+    def test_python_tools_follow_the_configured_interpreter(self) -> None:
+        justfile = self._read("justfile")
+        python_check = self._recipe_body(justfile, "python-check")
+
+        self.assertEqual(len(python_check), 3)
+        self.assertTrue(python_check[0].startswith("{{python}} -m ruff format "))
+        self.assertTrue(python_check[1].startswith("{{python}} -m ruff check "))
+        self.assertTrue(python_check[2].startswith("{{python}} -m mypy "))
+        self.assertEqual(self._recipe_body(justfile, "workflow-check"), ["actionlint"])
+        self.assertTrue(
+            all(command.startswith("pnpm ") for command in self._recipe_body(justfile, "web-check"))
+        )
+        self.assertIn("{{gitleaks}}", self._recipe_body(justfile, "secrets-history")[0])
+        self.assertIn("@just secrets-history", self._recipe_body(justfile, "verify"))
+
     def _workflow_environment(self, workflow: str) -> dict[str, str]:
         values: dict[str, str] = {}
         inside_environment = False
