@@ -151,13 +151,44 @@ def _class_metrics(tree: ast.Module) -> tuple[ClassMetric, ...]:
 
 
 def _public_exports(tree: ast.Module) -> tuple[str, ...]:
+    declared = _declared_all(tree)
+    if declared is not None:
+        return tuple(sorted(declared))
     exports: set[str] = set()
     for node in tree.body:
         export = _definition_export(node)
         if export is not None:
             exports.add(export)
         exports.update(_assignment_exports(node))
+        exports.update(_import_exports(node))
     return tuple(sorted(exports))
+
+
+def _declared_all(tree: ast.Module) -> set[str] | None:
+    for node in tree.body:
+        if not isinstance(node, ast.Assign) or not any(
+            isinstance(target, ast.Name) and target.id == "__all__" for target in node.targets
+        ):
+            continue
+        if not isinstance(node.value, ast.List | ast.Tuple | ast.Set):
+            return None
+        values = {
+            item.value
+            for item in node.value.elts
+            if isinstance(item, ast.Constant) and isinstance(item.value, str)
+        }
+        return values if len(values) == len(node.value.elts) else None
+    return None
+
+
+def _import_exports(node: ast.stmt) -> set[str]:
+    if isinstance(node, ast.Import):
+        names = (alias.asname or alias.name.split(".", maxsplit=1)[0] for alias in node.names)
+    elif isinstance(node, ast.ImportFrom):
+        names = (alias.asname or alias.name for alias in node.names if alias.name != "*")
+    else:
+        return set()
+    return {name for name in names if not name.startswith("_")}
 
 
 def _definition_export(node: ast.stmt) -> str | None:

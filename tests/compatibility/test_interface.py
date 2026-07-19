@@ -30,6 +30,8 @@ from tools.compatibility import (
 )
 from tools.compatibility.schema import JsonObject
 
+__all__ = ()
+
 CONTRACT_ROOT = MATRIX_PATH.parent
 
 
@@ -95,6 +97,7 @@ class ResultBoundaryTests(unittest.TestCase):
     def test_report_is_exact_six_leg_frozen_evidence(self) -> None:
         accepted = validate_report(self.matrix, _raw(self.report))
         self.assertEqual(len(accepted.runs), 6)
+        self.assertEqual(accepted.evidence_scope, "unconfined-diagnostic")
         attribute = "matrix_id"
         with self.assertRaises(ValidationError):
             setattr(accepted, attribute, "changed")
@@ -217,6 +220,25 @@ class PublicReportWriteTests(unittest.TestCase):
             sub.mkdir()
             with self.assertRaisesRegex(CompatibilityError, "parent-path escape"):
                 write_report(sub / ".." / "escaped.json", self.report)
+
+    def test_public_write_rejects_hostile_lock_and_detector_shaped_credentials(self) -> None:
+        raw = _raw(self.report)
+        _runs(raw)[0]["resolution"]["lock"] = [
+            "package @ https://user:secret@example.invalid/private.whl"
+        ]
+        with self.assertRaises(ValidationError):
+            CompatibilityReport.model_validate_json(json.dumps(raw))
+
+        raw = _raw(self.report)
+        credential = "ghp_" + ("a" * 36)
+        _runs(raw)[0]["interpreter"]["platform"] = credential
+        _observations(raw)[0]["details"]["platform"] = credential
+        hostile = CompatibilityReport.model_validate_json(json.dumps(raw))
+        with (
+            tempfile.TemporaryDirectory() as directory,
+            self.assertRaisesRegex(CompatibilityError, "credential-like"),
+        ):
+            write_report(Path(directory) / "hostile.json", hostile)
 
     def test_missing_parent_is_rejected_without_creating_it(self) -> None:
         with tempfile.TemporaryDirectory() as directory:

@@ -56,9 +56,9 @@ The verification locks and CI pins do not select ctower's product runtime or sup
 ## Inspect the executable L0 evidence
 
 The first implemented slice is a strict compatibility preflight, not a ctower runtime. Its versioned matrix
-currently covers standard-GIL CPython 3.12.13, 3.13.14, and 3.14.6. The recorded 2026-07-19 run produced six
-passing rows: all ten required observations passed on isolated Darwin/macOS `arm64` and immutable Linux
-`arm64` containers for each candidate.
+currently covers standard-GIL CPython 3.12.13, 3.13.14, and 3.14.6. The recorded 2026-07-19 local run
+observed all ten checks in six legs, but it is historical diagnostic evidence, not a canonical pass: its
+native macOS leg was not contained.
 
 A full reproduction requires `uv`, a macOS host, and Docker. It writes a sanitized report outside the
 repository:
@@ -66,8 +66,13 @@ repository:
 ```bash
 python3 -m tools.compatibility \
   --matrix contracts/compatibility/ct-l0-007-matrix.json \
+  --allow-unconfined-host-diagnostic \
   --output "${TMPDIR:-/tmp}/ctower-compatibility-result.json"
 ```
+
+Native host execution is denied without that explicit diagnostic flag. The resulting v1 report is marked
+`unconfined-diagnostic`; only externally proven execution in the repository's disposable, no-secret,
+least-privilege CI boundary may later receive canonical native credit.
 
 Read [`contracts/compatibility/README.md`](https://github.com/simjak/ctower/blob/main/contracts/compatibility/README.md)
 before interpreting the result. The preflight does not cover Linux `amd64` or the absent release-helper

@@ -24,7 +24,9 @@ from tools.compatibility import (
     execute_matrix,
     load_matrix,
 )
-from tools.compatibility.contract import EnvironmentVariable, ProcessRequest
+from tools.compatibility.models_core import EnvironmentVariable, ProcessRequest
+
+__all__ = ()
 
 _SYNTHETIC_SECRETS = {
     "AWS_SECRET_ACCESS_KEY": "synthetic-aws-secret",
@@ -147,12 +149,22 @@ class MatrixExecutionTests(unittest.TestCase):
         with self.assertRaisesRegex(CompatibilityError, "package-install failed"):
             execute_matrix(load_matrix(MATRIX_PATH), execution_port=port)
 
-    def test_malformed_or_unowned_container_evidence_fails_closed(self) -> None:
+    def test_container_cleanup_authority_comes_only_from_exact_name_inspection(self) -> None:
         port = MatrixPort()
         port.create_stdout = "not-a-container-id\n"
-        with self.assertRaisesRegex(CompatibilityError, "malformed container identity"):
-            execute_matrix(load_matrix(MATRIX_PATH), execution_port=port)
-        self.assertNotIn("docker-cleanup", [request.operation for request in port.calls])
+        execute_matrix(load_matrix(MATRIX_PATH), execution_port=port)
+        cleanup = [request for request in port.calls if request.operation == "docker-cleanup"]
+        self.assertTrue(cleanup)
+        self.assertTrue(all(request.argv[-1] == CONTAINER_ID for request in cleanup))
+        inspections = [
+            request
+            for request in port.calls
+            if request.operation == "docker-inspect" and "container" in request.argv
+        ]
+        self.assertTrue(inspections)
+        self.assertTrue(
+            all(request.argv[-1].startswith("ctower-compat-") for request in inspections)
+        )
 
         port = MatrixPort()
         port.image_inspection_override = "{}"
@@ -164,10 +176,27 @@ class MatrixExecutionTests(unittest.TestCase):
         port.container_inspection_override = "{}"
         with self.assertRaisesRegex(CompatibilityError, "container inspection was malformed"):
             execute_matrix(load_matrix(MATRIX_PATH), execution_port=port)
+        self.assertNotIn("docker-cleanup", [request.operation for request in port.calls])
 
         port = MatrixPort()
         port.owner_label_override = "d" * 32
         with self.assertRaisesRegex(CompatibilityError, "ownership identity"):
+            execute_matrix(load_matrix(MATRIX_PATH), execution_port=port)
+        self.assertNotIn("docker-cleanup", [request.operation for request in port.calls])
+
+    def test_truncated_or_noncanonical_command_evidence_never_crosses_a_gate(self) -> None:
+        for operation in ("dependency-freeze", "docker-freeze", "docker-inspect"):
+            with self.subTest(operation=operation):
+                port = MatrixPort()
+                port.truncate_operation = operation
+                with self.assertRaisesRegex(CompatibilityError, "incomplete output"):
+                    execute_matrix(load_matrix(MATRIX_PATH), execution_port=port)
+
+        port = MatrixPort()
+        port.freeze_output_override = (
+            "build==1.5.0\ncredential @ https://user:secret@example.invalid/private.whl\n"
+        )
+        with self.assertRaisesRegex(CompatibilityError, "canonical package==version"):
             execute_matrix(load_matrix(MATRIX_PATH), execution_port=port)
 
     def test_probe_semantic_identity_failures_cross_schema_before_model(self) -> None:
@@ -192,6 +221,10 @@ class MatrixExecutionTests(unittest.TestCase):
 
 
 class LocalProcessBoundaryTests(unittest.TestCase):
+    def test_native_host_execution_defaults_to_deny_and_never_claims_canonical_credit(self) -> None:
+        with self.assertRaisesRegex(CompatibilityError, "unconfined"):
+            execute_matrix(load_matrix(MATRIX_PATH), execution_port=LocalExecutionPort())
+
     def test_timeout_terminates_and_sigterm_resistance_escalates(self) -> None:
         port = LocalExecutionPort()
         terminated = port.run(_request("import time; time.sleep(10)", timeout_ms=50))
@@ -211,6 +244,7 @@ class LocalProcessBoundaryTests(unittest.TestCase):
         port = LocalExecutionPort()
         output = port.run(_request("print('x' * 5000)", output_limit_bytes=1024))
         self.assertTrue(output.stdout_truncated)
+        self.assertEqual(output.failure_reason, "output_limit")
         self.assertLessEqual(len(output.stdout.encode()), 1024)
 
         request = ProcessRequest(
@@ -223,6 +257,36 @@ class LocalProcessBoundaryTests(unittest.TestCase):
         )
         with self.assertRaisesRegex(CompatibilityError, "unable to start"):
             port.run(request)
+
+    def test_successful_leader_cannot_leave_a_process_group_descendant(self) -> None:
+        port = LocalExecutionPort()
+        source = (
+            "import subprocess,sys; "
+            "child=subprocess.Popen([sys.executable,'-c',"
+            "'import signal,time; "
+            "signal.signal(signal.SIGTERM, signal.SIG_IGN); "
+            "time.sleep(30)']); "
+            "print(child.pid, flush=True)"
+        )
+        result = port.run(_request(source, timeout_ms=2_000))
+
+        self.assertEqual(result.failure_reason, "surviving_descendants")
+        descendant = int(result.stdout.strip())
+        with self.assertRaises(ProcessLookupError):
+            os.kill(descendant, 0)
+
+    def test_stdout_and_stderr_are_streamed_into_hard_memory_ceilings(self) -> None:
+        port = LocalExecutionPort()
+        source = (
+            "import os; chunk=b'x'*65536; "
+            "[(os.write(1,chunk),os.write(2,chunk)) for _ in range(64)]"
+        )
+        result = port.run(_request(source, timeout_ms=2_000, output_limit_bytes=1024))
+
+        self.assertEqual(result.failure_reason, "output_limit")
+        self.assertTrue(result.stdout_truncated or result.stderr_truncated)
+        self.assertLessEqual(len(result.stdout.encode()), 1024)
+        self.assertLessEqual(len(result.stderr.encode()), 1024)
 
     def test_process_request_rejects_relative_executables_and_duplicate_environment(self) -> None:
         with self.assertRaises(ValidationError):

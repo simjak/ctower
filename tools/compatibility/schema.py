@@ -11,13 +11,23 @@ from pydantic import BaseModel
 from pydantic import ValidationError as PydanticValidationError
 from referencing import Registry, Resource
 
-from tools.compatibility.contract import (
+from tools.compatibility.models_core import (
     CompatibilityError,
-    CompatibilityReport,
     MatrixInput,
-    ProbeResult,
     TelemetryContext,
 )
+from tools.compatibility.models_probe import ProbeResult
+from tools.compatibility.models_report import CompatibilityReport
+
+__all__ = [
+    "JsonObject",
+    "parse_matrix",
+    "parse_probe",
+    "parse_report",
+    "read_json_object",
+    "validate_report_schema",
+    "validate_telemetry",
+]
 
 JsonObject = dict[str, object]
 _ROOT = Path(__file__).resolve().parents[2]

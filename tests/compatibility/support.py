@@ -5,7 +5,7 @@ from collections.abc import Callable
 from pathlib import Path
 from typing import Literal, cast
 
-from tools.compatibility.contract import (
+from tools.compatibility.models_core import (
     EXPECTED_REQUIREMENTS,
     EnvironmentVariable,
     HostIdentity,
@@ -15,6 +15,8 @@ from tools.compatibility.contract import (
     RuntimeDetails,
     TelemetryContext,
 )
+
+__all__ = ()
 
 ROOT = Path(__file__).resolve().parents[2]
 MATRIX_PATH = ROOT / "contracts" / "compatibility" / "ct-l0-007-matrix.json"
@@ -129,6 +131,8 @@ class MatrixPort:
         self.container_inspection_override: str | None = None
         self.malformed_probe: str | None = None
         self.probe_mutator: Callable[[dict[str, object]], None] | None = None
+        self.truncate_operation: str | None = None
+        self.freeze_output_override: str | None = None
 
     def resolve_tool(self, name: str) -> str | None:
         return f"/usr/local/bin/{name}" if name in {"uv", "docker"} else None
@@ -138,6 +142,8 @@ class MatrixPort:
 
     def run(self, request: ProcessRequest) -> ProcessResult:
         self.calls.append(request)
+        if request.operation == self.truncate_operation:
+            return _result(request, stdout="partial", stdout_truncated=True)
         if request.operation == self.fail_operation:
             return _result(request, returncode=7, stderr="synthetic failure")
         handlers: dict[str, Callable[[ProcessRequest], ProcessResult]] = {
@@ -165,7 +171,8 @@ class MatrixPort:
         return _result(request, stdout=self.create_stdout or self.container_id + "\n")
 
     def _freeze(self, request: ProcessRequest) -> ProcessResult:
-        return _result(request, stdout="\n".join(EXPECTED_REQUIREMENTS) + "\n")
+        output = self.freeze_output_override or "\n".join(EXPECTED_REQUIREMENTS) + "\n"
+        return _result(request, stdout=output)
 
     def _inspect(self, request: ProcessRequest) -> ProcessResult:
         return _result(request, stdout=self._inspection(request.argv))
@@ -197,6 +204,7 @@ class MatrixPort:
             return json.dumps(
                 {
                     "container_id": self.container_id,
+                    "name": f"/{argv[-1]}",
                     "image_id": self.container_image_id,
                     "owner_label": self.owner_label_override or self.owner_label,
                 }
@@ -246,6 +254,7 @@ class ProbeFixturePort:
         self.fail_source: str | None = None
         self.timeout_source: str | None = None
         self.output_overrides: dict[str, str] = {}
+        self.truncate_source: str | None = None
         self.mypy_invalid_returncode = 1
         self.import_marker = "ctower-wheel-ok\n"
 
@@ -280,6 +289,8 @@ class ProbeFixturePort:
     def run(self, request: ProcessRequest) -> ProcessResult:
         self.calls.append(request)
         joined = " ".join(request.argv)
+        if self.truncate_source and self.truncate_source in joined:
+            return _result(request, stdout="{}", stdout_truncated=True)
         failure = self._failure(request, joined)
         if failure is not None:
             return failure
@@ -335,7 +346,14 @@ def _result(
     stderr: str = "",
     timed_out: bool = False,
     termination: Literal["exited", "terminated", "killed"] = "exited",
+    stdout_truncated: bool = False,
+    stderr_truncated: bool = False,
+    failure_reason: Literal["output_limit", "surviving_descendants", "timeout"] | None = None,
 ) -> ProcessResult:
+    if failure_reason is None and timed_out:
+        failure_reason = "timeout"
+    if failure_reason is None and (stdout_truncated or stderr_truncated):
+        failure_reason = "output_limit"
     return ProcessResult(
         argv=request.argv,
         returncode=returncode,
@@ -343,8 +361,9 @@ def _result(
         stderr=stderr,
         timed_out=timed_out,
         termination=termination,
-        stdout_truncated=False,
-        stderr_truncated=False,
+        stdout_truncated=stdout_truncated,
+        stderr_truncated=stderr_truncated,
+        failure_reason=failure_reason,
     )
 
 

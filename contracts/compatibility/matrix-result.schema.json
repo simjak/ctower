@@ -4,9 +4,10 @@
   "title": "ctower runtime compatibility evidence",
   "type": "object",
   "additionalProperties": false,
-  "required": ["schema", "input_digest", "matrix_id", "telemetry", "runs"],
+  "required": ["schema", "evidence_scope", "input_digest", "matrix_id", "telemetry", "runs"],
   "properties": {
     "schema": {"const": "ctower.compatibility-result/v1"},
+    "evidence_scope": {"const": "unconfined-diagnostic"},
     "input_digest": {"$ref": "#/$defs/digest"},
     "matrix_id": {"const": "ct-l0-007-python-2026-07-19"},
     "telemetry": {
@@ -294,7 +295,13 @@
         "lock": {
           "type": "array",
           "minItems": 15,
-          "items": {"type": "string", "minLength": 3, "maxLength": 256}
+          "uniqueItems": true,
+          "items": {
+            "type": "string",
+            "minLength": 3,
+            "maxLength": 256,
+            "pattern": "^[a-z0-9](?:[a-z0-9.-]*[a-z0-9])?==[0-9][A-Za-z0-9.!+]*$"
+          }
         },
         "lock_sha256": {"$ref": "#/$defs/sha256"},
         "commands": {

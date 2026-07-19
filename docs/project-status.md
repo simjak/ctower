@@ -12,10 +12,10 @@ real work.
   envelopes.
 - Example versioned workflow, execution-policy, and gate-policy packs.
 - A repository policy module with ownership, source-budget, generated-drift, and secret checks.
-- A strict Python compatibility preflight with exact Draft 2020-12 input/result schemas, frozen typed
+- A strict Python compatibility diagnostic with exact Draft 2020-12 input/result schemas, frozen typed
   models, bounded process/container lifecycles, minimal child environments, and a sanitized atomic evidence
-  writer.
-- Thirty-eight compatibility tests measured at 92.74% branch coverage.
+  writer. Native host execution is default-deny and explicitly noncanonical when diagnostically enabled.
+- Compatibility tests with a hard 90% new-code branch-coverage gate.
 - Deterministic traceability from `contracts/traceability/sources.json` to
   `generated/traceability-index.json`, including generated-manifest drift checks.
 - A low-operations MkDocs Material documentation site and pinned GitHub Actions workflow for GitHub Pages.
@@ -28,12 +28,13 @@ These assets establish the contract for implementation. They are not a working c
 
 ## Compatibility evidence, not a runtime decision
 
-The 2026-07-19 preflight ran standard-GIL CPython 3.12.13, 3.13.14, and 3.14.6 in two environments:
-isolated macOS on Darwin `arm64` and immutable Linux containers on `arm64`. All six rows passed all ten required
-observations. The exact input, result rules, and sanitized evidence table live under
+The 2026-07-19 local preflight ran standard-GIL CPython 3.12.13, 3.13.14, and 3.14.6 in two environments:
+unconfined macOS on Darwin `arm64` and immutable Linux containers on `arm64`. All six rows observed all ten
+checks, but the report has been reclassified as noncanonical diagnostic evidence. The exact input, result
+rules, and historical table live under
 [`contracts/compatibility/`](https://github.com/simjak/ctower/tree/main/contracts/compatibility).
 
-This evidence does not select or pin ctower's Python runtime. Linux `amd64`, the future release-helper
+This diagnostic does not select or pin ctower's Python runtime. Canonical CI provenance, Linux `amd64`, the future release-helper
 wheel, and generated clients remain unexercised. There is no accepted project lock, `.python-version`,
 fallback choice, or decision superseding D6.
 

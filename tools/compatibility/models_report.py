@@ -14,6 +14,18 @@ from .models_core import (
     TelemetryContext,
 )
 from .models_probe import ProbeResult
+from .resolution import validate_canonical_lock
+
+__all__ = [
+    "ArtifactEvidence",
+    "CompatibilityReport",
+    "CompatibilityRun",
+    "DockerContainerInspection",
+    "DockerImageInspection",
+    "ImageIdentity",
+    "ProductArtifactEvidence",
+    "ResolutionEvidence",
+]
 
 
 class ResolutionEvidence(FrozenModel):
@@ -22,6 +34,11 @@ class ResolutionEvidence(FrozenModel):
     commands: tuple[
         tuple[Annotated[str, StringConstraints(min_length=1, max_length=32768)], ...], ...
     ]
+
+    @model_validator(mode="after")
+    def validate_lock_entries(self) -> Self:
+        validate_canonical_lock(self.lock)
+        return self
 
 
 class ImageIdentity(FrozenModel):
@@ -57,6 +74,7 @@ class DockerImageInspection(FrozenModel):
 
 class DockerContainerInspection(FrozenModel):
     container_id: Sha256
+    name: Annotated[str, StringConstraints(pattern=r"^/?ctower-compat-[a-z0-9-]{12,96}$")]
     image_id: Digest
     owner_label: Annotated[str, StringConstraints(pattern=r"^[0-9a-f]{32}$")]
 
@@ -90,6 +108,7 @@ class CompatibilityRun(ProbeResult):
 
 class CompatibilityReport(FrozenModel):
     schema_: Literal["ctower.compatibility-result/v1"] = Field(alias="schema")
+    evidence_scope: Literal["unconfined-diagnostic"]
     input_digest: Digest
     matrix_id: Literal["ct-l0-007-python-2026-07-19"]
     telemetry: TelemetryContext

@@ -2,14 +2,13 @@
 
 from __future__ import annotations
 
+import sys
 import tempfile
 import textwrap
 import unittest
-from asyncio.subprocess import Process
 from collections.abc import Iterator
 from contextlib import contextmanager
 from pathlib import Path
-from unittest.mock import AsyncMock, patch
 
 from tools.checks import SuiteDisposition, verify_expected_suites
 
@@ -86,9 +85,6 @@ class ExpectedSuitesTests(unittest.TestCase):
             self.assertIn("exit code 7", report.failures[0].message)
 
     def test_portable_python_token_uses_invoking_interpreter_without_changing_report(self) -> None:
-        interpreter = "/opt/ctower runtimes/Python 3.14/bin/python"
-        process = AsyncMock(spec=Process)
-        process.wait.return_value = 0
         with self._repository() as root:
             self._write_test(
                 root, "tests/current/test_current.py", "def test_current():\n    pass\n"
@@ -100,28 +96,26 @@ class ExpectedSuitesTests(unittest.TestCase):
                     phase="CT-L0-007",
                     status="required",
                     path="tests/current",
-                    command='["{python}", "-c", "raise SystemExit(0)"]',
+                    command=(
+                        '["{python}", "-c", "from pathlib import Path; '
+                        "import sys; Path('suite-ran').write_text(sys.executable, "
+                        "encoding='utf-8')\"]"
+                    ),
                 ),
             )
-            with (
-                patch("tools.checks._impl.suites.sys.executable", interpreter),
-                patch(
-                    "tools.checks._impl.suites.asyncio.create_subprocess_exec",
-                    new=AsyncMock(return_value=process),
-                ) as create_process,
-            ):
-                report = verify_expected_suites(root, execute=True)
+            report = verify_expected_suites(root, execute=True)
+            marker = (root / "suite-ran").read_text(encoding="utf-8")
 
         self.assertTrue(report.ok, report.to_dict())
-        create_process.assert_awaited_once_with(
-            interpreter,
-            "-c",
-            "raise SystemExit(0)",
-            cwd=root.resolve(),
-        )
+        self.assertEqual(marker, sys.executable)
         self.assertEqual(
             report.suites[0].command,
-            ("{python}", "-c", "raise SystemExit(0)"),
+            (
+                "{python}",
+                "-c",
+                "from pathlib import Path; import sys; "
+                "Path('suite-ran').write_text(sys.executable, encoding='utf-8')",
+            ),
         )
 
     def test_command_not_found_and_timeout_fail_closed(self) -> None:

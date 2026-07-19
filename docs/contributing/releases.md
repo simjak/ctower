@@ -54,6 +54,10 @@ must first be enabled by a reviewed configuration change.
 6. Verify that the tag targets the release pull request merge commit, the GitHub Release notes
    match `CHANGELOG.md`, and the public documentation build for that commit succeeds.
 
+The write-capable Release Please job has no manual trigger. It runs only for an exact push to
+`refs/heads/main` in `simjak/ctower`; its job-level guard must remain in place even if trigger syntax is
+edited later.
+
 Do not edit `VERSION` or create release tags manually during normal operation. An exceptional
 operator-directed version uses Release Please's documented `Release-As: X.Y.Z` commit footer and
 still flows through a reviewed release pull request.

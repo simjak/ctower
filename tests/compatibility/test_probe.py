@@ -93,6 +93,14 @@ class ContainedProbeTests(unittest.TestCase):
             ):
                 collect_probe("3.12.13", context, execution_port=port)
 
+            port = ProbeFixturePort()
+            port.truncate_source = "FastAPI"
+            with (
+                patch.dict(os.environ, environment, clear=False),
+                self.assertRaisesRegex(CompatibilityError, "incomplete output"),
+            ):
+                collect_probe("3.12.13", context, execution_port=port)
+
     def test_mypy_and_wheel_behavior_are_proven_not_assumed(self) -> None:
         context = telemetry()
         with tempfile.TemporaryDirectory() as directory:

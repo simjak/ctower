@@ -5,7 +5,7 @@ from pathlib import Path
 from typing import cast
 
 from tools.compatibility import execute_matrix, load_matrix, write_report
-from tools.compatibility.contract import EnvironmentName
+from tools.compatibility.models_core import EnvironmentName
 from tools.compatibility.process import ExecutionPort
 
 
@@ -15,6 +15,11 @@ def main(
     parser = argparse.ArgumentParser(description="Execute ctower runtime compatibility evidence")
     parser.add_argument("--matrix", type=Path, required=True)
     parser.add_argument("--output", type=Path, required=True)
+    parser.add_argument(
+        "--allow-unconfined-host-diagnostic",
+        action="store_true",
+        help="run native host commands without containment; output remains noncanonical",
+    )
     parser.add_argument(
         "--environment",
         action="append",
@@ -27,7 +32,12 @@ def main(
         "tuple[EnvironmentName, ...]",
         tuple(arguments.environments or ("macos-host", "linux-container")),
     )
-    report = execute_matrix(matrix, environments=environments, execution_port=execution_port)
+    report = execute_matrix(
+        matrix,
+        environments=environments,
+        execution_port=execution_port,
+        allow_unconfined_host_diagnostic=arguments.allow_unconfined_host_diagnostic,
+    )
     write_report(arguments.output, report)
     return 0
 

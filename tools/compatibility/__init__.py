@@ -1,11 +1,11 @@
 """Public Interface for versioned runtime compatibility evidence."""
 
-from tools.compatibility.contract import (
+from tools.compatibility.interface import execute_matrix, load_matrix, validate_report, write_report
+from tools.compatibility.models_core import (
     CompatibilityError,
     CompatibilityMatrix,
-    CompatibilityReport,
 )
-from tools.compatibility.interface import execute_matrix, load_matrix, validate_report, write_report
+from tools.compatibility.models_report import CompatibilityReport
 from tools.compatibility.process import ExecutionPort, LocalExecutionPort, ProbePort
 
 __all__ = [

@@ -21,6 +21,8 @@ from tools.checks._impl.model import (
 from tools.checks._impl.source import analyze_source, discover_sources
 from tools.checks.report import Finding, PolicyReport, Severity
 
+__all__ = ["run_verification"]
+
 
 def _finding(
     rule_id: str,

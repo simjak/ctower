@@ -1,31 +1,12 @@
 from __future__ import annotations
 
 import hashlib
-import re
 import tempfile
 import uuid
 from pathlib import Path
 
 from pydantic import ValidationError
 
-from tools.compatibility.contract import (
-    ArtifactEvidence,
-    Candidate,
-    CompatibilityError,
-    CompatibilityMatrix,
-    CompatibilityRun,
-    DockerContainerInspection,
-    DockerImageInspection,
-    EnvironmentVariable,
-    HostIdentity,
-    ImageIdentity,
-    ProbeResult,
-    ProcessOperation,
-    ProcessRequest,
-    ProcessResult,
-    ProductArtifactEvidence,
-    ResolutionEvidence,
-)
 from tools.compatibility.environment import (
     bootstrap_environment,
     container_prefix,
@@ -37,8 +18,31 @@ from tools.compatibility.environment import (
 from tools.compatibility.environment import (
     docker_environment as build_docker_environment,
 )
+from tools.compatibility.models_core import (
+    Candidate,
+    CompatibilityError,
+    CompatibilityMatrix,
+    EnvironmentVariable,
+    HostIdentity,
+    ProcessOperation,
+    ProcessRequest,
+    ProcessResult,
+)
+from tools.compatibility.models_probe import ProbeResult
+from tools.compatibility.models_report import (
+    ArtifactEvidence,
+    CompatibilityRun,
+    DockerContainerInspection,
+    DockerImageInspection,
+    ImageIdentity,
+    ProductArtifactEvidence,
+    ResolutionEvidence,
+)
 from tools.compatibility.process import ExecutionPort, LocalExecutionPort
+from tools.compatibility.resolution import canonicalize_freeze
 from tools.compatibility.schema import parse_probe, read_json_object
+
+__all__ = ["execute_candidate_matrix"]
 
 _OUTPUT_LIMIT = 131_072
 _GRACE_MS = 2_000
@@ -61,10 +65,18 @@ _TIMEOUTS: dict[ProcessOperation, int] = {
 
 
 def execute_candidate_matrix(
-    matrix: CompatibilityMatrix, *, execution_port: ExecutionPort | None = None
+    matrix: CompatibilityMatrix,
+    *,
+    execution_port: ExecutionPort | None = None,
+    allow_unconfined_host_diagnostic: bool = False,
 ) -> tuple[CompatibilityRun, ...]:
     """Run all fixed L0 legs with one explicit process boundary."""
     port = execution_port or LocalExecutionPort()
+    if isinstance(port, LocalExecutionPort) and not allow_unconfined_host_diagnostic:
+        raise CompatibilityError(
+            "native host execution is unconfined; use explicit diagnostic opt-in, "
+            "which cannot earn canonical passing credit"
+        )
     uv = _required_tool(port, "uv")
     docker = _required_tool(port, "docker")
     host = port.host_identity()
@@ -199,19 +211,23 @@ def _execute_linux(
     docker_environment = build_docker_environment(docker)
     container_id: str | None = None
     try:
-        container_id, create = _create_linux_container(
+        create = _create_linux_container(
             candidate, run_root, name, owner_label, docker, docker_environment, port
         )
+        container_inspection = _inspect_container(
+            port, docker, name, owner_label, docker_environment
+        )
+        container_id = container_inspection.container_id
         return _run_linux_container(
             matrix,
             candidate,
             run_root,
             name,
-            owner_label,
             container_id,
             docker,
             docker_environment,
             create,
+            container_inspection,
             port,
         )
     finally:
@@ -226,7 +242,7 @@ def _create_linux_container(
     docker: str,
     environment: tuple[EnvironmentVariable, ...],
     port: ExecutionPort,
-) -> tuple[str, tuple[str, ...]]:
+) -> tuple[str, ...]:
     create = (
         docker,
         "create",
@@ -243,10 +259,8 @@ def _create_linux_container(
         "-c",
         "import time; time.sleep(86400)",
     )
-    container_id = _checked(port, "docker-create", create, environment).stdout.strip()
-    if re.fullmatch(r"[0-9a-f]{64}", container_id) is None:
-        raise CompatibilityError("docker create returned a malformed container identity")
-    return container_id, create
+    _checked(port, "docker-create", create, environment)
+    return create
 
 
 def _run_linux_container(
@@ -254,11 +268,11 @@ def _run_linux_container(
     candidate: Candidate,
     run_root: Path,
     name: str,
-    owner_label: str,
     container_id: str,
     docker: str,
     environment: tuple[EnvironmentVariable, ...],
     create: tuple[str, ...],
+    container_inspection: DockerContainerInspection,
     port: ExecutionPort,
 ) -> CompatibilityRun:
     commands = [create]
@@ -266,7 +280,6 @@ def _run_linux_container(
     _checked(port, "docker-start", start, environment)
     commands.append(start)
     image_inspection = _inspect_image(port, docker, candidate, environment)
-    container_inspection = _inspect_container(port, docker, container_id, owner_label, environment)
     if container_inspection.image_id != image_inspection.image_id:
         raise CompatibilityError("created container image does not match the pinned image")
     freeze, probe, workload_commands = _run_linux_workload(
@@ -406,25 +419,25 @@ def _inspect_image(
 def _inspect_container(
     port: ExecutionPort,
     docker: str,
-    container_id: str,
+    name: str,
     owner_label: str,
     environment: tuple[EnvironmentVariable, ...],
 ) -> DockerContainerInspection:
     template = (
-        '{"container_id":{{json .Id}},"image_id":{{json .Image}},'
+        '{"container_id":{{json .Id}},"name":{{json .Name}},"image_id":{{json .Image}},'
         '"owner_label":{{json (index .Config.Labels "dev.ctower.compatibility.run")}}}'
     )
     result = _checked(
         port,
         "docker-inspect",
-        (docker, "container", "inspect", "--format", template, container_id),
+        (docker, "container", "inspect", "--format", template, name),
         environment,
     )
     try:
         inspection = DockerContainerInspection.model_validate_json(result.stdout)
     except ValidationError as error:
         raise CompatibilityError(f"docker container inspection was malformed: {error}") from error
-    if inspection.container_id != container_id or inspection.owner_label != owner_label:
+    if inspection.name.lstrip("/") != name or inspection.owner_label != owner_label:
         raise CompatibilityError("created container ownership identity did not round-trip")
     return inspection
 
@@ -434,7 +447,7 @@ def _resolution(
     commands: list[tuple[str, ...]],
     replacements: dict[str, str],
 ) -> ResolutionEvidence:
-    lock = tuple(sorted(line.strip() for line in freeze.splitlines() if line.strip()))
+    lock = canonicalize_freeze(freeze)
     payload = ("\n".join(lock) + "\n").encode()
     ordered = sorted(replacements.items(), key=lambda item: len(item[0]), reverse=True)
     sanitized = tuple(
@@ -466,7 +479,9 @@ def _checked(
     environment: tuple[EnvironmentVariable, ...],
 ) -> ProcessResult:
     result = _run(port, operation, argv, environment)
-    if result.timed_out or result.returncode != 0:
+    if result.stdout_truncated or result.stderr_truncated:
+        raise CompatibilityError(f"{operation} produced incomplete output")
+    if result.failure_reason is not None or result.timed_out or result.returncode != 0:
         raise CompatibilityError(f"{operation} failed: {_failure_detail(result)}")
     return result
 

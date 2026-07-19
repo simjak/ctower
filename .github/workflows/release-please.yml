@@ -3,7 +3,6 @@ name: release please
 on:
   push:
     branches: [main]
-  workflow_dispatch:
 
 permissions:
   contents: read
@@ -14,6 +13,10 @@ concurrency:
 
 jobs:
   release-please:
+    if: >-
+      github.event_name == 'push' &&
+      github.ref == 'refs/heads/main' &&
+      github.repository == 'simjak/ctower'
     runs-on: ubuntu-24.04
     permissions:
       contents: write

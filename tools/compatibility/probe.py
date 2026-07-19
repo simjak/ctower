@@ -14,13 +14,20 @@ from typing import Literal, cast
 
 from pydantic import BaseModel, ValidationError
 
-from .contract import (
+from .models_core import (
     EXPECTED_REQUIREMENTS,
-    CommandDetails,
     CompatibilityError,
+    EnvironmentVariable,
+    ProcessRequest,
+    ProcessResult,
+    PythonVersion,
+    ResolvedDependency,
+    TelemetryContext,
+)
+from .models_probe import (
+    CommandDetails,
     DependencyDetails,
     DependencyObservation,
-    EnvironmentVariable,
     FastapiDetails,
     FastapiObservation,
     JsonschemaDetails,
@@ -31,21 +38,18 @@ from .contract import (
     OpentelemetryDetails,
     OpentelemetryObservation,
     ProbeResult,
-    ProcessRequest,
-    ProcessResult,
     PsycopgDetails,
     PsycopgObservation,
     PydanticDetails,
     PydanticObservation,
-    PythonVersion,
-    ResolvedDependency,
     RuffObservation,
     RuntimeObservation,
-    TelemetryContext,
     WheelDetails,
     WheelObservation,
 )
 from .process import ExecutionPort, LocalExecutionPort, ProbePort
+
+__all__ = ["collect_probe", "main"]
 
 _PROBE_TIMEOUT_MS = 180_000
 _OUTPUT_LIMIT = 65_536
@@ -345,7 +349,9 @@ def _checked(
     port: ExecutionPort, telemetry: TelemetryContext, argv: tuple[str, ...]
 ) -> ProcessResult:
     result = _run(port, telemetry, argv)
-    if result.timed_out or result.returncode != 0:
+    if result.stdout_truncated or result.stderr_truncated:
+        raise CompatibilityError("probe subprocess produced incomplete output")
+    if result.failure_reason is not None or result.timed_out or result.returncode != 0:
         message = result.stderr.strip() or result.stdout.strip()
         raise CompatibilityError(f"probe subprocess failed: {message[-1000:]}")
     return result

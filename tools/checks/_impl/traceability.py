@@ -20,6 +20,13 @@ from tools.checks._impl.generated import (
     render_generated_manifest,
 )
 
+__all__ = [
+    "TraceabilityError",
+    "build_traceability_index",
+    "check_traceability_artifacts",
+    "write_traceability_artifacts",
+]
+
 _SOURCE_PATH = "contracts/traceability/sources.json"
 _OUTPUT_PATH = Path("generated/traceability-index.json")
 _MANIFEST_PATH = Path("generated/.generated-manifest.json")

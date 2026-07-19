@@ -6,14 +6,15 @@ import os
 import platform
 import shutil
 import signal
+import subprocess
 import sys
 import sysconfig
-import tempfile
 import threading
+import time
 from pathlib import Path
-from typing import BinaryIO, Literal, Protocol, cast
+from typing import IO, Literal, Protocol, cast
 
-from .contract import (
+from .models_core import (
     CompatibilityError,
     HostIdentity,
     ProcessRequest,
@@ -21,6 +22,8 @@ from .contract import (
     PythonVersion,
     RuntimeDetails,
 )
+
+__all__ = ["ExecutionPort", "LocalExecutionPort", "ProbePort"]
 
 
 class ExecutionPort(Protocol):
@@ -92,104 +95,168 @@ class LocalExecutionPort:
         return importlib.metadata.version(name)
 
 
-class _Child:
-    def __init__(self, process_id: int) -> None:
-        self.process_id = process_id
-        self.completed = threading.Event()
-        self.raw_status: int | None = None
-        self.waiter = threading.Thread(target=self._wait, daemon=True)
-        self.waiter.start()
+class _BoundedCapture:
+    """Drain one pipe continuously while retaining only a bounded diagnostic tail."""
 
-    def _wait(self) -> None:
-        _, self.raw_status = os.waitpid(self.process_id, 0)
-        self.completed.set()
+    def __init__(self, stream: IO[bytes], limit: int) -> None:
+        self._stream = stream
+        self._limit = limit
+        self._tail = bytearray()
+        self.exceeded = threading.Event()
+        self._failure: OSError | None = None
+        self._thread = threading.Thread(target=self._drain, daemon=True)
+        self._thread.start()
 
-    def wait(self, timeout_seconds: float) -> bool:
-        return self.completed.wait(timeout_seconds)
+    def _drain(self) -> None:
+        try:
+            while chunk := self._stream.read(min(self._limit, 65_536)):
+                self._append(chunk)
+        except OSError as error:
+            self._failure = error
 
-    def returncode(self) -> int:
-        if self.raw_status is None:
-            raise CompatibilityError("process remained alive after bounded termination")
-        return os.waitstatus_to_exitcode(self.raw_status)
+    def _append(self, chunk: bytes) -> None:
+        if len(self._tail) + len(chunk) > self._limit:
+            self.exceeded.set()
+        if len(chunk) >= self._limit:
+            self._tail[:] = chunk[-self._limit :]
+            return
+        overflow = max(0, len(self._tail) + len(chunk) - self._limit)
+        if overflow:
+            del self._tail[:overflow]
+        self._tail.extend(chunk)
+
+    def finish(self, timeout_seconds: float) -> tuple[str, bool]:
+        self._thread.join(timeout_seconds)
+        if self._thread.is_alive():
+            self._stream.close()
+            self._thread.join(timeout_seconds)
+        if self._thread.is_alive():
+            raise CompatibilityError("process output pipe remained open after group termination")
+        if self._failure is not None:
+            raise CompatibilityError(f"unable to drain process output: {self._failure}")
+        return bytes(self._tail).decode(errors="replace"), self.exceeded.is_set()
 
 
 def _run_bounded(request: ProcessRequest) -> ProcessResult:
-    with tempfile.TemporaryFile() as stdout, tempfile.TemporaryFile() as stderr:
-        child = _start_process(request, stdout.fileno(), stderr.fileno())
-        timed_out, termination = _wait_for_process(child, request)
-        output = _bounded_text(stdout, request.output_limit_bytes)
-        error = _bounded_text(stderr, request.output_limit_bytes)
+    process = _start_process(request)
+    if process.stdout is None or process.stderr is None:
+        raise CompatibilityError("process output pipes were not created")
+    stdout = _BoundedCapture(process.stdout, request.output_limit_bytes)
+    stderr = _BoundedCapture(process.stderr, request.output_limit_bytes)
+    failure, termination = _supervise_process(process, request, stdout, stderr)
+    output = stdout.finish(request.terminate_grace_ms / 1000)
+    error = stderr.finish(request.terminate_grace_ms / 1000)
+    returncode = process.wait(timeout=request.terminate_grace_ms / 1000)
     return ProcessResult(
         argv=request.argv,
-        returncode=child.returncode(),
+        returncode=returncode,
         stdout=output[0],
         stderr=error[0],
-        timed_out=timed_out,
+        timed_out=failure == "timeout",
         termination=termination,
         stdout_truncated=output[1],
         stderr_truncated=error[1],
+        failure_reason=failure,
     )
 
 
-def _start_process(
-    request: ProcessRequest, stdout_descriptor: int, stderr_descriptor: int
-) -> _Child:
-    null_input = os.open(os.devnull, os.O_RDONLY)
-    actions = (
-        (os.POSIX_SPAWN_DUP2, null_input, 0),
-        (os.POSIX_SPAWN_DUP2, stdout_descriptor, 1),
-        (os.POSIX_SPAWN_DUP2, stderr_descriptor, 2),
-        (os.POSIX_SPAWN_CLOSE, null_input),
-        (os.POSIX_SPAWN_CLOSE, stdout_descriptor),
-        (os.POSIX_SPAWN_CLOSE, stderr_descriptor),
-    )
+def _start_process(request: ProcessRequest) -> subprocess.Popen[bytes]:
     try:
-        process_id = os.posix_spawn(
-            request.argv[0],
+        return subprocess.Popen(  # noqa: S603 - absolute argv model; shell is never used.
             request.argv,
-            request.environment_dict(),
-            file_actions=actions,
-            setpgroup=0,
+            stdin=subprocess.DEVNULL,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+            env=request.environment_dict(),
+            process_group=0,
         )
     except OSError as error:
         raise CompatibilityError(f"unable to start {request.operation}: {error}") from error
-    finally:
-        os.close(null_input)
-    return _Child(process_id)
 
 
-def _wait_for_process(
-    child: _Child, request: ProcessRequest
-) -> tuple[bool, Literal["exited", "terminated", "killed"]]:
-    if child.wait(request.timeout_ms / 1000):
-        return False, "exited"
-    _signal_group(child.process_id, signal.SIGTERM)
-    if child.wait(request.terminate_grace_ms / 1000):
-        return True, "terminated"
-    _signal_group(child.process_id, signal.SIGKILL)
-    if not child.wait(request.terminate_grace_ms / 1000):
-        raise CompatibilityError("timed-out process group survived SIGKILL")
-    return True, "killed"
+def _supervise_process(
+    process: subprocess.Popen[bytes],
+    request: ProcessRequest,
+    stdout: _BoundedCapture,
+    stderr: _BoundedCapture,
+) -> tuple[
+    Literal["output_limit", "surviving_descendants", "timeout"] | None,
+    Literal["exited", "terminated", "killed"],
+]:
+    deadline = time.monotonic() + (request.timeout_ms / 1000)
+    while True:
+        if stdout.exceeded.is_set() or stderr.exceeded.is_set():
+            return "output_limit", _terminate_group(process, request)
+        if process.poll() is not None:
+            if _group_exists(process):
+                return "surviving_descendants", _terminate_group(process, request)
+            return None, "exited"
+        if time.monotonic() >= deadline:
+            return "timeout", _terminate_group(process, request)
+        time.sleep(0.005)
 
 
-def _signal_group(process_id: int, requested_signal: signal.Signals) -> None:
-    try:
-        os.killpg(process_id, requested_signal)
-    except ProcessLookupError:
-        return
-    except PermissionError as error:
-        raise CompatibilityError(
-            f"could not signal timed-out process group {process_id}"
-        ) from error
+def _terminate_group(
+    process: subprocess.Popen[bytes], request: ProcessRequest
+) -> Literal["exited", "terminated", "killed"]:
+    grace_seconds = request.terminate_grace_ms / 1000
+    if process.poll() is not None and not _group_exists(process):
+        return "exited"
+    _signal_group(process, signal.SIGTERM)
+    if _wait_for_empty_group(process, grace_seconds):
+        return "terminated"
+    _signal_group(process, signal.SIGKILL)
+    if not _wait_for_empty_group(process, grace_seconds):
+        raise CompatibilityError(f"process group {process.pid} survived SIGKILL")
+    return "killed"
 
 
-def _bounded_text(stream: BinaryIO, limit: int) -> tuple[str, bool]:
-    stream.seek(0, os.SEEK_END)
-    size = stream.tell()
-    truncated = size > limit
-    stream.seek(max(0, size - limit))
-    raw = stream.read()
-    return raw.decode(errors="replace"), truncated
+def _wait_for_empty_group(process: subprocess.Popen[bytes], timeout_seconds: float) -> bool:
+    deadline = time.monotonic() + timeout_seconds
+    while time.monotonic() < deadline:
+        process.poll()
+        if not _group_exists(process):
+            return True
+        time.sleep(0.005)
+    process.poll()
+    return not _group_exists(process)
+
+
+def _signal_group(process: subprocess.Popen[bytes], requested_signal: signal.Signals) -> None:
+    deadline = time.monotonic() + 0.05
+    while True:
+        try:
+            os.killpg(process.pid, requested_signal)
+        except ProcessLookupError:
+            return
+        except PermissionError as error:
+            if process.poll() is not None:
+                return
+            if time.monotonic() < deadline:
+                time.sleep(0.001)
+                continue
+            raise CompatibilityError(f"could not signal process group {process.pid}") from error
+        else:
+            return
+
+
+def _group_exists(process: subprocess.Popen[bytes]) -> bool:
+    deadline = time.monotonic() + 0.05
+    while True:
+        try:
+            os.killpg(process.pid, 0)
+        except ProcessLookupError:
+            return False
+        except PermissionError as error:
+            # Darwin can briefly report EPERM while an exited group becomes reapable.
+            if process.poll() is not None:
+                return False
+            if time.monotonic() < deadline:
+                time.sleep(0.001)
+                continue
+            raise CompatibilityError(f"cannot inspect process group {process.pid}") from error
+        else:
+            return True
 
 
 def _gil_enabled() -> bool:

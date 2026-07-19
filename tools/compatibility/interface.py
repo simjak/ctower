@@ -3,21 +3,21 @@ from __future__ import annotations
 import hashlib
 import json
 import os
-import re
 import stat
 import uuid
 from contextlib import suppress
 from pathlib import Path
 from typing import cast
 
-from tools.compatibility.contract import (
+from tools.compatibility.confidentiality import validate_public_report_bytes
+from tools.compatibility.execution import execute_candidate_matrix
+from tools.compatibility.models_core import (
     CompatibilityError,
     CompatibilityMatrix,
-    CompatibilityReport,
     EnvironmentName,
     TelemetryContext,
 )
-from tools.compatibility.execution import execute_candidate_matrix
+from tools.compatibility.models_report import CompatibilityReport
 from tools.compatibility.process import ExecutionPort
 from tools.compatibility.schema import (
     JsonObject,
@@ -28,10 +28,15 @@ from tools.compatibility.schema import (
     validate_telemetry,
 )
 
+__all__ = [
+    "FULL_ENVIRONMENTS",
+    "execute_matrix",
+    "load_matrix",
+    "validate_report",
+    "write_report",
+]
+
 FULL_ENVIRONMENTS: tuple[EnvironmentName, ...] = ("macos-host", "linux-container")
-_PRIVATE_PATH = re.compile(
-    r"(?:/Users/[^/]+|/home/[^/]+|/var/folders/|/private/var/folders/|/tmp/)"
-)
 
 
 def load_matrix(path: Path) -> CompatibilityMatrix:
@@ -52,12 +57,18 @@ def execute_matrix(
     *,
     environments: tuple[EnvironmentName, ...] = FULL_ENVIRONMENTS,
     execution_port: ExecutionPort | None = None,
+    allow_unconfined_host_diagnostic: bool = False,
 ) -> CompatibilityReport:
-    """Execute the complete fixed matrix through the injectable public process port."""
+    """Execute a diagnostic matrix; v1 output cannot claim canonical native containment."""
     _require_full_environments(environments)
-    runs = execute_candidate_matrix(matrix, execution_port=execution_port)
+    runs = execute_candidate_matrix(
+        matrix,
+        execution_port=execution_port,
+        allow_unconfined_host_diagnostic=allow_unconfined_host_diagnostic,
+    )
     raw: JsonObject = {
         "schema": "ctower.compatibility-result/v1",
+        "evidence_scope": "unconfined-diagnostic",
         "input_digest": matrix.digest,
         "matrix_id": matrix.matrix_id,
         "telemetry": matrix.telemetry.model_dump(mode="json", by_alias=True),
@@ -104,8 +115,7 @@ def write_report(path: Path, report: CompatibilityReport) -> None:
     raw = cast("JsonObject", report.model_dump(mode="json", by_alias=True))
     validate_report_schema(raw)
     encoded = (json.dumps(raw, indent=2, sort_keys=True, ensure_ascii=False) + "\n").encode()
-    if _PRIVATE_PATH.search(encoded.decode()):
-        raise CompatibilityError("public report contains a private host or temporary path")
+    validate_public_report_bytes(encoded)
     path = _canonical_system_path(path)
     parent_descriptor = _open_parent_without_symlinks(path)
     temporary_name = f".{path.name}.{uuid.uuid4().hex}.tmp"

@@ -15,6 +15,8 @@ from .models_core import (
     TelemetryContext,
 )
 
+__all__ = ["ProbeResult"]
+
 
 class DependencyDetails(FrozenModel):
     direct_versions: tuple[ResolvedDependency, ...]

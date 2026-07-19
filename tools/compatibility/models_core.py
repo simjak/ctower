@@ -6,6 +6,12 @@ from typing import Annotated, Literal, Self
 
 from pydantic import BaseModel, ConfigDict, Field, StringConstraints, model_validator
 
+__all__ = [
+    "CompatibilityError",
+    "CompatibilityMatrix",
+    "EnvironmentName",
+]
+
 PythonVersion = Literal["3.12.13", "3.13.14", "3.14.6"]
 EnvironmentName = Literal["macos-host", "linux-container"]
 ObservationName = Literal[
@@ -262,6 +268,16 @@ class ProcessResult(FrozenModel):
     termination: Literal["exited", "terminated", "killed"]
     stdout_truncated: bool
     stderr_truncated: bool
+    failure_reason: Literal["output_limit", "surviving_descendants", "timeout"] | None = None
+
+    @model_validator(mode="after")
+    def validate_failure_state(self) -> Self:
+        if self.timed_out != (self.failure_reason == "timeout"):
+            raise ValueError("timeout flag and typed failure reason differ")
+        truncated = self.stdout_truncated or self.stderr_truncated
+        if truncated and self.failure_reason != "output_limit":
+            raise ValueError("truncated output must be an output-limit failure")
+        return self
 
 
 class HostIdentity(FrozenModel):

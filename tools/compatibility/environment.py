@@ -5,12 +5,22 @@ import os
 import shutil
 from pathlib import Path
 
-from .contract import (
+from .models_core import (
     CompatibilityError,
     CompatibilityMatrix,
     EnvironmentVariable,
     PythonVersion,
 )
+
+__all__ = [
+    "bootstrap_environment",
+    "container_prefix",
+    "copy_probe_package",
+    "docker_environment",
+    "host_environment",
+    "macos_architecture",
+    "macos_python_request",
+]
 
 _DOCKER_CONNECTIVITY = (
     "DOCKER_HOST",
@@ -27,10 +37,8 @@ def copy_probe_package(run_root: Path) -> Path:
     source = Path(__file__).parent
     (destination / "__init__.py").write_text("", encoding="utf-8")
     for filename in (
-        "contract.py",
         "models_core.py",
         "models_probe.py",
-        "models_report.py",
         "process.py",
         "probe.py",
     ):

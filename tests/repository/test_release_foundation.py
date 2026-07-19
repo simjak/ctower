@@ -180,6 +180,15 @@ class ReleaseFoundationTests(unittest.TestCase):
             [".release-please-manifest.json"],
         )
 
+    def test_release_workflow_is_write_capable_only_for_trusted_main_pushes(self) -> None:
+        workflow = (self.root / ".github/workflows/release-please.yml").read_text(encoding="utf-8")
+
+        self.assertNotIn("workflow_dispatch", workflow)
+        self.assertIn("branches: [main]", workflow)
+        self.assertIn("github.event_name == 'push'", workflow)
+        self.assertIn("github.ref == 'refs/heads/main'", workflow)
+        self.assertIn("github.repository == 'simjak/ctower'", workflow)
+
     def _read_json(self, path: str) -> dict[str, object]:
         payload = json.loads((self.root / path).read_text(encoding="utf-8"))
         self.assertIsInstance(payload, dict)

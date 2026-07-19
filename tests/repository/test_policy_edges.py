@@ -48,6 +48,20 @@ class RepositoryPolicyEdgeTests(unittest.TestCase):
             }.issubset(rules)
         )
 
+    def test_effective_public_exports_include_reexports_and_declared_all(self) -> None:
+        imported = ", ".join(f"name_{index} as export_{index}" for index in range(26))
+        declared = ", ".join(repr(f"declared_{index}") for index in range(26))
+        cases = {
+            "imported reexports": f"from package import {imported}\n",
+            "declared all": f"__all__ = [{declared}]\n",
+        }
+        for label, source in cases.items():
+            with self.subTest(label):
+                with self._repository() as root:
+                    (root / "app/public.py").write_text(source, encoding="utf-8")
+                    report = verify(root, "fast")
+                self.assertIn("source.public-exports", {item.rule_id for item in report.errors})
+
     def test_parse_error_warning_budget_and_ambiguous_owner_are_visible(self) -> None:
         with self._repository() as root:
             (root / "app/broken.py").write_text("def broken(:\n", encoding="utf-8")
