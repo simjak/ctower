@@ -17,12 +17,14 @@ from tools.checks.generated import (
     load_generated_manifest,
     render_generated_manifest,
 )
+from tools.codegen._client_codegen import render_client
+from tools.codegen._model_codegen import render_init, render_models
 
 __all__ = ["CodegenError", "check", "write"]
 
 _MANIFEST = Path("generated/.generated-manifest.json")
 _OPENAPI = Path("contracts/http/openapi.yaml")
-_TEMPLATES = Path("tools/codegen/templates")
+_TELEMETRY = Path("contracts/observability/telemetry-context.schema.json")
 _OUTPUTS = {
     "__init__.py": Path("generated/python/ctower_client/__init__.py"),
     "client.py": Path("generated/python/ctower_client/client.py"),
@@ -30,13 +32,15 @@ _OUTPUTS = {
 }
 _INPUTS = (
     _OPENAPI,
+    _TELEMETRY,
     Path("contracts/domain/events/event-envelope.schema.json"),
     Path("contracts/domain/tickets/ticket-event.schema.json"),
     Path("tools/codegen/__init__.py"),
     Path("tools/codegen/__main__.py"),
+    Path("tools/codegen/_client_codegen.py"),
+    Path("tools/codegen/_model_codegen.py"),
     Path("tools/codegen/generator.py"),
     Path("tools/checks/generated.py"),
-    *tuple(_TEMPLATES / name for name in sorted(_OUTPUTS)),
 )
 _EXPECTED_OPERATIONS = {
     "bootstrapFirstTenant",
@@ -99,13 +103,16 @@ def check(root: Path) -> None:
 
 def _render(root: Path) -> _Rendered:
     contract = _load_openapi(root)
+    generated_contract = _with_telemetry_schema(root, contract)
     contract_digest = hashlib.sha256(
-        json.dumps(contract, separators=(",", ":"), sort_keys=True).encode()
+        json.dumps(generated_contract, separators=(",", ":"), sort_keys=True).encode()
     ).hexdigest()
-    outputs = tuple(
-        (output, _render_template(root, name, contract_digest))
-        for name, output in sorted(_OUTPUTS.items())
-    )
+    rendered = {
+        "__init__.py": render_init(generated_contract, contract_digest),
+        "client.py": render_client(generated_contract, contract_digest),
+        "models.py": render_models(generated_contract, contract_digest),
+    }
+    outputs = tuple((output, rendered[name]) for name, output in sorted(_OUTPUTS.items()))
     try:
         manifest = load_generated_manifest(root, _MANIFEST)
         generator_digest = digest_file(root, Path("tools/codegen/generator.py")).sha256
@@ -163,13 +170,35 @@ def _schema_names(document: dict[str, object]) -> set[str]:
     return set(cast(dict[str, object], components["schemas"]))
 
 
-def _render_template(root: Path, name: str, contract_digest: str) -> str:
-    path = root / _TEMPLATES / name
+def _with_telemetry_schema(root: Path, contract: dict[str, object]) -> dict[str, object]:
     try:
-        template = path.read_text(encoding="utf-8")
-    except OSError as error:
-        raise CodegenError(f"cannot read generator template {path}: {error}") from error
-    marker = "@@CONTRACT_SHA256@@"
-    if template.count(marker) != 1:
-        raise CodegenError(f"generator template {path} must contain one contract digest marker")
-    return template.replace(marker, contract_digest)
+        telemetry: object = json.loads((root / _TELEMETRY).read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError) as error:
+        raise CodegenError(f"cannot load authored telemetry context: {error}") from error
+    if not isinstance(telemetry, dict) or not isinstance(telemetry.get("$defs"), dict):
+        raise CodegenError("authored telemetry context must contain $defs")
+    definitions = cast(dict[str, object], telemetry["$defs"])
+    resolved = _resolve_local_definitions(telemetry, definitions)
+    if not isinstance(resolved, dict):
+        raise CodegenError("resolved telemetry context must be an object")
+    for metadata in ("$schema", "$id", "$defs", "title", "description"):
+        resolved.pop(metadata, None)
+    generated = cast(dict[str, object], json.loads(json.dumps(contract)))
+    components = cast(dict[str, object], generated["components"])
+    schemas = cast(dict[str, object], components["schemas"])
+    schemas["TelemetryContext"] = resolved
+    return generated
+
+
+def _resolve_local_definitions(value: object, definitions: dict[str, object]) -> object:
+    if isinstance(value, list):
+        return [_resolve_local_definitions(item, definitions) for item in value]
+    if not isinstance(value, dict):
+        return value
+    reference = value.get("$ref")
+    if isinstance(reference, str) and reference.startswith("#/$defs/"):
+        name = reference.removeprefix("#/$defs/")
+        if name not in definitions:
+            raise CodegenError(f"unknown telemetry definition {name}")
+        return _resolve_local_definitions(definitions[name], definitions)
+    return {key: _resolve_local_definitions(item, definitions) for key, item in value.items()}

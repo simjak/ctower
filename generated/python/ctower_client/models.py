@@ -1,6 +1,6 @@
 """DO NOT EDIT: generated file; regenerate from declared inputs.
 
-Authored contract digest: sha256:c7720459fe13da7954fd47531b54db7cee8e84b2df15c9a18ed354c1f0f768d3
+Authored contract digest: sha256:9f83fcb90dbb66afc0aae46bf7bbc2580f41a002f06d83a9121df381994e91f3
 """
 
 from __future__ import annotations
@@ -21,6 +21,7 @@ __all__ = [
     "Priority",
     "Problem",
     "SourceReference",
+    "TelemetryContext",
     "TicketCommandResult",
     "TicketCreateRequest",
     "TicketCreatedPayload",
@@ -34,6 +35,30 @@ class _BoundaryModel(BaseModel):
     model_config = ConfigDict(extra="forbid", frozen=True, populate_by_name=True, strict=True)
 
 
+class BootstrapRequest(_BoundaryModel):
+    commander_name: Annotated[str, Field(min_length=1, max_length=120)]
+    commander_vault_ref: Annotated[str, Field(pattern="^vault-ref:[a-z0-9/_-]+$")]
+    operator_credential_ref: Annotated[str, Field(pattern="^credential-ref:[a-z0-9/_-]+$")]
+    operator_name: Annotated[str, Field(min_length=1, max_length=120)]
+    operator_vault_ref: Annotated[str, Field(pattern="^vault-ref:[a-z0-9/_-]+$")]
+    tenant_name: Annotated[str, Field(min_length=1, max_length=120)]
+    tenant_slug: Annotated[str, Field(pattern="^[a-z][a-z0-9-]{1,62}$")]
+
+
+class CustodyTransferRequest(_BoundaryModel):
+    expected_version: Annotated[int, Field(ge=1)]
+    from_custodian_id: UUID
+    protected_transfer: bool
+    reason: Annotated[str, Field(min_length=1, max_length=500)]
+    to_custodian_id: UUID
+
+
+class CustodyTransferredPayload(_BoundaryModel):
+    from_custodian_id: UUID
+    reason: str
+    to_custodian_id: UUID
+
+
 class DurabilityState(StrEnum):
     DURABILITY_PENDING = "durability_pending"
 
@@ -44,28 +69,62 @@ class Priority(StrEnum):
     P2 = "P2"
 
 
+class Problem(_BoundaryModel):
+    code: Literal[
+        "bootstrap-consumed",
+        "bootstrap-expired",
+        "bootstrap-nonempty",
+        "bootstrap-origin",
+        "idempotency-conflict",
+        "tenant-scope-denied",
+        "unauthorized",
+        "validation-error",
+        "version-conflict",
+    ]
+    command_id: UUID | None = None
+    current_version: Annotated[int, Field(ge=1)] | None = None
+    detail: str
+    status: Annotated[int, Field(ge=400, le=599)]
+    title: str
+    type_uri: str = Field(alias="type", serialization_alias="type")
+
+
 class SourceReference(_BoundaryModel):
     kind: Annotated[str, Field(min_length=1, max_length=64)]
     ref: Annotated[str, Field(min_length=1, max_length=256)]
 
 
-class BootstrapRequest(_BoundaryModel):
-    commander_name: Annotated[str, Field(min_length=1, max_length=120)]
-    commander_vault_ref: Annotated[str, Field(pattern=r"^vault-ref:[a-z0-9/_-]+$")]
-    operator_credential_ref: Annotated[str, Field(pattern=r"^credential-ref:[a-z0-9/_-]+$")]
-    operator_name: Annotated[str, Field(min_length=1, max_length=120)]
-    operator_vault_ref: Annotated[str, Field(pattern=r"^vault-ref:[a-z0-9/_-]+$")]
-    tenant_name: Annotated[str, Field(min_length=1, max_length=120)]
-    tenant_slug: Annotated[str, Field(pattern=r"^[a-z][a-z0-9-]{1,62}$")]
+class TelemetryContext(_BoundaryModel):
+    schema_id: Literal["ctower.telemetry-context/v1"] = Field(
+        alias="schema", serialization_alias="schema"
+    )
+    trace_id: Annotated[str, Field(pattern="^[a-f0-9]{32}$")]
+    span_id: Annotated[str, Field(pattern="^[a-f0-9]{16}$")]
+    trace_flags: Annotated[int, Field(ge=0, le=255)]
+    trace_state: Annotated[str, Field(max_length=512)] | None = None
+    correlation_id: Annotated[str, Field(min_length=1, max_length=128)]
+    causation_id: Annotated[str, Field(min_length=1, max_length=128)]
+    tenant_id: Annotated[str, Field(min_length=1, max_length=128)]
+    actor_id: Annotated[str, Field(min_length=1, max_length=128)]
+    command_id: Annotated[str, Field(min_length=1, max_length=128)]
+    ticket_id: Annotated[str, Field(min_length=1, max_length=128)] | None = None
+    workflow_run_id: Annotated[str, Field(min_length=1, max_length=128)] | None = None
+    stage_attempt_id: Annotated[str, Field(min_length=1, max_length=128)] | None = None
+    job_id: Annotated[str, Field(min_length=1, max_length=128)] | None = None
+    runner_id: Annotated[str, Field(min_length=1, max_length=128)] | None = None
+    fencing_token: Annotated[int, Field(ge=1)] | None = None
+    effect_id: Annotated[str, Field(min_length=1, max_length=128)] | None = None
+    component_revision_id: Annotated[str, Field(min_length=1, max_length=128)] | None = None
+    deployment_id: Annotated[str, Field(min_length=1, max_length=128)] | None = None
 
 
 class BootstrapReceipt(_BoundaryModel):
     command_id: UUID
     commander_id: UUID
     durability_state: DurabilityState
-    event_ids: tuple[UUID, ...]
+    event_ids: Annotated[tuple[UUID, ...], Field(min_length=1)]
     operator_id: UUID
-    receipt_digest: Annotated[str, Field(pattern=r"^sha256:[0-9a-f]{64}$")]
+    receipt_digest: Annotated[str, Field(pattern="^sha256:[0-9a-f]{64}$")]
     tenant_id: UUID
 
 
@@ -76,12 +135,12 @@ class TicketCreateRequest(_BoundaryModel):
     title: Annotated[str, Field(min_length=1, max_length=200)]
 
 
-class CustodyTransferRequest(_BoundaryModel):
-    expected_version: Annotated[int, Field(ge=1)]
-    from_custodian_id: UUID
-    protected_transfer: bool
-    reason: Annotated[str, Field(min_length=1, max_length=500)]
-    to_custodian_id: UUID
+class TicketCreatedPayload(_BoundaryModel):
+    custodian_id: UUID
+    priority: Priority
+    source_kind: Annotated[str, Field(min_length=1, max_length=64)]
+    source_ref: Annotated[str, Field(min_length=1, max_length=256)]
+    title: str
 
 
 class TicketResource(_BoundaryModel):
@@ -98,21 +157,8 @@ class TicketResource(_BoundaryModel):
 class TicketCommandResult(_BoundaryModel):
     command_id: UUID
     durability_state: DurabilityState
-    event_ids: tuple[UUID, ...]
+    event_ids: Annotated[tuple[UUID, ...], Field(min_length=1)]
     ticket: TicketResource
-
-
-class TicketCreatedPayload(_BoundaryModel):
-    custodian_id: UUID
-    priority: Priority
-    source: SourceReference
-    title: str
-
-
-class CustodyTransferredPayload(_BoundaryModel):
-    from_custodian_id: UUID
-    reason: str
-    to_custodian_id: UUID
 
 
 class TimelineEvent(_BoundaryModel):
@@ -129,21 +175,3 @@ class TimelineResponse(_BoundaryModel):
     durability_state: DurabilityState
     events: tuple[TimelineEvent, ...]
     ticket_id: UUID
-
-
-class Problem(_BoundaryModel):
-    code: Literal[
-        "bootstrap-consumed",
-        "bootstrap-expired",
-        "bootstrap-origin",
-        "idempotency-conflict",
-        "tenant-scope-denied",
-        "unauthorized",
-        "version-conflict",
-    ]
-    command_id: UUID | None = None
-    current_version: Annotated[int, Field(ge=1)] | None = None
-    detail: str
-    status: Annotated[int, Field(ge=400, le=599)]
-    title: str
-    type_uri: str = Field(alias="type", serialization_alias="type")
