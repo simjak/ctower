@@ -10,7 +10,7 @@ artifacts, evidence, effects, and the complete audit trail survive agent, model,
 
 > [!IMPORTANT]
 > ctower is currently a **docs-first pre-alpha project**. The specification, architecture, contracts,
-> declarative packs, repository policy, bootstrap tests, and a Python compatibility preflight exist. The
+> declarative packs, repository policy, bootstrap tests, and Python compatibility contracts exist. The
 > API, kernel, ticket store, runner, CLI, web UI, and release runtime are not implemented yet. There is no
 > installable product today.
 
@@ -53,7 +53,7 @@ python3 -m tools.checks --root . --profile full --expected-suites
 
 These commands validate the repository foundation; they do not start ctower. See the
 [getting-started guide](https://simjak.github.io/ctower/getting-started/) for the current development
-workflow, the observed compatibility evidence, and its unresolved runtime-selection gaps.
+workflow, the historical compatibility evidence, and its unresolved runtime-selection gaps.
 
 ## Implementation path
 

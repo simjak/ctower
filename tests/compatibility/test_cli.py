@@ -7,59 +7,77 @@ from pathlib import Path
 from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
-    from compatibility.support import MATRIX_PATH, MatrixPort
+    from compatibility.support import MATRIX_PATH, report_payload
 else:
     try:
-        from .support import MATRIX_PATH, MatrixPort
+        from .support import MATRIX_PATH, report_payload
     except ImportError:
-        from support import MATRIX_PATH, MatrixPort
+        from support import MATRIX_PATH, report_payload
 
-from tools.compatibility import CompatibilityError
+from tools.compatibility import CompatibilityError, load_matrix
 from tools.compatibility import __main__ as cli
 
 
 class CliBoundaryTests(unittest.TestCase):
-    def test_invalid_matrix_fails_before_execution(self) -> None:
+    def test_invalid_inputs_fail_before_publication(self) -> None:
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)
-            matrix = root / "matrix.json"
-            matrix.write_text("{}", encoding="utf-8")
-            arguments = ("--matrix", str(matrix), "--output", str(root / "out.json"))
+            invalid_matrix = root / "matrix.json"
+            invalid_matrix.write_text("{}", encoding="utf-8")
+            report = self._write_report(root)
+            output = root / "out.json"
+            arguments = (
+                "--matrix",
+                str(invalid_matrix),
+                "--report",
+                str(report),
+                "--output",
+                str(output),
+            )
             with self.assertRaises(CompatibilityError):
-                cli.main(arguments, execution_port=MatrixPort())
-            self.assertFalse((root / "out.json").exists())
+                cli.main(arguments)
+            self.assertFalse(output.exists())
 
-    def test_partial_environment_is_not_publishable_l0_evidence(self) -> None:
-        with tempfile.TemporaryDirectory() as directory:
-            output = Path(directory) / "out.json"
+            report.write_text("{}", encoding="utf-8")
             arguments = (
                 "--matrix",
                 str(MATRIX_PATH),
+                "--report",
+                str(report),
                 "--output",
                 str(output),
-                "--environment",
-                "macos-host",
             )
-            with self.assertRaisesRegex(CompatibilityError, "requires macos-host"):
-                cli.main(arguments, execution_port=MatrixPort())
+            with self.assertRaises(CompatibilityError):
+                cli.main(arguments)
             self.assertFalse(output.exists())
 
-    def test_unknown_environment_is_rejected_by_argument_parser(self) -> None:
-        arguments = (
-            "--matrix",
-            str(MATRIX_PATH),
-            "--output",
-            "out.json",
-            "--environment",
-            "unknown",
-        )
+    def test_removed_execution_flags_are_rejected(self) -> None:
         with self.assertRaises(SystemExit):
-            cli.main(arguments, execution_port=MatrixPort())
+            cli.main(("--allow-unconfined-host-diagnostic",))
 
-    def test_full_cli_writes_schema_valid_six_leg_report(self) -> None:
+    def test_cli_validates_and_publishes_closed_report(self) -> None:
         with tempfile.TemporaryDirectory() as directory:
-            output = Path(directory) / "report.json"
-            arguments = ("--matrix", str(MATRIX_PATH), "--output", str(output))
-            self.assertEqual(cli.main(arguments, execution_port=MatrixPort()), 0)
+            root = Path(directory)
+            report = self._write_report(root)
+            output = root / "accepted.json"
+            arguments = (
+                "--matrix",
+                str(MATRIX_PATH),
+                "--report",
+                str(report),
+                "--output",
+                str(output),
+            )
+            self.assertEqual(cli.main(arguments), 0)
             raw = json.loads(output.read_text(encoding="utf-8"))
             self.assertEqual(len(raw["runs"]), 6)
+
+    @staticmethod
+    def _write_report(root: Path) -> Path:
+        path = root / "report.json"
+        path.write_text(json.dumps(report_payload(load_matrix(MATRIX_PATH))), encoding="utf-8")
+        return path
+
+
+if __name__ == "__main__":
+    unittest.main()

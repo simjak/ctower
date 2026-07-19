@@ -2,43 +2,20 @@ from __future__ import annotations
 
 import argparse
 from pathlib import Path
-from typing import cast
 
-from tools.compatibility import execute_matrix, load_matrix, write_report
-from tools.compatibility.models_core import EnvironmentName
-from tools.compatibility.process import ExecutionPort
+from tools.compatibility import load_matrix, write_report
+from tools.compatibility.schema import read_json_object
 
 
-def main(
-    argv: tuple[str, ...] | None = None, *, execution_port: ExecutionPort | None = None
-) -> int:
-    parser = argparse.ArgumentParser(description="Execute ctower runtime compatibility evidence")
+def main(argv: tuple[str, ...] | None = None) -> int:
+    parser = argparse.ArgumentParser(description="Validate ctower compatibility evidence")
     parser.add_argument("--matrix", type=Path, required=True)
+    parser.add_argument("--report", type=Path, required=True)
     parser.add_argument("--output", type=Path, required=True)
-    parser.add_argument(
-        "--allow-unconfined-host-diagnostic",
-        action="store_true",
-        help="run native host commands without containment; output remains noncanonical",
-    )
-    parser.add_argument(
-        "--environment",
-        action="append",
-        choices=("macos-host", "linux-container"),
-        dest="environments",
-    )
     arguments = parser.parse_args(argv)
     matrix = load_matrix(arguments.matrix)
-    environments = cast(
-        "tuple[EnvironmentName, ...]",
-        tuple(arguments.environments or ("macos-host", "linux-container")),
-    )
-    report = execute_matrix(
-        matrix,
-        environments=environments,
-        execution_port=execution_port,
-        allow_unconfined_host_diagnostic=arguments.allow_unconfined_host_diagnostic,
-    )
-    write_report(arguments.output, report)
+    report = read_json_object(arguments.report, label="compatibility report")
+    write_report(arguments.output, matrix, report)
     return 0
 
 

@@ -4,18 +4,24 @@ from __future__ import annotations
 
 import ast
 import asyncio
+import os
 import re
+import signal
 import sys
 import tomllib
 from collections.abc import Mapping
+from contextlib import suppress
 from dataclasses import dataclass
 from pathlib import Path, PurePosixPath
 
 from tools.checks.report import ExpectedSuitesReport, SuiteDisposition, SuiteResult
 
+__all__ = ["verify_expected_suites"]
+
 _SCHEMA = "ctower.expected-suites/v1"
 _MANIFEST_PATH = "tools/checks/expected-suites.toml"
 _MAX_TIMEOUT_SECONDS = 3600
+_PROCESS_GROUP_GRACE_SECONDS = 0.25
 _MANIFEST_FIELDS = {"schema", "manifest_version", "active_phase", "phase_order", "suite"}
 _BACKLOG_ID = re.compile(r"^CT-(?:L0|I[1-9][0-9]*)-[0-9]{3}$")
 _SUITE_ID = re.compile(r"^[a-z][a-z0-9-]{2,63}$")
@@ -372,17 +378,62 @@ async def _execute_required_suites(
 async def _execute_suite(root: Path, suite: _SuiteSpec) -> SuiteResult:
     command = _execution_command(suite.command)
     try:
-        process = await asyncio.create_subprocess_exec(*command, cwd=root)
-        return_code = await asyncio.wait_for(process.wait(), timeout=suite.timeout_seconds)
-    except TimeoutError:
-        process.kill()
-        await process.wait()
-        return _failure(suite, f"command timed out after {suite.timeout_seconds} seconds")
+        process = await asyncio.create_subprocess_exec(*command, cwd=root, start_new_session=True)
     except OSError as error:
         return _failure(suite, f"cannot execute command: {error}")
+    try:
+        return_code = await asyncio.wait_for(process.wait(), timeout=suite.timeout_seconds)
+    except TimeoutError:
+        await _terminate_process_group(process)
+        return _failure(suite, f"command timed out after {suite.timeout_seconds} seconds")
+    except BaseException:
+        await _terminate_process_group(process)
+        raise
+    await _terminate_process_group(process)
     if return_code != 0:
         return _failure(suite, f"command failed with exit code {return_code}")
     return _result(suite, SuiteDisposition.PASSED, "current required suite command passed")
+
+
+async def _terminate_process_group(process: asyncio.subprocess.Process) -> None:
+    group_id = process.pid
+    if not _process_group_exists(group_id):
+        return
+    _signal_process_group(group_id, signal.SIGTERM)
+    if await _wait_for_process_group_exit(group_id):
+        await _reap_leader(process)
+        return
+    _signal_process_group(group_id, signal.SIGKILL)
+    await _wait_for_process_group_exit(group_id)
+    await _reap_leader(process)
+
+
+async def _wait_for_process_group_exit(group_id: int) -> bool:
+    await asyncio.sleep(_PROCESS_GROUP_GRACE_SECONDS)
+    return not _process_group_exists(group_id)
+
+
+async def _reap_leader(process: asyncio.subprocess.Process) -> None:
+    if process.returncode is not None:
+        return
+    try:
+        await asyncio.wait_for(process.wait(), timeout=_PROCESS_GROUP_GRACE_SECONDS)
+    except TimeoutError:
+        process.kill()
+        await process.wait()
+
+
+def _signal_process_group(group_id: int, signal_number: signal.Signals) -> None:
+    with suppress(ProcessLookupError):
+        os.killpg(group_id, signal_number)
+
+
+def _process_group_exists(group_id: int) -> bool:
+    try:
+        os.killpg(group_id, 0)
+    except ProcessLookupError:
+        return False
+    return True
 
 
 def _execution_command(command: tuple[str, ...]) -> tuple[str, ...]:

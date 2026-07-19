@@ -151,6 +151,11 @@ def _class_metrics(tree: ast.Module) -> tuple[ClassMetric, ...]:
 
 
 def _public_exports(tree: ast.Module) -> tuple[str, ...]:
+    if any(
+        isinstance(node, ast.ImportFrom) and any(alias.name == "*" for alias in node.names)
+        for node in tree.body
+    ):
+        raise ValueError("star re-exports make the public surface unresolvable")
     declared = _declared_all(tree)
     if declared is not None:
         return tuple(sorted(declared))
@@ -165,20 +170,42 @@ def _public_exports(tree: ast.Module) -> tuple[str, ...]:
 
 
 def _declared_all(tree: ast.Module) -> set[str] | None:
+    declaration: ast.expr | None = None
     for node in tree.body:
-        if not isinstance(node, ast.Assign) or not any(
-            isinstance(target, ast.Name) and target.id == "__all__" for target in node.targets
-        ):
+        if isinstance(node, ast.AugAssign) and _is_all_target(node.target):
+            raise ValueError("augmented __all__ is not statically resolvable")
+        value = _declared_all_value(node)
+        if value is None:
             continue
-        if not isinstance(node.value, ast.List | ast.Tuple | ast.Set):
-            return None
-        values = {
-            item.value
-            for item in node.value.elts
-            if isinstance(item, ast.Constant) and isinstance(item.value, str)
-        }
-        return values if len(values) == len(node.value.elts) else None
+        if declaration is not None:
+            raise ValueError("multiple __all__ declarations are not statically resolvable")
+        declaration = value
+    if declaration is None:
+        return None
+    if not isinstance(declaration, ast.List | ast.Tuple | ast.Set):
+        raise TypeError("dynamic __all__ is not statically resolvable")
+    values = {
+        item.value
+        for item in declaration.elts
+        if isinstance(item, ast.Constant) and isinstance(item.value, str)
+    }
+    if len(values) != len(declaration.elts):
+        raise ValueError("__all__ must contain only unique string literals")
+    return values
+
+
+def _declared_all_value(node: ast.stmt) -> ast.expr | None:
+    if isinstance(node, ast.Assign) and any(_is_all_target(target) for target in node.targets):
+        return node.value
+    if isinstance(node, ast.AnnAssign) and _is_all_target(node.target):
+        if node.value is None:
+            raise ValueError("annotated __all__ requires a literal value")
+        return node.value
     return None
+
+
+def _is_all_target(node: ast.expr) -> bool:
+    return isinstance(node, ast.Name) and node.id == "__all__"
 
 
 def _import_exports(node: ast.stmt) -> set[str]:
@@ -230,7 +257,7 @@ def _analyze_python(path: Path, relative: str, text: str) -> SourceMetric:
             public_exports=_public_exports(tree),
             imports=_imports(tree),
         )
-    except (SyntaxError, tokenize.TokenError) as error:
+    except (SyntaxError, TypeError, ValueError, tokenize.TokenError) as error:
         return SourceMetric(
             absolute_path=path,
             path=relative,

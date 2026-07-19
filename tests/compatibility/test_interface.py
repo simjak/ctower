@@ -1,29 +1,30 @@
 from __future__ import annotations
 
 import copy
+import importlib
 import json
 import os
 import tempfile
 import unittest
 from collections.abc import Callable
 from contextlib import chdir
+from importlib.util import find_spec
 from pathlib import Path
 from typing import TYPE_CHECKING, Any, cast
 
 from pydantic import ValidationError
 
 if TYPE_CHECKING:
-    from compatibility.support import MATRIX_PATH, MatrixPort
+    from compatibility.support import MATRIX_PATH, report_payload
 else:
     try:
-        from .support import MATRIX_PATH, MatrixPort
+        from .support import MATRIX_PATH, report_payload
     except ImportError:
-        from support import MATRIX_PATH, MatrixPort
+        from support import MATRIX_PATH, report_payload
 
 from tools.compatibility import (
     CompatibilityError,
     CompatibilityReport,
-    execute_matrix,
     load_matrix,
     validate_report,
     write_report,
@@ -69,7 +70,6 @@ class InputBoundaryTests(unittest.TestCase):
             _add(("candidates", 0), "registry", value="evil.invalid"),
             _add((), "unknown", value=True),
         )
-        port = MatrixPort()
         with tempfile.TemporaryDirectory() as directory:
             path = Path(directory) / "matrix.json"
             for index, mutation in enumerate(mutations):
@@ -78,7 +78,6 @@ class InputBoundaryTests(unittest.TestCase):
                 path.write_text(json.dumps(candidate), encoding="utf-8")
                 with self.subTest(index=index), self.assertRaises(CompatibilityError):
                     load_matrix(path)
-        self.assertEqual(port.calls, [])
 
     def test_invalid_json_nonobject_and_format_fail_closed(self) -> None:
         with tempfile.TemporaryDirectory() as directory:
@@ -92,12 +91,12 @@ class InputBoundaryTests(unittest.TestCase):
 class ResultBoundaryTests(unittest.TestCase):
     def setUp(self) -> None:
         self.matrix = load_matrix(MATRIX_PATH)
-        self.report = execute_matrix(self.matrix, execution_port=MatrixPort())
+        self.report = validate_report(self.matrix, report_payload(self.matrix))
 
     def test_report_is_exact_six_leg_frozen_evidence(self) -> None:
         accepted = validate_report(self.matrix, _raw(self.report))
         self.assertEqual(len(accepted.runs), 6)
-        self.assertEqual(accepted.evidence_scope, "unconfined-diagnostic")
+        self.assertEqual(accepted.evidence_scope, "external-runner-noncanonical")
         attribute = "matrix_id"
         with self.assertRaises(ValidationError):
             setattr(accepted, attribute, "changed")
@@ -166,9 +165,9 @@ class ResultBoundaryTests(unittest.TestCase):
             "requested"
         ]
         cases.append(image)
-        repository = _raw(self.report)
-        _runs(repository)[1]["image_identity"]["repository_digests"] = ["python@sha256:" + "f" * 64]
-        cases.append(repository)
+        image_id = _raw(self.report)
+        _runs(image_id)[1]["image_identity"]["image_id"] = "sha256:" + "f" * 64
+        cases.append(image_id)
         resolution = _raw(self.report)
         _runs(resolution)[0]["resolution"]["lock_sha256"] = "0" * 64
         cases.append(resolution)
@@ -176,52 +175,57 @@ class ResultBoundaryTests(unittest.TestCase):
             with self.subTest(index=cases.index(raw)), self.assertRaises(CompatibilityError):
                 validate_report(self.matrix, raw)
 
-    def test_only_the_full_environment_pair_is_accepted(self) -> None:
-        for environments in ((), ("macos-host",), ("linux-container", "macos-host")):
-            with self.subTest(environments=environments), self.assertRaises(CompatibilityError):
-                validate_report(self.matrix, _raw(self.report), environments=environments)
+    def test_public_interface_has_no_native_execution_seam(self) -> None:
+        compatibility = importlib.import_module("tools.compatibility")
+        self.assertFalse(hasattr(compatibility, "execute_matrix"))
+        self.assertFalse(hasattr(compatibility, "ExecutionPort"))
+        self.assertFalse(hasattr(compatibility, "LocalExecutionPort"))
+        for module in ("environment", "execution", "probe", "process", "resolution"):
+            self.assertIsNone(find_spec(f"tools.compatibility.{module}"))
 
 
 class PublicReportWriteTests(unittest.TestCase):
     def setUp(self) -> None:
-        matrix = load_matrix(MATRIX_PATH)
-        self.report = execute_matrix(matrix, execution_port=MatrixPort())
+        self.matrix = load_matrix(MATRIX_PATH)
+        self.report = validate_report(self.matrix, report_payload(self.matrix))
 
     def test_atomic_report_write_round_trips(self) -> None:
         with tempfile.TemporaryDirectory() as directory:
             destination = Path(directory) / "report.json"
-            write_report(destination, self.report)
+            write_report(destination, self.matrix, self.report)
             self.assertEqual(json.loads(destination.read_text()), _raw(self.report))
 
+    def test_publication_revalidates_matrix_binding(self) -> None:
+        unbound = self.report.model_copy(update={"input_digest": "sha256:" + ("0" * 64)})
+        with tempfile.TemporaryDirectory() as directory:
+            destination = Path(directory) / "unbound.json"
+            with self.assertRaisesRegex(CompatibilityError, "input digest"):
+                write_report(destination, self.matrix, unbound)
+            self.assertFalse(destination.exists())
+
     def test_private_paths_symlink_destinations_and_parent_escape_are_rejected(self) -> None:
-        raw = _raw(self.report)
-        _runs(raw)[0]["resolution"]["commands"] = [["/Users/alice/private/tool"]]
-        private_report = CompatibilityReport.model_validate_json(json.dumps(raw))
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)
-            with self.assertRaisesRegex(CompatibilityError, "private host"):
-                write_report(root / "private.json", private_report)
-
             destination = root / "real.json"
             destination.write_text("old", encoding="utf-8")
             symlink = root / "link.json"
             symlink.symlink_to(destination)
             with self.assertRaisesRegex(CompatibilityError, "symlink"):
-                write_report(symlink, self.report)
+                write_report(symlink, self.matrix, self.report)
 
             real_parent = root / "real-parent"
             real_parent.mkdir()
             linked_parent = root / "linked-parent"
             linked_parent.symlink_to(real_parent, target_is_directory=True)
             with self.assertRaisesRegex(CompatibilityError, "safe existing directory"):
-                write_report(linked_parent / "report.json", self.report)
+                write_report(linked_parent / "report.json", self.matrix, self.report)
 
             sub = root / "sub"
             sub.mkdir()
             with self.assertRaisesRegex(CompatibilityError, "parent-path escape"):
-                write_report(sub / ".." / "escaped.json", self.report)
+                write_report(sub / ".." / "escaped.json", self.matrix, self.report)
 
-    def test_public_write_rejects_hostile_lock_and_detector_shaped_credentials(self) -> None:
+    def test_public_write_rejects_hostile_lock_and_formerly_free_runtime_fields(self) -> None:
         raw = _raw(self.report)
         _runs(raw)[0]["resolution"]["lock"] = [
             "package @ https://user:secret@example.invalid/private.whl"
@@ -229,22 +233,23 @@ class PublicReportWriteTests(unittest.TestCase):
         with self.assertRaises(ValidationError):
             CompatibilityReport.model_validate_json(json.dumps(raw))
 
-        raw = _raw(self.report)
-        credential = "ghp_" + ("a" * 36)
-        _runs(raw)[0]["interpreter"]["platform"] = credential
-        _observations(raw)[0]["details"]["platform"] = credential
-        hostile = CompatibilityReport.model_validate_json(json.dumps(raw))
-        with (
-            tempfile.TemporaryDirectory() as directory,
-            self.assertRaisesRegex(CompatibilityError, "credential-like"),
+        for field, value in (
+            ("platform", "Darwin-alice@example.invalid"),
+            ("machine", "/Users/alice/private"),
+            ("soabi", "TOKEN=synthetic-secret"),
+            ("cache_tag", "https://example.invalid/private"),
         ):
-            write_report(Path(directory) / "hostile.json", hostile)
+            raw = _raw(self.report)
+            _runs(raw)[0]["interpreter"][field] = value
+            _observations(raw)[0]["details"][field] = value
+            with self.subTest(field=field), self.assertRaises(ValidationError):
+                CompatibilityReport.model_validate_json(json.dumps(raw))
 
     def test_missing_parent_is_rejected_without_creating_it(self) -> None:
         with tempfile.TemporaryDirectory() as directory:
             parent = Path(directory) / "missing"
             with self.assertRaisesRegex(CompatibilityError, "safe existing directory"):
-                write_report(parent / "report.json", self.report)
+                write_report(parent / "report.json", self.matrix, self.report)
             self.assertFalse(parent.exists())
 
     def test_publish_os_error_is_typed_and_relative_output_is_supported(self) -> None:
@@ -253,17 +258,17 @@ class PublicReportWriteTests(unittest.TestCase):
             destination_directory = root / "occupied"
             destination_directory.mkdir()
             with self.assertRaisesRegex(CompatibilityError, "unable to publish"):
-                write_report(destination_directory, self.report)
+                write_report(destination_directory, self.matrix, self.report)
 
             with chdir(root):
-                write_report(Path("relative.json"), self.report)
+                write_report(Path("relative.json"), self.matrix, self.report)
             self.assertTrue((root / "relative.json").is_file())
 
     def test_macos_tmp_alias_is_opened_without_following_arbitrary_parents(self) -> None:
         system_tmp = Path(os.sep) / "tmp"
         with tempfile.TemporaryDirectory(dir=system_tmp) as directory:
             destination = system_tmp / Path(directory).name / "report.json"
-            write_report(destination, self.report)
+            write_report(destination, self.matrix, self.report)
             self.assertTrue(destination.is_file())
 
 

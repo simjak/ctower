@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-import secrets
+import hashlib
 import uuid
 from typing import Annotated, Literal, Self
 
@@ -28,7 +28,13 @@ ObservationName = Literal[
 ]
 Sha256 = Annotated[str, StringConstraints(pattern=r"^[0-9a-f]{64}$")]
 Digest = Annotated[str, StringConstraints(pattern=r"^sha256:[0-9a-f]{64}$")]
-Machine = Annotated[str, StringConstraints(pattern=r"^[A-Za-z0-9_.-]{2,32}$")]
+Machine = Literal["amd64", "arm64"]
+UuidText = Annotated[
+    str,
+    StringConstraints(
+        pattern=r"^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
+    ),
+]
 
 EXPECTED_REQUIREMENTS = (
     "build==1.5.0",
@@ -63,7 +69,7 @@ EXPECTED_ARTIFACTS = ("release_helper_wheel", "generated_clients")
 
 
 class CompatibilityError(RuntimeError):
-    """The compatibility input, execution, or evidence failed closed."""
+    """The compatibility input, validation, or publication failed closed."""
 
 
 class FrozenModel(BaseModel):
@@ -77,36 +83,41 @@ class TelemetryContext(FrozenModel):
     trace_id: Annotated[str, StringConstraints(pattern=r"^[0-9a-f]{32}$")]
     span_id: Annotated[str, StringConstraints(pattern=r"^[0-9a-f]{16}$")]
     trace_flags: int = Field(ge=0, le=255)
-    trace_state: Annotated[str, StringConstraints(max_length=512)] | None = None
-    correlation_id: Annotated[str, StringConstraints(min_length=1, max_length=128)]
-    causation_id: Annotated[str, StringConstraints(min_length=1, max_length=128)]
-    tenant_id: Annotated[str, StringConstraints(min_length=1, max_length=128)]
-    actor_id: Annotated[str, StringConstraints(min_length=1, max_length=128)]
-    command_id: Annotated[str, StringConstraints(min_length=1, max_length=128)]
-    ticket_id: Annotated[str, StringConstraints(min_length=1, max_length=128)] | None = None
-    workflow_run_id: Annotated[str, StringConstraints(min_length=1, max_length=128)] | None = None
-    stage_attempt_id: Annotated[str, StringConstraints(min_length=1, max_length=128)] | None = None
-    job_id: Annotated[str, StringConstraints(min_length=1, max_length=128)] | None = None
-    runner_id: Annotated[str, StringConstraints(min_length=1, max_length=128)] | None = None
-    fencing_token: int | None = Field(default=None, ge=1)
-    effect_id: Annotated[str, StringConstraints(min_length=1, max_length=128)] | None = None
-    component_revision_id: (
-        Annotated[str, StringConstraints(min_length=1, max_length=128)] | None
-    ) = None
-    deployment_id: Annotated[str, StringConstraints(min_length=1, max_length=128)] | None = None
+    trace_state: None = None
+    correlation_id: UuidText
+    causation_id: UuidText
+    tenant_id: Literal["ctower-public-contracts"]
+    actor_id: Literal["ctower.compatibility-validator"]
+    command_id: UuidText
+    ticket_id: None = None
+    workflow_run_id: None = None
+    stage_attempt_id: None = None
+    job_id: None = None
+    runner_id: None = None
+    fencing_token: None = None
+    effect_id: None = None
+    component_revision_id: Literal["CT-L0-007"]
+    deployment_id: None = None
 
     @classmethod
-    def create(cls) -> Self:
+    def for_matrix(cls, input_digest: str) -> Self:
+        seed = hashlib.sha256(input_digest.encode()).digest()
         return cls(
             schema="ctower.telemetry-context/v1",
-            trace_id=secrets.token_hex(16),
-            span_id=secrets.token_hex(8),
+            trace_id=hashlib.sha256(seed + b"trace").hexdigest()[:32],
+            span_id=hashlib.sha256(seed + b"span").hexdigest()[:16],
             trace_flags=1,
-            correlation_id=str(uuid.uuid4()),
-            causation_id=str(uuid.uuid4()),
-            tenant_id="ctower-public-preflight",
-            actor_id="ctower.compatibility-preflight",
-            command_id=str(uuid.uuid4()),
+            correlation_id=str(
+                uuid.UUID(bytes=hashlib.sha256(seed + b"correlation").digest()[:16], version=4)
+            ),
+            causation_id=str(
+                uuid.UUID(bytes=hashlib.sha256(seed + b"causation").digest()[:16], version=4)
+            ),
+            tenant_id="ctower-public-contracts",
+            actor_id="ctower.compatibility-validator",
+            command_id=str(
+                uuid.UUID(bytes=hashlib.sha256(seed + b"command").digest()[:16], version=4)
+            ),
             component_revision_id="CT-L0-007",
         )
 
@@ -215,71 +226,6 @@ class CompatibilityMatrix(FrozenModel):
         return self.source.candidates
 
 
-class EnvironmentVariable(FrozenModel):
-    name: Annotated[str, StringConstraints(pattern=r"^[A-Z][A-Z0-9_]*$")]
-    value: Annotated[str, StringConstraints(max_length=16384)]
-
-
-ProcessOperation = Literal[
-    "uv-bootstrap",
-    "python-install",
-    "venv-create",
-    "package-install",
-    "dependency-freeze",
-    "compatibility-probe",
-    "docker-create",
-    "docker-start",
-    "docker-package-install",
-    "docker-freeze",
-    "docker-probe",
-    "docker-inspect",
-    "docker-cleanup",
-    "probe-subprocess",
-]
-
-
-class ProcessRequest(FrozenModel):
-    operation: ProcessOperation
-    argv: tuple[Annotated[str, StringConstraints(min_length=1, max_length=32768)], ...]
-    environment: tuple[EnvironmentVariable, ...]
-    timeout_ms: int = Field(ge=1, le=900_000)
-    terminate_grace_ms: int = Field(ge=1, le=10_000)
-    output_limit_bytes: int = Field(ge=1024, le=1_048_576)
-
-    @model_validator(mode="after")
-    def validate_process_boundary(self) -> Self:
-        if not self.argv or not self.argv[0].startswith("/"):
-            raise ValueError("process executable must be an absolute path")
-        names = tuple(item.name for item in self.environment)
-        if len(names) != len(set(names)):
-            raise ValueError("process environment names must be unique")
-        return self
-
-    def environment_dict(self) -> dict[str, str]:
-        return {item.name: item.value for item in self.environment}
-
-
-class ProcessResult(FrozenModel):
-    argv: tuple[str, ...]
-    returncode: int
-    stdout: str
-    stderr: str
-    timed_out: bool
-    termination: Literal["exited", "terminated", "killed"]
-    stdout_truncated: bool
-    stderr_truncated: bool
-    failure_reason: Literal["output_limit", "surviving_descendants", "timeout"] | None = None
-
-    @model_validator(mode="after")
-    def validate_failure_state(self) -> Self:
-        if self.timed_out != (self.failure_reason == "timeout"):
-            raise ValueError("timeout flag and typed failure reason differ")
-        truncated = self.stdout_truncated or self.stderr_truncated
-        if truncated and self.failure_reason != "output_limit":
-            raise ValueError("truncated output must be an output-limit failure")
-        return self
-
-
 class HostIdentity(FrozenModel):
     system: Literal["Darwin", "Linux"]
     machine: Machine
@@ -296,9 +242,39 @@ class RuntimeDetails(FrozenModel):
     free_threaded: Literal[False]
     gil_enabled: Literal[True]
     system: Literal["Darwin", "Linux"]
-    platform: Annotated[str, StringConstraints(min_length=1, max_length=256)]
+    platform: Literal["linux-amd64", "linux-arm64", "macos-amd64", "macos-arm64"]
     machine: Machine
-    soabi: Annotated[str, StringConstraints(min_length=1, max_length=128)]
-    cache_tag: Annotated[str, StringConstraints(min_length=1, max_length=64)]
+    soabi: Literal[
+        "cpython-312-aarch64-linux-gnu",
+        "cpython-312-darwin",
+        "cpython-312-x86_64-linux-gnu",
+        "cpython-313-aarch64-linux-gnu",
+        "cpython-313-darwin",
+        "cpython-313-x86_64-linux-gnu",
+        "cpython-314-aarch64-linux-gnu",
+        "cpython-314-darwin",
+        "cpython-314-x86_64-linux-gnu",
+    ]
+    cache_tag: Literal["cpython-312", "cpython-313", "cpython-314"]
     py_gil_disabled: Literal[0]
     executable_sha256: Sha256
+
+    @model_validator(mode="after")
+    def enforce_runtime_identity(self) -> Self:
+        parts = self.version.split(".")
+        abi = f"{parts[0]}{parts[1]}"
+        expected_tag = f"cpython-{abi}"
+        expected_platform = f"{'macos' if self.system == 'Darwin' else 'linux'}-{self.machine}"
+        linux_machine = "aarch64" if self.machine == "arm64" else "x86_64"
+        expected_soabi = (
+            f"cpython-{abi}-darwin"
+            if self.system == "Darwin"
+            else f"cpython-{abi}-{linux_machine}-linux-gnu"
+        )
+        if (
+            self.cache_tag != expected_tag
+            or self.platform != expected_platform
+            or self.soabi != expected_soabi
+        ):
+            raise ValueError("runtime strings do not match the canonical identity")
+        return self

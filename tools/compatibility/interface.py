@@ -10,15 +10,12 @@ from pathlib import Path
 from typing import cast
 
 from tools.compatibility.confidentiality import validate_public_report_bytes
-from tools.compatibility.execution import execute_candidate_matrix
 from tools.compatibility.models_core import (
     CompatibilityError,
     CompatibilityMatrix,
-    EnvironmentName,
     TelemetryContext,
 )
 from tools.compatibility.models_report import CompatibilityReport
-from tools.compatibility.process import ExecutionPort
 from tools.compatibility.schema import (
     JsonObject,
     parse_matrix,
@@ -29,14 +26,10 @@ from tools.compatibility.schema import (
 )
 
 __all__ = [
-    "FULL_ENVIRONMENTS",
-    "execute_matrix",
     "load_matrix",
     "validate_report",
     "write_report",
 ]
-
-FULL_ENVIRONMENTS: tuple[EnvironmentName, ...] = ("macos-host", "linux-container")
 
 
 def load_matrix(path: Path) -> CompatibilityMatrix:
@@ -44,47 +37,20 @@ def load_matrix(path: Path) -> CompatibilityMatrix:
     raw = read_json_object(path, label="matrix")
     source = parse_matrix(raw)
     canonical = json.dumps(raw, sort_keys=True, separators=(",", ":"), ensure_ascii=False)
-    telemetry = _new_telemetry()
+    digest = f"sha256:{hashlib.sha256(canonical.encode()).hexdigest()}"
+    telemetry = _new_telemetry(digest)
     return CompatibilityMatrix(
         source=source,
-        digest=f"sha256:{hashlib.sha256(canonical.encode()).hexdigest()}",
+        digest=digest,
         telemetry=telemetry,
     )
-
-
-def execute_matrix(
-    matrix: CompatibilityMatrix,
-    *,
-    environments: tuple[EnvironmentName, ...] = FULL_ENVIRONMENTS,
-    execution_port: ExecutionPort | None = None,
-    allow_unconfined_host_diagnostic: bool = False,
-) -> CompatibilityReport:
-    """Execute a diagnostic matrix; v1 output cannot claim canonical native containment."""
-    _require_full_environments(environments)
-    runs = execute_candidate_matrix(
-        matrix,
-        execution_port=execution_port,
-        allow_unconfined_host_diagnostic=allow_unconfined_host_diagnostic,
-    )
-    raw: JsonObject = {
-        "schema": "ctower.compatibility-result/v1",
-        "evidence_scope": "unconfined-diagnostic",
-        "input_digest": matrix.digest,
-        "matrix_id": matrix.matrix_id,
-        "telemetry": matrix.telemetry.model_dump(mode="json", by_alias=True),
-        "runs": [run.model_dump(mode="json", by_alias=True) for run in runs],
-    }
-    return validate_report(matrix, raw)
 
 
 def validate_report(
     matrix: CompatibilityMatrix,
     report: JsonObject | CompatibilityReport,
-    *,
-    environments: tuple[EnvironmentName, ...] = FULL_ENVIRONMENTS,
 ) -> CompatibilityReport:
     """Accept evidence only after exact schema, model, topology, and input binding checks."""
-    _require_full_environments(environments)
     raw = (
         cast("JsonObject", report.model_dump(mode="json", by_alias=True))
         if isinstance(report, CompatibilityReport)
@@ -110,9 +76,14 @@ def validate_report(
     return accepted
 
 
-def write_report(path: Path, report: CompatibilityReport) -> None:
-    """Atomically publish schema-valid sanitized bytes without following path symlinks."""
-    raw = cast("JsonObject", report.model_dump(mode="json", by_alias=True))
+def write_report(
+    path: Path,
+    matrix: CompatibilityMatrix,
+    report: JsonObject | CompatibilityReport,
+) -> None:
+    """Bind, validate, and atomically publish sanitized bytes without following symlinks."""
+    accepted = validate_report(matrix, report)
+    raw = cast("JsonObject", accepted.model_dump(mode="json", by_alias=True))
     validate_report_schema(raw)
     encoded = (json.dumps(raw, indent=2, sort_keys=True, ensure_ascii=False) + "\n").encode()
     validate_public_report_bytes(encoded)
@@ -147,15 +118,10 @@ def write_report(path: Path, report: CompatibilityReport) -> None:
         os.close(parent_descriptor)
 
 
-def _new_telemetry() -> TelemetryContext:
-    telemetry = TelemetryContext.create()
+def _new_telemetry(input_digest: str) -> TelemetryContext:
+    telemetry = TelemetryContext.for_matrix(input_digest)
     validate_telemetry(telemetry)
     return telemetry
-
-
-def _require_full_environments(environments: tuple[EnvironmentName, ...]) -> None:
-    if environments != FULL_ENVIRONMENTS:
-        raise CompatibilityError("L0 evidence requires macos-host and linux-container exactly once")
 
 
 def _validate_resolution(lock: tuple[str, ...], declared_sha256: str) -> None:

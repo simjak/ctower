@@ -54,6 +54,7 @@ class RepositoryPolicyEdgeTests(unittest.TestCase):
         cases = {
             "imported reexports": f"from package import {imported}\n",
             "declared all": f"__all__ = [{declared}]\n",
+            "annotated declared all": f"__all__: tuple[str, ...] = ({declared})\n",
         }
         for label, source in cases.items():
             with self.subTest(label):
@@ -61,6 +62,19 @@ class RepositoryPolicyEdgeTests(unittest.TestCase):
                     (root / "app/public.py").write_text(source, encoding="utf-8")
                     report = verify(root, "fast")
                 self.assertIn("source.public-exports", {item.rule_id for item in report.errors})
+
+    def test_dynamic_all_and_star_reexports_fail_closed(self) -> None:
+        cases = {
+            "dynamic all": "__all__ = make_exports()\n",
+            "annotated dynamic all": "__all__: tuple[str, ...] = make_exports()\n",
+            "star reexport": "from package import *\n",
+        }
+        for label, source in cases.items():
+            with self.subTest(label=label):
+                with self._repository() as root:
+                    (root / "app/public.py").write_text(source, encoding="utf-8")
+                    report = verify(root, "fast")
+                self.assertIn("source.parse", {item.rule_id for item in report.errors})
 
     def test_parse_error_warning_budget_and_ambiguous_owner_are_visible(self) -> None:
         with self._repository() as root:

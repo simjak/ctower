@@ -9,7 +9,8 @@ from .models_core import CompatibilityError
 __all__ = ["validate_public_report_bytes"]
 
 _PRIVATE_PATH = re.compile(
-    r"(?:/Users/[^/]+|/home/[^/]+|/var/folders/|/private/var/folders/|/tmp/)"
+    r"(?:/Users/[^/]+|/home/[^/]+|/var/folders/|/private/var/folders/|/tmp/|[A-Za-z]:\\\\Users\\\\[^\\]+)",
+    re.IGNORECASE,
 )
 _CREDENTIAL_LIKE = re.compile(
     r"(?:"
@@ -19,9 +20,14 @@ _CREDENTIAL_LIKE = re.compile(
     r"|-----BEGIN [A-Z ]*PRIVATE KEY-----"
     r"|[Bb]earer\s+[A-Za-z0-9._~+/-]{16,}"
     r"|https?://[^/@\s:]+:[^/@\s]+@"
-    r"|(?:password|passwd|secret|token|api[_-]?key)[=:][^\s,;]{8,}"
-    r")"
+    r"|(?:password|passwd|secret|token|api[_-]?key)"
+    r"[\"']?\s*[:=]\s*[\"']?[^\s\",;]{8,}"
+    r")",
+    re.IGNORECASE,
 )
+_URL = re.compile(r"(?:https?|file)://", re.IGNORECASE)
+_EMAIL = re.compile(r"\b[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,63}\b", re.IGNORECASE)
+_PHONE = re.compile(r"(?:\+[1-9][0-9 .()-]{7,20}[0-9]|\([0-9]{2,4}\)[ 0-9.-]{6,18}[0-9])")
 
 
 def validate_public_report_bytes(encoded: bytes) -> None:
@@ -35,3 +41,7 @@ def validate_public_report_bytes(encoded: bytes) -> None:
         raise CompatibilityError("public report contains a private host or temporary path")
     if _CREDENTIAL_LIKE.search(text):
         raise CompatibilityError("public report contains credential-like material")
+    if _URL.search(text):
+        raise CompatibilityError("public report contains a URL")
+    if _EMAIL.search(text) or _PHONE.search(text):
+        raise CompatibilityError("public report contains explicit personal data")

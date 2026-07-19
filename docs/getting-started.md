@@ -53,30 +53,29 @@ The verification locks and CI pins do not select ctower's product runtime or sup
 `.python-version` or `uv.lock`; update verification inputs only through the reviewed lock process in the
 [development guide](contributing/development.md).
 
-## Inspect the executable L0 evidence
+## Inspect the L0 compatibility contracts
 
-The first implemented slice is a strict compatibility preflight, not a ctower runtime. Its versioned matrix
-currently covers standard-GIL CPython 3.12.13, 3.13.14, and 3.14.6. The recorded 2026-07-19 local run
-observed all ten checks in six legs, but it is historical diagnostic evidence, not a canonical pass: its
-native macOS leg was not contained.
+The first implemented slice is a strict compatibility contract validator, not an executable preflight or a
+ctower runtime. Its versioned matrix covers standard-GIL CPython 3.12.13, 3.13.14, and 3.14.6. The recorded
+2026-07-19 local run remains historical diagnostic evidence, not a canonical pass.
 
-A full reproduction requires `uv`, a macOS host, and Docker. It writes a sanitized report outside the
-repository:
+The public command validates an externally produced report and publishes only closed, sanitized fields:
 
 ```bash
 python3 -m tools.compatibility \
   --matrix contracts/compatibility/ct-l0-007-matrix.json \
-  --allow-unconfined-host-diagnostic \
-  --output "${TMPDIR:-/tmp}/ctower-compatibility-result.json"
+  --report /path/from/an/approved-external-runner.json \
+  --output /path/to/validated-result.json
 ```
 
-Native host execution is denied without that explicit diagnostic flag. The resulting v1 report is marked
-`unconfined-diagnostic`; only externally proven execution in the repository's disposable, no-secret,
-least-privilege CI boundary may later receive canonical native credit.
+No public compatibility API or CLI executes native dependencies, Docker, package installers, or probes on
+the developer host. Executable and canonical evidence remains deferred until a real disposable runner or VM
+adapter supplies containment and attestable provenance. Current reports are explicitly
+`external-runner-noncanonical` and cannot select the product runtime.
 
 Read [`contracts/compatibility/README.md`](https://github.com/simjak/ctower/blob/main/contracts/compatibility/README.md)
-before interpreting the result. The preflight does not cover Linux `amd64` or the absent release-helper
-wheel and generated clients, and it does not authorize a runtime pin or lockfile.
+before interpreting a result. The contract does not cover the absent release-helper wheel and generated
+clients, and it does not authorize a runtime pin or lockfile.
 
 Contract traceability has a separate deterministic source-to-output path. Edit the authored map, regenerate
 the index, then verify that committed bytes match:

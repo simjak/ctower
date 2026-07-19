@@ -6,6 +6,7 @@ from pydantic import Field, StringConstraints, model_validator
 
 from .models_core import (
     EXPECTED_CANDIDATES,
+    EXPECTED_REQUIREMENTS,
     Digest,
     EnvironmentName,
     FrozenModel,
@@ -14,14 +15,11 @@ from .models_core import (
     TelemetryContext,
 )
 from .models_probe import ProbeResult
-from .resolution import validate_canonical_lock
 
 __all__ = [
     "ArtifactEvidence",
     "CompatibilityReport",
     "CompatibilityRun",
-    "DockerContainerInspection",
-    "DockerImageInspection",
     "ImageIdentity",
     "ProductArtifactEvidence",
     "ResolutionEvidence",
@@ -31,13 +29,11 @@ __all__ = [
 class ResolutionEvidence(FrozenModel):
     lock: tuple[Annotated[str, StringConstraints(min_length=3, max_length=256)], ...]
     lock_sha256: Sha256
-    commands: tuple[
-        tuple[Annotated[str, StringConstraints(min_length=1, max_length=32768)], ...], ...
-    ]
 
     @model_validator(mode="after")
     def validate_lock_entries(self) -> Self:
-        validate_canonical_lock(self.lock)
+        if self.lock != EXPECTED_REQUIREMENTS:
+            raise ValueError("resolved dependencies do not match the closed L0 allowlist")
         return self
 
 
@@ -46,37 +42,16 @@ class ImageIdentity(FrozenModel):
         str,
         StringConstraints(pattern=r"^docker\.io/library/python@sha256:[0-9a-f]{64}$"),
     ]
-    container_id: Sha256
-    owner_label: Annotated[str, StringConstraints(pattern=r"^[0-9a-f]{32}$")]
     image_id: Digest
-    repository_digests: tuple[
-        Annotated[str, StringConstraints(pattern=r"^[A-Za-z0-9./_-]+@sha256:[0-9a-f]{64}$")], ...
-    ]
     os: Literal["linux"]
     architecture: Literal["amd64", "arm64"]
 
     @model_validator(mode="after")
     def bind_requested_digest(self) -> Self:
         requested_digest = self.requested.rsplit("@", 1)[1]
-        if not any(item.rsplit("@", 1)[-1] == requested_digest for item in self.repository_digests):
-            raise ValueError("inspected repository digests do not include requested image")
+        if self.image_id != requested_digest:
+            raise ValueError("image identity does not equal the requested immutable digest")
         return self
-
-
-class DockerImageInspection(FrozenModel):
-    image_id: Digest
-    architecture: Literal["amd64", "arm64"]
-    os: Literal["linux"]
-    repository_digests: tuple[
-        Annotated[str, StringConstraints(pattern=r"^[A-Za-z0-9./_-]+@sha256:[0-9a-f]{64}$")], ...
-    ]
-
-
-class DockerContainerInspection(FrozenModel):
-    container_id: Sha256
-    name: Annotated[str, StringConstraints(pattern=r"^/?ctower-compat-[a-z0-9-]{12,96}$")]
-    image_id: Digest
-    owner_label: Annotated[str, StringConstraints(pattern=r"^[0-9a-f]{32}$")]
 
 
 class ArtifactEvidence(FrozenModel):
@@ -108,7 +83,7 @@ class CompatibilityRun(ProbeResult):
 
 class CompatibilityReport(FrozenModel):
     schema_: Literal["ctower.compatibility-result/v1"] = Field(alias="schema")
-    evidence_scope: Literal["unconfined-diagnostic"]
+    evidence_scope: Literal["external-runner-noncanonical"]
     input_digest: Digest
     matrix_id: Literal["ct-l0-007-python-2026-07-19"]
     telemetry: TelemetryContext
@@ -133,7 +108,7 @@ class CompatibilityReport(FrozenModel):
 def _validate_common_identity(run: CompatibilityRun) -> None:
     if run.host_identity.system != run.interpreter.system:
         raise ValueError("declared system does not match interpreter evidence")
-    if _normalize_machine(run.host_identity.machine) != _normalize_machine(run.interpreter.machine):
+    if run.host_identity.machine != run.interpreter.machine:
         raise ValueError("declared machine does not match interpreter evidence")
 
 
@@ -145,9 +120,7 @@ def _validate_host_leg(run: CompatibilityRun) -> None:
 def _validate_container_leg(run: CompatibilityRun) -> None:
     if run.host_identity.system != "Linux" or run.image_identity is None:
         raise ValueError("linux-container evidence must prove Linux and an image identity")
-    if _normalize_machine(run.image_identity.architecture) != _normalize_machine(
-        run.interpreter.machine
-    ):
+    if run.image_identity.architecture != run.interpreter.machine:
         raise ValueError("container machine does not match inspected image architecture")
 
 
@@ -158,8 +131,3 @@ def _validate_report_images(report: CompatibilityReport) -> None:
             continue
         if run.image_identity is None or run.image_identity.requested != images[run.version]:
             raise ValueError("container evidence does not bind to the input image")
-
-
-def _normalize_machine(value: str) -> str:
-    aliases = {"aarch64": "arm64", "x86_64": "amd64", "AMD64": "amd64"}
-    return aliases.get(value, value.lower())

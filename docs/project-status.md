@@ -12,9 +12,9 @@ real work.
   envelopes.
 - Example versioned workflow, execution-policy, and gate-policy packs.
 - A repository policy module with ownership, source-budget, generated-drift, and secret checks.
-- A strict Python compatibility diagnostic with exact Draft 2020-12 input/result schemas, frozen typed
-  models, bounded process/container lifecycles, minimal child environments, and a sanitized atomic evidence
-  writer. Native host execution is default-deny and explicitly noncanonical when diagnostically enabled.
+- Strict Python compatibility input/result schemas, frozen typed models, closed-world report validation,
+  exact topology binding, and a sanitized no-follow atomic evidence writer. There is no public native
+  execution seam; executable evidence is deferred to a future disposable runner or VM adapter.
 - Compatibility tests with a hard 90% new-code branch-coverage gate.
 - Deterministic traceability from `contracts/traceability/sources.json` to
   `generated/traceability-index.json`, including generated-manifest drift checks.
@@ -34,7 +34,8 @@ checks, but the report has been reclassified as noncanonical diagnostic evidence
 rules, and historical table live under
 [`contracts/compatibility/`](https://github.com/simjak/ctower/tree/main/contracts/compatibility).
 
-This diagnostic does not select or pin ctower's Python runtime. Canonical CI provenance, Linux `amd64`, the future release-helper
+This historical diagnostic does not select or pin ctower's Python runtime. A contained runner with
+attestable provenance, Linux `amd64`, the future release-helper
 wheel, and generated clients remain unexercised. There is no accepted project lock, `.python-version`,
 fallback choice, or decision superseding D6.
 

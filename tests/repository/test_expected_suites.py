@@ -2,15 +2,21 @@
 
 from __future__ import annotations
 
+import json
+import os
+import signal
 import sys
 import tempfile
 import textwrap
+import time
 import unittest
 from collections.abc import Iterator
 from contextlib import contextmanager
 from pathlib import Path
 
 from tools.checks import SuiteDisposition, verify_expected_suites
+
+__all__ = ()
 
 
 class ExpectedSuitesTests(unittest.TestCase):
@@ -145,6 +151,54 @@ class ExpectedSuitesTests(unittest.TestCase):
                     report = verify_expected_suites(root, execute=True)
                 self.assertFalse(report.ok)
                 self.assertIn(expected, report.failures[0].message)
+
+    def test_leader_exit_and_timeout_cannot_leave_a_descendant_alive(self) -> None:
+        child = "import signal,time; signal.signal(signal.SIGTERM, signal.SIG_IGN); time.sleep(60)"
+        prefix = (
+            "import subprocess,sys,time; from pathlib import Path; "
+            f"child=subprocess.Popen([sys.executable, '-c', {child!r}]); "
+            "Path('descendant.pid').write_text(str(child.pid), encoding='utf-8'); "
+        )
+        for label, suffix, timeout, expected_ok in (
+            ("leader exit", "", 30, True),
+            ("leader timeout", "time.sleep(60)", 1, False),
+        ):
+            with self.subTest(label=label):
+                self._assert_group_descendant_absent(
+                    prefix + suffix, timeout, expected_ok=expected_ok
+                )
+
+    def _assert_group_descendant_absent(
+        self, leader: str, timeout: int, *, expected_ok: bool
+    ) -> None:
+        command = json.dumps(["{python}", "-c", leader])
+        pid = 0
+        with self._repository() as root:
+            self._write_test(
+                root, "tests/current/test_current.py", "def test_current():\n    pass\n"
+            )
+            self._write_manifest(
+                root,
+                self._suite_table(
+                    suite_id="current",
+                    phase="CT-L0-007",
+                    status="required",
+                    path="tests/current",
+                    command=command,
+                    timeout=timeout,
+                ),
+            )
+            try:
+                report = verify_expected_suites(root, execute=True)
+                pid = int((root / "descendant.pid").read_text(encoding="utf-8"))
+                deadline = time.monotonic() + 1.0
+                while _pid_exists(pid) and time.monotonic() < deadline:
+                    time.sleep(0.02)
+                self.assertEqual(report.ok, expected_ok, report.to_dict())
+                self.assertFalse(_pid_exists(pid), "suite descendant survived leader completion")
+            finally:
+                if pid and _pid_exists(pid):
+                    os.kill(pid, signal.SIGKILL)
 
     def test_manifest_header_and_suite_field_errors_fail_closed(self) -> None:
         valid = textwrap.dedent(self._header()) + self._one_suite_manifest()
@@ -338,6 +392,14 @@ class PortableCommandValidationTests(unittest.TestCase):
             self.assertFalse(report.ok)
             self.assertTrue(report.manifest_errors)
             self.assertIn("token", report.manifest_errors[0])
+
+
+def _pid_exists(pid: int) -> bool:
+    try:
+        os.kill(pid, 0)
+    except ProcessLookupError:
+        return False
+    return True
 
 
 if __name__ == "__main__":

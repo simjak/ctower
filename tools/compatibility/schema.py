@@ -16,13 +16,11 @@ from tools.compatibility.models_core import (
     MatrixInput,
     TelemetryContext,
 )
-from tools.compatibility.models_probe import ProbeResult
 from tools.compatibility.models_report import CompatibilityReport
 
 __all__ = [
     "JsonObject",
     "parse_matrix",
-    "parse_probe",
     "parse_report",
     "read_json_object",
     "validate_report_schema",
@@ -52,17 +50,6 @@ def parse_matrix(raw: JsonObject) -> MatrixInput:
     """Apply the published schema before crossing into the frozen input model."""
     _validate(_input_schema(), raw, label="matrix input")
     return _model_from_raw(MatrixInput, raw, label="matrix input")
-
-
-def parse_probe(raw: JsonObject) -> ProbeResult:
-    """Apply the published probe-result fragment before accepting probe evidence."""
-    result_schema = _result_schema()
-    fragment: JsonObject = {
-        "$schema": "https://json-schema.org/draft/2020-12/schema",
-        "$ref": f"{result_schema['$id']}#/$defs/probe_result",
-    }
-    _validate(fragment, raw, label="probe result", extra_resources=(result_schema,))
-    return _model_from_raw(ProbeResult, raw, label="probe result")
 
 
 def parse_report(raw: JsonObject) -> CompatibilityReport:
