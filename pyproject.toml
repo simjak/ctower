@@ -1,6 +1,6 @@
 [project]
 name = "ctower-workspace"
-version = "0.0.0"
+version = "1.0.0"
 description = "Docs-first bootstrap and repository policy for ctower"
 requires-python = ">=3.12,<3.15"
 dependencies = []
