@@ -115,6 +115,11 @@ paths = ["tests/acceptance/increment-1/**"]
 allowed_dependencies = ["control-api", "kernel-access", "kernel-record", "kernel-work"]
 
 [[ownership]]
+name = "kernel-module-tests"
+paths = ["tests/modules/**"]
+allowed_dependencies = ["kernel-access", "kernel-record", "kernel-work"]
+
+[[ownership]]
 name = "web"
 paths = ["apps/ctower-web/**"]
 allowed_dependencies = []

@@ -12,6 +12,7 @@ __all__ = [
     "Actor",
     "BootstrapCommand",
     "BootstrapReceipt",
+    "CustodyCommand",
     "PrincipalKind",
     "Record",
     "RecordProblem",
@@ -95,6 +96,7 @@ class RecordProblem:
     status: int
     title: str
     command_id: UUID | None = None
+    current_version: int | None = None
 
     def response_payload(self) -> dict[str, object]:
         """Return a minimal RFC 9457 object."""
@@ -108,6 +110,8 @@ class RecordProblem:
         }
         if self.command_id is not None:
             payload["command_id"] = str(self.command_id)
+        if self.current_version is not None:
+            payload["current_version"] = self.current_version
         return payload
 
 
@@ -137,6 +141,31 @@ class TicketCommand:
             "priority": self.priority,
             "source": asdict(self.source),
             "title": self.title,
+        }
+
+
+@dataclass(frozen=True, slots=True)
+class CustodyCommand:
+    """Validated version-checked request to transfer accountable custody."""
+
+    client_command_id: UUID
+    expected_version: int
+    from_custodian_id: UUID
+    protected_transfer: bool
+    reason: str
+    ticket_id: UUID
+    to_custodian_id: UUID
+
+    def request_payload(self) -> dict[str, object]:
+        """Return the complete command body used for idempotency."""
+
+        return {
+            "expected_version": self.expected_version,
+            "from_custodian_id": str(self.from_custodian_id),
+            "protected_transfer": self.protected_transfer,
+            "reason": self.reason,
+            "ticket_id": str(self.ticket_id),
+            "to_custodian_id": str(self.to_custodian_id),
         }
 
 
@@ -269,5 +298,17 @@ class Record(Protocol):
 
     def ticket_timeline(self, actor: Actor, ticket_id: UUID) -> TicketTimeline | RecordProblem:
         """Read the ordered tenant-scoped event timeline."""
+
+        ...
+
+    def transfer_custody(
+        self,
+        actor: Actor,
+        command: CustodyCommand,
+        *,
+        request_digest: bytes,
+        now: datetime,
+    ) -> TicketCommandResult | RecordProblem:
+        """Atomically close and open the ticket's accountable custody interval."""
 
         ...

@@ -18,7 +18,12 @@ from support.postgres import DatabaseFixture
 from ctower_api.interface import create_app
 from ctower_api.postgres import PostgresRecord, apply_migrations, provision_bootstrap
 
-__all__ = ["TenantFixture", "create_first_tenant", "provision_credential"]
+__all__ = [
+    "TenantFixture",
+    "create_first_tenant",
+    "create_second_tenant",
+    "provision_credential",
+]
 
 HTTP_CREATED = 201
 
@@ -70,6 +75,58 @@ def create_first_tenant(database: DatabaseFixture) -> TenantFixture:
     )
 
 
+def create_second_tenant(database: DatabaseFixture) -> TenantFixture:
+    """Provision a real isolated tenant through setup-only administrator authority."""
+
+    now = datetime.now(UTC)
+    tenant_id, operator_id, commander_id = (_uuid7(now) for _ in range(3))
+    operator_credential = secrets.token_urlsafe(32)
+    commander_credential = secrets.token_urlsafe(32)
+    with psycopg.connect(database.dsn) as connection:
+        connection.execute(
+            "INSERT INTO tenants (tenant_id, slug, name, created_at) VALUES (%s, %s, %s, %s)",
+            (tenant_id, "tenant-two", "Tenant Two", now),
+        )
+        connection.cursor().executemany(
+            """
+            INSERT INTO principals (
+                principal_id, tenant_id, kind, display_name, disabled,
+                credential_ref, vault_ref, created_at
+            ) VALUES (%s, %s, %s, %s, false, %s, %s, %s)
+            """,
+            (
+                (
+                    operator_id,
+                    tenant_id,
+                    "operator",
+                    "Tenant Two Operator",
+                    "credential-ref:tenant-two/operator",
+                    "vault-ref:tenant-two/operator",
+                    now,
+                ),
+                (
+                    commander_id,
+                    tenant_id,
+                    "commander",
+                    "Tenant Two Commander",
+                    None,
+                    "vault-ref:tenant-two/commander",
+                    now,
+                ),
+            ),
+        )
+    provision_credential(database.dsn, tenant_id, operator_id, operator_credential)
+    provision_credential(database.dsn, tenant_id, commander_id, commander_credential)
+    return TenantFixture(
+        database,
+        tenant_id,
+        operator_id,
+        commander_id,
+        operator_credential,
+        commander_credential,
+    )
+
+
 def _bootstrap(client: TestClient, token: str) -> Response:
     return cast(
         Response,
@@ -103,10 +160,21 @@ def provision_credential(dsn: str, tenant_id: UUID, principal_id: UUID, credenti
             ) VALUES (%s, %s, %s, %s, %s)
             """,
             (
-                uuid4(),
+                _uuid7(datetime.now(UTC)),
                 principal_id,
                 tenant_id,
                 hashlib.sha256(credential.encode()).digest(),
                 datetime.now(UTC),
             ),
         )
+
+
+def _uuid7(now: datetime) -> UUID:
+    milliseconds = int(now.timestamp() * 1000) & ((1 << 48) - 1)
+    random_bits = secrets.randbits(74)
+    value = milliseconds << 80
+    value |= 0x7 << 76
+    value |= ((random_bits >> 62) & 0xFFF) << 64
+    value |= 0b10 << 62
+    value |= random_bits & ((1 << 62) - 1)
+    return UUID(int=value)

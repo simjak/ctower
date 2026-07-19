@@ -12,6 +12,7 @@ from fastapi.responses import JSONResponse
 from ctower_client.models import BootstrapReceipt as HttpBootstrapReceipt
 from ctower_client.models import (
     BootstrapRequest,
+    CustodyTransferRequest,
     Problem,
     TicketCreateRequest,
     TicketResource,
@@ -22,6 +23,7 @@ from ctower_kernel.access import Access
 from ctower_kernel.record import (
     BootstrapCommand,
     BootstrapReceipt,
+    CustodyCommand,
     Record,
     RecordProblem,
     SourceReference,
@@ -42,6 +44,7 @@ def create_app(record: Record) -> FastAPI:
     access = Access(record)
     _install_bootstrap_route(app, access)
     _install_ticket_create_route(app, access, Work(record))
+    _install_custody_route(app, access, Work(record))
     _install_ticket_read_routes(app, access, record)
     return app
 
@@ -124,6 +127,35 @@ def _install_ticket_read_routes(app: FastAPI, access: Access, record: Record) ->
         return _timeline_response(record.ticket_timeline(actor, ticket_id))
 
 
+def _install_custody_route(app: FastAPI, access: Access, work: Work) -> None:
+    """Bind the protected custody command Adapter."""
+
+    @app.post("/v1/tickets/{ticket_id}/custody")
+    async def transfer_ticket_custody(
+        ticket_id: UUID,
+        request: Request,
+        command_id: Annotated[UUID, Header(alias="Idempotency-Key")],
+        authorization: Annotated[str | None, Header(alias="Authorization")] = None,
+    ) -> JSONResponse:
+        payload = CustodyTransferRequest.model_validate_json(await request.body())
+        actor = access.authenticate(authorization)
+        if isinstance(actor, RecordProblem):
+            return _problem_response(actor)
+        outcome = work.transfer_custody(
+            actor,
+            CustodyCommand(
+                client_command_id=command_id,
+                expected_version=payload.expected_version,
+                from_custodian_id=payload.from_custodian_id,
+                protected_transfer=payload.protected_transfer,
+                reason=payload.reason,
+                ticket_id=ticket_id,
+                to_custodian_id=payload.to_custodian_id,
+            ),
+        )
+        return _ticket_command_response(outcome, status_code=200)
+
+
 def _bootstrap_response(outcome: BootstrapReceipt | RecordProblem) -> JSONResponse:
     payload = outcome.response_payload()
     encoded = json.dumps(payload, separators=(",", ":"), sort_keys=True)
@@ -133,11 +165,13 @@ def _bootstrap_response(outcome: BootstrapReceipt | RecordProblem) -> JSONRespon
     return _problem_response(outcome)
 
 
-def _ticket_command_response(outcome: TicketCommandResult | RecordProblem) -> JSONResponse:
+def _ticket_command_response(
+    outcome: TicketCommandResult | RecordProblem, *, status_code: int = 201
+) -> JSONResponse:
     if isinstance(outcome, RecordProblem):
         return _problem_response(outcome)
     boundary = HttpTicketCommandResult.model_validate_json(_encoded(outcome.response_payload()))
-    return JSONResponse(status_code=201, content=boundary.model_dump(mode="json"))
+    return JSONResponse(status_code=status_code, content=boundary.model_dump(mode="json"))
 
 
 def _ticket_response(outcome: Ticket | RecordProblem) -> JSONResponse:

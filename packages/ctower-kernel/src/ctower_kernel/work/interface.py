@@ -9,6 +9,7 @@ from datetime import UTC, datetime
 
 from ctower_kernel.record import (
     Actor,
+    CustodyCommand,
     PrincipalKind,
     Record,
     RecordProblem,
@@ -44,6 +45,27 @@ class Work:
             return _refusal(command, "Only an operator may create a P0 ticket.")
         request_digest = hashlib.sha256(_canonical_json(command.request_payload())).digest()
         return self._record.create_ticket(
+            actor,
+            command,
+            request_digest=request_digest,
+            now=self._clock(),
+        )
+
+    def transfer_custody(
+        self, actor: Actor, command: CustodyCommand
+    ) -> TicketCommandResult | RecordProblem:
+        """Require protected operator authority before transferring custody."""
+
+        if actor.kind is not PrincipalKind.OPERATOR or not command.protected_transfer:
+            return RecordProblem(
+                code="unauthorized",
+                detail="Custody transfer requires protected operator authority.",
+                status=403,
+                title="Custody transfer refused",
+                command_id=command.client_command_id,
+            )
+        request_digest = hashlib.sha256(_canonical_json(command.request_payload())).digest()
+        return self._record.transfer_custody(
             actor,
             command,
             request_digest=request_digest,

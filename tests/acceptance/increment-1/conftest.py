@@ -12,7 +12,7 @@ from support.postgres import (
     start_postgres,
     stop_postgres,
 )
-from support.tenant_fixture import TenantFixture, create_first_tenant
+from support.tenant_fixture import TenantFixture, create_first_tenant, create_second_tenant
 
 __all__: tuple[str, ...] = ()
 
@@ -41,3 +41,10 @@ def tenant(database: DatabaseFixture) -> TenantFixture:
     """Provide one authenticated, bootstrap-created tenant."""
 
     return create_first_tenant(database)
+
+
+@pytest.fixture
+def second_tenant(tenant: TenantFixture) -> TenantFixture:
+    """Add one real setup-only tenant administrator beside the bootstrap tenant."""
+
+    return create_second_tenant(tenant.database)

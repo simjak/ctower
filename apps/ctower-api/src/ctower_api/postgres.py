@@ -15,6 +15,7 @@ import psycopg
 from psycopg.rows import dict_row
 from psycopg.types.json import Jsonb
 
+from ctower_api._custody_sql import transfer_custody as _transfer_custody
 from ctower_api._setup_sql import apply_migrations, provision_bootstrap
 from ctower_api._ticket_sql import actor_for_credential as _actor_for_credential
 from ctower_api._ticket_sql import create_ticket as _create_ticket
@@ -24,6 +25,7 @@ from ctower_kernel.record import (
     Actor,
     BootstrapCommand,
     BootstrapReceipt,
+    CustodyCommand,
     RecordProblem,
     Ticket,
     TicketCommand,
@@ -118,6 +120,24 @@ class PostgresRecord:
         """Read one tenant-scoped event timeline."""
 
         return _ticket_timeline(self._dsn, actor, ticket_id)
+
+    def transfer_custody(
+        self,
+        actor: Actor,
+        command: CustodyCommand,
+        *,
+        request_digest: bytes,
+        now: datetime,
+    ) -> TicketCommandResult | RecordProblem:
+        """Atomically replace one current ticket custodian."""
+
+        return _transfer_custody(
+            self._dsn,
+            actor,
+            command,
+            request_digest=request_digest,
+            now=now,
+        )
 
 
 def _bootstrap_refusal(
