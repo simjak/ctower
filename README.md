@@ -9,10 +9,10 @@ temporary. ctower is designed to preserve the work: ownership, workflow position
 artifacts, evidence, effects, and the complete audit trail survive agent, model, machine, and process changes.
 
 > [!IMPORTANT]
-> ctower is currently a **docs-first pre-alpha project**. The specification, architecture, contracts,
-> declarative packs, repository policy, bootstrap tests, and Python compatibility contracts exist. The
-> API, kernel, ticket store, runner, CLI, web UI, and release runtime are not implemented yet. There is no
-> installable product today.
+> ctower is currently a **pre-alpha development project**. One synthetic walking slice now implements local
+> first-tenant bootstrap, durable ticket create/read/timeline, protected custody transfer, and a thin online
+> CLI over a generated client. All writes remain `durability_pending`; there is no supported installable,
+> deployed, backed-up, or production-ready product today.
 
 ## What ctower is designed to provide
 
@@ -42,16 +42,17 @@ workflow and policy values live in `packs/`, and generated artifacts live in `ge
 
 ## Use the repository today
 
-Clone the repository and run the dependency-light bootstrap checks:
+Clone the repository and run the canonical verification gates:
 
 ```bash
 git clone git@github.com:simjak/ctower.git
 cd ctower
-python3 -m unittest discover -s tests/repository -v
-python3 -m tools.checks --root . --profile full --expected-suites
+just check
+just verify  # requires a clean committed tree
 ```
 
-These commands validate the repository foundation; they do not start ctower. See the
+These commands validate the repository and the currently required synthetic walking-slice suites; they do
+not deploy ctower or establish off-host durability. See the
 [getting-started guide](https://simjak.github.io/ctower/getting-started/) for the current development
 workflow, the historical compatibility evidence, and its unresolved runtime-selection gaps.
 

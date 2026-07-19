@@ -13,12 +13,27 @@ from datetime import UTC, datetime, timedelta
 from pathlib import Path
 
 from tools.checks import PolicyReport, verify
+from tools.checks import generated as _generated_interface
 
 _GENERATED_NOTICE = "DO NOT EDIT: generated file; regenerate from declared inputs."
 
 
 class GeneratedPathPolicyTests(unittest.TestCase):
     fixtures = Path(__file__).parent / "fixtures"
+
+    def test_generated_interface_exposes_only_the_supported_operations(self) -> None:
+        self.assertEqual(
+            _generated_interface.__all__,
+            [
+                "GeneratedArtifact",
+                "GeneratedManifestError",
+                "atomic_write_generated_text",
+                "digest_bytes",
+                "digest_file",
+                "load_generated_manifest",
+                "render_generated_manifest",
+            ],
+        )
 
     def test_allowed_authored_inputs_and_generated_outputs_pass(self) -> None:
         with self._repository() as root:

@@ -110,9 +110,14 @@ paths = ["apps/ctower-api/src/**"]
 allowed_dependencies = ["kernel-access", "kernel-record", "kernel-work"]
 
 [[ownership]]
+name = "control-cli"
+paths = ["apps/ctowerctl/src/**"]
+allowed_dependencies = []
+
+[[ownership]]
 name = "increment-1-acceptance-tests"
 paths = ["tests/acceptance/increment-1/**"]
-allowed_dependencies = ["control-api", "kernel-access", "kernel-record", "kernel-work"]
+allowed_dependencies = ["control-api", "control-cli", "kernel-access", "kernel-record", "kernel-work"]
 
 [[ownership]]
 name = "kernel-module-tests"

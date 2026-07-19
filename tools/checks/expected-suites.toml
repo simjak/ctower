@@ -1,6 +1,6 @@
 schema = "ctower.expected-suites/v1"
 manifest_version = 1
-active_phase = "CT-I1-002"
+active_phase = "CT-I1-004"
 phase_order = [
   "CT-L0-007",
   "CT-L0-001",
@@ -131,7 +131,7 @@ timeout_seconds = 900
 id = "thin-cli"
 owner = "CT-I1-004"
 phase = "CT-I1-004"
-status = "deferred"
+status = "required"
 path = "tests/acceptance/increment-1"
 patterns = ["test_ctl.py"]
 command = [

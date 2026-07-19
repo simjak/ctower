@@ -42,14 +42,19 @@ class JustfileTempPathTests(unittest.TestCase):
 
         self.assertNotIn("$$", source)
         self.assertIn('coverage_file="$(mktemp)"', self._recipe_body("compatibility-coverage"))
+        self.assertIn('coverage_file="$(mktemp)"', self._recipe_body("product-coverage"))
         self.assertIn('site_dir="$(mktemp -d)"', self._recipe_body("docs-check"))
         intended_tree = self._recipe_body("secrets-intended-tree")
         self.assertIn('scan_root="$(mktemp -d)"', intended_tree)
         self.assertIn('target="$scan_root/$file_path"', intended_tree)
         self.assertIn('coverage_file="$(mktemp)"', self._recipe_body("verify"))
+        codegen = self._recipe_body("codegen-check")
+        self.assertIn('pycache_dir="$(mktemp -d)"', codegen)
+        self.assertIn('PYTHONPYCACHEPREFIX="$pycache_dir"', codegen)
+        self.assertIn("trap 'rm -rf -- \"$pycache_dir\"' EXIT", codegen)
 
     def test_docs_and_coverage_paths_are_external_and_cleaned(self) -> None:
-        for recipe in ("docs-check", "compatibility-coverage"):
+        for recipe in ("docs-check", "compatibility-coverage", "product-coverage"):
             for probe_exit in (0, 17):
                 with self.subTest(recipe=recipe, probe_exit=probe_exit):
                     self._assert_external_cleaned_path(recipe, probe_exit)
