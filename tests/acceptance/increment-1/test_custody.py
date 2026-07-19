@@ -10,6 +10,7 @@ import psycopg
 import pytest
 from fastapi.testclient import TestClient
 from httpx import Response
+from support.telemetry import telemetry_headers
 from support.tenant_fixture import TenantFixture
 
 from ctower_api.interface import create_app
@@ -210,6 +211,90 @@ def test_concurrent_transfers_append_one_ordered_event(tenant: TenantFixture) ->
     assert len({event["event_id"] for event in events}) == VERSION_AFTER_FIRST_TRANSFER
 
 
+def test_one_principal_command_key_is_reserved_before_different_aggregate_work(
+    tenant: TenantFixture,
+) -> None:
+    ticket = _create_ticket(tenant)
+    ticket_id = UUID(str(ticket["ticket_id"]))
+    command_id = uuid4()
+    with psycopg.connect(tenant.database.admin_dsn) as connection:
+        connection.execute(
+            """
+            CREATE FUNCTION delay_command_result() RETURNS trigger LANGUAGE plpgsql AS $$
+            BEGIN
+                PERFORM pg_sleep(0.25);
+                RETURN NEW;
+            END
+            $$;
+            CREATE TRIGGER delay_command_result BEFORE INSERT ON command_results
+                FOR EACH ROW EXECUTE FUNCTION delay_command_result();
+            """
+        )
+
+    def create_different_ticket() -> Response:
+        with TestClient(
+            create_app(PostgresRecord(tenant.database.runtime_dsn)),
+            client=("127.0.0.1", 51000),
+            raise_server_exceptions=False,
+        ) as client:
+            return cast(
+                Response,
+                client.post(
+                    "/v1/tickets",
+                    json={
+                        "initial_custodian_id": str(tenant.commander_id),
+                        "priority": "P1",
+                        "source": {"kind": "mission-control", "ref": "idempotency:create"},
+                        "title": "Competing command",
+                    },
+                    headers={
+                        **_auth(tenant.operator_credential),
+                        "Idempotency-Key": str(command_id),
+                    },
+                ),
+            )
+
+    def transfer_existing_ticket() -> Response:
+        with TestClient(
+            create_app(PostgresRecord(tenant.database.runtime_dsn)),
+            client=("127.0.0.1", 51000),
+            raise_server_exceptions=False,
+        ) as client:
+            return _transfer(
+                client,
+                tenant.operator_credential,
+                ticket_id=ticket_id,
+                command_id=command_id,
+                expected_version=1,
+                from_id=tenant.commander_id,
+                to_id=tenant.operator_id,
+                reason="Competing command key",
+            )
+
+    with ThreadPoolExecutor(max_workers=2) as executor:
+        responses = tuple(
+            future.result()
+            for future in (
+                executor.submit(create_different_ticket),
+                executor.submit(transfer_existing_ticket),
+            )
+        )
+
+    assert sorted(response.status_code for response in responses) in ([200, 409], [201, 409])
+    conflict = next(response for response in responses if response.status_code == HTTP_CONFLICT)
+    assert conflict.json()["code"] == "idempotency-conflict"
+    with psycopg.connect(tenant.database.admin_dsn) as connection:
+        counts = connection.execute(
+            """
+            SELECT
+                (SELECT count(*) FROM command_results WHERE client_command_id = %s),
+                (SELECT count(*) FROM events)
+            """,
+            (command_id,),
+        ).fetchone()
+    assert counts == (1, 3)
+
+
 def test_service_role_cannot_update_or_delete_immutable_record_rows(
     tenant: TenantFixture,
 ) -> None:
@@ -225,14 +310,24 @@ def test_service_role_cannot_update_or_delete_immutable_record_rows(
     for statement in statements:
         with (
             pytest.raises(psycopg.errors.InsufficientPrivilege),
-            psycopg.connect(tenant.database.dsn) as connection,
+            psycopg.connect(tenant.database.runtime_dsn) as connection,
         ):
             connection.execute("SET ROLE ctower_svc")
             connection.execute(statement)
 
 
+def test_runtime_login_cannot_assume_migration_authority(tenant: TenantFixture) -> None:
+    with psycopg.connect(tenant.database.runtime_dsn) as connection:
+        current_user = connection.execute("SELECT current_user").fetchone()
+        assert current_user == ("ctower_runtime",)
+        with pytest.raises(psycopg.errors.InsufficientPrivilege):
+            connection.execute("SET ROLE ctower_admin")
+
+
 def _client(tenant: TenantFixture) -> TestClient:
-    return TestClient(create_app(PostgresRecord(tenant.database.dsn)), client=("127.0.0.1", 51000))
+    return TestClient(
+        create_app(PostgresRecord(tenant.database.runtime_dsn)), client=("127.0.0.1", 51000)
+    )
 
 
 def _create_ticket(tenant: TenantFixture, *, custodian_id: UUID | None = None) -> dict[str, object]:
@@ -297,4 +392,7 @@ def _timeline(client: TestClient, credential: str, ticket_id: UUID) -> Response:
 
 
 def _auth(credential: str) -> dict[str, str]:
-    return {"Authorization": f"Bearer {credential}"}
+    return {
+        "Authorization": f"Bearer {credential}",
+        **telemetry_headers(),
+    }

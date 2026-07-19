@@ -2,17 +2,35 @@
 
 from __future__ import annotations
 
+import json
 from dataclasses import FrozenInstanceError
+from pathlib import Path
+from typing import cast
 from uuid import uuid4
 
 import pytest
 
 from ctower_kernel.record import CustodyCommand, RecordProblem
+from ctower_kernel.record.events import canonical_event_bytes, event_digest
 from ctower_kernel.record.postgres import PostgresRecord
+
+ROOT = Path(__file__).parents[3]
 
 
 def test_postgres_adapter_is_owned_by_record_module() -> None:
     assert PostgresRecord.__module__ == "ctower_kernel.record.postgres"
+
+
+def test_record_event_authority_matches_authored_canonical_vectors() -> None:
+    document = json.loads(
+        (ROOT / "contracts/domain/events/canonical-vectors.json").read_text(encoding="utf-8")
+    )
+    vectors = cast(list[dict[str, object]], document["vectors"])
+
+    for vector in vectors:
+        event = cast(dict[str, object], vector["event"])
+        assert canonical_event_bytes(event).decode() == vector["canonical_json"]
+        assert f"sha256:{event_digest(event).hex()}" == vector["event_hash"]
 
 
 __all__: tuple[str, ...] = ()

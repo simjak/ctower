@@ -19,13 +19,20 @@ import pytest
 from fastapi.testclient import TestClient
 from httpx import Response
 from support.postgres import DatabaseFixture
+from support.telemetry import telemetry_headers
 
 from ctower_api.interface import create_app
-from ctower_kernel.record.postgres import PostgresRecord, apply_migrations, provision_bootstrap
+from ctower_kernel.record.postgres import (
+    PostgresRecord,
+    apply_migrations,
+    provision_bootstrap,
+    provision_database_roles,
+)
 
 ROOT = Path(__file__).parents[3]
 LOCAL_CLIENT = ("127.0.0.1", 51000)
 HTTP_CREATED = 201
+HTTP_UNAUTHORIZED = 401
 HTTP_FORBIDDEN = 403
 HTTP_CONFLICT = 409
 HTTP_GONE = 410
@@ -47,15 +54,16 @@ class BootstrapContext:
 def bootstrap(database: DatabaseFixture) -> BootstrapContext:
     """Migrate and provision one runtime-only bootstrap capability."""
 
-    apply_migrations(database.dsn)
+    provision_database_roles(database.admin_dsn)
+    apply_migrations(database.migrator_dsn)
     token = secrets.token_urlsafe(32)
     provision_bootstrap(
-        database.dsn,
+        database.migrator_dsn,
         capability_input=io.StringIO(f"{token}\n"),
         allowed_origin="127.0.0.1",
         expires_at=datetime.now(UTC) + timedelta(minutes=5),
     )
-    return BootstrapContext(database, PostgresRecord(database.dsn), token)
+    return BootstrapContext(database, PostgresRecord(database.runtime_dsn), token)
 
 
 def test_success_exact_replay_changed_body_second_use_and_token_non_persistence(
@@ -82,29 +90,30 @@ def test_success_exact_replay_changed_body_second_use_and_token_non_persistence(
     assert changed.json()["code"] == "idempotency-conflict"
     assert second.status_code == HTTP_CONFLICT
     assert second.json()["code"] == "bootstrap-consumed"
-    _assert_one_complete_bootstrap(bootstrap.database.dsn)
+    _assert_one_complete_bootstrap(bootstrap.database.admin_dsn)
     _assert_token_absent(bootstrap, caplog.text)
 
 
 def test_expiry_and_wrong_origin_have_zero_mutation(database: DatabaseFixture) -> None:
-    apply_migrations(database.dsn)
+    provision_database_roles(database.admin_dsn)
+    apply_migrations(database.migrator_dsn)
     token = secrets.token_urlsafe(32)
     provision_bootstrap(
-        database.dsn,
+        database.migrator_dsn,
         capability_input=io.StringIO(f"{token}\n"),
         allowed_origin="127.0.0.1",
         expires_at=datetime.now(UTC) - timedelta(seconds=1),
     )
-    record = PostgresRecord(database.dsn)
+    record = PostgresRecord(database.runtime_dsn)
     app = create_app(record)
 
     with TestClient(app, client=LOCAL_CLIENT) as client:
         expired = _bootstrap(client, token, uuid4(), _request_body())
     assert expired.status_code == HTTP_GONE
     assert expired.json()["code"] == "bootstrap-expired"
-    _assert_empty_authority(database.dsn)
+    _assert_empty_authority(database.admin_dsn)
 
-    with psycopg.connect(database.dsn) as connection:
+    with psycopg.connect(database.admin_dsn) as connection:
         connection.execute(
             "UPDATE bootstrap_capability SET expires_at = %s",
             (datetime.now(UTC) + timedelta(minutes=5),),
@@ -113,7 +122,7 @@ def test_expiry_and_wrong_origin_have_zero_mutation(database: DatabaseFixture) -
         wrong_origin = _bootstrap(client, token, uuid4(), _request_body())
     assert wrong_origin.status_code == HTTP_FORBIDDEN
     assert wrong_origin.json()["code"] == "bootstrap-origin"
-    _assert_empty_authority(database.dsn)
+    _assert_empty_authority(database.admin_dsn)
 
 
 def test_concurrent_attempts_create_exactly_one_authority(bootstrap: BootstrapContext) -> None:
@@ -133,7 +142,58 @@ def test_concurrent_attempts_create_exactly_one_authority(bootstrap: BootstrapCo
     assert {payload.get("code") for status, payload in responses if status == HTTP_CONFLICT} == {
         "bootstrap-consumed"
     }
-    _assert_one_complete_bootstrap(bootstrap.database.dsn)
+    _assert_one_complete_bootstrap(bootstrap.database.admin_dsn)
+
+
+def test_prepopulated_instance_is_refused_without_bootstrap_mutation(
+    bootstrap: BootstrapContext,
+) -> None:
+    with psycopg.connect(bootstrap.database.admin_dsn) as connection:
+        connection.execute(
+            "INSERT INTO tenants (tenant_id, slug, name, created_at) VALUES (%s, %s, %s, %s)",
+            (uuid4(), "existing", "Existing tenant", datetime.now(UTC)),
+        )
+
+    with TestClient(create_app(bootstrap.record), client=LOCAL_CLIENT) as client:
+        refused = _bootstrap(client, bootstrap.token, uuid4(), _request_body())
+
+    assert refused.status_code == HTTP_CONFLICT
+    assert refused.json()["code"] == "bootstrap-nonempty"
+    with psycopg.connect(bootstrap.database.admin_dsn) as connection:
+        counts = connection.execute(
+            """
+            SELECT
+                (SELECT count(*) FROM tenants),
+                (SELECT count(*) FROM principals),
+                (SELECT count(*) FROM events),
+                (SELECT count(*) FROM command_results),
+                (SELECT count(*) FROM outbox),
+                (SELECT count(*) FROM bootstrap_capability WHERE consumed_at IS NOT NULL)
+            """
+        ).fetchone()
+    assert counts == (1, 0, 0, 0, 0, 0)
+
+
+def test_bootstrap_origin_and_capability_precede_malformed_body(
+    bootstrap: BootstrapContext,
+) -> None:
+    app = create_app(bootstrap.record)
+    headers = {
+        "Content-Type": "application/json",
+        "Idempotency-Key": "not-a-uuid",
+        "X-Ctower-Bootstrap-Capability": "wrong-capability",
+    }
+    with TestClient(app, client=("198.51.100.10", 51000)) as client:
+        origin = client.post("/v1/bootstrap/first-tenant", content=b"{", headers=headers)
+    with TestClient(app, client=LOCAL_CLIENT) as client:
+        capability = client.post("/v1/bootstrap/first-tenant", content=b"{", headers=headers)
+
+    assert origin.status_code == HTTP_FORBIDDEN
+    assert origin.json()["code"] == "bootstrap-origin"
+    assert capability.status_code == HTTP_UNAUTHORIZED
+    assert capability.json()["code"] == "unauthorized"
+    for response in (origin, capability):
+        assert response.headers["content-type"].partition(";")[0] == "application/problem+json"
 
 
 def test_forced_outbox_failure_rolls_back_every_authority_row(
@@ -142,7 +202,7 @@ def test_forced_outbox_failure_rolls_back_every_authority_row(
     app = create_app(bootstrap.record)
     command_id = uuid4()
     body = _request_body()
-    with psycopg.connect(bootstrap.database.dsn) as connection:
+    with psycopg.connect(bootstrap.database.admin_dsn) as connection:
         connection.execute(
             """
             CREATE FUNCTION reject_bootstrap_outbox() RETURNS trigger LANGUAGE plpgsql AS $$
@@ -158,15 +218,15 @@ def test_forced_outbox_failure_rolls_back_every_authority_row(
     with TestClient(app, client=LOCAL_CLIENT, raise_server_exceptions=False) as client:
         failed = _bootstrap(client, bootstrap.token, command_id, body)
     assert failed.status_code == HTTP_SERVER_ERROR
-    _assert_empty_authority(bootstrap.database.dsn)
+    _assert_empty_authority(bootstrap.database.admin_dsn)
 
-    with psycopg.connect(bootstrap.database.dsn) as connection:
+    with psycopg.connect(bootstrap.database.admin_dsn) as connection:
         connection.execute("DROP TRIGGER reject_bootstrap_outbox ON outbox")
         connection.execute("DROP FUNCTION reject_bootstrap_outbox()")
     with TestClient(app, client=LOCAL_CLIENT) as client:
         retry = _bootstrap(client, bootstrap.token, command_id, body)
     assert retry.status_code == HTTP_CREATED
-    _assert_one_complete_bootstrap(bootstrap.database.dsn)
+    _assert_one_complete_bootstrap(bootstrap.database.admin_dsn)
 
 
 def _request_body() -> dict[str, str]:
@@ -193,6 +253,7 @@ def _bootstrap(
             "/v1/bootstrap/first-tenant",
             content=json.dumps(body, separators=(",", ":"), sort_keys=True),
             headers={
+                **telemetry_headers(command_id),
                 "Content-Type": "application/json",
                 "Idempotency-Key": str(command_id),
                 "X-Ctower-Bootstrap-Capability": token,
@@ -243,7 +304,7 @@ def _assert_token_absent(bootstrap: BootstrapContext, captured_logs: str) -> Non
     assert bootstrap.token not in " ".join(sys.argv)
     assert all(bootstrap.token not in value for value in os.environ.values())
     assert bootstrap.token not in captured_logs
-    with psycopg.connect(bootstrap.database.dsn) as connection:
+    with psycopg.connect(bootstrap.database.admin_dsn) as connection:
         persisted = connection.execute(
             """
             SELECT concat_ws('|',

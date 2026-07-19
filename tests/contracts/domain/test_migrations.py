@@ -37,6 +37,17 @@ def test_service_and_projection_roles_are_least_privilege() -> None:
     assert "GRANT SELECT ON ALL TABLES IN SCHEMA public TO ctower_projection" in grants
 
 
+def test_runtime_and_migrator_use_distinct_one_way_login_roles() -> None:
+    roles = (MIGRATIONS / "0001_roles.sql").read_text(encoding="utf-8")
+
+    assert "CREATE ROLE ctower_runtime LOGIN" in roles
+    assert "CREATE ROLE ctower_migrator LOGIN" in roles
+    assert "GRANT ctower_svc TO ctower_runtime" in roles
+    assert "GRANT ctower_admin TO ctower_migrator" in roles
+    assert "REVOKE ctower_admin FROM ctower_runtime" in roles
+    assert "GRANT ctower_admin TO ctower_runtime" not in roles
+
+
 def test_development_composition_uses_postgres_17_without_a_password_value() -> None:
     compose = (ROOT / "deploy/development/compose.yaml").read_text(encoding="utf-8")
 

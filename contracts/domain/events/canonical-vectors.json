@@ -3,6 +3,36 @@
   "vectors": [
     {
       "event": {
+        "actor_principal_id": "018f0d5e-7b9a-7c01-8000-000000000004",
+        "aggregate_id": "018f0d5e-7b9a-7c01-8000-000000000001",
+        "causation_id": null,
+        "client_command_id": "018f0d5e-7b9a-7c01-8000-000000000099",
+        "correlation_id": "018f0d5e-7b9a-7c01-8000-000000000099",
+        "event_id": "018f0d5e-7b9a-7c01-8000-000000000200",
+        "kind": "bootstrap.first_tenant_created",
+        "origin": "bootstrap",
+        "payload": {
+          "commander_id": "018f0d5e-7b9a-7c01-8000-000000000003",
+          "commander_vault_ref": "vault-ref:ctower/commander",
+          "operator_credential_ref": "credential-ref:ctower/operator",
+          "operator_id": "018f0d5e-7b9a-7c01-8000-000000000002",
+          "operator_vault_ref": "vault-ref:ctower/operator",
+          "tenant_id": "018f0d5e-7b9a-7c01-8000-000000000001",
+          "tenant_slug": "ctower"
+        },
+        "prev_hash": "sha256:0000000000000000000000000000000000000000000000000000000000000000",
+        "request_sha256": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "schema_version": 1,
+        "sequence": 1,
+        "server_time": "2026-07-19T17:59:00.000000Z",
+        "stream_id": "tenant:018f0d5e-7b9a-7c01-8000-000000000001:bootstrap",
+        "tenant_id": "018f0d5e-7b9a-7c01-8000-000000000001"
+      },
+      "canonical_json": "{\"actor_principal_id\":\"018f0d5e-7b9a-7c01-8000-000000000004\",\"aggregate_id\":\"018f0d5e-7b9a-7c01-8000-000000000001\",\"causation_id\":null,\"client_command_id\":\"018f0d5e-7b9a-7c01-8000-000000000099\",\"correlation_id\":\"018f0d5e-7b9a-7c01-8000-000000000099\",\"event_id\":\"018f0d5e-7b9a-7c01-8000-000000000200\",\"kind\":\"bootstrap.first_tenant_created\",\"origin\":\"bootstrap\",\"payload\":{\"commander_id\":\"018f0d5e-7b9a-7c01-8000-000000000003\",\"commander_vault_ref\":\"vault-ref:ctower/commander\",\"operator_credential_ref\":\"credential-ref:ctower/operator\",\"operator_id\":\"018f0d5e-7b9a-7c01-8000-000000000002\",\"operator_vault_ref\":\"vault-ref:ctower/operator\",\"tenant_id\":\"018f0d5e-7b9a-7c01-8000-000000000001\",\"tenant_slug\":\"ctower\"},\"prev_hash\":\"sha256:0000000000000000000000000000000000000000000000000000000000000000\",\"request_sha256\":\"sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\",\"schema_version\":1,\"sequence\":1,\"server_time\":\"2026-07-19T17:59:00.000000Z\",\"stream_id\":\"tenant:018f0d5e-7b9a-7c01-8000-000000000001:bootstrap\",\"tenant_id\":\"018f0d5e-7b9a-7c01-8000-000000000001\"}",
+      "event_hash": "sha256:538cd71fe957023bac5b268bcbdffab2fc1cbc524ef4066b064362bcd6afd2bd"
+    },
+    {
+      "event": {
         "actor_principal_id": "018f0d5e-7b9a-7c01-8000-000000000003",
         "aggregate_id": "018f0d5e-7b9a-7c01-8000-000000000010",
         "causation_id": null,

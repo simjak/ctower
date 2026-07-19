@@ -14,9 +14,15 @@ import psycopg
 from fastapi.testclient import TestClient
 from httpx import Response
 from support.postgres import DatabaseFixture
+from support.telemetry import telemetry_headers
 
 from ctower_api.interface import create_app
-from ctower_kernel.record.postgres import PostgresRecord, apply_migrations, provision_bootstrap
+from ctower_kernel.record.postgres import (
+    PostgresRecord,
+    apply_migrations,
+    provision_bootstrap,
+    provision_database_roles,
+)
 
 __all__ = [
     "TenantFixture",
@@ -43,16 +49,17 @@ class TenantFixture:
 def create_first_tenant(database: DatabaseFixture) -> TenantFixture:
     """Execute bootstrap, then bind runtime fixture credentials by digest."""
 
-    apply_migrations(database.dsn)
+    provision_database_roles(database.admin_dsn)
+    apply_migrations(database.migrator_dsn)
     bootstrap_token = secrets.token_urlsafe(32)
     provision_bootstrap(
-        database.dsn,
+        database.migrator_dsn,
         capability_input=io.StringIO(f"{bootstrap_token}\n"),
         allowed_origin="127.0.0.1",
         expires_at=datetime.now(UTC) + timedelta(minutes=5),
     )
     with TestClient(
-        create_app(PostgresRecord(database.dsn)), client=("127.0.0.1", 51000)
+        create_app(PostgresRecord(database.runtime_dsn)), client=("127.0.0.1", 51000)
     ) as client:
         response = _bootstrap(client, bootstrap_token)
     if response.status_code != HTTP_CREATED:
@@ -63,8 +70,8 @@ def create_first_tenant(database: DatabaseFixture) -> TenantFixture:
     commander_id = UUID(str(payload["commander_id"]))
     operator_credential = secrets.token_urlsafe(32)
     commander_credential = secrets.token_urlsafe(32)
-    provision_credential(database.dsn, tenant_id, operator_id, operator_credential)
-    provision_credential(database.dsn, tenant_id, commander_id, commander_credential)
+    provision_credential(database.admin_dsn, tenant_id, operator_id, operator_credential)
+    provision_credential(database.admin_dsn, tenant_id, commander_id, commander_credential)
     return TenantFixture(
         database,
         tenant_id,
@@ -82,7 +89,7 @@ def create_second_tenant(database: DatabaseFixture) -> TenantFixture:
     tenant_id, operator_id, commander_id = (_uuid7(now) for _ in range(3))
     operator_credential = secrets.token_urlsafe(32)
     commander_credential = secrets.token_urlsafe(32)
-    with psycopg.connect(database.dsn) as connection:
+    with psycopg.connect(database.admin_dsn) as connection:
         connection.execute(
             "INSERT INTO tenants (tenant_id, slug, name, created_at) VALUES (%s, %s, %s, %s)",
             (tenant_id, "tenant-two", "Tenant Two", now),
@@ -115,8 +122,8 @@ def create_second_tenant(database: DatabaseFixture) -> TenantFixture:
                 ),
             ),
         )
-    provision_credential(database.dsn, tenant_id, operator_id, operator_credential)
-    provision_credential(database.dsn, tenant_id, commander_id, commander_credential)
+    provision_credential(database.admin_dsn, tenant_id, operator_id, operator_credential)
+    provision_credential(database.admin_dsn, tenant_id, commander_id, commander_credential)
     return TenantFixture(
         database,
         tenant_id,
@@ -128,6 +135,7 @@ def create_second_tenant(database: DatabaseFixture) -> TenantFixture:
 
 
 def _bootstrap(client: TestClient, token: str) -> Response:
+    command_id = uuid4()
     return cast(
         Response,
         client.post(
@@ -142,7 +150,8 @@ def _bootstrap(client: TestClient, token: str) -> Response:
                 "tenant_slug": "ctower",
             },
             headers={
-                "Idempotency-Key": str(uuid4()),
+                **telemetry_headers(command_id),
+                "Idempotency-Key": str(command_id),
                 "X-Ctower-Bootstrap-Capability": token,
             },
         ),

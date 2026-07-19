@@ -20,10 +20,12 @@ __all__: tuple[str, ...] = ()
 
 @dataclass(frozen=True, slots=True)
 class DatabaseFixture:
-    """One isolated Postgres database and its password-free development DSN."""
+    """One isolated database with distinct administration, migration, and runtime DSNs."""
 
     name: str
-    dsn: str
+    admin_dsn: str
+    migrator_dsn: str
+    runtime_dsn: str
 
 
 def start_postgres() -> None:
@@ -69,7 +71,13 @@ def create_database() -> DatabaseFixture:
     name = f"ctower_test_{uuid4().hex}"
     with psycopg.connect(ADMIN_DSN, autocommit=True) as connection:
         connection.execute(f'CREATE DATABASE "{name}"')
-    return DatabaseFixture(name, f"postgresql://postgres@127.0.0.1:55432/{name}")
+    base = f"127.0.0.1:55432/{name}"
+    return DatabaseFixture(
+        name,
+        f"postgresql://postgres@{base}",
+        f"postgresql://ctower_migrator@{base}",
+        f"postgresql://ctower_runtime@{base}",
+    )
 
 
 def drop_database(database: DatabaseFixture) -> None:

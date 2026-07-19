@@ -2,12 +2,9 @@
 
 from __future__ import annotations
 
-import hashlib
-import hmac
-import json
 import secrets
 from dataclasses import dataclass
-from datetime import UTC, datetime
+from datetime import datetime
 from typing import cast
 from uuid import UUID
 
@@ -26,6 +23,15 @@ from ctower_kernel.record import (
     TicketTimeline,
     TimelineEvent,
 )
+from ctower_kernel.record._commands import reserve_command
+from ctower_kernel.record._event_store import append_event, enqueue_event
+from ctower_kernel.record.events import (
+    EventEnvelope,
+    EventKind,
+    EventOrigin,
+    TicketCreatedPayload,
+)
+from ctower_kernel.telemetry import TelemetryContext
 
 __all__ = ["actor_for_credential", "create_ticket", "get_ticket", "ticket_timeline"]
 
@@ -71,6 +77,7 @@ def create_ticket(
     *,
     request_digest: bytes,
     now: datetime,
+    telemetry: TelemetryContext,
 ) -> TicketCommandResult | RecordProblem:
     """Deduplicate before validation and atomically append a new ticket."""
 
@@ -101,13 +108,17 @@ def create_ticket(
             identifiers=identifiers,
             request_digest=request_digest,
             now=now,
+            telemetry=telemetry,
         )
     return result
 
 
-def get_ticket(dsn: str, actor: Actor, ticket_id: UUID) -> Ticket | RecordProblem:
+def get_ticket(
+    dsn: str, actor: Actor, ticket_id: UUID, *, telemetry: TelemetryContext
+) -> Ticket | RecordProblem:
     """Read one ticket using a tenant predicate that reveals no foreign existence."""
 
+    del telemetry
     with psycopg.connect(dsn, row_factory=dict_row) as connection:
         connection.execute("SET ROLE ctower_svc")
         row = connection.execute(
@@ -122,9 +133,12 @@ def get_ticket(dsn: str, actor: Actor, ticket_id: UUID) -> Ticket | RecordProble
     return _ticket_from_row(row) if row is not None else _scope_problem()
 
 
-def ticket_timeline(dsn: str, actor: Actor, ticket_id: UUID) -> TicketTimeline | RecordProblem:
+def ticket_timeline(
+    dsn: str, actor: Actor, ticket_id: UUID, *, telemetry: TelemetryContext
+) -> TicketTimeline | RecordProblem:
     """Read an ordered event stream using the same no-disclosure tenant predicate."""
 
+    del telemetry
     with psycopg.connect(dsn, row_factory=dict_row) as connection:
         connection.execute("SET ROLE ctower_svc")
         rows = connection.execute(
@@ -149,26 +163,15 @@ def _existing_result(
     command: TicketCommand,
     request_digest: bytes,
 ) -> TicketCommandResult | RecordProblem | None:
-    row = connection.execute(
-        """
-        SELECT request_sha256, response_body
-        FROM command_results
-        WHERE principal_id = %s AND client_command_id = %s
-        """,
-        (actor.principal_id, command.client_command_id),
-    ).fetchone()
-    if row is None:
-        return None
-    stored_digest = bytes(cast(bytes, row["request_sha256"]))
-    if not hmac.compare_digest(stored_digest, request_digest):
-        return RecordProblem(
-            code="idempotency-conflict",
-            detail="The command key was already used with a different request body.",
-            status=409,
-            title="Idempotency conflict",
-            command_id=command.client_command_id,
-        )
-    return _result_from_payload(cast(dict[str, object], row["response_body"]))
+    outcome = reserve_command(
+        connection,
+        actor.principal_id,
+        command.client_command_id,
+        request_digest,
+    )
+    if outcome is None or isinstance(outcome, RecordProblem):
+        return outcome
+    return _result_from_payload(outcome)
 
 
 def _eligible_custodian(
@@ -286,31 +289,32 @@ def _append_ticket_created(
     identifiers: _TicketIds,
     request_digest: bytes,
     now: datetime,
+    telemetry: TelemetryContext,
 ) -> None:
-    payload: dict[str, object] = {
-        "custodian_id": str(command.initial_custodian_id),
-        "priority": command.priority,
-        "source": {"kind": command.source.kind, "ref": command.source.ref},
-        "title": command.title,
-    }
-    event_hash = _ticket_event_hash(
-        actor,
-        command,
-        identifiers=identifiers,
-        request_digest=request_digest,
-        payload=payload,
-        now=now,
+    event = EventEnvelope(
+        actor_principal_id=actor.principal_id,
+        aggregate_id=identifiers.ticket,
+        causation_id=None,
+        client_command_id=command.client_command_id,
+        correlation_id=telemetry.correlation_uuid(command.client_command_id),
+        event_id=identifiers.event,
+        kind=EventKind.TICKET_CREATED,
+        origin=EventOrigin.API,
+        payload=TicketCreatedPayload(
+            custodian_id=command.initial_custodian_id,
+            priority=command.priority,
+            source_kind=command.source.kind,
+            source_ref=command.source.ref,
+            title=command.title,
+        ),
+        prev_hash=ZERO_HASH,
+        request_sha256=request_digest,
+        sequence=1,
+        server_time=now,
+        stream_id=f"ticket:{identifiers.ticket}",
+        tenant_id=actor.tenant_id,
     )
-    _insert_event(
-        connection,
-        actor,
-        command,
-        identifiers=identifiers,
-        request_digest=request_digest,
-        payload=payload,
-        event_hash=event_hash,
-        now=now,
-    )
+    append_event(connection, event)
     _insert_result_and_outbox(
         connection,
         actor,
@@ -318,7 +322,8 @@ def _append_ticket_created(
         result,
         identifiers=identifiers,
         request_digest=request_digest,
-        payload=payload,
+        event=event,
+        telemetry=telemetry,
         now=now,
     )
 
@@ -331,7 +336,8 @@ def _insert_result_and_outbox(
     *,
     identifiers: _TicketIds,
     request_digest: bytes,
-    payload: dict[str, object],
+    event: EventEnvelope,
+    telemetry: TelemetryContext,
     now: datetime,
 ) -> None:
     connection.execute(
@@ -351,80 +357,18 @@ def _insert_result_and_outbox(
             now,
         ),
     )
-    connection.execute(
-        """
-        INSERT INTO outbox (outbox_id, tenant_id, event_id, topic, payload, created_at)
-        VALUES (%s, %s, %s, 'record.events', %s, %s)
-        """,
-        (identifiers.outbox, actor.tenant_id, identifiers.event, Jsonb(payload), now),
-    )
-
-
-def _insert_event(
-    connection: psycopg.Connection[dict[str, object]],
-    actor: Actor,
-    command: TicketCommand,
-    *,
-    identifiers: _TicketIds,
-    request_digest: bytes,
-    payload: dict[str, object],
-    event_hash: bytes,
-    now: datetime,
-) -> None:
-    connection.execute(
-        """
-        INSERT INTO events (
-            event_id, tenant_id, stream_id, aggregate_id, sequence, kind, schema_version,
-            actor_principal_id, client_command_id, request_sha256, correlation_id,
-            causation_id, origin, server_time, payload, prev_hash, event_hash
-        ) VALUES (%s, %s, %s, %s, 1, 'ticket.created', 1, %s, %s, %s, %s,
-            NULL, 'api', %s, %s, %s, %s)
-        """,
-        (
-            identifiers.event,
-            actor.tenant_id,
-            f"ticket/{identifiers.ticket}",
-            identifiers.ticket,
-            actor.principal_id,
-            command.client_command_id,
-            request_digest,
-            command.client_command_id,
-            now,
-            Jsonb(payload),
-            ZERO_HASH,
-            event_hash,
+    enqueue_event(
+        connection,
+        identifiers.outbox,
+        event,
+        telemetry.bind(
+            tenant_id=str(actor.tenant_id),
+            actor_id=str(actor.principal_id),
+            command_id=str(command.client_command_id),
+            ticket_id=str(identifiers.ticket),
         ),
+        now,
     )
-
-
-def _ticket_event_hash(
-    actor: Actor,
-    command: TicketCommand,
-    *,
-    identifiers: _TicketIds,
-    request_digest: bytes,
-    payload: dict[str, object],
-    now: datetime,
-) -> bytes:
-    material: dict[str, object] = {
-        "actor_principal_id": str(actor.principal_id),
-        "aggregate_id": str(identifiers.ticket),
-        "causation_id": None,
-        "client_command_id": str(command.client_command_id),
-        "correlation_id": str(command.client_command_id),
-        "event_id": str(identifiers.event),
-        "kind": "ticket.created",
-        "origin": "api",
-        "payload": payload,
-        "prev_hash": f"sha256:{ZERO_HASH.hex()}",
-        "request_sha256": f"sha256:{request_digest.hex()}",
-        "schema_version": 1,
-        "sequence": 1,
-        "server_time": _timestamp(now),
-        "stream_id": f"ticket/{identifiers.ticket}",
-        "tenant_id": str(actor.tenant_id),
-    }
-    return hashlib.sha256(_canonical_json(material)).digest()
 
 
 def _ticket_from_row(row: dict[str, object]) -> Ticket:
@@ -490,16 +434,3 @@ def _uuid7(now: datetime) -> UUID:
     value |= 0b10 << 62
     value |= random_bits & ((1 << 62) - 1)
     return UUID(int=value)
-
-
-def _timestamp(value: datetime) -> str:
-    return value.astimezone(UTC).isoformat(timespec="microseconds").replace("+00:00", "Z")
-
-
-def _canonical_json(payload: dict[str, object]) -> bytes:
-    return json.dumps(
-        payload,
-        ensure_ascii=False,
-        separators=(",", ":"),
-        sort_keys=True,
-    ).encode()

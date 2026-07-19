@@ -2,15 +2,22 @@
 
 from __future__ import annotations
 
+import json
+from datetime import UTC, datetime
+from pathlib import Path
 from typing import cast
 from uuid import UUID, uuid4
 
 import psycopg
 from fastapi.testclient import TestClient
 from httpx import Response
+from jsonschema import Draft202012Validator
+from psycopg.rows import dict_row
+from support.telemetry import telemetry_headers
 from support.tenant_fixture import TenantFixture
 
 from ctower_api.interface import create_app
+from ctower_kernel.record.events import event_digest
 from ctower_kernel.record.postgres import PostgresRecord
 
 __all__: tuple[str, ...] = ()
@@ -20,6 +27,7 @@ HTTP_OK = 200
 HTTP_FORBIDDEN = 403
 HTTP_NOT_FOUND = 404
 HTTP_CONFLICT = 409
+ROOT = Path(__file__).parents[3]
 
 
 def test_p0_p1_p2_source_initial_custodian_reads_and_timeline(tenant: TenantFixture) -> None:
@@ -60,8 +68,11 @@ def test_p0_p1_p2_source_initial_custodian_reads_and_timeline(tenant: TenantFixt
             assert timeline.status_code == HTTP_OK
             assert timeline.json()["durability_state"] == "durability_pending"
             assert [event["kind"] for event in timeline.json()["events"]] == ["ticket.created"]
-            assert timeline.json()["events"][0]["payload"]["source"] == ticket["source"]
-    _assert_ticket_facts(tenant.database.dsn, expected=3)
+            assert (
+                timeline.json()["events"][0]["payload"]["source_kind"] == ticket["source"]["kind"]
+            )
+            assert timeline.json()["events"][0]["payload"]["source_ref"] == ticket["source"]["ref"]
+    _assert_ticket_facts(tenant.database.admin_dsn, expected=3)
 
 
 def test_exact_replay_changed_body_conflict_and_ineligible_custodian(
@@ -100,7 +111,7 @@ def test_exact_replay_changed_body_conflict_and_ineligible_custodian(
     assert replay.json()["event_ids"] == first.json()["event_ids"]
     assert changed.status_code == HTTP_CONFLICT
     assert changed.json()["code"] == "idempotency-conflict"
-    _assert_ticket_facts(tenant.database.dsn, expected=1)
+    _assert_ticket_facts(tenant.database.admin_dsn, expected=1)
 
 
 def test_p0_is_operator_only_while_commander_can_create_p1(tenant: TenantFixture) -> None:
@@ -125,11 +136,80 @@ def test_p0_is_operator_only_while_commander_can_create_p1(tenant: TenantFixture
     assert refused.status_code == HTTP_FORBIDDEN
     assert refused.json()["code"] == "unauthorized"
     assert accepted.status_code == HTTP_CREATED
-    _assert_ticket_facts(tenant.database.dsn, expected=1)
+    _assert_ticket_facts(tenant.database.admin_dsn, expected=1)
+
+
+def test_runtime_event_schema_hash_outbox_and_public_timeline_are_one_shape(
+    tenant: TenantFixture,
+) -> None:
+    command_id = uuid4()
+    with _client(tenant) as client:
+        created = _create_ticket(
+            client,
+            tenant.operator_credential,
+            command_id=command_id,
+            custodian_id=tenant.commander_id,
+            priority="P1",
+            title="Canonical runtime event",
+            source_ref="canonical:runtime",
+        )
+        ticket_id = UUID(created.json()["ticket"]["ticket_id"])
+        timeline = client.get(
+            f"/v1/tickets/{ticket_id}/timeline",
+            headers=_auth(tenant.operator_credential),
+        )
+
+    event_id = UUID(created.json()["event_ids"][0])
+    with psycopg.connect(tenant.database.admin_dsn, row_factory=dict_row) as connection:
+        row = connection.execute(
+            """
+            SELECT actor_principal_id, aggregate_id, causation_id, client_command_id,
+                correlation_id, event_id, kind, origin, payload, prev_hash, request_sha256,
+                schema_version, sequence, server_time, stream_id, tenant_id, event_hash
+            FROM events WHERE event_id = %s
+            """,
+            (event_id,),
+        ).fetchone()
+        outbox = connection.execute(
+            "SELECT payload FROM outbox WHERE event_id = %s", (event_id,)
+        ).fetchone()
+    assert row is not None and outbox is not None
+    server_time = cast(datetime, row["server_time"])
+    event: dict[str, object] = {
+        "actor_principal_id": str(row["actor_principal_id"]),
+        "aggregate_id": str(row["aggregate_id"]),
+        "causation_id": str(row["causation_id"]) if row["causation_id"] is not None else None,
+        "client_command_id": str(row["client_command_id"]),
+        "correlation_id": str(row["correlation_id"]),
+        "event_id": str(row["event_id"]),
+        "kind": row["kind"],
+        "origin": row["origin"],
+        "payload": row["payload"],
+        "prev_hash": f"sha256:{bytes(cast(bytes, row['prev_hash'])).hex()}",
+        "request_sha256": f"sha256:{bytes(cast(bytes, row['request_sha256'])).hex()}",
+        "schema_version": row["schema_version"],
+        "sequence": row["sequence"],
+        "server_time": server_time.astimezone(UTC)
+        .isoformat(timespec="microseconds")
+        .replace("+00:00", "Z"),
+        "stream_id": row["stream_id"],
+        "tenant_id": str(row["tenant_id"]),
+    }
+    schema = json.loads(
+        (ROOT / "contracts/domain/events/event-envelope.schema.json").read_text(encoding="utf-8")
+    )
+    Draft202012Validator(schema).validate(event)
+    assert event["stream_id"] == f"ticket:{ticket_id}"
+    assert event_digest(event) == bytes(cast(bytes, row["event_hash"]))
+    assert outbox["payload"] == event
+    public_event = timeline.json()["events"][0]
+    assert not {"event_hash", "prev_hash", "request_sha256"} & public_event.keys()
 
 
 def _client(tenant: TenantFixture) -> TestClient:
-    return TestClient(create_app(PostgresRecord(tenant.database.dsn)), client=("127.0.0.1", 51000))
+    return TestClient(
+        create_app(PostgresRecord(tenant.database.runtime_dsn)), client=("127.0.0.1", 51000)
+    )
 
 
 def _create_ticket(
@@ -156,7 +236,10 @@ def _create_ticket(
 
 
 def _auth(credential: str) -> dict[str, str]:
-    return {"Authorization": f"Bearer {credential}"}
+    return {
+        "Authorization": f"Bearer {credential}",
+        **telemetry_headers(),
+    }
 
 
 def _assert_ineligible_refused(client: TestClient, tenant: TenantFixture) -> None:

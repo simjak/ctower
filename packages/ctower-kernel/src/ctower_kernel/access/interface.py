@@ -9,6 +9,7 @@ from collections.abc import Callable
 from datetime import UTC, datetime
 
 from ctower_kernel.record import Actor, BootstrapCommand, BootstrapReceipt, Record, RecordProblem
+from ctower_kernel.telemetry import NoopTelemetry, Telemetry, TelemetryContext
 
 __all__ = ["Access", "digest_capability"]
 
@@ -21,9 +22,11 @@ class Access:
         record: Record,
         *,
         clock: Callable[[], datetime] | None = None,
+        telemetry: Telemetry | None = None,
     ) -> None:
         self._record = record
         self._clock = clock or (lambda: datetime.now(UTC))
+        self._telemetry = telemetry or NoopTelemetry()
 
     def bootstrap_first_tenant(
         self,
@@ -31,6 +34,7 @@ class Access:
         *,
         capability: str,
         origin: str,
+        telemetry: TelemetryContext,
     ) -> BootstrapReceipt | RecordProblem:
         """Refuse non-loopback origins and pass only digests into Record."""
 
@@ -43,12 +47,36 @@ class Access:
                 command_id=command.client_command_id,
             )
         request_digest = hashlib.sha256(_canonical_json(command.request_payload())).digest()
-        return self._record.bootstrap_first_tenant(
+        outcome = self._record.bootstrap_first_tenant(
             command,
             capability_digest=digest_capability(capability),
             request_digest=request_digest,
             origin=origin,
             now=self._clock(),
+            telemetry=telemetry,
+        )
+        self._telemetry.emit(
+            "access.bootstrap_first_tenant",
+            telemetry,
+            outcome="error" if isinstance(outcome, RecordProblem) else "ok",
+            reason=outcome.code if isinstance(outcome, RecordProblem) else "committed",
+        )
+        return outcome
+
+    def authorize_bootstrap(self, capability: str | None, *, origin: str) -> RecordProblem | None:
+        """Authorize raw origin and capability before transport payload validation."""
+
+        if not _is_loopback(origin):
+            return RecordProblem(
+                code="bootstrap-origin",
+                detail="The first-tenant route accepts only its configured local origin.",
+                status=403,
+                title="Bootstrap origin refused",
+            )
+        if capability is None:
+            return _unauthorized()
+        return self._record.authorize_bootstrap(
+            digest_capability(capability), origin=origin, now=self._clock()
         )
 
     def authenticate(self, authorization: str | None) -> Actor | RecordProblem:

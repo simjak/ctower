@@ -27,6 +27,7 @@
               "application/json": {"schema": {"$ref": "#/components/schemas/BootstrapReceipt"}}
             }
           },
+          "401": {"$ref": "#/components/responses/ProblemResponse"},
           "403": {"$ref": "#/components/responses/ProblemResponse"},
           "409": {"$ref": "#/components/responses/ProblemResponse"},
           "410": {"$ref": "#/components/responses/ProblemResponse"},
@@ -74,7 +75,8 @@
             }
           },
           "401": {"$ref": "#/components/responses/ProblemResponse"},
-          "404": {"$ref": "#/components/responses/ProblemResponse"}
+          "404": {"$ref": "#/components/responses/ProblemResponse"},
+          "422": {"$ref": "#/components/responses/ProblemResponse"}
         }
       }
     },
@@ -92,7 +94,8 @@
             }
           },
           "401": {"$ref": "#/components/responses/ProblemResponse"},
-          "404": {"$ref": "#/components/responses/ProblemResponse"}
+          "404": {"$ref": "#/components/responses/ProblemResponse"},
+          "422": {"$ref": "#/components/responses/ProblemResponse"}
         }
       }
     },
@@ -227,10 +230,12 @@
             "enum": [
               "bootstrap-consumed",
               "bootstrap-expired",
+              "bootstrap-nonempty",
               "bootstrap-origin",
               "idempotency-conflict",
               "tenant-scope-denied",
               "unauthorized",
+              "validation-error",
               "version-conflict"
             ]
           },
@@ -300,11 +305,12 @@
       "TicketCreatedPayload": {
         "type": "object",
         "additionalProperties": false,
-        "required": ["custodian_id", "priority", "source", "title"],
+        "required": ["custodian_id", "priority", "source_kind", "source_ref", "title"],
         "properties": {
           "custodian_id": {"type": "string", "format": "uuid"},
           "priority": {"$ref": "#/components/schemas/Priority"},
-          "source": {"$ref": "#/components/schemas/SourceReference"},
+          "source_kind": {"type": "string", "minLength": 1, "maxLength": 64},
+          "source_ref": {"type": "string", "minLength": 1, "maxLength": 256},
           "title": {"type": "string"}
         }
       },

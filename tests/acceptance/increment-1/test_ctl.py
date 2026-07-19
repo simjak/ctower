@@ -19,7 +19,12 @@ from support.postgres import DatabaseFixture
 from support.tenant_fixture import TenantFixture
 
 from ctower_api.interface import create_app
-from ctower_kernel.record.postgres import PostgresRecord, apply_migrations, provision_bootstrap
+from ctower_kernel.record.postgres import (
+    PostgresRecord,
+    apply_migrations,
+    provision_bootstrap,
+    provision_database_roles,
+)
 from ctowerctl import main
 
 __all__: tuple[str, ...] = ()
@@ -28,16 +33,17 @@ __all__: tuple[str, ...] = ()
 def test_bootstrap_reads_capability_from_stdin_and_prints_pending(
     database: DatabaseFixture,
 ) -> None:
-    apply_migrations(database.dsn)
+    provision_database_roles(database.admin_dsn)
+    apply_migrations(database.migrator_dsn)
     capability = secrets.token_urlsafe(32)
     provision_bootstrap(
-        database.dsn,
+        database.migrator_dsn,
         capability_input=io.StringIO(f"{capability}\n"),
         allowed_origin="127.0.0.1",
         expires_at=datetime.now(UTC) + timedelta(minutes=5),
     )
     command_id = uuid4()
-    with _server(database.dsn) as base_url:
+    with _server(database.runtime_dsn) as base_url:
         status, stdout, stderr = _run(
             _bootstrap_arguments(base_url, command_id),
             authority=capability,
@@ -54,7 +60,7 @@ def test_bootstrap_reads_capability_from_stdin_and_prints_pending(
 def test_ticket_create_show_and_assign_use_stable_command_ids(tenant: TenantFixture) -> None:
     create_id = uuid4()
     assign_id = uuid4()
-    with _server(tenant.database.dsn) as base_url:
+    with _server(tenant.database.runtime_dsn) as base_url:
         create_status, created_text, create_error = _run(
             _create_arguments(base_url, tenant, create_id),
             authority=tenant.operator_credential,

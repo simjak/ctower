@@ -3,12 +3,15 @@
 from __future__ import annotations
 
 import json
-from typing import Annotated
+from collections.abc import Awaitable, Callable
 from uuid import UUID
 
-from fastapi import FastAPI, Header, Request
+from fastapi import FastAPI, Request
 from fastapi.responses import JSONResponse
+from pydantic import ValidationError
+from starlette.responses import Response
 
+from ctower_api.telemetry import TelemetryRecorder
 from ctower_client.models import BootstrapReceipt as HttpBootstrapReceipt
 from ctower_client.models import (
     BootstrapRequest,
@@ -32,34 +35,63 @@ from ctower_kernel.record import (
     TicketCommandResult,
     TicketTimeline,
 )
+from ctower_kernel.telemetry import TelemetryContext
 from ctower_kernel.work import Work
 
 __all__ = ["create_app"]
 
 
-def create_app(record: Record) -> FastAPI:
+def create_app(record: Record, *, telemetry: TelemetryRecorder | None = None) -> FastAPI:
     """Compose the private command API without embedding durable decisions."""
 
     app = FastAPI(title="ctower control API", version="0.0.0")
-    access = Access(record)
-    _install_bootstrap_route(app, access)
-    _install_ticket_create_route(app, access, Work(record))
-    _install_custody_route(app, access, Work(record))
-    _install_ticket_read_routes(app, access, record)
+    recorder = telemetry or TelemetryRecorder()
+    access = Access(record, telemetry=recorder)
+
+    @app.middleware("http")
+    async def telemetry_health(
+        request: Request,
+        call_next: Callable[[Request], Awaitable[Response]],
+    ) -> Response:
+        response = await call_next(request)
+        response.headers["X-Ctower-Telemetry-Health"] = recorder.health
+        return response
+
+    _install_bootstrap_route(app, access, recorder)
+    _install_ticket_create_route(app, access, Work(record, telemetry=recorder), recorder)
+    _install_custody_route(app, access, Work(record, telemetry=recorder), recorder)
+    _install_ticket_read_routes(app, access, record, recorder)
     return app
 
 
-def _install_bootstrap_route(app: FastAPI, access: Access) -> None:
+def _install_bootstrap_route(
+    app: FastAPI, access: Access, telemetry_recorder: TelemetryRecorder
+) -> None:
     """Bind the local-only bootstrap transport Adapter."""
 
     @app.post("/v1/bootstrap/first-tenant", status_code=201)
-    def bootstrap_first_tenant(
-        request: Request,
-        payload: BootstrapRequest,
-        command_id: Annotated[UUID, Header(alias="Idempotency-Key")],
-        capability: Annotated[str, Header(alias="X-Ctower-Bootstrap-Capability")],
-    ) -> JSONResponse:
+    async def bootstrap_first_tenant(request: Request) -> JSONResponse:
         origin = request.client.host if request.client is not None else ""
+        capability = request.headers.get("X-Ctower-Bootstrap-Capability")
+        refusal = access.authorize_bootstrap(capability, origin=origin)
+        if refusal is not None:
+            return _problem_response(refusal)
+        try:
+            telemetry = _telemetry(request)
+            command_id = _uuid(request.headers.get("Idempotency-Key"))
+            payload = BootstrapRequest.model_validate_json(await request.body())
+        except (ValidationError, ValueError):
+            return _problem_response(_validation_problem())
+        if capability is None:
+            raise RuntimeError("authorized bootstrap capability disappeared")
+        telemetry = telemetry.bind(
+            tenant_id="unresolved",
+            actor_id="bootstrap-installer",
+            command_id=str(command_id),
+        )
+        telemetry_recorder.emit(
+            "access.authorize_bootstrap", telemetry, outcome="ok", reason="authorized"
+        )
         outcome = access.bootstrap_first_tenant(
             BootstrapCommand(
                 client_command_id=command_id,
@@ -73,23 +105,36 @@ def _install_bootstrap_route(app: FastAPI, access: Access) -> None:
             ),
             capability=capability,
             origin=origin,
+            telemetry=telemetry,
         )
         return _bootstrap_response(outcome)
 
 
-def _install_ticket_create_route(app: FastAPI, access: Access, work: Work) -> None:
+def _install_ticket_create_route(
+    app: FastAPI,
+    access: Access,
+    work: Work,
+    telemetry_recorder: TelemetryRecorder,
+) -> None:
     """Bind the authenticated ticket command Adapter."""
 
     @app.post("/v1/tickets", status_code=201)
-    async def create_ticket(
-        request: Request,
-        command_id: Annotated[UUID, Header(alias="Idempotency-Key")],
-        authorization: Annotated[str | None, Header(alias="Authorization")] = None,
-    ) -> JSONResponse:
-        payload = TicketCreateRequest.model_validate_json(await request.body())
-        actor = access.authenticate(authorization)
+    async def create_ticket(request: Request) -> JSONResponse:
+        actor = access.authenticate(request.headers.get("Authorization"))
         if isinstance(actor, RecordProblem):
             return _problem_response(actor)
+        try:
+            telemetry = _telemetry(request)
+            command_id = _uuid(request.headers.get("Idempotency-Key"))
+            payload = TicketCreateRequest.model_validate_json(await request.body())
+        except (ValidationError, ValueError):
+            return _problem_response(_validation_problem())
+        telemetry = telemetry.bind(
+            tenant_id=str(actor.tenant_id),
+            actor_id=str(actor.principal_id),
+            command_id=str(command_id),
+        )
+        telemetry_recorder.emit("access.authenticate", telemetry, outcome="ok", reason="authorized")
         outcome = work.create_ticket(
             actor,
             TicketCommand(
@@ -99,48 +144,85 @@ def _install_ticket_create_route(app: FastAPI, access: Access, work: Work) -> No
                 source=SourceReference(payload.source.kind, payload.source.ref),
                 title=payload.title,
             ),
+            telemetry=telemetry,
         )
         return _ticket_command_response(outcome)
 
 
-def _install_ticket_read_routes(app: FastAPI, access: Access, record: Record) -> None:
+def _install_ticket_read_routes(
+    app: FastAPI,
+    access: Access,
+    record: Record,
+    telemetry_recorder: TelemetryRecorder,
+) -> None:
     """Bind tenant-scoped ticket and timeline queries."""
 
     @app.get("/v1/tickets/{ticket_id}")
-    def get_ticket(
-        ticket_id: UUID,
-        authorization: Annotated[str | None, Header(alias="Authorization")] = None,
-    ) -> JSONResponse:
-        actor = access.authenticate(authorization)
+    def get_ticket(ticket_id: str, request: Request) -> JSONResponse:
+        actor = access.authenticate(request.headers.get("Authorization"))
         if isinstance(actor, RecordProblem):
             return _problem_response(actor)
-        return _ticket_response(record.get_ticket(actor, ticket_id))
+        try:
+            telemetry = _telemetry(request)
+            parsed_ticket_id = _uuid(ticket_id)
+        except ValueError:
+            return _problem_response(_validation_problem())
+        telemetry = telemetry.bind(
+            tenant_id=str(actor.tenant_id),
+            actor_id=str(actor.principal_id),
+            ticket_id=str(parsed_ticket_id),
+        )
+        telemetry_recorder.emit("access.authenticate", telemetry, outcome="ok", reason="authorized")
+        return _ticket_response(record.get_ticket(actor, parsed_ticket_id, telemetry=telemetry))
 
     @app.get("/v1/tickets/{ticket_id}/timeline")
-    def get_ticket_timeline(
-        ticket_id: UUID,
-        authorization: Annotated[str | None, Header(alias="Authorization")] = None,
-    ) -> JSONResponse:
-        actor = access.authenticate(authorization)
+    def get_ticket_timeline(ticket_id: str, request: Request) -> JSONResponse:
+        actor = access.authenticate(request.headers.get("Authorization"))
         if isinstance(actor, RecordProblem):
             return _problem_response(actor)
-        return _timeline_response(record.ticket_timeline(actor, ticket_id))
+        try:
+            telemetry = _telemetry(request)
+            parsed_ticket_id = _uuid(ticket_id)
+        except ValueError:
+            return _problem_response(_validation_problem())
+        telemetry = telemetry.bind(
+            tenant_id=str(actor.tenant_id),
+            actor_id=str(actor.principal_id),
+            ticket_id=str(parsed_ticket_id),
+        )
+        telemetry_recorder.emit("access.authenticate", telemetry, outcome="ok", reason="authorized")
+        return _timeline_response(
+            record.ticket_timeline(actor, parsed_ticket_id, telemetry=telemetry)
+        )
 
 
-def _install_custody_route(app: FastAPI, access: Access, work: Work) -> None:
+def _install_custody_route(
+    app: FastAPI,
+    access: Access,
+    work: Work,
+    telemetry_recorder: TelemetryRecorder,
+) -> None:
     """Bind the protected custody command Adapter."""
 
     @app.post("/v1/tickets/{ticket_id}/custody")
-    async def transfer_ticket_custody(
-        ticket_id: UUID,
-        request: Request,
-        command_id: Annotated[UUID, Header(alias="Idempotency-Key")],
-        authorization: Annotated[str | None, Header(alias="Authorization")] = None,
-    ) -> JSONResponse:
-        payload = CustodyTransferRequest.model_validate_json(await request.body())
-        actor = access.authenticate(authorization)
+    async def transfer_ticket_custody(ticket_id: str, request: Request) -> JSONResponse:
+        actor = access.authenticate(request.headers.get("Authorization"))
         if isinstance(actor, RecordProblem):
             return _problem_response(actor)
+        try:
+            telemetry = _telemetry(request)
+            parsed_ticket_id = _uuid(ticket_id)
+            command_id = _uuid(request.headers.get("Idempotency-Key"))
+            payload = CustodyTransferRequest.model_validate_json(await request.body())
+        except (ValidationError, ValueError):
+            return _problem_response(_validation_problem())
+        telemetry = telemetry.bind(
+            tenant_id=str(actor.tenant_id),
+            actor_id=str(actor.principal_id),
+            command_id=str(command_id),
+            ticket_id=str(parsed_ticket_id),
+        )
+        telemetry_recorder.emit("access.authenticate", telemetry, outcome="ok", reason="authorized")
         outcome = work.transfer_custody(
             actor,
             CustodyCommand(
@@ -149,9 +231,10 @@ def _install_custody_route(app: FastAPI, access: Access, work: Work) -> None:
                 from_custodian_id=payload.from_custodian_id,
                 protected_transfer=payload.protected_transfer,
                 reason=payload.reason,
-                ticket_id=ticket_id,
+                ticket_id=parsed_ticket_id,
                 to_custodian_id=payload.to_custodian_id,
             ),
+            telemetry=telemetry,
         )
         return _ticket_command_response(outcome, status_code=200)
 
@@ -199,3 +282,25 @@ def _problem_response(problem: RecordProblem) -> JSONResponse:
 
 def _encoded(payload: dict[str, object]) -> str:
     return json.dumps(payload, separators=(",", ":"), sort_keys=True)
+
+
+def _uuid(value: str | None) -> UUID:
+    if value is None:
+        raise ValueError("UUID transport value is missing")
+    return UUID(value)
+
+
+def _validation_problem() -> RecordProblem:
+    return RecordProblem(
+        code="validation-error",
+        detail="The request body or transport identifier does not match the authored contract.",
+        status=422,
+        title="Request validation failed",
+    )
+
+
+def _telemetry(request: Request) -> TelemetryContext:
+    payload = request.headers.get("X-Ctower-Telemetry-Context")
+    if payload is None:
+        raise ValueError("telemetry context is missing")
+    return TelemetryContext.from_json(payload.encode("utf-8"))

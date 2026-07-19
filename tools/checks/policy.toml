@@ -100,22 +100,27 @@ allowed_dependencies = ["http-client-codegen", "repository-policy"]
 [[ownership]]
 name = "kernel-record"
 paths = ["packages/ctower-kernel/src/ctower_kernel/__init__.py", "packages/ctower-kernel/src/ctower_kernel/record/**"]
+allowed_dependencies = ["kernel-telemetry"]
+
+[[ownership]]
+name = "kernel-telemetry"
+paths = ["packages/ctower-kernel/src/ctower_kernel/telemetry/**"]
 allowed_dependencies = []
 
 [[ownership]]
 name = "kernel-access"
 paths = ["packages/ctower-kernel/src/ctower_kernel/access/**"]
-allowed_dependencies = ["kernel-record"]
+allowed_dependencies = ["kernel-record", "kernel-telemetry"]
 
 [[ownership]]
 name = "kernel-work"
 paths = ["packages/ctower-kernel/src/ctower_kernel/work/**"]
-allowed_dependencies = ["kernel-record"]
+allowed_dependencies = ["kernel-record", "kernel-telemetry"]
 
 [[ownership]]
 name = "control-api"
 paths = ["apps/ctower-api/src/**"]
-allowed_dependencies = ["kernel-access", "kernel-record", "kernel-work"]
+allowed_dependencies = ["kernel-access", "kernel-record", "kernel-telemetry", "kernel-work"]
 
 [[ownership]]
 name = "control-cli"
@@ -125,12 +130,12 @@ allowed_dependencies = []
 [[ownership]]
 name = "increment-1-acceptance-tests"
 paths = ["tests/acceptance/increment-1/**"]
-allowed_dependencies = ["control-api", "control-cli", "kernel-access", "kernel-record", "kernel-work"]
+allowed_dependencies = ["control-api", "control-cli", "kernel-access", "kernel-record", "kernel-telemetry", "kernel-work"]
 
 [[ownership]]
 name = "kernel-module-tests"
 paths = ["tests/modules/**"]
-allowed_dependencies = ["kernel-access", "kernel-record", "kernel-work"]
+allowed_dependencies = ["kernel-access", "kernel-record", "kernel-telemetry", "kernel-work"]
 
 [[ownership]]
 name = "web"

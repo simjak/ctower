@@ -3,11 +3,11 @@
   "migrations": [
     {
       "path": "0001_roles.sql",
-      "sha256": "sha256:cd353fa1cd7404fc557c07376031fd493dbc31717060837a283108ac3076da31"
+      "sha256": "sha256:4dffe7d62d7ade9508a306f9567af824d378472bcf776d7f95e7626177af9b22"
     },
     {
       "path": "0002_ticket_slice.sql",
-      "sha256": "sha256:1489ddda8cca678085a3770a805e354aa56dacea69b50b02f9fd1c0c792f6980"
+      "sha256": "sha256:fabcb823a836d8d5f29dab2a597331db10e1b30b90e34f599801778d95045fab"
     },
     {
       "path": "0003_privileges.sql",

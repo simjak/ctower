@@ -7,7 +7,7 @@ import hmac
 import json
 import secrets
 from dataclasses import dataclass
-from datetime import UTC, datetime
+from datetime import datetime
 from typing import cast
 from uuid import UUID
 
@@ -27,15 +27,33 @@ from ctower_kernel.record import (
     TicketTimeline,
 )
 from ctower_kernel.record._custody_sql import transfer_custody as _transfer_custody
-from ctower_kernel.record._setup_sql import apply_migrations, provision_bootstrap
+from ctower_kernel.record._event_store import append_event, enqueue_event
+from ctower_kernel.record._setup_sql import (
+    apply_migrations,
+    provision_bootstrap,
+    provision_database_roles,
+)
 from ctower_kernel.record._ticket_sql import actor_for_credential as _actor_for_credential
 from ctower_kernel.record._ticket_sql import create_ticket as _create_ticket
 from ctower_kernel.record._ticket_sql import get_ticket as _get_ticket
 from ctower_kernel.record._ticket_sql import ticket_timeline as _ticket_timeline
+from ctower_kernel.record.events import (
+    BootstrapCreatedPayload,
+    EventEnvelope,
+    EventKind,
+    EventOrigin,
+)
+from ctower_kernel.telemetry import NoopTelemetry, Telemetry, TelemetryContext
 
-__all__ = ["PostgresRecord", "apply_migrations", "provision_bootstrap"]
+__all__ = [
+    "PostgresRecord",
+    "apply_migrations",
+    "provision_bootstrap",
+    "provision_database_roles",
+]
 
 ZERO_HASH = bytes(32)
+_BOOTSTRAP_SERIALIZATION_ATTEMPTS = 3
 
 
 @dataclass(frozen=True, slots=True)
@@ -51,8 +69,33 @@ class _BootstrapIds:
 class PostgresRecord:
     """Password-agnostic Postgres implementation of atomic Record commands."""
 
-    def __init__(self, dsn: str) -> None:
+    def __init__(self, dsn: str, *, telemetry: Telemetry | None = None) -> None:
         self._dsn = dsn
+        self._telemetry = telemetry or NoopTelemetry()
+
+    def authorize_bootstrap(
+        self, capability_digest: bytes, *, origin: str, now: datetime
+    ) -> RecordProblem | None:
+        """Preauthorize raw bootstrap transport fields without mutation."""
+
+        with psycopg.connect(self._dsn, row_factory=dict_row) as connection:
+            connection.execute("SET ROLE ctower_svc")
+            capability = connection.execute(
+                """
+                SELECT capability_digest, host(allowed_origin) AS allowed_origin, expires_at,
+                    consumed_at
+                FROM bootstrap_capability WHERE singleton
+                """
+            ).fetchone()
+        if capability is None or not hmac.compare_digest(
+            bytes(cast(bytes, capability["capability_digest"])), capability_digest
+        ):
+            return _transport_problem("unauthorized", 401, "Bootstrap capability refused")
+        if capability["allowed_origin"] != origin:
+            return _transport_problem("bootstrap-origin", 403, "Bootstrap origin refused")
+        if capability["consumed_at"] is None and cast(datetime, capability["expires_at"]) <= now:
+            return _transport_problem("bootstrap-expired", 410, "Bootstrap capability expired")
+        return None
 
     def bootstrap_first_tenant(
         self,
@@ -62,31 +105,32 @@ class PostgresRecord:
         request_digest: bytes,
         origin: str,
         now: datetime,
+        telemetry: TelemetryContext,
     ) -> BootstrapReceipt | RecordProblem:
         """Serialize, deduplicate, and commit the complete trust root."""
 
-        with psycopg.connect(self._dsn, row_factory=dict_row) as connection:
-            connection.execute("SET ROLE ctower_svc")
-            capability = connection.execute(
-                """
-                SELECT capability_digest, host(allowed_origin) AS allowed_origin, expires_at,
-                    consumed_at, consumed_command_id, consumed_request_sha256, receipt_body
-                FROM bootstrap_capability
-                WHERE singleton
-                FOR UPDATE
-                """
-            ).fetchone()
-            refusal = _bootstrap_refusal(
-                capability,
-                command,
-                capability_digest=capability_digest,
-                request_digest=request_digest,
-                origin=origin,
-                now=now,
-            )
-            if refusal is not None:
-                return refusal
-            return _commit_bootstrap(connection, command, request_digest=request_digest, now=now)
+        for attempt in range(_BOOTSTRAP_SERIALIZATION_ATTEMPTS):
+            try:
+                outcome = _bootstrap_transaction(
+                    self._dsn,
+                    command,
+                    capability_digest=capability_digest,
+                    request_digest=request_digest,
+                    origin=origin,
+                    now=now,
+                    telemetry=telemetry,
+                )
+                break
+            except psycopg.errors.SerializationFailure:
+                if attempt + 1 == _BOOTSTRAP_SERIALIZATION_ATTEMPTS:
+                    outcome = _problem(
+                        command,
+                        "bootstrap-consumed",
+                        409,
+                        "Bootstrap lost a concurrent serialization race",
+                    )
+        self._emit("record.bootstrap_first_tenant", telemetry, outcome)
+        return outcome
 
     def actor_for_credential(self, credential_digest: bytes) -> Actor | None:
         """Resolve one active principal through the credential index."""
@@ -100,26 +144,38 @@ class PostgresRecord:
         *,
         request_digest: bytes,
         now: datetime,
+        telemetry: TelemetryContext,
     ) -> TicketCommandResult | RecordProblem:
         """Append or replay one ticket transaction."""
 
-        return _create_ticket(
+        outcome = _create_ticket(
             self._dsn,
             actor,
             command,
             request_digest=request_digest,
             now=now,
+            telemetry=telemetry,
         )
+        self._emit("record.create_ticket", telemetry, outcome)
+        return outcome
 
-    def get_ticket(self, actor: Actor, ticket_id: UUID) -> Ticket | RecordProblem:
+    def get_ticket(
+        self, actor: Actor, ticket_id: UUID, *, telemetry: TelemetryContext
+    ) -> Ticket | RecordProblem:
         """Read one tenant-scoped ticket."""
 
-        return _get_ticket(self._dsn, actor, ticket_id)
+        outcome = _get_ticket(self._dsn, actor, ticket_id, telemetry=telemetry)
+        self._emit("record.get_ticket", telemetry, outcome)
+        return outcome
 
-    def ticket_timeline(self, actor: Actor, ticket_id: UUID) -> TicketTimeline | RecordProblem:
+    def ticket_timeline(
+        self, actor: Actor, ticket_id: UUID, *, telemetry: TelemetryContext
+    ) -> TicketTimeline | RecordProblem:
         """Read one tenant-scoped event timeline."""
 
-        return _ticket_timeline(self._dsn, actor, ticket_id)
+        outcome = _ticket_timeline(self._dsn, actor, ticket_id, telemetry=telemetry)
+        self._emit("record.ticket_timeline", telemetry, outcome)
+        return outcome
 
     def transfer_custody(
         self,
@@ -128,15 +184,82 @@ class PostgresRecord:
         *,
         request_digest: bytes,
         now: datetime,
+        telemetry: TelemetryContext,
     ) -> TicketCommandResult | RecordProblem:
         """Atomically replace one current ticket custodian."""
 
-        return _transfer_custody(
+        outcome = _transfer_custody(
             self._dsn,
             actor,
             command,
             request_digest=request_digest,
             now=now,
+            telemetry=telemetry,
+        )
+        self._emit("record.transfer_custody", telemetry, outcome)
+        return outcome
+
+    def _emit(
+        self,
+        name: str,
+        telemetry: TelemetryContext,
+        outcome: object,
+    ) -> None:
+        self._telemetry.emit(
+            name,
+            telemetry,
+            outcome="error" if isinstance(outcome, RecordProblem) else "ok",
+            reason=outcome.code if isinstance(outcome, RecordProblem) else "committed",
+        )
+
+
+def _bootstrap_transaction(
+    dsn: str,
+    command: BootstrapCommand,
+    *,
+    capability_digest: bytes,
+    request_digest: bytes,
+    origin: str,
+    now: datetime,
+    telemetry: TelemetryContext,
+) -> BootstrapReceipt | RecordProblem:
+    with psycopg.connect(dsn, row_factory=dict_row) as connection:
+        connection.execute("SET TRANSACTION ISOLATION LEVEL SERIALIZABLE")
+        connection.execute("SET ROLE ctower_svc")
+        capability = connection.execute(
+            """
+            SELECT capability_digest, host(allowed_origin) AS allowed_origin, expires_at,
+                consumed_at, consumed_command_id, consumed_request_sha256, receipt_body
+            FROM bootstrap_capability
+            WHERE singleton
+            FOR UPDATE
+            """
+        ).fetchone()
+        refusal = _bootstrap_refusal(
+            capability,
+            command,
+            capability_digest=capability_digest,
+            request_digest=request_digest,
+            origin=origin,
+            now=now,
+        )
+        if refusal is not None:
+            return refusal
+        connection.execute("LOCK TABLE tenants IN SHARE MODE")
+        nonempty = connection.execute("SELECT EXISTS (SELECT 1 FROM tenants)").fetchone()
+        if nonempty is None or bool(nonempty["exists"]):
+            return _problem(
+                command,
+                "bootstrap-nonempty",
+                409,
+                "Bootstrap requires an empty Ctower instance",
+            )
+        return _commit_bootstrap(
+            connection,
+            command,
+            request_digest=request_digest,
+            now=now,
+            telemetry=telemetry,
         )
 
 
@@ -190,16 +313,16 @@ def _new_bootstrap_ids(now: datetime) -> _BootstrapIds:
 
 def _bootstrap_event_payload(
     command: BootstrapCommand, identifiers: _BootstrapIds
-) -> dict[str, object]:
-    return {
-        "commander_id": str(identifiers.commander),
-        "commander_vault_ref": command.commander_vault_ref,
-        "operator_credential_ref": command.operator_credential_ref,
-        "operator_id": str(identifiers.operator),
-        "operator_vault_ref": command.operator_vault_ref,
-        "tenant_id": str(identifiers.tenant),
-        "tenant_slug": command.tenant_slug,
-    }
+) -> BootstrapCreatedPayload:
+    return BootstrapCreatedPayload(
+        commander_id=identifiers.commander,
+        commander_vault_ref=command.commander_vault_ref,
+        operator_credential_ref=command.operator_credential_ref,
+        operator_id=identifiers.operator,
+        operator_vault_ref=command.operator_vault_ref,
+        tenant_id=identifiers.tenant,
+        tenant_slug=command.tenant_slug,
+    )
 
 
 def _bootstrap_response(command: BootstrapCommand, identifiers: _BootstrapIds) -> dict[str, object]:
@@ -221,15 +344,25 @@ def _commit_bootstrap(
     *,
     request_digest: bytes,
     now: datetime,
+    telemetry: TelemetryContext,
 ) -> BootstrapReceipt:
     identifiers = _new_bootstrap_ids(now)
-    event_payload = _bootstrap_event_payload(command, identifiers)
-    event_hash = _event_hash(
-        command,
-        identifiers=identifiers,
-        request_digest=request_digest,
-        payload=event_payload,
-        now=now,
+    event = EventEnvelope(
+        actor_principal_id=identifiers.installer,
+        aggregate_id=identifiers.tenant,
+        causation_id=None,
+        client_command_id=command.client_command_id,
+        correlation_id=telemetry.correlation_uuid(command.client_command_id),
+        event_id=identifiers.event,
+        kind=EventKind.BOOTSTRAP_CREATED,
+        origin=EventOrigin.BOOTSTRAP,
+        payload=_bootstrap_event_payload(command, identifiers),
+        prev_hash=ZERO_HASH,
+        request_sha256=request_digest,
+        sequence=1,
+        server_time=now,
+        stream_id=f"tenant:{identifiers.tenant}:bootstrap",
+        tenant_id=identifiers.tenant,
     )
     response_body = _bootstrap_response(command, identifiers)
     _insert_authority(connection, command, identifiers=identifiers, now=now)
@@ -238,10 +371,10 @@ def _commit_bootstrap(
         command,
         identifiers=identifiers,
         request_digest=request_digest,
-        event_hash=event_hash,
-        event_payload=event_payload,
+        event=event,
         response_body=response_body,
         now=now,
+        telemetry=telemetry,
     )
     return _receipt_from_payload(response_body)
 
@@ -314,20 +447,12 @@ def _insert_event_and_receipt(
     *,
     identifiers: _BootstrapIds,
     request_digest: bytes,
-    event_hash: bytes,
-    event_payload: dict[str, object],
+    event: EventEnvelope,
     response_body: dict[str, object],
     now: datetime,
+    telemetry: TelemetryContext,
 ) -> None:
-    _insert_bootstrap_event(
-        connection,
-        command,
-        identifiers=identifiers,
-        request_digest=request_digest,
-        event_hash=event_hash,
-        event_payload=event_payload,
-        now=now,
-    )
+    append_event(connection, event)
     _insert_bootstrap_result(
         connection,
         command,
@@ -336,18 +461,16 @@ def _insert_event_and_receipt(
         response_body=response_body,
         now=now,
     )
-    connection.execute(
-        """
-        INSERT INTO outbox (outbox_id, tenant_id, event_id, topic, payload, created_at)
-        VALUES (%s, %s, %s, 'record.events', %s, %s)
-        """,
-        (
-            identifiers.outbox,
-            identifiers.tenant,
-            identifiers.event,
-            Jsonb(event_payload),
-            now,
+    enqueue_event(
+        connection,
+        identifiers.outbox,
+        event,
+        telemetry.bind(
+            tenant_id=str(identifiers.tenant),
+            actor_id=str(identifiers.installer),
+            command_id=str(command.client_command_id),
         ),
+        now,
     )
     connection.execute(
         """
@@ -357,42 +480,6 @@ def _insert_event_and_receipt(
         WHERE singleton
         """,
         (now, command.client_command_id, request_digest, Jsonb(response_body)),
-    )
-
-
-def _insert_bootstrap_event(
-    connection: psycopg.Connection[dict[str, object]],
-    command: BootstrapCommand,
-    *,
-    identifiers: _BootstrapIds,
-    request_digest: bytes,
-    event_hash: bytes,
-    event_payload: dict[str, object],
-    now: datetime,
-) -> None:
-    connection.execute(
-        """
-        INSERT INTO events (
-            event_id, tenant_id, stream_id, aggregate_id, sequence, kind, schema_version,
-            actor_principal_id, client_command_id, request_sha256, correlation_id,
-            causation_id, origin, server_time, payload, prev_hash, event_hash
-        ) VALUES (%s, %s, %s, %s, 1, 'bootstrap.first_tenant_created', 1,
-            %s, %s, %s, %s, NULL, 'bootstrap', %s, %s, %s, %s)
-        """,
-        (
-            identifiers.event,
-            identifiers.tenant,
-            f"tenant/{identifiers.tenant}/bootstrap",
-            identifiers.tenant,
-            identifiers.installer,
-            command.client_command_id,
-            request_digest,
-            command.client_command_id,
-            now,
-            Jsonb(event_payload),
-            ZERO_HASH,
-            event_hash,
-        ),
     )
 
 
@@ -424,35 +511,6 @@ def _insert_bootstrap_result(
     )
 
 
-def _event_hash(
-    command: BootstrapCommand,
-    *,
-    identifiers: _BootstrapIds,
-    request_digest: bytes,
-    payload: dict[str, object],
-    now: datetime,
-) -> bytes:
-    material: dict[str, object] = {
-        "actor_principal_id": str(identifiers.installer),
-        "aggregate_id": str(identifiers.tenant),
-        "causation_id": None,
-        "client_command_id": str(command.client_command_id),
-        "correlation_id": str(command.client_command_id),
-        "event_id": str(identifiers.event),
-        "kind": "bootstrap.first_tenant_created",
-        "origin": "bootstrap",
-        "payload": payload,
-        "prev_hash": f"sha256:{ZERO_HASH.hex()}",
-        "request_sha256": f"sha256:{request_digest.hex()}",
-        "schema_version": 1,
-        "sequence": 1,
-        "server_time": _timestamp(now),
-        "stream_id": f"tenant/{identifiers.tenant}/bootstrap",
-        "tenant_id": str(identifiers.tenant),
-    }
-    return hashlib.sha256(_canonical_json(material)).digest()
-
-
 def _problem(command: BootstrapCommand, code: str, status: int, title: str) -> RecordProblem:
     return RecordProblem(
         code=code,
@@ -461,6 +519,10 @@ def _problem(command: BootstrapCommand, code: str, status: int, title: str) -> R
         title=title,
         command_id=command.client_command_id,
     )
+
+
+def _transport_problem(code: str, status: int, title: str) -> RecordProblem:
+    return RecordProblem(code=code, detail=title, status=status, title=title)
 
 
 def _receipt_from_payload(payload: dict[str, object]) -> BootstrapReceipt:
@@ -484,10 +546,6 @@ def _uuid7(now: datetime) -> UUID:
     value |= 0b10 << 62
     value |= random_bits & ((1 << 62) - 1)
     return UUID(int=value)
-
-
-def _timestamp(value: datetime) -> str:
-    return value.astimezone(UTC).isoformat(timespec="microseconds").replace("+00:00", "Z")
 
 
 def _canonical_json(payload: dict[str, object]) -> bytes:

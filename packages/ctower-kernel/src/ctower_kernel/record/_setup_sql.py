@@ -11,15 +11,13 @@ from typing import TextIO, cast
 
 import psycopg
 
-__all__ = ["apply_migrations", "provision_bootstrap"]
+__all__ = ["apply_migrations", "provision_bootstrap", "provision_database_roles"]
 
 MIGRATIONS = Path(__file__).parents[3] / "migrations"
 MINIMUM_CAPABILITY_LENGTH = 32
 
 
-def apply_migrations(dsn: str) -> None:
-    """Verify and apply the authored checksum-ordered plain SQL migration set."""
-
+def _migration_scripts() -> tuple[str, ...]:
     manifest = cast(
         dict[str, object], json.loads((MIGRATIONS / "manifest.json").read_text(encoding="utf-8"))
     )
@@ -31,9 +29,23 @@ def apply_migrations(dsn: str) -> None:
         if not hmac.compare_digest(actual, entry["sha256"]):
             raise ValueError(f"migration checksum mismatch: {entry['path']}")
         scripts.append(content.decode())
-    with psycopg.connect(dsn) as connection:
+    return tuple(scripts)
+
+
+def provision_database_roles(admin_dsn: str) -> None:
+    """Use server administration only to provision the global login/role boundary."""
+
+    with psycopg.connect(admin_dsn) as connection:
+        connection.execute(_migration_scripts()[0])
+
+
+def apply_migrations(migrator_dsn: str) -> None:
+    """Apply schema migrations through the dedicated migrator login and admin role."""
+
+    with psycopg.connect(migrator_dsn) as connection:
+        connection.execute("SET ROLE ctower_admin")
         connection.execute("SELECT pg_advisory_xact_lock(712040119)")
-        for script in scripts:
+        for script in _migration_scripts()[1:]:
             connection.execute(script)
 
 
@@ -50,6 +62,7 @@ def provision_bootstrap(
     if len(capability) < MINIMUM_CAPABILITY_LENGTH:
         raise ValueError("bootstrap capability must have at least 32 characters")
     with psycopg.connect(dsn) as connection:
+        connection.execute("SET ROLE ctower_admin")
         connection.execute(
             """
             INSERT INTO bootstrap_capability (

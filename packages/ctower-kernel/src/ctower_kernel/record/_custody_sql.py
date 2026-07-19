@@ -2,8 +2,6 @@
 
 from __future__ import annotations
 
-import hashlib
-import hmac
 from dataclasses import dataclass
 from datetime import datetime
 from typing import cast
@@ -19,13 +17,20 @@ from ctower_kernel.record import (
     RecordProblem,
     TicketCommandResult,
 )
+from ctower_kernel.record._commands import reserve_command
+from ctower_kernel.record._event_store import append_event, enqueue_event
 from ctower_kernel.record._ticket_sql import (
-    _canonical_json,
     _result_from_payload,
     _ticket_from_row,
-    _timestamp,
     _uuid7,
 )
+from ctower_kernel.record.events import (
+    CustodyTransferredPayload,
+    EventEnvelope,
+    EventKind,
+    EventOrigin,
+)
+from ctower_kernel.telemetry import TelemetryContext
 
 __all__ = ["transfer_custody"]
 
@@ -36,6 +41,13 @@ class _CustodyIds:
     outbox: UUID
 
 
+@dataclass(frozen=True, slots=True)
+class _PreviousEvent:
+    event_hash: bytes
+    event_id: UUID
+    correlation_id: UUID
+
+
 def transfer_custody(
     dsn: str,
     actor: Actor,
@@ -43,6 +55,7 @@ def transfer_custody(
     *,
     request_digest: bytes,
     now: datetime,
+    telemetry: TelemetryContext,
 ) -> TicketCommandResult | RecordProblem:
     """Deduplicate, lock, compare, and atomically replace current custody."""
 
@@ -54,9 +67,6 @@ def transfer_custody(
         ticket_row = _locked_ticket(connection, actor, command.ticket_id)
         if ticket_row is None:
             return _scope_problem(command.client_command_id)
-        existing = _existing_result(connection, actor, command, request_digest)
-        if existing is not None:
-            return existing
         refusal = _transfer_refusal(connection, actor, command, ticket_row)
         if refusal is not None:
             return refusal
@@ -69,6 +79,7 @@ def transfer_custody(
             identifiers=identifiers,
             request_digest=request_digest,
             now=now,
+            telemetry=telemetry,
         )
     return result
 
@@ -79,26 +90,15 @@ def _existing_result(
     command: CustodyCommand,
     request_digest: bytes,
 ) -> TicketCommandResult | RecordProblem | None:
-    row = connection.execute(
-        """
-        SELECT request_sha256, response_body
-        FROM command_results
-        WHERE principal_id = %s AND client_command_id = %s
-        """,
-        (actor.principal_id, command.client_command_id),
-    ).fetchone()
-    if row is None:
-        return None
-    stored_digest = bytes(cast(bytes, row["request_sha256"]))
-    if not hmac.compare_digest(stored_digest, request_digest):
-        return RecordProblem(
-            code="idempotency-conflict",
-            detail="The command key was already used with a different request body.",
-            status=409,
-            title="Idempotency conflict",
-            command_id=command.client_command_id,
-        )
-    return _result_from_payload(cast(dict[str, object], row["response_body"]))
+    outcome = reserve_command(
+        connection,
+        actor.principal_id,
+        command.client_command_id,
+        request_digest,
+    )
+    if outcome is None or isinstance(outcome, RecordProblem):
+        return outcome
+    return _result_from_payload(outcome)
 
 
 def _locked_ticket(
@@ -163,6 +163,7 @@ def _commit_transfer(
     identifiers: _CustodyIds,
     request_digest: bytes,
     now: datetime,
+    telemetry: TelemetryContext,
 ) -> TicketCommandResult:
     next_version = int(cast(int, ticket_row["version"])) + 1
     _replace_interval(connection, actor, command, next_version=next_version, now=now)
@@ -191,6 +192,7 @@ def _commit_transfer(
         request_digest=request_digest,
         sequence=next_version,
         now=now,
+        telemetry=telemetry,
     )
     return result
 
@@ -245,24 +247,31 @@ def _append_transfer(
     request_digest: bytes,
     sequence: int,
     now: datetime,
+    telemetry: TelemetryContext,
 ) -> None:
-    prev_hash = _previous_hash(connection, actor, command, sequence=sequence)
-    payload = _transfer_payload(command)
-    event_hash = _event_hash(
-        actor, command, identifiers, request_digest, payload, prev_hash, sequence, now
-    )
-    _insert_event(
-        connection,
-        actor,
-        command,
-        identifiers=identifiers,
-        request_digest=request_digest,
-        payload=payload,
-        prev_hash=prev_hash,
-        event_hash=event_hash,
+    previous = _previous_event(connection, actor, command, sequence=sequence)
+    event = EventEnvelope(
+        actor_principal_id=actor.principal_id,
+        aggregate_id=command.ticket_id,
+        causation_id=previous.event_id,
+        client_command_id=command.client_command_id,
+        correlation_id=previous.correlation_id,
+        event_id=identifiers.event,
+        kind=EventKind.CUSTODY_TRANSFERRED,
+        origin=EventOrigin.API,
+        payload=CustodyTransferredPayload(
+            from_custodian_id=command.from_custodian_id,
+            reason=command.reason,
+            to_custodian_id=command.to_custodian_id,
+        ),
+        prev_hash=previous.event_hash,
+        request_sha256=request_digest,
         sequence=sequence,
-        now=now,
+        server_time=now,
+        stream_id=f"ticket:{command.ticket_id}",
+        tenant_id=actor.tenant_id,
     )
+    append_event(connection, event)
     _insert_result_and_outbox(
         connection,
         actor,
@@ -270,21 +279,22 @@ def _append_transfer(
         result,
         identifiers=identifiers,
         request_digest=request_digest,
-        payload=payload,
+        event=event,
+        telemetry=telemetry,
         now=now,
     )
 
 
-def _previous_hash(
+def _previous_event(
     connection: psycopg.Connection[dict[str, object]],
     actor: Actor,
     command: CustodyCommand,
     *,
     sequence: int,
-) -> bytes:
+) -> _PreviousEvent:
     row = connection.execute(
         """
-        SELECT event_hash
+        SELECT event_hash, event_id, correlation_id
         FROM events
         WHERE tenant_id = %s AND aggregate_id = %s AND sequence = %s
         """,
@@ -292,54 +302,10 @@ def _previous_hash(
     ).fetchone()
     if row is None:
         raise RuntimeError("locked ticket event stream is inconsistent")
-    return bytes(cast(bytes, row["event_hash"]))
-
-
-def _transfer_payload(command: CustodyCommand) -> dict[str, object]:
-    return {
-        "from_custodian_id": str(command.from_custodian_id),
-        "reason": command.reason,
-        "to_custodian_id": str(command.to_custodian_id),
-    }
-
-
-def _insert_event(
-    connection: psycopg.Connection[dict[str, object]],
-    actor: Actor,
-    command: CustodyCommand,
-    *,
-    identifiers: _CustodyIds,
-    request_digest: bytes,
-    payload: dict[str, object],
-    prev_hash: bytes,
-    event_hash: bytes,
-    sequence: int,
-    now: datetime,
-) -> None:
-    connection.execute(
-        """
-        INSERT INTO events (
-            event_id, tenant_id, stream_id, aggregate_id, sequence, kind, schema_version,
-            actor_principal_id, client_command_id, request_sha256, correlation_id,
-            causation_id, origin, server_time, payload, prev_hash, event_hash
-        ) VALUES (%s, %s, %s, %s, %s, 'ticket.custody_transferred', 1, %s, %s, %s,
-            %s, NULL, 'api', %s, %s, %s, %s)
-        """,
-        (
-            identifiers.event,
-            actor.tenant_id,
-            f"ticket/{command.ticket_id}",
-            command.ticket_id,
-            sequence,
-            actor.principal_id,
-            command.client_command_id,
-            request_digest,
-            command.client_command_id,
-            now,
-            Jsonb(payload),
-            prev_hash,
-            event_hash,
-        ),
+    return _PreviousEvent(
+        event_hash=bytes(cast(bytes, row["event_hash"])),
+        event_id=cast(UUID, row["event_id"]),
+        correlation_id=cast(UUID, row["correlation_id"]),
     )
 
 
@@ -351,7 +317,8 @@ def _insert_result_and_outbox(
     *,
     identifiers: _CustodyIds,
     request_digest: bytes,
-    payload: dict[str, object],
+    event: EventEnvelope,
+    telemetry: TelemetryContext,
     now: datetime,
 ) -> None:
     connection.execute(
@@ -371,44 +338,18 @@ def _insert_result_and_outbox(
             now,
         ),
     )
-    connection.execute(
-        """
-        INSERT INTO outbox (outbox_id, tenant_id, event_id, topic, payload, created_at)
-        VALUES (%s, %s, %s, 'record.events', %s, %s)
-        """,
-        (identifiers.outbox, actor.tenant_id, identifiers.event, Jsonb(payload), now),
+    enqueue_event(
+        connection,
+        identifiers.outbox,
+        event,
+        telemetry.bind(
+            tenant_id=str(actor.tenant_id),
+            actor_id=str(actor.principal_id),
+            command_id=str(command.client_command_id),
+            ticket_id=str(command.ticket_id),
+        ),
+        now,
     )
-
-
-def _event_hash(
-    actor: Actor,
-    command: CustodyCommand,
-    identifiers: _CustodyIds,
-    request_digest: bytes,
-    payload: dict[str, object],
-    prev_hash: bytes,
-    sequence: int,
-    now: datetime,
-) -> bytes:
-    material: dict[str, object] = {
-        "actor_principal_id": str(actor.principal_id),
-        "aggregate_id": str(command.ticket_id),
-        "causation_id": None,
-        "client_command_id": str(command.client_command_id),
-        "correlation_id": str(command.client_command_id),
-        "event_id": str(identifiers.event),
-        "kind": "ticket.custody_transferred",
-        "origin": "api",
-        "payload": payload,
-        "prev_hash": f"sha256:{prev_hash.hex()}",
-        "request_sha256": f"sha256:{request_digest.hex()}",
-        "schema_version": 1,
-        "sequence": sequence,
-        "server_time": _timestamp(now),
-        "stream_id": f"ticket/{command.ticket_id}",
-        "tenant_id": str(actor.tenant_id),
-    }
-    return hashlib.sha256(_canonical_json(material)).digest()
 
 
 def _version_problem(command: CustodyCommand, current: int, detail: str) -> RecordProblem:

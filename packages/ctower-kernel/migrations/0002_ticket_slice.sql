@@ -159,6 +159,10 @@ CREATE TABLE outbox (
     event_id uuid NOT NULL REFERENCES events(event_id),
     topic text NOT NULL,
     payload jsonb NOT NULL,
+    telemetry jsonb NOT NULL CHECK (
+        jsonb_typeof(telemetry) = 'object'
+        AND telemetry ->> 'schema' = 'ctower.telemetry-context/v1'
+    ),
     created_at timestamptz NOT NULL,
     UNIQUE (event_id, topic)
 );

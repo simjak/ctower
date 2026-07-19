@@ -8,6 +8,8 @@ from enum import StrEnum
 from typing import Protocol
 from uuid import UUID
 
+from ctower_kernel.telemetry import TelemetryContext
+
 __all__ = [
     "Actor",
     "BootstrapCommand",
@@ -261,6 +263,13 @@ class TicketTimeline:
 class Record(Protocol):
     """Small atomic persistence authority consumed by Access and Work."""
 
+    def authorize_bootstrap(
+        self, capability_digest: bytes, *, origin: str, now: datetime
+    ) -> RecordProblem | None:
+        """Preauthorize raw bootstrap transport authority without mutation."""
+
+        ...
+
     def bootstrap_first_tenant(
         self,
         command: BootstrapCommand,
@@ -269,6 +278,7 @@ class Record(Protocol):
         request_digest: bytes,
         origin: str,
         now: datetime,
+        telemetry: TelemetryContext,
     ) -> BootstrapReceipt | RecordProblem:
         """Atomically commit or refuse one first-tenant command."""
 
@@ -286,17 +296,22 @@ class Record(Protocol):
         *,
         request_digest: bytes,
         now: datetime,
+        telemetry: TelemetryContext,
     ) -> TicketCommandResult | RecordProblem:
         """Atomically append or exactly replay one ticket creation."""
 
         ...
 
-    def get_ticket(self, actor: Actor, ticket_id: UUID) -> Ticket | RecordProblem:
+    def get_ticket(
+        self, actor: Actor, ticket_id: UUID, *, telemetry: TelemetryContext
+    ) -> Ticket | RecordProblem:
         """Read one tenant-scoped ticket without cross-tenant disclosure."""
 
         ...
 
-    def ticket_timeline(self, actor: Actor, ticket_id: UUID) -> TicketTimeline | RecordProblem:
+    def ticket_timeline(
+        self, actor: Actor, ticket_id: UUID, *, telemetry: TelemetryContext
+    ) -> TicketTimeline | RecordProblem:
         """Read the ordered tenant-scoped event timeline."""
 
         ...
@@ -308,6 +323,7 @@ class Record(Protocol):
         *,
         request_digest: bytes,
         now: datetime,
+        telemetry: TelemetryContext,
     ) -> TicketCommandResult | RecordProblem:
         """Atomically close and open the ticket's accountable custody interval."""
 

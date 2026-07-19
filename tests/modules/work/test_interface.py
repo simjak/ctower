@@ -17,6 +17,7 @@ from ctower_kernel.record import (
     TicketCommand,
     TicketCommandResult,
 )
+from ctower_kernel.telemetry import TelemetryContext
 from ctower_kernel.work import Work
 
 __all__: tuple[str, ...] = ()
@@ -35,8 +36,9 @@ class _CommandRecord:
         *,
         request_digest: bytes,
         now: datetime,
+        telemetry: TelemetryContext,
     ) -> TicketCommandResult:
-        del actor, command, now
+        del actor, command, now, telemetry
         self.create_digest = request_digest
         return self.result
 
@@ -47,8 +49,9 @@ class _CommandRecord:
         *,
         request_digest: bytes,
         now: datetime,
+        telemetry: TelemetryContext,
     ) -> TicketCommandResult:
-        del actor, command, now
+        del actor, command, now, telemetry
         self.custody_digest = request_digest
         return self.result
 
@@ -57,8 +60,12 @@ def test_p0_requires_operator_but_p1_reaches_record_with_digest() -> None:
     actor = Actor(uuid4(), uuid4(), PrincipalKind.COMMANDER)
     record = _CommandRecord(_result(actor))
     work = Work(cast(Record, record))
-    refused = work.create_ticket(actor, _ticket_command(actor, priority="P0"))
-    accepted = work.create_ticket(actor, _ticket_command(actor, priority="P1"))
+    refused = work.create_ticket(
+        actor, _ticket_command(actor, priority="P0"), telemetry=_telemetry()
+    )
+    accepted = work.create_ticket(
+        actor, _ticket_command(actor, priority="P1"), telemetry=_telemetry()
+    )
 
     assert isinstance(refused, RecordProblem)
     assert refused.code == "unauthorized"
@@ -72,9 +79,15 @@ def test_custody_requires_protected_operator_authority() -> None:
     record = _CommandRecord(_result(operator))
     work = Work(cast(Record, record))
 
-    denied_actor = work.transfer_custody(commander, _custody_command(protected=True))
-    denied_flag = work.transfer_custody(operator, _custody_command(protected=False))
-    accepted = work.transfer_custody(operator, _custody_command(protected=True))
+    denied_actor = work.transfer_custody(
+        commander, _custody_command(protected=True), telemetry=_telemetry()
+    )
+    denied_flag = work.transfer_custody(
+        operator, _custody_command(protected=False), telemetry=_telemetry()
+    )
+    accepted = work.transfer_custody(
+        operator, _custody_command(protected=True), telemetry=_telemetry()
+    )
 
     assert isinstance(denied_actor, RecordProblem)
     assert isinstance(denied_flag, RecordProblem)
@@ -117,4 +130,19 @@ def _result(actor: Actor) -> TicketCommandResult:
             version=1,
             created_at=datetime.now(UTC),
         ),
+    )
+
+
+def _telemetry() -> TelemetryContext:
+    command_id = str(uuid4())
+    return TelemetryContext(
+        schema="ctower.telemetry-context/v1",
+        trace_id="0" * 32,
+        span_id="0" * 16,
+        trace_flags=1,
+        correlation_id=command_id,
+        causation_id=command_id,
+        tenant_id="test-tenant",
+        actor_id="test-actor",
+        command_id=command_id,
     )

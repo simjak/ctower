@@ -39,10 +39,12 @@ def test_problem_vocabulary_and_boundary_objects_are_strict() -> None:
     assert problem_codes == {
         "bootstrap-consumed",
         "bootstrap-expired",
+        "bootstrap-nonempty",
         "bootstrap-origin",
         "idempotency-conflict",
         "tenant-scope-denied",
         "unauthorized",
+        "validation-error",
         "version-conflict",
     }
     for name, schema in schemas.items():
