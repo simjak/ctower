@@ -26,4 +26,11 @@ boundary README before changing this repository.
 
 ## Required gates
 
-Run `just check` while developing and `just verify` before review after the accepted toolchain locks exist. Until then, run the dependency-light bootstrap commands in `README.md`. Never weaken a gate with an inline ignore; use one exact, independently approved, maximum-30-day exception in `tools/checks/exceptions.yaml` when the rule is waivable.
+Run `just check` while developing and `just verify` before review. Verification-host dependencies are
+hash/checksum locked in `requirements/verify.txt`, `pnpm-lock.yaml`, immutable hook commits, and the verify
+workflow; these locks do not choose ctower's unresolved product runtime or permit `.python-version`/`uv.lock`.
+The warm gate includes Actionlint and exact intended-tree secret detection. The release gate additionally
+scans complete reachable history and proves currently required suites, branch coverage, and a clean tree.
+Both gates invoke an installed Gitleaks binary without gate-time network access or compilation. Never weaken a gate with an
+inline ignore; use one exact, independently approved, maximum-30-day exception in
+`tools/checks/exceptions.yaml` when the rule is waivable.

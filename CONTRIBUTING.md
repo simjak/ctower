@@ -20,8 +20,9 @@ are all valuable.
 2. Make one cohesive change. Preserve the authoritative homes described in the
    [development guide](https://simjak.github.io/ctower/contributing/development/).
 3. Add or update tests, exact contracts, and public documentation together with changed behavior.
-4. Run the dependency-light checks from the [getting-started guide](https://simjak.github.io/ctower/getting-started/).
-   Once the accepted toolchain lands, run `just check` and `just verify`.
+4. Using the landed verification toolchain from the
+   [getting-started guide](https://simjak.github.io/ctower/getting-started/), run `just check` while developing
+   and `just verify` from the clean candidate commit.
 5. Open a pull request using the repository template and respond to independent review.
 
 Do not hand-edit files under `generated/`. Do not add a second specification, architecture atlas, roadmap,

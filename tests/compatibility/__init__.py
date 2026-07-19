@@ -1,1 +1,1 @@
-"""Compatibility evidence contract tests."""
+"""Compatibility contract tests."""

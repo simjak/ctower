@@ -29,6 +29,7 @@ _INPUT_PATHS = (
     Path("contracts/traceability/sources.json"),
     Path("contracts/traceability/traceability-sources.schema.json"),
     Path("tools/checks/_impl/generated.py"),
+    Path("tools/checks/_impl/generated_inventory.py"),
     Path("tools/checks/_impl/traceability.py"),
     Path("tools/checks/traceability.py"),
 )

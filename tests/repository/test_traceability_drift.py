@@ -100,6 +100,32 @@ class TraceabilityDriftTests(unittest.TestCase):
         self.assertIn("symlink", errors.getvalue())
         self.assertEqual(after, before)
 
+    def test_write_rejects_symlinked_and_nonregular_index_leaf(self) -> None:
+        with tempfile.TemporaryDirectory() as name, tempfile.TemporaryDirectory() as outside_name:
+            fixture = Path(name)
+            outside = Path(outside_name) / "outside.json"
+            self._copy_policy_fixture(fixture)
+            index = fixture / "generated/traceability-index.json"
+            index.unlink()
+            outside.write_text("outside baseline\n", encoding="utf-8")
+            index.symlink_to(outside)
+
+            symlink_exit = traceability_main(["--root", str(fixture), "--write"])
+            outside_after = outside.read_text(encoding="utf-8")
+
+        with tempfile.TemporaryDirectory() as name:
+            fixture = Path(name)
+            self._copy_policy_fixture(fixture)
+            index = fixture / "generated/traceability-index.json"
+            index.unlink()
+            index.mkdir()
+
+            directory_exit = traceability_main(["--root", str(fixture), "--write"])
+
+        self.assertEqual(symlink_exit, 1)
+        self.assertEqual(outside_after, "outside baseline\n")
+        self.assertEqual(directory_exit, 1)
+
     def test_invalid_authored_sources_fail_through_the_command(self) -> None:
         mutations = {
             "unknown reference": self._unknown_reference,
@@ -140,6 +166,7 @@ class TraceabilityDriftTests(unittest.TestCase):
             "tools/checks/policy.toml",
             "tools/checks/exceptions.yaml",
             "tools/checks/_impl/generated.py",
+            "tools/checks/_impl/generated_inventory.py",
             *(item["path"] for group in ("inputs", "outputs") for item in entry[group]),
         }
         source_map = self._read_json(self.root / "contracts/traceability/sources.json")

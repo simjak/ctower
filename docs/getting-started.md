@@ -32,27 +32,33 @@ Exact authored schemas belong in `contracts/`; concrete versioned workflows and 
 `packs/`; generated outputs belong in `generated/`. The specification owns human semantics, while the
 declared executable artifact owns exact representation.
 
-## Run the dependency-light checks
+## Run the frozen verification gates
 
-The bootstrap repository currently declares the compatibility window `>=3.12,<3.15`, but an exact project
-runtime and lock have not yet been accepted. With an available `python3`:
+ctower's product runtime remains unresolved, but the verification host is frozen independently. Install the
+hash-locked Python verification dependencies and the frozen JavaScript workspace without lifecycle scripts:
 
 ```bash
-python3 -m unittest discover -s tests/repository -v
-python3 -m tools.checks --root . --profile full
-python3 -m tools.checks --root . --profile full --expected-suites
+python3 -m pip install --require-hashes -r requirements/verify.txt
+pnpm install --frozen-lockfile --ignore-scripts
 ```
 
-Some contract suites require `jsonschema`. Until the accepted toolchain is locked, the repository README
-contains the current dependency-isolated validation command. Do not create an unreviewed lockfile or exact
-runtime pin to make local setup appear more complete than it is.
+Run the warm gate while developing, then run the full gate from a clean candidate commit:
+
+```bash
+just check
+just verify
+```
+
+The verification locks and CI pins do not select ctower's product runtime or supersede D6. Do not add
+`.python-version` or `uv.lock`; update verification inputs only through the reviewed lock process in the
+[development guide](contributing/development.md).
 
 ## Inspect the executable L0 evidence
 
 The first implemented slice is a strict compatibility preflight, not a ctower runtime. Its versioned matrix
 currently covers standard-GIL CPython 3.12.13, 3.13.14, and 3.14.6. The recorded 2026-07-19 run produced six
-passing rows: all ten required observations passed on isolated macOS `x86_64` and immutable Linux `arm64`
-containers for each candidate.
+passing rows: all ten required observations passed on isolated Darwin/macOS `arm64` and immutable Linux
+`arm64` containers for each candidate.
 
 A full reproduction requires `uv`, a macOS host, and Docker. It writes a sanitized report outside the
 repository:

@@ -1,29 +1,115 @@
-from __future__ import annotations
+"""Stable compatibility-contract facade over focused model modules."""
 
-from dataclasses import dataclass
+from .models_core import (
+    EXPECTED_ARTIFACTS,
+    EXPECTED_OBSERVATIONS,
+    EXPECTED_REQUIREMENTS,
+    Candidate,
+    CompatibilityError,
+    CompatibilityMatrix,
+    Digest,
+    EnvironmentName,
+    EnvironmentVariable,
+    FrozenModel,
+    HostIdentity,
+    Machine,
+    MatrixInput,
+    ObservationName,
+    ProcessOperation,
+    ProcessRequest,
+    ProcessResult,
+    PythonVersion,
+    ResolvedDependency,
+    RuntimeDetails,
+    Sha256,
+    TelemetryContext,
+)
+from .models_probe import (
+    CommandDetails,
+    DependencyDetails,
+    DependencyObservation,
+    FastapiDetails,
+    FastapiObservation,
+    JsonschemaDetails,
+    JsonschemaObservation,
+    MypyDetails,
+    MypyObservation,
+    Observation,
+    ObservationBase,
+    OpentelemetryDetails,
+    OpentelemetryObservation,
+    ProbeResult,
+    PsycopgDetails,
+    PsycopgObservation,
+    PydanticDetails,
+    PydanticObservation,
+    RuffObservation,
+    RuntimeObservation,
+    WheelDetails,
+    WheelObservation,
+)
+from .models_report import (
+    ArtifactEvidence,
+    CompatibilityReport,
+    CompatibilityRun,
+    DockerContainerInspection,
+    DockerImageInspection,
+    ImageIdentity,
+    ProductArtifactEvidence,
+    ResolutionEvidence,
+)
 
-
-class CompatibilityError(RuntimeError):
-    """The compatibility input or evidence failed closed."""
-
-
-@dataclass(frozen=True, slots=True)
-class Candidate:
-    version: str
-    gil: str
-    release_date: str
-    release_url: str
-    source_url: str
-    source_sha256: str
-    linux_image: str
-
-
-@dataclass(frozen=True, slots=True)
-class CompatibilityMatrix:
-    matrix_id: str
-    uv_version: str
-    requirements: tuple[str, ...]
-    required_observations: tuple[str, ...]
-    product_artifacts: tuple[str, ...]
-    candidates: tuple[Candidate, ...]
-    digest: str
+__all__ = [
+    "EXPECTED_ARTIFACTS",
+    "EXPECTED_OBSERVATIONS",
+    "EXPECTED_REQUIREMENTS",
+    "ArtifactEvidence",
+    "Candidate",
+    "CommandDetails",
+    "CompatibilityError",
+    "CompatibilityMatrix",
+    "CompatibilityReport",
+    "CompatibilityRun",
+    "DependencyDetails",
+    "DependencyObservation",
+    "Digest",
+    "DockerContainerInspection",
+    "DockerImageInspection",
+    "EnvironmentName",
+    "EnvironmentVariable",
+    "FastapiDetails",
+    "FastapiObservation",
+    "FrozenModel",
+    "HostIdentity",
+    "ImageIdentity",
+    "JsonschemaDetails",
+    "JsonschemaObservation",
+    "Machine",
+    "MatrixInput",
+    "MypyDetails",
+    "MypyObservation",
+    "Observation",
+    "ObservationBase",
+    "ObservationName",
+    "OpentelemetryDetails",
+    "OpentelemetryObservation",
+    "ProbeResult",
+    "ProcessOperation",
+    "ProcessRequest",
+    "ProcessResult",
+    "ProductArtifactEvidence",
+    "PsycopgDetails",
+    "PsycopgObservation",
+    "PydanticDetails",
+    "PydanticObservation",
+    "PythonVersion",
+    "ResolutionEvidence",
+    "ResolvedDependency",
+    "RuffObservation",
+    "RuntimeDetails",
+    "RuntimeObservation",
+    "Sha256",
+    "TelemetryContext",
+    "WheelDetails",
+    "WheelObservation",
+]

@@ -55,6 +55,12 @@ class PlaywrightGateTests(unittest.TestCase):
                 self.assertEqual(observed, expected_exit)
                 self.assertEqual(self._snapshot(checkout), before)
 
+    def test_real_zero_test_invocation_fails(self) -> None:
+        with chdir(self.root):
+            result = playwright_main()
+
+        self.assertNotEqual(result, 0)
+
     def test_public_main_rejects_overrides_and_missing_pnpm(self) -> None:
         with self.assertRaises(ValueError):
             playwright_main(("override",))
@@ -135,9 +141,8 @@ set -eu
 test "$1" = "exec"
 test "$2" = "playwright"
 test "$3" = "test"
-test "$4" = "--pass-with-no-tests"
-test "$5" = "--output"
-test "$6" = "$PLAYWRIGHT_OUTPUT_DIR"
+test "$4" = "--output"
+test "$5" = "$PLAYWRIGHT_OUTPUT_DIR"
 case "$PLAYWRIGHT_HTML_OUTPUT_DIR/" in "$PWD/"*) exit 91 ;; esac
 case "$PLAYWRIGHT_OUTPUT_DIR/" in "$PWD/"*) exit 92 ;; esac
 mkdir -p "$PLAYWRIGHT_HTML_OUTPUT_DIR" "$PLAYWRIGHT_OUTPUT_DIR"

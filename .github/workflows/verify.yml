@@ -8,23 +8,106 @@ on:
 permissions:
   contents: read
 
+concurrency:
+  group: verify-${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: ${{ github.ref != 'refs/heads/main' }}
+
+# Verification-host choices only. They do not select ctower's unresolved product runtime.
+env:
+  CTOWER_VERIFY_PYTHON: "3.13.14"
+  CTOWER_VERIFY_NODE: "24.16.0"
+  CTOWER_VERIFY_NODE_SHA256: d804845d34eddc21dc1092b519d643ef40b1f58ec5dec5c22b1f4bd8fabde6c9
+  CTOWER_VERIFY_PNPM: "10.20.0"
+  CTOWER_VERIFY_PNPM_SHA256: d25defac8655080add042decfa94b5c3b28cafbb048edd4de6dc2c41f9220418
+  CTOWER_VERIFY_JUST: "1.46.0"
+  CTOWER_VERIFY_JUST_SHA256: 79966e6e353f535ee7d1c6221641bcc8e3381c55b0d0a6dc6e54b34f9db36eaa
+  CTOWER_VERIFY_ACTIONLINT: "1.7.11"
+  CTOWER_VERIFY_ACTIONLINT_SHA256: 900919a84f2229bac68ca9cd4103ea297abc35e9689ebb842c6e34a3d1b01b0a
+  CTOWER_VERIFY_GITLEAKS: "8.28.0"
+  CTOWER_VERIFY_GITLEAKS_SHA256: a65b5253807a68ac0cafa4414031fd740aeb55f54fb7e55f386acb52e6a840eb
+
 jobs:
-  repository-bootstrap:
+  release-gate:
+    name: release gate
     runs-on: ubuntu-24.04
     steps:
-      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
-      - name: Compile repository policy
-        run: python3 -m compileall -q tools/checks
-      - name: Test repository policy
-        run: python3 -m unittest discover -s tests/repository -v
-      - name: Install bootstrap contract validator
-        run: python3 -m pip install --disable-pip-version-check 'jsonschema>=4.25,<5'
-      - name: Enforce full repository policy
-        run: python3 -m tools.checks --root . --profile full
-      - name: Enforce versioned verification scope
-        run: python3 -m tools.checks --root . --profile full --execute-suites
-      - name: Verify clean patch
-        run: git diff --check
+      - name: Check out complete candidate history
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+        with:
+          fetch-depth: 0
+          persist-credentials: false
 
-  # CT-L0-007 replaces this bootstrap job with frozen uv/pnpm installs followed by the
-  # exact `just check` and `just verify` recipes after runtime/toolchain locks are accepted.
+      - name: Install verification-host Python
+        uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1 # v6.3.0
+        with:
+          python-version: ${{ env.CTOWER_VERIFY_PYTHON }}
+          cache: pip
+          cache-dependency-path: requirements/verify.txt
+
+      - name: Install hash-locked Python verification dependencies
+        run: >-
+          python -m pip install --disable-pip-version-check --require-hashes
+          -r requirements/verify.txt
+
+      - name: Install checksum-verified command-line tools
+        shell: bash
+        run: |
+          set -euo pipefail
+          tool_root="${RUNNER_TEMP}/ctower-verification-tools"
+          archive_root="${tool_root}/archives"
+          binary_root="${tool_root}/bin"
+          node_root="${tool_root}/node"
+          mkdir -p "${archive_root}" "${binary_root}" "${node_root}"
+
+          fetch() {
+            local url="$1"
+            local output="$2"
+            local digest="$3"
+            curl --proto '=https' --tlsv1.2 --fail --location --retry 3 \
+              --connect-timeout 15 --max-time 300 \
+              --silent --show-error "${url}" --output "${output}"
+            printf '%s  %s\n' "${digest}" "${output}" | sha256sum --check --status
+          }
+
+          node_archive="${archive_root}/node.tar.xz"
+          fetch \
+            "https://nodejs.org/dist/v${CTOWER_VERIFY_NODE}/node-v${CTOWER_VERIFY_NODE}-linux-x64.tar.xz" \
+            "${node_archive}" "${CTOWER_VERIFY_NODE_SHA256}"
+          tar --extract --xz --file "${node_archive}" --directory "${node_root}" \
+            --strip-components=1
+
+          just_archive="${archive_root}/just.tar.gz"
+          fetch \
+            "https://github.com/casey/just/releases/download/${CTOWER_VERIFY_JUST}/just-${CTOWER_VERIFY_JUST}-x86_64-unknown-linux-musl.tar.gz" \
+            "${just_archive}" "${CTOWER_VERIFY_JUST_SHA256}"
+          tar --extract --gzip --file "${just_archive}" --directory "${binary_root}" just
+
+          actionlint_archive="${archive_root}/actionlint.tar.gz"
+          fetch \
+            "https://github.com/rhysd/actionlint/releases/download/v${CTOWER_VERIFY_ACTIONLINT}/actionlint_${CTOWER_VERIFY_ACTIONLINT}_linux_amd64.tar.gz" \
+            "${actionlint_archive}" "${CTOWER_VERIFY_ACTIONLINT_SHA256}"
+          tar --extract --gzip --file "${actionlint_archive}" \
+            --directory "${binary_root}" actionlint
+
+          gitleaks_archive="${archive_root}/gitleaks.tar.gz"
+          fetch \
+            "https://github.com/gitleaks/gitleaks/releases/download/v${CTOWER_VERIFY_GITLEAKS}/gitleaks_${CTOWER_VERIFY_GITLEAKS}_linux_x64.tar.gz" \
+            "${gitleaks_archive}" "${CTOWER_VERIFY_GITLEAKS_SHA256}"
+          tar --extract --gzip --file "${gitleaks_archive}" \
+            --directory "${binary_root}" gitleaks
+
+          fetch \
+            "https://github.com/pnpm/pnpm/releases/download/v${CTOWER_VERIFY_PNPM}/pnpm-linux-x64" \
+            "${binary_root}/pnpm" "${CTOWER_VERIFY_PNPM_SHA256}"
+          chmod 0755 "${binary_root}/pnpm"
+
+          printf '%s\n' "${node_root}/bin" "${binary_root}" >> "${GITHUB_PATH}"
+
+      - name: Install frozen JavaScript verification dependencies
+        run: pnpm install --frozen-lockfile --ignore-scripts
+
+      - name: Run canonical warm gate
+        run: just check
+
+      - name: Run canonical release gate
+        run: just verify

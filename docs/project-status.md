@@ -12,13 +12,16 @@ real work.
   envelopes.
 - Example versioned workflow, execution-policy, and gate-policy packs.
 - A repository policy module with ownership, source-budget, generated-drift, and secret checks.
-- A strict Python compatibility preflight with authored input/result schemas and a sanitized evidence
+- A strict Python compatibility preflight with exact Draft 2020-12 input/result schemas, frozen typed
+  models, bounded process/container lifecycles, minimal child environments, and a sanitized atomic evidence
   writer.
-- Twenty-seven compatibility tests measured at 97.05% branch coverage.
+- Thirty-eight compatibility tests measured at 92.74% branch coverage.
 - Deterministic traceability from `contracts/traceability/sources.json` to
   `generated/traceability-index.json`, including generated-manifest drift checks.
 - A low-operations MkDocs Material documentation site and pinned GitHub Actions workflow for GitHub Pages.
 - Source-only SemVer and Release Please automation at the `0.0.0` development baseline.
+- A reproducible, fork-safe `release gate` with immutable verification inputs, generated-root exactness,
+  required-suite accounting, and intended-tree plus complete-history secret scans.
 - Coding, observability, and secret-handling standards.
 
 These assets establish the contract for implementation. They are not a working control plane.
@@ -26,7 +29,7 @@ These assets establish the contract for implementation. They are not a working c
 ## Compatibility evidence, not a runtime decision
 
 The 2026-07-19 preflight ran standard-GIL CPython 3.12.13, 3.13.14, and 3.14.6 in two environments:
-isolated macOS on `x86_64` and immutable Linux containers on `arm64`. All six rows passed all ten required
+isolated macOS on Darwin `arm64` and immutable Linux containers on `arm64`. All six rows passed all ten required
 observations. The exact input, result rules, and sanitized evidence table live under
 [`contracts/compatibility/`](https://github.com/simjak/ctower/tree/main/contracts/compatibility).
 

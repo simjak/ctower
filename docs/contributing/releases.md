@@ -79,6 +79,20 @@ release gate. Narrative pages remain authored and must be reviewed against the c
 GitHub Pages is built on every pull request but deployed only from trusted `main`. A successful
 page deployment proves publication, not runtime correctness.
 
+## Verification provenance
+
+The required `release gate` job is safe for public fork pull requests: it has read-only repository
+permission, receives no repository secrets, checks out complete candidate history without persisted
+credentials, and invokes the canonical `just check` and `just verify` recipes. Python dependencies are
+installed from the hash-locked `requirements/verify.txt`; JavaScript uses the frozen `pnpm-lock.yaml` with
+lifecycle scripts disabled. Node distributions and the pnpm, `just`, Actionlint, and Gitleaks release assets
+are fetched with bounded HTTPS requests and checked against committed SHA-256 values before execution.
+
+Those versions describe the verification host only. They do not select a supported ctower Python runtime,
+create a product lock, or supersede D6. Update a binary pin only from the producer's release checksum or
+release-asset digest, update its version and digest together, and let the repository supply-chain tests prove
+the linkage. Remote GitHub Actions and pre-commit hooks remain pinned to immutable 40-character commits.
+
 ## Corrections, rollback, and withdrawal
 
 Published version numbers, tags, changelog entries, and release assets are immutable: never
@@ -111,6 +125,6 @@ After the workflows reach GitHub, a maintainer must:
   requests created by that fallback token do not trigger their own required verification
   workflows. Without the secret, a maintainer must cause a fresh pull-request event (for
   example, close and reopen the release PR) before it can satisfy branch protection;
-- require the verification, documentation, and Conventional Commit title checks on `main`;
+- require the stable `release gate`, `build documentation`, and `conventional title` checks on `main`;
 - enable squash merge and use the pull request title as the default squash commit title;
 - prevent force pushes and tag deletion for released versions.

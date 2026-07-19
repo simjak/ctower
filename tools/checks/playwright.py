@@ -26,7 +26,6 @@ async def _run_playwright(pnpm: str, checkout: Path, environment: dict[str, str]
         "exec",
         "playwright",
         "test",
-        "--pass-with-no-tests",
         "--output",
         environment["PLAYWRIGHT_OUTPUT_DIR"],
         cwd=checkout,

@@ -20,11 +20,15 @@
         },
         {
           "path": "tools/checks/_impl/generated.py",
-          "sha256": "sha256:02d4b0b19671b2967723ca087974d69d5bacd3e90fc6fabb448b2e79ec661626"
+          "sha256": "sha256:ba6295e9f5f548329dbc36ef1eb5cb48ebe841f990c23987d16d17361cd3c647"
+        },
+        {
+          "path": "tools/checks/_impl/generated_inventory.py",
+          "sha256": "sha256:f1984c3d3829bd9f800d515e70cf9647ef35cceb0e9fd8915a1b8bdb518f2217"
         },
         {
           "path": "tools/checks/_impl/traceability.py",
-          "sha256": "sha256:0c38c8cf0a682c0beec3cf7c2112e1dbca40b575a8b75b6a6ca8fc56004f7c92"
+          "sha256": "sha256:680e4bb8e012dfc89034b262842c05a4c34bf72c1780211bc4e7e11a9d8a5639"
         },
         {
           "path": "tools/checks/traceability.py",

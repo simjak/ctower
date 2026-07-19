@@ -1,151 +1,182 @@
 from __future__ import annotations
 
 import json
-import subprocess
-import sys
+import os
 import tempfile
 import unittest
 from pathlib import Path
+from typing import TYPE_CHECKING
 from unittest.mock import patch
 
-from tools.compatibility import probe
+if TYPE_CHECKING:
+    from compatibility.support import ProbeFixturePort, telemetry
+else:
+    try:
+        from .support import ProbeFixturePort, telemetry
+    except ImportError:
+        from support import ProbeFixturePort, telemetry
+
+from tools.compatibility import CompatibilityError, probe
+from tools.compatibility.probe import collect_probe
+
+_SECRETS = {
+    "AWS_ACCESS_KEY_ID": "synthetic-access-key",
+    "AWS_SECRET_ACCESS_KEY": "synthetic-secret-key",
+    "GH_TOKEN": "synthetic-github-token",
+    "SSH_AUTH_SOCK": "/synthetic/agent.sock",
+    "PIP_INDEX_URL": "https://credential@example.invalid/simple",
+}
 
 
-def completed(
-    returncode: int = 0, stdout: str = "", stderr: str = ""
-) -> subprocess.CompletedProcess[str]:
-    return subprocess.CompletedProcess(["probe"], returncode, stdout, stderr)
-
-
-class ProbeTests(unittest.TestCase):
-    def test_observation_runtime_dependencies_and_hashes(self) -> None:
-        success = probe._observe("ok", lambda: {"value": True})
-        failure = probe._observe("bad", lambda: (_ for _ in ()).throw(RuntimeError("boom")))
-        self.assertEqual(success["status"], "passed")
-        self.assertEqual(failure["status"], "failed")
-        self.assertEqual(probe._runtime(sys.version.split()[0])["gil_enabled"], True)
-        with (
-            patch.object(sys, "_is_gil_enabled", None),
-            patch("tools.compatibility.probe.sysconfig.get_config_var", return_value=1),
-        ):
-            self.assertFalse(probe._gil_enabled())
-        with (
-            patch("tools.compatibility.probe.platform.python_version", return_value="0.0.0"),
-            self.assertRaisesRegex(RuntimeError, "expected Python"),
-        ):
-            probe._runtime("1.2.3")
-        with patch("tools.compatibility.probe.importlib.metadata.version", return_value="1"):
-            self.assertEqual(probe._dependencies(("demo==1",)), {"direct_versions": {"demo": "1"}})
-            with self.assertRaisesRegex(RuntimeError, "mismatches"):
-                probe._dependencies(("demo==2",))
-        self.assertEqual(len(probe._json_sha256({"a": 1})), 64)
+class ContainedProbeTests(unittest.TestCase):
+    def test_complete_probe_uses_typed_models_and_minimal_environments(self) -> None:
+        port = ProbeFixturePort()
+        context = telemetry()
         with tempfile.TemporaryDirectory() as directory:
-            path = Path(directory) / "value"
-            path.write_bytes(b"ctower")
-            self.assertEqual(len(probe._file_sha256(path)), 64)
+            contained = {"HOME": directory, "TMPDIR": directory, **_SECRETS}
+            with patch.dict(os.environ, contained, clear=False):
+                report = collect_probe("3.12.13", context, execution_port=port)
 
-    def test_json_subprobe_and_wrappers(self) -> None:
-        with patch("tools.compatibility.probe._run", return_value=completed(stdout='{"ok": true}')):
-            self.assertEqual(probe._python_json("ignored"), {"ok": True})
-        for result, message in (
-            (completed(1, stderr="failed"), "failed"),
-            (completed(stdout="{"), "malformed"),
-            (completed(stdout="[]"), "JSON object"),
-        ):
-            with (
-                patch("tools.compatibility.probe._run", return_value=result),
-                self.assertRaisesRegex(RuntimeError, message),
-            ):
-                probe._python_json("ignored")
-        with patch("tools.compatibility.probe._python_json", return_value={"ok": True}) as run:
-            for operation in (
-                probe._pydantic,
-                probe._fastapi,
-                probe._psycopg,
-                probe._opentelemetry,
-                probe._jsonschema,
-            ):
-                self.assertEqual(operation(), {"ok": True})
-            self.assertEqual(run.call_count, 5)
-
-    def test_tool_and_typechecker_observations(self) -> None:
-        with patch("tools.compatibility.probe._run", return_value=completed()):
-            self.assertEqual(probe._ruff(), {"exit_code": 0})
-        with (
-            patch("tools.compatibility.probe._run", return_value=completed(1, stderr="bad")),
-            self.assertRaisesRegex(RuntimeError, "Ruff failed"),
-        ):
-            probe._ruff()
-
-        valid = completed()
-        invalid = completed(1, stdout="Unexpected keyword argument")
-        with patch("tools.compatibility.probe._run", side_effect=[valid, invalid]):
-            self.assertTrue(probe._mypy()["extra_field_rejected"])
-        with (
-            patch("tools.compatibility.probe._run", side_effect=[completed(1), invalid]),
-            self.assertRaisesRegex(RuntimeError, "valid Pydantic"),
-        ):
-            probe._mypy()
-        with (
-            patch("tools.compatibility.probe._run", side_effect=[valid, completed()]),
-            self.assertRaisesRegex(RuntimeError, "did not reject"),
-        ):
-            probe._mypy()
-
-    def test_wheel_observation_success_and_failures(self) -> None:
-        def successful(command: list[str]) -> subprocess.CompletedProcess[str]:
-            if "build" in command:
-                root = Path(command[-1])
-                (root / "dist").mkdir()
-                (root / "dist" / "ctower.whl").write_bytes(b"wheel")
-            stdout = "ctower-wheel-ok\n" if "ctower_compat_wheel" in command[-1] else ""
-            return subprocess.CompletedProcess(command, 0, stdout, "")
-
-        with patch("tools.compatibility.probe._run", side_effect=successful):
-            self.assertTrue(probe._wheel()["imported"])
-
-        with (
-            patch("tools.compatibility.probe._run", return_value=completed(1, stderr="build")),
-            self.assertRaisesRegex(RuntimeError, "wheel build"),
-        ):
-            probe._wheel()
-
-    def test_main_writes_pass_and_fail_reports(self) -> None:
-        operations = (
-            "_runtime",
-            "_dependencies",
-            "_pydantic",
-            "_fastapi",
-            "_psycopg",
-            "_opentelemetry",
-            "_ruff",
-            "_mypy",
-            "_jsonschema",
-            "_wheel",
+        self.assertEqual(report.status, "passed")
+        self.assertEqual(
+            [item.id for item in report.observations],
+            [
+                "runtime",
+                "dependency_resolution",
+                "pydantic",
+                "fastapi",
+                "psycopg",
+                "opentelemetry",
+                "ruff",
+                "mypy_pydantic_plugin",
+                "jsonschema",
+                "wheel",
+            ],
         )
-        with tempfile.TemporaryDirectory() as directory:
-            output = Path(directory) / "report.json"
-            arguments = [
-                "probe",
-                "--version",
-                "3.14.6",
-                "--requirements",
-                "[]",
-                "--output",
-                str(output),
-            ]
-            patches = [patch.object(probe, name, return_value={}) for name in operations]
-            entered = [item.start() for item in patches]
-            del entered
-            try:
-                with patch.object(sys, "argv", arguments):
-                    self.assertEqual(probe.main(), 0)
-            finally:
-                for item in reversed(patches):
-                    item.stop()
-            self.assertEqual(json.loads(output.read_text())["status"], "passed")
+        self.assertGreaterEqual(len(port.calls), 12)
+        for request in port.calls:
+            with self.subTest(argv=request.argv):
+                environment = request.environment_dict()
+                self.assertEqual(environment["HOME"], directory)
+                self.assertEqual(environment["TMPDIR"], directory)
+                self.assertTrue(set(environment).isdisjoint(_SECRETS))
+                self.assertEqual(
+                    json.loads(environment["CTOWER_TELEMETRY_CONTEXT"]),
+                    context.model_dump(mode="json", by_alias=True),
+                )
 
-    def test_real_process_boundary(self) -> None:
-        result = probe._spawn([sys.executable, "-c", "print('ok')"], {"PATH": "/usr/bin:/bin"})
-        self.assertEqual(result.stdout.strip(), "ok")
-        self.assertEqual(probe._command_details(result), {"exit_code": 0})
+    def test_subprocess_failure_timeout_and_malformed_evidence_fail_closed(self) -> None:
+        context = telemetry()
+        with tempfile.TemporaryDirectory() as directory:
+            environment = {"HOME": directory, "TMPDIR": directory}
+            port = ProbeFixturePort()
+            port.fail_source = "ruff"
+            with (
+                patch.dict(os.environ, environment, clear=False),
+                self.assertRaisesRegex(CompatibilityError, "probe subprocess failed"),
+            ):
+                collect_probe("3.12.13", context, execution_port=port)
+
+            port = ProbeFixturePort()
+            port.timeout_source = "ruff"
+            with (
+                patch.dict(os.environ, environment, clear=False),
+                self.assertRaisesRegex(CompatibilityError, "probe subprocess failed"),
+            ):
+                collect_probe("3.12.13", context, execution_port=port)
+
+            port = ProbeFixturePort()
+            port.output_overrides["FastAPI"] = "{}"
+            with (
+                patch.dict(os.environ, environment, clear=False),
+                self.assertRaisesRegex(CompatibilityError, "malformed evidence"),
+            ):
+                collect_probe("3.12.13", context, execution_port=port)
+
+    def test_mypy_and_wheel_behavior_are_proven_not_assumed(self) -> None:
+        context = telemetry()
+        with tempfile.TemporaryDirectory() as directory:
+            environment = {"HOME": directory, "TMPDIR": directory}
+            port = ProbeFixturePort()
+            port.mypy_invalid_returncode = 0
+            with (
+                patch.dict(os.environ, environment, clear=False),
+                self.assertRaisesRegex(CompatibilityError, "mypy plugin"),
+            ):
+                collect_probe("3.12.13", context, execution_port=port)
+
+            port = ProbeFixturePort()
+            port.import_marker = "wrong\n"
+            with (
+                patch.dict(os.environ, environment, clear=False),
+                self.assertRaisesRegex(CompatibilityError, "wrong marker"),
+            ):
+                collect_probe("3.12.13", context, execution_port=port)
+
+    def test_probe_requires_contained_home_and_tmpdir(self) -> None:
+        port = ProbeFixturePort()
+        environment = {
+            name: value for name, value in os.environ.items() if name not in {"HOME", "TMPDIR"}
+        }
+        with (
+            patch.dict(os.environ, environment, clear=True),
+            self.assertRaisesRegex(CompatibilityError, "contained HOME and TMPDIR"),
+        ):
+            collect_probe("3.12.13", telemetry(), execution_port=port)
+
+    def test_runtime_and_dependency_identity_are_port_owned(self) -> None:
+        port = ProbeFixturePort(version="3.13.14")
+        with (
+            tempfile.TemporaryDirectory() as directory,
+            patch.dict(os.environ, {"HOME": directory, "TMPDIR": directory}, clear=False),
+        ):
+            report = collect_probe("3.13.14", telemetry(), execution_port=port)
+        self.assertEqual(report.interpreter.version, "3.13.14")
+        dependency = report.observations[1]
+        self.assertEqual(dependency.id, "dependency_resolution")
+
+
+class ProbeCliFailureTests(unittest.TestCase):
+    def test_missing_telemetry_is_a_typed_failure(self) -> None:
+        arguments = (
+            "--version",
+            "3.12.13",
+            "--output",
+            "unused.json",
+        )
+        environment = {
+            name: value for name, value in os.environ.items() if name != "CTOWER_TELEMETRY_CONTEXT"
+        }
+        with (
+            patch.dict(os.environ, environment, clear=True),
+            self.assertRaisesRegex(CompatibilityError, "missing telemetry"),
+        ):
+            probe.main(arguments, execution_port=ProbeFixturePort())
+
+    def test_probe_cli_writes_typed_evidence(self) -> None:
+        context = telemetry()
+        with tempfile.TemporaryDirectory() as directory:
+            output = Path(directory) / "probe.json"
+            environment = {
+                "HOME": directory,
+                "TMPDIR": directory,
+                "CTOWER_TELEMETRY_CONTEXT": json.dumps(
+                    context.model_dump(mode="json", by_alias=True)
+                ),
+            }
+            arguments = ("--version", "3.12.13", "--output", str(output))
+            with patch.dict(os.environ, environment, clear=False):
+                self.assertEqual(
+                    probe.main(arguments, execution_port=ProbeFixturePort()),
+                    0,
+                )
+            raw = json.loads(output.read_text(encoding="utf-8"))
+            self.assertEqual(raw["telemetry"], context.model_dump(mode="json", by_alias=True))
+
+    def test_probe_cli_rejects_malformed_telemetry(self) -> None:
+        arguments = ("--version", "3.12.13", "--output", "unused.json")
+        with (
+            patch.dict(os.environ, {"CTOWER_TELEMETRY_CONTEXT": "{}"}, clear=False),
+            self.assertRaisesRegex(CompatibilityError, "telemetry is malformed"),
+        ):
+            probe.main(arguments, execution_port=ProbeFixturePort())

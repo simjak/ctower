@@ -1,48 +1,65 @@
 from __future__ import annotations
 
-import sys
+import json
 import tempfile
 import unittest
 from pathlib import Path
-from unittest.mock import patch
+from typing import TYPE_CHECKING
 
+if TYPE_CHECKING:
+    from compatibility.support import MATRIX_PATH, MatrixPort
+else:
+    try:
+        from .support import MATRIX_PATH, MatrixPort
+    except ImportError:
+        from support import MATRIX_PATH, MatrixPort
+
+from tools.compatibility import CompatibilityError
 from tools.compatibility import __main__ as cli
-from tools.compatibility.contract import CompatibilityMatrix
 
 
-class CliTests(unittest.TestCase):
-    def test_cli_defaults_to_full_matrix_and_writes_report(self) -> None:
-        matrix = CompatibilityMatrix("m", "1", (), (), (), (), "sha256:test")
-        report: dict[str, object] = {"runs": []}
+class CliBoundaryTests(unittest.TestCase):
+    def test_invalid_matrix_fails_before_execution(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            matrix = root / "matrix.json"
+            matrix.write_text("{}", encoding="utf-8")
+            arguments = ("--matrix", str(matrix), "--output", str(root / "out.json"))
+            with self.assertRaises(CompatibilityError):
+                cli.main(arguments, execution_port=MatrixPort())
+            self.assertFalse((root / "out.json").exists())
+
+    def test_partial_environment_is_not_publishable_l0_evidence(self) -> None:
         with tempfile.TemporaryDirectory() as directory:
             output = Path(directory) / "out.json"
-            arguments = ["compat", "--matrix", "input.json", "--output", str(output)]
-            with (
-                patch.object(sys, "argv", arguments),
-                patch.object(cli, "load_matrix", return_value=matrix),
-                patch.object(cli, "execute_matrix", return_value=report) as execute,
-                patch.object(cli, "write_report") as write,
-            ):
-                self.assertEqual(cli.main(), 0)
-        execute.assert_called_once_with(matrix, environments=("macos-host", "linux-container"))
-        write.assert_called_once_with(output, report)
+            arguments = (
+                "--matrix",
+                str(MATRIX_PATH),
+                "--output",
+                str(output),
+                "--environment",
+                "macos-host",
+            )
+            with self.assertRaisesRegex(CompatibilityError, "requires macos-host"):
+                cli.main(arguments, execution_port=MatrixPort())
+            self.assertFalse(output.exists())
 
-    def test_cli_accepts_explicit_environment(self) -> None:
-        matrix = CompatibilityMatrix("m", "1", (), (), (), (), "sha256:test")
-        arguments = [
-            "compat",
+    def test_unknown_environment_is_rejected_by_argument_parser(self) -> None:
+        arguments = (
             "--matrix",
-            "input.json",
+            str(MATRIX_PATH),
             "--output",
             "out.json",
             "--environment",
-            "macos-host",
-        ]
-        with (
-            patch.object(sys, "argv", arguments),
-            patch.object(cli, "load_matrix", return_value=matrix),
-            patch.object(cli, "execute_matrix", return_value={}) as execute,
-            patch.object(cli, "write_report"),
-        ):
-            self.assertEqual(cli.main(), 0)
-        execute.assert_called_once_with(matrix, environments=("macos-host",))
+            "unknown",
+        )
+        with self.assertRaises(SystemExit):
+            cli.main(arguments, execution_port=MatrixPort())
+
+    def test_full_cli_writes_schema_valid_six_leg_report(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            output = Path(directory) / "report.json"
+            arguments = ("--matrix", str(MATRIX_PATH), "--output", str(output))
+            self.assertEqual(cli.main(arguments, execution_port=MatrixPort()), 0)
+            raw = json.loads(output.read_text(encoding="utf-8"))
+            self.assertEqual(len(raw["runs"]), 6)

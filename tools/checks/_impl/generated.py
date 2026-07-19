@@ -14,6 +14,10 @@ from enum import StrEnum
 from pathlib import Path, PurePosixPath
 from typing import cast
 
+from tools.checks._impl.generated_inventory import (
+    GeneratedInventoryError,
+    enumerate_generated_outputs,
+)
 from tools.checks._impl.model import GeneratedPathPolicy
 from tools.checks.report import Finding, Severity
 
@@ -199,10 +203,11 @@ def _directory_identity(path: Path) -> tuple[int, int]:
 
 
 def verify_generated_manifest(root: Path, policy: GeneratedPathPolicy) -> tuple[Finding, ...]:
-    """Verify strict manifest shape, declared digests, and generated JSON notices."""
+    """Verify exact generated ownership, declared digests, and JSON notices."""
 
     try:
         manifest = load_generated_manifest(root, policy.manifest_path)
+        inventory_findings = _verify_output_inventory(root, policy, manifest)
     except GeneratedManifestError as error:
         return (_manifest_finding(policy.manifest_path, str(error)),)
     findings = [
@@ -215,6 +220,33 @@ def verify_generated_manifest(root: Path, policy: GeneratedPathPolicy) -> tuple[
         for entry in entries
         for finding in _verify_digest(root, policy, collection, entry)
     ]
+    return (*inventory_findings, *findings)
+
+
+def _verify_output_inventory(
+    root: Path, policy: GeneratedPathPolicy, manifest: GeneratedManifest
+) -> tuple[Finding, ...]:
+    declared = tuple(output.path for artifact in manifest.artifacts for output in artifact.outputs)
+    if len(declared) != len(set(declared)):
+        raise GeneratedManifestError("manifest output paths must be globally unique")
+    try:
+        actual = enumerate_generated_outputs(root, policy.output_root, policy.manifest_path)
+    except GeneratedInventoryError as error:
+        raise GeneratedManifestError(str(error)) from error
+    findings = [
+        _manifest_finding(
+            policy.manifest_path,
+            f"generated output is not declared by exactly one artifact: {path}",
+        )
+        for path in sorted(actual - set(declared))
+    ]
+    findings.extend(
+        _manifest_finding(
+            policy.manifest_path,
+            f"declared generated output is absent from the output root: {path}",
+        )
+        for path in sorted(set(declared) - actual)
+    )
     return tuple(findings)
 
 

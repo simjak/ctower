@@ -41,9 +41,32 @@ just check     warm, non-mutating checks
 just verify    full verification, generated drift, suites, history scan, clean-tree proof
 ```
 
-The accepted toolchain and lockfiles are still an L0 deliverable. Until they land, use the dependency-light
-commands in the [getting-started guide](../getting-started.md) and do not invent local pins. A pull request is
+The verification host is reproducible without selecting ctower's product runtime. Python verification
+dependencies are compiled with hashes in `requirements/verify.txt`; JavaScript dependencies use the frozen
+`pnpm-lock.yaml`; remote pre-commit hooks use immutable commits; and CI checksum-verifies Node, pnpm, `just`,
+Actionlint, and Gitleaks before use. Install the Python verification environment with
+`python -m pip install --require-hashes -r requirements/verify.txt` and JavaScript dependencies with
+`pnpm install --frozen-lockfile --ignore-scripts`. Do not add `.python-version` or `uv.lock`: D6 still leaves
+the product runtime unresolved, and these verification-host locks do not supersede that decision.
+
+`just check` includes Actionlint, strict documentation, generated traceability, a scan of exactly the intended
+Git tree, tests, types, formatting, and repository policy. `just verify` additionally executes every currently
+required suite, enforces branch coverage, scans complete reachable Git history, and proves the tree stayed
+clean. The local staged Gitleaks hook and both canonical gates invoke an already installed Gitleaks binary;
+they never compile Go tooling or fetch a scanner while deciding whether a candidate passes. A pull request is
 not ready merely because local hooks pass: required CI and independent review are authoritative.
+
+To update verification dependencies, edit only the direct inputs, regenerate rather than hand-edit the
+locks, and review the resolved diff. Use uv `0.11.3` and pnpm `10.20.0`:
+
+```bash
+uv pip compile requirements/verify.in --universal --python-version 3.13 \
+  --generate-hashes --output-file requirements/verify.txt
+pnpm install --lockfile-only --ignore-scripts
+```
+
+Any verification binary version change must update the upstream release checksum in
+`.github/workflows/verify.yml` in the same reviewed change.
 
 Architecture and quality policy mechanically checks ownership, legal dependencies, source size, function
 size, complexity, nesting, generated drift, exceptions, secrets, and verification scope. Review separately

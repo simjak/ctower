@@ -44,6 +44,16 @@ command = ["{python}", "-m", "pytest", "tests/acceptance/increment-1", "-q"]
 timeout_seconds = 900
 
 [[suite]]
+id = "browser-e2e"
+owner = "CT-I1-008"
+phase = "CT-I1-008"
+status = "deferred"
+path = "tests/e2e"
+patterns = ["*.spec.ts", "*.test.ts"]
+command = ["pnpm", "run", "test:e2e"]
+timeout_seconds = 900
+
+[[suite]]
 id = "increment-2-golden-path"
 owner = "CT-I2-010"
 phase = "CT-I2-010"

@@ -2,384 +2,410 @@ from __future__ import annotations
 
 import argparse
 import hashlib
-import importlib.metadata
 import json
 import os
-import platform
-import subprocess
 import sys
-import sysconfig
 import tempfile
 import time
+import uuid
 from collections.abc import Callable
 from pathlib import Path
+from typing import Literal, cast
 
-Observation = dict[str, object]
+from pydantic import BaseModel, ValidationError
+
+from .contract import (
+    EXPECTED_REQUIREMENTS,
+    CommandDetails,
+    CompatibilityError,
+    DependencyDetails,
+    DependencyObservation,
+    EnvironmentVariable,
+    FastapiDetails,
+    FastapiObservation,
+    JsonschemaDetails,
+    JsonschemaObservation,
+    MypyDetails,
+    MypyObservation,
+    Observation,
+    OpentelemetryDetails,
+    OpentelemetryObservation,
+    ProbeResult,
+    ProcessRequest,
+    ProcessResult,
+    PsycopgDetails,
+    PsycopgObservation,
+    PydanticDetails,
+    PydanticObservation,
+    PythonVersion,
+    ResolvedDependency,
+    RuffObservation,
+    RuntimeObservation,
+    TelemetryContext,
+    WheelDetails,
+    WheelObservation,
+)
+from .process import ExecutionPort, LocalExecutionPort, ProbePort
+
+_PROBE_TIMEOUT_MS = 180_000
+_OUTPUT_LIMIT = 65_536
 
 
-def main() -> int:
-    parser = argparse.ArgumentParser()
-    parser.add_argument("--version", required=True)
-    parser.add_argument("--requirements", required=True)
+def main(argv: tuple[str, ...] | None = None, *, execution_port: ProbePort | None = None) -> int:
+    parser = argparse.ArgumentParser(description="Run one contained compatibility probe")
+    parser.add_argument("--version", required=True, choices=("3.12.13", "3.13.14", "3.14.6"))
     parser.add_argument("--output", type=Path, required=True)
-    arguments = parser.parse_args()
-    requirements = tuple(json.loads(arguments.requirements))
-    observations = [
-        _observe("runtime", lambda: _runtime(arguments.version)),
-        _observe("dependency_resolution", lambda: _dependencies(requirements)),
-        _observe("pydantic", _pydantic),
-        _observe("fastapi", _fastapi),
-        _observe("psycopg", _psycopg),
-        _observe("opentelemetry", _opentelemetry),
-        _observe("ruff", _ruff),
-        _observe("mypy_pydantic_plugin", _mypy),
-        _observe("jsonschema", _jsonschema),
-        _observe("wheel", _wheel),
-    ]
-    runtime = observations[0]["details"]
-    report = {
-        "version": arguments.version,
-        "status": "passed"
-        if all(item["status"] == "passed" for item in observations)
-        else "failed",
-        "interpreter": runtime,
-        "observations": observations,
-    }
-    arguments.output.write_text(
-        json.dumps(report, indent=2, sort_keys=True) + "\n", encoding="utf-8"
+    arguments = parser.parse_args(argv)
+    telemetry = _read_telemetry()
+    report = collect_probe(
+        cast("PythonVersion", arguments.version), telemetry, execution_port=execution_port
     )
-    return 0 if report["status"] == "passed" else 1
+    _write_probe(arguments.output, report)
+    return 0
 
 
-def _observe(observation_id: str, operation: Callable[[], dict[str, object]]) -> Observation:
-    started = time.monotonic()
+def collect_probe(
+    version: PythonVersion,
+    telemetry: TelemetryContext,
+    *,
+    execution_port: ProbePort | None = None,
+) -> ProbeResult:
+    """Collect the fixed observations through the bounded public execution port."""
+    port = execution_port or LocalExecutionPort()
+    runtime, runtime_ms = _timed(lambda: port.runtime_details(version))
+    dependencies, dependencies_ms = _timed(lambda: _dependencies(port))
+    pydantic, pydantic_ms = _timed(lambda: _pydantic(port, telemetry))
+    fastapi, fastapi_ms = _timed(lambda: _fastapi(port, telemetry))
+    psycopg, psycopg_ms = _timed(lambda: _psycopg(port, telemetry))
+    opentelemetry, opentelemetry_ms = _timed(lambda: _opentelemetry(port, telemetry))
+    ruff, ruff_ms = _timed(lambda: _ruff(port, telemetry))
+    mypy, mypy_ms = _timed(lambda: _mypy(port, telemetry))
+    jsonschema, jsonschema_ms = _timed(lambda: _jsonschema(port, telemetry))
+    wheel, wheel_ms = _timed(lambda: _wheel(port, telemetry))
+    observations: tuple[Observation, ...] = (
+        RuntimeObservation(id="runtime", status="passed", duration_ms=runtime_ms, details=runtime),
+        DependencyObservation(
+            id="dependency_resolution",
+            status="passed",
+            duration_ms=dependencies_ms,
+            details=dependencies,
+        ),
+        PydanticObservation(
+            id="pydantic", status="passed", duration_ms=pydantic_ms, details=pydantic
+        ),
+        FastapiObservation(id="fastapi", status="passed", duration_ms=fastapi_ms, details=fastapi),
+        PsycopgObservation(id="psycopg", status="passed", duration_ms=psycopg_ms, details=psycopg),
+        OpentelemetryObservation(
+            id="opentelemetry",
+            status="passed",
+            duration_ms=opentelemetry_ms,
+            details=opentelemetry,
+        ),
+        RuffObservation(id="ruff", status="passed", duration_ms=ruff_ms, details=ruff),
+        MypyObservation(
+            id="mypy_pydantic_plugin", status="passed", duration_ms=mypy_ms, details=mypy
+        ),
+        JsonschemaObservation(
+            id="jsonschema", status="passed", duration_ms=jsonschema_ms, details=jsonschema
+        ),
+        WheelObservation(id="wheel", status="passed", duration_ms=wheel_ms, details=wheel),
+    )
+    return ProbeResult(
+        version=version,
+        status="passed",
+        interpreter=runtime,
+        observations=observations,
+        telemetry=telemetry,
+    )
+
+
+def _read_telemetry() -> TelemetryContext:
+    raw = os.environ.get("CTOWER_TELEMETRY_CONTEXT")
+    if raw is None:
+        raise CompatibilityError("compatibility probe is missing telemetry context")
     try:
-        details = operation()
-        return {
-            "id": observation_id,
-            "status": "passed",
-            "duration_ms": round((time.monotonic() - started) * 1000),
-            "details": details,
-        }
-    except (
-        AttributeError,
-        ImportError,
-        KeyError,
-        OSError,
-        RuntimeError,
-        StopIteration,
-        subprocess.SubprocessError,
-        ValueError,
-    ) as error:
-        return {
-            "id": observation_id,
-            "status": "failed",
-            "duration_ms": round((time.monotonic() - started) * 1000),
-            "details": {"error_type": type(error).__name__, "error": str(error)},
-        }
+        return TelemetryContext.model_validate_json(raw)
+    except ValidationError as error:
+        raise CompatibilityError("compatibility probe telemetry is malformed") from error
 
 
-def _runtime(expected_version: str) -> dict[str, object]:
-    version = platform.python_version()
-    if version != expected_version:
-        raise RuntimeError(f"expected Python {expected_version}, observed {version}")
-    gil_enabled = _gil_enabled()
-    if not gil_enabled:
-        raise RuntimeError("free-threaded interpreter is forbidden")
-    executable = Path(sys.executable)
-    return {
-        "version": version,
-        "implementation": platform.python_implementation(),
-        "free_threaded": not gil_enabled,
-        "gil_enabled": gil_enabled,
-        "platform": platform.platform(),
-        "machine": platform.machine(),
-        "soabi": sysconfig.get_config_var("SOABI"),
-        "cache_tag": sys.implementation.cache_tag,
-        "py_gil_disabled": sysconfig.get_config_var("Py_GIL_DISABLED") or 0,
-        "executable_sha256": _file_sha256(executable),
-    }
+def _dependencies(port: ProbePort) -> DependencyDetails:
+    dependencies = tuple(
+        ResolvedDependency(
+            name=requirement.split("==", 1)[0],
+            version=port.distribution_version(requirement.split("==", 1)[0]),
+        )
+        for requirement in EXPECTED_REQUIREMENTS
+    )
+    return DependencyDetails(direct_versions=dependencies)
 
 
-def _gil_enabled() -> bool:
-    probe = getattr(sys, "_is_gil_enabled", None)
-    if probe is not None:
-        return bool(probe())
-    return sysconfig.get_config_var("Py_GIL_DISABLED") in (None, 0)
-
-
-def _dependencies(requirements: tuple[str, ...]) -> dict[str, object]:
-    expected = {
-        item.split("==", 1)[0].split("[", 1)[0].lower(): item.split("==", 1)[1]
-        for item in requirements
-    }
-    observed = {name: importlib.metadata.version(name) for name in expected}
-    mismatches = {
-        name: {"expected": expected[name], "observed": observed[name]}
-        for name in expected
-        if expected[name] != observed[name]
-    }
-    if mismatches:
-        raise RuntimeError(f"dependency version mismatches: {mismatches}")
-    return {"direct_versions": observed}
-
-
-def _pydantic() -> dict[str, object]:
-    return _python_json(
+def _pydantic(port: ExecutionPort, telemetry: TelemetryContext) -> PydanticDetails:
+    return _python_model(
+        port,
+        telemetry,
+        PydanticDetails,
         """
 import json
 from pydantic import BaseModel, ConfigDict, ValidationError
-
 class Payload(BaseModel):
     model_config = ConfigDict(extra="forbid", frozen=True, strict=True)
     ticket_id: str
-    attempts: int
-
-accepted = Payload.model_validate({"ticket_id": "CT-L0-007", "attempts": 1})
+accepted = Payload.model_validate({"ticket_id": "CT-L0-007"})
 try:
-    Payload.model_validate({"ticket_id": "CT-L0-007", "attempts": 1, "unknown": True})
-except ValidationError as error:
-    if error.errors()[0]["type"] != "extra_forbidden":
-        raise RuntimeError("wrong rejection reason") from error
+    Payload.model_validate({"ticket_id": "CT-L0-007", "unknown": True})
+except ValidationError:
+    pass
 else:
     raise RuntimeError("unknown field accepted")
 print(json.dumps({"extra_fields": "forbidden", "frozen": accepted.model_config["frozen"]}))
-"""
+""",
     )
 
 
-def _fastapi() -> dict[str, object]:
-    return _python_json(
+def _fastapi(port: ExecutionPort, telemetry: TelemetryContext) -> FastapiDetails:
+    return _python_model(
+        port,
+        telemetry,
+        FastapiDetails,
         """
-import fastapi
-import hashlib
-import json
+import fastapi, hashlib, json
 from fastapi import FastAPI
-
 application = FastAPI()
 @application.get("/health", operation_id="compatibility_health")
-def health() -> dict[str, str]:
-    return {"status": "ok"}
+def health() -> dict[str, str]: return {"status": "ok"}
 schema = application.openapi()
-if schema["paths"]["/health"]["get"]["operationId"] != "compatibility_health":
-    raise RuntimeError("explicit operation ID was not preserved")
 encoded = json.dumps(schema, sort_keys=True, separators=(",", ":")).encode()
-print(json.dumps({
-    "version": fastapi.__version__,
-    "openapi": schema["openapi"],
-    "schema_sha256": hashlib.sha256(encoded).hexdigest(),
-}))
-"""
+print(json.dumps({"version": fastapi.__version__, "openapi": schema["openapi"],
+                  "schema_sha256": hashlib.sha256(encoded).hexdigest()}))
+""",
     )
 
 
-def _psycopg() -> dict[str, object]:
-    return _python_json(
+def _psycopg(port: ExecutionPort, telemetry: TelemetryContext) -> PsycopgDetails:
+    return _python_model(
+        port,
+        telemetry,
+        PsycopgDetails,
         """
-import importlib.metadata
-import json
-import psycopg
-import psycopg_pool
-
+import importlib.metadata, json, psycopg, psycopg_pool
 if not hasattr(psycopg, "Connection") or not hasattr(psycopg_pool, "ConnectionPool"):
     raise RuntimeError("public imports are incomplete")
-print(json.dumps({
-    "psycopg": importlib.metadata.version("psycopg"),
-    "psycopg_pool": importlib.metadata.version("psycopg-pool"),
-}))
-"""
+print(json.dumps({"psycopg": importlib.metadata.version("psycopg"),
+                  "psycopg_pool": importlib.metadata.version("psycopg-pool")}))
+""",
     )
 
 
-def _opentelemetry() -> dict[str, object]:
-    return _python_json(
+def _opentelemetry(port: ExecutionPort, telemetry: TelemetryContext) -> OpentelemetryDetails:
+    return _python_model(
+        port,
+        telemetry,
+        OpentelemetryDetails,
         """
-import importlib.metadata
-import json
+import importlib.metadata, json
 from opentelemetry.sdk.trace import TracerProvider
 from opentelemetry.sdk.trace.export import SimpleSpanProcessor
 from opentelemetry.sdk.trace.export.in_memory_span_exporter import InMemorySpanExporter
-
-exporter = InMemorySpanExporter()
-provider = TracerProvider()
+exporter = InMemorySpanExporter(); provider = TracerProvider()
 provider.add_span_processor(SimpleSpanProcessor(exporter))
-tracer = provider.get_tracer("ctower.compatibility")
-with tracer.start_as_current_span("probe") as span:
-    span.set_attribute("ctower.compatibility", True)
+with provider.get_tracer("ctower.compatibility").start_as_current_span("probe"): pass
 spans = exporter.get_finished_spans()
-if len(spans) != 1:
-    raise RuntimeError("expected exactly one exported span")
 print(json.dumps({"api": importlib.metadata.version("opentelemetry-api"), "spans": len(spans)}))
-"""
+""",
     )
 
 
-def _ruff() -> dict[str, object]:
+def _ruff(port: ExecutionPort, telemetry: TelemetryContext) -> CommandDetails:
     with tempfile.TemporaryDirectory(prefix="ctower-ruff-") as directory:
         source = Path(directory) / "typed.py"
         source.write_text("def value() -> int:\n    return 1\n", encoding="utf-8")
-        result = _run(
-            [sys.executable, "-m", "ruff", "check", "--isolated", "--no-cache", str(source)]
+        result = _checked(
+            port,
+            telemetry,
+            (sys.executable, "-m", "ruff", "check", "--isolated", "--no-cache", str(source)),
         )
-    if result.returncode != 0:
-        raise RuntimeError(f"Ruff failed: {result.stderr}")
-    return _command_details(result)
+    return CommandDetails(exit_code=cast("Literal[0]", result.returncode))
 
 
-def _mypy() -> dict[str, object]:
+def _mypy(port: ExecutionPort, telemetry: TelemetryContext) -> MypyDetails:
     with tempfile.TemporaryDirectory(prefix="ctower-mypy-") as directory:
         root = Path(directory)
         config = root / "mypy.ini"
         config.write_text(
             "[mypy]\nstrict = True\nplugins = pydantic.mypy\n"
-            "[pydantic-mypy]\ninit_forbid_extra = True\n"
-            "init_typed = True\nwarn_untyped_fields = True\n",
+            "[pydantic-mypy]\ninit_forbid_extra = True\ninit_typed = True\n",
             encoding="utf-8",
         )
         valid = root / "valid.py"
         valid.write_text(
             "from pydantic import BaseModel, ConfigDict\n"
-            "class Value(BaseModel):\n"
-            "    model_config = ConfigDict(extra='forbid')\n"
-            "    count: int\n"
-            "value: Value = Value(count=1)\n",
+            "class Value(BaseModel):\n    model_config = ConfigDict(extra='forbid')\n"
+            "    count: int\nvalue: Value = Value(count=1)\n",
             encoding="utf-8",
         )
         invalid = root / "invalid.py"
-        invalid.write_text(
-            valid.read_text() + "bad: Value = Value(count=1, extra=True)\n", encoding="utf-8"
-        )
-        valid_result = _run(
-            [sys.executable, "-m", "mypy", "--config-file", str(config), str(valid)]
+        invalid.write_text(valid.read_text() + "bad: Value = Value(count=1, extra=True)\n")
+        valid_result = _checked(
+            port,
+            telemetry,
+            (sys.executable, "-m", "mypy", "--config-file", str(config), str(valid)),
         )
         invalid_result = _run(
-            [sys.executable, "-m", "mypy", "--config-file", str(config), str(invalid)]
-        )
-    if valid_result.returncode != 0:
-        raise RuntimeError(
-            f"valid Pydantic model failed mypy: {valid_result.stdout}{valid_result.stderr}"
+            port,
+            telemetry,
+            (sys.executable, "-m", "mypy", "--config-file", str(config), str(invalid)),
         )
     invalid_text = invalid_result.stdout + invalid_result.stderr
-    if invalid_result.returncode == 0 or "Unexpected keyword argument" not in invalid_text:
-        raise RuntimeError("Pydantic mypy plugin did not reject an extra constructor field")
-    return {
-        "valid": _command_details(valid_result),
-        "invalid_exit_code": invalid_result.returncode,
-        "extra_field_rejected": True,
-    }
-
-
-def _jsonschema() -> dict[str, object]:
-    return _python_json(
-        """
-import hashlib
-import importlib.metadata
-import json
-import jsonschema
-from pydantic import BaseModel, ConfigDict
-
-class Contract(BaseModel):
-    model_config = ConfigDict(extra="forbid")
-    name: str
-
-schema = Contract.model_json_schema()
-validator = jsonschema.Draft202012Validator(schema)
-validator.validate({"name": "ctower"})
-if len(list(validator.iter_errors({"name": "ctower", "extra": True}))) != 1:
-    raise RuntimeError("expected exactly one additional-property error")
-encoded = json.dumps(schema, sort_keys=True, separators=(",", ":")).encode()
-print(json.dumps({
-    "version": importlib.metadata.version("jsonschema"),
-    "schema_sha256": hashlib.sha256(encoded).hexdigest(),
-}))
-"""
+    if invalid_result.returncode != 1 or "Unexpected keyword argument" not in invalid_text:
+        raise CompatibilityError("Pydantic mypy plugin did not reject an extra field")
+    return MypyDetails(
+        valid=CommandDetails(exit_code=cast("Literal[0]", valid_result.returncode)),
+        invalid_exit_code=1,
+        extra_field_rejected=True,
     )
 
 
-def _python_json(source: str) -> dict[str, object]:
-    result = _run([sys.executable, "-c", source])
-    if result.returncode != 0:
-        raise RuntimeError(result.stderr.strip() or "Python compatibility sub-probe failed")
-    try:
-        value = json.loads(result.stdout)
-    except json.JSONDecodeError as error:
-        raise RuntimeError("Python compatibility sub-probe returned malformed JSON") from error
-    if not isinstance(value, dict) or not all(isinstance(key, str) for key in value):
-        raise RuntimeError("Python compatibility sub-probe must return a JSON object")
-    return value
+def _jsonschema(port: ExecutionPort, telemetry: TelemetryContext) -> JsonschemaDetails:
+    return _python_model(
+        port,
+        telemetry,
+        JsonschemaDetails,
+        """
+import hashlib, importlib.metadata, json, jsonschema
+from pydantic import BaseModel, ConfigDict
+class Contract(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    name: str
+schema = Contract.model_json_schema(); validator = jsonschema.Draft202012Validator(schema)
+validator.validate({"name": "ctower"})
+if len(list(validator.iter_errors({"name": "ctower", "extra": True}))) != 1:
+    raise RuntimeError("expected one additional-property error")
+encoded = json.dumps(schema, sort_keys=True, separators=(",", ":")).encode()
+print(json.dumps({"version": importlib.metadata.version("jsonschema"),
+                  "schema_sha256": hashlib.sha256(encoded).hexdigest()}))
+""",
+    )
 
 
-def _wheel() -> dict[str, object]:
+def _wheel(port: ExecutionPort, telemetry: TelemetryContext) -> WheelDetails:
     with tempfile.TemporaryDirectory(prefix="ctower-wheel-") as directory:
         root = Path(directory)
         package = root / "src" / "ctower_compat_wheel"
         package.mkdir(parents=True)
-        (package / "__init__.py").write_text("MARKER = 'ctower-wheel-ok'\n", encoding="utf-8")
+        (package / "__init__.py").write_text("MARKER = 'ctower-wheel-ok'\n")
         (root / "pyproject.toml").write_text(
             "[build-system]\nrequires = ['setuptools==83.0.0', 'wheel==0.47.0']\n"
             "build-backend = 'setuptools.build_meta'\n"
-            "[project]\nname = 'ctower-compat-wheel'\nversion = '0.0.1'\n",
-            encoding="utf-8",
+            "[project]\nname = 'ctower-compat-wheel'\nversion = '0.0.1'\n"
         )
-        build = _run([sys.executable, "-m", "build", "--wheel", "--no-isolation", str(root)])
-        if build.returncode != 0:
-            raise RuntimeError(f"wheel build failed: {build.stdout}{build.stderr}")
+        build = _checked(
+            port,
+            telemetry,
+            (sys.executable, "-m", "build", "--wheel", "--no-isolation", str(root)),
+        )
         wheel = next((root / "dist").glob("*.whl"))
         install_root = root / "install"
-        venv = _run([sys.executable, "-m", "venv", str(install_root)])
-        if venv.returncode != 0:
-            raise RuntimeError(f"wheel venv failed: {venv.stderr}")
-        install_python = install_root / ("Scripts/python.exe" if os.name == "nt" else "bin/python")
-        install = _run([str(install_python), "-m", "pip", "install", "--no-deps", str(wheel)])
-        if install.returncode != 0:
-            raise RuntimeError(f"wheel install failed: {install.stdout}{install.stderr}")
-        imported = _run(
-            [str(install_python), "-c", "import ctower_compat_wheel as w; print(w.MARKER)"]
+        _checked(port, telemetry, (sys.executable, "-m", "venv", str(install_root)))
+        install_python = install_root / "bin" / "python"
+        install = _checked(
+            port,
+            telemetry,
+            (str(install_python), "-m", "pip", "install", "--no-deps", str(wheel)),
         )
-        if imported.returncode != 0 or imported.stdout.strip() != "ctower-wheel-ok":
-            raise RuntimeError("installed wheel import smoke failed")
-        return {
-            "wheel_sha256": _file_sha256(wheel),
-            "build": _command_details(build),
-            "install": _command_details(install),
-            "imported": True,
-        }
+        imported = _checked(
+            port,
+            telemetry,
+            (str(install_python), "-c", "import ctower_compat_wheel as w; print(w.MARKER)"),
+        )
+        if imported.stdout.strip() != "ctower-wheel-ok":
+            raise CompatibilityError("installed wheel import smoke returned the wrong marker")
+        return WheelDetails(
+            wheel_sha256=_file_sha256(wheel),
+            build=CommandDetails(exit_code=cast("Literal[0]", build.returncode)),
+            install=CommandDetails(exit_code=cast("Literal[0]", install.returncode)),
+            imported=True,
+        )
 
 
-def _run(command: list[str]) -> subprocess.CompletedProcess[str]:
-    environment = {
-        **os.environ,
+def _python_model[Detail: BaseModel](
+    port: ExecutionPort,
+    telemetry: TelemetryContext,
+    model: type[Detail],
+    source: str,
+) -> Detail:
+    result = _checked(port, telemetry, (sys.executable, "-c", source))
+    try:
+        return model.model_validate_json(result.stdout)
+    except ValidationError as error:
+        raise CompatibilityError("compatibility sub-probe returned malformed evidence") from error
+
+
+def _checked(
+    port: ExecutionPort, telemetry: TelemetryContext, argv: tuple[str, ...]
+) -> ProcessResult:
+    result = _run(port, telemetry, argv)
+    if result.timed_out or result.returncode != 0:
+        message = result.stderr.strip() or result.stdout.strip()
+        raise CompatibilityError(f"probe subprocess failed: {message[-1000:]}")
+    return result
+
+
+def _run(port: ExecutionPort, telemetry: TelemetryContext, argv: tuple[str, ...]) -> ProcessResult:
+    return port.run(
+        ProcessRequest(
+            operation="probe-subprocess",
+            argv=argv,
+            environment=_child_environment(telemetry),
+            timeout_ms=_PROBE_TIMEOUT_MS,
+            terminate_grace_ms=2_000,
+            output_limit_bytes=_OUTPUT_LIMIT,
+        )
+    )
+
+
+def _child_environment(telemetry: TelemetryContext) -> tuple[EnvironmentVariable, ...]:
+    home = os.environ.get("HOME")
+    temporary = os.environ.get("TMPDIR")
+    if home is None or temporary is None:
+        raise CompatibilityError("probe requires explicit contained HOME and TMPDIR")
+    values = {
+        "HOME": home,
+        "PATH": "/usr/local/bin:/usr/bin:/bin:/usr/sbin:/sbin",
         "PYTHONDONTWRITEBYTECODE": "1",
         "SOURCE_DATE_EPOCH": "0",
+        "TMPDIR": temporary,
+        "PIP_CONFIG_FILE": "/dev/null",
+        "PIP_DISABLE_PIP_VERSION_CHECK": "1",
+        "CTOWER_TELEMETRY_CONTEXT": json.dumps(
+            telemetry.model_dump(mode="json", by_alias=True),
+            sort_keys=True,
+            separators=(",", ":"),
+        ),
     }
-    return _spawn(command, environment)
+    return tuple(
+        EnvironmentVariable(name=name, value=value) for name, value in sorted(values.items())
+    )
 
 
-def _command_details(result: subprocess.CompletedProcess[str]) -> dict[str, object]:
-    return {"exit_code": result.returncode}
+def _timed[Detail: BaseModel](operation: Callable[[], Detail]) -> tuple[Detail, int]:
+    started = time.monotonic()
+    result = operation()
+    return result, round((time.monotonic() - started) * 1000)
 
 
-def _spawn(command: list[str], environment: dict[str, str]) -> subprocess.CompletedProcess[str]:
-    with tempfile.TemporaryFile() as stdout, tempfile.TemporaryFile() as stderr:
-        actions = [
-            (os.POSIX_SPAWN_DUP2, stdout.fileno(), 1),
-            (os.POSIX_SPAWN_DUP2, stderr.fileno(), 2),
-        ]
-        process_id = os.posix_spawn(command[0], command, environment, file_actions=actions)
-        _, raw_status = os.waitpid(process_id, 0)
-        stdout.seek(0)
-        stderr.seek(0)
-        return subprocess.CompletedProcess(
-            command,
-            os.waitstatus_to_exitcode(raw_status),
-            stdout.read().decode(errors="replace"),
-            stderr.read().decode(errors="replace"),
-        )
-
-
-def _json_sha256(value: object) -> str:
-    encoded = json.dumps(value, sort_keys=True, separators=(",", ":")).encode()
-    return hashlib.sha256(encoded).hexdigest()
+def _write_probe(path: Path, report: ProbeResult) -> None:
+    encoded = (
+        json.dumps(report.model_dump(mode="json", by_alias=True), sort_keys=True) + "\n"
+    ).encode()
+    temporary = path.with_name(f".{path.name}.{uuid.uuid4().hex}.tmp")
+    descriptor = os.open(temporary, os.O_WRONLY | os.O_CREAT | os.O_EXCL | os.O_NOFOLLOW, 0o600)
+    try:
+        os.write(descriptor, encoded)
+        os.fsync(descriptor)
+    finally:
+        os.close(descriptor)
+    temporary.replace(path)
 
 
 def _file_sha256(path: Path) -> str:

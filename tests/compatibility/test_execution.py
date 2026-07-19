@@ -1,183 +1,275 @@
 from __future__ import annotations
 
-import json
-import subprocess
+import os
+import sys
 import tempfile
 import unittest
 from pathlib import Path
-from typing import cast
+from typing import TYPE_CHECKING, Any, cast
 from unittest.mock import patch
 
-from tools.compatibility import CompatibilityError, execute_matrix, execution, load_matrix
-from tools.compatibility.contract import CompatibilityMatrix
+from pydantic import ValidationError
 
-ROOT = Path(__file__).resolve().parents[2]
-MATRIX_PATH = ROOT / "contracts" / "compatibility" / "ct-l0-007-matrix.json"
+if TYPE_CHECKING:
+    from compatibility.support import CONTAINER_ID, MATRIX_PATH, MatrixPort, env_names
+else:
+    try:
+        from .support import CONTAINER_ID, MATRIX_PATH, MatrixPort, env_names
+    except ImportError:
+        from support import CONTAINER_ID, MATRIX_PATH, MatrixPort, env_names
 
+from tools.compatibility import (
+    CompatibilityError,
+    LocalExecutionPort,
+    execute_matrix,
+    load_matrix,
+)
+from tools.compatibility.contract import EnvironmentVariable, ProcessRequest
 
-def minimal_probe(version: str, matrix: CompatibilityMatrix) -> dict[str, object]:
-    observations = [
-        {
-            "id": observation,
-            "status": "passed",
-            "duration_ms": 1,
-            "details": {"gil_enabled": True} if observation == "runtime" else {},
-        }
-        for observation in matrix.required_observations
-    ]
-    return {
-        "version": version,
-        "status": "passed",
-        "interpreter": {"version": version, "free_threaded": False},
-        "observations": observations,
-    }
-
-
-class FakeBoundary:
-    def __init__(self, *, image_json: str | None = None, probe_json: str | None = None) -> None:
-        self.matrix = load_matrix(MATRIX_PATH)
-        self.mount: Path | None = None
-        self.image_json = image_json
-        self.probe_json = probe_json
-        self.commands: list[list[str]] = []
-
-    def __call__(
-        self, command: list[str], environment: dict[str, str]
-    ) -> subprocess.CompletedProcess[str]:
-        del environment
-        self.commands.append(command)
-        self._remember_mount(command)
-        return self._response(command)
-
-    def _remember_mount(self, command: list[str]) -> None:
-        if "create" in command and "--mount" in command:
-            mount = command[command.index("--mount") + 1]
-            source = mount.split("source=", 1)[1].split(",target=", 1)[0]
-            self.mount = Path(source)
-
-    def _response(self, command: list[str]) -> subprocess.CompletedProcess[str]:
-        if "image" in command and "inspect" in command:
-            output = self.image_json or json.dumps(
-                [{"Id": "sha256:image", "Architecture": "arm64", "Os": "linux"}]
-            )
-            return subprocess.CompletedProcess(command, 0, output, "")
-        if "freeze" in command:
-            return subprocess.CompletedProcess(command, 0, "demo==1\nalpha==2\n", "")
-        self._write_probe(command)
-        return subprocess.CompletedProcess(command, 0, "", "")
-
-    def _write_probe(self, command: list[str]) -> None:
-        if "--output" not in command:
-            return
-        version = command[command.index("--version") + 1]
-        output_text = self.probe_json or json.dumps(minimal_probe(version, self.matrix))
-        output = command[command.index("--output") + 1]
-        if output == "/fixture/result.json":
-            if self.mount is None:
-                raise AssertionError("container probe ran before its fixture mount was recorded")
-            destination = self.mount / "result.json"
-        else:
-            destination = Path(output)
-        destination.write_text(output_text, encoding="utf-8")
+_SYNTHETIC_SECRETS = {
+    "AWS_SECRET_ACCESS_KEY": "synthetic-aws-secret",
+    "GH_TOKEN": "synthetic-github-token",
+    "SSH_AUTH_SOCK": "/synthetic/ssh-agent.sock",
+    "PIP_INDEX_URL": "https://secret@example.invalid/simple",
+    "UV_INDEX_URL": "https://secret@example.invalid/simple",
+}
 
 
-class ExecutionTests(unittest.TestCase):
-    def test_public_execution_runs_host_and_container_through_boundary(self) -> None:
-        matrix = load_matrix(MATRIX_PATH)
-        boundary = FakeBoundary()
-        with (
-            patch(
-                "tools.compatibility.execution.shutil.which",
-                side_effect=lambda name: f"/bin/{name}",
-            ),
-            patch("tools.compatibility.execution._spawn", side_effect=boundary),
-        ):
-            report = execute_matrix(matrix)
+class MatrixExecutionTests(unittest.TestCase):
+    def test_complete_matrix_is_typed_contained_and_telemetry_continuous(self) -> None:
+        port = MatrixPort()
+        with patch.dict(os.environ, _SYNTHETIC_SECRETS, clear=False):
+            report = execute_matrix(load_matrix(MATRIX_PATH), execution_port=port)
 
-        runs = cast(list[object], report["runs"])
-        self.assertEqual(len(runs), 6)
-        encoded = json.dumps(report)
-        self.assertNotIn(tempfile.gettempdir(), encoded)
-        self.assertIn("$BOOTSTRAP_UV", encoded)
-        self.assertIn("$CTOWER_CONTAINER", encoded)
-        self.assertTrue(any(command[1:3] == ["rm", "-f"] for command in boundary.commands))
-
-    def test_host_only_does_not_require_docker(self) -> None:
-        matrix = load_matrix(MATRIX_PATH)
-        boundary = FakeBoundary()
-        with (
-            patch(
-                "tools.compatibility.execution.shutil.which",
-                side_effect=lambda name: "/bin/uv" if name == "uv" else None,
-            ),
-            patch("tools.compatibility.execution._spawn", side_effect=boundary),
-        ):
-            report = execute_matrix(matrix, environments=("macos-host",))
-        runs = cast(list[object], report["runs"])
-        self.assertEqual(len(runs), 3)
-
-    def test_missing_required_tool_fails_closed(self) -> None:
-        matrix = load_matrix(MATRIX_PATH)
-        with (
-            patch("tools.compatibility.execution.shutil.which", return_value=None),
-            self.assertRaisesRegex(CompatibilityError, "uv is required"),
-        ):
-            execute_matrix(matrix, environments=("macos-host",))
-
-    def test_command_failure_and_malformed_outputs_fail_closed(self) -> None:
-        matrix = load_matrix(MATRIX_PATH)
-
-        def failed(
-            command: list[str], environment: dict[str, str]
-        ) -> subprocess.CompletedProcess[str]:
-            del environment
-            return subprocess.CompletedProcess(command, 7, "", "failure")
-
-        with (
-            patch("tools.compatibility.execution.shutil.which", return_value="/bin/tool"),
-            patch("tools.compatibility.execution._spawn", side_effect=failed),
-            self.assertRaisesRegex(CompatibilityError, "command failed"),
-        ):
-            execute_matrix(matrix, environments=("macos-host",))
-
-        for boundary, message in (
-            (FakeBoundary(image_json="{}"), "image inspection"),
-            (FakeBoundary(probe_json="[]"), "probe report must be an object"),
-            (FakeBoundary(probe_json="{"), "malformed probe report"),
-        ):
-            with (
-                patch("tools.compatibility.execution.shutil.which", return_value="/bin/tool"),
-                patch("tools.compatibility.execution._spawn", side_effect=boundary),
-                self.assertRaisesRegex(CompatibilityError, message),
-            ):
-                execute_matrix(matrix, environments=("linux-container",))
-
-    def test_resolution_and_interpreter_shape_fail_closed(self) -> None:
-        matrix = load_matrix(MATRIX_PATH)
-        for probe, message in (
-            ({"version": "3.12.13", "interpreter": {}, "observations": []}, "dependency"),
-            (
-                {
-                    "version": "3.12.13",
-                    "interpreter": [],
-                    "observations": [
-                        {"id": "dependency_resolution", "status": "passed", "details": {}}
-                    ],
-                },
-                "interpreter",
-            ),
-        ):
-            boundary = FakeBoundary(probe_json=json.dumps(probe))
-            with (
-                patch("tools.compatibility.execution.shutil.which", return_value="/bin/tool"),
-                patch("tools.compatibility.execution._spawn", side_effect=boundary),
-                self.assertRaisesRegex(CompatibilityError, message),
-            ):
-                execute_matrix(matrix, environments=("linux-container",))
-
-    def test_real_spawn_and_replacement_helpers(self) -> None:
-        result = execution._spawn(["/usr/bin/env", "printf", "ok"], {"PATH": "/usr/bin:/bin"})
-        self.assertEqual(result.stdout, "ok")
         self.assertEqual(
-            execution._replace("/long/root/file", [("/long/root", "$ROOT")]), "$ROOT/file"
+            [(run.version, run.environment) for run in report.runs],
+            [
+                ("3.12.13", "macos-host"),
+                ("3.12.13", "linux-container"),
+                ("3.13.14", "macos-host"),
+                ("3.13.14", "linux-container"),
+                ("3.14.6", "macos-host"),
+                ("3.14.6", "linux-container"),
+            ],
         )
+        self.assertTrue(all(run.telemetry == report.telemetry for run in report.runs))
+        untrusted = {
+            "python-install",
+            "venv-create",
+            "package-install",
+            "compatibility-probe",
+            "docker-package-install",
+            "docker-probe",
+        }
+        for request in port.calls:
+            with self.subTest(operation=request.operation):
+                self.assertTrue(env_names(request.environment).isdisjoint(_SYNTHETIC_SECRETS))
+                self.assertFalse(
+                    any(value in " ".join(request.argv) for value in _SYNTHETIC_SECRETS.values())
+                )
+                if request.operation in untrusted and request.operation.startswith("docker-"):
+                    self.assertIn("-i", request.argv)
+                if request.operation in untrusted and not request.operation.startswith("docker-"):
+                    self.assertNotIn(os.environ["HOME"], request.environment_dict().get("HOME", ""))
+        cleanup = [request for request in port.calls if request.operation == "docker-cleanup"]
+        self.assertEqual(len(cleanup), 3)
+        self.assertTrue(all(request.argv[-1] == CONTAINER_ID for request in cleanup))
+        installs = [request for request in port.calls if request.operation == "python-install"]
+        self.assertTrue(all("macos-aarch64-none" in request.argv[-1] for request in installs))
+        for run in report.runs[::2]:
+            flattened_commands = " ".join(
+                argument for command in run.resolution.commands for argument in command
+            )
+            self.assertIn("$BOOTSTRAP_UV", flattened_commands)
+            self.assertIn("$PINNED_UV", flattened_commands)
+            self.assertNotIn("/usr/local/bin/uv", flattened_commands)
+
+    def test_host_identity_fails_before_any_process(self) -> None:
+        port = MatrixPort()
+        port.host = port.host.model_copy(update={"system": "Linux"})
+        with self.assertRaisesRegex(CompatibilityError, "Darwin"):
+            execute_matrix(load_matrix(MATRIX_PATH), execution_port=port)
+        self.assertEqual(port.calls, [])
+
+        port = MatrixPort()
+        port.host = port.host.model_copy(update={"machine": "ppc64"})
+        with self.assertRaisesRegex(CompatibilityError, "unsupported macOS"):
+            execute_matrix(load_matrix(MATRIX_PATH), execution_port=port)
+        self.assertEqual(port.calls, [])
+
+    def test_missing_absolute_tools_fail_before_processes(self) -> None:
+        class MissingToolPort(MatrixPort):
+            def resolve_tool(self, name: str) -> str | None:
+                del name
+                return None
+
+        port = MissingToolPort()
+        with self.assertRaisesRegex(CompatibilityError, "uv is required"):
+            execute_matrix(load_matrix(MATRIX_PATH), execution_port=port)
+        self.assertEqual(port.calls, [])
+
+    def test_failed_create_never_deletes_unproven_name(self) -> None:
+        port = MatrixPort()
+        port.fail_operation = "docker-create"
+        with self.assertRaisesRegex(CompatibilityError, "docker-create failed"):
+            execute_matrix(load_matrix(MATRIX_PATH), execution_port=port)
+        self.assertNotIn("docker-cleanup", [request.operation for request in port.calls])
+
+    def test_cleanup_failure_and_timeout_are_terminal_with_exact_identity(self) -> None:
+        for mode in ("failed", "timeout"):
+            port = MatrixPort()
+            port.cleanup_mode = mode
+            with (
+                self.subTest(mode=mode),
+                self.assertRaisesRegex(CompatibilityError, f"cleanup failed for {CONTAINER_ID}"),
+            ):
+                execute_matrix(load_matrix(MATRIX_PATH), execution_port=port)
+
+    def test_created_container_must_bind_to_pinned_image_and_architecture(self) -> None:
+        port = MatrixPort()
+        port.container_image_id = "sha256:" + ("d" * 64)
+        with self.assertRaisesRegex(CompatibilityError, "created container image"):
+            execute_matrix(load_matrix(MATRIX_PATH), execution_port=port)
+
+        port = MatrixPort()
+        port.image_architecture = "amd64"
+        with self.assertRaises((CompatibilityError, ValidationError)):
+            execute_matrix(load_matrix(MATRIX_PATH), execution_port=port)
+
+    def test_malformed_probe_and_command_failure_fail_closed(self) -> None:
+        port = MatrixPort()
+        port.malformed_probe = '{"version":"3.12.13","extra":true}'
+        with self.assertRaisesRegex(CompatibilityError, "probe result"):
+            execute_matrix(load_matrix(MATRIX_PATH), execution_port=port)
+
+        port = MatrixPort()
+        port.fail_operation = "package-install"
+        with self.assertRaisesRegex(CompatibilityError, "package-install failed"):
+            execute_matrix(load_matrix(MATRIX_PATH), execution_port=port)
+
+    def test_malformed_or_unowned_container_evidence_fails_closed(self) -> None:
+        port = MatrixPort()
+        port.create_stdout = "not-a-container-id\n"
+        with self.assertRaisesRegex(CompatibilityError, "malformed container identity"):
+            execute_matrix(load_matrix(MATRIX_PATH), execution_port=port)
+        self.assertNotIn("docker-cleanup", [request.operation for request in port.calls])
+
+        port = MatrixPort()
+        port.image_inspection_override = "{}"
+        with self.assertRaisesRegex(CompatibilityError, "image inspection was malformed"):
+            execute_matrix(load_matrix(MATRIX_PATH), execution_port=port)
+        self.assertIn("docker-cleanup", [request.operation for request in port.calls])
+
+        port = MatrixPort()
+        port.container_inspection_override = "{}"
+        with self.assertRaisesRegex(CompatibilityError, "container inspection was malformed"):
+            execute_matrix(load_matrix(MATRIX_PATH), execution_port=port)
+
+        port = MatrixPort()
+        port.owner_label_override = "d" * 32
+        with self.assertRaisesRegex(CompatibilityError, "ownership identity"):
+            execute_matrix(load_matrix(MATRIX_PATH), execution_port=port)
+
+    def test_probe_semantic_identity_failures_cross_schema_before_model(self) -> None:
+        def wrong_interpreter(payload: dict[str, object]) -> None:
+            cast(dict[str, Any], payload["interpreter"])["version"] = "3.13.14"
+
+        def wrong_dependencies(payload: dict[str, object]) -> None:
+            observations = cast(list[dict[str, Any]], payload["observations"])
+            observations[1]["details"]["direct_versions"][0]["version"] = "9.9.9"
+
+        def wrong_runtime_observation(payload: dict[str, object]) -> None:
+            observations = cast(list[dict[str, Any]], payload["observations"])
+            details = dict(cast(dict[str, Any], observations[0]["details"]))
+            details["executable_sha256"] = "f" * 64
+            observations[0]["details"] = details
+
+        for mutation in (wrong_interpreter, wrong_dependencies, wrong_runtime_observation):
+            port = MatrixPort()
+            port.probe_mutator = mutation
+            with self.subTest(mutation=mutation.__name__), self.assertRaises(CompatibilityError):
+                execute_matrix(load_matrix(MATRIX_PATH), execution_port=port)
+
+
+class LocalProcessBoundaryTests(unittest.TestCase):
+    def test_timeout_terminates_and_sigterm_resistance_escalates(self) -> None:
+        port = LocalExecutionPort()
+        terminated = port.run(_request("import time; time.sleep(10)", timeout_ms=50))
+        self.assertTrue(terminated.timed_out)
+        self.assertIn(terminated.termination, {"terminated", "killed"})
+
+        resistant = port.run(
+            _request(
+                "import signal,time; signal.signal(signal.SIGTERM, signal.SIG_IGN); time.sleep(10)",
+                timeout_ms=200,
+            )
+        )
+        self.assertTrue(resistant.timed_out)
+        self.assertEqual(resistant.termination, "killed")
+
+    def test_output_is_bounded_and_start_failure_is_typed(self) -> None:
+        port = LocalExecutionPort()
+        output = port.run(_request("print('x' * 5000)", output_limit_bytes=1024))
+        self.assertTrue(output.stdout_truncated)
+        self.assertLessEqual(len(output.stdout.encode()), 1024)
+
+        request = ProcessRequest(
+            operation="probe-subprocess",
+            argv=("/does/not/exist",),
+            environment=(),
+            timeout_ms=50,
+            terminate_grace_ms=20,
+            output_limit_bytes=1024,
+        )
+        with self.assertRaisesRegex(CompatibilityError, "unable to start"):
+            port.run(request)
+
+    def test_process_request_rejects_relative_executables_and_duplicate_environment(self) -> None:
+        with self.assertRaises(ValidationError):
+            ProcessRequest(
+                operation="probe-subprocess",
+                argv=("python",),
+                environment=(),
+                timeout_ms=50,
+                terminate_grace_ms=20,
+                output_limit_bytes=1024,
+            )
+        repeated = (
+            EnvironmentVariable(name="PATH", value="/bin"),
+            EnvironmentVariable(name="PATH", value="/usr/bin"),
+        )
+        with self.assertRaises(ValidationError):
+            ProcessRequest(
+                operation="probe-subprocess",
+                argv=(sys.executable,),
+                environment=repeated,
+                timeout_ms=50,
+                terminate_grace_ms=20,
+                output_limit_bytes=1024,
+            )
+
+    def test_local_metadata_adapter_is_explicit(self) -> None:
+        port = LocalExecutionPort()
+        self.assertIsNotNone(port.resolve_tool("python"))
+        self.assertEqual(port.distribution_version("pydantic"), "2.13.4")
+        with self.assertRaisesRegex(CompatibilityError, "expected Python"):
+            port.runtime_details("3.12.13")
+        self.assertIn(port.host_identity().system, {"Darwin", "Linux"})
+
+
+def _request(
+    source: str, *, timeout_ms: int = 1_000, output_limit_bytes: int = 2048
+) -> ProcessRequest:
+    with tempfile.TemporaryDirectory() as directory:
+        home = str(Path(directory))
+    return ProcessRequest(
+        operation="probe-subprocess",
+        argv=(sys.executable, "-c", source),
+        environment=(
+            EnvironmentVariable(name="HOME", value=home),
+            EnvironmentVariable(name="PATH", value="/usr/bin:/bin"),
+        ),
+        timeout_ms=timeout_ms,
+        terminate_grace_ms=50,
+        output_limit_bytes=output_limit_bytes,
+    )
