@@ -15,12 +15,6 @@ import psycopg
 from psycopg.rows import dict_row
 from psycopg.types.json import Jsonb
 
-from ctower_api._custody_sql import transfer_custody as _transfer_custody
-from ctower_api._setup_sql import apply_migrations, provision_bootstrap
-from ctower_api._ticket_sql import actor_for_credential as _actor_for_credential
-from ctower_api._ticket_sql import create_ticket as _create_ticket
-from ctower_api._ticket_sql import get_ticket as _get_ticket
-from ctower_api._ticket_sql import ticket_timeline as _ticket_timeline
 from ctower_kernel.record import (
     Actor,
     BootstrapCommand,
@@ -32,6 +26,12 @@ from ctower_kernel.record import (
     TicketCommandResult,
     TicketTimeline,
 )
+from ctower_kernel.record._custody_sql import transfer_custody as _transfer_custody
+from ctower_kernel.record._setup_sql import apply_migrations, provision_bootstrap
+from ctower_kernel.record._ticket_sql import actor_for_credential as _actor_for_credential
+from ctower_kernel.record._ticket_sql import create_ticket as _create_ticket
+from ctower_kernel.record._ticket_sql import get_ticket as _get_ticket
+from ctower_kernel.record._ticket_sql import ticket_timeline as _ticket_timeline
 
 __all__ = ["PostgresRecord", "apply_migrations", "provision_bootstrap"]
 

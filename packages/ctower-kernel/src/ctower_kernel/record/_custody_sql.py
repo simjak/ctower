@@ -13,18 +13,18 @@ import psycopg
 from psycopg.rows import dict_row
 from psycopg.types.json import Jsonb
 
-from ctower_api._ticket_sql import (
-    _canonical_json,
-    _result_from_payload,
-    _ticket_from_row,
-    _timestamp,
-    _uuid7,
-)
 from ctower_kernel.record import (
     Actor,
     CustodyCommand,
     RecordProblem,
     TicketCommandResult,
+)
+from ctower_kernel.record._ticket_sql import (
+    _canonical_json,
+    _result_from_payload,
+    _ticket_from_row,
+    _timestamp,
+    _uuid7,
 )
 
 __all__ = ["transfer_custody"]

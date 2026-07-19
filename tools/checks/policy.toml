@@ -2,6 +2,14 @@ schema = "ctower.repository-policy/v1"
 
 [source]
 extensions = [".py", ".ts", ".tsx"]
+module_roots = [
+  "apps/ctower-api/src",
+  "apps/ctowerctl/src",
+  "generated/python",
+  "packages/ctower-kernel/src",
+  "tests/acceptance/increment-1",
+  "tests/compatibility",
+]
 exclude = [
   ".git/**",
   ".venv/**",

@@ -11,7 +11,7 @@ from httpx import Response
 from support.tenant_fixture import TenantFixture
 
 from ctower_api.interface import create_app
-from ctower_api.postgres import PostgresRecord
+from ctower_kernel.record.postgres import PostgresRecord
 
 __all__: tuple[str, ...] = ()
 

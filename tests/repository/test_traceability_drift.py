@@ -167,6 +167,8 @@ class TraceabilityDriftTests(unittest.TestCase):
             "tools/checks/exceptions.yaml",
             "tools/checks/_impl/generated.py",
             "tools/checks/_impl/generated_inventory.py",
+            "tools/checks/_impl/model.py",
+            "tools/checks/report.py",
             *(item["path"] for group in ("inputs", "outputs") for item in entry[group]),
         }
         source_map = self._read_json(self.root / "contracts/traceability/sources.json")

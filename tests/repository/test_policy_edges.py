@@ -114,6 +114,65 @@ class RepositoryPolicyEdgeTests(unittest.TestCase):
         self.assertTrue(report.ok, report.findings)
         self.assertGreaterEqual(report.scanned_files, 3)
 
+    def test_declared_src_roots_expose_forbidden_first_party_edges(self) -> None:
+        with self._repository() as root:
+            policy_path = root / "tools/checks/policy.toml"
+            policy_path.write_text(
+                policy_path.read_text(encoding="utf-8").replace(
+                    'extensions = [".py"]',
+                    'extensions = [".py"]\nmodule_roots = ["apps/api/src", "packages/kernel/src"]',
+                )
+                + """
+
+[[ownership]]
+name = "kernel"
+paths = ["packages/kernel/src/kernel/**"]
+allowed_dependencies = []
+
+[[ownership]]
+name = "api"
+paths = ["apps/api/src/api/**"]
+allowed_dependencies = []
+""",
+                encoding="utf-8",
+            )
+            kernel = root / "packages/kernel/src/kernel"
+            kernel.mkdir(parents=True)
+            (kernel / "_private.py").write_text("VALUE = 1\n", encoding="utf-8")
+            api = root / "apps/api/src/api"
+            api.mkdir(parents=True)
+            (api / "main.py").write_text("from kernel._private import VALUE\n", encoding="utf-8")
+            report = verify(root, "fast")
+        rules = {item.rule_id for item in report.errors}
+        self.assertIn("architecture.dependency", rules)
+        self.assertIn("architecture.private-import", rules)
+
+    def test_declared_src_roots_fail_unresolved_first_party_edges(self) -> None:
+        with self._repository() as root:
+            policy_path = root / "tools/checks/policy.toml"
+            policy_path.write_text(
+                policy_path.read_text(encoding="utf-8").replace(
+                    'extensions = [".py"]',
+                    'extensions = [".py"]\nmodule_roots = ["apps/api/src", "packages/kernel/src"]',
+                )
+                + """
+
+[[ownership]]
+name = "api"
+paths = ["apps/api/src/api/**"]
+allowed_dependencies = []
+""",
+                encoding="utf-8",
+            )
+            kernel = root / "packages/kernel/src/kernel"
+            kernel.mkdir(parents=True)
+            (kernel / "__init__.py").write_text("", encoding="utf-8")
+            api = root / "apps/api/src/api"
+            api.mkdir(parents=True)
+            (api / "main.py").write_text("from kernel.missing import VALUE\n", encoding="utf-8")
+            report = verify(root, "fast")
+        self.assertIn("architecture.unresolved-import", {item.rule_id for item in report.errors})
+
     def test_exception_store_rejects_malformed_unmatched_and_over_limit_entries(self) -> None:
         today = datetime.now(UTC).date()
         cases = {

@@ -21,7 +21,7 @@ from httpx import Response
 from support.postgres import DatabaseFixture
 
 from ctower_api.interface import create_app
-from ctower_api.postgres import PostgresRecord, apply_migrations, provision_bootstrap
+from ctower_kernel.record.postgres import PostgresRecord, apply_migrations, provision_bootstrap
 
 ROOT = Path(__file__).parents[3]
 LOCAL_CLIENT = ("127.0.0.1", 51000)

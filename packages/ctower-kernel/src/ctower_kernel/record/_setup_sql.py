@@ -11,12 +11,9 @@ from typing import TextIO, cast
 
 import psycopg
 
-from ctower_kernel.access import digest_capability
-
 __all__ = ["apply_migrations", "provision_bootstrap"]
 
-ROOT = Path(__file__).parents[4]
-MIGRATIONS = ROOT / "packages/ctower-kernel/migrations"
+MIGRATIONS = Path(__file__).parents[3] / "migrations"
 MINIMUM_CAPABILITY_LENGTH = 32
 
 
@@ -59,5 +56,5 @@ def provision_bootstrap(
                 singleton, capability_digest, allowed_origin, expires_at
             ) VALUES (true, %s, %s, %s)
             """,
-            (digest_capability(capability), allowed_origin, expires_at),
+            (hashlib.sha256(capability.encode("utf-8")).digest(), allowed_origin, expires_at),
         )

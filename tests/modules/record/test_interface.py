@@ -8,6 +8,12 @@ from uuid import uuid4
 import pytest
 
 from ctower_kernel.record import CustodyCommand, RecordProblem
+from ctower_kernel.record.postgres import PostgresRecord
+
+
+def test_postgres_adapter_is_owned_by_record_module() -> None:
+    assert PostgresRecord.__module__ == "ctower_kernel.record.postgres"
+
 
 __all__: tuple[str, ...] = ()
 

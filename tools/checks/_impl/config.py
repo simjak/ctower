@@ -113,6 +113,7 @@ def load_policy(root: Path) -> PolicyConfig:
     )
     return PolicyConfig(
         source_extensions=_strings(source.get("extensions"), "source.extensions"),
+        module_roots=_repository_paths(source.get("module_roots", []), "source.module_roots"),
         excludes=_strings(source.get("exclude"), "source.exclude"),
         protected_roots=_strings(source.get("protected_roots"), "source.protected_roots"),
         forbidden_module_stems=_strings(

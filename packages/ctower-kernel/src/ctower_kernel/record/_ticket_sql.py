@@ -1,4 +1,4 @@
-"""Postgres ticket append, replay, and tenant-scoped read transactions."""
+"""Record-owned Postgres ticket append, replay, and tenant-scoped reads."""
 
 from __future__ import annotations
 
