@@ -17,6 +17,7 @@ class _Parameter:
     location: str
     python_name: str
     python_type: str
+    required: bool
 
 
 @dataclass(frozen=True, slots=True)
@@ -27,6 +28,7 @@ class _Operation:
     parameters: tuple[_Parameter, ...]
     request_model: str | None
     response_model: str
+    problem_models: tuple[tuple[int, str], ...]
     authenticated: bool
 
 
@@ -34,9 +36,9 @@ def render_client(document: dict[str, object], contract_digest: str) -> str:
     operations = _operations(document)
     model_names = sorted(
         {
-            "Problem",
             "TelemetryContext",
             *(operation.response_model for operation in operations),
+            *(model for operation in operations for _, model in operation.problem_models),
             *(operation.request_model for operation in operations if operation.request_model),
         }
     )
@@ -49,14 +51,15 @@ Authored contract digest: sha256:{contract_digest}
 
 from __future__ import annotations
 
+from collections.abc import Mapping
 import secrets
 from types import TracebackType
-from typing import Self
+from typing import Annotated, Protocol, Self, cast
 from urllib.parse import quote
 from uuid import UUID, uuid4
 
 import httpx
-from pydantic import BaseModel
+from pydantic import BaseModel, ConfigDict, Field, validate_call
 
 from ctower_client.models import (
 {imports}
@@ -65,10 +68,15 @@ from ctower_client.models import (
 __all__ = ["CtowerClient", "CtowerProblemError"]
 
 
+class _ProblemModel(Protocol):
+    code: str
+    detail: str
+
+
 class CtowerProblemError(Exception):
     """Typed RFC 9457 response from ctower."""
 
-    def __init__(self, problem: Problem) -> None:
+    def __init__(self, problem: _ProblemModel) -> None:
         self.problem = problem
         super().__init__(f"{{problem.code}}: {{problem.detail}}")
 
@@ -112,13 +120,6 @@ class CtowerClient:
             "Authorization": f"Bearer {{self._credential}}",
         }}
 
-    def _command_headers(self, command_id: UUID) -> dict[str, str]:
-        return {{
-            **self._auth_headers(),
-            "Content-Type": "application/json",
-            "Idempotency-Key": str(command_id),
-        }}
-
     def _context(self, command_id: UUID, *, ticket_id: UUID | None = None) -> TelemetryContext:
         if self._telemetry is not None:
             payload = self._telemetry.model_dump(mode="json", by_alias=True, exclude_none=True)
@@ -147,7 +148,11 @@ class CtowerClient:
         }}
 
 
-def _response[ModelT: BaseModel](response: httpx.Response, model: type[ModelT]) -> ModelT:
+def _response[ModelT: BaseModel](
+    response: httpx.Response,
+    model: type[ModelT],
+    problem_models: Mapping[int, type[BaseModel]],
+) -> ModelT:
     if response.is_success:
         return model.model_validate_json(response.content)
     content_type = response.headers.get("content-type", "").partition(";")[0]
@@ -155,7 +160,15 @@ def _response[ModelT: BaseModel](response: httpx.Response, model: type[ModelT]) 
         raise httpx.HTTPStatusError(
             "ctower returned a non-problem failure", request=response.request, response=response
         )
-    raise CtowerProblemError(Problem.model_validate_json(response.content))
+    problem_model = problem_models.get(response.status_code)
+    if problem_model is None:
+        raise httpx.HTTPStatusError(
+            "ctower returned an undeclared failure status",
+            request=response.request,
+            response=response,
+        )
+    problem = problem_model.model_validate_json(response.content)
+    raise CtowerProblemError(cast(_ProblemModel, problem))
 '''
 
 
@@ -163,6 +176,7 @@ def _operations(document: dict[str, object]) -> tuple[_Operation, ...]:
     paths = _mapping(document.get("paths"), "paths")
     components = _mapping(document.get("components"), "components")
     parameter_definitions = _mapping(components.get("parameters"), "components.parameters")
+    response_definitions = _mapping(components.get("responses"), "components.responses")
     operations: list[_Operation] = []
     for path, path_value in paths.items():
         for method, value in _mapping(path_value, f"path {path}").items():
@@ -181,6 +195,7 @@ def _operations(document: dict[str, object]) -> tuple[_Operation, ...]:
                     parameters=parameters,
                     request_model=_request_model(operation),
                     response_model=_response_model(operation),
+                    problem_models=_problem_models(operation, response_definitions),
                     authenticated=bool(operation.get("security")),
                 )
             )
@@ -202,13 +217,21 @@ def _parameters(
             parameter = _mapping(definitions.get(name), f"parameter {name}")
         wire_name = str(parameter["name"])
         location = str(parameter["in"])
+        if location not in {"path", "header", "query"}:
+            raise ValueError(f"unsupported parameter location {location}")
+        required = parameter.get("required", False)
+        if not isinstance(required, bool):
+            raise TypeError(f"parameter {wire_name}.required must be a boolean")
+        if location == "path" and not required:
+            raise ValueError(f"path parameter {wire_name} must be required")
         schema = _mapping(parameter.get("schema"), f"parameter {wire_name}.schema")
         parameters.append(
             _Parameter(
                 name=wire_name,
                 location=location,
                 python_name=_parameter_name(wire_name),
-                python_type="UUID" if schema.get("format") == "uuid" else "str",
+                python_type=_parameter_type(schema),
+                required=required,
             )
         )
     return tuple(parameters)
@@ -234,13 +257,49 @@ def _response_model(operation: Mapping[str, object]) -> str:
     raise ValueError("operation has no JSON success response")
 
 
+def _problem_models(
+    operation: Mapping[str, object], definitions: Mapping[str, object]
+) -> tuple[tuple[int, str], ...]:
+    responses = _mapping(operation.get("responses"), "responses")
+    models: list[tuple[int, str]] = []
+    for status, value in sorted(responses.items()):
+        if status.startswith("2"):
+            continue
+        try:
+            status_code = int(status)
+        except ValueError as error:
+            raise ValueError(f"failure response status must be exact: {status}") from error
+        response = _mapping(value, f"response {status}")
+        reference = response.get("$ref")
+        if isinstance(reference, str):
+            prefix = "#/components/responses/"
+            if not reference.startswith(prefix):
+                raise ValueError(f"unsupported response reference {reference}")
+            name = reference.removeprefix(prefix)
+            response = _mapping(definitions.get(name), f"response {name}")
+        content = _mapping(response.get("content"), f"response {status}.content")
+        media = _mapping(
+            content.get("application/problem+json"),
+            f"response {status} application/problem+json",
+        )
+        models.append((status_code, _schema_reference(_mapping(media.get("schema"), "schema"))))
+    return tuple(models)
+
+
 def _render_method(operation: _Operation) -> str:
     path_parameters = [item for item in operation.parameters if item.location == "path"]
     header_parameters = [item for item in operation.parameters if item.location == "header"]
+    query_parameters = [item for item in operation.parameters if item.location == "query"]
     positional = [f"{item.python_name}: {item.python_type}" for item in path_parameters]
     if operation.request_model is not None:
         positional.append(f"request: {operation.request_model}")
-    keyword = [f"{item.python_name}: {item.python_type}" for item in header_parameters]
+    keyword_parameters = sorted(
+        [*header_parameters, *query_parameters], key=lambda item: not item.required
+    )
+    keyword = [
+        f"{item.python_name}: {item.python_type}" + ("" if item.required else " | None = None")
+        for item in keyword_parameters
+    ]
     signature = ["        self,", *(f"        {item}," for item in positional)]
     if keyword:
         signature.extend(["        *,", *(f"        {item}," for item in keyword)])
@@ -254,46 +313,67 @@ def _render_method(operation: _Operation) -> str:
     arguments = [f"            {path_expression},"]
     if operation.request_model is not None:
         arguments.append("            content=request.model_dump_json(),")
+    if query_parameters:
+        arguments.append(f"            params={_query_expression(query_parameters)},")
     arguments.append(f"            headers={_headers_expression(operation, header_parameters)},")
     call = "\n".join(arguments)
-    return f"""    def {_snake_case(operation.operation_id)}(
+    problems = ", ".join(f"{status}: {model}" for status, model in operation.problem_models)
+    return f"""    @validate_call(config=ConfigDict(strict=True, arbitrary_types_allowed=True))
+    def {_snake_case(operation.operation_id)}(
 {chr(10).join(signature)}
     ) -> {operation.response_model}:
         response = self._http.{operation.method}(
 {call}
         )
-        return _response(response, {operation.response_model})"""
+        return _response(response, {operation.response_model}, {{{problems}}})"""
+
+
+def _query_expression(parameters: list[_Parameter]) -> str:
+    entries = []
+    for parameter in parameters:
+        entry = f'"{parameter.name}": {parameter.python_name}'
+        if parameter.required:
+            entries.append(entry)
+        else:
+            entries.append(f"**({{{entry}}} if {parameter.python_name} is not None else {{}})")
+    return "{" + ", ".join(entries) + "}"
 
 
 def _headers_expression(operation: _Operation, parameters: list[_Parameter]) -> str:
     command = next((item for item in parameters if item.name == "Idempotency-Key"), None)
-    capability = next(
-        (item for item in parameters if item.name == "X-Ctower-Bootstrap-Capability"), None
+    entries = (
+        ["**self._auth_headers()"] if operation.authenticated else ['"Accept": "application/json"']
     )
-    if operation.authenticated and command is not None:
-        base = f"self._command_headers({command.python_name})"
-    elif operation.authenticated:
-        base = "self._auth_headers()"
+    if operation.request_model is not None:
+        entries.append('"Content-Type": "application/json"')
+    for parameter in parameters:
+        value = (
+            f"str({parameter.python_name})"
+            if parameter.python_type == "UUID"
+            else parameter.python_name
+        )
+        entry = f'"{parameter.name}": {value}'
+        if parameter.required:
+            entries.append(entry)
+        else:
+            entries.append(f"**({{{entry}}} if {parameter.python_name} is not None else {{}})")
+    base = "{\n" + "\n".join(f"                    {entry}," for entry in entries)
+    base += "\n                }"
+    if command is None:
+        command_expression = "uuid4()"
+    elif command.required:
+        command_expression = command.python_name
     else:
-        entries = ['"Content-Type": "application/json"']
-        if command is not None:
-            entries.append(f'"Idempotency-Key": str({command.python_name})')
-        if capability is not None:
-            entries.append(f'"X-Ctower-Bootstrap-Capability": {capability.python_name}')
-        base = "{\n" + "\n".join(f"                    {entry}," for entry in entries)
-        base += "\n                }"
-    command_expression = command.python_name if command is not None else "uuid4()"
+        command_expression = f"({command.python_name} or uuid4())"
     ticket = next((item for item in operation.parameters if item.name == "ticket_id"), None)
     ticket_argument = f", ticket_id={ticket.python_name}" if ticket is not None else ""
     context = f"self._context({command_expression}{ticket_argument})"
-    if base.startswith("{"):
-        return (
-            "self._telemetry_headers(\n"
-            f"                {context},\n"
-            f"                {base},\n"
-            "            )"
-        )
-    return f"self._telemetry_headers(\n                {context}, {base}\n            )"
+    return (
+        "self._telemetry_headers(\n"
+        f"                {context},\n"
+        f"                {base},\n"
+        "            )"
+    )
 
 
 def _schema_reference(schema: Mapping[str, object]) -> str:
@@ -301,6 +381,37 @@ def _schema_reference(schema: Mapping[str, object]) -> str:
     if not isinstance(reference, str) or not reference.startswith("#/components/schemas/"):
         raise ValueError("operation boundary schemas must be component references")
     return reference.removeprefix("#/components/schemas/")
+
+
+def _parameter_type(schema: Mapping[str, object]) -> str:
+    schema_type = schema.get("type")
+    if schema_type == "string":
+        base = "UUID" if schema.get("format") == "uuid" else "str"
+        constraints = _bounds(schema, (("minLength", "min_length"), ("maxLength", "max_length")))
+        return _annotated(base, constraints)
+    if schema_type == "array":
+        items = _mapping(schema.get("items"), "parameter array items")
+        base = f"tuple[{_parameter_type(items)}, ...]"
+        constraints = _bounds(schema, (("minItems", "min_length"), ("maxItems", "max_length")))
+        return _annotated(base, constraints)
+    if schema_type == "integer":
+        return _annotated("int", _bounds(schema, (("minimum", "ge"), ("maximum", "le"))))
+    if schema_type == "boolean":
+        return "bool"
+    raise ValueError(f"unsupported parameter schema: {dict(schema)}")
+
+
+def _bounds(
+    schema: Mapping[str, object], names: tuple[tuple[str, str], ...]
+) -> list[tuple[str, object]]:
+    return [(target, schema[source]) for source, target in names if source in schema]
+
+
+def _annotated(base: str, constraints: list[tuple[str, object]]) -> str:
+    if not constraints:
+        return base
+    arguments = ", ".join(f"{name}={json.dumps(value)}" for name, value in constraints)
+    return f"Annotated[{base}, Field({arguments})]"
 
 
 def _parameter_name(name: str) -> str:

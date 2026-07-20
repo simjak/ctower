@@ -187,8 +187,11 @@ def _primitive_expression(schema: Mapping[str, object], schema_type: object) -> 
 def _array_expression(schema: Mapping[str, object]) -> str:
     items = _mapping(schema.get("items"), "array items")
     base = f"tuple[{_type_expression(items)}, ...]"
-    minimum = schema.get("minItems")
-    return _annotated(base, [("min_length", minimum)] if isinstance(minimum, int) else [])
+    constraints: list[tuple[str, object]] = []
+    for source, target in (("minItems", "min_length"), ("maxItems", "max_length")):
+        if source in schema:
+            constraints.append((target, schema[source]))
+    return _annotated(base, constraints)
 
 
 def _string_expression(schema: Mapping[str, object]) -> str:

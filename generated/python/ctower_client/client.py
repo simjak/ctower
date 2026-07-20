@@ -5,14 +5,15 @@ Authored contract digest: sha256:9f83fcb90dbb66afc0aae46bf7bbc2580f41a002f06d83a
 
 from __future__ import annotations
 
+from collections.abc import Mapping
 import secrets
 from types import TracebackType
-from typing import Self
+from typing import Annotated, Protocol, Self, cast
 from urllib.parse import quote
 from uuid import UUID, uuid4
 
 import httpx
-from pydantic import BaseModel
+from pydantic import BaseModel, ConfigDict, Field, validate_call
 
 from ctower_client.models import (
     BootstrapReceipt,
@@ -29,10 +30,15 @@ from ctower_client.models import (
 __all__ = ["CtowerClient", "CtowerProblemError"]
 
 
+class _ProblemModel(Protocol):
+    code: str
+    detail: str
+
+
 class CtowerProblemError(Exception):
     """Typed RFC 9457 response from ctower."""
 
-    def __init__(self, problem: Problem) -> None:
+    def __init__(self, problem: _ProblemModel) -> None:
         self.problem = problem
         super().__init__(f"{problem.code}: {problem.detail}")
 
@@ -66,12 +72,13 @@ class CtowerClient:
     def close(self) -> None:
         self._http.close()
 
+    @validate_call(config=ConfigDict(strict=True, arbitrary_types_allowed=True))
     def bootstrap_first_tenant(
         self,
         request: BootstrapRequest,
         *,
         command_id: UUID,
-        capability: str,
+        capability: Annotated[str, Field(min_length=32, max_length=256)],
     ) -> BootstrapReceipt:
         response = self._http.post(
             "/v1/bootstrap/first-tenant",
@@ -79,14 +86,16 @@ class CtowerClient:
             headers=self._telemetry_headers(
                 self._context(command_id),
                 {
+                    "Accept": "application/json",
                     "Content-Type": "application/json",
                     "Idempotency-Key": str(command_id),
                     "X-Ctower-Bootstrap-Capability": capability,
                 },
             ),
         )
-        return _response(response, BootstrapReceipt)
+        return _response(response, BootstrapReceipt, {401: Problem, 403: Problem, 409: Problem, 410: Problem, 422: Problem})
 
+    @validate_call(config=ConfigDict(strict=True, arbitrary_types_allowed=True))
     def create_ticket(
         self,
         request: TicketCreateRequest,
@@ -97,11 +106,17 @@ class CtowerClient:
             "/v1/tickets",
             content=request.model_dump_json(),
             headers=self._telemetry_headers(
-                self._context(command_id), self._command_headers(command_id)
+                self._context(command_id),
+                {
+                    **self._auth_headers(),
+                    "Content-Type": "application/json",
+                    "Idempotency-Key": str(command_id),
+                },
             ),
         )
-        return _response(response, TicketCommandResult)
+        return _response(response, TicketCommandResult, {401: Problem, 404: Problem, 409: Problem, 422: Problem})
 
+    @validate_call(config=ConfigDict(strict=True, arbitrary_types_allowed=True))
     def get_ticket(
         self,
         ticket_id: UUID,
@@ -109,11 +124,15 @@ class CtowerClient:
         response = self._http.get(
             f"/v1/tickets/{quote(str(ticket_id), safe='')}",
             headers=self._telemetry_headers(
-                self._context(uuid4(), ticket_id=ticket_id), self._auth_headers()
+                self._context(uuid4(), ticket_id=ticket_id),
+                {
+                    **self._auth_headers(),
+                },
             ),
         )
-        return _response(response, TicketResource)
+        return _response(response, TicketResource, {401: Problem, 404: Problem, 422: Problem})
 
+    @validate_call(config=ConfigDict(strict=True, arbitrary_types_allowed=True))
     def get_ticket_timeline(
         self,
         ticket_id: UUID,
@@ -121,11 +140,15 @@ class CtowerClient:
         response = self._http.get(
             f"/v1/tickets/{quote(str(ticket_id), safe='')}/timeline",
             headers=self._telemetry_headers(
-                self._context(uuid4(), ticket_id=ticket_id), self._auth_headers()
+                self._context(uuid4(), ticket_id=ticket_id),
+                {
+                    **self._auth_headers(),
+                },
             ),
         )
-        return _response(response, TimelineResponse)
+        return _response(response, TimelineResponse, {401: Problem, 404: Problem, 422: Problem})
 
+    @validate_call(config=ConfigDict(strict=True, arbitrary_types_allowed=True))
     def transfer_ticket_custody(
         self,
         ticket_id: UUID,
@@ -137,10 +160,15 @@ class CtowerClient:
             f"/v1/tickets/{quote(str(ticket_id), safe='')}/custody",
             content=request.model_dump_json(),
             headers=self._telemetry_headers(
-                self._context(command_id, ticket_id=ticket_id), self._command_headers(command_id)
+                self._context(command_id, ticket_id=ticket_id),
+                {
+                    **self._auth_headers(),
+                    "Content-Type": "application/json",
+                    "Idempotency-Key": str(command_id),
+                },
             ),
         )
-        return _response(response, TicketCommandResult)
+        return _response(response, TicketCommandResult, {401: Problem, 404: Problem, 409: Problem, 422: Problem})
 
     def _auth_headers(self) -> dict[str, str]:
         if self._credential is None:
@@ -148,13 +176,6 @@ class CtowerClient:
         return {
             "Accept": "application/json",
             "Authorization": f"Bearer {self._credential}",
-        }
-
-    def _command_headers(self, command_id: UUID) -> dict[str, str]:
-        return {
-            **self._auth_headers(),
-            "Content-Type": "application/json",
-            "Idempotency-Key": str(command_id),
         }
 
     def _context(self, command_id: UUID, *, ticket_id: UUID | None = None) -> TelemetryContext:
@@ -185,7 +206,11 @@ class CtowerClient:
         }
 
 
-def _response[ModelT: BaseModel](response: httpx.Response, model: type[ModelT]) -> ModelT:
+def _response[ModelT: BaseModel](
+    response: httpx.Response,
+    model: type[ModelT],
+    problem_models: Mapping[int, type[BaseModel]],
+) -> ModelT:
     if response.is_success:
         return model.model_validate_json(response.content)
     content_type = response.headers.get("content-type", "").partition(";")[0]
@@ -193,4 +218,12 @@ def _response[ModelT: BaseModel](response: httpx.Response, model: type[ModelT]) 
         raise httpx.HTTPStatusError(
             "ctower returned a non-problem failure", request=response.request, response=response
         )
-    raise CtowerProblemError(Problem.model_validate_json(response.content))
+    problem_model = problem_models.get(response.status_code)
+    if problem_model is None:
+        raise httpx.HTTPStatusError(
+            "ctower returned an undeclared failure status",
+            request=response.request,
+            response=response,
+        )
+    problem = problem_model.model_validate_json(response.content)
+    raise CtowerProblemError(cast(_ProblemModel, problem))

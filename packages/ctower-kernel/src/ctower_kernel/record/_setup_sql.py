@@ -15,6 +15,7 @@ __all__ = ["apply_migrations", "provision_bootstrap", "provision_database_roles"
 
 MIGRATIONS = Path(__file__).parents[3] / "migrations"
 MINIMUM_CAPABILITY_LENGTH = 32
+MAXIMUM_CAPABILITY_LENGTH = 256
 
 
 def _migration_scripts() -> tuple[str, ...]:
@@ -61,6 +62,8 @@ def provision_bootstrap(
     capability = capability_input.readline().rstrip("\r\n")
     if len(capability) < MINIMUM_CAPABILITY_LENGTH:
         raise ValueError("bootstrap capability must have at least 32 characters")
+    if len(capability) > MAXIMUM_CAPABILITY_LENGTH:
+        raise ValueError("bootstrap capability must have at most 256 characters")
     with psycopg.connect(dsn) as connection:
         connection.execute("SET ROLE ctower_admin")
         connection.execute(

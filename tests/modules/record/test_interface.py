@@ -4,6 +4,8 @@ from __future__ import annotations
 
 import json
 from dataclasses import FrozenInstanceError
+from datetime import UTC, datetime
+from io import StringIO
 from pathlib import Path
 from typing import cast
 from uuid import uuid4
@@ -12,7 +14,7 @@ import pytest
 
 from ctower_kernel.record import CustodyCommand, RecordProblem
 from ctower_kernel.record.events import canonical_event_bytes, event_digest
-from ctower_kernel.record.postgres import PostgresRecord
+from ctower_kernel.record.postgres import PostgresRecord, provision_bootstrap
 
 ROOT = Path(__file__).parents[3]
 
@@ -72,3 +74,20 @@ def test_custody_command_is_immutable_and_includes_target_aggregate_in_digest_pa
     assert command.request_payload()["ticket_id"] == str(command.ticket_id)
     with pytest.raises(FrozenInstanceError):
         command.reason = "rewritten"  # type: ignore[misc]
+
+
+def test_bootstrap_provision_rejects_capability_above_authored_maximum(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    def unexpected_connect(_dsn: str) -> None:
+        raise AssertionError("invalid capability reached persistence")
+
+    monkeypatch.setattr("ctower_kernel.record._setup_sql.psycopg.connect", unexpected_connect)
+
+    with pytest.raises(ValueError, match="at most 256 characters"):
+        provision_bootstrap(
+            "postgresql://unused",
+            capability_input=StringIO("x" * 257 + "\n"),
+            allowed_origin="127.0.0.1",
+            expires_at=datetime.now(UTC),
+        )
