@@ -564,3 +564,58 @@ clause and its associated publication arithmetic. Every other D17 decision remai
    absence is never success. A missing, unreadable, or gapped activated source fails closed. Before I2
    activates a root/effect source, the activation transaction commits a signed inventory revision marking
    it active before any associated grant or effect can execute.
+
+## D19 — Versioned CommandGuard before arbitrary harness dispatch (locked 2026-07-20, operator R593)
+
+The operator required an enforceable catastrophic-command guard before ctower activates arbitrary local or
+remote harness execution. This decision deepens D10's compositional execution boundary and D17/D18's
+fail-closed sequencing without changing their ticket, Workflow, Proof, Effects, or earned-Seam authority.
+The observed design lead was a raw-text denylist that blocked a non-executing issue-description command
+because it merely quoted a dangerous token. Text occurrence is not execution intent.
+
+1. **Runtime decides; every dispatch-capable Harness or Supervisor Adapter enforces at the final boundary.**
+   Runtime owns one versioned CommandGuard decision over the proposed execution. Each registered local or
+   remote Harness or Supervisor Adapter that can launch, invoke, or submit a harness command must invoke and
+   enforce it at the last trusted point before process, shell, or provider dispatch. A direct bypass is an
+   architecture and conformance failure. A changed plan or target requires a new decision.
+2. **Normalize actual intent and targets.** Evaluation resolves executable identity, argv or explicit shell
+   plan, cwd, bounded environment references, parent traversal, globs, symlinks, wrappers/indirection, and
+   candidate targets in the dispatch namespace. Unresolved, ambiguous, or broad protected targets fail
+   closed. Safe cleanup is permitted only through an authorized capability with proven containment inside
+   an exact disposable root; basename or command-name exceptions are insufficient.
+3. **Typed decisions and immutable redacted receipts.** The result is exactly `allow`, `block`, or
+   `needs_operator`. Every result binds ticket, job/run, principal, Harness/provider, policy revision,
+   normalized-command digest, cwd, resolved targets, rule/reason, and time in an immutable receipt. Raw
+   secrets, expanded credential values, and sensitive command content do not enter application logs or
+   telemetry. `block` and `needs_operator` execute zero commands.
+4. **Minimum catastrophic classes are explicit.** Policy covers root/home/workspace or broad filesystem
+   destruction; disk/filesystem/volume format or wipe; destructive database operations; protected source
+   history/reference rewrite; cluster, container-host, cloud, or infrastructure destruction; and equivalent
+   supported wrappers or indirection.
+5. **Override is exact and consumable, never standing authority.** A `needs_operator` decision can proceed
+   only through a strongly authenticated grant bound to the original receipt, exact normalized command and
+   targets, nonce, short expiry, and one atomic use. Expiry, replay, changed resolution, scope mismatch, or
+   concurrent second use performs no dispatch and is audited. No grant disables the guard globally.
+   Remote execution receives a signed scoped decision/grant and returns a matching enforcement receipt
+   before ctower accepts completion.
+6. **This is accidental-destruction defense, not sandbox containment.** An allowed interpreter, script, or
+   binary may perform effects invisible to the structured dispatch plan. Sandbox/VM/OS isolation,
+   short-lived credentials, workspace/tenant scoping, egress controls, least privilege, and Effects
+   brokerage therefore remain independent required controls.
+7. **Sequence and non-freeze boundary.** This contract is a hard prerequisite inside CT-I2-004/I2.2 and
+   follows any resequenced checkpoint that first gains arbitrary command execution. I1 and PR #16 have no
+   agent-command execution surface and remain outside this scope. This decision freezes human semantics and
+   acceptance evidence, not the exact policy grammar, schema, storage, signature, or provider protocol;
+   those mechanics wait for the first real Harness consumer to earn them. GitHub issue
+   [#17](https://github.com/simjak/ctower/issues/17) tracks implementation.
+
+Rejected alternatives:
+
+- **Prompt- or skill-only instructions:** valuable guidance, but model compliance is not an enforcement
+  boundary and cannot prove zero dispatch on refusal.
+- **Raw regex-only denylist:** misses expansion, symlink, wrapper, and target semantics while producing the
+  observed false positive on quoted non-executing text.
+- **Universal standing override or global disable:** replayable ambient authority defeats exact scope,
+  expiry, accountability, and safe concurrent operation.
+- **Treating CommandGuard as a sandbox:** overclaims containment once allowed arbitrary code can issue its
+  own syscalls or access already granted credentials.
