@@ -7,6 +7,7 @@ from collections.abc import Iterator
 import pytest
 from support.postgres import (
     DatabaseFixture,
+    PostgresServer,
     create_database,
     drop_database,
     start_postgres,
@@ -18,20 +19,19 @@ __all__: tuple[str, ...] = ()
 
 
 @pytest.fixture(scope="session", autouse=True)
-def postgres_17() -> Iterator[None]:
+def postgres_17() -> Iterator[PostgresServer]:
     """Own the lifecycle of the authored development database composition."""
 
-    start_postgres()
-    yield
-    stop_postgres()
+    server = start_postgres()
+    yield server
+    stop_postgres(server)
 
 
 @pytest.fixture
-def database(postgres_17: None) -> Iterator[DatabaseFixture]:
+def database(postgres_17: PostgresServer) -> Iterator[DatabaseFixture]:
     """Give each acceptance test an independently migrated database."""
 
-    del postgres_17
-    fixture = create_database()
+    fixture = create_database(postgres_17)
     yield fixture
     drop_database(fixture)
 
