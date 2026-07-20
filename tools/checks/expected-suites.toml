@@ -128,6 +128,23 @@ command = [
 timeout_seconds = 900
 
 [[suite]]
+id = "process-boundary-acceptance"
+owner = "CT-I1-004"
+phase = "CT-I1-004"
+status = "required"
+path = "tests/acceptance/increment-1"
+patterns = ["test_process_boundary.py", "test_postgres_isolation.py"]
+command = [
+  "{python}",
+  "-m",
+  "pytest",
+  "tests/acceptance/increment-1/test_process_boundary.py",
+  "tests/acceptance/increment-1/test_postgres_isolation.py",
+  "-q",
+]
+timeout_seconds = 900
+
+[[suite]]
 id = "thin-cli"
 owner = "CT-I1-004"
 phase = "CT-I1-004"
