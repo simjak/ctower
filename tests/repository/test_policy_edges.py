@@ -20,6 +20,7 @@ _GENERATED_SCHEMA = "ctower.generated-manifest/v1"
 
 class RepositoryPolicyEdgeTests(unittest.TestCase):
     fixtures = Path(__file__).parent / "fixtures"
+    repository_policy = Path(__file__).parents[2] / "tools/checks/policy.toml"
 
     def test_invalid_policy_and_unknown_profile_fail_closed(self) -> None:
         with self._repository() as root:
@@ -173,6 +174,30 @@ allowed_dependencies = []
             report = verify(root, "fast")
         self.assertIn("architecture.unresolved-import", {item.rule_id for item in report.errors})
 
+    def test_record_boundary_findings_cannot_be_waived(self) -> None:
+        cases = {
+            "forbidden CLI-to-Record dependency": (
+                "architecture.dependency",
+                "from ctower_kernel.record.postgres import PostgresRecord\n",
+            ),
+            "private Record import": (
+                "architecture.private-import",
+                "from ctower_kernel.record._private import VALUE\n",
+            ),
+            "unresolved first-party Record import": (
+                "architecture.unresolved-import",
+                "from ctower_kernel.record.missing import VALUE\n",
+            ),
+        }
+        for label, (rule_id, source) in cases.items():
+            with self.subTest(label=label):
+                with self._architecture_repository(rule_id, source) as root:
+                    report = verify(root, "fast")
+                matching = [item for item in report.findings if item.rule_id == rule_id]
+                self.assertEqual(len(matching), 1, report.findings)
+                self.assertEqual(matching[0].severity.value, "error")
+                self.assertIsNone(matching[0].exception_id)
+
     def test_exception_store_rejects_malformed_unmatched_and_over_limit_entries(self) -> None:
         today = datetime.now(UTC).date()
         cases = {
@@ -282,6 +307,32 @@ allowed_dependencies = []
         with tempfile.TemporaryDirectory() as name:
             root = Path(name)
             shutil.copytree(self.fixtures / "positive", root, dirs_exist_ok=True)
+            yield root
+
+    @contextmanager
+    def _architecture_repository(self, rule_id: str, source: str) -> Iterator[Path]:
+        with tempfile.TemporaryDirectory() as name:
+            root = Path(name)
+            policy = root / "tools/checks/policy.toml"
+            policy.parent.mkdir(parents=True)
+            shutil.copyfile(self.repository_policy, policy)
+            cli = root / "apps/ctowerctl/src/ctowerctl/main.py"
+            cli.parent.mkdir(parents=True)
+            cli.write_text(source, encoding="utf-8")
+            record = root / "packages/ctower-kernel/src/ctower_kernel/record"
+            record.mkdir(parents=True)
+            (record.parent / "__init__.py").write_text("", encoding="utf-8")
+            (record / "__init__.py").write_text("", encoding="utf-8")
+            (record / "postgres.py").write_text("class PostgresRecord: pass\n", encoding="utf-8")
+            (record / "_private.py").write_text("VALUE = 1\n", encoding="utf-8")
+            self._write_exceptions(
+                root,
+                self._exception_payload(
+                    rule=rule_id,
+                    path="apps/ctowerctl/src/ctowerctl/main.py",
+                    temporary_limit=1,
+                ),
+            )
             yield root
 
     def _write_exceptions(self, root: Path, payload: object) -> None:

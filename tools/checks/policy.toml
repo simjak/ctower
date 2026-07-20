@@ -22,6 +22,9 @@ protected_roots = ["apps", "packages", "tools", "tests"]
 [architecture]
 forbidden_module_stems = ["common", "helpers", "manager", "utils"]
 non_waivable_rules = [
+  "architecture.dependency",
+  "architecture.private-import",
+  "architecture.unresolved-import",
   "generated.drift",
   "generated.manifest",
   "generated.notice",
