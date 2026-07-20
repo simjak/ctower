@@ -21,7 +21,7 @@
       "properties": {
         "path": {
           "type": "string",
-          "pattern": "^(contracts|packs)/[A-Za-z0-9._/-]+$"
+          "pattern": "^(contracts|packs|packages/ctower-kernel/migrations)/[A-Za-z0-9._/-]+$"
         },
         "references": {
           "type": "array",

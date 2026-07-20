@@ -1,0 +1,18 @@
+{
+  "schema": "ctower.gate-policy/v1",
+  "status": "staged",
+  "key": "ctower.trust-spine-four-stage.gates",
+  "revision": 1,
+  "workflow_ref": "ctower.trust-spine-four-stage@1",
+  "evidence_policy_ref": "ctower.trust-spine-four-stage.evidence@1",
+  "criteria": [
+    {
+      "key": "artifact-current",
+      "description": "Artifact evidence matches the current candidate.",
+      "candidate_dependent": true,
+      "requires_verdict": true
+    }
+  ],
+  "protected_verdict": {"reviewer_kind": "operator", "self_review": "forbidden"},
+  "note": "CP-1 requires one current-digest artifact and an independent operator verdict."
+}

@@ -196,7 +196,10 @@ def _validate_artifact(root: Path, value: str, index: int) -> None:
         or ".." in path.parts
         or str(path) != value
         or not path.parts
-        or path.parts[0] not in {"contracts", "packs"}
+        or not (
+            path.parts[0] in {"contracts", "packs"}
+            or path.parts[:3] == ("packages", "ctower-kernel", "migrations")
+        )
     ):
         raise TraceabilityError(f"artifacts[{index}].path is not an authored contract path")
     if not (root / path).is_file():
@@ -221,6 +224,13 @@ def _discover_normative_artifacts(root: Path) -> tuple[str, ...]:
             for path in (root / "packs").rglob(pattern)
             if path.is_file()
         )
+    migrations = root / "packages/ctower-kernel/migrations"
+    candidates.update(
+        path.relative_to(root).as_posix() for path in migrations.glob("*.sql") if path.is_file()
+    )
+    manifest = migrations / "manifest.json"
+    if manifest.is_file():
+        candidates.add(manifest.relative_to(root).as_posix())
     return tuple(sorted(candidates - _COVERAGE_EXEMPT))
 
 

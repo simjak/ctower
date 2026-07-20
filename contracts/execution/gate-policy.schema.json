@@ -1,0 +1,59 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://ctower.invalid/contracts/execution/gate-policy.schema.json",
+  "title": "GatePolicyConsumerSubset",
+  "description": "Development-only CP-1 criteria and independent verdict topology.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema",
+    "status",
+    "key",
+    "revision",
+    "workflow_ref",
+    "evidence_policy_ref",
+    "criteria",
+    "protected_verdict",
+    "note"
+  ],
+  "properties": {
+    "schema": {"const": "ctower.gate-policy/v1"},
+    "status": {"const": "staged"},
+    "key": {"$ref": "#/$defs/stableKey"},
+    "revision": {"type": "integer", "minimum": 1},
+    "workflow_ref": {"$ref": "#/$defs/versionedReference"},
+    "evidence_policy_ref": {"$ref": "#/$defs/versionedReference"},
+    "criteria": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["key", "description", "candidate_dependent", "requires_verdict"],
+        "properties": {
+          "key": {"$ref": "#/$defs/stableKey"},
+          "description": {"type": "string", "minLength": 1, "maxLength": 500},
+          "candidate_dependent": {"type": "boolean"},
+          "requires_verdict": {"type": "boolean"}
+        }
+      }
+    },
+    "protected_verdict": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["reviewer_kind", "self_review"],
+      "properties": {
+        "reviewer_kind": {"const": "operator"},
+        "self_review": {"const": "forbidden"}
+      }
+    },
+    "note": {"type": "string", "minLength": 1}
+  },
+  "$defs": {
+    "stableKey": {"type": "string", "pattern": "^[a-z][a-z0-9._-]*$"},
+    "versionedReference": {
+      "type": "string",
+      "pattern": "^[a-z][a-z0-9._-]*@[1-9][0-9]*$"
+    }
+  }
+}

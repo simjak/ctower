@@ -6,6 +6,7 @@ import asyncio
 import os
 import shutil
 import socket
+import time
 from dataclasses import dataclass
 from pathlib import Path
 from uuid import uuid4
@@ -53,13 +54,28 @@ def start_postgres() -> PostgresServer:
                 server,
                 "up",
                 "-d",
-                "--wait",
             )
         )
+        _wait_for_postgres(server)
     except Exception:
         asyncio.run(_compose(server, "down", "--volumes"))
         raise
     return server
+
+
+def _wait_for_postgres(server: PostgresServer) -> None:
+    """Require a real SQL connection after the container health transition."""
+
+    deadline = time.monotonic() + 10
+    last_error: psycopg.OperationalError | None = None
+    while time.monotonic() < deadline:
+        try:
+            with psycopg.connect(server.admin_dsn, connect_timeout=1):
+                return
+        except psycopg.OperationalError as error:
+            last_error = error
+            time.sleep(0.05)
+    raise RuntimeError("Postgres did not accept SQL connections within ten seconds") from last_error
 
 
 def stop_postgres(server: PostgresServer) -> None:

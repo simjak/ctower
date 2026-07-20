@@ -12,6 +12,10 @@
     {
       "path": "0003_privileges.sql",
       "sha256": "sha256:aa27bd19f3d30b5c677455467790a239b8d869d891f0a9abe1420c60c69c7a80"
+    },
+    {
+      "path": "0004_proof_workflow.sql",
+      "sha256": "sha256:007ac51f6fc1adb7700071e9525b8ca3482869ade6821c9db0332eef3b342f88"
     }
   ]
 }

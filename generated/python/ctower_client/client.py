@@ -1,6 +1,6 @@
 """DO NOT EDIT: generated file; regenerate from declared inputs.
 
-Authored contract digest: sha256:25659b6884b836c57f08f015a00885701ba0e031fa81536903bff04cb56850f1
+Authored contract digest: sha256:9826074d4caf513025306e895b4d8083c8df77751dccd222b940816b853d0f21
 """
 
 from __future__ import annotations
@@ -19,12 +19,19 @@ from ctower_client.models import (
     BootstrapReceipt,
     BootstrapRequest,
     CustodyTransferRequest,
+    EvidenceRequest,
+    FreezeCriteriaRequest,
     Problem,
+    ProofReceipt,
+    ResolveCloseRequest,
     TelemetryContext,
     TicketCommandResult,
     TicketCreateRequest,
     TicketResource,
     TimelineResponse,
+    VerdictRequest,
+    WorkflowReceipt,
+    WorkflowTransitionRequest,
 )
 
 __all__ = ["CtowerClient", "CtowerProblemError"]
@@ -117,6 +124,28 @@ class CtowerClient:
         return _response(response, TicketCommandResult, {401: Problem, 403: Problem, 404: Problem, 409: Problem, 422: Problem})
 
     @validate_call(config=ConfigDict(strict=True, arbitrary_types_allowed=True))
+    def freeze_proof_criteria(
+        self,
+        ticket_id: UUID,
+        request: FreezeCriteriaRequest,
+        *,
+        command_id: UUID,
+    ) -> ProofReceipt:
+        response = self._http.post(
+            f"/v1/tickets/{quote(str(ticket_id), safe='')}/proof/criteria",
+            content=request.model_dump_json(),
+            headers=self._telemetry_headers(
+                self._context(command_id, ticket_id=ticket_id),
+                {
+                    **self._auth_headers(),
+                    "Content-Type": "application/json",
+                    "Idempotency-Key": str(command_id),
+                },
+            ),
+        )
+        return _response(response, ProofReceipt, {401: Problem, 403: Problem, 404: Problem, 409: Problem, 422: Problem})
+
+    @validate_call(config=ConfigDict(strict=True, arbitrary_types_allowed=True))
     def get_ticket(
         self,
         ticket_id: UUID,
@@ -149,6 +178,72 @@ class CtowerClient:
         return _response(response, TimelineResponse, {401: Problem, 404: Problem, 422: Problem})
 
     @validate_call(config=ConfigDict(strict=True, arbitrary_types_allowed=True))
+    def record_proof_evidence(
+        self,
+        ticket_id: UUID,
+        request: EvidenceRequest,
+        *,
+        command_id: UUID,
+    ) -> ProofReceipt:
+        response = self._http.post(
+            f"/v1/tickets/{quote(str(ticket_id), safe='')}/proof/evidence",
+            content=request.model_dump_json(),
+            headers=self._telemetry_headers(
+                self._context(command_id, ticket_id=ticket_id),
+                {
+                    **self._auth_headers(),
+                    "Content-Type": "application/json",
+                    "Idempotency-Key": str(command_id),
+                },
+            ),
+        )
+        return _response(response, ProofReceipt, {401: Problem, 403: Problem, 404: Problem, 409: Problem, 422: Problem})
+
+    @validate_call(config=ConfigDict(strict=True, arbitrary_types_allowed=True))
+    def record_proof_verdict(
+        self,
+        ticket_id: UUID,
+        request: VerdictRequest,
+        *,
+        command_id: UUID,
+    ) -> ProofReceipt:
+        response = self._http.post(
+            f"/v1/tickets/{quote(str(ticket_id), safe='')}/proof/verdict",
+            content=request.model_dump_json(),
+            headers=self._telemetry_headers(
+                self._context(command_id, ticket_id=ticket_id),
+                {
+                    **self._auth_headers(),
+                    "Content-Type": "application/json",
+                    "Idempotency-Key": str(command_id),
+                },
+            ),
+        )
+        return _response(response, ProofReceipt, {401: Problem, 403: Problem, 404: Problem, 409: Problem, 422: Problem})
+
+    @validate_call(config=ConfigDict(strict=True, arbitrary_types_allowed=True))
+    def resolve_close_workflow(
+        self,
+        ticket_id: UUID,
+        request: ResolveCloseRequest,
+        *,
+        command_id: UUID,
+    ) -> WorkflowReceipt:
+        response = self._http.post(
+            f"/v1/tickets/{quote(str(ticket_id), safe='')}/workflow/resolve-close",
+            content=request.model_dump_json(),
+            headers=self._telemetry_headers(
+                self._context(command_id, ticket_id=ticket_id),
+                {
+                    **self._auth_headers(),
+                    "Content-Type": "application/json",
+                    "Idempotency-Key": str(command_id),
+                },
+            ),
+        )
+        return _response(response, WorkflowReceipt, {401: Problem, 404: Problem, 409: Problem, 422: Problem})
+
+    @validate_call(config=ConfigDict(strict=True, arbitrary_types_allowed=True))
     def transfer_ticket_custody(
         self,
         ticket_id: UUID,
@@ -169,6 +264,28 @@ class CtowerClient:
             ),
         )
         return _response(response, TicketCommandResult, {401: Problem, 403: Problem, 404: Problem, 409: Problem, 422: Problem})
+
+    @validate_call(config=ConfigDict(strict=True, arbitrary_types_allowed=True))
+    def transition_workflow(
+        self,
+        ticket_id: UUID,
+        request: WorkflowTransitionRequest,
+        *,
+        command_id: UUID,
+    ) -> WorkflowReceipt:
+        response = self._http.post(
+            f"/v1/tickets/{quote(str(ticket_id), safe='')}/workflow/transition",
+            content=request.model_dump_json(),
+            headers=self._telemetry_headers(
+                self._context(command_id, ticket_id=ticket_id),
+                {
+                    **self._auth_headers(),
+                    "Content-Type": "application/json",
+                    "Idempotency-Key": str(command_id),
+                },
+            ),
+        )
+        return _response(response, WorkflowReceipt, {401: Problem, 404: Problem, 409: Problem, 422: Problem})
 
     def _auth_headers(self) -> dict[str, str]:
         if self._credential is None:

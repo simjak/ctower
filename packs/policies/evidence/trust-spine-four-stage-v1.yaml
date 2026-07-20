@@ -1,0 +1,12 @@
+{
+  "schema": "ctower.evidence-policy/v1",
+  "status": "staged",
+  "key": "ctower.trust-spine-four-stage.evidence",
+  "revision": 1,
+  "digest_algorithm": "sha256",
+  "content_encoding": "utf-8",
+  "candidate_binding": "current_digest",
+  "corruption_policy": "reject",
+  "missing_policy": "reject",
+  "note": "CP-1 persists verified bytes locally; external object durability remains future scope."
+}

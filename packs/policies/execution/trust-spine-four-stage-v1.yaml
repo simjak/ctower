@@ -1,0 +1,14 @@
+{
+  "schema": "ctower.execution-policy/v1",
+  "status": "staged",
+  "key": "ctower.trust-spine-four-stage.execution",
+  "revision": 1,
+  "workflow_ref": "ctower.trust-spine-four-stage@1",
+  "capabilities": {
+    "remote": "not_exercised",
+    "images": "not_exercised",
+    "effects": "not_exercised",
+    "extensions": "not_exercised"
+  },
+  "note": "CP-1 evaluates facts only and starts no execution runtime."
+}

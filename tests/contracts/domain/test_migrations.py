@@ -18,7 +18,12 @@ def test_migration_manifest_is_ordered_and_checksum_exact() -> None:
 
     assert manifest["schema"] == "ctower.migrations/v1"
     assert names == sorted(names)
-    assert names == ["0001_roles.sql", "0002_ticket_slice.sql", "0003_privileges.sql"]
+    assert names == [
+        "0001_roles.sql",
+        "0002_ticket_slice.sql",
+        "0003_privileges.sql",
+        "0004_proof_workflow.sql",
+    ]
     for entry in entries:
         digest = hashlib.sha256((MIGRATIONS / entry["path"]).read_bytes()).hexdigest()
         assert entry["sha256"] == f"sha256:{digest}"
@@ -35,6 +40,16 @@ def test_service_and_projection_roles_are_least_privilege() -> None:
     assert "GRANT UPDATE" not in grants
     assert "GRANT DELETE" not in grants
     assert "GRANT SELECT ON ALL TABLES IN SCHEMA public TO ctower_projection" in grants
+
+
+def test_proof_workflow_facts_are_append_only_and_heads_are_narrowly_mutable() -> None:
+    migration = (MIGRATIONS / "0004_proof_workflow.sql").read_text(encoding="utf-8")
+
+    assert "GRANT SELECT, INSERT, UPDATE ON proof_bundles, workflow_runs TO ctower_svc" in migration
+    assert "GRANT INSERT, SELECT ON proof_criteria, proof_objects, proof_evidence" in migration
+    assert "proof_invalidations" in migration
+    assert "lifecycle_facts" in migration
+    assert "GRANT DELETE" not in migration
 
 
 def test_runtime_and_migrator_use_distinct_one_way_login_roles() -> None:

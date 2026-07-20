@@ -111,6 +111,7 @@ def load_policy(root: Path) -> PolicyConfig:
         )
         for item in ownership_data
     )
+    _validate_ownership_graph(ownership)
     return PolicyConfig(
         source_extensions=_strings(source.get("extensions"), "source.extensions"),
         module_roots=_repository_paths(source.get("module_roots", []), "source.module_roots"),
@@ -129,6 +130,31 @@ def load_policy(root: Path) -> PolicyConfig:
             name: _strings(value, f"profiles.{name}") for name, value in profiles_data.items()
         },
     )
+
+
+def _validate_ownership_graph(ownership: tuple[OwnershipRule, ...]) -> None:
+    names = {rule.name for rule in ownership}
+    if len(names) != len(ownership):
+        raise PolicyConfigurationError("ownership names must be unique")
+    unknown = sorted(
+        dependency
+        for rule in ownership
+        for dependency in rule.allowed_dependencies
+        if dependency not in names
+    )
+    if unknown:
+        raise PolicyConfigurationError(f"ownership dependencies are unknown: {unknown}")
+    remaining = {rule.name: set(rule.allowed_dependencies) for rule in ownership}
+    while remaining:
+        ready = {name for name, dependencies in remaining.items() if not dependencies}
+        if not ready:
+            cycle = ", ".join(sorted(remaining))
+            raise PolicyConfigurationError(f"ownership dependency cycle: {cycle}")
+        remaining = {
+            name: dependencies - ready
+            for name, dependencies in remaining.items()
+            if name not in ready
+        }
 
 
 def load_exceptions(root: Path) -> tuple[tuple[ExceptionRecord, ...], tuple[str, ...]]:

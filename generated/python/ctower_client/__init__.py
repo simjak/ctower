@@ -1,17 +1,23 @@
 """DO NOT EDIT: generated file; regenerate from declared inputs.
 
-Authored contract digest: sha256:25659b6884b836c57f08f015a00885701ba0e031fa81536903bff04cb56850f1
+Authored contract digest: sha256:9826074d4caf513025306e895b4d8083c8df77751dccd222b940816b853d0f21
 """
 
 from ctower_client.client import CtowerClient, CtowerProblemError
 from ctower_client.models import (
+    ActivityClass,
     BootstrapReceipt,
     BootstrapRequest,
     CustodyTransferredPayload,
     CustodyTransferRequest,
     DurabilityState,
+    EvidenceRequest,
+    FreezeCriteriaRequest,
     Priority,
     Problem,
+    ProofCriterion,
+    ProofReceipt,
+    ResolveCloseRequest,
     SourceReference,
     TelemetryContext,
     TicketCommandResult,
@@ -20,9 +26,14 @@ from ctower_client.models import (
     TicketResource,
     TimelineEvent,
     TimelineResponse,
+    VerdictDecision,
+    VerdictRequest,
+    WorkflowReceipt,
+    WorkflowTransitionRequest,
 )
 
 __all__ = [
+    "ActivityClass",
     "BootstrapReceipt",
     "BootstrapRequest",
     "CtowerClient",
@@ -30,8 +41,13 @@ __all__ = [
     "CustodyTransferRequest",
     "CustodyTransferredPayload",
     "DurabilityState",
+    "EvidenceRequest",
+    "FreezeCriteriaRequest",
     "Priority",
     "Problem",
+    "ProofCriterion",
+    "ProofReceipt",
+    "ResolveCloseRequest",
     "SourceReference",
     "TelemetryContext",
     "TicketCommandResult",
@@ -40,4 +56,8 @@ __all__ = [
     "TicketResource",
     "TimelineEvent",
     "TimelineResponse",
+    "VerdictDecision",
+    "VerdictRequest",
+    "WorkflowReceipt",
+    "WorkflowTransitionRequest",
 ]

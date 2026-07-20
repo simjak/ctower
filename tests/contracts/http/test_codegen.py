@@ -81,6 +81,16 @@ def test_generated_python_carries_do_not_edit_notice() -> None:
         )
 
 
+def test_generated_client_exposes_proof_and_workflow_commands() -> None:
+    client = (ROOT / "generated/python/ctower_client/client.py").read_text(encoding="utf-8")
+
+    assert "def freeze_proof_criteria(" in client
+    assert "def record_proof_evidence(" in client
+    assert "def record_proof_verdict(" in client
+    assert "def transition_workflow(" in client
+    assert "def resolve_close_workflow(" in client
+
+
 def test_contract_semantics_drive_generated_model_constraints_and_client_paths() -> None:
     with tempfile.TemporaryDirectory() as name:
         fixture = Path(name)

@@ -3,7 +3,8 @@
   "references": {
     "AC-ADM-02": [
       "contracts/bootstrap/first-tenant-request.schema.json",
-      "contracts/http/openapi.yaml"
+      "contracts/http/openapi.yaml",
+      "packages/ctower-kernel/migrations/0002_ticket_slice.sql"
     ],
     "AC-COMP-01": [
       "contracts/components/versioned-component.schema.json",
@@ -17,17 +18,51 @@
     ],
     "AC-DUR-02": [
       "contracts/domain/events/event-envelope.schema.json",
-      "contracts/http/openapi.yaml"
+      "contracts/http/openapi.yaml",
+      "packages/ctower-kernel/migrations/0002_ticket_slice.sql"
     ],
     "AC-DUR-03": [
       "contracts/domain/events/canonical-vectors.json",
       "contracts/domain/events/event-envelope.schema.json"
     ],
+    "AC-DUR-05": [
+      "contracts/evidence/evidence-manifest.schema.json"
+    ],
+    "AC-DUR-06": [
+      "packages/ctower-kernel/migrations/manifest.json"
+    ],
+    "AC-DUR-07": [
+      "packages/ctower-kernel/migrations/0001_roles.sql",
+      "packages/ctower-kernel/migrations/0002_ticket_slice.sql",
+      "packages/ctower-kernel/migrations/0003_privileges.sql",
+      "packages/ctower-kernel/migrations/0004_proof_workflow.sql",
+      "packages/ctower-kernel/migrations/manifest.json"
+    ],
+    "AC-EVD-01": [
+      "contracts/evidence/evidence-manifest.schema.json",
+      "contracts/execution/evidence-policy.schema.json",
+      "packs/policies/evidence/trust-spine-four-stage-v1.yaml"
+    ],
+    "AC-EVD-03": [
+      "contracts/execution/evidence-policy.schema.json"
+    ],
+    "AC-EVD-04": [
+      "contracts/execution/gate-policy.schema.json",
+      "contracts/http/openapi.yaml",
+      "packages/ctower-kernel/migrations/0004_proof_workflow.sql",
+      "packs/policies/gates/trust-spine-four-stage-v1.yaml"
+    ],
+    "AC-EVD-06": [
+      "contracts/evidence/evidence-manifest.schema.json",
+      "contracts/execution/evidence-policy.schema.json",
+      "packs/policies/evidence/trust-spine-four-stage-v1.yaml"
+    ],
     "AC-OPS-01": [
       "contracts/observability/telemetry-context.schema.json"
     ],
     "AC-PROD-04": [
-      "contracts/domain/tickets/ticket-event.schema.json"
+      "contracts/domain/tickets/ticket-event.schema.json",
+      "packages/ctower-kernel/migrations/0002_ticket_slice.sql"
     ],
     "AC-QUAL-01": [
       "contracts/compatibility/matrix-input.schema.json",
@@ -40,12 +75,30 @@
       "contracts/workflow/workflow.schema.json",
       "packs/workflows/engineering.software-factory/v1.yaml"
     ],
+    "AC-WF-01": [
+      "contracts/execution/execution-policy.schema.json",
+      "packs/policies/execution/trust-spine-four-stage-v1.yaml",
+      "packs/workflows/ctower.trust-spine-four-stage/v1.yaml"
+    ],
     "AC-WF-02": [
+      "contracts/execution/execution-policy.schema.json",
       "contracts/workflow/workflow.schema.json",
+      "packages/ctower-kernel/migrations/0004_proof_workflow.sql",
+      "packs/policies/execution/trust-spine-four-stage-v1.yaml",
+      "packs/workflows/ctower.trust-spine-four-stage/v1.yaml",
       "packs/workflows/engineering.software-factory/v1.yaml"
     ],
     "AC-WF-06": [
-      "packs/policies/gates/software-factory-v1.yaml"
+      "contracts/execution/gate-policy.schema.json",
+      "packs/policies/gates/software-factory-v1.yaml",
+      "packs/policies/gates/trust-spine-four-stage-v1.yaml"
+    ],
+    "AC-WF-07": [
+      "contracts/execution/gate-policy.schema.json"
+    ],
+    "AC-WF-09": [
+      "packages/ctower-kernel/migrations/0004_proof_workflow.sql",
+      "packs/policies/evidence/trust-spine-four-stage-v1.yaml"
     ],
     "AC-WF-22": [
       "contracts/workflow/review-plan.schema.json",
@@ -57,15 +110,24 @@
       "packs/policies/execution/software-factory-v1.yaml",
       "packs/policies/gates/software-factory-v1.yaml"
     ],
+    "INV-01": [
+      "packages/ctower-kernel/migrations/0001_roles.sql",
+      "packages/ctower-kernel/migrations/0002_ticket_slice.sql",
+      "packages/ctower-kernel/migrations/0003_privileges.sql"
+    ],
     "INV-02": [
-      "contracts/bootstrap/first-tenant-request.schema.json"
+      "contracts/bootstrap/first-tenant-request.schema.json",
+      "packages/ctower-kernel/migrations/0002_ticket_slice.sql",
+      "packages/ctower-kernel/migrations/0003_privileges.sql"
     ],
     "INV-03": [
       "contracts/domain/events/event-envelope.schema.json",
-      "contracts/http/openapi.yaml"
+      "contracts/http/openapi.yaml",
+      "packages/ctower-kernel/migrations/0002_ticket_slice.sql"
     ],
     "INV-04": [
-      "contracts/domain/events/event-envelope.schema.json"
+      "contracts/domain/events/event-envelope.schema.json",
+      "packages/ctower-kernel/migrations/0002_ticket_slice.sql"
     ],
     "INV-05": [
       "contracts/domain/events/canonical-vectors.json",
@@ -75,10 +137,44 @@
       "contracts/domain/tickets/ticket-event.schema.json"
     ],
     "INV-09": [
-      "contracts/domain/tickets/ticket-event.schema.json"
+      "contracts/domain/tickets/ticket-event.schema.json",
+      "packages/ctower-kernel/migrations/0002_ticket_slice.sql"
+    ],
+    "INV-12": [
+      "contracts/execution/execution-policy.schema.json",
+      "packages/ctower-kernel/migrations/0004_proof_workflow.sql",
+      "packs/policies/execution/trust-spine-four-stage-v1.yaml",
+      "packs/workflows/ctower.trust-spine-four-stage/v1.yaml"
+    ],
+    "INV-16": [
+      "contracts/evidence/evidence-manifest.schema.json",
+      "contracts/execution/gate-policy.schema.json",
+      "contracts/http/openapi.yaml",
+      "packages/ctower-kernel/migrations/0004_proof_workflow.sql",
+      "packs/policies/gates/trust-spine-four-stage-v1.yaml",
+      "packs/workflows/ctower.trust-spine-four-stage/v1.yaml"
+    ],
+    "INV-17": [
+      "contracts/execution/gate-policy.schema.json",
+      "packages/ctower-kernel/migrations/0004_proof_workflow.sql"
+    ],
+    "INV-18": [
+      "contracts/evidence/evidence-manifest.schema.json",
+      "contracts/execution/evidence-policy.schema.json",
+      "packages/ctower-kernel/migrations/0004_proof_workflow.sql",
+      "packs/policies/evidence/trust-spine-four-stage-v1.yaml"
     ],
     "INV-19": [
-      "packs/policies/gates/software-factory-v1.yaml"
+      "contracts/execution/gate-policy.schema.json",
+      "contracts/http/openapi.yaml",
+      "packages/ctower-kernel/migrations/0004_proof_workflow.sql",
+      "packs/policies/gates/software-factory-v1.yaml",
+      "packs/policies/gates/trust-spine-four-stage-v1.yaml"
+    ],
+    "INV-20": [
+      "contracts/execution/evidence-policy.schema.json",
+      "packages/ctower-kernel/migrations/0004_proof_workflow.sql",
+      "packs/policies/evidence/trust-spine-four-stage-v1.yaml"
     ],
     "INV-28": [
       "contracts/observability/telemetry-context.schema.json"
@@ -120,8 +216,23 @@
     "SPEC#companybundle-validate-plan-apply-and-export": [
       "contracts/company/company-bundle.schema.json"
     ],
+    "SPEC#durable-job-run-evidence-gate-and-effect-sequence": [
+      "contracts/evidence/evidence-manifest.schema.json"
+    ],
+    "SPEC#executable-authority-and-requirement-traceability": [
+      "packages/ctower-kernel/migrations/0001_roles.sql",
+      "packages/ctower-kernel/migrations/0003_privileges.sql",
+      "packages/ctower-kernel/migrations/manifest.json"
+    ],
     "SPEC#first-tenant-trust-root-ceremony": [
-      "contracts/bootstrap/first-tenant-request.schema.json"
+      "contracts/bootstrap/first-tenant-request.schema.json",
+      "packages/ctower-kernel/migrations/0002_ticket_slice.sql"
+    ],
+    "SPEC#i1-four-stage-fixture": [
+      "packs/policies/evidence/trust-spine-four-stage-v1.yaml",
+      "packs/policies/execution/trust-spine-four-stage-v1.yaml",
+      "packs/policies/gates/trust-spine-four-stage-v1.yaml",
+      "packs/workflows/ctower.trust-spine-four-stage/v1.yaml"
     ],
     "SPEC#language-allocation-and-runtime-acceptance": [
       "contracts/compatibility/matrix-input.schema.json",
@@ -137,15 +248,26 @@
     ],
     "SPEC#task-management-foundation": [
       "contracts/workflow/workflow.schema.json",
+      "packages/ctower-kernel/migrations/0002_ticket_slice.sql",
       "packs/workflows/engineering.software-factory/v1.yaml"
+    ],
+    "SPEC#test-and-evidence-matrix": [
+      "contracts/evidence/evidence-manifest.schema.json"
     ],
     "SPEC#universal-versionedcomponent-catalog-and-company-desired-state": [
       "contracts/components/versioned-component.schema.json",
       "packs/manifests/core-v1.yaml"
     ],
     "SPEC#versioned-workflow-and-execution-policy-contract": [
+      "contracts/execution/execution-policy.schema.json",
       "contracts/workflow/workflow.schema.json",
       "packs/workflows/engineering.software-factory/v1.yaml"
+    ],
+    "SPEC#workflow-and-verification-architecture": [
+      "contracts/execution/evidence-policy.schema.json",
+      "contracts/execution/gate-policy.schema.json",
+      "contracts/http/openapi.yaml",
+      "packages/ctower-kernel/migrations/0004_proof_workflow.sql"
     ]
   },
   "schema": "ctower.traceability-index/v1",

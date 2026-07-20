@@ -1,0 +1,25 @@
+{
+  "schema": "ctower.workflow/v1",
+  "status": "staged",
+  "key": "ctower.trust-spine-four-stage",
+  "revision": 1,
+  "input_contract": "ctower.ticket-candidate",
+  "terminal_contract": "ctower.proof-closed",
+  "policy_refs": {
+    "execution": "ctower.trust-spine-four-stage.execution@1",
+    "gates": "ctower.trust-spine-four-stage.gates@1"
+  },
+  "stages": [
+    {"key": "capture", "activity_class": "work"},
+    {"key": "frame", "activity_class": "work"},
+    {"key": "verify", "activity_class": "verification"},
+    {"key": "close", "activity_class": "work"}
+  ],
+  "transitions": [
+    {"from": "capture", "to": "frame", "predicate_ref": "entry.ready@1"},
+    {"from": "frame", "to": "verify", "predicate_ref": "criteria.frozen@1"},
+    {"from": "verify", "to": "close", "predicate_ref": "proof.current@1"}
+  ],
+  "failure_routes": [],
+  "note": "Development-only CP-1 fixture for the generic evaluator; no runtime is started."
+}

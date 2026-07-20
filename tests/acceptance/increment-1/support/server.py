@@ -15,9 +15,14 @@ import uvicorn
 
 from ctower_api.interface import create_app
 from ctower_api.telemetry import TelemetryRecorder
+from ctower_kernel.proof import Proof
+from ctower_kernel.proof.postgres import PostgresProof
 from ctower_kernel.record.postgres import PostgresRecord
+from ctower_kernel.workflow import Workflow, WorkflowGraph
+from ctower_kernel.workflow.postgres import PostgresWorkflow
 
 __all__: tuple[str, ...] = ()
+ROOT = Path(__file__).parents[4]
 
 
 class _Process(Protocol):
@@ -65,8 +70,22 @@ def _serve(
         if telemetry_capture is not None or telemetry_failure
         else None
     )
+    proof_store = PostgresProof(runtime_dsn, telemetry=recorder)
+    workflow_store = PostgresWorkflow(
+        runtime_dsn,
+        proof_gate=proof_store,
+        telemetry=recorder,
+    )
+    graph_payload = json.loads(
+        (ROOT / "packs/workflows/ctower.trust-spine-four-stage/v1.yaml").read_text(encoding="utf-8")
+    )
     uvicorn.run(
-        create_app(PostgresRecord(runtime_dsn, telemetry=recorder), telemetry=recorder),
+        create_app(
+            PostgresRecord(runtime_dsn, telemetry=recorder),
+            proof=Proof(writer=proof_store),
+            workflow=Workflow((WorkflowGraph.from_mapping(graph_payload),), writer=workflow_store),
+            telemetry=recorder,
+        ),
         host=host,
         port=port,
         log_level="error",
