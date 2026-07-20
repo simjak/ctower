@@ -326,13 +326,16 @@ are independent and make health `STATE UNKNOWN` when stale.
 
 ```text
 structured execution intent
- executable + argv/shell plan + cwd + bounded environment refs
+ executable + argv/shell plan + cwd + pinned environment-resolution identities
                        |
                        v
  normalize expansions / parent traversal / globs / symlinks / targets
                        |
                        v
- versioned CommandGuard decision + immutable receipt
+ canonical normalized-execution-plan digest + decision/attempt identity
+                       |
+                       v
+ versioned CommandGuard decision + immutable bound receipt
        | allow              | block             | needs_operator
        v                    v                     v
  exact plan may       zero dispatch       exact one-use, short-lived
@@ -354,13 +357,19 @@ proved by capability plus containment, not a command or basename exception. Raw 
 insufficient because quoted issue text is not execution intent, while expansions, indirection, and
 resolved targets determine the actual blast radius.
 
-The receipt binds ticket/run/principal, Harness/provider, policy revision, normalized-command digest, cwd,
-resolved targets, rule/reason, and time without logging raw secrets or sensitive command content. Changed
-targets, unresolved protected scope, expiry/replay, or missing/mismatched remote enforcement receipt fail
-closed. This guard reduces accidental destruction; sandbox/VM/OS isolation, workspace scoping,
-short-lived credentials, egress controls, and Effects brokerage remain the containment boundaries for
-malicious arbitrary code. Exact policy/schema/signature/provider mechanics wait for the first real Harness
-consumer in CT-I2-004; [issue #17](https://github.com/simjak/ctower/issues/17) tracks that implementation.
+One canonical digest covers executable identity, argv or explicit shell plan, normalized cwd, each
+non-secret environment reference plus its pinned version/digest, and the exact resolved target set in the
+actual dispatch namespace. Every decision, grant, and local or remote enforcement receipt binds that digest
+and one decision/dispatch-attempt identity plus ticket/job/run, principal, exact Harness/Supervisor/provider/
+target identities, policy revision, and evaluation/enforcement time, without logging secret values or
+sensitive command content. At the final boundary the Adapter dispatches from captured/pinned resolution or
+re-resolves and atomically compares it. Mismatch, uncertainty, or inability to record the receipt before
+dispatch means zero dispatch; receipt uncertainty after dispatch may have begun leaves completion
+incomplete/`STATE UNKNOWN`, never accepted. This guard reduces accidental destruction; sandbox/VM/OS
+isolation, workspace scoping, short-lived credentials, egress controls, and Effects brokerage remain the
+containment boundaries for malicious arbitrary code. Exact policy/schema/signature/provider mechanics wait
+for the first real Harness consumer in CT-I2-004; [issue #17](https://github.com/simjak/ctower/issues/17)
+tracks that implementation.
 
 ## Disaster-safe acceptance, restore, and cutover
 
@@ -456,8 +465,10 @@ Before either increment is complete, applicable tests must show that:
 4. Reads/effects cannot enable before key, object, tombstone, signed expected-source inventory, and activated-journal reconciliation; absent sources never count as success.
 5. Runner/tmux loss fences stale authority and resumes from durable state without inferred success.
 6. Every registered Harness or Supervisor command-dispatch path invokes CommandGuard at final pre-dispatch;
-   blocked/attention commands execute zero times, exact override succeeds once, replay/expiry/target ambiguity
-   fails, remote completion requires a matching enforcement receipt, and observability remains redacted.
+   decision/grant/local-or-remote enforcement receipts bind one canonical normalized-execution-plan digest
+   and decision/dispatch-attempt identity to the complete execution context; blocked/attention commands,
+   resolution mismatch, uncertainty, replay, expiry, and pre-dispatch receipt failure execute zero times;
+   post-dispatch receipt loss cannot produce accepted completion; and observability remains redacted.
 7. A candidate mutation invalidates exactly dependent proof and requires fresh applicable gates/review.
 8. Author/self-review, missing perspectives, invalid bounds, and stale evidence fail closed.
 9. Production verification failure enters incident, revocation, containment/rollback, verification, then triage.

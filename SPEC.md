@@ -534,7 +534,7 @@ An aggregate owns only the invariants that must be transactional together. Cross
 | **Runner / node** | Registered workload identity, protocol version, capabilities, trust class, capacity, allowed scopes, heartbeat, and quarantine/revocation state | Hosts execution runs and workspaces; never writes record tables directly |
 | **Execution run / session** | One bounded adapter execution with runner, job token, profile revision, context manifest, timestamps, usage, outcome, and ordered event cursor; vendor session handle is optional metadata | Run can allocate cost across tickets/stages; session is never identity |
 | **Effective run manifest / placement decision** | Immutable per-attempt pins for Harness, Supervisor, Target, Workspace, Telemetry, environment, image, target/allocation/incarnation, resources, egress, isolation, candidate exclusions, and rationale | Component or placement change creates a new attempt; mutable active pointers and provider handles cannot rewrite it |
-| **CommandGuard decision / override grant / enforcement receipt** | Immutable pre-dispatch decision over one normalized execution plan, optional authenticated exact-scope one-use operator grant, and Adapter enforcement observation | Binds ticket, run, principal, Harness/provider, policy revision, normalized-command digest, cwd, resolved targets, rule/reason, and time; authorizes no other command and proves neither sandbox containment nor Workflow success |
+| **CommandGuard decision / override grant / enforcement receipt** | Immutable pre-dispatch decision over one normalized execution plan, optional authenticated exact-scope one-use operator grant, and local or remote Adapter enforcement observation | Every artifact binds one normalized-execution-plan digest and decision/dispatch-attempt identity plus ticket/job/run, principal, Harness/Supervisor/provider/target identities, policy revision, and evaluation/enforcement time; it authorizes no other plan and proves neither sandbox containment nor Workflow success |
 | **Execution environment / image revision** | Immutable desired toolchain, OS/architecture, image digest, network, resources, cache/reuse/scrub, attestation, provenance, lifecycle, and future active pointer | Distinct from staging/production release environments; reusable bytes never contain standing credentials/login sessions |
 | **Target / allocation / incarnation** | Stable capacity registration, one fenced job reservation, and one observed host/VM/sandbox generation | Ctower allocation/fencing is authority; provider lease/run/resource IDs are scoped observations only |
 | **Workspace / checkpoint** | Workspace provider, source revision, mutable work location, ownership lease, checkpoint manifests, cleanup state, and recovery preconditions | A checkpoint is content-addressed and linked to a run/stage attempt; cleanup cannot destroy sole uncommitted evidence |
@@ -910,7 +910,7 @@ The ticket is the human join point, not the transaction boundary for the entire 
 55. **INV-55 — No secret-bearing reusable state.** Images, caches, warm entries, checkpoints, logs, and setup sessions cannot retain long-lived credentials, CLI/browser login state, private keys, tokens, or PII. Secrets are projected just in time after boot and revoked/scrubbed at end.
 56. **INV-56 — Provider observations are not transitions.** Remote providers and Crabbox return scoped observations/receipts only. Ctower validates/appends them; provider success, disappearance, cleanup, or image capture cannot advance Workflow, satisfy evidence, or promote an image.
 57. **INV-57 — Board/task axes remain orthogonal.** Priority, Board lane, blocker, arbitrary workflow stage/activity, lifecycle, typed delivery, custody, assignment, and runner lease remain independently attributable; Board controls emit typed intents rather than status patches, and lane semantics never depend on delivery wording or capitalization.
-58. **INV-58 — Guard before harness dispatch.** Every registered local or remote Harness or Supervisor Adapter that can launch, invoke, or submit a harness command obtains and enforces a current versioned CommandGuard decision for the exact normalized execution plan at its final trusted pre-dispatch boundary. `block` and `needs_operator` dispatch nothing; changed plans or targets, unresolved protected targets, expired/replayed grants, missing remote enforcement receipts, and direct guard bypass fail closed.
+58. **INV-58 — Guard before harness dispatch.** Every registered local or remote Harness or Supervisor Adapter that can launch, invoke, or submit a harness command obtains and enforces a current versioned CommandGuard decision for the exact normalized execution plan at its final trusted pre-dispatch boundary. `block` and `needs_operator` dispatch nothing; changed plans or targets, unresolved protected targets, expired/replayed grants, missing required local or remote enforcement receipts, and direct guard bypass fail closed.
 
 ## Workflow and verification architecture
 
@@ -2077,11 +2077,14 @@ command through another path. A direct path around the guard is an architecture 
 not an implementation convenience.
 
 The guard evaluates structured execution intent rather than raw text. Before policy evaluation it
-normalizes the executable identity; argv or the explicit shell plan; normalized working directory;
-bounded environment **references** rather than secret values; parent traversal; glob expansion; symlink
-resolution; and every candidate target in the actual dispatch namespace. An unresolved, ambiguous, or
-broad protected target yields `block` or `needs_operator`, never `allow`. Quoted examples, issue text, and
-other non-executing data do not become commands merely because they contain a dangerous token. Conversely,
+normalizes the executable identity; argv or the explicit shell plan; normalized working directory; each
+non-secret environment-resolution identity as its reference plus pinned version/digest, never the secret
+value; parent traversal; glob expansion; symlink resolution; and every candidate target in the actual
+dispatch namespace. These fields produce one canonical **normalized-execution-plan digest** covering the
+executable identity, argv or explicit shell plan, normalized cwd, every non-secret environment-resolution
+identity, and the exact resolved target set in that dispatch namespace. An unresolved, ambiguous, or broad
+protected target yields `block` or `needs_operator`, never `allow`. Quoted examples, issue text, and other
+non-executing data do not become commands merely because they contain a dangerous token. Conversely,
 supported shell, privilege, build, task-runner, and provider wrappers cannot hide their resolved execution
 intent; an opaque indirection with protected reach fails closed.
 
@@ -2098,29 +2101,37 @@ wrappers or indirection:
 
 Safe cleanup is authorized by capability plus proven containment inside an exact disposable root. A
 basename, command name, familiar cleanup script, or claimed temporary directory is never sufficient by
-itself. Any post-normalization change to executable, plan, cwd, environment references, or resolved targets
-requires a new decision.
+itself. The decision authorizes only the captured normalized resolution. At the final boundary the Adapter
+must dispatch from that captured/pinned resolution or re-resolve it and atomically compare the resulting
+normalized-execution-plan digest immediately before dispatch. Any mismatch, uncertainty, or inability to
+compare performs zero dispatch and requires a new decision.
 
 Each evaluation returns exactly `allow`, `block`, or `needs_operator` and appends an immutable decision
-receipt. The receipt binds the ticket, job/run, principal, Harness and provider/target when applicable,
-policy revision, normalized-command digest, normalized cwd, resolved target identities, decision,
-rule/reason, and decision time. Raw secrets, expanded credential values, and sensitive command content are
-excluded from application logs and telemetry; protected receipt fields remain access-controlled while
-observability uses the digest, rule, reason class, outcome, and low-cardinality component identities.
+receipt. Runtime assigns one decision/dispatch-attempt identity for that proposed boundary use. Every
+decision receipt, operator grant, and local or remote enforcement receipt binds that identity and the same
+normalized-execution-plan digest plus the ticket, job, run, principal, exact Harness, Supervisor, provider,
+and target identities, policy revision, and its evaluation or enforcement time. A typed not-applicable
+provider identity is allowed only for a composition with no provider. The decision receipt also records the
+decision and rule/reason; the enforcement receipt records whether zero dispatch or dispatch occurred and
+the observed outcome. Raw secrets, expanded credential values, and sensitive command content are excluded
+from application logs and telemetry; protected receipt fields remain access-controlled while observability
+uses the digest, rule, reason class, outcome, and low-cardinality component identities.
 
 `block` and `needs_operator` both execute zero commands. A `block` is a policy refusal. A
 `needs_operator` decision creates one exact Attention action and can proceed only with a policy-authorized
 operator grant produced after strong authentication. The grant binds the original receipt and exact
-normalized-command digest/targets, has a nonce and short absolute expiry, is consumed atomically once at
-dispatch, and cannot alter policy globally. Expiry, replay, target or command mismatch, changed resolution,
-or concurrent second use executes nothing and appends a refusal. Authorization and enforcement/result
-receipts remain linked.
+normalized-execution-plan digest and decision/dispatch-attempt identity, has a nonce and short absolute
+expiry, is consumed atomically once at dispatch, and cannot alter policy globally. Expiry, replay, plan or
+target mismatch, changed resolution, or concurrent second use executes nothing and appends a refusal.
+Authorization and enforcement/result receipts remain linked.
 
-A remote executor receives a signed decision or scoped operator grant and returns an authenticated
-enforcement receipt binding the same policy, command digest, cwd, targets, nonce/use, and outcome. Ctower
-does not accept the remote run's completion when that receipt is absent, invalid, stale, replayed, or
-mismatched; Runtime fences/quarantines the result and exposes incomplete enforcement as degraded or
-`STATE UNKNOWN`. Provider success alone remains an observation and cannot repair the missing proof.
+Every local or remote Adapter must durably append or return its bound enforcement receipt. A remote
+executor receives a signed decision or scoped operator grant and returns an authenticated receipt under
+the same contract. If the required receipt cannot be durably recorded before dispatch, the Adapter performs
+zero dispatch. If receipt loss or uncertainty is discovered after dispatch may have begun, ctower never
+accepts terminal completion: Runtime fences/quarantines the result and exposes incomplete enforcement as
+degraded or `STATE UNKNOWN`. An absent, invalid, stale, replayed, mismatched, or context-incomplete receipt
+cannot be repaired by process or provider success.
 
 This control is a high-value defense against accidental destruction by commands ctower dispatches. It is
 not containment against malicious arbitrary code: an allowed interpreter, script, compiler, or binary can
@@ -2645,7 +2656,7 @@ Each criterion is pass/fail. Evidence must be attached to the ctower build ticke
 | <a id="ac-run-12"></a>AC-RUN-12 | If reusable images are introduced, Run A pinned to image `d1` remains on `d1` when the future pointer moves to `d2`; actual-boot mismatch blocks tools/secrets, and revoke/rollback/GC never rewrites history. I1/I2 exercise only pinned control/local-runner build digests, not a custom-image product. | Current local-build pin test plus deferred image pointer/revoke fixtures |
 | <a id="ac-run-13"></a>AC-RUN-13 | Warm pools and shared caches are absent in I1/I2. A future implementation must atomically borrow, finalize/revoke/scrub/conformance-check before return, quarantine any uncertainty, and prove cache deletion loses no source/work/proof/audit or criterion evidence. | Absence assertion and deferred pool/cache safety fixture |
 | <a id="ac-run-14"></a>AC-RUN-14 | Exercised control/runner/network/host loss, stale result, stream gap, and finalize failure converge fail closed with no inferred success or destroyed sole-copy work. Future provider/image failure classes inherit the same invariant before their runtime can be published. | Local deterministic recovery matrix plus deferred provider/image invariant catalog |
-| <a id="ac-run-15"></a>AC-RUN-15 | Before arbitrary harness execution activates, every registered local or remote Harness or Supervisor Adapter capable of launching, invoking, or submitting a harness command passes one shared CommandGuard conformance contract at its final pre-dispatch boundary. Fixtures prove structured intent classification without raw-substring false positives; executable/argv or shell-plan, cwd, bounded environment-reference, empty-expansion, parent-traversal, glob, symlink, wrapper/indirection, and exact-target resolution; every catastrophic class; capability-and-containment-based safe cleanup; and architecture rejection of direct bypass. `block` and `needs_operator` produce a receipt and zero execution. An authenticated exact-command/exact-target override succeeds exactly once; expiry, replay, concurrent reuse, changed resolution, or scope mismatch executes nothing. Remote completion requires a valid matching signed decision/grant and enforcement receipt. All receipts bind the required decision context while logs/telemetry expose no raw secret or sensitive command content. | Registered dispatch-capable Adapter conformance matrix, process/shell/provider dispatch interceptor and zero-side-effect proof, normalization and catastrophic-class corpus, one-use/replay/expiry race trace, remote receipt mismatch fixtures when a remote Seam exists, architecture dependency/path report, and redaction capture |
+| <a id="ac-run-15"></a>AC-RUN-15 | Before arbitrary harness execution activates, every registered local or remote Harness or Supervisor Adapter capable of launching, invoking, or submitting a harness command passes one shared CommandGuard conformance contract at its final pre-dispatch boundary. Fixtures prove structured intent classification without raw-substring false positives; canonical normalized-execution-plan digesting over executable identity, argv or explicit shell plan, normalized cwd, every non-secret environment-resolution identity as reference plus pinned version/digest and never secret value, and the exact resolved target set in the actual dispatch namespace; empty-expansion, parent-traversal, glob, symlink, wrapper/indirection, every catastrophic class, capability-and-containment-based safe cleanup, and architecture rejection of direct bypass. Every decision, grant, and local or remote enforcement receipt binds that digest plus one decision/dispatch-attempt identity, ticket/job/run, principal, exact Harness/Supervisor/provider/target identities, policy revision, and evaluation/enforcement time. The final Adapter dispatches only from captured/pinned resolution or re-resolves and atomically compares the digest. `block`, `needs_operator`, mismatch, uncertainty, pre-dispatch receipt failure, expiry, replay, concurrent reuse, changed resolution, or scope mismatch executes nothing; post-dispatch receipt loss or uncertainty leaves completion incomplete/unknown and never accepted. An authenticated exact-plan override succeeds exactly once, and remote completion additionally requires a valid matching signed decision/grant and authenticated enforcement receipt. Logs/telemetry expose no raw secret or sensitive command content. | Registered dispatch-capable Adapter conformance matrix, process/shell/provider dispatch interceptor and zero-side-effect proof, canonical plan-digest vectors, normalization and catastrophic-class corpus, captured-resolution and atomic re-resolution TOCTOU matrix, complete-context receipt assertions, one-use/replay/expiry race trace, local/remote receipt-loss and mismatch fixtures as applicable, architecture dependency/path report, and redaction capture |
 
 ### Security
 
@@ -2688,7 +2699,7 @@ Each criterion is pass/fail. Evidence must be attached to the ctower build ticke
 | <a id="ac-ux-07"></a>AC-UX-07 | Ticket detail renders the latest accepted and refused transition/readiness evaluations with requested edge, result, rule/policy revisions, input digest, every unmet item/owner, evaluation time, linked evidence, and before/after versions; a refused fixture changes no authoritative state. | Accepted/refused API snapshots, state-diff assertion, and E2E screenshots |
 | <a id="ac-ux-08"></a>AC-UX-08 | Needs You contains 100% only current open policy-qualified operator-owned decisions/incidents and excludes informational, Commander-owned, service-recovery, resolved, expired, and superseded fixtures; ownership/qualification changes remove or coalesce rows within 60 s. | Positive/negative projection fixtures for every class, precision query, freshness clock test, and Home screenshots |
 | <a id="ac-ux-09"></a>AC-UX-09 | A browser command remains visibly `unsent` or `durability pending` until authoritative acceptance, preserves one stable command ID across disconnect/reload, and never paints optimistic state as accepted. Retry, refusal, and quarantine are distinguishable without inspecting developer tools. | Offline/reconnect/reload recording, accessibility assertions, and authoritative state diff |
-| <a id="ac-ux-10"></a>AC-UX-10 | The generated API/CLI and appropriate Home/Ticket Attention surface expose a `needs_operator` CommandGuard decision's normalized cwd/targets, rule/reason, exact command digest, grant scope, absolute expiry, unused/consumed/refused state, and linked decision/authorization/enforcement receipts. Strong re-authentication and explicit exact-scope confirmation are required; expiry, replay, mismatch, or concurrent reuse is shown as refused with zero execution. Secret values and grant credentials appear in none of these views, URLs, process arguments, logs, or telemetry; sensitive raw command content appears in none of the views, URLs, logs, or telemetry. | Generated-client/API snapshots, CLI transcript, every-control Home/Ticket recording, strong-reauth and concurrent-use matrix, linked receipt query, accessibility assertions, and redaction capture |
+| <a id="ac-ux-10"></a>AC-UX-10 | The generated API/CLI and appropriate Home/Ticket Attention surface expose a `needs_operator` CommandGuard decision's normalized cwd/targets, rule/reason, normalized-execution-plan digest, grant scope, absolute expiry, unused/consumed/refused state, and linked decision/authorization/enforcement receipts. Strong re-authentication and explicit exact-scope confirmation are required; expiry, replay, mismatch, or concurrent reuse is shown as refused with zero execution. Secret values and grant credentials appear in none of these views, URLs, process arguments, logs, or telemetry; sensitive raw command content appears in none of the views, URLs, logs, or telemetry. | Generated-client/API snapshots, CLI transcript, every-control Home/Ticket recording, strong-reauth and concurrent-use matrix, linked receipt query, accessibility assertions, and redaction capture |
 
 ### Migration
 
@@ -2748,7 +2759,7 @@ Before ctower becomes the writable source for its own project, the operator capt
 | **Evidence completeness** | Active criteria with current full-contract evidence / active criteria at resolution | Criteria, evidence, attestations | 100% at resolution; any breach is a correctness incident | Continuous |
 | **Evidence staleness** | Valid evidence past expiry or with changed dependency still counted / evidence evaluated | Evidence dependencies/invalidation | Zero; invalidation latency p95 <10 s | Continuous/daily |
 | **Runner recovery time** | Replacement `run.started` - loss detection for recoverable jobs | Lease, heartbeat, reconciliation, run events | p95 <=5 min; detection <60 s | Continuous/weekly |
-| **CommandGuard enforcement integrity** | Harness command attempts with one matching current pre-dispatch decision and required enforcement receipt / all Harness command attempts; blocked, operator-granted, replayed, and incomplete outcomes reported separately | Runtime decision receipts, operator grants, registered-Adapter enforcement receipts, dispatch interception, enforcement watermark | 100% guarded; zero execution on `block`/`needs_operator`; zero expired/replayed/mismatched grant use; any missing remote receipt makes completeness unknown | Continuous with weekly conformance/reconciliation report |
+| **CommandGuard enforcement integrity** | Harness command attempts with one matching current pre-dispatch decision and required local or remote enforcement receipt / all Harness command attempts; blocked, operator-granted, replayed, and incomplete outcomes reported separately | Runtime decision receipts, operator grants, registered-Adapter enforcement receipts, dispatch interception, enforcement watermark | 100% guarded; zero execution on `block`/`needs_operator`; zero expired/replayed/mismatched grant use; any missing required receipt makes completeness unknown | Continuous with weekly conformance/reconciliation report |
 | **Orphan count** | Nonterminal jobs without valid lease/recovery action after grace window | Jobs, leases, recovery actions | Zero | Continuous |
 | **Cost per verified outcome** | Fully allocated cost records / verified resolved tickets, by risk/type | Cost records/allocations, resolved episodes | Trend after baseline; attention/quality cannot regress merely to reduce cost | Weekly/monthly |
 | **Allocation completeness** | Cost amount with allocation fractions summing to 1 / all captured cost amount | Cost records/allocations | 100%; unallocated cost shown separately and blocks trustworthy unit economics | Daily/weekly |
@@ -2916,7 +2927,13 @@ ctowerctl release live-verify --ticket CT-I2-010 --endpoint /v1/meta/build
 
 #### I2 rollback
 
-A feature flag stops new workflow starts and job offers while preserving every ticket/run. Active jobs drain or cancel through durable commands. A local runner defect falls back to manual `bin/mux` operation through ctower job/command records, not legacy ticket state. A release failure follows receipt reconciliation and the tested incident/rollback path. A defective Workflow or policy is superseded by a new version; historical and production runs retain the version that actually executed.
+A feature flag stops new workflow starts and job offers while preserving every ticket/run. Active jobs
+drain or cancel through durable commands. Manual operator initiation is legal only through a healthy,
+registered, conformance-tested Adapter that obtains and enforces a fresh CommandGuard decision at its final
+dispatch boundary. If no such Adapter is healthy, new dispatch remains disabled. Direct `bin/mux`, shell,
+process, or provider invocation is forbidden as rollback. A release failure follows receipt reconciliation
+and the tested incident/rollback path. A defective Workflow or policy is superseded by a new version;
+historical and production runs retain the version that actually executed.
 
 ### Explicit do-not-build-yet list
 
