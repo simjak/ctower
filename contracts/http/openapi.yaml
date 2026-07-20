@@ -396,6 +396,7 @@
               "validation-error",
               "version-conflict",
               "workflow-predicate-unsatisfied",
+              "workflow-initial-stage-required",
               "proof-incomplete",
               "workflow-state-conflict",
               "workflow-terminal",

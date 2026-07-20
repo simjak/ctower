@@ -69,7 +69,7 @@ def advance_workflow(
         refusal = _transition_refusal(evaluator, mutation, run)
         if refusal is not None:
             return refusal
-        decision = _evaluate_transition(connection, evaluator, proof_gate, actor, mutation)
+        decision = _evaluate_transition(connection, evaluator, proof_gate, actor, mutation, run)
         if not decision.accepted:
             return _problem(
                 mutation,
@@ -96,6 +96,7 @@ def _evaluate_transition(
     proof_gate: ProofGate,
     actor: WorkflowActor,
     mutation: WorkflowMutation,
+    run: dict[str, object] | None,
 ) -> WorkflowDecision:
     return evaluator.evaluate(
         WorkflowContextSnapshot(
@@ -104,6 +105,7 @@ def _evaluate_transition(
             satisfied_predicates=_satisfied_predicates(
                 connection, proof_gate, actor.tenant_id, mutation.ticket_id
             ),
+            run_started=run is not None,
         ),
         WorkflowCommand(mutation.destination_stage),
     )
@@ -130,6 +132,7 @@ def _commit_transition(
         run_id=run_id,
         version=version,
         activity=activity,
+        initial_stage=cast(str, decision.initial_stage),
         predicate_ref=cast(str, decision.predicate_ref),
         now=now,
     )
@@ -353,6 +356,7 @@ def _persist_transition(
     run_id: UUID,
     version: int,
     activity: ActivityClass,
+    initial_stage: str,
     predicate_ref: str,
     now: datetime,
 ) -> None:
@@ -363,6 +367,7 @@ def _persist_transition(
         run_id=run_id,
         version=version,
         activity=activity,
+        initial_stage=initial_stage,
         now=now,
     )
     connection.execute(
@@ -397,6 +402,7 @@ def _persist_run_head(
     run_id: UUID,
     version: int,
     activity: ActivityClass,
+    initial_stage: str,
     now: datetime,
 ) -> None:
     if version != 1:
@@ -422,7 +428,7 @@ def _persist_run_head(
             actor.tenant_id,
             key,
             int(revision),
-            mutation.source_stage,
+            initial_stage,
             mutation.destination_stage,
             activity.value,
             now,

@@ -29,6 +29,7 @@
       "contracts/evidence/evidence-manifest.schema.json"
     ],
     "AC-DUR-06": [
+      "packages/ctower-kernel/migrations/0005_proof_verdict_sequence.sql",
       "packages/ctower-kernel/migrations/manifest.json"
     ],
     "AC-DUR-07": [
@@ -94,7 +95,8 @@
       "packs/policies/gates/trust-spine-four-stage-v1.yaml"
     ],
     "AC-WF-07": [
-      "contracts/execution/gate-policy.schema.json"
+      "contracts/execution/gate-policy.schema.json",
+      "packages/ctower-kernel/migrations/0005_proof_verdict_sequence.sql"
     ],
     "AC-WF-09": [
       "packages/ctower-kernel/migrations/0004_proof_workflow.sql",
@@ -127,7 +129,8 @@
     ],
     "INV-04": [
       "contracts/domain/events/event-envelope.schema.json",
-      "packages/ctower-kernel/migrations/0002_ticket_slice.sql"
+      "packages/ctower-kernel/migrations/0002_ticket_slice.sql",
+      "packages/ctower-kernel/migrations/0005_proof_verdict_sequence.sql"
     ],
     "INV-05": [
       "contracts/domain/events/canonical-vectors.json",
@@ -176,6 +179,9 @@
       "packages/ctower-kernel/migrations/0004_proof_workflow.sql",
       "packs/policies/evidence/trust-spine-four-stage-v1.yaml"
     ],
+    "INV-21": [
+      "packages/ctower-kernel/migrations/0005_proof_verdict_sequence.sql"
+    ],
     "INV-28": [
       "contracts/observability/telemetry-context.schema.json"
     ],
@@ -216,6 +222,9 @@
     "SPEC#companybundle-validate-plan-apply-and-export": [
       "contracts/company/company-bundle.schema.json"
     ],
+    "SPEC#consistency-concurrency-and-deduplication": [
+      "packages/ctower-kernel/migrations/0005_proof_verdict_sequence.sql"
+    ],
     "SPEC#durable-job-run-evidence-gate-and-effect-sequence": [
       "contracts/evidence/evidence-manifest.schema.json"
     ],
@@ -240,6 +249,9 @@
     ],
     "SPEC#observability-from-day-one": [
       "contracts/observability/telemetry-context.schema.json"
+    ],
+    "SPEC#persistence-authority": [
+      "packages/ctower-kernel/migrations/0005_proof_verdict_sequence.sql"
     ],
     "SPEC#review-rounds-lineages-generations-and-budgets": [
       "contracts/workflow/review-plan.schema.json",

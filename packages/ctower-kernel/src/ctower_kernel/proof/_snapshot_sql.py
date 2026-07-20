@@ -67,7 +67,7 @@ def load_snapshot(
     verdicts = connection.execute(
         """
         SELECT verdict_id, criterion_key, candidate_digest, reviewer_id, decision
-        FROM proof_verdicts WHERE tenant_id = %s AND proof_id = %s ORDER BY recorded_at, verdict_id
+        FROM proof_verdicts WHERE tenant_id = %s AND proof_id = %s ORDER BY proof_sequence
         """,
         (tenant_id, proof_id),
     ).fetchall()

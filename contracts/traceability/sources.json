@@ -287,6 +287,17 @@
       ]
     },
     {
+      "path": "packages/ctower-kernel/migrations/0005_proof_verdict_sequence.sql",
+      "references": [
+        "SPEC#consistency-concurrency-and-deduplication",
+        "SPEC#persistence-authority",
+        "INV-04",
+        "INV-21",
+        "AC-DUR-06",
+        "AC-WF-07"
+      ]
+    },
+    {
       "path": "packages/ctower-kernel/migrations/manifest.json",
       "references": [
         "SPEC#executable-authority-and-requirement-traceability",

@@ -20,6 +20,7 @@ def test_four_stage_fixture_is_a_valid_domain_neutral_graph() -> None:
 
     assert fixture["key"] == WORKFLOW
     assert fixture["revision"] == 1
+    assert fixture["initial_stage"] == "capture"
     assert [stage["activity_class"] for stage in fixture["stages"]] == [
         "work",
         "work",

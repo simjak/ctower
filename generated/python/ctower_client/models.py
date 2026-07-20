@@ -1,6 +1,6 @@
 """DO NOT EDIT: generated file; regenerate from declared inputs.
 
-Authored contract digest: sha256:9826074d4caf513025306e895b4d8083c8df77751dccd222b940816b853d0f21
+Authored contract digest: sha256:71152e641b41ee93136c346c04060769bcfd05c8bdfb8e009491efe2d666be3c
 """
 
 from __future__ import annotations
@@ -118,6 +118,7 @@ class Problem(_BoundaryModel):
         "validation-error",
         "version-conflict",
         "workflow-predicate-unsatisfied",
+        "workflow-initial-stage-required",
         "proof-incomplete",
         "workflow-state-conflict",
         "workflow-terminal",

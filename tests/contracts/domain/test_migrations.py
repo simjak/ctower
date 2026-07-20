@@ -23,6 +23,7 @@ def test_migration_manifest_is_ordered_and_checksum_exact() -> None:
         "0002_ticket_slice.sql",
         "0003_privileges.sql",
         "0004_proof_workflow.sql",
+        "0005_proof_verdict_sequence.sql",
     ]
     for entry in entries:
         digest = hashlib.sha256((MIGRATIONS / entry["path"]).read_bytes()).hexdigest()
@@ -50,6 +51,16 @@ def test_proof_workflow_facts_are_append_only_and_heads_are_narrowly_mutable() -
     assert "proof_invalidations" in migration
     assert "lifecycle_facts" in migration
     assert "GRANT DELETE" not in migration
+
+
+def test_verdict_sequence_migration_backfills_from_authoritative_events() -> None:
+    migration = (MIGRATIONS / "0005_proof_verdict_sequence.sql").read_text(encoding="utf-8")
+
+    assert "SET proof_sequence = event.sequence" in migration
+    assert "event.actor_principal_id = verdict.reviewer_id" in migration
+    assert "event.client_command_id = verdict.client_command_id" in migration
+    assert "proof_verdicts_sequence_unique" in migration
+    assert "ALTER COLUMN proof_sequence SET NOT NULL" in migration
 
 
 def test_runtime_and_migrator_use_distinct_one_way_login_roles() -> None:

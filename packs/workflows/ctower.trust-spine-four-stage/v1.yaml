@@ -3,6 +3,7 @@
   "status": "staged",
   "key": "ctower.trust-spine-four-stage",
   "revision": 1,
+  "initial_stage": "capture",
   "input_contract": "ctower.ticket-candidate",
   "terminal_contract": "ctower.proof-closed",
   "policy_refs": {

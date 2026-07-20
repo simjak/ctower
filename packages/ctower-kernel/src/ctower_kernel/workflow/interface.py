@@ -78,6 +78,7 @@ class WorkflowGraph:
 
     key: str
     revision: int
+    initial_stage: str
     stages: tuple[Stage, ...]
     transitions: tuple[Transition, ...]
 
@@ -89,6 +90,8 @@ class WorkflowGraph:
         stage_keys = {stage.key for stage in self.stages}
         if not self.stages or len(stage_keys) != len(self.stages):
             raise ValueError("workflow stages must be nonempty and unique")
+        if self.initial_stage not in stage_keys:
+            raise ValueError("workflow initial stage must reference one declared stage")
         edges = {(edge.source, edge.destination) for edge in self.transitions}
         if len(edges) != len(self.transitions):
             raise ValueError("workflow edges must be unique")
@@ -115,6 +118,7 @@ class WorkflowGraph:
                 "status",
                 "key",
                 "revision",
+                "initial_stage",
                 "input_contract",
                 "terminal_contract",
                 "policy_refs",
@@ -132,6 +136,7 @@ class WorkflowGraph:
         return cls(
             key=_string(payload["key"], "key"),
             revision=_integer(payload["revision"], "revision"),
+            initial_stage=_string(payload["initial_stage"], "initial_stage"),
             stages=stages,
             transitions=transitions,
         )
@@ -144,6 +149,7 @@ class WorkflowContextSnapshot:
     workflow_ref: str
     current_stage: str
     satisfied_predicates: frozenset[str]
+    run_started: bool
 
 
 @dataclass(frozen=True, slots=True)
@@ -161,6 +167,7 @@ class WorkflowDecision:
     reason: str
     activity_class: ActivityClass | None = None
     predicate_ref: str | None = None
+    initial_stage: str | None = None
 
 
 @dataclass(frozen=True, slots=True)
@@ -332,6 +339,8 @@ class Workflow:
         graph = self._graphs.get(snapshot.workflow_ref)
         if graph is None:
             return WorkflowDecision(accepted=False, reason="workflow-version-unknown")
+        if not snapshot.run_started and snapshot.current_stage != graph.initial_stage:
+            return WorkflowDecision(accepted=False, reason="initial-stage-required")
         edge = next(
             (
                 candidate
@@ -357,6 +366,7 @@ class Workflow:
             reason="accepted",
             activity_class=activity,
             predicate_ref=edge.predicate_ref,
+            initial_stage=graph.initial_stage,
         )
 
     def is_terminal(self, workflow_ref: str, stage_key: str) -> bool:

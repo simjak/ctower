@@ -26,6 +26,7 @@ def _graph(*, key: str = "fixture.generic", revision: int = 1) -> WorkflowGraph:
     return WorkflowGraph(
         key=key,
         revision=revision,
+        initial_stage="alpha",
         stages=(
             Stage("alpha", ActivityClass.WORK),
             Stage("beta", ActivityClass.VERIFICATION),
@@ -47,6 +48,7 @@ def test_versioned_graph_allows_only_declared_edges_and_derives_activity() -> No
             workflow_ref="fixture.generic@1",
             current_stage="alpha",
             satisfied_predicates=frozenset({"predicate.ready@1"}),
+            run_started=True,
         ),
         WorkflowCommand(destination_stage="beta"),
     )
@@ -55,6 +57,7 @@ def test_versioned_graph_allows_only_declared_edges_and_derives_activity() -> No
             workflow_ref="fixture.generic@1",
             current_stage="alpha",
             satisfied_predicates=frozenset({"predicate.proved@1"}),
+            run_started=True,
         ),
         WorkflowCommand(destination_stage="omega"),
     )
@@ -74,6 +77,7 @@ def test_version_and_predicate_mismatches_fail_closed() -> None:
             workflow_ref="fixture.generic@2",
             current_stage="alpha",
             satisfied_predicates=frozenset({"predicate.ready@1"}),
+            run_started=True,
         ),
         WorkflowCommand(destination_stage="beta"),
     )
@@ -82,6 +86,7 @@ def test_version_and_predicate_mismatches_fail_closed() -> None:
             workflow_ref="fixture.generic@1",
             current_stage="alpha",
             satisfied_predicates=frozenset(),
+            run_started=True,
         ),
         WorkflowCommand(destination_stage="beta"),
     )
@@ -90,6 +95,34 @@ def test_version_and_predicate_mismatches_fail_closed() -> None:
     assert unknown_version.reason == "workflow-version-unknown"
     assert missing_predicate.accepted is False
     assert missing_predicate.reason == "predicate-unsatisfied"
+
+
+def test_fresh_evaluation_requires_the_authored_initial_stage() -> None:
+    workflow = Workflow((_graph(),))
+
+    skipped = workflow.evaluate(
+        WorkflowContextSnapshot(
+            workflow_ref="fixture.generic@1",
+            current_stage="beta",
+            satisfied_predicates=frozenset({"predicate.proved@1"}),
+            run_started=False,
+        ),
+        WorkflowCommand(destination_stage="omega"),
+    )
+    initial = workflow.evaluate(
+        WorkflowContextSnapshot(
+            workflow_ref="fixture.generic@1",
+            current_stage="alpha",
+            satisfied_predicates=frozenset({"predicate.ready@1"}),
+            run_started=False,
+        ),
+        WorkflowCommand(destination_stage="beta"),
+    )
+
+    assert skipped.accepted is False
+    assert skipped.reason == "initial-stage-required"
+    assert initial.accepted is True
+    assert initial.initial_stage == "alpha"
 
 
 def test_authored_fixture_loads_and_uses_pinned_graph_data() -> None:
@@ -102,6 +135,7 @@ def test_authored_fixture_loads_and_uses_pinned_graph_data() -> None:
             workflow_ref="ctower.trust-spine-four-stage@1",
             current_stage="frame",
             satisfied_predicates=frozenset({"criteria.frozen@1"}),
+            run_started=True,
         ),
         WorkflowCommand(destination_stage="verify"),
     )
@@ -133,3 +167,17 @@ def test_mapping_parser_rejects_unversioned_failure_route_metadata() -> None:
 
     with pytest.raises(ValueError, match="failure route class must be versioned"):
         WorkflowGraph.from_mapping(payload)
+
+
+def test_mapping_parser_rejects_missing_or_unknown_initial_stage() -> None:
+    payload = json.loads(
+        (ROOT / "packs/workflows/ctower.trust-spine-four-stage/v1.yaml").read_text(encoding="utf-8")
+    )
+    missing = dict(payload)
+    del missing["initial_stage"]
+    unknown = {**payload, "initial_stage": "unknown"}
+
+    with pytest.raises(ValueError, match="payload fields"):
+        WorkflowGraph.from_mapping(missing)
+    with pytest.raises(ValueError, match="initial stage must reference one declared stage"):
+        WorkflowGraph.from_mapping(unknown)

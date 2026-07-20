@@ -72,6 +72,7 @@ def test_problem_vocabulary_and_boundary_objects_are_strict() -> None:
         "unauthorized",
         "validation-error",
         "version-conflict",
+        "workflow-initial-stage-required",
         "workflow-not-terminal",
         "workflow-predicate-unsatisfied",
         "workflow-state-conflict",

@@ -163,7 +163,15 @@ def _persist_decision(
     if isinstance(command, RecordEvidence):
         _insert_evidence(connection, actor, mutation, command, proof_id=proof_id, now=now)
     elif isinstance(command, RecordVerdict):
-        _insert_verdict(connection, actor, mutation, command, proof_id=proof_id, now=now)
+        _insert_verdict(
+            connection,
+            actor,
+            mutation,
+            command,
+            proof_id=proof_id,
+            proof_sequence=version,
+            now=now,
+        )
     elif isinstance(command, ChangeCandidate):
         _insert_invalidations(connection, actor, mutation, decision, proof_id=proof_id, now=now)
 
@@ -262,14 +270,16 @@ def _insert_verdict(
     command: RecordVerdict,
     *,
     proof_id: UUID,
+    proof_sequence: int,
     now: datetime,
 ) -> None:
     connection.execute(
         """
         INSERT INTO proof_verdicts (
             verdict_id, proof_id, tenant_id, criterion_key, candidate_digest,
-            reviewer_id, decision, protected, client_command_id, recorded_at
-        ) VALUES (%s, %s, %s, %s, %s, %s, %s, true, %s, %s)
+            reviewer_id, decision, protected, client_command_id, recorded_at,
+            proof_sequence
+        ) VALUES (%s, %s, %s, %s, %s, %s, %s, true, %s, %s, %s)
         """,
         (
             command.verdict_id,
@@ -281,6 +291,7 @@ def _insert_verdict(
             command.decision.value,
             mutation.client_command_id,
             now,
+            proof_sequence,
         ),
     )
 

@@ -346,6 +346,7 @@ def _terminal_workflow(store: PostgresWorkflow) -> Workflow:
     graph = WorkflowGraph(
         key="fixture.atomic-close",
         revision=1,
+        initial_stage="start",
         stages=(
             Stage("start", ActivityClass.WORK),
             Stage("terminal", ActivityClass.WORK),
