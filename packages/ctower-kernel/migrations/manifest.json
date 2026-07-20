@@ -20,6 +20,10 @@
     {
       "path": "0005_proof_verdict_sequence.sql",
       "sha256": "sha256:28b119bc49747e46c6e5088b8882f90d448e8647acf92cad3663a13c577eccf6"
+    },
+    {
+      "path": "0006_narrow_head_update_privileges.sql",
+      "sha256": "sha256:eec9c751c3a73132601b984eed36f6d432ac0a84c0e112180a9dbbc20294458e"
     }
   ]
 }
