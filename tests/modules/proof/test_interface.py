@@ -199,6 +199,61 @@ def test_protected_verdict_requires_an_authorized_non_self_reviewer() -> None:
     assert proof.is_satisfied(later_failure.snapshot) is False
 
 
+def test_verdict_requires_current_evidence_and_proof_identifiers_are_single_use() -> None:
+    proof = Proof()
+    candidate_digest = "sha256:" + "d" * 64
+    frozen = proof.decide(
+        _actor(),
+        ProofSnapshot.empty(),
+        FreezeCriteria(
+            candidate_digest=candidate_digest,
+            candidate_author_id=AUTHOR_ID,
+            criteria=(
+                Criterion(
+                    key="artifact-current",
+                    description="Artifact is current.",
+                    candidate_dependent=True,
+                    requires_verdict=True,
+                ),
+            ),
+        ),
+    ).snapshot
+    verdict = RecordVerdict(
+        verdict_id=UUID("40000000-0000-4000-8000-000000000004"),
+        criterion_key="artifact-current",
+        candidate_digest=candidate_digest,
+        decision=VerdictDecision.PASSING,
+    )
+
+    missing_evidence = proof.decide(_actor(REVIEWER_ID, PrincipalKind.OPERATOR), frozen, verdict)
+    content = b"single-use evidence"
+    evidence = RecordEvidence(
+        evidence_id=UUID("30000000-0000-4000-8000-000000000007"),
+        criterion_key="artifact-current",
+        candidate_digest=candidate_digest,
+        artifact_digest="sha256:" + hashlib.sha256(content).hexdigest(),
+        content=content,
+    )
+    recorded = proof.decide(_actor(), frozen, evidence)
+    duplicate_evidence = proof.decide(_actor(), recorded.snapshot, evidence)
+    reviewed = proof.decide(_actor(REVIEWER_ID, PrincipalKind.OPERATOR), recorded.snapshot, verdict)
+    duplicate_verdict = proof.decide(
+        _actor(REVIEWER_ID, PrincipalKind.OPERATOR), reviewed.snapshot, verdict
+    )
+
+    assert missing_evidence.accepted is False
+    assert missing_evidence.reason == "current-evidence-missing"
+    assert missing_evidence.snapshot == frozen
+    assert recorded.accepted is True
+    assert duplicate_evidence.accepted is False
+    assert duplicate_evidence.reason == "evidence-id-conflict"
+    assert duplicate_evidence.snapshot == recorded.snapshot
+    assert reviewed.accepted is True
+    assert duplicate_verdict.accepted is False
+    assert duplicate_verdict.reason == "verdict-id-conflict"
+    assert duplicate_verdict.snapshot == reviewed.snapshot
+
+
 def test_candidate_change_invalidates_only_candidate_dependent_proof() -> None:
     proof = Proof()
     first_digest = "sha256:" + "a" * 64

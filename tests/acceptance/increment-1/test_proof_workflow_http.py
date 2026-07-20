@@ -1,0 +1,438 @@
+"""Public HTTP behavior for the Proof-gated Workflow slice."""
+
+from __future__ import annotations
+
+import hashlib
+import json
+from dataclasses import dataclass
+from pathlib import Path
+from typing import cast
+from uuid import UUID, uuid4
+
+from fastapi import FastAPI
+from fastapi.testclient import TestClient
+from httpx import Response
+from support.telemetry import telemetry_headers
+from support.tenant_fixture import TenantFixture
+
+from ctower_api.interface import create_app
+from ctower_kernel.proof import Proof
+from ctower_kernel.proof.postgres import PostgresProof
+from ctower_kernel.record.postgres import PostgresRecord
+from ctower_kernel.workflow import Workflow, WorkflowGraph
+from ctower_kernel.workflow.postgres import PostgresWorkflow
+
+__all__: tuple[str, ...] = ()
+HTTP_OK = 200
+HTTP_CREATED = 201
+HTTP_UNAUTHORIZED = 401
+HTTP_FORBIDDEN = 403
+HTTP_NOT_FOUND = 404
+HTTP_CONFLICT = 409
+HTTP_UNPROCESSABLE_ENTITY = 422
+ROOT = Path(__file__).parents[3]
+
+
+@dataclass(frozen=True, slots=True)
+class _ProofTrace:
+    frame: Response
+    frozen: Response
+    verification: Response
+    corrupt: Response
+    evidence: Response
+    self_review: Response
+    verdict: Response
+
+
+@dataclass(frozen=True, slots=True)
+class _CloseTrace:
+    premature: Response
+    terminal: Response
+    closed: Response
+
+
+def test_criteria_freeze_refuses_a_missing_ticket(tenant: TenantFixture) -> None:
+    missing_ticket_id = uuid4()
+    command_id = uuid4()
+
+    with TestClient(_app(tenant)) as client:
+        response = client.post(
+            f"/v1/tickets/{missing_ticket_id}/proof/criteria",
+            json={
+                "expected_version": 0,
+                "candidate_digest": "sha256:" + "a" * 64,
+                "criteria": [
+                    {
+                        "key": "artifact-current",
+                        "description": "The artifact matches the reviewed candidate.",
+                        "candidate_dependent": True,
+                        "requires_verdict": True,
+                    }
+                ],
+            },
+            headers={
+                "Authorization": f"Bearer {tenant.commander_credential}",
+                "Idempotency-Key": str(command_id),
+                **telemetry_headers(command_id, ticket_id=missing_ticket_id),
+            },
+        )
+
+    assert response.status_code == HTTP_NOT_FOUND
+    assert response.headers["content-type"].partition(";")[0] == "application/problem+json"
+    assert response.json()["code"] == "tenant-scope-denied"
+    assert response.json()["status"] == HTTP_NOT_FOUND
+
+
+def test_transition_replay_is_stable_and_changed_reuse_is_refused(
+    tenant: TenantFixture,
+) -> None:
+    command_id = uuid4()
+    with TestClient(_app(tenant)) as client:
+        ticket_id = _create_ticket(client, tenant)
+        request = {
+            "expected_version": 0,
+            "workflow_ref": "ctower.trust-spine-four-stage@1",
+            "source_stage": "capture",
+            "destination_stage": "frame",
+        }
+        first = client.post(
+            f"/v1/tickets/{ticket_id}/workflow/transition",
+            json=request,
+            headers=_command_headers(tenant.commander_credential, command_id, ticket_id),
+        )
+        replay = client.post(
+            f"/v1/tickets/{ticket_id}/workflow/transition",
+            json=request,
+            headers=_command_headers(tenant.commander_credential, command_id, ticket_id),
+        )
+        changed = client.post(
+            f"/v1/tickets/{ticket_id}/workflow/transition",
+            json={**request, "destination_stage": "verify"},
+            headers=_command_headers(tenant.commander_credential, command_id, ticket_id),
+        )
+
+    assert first.status_code == HTTP_OK
+    assert first.json() == replay.json()
+    assert first.json()["stage"] == "frame"
+    assert first.json()["version"] == 1
+    assert changed.status_code == HTTP_CONFLICT
+    assert changed.json()["code"] == "idempotency-conflict"
+
+
+def test_undeclared_transition_is_refused_without_advancing_state(
+    tenant: TenantFixture,
+) -> None:
+    with TestClient(_app(tenant)) as client:
+        ticket_id = _create_ticket(client, tenant)
+        refused_id = uuid4()
+        refused = client.post(
+            f"/v1/tickets/{ticket_id}/workflow/transition",
+            json={
+                "expected_version": 0,
+                "workflow_ref": "ctower.trust-spine-four-stage@1",
+                "source_stage": "capture",
+                "destination_stage": "verify",
+            },
+            headers=_command_headers(tenant.commander_credential, refused_id, ticket_id),
+        )
+        accepted_id = uuid4()
+        accepted = client.post(
+            f"/v1/tickets/{ticket_id}/workflow/transition",
+            json={
+                "expected_version": 0,
+                "workflow_ref": "ctower.trust-spine-four-stage@1",
+                "source_stage": "capture",
+                "destination_stage": "frame",
+            },
+            headers=_command_headers(tenant.commander_credential, accepted_id, ticket_id),
+        )
+
+    assert refused.status_code == HTTP_CONFLICT
+    assert refused.json()["code"] == "workflow-transition-not-declared"
+    assert refused.json()["current_version"] == 0
+    assert accepted.status_code == HTTP_OK
+    assert accepted.json()["stage"] == "frame"
+    assert accepted.json()["version"] == 1
+
+
+def test_current_independent_proof_is_required_before_atomic_close(
+    tenant: TenantFixture,
+) -> None:
+    candidate_digest = "sha256:" + "c" * 64
+    content = "reviewed artifact"
+    artifact_digest = "sha256:" + hashlib.sha256(content.encode()).hexdigest()
+    with TestClient(_app(tenant)) as client:
+        ticket_id = _create_ticket(client, tenant)
+        proof_trace = _prepare_current_proof(
+            client, tenant, ticket_id, candidate_digest, artifact_digest, content
+        )
+        close_trace = _close_current_proof(client, tenant, ticket_id)
+
+    assert (proof_trace.frame.status_code, proof_trace.frame.json()["stage"]) == (
+        HTTP_OK,
+        "frame",
+    )
+    assert (proof_trace.frozen.status_code, proof_trace.frozen.json()["version"]) == (
+        HTTP_OK,
+        1,
+    )
+    assert proof_trace.verification.json()["activity_class"] == "verification"
+    assert (proof_trace.corrupt.status_code, proof_trace.corrupt.json()["code"]) == (
+        HTTP_CONFLICT,
+        "proof-evidence-digest-mismatch",
+    )
+    assert (proof_trace.evidence.status_code, proof_trace.evidence.json()["version"]) == (
+        HTTP_OK,
+        2,
+    )
+    assert (proof_trace.self_review.status_code, proof_trace.self_review.json()["code"]) == (
+        HTTP_FORBIDDEN,
+        "proof-self-review-refused",
+    )
+    assert (proof_trace.verdict.status_code, proof_trace.verdict.json()["satisfied"]) == (
+        HTTP_OK,
+        True,
+    )
+    assert (close_trace.premature.status_code, close_trace.premature.json()["code"]) == (
+        HTTP_CONFLICT,
+        "workflow-not-terminal",
+    )
+    assert (close_trace.terminal.status_code, close_trace.terminal.json()["stage"]) == (
+        HTTP_OK,
+        "close",
+    )
+    assert (close_trace.closed.status_code, close_trace.closed.json()["lifecycle_facts"]) == (
+        HTTP_OK,
+        ["resolved", "closed"],
+    )
+
+
+def test_proof_http_boundary_authenticates_before_strict_payload_validation(
+    tenant: TenantFixture,
+) -> None:
+    with TestClient(_app(tenant)) as client:
+        unauthorized = client.post(
+            "/v1/tickets/not-a-uuid/proof/evidence",
+            content=b"{",
+        )
+        ticket_id = _create_ticket(client, tenant)
+        command_id = uuid4()
+        malformed = client.post(
+            f"/v1/tickets/{ticket_id}/proof/evidence",
+            json={
+                "expected_version": 1,
+                "evidence_id": str(uuid4()),
+                "criterion_key": "artifact-current",
+                "candidate_digest": "sha256:" + "a" * 64,
+                "artifact_digest": "sha256:" + "b" * 64,
+                "content": "artifact",
+                "unexpected": True,
+            },
+            headers=_command_headers(tenant.commander_credential, command_id, ticket_id),
+        )
+
+    assert unauthorized.status_code == HTTP_UNAUTHORIZED
+    assert unauthorized.json()["code"] == "unauthorized"
+    assert malformed.status_code == HTTP_UNPROCESSABLE_ENTITY
+    assert malformed.json()["code"] == "validation-error"
+
+
+def _prepare_current_proof(
+    client: TestClient,
+    tenant: TenantFixture,
+    ticket_id: UUID,
+    candidate_digest: str,
+    artifact_digest: str,
+    content: str,
+) -> _ProofTrace:
+    return _ProofTrace(
+        frame=_transition(client, tenant, ticket_id, 0, "capture", "frame"),
+        frozen=_freeze(client, tenant, ticket_id, candidate_digest),
+        verification=_transition(client, tenant, ticket_id, 1, "frame", "verify"),
+        corrupt=_evidence(
+            client, tenant, ticket_id, candidate_digest, artifact_digest, "tampered artifact"
+        ),
+        evidence=_evidence(client, tenant, ticket_id, candidate_digest, artifact_digest, content),
+        self_review=_verdict(client, tenant.commander_credential, ticket_id, candidate_digest),
+        verdict=_verdict(client, tenant.operator_credential, ticket_id, candidate_digest),
+    )
+
+
+def _close_current_proof(client: TestClient, tenant: TenantFixture, ticket_id: UUID) -> _CloseTrace:
+    return _CloseTrace(
+        premature=_resolve_close(client, tenant, ticket_id, 2),
+        terminal=_transition(client, tenant, ticket_id, 2, "verify", "close"),
+        closed=_resolve_close(client, tenant, ticket_id, 3),
+    )
+
+
+def _transition(
+    client: TestClient,
+    tenant: TenantFixture,
+    ticket_id: UUID,
+    expected_version: int,
+    source: str,
+    destination: str,
+) -> Response:
+    return _post_command(
+        client,
+        tenant.commander_credential,
+        ticket_id,
+        "workflow/transition",
+        {
+            "expected_version": expected_version,
+            "workflow_ref": "ctower.trust-spine-four-stage@1",
+            "source_stage": source,
+            "destination_stage": destination,
+        },
+    )
+
+
+def _freeze(
+    client: TestClient,
+    tenant: TenantFixture,
+    ticket_id: UUID,
+    candidate_digest: str,
+) -> Response:
+    return _post_command(
+        client,
+        tenant.commander_credential,
+        ticket_id,
+        "proof/criteria",
+        {
+            "expected_version": 0,
+            "candidate_digest": candidate_digest,
+            "criteria": [
+                {
+                    "key": "artifact-current",
+                    "description": "The artifact matches the reviewed candidate.",
+                    "candidate_dependent": True,
+                    "requires_verdict": True,
+                }
+            ],
+        },
+    )
+
+
+def _evidence(
+    client: TestClient,
+    tenant: TenantFixture,
+    ticket_id: UUID,
+    candidate_digest: str,
+    artifact_digest: str,
+    content: str,
+) -> Response:
+    return _post_command(
+        client,
+        tenant.commander_credential,
+        ticket_id,
+        "proof/evidence",
+        {
+            "expected_version": 1,
+            "evidence_id": str(uuid4()),
+            "criterion_key": "artifact-current",
+            "candidate_digest": candidate_digest,
+            "artifact_digest": artifact_digest,
+            "content": content,
+        },
+    )
+
+
+def _verdict(
+    client: TestClient,
+    credential: str,
+    ticket_id: UUID,
+    candidate_digest: str,
+) -> Response:
+    return _post_command(
+        client,
+        credential,
+        ticket_id,
+        "proof/verdict",
+        {
+            "expected_version": 2,
+            "verdict_id": str(uuid4()),
+            "criterion_key": "artifact-current",
+            "candidate_digest": candidate_digest,
+            "decision": "pass",
+        },
+    )
+
+
+def _resolve_close(
+    client: TestClient,
+    tenant: TenantFixture,
+    ticket_id: UUID,
+    expected_version: int,
+) -> Response:
+    return _post_command(
+        client,
+        tenant.commander_credential,
+        ticket_id,
+        "workflow/resolve-close",
+        {
+            "expected_version": expected_version,
+            "workflow_ref": "ctower.trust-spine-four-stage@1",
+        },
+    )
+
+
+def _create_ticket(client: TestClient, tenant: TenantFixture) -> UUID:
+    command_id = uuid4()
+    response = client.post(
+        "/v1/tickets",
+        json={
+            "initial_custodian_id": str(tenant.commander_id),
+            "priority": "P1",
+            "source": {"kind": "test", "ref": "test:proof-workflow-http"},
+            "title": "Proof workflow HTTP behavior",
+        },
+        headers=_command_headers(tenant.commander_credential, command_id),
+    )
+    assert response.status_code == HTTP_CREATED
+    return UUID(cast(str, response.json()["ticket"]["ticket_id"]))
+
+
+def _command_headers(
+    credential: str, command_id: UUID, ticket_id: UUID | None = None
+) -> dict[str, str]:
+    return {
+        "Authorization": f"Bearer {credential}",
+        "Idempotency-Key": str(command_id),
+        **telemetry_headers(command_id, ticket_id=ticket_id),
+    }
+
+
+def _post_command(
+    client: TestClient,
+    credential: str,
+    ticket_id: UUID,
+    route: str,
+    payload: dict[str, object],
+) -> Response:
+    command_id = uuid4()
+    return cast(
+        Response,
+        client.post(
+            f"/v1/tickets/{ticket_id}/{route}",
+            json=payload,
+            headers=_command_headers(credential, command_id, ticket_id),
+        ),
+    )
+
+
+def _app(tenant: TenantFixture) -> FastAPI:
+    runtime_dsn = tenant.database.runtime_dsn
+    proof_store = PostgresProof(runtime_dsn)
+    workflow_store = PostgresWorkflow(runtime_dsn, proof_gate=proof_store)
+    graph_payload = json.loads(
+        (ROOT / "packs/workflows/ctower.trust-spine-four-stage/v1.yaml").read_text(encoding="utf-8")
+    )
+    return create_app(
+        PostgresRecord(runtime_dsn),
+        proof=Proof(writer=proof_store),
+        workflow=Workflow(
+            (WorkflowGraph.from_mapping(graph_payload),),
+            writer=workflow_store,
+        ),
+    )
