@@ -1,0 +1,373 @@
+"""Atomic Postgres custody transfer transaction for the Record Adapter."""
+
+from __future__ import annotations
+
+from dataclasses import dataclass
+from datetime import datetime
+from typing import cast
+from uuid import UUID
+
+import psycopg
+from psycopg.rows import dict_row
+from psycopg.types.json import Jsonb
+
+from ctower_kernel.record import (
+    Actor,
+    CustodyCommand,
+    RecordProblem,
+    TicketCommandResult,
+)
+from ctower_kernel.record._commands import reserve_command
+from ctower_kernel.record._event_store import append_event, enqueue_event
+from ctower_kernel.record._ticket_sql import (
+    _result_from_payload,
+    _ticket_from_row,
+    _uuid7,
+)
+from ctower_kernel.record.events import (
+    CustodyTransferredPayload,
+    EventEnvelope,
+    EventKind,
+    EventOrigin,
+)
+from ctower_kernel.telemetry import TelemetryContext
+
+__all__ = ["transfer_custody"]
+
+
+@dataclass(frozen=True, slots=True)
+class _CustodyIds:
+    event: UUID
+    outbox: UUID
+
+
+@dataclass(frozen=True, slots=True)
+class _PreviousEvent:
+    event_hash: bytes
+    event_id: UUID
+    correlation_id: UUID
+
+
+def transfer_custody(
+    dsn: str,
+    actor: Actor,
+    command: CustodyCommand,
+    *,
+    request_digest: bytes,
+    now: datetime,
+    telemetry: TelemetryContext,
+) -> TicketCommandResult | RecordProblem:
+    """Deduplicate, lock, compare, and atomically replace current custody."""
+
+    with psycopg.connect(dsn, row_factory=dict_row) as connection:
+        connection.execute("SET ROLE ctower_svc")
+        existing = _existing_result(connection, actor, command, request_digest)
+        if existing is not None:
+            return existing
+        ticket_row = _locked_ticket(connection, actor, command.ticket_id)
+        if ticket_row is None:
+            return _scope_problem(command.client_command_id)
+        refusal = _transfer_refusal(connection, actor, command, ticket_row)
+        if refusal is not None:
+            return refusal
+        identifiers = _CustodyIds(_uuid7(now), _uuid7(now))
+        result = _commit_transfer(
+            connection,
+            actor,
+            command,
+            ticket_row,
+            identifiers=identifiers,
+            request_digest=request_digest,
+            now=now,
+            telemetry=telemetry,
+        )
+    return result
+
+
+def _existing_result(
+    connection: psycopg.Connection[dict[str, object]],
+    actor: Actor,
+    command: CustodyCommand,
+    request_digest: bytes,
+) -> TicketCommandResult | RecordProblem | None:
+    outcome = reserve_command(
+        connection,
+        actor.principal_id,
+        command.client_command_id,
+        request_digest,
+    )
+    if outcome is None or isinstance(outcome, RecordProblem):
+        return outcome
+    return _result_from_payload(outcome)
+
+
+def _locked_ticket(
+    connection: psycopg.Connection[dict[str, object]], actor: Actor, ticket_id: UUID
+) -> dict[str, object] | None:
+    return connection.execute(
+        """
+        SELECT ticket_id, title, source_kind, source_ref, priority,
+            custodian_principal_id, version, created_at
+        FROM tickets
+        WHERE tenant_id = %s AND ticket_id = %s
+        FOR UPDATE
+        """,
+        (actor.tenant_id, ticket_id),
+    ).fetchone()
+
+
+def _transfer_refusal(
+    connection: psycopg.Connection[dict[str, object]],
+    actor: Actor,
+    command: CustodyCommand,
+    ticket_row: dict[str, object],
+) -> RecordProblem | None:
+    current_version = int(cast(int, ticket_row["version"]))
+    current_custodian = cast(UUID, ticket_row["custodian_principal_id"])
+    if command.expected_version != current_version:
+        return _version_problem(command, current_version, "The expected ticket version is stale.")
+    if command.from_custodian_id != current_custodian:
+        return _version_problem(
+            command, current_version, "The declared current custodian is stale."
+        )
+    if not _eligible_target(connection, actor, command.to_custodian_id):
+        return _scope_problem(command.client_command_id)
+    if command.to_custodian_id == current_custodian:
+        return _version_problem(
+            command, current_version, "Custody already belongs to that principal."
+        )
+    return None
+
+
+def _eligible_target(
+    connection: psycopg.Connection[dict[str, object]], actor: Actor, principal_id: UUID
+) -> bool:
+    row = connection.execute(
+        """
+        SELECT 1
+        FROM principals
+        WHERE tenant_id = %s AND principal_id = %s AND NOT disabled
+          AND kind IN ('commander', 'operator')
+        """,
+        (actor.tenant_id, principal_id),
+    ).fetchone()
+    return row is not None
+
+
+def _commit_transfer(
+    connection: psycopg.Connection[dict[str, object]],
+    actor: Actor,
+    command: CustodyCommand,
+    ticket_row: dict[str, object],
+    *,
+    identifiers: _CustodyIds,
+    request_digest: bytes,
+    now: datetime,
+    telemetry: TelemetryContext,
+) -> TicketCommandResult:
+    next_version = int(cast(int, ticket_row["version"])) + 1
+    _replace_interval(connection, actor, command, next_version=next_version, now=now)
+    connection.execute(
+        """
+        UPDATE tickets
+        SET custodian_principal_id = %s, version = %s
+        WHERE tenant_id = %s AND ticket_id = %s
+        """,
+        (command.to_custodian_id, next_version, actor.tenant_id, command.ticket_id),
+    )
+    ticket = _ticket_from_row(
+        {
+            **ticket_row,
+            "custodian_principal_id": command.to_custodian_id,
+            "version": next_version,
+        }
+    )
+    result = TicketCommandResult(command.client_command_id, (identifiers.event,), ticket)
+    _append_transfer(
+        connection,
+        actor,
+        command,
+        result,
+        identifiers=identifiers,
+        request_digest=request_digest,
+        sequence=next_version,
+        now=now,
+        telemetry=telemetry,
+    )
+    return result
+
+
+def _replace_interval(
+    connection: psycopg.Connection[dict[str, object]],
+    actor: Actor,
+    command: CustodyCommand,
+    *,
+    next_version: int,
+    now: datetime,
+) -> None:
+    updated = connection.execute(
+        """
+        UPDATE assignment_intervals
+        SET released_at = %s
+        WHERE tenant_id = %s AND ticket_id = %s
+          AND assignment_kind = 'ticket_custodian' AND released_at IS NULL
+          AND principal_id = %s
+        """,
+        (now, actor.tenant_id, command.ticket_id, command.from_custodian_id),
+    )
+    if updated.rowcount != 1:
+        raise RuntimeError("locked ticket custody interval is inconsistent")
+    connection.execute(
+        """
+        INSERT INTO assignment_intervals (
+            ticket_id, tenant_id, interval_sequence, assignment_kind, principal_id,
+            assigned_at, released_at, changed_by, reason, client_command_id
+        ) VALUES (%s, %s, %s, 'ticket_custodian', %s, %s, NULL, %s, %s, %s)
+        """,
+        (
+            command.ticket_id,
+            actor.tenant_id,
+            next_version,
+            command.to_custodian_id,
+            now,
+            actor.principal_id,
+            command.reason,
+            command.client_command_id,
+        ),
+    )
+
+
+def _append_transfer(
+    connection: psycopg.Connection[dict[str, object]],
+    actor: Actor,
+    command: CustodyCommand,
+    result: TicketCommandResult,
+    *,
+    identifiers: _CustodyIds,
+    request_digest: bytes,
+    sequence: int,
+    now: datetime,
+    telemetry: TelemetryContext,
+) -> None:
+    previous = _previous_event(connection, actor, command, sequence=sequence)
+    event = EventEnvelope(
+        actor_principal_id=actor.principal_id,
+        aggregate_id=command.ticket_id,
+        causation_id=previous.event_id,
+        client_command_id=command.client_command_id,
+        correlation_id=previous.correlation_id,
+        event_id=identifiers.event,
+        kind=EventKind.CUSTODY_TRANSFERRED,
+        origin=EventOrigin.API,
+        payload=CustodyTransferredPayload(
+            from_custodian_id=command.from_custodian_id,
+            reason=command.reason,
+            to_custodian_id=command.to_custodian_id,
+        ),
+        prev_hash=previous.event_hash,
+        request_sha256=request_digest,
+        sequence=sequence,
+        server_time=now,
+        stream_id=f"ticket:{command.ticket_id}",
+        tenant_id=actor.tenant_id,
+    )
+    append_event(connection, event)
+    _insert_result_and_outbox(
+        connection,
+        actor,
+        command,
+        result,
+        identifiers=identifiers,
+        request_digest=request_digest,
+        event=event,
+        telemetry=telemetry,
+        now=now,
+    )
+
+
+def _previous_event(
+    connection: psycopg.Connection[dict[str, object]],
+    actor: Actor,
+    command: CustodyCommand,
+    *,
+    sequence: int,
+) -> _PreviousEvent:
+    row = connection.execute(
+        """
+        SELECT event_hash, event_id, correlation_id
+        FROM events
+        WHERE tenant_id = %s AND aggregate_id = %s AND sequence = %s
+        """,
+        (actor.tenant_id, command.ticket_id, sequence - 1),
+    ).fetchone()
+    if row is None:
+        raise RuntimeError("locked ticket event stream is inconsistent")
+    return _PreviousEvent(
+        event_hash=bytes(cast(bytes, row["event_hash"])),
+        event_id=cast(UUID, row["event_id"]),
+        correlation_id=cast(UUID, row["correlation_id"]),
+    )
+
+
+def _insert_result_and_outbox(
+    connection: psycopg.Connection[dict[str, object]],
+    actor: Actor,
+    command: CustodyCommand,
+    result: TicketCommandResult,
+    *,
+    identifiers: _CustodyIds,
+    request_digest: bytes,
+    event: EventEnvelope,
+    telemetry: TelemetryContext,
+    now: datetime,
+) -> None:
+    connection.execute(
+        """
+        INSERT INTO command_results (
+            tenant_id, principal_id, client_command_id, request_sha256, status_code,
+            response_body, event_ids, created_at
+        ) VALUES (%s, %s, %s, %s, 200, %s, %s, %s)
+        """,
+        (
+            actor.tenant_id,
+            actor.principal_id,
+            command.client_command_id,
+            request_digest,
+            Jsonb(result.response_payload()),
+            [identifiers.event],
+            now,
+        ),
+    )
+    enqueue_event(
+        connection,
+        identifiers.outbox,
+        event,
+        telemetry.bind(
+            tenant_id=str(actor.tenant_id),
+            actor_id=str(actor.principal_id),
+            command_id=str(command.client_command_id),
+            ticket_id=str(command.ticket_id),
+        ),
+        now,
+    )
+
+
+def _version_problem(command: CustodyCommand, current: int, detail: str) -> RecordProblem:
+    return RecordProblem(
+        code="version-conflict",
+        detail=detail,
+        status=409,
+        title="Ticket version conflict",
+        command_id=command.client_command_id,
+        current_version=current,
+    )
+
+
+def _scope_problem(command_id: UUID) -> RecordProblem:
+    return RecordProblem(
+        code="tenant-scope-denied",
+        detail="The requested ticket is unavailable in the authenticated tenant scope.",
+        status=404,
+        title="Ticket unavailable",
+        command_id=command_id,
+    )

@@ -1,7 +1,8 @@
 # Getting started
 
-There is no installable ctower service yet. Today, getting started means reading and validating the
-docs-first repository, then contributing to the walking skeleton.
+There is no supported installable ctower service yet. Today, getting started means reading and validating
+the repository and its development-only durable-ticket walking slice, then contributing to the remaining
+system.
 
 ## Clone the repository
 

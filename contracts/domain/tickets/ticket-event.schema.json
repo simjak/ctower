@@ -1,0 +1,44 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://ctower.dev/contracts/domain/tickets/ticket-event.schema.json",
+  "title": "TicketEventPayload",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["kind", "data"],
+  "properties": {
+    "kind": {
+      "type": "string",
+      "enum": ["ticket.created", "ticket.custody_transferred"]
+    },
+    "data": {
+      "oneOf": [
+        {"$ref": "#/$defs/ticketCreated"},
+        {"$ref": "#/$defs/custodyTransferred"}
+      ]
+    }
+  },
+  "$defs": {
+    "ticketCreated": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["custodian_id", "priority", "source_kind", "source_ref", "title"],
+      "properties": {
+        "custodian_id": {"type": "string", "format": "uuid"},
+        "priority": {"type": "string", "enum": ["P0", "P1", "P2"]},
+        "source_kind": {"type": "string", "minLength": 1, "maxLength": 64},
+        "source_ref": {"type": "string", "minLength": 1, "maxLength": 256},
+        "title": {"type": "string", "minLength": 1, "maxLength": 200}
+      }
+    },
+    "custodyTransferred": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["from_custodian_id", "reason", "to_custodian_id"],
+      "properties": {
+        "from_custodian_id": {"type": "string", "format": "uuid"},
+        "reason": {"type": "string", "minLength": 1, "maxLength": 500},
+        "to_custodian_id": {"type": "string", "format": "uuid"}
+      }
+    }
+  }
+}

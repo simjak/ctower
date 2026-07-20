@@ -1,8 +1,8 @@
 # Project status
 
-ctower is a public, docs-first pre-alpha project. Implementation has started with repository gates,
-contracts, and compatibility evidence, but the runtime product is not implemented and cannot yet manage
-real work.
+ctower is a public pre-alpha project. A development-only synthetic walking slice now exercises local
+bootstrap, ticket persistence, custody, and an online CLI, but ctower is not a supported or deployed product
+and must not yet manage real work.
 
 ## Available now
 
@@ -23,8 +23,19 @@ real work.
 - A reproducible, fork-safe `release gate` with immutable verification inputs, generated-root exactness,
   required-suite accounting, and intended-tree plus complete-history secret scans.
 - Coding, observability, and secret-handling standards.
+- Checksum-ordered subset migrations for a Postgres 17 development fixture with separate migrator,
+  service, and projection roles.
+- One-use local first-tenant bootstrap that creates the tenant, disabled historical bootstrap principal,
+  operator, durable Commander identity, vault references, event/outbox, and exact replay receipt atomically.
+- Tenant-scoped ticket create/read/timeline with P0/P1/P2 policy, exact command replay, hash-chained events,
+  transactional outbox writes, and explicit `durability_pending` results.
+- Protected operator custody transfer with exact-current `from`, version CAS, gapless interval replacement,
+  same-tenant eligible targets, concurrent one-winner behavior, and restart retrieval.
+- A thin online `ctowerctl` tracer over the deterministic generated Python client for bootstrap and ticket
+  create/show/assign. Authority enters on stdin; offline mutations fail loudly as unsent.
 
-These assets establish the contract for implementation. They are not a working control plane.
+These assets and the synthetic tracer establish the first executable vertical. They are not a supported,
+deployed, or off-host-durable control plane.
 
 ## Compatibility evidence, not a runtime decision
 
@@ -45,9 +56,10 @@ proves only that the documentation built and deployed; it does not prove a ctowe
 
 ## Not available yet
 
-- A running API or control worker.
-- Durable ticket storage, workflow evaluation, leases, fencing, effects, or projections.
-- A supported CLI, web interface, installer, container image, or hosted service.
+- A supported/deployed API, control worker, installer, container image, or hosted service.
+- Off-host acknowledgement, backup/restore proof, outbox consumption, workflow evaluation, leases, fencing,
+  effects, or projections.
+- A supported CLI, encrypted offline spool, or web interface.
 - Local or remote agent execution adapters.
 - An accepted Python runtime pin or stable compatibility promise.
 - An installable package, deployable artifact, or production release. The current release automation is

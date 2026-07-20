@@ -5,7 +5,7 @@
 | Status | Compact derived operator and implementer map |
 | Normative authority | [`SPEC.md`](SPEC.md), version 1.7 |
 | Decision history | [`DECISIONS.md`](DECISIONS.md) |
-| Last reviewed | 2026-07-18 |
+| Last reviewed | 2026-07-19 |
 
 This is the sole terminal-safe derived architecture atlas. It explains the canonical specification; it
 does not add requirements, authorize work, or define exact schemas, operations, DDL, package values, or
@@ -13,8 +13,9 @@ deployment manifests. If this file and `SPEC.md` disagree, `SPEC.md` wins and th
 
 Implementation labels are strict:
 
-- **Current/verified** means the legacy local Mission Control/Control Tower substrate only.
-- **I1** and **I2** are committed target increments, not claims that product behavior exists today.
+- **Current walking slice** means the development-only bootstrap/ticket/custody path implemented in this
+  repository. It is synthetic local evidence, not a deployed or durability-accepted product.
+- **I1** and **I2** otherwise remain committed target increments, not claims that the full behavior exists.
 - **Deferred** means invariants may be recorded, but the runtime, product surface, and public Seam do not
   exist in I1/I2.
 
@@ -68,6 +69,19 @@ own effects, while ctower retains grants, receipts, and reconciliation findings.
 
 Logical Modules are not deployment units. Exact units live in `deploy/`; this atlas names only the
 topology fixed by the SPEC.
+
+The implemented development tracer currently has this narrower shape:
+
+```text
+ctowerctl -> generated Python client -> FastAPI Adapter
+                                      -> Access / Work Interfaces
+                                      -> Record -> Postgres 17 development fixture
+```
+
+It covers one-use first-tenant bootstrap, tenant-scoped ticket create/read/timeline, protected custody
+transfer, idempotent command results, hash-chained events, and transactional outbox writes. Every successful
+write remains `durability_pending`; there is no outbox consumer, off-host acknowledgement, backup/restore
+proof, worker, web surface, or production deployment in this slice.
 
 ### I1: co-located trust spine
 

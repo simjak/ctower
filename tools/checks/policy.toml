@@ -2,6 +2,14 @@ schema = "ctower.repository-policy/v1"
 
 [source]
 extensions = [".py", ".ts", ".tsx"]
+module_roots = [
+  "apps/ctower-api/src",
+  "apps/ctowerctl/src",
+  "generated/python",
+  "packages/ctower-kernel/src",
+  "tests/acceptance/increment-1",
+  "tests/compatibility",
+]
 exclude = [
   ".git/**",
   ".venv/**",
@@ -14,6 +22,9 @@ protected_roots = ["apps", "packages", "tools", "tests"]
 [architecture]
 forbidden_module_stems = ["common", "helpers", "manager", "utils"]
 non_waivable_rules = [
+  "architecture.dependency",
+  "architecture.private-import",
+  "architecture.unresolved-import",
   "generated.drift",
   "generated.manifest",
   "generated.notice",
@@ -80,9 +91,54 @@ paths = ["tests/compatibility/**"]
 allowed_dependencies = ["compatibility-tools"]
 
 [[ownership]]
+name = "http-client-codegen"
+paths = ["tools/codegen/**"]
+allowed_dependencies = ["repository-policy"]
+
+[[ownership]]
 name = "contract-tests"
 paths = ["tests/contracts/**"]
-allowed_dependencies = ["repository-policy"]
+allowed_dependencies = ["http-client-codegen", "repository-policy"]
+
+[[ownership]]
+name = "kernel-record"
+paths = ["packages/ctower-kernel/src/ctower_kernel/__init__.py", "packages/ctower-kernel/src/ctower_kernel/record/**"]
+allowed_dependencies = ["kernel-telemetry"]
+
+[[ownership]]
+name = "kernel-telemetry"
+paths = ["packages/ctower-kernel/src/ctower_kernel/telemetry/**"]
+allowed_dependencies = []
+
+[[ownership]]
+name = "kernel-access"
+paths = ["packages/ctower-kernel/src/ctower_kernel/access/**"]
+allowed_dependencies = ["kernel-record", "kernel-telemetry"]
+
+[[ownership]]
+name = "kernel-work"
+paths = ["packages/ctower-kernel/src/ctower_kernel/work/**"]
+allowed_dependencies = ["kernel-record", "kernel-telemetry"]
+
+[[ownership]]
+name = "control-api"
+paths = ["apps/ctower-api/src/**"]
+allowed_dependencies = ["kernel-access", "kernel-record", "kernel-telemetry", "kernel-work"]
+
+[[ownership]]
+name = "control-cli"
+paths = ["apps/ctowerctl/src/**"]
+allowed_dependencies = []
+
+[[ownership]]
+name = "increment-1-acceptance-tests"
+paths = ["tests/acceptance/increment-1/**"]
+allowed_dependencies = ["control-api", "control-cli", "kernel-access", "kernel-record", "kernel-telemetry", "kernel-work"]
+
+[[ownership]]
+name = "kernel-module-tests"
+paths = ["tests/modules/**"]
+allowed_dependencies = ["kernel-access", "kernel-record", "kernel-telemetry", "kernel-work"]
 
 [[ownership]]
 name = "web"

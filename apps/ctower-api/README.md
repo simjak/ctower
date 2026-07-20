@@ -1,3 +1,6 @@
 # ctower-api boundary
 
-Future Python composition root for authenticated commands, projections, health, and the control worker. It will depend on generated contracts and `ctower-kernel` public Interfaces. HTTP handlers and workers must contain no durable domain decisions. Product code begins with CT-I1-001.
+Python composition root for the development walking slice. Its FastAPI handlers validate generated HTTP
+models and call the public Access, Work, and Record Interfaces for bootstrap, ticket create/read/timeline,
+and protected custody transfer. Durable decisions remain in kernel Modules and the Postgres Record Adapter;
+the API never connects around those Interfaces. Projections, health, and the control worker remain deferred.

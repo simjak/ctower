@@ -144,12 +144,22 @@ def _owner_for_path(path: str, ownership: tuple[OwnershipRule, ...]) -> Ownershi
     return matches[0] if len(matches) == 1 else None
 
 
-def _module_path(root: Path, module: str) -> str | None:
+def _module_path(root: Path, module: str, module_roots: tuple[str, ...]) -> str | None:
     relative = module.replace(".", "/")
-    for candidate in (f"{relative}.py", f"{relative}/__init__.py"):
-        if (root / candidate).is_file():
-            return candidate
+    for module_root in (root, *(root / path for path in module_roots)):
+        for candidate in (f"{relative}.py", f"{relative}/__init__.py"):
+            resolved = module_root / candidate
+            if resolved.is_file():
+                return resolved.relative_to(root).as_posix()
     return None
+
+
+def _is_first_party_module(root: Path, module: str, module_roots: tuple[str, ...]) -> bool:
+    namespace = module.split(".", maxsplit=1)[0]
+    for module_root in (root, *(root / path for path in module_roots)):
+        if (module_root / namespace).is_dir() or (module_root / f"{namespace}.py").is_file():
+            return True
+    return False
 
 
 def _ownership_findings(root: Path, metric: SourceMetric, policy: PolicyConfig) -> list[Finding]:
@@ -192,7 +202,18 @@ def _evaluate_import(
     policy: PolicyConfig,
     import_ref: ImportRef,
 ) -> tuple[str | None, tuple[Finding, ...]]:
-    target_path = _module_path(root, import_ref.module)
+    target_path = _module_path(root, import_ref.module, policy.module_roots)
+    if target_path is None and _is_first_party_module(root, import_ref.module, policy.module_roots):
+        return None, (
+            _finding(
+                "architecture.unresolved-import",
+                metric,
+                f"first-party import {import_ref.module} does not resolve from "
+                "declared module roots",
+                Severity.ERROR,
+                line=import_ref.line,
+            ),
+        )
     target_owner = (
         _owner_for_path(target_path, policy.ownership) if target_path is not None else None
     )

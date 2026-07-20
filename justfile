@@ -8,16 +8,19 @@ default:
     @just --list
 
 # Warm, non-mutating developer and CI gate.
-check: python-check web-check docs-check workflow-check version-check repository-tests contract-tests traceability-check secrets-intended-tree
+check: python-check web-check docs-check workflow-check version-check repository-tests contract-tests codegen-check traceability-check secrets-intended-tree
     {{python}} -m tools.checks --root . --profile fast
 
 python-check: compatibility-coverage
-    {{python}} -m ruff format --check tools/checks tools/compatibility tests/repository tests/contracts tests/compatibility
-    {{python}} -m ruff check --no-cache tools/checks tools/compatibility tests/repository tests/contracts tests/compatibility
-    {{python}} -m mypy --no-incremental tools/checks tools/compatibility tests/repository tests/contracts tests/compatibility
+    {{python}} -m ruff format --check apps/ctower-api/src apps/ctowerctl/src packages/ctower-kernel/src tools/checks tools/codegen tools/compatibility tests/repository tests/contracts tests/compatibility tests/modules tests/acceptance/increment-1
+    {{python}} -m ruff check --no-cache apps/ctower-api/src apps/ctowerctl/src packages/ctower-kernel/src tools/checks tools/codegen tools/compatibility tests/repository tests/contracts tests/compatibility tests/modules tests/acceptance/increment-1
+    {{python}} -m mypy --no-incremental apps/ctower-api/src apps/ctowerctl/src packages/ctower-kernel/src tools/checks tools/codegen tools/compatibility generated/python tests/repository tests/contracts tests/compatibility tests/modules tests/acceptance/increment-1
 
 compatibility-coverage:
     @coverage_file="$(mktemp)"; trap 'rm -f "$coverage_file"' EXIT; COVERAGE_FILE="$coverage_file" {{python}} -m pytest -p no:cacheprovider --cov=tools.compatibility --cov-branch --cov-fail-under=90 tests/compatibility
+
+product-coverage:
+    @coverage_file="$(mktemp)"; trap 'rm -f "$coverage_file"' EXIT; COVERAGE_FILE="$coverage_file" {{python}} -m pytest -p no:cacheprovider --cov=ctower_api --cov=ctower_kernel --cov=ctowerctl --cov-branch --cov-fail-under=90 tests/modules tests/acceptance/increment-1 -q
 
 web-check:
     pnpm run format:check
@@ -42,6 +45,11 @@ repository-tests:
 
 contract-tests:
     {{python}} -m unittest discover -s tests/contracts/l0 -v
+    {{python}} -m pytest tests/contracts/domain tests/contracts/http -q
+
+codegen-check:
+    {{python}} -m tools.codegen --root . --check
+    @pycache_dir="$(mktemp -d)"; trap 'rm -rf -- "$pycache_dir"' EXIT; PYTHONPYCACHEPREFIX="$pycache_dir" {{python}} -m compileall -q generated/python
 
 traceability-check:
     {{python}} -m tools.checks.traceability --root . --check
@@ -59,7 +67,7 @@ secrets-history:
     {{gitleaks}} git . --config .gitleaks.toml --no-banner --redact --verbose
 
 # Full, non-mutating release gate. CT-L0-007 makes CI invoke this exact recipe.
-verify: _verify-clean-tree check
+verify: _verify-clean-tree check product-coverage
     {{python}} -m tools.checks --root . --profile full --execute-suites
     @coverage_file="$(mktemp)"; trap 'rm -f "$coverage_file"' EXIT; COVERAGE_FILE="$coverage_file" {{python}} -m pytest -p no:cacheprovider --cov=tools.checks --cov-branch --cov-fail-under=90 tests/repository
     @just secrets-history

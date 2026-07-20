@@ -20,6 +20,20 @@ class AuthoredContractTests(unittest.TestCase):
                 schema = json.loads(path.read_text(encoding="utf-8"))
                 Draft202012Validator.check_schema(schema)
 
+    def test_contract_readmes_do_not_regress_to_pre_runtime_claims(self) -> None:
+        contracts = (self.root / "contracts/README.md").read_text(encoding="utf-8")
+        bootstrap = (self.root / "contracts/bootstrap/README.md").read_text(encoding="utf-8")
+
+        self.assertNotIn("not an active runtime API", contracts)
+        self.assertNotIn("capability issuer and route do not exist yet", contracts)
+        self.assertIn("contracts exercised by the current development walking slice", contracts)
+        self.assertNotIn(
+            "no route, token issuer, database mutation, or runtime authority", bootstrap
+        )
+        self.assertNotIn("When implemented, the handler", bootstrap)
+        self.assertIn("kernel-owned Postgres Record implementation", bootstrap)
+        self.assertIn("The handler uses one serializable transaction", bootstrap)
+
 
 if __name__ == "__main__":
     unittest.main()

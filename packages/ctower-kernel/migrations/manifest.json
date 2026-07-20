@@ -1,0 +1,17 @@
+{
+  "schema": "ctower.migrations/v1",
+  "migrations": [
+    {
+      "path": "0001_roles.sql",
+      "sha256": "sha256:4dffe7d62d7ade9508a306f9567af824d378472bcf776d7f95e7626177af9b22"
+    },
+    {
+      "path": "0002_ticket_slice.sql",
+      "sha256": "sha256:fabcb823a836d8d5f29dab2a597331db10e1b30b90e34f599801778d95045fab"
+    },
+    {
+      "path": "0003_privileges.sql",
+      "sha256": "sha256:aa27bd19f3d30b5c677455467790a239b8d869d891f0a9abe1420c60c69c7a80"
+    }
+  ]
+}

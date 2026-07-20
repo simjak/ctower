@@ -1,0 +1,130 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://ctower.dev/contracts/domain/events/event-envelope.schema.json",
+  "title": "CtowerEventEnvelope",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "actor_principal_id",
+    "aggregate_id",
+    "causation_id",
+    "client_command_id",
+    "correlation_id",
+    "event_id",
+    "kind",
+    "origin",
+    "payload",
+    "prev_hash",
+    "request_sha256",
+    "schema_version",
+    "sequence",
+    "server_time",
+    "stream_id",
+    "tenant_id"
+  ],
+  "properties": {
+    "actor_principal_id": {"type": "string", "format": "uuid"},
+    "aggregate_id": {"type": "string", "format": "uuid"},
+    "causation_id": {"type": ["string", "null"], "format": "uuid"},
+    "client_command_id": {"type": "string", "format": "uuid"},
+    "correlation_id": {"type": "string", "format": "uuid"},
+    "event_id": {"type": "string", "format": "uuid"},
+    "kind": {
+      "type": "string",
+      "enum": [
+        "bootstrap.first_tenant_created",
+        "ticket.created",
+        "ticket.custody_transferred"
+      ]
+    },
+    "origin": {"type": "string", "enum": ["api", "bootstrap"]},
+    "payload": {"type": "object"},
+    "prev_hash": {"$ref": "#/$defs/sha256"},
+    "request_sha256": {"$ref": "#/$defs/sha256"},
+    "schema_version": {"const": 1},
+    "sequence": {"type": "integer", "minimum": 1},
+    "server_time": {"type": "string", "format": "date-time"},
+    "stream_id": {
+      "type": "string",
+      "pattern": "^(tenant:[0-9a-f-]{36}:bootstrap|ticket:[0-9a-f-]{36})$"
+    },
+    "tenant_id": {"type": "string", "format": "uuid"}
+  },
+  "allOf": [
+    {
+      "oneOf": [
+        {
+          "properties": {
+            "kind": {"const": "bootstrap.first_tenant_created"},
+            "origin": {"const": "bootstrap"},
+            "stream_id": {"pattern": "^tenant:[0-9a-f-]{36}:bootstrap$"},
+            "payload": {"$ref": "#/$defs/bootstrapCreated"}
+          }
+        },
+        {
+          "properties": {
+            "kind": {"const": "ticket.created"},
+            "origin": {"const": "api"},
+            "stream_id": {"pattern": "^ticket:[0-9a-f-]{36}$"},
+            "payload": {"$ref": "#/$defs/ticketCreated"}
+          }
+        },
+        {
+          "properties": {
+            "kind": {"const": "ticket.custody_transferred"},
+            "origin": {"const": "api"},
+            "stream_id": {"pattern": "^ticket:[0-9a-f-]{36}$"},
+            "payload": {"$ref": "#/$defs/custodyTransferred"}
+          }
+        }
+      ]
+    }
+  ],
+  "$defs": {
+    "sha256": {"type": "string", "pattern": "^sha256:[0-9a-f]{64}$"},
+    "bootstrapCreated": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "commander_id",
+        "commander_vault_ref",
+        "operator_credential_ref",
+        "operator_id",
+        "operator_vault_ref",
+        "tenant_id",
+        "tenant_slug"
+      ],
+      "properties": {
+        "commander_id": {"type": "string", "format": "uuid"},
+        "commander_vault_ref": {"type": "string", "minLength": 1},
+        "operator_credential_ref": {"type": "string", "minLength": 1},
+        "operator_id": {"type": "string", "format": "uuid"},
+        "operator_vault_ref": {"type": "string", "minLength": 1},
+        "tenant_id": {"type": "string", "format": "uuid"},
+        "tenant_slug": {"type": "string", "minLength": 2, "maxLength": 63}
+      }
+    },
+    "ticketCreated": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["custodian_id", "priority", "source_kind", "source_ref", "title"],
+      "properties": {
+        "custodian_id": {"type": "string", "format": "uuid"},
+        "priority": {"type": "string", "enum": ["P0", "P1", "P2"]},
+        "source_kind": {"type": "string", "minLength": 1, "maxLength": 64},
+        "source_ref": {"type": "string", "minLength": 1, "maxLength": 256},
+        "title": {"type": "string", "minLength": 1, "maxLength": 200}
+      }
+    },
+    "custodyTransferred": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["from_custodian_id", "reason", "to_custodian_id"],
+      "properties": {
+        "from_custodian_id": {"type": "string", "format": "uuid"},
+        "reason": {"type": "string", "minLength": 1, "maxLength": 500},
+        "to_custodian_id": {"type": "string", "format": "uuid"}
+      }
+    }
+  }
+}

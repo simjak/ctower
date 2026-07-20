@@ -167,14 +167,26 @@ class TraceabilityDriftTests(unittest.TestCase):
             "tools/checks/exceptions.yaml",
             "tools/checks/_impl/generated.py",
             "tools/checks/_impl/generated_inventory.py",
+            "tools/checks/_impl/model.py",
+            "tools/checks/report.py",
             *(item["path"] for group in ("inputs", "outputs") for item in entry[group]),
         }
         source_map = self._read_json(self.root / "contracts/traceability/sources.json")
         paths.update(artifact["path"] for artifact in source_map["artifacts"])
         for relative in sorted(paths):
+            if relative == "generated/.generated-manifest.json":
+                continue
             target = fixture / relative
             target.parent.mkdir(parents=True, exist_ok=True)
             shutil.copyfile(self.root / relative, target)
+        fixture_manifest = {
+            "_notice": manifest["_notice"],
+            "schema": manifest["schema"],
+            "artifacts": [entry],
+        }
+        (fixture / "generated/.generated-manifest.json").write_text(
+            json.dumps(fixture_manifest, indent=2, sort_keys=True) + "\n", encoding="utf-8"
+        )
 
     def _stale_traceability_entry(self, fixture: Path) -> None:
         path = fixture / "generated/.generated-manifest.json"

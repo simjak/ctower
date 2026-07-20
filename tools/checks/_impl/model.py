@@ -30,6 +30,7 @@ class GeneratedPathPolicy:
 @dataclass(frozen=True, slots=True)
 class PolicyConfig:
     source_extensions: tuple[str, ...]
+    module_roots: tuple[str, ...]
     excludes: tuple[str, ...]
     protected_roots: tuple[str, ...]
     forbidden_module_stems: tuple[str, ...]
