@@ -56,6 +56,7 @@ class _ProcessTenant:
     operator_id: UUID
     commander_id: UUID
     credential: str
+    commander_credential: str
 
 
 @pytest.fixture
@@ -74,7 +75,11 @@ def process_tenant(database: DatabaseFixture) -> Iterator[_ProcessTenant]:
             _bootstrap_request(), command_id=uuid4(), capability=capability
         )
         credential = secrets.token_urlsafe(32)
+        commander_credential = secrets.token_urlsafe(32)
         provision_credential(database.admin_dsn, receipt.tenant_id, receipt.operator_id, credential)
+        provision_credential(
+            database.admin_dsn, receipt.tenant_id, receipt.commander_id, commander_credential
+        )
         yield _ProcessTenant(
             database,
             base_url,
@@ -82,6 +87,7 @@ def process_tenant(database: DatabaseFixture) -> Iterator[_ProcessTenant]:
             receipt.operator_id,
             receipt.commander_id,
             credential,
+            commander_credential,
         )
 
 
@@ -151,6 +157,59 @@ def test_process_exact_replay_and_changed_body_conflict(
     assert replay == first
     assert cast(Problem, raised.value.problem).code == "idempotency-conflict"
     assert _command_counts(tenant.database.admin_dsn, command_id) == (1, 1, 1)
+
+
+def test_process_p0_authority_denial_is_typed_and_does_not_mutate(
+    process_tenant: _ProcessTenant,
+) -> None:
+    tenant = process_tenant
+    command_id = uuid4()
+    with (
+        CtowerClient(tenant.base_url, credential=tenant.commander_credential) as commander,
+        pytest.raises(CtowerProblemError) as raised,
+    ):
+        commander.create_ticket(
+            _ticket_request(tenant, title="Commander P0 denied", priority=Priority.P0),
+            command_id=command_id,
+        )
+
+    assert cast(Problem, raised.value.problem).code == "unauthorized"
+    assert _command_counts(tenant.database.admin_dsn, command_id) == (0, 0, 0)
+
+
+def test_process_custody_authority_denials_are_typed_and_do_not_mutate(
+    process_tenant: _ProcessTenant,
+) -> None:
+    tenant = process_tenant
+    created = _create(tenant, uuid4(), title="Custody authority remains unchanged")
+    unprotected_id, insufficient_id = uuid4(), uuid4()
+    with (
+        _client(tenant) as operator,
+        CtowerClient(tenant.base_url, credential=tenant.commander_credential) as commander,
+    ):
+        unprotected = _outcome(
+            lambda: operator.transfer_ticket_custody(
+                created.ticket.ticket_id,
+                _custody_request(tenant, reason="Unprotected transfer", protected=False),
+                command_id=unprotected_id,
+            )
+        )
+        insufficient = _outcome(
+            lambda: commander.transfer_ticket_custody(
+                created.ticket.ticket_id,
+                _custody_request(tenant, reason="Insufficient transfer authority"),
+                command_id=insufficient_id,
+            )
+        )
+        shown = operator.get_ticket(created.ticket.ticket_id)
+        timeline = operator.get_ticket_timeline(created.ticket.ticket_id)
+
+    assert isinstance(unprotected, Problem) and unprotected.code == "unauthorized"
+    assert isinstance(insufficient, Problem) and insufficient.code == "unauthorized"
+    assert shown == created.ticket
+    assert [event.kind for event in timeline.events] == ["ticket.created"]
+    assert _command_counts(tenant.database.admin_dsn, unprotected_id) == (0, 0, 0)
+    assert _command_counts(tenant.database.admin_dsn, insufficient_id) == (0, 0, 0)
 
 
 def test_process_same_ticket_concurrency_serializes_one_transfer(
@@ -378,20 +437,24 @@ def _generated_context(
     )
 
 
-def _ticket_request(tenant: _ProcessTenant, *, title: str) -> TicketCreateRequest:
+def _ticket_request(
+    tenant: _ProcessTenant, *, title: str, priority: Priority = Priority.P1
+) -> TicketCreateRequest:
     return TicketCreateRequest(
         initial_custodian_id=tenant.commander_id,
-        priority=Priority.P1,
+        priority=priority,
         source=SourceReference(kind="process", ref="generated-client"),
         title=title,
     )
 
 
-def _custody_request(tenant: _ProcessTenant, *, reason: str) -> CustodyTransferRequest:
+def _custody_request(
+    tenant: _ProcessTenant, *, reason: str, protected: bool = True
+) -> CustodyTransferRequest:
     return CustodyTransferRequest(
         expected_version=1,
         from_custodian_id=tenant.commander_id,
-        protected_transfer=True,
+        protected_transfer=protected,
         reason=reason,
         to_custodian_id=tenant.operator_id,
     )
