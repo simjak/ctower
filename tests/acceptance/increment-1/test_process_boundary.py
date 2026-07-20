@@ -3,17 +3,21 @@
 from __future__ import annotations
 
 import io
+import json
 import secrets
+import tempfile
 from collections.abc import Callable, Iterator
 from concurrent.futures import ThreadPoolExecutor
 from dataclasses import dataclass
 from datetime import UTC, datetime, timedelta
+from pathlib import Path
 from typing import cast
 from uuid import UUID, uuid4
 
 import httpx
 import psycopg
 import pytest
+from pydantic import ValidationError
 from support.postgres import DatabaseFixture
 from support.server import running_api
 from support.telemetry import telemetry_headers
@@ -40,6 +44,8 @@ from ctower_kernel.record.postgres import (
 __all__: tuple[str, ...] = ()
 
 TRANSFERRED_VERSION = 2
+TELEMETRY_SIGNAL_COUNT = 3
+HTTP_OK = 200
 
 
 @dataclass(frozen=True, slots=True)
@@ -259,6 +265,87 @@ def test_generated_telemetry_context_reaches_process_outbox(
     assert stored["trace_id"] == "a" * 32
 
 
+def test_process_auth_denial_telemetry_ignores_all_claimed_identity(
+    process_tenant: _ProcessTenant,
+) -> None:
+    tenant = process_tenant
+    context = _generated_context(
+        trace_id="c" * 32,
+        tenant_id="claimed-tenant",
+        actor_id="claimed-actor",
+    )
+    rejected_credential = "rejected-process-credential"
+    with tempfile.TemporaryDirectory() as temp_name:
+        capture = Path(temp_name) / "telemetry.jsonl"
+        with (
+            running_api(tenant.database.runtime_dsn, telemetry_capture=capture) as base_url,
+            CtowerClient(base_url, credential=rejected_credential, telemetry=context) as denied,
+            pytest.raises(CtowerProblemError),
+        ):
+            denied.get_ticket(uuid4())
+        records = [json.loads(line) for line in capture.read_text(encoding="utf-8").splitlines()]
+
+    assert len(records) == TELEMETRY_SIGNAL_COUNT
+    assert {record["signal"] for record in records} == {"span", "log", "metric"}
+    assert {record["name"] for record in records} == {"access.authenticate"}
+    assert {record["outcome"] for record in records} == {"error"}
+    assert {record["reason"] for record in records} == {"unauthorized"}
+    encoded = json.dumps(records, separators=(",", ":"), sort_keys=True)
+    for forbidden in (rejected_credential, "claimed-tenant", "claimed-actor", "c" * 32):
+        assert forbidden not in encoded
+
+
+def test_process_generated_telemetry_constraints_are_the_api_ingress(
+    process_tenant: _ProcessTenant,
+) -> None:
+    tenant = process_tenant
+    with pytest.raises(ValidationError):
+        _generated_context(trace_id="not-a-trace-id")
+    headers = telemetry_headers()
+    payload = json.loads(headers["X-Ctower-Telemetry-Context"])
+    payload["unexpected"] = "rejected"
+    headers["X-Ctower-Telemetry-Context"] = json.dumps(payload)
+    with httpx.Client(base_url=tenant.base_url) as raw:
+        response = raw.post(
+            "/v1/tickets",
+            content=_ticket_request(tenant, title="Invalid telemetry").model_dump_json(),
+            headers={
+                **headers,
+                "Authorization": f"Bearer {tenant.credential}",
+                "Idempotency-Key": str(uuid4()),
+                "Content-Type": "application/json",
+            },
+        )
+    problem = Problem.model_validate_json(response.content)
+    assert (problem.status, problem.code) == (422, "validation-error")
+
+
+def test_process_exporter_failure_preserves_generated_commit_and_health_truth(
+    process_tenant: _ProcessTenant,
+) -> None:
+    tenant = process_tenant
+    command_id = uuid4()
+    with running_api(tenant.database.runtime_dsn, telemetry_failure=True) as base_url:
+        with CtowerClient(base_url, credential=tenant.credential) as client:
+            created = client.create_ticket(
+                _ticket_request(tenant, title="Exporter failure process"), command_id=command_id
+            )
+        with httpx.Client(base_url=base_url) as raw:
+            health = raw.get(
+                f"/v1/tickets/{created.ticket.ticket_id}",
+                headers={
+                    "Authorization": f"Bearer {tenant.credential}",
+                    **telemetry_headers(ticket_id=created.ticket.ticket_id),
+                },
+            )
+
+    assert health.status_code == HTTP_OK
+    assert health.headers["X-Ctower-Telemetry-Health"] == "degraded"
+    assert _command_counts(tenant.database.admin_dsn, command_id) == (1, 1, 1)
+    with _client(tenant) as fresh:
+        assert fresh.get_ticket(created.ticket.ticket_id) == created.ticket
+
+
 def _bootstrap_request() -> BootstrapRequest:
     return BootstrapRequest(
         commander_name="Ctower Commander",
@@ -268,6 +355,26 @@ def _bootstrap_request() -> BootstrapRequest:
         operator_vault_ref="vault-ref:ctower/operator",
         tenant_name="Ctower",
         tenant_slug="ctower",
+    )
+
+
+def _generated_context(
+    *,
+    trace_id: str,
+    tenant_id: str = "unresolved",
+    actor_id: str = "unresolved",
+) -> TelemetryContext:
+    command_id = str(uuid4())
+    return TelemetryContext(
+        schema_id="ctower.telemetry-context/v1",
+        trace_id=trace_id,
+        span_id="d" * 16,
+        trace_flags=1,
+        correlation_id=command_id,
+        causation_id=command_id,
+        tenant_id=tenant_id,
+        actor_id=actor_id,
+        command_id=command_id,
     )
 
 

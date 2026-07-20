@@ -3,8 +3,9 @@
 from __future__ import annotations
 
 import json
+import secrets
 from collections.abc import Awaitable, Callable
-from uuid import UUID
+from uuid import UUID, uuid4
 
 from fastapi import FastAPI, Request
 from fastapi.responses import JSONResponse
@@ -21,9 +22,13 @@ from ctower_client.models import (
     TicketResource,
     TimelineResponse,
 )
+from ctower_client.models import (
+    TelemetryContext as HttpTelemetryContext,
+)
 from ctower_client.models import TicketCommandResult as HttpTicketCommandResult
 from ctower_kernel.access import Access
 from ctower_kernel.record import (
+    Actor,
     BootstrapCommand,
     BootstrapReceipt,
     CustodyCommand,
@@ -75,6 +80,7 @@ def _install_bootstrap_route(
         capability = request.headers.get("X-Ctower-Bootstrap-Capability")
         refusal = access.authorize_bootstrap(capability, origin=origin)
         if refusal is not None:
+            _emit_auth_denial(telemetry_recorder, "access.authorize_bootstrap", refusal)
             return _problem_response(refusal)
         try:
             telemetry = _telemetry(request)
@@ -120,7 +126,7 @@ def _install_ticket_create_route(
 
     @app.post("/v1/tickets", status_code=201)
     async def create_ticket(request: Request) -> JSONResponse:
-        actor = access.authenticate(request.headers.get("Authorization"))
+        actor = _authenticate(access, telemetry_recorder, request)
         if isinstance(actor, RecordProblem):
             return _problem_response(actor)
         try:
@@ -159,7 +165,7 @@ def _install_ticket_read_routes(
 
     @app.get("/v1/tickets/{ticket_id}")
     def get_ticket(ticket_id: str, request: Request) -> JSONResponse:
-        actor = access.authenticate(request.headers.get("Authorization"))
+        actor = _authenticate(access, telemetry_recorder, request)
         if isinstance(actor, RecordProblem):
             return _problem_response(actor)
         try:
@@ -177,7 +183,7 @@ def _install_ticket_read_routes(
 
     @app.get("/v1/tickets/{ticket_id}/timeline")
     def get_ticket_timeline(ticket_id: str, request: Request) -> JSONResponse:
-        actor = access.authenticate(request.headers.get("Authorization"))
+        actor = _authenticate(access, telemetry_recorder, request)
         if isinstance(actor, RecordProblem):
             return _problem_response(actor)
         try:
@@ -206,7 +212,7 @@ def _install_custody_route(
 
     @app.post("/v1/tickets/{ticket_id}/custody")
     async def transfer_ticket_custody(ticket_id: str, request: Request) -> JSONResponse:
-        actor = access.authenticate(request.headers.get("Authorization"))
+        actor = _authenticate(access, telemetry_recorder, request)
         if isinstance(actor, RecordProblem):
             return _problem_response(actor)
         try:
@@ -303,4 +309,61 @@ def _telemetry(request: Request) -> TelemetryContext:
     payload = request.headers.get("X-Ctower-Telemetry-Context")
     if payload is None:
         raise ValueError("telemetry context is missing")
-    return TelemetryContext.from_json(payload.encode("utf-8"))
+    return _trusted_telemetry(HttpTelemetryContext.model_validate_json(payload))
+
+
+def _trusted_telemetry(context: HttpTelemetryContext) -> TelemetryContext:
+    return TelemetryContext(
+        schema=context.schema_id,
+        trace_id=context.trace_id,
+        span_id=context.span_id,
+        trace_flags=context.trace_flags,
+        trace_state=context.trace_state,
+        correlation_id=context.correlation_id,
+        causation_id=context.causation_id,
+        tenant_id=context.tenant_id,
+        actor_id=context.actor_id,
+        command_id=context.command_id,
+        ticket_id=context.ticket_id,
+        workflow_run_id=context.workflow_run_id,
+        stage_attempt_id=context.stage_attempt_id,
+        job_id=context.job_id,
+        runner_id=context.runner_id,
+        fencing_token=context.fencing_token,
+        effect_id=context.effect_id,
+        component_revision_id=context.component_revision_id,
+        deployment_id=context.deployment_id,
+    )
+
+
+def _authenticate(
+    access: Access, recorder: TelemetryRecorder, request: Request
+) -> Actor | RecordProblem:
+    outcome = access.authenticate(request.headers.get("Authorization"))
+    if isinstance(outcome, RecordProblem):
+        _emit_auth_denial(recorder, "access.authenticate", outcome)
+    return outcome
+
+
+def _emit_auth_denial(recorder: TelemetryRecorder, name: str, problem: RecordProblem) -> None:
+    recorder.emit(
+        name,
+        _denial_telemetry(),
+        outcome="error",
+        reason=problem.code,
+    )
+
+
+def _denial_telemetry() -> TelemetryContext:
+    correlation_id = str(uuid4())
+    return TelemetryContext(
+        schema="ctower.telemetry-context/v1",
+        trace_id=secrets.token_hex(16),
+        span_id=secrets.token_hex(8),
+        trace_flags=0,
+        correlation_id=correlation_id,
+        causation_id=correlation_id,
+        tenant_id="unauthenticated",
+        actor_id="unauthenticated",
+        command_id=correlation_id,
+    )

@@ -16,10 +16,49 @@ from support.tenant_fixture import TenantFixture
 from ctower_api.interface import create_app
 from ctower_api.telemetry import TelemetryRecorder
 from ctower_kernel.record.postgres import PostgresRecord
+from ctower_kernel.telemetry import TelemetryContext as InternalTelemetryContext
 
 __all__: tuple[str, ...] = ()
 
 HTTP_CREATED = 201
+HTTP_UNAUTHORIZED = 401
+TELEMETRY_SIGNAL_COUNT = 3
+
+
+def test_auth_denial_telemetry_is_complete_server_owned_and_redacted(
+    tenant: TenantFixture,
+) -> None:
+    captures: list[dict[str, object]] = []
+    recorder = TelemetryRecorder(captures.append)
+    claimed = telemetry_headers()
+    claimed_payload = json.loads(claimed["X-Ctower-Telemetry-Context"])
+    claimed_payload.update({"tenant_id": "claimed-tenant", "actor_id": "claimed-actor"})
+    claimed["X-Ctower-Telemetry-Context"] = json.dumps(claimed_payload)
+    rejected_credential = "rejected-credential-material"
+
+    with TestClient(
+        create_app(PostgresRecord(tenant.database.runtime_dsn), telemetry=recorder)
+    ) as client:
+        response = client.post(
+            "/v1/tickets",
+            content=b"{",
+            headers={**claimed, "Authorization": f"Bearer {rejected_credential}"},
+        )
+
+    assert response.status_code == HTTP_UNAUTHORIZED
+    assert len(captures) == TELEMETRY_SIGNAL_COUNT
+    assert {record["signal"] for record in captures} == {"span", "log", "metric"}
+    labels = [cast(dict[str, str], record["metric_labels"]) for record in captures]
+    assert {label["outcome"] for label in labels} == {"error"}
+    assert {label["reason"] for label in labels} == {"unauthorized"}
+    encoded = json.dumps(captures, separators=(",", ":"), sort_keys=True)
+    assert rejected_credential not in encoded
+    assert "claimed-tenant" not in encoded
+    assert "claimed-actor" not in encoded
+
+
+def test_internal_telemetry_value_is_not_a_second_external_json_validator() -> None:
+    assert not hasattr(InternalTelemetryContext, "from_json")
 
 
 def test_context_reaches_outbox_and_golden_signals_are_redacted(

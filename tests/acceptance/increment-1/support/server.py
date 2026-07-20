@@ -2,16 +2,19 @@
 
 from __future__ import annotations
 
+import json
 import multiprocessing
 import socket
 import time
-from collections.abc import Iterator
+from collections.abc import Callable, Iterator
 from contextlib import contextmanager
+from pathlib import Path
 from typing import Protocol
 
 import uvicorn
 
 from ctower_api.interface import create_app
+from ctower_api.telemetry import TelemetryRecorder
 from ctower_kernel.record.postgres import PostgresRecord
 
 __all__: tuple[str, ...] = ()
@@ -23,14 +26,19 @@ class _Process(Protocol):
 
 
 @contextmanager
-def running_api(runtime_dsn: str) -> Iterator[str]:
+def running_api(
+    runtime_dsn: str,
+    *,
+    telemetry_capture: Path | None = None,
+    telemetry_failure: bool = False,
+) -> Iterator[str]:
     """Run the composed API in another process and yield its loopback URL."""
 
     host = "127.0.0.1"
     port = _available_port(host)
     process = multiprocessing.get_context("spawn").Process(
         target=_serve,
-        args=(runtime_dsn, host, port),
+        args=(runtime_dsn, host, port, telemetry_capture, int(telemetry_failure)),
         daemon=True,
     )
     process.start()
@@ -45,14 +53,37 @@ def running_api(runtime_dsn: str) -> Iterator[str]:
             process.join(timeout=5)
 
 
-def _serve(runtime_dsn: str, host: str, port: int) -> None:
+def _serve(
+    runtime_dsn: str,
+    host: str,
+    port: int,
+    telemetry_capture: Path | None,
+    telemetry_failure: int,
+) -> None:
+    recorder = TelemetryRecorder(
+        _exporter(telemetry_capture, fail=bool(telemetry_failure))
+        if telemetry_capture is not None or telemetry_failure
+        else None
+    )
     uvicorn.run(
-        create_app(PostgresRecord(runtime_dsn)),
+        create_app(PostgresRecord(runtime_dsn, telemetry=recorder), telemetry=recorder),
         host=host,
         port=port,
         log_level="error",
         access_log=False,
     )
+
+
+def _exporter(capture: Path | None, *, fail: bool) -> Callable[[dict[str, object]], None]:
+    def export(record: dict[str, object]) -> None:
+        if fail:
+            raise OSError("injected telemetry exporter failure")
+        if capture is None:
+            raise RuntimeError("telemetry capture path is missing")
+        with capture.open("a", encoding="utf-8") as stream:
+            stream.write(json.dumps(record, separators=(",", ":"), sort_keys=True) + "\n")
+
+    return export
 
 
 def _available_port(host: str) -> int:
