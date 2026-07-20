@@ -30,6 +30,7 @@ from ctower_kernel.record.events import (
     EventKind,
     EventOrigin,
     TicketCreatedPayload,
+    ticket_payload_from_mapping,
 )
 from ctower_kernel.telemetry import TelemetryContext
 
@@ -404,13 +405,15 @@ def _result_from_payload(payload: dict[str, object]) -> TicketCommandResult:
 
 
 def _timeline_event(row: dict[str, object]) -> TimelineEvent:
+    kind = EventKind(str(row["kind"]))
+    payload = cast(dict[str, object], row["payload"])
     return TimelineEvent(
         actor_principal_id=cast(UUID, row["actor_principal_id"]),
         command_id=cast(UUID, row["client_command_id"]),
         event_id=cast(UUID, row["event_id"]),
-        kind=str(row["kind"]),
+        kind=kind,
         occurred_at=cast(datetime, row["server_time"]),
-        payload=cast(dict[str, object], row["payload"]),
+        payload=ticket_payload_from_mapping(kind, payload),
         sequence=int(cast(int, row["sequence"])),
     )
 

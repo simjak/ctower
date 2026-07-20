@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import hashlib
 import json
 from datetime import UTC, datetime
 from pathlib import Path
@@ -17,7 +18,6 @@ from support.telemetry import telemetry_headers
 from support.tenant_fixture import TenantFixture
 
 from ctower_api.interface import create_app
-from ctower_kernel.record.events import event_digest
 from ctower_kernel.record.postgres import PostgresRecord
 
 __all__: tuple[str, ...] = ()
@@ -200,7 +200,8 @@ def test_runtime_event_schema_hash_outbox_and_public_timeline_are_one_shape(
     )
     Draft202012Validator(schema).validate(event)
     assert event["stream_id"] == f"ticket:{ticket_id}"
-    assert event_digest(event) == bytes(cast(bytes, row["event_hash"]))
+    canonical = json.dumps(event, ensure_ascii=False, separators=(",", ":"), sort_keys=True)
+    assert hashlib.sha256(canonical.encode()).digest() == bytes(cast(bytes, row["event_hash"]))
     assert outbox["payload"] == event
     public_event = timeline.json()["events"][0]
     assert not {"event_hash", "prev_hash", "request_sha256"} & public_event.keys()

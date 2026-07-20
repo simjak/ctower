@@ -8,6 +8,12 @@ from enum import StrEnum
 from typing import Protocol
 from uuid import UUID
 
+from ctower_kernel.record.events import (
+    CustodyTransferredPayload,
+    EventKind,
+    TicketCreatedPayload,
+    TicketEventPayload,
+)
 from ctower_kernel.telemetry import TelemetryContext
 
 __all__ = [
@@ -224,10 +230,20 @@ class TimelineEvent:
     actor_principal_id: UUID
     command_id: UUID
     event_id: UUID
-    kind: str
+    kind: EventKind
     occurred_at: datetime
-    payload: dict[str, object]
+    payload: TicketEventPayload
     sequence: int
+
+    def __post_init__(self) -> None:
+        expected_payload = {
+            EventKind.TICKET_CREATED: TicketCreatedPayload,
+            EventKind.CUSTODY_TRANSFERRED: CustodyTransferredPayload,
+        }.get(self.kind)
+        if expected_payload is None:
+            raise ValueError("timeline kind must be a ticket event")
+        if not isinstance(self.payload, expected_payload):
+            raise TypeError(f"{self.kind} requires {expected_payload.__name__}")
 
     def response_payload(self) -> dict[str, object]:
         """Return the generated timeline event shape."""
@@ -236,9 +252,9 @@ class TimelineEvent:
             "actor_principal_id": str(self.actor_principal_id),
             "command_id": str(self.command_id),
             "event_id": str(self.event_id),
-            "kind": self.kind,
+            "kind": self.kind.value,
             "occurred_at": self.occurred_at.isoformat(),
-            "payload": self.payload,
+            "payload": self.payload.to_mapping(),
             "sequence": self.sequence,
         }
 

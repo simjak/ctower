@@ -8,12 +8,22 @@ from datetime import UTC, datetime
 from io import StringIO
 from pathlib import Path
 from typing import cast
-from uuid import uuid4
+from uuid import UUID, uuid4
 
 import pytest
 
-from ctower_kernel.record import CustodyCommand, RecordProblem
-from ctower_kernel.record.events import canonical_event_bytes, event_digest
+from ctower_kernel.record import CustodyCommand, RecordProblem, TimelineEvent
+from ctower_kernel.record.events import (
+    BootstrapCreatedPayload,
+    CustodyTransferredPayload,
+    EventEnvelope,
+    EventKind,
+    EventOrigin,
+    TicketCreatedPayload,
+    canonical_event_bytes,
+    event_digest,
+    ticket_payload_from_mapping,
+)
 from ctower_kernel.record.postgres import PostgresRecord, provision_bootstrap
 
 ROOT = Path(__file__).parents[3]
@@ -30,7 +40,8 @@ def test_record_event_authority_matches_authored_canonical_vectors() -> None:
     vectors = cast(list[dict[str, object]], document["vectors"])
 
     for vector in vectors:
-        event = cast(dict[str, object], vector["event"])
+        mapping = cast(dict[str, object], vector["event"])
+        event = _event_from_vector(mapping)
         assert canonical_event_bytes(event).decode() == vector["canonical_json"]
         assert f"sha256:{event_digest(event).hex()}" == vector["event_hash"]
 
@@ -91,3 +102,128 @@ def test_bootstrap_provision_rejects_capability_above_authored_maximum(
             allowed_origin="127.0.0.1",
             expires_at=datetime.now(UTC),
         )
+
+
+def test_event_payloads_reject_authored_enum_and_length_violations() -> None:
+    with pytest.raises(ValueError, match="priority"):
+        TicketCreatedPayload(uuid4(), "P3", "source", "ref", "title")
+    with pytest.raises(ValueError, match="title"):
+        TicketCreatedPayload(uuid4(), "P1", "source", "ref", "x" * 201)
+    with pytest.raises(ValueError, match="reason"):
+        CustodyTransferredPayload(uuid4(), "", uuid4())
+    with pytest.raises(ValueError, match="tenant_slug"):
+        BootstrapCreatedPayload(uuid4(), "vault", "credential", uuid4(), "vault", uuid4(), "x")
+
+
+def test_event_envelope_rejects_origin_and_stream_identity_mismatch() -> None:
+    aggregate_id = uuid4()
+    payload = TicketCreatedPayload(uuid4(), "P1", "source", "ref", "title")
+
+    with pytest.raises(ValueError, match="origin"):
+        _ticket_event(aggregate_id, payload, origin=EventOrigin.BOOTSTRAP)
+    with pytest.raises(ValueError, match="stream"):
+        _ticket_event(aggregate_id, payload, stream_id=f"ticket:{uuid4()}")
+    with pytest.raises(TypeError, match="requires TicketCreatedPayload"):
+        _ticket_event(
+            aggregate_id,
+            CustodyTransferredPayload(uuid4(), "handoff", uuid4()),
+            kind=EventKind.TICKET_CREATED,
+        )
+    with pytest.raises(TypeError, match="validated EventEnvelope"):
+        event_digest(cast(EventEnvelope, {"kind": "invalid"}))
+
+
+def test_timeline_event_keeps_typed_kind_matched_payload() -> None:
+    payload = TicketCreatedPayload(uuid4(), "P1", "source", "ref", "title")
+    rebuilt = ticket_payload_from_mapping(EventKind.TICKET_CREATED, payload.to_mapping())
+    event = TimelineEvent(
+        actor_principal_id=uuid4(),
+        command_id=uuid4(),
+        event_id=uuid4(),
+        kind=EventKind.TICKET_CREATED,
+        occurred_at=datetime.now(UTC),
+        payload=rebuilt,
+        sequence=1,
+    )
+
+    assert event.response_payload()["payload"] == payload.to_mapping()
+    with pytest.raises(ValueError, match="fields"):
+        ticket_payload_from_mapping(
+            EventKind.TICKET_CREATED, {**payload.to_mapping(), "extra": "rejected"}
+        )
+    with pytest.raises(TypeError, match="requires CustodyTransferredPayload"):
+        TimelineEvent(
+            actor_principal_id=uuid4(),
+            command_id=uuid4(),
+            event_id=uuid4(),
+            kind=EventKind.CUSTODY_TRANSFERRED,
+            occurred_at=datetime.now(UTC),
+            payload=payload,
+            sequence=1,
+        )
+
+
+def _ticket_event(
+    aggregate_id: UUID,
+    payload: TicketCreatedPayload | CustodyTransferredPayload,
+    *,
+    kind: EventKind = EventKind.TICKET_CREATED,
+    origin: EventOrigin = EventOrigin.API,
+    stream_id: str | None = None,
+) -> EventEnvelope:
+    return EventEnvelope(
+        actor_principal_id=uuid4(),
+        aggregate_id=aggregate_id,
+        causation_id=None,
+        client_command_id=uuid4(),
+        correlation_id=uuid4(),
+        event_id=uuid4(),
+        kind=kind,
+        origin=origin,
+        payload=payload,
+        prev_hash=bytes(32),
+        request_sha256=bytes(32),
+        sequence=1,
+        server_time=datetime.now(UTC),
+        stream_id=stream_id or f"ticket:{aggregate_id}",
+        tenant_id=uuid4(),
+    )
+
+
+def _event_from_vector(mapping: dict[str, object]) -> EventEnvelope:
+    kind = EventKind(str(mapping["kind"]))
+    causation = mapping["causation_id"]
+    return EventEnvelope(
+        actor_principal_id=UUID(str(mapping["actor_principal_id"])),
+        aggregate_id=UUID(str(mapping["aggregate_id"])),
+        causation_id=UUID(str(causation)) if causation is not None else None,
+        client_command_id=UUID(str(mapping["client_command_id"])),
+        correlation_id=UUID(str(mapping["correlation_id"])),
+        event_id=UUID(str(mapping["event_id"])),
+        kind=kind,
+        origin=EventOrigin(str(mapping["origin"])),
+        payload=_vector_payload(kind, cast(dict[str, object], mapping["payload"])),
+        prev_hash=bytes.fromhex(str(mapping["prev_hash"]).removeprefix("sha256:")),
+        request_sha256=bytes.fromhex(str(mapping["request_sha256"]).removeprefix("sha256:")),
+        sequence=int(cast(int, mapping["sequence"])),
+        server_time=datetime.fromisoformat(str(mapping["server_time"])),
+        stream_id=str(mapping["stream_id"]),
+        tenant_id=UUID(str(mapping["tenant_id"])),
+        schema_version=int(cast(int, mapping["schema_version"])),
+    )
+
+
+def _vector_payload(
+    kind: EventKind, payload: dict[str, object]
+) -> BootstrapCreatedPayload | TicketCreatedPayload | CustodyTransferredPayload:
+    if kind is EventKind.BOOTSTRAP_CREATED:
+        return BootstrapCreatedPayload(
+            UUID(str(payload["commander_id"])),
+            str(payload["commander_vault_ref"]),
+            str(payload["operator_credential_ref"]),
+            UUID(str(payload["operator_id"])),
+            str(payload["operator_vault_ref"]),
+            UUID(str(payload["tenant_id"])),
+            str(payload["tenant_slug"]),
+        )
+    return ticket_payload_from_mapping(kind, payload)
