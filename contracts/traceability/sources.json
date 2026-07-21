@@ -375,6 +375,48 @@
       ]
     },
     {
+      "path": "packages/ctower-kernel/migrations/0009_transactional_record_positions.sql",
+      "references": [
+        "SPEC#consistency-concurrency-and-deduplication",
+        "SPEC#persistence-authority",
+        "SPEC#task-management-foundation",
+        "INV-04",
+        "INV-34",
+        "AC-DUR-06",
+        "AC-TM-02"
+      ]
+    },
+    {
+      "path": "packages/ctower-kernel/migrations/0010_custody_episode_intervals.sql",
+      "references": [
+        "SPEC#persistence-authority",
+        "SPEC#task-management-foundation",
+        "INV-09",
+        "AC-PROD-04",
+        "AC-TM-01"
+      ]
+    },
+    {
+      "path": "packages/ctower-kernel/migrations/0011_persisted_command_refusals.sql",
+      "references": [
+        "SPEC#consistency-concurrency-and-deduplication",
+        "SPEC#persistence-authority",
+        "INV-04",
+        "AC-DUR-02",
+        "AC-DUR-06"
+      ]
+    },
+    {
+      "path": "packages/ctower-kernel/migrations/0012_projection_runtime_role.sql",
+      "references": [
+        "SPEC#executable-authority-and-requirement-traceability",
+        "SPEC#security-objectives",
+        "INV-01",
+        "AC-DUR-07",
+        "AC-SEC-03"
+      ]
+    },
+    {
       "path": "packages/ctower-kernel/migrations/manifest.json",
       "references": [
         "SPEC#executable-authority-and-requirement-traceability",
