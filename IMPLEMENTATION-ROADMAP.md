@@ -2,11 +2,11 @@
 
 | Field | Value |
 |---|---|
-| Status | Non-normative execution sequence derived from `SPEC.md` 1.8 |
+| Status | Non-normative execution sequence derived from `SPEC.md` 1.9 |
 | Product increments | Exactly two: Increment 1 and Increment 2 |
 | Work authority before cutover | SPEC temporary bootstrap backlog |
 | Work authority after cutover | ctower tickets only |
-| Last reviewed | 2026-07-20 |
+| Last reviewed | 2026-07-21 |
 
 This roadmap makes the normative build order easier to execute. It does not create a third scope model,
 approve work, mirror ticket status, or override the stable IDs, acceptance criteria, validation commands,
@@ -35,7 +35,7 @@ INCREMENT 1 — durable task-management dogfood
               |
  [four-stage fixture on final generic evaluator]
               |
- [ctower-project cutover + I1 archive]
+ [ctower-project cutover + compact Project Delivery projection + I1 archive]
               |
 ============== SOURCE-OF-TRUTH BARRIER ==============
               |
@@ -47,7 +47,7 @@ INCREMENT 2 — autonomous generic workflow + one golden path
               |
  [activate durable Commander orchestration]
               |
- [complete five surfaces + Effects/release]
+ [complete five surfaces + Project Delivery projection detail/analytics + Effects/release]
               |
  [one software-factory production golden ticket]
 ```
@@ -74,6 +74,8 @@ A checkpoint is complete only when all applicable conditions hold:
 9. A checkpoint that first gains arbitrary local or remote harness command execution also implements and
    proves the final pre-dispatch CommandGuard contract; resequencing execution cannot move or waive this
    prerequisite.
+10. Any Project Delivery projection row is derived from current authoritative facts at a visible watermark;
+    manual status, ticket-count completion, a freshness heartbeat, or a missing source cannot claim progress.
 
 Execution status belongs to the temporary SPEC backlog before cutover and to ctower tickets afterward.
 This file records sequence and exit logic only.
@@ -226,8 +228,27 @@ proof, gates, effects, delivery, resolution, or closure. Before rewire, rollback
 import and unfreeze scoped legacy tools. After rewire, rollback is a compatible ctower restore/build or
 explicit read-only/spool mode; legacy mutation never resumes.
 
+The same checkpoint establishes only the hierarchy needed to dogfood project delivery:
+
+```text
+ctower company -> ctower project -> ordered Increment/Milestone checkpoints
+                                    -> outcomes + owners + exit criteria
+                                    -> qualifying tickets/Workflow/proof/outcome facts
+                                    -> compact Project Delivery projection rows
+```
+
+The compact Project Delivery projection shows checkpoint key/label, deterministic headline state, outcome,
+accountable owner, `proven / declared` exit-criterion coverage, source watermark, and freshness. Relevant
+accepted facts reconcile rows immediately; one hour without a relevant change publishes a freshness
+heartbeat that cannot move lifecycle state. Stale or incomplete sources are loud. There is no manual status,
+ticket-count percentage, interactive row-detail product, broad visualization, trend/cost/time analytics, or
+reusable cross-domain UI in I1.7; those depend on this proven hierarchy/rebuild contract and belong to I2.4.
+
 **Exit:** every selected ctower-project item and stable alias is accounted for exactly once, zero
 post-barrier legacy writes occur, the attention baseline is frozen, and applicable I1 evidence is archived.
+The ctower checkpoints reproduce the same compact Project Delivery projection after restart/restore, apply
+the canonical eight-state precedence with proof-aware `done`/`blocked`, and expose immediate reconciliation,
+hourly no-change freshness, and stale/unknown faults without accepting a projection write.
 From this point, ctower tickets—not this file or the SPEC table—own implementation status.
 
 ## Increment 2 — autonomous generic workflow and one factory golden path
@@ -309,9 +330,20 @@ retro. Fleet shows profiles, runners, jobs, workspaces, routines, capacity, budg
 treating terminals as truth. Analytics versions attention, flow, quality, recovery, cost, release, and
 improvement queries with watermarks and anti-gaming guardrails.
 
+Build the richer Project Delivery projection surface on the hierarchy and deterministic compact fold already
+proven at I1.7. Authorized interactive rows expose accountable owner; Workflow stage and independent Kanban/
+Board state; tickets, Workflow runs, changes/PRs, and applicable releases/outcomes; exit criteria and current
+proof coverage; passed/missing gates; blockers/dependencies; evidence/artifacts; decision history; estimated
+versus actual cost/time; and last verified/reconciled time with confidence/freshness. Add broader
+visualizations, trends, cost/time analytics, and reusable views for software, accounting, compliance, hiring,
+and other configured Workflows. It remains contextual to the five surfaces and never creates a writable
+status authority or third product increment.
+
 **Exit:** exactly five primary surfaces, complete run reconstruction after restart, allocation fractions=1,
 Needs You precision/recall, exact-scope guard confirmation and linked receipt views, no false calm, and KPI
-drill-down to permanent tickets/provenance all pass.
+drill-down to permanent tickets/provenance all pass. Project Delivery projection row detail is
+authorization-safe; cross-domain fixtures share the eight-state fold; proof invalidation regresses only
+dependent conditions; and restore/rebuild at one watermark reproduces the same rows and derivation reasons.
 
 ### I2.5 — Effects, root-owned release trust, and incident recovery
 

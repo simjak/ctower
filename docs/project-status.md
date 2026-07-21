@@ -1,8 +1,21 @@
 # Project status
 
-ctower is a public pre-alpha project. A development-only synthetic walking slice now exercises local
-bootstrap, ticket persistence, custody, an online CLI, and the CP-1 proof-gated four-stage fixture, but
-ctower is not a supported or deployed product and must not yet manage real work.
+ctower is a public pre-alpha project. The development-only local walking slice now exercises bootstrap,
+durable ticket and Board facts, custody, an online CLI, a read-only Board projection, and the CP-1
+proof-gated four-stage fixture. It is not a supported or deployed product and must not yet manage real
+work.
+
+## Delivery snapshot
+
+I1.2 is merged: PR [#20](https://github.com/simjak/ctower/pull/20) integrated reviewed source
+`78ec2a8` into `main` at `65718f5a` on 2026-07-21. It establishes the development-only CP2 durable Work,
+Workflow, Proof, Board, assignment, priority, blocker, relation, audit, and projection-role boundary. The
+next checkpoint is I1.3, acknowledged durability and disaster-safe operations. This snapshot records
+delivery facts. The
+[implementation roadmap](https://github.com/simjak/ctower/blob/main/IMPLEMENTATION-ROADMAP.md) is a
+derived sequencing view; binding scope and exit semantics live in the
+[system specification](https://github.com/simjak/ctower/blob/main/SPEC.md), with rationale preserved in
+[DECISIONS.md](https://github.com/simjak/ctower/blob/main/DECISIONS.md).
 
 ## Available now
 
@@ -34,8 +47,13 @@ ctower is not a supported or deployed product and must not yet manage real work.
 - A development-only generic Workflow evaluator for the staged `ctower.trust-spine-four-stage@1` fixture,
   with pinned legal edges and `activity_class`; plus Proof criteria freeze, content-digest verification,
   protected non-self verdicts, dependency invalidation, and proof-gated atomic resolve/close facts.
-- Proof and Workflow own their Postgres implementations above the lower Record append Interface. Workflow
-  receives only an injected current-proof capability, and the executable repository graph rejects cycles.
+- Durable Work facts for assignment, P0/P1/P2 priority, blockers, relations, workflow/policy pins, and
+  audit cursor retrieval; the development-only request tracer rebuilds a six-lane Board with loud source
+  and projection watermarks.
+- Work, Proof, and Workflow own their Postgres implementations above the lower Record append Interface.
+  Workflow receives only injected Work-readiness and current-proof capabilities, and the executable
+  repository graph rejects cycles. The projection role can replace disposable Board rows and cursors but
+  cannot mutate authoritative facts.
 - A thin online `ctowerctl` tracer over the deterministic generated Python client for bootstrap and ticket
   create/show/assign. Authority enters on stdin; offline mutations fail loudly as unsent.
 
@@ -63,7 +81,8 @@ proves only that the documentation built and deployed; it does not prove a ctowe
 
 - A supported/deployed API, control worker, installer, container image, or hosted service.
 - Off-host acknowledgement, backup/restore proof, outbox consumption, general workflow/runtime execution,
-  leases, fencing, effects, or projections.
+  leases, fencing, effects, or a durable projection worker. The current request-driven Board projection is
+  development-only and does not establish accepted durability.
 - A supported CLI, encrypted offline spool, or web interface.
 - Local or remote agent execution adapters.
 - An accepted Python runtime pin or stable compatibility promise.

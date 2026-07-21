@@ -9,11 +9,11 @@ temporary. ctower is designed to preserve the work: ownership, workflow position
 artifacts, evidence, effects, and the complete audit trail survive agent, model, machine, and process changes.
 
 > [!IMPORTANT]
-> ctower is currently a **pre-alpha development project**. One synthetic walking slice now implements local
-> first-tenant bootstrap, durable ticket create/read/timeline, protected custody transfer, a thin online
-> CLI, and a development-only proof-gated four-stage Workflow tracer over a generated client. All writes
-> remain `durability_pending`; there is no supported installable, deployed, backed-up, or production-ready
-> product today.
+> ctower is currently a **pre-alpha development project**. The development-only walking slice implements
+> first-tenant bootstrap; durable tickets, custody, assignment, priority, blockers, and relations; a
+> read-only six-lane Board projection; and the proof-gated four-stage Workflow fixture over generated
+> clients. All writes remain `durability_pending`; there is no supported installable, deployed, backed-up,
+> or production-ready product today.
 
 ## What ctower is designed to provide
 
