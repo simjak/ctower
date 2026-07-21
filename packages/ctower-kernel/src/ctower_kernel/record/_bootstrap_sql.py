@@ -158,9 +158,9 @@ def _bootstrap_principal(
     row = connection.execute(
         """
         SELECT actor_principal_id FROM events
-        WHERE tenant_id = %s AND client_command_id = %s AND kind = 'bootstrap.created'
+        WHERE tenant_id = %s AND client_command_id = %s AND kind = %s
         """,
-        (UUID(str(payload["tenant_id"])), command_id),
+        (UUID(str(payload["tenant_id"])), command_id, EventKind.BOOTSTRAP_CREATED),
     ).fetchone()
     if row is None:
         raise RuntimeError("consumed bootstrap receipt has no installer principal")
