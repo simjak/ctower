@@ -20,6 +20,7 @@ from ctower_kernel.record.events import (
     EventKind,
     EventOrigin,
     TicketCreatedPayload,
+    WorkChangedPayload,
     canonical_event_bytes,
     event_digest,
     ticket_payload_from_mapping,
@@ -215,7 +216,9 @@ def _event_from_vector(mapping: dict[str, object]) -> EventEnvelope:
 
 def _vector_payload(
     kind: EventKind, payload: dict[str, object]
-) -> BootstrapCreatedPayload | TicketCreatedPayload | CustodyTransferredPayload:
+) -> (
+    BootstrapCreatedPayload | TicketCreatedPayload | CustodyTransferredPayload | WorkChangedPayload
+):
     if kind is EventKind.BOOTSTRAP_CREATED:
         return BootstrapCreatedPayload(
             UUID(str(payload["commander_id"])),
@@ -225,5 +228,12 @@ def _vector_payload(
             str(payload["operator_vault_ref"]),
             UUID(str(payload["tenant_id"])),
             str(payload["tenant_slug"]),
+        )
+    if kind is EventKind.WORK_CHANGED:
+        return WorkChangedPayload(
+            operation=str(payload["operation"]),
+            ticket_id=UUID(str(payload["ticket_id"])),
+            work_version=int(cast(int, payload["work_version"])),
+            data=cast(dict[str, object], payload["data"]),
         )
     return ticket_payload_from_mapping(kind, payload)
