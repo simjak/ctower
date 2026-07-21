@@ -112,7 +112,9 @@ def test_generated_client_drives_complete_task_board_and_audit_flow(
         1,
         CUSTODY_EPISODE_COUNT,
     ]
-    assert custody_after_reopen[0].released_at <= custody_after_reopen[1].assigned_at
+    prior_release = custody_after_reopen[0].released_at
+    assert prior_release is not None
+    assert prior_release <= custody_after_reopen[1].assigned_at
     assert custody_after_reopen[1].released_at is None
     assert fresh_run.version == 1
     assert len([event for event in pages if event.kind == "proof.changed"]) == PROOF_EVENT_COUNT

@@ -148,10 +148,12 @@ def test_work_and_workflow_refusals_replay_before_later_state_reads(
             """,
             ([work_command_id, workflow_command_id],),
         ).fetchall()
-        event_count = connection.execute(
+        event_count_row = connection.execute(
             "SELECT count(*) AS value FROM events WHERE client_command_id = ANY(%s)",
             ([work_command_id, workflow_command_id],),
-        ).fetchone()["value"]
+        ).fetchone()
+    assert event_count_row is not None
+    event_count = event_count_row["value"]
     assert len(rows) == REFUSAL_COMMAND_COUNT
     assert all(row["status_code"] == HTTP_CONFLICT for row in rows)
     assert all(row["event_ids"] == [] for row in rows)

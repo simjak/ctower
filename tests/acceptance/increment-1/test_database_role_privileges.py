@@ -155,14 +155,10 @@ def test_projection_login_assumes_only_projection_and_reset_cannot_escape(
     assert view.projection_watermark == view.source_watermark
 
     with psycopg.connect(projection_dsn, autocommit=True, row_factory=dict_row) as connection:
-        assert connection.execute("SELECT current_user AS value").fetchone()["value"] == (
-            "ctower_projection_runtime"
-        )
+        assert _current_user(connection) == "ctower_projection_runtime"
         _assert_projection_login_cannot_escape(connection)
         connection.execute("SET ROLE ctower_projection")
-        assert connection.execute("SELECT current_user AS value").fetchone()["value"] == (
-            "ctower_projection"
-        )
+        assert _current_user(connection) == "ctower_projection"
         with pytest.raises(psycopg.errors.InsufficientPrivilege):
             connection.execute("UPDATE tickets SET version = version WHERE false")
         connection.execute("RESET ROLE")
@@ -180,6 +176,12 @@ def _assert_projection_login_cannot_escape(
     ):
         with pytest.raises(psycopg.errors.InsufficientPrivilege):
             connection.execute(statement)
+
+
+def _current_user(connection: psycopg.Connection[dict[str, object]]) -> str:
+    row = connection.execute("SELECT current_user AS value").fetchone()
+    assert row is not None
+    return str(row["value"])
 
 
 def test_upgrade_database_corrects_existing_head_privileges(
