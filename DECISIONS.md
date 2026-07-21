@@ -564,3 +564,94 @@ clause and its associated publication arithmetic. Every other D17 decision remai
    absence is never success. A missing, unreadable, or gapped activated source fails closed. Before I2
    activates a root/effect source, the activation transaction commits a signed inventory revision marking
    it active before any associated grant or effect can execute.
+
+## D19 — Versioned CommandGuard before arbitrary harness dispatch (locked 2026-07-20, operator R593)
+
+The operator required an enforceable catastrophic-command guard before ctower activates arbitrary local or
+remote harness execution. This decision deepens D10's compositional execution boundary and D17/D18's
+fail-closed sequencing without changing their ticket, Workflow, Proof, Effects, or earned-Seam authority.
+The observed design lead was a raw-text denylist that blocked a non-executing issue-description command
+because it merely quoted a dangerous token. Text occurrence is not execution intent.
+
+1. **Runtime decides; every dispatch-capable Harness or Supervisor Adapter enforces at the final boundary.**
+   Runtime owns one versioned CommandGuard decision over the proposed execution. Each registered local or
+   remote Harness or Supervisor Adapter that can launch, invoke, or submit a harness command must invoke and
+   enforce it at the last trusted point before process, shell, or provider dispatch. A direct bypass is an
+   architecture and conformance failure. A changed plan or target requires a new decision.
+2. **Normalize actual intent and targets.** Evaluation resolves executable identity, argv or explicit shell
+   plan, cwd, bounded environment references, parent traversal, globs, symlinks, wrappers/indirection, and
+   candidate targets in the dispatch namespace. Unresolved, ambiguous, or broad protected targets fail
+   closed. Safe cleanup is permitted only through an authorized capability with proven containment inside
+   an exact disposable root; basename or command-name exceptions are insufficient.
+3. **Typed decisions and immutable redacted receipts.** The result is exactly `allow`, `block`, or
+   `needs_operator`. Every result binds ticket, job/run, principal, Harness/provider, policy revision,
+   normalized-command digest, cwd, resolved targets, rule/reason, and time in an immutable receipt. Raw
+   secrets, expanded credential values, and sensitive command content do not enter application logs or
+   telemetry. `block` and `needs_operator` execute zero commands.
+4. **Minimum catastrophic classes are explicit.** Policy covers root/home/workspace or broad filesystem
+   destruction; disk/filesystem/volume format or wipe; destructive database operations; protected source
+   history/reference rewrite; cluster, container-host, cloud, or infrastructure destruction; and equivalent
+   supported wrappers or indirection.
+5. **Override is exact and consumable, never standing authority.** A `needs_operator` decision can proceed
+   only through a strongly authenticated grant bound to the original receipt, exact normalized command and
+   targets, nonce, short expiry, and one atomic use. Expiry, replay, changed resolution, scope mismatch, or
+   concurrent second use performs no dispatch and is audited. No grant disables the guard globally.
+   Remote execution receives a signed scoped decision/grant and returns a matching enforcement receipt
+   before ctower accepts completion.
+6. **This is accidental-destruction defense, not sandbox containment.** An allowed interpreter, script, or
+   binary may perform effects invisible to the structured dispatch plan. Sandbox/VM/OS isolation,
+   short-lived credentials, workspace/tenant scoping, egress controls, least privilege, and Effects
+   brokerage therefore remain independent required controls.
+7. **Sequence and non-freeze boundary.** This contract is a hard prerequisite inside CT-I2-004/I2.2 and
+   follows any resequenced checkpoint that first gains arbitrary command execution. I1 and PR #16 have no
+   agent-command execution surface and remain outside this scope. This decision freezes human semantics and
+   acceptance evidence, not the exact policy grammar, schema, storage, signature, or provider protocol;
+   those mechanics wait for the first real Harness consumer to earn them. GitHub issue
+   [#17](https://github.com/simjak/ctower/issues/17) tracks implementation.
+
+Rejected alternatives:
+
+- **Prompt- or skill-only instructions:** valuable guidance, but model compliance is not an enforcement
+  boundary and cannot prove zero dispatch on refusal.
+- **Raw regex-only denylist:** misses expansion, symlink, wrapper, and target semantics while producing the
+  observed false positive on quoted non-executing text.
+- **Universal standing override or global disable:** replayable ambient authority defeats exact scope,
+  expiry, accountability, and safe concurrent operation.
+- **Treating CommandGuard as a sandbox:** overclaims containment once allowed arbitrary code can issue its
+  own syscalls or access already granted credentials.
+
+## D20 — Bind CommandGuard decisions to dispatch and close the rollback bypass (locked 2026-07-20, operator)
+
+This entry preserves D19 as append-only history and supersedes/narrows only its incomplete digest,
+receipt-binding, final-dispatch, and rollback semantics. D19's Runtime ownership, catastrophic classes,
+typed decisions, exact one-use grants, accidental-destruction boundary, I1 exclusion, CT-I2-004 timing,
+earned-Seam rule, and deferred exact mechanics remain in force.
+
+1. **One canonical normalized-execution-plan digest.** The digest covers executable identity, argv or the
+   explicit shell plan, normalized cwd, each non-secret environment-resolution identity as its reference
+   plus pinned version/digest and never the secret value, and the exact resolved target set in the actual
+   dispatch namespace. It replaces any interpretation of D19's `normalized-command digest` as a partial
+   command-text or target-independent digest.
+2. **One decision/dispatch-attempt binding.** Every decision receipt, operator grant, and local or remote
+   enforcement receipt binds that digest plus the same decision/dispatch-attempt identity, ticket/job/run,
+   principal, exact Harness/Supervisor/provider/target identities, policy revision, and evaluation or
+   enforcement time. Local enforcement is evidence-bearing under the same contract as remote enforcement;
+   provider non-applicability is explicit rather than an omitted ambiguous field.
+3. **No evaluation/dispatch gap.** At its final boundary the Adapter dispatches only from the captured or
+   pinned resolution that was evaluated, or re-resolves and atomically compares the canonical digest
+   immediately before dispatch. Mismatch, uncertainty, inability to compare, or inability to durably record
+   the required receipt before dispatch performs zero dispatch and requires a new decision. Receipt loss or
+   uncertainty discovered after dispatch may have begun leaves completion incomplete/unknown and never
+   accepted; process or provider success cannot substitute for the receipt.
+4. **Rollback remains inside CommandGuard.** Manual operator initiation is legal only through a healthy,
+   registered, conformance-tested Adapter that obtains and enforces a fresh CommandGuard decision at final
+   dispatch. If none is healthy, new dispatch remains disabled. Direct `bin/mux`, shell, process, or
+   provider invocation is forbidden as rollback.
+
+This narrowing is required because D19's earlier receipt field lists did not unambiguously bind environment
+resolution, Supervisor and target identity, local enforcement, one dispatch attempt, and both evaluation
+and enforcement time to the same complete plan, nor require a captured resolution or atomic final compare.
+The I2 rollback text also permitted manual `bin/mux`, contradicting D19's no-bypass rule at the exact moment
+a guard-path failure would make bypass most dangerous. This decision freezes only human security semantics
+and acceptance obligations; exact policy grammar, schema, storage, signature, and local/remote transport
+still wait for CT-I2-004 and any independently earned remote Seam.

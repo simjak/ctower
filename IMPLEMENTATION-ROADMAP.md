@@ -2,11 +2,11 @@
 
 | Field | Value |
 |---|---|
-| Status | Non-normative execution sequence derived from `SPEC.md` 1.7 |
+| Status | Non-normative execution sequence derived from `SPEC.md` 1.8 |
 | Product increments | Exactly two: Increment 1 and Increment 2 |
 | Work authority before cutover | SPEC temporary bootstrap backlog |
 | Work authority after cutover | ctower tickets only |
-| Last reviewed | 2026-07-18 |
+| Last reviewed | 2026-07-20 |
 
 This roadmap makes the normative build order easier to execute. It does not create a third scope model,
 approve work, mirror ticket status, or override the stable IDs, acceptance criteria, validation commands,
@@ -43,7 +43,7 @@ INCREMENT 2 — autonomous generic workflow + one golden path
 
  [deepen generic Workflow + Proof/policy]
               |
- [durable Runtime + local process/tmux recovery]
+ [durable Runtime + CommandGuard + local process/tmux recovery]
               |
  [activate durable Commander orchestration]
               |
@@ -71,6 +71,9 @@ A checkpoint is complete only when all applicable conditions hold:
 7. A retro or checkpoint review turns a process defect into a linked improvement or an evidence-backed
    no-change decision.
 8. Later checkpoint suites remain `not_yet_required`; no placeholder test is presented as passing.
+9. A checkpoint that first gains arbitrary local or remote harness command execution also implements and
+   proves the final pre-dispatch CommandGuard contract; resequencing execution cannot move or waive this
+   prerequisite.
 
 Execution status belongs to the temporary SPEC backlog before cutover and to ctower tickets afterward.
 This file records sequence and exit logic only.
@@ -252,13 +255,33 @@ ACKs, structured chunks/gaps, checkpoints, cancellation, reconciliation, and imm
 Exercise the local Codex/Claude Harness compositions and the direct-process and tmux Supervisor Adapters
 through one conformance suite. Unknown component revisions fail closed.
 
+Before the first Adapter may dispatch an arbitrary command, implement the versioned CommandGuard tracked
+by [issue #17](https://github.com/simjak/ctower/issues/17) at every final local Harness or Supervisor
+command-dispatch boundary. Normalize executable identity, argv or shell plan, cwd, bounded environment
+references, parent traversal, globs, symlinks, and candidate targets; classify execution intent and
+catastrophic action rather than matching raw substrings. `block` and `needs_operator` execute nothing. An
+operator grant is strongly authenticated, exact-command/exact-target, one-use, short-lived, replay-proof,
+and audited; safe cleanup requires capability plus containment. Every decision produces a redacted
+immutable receipt. Any future remote Adapter must enforce a signed scoped decision/grant and return a
+matching enforcement receipt before completion is accepted.
+
+This checkpoint is where the first real Harness consumers earn exact CommandGuard policy, schema, storage,
+signature, and local transport mechanics; this roadmap does not freeze them earlier. Remote provider
+mechanics remain deferred until their separate real Seam is earned. The guard is accidental-destruction
+defense, not a substitute for sandbox/VM/OS isolation, short-lived credentials, workspace scoping, egress,
+or Effects brokerage.
+
 Kill the wrapper, runner, tmux server, network, and host at declared points. A replacement must reconstruct
 from ctower state, reject old epochs, preserve sole-copy work, and resume checkpointable work within the
 specified recovery SLO. Pane/process/session existence is not health, ACK, terminal result, or evidence.
 
 **Exit:** the worker substrate can operate unattended across restart/loss with zero orphaned nonterminal
-jobs. This is the activation gate for autonomous Commander reasoning; Commander is not asked to compensate
-for missing scheduler, lease, checkpoint, or reconciliation durability.
+jobs. Every registered Harness or Supervisor command-dispatch path also proves pre-dispatch guard
+invocation, resolved-target and wrapper cases, zero execution on block/attention, one exact override use,
+replay/expiry refusal, direct bypass rejection, and redacted service-level observability; a remote Adapter
+additionally proves matching signed enforcement receipts. This is the activation gate for autonomous
+Commander reasoning; Commander is not asked to compensate for missing scheduler, lease, checkpoint,
+reconciliation, or command-guard durability.
 
 ### I2.3 — Activate the durable Commander
 
@@ -279,13 +302,16 @@ automation becomes one precise operator action rather than status-chasing noise.
 **Stable work:** `CT-I2-005`, `CT-I2-009`.
 
 Complete Home, Board, contextual Ticket, Fleet, and Analytics over generated clients and rebuildable
-projections. Ticket adds live structured run/steering/ACK/gap, manifest, current proof, readiness refusals,
-delivery/incidents, cost, and retro. Fleet shows profiles, runners, jobs, workspaces, routines, capacity,
-budgets, and health without treating terminals as truth. Analytics versions attention, flow, quality,
-recovery, cost, release, and improvement queries with watermarks and anti-gaming guardrails.
+projections. Home/Ticket Attention adds exact-scope CommandGuard confirmation, grant state, and linked
+decision/authorization/enforcement receipts without raw sensitive command content. Ticket also adds live
+structured run/steering/ACK/gap, manifest, current proof, readiness refusals, delivery/incidents, cost, and
+retro. Fleet shows profiles, runners, jobs, workspaces, routines, capacity, budgets, and health without
+treating terminals as truth. Analytics versions attention, flow, quality, recovery, cost, release, and
+improvement queries with watermarks and anti-gaming guardrails.
 
 **Exit:** exactly five primary surfaces, complete run reconstruction after restart, allocation fractions=1,
-Needs You precision/recall, no false calm, and KPI drill-down to permanent tickets/provenance all pass.
+Needs You precision/recall, exact-scope guard confirmation and linked receipt views, no false calm, and KPI
+drill-down to permanent tickets/provenance all pass.
 
 ### I2.5 — Effects, root-owned release trust, and incident recovery
 

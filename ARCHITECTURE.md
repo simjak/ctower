@@ -3,7 +3,7 @@
 | Field | Value |
 |---|---|
 | Status | Compact derived operator and implementer map |
-| Normative authority | [`SPEC.md`](SPEC.md), version 1.7 |
+| Normative authority | [`SPEC.md`](SPEC.md), version 1.8 |
 | Decision history | [`DECISIONS.md`](DECISIONS.md) |
 | Last reviewed | 2026-07-20 |
 
@@ -56,8 +56,8 @@ hold authority. Models, sessions, processes, tmux panes, runners, and providers 
               v                                v
   +-------------------------+       +-----------------------------+
   | replaceable worker plane|       | root/effect integration     |
-  | runner -> local process |       | verify grant + provenance   |
-  |        -> local tmux    |       | apply -> receipt -> reconcile|
+  | runner -> CommandGuard  |       | verify grant + provenance   |
+  |       -> process / tmux |       | apply -> receipt -> reconcile|
   +-------------------------+       +-----------------------------+
 ```
 
@@ -144,7 +144,9 @@ behind Module Interfaces. Service-per-noun units such as a separate reconciler a
 alive while ctower upgrades itself, independently verifies artifact bytes, signatures/attestations,
 subjects, and trusted builder/workflow identity, and writes a hash-chained receipt journal. The one live
 `systemd-vps/v1` integration plus its fault-injection implementation is an internal Effects boundary, not
-a generalized provider Seam.
+a generalized provider Seam. Before any local Harness or Supervisor Adapter launches, invokes, or submits
+an arbitrary harness command, it must enforce Runtime's current CommandGuard decision over the normalized
+plan and targets.
 
 ## Deep Modules and dependency direction
 
@@ -175,7 +177,7 @@ entire ownership graph for cycles; composition satisfies Workflow's structural c
 | Proof | Criteria, artifacts, evidence DAG, independence, gate instances/verdicts, invalidation |
 | Attention | Exact policy-qualified human actions and Needs You projection inputs |
 | Workflow | Arbitrary pinned graph readiness, legal edges, policy selection, routes, bounds, terminal decisions |
-| Runtime | Accepted jobs, leases, fencing, cursors, ACKs, checkpoints, local execution composition |
+| Runtime | Accepted jobs, leases, fencing, cursors, ACKs, checkpoints, versioned CommandGuard decisions, local execution composition |
 | Effects | Grants, releases, provider observations, receipts, incidents, rollback, reconciliation |
 | Projections | Rebuildable Home, Board, Ticket, Fleet, Analytics, watermarks, KPIs |
 
@@ -331,6 +333,55 @@ commit before dispatch. One logical scheduler owns Routine truth; there is no OS
 Routine. Scheduler completeness, runner liveness, ticket progress, and effect/reconciliation watermarks
 are independent and make health `STATE UNKNOWN` when stale.
 
+## Guarded harness command dispatch
+
+```text
+structured execution intent
+ executable + argv/shell plan + cwd + pinned environment-resolution identities
+                       |
+                       v
+ normalize expansions / parent traversal / globs / symlinks / targets
+                       |
+                       v
+ canonical normalized-execution-plan digest + decision/attempt identity
+                       |
+                       v
+ versioned CommandGuard decision + immutable bound receipt
+       | allow              | block             | needs_operator
+       v                    v                     v
+ exact plan may       zero dispatch       exact one-use, short-lived
+ dispatch                                 authenticated grant or zero dispatch
+       |
+       v
+ Adapter enforcement receipt (signed/scoped for remote execution)
+       |
+       v
+ matching receipt required before terminal completion is accepted
+```
+
+Every registered Harness or Supervisor Adapter capable of harness command dispatch owns the same final
+pre-dispatch enforcement obligation; a process, shell, or provider path that bypasses it is an
+architecture/conformance failure. The policy recognizes
+filesystem root/home/workspace destruction, disk wipe/format, destructive database operations, protected
+history rewrite, cluster/infrastructure destruction, and equivalent supported wrappers. Safe cleanup is
+proved by capability plus containment, not a command or basename exception. Raw substring matching is
+insufficient because quoted issue text is not execution intent, while expansions, indirection, and
+resolved targets determine the actual blast radius.
+
+One canonical digest covers executable identity, argv or explicit shell plan, normalized cwd, each
+non-secret environment reference plus its pinned version/digest, and the exact resolved target set in the
+actual dispatch namespace. Every decision, grant, and local or remote enforcement receipt binds that digest
+and one decision/dispatch-attempt identity plus ticket/job/run, principal, exact Harness/Supervisor/provider/
+target identities, policy revision, and evaluation/enforcement time, without logging secret values or
+sensitive command content. At the final boundary the Adapter dispatches from captured/pinned resolution or
+re-resolves and atomically compares it. Mismatch, uncertainty, or inability to record the receipt before
+dispatch means zero dispatch; receipt uncertainty after dispatch may have begun leaves completion
+incomplete/`STATE UNKNOWN`, never accepted. This guard reduces accidental destruction; sandbox/VM/OS
+isolation, workspace scoping, short-lived credentials, egress controls, and Effects brokerage remain the
+containment boundaries for malicious arbitrary code. Exact policy/schema/signature/provider mechanics wait
+for the first real Harness consumer in CT-I2-004; [issue #17](https://github.com/simjak/ctower/issues/17)
+tracks that implementation.
+
 ## Disaster-safe acceptance, restore, and cutover
 
 ```text
@@ -403,7 +454,7 @@ I1: L0 contracts/repository gates
      -> ctower-project cutover/dogfood
 
 I2: deepen generic Workflow + Proof
-     -> durable Runtime and local process/tmux recovery
+     -> durable Runtime + CommandGuard and local process/tmux recovery
      -> activate unattended Commander on the proven always-on substrate
      -> complete five surfaces + Effects/release
      -> one software-factory production golden ticket
@@ -424,11 +475,16 @@ Before either increment is complete, applicable tests must show that:
 3. API/control-worker restart, host reboot, and isolated restore lose no accepted record.
 4. Reads/effects cannot enable before key, object, tombstone, signed expected-source inventory, and activated-journal reconciliation; absent sources never count as success.
 5. Runner/tmux loss fences stale authority and resumes from durable state without inferred success.
-6. A candidate mutation invalidates exactly dependent proof and requires fresh applicable gates/review.
-7. Author/self-review, missing perspectives, invalid bounds, and stale evidence fail closed.
-8. Production verification failure enters incident, revocation, containment/rollback, verification, then triage.
-9. Unknown scheduler, projection, runner, backup, telemetry, or reconciliation state is visibly degraded.
-10. Remote/image/extension fixtures cannot be presented as an exercised runtime or public Seam.
+6. Every registered Harness or Supervisor command-dispatch path invokes CommandGuard at final pre-dispatch;
+   decision/grant/local-or-remote enforcement receipts bind one canonical normalized-execution-plan digest
+   and decision/dispatch-attempt identity to the complete execution context; blocked/attention commands,
+   resolution mismatch, uncertainty, replay, expiry, and pre-dispatch receipt failure execute zero times;
+   post-dispatch receipt loss cannot produce accepted completion; and observability remains redacted.
+7. A candidate mutation invalidates exactly dependent proof and requires fresh applicable gates/review.
+8. Author/self-review, missing perspectives, invalid bounds, and stale evidence fail closed.
+9. Production verification failure enters incident, revocation, containment/rollback, verification, then triage.
+10. Unknown scheduler, projection, runner, backup, telemetry, or reconciliation state is visibly degraded.
+11. Remote/image/extension fixtures cannot be presented as an exercised runtime or public Seam.
 
 Tmux is useful for same-host continuity and operator visibility. Durability comes from acknowledged records,
 committed events/outbox entries, fenced leases, replayable cursors, immutable evidence, checkpoints,

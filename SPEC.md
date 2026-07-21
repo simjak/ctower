@@ -3,8 +3,8 @@
 | Field | Value |
 |---|---|
 | Status | Canonical target-system truth |
-| Version | 1.7 |
-| Date | 2026-07-18 |
+| Version | 1.8 |
+| Date | 2026-07-20 |
 | Owners | Operator/CEO (product and human gates), Commander (orchestration contract), Engineering Manager (architecture and risk contract) |
 | Decision authority | [`DECISIONS.md`](DECISIONS.md) |
 
@@ -93,7 +93,7 @@ This file is the single current product, UX, domain, architecture, workflow, sec
 When sources differ, use this order:
 
 1. A later operator-locked decision in `DECISIONS.md`.
-2. This `SPEC.md`, version 1.7 or a later reviewed version, for human-visible semantics and invariants.
+2. This `SPEC.md`, version 1.8 or a later reviewed version, for human-visible semantics and invariants.
 3. Reviewed executable artifacts referenced by this spec for exact mechanics: migrations, OpenAPI,
    schemas, packs, fixtures, and conformance tests. They may refine representation but may not contradict
    a requirement, acceptance criterion, or invariant.
@@ -183,6 +183,7 @@ Each story names observable user value and links to pass/fail acceptance criteri
 | US-OP-05 | Operator/CEO | I approve, revise, reject, defer, or explicitly waive a policy-declared human gate from Needs You and the workflow resumes idempotently from that protected decision without fabricating evidence. | [AC-WF-07](#ac-wf-07), [AC-WF-16](#ac-wf-16), [AC-EVD-04](#ac-evd-04), [AC-UX-04](#ac-ux-04) |
 | US-OP-06 | Operator/CEO | I can distinguish merged, staging verified, production verified, rolled back, and incident states without relying on wording such as “shipped.” | [AC-REL-01](#ac-rel-01), [AC-REL-04](#ac-rel-04), [AC-UX-06](#ac-ux-06) |
 | US-OP-07 | Operator/CEO | I use a familiar Board without losing process truth: priority, queue lane, arbitrary workflow stage/activity, blockers, accountable custody, active assignment, and typed delivery milestone remain separate and explainable. | [AC-TM-01](#ac-tm-01), [AC-TM-02](#ac-tm-02), [AC-TM-05](#ac-tm-05) |
+| US-OP-08 | Operator/CEO | Before a harness dispatches a catastrophic or ambiguous command, I see the normalized target and policy reason, can authorize only that exact command and target once for a short time, and can audit the result without exposing secret command content. | [AC-RUN-15](#ac-run-15), [AC-SEC-03](#ac-sec-03), [AC-UX-10](#ac-ux-10) |
 | US-CMD-01 | Commander | Every accepted command is deduplicated, durably classified, and routed to a pinned workflow before I dispatch work, so process death cannot drop intent. | [AC-DUR-01](#ac-dur-01), [AC-WF-01](#ac-wf-01), [AC-RUN-01](#ac-run-01) |
 | US-CMD-02 | Commander | I plan and decompose an outcome using relations; I create child tickets only for independently valuable work and preserve blocker and provenance graphs. | [AC-PROD-02](#ac-prod-02), [AC-WF-02](#ac-wf-02) |
 | US-CMD-03 | Commander | I resolve the strongest healthy permitted reasoning profile, select and explain a pinned Workflow and versioned `orchestration_plan`, and choose a policy-permitted perspective/anti-spin plan while the server enforces its declared bounds. | [AC-WF-03](#ac-wf-03), [AC-WF-11](#ac-wf-11), [AC-WF-12](#ac-wf-12), [AC-WF-19](#ac-wf-19), [AC-WF-21](#ac-wf-21), [AC-WF-22](#ac-wf-22), [AC-WF-24](#ac-wf-24), [AC-SEC-03](#ac-sec-03), [AC-RUN-02](#ac-run-02) |
@@ -533,6 +534,7 @@ An aggregate owns only the invariants that must be transactional together. Cross
 | **Runner / node** | Registered workload identity, protocol version, capabilities, trust class, capacity, allowed scopes, heartbeat, and quarantine/revocation state | Hosts execution runs and workspaces; never writes record tables directly |
 | **Execution run / session** | One bounded adapter execution with runner, job token, profile revision, context manifest, timestamps, usage, outcome, and ordered event cursor; vendor session handle is optional metadata | Run can allocate cost across tickets/stages; session is never identity |
 | **Effective run manifest / placement decision** | Immutable per-attempt pins for Harness, Supervisor, Target, Workspace, Telemetry, environment, image, target/allocation/incarnation, resources, egress, isolation, candidate exclusions, and rationale | Component or placement change creates a new attempt; mutable active pointers and provider handles cannot rewrite it |
+| **CommandGuard decision / override grant / enforcement receipt** | Immutable pre-dispatch decision over one normalized execution plan, optional authenticated exact-scope one-use operator grant, and local or remote Adapter enforcement observation | Every artifact binds one normalized-execution-plan digest and decision/dispatch-attempt identity plus ticket/job/run, principal, Harness/Supervisor/provider/target identities, policy revision, and evaluation/enforcement time; it authorizes no other plan and proves neither sandbox containment nor Workflow success |
 | **Execution environment / image revision** | Immutable desired toolchain, OS/architecture, image digest, network, resources, cache/reuse/scrub, attestation, provenance, lifecycle, and future active pointer | Distinct from staging/production release environments; reusable bytes never contain standing credentials/login sessions |
 | **Target / allocation / incarnation** | Stable capacity registration, one fenced job reservation, and one observed host/VM/sandbox generation | Ctower allocation/fencing is authority; provider lease/run/resource IDs are scoped observations only |
 | **Workspace / checkpoint** | Workspace provider, source revision, mutable work location, ownership lease, checkpoint manifests, cleanup state, and recovery preconditions | A checkpoint is content-addressed and linked to a run/stage attempt; cleanup cannot destroy sole uncommitted evidence |
@@ -908,6 +910,7 @@ The ticket is the human join point, not the transaction boundary for the entire 
 55. **INV-55 — No secret-bearing reusable state.** Images, caches, warm entries, checkpoints, logs, and setup sessions cannot retain long-lived credentials, CLI/browser login state, private keys, tokens, or PII. Secrets are projected just in time after boot and revoked/scrubbed at end.
 56. **INV-56 — Provider observations are not transitions.** Remote providers and Crabbox return scoped observations/receipts only. Ctower validates/appends them; provider success, disappearance, cleanup, or image capture cannot advance Workflow, satisfy evidence, or promote an image.
 57. **INV-57 — Board/task axes remain orthogonal.** Priority, Board lane, blocker, arbitrary workflow stage/activity, lifecycle, typed delivery, custody, assignment, and runner lease remain independently attributable; Board controls emit typed intents rather than status patches, and lane semantics never depend on delivery wording or capitalization.
+58. **INV-58 — Guard before harness dispatch.** Every registered local or remote Harness or Supervisor Adapter that can launch, invoke, or submit a harness command obtains and enforces a current versioned CommandGuard decision for the exact normalized execution plan at its final trusted pre-dispatch boundary. `block` and `needs_operator` dispatch nothing; changed plans or targets, unresolved protected targets, expired/replayed grants, missing required local or remote enforcement receipts, and direct guard bypass fail closed.
 
 ## Workflow and verification architecture
 
@@ -1704,7 +1707,7 @@ The highest-risk Modules use these shapes:
 |---|---|---|
 | Workflow | `evaluate(WorkflowContextSnapshot, WorkflowCommand) -> WorkflowDecision` | Graph legality, readiness, risk/budget/lineage evaluation, typed routes, and invalidations. It receives immutable facts and returns append/effect/job/Attention intents; it does not import Work, Proof, Runtime, or Effects persistence. |
 | Proof | `decide(ProofCommand) -> ProofDecision` | Criteria, object/artifact digest validity, evidence DAG, attestations, gate independence, freshness, and invalidation. Storage/scanner/signer observations cannot directly pass a gate. |
-| Runtime | Command-oriented offer/claim/renew/frame/reconcile decisions | Durable jobs, leases, fencing, manifests, cursors, checkpoints, placement, and terminal acceptance. Runner SDK owns framing/composition but has no ticket or database authority. |
+| Runtime | Command-oriented offer/claim/renew/frame/reconcile and CommandGuard decisions | Durable jobs, leases, fencing, manifests, cursors, checkpoints, placement, final pre-dispatch command authorization, and terminal acceptance. Runner SDK owns framing/composition and Adapter enforcement but has no ticket or database authority. |
 | Effects | Grant/apply/inspect/reconcile/rollback decisions over a narrow provider port | Desired/observed state, receipts, releases, incidents, ambiguity, rollback. Provider mechanics never decide authorization or delivery truth. |
 | Repository Policy | `verify(repository_root, profile) -> PolicyReport` | One parsed repository model, ownership graph, private-import rules, source budgets, generated drift, telemetry rules, and expiring exceptions. Hooks, `just`, and CI are thin callers. |
 
@@ -1789,8 +1792,9 @@ to exporter SDKs.
 Conformance drives one golden command from API/CLI ingress through Record/outbox, worker, runner, Proof,
 Effects, and Projections; proves context continuity and required low-cardinality metrics; asserts no secret
 or content in telemetry; and stops/restarts the collector to prove bounded buffering and a visible
-`telemetry_export_failed` health state. Protected effects, auth denials, gate decisions, incidents,
-rollbacks, stale-fence rejections, proof denials, and reconciliation failures are retained/sampled at 100%.
+`telemetry_export_failed` health state. Protected effects, auth denials, gate decisions, CommandGuard
+blocks/operator grants/enforcement failures, incidents, rollbacks, stale-fence rejections, proof denials,
+and reconciliation failures are retained/sampled at 100% without raw command or secret content.
 
 #### One local and CI verification contract
 
@@ -1880,7 +1884,7 @@ Interface or in the named application composition root.
 | Workflow orchestration | Workflow | Pinned graph, readiness, immutable accepted/refused transition evaluations, stage/attempt transitions, typed owning-stage routes, invalidation, terminal contract | Runner process lifecycle internals or human UI state |
 | Policy evaluation | Workflow | Arbitrary package facts, perspectives, finite anti-spin bounds, stage-gate requirements, stable lineage normalization/split policy, human-only rules, policy version | Platform-hardcoded engineering tiers or self-reported lineage/counters as authority |
 | Gate evaluation | Proof; Workflow owns only round/route accounting | Gate instances, reviewer assignment, sealed access, verdict attempts, conflicts, expiry/invalidation; Workflow consumes immutable Proof decisions into round facts | Artifact mutation, plan-authored consumed counts, or external effects |
-| Scheduling/job control | Runtime | Durable accepted jobs, priorities, capability matching, leases, fencing, command cursors, cancellation | Ticket ownership or gate verdicts |
+| Scheduling/job control | Runtime | Durable accepted jobs, priorities, capability matching, leases, fencing, command cursors, cancellation, and versioned CommandGuard decisions over normalized execution plans | Ticket ownership, gate verdicts, or claims that command filtering is sandbox containment |
 | Reconciliation/watchdog | Runtime for jobs/cursors; Effects for receipts; Projections for view watermarks | Desired-vs-observed state, lease expiry, cursor/receipt/projection reconciliation, synthetic checks behind the owning Interfaces | Guessing success from process absence or creating a cross-Module manager |
 | Effect brokerage | Effects | Short-lived grants, just-in-time credential resolution, idempotent external action, immutable receipt | Standing credentials on runners; approving its own policy |
 | Attention/notification | Attention | Durable action items, ranking, dedupe, recipient routing, delivery retries, acknowledgment | Inferring separate competing Needs You truth per client |
@@ -2062,6 +2066,83 @@ Exact frame schemas, command/event enums, compatibility vectors, and generated m
 - Every exercised start echoes the immutable local harness/supervisor/target/workspace/telemetry manifest and
   observed build/target incarnation before tools or secrets enable. Future remote/image fields extend the
   same envelope only after their Seams are earned.
+
+#### CommandGuard at the harness dispatch boundary
+
+Before I2 Runtime activation—or any resequenced checkpoint that first permits arbitrary harness command
+execution—Runtime owns a versioned **CommandGuard** decision. Every registered local or remote Harness or
+Supervisor Adapter that can launch, invoke, or submit a harness command enforces it at the last trusted
+boundary before dispatch. No such Adapter may launch a process, invoke a shell, or submit a provider
+command through another path. A direct path around the guard is an architecture and conformance failure,
+not an implementation convenience.
+
+The guard evaluates structured execution intent rather than raw text. Before policy evaluation it
+normalizes the executable identity; argv or the explicit shell plan; normalized working directory; each
+non-secret environment-resolution identity as its reference plus pinned version/digest, never the secret
+value; parent traversal; glob expansion; symlink resolution; and every candidate target in the actual
+dispatch namespace. These fields produce one canonical **normalized-execution-plan digest** covering the
+executable identity, argv or explicit shell plan, normalized cwd, every non-secret environment-resolution
+identity, and the exact resolved target set in that dispatch namespace. An unresolved, ambiguous, or broad
+protected target yields `block` or `needs_operator`, never `allow`. Quoted examples, issue text, and other
+non-executing data do not become commands merely because they contain a dangerous token. Conversely,
+supported shell, privilege, build, task-runner, and provider wrappers cannot hide their resolved execution
+intent; an opaque indirection with protected reach fails closed.
+
+The versioned policy covers at least these accidental catastrophic-action classes and their supported
+wrappers or indirection:
+
+- recursive or broad destruction of filesystem root, a user home, a repository/workspace, or a target
+  escaped through an empty expansion, parent traversal, glob, mount, or symlink;
+- disk, filesystem, partition, or volume format/wipe operations;
+- destructive database operations against protected instances, databases, schemas, or broad data sets;
+- protected source-history or reference rewrite, including force/reset/clean operations outside an exact
+  disposable scope; and
+- cluster, container-host, cloud, or infrastructure destruction.
+
+Safe cleanup is authorized by capability plus proven containment inside an exact disposable root. A
+basename, command name, familiar cleanup script, or claimed temporary directory is never sufficient by
+itself. The decision authorizes only the captured normalized resolution. At the final boundary the Adapter
+must dispatch from that captured/pinned resolution or re-resolve it and atomically compare the resulting
+normalized-execution-plan digest immediately before dispatch. Any mismatch, uncertainty, or inability to
+compare performs zero dispatch and requires a new decision.
+
+Each evaluation returns exactly `allow`, `block`, or `needs_operator` and appends an immutable decision
+receipt. Runtime assigns one decision/dispatch-attempt identity for that proposed boundary use. Every
+decision receipt, operator grant, and local or remote enforcement receipt binds that identity and the same
+normalized-execution-plan digest plus the ticket, job, run, principal, exact Harness, Supervisor, provider,
+and target identities, policy revision, and its evaluation or enforcement time. A typed not-applicable
+provider identity is allowed only for a composition with no provider. The decision receipt also records the
+decision and rule/reason; the enforcement receipt records whether zero dispatch or dispatch occurred and
+the observed outcome. Raw secrets, expanded credential values, and sensitive command content are excluded
+from application logs and telemetry; protected receipt fields remain access-controlled while observability
+uses the digest, rule, reason class, outcome, and low-cardinality component identities.
+
+`block` and `needs_operator` both execute zero commands. A `block` is a policy refusal. A
+`needs_operator` decision creates one exact Attention action and can proceed only with a policy-authorized
+operator grant produced after strong authentication. The grant binds the original receipt and exact
+normalized-execution-plan digest and decision/dispatch-attempt identity, has a nonce and short absolute
+expiry, is consumed atomically once at dispatch, and cannot alter policy globally. Expiry, replay, plan or
+target mismatch, changed resolution, or concurrent second use executes nothing and appends a refusal.
+Authorization and enforcement/result receipts remain linked.
+
+Every local or remote Adapter must durably append or return its bound enforcement receipt. A remote
+executor receives a signed decision or scoped operator grant and returns an authenticated receipt under
+the same contract. If the required receipt cannot be durably recorded before dispatch, the Adapter performs
+zero dispatch. If receipt loss or uncertainty is discovered after dispatch may have begun, ctower never
+accepts terminal completion: Runtime fences/quarantines the result and exposes incomplete enforcement as
+degraded or `STATE UNKNOWN`. An absent, invalid, stale, replayed, mismatched, or context-incomplete receipt
+cannot be repaired by process or provider success.
+
+This control is a high-value defense against accidental destruction by commands ctower dispatches. It is
+not containment against malicious arbitrary code: an allowed interpreter, script, compiler, or binary can
+issue effects the structured dispatch plan cannot observe. Sandbox/VM/OS isolation, short-lived
+credentials, workspace and tenant scoping, egress limits, least privilege, and Effects brokerage remain
+separate required controls.
+
+This revision freezes human semantics and evidence obligations only. The exact policy grammar, schema,
+storage shape, signature format, and local or remote provider transport are deliberately deferred until
+the first real Harness consumer in CT-I2-004 earns and implements the Seam; later remote mechanics must be
+earned independently. [Issue #17](https://github.com/simjak/ctower/issues/17) tracks implementation.
 
 #### Local runner with tmux Supervisor Adapter
 
@@ -2300,6 +2381,7 @@ These constraints reserve a safe future boundary without pretending an extension
 | Gateway/external source -> ingress | Forged sender, replay, prompt injection, malware, attachment bomb | DKIM/allowlist or HMAC/OIDC, timestamp/nonce replay window, size/type limits, malware/injection scan, structural taint, source-scoped principal | Reject or visible quarantine; never silently execute content |
 | API -> Postgres/object/vault | Service compromise, SQL injection, event rewrite, secret leakage | Parameterized plain SQL, least-privilege roles, separate migrator, insert-only event grants, encryption, vault refs, audit, hash anchors | Freeze affected stream on integrity doubt; security incident |
 | Control plane -> runner | Rogue runner, job theft, protocol replay, stale result | Registered workload identity, mTLS/OIDC, job-scoped lease, fencing, cursor/message dedupe, capability manifest, trust class | Quarantine runner, fence lease, replay on replacement |
+| Runtime/runner -> harness command boundary | Accidental catastrophic command, unresolved expansion, wrapper indirection, symlink/target escape, direct bypass, grant replay | Structured execution-plan and target normalization; versioned CommandGuard at every final pre-dispatch boundary; exact one-use operator grant; registered-Adapter conformance; signed remote decision and enforcement receipt; redacted observability | `block`/`needs_operator` dispatch nothing; mismatch, replay, bypass, or missing receipt fences/quarantines and makes enforcement incomplete. Sandbox/VM/OS isolation remains the malicious-code boundary. |
 | Runner -> tools/workspace/network | Prompt-injected destructive command, secret exfiltration, cross-project access | Scoped workspace, short-lived tool grants, egress allowlist, resource quota, secrets just in time, sandbox for high blast radius | Cancel/fence job; revoke handles; incident on attempted protected effect |
 | Evidence/artifact -> trusted context | Fabricated test, wrong commit/environment, malicious artifact, stale evidence | Digest/provenance/attestation, independent verifier, quarantine/promotion, dependency invalidation, expiry | Evidence cannot satisfy criterion/gate |
 | Gate/policy -> effect broker | Forged approval, policy downgrade, confused deputy | Immutable policy/gate snapshot, authenticated verdict, actor separation, exact target/action/digest grant, nonce/idempotency | No grant; suspicious request audited/incidentalized |
@@ -2574,6 +2656,7 @@ Each criterion is pass/fail. Evidence must be attached to the ctower build ticke
 | <a id="ac-run-12"></a>AC-RUN-12 | If reusable images are introduced, Run A pinned to image `d1` remains on `d1` when the future pointer moves to `d2`; actual-boot mismatch blocks tools/secrets, and revoke/rollback/GC never rewrites history. I1/I2 exercise only pinned control/local-runner build digests, not a custom-image product. | Current local-build pin test plus deferred image pointer/revoke fixtures |
 | <a id="ac-run-13"></a>AC-RUN-13 | Warm pools and shared caches are absent in I1/I2. A future implementation must atomically borrow, finalize/revoke/scrub/conformance-check before return, quarantine any uncertainty, and prove cache deletion loses no source/work/proof/audit or criterion evidence. | Absence assertion and deferred pool/cache safety fixture |
 | <a id="ac-run-14"></a>AC-RUN-14 | Exercised control/runner/network/host loss, stale result, stream gap, and finalize failure converge fail closed with no inferred success or destroyed sole-copy work. Future provider/image failure classes inherit the same invariant before their runtime can be published. | Local deterministic recovery matrix plus deferred provider/image invariant catalog |
+| <a id="ac-run-15"></a>AC-RUN-15 | Before arbitrary harness execution activates, every registered local or remote Harness or Supervisor Adapter capable of launching, invoking, or submitting a harness command passes one shared CommandGuard conformance contract at its final pre-dispatch boundary. Fixtures prove structured intent classification without raw-substring false positives; canonical normalized-execution-plan digesting over executable identity, argv or explicit shell plan, normalized cwd, every non-secret environment-resolution identity as reference plus pinned version/digest and never secret value, and the exact resolved target set in the actual dispatch namespace; empty-expansion, parent-traversal, glob, symlink, wrapper/indirection, every catastrophic class, capability-and-containment-based safe cleanup, and architecture rejection of direct bypass. Every decision, grant, and local or remote enforcement receipt binds that digest plus one decision/dispatch-attempt identity, ticket/job/run, principal, exact Harness/Supervisor/provider/target identities, policy revision, and evaluation/enforcement time. The final Adapter dispatches only from captured/pinned resolution or re-resolves and atomically compares the digest. `block`, `needs_operator`, mismatch, uncertainty, pre-dispatch receipt failure, expiry, replay, concurrent reuse, changed resolution, or scope mismatch executes nothing; post-dispatch receipt loss or uncertainty leaves completion incomplete/unknown and never accepted. An authenticated exact-plan override succeeds exactly once, and remote completion additionally requires a valid matching signed decision/grant and authenticated enforcement receipt. Logs/telemetry expose no raw secret or sensitive command content. | Registered dispatch-capable Adapter conformance matrix, process/shell/provider dispatch interceptor and zero-side-effect proof, canonical plan-digest vectors, normalization and catastrophic-class corpus, captured-resolution and atomic re-resolution TOCTOU matrix, complete-context receipt assertions, one-use/replay/expiry race trace, local/remote receipt-loss and mismatch fixtures as applicable, architecture dependency/path report, and redaction capture |
 
 ### Security
 
@@ -2616,6 +2699,7 @@ Each criterion is pass/fail. Evidence must be attached to the ctower build ticke
 | <a id="ac-ux-07"></a>AC-UX-07 | Ticket detail renders the latest accepted and refused transition/readiness evaluations with requested edge, result, rule/policy revisions, input digest, every unmet item/owner, evaluation time, linked evidence, and before/after versions; a refused fixture changes no authoritative state. | Accepted/refused API snapshots, state-diff assertion, and E2E screenshots |
 | <a id="ac-ux-08"></a>AC-UX-08 | Needs You contains 100% only current open policy-qualified operator-owned decisions/incidents and excludes informational, Commander-owned, service-recovery, resolved, expired, and superseded fixtures; ownership/qualification changes remove or coalesce rows within 60 s. | Positive/negative projection fixtures for every class, precision query, freshness clock test, and Home screenshots |
 | <a id="ac-ux-09"></a>AC-UX-09 | A browser command remains visibly `unsent` or `durability pending` until authoritative acceptance, preserves one stable command ID across disconnect/reload, and never paints optimistic state as accepted. Retry, refusal, and quarantine are distinguishable without inspecting developer tools. | Offline/reconnect/reload recording, accessibility assertions, and authoritative state diff |
+| <a id="ac-ux-10"></a>AC-UX-10 | The generated API/CLI and appropriate Home/Ticket Attention surface expose a `needs_operator` CommandGuard decision's normalized cwd/targets, rule/reason, normalized-execution-plan digest, grant scope, absolute expiry, unused/consumed/refused state, and linked decision/authorization/enforcement receipts. Strong re-authentication and explicit exact-scope confirmation are required; expiry, replay, mismatch, or concurrent reuse is shown as refused with zero execution. Secret values and grant credentials appear in none of these views, URLs, process arguments, logs, or telemetry; sensitive raw command content appears in none of the views, URLs, logs, or telemetry. | Generated-client/API snapshots, CLI transcript, every-control Home/Ticket recording, strong-reauth and concurrent-use matrix, linked receipt query, accessibility assertions, and redaction capture |
 
 ### Migration
 
@@ -2675,6 +2759,7 @@ Before ctower becomes the writable source for its own project, the operator capt
 | **Evidence completeness** | Active criteria with current full-contract evidence / active criteria at resolution | Criteria, evidence, attestations | 100% at resolution; any breach is a correctness incident | Continuous |
 | **Evidence staleness** | Valid evidence past expiry or with changed dependency still counted / evidence evaluated | Evidence dependencies/invalidation | Zero; invalidation latency p95 <10 s | Continuous/daily |
 | **Runner recovery time** | Replacement `run.started` - loss detection for recoverable jobs | Lease, heartbeat, reconciliation, run events | p95 <=5 min; detection <60 s | Continuous/weekly |
+| **CommandGuard enforcement integrity** | Harness command attempts with one matching current pre-dispatch decision and required local or remote enforcement receipt / all Harness command attempts; blocked, operator-granted, replayed, and incomplete outcomes reported separately | Runtime decision receipts, operator grants, registered-Adapter enforcement receipts, dispatch interception, enforcement watermark | 100% guarded; zero execution on `block`/`needs_operator`; zero expired/replayed/mismatched grant use; any missing required receipt makes completeness unknown | Continuous with weekly conformance/reconciliation report |
 | **Orphan count** | Nonterminal jobs without valid lease/recovery action after grace window | Jobs, leases, recovery actions | Zero | Continuous |
 | **Cost per verified outcome** | Fully allocated cost records / verified resolved tickets, by risk/type | Cost records/allocations, resolved episodes | Trend after baseline; attention/quality cannot regress merely to reduce cost | Weekly/monthly |
 | **Allocation completeness** | Cost amount with allocation fractions summing to 1 / all captured cost amount | Cost records/allocations | 100%; unallocated cost shown separately and blocks trustworthy unit economics | Daily/weekly |
@@ -2702,6 +2787,12 @@ Operator attention metrics are never reported alone. The primary scorecard alway
 ### Scope law and sequencing
 
 There are exactly two product increments. **Contract Level 0 (L0)** is a precondition inside Increment 1, not a third product increment. It freezes the smallest authoritative contracts, repository policy, and test vectors needed for independent work. L0 records durable invariants for future remote execution, custom images, and executable extensions but creates no public Seam for them; a later Seam must be earned by at least two justified real Adapters.
+
+No checkpoint may activate arbitrary local or remote harness command execution until the CommandGuard
+semantics in [INV-58](#non-negotiable-invariants) and [AC-RUN-15](#ac-run-15) are implemented at the final
+pre-dispatch boundary for every registered Harness or Supervisor Adapter capable of command dispatch. In the approved sequence this is a hard
+prerequisite inside CT-I2-004/I2.2; if execution moves earlier, the prerequisite moves with the first
+dispatch rather than being waived.
 
 ```mermaid
 flowchart LR
@@ -2758,7 +2849,9 @@ The fixture is interpreted by the final generic Workflow Module interface—not 
 7. The four-stage fixture above, a daily synthetic run, health/watchdog, backup/restore evidence, and operator-attention baseline instrumentation.
 8. A reviewed freeze/export/alias/import/rewire barrier for **ctower-project records only**. The import uses the generated HTTP client, writes no forged proof, records source digests/dispositions, rejects post-barrier legacy mutation, and establishes ctower as the project source of truth. No dual write and no tailer.
 
-Increment 1 has no agent stage dispatch, autonomous Commander loop, production effect grant, remote provider, custom-image product, warm pool, or executable-extension runtime.
+Increment 1 has no agent stage dispatch or harness command execution and therefore neither activates nor
+claims CommandGuard implementation. It also has no autonomous Commander loop, production effect grant,
+remote provider, custom-image product, warm pool, or executable-extension runtime.
 
 #### I1 exit evidence
 
@@ -2804,8 +2897,8 @@ The pinned `engineering.software-factory@1` policy selects, for this ticket only
 1. Complete the deep generic Workflow Module behind the I1 interface: arbitrary pinned graphs, stage attempts/jobs, package-defined classification, required perspectives and gates, configurable finite bounds, stable failure lineages, candidate/nonpassing/repair/execution facts, selective proof invalidation, typed routes, operator waivers, and readiness explanations.
 2. Versioned Commander capability resolution, durable accountable custody, orchestration-plan revisions, strongest-healthy profile selection, wake/reasoning jobs, checkpoints, escalation, and recovery without counter or ownership reset.
 3. Content-bearing Persona/Skill/Profile materialization; full evidence attestations and dependency graph; independent/sealed review where the pinned package requires it.
-4. Durable accepted/leased/running/terminal jobs, leases/fencing, cursors, ACKs, continuous structured chunks and explicit gaps, checkpoint/reconciliation, and the local Codex/Claude harness plus process/tmux supervisor compositions required by the golden ticket. No general remote-provider or image Seam.
-5. Complete the thin five-surface experience over proven module interfaces: Home, Board, contextual Ticket, Fleet, and Analytics, including live structured run, steering, readiness refusal, current proof, delivery/incidents, cost, and retro.
+4. Durable accepted/leased/running/terminal jobs, leases/fencing, cursors, ACKs, continuous structured chunks and explicit gaps, checkpoint/reconciliation, a versioned CommandGuard enforced at every final pre-dispatch boundary, and the local Codex/Claude harness plus process/tmux supervisor compositions required by the golden ticket. No general remote-provider or image Seam.
+5. Complete the thin five-surface experience over proven module interfaces: Home, Board, contextual Ticket, Fleet, and Analytics, including live structured run, steering, readiness refusal, current proof, CommandGuard Attention/grant/receipt state, delivery/incidents, cost, and retro.
 6. Changes/release candidate, named staging and production environments, scoped effect grants/receipts, one live `systemd-vps/v1` integration, and its fault-injection test implementation. This remains an internal Effects boundary rather than a generalized provider Seam. The root release supervisor independently verifies bytes, signature/attestation, subject, and trusted builder/workflow against root-owned policy before install; the application digest is intent only.
 7. Production smoke/live-QA incident, grant revoke, safe containment/rollback, exact-environment verification, triage-before-repair, and append-only retro/improvement evaluation.
 8. The golden ticket itself, including current-digest review/QA, forced losses, docs, signed release, staging/production proof, rollback rehearsal, retro, resolution, closure, and one compact traceability report.
@@ -2816,6 +2909,7 @@ The pinned `engineering.software-factory@1` policy selects, for this ticket only
 - Every plan field is policy-valid; consumed facts are server-owned and survive restart/reassignment. Missing required gates/perspectives, invalid bounds, client counters, non-independent reviewers, and exhausted lineages fail closed with one escalation.
 - Ticket detail reconstructs the journey without legacy ledgers, task/status files, raw terminal state, or vendor session state.
 - Forced runner loss is detected within 60 seconds, stale fencing is rejected, and checkpointable work resumes within five minutes. Commander-job loss preserves the same accountable principal and plan history.
+- Every registered Harness or Supervisor command-dispatch path proves pre-dispatch CommandGuard invocation, target resolution, zero execution on block/attention, exact one-use override with replay/expiry refusal, operator-visible linked receipts, and redacted observability before it may execute the golden ticket.
 - Review/QA identities differ from the author, input digests match, and a deliberate candidate mutation invalidates exactly dependent proof.
 - Root-owned trust policy rejects wrong, missing, revoked, or untrusted release provenance before install. Staging and production have distinct grants, receipts, observed digests, and independent live verification; injected smoke failure creates an incident and verified rollback before the successful attempt.
 - `GET /v1/meta/build` and `ctl meta build` agree, and the retro records attention, cost, wait, retries, recovery, gate yield, release evidence, and an evidence-backed improvement or no-change decision.
@@ -2833,7 +2927,13 @@ ctowerctl release live-verify --ticket CT-I2-010 --endpoint /v1/meta/build
 
 #### I2 rollback
 
-A feature flag stops new workflow starts and job offers while preserving every ticket/run. Active jobs drain or cancel through durable commands. A local runner defect falls back to manual `bin/mux` operation through ctower job/command records, not legacy ticket state. A release failure follows receipt reconciliation and the tested incident/rollback path. A defective Workflow or policy is superseded by a new version; historical and production runs retain the version that actually executed.
+A feature flag stops new workflow starts and job offers while preserving every ticket/run. Active jobs
+drain or cancel through durable commands. Manual operator initiation is legal only through a healthy,
+registered, conformance-tested Adapter that obtains and enforces a fresh CommandGuard decision at its final
+dispatch boundary. If no such Adapter is healthy, new dispatch remains disabled. Direct `bin/mux`, shell,
+process, or provider invocation is forbidden as rollback. A release failure follows receipt reconciliation
+and the tested incident/rollback path. A defective Workflow or policy is superseded by a new version;
+historical and production runs retain the version that actually executed.
 
 ### Explicit do-not-build-yet list
 
@@ -2895,8 +2995,8 @@ Each validation command below is designated as part of the item’s deliverable.
 | CT-I2-001 | Deepen the generic Workflow Module and publish `engineering.software-factory@1` Workflow/Execution/Gate/Evidence revisions: arbitrary stages, package classification, `required_perspectives`, configurable finite bounds, append-only facts, stable lineages, typed routes, and readiness evaluations. | CT-I1-008, CT-L0-004, CT-L0-006..007 | Engineer + Engineering Manager | Kernel `workflow/`; `packs/workflows/`; `packs/policies/execution/` | Cross-package graph/lineage/no-reset/refusal/single-escalation proofs | `uv run pytest tests/modules/workflow tests/acceptance/increment-2/test_workflow.py -q` |
 | CT-I2-002 | Implement keyed documents/artifacts, full evidence/attestations/dependencies/invalidation, gate instances and sealed verdict attempts. | CT-I2-001, CT-I1-003 | Engineer + Review + CSO | Kernel `proof/`; `contracts/evidence/` | Self-review denial, sealed reveal, selective invalidation, quarantine promotion | `uv run pytest tests/modules/proof tests/acceptance/increment-2/test_gates.py -q` |
 | CT-I2-003 | Implement strongest-healthy Commander profile resolution and effective manifests pinning the local harness/supervisor/target/workspace/telemetry revisions, secret refs, egress/resources, and provenance. | CT-I2-001, CT-L0-007 | Engineer + CSO | Kernel `catalog/`, `runtime/`; `packs/personas/`; `apps/ctower-runner/compose.py` | Selection/failover, support-only denial, immutable local pins, and no-plaintext scans | `uv run pytest tests/modules/catalog tests/modules/runtime/test_profiles.py -q` |
-| CT-I2-004 | Implement Runtime jobs/leases/fencing/cursors/ACKs/log chunks/gaps/checkpoints/reconciler and the justified local process/tmux plus Codex/Claude compositions. Publish no general remote/image Seam. | CT-I2-001, CT-I2-003 | Engineer + DevOps + QA | Kernel `runtime/`; `packages/ctower-runner-sdk/`; `apps/ctower-runner/`; conformance tests | Forced loss/resume, stale denial, zero orphans, local composition; remote/image absent and not exercised | `uv run pytest tests/conformance/runner tests/chaos -q` |
-| CT-I2-005 | Complete Fleet/Analytics and the rich Ticket journey over I1 surfaces with run manifest, local placement, ACK/gap, steering, readiness refusal, cost, incidents, and retro. | CT-I2-002, CT-I2-004, CT-L0-009 | Designer + UI QA | `apps/ctower-web/src/surfaces/`; generated TS client | Exactly-five routes, every-control trace, replay/gap/steer modes, accepted/refused zero-diff screenshots | `pnpm exec playwright test tests/acceptance/increment-2` |
+| CT-I2-004 | Implement Runtime jobs/leases/fencing/cursors/ACKs/log chunks/gaps/checkpoints/reconciler; the versioned CommandGuard required by [issue #17](https://github.com/simjak/ctower/issues/17) at every final local Harness and Supervisor command-dispatch boundary; and the justified local process/tmux plus Codex/Claude compositions. Freeze exact guard mechanics with these first real consumers, not before, and publish no general remote/image Seam. | CT-I2-001, CT-I2-003 | Engineer + DevOps + QA + CSO | Kernel `runtime/`; `packages/ctower-runner-sdk/`; `apps/ctower-runner/`; conformance tests | Forced loss/resume, stale denial, zero orphans, local composition; every registered command-dispatch Adapter's guard invocation, target resolution, zero block execution, one-use override/replay/expiry, redacted receipts, and bypass rejection; remote/image absent and not exercised | `uv run pytest tests/conformance/runner tests/chaos -q` |
+| CT-I2-005 | Complete Fleet/Analytics and the rich Ticket journey over I1 surfaces with run manifest, local placement, ACK/gap, steering, readiness refusal, CommandGuard Attention/grant/receipt state, cost, incidents, and retro. | CT-I2-002, CT-I2-004, CT-L0-009 | Designer + UI QA | `contracts/http/`; generated Python/TS clients; `apps/ctower-api/`; `apps/ctowerctl/`; `apps/ctower-web/src/surfaces/` | Exactly-five routes, every-control trace, replay/gap/steer modes, generated API snapshots and CLI transcript, exact-scope guard confirmation and linked receipt views, accepted/refused zero-diff screenshots | `uv run pytest tests/acceptance/increment-2/test_guard_attention.py -q && pnpm exec playwright test tests/acceptance/increment-2` |
 | CT-I2-006 | Implement package-defined classification/overlays and Execution Policy evaluation, mandatory stage gates, required perspectives, configurable limits, independence/conflict/diversity, protected waivers, and software/non-engineering fixtures. | CT-I2-002..003 | Engineering Manager + Engineer + CSO | Kernel `workflow/`, `access/`; policy packs | Missing/invalid-bound/removal/client-count/independence denials and coherent current-digest traces | `uv run pytest tests/modules/workflow/test_execution_policy.py -q` |
 | CT-I2-007 | Implement Effects releases/environments, one live `systemd-vps/v1` integration plus its fault-injection test implementation, scoped grants/receipts, root-owned artifact trust verification, self-restart journal recovery, and effect reconciliation. Activation must commit the signed expected-source inventory revision before the first grant/effect. Keep the boundary internal until a second real provider Adapter earns a public Seam. | CT-I2-006, CT-I2-004 | DevOps + Engineer + CSO | Kernel `effects/`; `packages/ctower-systemd-vps/`; `deploy/systemd/`; effect conformance | Wrong-target/expired/direct/provenance denials, pre-activation inventory-update proof, missing-source restore denial, crash matrix, real staging/prod digest, self-upgrade recovery, and no generalized provider Seam | `uv run pytest tests/modules/effects tests/conformance/effect-provider -q` |
 | CT-I2-008 | Implement production smoke/live-QA incident -> grant revoke -> safe containment/rollback -> exact verification -> triage-before-repair and retro linkage. | CT-I2-007 | DevOps + CSO + QA | Kernel `effects/`, `attention/`, `workflow/`; runbooks | Injected smoke/live-QA failures, rollback receipt/verification, direct-repair denial | `uv run pytest tests/acceptance/increment-2/test_incident_rollback.py -q` |
