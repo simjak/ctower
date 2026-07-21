@@ -144,8 +144,7 @@ def test_rolled_back_outbox_append_retries_without_poisoning_board(
 def test_board_reports_loud_unknown_for_cursor_and_source_faults(
     tenant: TenantFixture, fault: str
 ) -> None:
-    actor = Actor(tenant.commander_id, tenant.tenant_id, PrincipalKind.COMMANDER)
-    ticket_id = _ticket(tenant)
+    _ticket(tenant)
     projections = Projections(PostgresProjections(tenant.database.projection_dsn))
     current = projections.catch_up(tenant.tenant_id)
     assert current.health is ProjectionHealth.CURRENT

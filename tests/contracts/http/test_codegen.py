@@ -19,6 +19,7 @@ import httpx
 import pytest
 from pydantic import ValidationError
 
+from ctower_client import AuditPage
 from tools.codegen.generator import check, write
 
 ROOT = Path(__file__).parents[3]
@@ -82,8 +83,6 @@ def test_generated_python_carries_do_not_edit_notice() -> None:
 
 
 def test_generated_audit_variants_reject_unknown_and_mismatched_payloads() -> None:
-    from ctower_client import AuditPage
-
     ticket_id = uuid4()
     ticket_event = _audit_event(
         "ticket.created",

@@ -49,6 +49,7 @@ from ctower_kernel.workflow import WorkflowGraph
 ROOT = Path(__file__).parents[3]
 __all__: tuple[str, ...] = ()
 REOPENED_WORK_VERSION = 8
+CUSTODY_EPISODE_COUNT = 2
 PROOF_EVENT_COUNT = 3
 HTTP_NOT_FOUND = 404
 
@@ -106,8 +107,11 @@ def test_generated_client_drives_complete_task_board_and_audit_flow(
     assert custody_while_closed[0].released_at is not None
     assert reopened_receipt.version == REOPENED_WORK_VERSION
     assert reopened.cards[0].lane is BoardLane.BACKLOG
-    assert len(custody_after_reopen) == 2
-    assert [interval.episode_number for interval in custody_after_reopen] == [1, 2]
+    assert len(custody_after_reopen) == CUSTODY_EPISODE_COUNT
+    assert [interval.episode_number for interval in custody_after_reopen] == [
+        1,
+        CUSTODY_EPISODE_COUNT,
+    ]
     assert custody_after_reopen[0].released_at <= custody_after_reopen[1].assigned_at
     assert custody_after_reopen[1].released_at is None
     assert fresh_run.version == 1

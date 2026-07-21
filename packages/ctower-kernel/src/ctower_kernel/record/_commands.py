@@ -11,6 +11,7 @@ import psycopg
 from ctower_kernel.record import RecordProblem
 
 __all__: tuple[str, ...] = ()
+HTTP_BAD_REQUEST = 400
 
 
 def reserve_command(
@@ -45,7 +46,7 @@ def reserve_command(
             command_id=command_id,
         )
     payload = cast(dict[str, object], row["response_body"])
-    if int(cast(int, row["status_code"])) >= 400:
+    if int(cast(int, row["status_code"])) >= HTTP_BAD_REQUEST:
         return _problem_from_payload(payload)
     return payload
 

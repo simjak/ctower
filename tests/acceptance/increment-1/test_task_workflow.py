@@ -11,8 +11,8 @@ from datetime import UTC, datetime, timedelta
 from pathlib import Path
 from uuid import UUID, uuid4
 
-import pytest
 import psycopg
+import pytest
 from psycopg.rows import dict_row
 from support.tenant_fixture import TenantFixture
 
@@ -54,6 +54,8 @@ __all__: tuple[str, ...] = ()
 FIRST_CHANGE_VERSION = 2
 ASSIGNMENT_WORK_VERSION = 4
 BLOCKER_WORK_VERSION = 6
+REFUSAL_COMMAND_COUNT = 2
+HTTP_CONFLICT = 409
 
 
 def test_work_and_workflow_refusals_replay_before_later_state_reads(
@@ -150,8 +152,8 @@ def test_work_and_workflow_refusals_replay_before_later_state_reads(
             "SELECT count(*) AS value FROM events WHERE client_command_id = ANY(%s)",
             ([work_command_id, workflow_command_id],),
         ).fetchone()["value"]
-    assert len(rows) == 2
-    assert all(row["status_code"] == 409 for row in rows)
+    assert len(rows) == REFUSAL_COMMAND_COUNT
+    assert all(row["status_code"] == HTTP_CONFLICT for row in rows)
     assert all(row["event_ids"] == [] for row in rows)
     assert event_count == 0
 

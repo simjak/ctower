@@ -26,9 +26,9 @@ from ctower_client import (
     VerdictRequest,
     WorkflowTransitionRequest,
 )
-from ctower_kernel.record.postgres import provision_database_roles
 from ctower_kernel.projections import Projections
 from ctower_kernel.projections.postgres import PostgresProjections
+from ctower_kernel.record.postgres import provision_database_roles
 
 __all__: tuple[str, ...] = ()
 
