@@ -66,12 +66,20 @@ def change_assignment(
         ).fetchone(),
     )
     sequence = sequence_row["value"]
+    episode_row = cast(
+        dict[str, object],
+        connection.execute(
+            "SELECT current_episode FROM tickets WHERE tenant_id = %s AND ticket_id = %s",
+            (actor.tenant_id, command.ticket_id),
+        ).fetchone(),
+    )
     connection.execute(
         """
         INSERT INTO assignment_intervals (
             ticket_id, tenant_id, interval_sequence, assignment_kind, principal_id,
-            assigned_at, released_at, changed_by, reason, client_command_id, scope_ref
-        ) VALUES (%s, %s, %s, %s, %s, %s, NULL, %s, %s, %s, %s)
+            assigned_at, released_at, changed_by, reason, client_command_id, scope_ref,
+            episode_number
+        ) VALUES (%s, %s, %s, %s, %s, %s, NULL, %s, %s, %s, %s, %s)
         """,
         (
             command.ticket_id,
@@ -84,6 +92,7 @@ def change_assignment(
             command.reason,
             command.client_command_id,
             command.scope_ref,
+            episode_row["current_episode"],
         ),
     )
     return {
@@ -106,8 +115,8 @@ def list_assignments(
         return RecordProblem("tenant-scope-denied", "Ticket unavailable", 404, "Ticket unavailable")
     rows = connection.execute(
         """
-        SELECT assignment_kind, principal_id, assigned_at, released_at, changed_by,
-            reason, scope_ref, interval_sequence
+        SELECT assignment_kind, episode_number, principal_id, assigned_at, released_at,
+            changed_by, reason, scope_ref, interval_sequence
         FROM assignment_intervals
         WHERE tenant_id = %s AND ticket_id = %s
         ORDER BY assignment_kind, interval_sequence
@@ -117,6 +126,7 @@ def list_assignments(
     return tuple(
         AssignmentInterval(
             assignment_kind=AssignmentKind(str(row["assignment_kind"])),
+            episode_number=int(cast(int, row["episode_number"])),
             principal_id=cast(UUID, row["principal_id"]),
             assigned_at=cast(datetime, row["assigned_at"]),
             released_at=cast(datetime | None, row["released_at"]),

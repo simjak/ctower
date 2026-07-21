@@ -337,7 +337,7 @@ def _app(tenant: TenantFixture) -> FastAPI:
             },
         ),
         work=Work(record, writer=work_store),
-        projections=Projections(PostgresProjections(tenant.database.admin_dsn)),
+        projections=Projections(PostgresProjections(tenant.database.projection_dsn)),
     )
 
 

@@ -81,6 +81,69 @@ def test_generated_python_carries_do_not_edit_notice() -> None:
         )
 
 
+def test_generated_audit_variants_reject_unknown_and_mismatched_payloads() -> None:
+    from ctower_client import AuditPage
+
+    ticket_id = uuid4()
+    ticket_event = _audit_event(
+        "ticket.created",
+        {
+            "custodian_id": str(uuid4()),
+            "priority": "P1",
+            "source_kind": "test",
+            "source_ref": "test:audit",
+            "title": "Strict audit payload",
+        },
+    )
+    valid = AuditPage.model_validate_json(
+        json.dumps({"events": [ticket_event], "next_cursor": None, "ticket_id": str(ticket_id)})
+    )
+    assert valid.events[0].kind == "ticket.created"
+
+    unknown = json.loads(json.dumps(ticket_event))
+    unknown["payload"]["unexpected"] = True
+    with pytest.raises(ValidationError):
+        AuditPage.model_validate_json(
+            json.dumps({"events": [unknown], "next_cursor": None, "ticket_id": str(ticket_id)})
+        )
+
+    mismatch = json.loads(json.dumps(ticket_event))
+    mismatch["kind"] = "ticket.custody_transferred"
+    with pytest.raises(ValidationError):
+        AuditPage.model_validate_json(
+            json.dumps({"events": [mismatch], "next_cursor": None, "ticket_id": str(ticket_id)})
+        )
+
+    work = _audit_event(
+        "work.changed",
+        {
+            "data": {"episode_number": 1, "reason": "Ready"},
+            "operation": "priority_changed",
+            "ticket_id": str(ticket_id),
+            "work_version": 2,
+        },
+    )
+    with pytest.raises(ValidationError):
+        AuditPage.model_validate_json(
+            json.dumps({"events": [work], "next_cursor": None, "ticket_id": str(ticket_id)})
+        )
+
+
+def _audit_event(kind: str, payload: dict[str, object]) -> dict[str, object]:
+    return {
+        "actor_principal_id": str(uuid4()),
+        "command_id": str(uuid4()),
+        "event_hash": "sha256:" + "0" * 64,
+        "event_id": str(uuid4()),
+        "kind": kind,
+        "occurred_at": "2026-07-21T12:00:00Z",
+        "payload": payload,
+        "record_position": 1,
+        "sequence": 1,
+        "stream_id": f"ticket:{uuid4()}",
+    }
+
+
 def test_generated_client_exposes_proof_and_workflow_commands() -> None:
     client = (ROOT / "generated/python/ctower_client/client.py").read_text(encoding="utf-8")
 

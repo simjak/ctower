@@ -12,6 +12,8 @@ from pathlib import Path
 from uuid import UUID, uuid4
 
 import pytest
+import psycopg
+from psycopg.rows import dict_row
 from support.tenant_fixture import TenantFixture
 
 from ctower_kernel.proof.postgres import PostgresProof
@@ -52,6 +54,106 @@ __all__: tuple[str, ...] = ()
 FIRST_CHANGE_VERSION = 2
 ASSIGNMENT_WORK_VERSION = 4
 BLOCKER_WORK_VERSION = 6
+
+
+def test_work_and_workflow_refusals_replay_before_later_state_reads(
+    tenant: TenantFixture,
+) -> None:
+    graph = _graph()
+    actor = Actor(tenant.commander_id, tenant.tenant_id, PrincipalKind.COMMANDER)
+    workflow_actor = WorkflowActor(tenant.commander_id, tenant.tenant_id)
+    record = PostgresRecord(tenant.database.runtime_dsn)
+    work = Work(record, writer=PostgresWork(tenant.database.runtime_dsn))
+    workflow = Workflow(
+        (graph,),
+        writer=PostgresWorkflow(
+            tenant.database.runtime_dsn,
+            proof_gate=PostgresProof(tenant.database.runtime_dsn),
+            readiness_gate=PostgresWork(tenant.database.runtime_dsn),
+        ),
+        policy_digests=_policy_digests(),
+    )
+
+    work_ticket_id = _ticket(tenant)
+    work_command_id = uuid4()
+    refused_work = ChangePriority(
+        work_command_id, work_ticket_id, 2, "Refuse before later state", "P1"
+    )
+    first_work_refusal = work.execute(actor, refused_work, telemetry=_telemetry())
+    advanced_work = work.execute(
+        actor,
+        ChangePriority(uuid4(), work_ticket_id, 1, "Advance independently", "P1"),
+        telemetry=_telemetry(),
+    )
+    replayed_work_refusal = work.execute(actor, refused_work, telemetry=_telemetry())
+    changed_work_reuse = work.execute(
+        actor, replace(refused_work, reason="Changed reuse body"), telemetry=_telemetry()
+    )
+
+    workflow_ticket_id = _ticket(tenant)
+    workflow.start(workflow_actor, _start(graph, workflow_ticket_id), telemetry=_telemetry())
+    admitted = work.execute(
+        actor,
+        Admit(uuid4(), workflow_ticket_id, 1, "Ready for independent transition"),
+        telemetry=_telemetry(),
+    )
+    workflow_command_id = uuid4()
+    refused_transition = WorkflowMutation(
+        workflow_command_id,
+        workflow_ticket_id,
+        graph.reference,
+        2,
+        "capture",
+        "frame",
+    )
+    first_workflow_refusal = workflow.advance(
+        workflow_actor, refused_transition, telemetry=_telemetry()
+    )
+    advanced_workflow = workflow.advance(
+        workflow_actor,
+        WorkflowMutation(uuid4(), workflow_ticket_id, graph.reference, 1, "capture", "frame"),
+        telemetry=_telemetry(),
+    )
+    replayed_workflow_refusal = workflow.advance(
+        workflow_actor, refused_transition, telemetry=_telemetry()
+    )
+    changed_workflow_reuse = workflow.advance(
+        workflow_actor,
+        replace(refused_transition, expected_version=3),
+        telemetry=_telemetry(),
+    )
+
+    assert isinstance(first_work_refusal, RecordProblem)
+    assert first_work_refusal.current_version == 1
+    assert isinstance(advanced_work, WorkReceipt)
+    assert replayed_work_refusal == first_work_refusal
+    assert isinstance(changed_work_reuse, RecordProblem)
+    assert changed_work_reuse.code == "idempotency-conflict"
+    assert isinstance(admitted, WorkReceipt)
+    assert isinstance(first_workflow_refusal, RecordProblem)
+    assert first_workflow_refusal.current_version == 1
+    assert isinstance(advanced_workflow, WorkflowReceipt)
+    assert replayed_workflow_refusal == first_workflow_refusal
+    assert isinstance(changed_workflow_reuse, RecordProblem)
+    assert changed_workflow_reuse.code == "idempotency-conflict"
+
+    with psycopg.connect(tenant.database.admin_dsn, row_factory=dict_row) as connection:
+        rows = connection.execute(
+            """
+            SELECT client_command_id, status_code, response_body, event_ids
+            FROM command_results WHERE client_command_id = ANY(%s)
+            ORDER BY client_command_id
+            """,
+            ([work_command_id, workflow_command_id],),
+        ).fetchall()
+        event_count = connection.execute(
+            "SELECT count(*) AS value FROM events WHERE client_command_id = ANY(%s)",
+            ([work_command_id, workflow_command_id],),
+        ).fetchone()["value"]
+    assert len(rows) == 2
+    assert all(row["status_code"] == 409 for row in rows)
+    assert all(row["event_ids"] == [] for row in rows)
+    assert event_count == 0
 
 
 def test_workflow_requires_exact_explicit_pin_and_replays_start(tenant: TenantFixture) -> None:

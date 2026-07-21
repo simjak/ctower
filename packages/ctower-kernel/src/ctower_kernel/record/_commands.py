@@ -27,7 +27,7 @@ def reserve_command(
     )
     row = connection.execute(
         """
-        SELECT request_sha256, response_body
+        SELECT request_sha256, status_code, response_body
         FROM command_results
         WHERE principal_id = %s AND client_command_id = %s
         """,
@@ -44,4 +44,22 @@ def reserve_command(
             title="Idempotency conflict",
             command_id=command_id,
         )
-    return cast(dict[str, object], row["response_body"])
+    payload = cast(dict[str, object], row["response_body"])
+    if int(cast(int, row["status_code"])) >= 400:
+        return _problem_from_payload(payload)
+    return payload
+
+
+def _problem_from_payload(payload: dict[str, object]) -> RecordProblem:
+    command_id = payload.get("command_id")
+    current_version = payload.get("current_version")
+    unmet_facts = cast(list[object], payload.get("unmet_facts", []))
+    return RecordProblem(
+        code=str(payload["code"]),
+        detail=str(payload["detail"]),
+        status=int(cast(int, payload["status"])),
+        title=str(payload["title"]),
+        command_id=UUID(str(command_id)) if command_id is not None else None,
+        current_version=int(cast(int, current_version)) if current_version is not None else None,
+        unmet_facts=tuple(str(item) for item in unmet_facts),
+    )

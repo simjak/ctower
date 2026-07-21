@@ -3,7 +3,8 @@
   "migrations": [
     {
       "path": "0001_roles.sql",
-      "sha256": "sha256:4dffe7d62d7ade9508a306f9567af824d378472bcf776d7f95e7626177af9b22"
+      "sha256": "sha256:4dffe7d62d7ade9508a306f9567af824d378472bcf776d7f95e7626177af9b22",
+      "scope": "cluster"
     },
     {
       "path": "0002_ticket_slice.sql",
@@ -32,6 +33,23 @@
     {
       "path": "0008_board_projection.sql",
       "sha256": "sha256:c1f89ab4b707014b6dff988d4e3b420ba4cf3a4366871e521044ccdeeae786ad"
+    },
+    {
+      "path": "0009_transactional_record_positions.sql",
+      "sha256": "sha256:1e3edac8ca8d1e0395c04b2c759eafce65e7ae80796015ab57febc1055a35973"
+    },
+    {
+      "path": "0010_custody_episode_intervals.sql",
+      "sha256": "sha256:32e624b20e2d8e22f5bbb8ee782a3839cc90afde2516111d37dbc862d19fb5c6"
+    },
+    {
+      "path": "0011_persisted_command_refusals.sql",
+      "sha256": "sha256:6668579af027b1b5a630fed0cdafe8744fead6b620d34787e8c56c14e413937b"
+    },
+    {
+      "path": "0012_projection_runtime_role.sql",
+      "sha256": "sha256:ff76636094f2e9a3153735d7e6bce0e348ed7cd515b7c4cea932ec50fddbbcf3",
+      "scope": "cluster"
     }
   ]
 }

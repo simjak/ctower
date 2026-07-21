@@ -41,7 +41,8 @@ def close_workflow(
 
     with psycopg.connect(dsn, row_factory=dict_row) as connection:
         connection.execute("SET ROLE ctower_svc")
-        existing = RecordTransaction(connection).reserve(
+        transaction = RecordTransaction(connection)
+        existing = transaction.reserve(
             actor.principal_id, command.client_command_id, request_digest
         )
         if isinstance(existing, RecordProblem):
@@ -49,10 +50,27 @@ def close_workflow(
         if existing is not None:
             return _receipt(existing)
         if not _lock_open_ticket(connection, actor, command.ticket_id):
-            return _problem(command, "tenant-scope-denied", 404, "Open ticket not found")
+            problem = _problem(command, "tenant-scope-denied", 404, "Open ticket not found")
+            transaction.refuse(
+                actor.tenant_id,
+                actor.principal_id,
+                command.client_command_id,
+                request_digest,
+                problem,
+                now=now,
+            )
+            return problem
         run = _lock_run(connection, actor, command.ticket_id)
         refusal = _refusal(evaluator, proof_gate, actor, command, run, connection)
         if refusal is not None:
+            transaction.refuse(
+                actor.tenant_id,
+                actor.principal_id,
+                command.client_command_id,
+                request_digest,
+                refusal,
+                now=now,
+            )
             return refusal
         _insert_lifecycle(connection, actor, command, now=now)
         receipt = _closed_receipt(cast(dict[str, object], run), command)
@@ -238,6 +256,17 @@ def _insert_lifecycle(
         """,
         (now, actor.tenant_id, command.ticket_id, episode),
     )
+    released = connection.execute(
+        """
+        UPDATE assignment_intervals SET released_at = %s
+        WHERE tenant_id = %s AND ticket_id = %s
+          AND assignment_kind = 'ticket_custodian' AND episode_number = %s
+          AND released_at IS NULL
+        """,
+        (now, actor.tenant_id, command.ticket_id, episode),
+    )
+    if released.rowcount != 1:
+        raise RuntimeError("closing ticket custody interval is inconsistent")
 
 
 def _closed_receipt(run: dict[str, object], command: ResolveClose) -> WorkflowReceipt:

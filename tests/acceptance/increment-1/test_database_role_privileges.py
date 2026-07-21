@@ -27,6 +27,8 @@ from ctower_client import (
     WorkflowTransitionRequest,
 )
 from ctower_kernel.record.postgres import provision_database_roles
+from ctower_kernel.projections import Projections
+from ctower_kernel.projections.postgres import PostgresProjections
 
 __all__: tuple[str, ...] = ()
 
@@ -101,6 +103,7 @@ CP2_HEAD_UPDATE_COLUMNS = {
         "reason": False,
         "client_command_id": False,
         "scope_ref": False,
+        "episode_number": False,
     },
     "blocker_heads": {
         "blocker_id": False,
@@ -144,6 +147,41 @@ def test_fresh_database_narrows_head_update_privileges(tenant: TenantFixture) ->
     _assert_runtime_role_privileges(tenant.database.admin_dsn)
 
 
+def test_projection_login_assumes_only_projection_and_reset_cannot_escape(
+    tenant: TenantFixture,
+) -> None:
+    projection_dsn = tenant.database.projection_dsn
+    view = Projections(PostgresProjections(projection_dsn)).catch_up(tenant.tenant_id)
+    assert view.projection_watermark == view.source_watermark
+
+    with psycopg.connect(projection_dsn, autocommit=True, row_factory=dict_row) as connection:
+        assert connection.execute("SELECT current_user AS value").fetchone()["value"] == (
+            "ctower_projection_runtime"
+        )
+        _assert_projection_login_cannot_escape(connection)
+        connection.execute("SET ROLE ctower_projection")
+        assert connection.execute("SELECT current_user AS value").fetchone()["value"] == (
+            "ctower_projection"
+        )
+        with pytest.raises(psycopg.errors.InsufficientPrivilege):
+            connection.execute("UPDATE tickets SET version = version WHERE false")
+        connection.execute("RESET ROLE")
+        _assert_projection_login_cannot_escape(connection)
+
+
+def _assert_projection_login_cannot_escape(
+    connection: psycopg.Connection[dict[str, object]],
+) -> None:
+    for statement in (
+        "UPDATE tickets SET version = version WHERE false",
+        "CREATE TABLE projection_privilege_escape (value integer)",
+        "SET ROLE ctower_svc",
+        "SET ROLE ctower_admin",
+    ):
+        with pytest.raises(psycopg.errors.InsufficientPrivilege):
+            connection.execute(statement)
+
+
 def test_upgrade_database_corrects_existing_head_privileges(
     database: DatabaseFixture,
 ) -> None:
@@ -165,6 +203,9 @@ def test_upgrade_database_corrects_existing_head_privileges(
             "0006_narrow_head_update_privileges.sql",
             "0007_task_management_facts.sql",
             "0008_board_projection.sql",
+            "0009_transactional_record_positions.sql",
+            "0010_custody_episode_intervals.sql",
+            "0011_persisted_command_refusals.sql",
         ):
             connection.execute((MIGRATIONS / name).read_text(encoding="utf-8"))
 

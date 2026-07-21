@@ -27,6 +27,10 @@ def test_migration_manifest_is_ordered_and_checksum_exact() -> None:
         "0006_narrow_head_update_privileges.sql",
         "0007_task_management_facts.sql",
         "0008_board_projection.sql",
+        "0009_transactional_record_positions.sql",
+        "0010_custody_episode_intervals.sql",
+        "0011_persisted_command_refusals.sql",
+        "0012_projection_runtime_role.sql",
     ]
     for entry in entries:
         digest = hashlib.sha256((MIGRATIONS / entry["path"]).read_bytes()).hexdigest()
@@ -81,6 +85,15 @@ def test_runtime_and_migrator_use_distinct_one_way_login_roles() -> None:
     assert "GRANT ctower_admin TO ctower_migrator" in roles
     assert "REVOKE ctower_admin FROM ctower_runtime" in roles
     assert "GRANT ctower_admin TO ctower_runtime" not in roles
+
+
+def test_projection_runtime_login_can_assume_only_projection_role() -> None:
+    role = (MIGRATIONS / "0012_projection_runtime_role.sql").read_text(encoding="utf-8")
+
+    assert "CREATE ROLE ctower_projection_runtime" in role
+    assert "LOGIN NOSUPERUSER NOCREATEDB NOCREATEROLE NOINHERIT" in role
+    assert "GRANT ctower_projection TO ctower_projection_runtime" in role
+    assert "REVOKE ctower_svc, ctower_admin FROM ctower_projection_runtime" in role
 
 
 def test_development_composition_uses_postgres_17_without_a_password_value() -> None:

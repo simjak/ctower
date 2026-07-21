@@ -214,6 +214,7 @@ class WorkReceipt:
 @dataclass(frozen=True, slots=True)
 class AssignmentInterval:
     assignment_kind: AssignmentKind
+    episode_number: int
     principal_id: UUID
     assigned_at: datetime
     released_at: datetime | None
@@ -227,6 +228,7 @@ class AssignmentInterval:
             "assigned_at": self.assigned_at.isoformat(),
             "assignment_kind": self.assignment_kind.value,
             "changed_by": str(self.changed_by),
+            "episode_number": self.episode_number,
             "principal_id": str(self.principal_id),
             "reason": self.reason,
             "released_at": self.released_at.isoformat() if self.released_at else None,

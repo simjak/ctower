@@ -49,8 +49,17 @@ def start_workflow(
             return _receipt(existing)
         decision = evaluator.validate_start(command)
         if not decision.accepted:
-            return _problem(command, decision.reason, "Workflow pin refused")
-        return _commit_start(
+            problem = _problem(command, decision.reason, "Workflow pin refused")
+            transaction.refuse(
+                actor.tenant_id,
+                actor.principal_id,
+                command.client_command_id,
+                request_digest,
+                problem,
+                now=now,
+            )
+            return problem
+        outcome = _commit_start(
             connection,
             actor,
             command,
@@ -60,6 +69,16 @@ def start_workflow(
             now=now,
             telemetry=telemetry,
         )
+        if isinstance(outcome, RecordProblem):
+            transaction.refuse(
+                actor.tenant_id,
+                actor.principal_id,
+                command.client_command_id,
+                request_digest,
+                outcome,
+                now=now,
+            )
+        return outcome
 
 
 def _commit_start(

@@ -1,6 +1,6 @@
 """DO NOT EDIT: generated file; regenerate from declared inputs.
 
-Authored contract digest: sha256:4140fbfe12e8b79ef581aa8efd701ac8faff0ae86631cf2e593652675b1fa958
+Authored contract digest: sha256:516eacb7db7234c1524ed8f9fc4e65c3460d416f5efec473602c1111db7d3d51
 """
 
 from __future__ import annotations
@@ -15,39 +15,51 @@ from pydantic import BaseModel, ConfigDict, Field
 __all__ = [
     "ActivityClass",
     "AdmitIntent",
+    "AdmittedAuditData",
     "AssignmentChangeRequest",
+    "AssignmentChangedAuditData",
     "AssignmentInterval",
     "AssignmentKind",
     "AssignmentList",
     "AuditEvent",
     "AuditPage",
     "BlockIntent",
+    "BlockerOpenedAuditData",
+    "BlockerResolvedAuditData",
     "BoardCard",
     "BoardLane",
     "BoardView",
     "BootstrapReceipt",
     "BootstrapRequest",
     "CustodyTransferRequest",
+    "CustodyTransferredAuditEvent",
     "CustodyTransferredPayload",
     "DeferIntent",
+    "DeferredAuditData",
     "DurabilityState",
     "EvidenceRequest",
     "FreezeCriteriaRequest",
     "MutableAssignmentKind",
     "Priority",
     "PriorityChangeRequest",
+    "PriorityChangedAuditData",
     "Problem",
     "ProjectionHealth",
+    "ProofChangedAuditEvent",
+    "ProofChangedAuditPayload",
     "ProofCriterion",
     "ProofReceipt",
+    "RelationAddedAuditData",
     "RelationKind",
     "RelationRequest",
     "ReopenIntent",
+    "ReopenedAuditData",
     "ResolveCloseRequest",
     "SourceReference",
     "TelemetryContext",
     "TicketCommandResult",
     "TicketCreateRequest",
+    "TicketCreatedAuditEvent",
     "TicketCreatedPayload",
     "TicketIntentRequest",
     "TicketResource",
@@ -56,7 +68,19 @@ __all__ = [
     "UnblockIntent",
     "VerdictDecision",
     "VerdictRequest",
+    "WorkAdmittedAuditPayload",
+    "WorkAssignmentChangedAuditPayload",
+    "WorkBlockerOpenedAuditPayload",
+    "WorkBlockerResolvedAuditPayload",
+    "WorkChangedAuditEvent",
+    "WorkChangedAuditPayload",
+    "WorkDeferredAuditPayload",
+    "WorkPriorityChangedAuditPayload",
     "WorkReceipt",
+    "WorkRelationAddedAuditPayload",
+    "WorkReopenedAuditPayload",
+    "WorkflowChangedAuditEvent",
+    "WorkflowChangedAuditPayload",
     "WorkflowReceipt",
     "WorkflowStartRequest",
     "WorkflowTransitionRequest",
@@ -78,31 +102,25 @@ class AdmitIntent(_BoundaryModel):
     reason: Annotated[str, Field(min_length=1, max_length=500)]
 
 
+class AdmittedAuditData(_BoundaryModel):
+    episode_number: Annotated[int, Field(ge=1)]
+    reason: Annotated[str, Field(min_length=1, max_length=500)]
+
+
+class AssignmentChangedAuditData(_BoundaryModel):
+    assignment_kind: Literal["current_assignee", "stage_owner", "reviewer_assignment"]
+    from_principal_id: UUID | None
+    reason: Annotated[str, Field(min_length=1, max_length=500)]
+    scope_ref: Annotated[str, Field(min_length=1, max_length=256)] | None
+    to_principal_id: UUID
+
+
 class AssignmentKind(StrEnum):
     TICKET_CUSTODIAN = "ticket_custodian"
     CURRENT_ASSIGNEE = "current_assignee"
     STAGE_OWNER = "stage_owner"
     REVIEWER_ASSIGNMENT = "reviewer_assignment"
     RUNNER_LEASE_OWNER = "runner_lease_owner"
-
-
-class AuditEvent(_BoundaryModel):
-    actor_principal_id: UUID
-    command_id: UUID
-    event_hash: Annotated[str, Field(pattern="^sha256:[0-9a-f]{64}$")]
-    event_id: UUID
-    kind: Literal[
-        "ticket.created",
-        "ticket.custody_transferred",
-        "work.changed",
-        "workflow.changed",
-        "proof.changed",
-    ]
-    occurred_at: datetime
-    payload: dict[str, object]
-    record_position: Annotated[int, Field(ge=1)]
-    sequence: Annotated[int, Field(ge=1)]
-    stream_id: str
 
 
 class BlockIntent(_BoundaryModel):
@@ -119,6 +137,18 @@ class BlockIntent(_BoundaryModel):
     next_check_at: datetime | None
     dependency_ref: Annotated[str, Field(max_length=256)] | None
     board_impact: bool
+
+
+class BlockerOpenedAuditData(_BoundaryModel):
+    blocker_id: UUID
+    board_impact: bool
+    reason: Annotated[str, Field(min_length=1, max_length=500)]
+
+
+class BlockerResolvedAuditData(_BoundaryModel):
+    blocker_id: UUID
+    reason: Annotated[str, Field(min_length=1, max_length=500)]
+    resolution_evidence_ref: Annotated[str, Field(min_length=1, max_length=256)]
 
 
 class BoardLane(StrEnum):
@@ -157,6 +187,12 @@ class CustodyTransferredPayload(_BoundaryModel):
 class DeferIntent(_BoundaryModel):
     kind: Literal["defer"]
     expected_version: Annotated[int, Field(ge=1)]
+    reason: Annotated[str, Field(min_length=1, max_length=500)]
+    review_after: datetime
+
+
+class DeferredAuditData(_BoundaryModel):
+    episode_number: Annotated[int, Field(ge=1)]
     reason: Annotated[str, Field(min_length=1, max_length=500)]
     review_after: datetime
 
@@ -247,11 +283,26 @@ class ProjectionHealth(StrEnum):
     STATE_UNKNOWN = "STATE_UNKNOWN"
 
 
+class ProofChangedAuditPayload(_BoundaryModel):
+    candidate_digest: Annotated[str, Field(pattern="^sha256:[0-9a-f]{64}$")]
+    invalidated_evidence_ids: tuple[UUID, ...]
+    invalidated_verdict_ids: tuple[UUID, ...]
+    operation: Literal["freeze_criteria", "record_evidence", "record_verdict", "change_candidate"]
+    proof_version: Annotated[int, Field(ge=1)]
+    ticket_id: UUID
+
+
 class ProofCriterion(_BoundaryModel):
     key: Annotated[str, Field(pattern="^[a-z][a-z0-9._-]*$")]
     description: Annotated[str, Field(min_length=1, max_length=500)]
     candidate_dependent: bool
     requires_verdict: bool
+
+
+class RelationAddedAuditData(_BoundaryModel):
+    relation_kind: Literal["parent_of", "depends_on", "blocks", "duplicates", "relates_to", "caused_by"]
+    reason: Annotated[str, Field(min_length=1, max_length=500)]
+    target_ticket_id: UUID
 
 
 class RelationKind(StrEnum):
@@ -317,6 +368,15 @@ class VerdictDecision(StrEnum):
     FAIL = "fail"
 
 
+class WorkflowChangedAuditPayload(_BoundaryModel):
+    lifecycle_facts: Annotated[tuple[Literal["resolved", "closed"], ...], Field(max_length=2)]
+    operation: Literal["start", "transition", "resolve_close"]
+    stage: Annotated[str, Field(pattern="^[a-z][a-z0-9._-]*$")]
+    ticket_id: UUID
+    workflow_ref: Annotated[str, Field(pattern="^[a-z][a-z0-9._-]*@[1-9][0-9]*$")]
+    workflow_version: Annotated[int, Field(ge=1)]
+
+
 class WorkflowStartRequest(_BoundaryModel):
     workflow_ref: Annotated[str, Field(pattern="^[a-z][a-z0-9._-]*@[1-9][0-9]*$")]
     workflow_digest: Annotated[str, Field(pattern="^sha256:[0-9a-f]{64}$")]
@@ -347,17 +407,12 @@ class AssignmentInterval(_BoundaryModel):
     assigned_at: datetime
     assignment_kind: AssignmentKind
     changed_by: UUID
+    episode_number: Annotated[int, Field(ge=1)]
     principal_id: UUID
     reason: str
     released_at: datetime | None
     scope_ref: str | None
     sequence: Annotated[int, Field(ge=1)]
-
-
-class AuditPage(_BoundaryModel):
-    events: tuple[AuditEvent, ...]
-    next_cursor: Annotated[int, Field(ge=1)] | None
-    ticket_id: UUID
 
 
 class BoardCard(_BoundaryModel):
@@ -388,6 +443,19 @@ class BootstrapReceipt(_BoundaryModel):
     tenant_id: UUID
 
 
+class CustodyTransferredAuditEvent(_BoundaryModel):
+    actor_principal_id: UUID
+    command_id: UUID
+    event_hash: Annotated[str, Field(pattern="^sha256:[0-9a-f]{64}$")]
+    event_id: UUID
+    kind: Literal["ticket.custody_transferred"]
+    occurred_at: datetime
+    payload: CustodyTransferredPayload
+    record_position: Annotated[int, Field(ge=1)]
+    sequence: Annotated[int, Field(ge=1)]
+    stream_id: Annotated[str, Field(pattern="^ticket:[0-9a-f-]{36}$")]
+
+
 class FreezeCriteriaRequest(_BoundaryModel):
     expected_version: Annotated[int, Field(ge=0)]
     candidate_digest: Annotated[str, Field(pattern="^sha256:[0-9a-f]{64}$")]
@@ -399,6 +467,28 @@ class PriorityChangeRequest(_BoundaryModel):
     priority: Priority
     reason: Annotated[str, Field(min_length=1, max_length=500)]
     urgent_evidence_ref: Annotated[str, Field(min_length=1, max_length=256)] | None = None
+
+
+class PriorityChangedAuditData(_BoundaryModel):
+    authority: Literal["commander", "operator"]
+    from_priority: Priority
+    policy_ref: Literal["ctower.priority-authority@1"]
+    reason: Annotated[str, Field(min_length=1, max_length=500)]
+    to_priority: Priority
+    urgent_evidence_ref: Annotated[str, Field(min_length=1, max_length=256)] | None
+
+
+class ProofChangedAuditEvent(_BoundaryModel):
+    actor_principal_id: UUID
+    command_id: UUID
+    event_hash: Annotated[str, Field(pattern="^sha256:[0-9a-f]{64}$")]
+    event_id: UUID
+    kind: Literal["proof.changed"]
+    occurred_at: datetime
+    payload: ProofChangedAuditPayload
+    record_position: Annotated[int, Field(ge=1)]
+    sequence: Annotated[int, Field(ge=1)]
+    stream_id: Annotated[str, Field(pattern="^proof:[0-9a-f-]{36}$")]
 
 
 class ProofReceipt(_BoundaryModel):
@@ -419,6 +509,12 @@ class RelationRequest(_BoundaryModel):
     reason: Annotated[str, Field(min_length=1, max_length=500)]
     relation_kind: RelationKind
     target_ticket_id: UUID
+
+
+class ReopenedAuditData(_BoundaryModel):
+    episode_number: Annotated[int, Field(ge=2)]
+    priority: Priority
+    reason: Annotated[str, Field(min_length=1, max_length=500)]
 
 
 class TicketCreateRequest(_BoundaryModel):
@@ -459,6 +555,41 @@ class VerdictRequest(_BoundaryModel):
     decision: VerdictDecision
 
 
+class WorkAdmittedAuditPayload(_BoundaryModel):
+    data: AdmittedAuditData
+    operation: Literal["admitted"]
+    ticket_id: UUID
+    work_version: Annotated[int, Field(ge=2)]
+
+
+class WorkAssignmentChangedAuditPayload(_BoundaryModel):
+    data: AssignmentChangedAuditData
+    operation: Literal["assignment_changed"]
+    ticket_id: UUID
+    work_version: Annotated[int, Field(ge=2)]
+
+
+class WorkBlockerOpenedAuditPayload(_BoundaryModel):
+    data: BlockerOpenedAuditData
+    operation: Literal["blocker_opened"]
+    ticket_id: UUID
+    work_version: Annotated[int, Field(ge=2)]
+
+
+class WorkBlockerResolvedAuditPayload(_BoundaryModel):
+    data: BlockerResolvedAuditData
+    operation: Literal["blocker_resolved"]
+    ticket_id: UUID
+    work_version: Annotated[int, Field(ge=2)]
+
+
+class WorkDeferredAuditPayload(_BoundaryModel):
+    data: DeferredAuditData
+    operation: Literal["deferred"]
+    ticket_id: UUID
+    work_version: Annotated[int, Field(ge=2)]
+
+
 class WorkReceipt(_BoundaryModel):
     command_id: UUID
     durability_state: DurabilityState
@@ -475,6 +606,26 @@ class WorkReceipt(_BoundaryModel):
     ]
     ticket_id: UUID
     version: Annotated[int, Field(ge=2)]
+
+
+class WorkRelationAddedAuditPayload(_BoundaryModel):
+    data: RelationAddedAuditData
+    operation: Literal["relation_added"]
+    ticket_id: UUID
+    work_version: Annotated[int, Field(ge=2)]
+
+
+class WorkflowChangedAuditEvent(_BoundaryModel):
+    actor_principal_id: UUID
+    command_id: UUID
+    event_hash: Annotated[str, Field(pattern="^sha256:[0-9a-f]{64}$")]
+    event_id: UUID
+    kind: Literal["workflow.changed"]
+    occurred_at: datetime
+    payload: WorkflowChangedAuditPayload
+    record_position: Annotated[int, Field(ge=1)]
+    sequence: Annotated[int, Field(ge=1)]
+    stream_id: Annotated[str, Field(pattern="^workflow:[0-9a-f-]{36}$")]
 
 
 class WorkflowReceipt(_BoundaryModel):
@@ -509,6 +660,19 @@ class TicketCommandResult(_BoundaryModel):
     ticket: TicketResource
 
 
+class TicketCreatedAuditEvent(_BoundaryModel):
+    actor_principal_id: UUID
+    command_id: UUID
+    event_hash: Annotated[str, Field(pattern="^sha256:[0-9a-f]{64}$")]
+    event_id: UUID
+    kind: Literal["ticket.created"]
+    occurred_at: datetime
+    payload: TicketCreatedPayload
+    record_position: Annotated[int, Field(ge=1)]
+    sequence: Annotated[int, Field(ge=1)]
+    stream_id: Annotated[str, Field(pattern="^ticket:[0-9a-f-]{36}$")]
+
+
 class TimelineEvent(_BoundaryModel):
     actor_principal_id: UUID
     command_id: UUID
@@ -519,7 +683,46 @@ class TimelineEvent(_BoundaryModel):
     sequence: Annotated[int, Field(ge=1)]
 
 
+class WorkPriorityChangedAuditPayload(_BoundaryModel):
+    data: PriorityChangedAuditData
+    operation: Literal["priority_changed"]
+    ticket_id: UUID
+    work_version: Annotated[int, Field(ge=2)]
+
+
+class WorkReopenedAuditPayload(_BoundaryModel):
+    data: ReopenedAuditData
+    operation: Literal["reopened"]
+    ticket_id: UUID
+    work_version: Annotated[int, Field(ge=2)]
+
+
 class TimelineResponse(_BoundaryModel):
     durability_state: DurabilityState
     events: tuple[TimelineEvent, ...]
+    ticket_id: UUID
+
+
+type WorkChangedAuditPayload = WorkPriorityChangedAuditPayload | WorkAssignmentChangedAuditPayload | WorkAdmittedAuditPayload | WorkDeferredAuditPayload | WorkBlockerOpenedAuditPayload | WorkBlockerResolvedAuditPayload | WorkReopenedAuditPayload | WorkRelationAddedAuditPayload
+
+
+class WorkChangedAuditEvent(_BoundaryModel):
+    actor_principal_id: UUID
+    command_id: UUID
+    event_hash: Annotated[str, Field(pattern="^sha256:[0-9a-f]{64}$")]
+    event_id: UUID
+    kind: Literal["work.changed"]
+    occurred_at: datetime
+    payload: WorkChangedAuditPayload
+    record_position: Annotated[int, Field(ge=1)]
+    sequence: Annotated[int, Field(ge=1)]
+    stream_id: Annotated[str, Field(pattern="^ticket:[0-9a-f-]{36}$")]
+
+
+type AuditEvent = TicketCreatedAuditEvent | CustodyTransferredAuditEvent | WorkChangedAuditEvent | WorkflowChangedAuditEvent | ProofChangedAuditEvent
+
+
+class AuditPage(_BoundaryModel):
+    events: tuple[AuditEvent, ...]
+    next_cursor: Annotated[int, Field(ge=1)] | None
     ticket_id: UUID

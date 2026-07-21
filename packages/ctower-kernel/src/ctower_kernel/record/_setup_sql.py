@@ -18,7 +18,7 @@ MINIMUM_CAPABILITY_LENGTH = 32
 MAXIMUM_CAPABILITY_LENGTH = 256
 
 
-def _migration_scripts() -> tuple[str, ...]:
+def _migration_scripts(scope: str) -> tuple[str, ...]:
     manifest = cast(
         dict[str, object], json.loads((MIGRATIONS / "manifest.json").read_text(encoding="utf-8"))
     )
@@ -29,7 +29,8 @@ def _migration_scripts() -> tuple[str, ...]:
         actual = f"sha256:{hashlib.sha256(content).hexdigest()}"
         if not hmac.compare_digest(actual, entry["sha256"]):
             raise ValueError(f"migration checksum mismatch: {entry['path']}")
-        scripts.append(content.decode())
+        if entry.get("scope", "database") == scope:
+            scripts.append(content.decode())
     return tuple(scripts)
 
 
@@ -37,7 +38,8 @@ def provision_database_roles(admin_dsn: str) -> None:
     """Use server administration only to provision the global login/role boundary."""
 
     with psycopg.connect(admin_dsn) as connection:
-        connection.execute(_migration_scripts()[0])
+        for script in _migration_scripts("cluster"):
+            connection.execute(script)
 
 
 def apply_migrations(migrator_dsn: str) -> None:
@@ -46,7 +48,7 @@ def apply_migrations(migrator_dsn: str) -> None:
     with psycopg.connect(migrator_dsn) as connection:
         connection.execute("SET ROLE ctower_admin")
         connection.execute("SELECT pg_advisory_xact_lock(712040119)")
-        for script in _migration_scripts()[1:]:
+        for script in _migration_scripts("database"):
             connection.execute(script)
 
 

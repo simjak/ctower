@@ -50,7 +50,7 @@
       "inputs": [
         {
           "path": "contracts/http/openapi.yaml",
-          "sha256": "sha256:550b8e50b9aec4bc527621d37d52e5fa4475685ba2233e3ee621761d27a6ed4d"
+          "sha256": "sha256:0eebea3361eb48280cd8b275fc826dbd65a4e6c52072f08d61a2c0a1567c7738"
         },
         {
           "path": "contracts/observability/telemetry-context.schema.json",
@@ -86,11 +86,11 @@
         },
         {
           "path": "tools/codegen/_model_codegen.py",
-          "sha256": "sha256:7bacb9c7c933efb0f05d2ebb4d443ab4c5d2718f5b0876ec047c1678bfd631c1"
+          "sha256": "sha256:0b1e25b77c6e5ac1e3577f3b1e47fcdaeb69b7768a85b34dad4c5d99b32f1801"
         },
         {
           "path": "tools/codegen/generator.py",
-          "sha256": "sha256:10f6f5bfa7503c77a5ac4b6affb596d1e1562a2cbcaf0c2eca80ddea6a35243a"
+          "sha256": "sha256:a3b2cbc468ac9d2ce66016d93a7f500dd7b672efd0885582bbb1b67e6a0495a7"
         },
         {
           "path": "tools/checks/generated.py",
@@ -100,18 +100,18 @@
       "outputs": [
         {
           "path": "generated/python/ctower_client/__init__.py",
-          "sha256": "sha256:8f70bba9fb67ea84e8fbf9ae647efdc82f3a0f0e71a96957d7b63498d34fd06c"
+          "sha256": "sha256:1de683035d0299bf68e0b44be60328d2b7690fbcbc814751891583bc2816d071"
         },
         {
           "path": "generated/python/ctower_client/client.py",
-          "sha256": "sha256:e8b4aff3ff9ee48490ae66788207fc7bb4f40ed1d98cf28ba329e2cdceb72c9a"
+          "sha256": "sha256:b7b03d0ad3a79e6ff4295e4e431a405445c3da7983344807fb1f45eb64954870"
         },
         {
           "path": "generated/python/ctower_client/models.py",
-          "sha256": "sha256:bf88dce1081e54bec69ec32b40b43c63c153e3c02d81ab67c56a41e547211837"
+          "sha256": "sha256:c41229b1badf95c2603357d717296630dc9958d476321116931392f55ccbe0da"
         }
       ],
-      "tool_version": "1+sha256:10f6f5bfa7503c77a5ac4b6affb596d1e1562a2cbcaf0c2eca80ddea6a35243a"
+      "tool_version": "1+sha256:a3b2cbc468ac9d2ce66016d93a7f500dd7b672efd0885582bbb1b67e6a0495a7"
     }
   ],
   "schema": "ctower.generated-manifest/v1"

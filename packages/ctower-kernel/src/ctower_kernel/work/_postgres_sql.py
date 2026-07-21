@@ -50,7 +50,8 @@ def execute_work(
 
     with psycopg.connect(dsn, row_factory=dict_row) as connection:
         connection.execute("SET ROLE ctower_svc")
-        existing = RecordTransaction(connection).reserve(
+        transaction = RecordTransaction(connection)
+        existing = transaction.reserve(
             actor.principal_id, command.client_command_id, request_digest
         )
         if isinstance(existing, RecordProblem):
@@ -59,15 +60,29 @@ def execute_work(
             return _receipt(existing)
         ticket = _lock_ticket(connection, actor, command)
         if ticket is None:
-            return _problem(command, "tenant-scope-denied", 404, "Ticket unavailable")
+            return _refuse(
+                transaction,
+                actor,
+                command,
+                request_digest,
+                _problem(command, "tenant-scope-denied", 404, "Ticket unavailable"),
+                now,
+            )
         version = int(cast(int, ticket["version"]))
         if command.expected_version != version:
-            return _problem(
-                command, "version-conflict", 409, "Work version conflict", version=version
+            return _refuse(
+                transaction,
+                actor,
+                command,
+                request_digest,
+                _problem(
+                    command, "version-conflict", 409, "Work version conflict", version=version
+                ),
+                now,
             )
         operation, outcome = _mutate(connection, actor, command, ticket=ticket, now=now)
         if isinstance(outcome, RecordProblem):
-            return outcome
+            return _refuse(transaction, actor, command, request_digest, outcome, now)
         next_version = version + 1
         connection.execute(
             "UPDATE tickets SET version = %s WHERE tenant_id = %s AND ticket_id = %s",
@@ -99,7 +114,7 @@ def _lock_ticket(
     )
     rows = connection.execute(
         """
-        SELECT ticket_id, version, priority, current_episode FROM tickets
+        SELECT ticket_id, version, priority, current_episode, custodian_principal_id FROM tickets
         WHERE tenant_id = %s AND ticket_id = ANY(%s) ORDER BY ticket_id FOR UPDATE
         """,
         (actor.tenant_id, list(ticket_ids)),
@@ -234,6 +249,7 @@ def _mutate_intent(
             command,
             lifecycle_id=identifier,
             episode=episode,
+            custodian_id=cast(UUID, ticket["custodian_principal_id"]),
             priority=str(ticket["priority"]),
             now=now,
         )
@@ -263,6 +279,25 @@ def _problem(
     version: int | None = None,
 ) -> RecordProblem:
     return RecordProblem(code, title, status, title, command.client_command_id, version)
+
+
+def _refuse(
+    transaction: RecordTransaction,
+    actor: Actor,
+    command: WorkCommand,
+    request_digest: bytes,
+    problem: RecordProblem,
+    now: datetime,
+) -> RecordProblem:
+    transaction.refuse(
+        actor.tenant_id,
+        actor.principal_id,
+        command.client_command_id,
+        request_digest,
+        problem,
+        now=now,
+    )
+    return problem
 
 
 def _uuid7(now: datetime) -> UUID:

@@ -22,13 +22,23 @@ def append_event(
     *,
     subjects: tuple[EventSubject, ...] = (),
 ) -> None:
+    position_row = connection.execute(
+        """
+        UPDATE record_position_ledger SET last_position = last_position + 1
+        WHERE singleton RETURNING last_position
+        """
+    ).fetchone()
+    if position_row is None:
+        raise RuntimeError("record position ledger is unavailable")
     connection.execute(
         """
         INSERT INTO events (
             event_id, tenant_id, stream_id, aggregate_id, sequence, kind, schema_version,
             actor_principal_id, client_command_id, request_sha256, correlation_id,
-            causation_id, origin, server_time, payload, prev_hash, event_hash
-        ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+            causation_id, origin, server_time, payload, prev_hash, event_hash, record_position
+        ) VALUES (
+            %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s
+        )
         """,
         (
             event.event_id,
@@ -48,6 +58,7 @@ def append_event(
             Jsonb(event.payload.to_mapping()),
             event.prev_hash,
             event_digest(event),
+            position_row["last_position"],
         ),
     )
     if subjects:

@@ -27,7 +27,7 @@ def test_defer_stays_backlog_until_explicit_admission(tenant: TenantFixture) -> 
         PostgresRecord(tenant.database.runtime_dsn),
         writer=PostgresWork(tenant.database.runtime_dsn),
     )
-    projections = Projections(PostgresProjections(tenant.database.admin_dsn))
+    projections = Projections(PostgresProjections(tenant.database.projection_dsn))
 
     deferred = work.execute(
         actor,
@@ -57,7 +57,7 @@ def test_defer_stays_backlog_until_explicit_admission(tenant: TenantFixture) -> 
 def test_board_watermarks_staleness_and_rebuild_equality(tenant: TenantFixture) -> None:
     actor = Actor(tenant.commander_id, tenant.tenant_id, PrincipalKind.COMMANDER)
     ticket_id = _ticket(tenant)
-    store = PostgresProjections(tenant.database.admin_dsn)
+    store = PostgresProjections(tenant.database.projection_dsn)
     projections = Projections(store)
 
     backlog = projections.catch_up(tenant.tenant_id)
@@ -91,13 +91,62 @@ def test_board_watermarks_staleness_and_rebuild_equality(tenant: TenantFixture) 
     assert missing.health is ProjectionHealth.STATE_UNKNOWN
 
 
+def test_rolled_back_outbox_append_retries_without_poisoning_board(
+    tenant: TenantFixture,
+) -> None:
+    actor = Actor(tenant.commander_id, tenant.tenant_id, PrincipalKind.COMMANDER)
+    ticket_id = _ticket(tenant)
+    work = Work(
+        PostgresRecord(tenant.database.runtime_dsn),
+        writer=PostgresWork(tenant.database.runtime_dsn),
+    )
+    projections = Projections(PostgresProjections(tenant.database.projection_dsn))
+    before = projections.catch_up(tenant.tenant_id)
+    command = ChangePriority(uuid4(), ticket_id, 1, "Rollback-safe priority", "P1")
+
+    with psycopg.connect(tenant.database.admin_dsn) as connection:
+        connection.execute(
+            """
+            CREATE FUNCTION reject_projection_outbox() RETURNS trigger LANGUAGE plpgsql AS $$
+            BEGIN
+                RAISE EXCEPTION 'injected projection outbox failure';
+            END
+            $$;
+            CREATE TRIGGER reject_projection_outbox BEFORE INSERT ON outbox
+                FOR EACH ROW EXECUTE FUNCTION reject_projection_outbox();
+            """
+        )
+    with pytest.raises(psycopg.errors.RaiseException):
+        work.execute(actor, command, telemetry=_telemetry())
+    with psycopg.connect(tenant.database.admin_dsn) as connection:
+        connection.execute("DROP TRIGGER reject_projection_outbox ON outbox")
+        connection.execute("DROP FUNCTION reject_projection_outbox()")
+
+    retried = work.execute(actor, command, telemetry=_telemetry())
+    caught_up = projections.catch_up(tenant.tenant_id)
+    rebuilt = projections.rebuild(tenant.tenant_id)
+    with psycopg.connect(tenant.database.admin_dsn) as connection:
+        positions = [
+            row[0]
+            for row in connection.execute(
+                "SELECT record_position FROM events ORDER BY record_position"
+            ).fetchall()
+        ]
+
+    assert isinstance(retried, WorkReceipt)
+    assert positions == list(range(1, len(positions) + 1))
+    assert caught_up.health is ProjectionHealth.CURRENT
+    assert caught_up.source_watermark == before.source_watermark + 1
+    assert rebuilt.response_payload() == caught_up.response_payload()
+
+
 @pytest.mark.parametrize("fault", ("behind", "ahead", "gap", "unknown-event"))
 def test_board_reports_loud_unknown_for_cursor_and_source_faults(
     tenant: TenantFixture, fault: str
 ) -> None:
     actor = Actor(tenant.commander_id, tenant.tenant_id, PrincipalKind.COMMANDER)
     ticket_id = _ticket(tenant)
-    projections = Projections(PostgresProjections(tenant.database.admin_dsn))
+    projections = Projections(PostgresProjections(tenant.database.projection_dsn))
     current = projections.catch_up(tenant.tenant_id)
     assert current.health is ProjectionHealth.CURRENT
 
@@ -108,7 +157,13 @@ def test_board_reports_loud_unknown_for_cursor_and_source_faults(
                 (current.source_watermark + 1, tenant.tenant_id),
             )
         elif fault == "gap":
-            connection.execute("SELECT nextval('events_record_position_seq')")
+            connection.execute(
+                """
+                UPDATE events SET record_position = record_position + 1
+                WHERE record_position = %s
+                """,
+                (current.source_watermark,),
+            )
         else:
             connection.execute("ALTER TABLE events DROP CONSTRAINT events_kind_check")
             connection.execute(
@@ -118,23 +173,13 @@ def test_board_reports_loud_unknown_for_cursor_and_source_faults(
 
     if fault == "behind":
         unknown = projections.catch_up(tenant.tenant_id, current.source_watermark - 1)
-    elif fault == "gap":
-        committed = Work(
-            PostgresRecord(tenant.database.runtime_dsn),
-            writer=PostgresWork(tenant.database.runtime_dsn),
-        ).execute(
-            actor,
-            ChangePriority(uuid4(), ticket_id, 1, "Gap fault command", "P1"),
-            telemetry=_telemetry(),
-        )
-        assert isinstance(committed, WorkReceipt)
-        unknown = projections.catch_up(tenant.tenant_id)
     else:
         unknown = projections.catch_up(tenant.tenant_id)
 
     assert unknown.health is ProjectionHealth.STATE_UNKNOWN
     assert unknown.source_watermark != unknown.projection_watermark or fault in {
         "behind",
+        "gap",
         "unknown-event",
     }
 

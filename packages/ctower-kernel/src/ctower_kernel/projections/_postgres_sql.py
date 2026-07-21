@@ -86,9 +86,7 @@ def rebuild(dsn: str, tenant_id: UUID) -> BoardView:
 def _source_watermark(connection: psycopg.Connection[dict[str, object]]) -> int:
     row = cast(
         dict[str, object],
-        connection.execute(
-            "SELECT COALESCE(max(record_position), 0) AS value FROM events"
-        ).fetchone(),
+        connection.execute("SELECT last_position AS value FROM record_position_ledger").fetchone(),
     )
     return int(cast(int, row["value"]))
 

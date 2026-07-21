@@ -58,7 +58,7 @@ def test_generated_client_drives_complete_task_board_and_audit_flow(
 ) -> None:
     graph = _graph()
     with running_api(
-        tenant.database.runtime_dsn, projection_dsn=tenant.database.admin_dsn
+        tenant.database.runtime_dsn, projection_dsn=tenant.database.projection_dsn
     ) as base_url:
         commander = CtowerClient(base_url, credential=tenant.commander_credential)
         operator = CtowerClient(base_url, credential=tenant.operator_credential)
@@ -72,6 +72,11 @@ def test_generated_client_drives_complete_task_board_and_audit_flow(
         _block_and_unblock(commander, ticket_id, tenant.commander_id)
         _finish_proof_and_workflow(commander, operator, ticket_id, graph)
         complete = commander.get_board()
+        custody_while_closed = tuple(
+            interval
+            for interval in commander.list_ticket_assignments(ticket_id).assignments
+            if interval.assignment_kind.value == "ticket_custodian"
+        )
         reopened_receipt = commander.apply_ticket_intent(
             ticket_id,
             TicketIntentRequest(
@@ -85,14 +90,26 @@ def test_generated_client_drives_complete_task_board_and_audit_flow(
             command_id=uuid4(),
         )
         reopened = commander.get_board()
+        custody_after_reopen = tuple(
+            interval
+            for interval in commander.list_ticket_assignments(ticket_id).assignments
+            if interval.assignment_kind.value == "ticket_custodian"
+        )
         fresh_run = commander.start_ticket_workflow(ticket_id, _start(graph), command_id=uuid4())
         pages = _audit_pages(commander, ticket_id)
         commander.close()
         operator.close()
 
     assert complete.cards[0].lane is BoardLane.COMPLETE
+    assert len(custody_while_closed) == 1
+    assert custody_while_closed[0].episode_number == 1
+    assert custody_while_closed[0].released_at is not None
     assert reopened_receipt.version == REOPENED_WORK_VERSION
     assert reopened.cards[0].lane is BoardLane.BACKLOG
+    assert len(custody_after_reopen) == 2
+    assert [interval.episode_number for interval in custody_after_reopen] == [1, 2]
+    assert custody_after_reopen[0].released_at <= custody_after_reopen[1].assigned_at
+    assert custody_after_reopen[1].released_at is None
     assert fresh_run.version == 1
     assert len([event for event in pages if event.kind == "proof.changed"]) == PROOF_EVENT_COUNT
     assert len({event.event_id for event in pages}) == len(pages)

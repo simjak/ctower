@@ -241,9 +241,9 @@ def _insert_initial_custody(
         """
         INSERT INTO assignment_intervals (
             ticket_id, tenant_id, interval_sequence, assignment_kind, principal_id,
-            assigned_at, released_at, changed_by, reason, client_command_id
+            assigned_at, released_at, changed_by, reason, client_command_id, episode_number
         ) VALUES (%s, %s, 1, 'ticket_custodian', %s, %s, NULL, %s,
-            'initial eligible custodian', %s)
+            'initial eligible custodian', %s, 1)
         """,
         (
             identifiers.ticket,

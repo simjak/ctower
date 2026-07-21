@@ -66,3 +66,34 @@ class RecordTransaction:
             ),
         )
         enqueue_event(self._connection, outbox_id, event, telemetry, now)
+
+    def refuse(
+        self,
+        tenant_id: UUID,
+        principal_id: UUID,
+        command_id: UUID,
+        request_digest: bytes,
+        problem: RecordProblem,
+        *,
+        now: datetime,
+    ) -> None:
+        """Persist one exact typed refusal without an event or authoritative mutation."""
+
+        self._connection.execute(
+            """
+            INSERT INTO command_results (
+                tenant_id, principal_id, client_command_id, request_sha256, status_code,
+                response_body, event_ids, created_at
+            ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s)
+            """,
+            (
+                tenant_id,
+                principal_id,
+                command_id,
+                request_digest,
+                problem.status,
+                Jsonb(problem.response_payload()),
+                [],
+                now,
+            ),
+        )

@@ -75,22 +75,36 @@ def advance_workflow(
         if existing is not None:
             return _receipt_from_payload(existing)
         if not _lock_open_ticket(connection, actor, mutation.ticket_id):
-            return _problem(mutation, "tenant-scope-denied", 404, "Open ticket not found")
+            return _refuse(
+                transaction,
+                actor,
+                mutation,
+                request_digest,
+                _problem(mutation, "tenant-scope-denied", 404, "Open ticket not found"),
+                now,
+            )
         run = _lock_run(connection, actor, mutation.ticket_id)
         refusal = _transition_refusal(evaluator, mutation, run)
         if refusal is not None:
-            return refusal
+            return _refuse(transaction, actor, mutation, request_digest, refusal, now)
         decision, unmet_facts = _evaluate_transition(
             connection, evaluator, proof_gate, readiness_gate, actor, mutation, run
         )
         if not decision.accepted:
-            return _problem(
+            return _refuse(
+                transaction,
+                actor,
                 mutation,
-                f"workflow-{decision.reason}",
-                409,
-                "Workflow transition refused",
-                current_version=_run_version(run),
-                unmet_facts=unmet_facts,
+                request_digest,
+                _problem(
+                    mutation,
+                    f"workflow-{decision.reason}",
+                    409,
+                    "Workflow transition refused",
+                    current_version=_run_version(run),
+                    unmet_facts=unmet_facts,
+                ),
+                now,
             )
         return _commit_transition(
             connection,
@@ -267,6 +281,25 @@ def _transition_refusal(
             current_version=current_version,
         )
     return None
+
+
+def _refuse(
+    transaction: RecordTransaction,
+    actor: WorkflowActor,
+    mutation: WorkflowMutation,
+    request_digest: bytes,
+    problem: RecordProblem,
+    now: datetime,
+) -> RecordProblem:
+    transaction.refuse(
+        actor.tenant_id,
+        actor.principal_id,
+        mutation.client_command_id,
+        request_digest,
+        problem,
+        now=now,
+    )
+    return problem
 
 
 def _pins_match(evaluator: Workflow, workflow_ref: str, run: dict[str, object]) -> bool:

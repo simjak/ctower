@@ -91,6 +91,7 @@ def reopen(
     *,
     lifecycle_id: UUID,
     episode: int,
+    custodian_id: UUID,
     priority: str,
     now: datetime,
 ) -> dict[str, object] | RecordProblem:
@@ -101,6 +102,13 @@ def reopen(
             "work-reopen-unmet",
             "Resolved or closed episode required",
             ("lifecycle.resolved-or-closed@1",),
+        )
+    if not _eligible_custodian(connection, actor, custodian_id):
+        return _problem(
+            command,
+            "work-assignment-target-ineligible",
+            "Eligible custodian required for reopened episode",
+            ("custody.eligible-current@1",),
         )
     next_episode = episode + 1
     connection.execute(
@@ -113,6 +121,37 @@ def reopen(
     connection.execute(
         "UPDATE tickets SET current_episode = %s WHERE tenant_id = %s AND ticket_id = %s",
         (next_episode, actor.tenant_id, command.ticket_id),
+    )
+    sequence_row = cast(
+        dict[str, object],
+        connection.execute(
+            """
+            SELECT COALESCE(max(interval_sequence), 0) + 1 AS value
+            FROM assignment_intervals
+            WHERE tenant_id = %s AND ticket_id = %s
+              AND assignment_kind = 'ticket_custodian'
+            """,
+            (actor.tenant_id, command.ticket_id),
+        ).fetchone(),
+    )
+    connection.execute(
+        """
+        INSERT INTO assignment_intervals (
+            ticket_id, tenant_id, interval_sequence, assignment_kind, principal_id,
+            assigned_at, released_at, changed_by, reason, client_command_id, episode_number
+        ) VALUES (%s, %s, %s, 'ticket_custodian', %s, %s, NULL, %s, %s, %s, %s)
+        """,
+        (
+            command.ticket_id,
+            actor.tenant_id,
+            sequence_row["value"],
+            custodian_id,
+            now,
+            actor.principal_id,
+            f"reopen carry-forward: {command.reason}",
+            command.client_command_id,
+            next_episode,
+        ),
     )
     _lifecycle_fact(connection, actor, command, lifecycle_id, next_episode, "reopened", now)
     sequence_row = cast(
@@ -246,6 +285,20 @@ def _episode_state(
         (actor.tenant_id, ticket_id, episode),
     ).fetchone()
     return str(row["state"]) if row is not None else None
+
+
+def _eligible_custodian(
+    connection: psycopg.Connection[dict[str, object]], actor: Actor, principal_id: UUID
+) -> bool:
+    row = connection.execute(
+        """
+        SELECT 1 FROM principals
+        WHERE tenant_id = %s AND principal_id = %s AND NOT disabled
+          AND kind IN ('commander', 'operator')
+        """,
+        (actor.tenant_id, principal_id),
+    ).fetchone()
+    return row is not None
 
 
 def _set_episode(

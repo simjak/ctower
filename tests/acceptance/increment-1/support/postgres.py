@@ -28,6 +28,7 @@ class DatabaseFixture:
     admin_dsn: str
     migrator_dsn: str
     runtime_dsn: str
+    projection_dsn: str
 
 
 @dataclass(frozen=True, slots=True)
@@ -123,6 +124,7 @@ def create_database(server: PostgresServer) -> DatabaseFixture:
         f"postgresql://postgres@{base}",
         f"postgresql://ctower_migrator@{base}",
         f"postgresql://ctower_runtime@{base}",
+        f"postgresql://ctower_projection_runtime@{base}",
     )
 
 
