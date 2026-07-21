@@ -72,50 +72,12 @@ def test_generated_client_drives_complete_task_board_and_audit_flow(
         _prioritize_assign_and_begin(commander, ticket_id, tenant, graph)
         _block_and_unblock(commander, ticket_id, tenant.commander_id)
         _finish_proof_and_workflow(commander, operator, ticket_id, graph)
-        complete = commander.get_board()
-        custody_while_closed = tuple(
-            interval
-            for interval in commander.list_ticket_assignments(ticket_id).assignments
-            if interval.assignment_kind.value == "ticket_custodian"
-        )
-        reopened_receipt = commander.apply_ticket_intent(
-            ticket_id,
-            TicketIntentRequest(
-                intent=ReopenIntent(
-                    kind="reopen",
-                    expected_version=7,
-                    reason="A new actionable episode is required",
-                    priority_policy="carry_forward",
-                )
-            ),
-            command_id=uuid4(),
-        )
-        reopened = commander.get_board()
-        custody_after_reopen = tuple(
-            interval
-            for interval in commander.list_ticket_assignments(ticket_id).assignments
-            if interval.assignment_kind.value == "ticket_custodian"
-        )
+        _assert_close_reopen_custody(commander, ticket_id)
         fresh_run = commander.start_ticket_workflow(ticket_id, _start(graph), command_id=uuid4())
         pages = _audit_pages(commander, ticket_id)
         commander.close()
         operator.close()
 
-    assert complete.cards[0].lane is BoardLane.COMPLETE
-    assert len(custody_while_closed) == 1
-    assert custody_while_closed[0].episode_number == 1
-    assert custody_while_closed[0].released_at is not None
-    assert reopened_receipt.version == REOPENED_WORK_VERSION
-    assert reopened.cards[0].lane is BoardLane.BACKLOG
-    assert len(custody_after_reopen) == CUSTODY_EPISODE_COUNT
-    assert [interval.episode_number for interval in custody_after_reopen] == [
-        1,
-        CUSTODY_EPISODE_COUNT,
-    ]
-    prior_release = custody_after_reopen[0].released_at
-    assert prior_release is not None
-    assert prior_release <= custody_after_reopen[1].assigned_at
-    assert custody_after_reopen[1].released_at is None
     assert fresh_run.version == 1
     assert len([event for event in pages if event.kind == "proof.changed"]) == PROOF_EVENT_COUNT
     assert len({event.event_id for event in pages}) == len(pages)
@@ -125,6 +87,43 @@ def test_generated_client_drives_complete_task_board_and_audit_flow(
         "workflow.changed",
         "proof.changed",
     }
+
+
+def _assert_close_reopen_custody(client: CtowerClient, ticket_id: UUID) -> None:
+    complete = client.get_board()
+    closed = tuple(
+        interval
+        for interval in client.list_ticket_assignments(ticket_id).assignments
+        if interval.assignment_kind.value == "ticket_custodian"
+    )
+    reopened_receipt = client.apply_ticket_intent(
+        ticket_id,
+        TicketIntentRequest(
+            intent=ReopenIntent(
+                kind="reopen",
+                expected_version=7,
+                reason="A new actionable episode is required",
+                priority_policy="carry_forward",
+            )
+        ),
+        command_id=uuid4(),
+    )
+    reopened = client.get_board()
+    history = tuple(
+        interval
+        for interval in client.list_ticket_assignments(ticket_id).assignments
+        if interval.assignment_kind.value == "ticket_custodian"
+    )
+    assert complete.cards[0].lane is BoardLane.COMPLETE
+    assert len(closed) == 1 and closed[0].released_at is not None
+    assert closed[0].episode_number == 1
+    assert reopened_receipt.version == REOPENED_WORK_VERSION
+    assert reopened.cards[0].lane is BoardLane.BACKLOG
+    assert len(history) == CUSTODY_EPISODE_COUNT
+    assert [item.episode_number for item in history] == [1, CUSTODY_EPISODE_COUNT]
+    prior_release = history[0].released_at
+    assert prior_release is not None and prior_release <= history[1].assigned_at
+    assert history[1].released_at is None
 
 
 def _start_and_admit(client: CtowerClient, ticket_id: UUID, graph: WorkflowGraph) -> None:

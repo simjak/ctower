@@ -75,69 +75,10 @@ def test_work_and_workflow_refusals_replay_before_later_state_reads(
         ),
         policy_digests=_policy_digests(),
     )
-
-    work_ticket_id = _ticket(tenant)
-    work_command_id = uuid4()
-    refused_work = ChangePriority(
-        work_command_id, work_ticket_id, 2, "Refuse before later state", "P1"
+    work_command_id = _assert_work_refusal_replay(tenant, work, actor)
+    workflow_command_id = _assert_workflow_refusal_replay(
+        tenant, work, actor, workflow, workflow_actor, graph
     )
-    first_work_refusal = work.execute(actor, refused_work, telemetry=_telemetry())
-    advanced_work = work.execute(
-        actor,
-        ChangePriority(uuid4(), work_ticket_id, 1, "Advance independently", "P1"),
-        telemetry=_telemetry(),
-    )
-    replayed_work_refusal = work.execute(actor, refused_work, telemetry=_telemetry())
-    changed_work_reuse = work.execute(
-        actor, replace(refused_work, reason="Changed reuse body"), telemetry=_telemetry()
-    )
-
-    workflow_ticket_id = _ticket(tenant)
-    workflow.start(workflow_actor, _start(graph, workflow_ticket_id), telemetry=_telemetry())
-    admitted = work.execute(
-        actor,
-        Admit(uuid4(), workflow_ticket_id, 1, "Ready for independent transition"),
-        telemetry=_telemetry(),
-    )
-    workflow_command_id = uuid4()
-    refused_transition = WorkflowMutation(
-        workflow_command_id,
-        workflow_ticket_id,
-        graph.reference,
-        2,
-        "capture",
-        "frame",
-    )
-    first_workflow_refusal = workflow.advance(
-        workflow_actor, refused_transition, telemetry=_telemetry()
-    )
-    advanced_workflow = workflow.advance(
-        workflow_actor,
-        WorkflowMutation(uuid4(), workflow_ticket_id, graph.reference, 1, "capture", "frame"),
-        telemetry=_telemetry(),
-    )
-    replayed_workflow_refusal = workflow.advance(
-        workflow_actor, refused_transition, telemetry=_telemetry()
-    )
-    changed_workflow_reuse = workflow.advance(
-        workflow_actor,
-        replace(refused_transition, expected_version=3),
-        telemetry=_telemetry(),
-    )
-
-    assert isinstance(first_work_refusal, RecordProblem)
-    assert first_work_refusal.current_version == 1
-    assert isinstance(advanced_work, WorkReceipt)
-    assert replayed_work_refusal == first_work_refusal
-    assert isinstance(changed_work_reuse, RecordProblem)
-    assert changed_work_reuse.code == "idempotency-conflict"
-    assert isinstance(admitted, WorkReceipt)
-    assert isinstance(first_workflow_refusal, RecordProblem)
-    assert first_workflow_refusal.current_version == 1
-    assert isinstance(advanced_workflow, WorkflowReceipt)
-    assert replayed_workflow_refusal == first_workflow_refusal
-    assert isinstance(changed_workflow_reuse, RecordProblem)
-    assert changed_workflow_reuse.code == "idempotency-conflict"
 
     with psycopg.connect(tenant.database.admin_dsn, row_factory=dict_row) as connection:
         rows = connection.execute(
@@ -158,6 +99,62 @@ def test_work_and_workflow_refusals_replay_before_later_state_reads(
     assert all(row["status_code"] == HTTP_CONFLICT for row in rows)
     assert all(row["event_ids"] == [] for row in rows)
     assert event_count == 0
+
+
+def _assert_work_refusal_replay(tenant: TenantFixture, work: Work, actor: Actor) -> UUID:
+    ticket_id = _ticket(tenant)
+    command_id = uuid4()
+    refused = ChangePriority(command_id, ticket_id, 2, "Refuse before later state", "P1")
+    first = work.execute(actor, refused, telemetry=_telemetry())
+    advanced = work.execute(
+        actor,
+        ChangePriority(uuid4(), ticket_id, 1, "Advance independently", "P1"),
+        telemetry=_telemetry(),
+    )
+    replayed = work.execute(actor, refused, telemetry=_telemetry())
+    changed = work.execute(
+        actor, replace(refused, reason="Changed reuse body"), telemetry=_telemetry()
+    )
+    assert isinstance(first, RecordProblem) and first.current_version == 1
+    assert isinstance(advanced, WorkReceipt)
+    assert replayed == first
+    assert isinstance(changed, RecordProblem) and changed.code == "idempotency-conflict"
+    return command_id
+
+
+def _assert_workflow_refusal_replay(
+    tenant: TenantFixture,
+    work: Work,
+    actor: Actor,
+    workflow: Workflow,
+    workflow_actor: WorkflowActor,
+    graph: WorkflowGraph,
+) -> UUID:
+    ticket_id = _ticket(tenant)
+    workflow.start(workflow_actor, _start(graph, ticket_id), telemetry=_telemetry())
+    admitted = work.execute(
+        actor,
+        Admit(uuid4(), ticket_id, 1, "Ready for independent transition"),
+        telemetry=_telemetry(),
+    )
+    command_id = uuid4()
+    refused = WorkflowMutation(command_id, ticket_id, graph.reference, 2, "capture", "frame")
+    first = workflow.advance(workflow_actor, refused, telemetry=_telemetry())
+    advanced = workflow.advance(
+        workflow_actor,
+        WorkflowMutation(uuid4(), ticket_id, graph.reference, 1, "capture", "frame"),
+        telemetry=_telemetry(),
+    )
+    replayed = workflow.advance(workflow_actor, refused, telemetry=_telemetry())
+    changed = workflow.advance(
+        workflow_actor, replace(refused, expected_version=3), telemetry=_telemetry()
+    )
+    assert isinstance(admitted, WorkReceipt)
+    assert isinstance(first, RecordProblem) and first.current_version == 1
+    assert isinstance(advanced, WorkflowReceipt)
+    assert replayed == first
+    assert isinstance(changed, RecordProblem) and changed.code == "idempotency-conflict"
+    return command_id
 
 
 def test_workflow_requires_exact_explicit_pin_and_replays_start(tenant: TenantFixture) -> None:

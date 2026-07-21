@@ -122,36 +122,8 @@ def reopen(
         "UPDATE tickets SET current_episode = %s WHERE tenant_id = %s AND ticket_id = %s",
         (next_episode, actor.tenant_id, command.ticket_id),
     )
-    sequence_row = cast(
-        dict[str, object],
-        connection.execute(
-            """
-            SELECT COALESCE(max(interval_sequence), 0) + 1 AS value
-            FROM assignment_intervals
-            WHERE tenant_id = %s AND ticket_id = %s
-              AND assignment_kind = 'ticket_custodian'
-            """,
-            (actor.tenant_id, command.ticket_id),
-        ).fetchone(),
-    )
-    connection.execute(
-        """
-        INSERT INTO assignment_intervals (
-            ticket_id, tenant_id, interval_sequence, assignment_kind, principal_id,
-            assigned_at, released_at, changed_by, reason, client_command_id, episode_number
-        ) VALUES (%s, %s, %s, 'ticket_custodian', %s, %s, NULL, %s, %s, %s, %s)
-        """,
-        (
-            command.ticket_id,
-            actor.tenant_id,
-            sequence_row["value"],
-            custodian_id,
-            now,
-            actor.principal_id,
-            f"reopen carry-forward: {command.reason}",
-            command.client_command_id,
-            next_episode,
-        ),
+    _reopen_custody(
+        connection, actor, command, custodian_id=custodian_id, episode=next_episode, now=now
     )
     _lifecycle_fact(connection, actor, command, lifecycle_id, next_episode, "reopened", now)
     sequence_row = cast(
@@ -185,6 +157,48 @@ def reopen(
         ),
     )
     return {"episode_number": next_episode, "priority": priority, "reason": command.reason}
+
+
+def _reopen_custody(
+    connection: psycopg.Connection[dict[str, object]],
+    actor: Actor,
+    command: Reopen,
+    *,
+    custodian_id: UUID,
+    episode: int,
+    now: datetime,
+) -> None:
+    sequence_row = cast(
+        dict[str, object],
+        connection.execute(
+            """
+            SELECT COALESCE(max(interval_sequence), 0) + 1 AS value
+            FROM assignment_intervals
+            WHERE tenant_id = %s AND ticket_id = %s
+              AND assignment_kind = 'ticket_custodian'
+            """,
+            (actor.tenant_id, command.ticket_id),
+        ).fetchone(),
+    )
+    connection.execute(
+        """
+        INSERT INTO assignment_intervals (
+            ticket_id, tenant_id, interval_sequence, assignment_kind, principal_id,
+            assigned_at, released_at, changed_by, reason, client_command_id, episode_number
+        ) VALUES (%s, %s, %s, 'ticket_custodian', %s, %s, NULL, %s, %s, %s, %s)
+        """,
+        (
+            command.ticket_id,
+            actor.tenant_id,
+            sequence_row["value"],
+            custodian_id,
+            now,
+            actor.principal_id,
+            f"reopen carry-forward: {command.reason}",
+            command.client_command_id,
+            episode,
+        ),
+    )
 
 
 def _admission_fact(
