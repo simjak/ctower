@@ -21,14 +21,22 @@ def test_openapi_exposes_exact_walking_slice_operations_and_cli_mappings() -> No
 
     assert document["openapi"] == "3.1.0"
     assert set(operations) == {
+        "addTicketRelation",
+        "applyTicketIntent",
         "bootstrapFirstTenant",
+        "changeTicketAssignment",
+        "changeTicketPriority",
         "createTicket",
         "freezeProofCriteria",
+        "getBoard",
         "getTicket",
         "getTicketTimeline",
+        "listTicketAssignments",
+        "listTicketAuditEvents",
         "recordProofEvidence",
         "recordProofVerdict",
         "resolveCloseWorkflow",
+        "startTicketWorkflow",
         "transferTicketCustody",
         "transitionWorkflow",
     }
@@ -39,6 +47,9 @@ def test_openapi_exposes_exact_walking_slice_operations_and_cli_mappings() -> No
         "getTicketTimeline": "ticket timeline",
         "transferTicketCustody": "ticket assign",
     }
+    assert all(set(path) <= {"get", "post"} for path in paths.values())
+    assert set(paths["/v1/board"]) == {"get"}
+    assert all("status" not in path.casefold() for path in paths)
 
 
 def test_problem_vocabulary_and_boundary_objects_are_strict() -> None:
@@ -72,9 +83,23 @@ def test_problem_vocabulary_and_boundary_objects_are_strict() -> None:
         "unauthorized",
         "validation-error",
         "version-conflict",
-        "workflow-initial-stage-required",
+        "work-assignment-kind-refused",
+        "work-assignment-target-ineligible",
+        "work-assignment-unchanged",
+        "work-priority-unchanged",
+        "work-blocker-already-resolved",
+        "work-blocker-id-conflict",
+        "work-blocker-owner-ineligible",
+        "work-blocker-unknown",
+        "work-intent-unmet",
+        "work-relation-cycle",
+        "work-relation-exists",
+        "work-reopen-unmet",
+        "workflow-already-started",
+        "workflow-pin-mismatch",
         "workflow-not-terminal",
         "workflow-predicate-unsatisfied",
+        "workflow-run-not-started",
         "workflow-state-conflict",
         "workflow-terminal",
         "workflow-transition-not-declared",

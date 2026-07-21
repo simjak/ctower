@@ -11,6 +11,8 @@ from datetime import UTC, datetime
 from enum import StrEnum
 from uuid import UUID
 
+from ctower_kernel.record.work_events import WorkChangedPayload
+
 __all__ = [
     "BootstrapCreatedPayload",
     "CustodyTransferredPayload",
@@ -20,6 +22,7 @@ __all__ = [
     "ProofChangedPayload",
     "TicketCreatedPayload",
     "TicketEventPayload",
+    "WorkChangedPayload",
     "WorkflowChangedPayload",
     "canonical_event_bytes",
     "event_digest",
@@ -33,6 +36,7 @@ class EventKind(StrEnum):
     CUSTODY_TRANSFERRED = "ticket.custody_transferred"
     PROOF_CHANGED = "proof.changed"
     WORKFLOW_CHANGED = "workflow.changed"
+    WORK_CHANGED = "work.changed"
 
 
 class EventOrigin(StrEnum):
@@ -169,7 +173,7 @@ class WorkflowChangedPayload:
 
     def __post_init__(self) -> None:
         _require_uuid_fields(self, ("ticket_id",))
-        if self.operation not in {"transition", "resolve_close"}:
+        if self.operation not in {"start", "transition", "resolve_close"}:
             raise ValueError("workflow operation is outside the authored event contract")
         if self.workflow_version < 1:
             raise ValueError("workflow version must be positive")
@@ -197,6 +201,7 @@ type EventPayload = (
     | CustodyTransferredPayload
     | ProofChangedPayload
     | WorkflowChangedPayload
+    | WorkChangedPayload
 )
 type TicketEventPayload = TicketCreatedPayload | CustodyTransferredPayload
 
@@ -291,6 +296,7 @@ _EVENT_VARIANTS: dict[EventKind, tuple[type[object], EventOrigin]] = {
     EventKind.CUSTODY_TRANSFERRED: (CustodyTransferredPayload, EventOrigin.API),
     EventKind.PROOF_CHANGED: (ProofChangedPayload, EventOrigin.API),
     EventKind.WORKFLOW_CHANGED: (WorkflowChangedPayload, EventOrigin.API),
+    EventKind.WORK_CHANGED: (WorkChangedPayload, EventOrigin.API),
 }
 
 

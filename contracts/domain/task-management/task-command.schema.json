@@ -1,0 +1,151 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://ctower.dev/contracts/domain/task-management/task-command.schema.json",
+  "title": "TaskCommand",
+  "oneOf": [
+    {"$ref": "#/$defs/changePriority"},
+    {"$ref": "#/$defs/changeAssignment"},
+    {"$ref": "#/$defs/admit"},
+    {"$ref": "#/$defs/defer"},
+    {"$ref": "#/$defs/block"},
+    {"$ref": "#/$defs/unblock"},
+    {"$ref": "#/$defs/reopen"},
+    {"$ref": "#/$defs/addRelation"}
+  ],
+  "$defs": {
+    "commandId": {"type": "string", "format": "uuid"},
+    "version": {"type": "integer", "minimum": 1},
+    "reason": {"type": "string", "minLength": 1, "maxLength": 500},
+    "priority": {"type": "string", "enum": ["P0", "P1", "P2"]},
+    "assignmentKind": {
+      "type": "string",
+      "enum": [
+        "ticket_custodian", "current_assignee", "stage_owner",
+        "reviewer_assignment", "runner_lease_owner"
+      ]
+    },
+    "mutableAssignmentKind": {
+      "type": "string",
+      "enum": ["current_assignee", "stage_owner", "reviewer_assignment"]
+    },
+    "changePriority": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["kind", "client_command_id", "expected_version", "priority", "reason"],
+      "properties": {
+        "kind": {"const": "change_priority"},
+        "client_command_id": {"$ref": "#/$defs/commandId"},
+        "expected_version": {"$ref": "#/$defs/version"},
+        "priority": {"$ref": "#/$defs/priority"},
+        "reason": {"$ref": "#/$defs/reason"},
+        "urgent_evidence_ref": {"type": ["string", "null"], "minLength": 1, "maxLength": 256}
+      }
+    },
+    "changeAssignment": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["kind", "assignment_kind", "client_command_id", "expected_version", "reason", "to_principal_id"],
+      "properties": {
+        "kind": {"const": "change_assignment"},
+        "assignment_kind": {"$ref": "#/$defs/mutableAssignmentKind"},
+        "client_command_id": {"$ref": "#/$defs/commandId"},
+        "expected_version": {"$ref": "#/$defs/version"},
+        "reason": {"$ref": "#/$defs/reason"},
+        "scope_ref": {"type": ["string", "null"], "minLength": 1, "maxLength": 256},
+        "to_principal_id": {"type": "string", "format": "uuid"}
+      }
+    },
+    "admit": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["kind", "client_command_id", "expected_version", "reason"],
+      "properties": {
+        "kind": {"const": "admit"},
+        "client_command_id": {"$ref": "#/$defs/commandId"},
+        "expected_version": {"$ref": "#/$defs/version"},
+        "reason": {"$ref": "#/$defs/reason"}
+      }
+    },
+    "defer": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["kind", "client_command_id", "expected_version", "reason", "review_after"],
+      "properties": {
+        "kind": {"const": "defer"},
+        "client_command_id": {"$ref": "#/$defs/commandId"},
+        "expected_version": {"$ref": "#/$defs/version"},
+        "reason": {"$ref": "#/$defs/reason"},
+        "review_after": {"type": "string", "format": "date-time"}
+      }
+    },
+    "block": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "kind", "affected_stage", "blocker_id", "blocker_kind", "board_impact",
+        "client_command_id", "dependency_ref", "expected_version", "next_check_at",
+        "owner_principal_id", "reason", "reason_class", "resolution_condition", "source_ref"
+      ],
+      "properties": {
+        "kind": {"const": "block"},
+        "affected_stage": {"type": ["string", "null"], "pattern": "^[a-z][a-z0-9._-]*$"},
+        "blocker_id": {"type": "string", "format": "uuid"},
+        "blocker_kind": {
+          "type": "string",
+          "enum": ["dependency", "operator_action", "policy", "resource", "technical"]
+        },
+        "board_impact": {"type": "boolean"},
+        "client_command_id": {"$ref": "#/$defs/commandId"},
+        "dependency_ref": {"type": ["string", "null"], "maxLength": 256},
+        "expected_version": {"$ref": "#/$defs/version"},
+        "next_check_at": {"type": ["string", "null"], "format": "date-time"},
+        "owner_principal_id": {"type": "string", "format": "uuid"},
+        "reason": {"$ref": "#/$defs/reason"},
+        "reason_class": {"type": "string", "minLength": 1, "maxLength": 64},
+        "resolution_condition": {"type": "string", "minLength": 1, "maxLength": 500},
+        "source_ref": {"type": "string", "minLength": 1, "maxLength": 256}
+      }
+    },
+    "unblock": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["kind", "blocker_id", "client_command_id", "expected_version", "reason", "resolution_evidence_ref"],
+      "properties": {
+        "kind": {"const": "unblock"},
+        "blocker_id": {"type": "string", "format": "uuid"},
+        "client_command_id": {"$ref": "#/$defs/commandId"},
+        "expected_version": {"$ref": "#/$defs/version"},
+        "reason": {"$ref": "#/$defs/reason"},
+        "resolution_evidence_ref": {"type": "string", "minLength": 1, "maxLength": 256}
+      }
+    },
+    "reopen": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["kind", "client_command_id", "expected_version", "priority_policy", "reason"],
+      "properties": {
+        "kind": {"const": "reopen"},
+        "client_command_id": {"$ref": "#/$defs/commandId"},
+        "expected_version": {"$ref": "#/$defs/version"},
+        "priority_policy": {"const": "carry_forward"},
+        "reason": {"$ref": "#/$defs/reason"}
+      }
+    },
+    "addRelation": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["kind", "client_command_id", "expected_version", "reason", "relation_kind", "target_ticket_id"],
+      "properties": {
+        "kind": {"const": "add_relation"},
+        "client_command_id": {"$ref": "#/$defs/commandId"},
+        "expected_version": {"$ref": "#/$defs/version"},
+        "reason": {"$ref": "#/$defs/reason"},
+        "relation_kind": {
+          "type": "string",
+          "enum": ["parent_of", "depends_on", "blocks", "duplicates", "relates_to", "caused_by"]
+        },
+        "target_ticket_id": {"type": "string", "format": "uuid"}
+      }
+    }
+  }
+}

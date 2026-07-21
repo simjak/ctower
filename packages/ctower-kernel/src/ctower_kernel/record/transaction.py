@@ -10,7 +10,7 @@ from psycopg.types.json import Jsonb
 
 from ctower_kernel.record import RecordProblem
 from ctower_kernel.record._commands import reserve_command
-from ctower_kernel.record._event_store import append_event, enqueue_event
+from ctower_kernel.record._event_store import EventSubject, append_event, enqueue_event
 from ctower_kernel.record.events import EventEnvelope
 from ctower_kernel.telemetry import TelemetryContext
 
@@ -42,10 +42,11 @@ class RecordTransaction:
         status_code: int,
         telemetry: TelemetryContext,
         now: datetime,
+        subjects: tuple[EventSubject, ...] = (),
     ) -> None:
         """Append one event, exact result, and outbox row in the caller's transaction."""
 
-        append_event(self._connection, event)
+        append_event(self._connection, event, subjects=subjects)
         self._connection.execute(
             """
             INSERT INTO command_results (
@@ -65,3 +66,34 @@ class RecordTransaction:
             ),
         )
         enqueue_event(self._connection, outbox_id, event, telemetry, now)
+
+    def refuse(
+        self,
+        tenant_id: UUID,
+        principal_id: UUID,
+        command_id: UUID,
+        request_digest: bytes,
+        problem: RecordProblem,
+        *,
+        now: datetime,
+    ) -> None:
+        """Persist one exact typed refusal without an event or authoritative mutation."""
+
+        self._connection.execute(
+            """
+            INSERT INTO command_results (
+                tenant_id, principal_id, client_command_id, request_sha256, status_code,
+                response_body, event_ids, created_at
+            ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s)
+            """,
+            (
+                tenant_id,
+                principal_id,
+                command_id,
+                request_digest,
+                problem.status,
+                Jsonb(problem.response_payload()),
+                [],
+                now,
+            ),
+        )

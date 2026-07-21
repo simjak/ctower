@@ -11,7 +11,7 @@ from uuid import UUID, uuid4
 import psycopg
 import pytest
 from psycopg.rows import dict_row
-from support.server import running_api
+from support.server import running_api, start_and_admit
 from support.tenant_fixture import TenantFixture
 
 from ctower_client import (
@@ -65,6 +65,7 @@ from ctower_kernel.workflow import (
     WorkflowGraph,
     WorkflowMutation,
     WorkflowReceipt,
+    WorkflowStart,
 )
 from ctower_kernel.workflow.postgres import PostgresWorkflow
 
@@ -74,10 +75,22 @@ CANDIDATE_DIGEST = "sha256:" + "a" * 64
 EARLIER = datetime(2026, 7, 20, 12, 0, tzinfo=UTC)
 LATER = datetime(2026, 7, 20, 13, 0, tzinfo=UTC)
 ROOT = Path(__file__).parents[3]
-VERIFY_VERSION = 2
-CLOSE_VERSION = 3
+VERIFY_VERSION = 3
+CLOSE_VERSION = 4
+FIRST_TRANSITION_VERSION = 2
 FIRST_VERDICT_SEQUENCE = 3
 SECOND_VERDICT_SEQUENCE = 4
+
+
+class _AlwaysReady:
+    def unmet_facts(
+        self,
+        connection: psycopg.Connection[dict[str, object]],
+        tenant_id: UUID,
+        ticket_id: UUID,
+    ) -> tuple[str, ...]:
+        del connection, tenant_id, ticket_id
+        return ()
 
 
 @pytest.mark.parametrize(
@@ -253,6 +266,7 @@ def test_fresh_run_refuses_a_later_declared_edge_without_mutation(
     with running_api(tenant.database.runtime_dsn) as base_url:
         with CtowerClient(base_url, credential=tenant.commander_credential) as commander:
             ticket_id = _create_ticket(commander, tenant)
+            start_and_admit(commander, ticket_id)
             _record_current_evidence(commander, ticket_id)
         with CtowerClient(base_url, credential=tenant.operator_credential) as operator:
             _record_passing_verdict(operator, ticket_id)
@@ -261,21 +275,21 @@ def test_fresh_run_refuses_a_later_declared_edge_without_mutation(
                 commander.transition_workflow(
                     ticket_id,
                     WorkflowTransitionRequest(
-                        expected_version=0,
+                        expected_version=1,
                         workflow_ref=WORKFLOW_REF,
                         source_stage="verify",
                         destination_stage="close",
                     ),
                     command_id=uuid4(),
                 )
-            assert refused.value.problem.code == "workflow-initial-stage-required"
-            assert cast(HttpProblem, refused.value.problem).current_version == 0
-            assert _workflow_row_counts(tenant.database.admin_dsn, ticket_id) == (0, 0)
+            assert refused.value.problem.code == "workflow-state-conflict"
+            assert cast(HttpProblem, refused.value.problem).current_version == 1
+            assert _workflow_row_counts(tenant.database.admin_dsn, ticket_id) == (1, 0)
 
             first_movement = commander.transition_workflow(
                 ticket_id,
                 WorkflowTransitionRequest(
-                    expected_version=0,
+                    expected_version=1,
                     workflow_ref=WORKFLOW_REF,
                     source_stage="capture",
                     destination_stage="frame",
@@ -284,7 +298,7 @@ def test_fresh_run_refuses_a_later_declared_edge_without_mutation(
             )
 
     assert first_movement.stage == "frame"
-    assert first_movement.version == 1
+    assert first_movement.version == FIRST_TRANSITION_VERSION
 
 
 def _create_ticket(client: CtowerClient, tenant: TenantFixture) -> UUID:
@@ -363,19 +377,49 @@ def _prepare_verification_stage(
     assert not isinstance(ticket, RecordProblem)
     ticket_id = ticket.ticket.ticket_id
     proof_store = PostgresProof(tenant.database.runtime_dsn)
-    workflow_store = PostgresWorkflow(tenant.database.runtime_dsn, proof_gate=proof_store)
-    workflow = Workflow((_verdict_workflow_graph(),), writer=workflow_store)
+    workflow_store = PostgresWorkflow(
+        tenant.database.runtime_dsn,
+        proof_gate=proof_store,
+        readiness_gate=_AlwaysReady(),
+    )
+    graph = _verdict_workflow_graph()
+    workflow = Workflow(
+        (graph,),
+        writer=workflow_store,
+        policy_digests={
+            "fixture.execution@1": "sha256:" + "1" * 64,
+            "fixture.gates@1": "sha256:" + "2" * 64,
+            "fixture.evidence@1": "sha256:" + "3" * 64,
+        },
+    )
     actor = WorkflowActor(tenant.commander_id, tenant.tenant_id)
-    first = workflow.advance(
+    started = workflow.start(
         actor,
-        WorkflowMutation(uuid4(), ticket_id, "fixture.verdict-order@1", 0, "capture", "frame"),
+        WorkflowStart(
+            uuid4(),
+            ticket_id,
+            graph.reference,
+            graph.digest,
+            "fixture.execution@1",
+            "sha256:" + "1" * 64,
+            "fixture.gates@1",
+            "sha256:" + "2" * 64,
+            "fixture.evidence@1",
+            "sha256:" + "3" * 64,
+        ),
         telemetry=_telemetry(),
     )
+    first = workflow.advance(
+        actor,
+        WorkflowMutation(uuid4(), ticket_id, "fixture.verdict-order@1", 1, "capture", "frame"),
+        telemetry=_telemetry(),
+    )
+    assert isinstance(started, WorkflowReceipt)
     assert isinstance(first, WorkflowReceipt)
     _freeze_and_record_evidence(proof_store, tenant, ticket_id)
     verification = workflow.advance(
         actor,
-        WorkflowMutation(uuid4(), ticket_id, "fixture.verdict-order@1", 1, "frame", "verify"),
+        WorkflowMutation(uuid4(), ticket_id, "fixture.verdict-order@1", 2, "frame", "verify"),
         telemetry=_telemetry(),
     )
     assert isinstance(verification, WorkflowReceipt)
@@ -398,6 +442,8 @@ def _verdict_workflow_graph() -> WorkflowGraph:
             Transition("frame", "verify", "criteria.frozen@1"),
             Transition("verify", "close", "proof.current@1"),
         ),
+        execution_policy_ref="fixture.execution@1",
+        gate_policy_ref="fixture.gates@1",
     )
 
 

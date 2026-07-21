@@ -24,3 +24,6 @@ components:
   - kind: gate_policy
     key: engineering.software-factory.gates
     source: packs/policies/gates/software-factory-v1.yaml
+  - kind: cadence_policy
+    key: ctower.i1-priority-aging
+    source: packs/policies/scheduling/i1-priority-aging-v1.yaml

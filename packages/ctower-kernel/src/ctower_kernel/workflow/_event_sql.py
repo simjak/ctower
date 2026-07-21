@@ -61,6 +61,7 @@ def append_change(
             ticket_id=str(receipt.ticket_id),
         ),
         now=now,
+        subjects=(("ticket", receipt.ticket_id), ("workflow", receipt.workflow_run_id)),
     )
     return committed
 

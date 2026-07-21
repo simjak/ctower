@@ -106,6 +106,12 @@ def _references(value: object) -> set[str]:
 
 
 def _render_schema(name: str, schema: Mapping[str, object]) -> str:
+    one_of = schema.get("oneOf")
+    if isinstance(one_of, list):
+        variants = " | ".join(
+            _type_expression(_mapping(item, f"schema {name}.oneOf item")) for item in one_of
+        )
+        return f"type {name} = {variants}"
     if schema.get("type") == "string" and isinstance(schema.get("enum"), list):
         values = cast(list[object], schema["enum"])
         members = "\n".join(

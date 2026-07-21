@@ -35,6 +35,7 @@
         "bootstrap.first_tenant_created",
         "ticket.created",
         "ticket.custody_transferred",
+        "work.changed",
         "proof.changed",
         "workflow.changed"
       ]
@@ -55,6 +56,14 @@
   "allOf": [
     {
       "oneOf": [
+        {
+          "properties": {
+            "kind": {"const": "work.changed"},
+            "origin": {"const": "api"},
+            "stream_id": {"pattern": "^ticket:[0-9a-f-]{36}$"},
+            "payload": {"$ref": "#/$defs/workChanged"}
+          }
+        },
         {
           "properties": {
             "kind": {"const": "bootstrap.first_tenant_created"},
@@ -190,7 +199,7 @@
             {"const": ["resolved", "closed"]}
           ]
         },
-        "operation": {"enum": ["transition", "resolve_close"]},
+        "operation": {"enum": ["start", "transition", "resolve_close"]},
         "stage": {"type": "string", "pattern": "^[a-z][a-z0-9._-]*$"},
         "ticket_id": {"type": "string", "format": "uuid"},
         "workflow_ref": {
@@ -198,6 +207,160 @@
           "pattern": "^[a-z][a-z0-9._-]*@[1-9][0-9]*$"
         },
         "workflow_version": {"type": "integer", "minimum": 1}
+      }
+    },
+    "workChanged": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["data", "operation", "ticket_id", "work_version"],
+      "properties": {
+        "data": {"type": "object"},
+        "operation": {
+          "enum": [
+            "priority_changed", "assignment_changed", "admitted", "deferred",
+            "blocker_opened", "blocker_resolved", "reopened", "relation_added"
+          ]
+        },
+        "ticket_id": {"type": "string", "format": "uuid"},
+        "work_version": {"type": "integer", "minimum": 2}
+      },
+      "allOf": [
+        {
+          "oneOf": [
+            {
+              "properties": {
+                "operation": {"const": "priority_changed"},
+                "data": {"$ref": "#/$defs/priorityChanged"}
+              }
+            },
+            {
+              "properties": {
+                "operation": {"const": "assignment_changed"},
+                "data": {"$ref": "#/$defs/assignmentChanged"}
+              }
+            },
+            {
+              "properties": {
+                "operation": {"const": "admitted"},
+                "data": {"$ref": "#/$defs/admissionChanged"}
+              }
+            },
+            {
+              "properties": {
+                "operation": {"const": "deferred"},
+                "data": {"$ref": "#/$defs/deferred"}
+              }
+            },
+            {
+              "properties": {
+                "operation": {"const": "blocker_opened"},
+                "data": {"$ref": "#/$defs/blockerOpened"}
+              }
+            },
+            {
+              "properties": {
+                "operation": {"const": "blocker_resolved"},
+                "data": {"$ref": "#/$defs/blockerResolved"}
+              }
+            },
+            {
+              "properties": {
+                "operation": {"const": "reopened"},
+                "data": {"$ref": "#/$defs/reopened"}
+              }
+            },
+            {
+              "properties": {
+                "operation": {"const": "relation_added"},
+                "data": {"$ref": "#/$defs/relationAdded"}
+              }
+            }
+          ]
+        }
+      ]
+    },
+    "priorityChanged": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["authority", "from_priority", "policy_ref", "reason", "to_priority", "urgent_evidence_ref"],
+      "properties": {
+        "authority": {"enum": ["commander", "operator"]},
+        "from_priority": {"enum": ["P0", "P1", "P2"]},
+        "policy_ref": {"const": "ctower.priority-authority@1"},
+        "reason": {"type": "string", "minLength": 1, "maxLength": 500},
+        "to_priority": {"enum": ["P0", "P1", "P2"]},
+        "urgent_evidence_ref": {"type": ["string", "null"], "minLength": 1, "maxLength": 256}
+      }
+    },
+    "assignmentChanged": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["assignment_kind", "from_principal_id", "reason", "scope_ref", "to_principal_id"],
+      "properties": {
+        "assignment_kind": {"enum": ["current_assignee", "stage_owner", "reviewer_assignment"]},
+        "from_principal_id": {"type": ["string", "null"], "format": "uuid"},
+        "reason": {"type": "string", "minLength": 1, "maxLength": 500},
+        "scope_ref": {"type": ["string", "null"], "minLength": 1, "maxLength": 256},
+        "to_principal_id": {"type": "string", "format": "uuid"}
+      }
+    },
+    "admissionChanged": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["episode_number", "reason"],
+      "properties": {
+        "episode_number": {"type": "integer", "minimum": 1},
+        "reason": {"type": "string", "minLength": 1, "maxLength": 500}
+      }
+    },
+    "deferred": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["episode_number", "reason", "review_after"],
+      "properties": {
+        "episode_number": {"type": "integer", "minimum": 1},
+        "reason": {"type": "string", "minLength": 1, "maxLength": 500},
+        "review_after": {"type": "string", "format": "date-time"}
+      }
+    },
+    "blockerOpened": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["blocker_id", "board_impact", "reason"],
+      "properties": {
+        "blocker_id": {"type": "string", "format": "uuid"},
+        "board_impact": {"type": "boolean"},
+        "reason": {"type": "string", "minLength": 1, "maxLength": 500}
+      }
+    },
+    "blockerResolved": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["blocker_id", "reason", "resolution_evidence_ref"],
+      "properties": {
+        "blocker_id": {"type": "string", "format": "uuid"},
+        "reason": {"type": "string", "minLength": 1, "maxLength": 500},
+        "resolution_evidence_ref": {"type": "string", "minLength": 1, "maxLength": 256}
+      }
+    },
+    "reopened": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["episode_number", "priority", "reason"],
+      "properties": {
+        "episode_number": {"type": "integer", "minimum": 2},
+        "priority": {"enum": ["P0", "P1", "P2"]},
+        "reason": {"type": "string", "minLength": 1, "maxLength": 500}
+      }
+    },
+    "relationAdded": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["relation_kind", "reason", "target_ticket_id"],
+      "properties": {
+        "relation_kind": {"enum": ["parent_of", "depends_on", "blocks", "duplicates", "relates_to", "caused_by"]},
+        "reason": {"type": "string", "minLength": 1, "maxLength": 500},
+        "target_ticket_id": {"type": "string", "format": "uuid"}
       }
     }
   }

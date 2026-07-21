@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import ast
 import json
+from dataclasses import replace
 from pathlib import Path
 
 import pytest
@@ -16,6 +17,7 @@ from ctower_kernel.workflow import (
     WorkflowCommand,
     WorkflowContextSnapshot,
     WorkflowGraph,
+    WorkflowStart,
 )
 
 ROOT = Path(__file__).parents[3]
@@ -41,7 +43,12 @@ def _graph(*, key: str = "fixture.generic", revision: int = 1) -> WorkflowGraph:
 
 def test_versioned_graph_allows_only_declared_edges_and_derives_activity() -> None:
     graph = _graph()
-    workflow = Workflow((graph,))
+    policy_digests = {
+        "fixture.execution@1": "sha256:" + "1" * 64,
+        "fixture.gates@1": "sha256:" + "2" * 64,
+        "fixture.evidence@1": "sha256:" + "3" * 64,
+    }
+    workflow = Workflow((graph,), policy_digests=policy_digests)
 
     accepted = workflow.evaluate(
         WorkflowContextSnapshot(
@@ -97,7 +104,7 @@ def test_version_and_predicate_mismatches_fail_closed() -> None:
     assert missing_predicate.reason == "predicate-unsatisfied"
 
 
-def test_fresh_evaluation_requires_the_authored_initial_stage() -> None:
+def test_transition_refuses_to_invent_an_absent_run() -> None:
     workflow = Workflow((_graph(),))
 
     skipped = workflow.evaluate(
@@ -120,9 +127,55 @@ def test_fresh_evaluation_requires_the_authored_initial_stage() -> None:
     )
 
     assert skipped.accepted is False
-    assert skipped.reason == "initial-stage-required"
-    assert initial.accepted is True
-    assert initial.initial_stage == "alpha"
+    assert skipped.reason == "run-not-started"
+    assert initial.accepted is False
+    assert initial.reason == "run-not-started"
+
+
+def test_start_pin_is_exact_and_uses_authored_initial_stage() -> None:
+    graph = WorkflowGraph(
+        key="fixture.generic",
+        revision=1,
+        initial_stage="alpha",
+        stages=(Stage("alpha", ActivityClass.WORK),),
+        transitions=(),
+        execution_policy_ref="fixture.execution@1",
+        gate_policy_ref="fixture.gates@1",
+    )
+    workflow = Workflow(
+        (graph,),
+        policy_digests={
+            "fixture.execution@1": "sha256:" + "1" * 64,
+            "fixture.gates@1": "sha256:" + "2" * 64,
+            "fixture.evidence@1": "sha256:" + "3" * 64,
+        },
+    )
+    start = WorkflowStart(
+        client_command_id=__import__("uuid").uuid4(),
+        ticket_id=__import__("uuid").uuid4(),
+        workflow_ref=graph.reference,
+        workflow_digest=graph.digest,
+        execution_policy_ref="fixture.execution@1",
+        execution_policy_digest="sha256:" + "1" * 64,
+        gate_policy_ref="fixture.gates@1",
+        gate_policy_digest="sha256:" + "2" * 64,
+        evidence_policy_ref="fixture.evidence@1",
+        evidence_policy_digest="sha256:" + "3" * 64,
+    )
+
+    accepted = workflow.validate_start(start)
+    changed_digest = workflow.validate_start(replace(start, workflow_digest="sha256:" + "f" * 64))
+    changed_policy = workflow.validate_start(
+        replace(start, evidence_policy_digest="sha256:" + "f" * 64)
+    )
+
+    assert accepted.accepted is True
+    assert accepted.initial_stage == "alpha"
+    assert accepted.activity_class is ActivityClass.WORK
+    assert changed_digest.accepted is False
+    assert changed_digest.reason == "workflow-pin-mismatch"
+    assert changed_policy.accepted is False
+    assert changed_policy.reason == "workflow-pin-mismatch"
 
 
 def test_authored_fixture_loads_and_uses_pinned_graph_data() -> None:

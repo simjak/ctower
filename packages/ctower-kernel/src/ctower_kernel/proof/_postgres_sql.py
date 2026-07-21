@@ -47,28 +47,27 @@ def mutate_proof(
     now: datetime,
     telemetry: TelemetryContext,
 ) -> ProofReceipt | RecordProblem:
-    """Reserve the command key before reading and append one Proof decision."""
-
     with psycopg.connect(dsn, row_factory=dict_row) as connection:
         connection.execute("SET ROLE ctower_svc")
         transaction = RecordTransaction(connection)
-        existing = transaction.reserve(
-            actor.principal_id, mutation.client_command_id, request_digest
+        reserved = _reserve_proof_outcome(
+            transaction, actor, mutation, request_digest=request_digest
         )
-        if isinstance(existing, RecordProblem):
-            return existing
-        if existing is not None:
-            return _receipt_from_payload(existing)
+        if reserved is not None:
+            return reserved
         if not _lock_ticket(connection, actor, mutation.ticket_id):
-            return _problem(mutation, "tenant-scope-denied", 404, "Ticket not found")
+            problem = _problem(mutation, "tenant-scope-denied", 404, "Ticket not found")
+            return _refuse(transaction, actor, mutation, request_digest, problem, now)
         bundle = _lock_bundle(connection, actor, mutation.ticket_id)
         current_version = int(cast(int, bundle["version"])) if bundle is not None else 0
         if mutation.expected_version != current_version:
-            return _version_problem(mutation, current_version)
+            problem = _version_problem(mutation, current_version)
+            return _refuse(transaction, actor, mutation, request_digest, problem, now)
         snapshot = load_snapshot(connection, bundle, actor.tenant_id)
         decision = evaluator.decide(actor, snapshot, mutation.command)
         if not decision.accepted:
-            return _decision_problem(mutation, decision, current_version)
+            problem = _decision_problem(mutation, decision, current_version)
+            return _refuse(transaction, actor, mutation, request_digest, problem, now)
         return _commit_decision(
             connection,
             evaluator,
@@ -81,6 +80,38 @@ def mutate_proof(
             now=now,
             telemetry=telemetry,
         )
+
+
+def _reserve_proof_outcome(
+    transaction: RecordTransaction,
+    actor: ProofActor,
+    mutation: ProofMutation,
+    *,
+    request_digest: bytes,
+) -> ProofReceipt | RecordProblem | None:
+    existing = transaction.reserve(actor.principal_id, mutation.client_command_id, request_digest)
+    if isinstance(existing, RecordProblem):
+        return existing
+    return _receipt_from_payload(existing) if existing is not None else None
+
+
+def _refuse(
+    transaction: RecordTransaction,
+    actor: ProofActor,
+    mutation: ProofMutation,
+    request_digest: bytes,
+    problem: RecordProblem,
+    now: datetime,
+) -> RecordProblem:
+    transaction.refuse(
+        actor.tenant_id,
+        actor.principal_id,
+        mutation.client_command_id,
+        request_digest,
+        problem,
+        now=now,
+    )
+    return problem
 
 
 def _commit_decision(
@@ -387,6 +418,7 @@ def _append_change(
             ticket_id=str(mutation.ticket_id),
         ),
         now=now,
+        subjects=(("ticket", receipt.ticket_id), ("proof", receipt.proof_id)),
     )
     return committed
 

@@ -25,6 +25,12 @@ def test_migration_manifest_is_ordered_and_checksum_exact() -> None:
         "0004_proof_workflow.sql",
         "0005_proof_verdict_sequence.sql",
         "0006_narrow_head_update_privileges.sql",
+        "0007_task_management_facts.sql",
+        "0008_board_projection.sql",
+        "0009_transactional_record_positions.sql",
+        "0010_custody_episode_intervals.sql",
+        "0011_persisted_command_refusals.sql",
+        "0012_projection_runtime_role.sql",
     ]
     for entry in entries:
         digest = hashlib.sha256((MIGRATIONS / entry["path"]).read_bytes()).hexdigest()
@@ -54,6 +60,22 @@ def test_verdict_sequence_migration_backfills_from_authoritative_events() -> Non
     assert "ALTER COLUMN proof_sequence SET NOT NULL" in migration
 
 
+def test_cp2_migrations_separate_authority_from_disposable_projection() -> None:
+    facts = (MIGRATIONS / "0007_task_management_facts.sql").read_text(encoding="utf-8")
+    projection = (MIGRATIONS / "0008_board_projection.sql").read_text(encoding="utf-8")
+
+    assert "CREATE TABLE admission_facts" in facts
+    assert "CREATE TABLE blocker_facts" in facts
+    assert "CREATE TABLE ticket_relations" in facts
+    assert "workflow_digest" in facts
+    assert "CREATE TABLE event_links" in projection
+    assert "record_position" in projection
+    assert "CREATE TABLE board_projection_rows" in projection
+    assert "GRANT INSERT, UPDATE, DELETE ON board_projection_rows" in projection
+    assert "TO ctower_projection" in projection
+    assert "GRANT INSERT, UPDATE, DELETE ON board_projection_rows TO ctower_svc" not in projection
+
+
 def test_runtime_and_migrator_use_distinct_one_way_login_roles() -> None:
     roles = (MIGRATIONS / "0001_roles.sql").read_text(encoding="utf-8")
 
@@ -63,6 +85,15 @@ def test_runtime_and_migrator_use_distinct_one_way_login_roles() -> None:
     assert "GRANT ctower_admin TO ctower_migrator" in roles
     assert "REVOKE ctower_admin FROM ctower_runtime" in roles
     assert "GRANT ctower_admin TO ctower_runtime" not in roles
+
+
+def test_projection_runtime_login_can_assume_only_projection_role() -> None:
+    role = (MIGRATIONS / "0012_projection_runtime_role.sql").read_text(encoding="utf-8")
+
+    assert "CREATE ROLE ctower_projection_runtime" in role
+    assert "LOGIN NOSUPERUSER NOCREATEDB NOCREATEROLE NOINHERIT" in role
+    assert "GRANT ctower_projection TO ctower_projection_runtime" in role
+    assert "REVOKE ctower_svc, ctower_admin FROM ctower_projection_runtime" in role
 
 
 def test_development_composition_uses_postgres_17_without_a_password_value() -> None:

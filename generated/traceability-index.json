@@ -19,7 +19,8 @@
     "AC-DUR-02": [
       "contracts/domain/events/event-envelope.schema.json",
       "contracts/http/openapi.yaml",
-      "packages/ctower-kernel/migrations/0002_ticket_slice.sql"
+      "packages/ctower-kernel/migrations/0002_ticket_slice.sql",
+      "packages/ctower-kernel/migrations/0011_persisted_command_refusals.sql"
     ],
     "AC-DUR-03": [
       "contracts/domain/events/canonical-vectors.json",
@@ -30,6 +31,8 @@
     ],
     "AC-DUR-06": [
       "packages/ctower-kernel/migrations/0005_proof_verdict_sequence.sql",
+      "packages/ctower-kernel/migrations/0009_transactional_record_positions.sql",
+      "packages/ctower-kernel/migrations/0011_persisted_command_refusals.sql",
       "packages/ctower-kernel/migrations/manifest.json"
     ],
     "AC-DUR-07": [
@@ -38,6 +41,7 @@
       "packages/ctower-kernel/migrations/0003_privileges.sql",
       "packages/ctower-kernel/migrations/0004_proof_workflow.sql",
       "packages/ctower-kernel/migrations/0006_narrow_head_update_privileges.sql",
+      "packages/ctower-kernel/migrations/0012_projection_runtime_role.sql",
       "packages/ctower-kernel/migrations/manifest.json"
     ],
     "AC-EVD-01": [
@@ -64,7 +68,8 @@
     ],
     "AC-PROD-04": [
       "contracts/domain/tickets/ticket-event.schema.json",
-      "packages/ctower-kernel/migrations/0002_ticket_slice.sql"
+      "packages/ctower-kernel/migrations/0002_ticket_slice.sql",
+      "packages/ctower-kernel/migrations/0010_custody_episode_intervals.sql"
     ],
     "AC-QUAL-01": [
       "contracts/compatibility/matrix-input.schema.json",
@@ -74,11 +79,41 @@
       "contracts/http/openapi.yaml"
     ],
     "AC-SEC-03": [
-      "packages/ctower-kernel/migrations/0006_narrow_head_update_privileges.sql"
+      "packages/ctower-kernel/migrations/0006_narrow_head_update_privileges.sql",
+      "packages/ctower-kernel/migrations/0012_projection_runtime_role.sql"
+    ],
+    "AC-TM-01": [
+      "contracts/domain/task-management/task-command.schema.json",
+      "contracts/http/openapi.yaml",
+      "packages/ctower-kernel/migrations/0007_task_management_facts.sql",
+      "packages/ctower-kernel/migrations/0010_custody_episode_intervals.sql"
     ],
     "AC-TM-02": [
+      "contracts/domain/task-management/board-view.schema.json",
+      "contracts/http/openapi.yaml",
       "contracts/workflow/workflow.schema.json",
+      "packages/ctower-kernel/migrations/0008_board_projection.sql",
+      "packages/ctower-kernel/migrations/0009_transactional_record_positions.sql",
       "packs/workflows/engineering.software-factory/v1.yaml"
+    ],
+    "AC-TM-03": [
+      "contracts/domain/task-management/task-command.schema.json",
+      "contracts/http/openapi.yaml",
+      "packages/ctower-kernel/migrations/0007_task_management_facts.sql"
+    ],
+    "AC-TM-04": [
+      "contracts/domain/task-management/task-command.schema.json",
+      "contracts/http/openapi.yaml",
+      "packages/ctower-kernel/migrations/0007_task_management_facts.sql"
+    ],
+    "AC-TM-05": [
+      "contracts/domain/task-management/board-view.schema.json",
+      "contracts/http/openapi.yaml",
+      "packages/ctower-kernel/migrations/0008_board_projection.sql"
+    ],
+    "AC-TM-06": [
+      "contracts/domain/task-management/scheduling-policy.schema.json",
+      "packs/policies/scheduling/i1-priority-aging-v1.yaml"
     ],
     "AC-WF-01": [
       "contracts/execution/execution-policy.schema.json",
@@ -120,7 +155,9 @@
       "packages/ctower-kernel/migrations/0001_roles.sql",
       "packages/ctower-kernel/migrations/0002_ticket_slice.sql",
       "packages/ctower-kernel/migrations/0003_privileges.sql",
-      "packages/ctower-kernel/migrations/0006_narrow_head_update_privileges.sql"
+      "packages/ctower-kernel/migrations/0006_narrow_head_update_privileges.sql",
+      "packages/ctower-kernel/migrations/0007_task_management_facts.sql",
+      "packages/ctower-kernel/migrations/0012_projection_runtime_role.sql"
     ],
     "INV-02": [
       "contracts/bootstrap/first-tenant-request.schema.json",
@@ -135,7 +172,9 @@
     "INV-04": [
       "contracts/domain/events/event-envelope.schema.json",
       "packages/ctower-kernel/migrations/0002_ticket_slice.sql",
-      "packages/ctower-kernel/migrations/0005_proof_verdict_sequence.sql"
+      "packages/ctower-kernel/migrations/0005_proof_verdict_sequence.sql",
+      "packages/ctower-kernel/migrations/0009_transactional_record_positions.sql",
+      "packages/ctower-kernel/migrations/0011_persisted_command_refusals.sql"
     ],
     "INV-05": [
       "contracts/domain/events/canonical-vectors.json",
@@ -146,7 +185,8 @@
     ],
     "INV-09": [
       "contracts/domain/tickets/ticket-event.schema.json",
-      "packages/ctower-kernel/migrations/0002_ticket_slice.sql"
+      "packages/ctower-kernel/migrations/0002_ticket_slice.sql",
+      "packages/ctower-kernel/migrations/0010_custody_episode_intervals.sql"
     ],
     "INV-12": [
       "contracts/execution/execution-policy.schema.json",
@@ -191,6 +231,11 @@
     "INV-28": [
       "contracts/observability/telemetry-context.schema.json"
     ],
+    "INV-34": [
+      "contracts/domain/task-management/board-view.schema.json",
+      "packages/ctower-kernel/migrations/0008_board_projection.sql",
+      "packages/ctower-kernel/migrations/0009_transactional_record_positions.sql"
+    ],
     "INV-43": [
       "contracts/workflow/review-plan.schema.json",
       "packs/policies/execution/software-factory-v1.yaml",
@@ -213,7 +258,14 @@
       "contracts/company/company-bundle.schema.json"
     ],
     "INV-57": [
+      "contracts/domain/task-management/board-view.schema.json",
+      "contracts/domain/task-management/scheduling-policy.schema.json",
+      "contracts/domain/task-management/task-command.schema.json",
+      "contracts/http/openapi.yaml",
       "contracts/workflow/workflow.schema.json",
+      "packages/ctower-kernel/migrations/0007_task_management_facts.sql",
+      "packages/ctower-kernel/migrations/0008_board_projection.sql",
+      "packs/policies/scheduling/i1-priority-aging-v1.yaml",
       "packs/workflows/engineering.software-factory/v1.yaml"
     ],
     "SPEC#canonical-event-and-command-contract": [
@@ -229,7 +281,9 @@
       "contracts/company/company-bundle.schema.json"
     ],
     "SPEC#consistency-concurrency-and-deduplication": [
-      "packages/ctower-kernel/migrations/0005_proof_verdict_sequence.sql"
+      "packages/ctower-kernel/migrations/0005_proof_verdict_sequence.sql",
+      "packages/ctower-kernel/migrations/0009_transactional_record_positions.sql",
+      "packages/ctower-kernel/migrations/0011_persisted_command_refusals.sql"
     ],
     "SPEC#durable-job-run-evidence-gate-and-effect-sequence": [
       "contracts/evidence/evidence-manifest.schema.json"
@@ -237,6 +291,7 @@
     "SPEC#executable-authority-and-requirement-traceability": [
       "packages/ctower-kernel/migrations/0001_roles.sql",
       "packages/ctower-kernel/migrations/0003_privileges.sql",
+      "packages/ctower-kernel/migrations/0012_projection_runtime_role.sql",
       "packages/ctower-kernel/migrations/manifest.json"
     ],
     "SPEC#first-tenant-trust-root-ceremony": [
@@ -258,7 +313,12 @@
     ],
     "SPEC#persistence-authority": [
       "packages/ctower-kernel/migrations/0005_proof_verdict_sequence.sql",
-      "packages/ctower-kernel/migrations/0006_narrow_head_update_privileges.sql"
+      "packages/ctower-kernel/migrations/0006_narrow_head_update_privileges.sql",
+      "packages/ctower-kernel/migrations/0007_task_management_facts.sql",
+      "packages/ctower-kernel/migrations/0008_board_projection.sql",
+      "packages/ctower-kernel/migrations/0009_transactional_record_positions.sql",
+      "packages/ctower-kernel/migrations/0010_custody_episode_intervals.sql",
+      "packages/ctower-kernel/migrations/0011_persisted_command_refusals.sql"
     ],
     "SPEC#review-rounds-lineages-generations-and-budgets": [
       "contracts/workflow/review-plan.schema.json",
@@ -266,11 +326,21 @@
       "packs/policies/gates/software-factory-v1.yaml"
     ],
     "SPEC#security-objectives": [
-      "packages/ctower-kernel/migrations/0006_narrow_head_update_privileges.sql"
+      "packages/ctower-kernel/migrations/0006_narrow_head_update_privileges.sql",
+      "packages/ctower-kernel/migrations/0012_projection_runtime_role.sql"
     ],
     "SPEC#task-management-foundation": [
+      "contracts/domain/task-management/board-view.schema.json",
+      "contracts/domain/task-management/scheduling-policy.schema.json",
+      "contracts/domain/task-management/task-command.schema.json",
+      "contracts/http/openapi.yaml",
       "contracts/workflow/workflow.schema.json",
       "packages/ctower-kernel/migrations/0002_ticket_slice.sql",
+      "packages/ctower-kernel/migrations/0007_task_management_facts.sql",
+      "packages/ctower-kernel/migrations/0008_board_projection.sql",
+      "packages/ctower-kernel/migrations/0009_transactional_record_positions.sql",
+      "packages/ctower-kernel/migrations/0010_custody_episode_intervals.sql",
+      "packs/policies/scheduling/i1-priority-aging-v1.yaml",
       "packs/workflows/engineering.software-factory/v1.yaml"
     ],
     "SPEC#test-and-evidence-matrix": [

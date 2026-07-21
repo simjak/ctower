@@ -1,0 +1,23 @@
+{
+  "schema": "ctower.scheduling-policy/v1",
+  "status": "staged",
+  "key": "ctower.i1-priority-aging",
+  "revision": 1,
+  "hard_eligibility": [
+    "capability",
+    "trust",
+    "readiness",
+    "gates",
+    "environment",
+    "wip",
+    "quota",
+    "isolation"
+  ],
+  "aging": {
+    "eligible_since_source": "first_continuous_eligibility",
+    "maximum_boost_levels": 2,
+    "step_seconds": 86400
+  },
+  "preemption": {"allowed_only_if": "checkpoint_verified"},
+  "tie_break": ["eligible_since", "ticket_id"]
+}

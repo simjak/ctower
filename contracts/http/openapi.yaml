@@ -130,6 +130,143 @@
         }
       }
     },
+    "/v1/tickets/{ticket_id}/workflow/start": {
+      "post": {
+        "operationId": "startTicketWorkflow",
+        "security": [{"bearerAuth": []}],
+        "parameters": [
+          {"$ref": "#/components/parameters/TicketId"},
+          {"$ref": "#/components/parameters/IdempotencyKey"}
+        ],
+        "requestBody": {"required": true, "content": {"application/json": {"schema": {"$ref": "#/components/schemas/WorkflowStartRequest"}}}},
+        "responses": {
+          "200": {"description": "Workflow and policy snapshot pinned", "content": {"application/json": {"schema": {"$ref": "#/components/schemas/WorkflowReceipt"}}}},
+          "401": {"$ref": "#/components/responses/ProblemResponse"},
+          "404": {"$ref": "#/components/responses/ProblemResponse"},
+          "409": {"$ref": "#/components/responses/ProblemResponse"},
+          "422": {"$ref": "#/components/responses/ProblemResponse"}
+        }
+      }
+    },
+    "/v1/tickets/{ticket_id}/priority": {
+      "post": {
+        "operationId": "changeTicketPriority",
+        "security": [{"bearerAuth": []}],
+        "parameters": [
+          {"$ref": "#/components/parameters/TicketId"},
+          {"$ref": "#/components/parameters/IdempotencyKey"}
+        ],
+        "requestBody": {"required": true, "content": {"application/json": {"schema": {"$ref": "#/components/schemas/PriorityChangeRequest"}}}},
+        "responses": {
+          "200": {"description": "Priority fact committed", "content": {"application/json": {"schema": {"$ref": "#/components/schemas/WorkReceipt"}}}},
+          "401": {"$ref": "#/components/responses/ProblemResponse"},
+          "403": {"$ref": "#/components/responses/ProblemResponse"},
+          "404": {"$ref": "#/components/responses/ProblemResponse"},
+          "409": {"$ref": "#/components/responses/ProblemResponse"},
+          "422": {"$ref": "#/components/responses/ProblemResponse"}
+        }
+      }
+    },
+    "/v1/tickets/{ticket_id}/assignments": {
+      "get": {
+        "operationId": "listTicketAssignments",
+        "security": [{"bearerAuth": []}],
+        "parameters": [{"$ref": "#/components/parameters/TicketId"}],
+        "responses": {
+          "200": {"description": "Assignment interval history", "content": {"application/json": {"schema": {"$ref": "#/components/schemas/AssignmentList"}}}},
+          "401": {"$ref": "#/components/responses/ProblemResponse"},
+          "404": {"$ref": "#/components/responses/ProblemResponse"},
+          "422": {"$ref": "#/components/responses/ProblemResponse"}
+        }
+      },
+      "post": {
+        "operationId": "changeTicketAssignment",
+        "security": [{"bearerAuth": []}],
+        "parameters": [
+          {"$ref": "#/components/parameters/TicketId"},
+          {"$ref": "#/components/parameters/IdempotencyKey"}
+        ],
+        "requestBody": {"required": true, "content": {"application/json": {"schema": {"$ref": "#/components/schemas/AssignmentChangeRequest"}}}},
+        "responses": {
+          "200": {"description": "Assignment interval changed", "content": {"application/json": {"schema": {"$ref": "#/components/schemas/WorkReceipt"}}}},
+          "401": {"$ref": "#/components/responses/ProblemResponse"},
+          "404": {"$ref": "#/components/responses/ProblemResponse"},
+          "409": {"$ref": "#/components/responses/ProblemResponse"},
+          "422": {"$ref": "#/components/responses/ProblemResponse"}
+        }
+      }
+    },
+    "/v1/tickets/{ticket_id}/intents": {
+      "post": {
+        "operationId": "applyTicketIntent",
+        "security": [{"bearerAuth": []}],
+        "parameters": [
+          {"$ref": "#/components/parameters/TicketId"},
+          {"$ref": "#/components/parameters/IdempotencyKey"}
+        ],
+        "requestBody": {"required": true, "content": {"application/json": {"schema": {"$ref": "#/components/schemas/TicketIntentRequest"}}}},
+        "responses": {
+          "200": {"description": "Typed ticket intent committed", "content": {"application/json": {"schema": {"$ref": "#/components/schemas/WorkReceipt"}}}},
+          "401": {"$ref": "#/components/responses/ProblemResponse"},
+          "404": {"$ref": "#/components/responses/ProblemResponse"},
+          "409": {"$ref": "#/components/responses/ProblemResponse"},
+          "422": {"$ref": "#/components/responses/ProblemResponse"}
+        }
+      }
+    },
+    "/v1/tickets/{ticket_id}/relations": {
+      "post": {
+        "operationId": "addTicketRelation",
+        "security": [{"bearerAuth": []}],
+        "parameters": [
+          {"$ref": "#/components/parameters/TicketId"},
+          {"$ref": "#/components/parameters/IdempotencyKey"}
+        ],
+        "requestBody": {"required": true, "content": {"application/json": {"schema": {"$ref": "#/components/schemas/RelationRequest"}}}},
+        "responses": {
+          "200": {"description": "Typed relation committed", "content": {"application/json": {"schema": {"$ref": "#/components/schemas/WorkReceipt"}}}},
+          "401": {"$ref": "#/components/responses/ProblemResponse"},
+          "404": {"$ref": "#/components/responses/ProblemResponse"},
+          "409": {"$ref": "#/components/responses/ProblemResponse"},
+          "422": {"$ref": "#/components/responses/ProblemResponse"}
+        }
+      }
+    },
+    "/v1/tickets/{ticket_id}/audit": {
+      "get": {
+        "operationId": "listTicketAuditEvents",
+        "security": [{"bearerAuth": []}],
+        "parameters": [
+          {"$ref": "#/components/parameters/TicketId"},
+          {"$ref": "#/components/parameters/AuditCursor"},
+          {"$ref": "#/components/parameters/AuditLimit"}
+        ],
+        "responses": {
+          "200": {"description": "Cursor page of linked canonical events", "content": {"application/json": {"schema": {"$ref": "#/components/schemas/AuditPage"}}}},
+          "401": {"$ref": "#/components/responses/ProblemResponse"},
+          "404": {"$ref": "#/components/responses/ProblemResponse"},
+          "422": {"$ref": "#/components/responses/ProblemResponse"}
+        }
+      }
+    },
+    "/v1/board": {
+      "get": {
+        "operationId": "getBoard",
+        "security": [{"bearerAuth": []}],
+        "parameters": [
+          {"$ref": "#/components/parameters/BoardLaneFilter"},
+          {"$ref": "#/components/parameters/PriorityFilter"},
+          {"$ref": "#/components/parameters/StageFilter"},
+          {"$ref": "#/components/parameters/CustodianFilter"},
+          {"$ref": "#/components/parameters/AssigneeFilter"}
+        ],
+        "responses": {
+          "200": {"description": "Watermark-bearing Board view", "content": {"application/json": {"schema": {"$ref": "#/components/schemas/BoardView"}}}},
+          "401": {"$ref": "#/components/responses/ProblemResponse"},
+          "422": {"$ref": "#/components/responses/ProblemResponse"}
+        }
+      }
+    },
     "/v1/tickets/{ticket_id}/proof/criteria": {
       "post": {
         "operationId": "freezeProofCriteria",
@@ -296,6 +433,34 @@
         "in": "path",
         "required": true,
         "schema": {"type": "string", "format": "uuid"}
+      },
+      "AuditCursor": {
+        "name": "cursor", "in": "query", "required": false,
+        "schema": {"type": "integer", "minimum": 0, "default": 0}
+      },
+      "AuditLimit": {
+        "name": "limit", "in": "query", "required": false,
+        "schema": {"type": "integer", "minimum": 1, "maximum": 100, "default": 50}
+      },
+      "BoardLaneFilter": {
+        "name": "lane", "in": "query", "required": false,
+        "schema": {"type": "string", "enum": ["backlog", "ready", "in_progress", "in_review", "blocked", "complete"]}
+      },
+      "PriorityFilter": {
+        "name": "priority", "in": "query", "required": false,
+        "schema": {"type": "string", "enum": ["P0", "P1", "P2"]}
+      },
+      "StageFilter": {
+        "name": "stage_key", "in": "query", "required": false,
+        "schema": {"type": "string", "pattern": "^[a-z][a-z0-9._-]*$"}
+      },
+      "CustodianFilter": {
+        "name": "custodian_id", "in": "query", "required": false,
+        "schema": {"type": "string", "format": "uuid"}
+      },
+      "AssigneeFilter": {
+        "name": "assignee_id", "in": "query", "required": false,
+        "schema": {"type": "string", "format": "uuid"}
       }
     },
     "responses": {
@@ -395,8 +560,22 @@
               "unauthorized",
               "validation-error",
               "version-conflict",
+              "work-assignment-kind-refused",
+              "work-assignment-target-ineligible",
+              "work-assignment-unchanged",
+              "work-priority-unchanged",
+              "work-blocker-already-resolved",
+              "work-blocker-id-conflict",
+              "work-blocker-owner-ineligible",
+              "work-blocker-unknown",
+              "work-intent-unmet",
+              "work-relation-cycle",
+              "work-relation-exists",
+              "work-reopen-unmet",
+              "workflow-already-started",
+              "workflow-pin-mismatch",
               "workflow-predicate-unsatisfied",
-              "workflow-initial-stage-required",
+              "workflow-run-not-started",
               "proof-incomplete",
               "workflow-state-conflict",
               "workflow-terminal",
@@ -410,7 +589,8 @@
           "detail": {"type": "string"},
           "status": {"type": "integer", "minimum": 400, "maximum": 599},
           "title": {"type": "string"},
-          "type": {"type": "string", "format": "uri"}
+          "type": {"type": "string", "format": "uri"},
+          "unmet_facts": {"type": "array", "items": {"type": "string"}}
         }
       },
       "SourceReference": {
@@ -647,6 +827,481 @@
             "pattern": "^[a-z][a-z0-9._-]*@[1-9][0-9]*$"
           },
           "workflow_run_id": {"type": "string", "format": "uuid"}
+        }
+      },
+      "WorkflowStartRequest": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "workflow_ref", "workflow_digest", "execution_policy_ref", "execution_policy_digest",
+          "gate_policy_ref", "gate_policy_digest", "evidence_policy_ref", "evidence_policy_digest"
+        ],
+        "properties": {
+          "workflow_ref": {"type": "string", "pattern": "^[a-z][a-z0-9._-]*@[1-9][0-9]*$"},
+          "workflow_digest": {"type": "string", "pattern": "^sha256:[0-9a-f]{64}$"},
+          "execution_policy_ref": {"type": "string", "pattern": "^[a-z][a-z0-9._-]*@[1-9][0-9]*$"},
+          "execution_policy_digest": {"type": "string", "pattern": "^sha256:[0-9a-f]{64}$"},
+          "gate_policy_ref": {"type": "string", "pattern": "^[a-z][a-z0-9._-]*@[1-9][0-9]*$"},
+          "gate_policy_digest": {"type": "string", "pattern": "^sha256:[0-9a-f]{64}$"},
+          "evidence_policy_ref": {"type": "string", "pattern": "^[a-z][a-z0-9._-]*@[1-9][0-9]*$"},
+          "evidence_policy_digest": {"type": "string", "pattern": "^sha256:[0-9a-f]{64}$"}
+        }
+      },
+      "PriorityChangeRequest": {
+        "type": "object", "additionalProperties": false,
+        "required": ["expected_version", "priority", "reason"],
+        "properties": {
+          "expected_version": {"type": "integer", "minimum": 1},
+          "priority": {"$ref": "#/components/schemas/Priority"},
+          "reason": {"type": "string", "minLength": 1, "maxLength": 500},
+          "urgent_evidence_ref": {"type": ["string", "null"], "minLength": 1, "maxLength": 256}
+        }
+      },
+      "AssignmentKind": {
+        "type": "string",
+        "enum": ["ticket_custodian", "current_assignee", "stage_owner", "reviewer_assignment", "runner_lease_owner"]
+      },
+      "MutableAssignmentKind": {
+        "type": "string",
+        "enum": ["current_assignee", "stage_owner", "reviewer_assignment"]
+      },
+      "AssignmentChangeRequest": {
+        "type": "object", "additionalProperties": false,
+        "required": ["assignment_kind", "expected_version", "reason", "to_principal_id"],
+        "properties": {
+          "assignment_kind": {"$ref": "#/components/schemas/MutableAssignmentKind"},
+          "expected_version": {"type": "integer", "minimum": 1},
+          "reason": {"type": "string", "minLength": 1, "maxLength": 500},
+          "scope_ref": {"type": ["string", "null"], "minLength": 1, "maxLength": 256},
+          "to_principal_id": {"type": "string", "format": "uuid"}
+        }
+      },
+      "AssignmentInterval": {
+        "type": "object", "additionalProperties": false,
+        "required": ["assigned_at", "assignment_kind", "changed_by", "episode_number", "principal_id", "reason", "released_at", "scope_ref", "sequence"],
+        "properties": {
+          "assigned_at": {"type": "string", "format": "date-time"},
+          "assignment_kind": {"$ref": "#/components/schemas/AssignmentKind"},
+          "changed_by": {"type": "string", "format": "uuid"},
+          "episode_number": {"type": "integer", "minimum": 1},
+          "principal_id": {"type": "string", "format": "uuid"},
+          "reason": {"type": "string"},
+          "released_at": {"type": ["string", "null"], "format": "date-time"},
+          "scope_ref": {"type": ["string", "null"]},
+          "sequence": {"type": "integer", "minimum": 1}
+        }
+      },
+      "AssignmentList": {
+        "type": "object", "additionalProperties": false,
+        "required": ["assignments", "ticket_id"],
+        "properties": {
+          "assignments": {"type": "array", "items": {"$ref": "#/components/schemas/AssignmentInterval"}},
+          "ticket_id": {"type": "string", "format": "uuid"}
+        }
+      },
+      "AdmitIntent": {
+        "type": "object", "additionalProperties": false,
+        "required": ["kind", "expected_version", "reason"],
+        "properties": {
+          "kind": {"const": "admit"},
+          "expected_version": {"type": "integer", "minimum": 1},
+          "reason": {"type": "string", "minLength": 1, "maxLength": 500}
+        }
+      },
+      "DeferIntent": {
+        "type": "object", "additionalProperties": false,
+        "required": ["kind", "expected_version", "reason", "review_after"],
+        "properties": {
+          "kind": {"const": "defer"},
+          "expected_version": {"type": "integer", "minimum": 1},
+          "reason": {"type": "string", "minLength": 1, "maxLength": 500},
+          "review_after": {"type": "string", "format": "date-time"}
+        }
+      },
+      "BlockIntent": {
+        "type": "object", "additionalProperties": false,
+        "required": [
+          "kind", "expected_version", "reason", "blocker_id", "blocker_kind", "reason_class",
+          "owner_principal_id", "source_ref", "affected_stage", "resolution_condition",
+          "next_check_at", "dependency_ref", "board_impact"
+        ],
+        "properties": {
+          "kind": {"const": "block"},
+          "expected_version": {"type": "integer", "minimum": 1},
+          "reason": {"type": "string", "minLength": 1, "maxLength": 500},
+          "blocker_id": {"type": "string", "format": "uuid"},
+          "blocker_kind": {"type": "string", "enum": ["dependency", "operator_action", "policy", "resource", "technical"]},
+          "reason_class": {"type": "string", "minLength": 1, "maxLength": 64},
+          "owner_principal_id": {"type": "string", "format": "uuid"},
+          "source_ref": {"type": "string", "minLength": 1, "maxLength": 256},
+          "affected_stage": {"type": ["string", "null"], "pattern": "^[a-z][a-z0-9._-]*$"},
+          "resolution_condition": {"type": "string", "minLength": 1, "maxLength": 500},
+          "next_check_at": {"type": ["string", "null"], "format": "date-time"},
+          "dependency_ref": {"type": ["string", "null"], "maxLength": 256},
+          "board_impact": {"type": "boolean"}
+        }
+      },
+      "UnblockIntent": {
+        "type": "object", "additionalProperties": false,
+        "required": ["kind", "expected_version", "reason", "blocker_id", "resolution_evidence_ref"],
+        "properties": {
+          "kind": {"const": "unblock"},
+          "expected_version": {"type": "integer", "minimum": 1},
+          "reason": {"type": "string", "minLength": 1, "maxLength": 500},
+          "blocker_id": {"type": "string", "format": "uuid"},
+          "resolution_evidence_ref": {"type": "string", "minLength": 1, "maxLength": 256}
+        }
+      },
+      "ReopenIntent": {
+        "type": "object", "additionalProperties": false,
+        "required": ["kind", "expected_version", "reason", "priority_policy"],
+        "properties": {
+          "kind": {"const": "reopen"},
+          "expected_version": {"type": "integer", "minimum": 1},
+          "reason": {"type": "string", "minLength": 1, "maxLength": 500},
+          "priority_policy": {"const": "carry_forward"}
+        }
+      },
+      "TicketIntentRequest": {
+        "type": "object", "additionalProperties": false,
+        "required": ["intent"],
+        "properties": {
+          "intent": {
+            "oneOf": [
+              {"$ref": "#/components/schemas/AdmitIntent"},
+              {"$ref": "#/components/schemas/DeferIntent"},
+              {"$ref": "#/components/schemas/BlockIntent"},
+              {"$ref": "#/components/schemas/UnblockIntent"},
+              {"$ref": "#/components/schemas/ReopenIntent"}
+            ]
+          }
+        }
+      },
+      "RelationKind": {
+        "type": "string",
+        "enum": ["parent_of", "depends_on", "blocks", "duplicates", "relates_to", "caused_by"]
+      },
+      "RelationRequest": {
+        "type": "object", "additionalProperties": false,
+        "required": ["expected_version", "reason", "relation_kind", "target_ticket_id"],
+        "properties": {
+          "expected_version": {"type": "integer", "minimum": 1},
+          "reason": {"type": "string", "minLength": 1, "maxLength": 500},
+          "relation_kind": {"$ref": "#/components/schemas/RelationKind"},
+          "target_ticket_id": {"type": "string", "format": "uuid"}
+        }
+      },
+      "WorkReceipt": {
+        "type": "object", "additionalProperties": false,
+        "required": ["command_id", "durability_state", "event_ids", "operation", "ticket_id", "version"],
+        "properties": {
+          "command_id": {"type": "string", "format": "uuid"},
+          "durability_state": {"$ref": "#/components/schemas/DurabilityState"},
+          "event_ids": {"type": "array", "minItems": 1, "items": {"type": "string", "format": "uuid"}},
+          "operation": {"type": "string", "enum": ["priority_changed", "assignment_changed", "admitted", "deferred", "blocker_opened", "blocker_resolved", "reopened", "relation_added"]},
+          "ticket_id": {"type": "string", "format": "uuid"},
+          "version": {"type": "integer", "minimum": 2}
+        }
+      },
+      "BoardLane": {
+        "type": "string",
+        "enum": ["backlog", "ready", "in_progress", "in_review", "blocked", "complete"]
+      },
+      "ProjectionHealth": {"type": "string", "enum": ["CURRENT", "STATE_UNKNOWN"]},
+      "BoardCard": {
+        "type": "object", "additionalProperties": false,
+        "required": ["activity_class", "assignee_id", "blocker_opened_at", "blocker_reason", "custodian_id", "delivery_facts", "lane", "priority", "risk", "stage_key", "stage_label", "ticket_id", "title", "underlying_lane", "version"],
+        "properties": {
+          "activity_class": {"type": ["string", "null"], "enum": ["work", "verification", null]},
+          "assignee_id": {"type": ["string", "null"], "format": "uuid"},
+          "blocker_opened_at": {"type": ["string", "null"], "format": "date-time"},
+          "blocker_reason": {"type": ["string", "null"]},
+          "custodian_id": {"type": "string", "format": "uuid"},
+          "delivery_facts": {"type": "array", "items": {"type": "string"}},
+          "lane": {"$ref": "#/components/schemas/BoardLane"},
+          "priority": {"$ref": "#/components/schemas/Priority"},
+          "risk": {"type": ["string", "null"]},
+          "stage_key": {"type": ["string", "null"], "pattern": "^[a-z][a-z0-9._-]*$"},
+          "stage_label": {"type": ["string", "null"]},
+          "ticket_id": {"type": "string", "format": "uuid"},
+          "title": {"type": "string"},
+          "underlying_lane": {"type": ["string", "null"], "enum": ["backlog", "ready", "in_progress", "in_review", "complete", null]},
+          "version": {"type": "integer", "minimum": 1}
+        }
+      },
+      "BoardView": {
+        "type": "object", "additionalProperties": false,
+        "required": ["cards", "health", "projection_watermark", "source_watermark"],
+        "properties": {
+          "cards": {"type": "array", "items": {"$ref": "#/components/schemas/BoardCard"}},
+          "health": {"$ref": "#/components/schemas/ProjectionHealth"},
+          "projection_watermark": {"type": "integer", "minimum": 0},
+          "source_watermark": {"type": "integer", "minimum": 0}
+        }
+      },
+      "PriorityChangedAuditData": {
+        "type": "object", "additionalProperties": false,
+        "required": ["authority", "from_priority", "policy_ref", "reason", "to_priority", "urgent_evidence_ref"],
+        "properties": {
+          "authority": {"type": "string", "enum": ["commander", "operator"]},
+          "from_priority": {"$ref": "#/components/schemas/Priority"},
+          "policy_ref": {"const": "ctower.priority-authority@1"},
+          "reason": {"type": "string", "minLength": 1, "maxLength": 500},
+          "to_priority": {"$ref": "#/components/schemas/Priority"},
+          "urgent_evidence_ref": {"type": ["string", "null"], "minLength": 1, "maxLength": 256}
+        }
+      },
+      "AssignmentChangedAuditData": {
+        "type": "object", "additionalProperties": false,
+        "required": ["assignment_kind", "from_principal_id", "reason", "scope_ref", "to_principal_id"],
+        "properties": {
+          "assignment_kind": {"type": "string", "enum": ["current_assignee", "stage_owner", "reviewer_assignment"]},
+          "from_principal_id": {"type": ["string", "null"], "format": "uuid"},
+          "reason": {"type": "string", "minLength": 1, "maxLength": 500},
+          "scope_ref": {"type": ["string", "null"], "minLength": 1, "maxLength": 256},
+          "to_principal_id": {"type": "string", "format": "uuid"}
+        }
+      },
+      "AdmittedAuditData": {
+        "type": "object", "additionalProperties": false,
+        "required": ["episode_number", "reason"],
+        "properties": {
+          "episode_number": {"type": "integer", "minimum": 1},
+          "reason": {"type": "string", "minLength": 1, "maxLength": 500}
+        }
+      },
+      "DeferredAuditData": {
+        "type": "object", "additionalProperties": false,
+        "required": ["episode_number", "reason", "review_after"],
+        "properties": {
+          "episode_number": {"type": "integer", "minimum": 1},
+          "reason": {"type": "string", "minLength": 1, "maxLength": 500},
+          "review_after": {"type": "string", "format": "date-time"}
+        }
+      },
+      "BlockerOpenedAuditData": {
+        "type": "object", "additionalProperties": false,
+        "required": ["blocker_id", "board_impact", "reason"],
+        "properties": {
+          "blocker_id": {"type": "string", "format": "uuid"},
+          "board_impact": {"type": "boolean"},
+          "reason": {"type": "string", "minLength": 1, "maxLength": 500}
+        }
+      },
+      "BlockerResolvedAuditData": {
+        "type": "object", "additionalProperties": false,
+        "required": ["blocker_id", "reason", "resolution_evidence_ref"],
+        "properties": {
+          "blocker_id": {"type": "string", "format": "uuid"},
+          "reason": {"type": "string", "minLength": 1, "maxLength": 500},
+          "resolution_evidence_ref": {"type": "string", "minLength": 1, "maxLength": 256}
+        }
+      },
+      "ReopenedAuditData": {
+        "type": "object", "additionalProperties": false,
+        "required": ["episode_number", "priority", "reason"],
+        "properties": {
+          "episode_number": {"type": "integer", "minimum": 2},
+          "priority": {"$ref": "#/components/schemas/Priority"},
+          "reason": {"type": "string", "minLength": 1, "maxLength": 500}
+        }
+      },
+      "RelationAddedAuditData": {
+        "type": "object", "additionalProperties": false,
+        "required": ["relation_kind", "reason", "target_ticket_id"],
+        "properties": {
+          "relation_kind": {"type": "string", "enum": ["parent_of", "depends_on", "blocks", "duplicates", "relates_to", "caused_by"]},
+          "reason": {"type": "string", "minLength": 1, "maxLength": 500},
+          "target_ticket_id": {"type": "string", "format": "uuid"}
+        }
+      },
+      "WorkPriorityChangedAuditPayload": {
+        "type": "object", "additionalProperties": false,
+        "required": ["data", "operation", "ticket_id", "work_version"],
+        "properties": {
+          "data": {"$ref": "#/components/schemas/PriorityChangedAuditData"},
+          "operation": {"const": "priority_changed"},
+          "ticket_id": {"type": "string", "format": "uuid"},
+          "work_version": {"type": "integer", "minimum": 2}
+        }
+      },
+      "WorkAssignmentChangedAuditPayload": {
+        "type": "object", "additionalProperties": false,
+        "required": ["data", "operation", "ticket_id", "work_version"],
+        "properties": {
+          "data": {"$ref": "#/components/schemas/AssignmentChangedAuditData"},
+          "operation": {"const": "assignment_changed"},
+          "ticket_id": {"type": "string", "format": "uuid"},
+          "work_version": {"type": "integer", "minimum": 2}
+        }
+      },
+      "WorkAdmittedAuditPayload": {
+        "type": "object", "additionalProperties": false,
+        "required": ["data", "operation", "ticket_id", "work_version"],
+        "properties": {
+          "data": {"$ref": "#/components/schemas/AdmittedAuditData"},
+          "operation": {"const": "admitted"},
+          "ticket_id": {"type": "string", "format": "uuid"},
+          "work_version": {"type": "integer", "minimum": 2}
+        }
+      },
+      "WorkDeferredAuditPayload": {
+        "type": "object", "additionalProperties": false,
+        "required": ["data", "operation", "ticket_id", "work_version"],
+        "properties": {
+          "data": {"$ref": "#/components/schemas/DeferredAuditData"},
+          "operation": {"const": "deferred"},
+          "ticket_id": {"type": "string", "format": "uuid"},
+          "work_version": {"type": "integer", "minimum": 2}
+        }
+      },
+      "WorkBlockerOpenedAuditPayload": {
+        "type": "object", "additionalProperties": false,
+        "required": ["data", "operation", "ticket_id", "work_version"],
+        "properties": {
+          "data": {"$ref": "#/components/schemas/BlockerOpenedAuditData"},
+          "operation": {"const": "blocker_opened"},
+          "ticket_id": {"type": "string", "format": "uuid"},
+          "work_version": {"type": "integer", "minimum": 2}
+        }
+      },
+      "WorkBlockerResolvedAuditPayload": {
+        "type": "object", "additionalProperties": false,
+        "required": ["data", "operation", "ticket_id", "work_version"],
+        "properties": {
+          "data": {"$ref": "#/components/schemas/BlockerResolvedAuditData"},
+          "operation": {"const": "blocker_resolved"},
+          "ticket_id": {"type": "string", "format": "uuid"},
+          "work_version": {"type": "integer", "minimum": 2}
+        }
+      },
+      "WorkReopenedAuditPayload": {
+        "type": "object", "additionalProperties": false,
+        "required": ["data", "operation", "ticket_id", "work_version"],
+        "properties": {
+          "data": {"$ref": "#/components/schemas/ReopenedAuditData"},
+          "operation": {"const": "reopened"},
+          "ticket_id": {"type": "string", "format": "uuid"},
+          "work_version": {"type": "integer", "minimum": 2}
+        }
+      },
+      "WorkRelationAddedAuditPayload": {
+        "type": "object", "additionalProperties": false,
+        "required": ["data", "operation", "ticket_id", "work_version"],
+        "properties": {
+          "data": {"$ref": "#/components/schemas/RelationAddedAuditData"},
+          "operation": {"const": "relation_added"},
+          "ticket_id": {"type": "string", "format": "uuid"},
+          "work_version": {"type": "integer", "minimum": 2}
+        }
+      },
+      "WorkChangedAuditPayload": {
+        "oneOf": [
+          {"$ref": "#/components/schemas/WorkPriorityChangedAuditPayload"},
+          {"$ref": "#/components/schemas/WorkAssignmentChangedAuditPayload"},
+          {"$ref": "#/components/schemas/WorkAdmittedAuditPayload"},
+          {"$ref": "#/components/schemas/WorkDeferredAuditPayload"},
+          {"$ref": "#/components/schemas/WorkBlockerOpenedAuditPayload"},
+          {"$ref": "#/components/schemas/WorkBlockerResolvedAuditPayload"},
+          {"$ref": "#/components/schemas/WorkReopenedAuditPayload"},
+          {"$ref": "#/components/schemas/WorkRelationAddedAuditPayload"}
+        ]
+      },
+      "ProofChangedAuditPayload": {
+        "type": "object", "additionalProperties": false,
+        "required": ["candidate_digest", "invalidated_evidence_ids", "invalidated_verdict_ids", "operation", "proof_version", "ticket_id"],
+        "properties": {
+          "candidate_digest": {"type": "string", "pattern": "^sha256:[0-9a-f]{64}$"},
+          "invalidated_evidence_ids": {"type": "array", "items": {"type": "string", "format": "uuid"}},
+          "invalidated_verdict_ids": {"type": "array", "items": {"type": "string", "format": "uuid"}},
+          "operation": {"type": "string", "enum": ["freeze_criteria", "record_evidence", "record_verdict", "change_candidate"]},
+          "proof_version": {"type": "integer", "minimum": 1},
+          "ticket_id": {"type": "string", "format": "uuid"}
+        }
+      },
+      "WorkflowChangedAuditPayload": {
+        "type": "object", "additionalProperties": false,
+        "required": ["lifecycle_facts", "operation", "stage", "ticket_id", "workflow_ref", "workflow_version"],
+        "properties": {
+          "lifecycle_facts": {"type": "array", "maxItems": 2, "items": {"type": "string", "enum": ["resolved", "closed"]}},
+          "operation": {"type": "string", "enum": ["start", "transition", "resolve_close"]},
+          "stage": {"type": "string", "pattern": "^[a-z][a-z0-9._-]*$"},
+          "ticket_id": {"type": "string", "format": "uuid"},
+          "workflow_ref": {"type": "string", "pattern": "^[a-z][a-z0-9._-]*@[1-9][0-9]*$"},
+          "workflow_version": {"type": "integer", "minimum": 1}
+        }
+      },
+      "TicketCreatedAuditEvent": {
+        "type": "object", "additionalProperties": false,
+        "required": ["actor_principal_id", "command_id", "event_hash", "event_id", "kind", "occurred_at", "payload", "record_position", "sequence", "stream_id"],
+        "properties": {
+          "actor_principal_id": {"type": "string", "format": "uuid"}, "command_id": {"type": "string", "format": "uuid"},
+          "event_hash": {"type": "string", "pattern": "^sha256:[0-9a-f]{64}$"}, "event_id": {"type": "string", "format": "uuid"},
+          "kind": {"const": "ticket.created"}, "occurred_at": {"type": "string", "format": "date-time"},
+          "payload": {"$ref": "#/components/schemas/TicketCreatedPayload"}, "record_position": {"type": "integer", "minimum": 1},
+          "sequence": {"type": "integer", "minimum": 1}, "stream_id": {"type": "string", "pattern": "^ticket:[0-9a-f-]{36}$"}
+        }
+      },
+      "CustodyTransferredAuditEvent": {
+        "type": "object", "additionalProperties": false,
+        "required": ["actor_principal_id", "command_id", "event_hash", "event_id", "kind", "occurred_at", "payload", "record_position", "sequence", "stream_id"],
+        "properties": {
+          "actor_principal_id": {"type": "string", "format": "uuid"}, "command_id": {"type": "string", "format": "uuid"},
+          "event_hash": {"type": "string", "pattern": "^sha256:[0-9a-f]{64}$"}, "event_id": {"type": "string", "format": "uuid"},
+          "kind": {"const": "ticket.custody_transferred"}, "occurred_at": {"type": "string", "format": "date-time"},
+          "payload": {"$ref": "#/components/schemas/CustodyTransferredPayload"}, "record_position": {"type": "integer", "minimum": 1},
+          "sequence": {"type": "integer", "minimum": 1}, "stream_id": {"type": "string", "pattern": "^ticket:[0-9a-f-]{36}$"}
+        }
+      },
+      "WorkChangedAuditEvent": {
+        "type": "object", "additionalProperties": false,
+        "required": ["actor_principal_id", "command_id", "event_hash", "event_id", "kind", "occurred_at", "payload", "record_position", "sequence", "stream_id"],
+        "properties": {
+          "actor_principal_id": {"type": "string", "format": "uuid"}, "command_id": {"type": "string", "format": "uuid"},
+          "event_hash": {"type": "string", "pattern": "^sha256:[0-9a-f]{64}$"}, "event_id": {"type": "string", "format": "uuid"},
+          "kind": {"const": "work.changed"}, "occurred_at": {"type": "string", "format": "date-time"},
+          "payload": {"$ref": "#/components/schemas/WorkChangedAuditPayload"}, "record_position": {"type": "integer", "minimum": 1},
+          "sequence": {"type": "integer", "minimum": 1}, "stream_id": {"type": "string", "pattern": "^ticket:[0-9a-f-]{36}$"}
+        }
+      },
+      "WorkflowChangedAuditEvent": {
+        "type": "object", "additionalProperties": false,
+        "required": ["actor_principal_id", "command_id", "event_hash", "event_id", "kind", "occurred_at", "payload", "record_position", "sequence", "stream_id"],
+        "properties": {
+          "actor_principal_id": {"type": "string", "format": "uuid"}, "command_id": {"type": "string", "format": "uuid"},
+          "event_hash": {"type": "string", "pattern": "^sha256:[0-9a-f]{64}$"}, "event_id": {"type": "string", "format": "uuid"},
+          "kind": {"const": "workflow.changed"}, "occurred_at": {"type": "string", "format": "date-time"},
+          "payload": {"$ref": "#/components/schemas/WorkflowChangedAuditPayload"}, "record_position": {"type": "integer", "minimum": 1},
+          "sequence": {"type": "integer", "minimum": 1}, "stream_id": {"type": "string", "pattern": "^workflow:[0-9a-f-]{36}$"}
+        }
+      },
+      "ProofChangedAuditEvent": {
+        "type": "object", "additionalProperties": false,
+        "required": ["actor_principal_id", "command_id", "event_hash", "event_id", "kind", "occurred_at", "payload", "record_position", "sequence", "stream_id"],
+        "properties": {
+          "actor_principal_id": {"type": "string", "format": "uuid"}, "command_id": {"type": "string", "format": "uuid"},
+          "event_hash": {"type": "string", "pattern": "^sha256:[0-9a-f]{64}$"}, "event_id": {"type": "string", "format": "uuid"},
+          "kind": {"const": "proof.changed"}, "occurred_at": {"type": "string", "format": "date-time"},
+          "payload": {"$ref": "#/components/schemas/ProofChangedAuditPayload"}, "record_position": {"type": "integer", "minimum": 1},
+          "sequence": {"type": "integer", "minimum": 1}, "stream_id": {"type": "string", "pattern": "^proof:[0-9a-f-]{36}$"}
+        }
+      },
+      "AuditEvent": {
+        "oneOf": [
+          {"$ref": "#/components/schemas/TicketCreatedAuditEvent"},
+          {"$ref": "#/components/schemas/CustodyTransferredAuditEvent"},
+          {"$ref": "#/components/schemas/WorkChangedAuditEvent"},
+          {"$ref": "#/components/schemas/WorkflowChangedAuditEvent"},
+          {"$ref": "#/components/schemas/ProofChangedAuditEvent"}
+        ]
+      },
+      "AuditPage": {
+        "type": "object", "additionalProperties": false,
+        "required": ["events", "next_cursor", "ticket_id"],
+        "properties": {
+          "events": {"type": "array", "items": {"$ref": "#/components/schemas/AuditEvent"}},
+          "next_cursor": {"type": ["integer", "null"], "minimum": 1},
+          "ticket_id": {"type": "string", "format": "uuid"}
         }
       },
       "TimelineEvent": {

@@ -11,6 +11,7 @@ phase_order = [
   "CT-I1-004",
   "CT-L0-004",
   "CT-L0-005",
+  "CT-L0-008",
   "CT-I1-003",
   "CT-I1-008",
   "CT-I2-010",
@@ -97,6 +98,16 @@ command = ["{python}", "-m", "pytest", "tests/contracts/evidence", "-q"]
 timeout_seconds = 120
 
 [[suite]]
+id = "task-management-contracts"
+owner = "CT-L0-008"
+phase = "CT-L0-008"
+status = "required"
+path = "tests/contracts/task-management"
+patterns = ["test_*.py"]
+command = ["{python}", "-m", "pytest", "tests/contracts/task-management", "-q"]
+timeout_seconds = 120
+
+[[suite]]
 id = "access-module"
 owner = "CT-I1-002"
 phase = "CT-I1-002"
@@ -144,6 +155,16 @@ status = "required"
 path = "tests/modules/workflow"
 patterns = ["test_*.py"]
 command = ["{python}", "-m", "pytest", "tests/modules/workflow", "-q"]
+timeout_seconds = 300
+
+[[suite]]
+id = "projections-module"
+owner = "CT-I1-002"
+phase = "CT-I1-002"
+status = "required"
+path = "tests/modules/projections"
+patterns = ["test_*.py"]
+command = ["{python}", "-m", "pytest", "tests/modules/projections", "-q"]
 timeout_seconds = 300
 
 [[suite]]
@@ -225,6 +246,24 @@ command = [
   "-m",
   "pytest",
   "tests/acceptance/increment-1/test_four_stage_workflow.py",
+  "-q",
+]
+timeout_seconds = 900
+
+[[suite]]
+id = "task-board-acceptance"
+owner = "CT-I1-003"
+phase = "CT-I1-003"
+status = "required"
+path = "tests/acceptance/increment-1"
+patterns = ["test_task_*.py"]
+command = [
+  "{python}",
+  "-m",
+  "pytest",
+  "tests/acceptance/increment-1/test_task_board_client.py",
+  "tests/acceptance/increment-1/test_task_projection.py",
+  "tests/acceptance/increment-1/test_task_workflow.py",
   "-q",
 ]
 timeout_seconds = 900

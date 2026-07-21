@@ -331,7 +331,12 @@ def _render_method(operation: _Operation) -> str:
 def _query_expression(parameters: list[_Parameter]) -> str:
     entries = []
     for parameter in parameters:
-        entry = f'"{parameter.name}": {parameter.python_name}'
+        value = (
+            f"str({parameter.python_name})"
+            if parameter.python_type == "UUID"
+            else parameter.python_name
+        )
+        entry = f'"{parameter.name}": {value}'
         if parameter.required:
             entries.append(entry)
         else:

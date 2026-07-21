@@ -17,7 +17,6 @@ from ctower_kernel.record import (
     RecordProblem,
     TicketCommandResult,
 )
-from ctower_kernel.record._commands import reserve_command
 from ctower_kernel.record._event_store import append_event, enqueue_event
 from ctower_kernel.record._ticket_sql import (
     _result_from_payload,
@@ -30,6 +29,7 @@ from ctower_kernel.record.events import (
     EventKind,
     EventOrigin,
 )
+from ctower_kernel.record.transaction import RecordTransaction
 from ctower_kernel.telemetry import TelemetryContext
 
 __all__ = ["transfer_custody"]
@@ -61,15 +61,21 @@ def transfer_custody(
 
     with psycopg.connect(dsn, row_factory=dict_row) as connection:
         connection.execute("SET ROLE ctower_svc")
-        existing = _existing_result(connection, actor, command, request_digest)
-        if existing is not None:
+        transaction = RecordTransaction(connection)
+        existing = transaction.reserve(
+            actor.principal_id, command.client_command_id, request_digest
+        )
+        if isinstance(existing, RecordProblem):
             return existing
+        if existing is not None:
+            return _result_from_payload(existing)
         ticket_row = _locked_ticket(connection, actor, command.ticket_id)
         if ticket_row is None:
-            return _scope_problem(command.client_command_id)
+            problem = _scope_problem(command.client_command_id)
+            return _refuse(transaction, actor, command, request_digest, problem, now)
         refusal = _transfer_refusal(connection, actor, command, ticket_row)
         if refusal is not None:
-            return refusal
+            return _refuse(transaction, actor, command, request_digest, refusal, now)
         identifiers = _CustodyIds(_uuid7(now), _uuid7(now))
         result = _commit_transfer(
             connection,
@@ -84,21 +90,23 @@ def transfer_custody(
     return result
 
 
-def _existing_result(
-    connection: psycopg.Connection[dict[str, object]],
+def _refuse(
+    transaction: RecordTransaction,
     actor: Actor,
     command: CustodyCommand,
     request_digest: bytes,
-) -> TicketCommandResult | RecordProblem | None:
-    outcome = reserve_command(
-        connection,
+    problem: RecordProblem,
+    now: datetime,
+) -> RecordProblem:
+    transaction.refuse(
+        actor.tenant_id,
         actor.principal_id,
         command.client_command_id,
         request_digest,
+        problem,
+        now=now,
     )
-    if outcome is None or isinstance(outcome, RecordProblem):
-        return outcome
-    return _result_from_payload(outcome)
+    return problem
 
 
 def _locked_ticket(
@@ -107,9 +115,11 @@ def _locked_ticket(
     return connection.execute(
         """
         SELECT ticket_id, title, source_kind, source_ref, priority,
-            custodian_principal_id, version, created_at
-        FROM tickets
-        WHERE tenant_id = %s AND ticket_id = %s
+            custodian_principal_id, version, created_at, current_episode,
+            (SELECT state FROM lifecycle_episodes
+             WHERE tenant_id = tickets.tenant_id AND ticket_id = tickets.ticket_id
+               AND episode_number = tickets.current_episode) AS lifecycle_state
+        FROM tickets WHERE tenant_id = %s AND ticket_id = %s
         FOR UPDATE
         """,
         (actor.tenant_id, ticket_id),
@@ -124,6 +134,10 @@ def _transfer_refusal(
 ) -> RecordProblem | None:
     current_version = int(cast(int, ticket_row["version"]))
     current_custodian = cast(UUID, ticket_row["custodian_principal_id"])
+    if str(ticket_row["lifecycle_state"]) in {"closed", "cancelled"}:
+        return _version_problem(
+            command, current_version, "Closed ticket custody cannot be transferred."
+        )
     if command.expected_version != current_version:
         return _version_problem(command, current_version, "The expected ticket version is stale.")
     if command.from_custodian_id != current_custodian:
@@ -166,7 +180,14 @@ def _commit_transfer(
     telemetry: TelemetryContext,
 ) -> TicketCommandResult:
     next_version = int(cast(int, ticket_row["version"])) + 1
-    _replace_interval(connection, actor, command, next_version=next_version, now=now)
+    _replace_interval(
+        connection,
+        actor,
+        command,
+        episode=int(cast(int, ticket_row["current_episode"])),
+        next_version=next_version,
+        now=now,
+    )
     connection.execute(
         """
         UPDATE tickets
@@ -202,6 +223,7 @@ def _replace_interval(
     actor: Actor,
     command: CustodyCommand,
     *,
+    episode: int,
     next_version: int,
     now: datetime,
 ) -> None:
@@ -211,9 +233,9 @@ def _replace_interval(
         SET released_at = %s
         WHERE tenant_id = %s AND ticket_id = %s
           AND assignment_kind = 'ticket_custodian' AND released_at IS NULL
-          AND principal_id = %s
+          AND principal_id = %s AND episode_number = %s
         """,
-        (now, actor.tenant_id, command.ticket_id, command.from_custodian_id),
+        (now, actor.tenant_id, command.ticket_id, command.from_custodian_id, episode),
     )
     if updated.rowcount != 1:
         raise RuntimeError("locked ticket custody interval is inconsistent")
@@ -221,8 +243,8 @@ def _replace_interval(
         """
         INSERT INTO assignment_intervals (
             ticket_id, tenant_id, interval_sequence, assignment_kind, principal_id,
-            assigned_at, released_at, changed_by, reason, client_command_id
-        ) VALUES (%s, %s, %s, 'ticket_custodian', %s, %s, NULL, %s, %s, %s)
+            assigned_at, released_at, changed_by, reason, client_command_id, episode_number
+        ) VALUES (%s, %s, %s, 'ticket_custodian', %s, %s, NULL, %s, %s, %s, %s)
         """,
         (
             command.ticket_id,
@@ -233,6 +255,7 @@ def _replace_interval(
             actor.principal_id,
             command.reason,
             command.client_command_id,
+            episode,
         ),
     )
 
@@ -271,7 +294,7 @@ def _append_transfer(
         stream_id=f"ticket:{command.ticket_id}",
         tenant_id=actor.tenant_id,
     )
-    append_event(connection, event)
+    append_event(connection, event, subjects=(("ticket", command.ticket_id),))
     _insert_result_and_outbox(
         connection,
         actor,
