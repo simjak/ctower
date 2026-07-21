@@ -40,9 +40,30 @@ _INVALID_DECISION_CASES = [
     (
         DurabilityState.PENDING,
         None,
-        "sha256:" + "5" * 64,
+        "sha256:" + "Z" * 64,
+        1,
+        "command root must be one SHA-256 digest",
+    ),
+    (
+        DurabilityState.ACCEPTED,
         0,
-        "durability retry interval must be positive",
+        "sha256:" + "5" * 64,
+        1,
+        "acceptance position must be positive",
+    ),
+    (
+        DurabilityState.PENDING,
+        None,
+        "sha256:" + "6" * 64,
+        0,
+        "durability retry interval must be between 1 and 60 seconds",
+    ),
+    (
+        DurabilityState.PENDING,
+        None,
+        "sha256:" + "7" * 64,
+        61,
+        "durability retry interval must be between 1 and 60 seconds",
     ),
 ]
 

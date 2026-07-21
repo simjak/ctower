@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import re
 from dataclasses import asdict, dataclass
 from datetime import datetime
 from enum import StrEnum
@@ -16,7 +17,8 @@ from ctower_kernel.record.events import (
 )
 from ctower_kernel.telemetry import TelemetryContext
 
-_SHA256_TEXT_LENGTH = 71
+_SHA256_PATTERN = re.compile(r"sha256:[0-9a-f]{64}")
+_MAX_RETRY_SECONDS = 60
 
 __all__ = [
     "Actor",
@@ -86,13 +88,12 @@ class DurabilityDecision:
             raise ValueError("accepted durability requires an acceptance position")
         if self.state is DurabilityState.PENDING and self.acceptance_position is not None:
             raise ValueError("pending durability cannot carry an acceptance position")
-        if (
-            not self.command_root.startswith("sha256:")
-            or len(self.command_root) != _SHA256_TEXT_LENGTH
-        ):
+        if _SHA256_PATTERN.fullmatch(self.command_root) is None:
             raise ValueError("command root must be one SHA-256 digest")
-        if self.retry_after_seconds < 1:
-            raise ValueError("durability retry interval must be positive")
+        if self.acceptance_position is not None and self.acceptance_position < 1:
+            raise ValueError("acceptance position must be positive")
+        if not 1 <= self.retry_after_seconds <= _MAX_RETRY_SECONDS:
+            raise ValueError("durability retry interval must be between 1 and 60 seconds")
 
     @property
     def accepted(self) -> bool:

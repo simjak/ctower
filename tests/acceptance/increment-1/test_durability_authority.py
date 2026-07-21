@@ -84,6 +84,17 @@ def test_named_standby_authority_is_replay_safe_and_fail_closed(
 ) -> None:
     assert authority.pending_only_health.status is DurabilityHealthStatus.STATE_UNKNOWN
     assert authority.pending_only_health.reason == "pending_only"
+    unconfigured = PostgresRecord(authority.database.runtime_dsn).durability_health(
+        now=_database_now(authority.database.admin_dsn)
+    )
+    unavailable = PostgresRecord(
+        authority.database.runtime_dsn,
+        standby_dsn="postgresql://postgres@127.0.0.1:1/ctower?connect_timeout=1",
+    ).durability_health(now=_database_now(authority.database.admin_dsn))
+    assert unconfigured.status is DurabilityHealthStatus.STATE_UNKNOWN
+    assert unconfigured.reason == "standby_unconfigured"
+    assert unavailable.status is DurabilityHealthStatus.DEGRADED
+    assert unavailable.reason == "target_mismatch"
     captures: list[dict[str, object]] = []
     recorder = TelemetryRecorder(captures.append)
     record = PostgresRecord(
