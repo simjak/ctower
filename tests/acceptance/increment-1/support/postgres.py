@@ -7,6 +7,8 @@ import os
 import shutil
 import socket
 import time
+from collections.abc import Iterator
+from contextlib import contextmanager
 from dataclasses import dataclass
 from pathlib import Path
 from uuid import uuid4
@@ -83,6 +85,31 @@ def stop_postgres(server: PostgresServer) -> None:
     """Remove only one verifier-owned composition and its ephemeral volume."""
 
     asyncio.run(_compose(server, "down", "--volumes"))
+
+
+@contextmanager
+def suspend_postgres_backend(server: PostgresServer, pid: int) -> Iterator[None]:
+    """Pause one exact backend so timed termination deterministically cannot complete."""
+
+    asyncio.run(
+        _compose(server, "exec", "-T", "postgres", "sh", "-c", 'kill -STOP "$1"', "sh", str(pid))
+    )
+    try:
+        yield
+    finally:
+        asyncio.run(
+            _compose(
+                server,
+                "exec",
+                "-T",
+                "postgres",
+                "sh",
+                "-c",
+                'kill -CONT "$1"',
+                "sh",
+                str(pid),
+            )
+        )
 
 
 async def _compose(server: PostgresServer, *arguments: str) -> None:

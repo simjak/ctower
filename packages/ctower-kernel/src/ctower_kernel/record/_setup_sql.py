@@ -18,6 +18,9 @@ MIGRATIONS = Path(__file__).parents[3] / "migrations"
 MINIMUM_CAPABILITY_LENGTH = 32
 MAXIMUM_CAPABILITY_LENGTH = 256
 PROJECTION_RUNTIME_ROLE = "ctower_projection_runtime"
+# Projection workers should exit promptly on SIGTERM; five seconds tolerates backend cleanup
+# without allowing role provisioning to wait without a bound.
+PROJECTION_SESSION_TERMINATION_TIMEOUT_MS = 5_000
 
 
 def _migration_scripts(scope: str) -> tuple[str, ...]:
@@ -68,14 +71,31 @@ def _quarantine_projection_runtime(admin_dsn: str) -> bool:
         if exists is None:
             return False
         connection.execute("ALTER ROLE ctower_projection_runtime NOLOGIN")
-        connection.execute(
+        termination_results = connection.execute(
             """
-            SELECT pg_terminate_backend(pid)
+            SELECT pid, pg_catalog.pg_terminate_backend(pid, %s) AS terminated
             FROM pg_stat_activity
             WHERE usename = %s AND pid <> pg_backend_pid()
+            ORDER BY pid
+            """,
+            (PROJECTION_SESSION_TERMINATION_TIMEOUT_MS, PROJECTION_RUNTIME_ROLE),
+        ).fetchall()
+        unconfirmed = tuple(row for row in termination_results if row["terminated"] is not True)
+        if unconfirmed:
+            raise RuntimeError(
+                f"{PROJECTION_RUNTIME_ROLE} session termination was not confirmed within "
+                f"{PROJECTION_SESSION_TERMINATION_TIMEOUT_MS} ms"
+            )
+        survivor = connection.execute(
+            """
+            SELECT 1 FROM pg_stat_activity
+            WHERE usename = %s AND pid <> pg_backend_pid()
+            LIMIT 1
             """,
             (PROJECTION_RUNTIME_ROLE,),
-        ).fetchall()
+        ).fetchone()
+        if survivor is not None:
+            raise RuntimeError(f"{PROJECTION_RUNTIME_ROLE} session survived quarantine")
     return True
 
 

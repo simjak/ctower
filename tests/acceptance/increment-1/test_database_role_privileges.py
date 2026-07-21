@@ -151,6 +151,14 @@ def test_projection_login_assumes_only_projection_and_reset_cannot_escape(
     tenant: TenantFixture,
 ) -> None:
     projection_dsn = tenant.database.projection_dsn
+    stale_login = psycopg.connect(projection_dsn, autocommit=True)
+    try:
+        provision_database_roles(tenant.database.admin_dsn)
+        with pytest.raises(psycopg.OperationalError):
+            stale_login.execute("SELECT 1")
+    finally:
+        stale_login.close()
+
     view = Projections(PostgresProjections(projection_dsn)).catch_up(tenant.tenant_id)
     assert view.projection_watermark == view.source_watermark
 
