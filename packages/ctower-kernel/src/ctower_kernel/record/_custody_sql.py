@@ -17,7 +17,6 @@ from ctower_kernel.record import (
     RecordProblem,
     TicketCommandResult,
 )
-from ctower_kernel.record._commands import reserve_command
 from ctower_kernel.record._event_store import append_event, enqueue_event
 from ctower_kernel.record._ticket_sql import (
     _result_from_payload,
@@ -30,6 +29,7 @@ from ctower_kernel.record.events import (
     EventKind,
     EventOrigin,
 )
+from ctower_kernel.record.transaction import RecordTransaction
 from ctower_kernel.telemetry import TelemetryContext
 
 __all__ = ["transfer_custody"]
@@ -61,15 +61,21 @@ def transfer_custody(
 
     with psycopg.connect(dsn, row_factory=dict_row) as connection:
         connection.execute("SET ROLE ctower_svc")
-        existing = _existing_result(connection, actor, command, request_digest)
-        if existing is not None:
+        transaction = RecordTransaction(connection)
+        existing = transaction.reserve(
+            actor.principal_id, command.client_command_id, request_digest
+        )
+        if isinstance(existing, RecordProblem):
             return existing
+        if existing is not None:
+            return _result_from_payload(existing)
         ticket_row = _locked_ticket(connection, actor, command.ticket_id)
         if ticket_row is None:
-            return _scope_problem(command.client_command_id)
+            problem = _scope_problem(command.client_command_id)
+            return _refuse(transaction, actor, command, request_digest, problem, now)
         refusal = _transfer_refusal(connection, actor, command, ticket_row)
         if refusal is not None:
-            return refusal
+            return _refuse(transaction, actor, command, request_digest, refusal, now)
         identifiers = _CustodyIds(_uuid7(now), _uuid7(now))
         result = _commit_transfer(
             connection,
@@ -84,21 +90,23 @@ def transfer_custody(
     return result
 
 
-def _existing_result(
-    connection: psycopg.Connection[dict[str, object]],
+def _refuse(
+    transaction: RecordTransaction,
     actor: Actor,
     command: CustodyCommand,
     request_digest: bytes,
-) -> TicketCommandResult | RecordProblem | None:
-    outcome = reserve_command(
-        connection,
+    problem: RecordProblem,
+    now: datetime,
+) -> RecordProblem:
+    transaction.refuse(
+        actor.tenant_id,
         actor.principal_id,
         command.client_command_id,
         request_digest,
+        problem,
+        now=now,
     )
-    if outcome is None or isinstance(outcome, RecordProblem):
-        return outcome
-    return _result_from_payload(outcome)
+    return problem
 
 
 def _locked_ticket(

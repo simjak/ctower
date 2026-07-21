@@ -10,12 +10,14 @@ from pathlib import Path
 from typing import TextIO, cast
 
 import psycopg
+from psycopg.rows import dict_row
 
 __all__ = ["apply_migrations", "provision_bootstrap", "provision_database_roles"]
 
 MIGRATIONS = Path(__file__).parents[3] / "migrations"
 MINIMUM_CAPABILITY_LENGTH = 32
 MAXIMUM_CAPABILITY_LENGTH = 256
+PROJECTION_RUNTIME_ROLE = "ctower_projection_runtime"
 
 
 def _migration_scripts(scope: str) -> tuple[str, ...]:
@@ -37,9 +39,150 @@ def _migration_scripts(scope: str) -> tuple[str, ...]:
 def provision_database_roles(admin_dsn: str) -> None:
     """Use server administration only to provision the global login/role boundary."""
 
-    with psycopg.connect(admin_dsn) as connection:
+    preexisting = _quarantine_projection_runtime(admin_dsn)
+    with psycopg.connect(admin_dsn, row_factory=dict_row) as connection:
+        if preexisting:
+            reasons = _projection_role_rejection_reasons(
+                connection, require_projection_membership=False, require_login=False
+            )
+            if reasons:
+                raise ValueError(
+                    f"unsafe pre-existing {PROJECTION_RUNTIME_ROLE}: {', '.join(reasons)}"
+                )
         for script in _migration_scripts("cluster"):
             connection.execute(script)
+        reasons = _projection_role_rejection_reasons(
+            connection, require_projection_membership=True, require_login=True
+        )
+        if reasons:
+            raise ValueError(f"unsafe provisioned {PROJECTION_RUNTIME_ROLE}: {', '.join(reasons)}")
+
+
+def _quarantine_projection_runtime(admin_dsn: str) -> bool:
+    """Commit NOLOGIN before inspecting or attempting to adopt a pre-existing role."""
+
+    with psycopg.connect(admin_dsn, autocommit=True, row_factory=dict_row) as connection:
+        exists = connection.execute(
+            "SELECT 1 FROM pg_roles WHERE rolname = %s", (PROJECTION_RUNTIME_ROLE,)
+        ).fetchone()
+        if exists is None:
+            return False
+        connection.execute("ALTER ROLE ctower_projection_runtime NOLOGIN")
+        connection.execute(
+            """
+            SELECT pg_terminate_backend(pid)
+            FROM pg_stat_activity
+            WHERE usename = %s AND pid <> pg_backend_pid()
+            """,
+            (PROJECTION_RUNTIME_ROLE,),
+        ).fetchall()
+    return True
+
+
+def _projection_role_rejection_reasons(
+    connection: psycopg.Connection[dict[str, object]],
+    *,
+    require_projection_membership: bool,
+    require_login: bool,
+) -> tuple[str, ...]:
+    role = connection.execute(
+        """
+        SELECT oid, rolcanlogin, rolsuper, rolcreatedb, rolcreaterole, rolinherit,
+            rolreplication, rolbypassrls
+        FROM pg_roles WHERE rolname = %s
+        """,
+        (PROJECTION_RUNTIME_ROLE,),
+    ).fetchone()
+    if role is None:
+        return ("role is absent",)
+    reasons = list(_projection_attribute_rejections(role, require_login=require_login))
+    reasons.extend(
+        _projection_membership_rejections(
+            connection,
+            role["oid"],
+            require_projection_membership=require_projection_membership,
+        )
+    )
+    direct_authority = connection.execute(
+        """
+        SELECT 1 FROM pg_shdepend
+        WHERE refclassid = 'pg_authid'::regclass AND refobjid = %s
+          AND deptype IN ('a', 'o')
+        LIMIT 1
+        """,
+        (role["oid"],),
+    ).fetchone()
+    if direct_authority is not None:
+        reasons.append("direct grants or ownership")
+    settings = connection.execute(
+        "SELECT 1 FROM pg_db_role_setting WHERE setrole = %s LIMIT 1",
+        (role["oid"],),
+    ).fetchone()
+    if settings is not None:
+        reasons.append("role settings")
+    return tuple(reasons)
+
+
+def _projection_attribute_rejections(
+    role: dict[str, object], *, require_login: bool
+) -> tuple[str, ...]:
+    login = ("login state",) if bool(role["rolcanlogin"]) is not require_login else ()
+    dangerous = any(
+        bool(role[name])
+        for name in (
+            "rolsuper",
+            "rolcreatedb",
+            "rolcreaterole",
+            "rolinherit",
+            "rolreplication",
+            "rolbypassrls",
+        )
+    )
+    return (*login, *(("dangerous attributes",) if dangerous else ()))
+
+
+def _projection_membership_rejections(
+    connection: psycopg.Connection[dict[str, object]],
+    role_id: object,
+    *,
+    require_projection_membership: bool,
+) -> tuple[str, ...]:
+    memberships = {
+        str(row["rolname"])
+        for row in connection.execute(
+            """
+            WITH RECURSIVE reachable(roleid) AS (
+                SELECT membership.roleid
+                FROM pg_auth_members AS membership
+                WHERE membership.member = %s
+                UNION
+                SELECT membership.roleid
+                FROM pg_auth_members AS membership
+                JOIN reachable ON membership.member = reachable.roleid
+            )
+            SELECT role.rolname
+            FROM reachable JOIN pg_roles AS role ON role.oid = reachable.roleid
+            """,
+            (role_id,),
+        ).fetchall()
+    }
+    expected_memberships = {"ctower_projection"} if require_projection_membership else set()
+    closure_safe = (
+        memberships == expected_memberships
+        if require_projection_membership
+        else memberships <= {"ctower_projection"}
+    )
+    privileged_membership = connection.execute(
+        """
+        SELECT 1 FROM pg_auth_members
+        WHERE member = %s AND admin_option
+        LIMIT 1
+        """,
+        (role_id,),
+    ).fetchone()
+    closure = () if closure_safe else ("unexpected membership closure",)
+    administration = ("membership administration",) if privileged_membership is not None else ()
+    return (*closure, *administration)
 
 
 def apply_migrations(migrator_dsn: str) -> None:

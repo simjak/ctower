@@ -28,33 +28,34 @@ def open_blocker(
     ).fetchone()
     if owner is None:
         return _problem(command, "work-blocker-owner-ineligible", "Blocker owner unavailable")
-    try:
-        connection.execute(
-            """
-            INSERT INTO blocker_heads (
-                blocker_id, ticket_id, tenant_id, blocker_kind, reason_class, reason,
-                owner_principal_id, source_ref, affected_stage, resolution_condition,
-                next_check_at, dependency_ref, board_impact, opened_at
-            ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
-            """,
-            (
-                command.blocker_id,
-                command.ticket_id,
-                actor.tenant_id,
-                command.blocker_kind,
-                command.reason_class,
-                command.reason,
-                command.owner_principal_id,
-                command.source_ref,
-                command.affected_stage,
-                command.resolution_condition,
-                command.next_check_at,
-                command.dependency_ref,
-                command.board_impact,
-                now,
-            ),
-        )
-    except psycopg.errors.UniqueViolation:
+    inserted = connection.execute(
+        """
+        INSERT INTO blocker_heads (
+            blocker_id, ticket_id, tenant_id, blocker_kind, reason_class, reason,
+            owner_principal_id, source_ref, affected_stage, resolution_condition,
+            next_check_at, dependency_ref, board_impact, opened_at
+        ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+        ON CONFLICT DO NOTHING
+        RETURNING blocker_id
+        """,
+        (
+            command.blocker_id,
+            command.ticket_id,
+            actor.tenant_id,
+            command.blocker_kind,
+            command.reason_class,
+            command.reason,
+            command.owner_principal_id,
+            command.source_ref,
+            command.affected_stage,
+            command.resolution_condition,
+            command.next_check_at,
+            command.dependency_ref,
+            command.board_impact,
+            now,
+        ),
+    ).fetchone()
+    if inserted is None:
         return _problem(command, "work-blocker-id-conflict", "Blocker identifier already exists")
     _fact(connection, actor, command, fact_id, "opened", command.reason, None, now)
     return {

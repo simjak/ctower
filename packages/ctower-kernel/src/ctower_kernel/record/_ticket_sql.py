@@ -23,7 +23,6 @@ from ctower_kernel.record import (
     TicketTimeline,
     TimelineEvent,
 )
-from ctower_kernel.record._commands import reserve_command
 from ctower_kernel.record._event_store import append_event, enqueue_event
 from ctower_kernel.record.events import (
     EventEnvelope,
@@ -32,6 +31,7 @@ from ctower_kernel.record.events import (
     TicketCreatedPayload,
     ticket_payload_from_mapping,
 )
+from ctower_kernel.record.transaction import RecordTransaction
 from ctower_kernel.telemetry import TelemetryContext
 
 __all__ = ["actor_for_credential", "create_ticket", "get_ticket", "ticket_timeline"]
@@ -84,11 +84,12 @@ def create_ticket(
 
     with psycopg.connect(dsn, row_factory=dict_row) as connection:
         connection.execute("SET ROLE ctower_svc")
-        existing = _existing_result(connection, actor, command, request_digest)
-        if existing is not None:
-            return existing
-        if not _eligible_custodian(connection, actor, command.initial_custodian_id):
-            return _scope_problem(command.client_command_id)
+        transaction = RecordTransaction(connection)
+        reserved = _reserve_ticket_outcome(
+            connection, transaction, actor, command, request_digest=request_digest, now=now
+        )
+        if reserved is not None:
+            return reserved
         identifiers = _TicketIds(*(_uuid7(now) for _ in range(3)))
         ticket = Ticket(
             ticket_id=identifiers.ticket,
@@ -112,6 +113,26 @@ def create_ticket(
             telemetry=telemetry,
         )
     return result
+
+
+def _reserve_ticket_outcome(
+    connection: psycopg.Connection[dict[str, object]],
+    transaction: RecordTransaction,
+    actor: Actor,
+    command: TicketCommand,
+    *,
+    request_digest: bytes,
+    now: datetime,
+) -> TicketCommandResult | RecordProblem | None:
+    existing = transaction.reserve(actor.principal_id, command.client_command_id, request_digest)
+    if isinstance(existing, RecordProblem):
+        return existing
+    if existing is not None:
+        return _result_from_payload(existing)
+    if _eligible_custodian(connection, actor, command.initial_custodian_id):
+        return None
+    problem = _scope_problem(command.client_command_id)
+    return _refuse(transaction, actor, command, request_digest, problem, now)
 
 
 def get_ticket(
@@ -159,21 +180,23 @@ def ticket_timeline(
     return TicketTimeline(ticket_id, events)
 
 
-def _existing_result(
-    connection: psycopg.Connection[dict[str, object]],
+def _refuse(
+    transaction: RecordTransaction,
     actor: Actor,
     command: TicketCommand,
     request_digest: bytes,
-) -> TicketCommandResult | RecordProblem | None:
-    outcome = reserve_command(
-        connection,
+    problem: RecordProblem,
+    now: datetime,
+) -> RecordProblem:
+    transaction.refuse(
+        actor.tenant_id,
         actor.principal_id,
         command.client_command_id,
         request_digest,
+        problem,
+        now=now,
     )
-    if outcome is None or isinstance(outcome, RecordProblem):
-        return outcome
-    return _result_from_payload(outcome)
+    return problem
 
 
 def _eligible_custodian(

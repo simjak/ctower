@@ -35,27 +35,28 @@ def add_relation(
         RelationKind.BLOCKS,
     } and _reaches_source(connection, actor, command):
         return _problem(command, "work-relation-cycle", 409, "Relation cycle refused")
-    try:
-        connection.execute(
-            """
-            INSERT INTO ticket_relations (
-                relation_id, tenant_id, source_ticket_id, target_ticket_id, relation_kind,
-                actor_principal_id, reason, client_command_id, recorded_at
-            ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s)
-            """,
-            (
-                relation_id,
-                actor.tenant_id,
-                command.ticket_id,
-                command.target_ticket_id,
-                command.relation_kind.value,
-                actor.principal_id,
-                command.reason,
-                command.client_command_id,
-                now,
-            ),
-        )
-    except psycopg.errors.UniqueViolation:
+    inserted = connection.execute(
+        """
+        INSERT INTO ticket_relations (
+            relation_id, tenant_id, source_ticket_id, target_ticket_id, relation_kind,
+            actor_principal_id, reason, client_command_id, recorded_at
+        ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s)
+        ON CONFLICT DO NOTHING
+        RETURNING relation_id
+        """,
+        (
+            relation_id,
+            actor.tenant_id,
+            command.ticket_id,
+            command.target_ticket_id,
+            command.relation_kind.value,
+            actor.principal_id,
+            command.reason,
+            command.client_command_id,
+            now,
+        ),
+    ).fetchone()
+    if inserted is None:
         return _problem(command, "work-relation-exists", 409, "Relation already exists")
     return {
         "relation_kind": command.relation_kind.value,
