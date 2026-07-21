@@ -18,7 +18,14 @@ def test_migration_manifest_is_ordered_and_checksum_exact() -> None:
 
     assert manifest["schema"] == "ctower.migrations/v1"
     assert names == sorted(names)
-    assert names == ["0001_roles.sql", "0002_ticket_slice.sql", "0003_privileges.sql"]
+    assert names == [
+        "0001_roles.sql",
+        "0002_ticket_slice.sql",
+        "0003_privileges.sql",
+        "0004_proof_workflow.sql",
+        "0005_proof_verdict_sequence.sql",
+        "0006_narrow_head_update_privileges.sql",
+    ]
     for entry in entries:
         digest = hashlib.sha256((MIGRATIONS / entry["path"]).read_bytes()).hexdigest()
         assert entry["sha256"] == f"sha256:{digest}"
@@ -35,6 +42,16 @@ def test_service_and_projection_roles_are_least_privilege() -> None:
     assert "GRANT UPDATE" not in grants
     assert "GRANT DELETE" not in grants
     assert "GRANT SELECT ON ALL TABLES IN SCHEMA public TO ctower_projection" in grants
+
+
+def test_verdict_sequence_migration_backfills_from_authoritative_events() -> None:
+    migration = (MIGRATIONS / "0005_proof_verdict_sequence.sql").read_text(encoding="utf-8")
+
+    assert "SET proof_sequence = event.sequence" in migration
+    assert "event.actor_principal_id = verdict.reviewer_id" in migration
+    assert "event.client_command_id = verdict.client_command_id" in migration
+    assert "proof_verdicts_sequence_unique" in migration
+    assert "ALTER COLUMN proof_sequence SET NOT NULL" in migration
 
 
 def test_runtime_and_migrator_use_distinct_one_way_login_roles() -> None:

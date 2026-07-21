@@ -2,33 +2,48 @@
 
 from __future__ import annotations
 
-import json
-import secrets
 from collections.abc import Awaitable, Callable
-from uuid import UUID, uuid4
 
 from fastapi import FastAPI, Request
 from fastapi.responses import JSONResponse
 from pydantic import ValidationError
 from starlette.responses import Response
 
+from ctower_api._http_support import (
+    authenticate as _authenticate,
+)
+from ctower_api._http_support import (
+    emit_auth_denial as _emit_auth_denial,
+)
+from ctower_api._http_support import (
+    encoded as _encoded,
+)
+from ctower_api._http_support import (
+    problem_response as _problem_response,
+)
+from ctower_api._http_support import (
+    telemetry_context as _telemetry,
+)
+from ctower_api._http_support import (
+    uuid_value as _uuid,
+)
+from ctower_api._http_support import (
+    validation_problem as _validation_problem,
+)
+from ctower_api._proof_workflow_routes import install_proof_workflow_routes
 from ctower_api.telemetry import TelemetryRecorder
 from ctower_client.models import BootstrapReceipt as HttpBootstrapReceipt
 from ctower_client.models import (
     BootstrapRequest,
     CustodyTransferRequest,
-    Problem,
     TicketCreateRequest,
     TicketResource,
     TimelineResponse,
 )
-from ctower_client.models import (
-    TelemetryContext as HttpTelemetryContext,
-)
 from ctower_client.models import TicketCommandResult as HttpTicketCommandResult
 from ctower_kernel.access import Access
+from ctower_kernel.proof import Proof
 from ctower_kernel.record import (
-    Actor,
     BootstrapCommand,
     BootstrapReceipt,
     CustodyCommand,
@@ -40,13 +55,19 @@ from ctower_kernel.record import (
     TicketCommandResult,
     TicketTimeline,
 )
-from ctower_kernel.telemetry import TelemetryContext
 from ctower_kernel.work import Work
+from ctower_kernel.workflow import Workflow
 
 __all__ = ["create_app"]
 
 
-def create_app(record: Record, *, telemetry: TelemetryRecorder | None = None) -> FastAPI:
+def create_app(
+    record: Record,
+    *,
+    proof: Proof | None = None,
+    workflow: Workflow | None = None,
+    telemetry: TelemetryRecorder | None = None,
+) -> FastAPI:
     """Compose the private command API without embedding durable decisions."""
 
     app = FastAPI(title="ctower control API", version="0.0.0")
@@ -66,6 +87,8 @@ def create_app(record: Record, *, telemetry: TelemetryRecorder | None = None) ->
     _install_ticket_create_route(app, access, Work(record, telemetry=recorder), recorder)
     _install_custody_route(app, access, Work(record, telemetry=recorder), recorder)
     _install_ticket_read_routes(app, access, record, recorder)
+    if proof is not None and workflow is not None:
+        install_proof_workflow_routes(app, access, proof, workflow, recorder)
     return app
 
 
@@ -247,7 +270,7 @@ def _install_custody_route(
 
 def _bootstrap_response(outcome: BootstrapReceipt | RecordProblem) -> JSONResponse:
     payload = outcome.response_payload()
-    encoded = json.dumps(payload, separators=(",", ":"), sort_keys=True)
+    encoded = _encoded(payload)
     if isinstance(outcome, BootstrapReceipt):
         receipt_boundary = HttpBootstrapReceipt.model_validate_json(encoded)
         return JSONResponse(status_code=201, content=receipt_boundary.model_dump(mode="json"))
@@ -275,95 +298,3 @@ def _timeline_response(outcome: TicketTimeline | RecordProblem) -> JSONResponse:
         return _problem_response(outcome)
     boundary = TimelineResponse.model_validate_json(_encoded(outcome.response_payload()))
     return JSONResponse(status_code=200, content=boundary.model_dump(mode="json"))
-
-
-def _problem_response(problem: RecordProblem) -> JSONResponse:
-    problem_boundary = Problem.model_validate_json(_encoded(problem.response_payload()))
-    return JSONResponse(
-        status_code=problem.status,
-        content=problem_boundary.model_dump(mode="json", by_alias=True, exclude_none=True),
-        media_type="application/problem+json",
-    )
-
-
-def _encoded(payload: dict[str, object]) -> str:
-    return json.dumps(payload, separators=(",", ":"), sort_keys=True)
-
-
-def _uuid(value: str | None) -> UUID:
-    if value is None:
-        raise ValueError("UUID transport value is missing")
-    return UUID(value)
-
-
-def _validation_problem() -> RecordProblem:
-    return RecordProblem(
-        code="validation-error",
-        detail="The request body or transport identifier does not match the authored contract.",
-        status=422,
-        title="Request validation failed",
-    )
-
-
-def _telemetry(request: Request) -> TelemetryContext:
-    payload = request.headers.get("X-Ctower-Telemetry-Context")
-    if payload is None:
-        raise ValueError("telemetry context is missing")
-    return _trusted_telemetry(HttpTelemetryContext.model_validate_json(payload))
-
-
-def _trusted_telemetry(context: HttpTelemetryContext) -> TelemetryContext:
-    return TelemetryContext(
-        schema=context.schema_id,
-        trace_id=context.trace_id,
-        span_id=context.span_id,
-        trace_flags=context.trace_flags,
-        trace_state=context.trace_state,
-        correlation_id=context.correlation_id,
-        causation_id=context.causation_id,
-        tenant_id=context.tenant_id,
-        actor_id=context.actor_id,
-        command_id=context.command_id,
-        ticket_id=context.ticket_id,
-        workflow_run_id=context.workflow_run_id,
-        stage_attempt_id=context.stage_attempt_id,
-        job_id=context.job_id,
-        runner_id=context.runner_id,
-        fencing_token=context.fencing_token,
-        effect_id=context.effect_id,
-        component_revision_id=context.component_revision_id,
-        deployment_id=context.deployment_id,
-    )
-
-
-def _authenticate(
-    access: Access, recorder: TelemetryRecorder, request: Request
-) -> Actor | RecordProblem:
-    outcome = access.authenticate(request.headers.get("Authorization"))
-    if isinstance(outcome, RecordProblem):
-        _emit_auth_denial(recorder, "access.authenticate", outcome)
-    return outcome
-
-
-def _emit_auth_denial(recorder: TelemetryRecorder, name: str, problem: RecordProblem) -> None:
-    recorder.emit(
-        name,
-        _denial_telemetry(),
-        outcome="error",
-        reason=problem.code,
-    )
-
-
-def _denial_telemetry() -> TelemetryContext:
-    correlation_id = str(uuid4())
-    return TelemetryContext(
-        schema="ctower.telemetry-context/v1",
-        trace_id=secrets.token_hex(16),
-        span_id=secrets.token_hex(8),
-        trace_flags=0,
-        correlation_id=correlation_id,
-        causation_id=correlation_id,
-        tenant_id="unauthenticated",
-        actor_id="unauthenticated",
-        command_id=correlation_id,
-    )

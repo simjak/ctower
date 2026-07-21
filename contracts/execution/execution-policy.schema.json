@@ -1,0 +1,35 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://ctower.invalid/contracts/execution/execution-policy.schema.json",
+  "title": "ExecutionPolicyConsumerSubset",
+  "description": "Development-only CP-1 consumer subset; it starts no execution runtime.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema", "status", "key", "revision", "workflow_ref", "capabilities", "note"],
+  "properties": {
+    "schema": {"const": "ctower.execution-policy/v1"},
+    "status": {"const": "staged"},
+    "key": {"$ref": "#/$defs/stableKey"},
+    "revision": {"type": "integer", "minimum": 1},
+    "workflow_ref": {"$ref": "#/$defs/versionedReference"},
+    "capabilities": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["remote", "images", "effects", "extensions"],
+      "properties": {
+        "remote": {"const": "not_exercised"},
+        "images": {"const": "not_exercised"},
+        "effects": {"const": "not_exercised"},
+        "extensions": {"const": "not_exercised"}
+      }
+    },
+    "note": {"type": "string", "minLength": 1}
+  },
+  "$defs": {
+    "stableKey": {"type": "string", "pattern": "^[a-z][a-z0-9._-]*$"},
+    "versionedReference": {
+      "type": "string",
+      "pattern": "^[a-z][a-z0-9._-]*@[1-9][0-9]*$"
+    }
+  }
+}

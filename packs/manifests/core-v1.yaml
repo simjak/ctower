@@ -4,6 +4,18 @@ manifest_key: core
 revision: 1
 components:
   - kind: workflow
+    key: ctower.trust-spine-four-stage
+    source: packs/workflows/ctower.trust-spine-four-stage/v1.yaml
+  - kind: execution_policy
+    key: ctower.trust-spine-four-stage.execution
+    source: packs/policies/execution/trust-spine-four-stage-v1.yaml
+  - kind: gate_policy
+    key: ctower.trust-spine-four-stage.gates
+    source: packs/policies/gates/trust-spine-four-stage-v1.yaml
+  - kind: evidence_policy
+    key: ctower.trust-spine-four-stage.evidence
+    source: packs/policies/evidence/trust-spine-four-stage-v1.yaml
+  - kind: workflow
     key: engineering.software-factory
     source: packs/workflows/engineering.software-factory/v1.yaml
   - kind: execution_policy

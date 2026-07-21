@@ -34,7 +34,9 @@
       "enum": [
         "bootstrap.first_tenant_created",
         "ticket.created",
-        "ticket.custody_transferred"
+        "ticket.custody_transferred",
+        "proof.changed",
+        "workflow.changed"
       ]
     },
     "origin": {"type": "string", "enum": ["api", "bootstrap"]},
@@ -46,7 +48,7 @@
     "server_time": {"type": "string", "format": "date-time"},
     "stream_id": {
       "type": "string",
-      "pattern": "^(tenant:[0-9a-f-]{36}:bootstrap|ticket:[0-9a-f-]{36})$"
+      "pattern": "^(tenant:[0-9a-f-]{36}:bootstrap|ticket:[0-9a-f-]{36}|proof:[0-9a-f-]{36}|workflow:[0-9a-f-]{36})$"
     },
     "tenant_id": {"type": "string", "format": "uuid"}
   },
@@ -75,6 +77,22 @@
             "origin": {"const": "api"},
             "stream_id": {"pattern": "^ticket:[0-9a-f-]{36}$"},
             "payload": {"$ref": "#/$defs/custodyTransferred"}
+          }
+        },
+        {
+          "properties": {
+            "kind": {"const": "proof.changed"},
+            "origin": {"const": "api"},
+            "stream_id": {"pattern": "^proof:[0-9a-f-]{36}$"},
+            "payload": {"$ref": "#/$defs/proofChanged"}
+          }
+        },
+        {
+          "properties": {
+            "kind": {"const": "workflow.changed"},
+            "origin": {"const": "api"},
+            "stream_id": {"pattern": "^workflow:[0-9a-f-]{36}$"},
+            "payload": {"$ref": "#/$defs/workflowChanged"}
           }
         }
       ]
@@ -124,6 +142,62 @@
         "from_custodian_id": {"type": "string", "format": "uuid"},
         "reason": {"type": "string", "minLength": 1, "maxLength": 500},
         "to_custodian_id": {"type": "string", "format": "uuid"}
+      }
+    },
+    "proofChanged": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "candidate_digest",
+        "invalidated_evidence_ids",
+        "invalidated_verdict_ids",
+        "operation",
+        "proof_version",
+        "ticket_id"
+      ],
+      "properties": {
+        "candidate_digest": {"$ref": "#/$defs/sha256"},
+        "invalidated_evidence_ids": {
+          "type": "array",
+          "items": {"type": "string", "format": "uuid"}
+        },
+        "invalidated_verdict_ids": {
+          "type": "array",
+          "items": {"type": "string", "format": "uuid"}
+        },
+        "operation": {
+          "enum": ["freeze_criteria", "record_evidence", "record_verdict", "change_candidate"]
+        },
+        "proof_version": {"type": "integer", "minimum": 1},
+        "ticket_id": {"type": "string", "format": "uuid"}
+      }
+    },
+    "workflowChanged": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "lifecycle_facts",
+        "operation",
+        "stage",
+        "ticket_id",
+        "workflow_ref",
+        "workflow_version"
+      ],
+      "properties": {
+        "lifecycle_facts": {
+          "oneOf": [
+            {"type": "array", "maxItems": 0},
+            {"const": ["resolved", "closed"]}
+          ]
+        },
+        "operation": {"enum": ["transition", "resolve_close"]},
+        "stage": {"type": "string", "pattern": "^[a-z][a-z0-9._-]*$"},
+        "ticket_id": {"type": "string", "format": "uuid"},
+        "workflow_ref": {
+          "type": "string",
+          "pattern": "^[a-z][a-z0-9._-]*@[1-9][0-9]*$"
+        },
+        "workflow_version": {"type": "integer", "minimum": 1}
       }
     }
   }

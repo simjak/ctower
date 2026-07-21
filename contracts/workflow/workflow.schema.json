@@ -10,6 +10,7 @@
     "status",
     "key",
     "revision",
+    "initial_stage",
     "input_contract",
     "terminal_contract",
     "policy_refs",
@@ -23,6 +24,7 @@
     "status": {"enum": ["draft", "staged", "published", "superseded", "revoked"]},
     "key": {"$ref": "#/$defs/stableKey"},
     "revision": {"type": "integer", "minimum": 1},
+    "initial_stage": {"$ref": "#/$defs/stableKey"},
     "input_contract": {"$ref": "#/$defs/stableKey"},
     "terminal_contract": {"$ref": "#/$defs/stableKey"},
     "policy_refs": {

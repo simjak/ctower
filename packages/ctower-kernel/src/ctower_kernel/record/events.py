@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import hashlib
 import json
+import re
 from collections.abc import Mapping, Sequence
 from dataclasses import dataclass
 from datetime import UTC, datetime
@@ -16,8 +17,10 @@ __all__ = [
     "EventEnvelope",
     "EventKind",
     "EventOrigin",
+    "ProofChangedPayload",
     "TicketCreatedPayload",
     "TicketEventPayload",
+    "WorkflowChangedPayload",
     "canonical_event_bytes",
     "event_digest",
     "ticket_payload_from_mapping",
@@ -28,6 +31,8 @@ class EventKind(StrEnum):
     BOOTSTRAP_CREATED = "bootstrap.first_tenant_created"
     TICKET_CREATED = "ticket.created"
     CUSTODY_TRANSFERRED = "ticket.custody_transferred"
+    PROOF_CHANGED = "proof.changed"
+    WORKFLOW_CHANGED = "workflow.changed"
 
 
 class EventOrigin(StrEnum):
@@ -36,6 +41,9 @@ class EventOrigin(StrEnum):
 
 
 _DIGEST_BYTES = 32
+_DIGEST_TEXT = re.compile(r"^sha256:[0-9a-f]{64}$")
+_STABLE_KEY = re.compile(r"^[a-z][a-z0-9._-]*$")
+_VERSIONED_REFERENCE = re.compile(r"^[a-z][a-z0-9._-]*@[1-9][0-9]*$")
 
 
 @dataclass(frozen=True, slots=True)
@@ -114,7 +122,82 @@ class CustodyTransferredPayload:
         }
 
 
-type EventPayload = BootstrapCreatedPayload | TicketCreatedPayload | CustodyTransferredPayload
+@dataclass(frozen=True, slots=True)
+class ProofChangedPayload:
+    operation: str
+    ticket_id: UUID
+    proof_version: int
+    candidate_digest: str
+    invalidated_evidence_ids: tuple[UUID, ...]
+    invalidated_verdict_ids: tuple[UUID, ...]
+
+    def __post_init__(self) -> None:
+        _require_uuid_fields(self, ("ticket_id",))
+        _require_uuid_tuple("invalidated_evidence_ids", self.invalidated_evidence_ids)
+        _require_uuid_tuple("invalidated_verdict_ids", self.invalidated_verdict_ids)
+        if self.operation not in {
+            "freeze_criteria",
+            "record_evidence",
+            "record_verdict",
+            "change_candidate",
+        }:
+            raise ValueError("proof operation is outside the authored event contract")
+        if self.proof_version < 1:
+            raise ValueError("proof version must be positive")
+        if _DIGEST_TEXT.fullmatch(self.candidate_digest) is None:
+            raise ValueError("candidate digest must be content addressed")
+
+    def to_mapping(self) -> dict[str, object]:
+        return {
+            "candidate_digest": self.candidate_digest,
+            "invalidated_evidence_ids": [str(item) for item in self.invalidated_evidence_ids],
+            "invalidated_verdict_ids": [str(item) for item in self.invalidated_verdict_ids],
+            "operation": self.operation,
+            "proof_version": self.proof_version,
+            "ticket_id": str(self.ticket_id),
+        }
+
+
+@dataclass(frozen=True, slots=True)
+class WorkflowChangedPayload:
+    operation: str
+    ticket_id: UUID
+    workflow_ref: str
+    workflow_version: int
+    stage: str
+    lifecycle_facts: tuple[str, ...]
+
+    def __post_init__(self) -> None:
+        _require_uuid_fields(self, ("ticket_id",))
+        if self.operation not in {"transition", "resolve_close"}:
+            raise ValueError("workflow operation is outside the authored event contract")
+        if self.workflow_version < 1:
+            raise ValueError("workflow version must be positive")
+        if _VERSIONED_REFERENCE.fullmatch(self.workflow_ref) is None:
+            raise ValueError("workflow reference must be versioned")
+        if _STABLE_KEY.fullmatch(self.stage) is None:
+            raise ValueError("workflow stage must be stable")
+        if self.lifecycle_facts not in {(), ("resolved", "closed")}:
+            raise ValueError("workflow lifecycle facts must preserve terminal order")
+
+    def to_mapping(self) -> dict[str, object]:
+        return {
+            "lifecycle_facts": list(self.lifecycle_facts),
+            "operation": self.operation,
+            "stage": self.stage,
+            "ticket_id": str(self.ticket_id),
+            "workflow_ref": self.workflow_ref,
+            "workflow_version": self.workflow_version,
+        }
+
+
+type EventPayload = (
+    BootstrapCreatedPayload
+    | TicketCreatedPayload
+    | CustodyTransferredPayload
+    | ProofChangedPayload
+    | WorkflowChangedPayload
+)
 type TicketEventPayload = TicketCreatedPayload | CustodyTransferredPayload
 
 
@@ -206,6 +289,8 @@ _EVENT_VARIANTS: dict[EventKind, tuple[type[object], EventOrigin]] = {
     EventKind.BOOTSTRAP_CREATED: (BootstrapCreatedPayload, EventOrigin.BOOTSTRAP),
     EventKind.TICKET_CREATED: (TicketCreatedPayload, EventOrigin.API),
     EventKind.CUSTODY_TRANSFERRED: (CustodyTransferredPayload, EventOrigin.API),
+    EventKind.PROOF_CHANGED: (ProofChangedPayload, EventOrigin.API),
+    EventKind.WORKFLOW_CHANGED: (WorkflowChangedPayload, EventOrigin.API),
 }
 
 
@@ -272,6 +357,10 @@ def _validate_event_identity(event: EventEnvelope) -> None:
 def _stream_id(kind: EventKind, aggregate_id: UUID) -> str:
     if kind is EventKind.BOOTSTRAP_CREATED:
         return f"tenant:{aggregate_id}:bootstrap"
+    if kind is EventKind.PROOF_CHANGED:
+        return f"proof:{aggregate_id}"
+    if kind is EventKind.WORKFLOW_CHANGED:
+        return f"workflow:{aggregate_id}"
     return f"ticket:{aggregate_id}"
 
 
@@ -286,6 +375,11 @@ def _require_uuid_fields(value: object, names: tuple[str, ...]) -> None:
     for name in names:
         if not isinstance(getattr(value, name), UUID):
             raise TypeError(f"{name} must be a UUID")
+
+
+def _require_uuid_tuple(label: str, value: object) -> None:
+    if not isinstance(value, tuple) or not all(isinstance(item, UUID) for item in value):
+        raise TypeError(f"{label} must be a UUID tuple")
 
 
 def _require_keys(payload: Mapping[str, object], expected: set[str]) -> None:

@@ -1,0 +1,70 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://ctower.invalid/contracts/evidence/evidence-manifest.schema.json",
+  "title": "EvidenceManifestConsumerSubset",
+  "description": "Development-only CP-1 manifest of current proof and explicitly unexercised sources.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema",
+    "status",
+    "tenant_id",
+    "ticket_id",
+    "candidate_digest",
+    "criteria_revision",
+    "artifacts",
+    "verdict_ids",
+    "deferred_sources"
+  ],
+  "properties": {
+    "schema": {"const": "ctower.evidence-manifest/v1"},
+    "status": {"const": "development_only"},
+    "tenant_id": {"type": "string", "format": "uuid"},
+    "ticket_id": {"type": "string", "format": "uuid"},
+    "candidate_digest": {"$ref": "#/$defs/sha256"},
+    "criteria_revision": {"type": "integer", "minimum": 1},
+    "artifacts": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["criterion_key", "artifact_digest", "candidate_digest"],
+        "properties": {
+          "criterion_key": {"$ref": "#/$defs/stableKey"},
+          "artifact_digest": {"$ref": "#/$defs/sha256"},
+          "candidate_digest": {"$ref": "#/$defs/sha256"}
+        }
+      }
+    },
+    "verdict_ids": {
+      "type": "array",
+      "minItems": 1,
+      "items": {"type": "string", "format": "uuid"}
+    },
+    "deferred_sources": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["remote", "images", "effects", "extensions"],
+      "properties": {
+        "remote": {"$ref": "#/$defs/notExercised"},
+        "images": {"$ref": "#/$defs/notExercised"},
+        "effects": {"$ref": "#/$defs/notExercised"},
+        "extensions": {"$ref": "#/$defs/notExercised"}
+      }
+    }
+  },
+  "$defs": {
+    "sha256": {"type": "string", "pattern": "^sha256:[0-9a-f]{64}$"},
+    "stableKey": {"type": "string", "pattern": "^[a-z][a-z0-9._-]*$"},
+    "notExercised": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["status", "source_count"],
+      "properties": {
+        "status": {"const": "not_exercised"},
+        "source_count": {"const": 0}
+      }
+    }
+  }
+}

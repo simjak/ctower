@@ -1,6 +1,6 @@
 """DO NOT EDIT: generated file; regenerate from declared inputs.
 
-Authored contract digest: sha256:25659b6884b836c57f08f015a00885701ba0e031fa81536903bff04cb56850f1
+Authored contract digest: sha256:71152e641b41ee93136c346c04060769bcfd05c8bdfb8e009491efe2d666be3c
 """
 
 from __future__ import annotations
@@ -13,13 +13,19 @@ from uuid import UUID
 from pydantic import BaseModel, ConfigDict, Field
 
 __all__ = [
+    "ActivityClass",
     "BootstrapReceipt",
     "BootstrapRequest",
     "CustodyTransferRequest",
     "CustodyTransferredPayload",
     "DurabilityState",
+    "EvidenceRequest",
+    "FreezeCriteriaRequest",
     "Priority",
     "Problem",
+    "ProofCriterion",
+    "ProofReceipt",
+    "ResolveCloseRequest",
     "SourceReference",
     "TelemetryContext",
     "TicketCommandResult",
@@ -28,11 +34,20 @@ __all__ = [
     "TicketResource",
     "TimelineEvent",
     "TimelineResponse",
+    "VerdictDecision",
+    "VerdictRequest",
+    "WorkflowReceipt",
+    "WorkflowTransitionRequest",
 ]
 
 
 class _BoundaryModel(BaseModel):
     model_config = ConfigDict(extra="forbid", frozen=True, populate_by_name=True, strict=True)
+
+
+class ActivityClass(StrEnum):
+    WORK = "work"
+    VERIFICATION = "verification"
 
 
 class BootstrapRequest(_BoundaryModel):
@@ -63,6 +78,15 @@ class DurabilityState(StrEnum):
     DURABILITY_PENDING = "durability_pending"
 
 
+class EvidenceRequest(_BoundaryModel):
+    expected_version: Annotated[int, Field(ge=1)]
+    evidence_id: UUID
+    criterion_key: Annotated[str, Field(pattern="^[a-z][a-z0-9._-]*$")]
+    candidate_digest: Annotated[str, Field(pattern="^sha256:[0-9a-f]{64}$")]
+    artifact_digest: Annotated[str, Field(pattern="^sha256:[0-9a-f]{64}$")]
+    content: Annotated[str, Field(min_length=1, max_length=100000)]
+
+
 class Priority(StrEnum):
     P0 = "P0"
     P1 = "P1"
@@ -76,17 +100,50 @@ class Problem(_BoundaryModel):
         "bootstrap-nonempty",
         "bootstrap-origin",
         "idempotency-conflict",
+        "proof-candidate-author-mismatch",
+        "proof-candidate-digest-invalid",
+        "proof-candidate-digest-not-current",
+        "proof-candidate-unchanged",
+        "proof-criteria-already-frozen",
+        "proof-criteria-invalid",
+        "proof-criterion-unknown",
+        "proof-current-evidence-missing",
+        "proof-evidence-digest-mismatch",
+        "proof-evidence-id-conflict",
+        "proof-protected-authority-required",
+        "proof-self-review-refused",
+        "proof-verdict-id-conflict",
         "tenant-scope-denied",
         "unauthorized",
         "validation-error",
         "version-conflict",
+        "workflow-predicate-unsatisfied",
+        "workflow-initial-stage-required",
+        "proof-incomplete",
+        "workflow-state-conflict",
+        "workflow-terminal",
+        "workflow-transition-not-declared",
+        "workflow-version-unknown",
+        "workflow-not-terminal",
     ]
     command_id: UUID | None = None
-    current_version: Annotated[int, Field(ge=1)] | None = None
+    current_version: Annotated[int, Field(ge=0)] | None = None
     detail: str
     status: Annotated[int, Field(ge=400, le=599)]
     title: str
     type_uri: str = Field(alias="type", serialization_alias="type")
+
+
+class ProofCriterion(_BoundaryModel):
+    key: Annotated[str, Field(pattern="^[a-z][a-z0-9._-]*$")]
+    description: Annotated[str, Field(min_length=1, max_length=500)]
+    candidate_dependent: bool
+    requires_verdict: bool
+
+
+class ResolveCloseRequest(_BoundaryModel):
+    expected_version: Annotated[int, Field(ge=1)]
+    workflow_ref: Annotated[str, Field(pattern="^[a-z][a-z0-9._-]*@[1-9][0-9]*$")]
 
 
 class SourceReference(_BoundaryModel):
@@ -118,6 +175,18 @@ class TelemetryContext(_BoundaryModel):
     deployment_id: Annotated[str, Field(min_length=1, max_length=128)] | None = None
 
 
+class VerdictDecision(StrEnum):
+    PASS = "pass"
+    FAIL = "fail"
+
+
+class WorkflowTransitionRequest(_BoundaryModel):
+    expected_version: Annotated[int, Field(ge=0)]
+    workflow_ref: Annotated[str, Field(pattern="^[a-z][a-z0-9._-]*@[1-9][0-9]*$")]
+    source_stage: Annotated[str, Field(pattern="^[a-z][a-z0-9._-]*$")]
+    destination_stage: Annotated[str, Field(pattern="^[a-z][a-z0-9._-]*$")]
+
+
 class BootstrapReceipt(_BoundaryModel):
     command_id: UUID
     commander_id: UUID
@@ -126,6 +195,25 @@ class BootstrapReceipt(_BoundaryModel):
     operator_id: UUID
     receipt_digest: Annotated[str, Field(pattern="^sha256:[0-9a-f]{64}$")]
     tenant_id: UUID
+
+
+class FreezeCriteriaRequest(_BoundaryModel):
+    expected_version: Annotated[int, Field(ge=0)]
+    candidate_digest: Annotated[str, Field(pattern="^sha256:[0-9a-f]{64}$")]
+    criteria: Annotated[tuple[ProofCriterion, ...], Field(min_length=1)]
+
+
+class ProofReceipt(_BoundaryModel):
+    candidate_digest: Annotated[str, Field(pattern="^sha256:[0-9a-f]{64}$")]
+    command_id: UUID
+    durability_state: DurabilityState
+    event_ids: Annotated[tuple[UUID, ...], Field(min_length=1)]
+    invalidated_evidence_ids: tuple[UUID, ...]
+    invalidated_verdict_ids: tuple[UUID, ...]
+    proof_id: UUID
+    satisfied: bool
+    ticket_id: UUID
+    version: Annotated[int, Field(ge=1)]
 
 
 class TicketCreateRequest(_BoundaryModel):
@@ -152,6 +240,27 @@ class TicketResource(_BoundaryModel):
     ticket_id: UUID
     title: str
     version: Annotated[int, Field(ge=1)]
+
+
+class VerdictRequest(_BoundaryModel):
+    expected_version: Annotated[int, Field(ge=1)]
+    verdict_id: UUID
+    criterion_key: Annotated[str, Field(pattern="^[a-z][a-z0-9._-]*$")]
+    candidate_digest: Annotated[str, Field(pattern="^sha256:[0-9a-f]{64}$")]
+    decision: VerdictDecision
+
+
+class WorkflowReceipt(_BoundaryModel):
+    activity_class: ActivityClass
+    command_id: UUID
+    durability_state: DurabilityState
+    event_ids: Annotated[tuple[UUID, ...], Field(min_length=1)]
+    lifecycle_facts: Annotated[tuple[Literal["resolved", "closed"], ...], Field(max_length=2)]
+    stage: Annotated[str, Field(pattern="^[a-z][a-z0-9._-]*$")]
+    ticket_id: UUID
+    version: Annotated[int, Field(ge=1)]
+    workflow_ref: Annotated[str, Field(pattern="^[a-z][a-z0-9._-]*@[1-9][0-9]*$")]
+    workflow_run_id: UUID
 
 
 class TicketCommandResult(_BoundaryModel):

@@ -13,8 +13,9 @@ deployment manifests. If this file and `SPEC.md` disagree, `SPEC.md` wins and th
 
 Implementation labels are strict:
 
-- **Current walking slice** means the development-only bootstrap/ticket/custody path implemented in this
-  repository. It is synthetic local evidence, not a deployed or durability-accepted product.
+- **Current walking slice** means the development-only bootstrap/ticket/custody and CP-1 Proof/Workflow
+  fixture path implemented in this repository. It is synthetic local evidence, not a deployed or
+  durability-accepted product.
 - **I1** and **I2** otherwise remain committed target increments, not claims that the full behavior exists.
 - **Deferred** means invariants may be recorded, but the runtime, product surface, and public Seam do not
   exist in I1/I2.
@@ -73,15 +74,20 @@ topology fixed by the SPEC.
 The implemented development tracer currently has this narrower shape:
 
 ```text
-ctowerctl -> generated Python client -> FastAPI Adapter
-                                      -> Access / Work Interfaces
-                                      -> Record -> Postgres 17 development fixture
+generated Python client -> FastAPI Adapter -> Access / Work
+                                         \-> Proof -----> Record -> Postgres 17 fixture
+                                         \-> Workflow --> Record
+                                              ^ injected current-proof capability
+                                              | (no Workflow -> Proof import)
+                                            Proof implementation
 ```
 
 It covers one-use first-tenant bootstrap, tenant-scoped ticket create/read/timeline, protected custody
-transfer, idempotent command results, hash-chained events, and transactional outbox writes. Every successful
-write remains `durability_pending`; there is no outbox consumer, off-host acknowledgement, backup/restore
-proof, worker, web surface, or production deployment in this slice.
+transfer, criteria/evidence/verdict proof, interpreted four-stage transitions, proof-gated resolve/close,
+idempotent command results, hash-chained events, and transactional outbox writes. Proof and Workflow own
+their persistence above the lower Record append Interface; the composition root injects Proof's narrow
+current-proof query into Workflow. Every successful write remains `durability_pending`; there is no outbox
+consumer, off-host acknowledgement, backup/restore proof, worker, web surface, or production deployment.
 
 ### I1: co-located trust spine
 
@@ -152,11 +158,16 @@ plan and targets.
  runner app ---> runner SDK ---> generated runner contracts
  systemd-vps Adapter ----------> Effects port + generated effect contracts
 
- forbidden:
+forbidden:
    kernel -> app, web, CLI, runner, or provider implementation
    web/CLI/runner/provider/extension -> record-tier connection
    generated output -> policy or server implementation
 ```
+
+The implemented kernel dependency edges are acyclic: `Proof -> Record -> Telemetry` and
+`Workflow -> Record -> Telemetry`. Record imports neither Proof nor Workflow, and Workflow imports neither
+Proof nor its persistence implementation. The repository policy validates both edge allowlists and the
+entire ownership graph for cycles; composition satisfies Workflow's structural current-proof port.
 
 | Deep Module | Authority hidden behind its Interface |
 |---|---|

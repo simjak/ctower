@@ -10,9 +10,10 @@ artifacts, evidence, effects, and the complete audit trail survive agent, model,
 
 > [!IMPORTANT]
 > ctower is currently a **pre-alpha development project**. One synthetic walking slice now implements local
-> first-tenant bootstrap, durable ticket create/read/timeline, protected custody transfer, and a thin online
-> CLI over a generated client. All writes remain `durability_pending`; there is no supported installable,
-> deployed, backed-up, or production-ready product today.
+> first-tenant bootstrap, durable ticket create/read/timeline, protected custody transfer, a thin online
+> CLI, and a development-only proof-gated four-stage Workflow tracer over a generated client. All writes
+> remain `durability_pending`; there is no supported installable, deployed, backed-up, or production-ready
+> product today.
 
 ## What ctower is designed to provide
 

@@ -32,6 +32,50 @@
       ]
     },
     {
+      "path": "contracts/evidence/evidence-manifest.schema.json",
+      "references": [
+        "SPEC#test-and-evidence-matrix",
+        "SPEC#durable-job-run-evidence-gate-and-effect-sequence",
+        "INV-16",
+        "INV-18",
+        "AC-DUR-05",
+        "AC-EVD-01",
+        "AC-EVD-06"
+      ]
+    },
+    {
+      "path": "contracts/execution/evidence-policy.schema.json",
+      "references": [
+        "SPEC#workflow-and-verification-architecture",
+        "INV-18",
+        "INV-20",
+        "AC-EVD-01",
+        "AC-EVD-03",
+        "AC-EVD-06"
+      ]
+    },
+    {
+      "path": "contracts/execution/execution-policy.schema.json",
+      "references": [
+        "SPEC#versioned-workflow-and-execution-policy-contract",
+        "INV-12",
+        "AC-WF-01",
+        "AC-WF-02"
+      ]
+    },
+    {
+      "path": "contracts/execution/gate-policy.schema.json",
+      "references": [
+        "SPEC#workflow-and-verification-architecture",
+        "INV-16",
+        "INV-17",
+        "INV-19",
+        "AC-EVD-04",
+        "AC-WF-06",
+        "AC-WF-07"
+      ]
+    },
+    {
       "path": "contracts/domain/events/canonical-vectors.json",
       "references": [
         "SPEC#canonical-event-and-command-contract",
@@ -64,10 +108,14 @@
       "references": [
         "SPEC#canonical-event-and-command-contract",
         "SPEC#client-acknowledgement-and-offline-behavior",
+        "SPEC#workflow-and-verification-architecture",
         "INV-03",
+        "INV-16",
+        "INV-19",
         "AC-ADM-02",
         "AC-DUR-01",
         "AC-DUR-02",
+        "AC-EVD-04",
         "AC-QUAL-05"
       ]
     },
@@ -127,6 +175,17 @@
       ]
     },
     {
+      "path": "packs/policies/evidence/trust-spine-four-stage-v1.yaml",
+      "references": [
+        "SPEC#i1-four-stage-fixture",
+        "INV-18",
+        "INV-20",
+        "AC-EVD-01",
+        "AC-EVD-06",
+        "AC-WF-09"
+      ]
+    },
+    {
       "path": "packs/policies/gates/software-factory-v1.yaml",
       "references": [
         "SPEC#review-rounds-lineages-generations-and-budgets",
@@ -139,6 +198,25 @@
       ]
     },
     {
+      "path": "packs/policies/execution/trust-spine-four-stage-v1.yaml",
+      "references": [
+        "SPEC#i1-four-stage-fixture",
+        "INV-12",
+        "AC-WF-01",
+        "AC-WF-02"
+      ]
+    },
+    {
+      "path": "packs/policies/gates/trust-spine-four-stage-v1.yaml",
+      "references": [
+        "SPEC#i1-four-stage-fixture",
+        "INV-16",
+        "INV-19",
+        "AC-EVD-04",
+        "AC-WF-06"
+      ]
+    },
+    {
       "path": "packs/workflows/engineering.software-factory/v1.yaml",
       "references": [
         "SPEC#versioned-workflow-and-execution-policy-contract",
@@ -147,6 +225,95 @@
         "INV-57",
         "AC-WF-02",
         "AC-TM-02"
+      ]
+    },
+    {
+      "path": "packs/workflows/ctower.trust-spine-four-stage/v1.yaml",
+      "references": [
+        "SPEC#i1-four-stage-fixture",
+        "INV-12",
+        "INV-16",
+        "AC-WF-01",
+        "AC-WF-02"
+      ]
+    },
+    {
+      "path": "packages/ctower-kernel/migrations/0001_roles.sql",
+      "references": [
+        "SPEC#executable-authority-and-requirement-traceability",
+        "INV-01",
+        "AC-DUR-07"
+      ]
+    },
+    {
+      "path": "packages/ctower-kernel/migrations/0002_ticket_slice.sql",
+      "references": [
+        "SPEC#first-tenant-trust-root-ceremony",
+        "SPEC#task-management-foundation",
+        "INV-01",
+        "INV-02",
+        "INV-03",
+        "INV-04",
+        "INV-09",
+        "AC-ADM-02",
+        "AC-DUR-02",
+        "AC-DUR-07",
+        "AC-PROD-04"
+      ]
+    },
+    {
+      "path": "packages/ctower-kernel/migrations/0003_privileges.sql",
+      "references": [
+        "SPEC#executable-authority-and-requirement-traceability",
+        "INV-01",
+        "INV-02",
+        "AC-DUR-07"
+      ]
+    },
+    {
+      "path": "packages/ctower-kernel/migrations/0004_proof_workflow.sql",
+      "references": [
+        "SPEC#workflow-and-verification-architecture",
+        "INV-12",
+        "INV-16",
+        "INV-17",
+        "INV-18",
+        "INV-19",
+        "INV-20",
+        "AC-DUR-07",
+        "AC-EVD-04",
+        "AC-WF-02",
+        "AC-WF-09"
+      ]
+    },
+    {
+      "path": "packages/ctower-kernel/migrations/0005_proof_verdict_sequence.sql",
+      "references": [
+        "SPEC#consistency-concurrency-and-deduplication",
+        "SPEC#persistence-authority",
+        "INV-04",
+        "INV-21",
+        "AC-DUR-06",
+        "AC-WF-07"
+      ]
+    },
+    {
+      "path": "packages/ctower-kernel/migrations/0006_narrow_head_update_privileges.sql",
+      "references": [
+        "SPEC#persistence-authority",
+        "SPEC#security-objectives",
+        "INV-01",
+        "INV-12",
+        "AC-DUR-07",
+        "AC-SEC-03"
+      ]
+    },
+    {
+      "path": "packages/ctower-kernel/migrations/manifest.json",
+      "references": [
+        "SPEC#executable-authority-and-requirement-traceability",
+        "AC-DUR-06",
+        "AC-DUR-07"
       ]
     }
   ]

@@ -1,0 +1,32 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://ctower.invalid/contracts/execution/evidence-policy.schema.json",
+  "title": "EvidencePolicyConsumerSubset",
+  "description": "Development-only CP-1 content-addressed evidence rules.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema",
+    "status",
+    "key",
+    "revision",
+    "digest_algorithm",
+    "content_encoding",
+    "candidate_binding",
+    "corruption_policy",
+    "missing_policy",
+    "note"
+  ],
+  "properties": {
+    "schema": {"const": "ctower.evidence-policy/v1"},
+    "status": {"const": "staged"},
+    "key": {"type": "string", "pattern": "^[a-z][a-z0-9._-]*$"},
+    "revision": {"type": "integer", "minimum": 1},
+    "digest_algorithm": {"const": "sha256"},
+    "content_encoding": {"const": "utf-8"},
+    "candidate_binding": {"const": "current_digest"},
+    "corruption_policy": {"const": "reject"},
+    "missing_policy": {"const": "reject"},
+    "note": {"type": "string", "minLength": 1}
+  }
+}

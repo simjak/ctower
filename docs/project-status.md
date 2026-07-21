@@ -1,15 +1,15 @@
 # Project status
 
 ctower is a public pre-alpha project. A development-only synthetic walking slice now exercises local
-bootstrap, ticket persistence, custody, and an online CLI, but ctower is not a supported or deployed product
-and must not yet manage real work.
+bootstrap, ticket persistence, custody, an online CLI, and the CP-1 proof-gated four-stage fixture, but
+ctower is not a supported or deployed product and must not yet manage real work.
 
 ## Available now
 
 - The canonical system specification, architecture atlas, append-only decisions, and implementation
   roadmap.
-- Authored JSON Schema contracts for bootstrap, telemetry, workflows, review plans, and supporting domain
-  envelopes.
+- Authored JSON Schema contracts for bootstrap, telemetry, Workflow graphs, the CP-1 execution/gate/evidence
+  policy consumer subset, evidence manifests, review plans, and supporting domain envelopes.
 - Example versioned workflow, execution-policy, and gate-policy packs.
 - A repository policy module with ownership, source-budget, generated-drift, and secret checks.
 - Strict Python compatibility input/result schemas, frozen typed models, closed-world report validation,
@@ -31,6 +31,11 @@ and must not yet manage real work.
   transactional outbox writes, and explicit `durability_pending` results.
 - Protected operator custody transfer with exact-current `from`, version CAS, gapless interval replacement,
   same-tenant eligible targets, concurrent one-winner behavior, and restart retrieval.
+- A development-only generic Workflow evaluator for the staged `ctower.trust-spine-four-stage@1` fixture,
+  with pinned legal edges and `activity_class`; plus Proof criteria freeze, content-digest verification,
+  protected non-self verdicts, dependency invalidation, and proof-gated atomic resolve/close facts.
+- Proof and Workflow own their Postgres implementations above the lower Record append Interface. Workflow
+  receives only an injected current-proof capability, and the executable repository graph rejects cycles.
 - A thin online `ctowerctl` tracer over the deterministic generated Python client for bootstrap and ticket
   create/show/assign. Authority enters on stdin; offline mutations fail loudly as unsent.
 
@@ -57,8 +62,8 @@ proves only that the documentation built and deployed; it does not prove a ctowe
 ## Not available yet
 
 - A supported/deployed API, control worker, installer, container image, or hosted service.
-- Off-host acknowledgement, backup/restore proof, outbox consumption, workflow evaluation, leases, fencing,
-  effects, or projections.
+- Off-host acknowledgement, backup/restore proof, outbox consumption, general workflow/runtime execution,
+  leases, fencing, effects, or projections.
 - A supported CLI, encrypted offline spool, or web interface.
 - Local or remote agent execution adapters.
 - An accepted Python runtime pin or stable compatibility promise.

@@ -3,6 +3,7 @@
   "status": "draft",
   "key": "engineering.software-factory",
   "revision": 1,
+  "initial_stage": "intake",
   "input_contract": "software-change-ticket-v1",
   "terminal_contract": "verified-release-and-retro-v1",
   "policy_refs": {

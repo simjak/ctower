@@ -1,6 +1,6 @@
 schema = "ctower.expected-suites/v1"
 manifest_version = 1
-active_phase = "CT-I1-004"
+active_phase = "CT-I1-003"
 phase_order = [
   "CT-L0-007",
   "CT-L0-001",
@@ -9,6 +9,9 @@ phase_order = [
   "CT-I1-001",
   "CT-I1-002",
   "CT-I1-004",
+  "CT-L0-004",
+  "CT-L0-005",
+  "CT-I1-003",
   "CT-I1-008",
   "CT-I2-010",
 ]
@@ -64,6 +67,36 @@ command = ["{python}", "-m", "pytest", "tests/contracts/http", "-q"]
 timeout_seconds = 120
 
 [[suite]]
+id = "workflow-contracts"
+owner = "CT-L0-004"
+phase = "CT-L0-004"
+status = "required"
+path = "tests/contracts/workflow"
+patterns = ["test_*.py"]
+command = ["{python}", "-m", "pytest", "tests/contracts/workflow", "-q"]
+timeout_seconds = 120
+
+[[suite]]
+id = "execution-contracts"
+owner = "CT-L0-004"
+phase = "CT-L0-004"
+status = "required"
+path = "tests/contracts/execution"
+patterns = ["test_*.py"]
+command = ["{python}", "-m", "pytest", "tests/contracts/execution", "-q"]
+timeout_seconds = 120
+
+[[suite]]
+id = "evidence-contracts"
+owner = "CT-L0-005"
+phase = "CT-L0-005"
+status = "required"
+path = "tests/contracts/evidence"
+patterns = ["test_*.py"]
+command = ["{python}", "-m", "pytest", "tests/contracts/evidence", "-q"]
+timeout_seconds = 120
+
+[[suite]]
 id = "access-module"
 owner = "CT-I1-002"
 phase = "CT-I1-002"
@@ -91,6 +124,26 @@ status = "required"
 path = "tests/modules/work"
 patterns = ["test_*.py"]
 command = ["{python}", "-m", "pytest", "tests/modules/work", "-q"]
+timeout_seconds = 300
+
+[[suite]]
+id = "proof-module"
+owner = "CT-I1-003"
+phase = "CT-I1-003"
+status = "required"
+path = "tests/modules/proof"
+patterns = ["test_*.py"]
+command = ["{python}", "-m", "pytest", "tests/modules/proof", "-q"]
+timeout_seconds = 300
+
+[[suite]]
+id = "workflow-module"
+owner = "CT-I1-003"
+phase = "CT-I1-003"
+status = "required"
+path = "tests/modules/workflow"
+patterns = ["test_*.py"]
+command = ["{python}", "-m", "pytest", "tests/modules/workflow", "-q"]
 timeout_seconds = 300
 
 [[suite]]
@@ -159,6 +212,22 @@ command = [
   "-q",
 ]
 timeout_seconds = 300
+
+[[suite]]
+id = "proof-workflow-acceptance"
+owner = "CT-I1-003"
+phase = "CT-I1-003"
+status = "required"
+path = "tests/acceptance/increment-1"
+patterns = ["test_four_stage_workflow.py"]
+command = [
+  "{python}",
+  "-m",
+  "pytest",
+  "tests/acceptance/increment-1/test_four_stage_workflow.py",
+  "-q",
+]
+timeout_seconds = 900
 
 [[suite]]
 id = "increment-1-acceptance"

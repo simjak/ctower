@@ -45,18 +45,29 @@ _INPUTS = (
 _EXPECTED_OPERATIONS = {
     "bootstrapFirstTenant",
     "createTicket",
+    "freezeProofCriteria",
     "getTicket",
     "getTicketTimeline",
+    "recordProofEvidence",
+    "recordProofVerdict",
+    "resolveCloseWorkflow",
     "transferTicketCustody",
+    "transitionWorkflow",
 }
 _EXPECTED_SCHEMAS = {
+    "ActivityClass",
     "BootstrapReceipt",
     "BootstrapRequest",
     "CustodyTransferredPayload",
     "CustodyTransferRequest",
     "DurabilityState",
+    "EvidenceRequest",
+    "FreezeCriteriaRequest",
     "Priority",
     "Problem",
+    "ProofCriterion",
+    "ProofReceipt",
+    "ResolveCloseRequest",
     "SourceReference",
     "TicketCommandResult",
     "TicketCreateRequest",
@@ -64,6 +75,10 @@ _EXPECTED_SCHEMAS = {
     "TicketResource",
     "TimelineEvent",
     "TimelineResponse",
+    "VerdictDecision",
+    "VerdictRequest",
+    "WorkflowReceipt",
+    "WorkflowTransitionRequest",
 }
 
 
