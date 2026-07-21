@@ -19,6 +19,8 @@ from ctower_api.interface import create_app
 from ctower_kernel.proof import Proof
 from ctower_kernel.proof.postgres import PostgresProof
 from ctower_kernel.record.postgres import PostgresRecord
+from ctower_kernel.work import Work
+from ctower_kernel.work.postgres import PostgresWork
 from ctower_kernel.workflow import Workflow, WorkflowGraph
 from ctower_kernel.workflow.postgres import PostgresWorkflow
 
@@ -30,6 +32,7 @@ HTTP_FORBIDDEN = 403
 HTTP_NOT_FOUND = 404
 HTTP_CONFLICT = 409
 HTTP_UNPROCESSABLE_ENTITY = 422
+FIRST_TRANSITION_VERSION = 2
 ROOT = Path(__file__).parents[3]
 
 
@@ -89,8 +92,9 @@ def test_transition_replay_is_stable_and_changed_reuse_is_refused(
     command_id = uuid4()
     with TestClient(_app(tenant)) as client:
         ticket_id = _create_ticket(client, tenant)
+        _start_and_admit(client, tenant, ticket_id)
         request = {
-            "expected_version": 0,
+            "expected_version": 1,
             "workflow_ref": "ctower.trust-spine-four-stage@1",
             "source_stage": "capture",
             "destination_stage": "frame",
@@ -114,7 +118,7 @@ def test_transition_replay_is_stable_and_changed_reuse_is_refused(
     assert first.status_code == HTTP_OK
     assert first.json() == replay.json()
     assert first.json()["stage"] == "frame"
-    assert first.json()["version"] == 1
+    assert first.json()["version"] == FIRST_TRANSITION_VERSION
     assert changed.status_code == HTTP_CONFLICT
     assert changed.json()["code"] == "idempotency-conflict"
 
@@ -124,11 +128,12 @@ def test_undeclared_transition_is_refused_without_advancing_state(
 ) -> None:
     with TestClient(_app(tenant)) as client:
         ticket_id = _create_ticket(client, tenant)
+        _start_and_admit(client, tenant, ticket_id)
         refused_id = uuid4()
         refused = client.post(
             f"/v1/tickets/{ticket_id}/workflow/transition",
             json={
-                "expected_version": 0,
+                "expected_version": 1,
                 "workflow_ref": "ctower.trust-spine-four-stage@1",
                 "source_stage": "capture",
                 "destination_stage": "verify",
@@ -139,7 +144,7 @@ def test_undeclared_transition_is_refused_without_advancing_state(
         accepted = client.post(
             f"/v1/tickets/{ticket_id}/workflow/transition",
             json={
-                "expected_version": 0,
+                "expected_version": 1,
                 "workflow_ref": "ctower.trust-spine-four-stage@1",
                 "source_stage": "capture",
                 "destination_stage": "frame",
@@ -149,10 +154,10 @@ def test_undeclared_transition_is_refused_without_advancing_state(
 
     assert refused.status_code == HTTP_CONFLICT
     assert refused.json()["code"] == "workflow-transition-not-declared"
-    assert refused.json()["current_version"] == 0
+    assert refused.json()["current_version"] == 1
     assert accepted.status_code == HTTP_OK
     assert accepted.json()["stage"] == "frame"
-    assert accepted.json()["version"] == 1
+    assert accepted.json()["version"] == FIRST_TRANSITION_VERSION
 
 
 def test_current_independent_proof_is_required_before_atomic_close(
@@ -163,6 +168,7 @@ def test_current_independent_proof_is_required_before_atomic_close(
     artifact_digest = "sha256:" + hashlib.sha256(content.encode()).hexdigest()
     with TestClient(_app(tenant)) as client:
         ticket_id = _create_ticket(client, tenant)
+        _start_and_admit(client, tenant, ticket_id)
         proof_trace = _prepare_current_proof(
             client, tenant, ticket_id, candidate_digest, artifact_digest, content
         )
@@ -246,9 +252,9 @@ def _prepare_current_proof(
     content: str,
 ) -> _ProofTrace:
     return _ProofTrace(
-        frame=_transition(client, tenant, ticket_id, 0, "capture", "frame"),
+        frame=_transition(client, tenant, ticket_id, 1, "capture", "frame"),
         frozen=_freeze(client, tenant, ticket_id, candidate_digest),
-        verification=_transition(client, tenant, ticket_id, 1, "frame", "verify"),
+        verification=_transition(client, tenant, ticket_id, 2, "frame", "verify"),
         corrupt=_evidence(
             client, tenant, ticket_id, candidate_digest, artifact_digest, "tampered artifact"
         ),
@@ -260,9 +266,9 @@ def _prepare_current_proof(
 
 def _close_current_proof(client: TestClient, tenant: TenantFixture, ticket_id: UUID) -> _CloseTrace:
     return _CloseTrace(
-        premature=_resolve_close(client, tenant, ticket_id, 2),
-        terminal=_transition(client, tenant, ticket_id, 2, "verify", "close"),
-        closed=_resolve_close(client, tenant, ticket_id, 3),
+        premature=_resolve_close(client, tenant, ticket_id, 3),
+        terminal=_transition(client, tenant, ticket_id, 3, "verify", "close"),
+        closed=_resolve_close(client, tenant, ticket_id, 4),
     )
 
 
@@ -393,6 +399,47 @@ def _create_ticket(client: TestClient, tenant: TenantFixture) -> UUID:
     return UUID(cast(str, response.json()["ticket"]["ticket_id"]))
 
 
+def _start_and_admit(client: TestClient, tenant: TenantFixture, ticket_id: UUID) -> None:
+    graph_payload = json.loads(
+        (ROOT / "packs/workflows/ctower.trust-spine-four-stage/v1.yaml").read_text(encoding="utf-8")
+    )
+    graph = WorkflowGraph.from_mapping(graph_payload)
+    started = _post_command(
+        client,
+        tenant.commander_credential,
+        ticket_id,
+        "workflow/start",
+        {
+            "workflow_ref": graph.reference,
+            "workflow_digest": graph.digest,
+            "execution_policy_ref": "ctower.trust-spine-four-stage.execution@1",
+            "execution_policy_digest": _file_digest(
+                "packs/policies/execution/trust-spine-four-stage-v1.yaml"
+            ),
+            "gate_policy_ref": "ctower.trust-spine-four-stage.gates@1",
+            "gate_policy_digest": _file_digest(
+                "packs/policies/gates/trust-spine-four-stage-v1.yaml"
+            ),
+            "evidence_policy_ref": "ctower.trust-spine-four-stage.evidence@1",
+            "evidence_policy_digest": _file_digest(
+                "packs/policies/evidence/trust-spine-four-stage-v1.yaml"
+            ),
+        },
+    )
+    admitted = _post_command(
+        client,
+        tenant.commander_credential,
+        ticket_id,
+        "intents",
+        {"intent": {"kind": "admit", "expected_version": 1, "reason": "Ready"}},
+    )
+    assert (started.status_code, admitted.status_code) == (HTTP_OK, HTTP_OK)
+
+
+def _file_digest(relative: str) -> str:
+    return f"sha256:{hashlib.sha256((ROOT / relative).read_bytes()).hexdigest()}"
+
+
 def _command_headers(
     credential: str, command_id: UUID, ticket_id: UUID | None = None
 ) -> dict[str, str]:
@@ -424,15 +471,30 @@ def _post_command(
 def _app(tenant: TenantFixture) -> FastAPI:
     runtime_dsn = tenant.database.runtime_dsn
     proof_store = PostgresProof(runtime_dsn)
-    workflow_store = PostgresWorkflow(runtime_dsn, proof_gate=proof_store)
+    workflow_store = PostgresWorkflow(
+        runtime_dsn, proof_gate=proof_store, readiness_gate=PostgresWork(runtime_dsn)
+    )
     graph_payload = json.loads(
         (ROOT / "packs/workflows/ctower.trust-spine-four-stage/v1.yaml").read_text(encoding="utf-8")
     )
+    record = PostgresRecord(runtime_dsn)
     return create_app(
-        PostgresRecord(runtime_dsn),
+        record,
         proof=Proof(writer=proof_store),
         workflow=Workflow(
             (WorkflowGraph.from_mapping(graph_payload),),
             writer=workflow_store,
+            policy_digests={
+                "ctower.trust-spine-four-stage.execution@1": _file_digest(
+                    "packs/policies/execution/trust-spine-four-stage-v1.yaml"
+                ),
+                "ctower.trust-spine-four-stage.gates@1": _file_digest(
+                    "packs/policies/gates/trust-spine-four-stage-v1.yaml"
+                ),
+                "ctower.trust-spine-four-stage.evidence@1": _file_digest(
+                    "packs/policies/evidence/trust-spine-four-stage-v1.yaml"
+                ),
+            },
         ),
+        work=Work(record, writer=PostgresWork(runtime_dsn)),
     )

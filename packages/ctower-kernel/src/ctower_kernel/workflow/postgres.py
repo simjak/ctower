@@ -12,10 +12,12 @@ from ctower_kernel.workflow import (
     WorkflowActor,
     WorkflowMutation,
     WorkflowReceipt,
+    WorkflowStart,
 )
-from ctower_kernel.workflow._postgres_sql import ProofGate
+from ctower_kernel.workflow._close_sql import close_workflow as _close
+from ctower_kernel.workflow._postgres_sql import ProofGate, WorkReadinessGate
 from ctower_kernel.workflow._postgres_sql import advance_workflow as _advance
-from ctower_kernel.workflow._postgres_sql import close_workflow as _close
+from ctower_kernel.workflow._start_sql import start_workflow as _start
 
 __all__ = ["PostgresWorkflow"]
 
@@ -28,10 +30,12 @@ class PostgresWorkflow:
         dsn: str,
         *,
         proof_gate: ProofGate,
+        readiness_gate: WorkReadinessGate,
         telemetry: Telemetry | None = None,
     ) -> None:
         self._dsn = dsn
         self._proof_gate = proof_gate
+        self._readiness_gate = readiness_gate
         self._telemetry = telemetry or NoopTelemetry()
 
     def advance_workflow(
@@ -50,6 +54,7 @@ class PostgresWorkflow:
             self._dsn,
             evaluator,
             self._proof_gate,
+            self._readiness_gate,
             actor,
             mutation,
             request_digest=request_digest,
@@ -57,6 +62,30 @@ class PostgresWorkflow:
             telemetry=telemetry,
         )
         self._emit("workflow.advance", telemetry, outcome)
+        return outcome
+
+    def start_workflow(
+        self,
+        evaluator: Workflow,
+        actor: WorkflowActor,
+        command: WorkflowStart,
+        *,
+        request_digest: bytes,
+        now: datetime,
+        telemetry: TelemetryContext,
+    ) -> WorkflowReceipt | RecordProblem:
+        """Atomically persist one exact Workflow and policy pin."""
+
+        outcome = _start(
+            self._dsn,
+            evaluator,
+            actor,
+            command,
+            request_digest=request_digest,
+            now=now,
+            telemetry=telemetry,
+        )
+        self._emit("workflow.start", telemetry, outcome)
         return outcome
 
     def close_workflow(

@@ -8,3 +8,7 @@ Packs are immutable desired-state payloads for the universal Catalog. The initia
 generic evaluator subset. Its execution, gate, and evidence policy packs declare only the locally exercised
 criteria/evidence/verdict path; remote execution, images, effects, and executable extensions are explicitly
 `not_exercised`.
+
+`ctower.i1-priority-aging@1` is the staged CP2 scheduling-policy fixture. It deterministically orders only
+hard-eligible candidates with bounded aging and checkpoint-only preemption; it is not a Runtime dispatcher,
+timer authority, or claim that unattended scheduling is active.

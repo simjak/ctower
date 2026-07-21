@@ -1,5 +1,41 @@
 """Work Module public surface."""
 
-from ctower_kernel.work.interface import Work
+from ctower_kernel.work.interface import (
+    AddRelation,
+    Admit,
+    AssignmentInterval,
+    AssignmentKind,
+    Block,
+    ChangeAssignment,
+    ChangePriority,
+    Defer,
+    RelationKind,
+    Reopen,
+    SchedulingCandidate,
+    SchedulingDecision,
+    Unblock,
+    Work,
+    WorkCommand,
+    WorkReadiness,
+    WorkReceipt,
+)
 
-__all__ = ["Work"]
+__all__ = [
+    "AddRelation",
+    "Admit",
+    "AssignmentInterval",
+    "AssignmentKind",
+    "Block",
+    "ChangeAssignment",
+    "ChangePriority",
+    "Defer",
+    "RelationKind",
+    "Reopen",
+    "SchedulingCandidate",
+    "SchedulingDecision",
+    "Unblock",
+    "Work",
+    "WorkCommand",
+    "WorkReadiness",
+    "WorkReceipt",
+]

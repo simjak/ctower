@@ -18,6 +18,8 @@ from ctower_kernel.telemetry import TelemetryContext
 
 __all__ = [
     "Actor",
+    "AuditEvent",
+    "AuditPage",
     "BootstrapCommand",
     "BootstrapReceipt",
     "CustodyCommand",
@@ -105,6 +107,7 @@ class RecordProblem:
     title: str
     command_id: UUID | None = None
     current_version: int | None = None
+    unmet_facts: tuple[str, ...] = ()
 
     def response_payload(self) -> dict[str, object]:
         """Return a minimal RFC 9457 object."""
@@ -120,6 +123,8 @@ class RecordProblem:
             payload["command_id"] = str(self.command_id)
         if self.current_version is not None:
             payload["current_version"] = self.current_version
+        if self.unmet_facts:
+            payload["unmet_facts"] = list(self.unmet_facts)
         return payload
 
 
@@ -276,6 +281,52 @@ class TicketTimeline:
         }
 
 
+@dataclass(frozen=True, slots=True)
+class AuditEvent:
+    """One canonical event linked to a ticket without payload inspection."""
+
+    actor_principal_id: UUID
+    command_id: UUID
+    event_hash: str
+    event_id: UUID
+    kind: EventKind
+    occurred_at: datetime
+    payload: dict[str, object]
+    record_position: int
+    sequence: int
+    stream_id: str
+
+    def response_payload(self) -> dict[str, object]:
+        return {
+            "actor_principal_id": str(self.actor_principal_id),
+            "command_id": str(self.command_id),
+            "event_hash": self.event_hash,
+            "event_id": str(self.event_id),
+            "kind": self.kind.value,
+            "occurred_at": self.occurred_at.isoformat(),
+            "payload": self.payload,
+            "record_position": self.record_position,
+            "sequence": self.sequence,
+            "stream_id": self.stream_id,
+        }
+
+
+@dataclass(frozen=True, slots=True)
+class AuditPage:
+    """Stable global-position cursor page with no duplicate linked event."""
+
+    ticket_id: UUID
+    events: tuple[AuditEvent, ...]
+    next_cursor: int | None
+
+    def response_payload(self) -> dict[str, object]:
+        return {
+            "events": [event.response_payload() for event in self.events],
+            "next_cursor": self.next_cursor,
+            "ticket_id": str(self.ticket_id),
+        }
+
+
 class Record(Protocol):
     """Small atomic persistence authority consumed by Access and Work."""
 
@@ -329,6 +380,19 @@ class Record(Protocol):
         self, actor: Actor, ticket_id: UUID, *, telemetry: TelemetryContext
     ) -> TicketTimeline | RecordProblem:
         """Read the ordered tenant-scoped event timeline."""
+
+        ...
+
+    def ticket_audit(
+        self,
+        actor: Actor,
+        ticket_id: UUID,
+        *,
+        cursor: int,
+        limit: int,
+        telemetry: TelemetryContext,
+    ) -> AuditPage | RecordProblem:
+        """Read one cursor page from explicitly linked canonical events."""
 
         ...
 

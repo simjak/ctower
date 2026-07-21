@@ -148,6 +148,7 @@ def ticket_timeline(
                 server_time, payload
             FROM events
             WHERE tenant_id = %s AND aggregate_id = %s
+              AND kind IN ('ticket.created', 'ticket.custody_transferred')
             ORDER BY sequence
             """,
             (actor.tenant_id, ticket_id),
@@ -315,7 +316,7 @@ def _append_ticket_created(
         stream_id=f"ticket:{identifiers.ticket}",
         tenant_id=actor.tenant_id,
     )
-    append_event(connection, event)
+    append_event(connection, event, subjects=(("ticket", identifiers.ticket),))
     _insert_result_and_outbox(
         connection,
         actor,

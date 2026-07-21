@@ -13,7 +13,7 @@ from jsonschema import Draft202012Validator
 from jsonschema.exceptions import ValidationError
 
 ROOT = Path(__file__).parents[3]
-VECTOR_COUNT = 3
+VECTOR_COUNT = 4
 
 
 def test_event_envelope_is_strict_and_hash_vectors_are_canonical() -> None:
@@ -43,7 +43,7 @@ def test_event_envelope_is_strict_and_hash_vectors_are_canonical() -> None:
         previous_hashes[stream_id] = event_hash
 
 
-def test_ticket_event_payload_contract_covers_only_the_slice_vocabulary() -> None:
+def test_ticket_event_payload_contract_covers_the_typed_work_slice() -> None:
     schema = json.loads(
         (ROOT / "contracts/domain/tickets/ticket-event.schema.json").read_text(encoding="utf-8")
     )
@@ -53,14 +53,29 @@ def test_ticket_event_payload_contract_covers_only_the_slice_vocabulary() -> Non
     assert set(schema["properties"]["kind"]["enum"]) == {
         "ticket.created",
         "ticket.custody_transferred",
+        "work.changed",
     }
 
 
-def test_proof_and_workflow_event_variants_are_strict_and_typed() -> None:
+def test_work_proof_and_workflow_event_variants_are_strict_and_typed() -> None:
     schema = json.loads(
         (ROOT / "contracts/domain/events/event-envelope.schema.json").read_text(encoding="utf-8")
     )
     validator = Draft202012Validator(schema)
+    work = _aggregate_event("work.changed", "ticket")
+    work["payload"] = {
+        "data": {
+            "authority": "commander",
+            "from_priority": "P2",
+            "policy_ref": "ctower.priority-authority@1",
+            "reason": "Customer impact",
+            "to_priority": "P1",
+            "urgent_evidence_ref": None,
+        },
+        "operation": "priority_changed",
+        "ticket_id": "00000000-0000-4000-8000-000000000008",
+        "work_version": 2,
+    }
     proof = _aggregate_event("proof.changed", "proof")
     proof["payload"] = {
         "candidate_digest": "sha256:" + "a" * 64,
@@ -80,6 +95,7 @@ def test_proof_and_workflow_event_variants_are_strict_and_typed() -> None:
         "workflow_version": 3,
     }
 
+    validator.validate(work)
     validator.validate(proof)
     validator.validate(workflow)
     corrupt = deepcopy(workflow)

@@ -9,6 +9,7 @@ from fastapi.responses import JSONResponse
 from pydantic import ValidationError
 from starlette.responses import Response
 
+from ctower_api._board_routes import install_board_routes
 from ctower_api._http_support import (
     authenticate as _authenticate,
 )
@@ -31,6 +32,7 @@ from ctower_api._http_support import (
     validation_problem as _validation_problem,
 )
 from ctower_api._proof_workflow_routes import install_proof_workflow_routes
+from ctower_api._task_routes import install_task_routes
 from ctower_api.telemetry import TelemetryRecorder
 from ctower_client.models import BootstrapReceipt as HttpBootstrapReceipt
 from ctower_client.models import (
@@ -42,6 +44,7 @@ from ctower_client.models import (
 )
 from ctower_client.models import TicketCommandResult as HttpTicketCommandResult
 from ctower_kernel.access import Access
+from ctower_kernel.projections import Projections
 from ctower_kernel.proof import Proof
 from ctower_kernel.record import (
     BootstrapCommand,
@@ -66,6 +69,8 @@ def create_app(
     *,
     proof: Proof | None = None,
     workflow: Workflow | None = None,
+    work: Work | None = None,
+    projections: Projections | None = None,
     telemetry: TelemetryRecorder | None = None,
 ) -> FastAPI:
     """Compose the private command API without embedding durable decisions."""
@@ -73,6 +78,7 @@ def create_app(
     app = FastAPI(title="ctower control API", version="0.0.0")
     recorder = telemetry or TelemetryRecorder()
     access = Access(record, telemetry=recorder)
+    work_module = work or Work(record, telemetry=recorder)
 
     @app.middleware("http")
     async def telemetry_health(
@@ -84,11 +90,14 @@ def create_app(
         return response
 
     _install_bootstrap_route(app, access, recorder)
-    _install_ticket_create_route(app, access, Work(record, telemetry=recorder), recorder)
-    _install_custody_route(app, access, Work(record, telemetry=recorder), recorder)
+    _install_ticket_create_route(app, access, work_module, recorder)
+    _install_custody_route(app, access, work_module, recorder)
     _install_ticket_read_routes(app, access, record, recorder)
+    install_task_routes(app, access, record, work_module, workflow, recorder)
     if proof is not None and workflow is not None:
         install_proof_workflow_routes(app, access, proof, workflow, recorder)
+    if projections is not None:
+        install_board_routes(app, access, projections, recorder)
     return app
 
 

@@ -13,3 +13,7 @@ execution, gate, and evidence policy schemas under the single `execution/` home,
 current-proof/deferred-source manifest under `evidence/`. These schemas exercise only the four-stage local
 fixture. They do not activate remote execution, images, effects, executable extensions, or off-host
 durability.
+
+The CP2 task-management contracts under `domain/task-management/` fix typed Work commands, five assignment
+kinds, the six-lane Board view and watermark health, and a deterministic priority-aging selection policy.
+The scheduling pack selects among eligible work only; it neither dispatches jobs nor advances Workflow.

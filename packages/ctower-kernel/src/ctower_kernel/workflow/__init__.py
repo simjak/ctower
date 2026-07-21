@@ -13,6 +13,7 @@ from ctower_kernel.workflow.interface import (
     WorkflowGraph,
     WorkflowMutation,
     WorkflowReceipt,
+    WorkflowStart,
 )
 
 __all__ = [
@@ -28,4 +29,5 @@ __all__ = [
     "WorkflowGraph",
     "WorkflowMutation",
     "WorkflowReceipt",
+    "WorkflowStart",
 ]

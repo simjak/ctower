@@ -10,7 +10,7 @@ import psycopg
 import pytest
 from psycopg.rows import dict_row
 from support.postgres import DatabaseFixture
-from support.server import running_api
+from support.server import running_api, start_and_admit
 from support.tenant_fixture import TenantFixture, create_second_tenant
 
 from ctower_client import (
@@ -54,6 +54,71 @@ HEAD_UPDATE_COLUMNS = {
         "activity_class": True,
         "version": True,
         "created_at": False,
+        "episode_number": False,
+        "workflow_digest": False,
+        "execution_policy_ref": False,
+        "execution_policy_digest": False,
+        "gate_policy_ref": False,
+        "gate_policy_digest": False,
+        "evidence_policy_ref": False,
+        "evidence_policy_digest": False,
+        "started_by": False,
+    },
+}
+
+CP2_HEAD_UPDATE_COLUMNS = {
+    "tickets": {
+        "ticket_id": False,
+        "tenant_id": False,
+        "title": False,
+        "source_kind": False,
+        "source_ref": False,
+        "priority": True,
+        "custodian_principal_id": True,
+        "version": True,
+        "durability_state": False,
+        "created_by": False,
+        "created_at": False,
+        "current_episode": True,
+    },
+    "lifecycle_episodes": {
+        "ticket_id": False,
+        "tenant_id": False,
+        "episode_number": False,
+        "state": True,
+        "opened_at": False,
+        "closed_at": True,
+    },
+    "assignment_intervals": {
+        "ticket_id": False,
+        "tenant_id": False,
+        "interval_sequence": False,
+        "assignment_kind": False,
+        "principal_id": False,
+        "assigned_at": False,
+        "released_at": True,
+        "changed_by": False,
+        "reason": False,
+        "client_command_id": False,
+        "scope_ref": False,
+    },
+    "blocker_heads": {
+        "blocker_id": False,
+        "ticket_id": False,
+        "tenant_id": False,
+        "blocker_kind": False,
+        "reason_class": False,
+        "reason": False,
+        "owner_principal_id": False,
+        "source_ref": False,
+        "affected_stage": False,
+        "resolution_condition": False,
+        "next_check_at": False,
+        "dependency_ref": False,
+        "board_impact": False,
+        "opened_at": False,
+        "resolved_at": True,
+        "resolution_evidence_ref": True,
     },
 }
 
@@ -65,6 +130,10 @@ APPEND_ONLY_TABLES = (
     "proof_invalidations",
     "workflow_transition_facts",
     "lifecycle_facts",
+    "priority_facts",
+    "admission_facts",
+    "blocker_facts",
+    "ticket_relations",
 )
 
 
@@ -92,9 +161,12 @@ def test_upgrade_database_corrects_existing_head_privileges(
     _assert_legacy_heads_have_table_wide_update(database.admin_dsn)
     with psycopg.connect(database.migrator_dsn) as connection:
         connection.execute("SET ROLE ctower_admin")
-        connection.execute(
-            (MIGRATIONS / "0006_narrow_head_update_privileges.sql").read_text(encoding="utf-8")
-        )
+        for name in (
+            "0006_narrow_head_update_privileges.sql",
+            "0007_task_management_facts.sql",
+            "0008_board_projection.sql",
+        ):
+            connection.execute((MIGRATIONS / name).read_text(encoding="utf-8"))
 
     tenant = create_second_tenant(database)
     ticket_id = _exercise_public_proof_workflow_commands(tenant)
@@ -146,10 +218,11 @@ def _prepare_public_trace(
         ),
         command_id=uuid4(),
     ).ticket.ticket_id
+    start_and_admit(commander, ticket_id)
     frame = commander.transition_workflow(
         ticket_id,
         WorkflowTransitionRequest(
-            expected_version=0,
+            expected_version=1,
             workflow_ref="ctower.trust-spine-four-stage@1",
             source_stage="capture",
             destination_stage="frame",
@@ -162,7 +235,7 @@ def _prepare_public_trace(
     verification = commander.transition_workflow(
         ticket_id,
         WorkflowTransitionRequest(
-            expected_version=1,
+            expected_version=2,
             workflow_ref="ctower.trust-spine-four-stage@1",
             source_stage="frame",
             destination_stage="verify",
@@ -216,7 +289,7 @@ def _complete_public_trace(commander: CtowerClient, ticket_id: UUID) -> None:
     terminal = commander.transition_workflow(
         ticket_id,
         WorkflowTransitionRequest(
-            expected_version=2,
+            expected_version=3,
             workflow_ref=workflow_ref,
             source_stage="verify",
             destination_stage="close",
@@ -225,7 +298,7 @@ def _complete_public_trace(commander: CtowerClient, ticket_id: UUID) -> None:
     )
     closed = commander.resolve_close_workflow(
         ticket_id,
-        ResolveCloseRequest(expected_version=3, workflow_ref=workflow_ref),
+        ResolveCloseRequest(expected_version=4, workflow_ref=workflow_ref),
         command_id=uuid4(),
     )
     assert terminal.stage == "close"
@@ -260,7 +333,7 @@ def _workflow_revision(dsn: str, ticket_id: UUID) -> int:
 
 def _assert_runtime_role_privileges(dsn: str) -> None:
     with psycopg.connect(dsn, row_factory=dict_row) as connection:
-        for table, expected_columns in HEAD_UPDATE_COLUMNS.items():
+        for table, expected_columns in {**HEAD_UPDATE_COLUMNS, **CP2_HEAD_UPDATE_COLUMNS}.items():
             columns = connection.execute(
                 """
                 SELECT column_name
@@ -292,7 +365,17 @@ def _assert_legacy_heads_have_table_wide_update(dsn: str) -> None:
     with psycopg.connect(dsn, row_factory=dict_row) as connection:
         for table, expected_columns in HEAD_UPDATE_COLUMNS.items():
             assert _table_privilege(connection, table, "UPDATE") is True
-            for column in expected_columns:
+            legacy_columns = {
+                str(row["column_name"])
+                for row in connection.execute(
+                    """
+                    SELECT column_name FROM information_schema.columns
+                    WHERE table_schema = 'public' AND table_name = %s
+                    """,
+                    (table,),
+                ).fetchall()
+            }
+            for column in expected_columns.keys() & legacy_columns:
                 assert _column_update_privilege(connection, table, column) is True
 
 

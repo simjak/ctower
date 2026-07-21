@@ -1,6 +1,6 @@
 """DO NOT EDIT: generated file; regenerate from declared inputs.
 
-Authored contract digest: sha256:71152e641b41ee93136c346c04060769bcfd05c8bdfb8e009491efe2d666be3c
+Authored contract digest: sha256:4140fbfe12e8b79ef581aa8efd701ac8faff0ae86631cf2e593652675b1fa958
 """
 
 from __future__ import annotations
@@ -14,29 +14,51 @@ from pydantic import BaseModel, ConfigDict, Field
 
 __all__ = [
     "ActivityClass",
+    "AdmitIntent",
+    "AssignmentChangeRequest",
+    "AssignmentInterval",
+    "AssignmentKind",
+    "AssignmentList",
+    "AuditEvent",
+    "AuditPage",
+    "BlockIntent",
+    "BoardCard",
+    "BoardLane",
+    "BoardView",
     "BootstrapReceipt",
     "BootstrapRequest",
     "CustodyTransferRequest",
     "CustodyTransferredPayload",
+    "DeferIntent",
     "DurabilityState",
     "EvidenceRequest",
     "FreezeCriteriaRequest",
+    "MutableAssignmentKind",
     "Priority",
+    "PriorityChangeRequest",
     "Problem",
+    "ProjectionHealth",
     "ProofCriterion",
     "ProofReceipt",
+    "RelationKind",
+    "RelationRequest",
+    "ReopenIntent",
     "ResolveCloseRequest",
     "SourceReference",
     "TelemetryContext",
     "TicketCommandResult",
     "TicketCreateRequest",
     "TicketCreatedPayload",
+    "TicketIntentRequest",
     "TicketResource",
     "TimelineEvent",
     "TimelineResponse",
+    "UnblockIntent",
     "VerdictDecision",
     "VerdictRequest",
+    "WorkReceipt",
     "WorkflowReceipt",
+    "WorkflowStartRequest",
     "WorkflowTransitionRequest",
 ]
 
@@ -48,6 +70,64 @@ class _BoundaryModel(BaseModel):
 class ActivityClass(StrEnum):
     WORK = "work"
     VERIFICATION = "verification"
+
+
+class AdmitIntent(_BoundaryModel):
+    kind: Literal["admit"]
+    expected_version: Annotated[int, Field(ge=1)]
+    reason: Annotated[str, Field(min_length=1, max_length=500)]
+
+
+class AssignmentKind(StrEnum):
+    TICKET_CUSTODIAN = "ticket_custodian"
+    CURRENT_ASSIGNEE = "current_assignee"
+    STAGE_OWNER = "stage_owner"
+    REVIEWER_ASSIGNMENT = "reviewer_assignment"
+    RUNNER_LEASE_OWNER = "runner_lease_owner"
+
+
+class AuditEvent(_BoundaryModel):
+    actor_principal_id: UUID
+    command_id: UUID
+    event_hash: Annotated[str, Field(pattern="^sha256:[0-9a-f]{64}$")]
+    event_id: UUID
+    kind: Literal[
+        "ticket.created",
+        "ticket.custody_transferred",
+        "work.changed",
+        "workflow.changed",
+        "proof.changed",
+    ]
+    occurred_at: datetime
+    payload: dict[str, object]
+    record_position: Annotated[int, Field(ge=1)]
+    sequence: Annotated[int, Field(ge=1)]
+    stream_id: str
+
+
+class BlockIntent(_BoundaryModel):
+    kind: Literal["block"]
+    expected_version: Annotated[int, Field(ge=1)]
+    reason: Annotated[str, Field(min_length=1, max_length=500)]
+    blocker_id: UUID
+    blocker_kind: Literal["dependency", "operator_action", "policy", "resource", "technical"]
+    reason_class: Annotated[str, Field(min_length=1, max_length=64)]
+    owner_principal_id: UUID
+    source_ref: Annotated[str, Field(min_length=1, max_length=256)]
+    affected_stage: Annotated[str, Field(pattern="^[a-z][a-z0-9._-]*$")] | None
+    resolution_condition: Annotated[str, Field(min_length=1, max_length=500)]
+    next_check_at: datetime | None
+    dependency_ref: Annotated[str, Field(max_length=256)] | None
+    board_impact: bool
+
+
+class BoardLane(StrEnum):
+    BACKLOG = "backlog"
+    READY = "ready"
+    IN_PROGRESS = "in_progress"
+    IN_REVIEW = "in_review"
+    BLOCKED = "blocked"
+    COMPLETE = "complete"
 
 
 class BootstrapRequest(_BoundaryModel):
@@ -74,6 +154,13 @@ class CustodyTransferredPayload(_BoundaryModel):
     to_custodian_id: UUID
 
 
+class DeferIntent(_BoundaryModel):
+    kind: Literal["defer"]
+    expected_version: Annotated[int, Field(ge=1)]
+    reason: Annotated[str, Field(min_length=1, max_length=500)]
+    review_after: datetime
+
+
 class DurabilityState(StrEnum):
     DURABILITY_PENDING = "durability_pending"
 
@@ -85,6 +172,12 @@ class EvidenceRequest(_BoundaryModel):
     candidate_digest: Annotated[str, Field(pattern="^sha256:[0-9a-f]{64}$")]
     artifact_digest: Annotated[str, Field(pattern="^sha256:[0-9a-f]{64}$")]
     content: Annotated[str, Field(min_length=1, max_length=100000)]
+
+
+class MutableAssignmentKind(StrEnum):
+    CURRENT_ASSIGNEE = "current_assignee"
+    STAGE_OWNER = "stage_owner"
+    REVIEWER_ASSIGNMENT = "reviewer_assignment"
 
 
 class Priority(StrEnum):
@@ -117,8 +210,22 @@ class Problem(_BoundaryModel):
         "unauthorized",
         "validation-error",
         "version-conflict",
+        "work-assignment-kind-refused",
+        "work-assignment-target-ineligible",
+        "work-assignment-unchanged",
+        "work-priority-unchanged",
+        "work-blocker-already-resolved",
+        "work-blocker-id-conflict",
+        "work-blocker-owner-ineligible",
+        "work-blocker-unknown",
+        "work-intent-unmet",
+        "work-relation-cycle",
+        "work-relation-exists",
+        "work-reopen-unmet",
+        "workflow-already-started",
+        "workflow-pin-mismatch",
         "workflow-predicate-unsatisfied",
-        "workflow-initial-stage-required",
+        "workflow-run-not-started",
         "proof-incomplete",
         "workflow-state-conflict",
         "workflow-terminal",
@@ -132,6 +239,12 @@ class Problem(_BoundaryModel):
     status: Annotated[int, Field(ge=400, le=599)]
     title: str
     type_uri: str = Field(alias="type", serialization_alias="type")
+    unmet_facts: tuple[str, ...] | None = None
+
+
+class ProjectionHealth(StrEnum):
+    CURRENT = "CURRENT"
+    STATE_UNKNOWN = "STATE_UNKNOWN"
 
 
 class ProofCriterion(_BoundaryModel):
@@ -139,6 +252,22 @@ class ProofCriterion(_BoundaryModel):
     description: Annotated[str, Field(min_length=1, max_length=500)]
     candidate_dependent: bool
     requires_verdict: bool
+
+
+class RelationKind(StrEnum):
+    PARENT_OF = "parent_of"
+    DEPENDS_ON = "depends_on"
+    BLOCKS = "blocks"
+    DUPLICATES = "duplicates"
+    RELATES_TO = "relates_to"
+    CAUSED_BY = "caused_by"
+
+
+class ReopenIntent(_BoundaryModel):
+    kind: Literal["reopen"]
+    expected_version: Annotated[int, Field(ge=1)]
+    reason: Annotated[str, Field(min_length=1, max_length=500)]
+    priority_policy: Literal["carry_forward"]
 
 
 class ResolveCloseRequest(_BoundaryModel):
@@ -175,9 +304,28 @@ class TelemetryContext(_BoundaryModel):
     deployment_id: Annotated[str, Field(min_length=1, max_length=128)] | None = None
 
 
+class UnblockIntent(_BoundaryModel):
+    kind: Literal["unblock"]
+    expected_version: Annotated[int, Field(ge=1)]
+    reason: Annotated[str, Field(min_length=1, max_length=500)]
+    blocker_id: UUID
+    resolution_evidence_ref: Annotated[str, Field(min_length=1, max_length=256)]
+
+
 class VerdictDecision(StrEnum):
     PASS = "pass"
     FAIL = "fail"
+
+
+class WorkflowStartRequest(_BoundaryModel):
+    workflow_ref: Annotated[str, Field(pattern="^[a-z][a-z0-9._-]*@[1-9][0-9]*$")]
+    workflow_digest: Annotated[str, Field(pattern="^sha256:[0-9a-f]{64}$")]
+    execution_policy_ref: Annotated[str, Field(pattern="^[a-z][a-z0-9._-]*@[1-9][0-9]*$")]
+    execution_policy_digest: Annotated[str, Field(pattern="^sha256:[0-9a-f]{64}$")]
+    gate_policy_ref: Annotated[str, Field(pattern="^[a-z][a-z0-9._-]*@[1-9][0-9]*$")]
+    gate_policy_digest: Annotated[str, Field(pattern="^sha256:[0-9a-f]{64}$")]
+    evidence_policy_ref: Annotated[str, Field(pattern="^[a-z][a-z0-9._-]*@[1-9][0-9]*$")]
+    evidence_policy_digest: Annotated[str, Field(pattern="^sha256:[0-9a-f]{64}$")]
 
 
 class WorkflowTransitionRequest(_BoundaryModel):
@@ -185,6 +333,49 @@ class WorkflowTransitionRequest(_BoundaryModel):
     workflow_ref: Annotated[str, Field(pattern="^[a-z][a-z0-9._-]*@[1-9][0-9]*$")]
     source_stage: Annotated[str, Field(pattern="^[a-z][a-z0-9._-]*$")]
     destination_stage: Annotated[str, Field(pattern="^[a-z][a-z0-9._-]*$")]
+
+
+class AssignmentChangeRequest(_BoundaryModel):
+    assignment_kind: MutableAssignmentKind
+    expected_version: Annotated[int, Field(ge=1)]
+    reason: Annotated[str, Field(min_length=1, max_length=500)]
+    scope_ref: Annotated[str, Field(min_length=1, max_length=256)] | None = None
+    to_principal_id: UUID
+
+
+class AssignmentInterval(_BoundaryModel):
+    assigned_at: datetime
+    assignment_kind: AssignmentKind
+    changed_by: UUID
+    principal_id: UUID
+    reason: str
+    released_at: datetime | None
+    scope_ref: str | None
+    sequence: Annotated[int, Field(ge=1)]
+
+
+class AuditPage(_BoundaryModel):
+    events: tuple[AuditEvent, ...]
+    next_cursor: Annotated[int, Field(ge=1)] | None
+    ticket_id: UUID
+
+
+class BoardCard(_BoundaryModel):
+    activity_class: Literal["work", "verification", "None"] | None
+    assignee_id: UUID | None
+    blocker_opened_at: datetime | None
+    blocker_reason: str | None
+    custodian_id: UUID
+    delivery_facts: tuple[str, ...]
+    lane: BoardLane
+    priority: Priority
+    risk: str | None
+    stage_key: Annotated[str, Field(pattern="^[a-z][a-z0-9._-]*$")] | None
+    stage_label: str | None
+    ticket_id: UUID
+    title: str
+    underlying_lane: Literal["backlog", "ready", "in_progress", "in_review", "complete", "None"] | None
+    version: Annotated[int, Field(ge=1)]
 
 
 class BootstrapReceipt(_BoundaryModel):
@@ -203,6 +394,13 @@ class FreezeCriteriaRequest(_BoundaryModel):
     criteria: Annotated[tuple[ProofCriterion, ...], Field(min_length=1)]
 
 
+class PriorityChangeRequest(_BoundaryModel):
+    expected_version: Annotated[int, Field(ge=1)]
+    priority: Priority
+    reason: Annotated[str, Field(min_length=1, max_length=500)]
+    urgent_evidence_ref: Annotated[str, Field(min_length=1, max_length=256)] | None = None
+
+
 class ProofReceipt(_BoundaryModel):
     candidate_digest: Annotated[str, Field(pattern="^sha256:[0-9a-f]{64}$")]
     command_id: UUID
@@ -214,6 +412,13 @@ class ProofReceipt(_BoundaryModel):
     satisfied: bool
     ticket_id: UUID
     version: Annotated[int, Field(ge=1)]
+
+
+class RelationRequest(_BoundaryModel):
+    expected_version: Annotated[int, Field(ge=1)]
+    reason: Annotated[str, Field(min_length=1, max_length=500)]
+    relation_kind: RelationKind
+    target_ticket_id: UUID
 
 
 class TicketCreateRequest(_BoundaryModel):
@@ -229,6 +434,10 @@ class TicketCreatedPayload(_BoundaryModel):
     source_kind: Annotated[str, Field(min_length=1, max_length=64)]
     source_ref: Annotated[str, Field(min_length=1, max_length=256)]
     title: str
+
+
+class TicketIntentRequest(_BoundaryModel):
+    intent: AdmitIntent | DeferIntent | BlockIntent | UnblockIntent | ReopenIntent
 
 
 class TicketResource(_BoundaryModel):
@@ -250,6 +459,24 @@ class VerdictRequest(_BoundaryModel):
     decision: VerdictDecision
 
 
+class WorkReceipt(_BoundaryModel):
+    command_id: UUID
+    durability_state: DurabilityState
+    event_ids: Annotated[tuple[UUID, ...], Field(min_length=1)]
+    operation: Literal[
+        "priority_changed",
+        "assignment_changed",
+        "admitted",
+        "deferred",
+        "blocker_opened",
+        "blocker_resolved",
+        "reopened",
+        "relation_added",
+    ]
+    ticket_id: UUID
+    version: Annotated[int, Field(ge=2)]
+
+
 class WorkflowReceipt(_BoundaryModel):
     activity_class: ActivityClass
     command_id: UUID
@@ -261,6 +488,18 @@ class WorkflowReceipt(_BoundaryModel):
     version: Annotated[int, Field(ge=1)]
     workflow_ref: Annotated[str, Field(pattern="^[a-z][a-z0-9._-]*@[1-9][0-9]*$")]
     workflow_run_id: UUID
+
+
+class AssignmentList(_BoundaryModel):
+    assignments: tuple[AssignmentInterval, ...]
+    ticket_id: UUID
+
+
+class BoardView(_BoundaryModel):
+    cards: tuple[BoardCard, ...]
+    health: ProjectionHealth
+    projection_watermark: Annotated[int, Field(ge=0)]
+    source_watermark: Annotated[int, Field(ge=0)]
 
 
 class TicketCommandResult(_BoundaryModel):

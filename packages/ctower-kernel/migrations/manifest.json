@@ -24,6 +24,14 @@
     {
       "path": "0006_narrow_head_update_privileges.sql",
       "sha256": "sha256:eec9c751c3a73132601b984eed36f6d432ac0a84c0e112180a9dbbc20294458e"
+    },
+    {
+      "path": "0007_task_management_facts.sql",
+      "sha256": "sha256:3845d31069ef1223dea2418f45969115c070f860c82285d343d25cef4c964a24"
+    },
+    {
+      "path": "0008_board_projection.sql",
+      "sha256": "sha256:c1f89ab4b707014b6dff988d4e3b420ba4cf3a4366871e521044ccdeeae786ad"
     }
   ]
 }

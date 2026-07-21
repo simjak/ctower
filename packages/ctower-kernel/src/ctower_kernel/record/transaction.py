@@ -10,7 +10,7 @@ from psycopg.types.json import Jsonb
 
 from ctower_kernel.record import RecordProblem
 from ctower_kernel.record._commands import reserve_command
-from ctower_kernel.record._event_store import append_event, enqueue_event
+from ctower_kernel.record._event_store import EventSubject, append_event, enqueue_event
 from ctower_kernel.record.events import EventEnvelope
 from ctower_kernel.telemetry import TelemetryContext
 
@@ -42,10 +42,11 @@ class RecordTransaction:
         status_code: int,
         telemetry: TelemetryContext,
         now: datetime,
+        subjects: tuple[EventSubject, ...] = (),
     ) -> None:
         """Append one event, exact result, and outbox row in the caller's transaction."""
 
-        append_event(self._connection, event)
+        append_event(self._connection, event, subjects=subjects)
         self._connection.execute(
             """
             INSERT INTO command_results (

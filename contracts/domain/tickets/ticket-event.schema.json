@@ -8,12 +8,13 @@
   "properties": {
     "kind": {
       "type": "string",
-      "enum": ["ticket.created", "ticket.custody_transferred"]
+      "enum": ["ticket.created", "ticket.custody_transferred", "work.changed"]
     },
     "data": {
       "oneOf": [
         {"$ref": "#/$defs/ticketCreated"},
-        {"$ref": "#/$defs/custodyTransferred"}
+        {"$ref": "#/$defs/custodyTransferred"},
+        {"$ref": "../events/event-envelope.schema.json#/$defs/workChanged"}
       ]
     }
   },

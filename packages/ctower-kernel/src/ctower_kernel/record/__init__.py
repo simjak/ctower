@@ -2,6 +2,8 @@
 
 from ctower_kernel.record.interface import (
     Actor,
+    AuditEvent,
+    AuditPage,
     BootstrapCommand,
     BootstrapReceipt,
     CustodyCommand,
@@ -18,6 +20,8 @@ from ctower_kernel.record.interface import (
 
 __all__ = [
     "Actor",
+    "AuditEvent",
+    "AuditPage",
     "BootstrapCommand",
     "BootstrapReceipt",
     "CustodyCommand",

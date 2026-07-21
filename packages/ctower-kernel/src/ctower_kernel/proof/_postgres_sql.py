@@ -387,6 +387,7 @@ def _append_change(
             ticket_id=str(mutation.ticket_id),
         ),
         now=now,
+        subjects=(("ticket", receipt.ticket_id), ("proof", receipt.proof_id)),
     )
     return committed
 

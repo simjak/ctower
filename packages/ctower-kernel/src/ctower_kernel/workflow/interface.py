@@ -8,11 +8,11 @@ import re
 from collections.abc import Callable, Mapping
 from dataclasses import dataclass
 from datetime import UTC, datetime
-from enum import StrEnum
 from typing import TYPE_CHECKING, Protocol
 from uuid import UUID
 
 from ctower_kernel.telemetry import TelemetryContext
+from ctower_kernel.workflow._graph import ActivityClass, Stage, Transition, WorkflowGraph
 
 if TYPE_CHECKING:
     from ctower_kernel.record import RecordProblem
@@ -30,116 +30,11 @@ __all__ = [
     "WorkflowGraph",
     "WorkflowMutation",
     "WorkflowReceipt",
+    "WorkflowStart",
 ]
 
-_STABLE_KEY = re.compile(r"^[a-z][a-z0-9._-]*$")
 _VERSIONED_REFERENCE = re.compile(r"^[a-z][a-z0-9._-]*@[1-9][0-9]*$")
-
-
-class ActivityClass(StrEnum):
-    """Domain-neutral Board activity metadata."""
-
-    WORK = "work"
-    VERIFICATION = "verification"
-
-
-@dataclass(frozen=True, slots=True)
-class Stage:
-    """One authored graph node."""
-
-    key: str
-    activity_class: ActivityClass
-
-    def __post_init__(self) -> None:
-        if _STABLE_KEY.fullmatch(self.key) is None:
-            raise ValueError("stage key must be stable")
-
-
-@dataclass(frozen=True, slots=True)
-class Transition:
-    """One directed edge guarded by a versioned predicate."""
-
-    source: str
-    destination: str
-    predicate_ref: str
-
-    def __post_init__(self) -> None:
-        if _STABLE_KEY.fullmatch(self.source) is None:
-            raise ValueError("transition source must be stable")
-        if _STABLE_KEY.fullmatch(self.destination) is None:
-            raise ValueError("transition destination must be stable")
-        if _VERSIONED_REFERENCE.fullmatch(self.predicate_ref) is None:
-            raise ValueError("transition predicate must be versioned")
-
-
-@dataclass(frozen=True, slots=True)
-class WorkflowGraph:
-    """Immutable authored graph revision."""
-
-    key: str
-    revision: int
-    initial_stage: str
-    stages: tuple[Stage, ...]
-    transitions: tuple[Transition, ...]
-
-    def __post_init__(self) -> None:
-        if _STABLE_KEY.fullmatch(self.key) is None:
-            raise ValueError("workflow key must be stable")
-        if self.revision < 1:
-            raise ValueError("workflow revision must be positive")
-        stage_keys = {stage.key for stage in self.stages}
-        if not self.stages or len(stage_keys) != len(self.stages):
-            raise ValueError("workflow stages must be nonempty and unique")
-        if self.initial_stage not in stage_keys:
-            raise ValueError("workflow initial stage must reference one declared stage")
-        edges = {(edge.source, edge.destination) for edge in self.transitions}
-        if len(edges) != len(self.transitions):
-            raise ValueError("workflow edges must be unique")
-        if any(
-            edge.source not in stage_keys or edge.destination not in stage_keys
-            for edge in self.transitions
-        ):
-            raise ValueError("workflow edges must reference declared stages")
-
-    @property
-    def reference(self) -> str:
-        """Return the immutable component reference."""
-
-        return f"{self.key}@{self.revision}"
-
-    @classmethod
-    def from_mapping(cls, payload: Mapping[str, object]) -> WorkflowGraph:
-        """Parse one strict authored Workflow payload without a runtime schema dependency."""
-
-        _require_keys(
-            payload,
-            {
-                "schema",
-                "status",
-                "key",
-                "revision",
-                "initial_stage",
-                "input_contract",
-                "terminal_contract",
-                "policy_refs",
-                "stages",
-                "transitions",
-                "failure_routes",
-                "note",
-            },
-        )
-        _validate_metadata(payload)
-        stages = tuple(_stage(item) for item in _objects(payload["stages"], "stages"))
-        transitions = tuple(
-            _transition(item) for item in _objects(payload["transitions"], "transitions")
-        )
-        return cls(
-            key=_string(payload["key"], "key"),
-            revision=_integer(payload["revision"], "revision"),
-            initial_stage=_string(payload["initial_stage"], "initial_stage"),
-            stages=stages,
-            transitions=transitions,
-        )
+_SHA256 = re.compile(r"^sha256:[0-9a-f]{64}$")
 
 
 @dataclass(frozen=True, slots=True)
@@ -202,6 +97,37 @@ class WorkflowMutation:
 
 
 @dataclass(frozen=True, slots=True)
+class WorkflowStart:
+    """Exact Workflow and compatible policy snapshot pin."""
+
+    client_command_id: UUID
+    ticket_id: UUID
+    workflow_ref: str
+    workflow_digest: str
+    execution_policy_ref: str
+    execution_policy_digest: str
+    gate_policy_ref: str
+    gate_policy_digest: str
+    evidence_policy_ref: str
+    evidence_policy_digest: str
+
+    def request_payload(self) -> dict[str, object]:
+        """Return the complete idempotency payload."""
+
+        return {
+            "evidence_policy_digest": self.evidence_policy_digest,
+            "evidence_policy_ref": self.evidence_policy_ref,
+            "execution_policy_digest": self.execution_policy_digest,
+            "execution_policy_ref": self.execution_policy_ref,
+            "gate_policy_digest": self.gate_policy_digest,
+            "gate_policy_ref": self.gate_policy_ref,
+            "ticket_id": str(self.ticket_id),
+            "workflow_digest": self.workflow_digest,
+            "workflow_ref": self.workflow_ref,
+        }
+
+
+@dataclass(frozen=True, slots=True)
 class ResolveClose:
     """Request atomic resolved and closed lifecycle facts."""
 
@@ -252,6 +178,17 @@ class WorkflowReceipt:
 
 
 class _WorkflowWriter(Protocol):
+    def start_workflow(
+        self,
+        evaluator: Workflow,
+        actor: WorkflowActor,
+        command: WorkflowStart,
+        *,
+        request_digest: bytes,
+        now: datetime,
+        telemetry: TelemetryContext,
+    ) -> WorkflowReceipt | RecordProblem: ...
+
     def advance_workflow(
         self,
         evaluator: Workflow,
@@ -283,12 +220,14 @@ class Workflow:
         graphs: tuple[WorkflowGraph, ...],
         *,
         writer: _WorkflowWriter | None = None,
+        policy_digests: Mapping[str, str] | None = None,
         clock: Callable[[], datetime] | None = None,
     ) -> None:
         self._graphs = {graph.reference: graph for graph in graphs}
         if len(self._graphs) != len(graphs):
             raise ValueError("workflow graph references must be unique")
         self._writer = writer
+        self._policy_digests = dict(policy_digests or {})
         self._clock = clock or (lambda: datetime.now(UTC))
 
     def advance(
@@ -309,6 +248,69 @@ class Workflow:
             request_digest=_digest(mutation.request_payload()),
             now=self._clock(),
             telemetry=telemetry,
+        )
+
+    def start(
+        self,
+        actor: WorkflowActor,
+        command: WorkflowStart,
+        *,
+        telemetry: TelemetryContext,
+    ) -> WorkflowReceipt | RecordProblem:
+        """Commit or exactly replay one immutable Workflow/policy pin."""
+
+        if self._writer is None:
+            raise RuntimeError("workflow persistence is not configured")
+        return self._writer.start_workflow(
+            self,
+            actor,
+            command,
+            request_digest=_digest(command.request_payload()),
+            now=self._clock(),
+            telemetry=telemetry,
+        )
+
+    def validate_start(self, command: WorkflowStart) -> WorkflowDecision:
+        """Validate exact graph and policy references before persistence."""
+
+        graph = self._graphs.get(command.workflow_ref)
+        if graph is None:
+            return WorkflowDecision(accepted=False, reason="workflow-version-unknown")
+        references = (
+            command.execution_policy_ref,
+            command.gate_policy_ref,
+            command.evidence_policy_ref,
+        )
+        digests = (
+            command.workflow_digest,
+            command.execution_policy_digest,
+            command.gate_policy_digest,
+            command.evidence_policy_digest,
+        )
+        exact_refs = (
+            graph.execution_policy_ref == command.execution_policy_ref
+            and graph.gate_policy_ref == command.gate_policy_ref
+        )
+        exact_policy_digests = all(
+            self._policy_digests.get(reference) == digest
+            for reference, digest in zip(references, digests[1:], strict=True)
+        )
+        if (
+            command.workflow_digest != graph.digest
+            or not exact_refs
+            or not exact_policy_digests
+            or any(_VERSIONED_REFERENCE.fullmatch(value) is None for value in references)
+            or any(_SHA256.fullmatch(value) is None for value in digests)
+        ):
+            return WorkflowDecision(accepted=False, reason="workflow-pin-mismatch")
+        activity = next(
+            stage.activity_class for stage in graph.stages if stage.key == graph.initial_stage
+        )
+        return WorkflowDecision(
+            accepted=True,
+            reason="accepted",
+            activity_class=activity,
+            initial_stage=graph.initial_stage,
         )
 
     def resolve_close(
@@ -339,8 +341,8 @@ class Workflow:
         graph = self._graphs.get(snapshot.workflow_ref)
         if graph is None:
             return WorkflowDecision(accepted=False, reason="workflow-version-unknown")
-        if not snapshot.run_started and snapshot.current_stage != graph.initial_stage:
-            return WorkflowDecision(accepted=False, reason="initial-stage-required")
+        if not snapshot.run_started:
+            return WorkflowDecision(accepted=False, reason="run-not-started")
         edge = next(
             (
                 candidate
@@ -377,6 +379,23 @@ class Workflow:
             return False
         return not any(edge.source == stage_key for edge in graph.transitions)
 
+    def pins_match(
+        self,
+        workflow_ref: str,
+        workflow_digest: str,
+        policy_pins: tuple[tuple[str, str], ...],
+    ) -> bool:
+        """Verify that persisted immutable pins still match this composed catalog."""
+
+        graph = self._graphs.get(workflow_ref)
+        return (
+            graph is not None
+            and graph.digest == workflow_digest
+            and all(
+                self._policy_digests.get(reference) == digest for reference, digest in policy_pins
+            )
+        )
+
 
 def _digest(payload: dict[str, object]) -> bytes:
     encoded = json.dumps(
@@ -386,82 +405,3 @@ def _digest(payload: dict[str, object]) -> bytes:
         sort_keys=True,
     ).encode()
     return hashlib.sha256(encoded).digest()
-
-
-def _validate_metadata(payload: Mapping[str, object]) -> None:
-    if payload["schema"] != "ctower.workflow/v1":
-        raise ValueError("workflow schema is unsupported")
-    if payload["status"] not in {"draft", "staged", "published", "superseded", "revoked"}:
-        raise ValueError("workflow status is unsupported")
-    for field in ("input_contract", "terminal_contract"):
-        if _STABLE_KEY.fullmatch(_string(payload[field], field)) is None:
-            raise ValueError(f"{field} must be stable")
-    if not _string(payload["note"], "note"):
-        raise ValueError("note must be nonempty")
-    policy_refs = _object(payload["policy_refs"], "policy_refs")
-    _require_keys(policy_refs, {"execution", "gates"})
-    if any(
-        _VERSIONED_REFERENCE.fullmatch(_string(value, key)) is None
-        for key, value in policy_refs.items()
-    ):
-        raise ValueError("workflow policy references must be versioned")
-    for route in _objects(payload["failure_routes"], "failure_routes"):
-        _validate_failure_route(route)
-
-
-def _validate_failure_route(payload: Mapping[str, object]) -> None:
-    _require_keys(payload, {"from", "failure_class_ref", "to"})
-    if any(
-        _STABLE_KEY.fullmatch(_string(payload[field], f"failure_route.{field}")) is None
-        for field in ("from", "to")
-    ):
-        raise ValueError("failure route stages must be stable")
-    reference = _string(payload["failure_class_ref"], "failure_route.failure_class_ref")
-    if _VERSIONED_REFERENCE.fullmatch(reference) is None:
-        raise ValueError("failure route class must be versioned")
-
-
-def _stage(payload: Mapping[str, object]) -> Stage:
-    _require_keys(payload, {"key", "activity_class"})
-    return Stage(
-        key=_string(payload["key"], "stage.key"),
-        activity_class=ActivityClass(_string(payload["activity_class"], "activity_class")),
-    )
-
-
-def _transition(payload: Mapping[str, object]) -> Transition:
-    _require_keys(payload, {"from", "to", "predicate_ref"})
-    return Transition(
-        source=_string(payload["from"], "transition.from"),
-        destination=_string(payload["to"], "transition.to"),
-        predicate_ref=_string(payload["predicate_ref"], "transition.predicate_ref"),
-    )
-
-
-def _objects(value: object, label: str) -> tuple[Mapping[str, object], ...]:
-    if not isinstance(value, list) or not all(isinstance(item, Mapping) for item in value):
-        raise TypeError(f"{label} must be an array of objects")
-    return tuple(_object(item, label) for item in value)
-
-
-def _object(value: object, label: str) -> Mapping[str, object]:
-    if not isinstance(value, Mapping):
-        raise TypeError(f"{label} must be an object")
-    return value
-
-
-def _require_keys(payload: Mapping[str, object], expected: set[str]) -> None:
-    if set(payload) != expected:
-        raise ValueError("workflow payload fields do not match the authored contract")
-
-
-def _string(value: object, label: str) -> str:
-    if not isinstance(value, str):
-        raise TypeError(f"{label} must be a string")
-    return value
-
-
-def _integer(value: object, label: str) -> int:
-    if type(value) is not int:
-        raise TypeError(f"{label} must be an integer")
-    return value

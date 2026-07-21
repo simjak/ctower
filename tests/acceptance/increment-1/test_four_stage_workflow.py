@@ -9,7 +9,7 @@ from uuid import UUID, uuid4
 import psycopg
 import pytest
 from psycopg.rows import dict_row
-from support.server import running_api
+from support.server import running_api, start_and_admit
 from support.tenant_fixture import TenantFixture
 
 from ctower_client import (
@@ -68,6 +68,7 @@ from ctower_kernel.workflow import (
     WorkflowGraph,
     WorkflowMutation,
     WorkflowReceipt,
+    WorkflowStart,
 )
 from ctower_kernel.workflow.postgres import PostgresWorkflow
 
@@ -83,6 +84,17 @@ class _PreparedTrace:
     corrupt_code: str
     evidence: HttpProofReceipt
     self_review_code: str
+
+
+class _AlwaysReady:
+    def unmet_facts(
+        self,
+        connection: psycopg.Connection[dict[str, object]],
+        tenant_id: UUID,
+        ticket_id: UUID,
+    ) -> tuple[str, ...]:
+        del connection, tenant_id, ticket_id
+        return ()
 
 
 def test_generated_client_drives_the_four_stage_fixture(tenant: TenantFixture) -> None:
@@ -136,6 +148,7 @@ def _prepare_public_trace(
         ),
         command_id=uuid4(),
     ).ticket
+    start_and_admit(commander, ticket.ticket_id)
     frame, frozen, verification = _reach_verification(commander, ticket.ticket_id, candidate_digest)
     corrupt_code, evidence = _record_public_evidence(
         commander, ticket.ticket_id, candidate_digest, artifact_digest, content
@@ -159,7 +172,7 @@ def _reach_verification(
     frame = commander.transition_workflow(
         ticket_id,
         WorkflowTransitionRequest(
-            expected_version=0,
+            expected_version=1,
             workflow_ref=workflow_ref,
             source_stage="capture",
             destination_stage="frame",
@@ -185,7 +198,7 @@ def _reach_verification(
     verification = commander.transition_workflow(
         ticket_id,
         WorkflowTransitionRequest(
-            expected_version=1,
+            expected_version=2,
             workflow_ref=workflow_ref,
             source_stage="frame",
             destination_stage="verify",
@@ -253,7 +266,7 @@ def _close_public_trace(
     terminal = commander.transition_workflow(
         ticket_id,
         WorkflowTransitionRequest(
-            expected_version=2,
+            expected_version=3,
             workflow_ref=workflow_ref,
             source_stage="verify",
             destination_stage="close",
@@ -262,7 +275,7 @@ def _close_public_trace(
     )
     closed = commander.resolve_close_workflow(
         ticket_id,
-        ResolveCloseRequest(expected_version=3, workflow_ref=workflow_ref),
+        ResolveCloseRequest(expected_version=4, workflow_ref=workflow_ref),
         command_id=uuid4(),
     )
     return terminal, closed
@@ -277,7 +290,7 @@ def test_close_requires_current_proof_and_appends_resolved_then_closed_atomicall
         client_command_id=close_id,
         ticket_id=ticket_id,
         workflow_ref="fixture.atomic-close@1",
-        expected_version=1,
+        expected_version=2,
     )
 
     refused = workflow.resolve_close(workflow_actor, close, telemetry=_telemetry())
@@ -305,22 +318,52 @@ def _terminal_context(
     tenant: TenantFixture,
 ) -> tuple[PostgresProof, Workflow, WorkflowActor, UUID]:
     proof_store = PostgresProof(tenant.database.runtime_dsn)
-    workflow_store = PostgresWorkflow(tenant.database.runtime_dsn, proof_gate=proof_store)
+    workflow_store = PostgresWorkflow(
+        tenant.database.runtime_dsn,
+        proof_gate=proof_store,
+        readiness_gate=_AlwaysReady(),
+    )
     ticket_id = _create_ticket(tenant)
-    workflow = _terminal_workflow(workflow_store)
+    graph = _terminal_graph()
+    workflow = Workflow(
+        (graph,),
+        writer=workflow_store,
+        policy_digests={
+            "fixture.execution@1": "sha256:" + "1" * 64,
+            "fixture.gates@1": "sha256:" + "2" * 64,
+            "fixture.evidence@1": "sha256:" + "3" * 64,
+        },
+    )
     actor = WorkflowActor(tenant.commander_id, tenant.tenant_id)
+    started = workflow.start(
+        actor,
+        WorkflowStart(
+            uuid4(),
+            ticket_id,
+            graph.reference,
+            graph.digest,
+            "fixture.execution@1",
+            "sha256:" + "1" * 64,
+            "fixture.gates@1",
+            "sha256:" + "2" * 64,
+            "fixture.evidence@1",
+            "sha256:" + "3" * 64,
+        ),
+        telemetry=_telemetry(),
+    )
     moved = workflow.advance(
         actor,
         WorkflowMutation(
             client_command_id=uuid4(),
             ticket_id=ticket_id,
             workflow_ref="fixture.atomic-close@1",
-            expected_version=0,
+            expected_version=1,
             source_stage="start",
             destination_stage="terminal",
         ),
         telemetry=_telemetry(),
     )
+    assert isinstance(started, WorkflowReceipt)
     assert isinstance(moved, WorkflowReceipt)
     return proof_store, workflow, actor, ticket_id
 
@@ -342,8 +385,8 @@ def _create_ticket(tenant: TenantFixture) -> UUID:
     return ticket.ticket.ticket_id
 
 
-def _terminal_workflow(store: PostgresWorkflow) -> Workflow:
-    graph = WorkflowGraph(
+def _terminal_graph() -> WorkflowGraph:
+    return WorkflowGraph(
         key="fixture.atomic-close",
         revision=1,
         initial_stage="start",
@@ -352,8 +395,9 @@ def _terminal_workflow(store: PostgresWorkflow) -> Workflow:
             Stage("terminal", ActivityClass.WORK),
         ),
         transitions=(Transition("start", "terminal", "entry.ready@1"),),
+        execution_policy_ref="fixture.execution@1",
+        gate_policy_ref="fixture.gates@1",
     )
-    return Workflow((graph,), writer=store)
 
 
 def _complete_proof(store: PostgresProof, tenant: TenantFixture, ticket_id: UUID) -> None:

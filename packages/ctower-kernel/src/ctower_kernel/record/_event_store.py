@@ -13,8 +13,15 @@ from ctower_kernel.telemetry import TelemetryContext
 
 __all__: tuple[str, ...] = ()
 
+type EventSubject = tuple[str, UUID]
 
-def append_event(connection: psycopg.Connection[dict[str, object]], event: EventEnvelope) -> None:
+
+def append_event(
+    connection: psycopg.Connection[dict[str, object]],
+    event: EventEnvelope,
+    *,
+    subjects: tuple[EventSubject, ...] = (),
+) -> None:
     connection.execute(
         """
         INSERT INTO events (
@@ -43,6 +50,17 @@ def append_event(connection: psycopg.Connection[dict[str, object]], event: Event
             event_digest(event),
         ),
     )
+    if subjects:
+        connection.cursor().executemany(
+            """
+            INSERT INTO event_links (event_id, tenant_id, subject_kind, subject_id)
+            VALUES (%s, %s, %s, %s)
+            """,
+            (
+                (event.event_id, event.tenant_id, subject_kind, subject_id)
+                for subject_kind, subject_id in subjects
+            ),
+        )
 
 
 def enqueue_event(

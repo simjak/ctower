@@ -271,7 +271,7 @@ def _append_transfer(
         stream_id=f"ticket:{command.ticket_id}",
         tenant_id=actor.tenant_id,
     )
-    append_event(connection, event)
+    append_event(connection, event, subjects=(("ticket", command.ticket_id),))
     _insert_result_and_outbox(
         connection,
         actor,
