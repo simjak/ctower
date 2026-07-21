@@ -101,6 +101,7 @@ def execute_work(
             request_digest=request_digest,
             now=now,
             telemetry=telemetry,
+            subjects=_touched_subjects(command),
         )
 
 
@@ -122,9 +123,23 @@ def _reserve_work_outcome(
         actor.principal_id,
         command.client_command_id,
         request_digest,
-        (("ticket", command.ticket_id),),
+        _prerequisite_subjects(command),
         now=now,
     )
+
+
+def _prerequisite_subjects(command: WorkCommand) -> tuple[tuple[str, UUID], ...]:
+    ticket_ids = (
+        {command.ticket_id, command.target_ticket_id}
+        if isinstance(command, AddRelation)
+        else {command.ticket_id}
+    )
+    ordered_ids = sorted(ticket_ids, key=lambda item: item.int)
+    return tuple(("ticket", ticket_id) for ticket_id in ordered_ids)
+
+
+def _touched_subjects(command: WorkCommand) -> tuple[tuple[str, UUID], ...]:
+    return (*_prerequisite_subjects(command), ("work", command.ticket_id))
 
 
 def _lock_ticket(

@@ -14,6 +14,7 @@ from pathlib import Path
 from uuid import uuid4
 
 import psycopg
+from psycopg import sql
 
 ROOT = Path(__file__).parents[4]
 COMPOSE = ROOT / "deploy/development/compose.yaml"
@@ -325,6 +326,68 @@ def pause_durability_standby(pair: DurabilityPair) -> Iterator[None]:
         _wait_for_sync(pair)
 
 
+@contextmanager
+def pause_durability_replay(pair: DurabilityPair) -> Iterator[None]:
+    """Pause WAL replay while leaving the receiver and primary sender connected."""
+
+    with psycopg.connect(pair.standby_admin_dsn, autocommit=True) as connection:
+        connection.execute("SELECT pg_wal_replay_pause()")
+    _wait_for_replay_pause(pair, paused=True)
+    try:
+        yield
+    finally:
+        with psycopg.connect(pair.standby_admin_dsn, autocommit=True) as connection:
+            connection.execute("SELECT pg_wal_replay_resume()")
+        _wait_for_replay_pause(pair, paused=False)
+        _wait_for_replay_current(pair)
+
+
+@contextmanager
+def disconnect_durability_receiver(pair: DurabilityPair) -> Iterator[None]:
+    """Restart the standby with an unreachable primary while retaining SQL access."""
+
+    with psycopg.connect(pair.standby_admin_dsn, autocommit=True) as connection:
+        row = connection.execute("SHOW primary_conninfo").fetchone()
+        if row is None:
+            raise RuntimeError("standby primary_conninfo was unavailable")
+        original = str(row[0])
+        connection.execute(
+            sql.SQL("ALTER SYSTEM SET primary_conninfo = {}").format(
+                sql.Literal("host=127.0.0.1 port=1 user=postgres application_name=ctower_i1_ack")
+            )
+        )
+    _docker("restart", pair.standby_container)
+    _wait_for_dsn(pair.standby_admin_dsn, require_recovery=True)
+    _wait_for_sender(pair, streaming=False)
+    try:
+        yield
+    finally:
+        with psycopg.connect(pair.standby_admin_dsn, autocommit=True) as connection:
+            connection.execute(
+                sql.SQL("ALTER SYSTEM SET primary_conninfo = {}").format(sql.Literal(original))
+            )
+        _docker("restart", pair.standby_container)
+        _wait_for_dsn(pair.standby_admin_dsn, require_recovery=True)
+        _wait_for_sync(pair)
+        _wait_for_replay_current(pair)
+
+
+@contextmanager
+def delay_durability_replay(pair: DurabilityPair) -> Iterator[None]:
+    """Create an unpaused, streaming receiver whose replay watermark is behind."""
+
+    with psycopg.connect(pair.standby_admin_dsn, autocommit=True) as connection:
+        connection.execute("ALTER SYSTEM SET recovery_min_apply_delay = '5s'")
+        connection.execute("SELECT pg_reload_conf()")
+    try:
+        yield
+    finally:
+        with psycopg.connect(pair.standby_admin_dsn, autocommit=True) as connection:
+            connection.execute("ALTER SYSTEM SET recovery_min_apply_delay = '0s'")
+            connection.execute("SELECT pg_reload_conf()")
+        _wait_for_replay_current(pair)
+
+
 def create_durability_database(pair: DurabilityPair) -> tuple[DatabaseFixture, str]:
     """Create one primary database and return its replay-only standby DSN."""
 
@@ -364,6 +427,12 @@ def start_durability_standby(pair: DurabilityPair) -> None:
 
     _docker("start", pair.standby_container)
     _wait_for_dsn(pair.standby_admin_dsn, require_recovery=True)
+
+
+def wait_for_durability_replay_current(pair: DurabilityPair) -> None:
+    """Wait until the standby replay watermark reaches the primary flush watermark."""
+
+    _wait_for_replay_current(pair)
 
 
 def promote_durability_standby(pair: DurabilityPair) -> None:
@@ -429,6 +498,55 @@ def _wait_for_sync(pair: DurabilityPair) -> None:
             return
         time.sleep(0.05)
     raise RuntimeError("named standby did not become synchronous")
+
+
+def _wait_for_replay_pause(pair: DurabilityPair, *, paused: bool) -> None:
+    deadline = time.monotonic() + 10
+    while time.monotonic() < deadline:
+        with psycopg.connect(pair.standby_admin_dsn) as connection:
+            row = connection.execute("SELECT pg_is_wal_replay_paused()").fetchone()
+        if row == (paused,):
+            return
+        time.sleep(0.05)
+    raise RuntimeError("standby replay did not reach the requested pause state")
+
+
+def _wait_for_sender(pair: DurabilityPair, *, streaming: bool) -> None:
+    deadline = time.monotonic() + 10
+    while time.monotonic() < deadline:
+        with psycopg.connect(pair.primary_admin_dsn) as connection:
+            row = connection.execute(
+                """
+                SELECT count(*) = 1 AND min(state) = 'streaming'
+                FROM pg_stat_replication WHERE application_name = 'ctower_i1_ack'
+                """
+            ).fetchone()
+        if row == (streaming,):
+            return
+        time.sleep(0.05)
+    raise RuntimeError("primary WAL sender did not reach the requested state")
+
+
+def _wait_for_replay_current(pair: DurabilityPair) -> None:
+    deadline = time.monotonic() + 15
+    while time.monotonic() < deadline:
+        with psycopg.connect(pair.primary_admin_dsn) as primary:
+            primary_lsn = primary.execute("SELECT pg_current_wal_flush_lsn()::text").fetchone()
+        with psycopg.connect(pair.standby_admin_dsn) as standby:
+            standby_lsn = standby.execute("SELECT pg_last_wal_replay_lsn()::text").fetchone()
+        if (
+            primary_lsn is not None
+            and standby_lsn is not None
+            and _lsn_position(str(standby_lsn[0])) >= _lsn_position(str(primary_lsn[0]))
+        ):
+            return
+        time.sleep(0.05)
+    raise RuntimeError("standby replay watermark did not catch the primary flush watermark")
+
+
+def _lsn_position(value: str) -> int:
+    high, low = value.split("/", maxsplit=1)
+    return (int(high, 16) << 32) | int(low, 16)
 
 
 def _wait_for_dsn(dsn: str, *, require_recovery: bool = False) -> None:

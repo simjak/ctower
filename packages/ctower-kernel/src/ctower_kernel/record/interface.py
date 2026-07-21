@@ -160,6 +160,7 @@ class BootstrapReceipt:
     commander_id: UUID
     event_ids: tuple[UUID, ...]
     operator_id: UUID
+    principal_id: UUID
     receipt_digest: str
     tenant_id: UUID
 
@@ -492,6 +493,7 @@ class Record(Protocol):
     def reconcile_durability(
         self,
         tenant_id: UUID,
+        principal_id: UUID,
         command_id: UUID,
         *,
         now: datetime,

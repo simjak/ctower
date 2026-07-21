@@ -4,13 +4,14 @@ from __future__ import annotations
 
 import hashlib
 import hmac
-import json
+import re
 from datetime import datetime
 from pathlib import Path
-from typing import TextIO, cast
+from typing import Literal, TextIO
 
 import psycopg
 from psycopg.rows import dict_row
+from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
 
 __all__ = ["apply_migrations", "provision_bootstrap", "provision_database_roles"]
 
@@ -21,20 +22,95 @@ PROJECTION_RUNTIME_ROLE = "ctower_projection_runtime"
 # Projection workers should exit promptly on SIGTERM; five seconds tolerates backend cleanup
 # without allowing role provisioning to wait without a bound.
 PROJECTION_SESSION_TERMINATION_TIMEOUT_MS = 5_000
+_SEMVER = re.compile(r"(?:0|[1-9][0-9]*)\.(?:0|[1-9][0-9]*)\.(?:0|[1-9][0-9]*)")
+
+
+class _MigrationDeclaration(BaseModel):
+    """One strict upgrade and rollback declaration from the authored manifest."""
+
+    model_config = ConfigDict(extra="forbid", frozen=True, strict=True)
+
+    path: str
+    sha256: str
+    scope: Literal["cluster", "database"] = "database"
+    minimum_service_version: str
+    maximum_service_version: str
+    forward_test: str
+    rollback_or_forward_compensation: str
+    backup_checkpoint: str
+
+    @field_validator("path")
+    @classmethod
+    def _valid_path(cls, value: str) -> str:
+        if not re.fullmatch(r"[0-9]{4}_[a-z0-9_]+\.sql", value):
+            raise ValueError("migration path must be one numbered SQL filename")
+        return value
+
+    @field_validator("sha256")
+    @classmethod
+    def _valid_sha256(cls, value: str) -> str:
+        if not re.fullmatch(r"sha256:[0-9a-f]{64}", value):
+            raise ValueError("migration checksum must be one lowercase SHA-256 digest")
+        return value
+
+    @field_validator("minimum_service_version", "maximum_service_version")
+    @classmethod
+    def _valid_version(cls, value: str) -> str:
+        if _SEMVER.fullmatch(value) is None:
+            raise ValueError("migration compatibility must be one exact service version")
+        return value
+
+    @field_validator("forward_test")
+    @classmethod
+    def _valid_forward_test(cls, value: str) -> str:
+        pattern = r"pytest:tests/[A-Za-z0-9_./-]+\.py::test_[a-z0-9_]+"
+        if re.fullmatch(pattern, value) is None:
+            raise ValueError("migration forward test must be one exact pytest node")
+        return value
+
+    @field_validator("rollback_or_forward_compensation", "backup_checkpoint")
+    @classmethod
+    def _nonempty_procedure(cls, value: str) -> str:
+        if not value.strip():
+            raise ValueError("migration recovery declarations cannot be empty")
+        return value
+
+    @model_validator(mode="after")
+    def _ordered_compatibility(self) -> _MigrationDeclaration:
+        minimum = tuple(map(int, self.minimum_service_version.split(".")))
+        maximum = tuple(map(int, self.maximum_service_version.split(".")))
+        if minimum > maximum:
+            raise ValueError("minimum compatible service version exceeds maximum")
+        return self
+
+
+class _MigrationManifest(BaseModel):
+    """The one strict ordered migration declaration."""
+
+    model_config = ConfigDict(extra="forbid", frozen=True, strict=True)
+
+    schema_id: Literal["ctower.migrations/v2"] = Field(alias="schema")
+    migrations: tuple[_MigrationDeclaration, ...]
+
+    @model_validator(mode="after")
+    def _ordered_unique_paths(self) -> _MigrationManifest:
+        paths = tuple(entry.path for entry in self.migrations)
+        if paths != tuple(sorted(set(paths))):
+            raise ValueError("migration paths must be unique and ordered")
+        return self
 
 
 def _migration_scripts(scope: str) -> tuple[str, ...]:
-    manifest = cast(
-        dict[str, object], json.loads((MIGRATIONS / "manifest.json").read_text(encoding="utf-8"))
+    manifest = _MigrationManifest.model_validate_json(
+        (MIGRATIONS / "manifest.json").read_text(encoding="utf-8")
     )
-    entries = cast(list[dict[str, str]], manifest["migrations"])
     scripts: list[str] = []
-    for entry in entries:
-        content = (MIGRATIONS / entry["path"]).read_bytes()
+    for entry in manifest.migrations:
+        content = (MIGRATIONS / entry.path).read_bytes()
         actual = f"sha256:{hashlib.sha256(content).hexdigest()}"
-        if not hmac.compare_digest(actual, entry["sha256"]):
-            raise ValueError(f"migration checksum mismatch: {entry['path']}")
-        if entry.get("scope", "database") == scope:
+        if not hmac.compare_digest(actual, entry.sha256):
+            raise ValueError(f"migration checksum mismatch: {entry.path}")
+        if entry.scope == scope:
             scripts.append(content.decode())
     return tuple(scripts)
 

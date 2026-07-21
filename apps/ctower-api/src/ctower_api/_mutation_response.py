@@ -25,6 +25,7 @@ def mutation_response(
     outcome: _SemanticResult | RecordProblem,
     *,
     tenant_id: UUID,
+    principal_id: UUID,
     command_id: UUID,
     telemetry: TelemetryContext,
     boundary_model: type[BaseModel],
@@ -36,6 +37,7 @@ def mutation_response(
         return problem_response(outcome)
     decision = record.reconcile_durability(
         tenant_id,
+        principal_id,
         command_id,
         now=_observed_time(),
         telemetry=telemetry,

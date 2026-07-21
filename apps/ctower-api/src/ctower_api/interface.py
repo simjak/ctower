@@ -49,6 +49,7 @@ from ctower_kernel.access import Access
 from ctower_kernel.projections import Projections
 from ctower_kernel.proof import Proof
 from ctower_kernel.record import (
+    Actor,
     BootstrapCommand,
     CustodyCommand,
     Record,
@@ -153,6 +154,7 @@ def _install_bootstrap_route(
             record,
             outcome,
             tenant_id=outcome.tenant_id,
+            principal_id=outcome.principal_id,
             command_id=outcome.command_id,
             telemetry=telemetry.bind(
                 tenant_id=str(outcome.tenant_id),
@@ -202,7 +204,7 @@ def _install_ticket_create_route(
             telemetry=telemetry,
         )
         return _ticket_command_response(
-            record, outcome, actor.tenant_id, command_id, telemetry, status_code=201
+            record, outcome, actor, command_id, telemetry, status_code=201
         )
 
 
@@ -295,14 +297,14 @@ def _install_custody_route(
             telemetry=telemetry,
         )
         return _ticket_command_response(
-            record, outcome, actor.tenant_id, command_id, telemetry, status_code=200
+            record, outcome, actor, command_id, telemetry, status_code=200
         )
 
 
 def _ticket_command_response(
     record: Record,
     outcome: TicketCommandResult | RecordProblem,
-    tenant_id: UUID,
+    actor: Actor,
     command_id: UUID,
     telemetry: TelemetryContext,
     *,
@@ -311,7 +313,8 @@ def _ticket_command_response(
     return _mutation_response(
         record,
         outcome,
-        tenant_id=tenant_id,
+        tenant_id=actor.tenant_id,
+        principal_id=actor.principal_id,
         command_id=command_id,
         telemetry=telemetry,
         boundary_model=HttpTicketCommandResult,

@@ -2,31 +2,89 @@
 
 from __future__ import annotations
 
-import json
 import time
 from collections.abc import Iterator
 from dataclasses import dataclass
-from datetime import datetime
 from typing import cast
 from uuid import UUID, uuid4
 
 import psycopg
 import pytest
 from fastapi.testclient import TestClient
-from httpx import Response
-from psycopg.rows import dict_row
+from support.durability_assertions import (
+    acceptance_position as _acceptance_position,
+)
+from support.durability_assertions import (
+    add_relation as _add_relation,
+)
+from support.durability_assertions import (
+    assert_ack_without_finalization as _assert_ack_without_finalization,
+)
+from support.durability_assertions import (
+    assert_exact_refusal as _assert_exact_refusal,
+)
+from support.durability_assertions import (
+    assert_no_relation as _assert_no_relation,
+)
+from support.durability_assertions import (
+    assert_one_result_and_ack as _assert_one_result_and_ack,
+)
+from support.durability_assertions import (
+    assert_primary_evidence as _assert_primary_evidence,
+)
+from support.durability_assertions import (
+    assert_primary_loss_boundary as _assert_primary_loss_boundary,
+)
+from support.durability_assertions import (
+    assert_primary_only_result as _assert_primary_only_result,
+)
+from support.durability_assertions import (
+    assert_replay_without_receipt as _assert_replay_without_receipt,
+)
+from support.durability_assertions import (
+    assert_secret_free_telemetry as _assert_secret_free_telemetry,
+)
+from support.durability_assertions import (
+    change_priority as _change_priority,
+)
+from support.durability_assertions import (
+    create_ticket as _create_ticket,
+)
+from support.durability_assertions import (
+    database_now as _database_now,
+)
+from support.durability_assertions import (
+    install_ack_delay as _install_ack_delay,
+)
+from support.durability_assertions import (
+    install_finalization_refusal as _install_finalization_refusal,
+)
+from support.durability_assertions import (
+    remove_ack_delay as _remove_ack_delay,
+)
+from support.durability_assertions import (
+    remove_finalization_refusal as _remove_finalization_refusal,
+)
+from support.durability_assertions import (
+    semantic_without_durability as _semantic_without_durability,
+)
+from support.durability_assertions import (
+    set_mode as _set_mode,
+)
+from support.durability_assertions import (
+    set_target as _set_target,
+)
+from support.durability_health import assert_live_health_faults
+from support.durability_serialization import assert_subject_serialization
 from support.postgres import (
     DatabaseFixture,
     DurabilityPair,
     create_durability_database,
-    promote_durability_standby,
     start_durability_pair,
-    start_durability_standby,
     stop_durability_pair,
-    stop_durability_primary,
     stop_durability_standby,
+    wait_for_durability_replay_current,
 )
-from support.telemetry import telemetry_headers
 from support.tenant_fixture import TenantFixture, create_first_tenant
 
 from ctower_api.interface import create_app
@@ -41,6 +99,7 @@ __all__: tuple[str, ...] = ()
 HTTP_ACCEPTED = 201
 HTTP_PENDING = 202
 HTTP_CONFLICT = 409
+HTTP_OK = 200
 BOUND_SECONDS = 8.0
 SHA256_BYTES = 32
 
@@ -74,6 +133,7 @@ def authority() -> Iterator[_AuthorityFixture]:
                 WHERE singleton
                 """
             )
+        wait_for_durability_replay_current(pair)
         yield _AuthorityFixture(pair, database, pending_only_health, standby_dsn, tenant)
     finally:
         stop_durability_pair(pair)
@@ -94,7 +154,7 @@ def test_named_standby_authority_is_replay_safe_and_fail_closed(
     assert unconfigured.status is DurabilityHealthStatus.STATE_UNKNOWN
     assert unconfigured.reason == "standby_unconfigured"
     assert unavailable.status is DurabilityHealthStatus.DEGRADED
-    assert unavailable.reason == "target_mismatch"
+    assert unavailable.reason == "target_not_live"
     captures: list[dict[str, object]] = []
     recorder = TelemetryRecorder(captures.append)
     record = PostgresRecord(
@@ -111,17 +171,83 @@ def test_named_standby_authority_is_replay_safe_and_fail_closed(
         ),
         telemetry=recorder,
     )
+    assert_live_health_faults(record, authority.pair, authority.database)
 
-    with TestClient(app, client=("127.0.0.1", 51000)) as client:
+    with (
+        TestClient(app, client=("127.0.0.1", 51000)) as client,
+        TestClient(app, client=("127.0.0.1", 51001)) as concurrent_client,
+    ):
+        _same_command_id_is_principal_scoped(client, authority)
+        _accepted_replay_survives_policy_pending(client, authority)
+        _unfinalized_ack_remains_pending(client, authority)
         accepted = _accepted_replay_and_conflict(client, authority)
         _response_loss_replays_exactly(client, authority)
         _wrong_target_recovers_on_same_key(client, authority, record)
         _replay_before_receipt_recovers_on_same_key(client, authority)
+        _accepted_relation_moves_both_ticket_heads(client, authority)
         _assert_primary_evidence(authority, accepted)
-        local_commands = _standby_loss_is_bounded_and_dependency_safe(client, authority)
+        local_commands = _standby_loss_is_bounded_and_dependency_safe(
+            client, concurrent_client, authority
+        )
 
     _assert_secret_free_telemetry(captures, authority.tenant)
     _assert_primary_loss_boundary(authority, accepted, local_commands)
+
+
+def _accepted_replay_survives_policy_pending(
+    client: TestClient, authority: _AuthorityFixture
+) -> None:
+    command_id = uuid4()
+    first = _create_ticket(client, authority.tenant, command_id, title="Monotonic acceptance")
+    position = _acceptance_position(authority, command_id)
+    _set_mode(authority, "pending_only")
+    try:
+        replay = _create_ticket(client, authority.tenant, command_id, title="Monotonic acceptance")
+    finally:
+        _set_mode(authority, "cutover_rpo0")
+
+    assert first.status_code == HTTP_ACCEPTED
+    assert replay.status_code == HTTP_ACCEPTED
+    assert replay.content == first.content
+    assert _acceptance_position(authority, command_id) == position
+
+
+def _same_command_id_is_principal_scoped(client: TestClient, authority: _AuthorityFixture) -> None:
+    command_id = uuid4()
+    operator = _create_ticket(
+        client,
+        authority.tenant,
+        command_id,
+        title="Operator command identity",
+        credential=authority.tenant.operator_credential,
+    )
+    commander = _create_ticket(
+        client,
+        authority.tenant,
+        command_id,
+        title="Commander command identity",
+        credential=authority.tenant.commander_credential,
+    )
+    operator_replay = _create_ticket(
+        client,
+        authority.tenant,
+        command_id,
+        title="Operator command identity",
+        credential=authority.tenant.operator_credential,
+    )
+    commander_replay = _create_ticket(
+        client,
+        authority.tenant,
+        command_id,
+        title="Commander command identity",
+        credential=authority.tenant.commander_credential,
+    )
+
+    assert operator.status_code == HTTP_ACCEPTED
+    assert commander.status_code == HTTP_ACCEPTED
+    assert operator.content == operator_replay.content
+    assert commander.content == commander_replay.content
+    assert operator.json()["ticket"]["ticket_id"] != commander.json()["ticket"]["ticket_id"]
 
 
 def _accepted_replay_and_conflict(
@@ -140,6 +266,26 @@ def _accepted_replay_and_conflict(
     assert changed.status_code == HTTP_CONFLICT
     assert changed.json()["code"] == "idempotency-conflict"
     return command_id, UUID(cast(str, first.json()["ticket"]["ticket_id"]))
+
+
+def _unfinalized_ack_remains_pending(client: TestClient, authority: _AuthorityFixture) -> None:
+    command_id = uuid4()
+    _install_finalization_refusal(authority.database.admin_dsn)
+    try:
+        first = _create_ticket(client, authority.tenant, command_id, title="Unfinalized ACK")
+    finally:
+        _remove_finalization_refusal(authority.database.admin_dsn)
+    _assert_ack_without_finalization(authority, command_id)
+    _set_mode(authority, "pending_only")
+    try:
+        replay = _create_ticket(client, authority.tenant, command_id, title="Unfinalized ACK")
+    finally:
+        _set_mode(authority, "cutover_rpo0")
+
+    assert first.status_code == HTTP_PENDING
+    assert replay.status_code == HTTP_PENDING
+    assert replay.content == first.content
+    _assert_ack_without_finalization(authority, command_id)
 
 
 def _response_loss_replays_exactly(client: TestClient, authority: _AuthorityFixture) -> None:
@@ -202,9 +348,74 @@ def _replay_before_receipt_recovers_on_same_key(
 
 
 def _standby_loss_is_bounded_and_dependency_safe(
-    client: TestClient, authority: _AuthorityFixture
-) -> tuple[UUID, UUID, UUID]:
+    client: TestClient,
+    concurrent_client: TestClient,
+    authority: _AuthorityFixture,
+) -> tuple[UUID, ...]:
+    setup = _prepare_standby_loss(client, authority)
     stop_durability_standby(authority.pair)
+    accepted_replay = _create_ticket(
+        client, authority.tenant, setup.accepted_command, title="Accepted before standby loss"
+    )
+    assert accepted_replay.status_code == HTTP_ACCEPTED
+    assert accepted_replay.content == setup.accepted_content
+    assert _acceptance_position(authority, setup.accepted_command) == setup.position
+    serialization_commands = assert_subject_serialization(
+        client,
+        concurrent_client,
+        authority.tenant,
+        authority.database,
+        setup.serialization_ticket_id,
+    )
+    local_commands = _exercise_pending_dependencies(client, authority, setup)
+    return (*local_commands, *serialization_commands)
+
+
+@dataclass(frozen=True, slots=True)
+class _LossSetup:
+    accepted_command: UUID
+    accepted_content: bytes
+    position: int
+    relation_source_id: UUID
+    serialization_ticket_id: UUID
+    unrelated_ticket_id: UUID
+
+
+def _prepare_standby_loss(client: TestClient, authority: _AuthorityFixture) -> _LossSetup:
+    accepted_command = uuid4()
+    accepted = _create_ticket(
+        client, authority.tenant, accepted_command, title="Accepted before standby loss"
+    )
+    relation_source = _create_ticket(
+        client, authority.tenant, uuid4(), title="Accepted relation source"
+    )
+    unrelated_ticket = _create_ticket(
+        client, authority.tenant, uuid4(), title="Accepted unrelated ticket"
+    )
+    serialization_ticket = _create_ticket(
+        client, authority.tenant, uuid4(), title="Serialized subject boundary"
+    )
+    relation_source_id = UUID(cast(str, relation_source.json()["ticket"]["ticket_id"]))
+    unrelated_ticket_id = UUID(cast(str, unrelated_ticket.json()["ticket"]["ticket_id"]))
+    serialization_ticket_id = UUID(cast(str, serialization_ticket.json()["ticket"]["ticket_id"]))
+    position = _acceptance_position(authority, accepted_command)
+    assert accepted.status_code == HTTP_ACCEPTED
+    assert relation_source.status_code == HTTP_ACCEPTED
+    assert unrelated_ticket.status_code == HTTP_ACCEPTED
+    assert serialization_ticket.status_code == HTTP_ACCEPTED
+    return _LossSetup(
+        accepted_command,
+        accepted.content,
+        position,
+        relation_source_id,
+        serialization_ticket_id,
+        unrelated_ticket_id,
+    )
+
+
+def _exercise_pending_dependencies(
+    client: TestClient, authority: _AuthorityFixture, setup: _LossSetup
+) -> tuple[UUID, ...]:
     pending_command = uuid4()
     started = time.monotonic()
     pending = _create_ticket(
@@ -219,6 +430,28 @@ def _standby_loss_is_bounded_and_dependency_safe(
     assert pending.headers["Retry-After"] == "1"
     assert elapsed < BOUND_SECONDS
     _assert_primary_only_result(authority.database.admin_dsn, pending_command)
+
+    relation_command = uuid4()
+    relation = _add_relation(
+        client,
+        authority.tenant,
+        setup.relation_source_id,
+        pending_ticket,
+        relation_command,
+    )
+    assert relation.status_code == HTTP_CONFLICT
+    assert relation.json()["code"] == "durability_pending"
+    _assert_exact_refusal(authority.database.admin_dsn, relation_command)
+    _assert_no_relation(authority, setup.relation_source_id, pending_ticket)
+
+    unrelated_progress_command = uuid4()
+    unrelated_progress = _change_priority(
+        client,
+        authority.tenant,
+        setup.unrelated_ticket_id,
+        unrelated_progress_command,
+    )
+    assert unrelated_progress.status_code == HTTP_PENDING
 
     refusal_command = uuid4()
     refused = _change_priority(
@@ -240,265 +473,50 @@ def _standby_loss_is_bounded_and_dependency_safe(
     )
     assert unrelated.status_code == HTTP_PENDING
     assert UUID(cast(str, unrelated.json()["ticket"]["ticket_id"])) != pending_ticket
-    return pending_command, refusal_command, unrelated_command
+    return (
+        pending_command,
+        refusal_command,
+        unrelated_command,
+        relation_command,
+        unrelated_progress_command,
+    )
 
 
-def _assert_primary_evidence(authority: _AuthorityFixture, accepted: tuple[UUID, UUID]) -> None:
-    command_id, _ = accepted
-    with psycopg.connect(authority.standby_dsn, row_factory=dict_row) as connection:
-        receipt = connection.execute(
-            """
-            SELECT acceptance_position, command_root, request_sha256,
-                standby_application_name, standby_identity, standby_in_recovery
-            FROM durability_acknowledgements AS acknowledgement
-            JOIN LATERAL (
-                SELECT standby_in_recovery
-                FROM durability_target_observations AS observation
-                WHERE observation.tenant_id = acknowledgement.tenant_id
-                  AND observation.principal_id = acknowledgement.principal_id
-                  AND observation.client_command_id = acknowledgement.client_command_id
-                  AND observation.receipt_visible
-                ORDER BY observation.observed_at DESC LIMIT 1
-            ) AS observation ON true
-            WHERE acknowledgement.tenant_id = %s
-              AND acknowledgement.client_command_id = %s
-            """,
-            (authority.tenant.tenant_id, command_id),
-        ).fetchone()
-        positions = connection.execute(
-            """
-            SELECT acceptance_position FROM durability_acknowledgements
-            ORDER BY acceptance_position
-            """
-        ).fetchall()
-    assert receipt is not None
-    assert int(cast(int, receipt["acceptance_position"])) > 0
-    assert len(bytes(cast(bytes, receipt["command_root"]))) == SHA256_BYTES
-    assert len(bytes(cast(bytes, receipt["request_sha256"]))) == SHA256_BYTES
-    assert receipt["standby_application_name"] == "ctower_i1_ack"
-    assert receipt["standby_identity"] == "ctower_i1_standby"
-    assert receipt["standby_in_recovery"] is True
-    ordered = [int(cast(int, row["acceptance_position"])) for row in positions]
-    assert ordered == sorted(set(ordered))
-
-
-def _assert_primary_loss_boundary(
-    authority: _AuthorityFixture,
-    accepted: tuple[UUID, UUID],
-    local_commands: tuple[UUID, UUID, UUID],
+def _accepted_relation_moves_both_ticket_heads(
+    client: TestClient, authority: _AuthorityFixture
 ) -> None:
-    accepted_command, accepted_ticket = accepted
-    stop_durability_primary(authority.pair)
-    start_durability_standby(authority.pair)
-    promote_durability_standby(authority.pair)
+    source = _create_ticket(client, authority.tenant, uuid4(), title="Relation head source")
+    target = _create_ticket(client, authority.tenant, uuid4(), title="Relation head target")
+    source_id = UUID(cast(str, source.json()["ticket"]["ticket_id"]))
+    target_id = UUID(cast(str, target.json()["ticket"]["ticket_id"]))
+    command_id = uuid4()
+    relation = _add_relation(client, authority.tenant, source_id, target_id, command_id)
+    replay = _add_relation(client, authority.tenant, source_id, target_id, command_id)
 
-    with psycopg.connect(authority.standby_dsn) as connection:
-        accepted_row = connection.execute(
-            """
-            SELECT
-                EXISTS (SELECT 1 FROM tickets WHERE ticket_id = %s),
-                EXISTS (
-                    SELECT 1 FROM durability_acknowledgements
-                    WHERE tenant_id = %s AND client_command_id = %s
-                )
-            """,
-            (accepted_ticket, authority.tenant.tenant_id, accepted_command),
-        ).fetchone()
-        absent = connection.execute(
-            """
-            SELECT count(*) FROM command_results
-            WHERE tenant_id = %s AND client_command_id = ANY(%s)
-            """,
-            (authority.tenant.tenant_id, list(local_commands)),
-        ).fetchone()
-    assert accepted_row == (True, True)
-    assert absent == (0,)
-
-
-def _assert_replay_without_receipt(authority: _AuthorityFixture, command_id: UUID) -> None:
-    with psycopg.connect(authority.standby_dsn) as connection:
-        facts = connection.execute(
-            """
-            SELECT
-                EXISTS (
-                    SELECT 1 FROM command_results
-                    WHERE tenant_id = %s AND client_command_id = %s
-                ),
-                EXISTS (
-                    SELECT 1 FROM durability_acknowledgements
-                    WHERE tenant_id = %s AND client_command_id = %s
-                )
-            """,
-            (
-                authority.tenant.tenant_id,
-                command_id,
-                authority.tenant.tenant_id,
-                command_id,
-            ),
-        ).fetchone()
-    assert facts == (True, False)
-
-
-def _assert_primary_only_result(dsn: str, command_id: UUID) -> None:
-    with psycopg.connect(dsn) as connection:
-        row = connection.execute(
-            """
-            SELECT count(*) FROM command_results
-            WHERE client_command_id = %s
-            """,
-            (command_id,),
-        ).fetchone()
-    assert row == (1,)
-
-
-def _assert_one_result_and_ack(authority: _AuthorityFixture, command_id: UUID) -> None:
+    assert relation.status_code == HTTP_OK
+    assert replay.content == relation.content
+    event_id = UUID(cast(str, relation.json()["event_ids"][0]))
     with psycopg.connect(authority.database.admin_dsn) as connection:
-        row = connection.execute(
+        links = connection.execute(
             """
-            SELECT
-                (SELECT count(*) FROM command_results WHERE client_command_id = %s),
-                (SELECT count(*) FROM durability_acknowledgements WHERE client_command_id = %s)
+            SELECT subject_kind, subject_id FROM event_links
+            WHERE tenant_id = %s AND event_id = %s
             """,
-            (command_id, command_id),
-        ).fetchone()
-    assert row == (1, 1)
-
-
-def _assert_exact_refusal(dsn: str, command_id: UUID) -> None:
-    with psycopg.connect(dsn, row_factory=dict_row) as connection:
-        row = connection.execute(
+            (authority.tenant.tenant_id, event_id),
+        ).fetchall()
+        heads = connection.execute(
             """
-            SELECT status_code, response_body, event_ids
-            FROM command_results WHERE client_command_id = %s
+            SELECT subject_id, principal_id, client_command_id
+            FROM durability_subject_heads
+            WHERE tenant_id = %s AND subject_kind = 'ticket' AND subject_id = ANY(%s)
             """,
-            (command_id,),
-        ).fetchone()
-    assert row is not None
-    assert row["status_code"] == HTTP_CONFLICT
-    assert cast(dict[str, object], row["response_body"])["code"] == "durability_pending"
-    assert row["event_ids"] == []
-
-
-def _assert_secret_free_telemetry(captures: list[dict[str, object]], tenant: TenantFixture) -> None:
-    encoded = json.dumps(captures, separators=(",", ":"), sort_keys=True)
-    assert tenant.operator_credential not in encoded
-    assert tenant.commander_credential not in encoded
-    assert "postgresql://" not in encoded
-    assert {str(item["reason"]) for item in captures} <= {
-        "authorized",
-        "committed",
-        "durability_pending",
-        "idempotency-conflict",
+            (authority.tenant.tenant_id, [source_id, target_id]),
+        ).fetchall()
+    assert {row for row in links if row[0] == "ticket"} == {
+        ("ticket", source_id),
+        ("ticket", target_id),
     }
-
-
-def _semantic_without_durability(value: object) -> object:
-    if isinstance(value, dict):
-        return {
-            key: _semantic_without_durability(item)
-            for key, item in value.items()
-            if key != "durability_state"
-        }
-    if isinstance(value, list):
-        return [_semantic_without_durability(item) for item in value]
-    return value
-
-
-def _set_target(authority: _AuthorityFixture, identity: str) -> None:
-    with psycopg.connect(authority.database.admin_dsn) as connection:
-        connection.execute(
-            """
-            UPDATE durability_policy_state
-            SET standby_identity = %s, configured_at = clock_timestamp()
-            WHERE singleton
-            """,
-            (identity,),
-        )
-
-
-def _install_ack_delay(dsn: str) -> None:
-    with psycopg.connect(dsn) as connection:
-        connection.execute(
-            """
-            CREATE FUNCTION test_delay_durability_ack() RETURNS trigger
-            LANGUAGE plpgsql AS $$
-            BEGIN
-                PERFORM pg_sleep(3);
-                RETURN NEW;
-            END
-            $$
-            """
-        )
-        connection.execute(
-            """
-            CREATE TRIGGER test_delay_durability_ack
-            BEFORE INSERT ON durability_acknowledgements
-            FOR EACH ROW EXECUTE FUNCTION test_delay_durability_ack()
-            """
-        )
-
-
-def _remove_ack_delay(dsn: str) -> None:
-    with psycopg.connect(dsn) as connection:
-        connection.execute(
-            "DROP TRIGGER IF EXISTS test_delay_durability_ack ON durability_acknowledgements"
-        )
-        connection.execute("DROP FUNCTION IF EXISTS test_delay_durability_ack()")
-
-
-def _database_now(dsn: str) -> datetime:
-    with psycopg.connect(dsn) as connection:
-        row = connection.execute("SELECT clock_timestamp()").fetchone()
-    if row is None:
-        raise RuntimeError("database clock was unavailable")
-    return cast(datetime, row[0])
-
-
-def _create_ticket(
-    client: TestClient,
-    tenant: TenantFixture,
-    command_id: UUID,
-    *,
-    title: str,
-) -> Response:
-    return cast(
-        Response,
-        client.post(
-            "/v1/tickets",
-            json={
-                "initial_custodian_id": str(tenant.commander_id),
-                "priority": "P1",
-                "source": {"kind": "test", "ref": f"test:durability:{command_id}"},
-                "title": title,
-            },
-            headers={
-                **telemetry_headers(command_id),
-                "Authorization": f"Bearer {tenant.operator_credential}",
-                "Idempotency-Key": str(command_id),
-            },
-        ),
-    )
-
-
-def _change_priority(
-    client: TestClient,
-    tenant: TenantFixture,
-    ticket_id: UUID,
-    command_id: UUID,
-) -> Response:
-    return cast(
-        Response,
-        client.post(
-            f"/v1/tickets/{ticket_id}/priority",
-            json={
-                "expected_version": 1,
-                "priority": "P2",
-                "reason": "Dependent mutation must wait for acknowledged subject state",
-            },
-            headers={
-                **telemetry_headers(command_id, ticket_id=ticket_id),
-                "Authorization": f"Bearer {tenant.commander_credential}",
-                "Idempotency-Key": str(command_id),
-            },
-        ),
-    )
+    assert set(heads) == {
+        (source_id, authority.tenant.commander_id, command_id),
+        (target_id, authority.tenant.commander_id, command_id),
+    }

@@ -61,6 +61,7 @@ def bootstrap_transaction(
             """
         ).fetchone()
         refusal = _bootstrap_refusal(
+            connection,
             capability,
             command,
             capability_digest=capability_digest,
@@ -101,6 +102,7 @@ def bootstrap_problem(
 
 
 def _bootstrap_refusal(
+    connection: psycopg.Connection[dict[str, object]],
     capability: dict[str, object] | None,
     command: BootstrapCommand,
     *,
@@ -118,6 +120,7 @@ def _bootstrap_refusal(
     consumed_command = cast(UUID | None, capability["consumed_command_id"])
     if consumed_command is not None:
         return _consumed_outcome(
+            connection,
             capability,
             command,
             consumed_command=consumed_command,
@@ -130,6 +133,7 @@ def _bootstrap_refusal(
 
 
 def _consumed_outcome(
+    connection: psycopg.Connection[dict[str, object]],
     capability: dict[str, object],
     command: BootstrapCommand,
     *,
@@ -141,7 +145,26 @@ def _consumed_outcome(
     consumed_request = bytes(cast(bytes, capability["consumed_request_sha256"]))
     if not hmac.compare_digest(consumed_request, request_digest):
         return bootstrap_problem(command, "idempotency-conflict", 409, "Idempotency conflict")
-    return _receipt_from_payload(cast(dict[str, object], capability["receipt_body"]))
+    payload = cast(dict[str, object], capability["receipt_body"])
+    principal_id = _bootstrap_principal(connection, payload, consumed_command)
+    return _receipt_from_payload(payload, principal_id=principal_id)
+
+
+def _bootstrap_principal(
+    connection: psycopg.Connection[dict[str, object]],
+    payload: dict[str, object],
+    command_id: UUID,
+) -> UUID:
+    row = connection.execute(
+        """
+        SELECT actor_principal_id FROM events
+        WHERE tenant_id = %s AND client_command_id = %s AND kind = 'bootstrap.created'
+        """,
+        (UUID(str(payload["tenant_id"])), command_id),
+    ).fetchone()
+    if row is None:
+        raise RuntimeError("consumed bootstrap receipt has no installer principal")
+    return cast(UUID, row["actor_principal_id"])
 
 
 def _new_bootstrap_ids(now: datetime) -> _BootstrapIds:
@@ -218,7 +241,7 @@ def _commit_bootstrap(
         now=now,
         telemetry=telemetry,
     )
-    return _receipt_from_payload(response_body)
+    return _receipt_from_payload(response_body, principal_id=identifiers.installer)
 
 
 def _principal_rows(
@@ -318,13 +341,14 @@ def _insert_event_and_receipt(
     )
 
 
-def _receipt_from_payload(payload: dict[str, object]) -> BootstrapReceipt:
+def _receipt_from_payload(payload: dict[str, object], *, principal_id: UUID) -> BootstrapReceipt:
     event_ids = cast(list[str], payload["event_ids"])
     return BootstrapReceipt(
         command_id=UUID(str(payload["command_id"])),
         commander_id=UUID(str(payload["commander_id"])),
         event_ids=tuple(UUID(item) for item in event_ids),
         operator_id=UUID(str(payload["operator_id"])),
+        principal_id=principal_id,
         receipt_digest=str(payload["receipt_digest"]),
         tenant_id=UUID(str(payload["tenant_id"])),
     )

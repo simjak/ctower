@@ -30,7 +30,7 @@ from ctower_kernel.record._bootstrap_sql import (
     bootstrap_transaction,
 )
 from ctower_kernel.record._custody_sql import transfer_custody as _transfer_custody
-from ctower_kernel.record._durability_sql import durability_health as _durability_health
+from ctower_kernel.record._durability_health_sql import durability_health as _durability_health
 from ctower_kernel.record._durability_sql import reconcile_durability as _reconcile_durability
 from ctower_kernel.record._setup_sql import (
     apply_migrations,
@@ -238,6 +238,7 @@ class PostgresRecord:
     def reconcile_durability(
         self,
         tenant_id: UUID,
+        principal_id: UUID,
         command_id: UUID,
         *,
         now: datetime,
@@ -249,6 +250,7 @@ class PostgresRecord:
             self._dsn,
             self._standby_dsn,
             tenant_id,
+            principal_id,
             command_id,
             now=now,
         )

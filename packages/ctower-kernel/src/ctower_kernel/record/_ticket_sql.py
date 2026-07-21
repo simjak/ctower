@@ -83,12 +83,22 @@ def create_ticket(
     with authority_connection(dsn) as connection:
         connection.execute("SET ROLE ctower_svc")
         transaction = RecordTransaction(connection)
+        identifiers = _TicketIds(*(_uuid7(now) for _ in range(3)))
         reserved = _reserve_ticket_outcome(
             connection, transaction, actor, command, request_digest=request_digest, now=now
         )
         if reserved is not None:
             return reserved
-        identifiers = _TicketIds(*(_uuid7(now) for _ in range(3)))
+        pending = transaction.require_durable_subjects(
+            actor.tenant_id,
+            actor.principal_id,
+            command.client_command_id,
+            request_digest,
+            (("ticket", identifiers.ticket),),
+            now=now,
+        )
+        if pending is not None:
+            return pending
         ticket = Ticket(
             ticket_id=identifiers.ticket,
             title=command.title,

@@ -29,22 +29,23 @@ class CommandSnapshot:
 
 
 def command_snapshot(
-    connection: psycopg.Connection[dict[str, object]], tenant_id: UUID, command_id: UUID
+    connection: psycopg.Connection[dict[str, object]],
+    tenant_id: UUID,
+    principal_id: UUID,
+    command_id: UUID,
 ) -> CommandSnapshot | RecordProblem:
     """Read and hash the one semantic result, its ordered events, and outbox identity."""
 
-    rows = connection.execute(
+    result = connection.execute(
         """
         SELECT tenant_id, principal_id, client_command_id, request_sha256,
             status_code, response_body, event_ids
         FROM command_results
-        WHERE tenant_id = %s AND client_command_id = %s
-        ORDER BY principal_id
-        LIMIT 2
+        WHERE tenant_id = %s AND principal_id = %s AND client_command_id = %s
         """,
-        (tenant_id, command_id),
-    ).fetchall()
-    if len(rows) != 1:
+        (tenant_id, principal_id, command_id),
+    ).fetchone()
+    if result is None:
         return RecordProblem(
             "tenant-scope-denied",
             "The command is unavailable in the requested tenant scope.",
@@ -52,8 +53,6 @@ def command_snapshot(
             "Command unavailable",
             command_id,
         )
-    result = rows[0]
-    principal_id = cast(UUID, result["principal_id"])
     event_ids = tuple(cast(list[UUID], result["event_ids"]))
     events = connection.execute(
         """

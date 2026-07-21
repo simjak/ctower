@@ -453,6 +453,27 @@
       ]
     },
     {
+      "path": "packages/ctower-kernel/migrations/0014_durability_acceptance_finalization.sql",
+      "references": [
+        "SPEC#client-acknowledgement-and-offline-behavior",
+        "SPEC#persistence-authority",
+        "INV-36",
+        "AC-DUR-01",
+        "AC-DUR-02",
+        "AC-DUR-06"
+      ]
+    },
+    {
+      "path": "packages/ctower-kernel/migrations/0015_durability_probe_role.sql",
+      "references": [
+        "SPEC#executable-authority-and-requirement-traceability",
+        "SPEC#security-objectives",
+        "INV-01",
+        "AC-DUR-07",
+        "AC-SEC-03"
+      ]
+    },
+    {
       "path": "packages/ctower-kernel/migrations/manifest.json",
       "references": [
         "SPEC#executable-authority-and-requirement-traceability",

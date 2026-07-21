@@ -29,6 +29,7 @@ def append_change(
     request_digest: bytes,
     now: datetime,
     telemetry: TelemetryContext,
+    subjects: tuple[tuple[str, UUID], ...],
 ) -> WorkReceipt:
     event_id, outbox_id = _uuid7(now), _uuid7(now)
     previous = connection.execute(
@@ -81,7 +82,7 @@ def append_change(
             ticket_id=str(receipt.ticket_id),
         ),
         now=now,
-        subjects=(("ticket", receipt.ticket_id), ("work", receipt.ticket_id)),
+        subjects=subjects,
     )
     return committed
 

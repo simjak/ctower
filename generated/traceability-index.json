@@ -17,14 +17,16 @@
       "contracts/http/openapi.yaml",
       "contracts/operations/durability-ack.schema.json",
       "contracts/operations/durability-policy.schema.json",
-      "packages/ctower-kernel/migrations/0013_durability_authority.sql"
+      "packages/ctower-kernel/migrations/0013_durability_authority.sql",
+      "packages/ctower-kernel/migrations/0014_durability_acceptance_finalization.sql"
     ],
     "AC-DUR-02": [
       "contracts/domain/events/event-envelope.schema.json",
       "contracts/http/openapi.yaml",
       "contracts/operations/durability-ack.schema.json",
       "packages/ctower-kernel/migrations/0002_ticket_slice.sql",
-      "packages/ctower-kernel/migrations/0011_persisted_command_refusals.sql"
+      "packages/ctower-kernel/migrations/0011_persisted_command_refusals.sql",
+      "packages/ctower-kernel/migrations/0014_durability_acceptance_finalization.sql"
     ],
     "AC-DUR-03": [
       "contracts/domain/events/canonical-vectors.json",
@@ -38,6 +40,7 @@
       "packages/ctower-kernel/migrations/0009_transactional_record_positions.sql",
       "packages/ctower-kernel/migrations/0011_persisted_command_refusals.sql",
       "packages/ctower-kernel/migrations/0013_durability_authority.sql",
+      "packages/ctower-kernel/migrations/0014_durability_acceptance_finalization.sql",
       "packages/ctower-kernel/migrations/manifest.json"
     ],
     "AC-DUR-07": [
@@ -48,6 +51,7 @@
       "packages/ctower-kernel/migrations/0006_narrow_head_update_privileges.sql",
       "packages/ctower-kernel/migrations/0012_projection_runtime_role.sql",
       "packages/ctower-kernel/migrations/0013_durability_authority.sql",
+      "packages/ctower-kernel/migrations/0015_durability_probe_role.sql",
       "packages/ctower-kernel/migrations/manifest.json"
     ],
     "AC-EVD-01": [
@@ -87,7 +91,8 @@
     ],
     "AC-SEC-03": [
       "packages/ctower-kernel/migrations/0006_narrow_head_update_privileges.sql",
-      "packages/ctower-kernel/migrations/0012_projection_runtime_role.sql"
+      "packages/ctower-kernel/migrations/0012_projection_runtime_role.sql",
+      "packages/ctower-kernel/migrations/0015_durability_probe_role.sql"
     ],
     "AC-TM-01": [
       "contracts/domain/task-management/task-command.schema.json",
@@ -164,7 +169,8 @@
       "packages/ctower-kernel/migrations/0003_privileges.sql",
       "packages/ctower-kernel/migrations/0006_narrow_head_update_privileges.sql",
       "packages/ctower-kernel/migrations/0007_task_management_facts.sql",
-      "packages/ctower-kernel/migrations/0012_projection_runtime_role.sql"
+      "packages/ctower-kernel/migrations/0012_projection_runtime_role.sql",
+      "packages/ctower-kernel/migrations/0015_durability_probe_role.sql"
     ],
     "INV-02": [
       "contracts/bootstrap/first-tenant-request.schema.json",
@@ -247,7 +253,8 @@
     "INV-36": [
       "contracts/operations/durability-ack.schema.json",
       "contracts/operations/durability-policy.schema.json",
-      "packages/ctower-kernel/migrations/0013_durability_authority.sql"
+      "packages/ctower-kernel/migrations/0013_durability_authority.sql",
+      "packages/ctower-kernel/migrations/0014_durability_acceptance_finalization.sql"
     ],
     "INV-43": [
       "contracts/workflow/review-plan.schema.json",
@@ -291,7 +298,8 @@
       "contracts/http/openapi.yaml",
       "contracts/operations/durability-ack.schema.json",
       "contracts/operations/durability-policy.schema.json",
-      "packages/ctower-kernel/migrations/0013_durability_authority.sql"
+      "packages/ctower-kernel/migrations/0013_durability_authority.sql",
+      "packages/ctower-kernel/migrations/0014_durability_acceptance_finalization.sql"
     ],
     "SPEC#companybundle-validate-plan-apply-and-export": [
       "contracts/company/company-bundle.schema.json"
@@ -308,6 +316,7 @@
       "packages/ctower-kernel/migrations/0001_roles.sql",
       "packages/ctower-kernel/migrations/0003_privileges.sql",
       "packages/ctower-kernel/migrations/0012_projection_runtime_role.sql",
+      "packages/ctower-kernel/migrations/0015_durability_probe_role.sql",
       "packages/ctower-kernel/migrations/manifest.json"
     ],
     "SPEC#first-tenant-trust-root-ceremony": [
@@ -338,7 +347,8 @@
       "packages/ctower-kernel/migrations/0009_transactional_record_positions.sql",
       "packages/ctower-kernel/migrations/0010_custody_episode_intervals.sql",
       "packages/ctower-kernel/migrations/0011_persisted_command_refusals.sql",
-      "packages/ctower-kernel/migrations/0013_durability_authority.sql"
+      "packages/ctower-kernel/migrations/0013_durability_authority.sql",
+      "packages/ctower-kernel/migrations/0014_durability_acceptance_finalization.sql"
     ],
     "SPEC#review-rounds-lineages-generations-and-budgets": [
       "contracts/workflow/review-plan.schema.json",
@@ -347,7 +357,8 @@
     ],
     "SPEC#security-objectives": [
       "packages/ctower-kernel/migrations/0006_narrow_head_update_privileges.sql",
-      "packages/ctower-kernel/migrations/0012_projection_runtime_role.sql"
+      "packages/ctower-kernel/migrations/0012_projection_runtime_role.sql",
+      "packages/ctower-kernel/migrations/0015_durability_probe_role.sql"
     ],
     "SPEC#task-management-foundation": [
       "contracts/domain/task-management/board-view.schema.json",

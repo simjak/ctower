@@ -4,11 +4,13 @@ from __future__ import annotations
 
 import hashlib
 import json
+import re
 from pathlib import Path
 from typing import cast
 
 ROOT = Path(__file__).parents[3]
 MIGRATIONS = ROOT / "packages/ctower-kernel/migrations"
+LIVE_EVIDENCE_FUNCTIONS = 2
 
 
 def test_migration_manifest_is_ordered_and_checksum_exact() -> None:
@@ -16,7 +18,7 @@ def test_migration_manifest_is_ordered_and_checksum_exact() -> None:
     entries = cast(list[dict[str, str]], manifest["migrations"])
     names = [entry["path"] for entry in entries]
 
-    assert manifest["schema"] == "ctower.migrations/v1"
+    assert manifest["schema"] == "ctower.migrations/v2"
     assert names == sorted(names)
     assert names == [
         "0001_roles.sql",
@@ -32,10 +34,64 @@ def test_migration_manifest_is_ordered_and_checksum_exact() -> None:
         "0011_persisted_command_refusals.sql",
         "0012_projection_runtime_role.sql",
         "0013_durability_authority.sql",
+        "0014_durability_acceptance_finalization.sql",
+        "0015_durability_probe_role.sql",
     ]
     for entry in entries:
         digest = hashlib.sha256((MIGRATIONS / entry["path"]).read_bytes()).hexdigest()
         assert entry["sha256"] == f"sha256:{digest}"
+
+
+def test_every_migration_declares_compatibility_forward_compensation_and_backup() -> None:
+    manifest = json.loads((MIGRATIONS / "manifest.json").read_text(encoding="utf-8"))
+    entries = cast(list[dict[str, object]], manifest["migrations"])
+
+    for entry in entries:
+        assert set(entry) in (
+            {
+                "backup_checkpoint",
+                "forward_test",
+                "maximum_service_version",
+                "minimum_service_version",
+                "path",
+                "rollback_or_forward_compensation",
+                "sha256",
+            },
+            {
+                "backup_checkpoint",
+                "forward_test",
+                "maximum_service_version",
+                "minimum_service_version",
+                "path",
+                "rollback_or_forward_compensation",
+                "scope",
+                "sha256",
+            },
+        )
+        minimum = cast(str, entry["minimum_service_version"])
+        maximum = cast(str, entry["maximum_service_version"])
+        version = r"(?:0|[1-9][0-9]*)\.(?:0|[1-9][0-9]*)\.(?:0|[1-9][0-9]*)"
+        assert re.fullmatch(version, minimum)
+        assert re.fullmatch(version, maximum)
+        assert tuple(map(int, minimum.split("."))) <= tuple(map(int, maximum.split(".")))
+        forward = cast(str, entry["forward_test"])
+        assert forward.startswith("pytest:")
+        test_path, node = forward.removeprefix("pytest:").split("::")
+        test_file = ROOT / test_path
+        assert test_file.is_file()
+        assert re.search(rf"^def {re.escape(node)}\(", test_file.read_text(), re.MULTILINE)
+        assert cast(str, entry["rollback_or_forward_compensation"]).strip()
+        assert cast(str, entry["backup_checkpoint"]).strip()
+
+
+def test_durability_migration_declares_pending_only_writer_compatibility() -> None:
+    manifest = json.loads((MIGRATIONS / "manifest.json").read_text(encoding="utf-8"))
+    entries = {entry["path"]: entry for entry in manifest["migrations"]}
+    declaration = cast(dict[str, str], entries["0013_durability_authority.sql"])
+
+    assert "pending_only" in declaration["rollback_or_forward_compensation"]
+    assert "no old writer after cutover" in declaration["rollback_or_forward_compensation"]
+    assert "subject-head reconstruction" in declaration["rollback_or_forward_compensation"]
 
 
 def test_service_and_projection_roles_are_least_privilege() -> None:
@@ -109,6 +165,40 @@ def test_durability_authority_is_additive_immutable_and_least_privilege() -> Non
         line for line in migration.splitlines() if "durability_acknowledgements" in line
     )
     assert "GRANT DELETE" not in migration
+
+
+def test_durability_finalization_is_immutable_and_bound_to_one_acknowledgement() -> None:
+    migration = (MIGRATIONS / "0014_durability_acceptance_finalization.sql").read_text(
+        encoding="utf-8"
+    )
+
+    assert "CREATE TABLE durability_acceptance_finalizations" in migration
+    assert "PRIMARY KEY (tenant_id, principal_id, client_command_id)" in migration
+    assert "tenant_id, principal_id, client_command_id, acceptance_position" in migration
+    assert "durability_acceptance_finalizations_immutable" in migration
+    assert "GRANT INSERT, SELECT ON durability_acceptance_finalizations TO ctower_svc" in migration
+    assert "GRANT UPDATE" not in migration
+    assert "GRANT DELETE" not in migration
+    assert migration.count("SECURITY DEFINER") == LIVE_EVIDENCE_FUNCTIONS
+    assert migration.count("SET search_path = pg_catalog") == LIVE_EVIDENCE_FUNCTIONS
+    assert "WHERE sender.application_name = 'ctower_i1_ack'" in migration
+    assert "REVOKE ALL ON FUNCTION durability_primary_live_evidence() FROM PUBLIC" in migration
+    assert "REVOKE ALL ON FUNCTION durability_standby_live_evidence() FROM PUBLIC" in migration
+    assert "GRANT EXECUTE ON FUNCTION durability_primary_live_evidence() TO ctower_svc" in migration
+    assert "GRANT EXECUTE ON FUNCTION durability_standby_live_evidence() TO ctower_svc" in migration
+    assert "pg_read_all_stats" not in migration
+    assert "pg_monitor" not in migration
+
+
+def test_durability_probe_role_is_no_login_and_never_granted_to_runtime() -> None:
+    migration = (MIGRATIONS / "0015_durability_probe_role.sql").read_text(encoding="utf-8")
+
+    assert "CREATE ROLE ctower_durability_probe" in migration
+    assert "NOLOGIN NOSUPERUSER NOCREATEDB NOCREATEROLE INHERIT" in migration
+    assert "GRANT pg_read_all_stats TO ctower_durability_probe" in migration
+    assert "GRANT ctower_durability_probe TO ctower_admin" in migration
+    assert "REVOKE ctower_durability_probe FROM ctower_svc, ctower_runtime" in migration
+    assert "GRANT pg_read_all_stats TO ctower_svc" not in migration
 
 
 def test_development_composition_uses_postgres_17_without_a_password_value() -> None:

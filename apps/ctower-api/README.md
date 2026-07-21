@@ -11,3 +11,5 @@ projection connection. One common mutation envelope asks Record to reconcile the
 returns either replayable `durability_pending` or the original semantic result as accepted; normal/default
 configuration remains `pending_only`. The background worker, operations health surface, production
 off-host target, and deployment remain deferred.
+The common mutation envelope threads the authenticated principal into every Record reconciliation call, so
+same-tenant principals may independently reuse the same command UUID without weakening exact replay.

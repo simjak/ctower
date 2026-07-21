@@ -111,14 +111,21 @@ class RecordTransaction:
         *,
         now: datetime,
     ) -> RecordProblem | None:
-        """Refuse dependency on a locally committed but unacknowledged subject head."""
+        """Serialize subject heads before aggregate locks and refuse unacknowledged heads.
+
+        The global order is sorted absent-head advisory locks, sorted existing
+        ``durability_subject_heads`` row locks, then caller-owned aggregate locks. The
+        transaction retains every lock through refusal or committed head movement.
+        """
 
         if self._mode != "cutover_rpo0":
             return None
+        ordered = self._ordered_subjects(subjects)
+        self._lock_absent_subject_identities(tenant_id, ordered)
         pending = [
             (subject_kind, subject_id)
-            for subject_kind, subject_id in subjects
-            if self._subject_is_pending(tenant_id, subject_kind, subject_id)
+            for subject_kind, subject_id in ordered
+            if self._lock_subject_head(tenant_id, subject_kind, subject_id)
         ]
         if not pending:
             return None
@@ -153,7 +160,8 @@ class RecordTransaction:
     ) -> None:
         """Append one event, exact result, and outbox row in the caller's transaction."""
 
-        append_event(self._connection, event, subjects=subjects)
+        ordered_subjects = self._ordered_subjects(subjects)
+        append_event(self._connection, event, subjects=ordered_subjects)
         self._connection.execute(
             """
             INSERT INTO command_results (
@@ -173,7 +181,7 @@ class RecordTransaction:
             ),
         )
         enqueue_event(self._connection, outbox_id, event, telemetry, now)
-        self._move_subject_heads(event, subjects, now=now)
+        self._move_subject_heads(event, ordered_subjects, now=now)
 
     def refuse(
         self,
@@ -225,7 +233,30 @@ class RecordTransaction:
         )
         arm_remote_apply_deadline(self._connection, int(cast(int, policy["commit_deadline_ms"])))
 
-    def _subject_is_pending(self, tenant_id: UUID, subject_kind: str, subject_id: UUID) -> bool:
+    @staticmethod
+    def _ordered_subjects(subjects: tuple[EventSubject, ...]) -> tuple[EventSubject, ...]:
+        return tuple(sorted(set(subjects), key=lambda item: (item[0], item[1].int)))
+
+    def _lock_absent_subject_identities(
+        self, tenant_id: UUID, subjects: tuple[EventSubject, ...]
+    ) -> None:
+        for subject_kind, subject_id in subjects:
+            exists = self._connection.execute(
+                """
+                SELECT 1 FROM durability_subject_heads
+                WHERE tenant_id = %s AND subject_kind = %s AND subject_id = %s
+                """,
+                (tenant_id, subject_kind, subject_id),
+            ).fetchone()
+            if exists is not None:
+                continue
+            identity = f"{tenant_id}:{subject_kind}:{subject_id}"
+            self._connection.execute(
+                "SELECT pg_advisory_xact_lock(hashtextextended(%s, 0))",
+                (identity,),
+            )
+
+    def _lock_subject_head(self, tenant_id: UUID, subject_kind: str, subject_id: UUID) -> bool:
         row = self._connection.execute(
             """
             SELECT acknowledgement.acceptance_position
@@ -235,6 +266,7 @@ class RecordTransaction:
              AND acknowledgement.principal_id = head.principal_id
              AND acknowledgement.client_command_id = head.client_command_id
             WHERE head.tenant_id = %s AND head.subject_kind = %s AND head.subject_id = %s
+            FOR UPDATE OF head
             """,
             (tenant_id, subject_kind, subject_id),
         ).fetchone()
