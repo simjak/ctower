@@ -64,6 +64,7 @@ def test_problem_vocabulary_and_boundary_objects_are_strict() -> None:
         "bootstrap-expired",
         "bootstrap-nonempty",
         "bootstrap-origin",
+        "durability_pending",
         "idempotency-conflict",
         "proof-candidate-author-mismatch",
         "proof-candidate-digest-invalid",

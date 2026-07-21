@@ -16,6 +16,8 @@ from ctower_kernel.record import (
     BootstrapCommand,
     BootstrapReceipt,
     CustodyCommand,
+    DurabilityDecision,
+    DurabilityHealth,
     RecordProblem,
     Ticket,
     TicketCommand,
@@ -28,6 +30,8 @@ from ctower_kernel.record._bootstrap_sql import (
     bootstrap_transaction,
 )
 from ctower_kernel.record._custody_sql import transfer_custody as _transfer_custody
+from ctower_kernel.record._durability_sql import durability_health as _durability_health
+from ctower_kernel.record._durability_sql import reconcile_durability as _reconcile_durability
 from ctower_kernel.record._setup_sql import (
     apply_migrations,
     provision_bootstrap,
@@ -37,6 +41,7 @@ from ctower_kernel.record._ticket_sql import actor_for_credential as _actor_for_
 from ctower_kernel.record._ticket_sql import create_ticket as _create_ticket
 from ctower_kernel.record._ticket_sql import get_ticket as _get_ticket
 from ctower_kernel.record._ticket_sql import ticket_timeline as _ticket_timeline
+from ctower_kernel.record.transaction import recover_ambiguous_commit
 from ctower_kernel.telemetry import NoopTelemetry, Telemetry, TelemetryContext
 
 __all__ = [
@@ -52,8 +57,15 @@ _BOOTSTRAP_SERIALIZATION_ATTEMPTS = 3
 class PostgresRecord:
     """Password-agnostic Postgres implementation of atomic Record commands."""
 
-    def __init__(self, dsn: str, *, telemetry: Telemetry | None = None) -> None:
+    def __init__(
+        self,
+        dsn: str,
+        *,
+        standby_dsn: str | None = None,
+        telemetry: Telemetry | None = None,
+    ) -> None:
         self._dsn = dsn
+        self._standby_dsn = standby_dsn
         self._telemetry = telemetry or NoopTelemetry()
 
     def authorize_bootstrap(
@@ -92,6 +104,29 @@ class PostgresRecord:
     ) -> BootstrapReceipt | RecordProblem:
         """Serialize, deduplicate, and commit the complete trust root."""
 
+        outcome = recover_ambiguous_commit(
+            lambda: self._bootstrap_attempt(
+                command,
+                capability_digest=capability_digest,
+                request_digest=request_digest,
+                origin=origin,
+                now=now,
+                telemetry=telemetry,
+            )
+        )
+        self._emit("record.bootstrap_first_tenant", telemetry, outcome)
+        return outcome
+
+    def _bootstrap_attempt(
+        self,
+        command: BootstrapCommand,
+        *,
+        capability_digest: bytes,
+        request_digest: bytes,
+        origin: str,
+        now: datetime,
+        telemetry: TelemetryContext,
+    ) -> BootstrapReceipt | RecordProblem:
         for attempt in range(_BOOTSTRAP_SERIALIZATION_ATTEMPTS):
             try:
                 outcome = bootstrap_transaction(
@@ -112,7 +147,6 @@ class PostgresRecord:
                         409,
                         "Bootstrap lost a concurrent serialization race",
                     )
-        self._emit("record.bootstrap_first_tenant", telemetry, outcome)
         return outcome
 
     def actor_for_credential(self, credential_digest: bytes) -> Actor | None:
@@ -131,13 +165,15 @@ class PostgresRecord:
     ) -> TicketCommandResult | RecordProblem:
         """Append or replay one ticket transaction."""
 
-        outcome = _create_ticket(
-            self._dsn,
-            actor,
-            command,
-            request_digest=request_digest,
-            now=now,
-            telemetry=telemetry,
+        outcome = recover_ambiguous_commit(
+            lambda: _create_ticket(
+                self._dsn,
+                actor,
+                command,
+                request_digest=request_digest,
+                now=now,
+                telemetry=telemetry,
+            )
         )
         self._emit("record.create_ticket", telemetry, outcome)
         return outcome
@@ -186,16 +222,43 @@ class PostgresRecord:
     ) -> TicketCommandResult | RecordProblem:
         """Atomically replace one current ticket custodian."""
 
-        outcome = _transfer_custody(
-            self._dsn,
-            actor,
-            command,
-            request_digest=request_digest,
-            now=now,
-            telemetry=telemetry,
+        outcome = recover_ambiguous_commit(
+            lambda: _transfer_custody(
+                self._dsn,
+                actor,
+                command,
+                request_digest=request_digest,
+                now=now,
+                telemetry=telemetry,
+            )
         )
         self._emit("record.transfer_custody", telemetry, outcome)
         return outcome
+
+    def reconcile_durability(
+        self,
+        tenant_id: UUID,
+        command_id: UUID,
+        *,
+        now: datetime,
+        telemetry: TelemetryContext,
+    ) -> DurabilityDecision | RecordProblem:
+        """Reconcile one command against the configured named standby."""
+
+        outcome = _reconcile_durability(
+            self._dsn,
+            self._standby_dsn,
+            tenant_id,
+            command_id,
+            now=now,
+        )
+        self._emit("record.reconcile_durability", telemetry, outcome)
+        return outcome
+
+    def durability_health(self, *, now: datetime) -> DurabilityHealth:
+        """Read the fail-closed durability target health snapshot."""
+
+        return _durability_health(self._dsn, self._standby_dsn, now=now)
 
     def _emit(
         self,

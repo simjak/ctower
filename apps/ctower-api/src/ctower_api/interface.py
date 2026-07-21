@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from collections.abc import Awaitable, Callable
+from uuid import UUID
 
 from fastapi import FastAPI, Request
 from fastapi.responses import JSONResponse
@@ -31,6 +32,7 @@ from ctower_api._http_support import (
 from ctower_api._http_support import (
     validation_problem as _validation_problem,
 )
+from ctower_api._mutation_response import mutation_response as _mutation_response
 from ctower_api._proof_workflow_routes import install_proof_workflow_routes
 from ctower_api._task_routes import install_task_routes
 from ctower_api.telemetry import TelemetryRecorder
@@ -48,7 +50,6 @@ from ctower_kernel.projections import Projections
 from ctower_kernel.proof import Proof
 from ctower_kernel.record import (
     BootstrapCommand,
-    BootstrapReceipt,
     CustodyCommand,
     Record,
     RecordProblem,
@@ -58,6 +59,7 @@ from ctower_kernel.record import (
     TicketCommandResult,
     TicketTimeline,
 )
+from ctower_kernel.telemetry import TelemetryContext
 from ctower_kernel.work import Work
 from ctower_kernel.workflow import Workflow
 
@@ -89,20 +91,20 @@ def create_app(
         response.headers["X-Ctower-Telemetry-Health"] = recorder.health
         return response
 
-    _install_bootstrap_route(app, access, recorder)
-    _install_ticket_create_route(app, access, work_module, recorder)
-    _install_custody_route(app, access, work_module, recorder)
+    _install_bootstrap_route(app, access, record, recorder)
+    _install_ticket_create_route(app, access, record, work_module, recorder)
+    _install_custody_route(app, access, record, work_module, recorder)
     _install_ticket_read_routes(app, access, record, recorder)
     install_task_routes(app, access, record, work_module, workflow, recorder)
     if proof is not None and workflow is not None:
-        install_proof_workflow_routes(app, access, proof, workflow, recorder)
+        install_proof_workflow_routes(app, access, record, proof, workflow, recorder)
     if projections is not None:
         install_board_routes(app, access, projections, recorder)
     return app
 
 
 def _install_bootstrap_route(
-    app: FastAPI, access: Access, telemetry_recorder: TelemetryRecorder
+    app: FastAPI, access: Access, record: Record, telemetry_recorder: TelemetryRecorder
 ) -> None:
     """Bind the local-only bootstrap transport Adapter."""
 
@@ -145,12 +147,27 @@ def _install_bootstrap_route(
             origin=origin,
             telemetry=telemetry,
         )
-        return _bootstrap_response(outcome)
+        if isinstance(outcome, RecordProblem):
+            return _problem_response(outcome)
+        return _mutation_response(
+            record,
+            outcome,
+            tenant_id=outcome.tenant_id,
+            command_id=outcome.command_id,
+            telemetry=telemetry.bind(
+                tenant_id=str(outcome.tenant_id),
+                actor_id="bootstrap-installer",
+                command_id=str(outcome.command_id),
+            ),
+            boundary_model=HttpBootstrapReceipt,
+            accepted_status=201,
+        )
 
 
 def _install_ticket_create_route(
     app: FastAPI,
     access: Access,
+    record: Record,
     work: Work,
     telemetry_recorder: TelemetryRecorder,
 ) -> None:
@@ -184,7 +201,9 @@ def _install_ticket_create_route(
             ),
             telemetry=telemetry,
         )
-        return _ticket_command_response(outcome)
+        return _ticket_command_response(
+            record, outcome, actor.tenant_id, command_id, telemetry, status_code=201
+        )
 
 
 def _install_ticket_read_routes(
@@ -237,6 +256,7 @@ def _install_ticket_read_routes(
 def _install_custody_route(
     app: FastAPI,
     access: Access,
+    record: Record,
     work: Work,
     telemetry_recorder: TelemetryRecorder,
 ) -> None:
@@ -274,25 +294,29 @@ def _install_custody_route(
             ),
             telemetry=telemetry,
         )
-        return _ticket_command_response(outcome, status_code=200)
-
-
-def _bootstrap_response(outcome: BootstrapReceipt | RecordProblem) -> JSONResponse:
-    payload = outcome.response_payload()
-    encoded = _encoded(payload)
-    if isinstance(outcome, BootstrapReceipt):
-        receipt_boundary = HttpBootstrapReceipt.model_validate_json(encoded)
-        return JSONResponse(status_code=201, content=receipt_boundary.model_dump(mode="json"))
-    return _problem_response(outcome)
+        return _ticket_command_response(
+            record, outcome, actor.tenant_id, command_id, telemetry, status_code=200
+        )
 
 
 def _ticket_command_response(
-    outcome: TicketCommandResult | RecordProblem, *, status_code: int = 201
+    record: Record,
+    outcome: TicketCommandResult | RecordProblem,
+    tenant_id: UUID,
+    command_id: UUID,
+    telemetry: TelemetryContext,
+    *,
+    status_code: int,
 ) -> JSONResponse:
-    if isinstance(outcome, RecordProblem):
-        return _problem_response(outcome)
-    boundary = HttpTicketCommandResult.model_validate_json(_encoded(outcome.response_payload()))
-    return JSONResponse(status_code=status_code, content=boundary.model_dump(mode="json"))
+    return _mutation_response(
+        record,
+        outcome,
+        tenant_id=tenant_id,
+        command_id=command_id,
+        telemetry=telemetry,
+        boundary_model=HttpTicketCommandResult,
+        accepted_status=status_code,
+    )
 
 
 def _ticket_response(outcome: Ticket | RecordProblem) -> JSONResponse:

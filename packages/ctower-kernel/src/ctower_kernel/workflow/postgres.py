@@ -5,6 +5,7 @@ from __future__ import annotations
 from datetime import datetime
 
 from ctower_kernel.record import RecordProblem
+from ctower_kernel.record.transaction import recover_ambiguous_commit
 from ctower_kernel.telemetry import NoopTelemetry, Telemetry, TelemetryContext
 from ctower_kernel.workflow import (
     ResolveClose,
@@ -50,16 +51,18 @@ class PostgresWorkflow:
     ) -> WorkflowReceipt | RecordProblem:
         """Atomically persist one legal Workflow transition."""
 
-        outcome = _advance(
-            self._dsn,
-            evaluator,
-            self._proof_gate,
-            self._readiness_gate,
-            actor,
-            mutation,
-            request_digest=request_digest,
-            now=now,
-            telemetry=telemetry,
+        outcome = recover_ambiguous_commit(
+            lambda: _advance(
+                self._dsn,
+                evaluator,
+                self._proof_gate,
+                self._readiness_gate,
+                actor,
+                mutation,
+                request_digest=request_digest,
+                now=now,
+                telemetry=telemetry,
+            )
         )
         self._emit("workflow.advance", telemetry, outcome)
         return outcome
@@ -76,14 +79,16 @@ class PostgresWorkflow:
     ) -> WorkflowReceipt | RecordProblem:
         """Atomically persist one exact Workflow and policy pin."""
 
-        outcome = _start(
-            self._dsn,
-            evaluator,
-            actor,
-            command,
-            request_digest=request_digest,
-            now=now,
-            telemetry=telemetry,
+        outcome = recover_ambiguous_commit(
+            lambda: _start(
+                self._dsn,
+                evaluator,
+                actor,
+                command,
+                request_digest=request_digest,
+                now=now,
+                telemetry=telemetry,
+            )
         )
         self._emit("workflow.start", telemetry, outcome)
         return outcome
@@ -100,15 +105,17 @@ class PostgresWorkflow:
     ) -> WorkflowReceipt | RecordProblem:
         """Atomically append proof-gated terminal lifecycle facts."""
 
-        outcome = _close(
-            self._dsn,
-            evaluator,
-            self._proof_gate,
-            actor,
-            command,
-            request_digest=request_digest,
-            now=now,
-            telemetry=telemetry,
+        outcome = recover_ambiguous_commit(
+            lambda: _close(
+                self._dsn,
+                evaluator,
+                self._proof_gate,
+                actor,
+                command,
+                request_digest=request_digest,
+                now=now,
+                telemetry=telemetry,
+            )
         )
         self._emit("workflow.close", telemetry, outcome)
         return outcome

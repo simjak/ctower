@@ -98,6 +98,7 @@ class _Process(Protocol):
 def running_api(
     runtime_dsn: str,
     *,
+    standby_dsn: str | None = None,
     telemetry_capture: Path | None = None,
     telemetry_failure: bool = False,
     projection_dsn: str | None = None,
@@ -110,6 +111,7 @@ def running_api(
         target=_serve,
         args=(
             runtime_dsn,
+            standby_dsn,
             projection_dsn,
             host,
             port,
@@ -132,6 +134,7 @@ def running_api(
 
 def _serve(
     runtime_dsn: str,
+    standby_dsn: str | None,
     projection_dsn: str | None,
     host: str,
     port: int,
@@ -153,7 +156,7 @@ def _serve(
     graph_payload = json.loads(
         (ROOT / "packs/workflows/ctower.trust-spine-four-stage/v1.yaml").read_text(encoding="utf-8")
     )
-    record = PostgresRecord(runtime_dsn, telemetry=recorder)
+    record = PostgresRecord(runtime_dsn, standby_dsn=standby_dsn, telemetry=recorder)
     work = Work(record, writer=PostgresWork(runtime_dsn), telemetry=recorder)
     uvicorn.run(
         create_app(

@@ -50,6 +50,10 @@
       "path": "0012_projection_runtime_role.sql",
       "sha256": "sha256:ff76636094f2e9a3153735d7e6bce0e348ed7cd515b7c4cea932ec50fddbbcf3",
       "scope": "cluster"
+    },
+    {
+      "path": "0013_durability_authority.sql",
+      "sha256": "sha256:84680285d62b13a24126797e9dcefff2cc039a85a772696cac87cd1398284108"
     }
   ]
 }

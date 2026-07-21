@@ -10,7 +10,6 @@ from uuid import UUID
 
 import psycopg
 from psycopg.rows import dict_row
-from psycopg.types.json import Jsonb
 
 from ctower_kernel.record import (
     Actor,
@@ -23,7 +22,6 @@ from ctower_kernel.record import (
     TicketTimeline,
     TimelineEvent,
 )
-from ctower_kernel.record._event_store import append_event, enqueue_event
 from ctower_kernel.record.events import (
     EventEnvelope,
     EventKind,
@@ -31,7 +29,7 @@ from ctower_kernel.record.events import (
     TicketCreatedPayload,
     ticket_payload_from_mapping,
 )
-from ctower_kernel.record.transaction import RecordTransaction
+from ctower_kernel.record.transaction import RecordTransaction, authority_connection
 from ctower_kernel.telemetry import TelemetryContext
 
 __all__ = ["actor_for_credential", "create_ticket", "get_ticket", "ticket_timeline"]
@@ -82,7 +80,7 @@ def create_ticket(
 ) -> TicketCommandResult | RecordProblem:
     """Deduplicate before validation and atomically append a new ticket."""
 
-    with psycopg.connect(dsn, row_factory=dict_row) as connection:
+    with authority_connection(dsn) as connection:
         connection.execute("SET ROLE ctower_svc")
         transaction = RecordTransaction(connection)
         reserved = _reserve_ticket_outcome(
@@ -339,60 +337,19 @@ def _append_ticket_created(
         stream_id=f"ticket:{identifiers.ticket}",
         tenant_id=actor.tenant_id,
     )
-    append_event(connection, event, subjects=(("ticket", identifiers.ticket),))
-    _insert_result_and_outbox(
-        connection,
-        actor,
-        command,
-        result,
-        identifiers=identifiers,
-        request_digest=request_digest,
-        event=event,
-        telemetry=telemetry,
-        now=now,
-    )
-
-
-def _insert_result_and_outbox(
-    connection: psycopg.Connection[dict[str, object]],
-    actor: Actor,
-    command: TicketCommand,
-    result: TicketCommandResult,
-    *,
-    identifiers: _TicketIds,
-    request_digest: bytes,
-    event: EventEnvelope,
-    telemetry: TelemetryContext,
-    now: datetime,
-) -> None:
-    connection.execute(
-        """
-        INSERT INTO command_results (
-            tenant_id, principal_id, client_command_id, request_sha256, status_code,
-            response_body, event_ids, created_at
-        ) VALUES (%s, %s, %s, %s, 201, %s, %s, %s)
-        """,
-        (
-            actor.tenant_id,
-            actor.principal_id,
-            command.client_command_id,
-            request_digest,
-            Jsonb(result.response_payload()),
-            [identifiers.event],
-            now,
-        ),
-    )
-    enqueue_event(
-        connection,
-        identifiers.outbox,
+    RecordTransaction(connection).commit(
         event,
-        telemetry.bind(
+        outbox_id=identifiers.outbox,
+        response_body=result.response_payload(),
+        status_code=201,
+        telemetry=telemetry.bind(
             tenant_id=str(actor.tenant_id),
             actor_id=str(actor.principal_id),
             command_id=str(command.client_command_id),
             ticket_id=str(identifiers.ticket),
         ),
-        now,
+        now=now,
+        subjects=(("ticket", identifiers.ticket),),
     )
 
 

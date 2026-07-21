@@ -22,7 +22,7 @@ from ctower_kernel.record.postgres import PostgresRecord
 
 __all__: tuple[str, ...] = ()
 
-HTTP_CREATED = 201
+HTTP_PENDING = 202
 HTTP_OK = 200
 HTTP_FORBIDDEN = 403
 HTTP_NOT_FOUND = 404
@@ -45,7 +45,7 @@ def test_p0_p1_p2_source_initial_custodian_reads_and_timeline(tenant: TenantFixt
             for priority in ("P0", "P1", "P2")
         )
         for priority, response in zip(("P0", "P1", "P2"), responses, strict=True):
-            assert response.status_code == HTTP_CREATED
+            assert response.status_code == HTTP_PENDING
             created = response.json()
             ticket = created["ticket"]
             assert created["durability_state"] == "durability_pending"
@@ -106,7 +106,7 @@ def test_exact_replay_changed_body_conflict_and_ineligible_custodian(
         )
         _assert_ineligible_refused(client, tenant)
 
-    assert first.status_code == HTTP_CREATED
+    assert first.status_code == HTTP_PENDING
     assert replay.content == first.content
     assert replay.json()["event_ids"] == first.json()["event_ids"]
     assert changed.status_code == HTTP_CONFLICT
@@ -135,7 +135,7 @@ def test_p0_is_operator_only_while_commander_can_create_p1(tenant: TenantFixture
 
     assert refused.status_code == HTTP_FORBIDDEN
     assert refused.json()["code"] == "unauthorized"
-    assert accepted.status_code == HTTP_CREATED
+    assert accepted.status_code == HTTP_PENDING
     _assert_ticket_facts(tenant.database.admin_dsn, expected=1)
 
 

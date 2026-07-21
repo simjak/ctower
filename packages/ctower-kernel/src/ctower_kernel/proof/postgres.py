@@ -11,6 +11,7 @@ from ctower_kernel.proof import Proof, ProofActor, ProofMutation, ProofReceipt
 from ctower_kernel.proof._postgres_sql import mutate_proof
 from ctower_kernel.proof._snapshot_sql import proof_is_current
 from ctower_kernel.record import RecordProblem
+from ctower_kernel.record.transaction import recover_ambiguous_commit
 from ctower_kernel.telemetry import NoopTelemetry, Telemetry, TelemetryContext
 
 __all__ = ["PostgresProof"]
@@ -35,14 +36,16 @@ class PostgresProof:
     ) -> ProofReceipt | RecordProblem:
         """Atomically persist one accepted Proof decision."""
 
-        outcome = mutate_proof(
-            self._dsn,
-            evaluator,
-            actor,
-            mutation,
-            request_digest=request_digest,
-            now=now,
-            telemetry=telemetry,
+        outcome = recover_ambiguous_commit(
+            lambda: mutate_proof(
+                self._dsn,
+                evaluator,
+                actor,
+                mutation,
+                request_digest=request_digest,
+                now=now,
+                telemetry=telemetry,
+            )
         )
         self._telemetry.emit(
             "proof.mutate",

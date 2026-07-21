@@ -31,7 +31,7 @@ __all__ = [
     "provision_credential",
 ]
 
-HTTP_CREATED = 201
+HTTP_PENDING = 202
 
 
 @dataclass(frozen=True, slots=True)
@@ -62,7 +62,7 @@ def create_first_tenant(database: DatabaseFixture) -> TenantFixture:
         create_app(PostgresRecord(database.runtime_dsn)), client=("127.0.0.1", 51000)
     ) as client:
         response = _bootstrap(client, bootstrap_token)
-    if response.status_code != HTTP_CREATED:
+    if response.status_code != HTTP_PENDING:
         raise RuntimeError(f"first-tenant fixture bootstrap failed: {response.status_code}")
     payload = response.json()
     tenant_id = UUID(str(payload["tenant_id"]))

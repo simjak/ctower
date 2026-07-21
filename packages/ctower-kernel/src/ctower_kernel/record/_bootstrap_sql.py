@@ -12,17 +12,16 @@ from typing import cast
 from uuid import UUID
 
 import psycopg
-from psycopg.rows import dict_row
 from psycopg.types.json import Jsonb
 
 from ctower_kernel.record import BootstrapCommand, BootstrapReceipt, RecordProblem
-from ctower_kernel.record._event_store import append_event, enqueue_event
 from ctower_kernel.record.events import (
     BootstrapCreatedPayload,
     EventEnvelope,
     EventKind,
     EventOrigin,
 )
+from ctower_kernel.record.transaction import RecordTransaction, authority_connection
 from ctower_kernel.telemetry import TelemetryContext
 
 __all__: tuple[str, ...] = ()
@@ -49,7 +48,7 @@ def bootstrap_transaction(
     now: datetime,
     telemetry: TelemetryContext,
 ) -> BootstrapReceipt | RecordProblem:
-    with psycopg.connect(dsn, row_factory=dict_row) as connection:
+    with authority_connection(dsn) as connection:
         connection.execute("SET TRANSACTION ISOLATION LEVEL SERIALIZABLE")
         connection.execute("SET ROLE ctower_svc")
         capability = connection.execute(
@@ -203,9 +202,14 @@ def _commit_bootstrap(
         tenant_id=identifiers.tenant,
     )
     response_body = _bootstrap_response(command, identifiers)
+    transaction = RecordTransaction(connection)
+    reserved = transaction.reserve(identifiers.installer, command.client_command_id, request_digest)
+    if reserved is not None:
+        raise RuntimeError("empty bootstrap authority unexpectedly contains the command key")
     _insert_authority(connection, command, identifiers=identifiers, now=now)
     _insert_event_and_receipt(
         connection,
+        transaction,
         command,
         identifiers=identifiers,
         request_digest=request_digest,
@@ -281,6 +285,7 @@ def _insert_authority(
 
 def _insert_event_and_receipt(
     connection: psycopg.Connection[dict[str, object]],
+    transaction: RecordTransaction,
     command: BootstrapCommand,
     *,
     identifiers: _BootstrapIds,
@@ -290,25 +295,17 @@ def _insert_event_and_receipt(
     now: datetime,
     telemetry: TelemetryContext,
 ) -> None:
-    append_event(connection, event)
-    _insert_bootstrap_result(
-        connection,
-        command,
-        identifiers=identifiers,
-        request_digest=request_digest,
-        response_body=response_body,
-        now=now,
-    )
-    enqueue_event(
-        connection,
-        identifiers.outbox,
+    transaction.commit(
         event,
-        telemetry.bind(
+        outbox_id=identifiers.outbox,
+        response_body=response_body,
+        status_code=201,
+        telemetry=telemetry.bind(
             tenant_id=str(identifiers.tenant),
             actor_id=str(identifiers.installer),
             command_id=str(command.client_command_id),
         ),
-        now,
+        now=now,
     )
     connection.execute(
         """
@@ -318,34 +315,6 @@ def _insert_event_and_receipt(
         WHERE singleton
         """,
         (now, command.client_command_id, request_digest, Jsonb(response_body)),
-    )
-
-
-def _insert_bootstrap_result(
-    connection: psycopg.Connection[dict[str, object]],
-    command: BootstrapCommand,
-    *,
-    identifiers: _BootstrapIds,
-    request_digest: bytes,
-    response_body: dict[str, object],
-    now: datetime,
-) -> None:
-    connection.execute(
-        """
-        INSERT INTO command_results (
-            tenant_id, principal_id, client_command_id, request_sha256, status_code,
-            response_body, event_ids, created_at
-        ) VALUES (%s, %s, %s, %s, 201, %s, %s, %s)
-        """,
-        (
-            identifiers.tenant,
-            identifiers.installer,
-            command.client_command_id,
-            request_digest,
-            Jsonb(response_body),
-            [identifiers.event],
-            now,
-        ),
     )
 
 

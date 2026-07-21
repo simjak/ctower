@@ -13,9 +13,9 @@ deployment manifests. If this file and `SPEC.md` disagree, `SPEC.md` wins and th
 
 Implementation labels are strict:
 
-- **Current walking slice** means the development-only bootstrap, CP2 task/Board, and CP-1 Proof/Workflow
-  fixture path implemented in this repository. It is synthetic local evidence, not a deployed or
-  durability-accepted product.
+- **Current walking slice** means the development-only bootstrap, CP2 task/Board, CP-1 Proof/Workflow,
+  and CP3-A durability-authority fixture paths implemented in this repository. They are synthetic local
+  evidence, not a deployed or durability-accepted product.
 - **I1** and **I2** otherwise remain committed target increments, not claims that the full behavior exists.
 - **Deferred** means invariants may be recorded, but the runtime, product surface, and public Seam do not
   exist in I1/I2.
@@ -74,23 +74,27 @@ topology fixed by the SPEC.
 The implemented development tracer currently has this narrower shape:
 
 ```text
-generated Python client -> FastAPI Adapter -> Access / Work -----> Record -> Postgres 17 fixture
+generated Python client -> FastAPI Adapter -> Access / Work -----> Record -> Postgres 17 primary fixture
                                          \-> Proof ---------------> Record
                                          \-> Workflow ------------> Record
                                          \-> Projections ---------> disposable Board rows/cursor
                                               ^ injected Work-readiness + Proof-current capabilities
                                               | (no Workflow -> Work/Proof imports)
                                            composition root
+                                                                    |
+                                              named test-only hot standby (`remote_apply` ACK)
 ```
 
 It covers one-use first-tenant bootstrap; tenant-scoped tickets; protected custody; priority, assignment,
 lifecycle/admission, blocker, and relation facts; explicit immutable Workflow/policy pins; criteria,
 evidence, and verdict proof; interpreted four-stage transitions; proof-gated resolve/close; linked cursor
 audit; and a rebuildable six-lane Board with loud watermarks. Record owns idempotent append, hash-chained
-events, links, positions, and transactional outbox writes. Work, Proof, and Workflow own their authority
-above Record; Projections replaces only disposable rows/cursors through a distinct role. Every successful
-write remains `durability_pending`; there is no outbox/projection worker, off-host acknowledgement,
-backup/restore proof, web surface, or production deployment.
+events, links, positions, transactional outbox writes, canonical command roots, subject durability heads,
+and typed pending/accepted reconciliation. Work, Proof, and Workflow own their authority above Record;
+Projections replaces only disposable rows/cursors through a distinct role. Every normal/default write
+remains `durability_pending`; a verifier-owned two-PostgreSQL fixture proves the named-standby ACK path,
+but there is no configured production off-host target, outbox/projection worker, backup/restore proof, web
+surface, or production deployment.
 
 ### I1: co-located trust spine
 

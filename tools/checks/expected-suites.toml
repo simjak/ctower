@@ -13,6 +13,7 @@ phase_order = [
   "CT-L0-005",
   "CT-L0-008",
   "CT-I1-003",
+  "CT-I1-006",
   "CT-I1-008",
   "CT-I2-010",
 ]
@@ -264,6 +265,92 @@ command = [
   "tests/acceptance/increment-1/test_task_board_client.py",
   "tests/acceptance/increment-1/test_task_projection.py",
   "tests/acceptance/increment-1/test_task_workflow.py",
+  "-q",
+]
+timeout_seconds = 900
+
+[[suite]]
+id = "operations-contracts"
+owner = "CT-I1-006"
+phase = "CT-I1-006"
+status = "deferred"
+path = "tests/contracts/operations"
+patterns = ["test_*.py"]
+command = ["{python}", "-m", "pytest", "tests/contracts/operations", "-q"]
+timeout_seconds = 300
+
+[[suite]]
+id = "record-durability-module"
+owner = "CT-I1-006"
+phase = "CT-I1-006"
+status = "deferred"
+path = "tests/modules/record"
+patterns = ["test_durability.py", "test_integrity.py"]
+command = [
+  "{python}",
+  "-m",
+  "pytest",
+  "tests/modules/record/test_durability.py",
+  "tests/modules/record/test_integrity.py",
+  "-q",
+]
+timeout_seconds = 300
+
+[[suite]]
+id = "runtime-routine-module"
+owner = "CT-I1-006"
+phase = "CT-I1-006"
+status = "deferred"
+path = "tests/modules/runtime"
+patterns = ["test_*.py"]
+command = ["{python}", "-m", "pytest", "tests/modules/runtime", "-q"]
+timeout_seconds = 300
+
+[[suite]]
+id = "operations-projection-attention"
+owner = "CT-I1-006"
+phase = "CT-I1-006"
+status = "deferred"
+path = "tests/modules/projections"
+patterns = ["test_operations_*.py"]
+command = [
+  "{python}",
+  "-m",
+  "pytest",
+  "tests/modules/projections/test_operations_projection.py",
+  "tests/modules/attention",
+  "-q",
+]
+timeout_seconds = 300
+
+[[suite]]
+id = "operations-chaos"
+owner = "CT-I1-006"
+phase = "CT-I1-006"
+status = "deferred"
+path = "tests/acceptance/increment-1"
+patterns = ["test_operations_faults.py"]
+command = [
+  "{python}",
+  "-m",
+  "pytest",
+  "tests/acceptance/increment-1/test_operations_faults.py",
+  "-q",
+]
+timeout_seconds = 900
+
+[[suite]]
+id = "operations-acceptance"
+owner = "CT-I1-006"
+phase = "CT-I1-006"
+status = "deferred"
+path = "tests/acceptance/increment-1"
+patterns = ["test_operations.py"]
+command = [
+  "{python}",
+  "-m",
+  "pytest",
+  "tests/acceptance/increment-1/test_operations.py",
   "-q",
 ]
 timeout_seconds = 900

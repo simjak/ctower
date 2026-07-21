@@ -31,6 +31,7 @@ def test_migration_manifest_is_ordered_and_checksum_exact() -> None:
         "0010_custody_episode_intervals.sql",
         "0011_persisted_command_refusals.sql",
         "0012_projection_runtime_role.sql",
+        "0013_durability_authority.sql",
     ]
     for entry in entries:
         digest = hashlib.sha256((MIGRATIONS / entry["path"]).read_bytes()).hexdigest()
@@ -94,6 +95,20 @@ def test_projection_runtime_login_can_assume_only_projection_role() -> None:
     assert "LOGIN NOSUPERUSER NOCREATEDB NOCREATEROLE NOINHERIT" in role
     assert "GRANT ctower_projection TO ctower_projection_runtime" in role
     assert "REVOKE ctower_svc, ctower_admin FROM ctower_projection_runtime" in role
+
+
+def test_durability_authority_is_additive_immutable_and_least_privilege() -> None:
+    migration = (MIGRATIONS / "0013_durability_authority.sql").read_text(encoding="utf-8")
+
+    assert "CREATE TABLE durability_subject_heads" in migration
+    assert "CREATE TABLE durability_acknowledgements" in migration
+    assert "acceptance_position bigint GENERATED ALWAYS AS IDENTITY" in migration
+    assert "CREATE TABLE durability_target_observations" in migration
+    assert "GRANT INSERT, SELECT ON durability_acknowledgements TO ctower_svc" in migration
+    assert "GRANT UPDATE" not in "\n".join(
+        line for line in migration.splitlines() if "durability_acknowledgements" in line
+    )
+    assert "GRANT DELETE" not in migration
 
 
 def test_development_composition_uses_postgres_17_without_a_password_value() -> None:

@@ -8,10 +8,9 @@ from typing import cast
 from uuid import UUID
 
 import psycopg
-from psycopg.rows import dict_row
 
 from ctower_kernel.record import RecordProblem
-from ctower_kernel.record.transaction import RecordTransaction
+from ctower_kernel.record.transaction import RecordTransaction, authority_connection
 from ctower_kernel.telemetry import TelemetryContext
 from ctower_kernel.workflow import (
     ActivityClass,
@@ -37,7 +36,7 @@ def start_workflow(
 ) -> WorkflowReceipt | RecordProblem:
     """Start only an open current episode with one exact immutable snapshot."""
 
-    with psycopg.connect(dsn, row_factory=dict_row) as connection:
+    with authority_connection(dsn) as connection:
         connection.execute("SET ROLE ctower_svc")
         transaction = RecordTransaction(connection)
         existing = transaction.reserve(
@@ -47,6 +46,16 @@ def start_workflow(
             return existing
         if existing is not None:
             return _receipt(existing)
+        pending = transaction.require_durable_subjects(
+            actor.tenant_id,
+            actor.principal_id,
+            command.client_command_id,
+            request_digest,
+            (("ticket", command.ticket_id),),
+            now=now,
+        )
+        if pending is not None:
+            return pending
         decision = evaluator.validate_start(command)
         if not decision.accepted:
             problem = _problem(command, decision.reason, "Workflow pin refused")

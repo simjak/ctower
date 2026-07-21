@@ -8,10 +8,9 @@ from typing import cast
 from uuid import UUID
 
 import psycopg
-from psycopg.rows import dict_row
 
 from ctower_kernel.record import RecordProblem
-from ctower_kernel.record.transaction import RecordTransaction
+from ctower_kernel.record.transaction import RecordTransaction, authority_connection
 from ctower_kernel.telemetry import TelemetryContext
 from ctower_kernel.workflow import (
     ActivityClass,
@@ -39,7 +38,7 @@ def close_workflow(
 ) -> WorkflowReceipt | RecordProblem:
     """Append resolved and closed only after one transactional proof recheck."""
 
-    with psycopg.connect(dsn, row_factory=dict_row) as connection:
+    with authority_connection(dsn) as connection:
         connection.execute("SET ROLE ctower_svc")
         transaction = RecordTransaction(connection)
         existing = transaction.reserve(
@@ -49,6 +48,9 @@ def close_workflow(
             return existing
         if existing is not None:
             return _receipt(existing)
+        pending = _pending_subject_refusal(transaction, actor, command, request_digest, now)
+        if pending is not None:
+            return pending
         if not _lock_open_ticket(connection, actor, command.ticket_id):
             problem = _problem(command, "tenant-scope-denied", 404, "Open ticket not found")
             transaction.refuse(
@@ -84,6 +86,23 @@ def close_workflow(
             now=now,
             telemetry=telemetry,
         )
+
+
+def _pending_subject_refusal(
+    transaction: RecordTransaction,
+    actor: WorkflowActor,
+    command: ResolveClose,
+    request_digest: bytes,
+    now: datetime,
+) -> RecordProblem | None:
+    return transaction.require_durable_subjects(
+        actor.tenant_id,
+        actor.principal_id,
+        command.client_command_id,
+        request_digest,
+        (("ticket", command.ticket_id),),
+        now=now,
+    )
 
 
 def _lock_open_ticket(

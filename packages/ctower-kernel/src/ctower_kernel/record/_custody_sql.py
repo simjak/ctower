@@ -8,8 +8,6 @@ from typing import cast
 from uuid import UUID
 
 import psycopg
-from psycopg.rows import dict_row
-from psycopg.types.json import Jsonb
 
 from ctower_kernel.record import (
     Actor,
@@ -17,7 +15,6 @@ from ctower_kernel.record import (
     RecordProblem,
     TicketCommandResult,
 )
-from ctower_kernel.record._event_store import append_event, enqueue_event
 from ctower_kernel.record._ticket_sql import (
     _result_from_payload,
     _ticket_from_row,
@@ -29,7 +26,7 @@ from ctower_kernel.record.events import (
     EventKind,
     EventOrigin,
 )
-from ctower_kernel.record.transaction import RecordTransaction
+from ctower_kernel.record.transaction import RecordTransaction, authority_connection
 from ctower_kernel.telemetry import TelemetryContext
 
 __all__ = ["transfer_custody"]
@@ -59,7 +56,7 @@ def transfer_custody(
 ) -> TicketCommandResult | RecordProblem:
     """Deduplicate, lock, compare, and atomically replace current custody."""
 
-    with psycopg.connect(dsn, row_factory=dict_row) as connection:
+    with authority_connection(dsn) as connection:
         connection.execute("SET ROLE ctower_svc")
         transaction = RecordTransaction(connection)
         existing = transaction.reserve(
@@ -69,6 +66,16 @@ def transfer_custody(
             return existing
         if existing is not None:
             return _result_from_payload(existing)
+        pending = transaction.require_durable_subjects(
+            actor.tenant_id,
+            actor.principal_id,
+            command.client_command_id,
+            request_digest,
+            (("ticket", command.ticket_id),),
+            now=now,
+        )
+        if pending is not None:
+            return pending
         ticket_row = _locked_ticket(connection, actor, command.ticket_id)
         if ticket_row is None:
             problem = _scope_problem(command.client_command_id)
@@ -294,17 +301,19 @@ def _append_transfer(
         stream_id=f"ticket:{command.ticket_id}",
         tenant_id=actor.tenant_id,
     )
-    append_event(connection, event, subjects=(("ticket", command.ticket_id),))
-    _insert_result_and_outbox(
-        connection,
-        actor,
-        command,
-        result,
-        identifiers=identifiers,
-        request_digest=request_digest,
-        event=event,
-        telemetry=telemetry,
+    RecordTransaction(connection).commit(
+        event,
+        outbox_id=identifiers.outbox,
+        response_body=result.response_payload(),
+        status_code=200,
+        telemetry=telemetry.bind(
+            tenant_id=str(actor.tenant_id),
+            actor_id=str(actor.principal_id),
+            command_id=str(command.client_command_id),
+            ticket_id=str(command.ticket_id),
+        ),
         now=now,
+        subjects=(("ticket", command.ticket_id),),
     )
 
 
@@ -329,49 +338,6 @@ def _previous_event(
         event_hash=bytes(cast(bytes, row["event_hash"])),
         event_id=cast(UUID, row["event_id"]),
         correlation_id=cast(UUID, row["correlation_id"]),
-    )
-
-
-def _insert_result_and_outbox(
-    connection: psycopg.Connection[dict[str, object]],
-    actor: Actor,
-    command: CustodyCommand,
-    result: TicketCommandResult,
-    *,
-    identifiers: _CustodyIds,
-    request_digest: bytes,
-    event: EventEnvelope,
-    telemetry: TelemetryContext,
-    now: datetime,
-) -> None:
-    connection.execute(
-        """
-        INSERT INTO command_results (
-            tenant_id, principal_id, client_command_id, request_sha256, status_code,
-            response_body, event_ids, created_at
-        ) VALUES (%s, %s, %s, %s, 200, %s, %s, %s)
-        """,
-        (
-            actor.tenant_id,
-            actor.principal_id,
-            command.client_command_id,
-            request_digest,
-            Jsonb(result.response_payload()),
-            [identifiers.event],
-            now,
-        ),
-    )
-    enqueue_event(
-        connection,
-        identifiers.outbox,
-        event,
-        telemetry.bind(
-            tenant_id=str(actor.tenant_id),
-            actor_id=str(actor.principal_id),
-            command_id=str(command.client_command_id),
-            ticket_id=str(command.ticket_id),
-        ),
-        now,
     )
 
 

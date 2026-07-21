@@ -5,7 +5,7 @@ from __future__ import annotations
 from dataclasses import asdict, dataclass
 from datetime import datetime
 from enum import StrEnum
-from typing import Protocol
+from typing import Literal, Protocol
 from uuid import UUID
 
 from ctower_kernel.record.events import (
@@ -16,6 +16,8 @@ from ctower_kernel.record.events import (
 )
 from ctower_kernel.telemetry import TelemetryContext
 
+_SHA256_TEXT_LENGTH = 71
+
 __all__ = [
     "Actor",
     "AuditEvent",
@@ -23,6 +25,11 @@ __all__ = [
     "BootstrapCommand",
     "BootstrapReceipt",
     "CustodyCommand",
+    "DurabilityDecision",
+    "DurabilityHealth",
+    "DurabilityHealthStatus",
+    "DurabilityReason",
+    "DurabilityState",
     "PrincipalKind",
     "Record",
     "RecordProblem",
@@ -40,6 +47,78 @@ class PrincipalKind(StrEnum):
 
     OPERATOR = "operator"
     COMMANDER = "commander"
+
+
+class DurabilityState(StrEnum):
+    """Only the monotonic wire states allowed for a committed command."""
+
+    PENDING = "durability_pending"
+    ACCEPTED = "accepted"
+
+
+type DurabilityReason = Literal[
+    "policy_pending_only",
+    "standby_unconfigured",
+    "standby_not_ready",
+    "target_mismatch",
+    "replay_missing",
+    "integrity_mismatch",
+    "receipt_pending",
+    "standby_receipt_proven",
+    "commit_ambiguous",
+]
+
+
+@dataclass(frozen=True, slots=True)
+class DurabilityDecision:
+    """Record-owned answer about one exact semantic command result."""
+
+    command_id: UUID
+    state: DurabilityState
+    reason: DurabilityReason
+    policy_ref: str
+    command_root: str
+    acceptance_position: int | None
+    retry_after_seconds: int
+
+    def __post_init__(self) -> None:
+        if self.state is DurabilityState.ACCEPTED and self.acceptance_position is None:
+            raise ValueError("accepted durability requires an acceptance position")
+        if self.state is DurabilityState.PENDING and self.acceptance_position is not None:
+            raise ValueError("pending durability cannot carry an acceptance position")
+        if (
+            not self.command_root.startswith("sha256:")
+            or len(self.command_root) != _SHA256_TEXT_LENGTH
+        ):
+            raise ValueError("command root must be one SHA-256 digest")
+        if self.retry_after_seconds < 1:
+            raise ValueError("durability retry interval must be positive")
+
+    @property
+    def accepted(self) -> bool:
+        """Whether this command has an immutable accepted-order receipt."""
+
+        return self.state is DurabilityState.ACCEPTED
+
+
+class DurabilityHealthStatus(StrEnum):
+    """Fail-closed state of the Record durability authority."""
+
+    HEALTHY = "HEALTHY"
+    DEGRADED = "DEGRADED"
+    STATE_UNKNOWN = "STATE_UNKNOWN"
+
+
+@dataclass(frozen=True, slots=True)
+class DurabilityHealth:
+    """Small Record health snapshot without operations-loop concerns."""
+
+    status: DurabilityHealthStatus
+    policy_ref: str
+    target_identity: str
+    acceptance_position: int | None
+    observed_at: datetime
+    reason: str
 
 
 @dataclass(frozen=True, slots=True)
@@ -406,5 +485,22 @@ class Record(Protocol):
         telemetry: TelemetryContext,
     ) -> TicketCommandResult | RecordProblem:
         """Atomically close and open the ticket's accountable custody interval."""
+
+        ...
+
+    def reconcile_durability(
+        self,
+        tenant_id: UUID,
+        command_id: UUID,
+        *,
+        now: datetime,
+        telemetry: TelemetryContext,
+    ) -> DurabilityDecision | RecordProblem:
+        """Prove or conservatively defer off-host acceptance for one command."""
+
+        ...
+
+    def durability_health(self, *, now: datetime) -> DurabilityHealth:
+        """Report the current named-target durability state without false green."""
 
         ...

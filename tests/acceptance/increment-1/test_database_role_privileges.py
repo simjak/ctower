@@ -125,6 +125,17 @@ CP2_HEAD_UPDATE_COLUMNS = {
     },
 }
 
+DURABILITY_HEAD_UPDATE_COLUMNS = {
+    "durability_subject_heads": {
+        "tenant_id": False,
+        "subject_kind": False,
+        "subject_id": False,
+        "principal_id": True,
+        "client_command_id": True,
+        "updated_at": True,
+    }
+}
+
 APPEND_ONLY_TABLES = (
     "proof_criteria",
     "proof_objects",
@@ -137,6 +148,8 @@ APPEND_ONLY_TABLES = (
     "admission_facts",
     "blocker_facts",
     "ticket_relations",
+    "durability_acknowledgements",
+    "durability_target_observations",
 )
 
 
@@ -216,6 +229,7 @@ def test_upgrade_database_corrects_existing_head_privileges(
             "0009_transactional_record_positions.sql",
             "0010_custody_episode_intervals.sql",
             "0011_persisted_command_refusals.sql",
+            "0013_durability_authority.sql",
         ):
             connection.execute((MIGRATIONS / name).read_text(encoding="utf-8"))
 
@@ -384,7 +398,12 @@ def _workflow_revision(dsn: str, ticket_id: UUID) -> int:
 
 def _assert_runtime_role_privileges(dsn: str) -> None:
     with psycopg.connect(dsn, row_factory=dict_row) as connection:
-        for table, expected_columns in {**HEAD_UPDATE_COLUMNS, **CP2_HEAD_UPDATE_COLUMNS}.items():
+        head_tables = {
+            **HEAD_UPDATE_COLUMNS,
+            **CP2_HEAD_UPDATE_COLUMNS,
+            **DURABILITY_HEAD_UPDATE_COLUMNS,
+        }
+        for table, expected_columns in head_tables.items():
             columns = connection.execute(
                 """
                 SELECT column_name

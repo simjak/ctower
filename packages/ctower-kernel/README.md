@@ -10,9 +10,12 @@ Board fold with loud source/projection watermark health.
 Record is the lower append Interface and depends only on Telemetry. Work, Proof, and Workflow each own their
 SQL implementation and depend downward on Record; Workflow imports neither Work nor Proof. Composition
 injects their narrow readiness/current-proof capabilities into Workflow, keeping the repository dependency
-graph acyclic. Projections can replace only disposable Board rows/cursors and cannot mutate authority.
-Catalog, Attention, Runtime, Effects, the background projection worker, and the rest of I1/I2 remain
-deferred.
+graph acyclic. Record also owns the typed durability decision, RFC-8785/SHA-256 semantic command root,
+subject-head dependency refusal, immutable named-standby acknowledgement, and fail-closed health snapshot.
+Its default policy remains `pending_only`; accepted behavior is exercised only by the verifier-owned local
+PostgreSQL 17 primary/hot-standby fixture. Projections can replace only disposable Board rows/cursors and
+cannot mutate authority. Catalog, Attention, Runtime, Effects, the background projection worker, and the
+rest of I1/I2 remain deferred.
 
 There is no executable Extension Host in I1 or I2; that runtime remains deferred until a real use case and
 two real Adapters earn its Seam. The kernel may depend on authored/generated contracts and allowlisted public

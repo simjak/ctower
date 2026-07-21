@@ -21,8 +21,13 @@
           }
         },
         "responses": {
+          "202": {
+            "description": "Semantic result committed; off-host durability acknowledgement pending",
+            "headers": {"Retry-After": {"$ref": "#/components/headers/RetryAfter"}},
+            "content": {"application/json": {"schema": {"$ref": "#/components/schemas/BootstrapReceipt"}}}
+          },
           "201": {
-            "description": "First tenant committed with durability pending",
+            "description": "First tenant accepted off host",
             "content": {
               "application/json": {"schema": {"$ref": "#/components/schemas/BootstrapReceipt"}}
             }
@@ -48,8 +53,13 @@
           }
         },
         "responses": {
+          "202": {
+            "description": "Semantic result committed; off-host durability acknowledgement pending",
+            "headers": {"Retry-After": {"$ref": "#/components/headers/RetryAfter"}},
+            "content": {"application/json": {"schema": {"$ref": "#/components/schemas/TicketCommandResult"}}}
+          },
           "201": {
-            "description": "Ticket committed with durability pending",
+            "description": "Ticket accepted off host",
             "content": {
               "application/json": {"schema": {"$ref": "#/components/schemas/TicketCommandResult"}}
             }
@@ -116,8 +126,13 @@
           }
         },
         "responses": {
+          "202": {
+            "description": "Semantic result committed; off-host durability acknowledgement pending",
+            "headers": {"Retry-After": {"$ref": "#/components/headers/RetryAfter"}},
+            "content": {"application/json": {"schema": {"$ref": "#/components/schemas/TicketCommandResult"}}}
+          },
           "200": {
-            "description": "Custody committed with durability pending",
+            "description": "Custody accepted off host",
             "content": {
               "application/json": {"schema": {"$ref": "#/components/schemas/TicketCommandResult"}}
             }
@@ -140,7 +155,8 @@
         ],
         "requestBody": {"required": true, "content": {"application/json": {"schema": {"$ref": "#/components/schemas/WorkflowStartRequest"}}}},
         "responses": {
-          "200": {"description": "Workflow and policy snapshot pinned", "content": {"application/json": {"schema": {"$ref": "#/components/schemas/WorkflowReceipt"}}}},
+          "202": {"description": "Semantic result committed; off-host durability acknowledgement pending", "headers": {"Retry-After": {"$ref": "#/components/headers/RetryAfter"}}, "content": {"application/json": {"schema": {"$ref": "#/components/schemas/WorkflowReceipt"}}}},
+          "200": {"description": "Workflow and policy snapshot accepted off host", "content": {"application/json": {"schema": {"$ref": "#/components/schemas/WorkflowReceipt"}}}},
           "401": {"$ref": "#/components/responses/ProblemResponse"},
           "404": {"$ref": "#/components/responses/ProblemResponse"},
           "409": {"$ref": "#/components/responses/ProblemResponse"},
@@ -158,7 +174,8 @@
         ],
         "requestBody": {"required": true, "content": {"application/json": {"schema": {"$ref": "#/components/schemas/PriorityChangeRequest"}}}},
         "responses": {
-          "200": {"description": "Priority fact committed", "content": {"application/json": {"schema": {"$ref": "#/components/schemas/WorkReceipt"}}}},
+          "202": {"description": "Semantic result committed; off-host durability acknowledgement pending", "headers": {"Retry-After": {"$ref": "#/components/headers/RetryAfter"}}, "content": {"application/json": {"schema": {"$ref": "#/components/schemas/WorkReceipt"}}}},
+          "200": {"description": "Priority fact accepted off host", "content": {"application/json": {"schema": {"$ref": "#/components/schemas/WorkReceipt"}}}},
           "401": {"$ref": "#/components/responses/ProblemResponse"},
           "403": {"$ref": "#/components/responses/ProblemResponse"},
           "404": {"$ref": "#/components/responses/ProblemResponse"},
@@ -188,7 +205,8 @@
         ],
         "requestBody": {"required": true, "content": {"application/json": {"schema": {"$ref": "#/components/schemas/AssignmentChangeRequest"}}}},
         "responses": {
-          "200": {"description": "Assignment interval changed", "content": {"application/json": {"schema": {"$ref": "#/components/schemas/WorkReceipt"}}}},
+          "202": {"description": "Semantic result committed; off-host durability acknowledgement pending", "headers": {"Retry-After": {"$ref": "#/components/headers/RetryAfter"}}, "content": {"application/json": {"schema": {"$ref": "#/components/schemas/WorkReceipt"}}}},
+          "200": {"description": "Assignment interval accepted off host", "content": {"application/json": {"schema": {"$ref": "#/components/schemas/WorkReceipt"}}}},
           "401": {"$ref": "#/components/responses/ProblemResponse"},
           "404": {"$ref": "#/components/responses/ProblemResponse"},
           "409": {"$ref": "#/components/responses/ProblemResponse"},
@@ -206,7 +224,8 @@
         ],
         "requestBody": {"required": true, "content": {"application/json": {"schema": {"$ref": "#/components/schemas/TicketIntentRequest"}}}},
         "responses": {
-          "200": {"description": "Typed ticket intent committed", "content": {"application/json": {"schema": {"$ref": "#/components/schemas/WorkReceipt"}}}},
+          "202": {"description": "Semantic result committed; off-host durability acknowledgement pending", "headers": {"Retry-After": {"$ref": "#/components/headers/RetryAfter"}}, "content": {"application/json": {"schema": {"$ref": "#/components/schemas/WorkReceipt"}}}},
+          "200": {"description": "Typed ticket intent accepted off host", "content": {"application/json": {"schema": {"$ref": "#/components/schemas/WorkReceipt"}}}},
           "401": {"$ref": "#/components/responses/ProblemResponse"},
           "404": {"$ref": "#/components/responses/ProblemResponse"},
           "409": {"$ref": "#/components/responses/ProblemResponse"},
@@ -224,7 +243,8 @@
         ],
         "requestBody": {"required": true, "content": {"application/json": {"schema": {"$ref": "#/components/schemas/RelationRequest"}}}},
         "responses": {
-          "200": {"description": "Typed relation committed", "content": {"application/json": {"schema": {"$ref": "#/components/schemas/WorkReceipt"}}}},
+          "202": {"description": "Semantic result committed; off-host durability acknowledgement pending", "headers": {"Retry-After": {"$ref": "#/components/headers/RetryAfter"}}, "content": {"application/json": {"schema": {"$ref": "#/components/schemas/WorkReceipt"}}}},
+          "200": {"description": "Typed relation accepted off host", "content": {"application/json": {"schema": {"$ref": "#/components/schemas/WorkReceipt"}}}},
           "401": {"$ref": "#/components/responses/ProblemResponse"},
           "404": {"$ref": "#/components/responses/ProblemResponse"},
           "409": {"$ref": "#/components/responses/ProblemResponse"},
@@ -282,8 +302,13 @@
           }
         },
         "responses": {
+          "202": {
+            "description": "Semantic result committed; off-host durability acknowledgement pending",
+            "headers": {"Retry-After": {"$ref": "#/components/headers/RetryAfter"}},
+            "content": {"application/json": {"schema": {"$ref": "#/components/schemas/ProofReceipt"}}}
+          },
           "200": {
-            "description": "Criteria frozen with durability pending",
+            "description": "Criteria accepted off host",
             "content": {
               "application/json": {"schema": {"$ref": "#/components/schemas/ProofReceipt"}}
             }
@@ -311,8 +336,13 @@
           }
         },
         "responses": {
+          "202": {
+            "description": "Semantic result committed; off-host durability acknowledgement pending",
+            "headers": {"Retry-After": {"$ref": "#/components/headers/RetryAfter"}},
+            "content": {"application/json": {"schema": {"$ref": "#/components/schemas/ProofReceipt"}}}
+          },
           "200": {
-            "description": "Evidence recorded with durability pending",
+            "description": "Evidence accepted off host",
             "content": {
               "application/json": {"schema": {"$ref": "#/components/schemas/ProofReceipt"}}
             }
@@ -340,8 +370,13 @@
           }
         },
         "responses": {
+          "202": {
+            "description": "Semantic result committed; off-host durability acknowledgement pending",
+            "headers": {"Retry-After": {"$ref": "#/components/headers/RetryAfter"}},
+            "content": {"application/json": {"schema": {"$ref": "#/components/schemas/ProofReceipt"}}}
+          },
           "200": {
-            "description": "Protected verdict recorded with durability pending",
+            "description": "Protected verdict accepted off host",
             "content": {
               "application/json": {"schema": {"$ref": "#/components/schemas/ProofReceipt"}}
             }
@@ -369,8 +404,13 @@
           }
         },
         "responses": {
+          "202": {
+            "description": "Semantic result committed; off-host durability acknowledgement pending",
+            "headers": {"Retry-After": {"$ref": "#/components/headers/RetryAfter"}},
+            "content": {"application/json": {"schema": {"$ref": "#/components/schemas/WorkflowReceipt"}}}
+          },
           "200": {
-            "description": "Workflow transition committed with durability pending",
+            "description": "Workflow transition accepted off host",
             "content": {
               "application/json": {"schema": {"$ref": "#/components/schemas/WorkflowReceipt"}}
             }
@@ -397,8 +437,13 @@
           }
         },
         "responses": {
+          "202": {
+            "description": "Semantic result committed; off-host durability acknowledgement pending",
+            "headers": {"Retry-After": {"$ref": "#/components/headers/RetryAfter"}},
+            "content": {"application/json": {"schema": {"$ref": "#/components/schemas/WorkflowReceipt"}}}
+          },
           "200": {
-            "description": "Resolved and closed facts committed atomically",
+            "description": "Resolved and closed facts accepted off host",
             "content": {
               "application/json": {"schema": {"$ref": "#/components/schemas/WorkflowReceipt"}}
             }
@@ -412,6 +457,12 @@
     }
   },
   "components": {
+    "headers": {
+      "RetryAfter": {
+        "description": "Seconds before replaying the same idempotency key",
+        "schema": {"type": "integer", "minimum": 1, "maximum": 60}
+      }
+    },
     "securitySchemes": {
       "bearerAuth": {"type": "http", "scheme": "bearer", "bearerFormat": "opaque"}
     },
@@ -528,7 +579,7 @@
           "to_custodian_id": {"type": "string", "format": "uuid"}
         }
       },
-      "DurabilityState": {"type": "string", "enum": ["durability_pending"]},
+      "DurabilityState": {"type": "string", "enum": ["durability_pending", "accepted"]},
       "Priority": {"type": "string", "enum": ["P0", "P1", "P2"]},
       "Problem": {
         "type": "object",
@@ -542,6 +593,7 @@
               "bootstrap-expired",
               "bootstrap-nonempty",
               "bootstrap-origin",
+              "durability_pending",
               "idempotency-conflict",
               "proof-candidate-author-mismatch",
               "proof-candidate-digest-invalid",

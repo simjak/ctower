@@ -28,7 +28,7 @@ from ctower_kernel.workflow.postgres import PostgresWorkflow
 __all__: tuple[str, ...] = ()
 ROOT = Path(__file__).parents[3]
 HTTP_OK = 200
-HTTP_CREATED = 201
+HTTP_PENDING = 202
 HTTP_CONFLICT = 409
 HTTP_UNPROCESSABLE_ENTITY = 422
 
@@ -69,7 +69,18 @@ def test_task_http_routes_preserve_typed_work_board_and_audit_facts(
         trace.related,
         trace.audit,
     )
-    assert [response.status_code for response in successful] == [HTTP_OK] * len(successful)
+    assert [response.status_code for response in successful] == [
+        HTTP_PENDING,
+        HTTP_PENDING,
+        HTTP_OK,
+        HTTP_PENDING,
+        HTTP_PENDING,
+        HTTP_PENDING,
+        HTTP_OK,
+        HTTP_PENDING,
+        HTTP_PENDING,
+        HTTP_OK,
+    ]
     assert trace.assignments.json()["assignments"][0]["principal_id"] == str(tenant.operator_id)
     assert trace.board.json()["health"] == "CURRENT"
     assert trace.board.json()["cards"][0]["lane"] == "blocked"
@@ -236,7 +247,7 @@ def _create_ticket(client: TestClient, tenant: TenantFixture) -> UUID:
         },
         headers=_headers(tenant),
     )
-    assert response.status_code == HTTP_CREATED
+    assert response.status_code == HTTP_PENDING
     return UUID(cast(str, response.json()["ticket"]["ticket_id"]))
 
 
@@ -275,7 +286,7 @@ def _start_and_admit(client: TestClient, tenant: TenantFixture, ticket_id: UUID)
         "intents",
         {"intent": {"kind": "admit", "expected_version": 1, "reason": "Ready"}},
     )
-    assert (started.status_code, admitted.status_code) == (HTTP_OK, HTTP_OK)
+    assert (started.status_code, admitted.status_code) == (HTTP_PENDING, HTTP_PENDING)
 
 
 def _post(
