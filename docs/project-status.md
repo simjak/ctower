@@ -11,9 +11,11 @@ I1.2 is merged: PR [#20](https://github.com/simjak/ctower/pull/20) integrated re
 `78ec2a8` into `main` at `65718f5a` on 2026-07-21. It establishes the development-only CP2 durable Work,
 Workflow, Proof, Board, assignment, priority, blocker, relation, audit, and projection-role boundary. The
 next checkpoint is I1.3, acknowledged durability and disaster-safe operations. This snapshot records
-delivery facts; the
-[implementation roadmap](https://github.com/simjak/ctower/blob/main/IMPLEMENTATION-ROADMAP.md) remains
-the authoritative sequence and exit contract.
+delivery facts. The
+[implementation roadmap](https://github.com/simjak/ctower/blob/main/IMPLEMENTATION-ROADMAP.md) is a
+derived sequencing view; binding scope and exit semantics live in the
+[system specification](https://github.com/simjak/ctower/blob/main/SPEC.md), with rationale preserved in
+[DECISIONS.md](https://github.com/simjak/ctower/blob/main/DECISIONS.md).
 
 ## Available now
 

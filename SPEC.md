@@ -329,7 +329,7 @@ the existing Catalog, Work, Proof, and authorization contracts. A Project Delive
 calculated only from accepted durable facts at a source watermark. It has no status mutation command,
 generic patch operation, or manual override; deleting it and replaying the same facts must reproduce it.
 
-The compact view remains:
+The following hypothetical rows illustrate the compact view; they are not current implementation status:
 
 ```text
 Project area                       Status         Outcome
