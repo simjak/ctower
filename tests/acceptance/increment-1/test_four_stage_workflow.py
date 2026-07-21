@@ -301,16 +301,28 @@ def test_close_requires_current_proof_and_appends_resolved_then_closed_atomicall
 
     _complete_proof(proof_store, tenant, ticket_id)
 
-    committed = workflow.resolve_close(workflow_actor, close, telemetry=_telemetry())
-    replay = workflow.resolve_close(workflow_actor, close, telemetry=_telemetry())
+    refused_replay = workflow.resolve_close(workflow_actor, close, telemetry=_telemetry())
+    committed_close_id = uuid4()
+    committed_close = ResolveClose(
+        client_command_id=committed_close_id,
+        ticket_id=ticket_id,
+        workflow_ref="fixture.atomic-close@1",
+        expected_version=2,
+    )
+    committed = workflow.resolve_close(workflow_actor, committed_close, telemetry=_telemetry())
+    replay = workflow.resolve_close(workflow_actor, committed_close, telemetry=_telemetry())
 
+    assert refused_replay == refused
     assert isinstance(committed, WorkflowReceipt)
     assert replay == committed
     assert committed.lifecycle_facts == ("resolved", "closed")
     _assert_lifecycle(
         tenant.database.admin_dsn,
         ticket_id,
-        expected=((1, "resolved", close_id), (2, "closed", close_id)),
+        expected=(
+            (1, "resolved", committed_close_id),
+            (2, "closed", committed_close_id),
+        ),
     )
 
 
