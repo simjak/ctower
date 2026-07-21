@@ -25,10 +25,11 @@ ctower addresses those questions with a durable control plane and a complete tic
 execute work through narrow adapters; they do not become the authority for work state.
 
 !!! warning "Pre-alpha status"
-    ctower now has one development-only local walking slice: first-tenant bootstrap, ticket
-    create/read/timeline, protected custody transfer, and a thin online CLI. Writes remain
-    `durability_pending`; no runner, web application, supported deployment, off-host acknowledgement, or
-    production release is available. See [Project status](project-status.md).
+    ctower now has one development-only local walking slice: first-tenant bootstrap; durable tickets,
+    custody, assignment, priority, blockers, and relations; a read-only six-lane Board projection; and the
+    proof-gated four-stage Workflow fixture. Writes remain `durability_pending`; no runner, web
+    application, supported deployment, off-host acknowledgement, or production release is available. See
+    [Project status](project-status.md).
 
 ## Navigate the project
 

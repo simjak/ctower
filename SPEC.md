@@ -3,8 +3,8 @@
 | Field | Value |
 |---|---|
 | Status | Canonical target-system truth |
-| Version | 1.8 |
-| Date | 2026-07-20 |
+| Version | 1.9 |
+| Date | 2026-07-21 |
 | Owners | Operator/CEO (product and human gates), Commander (orchestration contract), Engineering Manager (architecture and risk contract) |
 | Decision authority | [`DECISIONS.md`](DECISIONS.md) |
 
@@ -93,7 +93,7 @@ This file is the single current product, UX, domain, architecture, workflow, sec
 When sources differ, use this order:
 
 1. A later operator-locked decision in `DECISIONS.md`.
-2. This `SPEC.md`, version 1.8 or a later reviewed version, for human-visible semantics and invariants.
+2. This `SPEC.md`, version 1.9 or a later reviewed version, for human-visible semantics and invariants.
 3. Reviewed executable artifacts referenced by this spec for exact mechanics: migrations, OpenAPI,
    schemas, packs, fixtures, and conformance tests. They may refine representation but may not contradict
    a requirement, acceptance criterion, or invariant.
@@ -184,6 +184,9 @@ Each story names observable user value and links to pass/fail acceptance criteri
 | US-OP-06 | Operator/CEO | I can distinguish merged, staging verified, production verified, rolled back, and incident states without relying on wording such as “shipped.” | [AC-REL-01](#ac-rel-01), [AC-REL-04](#ac-rel-04), [AC-UX-06](#ac-ux-06) |
 | US-OP-07 | Operator/CEO | I use a familiar Board without losing process truth: priority, queue lane, arbitrary workflow stage/activity, blockers, accountable custody, active assignment, and typed delivery milestone remain separate and explainable. | [AC-TM-01](#ac-tm-01), [AC-TM-02](#ac-tm-02), [AC-TM-05](#ac-tm-05) |
 | US-OP-08 | Operator/CEO | Before a harness dispatches a catastrophic or ambiguous command, I see the normalized target and policy reason, can authorize only that exact command and target once for a short time, and can audit the result without exposing secret command content. | [AC-RUN-15](#ac-run-15), [AC-SEC-03](#ac-sec-03), [AC-UX-10](#ac-ux-10) |
+| US-PD-01 | Operator/CEO | I open a project and see whether its declared increments or milestones are actually being delivered, using compact checkpoint rows derived from current exit-criterion proof rather than manually entered status or ticket-count percentages. | [AC-PD-01](#ac-pd-01), [AC-PD-02](#ac-pd-02), [AC-PD-04](#ac-pd-04) |
+| US-PD-02 | Accountable project owner | I drill into a checkpoint and see its owner, stage and Kanban facts, linked work and outcomes, passed and missing gates, blockers/dependencies, evidence, decisions, estimates versus actuals, and projection freshness; when proof changes, the row changes without erasing the underlying lifecycle history. | [AC-PD-02](#ac-pd-02), [AC-PD-03](#ac-pd-03), [AC-PD-05](#ac-pd-05) |
+| US-PD-03 | Operator and cross-domain owner | I use the same Project Delivery projection for software, accounting, compliance, hiring, and other configured Workflows; restore/rebuild reproduces the same rows, while stale or incomplete source truth is visibly unknown instead of guessed. | [AC-PD-04](#ac-pd-04), [AC-PD-05](#ac-pd-05), [AC-PD-06](#ac-pd-06) |
 | US-CMD-01 | Commander | Every accepted command is deduplicated, durably classified, and routed to a pinned workflow before I dispatch work, so process death cannot drop intent. | [AC-DUR-01](#ac-dur-01), [AC-WF-01](#ac-wf-01), [AC-RUN-01](#ac-run-01) |
 | US-CMD-02 | Commander | I plan and decompose an outcome using relations; I create child tickets only for independently valuable work and preserve blocker and provenance graphs. | [AC-PROD-02](#ac-prod-02), [AC-WF-02](#ac-wf-02) |
 | US-CMD-03 | Commander | I resolve the strongest healthy permitted reasoning profile, select and explain a pinned Workflow and versioned `orchestration_plan`, and choose a policy-permitted perspective/anti-spin plan while the server enforces its declared bounds. | [AC-WF-03](#ac-wf-03), [AC-WF-11](#ac-wf-11), [AC-WF-12](#ac-wf-12), [AC-WF-19](#ac-wf-19), [AC-WF-21](#ac-wf-21), [AC-WF-22](#ac-wf-22), [AC-WF-24](#ac-wf-24), [AC-SEC-03](#ac-sec-03), [AC-RUN-02](#ac-run-02) |
@@ -222,7 +225,7 @@ Each story names observable user value and links to pass/fail acceptance criteri
 | Primary surface | Canonical question | Required content | Explicitly contextual, not a new primary route |
 |---|---|---|---|
 | **Home** | What do I want, and what genuinely needs me now? | Commander omnibox/thread, current ticket summary, ranked Needs You, health/completeness banner | Approvals, questions, escalations, incident decisions |
-| **Board** | Where is every valuable outcome? | Searchable/filterable tickets, lifecycle, workflow stage, owner, risk, attention, delivery summary, relations | Goals, projects, saved views, dependency maps |
+| **Board** | Where is every valuable outcome? | Searchable/filterable tickets, lifecycle, workflow stage, owner, risk, attention, delivery summary, relations, contextual Project Delivery projection summaries | Goals, projects, saved views, dependency maps |
 | **Ticket detail** | What happened, what is happening, what proves it, and why did or did not it move? | Outcome, workflow map, live run, conversation, documents, criteria, evidence, gates, custody, delivery, costs, timeline, retro, and the last accepted/refused readiness or transition evaluation with its exact unmet checklist | Artifacts, annotations, changes, releases, incidents |
 | **Fleet** | Who and what can execute, and is it healthy? | Agent profiles/revisions, runners/nodes, jobs/runs/sessions, workspaces, routines, tools, budgets, capacity, trust | Org chart, provider settings, gateways, secret references |
 | **Analytics** | Is the system reducing attention while preserving outcomes? | KPI definitions and trends, stage/cost/quality/recovery analysis, bypass reconciliation, improvement effectiveness | Raw exports, audit queries, cost drill-down |
@@ -242,7 +245,7 @@ this inventory, not a license to reproduce its page-per-noun navigation.
 | Primary screenshot surface | Included concepts from the research inventory | Never a primary destination |
 |---|---|---|
 | **Home / Needs You** | Commander omnibox/thread, current ticket, exact operator actions, health | Separate Commander dashboard, approvals inbox, generic Activity |
-| **Board** | Tasks, Goals, Projects as filters/groups; priority, lane, precise stage, blocker, owner, delivery | Separate Tasks, Goals, Projects, Issues, or dependency-board routes |
+| **Board** | Tasks, Goals, Projects as filters/groups; priority, lane, precise stage, blocker, owner, delivery, contextual Project Delivery projection | Separate Tasks, Goals, Projects, Issues, or dependency-board routes |
 | **Ticket detail** | Artifacts, current workspace, runs/transcript, evidence, gates, changes, releases, incidents | Global Artifacts, Workspaces, Timeline, or Approvals routes |
 | **Fleet** | Agents, org context, skills, workspaces, routines, Harness/Supervisor/Target/Workspace/Telemetry Adapters, budgets and health | Agent store, Skills Store, Routines, Environments, or Adapters as primary routes |
 | **Analytics** | Timeline analysis, Costs, Activity, quality/recovery/attention trends | Writable status, raw event log as ordinary navigation |
@@ -299,6 +302,113 @@ current assignee, blocker age/reason, risk, and typed delivery milestone. Ticket
 A card can be in the complete lane without a production delivery requirement, or remain in progress after
 `staging_verified` while a Workflow still requires production verification and retro. No semantic
 distinction depends on writing “done” in upper- versus lower-case.
+
+#### Project Delivery projection
+
+Tickets answer whether individual work moved. The **Project Delivery projection** answers whether a
+project is actually being delivered. It is a contextual Board/project view inside the locked five-surface
+model, not a sixth primary destination and not another writable project-status system.
+
+```text
+Company
+  `-- Project
+       |-- Increment / Milestone
+       |    |-- exit criteria
+       |    |-- tickets and workflow runs
+       |    |-- evidence and artifacts
+       |    `-- release/outcome facts, when applicable
+       `-- Project Delivery projection (derived, read-only)
+            `-- checkpoint progress rows
+```
+
+`Increment` and `Milestone` are configured project vocabulary for the same domain-neutral **checkpoint**
+role. A checkpoint declares an outcome, accountable owner, ordering, exit criteria, and explicit links or
+selection rules for qualifying tickets, Workflow runs, gates, evidence, artifacts, decisions, costs, and
+release/outcome facts. Definitions and criteria change only through authenticated versioned commands under
+the existing Catalog, Work, Proof, and authorization contracts. A Project Delivery projection row is
+calculated only from accepted durable facts at a source watermark. It has no status mutation command,
+generic patch operation, or manual override; deleting it and replaying the same facts must reproduce it.
+
+The compact view remains:
+
+```text
+Project area                       Status         Outcome
+I1.3 -- Disaster-safe durability   In progress    Off-host ACK implementation underway
+I1.4 -- Protected CLI              Planned        Waiting on durable acceptance semantics
+```
+
+The canonical headline states are `planned`, `in_progress`, `ready_to_land`, `merged`, `verified`,
+`released`, `blocked`, and `done`. Derivation first evaluates projection health and proof validity, then
+applies this exact precedence:
+
+```text
+done > blocked > released > verified > merged > ready_to_land > in_progress > planned
+```
+
+| Headline state | Deterministic condition |
+|---|---|
+| `planned` | The checkpoint exists and has no qualifying active ticket/Workflow and no current valid proof of a later applicable lifecycle state. |
+| `in_progress` | At least one qualifying ticket or Workflow is active, and no higher-precedence condition holds. |
+| `ready_to_land` | For a checkpoint that declares a software-style landing boundary, implementation is complete and every required current-candidate pre-merge gate has current passing proof. |
+| `merged` | The accepted candidate reached the checkpoint's configured main/default integration target. |
+| `verified` | The required staging or other non-production deployment and QA proof passed for the current candidate, when the checkpoint declares that lifecycle step. |
+| `released` | Required production or externally effective outcome verification passed for the current candidate, when the checkpoint declares that lifecycle step, but at least one other declared exit criterion remains unproven. |
+| `blocked` | The checkpoint is not `done`, and at least one unresolved effective blocker prevents the next required exit criterion. The row also retains and exposes the highest underlying applicable lifecycle maturity, such as `merged`, so the blocker does not erase history. |
+| `done` | The checkpoint declares at least one exit criterion and every declared criterion has current valid proof. An unresolved fact can coexist in drill-down only if it does not prevent or invalidate an exit criterion; otherwise `done` no longer applies and `blocked` wins over the retained underlying maturity. |
+
+Lifecycle states that a checkpoint does not declare are inapplicable and skipped, not guessed. Accounting,
+compliance, hiring, research, or other non-software checkpoints may therefore move directly from
+`in_progress` to `done`, or use `blocked`, without merge, staging, or release facts. They still cannot be
+`done` without current proof for every configured exit criterion. A proof expiry, revocation, dependency
+digest change, rollback, incident, or superseding outcome immediately removes every derived condition that
+depended on it and recomputes the row; a row may legitimately regress while its underlying immutable facts
+remain available for explanation.
+
+The I1.7 dogfood view exposes the smallest useful hierarchy and compact checkpoint rows: checkpoint key and
+label, headline state, outcome, accountable owner, explicit `proven exit criteria / declared exit criteria`,
+source watermark, and freshness. It links through the existing Board and Ticket views for underlying facts.
+It never fabricates a completion percentage from ticket counts. Zero declared criteria is visibly
+unconfigured, not 0% and not `done`.
+
+The I2.4 interactive row detail additionally exposes:
+
+- accountable owner;
+- Workflow stage and independent Kanban/Board state;
+- tickets, Workflow runs, changes/PRs, and releases or other outcomes as applicable;
+- acceptance/exit criteria and current proof coverage;
+- passed and missing gates;
+- blockers and dependencies;
+- evidence and artifacts;
+- decision history;
+- estimated versus actual cost/time; and
+- last verified/reconciled timestamp plus projection confidence/freshness.
+
+Broader visualizations, trends, cost/time analytics, and reusable cross-domain interaction belong to I2.4,
+after I1.7 proves the hierarchy, authority links, rebuild, and compact projection for ctower itself.
+
+Update semantics are exact:
+
+```text
+authoritative ticket/workflow/gate/outcome event --> reconcile immediately
+no relevant change for one hour                 --> publish freshness heartbeat
+```
+
+Immediate reconciliation drains the transactional outbox and recomputes affected checkpoint rows from
+authoritative facts. The hourly freshness heartbeat re-runs the same fold and may update only projection
+watermark, reconciliation time, confidence/freshness, and health; it does not append a lifecycle fact,
+advance work, or fabricate a state change. The existing Routine/scheduler contract may materialize the
+hourly occurrence, but this freshness heartbeat is neither a reasoning heartbeat nor a lease heartbeat and
+has no Workflow, Proof, or project command authority. A row is `stale` when no successful event-driven reconcile or
+freshness heartbeat has completed for more than one hour. It is `STATE UNKNOWN`—with the missing source,
+watermark, and recovery owner—when source completeness, integrity, linkage, authorization-safe aggregation,
+or proof validity cannot be established. Stale/unknown health is an overlay, not a ninth headline state,
+and suppresses any calm delivery claim.
+
+Projection reads use the same tenant/project authorization as their source facts. A summary cannot reveal a
+restricted ticket, artifact, decision, cost, or outcome through aggregation, and projection access grants no
+authority to mutate the hierarchy, criteria, work, proof, or effects. Authorized drill-down retains the
+source fact IDs and derivation reasons needed to explain every inclusion, exclusion, precedence choice, and
+confidence assessment.
 
 ### Omnibox classification and promotion
 
@@ -498,6 +608,8 @@ Suspect is an observed-health projection, not an authoritative job state. The du
 
 - Every Needs You item links to the exact ticket section, gate, incident, or runner recovery action.
 - Board rows show a derived summary only; mutations occur through commands and canonical detail views.
+- The Project Delivery projection is a contextual project grouping within Board; its checkpoint rows link to
+  authorized source facts and never become a sixth route or a command surface.
 - Ticket detail renders one chronological typed timeline while allowing anchored views for workflow, evidence, and delivery.
 - Ticket detail shows the latest readiness/transition evaluation: requested edge, accepted/refused result,
   rule and policy revisions, current input digest, every unmet item and owner, evaluation time, linked
@@ -517,6 +629,8 @@ An aggregate owns only the invariants that must be transactional together. Cross
 | **Inbound thread / conversation** | Durable channel-neutral thread, participants, source scope, ordered inbound/outbound command events, classification, and promotion provenance | May link zero or more tickets; source event IDs are immutable aliases |
 | **Inbound conversation/command event** | Original payload reference, authenticated or source-verified actor, taint level, idempotency key, classification result, and append position | Belongs to one thread; may promote/link a ticket or attach to another aggregate |
 | **Ticket** | Permanent ID, tenant/project scope, promised outcome, lifecycle episode pointer, accountable owner, aggregate version, and ticket-event hash-chain head | Links relations, workflow runs, criteria, attention, changes, costs, and retros; does not own their internal state |
+| **Project / delivery checkpoint definition** | Versioned Company -> Project -> Increment/Milestone hierarchy, checkpoint outcome/order, accountable owner, declared exit criteria, and explicit qualifying-work links or rules | References tickets, Workflow runs, Proof, decisions, costs, and applicable release/outcome facts; it never owns their lifecycle or verdicts |
+| **Project Delivery projection row** | Disposable checkpoint summary, derivation reasons, source watermark, proof coverage, confidence/freshness, and health | Rebuilds from authorized project/checkpoint definitions plus durable Work, Workflow, Proof, gate, cost, and outcome facts; accepts no mutation |
 | **Priority fact / blocker** | Append-only P0/P1/P2 changes and durable typed unmet conditions with owner, source, affected stage, resolution contract, next check/SLA, and evidence | Work truth is orthogonal to risk, stage, Board lane, delivery, and Attention; multiple effective blockers coexist |
 | **Ticket relation** | Typed edge with source, target, actor, rationale, and validity; `parent_of`, `depends_on`, `blocks`, `duplicates`, `relates_to`, `caused_by` | Parent graph and blocker graph are separately cycle-checked; child tickets require independent value |
 | **Lifecycle episode** | One open-to-terminal interval with opening event, outcome, resolution/closure/cancellation facts, and optional next episode | `reopened` closes no history; it starts a new numbered episode on the same ticket |
@@ -848,6 +962,7 @@ The ticket is the human join point, not the transaction boundary for the entire 
 | Durable job | `accepted`, `leased`, `running`, `terminal` plus terminal outcome `succeeded|failed|cancelled|lost` | Dispatch and runner protocol. Health projections such as suspect do not rewrite the job state. |
 | Gate instance | `required`, `collecting`, `verdict_recorded`, `invalidated`, `superseded` | Requirement and validity for one policy/input snapshot. Verdict attempts are `pass|fail|changes_requested|error|abstain`. |
 | Delivery | Immutable merge facts, release candidates, deployment attempts, environment verifications, rollbacks, and incidents | No single mutable delivery enum is authoritative. UI summaries are derived. |
+| Project Delivery projection | `planned`, `in_progress`, `ready_to_land`, `merged`, `verified`, `released`, `blocked`, `done` plus separate fresh/stale/unknown health | Read-only checkpoint fold using the exact precedence and proof rules above. Inapplicable lifecycle steps are skipped; manual status and ticket-count completion are never authority. |
 | Attention | `open`, `snoozed`, `resolved`, `expired`, `cancelled` | Exact human action record; expiration re-evaluates policy rather than silently clearing it. |
 | Custody and assignment | Half-open intervals `[assigned_at, released_at)` | `ticket_custodian`, `current_assignee`, `stage_owner`, `reviewer_assignment`, and `runner_lease_owner` are distinct; routine owner changes do not create handoff tickets. |
 
@@ -911,6 +1026,8 @@ The ticket is the human join point, not the transaction boundary for the entire 
 56. **INV-56 — Provider observations are not transitions.** Remote providers and Crabbox return scoped observations/receipts only. Ctower validates/appends them; provider success, disappearance, cleanup, or image capture cannot advance Workflow, satisfy evidence, or promote an image.
 57. **INV-57 — Board/task axes remain orthogonal.** Priority, Board lane, blocker, arbitrary workflow stage/activity, lifecycle, typed delivery, custody, assignment, and runner lease remain independently attributable; Board controls emit typed intents rather than status patches, and lane semantics never depend on delivery wording or capitalization.
 58. **INV-58 — Guard before harness dispatch.** Every registered local or remote Harness or Supervisor Adapter that can launch, invoke, or submit a harness command obtains and enforces a current versioned CommandGuard decision for the exact normalized execution plan at its final trusted pre-dispatch boundary. `block` and `needs_operator` dispatch nothing; changed plans or targets, unresolved protected targets, expired/replayed grants, missing required local or remote enforcement receipts, and direct guard bypass fail closed.
+59. **INV-59 — Project Delivery projection is derived.** Every Project Delivery projection row is rebuilt only from versioned hierarchy/exit-criterion definitions and accepted durable Work, Workflow, Proof, gate, cost, and outcome facts. The exact precedence is deterministic; manual row status, projection writes, ticket-count percentages, and wording cannot establish delivery or completion.
+60. **INV-60 — Project Delivery projection freshness is honest.** Relevant authoritative events reconcile affected rows immediately; one hour without a relevant change publishes a freshness heartbeat that cannot mutate lifecycle state. Missing or overdue reconciliation, unknown authorization-safe coverage, source gaps, or invalid proof renders the row stale or `STATE UNKNOWN`, and restore/replay at one watermark reproduces the same derivation.
 
 ## Workflow and verification architecture
 
@@ -1885,11 +2002,11 @@ Interface or in the named application composition root.
 | Policy evaluation | Workflow | Arbitrary package facts, perspectives, finite anti-spin bounds, stage-gate requirements, stable lineage normalization/split policy, human-only rules, policy version | Platform-hardcoded engineering tiers or self-reported lineage/counters as authority |
 | Gate evaluation | Proof; Workflow owns only round/route accounting | Gate instances, reviewer assignment, sealed access, verdict attempts, conflicts, expiry/invalidation; Workflow consumes immutable Proof decisions into round facts | Artifact mutation, plan-authored consumed counts, or external effects |
 | Scheduling/job control | Runtime | Durable accepted jobs, priorities, capability matching, leases, fencing, command cursors, cancellation, and versioned CommandGuard decisions over normalized execution plans | Ticket ownership, gate verdicts, or claims that command filtering is sandbox containment |
-| Reconciliation/watchdog | Runtime for jobs/cursors; Effects for receipts; Projections for view watermarks | Desired-vs-observed state, lease expiry, cursor/receipt/projection reconciliation, synthetic checks behind the owning Interfaces | Guessing success from process absence or creating a cross-Module manager |
+| Reconciliation/watchdog | Runtime for jobs/cursors; Effects for receipts; Projections for view watermarks | Desired-vs-observed state, lease expiry, cursor/receipt/projection reconciliation, Project Delivery projection event folds/hourly freshness, synthetic checks behind the owning Interfaces | Guessing success from process absence, advancing work from a heartbeat, or creating a cross-Module manager |
 | Effect brokerage | Effects | Short-lived grants, just-in-time credential resolution, idempotent external action, immutable receipt | Standing credentials on runners; approving its own policy |
 | Attention/notification | Attention | Durable action items, ranking, dedupe, recipient routing, delivery retries, acknowledgment | Inferring separate competing Needs You truth per client |
 | Artifact/evidence handling | Proof | Digest verification, object metadata, document revisions, evidence dependencies, trust/quarantine | Treating any uploaded byte as valid evidence |
-| Projection/query handling | Projections | Home, Board, Ticket, Fleet, Analytics, search, activity, health/completeness | Authoritative mutations |
+| Projection/query handling | Projections | Home, Board, Ticket, Fleet, Analytics, contextual Project Delivery projection, search, activity, health/completeness | Authoritative mutations, manual delivery status, or ticket-count completion claims |
 | Audit/analytics | Projections for KPI/cost/retro reads; Effects for external reconciliation | KPI query versions, external reconciliation, cost allocation, retro comparison | Rewriting source events to improve metrics or becoming a second audit authority |
 
 ### Greenfield monorepo and deep-Module boundaries
@@ -1932,7 +2049,7 @@ FORBIDDEN: generated output -> policy/server implementation
 Work owns ticket/lifecycle/custody/priority/blocker commands; Workflow owns generic graph/readiness/routes
 and policy counters; Proof owns criteria/artifacts/evidence/gates; Runtime owns jobs/leases/fencing/cursors
 and only the local execution Seams earned by two real Adapters; Effects owns grants/receipts/releases/
-incidents; Projections owns all five rebuildable surfaces. There is no Factory, TaskManager, generic provider
+incidents; Projections owns all five rebuildable surfaces and contextual Project Delivery projection rows. There is no Factory, TaskManager, generic provider
 manager, status service, or service-per-table authority.
 
 ### Executable authority and requirement traceability
@@ -1976,7 +2093,7 @@ Exact physical DDL lives only in kernel migrations and its generated catalog ind
 |---|---|
 | Authoritative current/configuration | Stable identities and current pointers mutate only through authenticated idempotent commands/CAS |
 | Immutable revision/fact | Published components/plans, events, occurrences, counters, verdicts, receipts, aliases, and evaluations are insert-only; corrections append successors/tombstones |
-| Rebuildable projection | Home/Board/Ticket/Fleet/Analytics, delivery summaries, counters, and watermarks rebuild from facts and are never command input |
+| Rebuildable projection | Home/Board/Ticket/Fleet/Analytics, Project Delivery projection rows, delivery summaries, counters, and watermarks rebuild from facts and are never command input |
 | External bytes/effects | Object/provider systems own bytes/effects; ctower retains immutable digest/provenance/receipt metadata and reconciles rather than infers |
 
 All public IDs are UUIDv7 or permanent human ticket IDs; time is server UTC. Every tenant-scoped table has
@@ -2283,7 +2400,7 @@ The service role has no `UPDATE`/`DELETE` grant on event, verdict, receipt, atte
 | Layer | Purpose | Authority and retention |
 |---|---|---|
 | **Domain event streams** | Immutable business/control facts: ticket mutation, stage transition, verdict, job result, effect receipt, incident | Authoritative; cursor-paginated; hash/anchor protected; retained per audit policy |
-| **Readable projections** | Home, Board, Ticket journey, Fleet, Analytics, search, friendly activity | Rebuildable; carry source watermark and health; never accept writes; stale/partial is loud |
+| **Readable projections** | Home, Board, Ticket journey, Fleet, Analytics, contextual Project Delivery projection, search, friendly activity | Rebuildable; carry source watermark and health; never accept writes; stale/partial is loud |
 | **Raw execution logs** | stdout/stderr, terminal transcript, browser video, verbose tool logs | Object-store forensic material; content-addressed, access-scoped, and retention-limited; not sufficient proof without evidence record |
 
 Structured execution events are the control protocol. A terminal transcript may help a human understand a run but cannot establish assignment, success, or completion on its own.
@@ -2561,6 +2678,17 @@ Each criterion is pass/fail. Evidence must be attached to the ctower build ticke
 | <a id="ac-tm-05"></a>AC-TM-05 | Board/Ticket expose priority, precise stage/activity, custodian, assignee, blocker, risk, typed delivery facts, and lane derivation with project/goal/stage/priority/owner/risk filters. Fixtures prove `complete` without a delivery requirement, `staging_verified` while lane remains `in_progress`, and `production_verified` before retro/close without false closure; capitalization changes no semantics. | API snapshots, Playwright recording and copy assertions |
 | <a id="ac-tm-06"></a>AC-TM-06 | Scheduler dispatches only hard-eligible work, improves service order for higher priority, gives eligible P1/P2 service within the published bound under sustained P0 load, preserves age/fairness across restart/reassignment, and preempts only from a verified checkpoint. | Deterministic-clock queue properties, P0 flood/restart/preemption trace and selection explanations |
 
+### Project Delivery projection
+
+| ID | Pass condition | Evidence capture |
+|---|---|---|
+| <a id="ac-pd-01"></a>AC-PD-01 | At I1.7, the ctower company/project hierarchy declares its increments or milestones as ordered checkpoints with outcomes, accountable owners, at least one exit criterion, and explicit qualifying-work links/rules. The contextual compact Project Delivery projection shows checkpoint key/label, one derived headline state, outcome, `proven / declared` exit-criterion coverage, source watermark, and freshness. No status patch, projection write, ticket-count percentage, or sixth primary route exists. | Versioned hierarchy/definition snapshot, compact Board/project view, command/privilege inventory, route inventory, and ticket-count anti-fixture |
+| <a id="ac-pd-02"></a>AC-PD-02 | An exhaustive current-fact truth table derives exactly `done > blocked > released > verified > merged > ready_to_land > in_progress > planned`. `done` requires at least one declared criterion and current proof for every declared criterion; otherwise an effective blocker wins while retaining the highest underlying maturity. Non-software checkpoints skip inapplicable landing/merge/staging/release states without weakening their exit criteria. | Cross-domain fold truth table, blocked-at-maturity snapshots, zero-criterion denial, and derivation-reason report |
+| <a id="ac-pd-03"></a>AC-PD-03 | At I2.4, an authorized interactive row exposes accountable owner; Workflow stage and independent Kanban/Board state; linked tickets, Workflow runs, changes/PRs, and applicable releases/outcomes; exit criteria/current proof coverage; passed/missing gates; blockers/dependencies; evidence/artifacts; decision history; estimated/actual cost and time; and last verified/reconciled time with confidence/freshness. Restricted source facts do not leak through summary or drill-down. | Generated API snapshots, every-control cross-role recording, authorization/redaction matrix, and source-ID derivation trace |
+| <a id="ac-pd-04"></a>AC-PD-04 | Every relevant accepted ticket, Workflow, gate, proof, blocker, change, or outcome event triggers one idempotent affected-row reconcile immediately through the outbox. If no relevant change occurs for one hour, one freshness heartbeat recomputes the same fold and changes no headline/source lifecycle fact. An overdue heartbeat is stale; missing/gapped/integrity-unknown or authorization-incomplete sources render `STATE UNKNOWN` with watermark and recovery owner. | Fake-clock event/heartbeat trace, no-source-event state diff, outbox replay dedupe, watermark fault matrix, and stale/unknown screenshots |
+| <a id="ac-pd-05"></a>AC-PD-05 | Expiry, revocation, dependency-digest change, rollback, incident, or superseding outcome removes exactly the Project Delivery projection conditions that depended on invalidated proof before the row can remain `done` or at a later lifecycle state. Deleting/rebuilding projections after restart or isolated restore at one source watermark reproduces byte-equivalent semantic rows and derivation reasons. | Proof-invalidation dependency matrix, before/after row trace, projection deletion/replay comparison, and isolated-restore rebuild report |
+| <a id="ac-pd-06"></a>AC-PD-06 | Software, accounting, compliance, and hiring fixtures use the same Project Delivery projection Interface and eight-state fold. Their configured checkpoint labels, applicable lifecycle states, exit criteria, owners, and qualifying facts differ, while manual status remains ineffective and every `done` row has complete current proof. | Cross-domain fixture matrix, forbidden domain/stage-name branch check, manual-mutation denial, and complete-proof query |
+
 ### Product
 
 | ID | Pass condition | Evidence capture |
@@ -2816,7 +2944,7 @@ The order is normative. ctower first proves that it can durably accept, restore,
 
 #### I1 outcome
 
-The operator can create, prioritize, assign, block, inspect, prove, and close ctower-project tickets through an authenticated private service, spool-backed CLI, and thin Board/Ticket UI. An accepted write already has its policy-required off-host durable acknowledgement; backup/restore and key recovery are proven before cutover. A reviewed one-time barrier then makes ctower the only writable task source for the ctower project while legacy records remain read-only provenance.
+The operator can create, prioritize, assign, block, inspect, prove, and close ctower-project tickets through an authenticated private service, spool-backed CLI, and thin Board/Ticket UI. An accepted write already has its policy-required off-host durable acknowledgement; backup/restore and key recovery are proven before cutover. A reviewed one-time barrier then makes ctower the only writable task source for the ctower project while legacy records remain read-only provenance. At that barrier, the smallest Company -> Project -> Increment/Milestone hierarchy and compact read-only Project Delivery projection let ctower track its own declared checkpoints without creating another status source.
 
 #### I1 four-stage fixture
 
@@ -2847,7 +2975,8 @@ The fixture is interpreted by the final generic Workflow Module interface—not 
 5. `ctowerctl`/`ctl` capture, query, comment, assign, prioritize, block/unblock, criteria, evidence, gate, transition, resolve, and CompanyBundle validate/plan/apply/export operations through the generated client. Its encrypted owner-only ordered spool preserves one command ID through crash, concurrent-writer, torn-write, disk-full, retry, and quarantine paths.
 6. Thin Home, Board, and contextual/direct-ID Ticket surfaces inside the locked five-surface shell. Board derives its six lanes from lifecycle/blockers/readiness plus stage `activity_class`; Ticket shows custody, assignments, stage, criteria/evidence/gates, blockers, typed delivery, command acceptance, and the ordered timeline. Browser commands remain visibly unsent or durability-pending until accepted.
 7. The four-stage fixture above, a daily synthetic run, health/watchdog, backup/restore evidence, and operator-attention baseline instrumentation.
-8. A reviewed freeze/export/alias/import/rewire barrier for **ctower-project records only**. The import uses the generated HTTP client, writes no forged proof, records source digests/dispositions, rejects post-barrier legacy mutation, and establishes ctower as the project source of truth. No dual write and no tailer.
+8. At I1.7, the smallest ctower Company -> Project -> Increment/Milestone hierarchy, checkpoint outcomes/owners/exit criteria and qualifying-work links, plus compact read-only Project Delivery projection rows with deterministic state, proof coverage, watermark, and hourly freshness. Existing Board/Ticket views provide source drill-through; there is no interactive row-detail product, broader visualization, trend/cost/time analytics, manual status, or ticket-count percentage in I1.
+9. A reviewed freeze/export/alias/import/rewire barrier for **ctower-project records only**. The import uses the generated HTTP client, writes no forged proof, records source digests/dispositions, rejects post-barrier legacy mutation, and establishes ctower as the project source of truth. No dual write and no tailer.
 
 Increment 1 has no agent stage dispatch or harness command execution and therefore neither activates nor
 claims CommandGuard implementation. It also has no autonomous Commander loop, production effect grant,
@@ -2863,6 +2992,7 @@ remote provider, custom-image product, warm pool, or executable-extension runtim
 - Timed UI evidence proves the operator can find, reprioritize, reassign, block/unblock, inspect proof, and close a ticket through Board/Ticket without another ledger.
 - The frozen baseline artifact contains at least five legacy working days. The clean-install first-success trial meets [AC-ADM-03](#ac-adm-03).
 - Import reconciliation accounts for every selected ctower-project item, creates each stable alias once, and records zero legacy writes after cutover.
+- The ctower project hierarchy and compact Project Delivery projection satisfy [AC-PD-01](#ac-pd-01), the eight-state/blocked-proof truth table satisfies [AC-PD-02](#ac-pd-02), and event reconciliation plus the hourly no-change heartbeat satisfy the I1 portion of [AC-PD-04](#ac-pd-04).
 
 #### I1 designated validation commands
 
@@ -2898,7 +3028,7 @@ The pinned `engineering.software-factory@1` policy selects, for this ticket only
 2. Versioned Commander capability resolution, durable accountable custody, orchestration-plan revisions, strongest-healthy profile selection, wake/reasoning jobs, checkpoints, escalation, and recovery without counter or ownership reset.
 3. Content-bearing Persona/Skill/Profile materialization; full evidence attestations and dependency graph; independent/sealed review where the pinned package requires it.
 4. Durable accepted/leased/running/terminal jobs, leases/fencing, cursors, ACKs, continuous structured chunks and explicit gaps, checkpoint/reconciliation, a versioned CommandGuard enforced at every final pre-dispatch boundary, and the local Codex/Claude harness plus process/tmux supervisor compositions required by the golden ticket. No general remote-provider or image Seam.
-5. Complete the thin five-surface experience over proven module interfaces: Home, Board, contextual Ticket, Fleet, and Analytics, including live structured run, steering, readiness refusal, current proof, CommandGuard Attention/grant/receipt state, delivery/incidents, cost, and retro.
+5. Complete the thin five-surface experience over proven module interfaces: Home, Board, contextual Ticket, Fleet, and Analytics, including live structured run, steering, readiness refusal, current proof, CommandGuard Attention/grant/receipt state, delivery/incidents, cost, and retro. I2.4 also adds interactive Project Delivery projection row detail, broader visualizations, trend/cost/time analytics, and reusable cross-domain views over the I1.7 hierarchy and projection contract; it remains contextual, not a sixth surface.
 6. Changes/release candidate, named staging and production environments, scoped effect grants/receipts, one live `systemd-vps/v1` integration, and its fault-injection test implementation. This remains an internal Effects boundary rather than a generalized provider Seam. The root release supervisor independently verifies bytes, signature/attestation, subject, and trusted builder/workflow against root-owned policy before install; the application digest is intent only.
 7. Production smoke/live-QA incident, grant revoke, safe containment/rollback, exact-environment verification, triage-before-repair, and append-only retro/improvement evaluation.
 8. The golden ticket itself, including current-digest review/QA, forced losses, docs, signed release, staging/production proof, rollback rehearsal, retro, resolution, closure, and one compact traceability report.
@@ -2911,6 +3041,7 @@ The pinned `engineering.software-factory@1` policy selects, for this ticket only
 - Forced runner loss is detected within 60 seconds, stale fencing is rejected, and checkpointable work resumes within five minutes. Commander-job loss preserves the same accountable principal and plan history.
 - Every registered Harness or Supervisor command-dispatch path proves pre-dispatch CommandGuard invocation, target resolution, zero execution on block/attention, exact one-use override with replay/expiry refusal, operator-visible linked receipts, and redacted observability before it may execute the golden ticket.
 - Review/QA identities differ from the author, input digests match, and a deliberate candidate mutation invalidates exactly dependent proof.
+- Project Delivery projection row detail, proof regression, cross-domain state skipping, stale/unknown behavior, and restore/rebuild meet AC-PD-02 through AC-PD-06 without any writable status or ticket-count completion claim.
 - Root-owned trust policy rejects wrong, missing, revoked, or untrusted release provenance before install. Staging and production have distinct grants, receipts, observed digests, and independent live verification; injected smoke failure creates an incident and verified rollback before the successful attempt.
 - `GET /v1/meta/build` and `ctl meta build` agree, and the retro records attention, cost, wait, retries, recovery, gate yield, release evidence, and an evidence-backed improvement or no-change decision.
 
@@ -2985,7 +3116,7 @@ Each validation command below is designated as part of the item’s deliverable.
 | CT-I1-004 | Implement `ctowerctl`/`ctl`, generated API client, ordered spool/ACK/quarantine, CompanyBundle validate/plan/apply/export, and API/CLI parity. | CT-L0-003, CT-L0-007, CT-I1-002 | Engineer + QA | `apps/ctowerctl/`; `generated/python/ctower-client/`; `contracts/company/` | Kill/replay/two-writer/disk/poison chaos plus AC-COMP-03 | `uv run pytest tests/acceptance/increment-1/test_ctl.py tests/contracts/company -q` |
 | CT-I1-005 | Implement thin Home, Board, and contextual/direct Ticket inside the five-surface shell, with trustworthy health, priority/owner/blocker controls, `activity_class` lane fold, proof, typed delivery, timeline, and visibly pending browser commands. | CT-I1-002..003, CT-L0-008..009 | Designer + UI QA; operator taste gate when material | `apps/ctower-web/src/surfaces/{home,board,ticket}/`; `routes.ts`; kernel `attention/`, `projections/` | Every-control UI QA, Board truth table, command reconnect, <10 s Home, and unknown screenshots | `uv run pytest tests/acceptance/increment-1/test_needs_you.py tests/acceptance/increment-1/test_board.py && pnpm exec playwright test tests/acceptance/increment-1` |
 | CT-I1-006 | Implement off-host-ack acceptance, Routine occurrence/scheduler, outbox/projection/health loops, backups/anchors, encrypted artifacts, vault/KMS recovery, poison handling, synthetic four-stage lifecycle, signed restore expected-source inventory, fail-closed isolated journal reconciliation, and real reboot drills. | CT-I1-001..005 | DevOps + Engineer + independent QA | Control worker; kernel record/runtime/projections/attention; `packs/routines/`; `deploy/`; runbooks | Host-loss RPO0, `durability_pending`, duplicate/DST/restart and poison visibility, five synthetic runs, key restore, explicit I1 root/effect/provider `not_exercised`/zero-source entries, activated-source absence denial, reboot targets | `uv run pytest tests/acceptance/increment-1/test_operations.py -q` |
-| CT-I1-007 | Freeze/export/alias/import/correct and atomically rewire **ctower-project** clients; detect split brain and reject legacy writes. Import uses the generated HTTP client only. | CT-I1-004..006 | Engineer + Commander verification + Review | `tools/migration/ctower-project/`; generated client | Reviewed dispositions, two-run diff, correction provenance, exact aliases, and zero post-barrier legacy writes | `uv run pytest tests/acceptance/increment-1/test_cutover.py -q` |
+| CT-I1-007 | Freeze/export/alias/import/correct and atomically rewire **ctower-project** clients; establish the smallest Company -> Project -> Increment/Milestone definitions and compact read-only Project Delivery projection needed for dogfood; detect split brain and reject legacy or manual-status writes. Import uses the generated HTTP client only. | CT-I1-004..006 | Engineer + Commander verification + Review | `tools/migration/ctower-project/`; generated client; kernel Catalog/Work/Projections | Reviewed dispositions, two-run diff, correction provenance, exact aliases, zero post-barrier legacy writes, deterministic compact checkpoint rows/proof coverage, immediate reconcile, hourly freshness, and stale/unknown faults | `uv run pytest tests/acceptance/increment-1/test_cutover.py -q` |
 | CT-I1-008 | Archive complete I1 contracts, security, deferred-capability, chaos, UX, first-success, restore, migration, baseline, and operations evidence; issue ctower-project dogfood go/no-go. | CT-L0-001..009, CT-I1-001..007 | Independent QA + Review + CSO | `tests/acceptance/increment-1/`; evidence objects | Applicable ACs pass/no red gate; future remote/image/executable-extension runtime explicitly not exercised | `uv run pytest tests/acceptance/increment-1 tests/contracts -q` |
 
 ### I2 implementation backlog
@@ -2996,11 +3127,11 @@ Each validation command below is designated as part of the item’s deliverable.
 | CT-I2-002 | Implement keyed documents/artifacts, full evidence/attestations/dependencies/invalidation, gate instances and sealed verdict attempts. | CT-I2-001, CT-I1-003 | Engineer + Review + CSO | Kernel `proof/`; `contracts/evidence/` | Self-review denial, sealed reveal, selective invalidation, quarantine promotion | `uv run pytest tests/modules/proof tests/acceptance/increment-2/test_gates.py -q` |
 | CT-I2-003 | Implement strongest-healthy Commander profile resolution and effective manifests pinning the local harness/supervisor/target/workspace/telemetry revisions, secret refs, egress/resources, and provenance. | CT-I2-001, CT-L0-007 | Engineer + CSO | Kernel `catalog/`, `runtime/`; `packs/personas/`; `apps/ctower-runner/compose.py` | Selection/failover, support-only denial, immutable local pins, and no-plaintext scans | `uv run pytest tests/modules/catalog tests/modules/runtime/test_profiles.py -q` |
 | CT-I2-004 | Implement Runtime jobs/leases/fencing/cursors/ACKs/log chunks/gaps/checkpoints/reconciler; the versioned CommandGuard required by [issue #17](https://github.com/simjak/ctower/issues/17) at every final local Harness and Supervisor command-dispatch boundary; and the justified local process/tmux plus Codex/Claude compositions. Freeze exact guard mechanics with these first real consumers, not before, and publish no general remote/image Seam. | CT-I2-001, CT-I2-003 | Engineer + DevOps + QA + CSO | Kernel `runtime/`; `packages/ctower-runner-sdk/`; `apps/ctower-runner/`; conformance tests | Forced loss/resume, stale denial, zero orphans, local composition; every registered command-dispatch Adapter's guard invocation, target resolution, zero block execution, one-use override/replay/expiry, redacted receipts, and bypass rejection; remote/image absent and not exercised | `uv run pytest tests/conformance/runner tests/chaos -q` |
-| CT-I2-005 | Complete Fleet/Analytics and the rich Ticket journey over I1 surfaces with run manifest, local placement, ACK/gap, steering, readiness refusal, CommandGuard Attention/grant/receipt state, cost, incidents, and retro. | CT-I2-002, CT-I2-004, CT-L0-009 | Designer + UI QA | `contracts/http/`; generated Python/TS clients; `apps/ctower-api/`; `apps/ctowerctl/`; `apps/ctower-web/src/surfaces/` | Exactly-five routes, every-control trace, replay/gap/steer modes, generated API snapshots and CLI transcript, exact-scope guard confirmation and linked receipt views, accepted/refused zero-diff screenshots | `uv run pytest tests/acceptance/increment-2/test_guard_attention.py -q && pnpm exec playwright test tests/acceptance/increment-2` |
+| CT-I2-005 | Complete Fleet/Analytics, the rich Ticket journey, and interactive Project Delivery projection row detail over I1 surfaces with run manifest, local placement, ACK/gap, steering, readiness refusal, CommandGuard Attention/grant/receipt state, source-linked project proof/gates/blockers/decisions, cost/time, incidents, and retro. | CT-I2-002, CT-I2-004, CT-L0-009 | Designer + UI QA | `contracts/http/`; generated Python/TS clients; `apps/ctower-api/`; `apps/ctowerctl/`; `apps/ctower-web/src/surfaces/` | Exactly-five routes, every-control trace, replay/gap/steer modes, generated API snapshots and CLI transcript, authorized Project Delivery projection drill-down, exact-scope guard confirmation and linked receipt views, accepted/refused zero-diff screenshots | `uv run pytest tests/acceptance/increment-2/test_guard_attention.py -q && pnpm exec playwright test tests/acceptance/increment-2` |
 | CT-I2-006 | Implement package-defined classification/overlays and Execution Policy evaluation, mandatory stage gates, required perspectives, configurable limits, independence/conflict/diversity, protected waivers, and software/non-engineering fixtures. | CT-I2-002..003 | Engineering Manager + Engineer + CSO | Kernel `workflow/`, `access/`; policy packs | Missing/invalid-bound/removal/client-count/independence denials and coherent current-digest traces | `uv run pytest tests/modules/workflow/test_execution_policy.py -q` |
 | CT-I2-007 | Implement Effects releases/environments, one live `systemd-vps/v1` integration plus its fault-injection test implementation, scoped grants/receipts, root-owned artifact trust verification, self-restart journal recovery, and effect reconciliation. Activation must commit the signed expected-source inventory revision before the first grant/effect. Keep the boundary internal until a second real provider Adapter earns a public Seam. | CT-I2-006, CT-I2-004 | DevOps + Engineer + CSO | Kernel `effects/`; `packages/ctower-systemd-vps/`; `deploy/systemd/`; effect conformance | Wrong-target/expired/direct/provenance denials, pre-activation inventory-update proof, missing-source restore denial, crash matrix, real staging/prod digest, self-upgrade recovery, and no generalized provider Seam | `uv run pytest tests/modules/effects tests/conformance/effect-provider -q` |
 | CT-I2-008 | Implement production smoke/live-QA incident -> grant revoke -> safe containment/rollback -> exact verification -> triage-before-repair and retro linkage. | CT-I2-007 | DevOps + CSO + QA | Kernel `effects/`, `attention/`, `workflow/`; runbooks | Injected smoke/live-QA failures, rollback receipt/verification, direct-repair denial | `uv run pytest tests/acceptance/increment-2/test_incident_rollback.py -q` |
-| CT-I2-009 | Implement Projections/Analytics for cost allocation, attention baseline, approved task-flow/priority/blocker measures, stage/recovery/release/stream/local-placement KPIs, retro, and improvement evaluation. | CT-I2-001..008 | Engineer + Commander/Tech-writer review | Kernel `projections/`, `work/`; Analytics surface | Allocation=1, precision, WIP provenance, KPI watermarks, baseline/absolute targets, and retro evaluation | `uv run pytest tests/modules/projections tests/acceptance/increment-2/test_metrics.py -q` |
+| CT-I2-009 | Implement Projections/Analytics for cost allocation, attention baseline, approved task-flow/priority/blocker measures, stage/recovery/release/stream/local-placement KPIs, Project Delivery projection visualizations/trends/cost-time and cross-domain views, retro, and improvement evaluation. | CT-I2-001..008 | Engineer + Commander/Tech-writer review | Kernel `projections/`, `work/`; Analytics surface | Allocation=1, precision, WIP provenance, KPI watermarks, Project Delivery projection invalidation/restore/cross-domain proofs, baseline/absolute targets, and retro evaluation | `uv run pytest tests/modules/projections tests/acceptance/increment-2/test_metrics.py -q` |
 | CT-I2-010 | Execute the golden ticket with Commander continuity, configurable policy fields, forced Commander/runner loss, `/v1/meta/build` + `ctowerctl`, independent gates, signed root-verified systemd staging/prod effects, incident/rollback rehearsal, retro, resolve, close, and compact traceability audit. | CT-I2-001..009 | Commander accountable to terminal; Engineer author; independent Review/QA/DevOps | Whole `ctower` deployment | All I2 evidence, local component pins, failover/receipts, permanent journey; no remote/image/executable-extension claim | `ctowerctl ticket verify CT-I2-010 --require workflow-complete,evidence-current,gates-valid,staging-verified,production-verified,retro,resolved,closed` |
 
 ### Bootstrap backlog import completion

@@ -655,3 +655,39 @@ The I2 rollback text also permitted manual `bin/mux`, contradicting D19's no-byp
 a guard-path failure would make bypass most dangerous. This decision freezes only human security semantics
 and acceptance obligations; exact policy grammar, schema, storage, signature, and local/remote transport
 still wait for CT-I2-004 and any independently earned remote Seam.
+
+## D21 — Generic derived Project Delivery projection (locked 2026-07-21, operator)
+
+Tickets answer whether individual work moved; they do not by themselves answer whether a project is being
+delivered. The operator approved one generic **Project Delivery projection** over the hierarchy
+Company -> Project -> Increment/Milestone checkpoint. The software-factory table is one configured use,
+not a platform-wide delivery vocabulary. Accounting, compliance, hiring, research, and other Workflows may
+configure different checkpoint labels, exit criteria, and applicable lifecycle facts on the same projection.
+
+The Project Delivery projection is rebuildable and read-only. It derives every row from versioned
+checkpoint definitions and accepted durable ticket, Workflow, gate, evidence/artifact, blocker, decision,
+cost, and applicable release/outcome facts. Manual status edits were rejected because they would create a
+second source of truth and permit displayed confidence to diverge from proof. Ticket-count completion
+percentages were rejected because tickets differ in value, scope, criteria, and lifecycle, and splitting or
+closing tickets could game the number. The truthful progress expression is checkpoint completion plus
+explicit `proven exit criteria / declared exit criteria`, missing gates, and visible confidence/freshness.
+
+The deterministic headline precedence, highest first, is `done`, `blocked`, `released`, `verified`,
+`merged`, `ready_to_land`, `in_progress`, then `planned`. `done` requires current valid proof for every
+declared exit criterion. Otherwise an
+effective blocker prevents the next required criterion and overrides the headline while the underlying
+lifecycle maturity remains available for drill-down. Checkpoints skip merge, staging, or release states
+that their domain does not declare; skipping never weakens exit criteria. Proof invalidation, rollback, or
+incident may regress the derived row without rewriting historical facts.
+
+Relevant authoritative events reconcile affected rows immediately through the outbox. One hour without a
+relevant change publishes a freshness heartbeat that recomputes the same fold but cannot fabricate a state
+change. Overdue reconciliation is stale; missing/gapped/integrity-unknown or authorization-incomplete source
+truth is `STATE UNKNOWN`, not calm progress.
+
+Scope is deliberately split across the existing two increments. I1.7 adds only the smallest ctower
+Company/Project/checkpoint hierarchy and compact trustworthy Project Delivery projection needed for
+source-of-truth dogfood and rebuild/restore proof. I2.4 adds authorized interactive row drill-down, broader
+visualizations, trends, cost/time analytics, and a reusable cross-domain product surface. This separation
+lets ctower observe its own delivery as soon as it becomes authoritative without pulling a rich analytics
+product into the cutover or implying a third product increment.

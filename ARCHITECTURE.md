@@ -3,7 +3,7 @@
 | Field | Value |
 |---|---|
 | Status | Compact derived operator and implementer map |
-| Normative authority | [`SPEC.md`](SPEC.md), version 1.8 |
+| Normative authority | [`SPEC.md`](SPEC.md), version 1.9 |
 | Decision history | [`DECISIONS.md`](DECISIONS.md) |
 | Last reviewed | 2026-07-21 |
 
@@ -182,7 +182,7 @@ structural Work-readiness and current-proof ports.
 | Workflow | Arbitrary pinned graph readiness, legal edges, policy selection, routes, bounds, terminal decisions |
 | Runtime | Accepted jobs, leases, fencing, cursors, ACKs, checkpoints, versioned CommandGuard decisions, local execution composition |
 | Effects | Grants, releases, provider observations, receipts, incidents, rollback, reconciliation |
-| Projections | Rebuildable Home, Board, Ticket, Fleet, Analytics, watermarks, KPIs |
+| Projections | Rebuildable Home, Board, Ticket, Fleet, Analytics, contextual Project Delivery projection, watermarks, KPIs |
 
 There is no `Factory`, `TaskManager`, status service, generic provider manager, or microservice per table.
 The software factory is data interpreted by Workflow. Public Interfaces stay small; private validators,
@@ -302,6 +302,43 @@ protected atomic Commander-custody transfer can replace C0, with no gap and with
 Canonical Board lanes are `backlog`, `ready`, `in_progress`, `in_review`, `blocked`, and `complete`.
 Priority is `P0|P1|P2`. The Board derives verification from stage `activity_class`, not stage names. Merge,
 staging verification, production verification, rollback, and incident remain separate typed delivery facts.
+
+## Project Delivery projection reads facts; it never commands work
+
+The Project Delivery projection is a contextual Board/project read model over the hierarchy
+`Company -> Project -> Increment/Milestone checkpoint`. It reads accepted checkpoint definitions, tickets,
+Workflow runs, Proof/gates, blockers, evidence/artifacts, decisions, costs, and applicable release/outcome
+facts. It cannot mutate any of them or accept manual status.
+
+```text
+ authoritative ticket / Workflow / gate / outcome fact
+                         |
+                         v
+                transactional outbox
+                         |
+                 reconcile immediately
+                         v
+ +---------------- Project Delivery projection ----------------+
+ | checkpoint row + proof coverage + derivation reasons         |
+ | done > blocked > released > verified > merged                |
+ |      > ready_to_land > in_progress > planned                 |
+ | source watermark + last reconciled + confidence/freshness    |
+ +--------------------------+-----------------------------------+
+                            ^
+        no relevant fact for one hour -> freshness heartbeat
+        recompute same facts; change no lifecycle state
+```
+
+`done` requires current proof for every declared exit criterion. Otherwise an effective blocker overrides
+the headline while preserving the highest underlying lifecycle maturity for drill-down. Checkpoints skip
+merge/staging/release states they do not declare, so accounting, compliance, hiring, and software all use
+the same fold. Ticket counts never become a completion percentage.
+
+An overdue heartbeat is stale. A missing/gapped watermark, unknown integrity or proof validity, or unsafe
+authorization coverage is `STATE UNKNOWN`, not a ninth delivery state. Deleting/rebuilding the projection
+at one watermark must reproduce the same rows. I1.7 ships only the hierarchy and compact read-only rows for
+ctower dogfood; I2.4 adds interactive detail, broader visualization, trends, cost/time analytics, and the
+reusable cross-domain view.
 
 ## Durable wake, Routine, and run flow
 
@@ -454,12 +491,12 @@ I1: L0 contracts/repository gates
      -> spool-backed CLI
      -> thin Home + Board + Ticket
      -> capture -> frame -> verify -> close on final generic evaluator
-     -> ctower-project cutover/dogfood
+     -> ctower-project cutover + compact Project Delivery projection dogfood
 
 I2: deepen generic Workflow + Proof
      -> durable Runtime + CommandGuard and local process/tmux recovery
      -> activate unattended Commander on the proven always-on substrate
-     -> complete five surfaces + Effects/release
+     -> complete five surfaces + Project Delivery projection detail/analytics + Effects/release
      -> one software-factory production golden ticket
 ```
 
@@ -487,7 +524,10 @@ Before either increment is complete, applicable tests must show that:
 8. Author/self-review, missing perspectives, invalid bounds, and stale evidence fail closed.
 9. Production verification failure enters incident, revocation, containment/rollback, verification, then triage.
 10. Unknown scheduler, projection, runner, backup, telemetry, or reconciliation state is visibly degraded.
-11. Remote/image/extension fixtures cannot be presented as an exercised runtime or public Seam.
+11. The Project Delivery projection rebuilds identically, applies its eight-state precedence across
+    software and non-software checkpoints, regresses on proof invalidation, reconciles facts immediately,
+    and emits an hourly no-change heartbeat without inventing progress or ticket-count completion.
+12. Remote/image/extension fixtures cannot be presented as an exercised runtime or public Seam.
 
 Tmux is useful for same-host continuity and operator visibility. Durability comes from acknowledged records,
 committed events/outbox entries, fenced leases, replayable cursors, immutable evidence, checkpoints,
