@@ -18,8 +18,7 @@ from ctower_kernel.record.postgres import PostgresRecord
 
 __all__: tuple[str, ...] = ()
 
-HTTP_CREATED = 201
-HTTP_OK = 200
+HTTP_PENDING = 202
 HTTP_FORBIDDEN = 403
 HTTP_NOT_FOUND = 404
 HTTP_CONFLICT = 409
@@ -69,7 +68,7 @@ def _assert_transfer_outcomes(
     replay: Response,
     stale: Response,
 ) -> None:
-    assert first.status_code == HTTP_OK
+    assert first.status_code == HTTP_PENDING
     assert first.content == replay.content
     assert first.json()["durability_state"] == "durability_pending"
     assert first.json()["ticket"]["version"] == VERSION_AFTER_FIRST_TRANSFER
@@ -95,7 +94,7 @@ def test_operator_custody_can_transfer_to_commander_after_restart(tenant: Tenant
         shown = _show(restarted, tenant.operator_credential, ticket_id)
         timeline = _timeline(restarted, tenant.operator_credential, ticket_id)
 
-    assert transferred.status_code == HTTP_OK
+    assert transferred.status_code == HTTP_PENDING
     assert shown.json() == transferred.json()["ticket"]
     assert shown.json()["custodian_id"] == str(tenant.commander_id)
     assert [event["sequence"] for event in timeline.json()["events"]] == [1, 2]
@@ -198,7 +197,10 @@ def test_concurrent_transfers_append_one_ordered_event(tenant: TenantFixture) ->
     with ThreadPoolExecutor(max_workers=2) as executor:
         responses = tuple(executor.map(lambda _: attempt(), range(2)))
 
-    assert sorted(response.status_code for response in responses) == [HTTP_OK, HTTP_CONFLICT]
+    assert sorted(response.status_code for response in responses) == [
+        HTTP_PENDING,
+        HTTP_CONFLICT,
+    ]
     conflict = next(response for response in responses if response.status_code == HTTP_CONFLICT)
     assert conflict.json()["current_version"] == VERSION_AFTER_FIRST_TRANSFER
     with _client(tenant) as client:
@@ -280,7 +282,7 @@ def test_one_principal_command_key_is_reserved_before_different_aggregate_work(
             )
         )
 
-    assert sorted(response.status_code for response in responses) in ([200, 409], [201, 409])
+    assert sorted(response.status_code for response in responses) == [HTTP_PENDING, HTTP_CONFLICT]
     conflict = next(response for response in responses if response.status_code == HTTP_CONFLICT)
     assert conflict.json()["code"] == "idempotency-conflict"
     with psycopg.connect(tenant.database.admin_dsn) as connection:
@@ -345,7 +347,7 @@ def _create_ticket(tenant: TenantFixture, *, custodian_id: UUID | None = None) -
                 "Idempotency-Key": str(uuid4()),
             },
         )
-    assert response.status_code == HTTP_CREATED
+    assert response.status_code == HTTP_PENDING
     return cast(dict[str, object], response.json()["ticket"])
 
 

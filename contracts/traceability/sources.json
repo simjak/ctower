@@ -132,6 +132,31 @@
       ]
     },
     {
+      "path": "contracts/operations/durability-policy.schema.json",
+      "references": [
+        "SPEC#client-acknowledgement-and-offline-behavior",
+        "INV-36",
+        "AC-DUR-01"
+      ]
+    },
+    {
+      "path": "contracts/operations/durability-ack.schema.json",
+      "references": [
+        "SPEC#client-acknowledgement-and-offline-behavior",
+        "INV-36",
+        "AC-DUR-01",
+        "AC-DUR-02"
+      ]
+    },
+    {
+      "path": "contracts/operations/health.schema.json",
+      "references": [
+        "SPEC#operational-health-and-degraded-behavior",
+        "INV-28",
+        "AC-OPS-01"
+      ]
+    },
+    {
       "path": "contracts/http/openapi.yaml",
       "references": [
         "SPEC#canonical-event-and-command-contract",
@@ -412,6 +437,71 @@
         "SPEC#executable-authority-and-requirement-traceability",
         "SPEC#security-objectives",
         "INV-01",
+        "AC-DUR-07",
+        "AC-SEC-03"
+      ]
+    },
+    {
+      "path": "packages/ctower-kernel/migrations/0013_durability_authority.sql",
+      "references": [
+        "SPEC#client-acknowledgement-and-offline-behavior",
+        "SPEC#persistence-authority",
+        "INV-36",
+        "AC-DUR-01",
+        "AC-DUR-06",
+        "AC-DUR-07"
+      ]
+    },
+    {
+      "path": "packages/ctower-kernel/migrations/0014_durability_acceptance_finalization.sql",
+      "references": [
+        "SPEC#client-acknowledgement-and-offline-behavior",
+        "SPEC#persistence-authority",
+        "INV-36",
+        "AC-DUR-01",
+        "AC-DUR-02",
+        "AC-DUR-06"
+      ]
+    },
+    {
+      "path": "packages/ctower-kernel/migrations/0015_durability_probe_role.sql",
+      "references": [
+        "SPEC#executable-authority-and-requirement-traceability",
+        "SPEC#security-objectives",
+        "INV-01",
+        "AC-DUR-07",
+        "AC-SEC-03"
+      ]
+    },
+    {
+      "path": "packages/ctower-kernel/migrations/0016_durability_finalization_confirmation.sql",
+      "references": [
+        "SPEC#client-acknowledgement-and-offline-behavior",
+        "SPEC#persistence-authority",
+        "INV-36",
+        "AC-DUR-01",
+        "AC-DUR-02",
+        "AC-DUR-06"
+      ]
+    },
+    {
+      "path": "packages/ctower-kernel/migrations/0017_durability_probe_schema_boundary.sql",
+      "references": [
+        "SPEC#executable-authority-and-requirement-traceability",
+        "SPEC#security-objectives",
+        "INV-01",
+        "INV-28",
+        "AC-DUR-07",
+        "AC-SEC-03"
+      ]
+    },
+    {
+      "path": "packages/ctower-kernel/migrations/0018_durability_probe_search_path.sql",
+      "references": [
+        "SPEC#executable-authority-and-requirement-traceability",
+        "SPEC#security-objectives",
+        "INV-01",
+        "INV-28",
         "AC-DUR-07",
         "AC-SEC-03"
       ]

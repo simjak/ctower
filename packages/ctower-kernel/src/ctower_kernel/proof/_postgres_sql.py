@@ -8,7 +8,6 @@ from typing import cast
 from uuid import UUID
 
 import psycopg
-from psycopg.rows import dict_row
 
 from ctower_kernel.proof import (
     ChangeCandidate,
@@ -29,7 +28,7 @@ from ctower_kernel.record.events import (
     EventOrigin,
     ProofChangedPayload,
 )
-from ctower_kernel.record.transaction import RecordTransaction
+from ctower_kernel.record.transaction import RecordTransaction, authority_connection
 from ctower_kernel.telemetry import TelemetryContext
 
 __all__: tuple[str, ...] = ()
@@ -47,7 +46,7 @@ def mutate_proof(
     now: datetime,
     telemetry: TelemetryContext,
 ) -> ProofReceipt | RecordProblem:
-    with psycopg.connect(dsn, row_factory=dict_row) as connection:
+    with authority_connection(dsn) as connection:
         connection.execute("SET ROLE ctower_svc")
         transaction = RecordTransaction(connection)
         reserved = _reserve_proof_outcome(
@@ -55,6 +54,16 @@ def mutate_proof(
         )
         if reserved is not None:
             return reserved
+        pending = transaction.require_durable_subjects(
+            actor.tenant_id,
+            actor.principal_id,
+            mutation.client_command_id,
+            request_digest,
+            (("ticket", mutation.ticket_id),),
+            now=now,
+        )
+        if pending is not None:
+            return pending
         if not _lock_ticket(connection, actor, mutation.ticket_id):
             problem = _problem(mutation, "tenant-scope-denied", 404, "Ticket not found")
             return _refuse(transaction, actor, mutation, request_digest, problem, now)

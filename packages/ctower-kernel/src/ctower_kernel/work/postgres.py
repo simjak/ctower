@@ -8,6 +8,7 @@ from uuid import UUID
 import psycopg
 
 from ctower_kernel.record import Actor, RecordProblem
+from ctower_kernel.record.transaction import recover_ambiguous_commit
 from ctower_kernel.telemetry import TelemetryContext
 from ctower_kernel.work import AssignmentInterval, WorkCommand, WorkReadiness, WorkReceipt
 from ctower_kernel.work._postgres_sql import assignments as _assignments
@@ -33,13 +34,15 @@ class PostgresWork:
         now: datetime,
         telemetry: TelemetryContext,
     ) -> WorkReceipt | RecordProblem:
-        return _execute(
-            self._dsn,
-            actor,
-            command,
-            request_digest=request_digest,
-            now=now,
-            telemetry=telemetry,
+        return recover_ambiguous_commit(
+            lambda: _execute(
+                self._dsn,
+                actor,
+                command,
+                request_digest=request_digest,
+                now=now,
+                telemetry=telemetry,
+            )
         )
 
     def assignments(

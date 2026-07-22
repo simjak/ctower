@@ -1,55 +1,185 @@
 {
-  "schema": "ctower.migrations/v1",
+  "schema": "ctower.migrations/v2",
   "migrations": [
     {
       "path": "0001_roles.sql",
       "sha256": "sha256:4dffe7d62d7ade9508a306f9567af824d378472bcf776d7f95e7626177af9b22",
-      "scope": "cluster"
+      "scope": "cluster",
+      "minimum_service_version": "0.0.0",
+      "maximum_service_version": "0.0.0",
+      "forward_test": "pytest:tests/acceptance/increment-1/test_bootstrap.py::test_success_exact_replay_changed_body_second_use_and_token_non_persistence",
+      "rollback_or_forward_compensation": "Restore the exact pre-migration cluster backup or append a reviewed forward compensation; never edit this accepted migration.",
+      "backup_checkpoint": "Before a nonempty installation applies this migration, capture and verify the cluster roles and memberships; the empty PostgreSQL 17 forward fixture records not-applicable."
     },
     {
       "path": "0002_ticket_slice.sql",
-      "sha256": "sha256:fabcb823a836d8d5f29dab2a597331db10e1b30b90e34f599801778d95045fab"
+      "sha256": "sha256:fabcb823a836d8d5f29dab2a597331db10e1b30b90e34f599801778d95045fab",
+      "minimum_service_version": "0.0.0",
+      "maximum_service_version": "0.0.0",
+      "forward_test": "pytest:tests/acceptance/increment-1/test_bootstrap.py::test_success_exact_replay_changed_body_second_use_and_token_non_persistence",
+      "rollback_or_forward_compensation": "Restore the exact pre-migration database backup or append a reviewed forward compensation; never edit this accepted migration.",
+      "backup_checkpoint": "Before applying to a nonempty installation, capture and verify a database backup; the empty PostgreSQL 17 forward fixture records not-applicable."
     },
     {
       "path": "0003_privileges.sql",
-      "sha256": "sha256:aa27bd19f3d30b5c677455467790a239b8d869d891f0a9abe1420c60c69c7a80"
+      "sha256": "sha256:aa27bd19f3d30b5c677455467790a239b8d869d891f0a9abe1420c60c69c7a80",
+      "minimum_service_version": "0.0.0",
+      "maximum_service_version": "0.0.0",
+      "forward_test": "pytest:tests/acceptance/increment-1/test_custody.py::test_service_role_cannot_update_or_delete_immutable_record_rows",
+      "rollback_or_forward_compensation": "Restore the exact pre-migration privilege snapshot or append a reviewed forward compensation; never edit this accepted migration.",
+      "backup_checkpoint": "Before applying to a nonempty installation, capture and verify role grants and ownership; the empty PostgreSQL 17 forward fixture records not-applicable."
     },
     {
       "path": "0004_proof_workflow.sql",
-      "sha256": "sha256:007ac51f6fc1adb7700071e9525b8ca3482869ade6821c9db0332eef3b342f88"
+      "sha256": "sha256:007ac51f6fc1adb7700071e9525b8ca3482869ade6821c9db0332eef3b342f88",
+      "minimum_service_version": "0.0.0",
+      "maximum_service_version": "0.0.0",
+      "forward_test": "pytest:tests/acceptance/increment-1/test_workflow_integrity.py::test_verdict_commit_sequence_controls_current_proof",
+      "rollback_or_forward_compensation": "Restore the exact pre-migration database backup or append a reviewed forward compensation; never edit this accepted migration.",
+      "backup_checkpoint": "Before applying to a nonempty installation, capture and verify a database backup; the empty PostgreSQL 17 forward fixture records not-applicable."
     },
     {
       "path": "0005_proof_verdict_sequence.sql",
-      "sha256": "sha256:28b119bc49747e46c6e5088b8882f90d448e8647acf92cad3663a13c577eccf6"
+      "sha256": "sha256:28b119bc49747e46c6e5088b8882f90d448e8647acf92cad3663a13c577eccf6",
+      "minimum_service_version": "0.0.0",
+      "maximum_service_version": "0.0.0",
+      "forward_test": "pytest:tests/acceptance/increment-1/test_workflow_integrity.py::test_corrective_migration_backfills_committed_verdict_sequences",
+      "rollback_or_forward_compensation": "Restore the exact pre-migration database backup or append a reviewed forward compensation that preserves accepted verdict facts; never edit this accepted migration.",
+      "backup_checkpoint": "Before applying to a nonempty installation, capture and verify event and verdict counts plus a database backup."
     },
     {
       "path": "0006_narrow_head_update_privileges.sql",
-      "sha256": "sha256:eec9c751c3a73132601b984eed36f6d432ac0a84c0e112180a9dbbc20294458e"
+      "sha256": "sha256:eec9c751c3a73132601b984eed36f6d432ac0a84c0e112180a9dbbc20294458e",
+      "minimum_service_version": "0.0.0",
+      "maximum_service_version": "0.0.0",
+      "forward_test": "pytest:tests/acceptance/increment-1/test_custody.py::test_service_role_cannot_update_or_delete_immutable_record_rows",
+      "rollback_or_forward_compensation": "Restore the exact pre-migration privilege snapshot or append a reviewed forward compensation; never edit this accepted migration.",
+      "backup_checkpoint": "Before applying to a nonempty installation, capture and verify role grants and ownership; the empty PostgreSQL 17 forward fixture records not-applicable."
     },
     {
       "path": "0007_task_management_facts.sql",
-      "sha256": "sha256:3845d31069ef1223dea2418f45969115c070f860c82285d343d25cef4c964a24"
+      "sha256": "sha256:3845d31069ef1223dea2418f45969115c070f860c82285d343d25cef4c964a24",
+      "minimum_service_version": "0.0.0",
+      "maximum_service_version": "0.0.0",
+      "forward_test": "pytest:tests/acceptance/increment-1/test_task_workflow.py::test_work_priority_assignment_replay_and_orthogonal_custody",
+      "rollback_or_forward_compensation": "Restore the exact pre-migration database backup or append a reviewed forward compensation that preserves accepted task facts; never edit this accepted migration.",
+      "backup_checkpoint": "Before applying to a nonempty installation, capture and verify task/event counts plus a database backup."
     },
     {
       "path": "0008_board_projection.sql",
-      "sha256": "sha256:c1f89ab4b707014b6dff988d4e3b420ba4cf3a4366871e521044ccdeeae786ad"
+      "sha256": "sha256:c1f89ab4b707014b6dff988d4e3b420ba4cf3a4366871e521044ccdeeae786ad",
+      "minimum_service_version": "0.0.0",
+      "maximum_service_version": "0.0.0",
+      "forward_test": "pytest:tests/acceptance/increment-1/test_task_projection.py::test_board_watermarks_staleness_and_rebuild_equality",
+      "rollback_or_forward_compensation": "Rebuild disposable projection rows after restoring the exact pre-migration database backup or append a reviewed forward compensation; never edit this accepted migration.",
+      "backup_checkpoint": "Before applying to a nonempty installation, capture and verify authority event counts plus a database backup; projection rows are disposable."
     },
     {
       "path": "0009_transactional_record_positions.sql",
-      "sha256": "sha256:1e3edac8ca8d1e0395c04b2c759eafce65e7ae80796015ab57febc1055a35973"
+      "sha256": "sha256:1e3edac8ca8d1e0395c04b2c759eafce65e7ae80796015ab57febc1055a35973",
+      "minimum_service_version": "0.0.0",
+      "maximum_service_version": "0.0.0",
+      "forward_test": "pytest:tests/acceptance/increment-1/test_task_projection.py::test_rolled_back_outbox_append_retries_without_poisoning_board",
+      "rollback_or_forward_compensation": "Restore the exact pre-migration database backup or append a reviewed forward compensation that preserves accepted event order; never edit this accepted migration.",
+      "backup_checkpoint": "Before applying to a nonempty installation, capture and verify event counts, hashes, and a database backup."
     },
     {
       "path": "0010_custody_episode_intervals.sql",
-      "sha256": "sha256:32e624b20e2d8e22f5bbb8ee782a3839cc90afde2516111d37dbc862d19fb5c6"
+      "sha256": "sha256:32e624b20e2d8e22f5bbb8ee782a3839cc90afde2516111d37dbc862d19fb5c6",
+      "minimum_service_version": "0.0.0",
+      "maximum_service_version": "0.0.0",
+      "forward_test": "pytest:tests/acceptance/increment-1/test_custody.py::test_atomic_reassign_exact_replay_and_stale_from",
+      "rollback_or_forward_compensation": "Restore the exact pre-migration database backup or append a reviewed forward compensation that preserves custody intervals; never edit this accepted migration.",
+      "backup_checkpoint": "Before applying to a nonempty installation, capture and verify ticket/custody counts plus a database backup."
     },
     {
       "path": "0011_persisted_command_refusals.sql",
-      "sha256": "sha256:6668579af027b1b5a630fed0cdafe8744fead6b620d34787e8c56c14e413937b"
+      "sha256": "sha256:6668579af027b1b5a630fed0cdafe8744fead6b620d34787e8c56c14e413937b",
+      "minimum_service_version": "0.0.0",
+      "maximum_service_version": "0.0.0",
+      "forward_test": "pytest:tests/acceptance/increment-1/test_custody.py::test_one_principal_command_key_is_reserved_before_different_aggregate_work",
+      "rollback_or_forward_compensation": "Restore the exact pre-migration database backup or append a reviewed forward compensation that preserves accepted command results; never edit this accepted migration.",
+      "backup_checkpoint": "Before applying to a nonempty installation, capture and verify command-result/event counts plus a database backup."
     },
     {
       "path": "0012_projection_runtime_role.sql",
       "sha256": "sha256:ff76636094f2e9a3153735d7e6bce0e348ed7cd515b7c4cea932ec50fddbbcf3",
-      "scope": "cluster"
+      "scope": "cluster",
+      "minimum_service_version": "0.0.0",
+      "maximum_service_version": "0.0.0",
+      "forward_test": "pytest:tests/acceptance/increment-1/test_projection_role_adoption.py::test_unsafe_preexisting_projection_role_is_quarantined_before_reuse",
+      "rollback_or_forward_compensation": "Restore the exact pre-migration cluster role snapshot or append a reviewed forward compensation; never edit this accepted migration.",
+      "backup_checkpoint": "Before a nonempty installation applies this migration, capture and verify cluster roles and memberships; the empty PostgreSQL 17 forward fixture records not-applicable."
+    },
+    {
+      "path": "0013_durability_authority.sql",
+      "sha256": "sha256:84680285d62b13a24126797e9dcefff2cc039a85a772696cac87cd1398284108",
+      "minimum_service_version": "0.0.0",
+      "maximum_service_version": "0.0.0",
+      "forward_test": "pytest:tests/acceptance/increment-1/test_durability_authority.py::test_named_standby_authority_is_replay_safe_and_fail_closed",
+      "rollback_or_forward_compensation": "Compatibility is pending_only until reviewed cutover. A pre-migration backup may be restored only into an isolated recovery copy used to construct forward compensation, or into live service before any later acceptance or reactivation. After cutover or any later acceptance, roll back only to a durability/finalization-aware build or append reviewed forward compensation preserving every immutable command, event, acknowledgement, and finalization fact. Keep policy pending_only until verified subject-head reconstruction before reactivation; never edit this accepted migration.",
+      "backup_checkpoint": "Before cutover_rpo0 activation, capture and verify a database backup plus command-result, event, outbox, and durability-subject-head counts; the current pending_only development fixture records no activation.",
+      "recovery_contract": {
+        "pre_migration_backup": {
+          "isolated_recovery": true,
+          "live_restore_before_later_acceptance_or_reactivation": true
+        },
+        "after_cutover_or_later_acceptance": {
+          "requires_durability_aware_build_or_forward_compensation": true,
+          "preserve_immutable_facts": [
+            "commands",
+            "events",
+            "acknowledgements",
+            "finalizations"
+          ]
+        }
+      }
+    },
+    {
+      "path": "0014_durability_acceptance_finalization.sql",
+      "sha256": "sha256:26b92942b6223b85463005d62d045089558375edb2d7c8f523bbee2f5b69bf68",
+      "minimum_service_version": "0.0.0",
+      "maximum_service_version": "0.0.0",
+      "forward_test": "pytest:tests/acceptance/increment-1/test_durability_authority.py::test_named_standby_authority_is_replay_safe_and_fail_closed",
+      "rollback_or_forward_compensation": "Keep policy pending_only when finalization behavior is unavailable. After cutover, roll back only to a finalization-aware durability build or append a reviewed forward compensation; never delete acknowledgement or finalization evidence.",
+      "backup_checkpoint": "Before cutover_rpo0 activation, capture and verify a database backup plus acknowledgement/finalization counts; the current pending_only development fixture records no activation."
+    },
+    {
+      "path": "0015_durability_probe_role.sql",
+      "sha256": "sha256:504bc658fe30b79b15fd076b7d44aabaf185d8e3df7da06ec416fb4af538bd1b",
+      "scope": "cluster",
+      "minimum_service_version": "0.0.0",
+      "maximum_service_version": "0.0.0",
+      "forward_test": "pytest:tests/acceptance/increment-1/test_database_role_privileges.py::test_fresh_database_narrows_head_update_privileges",
+      "rollback_or_forward_compensation": "Revoke ctower_durability_probe from ctower_admin only after replacing the live-evidence functions with an equally narrow reviewed probe; never grant pg_read_all_stats to ctower_svc or runtime.",
+      "backup_checkpoint": "Before applying, capture and verify cluster role memberships and the two durability probe function owners; this additive no-login role contains no data."
+    },
+    {
+      "path": "0016_durability_finalization_confirmation.sql",
+      "sha256": "sha256:43e4095a044d089d8f788f88afdc01c2c0bd46887683ac4bb7a2038f7a67d574",
+      "minimum_service_version": "0.0.0",
+      "maximum_service_version": "0.0.0",
+      "forward_test": "pytest:tests/acceptance/increment-1/test_durability_authority.py::test_named_standby_authority_is_replay_safe_and_fail_closed",
+      "rollback_or_forward_compensation": "Keep policy pending_only if exact off-host finalization confirmation is unavailable. After cutover, use a finalization-aware build or append reviewed forward compensation preserving every command, event, acknowledgement, finalization, and confirmation fact; never weaken complete receipt binding.",
+      "backup_checkpoint": "Before cutover_rpo0 activation, capture and verify acknowledgement, finalization, and confirmation counts plus the complete-receipt constraints; the current pending_only development fixture records no activation."
+    },
+    {
+      "path": "0017_durability_probe_schema_boundary.sql",
+      "sha256": "sha256:bcf5db235d723a312f081183c0138b0dad56ee3640133f7faa4e401553f5d6af",
+      "minimum_service_version": "0.0.0",
+      "maximum_service_version": "0.0.0",
+      "forward_test": "pytest:tests/acceptance/increment-1/test_durability_probe_role_adoption.py::test_unsafe_preexisting_probe_role_is_quarantined_before_reuse",
+      "rollback_or_forward_compensation": "Keep the probe NOLOGIN with exact memberships and no schema CREATE. Replace its two fixed-search-path functions before changing ownership or EXECUTE grants; never restore a runtime assumption or function-replacement path.",
+      "backup_checkpoint": "Before applying, capture the complete probe role graph/options, settings, sessions, owned objects, direct grants, function ACLs, and public-schema privileges."
+    },
+    {
+      "path": "0018_durability_probe_search_path.sql",
+      "sha256": "sha256:bccc3fcccd4987c3698feb5ced1172a47365ea45ac8d0d657c8b4f495c121fae",
+      "minimum_service_version": "0.0.0",
+      "maximum_service_version": "0.0.0",
+      "forward_test": "pytest:tests/acceptance/increment-1/test_durability_probe_role_adoption.py::test_temporary_probe_inputs_cannot_shadow_catalog_evidence",
+      "rollback_or_forward_compensation": "Keep both SECURITY DEFINER durability probes on the exact search path pg_catalog, pg_temp with pg_temp last. If compatibility requires another path, append a reviewed forward compensation that preserves catalog-first probe inputs; never restore implicit temporary-schema precedence.",
+      "backup_checkpoint": "Before applying, capture and verify both durability probe definitions, owners, ACLs, and proconfig values; this additive function-configuration change contains no data."
     }
   ]
 }

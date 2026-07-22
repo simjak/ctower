@@ -20,7 +20,7 @@ def test_unsafe_preexisting_projection_role_is_quarantined_before_reuse(
 ) -> None:
     escape_role = f"ctower_projection_escape_{database.name.removeprefix('ctower_test_')[:12]}"
     provision_database_roles(database.admin_dsn)
-    apply_migrations(database.migrator_dsn)
+    apply_migrations(database.migrator_dsn, role_admin_dsn=database.admin_dsn)
     active_login: psycopg.Connection[Any] | None = None
     other_login: psycopg.Connection[Any] | None = None
     try:

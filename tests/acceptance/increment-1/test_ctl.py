@@ -34,7 +34,7 @@ def test_bootstrap_reads_capability_from_stdin_and_prints_pending(
     database: DatabaseFixture,
 ) -> None:
     provision_database_roles(database.admin_dsn)
-    apply_migrations(database.migrator_dsn)
+    apply_migrations(database.migrator_dsn, role_admin_dsn=database.admin_dsn)
     capability = secrets.token_urlsafe(32)
     provision_bootstrap(
         database.migrator_dsn,

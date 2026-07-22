@@ -11,7 +11,7 @@ import psycopg
 from psycopg.rows import dict_row
 
 from ctower_kernel.record import Actor, RecordProblem
-from ctower_kernel.record.transaction import RecordTransaction
+from ctower_kernel.record.transaction import RecordTransaction, authority_connection
 from ctower_kernel.telemetry import TelemetryContext
 from ctower_kernel.work import (
     AddRelation,
@@ -48,16 +48,18 @@ def execute_work(
 ) -> WorkReceipt | RecordProblem:
     """Reserve replay authority, serialize Ticket/Work, and append one typed event."""
 
-    with psycopg.connect(dsn, row_factory=dict_row) as connection:
+    with authority_connection(dsn) as connection:
         connection.execute("SET ROLE ctower_svc")
         transaction = RecordTransaction(connection)
-        existing = transaction.reserve(
-            actor.principal_id, command.client_command_id, request_digest
+        reserved = _reserve_work_outcome(
+            transaction,
+            actor,
+            command,
+            request_digest=request_digest,
+            now=now,
         )
-        if isinstance(existing, RecordProblem):
-            return existing
-        if existing is not None:
-            return _receipt(existing)
+        if reserved is not None:
+            return reserved
         ticket = _lock_ticket(connection, actor, command)
         if ticket is None:
             return _refuse(
@@ -99,7 +101,45 @@ def execute_work(
             request_digest=request_digest,
             now=now,
             telemetry=telemetry,
+            subjects=_touched_subjects(command),
         )
+
+
+def _reserve_work_outcome(
+    transaction: RecordTransaction,
+    actor: Actor,
+    command: WorkCommand,
+    *,
+    request_digest: bytes,
+    now: datetime,
+) -> WorkReceipt | RecordProblem | None:
+    existing = transaction.reserve(actor.principal_id, command.client_command_id, request_digest)
+    if isinstance(existing, RecordProblem):
+        return existing
+    if existing is not None:
+        return _receipt(existing)
+    return transaction.require_durable_subjects(
+        actor.tenant_id,
+        actor.principal_id,
+        command.client_command_id,
+        request_digest,
+        _prerequisite_subjects(command),
+        now=now,
+    )
+
+
+def _prerequisite_subjects(command: WorkCommand) -> tuple[tuple[str, UUID], ...]:
+    ticket_ids = (
+        {command.ticket_id, command.target_ticket_id}
+        if isinstance(command, AddRelation)
+        else {command.ticket_id}
+    )
+    ordered_ids = sorted(ticket_ids, key=lambda item: item.int)
+    return tuple(("ticket", ticket_id) for ticket_id in ordered_ids)
+
+
+def _touched_subjects(command: WorkCommand) -> tuple[tuple[str, UUID], ...]:
+    return (*_prerequisite_subjects(command), ("work", command.ticket_id))
 
 
 def _lock_ticket(

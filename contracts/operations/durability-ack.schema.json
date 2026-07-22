@@ -1,0 +1,39 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://ctower.dev/contracts/operations/durability-ack.schema.json",
+  "title": "Off-host durability acknowledgement",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_id",
+    "tenant_id",
+    "principal_id",
+    "client_command_id",
+    "request_sha256",
+    "command_root",
+    "acceptance_position",
+    "policy_ref",
+    "standby_application_name",
+    "standby_identity",
+    "standby_system_identifier",
+    "standby_timeline_id",
+    "standby_replay_lsn",
+    "acknowledged_at"
+  ],
+  "properties": {
+    "schema_id": {"const": "ctower.durability-ack/v1"},
+    "tenant_id": {"type": "string", "format": "uuid"},
+    "principal_id": {"type": "string", "format": "uuid"},
+    "client_command_id": {"type": "string", "format": "uuid"},
+    "request_sha256": {"type": "string", "pattern": "^sha256:[0-9a-f]{64}$"},
+    "command_root": {"type": "string", "pattern": "^sha256:[0-9a-f]{64}$"},
+    "acceptance_position": {"type": "integer", "minimum": 1},
+    "policy_ref": {"type": "string", "pattern": "^[a-z][a-z0-9._-]*@[1-9][0-9]*$"},
+    "standby_application_name": {"const": "ctower_i1_ack"},
+    "standby_identity": {"type": "string", "minLength": 1, "maxLength": 128},
+    "standby_system_identifier": {"type": "string", "pattern": "^[0-9]+$"},
+    "standby_timeline_id": {"type": "integer", "minimum": 1},
+    "standby_replay_lsn": {"type": "string", "pattern": "^[0-9A-F]+/[0-9A-F]+$"},
+    "acknowledged_at": {"type": "string", "format": "date-time"}
+  }
+}

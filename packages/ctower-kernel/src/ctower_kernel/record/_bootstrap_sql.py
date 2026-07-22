@@ -12,17 +12,16 @@ from typing import cast
 from uuid import UUID
 
 import psycopg
-from psycopg.rows import dict_row
 from psycopg.types.json import Jsonb
 
 from ctower_kernel.record import BootstrapCommand, BootstrapReceipt, RecordProblem
-from ctower_kernel.record._event_store import append_event, enqueue_event
 from ctower_kernel.record.events import (
     BootstrapCreatedPayload,
     EventEnvelope,
     EventKind,
     EventOrigin,
 )
+from ctower_kernel.record.transaction import RecordTransaction, authority_connection
 from ctower_kernel.telemetry import TelemetryContext
 
 __all__: tuple[str, ...] = ()
@@ -49,7 +48,7 @@ def bootstrap_transaction(
     now: datetime,
     telemetry: TelemetryContext,
 ) -> BootstrapReceipt | RecordProblem:
-    with psycopg.connect(dsn, row_factory=dict_row) as connection:
+    with authority_connection(dsn) as connection:
         connection.execute("SET TRANSACTION ISOLATION LEVEL SERIALIZABLE")
         connection.execute("SET ROLE ctower_svc")
         capability = connection.execute(
@@ -62,6 +61,7 @@ def bootstrap_transaction(
             """
         ).fetchone()
         refusal = _bootstrap_refusal(
+            connection,
             capability,
             command,
             capability_digest=capability_digest,
@@ -102,6 +102,7 @@ def bootstrap_problem(
 
 
 def _bootstrap_refusal(
+    connection: psycopg.Connection[dict[str, object]],
     capability: dict[str, object] | None,
     command: BootstrapCommand,
     *,
@@ -119,6 +120,7 @@ def _bootstrap_refusal(
     consumed_command = cast(UUID | None, capability["consumed_command_id"])
     if consumed_command is not None:
         return _consumed_outcome(
+            connection,
             capability,
             command,
             consumed_command=consumed_command,
@@ -131,6 +133,7 @@ def _bootstrap_refusal(
 
 
 def _consumed_outcome(
+    connection: psycopg.Connection[dict[str, object]],
     capability: dict[str, object],
     command: BootstrapCommand,
     *,
@@ -142,7 +145,26 @@ def _consumed_outcome(
     consumed_request = bytes(cast(bytes, capability["consumed_request_sha256"]))
     if not hmac.compare_digest(consumed_request, request_digest):
         return bootstrap_problem(command, "idempotency-conflict", 409, "Idempotency conflict")
-    return _receipt_from_payload(cast(dict[str, object], capability["receipt_body"]))
+    payload = cast(dict[str, object], capability["receipt_body"])
+    principal_id = _bootstrap_principal(connection, payload, consumed_command)
+    return _receipt_from_payload(payload, principal_id=principal_id)
+
+
+def _bootstrap_principal(
+    connection: psycopg.Connection[dict[str, object]],
+    payload: dict[str, object],
+    command_id: UUID,
+) -> UUID:
+    row = connection.execute(
+        """
+        SELECT actor_principal_id FROM events
+        WHERE tenant_id = %s AND client_command_id = %s AND kind = %s
+        """,
+        (UUID(str(payload["tenant_id"])), command_id, EventKind.BOOTSTRAP_CREATED),
+    ).fetchone()
+    if row is None:
+        raise RuntimeError("consumed bootstrap receipt has no installer principal")
+    return cast(UUID, row["actor_principal_id"])
 
 
 def _new_bootstrap_ids(now: datetime) -> _BootstrapIds:
@@ -203,9 +225,14 @@ def _commit_bootstrap(
         tenant_id=identifiers.tenant,
     )
     response_body = _bootstrap_response(command, identifiers)
+    transaction = RecordTransaction(connection)
+    reserved = transaction.reserve(identifiers.installer, command.client_command_id, request_digest)
+    if reserved is not None:
+        raise RuntimeError("empty bootstrap authority unexpectedly contains the command key")
     _insert_authority(connection, command, identifiers=identifiers, now=now)
     _insert_event_and_receipt(
         connection,
+        transaction,
         command,
         identifiers=identifiers,
         request_digest=request_digest,
@@ -214,7 +241,7 @@ def _commit_bootstrap(
         now=now,
         telemetry=telemetry,
     )
-    return _receipt_from_payload(response_body)
+    return _receipt_from_payload(response_body, principal_id=identifiers.installer)
 
 
 def _principal_rows(
@@ -281,6 +308,7 @@ def _insert_authority(
 
 def _insert_event_and_receipt(
     connection: psycopg.Connection[dict[str, object]],
+    transaction: RecordTransaction,
     command: BootstrapCommand,
     *,
     identifiers: _BootstrapIds,
@@ -290,25 +318,17 @@ def _insert_event_and_receipt(
     now: datetime,
     telemetry: TelemetryContext,
 ) -> None:
-    append_event(connection, event)
-    _insert_bootstrap_result(
-        connection,
-        command,
-        identifiers=identifiers,
-        request_digest=request_digest,
-        response_body=response_body,
-        now=now,
-    )
-    enqueue_event(
-        connection,
-        identifiers.outbox,
+    transaction.commit(
         event,
-        telemetry.bind(
+        outbox_id=identifiers.outbox,
+        response_body=response_body,
+        status_code=201,
+        telemetry=telemetry.bind(
             tenant_id=str(identifiers.tenant),
             actor_id=str(identifiers.installer),
             command_id=str(command.client_command_id),
         ),
-        now,
+        now=now,
     )
     connection.execute(
         """
@@ -321,41 +341,14 @@ def _insert_event_and_receipt(
     )
 
 
-def _insert_bootstrap_result(
-    connection: psycopg.Connection[dict[str, object]],
-    command: BootstrapCommand,
-    *,
-    identifiers: _BootstrapIds,
-    request_digest: bytes,
-    response_body: dict[str, object],
-    now: datetime,
-) -> None:
-    connection.execute(
-        """
-        INSERT INTO command_results (
-            tenant_id, principal_id, client_command_id, request_sha256, status_code,
-            response_body, event_ids, created_at
-        ) VALUES (%s, %s, %s, %s, 201, %s, %s, %s)
-        """,
-        (
-            identifiers.tenant,
-            identifiers.installer,
-            command.client_command_id,
-            request_digest,
-            Jsonb(response_body),
-            [identifiers.event],
-            now,
-        ),
-    )
-
-
-def _receipt_from_payload(payload: dict[str, object]) -> BootstrapReceipt:
+def _receipt_from_payload(payload: dict[str, object], *, principal_id: UUID) -> BootstrapReceipt:
     event_ids = cast(list[str], payload["event_ids"])
     return BootstrapReceipt(
         command_id=UUID(str(payload["command_id"])),
         commander_id=UUID(str(payload["commander_id"])),
         event_ids=tuple(UUID(item) for item in event_ids),
         operator_id=UUID(str(payload["operator_id"])),
+        principal_id=principal_id,
         receipt_digest=str(payload["receipt_digest"]),
         tenant_id=UUID(str(payload["tenant_id"])),
     )

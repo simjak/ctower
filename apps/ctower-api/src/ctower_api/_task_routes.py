@@ -14,6 +14,7 @@ from ctower_api._http_support import problem_response as _problem_response
 from ctower_api._http_support import telemetry_context as _telemetry
 from ctower_api._http_support import uuid_value as _uuid
 from ctower_api._http_support import validation_problem as _validation_problem
+from ctower_api._mutation_response import mutation_response as _mutation_response
 from ctower_api.telemetry import TelemetryRecorder
 from ctower_client.models import (
     AdmitIntent,
@@ -65,18 +66,22 @@ def install_task_routes(
 ) -> None:
     """Install CP2 operations without a writable status or Board mutation."""
 
-    _install_priority(app, access, work, recorder)
-    _install_assignment(app, access, work, recorder)
+    _install_priority(app, access, record, work, recorder)
+    _install_assignment(app, access, record, work, recorder)
     _install_assignment_list(app, access, work, recorder)
-    _install_intent(app, access, work, recorder)
-    _install_relation(app, access, work, recorder)
+    _install_intent(app, access, record, work, recorder)
+    _install_relation(app, access, record, work, recorder)
     _install_audit(app, access, record, recorder)
     if workflow is not None:
-        _install_start(app, access, workflow, recorder)
+        _install_start(app, access, record, workflow, recorder)
 
 
 def _install_start(
-    app: FastAPI, access: Access, workflow: Workflow, recorder: TelemetryRecorder
+    app: FastAPI,
+    access: Access,
+    record: Record,
+    workflow: Workflow,
+    recorder: TelemetryRecorder,
 ) -> None:
     @app.post("/v1/tickets/{ticket_id}/workflow/start")
     async def start(ticket_id: str, request: Request) -> JSONResponse:
@@ -100,11 +105,11 @@ def _install_start(
             ),
             telemetry=telemetry,
         )
-        return _workflow_response(outcome)
+        return _workflow_response(record, outcome, actor, command_id, telemetry)
 
 
 def _install_priority(
-    app: FastAPI, access: Access, work: Work, recorder: TelemetryRecorder
+    app: FastAPI, access: Access, record: Record, work: Work, recorder: TelemetryRecorder
 ) -> None:
     @app.post("/v1/tickets/{ticket_id}/priority")
     async def priority(ticket_id: str, request: Request) -> JSONResponse:
@@ -113,6 +118,7 @@ def _install_priority(
             return parsed
         actor, ticket, command_id, payload, telemetry = parsed
         return _work_response(
+            record,
             work.execute(
                 actor,
                 ChangePriority(
@@ -124,12 +130,15 @@ def _install_priority(
                     payload.urgent_evidence_ref,
                 ),
                 telemetry=telemetry,
-            )
+            ),
+            actor,
+            command_id,
+            telemetry,
         )
 
 
 def _install_assignment(
-    app: FastAPI, access: Access, work: Work, recorder: TelemetryRecorder
+    app: FastAPI, access: Access, record: Record, work: Work, recorder: TelemetryRecorder
 ) -> None:
     @app.post("/v1/tickets/{ticket_id}/assignments")
     async def assignment(ticket_id: str, request: Request) -> JSONResponse:
@@ -138,6 +147,7 @@ def _install_assignment(
             return parsed
         actor, ticket, command_id, payload, telemetry = parsed
         return _work_response(
+            record,
             work.execute(
                 actor,
                 ChangeAssignment(
@@ -150,7 +160,10 @@ def _install_assignment(
                     payload.scope_ref,
                 ),
                 telemetry=telemetry,
-            )
+            ),
+            actor,
+            command_id,
+            telemetry,
         )
 
 
@@ -177,7 +190,13 @@ def _install_assignment_list(
         return JSONResponse(content=boundary.model_dump(mode="json"))
 
 
-def _install_intent(app: FastAPI, access: Access, work: Work, recorder: TelemetryRecorder) -> None:
+def _install_intent(
+    app: FastAPI,
+    access: Access,
+    record: Record,
+    work: Work,
+    recorder: TelemetryRecorder,
+) -> None:
     @app.post("/v1/tickets/{ticket_id}/intents")
     async def intent(ticket_id: str, request: Request) -> JSONResponse:
         parsed = await _parse(access, recorder, request, ticket_id, TicketIntentRequest)
@@ -185,7 +204,13 @@ def _install_intent(app: FastAPI, access: Access, work: Work, recorder: Telemetr
             return parsed
         actor, ticket, command_id, payload, telemetry = parsed
         command = _intent(command_id, ticket, payload)
-        return _work_response(work.execute(actor, command, telemetry=telemetry))
+        return _work_response(
+            record,
+            work.execute(actor, command, telemetry=telemetry),
+            actor,
+            command_id,
+            telemetry,
+        )
 
 
 def _intent(command_id: UUID, ticket_id: UUID, request: TicketIntentRequest) -> WorkCommand:
@@ -217,7 +242,7 @@ def _intent(command_id: UUID, ticket_id: UUID, request: TicketIntentRequest) -> 
 
 
 def _install_relation(
-    app: FastAPI, access: Access, work: Work, recorder: TelemetryRecorder
+    app: FastAPI, access: Access, record: Record, work: Work, recorder: TelemetryRecorder
 ) -> None:
     @app.post("/v1/tickets/{ticket_id}/relations")
     async def relation(ticket_id: str, request: Request) -> JSONResponse:
@@ -226,6 +251,7 @@ def _install_relation(
             return parsed
         actor, ticket, command_id, payload, telemetry = parsed
         return _work_response(
+            record,
             work.execute(
                 actor,
                 AddRelation(
@@ -237,7 +263,10 @@ def _install_relation(
                     payload.target_ticket_id,
                 ),
                 telemetry=telemetry,
-            )
+            ),
+            actor,
+            command_id,
+            telemetry,
         )
 
 
@@ -299,18 +328,42 @@ def _read_actor(
     return actor, ticket, telemetry
 
 
-def _work_response(outcome: WorkReceipt | RecordProblem) -> JSONResponse:
-    if isinstance(outcome, RecordProblem):
-        return _problem_response(outcome)
-    boundary = HttpWorkReceipt.model_validate_json(_encoded(outcome.response_payload()))
-    return JSONResponse(content=boundary.model_dump(mode="json"))
+def _work_response(
+    record: Record,
+    outcome: WorkReceipt | RecordProblem,
+    actor: Actor,
+    command_id: UUID,
+    telemetry: TelemetryContext,
+) -> JSONResponse:
+    return _mutation_response(
+        record,
+        outcome,
+        tenant_id=actor.tenant_id,
+        principal_id=actor.principal_id,
+        command_id=command_id,
+        telemetry=telemetry,
+        boundary_model=HttpWorkReceipt,
+        accepted_status=200,
+    )
 
 
-def _workflow_response(outcome: WorkflowReceipt | RecordProblem) -> JSONResponse:
-    if isinstance(outcome, RecordProblem):
-        return _problem_response(outcome)
-    boundary = HttpWorkflowReceipt.model_validate_json(_encoded(outcome.response_payload()))
-    return JSONResponse(content=boundary.model_dump(mode="json"))
+def _workflow_response(
+    record: Record,
+    outcome: WorkflowReceipt | RecordProblem,
+    actor: Actor,
+    command_id: UUID,
+    telemetry: TelemetryContext,
+) -> JSONResponse:
+    return _mutation_response(
+        record,
+        outcome,
+        tenant_id=actor.tenant_id,
+        principal_id=actor.principal_id,
+        command_id=command_id,
+        telemetry=telemetry,
+        boundary_model=HttpWorkflowReceipt,
+        accepted_status=200,
+    )
 
 
 def _audit_response(outcome: KernelAuditPage | RecordProblem) -> JSONResponse:

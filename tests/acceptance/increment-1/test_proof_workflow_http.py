@@ -25,8 +25,7 @@ from ctower_kernel.workflow import Workflow, WorkflowGraph
 from ctower_kernel.workflow.postgres import PostgresWorkflow
 
 __all__: tuple[str, ...] = ()
-HTTP_OK = 200
-HTTP_CREATED = 201
+HTTP_PENDING = 202
 HTTP_UNAUTHORIZED = 401
 HTTP_FORBIDDEN = 403
 HTTP_NOT_FOUND = 404
@@ -115,7 +114,7 @@ def test_transition_replay_is_stable_and_changed_reuse_is_refused(
             headers=_command_headers(tenant.commander_credential, command_id, ticket_id),
         )
 
-    assert first.status_code == HTTP_OK
+    assert first.status_code == HTTP_PENDING
     assert first.json() == replay.json()
     assert first.json()["stage"] == "frame"
     assert first.json()["version"] == FIRST_TRANSITION_VERSION
@@ -155,7 +154,7 @@ def test_undeclared_transition_is_refused_without_advancing_state(
     assert refused.status_code == HTTP_CONFLICT
     assert refused.json()["code"] == "workflow-transition-not-declared"
     assert refused.json()["current_version"] == 1
-    assert accepted.status_code == HTTP_OK
+    assert accepted.status_code == HTTP_PENDING
     assert accepted.json()["stage"] == "frame"
     assert accepted.json()["version"] == FIRST_TRANSITION_VERSION
 
@@ -175,11 +174,11 @@ def test_current_independent_proof_is_required_before_atomic_close(
         close_trace = _close_current_proof(client, tenant, ticket_id)
 
     assert (proof_trace.frame.status_code, proof_trace.frame.json()["stage"]) == (
-        HTTP_OK,
+        HTTP_PENDING,
         "frame",
     )
     assert (proof_trace.frozen.status_code, proof_trace.frozen.json()["version"]) == (
-        HTTP_OK,
+        HTTP_PENDING,
         1,
     )
     assert proof_trace.verification.json()["activity_class"] == "verification"
@@ -188,7 +187,7 @@ def test_current_independent_proof_is_required_before_atomic_close(
         "proof-evidence-digest-mismatch",
     )
     assert (proof_trace.evidence.status_code, proof_trace.evidence.json()["version"]) == (
-        HTTP_OK,
+        HTTP_PENDING,
         2,
     )
     assert (proof_trace.self_review.status_code, proof_trace.self_review.json()["code"]) == (
@@ -196,7 +195,7 @@ def test_current_independent_proof_is_required_before_atomic_close(
         "proof-self-review-refused",
     )
     assert (proof_trace.verdict.status_code, proof_trace.verdict.json()["satisfied"]) == (
-        HTTP_OK,
+        HTTP_PENDING,
         True,
     )
     assert (close_trace.premature.status_code, close_trace.premature.json()["code"]) == (
@@ -204,11 +203,11 @@ def test_current_independent_proof_is_required_before_atomic_close(
         "workflow-not-terminal",
     )
     assert (close_trace.terminal.status_code, close_trace.terminal.json()["stage"]) == (
-        HTTP_OK,
+        HTTP_PENDING,
         "close",
     )
     assert (close_trace.closed.status_code, close_trace.closed.json()["lifecycle_facts"]) == (
-        HTTP_OK,
+        HTTP_PENDING,
         ["resolved", "closed"],
     )
 
@@ -395,7 +394,7 @@ def _create_ticket(client: TestClient, tenant: TenantFixture) -> UUID:
         },
         headers=_command_headers(tenant.commander_credential, command_id),
     )
-    assert response.status_code == HTTP_CREATED
+    assert response.status_code == HTTP_PENDING
     return UUID(cast(str, response.json()["ticket"]["ticket_id"]))
 
 
@@ -433,7 +432,7 @@ def _start_and_admit(client: TestClient, tenant: TenantFixture, ticket_id: UUID)
         "intents",
         {"intent": {"kind": "admit", "expected_version": 1, "reason": "Ready"}},
     )
-    assert (started.status_code, admitted.status_code) == (HTTP_OK, HTTP_OK)
+    assert (started.status_code, admitted.status_code) == (HTTP_PENDING, HTTP_PENDING)
 
 
 def _file_digest(relative: str) -> str:

@@ -125,6 +125,17 @@ CP2_HEAD_UPDATE_COLUMNS = {
     },
 }
 
+DURABILITY_HEAD_UPDATE_COLUMNS = {
+    "durability_subject_heads": {
+        "tenant_id": False,
+        "subject_kind": False,
+        "subject_id": False,
+        "principal_id": True,
+        "client_command_id": True,
+        "updated_at": True,
+    }
+}
+
 APPEND_ONLY_TABLES = (
     "proof_criteria",
     "proof_objects",
@@ -137,6 +148,10 @@ APPEND_ONLY_TABLES = (
     "admission_facts",
     "blocker_facts",
     "ticket_relations",
+    "durability_acknowledgements",
+    "durability_acceptance_finalizations",
+    "durability_acceptance_confirmations",
+    "durability_target_observations",
 )
 
 
@@ -216,8 +231,14 @@ def test_upgrade_database_corrects_existing_head_privileges(
             "0009_transactional_record_positions.sql",
             "0010_custody_episode_intervals.sql",
             "0011_persisted_command_refusals.sql",
+            "0013_durability_authority.sql",
+            "0014_durability_acceptance_finalization.sql",
+            "0016_durability_finalization_confirmation.sql",
+            "0017_durability_probe_schema_boundary.sql",
+            "0018_durability_probe_search_path.sql",
         ):
             connection.execute((MIGRATIONS / name).read_text(encoding="utf-8"))
+    provision_database_roles(database.admin_dsn)
 
     tenant = create_second_tenant(database)
     ticket_id = _exercise_public_proof_workflow_commands(tenant)
@@ -384,7 +405,12 @@ def _workflow_revision(dsn: str, ticket_id: UUID) -> int:
 
 def _assert_runtime_role_privileges(dsn: str) -> None:
     with psycopg.connect(dsn, row_factory=dict_row) as connection:
-        for table, expected_columns in {**HEAD_UPDATE_COLUMNS, **CP2_HEAD_UPDATE_COLUMNS}.items():
+        head_tables = {
+            **HEAD_UPDATE_COLUMNS,
+            **CP2_HEAD_UPDATE_COLUMNS,
+            **DURABILITY_HEAD_UPDATE_COLUMNS,
+        }
+        for table, expected_columns in head_tables.items():
             columns = connection.execute(
                 """
                 SELECT column_name
@@ -410,6 +436,51 @@ def _assert_runtime_role_privileges(dsn: str) -> None:
             assert _table_privilege(connection, table, "INSERT") is True
             assert _table_privilege(connection, table, "UPDATE") is False
             assert _table_privilege(connection, table, "DELETE") is False
+
+        for function in (
+            "durability_primary_live_evidence()",
+            "durability_standby_live_evidence()",
+        ):
+            privilege = connection.execute(
+                "SELECT has_function_privilege('ctower_svc', %s, 'EXECUTE') AS value",
+                (f"public.{function}",),
+            ).fetchone()
+            assert privilege is not None
+            assert privilege["value"] is True
+        for broad_role in ("pg_monitor", "pg_read_all_stats"):
+            membership = connection.execute(
+                "SELECT pg_has_role('ctower_svc', %s, 'MEMBER') AS value",
+                (broad_role,),
+            ).fetchone()
+            assert membership is not None
+            assert membership["value"] is False
+        probe = connection.execute(
+            """
+            SELECT role.rolcanlogin,
+                pg_has_role('ctower_durability_probe', 'pg_read_all_stats', 'MEMBER')
+                    AS reads_stats
+            FROM pg_roles AS role WHERE role.rolname = 'ctower_durability_probe'
+            """
+        ).fetchone()
+        assert probe is not None
+        assert probe == {"rolcanlogin": False, "reads_stats": True}
+        functions = connection.execute(
+            """
+            SELECT procedure.proname, owner.rolname AS owner, procedure.prosecdef,
+                procedure.proconfig
+            FROM pg_proc AS procedure
+            JOIN pg_roles AS owner ON owner.oid = procedure.proowner
+            WHERE procedure.proname IN (
+                'durability_primary_live_evidence',
+                'durability_standby_live_evidence'
+            )
+            ORDER BY procedure.proname
+            """
+        ).fetchall()
+        assert [(row["owner"], row["prosecdef"], row["proconfig"]) for row in functions] == [
+            ("ctower_durability_probe", True, ["search_path=pg_catalog, pg_temp"]),
+            ("ctower_durability_probe", True, ["search_path=pg_catalog, pg_temp"]),
+        ]
 
 
 def _assert_legacy_heads_have_table_wide_update(dsn: str) -> None:

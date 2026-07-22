@@ -20,7 +20,7 @@ from ctower_kernel.telemetry import TelemetryContext as InternalTelemetryContext
 
 __all__: tuple[str, ...] = ()
 
-HTTP_CREATED = 201
+HTTP_PENDING = 202
 HTTP_UNAUTHORIZED = 401
 TELEMETRY_SIGNAL_COUNT = 3
 
@@ -79,7 +79,7 @@ def test_context_reaches_outbox_and_golden_signals_are_redacted(
             title="golden-secret-title",
         )
 
-    assert response.status_code == HTTP_CREATED
+    assert response.status_code == HTTP_PENDING
     assert response.headers["X-Ctower-Telemetry-Health"] == "healthy"
     payload = response.json()
     event_id = UUID(payload["event_ids"][0])
@@ -102,6 +102,7 @@ def test_context_reaches_outbox_and_golden_signals_are_redacted(
     assert {str(record["name"]) for record in captures} == {
         "access.authenticate",
         "record.create_ticket",
+        "record.reconcile_durability",
         "work.create_ticket",
     }
     assert {str(record["signal"]) for record in captures} == {"span", "log", "metric"}
@@ -143,7 +144,7 @@ def test_exporter_failure_preserves_commit_and_reports_degraded_health(
             title="Exporter failure cannot roll back",
         )
 
-    assert response.status_code == HTTP_CREATED
+    assert response.status_code == HTTP_PENDING
     assert response.headers["X-Ctower-Telemetry-Health"] == "degraded"
     ticket_id = UUID(response.json()["ticket"]["ticket_id"])
     with psycopg.connect(tenant.database.admin_dsn) as connection:

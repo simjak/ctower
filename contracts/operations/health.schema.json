@@ -1,0 +1,32 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://ctower.dev/contracts/operations/health.schema.json",
+  "title": "Control health snapshot",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema_id", "status", "observed_at", "availability", "completeness", "integrity"],
+  "properties": {
+    "schema_id": {"const": "ctower.health/v1"},
+    "status": {"$ref": "#/$defs/status"},
+    "observed_at": {"type": "string", "format": "date-time"},
+    "availability": {"$ref": "#/$defs/dimension"},
+    "completeness": {"$ref": "#/$defs/dimension"},
+    "integrity": {"$ref": "#/$defs/dimension"}
+  },
+  "$defs": {
+    "status": {"type": "string", "enum": ["HEALTHY", "DEGRADED", "STATE_UNKNOWN"]},
+    "dimension": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["status", "watermark", "threshold_seconds", "observed_at", "owner", "reason"],
+      "properties": {
+        "status": {"$ref": "#/$defs/status"},
+        "watermark": {"type": ["integer", "null"], "minimum": 0},
+        "threshold_seconds": {"type": "integer", "minimum": 0},
+        "observed_at": {"type": "string", "format": "date-time"},
+        "owner": {"type": "string", "minLength": 1, "maxLength": 128},
+        "reason": {"type": "string", "minLength": 1, "maxLength": 500}
+      }
+    }
+  }
+}

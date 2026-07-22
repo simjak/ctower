@@ -31,7 +31,7 @@ from ctower_kernel.record.postgres import (
 
 ROOT = Path(__file__).parents[3]
 LOCAL_CLIENT = ("127.0.0.1", 51000)
-HTTP_CREATED = 201
+HTTP_PENDING = 202
 HTTP_UNAUTHORIZED = 401
 HTTP_FORBIDDEN = 403
 HTTP_CONFLICT = 409
@@ -55,7 +55,7 @@ def bootstrap(database: DatabaseFixture) -> BootstrapContext:
     """Migrate and provision one runtime-only bootstrap capability."""
 
     provision_database_roles(database.admin_dsn)
-    apply_migrations(database.migrator_dsn)
+    apply_migrations(database.migrator_dsn, role_admin_dsn=database.admin_dsn)
     token = secrets.token_urlsafe(32)
     provision_bootstrap(
         database.migrator_dsn,
@@ -82,8 +82,9 @@ def test_success_exact_replay_changed_body_second_use_and_token_non_persistence(
         )
         second = _bootstrap(client, bootstrap.token, uuid4(), body)
 
-    assert first.status_code == HTTP_CREATED
-    assert replay.status_code == HTTP_CREATED
+    assert first.status_code == HTTP_PENDING
+    assert replay.status_code == HTTP_PENDING
+    assert first.headers["Retry-After"] == "1"
     assert replay.content == first.content
     assert replay.json()["event_ids"] == first.json()["event_ids"]
     assert changed.status_code == HTTP_CONFLICT
@@ -96,7 +97,7 @@ def test_success_exact_replay_changed_body_second_use_and_token_non_persistence(
 
 def test_expiry_and_wrong_origin_have_zero_mutation(database: DatabaseFixture) -> None:
     provision_database_roles(database.admin_dsn)
-    apply_migrations(database.migrator_dsn)
+    apply_migrations(database.migrator_dsn, role_admin_dsn=database.admin_dsn)
     token = secrets.token_urlsafe(32)
     provision_bootstrap(
         database.migrator_dsn,
@@ -137,8 +138,8 @@ def test_concurrent_attempts_create_exactly_one_authority(bootstrap: BootstrapCo
     with ThreadPoolExecutor(max_workers=8) as executor:
         responses = tuple(executor.map(invoke, (uuid4() for _ in range(12))))
 
-    assert sum(status == HTTP_CREATED for status, _ in responses) == 1
-    assert all(status in {HTTP_CREATED, HTTP_CONFLICT} for status, _ in responses)
+    assert sum(status == HTTP_PENDING for status, _ in responses) == 1
+    assert all(status in {HTTP_PENDING, HTTP_CONFLICT} for status, _ in responses)
     assert {payload.get("code") for status, payload in responses if status == HTTP_CONFLICT} == {
         "bootstrap-consumed"
     }
@@ -225,7 +226,7 @@ def test_forced_outbox_failure_rolls_back_every_authority_row(
         connection.execute("DROP FUNCTION reject_bootstrap_outbox()")
     with TestClient(app, client=LOCAL_CLIENT) as client:
         retry = _bootstrap(client, bootstrap.token, command_id, body)
-    assert retry.status_code == HTTP_CREATED
+    assert retry.status_code == HTTP_PENDING
     _assert_one_complete_bootstrap(bootstrap.database.admin_dsn)
 
 

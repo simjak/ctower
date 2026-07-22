@@ -8,10 +8,9 @@ from typing import Protocol, cast
 from uuid import UUID
 
 import psycopg
-from psycopg.rows import dict_row
 
 from ctower_kernel.record import RecordProblem
-from ctower_kernel.record.transaction import RecordTransaction
+from ctower_kernel.record.transaction import RecordTransaction, authority_connection
 from ctower_kernel.telemetry import TelemetryContext
 from ctower_kernel.workflow import (
     ActivityClass,
@@ -64,16 +63,18 @@ def advance_workflow(
 ) -> WorkflowReceipt | RecordProblem:
     """Reserve the command key before evaluating one graph edge."""
 
-    with psycopg.connect(dsn, row_factory=dict_row) as connection:
+    with authority_connection(dsn) as connection:
         connection.execute("SET ROLE ctower_svc")
         transaction = RecordTransaction(connection)
-        existing = transaction.reserve(
-            actor.principal_id, mutation.client_command_id, request_digest
+        reserved = _reserve_workflow_outcome(
+            transaction,
+            actor,
+            mutation,
+            request_digest=request_digest,
+            now=now,
         )
-        if isinstance(existing, RecordProblem):
-            return existing
-        if existing is not None:
-            return _receipt_from_payload(existing)
+        if reserved is not None:
+            return reserved
         if not _lock_open_ticket(connection, actor, mutation.ticket_id):
             return _refuse(
                 transaction,
@@ -116,6 +117,29 @@ def advance_workflow(
             now=now,
             telemetry=telemetry,
         )
+
+
+def _reserve_workflow_outcome(
+    transaction: RecordTransaction,
+    actor: WorkflowActor,
+    mutation: WorkflowMutation,
+    *,
+    request_digest: bytes,
+    now: datetime,
+) -> WorkflowReceipt | RecordProblem | None:
+    existing = transaction.reserve(actor.principal_id, mutation.client_command_id, request_digest)
+    if isinstance(existing, RecordProblem):
+        return existing
+    if existing is not None:
+        return _receipt_from_payload(existing)
+    return transaction.require_durable_subjects(
+        actor.tenant_id,
+        actor.principal_id,
+        mutation.client_command_id,
+        request_digest,
+        (("ticket", mutation.ticket_id),),
+        now=now,
+    )
 
 
 def _evaluate_transition(
