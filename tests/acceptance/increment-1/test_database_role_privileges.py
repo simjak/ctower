@@ -150,6 +150,7 @@ APPEND_ONLY_TABLES = (
     "ticket_relations",
     "durability_acknowledgements",
     "durability_acceptance_finalizations",
+    "durability_acceptance_confirmations",
     "durability_target_observations",
 )
 
@@ -232,8 +233,11 @@ def test_upgrade_database_corrects_existing_head_privileges(
             "0011_persisted_command_refusals.sql",
             "0013_durability_authority.sql",
             "0014_durability_acceptance_finalization.sql",
+            "0016_durability_finalization_confirmation.sql",
+            "0017_durability_probe_schema_boundary.sql",
         ):
             connection.execute((MIGRATIONS / name).read_text(encoding="utf-8"))
+    provision_database_roles(database.admin_dsn)
 
     tenant = create_second_tenant(database)
     ticket_id = _exercise_public_proof_workflow_commands(tenant)

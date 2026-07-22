@@ -11,6 +11,21 @@ from typing import cast
 ROOT = Path(__file__).parents[3]
 MIGRATIONS = ROOT / "packages/ctower-kernel/migrations"
 LIVE_EVIDENCE_FUNCTIONS = 2
+_DURABILITY_RECOVERY_CONTRACT = {
+    "pre_migration_backup": {
+        "isolated_recovery": True,
+        "live_restore_before_later_acceptance_or_reactivation": True,
+    },
+    "after_cutover_or_later_acceptance": {
+        "requires_durability_aware_build_or_forward_compensation": True,
+        "preserve_immutable_facts": [
+            "commands",
+            "events",
+            "acknowledgements",
+            "finalizations",
+        ],
+    },
+}
 
 
 def test_migration_manifest_is_ordered_and_checksum_exact() -> None:
@@ -36,6 +51,8 @@ def test_migration_manifest_is_ordered_and_checksum_exact() -> None:
         "0013_durability_authority.sql",
         "0014_durability_acceptance_finalization.sql",
         "0015_durability_probe_role.sql",
+        "0016_durability_finalization_confirmation.sql",
+        "0017_durability_probe_schema_boundary.sql",
     ]
     for entry in entries:
         digest = hashlib.sha256((MIGRATIONS / entry["path"]).read_bytes()).hexdigest()
@@ -54,6 +71,16 @@ def test_every_migration_declares_compatibility_forward_compensation_and_backup(
                 "maximum_service_version",
                 "minimum_service_version",
                 "path",
+                "rollback_or_forward_compensation",
+                "sha256",
+            },
+            {
+                "backup_checkpoint",
+                "forward_test",
+                "maximum_service_version",
+                "minimum_service_version",
+                "path",
+                "recovery_contract",
                 "rollback_or_forward_compensation",
                 "sha256",
             },
@@ -84,14 +111,12 @@ def test_every_migration_declares_compatibility_forward_compensation_and_backup(
         assert cast(str, entry["backup_checkpoint"]).strip()
 
 
-def test_durability_migration_declares_pending_only_writer_compatibility() -> None:
+def test_durability_migration_recovery_separates_backup_restore_from_live_rollback() -> None:
     manifest = json.loads((MIGRATIONS / "manifest.json").read_text(encoding="utf-8"))
     entries = {entry["path"]: entry for entry in manifest["migrations"]}
-    declaration = cast(dict[str, str], entries["0013_durability_authority.sql"])
+    declaration = cast(dict[str, object], entries["0013_durability_authority.sql"])
 
-    assert "pending_only" in declaration["rollback_or_forward_compensation"]
-    assert "no old writer after cutover" in declaration["rollback_or_forward_compensation"]
-    assert "subject-head reconstruction" in declaration["rollback_or_forward_compensation"]
+    assert declaration["recovery_contract"] == _DURABILITY_RECOVERY_CONTRACT
 
 
 def test_service_and_projection_roles_are_least_privilege() -> None:
@@ -199,6 +224,34 @@ def test_durability_probe_role_is_no_login_and_never_granted_to_runtime() -> Non
     assert "GRANT ctower_durability_probe TO ctower_admin" in migration
     assert "REVOKE ctower_durability_probe FROM ctower_svc, ctower_runtime" in migration
     assert "GRANT pg_read_all_stats TO ctower_svc" not in migration
+
+
+def test_finalization_confirmation_is_immutable_and_complete_receipt_bound() -> None:
+    migration = (MIGRATIONS / "0016_durability_finalization_confirmation.sql").read_text(
+        encoding="utf-8"
+    )
+
+    assert "durability_acknowledgements_complete_receipt_unique" in migration
+    assert "durability_finalizations_complete_receipt_unique" in migration
+    assert "durability_finalizations_complete_acknowledgement" in migration
+    assert "CREATE TABLE durability_acceptance_confirmations" in migration
+    assert "REFERENCES durability_acceptance_finalizations" in migration
+    assert "durability_acceptance_confirmations_immutable" in migration
+    assert "GRANT INSERT, SELECT ON durability_acceptance_confirmations TO ctower_svc" in migration
+    assert "GRANT UPDATE" not in migration
+    assert "GRANT DELETE" not in migration
+
+
+def test_probe_schema_boundary_keeps_only_narrow_function_execution() -> None:
+    migration = (MIGRATIONS / "0017_durability_probe_schema_boundary.sql").read_text(
+        encoding="utf-8"
+    )
+
+    assert migration.count("REVOKE ALL ON FUNCTION") == LIVE_EVIDENCE_FUNCTIONS
+    assert migration.count("GRANT EXECUTE ON FUNCTION") == LIVE_EVIDENCE_FUNCTIONS
+    assert "FROM PUBLIC" in migration
+    assert "TO ctower_svc" in migration
+    assert "GRANT CREATE" not in migration
 
 
 def test_development_composition_uses_postgres_17_without_a_password_value() -> None:

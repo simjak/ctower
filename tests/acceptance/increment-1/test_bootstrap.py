@@ -55,7 +55,7 @@ def bootstrap(database: DatabaseFixture) -> BootstrapContext:
     """Migrate and provision one runtime-only bootstrap capability."""
 
     provision_database_roles(database.admin_dsn)
-    apply_migrations(database.migrator_dsn)
+    apply_migrations(database.migrator_dsn, role_admin_dsn=database.admin_dsn)
     token = secrets.token_urlsafe(32)
     provision_bootstrap(
         database.migrator_dsn,
@@ -97,7 +97,7 @@ def test_success_exact_replay_changed_body_second_use_and_token_non_persistence(
 
 def test_expiry_and_wrong_origin_have_zero_mutation(database: DatabaseFixture) -> None:
     provision_database_roles(database.admin_dsn)
-    apply_migrations(database.migrator_dsn)
+    apply_migrations(database.migrator_dsn, role_admin_dsn=database.admin_dsn)
     token = secrets.token_urlsafe(32)
     provision_bootstrap(
         database.migrator_dsn,

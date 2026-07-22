@@ -5,7 +5,7 @@
 | Status | Compact derived operator and implementer map |
 | Normative authority | [`SPEC.md`](SPEC.md), version 1.9 |
 | Decision history | [`DECISIONS.md`](DECISIONS.md) |
-| Last reviewed | 2026-07-21 |
+| Last reviewed | 2026-07-22 |
 
 This is the sole terminal-safe derived architecture atlas. It explains the canonical specification; it
 does not add requirements, authorize work, or define exact schemas, operations, DDL, package values, or
@@ -93,8 +93,11 @@ events, links, positions, transactional outbox writes, canonical command roots, 
 and typed pending/accepted reconciliation. Work, Proof, and Workflow own their authority above Record;
 Projections replaces only disposable rows/cursors through a distinct role. Every normal/default write
 remains `durability_pending`; a verifier-owned two-PostgreSQL fixture proves the named-standby ACK path,
-but there is no configured production off-host target, outbox/projection worker, backup/restore proof, web
-surface, or production deployment.
+including complete receipt-bound finalization, standby-read confirmation, promotion ambiguity, and typed
+degradation for unreadable live evidence. Its no-login evidence role is quarantined before adoption and
+retains neither schema-CREATE nor role-assumption paths after its two fixed probes exist. There is no
+configured production off-host target, outbox/projection worker, backup/restore proof, web surface, or
+production deployment.
 
 ### I1: co-located trust spine
 

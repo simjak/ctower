@@ -18,6 +18,21 @@ from ctower_kernel.record import (
     RecordProblem,
 )
 from ctower_kernel.record._command_root import CommandSnapshot, command_snapshot, digest
+from ctower_kernel.record._durability_confirmation_sql import (
+    acceptance_finalization as _finalization,
+)
+from ctower_kernel.record._durability_confirmation_sql import (
+    confirmation as _confirmation,
+)
+from ctower_kernel.record._durability_confirmation_sql import (
+    current_copy_is_named_standby as _current_copy_is_named_standby,
+)
+from ctower_kernel.record._durability_confirmation_sql import (
+    insert_finalization as _insert_finalization,
+)
+from ctower_kernel.record._durability_confirmation_sql import (
+    store_confirmation as _store_confirmation,
+)
 from ctower_kernel.record._durability_evidence import Finalization as _Finalization
 from ctower_kernel.record._durability_evidence import Policy as _Policy
 from ctower_kernel.record._durability_evidence import Receipt as _Receipt
@@ -58,23 +73,69 @@ def reconcile_durability(
         finalization = (
             None if isinstance(snapshot, RecordProblem) else _finalization(primary, snapshot)
         )
+        receipt = None if isinstance(snapshot, RecordProblem) else _receipt(primary, snapshot)
+        confirmation = (
+            None if isinstance(snapshot, RecordProblem) else _confirmation(primary, snapshot)
+        )
+        named_copy = (
+            False
+            if isinstance(snapshot, RecordProblem) or receipt is None
+            else _current_copy_is_named_standby(primary, receipt)
+        )
+        policy = None if isinstance(snapshot, RecordProblem) else _policy(primary)
     if isinstance(snapshot, RecordProblem):
         outcome: DurabilityDecision | RecordProblem = snapshot
     elif finalization is not None:
-        outcome = _finalized_outcome(snapshot, finalization)
+        outcome = _finalized_outcome(
+            primary_dsn,
+            standby_dsn,
+            snapshot,
+            receipt,
+            finalization,
+            confirmation,
+            named_copy=named_copy,
+            policy=cast(_Policy, policy),
+            now=now,
+        )
     else:
         outcome = _reconcile_unfinalized(primary_dsn, standby_dsn, snapshot, now=now)
     return outcome
 
 
 def _finalized_outcome(
-    snapshot: CommandSnapshot, finalization: _Finalization
+    primary_dsn: str,
+    standby_dsn: str | None,
+    snapshot: CommandSnapshot,
+    receipt: _Receipt | None,
+    finalization: _Finalization,
+    confirmation: _Finalization | None,
+    *,
+    named_copy: bool,
+    policy: _Policy,
+    now: datetime,
 ) -> DurabilityDecision | RecordProblem:
-    if _finalization_matches_snapshot(finalization, snapshot):
+    if receipt is None or not _finalization_matches_snapshot(finalization, snapshot):
+        return _finalization_integrity_problem(snapshot)
+    if not _finalization_matches_receipt(finalization, receipt):
+        return _finalization_integrity_problem(snapshot)
+    if confirmation == finalization or named_copy:
         return _accepted(snapshot, finalization)
+    if standby_dsn is not None and _confirm_replayed_finalization(
+        primary_dsn,
+        standby_dsn,
+        snapshot,
+        receipt,
+        finalization,
+        now=now,
+    ):
+        return _accepted(snapshot, finalization)
+    return _pending(snapshot, policy, "commit_ambiguous")
+
+
+def _finalization_integrity_problem(snapshot: CommandSnapshot) -> RecordProblem:
     return RecordProblem(
         "durability-integrity",
-        "Finalized acceptance evidence does not match the immutable command root.",
+        "Finalized acceptance evidence does not match the command and complete receipt.",
         503,
         "Durability integrity unavailable",
         snapshot.command_id,
@@ -105,9 +166,11 @@ def _reconcile_unfinalized(
         return receipt
     finalization = _finalize_acceptance(
         primary_dsn,
+        standby_dsn,
         snapshot,
         receipt,
         policy,
+        proof,
         now=now,
     )
     if finalization is None:
@@ -392,86 +455,110 @@ def _receipt(
 
 def _finalize_acceptance(
     primary_dsn: str,
+    standby_dsn: str,
     snapshot: CommandSnapshot,
     receipt: _Receipt,
     policy: _Policy,
+    identity: _StandbyIdentity,
     *,
     now: datetime,
 ) -> _Finalization | None:
     """Commit finalization with remote-apply and resolve ambiguity by exact lookup."""
 
-    try:
-        with _service_connection(primary_dsn) as primary:
-            _set_remote_apply(primary, policy)
-            primary.execute(
-                """
-                INSERT INTO durability_acceptance_finalizations (
-                    tenant_id, principal_id, client_command_id, request_sha256,
-                    command_root, acceptance_position, policy_ref,
-                    standby_application_name, standby_identity,
-                    standby_system_identifier, standby_timeline_id,
-                    standby_replay_lsn, finalized_at
-                ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
-                ON CONFLICT (tenant_id, principal_id, client_command_id) DO NOTHING
-                """,
-                (
-                    snapshot.tenant_id,
-                    snapshot.principal_id,
-                    snapshot.command_id,
-                    receipt.request_digest,
-                    receipt.command_root,
-                    receipt.acceptance_position,
-                    receipt.policy_ref,
-                    receipt.standby_application_name,
-                    receipt.standby_identity,
-                    receipt.standby_system_identifier,
-                    receipt.standby_timeline_id,
-                    receipt.standby_replay_lsn,
-                    now,
-                ),
-            )
-    except psycopg.Error:
-        pass
-    try:
-        with _service_connection(primary_dsn) as primary:
-            finalization = _finalization(primary, snapshot)
-    except psycopg.Error:
-        return None
-    if finalization is None or not _finalization_matches_receipt(finalization, receipt):
+    _commit_finalization(primary_dsn, snapshot, receipt, policy, now=now)
+    finalization = _exact_replayed_finalization(standby_dsn, snapshot, receipt, policy, identity)
+    if finalization is None or not _store_confirmation(primary_dsn, finalization, now=now):
         return None
     return finalization
 
 
-def _finalization(
-    connection: psycopg.Connection[dict[str, object]], snapshot: CommandSnapshot
+def _commit_finalization(
+    primary_dsn: str,
+    snapshot: CommandSnapshot,
+    receipt: _Receipt,
+    policy: _Policy,
+    *,
+    now: datetime,
+) -> None:
+    try:
+        with _service_connection(primary_dsn) as primary:
+            _set_remote_apply(primary, policy)
+            _insert_finalization(primary, snapshot, receipt, now=now)
+    except psycopg.Error:
+        pass
+
+
+def _exact_replayed_finalization(
+    standby_dsn: str,
+    snapshot: CommandSnapshot,
+    receipt: _Receipt,
+    policy: _Policy,
+    identity: _StandbyIdentity,
 ) -> _Finalization | None:
-    row = connection.execute(
-        """
-        SELECT tenant_id, principal_id, client_command_id, request_sha256,
-            command_root, acceptance_position, policy_ref, standby_application_name,
-            standby_identity, standby_system_identifier, standby_timeline_id,
-            standby_replay_lsn::text AS standby_replay_lsn
-        FROM durability_acceptance_finalizations
-        WHERE tenant_id = %s AND principal_id = %s AND client_command_id = %s
-        """,
-        (snapshot.tenant_id, snapshot.principal_id, snapshot.command_id),
-    ).fetchone()
-    if row is None:
+    replay = _replayed_finalization(standby_dsn, snapshot)
+    if replay is None:
         return None
-    return _Finalization(
-        cast(UUID, row["tenant_id"]),
-        cast(UUID, row["principal_id"]),
-        cast(UUID, row["client_command_id"]),
-        bytes(cast(bytes, row["request_sha256"])),
-        bytes(cast(bytes, row["command_root"])),
-        int(cast(int, row["acceptance_position"])),
-        str(row["policy_ref"]),
-        str(row["standby_application_name"]),
-        str(row["standby_identity"]),
-        int(str(row["standby_system_identifier"])),
-        int(cast(int, row["standby_timeline_id"])),
-        str(row["standby_replay_lsn"]),
+    replay_identity, replay_receipt, finalization = replay
+    matches = all(
+        (
+            replay_receipt is not None,
+            finalization is not None,
+            _same_standby(replay_identity, identity),
+            replay_receipt is not None
+            and _receipt_matches(replay_receipt, snapshot, policy, identity),
+            finalization is not None and _finalization_matches_snapshot(finalization, snapshot),
+            finalization is not None
+            and replay_receipt is not None
+            and _finalization_matches_receipt(finalization, replay_receipt),
+            finalization is not None and _finalization_matches_receipt(finalization, receipt),
+        )
     )
+    if not matches:
+        return None
+    return cast(_Finalization, finalization)
+
+
+def _replayed_finalization(
+    standby_dsn: str, snapshot: CommandSnapshot
+) -> tuple[_StandbyIdentity, _Receipt | None, _Finalization | None] | None:
+    try:
+        with psycopg.connect(standby_dsn, row_factory=dict_row) as standby:
+            identity = _standby_identity(standby)
+            standby.execute("SET ROLE ctower_svc")
+            return identity, _receipt(standby, snapshot), _finalization(standby, snapshot)
+    except (psycopg.Error, ValueError):
+        return None
+
+
+def _confirm_replayed_finalization(
+    primary_dsn: str,
+    standby_dsn: str,
+    snapshot: CommandSnapshot,
+    receipt: _Receipt,
+    finalization: _Finalization,
+    *,
+    now: datetime,
+) -> bool:
+    replay = _replayed_finalization(standby_dsn, snapshot)
+    if replay is None:
+        return False
+    identity, replay_receipt, replay_finalization = replay
+    receipt_policy = _Policy(
+        receipt.policy_ref,
+        "cutover_rpo0",
+        receipt.standby_application_name,
+        receipt.standby_identity,
+        100,
+        1,
+    )
+    if (
+        replay_receipt is None
+        or replay_finalization != finalization
+        or not _receipt_matches(replay_receipt, snapshot, receipt_policy, identity)
+        or not _finalization_matches_receipt(replay_finalization, receipt)
+    ):
+        return False
+    return _store_confirmation(primary_dsn, replay_finalization, now=now)
 
 
 def _accepted(snapshot: CommandSnapshot, finalization: _Finalization) -> DurabilityDecision:

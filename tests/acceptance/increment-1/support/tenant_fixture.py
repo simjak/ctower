@@ -50,7 +50,7 @@ def create_first_tenant(database: DatabaseFixture) -> TenantFixture:
     """Execute bootstrap, then bind runtime fixture credentials by digest."""
 
     provision_database_roles(database.admin_dsn)
-    apply_migrations(database.migrator_dsn)
+    apply_migrations(database.migrator_dsn, role_admin_dsn=database.admin_dsn)
     bootstrap_token = secrets.token_urlsafe(32)
     provision_bootstrap(
         database.migrator_dsn,

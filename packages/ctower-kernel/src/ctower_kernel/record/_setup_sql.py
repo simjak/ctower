@@ -13,6 +13,13 @@ import psycopg
 from psycopg.rows import dict_row
 from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
 
+from ctower_kernel.record._durability_probe_role_sql import (
+    DURABILITY_PROBE_ROLE,
+    close_durability_probe_boundary,
+    probe_role_rejection_reasons,
+    quarantine_durability_probe,
+)
+
 __all__ = ["apply_migrations", "provision_bootstrap", "provision_database_roles"]
 
 MIGRATIONS = Path(__file__).parents[3] / "migrations"
@@ -23,6 +30,38 @@ PROJECTION_RUNTIME_ROLE = "ctower_projection_runtime"
 # without allowing role provisioning to wait without a bound.
 PROJECTION_SESSION_TERMINATION_TIMEOUT_MS = 5_000
 _SEMVER = re.compile(r"(?:0|[1-9][0-9]*)\.(?:0|[1-9][0-9]*)\.(?:0|[1-9][0-9]*)")
+
+
+class _PreMigrationBackupRecovery(BaseModel):
+    """The only safe uses of a backup predating durability authority."""
+
+    model_config = ConfigDict(extra="forbid", frozen=True, strict=True)
+
+    isolated_recovery: Literal[True]
+    live_restore_before_later_acceptance_or_reactivation: Literal[True]
+
+
+class _PostCutoverRecovery(BaseModel):
+    """The recovery obligation once durable acceptance may have occurred."""
+
+    model_config = ConfigDict(extra="forbid", frozen=True, strict=True)
+
+    requires_durability_aware_build_or_forward_compensation: Literal[True]
+    preserve_immutable_facts: tuple[
+        Literal["commands"],
+        Literal["events"],
+        Literal["acknowledgements"],
+        Literal["finalizations"],
+    ]
+
+
+class _RecoveryContract(BaseModel):
+    """Machine-validated recovery phases for the durability migration."""
+
+    model_config = ConfigDict(extra="forbid", frozen=True, strict=True)
+
+    pre_migration_backup: _PreMigrationBackupRecovery
+    after_cutover_or_later_acceptance: _PostCutoverRecovery
 
 
 class _MigrationDeclaration(BaseModel):
@@ -38,6 +77,7 @@ class _MigrationDeclaration(BaseModel):
     forward_test: str
     rollback_or_forward_compensation: str
     backup_checkpoint: str
+    recovery_contract: _RecoveryContract | None = None
 
     @field_validator("path")
     @classmethod
@@ -81,6 +121,8 @@ class _MigrationDeclaration(BaseModel):
         maximum = tuple(map(int, self.maximum_service_version.split(".")))
         if minimum > maximum:
             raise ValueError("minimum compatible service version exceeds maximum")
+        if self.path == "0013_durability_authority.sql" and self.recovery_contract is None:
+            raise ValueError("durability authority requires a semantic recovery contract")
         return self
 
 
@@ -118,8 +160,15 @@ def _migration_scripts(scope: str) -> tuple[str, ...]:
 def provision_database_roles(admin_dsn: str) -> None:
     """Use server administration only to provision the global login/role boundary."""
 
+    probe_preexisting = quarantine_durability_probe(admin_dsn)
     preexisting = _quarantine_projection_runtime(admin_dsn)
     with psycopg.connect(admin_dsn, row_factory=dict_row) as connection:
+        if probe_preexisting:
+            probe_reasons = probe_role_rejection_reasons(connection, provisioned=False)
+            if probe_reasons:
+                raise ValueError(
+                    f"unsafe pre-existing {DURABILITY_PROBE_ROLE}: {', '.join(probe_reasons)}"
+                )
         if preexisting:
             reasons = _projection_role_rejection_reasons(
                 connection, require_projection_membership=False, require_login=False
@@ -130,6 +179,12 @@ def provision_database_roles(admin_dsn: str) -> None:
                 )
         for script in _migration_scripts("cluster"):
             connection.execute(script)
+        close_durability_probe_boundary(connection)
+        probe_reasons = probe_role_rejection_reasons(connection, provisioned=True)
+        if probe_reasons:
+            raise ValueError(
+                f"unsafe provisioned {DURABILITY_PROBE_ROLE}: {', '.join(probe_reasons)}"
+            )
         reasons = _projection_role_rejection_reasons(
             connection, require_projection_membership=True, require_login=True
         )
@@ -281,14 +336,15 @@ def _projection_membership_rejections(
     return (*closure, *administration)
 
 
-def apply_migrations(migrator_dsn: str) -> None:
-    """Apply schema migrations through the dedicated migrator login and admin role."""
+def apply_migrations(migrator_dsn: str, *, role_admin_dsn: str) -> None:
+    """Apply database migrations, then close the transient server-role boundary."""
 
     with psycopg.connect(migrator_dsn) as connection:
         connection.execute("SET ROLE ctower_admin")
         connection.execute("SELECT pg_advisory_xact_lock(712040119)")
         for script in _migration_scripts("database"):
             connection.execute(script)
+    provision_database_roles(role_admin_dsn)
 
 
 def provision_bootstrap(

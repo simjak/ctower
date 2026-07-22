@@ -117,8 +117,23 @@
       "minimum_service_version": "0.0.0",
       "maximum_service_version": "0.0.0",
       "forward_test": "pytest:tests/acceptance/increment-1/test_durability_authority.py::test_named_standby_authority_is_replay_safe_and_fail_closed",
-      "rollback_or_forward_compensation": "Compatibility is pending_only until reviewed cutover. After cutover there is no old writer after cutover: roll back only to a durability-aware build, keep policy pending_only, and require verified subject-head reconstruction before reactivation. Restore the exact pre-migration backup or append a reviewed forward compensation; never edit this accepted migration.",
-      "backup_checkpoint": "Before cutover_rpo0 activation, capture and verify a database backup plus command-result, event, outbox, and durability-subject-head counts; the current pending_only development fixture records no activation."
+      "rollback_or_forward_compensation": "Compatibility is pending_only until reviewed cutover. A pre-migration backup may be restored only into an isolated recovery copy used to construct forward compensation, or into live service before any later acceptance or reactivation. After cutover or any later acceptance, roll back only to a durability/finalization-aware build or append reviewed forward compensation preserving every immutable command, event, acknowledgement, and finalization fact. Keep policy pending_only until verified subject-head reconstruction before reactivation; never edit this accepted migration.",
+      "backup_checkpoint": "Before cutover_rpo0 activation, capture and verify a database backup plus command-result, event, outbox, and durability-subject-head counts; the current pending_only development fixture records no activation.",
+      "recovery_contract": {
+        "pre_migration_backup": {
+          "isolated_recovery": true,
+          "live_restore_before_later_acceptance_or_reactivation": true
+        },
+        "after_cutover_or_later_acceptance": {
+          "requires_durability_aware_build_or_forward_compensation": true,
+          "preserve_immutable_facts": [
+            "commands",
+            "events",
+            "acknowledgements",
+            "finalizations"
+          ]
+        }
+      }
     },
     {
       "path": "0014_durability_acceptance_finalization.sql",
@@ -138,6 +153,24 @@
       "forward_test": "pytest:tests/acceptance/increment-1/test_database_role_privileges.py::test_fresh_database_narrows_head_update_privileges",
       "rollback_or_forward_compensation": "Revoke ctower_durability_probe from ctower_admin only after replacing the live-evidence functions with an equally narrow reviewed probe; never grant pg_read_all_stats to ctower_svc or runtime.",
       "backup_checkpoint": "Before applying, capture and verify cluster role memberships and the two durability probe function owners; this additive no-login role contains no data."
+    },
+    {
+      "path": "0016_durability_finalization_confirmation.sql",
+      "sha256": "sha256:43e4095a044d089d8f788f88afdc01c2c0bd46887683ac4bb7a2038f7a67d574",
+      "minimum_service_version": "0.0.0",
+      "maximum_service_version": "0.0.0",
+      "forward_test": "pytest:tests/acceptance/increment-1/test_durability_authority.py::test_named_standby_authority_is_replay_safe_and_fail_closed",
+      "rollback_or_forward_compensation": "Keep policy pending_only if exact off-host finalization confirmation is unavailable. After cutover, use a finalization-aware build or append reviewed forward compensation preserving every command, event, acknowledgement, finalization, and confirmation fact; never weaken complete receipt binding.",
+      "backup_checkpoint": "Before cutover_rpo0 activation, capture and verify acknowledgement, finalization, and confirmation counts plus the complete-receipt constraints; the current pending_only development fixture records no activation."
+    },
+    {
+      "path": "0017_durability_probe_schema_boundary.sql",
+      "sha256": "sha256:bcf5db235d723a312f081183c0138b0dad56ee3640133f7faa4e401553f5d6af",
+      "minimum_service_version": "0.0.0",
+      "maximum_service_version": "0.0.0",
+      "forward_test": "pytest:tests/acceptance/increment-1/test_durability_probe_role_adoption.py::test_unsafe_preexisting_probe_role_is_quarantined_before_reuse",
+      "rollback_or_forward_compensation": "Keep the probe NOLOGIN with exact memberships and no schema CREATE. Replace its two fixed-search-path functions before changing ownership or EXECUTE grants; never restore a runtime assumption or function-replacement path.",
+      "backup_checkpoint": "Before applying, capture the complete probe role graph/options, settings, sessions, owned objects, direct grants, function ACLs, and public-schema privileges."
     }
   ]
 }

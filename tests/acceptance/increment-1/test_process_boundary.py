@@ -62,7 +62,7 @@ class _ProcessTenant:
 @pytest.fixture
 def process_tenant(database: DatabaseFixture) -> Iterator[_ProcessTenant]:
     provision_database_roles(database.admin_dsn)
-    apply_migrations(database.migrator_dsn)
+    apply_migrations(database.migrator_dsn, role_admin_dsn=database.admin_dsn)
     capability = secrets.token_urlsafe(32)
     provision_bootstrap(
         database.migrator_dsn,

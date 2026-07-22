@@ -74,7 +74,22 @@ from support.durability_assertions import (
 from support.durability_assertions import (
     set_target as _set_target,
 )
-from support.durability_health import assert_live_health_faults
+from support.durability_finalization import (
+    AmbiguousFinalization as _AmbiguousFinalization,
+)
+from support.durability_finalization import (
+    assert_promoted_replay as _assert_promoted_replay,
+)
+from support.durability_finalization import (
+    assert_receipt_mismatches_are_rejected as _assert_receipt_mismatches_are_rejected,
+)
+from support.durability_finalization import (
+    create_ambiguous_finalization as _create_ambiguous_finalization,
+)
+from support.durability_health import (
+    assert_live_health_faults,
+    unreadable_standby_replay_evidence,
+)
 from support.durability_serialization import assert_subject_serialization
 from support.postgres import (
     DatabaseFixture,
@@ -82,7 +97,6 @@ from support.postgres import (
     create_durability_database,
     start_durability_pair,
     stop_durability_pair,
-    stop_durability_standby,
     wait_for_durability_replay_current,
 )
 from support.tenant_fixture import TenantFixture, create_first_tenant
@@ -139,6 +153,22 @@ def authority() -> Iterator[_AuthorityFixture]:
         stop_durability_pair(pair)
 
 
+@pytest.mark.parametrize(
+    ("malformed", "reason"),
+    [(False, "replay_evidence_unreadable"), (True, "target_evidence_unreadable")],
+)
+def test_unreadable_standby_replay_evidence_fails_closed(
+    authority: _AuthorityFixture, *, malformed: bool, reason: str
+) -> None:
+    record = PostgresRecord(authority.database.runtime_dsn, standby_dsn=authority.standby_dsn)
+
+    with unreadable_standby_replay_evidence(authority.database.admin_dsn, malformed=malformed):
+        health = record.durability_health(now=_database_now(authority.database.admin_dsn))
+
+    assert health.status is DurabilityHealthStatus.DEGRADED
+    assert health.reason == reason
+
+
 def test_named_standby_authority_is_replay_safe_and_fail_closed(
     authority: _AuthorityFixture,
 ) -> None:
@@ -185,13 +215,15 @@ def test_named_standby_authority_is_replay_safe_and_fail_closed(
         _wrong_target_recovers_on_same_key(client, authority, record)
         _replay_before_receipt_recovers_on_same_key(client, authority)
         _accepted_relation_moves_both_ticket_heads(client, authority)
+        _assert_receipt_mismatches_are_rejected(client, authority)
         _assert_primary_evidence(authority, accepted)
-        local_commands = _standby_loss_is_bounded_and_dependency_safe(
+        local_commands, ambiguity = _standby_loss_is_bounded_and_dependency_safe(
             client, concurrent_client, authority
         )
 
     _assert_secret_free_telemetry(captures, authority.tenant)
     _assert_primary_loss_boundary(authority, accepted, local_commands)
+    _assert_promoted_replay(authority, ambiguity)
 
 
 def _accepted_replay_survives_policy_pending(
@@ -351,9 +383,9 @@ def _standby_loss_is_bounded_and_dependency_safe(
     client: TestClient,
     concurrent_client: TestClient,
     authority: _AuthorityFixture,
-) -> tuple[UUID, ...]:
+) -> tuple[tuple[UUID, ...], _AmbiguousFinalization]:
     setup = _prepare_standby_loss(client, authority)
-    stop_durability_standby(authority.pair)
+    ambiguity = _create_ambiguous_finalization(concurrent_client, authority)
     accepted_replay = _create_ticket(
         client, authority.tenant, setup.accepted_command, title="Accepted before standby loss"
     )
@@ -368,7 +400,7 @@ def _standby_loss_is_bounded_and_dependency_safe(
         setup.serialization_ticket_id,
     )
     local_commands = _exercise_pending_dependencies(client, authority, setup)
-    return (*local_commands, *serialization_commands)
+    return (*local_commands, *serialization_commands), ambiguity
 
 
 @dataclass(frozen=True, slots=True)
