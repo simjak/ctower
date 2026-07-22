@@ -56,6 +56,7 @@
       "packages/ctower-kernel/migrations/0013_durability_authority.sql",
       "packages/ctower-kernel/migrations/0015_durability_probe_role.sql",
       "packages/ctower-kernel/migrations/0017_durability_probe_schema_boundary.sql",
+      "packages/ctower-kernel/migrations/0018_durability_probe_search_path.sql",
       "packages/ctower-kernel/migrations/manifest.json"
     ],
     "AC-EVD-01": [
@@ -97,7 +98,8 @@
       "packages/ctower-kernel/migrations/0006_narrow_head_update_privileges.sql",
       "packages/ctower-kernel/migrations/0012_projection_runtime_role.sql",
       "packages/ctower-kernel/migrations/0015_durability_probe_role.sql",
-      "packages/ctower-kernel/migrations/0017_durability_probe_schema_boundary.sql"
+      "packages/ctower-kernel/migrations/0017_durability_probe_schema_boundary.sql",
+      "packages/ctower-kernel/migrations/0018_durability_probe_search_path.sql"
     ],
     "AC-TM-01": [
       "contracts/domain/task-management/task-command.schema.json",
@@ -176,7 +178,8 @@
       "packages/ctower-kernel/migrations/0007_task_management_facts.sql",
       "packages/ctower-kernel/migrations/0012_projection_runtime_role.sql",
       "packages/ctower-kernel/migrations/0015_durability_probe_role.sql",
-      "packages/ctower-kernel/migrations/0017_durability_probe_schema_boundary.sql"
+      "packages/ctower-kernel/migrations/0017_durability_probe_schema_boundary.sql",
+      "packages/ctower-kernel/migrations/0018_durability_probe_search_path.sql"
     ],
     "INV-02": [
       "contracts/bootstrap/first-tenant-request.schema.json",
@@ -250,7 +253,8 @@
     "INV-28": [
       "contracts/observability/telemetry-context.schema.json",
       "contracts/operations/health.schema.json",
-      "packages/ctower-kernel/migrations/0017_durability_probe_schema_boundary.sql"
+      "packages/ctower-kernel/migrations/0017_durability_probe_schema_boundary.sql",
+      "packages/ctower-kernel/migrations/0018_durability_probe_search_path.sql"
     ],
     "INV-34": [
       "contracts/domain/task-management/board-view.schema.json",
@@ -327,6 +331,7 @@
       "packages/ctower-kernel/migrations/0012_projection_runtime_role.sql",
       "packages/ctower-kernel/migrations/0015_durability_probe_role.sql",
       "packages/ctower-kernel/migrations/0017_durability_probe_schema_boundary.sql",
+      "packages/ctower-kernel/migrations/0018_durability_probe_search_path.sql",
       "packages/ctower-kernel/migrations/manifest.json"
     ],
     "SPEC#first-tenant-trust-root-ceremony": [
@@ -370,7 +375,8 @@
       "packages/ctower-kernel/migrations/0006_narrow_head_update_privileges.sql",
       "packages/ctower-kernel/migrations/0012_projection_runtime_role.sql",
       "packages/ctower-kernel/migrations/0015_durability_probe_role.sql",
-      "packages/ctower-kernel/migrations/0017_durability_probe_schema_boundary.sql"
+      "packages/ctower-kernel/migrations/0017_durability_probe_schema_boundary.sql",
+      "packages/ctower-kernel/migrations/0018_durability_probe_search_path.sql"
     ],
     "SPEC#task-management-foundation": [
       "contracts/domain/task-management/board-view.schema.json",

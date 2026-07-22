@@ -496,6 +496,17 @@
       ]
     },
     {
+      "path": "packages/ctower-kernel/migrations/0018_durability_probe_search_path.sql",
+      "references": [
+        "SPEC#executable-authority-and-requirement-traceability",
+        "SPEC#security-objectives",
+        "INV-01",
+        "INV-28",
+        "AC-DUR-07",
+        "AC-SEC-03"
+      ]
+    },
+    {
       "path": "packages/ctower-kernel/migrations/manifest.json",
       "references": [
         "SPEC#executable-authority-and-requirement-traceability",

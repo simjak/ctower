@@ -235,6 +235,7 @@ def test_upgrade_database_corrects_existing_head_privileges(
             "0014_durability_acceptance_finalization.sql",
             "0016_durability_finalization_confirmation.sql",
             "0017_durability_probe_schema_boundary.sql",
+            "0018_durability_probe_search_path.sql",
         ):
             connection.execute((MIGRATIONS / name).read_text(encoding="utf-8"))
     provision_database_roles(database.admin_dsn)
@@ -477,8 +478,8 @@ def _assert_runtime_role_privileges(dsn: str) -> None:
             """
         ).fetchall()
         assert [(row["owner"], row["prosecdef"], row["proconfig"]) for row in functions] == [
-            ("ctower_durability_probe", True, ["search_path=pg_catalog"]),
-            ("ctower_durability_probe", True, ["search_path=pg_catalog"]),
+            ("ctower_durability_probe", True, ["search_path=pg_catalog, pg_temp"]),
+            ("ctower_durability_probe", True, ["search_path=pg_catalog, pg_temp"]),
         ]
 
 

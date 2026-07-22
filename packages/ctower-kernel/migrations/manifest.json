@@ -171,6 +171,15 @@
       "forward_test": "pytest:tests/acceptance/increment-1/test_durability_probe_role_adoption.py::test_unsafe_preexisting_probe_role_is_quarantined_before_reuse",
       "rollback_or_forward_compensation": "Keep the probe NOLOGIN with exact memberships and no schema CREATE. Replace its two fixed-search-path functions before changing ownership or EXECUTE grants; never restore a runtime assumption or function-replacement path.",
       "backup_checkpoint": "Before applying, capture the complete probe role graph/options, settings, sessions, owned objects, direct grants, function ACLs, and public-schema privileges."
+    },
+    {
+      "path": "0018_durability_probe_search_path.sql",
+      "sha256": "sha256:bccc3fcccd4987c3698feb5ced1172a47365ea45ac8d0d657c8b4f495c121fae",
+      "minimum_service_version": "0.0.0",
+      "maximum_service_version": "0.0.0",
+      "forward_test": "pytest:tests/acceptance/increment-1/test_durability_probe_role_adoption.py::test_temporary_probe_inputs_cannot_shadow_catalog_evidence",
+      "rollback_or_forward_compensation": "Keep both SECURITY DEFINER durability probes on the exact search path pg_catalog, pg_temp with pg_temp last. If compatibility requires another path, append a reviewed forward compensation that preserves catalog-first probe inputs; never restore implicit temporary-schema precedence.",
+      "backup_checkpoint": "Before applying, capture and verify both durability probe definitions, owners, ACLs, and proconfig values; this additive function-configuration change contains no data."
     }
   ]
 }

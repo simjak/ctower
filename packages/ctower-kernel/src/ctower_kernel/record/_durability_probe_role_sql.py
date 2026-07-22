@@ -413,7 +413,7 @@ def _health_function_boundary_is_inexact(
             DURABILITY_PROBE_ROLE,
             "sql",
             True,
-            ["search_path=pg_catalog"],
+            ["search_path=pg_catalog, pg_temp"],
             "",
             _HEALTH_FUNCTION_BODIES[function],
         )

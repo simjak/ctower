@@ -53,6 +53,7 @@ def test_migration_manifest_is_ordered_and_checksum_exact() -> None:
         "0015_durability_probe_role.sql",
         "0016_durability_finalization_confirmation.sql",
         "0017_durability_probe_schema_boundary.sql",
+        "0018_durability_probe_search_path.sql",
     ]
     for entry in entries:
         digest = hashlib.sha256((MIGRATIONS / entry["path"]).read_bytes()).hexdigest()
@@ -252,6 +253,14 @@ def test_probe_schema_boundary_keeps_only_narrow_function_execution() -> None:
     assert "FROM PUBLIC" in migration
     assert "TO ctower_svc" in migration
     assert "GRANT CREATE" not in migration
+
+
+def test_durability_probe_search_path_puts_temporary_schema_last() -> None:
+    migration = (MIGRATIONS / "0018_durability_probe_search_path.sql").read_text(encoding="utf-8")
+
+    assert migration.count("ALTER FUNCTION public.durability_") == LIVE_EVIDENCE_FUNCTIONS
+    assert migration.count("SET search_path = pg_catalog, pg_temp") == LIVE_EVIDENCE_FUNCTIONS
+    assert "pg_temp, pg_catalog" not in migration
 
 
 def test_development_composition_uses_postgres_17_without_a_password_value() -> None:

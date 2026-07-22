@@ -8,7 +8,14 @@ import psycopg
 import pytest
 from psycopg import sql
 from psycopg.rows import dict_row
-from support.postgres import DatabaseFixture
+from support.postgres import (
+    DatabaseFixture,
+    create_durability_database,
+    start_durability_pair,
+    stop_durability_pair,
+    wait_for_durability_replay_current,
+)
+from support.tenant_fixture import create_first_tenant
 
 from ctower_kernel.record.postgres import apply_migrations, provision_database_roles
 
@@ -16,6 +23,66 @@ __all__: tuple[str, ...] = ()
 
 _ATTACKER = "ctower_probe_upgrade_attacker"
 _PROBE = "ctower_durability_probe"
+
+
+def test_temporary_probe_inputs_cannot_shadow_catalog_evidence() -> None:
+    pair = start_durability_pair()
+    try:
+        database, standby_dsn = create_durability_database(pair)
+        create_first_tenant(database)
+        wait_for_durability_replay_current(pair)
+        with psycopg.connect(database.admin_dsn, autocommit=True, row_factory=dict_row) as primary:
+            primary.execute("SET SESSION AUTHORIZATION ctower_svc")
+            expected = _stable_probe_evidence(
+                primary.execute(
+                    "SELECT * FROM public.durability_primary_live_evidence()"
+                ).fetchone()
+            )
+            primary.execute(
+                """
+                CREATE TEMPORARY TABLE pg_stat_replication (
+                    application_name text, state text, sync_state text, replay_lsn pg_lsn
+                )
+                """
+            )
+            primary.execute(
+                """
+                INSERT INTO pg_stat_replication
+                VALUES ('ctower_i1_ack', 'forged', 'forged', 'FFFFFFFF/FFFFFFFF')
+                """
+            )
+            primary.execute("CREATE TEMPORARY TABLE pg_stat_wal_receiver (status text)")
+            primary.execute("INSERT INTO pg_stat_wal_receiver VALUES ('forged')")
+            assert (
+                _stable_probe_evidence(
+                    primary.execute(
+                        "SELECT * FROM public.durability_primary_live_evidence()"
+                    ).fetchone()
+                )
+                == expected
+            )
+            with pytest.raises(
+                psycopg.errors.ObjectNotInPrerequisiteState,
+                match="recovery is not in progress",
+            ):
+                primary.execute("SELECT * FROM public.durability_standby_live_evidence()")
+
+        with psycopg.connect(standby_dsn, row_factory=dict_row) as standby:
+            standby.execute("SET SESSION AUTHORIZATION ctower_svc")
+            standby_evidence = standby.execute(
+                "SELECT * FROM public.durability_standby_live_evidence()"
+            ).fetchone()
+            assert standby_evidence is not None
+            assert standby_evidence["matching_receiver_count"] == 1
+            assert standby_evidence["receiver_status"] == "streaming"
+    finally:
+        stop_durability_pair(pair)
+
+
+def _stable_probe_evidence(row: dict[str, object] | None) -> dict[str, object]:
+    assert row is not None
+    volatile = {"primary_flush_lsn", "replay_lsn"}
+    return {key: value for key, value in row.items() if key not in volatile}
 
 
 def test_unsafe_preexisting_probe_role_is_quarantined_before_reuse(
@@ -220,8 +287,8 @@ def _assert_exact_probe_boundary(dsn: str) -> None:
         },
     ]
     assert [(row["owner"], row["prosecdef"], row["proconfig"]) for row in functions] == [
-        (_PROBE, True, ["search_path=pg_catalog"]),
-        (_PROBE, True, ["search_path=pg_catalog"]),
+        (_PROBE, True, ["search_path=pg_catalog, pg_temp"]),
+        (_PROBE, True, ["search_path=pg_catalog, pg_temp"]),
     ]
     assert [row["public_execute"] for row in functions] == [False, False], functions
     assert all(row["service_execute"] is True for row in functions)
@@ -253,7 +320,7 @@ RETURNS TABLE (
 )
 LANGUAGE sql
 SECURITY DEFINER
-SET search_path = pg_catalog
+SET search_path = pg_catalog, pg_temp
 AS $$ {body} $$
 """
 _FORGED_PRIMARY_PROBE = _PRIMARY_PROBE_SIGNATURE.format(
