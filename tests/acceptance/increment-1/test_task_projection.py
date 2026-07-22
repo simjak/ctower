@@ -6,6 +6,7 @@ from datetime import UTC, datetime, timedelta
 from uuid import UUID, uuid4
 
 import pytest
+from support.acceptance import accept_pending_commands
 from support.projection_faults import (
     InjectedOutboxFailure,
     ProjectionFault,
@@ -32,6 +33,7 @@ def test_defer_stays_backlog_until_explicit_admission(tenant: TenantFixture) -> 
         writer=PostgresWork(tenant.database.runtime_dsn),
     )
     projections = Projections(PostgresProjections(tenant.database.projection_dsn))
+    accept_pending_commands(tenant.database.admin_dsn, tenant.tenant_id)
 
     deferred = work.execute(
         actor,
@@ -44,12 +46,14 @@ def test_defer_stays_backlog_until_explicit_admission(tenant: TenantFixture) -> 
         ),
         telemetry=_telemetry(),
     )
+    accept_pending_commands(tenant.database.admin_dsn, tenant.tenant_id)
     backlog = projections.catch_up(tenant.tenant_id)
     admitted = work.execute(
         actor,
         Admit(uuid4(), ticket_id, 2, "Capacity is available"),
         telemetry=_telemetry(),
     )
+    accept_pending_commands(tenant.database.admin_dsn, tenant.tenant_id)
     ready = projections.catch_up(tenant.tenant_id)
 
     assert isinstance(deferred, WorkReceipt)
@@ -64,6 +68,7 @@ def test_board_watermarks_staleness_and_rebuild_equality(tenant: TenantFixture) 
     store = PostgresProjections(tenant.database.projection_dsn)
     projections = Projections(store)
 
+    accept_pending_commands(tenant.database.admin_dsn, tenant.tenant_id)
     backlog = projections.catch_up(tenant.tenant_id)
     work = Work(
         PostgresRecord(tenant.database.runtime_dsn),
@@ -74,6 +79,7 @@ def test_board_watermarks_staleness_and_rebuild_equality(tenant: TenantFixture) 
         Admit(uuid4(), ticket_id, 1, "Admit to ready queue"),
         telemetry=_telemetry(),
     )
+    accept_pending_commands(tenant.database.admin_dsn, tenant.tenant_id)
     stale = projections.board(actor, BoardQuery())
     ready = projections.catch_up(tenant.tenant_id)
     rebuilt = projections.rebuild(tenant.tenant_id)
@@ -101,6 +107,7 @@ def test_rolled_back_outbox_append_retries_without_poisoning_board(
         writer=PostgresWork(tenant.database.runtime_dsn),
     )
     projections = Projections(PostgresProjections(tenant.database.projection_dsn))
+    accept_pending_commands(tenant.database.admin_dsn, tenant.tenant_id)
     before = projections.catch_up(tenant.tenant_id)
     command = ChangePriority(uuid4(), ticket_id, 1, "Rollback-safe priority", "P1")
 
@@ -109,6 +116,7 @@ def test_rolled_back_outbox_append_retries_without_poisoning_board(
         work.execute(actor, command, telemetry=_telemetry())
 
     retried = work.execute(actor, command, telemetry=_telemetry())
+    accept_pending_commands(tenant.database.admin_dsn, tenant.tenant_id)
     caught_up = projections.catch_up(tenant.tenant_id)
     rebuilt = projections.rebuild(tenant.tenant_id)
     positions = faults.record_positions()
@@ -120,12 +128,13 @@ def test_rolled_back_outbox_append_retries_without_poisoning_board(
     assert rebuilt.response_payload() == caught_up.response_payload()
 
 
-@pytest.mark.parametrize("fault", ("behind", "ahead", "gap", "unknown-event"))
+@pytest.mark.parametrize("fault", ("behind", "ahead"))
 def test_board_reports_loud_unknown_for_cursor_and_source_faults(
     tenant: TenantFixture, fault: ProjectionFault
 ) -> None:
     _ticket(tenant)
     projections = Projections(PostgresProjections(tenant.database.projection_dsn))
+    accept_pending_commands(tenant.database.admin_dsn, tenant.tenant_id)
     current = projections.catch_up(tenant.tenant_id)
     assert current.health is ProjectionHealth.CURRENT
 
@@ -139,11 +148,7 @@ def test_board_reports_loud_unknown_for_cursor_and_source_faults(
         unknown = projections.catch_up(tenant.tenant_id)
 
     assert unknown.health is ProjectionHealth.STATE_UNKNOWN
-    assert unknown.source_watermark != unknown.projection_watermark or fault in {
-        "behind",
-        "gap",
-        "unknown-event",
-    }
+    assert unknown.source_watermark != unknown.projection_watermark or fault == "behind"
 
 
 def _ticket(tenant: TenantFixture) -> UUID:

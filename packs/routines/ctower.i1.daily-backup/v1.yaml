@@ -1,0 +1,19 @@
+{
+  "schema_id": "ctower.routine/v1",
+  "routine_ref": "ctower.i1.daily-backup@1",
+  "revision_digest": "sha256:46945497919426237591607586a629ee05aa7d2df1d08caffeed85486f20d40a",
+  "schedule": {
+    "kind": "daily",
+    "timezone": "UTC",
+    "local_time": "01:00:00"
+  },
+  "dst_policy": "wall_clock_once",
+  "concurrency": "serialize_one_pending",
+  "catch_up": "enqueue_missed_with_cap",
+  "catch_up_cap": 1,
+  "timeout_seconds": 7200,
+  "handler_kind": "daily_backup",
+  "component_digests": [
+    "sha256:86c556ea8d8d54eb47b38697131150a2d43feee2338f0867b573571652c6f6a0"
+  ]
+}

@@ -1,0 +1,66 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://ctower.dev/contracts/domain/outbox-delivery.schema.json",
+  "title": "OutboxDeliveryFact",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema_id", "fact"],
+  "properties": {
+    "schema_id": {"const": "ctower.outbox-delivery/v1"},
+    "fact": {
+      "oneOf": [
+        {"$ref": "#/$defs/attempt"},
+        {"$ref": "#/$defs/poison"},
+        {"$ref": "#/$defs/disposition"}
+      ]
+    }
+  },
+  "$defs": {
+    "partition": {
+      "type": "object", "additionalProperties": false,
+      "required": ["consumer_key", "tenant_id", "topic"],
+      "properties": {
+        "consumer_key": {"type": "string", "pattern": "^[a-z][a-z0-9._-]*$"},
+        "tenant_id": {"type": "string", "format": "uuid"},
+        "topic": {"type": "string", "pattern": "^[a-z][a-z0-9._-]*$"}
+      }
+    },
+    "attempt": {
+      "type": "object", "additionalProperties": false,
+      "required": ["kind", "partition", "outbox_id", "generation", "attempt_number", "outcome", "recorded_at"],
+      "properties": {
+        "kind": {"const": "attempt"}, "partition": {"$ref": "#/$defs/partition"},
+        "outbox_id": {"type": "string", "format": "uuid"},
+        "generation": {"type": "integer", "minimum": 1},
+        "attempt_number": {"type": "integer", "minimum": 1},
+        "outcome": {"type": "string", "enum": ["delivered", "retryable_failure", "poisoned", "tombstoned"]},
+        "recorded_at": {"type": "string", "format": "date-time"}
+      }
+    },
+    "poison": {
+      "type": "object", "additionalProperties": false,
+      "required": ["kind", "partition", "outbox_id", "source_position", "payload_digest", "reason", "recorded_at"],
+      "properties": {
+        "kind": {"const": "poison"}, "partition": {"$ref": "#/$defs/partition"},
+        "outbox_id": {"type": "string", "format": "uuid"},
+        "source_position": {"type": "integer", "minimum": 1},
+        "payload_digest": {"type": "string", "pattern": "^sha256:[0-9a-f]{64}$"},
+        "reason": {"type": "string", "minLength": 1, "maxLength": 500},
+        "recorded_at": {"type": "string", "format": "date-time"}
+      }
+    },
+    "disposition": {
+      "type": "object", "additionalProperties": false,
+      "required": ["kind", "partition", "outbox_id", "command_id", "actor_id", "action", "reason", "recorded_at"],
+      "properties": {
+        "kind": {"const": "disposition"}, "partition": {"$ref": "#/$defs/partition"},
+        "outbox_id": {"type": "string", "format": "uuid"},
+        "command_id": {"type": "string", "format": "uuid"},
+        "actor_id": {"type": "string", "format": "uuid"},
+        "action": {"type": "string", "enum": ["retry", "tombstone"]},
+        "reason": {"type": "string", "minLength": 1, "maxLength": 500},
+        "recorded_at": {"type": "string", "format": "date-time"}
+      }
+    }
+  }
+}

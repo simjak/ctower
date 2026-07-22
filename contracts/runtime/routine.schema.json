@@ -1,0 +1,49 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://ctower.dev/contracts/runtime/routine.schema.json",
+  "title": "RoutineRevision",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_id", "routine_ref", "revision_digest", "schedule", "dst_policy",
+    "concurrency", "catch_up", "catch_up_cap", "timeout_seconds", "handler_kind",
+    "component_digests"
+  ],
+  "properties": {
+    "schema_id": {"const": "ctower.routine/v1"},
+    "routine_ref": {"type": "string", "pattern": "^[a-z][a-z0-9._-]*@[1-9][0-9]*$"},
+    "revision_digest": {"$ref": "#/$defs/digest"},
+    "schedule": {"$ref": "#/$defs/schedule"},
+    "dst_policy": {"const": "wall_clock_once"},
+    "concurrency": {
+      "type": "string",
+      "enum": ["coalesce_if_active", "skip_if_active", "serialize_one_pending", "always_enqueue_bounded"]
+    },
+    "catch_up": {
+      "type": "string",
+      "enum": ["skip_missed", "coalesce_latest", "enqueue_missed_with_cap"]
+    },
+    "catch_up_cap": {"type": "integer", "minimum": 1, "maximum": 100},
+    "timeout_seconds": {"type": "integer", "minimum": 1, "maximum": 86400},
+    "handler_kind": {
+      "type": "string",
+      "enum": ["synthetic_four_stage", "daily_backup", "record_anchor"]
+    },
+    "component_digests": {
+      "type": "array", "minItems": 1, "uniqueItems": true, "items": {"$ref": "#/$defs/digest"}
+    }
+  },
+  "$defs": {
+    "digest": {"type": "string", "pattern": "^sha256:[0-9a-f]{64}$"},
+    "schedule": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["kind", "timezone", "local_time"],
+      "properties": {
+        "kind": {"type": "string", "enum": ["daily", "hourly"]},
+        "timezone": {"type": "string", "minLength": 1, "maxLength": 128},
+        "local_time": {"type": ["string", "null"], "pattern": "^(?:[01][0-9]|2[0-3]):[0-5][0-9]:[0-5][0-9]$"}
+      }
+    }
+  }
+}

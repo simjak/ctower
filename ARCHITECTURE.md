@@ -14,8 +14,8 @@ deployment manifests. If this file and `SPEC.md` disagree, `SPEC.md` wins and th
 Implementation labels are strict:
 
 - **Current walking slice** means the development-only bootstrap, CP2 task/Board, CP-1 Proof/Workflow,
-  and CP3-A durability-authority fixture paths implemented in this repository. They are synthetic local
-  evidence, not a deployed or durability-accepted product.
+  CP3-A durability-authority fixture, and CP3-B deterministic scheduler/accepted-outbox/health paths
+  implemented in this repository. They are synthetic local evidence, not a deployed product.
 - **I1** and **I2** otherwise remain committed target increments, not claims that the full behavior exists.
 - **Deferred** means invariants may be recorded, but the runtime, product surface, and public Seam do not
   exist in I1/I2.
@@ -77,10 +77,13 @@ The implemented development tracer currently has this narrower shape:
 generated Python client -> FastAPI Adapter -> Access / Work -----> Record -> Postgres 17 primary fixture
                                          \-> Proof ---------------> Record
                                          \-> Workflow ------------> Record
-                                         \-> Projections ---------> disposable Board rows/cursor
+                                         \-> Projections ---------> stored disposable Board reads
                                               ^ injected Work-readiness + Proof-current capabilities
                                               | (no Workflow -> Work/Proof imports)
                                            composition root
+                                                  |
+                                   same-artifact control worker
+                                   Routine scans + accepted outbox fold
                                                                     |
                                               named test-only hot standby (`remote_apply` ACK)
 ```
@@ -88,15 +91,17 @@ generated Python client -> FastAPI Adapter -> Access / Work -----> Record -> Pos
 It covers one-use first-tenant bootstrap; tenant-scoped tickets; protected custody; priority, assignment,
 lifecycle/admission, blocker, and relation facts; explicit immutable Workflow/policy pins; criteria,
 evidence, and verdict proof; interpreted four-stage transitions; proof-gated resolve/close; linked cursor
-audit; and a rebuildable six-lane Board with loud watermarks. Record owns idempotent append, hash-chained
+audit; three fixed Routine revisions; an accepted-only, rebuildable six-lane Board; immutable delivery and
+poison evidence; authenticated recovery dispositions; and contributor-level health. Record owns idempotent append, hash-chained
 events, links, positions, transactional outbox writes, canonical command roots, subject durability heads,
 and typed pending/accepted reconciliation. Work, Proof, and Workflow own their authority above Record;
-Projections replaces only disposable rows/cursors through a distinct role. Every normal/default write
+Projections replaces only disposable rows/cursors through a distinct role. HTTP Board reads never advance
+the cursor; the separately launched same-artifact worker performs catch-up. Every normal/default write
 remains `durability_pending`; a verifier-owned two-PostgreSQL fixture proves the named-standby ACK path,
 including complete receipt-bound finalization, standby-read confirmation, promotion ambiguity, and typed
 degradation for unreadable live evidence. Its no-login evidence role is quarantined before adoption and
 retains neither schema-CREATE nor role-assumption paths after its two fixed probes exist. There is no
-configured production off-host target, outbox/projection worker, backup/restore proof, web surface, or
+configured production off-host target, real fixed-job effects, backup/restore proof, web surface, or
 production deployment.
 
 ### I1: co-located trust spine

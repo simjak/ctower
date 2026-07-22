@@ -1,0 +1,24 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://ctower.dev/contracts/runtime/routine-occurrence.schema.json",
+  "title": "RoutineOccurrence",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_id", "occurrence_id", "tenant_id", "routine_ref", "revision_digest",
+    "scheduled_for", "local_civil_time", "timezone", "utc_offset_seconds", "outcome", "job_id"
+  ],
+  "properties": {
+    "schema_id": {"const": "ctower.routine-occurrence/v1"},
+    "occurrence_id": {"type": "string", "format": "uuid"},
+    "tenant_id": {"type": "string", "format": "uuid"},
+    "routine_ref": {"type": "string", "pattern": "^[a-z][a-z0-9._-]*@[1-9][0-9]*$"},
+    "revision_digest": {"type": "string", "pattern": "^sha256:[0-9a-f]{64}$"},
+    "scheduled_for": {"type": "string", "format": "date-time"},
+    "local_civil_time": {"type": "string", "format": "date-time"},
+    "timezone": {"type": "string", "minLength": 1, "maxLength": 128},
+    "utc_offset_seconds": {"type": "integer", "minimum": -64800, "maximum": 64800},
+    "outcome": {"type": "string", "enum": ["queued", "coalesced", "skipped"]},
+    "job_id": {"type": ["string", "null"], "format": "uuid"}
+  }
+}

@@ -67,8 +67,9 @@ class ProjectionFaults:
             if fault == "ahead":
                 connection.execute(
                     """
-                    UPDATE projection_cursors SET projection_watermark = %s
-                    WHERE tenant_id = %s
+                    UPDATE outbox_consumer_cursors SET acceptance_position = %s
+                    WHERE consumer_key = 'board_projection' AND tenant_id = %s
+                      AND topic = 'record.events'
                     """,
                     (source_watermark + 1, tenant_id),
                 )

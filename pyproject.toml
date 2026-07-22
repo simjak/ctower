@@ -13,6 +13,7 @@ dependencies = [
 
 [project.scripts]
 ctowerctl = "ctowerctl:main"
+ctower-control-worker = "ctower_api.control_worker:main"
 
 [dependency-groups]
 dev = [
