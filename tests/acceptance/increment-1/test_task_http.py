@@ -12,6 +12,7 @@ from uuid import UUID, uuid4
 from fastapi import FastAPI
 from fastapi.testclient import TestClient
 from httpx import Response
+from support.acceptance import accept_pending_commands
 from support.telemetry import telemetry_headers
 from support.tenant_fixture import TenantFixture
 
@@ -116,6 +117,8 @@ def _exercise_task_routes(client: TestClient, tenant: TenantFixture, ticket_id: 
     deferred = _post(client, tenant, ticket_id, "intents", _defer())
     admitted = _post(client, tenant, ticket_id, "intents", _admit())
     blocked = _post(client, tenant, ticket_id, "intents", _block(tenant, blocker_id))
+    accept_pending_commands(tenant.database.admin_dsn, tenant.tenant_id)
+    Projections(PostgresProjections(tenant.database.projection_dsn)).catch_up(tenant.tenant_id)
     board = _read_blocked_board(client, tenant)
     unblocked = _post(client, tenant, ticket_id, "intents", _unblock(blocker_id))
     target_id = _create_ticket(client, tenant)
