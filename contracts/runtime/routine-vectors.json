@@ -1,0 +1,74 @@
+{
+  "schema": "ctower.routine-vectors/v1",
+  "canonicalization": "UTF-8 JSON of every authored pack field except revision_digest; object keys sorted; ensure_ascii=false; separators=(',', ':')",
+  "revision_vectors": [
+    {
+      "path": "packs/routines/ctower.i1.daily-backup/v1.yaml",
+      "canonical_json": "{\"catch_up\":\"enqueue_missed_with_cap\",\"catch_up_cap\":1,\"component_digests\":[\"sha256:86c556ea8d8d54eb47b38697131150a2d43feee2338f0867b573571652c6f6a0\"],\"concurrency\":\"serialize_one_pending\",\"dst_policy\":\"wall_clock_once\",\"handler_kind\":\"daily_backup\",\"routine_ref\":\"ctower.i1.daily-backup@1\",\"schedule\":{\"kind\":\"daily\",\"local_time\":\"01:00:00\",\"timezone\":\"UTC\"},\"schema_id\":\"ctower.routine/v1\",\"timeout_seconds\":7200}",
+      "revision_digest": "sha256:e966843c70c4b251bbe872148e5a753e038fae1a1e5c85280570cf44ffd0c098"
+    },
+    {
+      "path": "packs/routines/ctower.i1.record-anchor/v1.yaml",
+      "canonical_json": "{\"catch_up\":\"coalesce_latest\",\"catch_up_cap\":1,\"component_digests\":[\"sha256:c32644a439057407d137a63ade68a9c69ed43e59da6f4a2d9d6bf238c1c837ed\"],\"concurrency\":\"serialize_one_pending\",\"dst_policy\":\"wall_clock_once\",\"handler_kind\":\"record_anchor\",\"routine_ref\":\"ctower.i1.record-anchor@1\",\"schedule\":{\"kind\":\"hourly\",\"local_time\":null,\"timezone\":\"UTC\"},\"schema_id\":\"ctower.routine/v1\",\"timeout_seconds\":300}",
+      "revision_digest": "sha256:bd0b25449100de857ae42b98c5fcb00a8e8d3585a0c6adb866d798319873b26a"
+    },
+    {
+      "path": "packs/routines/ctower.i1.synthetic-four-stage/v1.yaml",
+      "canonical_json": "{\"catch_up\":\"skip_missed\",\"catch_up_cap\":1,\"component_digests\":[\"sha256:96c61b4ce6c1aa5f7cfbe49c41a86a69ec9010806ee50eea3e7d7a412ff852f8\"],\"concurrency\":\"coalesce_if_active\",\"dst_policy\":\"wall_clock_once\",\"handler_kind\":\"synthetic_four_stage\",\"routine_ref\":\"ctower.i1.synthetic-four-stage@1\",\"schedule\":{\"kind\":\"daily\",\"local_time\":\"00:15:00\",\"timezone\":\"UTC\"},\"schema_id\":\"ctower.routine/v1\",\"timeout_seconds\":900}",
+      "revision_digest": "sha256:d7c5bc484d300b2d3d90222ba756b5f32fa28ac47130d43b65d31d00b70d6db5"
+    }
+  ],
+  "occurrence_vectors": [
+    {
+      "name": "new-york-spring-gap-visible-skip",
+      "occurrence": {
+        "schema_id": "ctower.routine-occurrence/v1",
+        "occurrence_id": "018f0d5e-7b9a-7c01-8000-000000000301",
+        "tenant_id": "018f0d5e-7b9a-7c01-8000-000000000001",
+        "routine_ref": "ctower.test.dst-gap@1",
+        "revision_digest": "sha256:8888888888888888888888888888888888888888888888888888888888888888",
+        "scheduled_for": "2026-03-08T07:30:00Z",
+        "local_civil_time": "2026-03-08T02:30:00",
+        "timezone": "America/New_York",
+        "utc_offset_seconds": null,
+        "offset_decision": "nonexistent_local_time",
+        "outcome": "skipped",
+        "job_id": null
+      }
+    },
+    {
+      "name": "new-york-fall-repeat-earlier-offset",
+      "occurrence": {
+        "schema_id": "ctower.routine-occurrence/v1",
+        "occurrence_id": "018f0d5e-7b9a-7c01-8000-000000000302",
+        "tenant_id": "018f0d5e-7b9a-7c01-8000-000000000001",
+        "routine_ref": "ctower.test.dst-repeat@1",
+        "revision_digest": "sha256:9999999999999999999999999999999999999999999999999999999999999999",
+        "scheduled_for": "2026-11-01T05:30:00Z",
+        "local_civil_time": "2026-11-01T01:30:00",
+        "timezone": "America/New_York",
+        "utc_offset_seconds": -14400,
+        "offset_decision": "earlier_offset",
+        "outcome": "queued",
+        "job_id": "018f0d5e-7b9a-7c01-8000-000000000303"
+      }
+    },
+    {
+      "name": "typed-policy-refusal",
+      "occurrence": {
+        "schema_id": "ctower.routine-occurrence/v1",
+        "occurrence_id": "018f0d5e-7b9a-7c01-8000-000000000304",
+        "tenant_id": "018f0d5e-7b9a-7c01-8000-000000000001",
+        "routine_ref": "ctower.test.refusal@1",
+        "revision_digest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "scheduled_for": "2026-07-22T12:00:00Z",
+        "local_civil_time": "2026-07-22T12:00:00",
+        "timezone": "UTC",
+        "utc_offset_seconds": 0,
+        "offset_decision": "exact",
+        "outcome": "refused",
+        "job_id": null
+      }
+    }
+  ]
+}

@@ -11,8 +11,10 @@ from pydantic import ValidationError
 from ctower_api._http_support import authenticate as _authenticate
 from ctower_api._http_support import encoded as _encoded
 from ctower_api._http_support import problem_response as _problem_response
+from ctower_api._http_support import telemetry_context as _telemetry
 from ctower_api._http_support import uuid_value as _uuid
 from ctower_api._http_support import validation_problem as _validation_problem
+from ctower_api._mutation_response import mutation_response as _mutation_response
 from ctower_api.telemetry import TelemetryRecorder
 from ctower_client.models import ControlHealth as HttpControlHealth
 from ctower_client.models import PoisonDispositionReceipt as HttpPoisonDispositionReceipt
@@ -46,12 +48,13 @@ def install_health_routes(
         return JSONResponse(content=boundary.model_dump(mode="json", by_alias=True))
 
     if attention is not None:
-        _install_disposition_route(app, access, recorder, attention)
+        _install_disposition_route(app, access, record, recorder, attention)
 
 
 def _install_disposition_route(
     app: FastAPI,
     access: Access,
+    record: Record,
     recorder: TelemetryRecorder,
     attention: Attention,
 ) -> None:
@@ -61,6 +64,7 @@ def _install_disposition_route(
         if isinstance(actor, RecordProblem):
             return _problem_response(actor)
         try:
+            telemetry = _telemetry(request)
             parsed_outbox_id = _uuid(outbox_id)
             command_id = _uuid(request.headers.get("Idempotency-Key"))
             payload = PoisonDispositionRequest.model_validate_json(await request.body())
@@ -75,11 +79,19 @@ def _install_disposition_route(
             receipt = attention.disposition(actor, command)
         except (ValidationError, ValueError):
             return _problem_response(_validation_problem())
-        boundary = HttpPoisonDispositionReceipt.model_validate_json(
-            _encoded(receipt.response_payload())
+        telemetry = telemetry.bind(
+            tenant_id=str(actor.tenant_id),
+            actor_id=str(actor.principal_id),
+            command_id=str(command_id),
         )
-        return JSONResponse(
-            status_code=202,
-            headers={"Retry-After": "1"},
-            content=boundary.model_dump(mode="json"),
+        recorder.emit("access.authenticate", telemetry, outcome="ok", reason="authorized")
+        return _mutation_response(
+            record,
+            receipt,
+            tenant_id=actor.tenant_id,
+            principal_id=actor.principal_id,
+            command_id=command_id,
+            telemetry=telemetry,
+            boundary_model=HttpPoisonDispositionReceipt,
+            accepted_status=200,
         )

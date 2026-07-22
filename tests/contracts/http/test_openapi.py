@@ -68,6 +68,7 @@ def test_problem_vocabulary_and_boundary_objects_are_strict() -> None:
         "bootstrap-origin",
         "durability_pending",
         "idempotency-conflict",
+        "poison-not-found",
         "proof-candidate-author-mismatch",
         "proof-candidate-digest-invalid",
         "proof-candidate-digest-not-current",

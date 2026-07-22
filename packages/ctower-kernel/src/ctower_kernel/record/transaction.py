@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import hashlib
 from collections.abc import Callable
 from contextlib import suppress
 from datetime import datetime
@@ -157,6 +158,7 @@ class RecordTransaction:
         telemetry: TelemetryContext,
         now: datetime,
         subjects: tuple[EventSubject, ...] = (),
+        topic: str = "record.events",
     ) -> None:
         """Append one event, exact result, and outbox row in the caller's transaction."""
 
@@ -180,8 +182,44 @@ class RecordTransaction:
                 now,
             ),
         )
-        enqueue_event(self._connection, outbox_id, event, telemetry, now)
+        enqueue_event(self._connection, outbox_id, event, telemetry, now, topic=topic)
         self._move_subject_heads(event, ordered_subjects, now=now)
+
+    def commit_control(
+        self,
+        event: EventEnvelope,
+        *,
+        outbox_id: UUID,
+        response_body: dict[str, object],
+        status_code: int,
+        now: datetime,
+        topic: str,
+        job_id: UUID | None = None,
+    ) -> None:
+        """Append a trusted control-plane event without exporting Telemetry upward."""
+
+        trace = hashlib.sha256(event.client_command_id.bytes + b"trace").hexdigest()
+        telemetry = TelemetryContext(
+            schema="ctower.telemetry-context/v1",
+            trace_id=trace[:32],
+            span_id=trace[32:48],
+            trace_flags=1,
+            correlation_id=str(event.correlation_id),
+            causation_id=str(event.client_command_id),
+            tenant_id=str(event.tenant_id),
+            actor_id=str(event.actor_principal_id),
+            command_id=str(event.client_command_id),
+            job_id=str(job_id) if job_id is not None else None,
+        )
+        self.commit(
+            event,
+            outbox_id=outbox_id,
+            response_body=response_body,
+            status_code=status_code,
+            telemetry=telemetry,
+            now=now,
+            topic=topic,
+        )
 
     def refuse(
         self,

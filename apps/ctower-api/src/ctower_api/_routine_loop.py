@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import hashlib
 import json
 from dataclasses import dataclass
 from datetime import time
@@ -84,10 +85,15 @@ def _load_revision(path: Path) -> RoutineRevision:
         raise ValueError(f"Routine schedule has unknown or missing fields: {path}")
     if pack["schema_id"] != "ctower.routine/v1" or pack["dst_policy"] != "wall_clock_once":
         raise ValueError(f"Routine pack declares an unsupported contract or DST policy: {path}")
+    declared_digest = _string(pack["revision_digest"], "revision_digest")
+    authored = {key: value for key, value in pack.items() if key != "revision_digest"}
+    computed_digest = "sha256:" + hashlib.sha256(_canonical_bytes(authored)).hexdigest()
+    if declared_digest != computed_digest:
+        raise ValueError(f"Routine revision digest does not match authored content: {path}")
     local_time = _local_time(schedule["local_time"])
     return RoutineRevision(
         routine_ref=_string(pack["routine_ref"], "routine_ref"),
-        revision_digest=_string(pack["revision_digest"], "revision_digest"),
+        revision_digest=declared_digest,
         schedule_kind=ScheduleKind(_string(schedule["kind"], "schedule.kind")),
         timezone=_string(schedule["timezone"], "schedule.timezone"),
         local_time=local_time,
@@ -98,6 +104,17 @@ def _load_revision(path: Path) -> RoutineRevision:
         timeout_seconds=_integer(pack["timeout_seconds"], "timeout_seconds"),
         component_digests=_strings(pack["component_digests"], "component_digests"),
     )
+
+
+def _canonical_bytes(value: dict[str, object]) -> bytes:
+    """Render the complete authored revision body as deterministic UTF-8 JSON."""
+
+    return json.dumps(
+        value,
+        ensure_ascii=False,
+        separators=(",", ":"),
+        sort_keys=True,
+    ).encode("utf-8")
 
 
 def _mapping(value: object, field: str) -> dict[str, object]:

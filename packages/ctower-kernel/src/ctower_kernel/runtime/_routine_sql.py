@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+import hashlib
+import json
 import secrets
 from datetime import datetime, time
 from typing import cast
@@ -10,6 +12,13 @@ from uuid import UUID
 import psycopg
 from psycopg.rows import dict_row
 
+from ctower_kernel.record.events import (
+    EventEnvelope,
+    EventKind,
+    EventOrigin,
+    RoutineOccurrenceRecordedPayload,
+)
+from ctower_kernel.record.transaction import RecordTransaction, authority_connection
 from ctower_kernel.runtime import (
     CatchUpPolicy,
     ConcurrencyPolicy,
@@ -35,7 +44,9 @@ def register(
 ) -> None:
     with psycopg.connect(dsn, row_factory=dict_row) as connection:
         connection.execute("SET ROLE ctower_svc")
-        initial_fire = first_fire_at or revision.next_fire_after(_database_now(connection))
+        now = _database_now(connection)
+        _control_worker_principal(connection, tenant_id, now)
+        initial_fire = first_fire_at or revision.next_fire_after(now)
         connection.execute(
             """
             INSERT INTO routine_revisions (
@@ -85,9 +96,10 @@ def tenant_ids(dsn: str) -> tuple[UUID, ...]:
 
 
 def scan(dsn: str, tenant_id: UUID) -> SchedulerScan:
-    with psycopg.connect(dsn, row_factory=dict_row) as connection:
+    with authority_connection(dsn) as connection:
         connection.execute("SET ROLE ctower_svc")
         now = _database_now(connection)
+        actor_principal_id = _control_worker_principal(connection, tenant_id, now)
         rows = connection.execute(
             """
             SELECT trigger.next_fire_at, revision.*
@@ -106,7 +118,14 @@ def scan(dsn: str, tenant_id: UUID) -> SchedulerScan:
             revision = _revision(row)
             plans, next_fire = _plans(connection, tenant_id, revision, row, now)
             for plan in plans:
-                occurrence, job = _persist_plan(connection, tenant_id, revision, plan, now)
+                occurrence, job = _persist_plan(
+                    connection,
+                    tenant_id,
+                    actor_principal_id,
+                    revision,
+                    plan,
+                    now,
+                )
                 if occurrence is not None:
                     occurrences.append(occurrence)
                 if job is not None:
@@ -153,60 +172,198 @@ def _plans(
 def _persist_plan(
     connection: psycopg.Connection[dict[str, object]],
     tenant_id: UUID,
+    actor_principal_id: UUID,
     revision: RoutineRevision,
     plan: OccurrencePlan,
     now: datetime,
 ) -> tuple[RoutineOccurrence | None, FixedOperationJob | None]:
-    occurrence_id = _uuid7(now)
-    inserted = connection.execute(
+    occurrence_id, command_id, event_id, outbox_id, job_id = _occurrence_ids(
+        tenant_id, revision, plan
+    )
+    request_payload = _occurrence_payload(tenant_id, occurrence_id, revision, plan, job_id)
+    request_digest = hashlib.sha256(_canonical_bytes(request_payload)).digest()
+    transaction = RecordTransaction(connection)
+    existing = transaction.reserve(actor_principal_id, command_id, request_digest)
+    if existing is not None:
+        return None, None
+    event = _occurrence_event(
+        tenant_id,
+        actor_principal_id,
+        occurrence_id,
+        command_id,
+        event_id,
+        revision,
+        plan,
+        job_id,
+        request_digest,
+        now,
+    )
+    _commit_occurrence(transaction, event, outbox_id, request_payload, job_id, now)
+    _insert_occurrence(
+        connection, tenant_id, actor_principal_id, occurrence_id, command_id, revision, plan, now
+    )
+    job = None
+    if job_id is not None:
+        job = _insert_job(connection, tenant_id, occurrence_id, job_id, revision, now)
+    occurrence = _routine_occurrence(tenant_id, occurrence_id, revision, plan, job_id)
+    return occurrence, job
+
+
+def _occurrence_ids(
+    tenant_id: UUID,
+    revision: RoutineRevision,
+    plan: OccurrencePlan,
+) -> tuple[UUID, UUID, UUID, UUID, UUID | None]:
+    identity = (
+        tenant_id.bytes,
+        _digest(revision.revision_digest),
+        plan.scheduled_for.isoformat().encode("ascii"),
+    )
+    job_id = (
+        _stable_uuid7(plan.scheduled_for, b"job", *identity)
+        if plan.outcome is OccurrenceOutcome.QUEUED
+        else None
+    )
+    return (
+        _stable_uuid7(plan.scheduled_for, b"occurrence", *identity),
+        _stable_uuid7(plan.scheduled_for, b"command", *identity),
+        _stable_uuid7(plan.scheduled_for, b"event", *identity),
+        _stable_uuid7(plan.scheduled_for, b"outbox", *identity),
+        job_id,
+    )
+
+
+def _occurrence_event(
+    tenant_id: UUID,
+    actor_principal_id: UUID,
+    occurrence_id: UUID,
+    command_id: UUID,
+    event_id: UUID,
+    revision: RoutineRevision,
+    plan: OccurrencePlan,
+    job_id: UUID | None,
+    request_digest: bytes,
+    now: datetime,
+) -> EventEnvelope:
+    return EventEnvelope(
+        actor_principal_id=actor_principal_id,
+        aggregate_id=occurrence_id,
+        causation_id=None,
+        client_command_id=command_id,
+        correlation_id=command_id,
+        event_id=event_id,
+        kind=EventKind.ROUTINE_OCCURRENCE_RECORDED,
+        origin=EventOrigin.CONTROL_WORKER,
+        payload=RoutineOccurrenceRecordedPayload(
+            occurrence_id=occurrence_id,
+            routine_ref=revision.routine_ref,
+            revision_digest=revision.revision_digest,
+            scheduled_for=plan.scheduled_for,
+            local_civil_time=plan.local_civil_time,
+            timezone=revision.timezone,
+            utc_offset_seconds=plan.utc_offset_seconds,
+            offset_decision=plan.offset_decision.value,
+            outcome=plan.outcome.value,
+            job_id=job_id,
+        ),
+        prev_hash=bytes(32),
+        request_sha256=request_digest,
+        sequence=1,
+        server_time=now,
+        stream_id=f"routine-occurrence:{occurrence_id}",
+        tenant_id=tenant_id,
+    )
+
+
+def _commit_occurrence(
+    transaction: RecordTransaction,
+    event: EventEnvelope,
+    outbox_id: UUID,
+    request_payload: dict[str, object],
+    job_id: UUID | None,
+    now: datetime,
+) -> None:
+    transaction.commit_control(
+        event,
+        outbox_id=outbox_id,
+        response_body={
+            "command_id": str(event.client_command_id),
+            "durability_state": "durability_pending",
+            "event_ids": [str(event.event_id)],
+            "occurrence": request_payload,
+        },
+        status_code=202,
+        now=now,
+        topic="runtime.occurrences",
+        job_id=job_id,
+    )
+
+
+def _insert_occurrence(
+    connection: psycopg.Connection[dict[str, object]],
+    tenant_id: UUID,
+    actor_principal_id: UUID,
+    occurrence_id: UUID,
+    command_id: UUID,
+    revision: RoutineRevision,
+    plan: OccurrencePlan,
+    now: datetime,
+) -> None:
+    connection.execute(
         """
         INSERT INTO routine_occurrences (
-            occurrence_id, tenant_id, revision_digest, scheduled_for,
-            local_civil_time, timezone, utc_offset_seconds, outcome, recorded_at
-        ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s)
-        ON CONFLICT (tenant_id, revision_digest, scheduled_for) DO NOTHING
-        RETURNING occurrence_id
+            occurrence_id, tenant_id, actor_principal_id, client_command_id,
+            revision_digest, scheduled_for, local_civil_time, timezone,
+            utc_offset_seconds, offset_decision, outcome, recorded_at
+        ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
         """,
         (
             occurrence_id,
             tenant_id,
+            actor_principal_id,
+            command_id,
             _digest(revision.revision_digest),
             plan.scheduled_for,
             plan.local_civil_time,
             revision.timezone,
             plan.utc_offset_seconds,
+            plan.offset_decision.value,
             plan.outcome.value,
             now,
         ),
-    ).fetchone()
-    if inserted is None:
-        return None, None
-    job = None
-    if plan.outcome is OccurrenceOutcome.QUEUED:
-        job = _insert_job(connection, tenant_id, occurrence_id, revision, now)
-    occurrence = RoutineOccurrence(
-        occurrence_id,
-        tenant_id,
-        revision.routine_ref,
-        revision.revision_digest,
-        plan.scheduled_for,
-        plan.local_civil_time,
-        revision.timezone,
-        plan.utc_offset_seconds,
-        plan.outcome,
-        job.job_id if job else None,
     )
-    return occurrence, job
+
+
+def _routine_occurrence(
+    tenant_id: UUID,
+    occurrence_id: UUID,
+    revision: RoutineRevision,
+    plan: OccurrencePlan,
+    job_id: UUID | None,
+) -> RoutineOccurrence:
+    return RoutineOccurrence(
+        occurrence_id=occurrence_id,
+        tenant_id=tenant_id,
+        routine_ref=revision.routine_ref,
+        revision_digest=revision.revision_digest,
+        scheduled_for=plan.scheduled_for,
+        local_civil_time=plan.local_civil_time,
+        timezone=revision.timezone,
+        utc_offset_seconds=plan.utc_offset_seconds,
+        offset_decision=plan.offset_decision,
+        outcome=plan.outcome,
+        job_id=job_id,
+    )
 
 
 def _insert_job(
     connection: psycopg.Connection[dict[str, object]],
     tenant_id: UUID,
     occurrence_id: UUID,
+    job_id: UUID,
     revision: RoutineRevision,
     now: datetime,
 ) -> FixedOperationJob:
-    job_id = _uuid7(now)
     connection.execute(
         """
         INSERT INTO operation_jobs (
@@ -233,6 +390,60 @@ def _insert_job(
         revision.component_digests,
         now,
     )
+
+
+def _occurrence_payload(
+    tenant_id: UUID,
+    occurrence_id: UUID,
+    revision: RoutineRevision,
+    plan: OccurrencePlan,
+    job_id: UUID | None,
+) -> dict[str, object]:
+    return {
+        "job_id": str(job_id) if job_id is not None else None,
+        "local_civil_time": plan.local_civil_time,
+        "occurrence_id": str(occurrence_id),
+        "offset_decision": plan.offset_decision.value,
+        "outcome": plan.outcome.value,
+        "revision_digest": revision.revision_digest,
+        "routine_ref": revision.routine_ref,
+        "scheduled_for": plan.scheduled_for.isoformat(),
+        "schema_id": "ctower.routine-occurrence/v1",
+        "tenant_id": str(tenant_id),
+        "timezone": revision.timezone,
+        "utc_offset_seconds": plan.utc_offset_seconds,
+    }
+
+
+def _canonical_bytes(value: dict[str, object]) -> bytes:
+    return json.dumps(value, ensure_ascii=False, separators=(",", ":"), sort_keys=True).encode()
+
+
+def _control_worker_principal(
+    connection: psycopg.Connection[dict[str, object]],
+    tenant_id: UUID,
+    now: datetime,
+) -> UUID:
+    connection.execute(
+        """
+        INSERT INTO principals (
+            principal_id, tenant_id, kind, display_name, disabled,
+            credential_ref, vault_ref, created_at
+        ) VALUES (%s, %s, 'control_worker', 'ctower control worker', false, NULL, NULL, %s)
+        ON CONFLICT (tenant_id, display_name) DO NOTHING
+        """,
+        (_uuid7(now), tenant_id, now),
+    )
+    row = connection.execute(
+        """
+        SELECT principal_id, kind, disabled FROM principals
+        WHERE tenant_id = %s AND display_name = 'ctower control worker'
+        """,
+        (tenant_id,),
+    ).fetchone()
+    if row is None or row["kind"] != "control_worker" or row["disabled"] is not False:
+        raise RuntimeError("Routine control-worker principal is unavailable")
+    return cast(UUID, row["principal_id"])
 
 
 def _scheduler_watermark(
@@ -308,6 +519,18 @@ def _digest(value: str) -> bytes:
 def _uuid7(now: datetime) -> UUID:
     milliseconds = int(now.timestamp() * 1000) & ((1 << 48) - 1)
     random_bits = secrets.randbits(74)
+    value = milliseconds << 80
+    value |= 0x7 << 76
+    value |= ((random_bits >> 62) & 0xFFF) << 64
+    value |= 0b10 << 62
+    value |= random_bits & ((1 << 62) - 1)
+    return UUID(int=value)
+
+
+def _stable_uuid7(now: datetime, *identity: bytes) -> UUID:
+    milliseconds = int(now.timestamp() * 1000) & ((1 << 48) - 1)
+    digest = hashlib.sha256(b"\x00".join(identity)).digest()
+    random_bits = int.from_bytes(digest[:10], "big") & ((1 << 74) - 1)
     value = milliseconds << 80
     value |= 0x7 << 76
     value |= ((random_bits >> 62) & 0xFFF) << 64

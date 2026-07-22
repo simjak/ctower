@@ -12,7 +12,10 @@
   "properties": {
     "schema_id": {"const": "ctower.routine/v1"},
     "routine_ref": {"type": "string", "pattern": "^[a-z][a-z0-9._-]*@[1-9][0-9]*$"},
-    "revision_digest": {"$ref": "#/$defs/digest"},
+    "revision_digest": {
+      "allOf": [{"$ref": "#/$defs/digest"}],
+      "description": "SHA-256 of canonical UTF-8 JSON for every authored field except revision_digest; object keys are sorted and separators are comma/colon with no insignificant whitespace."
+    },
     "schedule": {"$ref": "#/$defs/schedule"},
     "dst_policy": {"const": "wall_clock_once"},
     "concurrency": {

@@ -20,6 +20,7 @@ __all__ = [
     "RoutineOccurrence",
     "RoutineRevision",
     "ScheduleKind",
+    "ScheduleOffsetDecision",
     "SchedulerScan",
 ]
 
@@ -52,13 +53,21 @@ class OccurrenceOutcome(StrEnum):
     QUEUED = "queued"
     COALESCED = "coalesced"
     SKIPPED = "skipped"
+    REFUSED = "refused"
+
+
+class ScheduleOffsetDecision(StrEnum):
+    EXACT = "exact"
+    EARLIER_OFFSET = "earlier_offset"
+    NONEXISTENT_LOCAL_TIME = "nonexistent_local_time"
 
 
 @dataclass(frozen=True, slots=True)
 class OccurrencePlan:
     scheduled_for: datetime
     local_civil_time: str
-    utc_offset_seconds: int
+    utc_offset_seconds: int | None
+    offset_decision: ScheduleOffsetDecision
     outcome: OccurrenceOutcome
 
 
@@ -71,7 +80,8 @@ class RoutineOccurrence:
     scheduled_for: datetime
     local_civil_time: str
     timezone: str
-    utc_offset_seconds: int
+    utc_offset_seconds: int | None
+    offset_decision: ScheduleOffsetDecision
     outcome: OccurrenceOutcome
     job_id: UUID | None
 
@@ -152,7 +162,7 @@ class RoutineRevision:
         _validate_revision_schedule(self)
 
     def next_fire_after(self, instant: datetime) -> datetime:
-        """Return the next unique UTC instant, skipping nonexistent local times."""
+        """Return the next unique UTC decision instant, including a visible DST gap."""
 
         _aware(instant)
         if self.schedule_kind is ScheduleKind.HOURLY:
@@ -161,8 +171,10 @@ class RoutineRevision:
         zone = ZoneInfo(self.timezone)
         local_date = instant.astimezone(zone).date()
         for days in range(370):
-            candidate = _wall_clock_once(local_date + timedelta(days=days), self.local_time, zone)
-            if candidate is not None and candidate > instant:
+            candidate, _, _ = _wall_clock_decision(
+                local_date + timedelta(days=days), self.local_time, zone
+            )
+            if candidate > instant:
                 return candidate
         raise RuntimeError("daily Routine has no resolvable fire in the bounded calendar")
 
@@ -249,19 +261,36 @@ def _plan(
     routine: RoutineRevision, scheduled_for: datetime, outcome: OccurrenceOutcome
 ) -> OccurrencePlan:
     _aware(scheduled_for)
-    local = scheduled_for.astimezone(ZoneInfo(routine.timezone))
+    zone = ZoneInfo(routine.timezone)
+    local = scheduled_for.astimezone(zone)
+    offset_decision = ScheduleOffsetDecision.EXACT
+    local_civil_time = local.replace(tzinfo=None)
     offset = local.utcoffset()
-    if offset is None:
+    if routine.schedule_kind is ScheduleKind.DAILY:
+        decision_at, offset, offset_decision = _wall_clock_decision(
+            local.date(), routine.local_time, zone
+        )
+        if decision_at != scheduled_for.astimezone(UTC):
+            raise ValueError("daily Routine instant does not match its wall-clock decision")
+        if routine.local_time is None:
+            raise RuntimeError("daily Routine local time disappeared")
+        local_civil_time = datetime.combine(local.date(), routine.local_time)
+    if offset is None and offset_decision is not ScheduleOffsetDecision.NONEXISTENT_LOCAL_TIME:
         raise RuntimeError("Routine local offset is unavailable")
+    if offset_decision is ScheduleOffsetDecision.NONEXISTENT_LOCAL_TIME:
+        outcome = OccurrenceOutcome.SKIPPED
     return OccurrencePlan(
         scheduled_for=scheduled_for.astimezone(UTC),
-        local_civil_time=local.replace(tzinfo=None).isoformat(),
-        utc_offset_seconds=int(offset.total_seconds()),
+        local_civil_time=local_civil_time.isoformat(),
+        utc_offset_seconds=int(offset.total_seconds()) if offset is not None else None,
+        offset_decision=offset_decision,
         outcome=outcome,
     )
 
 
-def _wall_clock_once(day: date, at: time | None, zone: ZoneInfo) -> datetime | None:
+def _wall_clock_decision(
+    day: date, at: time | None, zone: ZoneInfo
+) -> tuple[datetime, timedelta | None, ScheduleOffsetDecision]:
     if at is None:
         raise RuntimeError("daily Routine local time disappeared")
     naive = datetime.combine(day, at)
@@ -270,7 +299,17 @@ def _wall_clock_once(day: date, at: time | None, zone: ZoneInfo) -> datetime | N
         utc = naive.replace(tzinfo=zone, fold=fold).astimezone(UTC)
         if utc.astimezone(zone).replace(tzinfo=None) == naive:
             candidates.add(utc)
-    return min(candidates) if candidates else None
+    if not candidates:
+        proxy = naive.replace(tzinfo=zone, fold=0).astimezone(UTC)
+        return proxy, None, ScheduleOffsetDecision.NONEXISTENT_LOCAL_TIME
+    selected = min(candidates)
+    local = selected.astimezone(zone)
+    decision = (
+        ScheduleOffsetDecision.EARLIER_OFFSET
+        if len(candidates) > 1
+        else ScheduleOffsetDecision.EXACT
+    )
+    return selected, local.utcoffset(), decision
 
 
 def _aware(value: datetime) -> None:

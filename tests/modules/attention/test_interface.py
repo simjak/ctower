@@ -13,7 +13,7 @@ from ctower_kernel.attention import (
     PoisonDispositionAction,
     PoisonDispositionReceipt,
 )
-from ctower_kernel.record import Actor, PrincipalKind
+from ctower_kernel.record import Actor, PrincipalKind, RecordProblem
 
 
 class _Store:
@@ -38,6 +38,7 @@ def test_retry_and_tombstone_are_the_only_typed_recovery_actions() -> None:
     for action in PoisonDispositionAction:
         command = _command(action)
         receipt = attention.disposition(actor, command)
+        assert not isinstance(receipt, RecordProblem)
         assert receipt.command is command
         assert receipt.tenant_id == actor.tenant_id
 

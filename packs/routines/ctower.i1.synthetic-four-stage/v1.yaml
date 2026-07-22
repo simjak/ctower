@@ -1,7 +1,7 @@
 {
   "schema_id": "ctower.routine/v1",
   "routine_ref": "ctower.i1.synthetic-four-stage@1",
-  "revision_digest": "sha256:3d5f00f10c45513811e510461c4fbecf3bd28479276c51eb4d54a0bfef118902",
+  "revision_digest": "sha256:d7c5bc484d300b2d3d90222ba756b5f32fa28ac47130d43b65d31d00b70d6db5",
   "schedule": {
     "kind": "daily",
     "timezone": "UTC",

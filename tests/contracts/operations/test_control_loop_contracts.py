@@ -2,9 +2,12 @@
 
 from __future__ import annotations
 
+import hashlib
 import json
 from pathlib import Path
 from typing import cast
+
+from jsonschema import Draft202012Validator
 
 ROOT = Path(__file__).parents[3]
 
@@ -55,6 +58,27 @@ def test_three_i1_routine_packs_pin_exact_schedule_policies() -> None:
     assert anchor_schedule["kind"] == "hourly"
     assert packs["ctower.i1.record-anchor@1"]["concurrency"] == "serialize_one_pending"
     assert packs["ctower.i1.record-anchor@1"]["catch_up"] == "coalesce_latest"
+
+
+def test_routine_revision_and_dst_outcome_vectors_are_deterministic() -> None:
+    vectors = _json("contracts/runtime/routine-vectors.json")
+    occurrence_schema = _json("contracts/runtime/routine-occurrence.schema.json")
+    validator = Draft202012Validator(occurrence_schema)
+    revisions = cast(list[dict[str, object]], vectors["revision_vectors"])
+    occurrences = cast(list[dict[str, object]], vectors["occurrence_vectors"])
+
+    for vector in revisions:
+        pack = _json(str(vector["path"]))
+        declared = pack.pop("revision_digest")
+        canonical = json.dumps(pack, ensure_ascii=False, separators=(",", ":"), sort_keys=True)
+        assert canonical == vector["canonical_json"]
+        assert declared == vector["revision_digest"]
+        assert declared == f"sha256:{hashlib.sha256(canonical.encode()).hexdigest()}"
+
+    for vector in occurrences:
+        validator.validate(vector["occurrence"])
+    outcomes = {cast(dict[str, object], vector["occurrence"])["outcome"] for vector in occurrences}
+    assert {"queued", "skipped", "refused"} <= outcomes
 
 
 def test_health_contract_names_each_independent_cp3b_contributor() -> None:

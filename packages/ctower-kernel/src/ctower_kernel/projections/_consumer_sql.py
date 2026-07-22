@@ -37,8 +37,7 @@ def consume_one(dsn: str, tenant_id: UUID) -> bool:
                 position = int(cast(int, cursor["acceptance_position"]))
                 _advance(connection, tenant_id, position, source)
             return False
-        if message.get("recovery_action") == "tombstone":
-            _tombstone(connection, tenant_id, message)
+        if _apply_accepted_tombstone(connection, tenant_id, message):
             return True
         attempt = _attempt_number(
             connection, tenant_id, cast(UUID, message["outbox_id"]), generation
@@ -68,6 +67,20 @@ def consume_one(dsn: str, tenant_id: UUID) -> bool:
         )
         _advance_if_position_drained(connection, tenant_id, message, cursor)
         return True
+
+
+def _apply_accepted_tombstone(
+    connection: psycopg.Connection[dict[str, object]],
+    tenant_id: UUID,
+    message: dict[str, object],
+) -> bool:
+    recovery = _accepted_recovery(connection, tenant_id, cast(UUID, message["outbox_id"]))
+    if recovery is not None and str(recovery["action"]) == "tombstone":
+        message["recovery_action"] = "tombstone"
+    if message.get("recovery_action") != "tombstone":
+        return False
+    _tombstone(connection, tenant_id, message)
+    return True
 
 
 def read_source(dsn: str, tenant_id: UUID) -> int:
@@ -128,16 +141,7 @@ def _recover_or_next(
     message = _message_by_outbox(connection, tenant_id, blocked)
     if message is None:
         raise RuntimeError("blocked outbox message disappeared")
-    recovery = connection.execute(
-        """
-        SELECT disposition.action, disposition.recorded_at
-        FROM outbox_poison_dispositions AS disposition
-        WHERE disposition.consumer_key = %s AND disposition.tenant_id = %s
-          AND disposition.topic = %s AND disposition.outbox_id = %s
-        ORDER BY disposition.recorded_at DESC, disposition.client_command_id DESC LIMIT 1
-        """,
-        (_CONSUMER, tenant_id, _TOPIC, blocked),
-    ).fetchone()
+    recovery = _accepted_recovery(connection, tenant_id, blocked)
     latest = connection.execute(
         """
         SELECT outcome, recorded_at FROM outbox_delivery_attempts
@@ -149,13 +153,37 @@ def _recover_or_next(
     ).fetchone()
     if latest is not None and str(latest["outcome"]) in {"delivered", "tombstoned"}:
         return message
-    if recovery is None or (
-        latest is not None
+    if recovery is None:
+        return None
+    if (
+        str(recovery["action"]) != "tombstone"
+        and latest is not None
         and cast(datetime, recovery["recorded_at"]) <= cast(datetime, latest["recorded_at"])
     ):
         return None
     message["recovery_action"] = str(recovery["action"])
     return message
+
+
+def _accepted_recovery(
+    connection: psycopg.Connection[dict[str, object]],
+    tenant_id: UUID,
+    outbox_id: UUID,
+) -> dict[str, object] | None:
+    return connection.execute(
+        """
+        SELECT disposition.action, disposition.recorded_at
+        FROM outbox_poison_dispositions AS disposition
+        JOIN durability_acceptance_confirmations AS confirmation
+          ON confirmation.tenant_id = disposition.tenant_id
+         AND confirmation.principal_id = disposition.actor_principal_id
+         AND confirmation.client_command_id = disposition.client_command_id
+        WHERE disposition.consumer_key = %s AND disposition.tenant_id = %s
+          AND disposition.topic = %s AND disposition.outbox_id = %s
+        ORDER BY disposition.recorded_at DESC, disposition.client_command_id DESC LIMIT 1
+        """,
+        (_CONSUMER, tenant_id, _TOPIC, outbox_id),
+    ).fetchone()
 
 
 def _next_message(

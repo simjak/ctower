@@ -143,7 +143,7 @@ allowed_dependencies = ["kernel-record"]
 [[ownership]]
 name = "kernel-runtime"
 paths = ["packages/ctower-kernel/src/ctower_kernel/runtime/**"]
-allowed_dependencies = []
+allowed_dependencies = ["kernel-record"]
 
 [[ownership]]
 name = "control-api"

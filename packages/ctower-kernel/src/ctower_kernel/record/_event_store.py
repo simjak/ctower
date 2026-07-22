@@ -80,17 +80,20 @@ def enqueue_event(
     event: EventEnvelope,
     telemetry: TelemetryContext,
     now: datetime,
+    *,
+    topic: str = "record.events",
 ) -> None:
     connection.execute(
         """
         INSERT INTO outbox (
             outbox_id, tenant_id, event_id, topic, payload, telemetry, created_at
-        ) VALUES (%s, %s, %s, 'record.events', %s, %s, %s)
+        ) VALUES (%s, %s, %s, %s, %s, %s, %s)
         """,
         (
             outbox_id,
             event.tenant_id,
             event.event_id,
+            topic,
             Jsonb(event.to_mapping()),
             Jsonb(telemetry.to_mapping()),
             now,

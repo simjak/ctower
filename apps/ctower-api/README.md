@@ -11,7 +11,8 @@ never catch up the projection. One common mutation envelope asks Record to recon
 returns either replayable `durability_pending` or the original semantic result as accepted; normal/default
 configuration remains `pending_only`. The same artifact exposes `ctower-control-worker`, which owns the
 fixed Routine scan and accepted-outbox projection loops. Authenticated health reports independent
-contributors, and the optional Attention composition exposes append-only retry/tombstone poison recovery.
+contributors, and the optional Attention composition exposes canonical, acceptance-gated append-only
+retry/tombstone poison recovery with exact command replay.
 Real backup, anchor, object, and synthetic effects, a production off-host target, and deployment remain deferred.
 The common mutation envelope threads the authenticated principal into every Record reconciliation call, so
 same-tenant principals may independently reuse the same command UUID without weakening exact replay.

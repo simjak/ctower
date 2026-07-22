@@ -10,6 +10,7 @@ from ctower_kernel.runtime.interface import (
     RoutineOccurrence,
     RoutineRevision,
     ScheduleKind,
+    ScheduleOffsetDecision,
     SchedulerScan,
 )
 
@@ -23,5 +24,6 @@ __all__ = [
     "RoutineOccurrence",
     "RoutineRevision",
     "ScheduleKind",
+    "ScheduleOffsetDecision",
     "SchedulerScan",
 ]

@@ -190,6 +190,14 @@
       ]
     },
     {
+      "path": "contracts/runtime/routine-vectors.json",
+      "references": [
+        "SPEC#event-driven-default-and-routine-revisions",
+        "AC-OPS-13",
+        "AC-OPS-14"
+      ]
+    },
+    {
       "path": "contracts/http/openapi.yaml",
       "references": [
         "SPEC#canonical-event-and-command-contract",

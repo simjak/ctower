@@ -1,7 +1,7 @@
 {
   "schema_id": "ctower.routine/v1",
   "routine_ref": "ctower.i1.daily-backup@1",
-  "revision_digest": "sha256:46945497919426237591607586a629ee05aa7d2df1d08caffeed85486f20d40a",
+  "revision_digest": "sha256:e966843c70c4b251bbe872148e5a753e038fae1a1e5c85280570cf44ffd0c098",
   "schedule": {
     "kind": "daily",
     "timezone": "UTC",

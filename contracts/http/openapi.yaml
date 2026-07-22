@@ -307,8 +307,12 @@
         ],
         "requestBody": {"required": true, "content": {"application/json": {"schema": {"$ref": "#/components/schemas/PoisonDispositionRequest"}}}},
         "responses": {
+          "200": {
+            "description": "Accepted append-only recovery command",
+            "content": {"application/json": {"schema": {"$ref": "#/components/schemas/PoisonDispositionReceipt"}}}
+          },
           "202": {
-            "description": "Append-only recovery command recorded for background consumption",
+            "description": "Append-only recovery command is durability pending",
             "headers": {"Retry-After": {"$ref": "#/components/headers/RetryAfter"}},
             "content": {"application/json": {"schema": {"$ref": "#/components/schemas/PoisonDispositionReceipt"}}}
           },
@@ -633,6 +637,7 @@
               "bootstrap-origin",
               "durability_pending",
               "idempotency-conflict",
+              "poison-not-found",
               "proof-candidate-author-mismatch",
               "proof-candidate-digest-invalid",
               "proof-candidate-digest-not-current",
@@ -1184,11 +1189,13 @@
       },
       "PoisonDispositionReceipt": {
         "type": "object", "additionalProperties": false,
-        "required": ["command_id", "outbox_id", "action", "recorded_at"],
+        "required": ["command_id", "outbox_id", "action", "durability_state", "event_ids", "recorded_at"],
         "properties": {
           "command_id": {"type": "string", "format": "uuid"},
           "outbox_id": {"type": "string", "format": "uuid"},
           "action": {"$ref": "#/components/schemas/PoisonDispositionAction"},
+          "durability_state": {"$ref": "#/components/schemas/DurabilityState"},
+          "event_ids": {"type": "array", "minItems": 1, "items": {"type": "string", "format": "uuid"}},
           "recorded_at": {"type": "string", "format": "date-time"}
         }
       },

@@ -12,7 +12,7 @@
         },
         {
           "path": "contracts/traceability/sources.json",
-          "sha256": "sha256:cd549d247c711be65bcffe13abe26258728408af4f3cbd038e0047ff91eaa168"
+          "sha256": "sha256:eb45ff2066a0d462f455edb81514976d444bbe129a08cf7bc04b9348fae790f7"
         },
         {
           "path": "contracts/traceability/traceability-sources.schema.json",
@@ -38,7 +38,7 @@
       "outputs": [
         {
           "path": "generated/traceability-index.json",
-          "sha256": "sha256:7516e61177c7637f9da34a83942d55cca1962371dfe136896ffc6109b69bb41f"
+          "sha256": "sha256:fca173b6cda30ce6c0f8aa942db69519d0ee088f318dfc618316cea05e64744f"
         }
       ],
       "tool_version": "2"
@@ -50,7 +50,7 @@
       "inputs": [
         {
           "path": "contracts/http/openapi.yaml",
-          "sha256": "sha256:65647c34052d6f417fb1a30d5575928cf52964b87fc1a7f8378b3690e3d43a2e"
+          "sha256": "sha256:8cd6f249721d78f29ab1bba86247a9b9014ed95cb009ea3bc14b9f7e0cdada72"
         },
         {
           "path": "contracts/observability/telemetry-context.schema.json",
@@ -58,7 +58,7 @@
         },
         {
           "path": "contracts/domain/events/event-envelope.schema.json",
-          "sha256": "sha256:759fa42a71c382cc41b661bf6cd1221e45456e257648909fdbad96458d43e650"
+          "sha256": "sha256:471a47c926361f2e3531d19a8eed618300e89f2c636b6c1b623b70b350a593d4"
         },
         {
           "path": "contracts/domain/tickets/ticket-event.schema.json",
@@ -100,15 +100,15 @@
       "outputs": [
         {
           "path": "generated/python/ctower_client/__init__.py",
-          "sha256": "sha256:bd866971f1b8371dfbec3f739e73a62f4d68efe424136dc69230bd7764e37ddb"
+          "sha256": "sha256:3a84e04841b19fc93da402242f3a3e8f6b5181c924fe362c197d861383e8625b"
         },
         {
           "path": "generated/python/ctower_client/client.py",
-          "sha256": "sha256:112c14e8ce6046205093d5dd2eedb4475d60deb6ba177109878cc1cdb9153cfc"
+          "sha256": "sha256:4a3d06df237db7ba5bbdbc47ce1f4dd849b45bb9aa06ea31064a59edc8f14c03"
         },
         {
           "path": "generated/python/ctower_client/models.py",
-          "sha256": "sha256:c6ef46f46b97ca974ee9a10a698f18a5f7fc780fff6e43178ed331714b380381"
+          "sha256": "sha256:1efe8e249db161e69ea8d15232013db65bd6b5a43ee9c87014340397df86bb35"
         }
       ],
       "tool_version": "1+sha256:a7cc74bf1339a9e2b5487934325c6cd73382db1f2e6e9d614ace9d0ca809ed33"

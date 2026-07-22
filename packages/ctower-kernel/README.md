@@ -6,7 +6,8 @@ command/event/outbox persistence; ticket lifecycle, priority, custody, assignmen
 typed-intent policy; frozen criteria, digest-bound evidence, protected verdicts and selective invalidation;
 explicitly pinned legal graph movement plus proof-gated atomic resolve/close; and a disposable six-lane
 Board fold over accepted outbox records; immutable delivery attempts, poison, deduplicated Attention findings,
-append-only recovery dispositions; fixed Routine occurrences/jobs; and independently attributable health.
+canonical acceptance-gated recovery dispositions; fixed Routine occurrences/jobs with event/result/outbox
+lineage; and independently attributable health.
 
 Record is the lower append Interface and depends only on Telemetry. Work, Proof, and Workflow each own their
 SQL implementation and depend downward on Record; Workflow imports neither Work nor Proof. Composition

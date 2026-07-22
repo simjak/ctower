@@ -92,7 +92,7 @@ It covers one-use first-tenant bootstrap; tenant-scoped tickets; protected custo
 lifecycle/admission, blocker, and relation facts; explicit immutable Workflow/policy pins; criteria,
 evidence, and verdict proof; interpreted four-stage transitions; proof-gated resolve/close; linked cursor
 audit; three fixed Routine revisions; an accepted-only, rebuildable six-lane Board; immutable delivery and
-poison evidence; authenticated recovery dispositions; and contributor-level health. Record owns idempotent append, hash-chained
+poison evidence; canonical, acceptance-gated recovery dispositions; and contributor-level health. Record owns idempotent append, hash-chained
 events, links, positions, transactional outbox writes, canonical command roots, subject durability heads,
 and typed pending/accepted reconciliation. Work, Proof, and Workflow own their authority above Record;
 Projections replaces only disposable rows/cursors through a distinct role. HTTP Board reads never advance
@@ -179,10 +179,11 @@ forbidden:
    generated output -> policy or server implementation
 ```
 
-The implemented kernel dependency edges are acyclic: `Work|Proof|Workflow -> Record -> Telemetry`.
-Record imports none of those owners, and Workflow imports neither Work nor Proof. The repository policy
-validates edge allowlists and the entire ownership graph for cycles; composition satisfies Workflow's
-structural Work-readiness and current-proof ports.
+The implemented kernel dependency edges are acyclic:
+`Work|Proof|Workflow|Attention|Runtime -> Record -> Telemetry`. Record imports none of those owners, and
+Workflow imports neither Work nor Proof. The repository policy validates edge allowlists and the entire
+ownership graph for cycles; composition satisfies Workflow's structural Work-readiness and current-proof
+ports.
 
 | Deep Module | Authority hidden behind its Interface |
 |---|---|
@@ -380,8 +381,9 @@ A trigger is why work may become due. A wake intent is the durable request. A re
 operator-facing name for one bounded `execution_run`. A lease heartbeat renews only a current fenced
 lease. A scheduler beat materializes due Routine occurrences. None substitutes for another.
 
-Routine occurrence, concurrency/catch-up outcome, ordinary command/job, outbox row, and `next_fire_at`
-commit before dispatch. One logical scheduler owns Routine truth; there is no OS cron process per agent or
+Routine occurrence, concurrency/catch-up outcome, canonical event/result/outbox lineage, ordinary fixed job,
+and `next_fire_at` commit together before acceptance-gated dispatch. Nonexistent civil times remain visible
+skips and repeated times use the earlier offset. One logical scheduler owns Routine truth; there is no OS cron process per agent or
 Routine. Scheduler completeness, runner liveness, ticket progress, and effect/reconciliation watermarks
 are independent and make health `STATE UNKNOWN` when stale.
 

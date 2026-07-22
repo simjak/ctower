@@ -1,7 +1,7 @@
 {
   "schema_id": "ctower.routine/v1",
   "routine_ref": "ctower.i1.record-anchor@1",
-  "revision_digest": "sha256:45c48cce2e2d7fbdea1afc51c7c6ad26fc5f0fd114155b01a72b28cb70a3ccbf",
+  "revision_digest": "sha256:bd0b25449100de857ae42b98c5fcb00a8e8d3585a0c6adb866d798319873b26a",
   "schedule": {
     "kind": "hourly",
     "timezone": "UTC",

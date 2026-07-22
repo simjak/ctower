@@ -16,16 +16,28 @@ from ctower_kernel.runtime import (
 )
 
 
-def test_wall_clock_once_skips_dst_gap_and_uses_earlier_repeated_offset() -> None:
+def test_wall_clock_once_records_dst_gap_and_uses_earlier_repeated_offset() -> None:
     routine = _daily("America/New_York", time(2, 30))
 
     after_gap_eve = datetime(2026, 3, 7, 7, 30, tzinfo=UTC)
     after_repeat_eve = datetime(2026, 10, 31, 6, 30, tzinfo=UTC)
 
-    assert routine.next_fire_after(after_gap_eve) == datetime(2026, 3, 9, 6, 30, tzinfo=UTC)
+    gap = routine.next_fire_after(after_gap_eve)
+    assert gap == datetime(2026, 3, 8, 7, 30, tzinfo=UTC)
+    gap_plan = routine.plan_due((gap,))
+    assert gap_plan[0].local_civil_time == "2026-03-08T02:30:00"
+    assert gap_plan[0].utc_offset_seconds is None
+    assert gap_plan[0].offset_decision == "nonexistent_local_time"
+    assert gap_plan[0].outcome is OccurrenceOutcome.SKIPPED
     repeated = _daily("America/New_York", time(1, 30)).next_fire_after(after_repeat_eve)
     assert repeated == datetime(2026, 11, 1, 5, 30, tzinfo=UTC)
     assert repeated.utcoffset() == UTC.utcoffset(repeated)
+    repeated_plan = _daily("America/New_York", time(1, 30)).plan_due((repeated,))
+    assert repeated_plan[0].offset_decision == "earlier_offset"
+
+
+def test_occurrence_outcomes_include_typed_refusal() -> None:
+    assert OccurrenceOutcome.REFUSED.value == "refused"
 
 
 def test_catch_up_is_bounded_and_keeps_the_latest_due_fire() -> None:

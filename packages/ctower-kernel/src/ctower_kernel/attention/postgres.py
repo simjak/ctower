@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from ctower_kernel.attention import PoisonDisposition, PoisonDispositionReceipt
 from ctower_kernel.attention._postgres_sql import disposition as _disposition
-from ctower_kernel.record import Actor
+from ctower_kernel.record import Actor, RecordProblem
 
 __all__ = ["PostgresAttention"]
 
@@ -15,5 +15,7 @@ class PostgresAttention:
     def __init__(self, dsn: str) -> None:
         self._dsn = dsn
 
-    def disposition(self, actor: Actor, command: PoisonDisposition) -> PoisonDispositionReceipt:
+    def disposition(
+        self, actor: Actor, command: PoisonDisposition
+    ) -> PoisonDispositionReceipt | RecordProblem:
         return _disposition(self._dsn, actor, command)

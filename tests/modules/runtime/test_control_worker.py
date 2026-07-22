@@ -184,3 +184,20 @@ def test_routine_pack_loader_rejects_every_untyped_or_non_exact_shape(tmp_path: 
                 Projections(_ProjectionStore()),
                 pack_root=case_root,
             )
+
+
+def test_routine_pack_loader_recomputes_revision_digest_from_authored_content(
+    tmp_path: Path,
+) -> None:
+    case_root = tmp_path / "digest-mismatch"
+    shutil.copytree(ROOT / "packs/routines", case_root / "routines")
+    target = case_root / "routines/ctower.i1.daily-backup/v1.yaml"
+    pack = cast(dict[str, object], json.loads(target.read_text(encoding="utf-8")))
+    target.write_text(json.dumps({**pack, "timeout_seconds": 7201}), encoding="utf-8")
+
+    with pytest.raises(ValueError, match="revision digest does not match authored content"):
+        build_worker(
+            Routine(_RoutineStore(uuid4())),
+            Projections(_ProjectionStore()),
+            pack_root=case_root,
+        )

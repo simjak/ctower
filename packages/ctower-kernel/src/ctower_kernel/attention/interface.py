@@ -9,7 +9,7 @@ from enum import StrEnum
 from typing import Protocol
 from uuid import UUID
 
-from ctower_kernel.record import Actor
+from ctower_kernel.record import Actor, RecordProblem
 
 __all__ = [
     "Attention",
@@ -44,6 +44,15 @@ class PoisonDisposition:
         if not 1 <= len(self.reason) <= _MAX_REASON_LENGTH:
             raise ValueError("poison disposition reason is outside the authored contract")
 
+    def request_payload(self) -> dict[str, object]:
+        return {
+            "action": self.action.value,
+            "consumer_key": self.consumer_key,
+            "outbox_id": str(self.outbox_id),
+            "reason": self.reason,
+            "topic": self.topic,
+        }
+
 
 @dataclass(frozen=True, slots=True)
 class PoisonDispositionReceipt:
@@ -51,18 +60,23 @@ class PoisonDispositionReceipt:
     actor_principal_id: UUID
     command: PoisonDisposition
     recorded_at: datetime
+    event_ids: tuple[UUID, ...] = ()
 
     def response_payload(self) -> dict[str, object]:
         return {
             "command_id": str(self.command.client_command_id),
             "outbox_id": str(self.command.outbox_id),
             "action": self.command.action.value,
+            "durability_state": "durability_pending",
+            "event_ids": [str(item) for item in self.event_ids],
             "recorded_at": self.recorded_at.isoformat(),
         }
 
 
 class _AttentionStore(Protocol):
-    def disposition(self, actor: Actor, command: PoisonDisposition) -> PoisonDispositionReceipt: ...
+    def disposition(
+        self, actor: Actor, command: PoisonDisposition
+    ) -> PoisonDispositionReceipt | RecordProblem: ...
 
 
 class Attention:
@@ -71,5 +85,7 @@ class Attention:
     def __init__(self, store: _AttentionStore) -> None:
         self._store = store
 
-    def disposition(self, actor: Actor, command: PoisonDisposition) -> PoisonDispositionReceipt:
+    def disposition(
+        self, actor: Actor, command: PoisonDisposition
+    ) -> PoisonDispositionReceipt | RecordProblem:
         return self._store.disposition(actor, command)

@@ -5,6 +5,28 @@ BEGIN
 END
 $$;
 
+ALTER TABLE principals DROP CONSTRAINT principals_kind_check;
+ALTER TABLE principals ADD CONSTRAINT principals_kind_check CHECK (kind IN (
+    'bootstrap_installer', 'operator', 'commander', 'agent', 'reviewer', 'runner',
+    'control_worker'
+));
+
+ALTER TABLE events DROP CONSTRAINT events_kind_check;
+ALTER TABLE events ADD CONSTRAINT events_kind_check CHECK (kind IN (
+    'bootstrap.first_tenant_created',
+    'ticket.created',
+    'ticket.custody_transferred',
+    'proof.changed',
+    'workflow.changed',
+    'work.changed',
+    'routine.occurrence_recorded',
+    'attention.poison_disposition_recorded'
+));
+ALTER TABLE events DROP CONSTRAINT events_origin_check;
+ALTER TABLE events ADD CONSTRAINT events_origin_check CHECK (
+    origin IN ('api', 'bootstrap', 'control_worker')
+);
+
 CREATE TABLE workflow_start_facts (
     event_id uuid PRIMARY KEY,
     tenant_id uuid NOT NULL REFERENCES tenants(tenant_id),
@@ -70,15 +92,29 @@ CREATE TABLE routine_triggers (
 CREATE TABLE routine_occurrences (
     occurrence_id uuid PRIMARY KEY,
     tenant_id uuid NOT NULL REFERENCES tenants(tenant_id),
+    actor_principal_id uuid NOT NULL,
+    client_command_id uuid NOT NULL,
     revision_digest bytea NOT NULL REFERENCES routine_revisions(revision_digest),
     scheduled_for timestamptz NOT NULL,
     local_civil_time timestamp NOT NULL,
     timezone text NOT NULL CHECK (length(timezone) BETWEEN 1 AND 128),
-    utc_offset_seconds integer NOT NULL CHECK (utc_offset_seconds BETWEEN -64800 AND 64800),
-    outcome text NOT NULL CHECK (outcome IN ('queued', 'coalesced', 'skipped')),
+    utc_offset_seconds integer CHECK (utc_offset_seconds BETWEEN -64800 AND 64800),
+    offset_decision text NOT NULL CHECK (offset_decision IN (
+        'exact', 'earlier_offset', 'nonexistent_local_time'
+    )),
+    outcome text NOT NULL CHECK (outcome IN ('queued', 'coalesced', 'skipped', 'refused')),
     recorded_at timestamptz NOT NULL,
+    FOREIGN KEY (actor_principal_id, tenant_id)
+        REFERENCES principals(principal_id, tenant_id),
+    FOREIGN KEY (tenant_id, actor_principal_id, client_command_id)
+        REFERENCES command_results(tenant_id, principal_id, client_command_id),
     UNIQUE (tenant_id, revision_digest, scheduled_for),
-    UNIQUE (occurrence_id, tenant_id)
+    UNIQUE (occurrence_id, tenant_id),
+    CHECK (
+        (offset_decision = 'nonexistent_local_time'
+            AND utc_offset_seconds IS NULL AND outcome = 'skipped')
+        OR (offset_decision <> 'nonexistent_local_time' AND utc_offset_seconds IS NOT NULL)
+    )
 );
 
 CREATE TABLE operation_jobs (
@@ -96,6 +132,17 @@ CREATE TABLE operation_jobs (
         REFERENCES routine_occurrences(occurrence_id, tenant_id),
     UNIQUE (occurrence_id)
 );
+
+CREATE VIEW dispatchable_operation_jobs AS
+SELECT job.*
+FROM operation_jobs AS job
+JOIN routine_occurrences AS occurrence
+  ON occurrence.tenant_id = job.tenant_id
+ AND occurrence.occurrence_id = job.occurrence_id
+JOIN durability_acceptance_confirmations AS confirmation
+  ON confirmation.tenant_id = occurrence.tenant_id
+ AND confirmation.principal_id = occurrence.actor_principal_id
+ AND confirmation.client_command_id = occurrence.client_command_id;
 
 CREATE TABLE scheduler_watermarks (
     tenant_id uuid PRIMARY KEY REFERENCES tenants(tenant_id),
@@ -184,6 +231,7 @@ CREATE TABLE outbox_poison_dispositions (
     tenant_id uuid NOT NULL REFERENCES tenants(tenant_id),
     actor_principal_id uuid NOT NULL,
     client_command_id uuid NOT NULL,
+    event_id uuid NOT NULL,
     consumer_key text NOT NULL,
     topic text NOT NULL,
     outbox_id uuid NOT NULL,
@@ -193,6 +241,9 @@ CREATE TABLE outbox_poison_dispositions (
     PRIMARY KEY (tenant_id, actor_principal_id, client_command_id),
     FOREIGN KEY (actor_principal_id, tenant_id)
         REFERENCES principals(principal_id, tenant_id),
+    FOREIGN KEY (tenant_id, actor_principal_id, client_command_id)
+        REFERENCES command_results(tenant_id, principal_id, client_command_id),
+    FOREIGN KEY (event_id, tenant_id) REFERENCES events(event_id, tenant_id),
     FOREIGN KEY (consumer_key, tenant_id, topic, outbox_id)
         REFERENCES outbox_poison(consumer_key, tenant_id, topic, outbox_id)
 );
@@ -250,6 +301,7 @@ CREATE INDEX operation_jobs_pending
 
 GRANT INSERT, SELECT ON workflow_start_facts TO ctower_svc;
 GRANT INSERT, SELECT ON routine_revisions, routine_occurrences, operation_jobs TO ctower_svc;
+GRANT SELECT ON dispatchable_operation_jobs TO ctower_svc;
 GRANT INSERT, SELECT ON routine_triggers, scheduler_watermarks TO ctower_svc;
 GRANT UPDATE (next_fire_at, updated_at) ON routine_triggers TO ctower_svc;
 GRANT UPDATE (scan_watermark, status, reason, observed_at) ON scheduler_watermarks TO ctower_svc;
