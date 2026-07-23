@@ -54,6 +54,7 @@ def test_migration_manifest_is_ordered_and_checksum_exact() -> None:
         "0016_durability_finalization_confirmation.sql",
         "0017_durability_probe_schema_boundary.sql",
         "0018_durability_probe_search_path.sql",
+        "0019_outbox_routine_health.sql",
     ]
     for entry in entries:
         digest = hashlib.sha256((MIGRATIONS / entry["path"]).read_bytes()).hexdigest()

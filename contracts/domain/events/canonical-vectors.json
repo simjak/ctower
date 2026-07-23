@@ -118,6 +118,67 @@
       },
       "canonical_json": "{\"actor_principal_id\":\"018f0d5e-7b9a-7c01-8000-000000000003\",\"aggregate_id\":\"018f0d5e-7b9a-7c01-8000-000000000010\",\"causation_id\":\"018f0d5e-7b9a-7c01-8000-000000000202\",\"client_command_id\":\"018f0d5e-7b9a-7c01-8000-000000000103\",\"correlation_id\":\"018f0d5e-7b9a-7c01-8000-000000000101\",\"event_id\":\"018f0d5e-7b9a-7c01-8000-000000000203\",\"kind\":\"work.changed\",\"origin\":\"api\",\"payload\":{\"data\":{\"authority\":\"commander\",\"from_priority\":\"P1\",\"policy_ref\":\"ctower.priority-authority@1\",\"reason\":\"Customer impact changed\",\"to_priority\":\"P2\",\"urgent_evidence_ref\":null},\"operation\":\"priority_changed\",\"ticket_id\":\"018f0d5e-7b9a-7c01-8000-000000000010\",\"work_version\":3},\"prev_hash\":\"sha256:352757f41839584226ab8df2ee0749862f644d3726cbb9d701def2ca411d6239\",\"request_sha256\":\"sha256:3333333333333333333333333333333333333333333333333333333333333333\",\"schema_version\":1,\"sequence\":3,\"server_time\":\"2026-07-19T18:02:00.000000Z\",\"stream_id\":\"ticket:018f0d5e-7b9a-7c01-8000-000000000010\",\"tenant_id\":\"018f0d5e-7b9a-7c01-8000-000000000001\"}",
       "event_hash": "sha256:f79f634cbac45d9adc8f0fa738fbc0f2ae6ce3393fd1c8aa96de8a5bf7371de0"
+    },
+    {
+      "event": {
+        "actor_principal_id": "018f0d5e-7b9a-7c01-8000-000000000004",
+        "aggregate_id": "018f0d5e-7b9a-7c01-8000-000000000301",
+        "causation_id": null,
+        "client_command_id": "018f0d5e-7b9a-7c01-8000-000000000399",
+        "correlation_id": "018f0d5e-7b9a-7c01-8000-000000000399",
+        "event_id": "018f0d5e-7b9a-7c01-8000-000000000401",
+        "kind": "routine.occurrence_recorded",
+        "origin": "control_worker",
+        "payload": {
+          "job_id": null,
+          "local_civil_time": "2026-03-08T02:30:00",
+          "occurrence_id": "018f0d5e-7b9a-7c01-8000-000000000301",
+          "offset_decision": "nonexistent_local_time",
+          "outcome": "skipped",
+          "revision_digest": "sha256:8888888888888888888888888888888888888888888888888888888888888888",
+          "routine_ref": "ctower.test.dst-gap@1",
+          "scheduled_for": "2026-03-08T07:30:00.000000Z",
+          "timezone": "America/New_York",
+          "utc_offset_seconds": null
+        },
+        "prev_hash": "sha256:0000000000000000000000000000000000000000000000000000000000000000",
+        "request_sha256": "sha256:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+        "schema_version": 1,
+        "sequence": 1,
+        "server_time": "2026-03-08T07:30:00.000000Z",
+        "stream_id": "routine-occurrence:018f0d5e-7b9a-7c01-8000-000000000301",
+        "tenant_id": "018f0d5e-7b9a-7c01-8000-000000000001"
+      },
+      "canonical_json": "{\"actor_principal_id\":\"018f0d5e-7b9a-7c01-8000-000000000004\",\"aggregate_id\":\"018f0d5e-7b9a-7c01-8000-000000000301\",\"causation_id\":null,\"client_command_id\":\"018f0d5e-7b9a-7c01-8000-000000000399\",\"correlation_id\":\"018f0d5e-7b9a-7c01-8000-000000000399\",\"event_id\":\"018f0d5e-7b9a-7c01-8000-000000000401\",\"kind\":\"routine.occurrence_recorded\",\"origin\":\"control_worker\",\"payload\":{\"job_id\":null,\"local_civil_time\":\"2026-03-08T02:30:00\",\"occurrence_id\":\"018f0d5e-7b9a-7c01-8000-000000000301\",\"offset_decision\":\"nonexistent_local_time\",\"outcome\":\"skipped\",\"revision_digest\":\"sha256:8888888888888888888888888888888888888888888888888888888888888888\",\"routine_ref\":\"ctower.test.dst-gap@1\",\"scheduled_for\":\"2026-03-08T07:30:00.000000Z\",\"timezone\":\"America/New_York\",\"utc_offset_seconds\":null},\"prev_hash\":\"sha256:0000000000000000000000000000000000000000000000000000000000000000\",\"request_sha256\":\"sha256:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb\",\"schema_version\":1,\"sequence\":1,\"server_time\":\"2026-03-08T07:30:00.000000Z\",\"stream_id\":\"routine-occurrence:018f0d5e-7b9a-7c01-8000-000000000301\",\"tenant_id\":\"018f0d5e-7b9a-7c01-8000-000000000001\"}",
+      "event_hash": "sha256:a1c7b7dfc5963caae4dd064a239d19f48c97300e7c4bdc4027ec8eda3f09c479"
+    },
+    {
+      "event": {
+        "actor_principal_id": "018f0d5e-7b9a-7c01-8000-000000000003",
+        "aggregate_id": "018f0d5e-7b9a-7c01-8000-000000000500",
+        "causation_id": null,
+        "client_command_id": "018f0d5e-7b9a-7c01-8000-000000000500",
+        "correlation_id": "018f0d5e-7b9a-7c01-8000-000000000500",
+        "event_id": "018f0d5e-7b9a-7c01-8000-000000000501",
+        "kind": "attention.poison_disposition_recorded",
+        "origin": "api",
+        "payload": {
+          "action": "tombstone",
+          "consumer_key": "board_projection",
+          "outbox_id": "018f0d5e-7b9a-7c01-8000-000000000402",
+          "reason": "Policy-authorized invalid historical payload tombstone",
+          "topic": "record.events"
+        },
+        "prev_hash": "sha256:0000000000000000000000000000000000000000000000000000000000000000",
+        "request_sha256": "sha256:cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+        "schema_version": 1,
+        "sequence": 1,
+        "server_time": "2026-07-22T14:44:00.000000Z",
+        "stream_id": "poison-disposition:018f0d5e-7b9a-7c01-8000-000000000500",
+        "tenant_id": "018f0d5e-7b9a-7c01-8000-000000000001"
+      },
+      "canonical_json": "{\"actor_principal_id\":\"018f0d5e-7b9a-7c01-8000-000000000003\",\"aggregate_id\":\"018f0d5e-7b9a-7c01-8000-000000000500\",\"causation_id\":null,\"client_command_id\":\"018f0d5e-7b9a-7c01-8000-000000000500\",\"correlation_id\":\"018f0d5e-7b9a-7c01-8000-000000000500\",\"event_id\":\"018f0d5e-7b9a-7c01-8000-000000000501\",\"kind\":\"attention.poison_disposition_recorded\",\"origin\":\"api\",\"payload\":{\"action\":\"tombstone\",\"consumer_key\":\"board_projection\",\"outbox_id\":\"018f0d5e-7b9a-7c01-8000-000000000402\",\"reason\":\"Policy-authorized invalid historical payload tombstone\",\"topic\":\"record.events\"},\"prev_hash\":\"sha256:0000000000000000000000000000000000000000000000000000000000000000\",\"request_sha256\":\"sha256:cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc\",\"schema_version\":1,\"sequence\":1,\"server_time\":\"2026-07-22T14:44:00.000000Z\",\"stream_id\":\"poison-disposition:018f0d5e-7b9a-7c01-8000-000000000500\",\"tenant_id\":\"018f0d5e-7b9a-7c01-8000-000000000001\"}",
+      "event_hash": "sha256:82cae08e021a6bd8eaa075993a85cfed3bae0d9a0b44b7e607a836a39cfc998a"
     }
   ]
 }

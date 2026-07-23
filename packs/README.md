@@ -12,3 +12,8 @@ criteria/evidence/verdict path; remote execution, images, effects, and executabl
 `ctower.i1-priority-aging@1` is the staged CP2 scheduling-policy fixture. It deterministically orders only
 hard-eligible candidates with bounded aging and checkpoint-only preemption; it is not a Runtime dispatcher,
 timer authority, or claim that unattended scheduling is active.
+
+The three `packs/routines/ctower.i1.*@1` revisions are the complete CP3-B Runtime set. They schedule only
+typed fixed-operation jobs, and each declared revision digest is recomputed from its complete canonical
+authored body before registration. CP3-B does not dispatch those jobs or activate synthetic, backup, anchor,
+credential, object-store, or remote-execution effects.

@@ -126,7 +126,7 @@ def _commit_start(
         activity,
         1,
     )
-    return append_change(
+    committed = append_change(
         connection,
         actor,
         command.client_command_id,
@@ -135,6 +135,31 @@ def _commit_start(
         request_digest=request_digest,
         now=now,
         telemetry=telemetry,
+    )
+    _insert_start_fact(connection, actor, committed, now)
+    return committed
+
+
+def _insert_start_fact(
+    connection: psycopg.Connection[dict[str, object]],
+    actor: WorkflowActor,
+    receipt: WorkflowReceipt,
+    now: datetime,
+) -> None:
+    connection.execute(
+        """
+        INSERT INTO workflow_start_facts (
+            event_id, tenant_id, workflow_run_id, ticket_id, activity_class, recorded_at
+        ) VALUES (%s, %s, %s, %s, %s, %s)
+        """,
+        (
+            receipt.event_ids[0],
+            actor.tenant_id,
+            receipt.workflow_run_id,
+            receipt.ticket_id,
+            receipt.activity_class.value,
+            now,
+        ),
     )
 
 

@@ -1,6 +1,6 @@
 """DO NOT EDIT: generated file; regenerate from declared inputs.
 
-Authored contract digest: sha256:f1a3a71dcae091a1146eb825b1a62b96c31e71ed45c9462f342e4c4cca647c83
+Authored contract digest: sha256:2b3f7da4c5b9c79bbee92e4f5f3da11a6910e67c0067ee8275474000b7bc436b
 """
 
 from __future__ import annotations
@@ -22,9 +22,12 @@ from ctower_client.models import (
     BoardView,
     BootstrapReceipt,
     BootstrapRequest,
+    ControlHealth,
     CustodyTransferRequest,
     EvidenceRequest,
     FreezeCriteriaRequest,
+    PoisonDispositionReceipt,
+    PoisonDispositionRequest,
     PriorityChangeRequest,
     Problem,
     ProofReceipt,
@@ -265,6 +268,21 @@ class CtowerClient:
         return _response(response, BoardView, {401: Problem, 422: Problem})
 
     @validate_call(config=ConfigDict(strict=True, arbitrary_types_allowed=True))
+    def get_control_health(
+        self,
+    ) -> ControlHealth:
+        response = self._http.get(
+            "/health",
+            headers=self._telemetry_headers(
+                self._context(uuid4()),
+                {
+                    **self._auth_headers(),
+                },
+            ),
+        )
+        return _response(response, ControlHealth, {401: Problem})
+
+    @validate_call(config=ConfigDict(strict=True, arbitrary_types_allowed=True))
     def get_ticket(
         self,
         ticket_id: UUID,
@@ -331,6 +349,28 @@ class CtowerClient:
             ),
         )
         return _response(response, AuditPage, {401: Problem, 404: Problem, 422: Problem})
+
+    @validate_call(config=ConfigDict(strict=True, arbitrary_types_allowed=True))
+    def record_outbox_poison_disposition(
+        self,
+        outbox_id: UUID,
+        request: PoisonDispositionRequest,
+        *,
+        command_id: UUID,
+    ) -> PoisonDispositionReceipt:
+        response = self._http.post(
+            f"/v1/outbox/{quote(str(outbox_id), safe='')}/dispositions",
+            content=request.model_dump_json(),
+            headers=self._telemetry_headers(
+                self._context(command_id),
+                {
+                    **self._auth_headers(),
+                    "Content-Type": "application/json",
+                    "Idempotency-Key": str(command_id),
+                },
+            ),
+        )
+        return _response(response, PoisonDispositionReceipt, {401: Problem, 404: Problem, 409: Problem, 422: Problem})
 
     @validate_call(config=ConfigDict(strict=True, arbitrary_types_allowed=True))
     def record_proof_evidence(

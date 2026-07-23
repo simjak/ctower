@@ -37,10 +37,12 @@
         "ticket.custody_transferred",
         "work.changed",
         "proof.changed",
-        "workflow.changed"
+        "workflow.changed",
+        "routine.occurrence_recorded",
+        "attention.poison_disposition_recorded"
       ]
     },
-    "origin": {"type": "string", "enum": ["api", "bootstrap"]},
+    "origin": {"type": "string", "enum": ["api", "bootstrap", "control_worker"]},
     "payload": {"type": "object"},
     "prev_hash": {"$ref": "#/$defs/sha256"},
     "request_sha256": {"$ref": "#/$defs/sha256"},
@@ -49,7 +51,7 @@
     "server_time": {"type": "string", "format": "date-time"},
     "stream_id": {
       "type": "string",
-      "pattern": "^(tenant:[0-9a-f-]{36}:bootstrap|ticket:[0-9a-f-]{36}|proof:[0-9a-f-]{36}|workflow:[0-9a-f-]{36})$"
+      "pattern": "^(tenant:[0-9a-f-]{36}:bootstrap|ticket:[0-9a-f-]{36}|proof:[0-9a-f-]{36}|workflow:[0-9a-f-]{36}|routine-occurrence:[0-9a-f-]{36}|poison-disposition:[0-9a-f-]{36})$"
     },
     "tenant_id": {"type": "string", "format": "uuid"}
   },
@@ -102,6 +104,22 @@
             "origin": {"const": "api"},
             "stream_id": {"pattern": "^workflow:[0-9a-f-]{36}$"},
             "payload": {"$ref": "#/$defs/workflowChanged"}
+          }
+        },
+        {
+          "properties": {
+            "kind": {"const": "routine.occurrence_recorded"},
+            "origin": {"const": "control_worker"},
+            "stream_id": {"pattern": "^routine-occurrence:[0-9a-f-]{36}$"},
+            "payload": {"$ref": "#/$defs/routineOccurrenceRecorded"}
+          }
+        },
+        {
+          "properties": {
+            "kind": {"const": "attention.poison_disposition_recorded"},
+            "origin": {"const": "api"},
+            "stream_id": {"pattern": "^poison-disposition:[0-9a-f-]{36}$"},
+            "payload": {"$ref": "#/$defs/poisonDispositionRecorded"}
           }
         }
       ]
@@ -207,6 +225,38 @@
           "pattern": "^[a-z][a-z0-9._-]*@[1-9][0-9]*$"
         },
         "workflow_version": {"type": "integer", "minimum": 1}
+      }
+    },
+    "routineOccurrenceRecorded": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "job_id", "local_civil_time", "occurrence_id", "offset_decision", "outcome",
+        "revision_digest", "routine_ref", "scheduled_for", "timezone", "utc_offset_seconds"
+      ],
+      "properties": {
+        "job_id": {"type": ["string", "null"], "format": "uuid"},
+        "local_civil_time": {"type": "string", "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}$"},
+        "occurrence_id": {"type": "string", "format": "uuid"},
+        "offset_decision": {"enum": ["exact", "earlier_offset", "nonexistent_local_time"]},
+        "outcome": {"enum": ["queued", "coalesced", "skipped", "refused"]},
+        "revision_digest": {"$ref": "#/$defs/sha256"},
+        "routine_ref": {"type": "string", "pattern": "^[a-z][a-z0-9._-]*@[1-9][0-9]*$"},
+        "scheduled_for": {"type": "string", "format": "date-time"},
+        "timezone": {"type": "string", "minLength": 1, "maxLength": 128},
+        "utc_offset_seconds": {"type": ["integer", "null"], "minimum": -64800, "maximum": 64800}
+      }
+    },
+    "poisonDispositionRecorded": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["action", "consumer_key", "outbox_id", "reason", "topic"],
+      "properties": {
+        "action": {"enum": ["retry", "tombstone"]},
+        "consumer_key": {"type": "string", "pattern": "^[a-z][a-z0-9._-]*$"},
+        "outbox_id": {"type": "string", "format": "uuid"},
+        "reason": {"type": "string", "minLength": 1, "maxLength": 500},
+        "topic": {"type": "string", "pattern": "^[a-z][a-z0-9._-]*$"}
       }
     },
     "workChanged": {

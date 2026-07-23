@@ -180,6 +180,15 @@
       "forward_test": "pytest:tests/acceptance/increment-1/test_durability_probe_role_adoption.py::test_temporary_probe_inputs_cannot_shadow_catalog_evidence",
       "rollback_or_forward_compensation": "Keep both SECURITY DEFINER durability probes on the exact search path pg_catalog, pg_temp with pg_temp last. If compatibility requires another path, append a reviewed forward compensation that preserves catalog-first probe inputs; never restore implicit temporary-schema precedence.",
       "backup_checkpoint": "Before applying, capture and verify both durability probe definitions, owners, ACLs, and proconfig values; this additive function-configuration change contains no data."
+    },
+    {
+      "path": "0019_outbox_routine_health.sql",
+      "sha256": "sha256:57eac6f0f3702f4fc292a3c4e7ed50ee7bdb39b6902c2104cac734021fd6e6f4",
+      "minimum_service_version": "0.0.0",
+      "maximum_service_version": "0.0.0",
+      "forward_test": "pytest:tests/acceptance/increment-1/test_operations.py::test_control_loop_migration_adds_separate_immutable_and_cursor_state",
+      "rollback_or_forward_compensation": "Restore the exact pre-migration database backup only before later accepted control-loop facts, or append a reviewed forward compensation preserving Routine occurrences, fixed jobs, outbox attempts, poison/dispositions, Attention findings, and health evidence; projection rows remain rebuildable.",
+      "backup_checkpoint": "Before applying to a nonempty installation, capture and verify event, outbox, accepted-confirmation, projection, workflow-run, and tenant counts plus a database backup; current CP3-B fixed jobs have no dispatch effects."
     }
   ]
 }

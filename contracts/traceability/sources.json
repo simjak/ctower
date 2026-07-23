@@ -95,6 +95,16 @@
       ]
     },
     {
+      "path": "contracts/domain/outbox-delivery.schema.json",
+      "references": [
+        "SPEC#persistence-authority",
+        "INV-28",
+        "INV-34",
+        "AC-OPS-02",
+        "AC-OPS-16"
+      ]
+    },
+    {
       "path": "contracts/domain/tickets/ticket-event.schema.json",
       "references": [
         "SPEC#canonical-event-and-command-contract",
@@ -153,7 +163,38 @@
       "references": [
         "SPEC#operational-health-and-degraded-behavior",
         "INV-28",
-        "AC-OPS-01"
+        "AC-OPS-01",
+        "AC-OPS-15"
+      ]
+    },
+    {
+      "path": "contracts/runtime/operation-job.schema.json",
+      "references": [
+        "SPEC#event-driven-default-and-routine-revisions",
+        "AC-OPS-13",
+        "AC-OPS-14"
+      ]
+    },
+    {
+      "path": "contracts/runtime/routine-occurrence.schema.json",
+      "references": [
+        "SPEC#event-driven-default-and-routine-revisions",
+        "AC-OPS-13"
+      ]
+    },
+    {
+      "path": "contracts/runtime/routine.schema.json",
+      "references": [
+        "SPEC#event-driven-default-and-routine-revisions",
+        "AC-OPS-13"
+      ]
+    },
+    {
+      "path": "contracts/runtime/routine-vectors.json",
+      "references": [
+        "SPEC#event-driven-default-and-routine-revisions",
+        "AC-OPS-13",
+        "AC-OPS-14"
       ]
     },
     {
@@ -161,17 +202,21 @@
       "references": [
         "SPEC#canonical-event-and-command-contract",
         "SPEC#client-acknowledgement-and-offline-behavior",
+        "SPEC#operational-health-and-degraded-behavior",
         "SPEC#task-management-foundation",
         "SPEC#workflow-and-verification-architecture",
         "INV-03",
         "INV-16",
         "INV-19",
+        "INV-28",
         "INV-57",
         "AC-ADM-02",
         "AC-DUR-01",
         "AC-DUR-02",
         "AC-EVD-04",
         "AC-QUAL-05",
+        "AC-OPS-01",
+        "AC-OPS-16",
         "AC-SEC-12",
         "AC-TM-01",
         "AC-TM-02",
@@ -283,6 +328,27 @@
         "SPEC#task-management-foundation",
         "INV-57",
         "AC-TM-06"
+      ]
+    },
+    {
+      "path": "packs/routines/ctower.i1.daily-backup/v1.yaml",
+      "references": [
+        "SPEC#event-driven-default-and-routine-revisions",
+        "AC-OPS-13"
+      ]
+    },
+    {
+      "path": "packs/routines/ctower.i1.record-anchor/v1.yaml",
+      "references": [
+        "SPEC#event-driven-default-and-routine-revisions",
+        "AC-OPS-13"
+      ]
+    },
+    {
+      "path": "packs/routines/ctower.i1.synthetic-four-stage/v1.yaml",
+      "references": [
+        "SPEC#event-driven-default-and-routine-revisions",
+        "AC-OPS-13"
       ]
     },
     {
@@ -505,6 +571,21 @@
         "INV-28",
         "AC-DUR-07",
         "AC-SEC-03"
+      ]
+    },
+    {
+      "path": "packages/ctower-kernel/migrations/0019_outbox_routine_health.sql",
+      "references": [
+        "SPEC#persistence-authority",
+        "SPEC#operational-health-and-degraded-behavior",
+        "INV-28",
+        "INV-34",
+        "INV-36",
+        "AC-DUR-07",
+        "AC-OPS-01",
+        "AC-OPS-02",
+        "AC-OPS-13",
+        "AC-OPS-16"
       ]
     },
     {

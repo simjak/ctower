@@ -1,6 +1,6 @@
 """DO NOT EDIT: generated file; regenerate from declared inputs.
 
-Authored contract digest: sha256:f1a3a71dcae091a1146eb825b1a62b96c31e71ed45c9462f342e4c4cca647c83
+Authored contract digest: sha256:2b3f7da4c5b9c79bbee92e4f5f3da11a6910e67c0067ee8275474000b7bc436b
 """
 
 from __future__ import annotations
@@ -31,6 +31,7 @@ __all__ = [
     "BoardView",
     "BootstrapReceipt",
     "BootstrapRequest",
+    "ControlHealth",
     "CustodyTransferRequest",
     "CustodyTransferredAuditEvent",
     "CustodyTransferredPayload",
@@ -39,7 +40,14 @@ __all__ = [
     "DurabilityState",
     "EvidenceRequest",
     "FreezeCriteriaRequest",
+    "HealthContributor",
+    "HealthContributorKey",
+    "HealthDimension",
+    "HealthStatus",
     "MutableAssignmentKind",
+    "PoisonDispositionAction",
+    "PoisonDispositionReceipt",
+    "PoisonDispositionRequest",
     "Priority",
     "PriorityChangeRequest",
     "PriorityChangedAuditData",
@@ -211,10 +219,32 @@ class EvidenceRequest(_BoundaryModel):
     content: Annotated[str, Field(min_length=1, max_length=100000)]
 
 
+class HealthContributorKey(StrEnum):
+    DURABILITY = "durability"
+    SCHEDULER = "scheduler"
+    OUTBOX = "outbox"
+    PROJECTION = "projection"
+    BACKUP = "backup"
+    ANCHOR = "anchor"
+    OBJECT = "object"
+    SYNTHETIC = "synthetic"
+
+
+class HealthStatus(StrEnum):
+    HEALTHY = "HEALTHY"
+    DEGRADED = "DEGRADED"
+    STATE_UNKNOWN = "STATE_UNKNOWN"
+
+
 class MutableAssignmentKind(StrEnum):
     CURRENT_ASSIGNEE = "current_assignee"
     STAGE_OWNER = "stage_owner"
     REVIEWER_ASSIGNMENT = "reviewer_assignment"
+
+
+class PoisonDispositionAction(StrEnum):
+    RETRY = "retry"
+    TOMBSTONE = "tombstone"
 
 
 class Priority(StrEnum):
@@ -231,6 +261,7 @@ class Problem(_BoundaryModel):
         "bootstrap-origin",
         "durability_pending",
         "idempotency-conflict",
+        "poison-not-found",
         "proof-candidate-author-mismatch",
         "proof-candidate-digest-invalid",
         "proof-candidate-digest-not-current",
@@ -464,6 +495,32 @@ class FreezeCriteriaRequest(_BoundaryModel):
     criteria: Annotated[tuple[ProofCriterion, ...], Field(min_length=1)]
 
 
+class HealthContributor(_BoundaryModel):
+    key: HealthContributorKey
+    status: HealthStatus
+    watermark: Annotated[int, Field(ge=0)] | None
+    threshold_seconds: Annotated[int, Field(ge=0)]
+    observed_at: datetime
+    owner: Annotated[str, Field(min_length=1, max_length=128)]
+    reason: Annotated[str, Field(min_length=1, max_length=500)]
+
+
+class PoisonDispositionReceipt(_BoundaryModel):
+    command_id: UUID
+    outbox_id: UUID
+    action: PoisonDispositionAction
+    durability_state: DurabilityState
+    event_ids: Annotated[tuple[UUID, ...], Field(min_length=1)]
+    recorded_at: datetime
+
+
+class PoisonDispositionRequest(_BoundaryModel):
+    consumer_key: Annotated[str, Field(pattern="^[a-z][a-z0-9._-]*$")]
+    topic: Annotated[str, Field(pattern="^[a-z][a-z0-9._-]*$")]
+    action: PoisonDispositionAction
+    reason: Annotated[str, Field(min_length=1, max_length=500)]
+
+
 class PriorityChangeRequest(_BoundaryModel):
     expected_version: Annotated[int, Field(ge=1)]
     priority: Priority
@@ -655,6 +712,11 @@ class BoardView(_BoundaryModel):
     source_watermark: Annotated[int, Field(ge=0)]
 
 
+class HealthDimension(_BoundaryModel):
+    status: HealthStatus
+    contributors: Annotated[tuple[HealthContributor, ...], Field(min_length=1)]
+
+
 class TicketCommandResult(_BoundaryModel):
     command_id: UUID
     durability_state: DurabilityState
@@ -697,6 +759,15 @@ class WorkReopenedAuditPayload(_BoundaryModel):
     operation: Literal["reopened"]
     ticket_id: UUID
     work_version: Annotated[int, Field(ge=2)]
+
+
+class ControlHealth(_BoundaryModel):
+    schema_id: Literal["ctower.health/v1"]
+    status: HealthStatus
+    observed_at: datetime
+    availability: HealthDimension
+    completeness: HealthDimension
+    integrity: HealthDimension
 
 
 class TimelineResponse(_BoundaryModel):

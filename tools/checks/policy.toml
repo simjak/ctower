@@ -136,9 +136,19 @@ paths = ["packages/ctower-kernel/src/ctower_kernel/projections/**"]
 allowed_dependencies = ["kernel-record"]
 
 [[ownership]]
+name = "kernel-attention"
+paths = ["packages/ctower-kernel/src/ctower_kernel/attention/**"]
+allowed_dependencies = ["kernel-record"]
+
+[[ownership]]
+name = "kernel-runtime"
+paths = ["packages/ctower-kernel/src/ctower_kernel/runtime/**"]
+allowed_dependencies = ["kernel-record"]
+
+[[ownership]]
 name = "control-api"
 paths = ["apps/ctower-api/src/**"]
-allowed_dependencies = ["kernel-access", "kernel-projections", "kernel-proof", "kernel-record", "kernel-telemetry", "kernel-work", "kernel-workflow"]
+allowed_dependencies = ["kernel-access", "kernel-attention", "kernel-projections", "kernel-proof", "kernel-record", "kernel-runtime", "kernel-telemetry", "kernel-work", "kernel-workflow"]
 
 [[ownership]]
 name = "control-cli"
@@ -148,12 +158,12 @@ allowed_dependencies = []
 [[ownership]]
 name = "increment-1-acceptance-tests"
 paths = ["tests/acceptance/increment-1/**"]
-allowed_dependencies = ["control-api", "control-cli", "kernel-access", "kernel-projections", "kernel-proof", "kernel-record", "kernel-telemetry", "kernel-work", "kernel-workflow"]
+allowed_dependencies = ["control-api", "control-cli", "kernel-access", "kernel-attention", "kernel-projections", "kernel-proof", "kernel-record", "kernel-runtime", "kernel-telemetry", "kernel-work", "kernel-workflow"]
 
 [[ownership]]
 name = "kernel-module-tests"
 paths = ["tests/modules/**"]
-allowed_dependencies = ["kernel-access", "kernel-projections", "kernel-proof", "kernel-record", "kernel-telemetry", "kernel-work", "kernel-workflow"]
+allowed_dependencies = ["control-api", "kernel-access", "kernel-attention", "kernel-projections", "kernel-proof", "kernel-record", "kernel-runtime", "kernel-telemetry", "kernel-work", "kernel-workflow"]
 
 [[ownership]]
 name = "web"

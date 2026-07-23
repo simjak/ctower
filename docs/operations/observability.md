@@ -1,7 +1,9 @@
 # Observability
 
-ctower treats observability as part of correctness, not an optional dashboard layer. This page describes the
-operating contract; it does not claim that the runtime telemetry implementation exists yet.
+ctower treats observability as part of correctness, not an optional dashboard layer. CP3-B implements the
+authenticated stored health response and its durability, scheduler, outbox, projection, backup, anchor,
+object, and synthetic contributor vocabulary. The broader collector/dashboard runtime described below
+remains a target contract.
 
 ## Three-dimensional health
 
@@ -31,6 +33,11 @@ Public Interfaces and real adapter wrappers are expected to emit:
 
 Collector or exporter failure must never roll back a valid Record transaction, but it must make telemetry
 completeness visibly unhealthy.
+
+Unsupported CP3-B contributors report `STATE_UNKNOWN` with an explicit `not-applicable-in-cp3-b` reason;
+they never inherit another contributor's watermark. A Board GET is read-only and cannot repair lag. Poison
+recovery requires an authenticated append-only retry or tombstone disposition, while the poison and its
+deduplicated Attention finding remain immutable evidence.
 
 ## Redaction and cardinality
 

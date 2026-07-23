@@ -8,7 +8,7 @@ from enum import StrEnum
 from typing import Protocol
 from uuid import UUID
 
-from ctower_kernel.record import Actor
+from ctower_kernel.record import Actor, DurabilityHealth
 
 __all__ = [
     "BoardCard",
@@ -16,10 +16,17 @@ __all__ = [
     "BoardLane",
     "BoardQuery",
     "BoardView",
+    "ControlHealth",
+    "HealthContributor",
+    "HealthContributorKey",
+    "HealthDimension",
+    "HealthStatus",
     "ProjectionHealth",
     "Projections",
     "derive_board_card",
 ]
+_MAX_HEALTH_OWNER_LENGTH = 128
+_MAX_HEALTH_REASON_LENGTH = 500
 
 
 class BoardLane(StrEnum):
@@ -34,6 +41,103 @@ class BoardLane(StrEnum):
 class ProjectionHealth(StrEnum):
     CURRENT = "CURRENT"
     STATE_UNKNOWN = "STATE_UNKNOWN"
+
+
+class HealthStatus(StrEnum):
+    HEALTHY = "HEALTHY"
+    DEGRADED = "DEGRADED"
+    STATE_UNKNOWN = "STATE_UNKNOWN"
+
+
+class HealthContributorKey(StrEnum):
+    DURABILITY = "durability"
+    SCHEDULER = "scheduler"
+    OUTBOX = "outbox"
+    PROJECTION = "projection"
+    BACKUP = "backup"
+    ANCHOR = "anchor"
+    OBJECT = "object"
+    SYNTHETIC = "synthetic"
+
+
+@dataclass(frozen=True, slots=True)
+class HealthContributor:
+    key: HealthContributorKey
+    status: HealthStatus
+    watermark: int | None
+    threshold_seconds: int
+    observed_at: datetime
+    owner: str
+    reason: str
+
+    def __post_init__(self) -> None:
+        if self.watermark is not None and self.watermark < 0:
+            raise ValueError("health watermark cannot be negative")
+        if self.threshold_seconds < 0:
+            raise ValueError("health threshold cannot be negative")
+        if self.observed_at.tzinfo is None:
+            raise ValueError("health observation must be timezone-aware")
+        owner_valid = 1 <= len(self.owner) <= _MAX_HEALTH_OWNER_LENGTH
+        reason_valid = 1 <= len(self.reason) <= _MAX_HEALTH_REASON_LENGTH
+        if not owner_valid or not reason_valid:
+            raise ValueError("health attribution is outside the authored contract")
+
+    def response_payload(self) -> dict[str, object]:
+        return {
+            "key": self.key.value,
+            "status": self.status.value,
+            "watermark": self.watermark,
+            "threshold_seconds": self.threshold_seconds,
+            "observed_at": self.observed_at.isoformat(),
+            "owner": self.owner,
+            "reason": self.reason,
+        }
+
+
+@dataclass(frozen=True, slots=True)
+class HealthDimension:
+    status: HealthStatus
+    contributors: tuple[HealthContributor, ...]
+
+    def __post_init__(self) -> None:
+        keys = tuple(item.key for item in self.contributors)
+        if not keys or len(keys) != len(set(keys)):
+            raise ValueError("health dimension contributors must be nonempty and unique")
+
+    def response_payload(self) -> dict[str, object]:
+        return {
+            "status": self.status.value,
+            "contributors": [item.response_payload() for item in self.contributors],
+        }
+
+
+@dataclass(frozen=True, slots=True)
+class ControlHealth:
+    status: HealthStatus
+    observed_at: datetime
+    availability: HealthDimension
+    completeness: HealthDimension
+    integrity: HealthDimension
+
+    def __post_init__(self) -> None:
+        contributors = (
+            self.availability.contributors
+            + self.completeness.contributors
+            + self.integrity.contributors
+        )
+        keys = tuple(item.key for item in contributors)
+        if len(keys) != len(set(keys)) or set(keys) != set(HealthContributorKey):
+            raise ValueError("control health must attribute every contributor exactly once")
+
+    def response_payload(self) -> dict[str, object]:
+        return {
+            "schema_id": "ctower.health/v1",
+            "status": self.status.value,
+            "observed_at": self.observed_at.isoformat(),
+            "availability": self.availability.response_payload(),
+            "completeness": self.completeness.response_payload(),
+            "integrity": self.integrity.response_payload(),
+        }
 
 
 @dataclass(frozen=True, slots=True)
@@ -129,6 +233,10 @@ class _ProjectionStore(Protocol):
 
     def rebuild(self, tenant_id: UUID) -> BoardView: ...
 
+    def health(
+        self, tenant_id: UUID, durability: DurabilityHealth, *, now: datetime
+    ) -> ControlHealth: ...
+
 
 class Projections:
     """Expose catch-up, read, and deterministic rebuild without mutation commands."""
@@ -144,6 +252,9 @@ class Projections:
 
     def rebuild(self, tenant_id: UUID) -> BoardView:
         return self._store.rebuild(tenant_id)
+
+    def health(self, actor: Actor, durability: DurabilityHealth, *, now: datetime) -> ControlHealth:
+        return self._store.health(actor.tenant_id, durability, now=now)
 
 
 def derive_board_card(facts: BoardFacts) -> BoardCard:

@@ -19,7 +19,9 @@ __all__ = [
     "EventEnvelope",
     "EventKind",
     "EventOrigin",
+    "PoisonDispositionRecordedPayload",
     "ProofChangedPayload",
+    "RoutineOccurrenceRecordedPayload",
     "TicketCreatedPayload",
     "TicketEventPayload",
     "WorkChangedPayload",
@@ -37,14 +39,18 @@ class EventKind(StrEnum):
     PROOF_CHANGED = "proof.changed"
     WORKFLOW_CHANGED = "workflow.changed"
     WORK_CHANGED = "work.changed"
+    ROUTINE_OCCURRENCE_RECORDED = "routine.occurrence_recorded"
+    POISON_DISPOSITION_RECORDED = "attention.poison_disposition_recorded"
 
 
 class EventOrigin(StrEnum):
     API = "api"
     BOOTSTRAP = "bootstrap"
+    CONTROL_WORKER = "control_worker"
 
 
 _DIGEST_BYTES = 32
+_MAX_UTC_OFFSET_SECONDS = 64800
 _DIGEST_TEXT = re.compile(r"^sha256:[0-9a-f]{64}$")
 _STABLE_KEY = re.compile(r"^[a-z][a-z0-9._-]*$")
 _VERSIONED_REFERENCE = re.compile(r"^[a-z][a-z0-9._-]*@[1-9][0-9]*$")
@@ -195,6 +201,95 @@ class WorkflowChangedPayload:
         }
 
 
+@dataclass(frozen=True, slots=True)
+class RoutineOccurrenceRecordedPayload:
+    occurrence_id: UUID
+    routine_ref: str
+    revision_digest: str
+    scheduled_for: datetime
+    local_civil_time: str
+    timezone: str
+    utc_offset_seconds: int | None
+    offset_decision: str
+    outcome: str
+    job_id: UUID | None
+
+    def __post_init__(self) -> None:
+        _validate_routine_occurrence_identity(self)
+        _validate_routine_occurrence_decision(self)
+
+    def to_mapping(self) -> dict[str, object]:
+        return {
+            "job_id": str(self.job_id) if self.job_id is not None else None,
+            "local_civil_time": self.local_civil_time,
+            "occurrence_id": str(self.occurrence_id),
+            "offset_decision": self.offset_decision,
+            "outcome": self.outcome,
+            "revision_digest": self.revision_digest,
+            "routine_ref": self.routine_ref,
+            "scheduled_for": _timestamp(self.scheduled_for),
+            "timezone": self.timezone,
+            "utc_offset_seconds": self.utc_offset_seconds,
+        }
+
+
+def _validate_routine_occurrence_identity(payload: RoutineOccurrenceRecordedPayload) -> None:
+    _require_uuid_fields(payload, ("occurrence_id",))
+    if payload.job_id is not None and not isinstance(payload.job_id, UUID):
+        raise TypeError("job_id must be a UUID or None")
+    if _VERSIONED_REFERENCE.fullmatch(payload.routine_ref) is None:
+        raise ValueError("routine reference must be versioned")
+    if _DIGEST_TEXT.fullmatch(payload.revision_digest) is None:
+        raise ValueError("routine revision must be content addressed")
+    _validate_timestamp(payload.scheduled_for)
+    _bounded("local_civil_time", payload.local_civil_time, minimum=1, maximum=32)
+    _bounded("timezone", payload.timezone, minimum=1, maximum=128)
+
+
+def _validate_routine_occurrence_decision(payload: RoutineOccurrenceRecordedPayload) -> None:
+    offset = payload.utc_offset_seconds
+    if offset is not None and not (-_MAX_UTC_OFFSET_SECONDS <= offset <= _MAX_UTC_OFFSET_SECONDS):
+        raise ValueError("Routine UTC offset is outside the authored contract")
+    if payload.offset_decision not in {"exact", "earlier_offset", "nonexistent_local_time"}:
+        raise ValueError("Routine offset decision is outside the authored contract")
+    if payload.outcome not in {"queued", "coalesced", "skipped", "refused"}:
+        raise ValueError("Routine outcome is outside the authored contract")
+    if payload.offset_decision == "nonexistent_local_time" and (
+        offset is not None or payload.outcome != "skipped"
+    ):
+        raise ValueError("nonexistent Routine civil time must be visibly skipped")
+    if (payload.outcome == "queued") != (payload.job_id is not None):
+        raise ValueError("only a queued Routine occurrence carries a fixed job")
+
+
+@dataclass(frozen=True, slots=True)
+class PoisonDispositionRecordedPayload:
+    outbox_id: UUID
+    consumer_key: str
+    topic: str
+    action: str
+    reason: str
+
+    def __post_init__(self) -> None:
+        _require_uuid_fields(self, ("outbox_id",))
+        if _STABLE_KEY.fullmatch(self.consumer_key) is None:
+            raise ValueError("poison consumer key is outside the authored event contract")
+        if _STABLE_KEY.fullmatch(self.topic) is None:
+            raise ValueError("poison topic is outside the authored event contract")
+        if self.action not in {"retry", "tombstone"}:
+            raise ValueError("poison action is outside the authored event contract")
+        _bounded("reason", self.reason, minimum=1, maximum=500)
+
+    def to_mapping(self) -> dict[str, object]:
+        return {
+            "action": self.action,
+            "consumer_key": self.consumer_key,
+            "outbox_id": str(self.outbox_id),
+            "reason": self.reason,
+            "topic": self.topic,
+        }
+
+
 type EventPayload = (
     BootstrapCreatedPayload
     | TicketCreatedPayload
@@ -202,6 +297,8 @@ type EventPayload = (
     | ProofChangedPayload
     | WorkflowChangedPayload
     | WorkChangedPayload
+    | RoutineOccurrenceRecordedPayload
+    | PoisonDispositionRecordedPayload
 )
 type TicketEventPayload = TicketCreatedPayload | CustodyTransferredPayload
 
@@ -297,6 +394,14 @@ _EVENT_VARIANTS: dict[EventKind, tuple[type[object], EventOrigin]] = {
     EventKind.PROOF_CHANGED: (ProofChangedPayload, EventOrigin.API),
     EventKind.WORKFLOW_CHANGED: (WorkflowChangedPayload, EventOrigin.API),
     EventKind.WORK_CHANGED: (WorkChangedPayload, EventOrigin.API),
+    EventKind.ROUTINE_OCCURRENCE_RECORDED: (
+        RoutineOccurrenceRecordedPayload,
+        EventOrigin.CONTROL_WORKER,
+    ),
+    EventKind.POISON_DISPOSITION_RECORDED: (
+        PoisonDispositionRecordedPayload,
+        EventOrigin.API,
+    ),
 }
 
 
@@ -358,6 +463,14 @@ def _validate_event_identity(event: EventEnvelope) -> None:
         event.aggregate_id != event.tenant_id or event.payload.tenant_id != event.tenant_id
     ):
         raise ValueError("bootstrap aggregate, payload, and tenant identity must match")
+    if isinstance(event.payload, RoutineOccurrenceRecordedPayload) and (
+        event.aggregate_id != event.payload.occurrence_id
+    ):
+        raise ValueError("Routine aggregate and occurrence identity must match")
+    if isinstance(event.payload, PoisonDispositionRecordedPayload) and (
+        event.aggregate_id != event.client_command_id
+    ):
+        raise ValueError("poison disposition aggregate must be its command identity")
 
 
 def _stream_id(kind: EventKind, aggregate_id: UUID) -> str:
@@ -367,6 +480,10 @@ def _stream_id(kind: EventKind, aggregate_id: UUID) -> str:
         return f"proof:{aggregate_id}"
     if kind is EventKind.WORKFLOW_CHANGED:
         return f"workflow:{aggregate_id}"
+    if kind is EventKind.ROUTINE_OCCURRENCE_RECORDED:
+        return f"routine-occurrence:{aggregate_id}"
+    if kind is EventKind.POISON_DISPOSITION_RECORDED:
+        return f"poison-disposition:{aggregate_id}"
     return f"ticket:{aggregate_id}"
 
 

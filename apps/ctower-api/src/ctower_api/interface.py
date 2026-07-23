@@ -11,6 +11,7 @@ from pydantic import ValidationError
 from starlette.responses import Response
 
 from ctower_api._board_routes import install_board_routes
+from ctower_api._health_routes import install_health_routes
 from ctower_api._http_support import (
     authenticate as _authenticate,
 )
@@ -46,6 +47,7 @@ from ctower_client.models import (
 )
 from ctower_client.models import TicketCommandResult as HttpTicketCommandResult
 from ctower_kernel.access import Access
+from ctower_kernel.attention import Attention
 from ctower_kernel.projections import Projections
 from ctower_kernel.proof import Proof
 from ctower_kernel.record import (
@@ -74,6 +76,7 @@ def create_app(
     workflow: Workflow | None = None,
     work: Work | None = None,
     projections: Projections | None = None,
+    attention: Attention | None = None,
     telemetry: TelemetryRecorder | None = None,
 ) -> FastAPI:
     """Compose the private command API without embedding durable decisions."""
@@ -101,6 +104,7 @@ def create_app(
         install_proof_workflow_routes(app, access, record, proof, workflow, recorder)
     if projections is not None:
         install_board_routes(app, access, projections, recorder)
+        install_health_routes(app, access, record, projections, recorder, attention)
     return app
 
 

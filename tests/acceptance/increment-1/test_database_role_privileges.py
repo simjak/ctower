@@ -236,6 +236,7 @@ def test_upgrade_database_corrects_existing_head_privileges(
             "0016_durability_finalization_confirmation.sql",
             "0017_durability_probe_schema_boundary.sql",
             "0018_durability_probe_search_path.sql",
+            "0019_outbox_routine_health.sql",
         ):
             connection.execute((MIGRATIONS / name).read_text(encoding="utf-8"))
     provision_database_roles(database.admin_dsn)

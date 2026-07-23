@@ -1,0 +1,19 @@
+{
+  "schema_id": "ctower.routine/v1",
+  "routine_ref": "ctower.i1.synthetic-four-stage@1",
+  "revision_digest": "sha256:d7c5bc484d300b2d3d90222ba756b5f32fa28ac47130d43b65d31d00b70d6db5",
+  "schedule": {
+    "kind": "daily",
+    "timezone": "UTC",
+    "local_time": "00:15:00"
+  },
+  "dst_policy": "wall_clock_once",
+  "concurrency": "coalesce_if_active",
+  "catch_up": "skip_missed",
+  "catch_up_cap": 1,
+  "timeout_seconds": 900,
+  "handler_kind": "synthetic_four_stage",
+  "component_digests": [
+    "sha256:96c61b4ce6c1aa5f7cfbe49c41a86a69ec9010806ee50eea3e7d7a412ff852f8"
+  ]
+}

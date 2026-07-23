@@ -10,6 +10,7 @@ from typing import cast
 from uuid import UUID, uuid4
 
 import pytest
+from support.acceptance import accept_pending_commands
 from support.server import running_api
 from support.tenant_fixture import TenantFixture, create_second_tenant
 
@@ -19,6 +20,7 @@ from ctower_client import (
     AuditEvent,
     BlockIntent,
     BoardLane,
+    BoardView,
     CtowerClient,
     CtowerProblemError,
     EvidenceRequest,
@@ -44,6 +46,8 @@ from ctower_client import (
 from ctower_client import (
     Problem as HttpProblem,
 )
+from ctower_kernel.projections import Projections
+from ctower_kernel.projections.postgres import PostgresProjections
 from ctower_kernel.workflow import WorkflowGraph
 
 ROOT = Path(__file__).parents[3]
@@ -64,15 +68,15 @@ def test_generated_client_drives_complete_task_board_and_audit_flow(
         commander = CtowerClient(base_url, credential=tenant.commander_credential)
         operator = CtowerClient(base_url, credential=tenant.operator_credential)
         ticket_id = _new_ticket(commander, tenant.commander_id, "cp2-client")
-        assert commander.get_board().cards[0].lane is BoardLane.BACKLOG
+        assert _refresh_board(tenant, commander).cards[0].lane is BoardLane.BACKLOG
         with pytest.raises(CtowerProblemError) as invalid_filter:
             commander.get_board(stage_key="NOT A STAGE")
         assert invalid_filter.value.problem.code == "validation-error"
-        _start_and_admit(commander, ticket_id, graph)
+        _start_and_admit(commander, ticket_id, graph, tenant)
         _prioritize_assign_and_begin(commander, ticket_id, tenant, graph)
-        _block_and_unblock(commander, ticket_id, tenant.commander_id)
-        _finish_proof_and_workflow(commander, operator, ticket_id, graph)
-        _assert_close_reopen_custody(commander, ticket_id)
+        _block_and_unblock(commander, ticket_id, tenant.commander_id, tenant)
+        _finish_proof_and_workflow(commander, operator, ticket_id, graph, tenant)
+        _assert_close_reopen_custody(commander, ticket_id, tenant)
         fresh_run = commander.start_ticket_workflow(ticket_id, _start(graph), command_id=uuid4())
         pages = _audit_pages(commander, ticket_id)
         commander.close()
@@ -89,8 +93,10 @@ def test_generated_client_drives_complete_task_board_and_audit_flow(
     }
 
 
-def _assert_close_reopen_custody(client: CtowerClient, ticket_id: UUID) -> None:
-    complete = client.get_board()
+def _assert_close_reopen_custody(
+    client: CtowerClient, ticket_id: UUID, tenant: TenantFixture
+) -> None:
+    complete = _refresh_board(tenant, client)
     closed = tuple(
         interval
         for interval in client.list_ticket_assignments(ticket_id).assignments
@@ -108,7 +114,7 @@ def _assert_close_reopen_custody(client: CtowerClient, ticket_id: UUID) -> None:
         ),
         command_id=uuid4(),
     )
-    reopened = client.get_board()
+    reopened = _refresh_board(tenant, client)
     history = tuple(
         interval
         for interval in client.list_ticket_assignments(ticket_id).assignments
@@ -126,7 +132,12 @@ def _assert_close_reopen_custody(client: CtowerClient, ticket_id: UUID) -> None:
     assert history[1].released_at is None
 
 
-def _start_and_admit(client: CtowerClient, ticket_id: UUID, graph: WorkflowGraph) -> None:
+def _start_and_admit(
+    client: CtowerClient,
+    ticket_id: UUID,
+    graph: WorkflowGraph,
+    tenant: TenantFixture,
+) -> None:
     client.start_ticket_workflow(ticket_id, _start(graph), command_id=uuid4())
     client.apply_ticket_intent(
         ticket_id,
@@ -135,7 +146,7 @@ def _start_and_admit(client: CtowerClient, ticket_id: UUID, graph: WorkflowGraph
         ),
         command_id=uuid4(),
     )
-    ready = client.get_board()
+    ready = _refresh_board(tenant, client)
     assert ready.health is ProjectionHealth.CURRENT
     assert ready.cards[0].lane is BoardLane.READY
 
@@ -176,10 +187,15 @@ def _prioritize_assign_and_begin(
         ),
         command_id=uuid4(),
     )
-    assert client.get_board().cards[0].lane is BoardLane.IN_PROGRESS
+    assert _refresh_board(tenant, client).cards[0].lane is BoardLane.IN_PROGRESS
 
 
-def _block_and_unblock(client: CtowerClient, ticket_id: UUID, owner_id: UUID) -> None:
+def _block_and_unblock(
+    client: CtowerClient,
+    ticket_id: UUID,
+    owner_id: UUID,
+    tenant: TenantFixture,
+) -> None:
     blocker_id = uuid4()
     client.apply_ticket_intent(
         ticket_id,
@@ -202,7 +218,7 @@ def _block_and_unblock(client: CtowerClient, ticket_id: UUID, owner_id: UUID) ->
         ),
         command_id=uuid4(),
     )
-    blocked = client.get_board().cards[0]
+    blocked = _refresh_board(tenant, client).cards[0]
     assert blocked.lane is BoardLane.BLOCKED
     assert blocked.underlying_lane == "in_progress"
     client.apply_ticket_intent(
@@ -287,6 +303,7 @@ def _finish_proof_and_workflow(
     operator: CtowerClient,
     ticket_id: UUID,
     graph: WorkflowGraph,
+    tenant: TenantFixture,
 ) -> None:
     candidate = "sha256:" + "c" * 64
     content = "current CP2 evidence"
@@ -302,7 +319,7 @@ def _finish_proof_and_workflow(
         ),
         command_id=uuid4(),
     )
-    assert commander.get_board().cards[0].lane is BoardLane.IN_REVIEW
+    assert _refresh_board(tenant, commander).cards[0].lane is BoardLane.IN_REVIEW
     commander.record_proof_evidence(
         ticket_id,
         EvidenceRequest(
@@ -395,3 +412,9 @@ def _start(graph: WorkflowGraph) -> WorkflowStartRequest:
 
 def _digest(relative: str) -> str:
     return f"sha256:{hashlib.sha256((ROOT / relative).read_bytes()).hexdigest()}"
+
+
+def _refresh_board(tenant: TenantFixture, client: CtowerClient) -> BoardView:
+    accept_pending_commands(tenant.database.admin_dsn, tenant.tenant_id)
+    Projections(PostgresProjections(tenant.database.projection_dsn)).catch_up(tenant.tenant_id)
+    return client.get_board()

@@ -2,13 +2,15 @@
 
 from __future__ import annotations
 
+from datetime import datetime
 from uuid import UUID
 
-from ctower_kernel.projections import BoardQuery, BoardView
+from ctower_kernel.projections import BoardQuery, BoardView, ControlHealth
+from ctower_kernel.projections._health_sql import health as _health
 from ctower_kernel.projections._postgres_sql import board as _board
 from ctower_kernel.projections._postgres_sql import catch_up as _catch_up
 from ctower_kernel.projections._postgres_sql import rebuild as _rebuild
-from ctower_kernel.record import Actor
+from ctower_kernel.record import Actor, DurabilityHealth
 
 __all__ = ["PostgresProjections"]
 
@@ -27,3 +29,8 @@ class PostgresProjections:
 
     def rebuild(self, tenant_id: UUID) -> BoardView:
         return _rebuild(self._dsn, tenant_id)
+
+    def health(
+        self, tenant_id: UUID, durability: DurabilityHealth, *, now: datetime
+    ) -> ControlHealth:
+        return _health(self._dsn, tenant_id, durability, now=now)

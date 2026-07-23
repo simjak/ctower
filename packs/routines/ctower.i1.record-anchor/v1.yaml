@@ -1,0 +1,19 @@
+{
+  "schema_id": "ctower.routine/v1",
+  "routine_ref": "ctower.i1.record-anchor@1",
+  "revision_digest": "sha256:bd0b25449100de857ae42b98c5fcb00a8e8d3585a0c6adb866d798319873b26a",
+  "schedule": {
+    "kind": "hourly",
+    "timezone": "UTC",
+    "local_time": null
+  },
+  "dst_policy": "wall_clock_once",
+  "concurrency": "serialize_one_pending",
+  "catch_up": "coalesce_latest",
+  "catch_up_cap": 1,
+  "timeout_seconds": 300,
+  "handler_kind": "record_anchor",
+  "component_digests": [
+    "sha256:c32644a439057407d137a63ade68a9c69ed43e59da6f4a2d9d6bf238c1c837ed"
+  ]
+}

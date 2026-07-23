@@ -1,6 +1,6 @@
 schema = "ctower.expected-suites/v1"
 manifest_version = 1
-active_phase = "CT-I1-003"
+active_phase = "CT-I1-006"
 phase_order = [
   "CT-L0-007",
   "CT-L0-001",
@@ -13,8 +13,8 @@ phase_order = [
   "CT-L0-005",
   "CT-L0-008",
   "CT-I1-003",
-  "CT-I1-005",
   "CT-I1-006",
+  "CT-I1-005",
   "CT-I1-008",
   "CT-I2-010",
 ]
@@ -274,7 +274,7 @@ timeout_seconds = 900
 id = "operations-contracts"
 owner = "CT-I1-006"
 phase = "CT-I1-006"
-status = "deferred"
+status = "required"
 path = "tests/contracts/operations"
 patterns = ["test_*.py"]
 command = ["{python}", "-m", "pytest", "tests/contracts/operations", "-q"]
@@ -284,7 +284,7 @@ timeout_seconds = 300
 id = "record-durability-module"
 owner = "CT-I1-006"
 phase = "CT-I1-006"
-status = "deferred"
+status = "required"
 path = "tests/modules/record"
 patterns = ["test_durability.py", "test_integrity.py"]
 command = [
@@ -301,7 +301,7 @@ timeout_seconds = 300
 id = "runtime-routine-module"
 owner = "CT-I1-006"
 phase = "CT-I1-006"
-status = "deferred"
+status = "required"
 path = "tests/modules/runtime"
 patterns = ["test_*.py"]
 command = ["{python}", "-m", "pytest", "tests/modules/runtime", "-q"]
@@ -311,7 +311,7 @@ timeout_seconds = 300
 id = "operations-projection-attention"
 owner = "CT-I1-006"
 phase = "CT-I1-006"
-status = "deferred"
+status = "required"
 path = "tests/modules/projections"
 patterns = ["test_operations_*.py"]
 command = [
@@ -328,7 +328,7 @@ timeout_seconds = 300
 id = "operations-chaos"
 owner = "CT-I1-006"
 phase = "CT-I1-006"
-status = "deferred"
+status = "required"
 path = "tests/acceptance/increment-1"
 patterns = ["test_operations_faults.py"]
 command = [
@@ -344,7 +344,7 @@ timeout_seconds = 900
 id = "operations-acceptance"
 owner = "CT-I1-006"
 phase = "CT-I1-006"
-status = "deferred"
+status = "required"
 path = "tests/acceptance/increment-1"
 patterns = ["test_operations.py"]
 command = [

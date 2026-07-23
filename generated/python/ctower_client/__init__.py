@@ -1,6 +1,6 @@
 """DO NOT EDIT: generated file; regenerate from declared inputs.
 
-Authored contract digest: sha256:f1a3a71dcae091a1146eb825b1a62b96c31e71ed45c9462f342e4c4cca647c83
+Authored contract digest: sha256:2b3f7da4c5b9c79bbee92e4f5f3da11a6910e67c0067ee8275474000b7bc436b
 """
 
 from ctower_client.client import CtowerClient, CtowerProblemError
@@ -23,6 +23,7 @@ from ctower_client.models import (
     BoardView,
     BootstrapReceipt,
     BootstrapRequest,
+    ControlHealth,
     CustodyTransferredAuditEvent,
     CustodyTransferredPayload,
     CustodyTransferRequest,
@@ -31,7 +32,14 @@ from ctower_client.models import (
     DurabilityState,
     EvidenceRequest,
     FreezeCriteriaRequest,
+    HealthContributor,
+    HealthContributorKey,
+    HealthDimension,
+    HealthStatus,
     MutableAssignmentKind,
+    PoisonDispositionAction,
+    PoisonDispositionReceipt,
+    PoisonDispositionRequest,
     Priority,
     PriorityChangedAuditData,
     PriorityChangeRequest,
@@ -97,6 +105,7 @@ __all__ = [
     "BoardView",
     "BootstrapReceipt",
     "BootstrapRequest",
+    "ControlHealth",
     "CtowerClient",
     "CtowerProblemError",
     "CustodyTransferRequest",
@@ -107,7 +116,14 @@ __all__ = [
     "DurabilityState",
     "EvidenceRequest",
     "FreezeCriteriaRequest",
+    "HealthContributor",
+    "HealthContributorKey",
+    "HealthDimension",
+    "HealthStatus",
     "MutableAssignmentKind",
+    "PoisonDispositionAction",
+    "PoisonDispositionReceipt",
+    "PoisonDispositionRequest",
     "Priority",
     "PriorityChangeRequest",
     "PriorityChangedAuditData",

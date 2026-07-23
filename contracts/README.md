@@ -17,3 +17,8 @@ durability.
 The CP2 task-management contracts under `domain/task-management/` fix typed Work commands, five assignment
 kinds, the six-lane Board view and watermark health, and a deterministic priority-aging selection policy.
 The scheduling pack selects among eligible work only; it neither dispatches jobs nor advances Workflow.
+
+The CP3-B Runtime contracts under `runtime/` define content-addressed Routine revisions, visible DST
+offset decisions and outcomes, and fixed pending-only jobs. `runtime/routine-vectors.json` is the
+deterministic digest and DST/refusal vector set; canonical occurrence and poison-disposition events remain
+under the single `domain/events/` authority.

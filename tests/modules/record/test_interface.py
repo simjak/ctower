@@ -19,6 +19,8 @@ from ctower_kernel.record.events import (
     EventEnvelope,
     EventKind,
     EventOrigin,
+    PoisonDispositionRecordedPayload,
+    RoutineOccurrenceRecordedPayload,
     TicketCreatedPayload,
     WorkChangedPayload,
     canonical_event_bytes,
@@ -217,7 +219,12 @@ def _event_from_vector(mapping: dict[str, object]) -> EventEnvelope:
 def _vector_payload(
     kind: EventKind, payload: dict[str, object]
 ) -> (
-    BootstrapCreatedPayload | TicketCreatedPayload | CustodyTransferredPayload | WorkChangedPayload
+    BootstrapCreatedPayload
+    | TicketCreatedPayload
+    | CustodyTransferredPayload
+    | WorkChangedPayload
+    | RoutineOccurrenceRecordedPayload
+    | PoisonDispositionRecordedPayload
 ):
     if kind is EventKind.BOOTSTRAP_CREATED:
         return BootstrapCreatedPayload(
@@ -235,5 +242,31 @@ def _vector_payload(
             ticket_id=UUID(str(payload["ticket_id"])),
             work_version=int(cast(int, payload["work_version"])),
             data=cast(dict[str, object], payload["data"]),
+        )
+    if kind is EventKind.ROUTINE_OCCURRENCE_RECORDED:
+        job_id = payload["job_id"]
+        return RoutineOccurrenceRecordedPayload(
+            occurrence_id=UUID(str(payload["occurrence_id"])),
+            routine_ref=str(payload["routine_ref"]),
+            revision_digest=str(payload["revision_digest"]),
+            scheduled_for=datetime.fromisoformat(str(payload["scheduled_for"])),
+            local_civil_time=str(payload["local_civil_time"]),
+            timezone=str(payload["timezone"]),
+            utc_offset_seconds=(
+                int(cast(int, payload["utc_offset_seconds"]))
+                if payload["utc_offset_seconds"] is not None
+                else None
+            ),
+            offset_decision=str(payload["offset_decision"]),
+            outcome=str(payload["outcome"]),
+            job_id=UUID(str(job_id)) if job_id is not None else None,
+        )
+    if kind is EventKind.POISON_DISPOSITION_RECORDED:
+        return PoisonDispositionRecordedPayload(
+            outbox_id=UUID(str(payload["outbox_id"])),
+            consumer_key=str(payload["consumer_key"]),
+            topic=str(payload["topic"]),
+            action=str(payload["action"]),
+            reason=str(payload["reason"]),
         )
     return ticket_payload_from_mapping(kind, payload)
