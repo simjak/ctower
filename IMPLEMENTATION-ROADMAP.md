@@ -6,7 +6,7 @@
 | Product increments | Exactly two: Increment 1 and Increment 2 |
 | Work authority before cutover | SPEC temporary bootstrap backlog |
 | Work authority after cutover | ctower tickets only |
-| Last reviewed | 2026-07-21 |
+| Last reviewed | 2026-07-23 |
 
 This roadmap makes the normative build order easier to execute. It does not create a third scope model,
 approve work, mirror ticket status, or override the stable IDs, acceptance criteria, validation commands,
