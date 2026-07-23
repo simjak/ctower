@@ -154,12 +154,26 @@ def _lock_ticket(
     )
     rows = connection.execute(
         """
-        SELECT ticket_id, version, priority, current_episode, custodian_principal_id FROM tickets
+        SELECT ticket_id, version, priority, current_episode, custodian_principal_id
+        FROM tickets
         WHERE tenant_id = %s AND ticket_id = ANY(%s) ORDER BY ticket_id FOR UPDATE
         """,
         (actor.tenant_id, list(ticket_ids)),
     ).fetchall()
-    return next((row for row in rows if row["ticket_id"] == command.ticket_id), None)
+    ticket = next((row for row in rows if row["ticket_id"] == command.ticket_id), None)
+    if ticket is None:
+        return None
+    lifecycle = cast(
+        dict[str, object],
+        connection.execute(
+            """
+            SELECT state FROM lifecycle_episodes
+            WHERE tenant_id = %s AND ticket_id = %s AND episode_number = %s
+            """,
+            (actor.tenant_id, command.ticket_id, ticket["current_episode"]),
+        ).fetchone(),
+    )
+    return {**ticket, "lifecycle_state": lifecycle["state"]}
 
 
 def assignments(
@@ -226,6 +240,16 @@ def _mutate(
     ticket: dict[str, object],
     now: datetime,
 ) -> tuple[str, dict[str, object] | RecordProblem]:
+    if isinstance(command, ChangeAssignment) and ticket["lifecycle_state"] in {
+        "closed",
+        "cancelled",
+    }:
+        return "assignment_changed", _problem(
+            command,
+            "work-ticket-terminal",
+            409,
+            "Closed ticket requires a legal reopen before assignment",
+        )
     if isinstance(command, ChangePriority):
         if command.priority == str(ticket["priority"]):
             return "priority_changed", _problem(

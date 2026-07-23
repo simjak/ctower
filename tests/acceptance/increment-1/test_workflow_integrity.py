@@ -11,7 +11,7 @@ from uuid import UUID, uuid4
 import psycopg
 import pytest
 from psycopg.rows import dict_row
-from support.server import running_api, start_and_admit
+from support.server import fixture_proof_store, running_api, start_and_admit
 from support.tenant_fixture import TenantFixture
 
 from ctower_client import (
@@ -323,7 +323,7 @@ def _record_current_evidence(client: CtowerClient, ticket_id: UUID) -> None:
             criteria=(
                 ProofCriterion(
                     key="artifact-current",
-                    description="The candidate artifact is current.",
+                    description="Artifact evidence matches the current candidate.",
                     candidate_dependent=True,
                     requires_verdict=True,
                 ),
@@ -376,7 +376,12 @@ def _prepare_verification_stage(
     )
     assert not isinstance(ticket, RecordProblem)
     ticket_id = ticket.ticket.ticket_id
-    proof_store = PostgresProof(tenant.database.runtime_dsn)
+    proof_store = fixture_proof_store(
+        tenant.database.runtime_dsn,
+        "fixture.verdict-order@1",
+        "artifact-current",
+        "The candidate artifact is current.",
+    )
     workflow_store = PostgresWorkflow(
         tenant.database.runtime_dsn,
         proof_gate=proof_store,

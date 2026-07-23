@@ -25,13 +25,13 @@ from ctower_client import (
 )
 from ctower_kernel.projections import Projections
 from ctower_kernel.projections.postgres import PostgresProjections
-from ctower_kernel.proof import Proof
+from ctower_kernel.proof import Criterion, Proof, ProofPolicy
 from ctower_kernel.proof.postgres import PostgresProof
 from ctower_kernel.record.postgres import PostgresRecord
 from ctower_kernel.work import Work
 from ctower_kernel.work.postgres import PostgresWork
 from ctower_kernel.workflow import Workflow, WorkflowGraph
-from ctower_kernel.workflow.postgres import PostgresWorkflow
+from ctower_kernel.workflow.postgres import PostgresWorkflow, PostgresWorkflowPolicyPins
 
 __all__: tuple[str, ...] = ()
 ROOT = Path(__file__).parents[4]
@@ -87,6 +87,52 @@ def _policy_digests() -> dict[str, str]:
             "packs/policies/evidence/trust-spine-four-stage-v1.yaml"
         ),
     }
+
+
+def proof_policy() -> ProofPolicy:
+    """Load proof obligations from the exact authored bytes pinned by Workflow."""
+
+    gate_bytes = (ROOT / "packs/policies/gates/trust-spine-four-stage-v1.yaml").read_bytes()
+    evidence_bytes = (ROOT / "packs/policies/evidence/trust-spine-four-stage-v1.yaml").read_bytes()
+    return ProofPolicy.from_mappings(
+        json.loads(gate_bytes),
+        json.loads(evidence_bytes),
+        gate_policy_digest="sha256:" + hashlib.sha256(gate_bytes).hexdigest(),
+        evidence_policy_digest="sha256:" + hashlib.sha256(evidence_bytes).hexdigest(),
+    )
+
+
+def fixture_proof_policy(workflow_ref: str, criterion: Criterion) -> ProofPolicy:
+    """Build the exact synthetic pin used by direct persistence acceptance fixtures."""
+
+    return ProofPolicy(
+        workflow_ref=workflow_ref,
+        gate_policy_ref="fixture.gates@1",
+        gate_policy_digest="sha256:" + "2" * 64,
+        evidence_policy_ref="fixture.evidence@1",
+        evidence_policy_digest="sha256:" + "3" * 64,
+        criteria=(criterion,),
+        reviewer_kind="operator",
+        self_review_forbidden=True,
+    )
+
+
+def fixture_proof_store(
+    dsn: str, workflow_ref: str, criterion_key: str, description: str
+) -> PostgresProof:
+    """Compose a fail-closed Proof store for one synthetic Workflow pin."""
+
+    criterion = Criterion(
+        key=criterion_key,
+        description=description,
+        candidate_dependent=True,
+        requires_verdict=True,
+    )
+    return PostgresProof(
+        dsn,
+        policies=(fixture_proof_policy(workflow_ref, criterion),),
+        policy_pins=PostgresWorkflowPolicyPins(),
+    )
 
 
 class _Process(Protocol):
@@ -146,7 +192,12 @@ def _serve(
         if telemetry_capture is not None or telemetry_failure
         else None
     )
-    proof_store = PostgresProof(runtime_dsn, telemetry=recorder)
+    proof_store = PostgresProof(
+        runtime_dsn,
+        policies=(proof_policy(),),
+        policy_pins=PostgresWorkflowPolicyPins(),
+        telemetry=recorder,
+    )
     workflow_store = PostgresWorkflow(
         runtime_dsn,
         proof_gate=proof_store,

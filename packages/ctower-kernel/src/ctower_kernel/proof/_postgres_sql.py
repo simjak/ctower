@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import secrets
 from datetime import datetime
-from typing import cast
+from typing import Protocol, cast
 from uuid import UUID
 
 import psycopg
@@ -16,6 +16,7 @@ from ctower_kernel.proof import (
     ProofActor,
     ProofDecision,
     ProofMutation,
+    ProofPolicy,
     ProofReceipt,
     RecordEvidence,
     RecordVerdict,
@@ -36,9 +37,22 @@ __all__: tuple[str, ...] = ()
 ZERO_HASH = bytes(32)
 
 
+class ProofPolicyPins(Protocol):
+    """Read immutable Workflow-owned pins without importing Workflow into Proof."""
+
+    def proof_policy_pin(
+        self,
+        connection: psycopg.Connection[dict[str, object]],
+        tenant_id: UUID,
+        ticket_id: UUID,
+    ) -> tuple[str, str, str, str, str] | None: ...
+
+
 def mutate_proof(
     dsn: str,
     evaluator: Proof,
+    policies: tuple[ProofPolicy, ...],
+    policy_pins: ProofPolicyPins,
     actor: ProofActor,
     mutation: ProofMutation,
     *,
@@ -64,16 +78,22 @@ def mutate_proof(
         )
         if pending is not None:
             return pending
-        if not _lock_ticket(connection, actor, mutation.ticket_id):
-            problem = _problem(mutation, "tenant-scope-denied", 404, "Ticket not found")
-            return _refuse(transaction, actor, mutation, request_digest, problem, now)
+        policy = _locked_policy(
+            connection,
+            policies,
+            policy_pins,
+            actor,
+            mutation,
+        )
+        if isinstance(policy, RecordProblem):
+            return _refuse(transaction, actor, mutation, request_digest, policy, now)
         bundle = _lock_bundle(connection, actor, mutation.ticket_id)
         current_version = int(cast(int, bundle["version"])) if bundle is not None else 0
         if mutation.expected_version != current_version:
             problem = _version_problem(mutation, current_version)
             return _refuse(transaction, actor, mutation, request_digest, problem, now)
         snapshot = load_snapshot(connection, bundle, actor.tenant_id)
-        decision = evaluator.decide(actor, snapshot, mutation.command)
+        decision = evaluator.decide(actor, snapshot, mutation.command, policy=policy)
         if not decision.accepted:
             problem = _decision_problem(mutation, decision, current_version)
             return _refuse(transaction, actor, mutation, request_digest, problem, now)
@@ -83,6 +103,7 @@ def mutate_proof(
             actor,
             mutation,
             decision,
+            policy,
             bundle,
             current_version=current_version,
             request_digest=request_digest,
@@ -129,6 +150,7 @@ def _commit_decision(
     actor: ProofActor,
     mutation: ProofMutation,
     decision: ProofDecision,
+    policy: ProofPolicy,
     bundle: dict[str, object] | None,
     *,
     current_version: int,
@@ -143,11 +165,19 @@ def _commit_decision(
         actor,
         mutation,
         decision,
+        policy,
         proof_id=proof_id,
         version=version,
         now=now,
     )
-    receipt = _receipt(evaluator, mutation, decision, proof_id=proof_id, version=version)
+    receipt = _receipt(
+        evaluator,
+        mutation,
+        decision,
+        policy,
+        proof_id=proof_id,
+        version=version,
+    )
     return _append_change(
         connection,
         actor,
@@ -187,6 +217,7 @@ def _persist_decision(
     actor: ProofActor,
     mutation: ProofMutation,
     decision: ProofDecision,
+    policy: ProofPolicy,
     *,
     proof_id: UUID,
     version: int,
@@ -194,7 +225,14 @@ def _persist_decision(
 ) -> None:
     command = mutation.command
     if isinstance(command, FreezeCriteria):
-        _insert_frozen(connection, actor, mutation, proof_id=proof_id, now=now)
+        _insert_frozen(
+            connection,
+            actor,
+            mutation,
+            policy,
+            proof_id=proof_id,
+            now=now,
+        )
         return
     connection.execute(
         "UPDATE proof_bundles SET version = %s, candidate_digest = %s WHERE proof_id = %s",
@@ -220,6 +258,7 @@ def _insert_frozen(
     connection: psycopg.Connection[dict[str, object]],
     actor: ProofActor,
     mutation: ProofMutation,
+    policy: ProofPolicy,
     *,
     proof_id: UUID,
     now: datetime,
@@ -260,7 +299,7 @@ def _insert_frozen(
                 mutation.client_command_id,
                 now,
             )
-            for item in command.criteria
+            for item in policy.criteria
         ),
     )
 
@@ -376,6 +415,7 @@ def _receipt(
     evaluator: Proof,
     mutation: ProofMutation,
     decision: ProofDecision,
+    policy: ProofPolicy,
     *,
     proof_id: UUID,
     version: int,
@@ -387,7 +427,7 @@ def _receipt(
         ticket_id=mutation.ticket_id,
         version=version,
         candidate_digest=cast(str, decision.snapshot.candidate_digest),
-        satisfied=evaluator.is_satisfied(decision.snapshot),
+        satisfied=evaluator.is_satisfied(decision.snapshot, policy=policy),
         invalidated_evidence_ids=decision.invalidated_evidence_ids,
         invalidated_verdict_ids=decision.invalidated_verdict_ids,
     )
@@ -536,6 +576,41 @@ def _decision_problem(
         403 if decision.reason in forbidden else 409,
         "Proof mutation refused",
         current_version=current_version,
+    )
+
+
+def _resolve_policy(
+    connection: psycopg.Connection[dict[str, object]],
+    policies: tuple[ProofPolicy, ...],
+    policy_pins: ProofPolicyPins,
+    tenant_id: UUID,
+    ticket_id: UUID,
+) -> ProofPolicy | None:
+    pin = policy_pins.proof_policy_pin(connection, tenant_id, ticket_id)
+    return next((policy for policy in policies if policy.pin == pin), None)
+
+
+def _locked_policy(
+    connection: psycopg.Connection[dict[str, object]],
+    policies: tuple[ProofPolicy, ...],
+    policy_pins: ProofPolicyPins,
+    actor: ProofActor,
+    mutation: ProofMutation,
+) -> ProofPolicy | RecordProblem:
+    if not _lock_ticket(connection, actor, mutation.ticket_id):
+        return _problem(mutation, "tenant-scope-denied", 404, "Ticket not found")
+    policy = _resolve_policy(
+        connection,
+        policies,
+        policy_pins,
+        actor.tenant_id,
+        mutation.ticket_id,
+    )
+    return policy or _problem(
+        mutation,
+        "proof-policy-pin-mismatch",
+        409,
+        "Pinned proof policy is unavailable",
     )
 
 

@@ -12,6 +12,7 @@ from uuid import UUID, uuid4
 from fastapi import FastAPI
 from fastapi.testclient import TestClient
 from httpx import Response
+from support.server import proof_policy
 from support.telemetry import telemetry_headers
 from support.tenant_fixture import TenantFixture
 
@@ -22,7 +23,7 @@ from ctower_kernel.record.postgres import PostgresRecord
 from ctower_kernel.work import Work
 from ctower_kernel.work.postgres import PostgresWork
 from ctower_kernel.workflow import Workflow, WorkflowGraph
-from ctower_kernel.workflow.postgres import PostgresWorkflow
+from ctower_kernel.workflow.postgres import PostgresWorkflow, PostgresWorkflowPolicyPins
 
 __all__: tuple[str, ...] = ()
 HTTP_PENDING = 202
@@ -242,6 +243,37 @@ def test_proof_http_boundary_authenticates_before_strict_payload_validation(
     assert malformed.json()["code"] == "validation-error"
 
 
+def test_caller_cannot_weaken_the_pinned_gate_policy(tenant: TenantFixture) -> None:
+    candidate_digest = "sha256:" + "d" * 64
+    with TestClient(_app(tenant)) as client:
+        ticket_id = _create_ticket(client, tenant)
+        _start_and_admit(client, tenant, ticket_id)
+        weakened = _post_command(
+            client,
+            tenant.commander_credential,
+            ticket_id,
+            "proof/criteria",
+            {
+                "expected_version": 0,
+                "candidate_digest": candidate_digest,
+                "criteria": [
+                    {
+                        "key": "artifact-current",
+                        "description": "Artifact evidence matches the current candidate.",
+                        "candidate_dependent": True,
+                        "requires_verdict": False,
+                    }
+                ],
+            },
+        )
+        exact = _freeze(client, tenant, ticket_id, candidate_digest)
+
+    assert weakened.status_code == HTTP_CONFLICT
+    assert weakened.json()["code"] == "proof-criteria-policy-mismatch"
+    assert exact.status_code == HTTP_PENDING
+    assert exact.json()["version"] == 1
+
+
 def _prepare_current_proof(
     client: TestClient,
     tenant: TenantFixture,
@@ -310,7 +342,7 @@ def _freeze(
             "criteria": [
                 {
                     "key": "artifact-current",
-                    "description": "The artifact matches the reviewed candidate.",
+                    "description": "Artifact evidence matches the current candidate.",
                     "candidate_dependent": True,
                     "requires_verdict": True,
                 }
@@ -469,7 +501,11 @@ def _post_command(
 
 def _app(tenant: TenantFixture) -> FastAPI:
     runtime_dsn = tenant.database.runtime_dsn
-    proof_store = PostgresProof(runtime_dsn)
+    proof_store = PostgresProof(
+        runtime_dsn,
+        policies=(proof_policy(),),
+        policy_pins=PostgresWorkflowPolicyPins(),
+    )
     workflow_store = PostgresWorkflow(
         runtime_dsn, proof_gate=proof_store, readiness_gate=PostgresWork(runtime_dsn)
     )

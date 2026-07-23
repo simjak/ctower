@@ -119,18 +119,28 @@ def _refuse(
 def _locked_ticket(
     connection: psycopg.Connection[dict[str, object]], actor: Actor, ticket_id: UUID
 ) -> dict[str, object] | None:
-    return connection.execute(
+    ticket = connection.execute(
         """
         SELECT ticket_id, title, source_kind, source_ref, priority,
-            custodian_principal_id, version, created_at, current_episode,
-            (SELECT state FROM lifecycle_episodes
-             WHERE tenant_id = tickets.tenant_id AND ticket_id = tickets.ticket_id
-               AND episode_number = tickets.current_episode) AS lifecycle_state
+            custodian_principal_id, version, created_at, current_episode
         FROM tickets WHERE tenant_id = %s AND ticket_id = %s
         FOR UPDATE
         """,
         (actor.tenant_id, ticket_id),
     ).fetchone()
+    if ticket is None:
+        return None
+    lifecycle = cast(
+        dict[str, object],
+        connection.execute(
+            """
+            SELECT state FROM lifecycle_episodes
+            WHERE tenant_id = %s AND ticket_id = %s AND episode_number = %s
+            """,
+            (actor.tenant_id, ticket_id, ticket["current_episode"]),
+        ).fetchone(),
+    )
+    return {**ticket, "lifecycle_state": lifecycle["state"]}
 
 
 def _transfer_refusal(

@@ -50,7 +50,7 @@
       "inputs": [
         {
           "path": "contracts/http/openapi.yaml",
-          "sha256": "sha256:8cd6f249721d78f29ab1bba86247a9b9014ed95cb009ea3bc14b9f7e0cdada72"
+          "sha256": "sha256:5994fc14dfc25a77e27bbac406a7d6711139eab07b4e3c428173e9d41795ff58"
         },
         {
           "path": "contracts/observability/telemetry-context.schema.json",
@@ -100,15 +100,15 @@
       "outputs": [
         {
           "path": "generated/python/ctower_client/__init__.py",
-          "sha256": "sha256:3a84e04841b19fc93da402242f3a3e8f6b5181c924fe362c197d861383e8625b"
+          "sha256": "sha256:57ef6db17344e6cb39f0f3c319804b930ac79378e10e3e9c3468443398f756a0"
         },
         {
           "path": "generated/python/ctower_client/client.py",
-          "sha256": "sha256:4a3d06df237db7ba5bbdbc47ce1f4dd849b45bb9aa06ea31064a59edc8f14c03"
+          "sha256": "sha256:6a844159620b4099e61622435494329a877dd1f52dc471b86d80969dca12715b"
         },
         {
           "path": "generated/python/ctower_client/models.py",
-          "sha256": "sha256:1efe8e249db161e69ea8d15232013db65bd6b5a43ee9c87014340397df86bb35"
+          "sha256": "sha256:48dc27fa14b4db32847daded0c69d730a8e772142c2a6b4efc1369b36e293e31"
         }
       ],
       "tool_version": "1+sha256:a7cc74bf1339a9e2b5487934325c6cd73382db1f2e6e9d614ace9d0ca809ed33"

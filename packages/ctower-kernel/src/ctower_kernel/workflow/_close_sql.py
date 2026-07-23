@@ -286,6 +286,14 @@ def _insert_lifecycle(
     )
     if released.rowcount != 1:
         raise RuntimeError("closing ticket custody interval is inconsistent")
+    connection.execute(
+        """
+        UPDATE assignment_intervals SET released_at = %s
+        WHERE tenant_id = %s AND ticket_id = %s AND episode_number = %s
+          AND released_at IS NULL
+        """,
+        (now, actor.tenant_id, command.ticket_id, episode),
+    )
 
 
 def _closed_receipt(run: dict[str, object], command: ResolveClose) -> WorkflowReceipt:

@@ -334,7 +334,7 @@ def _freeze_and_record_public_evidence(
             criteria=(
                 ProofCriterion(
                     key="artifact-current",
-                    description="The candidate artifact is current.",
+                    description="Artifact evidence matches the current candidate.",
                     candidate_dependent=True,
                     requires_verdict=True,
                 ),

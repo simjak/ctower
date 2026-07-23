@@ -1,6 +1,6 @@
 """DO NOT EDIT: generated file; regenerate from declared inputs.
 
-Authored contract digest: sha256:2b3f7da4c5b9c79bbee92e4f5f3da11a6910e67c0067ee8275474000b7bc436b
+Authored contract digest: sha256:31a1026b047b222db8e967419ee87aed8af21d415533c8347f574a200bac6cde
 """
 
 from __future__ import annotations
@@ -268,11 +268,14 @@ class Problem(_BoundaryModel):
         "proof-candidate-unchanged",
         "proof-criteria-already-frozen",
         "proof-criteria-invalid",
+        "proof-criteria-policy-mismatch",
         "proof-criterion-unknown",
         "proof-current-evidence-missing",
         "proof-evidence-digest-mismatch",
         "proof-evidence-id-conflict",
         "proof-protected-authority-required",
+        "proof-policy-mismatch",
+        "proof-policy-pin-mismatch",
         "proof-self-review-refused",
         "proof-verdict-id-conflict",
         "tenant-scope-denied",
@@ -291,6 +294,7 @@ class Problem(_BoundaryModel):
         "work-relation-cycle",
         "work-relation-exists",
         "work-reopen-unmet",
+        "work-ticket-terminal",
         "workflow-already-started",
         "workflow-pin-mismatch",
         "workflow-predicate-unsatisfied",

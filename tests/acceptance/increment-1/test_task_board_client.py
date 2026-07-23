@@ -369,7 +369,7 @@ def _freeze_criterion(client: CtowerClient, ticket_id: UUID, candidate: str) -> 
             criteria=(
                 ProofCriterion(
                     key="artifact-current",
-                    description="Artifact is current",
+                    description="Artifact evidence matches the current candidate.",
                     candidate_dependent=True,
                     requires_verdict=True,
                 ),

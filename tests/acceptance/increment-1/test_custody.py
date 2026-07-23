@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+import hashlib
+import threading
 from concurrent.futures import ThreadPoolExecutor
 from typing import cast
 from uuid import UUID, uuid4
@@ -10,10 +12,26 @@ import psycopg
 import pytest
 from fastapi.testclient import TestClient
 from httpx import Response
+from support.server import running_api, start_and_admit
 from support.telemetry import telemetry_headers
 from support.tenant_fixture import TenantFixture
 
 from ctower_api.interface import create_app
+from ctower_client import (
+    CtowerClient,
+    CtowerProblemError,
+    CustodyTransferRequest,
+    EvidenceRequest,
+    FreezeCriteriaRequest,
+    Priority,
+    ProofCriterion,
+    ResolveCloseRequest,
+    SourceReference,
+    TicketCreateRequest,
+    VerdictDecision,
+    VerdictRequest,
+    WorkflowTransitionRequest,
+)
 from ctower_kernel.record.postgres import PostgresRecord
 
 __all__: tuple[str, ...] = ()
@@ -211,6 +229,165 @@ def test_concurrent_transfers_append_one_ordered_event(tenant: TenantFixture) ->
     events = timeline.json()["events"]
     assert [event["sequence"] for event in events] == [1, 2]
     assert len({event["event_id"] for event in events}) == VERSION_AFTER_FIRST_TRANSFER
+
+
+def test_close_and_custody_race_serialize_without_dangling_ownership(
+    tenant: TenantFixture,
+) -> None:
+    with running_api(tenant.database.runtime_dsn) as base_url:
+        ticket_id = _terminal_public_ticket(base_url, tenant)
+        barrier = threading.Barrier(2)
+
+        def close() -> str:
+            barrier.wait()
+            with CtowerClient(base_url, credential=tenant.commander_credential) as client:
+                client.resolve_close_workflow(
+                    ticket_id,
+                    ResolveCloseRequest(
+                        expected_version=4,
+                        workflow_ref="ctower.trust-spine-four-stage@1",
+                    ),
+                    command_id=uuid4(),
+                )
+            return "closed"
+
+        def transfer() -> str:
+            barrier.wait()
+            with CtowerClient(base_url, credential=tenant.operator_credential) as client:
+                try:
+                    client.transfer_ticket_custody(
+                        ticket_id,
+                        CustodyTransferRequest(
+                            expected_version=2,
+                            from_custodian_id=tenant.commander_id,
+                            protected_transfer=True,
+                            reason="Race terminal close",
+                            to_custodian_id=tenant.operator_id,
+                        ),
+                        command_id=uuid4(),
+                    )
+                except CtowerProblemError as error:
+                    return error.problem.code
+            return "transferred"
+
+        with ThreadPoolExecutor(max_workers=2) as executor:
+            futures = (executor.submit(close), executor.submit(transfer))
+            outcomes = tuple(future.result() for future in futures)
+
+    assert outcomes[0] == "closed"
+    assert outcomes[1] in {"transferred", "version-conflict"}
+    with psycopg.connect(tenant.database.admin_dsn) as connection:
+        row = connection.execute(
+            """
+            SELECT episode.state,
+                (SELECT count(*) FROM assignment_intervals AS assignment
+                 WHERE assignment.tenant_id = ticket.tenant_id
+                   AND assignment.ticket_id = ticket.ticket_id
+                   AND assignment.released_at IS NULL) AS open_assignments
+            FROM tickets AS ticket
+            JOIN lifecycle_episodes AS episode
+              ON episode.tenant_id = ticket.tenant_id
+             AND episode.ticket_id = ticket.ticket_id
+             AND episode.episode_number = ticket.current_episode
+            WHERE ticket.tenant_id = %s AND ticket.ticket_id = %s
+            """,
+            (tenant.tenant_id, ticket_id),
+        ).fetchone()
+    assert row == ("closed", 0)
+
+
+def _terminal_public_ticket(base_url: str, tenant: TenantFixture) -> UUID:
+    candidate = "sha256:" + "e" * 64
+    content = "race proof"
+    with CtowerClient(base_url, credential=tenant.commander_credential) as commander:
+        ticket_id = commander.create_ticket(
+            TicketCreateRequest(
+                initial_custodian_id=tenant.commander_id,
+                priority=Priority.P1,
+                source=SourceReference(kind="test", ref=f"test:close-race:{uuid4()}"),
+                title="Close custody race",
+            ),
+            command_id=uuid4(),
+        ).ticket.ticket_id
+        start_and_admit(commander, ticket_id)
+        _record_public_proof(commander, ticket_id, candidate, content)
+    with CtowerClient(base_url, credential=tenant.operator_credential) as operator:
+        operator.record_proof_verdict(
+            ticket_id,
+            VerdictRequest(
+                expected_version=2,
+                verdict_id=uuid4(),
+                criterion_key="artifact-current",
+                candidate_digest=candidate,
+                decision=VerdictDecision.PASS,
+            ),
+            command_id=uuid4(),
+        )
+    with CtowerClient(base_url, credential=tenant.commander_credential) as commander:
+        commander.transition_workflow(
+            ticket_id,
+            WorkflowTransitionRequest(
+                expected_version=3,
+                workflow_ref="ctower.trust-spine-four-stage@1",
+                source_stage="verify",
+                destination_stage="close",
+            ),
+            command_id=uuid4(),
+        )
+    return ticket_id
+
+
+def _record_public_proof(
+    commander: CtowerClient, ticket_id: UUID, candidate: str, content: str
+) -> None:
+    commander.transition_workflow(
+        ticket_id,
+        WorkflowTransitionRequest(
+            expected_version=1,
+            workflow_ref="ctower.trust-spine-four-stage@1",
+            source_stage="capture",
+            destination_stage="frame",
+        ),
+        command_id=uuid4(),
+    )
+    commander.freeze_proof_criteria(
+        ticket_id,
+        FreezeCriteriaRequest(
+            expected_version=0,
+            candidate_digest=candidate,
+            criteria=(
+                ProofCriterion(
+                    key="artifact-current",
+                    description="Artifact evidence matches the current candidate.",
+                    candidate_dependent=True,
+                    requires_verdict=True,
+                ),
+            ),
+        ),
+        command_id=uuid4(),
+    )
+    commander.transition_workflow(
+        ticket_id,
+        WorkflowTransitionRequest(
+            expected_version=2,
+            workflow_ref="ctower.trust-spine-four-stage@1",
+            source_stage="frame",
+            destination_stage="verify",
+        ),
+        command_id=uuid4(),
+    )
+    commander.record_proof_evidence(
+        ticket_id,
+        EvidenceRequest(
+            expected_version=1,
+            evidence_id=uuid4(),
+            criterion_key="artifact-current",
+            candidate_digest=candidate,
+            artifact_digest="sha256:" + hashlib.sha256(content.encode()).hexdigest(),
+            content=content,
+        ),
+        command_id=uuid4(),
+    )
 
 
 def test_one_principal_command_key_is_reserved_before_different_aggregate_work(
