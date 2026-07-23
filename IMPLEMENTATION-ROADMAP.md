@@ -2,7 +2,7 @@
 
 | Field | Value |
 |---|---|
-| Status | Non-normative execution sequence derived from `SPEC.md` 1.9 |
+| Status | Non-normative execution sequence derived from `SPEC.md` 1.10 |
 | Product increments | Exactly two: Increment 1 and Increment 2 |
 | Work authority before cutover | SPEC temporary bootstrap backlog |
 | Work authority after cutover | ctower tickets only |
@@ -171,7 +171,7 @@ and contains no secrets, counters, sessions, receipts, or live work.
 **Exit:** API/CLI parity, kill/replay, two-writer, disk, poison, secret, and zero-semantic-diff round-trip
 tests pass. `durability_pending` remains a non-accepted replayable result.
 
-### I1.5 — Thin trustworthy Home, Board, and Ticket
+### I1.5 — Thin trustworthy five-surface shell
 
 **Stable work:** `CT-I1-005` plus the I1 projection/health part of `CT-I1-006`.
 
@@ -182,10 +182,16 @@ Ship only the thin I1 portion of the five-surface shell:
   risk, and typed delivery facts;
 - contextual/direct-ID Ticket with ordered timeline, criteria/evidence/gates, custody/assignment history,
   blockers, typed delivery, accepted/refused transitions, and pending command state.
+- Fleet with authoritative I1 control-health contributors only; and Analytics with only the frozen
+  operator-attention baseline/current sample, revision, cohort, digest/watermark, and provisional/unknown
+  state. Both are read-only and I2 deepens them.
 
 Browser writes remain `unsent` or `durability pending` until authoritative acceptance and preserve one key
-through reload. Board controls issue typed intents, never `PATCH status`. Material UI taste remains an
-operator gate; every visible control must be wired and independently exercised.
+through reload. The omnibox appends a durable thread event first and uses explicit
+`discussion|create_ticket|link_ticket` intent; I1 has no inferred Commander reply or automatic classifier.
+Risk is a Workflow-owned append-only assessment, not priority or a writable field. Board controls issue typed
+intents, never `PATCH status`. Material UI taste remains an operator gate; every visible control must be wired
+and independently exercised.
 
 **Exit:** Board truth-table, tenant isolation, reconnect/reload, every-control UI QA, Needs You precision,
 `STATE UNKNOWN`, and healthy-Home under-ten-seconds evidence pass.
@@ -318,11 +324,11 @@ counts. Delegate implementation and independent verdicts; do not make the Comman
 counters, checkpoints, and exactly-once dispatch. No eligible strong profile, policy ambiguity, or exhausted
 automation becomes one precise operator action rather than status-chasing noise.
 
-### I2.4 — Complete five surfaces, observability, and improvement views
+### I2.4 — Deepen five surfaces, observability, and improvement views
 
 **Stable work:** `CT-I2-005`, `CT-I2-009`.
 
-Complete Home, Board, contextual Ticket, Fleet, and Analytics over generated clients and rebuildable
+Deepen Home, Board, contextual Ticket, Fleet, and Analytics over generated clients and rebuildable
 projections. Home/Ticket Attention adds exact-scope CommandGuard confirmation, grant state, and linked
 decision/authorization/enforcement receipts without raw sensitive command content. Ticket also adds live
 structured run/steering/ACK/gap, manifest, current proof, readiness refusals, delivery/incidents, cost, and
