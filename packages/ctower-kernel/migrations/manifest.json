@@ -183,7 +183,7 @@
     },
     {
       "path": "0019_outbox_routine_health.sql",
-      "sha256": "sha256:62c70ab57f857136b0e408491e1dde372aee6cc50c3b5c6cc96c2a524b9e61a3",
+      "sha256": "sha256:57eac6f0f3702f4fc292a3c4e7ed50ee7bdb39b6902c2104cac734021fd6e6f4",
       "minimum_service_version": "0.0.0",
       "maximum_service_version": "0.0.0",
       "forward_test": "pytest:tests/acceptance/increment-1/test_operations.py::test_control_loop_migration_adds_separate_immutable_and_cursor_state",

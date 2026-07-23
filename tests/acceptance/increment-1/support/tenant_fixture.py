@@ -46,7 +46,12 @@ class TenantFixture:
     commander_credential: str
 
 
-def create_first_tenant(database: DatabaseFixture) -> TenantFixture:
+def create_first_tenant(
+    database: DatabaseFixture,
+    *,
+    commander_name: str = "Ctower Commander",
+    operator_name: str = "First Operator",
+) -> TenantFixture:
     """Execute bootstrap, then bind runtime fixture credentials by digest."""
 
     provision_database_roles(database.admin_dsn)
@@ -61,7 +66,12 @@ def create_first_tenant(database: DatabaseFixture) -> TenantFixture:
     with TestClient(
         create_app(PostgresRecord(database.runtime_dsn)), client=("127.0.0.1", 51000)
     ) as client:
-        response = _bootstrap(client, bootstrap_token)
+        response = _bootstrap(
+            client,
+            bootstrap_token,
+            commander_name=commander_name,
+            operator_name=operator_name,
+        )
     if response.status_code != HTTP_PENDING:
         raise RuntimeError(f"first-tenant fixture bootstrap failed: {response.status_code}")
     payload = response.json()
@@ -134,17 +144,23 @@ def create_second_tenant(database: DatabaseFixture) -> TenantFixture:
     )
 
 
-def _bootstrap(client: TestClient, token: str) -> Response:
+def _bootstrap(
+    client: TestClient,
+    token: str,
+    *,
+    commander_name: str,
+    operator_name: str,
+) -> Response:
     command_id = uuid4()
     return cast(
         Response,
         client.post(
             "/v1/bootstrap/first-tenant",
             json={
-                "commander_name": "Ctower Commander",
+                "commander_name": commander_name,
                 "commander_vault_ref": "vault-ref:ctower/commander",
                 "operator_credential_ref": "credential-ref:ctower/operator",
-                "operator_name": "First Operator",
+                "operator_name": operator_name,
                 "operator_vault_ref": "vault-ref:ctower/operator",
                 "tenant_name": "Ctower",
                 "tenant_slug": "ctower",
