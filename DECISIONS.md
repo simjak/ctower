@@ -691,3 +691,37 @@ source-of-truth dogfood and rebuild/restore proof. I2.4 adds authorized interact
 visualizations, trends, cost/time analytics, and a reusable cross-domain product surface. This separation
 lets ctower observe its own delivery as soon as it becomes authoritative without pulling a rich analytics
 product into the cutover or implying a third product increment.
+
+## D22 — I1.5 browser boundary and thin five-surface closure (locked 2026-07-23, operator)
+
+The operator approved the six-row I1.5 Gate-0 bundle. This entry preserves D1–D21 and supersedes only:
+the still-unselected frontend stack; automatic text/context classification as an I1 requirement; the
+CT-I1-005 Playwright path; nullable/source-less I1 risk; and the implication that Fleet/Analytics global
+routes may be dead until I2.
+
+1. **Browser stack.** ctower-web is a React 19 client-only SPA using React Router 7 Declarative Mode and a
+   Vite static build under the repository's Node 24/pnpm toolchain. The private TLS edge serves the immutable
+   static bundle and proxies the API/session paths on one origin. Production has no Node server, SSR,
+   frontend authority/cache layer, handwritten API client, component framework, or service worker.
+2. **Browser authentication.** The SPA receives no API bearer. A same-origin server-rendered no-script login
+   exchanges the existing opaque operator credential for a record-backed 256-bit server session represented
+   only by a `__Host-ctower_session` Secure/HttpOnly/SameSite=Strict cookie. Unsafe requests require a
+   session-bound synchronizer token plus exact Origin/Fetch-Site checks. Idle expiry is 30 minutes, absolute
+   expiry 12 hours, and Access-policy-protected commands require reauthentication within 10 minutes.
+   Logout, session revoke, source-credential revoke/rotate, or principal disable invalidates authority.
+3. **I1 omnibox.** Every submit first appends one durable thread event. I1 classification is the operator's
+   explicit `discussion|create_ticket|link_ticket` choice, defaulting to discussion. Create/link and
+   provenance are atomic and exactly replayable; one discussion event may later be promoted once. I1 has no
+   autonomous Commander reply, probabilistic/keyword classifier, semantic matcher, browser thread ledger, or
+   duplicate ticket ledger. The target may deepen classification only through a later reviewed contract.
+4. **Browser tests.** `tests/e2e` is the sole Playwright source root; increment directories live below it and
+   `pnpm run test:e2e` is the canonical non-mutating command. `tests/acceptance/increment-*` remains Python
+   acceptance. CT-I1-005 owns activation of the browser suite; CT-I1-008 archives its evidence.
+5. **I1 risk.** Current-episode risk is a Workflow-owned append-only assessment derived deterministically by
+   the pinned I1 execution policy from typed immutable basis facts/evidence. Clients cannot submit the
+   label/rule or patch risk. The I1 package emits `standard|elevated|critical` with explicit
+   `UNASSESSED|STATE_UNKNOWN` states and policy/rule/input provenance. Priority is never an input.
+6. **I1 five-surface shell.** Fleet and Analytics are real narrow read-only I1 bodies. Fleet renders I1
+   control health contributors. Analytics renders only the frozen attention baseline/current sample,
+   revision/cohort/digest/watermark, and provisional/unknown state. I2 deepens those routes; I1 does not
+   expose runners/workspaces/budgets, broad KPIs/trends/cost, or writable state.

@@ -101,6 +101,9 @@
       "packages/ctower-kernel/migrations/0017_durability_probe_schema_boundary.sql",
       "packages/ctower-kernel/migrations/0018_durability_probe_search_path.sql"
     ],
+    "AC-SEC-12": [
+      "contracts/http/openapi.yaml"
+    ],
     "AC-TM-01": [
       "contracts/domain/task-management/task-command.schema.json",
       "contracts/http/openapi.yaml",
