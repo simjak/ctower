@@ -98,7 +98,7 @@ repository foundation
 trusted control plane -> one durable ticket -> restore proof
         |
         v
-CLI + thin UI -> source-of-truth cutover for ctower itself
+public API + protected CLI -> I1 source-of-truth cutover for ctower itself
         |
         v
 workflow + runtime -> Commander automation -> protected release
@@ -106,6 +106,9 @@ workflow + runtime -> Commander automation -> protected release
         v
 ctower releases and retros its own feature
 ```
+
+Public API + protected CLI precede I1 source-of-truth cutover. Browser implementation, browser evidence,
+and browser E2E first activate at CT-I2-005 / I2.4.
 
 Dogfooding advances in five explicit levels:
 

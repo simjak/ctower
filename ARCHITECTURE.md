@@ -127,14 +127,13 @@ production deployment.
   +---------------------------------------------------------------+
 ```
 
-I1 has no agent stage dispatch, autonomous Commander loop, runner daemon, or production effect grant. Its
-React 19 client-only SPA is a Vite static artifact behind the private TLS edge; it uses the generated client
-and same-origin Access session, with no production Node server, SSR, browser token, or browser authority.
-The API composition and one control worker share one kernel artifact; Access, Record, Catalog, Work,
-Proof, Attention, the limited generic Workflow evaluator, and Projections remain logical responsibilities
-behind Module Interfaces. Home uses explicit durable-thread intent, Workflow derives append-only current-
-episode risk, and narrow read-only Fleet/Analytics render authoritative health/baseline reads. Service-per-
-noun units such as a separate reconciler are not implied.
+I1 has no agent stage dispatch, autonomous Commander loop, runner daemon, production effect grant, or browser
+surface. Its public operation is the API plus protected `ctowerctl`/`ctl`; explicit durable-thread intent and
+Workflow-owned append-only current-episode risk are API/CLI facts. The API composition and one control worker
+share one kernel artifact; Access, Record, Catalog, Work, Proof, Attention, the limited generic Workflow
+evaluator, and Projections remain logical responsibilities behind Module Interfaces. React/Vite, browser
+session/CSRF, routes, Playwright, and all browser evidence begin at I2.4 under D22. Service-per-noun units
+such as a separate reconciler are not implied.
 
 ### I2/target: separately deployable contract clients
 
@@ -353,9 +352,9 @@ the same fold. Ticket counts never become a completion percentage.
 
 An overdue heartbeat is stale. A missing/gapped watermark, unknown integrity or proof validity, or unsafe
 authorization coverage is `STATE UNKNOWN`, not a ninth delivery state. Deleting/rebuilding the projection
-at one watermark must reproduce the same rows. I1.7 ships only the hierarchy and compact read-only rows for
-ctower dogfood; I2.4 adds interactive detail, broader visualization, trends, cost/time analytics, and the
-reusable cross-domain view.
+at one watermark must reproduce the same rows. I1.7 exposes only the hierarchy and compact read-only CLI text
+projection, with optional deterministic JSON, for ctower dogfood; I2.4 adds browser drill-through,
+interactive detail, broader visualization, trends, cost/time analytics, and the reusable cross-domain view.
 
 ## Durable wake, Routine, and run flow
 
@@ -489,7 +488,7 @@ The cutover is therefore ordered:
 
 ```text
 prove acceptance + backup + isolated restore
-  -> prove CLI/UI/four-stage generic evaluator
+  -> prove API/protected-CLI four-stage generic evaluator
   -> inventory and freeze ctower-project legacy writers
   -> hash/export + reviewed alias map
   -> idempotent restricted import + reconciliation
@@ -507,14 +506,14 @@ I1: L0 contracts/repository gates
      -> Record + Work + Proof
      -> off-host acceptance + restore
      -> spool-backed CLI
-     -> thin Home + Board + Ticket + Fleet + Analytics
+     -> API + protected-CLI trust-spine operation
      -> capture -> frame -> verify -> close on final generic evaluator
-     -> ctower-project cutover + compact Project Delivery projection dogfood
+     -> ctower-project cutover + compact Project Delivery CLI text projection dogfood
 
 I2: deepen generic Workflow + Proof
      -> durable Runtime + CommandGuard and local process/tmux recovery
      -> activate unattended Commander on the proven always-on substrate
-     -> deepen five surfaces + Project Delivery projection detail/analytics + Effects/release
+     -> D22 browser realization + deepen five surfaces + Project Delivery projection detail/analytics + Effects/release
      -> one software-factory production golden ticket
 ```
 

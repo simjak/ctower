@@ -61,7 +61,9 @@ workflow, the historical compatibility evidence, and its unresolved runtime-sele
 
 1. Establish reproducible toolchains, required CI checks, and architectural boundary gates.
 2. Build one durable ticket vertical and prove backup, restore, replay, and idempotency.
-3. Add the CLI and thin Board/Ticket UI, then cut ctower's own backlog over without dual writes.
+3. Public API + protected CLI precede I1 source-of-truth cutover. That cutover moves ctower's own backlog
+   without dual writes. Browser implementation, browser evidence, and browser E2E first activate at
+   CT-I2-005 / I2.4.
 4. Add the generic workflow engine, durable runtime, Commander automation, and protected effects.
 5. Use ctower to plan, implement, verify, document, release, and retro its own first production feature.
 
