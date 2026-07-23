@@ -36,6 +36,35 @@ class CliFirstScopeTests(unittest.TestCase):
         )
         self.assertIn("`CT-I2-005` I2.4 browser sub-checkpoint", decisions)
 
+    def test_current_guidance_keeps_browser_after_cli_first_cutover(self) -> None:
+        current_guidance = {
+            "README.md": (self.root / "README.md").read_text(encoding="utf-8"),
+            "project status": (self.root / "docs/project-status.md").read_text(encoding="utf-8"),
+            "coding standards": (self.root / "docs/contributing/CODING_STANDARDS.md").read_text(
+                encoding="utf-8"
+            ),
+        }
+        canonical_order = "Public API + protected CLI precede I1 source-of-truth cutover."
+        browser_activation = (
+            "Browser implementation, browser evidence, and browser E2E first activate "
+            "at CT-I2-005 / I2.4."
+        )
+
+        for name, guidance in current_guidance.items():
+            with self.subTest(name=name):
+                normalized_guidance = " ".join(guidance.split())
+                self.assertIn(canonical_order, normalized_guidance)
+                self.assertIn(browser_activation, normalized_guidance)
+
+        self.assertNotIn(
+            "Add the CLI and thin Board/Ticket UI, then cut ctower's own backlog over",
+            current_guidance["README.md"],
+        )
+        self.assertNotIn(
+            "CLI + thin UI -> source-of-truth cutover", current_guidance["project status"]
+        )
+        self.assertNotIn("browser E2E before CT-I1-008", current_guidance["coding standards"])
+
 
 if __name__ == "__main__":
     unittest.main()
