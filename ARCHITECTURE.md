@@ -3,9 +3,9 @@
 | Field | Value |
 |---|---|
 | Status | Compact derived operator and implementer map |
-| Normative authority | [`SPEC.md`](SPEC.md), version 1.9 |
+| Normative authority | [`SPEC.md`](SPEC.md), version 1.10 |
 | Decision history | [`DECISIONS.md`](DECISIONS.md) |
-| Last reviewed | 2026-07-22 |
+| Last reviewed | 2026-07-23 |
 
 This is the sole terminal-safe derived architecture atlas. It explains the canonical specification; it
 does not add requirements, authorize work, or define exact schemas, operations, DDL, package values, or
@@ -127,10 +127,14 @@ production deployment.
   +---------------------------------------------------------------+
 ```
 
-I1 has no agent stage dispatch, autonomous Commander loop, runner daemon, or production effect grant.
+I1 has no agent stage dispatch, autonomous Commander loop, runner daemon, or production effect grant. Its
+React 19 client-only SPA is a Vite static artifact behind the private TLS edge; it uses the generated client
+and same-origin Access session, with no production Node server, SSR, browser token, or browser authority.
 The API composition and one control worker share one kernel artifact; Access, Record, Catalog, Work,
 Proof, Attention, the limited generic Workflow evaluator, and Projections remain logical responsibilities
-behind Module Interfaces. Service-per-noun units such as a separate reconciler are not implied.
+behind Module Interfaces. Home uses explicit durable-thread intent, Workflow derives append-only current-
+episode risk, and narrow read-only Fleet/Analytics render authoritative health/baseline reads. Service-per-
+noun units such as a separate reconciler are not implied.
 
 ### I2/target: separately deployable contract clients
 
@@ -503,14 +507,14 @@ I1: L0 contracts/repository gates
      -> Record + Work + Proof
      -> off-host acceptance + restore
      -> spool-backed CLI
-     -> thin Home + Board + Ticket
+     -> thin Home + Board + Ticket + Fleet + Analytics
      -> capture -> frame -> verify -> close on final generic evaluator
      -> ctower-project cutover + compact Project Delivery projection dogfood
 
 I2: deepen generic Workflow + Proof
      -> durable Runtime + CommandGuard and local process/tmux recovery
      -> activate unattended Commander on the proven always-on substrate
-     -> complete five surfaces + Project Delivery projection detail/analytics + Effects/release
+     -> deepen five surfaces + Project Delivery projection detail/analytics + Effects/release
      -> one software-factory production golden ticket
 ```
 
