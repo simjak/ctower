@@ -9,7 +9,7 @@ from typing import Literal
 from urllib.parse import urlsplit
 
 import httpx
-from pydantic import BaseModel, ConfigDict, field_validator
+from pydantic import BaseModel, ConfigDict, field_validator, model_validator
 
 from ctower_kernel.proof.objects import ObjectIntegrityError
 
@@ -72,6 +72,12 @@ class VerificationReceipt(BaseModel):
     verified: bool
     verified_at: datetime
     reason: Literal["valid", "invalid_signature", "key_unavailable", "wrong_key_reference"]
+
+    @model_validator(mode="after")
+    def _consistent_result(self) -> VerificationReceipt:
+        if self.verified != (self.reason == "valid"):
+            raise ValueError("KMS verification result and reason disagree")
+        return self
 
 
 class ExternalKms:
@@ -208,6 +214,9 @@ def _verification_receipt(payload: dict[str, object]) -> VerificationReceipt:
     verified = payload.get("verified")
     if not isinstance(verified, bool):
         raise ObjectIntegrityError("KMS response omitted verified")
+    reason = _reason_field(payload)
+    if verified != (reason == "valid"):
+        raise ObjectIntegrityError("KMS verification result and reason disagree")
     return VerificationReceipt(
         digest=_string_field(payload, "digest"),
         key_reference=_string_field(payload, "key_reference"),
@@ -215,7 +224,7 @@ def _verification_receipt(payload: dict[str, object]) -> VerificationReceipt:
         public_key_sha256=_string_field(payload, "public_key_sha256"),
         verified=verified,
         verified_at=_datetime_field(payload, "verified_at"),
-        reason=_reason_field(payload),
+        reason=reason,
     )
 
 

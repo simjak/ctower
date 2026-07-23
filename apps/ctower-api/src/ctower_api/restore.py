@@ -15,6 +15,7 @@ from ctower_kernel.record.recovery import (
     RestoreCheck,
     RestoreReport,
     RestoreStepKind,
+    SignatureVerification,
 )
 
 __all__ = ["RestoreEvidence", "RestoreGate", "RestoreVerifier"]
@@ -95,7 +96,7 @@ class RestoreVerifier:
         installation_id: UUID,
         backup_id: UUID,
         inventory: InventoryRevision,
-        inventory_signature_verified: bool,
+        inventory_verification: SignatureVerification,
         reconciled_source_keys: frozenset[str],
         accepted_source_position: int,
         restored_acceptance_position: int,
@@ -123,7 +124,7 @@ class RestoreVerifier:
             installation_id=installation_id,
             backup_id=backup_id,
             inventory=inventory,
-            inventory_signature_verified=inventory_signature_verified,
+            inventory_verification=inventory_verification,
             reconciled_source_keys=reconciled_source_keys,
             accepted_source_position=accepted_source_position,
             restored_acceptance_position=restored_acceptance_position,

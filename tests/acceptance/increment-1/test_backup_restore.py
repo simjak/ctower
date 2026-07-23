@@ -2,16 +2,20 @@
 
 from __future__ import annotations
 
-import hashlib
-import json
 from datetime import UTC, datetime, timedelta
-from typing import Literal
 from uuid import UUID, uuid4
 
 import psycopg
 import pytest
 from pydantic import ValidationError
 from support.acceptance import accept_command
+from support.recovery import (
+    accepted_roots,
+    backup,
+    installation,
+    inventory,
+    signature_verification,
+)
 from support.tenant_fixture import TenantFixture
 
 from ctower_api.restore import CheckEvidence, RestoreEvidence, RestoreGate, RestoreVerifier
@@ -40,13 +44,12 @@ from ctower_kernel.record import (
 from ctower_kernel.record.postgres import PostgresRecord
 from ctower_kernel.record.postgres_recovery import PostgresRecovery
 from ctower_kernel.record.recovery import (
-    AcceptedRoot,
     AnchorRecord,
     BackupRecord,
-    ExpectedSource,
     InstallationIdentity,
     InventoryRevision,
     RecoveryPolicy,
+    RecoveryReplayConflictError,
     RestoreReport,
 )
 from ctower_kernel.telemetry import TelemetryContext
@@ -120,6 +123,7 @@ def test_cp3c_migrations_are_additive_and_roles_are_least_privilege(
         "expected_source_inventory_revisions",
         "installation_identities",
         "object_backfill_receipts",
+        "object_erasure_intents",
         "object_erasure_tombstones",
         "object_upload_receipts",
         "record_anchor_receipts",
@@ -183,14 +187,6 @@ def test_external_object_backfill_restore_and_erasure_fail_closed(
         object_store,
         external,
         tenant.tenant_id,
-        artifact_digest,
-        content,
-        locator,
-    )
-    _assert_erasure_survives_restart(
-        tenant,
-        object_store,
-        external,
         artifact_digest,
         content,
         locator,
@@ -281,34 +277,8 @@ def _assert_external_object_faults(
     external.wrong_key = False
 
 
-def _assert_erasure_survives_restart(
-    tenant: TenantFixture,
-    object_store: PostgresProof,
-    external: DeterministicEncryptedStore,
-    artifact_digest: str,
-    content: bytes,
-    locator: tuple[UUID, str, str],
-) -> None:
-    object_store.erase_object(
-        tenant.tenant_id,
-        artifact_digest,
-        tombstone_id=uuid4(),
-        authority_ref="erasure-ref:test/approved",
-        reason="retention expired",
-    )
-    external.objects[locator] = b"ciphertext:" + content[::-1]
-    restarted = PostgresProof(
-        tenant.database.runtime_dsn,
-        object_store=external,
-        object_key_reference="kms-ref:objects/tenant",
-    )
-    with pytest.raises(ObjectIntegrityError, match="durably erased"):
-        restarted.read_object(tenant.tenant_id, artifact_digest)
-    assert restarted.backfill_objects(tenant.tenant_id) == 0
-
-
 def test_incomplete_zero_exit_backup_evidence_cannot_be_recorded() -> None:
-    payload = _backup(uuid4(), uuid4(), uuid4()).model_dump(mode="python")
+    payload = backup(uuid4(), uuid4(), uuid4()).model_dump(mode="python")
     payload["base_verified"] = False
 
     with pytest.raises(ValidationError):
@@ -319,9 +289,9 @@ def test_restore_quarantine_requires_exact_enablement_receipt(
     tenant: TenantFixture,
 ) -> None:
     recovery = PostgresRecovery(tenant.database.admin_dsn)
-    backup, installation, inventory = _record_restore_prerequisites(
+    backup, installation, inventory, accepted_position = _record_restore_prerequisites(
         recovery,
-        tenant.tenant_id,
+        tenant,
     )
     restore_run_id = uuid4()
     report, report_sha256 = _verify_restore(
@@ -331,6 +301,7 @@ def test_restore_quarantine_requires_exact_enablement_receipt(
         backup,
         inventory,
         restore_run_id,
+        accepted_position,
     )
     replayed_report, replayed_digest = _verify_restore(
         RestoreVerifier(recovery),
@@ -339,10 +310,29 @@ def test_restore_quarantine_requires_exact_enablement_receipt(
         backup,
         inventory,
         restore_run_id,
+        accepted_position,
     )
     assert report.enablement_eligible is True
     assert replayed_report == report
     assert replayed_digest == report_sha256
+    changed_steps = (
+        report.steps[0].model_copy(update={"detail": "changed replay detail"}),
+        *report.steps[1:],
+    )
+    with pytest.raises(RecoveryReplayConflictError, match="completed report"):
+        recovery.complete_restore(report.model_copy(update={"steps": changed_steps}))
+    with pytest.raises(RecoveryReplayConflictError, match="restore run"):
+        recovery.begin_restore(
+            restore_run_id=restore_run_id,
+            tenant_id=tenant.tenant_id,
+            installation_id=installation.installation_id,
+            backup_id=backup.backup_id,
+            inventory_revision_id=inventory.inventory_revision_id,
+            accepted_source_position=accepted_position,
+            restored_acceptance_position=accepted_position,
+            artifact_rpo_seconds=61,
+            started_at=NOW,
+        )
     _assert_enablement_gate(
         tenant,
         installation,
@@ -353,20 +343,28 @@ def test_restore_quarantine_requires_exact_enablement_receipt(
 
 def _record_restore_prerequisites(
     recovery: PostgresRecovery,
-    tenant_id: UUID,
-) -> tuple[BackupRecord, InstallationIdentity, InventoryRevision]:
-    backup = _backup(uuid4(), uuid4(), tenant_id)
-    recovery.record_backup(backup)
-    installation = _installation(tenant_id)
-    recovery.record_installation(installation, signature_verified=True)
-    inventory = _inventory(tenant_id)
-    with pytest.raises(ValueError, match="signature"):
-        recovery.record_inventory(inventory, signature_verified=False)
-    recovery.record_inventory(inventory, signature_verified=True)
-    roots = (
-        AcceptedRoot(acceptance_position=1, command_root="sha256:" + "a" * 64),
-        AcceptedRoot(acceptance_position=2, command_root="sha256:" + "b" * 64),
+    tenant: TenantFixture,
+) -> tuple[BackupRecord, InstallationIdentity, InventoryRevision, int]:
+    _ticket(tenant)
+    tenant_id = tenant.tenant_id
+    backup_record = backup(uuid4(), uuid4(), tenant_id)
+    recovery.record_backup(backup_record)
+    installation_record = installation(tenant_id)
+    recovery.record_installation(
+        installation_record,
+        verification=signature_verification(installation_record),
     )
+    inventory_record = inventory(tenant_id)
+    with pytest.raises(ValueError, match="signature"):
+        recovery.record_inventory(
+            inventory_record,
+            verification=signature_verification(inventory_record, verified=False),
+        )
+    recovery.record_inventory(
+        inventory_record,
+        verification=signature_verification(inventory_record),
+    )
+    roots = accepted_roots(tenant.database.admin_dsn, tenant_id)
     anchor_digest = RecoveryPolicy().build_anchor(
         roots,
         previous_anchor_sha256=None,
@@ -374,23 +372,31 @@ def _record_restore_prerequisites(
     anchor = AnchorRecord(
         anchor_id=uuid4(),
         tenant_id=tenant_id,
-        source_start_position=1,
-        source_end_position=2,
+        source_start_position=roots[0].acceptance_position,
+        source_end_position=roots[-1].acceptance_position,
         previous_anchor_sha256=None,
         anchor_sha256=anchor_digest,
         signature="external-anchor-signature",
         signing_key_reference="kms-ref:anchor/signing",
         signing_key_version="v1",
         public_key_sha256="sha256:" + "c" * 64,
-        object_key="operations/anchors/2.json",
-        object_version="version-2",
+        object_key=f"operations/anchors/{roots[-1].acceptance_position}.json",
+        object_version=f"version-{roots[-1].acceptance_position}",
         anchored_at=NOW,
     )
     with pytest.raises(ValueError, match="signature"):
-        recovery.record_anchor(anchor, roots, signature_verified=False)
-    recovery.record_anchor(anchor, roots, signature_verified=True)
-    recovery.record_anchor(anchor, roots, signature_verified=True)
-    return backup, installation, inventory
+        recovery.record_anchor(
+            anchor,
+            verification=signature_verification(anchor, verified=False),
+        )
+    recovery.record_anchor(anchor, verification=signature_verification(anchor))
+    recovery.record_anchor(anchor, verification=signature_verification(anchor))
+    return (
+        backup_record,
+        installation_record,
+        inventory_record,
+        roots[-1].acceptance_position,
+    )
 
 
 def _assert_enablement_gate(
@@ -419,24 +425,36 @@ def _assert_enablement_gate(
             enabled_at=NOW + timedelta(minutes=4),
         )
 
+    enablement_id = uuid4()
+    enabled_at = NOW + timedelta(minutes=4)
     restarted.enable(
-        enablement_id=uuid4(),
+        enablement_id=enablement_id,
         restore_run_id=report.restore_run_id,
         tenant_id=tenant.tenant_id,
         installation_id=installation.installation_id,
         report_sha256=report_sha256,
         authority_ref="restore-authority:test/operator",
-        enabled_at=NOW + timedelta(minutes=4),
+        enabled_at=enabled_at,
     )
     restarted.enable(
-        enablement_id=uuid4(),
+        enablement_id=enablement_id,
         restore_run_id=report.restore_run_id,
         tenant_id=tenant.tenant_id,
         installation_id=installation.installation_id,
         report_sha256=report_sha256,
         authority_ref="restore-authority:test/operator",
-        enabled_at=NOW + timedelta(minutes=4),
+        enabled_at=enabled_at,
     )
+    with pytest.raises(RecoveryReplayConflictError, match="enablement"):
+        restarted.enable(
+            enablement_id=uuid4(),
+            restore_run_id=report.restore_run_id,
+            tenant_id=tenant.tenant_id,
+            installation_id=installation.installation_id,
+            report_sha256=report_sha256,
+            authority_ref="restore-authority:test/operator",
+            enabled_at=enabled_at,
+        )
     RestoreGate(
         PostgresRecovery(tenant.database.admin_dsn),
         tenant_id=tenant.tenant_id,
@@ -468,89 +486,6 @@ def _ticket(tenant: TenantFixture) -> UUID:
     return outcome.ticket.ticket_id
 
 
-def _backup(backup_id: UUID, receipt_id: UUID, tenant_id: UUID) -> BackupRecord:
-    return BackupRecord(
-        backup_id=backup_id,
-        verification_receipt_id=receipt_id,
-        tenant_id=tenant_id,
-        manifest_sha256="sha256:" + "1" * 64,
-        repository_ref="backup-ref:test/repository",
-        repository_object_version="version-1",
-        base_backup_sha256="sha256:" + "2" * 64,
-        wal_start_lsn="0/10",
-        wal_stop_lsn="0/20",
-        logical_dump_sha256="sha256:" + "3" * 64,
-        object_manifest_sha256="sha256:" + "4" * 64,
-        migration_manifest_sha256="sha256:" + "5" * 64,
-        key_reference="kms-ref:backup/key",
-        key_version="v1",
-        started_at=NOW,
-        completed_at=NOW + timedelta(minutes=1),
-        base_verified=True,
-        wal_verified=True,
-        logical_dump_verified=True,
-        objects_verified=True,
-        key_reference_verified=True,
-    )
-
-
-def _installation(tenant_id: UUID) -> InstallationIdentity:
-    return InstallationIdentity(
-        installation_id=uuid4(),
-        tenant_id=tenant_id,
-        identity_ref="installation-ref:test/isolated",
-        identity_sha256="sha256:" + "6" * 64,
-        signature="root-signed-installation",
-        signing_key_reference="kms-ref:installation/signing",
-        signing_key_version="v1",
-        public_key_sha256="sha256:" + "7" * 64,
-        issued_at=NOW,
-    )
-
-
-def _inventory(tenant_id: UUID) -> InventoryRevision:
-    sources = (
-        _source("ctower.root-supervisor.default", "root_supervisor_journal"),
-        _source("ctower.effect.default", "effect_journal"),
-        _source("ctower.provider.default", "provider_journal"),
-    )
-    revision_id = uuid4()
-    payload: dict[str, object] = {
-        "schema_id": "ctower.expected-source-inventory/v1",
-        "inventory_revision_id": str(revision_id),
-        "tenant_id": str(tenant_id),
-        "revision_number": 1,
-        "previous_revision_sha256": None,
-        "signing_key_reference": "kms-ref:restore/inventory",
-        "signing_key_version": "v1",
-        "public_key_sha256": "sha256:" + "8" * 64,
-        "created_at": NOW.isoformat().replace("+00:00", "Z"),
-        "sources": [source.model_dump(mode="json") for source in sources],
-    }
-    digest = (
-        "sha256:"
-        + hashlib.sha256(
-            json.dumps(payload, separators=(",", ":"), sort_keys=True).encode()
-        ).hexdigest()
-    )
-    return InventoryRevision(
-        schema_id="ctower.expected-source-inventory/v1",
-        inventory_revision_id=revision_id,
-        tenant_id=tenant_id,
-        revision_number=1,
-        previous_revision_sha256=None,
-        revision_sha256=digest,
-        signature="external-kms-signature",
-        signing_key_reference="kms-ref:restore/inventory",
-        signing_key_version="v1",
-        public_key_sha256="sha256:" + "8" * 64,
-        object_key="operations/inventory/revision-1.json",
-        object_version="version-1",
-        created_at=NOW,
-        sources=sources,
-    )
-
-
 def _verify_restore(
     verifier: RestoreVerifier,
     tenant_id: UUID,
@@ -558,6 +493,7 @@ def _verify_restore(
     backup: BackupRecord,
     inventory: InventoryRevision,
     restore_run_id: UUID,
+    accepted_position: int,
 ) -> tuple[RestoreReport, str]:
     return verifier.verify(
         restore_run_id=restore_run_id,
@@ -565,27 +501,14 @@ def _verify_restore(
         installation_id=installation.installation_id,
         backup_id=backup.backup_id,
         inventory=inventory,
-        inventory_signature_verified=True,
+        inventory_verification=signature_verification(inventory),
         reconciled_source_keys=frozenset(),
-        accepted_source_position=10,
-        restored_acceptance_position=10,
+        accepted_source_position=accepted_position,
+        restored_acceptance_position=accepted_position,
         artifact_rpo_seconds=60,
         started_at=NOW,
         completed_at=NOW + timedelta(minutes=3),
         evidence=_restore_evidence(),
-    )
-
-
-def _source(
-    key: str,
-    kind: Literal["root_supervisor_journal", "effect_journal", "provider_journal"],
-) -> ExpectedSource:
-    return ExpectedSource(
-        source_key=key,
-        source_kind=kind,
-        activation="not_exercised",
-        cursor_declaration="zero_source",
-        source_count=0,
     )
 
 

@@ -23,10 +23,12 @@ __all__ = [
     "InstallationIdentity",
     "InventoryRevision",
     "RecoveryPolicy",
+    "RecoveryReplayConflictError",
     "RestoreCheck",
     "RestoreFinding",
     "RestoreReport",
     "RestoreStepKind",
+    "SignatureVerification",
 ]
 
 type Digest = Annotated[str, StringConstraints(pattern=r"^sha256:[0-9a-f]{64}$")]
@@ -47,6 +49,57 @@ class AcceptedRoot(_StrictModel):
 
     acceptance_position: int
     command_root: Digest
+
+
+class RecoveryReplayConflictError(ValueError):
+    """An immutable recovery identity was replayed with changed semantics."""
+
+
+class SignatureVerification(_StrictModel):
+    """Kernel-owned verification fact bound to one exact signed receipt."""
+
+    digest: Digest
+    signature: str
+    signing_key_reference: StableReference
+    signing_key_version: str
+    public_key_sha256: Digest
+    signed_at: datetime
+    verified: bool
+    verified_at: datetime
+    reason: Literal[
+        "valid",
+        "invalid_signature",
+        "key_unavailable",
+        "wrong_key_reference",
+    ]
+
+    @model_validator(mode="after")
+    def _consistent_result(self) -> SignatureVerification:
+        if self.verified != (self.reason == "valid"):
+            raise ValueError("signature verification result and reason disagree")
+        if self.verified_at < self.signed_at:
+            raise ValueError("signature verification predates the signature")
+        return self
+
+    def require_binding(
+        self,
+        *,
+        digest: str,
+        signature: str,
+        signing_key_reference: str,
+        signing_key_version: str,
+        public_key_sha256: str,
+    ) -> None:
+        """Reject a verification fact mixed with any other signed receipt."""
+
+        if (
+            self.digest != digest
+            or self.signature != signature
+            or self.signing_key_reference != signing_key_reference
+            or self.signing_key_version != signing_key_version
+            or self.public_key_sha256 != public_key_sha256
+        ):
+            raise ValueError("signature verification is not bound to the recovery receipt")
 
 
 class AnchorRecord(_StrictModel):
@@ -209,6 +262,15 @@ class RestoreReport(_StrictModel):
     enablement_eligible: bool
     effects_enabled: Literal[False] = False
 
+    @model_validator(mode="after")
+    def _derived_policy(self) -> RestoreReport:
+        _validate_restore_order(self.steps)
+        accepted_rpo, measured_rto = _validate_restore_metrics(self)
+        eligible = _restore_is_eligible(self, accepted_rpo, measured_rto)
+        if self.enablement_eligible != eligible:
+            raise ValueError("restore eligibility must be derived from report evidence")
+        return self
+
 
 class RecoveryPolicy:
     """Compute anchors and restore decisions without provider or SQL handles."""
@@ -234,7 +296,7 @@ class RecoveryPolicy:
         installation_id: UUID,
         backup_id: UUID,
         inventory: InventoryRevision,
-        inventory_signature_verified: bool,
+        inventory_verification: SignatureVerification,
         reconciled_source_keys: frozenset[str],
         accepted_source_position: int,
         restored_acceptance_position: int,
@@ -246,13 +308,14 @@ class RecoveryPolicy:
         """Remain quarantined unless every ordered proof and target passes."""
 
         _validate_restore_order(checks)
+        _require_inventory_verification(inventory, inventory_verification)
         failures = list(
             inventory_failures(
                 tuple(source.model_dump(mode="python") for source in inventory.sources),
                 reconciled_source_keys=reconciled_source_keys,
             )
         )
-        if not inventory_signature_verified:
+        if not inventory_verification.verified:
             failures.append("inventory-signature-invalid")
         if restored_acceptance_position != accepted_source_position:
             failures.append("accepted-record-rpo-nonzero")
@@ -261,7 +324,11 @@ class RecoveryPolicy:
         if any(check.outcome == "fail" for check in checks):
             failures.append("restore-step-failed")
         rto_seconds = int((completed_at - started_at).total_seconds())
-        if rto_seconds < 0 or rto_seconds > _MAX_RESTORE_RTO_SECONDS:
+        if rto_seconds < 0:
+            raise ValueError("restore completion cannot predate its start")
+        if restored_acceptance_position > accepted_source_position:
+            raise ValueError("restored position cannot exceed accepted source position")
+        if rto_seconds > _MAX_RESTORE_RTO_SECONDS:
             failures.append("restore-rto-exceeded")
         findings = tuple(_finding(index, failure) for index, failure in enumerate(failures, 1))
         return RestoreReport(
@@ -272,12 +339,9 @@ class RecoveryPolicy:
             inventory_revision_sha256=inventory.revision_sha256,
             accepted_source_position=accepted_source_position,
             restored_acceptance_position=restored_acceptance_position,
-            accepted_rpo_seconds=max(
-                accepted_source_position - restored_acceptance_position,
-                0,
-            ),
+            accepted_rpo_seconds=accepted_source_position - restored_acceptance_position,
             artifact_rpo_seconds=artifact_rpo_seconds,
-            rto_seconds=max(rto_seconds, 0),
+            rto_seconds=rto_seconds,
             started_at=started_at,
             completed_at=completed_at,
             steps=checks,
@@ -289,6 +353,51 @@ class RecoveryPolicy:
 def _validate_restore_order(checks: tuple[RestoreCheck, ...]) -> None:
     if tuple(check.kind for check in checks) != RESTORE_ORDER:
         raise ValueError("restore checks must be complete and strictly ordered")
+
+
+def _require_inventory_verification(
+    inventory: InventoryRevision,
+    verification: SignatureVerification,
+) -> None:
+    if inventory_digest(inventory.model_dump(mode="json")) != inventory.revision_sha256:
+        raise ValueError("inventory revision digest does not bind its signed contents")
+    verification.require_binding(
+        digest=inventory.revision_sha256,
+        signature=inventory.signature,
+        signing_key_reference=inventory.signing_key_reference,
+        signing_key_version=inventory.signing_key_version,
+        public_key_sha256=inventory.public_key_sha256,
+    )
+
+
+def _validate_restore_metrics(report: RestoreReport) -> tuple[int, int]:
+    if report.accepted_source_position < 0 or report.restored_acceptance_position < 0:
+        raise ValueError("restore positions must be nonnegative")
+    if report.restored_acceptance_position > report.accepted_source_position:
+        raise ValueError("restored position cannot exceed accepted source position")
+    accepted_rpo = report.accepted_source_position - report.restored_acceptance_position
+    if report.accepted_rpo_seconds != accepted_rpo:
+        raise ValueError("accepted RPO must be derived from persisted positions")
+    measured_rto = int((report.completed_at - report.started_at).total_seconds())
+    if measured_rto < 0 or report.rto_seconds != measured_rto:
+        raise ValueError("restore RTO must be derived from report timestamps")
+    if report.artifact_rpo_seconds < 0:
+        raise ValueError("artifact RPO must be nonnegative")
+    return accepted_rpo, measured_rto
+
+
+def _restore_is_eligible(
+    report: RestoreReport,
+    accepted_rpo: int,
+    measured_rto: int,
+) -> bool:
+    metrics_pass = (
+        accepted_rpo == 0
+        and report.artifact_rpo_seconds <= _MAX_ARTIFACT_RPO_SECONDS
+        and measured_rto <= _MAX_RESTORE_RTO_SECONDS
+    )
+    evidence_passes = all(step.outcome == "pass" for step in report.steps)
+    return metrics_pass and evidence_passes and not report.findings
 
 
 def _finding(index: int, failure: str) -> RestoreFinding:

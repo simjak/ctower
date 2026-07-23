@@ -51,72 +51,88 @@ class RecoveryTransport:
     def _kms(self, request: httpx.Request) -> httpx.Response:
         payload = _json(request)
         if request.url.path == "/v1/encrypt":
-            plaintext = base64.b64decode(str(payload["plaintext_base64"]))
-            ciphertext = b"ciphertext:" + plaintext[::-1]
-            digest = digest_bytes(ciphertext)
-            if self.fault == "encrypt_digest":
-                digest = "sha256:" + "0" * 64
-            key_reference = str(payload["key_reference"])
-            if self.fault == "encrypt_key":
-                key_reference = "kms-ref:test/wrong"
-            return _response(
-                {
-                    "ciphertext_base64": base64.b64encode(ciphertext).decode(),
-                    "ciphertext_sha256": digest,
-                    "key_reference": key_reference,
-                    "key_version": "v1",
-                    "wrapped_key_sha256": "sha256:" + "1" * 64,
-                    "used_at": _timestamp(),
-                }
-            )
+            return self._encrypt(payload)
         if request.url.path == "/v1/decrypt":
-            ciphertext = base64.b64decode(str(payload["ciphertext_base64"]))
-            plaintext = ciphertext.removeprefix(b"ciphertext:")[::-1]
-            return _response(
-                {
-                    "plaintext_base64": base64.b64encode(plaintext).decode(),
-                    "key_reference": payload["key_reference"],
-                }
-            )
+            return self._decrypt(payload)
         if request.url.path == "/v1/key-erasure":
-            self.erased = True
-            return _response(
-                {
-                    "erased": self.fault != "erase_denied",
-                    "key_reference": payload["key_reference"],
-                    "key_version": payload["key_version"],
-                }
-            )
+            return self._erase(payload)
         if request.url.path == "/v1/sign":
-            digest = str(payload["digest"])
-            if self.fault == "sign_digest":
-                digest = "sha256:" + "2" * 64
-            return _response(
-                {
-                    "digest": digest,
-                    "signature": "external-signature",
-                    "key_reference": payload["key_reference"],
-                    "key_version": "v1",
-                    "public_key_sha256": "sha256:" + "3" * 64,
-                    "signed_at": _timestamp(),
-                }
-            )
+            return self._sign(payload)
         if request.url.path == "/v1/verify":
-            key_reference = str(payload["key_reference"])
-            if self.fault == "verify_key":
-                key_reference = "kms-ref:test/wrong"
-            return _response(
-                {
-                    "digest": payload["digest"],
-                    "key_reference": key_reference,
-                    "key_version": payload["key_version"],
-                    "public_key_sha256": payload["public_key_sha256"],
-                    "verified": True,
-                    "verified_at": _timestamp(),
-                    "reason": "valid",
-                }
-            )
+            return self._verify(payload)
         return httpx.Response(404)
+
+    def _encrypt(self, payload: dict[str, object]) -> httpx.Response:
+        plaintext = base64.b64decode(str(payload["plaintext_base64"]))
+        ciphertext = b"ciphertext:" + plaintext[::-1]
+        digest = digest_bytes(ciphertext)
+        if self.fault == "encrypt_digest":
+            digest = "sha256:" + "0" * 64
+        key_reference = str(payload["key_reference"])
+        if self.fault == "encrypt_key":
+            key_reference = "kms-ref:test/wrong"
+        return _response(
+            {
+                "ciphertext_base64": base64.b64encode(ciphertext).decode(),
+                "ciphertext_sha256": digest,
+                "key_reference": key_reference,
+                "key_version": "v1",
+                "wrapped_key_sha256": "sha256:" + "1" * 64,
+                "used_at": _timestamp(),
+            }
+        )
+
+    def _decrypt(self, payload: dict[str, object]) -> httpx.Response:
+        ciphertext = base64.b64decode(str(payload["ciphertext_base64"]))
+        plaintext = ciphertext.removeprefix(b"ciphertext:")[::-1]
+        return _response(
+            {
+                "plaintext_base64": base64.b64encode(plaintext).decode(),
+                "key_reference": payload["key_reference"],
+            }
+        )
+
+    def _erase(self, payload: dict[str, object]) -> httpx.Response:
+        self.erased = True
+        return _response(
+            {
+                "erased": self.fault != "erase_denied",
+                "key_reference": payload["key_reference"],
+                "key_version": payload["key_version"],
+            }
+        )
+
+    def _sign(self, payload: dict[str, object]) -> httpx.Response:
+        digest = str(payload["digest"])
+        if self.fault == "sign_digest":
+            digest = "sha256:" + "2" * 64
+        return _response(
+            {
+                "digest": digest,
+                "signature": "external-signature",
+                "key_reference": payload["key_reference"],
+                "key_version": "v1",
+                "public_key_sha256": "sha256:" + "3" * 64,
+                "signed_at": _timestamp(),
+            }
+        )
+
+    def _verify(self, payload: dict[str, object]) -> httpx.Response:
+        key_reference = str(payload["key_reference"])
+        if self.fault == "verify_key":
+            key_reference = "kms-ref:test/wrong"
+        reason = "invalid_signature" if self.fault == "verify_reason" else "valid"
+        return _response(
+            {
+                "digest": payload["digest"],
+                "key_reference": key_reference,
+                "key_version": payload["key_version"],
+                "public_key_sha256": payload["public_key_sha256"],
+                "verified": True,
+                "verified_at": _timestamp(),
+                "reason": reason,
+            }
+        )
 
 
 def test_concrete_storage_and_external_signing_round_trip(
@@ -211,6 +227,9 @@ def test_read_erase_and_signature_faults_fail_closed(
     signature = signer.sign(digest_bytes(content), key_reference="kms-ref:test/signing")
     transport.fault = "verify_key"
     with pytest.raises(ObjectIntegrityError, match="not signature-bound"):
+        signer.verify(signature)
+    transport.fault = "verify_reason"
+    with pytest.raises(ObjectIntegrityError, match="result and reason disagree"):
         signer.verify(signature)
 
 

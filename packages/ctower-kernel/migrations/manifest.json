@@ -202,16 +202,16 @@
     },
     {
       "path": "0021_object_backup_anchor.sql",
-      "sha256": "sha256:a5068770cf8fd5a3495b6902a97ed3540730a9783f6c2d43c545e5977fcd5d6b",
+      "sha256": "sha256:11ec30462936ff0d7271bc8b04568ae9d2b25bcc317ba3a562221d44862c4eb0",
       "minimum_service_version": "0.0.0",
       "maximum_service_version": "0.0.0",
-      "forward_test": "pytest:tests/acceptance/increment-1/test_backup_restore.py::test_external_object_backfill_restore_and_erasure_fail_closed",
+      "forward_test": "pytest:tests/acceptance/increment-1/test_erasure_recovery.py::test_erasure_reconciles_external_success_before_tombstone_and_rejects_drift",
       "rollback_or_forward_compensation": "Leave additive columns and immutable receipts in place and roll back only to an object-aware dual-read build; append forward compensation for bad metadata, never delete object, erasure, backup, or anchor evidence.",
       "backup_checkpoint": "Before applying to a nonempty installation, capture and verify proof-object counts and digests plus a database backup; object-only writes remain disabled."
     },
     {
       "path": "0022_restore_inventory.sql",
-      "sha256": "sha256:7abb416c1c1be8225fbb154ecf3c590ffc3afe0894dcaebd57722302400fe78b",
+      "sha256": "sha256:31b1caaf968961580822f575216d8afc243c531316b5ab0bfe673381280e3925",
       "minimum_service_version": "0.0.0",
       "maximum_service_version": "0.0.0",
       "forward_test": "pytest:tests/acceptance/increment-1/test_backup_restore.py::test_restore_quarantine_requires_exact_enablement_receipt",
@@ -220,7 +220,7 @@
     },
     {
       "path": "0023_cp3c_privileges.sql",
-      "sha256": "sha256:27feb15a0092cb23d769d033313de9a224b8a77a3fb2a00e249f4c26ee6f0549",
+      "sha256": "sha256:40d64d6e7087f75232360d7b5841b4ca7fc6c2524a870e217eed78fed7e11a7b",
       "minimum_service_version": "0.0.0",
       "maximum_service_version": "0.0.0",
       "forward_test": "pytest:tests/acceptance/increment-1/test_backup_restore.py::test_cp3c_migrations_are_additive_and_roles_are_least_privilege",

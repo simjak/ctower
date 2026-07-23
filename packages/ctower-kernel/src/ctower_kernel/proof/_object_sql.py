@@ -21,6 +21,12 @@ class ObjectRow:
     receipt: StoredObject | None
 
 
+@dataclass(frozen=True, slots=True)
+class ErasurePreparation:
+    receipt: StoredObject
+    complete: bool
+
+
 def insert_external_object(
     connection: psycopg.Connection[dict[str, object]],
     tenant_id: UUID,
@@ -123,25 +129,91 @@ def load_object(
         return None
     state = str(row["storage_state"])
     content = bytes(cast(bytes, row["content"])) if row["content"] is not None else None
-    receipt = _receipt_from_row(artifact_digest, row) if state == "external_verified" else None
+    receipt = (
+        _receipt_from_row(artifact_digest, row)
+        if state in {"external_verified", "erasure_pending"}
+        else None
+    )
     return ObjectRow(state, content, receipt)
 
 
-def mark_erased(
+def prepare_erasure(
     connection: psycopg.Connection[dict[str, object]],
     tenant_id: UUID,
     artifact_digest: str,
-    receipt: StoredObject,
     *,
-    tombstone_id: UUID,
+    erasure_intent_id: UUID,
     authority_ref: str,
     reason: str,
-    erased_at: datetime,
-) -> None:
+    requested_at: datetime,
+) -> ErasurePreparation:
+    """Persist and exact-match one intent before any external erasure effect."""
+
+    digest = _digest(artifact_digest)
+    existing = connection.execute(
+        """
+        SELECT intent.*, tombstone.tombstone_id
+        FROM object_erasure_intents AS intent
+        LEFT JOIN object_erasure_tombstones AS tombstone
+          ON tombstone.erasure_intent_id = intent.erasure_intent_id
+        WHERE intent.tenant_id = %s AND intent.artifact_digest = %s
+        """,
+        (tenant_id, digest),
+    ).fetchone()
+    if existing is not None:
+        if (
+            existing["erasure_intent_id"] != erasure_intent_id
+            or existing["authority_ref"] != authority_ref
+            or existing["reason"] != reason
+        ):
+            raise ObjectIntegrityError("object erasure intent replay changed immutable identity")
+        return ErasurePreparation(
+            _receipt_from_intent(artifact_digest, existing),
+            existing["tombstone_id"] is not None,
+        )
+    row = connection.execute(
+        """
+        SELECT storage_state, content, object_key, object_version, ciphertext_sha256,
+            key_reference, key_version, wrapped_key_sha256, recorded_at,
+            external_verified_at
+        FROM proof_objects
+        WHERE tenant_id = %s AND artifact_digest = %s
+        FOR UPDATE
+        """,
+        (tenant_id, digest),
+    ).fetchone()
+    if row is None or row["storage_state"] != "external_verified":
+        raise ObjectIntegrityError("only one verified external object can be erased")
+    receipt = _receipt_from_row(artifact_digest, row)
+    connection.execute(
+        """
+        INSERT INTO object_erasure_intents (
+            erasure_intent_id, tenant_id, artifact_digest, object_key, object_version,
+            ciphertext_sha256, key_reference, key_version, wrapped_key_sha256,
+            uploaded_at, verified_at, authority_ref, reason, requested_at
+        ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+        """,
+        (
+            erasure_intent_id,
+            tenant_id,
+            digest,
+            receipt.object_key,
+            receipt.object_version,
+            _digest(receipt.ciphertext_sha256),
+            receipt.key_reference,
+            receipt.key_version,
+            _digest(receipt.wrapped_key_sha256),
+            receipt.uploaded_at,
+            receipt.verified_at,
+            authority_ref,
+            reason,
+            requested_at,
+        ),
+    )
     updated = connection.execute(
         """
         UPDATE proof_objects
-        SET content = NULL, storage_state = 'erased', object_key = NULL, object_version = NULL
+        SET storage_state = 'erasure_pending'
         WHERE tenant_id = %s AND artifact_digest = %s
           AND storage_state = 'external_verified'
           AND object_key = %s AND object_version = %s
@@ -154,24 +226,81 @@ def mark_erased(
         ),
     )
     if updated.rowcount != 1:
-        raise ObjectIntegrityError("object erasure metadata changed before tombstone commit")
+        raise ObjectIntegrityError("object metadata changed before erasure intent commit")
+    return ErasurePreparation(receipt=receipt, complete=False)
+
+
+def complete_erasure(
+    connection: psycopg.Connection[dict[str, object]],
+    tenant_id: UUID,
+    artifact_digest: str,
+    *,
+    erasure_intent_id: UUID,
+    erased_at: datetime,
+) -> None:
+    """Reconcile one completed external erasure into its final tombstone."""
+
+    digest = _digest(artifact_digest)
+    intent = connection.execute(
+        """
+        SELECT * FROM object_erasure_intents
+        WHERE erasure_intent_id = %s AND tenant_id = %s AND artifact_digest = %s
+        """,
+        (erasure_intent_id, tenant_id, digest),
+    ).fetchone()
+    if intent is None:
+        raise ObjectIntegrityError("object erasure intent is missing")
+    existing = connection.execute(
+        """
+        SELECT 1 FROM object_erasure_tombstones
+        WHERE erasure_intent_id = %s AND tenant_id = %s AND artifact_digest = %s
+        """,
+        (erasure_intent_id, tenant_id, digest),
+    ).fetchone()
+    if existing is not None:
+        return
+    updated = connection.execute(
+        """
+        UPDATE proof_objects
+        SET content = NULL, storage_state = 'erased', object_key = NULL, object_version = NULL
+        WHERE tenant_id = %s AND artifact_digest = %s
+          AND storage_state = 'erasure_pending'
+          AND object_key = %s AND object_version = %s
+          AND ciphertext_sha256 = %s AND key_reference = %s AND key_version = %s
+          AND wrapped_key_sha256 = %s
+        """,
+        (
+            tenant_id,
+            digest,
+            intent["object_key"],
+            intent["object_version"],
+            intent["ciphertext_sha256"],
+            intent["key_reference"],
+            intent["key_version"],
+            intent["wrapped_key_sha256"],
+        ),
+    )
+    if updated.rowcount != 1:
+        raise ObjectIntegrityError("object erasure state changed before tombstone commit")
     connection.execute(
         """
         INSERT INTO object_erasure_tombstones (
             tombstone_id, tenant_id, artifact_digest, erased_object_key,
-            erased_object_version, erased_key_reference, authority_ref, reason, erased_at
-        ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s)
+            erased_object_version, erased_key_reference, authority_ref, reason,
+            erased_at, erasure_intent_id
+        ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
         """,
         (
-            tombstone_id,
+            erasure_intent_id,
             tenant_id,
-            _digest(artifact_digest),
-            receipt.object_key,
-            receipt.object_version,
-            receipt.key_reference,
-            authority_ref,
-            reason,
+            digest,
+            intent["object_key"],
+            intent["object_version"],
+            intent["key_reference"],
+            intent["authority_ref"],
+            intent["reason"],
             erased_at,
+            erasure_intent_id,
         ),
     )
 
@@ -274,6 +403,20 @@ def _receipt_from_row(artifact_digest: str, row: dict[str, object]) -> StoredObj
         wrapped_key_sha256=f"sha256:{bytes(cast(bytes, row['wrapped_key_sha256'])).hex()}",
         uploaded_at=cast(datetime, row["recorded_at"]),
         verified_at=cast(datetime, row["external_verified_at"]),
+    )
+
+
+def _receipt_from_intent(artifact_digest: str, row: dict[str, object]) -> StoredObject:
+    return StoredObject(
+        artifact_digest=artifact_digest,
+        object_key=str(row["object_key"]),
+        object_version=str(row["object_version"]),
+        ciphertext_sha256=f"sha256:{bytes(cast(bytes, row['ciphertext_sha256'])).hex()}",
+        key_reference=str(row["key_reference"]),
+        key_version=str(row["key_version"]),
+        wrapped_key_sha256=f"sha256:{bytes(cast(bytes, row['wrapped_key_sha256'])).hex()}",
+        uploaded_at=cast(datetime, row["uploaded_at"]),
+        verified_at=cast(datetime, row["verified_at"]),
     )
 
 

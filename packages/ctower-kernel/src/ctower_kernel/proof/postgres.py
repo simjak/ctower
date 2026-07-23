@@ -10,9 +10,10 @@ import psycopg
 
 from ctower_kernel.proof import Proof, ProofActor, ProofMutation, ProofReceipt, RecordEvidence
 from ctower_kernel.proof._object_sql import (
+    complete_erasure,
     inline_objects,
     load_object,
-    mark_erased,
+    prepare_erasure,
     record_backfill,
 )
 from ctower_kernel.proof._postgres_sql import mutate_proof
@@ -93,6 +94,8 @@ class PostgresProof:
             raise ObjectIntegrityError("proof object is missing")
         if row.state == "erased":
             raise ObjectIntegrityError("proof object is durably erased")
+        if row.state == "erasure_pending":
+            raise ObjectIntegrityError("proof object erasure is pending reconciliation")
         if row.receipt is not None:
             if self._object_store is None:
                 raise ObjectIntegrityError("external object access is unavailable")
@@ -139,26 +142,37 @@ class PostgresProof:
         authority_ref: str,
         reason: str,
     ) -> None:
-        """Erase exact external bytes/key, then append the durable tombstone."""
+        """Persist exact intent, reconcile idempotent effects, then tombstone."""
 
         store, _key_reference = self._configured_store()
         with authority_connection(self._dsn) as connection:
             connection.execute("SET ROLE ctower_svc")
             row = load_object(connection, tenant_id, artifact_digest)
-        if row is None or row.receipt is None or row.state != "external_verified":
+        if row is None:
             raise ObjectIntegrityError("only one verified external object can be erased")
-        store.read_verified(tenant_id, row.receipt)
-        store.erase(tenant_id, row.receipt)
+        if row.state == "external_verified" and row.receipt is not None:
+            store.read_verified(tenant_id, row.receipt)
         with authority_connection(self._dsn) as connection:
             connection.execute("SET ROLE ctower_svc")
-            mark_erased(
+            intent = prepare_erasure(
                 connection,
                 tenant_id,
                 artifact_digest,
-                row.receipt,
-                tombstone_id=tombstone_id,
+                erasure_intent_id=tombstone_id,
                 authority_ref=authority_ref,
                 reason=reason,
+                requested_at=self._clock(),
+            )
+        if intent.complete:
+            return
+        store.erase(tenant_id, intent.receipt)
+        with authority_connection(self._dsn) as connection:
+            connection.execute("SET ROLE ctower_svc")
+            complete_erasure(
+                connection,
+                tenant_id,
+                artifact_digest,
+                erasure_intent_id=tombstone_id,
                 erased_at=self._clock(),
             )
 

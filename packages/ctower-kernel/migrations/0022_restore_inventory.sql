@@ -36,10 +36,17 @@ CREATE TABLE expected_source_inventory_revisions (
     object_key text NOT NULL CHECK (length(object_key) BETWEEN 1 AND 512),
     object_version text NOT NULL CHECK (length(object_version) BETWEEN 1 AND 256),
     created_at timestamptz NOT NULL,
+    FOREIGN KEY (tenant_id, previous_revision_sha256)
+        REFERENCES expected_source_inventory_revisions(tenant_id, revision_sha256),
     UNIQUE (tenant_id, revision_number),
+    UNIQUE (tenant_id, previous_revision_sha256),
     UNIQUE (tenant_id, revision_sha256),
     UNIQUE (inventory_revision_id, tenant_id)
 );
+
+CREATE UNIQUE INDEX expected_source_inventory_one_genesis
+    ON expected_source_inventory_revisions (tenant_id)
+    WHERE previous_revision_sha256 IS NULL;
 
 CREATE TABLE expected_source_inventory_entries (
     inventory_revision_id uuid NOT NULL,
@@ -92,24 +99,38 @@ CREATE TABLE restore_runs (
     artifact_rpo_seconds integer NOT NULL CHECK (artifact_rpo_seconds >= 0),
     started_at timestamptz NOT NULL,
     completed_at timestamptz,
+    rto_seconds integer CHECK (rto_seconds IS NULL OR rto_seconds >= 0),
     report_sha256 bytea CHECK (report_sha256 IS NULL OR octet_length(report_sha256) = 32),
     FOREIGN KEY (installation_id, tenant_id)
         REFERENCES installation_identities(installation_id, tenant_id),
     FOREIGN KEY (backup_id, tenant_id) REFERENCES backup_manifests(backup_id, tenant_id),
     FOREIGN KEY (inventory_revision_id, tenant_id)
         REFERENCES expected_source_inventory_revisions(inventory_revision_id, tenant_id),
+    CHECK (restored_acceptance_position <= accepted_source_position),
+    CHECK (
+        accepted_rpo_seconds = accepted_source_position - restored_acceptance_position
+    ),
+    CHECK (
+        rto_seconds IS NULL
+        OR rto_seconds = EXTRACT(EPOCH FROM (completed_at - started_at))::integer
+    ),
     CHECK (
         (
             status = 'quarantined'
             AND (
-                (completed_at IS NULL AND report_sha256 IS NULL)
-                OR (completed_at IS NOT NULL AND report_sha256 IS NOT NULL)
+                (completed_at IS NULL AND rto_seconds IS NULL AND report_sha256 IS NULL)
+                OR (
+                    completed_at IS NOT NULL
+                    AND rto_seconds IS NOT NULL
+                    AND report_sha256 IS NOT NULL
+                )
             )
         )
         OR (
             status IN ('failed', 'enabled')
             AND completed_at IS NOT NULL
             AND completed_at >= started_at
+            AND rto_seconds IS NOT NULL
             AND report_sha256 IS NOT NULL
         )
     ),
@@ -133,7 +154,23 @@ CREATE TABLE restore_steps (
     recorded_at timestamptz NOT NULL,
     PRIMARY KEY (restore_run_id, step_sequence),
     FOREIGN KEY (restore_run_id, tenant_id)
-        REFERENCES restore_runs(restore_run_id, tenant_id)
+        REFERENCES restore_runs(restore_run_id, tenant_id),
+    CHECK (
+        step_kind = CASE step_sequence
+            WHEN 1 THEN 'database_recovered'
+            WHEN 2 THEN 'object_access_recovered'
+            WHEN 3 THEN 'key_access_recovered'
+            WHEN 4 THEN 'erasure_reapplied'
+            WHEN 5 THEN 'migrations_verified'
+            WHEN 6 THEN 'chains_verified'
+            WHEN 7 THEN 'anchors_verified'
+            WHEN 8 THEN 'objects_verified'
+            WHEN 9 THEN 'tombstones_verified'
+            WHEN 10 THEN 'inventory_verified'
+            WHEN 11 THEN 'journals_reconciled'
+            WHEN 12 THEN 'synthetic_verified'
+        END
+    )
 );
 
 CREATE TABLE restore_findings (

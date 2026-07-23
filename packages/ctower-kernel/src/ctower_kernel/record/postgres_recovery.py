@@ -5,7 +5,7 @@ from __future__ import annotations
 from datetime import datetime
 from uuid import UUID
 
-from ctower_kernel.record._integrity import inventory_failures
+from ctower_kernel.record._integrity import inventory_digest, inventory_failures
 from ctower_kernel.record._recovery_sql import (
     begin_restore,
     complete_restore,
@@ -17,13 +17,12 @@ from ctower_kernel.record._recovery_sql import (
     reads_enabled,
 )
 from ctower_kernel.record.recovery import (
-    AcceptedRoot,
     AnchorRecord,
     BackupRecord,
     InstallationIdentity,
     InventoryRevision,
-    RecoveryPolicy,
     RestoreReport,
+    SignatureVerification,
 )
 
 __all__ = ["PostgresRecovery"]
@@ -32,9 +31,8 @@ __all__ = ["PostgresRecovery"]
 class PostgresRecovery:
     """Persist only externally verified, policy-valid recovery facts."""
 
-    def __init__(self, dsn: str, *, policy: RecoveryPolicy | None = None) -> None:
+    def __init__(self, dsn: str) -> None:
         self._dsn = dsn
-        self._policy = policy or RecoveryPolicy()
 
     def record_backup(self, backup: BackupRecord) -> None:
         """Append one complete verified backup and receipt."""
@@ -44,34 +42,38 @@ class PostgresRecovery:
     def record_anchor(
         self,
         anchor: AnchorRecord,
-        roots: tuple[AcceptedRoot, ...],
         *,
-        signature_verified: bool,
+        verification: SignatureVerification,
     ) -> None:
-        """Append an anchor only after digest and external signature verification."""
+        """Ground one verified anchor in locked accepted Record roots."""
 
-        expected = self._policy.build_anchor(
-            roots,
-            previous_anchor_sha256=anchor.previous_anchor_sha256,
+        verification.require_binding(
+            digest=anchor.anchor_sha256,
+            signature=anchor.signature,
+            signing_key_reference=anchor.signing_key_reference,
+            signing_key_version=anchor.signing_key_version,
+            public_key_sha256=anchor.public_key_sha256,
         )
-        if (
-            not signature_verified
-            or expected != anchor.anchor_sha256
-            or roots[0].acceptance_position != anchor.source_start_position
-            or roots[-1].acceptance_position != anchor.source_end_position
-        ):
-            raise ValueError("anchor receipt failed digest or signature verification")
+        if not verification.verified:
+            raise ValueError("anchor receipt failed signature verification")
         insert_anchor(self._dsn, anchor)
 
     def record_installation(
         self,
         identity: InstallationIdentity,
         *,
-        signature_verified: bool,
+        verification: SignatureVerification,
     ) -> None:
         """Append only a root-signature-verified installation identity."""
 
-        if not signature_verified:
+        verification.require_binding(
+            digest=identity.identity_sha256,
+            signature=identity.signature,
+            signing_key_reference=identity.signing_key_reference,
+            signing_key_version=identity.signing_key_version,
+            public_key_sha256=identity.public_key_sha256,
+        )
+        if not verification.verified:
             raise ValueError("installation identity signature verification failed")
         insert_installation(self._dsn, identity)
 
@@ -79,10 +81,19 @@ class PostgresRecovery:
         self,
         inventory: InventoryRevision,
         *,
-        signature_verified: bool,
+        verification: SignatureVerification,
     ) -> None:
         """Append one exhaustive digest- and signature-verified revision."""
 
+        if inventory_digest(inventory.model_dump(mode="json")) != inventory.revision_sha256:
+            raise ValueError("inventory revision digest does not bind its signed contents")
+        verification.require_binding(
+            digest=inventory.revision_sha256,
+            signature=inventory.signature,
+            signing_key_reference=inventory.signing_key_reference,
+            signing_key_version=inventory.signing_key_version,
+            public_key_sha256=inventory.public_key_sha256,
+        )
         active = frozenset(
             source.source_key for source in inventory.sources if source.activation == "active"
         )
@@ -90,7 +101,7 @@ class PostgresRecovery:
             tuple(source.model_dump(mode="python") for source in inventory.sources),
             reconciled_source_keys=active,
         )
-        if not signature_verified or failures:
+        if not verification.verified or failures:
             raise ValueError("inventory revision failed signature or source validation")
         insert_inventory(self._dsn, inventory)
 

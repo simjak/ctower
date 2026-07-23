@@ -12,6 +12,7 @@ from ctower_api._kms import (
 )
 from ctower_api._object_store import ObjectStoreConfig, S3CompatibleObjectStore
 from ctower_kernel.proof.objects import StoredObject
+from ctower_kernel.record.recovery import SignatureVerification
 
 __all__ = [
     "ExternalIntegrityAuthority",
@@ -68,7 +69,18 @@ class ExternalIntegrityAuthority:
 
         return self._kms.sign(digest, key_reference=key_reference)
 
-    def verify(self, receipt: SignatureReceipt) -> VerificationReceipt:
+    def verify(self, receipt: SignatureReceipt) -> SignatureVerification:
         """Return an exact signature-bound external verification receipt."""
 
-        return self._kms.verify(receipt)
+        verification = self._kms.verify(receipt)
+        return SignatureVerification(
+            digest=receipt.digest,
+            signature=receipt.signature,
+            signing_key_reference=receipt.key_reference,
+            signing_key_version=receipt.key_version,
+            public_key_sha256=receipt.public_key_sha256,
+            signed_at=receipt.signed_at,
+            verified=verification.verified,
+            verified_at=verification.verified_at,
+            reason=verification.reason,
+        )
