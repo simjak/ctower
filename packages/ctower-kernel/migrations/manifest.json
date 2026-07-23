@@ -192,11 +192,11 @@
     },
     {
       "path": "0020_recovery_roles.sql",
-      "sha256": "sha256:7aafcfc5ce7740db1c16051fe10c301764aa5db33fbd226bbf2ced11a53afe11",
+      "sha256": "sha256:bb5370231d52b7df6c29d97c48765e0996c37ce4119cc6d7f66a2257d6da26c0",
       "scope": "cluster",
       "minimum_service_version": "0.0.0",
       "maximum_service_version": "0.0.0",
-      "forward_test": "pytest:tests/acceptance/increment-1/test_backup_restore.py::test_cp3c_migrations_are_additive_and_roles_are_least_privilege",
+      "forward_test": "pytest:tests/acceptance/increment-1/test_database_role_privileges.py::test_recovery_roles_create_cleanly_and_reuse_only_exact_catalog_shapes",
       "rollback_or_forward_compensation": "Keep the four NOLOGIN recovery roles quarantined or append a reviewed forward role compensation; never grant them runtime or migrator membership and never reuse an unexpectedly privileged pre-existing identity.",
       "backup_checkpoint": "Before applying, capture the complete role graph, attributes, memberships, direct grants, and owned objects for the four recovery role names; the clean local fixture contains none."
     },

@@ -154,14 +154,15 @@ def test_cp3c_migrations_are_additive_and_roles_are_least_privilege(
                 has_table_privilege('ctower_projection', 'restore_runs', 'INSERT'),
                 has_table_privilege('ctower_backup', 'backup_manifests', 'INSERT'),
                 has_table_privilege('ctower_backup', 'backup_manifests', 'UPDATE'),
-                pg_has_role('ctower_runtime', 'ctower_restore', 'MEMBER')
+                pg_has_role('ctower_runtime', 'ctower_restore', 'MEMBER'),
+                has_schema_privilege('ctower_backup', 'public', 'USAGE')
             """
         ).fetchone()
 
     assert expected_tables <= tables
     assert len(roles) == _RECOVERY_ROLE_COUNT
     assert all(not any(bool(value) for value in row[1:]) for row in roles)
-    assert privileges == (False, False, True, False, False)
+    assert privileges == (False, False, True, False, False, True)
 
 
 def test_external_object_backfill_restore_and_erasure_fail_closed(

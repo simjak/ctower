@@ -33,6 +33,7 @@ from ctower_kernel.record._custody_sql import transfer_custody as _transfer_cust
 from ctower_kernel.record._durability_health_sql import durability_health as _durability_health
 from ctower_kernel.record._durability_sql import reconcile_durability as _reconcile_durability
 from ctower_kernel.record._setup_sql import (
+    RecoveryRoleConfigurationError,
     apply_migrations,
     provision_bootstrap,
     provision_database_roles,
@@ -46,6 +47,7 @@ from ctower_kernel.telemetry import NoopTelemetry, Telemetry, TelemetryContext
 
 __all__ = [
     "PostgresRecord",
+    "RecoveryRoleConfigurationError",
     "apply_migrations",
     "provision_bootstrap",
     "provision_database_roles",

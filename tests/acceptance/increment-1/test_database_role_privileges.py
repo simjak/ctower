@@ -10,6 +10,11 @@ import psycopg
 import pytest
 from psycopg.rows import dict_row
 from support.postgres import DatabaseFixture
+from support.recovery_role_adoption import (
+    RECOVERY_ROLES,
+    assert_clean_creation_and_exact_reuse,
+    assert_mismatch_cases_are_atomic,
+)
 from support.server import running_api, start_and_admit
 from support.tenant_fixture import TenantFixture, create_second_tenant
 
@@ -153,6 +158,18 @@ APPEND_ONLY_TABLES = (
     "durability_acceptance_confirmations",
     "durability_target_observations",
 )
+
+
+def test_recovery_roles_create_cleanly_and_reuse_only_exact_catalog_shapes() -> None:
+    assert_clean_creation_and_exact_reuse()
+
+
+@pytest.mark.parametrize("role", RECOVERY_ROLES)
+def test_recovery_role_mismatches_are_typed_deterministic_and_atomic(
+    database: DatabaseFixture,
+    role: str,
+) -> None:
+    assert_mismatch_cases_are_atomic(database, role)
 
 
 def test_fresh_database_narrows_head_update_privileges(tenant: TenantFixture) -> None:
