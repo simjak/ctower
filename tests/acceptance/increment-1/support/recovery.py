@@ -13,7 +13,8 @@ import psycopg
 from ctower_kernel.record.recovery import (
     AcceptedRoot,
     AnchorRecord,
-    BackupRecord,
+    BackupManifest,
+    BackupVerificationReceipt,
     ExpectedSource,
     InstallationIdentity,
     InventoryRevision,
@@ -32,29 +33,26 @@ __all__ = [
 ]
 
 
-def backup(backup_id: UUID, receipt_id: UUID, tenant_id: UUID) -> BackupRecord:
-    return BackupRecord(
-        backup_id=backup_id,
-        verification_receipt_id=receipt_id,
-        tenant_id=tenant_id,
-        manifest_sha256="sha256:" + "1" * 64,
-        repository_ref="backup-ref:test/repository",
-        repository_object_version="version-1",
-        base_backup_sha256="sha256:" + "2" * 64,
-        wal_start_lsn="0/10",
-        wal_stop_lsn="0/20",
-        logical_dump_sha256="sha256:" + "3" * 64,
-        object_manifest_sha256="sha256:" + "4" * 64,
-        migration_manifest_sha256="sha256:" + "5" * 64,
-        key_reference="kms-ref:backup/key",
-        key_version="v1",
-        started_at=NOW,
-        completed_at=NOW + timedelta(minutes=1),
-        base_verified=True,
-        wal_verified=True,
-        logical_dump_verified=True,
-        objects_verified=True,
-        key_reference_verified=True,
+def backup(backup_id: UUID, tenant_id: UUID) -> BackupVerificationReceipt:
+    return BackupVerificationReceipt(
+        manifest=BackupManifest(
+            backup_id=backup_id,
+            tenant_id=tenant_id,
+            repository_ref="backup-ref:test/repository",
+            repository_object_version="version-1",
+            base_backup_sha256="sha256:" + "2" * 64,
+            wal_start_lsn="0/10",
+            wal_stop_lsn="0/20",
+            logical_dump_sha256="sha256:" + "3" * 64,
+            object_manifest_sha256="sha256:" + "4" * 64,
+            migration_manifest_sha256="sha256:" + "5" * 64,
+            key_reference="kms-ref:backup/key",
+            key_version="v1",
+            pgbackrest_sha256="sha256:" + "9" * 64,
+            pg_dump_sha256="sha256:" + "a" * 64,
+            started_at=NOW,
+            completed_at=NOW + timedelta(minutes=1),
+        )
     )
 
 
@@ -63,7 +61,6 @@ def installation(tenant_id: UUID) -> InstallationIdentity:
         installation_id=uuid4(),
         tenant_id=tenant_id,
         identity_ref="installation-ref:test/isolated",
-        identity_sha256="sha256:" + "6" * 64,
         signature="root-signed-installation",
         signing_key_reference="kms-ref:installation/signing",
         signing_key_version="v1",

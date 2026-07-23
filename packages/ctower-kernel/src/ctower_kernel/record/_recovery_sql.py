@@ -20,7 +20,7 @@ from ctower_kernel.record._recovery_replay import (
 )
 from ctower_kernel.record.recovery import (
     AnchorRecord,
-    BackupRecord,
+    BackupVerificationReceipt,
     InstallationIdentity,
     InventoryRevision,
     RecoveryReplayConflictError,
@@ -32,25 +32,30 @@ __all__: tuple[str, ...] = ()
 _ROLES = frozenset({"ctower_backup", "ctower_anchor", "ctower_restore"})
 
 
-def insert_backup(dsn: str, backup: BackupRecord) -> None:
+def insert_backup(dsn: str, receipt: BackupVerificationReceipt) -> None:
+    backup = receipt.manifest
     with _connection(dsn, "ctower_backup") as connection:
         connection.execute(
             """
             INSERT INTO backup_manifests (
-                backup_id, tenant_id, manifest_sha256, backup_kind, repository_ref,
-                base_backup_sha256, wal_start_lsn, wal_stop_lsn, logical_dump_sha256,
+                backup_id, tenant_id, schema_id, manifest_sha256, backup_kind,
+                repository_ref, repository_object_version, base_backup_sha256,
+                wal_start_lsn, wal_stop_lsn, logical_dump_sha256,
                 object_manifest_sha256, migration_manifest_sha256, key_reference,
-                key_version, started_at, completed_at
+                key_version, pgbackrest_sha256, pg_dump_sha256, started_at, completed_at
             ) VALUES (
-                %s, %s, %s, 'daily_full', %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s
+                %s, %s, %s, %s, 'daily_full', %s, %s, %s, %s, %s, %s, %s, %s,
+                %s, %s, %s, %s, %s, %s
             )
             ON CONFLICT DO NOTHING
             """,
             (
                 backup.backup_id,
                 backup.tenant_id,
+                backup.schema_id,
                 _digest(backup.manifest_sha256),
                 backup.repository_ref,
+                backup.repository_object_version,
                 _digest(backup.base_backup_sha256),
                 backup.wal_start_lsn,
                 backup.wal_stop_lsn,
@@ -59,6 +64,8 @@ def insert_backup(dsn: str, backup: BackupRecord) -> None:
                 _digest(backup.migration_manifest_sha256),
                 backup.key_reference,
                 backup.key_version,
+                _digest(backup.pgbackrest_sha256),
+                _digest(backup.pg_dump_sha256),
                 backup.started_at,
                 backup.completed_at,
             ),
@@ -67,19 +74,23 @@ def insert_backup(dsn: str, backup: BackupRecord) -> None:
             connection,
             """
             SELECT 1 FROM backup_manifests
-            WHERE backup_id = %s AND tenant_id = %s AND manifest_sha256 = %s
-              AND backup_kind = 'daily_full' AND repository_ref = %s
+            WHERE backup_id = %s AND tenant_id = %s AND schema_id = %s
+              AND manifest_sha256 = %s AND backup_kind = 'daily_full'
+              AND repository_ref = %s AND repository_object_version = %s
               AND base_backup_sha256 = %s AND wal_start_lsn = %s
               AND wal_stop_lsn = %s AND logical_dump_sha256 = %s
               AND object_manifest_sha256 = %s AND migration_manifest_sha256 = %s
               AND key_reference = %s AND key_version = %s
+              AND pgbackrest_sha256 = %s AND pg_dump_sha256 = %s
               AND started_at = %s AND completed_at = %s
             """,
             (
                 backup.backup_id,
                 backup.tenant_id,
+                backup.schema_id,
                 _digest(backup.manifest_sha256),
                 backup.repository_ref,
+                backup.repository_object_version,
                 _digest(backup.base_backup_sha256),
                 backup.wal_start_lsn,
                 backup.wal_stop_lsn,
@@ -88,46 +99,47 @@ def insert_backup(dsn: str, backup: BackupRecord) -> None:
                 _digest(backup.migration_manifest_sha256),
                 backup.key_reference,
                 backup.key_version,
+                _digest(backup.pgbackrest_sha256),
+                _digest(backup.pg_dump_sha256),
                 backup.started_at,
                 backup.completed_at,
             ),
             label="backup",
         )
-        connection.execute(
-            """
-            INSERT INTO backup_verification_receipts (
-                receipt_id, backup_id, tenant_id, repository_object_version,
-                base_verified, wal_verified, logical_dump_verified, objects_verified,
-                key_reference_verified, verified_at
-            ) VALUES (%s, %s, %s, %s, true, true, true, true, true, %s)
-            ON CONFLICT DO NOTHING
-            """,
-            (
-                backup.verification_receipt_id,
-                backup.backup_id,
-                backup.tenant_id,
-                backup.repository_object_version,
-                backup.completed_at,
-            ),
-        )
-        require_exact_row(
-            connection,
-            """
-            SELECT 1 FROM backup_verification_receipts
-            WHERE receipt_id = %s AND backup_id = %s AND tenant_id = %s
-              AND repository_object_version = %s
-              AND base_verified AND wal_verified AND logical_dump_verified
-              AND objects_verified AND key_reference_verified AND verified_at = %s
-            """,
-            (
-                backup.verification_receipt_id,
-                backup.backup_id,
-                backup.tenant_id,
-                backup.repository_object_version,
-                backup.completed_at,
-            ),
-            label="backup verification receipt",
-        )
+        _insert_backup_receipt(connection, receipt)
+
+
+def _insert_backup_receipt(
+    connection: psycopg.Connection[dict[str, object]],
+    receipt: BackupVerificationReceipt,
+) -> None:
+    backup = receipt.manifest
+    identity = (
+        receipt.verification_receipt_id,
+        backup.backup_id,
+        backup.tenant_id,
+        _digest(backup.manifest_sha256),
+        receipt.verified_at,
+    )
+    connection.execute(
+        """
+        INSERT INTO backup_verification_receipts (
+            receipt_id, backup_id, tenant_id, manifest_sha256, verified_at
+        ) VALUES (%s, %s, %s, %s, %s)
+        ON CONFLICT DO NOTHING
+        """,
+        identity,
+    )
+    require_exact_row(
+        connection,
+        """
+        SELECT 1 FROM backup_verification_receipts
+        WHERE receipt_id = %s AND backup_id = %s AND tenant_id = %s
+          AND manifest_sha256 = %s AND verified_at = %s
+        """,
+        identity,
+        label="backup verification receipt",
+    )
 
 
 def insert_anchor(dsn: str, anchor: AnchorRecord) -> None:

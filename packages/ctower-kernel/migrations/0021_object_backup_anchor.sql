@@ -125,9 +125,13 @@ ALTER TABLE object_erasure_tombstones
 CREATE TABLE backup_manifests (
     backup_id uuid PRIMARY KEY,
     tenant_id uuid NOT NULL REFERENCES tenants(tenant_id),
+    schema_id text NOT NULL CHECK (schema_id = 'ctower.backup-manifest/v1'),
     manifest_sha256 bytea NOT NULL CHECK (octet_length(manifest_sha256) = 32),
     backup_kind text NOT NULL CHECK (backup_kind = 'daily_full'),
     repository_ref text NOT NULL CHECK (repository_ref ~ '^[a-z][a-z0-9._:/-]{2,255}$'),
+    repository_object_version text NOT NULL CHECK (
+        length(repository_object_version) BETWEEN 1 AND 256
+    ),
     base_backup_sha256 bytea NOT NULL CHECK (octet_length(base_backup_sha256) = 32),
     wal_start_lsn pg_lsn NOT NULL,
     wal_stop_lsn pg_lsn NOT NULL CHECK (wal_stop_lsn >= wal_start_lsn),
@@ -136,9 +140,12 @@ CREATE TABLE backup_manifests (
     migration_manifest_sha256 bytea NOT NULL CHECK (octet_length(migration_manifest_sha256) = 32),
     key_reference text NOT NULL CHECK (key_reference ~ '^[a-z][a-z0-9._:/-]{2,255}$'),
     key_version text NOT NULL CHECK (key_version ~ '^[A-Za-z0-9._:-]{1,128}$'),
+    pgbackrest_sha256 bytea NOT NULL CHECK (octet_length(pgbackrest_sha256) = 32),
+    pg_dump_sha256 bytea NOT NULL CHECK (octet_length(pg_dump_sha256) = 32),
     started_at timestamptz NOT NULL,
     completed_at timestamptz NOT NULL CHECK (completed_at >= started_at),
-    UNIQUE (tenant_id, manifest_sha256)
+    UNIQUE (tenant_id, manifest_sha256),
+    UNIQUE (backup_id, tenant_id, manifest_sha256)
 );
 
 ALTER TABLE backup_manifests ADD CONSTRAINT backup_manifests_id_tenant_unique
@@ -148,17 +155,11 @@ CREATE TABLE backup_verification_receipts (
     receipt_id uuid PRIMARY KEY,
     backup_id uuid NOT NULL REFERENCES backup_manifests(backup_id),
     tenant_id uuid NOT NULL REFERENCES tenants(tenant_id),
-    repository_object_version text NOT NULL CHECK (
-        length(repository_object_version) BETWEEN 1 AND 256
-    ),
-    base_verified boolean NOT NULL CHECK (base_verified),
-    wal_verified boolean NOT NULL CHECK (wal_verified),
-    logical_dump_verified boolean NOT NULL CHECK (logical_dump_verified),
-    objects_verified boolean NOT NULL CHECK (objects_verified),
-    key_reference_verified boolean NOT NULL CHECK (key_reference_verified),
+    manifest_sha256 bytea NOT NULL CHECK (octet_length(manifest_sha256) = 32),
     verified_at timestamptz NOT NULL,
-    FOREIGN KEY (backup_id, tenant_id) REFERENCES backup_manifests(backup_id, tenant_id),
-    UNIQUE (backup_id, repository_object_version)
+    FOREIGN KEY (backup_id, tenant_id, manifest_sha256)
+        REFERENCES backup_manifests(backup_id, tenant_id, manifest_sha256),
+    UNIQUE (backup_id, manifest_sha256)
 );
 
 CREATE TABLE record_anchor_receipts (

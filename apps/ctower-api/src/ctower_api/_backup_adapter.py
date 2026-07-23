@@ -11,16 +11,20 @@ from collections.abc import Callable, Sequence
 from contextlib import suppress
 from datetime import UTC, datetime
 from pathlib import Path
-from typing import Literal, Protocol
+from typing import Protocol, cast
 from uuid import UUID
 
 from pydantic import BaseModel, ConfigDict, field_validator
+
+from ctower_kernel.record.recovery import BackupManifest, BackupVerificationReceipt
 
 __all__: tuple[str, ...] = ()
 
 _DIGEST = re.compile(r"^sha256:[0-9a-f]{64}$")
 _LSN = re.compile(r"^[0-9A-F]+/[0-9A-F]+$")
 _OUTPUT_LIMIT = 4_000
+_PROCESS_CLEANUP_SECONDS = 1.0
+_DRAIN_CLEANUP_SECONDS = 1.0
 type _FileFingerprint = tuple[int, int, int, str]
 
 
@@ -83,41 +87,6 @@ class CommandResult(BaseModel):
     stderr: str
 
 
-class BackupManifest(BaseModel):
-    """Complete local evidence required before recording backup success."""
-
-    model_config = ConfigDict(extra="forbid", frozen=True, strict=True)
-
-    schema_id: Literal["ctower.backup-manifest/v1"] = "ctower.backup-manifest/v1"
-    backup_id: UUID
-    tenant_id: UUID
-    repository_ref: str
-    repository_object_version: str
-    base_backup_sha256: str
-    wal_start_lsn: str
-    wal_stop_lsn: str
-    logical_dump_sha256: str
-    object_manifest_sha256: str
-    migration_manifest_sha256: str
-    key_reference: str
-    key_version: str
-    started_at: datetime
-    completed_at: datetime
-    verification: BackupVerification
-
-
-class BackupVerification(BaseModel):
-    """Every independent success fact required for a usable backup."""
-
-    model_config = ConfigDict(extra="forbid", frozen=True, strict=True)
-
-    base: Literal[True]
-    wal: Literal[True]
-    logical_dump: Literal[True]
-    objects: Literal[True]
-    key_reference: Literal[True]
-
-
 class _Runner(Protocol):
     def __call__(self, argv: Sequence[str], *, timeout: int) -> CommandResult: ...
 
@@ -142,7 +111,7 @@ class FixedBackupAdapter:
         backup_id: UUID,
         *,
         key_version: str,
-    ) -> BackupManifest:
+    ) -> BackupVerificationReceipt:
         """Run physical and logical backup steps and require all evidence."""
 
         self._verify_tools()
@@ -169,27 +138,24 @@ class FixedBackupAdapter:
         )
         evidence = _read_evidence(self._config, backup_id=backup_id, before=before)
         completed_at = self._clock()
-        return BackupManifest(
-            backup_id=backup_id,
-            tenant_id=tenant_id,
-            repository_ref=self._config.repository_ref,
-            repository_object_version=evidence.repository_object_version,
-            base_backup_sha256=_file_digest(self._config.base_manifest_path),
-            wal_start_lsn=evidence.wal_start_lsn,
-            wal_stop_lsn=evidence.wal_stop_lsn,
-            logical_dump_sha256=_file_digest(self._config.logical_dump_path),
-            object_manifest_sha256=_file_digest(self._config.object_manifest_path),
-            migration_manifest_sha256=_file_digest(self._config.migration_manifest_path),
-            key_reference=self._config.key_reference,
-            key_version=key_version,
-            started_at=started_at,
-            completed_at=completed_at,
-            verification=BackupVerification(
-                base=True,
-                wal=True,
-                logical_dump=True,
-                objects=True,
-                key_reference=True,
+        return BackupVerificationReceipt(
+            manifest=BackupManifest(
+                backup_id=backup_id,
+                tenant_id=tenant_id,
+                repository_ref=self._config.repository_ref,
+                repository_object_version=evidence.repository_object_version,
+                base_backup_sha256=_file_digest(self._config.base_manifest_path),
+                wal_start_lsn=evidence.wal_start_lsn,
+                wal_stop_lsn=evidence.wal_stop_lsn,
+                logical_dump_sha256=_file_digest(self._config.logical_dump_path),
+                object_manifest_sha256=_file_digest(self._config.object_manifest_path),
+                migration_manifest_sha256=_file_digest(self._config.migration_manifest_path),
+                key_reference=self._config.key_reference,
+                key_version=key_version,
+                pgbackrest_sha256=self._config.pgbackrest_sha256,
+                pg_dump_sha256=self._config.pg_dump_sha256,
+                started_at=started_at,
+                completed_at=completed_at,
             ),
         )
 
@@ -260,21 +226,27 @@ async def _run_async(argv: Sequence[str], *, deadline_seconds: int) -> CommandRe
         stderr=asyncio.subprocess.PIPE,
         start_new_session=True,
     )
-    if process.stdout is None or process.stderr is None:
-        raise BackupError("backup command output pipes are unavailable")
-    stdout_task = asyncio.create_task(_read_tail(process.stdout))
-    stderr_task = asyncio.create_task(_read_tail(process.stderr))
+    process_group_id = process.pid
+    stdout = cast(asyncio.StreamReader, process.stdout)
+    stderr = cast(asyncio.StreamReader, process.stderr)
+    drain_tasks = (
+        asyncio.create_task(_read_tail(stdout)),
+        asyncio.create_task(_read_tail(stderr)),
+    )
     try:
-        await asyncio.wait_for(process.wait(), timeout=deadline_seconds)
+        async with asyncio.timeout(deadline_seconds):
+            await process.wait()
+            stdout_tail, stderr_tail = await asyncio.gather(*drain_tasks)
     except TimeoutError as error:
-        await _terminate_and_reap(process)
+        await _cleanup_failed_process(process, process_group_id, drain_tasks)
         raise BackupError("fixed backup command timed out and was reaped") from error
-    finally:
-        stdout, stderr = await asyncio.gather(stdout_task, stderr_task)
+    except BaseException:
+        await _cleanup_failed_process(process, process_group_id, drain_tasks)
+        raise
     return CommandResult(
         returncode=process.returncode or 0,
-        stdout=stdout.decode("utf-8", errors="replace"),
-        stderr=stderr.decode("utf-8", errors="replace"),
+        stdout=stdout_tail.decode("utf-8", errors="replace"),
+        stderr=stderr_tail.decode("utf-8", errors="replace"),
     )
 
 
@@ -287,23 +259,73 @@ async def _read_tail(stream: asyncio.StreamReader) -> bytes:
     return bytes(tail)
 
 
-async def _terminate_and_reap(process: asyncio.subprocess.Process) -> None:
+async def _cleanup_failed_process(
+    process: asyncio.subprocess.Process,
+    process_group_id: int,
+    drain_tasks: tuple[asyncio.Task[bytes], ...],
+) -> None:
+    cleanup = asyncio.create_task(_terminate_and_reap(process, process_group_id=process_group_id))
+    try:
+        await asyncio.shield(cleanup)
+    except asyncio.CancelledError:
+        with suppress(asyncio.CancelledError):
+            await asyncio.shield(cleanup)
+    finally:
+        await _cancel_drains(drain_tasks)
+
+
+async def _terminate_and_reap(
+    process: asyncio.subprocess.Process,
+    *,
+    process_group_id: int,
+) -> None:
+    _signal_process_group(process_group_id, signal.SIGTERM)
+    await _wait_for_process(process)
+    if await _wait_for_process_group_exit(process_group_id):
+        return
+    _signal_process_group(process_group_id, signal.SIGKILL)
+    if not await _wait_for_process_group_exit(process_group_id):
+        raise BackupError("backup process group could not be reaped")
+
+
+def _signal_process_group(process_group_id: int, selected: signal.Signals) -> None:
+    with suppress(ProcessLookupError):
+        os.killpg(process_group_id, selected)
+
+
+async def _wait_for_process(process: asyncio.subprocess.Process) -> None:
     if process.returncode is not None:
         return
+    with suppress(TimeoutError):
+        await asyncio.wait_for(process.wait(), timeout=_PROCESS_CLEANUP_SECONDS)
+
+
+async def _wait_for_process_group_exit(process_group_id: int) -> bool:
+    deadline = asyncio.get_running_loop().time() + _PROCESS_CLEANUP_SECONDS
+    while _process_group_exists(process_group_id):
+        if asyncio.get_running_loop().time() >= deadline:
+            return False
+        await asyncio.sleep(0.01)
+    return True
+
+
+def _process_group_exists(process_group_id: int) -> bool:
     try:
-        os.killpg(process.pid, signal.SIGTERM)
+        os.killpg(process_group_id, 0)
     except ProcessLookupError:
-        await process.wait()
-        return
-    try:
-        await asyncio.wait_for(process.wait(), timeout=5)
-    except TimeoutError:
-        with suppress(ProcessLookupError):
-            os.killpg(process.pid, signal.SIGKILL)
-        await process.wait()
-    else:
-        with suppress(ProcessLookupError):
-            os.killpg(process.pid, signal.SIGKILL)
+        return False
+    return True
+
+
+async def _cancel_drains(drain_tasks: tuple[asyncio.Task[bytes], ...]) -> None:
+    for task in drain_tasks:
+        if not task.done():
+            task.cancel()
+    with suppress(TimeoutError):
+        await asyncio.wait_for(
+            asyncio.gather(*drain_tasks, return_exceptions=True),
+            timeout=_DRAIN_CLEANUP_SECONDS,
+        )
 
 
 def _evidence_paths(config: BackupAdapterConfig) -> tuple[Path, ...]:

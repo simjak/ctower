@@ -6,6 +6,8 @@ import hashlib
 import json
 import re
 from collections.abc import Mapping, Sequence
+from datetime import UTC, datetime
+from uuid import UUID
 
 __all__: tuple[str, ...] = ()
 
@@ -27,6 +29,70 @@ def canonical_digest(payload: object) -> str:
         separators=(",", ":"),
     ).encode("utf-8")
     return f"sha256:{hashlib.sha256(encoded).hexdigest()}"
+
+
+def installation_identity_digest(
+    *,
+    installation_id: UUID,
+    tenant_id: UUID,
+    identity_ref: str,
+    issued_at: datetime,
+) -> str:
+    """Bind every persisted installation-identity body field."""
+
+    return canonical_digest(
+        {
+            "schema_id": "ctower.installation-identity/v1",
+            "installation_id": str(installation_id),
+            "tenant_id": str(tenant_id),
+            "identity_ref": identity_ref,
+            "issued_at": _canonical_timestamp(issued_at),
+        }
+    )
+
+
+def backup_manifest_digest(
+    *,
+    backup_id: UUID,
+    tenant_id: UUID,
+    repository_ref: str,
+    repository_object_version: str,
+    base_backup_sha256: str,
+    wal_start_lsn: str,
+    wal_stop_lsn: str,
+    logical_dump_sha256: str,
+    object_manifest_sha256: str,
+    migration_manifest_sha256: str,
+    key_reference: str,
+    key_version: str,
+    pgbackrest_sha256: str,
+    pg_dump_sha256: str,
+    started_at: datetime,
+    completed_at: datetime,
+) -> str:
+    """Bind one verified run's complete persisted backup manifest."""
+
+    return canonical_digest(
+        {
+            "schema_id": "ctower.backup-manifest/v1",
+            "backup_id": str(backup_id),
+            "tenant_id": str(tenant_id),
+            "repository_ref": repository_ref,
+            "repository_object_version": repository_object_version,
+            "base_backup_sha256": base_backup_sha256,
+            "wal_start_lsn": wal_start_lsn,
+            "wal_stop_lsn": wal_stop_lsn,
+            "logical_dump_sha256": logical_dump_sha256,
+            "object_manifest_sha256": object_manifest_sha256,
+            "migration_manifest_sha256": migration_manifest_sha256,
+            "key_reference": key_reference,
+            "key_version": key_version,
+            "pgbackrest_sha256": pgbackrest_sha256,
+            "pg_dump_sha256": pg_dump_sha256,
+            "started_at": _canonical_timestamp(started_at),
+            "completed_at": _canonical_timestamp(completed_at),
+        }
+    )
 
 
 def anchor_digest(
@@ -139,6 +205,12 @@ def _active_source_failures(
 
 def _nonempty(value: object) -> bool:
     return isinstance(value, str) and bool(value)
+
+
+def _canonical_timestamp(value: datetime) -> str:
+    if value.tzinfo is None or value.utcoffset() is None:
+        raise ValueError("integrity timestamps must be timezone-aware")
+    return value.astimezone(UTC).isoformat().replace("+00:00", "Z")
 
 
 def _canonical(value: object) -> object:

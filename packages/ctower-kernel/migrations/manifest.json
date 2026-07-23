@@ -202,7 +202,7 @@
     },
     {
       "path": "0021_object_backup_anchor.sql",
-      "sha256": "sha256:11ec30462936ff0d7271bc8b04568ae9d2b25bcc317ba3a562221d44862c4eb0",
+      "sha256": "sha256:bbe82e62b6d87ff34780b89dc4b0e089469f0cae8f89b2fde35cb0f67ec9bd58",
       "minimum_service_version": "0.0.0",
       "maximum_service_version": "0.0.0",
       "forward_test": "pytest:tests/acceptance/increment-1/test_erasure_recovery.py::test_erasure_reconciles_external_success_before_tombstone_and_rejects_drift",

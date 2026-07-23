@@ -7,11 +7,17 @@ from uuid import UUID
 from ctower_api._backup_adapter import (
     BackupAdapterConfig,
     BackupError,
-    BackupManifest,
     FixedBackupAdapter,
 )
+from ctower_kernel.record.recovery import BackupManifest, BackupVerificationReceipt
 
-__all__ = ["BackupAdapterConfig", "BackupError", "BackupManifest", "LocalBackup"]
+__all__ = [
+    "BackupAdapterConfig",
+    "BackupError",
+    "BackupManifest",
+    "BackupVerificationReceipt",
+    "LocalBackup",
+]
 
 
 class LocalBackup:
@@ -26,7 +32,7 @@ class LocalBackup:
         backup_id: UUID,
         *,
         key_version: str,
-    ) -> BackupManifest:
+    ) -> BackupVerificationReceipt:
         """Require complete physical, WAL, logical, object, and key evidence."""
 
         return self._adapter.run_daily(

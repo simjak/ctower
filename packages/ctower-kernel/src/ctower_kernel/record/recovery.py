@@ -5,12 +5,14 @@ from __future__ import annotations
 from datetime import datetime
 from enum import StrEnum
 from typing import Annotated, Literal
-from uuid import UUID
+from uuid import NAMESPACE_URL, UUID, uuid5
 
 from pydantic import BaseModel, ConfigDict, StringConstraints, model_validator
 
 from ctower_kernel.record._integrity import (
     anchor_digest,
+    backup_manifest_digest,
+    installation_identity_digest,
     inventory_digest,
     inventory_failures,
 )
@@ -18,7 +20,8 @@ from ctower_kernel.record._integrity import (
 __all__ = [
     "AcceptedRoot",
     "AnchorRecord",
-    "BackupRecord",
+    "BackupManifest",
+    "BackupVerificationReceipt",
     "ExpectedSource",
     "InstallationIdentity",
     "InventoryRevision",
@@ -89,6 +92,7 @@ class SignatureVerification(_StrictModel):
         signing_key_reference: str,
         signing_key_version: str,
         public_key_sha256: str,
+        signed_at: datetime,
     ) -> None:
         """Reject a verification fact mixed with any other signed receipt."""
 
@@ -98,6 +102,7 @@ class SignatureVerification(_StrictModel):
             or self.signing_key_reference != signing_key_reference
             or self.signing_key_version != signing_key_version
             or self.public_key_sha256 != public_key_sha256
+            or self.signed_at != signed_at
         ):
             raise ValueError("signature verification is not bound to the recovery receipt")
 
@@ -120,13 +125,12 @@ class AnchorRecord(_StrictModel):
     anchored_at: datetime
 
 
-class BackupRecord(_StrictModel):
-    """Verified complete database/object backup evidence."""
+class BackupManifest(_StrictModel):
+    """Canonical persisted evidence from one exact backup run."""
 
+    schema_id: Literal["ctower.backup-manifest/v1"] = "ctower.backup-manifest/v1"
     backup_id: UUID
-    verification_receipt_id: UUID
     tenant_id: UUID
-    manifest_sha256: Digest
     repository_ref: StableReference
     repository_object_version: str
     base_backup_sha256: Digest
@@ -137,13 +141,63 @@ class BackupRecord(_StrictModel):
     migration_manifest_sha256: Digest
     key_reference: StableReference
     key_version: str
+    pgbackrest_sha256: Digest
+    pg_dump_sha256: Digest
     started_at: datetime
     completed_at: datetime
-    base_verified: Literal[True]
-    wal_verified: Literal[True]
-    logical_dump_verified: Literal[True]
-    objects_verified: Literal[True]
-    key_reference_verified: Literal[True]
+
+    @property
+    def manifest_sha256(self) -> Digest:
+        """Derive the manifest digest instead of accepting one beside the run."""
+
+        return backup_manifest_digest(
+            backup_id=self.backup_id,
+            tenant_id=self.tenant_id,
+            repository_ref=self.repository_ref,
+            repository_object_version=self.repository_object_version,
+            base_backup_sha256=self.base_backup_sha256,
+            wal_start_lsn=self.wal_start_lsn,
+            wal_stop_lsn=self.wal_stop_lsn,
+            logical_dump_sha256=self.logical_dump_sha256,
+            object_manifest_sha256=self.object_manifest_sha256,
+            migration_manifest_sha256=self.migration_manifest_sha256,
+            key_reference=self.key_reference,
+            key_version=self.key_version,
+            pgbackrest_sha256=self.pgbackrest_sha256,
+            pg_dump_sha256=self.pg_dump_sha256,
+            started_at=self.started_at,
+            completed_at=self.completed_at,
+        )
+
+    @model_validator(mode="after")
+    def _valid_run(self) -> BackupManifest:
+        if self.completed_at < self.started_at:
+            raise ValueError("backup completion predates its start")
+        return self
+
+
+class BackupVerificationReceipt(_StrictModel):
+    """Adapter-owned authority to persist one exact verified run."""
+
+    schema_id: Literal["ctower.backup-verification-receipt/v1"] = (
+        "ctower.backup-verification-receipt/v1"
+    )
+    manifest: BackupManifest
+
+    @property
+    def verification_receipt_id(self) -> UUID:
+        """Bind receipt identity to the canonical run manifest."""
+
+        return uuid5(
+            NAMESPACE_URL,
+            f"ctower.backup-verification-receipt/v1:{self.manifest.manifest_sha256}",
+        )
+
+    @property
+    def verified_at(self) -> datetime:
+        """Use the adapter's completed-run time as verification time."""
+
+        return self.manifest.completed_at
 
 
 class InstallationIdentity(_StrictModel):
@@ -152,12 +206,22 @@ class InstallationIdentity(_StrictModel):
     installation_id: UUID
     tenant_id: UUID
     identity_ref: StableReference
-    identity_sha256: Digest
     signature: str
     signing_key_reference: StableReference
     signing_key_version: str
     public_key_sha256: Digest
     issued_at: datetime
+
+    @property
+    def identity_sha256(self) -> Digest:
+        """Derive the signed digest from the complete persisted body."""
+
+        return installation_identity_digest(
+            installation_id=self.installation_id,
+            tenant_id=self.tenant_id,
+            identity_ref=self.identity_ref,
+            issued_at=self.issued_at,
+        )
 
 
 class ExpectedSource(_StrictModel):
@@ -367,6 +431,7 @@ def _require_inventory_verification(
         signing_key_reference=inventory.signing_key_reference,
         signing_key_version=inventory.signing_key_version,
         public_key_sha256=inventory.public_key_sha256,
+        signed_at=inventory.created_at,
     )
 
 

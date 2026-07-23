@@ -7,7 +7,6 @@ from uuid import UUID, uuid4
 
 import psycopg
 import pytest
-from pydantic import ValidationError
 from support.acceptance import accept_command
 from support.recovery import (
     accepted_roots,
@@ -45,7 +44,7 @@ from ctower_kernel.record.postgres import PostgresRecord
 from ctower_kernel.record.postgres_recovery import PostgresRecovery
 from ctower_kernel.record.recovery import (
     AnchorRecord,
-    BackupRecord,
+    BackupVerificationReceipt,
     InstallationIdentity,
     InventoryRevision,
     RecoveryPolicy,
@@ -277,14 +276,6 @@ def _assert_external_object_faults(
     external.wrong_key = False
 
 
-def test_incomplete_zero_exit_backup_evidence_cannot_be_recorded() -> None:
-    payload = backup(uuid4(), uuid4(), uuid4()).model_dump(mode="python")
-    payload["base_verified"] = False
-
-    with pytest.raises(ValidationError):
-        BackupRecord.model_validate(payload)
-
-
 def test_restore_quarantine_requires_exact_enablement_receipt(
     tenant: TenantFixture,
 ) -> None:
@@ -326,7 +317,7 @@ def test_restore_quarantine_requires_exact_enablement_receipt(
             restore_run_id=restore_run_id,
             tenant_id=tenant.tenant_id,
             installation_id=installation.installation_id,
-            backup_id=backup.backup_id,
+            backup_id=backup.manifest.backup_id,
             inventory_revision_id=inventory.inventory_revision_id,
             accepted_source_position=accepted_position,
             restored_acceptance_position=accepted_position,
@@ -344,10 +335,10 @@ def test_restore_quarantine_requires_exact_enablement_receipt(
 def _record_restore_prerequisites(
     recovery: PostgresRecovery,
     tenant: TenantFixture,
-) -> tuple[BackupRecord, InstallationIdentity, InventoryRevision, int]:
+) -> tuple[BackupVerificationReceipt, InstallationIdentity, InventoryRevision, int]:
     _ticket(tenant)
     tenant_id = tenant.tenant_id
-    backup_record = backup(uuid4(), uuid4(), tenant_id)
+    backup_record = backup(uuid4(), tenant_id)
     recovery.record_backup(backup_record)
     installation_record = installation(tenant_id)
     recovery.record_installation(
@@ -490,7 +481,7 @@ def _verify_restore(
     verifier: RestoreVerifier,
     tenant_id: UUID,
     installation: InstallationIdentity,
-    backup: BackupRecord,
+    backup: BackupVerificationReceipt,
     inventory: InventoryRevision,
     restore_run_id: UUID,
     accepted_position: int,
@@ -499,7 +490,7 @@ def _verify_restore(
         restore_run_id=restore_run_id,
         tenant_id=tenant_id,
         installation_id=installation.installation_id,
-        backup_id=backup.backup_id,
+        backup_id=backup.manifest.backup_id,
         inventory=inventory,
         inventory_verification=signature_verification(inventory),
         reconciled_source_keys=frozenset(),

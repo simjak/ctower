@@ -3,8 +3,10 @@
 from __future__ import annotations
 
 from datetime import timedelta
+from typing import cast
 from uuid import uuid4
 
+import psycopg
 import pytest
 from support.acceptance import accept_command
 from support.recovery import (
@@ -30,6 +32,7 @@ from ctower_kernel.record.postgres_recovery import PostgresRecovery
 from ctower_kernel.record.recovery import (
     AcceptedRoot,
     AnchorRecord,
+    BackupVerificationReceipt,
     RecoveryPolicy,
     RecoveryReplayConflictError,
 )
@@ -47,6 +50,7 @@ __all__: tuple[str, ...] = ()
         ("signing_key_reference", "kms-ref:other/signing"),
         ("signing_key_version", "v2"),
         ("public_key_sha256", "sha256:" + "9" * 64),
+        ("signed_at", NOW + timedelta(seconds=2)),
     ],
 )
 def test_recovery_boundary_rejects_each_mismatched_signature_receipt_field(
@@ -64,6 +68,87 @@ def test_recovery_boundary_rejects_each_mismatched_signature_receipt_field(
         )
 
 
+@pytest.mark.parametrize(
+    "field",
+    ["installation_id", "tenant_id", "identity_ref", "issued_at"],
+)
+def test_installation_signature_rejects_every_semantic_rebind_before_sql_mutation(
+    tenant: TenantFixture,
+    second_tenant: TenantFixture,
+    field: str,
+) -> None:
+    identity = installation(tenant.tenant_id)
+    original_verification = signature_verification(identity)
+    values: dict[str, object] = {
+        "installation_id": uuid4(),
+        "tenant_id": second_tenant.tenant_id,
+        "identity_ref": "installation-ref:test/rebound",
+        "issued_at": NOW + timedelta(seconds=1),
+    }
+    rebound = identity.model_copy(update={field: values[field]})
+
+    with pytest.raises(ValueError, match="not bound"):
+        PostgresRecovery(tenant.database.admin_dsn).record_installation(
+            rebound,
+            verification=original_verification,
+        )
+
+    with psycopg.connect(tenant.database.admin_dsn) as connection:
+        persisted = connection.execute(
+            "SELECT count(*) FROM installation_identities WHERE installation_id = %s",
+            (rebound.installation_id,),
+        ).fetchone()
+    assert persisted is not None
+    assert persisted[0] == 0
+
+
+def test_installation_signature_must_be_verified_before_sql_mutation(
+    tenant: TenantFixture,
+) -> None:
+    identity = installation(tenant.tenant_id)
+
+    with pytest.raises(ValueError, match="signature verification failed"):
+        PostgresRecovery(tenant.database.admin_dsn).record_installation(
+            identity,
+            verification=signature_verification(identity, verified=False),
+        )
+
+    with psycopg.connect(tenant.database.admin_dsn) as connection:
+        persisted = connection.execute(
+            "SELECT count(*) FROM installation_identities WHERE installation_id = %s",
+            (identity.installation_id,),
+        ).fetchone()
+    assert persisted is not None
+    assert persisted[0] == 0
+
+
+def test_synthetic_all_true_no_run_input_cannot_reach_backup_sql(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    persisted: list[BackupVerificationReceipt] = []
+    monkeypatch.setattr(
+        "ctower_kernel.record.postgres_recovery.insert_backup",
+        lambda _dsn, receipt: persisted.append(receipt),
+    )
+    synthetic = cast(
+        BackupVerificationReceipt,
+        {
+            "backup_id": uuid4(),
+            "tenant_id": uuid4(),
+            "manifest_sha256": "sha256:" + "1" * 64,
+            "base_verified": True,
+            "wal_verified": True,
+            "logical_dump_verified": True,
+            "objects_verified": True,
+            "key_reference_verified": True,
+        },
+    )
+
+    with pytest.raises(TypeError, match="run-bound verification receipt"):
+        PostgresRecovery("unused").record_backup(synthetic)
+    assert persisted == []
+
+
 def test_every_recovery_receipt_requires_complete_exact_replay(
     tenant: TenantFixture,
 ) -> None:
@@ -79,17 +164,20 @@ def _assert_backup_replay(
     recovery: PostgresRecovery,
     tenant: TenantFixture,
 ) -> None:
-    backup_record = backup(uuid4(), uuid4(), tenant.tenant_id)
-    recovery.record_backup(backup_record)
-    recovery.record_backup(backup_record)
+    receipt = backup(uuid4(), tenant.tenant_id)
+    recovery.record_backup(receipt)
+    recovery.record_backup(receipt)
     for update in (
         {"repository_ref": "backup-ref:test/changed"},
         {"repository_object_version": "version-2"},
-        {"verification_receipt_id": uuid4()},
+        {"pgbackrest_sha256": "sha256:" + "b" * 64},
         {"completed_at": NOW + timedelta(minutes=2)},
     ):
+        changed = receipt.model_copy(
+            update={"manifest": receipt.manifest.model_copy(update=update)}
+        )
         with pytest.raises(RecoveryReplayConflictError):
-            recovery.record_backup(backup_record.model_copy(update=update))
+            recovery.record_backup(changed)
 
 
 def _assert_installation_replay(

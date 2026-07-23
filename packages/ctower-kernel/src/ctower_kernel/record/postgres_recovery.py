@@ -18,7 +18,7 @@ from ctower_kernel.record._recovery_sql import (
 )
 from ctower_kernel.record.recovery import (
     AnchorRecord,
-    BackupRecord,
+    BackupVerificationReceipt,
     InstallationIdentity,
     InventoryRevision,
     RestoreReport,
@@ -34,10 +34,12 @@ class PostgresRecovery:
     def __init__(self, dsn: str) -> None:
         self._dsn = dsn
 
-    def record_backup(self, backup: BackupRecord) -> None:
+    def record_backup(self, receipt: BackupVerificationReceipt) -> None:
         """Append one complete verified backup and receipt."""
 
-        insert_backup(self._dsn, backup)
+        if not isinstance(receipt, BackupVerificationReceipt):
+            raise TypeError("record_backup requires one run-bound verification receipt")
+        insert_backup(self._dsn, receipt)
 
     def record_anchor(
         self,
@@ -53,6 +55,7 @@ class PostgresRecovery:
             signing_key_reference=anchor.signing_key_reference,
             signing_key_version=anchor.signing_key_version,
             public_key_sha256=anchor.public_key_sha256,
+            signed_at=anchor.anchored_at,
         )
         if not verification.verified:
             raise ValueError("anchor receipt failed signature verification")
@@ -72,6 +75,7 @@ class PostgresRecovery:
             signing_key_reference=identity.signing_key_reference,
             signing_key_version=identity.signing_key_version,
             public_key_sha256=identity.public_key_sha256,
+            signed_at=identity.issued_at,
         )
         if not verification.verified:
             raise ValueError("installation identity signature verification failed")
@@ -93,6 +97,7 @@ class PostgresRecovery:
             signing_key_reference=inventory.signing_key_reference,
             signing_key_version=inventory.signing_key_version,
             public_key_sha256=inventory.public_key_sha256,
+            signed_at=inventory.created_at,
         )
         active = frozenset(
             source.source_key for source in inventory.sources if source.activation == "active"

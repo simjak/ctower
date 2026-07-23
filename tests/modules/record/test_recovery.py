@@ -9,10 +9,12 @@ from typing import Literal
 from uuid import UUID, uuid4
 
 import pytest
+from pydantic import ValidationError
 
 from ctower_kernel.record.recovery import (
     AcceptedRoot,
     ExpectedSource,
+    InstallationIdentity,
     InventoryRevision,
     RecoveryPolicy,
     RestoreCheck,
@@ -26,6 +28,24 @@ INSTALLATION_ID = UUID("20000000-0000-4000-8000-000000000001")
 BACKUP_ID = UUID("30000000-0000-4000-8000-000000000001")
 NOW = datetime(2026, 7, 23, 10, 0, tzinfo=UTC)
 __all__: tuple[str, ...] = ()
+
+
+def test_installation_identity_digest_is_derived_not_asserted() -> None:
+    identity = InstallationIdentity(
+        installation_id=INSTALLATION_ID,
+        tenant_id=TENANT_ID,
+        identity_ref="installation-ref:test/isolated",
+        signature="root-signature",
+        signing_key_reference="kms-ref:installation/signing",
+        signing_key_version="v1",
+        public_key_sha256="sha256:" + "f" * 64,
+        issued_at=NOW,
+    )
+    payload = identity.model_dump(mode="python")
+    payload["identity_sha256"] = identity.identity_sha256
+
+    with pytest.raises(ValidationError, match="Extra inputs"):
+        InstallationIdentity.model_validate(payload)
 
 
 def test_anchor_is_digest_chained_contiguous_and_replay_stable() -> None:

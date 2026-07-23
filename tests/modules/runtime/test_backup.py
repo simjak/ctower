@@ -5,15 +5,24 @@ from __future__ import annotations
 import hashlib
 import os
 import shlex
+import time
+from datetime import UTC, datetime, timedelta
 from pathlib import Path
 from uuid import uuid4
 
 import pytest
 from pydantic import ValidationError
 
-from ctower_api.backup import BackupAdapterConfig, BackupError, LocalBackup
+from ctower_api.backup import (
+    BackupAdapterConfig,
+    BackupError,
+    BackupVerificationReceipt,
+    LocalBackup,
+)
 
 __all__: tuple[str, ...] = ()
+_DESCENDANT_DEADLINE_SECONDS = 3
+_UUID5_VERSION = 5
 
 
 def test_zero_exit_without_complete_evidence_is_not_a_backup(tmp_path: Path) -> None:
@@ -33,17 +42,57 @@ def test_complete_fixed_backup_evidence_produces_verified_manifest(
     pg_dump = _logical_dump_tool(tmp_path / "pg_dump")
     config = _config(tmp_path, pgbackrest, pg_dump)
 
-    manifest = LocalBackup(config).run_daily(uuid4(), backup_id, key_version="v1")
+    receipt = LocalBackup(config).run_daily(uuid4(), backup_id, key_version="v1")
+    manifest = receipt.manifest
 
     assert manifest.repository_object_version == "version-1"
     assert manifest.base_backup_sha256 == _digest(config.base_manifest_path)
-    assert manifest.verification.model_dump() == {
-        "base": True,
-        "wal": True,
-        "logical_dump": True,
-        "objects": True,
-        "key_reference": True,
-    }
+    assert manifest.pgbackrest_sha256 == config.pgbackrest_sha256
+    assert manifest.pg_dump_sha256 == config.pg_dump_sha256
+    assert receipt.verification_receipt_id.version == _UUID5_VERSION
+    assert receipt.verified_at == manifest.completed_at
+    payload = manifest.model_dump(mode="python")
+    payload["manifest_sha256"] = manifest.manifest_sha256
+    with pytest.raises(ValidationError, match="Extra inputs"):
+        type(manifest).model_validate(payload)
+    invalid_times = manifest.model_dump(mode="python")
+    invalid_times["completed_at"] = manifest.started_at - timedelta(seconds=1)
+    with pytest.raises(ValidationError, match="completion predates"):
+        type(manifest).model_validate(invalid_times)
+
+
+@pytest.mark.parametrize(
+    ("field", "value"),
+    [
+        ("backup_id", uuid4()),
+        ("tenant_id", uuid4()),
+        ("repository_ref", "backup-ref:test/changed"),
+        ("repository_object_version", "version-2"),
+        ("base_backup_sha256", "sha256:" + "0" * 64),
+        ("wal_start_lsn", "0/11"),
+        ("wal_stop_lsn", "0/21"),
+        ("logical_dump_sha256", "sha256:" + "1" * 64),
+        ("object_manifest_sha256", "sha256:" + "2" * 64),
+        ("migration_manifest_sha256", "sha256:" + "3" * 64),
+        ("key_reference", "kms-ref:test/changed"),
+        ("key_version", "v2"),
+        ("pgbackrest_sha256", "sha256:" + "4" * 64),
+        ("pg_dump_sha256", "sha256:" + "5" * 64),
+        ("started_at", datetime(2020, 1, 1, tzinfo=UTC)),
+        ("completed_at", datetime(2030, 1, 1, tzinfo=UTC)),
+    ],
+)
+def test_manifest_and_receipt_identity_bind_every_run_field(
+    tmp_path: Path,
+    field: str,
+    value: object,
+) -> None:
+    receipt = _verified_receipt(tmp_path)
+    changed_manifest = receipt.manifest.model_copy(update={field: value})
+    changed_receipt = BackupVerificationReceipt(manifest=changed_manifest)
+
+    assert changed_manifest.manifest_sha256 != receipt.manifest.manifest_sha256
+    assert changed_receipt.verification_receipt_id != receipt.verification_receipt_id
 
 
 def test_noop_tools_cannot_adopt_stale_evidence(tmp_path: Path) -> None:
@@ -79,6 +128,28 @@ def test_timed_out_backup_process_group_is_killed_and_reaped(tmp_path: Path) -> 
     process_id = int(pid_path.read_text(encoding="utf-8"))
     with pytest.raises(ProcessLookupError):
         os.kill(process_id, 0)
+
+
+def test_exited_leader_descendant_holding_both_pipes_is_bounded_and_reaped(
+    tmp_path: Path,
+) -> None:
+    descendant_path = tmp_path / "descendant.pid"
+    pgbackrest = _successful_tool(
+        tmp_path / "pgbackrest",
+        f"sleep 30 &\nprintf '%s' \"$!\" > {shlex.quote(str(descendant_path))}\nexit 0",
+    )
+    pg_dump = _successful_tool(tmp_path / "pg_dump")
+    config = _config(tmp_path, pgbackrest, pg_dump).model_copy(update={"timeout_seconds": 1})
+
+    started = time.monotonic()
+    with pytest.raises(BackupError, match="timed out and was reaped"):
+        LocalBackup(config).run_daily(uuid4(), uuid4(), key_version="v1")
+    elapsed = time.monotonic() - started
+
+    assert elapsed < _DESCENDANT_DEADLINE_SECONDS
+    descendant_id = int(descendant_path.read_text(encoding="utf-8"))
+    with pytest.raises(ProcessLookupError):
+        os.kill(descendant_id, 0)
 
 
 def test_backup_config_rejects_untrusted_checksum_and_relative_path(tmp_path: Path) -> None:
@@ -152,13 +223,24 @@ def test_backup_command_output_is_bounded_at_the_source(tmp_path: Path) -> None:
     )
     pg_dump = _logical_dump_tool(tmp_path / "pg_dump")
 
-    manifest = LocalBackup(_config(tmp_path, pgbackrest, pg_dump)).run_daily(
+    receipt = LocalBackup(_config(tmp_path, pgbackrest, pg_dump)).run_daily(
         uuid4(),
         backup_id,
         key_version="v1",
     )
 
-    assert manifest.backup_id == backup_id
+    assert receipt.manifest.backup_id == backup_id
+
+
+def _verified_receipt(tmp_path: Path) -> BackupVerificationReceipt:
+    backup_id = uuid4()
+    pgbackrest = _evidence_tool(tmp_path / "pgbackrest", tmp_path, backup_id)
+    pg_dump = _logical_dump_tool(tmp_path / "pg_dump")
+    return LocalBackup(_config(tmp_path, pgbackrest, pg_dump)).run_daily(
+        uuid4(),
+        backup_id,
+        key_version="v1",
+    )
 
 
 def _config(
