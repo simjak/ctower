@@ -10,6 +10,15 @@ ALTER TABLE principals ADD CONSTRAINT principals_kind_check CHECK (kind IN (
     'bootstrap_installer', 'operator', 'commander', 'agent', 'reviewer', 'runner',
     'control_worker'
 ));
+ALTER TABLE principals DROP CONSTRAINT principals_display_name_check;
+ALTER TABLE principals ADD CONSTRAINT principals_display_name_check CHECK (
+    (kind = 'control_worker'
+        AND display_name = 'ctower:internal:control-worker:' || repeat('-', 90))
+    OR
+    (kind <> 'control_worker' AND length(display_name) BETWEEN 1 AND 120)
+);
+CREATE UNIQUE INDEX principals_one_control_worker_per_tenant
+    ON principals (tenant_id) WHERE kind = 'control_worker';
 
 ALTER TABLE events DROP CONSTRAINT events_kind_check;
 ALTER TABLE events ADD CONSTRAINT events_kind_check CHECK (kind IN (

@@ -157,6 +157,9 @@
       "packages/ctower-kernel/migrations/0021_object_backup_anchor.sql",
       "packages/ctower-kernel/migrations/0022_restore_inventory.sql"
     ],
+    "AC-SEC-12": [
+      "contracts/http/openapi.yaml"
+    ],
     "AC-TM-01": [
       "contracts/domain/task-management/task-command.schema.json",
       "contracts/http/openapi.yaml",

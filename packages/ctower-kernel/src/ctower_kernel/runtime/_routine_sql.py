@@ -4,7 +4,6 @@ from __future__ import annotations
 
 import hashlib
 import json
-import secrets
 from datetime import datetime, time
 from typing import cast
 from uuid import UUID
@@ -33,6 +32,8 @@ from ctower_kernel.runtime import (
 
 __all__: tuple[str, ...] = ()
 _MAX_DUE_PER_SCAN = 400
+_CONTROL_WORKER_ID_DOMAIN = b"ctower.control-worker-principal/v1"
+_CONTROL_WORKER_DISPLAY_NAME = "ctower:internal:control-worker:" + "-" * 90
 
 
 def register(
@@ -424,26 +425,64 @@ def _control_worker_principal(
     tenant_id: UUID,
     now: datetime,
 ) -> UUID:
+    principal_id = _control_worker_principal_id(tenant_id)
     connection.execute(
         """
         INSERT INTO principals (
             principal_id, tenant_id, kind, display_name, disabled,
             credential_ref, vault_ref, created_at
-        ) VALUES (%s, %s, 'control_worker', 'ctower control worker', false, NULL, NULL, %s)
-        ON CONFLICT (tenant_id, display_name) DO NOTHING
+        ) VALUES (%s, %s, 'control_worker', %s, false, NULL, NULL, %s)
+        ON CONFLICT DO NOTHING
         """,
-        (_uuid7(now), tenant_id, now),
+        (principal_id, tenant_id, _CONTROL_WORKER_DISPLAY_NAME, now),
     )
     row = connection.execute(
         """
-        SELECT principal_id, kind, disabled FROM principals
-        WHERE tenant_id = %s AND display_name = 'ctower control worker'
+        SELECT principal_id, tenant_id, kind, display_name, disabled,
+            credential_ref, vault_ref,
+            NOT EXISTS (
+                SELECT 1 FROM principal_credentials AS credential
+                WHERE credential.principal_id = principal.principal_id
+                  AND credential.tenant_id = principal.tenant_id
+                  AND credential.revoked_at IS NULL
+            ) AS credential_free
+        FROM principals AS principal
+        WHERE principal_id = %s
         """,
-        (tenant_id,),
+        (principal_id,),
     ).fetchone()
-    if row is None or row["kind"] != "control_worker" or row["disabled"] is not False:
+    expected = (
+        principal_id,
+        tenant_id,
+        "control_worker",
+        _CONTROL_WORKER_DISPLAY_NAME,
+        False,
+        None,
+        None,
+        True,
+    )
+    fields = (
+        "principal_id",
+        "tenant_id",
+        "kind",
+        "display_name",
+        "disabled",
+        "credential_ref",
+        "vault_ref",
+        "credential_free",
+    )
+    if row is None or tuple(row[field] for field in fields) != expected:
         raise RuntimeError("Routine control-worker principal is unavailable")
-    return cast(UUID, row["principal_id"])
+    return principal_id
+
+
+def _control_worker_principal_id(tenant_id: UUID) -> UUID:
+    digest = bytearray(
+        hashlib.sha256(_CONTROL_WORKER_ID_DOMAIN + b"\x00" + tenant_id.bytes).digest()[:16]
+    )
+    digest[6] = (digest[6] & 0x0F) | 0x80
+    digest[8] = (digest[8] & 0x3F) | 0x80
+    return UUID(bytes=bytes(digest))
 
 
 def _scheduler_watermark(
@@ -514,17 +553,6 @@ def _database_now(connection: psycopg.Connection[dict[str, object]]) -> datetime
 
 def _digest(value: str) -> bytes:
     return bytes.fromhex(value.removeprefix("sha256:"))
-
-
-def _uuid7(now: datetime) -> UUID:
-    milliseconds = int(now.timestamp() * 1000) & ((1 << 48) - 1)
-    random_bits = secrets.randbits(74)
-    value = milliseconds << 80
-    value |= 0x7 << 76
-    value |= ((random_bits >> 62) & 0xFFF) << 64
-    value |= 0b10 << 62
-    value |= random_bits & ((1 << 62) - 1)
-    return UUID(int=value)
 
 
 def _stable_uuid7(now: datetime, *identity: bytes) -> UUID:

@@ -8,11 +8,11 @@
       "inputs": [
         {
           "path": "SPEC.md",
-          "sha256": "sha256:a444849e5823528c8cd7ff65a309739e8fbb6266c6fd5750fc0b45f5fb3b1bce"
+          "sha256": "sha256:793154094d6fa33cfe8ea7da499cc21ac62886d4e91617b959885b51c9c18a4a"
         },
         {
           "path": "contracts/traceability/sources.json",
-          "sha256": "sha256:6fe2d79a192f6b2e3b223355cfa2cc21d27c9eb1f79523c188b407fb853b3ff7"
+          "sha256": "sha256:c7bb8a46c260fdae4fb5db168b70f5d34ed3f1f3a8157313de215f8e3ecb8b85"
         },
         {
           "path": "contracts/traceability/traceability-sources.schema.json",
@@ -38,7 +38,7 @@
       "outputs": [
         {
           "path": "generated/traceability-index.json",
-          "sha256": "sha256:eeb35fec87fd47229564743ccfc3095bba0cf00e06a91c2bf75bfa0132450b3e"
+          "sha256": "sha256:f455f0d37ee83c06b0aa2dde2c69f4f599c9c6b3cbb143f6d5ed902e49c67a03"
         }
       ],
       "tool_version": "2"
