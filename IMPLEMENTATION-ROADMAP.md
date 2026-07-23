@@ -31,7 +31,7 @@ INCREMENT 1 — durable task-management dogfood
               |
  [spool-backed CLI]
               |
- [thin Home + Board + Ticket]
+ [API + protected CLI trust-spine operation]
               |
  [four-stage fixture on final generic evaluator]
               |
@@ -47,7 +47,7 @@ INCREMENT 2 — autonomous generic workflow + one golden path
               |
  [activate durable Commander orchestration]
               |
- [complete five surfaces + Project Delivery projection detail/analytics + Effects/release]
+ [I2.4 browser realization: five surfaces + Project Delivery detail/analytics + Effects/release]
               |
  [one software-factory production golden ticket]
 ```
@@ -171,30 +171,17 @@ and contains no secrets, counters, sessions, receipts, or live work.
 **Exit:** API/CLI parity, kill/replay, two-writer, disk, poison, secret, and zero-semantic-diff round-trip
 tests pass. `durability_pending` remains a non-accepted replayable result.
 
-### I1.5 — Thin trustworthy five-surface shell
+### I1.5 — Deferred browser realization alias
 
-**Stable work:** `CT-I1-005` plus the I1 projection/health part of `CT-I1-006`.
+**Stable work:** stable deferred alias `CT-I1-005` -> `CT-I2-005` I2.4 browser sub-checkpoint.
 
-Ship only the thin I1 portion of the five-surface shell:
+No I1 browser implementation or evidence is authorized. D22's React/Vite, browser-session/CSRF,
+routes/navigation, Playwright, screenshots, UI QA, and narrow Fleet/Analytics presentation are realized at
+I2.4. This stable alias preserves audit history; it is not an I1 predecessor or a deleted scope item.
 
-- Home with omnibox, policy-qualified Needs You, and completeness/integrity health;
-- Board with the six derived lanes and independent priority, stage/activity, blocker, custody, assignee,
-  risk, and typed delivery facts;
-- contextual/direct-ID Ticket with ordered timeline, criteria/evidence/gates, custody/assignment history,
-  blockers, typed delivery, accepted/refused transitions, and pending command state.
-- Fleet with authoritative I1 control-health contributors only; and Analytics with only the frozen
-  operator-attention baseline/current sample, revision, cohort, digest/watermark, and provisional/unknown
-  state. Both are read-only and I2 deepens them.
-
-Browser writes remain `unsent` or `durability pending` until authoritative acceptance and preserve one key
-through reload. The omnibox appends a durable thread event first and uses explicit
-`discussion|create_ticket|link_ticket` intent; I1 has no inferred Commander reply or automatic classifier.
-Risk is a Workflow-owned append-only assessment, not priority or a writable field. Board controls issue typed
-intents, never `PATCH status`. Material UI taste remains an operator gate; every visible control must be wired
-and independently exercised.
-
-**Exit:** Board truth-table, tenant isolation, reconnect/reload, every-control UI QA, Needs You precision,
-`STATE UNKNOWN`, and healthy-Home under-ten-seconds evidence pass.
+I1 retains the API/CLI semantics D22 selected: durable-thread-first explicit
+`discussion|create_ticket|link_ticket` intent/provenance; Workflow-owned append-only risk; six-lane fold;
+typed intents; health/Attention; and pending/refusal/quarantine/degraded/`STATE UNKNOWN` reporting.
 
 ### I1.6 — Four-stage trust-spine fixture on the final evaluator
 
@@ -207,25 +194,27 @@ capture [work] -> frame [work] -> verify [verification] -> close [work]
 Run `ctower.trust-spine-four-stage@1` through the public generic Workflow Interface. `capture` records the
 off-host-accepted ticket, priority, source, and custodian. `frame` freezes criteria/evidence/gate contracts.
 `verify` records current-digest evidence and a protected verdict. `close` resolves and administratively
-closes only after server validation. Board derives `in_review` from activity metadata, not the word verify.
+closes only after server validation. The API/CLI six-lane projection derives `in_review` from activity
+metadata, not the word verify.
 
-**Exit:** daily synthetic runs, restore/reboot, browser/CLI, Proof, and forbidden-stage-name tests all pass.
+**Exit:** daily synthetic runs, restore/reboot, public API/protected-CLI, Proof, and forbidden-stage-name
+tests all pass.
 The clean-install first-success trial meets AC-ADM-03: on a supported private VPS, a first operator installs,
-bootstraps, applies the minimal CompanyBundle, captures one ticket, and completes this fixture through CLI
-and thin Board/Ticket within 60 minutes of operator elapsed time, without direct DB/legacy writes or hidden
-recovery. This is an acceptance target, not current behavior.
+bootstraps, applies the minimal CompanyBundle, captures one ticket, and completes this fixture through the
+protected CLI within 60 minutes of operator elapsed time, without direct DB/legacy writes or hidden recovery.
+This is an acceptance target, not current behavior.
 
 ### I1.7 — ctower-project source-of-truth barrier and I1 archive
 
 **Stable work:** `CT-I1-007`, `CT-I1-008`.
 
-Only after acknowledged durability, isolated restore, CLI/UI, and the four-stage fixture pass:
+Only after acknowledged durability, isolated restore, API/protected CLI, and the four-stage fixture pass:
 
 ```text
 inventory -> freeze ctower-project legacy writers -> hash/export
           -> reviewed alias/dedupe map -> idempotent restricted import
           -> reconcile every disposition/owner/relation/claim
-          -> atomic web/CLI/Commander/runner client rewire
+          -> atomic API/CLI/Commander/runner-facing client rewire
           -> seal legacy inputs read-only
 ```
 
@@ -243,12 +232,14 @@ ctower company -> ctower project -> ordered Increment/Milestone checkpoints
                                     -> compact Project Delivery projection rows
 ```
 
-The compact Project Delivery projection shows checkpoint key/label, deterministic headline state, outcome,
-accountable owner, `proven / declared` exit-criterion coverage, source watermark, and freshness. Relevant
-accepted facts reconcile rows immediately; one hour without a relevant change publishes a freshness
-heartbeat that cannot move lifecycle state. Stale or incomplete sources are loud. There is no manual status,
-ticket-count percentage, interactive row-detail product, broad visualization, trend/cost/time analytics, or
-reusable cross-domain UI in I1.7; those depend on this proven hierarchy/rebuild contract and belong to I2.4.
+The compact read-only Project Delivery CLI text projection, with optional deterministic JSON, shows checkpoint
+key/label, deterministic headline state, outcome, accountable owner, `proven / declared` exit-criterion
+coverage, source watermark, freshness, authorized source IDs, and derivation reasons. Relevant accepted
+facts reconcile rows immediately; one hour without a relevant change publishes a freshness heartbeat that
+cannot move lifecycle state. Stale or incomplete sources are loud. There is no manual status, ticket-count
+percentage, browser drill-through, interactive row-detail product, broad visualization, trend/cost/time
+analytics, or reusable cross-domain UI in I1.7; those depend on this proven hierarchy/rebuild contract and
+belong to I2.4.
 
 **Exit:** every selected ctower-project item and stable alias is accounted for exactly once, zero
 post-barrier legacy writes occur, the attention baseline is frozen, and applicable I1 evidence is archived.
@@ -324,11 +315,12 @@ counts. Delegate implementation and independent verdicts; do not make the Comman
 counters, checkpoints, and exactly-once dispatch. No eligible strong profile, policy ambiguity, or exhausted
 automation becomes one precise operator action rather than status-chasing noise.
 
-### I2.4 — Deepen five surfaces, observability, and improvement views
+### I2.4 — Browser realization, five surfaces, observability, and improvement views
 
 **Stable work:** `CT-I2-005`, `CT-I2-009`.
 
-Deepen Home, Board, contextual Ticket, Fleet, and Analytics over generated clients and rebuildable
+Realize D22's browser stack/session/CSRF boundary, then deepen Home, Board, contextual Ticket, Fleet, and
+Analytics over generated clients and rebuildable
 projections. Home/Ticket Attention adds exact-scope CommandGuard confirmation, grant state, and linked
 decision/authorization/enforcement receipts without raw sensitive command content. Ticket also adds live
 structured run/steering/ACK/gap, manifest, current proof, readiness refusals, delivery/incidents, cost, and
