@@ -21,6 +21,7 @@ from ctower_kernel.record.events import (
     EventOrigin,
     PoisonDispositionRecordedPayload,
     RoutineOccurrenceRecordedPayload,
+    TicketCommentAddedPayload,
     TicketCreatedPayload,
     WorkChangedPayload,
     canonical_event_bytes,
@@ -222,6 +223,7 @@ def _vector_payload(
     BootstrapCreatedPayload
     | TicketCreatedPayload
     | CustodyTransferredPayload
+    | TicketCommentAddedPayload
     | WorkChangedPayload
     | RoutineOccurrenceRecordedPayload
     | PoisonDispositionRecordedPayload

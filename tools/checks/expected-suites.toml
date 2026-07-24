@@ -237,6 +237,46 @@ command = [
 timeout_seconds = 300
 
 [[suite]]
+id = "protected-cli-secret-service"
+owner = "CT-I1-004"
+phase = "CT-I1-004"
+status = "required"
+path = "tests/integration/keyring"
+patterns = ["test_*.py"]
+command = [
+  "bash",
+  "tests/integration/keyring/run-secret-service",
+  "{python}",
+  "-m",
+  "pytest",
+  "-p",
+  "no:cacheprovider",
+  "tests/integration/keyring",
+  "-q",
+]
+timeout_seconds = 180
+
+[[suite]]
+id = "protected-cli-wheel"
+owner = "CT-I1-004"
+phase = "CT-I1-004"
+status = "required"
+path = "tests/packaging"
+patterns = ["test_*.py"]
+command = [
+  "bash",
+  "tests/integration/keyring/run-secret-service",
+  "{python}",
+  "-m",
+  "pytest",
+  "-p",
+  "no:cacheprovider",
+  "tests/packaging",
+  "-q",
+]
+timeout_seconds = 900
+
+[[suite]]
 id = "proof-workflow-acceptance"
 owner = "CT-I1-003"
 phase = "CT-I1-003"

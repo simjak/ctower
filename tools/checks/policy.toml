@@ -162,7 +162,12 @@ allowed_dependencies = ["kernel-access", "kernel-attention", "kernel-catalog", "
 
 [[ownership]]
 name = "control-cli"
-paths = ["apps/ctowerctl/src/**", "tests/modules/ctowerctl/**"]
+paths = [
+  "apps/ctowerctl/src/**",
+  "tests/integration/**",
+  "tests/modules/ctowerctl/**",
+  "tests/packaging/**",
+]
 allowed_dependencies = []
 
 [[ownership]]

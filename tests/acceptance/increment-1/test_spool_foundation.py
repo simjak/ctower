@@ -242,7 +242,7 @@ def test_missing_or_unapproved_keyring_fails_state_unknown_without_moving_cipher
     spool = _spool(state)
     spool.enqueue(_command(uuid4(), {"title": "keep"}))
     pending = tuple(_origin_root(state).joinpath("pending").glob("*.rec"))
-    monkeypatch.delitem(sys.modules, "keyring")
+    monkeypatch.setitem(sys.modules, "keyring", types.ModuleType("keyring"))
 
     status = spool.status()
 

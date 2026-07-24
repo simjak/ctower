@@ -1,24 +1,68 @@
+[build-system]
+requires = [
+  "setuptools==83.0.0",
+  "wheel==0.47.0",
+]
+build-backend = "setuptools.build_meta"
+
 [project]
 name = "ctower-workspace"
 version = "0.0.0"
 description = "Ctower durable-work control plane"
 requires-python = ">=3.12,<3.15"
 dependencies = [
+  "cryptography>=46,<47",
   "fastapi>=0.115,<1",
   "httpx>=0.28,<1",
   "jsonschema>=4.25,<5",
+  "keyring>=25.7,<26",
   "packaging>=24,<27",
+  "platformdirs>=4.5,<5",
   "psycopg[binary,pool]>=3.2,<4",
   "pydantic>=2.11,<3",
   "referencing>=0.36,<1",
   "rfc8785>=0.1.4,<0.2",
   "ruamel.yaml>=0.18.14,<0.19",
+  "SecretStorage>=3.4,<4; sys_platform == 'linux'",
   "uvicorn>=0.34,<1",
 ]
 
 [project.scripts]
+ctl = "ctowerctl:main"
 ctowerctl = "ctowerctl:main"
 ctower-control-worker = "ctower_api.control_worker:main"
+
+[tool.setuptools]
+include-package-data = false
+packages = [
+  "ctower_api",
+  "ctower_client",
+  "ctower_contracts",
+  "ctower_kernel",
+  "ctower_kernel.access",
+  "ctower_kernel.attention",
+  "ctower_kernel.catalog",
+  "ctower_kernel.objects",
+  "ctower_kernel.projections",
+  "ctower_kernel.proof",
+  "ctower_kernel.record",
+  "ctower_kernel.runtime",
+  "ctower_kernel.telemetry",
+  "ctower_kernel.work",
+  "ctower_kernel.workflow",
+  "ctowerctl",
+  "ctowerctl.spool",
+]
+
+[tool.setuptools.package-dir]
+ctower_api = "apps/ctower-api/src/ctower_api"
+ctower_client = "generated/python/ctower_client"
+ctower_contracts = "generated/python/ctower_contracts"
+ctower_kernel = "packages/ctower-kernel/src/ctower_kernel"
+ctowerctl = "apps/ctowerctl/src/ctowerctl"
+
+[tool.setuptools.package-data]
+ctower_contracts = ["schemas.json"]
 
 [dependency-groups]
 dev = [

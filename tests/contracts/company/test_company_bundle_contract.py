@@ -6,9 +6,9 @@ from pathlib import Path
 from typing import cast
 
 import pytest
-import yaml
 from jsonschema import Draft202012Validator
 from referencing import Registry, Resource
+from ruamel.yaml import YAML
 
 ROOT = Path(__file__).parents[3]
 COMPONENTS = ROOT / "contracts/components"
@@ -135,7 +135,9 @@ def test_universal_component_kind_inventory_is_exact() -> None:
 def test_minimal_bundle_is_portable_strict_and_content_addressed() -> None:
     bundle = cast(
         dict[str, object],
-        yaml.safe_load((ROOT / "company/company.bundle.yaml").read_text(encoding="utf-8")),
+        YAML(typ="safe", pure=True).load(
+            (ROOT / "company/company.bundle.yaml").read_text(encoding="utf-8")
+        ),
     )
     resources = cast(list[dict[str, object]], bundle["resources"])
     schema_paths = _schema_paths()
