@@ -162,7 +162,7 @@ allowed_dependencies = ["kernel-access", "kernel-attention", "kernel-catalog", "
 
 [[ownership]]
 name = "control-cli"
-paths = ["apps/ctowerctl/src/**"]
+paths = ["apps/ctowerctl/src/**", "tests/modules/ctowerctl/**"]
 allowed_dependencies = []
 
 [[ownership]]
@@ -172,7 +172,19 @@ allowed_dependencies = ["control-api", "control-cli", "kernel-access", "kernel-a
 
 [[ownership]]
 name = "kernel-module-tests"
-paths = ["tests/modules/**"]
+paths = [
+  "tests/modules/__init__.py",
+  "tests/modules/access/**",
+  "tests/modules/attention/**",
+  "tests/modules/catalog/**",
+  "tests/modules/objects/**",
+  "tests/modules/projections/**",
+  "tests/modules/proof/**",
+  "tests/modules/record/**",
+  "tests/modules/runtime/**",
+  "tests/modules/work/**",
+  "tests/modules/workflow/**",
+]
 allowed_dependencies = ["control-api", "kernel-access", "kernel-attention", "kernel-catalog", "kernel-objects", "kernel-projections", "kernel-proof", "kernel-record", "kernel-runtime", "kernel-telemetry", "kernel-work", "kernel-workflow"]
 
 [[ownership]]

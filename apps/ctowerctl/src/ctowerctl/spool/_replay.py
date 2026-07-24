@@ -9,6 +9,7 @@ from uuid import UUID
 
 from pydantic import BaseModel, ConfigDict, Field, model_validator
 
+from ctower_client.operations import OPERATIONS, SpoolPolicy
 from ctowerctl.spool._crypto import RecordType
 from ctowerctl.spool._recovery import (
     AcceptedReceipt,
@@ -40,7 +41,6 @@ _CLIENT_ERROR_MIN = 400
 _SERVER_ERROR_MIN = 500
 _TOO_MANY_REQUESTS = 429
 _TEMPORARY_CLIENT_ERRORS = frozenset({408, 425})
-_BOOTSTRAP_OPERATION = "bootstrapFirstTenant"
 
 
 class _BoundaryModel(BaseModel):
@@ -62,8 +62,13 @@ class SpoolCommand(_BoundaryModel):
 
     @model_validator(mode="after")
     def _deny_unspoolable_authority(self) -> SpoolCommand:
-        if self.operation_id == _BOOTSTRAP_OPERATION:
-            raise ValueError("bootstrap authority must never enter the spool")
+        operation = OPERATIONS.get(self.operation_id)
+        if (
+            operation is None
+            or not operation.mutation
+            or operation.spool_policy is not SpoolPolicy.ALLOWED
+        ):
+            raise ValueError("only generated allowlisted mutations may enter the spool")
         reject_secret_material(self.path_parameters)
         reject_secret_material(self.request_body)
         return self
@@ -189,12 +194,15 @@ def _success_decision(
 
 
 def _execute(executor: ReplayExecutor, payload: CommandEnvelope) -> ReplayResponse:
-    command = SpoolCommand(
-        operation_id=payload.operation_id,
-        path_parameters=payload.path_parameters,
-        request_body=payload.request_body,
-        command_id=UUID(payload.command_id),
-    )
+    try:
+        command = SpoolCommand(
+            operation_id=payload.operation_id,
+            path_parameters=payload.path_parameters,
+            request_body=payload.request_body,
+            command_id=UUID(payload.command_id),
+        )
+    except ValueError:
+        return ReplayResponse(status_code=422, problem_code="operation_not_replayable")
     try:
         return executor.execute(command)
     except (ConnectionError, OSError, TimeoutError):

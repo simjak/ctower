@@ -1,0 +1,150 @@
+"""Closed explicit CLI, assignment, and bounded bundle-input evidence."""
+
+from __future__ import annotations
+
+from pathlib import Path
+from uuid import uuid4
+
+import pytest
+
+from ctower_client.models import AssignmentChangeRequest, CustodyTransferRequest
+from ctower_client.operations import CLI_OPERATIONS, SpoolPolicy
+from ctowerctl._company_commands import (
+    load_bundle,
+)
+from ctowerctl._company_commands import (
+    mutation_command_names as company_mutations,
+)
+from ctowerctl._company_commands import (
+    query_command_names as company_queries,
+)
+from ctowerctl._ops_commands import (
+    mutation_command_names as ops_mutations,
+)
+from ctowerctl._ops_commands import (
+    query_command_names as ops_queries,
+)
+from ctowerctl._parser import authored_command_names, parse_arguments
+from ctowerctl._ticket_commands import (
+    build_mutation,
+)
+from ctowerctl._ticket_commands import (
+    mutation_command_names as ticket_mutations,
+)
+from ctowerctl._ticket_commands import (
+    query_command_names as ticket_queries,
+)
+
+__all__: tuple[str, ...] = ()
+
+
+def test_parser_exposes_every_authored_name_without_operation_dispatch() -> None:
+    assert authored_command_names() == frozenset(CLI_OPERATIONS)
+    with pytest.raises(ValueError, match="usage"):
+        parse_arguments(
+            [
+                "--base-url",
+                "https://ctower.example",
+                "operation",
+                "applyCompanyBundle",
+            ]
+        )
+
+
+def test_explicit_handlers_cover_every_generated_operation_class() -> None:
+    mutations = ticket_mutations() | company_mutations() | ops_mutations()
+    queries = ticket_queries() | company_queries() | ops_queries()
+    expected_mutations = {
+        name
+        for name, operation in CLI_OPERATIONS.items()
+        if operation.mutation and operation.spool_policy is SpoolPolicy.ALLOWED
+    }
+    expected_queries = {
+        name for name, operation in CLI_OPERATIONS.items() if not operation.mutation
+    }
+    forbidden = {
+        name
+        for name, operation in CLI_OPERATIONS.items()
+        if operation.mutation and operation.spool_policy is SpoolPolicy.FORBIDDEN
+    }
+
+    assert mutations == expected_mutations
+    assert queries == expected_queries
+    assert forbidden == {"bootstrap first-tenant"}
+
+
+def test_assignment_and_custody_build_distinct_generated_requests() -> None:
+    ticket_id = uuid4()
+    command_id = uuid4()
+    principal_id = uuid4()
+    assignment = parse_arguments(_assignment_arguments(ticket_id, command_id, principal_id))
+    custody = parse_arguments(_custody_arguments(ticket_id, command_id, principal_id))
+
+    assignment_payload = build_mutation(assignment)
+    custody_payload = build_mutation(custody)
+
+    assert assignment.cli_name == "ticket assign"
+    assert isinstance(assignment_payload.request, AssignmentChangeRequest)
+    assert assignment_payload.request.assignment_kind == "reviewer_assignment"
+    assert custody.cli_name == "ticket custody transfer"
+    assert isinstance(custody_payload.request, CustodyTransferRequest)
+
+
+def _assignment_arguments(ticket_id: object, command_id: object, principal_id: object) -> list[str]:
+    return [
+        "--base-url",
+        "https://ctower.example",
+        "ticket",
+        "assign",
+        str(ticket_id),
+        "--command-id",
+        str(command_id),
+        "--expected-version",
+        "3",
+        "--kind",
+        "reviewer",
+        "--to-principal-id",
+        str(principal_id),
+        "--reason",
+        "Independent review",
+    ]
+
+
+def _custody_arguments(ticket_id: object, command_id: object, principal_id: object) -> list[str]:
+    return [
+        "--base-url",
+        "https://ctower.example",
+        "ticket",
+        "custody",
+        "transfer",
+        str(ticket_id),
+        "--command-id",
+        str(command_id),
+        "--expected-version",
+        "3",
+        "--from-custodian-id",
+        str(uuid4()),
+        "--to-custodian-id",
+        str(principal_id),
+        "--reason",
+        "Protected authority handoff",
+        "--protected-transfer",
+    ]
+
+
+@pytest.mark.parametrize(
+    "payload",
+    [
+        "base: &base {schema: ctower.company-bundle/v1}\nbundle: *base\n",
+        "schema: ctower.company-bundle/v1\nschema: ctower.company-bundle/v1\n",
+        "schema: !include other.yaml\n",
+    ],
+)
+def test_bundle_input_rejects_alias_duplicate_and_tag(
+    tmp_path: Path,
+    payload: str,
+) -> None:
+    source = tmp_path / "bundle.yaml"
+    source.write_text(payload, encoding="utf-8")
+    with pytest.raises(ValueError, match="bundle input"):
+        load_bundle(source)
