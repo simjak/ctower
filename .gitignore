@@ -23,5 +23,5 @@ build/
 
 # Runtime state never belongs in this source repository.
 state/
-workspaces/
+/workspaces/
 /spool/

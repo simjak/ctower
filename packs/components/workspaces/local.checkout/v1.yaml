@@ -1,0 +1,7 @@
+{
+  "schema": "ctower.workspace/v1",
+  "key": "local.checkout",
+  "mode": "checked_out",
+  "persistence": "not_authoritative",
+  "execution": "not_exercised"
+}

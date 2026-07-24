@@ -19,9 +19,16 @@ class GitignorePolicyTests(unittest.TestCase):
             root,
             "apps/ctowerctl/src/ctowerctl/spool/interface.py",
         )
+        workspace_runtime = self._check_ignore(root, "workspaces/runtime-probe")
+        workspace_contract = self._check_ignore(
+            root,
+            "packs/components/workspaces/local.checkout/v1.yaml",
+        )
 
         self.assertEqual(runtime.returncode, 0, runtime.stderr)
         self.assertEqual(source.returncode, 1, source.stdout)
+        self.assertEqual(workspace_runtime.returncode, 0, workspace_runtime.stderr)
+        self.assertEqual(workspace_contract.returncode, 1, workspace_contract.stdout)
 
     @staticmethod
     def _check_ignore(root: Path, relative: str) -> subprocess.CompletedProcess[str]:
