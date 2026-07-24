@@ -32,26 +32,7 @@ _DIGEST = "sha256:" + ("a" * 64)
 _OTHER_DIGEST = "sha256:" + ("b" * 64)
 
 
-def test_builds_each_protected_work_and_proof_request(tmp_path: Path) -> None:
-    """Every authored work/proof spelling constructs its exact generated model."""
-
-    criteria_file = tmp_path / "criteria.json"
-    criteria_file.write_text(
-        json.dumps(
-            [
-                {
-                    "key": "release",
-                    "description": "Release proof is independently verified.",
-                    "candidate_dependent": True,
-                    "requires_verdict": True,
-                }
-            ]
-        ),
-        encoding="utf-8",
-    )
-    evidence_file = tmp_path / "evidence.txt"
-    evidence_file.write_text("artifact was independently observed", encoding="utf-8")
-
+def test_builds_each_protected_work_request() -> None:
     priority = _ticket_commands.build_mutation(
         _arguments("ticket prioritize", priority="P0", urgent_evidence_ref="evidence:urgent")
     )
@@ -94,6 +75,36 @@ def test_builds_each_protected_work_and_proof_request(tmp_path: Path) -> None:
             target_ticket_id=uuid4(),
         )
     )
+
+    assert isinstance(priority.request, PriorityChangeRequest)
+    assert priority.request.priority == "P0"
+    assert [
+        cast(TicketIntentRequest, payload.request).intent.kind for payload in intent_payloads
+    ] == ["admit", "defer", "reopen", "block", "unblock"]
+    assert isinstance(relation.request, RelationRequest)
+    assert relation.request.relation_kind == "depends_on"
+    payloads = [priority, *intent_payloads, relation]
+    assert all(payload.path_parameters == {"ticket_id": str(_TICKET_ID)} for payload in payloads)
+
+
+def test_builds_each_protected_proof_request(tmp_path: Path) -> None:
+    criteria_file = tmp_path / "criteria.json"
+    criteria_file.write_text(
+        json.dumps(
+            [
+                {
+                    "key": "release",
+                    "description": "Release proof is independently verified.",
+                    "candidate_dependent": True,
+                    "requires_verdict": True,
+                }
+            ]
+        ),
+        encoding="utf-8",
+    )
+    evidence_file = tmp_path / "evidence.txt"
+    evidence_file.write_text("artifact was independently observed", encoding="utf-8")
+
     criteria = _ticket_commands.build_mutation(
         _arguments("ticket criteria freeze", criteria_file=criteria_file)
     )
@@ -114,6 +125,18 @@ def test_builds_each_protected_work_and_proof_request(tmp_path: Path) -> None:
             decision="pass",
         )
     )
+
+    assert isinstance(criteria.request, FreezeCriteriaRequest)
+    assert criteria.request.criteria[0].key == "release"
+    assert isinstance(evidence.request, EvidenceRequest)
+    assert evidence.request.content == "artifact was independently observed"
+    assert isinstance(verdict.request, VerdictRequest)
+    assert verdict.request.decision == "pass"
+    payloads = [criteria, evidence, verdict]
+    assert all(payload.path_parameters == {"ticket_id": str(_TICKET_ID)} for payload in payloads)
+
+
+def test_builds_each_protected_workflow_request() -> None:
     workflow = _ticket_commands.build_mutation(
         _arguments(
             "ticket workflow start",
@@ -139,37 +162,13 @@ def test_builds_each_protected_work_and_proof_request(tmp_path: Path) -> None:
         _arguments("ticket resolve", workflow_ref="release@1")
     )
 
-    assert isinstance(priority.request, PriorityChangeRequest)
-    assert priority.request.priority == "P0"
-    assert [
-        cast(TicketIntentRequest, payload.request).intent.kind for payload in intent_payloads
-    ] == ["admit", "defer", "reopen", "block", "unblock"]
-    assert isinstance(relation.request, RelationRequest)
-    assert relation.request.relation_kind == "depends_on"
-    assert isinstance(criteria.request, FreezeCriteriaRequest)
-    assert criteria.request.criteria[0].key == "release"
-    assert isinstance(evidence.request, EvidenceRequest)
-    assert evidence.request.content == "artifact was independently observed"
-    assert isinstance(verdict.request, VerdictRequest)
-    assert verdict.request.decision == "pass"
     assert isinstance(workflow.request, WorkflowStartRequest)
     assert workflow.request.workflow_ref == "release@1"
     assert isinstance(transition.request, WorkflowTransitionRequest)
     assert transition.request.destination_stage == "verify"
     assert isinstance(resolve.request, ResolveCloseRequest)
     assert resolve.request.workflow_ref == "release@1"
-
-    payloads = [
-        priority,
-        *intent_payloads,
-        relation,
-        criteria,
-        evidence,
-        verdict,
-        workflow,
-        transition,
-        resolve,
-    ]
+    payloads = [workflow, transition, resolve]
     assert all(payload.path_parameters == {"ticket_id": str(_TICKET_ID)} for payload in payloads)
 
 

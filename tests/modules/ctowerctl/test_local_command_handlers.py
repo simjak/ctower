@@ -86,26 +86,8 @@ def test_operations_handlers_build_and_route_only_authored_commands() -> None:
         )
 
 
-def test_local_spool_commands_expose_health_inventory_and_dispositions(
-    monkeypatch: pytest.MonkeyPatch,
-) -> None:
-    spool = _FakeSpool()
-    monkeypatch.setattr(
-        Spool,
-        "for_origin",
-        staticmethod(lambda _base_url: cast(Spool, spool)),
-    )
-    monkeypatch.setattr(
-        _spool_commands,
-        "CtowerClient",
-        lambda *_args, **_kwargs: _ClientContext(),
-    )
-    monkeypatch.setattr(
-        _spool_commands,
-        "GeneratedReplayExecutor",
-        lambda _client: object(),
-    )
-
+def test_local_spool_reports_health_and_inventory(spool_harness: _FakeSpool) -> None:
+    spool = spool_harness
     result, code = _spool_commands.execute(
         "https://ctower.example",
         _local_arguments("spool status"),
@@ -151,6 +133,9 @@ def test_local_spool_commands_expose_health_inventory_and_dispositions(
     )
     assert code is ExitCode.LOCAL_FAILURE
 
+
+def test_local_spool_applies_explicit_dispositions(spool_harness: _FakeSpool) -> None:
+    spool = spool_harness
     retry, code = _spool_commands.execute(
         "https://ctower.example",
         _local_arguments(
@@ -176,8 +161,13 @@ def test_local_spool_commands_expose_health_inventory_and_dispositions(
     assert spool.retry_calls == [(_SEQUENCE, "Retry after inspection.")]
     assert spool.discard_calls == [(_SEQUENCE, "Discard after inspection.")]
 
+
+def test_local_spool_maps_drain_outcomes_and_refuses_unknown(
+    spool_harness: _FakeSpool,
+) -> None:
+    spool = spool_harness
     reports = (
-        (_drain_report(remaining=0, barrier=7), ExitCode.PERMANENT),
+        (_drain_report(remaining=0, barrier=_SEQUENCE), ExitCode.PERMANENT),
         (_drain_report(remaining=2, barrier=None), ExitCode.TEMPORARY),
         (_drain_report(remaining=0, barrier=None), ExitCode.SUCCESS),
     )
@@ -200,10 +190,9 @@ def test_local_spool_commands_expose_health_inventory_and_dispositions(
         )
 
 
-def test_interface_dispatch_and_outcome_helpers_fail_closed(
+def test_interface_dispatch_fails_closed(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    spool = _FakeSpool()
     outbox_id = uuid4()
     ops_arguments = argparse.Namespace(
         area="ops",
@@ -270,6 +259,10 @@ def test_interface_dispatch_and_outcome_helpers_fail_closed(
             forbidden,
         )
 
+
+def test_interface_outcome_helpers_fail_closed() -> None:
+    spool = _FakeSpool()
+    outbox_id = uuid4()
     accepted = _entry(SpoolState.ACCEPTED_ARCHIVE)
     pending = _entry(SpoolState.PENDING)
     quarantined = _entry(SpoolState.QUARANTINE, reason_code="schema-invalid")
@@ -427,6 +420,27 @@ class _FakeSpool:
     def drain(self, _executor: object) -> DrainReport:
         self.drain_calls += 1
         return self.drain_result
+
+
+@pytest.fixture
+def spool_harness(monkeypatch: pytest.MonkeyPatch) -> _FakeSpool:
+    spool = _FakeSpool()
+    monkeypatch.setattr(
+        Spool,
+        "for_origin",
+        staticmethod(lambda _base_url: cast(Spool, spool)),
+    )
+    monkeypatch.setattr(
+        _spool_commands,
+        "CtowerClient",
+        lambda *_args, **_kwargs: _ClientContext(),
+    )
+    monkeypatch.setattr(
+        _spool_commands,
+        "GeneratedReplayExecutor",
+        lambda _client: object(),
+    )
+    return spool
 
 
 def _entry(state: SpoolState, *, reason_code: str | None = None) -> SpoolEntry:
