@@ -1,0 +1,188 @@
+{
+  "schema": "ctower.cp3d-bindings/v1",
+  "binding_kind": "synthetic_mechanics",
+  "packet_id": "ctower-cp3d-synthetic-mechanics",
+  "runtime_policy": "pending_only",
+  "validation_context": "same_host_mechanics",
+  "postgres": {
+    "image": "docker.io/library/postgres:17.5@sha256:1111111111111111111111111111111111111111111111111111111111111111",
+    "uid": 999,
+    "gid": 999,
+    "port": 5432,
+    "database": "ctower",
+    "replication_user": "ctower_replication",
+    "standby_application_name": "ctower_i1_ack",
+    "synchronous_commit": "remote_apply"
+  },
+  "primary": {
+    "provider": "synthetic-provider-a",
+    "region": "synthetic-region-a",
+    "zone": "synthetic-zone-a",
+    "host_id": "synthetic-host-a",
+    "failure_domain": "synthetic-failure-domain-a",
+    "operator_domain": "synthetic-operator-domain-a",
+    "private_ip": "10.73.0.11",
+    "data_directory": "/srv/ctower/cp3d/primary/data",
+    "postgres_config": {
+      "reference": "file-ref://synthetic/primary/postgresql-conf",
+      "path": "/etc/ctower/cp3d/primary/postgresql.conf",
+      "owner": "root",
+      "group": "ctower-postgres",
+      "mode": "0440",
+      "sha256": "sha256:2111111111111111111111111111111111111111111111111111111111111111"
+    },
+    "hba_config": {
+      "reference": "file-ref://synthetic/primary/pg-hba-conf",
+      "path": "/etc/ctower/cp3d/primary/pg_hba.conf",
+      "owner": "root",
+      "group": "ctower-postgres",
+      "mode": "0440",
+      "sha256": "sha256:3111111111111111111111111111111111111111111111111111111111111111"
+    },
+    "tls_ca": {
+      "reference": "file-ref://synthetic/primary/tls-ca",
+      "path": "/etc/ctower/cp3d/primary/tls/ca.crt",
+      "owner": "root",
+      "group": "ctower-postgres",
+      "mode": "0440",
+      "sha256": "sha256:4111111111111111111111111111111111111111111111111111111111111111"
+    },
+    "tls_certificate": {
+      "reference": "file-ref://synthetic/primary/tls-certificate",
+      "path": "/etc/ctower/cp3d/primary/tls/tls.crt",
+      "owner": "root",
+      "group": "ctower-postgres",
+      "mode": "0440",
+      "sha256": "sha256:5111111111111111111111111111111111111111111111111111111111111111"
+    },
+    "tls_key": {
+      "reference": "file-ref://synthetic/primary/tls-key",
+      "path": "/etc/ctower/cp3d/primary/tls/tls.key",
+      "owner": "root",
+      "group": "ctower-postgres",
+      "mode": "0440",
+      "sha256": "sha256:6111111111111111111111111111111111111111111111111111111111111111"
+    }
+  },
+  "standby": {
+    "provider": "synthetic-provider-b",
+    "region": "synthetic-region-b",
+    "zone": "synthetic-zone-b",
+    "host_id": "synthetic-host-b",
+    "failure_domain": "synthetic-failure-domain-b",
+    "operator_domain": "synthetic-operator-domain-b",
+    "private_ip": "10.74.0.12",
+    "data_directory": "/srv/ctower/cp3d/standby/data",
+    "postgres_config": {
+      "reference": "file-ref://synthetic/standby/postgresql-conf",
+      "path": "/etc/ctower/cp3d/standby/postgresql.conf",
+      "owner": "root",
+      "group": "ctower-postgres",
+      "mode": "0440",
+      "sha256": "sha256:7111111111111111111111111111111111111111111111111111111111111111"
+    },
+    "hba_config": {
+      "reference": "file-ref://synthetic/standby/pg-hba-conf",
+      "path": "/etc/ctower/cp3d/standby/pg_hba.conf",
+      "owner": "root",
+      "group": "ctower-postgres",
+      "mode": "0440",
+      "sha256": "sha256:8111111111111111111111111111111111111111111111111111111111111111"
+    },
+    "tls_ca": {
+      "reference": "file-ref://synthetic/standby/tls-ca",
+      "path": "/etc/ctower/cp3d/standby/tls/ca.crt",
+      "owner": "root",
+      "group": "ctower-postgres",
+      "mode": "0440",
+      "sha256": "sha256:9111111111111111111111111111111111111111111111111111111111111111"
+    },
+    "tls_certificate": {
+      "reference": "file-ref://synthetic/standby/tls-certificate",
+      "path": "/etc/ctower/cp3d/standby/tls/tls.crt",
+      "owner": "root",
+      "group": "ctower-postgres",
+      "mode": "0440",
+      "sha256": "sha256:a111111111111111111111111111111111111111111111111111111111111111"
+    },
+    "tls_key": {
+      "reference": "file-ref://synthetic/standby/tls-key",
+      "path": "/etc/ctower/cp3d/standby/tls/tls.key",
+      "owner": "root",
+      "group": "ctower-postgres",
+      "mode": "0440",
+      "sha256": "sha256:b111111111111111111111111111111111111111111111111111111111111111"
+    },
+    "replication_passfile": {
+      "reference": "credential-file-ref://synthetic/standby/replication-passfile",
+      "path": "/etc/ctower/cp3d/standby/replication.passfile",
+      "owner": "root",
+      "group": "ctower-postgres",
+      "mode": "0440",
+      "sha256": "sha256:c111111111111111111111111111111111111111111111111111111111111111"
+    }
+  },
+  "workload_identities": {
+    "primary": "workload-ref://synthetic/primary-postgres",
+    "standby": "workload-ref://synthetic/standby-postgres",
+    "backup": "workload-ref://synthetic/backup-writer",
+    "object": "workload-ref://synthetic/object-writer",
+    "anchor": "workload-ref://synthetic/anchor-writer",
+    "recovery": "workload-ref://synthetic/recovery-reader"
+  },
+  "object_store": {
+    "endpoint": "https://objects.synthetic.invalid",
+    "account_reference": "account-ref://synthetic/off-host-object-account",
+    "region": "synthetic-off-host-region",
+    "backup_bucket": "ctower-synthetic-backups",
+    "object_bucket": "ctower-synthetic-objects",
+    "anchor_bucket": "ctower-synthetic-anchors",
+    "versioning": true,
+    "object_lock": true,
+    "retention_days": 30
+  },
+  "key_recovery": {
+    "vault_endpoint": "https://vault.synthetic.invalid",
+    "vault_key_reference": "vault-key-ref://synthetic/ctower-artifacts/v1",
+    "kms_key_reference": "kms-key-ref://synthetic/ctower-backups/v1",
+    "public_key_digest": "sha256:d111111111111111111111111111111111111111111111111111111111111111",
+    "recovery_principal": "principal-ref://synthetic/ctower-recovery",
+    "ceremony_owner": "synthetic-recovery-owner"
+  },
+  "alerting": {
+    "destination_reference": "alert-ref://synthetic/ctower-durability",
+    "owner": "synthetic-durability-owner"
+  },
+  "destructive_drill_window": "window-ref://synthetic/approved-maintenance-window",
+  "ack_latency_acceptance": {
+    "maximum_milliseconds": 250,
+    "owner": "synthetic-latency-owner",
+    "evidence": {
+      "reference": "evidence-ref://synthetic/ack-latency",
+      "digest": "sha256:e111111111111111111111111111111111111111111111111111111111111111",
+      "signature_reference": "signature-ref://synthetic/ack-latency"
+    }
+  },
+  "signed_evidence": {
+    "topology_review": {
+      "reference": "evidence-ref://synthetic/topology-review",
+      "digest": "sha256:f111111111111111111111111111111111111111111111111111111111111111",
+      "signature_reference": "signature-ref://synthetic/topology-review"
+    },
+    "network_tls_review": {
+      "reference": "evidence-ref://synthetic/network-tls-review",
+      "digest": "sha256:1211111111111111111111111111111111111111111111111111111111111111",
+      "signature_reference": "signature-ref://synthetic/network-tls-review"
+    },
+    "object_lock_review": {
+      "reference": "evidence-ref://synthetic/object-lock-review",
+      "digest": "sha256:1311111111111111111111111111111111111111111111111111111111111111",
+      "signature_reference": "signature-ref://synthetic/object-lock-review"
+    },
+    "image_attestation": {
+      "reference": "evidence-ref://synthetic/postgres-image-attestation",
+      "digest": "sha256:1411111111111111111111111111111111111111111111111111111111111111",
+      "signature_reference": "signature-ref://synthetic/postgres-image-attestation"
+    }
+  }
+}

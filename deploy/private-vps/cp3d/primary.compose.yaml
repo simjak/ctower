@@ -1,0 +1,80 @@
+name: ${CTOWER_COMPOSE_PROJECT:?operator binding required}
+
+services:
+  postgres-primary:
+    image: ${CTOWER_POSTGRES_IMAGE:?immutable PostgreSQL 17 image required}
+    profiles: ["operator-start-only"]
+    user: "${CTOWER_POSTGRES_UID:?uid required}:${CTOWER_POSTGRES_GID:?gid required}"
+    network_mode: host
+    read_only: true
+    restart: "no"
+    init: true
+    cap_drop: ["ALL"]
+    security_opt: ["no-new-privileges:true"]
+    stop_grace_period: 2m
+    tmpfs:
+      - /run/postgresql:rw,noexec,nosuid,nodev,mode=0750
+    command:
+      - postgres
+      - -D
+      - /var/lib/postgresql/data
+      - -c
+      - config_file=/run/ctower/postgresql.conf
+      - -c
+      - hba_file=/run/ctower/pg_hba.conf
+      - -c
+      - listen_addresses=${CTOWER_HOST_PRIVATE_IP:?private host IP required}
+      - -c
+      - port=${CTOWER_POSTGRES_PORT:?port required}
+      - -c
+      - ssl=on
+      - -c
+      - ssl_ca_file=/run/ctower/tls/ca.crt
+      - -c
+      - ssl_cert_file=/run/ctower/tls/tls.crt
+      - -c
+      - ssl_key_file=/run/ctower/tls/tls.key
+      - -c
+      - wal_level=replica
+      - -c
+      - max_wal_senders=10
+      - -c
+      - max_replication_slots=10
+      - -c
+      - synchronous_commit=remote_apply
+      - -c
+      - synchronous_standby_names=FIRST 1 (ctower_i1_ack)
+    volumes:
+      - type: bind
+        source: ${CTOWER_DATA_DIRECTORY:?PostgreSQL data directory required}
+        target: /var/lib/postgresql/data
+      - type: bind
+        source: ${CTOWER_POSTGRES_CONFIG:?root-owned PostgreSQL config required}
+        target: /run/ctower/postgresql.conf
+        read_only: true
+      - type: bind
+        source: ${CTOWER_HBA_CONFIG:?root-owned HBA config required}
+        target: /run/ctower/pg_hba.conf
+        read_only: true
+      - type: bind
+        source: ${CTOWER_TLS_CA:?root-owned TLS CA required}
+        target: /run/ctower/tls/ca.crt
+        read_only: true
+      - type: bind
+        source: ${CTOWER_TLS_CERTIFICATE:?root-owned TLS certificate required}
+        target: /run/ctower/tls/tls.crt
+        read_only: true
+      - type: bind
+        source: ${CTOWER_TLS_KEY:?root-owned TLS key required}
+        target: /run/ctower/tls/tls.key
+        read_only: true
+    labels:
+      io.ctower.cp3d.role: primary
+      io.ctower.cp3d.provider: ${CTOWER_PROVIDER:?provider identity required}
+      io.ctower.cp3d.region: ${CTOWER_REGION:?region identity required}
+      io.ctower.cp3d.zone: ${CTOWER_ZONE:?zone identity required}
+      io.ctower.cp3d.host: ${CTOWER_HOST_ID:?host identity required}
+      io.ctower.cp3d.failure-domain: ${CTOWER_FAILURE_DOMAIN:?failure domain required}
+      io.ctower.cp3d.operator-domain: ${CTOWER_OPERATOR_DOMAIN:?operator domain required}
+      io.ctower.cp3d.workload-identity: ${CTOWER_WORKLOAD_IDENTITY:?identity reference required}
+      io.ctower.cp3d.runtime-policy: pending_only

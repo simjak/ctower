@@ -1,4 +1,4 @@
-# CP3-C private-VPS recovery templates
+# Private-VPS durability and recovery packets
 
 These files describe the local recovery shape without activating a production target. They contain
 identifiers and references only. Do not add passwords, tokens, private keys, wrapped data keys, TLS
@@ -21,8 +21,15 @@ until every `CP3D_REQUIRED` marker has been replaced and independently reviewed.
 The application continues with `pending_only`, object-only switching remains off, and restored
 installations remain quarantined until the exact report/installation enablement receipt exists.
 
+`cp3d/` adds the source-only PostgreSQL Compose packet for operator binding. It has two independently
+runnable host projects, strict typed validation, local `docker compose config` rendering, host-local
+root-owned file checks, and a canonical redacted topology manifest. It remains `pending_only` and
+cannot claim CP3-D: provider provisioning, network/TLS policy, credentials, actual two-host
+replication, destructive drills, and the missing ctower product image/runtime remain external.
+
 Runbooks:
 
+- [CP3-D PostgreSQL operator-binding packet](cp3d/README.md)
 - [backup and anchors](../../docs/operations/backup-and-anchors.md)
 - [key recovery](../../docs/operations/key-recovery.md)
 - [isolated restore](../../docs/operations/isolated-restore.md)
