@@ -725,3 +725,32 @@ routes may be dead until I2.
    control health contributors. Analytics renders only the frozen attention baseline/current sample,
    revision/cohort/digest/watermark, and provisional/unknown state. I2 deepens those routes; I1 does not
    expose runners/workspaces/budgets, broad KPIs/trends/cost, or writable state.
+
+## D23 — CLI-first I1 and deferred browser realization (locked 2026-07-23, operator)
+
+The operator authorized I1 as API plus protected CLI only. This decision preserves D22 and supersedes only
+its browser implementation timing. Explicit durable intake intent/provenance and Workflow-owned risk remain
+I1 API/CLI requirements. React/Vite, browser sessions and CSRF realization, routes/navigation, Playwright,
+screenshots, browser QA, and the interactive Project Delivery drill-down are deferred to the explicit
+`CT-I2-005` I2.4 browser sub-checkpoint. No placeholder UI, empty browser suite, or I1 browser claim is
+allowed.
+
+1. **I1 trust-spine proof.** I1.6 proves `capture -> frame -> verify -> close` through the public API and
+   protected CLI. The server still evaluates every transition; capture records off-host acceptance, priority,
+   custody, and source; frame freezes criteria/evidence/gate; verify records current-digest evidence and a
+   protected verdict; close validates then resolves/closes. Synthetic, restore/reboot, failure, and
+   forbidden-stage-name proof remain required.
+2. **I1 cutover and Project Delivery.** I1.7 freezes, exports, imports, reconciles, rewires, and seals only
+   API/CLI/Commander/runner-facing clients that exist in I1. Its read-only Project Delivery text projection,
+   with optional deterministic JSON, shows checkpoint key/label, headline, outcome, owner, proven/declared
+   coverage, watermark, freshness, unknown/degraded state, source IDs, and derivation reasons. It accepts no
+   status mutation, manual override, ticket-count percentage, or second source of truth.
+3. **Stable traceability.** `CT-I1-005` remains a stable deferred alias, not a deleted or renumbered item.
+   `CT-I2-005` owns the first browser realization and the sole `tests/e2e` Playwright suite. API/CLI source
+   contracts and their traceability remain authoritative in I1; browser-session traceability remains future
+   authority rather than passing I1 evidence.
+
+This sequencing does not weaken off-host acknowledgement, protected CLI spool behavior, six-lane/task-axis
+semantics, typed intents, risk provenance, proof/gate requirements, restore, auditability, source-of-truth
+cutover, no-dual-write, or `STATE UNKNOWN`/degraded behavior. It is reversible before I2.4 because no
+browser artifact or route is introduced in I1; implementation begins later against D22's preserved choices.

@@ -33,19 +33,36 @@ markdown_extensions:
 
 nav:
   - Home: index.md
-  - Project status: project-status.md
-  - Getting started: getting-started.md
-  - Core concepts: concepts.md
-  - Development:
-      - Development guide: contributing/development.md
-      - Coding standards: contributing/CODING_STANDARDS.md
-      - Releases: contributing/releases.md
+  - Start here:
+      - Project status: project-status.md
+      - Repository setup: start-here/repository-setup.md
+      - Exercise the development walking slice: getting-started.md
+      - What is deliberately unavailable: start-here/availability.md
+  - Guides:
+      - Contribution guide: https://github.com/simjak/ctower/blob/main/CONTRIBUTING.md
+  - Concepts:
+      - Core concepts: concepts.md
   - Operations:
+      - Current operational boundary: operations/current-boundary.md
       - Observability: operations/observability.md
+      - Backup and anchors: operations/backup-and-anchors.md
+      - Key recovery: operations/key-recovery.md
+      - Isolated restore: operations/isolated-restore.md
+      - Rollback: operations/rollback.md
+      - Recovery evidence: operations/recovery-evidence.md
   - Security:
       - Secret handling: security/secret-handling.md
-  - Canonical design:
-      - System specification: https://github.com/simjak/ctower/blob/main/SPEC.md
+  - Reference:
+      - HTTP/OpenAPI development contract: https://github.com/simjak/ctower/blob/main/contracts/http/openapi.yaml
+      - Authored contracts: https://github.com/simjak/ctower/tree/main/contracts
+      - Component boundaries: https://github.com/simjak/ctower/tree/main/apps
+  - Advanced internals:
       - Architecture atlas: https://github.com/simjak/ctower/blob/main/ARCHITECTURE.md
+      - System specification: https://github.com/simjak/ctower/blob/main/SPEC.md
       - Decision log: https://github.com/simjak/ctower/blob/main/DECISIONS.md
       - Implementation roadmap: https://github.com/simjak/ctower/blob/main/IMPLEMENTATION-ROADMAP.md
+  - Contributing:
+      - Development guide: contributing/development.md
+      - Coding standards: contributing/CODING_STANDARDS.md
+      - Documentation policy: contributing/documentation.md
+      - Releases: contributing/releases.md

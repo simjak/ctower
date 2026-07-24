@@ -1,3 +1,12 @@
 # Deployment homes
 
-Deployment configuration belongs here; runtime credentials do not. The initial repository contains only the observability collector/dashboard/alert homes. Compose, Postgres roles, systemd units, VPS manifests, release images, and the root-owned release-supervisor configuration arrive with their stable CT tickets and conformance evidence.
+Deployment configuration belongs here; runtime credentials do not.
+
+`development/compose.yaml` is a disposable PostgreSQL 17 fixture for Increment-1 acceptance tests. It is
+loopback-bound, uses temporary storage, and does **not** compose a ctower API, control worker, durable
+topology, credentials, backups, or a product deployment.
+
+The repository also contains observability collector, dashboard, and alert homes. `private-vps/` adds the
+secret-free CP3-C recovery shape. Neither establishes a supported product deployment: there is no external
+endpoint, credential, systemd activation, or production durability switch. Those require CP3-D conformance
+evidence before becoming operator deployment documentation.
