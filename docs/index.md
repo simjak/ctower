@@ -1,47 +1,40 @@
 # Durable work, not durable terminals
 
-ctower is an open-source control plane for work performed by humans and replaceable AI agents. It is
-designed to keep the ticket, workflow, policy, evidence, and audit trail authoritative even when an agent
-process, model, context window, sandbox, or machine disappears.
+ctower is an open-source control plane for durable work performed by humans and replaceable AI agents. It
+keeps ownership, workflow state, evidence, and audit facts authoritative when an agent process, terminal,
+or machine disappears.
 
 ```text
-request -> ticket -> workflow -> execution -> evidence -> gates -> release -> retro -> close
-                 durable authority          replaceable workers
+request -> Work -> Workflow -> evidence -> gate -> outcome
+             durable control plane       replaceable workers
 ```
 
-## Why ctower exists
+!!! warning "Pre-alpha and development-only"
+    ctower is not a supported install, deployment, hosted service, backup/restore product, browser UI,
+    runner, or production release. Its current value is a tested development slice and a public design for
+    earning those capabilities honestly.
 
-Agent harnesses are excellent execution environments, but a terminal session is not a task-management
-system. Chat histories and process-local queues make it difficult to answer basic operational questions:
+## Start here
 
-- Who owns this outcome now, and who owned it before?
-- Which workflow stage and Kanban state is the ticket in?
-- What was attempted, rejected, repaired, reviewed, and released?
-- Which evidence is current for the exact candidate being promoted?
-- Can work resume safely after a runner, host, or model disappears?
-- Which decision truly needs operator attention?
+1. Read [Project status](project-status.md) for the capability boundary.
+2. Follow [Repository setup](start-here/repository-setup.md) to validate a checkout.
+3. Read [Exercise the development walking slice](getting-started.md) before running the full acceptance
+   gate.
+4. Check [What is deliberately unavailable](start-here/availability.md) before planning an integration or
+   operational use.
 
-ctower addresses those questions with a durable control plane and a complete ticket history. Runtimes
-execute work through narrow adapters; they do not become the authority for work state.
+## Navigate by need
 
-!!! warning "Pre-alpha status"
-    ctower now has one development-only local walking slice: first-tenant bootstrap; durable tickets,
-    custody, assignment, priority, blockers, and relations; a read-only six-lane Board projection; and the
-    proof-gated four-stage Workflow fixture. Writes remain `durability_pending`; no runner, web
-    application, supported deployment, off-host acknowledgement, or production release is available. See
-    [Project status](project-status.md).
+- [Guides](contributing/development.md) explain repository development and verification.
+- [Concepts](concepts.md) define the durable-authority vocabulary.
+- [Operations](operations/current-boundary.md) state the present operational boundary.
+- [Reference](https://github.com/simjak/ctower/tree/main/contracts) begins with authored contracts and the
+  [development OpenAPI](https://github.com/simjak/ctower/blob/main/contracts/http/openapi.yaml).
+- [Advanced internals](https://github.com/simjak/ctower/blob/main/ARCHITECTURE.md) are deliberately behind the
+  architecture atlas and specification.
+- [Contributing](contributing/development.md) explains how to make a verified change.
 
-## Navigate the project
-
-- [Getting started](getting-started.md) explains what can be validated today.
-- [Core concepts](concepts.md) introduces tickets, workflows, policies, agents, gates, and effects.
-- [Development guide](contributing/development.md) explains source ownership and contribution gates.
-- [System specification](https://github.com/simjak/ctower/blob/main/SPEC.md) is the canonical source for
-  product and system semantics.
-- [Architecture atlas](https://github.com/simjak/ctower/blob/main/ARCHITECTURE.md) provides compact system,
-  infrastructure, and flow diagrams.
-- [Implementation roadmap](https://github.com/simjak/ctower/blob/main/IMPLEMENTATION-ROADMAP.md) defines the
-  walking-skeleton and dogfooding sequence.
-
-The documentation site explains the project. It does not duplicate or supersede the canonical design
-documents in the repository root.
+The site orients readers; it does not duplicate the canonical [system specification](https://github.com/simjak/ctower/blob/main/SPEC.md),
+[architecture atlas](https://github.com/simjak/ctower/blob/main/ARCHITECTURE.md),
+[decision log](https://github.com/simjak/ctower/blob/main/DECISIONS.md), or
+[implementation roadmap](https://github.com/simjak/ctower/blob/main/IMPLEMENTATION-ROADMAP.md).
