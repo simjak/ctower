@@ -135,6 +135,7 @@ def seal_record(
     predecessor_hash: str,
     key_identifier: str,
     payload: JsonObject,
+    *,
     keys: KeySet,
 ) -> SealedRecord:
     """Encrypt one sequence/type-bound record and authenticate its clear header."""
@@ -147,7 +148,7 @@ def seal_record(
         predecessor_hash,
         key_identifier,
         nonce,
-        AESGCM(keys.encryption).encrypt(nonce, plaintext, b""),
+        ciphertext=AESGCM(keys.encryption).encrypt(nonce, plaintext, b""),
     )
     # GCM's encrypted body is independent of AAD; only its authentication tag changes.
     # Binding the body digest breaks the otherwise circular "digest in AAD" dependency.
@@ -162,7 +163,7 @@ def seal_record(
         predecessor_hash,
         key_identifier,
         nonce,
-        ciphertext,
+        ciphertext=ciphertext,
     )
     header_bytes = canonical_json(cast(JsonObject, header.model_dump(mode="json")))
     record_hash = hashlib.sha256(header_bytes + b"\n" + ciphertext).hexdigest()
@@ -258,6 +259,7 @@ def _header(
     predecessor_hash: str,
     key_identifier: str,
     nonce: bytes,
+    *,
     ciphertext: bytes,
 ) -> RecordHeader:
     return RecordHeader(

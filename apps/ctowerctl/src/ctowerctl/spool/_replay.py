@@ -156,7 +156,14 @@ def drain_session(session: Session, executor: ReplayExecutor) -> DrainReport:
     if barrier is not None and (
         not pending or barrier.stored.sequence < pending[0].stored.sequence
     ):
-        return _report(session, 0, 0, 0, barrier.stored.sequence, "quarantine_barrier")
+        return _report(
+            session,
+            0,
+            0,
+            0,
+            barrier.stored.sequence,
+            reason_code="quarantine_barrier",
+        )
     attempted = accepted = quarantined = 0
     reason = "empty"
     for record in pending:
@@ -177,7 +184,14 @@ def drain_session(session: Session, executor: ReplayExecutor) -> DrainReport:
             _quarantine(session, record, reason, response.response)
             quarantined += 1
         break
-    return _report(session, attempted, accepted, quarantined, _barrier(session), reason)
+    return _report(
+        session,
+        attempted,
+        accepted,
+        quarantined,
+        _barrier(session),
+        reason_code=reason,
+    )
 
 
 def _success_decision(
@@ -259,6 +273,7 @@ def _report(
     accepted: int,
     quarantined: int,
     barrier_sequence: int | None,
+    *,
     reason_code: str,
 ) -> DrainReport:
     remaining = sum(1 for item in session.commands() if item.stored.directory == "pending")

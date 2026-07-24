@@ -99,7 +99,7 @@ class Session:
             self.head.record_hash,
             self.metadata.key_id,
             body,
-            self.keys,
+            keys=self.keys,
         )
         if len(sealed.data) > self.maximum_record_bytes:
             raise StorageError("encrypted durable record exceeds bounded size")
