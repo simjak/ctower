@@ -11,11 +11,13 @@ from pydantic import BaseModel, ConfigDict, Field, model_validator
 
 from ctower_client.operations import OPERATIONS, SpoolPolicy
 from ctowerctl.spool._crypto import RecordType
+from ctowerctl.spool._identity import same_binding
 from ctowerctl.spool._recovery import (
     AcceptedReceipt,
     CommandEnvelope,
     QuarantineReceipt,
     RecoveredRecord,
+    RecoveryError,
     Session,
     command_payload,
     parse_utc,
@@ -147,9 +149,15 @@ def classify(response: ResponseView, expected_command_id: UUID) -> tuple[ReplayD
     return decision, reason
 
 
-def drain_session(session: Session, executor: ReplayExecutor) -> DrainReport:
+def drain_session(
+    session: Session,
+    executor: ReplayExecutor,
+    credential_binding: str,
+) -> DrainReport:
     """Replay globally in order and stop at the first pending or quarantine barrier."""
 
+    if session.corrupt_records:
+        raise RecoveryError("corrupt quarantine blocks normal ordered replay")
     commands = tuple(sorted(session.commands(), key=lambda item: item.stored.sequence))
     barrier = next((item for item in commands if item.stored.directory == "quarantine"), None)
     pending = tuple(item for item in commands if item.stored.directory == "pending")
@@ -168,6 +176,12 @@ def drain_session(session: Session, executor: ReplayExecutor) -> DrainReport:
     reason = "empty"
     for record in pending:
         payload = command_payload(record)
+        binding_reason = _binding_refusal(payload, credential_binding)
+        if binding_reason is not None:
+            _quarantine(session, record, binding_reason, None)
+            quarantined += 1
+            reason = binding_reason
+            break
         if datetime.now(UTC) >= parse_utc(payload.expires_at):
             _quarantine(session, record, "expired", None)
             quarantined += 1
@@ -192,6 +206,17 @@ def drain_session(session: Session, executor: ReplayExecutor) -> DrainReport:
         _barrier(session),
         reason_code=reason,
     )
+
+
+def _binding_refusal(
+    payload: CommandEnvelope,
+    current_binding: str,
+) -> str | None:
+    if payload.credential_binding is None:
+        return "credential_binding_missing"
+    if not same_binding(payload.credential_binding, current_binding):
+        return "credential_identity_mismatch"
+    return None
 
 
 def _success_decision(

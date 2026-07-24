@@ -2,23 +2,36 @@
 
 from __future__ import annotations
 
+import base64
 import errno
+import hashlib
 import json
 import os
+import shutil
 import sys
 import types
 from datetime import UTC, datetime, timedelta
 from pathlib import Path
-from uuid import uuid4
+from uuid import UUID, uuid4
 
 import pytest
 
-from ctowerctl.spool import ReplayResponse, Spool, SpoolCommand, SpoolConfig, SpoolError
+from ctowerctl.spool import (
+    ReplayResponse,
+    Spool,
+    SpoolCommand,
+    SpoolConfig,
+    SpoolEntry,
+    SpoolError,
+    SpoolStatus,
+)
 
 __all__: tuple[str, ...] = ()
 
 _THIRTY_ONE_DAYS = 31
 _TWO_RECORDS = 2
+_RANDOM_RECORD_FORMAT = 2
+_CREDENTIAL = "synthetic-filesystem-identity"
 
 type _JsonScalar = str | int | float | bool | None
 type _JsonValue = _JsonScalar | list[_JsonValue] | dict[str, _JsonValue]
@@ -43,11 +56,12 @@ _Backend.__name__ = "Keyring"
 
 
 @pytest.fixture
-def secure_keyring(monkeypatch: pytest.MonkeyPatch) -> None:
+def secure_keyring(monkeypatch: pytest.MonkeyPatch) -> _Backend:
     module = types.ModuleType("keyring")
     backend = _Backend()
     module.__dict__["get_keyring"] = lambda: backend
     monkeypatch.setitem(sys.modules, "keyring", module)
+    return backend
 
 
 class _Accepting:
@@ -70,6 +84,13 @@ class _PastDateTime(datetime):
         del tz
         value = datetime.now(UTC) - timedelta(days=_THIRTY_ONE_DAYS)
         return cls.fromtimestamp(value.timestamp(), UTC)
+
+
+class _RollbackDateTime(datetime):
+    @classmethod
+    def now(cls, tz: object | None = None) -> _RollbackDateTime:
+        del tz
+        return cls(2026, 7, 24, 12, 0, tzinfo=UTC)
 
 
 def test_symlink_hardlink_and_network_filesystem_are_refused(
@@ -141,14 +162,14 @@ def test_owner_only_intermediate_state_directories_are_reverified(
     assert not spool.doctor().healthy
 
 
-def test_ciphertext_tamper_moves_pending_to_quarantine_and_blocks_chain(
+def test_corrupt_ciphertext_is_actionable_exact_quarantine_and_preserves_audit(
     tmp_path: Path,
-    secure_keyring: None,
+    secure_keyring: _Backend,
 ) -> None:
     del secure_keyring
     state = tmp_path / "state"
     spool = _spool(state)
-    spool.enqueue(_command())
+    entry = spool.enqueue(_command())
     record = next(_root(state).joinpath("pending").glob("*.rec"))
     data = bytearray(record.read_bytes())
     data[len(data) // 2] ^= 1
@@ -156,11 +177,42 @@ def test_ciphertext_tamper_moves_pending_to_quarantine_and_blocks_chain(
 
     status = spool.status()
 
-    assert status.health == "state_unknown"
-    assert "chain_integrity" in status.reason_codes
     assert not tuple(_root(state).joinpath("pending").glob("*.rec"))
-    assert tuple(_root(state).joinpath("quarantine").glob("*.command.rec"))
-    assert not spool.doctor().healthy
+    quarantined = next(_root(state).joinpath("quarantine").glob("*.command.rec"))
+    inventory = spool.list_entries()
+    _assert_corrupt_inventory(status, inventory, entry.sequence)
+    executor = _Accepting()
+    with pytest.raises(SpoolError) as replay_refusal:
+        spool.drain(executor)
+    assert replay_refusal.value.code == "chain_integrity"
+    assert executor.calls == 0
+    _assert_wrong_corrupt_dispositions(spool, entry.sequence, inventory[0])
+
+    replacement = bytearray(quarantined.read_bytes())
+    replacement[-2] ^= 1
+    quarantined.write_bytes(replacement)
+    with pytest.raises(SpoolError) as changed:
+        spool.discard(
+            entry.sequence or 0,
+            "stale inventory",
+            artifact_digest=inventory[0].artifact_digest,
+        )
+    assert changed.value.code == "invalid_disposition"
+    current = spool.list_entries()[0]
+    assert current.artifact_digest != inventory[0].artifact_digest
+    spool.discard(
+        entry.sequence or 0,
+        "exact corrupt artifact reviewed",
+        artifact_digest=current.artifact_digest,
+    )
+
+    assert spool.list_entries() == ()
+    assert spool.status().health == "healthy"
+    assert spool.doctor().healthy
+    assert quarantined.read_bytes() == bytes(replacement)
+    assert tuple(_root(state).joinpath("quarantine").glob("*.corrupt_disposition.rec"))
+    assert spool.enqueue(_command()).state == "pending"
+    assert spool.doctor().healthy
 
 
 def test_old_authenticated_head_incorporates_one_unique_next_record(
@@ -282,6 +334,48 @@ def test_nonce_is_unique_and_headers_never_carry_request_content(
     assert corpus not in json.dumps(documents, sort_keys=True)
 
 
+def test_random_nonce_survives_head_and_record_rollback_without_xor_disclosure(
+    tmp_path: Path,
+    secure_keyring: _Backend,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    del secure_keyring
+    state = tmp_path / "state"
+    spool = _spool(state)
+    snapshot = tmp_path / "snapshot"
+    shutil.copytree(state, snapshot)
+    command_id = UUID("00000000-0000-0000-0000-000000000001")
+    first_command = _rollback_command(command_id, "equal-length-a")
+    second_command = _rollback_command(command_id, "equal-length-b")
+
+    with monkeypatch.context() as clock:
+        clock.setattr("ctowerctl.spool.interface.datetime", _RollbackDateTime)
+        first = spool.enqueue(first_command)
+        first_data = next(_root(state).joinpath("pending").glob("*.command.rec")).read_bytes()
+        first_document = json.loads(first_data)
+        first_plaintext = _expected_plaintext(first_command, first, spool.status())
+
+        shutil.rmtree(state)
+        shutil.copytree(snapshot, state)
+        restored = _spool(state)
+        second = restored.enqueue(second_command)
+        second_data = next(_root(state).joinpath("pending").glob("*.command.rec")).read_bytes()
+        second_document = json.loads(second_data)
+        second_plaintext = _expected_plaintext(second_command, second, restored.status())
+
+    assert first.sequence == second.sequence == 1
+    assert first_document["header"]["format_version"] == _RANDOM_RECORD_FORMAT
+    assert second_document["header"]["format_version"] == _RANDOM_RECORD_FORMAT
+    assert first_document["header"]["nonce"] != second_document["header"]["nonce"]
+    first_ciphertext = base64.b64decode(first_document["ciphertext"])[:-16]
+    second_ciphertext = base64.b64decode(second_document["ciphertext"])[:-16]
+    assert len(first_plaintext) == len(second_plaintext)
+    assert _xor(first_ciphertext, second_ciphertext) != _xor(
+        first_plaintext,
+        second_plaintext,
+    )
+
+
 def test_old_accepted_history_compacts_to_one_anchor_but_quarantine_never_does(
     tmp_path: Path,
     secure_keyring: None,
@@ -369,7 +463,100 @@ class _Rejecting:
 
 
 def _spool(state: Path) -> Spool:
-    return Spool.for_origin("https://filesystem.example/api", SpoolConfig(state_path=state))
+    return Spool.for_origin(
+        "https://filesystem.example/api",
+        SpoolConfig(state_path=state),
+    ).bind_credential(_CREDENTIAL)
+
+
+def _assert_corrupt_inventory(
+    status: SpoolStatus,
+    inventory: tuple[SpoolEntry, ...],
+    sequence: int | None,
+) -> None:
+    assert status.health == "degraded"
+    assert status.chain_status == "degraded"
+    assert status.reason_codes == ("corrupt_record",)
+    assert status.quarantine_count == 1
+    assert len(inventory) == 1
+    assert inventory[0].sequence == sequence
+    assert inventory[0].command_id is None
+    assert inventory[0].operation_id is None
+    assert inventory[0].reason_code == "corrupt_record"
+    assert inventory[0].artifact_digest is not None
+
+
+def _assert_wrong_corrupt_dispositions(
+    spool: Spool,
+    sequence: int | None,
+    inventory: SpoolEntry,
+) -> None:
+    with pytest.raises(SpoolError) as wrong_sequence:
+        spool.discard(
+            (sequence or 0) + 1,
+            "wrong sequence",
+            artifact_digest=inventory.artifact_digest,
+        )
+    assert wrong_sequence.value.code == "invalid_disposition"
+    with pytest.raises(SpoolError) as wrong_digest:
+        spool.discard(
+            sequence or 0,
+            "wrong digest",
+            artifact_digest="0" * 64,
+        )
+    assert wrong_digest.value.code == "invalid_disposition"
+
+
+def _rollback_command(command_id: UUID, body: str) -> SpoolCommand:
+    return SpoolCommand(
+        operation_id="createTicket",
+        command_id=command_id,
+        request_body={"body": body},
+    )
+
+
+def _expected_plaintext(
+    command: SpoolCommand,
+    entry: SpoolEntry,
+    status: SpoolStatus,
+) -> bytes:
+    assert entry.enqueued_at is not None
+    assert entry.expires_at is not None
+    semantic = {
+        "operation_id": command.operation_id,
+        "path_parameters": command.path_parameters,
+        "request_body": command.request_body,
+    }
+    payload = {
+        **semantic,
+        "command_id": str(command.command_id),
+        "credential_binding": "0" * 64,
+        "enqueued_at": _utc_text(entry.enqueued_at),
+        "expires_at": _utc_text(entry.expires_at),
+        "origin_digest": status.origin_digest,
+        "schema_version": 2,
+        "semantic_request_digest": hashlib.sha256(_canonical_json(semantic)).hexdigest(),
+    }
+    return _canonical_json(payload)
+
+
+def _canonical_json(value: object) -> bytes:
+    return json.dumps(
+        value,
+        allow_nan=False,
+        ensure_ascii=False,
+        separators=(",", ":"),
+        sort_keys=True,
+    ).encode("utf-8")
+
+
+def _utc_text(value: datetime) -> str:
+    return value.astimezone(UTC).isoformat(timespec="microseconds").replace("+00:00", "Z")
+
+
+def _xor(left: bytes, right: bytes) -> bytes:
+    assert len(left) == len(right)
+    return bytes(first ^ second for first, second in zip(left, right, strict=True))
 
 
 def _command(body: _JsonObject | None = None) -> SpoolCommand:

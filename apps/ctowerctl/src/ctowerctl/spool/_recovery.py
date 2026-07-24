@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from dataclasses import dataclass
+import hashlib
 from datetime import UTC, datetime
 from typing import cast
 from uuid import UUID, uuid4
@@ -10,6 +10,12 @@ from uuid import UUID, uuid4
 from pydantic import BaseModel, ValidationError
 
 from ctowerctl.spool import _keyring
+from ctowerctl.spool._chain import (
+    ChainError,
+    CorruptRecord,
+    RecoveredRecord,
+    validate_record_chain,
+)
 from ctowerctl.spool._crypto import (
     FORMAT_VERSION,
     GENESIS_HASH,
@@ -29,6 +35,7 @@ from ctowerctl.spool._models import (
     AcceptedReceipt,
     CommandEnvelope,
     CompactionAnchor,
+    CorruptDisposition,
     Disposition,
     Head,
     Metadata,
@@ -41,6 +48,8 @@ __all__ = [
     "AcceptedReceipt",
     "CommandEnvelope",
     "CompactionAnchor",
+    "CorruptDisposition",
+    "CorruptRecord",
     "Disposition",
     "QuarantineReceipt",
     "RecoveredRecord",
@@ -56,11 +65,9 @@ __all__ = [
 class RecoveryError(RuntimeError):
     """The spool cannot safely infer one durable state."""
 
-
-@dataclass(frozen=True, slots=True)
-class RecoveredRecord:
-    stored: StoredFile
-    opened: OpenedRecord
+    def __init__(self, message: str, *, code: str = "chain_integrity") -> None:
+        super().__init__(message)
+        self.code = code
 
 
 class Session:
@@ -73,6 +80,7 @@ class Session:
         head: Head,
         keys: KeySet,
         records: list[RecoveredRecord],
+        corrupt_records: tuple[CorruptRecord, ...],
         *,
         maximum_record_bytes: int,
         torn_evidence: int,
@@ -82,6 +90,7 @@ class Session:
         self.head = head
         self.keys = keys
         self.records = records
+        self.corrupt_records = corrupt_records
         self.maximum_record_bytes = maximum_record_bytes
         self.torn_evidence = torn_evidence
 
@@ -91,6 +100,8 @@ class Session:
         directory: DirectoryName,
         payload: BaseModel,
     ) -> RecoveredRecord:
+        if self.corrupt_records and record_type != RecordType.CORRUPT_DISPOSITION:
+            raise RecoveryError("corrupt quarantine requires explicit disposition")
         sequence = self.head.sequence + 1
         body = cast(JsonObject, payload.model_dump(mode="json"))
         sealed = seal_record(
@@ -150,6 +161,28 @@ class Session:
     def command(self, sequence: int) -> RecoveredRecord | None:
         return next((item for item in self.commands() if item.stored.sequence == sequence), None)
 
+    def corrupt_command(self, sequence: int) -> CorruptRecord | None:
+        return next(
+            (item for item in self.corrupt_records if item.stored.sequence == sequence),
+            None,
+        )
+
+    def verify_corrupt_artifact(self, corrupt: CorruptRecord) -> None:
+        data = self.store.read_file(corrupt.stored, maximum=self.maximum_record_bytes)
+        if (
+            len(data) != corrupt.stored.size
+            or hashlib.sha256(data).hexdigest() != corrupt.artifact_digest
+        ):
+            raise RecoveryError("corrupt artifact changed before disposition")
+
+    def verify_doctor_state(self) -> None:
+        """Require evidence-free state for the non-mutating doctor result."""
+
+        if self.torn_evidence:
+            raise RecoveryError("torn-write evidence requires explicit disposition")
+        if self.corrupt_records:
+            raise RecoveryError("corrupt quarantine requires explicit disposition")
+
 
 def recover_session(
     store: LockedStore,
@@ -163,7 +196,7 @@ def recover_session(
     metadata, keys = _load_or_create_metadata(store, origin_digest)
     head = _load_or_create_head(store, keys)
     temporary_count = store.recover_temps() if repair else store.temporary_count()
-    recovered = _open_records(
+    recovered, discovered_corrupt = _open_records(
         store,
         metadata,
         keys,
@@ -171,13 +204,21 @@ def recover_session(
         repair=repair,
     )
     recovered = _recover_compaction(store, recovered, repair=repair)
-    head = _validate_chain(store, keys, head, recovered, repair=repair)
+    head, active_corrupt = _validate_chain(
+        store,
+        keys,
+        head,
+        recovered,
+        discovered_corrupt,
+        repair=repair,
+    )
     session = Session(
         store,
         metadata,
         head,
         keys,
         recovered,
+        active_corrupt,
         maximum_record_bytes=maximum_record_bytes,
         torn_evidence=store.quarantine_evidence_count() + (0 if repair else temporary_count),
     )
@@ -281,24 +322,64 @@ def _open_records(
     maximum_record_bytes: int,
     *,
     repair: bool,
-) -> list[RecoveredRecord]:
+) -> tuple[list[RecoveredRecord], list[CorruptRecord]]:
     recovered: list[RecoveredRecord] = []
+    corrupt: list[CorruptRecord] = []
     for stored in store.scan_records():
-        try:
-            opened = open_record(
-                store.read_file(stored, maximum=maximum_record_bytes),
-                keys,
-                metadata.key_id,
-            )
-        except (CryptoError, StorageError) as error:
-            if repair and stored.directory == "pending":
-                store.move(stored, "quarantine")
-            raise RecoveryError("spool record is corrupt; ordered replay is blocked") from error
-        if opened.header.sequence != stored.sequence or opened.header.record_type != stored.kind:
-            raise RecoveryError("record filename does not match its authenticated header")
-        _validate_location(stored)
-        recovered.append(RecoveredRecord(stored=stored, opened=opened))
-    return recovered
+        result = _open_stored_record(
+            store,
+            stored,
+            metadata,
+            keys,
+            maximum_record_bytes,
+            repair=repair,
+        )
+        if isinstance(result, CorruptRecord):
+            corrupt.append(result)
+        else:
+            recovered.append(result)
+    return recovered, corrupt
+
+
+def _open_stored_record(
+    store: LockedStore,
+    stored: StoredFile,
+    metadata: Metadata,
+    keys: KeySet,
+    maximum_record_bytes: int,
+    *,
+    repair: bool,
+) -> RecoveredRecord | CorruptRecord:
+    try:
+        data = store.read_file(stored, maximum=maximum_record_bytes)
+    except StorageError as error:
+        raise RecoveryError("spool record cannot be read safely") from error
+    try:
+        opened = open_record(data, keys, metadata.key_id)
+    except CryptoError as error:
+        return _corrupt_record(store, stored, data, error, repair=repair)
+    if opened.header.sequence != stored.sequence or opened.header.record_type != stored.kind:
+        raise RecoveryError("record filename does not match its authenticated header")
+    _validate_location(stored)
+    return RecoveredRecord(stored=stored, opened=opened)
+
+
+def _corrupt_record(
+    store: LockedStore,
+    stored: StoredFile,
+    data: bytes,
+    cause: CryptoError,
+    *,
+    repair: bool,
+) -> CorruptRecord:
+    if stored.kind != "command" or stored.directory not in {"pending", "quarantine"}:
+        raise RecoveryError("non-command spool record is corrupt; recovery is blocked") from cause
+    if repair and stored.directory == "pending":
+        stored = store.move(stored, "quarantine")
+    return CorruptRecord(
+        stored=stored,
+        artifact_digest=hashlib.sha256(data).hexdigest(),
+    )
 
 
 def _validate_chain(
@@ -306,26 +387,57 @@ def _validate_chain(
     keys: KeySet,
     head: Head,
     records: list[RecoveredRecord],
+    corrupt: list[CorruptRecord],
+    *,
+    repair: bool,
+) -> tuple[Head, tuple[CorruptRecord, ...]]:
+    if not records and not corrupt:
+        return _empty_chain(head)
+    try:
+        validation = validate_record_chain(records, corrupt, head)
+    except ChainError as error:
+        raise RecoveryError(str(error), code=error.code) from error
+    last_sequence = max(
+        [item.stored.sequence for item in records] + [item.stored.sequence for item in corrupt]
+    )
+    head = _recover_head(
+        store,
+        keys,
+        head,
+        validation.logical_hashes,
+        last_sequence,
+        repair=repair,
+    )
+    return head, validation.active_corrupt
+
+
+def _empty_chain(head: Head) -> tuple[Head, tuple[CorruptRecord, ...]]:
+    if head.sequence != 0 or head.record_hash != GENESIS_HASH:
+        raise RecoveryError("spool head names a missing durable record")
+    return head, ()
+
+
+def _recover_head(
+    store: LockedStore,
+    keys: KeySet,
+    head: Head,
+    logical_hashes: dict[int, str],
+    last_sequence: int,
     *,
     repair: bool,
 ) -> Head:
-    if not records:
-        if head.sequence != 0 or head.record_hash != GENESIS_HASH:
-            raise RecoveryError("spool head names a missing durable record")
-        return head
-    _validate_record_chain(records)
-    if head.sequence > records[-1].stored.sequence:
+    if head.sequence > last_sequence:
         raise RecoveryError("spool head names a missing durable record")
-    if not _head_matches_record(head, records):
+    if not _head_matches_record(head, logical_hashes):
         raise RecoveryError("spool head does not match its durable record")
-    if head.sequence == records[-1].stored.sequence:
+    if head.sequence == last_sequence:
         return head
     if not repair:
         raise RecoveryError("spool head recovery is required")
     next_head = Head(
         format_version=FORMAT_VERSION,
-        sequence=records[-1].stored.sequence,
-        record_hash=records[-1].opened.record_hash,
+        sequence=last_sequence,
+        record_hash=logical_hashes[last_sequence],
     )
     store.write_control(
         "head",
@@ -366,68 +478,10 @@ def _recover_compaction(
     return records
 
 
-def _validate_record_chain(records: list[RecoveredRecord]) -> None:
-    first = records[0]
-    expected_sequence, predecessor = _chain_start(first)
-    discarded = _discarded_hashes(records)
-    for record in records:
-        if record.stored.sequence != expected_sequence:
-            expected_sequence, predecessor = _bridge_discarded_command(
-                expected_sequence,
-                predecessor,
-                record,
-                discarded,
-            )
-        if record.opened.header.predecessor_hash != predecessor:
-            raise RecoveryError("durable record predecessor chain is broken")
-        predecessor = record.opened.record_hash
-        expected_sequence += 1
-
-
-def _chain_start(first: RecoveredRecord) -> tuple[int, str]:
-    if first.stored.sequence == 1:
-        return 1, GENESIS_HASH
-    if first.opened.header.record_type != "anchor":
-        return 1, GENESIS_HASH
-    anchor = _payload(first, CompactionAnchor)
-    if anchor.covered_from != 1 or anchor.covered_through != first.stored.sequence - 1:
-        raise RecoveryError("compaction anchor does not cover the missing prefix")
-    return first.stored.sequence, anchor.terminal_hash
-
-
-def _discarded_hashes(records: list[RecoveredRecord]) -> dict[int, str]:
-    discarded: dict[int, str] = {}
-    for record in records:
-        if record.opened.header.record_type != "disposition":
-            continue
-        disposition = _payload(record, Disposition)
-        if disposition.action == "discard":
-            discarded[disposition.command_sequence] = disposition.command_hash
-    return discarded
-
-
-def _bridge_discarded_command(
-    expected_sequence: int,
-    predecessor: str,
-    record: RecoveredRecord,
-    discarded: dict[int, str],
-) -> tuple[int, str]:
-    del predecessor
-    discarded_hash = discarded.get(expected_sequence)
-    if (
-        record.stored.sequence != expected_sequence + 1
-        or discarded_hash is None
-        or record.opened.header.predecessor_hash != discarded_hash
-    ):
-        raise RecoveryError("durable record sequence contains an unexplained gap")
-    return record.stored.sequence, discarded_hash
-
-
-def _head_matches_record(head: Head, records: list[RecoveredRecord]) -> bool:
+def _head_matches_record(head: Head, logical_hashes: dict[int, str]) -> bool:
     if head.sequence == 0:
         return head.record_hash == GENESIS_HASH
-    matching = next((item for item in records if item.stored.sequence == head.sequence), None)
-    return matching is not None and matching.opened.record_hash == head.record_hash
+    return logical_hashes.get(head.sequence) == head.record_hash
 
 
 def _recover_transitions(session: Session, *, repair: bool) -> None:
@@ -506,6 +560,7 @@ def _validate_location(stored: StoredFile) -> None:
         "accepted_receipt": frozenset({"accepted"}),
         "quarantine_receipt": frozenset({"quarantine"}),
         "disposition": frozenset({"quarantine"}),
+        "corrupt_disposition": frozenset({"quarantine"}),
         "anchor": frozenset({"anchors"}),
     }
     if stored.directory not in expected[stored.kind]:

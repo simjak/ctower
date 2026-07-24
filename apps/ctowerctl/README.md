@@ -14,6 +14,14 @@ origin-scoped, owner-only, sequence/hash chained, and keyed only through an allo
 credential backend. On Linux the development path requires an active D-Bus session, Secret Service, and an
 unlocked collection. There is no plaintext, file, environment, or `keyrings.alt` fallback. A missing or
 locked keyring exits `74` before enqueue/send and does not change existing ciphertext; reads can continue.
+Each command also carries only a keyed opaque identity for the stdin credential used at enqueue. Replay
+compares the current stdin credential before every send. Rotation or a different principal quarantines the
+old command with zero network sends; restore the original identity and explicitly retry, or discard and
+re-enqueue under the new identity.
+
+Corrupt command ciphertext remains visible as a bounded quarantine row with its sequence, byte count, and
+artifact digest. It blocks replay until an operator discards that exact sequence and digest. The disposition
+is authenticated and append-only; the corrupt ciphertext remains as local audit evidence.
 
 Exit meanings are stable: `0` read/accepted, `64` usage/input, `69` permanent rejection or quarantine,
 `74` local/keyring/integrity failure, and `75` queued, unreachable, or `durability_pending`. Exit `75` never

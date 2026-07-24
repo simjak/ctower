@@ -14,7 +14,7 @@ from uuid import UUID
 from pydantic import BaseModel, ConfigDict, Field
 
 if TYPE_CHECKING:
-    from ctowerctl.spool._recovery import RecoveredRecord, Session
+    from ctowerctl.spool._recovery import CorruptRecord, RecoveredRecord, Session
 
 __all__ = [
     "JsonObject",
@@ -24,6 +24,7 @@ __all__ = [
     "SpoolState",
     "SpoolStatus",
     "canonical_json",
+    "corrupt_entry",
     "digest_json",
     "discarded_entry",
     "doctor_failure",
@@ -86,6 +87,7 @@ class SpoolEntry(_BoundaryModel):
     expires_at: datetime | None
     bytes: Annotated[int, Field(ge=0)]
     reason_code: str | None = None
+    artifact_digest: Annotated[str, Field(pattern=r"^[0-9a-f]{64}$")] | None = None
 
 
 class SpoolStatus(_BoundaryModel):
@@ -155,7 +157,10 @@ def reason_digest(reason: str) -> str:
 def spool_status(session: Session, origin_digest: str) -> SpoolStatus:
     """Build a redacted status from a verified session."""
 
-    entries = tuple(spool_entry(item, session) for item in session.commands())
+    entries = (
+        *(spool_entry(item, session) for item in session.commands()),
+        *(corrupt_entry(item) for item in session.corrupt_records),
+    )
     pending = tuple(item for item in entries if item.state is SpoolState.PENDING)
     accepted = tuple(item for item in entries if item.state is SpoolState.ACCEPTED_ARCHIVE)
     quarantined = tuple(item for item in entries if item.state is SpoolState.QUARANTINE)
@@ -179,7 +184,7 @@ def spool_status(session: Session, origin_digest: str) -> SpoolStatus:
             default=None,
         ),
         keyring_available=True,
-        chain_status="healthy",
+        chain_status="degraded" if session.corrupt_records else "healthy",
         reason_codes=reasons,
     )
 
@@ -202,6 +207,22 @@ def spool_entry(record: RecoveredRecord, session: Session) -> SpoolEntry:
         expires_at=_parse_utc(_string_field(payload, "expires_at")),
         bytes=record.stored.size,
         reason_code=_quarantine_reason(session, record),
+    )
+
+
+def corrupt_entry(record: CorruptRecord) -> SpoolEntry:
+    """Expose bounded exact ciphertext evidence without trusting plaintext."""
+
+    return SpoolEntry(
+        sequence=record.stored.sequence,
+        command_id=None,
+        operation_id=None,
+        state=SpoolState.QUARANTINE,
+        enqueued_at=None,
+        expires_at=None,
+        bytes=record.stored.size,
+        reason_code="corrupt_record",
+        artifact_digest=record.artifact_digest,
     )
 
 

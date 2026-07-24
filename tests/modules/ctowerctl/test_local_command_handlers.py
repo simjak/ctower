@@ -159,7 +159,7 @@ def test_local_spool_applies_explicit_dispositions(spool_harness: _FakeSpool) ->
     assert disposition.model_dump() == {"action": "discard", "sequence": _SEQUENCE}
     assert code is ExitCode.SUCCESS
     assert spool.retry_calls == [(_SEQUENCE, "Retry after inspection.")]
-    assert spool.discard_calls == [(_SEQUENCE, "Discard after inspection.")]
+    assert spool.discard_calls == [(_SEQUENCE, "Discard after inspection.", None)]
 
 
 def test_local_spool_maps_drain_outcomes_and_refuses_unknown(
@@ -181,6 +181,7 @@ def test_local_spool_maps_drain_outcomes_and_refuses_unknown(
         assert result == report
         assert code is expected_code
     assert spool.drain_calls == len(reports)
+    assert spool.binding_calls == ["ephemeral-authority"] * len(reports)
 
     with pytest.raises(ValueError, match="unsupported local spool command"):
         _spool_commands.execute(
@@ -392,7 +393,8 @@ class _FakeSpool:
         self.drain_result = _drain_report(remaining=0, barrier=None)
         self.list_calls: list[tuple[SpoolState | None, int]] = []
         self.retry_calls: list[tuple[int, str]] = []
-        self.discard_calls: list[tuple[int, str]] = []
+        self.discard_calls: list[tuple[int, str, str | None]] = []
+        self.binding_calls: list[str] = []
         self.drain_calls = 0
 
     def status(self) -> SpoolStatus:
@@ -414,8 +416,18 @@ class _FakeSpool:
         self.retry_calls.append((sequence, reason))
         return self.entries[0]
 
-    def discard(self, sequence: int, reason: str) -> None:
-        self.discard_calls.append((sequence, reason))
+    def bind_credential(self, credential: str) -> _FakeSpool:
+        self.binding_calls.append(credential)
+        return self
+
+    def discard(
+        self,
+        sequence: int,
+        reason: str,
+        *,
+        artifact_digest: str | None = None,
+    ) -> None:
+        self.discard_calls.append((sequence, reason, artifact_digest))
 
     def drain(self, _executor: object) -> DrainReport:
         self.drain_calls += 1
@@ -523,6 +535,7 @@ def _local_arguments(command: str, **overrides: object) -> argparse.Namespace:
         "limit": 100,
         "sequence": _SEQUENCE,
         "reason": "Operator disposition.",
+        "artifact_digest": None,
     }
     values.update(overrides)
     return argparse.Namespace(**values)

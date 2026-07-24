@@ -36,7 +36,8 @@ _DIRECTORIES: Final[tuple[DirectoryName, ...]] = (
 )
 _RECORD_NAME = re.compile(
     r"^(?P<sequence>[0-9]{20})\."
-    r"(?P<kind>command|accepted_receipt|quarantine_receipt|disposition|anchor)\.rec$"
+    r"(?P<kind>command|accepted_receipt|quarantine_receipt|disposition|"
+    r"corrupt_disposition|anchor)\.rec$"
 )
 _TEMP_NAME = re.compile(r"^\.(?:record|control)-[a-f0-9-]{36}\.tmp$")
 _EVIDENCE_NAME = re.compile(r"^torn-[a-f0-9-]{36}\.evidence$")

@@ -133,7 +133,7 @@ def _execute_mutation(
         request_body=_model_payload(payload.request),
         command_id=command_id,
     )
-    spool = Spool.for_origin(base_url)
+    spool = Spool.for_origin(base_url).bind_credential(credential)
     spool.enqueue(command)
     with CtowerClient(base_url, credential=credential) as client:
         executor = GeneratedReplayExecutor(client)

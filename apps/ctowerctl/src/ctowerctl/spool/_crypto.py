@@ -5,15 +5,24 @@ from __future__ import annotations
 import base64
 import hashlib
 import hmac
+import secrets
 from dataclasses import dataclass
 from enum import StrEnum
 from typing import Annotated, Final, Literal, cast
 from uuid import UUID
 
+from cryptography.exceptions import InvalidTag
 from cryptography.hazmat.primitives import hashes
 from cryptography.hazmat.primitives.ciphers.aead import AESGCM
 from cryptography.hazmat.primitives.kdf.hkdf import HKDF
-from pydantic import BaseModel, ConfigDict, Field, TypeAdapter, ValidationError
+from pydantic import (
+    BaseModel,
+    ConfigDict,
+    Field,
+    TypeAdapter,
+    ValidationError,
+    model_validator,
+)
 
 from ctowerctl.spool._redaction import JsonObject, canonical_json
 
@@ -37,6 +46,9 @@ FORMAT_VERSION: Final = 1
 GENESIS_HASH = "0" * 64
 _MASTER_KEY_BYTES = 32
 _GCM_TAG_BYTES = 16
+_GCM_NONCE_BYTES = 12
+_LEGACY_RECORD_FORMAT: Final = 1
+_RANDOM_NONCE_RECORD_FORMAT: Final = 2
 _JSON_OBJECT: TypeAdapter[JsonObject] = TypeAdapter(JsonObject)
 
 
@@ -47,6 +59,7 @@ class RecordType(StrEnum):
     ACCEPTED_RECEIPT = "accepted_receipt"
     QUARANTINE_RECEIPT = "quarantine_receipt"
     DISPOSITION = "disposition"
+    CORRUPT_DISPOSITION = "corrupt_disposition"
     ANCHOR = "anchor"
 
 
@@ -59,14 +72,20 @@ class _DiskModel(BaseModel):
 
 
 class RecordHeader(_DiskModel):
-    format_version: Literal[1]
+    format_version: Literal[1, 2]
     record_type: RecordType
     sequence: Annotated[int, Field(ge=1)]
     predecessor_hash: Annotated[str, Field(pattern=r"^[0-9a-f]{64}$")]
     key_id: Annotated[str, Field(pattern=r"^[0-9a-f]{32}$")]
     nonce: str
     ciphertext_length: Annotated[int, Field(ge=1)]
-    ciphertext_sha256: Annotated[str, Field(pattern=r"^[0-9a-f]{64}$")]
+    ciphertext_sha256: Annotated[str, Field(pattern=r"^[0-9a-f]{64}$")] | None = None
+
+    @model_validator(mode="after")
+    def _validate_versioned_digest(self) -> RecordHeader:
+        if (self.format_version == _LEGACY_RECORD_FORMAT) != (self.ciphertext_sha256 is not None):
+            raise ValueError("record ciphertext digest does not match format version")
+        return self
 
 
 class _RecordDocument(_DiskModel):
@@ -85,7 +104,8 @@ class KeySet:
 
     encryption: bytes
     metadata_mac: bytes
-    nonce: bytes
+    legacy_nonce: bytes
+    credential_binding: bytes
 
 
 @dataclass(frozen=True, slots=True)
@@ -118,14 +138,19 @@ def key_id(master_key: bytes) -> str:
 
 
 def derive_keys(master_key: bytes, spool_uuid: UUID) -> KeySet:
-    """Derive independent AES, metadata-MAC, and deterministic-nonce keys."""
+    """Derive independent encryption, metadata, legacy, and identity keys."""
 
     _require_master_key(master_key)
     salt = spool_uuid.bytes
     return KeySet(
         encryption=_derive(master_key, salt, b"ctower-spool/v1/aes-256-gcm"),
         metadata_mac=_derive(master_key, salt, b"ctower-spool/v1/metadata-hmac"),
-        nonce=_derive(master_key, salt, b"ctower-spool/v1/nonce-hmac"),
+        legacy_nonce=_derive(master_key, salt, b"ctower-spool/v1/nonce-hmac"),
+        credential_binding=_derive(
+            master_key,
+            salt,
+            b"ctower-spool/v1/enqueue-credential-binding",
+        ),
     )
 
 
@@ -140,32 +165,22 @@ def seal_record(
 ) -> SealedRecord:
     """Encrypt one sequence/type-bound record and authenticate its clear header."""
 
-    nonce = _nonce(keys.nonce, sequence, record_type)
+    nonce = secrets.token_bytes(_GCM_NONCE_BYTES)
     plaintext = canonical_json(payload)
-    provisional = _header(
-        record_type,
-        sequence,
-        predecessor_hash,
-        key_identifier,
-        nonce,
-        ciphertext=AESGCM(keys.encryption).encrypt(nonce, plaintext, b""),
-    )
-    # GCM's encrypted body is independent of AAD; only its authentication tag changes.
-    # Binding the body digest breaks the otherwise circular "digest in AAD" dependency.
-    ciphertext = AESGCM(keys.encryption).encrypt(
-        nonce,
-        plaintext,
-        canonical_json(cast(JsonObject, provisional.model_dump(mode="json"))),
-    )
     header = _header(
         record_type,
         sequence,
         predecessor_hash,
         key_identifier,
         nonce,
-        ciphertext=ciphertext,
+        ciphertext_length=len(plaintext) + _GCM_TAG_BYTES,
     )
     header_bytes = canonical_json(cast(JsonObject, header.model_dump(mode="json")))
+    ciphertext = AESGCM(keys.encryption).encrypt(
+        nonce,
+        plaintext,
+        header_bytes,
+    )
     record_hash = hashlib.sha256(header_bytes + b"\n" + ciphertext).hexdigest()
     document = _RecordDocument(
         header=header,
@@ -189,16 +204,15 @@ def open_record(data: bytes, keys: KeySet, expected_key_id: str) -> OpenedRecord
     header = document.header
     if header.key_id != expected_key_id:
         raise CryptoError("record key identity does not match metadata")
-    expected_nonce = _nonce(keys.nonce, header.sequence, header.record_type)
     encoded_nonce = _decode_nonce(header.nonce)
-    _verify_nonce(encoded_nonce, expected_nonce)
+    _verify_nonce(encoded_nonce, header, keys)
     _verify_ciphertext(ciphertext, header)
     header_bytes = canonical_json(cast(JsonObject, header.model_dump(mode="json")))
     record_hash = hashlib.sha256(header_bytes + b"\n" + ciphertext).hexdigest()
     try:
         plaintext = AESGCM(keys.encryption).decrypt(encoded_nonce, ciphertext, header_bytes)
         payload = _JSON_OBJECT.validate_json(plaintext, strict=True)
-    except (ValueError, ValidationError) as error:
+    except (InvalidTag, ValueError, ValidationError) as error:
         raise CryptoError("record authentication or payload validation failed") from error
     return OpenedRecord(header=header, payload=payload, record_hash=record_hash)
 
@@ -210,17 +224,22 @@ def _decode_nonce(value: str) -> bytes:
         raise CryptoError("record nonce encoding is invalid") from error
 
 
-def _verify_nonce(encoded: bytes, expected: bytes) -> None:
-    if not hmac.compare_digest(encoded, expected):
-        raise CryptoError("record nonce is not sequence/type bound")
+def _verify_nonce(encoded: bytes, header: RecordHeader, keys: KeySet) -> None:
+    if len(encoded) != _GCM_NONCE_BYTES:
+        raise CryptoError("record nonce must contain exactly 96 bits")
+    if header.format_version == _LEGACY_RECORD_FORMAT:
+        expected = _legacy_nonce(keys.legacy_nonce, header.sequence, header.record_type)
+        if not hmac.compare_digest(encoded, expected):
+            raise CryptoError("legacy record nonce is not sequence/type bound")
 
 
 def _verify_ciphertext(ciphertext: bytes, header: RecordHeader) -> None:
     if len(ciphertext) != header.ciphertext_length:
         raise CryptoError("record ciphertext length does not match")
-    digest = hashlib.sha256(ciphertext[:-_GCM_TAG_BYTES]).hexdigest()
-    if not hmac.compare_digest(digest, header.ciphertext_sha256):
-        raise CryptoError("record ciphertext digest does not match")
+    if header.format_version == _LEGACY_RECORD_FORMAT:
+        digest = hashlib.sha256(ciphertext[:-_GCM_TAG_BYTES]).hexdigest()
+        if not hmac.compare_digest(digest, cast(str, header.ciphertext_sha256)):
+            raise CryptoError("legacy record ciphertext digest does not match")
 
 
 def sign_document(body: JsonObject, key: bytes) -> bytes:
@@ -260,21 +279,21 @@ def _header(
     key_identifier: str,
     nonce: bytes,
     *,
-    ciphertext: bytes,
+    ciphertext_length: int,
 ) -> RecordHeader:
     return RecordHeader(
-        format_version=FORMAT_VERSION,
+        format_version=_RANDOM_NONCE_RECORD_FORMAT,
         record_type=record_type,
         sequence=sequence,
         predecessor_hash=predecessor_hash,
         key_id=key_identifier,
         nonce=base64.b64encode(nonce).decode("ascii"),
-        ciphertext_length=len(ciphertext),
-        ciphertext_sha256=hashlib.sha256(ciphertext[:-_GCM_TAG_BYTES]).hexdigest(),
+        ciphertext_length=ciphertext_length,
+        ciphertext_sha256=None,
     )
 
 
-def _nonce(nonce_key: bytes, sequence: int, record_type: RecordType) -> bytes:
+def _legacy_nonce(nonce_key: bytes, sequence: int, record_type: RecordType) -> bytes:
     if sequence < 1:
         raise CryptoError("record sequence must be positive")
     material = (

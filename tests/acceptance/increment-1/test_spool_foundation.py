@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import json
 import os
+import shutil
 import stat
 import sys
 import types
@@ -30,6 +31,7 @@ type _JsonValue = _JsonScalar | list[_JsonValue] | dict[str, _JsonValue]
 type _JsonObject = dict[str, _JsonValue]
 
 _TWO_COMMANDS = 2
+_CREDENTIAL = "synthetic-foundation-identity"
 
 
 class _MemoryBackend:
@@ -232,6 +234,75 @@ def test_permanent_rejection_is_ordering_barrier_with_retry_and_discard(
     )
 
 
+def test_consecutive_discard_tombstones_bridge_chain_and_missing_or_forged_refuse(
+    tmp_path: Path,
+    secure_keyring: _MemoryBackend,
+) -> None:
+    del secure_keyring
+    state = tmp_path / "state"
+    spool = _spool(state)
+    first = spool.enqueue(_command(uuid4(), {"title": "first"}))
+    second = spool.enqueue(_command(uuid4(), {"title": "second"}))
+    rejected = ReplayResponse(status_code=422, problem_code="schema_rejected")
+
+    assert spool.drain(_Executor(rejected)).barrier_sequence == first.sequence
+    spool.discard(first.sequence or 0, "replace first")
+    assert spool.drain(_Executor(rejected)).barrier_sequence == second.sequence
+    spool.discard(second.sequence or 0, "replace second")
+
+    assert spool.list_entries() == ()
+    assert spool.doctor().healthy
+    third = spool.enqueue(_command(uuid4(), {"title": "third"}))
+    assert spool.drain(_Accepting()).accepted == 1
+    assert third.sequence is not None
+    assert spool.doctor().healthy
+
+    missing = tmp_path / "missing"
+    forged = tmp_path / "forged"
+    shutil.copytree(state, missing)
+    shutil.copytree(state, forged)
+    missing_tombstone = sorted(
+        _origin_root(missing).joinpath("quarantine").glob("*.disposition.rec")
+    )[0]
+    missing_tombstone.unlink()
+    assert _unbound_spool(missing).status().reason_codes == ("chain_integrity",)
+
+    forged_tombstone = sorted(
+        _origin_root(forged).joinpath("quarantine").glob("*.disposition.rec")
+    )[0]
+    forged_bytes = bytearray(forged_tombstone.read_bytes())
+    forged_bytes[len(forged_bytes) // 2] ^= 1
+    forged_tombstone.write_bytes(forged_bytes)
+    assert _unbound_spool(forged).status().reason_codes == ("chain_integrity",)
+
+
+def test_replay_credential_identity_mismatch_is_zero_send_and_recoverable(
+    tmp_path: Path,
+    secure_keyring: _MemoryBackend,
+) -> None:
+    del secure_keyring
+    state = tmp_path / "state"
+    original = _spool(state)
+    command = original.enqueue(_command(uuid4(), {"title": "identity-bound"}))
+    rotated = _unbound_spool(state).bind_credential("synthetic-rotated-identity")
+    executor = _Accepting()
+
+    refused = rotated.drain(executor)
+
+    assert refused.attempted == 0
+    assert refused.quarantined == 1
+    assert refused.reason_code == "credential_identity_mismatch"
+    assert executor.calls == []
+    assert original.list_entries()[0].reason_code == "credential_identity_mismatch"
+    original.retry(command.sequence or 0, "original identity restored")
+    accepted = _Accepting()
+    assert original.drain(accepted).accepted == 1
+    assert [item.command_id for item in accepted.calls] == [command.command_id]
+    corpus = _all_spool_bytes(state)
+    assert _CREDENTIAL.encode() not in corpus
+    assert b"synthetic-rotated-identity" not in corpus
+
+
 def test_missing_or_unapproved_keyring_fails_state_unknown_without_moving_ciphertext(
     tmp_path: Path,
     secure_keyring: _MemoryBackend,
@@ -281,12 +352,12 @@ def test_bounded_count_and_record_size_refuse_before_another_append(
         max_command_bytes=64 * 1024,
         max_live_bytes=1024 * 1024,
     )
-    spool = Spool.for_origin("https://example.test", config)
+    spool = Spool.for_origin("https://example.test", config).bind_credential(_CREDENTIAL)
     spool.enqueue(_command(uuid4(), {"title": "one"}))
     with pytest.raises(SpoolError) as count_error:
         spool.enqueue(_command(uuid4(), {"title": "two"}))
     assert count_error.value.code == "capacity_count"
-    large = Spool.for_origin("https://large.example", config)
+    large = Spool.for_origin("https://large.example", config).bind_credential(_CREDENTIAL)
     with pytest.raises(SpoolError) as size_error:
         large.enqueue(_command(uuid4(), {"body": "x" * (64 * 1024)}))
     assert size_error.value.code == "command_too_large"
@@ -300,7 +371,14 @@ def _install_keyring(monkeypatch: pytest.MonkeyPatch, backend: object) -> None:
 
 
 def _spool(state: Path) -> Spool:
-    return Spool.for_origin("https://example.test/api", SpoolConfig(state_path=state))
+    return _unbound_spool(state).bind_credential(_CREDENTIAL)
+
+
+def _unbound_spool(state: Path) -> Spool:
+    return Spool.for_origin(
+        "https://example.test/api",
+        SpoolConfig(state_path=state),
+    )
 
 
 def _command(command_id: UUID, body: _JsonObject) -> SpoolCommand:
