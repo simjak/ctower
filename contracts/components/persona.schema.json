@@ -1,0 +1,14 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://ctower.local/contracts/components/persona.schema.json",
+  "title": "PersonaComponent",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema", "key", "display_name", "instructions_digest"],
+  "properties": {
+    "schema": { "const": "ctower.persona/v1" },
+    "key": { "type": "string", "pattern": "^[a-z][a-z0-9.-]{2,127}$" },
+    "display_name": { "type": "string", "minLength": 1, "maxLength": 128 },
+    "instructions_digest": { "type": "string", "pattern": "^sha256:[0-9a-f]{64}$" }
+  }
+}

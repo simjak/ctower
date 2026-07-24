@@ -8,12 +8,18 @@
   "properties": {
     "kind": {
       "type": "string",
-      "enum": ["ticket.created", "ticket.custody_transferred", "work.changed"]
+      "enum": [
+        "ticket.created",
+        "ticket.custody_transferred",
+        "ticket.comment_added",
+        "work.changed"
+      ]
     },
     "data": {
       "oneOf": [
         {"$ref": "#/$defs/ticketCreated"},
         {"$ref": "#/$defs/custodyTransferred"},
+        {"$ref": "#/$defs/commentAdded"},
         {"$ref": "../events/event-envelope.schema.json#/$defs/workChanged"}
       ]
     }
@@ -39,6 +45,16 @@
         "from_custodian_id": {"type": "string", "format": "uuid"},
         "reason": {"type": "string", "minLength": 1, "maxLength": 500},
         "to_custodian_id": {"type": "string", "format": "uuid"}
+      }
+    },
+    "commentAdded": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["body", "comment_id", "ticket_id"],
+      "properties": {
+        "body": {"type": "string", "minLength": 1, "maxLength": 4000},
+        "comment_id": {"type": "string", "format": "uuid"},
+        "ticket_id": {"type": "string", "format": "uuid"}
       }
     }
   }

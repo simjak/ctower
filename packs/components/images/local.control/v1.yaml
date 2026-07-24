@@ -1,0 +1,8 @@
+{
+  "schema": "ctower.image/v1",
+  "key": "local.control",
+  "digest": "sha256:9d14b2c6a45bdaccc6adf6812dc0293e21b2a87fed69b92b25ef9809a83d8a98",
+  "environment_ref": "local.linux@1",
+  "reusable_state": "secret_free",
+  "execution": "not_exercised"
+}

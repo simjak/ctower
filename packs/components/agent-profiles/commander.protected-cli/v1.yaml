@@ -1,0 +1,9 @@
+{
+  "schema": "ctower.agent-profile/v1",
+  "key": "commander.protected-cli",
+  "persona_ref": "operator.commander@1",
+  "harness_ref": "local.generated-client@1",
+  "skill_refs": ["protected.cli@1"],
+  "tool_refs": ["ctowerctl.client@1"],
+  "execution": "not_exercised"
+}

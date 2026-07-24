@@ -2,27 +2,435 @@ schema: ctower.company-bundle/v1
 company:
   key: example-company
   display_name: Example Company
-component_refs:
-  - kind: workflow
-    key: engineering.software-factory
-    revision: 1
-    content_digest: sha256:0000000000000000000000000000000000000000000000000000000000000000
-  - kind: execution_policy
-    key: engineering.software-factory.execution
-    revision: 1
-    content_digest: sha256:0000000000000000000000000000000000000000000000000000000000000000
-  - kind: gate_policy
-    key: engineering.software-factory.gates
-    revision: 1
-    content_digest: sha256:0000000000000000000000000000000000000000000000000000000000000000
+resources:
+  - component:
+      schema: ctower.versioned-component/v1
+      kind: goal
+      key: company.trusted-delivery
+      scope: {tenant: example-company, project: null}
+      revision: 1
+      content_digest: sha256:52e8483da484e9d27789621c173bc77f2b6511e91188caa98443f2da05cc5368
+      schema_ref: ctower.goal/v1
+      lifecycle: published
+      compatibility: {ctower: ">=0.0.0,<1.0.0", requires: []}
+      provenance:
+        - {kind: authored, source: packs/components/goals/company.trusted-delivery/v1.yaml, digest: sha256:52e8483da484e9d27789621c173bc77f2b6511e91188caa98443f2da05cc5368}
+      payload_ref: object:sha256:52e8483da484e9d27789621c173bc77f2b6511e91188caa98443f2da05cc5368
+    payload:
+      schema: ctower.goal/v1
+      key: company.trusted-delivery
+      display_name: Trusted delivery
+      outcome: Every accepted change is attributable, durable, and supported by current proof.
+      success_criteria:
+        - The protected CLI preserves one command identity through acceptance or explicit refusal.
+        - Every active configuration resource is pinned to an immutable revision and digest.
+  - component:
+      schema: ctower.versioned-component/v1
+      kind: project
+      key: ctower.control-plane
+      scope: {tenant: example-company, project: null}
+      revision: 1
+      content_digest: sha256:a99c1695616e71bc638500024708d25e6199df247f250b2dbadf398136c84c3b
+      schema_ref: ctower.project/v1
+      lifecycle: published
+      compatibility: {ctower: ">=0.0.0,<1.0.0", requires: []}
+      provenance:
+        - {kind: authored, source: packs/components/projects/ctower.control-plane/v1.yaml, digest: sha256:a99c1695616e71bc638500024708d25e6199df247f250b2dbadf398136c84c3b}
+      payload_ref: object:sha256:a99c1695616e71bc638500024708d25e6199df247f250b2dbadf398136c84c3b
+    payload:
+      schema: ctower.project/v1
+      key: ctower.control-plane
+      display_name: Ctower control plane
+      repository_ref: repository:github/simjak/ctower
+      goal_refs: [company.trusted-delivery@1]
+  - component:
+      schema: ctower.versioned-component/v1
+      kind: persona
+      key: operator.commander
+      scope: {tenant: example-company, project: null}
+      revision: 1
+      content_digest: sha256:c188b829bde39cf37e2765aa44d1cf10d256c3461d7097984693e299c8cb229d
+      schema_ref: ctower.persona/v1
+      lifecycle: published
+      compatibility: {ctower: ">=0.0.0,<1.0.0", requires: []}
+      provenance:
+        - {kind: authored, source: packs/components/personas/operator.commander/v1.yaml, digest: sha256:c188b829bde39cf37e2765aa44d1cf10d256c3461d7097984693e299c8cb229d}
+      payload_ref: object:sha256:c188b829bde39cf37e2765aa44d1cf10d256c3461d7097984693e299c8cb229d
+    payload:
+      schema: ctower.persona/v1
+      key: operator.commander
+      display_name: Commander
+      instructions_digest: sha256:461112220f4c223404b6979a3133d375c34753350d4a9fa9f6a4ece0a12c19db
+  - component:
+      schema: ctower.versioned-component/v1
+      kind: capability
+      key: control.api
+      scope: {tenant: example-company, project: null}
+      revision: 1
+      content_digest: sha256:f36850d9b7ab10e4a1e65e4827a74e34de987e05603ce2ff644db4faeeb5945e
+      schema_ref: ctower.capability/v1
+      lifecycle: published
+      compatibility: {ctower: ">=0.0.0,<1.0.0", requires: []}
+      provenance:
+        - {kind: authored, source: packs/components/capabilities/control.api/v1.yaml, digest: sha256:f36850d9b7ab10e4a1e65e4827a74e34de987e05603ce2ff644db4faeeb5945e}
+      payload_ref: object:sha256:f36850d9b7ab10e4a1e65e4827a74e34de987e05603ce2ff644db4faeeb5945e
+    payload:
+      schema: ctower.capability/v1
+      key: control.api
+      display_name: Generated control API
+      operation: ctower.generated_client
+      authority: requested_not_granted
+  - component:
+      schema: ctower.versioned-component/v1
+      kind: skill
+      key: protected.cli
+      scope: {tenant: example-company, project: null}
+      revision: 1
+      content_digest: sha256:3a53651d8858c87c698d9d0386535cc875816f4a1d0c8dfc54737c1509aaf632
+      schema_ref: ctower.skill/v1
+      lifecycle: published
+      compatibility:
+        ctower: ">=0.0.0,<1.0.0"
+        requires:
+          - {kind: capability, key: control.api, revision: 1, content_digest: sha256:f36850d9b7ab10e4a1e65e4827a74e34de987e05603ce2ff644db4faeeb5945e}
+      provenance:
+        - {kind: authored, source: packs/components/skills/protected.cli/v1.yaml, digest: sha256:3a53651d8858c87c698d9d0386535cc875816f4a1d0c8dfc54737c1509aaf632}
+      payload_ref: object:sha256:3a53651d8858c87c698d9d0386535cc875816f4a1d0c8dfc54737c1509aaf632
+    payload:
+      schema: ctower.skill/v1
+      key: protected.cli
+      display_name: Protected CLI operation
+      instructions_digest: sha256:8927bd3d2a69b55c4c86f9ef28b2fdad8d34d76dbbe9e269ec096e6d8ca167d0
+      capability_refs: [control.api@1]
+  - component:
+      schema: ctower.versioned-component/v1
+      kind: tool
+      key: ctowerctl.client
+      scope: {tenant: example-company, project: null}
+      revision: 1
+      content_digest: sha256:8baab4c5906a2039c470a42ca86961d81ead9d1b610e4939abef11dba6466d92
+      schema_ref: ctower.tool/v1
+      lifecycle: published
+      compatibility:
+        ctower: ">=0.0.0,<1.0.0"
+        requires:
+          - {kind: capability, key: control.api, revision: 1, content_digest: sha256:f36850d9b7ab10e4a1e65e4827a74e34de987e05603ce2ff644db4faeeb5945e}
+      provenance:
+        - {kind: authored, source: packs/components/tools/ctowerctl.client/v1.yaml, digest: sha256:8baab4c5906a2039c470a42ca86961d81ead9d1b610e4939abef11dba6466d92}
+      payload_ref: object:sha256:8baab4c5906a2039c470a42ca86961d81ead9d1b610e4939abef11dba6466d92
+    payload:
+      schema: ctower.tool/v1
+      key: ctowerctl.client
+      display_name: Ctower generated client
+      capability: control.api
+      authority: requested_not_granted
+  - component:
+      schema: ctower.versioned-component/v1
+      kind: environment
+      key: local.linux
+      scope: {tenant: example-company, project: null}
+      revision: 1
+      content_digest: sha256:4b5bc595819910eba77d86e606f8b8bc989a5e794b03ea2fb3a971ea52ab39db
+      schema_ref: ctower.environment/v1
+      lifecycle: published
+      compatibility: {ctower: ">=0.0.0,<1.0.0", requires: []}
+      provenance:
+        - {kind: authored, source: packs/components/environments/local.linux/v1.yaml, digest: sha256:4b5bc595819910eba77d86e606f8b8bc989a5e794b03ea2fb3a971ea52ab39db}
+      payload_ref: object:sha256:4b5bc595819910eba77d86e606f8b8bc989a5e794b03ea2fb3a971ea52ab39db
+    payload:
+      schema: ctower.environment/v1
+      key: local.linux
+      platform: linux
+      architecture: x86_64
+      runtime: cpython-3.14
+      effects: not_exercised
+  - component:
+      schema: ctower.versioned-component/v1
+      kind: image
+      key: local.control
+      scope: {tenant: example-company, project: null}
+      revision: 1
+      content_digest: sha256:314c24a09a252a2588c7bfcdd7a9c0875d055d46e017e11865c09f46fc47ac53
+      schema_ref: ctower.image/v1
+      lifecycle: published
+      compatibility:
+        ctower: ">=0.0.0,<1.0.0"
+        requires:
+          - {kind: environment, key: local.linux, revision: 1, content_digest: sha256:4b5bc595819910eba77d86e606f8b8bc989a5e794b03ea2fb3a971ea52ab39db}
+      provenance:
+        - {kind: authored, source: packs/components/images/local.control/v1.yaml, digest: sha256:314c24a09a252a2588c7bfcdd7a9c0875d055d46e017e11865c09f46fc47ac53}
+      payload_ref: object:sha256:314c24a09a252a2588c7bfcdd7a9c0875d055d46e017e11865c09f46fc47ac53
+    payload:
+      schema: ctower.image/v1
+      key: local.control
+      digest: sha256:9d14b2c6a45bdaccc6adf6812dc0293e21b2a87fed69b92b25ef9809a83d8a98
+      environment_ref: local.linux@1
+      reusable_state: secret_free
+      execution: not_exercised
+  - component:
+      schema: ctower.versioned-component/v1
+      kind: harness
+      key: local.generated-client
+      scope: {tenant: example-company, project: null}
+      revision: 1
+      content_digest: sha256:3458a380b9f9fd4436761a38cb2b7755af8700813b694ce7d993ad7e42083d10
+      schema_ref: ctower.harness/v1
+      lifecycle: published
+      compatibility: {ctower: ">=0.0.0,<1.0.0", requires: []}
+      provenance:
+        - {kind: authored, source: packs/components/harnesses/local.generated-client/v1.yaml, digest: sha256:3458a380b9f9fd4436761a38cb2b7755af8700813b694ce7d993ad7e42083d10}
+      payload_ref: object:sha256:3458a380b9f9fd4436761a38cb2b7755af8700813b694ce7d993ad7e42083d10
+    payload:
+      schema: ctower.harness/v1
+      key: local.generated-client
+      adapter: ctowerctl.generated_client
+      capabilities: [CONTROL_API]
+      execution: not_exercised
+  - component:
+      schema: ctower.versioned-component/v1
+      kind: supervisor
+      key: local.process
+      scope: {tenant: example-company, project: null}
+      revision: 1
+      content_digest: sha256:3803991ba7d0b7e797edc60d7078e8334d7850d1b769b052dc4775cc315fbd82
+      schema_ref: ctower.supervisor/v1
+      lifecycle: published
+      compatibility: {ctower: ">=0.0.0,<1.0.0", requires: []}
+      provenance:
+        - {kind: authored, source: packs/components/supervisors/local.process/v1.yaml, digest: sha256:3803991ba7d0b7e797edc60d7078e8334d7850d1b769b052dc4775cc315fbd82}
+      payload_ref: object:sha256:3803991ba7d0b7e797edc60d7078e8334d7850d1b769b052dc4775cc315fbd82
+    payload:
+      schema: ctower.supervisor/v1
+      key: local.process
+      adapter: ctower.local_process
+      operations: [probe, observe]
+      execution: not_exercised
+  - component:
+      schema: ctower.versioned-component/v1
+      kind: target
+      key: local.control
+      scope: {tenant: example-company, project: null}
+      revision: 1
+      content_digest: sha256:48fee5c2e773f9632720d5fd3cd066927b7d9f82da8dfc185d3bd601c73ba7fd
+      schema_ref: ctower.target/v1
+      lifecycle: published
+      compatibility:
+        ctower: ">=0.0.0,<1.0.0"
+        requires:
+          - {kind: environment, key: local.linux, revision: 1, content_digest: sha256:4b5bc595819910eba77d86e606f8b8bc989a5e794b03ea2fb3a971ea52ab39db}
+          - {kind: image, key: local.control, revision: 1, content_digest: sha256:314c24a09a252a2588c7bfcdd7a9c0875d055d46e017e11865c09f46fc47ac53}
+      provenance:
+        - {kind: authored, source: packs/components/targets/local.control/v1.yaml, digest: sha256:48fee5c2e773f9632720d5fd3cd066927b7d9f82da8dfc185d3bd601c73ba7fd}
+      payload_ref: object:sha256:48fee5c2e773f9632720d5fd3cd066927b7d9f82da8dfc185d3bd601c73ba7fd
+    payload:
+      schema: ctower.target/v1
+      key: local.control
+      environment_ref: local.linux@1
+      image_ref: local.control@1
+      network: local_only
+      execution: not_exercised
+  - component:
+      schema: ctower.versioned-component/v1
+      kind: workspace
+      key: local.checkout
+      scope: {tenant: example-company, project: null}
+      revision: 1
+      content_digest: sha256:b395579f15d221ddc0c47921a4c4cbf7d8039fdeab49532b621d0f192040baad
+      schema_ref: ctower.workspace/v1
+      lifecycle: published
+      compatibility: {ctower: ">=0.0.0,<1.0.0", requires: []}
+      provenance:
+        - {kind: authored, source: packs/components/workspaces/local.checkout/v1.yaml, digest: sha256:b395579f15d221ddc0c47921a4c4cbf7d8039fdeab49532b621d0f192040baad}
+      payload_ref: object:sha256:b395579f15d221ddc0c47921a4c4cbf7d8039fdeab49532b621d0f192040baad
+    payload:
+      schema: ctower.workspace/v1
+      key: local.checkout
+      mode: checked_out
+      persistence: not_authoritative
+      execution: not_exercised
+  - component:
+      schema: ctower.versioned-component/v1
+      kind: telemetry
+      key: local.otlp
+      scope: {tenant: example-company, project: null}
+      revision: 1
+      content_digest: sha256:338919da4a210a40c7bd68a51264e2e6cd49653b8b16a0b8c9aca16b21637f58
+      schema_ref: ctower.telemetry/v1
+      lifecycle: published
+      compatibility: {ctower: ">=0.0.0,<1.0.0", requires: []}
+      provenance:
+        - {kind: authored, source: packs/components/telemetry/local.otlp/v1.yaml, digest: sha256:338919da4a210a40c7bd68a51264e2e6cd49653b8b16a0b8c9aca16b21637f58}
+      payload_ref: object:sha256:338919da4a210a40c7bd68a51264e2e6cd49653b8b16a0b8c9aca16b21637f58
+    payload:
+      schema: ctower.telemetry/v1
+      key: local.otlp
+      exporter: otlp
+      redaction: required
+      execution: not_exercised
+  - component:
+      schema: ctower.versioned-component/v1
+      kind: agent_profile
+      key: commander.protected-cli
+      scope: {tenant: example-company, project: null}
+      revision: 1
+      content_digest: sha256:17288c4fa0fcdc766311744cd91002c4a9eab2c2fbbb021593043b4c00eb90d9
+      schema_ref: ctower.agent-profile/v1
+      lifecycle: published
+      compatibility:
+        ctower: ">=0.0.0,<1.0.0"
+        requires:
+          - {kind: persona, key: operator.commander, revision: 1, content_digest: sha256:c188b829bde39cf37e2765aa44d1cf10d256c3461d7097984693e299c8cb229d}
+          - {kind: harness, key: local.generated-client, revision: 1, content_digest: sha256:3458a380b9f9fd4436761a38cb2b7755af8700813b694ce7d993ad7e42083d10}
+          - {kind: skill, key: protected.cli, revision: 1, content_digest: sha256:3a53651d8858c87c698d9d0386535cc875816f4a1d0c8dfc54737c1509aaf632}
+          - {kind: tool, key: ctowerctl.client, revision: 1, content_digest: sha256:8baab4c5906a2039c470a42ca86961d81ead9d1b610e4939abef11dba6466d92}
+      provenance:
+        - {kind: authored, source: packs/components/agent-profiles/commander.protected-cli/v1.yaml, digest: sha256:17288c4fa0fcdc766311744cd91002c4a9eab2c2fbbb021593043b4c00eb90d9}
+      payload_ref: object:sha256:17288c4fa0fcdc766311744cd91002c4a9eab2c2fbbb021593043b4c00eb90d9
+    payload:
+      schema: ctower.agent-profile/v1
+      key: commander.protected-cli
+      persona_ref: operator.commander@1
+      harness_ref: local.generated-client@1
+      skill_refs: [protected.cli@1]
+      tool_refs: [ctowerctl.client@1]
+      execution: not_exercised
+  - component:
+      schema: ctower.versioned-component/v1
+      kind: workflow
+      key: ctower.trust-spine-four-stage
+      scope: {tenant: example-company, project: null}
+      revision: 1
+      content_digest: sha256:83fb59cef7c47d2c39a075322279b4ae893b91e5f538f7517d8e31dd60bdc17c
+      schema_ref: ctower.workflow/v1
+      lifecycle: published
+      compatibility:
+        ctower: ">=0.0.0,<1.0.0"
+        requires:
+          - {kind: execution_policy, key: ctower.trust-spine-four-stage.execution, revision: 1, content_digest: sha256:15f720af3958e10884ef06e39a5f937f0f5110a2f6fdaf08f9d2927119430d73}
+          - {kind: gate_policy, key: ctower.trust-spine-four-stage.gates, revision: 1, content_digest: sha256:1ea9adf4527c28f1debca1c8cbc556c73ff6b8eb19f06fbda81808e2ea59fd21}
+      provenance:
+        - {kind: authored, source: packs/workflows/ctower.trust-spine-four-stage/v1.yaml, digest: sha256:83fb59cef7c47d2c39a075322279b4ae893b91e5f538f7517d8e31dd60bdc17c}
+      payload_ref: object:sha256:83fb59cef7c47d2c39a075322279b4ae893b91e5f538f7517d8e31dd60bdc17c
+    payload:
+      schema: ctower.workflow/v1
+      status: staged
+      key: ctower.trust-spine-four-stage
+      revision: 1
+      initial_stage: capture
+      input_contract: ctower.ticket-candidate
+      terminal_contract: ctower.proof-closed
+      policy_refs:
+        execution: ctower.trust-spine-four-stage.execution@1
+        gates: ctower.trust-spine-four-stage.gates@1
+      stages:
+        - {key: capture, activity_class: work}
+        - {key: frame, activity_class: work}
+        - {key: verify, activity_class: verification}
+        - {key: close, activity_class: work}
+      transitions:
+        - {from: capture, to: frame, predicate_ref: entry.ready@1}
+        - {from: frame, to: verify, predicate_ref: criteria.frozen@1}
+        - {from: verify, to: close, predicate_ref: proof.current@1}
+      failure_routes: []
+      note: Development-only CP-1 fixture for the generic evaluator; no runtime is started.
+  - component:
+      schema: ctower.versioned-component/v1
+      kind: execution_policy
+      key: ctower.trust-spine-four-stage.execution
+      scope: {tenant: example-company, project: null}
+      revision: 1
+      content_digest: sha256:15f720af3958e10884ef06e39a5f937f0f5110a2f6fdaf08f9d2927119430d73
+      schema_ref: ctower.execution-policy/v1
+      lifecycle: published
+      compatibility:
+        ctower: ">=0.0.0,<1.0.0"
+        requires:
+          - {kind: workflow, key: ctower.trust-spine-four-stage, revision: 1, content_digest: sha256:83fb59cef7c47d2c39a075322279b4ae893b91e5f538f7517d8e31dd60bdc17c}
+      provenance:
+        - {kind: authored, source: packs/policies/execution/trust-spine-four-stage-v1.yaml, digest: sha256:15f720af3958e10884ef06e39a5f937f0f5110a2f6fdaf08f9d2927119430d73}
+      payload_ref: object:sha256:15f720af3958e10884ef06e39a5f937f0f5110a2f6fdaf08f9d2927119430d73
+    payload:
+      schema: ctower.execution-policy/v1
+      status: staged
+      key: ctower.trust-spine-four-stage.execution
+      revision: 1
+      workflow_ref: ctower.trust-spine-four-stage@1
+      capabilities:
+        remote: not_exercised
+        images: not_exercised
+        effects: not_exercised
+        extensions: not_exercised
+      note: CP-1 evaluates facts only and starts no execution runtime.
+  - component:
+      schema: ctower.versioned-component/v1
+      kind: gate_policy
+      key: ctower.trust-spine-four-stage.gates
+      scope: {tenant: example-company, project: null}
+      revision: 1
+      content_digest: sha256:1ea9adf4527c28f1debca1c8cbc556c73ff6b8eb19f06fbda81808e2ea59fd21
+      schema_ref: ctower.gate-policy/v1
+      lifecycle: published
+      compatibility:
+        ctower: ">=0.0.0,<1.0.0"
+        requires:
+          - {kind: workflow, key: ctower.trust-spine-four-stage, revision: 1, content_digest: sha256:83fb59cef7c47d2c39a075322279b4ae893b91e5f538f7517d8e31dd60bdc17c}
+          - {kind: evidence_policy, key: ctower.trust-spine-four-stage.evidence, revision: 1, content_digest: sha256:559bfb59c68ac1a6147021bfd56637692623c40c57387cc95bbbdb2e186e70f6}
+      provenance:
+        - {kind: authored, source: packs/policies/gates/trust-spine-four-stage-v1.yaml, digest: sha256:1ea9adf4527c28f1debca1c8cbc556c73ff6b8eb19f06fbda81808e2ea59fd21}
+      payload_ref: object:sha256:1ea9adf4527c28f1debca1c8cbc556c73ff6b8eb19f06fbda81808e2ea59fd21
+    payload:
+      schema: ctower.gate-policy/v1
+      status: staged
+      key: ctower.trust-spine-four-stage.gates
+      revision: 1
+      workflow_ref: ctower.trust-spine-four-stage@1
+      evidence_policy_ref: ctower.trust-spine-four-stage.evidence@1
+      criteria:
+        - key: artifact-current
+          description: Artifact evidence matches the current candidate.
+          candidate_dependent: true
+          requires_verdict: true
+      protected_verdict: {reviewer_kind: operator, self_review: forbidden}
+      note: CP-1 requires one current-digest artifact and an independent operator verdict.
+  - component:
+      schema: ctower.versioned-component/v1
+      kind: evidence_policy
+      key: ctower.trust-spine-four-stage.evidence
+      scope: {tenant: example-company, project: null}
+      revision: 1
+      content_digest: sha256:559bfb59c68ac1a6147021bfd56637692623c40c57387cc95bbbdb2e186e70f6
+      schema_ref: ctower.evidence-policy/v1
+      lifecycle: published
+      compatibility: {ctower: ">=0.0.0,<1.0.0", requires: []}
+      provenance:
+        - {kind: authored, source: packs/policies/evidence/trust-spine-four-stage-v1.yaml, digest: sha256:559bfb59c68ac1a6147021bfd56637692623c40c57387cc95bbbdb2e186e70f6}
+      payload_ref: object:sha256:559bfb59c68ac1a6147021bfd56637692623c40c57387cc95bbbdb2e186e70f6
+    payload:
+      schema: ctower.evidence-policy/v1
+      status: staged
+      key: ctower.trust-spine-four-stage.evidence
+      revision: 1
+      digest_algorithm: sha256
+      content_encoding: utf-8
+      candidate_binding: current_digest
+      corruption_policy: reject
+      missing_policy: reject
+      note: CP-1 persists verified bytes locally; external object durability remains future scope.
 assignments:
   - subject: project:ctower
     slot: workflow
     component:
       kind: workflow
-      key: engineering.software-factory
+      key: ctower.trust-spine-four-stage
       revision: 1
-      content_digest: sha256:0000000000000000000000000000000000000000000000000000000000000000
+      content_digest: sha256:83fb59cef7c47d2c39a075322279b4ae893b91e5f538f7517d8e31dd60bdc17c
+  - subject: principal:commander
+    slot: agent_profile
+    component:
+      kind: agent_profile
+      key: commander.protected-cli
+      revision: 1
+      content_digest: sha256:17288c4fa0fcdc766311744cd91002c4a9eab2c2fbbb021593043b4c00eb90d9
 secret_binding_refs:
   - name: SOURCE_CONTROL_TOKEN
     reference_class: runtime-binding

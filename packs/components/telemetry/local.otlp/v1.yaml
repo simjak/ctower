@@ -1,0 +1,7 @@
+{
+  "schema": "ctower.telemetry/v1",
+  "key": "local.otlp",
+  "exporter": "otlp",
+  "redaction": "required",
+  "execution": "not_exercised"
+}

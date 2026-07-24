@@ -1,0 +1,7 @@
+{
+  "schema": "ctower.harness/v1",
+  "key": "local.generated-client",
+  "adapter": "ctowerctl.generated_client",
+  "capabilities": ["CONTROL_API"],
+  "execution": "not_exercised"
+}

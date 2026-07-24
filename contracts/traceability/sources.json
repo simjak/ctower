@@ -277,6 +277,155 @@
       ]
     },
     {
+      "path": "contracts/components/agent-profile.schema.json",
+      "references": [
+        "SPEC#universal-versionedcomponent-catalog-and-company-desired-state",
+        "INV-45",
+        "AC-ADM-01",
+        "AC-COMP-01"
+      ]
+    },
+    {
+      "path": "contracts/components/capability.schema.json",
+      "references": [
+        "SPEC#universal-versionedcomponent-catalog-and-company-desired-state",
+        "INV-45",
+        "AC-ADM-01",
+        "AC-COMP-01"
+      ]
+    },
+    {
+      "path": "contracts/components/environment.schema.json",
+      "references": [
+        "SPEC#universal-versionedcomponent-catalog-and-company-desired-state",
+        "INV-45",
+        "INV-48",
+        "AC-ADM-01",
+        "AC-COMP-01"
+      ]
+    },
+    {
+      "path": "contracts/components/goal.schema.json",
+      "references": [
+        "SPEC#universal-versionedcomponent-catalog-and-company-desired-state",
+        "INV-45",
+        "AC-ADM-01",
+        "AC-COMP-01"
+      ]
+    },
+    {
+      "path": "contracts/components/harness.schema.json",
+      "references": [
+        "SPEC#universal-versionedcomponent-catalog-and-company-desired-state",
+        "INV-45",
+        "INV-48",
+        "AC-ADM-01",
+        "AC-COMP-01"
+      ]
+    },
+    {
+      "path": "contracts/components/image.schema.json",
+      "references": [
+        "SPEC#universal-versionedcomponent-catalog-and-company-desired-state",
+        "INV-45",
+        "INV-48",
+        "AC-ADM-01",
+        "AC-COMP-01"
+      ]
+    },
+    {
+      "path": "contracts/components/integration.schema.json",
+      "references": [
+        "SPEC#universal-versionedcomponent-catalog-and-company-desired-state",
+        "INV-45",
+        "AC-COMP-01"
+      ]
+    },
+    {
+      "path": "contracts/components/notification.schema.json",
+      "references": [
+        "SPEC#universal-versionedcomponent-catalog-and-company-desired-state",
+        "INV-45",
+        "AC-COMP-01"
+      ]
+    },
+    {
+      "path": "contracts/components/persona.schema.json",
+      "references": [
+        "SPEC#universal-versionedcomponent-catalog-and-company-desired-state",
+        "INV-45",
+        "AC-ADM-01",
+        "AC-COMP-01"
+      ]
+    },
+    {
+      "path": "contracts/components/project.schema.json",
+      "references": [
+        "SPEC#universal-versionedcomponent-catalog-and-company-desired-state",
+        "INV-45",
+        "AC-ADM-01",
+        "AC-COMP-01"
+      ]
+    },
+    {
+      "path": "contracts/components/skill.schema.json",
+      "references": [
+        "SPEC#universal-versionedcomponent-catalog-and-company-desired-state",
+        "INV-45",
+        "AC-ADM-01",
+        "AC-COMP-01"
+      ]
+    },
+    {
+      "path": "contracts/components/supervisor.schema.json",
+      "references": [
+        "SPEC#universal-versionedcomponent-catalog-and-company-desired-state",
+        "INV-45",
+        "INV-48",
+        "AC-ADM-01",
+        "AC-COMP-01"
+      ]
+    },
+    {
+      "path": "contracts/components/target.schema.json",
+      "references": [
+        "SPEC#universal-versionedcomponent-catalog-and-company-desired-state",
+        "INV-45",
+        "INV-48",
+        "AC-ADM-01",
+        "AC-COMP-01"
+      ]
+    },
+    {
+      "path": "contracts/components/telemetry.schema.json",
+      "references": [
+        "SPEC#universal-versionedcomponent-catalog-and-company-desired-state",
+        "INV-45",
+        "INV-48",
+        "AC-ADM-01",
+        "AC-COMP-01"
+      ]
+    },
+    {
+      "path": "contracts/components/tool.schema.json",
+      "references": [
+        "SPEC#universal-versionedcomponent-catalog-and-company-desired-state",
+        "INV-45",
+        "AC-ADM-01",
+        "AC-COMP-01"
+      ]
+    },
+    {
+      "path": "contracts/components/workspace.schema.json",
+      "references": [
+        "SPEC#universal-versionedcomponent-catalog-and-company-desired-state",
+        "INV-45",
+        "INV-48",
+        "AC-ADM-01",
+        "AC-COMP-01"
+      ]
+    },
+    {
       "path": "contracts/observability/telemetry-context.schema.json",
       "references": [
         "SPEC#observability-from-day-one",
@@ -310,6 +459,139 @@
       "references": [
         "SPEC#universal-versionedcomponent-catalog-and-company-desired-state",
         "INV-45",
+        "AC-COMP-01"
+      ]
+    },
+    {
+      "path": "packs/components/agent-profiles/commander.protected-cli/v1.yaml",
+      "references": [
+        "SPEC#universal-versionedcomponent-catalog-and-company-desired-state",
+        "INV-45",
+        "AC-ADM-01",
+        "AC-COMP-01"
+      ]
+    },
+    {
+      "path": "packs/components/capabilities/control.api/v1.yaml",
+      "references": [
+        "SPEC#universal-versionedcomponent-catalog-and-company-desired-state",
+        "INV-45",
+        "AC-ADM-01",
+        "AC-COMP-01"
+      ]
+    },
+    {
+      "path": "packs/components/environments/local.linux/v1.yaml",
+      "references": [
+        "SPEC#universal-versionedcomponent-catalog-and-company-desired-state",
+        "INV-45",
+        "INV-48",
+        "AC-ADM-01",
+        "AC-COMP-01"
+      ]
+    },
+    {
+      "path": "packs/components/goals/company.trusted-delivery/v1.yaml",
+      "references": [
+        "SPEC#universal-versionedcomponent-catalog-and-company-desired-state",
+        "INV-45",
+        "AC-ADM-01",
+        "AC-COMP-01"
+      ]
+    },
+    {
+      "path": "packs/components/harnesses/local.generated-client/v1.yaml",
+      "references": [
+        "SPEC#universal-versionedcomponent-catalog-and-company-desired-state",
+        "INV-45",
+        "INV-48",
+        "AC-ADM-01",
+        "AC-COMP-01"
+      ]
+    },
+    {
+      "path": "packs/components/images/local.control/v1.yaml",
+      "references": [
+        "SPEC#universal-versionedcomponent-catalog-and-company-desired-state",
+        "INV-45",
+        "INV-48",
+        "AC-ADM-01",
+        "AC-COMP-01"
+      ]
+    },
+    {
+      "path": "packs/components/personas/operator.commander/v1.yaml",
+      "references": [
+        "SPEC#universal-versionedcomponent-catalog-and-company-desired-state",
+        "INV-45",
+        "AC-ADM-01",
+        "AC-COMP-01"
+      ]
+    },
+    {
+      "path": "packs/components/projects/ctower.control-plane/v1.yaml",
+      "references": [
+        "SPEC#universal-versionedcomponent-catalog-and-company-desired-state",
+        "INV-45",
+        "AC-ADM-01",
+        "AC-COMP-01"
+      ]
+    },
+    {
+      "path": "packs/components/skills/protected.cli/v1.yaml",
+      "references": [
+        "SPEC#universal-versionedcomponent-catalog-and-company-desired-state",
+        "INV-45",
+        "AC-ADM-01",
+        "AC-COMP-01"
+      ]
+    },
+    {
+      "path": "packs/components/supervisors/local.process/v1.yaml",
+      "references": [
+        "SPEC#universal-versionedcomponent-catalog-and-company-desired-state",
+        "INV-45",
+        "INV-48",
+        "AC-ADM-01",
+        "AC-COMP-01"
+      ]
+    },
+    {
+      "path": "packs/components/targets/local.control/v1.yaml",
+      "references": [
+        "SPEC#universal-versionedcomponent-catalog-and-company-desired-state",
+        "INV-45",
+        "INV-48",
+        "AC-ADM-01",
+        "AC-COMP-01"
+      ]
+    },
+    {
+      "path": "packs/components/telemetry/local.otlp/v1.yaml",
+      "references": [
+        "SPEC#universal-versionedcomponent-catalog-and-company-desired-state",
+        "INV-45",
+        "INV-48",
+        "AC-ADM-01",
+        "AC-COMP-01"
+      ]
+    },
+    {
+      "path": "packs/components/tools/ctowerctl.client/v1.yaml",
+      "references": [
+        "SPEC#universal-versionedcomponent-catalog-and-company-desired-state",
+        "INV-45",
+        "AC-ADM-01",
+        "AC-COMP-01"
+      ]
+    },
+    {
+      "path": "packs/components/workspaces/local.checkout/v1.yaml",
+      "references": [
+        "SPEC#universal-versionedcomponent-catalog-and-company-desired-state",
+        "INV-45",
+        "INV-48",
+        "AC-ADM-01",
         "AC-COMP-01"
       ]
     },

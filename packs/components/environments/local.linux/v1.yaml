@@ -1,0 +1,8 @@
+{
+  "schema": "ctower.environment/v1",
+  "key": "local.linux",
+  "platform": "linux",
+  "architecture": "x86_64",
+  "runtime": "cpython-3.14",
+  "effects": "not_exercised"
+}

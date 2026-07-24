@@ -1,0 +1,15 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://ctower.local/contracts/components/workspace.schema.json",
+  "title": "WorkspaceComponent",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema", "key", "mode", "persistence", "execution"],
+  "properties": {
+    "schema": { "const": "ctower.workspace/v1" },
+    "key": { "type": "string", "pattern": "^[a-z][a-z0-9.-]{2,127}$" },
+    "mode": { "enum": ["ephemeral", "checked_out"] },
+    "persistence": { "const": "not_authoritative" },
+    "execution": { "const": "not_exercised" }
+  }
+}

@@ -1,0 +1,14 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://ctower.local/contracts/components/notification.schema.json",
+  "title": "NotificationComponent",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema", "key", "channel", "delivery"],
+  "properties": {
+    "schema": { "const": "ctower.notification/v1" },
+    "key": { "type": "string", "pattern": "^[a-z][a-z0-9.-]{2,127}$" },
+    "channel": { "enum": ["none", "operator_attention"] },
+    "delivery": { "const": "not_exercised" }
+  }
+}

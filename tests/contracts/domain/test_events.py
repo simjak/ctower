@@ -51,6 +51,7 @@ def test_ticket_event_payload_contract_covers_the_typed_work_slice() -> None:
     Draft202012Validator.check_schema(schema)
     assert schema["additionalProperties"] is False
     assert set(schema["properties"]["kind"]["enum"]) == {
+        "ticket.comment_added",
         "ticket.created",
         "ticket.custody_transferred",
         "work.changed",

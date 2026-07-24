@@ -1,0 +1,7 @@
+{
+  "schema": "ctower.capability/v1",
+  "key": "control.api",
+  "display_name": "Generated control API",
+  "operation": "ctower.generated_client",
+  "authority": "requested_not_granted"
+}

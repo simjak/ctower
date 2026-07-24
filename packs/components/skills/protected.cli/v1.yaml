@@ -1,0 +1,7 @@
+{
+  "schema": "ctower.skill/v1",
+  "key": "protected.cli",
+  "display_name": "Protected CLI operation",
+  "instructions_digest": "sha256:8927bd3d2a69b55c4c86f9ef28b2fdad8d34d76dbbe9e269ec096e6d8ca167d0",
+  "capability_refs": ["control.api@1"]
+}

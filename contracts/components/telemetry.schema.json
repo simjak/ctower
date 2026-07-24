@@ -1,0 +1,15 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://ctower.local/contracts/components/telemetry.schema.json",
+  "title": "TelemetryComponent",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema", "key", "exporter", "redaction", "execution"],
+  "properties": {
+    "schema": { "const": "ctower.telemetry/v1" },
+    "key": { "type": "string", "pattern": "^[a-z][a-z0-9.-]{2,127}$" },
+    "exporter": { "const": "otlp" },
+    "redaction": { "const": "required" },
+    "execution": { "const": "not_exercised" }
+  }
+}
