@@ -328,19 +328,11 @@ def _exercise_principal_apply_matrix(
             json=apply_request,
             headers=_commander_headers(tenant, command_id=commander_id),
         )
-        assert (
-            store.put_attempts,
-            store.read_attempts,
-            store.erase_attempts,
-            store.write_count,
-        ) == (0, 0, 0, 0)
-        assert _catalog_counts(tenant.database.admin_dsn) == before
-        assert (
-            _command_result_count(
-                tenant.database.admin_dsn,
-                (unauthenticated_id, commander_id),
-            )
-            == 0
+        _assert_principal_refusals_have_no_effects(
+            tenant,
+            store,
+            before,
+            (unauthenticated_id, commander_id),
         )
         operator = client.post(
             "/v1/company/bundle/apply",
@@ -367,6 +359,22 @@ def _exercise_principal_apply_matrix(
         invalid_plan,
         unsupported_lifecycle,
     )
+
+
+def _assert_principal_refusals_have_no_effects(
+    tenant: TenantFixture,
+    store: MemoryObjectStore,
+    before: tuple[int, int, int],
+    command_ids: tuple[UUID, UUID],
+) -> None:
+    assert (
+        store.put_attempts,
+        store.read_attempts,
+        store.erase_attempts,
+        store.write_count,
+    ) == (0, 0, 0, 0)
+    assert _catalog_counts(tenant.database.admin_dsn) == before
+    assert _command_result_count(tenant.database.admin_dsn, command_ids) == 0
 
 
 def _http_post_activation_refusals(
