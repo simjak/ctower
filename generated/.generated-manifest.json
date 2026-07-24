@@ -12,7 +12,7 @@
         },
         {
           "path": "contracts/traceability/sources.json",
-          "sha256": "sha256:40f5ce1efe98633707c7f12b167ab562c02058a3662feb855538f0933eccf65e"
+          "sha256": "sha256:6c30080cfe2e6ceb4a09c71123bb967794d3f5cb7fce8f624f9c37b8b6711f92"
         },
         {
           "path": "contracts/traceability/traceability-sources.schema.json",
@@ -38,7 +38,7 @@
       "outputs": [
         {
           "path": "generated/traceability-index.json",
-          "sha256": "sha256:623683b07a792c8ae0a6d5acb1daa284504f2f9436a34646a9a37586f36e2653"
+          "sha256": "sha256:8c1dcc50b3f072fd6f578f0835f28829c4492d7022d66b434ed7e7ede1342cfe"
         }
       ],
       "tool_version": "2"
@@ -49,28 +49,196 @@
       "id": "http-python-client",
       "inputs": [
         {
-          "path": "contracts/http/openapi.yaml",
-          "sha256": "sha256:5994fc14dfc25a77e27bbac406a7d6711139eab07b4e3c428173e9d41795ff58"
+          "path": "contracts/bootstrap/first-tenant-request.schema.json",
+          "sha256": "sha256:ab2dda66be389a297e6897282bbe79aa488d281438e4a5fe13c51d596fc34c67"
         },
         {
-          "path": "contracts/observability/telemetry-context.schema.json",
-          "sha256": "sha256:63b7fe0149d28296b8a8353fb46fb46c642893f46549c3c537045584e65f7acd"
+          "path": "contracts/company/company-bundle.schema.json",
+          "sha256": "sha256:d6cdaeabc1e60c19cb4e136c3b705a3fb5f1449c478a2ddb1938b6f95dc7b112"
+        },
+        {
+          "path": "contracts/compatibility/matrix-input.schema.json",
+          "sha256": "sha256:f51b5f8b7884c08deedec825f824b00cb6f0c847f5a4dee89db274fab55eae6d"
+        },
+        {
+          "path": "contracts/compatibility/matrix-result.schema.json",
+          "sha256": "sha256:ce922d93e2657f8040f1da3b09d26d39f36eadddc969aee908fd1584501bd3a6"
+        },
+        {
+          "path": "contracts/components/agent-profile.schema.json",
+          "sha256": "sha256:9c910ebd63de2235eac1dea7369d303ea115ab328300a4963e10756eded3369d"
+        },
+        {
+          "path": "contracts/components/capability.schema.json",
+          "sha256": "sha256:0e427932f6030c781a51138c6fd4ce6d4ae3bdea76ccf43ebecc4d705047a96e"
+        },
+        {
+          "path": "contracts/components/environment.schema.json",
+          "sha256": "sha256:003eecd235b0b56cbcc4bafd176628d78594b44be6e42c6aeccf84253d057689"
+        },
+        {
+          "path": "contracts/components/goal.schema.json",
+          "sha256": "sha256:0327a0ffcf4b37173e2bbf05efb2b75fb8c88c0beed1439ceec05c50b4cec7ad"
+        },
+        {
+          "path": "contracts/components/harness.schema.json",
+          "sha256": "sha256:9dbedacb7e5dbdc23614cbe998e3d1b2ed48e4b153ab06b475d0205c04080d49"
+        },
+        {
+          "path": "contracts/components/image.schema.json",
+          "sha256": "sha256:a6f46847f4e3bb615fc1fe10bceb6fb7e43b65e27246952d54d31bd9da8eff4c"
+        },
+        {
+          "path": "contracts/components/integration.schema.json",
+          "sha256": "sha256:a3e206c7b7664a24d6e1ec5306f1aa9112c704d1c398d6d5e96423c57ce9725b"
+        },
+        {
+          "path": "contracts/components/notification.schema.json",
+          "sha256": "sha256:6cce1c37eceb9700b684f6853d9067f053ff5719ae29e1ec9b8aeaba411fc6ab"
+        },
+        {
+          "path": "contracts/components/persona.schema.json",
+          "sha256": "sha256:3f9fa9d5910cb4a98b46ad7c36cd887aa34922cb63c1f15f75dd652785b871d2"
+        },
+        {
+          "path": "contracts/components/project.schema.json",
+          "sha256": "sha256:c3e0a89626f9ac0ab40266f54abfad07a9bf9b572ed5efc4a861a8fc570e303d"
+        },
+        {
+          "path": "contracts/components/skill.schema.json",
+          "sha256": "sha256:b4df26d394639a9d615b6ccc67d7ebb9ce95258083c5fe460514178dbf839b2c"
+        },
+        {
+          "path": "contracts/components/supervisor.schema.json",
+          "sha256": "sha256:e2734f7fa919b612c69117fb8fac11a5b35411e2d1f065da307073a1365b444d"
+        },
+        {
+          "path": "contracts/components/target.schema.json",
+          "sha256": "sha256:39d678ded33a537247a33b5a483274ae1f0a013c60b36502b274db787f923fc3"
+        },
+        {
+          "path": "contracts/components/telemetry.schema.json",
+          "sha256": "sha256:1de491ea6bd092759a087521bc775e0621f65f3f7e0f78c5c5948f15fd2aeba8"
+        },
+        {
+          "path": "contracts/components/tool.schema.json",
+          "sha256": "sha256:c14917f3a6cf393719774d1902ec5751af94a57fe68d3bde73a634913ca84a58"
+        },
+        {
+          "path": "contracts/components/versioned-component.schema.json",
+          "sha256": "sha256:475e5adb48b28e5f82672435332ade2fd5df8628f2d3b4a2939a8fa991313d13"
+        },
+        {
+          "path": "contracts/components/workspace.schema.json",
+          "sha256": "sha256:65de4f625a925db34172d102179343568bc9ba5ae4b1a089311b96156206a622"
         },
         {
           "path": "contracts/domain/events/event-envelope.schema.json",
-          "sha256": "sha256:471a47c926361f2e3531d19a8eed618300e89f2c636b6c1b623b70b350a593d4"
+          "sha256": "sha256:d4c4b63ee3da6e19f9c29d2ca83c29e7501f2bce557826c21ba8301a61d4bc3a"
         },
         {
-          "path": "contracts/domain/tickets/ticket-event.schema.json",
-          "sha256": "sha256:d4f708f9be78a49e9b253f0ce601f47c46f576825b1aa03effc6b39346566239"
+          "path": "contracts/domain/outbox-delivery.schema.json",
+          "sha256": "sha256:7bbc2a183d0e3e0f609ca3146947e897da73063c91ebf14292967b0b3b692550"
         },
         {
           "path": "contracts/domain/task-management/board-view.schema.json",
           "sha256": "sha256:c8bcb47434fb331fbd6aaa4e3192a083ebd2e6a8a0cfca3e00e28053a200b6ad"
         },
         {
+          "path": "contracts/domain/task-management/scheduling-policy.schema.json",
+          "sha256": "sha256:d5e5b1d7fdb8fcd0ef9101ec1098219f4d5e23b5c8343d96483501032f3123e7"
+        },
+        {
           "path": "contracts/domain/task-management/task-command.schema.json",
           "sha256": "sha256:f12aec67e8864c1e9cdbc06ab65c88ae12482bc41a0c21f474043e8862458335"
+        },
+        {
+          "path": "contracts/domain/tickets/ticket-event.schema.json",
+          "sha256": "sha256:4524d9f0d807ba90b2524e7c9a679069fdd917b7adff7b478ae028bf8b2a9ba1"
+        },
+        {
+          "path": "contracts/evidence/evidence-manifest.schema.json",
+          "sha256": "sha256:d57d312de09244e0767e09a084613d9fd38f204f74b3e8f2b63412bcacc3f956"
+        },
+        {
+          "path": "contracts/evidence/object-manifest.schema.json",
+          "sha256": "sha256:b15e5c87f49aa4643eef53c2ebf47b0c89d225e293707de70f92837ce78670a9"
+        },
+        {
+          "path": "contracts/execution/evidence-policy.schema.json",
+          "sha256": "sha256:3c332ed05c32bdd897e176cdf35c06e35d32d0a0789ef161d66ec4382fa6b26d"
+        },
+        {
+          "path": "contracts/execution/execution-policy.schema.json",
+          "sha256": "sha256:b9fc8e8c6be1308f1731172065005eb0bea335c486a4bf0fddeb196c03432ea1"
+        },
+        {
+          "path": "contracts/execution/gate-policy.schema.json",
+          "sha256": "sha256:a2240da235048862b7542850bf0d11799327278c731df0b207e4c9df6746573a"
+        },
+        {
+          "path": "contracts/http/openapi.yaml",
+          "sha256": "sha256:151f9c84ae42f3c9e11092699279b1a3e23998621d1fd6c28248fc181d42ae4c"
+        },
+        {
+          "path": "contracts/observability/telemetry-context.schema.json",
+          "sha256": "sha256:63b7fe0149d28296b8a8353fb46fb46c642893f46549c3c537045584e65f7acd"
+        },
+        {
+          "path": "contracts/operations/anchor.schema.json",
+          "sha256": "sha256:d29b887c4ca97d9f37c416c9df9cb9d8b34f5414d574cdf04baadd9329eaf52d"
+        },
+        {
+          "path": "contracts/operations/backup-manifest.schema.json",
+          "sha256": "sha256:28dbdbd2c10094d4aed51671317e6d521f820131b1cd54219d616720dc9e9d3c"
+        },
+        {
+          "path": "contracts/operations/durability-ack.schema.json",
+          "sha256": "sha256:3ae0a91cc19a8d56ec339729f174d6f0d7f39cdc2893f2ade356e807605d078f"
+        },
+        {
+          "path": "contracts/operations/durability-policy.schema.json",
+          "sha256": "sha256:ceef013fe815d39d522964ab74fab117b17a140b5d7cf7a4c888a664deacfc2b"
+        },
+        {
+          "path": "contracts/operations/expected-source-inventory.schema.json",
+          "sha256": "sha256:2e0130437413382213d7766325e0fe475022485122ea24593ed80d1462ae0b3f"
+        },
+        {
+          "path": "contracts/operations/health.schema.json",
+          "sha256": "sha256:802af0ebb4cca11ec4a5c5986b94b5d5ba2e788cfab3dd860106adfda8b7539e"
+        },
+        {
+          "path": "contracts/operations/restore-report.schema.json",
+          "sha256": "sha256:a7cadf4b123e1cf76a4079b964c094099bc4b35b9ad1c4cc69ec098f1e85c78e"
+        },
+        {
+          "path": "contracts/runtime/operation-job.schema.json",
+          "sha256": "sha256:df8b67525d1d82f3e7d19d68e971b4643c56c6b699ec8b043a43f946d43e82bc"
+        },
+        {
+          "path": "contracts/runtime/routine-occurrence.schema.json",
+          "sha256": "sha256:682c4e1c3cd0248d8a10c97d2a56cfa2458ab6977db390bc33a00926bc94985f"
+        },
+        {
+          "path": "contracts/runtime/routine.schema.json",
+          "sha256": "sha256:6ca182c99ea79861acf44bf0f5692d7f1be6d0751ec7ac6a1df8777b838da815"
+        },
+        {
+          "path": "contracts/traceability/traceability-sources.schema.json",
+          "sha256": "sha256:bfbc2fd30d7b5601a11779a244b0cad73facacffe13819bf787a1f0461434221"
+        },
+        {
+          "path": "contracts/workflow/review-plan.schema.json",
+          "sha256": "sha256:2cd3a99e04c6bbae56579b841cd73479aed54dd1f899dcfd2cb71210eb7f0e7c"
+        },
+        {
+          "path": "contracts/workflow/workflow.schema.json",
+          "sha256": "sha256:bc2fb7e3a99ffd3dacd98f5ba4e05aa9781b192be6a7c36a1dbfc17060b8f3aa"
+        },
+        {
+          "path": "tools/checks/generated.py",
+          "sha256": "sha256:57ca94e0d1376f66cdaa2f3dbdb48a603970cac5088e7a7e9baaf57fbe4e1926"
         },
         {
           "path": "tools/codegen/__init__.py",
@@ -85,33 +253,57 @@
           "sha256": "sha256:007b1b5a70754a513b6211bc190f0051c30d2eff74e5f9db5890b36e959c1a0f"
         },
         {
+          "path": "tools/codegen/_inventory.py",
+          "sha256": "sha256:22ccc95a4a0c57729f1c84b083d9471aab524dea98c775bb67848cbac1f37026"
+        },
+        {
           "path": "tools/codegen/_model_codegen.py",
           "sha256": "sha256:0b1e25b77c6e5ac1e3577f3b1e47fcdaeb69b7768a85b34dad4c5d99b32f1801"
         },
         {
-          "path": "tools/codegen/generator.py",
-          "sha256": "sha256:a7cc74bf1339a9e2b5487934325c6cd73382db1f2e6e9d614ace9d0ca809ed33"
+          "path": "tools/codegen/_operation_codegen.py",
+          "sha256": "sha256:33eb7a884b4f95c7dfec67db32359e061977daeea07d9ce348d29c712775bc7d"
         },
         {
-          "path": "tools/checks/generated.py",
-          "sha256": "sha256:57ca94e0d1376f66cdaa2f3dbdb48a603970cac5088e7a7e9baaf57fbe4e1926"
+          "path": "tools/codegen/_schema_codegen.py",
+          "sha256": "sha256:d8787757774afe612c0a52d630c32e1ca8a7b8f3ba1b194f2b7f778d78e3d54b"
+        },
+        {
+          "path": "tools/codegen/generator.py",
+          "sha256": "sha256:88d15f5e2d0a1ffe6c49a1698452dc1c473510c0fc3a74b0c6cac7a2fb2e3713"
         }
       ],
       "outputs": [
         {
           "path": "generated/python/ctower_client/__init__.py",
-          "sha256": "sha256:57ef6db17344e6cb39f0f3c319804b930ac79378e10e3e9c3468443398f756a0"
+          "sha256": "sha256:b976846f7b6566f0505e723cd60a4964fdb353bd3bb3ac87d76c4fe8652826f5"
         },
         {
           "path": "generated/python/ctower_client/client.py",
-          "sha256": "sha256:6a844159620b4099e61622435494329a877dd1f52dc471b86d80969dca12715b"
+          "sha256": "sha256:e887308d0f6d289900140752fe4c7b08110cc72f43a0b16fb0c0df982603731b"
         },
         {
           "path": "generated/python/ctower_client/models.py",
-          "sha256": "sha256:48dc27fa14b4db32847daded0c69d730a8e772142c2a6b4efc1369b36e293e31"
+          "sha256": "sha256:ba92473c288882a9192ed5de098509beecc182dca3ea26ad19878a9e7d508473"
+        },
+        {
+          "path": "generated/python/ctower_client/operations.py",
+          "sha256": "sha256:b91116620d6091bfabc53785c9c6002682bb50e67d2770e07fac9d69d30c6471"
+        },
+        {
+          "path": "generated/python/ctower_contracts/__init__.py",
+          "sha256": "sha256:b86bc4c53b90f782fecddb828b6ee4de03cb8f4f6fabac6072d2fe4dbeff1844"
+        },
+        {
+          "path": "generated/python/ctower_contracts/catalog.py",
+          "sha256": "sha256:0bd7c5065b73ccc99b3ebe73355e4d5ed9626cf6c35d36b5a87a61040fa688b4"
+        },
+        {
+          "path": "generated/python/ctower_contracts/schemas.json",
+          "sha256": "sha256:1c343dfc8db56c124f2da2a569eaafdd225e6dc873a1a48e6c7584c00fefdf6f"
         }
       ],
-      "tool_version": "1+sha256:a7cc74bf1339a9e2b5487934325c6cd73382db1f2e6e9d614ace9d0ca809ed33"
+      "tool_version": "1+sha256:88d15f5e2d0a1ffe6c49a1698452dc1c473510c0fc3a74b0c6cac7a2fb2e3713"
     }
   ],
   "schema": "ctower.generated-manifest/v1"

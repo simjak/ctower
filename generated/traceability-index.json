@@ -71,7 +71,8 @@
       "packs/manifests/core-v1.yaml"
     ],
     "AC-COMP-03": [
-      "contracts/company/company-bundle.schema.json"
+      "contracts/company/company-bundle.schema.json",
+      "packages/ctower-kernel/migrations/0024_catalog_authority.sql"
     ],
     "AC-DUR-01": [
       "contracts/http/openapi.yaml",
@@ -88,7 +89,8 @@
       "packages/ctower-kernel/migrations/0002_ticket_slice.sql",
       "packages/ctower-kernel/migrations/0011_persisted_command_refusals.sql",
       "packages/ctower-kernel/migrations/0014_durability_acceptance_finalization.sql",
-      "packages/ctower-kernel/migrations/0016_durability_finalization_confirmation.sql"
+      "packages/ctower-kernel/migrations/0016_durability_finalization_confirmation.sql",
+      "packages/ctower-kernel/migrations/0025_ticket_comment_event.sql"
     ],
     "AC-DUR-03": [
       "contracts/domain/events/canonical-vectors.json",
@@ -112,6 +114,8 @@
       "packages/ctower-kernel/migrations/0013_durability_authority.sql",
       "packages/ctower-kernel/migrations/0014_durability_acceptance_finalization.sql",
       "packages/ctower-kernel/migrations/0016_durability_finalization_confirmation.sql",
+      "packages/ctower-kernel/migrations/0024_catalog_authority.sql",
+      "packages/ctower-kernel/migrations/0025_ticket_comment_event.sql",
       "packages/ctower-kernel/migrations/manifest.json"
     ],
     "AC-DUR-07": [
@@ -128,6 +132,7 @@
       "packages/ctower-kernel/migrations/0019_outbox_routine_health.sql",
       "packages/ctower-kernel/migrations/0020_recovery_roles.sql",
       "packages/ctower-kernel/migrations/0023_cp3c_privileges.sql",
+      "packages/ctower-kernel/migrations/0024_catalog_authority.sql",
       "packages/ctower-kernel/migrations/manifest.json"
     ],
     "AC-EVD-01": [
@@ -195,7 +200,8 @@
     "AC-PROD-04": [
       "contracts/domain/tickets/ticket-event.schema.json",
       "packages/ctower-kernel/migrations/0002_ticket_slice.sql",
-      "packages/ctower-kernel/migrations/0010_custody_episode_intervals.sql"
+      "packages/ctower-kernel/migrations/0010_custody_episode_intervals.sql",
+      "packages/ctower-kernel/migrations/0025_ticket_comment_event.sql"
     ],
     "AC-QUAL-01": [
       "contracts/compatibility/matrix-input.schema.json",
@@ -317,7 +323,8 @@
       "packages/ctower-kernel/migrations/0002_ticket_slice.sql",
       "packages/ctower-kernel/migrations/0005_proof_verdict_sequence.sql",
       "packages/ctower-kernel/migrations/0009_transactional_record_positions.sql",
-      "packages/ctower-kernel/migrations/0011_persisted_command_refusals.sql"
+      "packages/ctower-kernel/migrations/0011_persisted_command_refusals.sql",
+      "packages/ctower-kernel/migrations/0025_ticket_comment_event.sql"
     ],
     "INV-05": [
       "contracts/domain/events/canonical-vectors.json",
@@ -444,7 +451,8 @@
       "packs/workflows/engineering.software-factory/v1.yaml"
     ],
     "INV-47": [
-      "contracts/company/company-bundle.schema.json"
+      "contracts/company/company-bundle.schema.json",
+      "packages/ctower-kernel/migrations/0024_catalog_authority.sql"
     ],
     "INV-48": [
       "contracts/components/environment.schema.json",
@@ -486,7 +494,8 @@
       "contracts/domain/events/canonical-vectors.json",
       "contracts/domain/events/event-envelope.schema.json",
       "contracts/domain/tickets/ticket-event.schema.json",
-      "contracts/http/openapi.yaml"
+      "contracts/http/openapi.yaml",
+      "packages/ctower-kernel/migrations/0025_ticket_comment_event.sql"
     ],
     "SPEC#client-acknowledgement-and-offline-behavior": [
       "contracts/http/openapi.yaml",
@@ -497,7 +506,8 @@
       "packages/ctower-kernel/migrations/0016_durability_finalization_confirmation.sql"
     ],
     "SPEC#companybundle-validate-plan-apply-and-export": [
-      "contracts/company/company-bundle.schema.json"
+      "contracts/company/company-bundle.schema.json",
+      "packages/ctower-kernel/migrations/0024_catalog_authority.sql"
     ],
     "SPEC#consistency-concurrency-and-deduplication": [
       "packages/ctower-kernel/migrations/0005_proof_verdict_sequence.sql",
@@ -559,7 +569,9 @@
       "packages/ctower-kernel/migrations/0013_durability_authority.sql",
       "packages/ctower-kernel/migrations/0014_durability_acceptance_finalization.sql",
       "packages/ctower-kernel/migrations/0016_durability_finalization_confirmation.sql",
-      "packages/ctower-kernel/migrations/0019_outbox_routine_health.sql"
+      "packages/ctower-kernel/migrations/0019_outbox_routine_health.sql",
+      "packages/ctower-kernel/migrations/0024_catalog_authority.sql",
+      "packages/ctower-kernel/migrations/0025_ticket_comment_event.sql"
     ],
     "SPEC#retention-erasure-backup-and-restore": [
       "contracts/evidence/object-manifest.schema.json",

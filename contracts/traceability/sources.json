@@ -957,6 +957,28 @@
       ]
     },
     {
+      "path": "packages/ctower-kernel/migrations/0024_catalog_authority.sql",
+      "references": [
+        "SPEC#companybundle-validate-plan-apply-and-export",
+        "SPEC#persistence-authority",
+        "INV-47",
+        "AC-COMP-03",
+        "AC-DUR-06",
+        "AC-DUR-07"
+      ]
+    },
+    {
+      "path": "packages/ctower-kernel/migrations/0025_ticket_comment_event.sql",
+      "references": [
+        "SPEC#canonical-event-and-command-contract",
+        "SPEC#persistence-authority",
+        "INV-04",
+        "AC-DUR-02",
+        "AC-DUR-06",
+        "AC-PROD-04"
+      ]
+    },
+    {
       "path": "packages/ctower-kernel/migrations/manifest.json",
       "references": [
         "SPEC#executable-authority-and-requirement-traceability",

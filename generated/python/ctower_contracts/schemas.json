@@ -1,0 +1,6928 @@
+{
+  "_notice": "DO NOT EDIT: generated file; regenerate from declared inputs.",
+  "aliases": {
+    "ctower.agent-profile/v1": "contracts/components/agent-profile.schema.json",
+    "ctower.bootstrap.first-tenant-request/v1": "contracts/bootstrap/first-tenant-request.schema.json",
+    "ctower.capability/v1": "contracts/components/capability.schema.json",
+    "ctower.company-bundle/v1": "contracts/company/company-bundle.schema.json",
+    "ctower.compatibility-input/v1": "contracts/compatibility/matrix-input.schema.json",
+    "ctower.compatibility-result/v1": "contracts/compatibility/matrix-result.schema.json",
+    "ctower.environment/v1": "contracts/components/environment.schema.json",
+    "ctower.evidence-manifest/v1": "contracts/evidence/evidence-manifest.schema.json",
+    "ctower.evidence-policy/v1": "contracts/execution/evidence-policy.schema.json",
+    "ctower.execution-policy/v1": "contracts/execution/execution-policy.schema.json",
+    "ctower.gate-policy/v1": "contracts/execution/gate-policy.schema.json",
+    "ctower.goal/v1": "contracts/components/goal.schema.json",
+    "ctower.harness/v1": "contracts/components/harness.schema.json",
+    "ctower.image/v1": "contracts/components/image.schema.json",
+    "ctower.integration/v1": "contracts/components/integration.schema.json",
+    "ctower.notification/v1": "contracts/components/notification.schema.json",
+    "ctower.persona/v1": "contracts/components/persona.schema.json",
+    "ctower.project/v1": "contracts/components/project.schema.json",
+    "ctower.review-plan/v1": "contracts/workflow/review-plan.schema.json",
+    "ctower.scheduling-policy/v1": "contracts/domain/task-management/scheduling-policy.schema.json",
+    "ctower.skill/v1": "contracts/components/skill.schema.json",
+    "ctower.supervisor/v1": "contracts/components/supervisor.schema.json",
+    "ctower.target/v1": "contracts/components/target.schema.json",
+    "ctower.telemetry-context/v1": "contracts/observability/telemetry-context.schema.json",
+    "ctower.telemetry/v1": "contracts/components/telemetry.schema.json",
+    "ctower.tool/v1": "contracts/components/tool.schema.json",
+    "ctower.traceability-sources/v1": "contracts/traceability/traceability-sources.schema.json",
+    "ctower.versioned-component/v1": "contracts/components/versioned-component.schema.json",
+    "ctower.workflow/v1": "contracts/workflow/workflow.schema.json",
+    "ctower.workspace/v1": "contracts/components/workspace.schema.json",
+    "https://ctower.dev/contracts/compatibility/matrix-input/v1": "contracts/compatibility/matrix-input.schema.json",
+    "https://ctower.dev/contracts/compatibility/matrix-result/v1": "contracts/compatibility/matrix-result.schema.json",
+    "https://ctower.dev/contracts/domain/events/event-envelope.schema.json": "contracts/domain/events/event-envelope.schema.json",
+    "https://ctower.dev/contracts/domain/outbox-delivery.schema.json": "contracts/domain/outbox-delivery.schema.json",
+    "https://ctower.dev/contracts/domain/task-management/board-view.schema.json": "contracts/domain/task-management/board-view.schema.json",
+    "https://ctower.dev/contracts/domain/task-management/scheduling-policy.schema.json": "contracts/domain/task-management/scheduling-policy.schema.json",
+    "https://ctower.dev/contracts/domain/task-management/task-command.schema.json": "contracts/domain/task-management/task-command.schema.json",
+    "https://ctower.dev/contracts/domain/tickets/ticket-event.schema.json": "contracts/domain/tickets/ticket-event.schema.json",
+    "https://ctower.dev/contracts/evidence/object-manifest.schema.json": "contracts/evidence/object-manifest.schema.json",
+    "https://ctower.dev/contracts/operations/anchor.schema.json": "contracts/operations/anchor.schema.json",
+    "https://ctower.dev/contracts/operations/backup-manifest.schema.json": "contracts/operations/backup-manifest.schema.json",
+    "https://ctower.dev/contracts/operations/durability-ack.schema.json": "contracts/operations/durability-ack.schema.json",
+    "https://ctower.dev/contracts/operations/durability-policy.schema.json": "contracts/operations/durability-policy.schema.json",
+    "https://ctower.dev/contracts/operations/expected-source-inventory.schema.json": "contracts/operations/expected-source-inventory.schema.json",
+    "https://ctower.dev/contracts/operations/health.schema.json": "contracts/operations/health.schema.json",
+    "https://ctower.dev/contracts/operations/restore-report.schema.json": "contracts/operations/restore-report.schema.json",
+    "https://ctower.dev/contracts/runtime/operation-job.schema.json": "contracts/runtime/operation-job.schema.json",
+    "https://ctower.dev/contracts/runtime/routine-occurrence.schema.json": "contracts/runtime/routine-occurrence.schema.json",
+    "https://ctower.dev/contracts/runtime/routine.schema.json": "contracts/runtime/routine.schema.json",
+    "https://ctower.invalid/contracts/evidence/evidence-manifest.schema.json": "contracts/evidence/evidence-manifest.schema.json",
+    "https://ctower.invalid/contracts/execution/evidence-policy.schema.json": "contracts/execution/evidence-policy.schema.json",
+    "https://ctower.invalid/contracts/execution/execution-policy.schema.json": "contracts/execution/execution-policy.schema.json",
+    "https://ctower.invalid/contracts/execution/gate-policy.schema.json": "contracts/execution/gate-policy.schema.json",
+    "https://ctower.invalid/contracts/traceability/traceability-sources.schema.json": "contracts/traceability/traceability-sources.schema.json",
+    "https://ctower.invalid/contracts/workflow/review-plan.schema.json": "contracts/workflow/review-plan.schema.json",
+    "https://ctower.invalid/contracts/workflow/workflow.schema.json": "contracts/workflow/workflow.schema.json",
+    "https://ctower.local/contracts/bootstrap/first-tenant-request.schema.json": "contracts/bootstrap/first-tenant-request.schema.json",
+    "https://ctower.local/contracts/company/company-bundle.schema.json": "contracts/company/company-bundle.schema.json",
+    "https://ctower.local/contracts/components/agent-profile.schema.json": "contracts/components/agent-profile.schema.json",
+    "https://ctower.local/contracts/components/capability.schema.json": "contracts/components/capability.schema.json",
+    "https://ctower.local/contracts/components/environment.schema.json": "contracts/components/environment.schema.json",
+    "https://ctower.local/contracts/components/goal.schema.json": "contracts/components/goal.schema.json",
+    "https://ctower.local/contracts/components/harness.schema.json": "contracts/components/harness.schema.json",
+    "https://ctower.local/contracts/components/image.schema.json": "contracts/components/image.schema.json",
+    "https://ctower.local/contracts/components/integration.schema.json": "contracts/components/integration.schema.json",
+    "https://ctower.local/contracts/components/notification.schema.json": "contracts/components/notification.schema.json",
+    "https://ctower.local/contracts/components/persona.schema.json": "contracts/components/persona.schema.json",
+    "https://ctower.local/contracts/components/project.schema.json": "contracts/components/project.schema.json",
+    "https://ctower.local/contracts/components/skill.schema.json": "contracts/components/skill.schema.json",
+    "https://ctower.local/contracts/components/supervisor.schema.json": "contracts/components/supervisor.schema.json",
+    "https://ctower.local/contracts/components/target.schema.json": "contracts/components/target.schema.json",
+    "https://ctower.local/contracts/components/telemetry.schema.json": "contracts/components/telemetry.schema.json",
+    "https://ctower.local/contracts/components/tool.schema.json": "contracts/components/tool.schema.json",
+    "https://ctower.local/contracts/components/versioned-component.schema.json": "contracts/components/versioned-component.schema.json",
+    "https://ctower.local/contracts/components/workspace.schema.json": "contracts/components/workspace.schema.json",
+    "https://ctower.local/contracts/observability/telemetry-context.schema.json": "contracts/observability/telemetry-context.schema.json"
+  },
+  "resources": {
+    "contracts/bootstrap/first-tenant-request.schema.json": {
+      "$id": "https://ctower.local/contracts/bootstrap/first-tenant-request.schema.json",
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "additionalProperties": false,
+      "description": "Secret-free body for the one-use first-tenant trust-root ceremony.",
+      "properties": {
+        "durable_commander": {
+          "additionalProperties": false,
+          "properties": {
+            "display_name": {
+              "maxLength": 128,
+              "minLength": 1,
+              "type": "string"
+            },
+            "key": {
+              "pattern": "^[a-z][a-z0-9-]{2,63}$",
+              "type": "string"
+            }
+          },
+          "required": [
+            "key",
+            "display_name"
+          ],
+          "type": "object"
+        },
+        "initial_operator": {
+          "additionalProperties": false,
+          "properties": {
+            "display_name": {
+              "maxLength": 128,
+              "minLength": 1,
+              "type": "string"
+            },
+            "external_subject": {
+              "maxLength": 255,
+              "minLength": 1,
+              "type": "string"
+            }
+          },
+          "required": [
+            "external_subject",
+            "display_name"
+          ],
+          "type": "object"
+        },
+        "schema": {
+          "const": "ctower.bootstrap.first-tenant-request/v1"
+        },
+        "tenant": {
+          "additionalProperties": false,
+          "properties": {
+            "display_name": {
+              "maxLength": 128,
+              "minLength": 1,
+              "type": "string"
+            },
+            "key": {
+              "pattern": "^[a-z][a-z0-9-]{2,63}$",
+              "type": "string"
+            }
+          },
+          "required": [
+            "key",
+            "display_name"
+          ],
+          "type": "object"
+        },
+        "vault_binding_refs": {
+          "items": {
+            "additionalProperties": false,
+            "properties": {
+              "name": {
+                "pattern": "^[A-Z][A-Z0-9_]{2,127}$",
+                "type": "string"
+              },
+              "reference": {
+                "maxLength": 512,
+                "pattern": "^(?:os-credential|vault|binding)://[^\\s]+$",
+                "type": "string"
+              },
+              "reference_class": {
+                "enum": [
+                  "os-credential",
+                  "vault-path",
+                  "runtime-binding"
+                ],
+                "type": "string"
+              }
+            },
+            "required": [
+              "name",
+              "reference_class",
+              "reference"
+            ],
+            "type": "object"
+          },
+          "minItems": 1,
+          "type": "array",
+          "uniqueItems": true
+        }
+      },
+      "required": [
+        "schema",
+        "tenant",
+        "initial_operator",
+        "durable_commander",
+        "vault_binding_refs"
+      ],
+      "title": "FirstTenantBootstrapRequest",
+      "type": "object"
+    },
+    "contracts/company/company-bundle.schema.json": {
+      "$defs": {
+        "componentRef": {
+          "additionalProperties": false,
+          "properties": {
+            "content_digest": {
+              "pattern": "^sha256:[a-f0-9]{64}$",
+              "type": "string"
+            },
+            "key": {
+              "minLength": 1,
+              "type": "string"
+            },
+            "kind": {
+              "minLength": 1,
+              "type": "string"
+            },
+            "revision": {
+              "minimum": 1,
+              "type": "integer"
+            }
+          },
+          "required": [
+            "kind",
+            "key",
+            "revision",
+            "content_digest"
+          ],
+          "type": "object"
+        }
+      },
+      "$id": "https://ctower.local/contracts/company/company-bundle.schema.json",
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "additionalProperties": false,
+      "properties": {
+        "assignments": {
+          "items": {
+            "additionalProperties": false,
+            "properties": {
+              "component": {
+                "$ref": "#/$defs/componentRef"
+              },
+              "slot": {
+                "pattern": "^[a-z][a-z0-9._-]{1,63}$",
+                "type": "string"
+              },
+              "subject": {
+                "pattern": "^[a-z][a-z0-9._-]*:[a-z][a-z0-9._-]*$",
+                "type": "string"
+              }
+            },
+            "required": [
+              "subject",
+              "slot",
+              "component"
+            ],
+            "type": "object"
+          },
+          "type": "array"
+        },
+        "company": {
+          "additionalProperties": false,
+          "properties": {
+            "display_name": {
+              "maxLength": 128,
+              "minLength": 1,
+              "type": "string"
+            },
+            "key": {
+              "pattern": "^[a-z][a-z0-9-]{2,63}$",
+              "type": "string"
+            }
+          },
+          "required": [
+            "key",
+            "display_name"
+          ],
+          "type": "object"
+        },
+        "resources": {
+          "items": {
+            "additionalProperties": false,
+            "properties": {
+              "component": {
+                "$ref": "https://ctower.local/contracts/components/versioned-component.schema.json"
+              },
+              "payload": {
+                "type": "object"
+              }
+            },
+            "required": [
+              "component",
+              "payload"
+            ],
+            "type": "object"
+          },
+          "maxItems": 512,
+          "minItems": 1,
+          "type": "array",
+          "uniqueItems": true
+        },
+        "schema": {
+          "const": "ctower.company-bundle/v1"
+        },
+        "secret_binding_refs": {
+          "items": {
+            "additionalProperties": false,
+            "properties": {
+              "name": {
+                "pattern": "^[A-Z][A-Z0-9_]{2,127}$",
+                "type": "string"
+              },
+              "reference_class": {
+                "enum": [
+                  "os-credential",
+                  "vault-path",
+                  "runtime-binding"
+                ],
+                "type": "string"
+              }
+            },
+            "required": [
+              "name",
+              "reference_class"
+            ],
+            "type": "object"
+          },
+          "type": "array",
+          "uniqueItems": true
+        }
+      },
+      "required": [
+        "schema",
+        "company",
+        "resources",
+        "assignments",
+        "secret_binding_refs"
+      ],
+      "title": "CompanyBundle",
+      "type": "object"
+    },
+    "contracts/compatibility/matrix-input.schema.json": {
+      "$defs": {
+        "candidateBase": {
+          "additionalProperties": false,
+          "properties": {
+            "gil": {
+              "const": "required"
+            },
+            "linux_image": {
+              "pattern": "^docker\\.io/library/python@sha256:[0-9a-f]{64}$",
+              "type": "string"
+            },
+            "release_date": {
+              "format": "date",
+              "type": "string"
+            },
+            "release_url": {
+              "format": "uri",
+              "type": "string"
+            },
+            "source_sha256": {
+              "pattern": "^[0-9a-f]{64}$",
+              "type": "string"
+            },
+            "source_url": {
+              "format": "uri",
+              "type": "string"
+            },
+            "version": {
+              "enum": [
+                "3.12.13",
+                "3.13.14",
+                "3.14.6"
+              ]
+            }
+          },
+          "required": [
+            "version",
+            "gil",
+            "release_date",
+            "release_url",
+            "source_url",
+            "source_sha256",
+            "linux_image"
+          ],
+          "type": "object"
+        },
+        "python31213": {
+          "allOf": [
+            {
+              "$ref": "#/$defs/candidateBase"
+            },
+            {
+              "properties": {
+                "linux_image": {
+                  "const": "docker.io/library/python@sha256:57cd7c3a7a273101a6485ba99423ee568157882804b1124b4dd04266317710de"
+                },
+                "release_date": {
+                  "const": "2026-03-03"
+                },
+                "release_url": {
+                  "const": "https://www.python.org/downloads/release/python-31213/"
+                },
+                "source_sha256": {
+                  "const": "0816c4761c97ecdb3f50a3924de0a93fd78cb63ee8e6c04201ddfaedca500b0b"
+                },
+                "source_url": {
+                  "const": "https://www.python.org/ftp/python/3.12.13/Python-3.12.13.tgz"
+                },
+                "version": {
+                  "const": "3.12.13"
+                }
+              }
+            }
+          ]
+        },
+        "python31314": {
+          "allOf": [
+            {
+              "$ref": "#/$defs/candidateBase"
+            },
+            {
+              "properties": {
+                "linux_image": {
+                  "const": "docker.io/library/python@sha256:6771159cd4fa5d9bba1258caf0b82e6b73458c694d178ad97c5e925c2d0e1a91"
+                },
+                "release_date": {
+                  "const": "2026-06-10"
+                },
+                "release_url": {
+                  "const": "https://www.python.org/downloads/release/python-31314/"
+                },
+                "source_sha256": {
+                  "const": "5ae535a36af0ebca6fca176ecb8197f5db9c1cb8c8f0cd12cdf1787046db1f41"
+                },
+                "source_url": {
+                  "const": "https://www.python.org/ftp/python/3.13.14/Python-3.13.14.tgz"
+                },
+                "version": {
+                  "const": "3.13.14"
+                }
+              }
+            }
+          ]
+        },
+        "python3146": {
+          "allOf": [
+            {
+              "$ref": "#/$defs/candidateBase"
+            },
+            {
+              "properties": {
+                "linux_image": {
+                  "const": "docker.io/library/python@sha256:cea0e6040540fb2b965b6e7fb5ffa00871e632eef63719f0ea54bca189ce14a6"
+                },
+                "release_date": {
+                  "const": "2026-06-10"
+                },
+                "release_url": {
+                  "const": "https://www.python.org/downloads/release/python-3146/"
+                },
+                "source_sha256": {
+                  "const": "74d0d71d0600e477651a077101d6e62d1e2e69b8e992ba18c993dd643b7ba222"
+                },
+                "source_url": {
+                  "const": "https://www.python.org/ftp/python/3.14.6/Python-3.14.6.tgz"
+                },
+                "version": {
+                  "const": "3.14.6"
+                }
+              }
+            }
+          ]
+        }
+      },
+      "$id": "https://ctower.dev/contracts/compatibility/matrix-input/v1",
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "additionalProperties": false,
+      "properties": {
+        "candidates": {
+          "items": false,
+          "maxItems": 3,
+          "minItems": 3,
+          "prefixItems": [
+            {
+              "$ref": "#/$defs/python31213"
+            },
+            {
+              "$ref": "#/$defs/python31314"
+            },
+            {
+              "$ref": "#/$defs/python3146"
+            }
+          ],
+          "type": "array"
+        },
+        "matrix_id": {
+          "const": "ct-l0-007-python-2026-07-19"
+        },
+        "product_artifacts": {
+          "const": [
+            "release_helper_wheel",
+            "generated_clients"
+          ],
+          "type": "array"
+        },
+        "required_observations": {
+          "const": [
+            "runtime",
+            "dependency_resolution",
+            "pydantic",
+            "fastapi",
+            "psycopg",
+            "opentelemetry",
+            "ruff",
+            "mypy_pydantic_plugin",
+            "jsonschema",
+            "wheel"
+          ],
+          "type": "array"
+        },
+        "requirements": {
+          "const": [
+            "build==1.5.0",
+            "fastapi==0.139.2",
+            "httpx==0.28.1",
+            "jsonschema==4.26.0",
+            "mypy==1.20.2",
+            "opentelemetry-api==1.44.0",
+            "opentelemetry-sdk==1.44.0",
+            "psycopg==3.3.4",
+            "psycopg-binary==3.3.4",
+            "psycopg-pool==3.3.1",
+            "pydantic==2.13.4",
+            "ruff==0.15.22",
+            "setuptools==83.0.0",
+            "types-jsonschema==4.26.0.20260518",
+            "uv==0.11.29",
+            "uvicorn==0.51.0",
+            "wheel==0.47.0"
+          ],
+          "type": "array"
+        },
+        "schema": {
+          "const": "ctower.compatibility-input/v1"
+        },
+        "uv_version": {
+          "const": "0.11.29"
+        }
+      },
+      "required": [
+        "schema",
+        "matrix_id",
+        "uv_version",
+        "requirements",
+        "required_observations",
+        "product_artifacts",
+        "candidates"
+      ],
+      "title": "ctower fixed L0 runtime compatibility matrix input",
+      "type": "object"
+    },
+    "contracts/compatibility/matrix-result.schema.json": {
+      "$defs": {
+        "artifact": {
+          "additionalProperties": false,
+          "properties": {
+            "reason_code": {
+              "const": "artifact_absent"
+            },
+            "status": {
+              "const": "not_exercised"
+            }
+          },
+          "required": [
+            "status",
+            "reason_code"
+          ],
+          "type": "object"
+        },
+        "commandDetails": {
+          "additionalProperties": false,
+          "properties": {
+            "exit_code": {
+              "const": 0
+            }
+          },
+          "required": [
+            "exit_code"
+          ],
+          "type": "object"
+        },
+        "dependencyDetails": {
+          "additionalProperties": false,
+          "properties": {
+            "direct_versions": {
+              "items": {
+                "$ref": "#/$defs/resolvedDependency"
+              },
+              "maxItems": 17,
+              "minItems": 17,
+              "type": "array"
+            }
+          },
+          "required": [
+            "direct_versions"
+          ],
+          "type": "object"
+        },
+        "dependencyObservation": {
+          "allOf": [
+            {
+              "$ref": "#/$defs/observationEnvelope"
+            },
+            {
+              "properties": {
+                "details": {
+                  "$ref": "#/$defs/dependencyDetails"
+                },
+                "id": {
+                  "const": "dependency_resolution"
+                }
+              }
+            }
+          ]
+        },
+        "digest": {
+          "pattern": "^sha256:[0-9a-f]{64}$",
+          "type": "string"
+        },
+        "fastapiDetails": {
+          "additionalProperties": false,
+          "properties": {
+            "openapi": {
+              "pattern": "^3\\.[01]\\.[0-9]+$",
+              "type": "string"
+            },
+            "schema_sha256": {
+              "$ref": "#/$defs/sha256"
+            },
+            "version": {
+              "const": "0.139.2"
+            }
+          },
+          "required": [
+            "version",
+            "openapi",
+            "schema_sha256"
+          ],
+          "type": "object"
+        },
+        "fastapiObservation": {
+          "allOf": [
+            {
+              "$ref": "#/$defs/observationEnvelope"
+            },
+            {
+              "properties": {
+                "details": {
+                  "$ref": "#/$defs/fastapiDetails"
+                },
+                "id": {
+                  "const": "fastapi"
+                }
+              }
+            }
+          ]
+        },
+        "hostIdentity": {
+          "additionalProperties": false,
+          "properties": {
+            "machine": {
+              "$ref": "#/$defs/machine"
+            },
+            "system": {
+              "enum": [
+                "Darwin",
+                "Linux"
+              ]
+            }
+          },
+          "required": [
+            "system",
+            "machine"
+          ],
+          "type": "object"
+        },
+        "imageIdentity": {
+          "additionalProperties": false,
+          "properties": {
+            "architecture": {
+              "enum": [
+                "amd64",
+                "arm64"
+              ]
+            },
+            "image_id": {
+              "$ref": "#/$defs/digest"
+            },
+            "os": {
+              "const": "linux"
+            },
+            "requested": {
+              "pattern": "^docker\\.io/library/python@sha256:[0-9a-f]{64}$",
+              "type": "string"
+            }
+          },
+          "required": [
+            "requested",
+            "image_id",
+            "os",
+            "architecture"
+          ],
+          "type": "object"
+        },
+        "jsonschemaDetails": {
+          "additionalProperties": false,
+          "properties": {
+            "schema_sha256": {
+              "$ref": "#/$defs/sha256"
+            },
+            "version": {
+              "const": "4.26.0"
+            }
+          },
+          "required": [
+            "version",
+            "schema_sha256"
+          ],
+          "type": "object"
+        },
+        "jsonschemaObservation": {
+          "allOf": [
+            {
+              "$ref": "#/$defs/observationEnvelope"
+            },
+            {
+              "properties": {
+                "details": {
+                  "$ref": "#/$defs/jsonschemaDetails"
+                },
+                "id": {
+                  "const": "jsonschema"
+                }
+              }
+            }
+          ]
+        },
+        "machine": {
+          "enum": [
+            "amd64",
+            "arm64"
+          ]
+        },
+        "mypyDetails": {
+          "additionalProperties": false,
+          "properties": {
+            "extra_field_rejected": {
+              "const": true
+            },
+            "invalid_exit_code": {
+              "const": 1
+            },
+            "valid": {
+              "$ref": "#/$defs/commandDetails"
+            }
+          },
+          "required": [
+            "valid",
+            "invalid_exit_code",
+            "extra_field_rejected"
+          ],
+          "type": "object"
+        },
+        "mypyObservation": {
+          "allOf": [
+            {
+              "$ref": "#/$defs/observationEnvelope"
+            },
+            {
+              "properties": {
+                "details": {
+                  "$ref": "#/$defs/mypyDetails"
+                },
+                "id": {
+                  "const": "mypy_pydantic_plugin"
+                }
+              }
+            }
+          ]
+        },
+        "observation": {
+          "oneOf": [
+            {
+              "$ref": "#/$defs/runtimeObservation"
+            },
+            {
+              "$ref": "#/$defs/dependencyObservation"
+            },
+            {
+              "$ref": "#/$defs/pydanticObservation"
+            },
+            {
+              "$ref": "#/$defs/fastapiObservation"
+            },
+            {
+              "$ref": "#/$defs/psycopgObservation"
+            },
+            {
+              "$ref": "#/$defs/opentelemetryObservation"
+            },
+            {
+              "$ref": "#/$defs/ruffObservation"
+            },
+            {
+              "$ref": "#/$defs/mypyObservation"
+            },
+            {
+              "$ref": "#/$defs/jsonschemaObservation"
+            },
+            {
+              "$ref": "#/$defs/wheelObservation"
+            }
+          ]
+        },
+        "observationEnvelope": {
+          "additionalProperties": false,
+          "properties": {
+            "details": {
+              "type": "object"
+            },
+            "duration_ms": {
+              "maximum": 900000,
+              "minimum": 0,
+              "type": "integer"
+            },
+            "id": {
+              "type": "string"
+            },
+            "status": {
+              "const": "passed"
+            }
+          },
+          "required": [
+            "id",
+            "status",
+            "duration_ms",
+            "details"
+          ],
+          "type": "object"
+        },
+        "observationSet": {
+          "items": false,
+          "maxItems": 10,
+          "minItems": 10,
+          "prefixItems": [
+            {
+              "$ref": "#/$defs/runtimeObservation"
+            },
+            {
+              "$ref": "#/$defs/dependencyObservation"
+            },
+            {
+              "$ref": "#/$defs/pydanticObservation"
+            },
+            {
+              "$ref": "#/$defs/fastapiObservation"
+            },
+            {
+              "$ref": "#/$defs/psycopgObservation"
+            },
+            {
+              "$ref": "#/$defs/opentelemetryObservation"
+            },
+            {
+              "$ref": "#/$defs/ruffObservation"
+            },
+            {
+              "$ref": "#/$defs/mypyObservation"
+            },
+            {
+              "$ref": "#/$defs/jsonschemaObservation"
+            },
+            {
+              "$ref": "#/$defs/wheelObservation"
+            }
+          ],
+          "type": "array"
+        },
+        "opentelemetryDetails": {
+          "additionalProperties": false,
+          "properties": {
+            "api": {
+              "const": "1.44.0"
+            },
+            "spans": {
+              "const": 1
+            }
+          },
+          "required": [
+            "api",
+            "spans"
+          ],
+          "type": "object"
+        },
+        "opentelemetryObservation": {
+          "allOf": [
+            {
+              "$ref": "#/$defs/observationEnvelope"
+            },
+            {
+              "properties": {
+                "details": {
+                  "$ref": "#/$defs/opentelemetryDetails"
+                },
+                "id": {
+                  "const": "opentelemetry"
+                }
+              }
+            }
+          ]
+        },
+        "probeCore": {
+          "properties": {
+            "interpreter": {
+              "$ref": "#/$defs/runtimeDetails"
+            },
+            "observations": {
+              "$ref": "#/$defs/observationSet"
+            },
+            "status": {
+              "const": "passed"
+            },
+            "telemetry": {
+              "$ref": "https://ctower.local/contracts/observability/telemetry-context.schema.json"
+            },
+            "version": {
+              "$ref": "#/$defs/version"
+            }
+          },
+          "required": [
+            "version",
+            "status",
+            "interpreter",
+            "observations",
+            "telemetry"
+          ],
+          "type": "object"
+        },
+        "probe_result": {
+          "allOf": [
+            {
+              "$ref": "#/$defs/probeCore"
+            }
+          ],
+          "unevaluatedProperties": false
+        },
+        "productArtifacts": {
+          "additionalProperties": false,
+          "properties": {
+            "generated_clients": {
+              "$ref": "#/$defs/artifact"
+            },
+            "release_helper_wheel": {
+              "$ref": "#/$defs/artifact"
+            }
+          },
+          "required": [
+            "release_helper_wheel",
+            "generated_clients"
+          ],
+          "type": "object"
+        },
+        "psycopgDetails": {
+          "additionalProperties": false,
+          "properties": {
+            "psycopg": {
+              "const": "3.3.4"
+            },
+            "psycopg_pool": {
+              "const": "3.3.1"
+            }
+          },
+          "required": [
+            "psycopg",
+            "psycopg_pool"
+          ],
+          "type": "object"
+        },
+        "psycopgObservation": {
+          "allOf": [
+            {
+              "$ref": "#/$defs/observationEnvelope"
+            },
+            {
+              "properties": {
+                "details": {
+                  "$ref": "#/$defs/psycopgDetails"
+                },
+                "id": {
+                  "const": "psycopg"
+                }
+              }
+            }
+          ]
+        },
+        "pydanticDetails": {
+          "additionalProperties": false,
+          "properties": {
+            "extra_fields": {
+              "const": "forbidden"
+            },
+            "frozen": {
+              "const": true
+            }
+          },
+          "required": [
+            "extra_fields",
+            "frozen"
+          ],
+          "type": "object"
+        },
+        "pydanticObservation": {
+          "allOf": [
+            {
+              "$ref": "#/$defs/observationEnvelope"
+            },
+            {
+              "properties": {
+                "details": {
+                  "$ref": "#/$defs/pydanticDetails"
+                },
+                "id": {
+                  "const": "pydantic"
+                }
+              }
+            }
+          ]
+        },
+        "python31213Linux": {
+          "allOf": [
+            {
+              "$ref": "#/$defs/run"
+            },
+            {
+              "properties": {
+                "environment": {
+                  "const": "linux-container"
+                },
+                "host_identity": {
+                  "properties": {
+                    "system": {
+                      "const": "Linux"
+                    }
+                  }
+                },
+                "image_identity": {
+                  "properties": {
+                    "requested": {
+                      "const": "docker.io/library/python@sha256:57cd7c3a7a273101a6485ba99423ee568157882804b1124b4dd04266317710de"
+                    }
+                  }
+                },
+                "version": {
+                  "const": "3.12.13"
+                }
+              }
+            }
+          ]
+        },
+        "python31213Macos": {
+          "allOf": [
+            {
+              "$ref": "#/$defs/run"
+            },
+            {
+              "properties": {
+                "environment": {
+                  "const": "macos-host"
+                },
+                "host_identity": {
+                  "properties": {
+                    "system": {
+                      "const": "Darwin"
+                    }
+                  }
+                },
+                "image_identity": {
+                  "type": "null"
+                },
+                "version": {
+                  "const": "3.12.13"
+                }
+              }
+            }
+          ]
+        },
+        "python31314Linux": {
+          "allOf": [
+            {
+              "$ref": "#/$defs/run"
+            },
+            {
+              "properties": {
+                "environment": {
+                  "const": "linux-container"
+                },
+                "host_identity": {
+                  "properties": {
+                    "system": {
+                      "const": "Linux"
+                    }
+                  }
+                },
+                "image_identity": {
+                  "properties": {
+                    "requested": {
+                      "const": "docker.io/library/python@sha256:6771159cd4fa5d9bba1258caf0b82e6b73458c694d178ad97c5e925c2d0e1a91"
+                    }
+                  }
+                },
+                "version": {
+                  "const": "3.13.14"
+                }
+              }
+            }
+          ]
+        },
+        "python31314Macos": {
+          "allOf": [
+            {
+              "$ref": "#/$defs/run"
+            },
+            {
+              "properties": {
+                "environment": {
+                  "const": "macos-host"
+                },
+                "host_identity": {
+                  "properties": {
+                    "system": {
+                      "const": "Darwin"
+                    }
+                  }
+                },
+                "image_identity": {
+                  "type": "null"
+                },
+                "version": {
+                  "const": "3.13.14"
+                }
+              }
+            }
+          ]
+        },
+        "python3146Linux": {
+          "allOf": [
+            {
+              "$ref": "#/$defs/run"
+            },
+            {
+              "properties": {
+                "environment": {
+                  "const": "linux-container"
+                },
+                "host_identity": {
+                  "properties": {
+                    "system": {
+                      "const": "Linux"
+                    }
+                  }
+                },
+                "image_identity": {
+                  "properties": {
+                    "requested": {
+                      "const": "docker.io/library/python@sha256:cea0e6040540fb2b965b6e7fb5ffa00871e632eef63719f0ea54bca189ce14a6"
+                    }
+                  }
+                },
+                "version": {
+                  "const": "3.14.6"
+                }
+              }
+            }
+          ]
+        },
+        "python3146Macos": {
+          "allOf": [
+            {
+              "$ref": "#/$defs/run"
+            },
+            {
+              "properties": {
+                "environment": {
+                  "const": "macos-host"
+                },
+                "host_identity": {
+                  "properties": {
+                    "system": {
+                      "const": "Darwin"
+                    }
+                  }
+                },
+                "image_identity": {
+                  "type": "null"
+                },
+                "version": {
+                  "const": "3.14.6"
+                }
+              }
+            }
+          ]
+        },
+        "resolution": {
+          "additionalProperties": false,
+          "properties": {
+            "lock": {
+              "items": {
+                "maxLength": 256,
+                "minLength": 3,
+                "pattern": "^[a-z0-9](?:[a-z0-9.-]*[a-z0-9])?==[0-9][A-Za-z0-9.!+]*$",
+                "type": "string"
+              },
+              "minItems": 17,
+              "type": "array",
+              "uniqueItems": true
+            },
+            "lock_sha256": {
+              "$ref": "#/$defs/sha256"
+            }
+          },
+          "required": [
+            "lock",
+            "lock_sha256"
+          ],
+          "type": "object"
+        },
+        "resolvedDependency": {
+          "additionalProperties": false,
+          "properties": {
+            "name": {
+              "pattern": "^[a-z0-9][a-z0-9.-]+$",
+              "type": "string"
+            },
+            "version": {
+              "pattern": "^[0-9][A-Za-z0-9.+!-]*$",
+              "type": "string"
+            }
+          },
+          "required": [
+            "name",
+            "version"
+          ],
+          "type": "object"
+        },
+        "ruffObservation": {
+          "allOf": [
+            {
+              "$ref": "#/$defs/observationEnvelope"
+            },
+            {
+              "properties": {
+                "details": {
+                  "$ref": "#/$defs/commandDetails"
+                },
+                "id": {
+                  "const": "ruff"
+                }
+              }
+            }
+          ]
+        },
+        "run": {
+          "allOf": [
+            {
+              "$ref": "#/$defs/probeCore"
+            },
+            {
+              "properties": {
+                "environment": {
+                  "enum": [
+                    "macos-host",
+                    "linux-container"
+                  ]
+                },
+                "host_identity": {
+                  "$ref": "#/$defs/hostIdentity"
+                },
+                "image_identity": {
+                  "oneOf": [
+                    {
+                      "$ref": "#/$defs/imageIdentity"
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                },
+                "product_artifacts": {
+                  "$ref": "#/$defs/productArtifacts"
+                },
+                "resolution": {
+                  "$ref": "#/$defs/resolution"
+                }
+              },
+              "required": [
+                "environment",
+                "host_identity",
+                "resolution",
+                "product_artifacts",
+                "image_identity"
+              ],
+              "type": "object"
+            }
+          ],
+          "unevaluatedProperties": false
+        },
+        "runtimeDetails": {
+          "additionalProperties": false,
+          "properties": {
+            "cache_tag": {
+              "enum": [
+                "cpython-312",
+                "cpython-313",
+                "cpython-314"
+              ]
+            },
+            "executable_sha256": {
+              "$ref": "#/$defs/sha256"
+            },
+            "free_threaded": {
+              "const": false
+            },
+            "gil_enabled": {
+              "const": true
+            },
+            "implementation": {
+              "const": "CPython"
+            },
+            "machine": {
+              "$ref": "#/$defs/machine"
+            },
+            "platform": {
+              "enum": [
+                "linux-amd64",
+                "linux-arm64",
+                "macos-amd64",
+                "macos-arm64"
+              ]
+            },
+            "py_gil_disabled": {
+              "const": 0
+            },
+            "soabi": {
+              "enum": [
+                "cpython-312-aarch64-linux-gnu",
+                "cpython-312-darwin",
+                "cpython-312-x86_64-linux-gnu",
+                "cpython-313-aarch64-linux-gnu",
+                "cpython-313-darwin",
+                "cpython-313-x86_64-linux-gnu",
+                "cpython-314-aarch64-linux-gnu",
+                "cpython-314-darwin",
+                "cpython-314-x86_64-linux-gnu"
+              ]
+            },
+            "system": {
+              "enum": [
+                "Darwin",
+                "Linux"
+              ]
+            },
+            "version": {
+              "$ref": "#/$defs/version"
+            }
+          },
+          "required": [
+            "version",
+            "implementation",
+            "free_threaded",
+            "gil_enabled",
+            "system",
+            "platform",
+            "machine",
+            "soabi",
+            "cache_tag",
+            "py_gil_disabled",
+            "executable_sha256"
+          ],
+          "type": "object"
+        },
+        "runtimeObservation": {
+          "allOf": [
+            {
+              "$ref": "#/$defs/observationEnvelope"
+            },
+            {
+              "properties": {
+                "details": {
+                  "$ref": "#/$defs/runtimeDetails"
+                },
+                "id": {
+                  "const": "runtime"
+                }
+              }
+            }
+          ]
+        },
+        "sha256": {
+          "pattern": "^[0-9a-f]{64}$",
+          "type": "string"
+        },
+        "version": {
+          "enum": [
+            "3.12.13",
+            "3.13.14",
+            "3.14.6"
+          ]
+        },
+        "wheelDetails": {
+          "additionalProperties": false,
+          "properties": {
+            "build": {
+              "$ref": "#/$defs/commandDetails"
+            },
+            "imported": {
+              "const": true
+            },
+            "install": {
+              "$ref": "#/$defs/commandDetails"
+            },
+            "wheel_sha256": {
+              "$ref": "#/$defs/sha256"
+            }
+          },
+          "required": [
+            "wheel_sha256",
+            "build",
+            "install",
+            "imported"
+          ],
+          "type": "object"
+        },
+        "wheelObservation": {
+          "allOf": [
+            {
+              "$ref": "#/$defs/observationEnvelope"
+            },
+            {
+              "properties": {
+                "details": {
+                  "$ref": "#/$defs/wheelDetails"
+                },
+                "id": {
+                  "const": "wheel"
+                }
+              }
+            }
+          ]
+        }
+      },
+      "$id": "https://ctower.dev/contracts/compatibility/matrix-result/v1",
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "additionalProperties": false,
+      "properties": {
+        "evidence_scope": {
+          "const": "external-runner-noncanonical"
+        },
+        "input_digest": {
+          "$ref": "#/$defs/digest"
+        },
+        "matrix_id": {
+          "const": "ct-l0-007-python-2026-07-19"
+        },
+        "runs": {
+          "items": false,
+          "maxItems": 6,
+          "minItems": 6,
+          "prefixItems": [
+            {
+              "$ref": "#/$defs/python31213Macos"
+            },
+            {
+              "$ref": "#/$defs/python31213Linux"
+            },
+            {
+              "$ref": "#/$defs/python31314Macos"
+            },
+            {
+              "$ref": "#/$defs/python31314Linux"
+            },
+            {
+              "$ref": "#/$defs/python3146Macos"
+            },
+            {
+              "$ref": "#/$defs/python3146Linux"
+            }
+          ],
+          "type": "array"
+        },
+        "schema": {
+          "const": "ctower.compatibility-result/v1"
+        },
+        "telemetry": {
+          "$ref": "https://ctower.local/contracts/observability/telemetry-context.schema.json"
+        }
+      },
+      "required": [
+        "schema",
+        "evidence_scope",
+        "input_digest",
+        "matrix_id",
+        "telemetry",
+        "runs"
+      ],
+      "title": "ctower runtime compatibility evidence",
+      "type": "object"
+    },
+    "contracts/components/agent-profile.schema.json": {
+      "$id": "https://ctower.local/contracts/components/agent-profile.schema.json",
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "additionalProperties": false,
+      "properties": {
+        "execution": {
+          "const": "not_exercised"
+        },
+        "harness_ref": {
+          "pattern": "^[a-z][a-z0-9.-]{2,127}@[1-9][0-9]*$",
+          "type": "string"
+        },
+        "key": {
+          "pattern": "^[a-z][a-z0-9.-]{2,127}$",
+          "type": "string"
+        },
+        "persona_ref": {
+          "pattern": "^[a-z][a-z0-9.-]{2,127}@[1-9][0-9]*$",
+          "type": "string"
+        },
+        "schema": {
+          "const": "ctower.agent-profile/v1"
+        },
+        "skill_refs": {
+          "items": {
+            "pattern": "^[a-z][a-z0-9.-]{2,127}@[1-9][0-9]*$",
+            "type": "string"
+          },
+          "maxItems": 64,
+          "type": "array",
+          "uniqueItems": true
+        },
+        "tool_refs": {
+          "items": {
+            "pattern": "^[a-z][a-z0-9.-]{2,127}@[1-9][0-9]*$",
+            "type": "string"
+          },
+          "maxItems": 64,
+          "type": "array",
+          "uniqueItems": true
+        }
+      },
+      "required": [
+        "schema",
+        "key",
+        "persona_ref",
+        "harness_ref",
+        "skill_refs",
+        "tool_refs",
+        "execution"
+      ],
+      "title": "AgentProfileComponent",
+      "type": "object"
+    },
+    "contracts/components/capability.schema.json": {
+      "$id": "https://ctower.local/contracts/components/capability.schema.json",
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "additionalProperties": false,
+      "properties": {
+        "authority": {
+          "const": "requested_not_granted"
+        },
+        "display_name": {
+          "maxLength": 128,
+          "minLength": 1,
+          "type": "string"
+        },
+        "key": {
+          "pattern": "^[a-z][a-z0-9.-]{2,127}$",
+          "type": "string"
+        },
+        "operation": {
+          "pattern": "^[a-z][a-z0-9._-]{2,127}$",
+          "type": "string"
+        },
+        "schema": {
+          "const": "ctower.capability/v1"
+        }
+      },
+      "required": [
+        "schema",
+        "key",
+        "display_name",
+        "operation",
+        "authority"
+      ],
+      "title": "CapabilityComponent",
+      "type": "object"
+    },
+    "contracts/components/environment.schema.json": {
+      "$id": "https://ctower.local/contracts/components/environment.schema.json",
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "additionalProperties": false,
+      "properties": {
+        "architecture": {
+          "enum": [
+            "x86_64",
+            "aarch64"
+          ],
+          "type": "string"
+        },
+        "effects": {
+          "const": "not_exercised"
+        },
+        "key": {
+          "pattern": "^[a-z][a-z0-9.-]{2,127}$",
+          "type": "string"
+        },
+        "platform": {
+          "enum": [
+            "linux",
+            "macos",
+            "windows"
+          ],
+          "type": "string"
+        },
+        "runtime": {
+          "maxLength": 80,
+          "minLength": 1,
+          "type": "string"
+        },
+        "schema": {
+          "const": "ctower.environment/v1"
+        }
+      },
+      "required": [
+        "schema",
+        "key",
+        "platform",
+        "architecture",
+        "runtime",
+        "effects"
+      ],
+      "title": "EnvironmentComponent",
+      "type": "object"
+    },
+    "contracts/components/goal.schema.json": {
+      "$id": "https://ctower.local/contracts/components/goal.schema.json",
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "additionalProperties": false,
+      "properties": {
+        "display_name": {
+          "maxLength": 128,
+          "minLength": 1,
+          "type": "string"
+        },
+        "key": {
+          "pattern": "^[a-z][a-z0-9.-]{2,127}$",
+          "type": "string"
+        },
+        "outcome": {
+          "maxLength": 500,
+          "minLength": 1,
+          "type": "string"
+        },
+        "schema": {
+          "const": "ctower.goal/v1"
+        },
+        "success_criteria": {
+          "items": {
+            "maxLength": 300,
+            "minLength": 1,
+            "type": "string"
+          },
+          "maxItems": 32,
+          "minItems": 1,
+          "type": "array",
+          "uniqueItems": true
+        }
+      },
+      "required": [
+        "schema",
+        "key",
+        "display_name",
+        "outcome",
+        "success_criteria"
+      ],
+      "title": "GoalComponent",
+      "type": "object"
+    },
+    "contracts/components/harness.schema.json": {
+      "$id": "https://ctower.local/contracts/components/harness.schema.json",
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "additionalProperties": false,
+      "properties": {
+        "adapter": {
+          "pattern": "^[a-z][a-z0-9._-]{2,127}$",
+          "type": "string"
+        },
+        "capabilities": {
+          "items": {
+            "pattern": "^[A-Z][A-Z0-9_]{2,63}$",
+            "type": "string"
+          },
+          "maxItems": 32,
+          "type": "array",
+          "uniqueItems": true
+        },
+        "execution": {
+          "const": "not_exercised"
+        },
+        "key": {
+          "pattern": "^[a-z][a-z0-9.-]{2,127}$",
+          "type": "string"
+        },
+        "schema": {
+          "const": "ctower.harness/v1"
+        }
+      },
+      "required": [
+        "schema",
+        "key",
+        "adapter",
+        "capabilities",
+        "execution"
+      ],
+      "title": "HarnessComponent",
+      "type": "object"
+    },
+    "contracts/components/image.schema.json": {
+      "$id": "https://ctower.local/contracts/components/image.schema.json",
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "additionalProperties": false,
+      "properties": {
+        "digest": {
+          "pattern": "^sha256:[0-9a-f]{64}$",
+          "type": "string"
+        },
+        "environment_ref": {
+          "pattern": "^[a-z][a-z0-9.-]{2,127}@[1-9][0-9]*$",
+          "type": "string"
+        },
+        "execution": {
+          "const": "not_exercised"
+        },
+        "key": {
+          "pattern": "^[a-z][a-z0-9.-]{2,127}$",
+          "type": "string"
+        },
+        "reusable_state": {
+          "const": "secret_free"
+        },
+        "schema": {
+          "const": "ctower.image/v1"
+        }
+      },
+      "required": [
+        "schema",
+        "key",
+        "digest",
+        "environment_ref",
+        "reusable_state",
+        "execution"
+      ],
+      "title": "ImageComponent",
+      "type": "object"
+    },
+    "contracts/components/integration.schema.json": {
+      "$id": "https://ctower.local/contracts/components/integration.schema.json",
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "additionalProperties": false,
+      "properties": {
+        "adapter": {
+          "pattern": "^[a-z][a-z0-9._-]{2,127}$",
+          "type": "string"
+        },
+        "authority": {
+          "const": "reference_only"
+        },
+        "execution": {
+          "const": "not_exercised"
+        },
+        "key": {
+          "pattern": "^[a-z][a-z0-9.-]{2,127}$",
+          "type": "string"
+        },
+        "schema": {
+          "const": "ctower.integration/v1"
+        }
+      },
+      "required": [
+        "schema",
+        "key",
+        "adapter",
+        "authority",
+        "execution"
+      ],
+      "title": "IntegrationComponent",
+      "type": "object"
+    },
+    "contracts/components/notification.schema.json": {
+      "$id": "https://ctower.local/contracts/components/notification.schema.json",
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "additionalProperties": false,
+      "properties": {
+        "channel": {
+          "enum": [
+            "none",
+            "operator_attention"
+          ]
+        },
+        "delivery": {
+          "const": "not_exercised"
+        },
+        "key": {
+          "pattern": "^[a-z][a-z0-9.-]{2,127}$",
+          "type": "string"
+        },
+        "schema": {
+          "const": "ctower.notification/v1"
+        }
+      },
+      "required": [
+        "schema",
+        "key",
+        "channel",
+        "delivery"
+      ],
+      "title": "NotificationComponent",
+      "type": "object"
+    },
+    "contracts/components/persona.schema.json": {
+      "$id": "https://ctower.local/contracts/components/persona.schema.json",
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "additionalProperties": false,
+      "properties": {
+        "display_name": {
+          "maxLength": 128,
+          "minLength": 1,
+          "type": "string"
+        },
+        "instructions_digest": {
+          "pattern": "^sha256:[0-9a-f]{64}$",
+          "type": "string"
+        },
+        "key": {
+          "pattern": "^[a-z][a-z0-9.-]{2,127}$",
+          "type": "string"
+        },
+        "schema": {
+          "const": "ctower.persona/v1"
+        }
+      },
+      "required": [
+        "schema",
+        "key",
+        "display_name",
+        "instructions_digest"
+      ],
+      "title": "PersonaComponent",
+      "type": "object"
+    },
+    "contracts/components/project.schema.json": {
+      "$id": "https://ctower.local/contracts/components/project.schema.json",
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "additionalProperties": false,
+      "properties": {
+        "display_name": {
+          "maxLength": 128,
+          "minLength": 1,
+          "type": "string"
+        },
+        "goal_refs": {
+          "items": {
+            "pattern": "^[a-z][a-z0-9.-]{2,127}@[1-9][0-9]*$",
+            "type": "string"
+          },
+          "maxItems": 32,
+          "minItems": 1,
+          "type": "array",
+          "uniqueItems": true
+        },
+        "key": {
+          "pattern": "^[a-z][a-z0-9.-]{2,127}$",
+          "type": "string"
+        },
+        "repository_ref": {
+          "pattern": "^repository:[a-z][a-z0-9._/-]{2,255}$",
+          "type": "string"
+        },
+        "schema": {
+          "const": "ctower.project/v1"
+        }
+      },
+      "required": [
+        "schema",
+        "key",
+        "display_name",
+        "repository_ref",
+        "goal_refs"
+      ],
+      "title": "ProjectComponent",
+      "type": "object"
+    },
+    "contracts/components/skill.schema.json": {
+      "$id": "https://ctower.local/contracts/components/skill.schema.json",
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "additionalProperties": false,
+      "properties": {
+        "capability_refs": {
+          "items": {
+            "pattern": "^[a-z][a-z0-9.-]{2,127}@[1-9][0-9]*$",
+            "type": "string"
+          },
+          "maxItems": 64,
+          "type": "array",
+          "uniqueItems": true
+        },
+        "display_name": {
+          "maxLength": 128,
+          "minLength": 1,
+          "type": "string"
+        },
+        "instructions_digest": {
+          "pattern": "^sha256:[0-9a-f]{64}$",
+          "type": "string"
+        },
+        "key": {
+          "pattern": "^[a-z][a-z0-9.-]{2,127}$",
+          "type": "string"
+        },
+        "schema": {
+          "const": "ctower.skill/v1"
+        }
+      },
+      "required": [
+        "schema",
+        "key",
+        "display_name",
+        "instructions_digest",
+        "capability_refs"
+      ],
+      "title": "SkillComponent",
+      "type": "object"
+    },
+    "contracts/components/supervisor.schema.json": {
+      "$id": "https://ctower.local/contracts/components/supervisor.schema.json",
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "additionalProperties": false,
+      "properties": {
+        "adapter": {
+          "pattern": "^[a-z][a-z0-9._-]{2,127}$",
+          "type": "string"
+        },
+        "execution": {
+          "const": "not_exercised"
+        },
+        "key": {
+          "pattern": "^[a-z][a-z0-9.-]{2,127}$",
+          "type": "string"
+        },
+        "operations": {
+          "items": {
+            "enum": [
+              "probe",
+              "observe",
+              "interrupt",
+              "terminate",
+              "snapshot",
+              "adopt"
+            ],
+            "type": "string"
+          },
+          "minItems": 1,
+          "type": "array",
+          "uniqueItems": true
+        },
+        "schema": {
+          "const": "ctower.supervisor/v1"
+        }
+      },
+      "required": [
+        "schema",
+        "key",
+        "adapter",
+        "operations",
+        "execution"
+      ],
+      "title": "SupervisorComponent",
+      "type": "object"
+    },
+    "contracts/components/target.schema.json": {
+      "$id": "https://ctower.local/contracts/components/target.schema.json",
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "additionalProperties": false,
+      "properties": {
+        "environment_ref": {
+          "pattern": "^[a-z][a-z0-9.-]{2,127}@[1-9][0-9]*$",
+          "type": "string"
+        },
+        "execution": {
+          "const": "not_exercised"
+        },
+        "image_ref": {
+          "pattern": "^[a-z][a-z0-9.-]{2,127}@[1-9][0-9]*$",
+          "type": "string"
+        },
+        "key": {
+          "pattern": "^[a-z][a-z0-9.-]{2,127}$",
+          "type": "string"
+        },
+        "network": {
+          "const": "local_only"
+        },
+        "schema": {
+          "const": "ctower.target/v1"
+        }
+      },
+      "required": [
+        "schema",
+        "key",
+        "environment_ref",
+        "image_ref",
+        "network",
+        "execution"
+      ],
+      "title": "TargetComponent",
+      "type": "object"
+    },
+    "contracts/components/telemetry.schema.json": {
+      "$id": "https://ctower.local/contracts/components/telemetry.schema.json",
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "additionalProperties": false,
+      "properties": {
+        "execution": {
+          "const": "not_exercised"
+        },
+        "exporter": {
+          "const": "otlp"
+        },
+        "key": {
+          "pattern": "^[a-z][a-z0-9.-]{2,127}$",
+          "type": "string"
+        },
+        "redaction": {
+          "const": "required"
+        },
+        "schema": {
+          "const": "ctower.telemetry/v1"
+        }
+      },
+      "required": [
+        "schema",
+        "key",
+        "exporter",
+        "redaction",
+        "execution"
+      ],
+      "title": "TelemetryComponent",
+      "type": "object"
+    },
+    "contracts/components/tool.schema.json": {
+      "$id": "https://ctower.local/contracts/components/tool.schema.json",
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "additionalProperties": false,
+      "properties": {
+        "authority": {
+          "const": "requested_not_granted"
+        },
+        "capability": {
+          "pattern": "^[a-z][a-z0-9._-]{2,127}$",
+          "type": "string"
+        },
+        "display_name": {
+          "maxLength": 128,
+          "minLength": 1,
+          "type": "string"
+        },
+        "key": {
+          "pattern": "^[a-z][a-z0-9.-]{2,127}$",
+          "type": "string"
+        },
+        "schema": {
+          "const": "ctower.tool/v1"
+        }
+      },
+      "required": [
+        "schema",
+        "key",
+        "display_name",
+        "capability",
+        "authority"
+      ],
+      "title": "ToolComponent",
+      "type": "object"
+    },
+    "contracts/components/versioned-component.schema.json": {
+      "$defs": {
+        "componentReference": {
+          "additionalProperties": false,
+          "properties": {
+            "content_digest": {
+              "pattern": "^sha256:[a-f0-9]{64}$",
+              "type": "string"
+            },
+            "key": {
+              "minLength": 1,
+              "type": "string"
+            },
+            "kind": {
+              "minLength": 1,
+              "type": "string"
+            },
+            "revision": {
+              "minimum": 1,
+              "type": "integer"
+            }
+          },
+          "required": [
+            "kind",
+            "key",
+            "revision",
+            "content_digest"
+          ],
+          "type": "object"
+        }
+      },
+      "$id": "https://ctower.local/contracts/components/versioned-component.schema.json",
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "additionalProperties": false,
+      "properties": {
+        "compatibility": {
+          "additionalProperties": false,
+          "properties": {
+            "ctower": {
+              "minLength": 1,
+              "type": "string"
+            },
+            "requires": {
+              "items": {
+                "$ref": "#/$defs/componentReference"
+              },
+              "type": "array",
+              "uniqueItems": true
+            }
+          },
+          "required": [
+            "ctower",
+            "requires"
+          ],
+          "type": "object"
+        },
+        "content_digest": {
+          "pattern": "^sha256:[a-f0-9]{64}$",
+          "type": "string"
+        },
+        "key": {
+          "pattern": "^[a-z][a-z0-9.-]{2,127}$",
+          "type": "string"
+        },
+        "kind": {
+          "enum": [
+            "workflow",
+            "execution_policy",
+            "gate_policy",
+            "evidence_policy",
+            "goal",
+            "project",
+            "agent_profile",
+            "persona",
+            "skill",
+            "tool",
+            "capability",
+            "environment",
+            "image",
+            "harness",
+            "supervisor",
+            "target",
+            "workspace",
+            "telemetry",
+            "placement_policy",
+            "extension",
+            "cadence_policy",
+            "notification",
+            "integration",
+            "adapter"
+          ],
+          "type": "string"
+        },
+        "lifecycle": {
+          "enum": [
+            "draft",
+            "published",
+            "deprecated",
+            "revoked"
+          ],
+          "type": "string"
+        },
+        "payload_ref": {
+          "pattern": "^object:sha256:[a-f0-9]{64}$",
+          "type": "string"
+        },
+        "provenance": {
+          "items": {
+            "additionalProperties": false,
+            "properties": {
+              "digest": {
+                "pattern": "^sha256:[a-f0-9]{64}$",
+                "type": "string"
+              },
+              "kind": {
+                "minLength": 1,
+                "type": "string"
+              },
+              "source": {
+                "minLength": 1,
+                "type": "string"
+              }
+            },
+            "required": [
+              "kind",
+              "source",
+              "digest"
+            ],
+            "type": "object"
+          },
+          "minItems": 1,
+          "type": "array"
+        },
+        "revision": {
+          "minimum": 1,
+          "type": "integer"
+        },
+        "schema": {
+          "const": "ctower.versioned-component/v1"
+        },
+        "schema_ref": {
+          "minLength": 1,
+          "type": "string"
+        },
+        "scope": {
+          "additionalProperties": false,
+          "properties": {
+            "project": {
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "tenant": {
+              "minLength": 1,
+              "type": "string"
+            }
+          },
+          "required": [
+            "tenant",
+            "project"
+          ],
+          "type": "object"
+        },
+        "supersedes": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/componentReference"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      },
+      "required": [
+        "schema",
+        "kind",
+        "key",
+        "scope",
+        "revision",
+        "content_digest",
+        "schema_ref",
+        "lifecycle",
+        "compatibility",
+        "provenance",
+        "payload_ref"
+      ],
+      "title": "VersionedComponent",
+      "type": "object"
+    },
+    "contracts/components/workspace.schema.json": {
+      "$id": "https://ctower.local/contracts/components/workspace.schema.json",
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "additionalProperties": false,
+      "properties": {
+        "execution": {
+          "const": "not_exercised"
+        },
+        "key": {
+          "pattern": "^[a-z][a-z0-9.-]{2,127}$",
+          "type": "string"
+        },
+        "mode": {
+          "enum": [
+            "ephemeral",
+            "checked_out"
+          ]
+        },
+        "persistence": {
+          "const": "not_authoritative"
+        },
+        "schema": {
+          "const": "ctower.workspace/v1"
+        }
+      },
+      "required": [
+        "schema",
+        "key",
+        "mode",
+        "persistence",
+        "execution"
+      ],
+      "title": "WorkspaceComponent",
+      "type": "object"
+    },
+    "contracts/domain/events/event-envelope.schema.json": {
+      "$defs": {
+        "admissionChanged": {
+          "additionalProperties": false,
+          "properties": {
+            "episode_number": {
+              "minimum": 1,
+              "type": "integer"
+            },
+            "reason": {
+              "maxLength": 500,
+              "minLength": 1,
+              "type": "string"
+            }
+          },
+          "required": [
+            "episode_number",
+            "reason"
+          ],
+          "type": "object"
+        },
+        "assignmentChanged": {
+          "additionalProperties": false,
+          "properties": {
+            "assignment_kind": {
+              "enum": [
+                "current_assignee",
+                "stage_owner",
+                "reviewer_assignment"
+              ]
+            },
+            "from_principal_id": {
+              "format": "uuid",
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "reason": {
+              "maxLength": 500,
+              "minLength": 1,
+              "type": "string"
+            },
+            "scope_ref": {
+              "maxLength": 256,
+              "minLength": 1,
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "to_principal_id": {
+              "format": "uuid",
+              "type": "string"
+            }
+          },
+          "required": [
+            "assignment_kind",
+            "from_principal_id",
+            "reason",
+            "scope_ref",
+            "to_principal_id"
+          ],
+          "type": "object"
+        },
+        "blockerOpened": {
+          "additionalProperties": false,
+          "properties": {
+            "blocker_id": {
+              "format": "uuid",
+              "type": "string"
+            },
+            "board_impact": {
+              "type": "boolean"
+            },
+            "reason": {
+              "maxLength": 500,
+              "minLength": 1,
+              "type": "string"
+            }
+          },
+          "required": [
+            "blocker_id",
+            "board_impact",
+            "reason"
+          ],
+          "type": "object"
+        },
+        "blockerResolved": {
+          "additionalProperties": false,
+          "properties": {
+            "blocker_id": {
+              "format": "uuid",
+              "type": "string"
+            },
+            "reason": {
+              "maxLength": 500,
+              "minLength": 1,
+              "type": "string"
+            },
+            "resolution_evidence_ref": {
+              "maxLength": 256,
+              "minLength": 1,
+              "type": "string"
+            }
+          },
+          "required": [
+            "blocker_id",
+            "reason",
+            "resolution_evidence_ref"
+          ],
+          "type": "object"
+        },
+        "bootstrapCreated": {
+          "additionalProperties": false,
+          "properties": {
+            "commander_id": {
+              "format": "uuid",
+              "type": "string"
+            },
+            "commander_vault_ref": {
+              "minLength": 1,
+              "type": "string"
+            },
+            "operator_credential_ref": {
+              "minLength": 1,
+              "type": "string"
+            },
+            "operator_id": {
+              "format": "uuid",
+              "type": "string"
+            },
+            "operator_vault_ref": {
+              "minLength": 1,
+              "type": "string"
+            },
+            "tenant_id": {
+              "format": "uuid",
+              "type": "string"
+            },
+            "tenant_slug": {
+              "maxLength": 63,
+              "minLength": 2,
+              "type": "string"
+            }
+          },
+          "required": [
+            "commander_id",
+            "commander_vault_ref",
+            "operator_credential_ref",
+            "operator_id",
+            "operator_vault_ref",
+            "tenant_id",
+            "tenant_slug"
+          ],
+          "type": "object"
+        },
+        "catalogBundleActivated": {
+          "additionalProperties": false,
+          "properties": {
+            "active_version": {
+              "minimum": 1,
+              "type": "integer"
+            },
+            "bundle_digest": {
+              "$ref": "#/$defs/sha256"
+            },
+            "member_event_ids": {
+              "items": {
+                "format": "uuid",
+                "type": "string"
+              },
+              "minItems": 1,
+              "type": "array"
+            },
+            "plan_digest": {
+              "$ref": "#/$defs/sha256"
+            }
+          },
+          "required": [
+            "active_version",
+            "bundle_digest",
+            "member_event_ids",
+            "plan_digest"
+          ],
+          "type": "object"
+        },
+        "catalogComponentPublished": {
+          "additionalProperties": false,
+          "properties": {
+            "component": {
+              "$ref": "#/$defs/componentReference"
+            },
+            "object_version": {
+              "maxLength": 256,
+              "minLength": 1,
+              "type": "string"
+            },
+            "payload_ref": {
+              "pattern": "^object:sha256:[0-9a-f]{64}$",
+              "type": "string"
+            }
+          },
+          "required": [
+            "component",
+            "object_version",
+            "payload_ref"
+          ],
+          "type": "object"
+        },
+        "componentReference": {
+          "additionalProperties": false,
+          "properties": {
+            "content_digest": {
+              "$ref": "#/$defs/sha256"
+            },
+            "key": {
+              "pattern": "^[a-z][a-z0-9.-]{2,127}$",
+              "type": "string"
+            },
+            "kind": {
+              "pattern": "^[a-z][a-z0-9_]{2,63}$",
+              "type": "string"
+            },
+            "revision": {
+              "minimum": 1,
+              "type": "integer"
+            }
+          },
+          "required": [
+            "content_digest",
+            "key",
+            "kind",
+            "revision"
+          ],
+          "type": "object"
+        },
+        "custodyTransferred": {
+          "additionalProperties": false,
+          "properties": {
+            "from_custodian_id": {
+              "format": "uuid",
+              "type": "string"
+            },
+            "reason": {
+              "maxLength": 500,
+              "minLength": 1,
+              "type": "string"
+            },
+            "to_custodian_id": {
+              "format": "uuid",
+              "type": "string"
+            }
+          },
+          "required": [
+            "from_custodian_id",
+            "reason",
+            "to_custodian_id"
+          ],
+          "type": "object"
+        },
+        "deferred": {
+          "additionalProperties": false,
+          "properties": {
+            "episode_number": {
+              "minimum": 1,
+              "type": "integer"
+            },
+            "reason": {
+              "maxLength": 500,
+              "minLength": 1,
+              "type": "string"
+            },
+            "review_after": {
+              "format": "date-time",
+              "type": "string"
+            }
+          },
+          "required": [
+            "episode_number",
+            "reason",
+            "review_after"
+          ],
+          "type": "object"
+        },
+        "poisonDispositionRecorded": {
+          "additionalProperties": false,
+          "properties": {
+            "action": {
+              "enum": [
+                "retry",
+                "tombstone"
+              ]
+            },
+            "consumer_key": {
+              "pattern": "^[a-z][a-z0-9._-]*$",
+              "type": "string"
+            },
+            "outbox_id": {
+              "format": "uuid",
+              "type": "string"
+            },
+            "reason": {
+              "maxLength": 500,
+              "minLength": 1,
+              "type": "string"
+            },
+            "topic": {
+              "pattern": "^[a-z][a-z0-9._-]*$",
+              "type": "string"
+            }
+          },
+          "required": [
+            "action",
+            "consumer_key",
+            "outbox_id",
+            "reason",
+            "topic"
+          ],
+          "type": "object"
+        },
+        "priorityChanged": {
+          "additionalProperties": false,
+          "properties": {
+            "authority": {
+              "enum": [
+                "commander",
+                "operator"
+              ]
+            },
+            "from_priority": {
+              "enum": [
+                "P0",
+                "P1",
+                "P2"
+              ]
+            },
+            "policy_ref": {
+              "const": "ctower.priority-authority@1"
+            },
+            "reason": {
+              "maxLength": 500,
+              "minLength": 1,
+              "type": "string"
+            },
+            "to_priority": {
+              "enum": [
+                "P0",
+                "P1",
+                "P2"
+              ]
+            },
+            "urgent_evidence_ref": {
+              "maxLength": 256,
+              "minLength": 1,
+              "type": [
+                "string",
+                "null"
+              ]
+            }
+          },
+          "required": [
+            "authority",
+            "from_priority",
+            "policy_ref",
+            "reason",
+            "to_priority",
+            "urgent_evidence_ref"
+          ],
+          "type": "object"
+        },
+        "proofChanged": {
+          "additionalProperties": false,
+          "properties": {
+            "candidate_digest": {
+              "$ref": "#/$defs/sha256"
+            },
+            "invalidated_evidence_ids": {
+              "items": {
+                "format": "uuid",
+                "type": "string"
+              },
+              "type": "array"
+            },
+            "invalidated_verdict_ids": {
+              "items": {
+                "format": "uuid",
+                "type": "string"
+              },
+              "type": "array"
+            },
+            "operation": {
+              "enum": [
+                "freeze_criteria",
+                "record_evidence",
+                "record_verdict",
+                "change_candidate"
+              ]
+            },
+            "proof_version": {
+              "minimum": 1,
+              "type": "integer"
+            },
+            "ticket_id": {
+              "format": "uuid",
+              "type": "string"
+            }
+          },
+          "required": [
+            "candidate_digest",
+            "invalidated_evidence_ids",
+            "invalidated_verdict_ids",
+            "operation",
+            "proof_version",
+            "ticket_id"
+          ],
+          "type": "object"
+        },
+        "relationAdded": {
+          "additionalProperties": false,
+          "properties": {
+            "reason": {
+              "maxLength": 500,
+              "minLength": 1,
+              "type": "string"
+            },
+            "relation_kind": {
+              "enum": [
+                "parent_of",
+                "depends_on",
+                "blocks",
+                "duplicates",
+                "relates_to",
+                "caused_by"
+              ]
+            },
+            "target_ticket_id": {
+              "format": "uuid",
+              "type": "string"
+            }
+          },
+          "required": [
+            "relation_kind",
+            "reason",
+            "target_ticket_id"
+          ],
+          "type": "object"
+        },
+        "reopened": {
+          "additionalProperties": false,
+          "properties": {
+            "episode_number": {
+              "minimum": 2,
+              "type": "integer"
+            },
+            "priority": {
+              "enum": [
+                "P0",
+                "P1",
+                "P2"
+              ]
+            },
+            "reason": {
+              "maxLength": 500,
+              "minLength": 1,
+              "type": "string"
+            }
+          },
+          "required": [
+            "episode_number",
+            "priority",
+            "reason"
+          ],
+          "type": "object"
+        },
+        "routineOccurrenceRecorded": {
+          "additionalProperties": false,
+          "properties": {
+            "job_id": {
+              "format": "uuid",
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "local_civil_time": {
+              "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}$",
+              "type": "string"
+            },
+            "occurrence_id": {
+              "format": "uuid",
+              "type": "string"
+            },
+            "offset_decision": {
+              "enum": [
+                "exact",
+                "earlier_offset",
+                "nonexistent_local_time"
+              ]
+            },
+            "outcome": {
+              "enum": [
+                "queued",
+                "coalesced",
+                "skipped",
+                "refused"
+              ]
+            },
+            "revision_digest": {
+              "$ref": "#/$defs/sha256"
+            },
+            "routine_ref": {
+              "pattern": "^[a-z][a-z0-9._-]*@[1-9][0-9]*$",
+              "type": "string"
+            },
+            "scheduled_for": {
+              "format": "date-time",
+              "type": "string"
+            },
+            "timezone": {
+              "maxLength": 128,
+              "minLength": 1,
+              "type": "string"
+            },
+            "utc_offset_seconds": {
+              "maximum": 64800,
+              "minimum": -64800,
+              "type": [
+                "integer",
+                "null"
+              ]
+            }
+          },
+          "required": [
+            "job_id",
+            "local_civil_time",
+            "occurrence_id",
+            "offset_decision",
+            "outcome",
+            "revision_digest",
+            "routine_ref",
+            "scheduled_for",
+            "timezone",
+            "utc_offset_seconds"
+          ],
+          "type": "object"
+        },
+        "sha256": {
+          "pattern": "^sha256:[0-9a-f]{64}$",
+          "type": "string"
+        },
+        "ticketCommentAdded": {
+          "additionalProperties": false,
+          "properties": {
+            "body": {
+              "maxLength": 4000,
+              "minLength": 1,
+              "type": "string"
+            },
+            "comment_id": {
+              "format": "uuid",
+              "type": "string"
+            },
+            "ticket_id": {
+              "format": "uuid",
+              "type": "string"
+            }
+          },
+          "required": [
+            "body",
+            "comment_id",
+            "ticket_id"
+          ],
+          "type": "object"
+        },
+        "ticketCreated": {
+          "additionalProperties": false,
+          "properties": {
+            "custodian_id": {
+              "format": "uuid",
+              "type": "string"
+            },
+            "priority": {
+              "enum": [
+                "P0",
+                "P1",
+                "P2"
+              ],
+              "type": "string"
+            },
+            "source_kind": {
+              "maxLength": 64,
+              "minLength": 1,
+              "type": "string"
+            },
+            "source_ref": {
+              "maxLength": 256,
+              "minLength": 1,
+              "type": "string"
+            },
+            "title": {
+              "maxLength": 200,
+              "minLength": 1,
+              "type": "string"
+            }
+          },
+          "required": [
+            "custodian_id",
+            "priority",
+            "source_kind",
+            "source_ref",
+            "title"
+          ],
+          "type": "object"
+        },
+        "workChanged": {
+          "additionalProperties": false,
+          "allOf": [
+            {
+              "oneOf": [
+                {
+                  "properties": {
+                    "data": {
+                      "$ref": "#/$defs/priorityChanged"
+                    },
+                    "operation": {
+                      "const": "priority_changed"
+                    }
+                  }
+                },
+                {
+                  "properties": {
+                    "data": {
+                      "$ref": "#/$defs/assignmentChanged"
+                    },
+                    "operation": {
+                      "const": "assignment_changed"
+                    }
+                  }
+                },
+                {
+                  "properties": {
+                    "data": {
+                      "$ref": "#/$defs/admissionChanged"
+                    },
+                    "operation": {
+                      "const": "admitted"
+                    }
+                  }
+                },
+                {
+                  "properties": {
+                    "data": {
+                      "$ref": "#/$defs/deferred"
+                    },
+                    "operation": {
+                      "const": "deferred"
+                    }
+                  }
+                },
+                {
+                  "properties": {
+                    "data": {
+                      "$ref": "#/$defs/blockerOpened"
+                    },
+                    "operation": {
+                      "const": "blocker_opened"
+                    }
+                  }
+                },
+                {
+                  "properties": {
+                    "data": {
+                      "$ref": "#/$defs/blockerResolved"
+                    },
+                    "operation": {
+                      "const": "blocker_resolved"
+                    }
+                  }
+                },
+                {
+                  "properties": {
+                    "data": {
+                      "$ref": "#/$defs/reopened"
+                    },
+                    "operation": {
+                      "const": "reopened"
+                    }
+                  }
+                },
+                {
+                  "properties": {
+                    "data": {
+                      "$ref": "#/$defs/relationAdded"
+                    },
+                    "operation": {
+                      "const": "relation_added"
+                    }
+                  }
+                }
+              ]
+            }
+          ],
+          "properties": {
+            "data": {
+              "type": "object"
+            },
+            "operation": {
+              "enum": [
+                "priority_changed",
+                "assignment_changed",
+                "admitted",
+                "deferred",
+                "blocker_opened",
+                "blocker_resolved",
+                "reopened",
+                "relation_added"
+              ]
+            },
+            "ticket_id": {
+              "format": "uuid",
+              "type": "string"
+            },
+            "work_version": {
+              "minimum": 2,
+              "type": "integer"
+            }
+          },
+          "required": [
+            "data",
+            "operation",
+            "ticket_id",
+            "work_version"
+          ],
+          "type": "object"
+        },
+        "workflowChanged": {
+          "additionalProperties": false,
+          "properties": {
+            "lifecycle_facts": {
+              "oneOf": [
+                {
+                  "maxItems": 0,
+                  "type": "array"
+                },
+                {
+                  "const": [
+                    "resolved",
+                    "closed"
+                  ]
+                }
+              ]
+            },
+            "operation": {
+              "enum": [
+                "start",
+                "transition",
+                "resolve_close"
+              ]
+            },
+            "stage": {
+              "pattern": "^[a-z][a-z0-9._-]*$",
+              "type": "string"
+            },
+            "ticket_id": {
+              "format": "uuid",
+              "type": "string"
+            },
+            "workflow_ref": {
+              "pattern": "^[a-z][a-z0-9._-]*@[1-9][0-9]*$",
+              "type": "string"
+            },
+            "workflow_version": {
+              "minimum": 1,
+              "type": "integer"
+            }
+          },
+          "required": [
+            "lifecycle_facts",
+            "operation",
+            "stage",
+            "ticket_id",
+            "workflow_ref",
+            "workflow_version"
+          ],
+          "type": "object"
+        }
+      },
+      "$id": "https://ctower.dev/contracts/domain/events/event-envelope.schema.json",
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "additionalProperties": false,
+      "allOf": [
+        {
+          "oneOf": [
+            {
+              "properties": {
+                "kind": {
+                  "const": "work.changed"
+                },
+                "origin": {
+                  "const": "api"
+                },
+                "payload": {
+                  "$ref": "#/$defs/workChanged"
+                },
+                "stream_id": {
+                  "pattern": "^ticket:[0-9a-f-]{36}$"
+                }
+              }
+            },
+            {
+              "properties": {
+                "kind": {
+                  "const": "bootstrap.first_tenant_created"
+                },
+                "origin": {
+                  "const": "bootstrap"
+                },
+                "payload": {
+                  "$ref": "#/$defs/bootstrapCreated"
+                },
+                "stream_id": {
+                  "pattern": "^tenant:[0-9a-f-]{36}:bootstrap$"
+                }
+              }
+            },
+            {
+              "properties": {
+                "kind": {
+                  "const": "ticket.created"
+                },
+                "origin": {
+                  "const": "api"
+                },
+                "payload": {
+                  "$ref": "#/$defs/ticketCreated"
+                },
+                "stream_id": {
+                  "pattern": "^ticket:[0-9a-f-]{36}$"
+                }
+              }
+            },
+            {
+              "properties": {
+                "kind": {
+                  "const": "ticket.custody_transferred"
+                },
+                "origin": {
+                  "const": "api"
+                },
+                "payload": {
+                  "$ref": "#/$defs/custodyTransferred"
+                },
+                "stream_id": {
+                  "pattern": "^ticket:[0-9a-f-]{36}$"
+                }
+              }
+            },
+            {
+              "properties": {
+                "kind": {
+                  "const": "ticket.comment_added"
+                },
+                "origin": {
+                  "const": "api"
+                },
+                "payload": {
+                  "$ref": "#/$defs/ticketCommentAdded"
+                },
+                "stream_id": {
+                  "pattern": "^ticket:[0-9a-f-]{36}$"
+                }
+              }
+            },
+            {
+              "properties": {
+                "kind": {
+                  "const": "catalog.component_published"
+                },
+                "origin": {
+                  "const": "api"
+                },
+                "payload": {
+                  "$ref": "#/$defs/catalogComponentPublished"
+                },
+                "stream_id": {
+                  "pattern": "^catalog:[0-9a-f-]{36}$"
+                }
+              }
+            },
+            {
+              "properties": {
+                "kind": {
+                  "const": "catalog.bundle_activated"
+                },
+                "origin": {
+                  "const": "api"
+                },
+                "payload": {
+                  "$ref": "#/$defs/catalogBundleActivated"
+                },
+                "stream_id": {
+                  "pattern": "^catalog:[0-9a-f-]{36}$"
+                }
+              }
+            },
+            {
+              "properties": {
+                "kind": {
+                  "const": "proof.changed"
+                },
+                "origin": {
+                  "const": "api"
+                },
+                "payload": {
+                  "$ref": "#/$defs/proofChanged"
+                },
+                "stream_id": {
+                  "pattern": "^proof:[0-9a-f-]{36}$"
+                }
+              }
+            },
+            {
+              "properties": {
+                "kind": {
+                  "const": "workflow.changed"
+                },
+                "origin": {
+                  "const": "api"
+                },
+                "payload": {
+                  "$ref": "#/$defs/workflowChanged"
+                },
+                "stream_id": {
+                  "pattern": "^workflow:[0-9a-f-]{36}$"
+                }
+              }
+            },
+            {
+              "properties": {
+                "kind": {
+                  "const": "routine.occurrence_recorded"
+                },
+                "origin": {
+                  "const": "control_worker"
+                },
+                "payload": {
+                  "$ref": "#/$defs/routineOccurrenceRecorded"
+                },
+                "stream_id": {
+                  "pattern": "^routine-occurrence:[0-9a-f-]{36}$"
+                }
+              }
+            },
+            {
+              "properties": {
+                "kind": {
+                  "const": "attention.poison_disposition_recorded"
+                },
+                "origin": {
+                  "const": "api"
+                },
+                "payload": {
+                  "$ref": "#/$defs/poisonDispositionRecorded"
+                },
+                "stream_id": {
+                  "pattern": "^poison-disposition:[0-9a-f-]{36}$"
+                }
+              }
+            }
+          ]
+        }
+      ],
+      "properties": {
+        "actor_principal_id": {
+          "format": "uuid",
+          "type": "string"
+        },
+        "aggregate_id": {
+          "format": "uuid",
+          "type": "string"
+        },
+        "causation_id": {
+          "format": "uuid",
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "client_command_id": {
+          "format": "uuid",
+          "type": "string"
+        },
+        "correlation_id": {
+          "format": "uuid",
+          "type": "string"
+        },
+        "event_id": {
+          "format": "uuid",
+          "type": "string"
+        },
+        "kind": {
+          "enum": [
+            "bootstrap.first_tenant_created",
+            "ticket.created",
+            "ticket.custody_transferred",
+            "ticket.comment_added",
+            "catalog.component_published",
+            "catalog.bundle_activated",
+            "work.changed",
+            "proof.changed",
+            "workflow.changed",
+            "routine.occurrence_recorded",
+            "attention.poison_disposition_recorded"
+          ],
+          "type": "string"
+        },
+        "origin": {
+          "enum": [
+            "api",
+            "bootstrap",
+            "control_worker"
+          ],
+          "type": "string"
+        },
+        "payload": {
+          "type": "object"
+        },
+        "prev_hash": {
+          "$ref": "#/$defs/sha256"
+        },
+        "request_sha256": {
+          "$ref": "#/$defs/sha256"
+        },
+        "schema_version": {
+          "const": 1
+        },
+        "sequence": {
+          "minimum": 1,
+          "type": "integer"
+        },
+        "server_time": {
+          "format": "date-time",
+          "type": "string"
+        },
+        "stream_id": {
+          "pattern": "^(tenant:[0-9a-f-]{36}:bootstrap|ticket:[0-9a-f-]{36}|catalog:[0-9a-f-]{36}|proof:[0-9a-f-]{36}|workflow:[0-9a-f-]{36}|routine-occurrence:[0-9a-f-]{36}|poison-disposition:[0-9a-f-]{36})$",
+          "type": "string"
+        },
+        "tenant_id": {
+          "format": "uuid",
+          "type": "string"
+        }
+      },
+      "required": [
+        "actor_principal_id",
+        "aggregate_id",
+        "causation_id",
+        "client_command_id",
+        "correlation_id",
+        "event_id",
+        "kind",
+        "origin",
+        "payload",
+        "prev_hash",
+        "request_sha256",
+        "schema_version",
+        "sequence",
+        "server_time",
+        "stream_id",
+        "tenant_id"
+      ],
+      "title": "CtowerEventEnvelope",
+      "type": "object"
+    },
+    "contracts/domain/outbox-delivery.schema.json": {
+      "$defs": {
+        "attempt": {
+          "additionalProperties": false,
+          "properties": {
+            "attempt_number": {
+              "minimum": 1,
+              "type": "integer"
+            },
+            "generation": {
+              "minimum": 1,
+              "type": "integer"
+            },
+            "kind": {
+              "const": "attempt"
+            },
+            "outbox_id": {
+              "format": "uuid",
+              "type": "string"
+            },
+            "outcome": {
+              "enum": [
+                "delivered",
+                "retryable_failure",
+                "poisoned",
+                "tombstoned"
+              ],
+              "type": "string"
+            },
+            "partition": {
+              "$ref": "#/$defs/partition"
+            },
+            "recorded_at": {
+              "format": "date-time",
+              "type": "string"
+            }
+          },
+          "required": [
+            "kind",
+            "partition",
+            "outbox_id",
+            "generation",
+            "attempt_number",
+            "outcome",
+            "recorded_at"
+          ],
+          "type": "object"
+        },
+        "disposition": {
+          "additionalProperties": false,
+          "properties": {
+            "action": {
+              "enum": [
+                "retry",
+                "tombstone"
+              ],
+              "type": "string"
+            },
+            "actor_id": {
+              "format": "uuid",
+              "type": "string"
+            },
+            "command_id": {
+              "format": "uuid",
+              "type": "string"
+            },
+            "kind": {
+              "const": "disposition"
+            },
+            "outbox_id": {
+              "format": "uuid",
+              "type": "string"
+            },
+            "partition": {
+              "$ref": "#/$defs/partition"
+            },
+            "reason": {
+              "maxLength": 500,
+              "minLength": 1,
+              "type": "string"
+            },
+            "recorded_at": {
+              "format": "date-time",
+              "type": "string"
+            }
+          },
+          "required": [
+            "kind",
+            "partition",
+            "outbox_id",
+            "command_id",
+            "actor_id",
+            "action",
+            "reason",
+            "recorded_at"
+          ],
+          "type": "object"
+        },
+        "partition": {
+          "additionalProperties": false,
+          "properties": {
+            "consumer_key": {
+              "pattern": "^[a-z][a-z0-9._-]*$",
+              "type": "string"
+            },
+            "tenant_id": {
+              "format": "uuid",
+              "type": "string"
+            },
+            "topic": {
+              "pattern": "^[a-z][a-z0-9._-]*$",
+              "type": "string"
+            }
+          },
+          "required": [
+            "consumer_key",
+            "tenant_id",
+            "topic"
+          ],
+          "type": "object"
+        },
+        "poison": {
+          "additionalProperties": false,
+          "properties": {
+            "kind": {
+              "const": "poison"
+            },
+            "outbox_id": {
+              "format": "uuid",
+              "type": "string"
+            },
+            "partition": {
+              "$ref": "#/$defs/partition"
+            },
+            "payload_digest": {
+              "pattern": "^sha256:[0-9a-f]{64}$",
+              "type": "string"
+            },
+            "reason": {
+              "maxLength": 500,
+              "minLength": 1,
+              "type": "string"
+            },
+            "recorded_at": {
+              "format": "date-time",
+              "type": "string"
+            },
+            "source_position": {
+              "minimum": 1,
+              "type": "integer"
+            }
+          },
+          "required": [
+            "kind",
+            "partition",
+            "outbox_id",
+            "source_position",
+            "payload_digest",
+            "reason",
+            "recorded_at"
+          ],
+          "type": "object"
+        }
+      },
+      "$id": "https://ctower.dev/contracts/domain/outbox-delivery.schema.json",
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "additionalProperties": false,
+      "properties": {
+        "fact": {
+          "oneOf": [
+            {
+              "$ref": "#/$defs/attempt"
+            },
+            {
+              "$ref": "#/$defs/poison"
+            },
+            {
+              "$ref": "#/$defs/disposition"
+            }
+          ]
+        },
+        "schema_id": {
+          "const": "ctower.outbox-delivery/v1"
+        }
+      },
+      "required": [
+        "schema_id",
+        "fact"
+      ],
+      "title": "OutboxDeliveryFact",
+      "type": "object"
+    },
+    "contracts/domain/task-management/board-view.schema.json": {
+      "$defs": {
+        "card": {
+          "additionalProperties": false,
+          "properties": {
+            "activity_class": {
+              "enum": [
+                "work",
+                "verification",
+                null
+              ],
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "assignee_id": {
+              "format": "uuid",
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "blocker_opened_at": {
+              "format": "date-time",
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "blocker_reason": {
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "custodian_id": {
+              "format": "uuid",
+              "type": "string"
+            },
+            "delivery_facts": {
+              "items": {
+                "enum": [
+                  "change_merged",
+                  "staging_verified",
+                  "production_verified",
+                  "rolled_back",
+                  "incident_open"
+                ],
+                "type": "string"
+              },
+              "type": "array",
+              "uniqueItems": true
+            },
+            "lane": {
+              "$ref": "#/$defs/lane"
+            },
+            "priority": {
+              "enum": [
+                "P0",
+                "P1",
+                "P2"
+              ],
+              "type": "string"
+            },
+            "risk": {
+              "maxLength": 64,
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "stage_key": {
+              "pattern": "^[a-z][a-z0-9._-]*$",
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "stage_label": {
+              "maxLength": 120,
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "ticket_id": {
+              "format": "uuid",
+              "type": "string"
+            },
+            "title": {
+              "maxLength": 200,
+              "minLength": 1,
+              "type": "string"
+            },
+            "underlying_lane": {
+              "oneOf": [
+                {
+                  "$ref": "#/$defs/lane"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "version": {
+              "minimum": 1,
+              "type": "integer"
+            }
+          },
+          "required": [
+            "activity_class",
+            "assignee_id",
+            "blocker_opened_at",
+            "blocker_reason",
+            "custodian_id",
+            "delivery_facts",
+            "lane",
+            "priority",
+            "risk",
+            "stage_key",
+            "stage_label",
+            "ticket_id",
+            "title",
+            "underlying_lane",
+            "version"
+          ],
+          "type": "object"
+        },
+        "health": {
+          "enum": [
+            "CURRENT",
+            "STATE_UNKNOWN"
+          ],
+          "type": "string"
+        },
+        "lane": {
+          "enum": [
+            "backlog",
+            "ready",
+            "in_progress",
+            "in_review",
+            "blocked",
+            "complete"
+          ],
+          "type": "string"
+        },
+        "query": {
+          "additionalProperties": false,
+          "properties": {
+            "assignee_id": {
+              "format": "uuid",
+              "type": "string"
+            },
+            "custodian_id": {
+              "format": "uuid",
+              "type": "string"
+            },
+            "lane": {
+              "$ref": "#/$defs/lane"
+            },
+            "priority": {
+              "enum": [
+                "P0",
+                "P1",
+                "P2"
+              ],
+              "type": "string"
+            },
+            "risk": {
+              "maxLength": 64,
+              "type": "string"
+            },
+            "stage_key": {
+              "pattern": "^[a-z][a-z0-9._-]*$",
+              "type": "string"
+            }
+          },
+          "type": "object"
+        }
+      },
+      "$id": "https://ctower.dev/contracts/domain/task-management/board-view.schema.json",
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "additionalProperties": false,
+      "properties": {
+        "cards": {
+          "items": {
+            "$ref": "#/$defs/card"
+          },
+          "type": "array"
+        },
+        "health": {
+          "$ref": "#/$defs/health"
+        },
+        "projection_watermark": {
+          "minimum": 0,
+          "type": "integer"
+        },
+        "source_watermark": {
+          "minimum": 0,
+          "type": "integer"
+        }
+      },
+      "required": [
+        "cards",
+        "health",
+        "projection_watermark",
+        "source_watermark"
+      ],
+      "title": "BoardView",
+      "type": "object"
+    },
+    "contracts/domain/task-management/scheduling-policy.schema.json": {
+      "$id": "https://ctower.dev/contracts/domain/task-management/scheduling-policy.schema.json",
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "additionalProperties": false,
+      "properties": {
+        "aging": {
+          "additionalProperties": false,
+          "properties": {
+            "eligible_since_source": {
+              "const": "first_continuous_eligibility"
+            },
+            "maximum_boost_levels": {
+              "maximum": 2,
+              "minimum": 1,
+              "type": "integer"
+            },
+            "step_seconds": {
+              "minimum": 60,
+              "type": "integer"
+            }
+          },
+          "required": [
+            "eligible_since_source",
+            "maximum_boost_levels",
+            "step_seconds"
+          ],
+          "type": "object"
+        },
+        "hard_eligibility": {
+          "items": {
+            "enum": [
+              "capability",
+              "trust",
+              "readiness",
+              "gates",
+              "environment",
+              "wip",
+              "quota",
+              "isolation"
+            ]
+          },
+          "minItems": 1,
+          "type": "array",
+          "uniqueItems": true
+        },
+        "key": {
+          "pattern": "^[a-z][a-z0-9._-]*$",
+          "type": "string"
+        },
+        "preemption": {
+          "additionalProperties": false,
+          "properties": {
+            "allowed_only_if": {
+              "const": "checkpoint_verified"
+            }
+          },
+          "required": [
+            "allowed_only_if"
+          ],
+          "type": "object"
+        },
+        "revision": {
+          "minimum": 1,
+          "type": "integer"
+        },
+        "schema": {
+          "const": "ctower.scheduling-policy/v1"
+        },
+        "status": {
+          "enum": [
+            "draft",
+            "staged",
+            "active",
+            "retired"
+          ]
+        },
+        "tie_break": {
+          "items": false,
+          "maxItems": 2,
+          "minItems": 2,
+          "prefixItems": [
+            {
+              "const": "eligible_since"
+            },
+            {
+              "const": "ticket_id"
+            }
+          ],
+          "type": "array"
+        }
+      },
+      "required": [
+        "aging",
+        "hard_eligibility",
+        "key",
+        "preemption",
+        "revision",
+        "schema",
+        "status",
+        "tie_break"
+      ],
+      "title": "SchedulingPolicy",
+      "type": "object"
+    },
+    "contracts/domain/task-management/task-command.schema.json": {
+      "$defs": {
+        "addRelation": {
+          "additionalProperties": false,
+          "properties": {
+            "client_command_id": {
+              "$ref": "#/$defs/commandId"
+            },
+            "expected_version": {
+              "$ref": "#/$defs/version"
+            },
+            "kind": {
+              "const": "add_relation"
+            },
+            "reason": {
+              "$ref": "#/$defs/reason"
+            },
+            "relation_kind": {
+              "enum": [
+                "parent_of",
+                "depends_on",
+                "blocks",
+                "duplicates",
+                "relates_to",
+                "caused_by"
+              ],
+              "type": "string"
+            },
+            "target_ticket_id": {
+              "format": "uuid",
+              "type": "string"
+            }
+          },
+          "required": [
+            "kind",
+            "client_command_id",
+            "expected_version",
+            "reason",
+            "relation_kind",
+            "target_ticket_id"
+          ],
+          "type": "object"
+        },
+        "admit": {
+          "additionalProperties": false,
+          "properties": {
+            "client_command_id": {
+              "$ref": "#/$defs/commandId"
+            },
+            "expected_version": {
+              "$ref": "#/$defs/version"
+            },
+            "kind": {
+              "const": "admit"
+            },
+            "reason": {
+              "$ref": "#/$defs/reason"
+            }
+          },
+          "required": [
+            "kind",
+            "client_command_id",
+            "expected_version",
+            "reason"
+          ],
+          "type": "object"
+        },
+        "assignmentKind": {
+          "enum": [
+            "ticket_custodian",
+            "current_assignee",
+            "stage_owner",
+            "reviewer_assignment",
+            "runner_lease_owner"
+          ],
+          "type": "string"
+        },
+        "block": {
+          "additionalProperties": false,
+          "properties": {
+            "affected_stage": {
+              "pattern": "^[a-z][a-z0-9._-]*$",
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "blocker_id": {
+              "format": "uuid",
+              "type": "string"
+            },
+            "blocker_kind": {
+              "enum": [
+                "dependency",
+                "operator_action",
+                "policy",
+                "resource",
+                "technical"
+              ],
+              "type": "string"
+            },
+            "board_impact": {
+              "type": "boolean"
+            },
+            "client_command_id": {
+              "$ref": "#/$defs/commandId"
+            },
+            "dependency_ref": {
+              "maxLength": 256,
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "expected_version": {
+              "$ref": "#/$defs/version"
+            },
+            "kind": {
+              "const": "block"
+            },
+            "next_check_at": {
+              "format": "date-time",
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "owner_principal_id": {
+              "format": "uuid",
+              "type": "string"
+            },
+            "reason": {
+              "$ref": "#/$defs/reason"
+            },
+            "reason_class": {
+              "maxLength": 64,
+              "minLength": 1,
+              "type": "string"
+            },
+            "resolution_condition": {
+              "maxLength": 500,
+              "minLength": 1,
+              "type": "string"
+            },
+            "source_ref": {
+              "maxLength": 256,
+              "minLength": 1,
+              "type": "string"
+            }
+          },
+          "required": [
+            "kind",
+            "affected_stage",
+            "blocker_id",
+            "blocker_kind",
+            "board_impact",
+            "client_command_id",
+            "dependency_ref",
+            "expected_version",
+            "next_check_at",
+            "owner_principal_id",
+            "reason",
+            "reason_class",
+            "resolution_condition",
+            "source_ref"
+          ],
+          "type": "object"
+        },
+        "changeAssignment": {
+          "additionalProperties": false,
+          "properties": {
+            "assignment_kind": {
+              "$ref": "#/$defs/mutableAssignmentKind"
+            },
+            "client_command_id": {
+              "$ref": "#/$defs/commandId"
+            },
+            "expected_version": {
+              "$ref": "#/$defs/version"
+            },
+            "kind": {
+              "const": "change_assignment"
+            },
+            "reason": {
+              "$ref": "#/$defs/reason"
+            },
+            "scope_ref": {
+              "maxLength": 256,
+              "minLength": 1,
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "to_principal_id": {
+              "format": "uuid",
+              "type": "string"
+            }
+          },
+          "required": [
+            "kind",
+            "assignment_kind",
+            "client_command_id",
+            "expected_version",
+            "reason",
+            "to_principal_id"
+          ],
+          "type": "object"
+        },
+        "changePriority": {
+          "additionalProperties": false,
+          "properties": {
+            "client_command_id": {
+              "$ref": "#/$defs/commandId"
+            },
+            "expected_version": {
+              "$ref": "#/$defs/version"
+            },
+            "kind": {
+              "const": "change_priority"
+            },
+            "priority": {
+              "$ref": "#/$defs/priority"
+            },
+            "reason": {
+              "$ref": "#/$defs/reason"
+            },
+            "urgent_evidence_ref": {
+              "maxLength": 256,
+              "minLength": 1,
+              "type": [
+                "string",
+                "null"
+              ]
+            }
+          },
+          "required": [
+            "kind",
+            "client_command_id",
+            "expected_version",
+            "priority",
+            "reason"
+          ],
+          "type": "object"
+        },
+        "commandId": {
+          "format": "uuid",
+          "type": "string"
+        },
+        "defer": {
+          "additionalProperties": false,
+          "properties": {
+            "client_command_id": {
+              "$ref": "#/$defs/commandId"
+            },
+            "expected_version": {
+              "$ref": "#/$defs/version"
+            },
+            "kind": {
+              "const": "defer"
+            },
+            "reason": {
+              "$ref": "#/$defs/reason"
+            },
+            "review_after": {
+              "format": "date-time",
+              "type": "string"
+            }
+          },
+          "required": [
+            "kind",
+            "client_command_id",
+            "expected_version",
+            "reason",
+            "review_after"
+          ],
+          "type": "object"
+        },
+        "mutableAssignmentKind": {
+          "enum": [
+            "current_assignee",
+            "stage_owner",
+            "reviewer_assignment"
+          ],
+          "type": "string"
+        },
+        "priority": {
+          "enum": [
+            "P0",
+            "P1",
+            "P2"
+          ],
+          "type": "string"
+        },
+        "reason": {
+          "maxLength": 500,
+          "minLength": 1,
+          "type": "string"
+        },
+        "reopen": {
+          "additionalProperties": false,
+          "properties": {
+            "client_command_id": {
+              "$ref": "#/$defs/commandId"
+            },
+            "expected_version": {
+              "$ref": "#/$defs/version"
+            },
+            "kind": {
+              "const": "reopen"
+            },
+            "priority_policy": {
+              "const": "carry_forward"
+            },
+            "reason": {
+              "$ref": "#/$defs/reason"
+            }
+          },
+          "required": [
+            "kind",
+            "client_command_id",
+            "expected_version",
+            "priority_policy",
+            "reason"
+          ],
+          "type": "object"
+        },
+        "unblock": {
+          "additionalProperties": false,
+          "properties": {
+            "blocker_id": {
+              "format": "uuid",
+              "type": "string"
+            },
+            "client_command_id": {
+              "$ref": "#/$defs/commandId"
+            },
+            "expected_version": {
+              "$ref": "#/$defs/version"
+            },
+            "kind": {
+              "const": "unblock"
+            },
+            "reason": {
+              "$ref": "#/$defs/reason"
+            },
+            "resolution_evidence_ref": {
+              "maxLength": 256,
+              "minLength": 1,
+              "type": "string"
+            }
+          },
+          "required": [
+            "kind",
+            "blocker_id",
+            "client_command_id",
+            "expected_version",
+            "reason",
+            "resolution_evidence_ref"
+          ],
+          "type": "object"
+        },
+        "version": {
+          "minimum": 1,
+          "type": "integer"
+        }
+      },
+      "$id": "https://ctower.dev/contracts/domain/task-management/task-command.schema.json",
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "oneOf": [
+        {
+          "$ref": "#/$defs/changePriority"
+        },
+        {
+          "$ref": "#/$defs/changeAssignment"
+        },
+        {
+          "$ref": "#/$defs/admit"
+        },
+        {
+          "$ref": "#/$defs/defer"
+        },
+        {
+          "$ref": "#/$defs/block"
+        },
+        {
+          "$ref": "#/$defs/unblock"
+        },
+        {
+          "$ref": "#/$defs/reopen"
+        },
+        {
+          "$ref": "#/$defs/addRelation"
+        }
+      ],
+      "title": "TaskCommand"
+    },
+    "contracts/domain/tickets/ticket-event.schema.json": {
+      "$defs": {
+        "commentAdded": {
+          "additionalProperties": false,
+          "properties": {
+            "body": {
+              "maxLength": 4000,
+              "minLength": 1,
+              "type": "string"
+            },
+            "comment_id": {
+              "format": "uuid",
+              "type": "string"
+            },
+            "ticket_id": {
+              "format": "uuid",
+              "type": "string"
+            }
+          },
+          "required": [
+            "body",
+            "comment_id",
+            "ticket_id"
+          ],
+          "type": "object"
+        },
+        "custodyTransferred": {
+          "additionalProperties": false,
+          "properties": {
+            "from_custodian_id": {
+              "format": "uuid",
+              "type": "string"
+            },
+            "reason": {
+              "maxLength": 500,
+              "minLength": 1,
+              "type": "string"
+            },
+            "to_custodian_id": {
+              "format": "uuid",
+              "type": "string"
+            }
+          },
+          "required": [
+            "from_custodian_id",
+            "reason",
+            "to_custodian_id"
+          ],
+          "type": "object"
+        },
+        "ticketCreated": {
+          "additionalProperties": false,
+          "properties": {
+            "custodian_id": {
+              "format": "uuid",
+              "type": "string"
+            },
+            "priority": {
+              "enum": [
+                "P0",
+                "P1",
+                "P2"
+              ],
+              "type": "string"
+            },
+            "source_kind": {
+              "maxLength": 64,
+              "minLength": 1,
+              "type": "string"
+            },
+            "source_ref": {
+              "maxLength": 256,
+              "minLength": 1,
+              "type": "string"
+            },
+            "title": {
+              "maxLength": 200,
+              "minLength": 1,
+              "type": "string"
+            }
+          },
+          "required": [
+            "custodian_id",
+            "priority",
+            "source_kind",
+            "source_ref",
+            "title"
+          ],
+          "type": "object"
+        }
+      },
+      "$id": "https://ctower.dev/contracts/domain/tickets/ticket-event.schema.json",
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "additionalProperties": false,
+      "properties": {
+        "data": {
+          "oneOf": [
+            {
+              "$ref": "#/$defs/ticketCreated"
+            },
+            {
+              "$ref": "#/$defs/custodyTransferred"
+            },
+            {
+              "$ref": "#/$defs/commentAdded"
+            },
+            {
+              "$ref": "https://ctower.dev/contracts/domain/events/event-envelope.schema.json#/$defs/workChanged"
+            }
+          ]
+        },
+        "kind": {
+          "enum": [
+            "ticket.created",
+            "ticket.custody_transferred",
+            "ticket.comment_added",
+            "work.changed"
+          ],
+          "type": "string"
+        }
+      },
+      "required": [
+        "kind",
+        "data"
+      ],
+      "title": "TicketEventPayload",
+      "type": "object"
+    },
+    "contracts/evidence/evidence-manifest.schema.json": {
+      "$defs": {
+        "notExercised": {
+          "additionalProperties": false,
+          "properties": {
+            "source_count": {
+              "const": 0
+            },
+            "status": {
+              "const": "not_exercised"
+            }
+          },
+          "required": [
+            "status",
+            "source_count"
+          ],
+          "type": "object"
+        },
+        "sha256": {
+          "pattern": "^sha256:[0-9a-f]{64}$",
+          "type": "string"
+        },
+        "stableKey": {
+          "pattern": "^[a-z][a-z0-9._-]*$",
+          "type": "string"
+        }
+      },
+      "$id": "https://ctower.invalid/contracts/evidence/evidence-manifest.schema.json",
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "additionalProperties": false,
+      "description": "Development-only CP-1 manifest of current proof and explicitly unexercised sources.",
+      "properties": {
+        "artifacts": {
+          "items": {
+            "additionalProperties": false,
+            "properties": {
+              "artifact_digest": {
+                "$ref": "#/$defs/sha256"
+              },
+              "candidate_digest": {
+                "$ref": "#/$defs/sha256"
+              },
+              "criterion_key": {
+                "$ref": "#/$defs/stableKey"
+              }
+            },
+            "required": [
+              "criterion_key",
+              "artifact_digest",
+              "candidate_digest"
+            ],
+            "type": "object"
+          },
+          "minItems": 1,
+          "type": "array"
+        },
+        "candidate_digest": {
+          "$ref": "#/$defs/sha256"
+        },
+        "criteria_revision": {
+          "minimum": 1,
+          "type": "integer"
+        },
+        "deferred_sources": {
+          "additionalProperties": false,
+          "properties": {
+            "effects": {
+              "$ref": "#/$defs/notExercised"
+            },
+            "extensions": {
+              "$ref": "#/$defs/notExercised"
+            },
+            "images": {
+              "$ref": "#/$defs/notExercised"
+            },
+            "remote": {
+              "$ref": "#/$defs/notExercised"
+            }
+          },
+          "required": [
+            "remote",
+            "images",
+            "effects",
+            "extensions"
+          ],
+          "type": "object"
+        },
+        "schema": {
+          "const": "ctower.evidence-manifest/v1"
+        },
+        "status": {
+          "const": "development_only"
+        },
+        "tenant_id": {
+          "format": "uuid",
+          "type": "string"
+        },
+        "ticket_id": {
+          "format": "uuid",
+          "type": "string"
+        },
+        "verdict_ids": {
+          "items": {
+            "format": "uuid",
+            "type": "string"
+          },
+          "minItems": 1,
+          "type": "array"
+        }
+      },
+      "required": [
+        "schema",
+        "status",
+        "tenant_id",
+        "ticket_id",
+        "candidate_digest",
+        "criteria_revision",
+        "artifacts",
+        "verdict_ids",
+        "deferred_sources"
+      ],
+      "title": "EvidenceManifestConsumerSubset",
+      "type": "object"
+    },
+    "contracts/evidence/object-manifest.schema.json": {
+      "$defs": {
+        "digest": {
+          "pattern": "^sha256:[0-9a-f]{64}$",
+          "type": "string"
+        },
+        "object": {
+          "additionalProperties": false,
+          "properties": {
+            "artifact_digest": {
+              "$ref": "#/$defs/digest"
+            },
+            "ciphertext_sha256": {
+              "$ref": "#/$defs/digest"
+            },
+            "key_reference": {
+              "$ref": "#/$defs/reference"
+            },
+            "key_version": {
+              "pattern": "^[A-Za-z0-9._:-]{1,128}$",
+              "type": "string"
+            },
+            "object_key": {
+              "maxLength": 512,
+              "minLength": 1,
+              "type": "string"
+            },
+            "object_version": {
+              "maxLength": 256,
+              "minLength": 1,
+              "type": "string"
+            },
+            "verified_at": {
+              "format": "date-time",
+              "type": "string"
+            },
+            "wrapped_key_sha256": {
+              "$ref": "#/$defs/digest"
+            }
+          },
+          "required": [
+            "artifact_digest",
+            "object_key",
+            "object_version",
+            "ciphertext_sha256",
+            "key_reference",
+            "key_version",
+            "wrapped_key_sha256",
+            "verified_at"
+          ],
+          "type": "object"
+        },
+        "reference": {
+          "pattern": "^[a-z][a-z0-9._:/-]{2,255}$",
+          "type": "string"
+        }
+      },
+      "$id": "https://ctower.dev/contracts/evidence/object-manifest.schema.json",
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "additionalProperties": false,
+      "properties": {
+        "artifact_rpo_seconds": {
+          "maximum": 300,
+          "minimum": 0,
+          "type": "integer"
+        },
+        "created_at": {
+          "format": "date-time",
+          "type": "string"
+        },
+        "objects": {
+          "items": {
+            "$ref": "#/$defs/object"
+          },
+          "type": "array",
+          "uniqueItems": true
+        },
+        "schema_id": {
+          "const": "ctower.object-manifest/v1"
+        },
+        "tenant_id": {
+          "format": "uuid",
+          "type": "string"
+        }
+      },
+      "required": [
+        "schema_id",
+        "tenant_id",
+        "created_at",
+        "artifact_rpo_seconds",
+        "objects"
+      ],
+      "title": "Immutable encrypted object manifest",
+      "type": "object"
+    },
+    "contracts/execution/evidence-policy.schema.json": {
+      "$id": "https://ctower.invalid/contracts/execution/evidence-policy.schema.json",
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "additionalProperties": false,
+      "description": "Development-only CP-1 content-addressed evidence rules.",
+      "properties": {
+        "candidate_binding": {
+          "const": "current_digest"
+        },
+        "content_encoding": {
+          "const": "utf-8"
+        },
+        "corruption_policy": {
+          "const": "reject"
+        },
+        "digest_algorithm": {
+          "const": "sha256"
+        },
+        "key": {
+          "pattern": "^[a-z][a-z0-9._-]*$",
+          "type": "string"
+        },
+        "missing_policy": {
+          "const": "reject"
+        },
+        "note": {
+          "minLength": 1,
+          "type": "string"
+        },
+        "revision": {
+          "minimum": 1,
+          "type": "integer"
+        },
+        "schema": {
+          "const": "ctower.evidence-policy/v1"
+        },
+        "status": {
+          "const": "staged"
+        }
+      },
+      "required": [
+        "schema",
+        "status",
+        "key",
+        "revision",
+        "digest_algorithm",
+        "content_encoding",
+        "candidate_binding",
+        "corruption_policy",
+        "missing_policy",
+        "note"
+      ],
+      "title": "EvidencePolicyConsumerSubset",
+      "type": "object"
+    },
+    "contracts/execution/execution-policy.schema.json": {
+      "$defs": {
+        "stableKey": {
+          "pattern": "^[a-z][a-z0-9._-]*$",
+          "type": "string"
+        },
+        "versionedReference": {
+          "pattern": "^[a-z][a-z0-9._-]*@[1-9][0-9]*$",
+          "type": "string"
+        }
+      },
+      "$id": "https://ctower.invalid/contracts/execution/execution-policy.schema.json",
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "additionalProperties": false,
+      "description": "Development-only CP-1 consumer subset; it starts no execution runtime.",
+      "properties": {
+        "capabilities": {
+          "additionalProperties": false,
+          "properties": {
+            "effects": {
+              "const": "not_exercised"
+            },
+            "extensions": {
+              "const": "not_exercised"
+            },
+            "images": {
+              "const": "not_exercised"
+            },
+            "remote": {
+              "const": "not_exercised"
+            }
+          },
+          "required": [
+            "remote",
+            "images",
+            "effects",
+            "extensions"
+          ],
+          "type": "object"
+        },
+        "key": {
+          "$ref": "#/$defs/stableKey"
+        },
+        "note": {
+          "minLength": 1,
+          "type": "string"
+        },
+        "revision": {
+          "minimum": 1,
+          "type": "integer"
+        },
+        "schema": {
+          "const": "ctower.execution-policy/v1"
+        },
+        "status": {
+          "const": "staged"
+        },
+        "workflow_ref": {
+          "$ref": "#/$defs/versionedReference"
+        }
+      },
+      "required": [
+        "schema",
+        "status",
+        "key",
+        "revision",
+        "workflow_ref",
+        "capabilities",
+        "note"
+      ],
+      "title": "ExecutionPolicyConsumerSubset",
+      "type": "object"
+    },
+    "contracts/execution/gate-policy.schema.json": {
+      "$defs": {
+        "stableKey": {
+          "pattern": "^[a-z][a-z0-9._-]*$",
+          "type": "string"
+        },
+        "versionedReference": {
+          "pattern": "^[a-z][a-z0-9._-]*@[1-9][0-9]*$",
+          "type": "string"
+        }
+      },
+      "$id": "https://ctower.invalid/contracts/execution/gate-policy.schema.json",
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "additionalProperties": false,
+      "description": "Development-only CP-1 criteria and independent verdict topology.",
+      "properties": {
+        "criteria": {
+          "items": {
+            "additionalProperties": false,
+            "properties": {
+              "candidate_dependent": {
+                "type": "boolean"
+              },
+              "description": {
+                "maxLength": 500,
+                "minLength": 1,
+                "type": "string"
+              },
+              "key": {
+                "$ref": "#/$defs/stableKey"
+              },
+              "requires_verdict": {
+                "type": "boolean"
+              }
+            },
+            "required": [
+              "key",
+              "description",
+              "candidate_dependent",
+              "requires_verdict"
+            ],
+            "type": "object"
+          },
+          "minItems": 1,
+          "type": "array"
+        },
+        "evidence_policy_ref": {
+          "$ref": "#/$defs/versionedReference"
+        },
+        "key": {
+          "$ref": "#/$defs/stableKey"
+        },
+        "note": {
+          "minLength": 1,
+          "type": "string"
+        },
+        "protected_verdict": {
+          "additionalProperties": false,
+          "properties": {
+            "reviewer_kind": {
+              "const": "operator"
+            },
+            "self_review": {
+              "const": "forbidden"
+            }
+          },
+          "required": [
+            "reviewer_kind",
+            "self_review"
+          ],
+          "type": "object"
+        },
+        "revision": {
+          "minimum": 1,
+          "type": "integer"
+        },
+        "schema": {
+          "const": "ctower.gate-policy/v1"
+        },
+        "status": {
+          "const": "staged"
+        },
+        "workflow_ref": {
+          "$ref": "#/$defs/versionedReference"
+        }
+      },
+      "required": [
+        "schema",
+        "status",
+        "key",
+        "revision",
+        "workflow_ref",
+        "evidence_policy_ref",
+        "criteria",
+        "protected_verdict",
+        "note"
+      ],
+      "title": "GatePolicyConsumerSubset",
+      "type": "object"
+    },
+    "contracts/observability/telemetry-context.schema.json": {
+      "$defs": {
+        "id": {
+          "maxLength": 128,
+          "minLength": 1,
+          "type": "string"
+        },
+        "nullableId": {
+          "maxLength": 128,
+          "minLength": 1,
+          "type": [
+            "string",
+            "null"
+          ]
+        }
+      },
+      "$id": "https://ctower.local/contracts/observability/telemetry-context.schema.json",
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "additionalProperties": false,
+      "description": "Strict propagation context. Values provide correlation only and never authority.",
+      "properties": {
+        "actor_id": {
+          "$ref": "#/$defs/id"
+        },
+        "causation_id": {
+          "$ref": "#/$defs/id"
+        },
+        "command_id": {
+          "$ref": "#/$defs/id"
+        },
+        "component_revision_id": {
+          "$ref": "#/$defs/nullableId"
+        },
+        "correlation_id": {
+          "$ref": "#/$defs/id"
+        },
+        "deployment_id": {
+          "$ref": "#/$defs/nullableId"
+        },
+        "effect_id": {
+          "$ref": "#/$defs/nullableId"
+        },
+        "fencing_token": {
+          "minimum": 1,
+          "type": [
+            "integer",
+            "null"
+          ]
+        },
+        "job_id": {
+          "$ref": "#/$defs/nullableId"
+        },
+        "runner_id": {
+          "$ref": "#/$defs/nullableId"
+        },
+        "schema": {
+          "const": "ctower.telemetry-context/v1"
+        },
+        "span_id": {
+          "pattern": "^[a-f0-9]{16}$",
+          "type": "string"
+        },
+        "stage_attempt_id": {
+          "$ref": "#/$defs/nullableId"
+        },
+        "tenant_id": {
+          "$ref": "#/$defs/id"
+        },
+        "ticket_id": {
+          "$ref": "#/$defs/nullableId"
+        },
+        "trace_flags": {
+          "maximum": 255,
+          "minimum": 0,
+          "type": "integer"
+        },
+        "trace_id": {
+          "pattern": "^[a-f0-9]{32}$",
+          "type": "string"
+        },
+        "trace_state": {
+          "maxLength": 512,
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "workflow_run_id": {
+          "$ref": "#/$defs/nullableId"
+        }
+      },
+      "required": [
+        "schema",
+        "trace_id",
+        "span_id",
+        "trace_flags",
+        "correlation_id",
+        "causation_id",
+        "tenant_id",
+        "actor_id",
+        "command_id"
+      ],
+      "title": "TelemetryContext",
+      "type": "object"
+    },
+    "contracts/operations/anchor.schema.json": {
+      "$defs": {
+        "digest": {
+          "pattern": "^sha256:[0-9a-f]{64}$",
+          "type": "string"
+        },
+        "reference": {
+          "pattern": "^[a-z][a-z0-9._:/-]{2,255}$",
+          "type": "string"
+        }
+      },
+      "$id": "https://ctower.dev/contracts/operations/anchor.schema.json",
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "additionalProperties": false,
+      "properties": {
+        "anchor_id": {
+          "format": "uuid",
+          "type": "string"
+        },
+        "anchor_sha256": {
+          "$ref": "#/$defs/digest"
+        },
+        "anchored_at": {
+          "format": "date-time",
+          "type": "string"
+        },
+        "object_key": {
+          "maxLength": 512,
+          "minLength": 1,
+          "type": "string"
+        },
+        "object_version": {
+          "maxLength": 256,
+          "minLength": 1,
+          "type": "string"
+        },
+        "previous_anchor_sha256": {
+          "oneOf": [
+            {
+              "$ref": "#/$defs/digest"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "public_key_sha256": {
+          "$ref": "#/$defs/digest"
+        },
+        "schema_id": {
+          "const": "ctower.record-anchor/v1"
+        },
+        "signature": {
+          "maxLength": 4096,
+          "minLength": 1,
+          "type": "string"
+        },
+        "signing_key_reference": {
+          "$ref": "#/$defs/reference"
+        },
+        "signing_key_version": {
+          "pattern": "^[A-Za-z0-9._:-]{1,128}$",
+          "type": "string"
+        },
+        "source_end_position": {
+          "minimum": 1,
+          "type": "integer"
+        },
+        "source_start_position": {
+          "minimum": 1,
+          "type": "integer"
+        },
+        "tenant_id": {
+          "format": "uuid",
+          "type": "string"
+        }
+      },
+      "required": [
+        "schema_id",
+        "anchor_id",
+        "tenant_id",
+        "source_start_position",
+        "source_end_position",
+        "previous_anchor_sha256",
+        "anchor_sha256",
+        "signature",
+        "signing_key_reference",
+        "signing_key_version",
+        "public_key_sha256",
+        "object_key",
+        "object_version",
+        "anchored_at"
+      ],
+      "title": "Append-only external record anchor receipt",
+      "type": "object"
+    },
+    "contracts/operations/backup-manifest.schema.json": {
+      "$defs": {
+        "digest": {
+          "pattern": "^sha256:[0-9a-f]{64}$",
+          "type": "string"
+        },
+        "lsn": {
+          "pattern": "^[0-9A-F]+/[0-9A-F]+$",
+          "type": "string"
+        },
+        "reference": {
+          "pattern": "^[a-z][a-z0-9._:/-]{2,255}$",
+          "type": "string"
+        }
+      },
+      "$id": "https://ctower.dev/contracts/operations/backup-manifest.schema.json",
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "additionalProperties": false,
+      "properties": {
+        "backup_id": {
+          "format": "uuid",
+          "type": "string"
+        },
+        "base_backup_sha256": {
+          "$ref": "#/$defs/digest"
+        },
+        "completed_at": {
+          "format": "date-time",
+          "type": "string"
+        },
+        "key_reference": {
+          "$ref": "#/$defs/reference"
+        },
+        "key_version": {
+          "pattern": "^[A-Za-z0-9._:-]{1,128}$",
+          "type": "string"
+        },
+        "logical_dump_sha256": {
+          "$ref": "#/$defs/digest"
+        },
+        "migration_manifest_sha256": {
+          "$ref": "#/$defs/digest"
+        },
+        "object_manifest_sha256": {
+          "$ref": "#/$defs/digest"
+        },
+        "repository_object_version": {
+          "maxLength": 256,
+          "minLength": 1,
+          "type": "string"
+        },
+        "repository_ref": {
+          "$ref": "#/$defs/reference"
+        },
+        "schema_id": {
+          "const": "ctower.backup-manifest/v1"
+        },
+        "started_at": {
+          "format": "date-time",
+          "type": "string"
+        },
+        "tenant_id": {
+          "format": "uuid",
+          "type": "string"
+        },
+        "verification": {
+          "additionalProperties": false,
+          "properties": {
+            "base": {
+              "const": true
+            },
+            "key_reference": {
+              "const": true
+            },
+            "logical_dump": {
+              "const": true
+            },
+            "objects": {
+              "const": true
+            },
+            "wal": {
+              "const": true
+            }
+          },
+          "required": [
+            "base",
+            "wal",
+            "logical_dump",
+            "objects",
+            "key_reference"
+          ],
+          "type": "object"
+        },
+        "wal_start_lsn": {
+          "$ref": "#/$defs/lsn"
+        },
+        "wal_stop_lsn": {
+          "$ref": "#/$defs/lsn"
+        }
+      },
+      "required": [
+        "schema_id",
+        "backup_id",
+        "tenant_id",
+        "repository_ref",
+        "repository_object_version",
+        "base_backup_sha256",
+        "wal_start_lsn",
+        "wal_stop_lsn",
+        "logical_dump_sha256",
+        "object_manifest_sha256",
+        "migration_manifest_sha256",
+        "key_reference",
+        "key_version",
+        "started_at",
+        "completed_at",
+        "verification"
+      ],
+      "title": "Verified daily backup manifest",
+      "type": "object"
+    },
+    "contracts/operations/durability-ack.schema.json": {
+      "$id": "https://ctower.dev/contracts/operations/durability-ack.schema.json",
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "additionalProperties": false,
+      "properties": {
+        "acceptance_position": {
+          "minimum": 1,
+          "type": "integer"
+        },
+        "acknowledged_at": {
+          "format": "date-time",
+          "type": "string"
+        },
+        "client_command_id": {
+          "format": "uuid",
+          "type": "string"
+        },
+        "command_root": {
+          "pattern": "^sha256:[0-9a-f]{64}$",
+          "type": "string"
+        },
+        "policy_ref": {
+          "pattern": "^[a-z][a-z0-9._-]*@[1-9][0-9]*$",
+          "type": "string"
+        },
+        "principal_id": {
+          "format": "uuid",
+          "type": "string"
+        },
+        "request_sha256": {
+          "pattern": "^sha256:[0-9a-f]{64}$",
+          "type": "string"
+        },
+        "schema_id": {
+          "const": "ctower.durability-ack/v1"
+        },
+        "standby_application_name": {
+          "const": "ctower_i1_ack"
+        },
+        "standby_identity": {
+          "maxLength": 128,
+          "minLength": 1,
+          "type": "string"
+        },
+        "standby_replay_lsn": {
+          "pattern": "^[0-9A-F]+/[0-9A-F]+$",
+          "type": "string"
+        },
+        "standby_system_identifier": {
+          "pattern": "^[0-9]+$",
+          "type": "string"
+        },
+        "standby_timeline_id": {
+          "minimum": 1,
+          "type": "integer"
+        },
+        "tenant_id": {
+          "format": "uuid",
+          "type": "string"
+        }
+      },
+      "required": [
+        "schema_id",
+        "tenant_id",
+        "principal_id",
+        "client_command_id",
+        "request_sha256",
+        "command_root",
+        "acceptance_position",
+        "policy_ref",
+        "standby_application_name",
+        "standby_identity",
+        "standby_system_identifier",
+        "standby_timeline_id",
+        "standby_replay_lsn",
+        "acknowledged_at"
+      ],
+      "title": "Off-host durability acknowledgement",
+      "type": "object"
+    },
+    "contracts/operations/durability-policy.schema.json": {
+      "$id": "https://ctower.dev/contracts/operations/durability-policy.schema.json",
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "additionalProperties": false,
+      "properties": {
+        "commit_deadline_ms": {
+          "maximum": 30000,
+          "minimum": 100,
+          "type": "integer"
+        },
+        "mode": {
+          "enum": [
+            "pending_only",
+            "cutover_rpo0"
+          ],
+          "type": "string"
+        },
+        "policy_ref": {
+          "pattern": "^[a-z][a-z0-9._-]*@[1-9][0-9]*$",
+          "type": "string"
+        },
+        "retry_after_seconds": {
+          "maximum": 60,
+          "minimum": 1,
+          "type": "integer"
+        },
+        "schema_id": {
+          "const": "ctower.durability-policy/v1"
+        },
+        "standby_application_name": {
+          "const": "ctower_i1_ack"
+        },
+        "standby_count": {
+          "const": 1
+        },
+        "standby_identity": {
+          "maxLength": 128,
+          "minLength": 1,
+          "type": "string"
+        },
+        "synchronous_commit": {
+          "const": "remote_apply"
+        }
+      },
+      "required": [
+        "schema_id",
+        "policy_ref",
+        "mode",
+        "synchronous_commit",
+        "standby_count",
+        "standby_application_name",
+        "standby_identity",
+        "commit_deadline_ms",
+        "retry_after_seconds"
+      ],
+      "title": "Durability policy",
+      "type": "object"
+    },
+    "contracts/operations/expected-source-inventory.schema.json": {
+      "$defs": {
+        "active": {
+          "additionalProperties": false,
+          "properties": {
+            "activation": {
+              "const": "active"
+            },
+            "activation_event_ref": {
+              "$ref": "#/$defs/reference"
+            },
+            "cursor_declaration": {
+              "const": "trusted_cursor"
+            },
+            "source_count": {
+              "minimum": 1,
+              "type": "integer"
+            },
+            "source_key": {
+              "enum": [
+                "ctower.root-supervisor.default",
+                "ctower.effect.default",
+                "ctower.provider.default"
+              ]
+            },
+            "source_kind": {
+              "enum": [
+                "root_supervisor_journal",
+                "effect_journal",
+                "provider_journal"
+              ]
+            },
+            "trust_root_ref": {
+              "$ref": "#/$defs/reference"
+            },
+            "trusted_cursor": {
+              "maxLength": 255,
+              "minLength": 1,
+              "type": "string"
+            }
+          },
+          "required": [
+            "source_key",
+            "source_kind",
+            "activation",
+            "cursor_declaration",
+            "source_count",
+            "trust_root_ref",
+            "trusted_cursor",
+            "activation_event_ref"
+          ],
+          "type": "object"
+        },
+        "digest": {
+          "pattern": "^sha256:[0-9a-f]{64}$",
+          "type": "string"
+        },
+        "inactive": {
+          "additionalProperties": false,
+          "properties": {
+            "activation": {
+              "const": "not_exercised"
+            },
+            "cursor_declaration": {
+              "const": "zero_source"
+            },
+            "source_count": {
+              "const": 0
+            },
+            "source_key": {
+              "enum": [
+                "ctower.root-supervisor.default",
+                "ctower.effect.default",
+                "ctower.provider.default"
+              ]
+            },
+            "source_kind": {
+              "enum": [
+                "root_supervisor_journal",
+                "effect_journal",
+                "provider_journal"
+              ]
+            }
+          },
+          "required": [
+            "source_key",
+            "source_kind",
+            "activation",
+            "cursor_declaration",
+            "source_count"
+          ],
+          "type": "object"
+        },
+        "reference": {
+          "pattern": "^[a-z][a-z0-9._:/-]{2,255}$",
+          "type": "string"
+        },
+        "source": {
+          "oneOf": [
+            {
+              "$ref": "#/$defs/inactive"
+            },
+            {
+              "$ref": "#/$defs/active"
+            }
+          ]
+        },
+        "sourceBase": {
+          "properties": {
+            "source_key": {
+              "enum": [
+                "ctower.root-supervisor.default",
+                "ctower.effect.default",
+                "ctower.provider.default"
+              ]
+            },
+            "source_kind": {
+              "enum": [
+                "root_supervisor_journal",
+                "effect_journal",
+                "provider_journal"
+              ]
+            }
+          },
+          "required": [
+            "source_key",
+            "source_kind"
+          ],
+          "type": "object"
+        }
+      },
+      "$id": "https://ctower.dev/contracts/operations/expected-source-inventory.schema.json",
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "additionalProperties": false,
+      "properties": {
+        "created_at": {
+          "format": "date-time",
+          "type": "string"
+        },
+        "inventory_revision_id": {
+          "format": "uuid",
+          "type": "string"
+        },
+        "object_key": {
+          "maxLength": 512,
+          "minLength": 1,
+          "type": "string"
+        },
+        "object_version": {
+          "maxLength": 256,
+          "minLength": 1,
+          "type": "string"
+        },
+        "previous_revision_sha256": {
+          "oneOf": [
+            {
+              "$ref": "#/$defs/digest"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "public_key_sha256": {
+          "$ref": "#/$defs/digest"
+        },
+        "revision_number": {
+          "minimum": 1,
+          "type": "integer"
+        },
+        "revision_sha256": {
+          "$ref": "#/$defs/digest"
+        },
+        "schema_id": {
+          "const": "ctower.expected-source-inventory/v1"
+        },
+        "signature": {
+          "maxLength": 4096,
+          "minLength": 1,
+          "type": "string"
+        },
+        "signing_key_reference": {
+          "$ref": "#/$defs/reference"
+        },
+        "signing_key_version": {
+          "pattern": "^[A-Za-z0-9._:-]{1,128}$",
+          "type": "string"
+        },
+        "sources": {
+          "items": {
+            "$ref": "#/$defs/source"
+          },
+          "maxItems": 3,
+          "minItems": 3,
+          "type": "array",
+          "uniqueItems": true
+        },
+        "tenant_id": {
+          "format": "uuid",
+          "type": "string"
+        }
+      },
+      "required": [
+        "schema_id",
+        "inventory_revision_id",
+        "tenant_id",
+        "revision_number",
+        "previous_revision_sha256",
+        "revision_sha256",
+        "signature",
+        "signing_key_reference",
+        "signing_key_version",
+        "public_key_sha256",
+        "object_key",
+        "object_version",
+        "created_at",
+        "sources"
+      ],
+      "title": "Signed expected restore-source inventory",
+      "type": "object"
+    },
+    "contracts/operations/health.schema.json": {
+      "$defs": {
+        "contributor": {
+          "additionalProperties": false,
+          "properties": {
+            "key": {
+              "enum": [
+                "durability",
+                "scheduler",
+                "outbox",
+                "projection",
+                "backup",
+                "anchor",
+                "object",
+                "synthetic"
+              ],
+              "type": "string"
+            },
+            "observed_at": {
+              "format": "date-time",
+              "type": "string"
+            },
+            "owner": {
+              "maxLength": 128,
+              "minLength": 1,
+              "type": "string"
+            },
+            "reason": {
+              "maxLength": 500,
+              "minLength": 1,
+              "type": "string"
+            },
+            "status": {
+              "$ref": "#/$defs/status"
+            },
+            "threshold_seconds": {
+              "minimum": 0,
+              "type": "integer"
+            },
+            "watermark": {
+              "minimum": 0,
+              "type": [
+                "integer",
+                "null"
+              ]
+            }
+          },
+          "required": [
+            "key",
+            "status",
+            "watermark",
+            "threshold_seconds",
+            "observed_at",
+            "owner",
+            "reason"
+          ],
+          "type": "object"
+        },
+        "dimension": {
+          "additionalProperties": false,
+          "properties": {
+            "contributors": {
+              "items": {
+                "$ref": "#/$defs/contributor"
+              },
+              "minItems": 1,
+              "type": "array",
+              "uniqueItems": true
+            },
+            "status": {
+              "$ref": "#/$defs/status"
+            }
+          },
+          "required": [
+            "status",
+            "contributors"
+          ],
+          "type": "object"
+        },
+        "status": {
+          "enum": [
+            "HEALTHY",
+            "DEGRADED",
+            "STATE_UNKNOWN"
+          ],
+          "type": "string"
+        }
+      },
+      "$id": "https://ctower.dev/contracts/operations/health.schema.json",
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "additionalProperties": false,
+      "properties": {
+        "availability": {
+          "$ref": "#/$defs/dimension"
+        },
+        "completeness": {
+          "$ref": "#/$defs/dimension"
+        },
+        "integrity": {
+          "$ref": "#/$defs/dimension"
+        },
+        "observed_at": {
+          "format": "date-time",
+          "type": "string"
+        },
+        "schema_id": {
+          "const": "ctower.health/v1"
+        },
+        "status": {
+          "$ref": "#/$defs/status"
+        }
+      },
+      "required": [
+        "schema_id",
+        "status",
+        "observed_at",
+        "availability",
+        "completeness",
+        "integrity"
+      ],
+      "title": "Control health snapshot",
+      "type": "object"
+    },
+    "contracts/operations/restore-report.schema.json": {
+      "$defs": {
+        "anchorsVerified": {
+          "allOf": [
+            {
+              "$ref": "#/$defs/step"
+            },
+            {
+              "properties": {
+                "kind": {
+                  "const": "anchors_verified"
+                }
+              }
+            }
+          ]
+        },
+        "chainsVerified": {
+          "allOf": [
+            {
+              "$ref": "#/$defs/step"
+            },
+            {
+              "properties": {
+                "kind": {
+                  "const": "chains_verified"
+                }
+              }
+            }
+          ]
+        },
+        "databaseRecovered": {
+          "allOf": [
+            {
+              "$ref": "#/$defs/step"
+            },
+            {
+              "properties": {
+                "kind": {
+                  "const": "database_recovered"
+                }
+              }
+            }
+          ]
+        },
+        "digest": {
+          "pattern": "^sha256:[0-9a-f]{64}$",
+          "type": "string"
+        },
+        "erasureReapplied": {
+          "allOf": [
+            {
+              "$ref": "#/$defs/step"
+            },
+            {
+              "properties": {
+                "kind": {
+                  "const": "erasure_reapplied"
+                }
+              }
+            }
+          ]
+        },
+        "finding": {
+          "additionalProperties": false,
+          "properties": {
+            "evidence_sha256": {
+              "$ref": "#/$defs/digest"
+            },
+            "key": {
+              "pattern": "^[a-z][a-z0-9._:-]*$",
+              "type": "string"
+            },
+            "reason": {
+              "maxLength": 500,
+              "minLength": 1,
+              "type": "string"
+            },
+            "resolved": {
+              "type": "boolean"
+            },
+            "severity": {
+              "enum": [
+                "critical",
+                "error"
+              ]
+            }
+          },
+          "required": [
+            "key",
+            "severity",
+            "reason",
+            "evidence_sha256",
+            "resolved"
+          ],
+          "type": "object"
+        },
+        "inventoryVerified": {
+          "allOf": [
+            {
+              "$ref": "#/$defs/step"
+            },
+            {
+              "properties": {
+                "kind": {
+                  "const": "inventory_verified"
+                }
+              }
+            }
+          ]
+        },
+        "journalsReconciled": {
+          "allOf": [
+            {
+              "$ref": "#/$defs/step"
+            },
+            {
+              "properties": {
+                "kind": {
+                  "const": "journals_reconciled"
+                }
+              }
+            }
+          ]
+        },
+        "keyAccessRecovered": {
+          "allOf": [
+            {
+              "$ref": "#/$defs/step"
+            },
+            {
+              "properties": {
+                "kind": {
+                  "const": "key_access_recovered"
+                }
+              }
+            }
+          ]
+        },
+        "migrationsVerified": {
+          "allOf": [
+            {
+              "$ref": "#/$defs/step"
+            },
+            {
+              "properties": {
+                "kind": {
+                  "const": "migrations_verified"
+                }
+              }
+            }
+          ]
+        },
+        "objectAccessRecovered": {
+          "allOf": [
+            {
+              "$ref": "#/$defs/step"
+            },
+            {
+              "properties": {
+                "kind": {
+                  "const": "object_access_recovered"
+                }
+              }
+            }
+          ]
+        },
+        "objectsVerified": {
+          "allOf": [
+            {
+              "$ref": "#/$defs/step"
+            },
+            {
+              "properties": {
+                "kind": {
+                  "const": "objects_verified"
+                }
+              }
+            }
+          ]
+        },
+        "step": {
+          "additionalProperties": false,
+          "properties": {
+            "detail": {
+              "maxLength": 500,
+              "minLength": 1,
+              "type": "string"
+            },
+            "evidence_sha256": {
+              "$ref": "#/$defs/digest"
+            },
+            "kind": {
+              "type": "string"
+            },
+            "outcome": {
+              "enum": [
+                "pass",
+                "fail"
+              ]
+            }
+          },
+          "required": [
+            "kind",
+            "outcome",
+            "evidence_sha256",
+            "detail"
+          ],
+          "type": "object"
+        },
+        "syntheticVerified": {
+          "allOf": [
+            {
+              "$ref": "#/$defs/step"
+            },
+            {
+              "properties": {
+                "kind": {
+                  "const": "synthetic_verified"
+                }
+              }
+            }
+          ]
+        },
+        "tombstonesVerified": {
+          "allOf": [
+            {
+              "$ref": "#/$defs/step"
+            },
+            {
+              "properties": {
+                "kind": {
+                  "const": "tombstones_verified"
+                }
+              }
+            }
+          ]
+        }
+      },
+      "$id": "https://ctower.dev/contracts/operations/restore-report.schema.json",
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "additionalProperties": false,
+      "properties": {
+        "accepted_rpo_seconds": {
+          "const": 0
+        },
+        "accepted_source_position": {
+          "minimum": 0,
+          "type": "integer"
+        },
+        "artifact_rpo_seconds": {
+          "maximum": 300,
+          "minimum": 0,
+          "type": "integer"
+        },
+        "backup_id": {
+          "format": "uuid",
+          "type": "string"
+        },
+        "completed_at": {
+          "format": "date-time",
+          "type": "string"
+        },
+        "effects_enabled": {
+          "const": false
+        },
+        "enablement_eligible": {
+          "type": "boolean"
+        },
+        "findings": {
+          "items": {
+            "$ref": "#/$defs/finding"
+          },
+          "type": "array",
+          "uniqueItems": true
+        },
+        "installation_id": {
+          "format": "uuid",
+          "type": "string"
+        },
+        "inventory_revision_sha256": {
+          "$ref": "#/$defs/digest"
+        },
+        "restore_run_id": {
+          "format": "uuid",
+          "type": "string"
+        },
+        "restored_acceptance_position": {
+          "minimum": 0,
+          "type": "integer"
+        },
+        "rto_seconds": {
+          "maximum": 14400,
+          "minimum": 0,
+          "type": "integer"
+        },
+        "schema_id": {
+          "const": "ctower.restore-report/v1"
+        },
+        "started_at": {
+          "format": "date-time",
+          "type": "string"
+        },
+        "steps": {
+          "items": false,
+          "maxItems": 12,
+          "minItems": 12,
+          "prefixItems": [
+            {
+              "$ref": "#/$defs/databaseRecovered"
+            },
+            {
+              "$ref": "#/$defs/objectAccessRecovered"
+            },
+            {
+              "$ref": "#/$defs/keyAccessRecovered"
+            },
+            {
+              "$ref": "#/$defs/erasureReapplied"
+            },
+            {
+              "$ref": "#/$defs/migrationsVerified"
+            },
+            {
+              "$ref": "#/$defs/chainsVerified"
+            },
+            {
+              "$ref": "#/$defs/anchorsVerified"
+            },
+            {
+              "$ref": "#/$defs/objectsVerified"
+            },
+            {
+              "$ref": "#/$defs/tombstonesVerified"
+            },
+            {
+              "$ref": "#/$defs/inventoryVerified"
+            },
+            {
+              "$ref": "#/$defs/journalsReconciled"
+            },
+            {
+              "$ref": "#/$defs/syntheticVerified"
+            }
+          ],
+          "type": "array"
+        },
+        "tenant_id": {
+          "format": "uuid",
+          "type": "string"
+        }
+      },
+      "required": [
+        "schema_id",
+        "restore_run_id",
+        "tenant_id",
+        "installation_id",
+        "backup_id",
+        "inventory_revision_sha256",
+        "accepted_source_position",
+        "restored_acceptance_position",
+        "accepted_rpo_seconds",
+        "artifact_rpo_seconds",
+        "rto_seconds",
+        "started_at",
+        "completed_at",
+        "steps",
+        "findings",
+        "enablement_eligible",
+        "effects_enabled"
+      ],
+      "title": "Isolated restore verification report",
+      "type": "object"
+    },
+    "contracts/runtime/operation-job.schema.json": {
+      "$id": "https://ctower.dev/contracts/runtime/operation-job.schema.json",
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "additionalProperties": false,
+      "properties": {
+        "component_digests": {
+          "items": {
+            "pattern": "^sha256:[0-9a-f]{64}$",
+            "type": "string"
+          },
+          "minItems": 1,
+          "type": "array",
+          "uniqueItems": true
+        },
+        "created_at": {
+          "format": "date-time",
+          "type": "string"
+        },
+        "job_id": {
+          "format": "uuid",
+          "type": "string"
+        },
+        "occurrence_id": {
+          "format": "uuid",
+          "type": "string"
+        },
+        "operation": {
+          "enum": [
+            "synthetic_four_stage",
+            "daily_backup",
+            "record_anchor"
+          ],
+          "type": "string"
+        },
+        "schema_id": {
+          "const": "ctower.operation-job/v1"
+        },
+        "state": {
+          "const": "pending"
+        },
+        "tenant_id": {
+          "format": "uuid",
+          "type": "string"
+        },
+        "timeout_seconds": {
+          "maximum": 86400,
+          "minimum": 1,
+          "type": "integer"
+        }
+      },
+      "required": [
+        "schema_id",
+        "job_id",
+        "tenant_id",
+        "occurrence_id",
+        "operation",
+        "state",
+        "timeout_seconds",
+        "component_digests",
+        "created_at"
+      ],
+      "title": "FixedOperationJob",
+      "type": "object"
+    },
+    "contracts/runtime/routine-occurrence.schema.json": {
+      "$id": "https://ctower.dev/contracts/runtime/routine-occurrence.schema.json",
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "additionalProperties": false,
+      "properties": {
+        "job_id": {
+          "format": "uuid",
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "local_civil_time": {
+          "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}$",
+          "type": "string"
+        },
+        "occurrence_id": {
+          "format": "uuid",
+          "type": "string"
+        },
+        "offset_decision": {
+          "enum": [
+            "exact",
+            "earlier_offset",
+            "nonexistent_local_time"
+          ],
+          "type": "string"
+        },
+        "outcome": {
+          "enum": [
+            "queued",
+            "coalesced",
+            "skipped",
+            "refused"
+          ],
+          "type": "string"
+        },
+        "revision_digest": {
+          "pattern": "^sha256:[0-9a-f]{64}$",
+          "type": "string"
+        },
+        "routine_ref": {
+          "pattern": "^[a-z][a-z0-9._-]*@[1-9][0-9]*$",
+          "type": "string"
+        },
+        "scheduled_for": {
+          "format": "date-time",
+          "type": "string"
+        },
+        "schema_id": {
+          "const": "ctower.routine-occurrence/v1"
+        },
+        "tenant_id": {
+          "format": "uuid",
+          "type": "string"
+        },
+        "timezone": {
+          "maxLength": 128,
+          "minLength": 1,
+          "type": "string"
+        },
+        "utc_offset_seconds": {
+          "maximum": 64800,
+          "minimum": -64800,
+          "type": [
+            "integer",
+            "null"
+          ]
+        }
+      },
+      "required": [
+        "schema_id",
+        "occurrence_id",
+        "tenant_id",
+        "routine_ref",
+        "revision_digest",
+        "scheduled_for",
+        "local_civil_time",
+        "timezone",
+        "utc_offset_seconds",
+        "offset_decision",
+        "outcome",
+        "job_id"
+      ],
+      "title": "RoutineOccurrence",
+      "type": "object"
+    },
+    "contracts/runtime/routine.schema.json": {
+      "$defs": {
+        "digest": {
+          "pattern": "^sha256:[0-9a-f]{64}$",
+          "type": "string"
+        },
+        "schedule": {
+          "additionalProperties": false,
+          "properties": {
+            "kind": {
+              "enum": [
+                "daily",
+                "hourly"
+              ],
+              "type": "string"
+            },
+            "local_time": {
+              "pattern": "^(?:[01][0-9]|2[0-3]):[0-5][0-9]:[0-5][0-9]$",
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "timezone": {
+              "maxLength": 128,
+              "minLength": 1,
+              "type": "string"
+            }
+          },
+          "required": [
+            "kind",
+            "timezone",
+            "local_time"
+          ],
+          "type": "object"
+        }
+      },
+      "$id": "https://ctower.dev/contracts/runtime/routine.schema.json",
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "additionalProperties": false,
+      "properties": {
+        "catch_up": {
+          "enum": [
+            "skip_missed",
+            "coalesce_latest",
+            "enqueue_missed_with_cap"
+          ],
+          "type": "string"
+        },
+        "catch_up_cap": {
+          "maximum": 100,
+          "minimum": 1,
+          "type": "integer"
+        },
+        "component_digests": {
+          "items": {
+            "$ref": "#/$defs/digest"
+          },
+          "minItems": 1,
+          "type": "array",
+          "uniqueItems": true
+        },
+        "concurrency": {
+          "enum": [
+            "coalesce_if_active",
+            "skip_if_active",
+            "serialize_one_pending",
+            "always_enqueue_bounded"
+          ],
+          "type": "string"
+        },
+        "dst_policy": {
+          "const": "wall_clock_once"
+        },
+        "handler_kind": {
+          "enum": [
+            "synthetic_four_stage",
+            "daily_backup",
+            "record_anchor"
+          ],
+          "type": "string"
+        },
+        "revision_digest": {
+          "allOf": [
+            {
+              "$ref": "#/$defs/digest"
+            }
+          ],
+          "description": "SHA-256 of canonical UTF-8 JSON for every authored field except revision_digest; object keys are sorted and separators are comma/colon with no insignificant whitespace."
+        },
+        "routine_ref": {
+          "pattern": "^[a-z][a-z0-9._-]*@[1-9][0-9]*$",
+          "type": "string"
+        },
+        "schedule": {
+          "$ref": "#/$defs/schedule"
+        },
+        "schema_id": {
+          "const": "ctower.routine/v1"
+        },
+        "timeout_seconds": {
+          "maximum": 86400,
+          "minimum": 1,
+          "type": "integer"
+        }
+      },
+      "required": [
+        "schema_id",
+        "routine_ref",
+        "revision_digest",
+        "schedule",
+        "dst_policy",
+        "concurrency",
+        "catch_up",
+        "catch_up_cap",
+        "timeout_seconds",
+        "handler_kind",
+        "component_digests"
+      ],
+      "title": "RoutineRevision",
+      "type": "object"
+    },
+    "contracts/traceability/traceability-sources.schema.json": {
+      "$defs": {
+        "artifact": {
+          "additionalProperties": false,
+          "properties": {
+            "path": {
+              "pattern": "^(contracts|packs|packages/ctower-kernel/migrations)/[A-Za-z0-9._/-]+$",
+              "type": "string"
+            },
+            "references": {
+              "items": {
+                "pattern": "^(SPEC#[a-z0-9][a-z0-9-]*|INV-[0-9]{2}|AC-[A-Z0-9]+-[0-9]{2})$",
+                "type": "string"
+              },
+              "minItems": 1,
+              "type": "array",
+              "uniqueItems": true
+            }
+          },
+          "required": [
+            "path",
+            "references"
+          ],
+          "type": "object"
+        }
+      },
+      "$id": "https://ctower.invalid/contracts/traceability/traceability-sources.schema.json",
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "additionalProperties": false,
+      "properties": {
+        "artifacts": {
+          "items": {
+            "$ref": "#/$defs/artifact"
+          },
+          "minItems": 1,
+          "type": "array"
+        },
+        "schema": {
+          "const": "ctower.traceability-sources/v1"
+        }
+      },
+      "required": [
+        "schema",
+        "artifacts"
+      ],
+      "title": "Authored contract traceability sources",
+      "type": "object"
+    },
+    "contracts/workflow/review-plan.schema.json": {
+      "$comment": "A ReviewPlan is a named child of the gate-policy revision in policy_ref. Its enclosing review_plans map key and parent revision are its sole identity; it has no independent key, revision, or status. total_executions is immutable server-owned observation only; ReviewPlan v1 defines no aggregate-execution limit.",
+      "$defs": {
+        "additionalPerspective": {
+          "additionalProperties": false,
+          "properties": {
+            "applicability": {
+              "oneOf": [
+                {
+                  "$ref": "#/$defs/optionalApplicability"
+                },
+                {
+                  "$ref": "#/$defs/conditionalApplicability"
+                }
+              ]
+            },
+            "perspective": {
+              "$ref": "#/$defs/perspectiveReference"
+            }
+          },
+          "required": [
+            "perspective",
+            "applicability"
+          ],
+          "type": "object"
+        },
+        "conditionalApplicability": {
+          "additionalProperties": false,
+          "properties": {
+            "mode": {
+              "const": "conditional"
+            },
+            "predicate_ref": {
+              "$ref": "#/$defs/versionedReference"
+            }
+          },
+          "required": [
+            "mode",
+            "predicate_ref"
+          ],
+          "type": "object"
+        },
+        "limits": {
+          "additionalProperties": false,
+          "properties": {
+            "max_candidate_generations": {
+              "minimum": 1,
+              "type": "integer"
+            },
+            "max_nonpassing_rounds": {
+              "minimum": 0,
+              "type": "integer"
+            },
+            "max_repairs_per_lineage": {
+              "minimum": 0,
+              "type": "integer"
+            },
+            "total_executions": false
+          },
+          "required": [
+            "max_nonpassing_rounds",
+            "max_repairs_per_lineage",
+            "max_candidate_generations"
+          ],
+          "type": "object"
+        },
+        "optionalApplicability": {
+          "additionalProperties": false,
+          "properties": {
+            "activation_policy_ref": {
+              "$ref": "#/$defs/versionedReference"
+            },
+            "mode": {
+              "const": "optional"
+            }
+          },
+          "required": [
+            "mode",
+            "activation_policy_ref"
+          ],
+          "type": "object"
+        },
+        "perspectiveReference": {
+          "additionalProperties": false,
+          "properties": {
+            "name": {
+              "pattern": "^[a-z][a-z0-9._-]*$",
+              "type": "string"
+            },
+            "policy_ref": {
+              "$ref": "#/$defs/versionedReference"
+            },
+            "workflow_ref": {
+              "$ref": "#/$defs/versionedReference"
+            }
+          },
+          "required": [
+            "name",
+            "workflow_ref",
+            "policy_ref"
+          ],
+          "type": "object"
+        },
+        "versionedReference": {
+          "pattern": "^[a-z][a-z0-9._-]*@[1-9][0-9]*(#[a-z][a-z0-9._-]*)?$",
+          "type": "string"
+        }
+      },
+      "$id": "https://ctower.invalid/contracts/workflow/review-plan.schema.json",
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "additionalProperties": false,
+      "description": "Domain-neutral, revision-pinned review topology and anti-spin policy.",
+      "properties": {
+        "additional_perspectives": {
+          "items": {
+            "$ref": "#/$defs/additionalPerspective"
+          },
+          "type": "array",
+          "uniqueItems": true
+        },
+        "limits": {
+          "$ref": "#/$defs/limits"
+        },
+        "policy_ref": {
+          "$ref": "#/$defs/versionedReference"
+        },
+        "required_perspectives": {
+          "items": {
+            "$ref": "#/$defs/perspectiveReference"
+          },
+          "minItems": 1,
+          "type": "array",
+          "uniqueItems": true
+        },
+        "schema": {
+          "const": "ctower.review-plan/v1"
+        },
+        "total_executions": false,
+        "workflow_ref": {
+          "$ref": "#/$defs/versionedReference"
+        }
+      },
+      "required": [
+        "schema",
+        "workflow_ref",
+        "policy_ref",
+        "required_perspectives",
+        "additional_perspectives",
+        "limits"
+      ],
+      "title": "ReviewPlan",
+      "type": "object"
+    },
+    "contracts/workflow/workflow.schema.json": {
+      "$defs": {
+        "activityClass": {
+          "enum": [
+            "work",
+            "verification"
+          ]
+        },
+        "failureRoute": {
+          "additionalProperties": false,
+          "properties": {
+            "failure_class_ref": {
+              "$ref": "#/$defs/versionedReference"
+            },
+            "from": {
+              "$ref": "#/$defs/stableKey"
+            },
+            "to": {
+              "$ref": "#/$defs/stableKey"
+            }
+          },
+          "required": [
+            "from",
+            "failure_class_ref",
+            "to"
+          ],
+          "type": "object"
+        },
+        "stableKey": {
+          "pattern": "^[a-z][a-z0-9._-]*$",
+          "type": "string"
+        },
+        "stage": {
+          "additionalProperties": false,
+          "properties": {
+            "activity_class": {
+              "$ref": "#/$defs/activityClass"
+            },
+            "key": {
+              "$ref": "#/$defs/stableKey"
+            }
+          },
+          "required": [
+            "key",
+            "activity_class"
+          ],
+          "type": "object"
+        },
+        "transition": {
+          "additionalProperties": false,
+          "properties": {
+            "from": {
+              "$ref": "#/$defs/stableKey"
+            },
+            "predicate_ref": {
+              "$ref": "#/$defs/versionedReference"
+            },
+            "to": {
+              "$ref": "#/$defs/stableKey"
+            }
+          },
+          "required": [
+            "from",
+            "to",
+            "predicate_ref"
+          ],
+          "type": "object"
+        },
+        "versionedReference": {
+          "pattern": "^[a-z][a-z0-9._-]*@[1-9][0-9]*$",
+          "type": "string"
+        }
+      },
+      "$id": "https://ctower.invalid/contracts/workflow/workflow.schema.json",
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "additionalProperties": false,
+      "description": "Domain-neutral workflow graph metadata for L0 authored packs.",
+      "properties": {
+        "failure_routes": {
+          "items": {
+            "$ref": "#/$defs/failureRoute"
+          },
+          "type": "array"
+        },
+        "initial_stage": {
+          "$ref": "#/$defs/stableKey"
+        },
+        "input_contract": {
+          "$ref": "#/$defs/stableKey"
+        },
+        "key": {
+          "$ref": "#/$defs/stableKey"
+        },
+        "note": {
+          "minLength": 1,
+          "type": "string"
+        },
+        "policy_refs": {
+          "additionalProperties": false,
+          "properties": {
+            "execution": {
+              "$ref": "#/$defs/versionedReference"
+            },
+            "gates": {
+              "$ref": "#/$defs/versionedReference"
+            }
+          },
+          "required": [
+            "execution",
+            "gates"
+          ],
+          "type": "object"
+        },
+        "revision": {
+          "minimum": 1,
+          "type": "integer"
+        },
+        "schema": {
+          "const": "ctower.workflow/v1"
+        },
+        "stages": {
+          "items": {
+            "$ref": "#/$defs/stage"
+          },
+          "minItems": 1,
+          "type": "array",
+          "uniqueItems": true
+        },
+        "status": {
+          "enum": [
+            "draft",
+            "staged",
+            "published",
+            "superseded",
+            "revoked"
+          ]
+        },
+        "terminal_contract": {
+          "$ref": "#/$defs/stableKey"
+        },
+        "transitions": {
+          "items": {
+            "$ref": "#/$defs/transition"
+          },
+          "type": "array"
+        }
+      },
+      "required": [
+        "schema",
+        "status",
+        "key",
+        "revision",
+        "initial_stage",
+        "input_contract",
+        "terminal_contract",
+        "policy_refs",
+        "stages",
+        "transitions",
+        "failure_routes",
+        "note"
+      ],
+      "title": "Workflow",
+      "type": "object"
+    }
+  },
+  "schema": "ctower.runtime-contracts/v1",
+  "sources": [
+    {
+      "id": "https://ctower.local/contracts/bootstrap/first-tenant-request.schema.json",
+      "path": "contracts/bootstrap/first-tenant-request.schema.json",
+      "sha256": "sha256:ab2dda66be389a297e6897282bbe79aa488d281438e4a5fe13c51d596fc34c67"
+    },
+    {
+      "id": "https://ctower.local/contracts/company/company-bundle.schema.json",
+      "path": "contracts/company/company-bundle.schema.json",
+      "sha256": "sha256:d6cdaeabc1e60c19cb4e136c3b705a3fb5f1449c478a2ddb1938b6f95dc7b112"
+    },
+    {
+      "id": "https://ctower.dev/contracts/compatibility/matrix-input/v1",
+      "path": "contracts/compatibility/matrix-input.schema.json",
+      "sha256": "sha256:f51b5f8b7884c08deedec825f824b00cb6f0c847f5a4dee89db274fab55eae6d"
+    },
+    {
+      "id": "https://ctower.dev/contracts/compatibility/matrix-result/v1",
+      "path": "contracts/compatibility/matrix-result.schema.json",
+      "sha256": "sha256:ce922d93e2657f8040f1da3b09d26d39f36eadddc969aee908fd1584501bd3a6"
+    },
+    {
+      "id": "https://ctower.local/contracts/components/agent-profile.schema.json",
+      "path": "contracts/components/agent-profile.schema.json",
+      "sha256": "sha256:9c910ebd63de2235eac1dea7369d303ea115ab328300a4963e10756eded3369d"
+    },
+    {
+      "id": "https://ctower.local/contracts/components/capability.schema.json",
+      "path": "contracts/components/capability.schema.json",
+      "sha256": "sha256:0e427932f6030c781a51138c6fd4ce6d4ae3bdea76ccf43ebecc4d705047a96e"
+    },
+    {
+      "id": "https://ctower.local/contracts/components/environment.schema.json",
+      "path": "contracts/components/environment.schema.json",
+      "sha256": "sha256:003eecd235b0b56cbcc4bafd176628d78594b44be6e42c6aeccf84253d057689"
+    },
+    {
+      "id": "https://ctower.local/contracts/components/goal.schema.json",
+      "path": "contracts/components/goal.schema.json",
+      "sha256": "sha256:0327a0ffcf4b37173e2bbf05efb2b75fb8c88c0beed1439ceec05c50b4cec7ad"
+    },
+    {
+      "id": "https://ctower.local/contracts/components/harness.schema.json",
+      "path": "contracts/components/harness.schema.json",
+      "sha256": "sha256:9dbedacb7e5dbdc23614cbe998e3d1b2ed48e4b153ab06b475d0205c04080d49"
+    },
+    {
+      "id": "https://ctower.local/contracts/components/image.schema.json",
+      "path": "contracts/components/image.schema.json",
+      "sha256": "sha256:a6f46847f4e3bb615fc1fe10bceb6fb7e43b65e27246952d54d31bd9da8eff4c"
+    },
+    {
+      "id": "https://ctower.local/contracts/components/integration.schema.json",
+      "path": "contracts/components/integration.schema.json",
+      "sha256": "sha256:a3e206c7b7664a24d6e1ec5306f1aa9112c704d1c398d6d5e96423c57ce9725b"
+    },
+    {
+      "id": "https://ctower.local/contracts/components/notification.schema.json",
+      "path": "contracts/components/notification.schema.json",
+      "sha256": "sha256:6cce1c37eceb9700b684f6853d9067f053ff5719ae29e1ec9b8aeaba411fc6ab"
+    },
+    {
+      "id": "https://ctower.local/contracts/components/persona.schema.json",
+      "path": "contracts/components/persona.schema.json",
+      "sha256": "sha256:3f9fa9d5910cb4a98b46ad7c36cd887aa34922cb63c1f15f75dd652785b871d2"
+    },
+    {
+      "id": "https://ctower.local/contracts/components/project.schema.json",
+      "path": "contracts/components/project.schema.json",
+      "sha256": "sha256:c3e0a89626f9ac0ab40266f54abfad07a9bf9b572ed5efc4a861a8fc570e303d"
+    },
+    {
+      "id": "https://ctower.local/contracts/components/skill.schema.json",
+      "path": "contracts/components/skill.schema.json",
+      "sha256": "sha256:b4df26d394639a9d615b6ccc67d7ebb9ce95258083c5fe460514178dbf839b2c"
+    },
+    {
+      "id": "https://ctower.local/contracts/components/supervisor.schema.json",
+      "path": "contracts/components/supervisor.schema.json",
+      "sha256": "sha256:e2734f7fa919b612c69117fb8fac11a5b35411e2d1f065da307073a1365b444d"
+    },
+    {
+      "id": "https://ctower.local/contracts/components/target.schema.json",
+      "path": "contracts/components/target.schema.json",
+      "sha256": "sha256:39d678ded33a537247a33b5a483274ae1f0a013c60b36502b274db787f923fc3"
+    },
+    {
+      "id": "https://ctower.local/contracts/components/telemetry.schema.json",
+      "path": "contracts/components/telemetry.schema.json",
+      "sha256": "sha256:1de491ea6bd092759a087521bc775e0621f65f3f7e0f78c5c5948f15fd2aeba8"
+    },
+    {
+      "id": "https://ctower.local/contracts/components/tool.schema.json",
+      "path": "contracts/components/tool.schema.json",
+      "sha256": "sha256:c14917f3a6cf393719774d1902ec5751af94a57fe68d3bde73a634913ca84a58"
+    },
+    {
+      "id": "https://ctower.local/contracts/components/versioned-component.schema.json",
+      "path": "contracts/components/versioned-component.schema.json",
+      "sha256": "sha256:475e5adb48b28e5f82672435332ade2fd5df8628f2d3b4a2939a8fa991313d13"
+    },
+    {
+      "id": "https://ctower.local/contracts/components/workspace.schema.json",
+      "path": "contracts/components/workspace.schema.json",
+      "sha256": "sha256:65de4f625a925db34172d102179343568bc9ba5ae4b1a089311b96156206a622"
+    },
+    {
+      "id": "https://ctower.dev/contracts/domain/events/event-envelope.schema.json",
+      "path": "contracts/domain/events/event-envelope.schema.json",
+      "sha256": "sha256:d4c4b63ee3da6e19f9c29d2ca83c29e7501f2bce557826c21ba8301a61d4bc3a"
+    },
+    {
+      "id": "https://ctower.dev/contracts/domain/outbox-delivery.schema.json",
+      "path": "contracts/domain/outbox-delivery.schema.json",
+      "sha256": "sha256:7bbc2a183d0e3e0f609ca3146947e897da73063c91ebf14292967b0b3b692550"
+    },
+    {
+      "id": "https://ctower.dev/contracts/domain/task-management/board-view.schema.json",
+      "path": "contracts/domain/task-management/board-view.schema.json",
+      "sha256": "sha256:c8bcb47434fb331fbd6aaa4e3192a083ebd2e6a8a0cfca3e00e28053a200b6ad"
+    },
+    {
+      "id": "https://ctower.dev/contracts/domain/task-management/scheduling-policy.schema.json",
+      "path": "contracts/domain/task-management/scheduling-policy.schema.json",
+      "sha256": "sha256:d5e5b1d7fdb8fcd0ef9101ec1098219f4d5e23b5c8343d96483501032f3123e7"
+    },
+    {
+      "id": "https://ctower.dev/contracts/domain/task-management/task-command.schema.json",
+      "path": "contracts/domain/task-management/task-command.schema.json",
+      "sha256": "sha256:f12aec67e8864c1e9cdbc06ab65c88ae12482bc41a0c21f474043e8862458335"
+    },
+    {
+      "id": "https://ctower.dev/contracts/domain/tickets/ticket-event.schema.json",
+      "path": "contracts/domain/tickets/ticket-event.schema.json",
+      "sha256": "sha256:4524d9f0d807ba90b2524e7c9a679069fdd917b7adff7b478ae028bf8b2a9ba1"
+    },
+    {
+      "id": "https://ctower.invalid/contracts/evidence/evidence-manifest.schema.json",
+      "path": "contracts/evidence/evidence-manifest.schema.json",
+      "sha256": "sha256:d57d312de09244e0767e09a084613d9fd38f204f74b3e8f2b63412bcacc3f956"
+    },
+    {
+      "id": "https://ctower.dev/contracts/evidence/object-manifest.schema.json",
+      "path": "contracts/evidence/object-manifest.schema.json",
+      "sha256": "sha256:b15e5c87f49aa4643eef53c2ebf47b0c89d225e293707de70f92837ce78670a9"
+    },
+    {
+      "id": "https://ctower.invalid/contracts/execution/evidence-policy.schema.json",
+      "path": "contracts/execution/evidence-policy.schema.json",
+      "sha256": "sha256:3c332ed05c32bdd897e176cdf35c06e35d32d0a0789ef161d66ec4382fa6b26d"
+    },
+    {
+      "id": "https://ctower.invalid/contracts/execution/execution-policy.schema.json",
+      "path": "contracts/execution/execution-policy.schema.json",
+      "sha256": "sha256:b9fc8e8c6be1308f1731172065005eb0bea335c486a4bf0fddeb196c03432ea1"
+    },
+    {
+      "id": "https://ctower.invalid/contracts/execution/gate-policy.schema.json",
+      "path": "contracts/execution/gate-policy.schema.json",
+      "sha256": "sha256:a2240da235048862b7542850bf0d11799327278c731df0b207e4c9df6746573a"
+    },
+    {
+      "id": "https://ctower.local/contracts/observability/telemetry-context.schema.json",
+      "path": "contracts/observability/telemetry-context.schema.json",
+      "sha256": "sha256:63b7fe0149d28296b8a8353fb46fb46c642893f46549c3c537045584e65f7acd"
+    },
+    {
+      "id": "https://ctower.dev/contracts/operations/anchor.schema.json",
+      "path": "contracts/operations/anchor.schema.json",
+      "sha256": "sha256:d29b887c4ca97d9f37c416c9df9cb9d8b34f5414d574cdf04baadd9329eaf52d"
+    },
+    {
+      "id": "https://ctower.dev/contracts/operations/backup-manifest.schema.json",
+      "path": "contracts/operations/backup-manifest.schema.json",
+      "sha256": "sha256:28dbdbd2c10094d4aed51671317e6d521f820131b1cd54219d616720dc9e9d3c"
+    },
+    {
+      "id": "https://ctower.dev/contracts/operations/durability-ack.schema.json",
+      "path": "contracts/operations/durability-ack.schema.json",
+      "sha256": "sha256:3ae0a91cc19a8d56ec339729f174d6f0d7f39cdc2893f2ade356e807605d078f"
+    },
+    {
+      "id": "https://ctower.dev/contracts/operations/durability-policy.schema.json",
+      "path": "contracts/operations/durability-policy.schema.json",
+      "sha256": "sha256:ceef013fe815d39d522964ab74fab117b17a140b5d7cf7a4c888a664deacfc2b"
+    },
+    {
+      "id": "https://ctower.dev/contracts/operations/expected-source-inventory.schema.json",
+      "path": "contracts/operations/expected-source-inventory.schema.json",
+      "sha256": "sha256:2e0130437413382213d7766325e0fe475022485122ea24593ed80d1462ae0b3f"
+    },
+    {
+      "id": "https://ctower.dev/contracts/operations/health.schema.json",
+      "path": "contracts/operations/health.schema.json",
+      "sha256": "sha256:802af0ebb4cca11ec4a5c5986b94b5d5ba2e788cfab3dd860106adfda8b7539e"
+    },
+    {
+      "id": "https://ctower.dev/contracts/operations/restore-report.schema.json",
+      "path": "contracts/operations/restore-report.schema.json",
+      "sha256": "sha256:a7cadf4b123e1cf76a4079b964c094099bc4b35b9ad1c4cc69ec098f1e85c78e"
+    },
+    {
+      "id": "https://ctower.dev/contracts/runtime/operation-job.schema.json",
+      "path": "contracts/runtime/operation-job.schema.json",
+      "sha256": "sha256:df8b67525d1d82f3e7d19d68e971b4643c56c6b699ec8b043a43f946d43e82bc"
+    },
+    {
+      "id": "https://ctower.dev/contracts/runtime/routine-occurrence.schema.json",
+      "path": "contracts/runtime/routine-occurrence.schema.json",
+      "sha256": "sha256:682c4e1c3cd0248d8a10c97d2a56cfa2458ab6977db390bc33a00926bc94985f"
+    },
+    {
+      "id": "https://ctower.dev/contracts/runtime/routine.schema.json",
+      "path": "contracts/runtime/routine.schema.json",
+      "sha256": "sha256:6ca182c99ea79861acf44bf0f5692d7f1be6d0751ec7ac6a1df8777b838da815"
+    },
+    {
+      "id": "https://ctower.invalid/contracts/traceability/traceability-sources.schema.json",
+      "path": "contracts/traceability/traceability-sources.schema.json",
+      "sha256": "sha256:bfbc2fd30d7b5601a11779a244b0cad73facacffe13819bf787a1f0461434221"
+    },
+    {
+      "id": "https://ctower.invalid/contracts/workflow/review-plan.schema.json",
+      "path": "contracts/workflow/review-plan.schema.json",
+      "sha256": "sha256:2cd3a99e04c6bbae56579b841cd73479aed54dd1f899dcfd2cb71210eb7f0e7c"
+    },
+    {
+      "id": "https://ctower.invalid/contracts/workflow/workflow.schema.json",
+      "path": "contracts/workflow/workflow.schema.json",
+      "sha256": "sha256:bc2fb7e3a99ffd3dacd98f5ba4e05aa9781b192be6a7c36a1dbfc17060b8f3aa"
+    }
+  ]
+}

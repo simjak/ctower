@@ -18,12 +18,14 @@ from uuid import UUID, uuid4
 import httpx
 import pytest
 from pydantic import ValidationError
+from ruamel.yaml import YAML
 
 from ctower_client import AuditPage
-from tools.codegen.generator import check, write
+from tools.codegen.generator import CodegenError, check, write
 
 ROOT = Path(__file__).parents[3]
 __all__: tuple[str, ...] = ()
+_EXPECTED_OPERATION_COUNT = 25
 
 
 class _MutatedClient(Protocol):
@@ -39,7 +41,8 @@ def _generated_package(fixture: Path) -> Iterator[ModuleType]:
     cached = {
         name: module
         for name, module in sys.modules.items()
-        if name == "ctower_client" or name.startswith("ctower_client.")
+        if name in {"ctower_client", "ctower_contracts"}
+        or name.startswith(("ctower_client.", "ctower_contracts."))
     }
     for name in cached:
         del sys.modules[name]
@@ -49,7 +52,9 @@ def _generated_package(fixture: Path) -> Iterator[ModuleType]:
     finally:
         sys.path.pop(0)
         for name in tuple(sys.modules):
-            if name == "ctower_client" or name.startswith("ctower_client."):
+            if name in {"ctower_client", "ctower_contracts"} or name.startswith(
+                ("ctower_client.", "ctower_contracts.")
+            ):
                 del sys.modules[name]
         sys.modules.update(cached)
 
@@ -66,20 +71,158 @@ def test_generated_client_is_owned_and_byte_stable() -> None:
         "generated/python/ctower_client/__init__.py",
         "generated/python/ctower_client/client.py",
         "generated/python/ctower_client/models.py",
+        "generated/python/ctower_client/operations.py",
+        "generated/python/ctower_contracts/__init__.py",
+        "generated/python/ctower_contracts/catalog.py",
+        "generated/python/ctower_contracts/schemas.json",
     }
     for entry in outputs:
         digest = hashlib.sha256((ROOT / entry["path"]).read_bytes()).hexdigest()
         assert entry["sha256"] == f"sha256:{digest}"
+    inputs = cast(list[dict[str, str]], entries[0]["inputs"])
+    input_paths = {entry["path"] for entry in inputs}
+    assert {
+        path.relative_to(ROOT).as_posix() for path in (ROOT / "contracts").rglob("*.schema.json")
+    } <= input_paths
 
 
 def test_generated_python_carries_do_not_edit_notice() -> None:
-    paths = tuple(sorted((ROOT / "generated/python/ctower_client").glob("*.py")))
+    paths = tuple(sorted((ROOT / "generated/python").glob("ctower_*/*.py")))
 
-    assert {path.name for path in paths} == {"__init__.py", "client.py", "models.py"}
+    assert {path.relative_to(ROOT / "generated/python").as_posix() for path in paths} == {
+        "ctower_client/__init__.py",
+        "ctower_client/client.py",
+        "ctower_client/models.py",
+        "ctower_client/operations.py",
+        "ctower_contracts/__init__.py",
+        "ctower_contracts/catalog.py",
+    }
     for path in paths:
         assert path.read_text(encoding="utf-8").startswith(
             '"""DO NOT EDIT: generated file; regenerate from declared inputs.'
         )
+    resources = json.loads(
+        (ROOT / "generated/python/ctower_contracts/schemas.json").read_text(encoding="utf-8")
+    )
+    assert resources["_notice"] == "DO NOT EDIT: generated file; regenerate from declared inputs."
+
+
+def test_generated_operation_registry_is_the_exact_authored_replay_allowlist() -> None:
+    document = json.loads((ROOT / "contracts/http/openapi.yaml").read_text(encoding="utf-8"))
+    expected: dict[str, tuple[object, ...]] = {}
+    for path, path_item in cast(dict[str, dict[str, object]], document["paths"]).items():
+        for method, value in path_item.items():
+            if method not in {"get", "post"}:
+                continue
+            operation = cast(dict[str, object], value)
+            cli = operation["x-ctower-cli"]
+            cli_names = tuple(cli) if isinstance(cli, list) else (cast(str, cli),)
+            request = _boundary_name(operation.get("requestBody"))
+            response = _success_boundary(operation)
+            expected[cast(str, operation["operationId"])] = (
+                method.upper(),
+                path,
+                request,
+                response,
+                cli_names,
+                operation["x-ctower-mutation"],
+                operation["x-ctower-spool"],
+            )
+
+    with _generated_package(ROOT):
+        generated = importlib.import_module("ctower_client.operations")
+        actual = {
+            operation_id: (
+                spec.method,
+                spec.path,
+                spec.request_model.__name__ if spec.request_model is not None else None,
+                spec.response_model.__name__,
+                spec.cli_names,
+                spec.mutation,
+                spec.spool_policy.value,
+            )
+            for operation_id, spec in generated.OPERATIONS.items()
+        }
+
+    assert len(actual) == _EXPECTED_OPERATION_COUNT
+    assert actual == expected
+
+
+def test_generated_runtime_contracts_validate_offline_and_are_defensive() -> None:
+    payload = YAML(typ="safe", pure=True).load(
+        (ROOT / "company/company.bundle.yaml").read_text(encoding="utf-8")
+    )
+    with _generated_package(ROOT):
+        generated = importlib.import_module("ctower_contracts")
+        schema = generated.schema_for("ctower.company-bundle/v1")
+        assert schema is not None
+        schema["title"] = "mutated caller copy"
+        assert generated.schema_for("ctower.company-bundle/v1")["title"] != "mutated caller copy"
+        generated.validator_for("ctower.company-bundle/v1").validate(payload)
+        assert generated.schema_for("ctower.unknown/v1") is None
+
+
+@pytest.mark.parametrize(
+    ("reference", "message"),
+    [
+        ("https://attacker.invalid/schema.json", "network schema reference"),
+        ("../../../escaped.schema.json", "escapes contracts"),
+    ],
+)
+def test_codegen_rejects_nonlocal_schema_references(reference: str, message: str) -> None:
+    with tempfile.TemporaryDirectory() as name:
+        fixture = Path(name)
+        shutil.copytree(
+            ROOT,
+            fixture,
+            dirs_exist_ok=True,
+            ignore=shutil.ignore_patterns(".git", "node_modules", "__pycache__"),
+        )
+        path = fixture / "contracts/company/company-bundle.schema.json"
+        schema = json.loads(path.read_text(encoding="utf-8"))
+        schema["properties"]["resources"]["items"]["properties"]["component"]["$ref"] = reference
+        path.write_text(json.dumps(schema, indent=2) + "\n", encoding="utf-8")
+
+        with pytest.raises(CodegenError, match=message):
+            write(fixture)
+
+
+def test_codegen_rejects_runtime_schema_name_collisions() -> None:
+    with tempfile.TemporaryDirectory() as name:
+        fixture = Path(name)
+        shutil.copytree(
+            ROOT,
+            fixture,
+            dirs_exist_ok=True,
+            ignore=shutil.ignore_patterns(".git", "node_modules", "__pycache__"),
+        )
+        original = fixture / "contracts/components/goal.schema.json"
+        duplicate = fixture / "contracts/components/goal-collision.schema.json"
+        schema = json.loads(original.read_text(encoding="utf-8"))
+        schema["$id"] = "https://ctower.local/contracts/components/goal-collision.schema.json"
+        duplicate.write_text(json.dumps(schema, indent=2) + "\n", encoding="utf-8")
+
+        with pytest.raises(CodegenError, match="runtime schema name collision"):
+            write(fixture)
+
+
+def _boundary_name(value: object) -> str | None:
+    if value is None:
+        return None
+    body = cast(dict[str, object], value)
+    content = cast(dict[str, object], body["content"])
+    media = cast(dict[str, object], content["application/json"])
+    schema = cast(dict[str, str], media["schema"])
+    return schema["$ref"].removeprefix("#/components/schemas/")
+
+
+def _success_boundary(operation: dict[str, object]) -> str:
+    responses = cast(dict[str, dict[str, object]], operation["responses"])
+    response = next(value for status, value in sorted(responses.items()) if status.startswith("2"))
+    content = cast(dict[str, object], response["content"])
+    media = cast(dict[str, object], content["application/json"])
+    schema = cast(dict[str, str], media["schema"])
+    return schema["$ref"].removeprefix("#/components/schemas/")
 
 
 def test_generated_audit_variants_reject_unknown_and_mismatched_payloads() -> None:
