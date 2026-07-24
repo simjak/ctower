@@ -1,0 +1,130 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://ctower.dev/contracts/operations/restore-report.schema.json",
+  "title": "Isolated restore verification report",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_id",
+    "restore_run_id",
+    "tenant_id",
+    "installation_id",
+    "backup_id",
+    "inventory_revision_sha256",
+    "accepted_source_position",
+    "restored_acceptance_position",
+    "accepted_rpo_seconds",
+    "artifact_rpo_seconds",
+    "rto_seconds",
+    "started_at",
+    "completed_at",
+    "steps",
+    "findings",
+    "enablement_eligible",
+    "effects_enabled"
+  ],
+  "properties": {
+    "schema_id": {"const": "ctower.restore-report/v1"},
+    "restore_run_id": {"type": "string", "format": "uuid"},
+    "tenant_id": {"type": "string", "format": "uuid"},
+    "installation_id": {"type": "string", "format": "uuid"},
+    "backup_id": {"type": "string", "format": "uuid"},
+    "inventory_revision_sha256": {"$ref": "#/$defs/digest"},
+    "accepted_source_position": {"type": "integer", "minimum": 0},
+    "restored_acceptance_position": {"type": "integer", "minimum": 0},
+    "accepted_rpo_seconds": {"const": 0},
+    "artifact_rpo_seconds": {"type": "integer", "minimum": 0, "maximum": 300},
+    "rto_seconds": {"type": "integer", "minimum": 0, "maximum": 14400},
+    "started_at": {"type": "string", "format": "date-time"},
+    "completed_at": {"type": "string", "format": "date-time"},
+    "steps": {
+      "type": "array",
+      "minItems": 12,
+      "maxItems": 12,
+      "prefixItems": [
+        {"$ref": "#/$defs/databaseRecovered"},
+        {"$ref": "#/$defs/objectAccessRecovered"},
+        {"$ref": "#/$defs/keyAccessRecovered"},
+        {"$ref": "#/$defs/erasureReapplied"},
+        {"$ref": "#/$defs/migrationsVerified"},
+        {"$ref": "#/$defs/chainsVerified"},
+        {"$ref": "#/$defs/anchorsVerified"},
+        {"$ref": "#/$defs/objectsVerified"},
+        {"$ref": "#/$defs/tombstonesVerified"},
+        {"$ref": "#/$defs/inventoryVerified"},
+        {"$ref": "#/$defs/journalsReconciled"},
+        {"$ref": "#/$defs/syntheticVerified"}
+      ],
+      "items": false
+    },
+    "findings": {
+      "type": "array",
+      "uniqueItems": true,
+      "items": {"$ref": "#/$defs/finding"}
+    },
+    "enablement_eligible": {"type": "boolean"},
+    "effects_enabled": {"const": false}
+  },
+  "$defs": {
+    "digest": {"type": "string", "pattern": "^sha256:[0-9a-f]{64}$"},
+    "step": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["kind", "outcome", "evidence_sha256", "detail"],
+      "properties": {
+        "kind": {"type": "string"},
+        "outcome": {"enum": ["pass", "fail"]},
+        "evidence_sha256": {"$ref": "#/$defs/digest"},
+        "detail": {"type": "string", "minLength": 1, "maxLength": 500}
+      }
+    },
+    "databaseRecovered": {
+      "allOf": [{"$ref": "#/$defs/step"}, {"properties": {"kind": {"const": "database_recovered"}}}]
+    },
+    "objectAccessRecovered": {
+      "allOf": [{"$ref": "#/$defs/step"}, {"properties": {"kind": {"const": "object_access_recovered"}}}]
+    },
+    "keyAccessRecovered": {
+      "allOf": [{"$ref": "#/$defs/step"}, {"properties": {"kind": {"const": "key_access_recovered"}}}]
+    },
+    "erasureReapplied": {
+      "allOf": [{"$ref": "#/$defs/step"}, {"properties": {"kind": {"const": "erasure_reapplied"}}}]
+    },
+    "migrationsVerified": {
+      "allOf": [{"$ref": "#/$defs/step"}, {"properties": {"kind": {"const": "migrations_verified"}}}]
+    },
+    "chainsVerified": {
+      "allOf": [{"$ref": "#/$defs/step"}, {"properties": {"kind": {"const": "chains_verified"}}}]
+    },
+    "anchorsVerified": {
+      "allOf": [{"$ref": "#/$defs/step"}, {"properties": {"kind": {"const": "anchors_verified"}}}]
+    },
+    "objectsVerified": {
+      "allOf": [{"$ref": "#/$defs/step"}, {"properties": {"kind": {"const": "objects_verified"}}}]
+    },
+    "tombstonesVerified": {
+      "allOf": [{"$ref": "#/$defs/step"}, {"properties": {"kind": {"const": "tombstones_verified"}}}]
+    },
+    "inventoryVerified": {
+      "allOf": [{"$ref": "#/$defs/step"}, {"properties": {"kind": {"const": "inventory_verified"}}}]
+    },
+    "journalsReconciled": {
+      "allOf": [{"$ref": "#/$defs/step"}, {"properties": {"kind": {"const": "journals_reconciled"}}}]
+    },
+    "syntheticVerified": {
+      "allOf": [{"$ref": "#/$defs/step"}, {"properties": {"kind": {"const": "synthetic_verified"}}}]
+    },
+    "finding": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["key", "severity", "reason", "evidence_sha256", "resolved"],
+      "properties": {
+        "key": {"type": "string", "pattern": "^[a-z][a-z0-9._:-]*$"},
+        "severity": {"enum": ["critical", "error"]},
+        "reason": {"type": "string", "minLength": 1, "maxLength": 500},
+        "evidence_sha256": {"$ref": "#/$defs/digest"},
+        "resolved": {"type": "boolean"}
+      }
+    }
+  }
+}

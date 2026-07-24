@@ -1,0 +1,131 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://ctower.dev/contracts/operations/expected-source-inventory.schema.json",
+  "title": "Signed expected restore-source inventory",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_id",
+    "inventory_revision_id",
+    "tenant_id",
+    "revision_number",
+    "previous_revision_sha256",
+    "revision_sha256",
+    "signature",
+    "signing_key_reference",
+    "signing_key_version",
+    "public_key_sha256",
+    "object_key",
+    "object_version",
+    "created_at",
+    "sources"
+  ],
+  "properties": {
+    "schema_id": {"const": "ctower.expected-source-inventory/v1"},
+    "inventory_revision_id": {"type": "string", "format": "uuid"},
+    "tenant_id": {"type": "string", "format": "uuid"},
+    "revision_number": {"type": "integer", "minimum": 1},
+    "previous_revision_sha256": {
+      "oneOf": [{"$ref": "#/$defs/digest"}, {"type": "null"}]
+    },
+    "revision_sha256": {"$ref": "#/$defs/digest"},
+    "signature": {"type": "string", "minLength": 1, "maxLength": 4096},
+    "signing_key_reference": {"$ref": "#/$defs/reference"},
+    "signing_key_version": {"type": "string", "pattern": "^[A-Za-z0-9._:-]{1,128}$"},
+    "public_key_sha256": {"$ref": "#/$defs/digest"},
+    "object_key": {"type": "string", "minLength": 1, "maxLength": 512},
+    "object_version": {"type": "string", "minLength": 1, "maxLength": 256},
+    "created_at": {"type": "string", "format": "date-time"},
+    "sources": {
+      "type": "array",
+      "minItems": 3,
+      "maxItems": 3,
+      "uniqueItems": true,
+      "items": {"$ref": "#/$defs/source"}
+    }
+  },
+  "$defs": {
+    "digest": {"type": "string", "pattern": "^sha256:[0-9a-f]{64}$"},
+    "reference": {"type": "string", "pattern": "^[a-z][a-z0-9._:/-]{2,255}$"},
+    "source": {
+      "oneOf": [
+        {"$ref": "#/$defs/inactive"},
+        {"$ref": "#/$defs/active"}
+      ]
+    },
+    "sourceBase": {
+      "type": "object",
+      "properties": {
+        "source_key": {
+          "enum": [
+            "ctower.root-supervisor.default",
+            "ctower.effect.default",
+            "ctower.provider.default"
+          ]
+        },
+        "source_kind": {
+          "enum": ["root_supervisor_journal", "effect_journal", "provider_journal"]
+        }
+      },
+      "required": ["source_key", "source_kind"]
+    },
+    "inactive": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "source_key",
+        "source_kind",
+        "activation",
+        "cursor_declaration",
+        "source_count"
+      ],
+      "properties": {
+        "source_key": {
+          "enum": [
+            "ctower.root-supervisor.default",
+            "ctower.effect.default",
+            "ctower.provider.default"
+          ]
+        },
+        "source_kind": {
+          "enum": ["root_supervisor_journal", "effect_journal", "provider_journal"]
+        },
+        "activation": {"const": "not_exercised"},
+        "cursor_declaration": {"const": "zero_source"},
+        "source_count": {"const": 0}
+      }
+    },
+    "active": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "source_key",
+        "source_kind",
+        "activation",
+        "cursor_declaration",
+        "source_count",
+        "trust_root_ref",
+        "trusted_cursor",
+        "activation_event_ref"
+      ],
+      "properties": {
+        "source_key": {
+          "enum": [
+            "ctower.root-supervisor.default",
+            "ctower.effect.default",
+            "ctower.provider.default"
+          ]
+        },
+        "source_kind": {
+          "enum": ["root_supervisor_journal", "effect_journal", "provider_journal"]
+        },
+        "activation": {"const": "active"},
+        "cursor_declaration": {"const": "trusted_cursor"},
+        "source_count": {"type": "integer", "minimum": 1},
+        "trust_root_ref": {"$ref": "#/$defs/reference"},
+        "trusted_cursor": {"type": "string", "minLength": 1, "maxLength": 255},
+        "activation_event_ref": {"$ref": "#/$defs/reference"}
+      }
+    }
+  }
+}

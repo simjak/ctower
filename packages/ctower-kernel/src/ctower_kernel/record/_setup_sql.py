@@ -19,8 +19,17 @@ from ctower_kernel.record._durability_probe_role_sql import (
     probe_role_rejection_reasons,
     quarantine_durability_probe,
 )
+from ctower_kernel.record._recovery_role_shape_sql import (
+    RecoveryRoleConfigurationError,
+    validate_recovery_role_shapes,
+)
 
-__all__ = ["apply_migrations", "provision_bootstrap", "provision_database_roles"]
+__all__ = [
+    "RecoveryRoleConfigurationError",
+    "apply_migrations",
+    "provision_bootstrap",
+    "provision_database_roles",
+]
 
 MIGRATIONS = Path(__file__).parents[3] / "migrations"
 MINIMUM_CAPABILITY_LENGTH = 32
@@ -160,6 +169,8 @@ def _migration_scripts(scope: str) -> tuple[str, ...]:
 def provision_database_roles(admin_dsn: str) -> None:
     """Use server administration only to provision the global login/role boundary."""
 
+    with psycopg.connect(admin_dsn, row_factory=dict_row) as connection:
+        validate_recovery_role_shapes(connection)
     probe_preexisting = quarantine_durability_probe(admin_dsn)
     preexisting = _quarantine_projection_runtime(admin_dsn)
     with psycopg.connect(admin_dsn, row_factory=dict_row) as connection:
@@ -177,8 +188,7 @@ def provision_database_roles(admin_dsn: str) -> None:
                 raise ValueError(
                     f"unsafe pre-existing {PROJECTION_RUNTIME_ROLE}: {', '.join(reasons)}"
                 )
-        for script in _migration_scripts("cluster"):
-            connection.execute(script)
+        _apply_cluster_migrations(connection)
         close_durability_probe_boundary(connection)
         probe_reasons = probe_role_rejection_reasons(connection, provisioned=True)
         if probe_reasons:
@@ -190,6 +200,25 @@ def provision_database_roles(admin_dsn: str) -> None:
         )
         if reasons:
             raise ValueError(f"unsafe provisioned {PROJECTION_RUNTIME_ROLE}: {', '.join(reasons)}")
+
+
+def _apply_cluster_migrations(
+    connection: psycopg.Connection[dict[str, object]],
+) -> None:
+    for script in _migration_scripts("cluster"):
+        _execute_cluster_migration(connection, script)
+
+
+def _execute_cluster_migration(
+    connection: psycopg.Connection[dict[str, object]],
+    script: str,
+) -> None:
+    try:
+        connection.execute(script)
+    except psycopg.errors.RaiseException as error:
+        if error.diag.message_primary == RecoveryRoleConfigurationError.MESSAGE:
+            raise RecoveryRoleConfigurationError from None
+        raise
 
 
 def _quarantine_projection_runtime(admin_dsn: str) -> bool:

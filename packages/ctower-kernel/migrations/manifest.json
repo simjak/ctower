@@ -189,6 +189,43 @@
       "forward_test": "pytest:tests/acceptance/increment-1/test_operations.py::test_control_loop_migration_adds_separate_immutable_and_cursor_state",
       "rollback_or_forward_compensation": "Restore the exact pre-migration database backup only before later accepted control-loop facts, or append a reviewed forward compensation preserving Routine occurrences, fixed jobs, outbox attempts, poison/dispositions, Attention findings, and health evidence; projection rows remain rebuildable.",
       "backup_checkpoint": "Before applying to a nonempty installation, capture and verify event, outbox, accepted-confirmation, projection, workflow-run, and tenant counts plus a database backup; current CP3-B fixed jobs have no dispatch effects."
+    },
+    {
+      "path": "0020_recovery_roles.sql",
+      "sha256": "sha256:d5854efda905b33d1d60795057752720cf1c5749149e85a6e59ebc0162135365",
+      "scope": "cluster",
+      "minimum_service_version": "0.0.0",
+      "maximum_service_version": "0.0.0",
+      "forward_test": "pytest:tests/acceptance/increment-1/test_database_role_privileges.py::test_recovery_roles_create_cleanly_and_reuse_only_exact_catalog_shapes",
+      "rollback_or_forward_compensation": "Keep the four NOLOGIN recovery roles quarantined or append a reviewed forward role compensation; never grant them runtime or migrator membership and never reuse an unexpectedly privileged pre-existing identity.",
+      "backup_checkpoint": "Before applying, capture the complete role graph, attributes, memberships, direct grants, and owned objects for the four recovery role names; the clean local fixture contains none."
+    },
+    {
+      "path": "0021_object_backup_anchor.sql",
+      "sha256": "sha256:bbe82e62b6d87ff34780b89dc4b0e089469f0cae8f89b2fde35cb0f67ec9bd58",
+      "minimum_service_version": "0.0.0",
+      "maximum_service_version": "0.0.0",
+      "forward_test": "pytest:tests/acceptance/increment-1/test_erasure_recovery.py::test_erasure_reconciles_external_success_before_tombstone_and_rejects_drift",
+      "rollback_or_forward_compensation": "Leave additive columns and immutable receipts in place and roll back only to an object-aware dual-read build; append forward compensation for bad metadata, never delete object, erasure, backup, or anchor evidence.",
+      "backup_checkpoint": "Before applying to a nonempty installation, capture and verify proof-object counts and digests plus a database backup; object-only writes remain disabled."
+    },
+    {
+      "path": "0022_restore_inventory.sql",
+      "sha256": "sha256:31b1caaf968961580822f575216d8afc243c531316b5ab0bfe673381280e3925",
+      "minimum_service_version": "0.0.0",
+      "maximum_service_version": "0.0.0",
+      "forward_test": "pytest:tests/acceptance/increment-1/test_backup_restore.py::test_restore_quarantine_requires_exact_enablement_receipt",
+      "rollback_or_forward_compensation": "Preserve signed inventory, installation, restore, finding, and enablement facts and keep restored installations quarantined; append a reviewed forward compensation rather than manufacturing or deleting a receipt.",
+      "backup_checkpoint": "Before applying to a nonempty installation, capture and verify backup, anchor, tombstone, accepted-root, migration-manifest, and inventory counts plus a database backup."
+    },
+    {
+      "path": "0023_cp3c_privileges.sql",
+      "sha256": "sha256:40d64d6e7087f75232360d7b5841b4ca7fc6c2524a870e217eed78fed7e11a7b",
+      "minimum_service_version": "0.0.0",
+      "maximum_service_version": "0.0.0",
+      "forward_test": "pytest:tests/acceptance/increment-1/test_backup_restore.py::test_cp3c_migrations_are_additive_and_roles_are_least_privilege",
+      "rollback_or_forward_compensation": "Keep runtime denied and append reviewed privilege compensation from an exact grant snapshot; never grant API, projection, or migrator a recovery-writer role as fallback.",
+      "backup_checkpoint": "Before applying, capture all grants on proof, backup, anchor, inventory, installation, restore, finding, and enablement tables; the migration is privilege-only."
     }
   ]
 }

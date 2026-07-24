@@ -1,3 +1,6 @@
 # Deployment homes
 
-Deployment configuration belongs here; runtime credentials do not. The initial repository contains only the observability collector/dashboard/alert homes. Compose, Postgres roles, systemd units, VPS manifests, release images, and the root-owned release-supervisor configuration arrive with their stable CT tickets and conformance evidence.
+Deployment configuration belongs here; runtime credentials do not. Development and observability
+configuration is active. `private-vps/` adds the secret-free CP3-C recovery shape, but intentionally has
+no external endpoint, credential, systemd activation, or production durability switch; those require
+CP3-D conformance evidence.

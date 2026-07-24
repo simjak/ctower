@@ -1,0 +1,17 @@
+# CP3-C shape only; CP3-D must replace every marker and verify tool/config checksums.
+[global]
+repo1-type=s3
+repo1-s3-endpoint=CP3D_REQUIRED
+repo1-s3-bucket=CP3D_REQUIRED
+repo1-s3-region=CP3D_REQUIRED
+repo1-path=/ctower
+repo1-retention-full=CP3D_REQUIRED
+repo1-bundle=y
+repo1-block=y
+repo1-cipher-type=aes-256-cbc
+
+# Credentials are provided by a root-owned workload identity mechanism, never this file.
+[ctower]
+pg1-path=CP3D_REQUIRED
+pg1-port=5432
+pg1-socket-path=CP3D_REQUIRED
