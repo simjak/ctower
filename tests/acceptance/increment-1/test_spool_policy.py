@@ -26,6 +26,7 @@ from ctowerctl.spool import (
 __all__: tuple[str, ...] = ()
 
 _TWO_COMMANDS = 2
+_CREDENTIAL = "synthetic-policy-identity"
 
 
 class _Backend:
@@ -168,8 +169,12 @@ def test_doctor_filters_limits_dispositions_and_empty_retention(
 ) -> None:
     backend = _Backend()
     _install_keyring(monkeypatch, backend)
-    spool = _spool(tmp_path)
-    assert spool.doctor().state == "uninitialized"
+    unbound = Spool.for_origin(
+        "https://policy.example/api",
+        SpoolConfig(state_path=tmp_path),
+    )
+    assert unbound.doctor().state == "uninitialized"
+    spool = unbound.bind_credential(_CREDENTIAL)
     first = spool.enqueue(_command("first"))
     spool.drain(_Rejecting())
     spool.enqueue(_command("second"))
@@ -266,10 +271,13 @@ def test_key_creation_anomalies_fail_before_a_command_is_persisted(
     mode: str,
 ) -> None:
     _install_keyring(monkeypatch, _Backend(mode))
-    spool = _spool(tmp_path)
     with pytest.raises(SpoolError) as failure:
-        spool.enqueue(_command(mode))
+        _spool(tmp_path).enqueue(_command(mode))
     assert failure.value.code == "keyring_unavailable"
+    spool = Spool.for_origin(
+        "https://policy.example/api",
+        SpoolConfig(state_path=tmp_path),
+    )
     assert spool.status().pending_count is None
 
 
@@ -343,7 +351,10 @@ def _install_keyring(monkeypatch: pytest.MonkeyPatch, backend: object) -> None:
 
 
 def _spool(state: Path) -> Spool:
-    return Spool.for_origin("https://policy.example/api", SpoolConfig(state_path=state))
+    return Spool.for_origin(
+        "https://policy.example/api",
+        SpoolConfig(state_path=state),
+    ).bind_credential(_CREDENTIAL)
 
 
 def _command(title: str) -> SpoolCommand:

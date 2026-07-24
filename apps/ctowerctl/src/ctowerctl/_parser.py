@@ -388,6 +388,8 @@ def _spool_parser(parser: argparse.ArgumentParser) -> None:
         disposition.set_defaults(local_command=f"spool {name}")
         disposition.add_argument("sequence", type=_positive_int)
         disposition.add_argument("--reason", required=True)
+        if name == "discard":
+            disposition.add_argument("--artifact-digest")
 
 
 def _ticket_id(parser: argparse.ArgumentParser) -> None:

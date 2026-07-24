@@ -36,7 +36,7 @@ while not barrier.exists():
 spool = Spool.for_origin(
     "https://example.test/api",
     SpoolConfig(state_path=Path(os.environ["CT_SPOOL_STATE"])),
-)
+).bind_credential("synthetic-process-identity")
 spool.enqueue(
     SpoolCommand(
         operation_id="createTicket",

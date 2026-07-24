@@ -18,7 +18,13 @@ from uuid import UUID
 from pydantic import BaseModel, ConfigDict, Field, model_validator
 
 from ctowerctl.spool import _keyring
+from ctowerctl.spool._corruption import (
+    CorruptDispositionError,
+    dispose_corrupt,
+    require_no_artifact_digest,
+)
 from ctowerctl.spool._crypto import RecordType
+from ctowerctl.spool._identity import credential_binding, same_binding
 from ctowerctl.spool._recovery import (
     CommandEnvelope,
     Disposition,
@@ -37,6 +43,7 @@ from ctowerctl.spool._redaction import (
     SpoolState,
     SpoolStatus,
     canonical_json,
+    corrupt_entry,
     digest_json,
     discarded_entry,
     doctor_failure,
@@ -126,11 +133,13 @@ class Spool:
         config: SpoolConfig,
         tree: SafeTree,
         path: Path,
+        identity_binding: str | None = None,
     ) -> None:
         self._origin_digest = origin_digest
         self._config = config
         self._tree = tree
         self._path = path
+        self._identity_binding = identity_binding
 
     @classmethod
     def for_origin(cls, origin: str, config: SpoolConfig | None = None) -> Spool:
@@ -148,20 +157,43 @@ class Spool:
             path,
         )
 
+    def bind_credential(self, credential: str) -> Spool:
+        """Return a clone retaining only a keyed opaque identity for enqueue/replay."""
+
+        try:
+            with self._session() as session:
+                binding = credential_binding(session.keys, credential)
+        except _EXPECTED_LOCAL_FAILURES as error:
+            raise _spool_error(error) from error
+        return Spool(
+            self._origin_digest,
+            self._config,
+            self._tree,
+            self._path,
+            binding,
+        )
+
     def enqueue(self, command: SpoolCommand) -> SpoolEntry:
         """Durably append a stable command before any caller may send it."""
 
         try:
             with self._session() as session:
+                binding = self._require_identity_binding()
                 existing = _find_command_id(session, command.command_id)
                 semantic_digest = _semantic_digest(command)
                 if existing is not None:
-                    return _idempotent_entry(existing, session, semantic_digest)
+                    return _idempotent_entry(
+                        existing,
+                        session,
+                        semantic_digest,
+                        binding,
+                    )
                 envelope = _new_envelope(
                     command,
                     self._origin_digest,
                     self._config.pending_horizon_days,
                     semantic_digest,
+                    binding,
                 )
                 _check_command_size(envelope, self._config.max_command_bytes)
                 _check_capacity(
@@ -210,7 +242,7 @@ class Spool:
                     maximum_record_bytes=self._config.max_command_bytes,
                     repair=False,
                 )
-                _require_no_torn_evidence(session)
+                session.verify_doctor_state()
                 _verify_existing_capacity(session, self._config)
         except _keyring.KeyringError:
             return doctor_failure("state_unknown", "keyring_unavailable")
@@ -244,6 +276,7 @@ class Spool:
         try:
             with self._session() as session:
                 entries = [spool_entry(item, session) for item in session.commands()]
+                entries.extend(corrupt_entry(item) for item in session.corrupt_records)
                 if state is not None:
                     entries = [item for item in entries if item.state == state]
                 if state in {None, SpoolState.QUARANTINE} and session.torn_evidence:
@@ -257,7 +290,11 @@ class Spool:
 
         try:
             with self._session() as session:
-                return drain_session(session, executor)
+                return drain_session(
+                    session,
+                    executor,
+                    self._require_identity_binding(),
+                )
         except _EXPECTED_LOCAL_FAILURES as error:
             raise _spool_error(error) from error
 
@@ -266,10 +303,16 @@ class Spool:
 
         return self._disposition(sequence, "retry", reason)
 
-    def discard(self, sequence: int, reason: str) -> None:
+    def discard(
+        self,
+        sequence: int,
+        reason: str,
+        *,
+        artifact_digest: str | None = None,
+    ) -> None:
         """Write a durable disposition tombstone before body removal."""
 
-        self._disposition(sequence, "discard", reason)
+        self._disposition(sequence, "discard", reason, artifact_digest=artifact_digest)
 
     def compact(self) -> int:
         """Replace a wholly old accepted chain with one authenticated anchor."""
@@ -289,16 +332,31 @@ class Spool:
         sequence: int,
         action: Literal["retry", "discard"],
         reason: str,
+        *,
+        artifact_digest: str | None = None,
     ) -> SpoolEntry:
         if not 1 <= len(reason) <= _MAX_DISPOSITION_REASON:
             raise SpoolError("invalid_disposition", "disposition reason must be 1..500 characters")
         try:
             with self._session() as session:
+                corrupt = session.corrupt_command(sequence)
+                if corrupt is not None:
+                    return dispose_corrupt(
+                        session,
+                        corrupt,
+                        action,
+                        reason,
+                        artifact_digest,
+                    )
+                require_no_artifact_digest(artifact_digest)
                 command = _require_quarantined(session.command(sequence))
                 disposition = Disposition(
-                    schema_version=1,
+                    schema_version=2,
                     command_sequence=sequence,
                     command_hash=command.opened.record_hash,
+                    command_predecessor_hash=(
+                        command.opened.header.predecessor_hash if action == "discard" else None
+                    ),
                     action=action,
                     reason_digest=reason_digest(reason),
                     recorded_at=utc_text(),
@@ -310,8 +368,18 @@ class Spool:
                 return spool_entry(session.move(command, "pending"), session)
         except SpoolError:
             raise
+        except CorruptDispositionError as error:
+            raise SpoolError("invalid_disposition", str(error)) from error
         except _EXPECTED_LOCAL_FAILURES as error:
             raise _spool_error(error) from error
+
+    def _require_identity_binding(self) -> str:
+        if self._identity_binding is None:
+            raise SpoolError(
+                "credential_identity_required",
+                "enqueue and replay require an ephemeral credential identity binding",
+            )
+        return self._identity_binding
 
     @contextmanager
     def _session(self) -> Iterator[Session]:
@@ -328,10 +396,11 @@ def _new_envelope(
     origin_digest: str,
     horizon_days: int,
     semantic_digest: str,
+    identity_binding: str,
 ) -> CommandEnvelope:
     now = datetime.now(UTC)
     return CommandEnvelope(
-        schema_version=1,
+        schema_version=2,
         operation_id=command.operation_id,
         path_parameters=command.path_parameters,
         request_body=command.request_body,
@@ -340,6 +409,7 @@ def _new_envelope(
         enqueued_at=utc_text(now),
         expires_at=utc_text(now + timedelta(days=horizon_days)),
         semantic_request_digest=semantic_digest,
+        credential_binding=identity_binding,
     )
 
 
@@ -368,9 +438,18 @@ def _idempotent_entry(
     record: RecoveredRecord,
     session: Session,
     semantic_digest: str,
+    identity_binding: str,
 ) -> SpoolEntry:
-    if command_payload(record).semantic_request_digest != semantic_digest:
+    payload = command_payload(record)
+    if payload.semantic_request_digest != semantic_digest:
         raise SpoolError("command_id_conflict", "command ID already binds a different request")
+    if payload.credential_binding is None or not same_binding(
+        payload.credential_binding, identity_binding
+    ):
+        raise SpoolError(
+            "credential_identity_mismatch",
+            "command ID belongs to another enqueue credential identity",
+        )
     return spool_entry(record, session)
 
 
@@ -380,22 +459,30 @@ def _check_command_size(command: CommandEnvelope, maximum: int) -> None:
 
 
 def _check_capacity(session: Session, config: SpoolConfig, incoming_size: int) -> None:
-    live = tuple(
+    live_commands = tuple(
         item for item in session.commands() if item.stored.directory in {"pending", "quarantine"}
     )
-    if len(live) >= config.max_live_commands:
+    live_count = len(live_commands) + len(session.corrupt_records)
+    live_bytes = sum(item.stored.size for item in live_commands) + sum(
+        item.stored.size for item in session.corrupt_records
+    )
+    if live_count >= config.max_live_commands:
         raise SpoolError("capacity_count", "live spool command capacity is exhausted")
-    if sum(item.stored.size for item in live) + incoming_size > config.max_live_bytes:
+    if live_bytes + incoming_size > config.max_live_bytes:
         raise SpoolError("capacity_bytes", "live spool byte capacity is exhausted")
 
 
 def _verify_existing_capacity(session: Session, config: SpoolConfig) -> None:
-    live = tuple(
+    live_commands = tuple(
         item for item in session.commands() if item.stored.directory in {"pending", "quarantine"}
     )
-    if len(live) > config.max_live_commands:
+    live_count = len(live_commands) + len(session.corrupt_records)
+    live_bytes = sum(item.stored.size for item in live_commands) + sum(
+        item.stored.size for item in session.corrupt_records
+    )
+    if live_count > config.max_live_commands:
         raise StorageError("live spool exceeds configured command capacity")
-    if sum(item.stored.size for item in live) > config.max_live_bytes:
+    if live_bytes > config.max_live_bytes:
         raise StorageError("live spool exceeds configured byte capacity")
 
 
@@ -489,7 +576,7 @@ def _error_code(error: Exception) -> str:
     if isinstance(error, SecretMaterialError):
         return "secret_material"
     if isinstance(error, RecoveryError):
-        return "chain_integrity"
+        return error.code
     if isinstance(error, StorageError):
         return "storage_integrity"
     return "local_failure"
@@ -498,11 +585,6 @@ def _error_code(error: Exception) -> str:
 def _require_metadata(*, exists: bool) -> None:
     if not exists:
         raise RecoveryError("spool metadata is missing")
-
-
-def _require_no_torn_evidence(session: Session) -> None:
-    if session.torn_evidence:
-        raise RecoveryError("torn-write evidence requires explicit disposition")
 
 
 def _require_quarantined(command: RecoveredRecord | None) -> RecoveredRecord:

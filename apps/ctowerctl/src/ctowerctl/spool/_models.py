@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from typing import Annotated, Literal
 
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, ConfigDict, Field, model_validator
 
 from ctowerctl.spool._redaction import JsonObject
 
@@ -12,11 +12,14 @@ __all__ = [
     "AcceptedReceipt",
     "CommandEnvelope",
     "CompactionAnchor",
+    "CorruptDisposition",
     "Disposition",
     "Head",
     "Metadata",
     "QuarantineReceipt",
 ]
+
+_BOUND_PAYLOAD_VERSION = 2
 
 
 class _DiskPayload(BaseModel):
@@ -37,7 +40,7 @@ class Head(_DiskPayload):
 
 
 class CommandEnvelope(_DiskPayload):
-    schema_version: Literal[1]
+    schema_version: Literal[1, 2]
     operation_id: Annotated[str, Field(pattern=r"^[A-Za-z][A-Za-z0-9]{0,127}$")]
     path_parameters: JsonObject
     request_body: JsonObject
@@ -46,6 +49,13 @@ class CommandEnvelope(_DiskPayload):
     enqueued_at: str
     expires_at: str
     semantic_request_digest: Annotated[str, Field(pattern=r"^[0-9a-f]{64}$")]
+    credential_binding: Annotated[str, Field(pattern=r"^[0-9a-f]{64}$")] | None = None
+
+    @model_validator(mode="after")
+    def _validate_versioned_binding(self) -> CommandEnvelope:
+        if (self.schema_version == _BOUND_PAYLOAD_VERSION) != (self.credential_binding is not None):
+            raise ValueError("command credential binding does not match schema version")
+        return self
 
 
 class AcceptedReceipt(_DiskPayload):
@@ -72,10 +82,30 @@ class QuarantineReceipt(_DiskPayload):
 
 
 class Disposition(_DiskPayload):
+    schema_version: Literal[1, 2]
+    command_sequence: Annotated[int, Field(ge=1)]
+    command_hash: Annotated[str, Field(pattern=r"^[0-9a-f]{64}$")]
+    command_predecessor_hash: Annotated[str, Field(pattern=r"^[0-9a-f]{64}$")] | None = None
+    action: Literal["retry", "discard"]
+    reason_digest: Annotated[str, Field(pattern=r"^[0-9a-f]{64}$")]
+    recorded_at: str
+
+    @model_validator(mode="after")
+    def _validate_versioned_predecessor(self) -> Disposition:
+        expected = self.schema_version == _BOUND_PAYLOAD_VERSION and self.action == "discard"
+        if expected != (self.command_predecessor_hash is not None):
+            raise ValueError("disposition predecessor does not match schema/action")
+        return self
+
+
+class CorruptDisposition(_DiskPayload):
     schema_version: Literal[1]
     command_sequence: Annotated[int, Field(ge=1)]
     command_hash: Annotated[str, Field(pattern=r"^[0-9a-f]{64}$")]
-    action: Literal["retry", "discard"]
+    command_predecessor_hash: Annotated[str, Field(pattern=r"^[0-9a-f]{64}$")]
+    artifact_digest: Annotated[str, Field(pattern=r"^[0-9a-f]{64}$")]
+    artifact_bytes: Annotated[int, Field(ge=1)]
+    action: Literal["discard"]
     reason_digest: Annotated[str, Field(pattern=r"^[0-9a-f]{64}$")]
     recorded_at: str
 

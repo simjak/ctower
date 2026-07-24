@@ -65,6 +65,30 @@ ctl --base-url https://ctower.example spool retry 7 --reason "server policy corr
 ctl --base-url https://ctower.example spool discard 7 --reason "request intentionally abandoned"
 ```
 
+The spool stores only a keyed opaque identity for the stdin authority used to enqueue each command. Before
+every send, `spool drain` compares the current authority to that identity. A rotated credential or different
+principal therefore performs zero network sends and visibly quarantines the command as
+`credential_identity_mismatch`. Fail closed: either restore the original credential and explicitly retry,
+or discard the old command and enqueue a new command ID under the rotated credential. The spool does not
+silently rebind queued authority.
+
+If `spool list --state quarantine` reports `corrupt_record`, it omits untrusted command fields and includes
+only the exact sequence, byte count, and SHA-256 `artifact_digest`. Replay remains blocked. After inspecting
+the local incident, dispose only the inventoried artifact:
+
+```bash
+ctl --base-url https://ctower.example spool discard 7 \
+  --artifact-digest 0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef \
+  --reason "exact corrupt ciphertext reviewed"
+```
+
+A wrong sequence or digest, or a file changed after inventory, is refused. The authenticated disposition
+preserves the command's chain relationship, and the corrupt ciphertext is retained as audit evidence.
+
+The reader accepts legacy v1 encrypted records. A pre-alpha legacy discard tombstone that lacks the deleted
+command's authenticated predecessor cannot satisfy the repaired chain contract and fails closed as
+`format_incompatible`; do not reinterpret or delete that state with the newer build.
+
 Retry/discard reasons are bounded metadata, never secret material. Do not manually edit, copy between
 origins, or delete spool files. Missing/locked keyring evidence yields `STATE_UNKNOWN`; existing ciphertext
 is left in place. This local quarantine boundary is not off-host backup or disaster recovery.

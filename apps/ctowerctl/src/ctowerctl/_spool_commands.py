@@ -80,7 +80,9 @@ def _modify(
     authority_stream: TextIO,
 ) -> tuple[BaseModel, ExitCode]:
     if command == "spool drain":
-        with CtowerClient(base_url, credential=read_authority(authority_stream)) as client:
+        credential = read_authority(authority_stream)
+        spool = spool.bind_credential(credential)
+        with CtowerClient(base_url, credential=credential) as client:
             report = spool.drain(GeneratedReplayExecutor(client))
         return report, _drain_code(report.remaining_pending, report.barrier_sequence)
     if command == "spool retry":
@@ -88,7 +90,11 @@ def _modify(
         return entry, ExitCode.SUCCESS
     if command == "spool discard":
         sequence = cast(int, arguments.sequence)
-        spool.discard(sequence, cast(str, arguments.reason))
+        spool.discard(
+            sequence,
+            cast(str, arguments.reason),
+            artifact_digest=cast(str | None, getattr(arguments, "artifact_digest", None)),
+        )
         return SpoolDisposition(action="discard", sequence=sequence), ExitCode.SUCCESS
     raise ValueError("usage: unsupported local spool command")
 
