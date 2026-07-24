@@ -166,7 +166,7 @@ paths = [
   "apps/ctowerctl/src/**",
   "tests/integration/**",
   "tests/modules/ctowerctl/**",
-  "tests/packaging/**",
+  "tests/artifact/**",
 ]
 allowed_dependencies = []
 

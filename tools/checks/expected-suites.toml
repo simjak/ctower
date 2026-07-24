@@ -261,7 +261,7 @@ id = "protected-cli-wheel"
 owner = "CT-I1-004"
 phase = "CT-I1-004"
 status = "required"
-path = "tests/packaging"
+path = "tests/artifact"
 patterns = ["test_*.py"]
 command = [
   "bash",
@@ -271,7 +271,7 @@ command = [
   "pytest",
   "-p",
   "no:cacheprovider",
-  "tests/packaging",
+  "tests/artifact",
   "-q",
 ]
 timeout_seconds = 900
