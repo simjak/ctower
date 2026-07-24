@@ -68,6 +68,7 @@ def test_generated_client_is_owned_and_byte_stable() -> None:
     assert len(entries) == 1
     outputs = cast(list[dict[str, str]], entries[0]["outputs"])
     assert {entry["path"] for entry in outputs} == {
+        "generated/README.md",
         "generated/python/ctower_client/__init__.py",
         "generated/python/ctower_client/client.py",
         "generated/python/ctower_client/models.py",

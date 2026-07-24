@@ -270,10 +270,14 @@
         },
         {
           "path": "tools/codegen/generator.py",
-          "sha256": "sha256:88d15f5e2d0a1ffe6c49a1698452dc1c473510c0fc3a74b0c6cac7a2fb2e3713"
+          "sha256": "sha256:cac7c729573552347b1efae10fbc722b0cd2719d2bde84fe360fc73eb2b64d3c"
         }
       ],
       "outputs": [
+        {
+          "path": "generated/README.md",
+          "sha256": "sha256:e448a9a59fa23c89a3ae875b398712d07822cfaff481985dd9dcee51e9d82214"
+        },
         {
           "path": "generated/python/ctower_client/__init__.py",
           "sha256": "sha256:b976846f7b6566f0505e723cd60a4964fdb353bd3bb3ac87d76c4fe8652826f5"
@@ -303,7 +307,7 @@
           "sha256": "sha256:1c343dfc8db56c124f2da2a569eaafdd225e6dc873a1a48e6c7584c00fefdf6f"
         }
       ],
-      "tool_version": "1+sha256:88d15f5e2d0a1ffe6c49a1698452dc1c473510c0fc3a74b0c6cac7a2fb2e3713"
+      "tool_version": "1+sha256:cac7c729573552347b1efae10fbc722b0cd2719d2bde84fe360fc73eb2b64d3c"
     }
   ],
   "schema": "ctower.generated-manifest/v1"

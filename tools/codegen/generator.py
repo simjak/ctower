@@ -26,6 +26,7 @@ from tools.codegen._schema_codegen import render_schema_resources
 __all__ = ["CodegenError", "check", "write"]
 
 _MANIFEST = Path("generated/.generated-manifest.json")
+_README = Path("generated/README.md")
 _OPENAPI = Path("contracts/http/openapi.yaml")
 _TELEMETRY = Path("contracts/observability/telemetry-context.schema.json")
 _CLIENT_OUTPUTS = {
@@ -102,7 +103,15 @@ def _render(root: Path) -> _Rendered:
     client_outputs = tuple(
         (output, rendered[name]) for name, output in sorted(_CLIENT_OUTPUTS.items())
     )
-    outputs = tuple(sorted((*client_outputs, *contract_resources.outputs)))
+    outputs = tuple(
+        sorted(
+            (
+                *client_outputs,
+                *contract_resources.outputs,
+                (_README, _render_readme()),
+            )
+        )
+    )
     inputs = tuple(sorted({*_BASE_INPUTS, *contract_resources.inputs}))
     try:
         manifest = load_generated_manifest(root, _MANIFEST)
@@ -159,6 +168,29 @@ def _schema_names(document: dict[str, object]) -> set[str]:
     if not isinstance(components, dict) or not isinstance(components.get("schemas"), dict):
         raise CodegenError("OpenAPI components.schemas must be an object")
     return set(cast(dict[str, object], components["schemas"]))
+
+
+def _render_readme() -> str:
+    return """# Generated artifacts
+
+Do not edit files in this directory. Regenerate them from authored contracts with:
+
+```text
+python3 -m tools.codegen --root . --write
+```
+
+`python/ctower_client` is the strict OpenAPI client/model package. Its generated operation
+registry is the closed replay inventory for the protected CLI; it is not an arbitrary
+dispatcher.
+
+`python/ctower_contracts` vendors authored JSON schemas into a local-only runtime resource.
+Resolution rejects network references and paths that escape the authored contract tree.
+
+Both packages and `ctower_contracts/schemas.json` are included in the verified development
+wheel. Generated presence does not establish a stable external API, supported package release,
+deployment, or runtime/effect activation. Exact source/output digests are owned by
+`.generated-manifest.json`.
+"""
 
 
 def _with_telemetry_schema(root: Path, contract: dict[str, object]) -> dict[str, object]:
