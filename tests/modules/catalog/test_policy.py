@@ -191,7 +191,46 @@ def test_activation_replans_against_the_locked_base_and_exact_plan_digest() -> N
     assert isinstance(wrong_base, CatalogProblem)
     assert wrong_base.code == "bundle-base-conflict"
     assert isinstance(wrong_plan, CatalogProblem)
-    assert wrong_plan.code == "bundle-plan-conflict"
+    assert wrong_plan.code == "bundle-plan-mismatch"
+
+
+def test_activation_refuses_a_planned_removal_until_lifecycle_apply_exists() -> None:
+    bundle = minimal_bundle()
+    policy = CatalogPolicy(FileSchemas())
+    initial = policy.plan("example-company", bundle, None)
+    assert not isinstance(initial, CatalogProblem)
+    active = ActiveBundle(
+        version=1,
+        bundle_digest=initial.proposed_bundle_digest,
+        bundle=bundle,
+        command_id=_COMMAND_ID,
+        actor_principal_id=_ACTOR_ID,
+        activated_at=datetime(2026, 7, 24, tzinfo=UTC),
+        checks=initial.checks,
+    )
+    removal = bundle.model_copy(
+        update={
+            "resources": tuple(
+                resource
+                for resource in bundle.resources
+                if resource.component.key != "local.process"
+            )
+        }
+    )
+    planned = policy.plan("example-company", removal, active)
+    assert not isinstance(planned, CatalogProblem)
+    assert BundleActionKind.DEPRECATE in {action.kind for action in planned.actions}
+    command = CompanyBundleApply(
+        client_command_id=_COMMAND_ID,
+        bundle=removal,
+        expected_active_version=1,
+        plan_digest=planned.plan_digest,
+    )
+
+    refused = policy.prepare_activation("example-company", command, active)
+
+    assert isinstance(refused, CatalogProblem)
+    assert refused.code == "bundle-compatibility-refused"
 
 
 def test_digest_schema_reference_compatibility_and_tenant_fail_closed() -> None:

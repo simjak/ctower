@@ -35,6 +35,12 @@ the generic protocol. Record owns immutable backup/anchor/inventory/restore evid
 installation/report enablement policy. The local recovery checkpoint does not activate production
 objects, backups, effects, or external targets; Catalog declarations do not activate Effects, synthetic
 handlers, or the remaining I1/I2 runtimes.
+CompanyBundle validate, plan, and export remain authenticated read operations, including for Commander,
+while apply requires current operator/platform-administrator authority. Apply resolves exact
+principal-command replay, locked base and plan equivalence, and unsupported removal/deprecation before
+staging immutable payloads; an exact replay returns its stored result without consulting the Object port.
+I1 additive and successor activation remains supported, but lifecycle removal/deprecation is a typed refusal
+that leaves the prior active Catalog authoritative.
 
 There is no executable Extension Host in I1 or I2; that runtime remains deferred until a real use case and
 two real Adapters earn its Seam. The kernel may depend on authored/generated contracts and allowlisted public

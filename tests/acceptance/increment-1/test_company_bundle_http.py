@@ -7,23 +7,44 @@ from typing import cast
 from uuid import UUID, uuid4
 
 import psycopg
+import pytest
 from ctower_contracts import CATALOG
 from fastapi import FastAPI
 from fastapi.testclient import TestClient
 from httpx import Response
 from psycopg.rows import dict_row
-from support.catalog import MemoryObjectStore, minimal_bundle
+from support.catalog import (
+    FileSchemas,
+    InterruptingObjectStore,
+    MemoryObjectStore,
+    SimulatedProcessLoss,
+    actor_for,
+    apply_initial_bundle,
+    assert_command_replay_precedes_adapters,
+    assert_locked_plan_refusals_precede_adapters,
+    assert_removal_refusal_precedes_adapters,
+    minimal_bundle,
+    telemetry_for,
+)
 from support.telemetry import telemetry_headers
 from support.tenant_fixture import TenantFixture
 
 from ctower_api.interface import create_app
-from ctower_kernel.catalog import CompanyBundle, PostgresCatalog
+from ctower_kernel.catalog import (
+    CatalogProblem,
+    CompanyBundle,
+    CompanyBundleApply,
+    CompanyBundleCommandResult,
+    PostgresCatalog,
+)
 from ctower_kernel.record.postgres import PostgresRecord
 
 __all__: tuple[str, ...] = ()
 
 HTTP_OK = 200
 HTTP_PENDING = 202
+HTTP_FORBIDDEN = 403
+HTTP_CONFLICT = 409
 HTTP_UNAUTHORIZED = 401
 HTTP_NOT_FOUND = 404
 HTTP_UNPROCESSABLE_ENTITY = 422
@@ -225,18 +246,254 @@ def test_new_routes_authenticate_before_path_or_body_validation(
     }
 
 
-def _app(tenant: TenantFixture) -> FastAPI:
+def test_company_bundle_apply_principal_matrix_authorizes_before_effects(
+    tenant: TenantFixture,
+) -> None:
     store = MemoryObjectStore()
+    before = _catalog_counts(tenant.database.admin_dsn)
+    unauthenticated_id, commander_id, operator_id = uuid4(), uuid4(), uuid4()
+    (
+        validated,
+        planned,
+        unauthenticated,
+        commander,
+        operator,
+        commander_export,
+        invalid_plan,
+        unsupported_lifecycle,
+    ) = _exercise_principal_apply_matrix(
+        tenant,
+        store,
+        before,
+        unauthenticated_id,
+        commander_id,
+        operator_id,
+    )
+
+    assert validated.status_code == HTTP_OK
+    assert planned.status_code == HTTP_OK
+    assert (unauthenticated.status_code, unauthenticated.json()["code"]) == (
+        HTTP_UNAUTHORIZED,
+        "unauthorized",
+    )
+    assert (commander.status_code, commander.json()["code"]) == (
+        HTTP_FORBIDDEN,
+        "unauthorized",
+    )
+    assert operator.status_code == HTTP_PENDING
+    assert commander_export.status_code == HTTP_OK
+    assert (invalid_plan.status_code, invalid_plan.json()["code"]) == (
+        HTTP_CONFLICT,
+        "bundle-plan-mismatch",
+    )
+    assert (
+        unsupported_lifecycle.status_code,
+        unsupported_lifecycle.json()["code"],
+    ) == (HTTP_UNPROCESSABLE_ENTITY, "bundle-compatibility-refused")
+
+
+def _exercise_principal_apply_matrix(
+    tenant: TenantFixture,
+    store: MemoryObjectStore,
+    before: tuple[int, int, int],
+    unauthenticated_id: UUID,
+    commander_id: UUID,
+    operator_id: UUID,
+) -> tuple[Response, Response, Response, Response, Response, Response, Response, Response]:
+    bundle = _tenant_bundle()
+    request = {"bundle": bundle.model_dump(mode="json", by_alias=True)}
+    with TestClient(_app(tenant, store=store)) as client:
+        validated = client.post(
+            "/v1/company/bundle/validate",
+            json=request,
+            headers=_commander_headers(tenant),
+        )
+        planned = client.post(
+            "/v1/company/bundle/plan",
+            json=request,
+            headers=_commander_headers(tenant),
+        )
+        apply_request = {
+            **request,
+            "expected_active_version": 0,
+            "plan_digest": planned.json()["plan_digest"],
+        }
+        unauthenticated = client.post(
+            "/v1/company/bundle/apply",
+            json=apply_request,
+            headers={"Idempotency-Key": str(unauthenticated_id), **telemetry_headers()},
+        )
+        commander = client.post(
+            "/v1/company/bundle/apply",
+            json=apply_request,
+            headers=_commander_headers(tenant, command_id=commander_id),
+        )
+        assert (
+            store.put_attempts,
+            store.read_attempts,
+            store.erase_attempts,
+            store.write_count,
+        ) == (0, 0, 0, 0)
+        assert _catalog_counts(tenant.database.admin_dsn) == before
+        assert (
+            _command_result_count(
+                tenant.database.admin_dsn,
+                (unauthenticated_id, commander_id),
+            )
+            == 0
+        )
+        operator = client.post(
+            "/v1/company/bundle/apply",
+            json=apply_request,
+            headers=_headers(tenant, command_id=operator_id),
+        )
+        commander_export = client.get(
+            "/v1/company/bundle/export",
+            headers=_commander_headers(tenant),
+        )
+        invalid_plan, unsupported_lifecycle = _http_post_activation_refusals(
+            client,
+            tenant,
+            bundle,
+            store,
+        )
+    return (
+        validated,
+        planned,
+        unauthenticated,
+        commander,
+        operator,
+        commander_export,
+        invalid_plan,
+        unsupported_lifecycle,
+    )
+
+
+def _http_post_activation_refusals(
+    client: TestClient,
+    tenant: TenantFixture,
+    bundle: CompanyBundle,
+    store: MemoryObjectStore,
+) -> tuple[Response, Response]:
+    request = {"bundle": bundle.model_dump(mode="json", by_alias=True)}
+    writes = store.put_attempts, store.write_count
+    invalid_plan = client.post(
+        "/v1/company/bundle/apply",
+        json={
+            **request,
+            "expected_active_version": 1,
+            "plan_digest": "sha256:" + "0" * 64,
+        },
+        headers=_headers(tenant, command_id=uuid4()),
+    )
+    removal = bundle.model_copy(
+        update={
+            "resources": tuple(
+                resource
+                for resource in bundle.resources
+                if resource.component.key != "local.process"
+            )
+        }
+    )
+    planned = client.post(
+        "/v1/company/bundle/plan",
+        json={"bundle": removal.model_dump(mode="json", by_alias=True)},
+        headers=_headers(tenant),
+    )
+    unsupported = client.post(
+        "/v1/company/bundle/apply",
+        json={
+            "bundle": removal.model_dump(mode="json", by_alias=True),
+            "expected_active_version": 1,
+            "plan_digest": planned.json()["plan_digest"],
+        },
+        headers=_headers(tenant, command_id=uuid4()),
+    )
+    assert (store.put_attempts, store.write_count) == writes
+    return invalid_plan, unsupported
+
+
+def test_apply_refusals_and_replay_precede_payload_writes_and_lifecycle_effects(
+    tenant: TenantFixture,
+) -> None:
+    actor = actor_for(tenant.tenant_id, tenant.operator_id)
+    store = MemoryObjectStore()
+    catalog = _catalog(tenant, store)
+    bundle = _tenant_bundle()
+    command, first = apply_initial_bundle(catalog, actor, bundle)
+    writes = store.write_count
+    facts = _catalog_counts(tenant.database.admin_dsn)
+
+    assert_command_replay_precedes_adapters(catalog, actor, command, first, store)
+    assert_locked_plan_refusals_precede_adapters(catalog, actor, bundle, store)
+    assert_removal_refusal_precedes_adapters(catalog, actor, bundle, store)
+
+    assert store.write_count == writes
+    assert _catalog_counts(tenant.database.admin_dsn) == facts
+    assert _deprecated_fact_count(tenant.database.admin_dsn) == 0
+    exported = catalog.export(actor)
+    assert not isinstance(exported, CatalogProblem)
+    assert exported.active_version == 1
+    assert any(resource.component.key == "local.process" for resource in exported.bundle.resources)
+
+
+def test_retry_reconciles_payload_receipts_after_post_write_process_loss(
+    tenant: TenantFixture,
+) -> None:
+    actor = actor_for(tenant.tenant_id, tenant.operator_id)
+    bundle = _tenant_bundle()
+    store = InterruptingObjectStore(len(bundle.resources))
+    catalog = _catalog(tenant, store)
+    plan = catalog.plan(actor, bundle)
+    assert not isinstance(plan, CatalogProblem)
+    command_id = uuid4()
+    command = CompanyBundleApply(
+        client_command_id=command_id,
+        bundle=bundle,
+        expected_active_version=0,
+        plan_digest=plan.plan_digest,
+    )
+
+    with pytest.raises(SimulatedProcessLoss):
+        catalog.apply(actor, command, telemetry=telemetry_for(actor, command_id))
+
+    assert store.write_count == len(bundle.resources)
+    assert _catalog_counts(tenant.database.admin_dsn) == (0, 0, 0)
+    assert _command_result_count(tenant.database.admin_dsn, (command_id,)) == 0
+    recovered = catalog.apply(actor, command, telemetry=telemetry_for(actor, command_id))
+
+    assert isinstance(recovered, CompanyBundleCommandResult)
+    assert recovered.active_version == 1
+    assert store.write_count == len(bundle.resources)
+    assert store.put_attempts == len(bundle.resources) * 2
+
+
+def _app(
+    tenant: TenantFixture,
+    *,
+    store: MemoryObjectStore | None = None,
+) -> FastAPI:
+    catalog_store = store or MemoryObjectStore()
     catalog = PostgresCatalog(
         tenant.database.runtime_dsn,
         CATALOG,
-        store,
+        catalog_store,
         key_reference="vault:catalog-key",
         clock=lambda: datetime(2026, 7, 24, tzinfo=UTC),
     )
     return create_app(
         PostgresRecord(tenant.database.runtime_dsn),
         catalog=catalog,
+    )
+
+
+def _catalog(tenant: TenantFixture, store: MemoryObjectStore) -> PostgresCatalog:
+    return PostgresCatalog(
+        tenant.database.runtime_dsn,
+        FileSchemas(),
+        store,
+        key_reference="vault:catalog-key",
+        clock=lambda: datetime(2026, 7, 24, tzinfo=UTC),
     )
 
 
@@ -295,6 +552,20 @@ def _headers(
     return headers
 
 
+def _commander_headers(
+    tenant: TenantFixture,
+    *,
+    command_id: UUID | None = None,
+) -> dict[str, str]:
+    headers = {
+        "Authorization": f"Bearer {tenant.commander_credential}",
+        **telemetry_headers(),
+    }
+    if command_id is not None:
+        headers["Idempotency-Key"] = str(command_id)
+    return headers
+
+
 def _catalog_counts(dsn: str) -> tuple[int, int, int]:
     with psycopg.connect(dsn, row_factory=dict_row) as connection:
         row = connection.execute(
@@ -311,3 +582,22 @@ def _catalog_counts(dsn: str) -> tuple[int, int, int]:
         int(cast(int, row["bundles"])),
         int(cast(int, row["events"])),
     )
+
+
+def _command_result_count(dsn: str, command_ids: tuple[UUID, ...]) -> int:
+    with psycopg.connect(dsn) as connection:
+        row = connection.execute(
+            "SELECT count(*) FROM command_results WHERE client_command_id = ANY(%s)",
+            (list(command_ids),),
+        ).fetchone()
+    assert row is not None
+    return int(row[0])
+
+
+def _deprecated_fact_count(dsn: str) -> int:
+    with psycopg.connect(dsn) as connection:
+        row = connection.execute(
+            "SELECT count(*) FROM catalog_component_lifecycle_facts WHERE action = 'deprecated'"
+        ).fetchone()
+    assert row is not None
+    return int(row[0])

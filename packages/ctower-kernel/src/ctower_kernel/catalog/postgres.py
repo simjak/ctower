@@ -23,10 +23,10 @@ from ctower_kernel.catalog.interface import (
     CompanyBundlePlan,
     SchemaCatalog,
 )
-from ctower_kernel.catalog.object_interface import CatalogObjectError, StagedPayload
+from ctower_kernel.catalog.object_interface import CatalogObjectError
 from ctower_kernel.catalog.service import CatalogPayloadStager, CatalogPolicy
 from ctower_kernel.objects import ObjectStore
-from ctower_kernel.record import Actor
+from ctower_kernel.record import Actor, PrincipalKind
 from ctower_kernel.record.transaction import recover_ambiguous_commit
 from ctower_kernel.telemetry import NoopTelemetry, Telemetry, TelemetryContext
 
@@ -93,24 +93,19 @@ class PostgresCatalog:
         *,
         telemetry: TelemetryContext,
     ) -> CompanyBundleCommandResult | CatalogProblem:
-        """Stage payloads, then atomically publish events and move the active pointer."""
+        """Authorize and lock the exact command before any payload write."""
 
+        authorized = _authorize_apply(actor, command)
+        if authorized is not None:
+            return authorized
         key = self._tenant_key(actor)
         if isinstance(key, CatalogProblem):
             return key
-        validated = self._policy.validate(key, command.bundle)
-        if isinstance(validated, CatalogProblem):
-            return validated.model_copy(update={"command_id": command.client_command_id})
-        try:
-            staged = self._stager.stage(actor.tenant_id, command.bundle)
-        except CatalogObjectError:
-            return _recovery_problem(command.client_command_id)
         request_digest = hashlib.sha256(canonical_bytes(command.request_payload())).digest()
         outcome = self._apply_with_serialization_retry(
             actor,
             key,
             command,
-            staged,
             request_digest=request_digest,
             telemetry=telemetry,
         )
@@ -162,7 +157,6 @@ class PostgresCatalog:
         actor: Actor,
         tenant_slug: str,
         command: CompanyBundleApply,
-        staged: tuple[StagedPayload, ...],
         *,
         request_digest: bytes,
         telemetry: TelemetryContext,
@@ -175,8 +169,8 @@ class PostgresCatalog:
                         actor,
                         tenant_slug,
                         command,
-                        staged,
                         self._policy,
+                        self._stager,
                         self._store,
                         request_digest=request_digest,
                         now=self._clock(),
@@ -215,4 +209,19 @@ def _recovery_problem(command_id: UUID | None = None) -> CatalogProblem:
         status=503,
         title="Bundle recovery unavailable",
         command_id=command_id,
+    )
+
+
+def _authorize_apply(
+    actor: Actor,
+    command: CompanyBundleApply,
+) -> CatalogProblem | None:
+    if actor.kind is PrincipalKind.OPERATOR:
+        return None
+    return CatalogProblem(
+        code="unauthorized",
+        detail="CompanyBundle apply requires operator or platform-administrator authority.",
+        status=403,
+        title="CompanyBundle apply forbidden",
+        command_id=command.client_command_id,
     )

@@ -25,8 +25,8 @@ from ctower_kernel.catalog.interface import (
     CompanyBundleCommandResult,
     CompanyBundlePlan,
 )
-from ctower_kernel.catalog.object_interface import CatalogObjectError, StagedPayload
-from ctower_kernel.catalog.service import CatalogPolicy
+from ctower_kernel.catalog.object_interface import CatalogObjectError
+from ctower_kernel.catalog.service import CatalogPayloadStager, CatalogPolicy
 from ctower_kernel.objects import ObjectStore
 from ctower_kernel.record import Actor, RecordProblem
 from ctower_kernel.record.transaction import RecordTransaction, authority_connection
@@ -40,8 +40,8 @@ def apply_bundle(
     actor: Actor,
     tenant_key: str,
     command: CompanyBundleApply,
-    staged: tuple[StagedPayload, ...],
     policy: CatalogPolicy,
+    stager: CatalogPayloadStager,
     store: ObjectStore,
     *,
     request_digest: bytes,
@@ -67,8 +67,8 @@ def apply_bundle(
             actor,
             tenant_key,
             command,
-            staged,
             policy,
+            stager,
             store,
             request_digest=request_digest,
             now=now,
@@ -82,8 +82,8 @@ def _apply_reserved_bundle(
     actor: Actor,
     tenant_key: str,
     command: CompanyBundleApply,
-    staged: tuple[StagedPayload, ...],
     policy: CatalogPolicy,
+    stager: CatalogPayloadStager,
     store: ObjectStore,
     *,
     request_digest: bytes,
@@ -108,6 +108,16 @@ def _apply_reserved_bundle(
     )
     if isinstance(plan, CatalogProblem):
         return _refuse(transaction, actor, command, request_digest, plan, now)
+    try:
+        staged = stager.stage(actor.tenant_id, command.bundle)
+    except CatalogObjectError:
+        recovery = _problem(
+            command,
+            "bundle-recovery-unavailable",
+            "Catalog payload staging or read-back is unavailable.",
+            status=503,
+        )
+        return _refuse(transaction, actor, command, request_digest, recovery, now)
     bundle = normalized_bundle(command.bundle)
     prepared = prepare_revisions(connection, actor, command, bundle, staged)
     if isinstance(prepared, CatalogProblem):

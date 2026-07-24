@@ -24,3 +24,7 @@ same-tenant principals may independently reuse the same command UUID without wea
 Catalog receives the same injected generic object capability as Proof; API composition does not create a
 second object store. Bundle validate/plan/export are read-only, while apply retains auth-before-validation,
 Record-owned command/event/outbox durability, locked-base re-planning, and an atomic future-only pointer.
+Commander apply is rejected before Catalog or object effects. The private immutable-object Adapter persists
+receipt metadata beside ciphertext so a retry after an interrupted successful write can verify and reconcile
+the same object without another KMS encryption or object PUT; ordinary exact command replay is resolved by
+Record before that Adapter is called.
