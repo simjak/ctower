@@ -11,6 +11,8 @@ from pydantic import ValidationError
 from starlette.responses import Response
 
 from ctower_api._board_routes import install_board_routes
+from ctower_api._catalog_routes import BundleCatalog, install_catalog_routes
+from ctower_api._comment_routes import install_comment_routes
 from ctower_api._health_routes import install_health_routes
 from ctower_api._http_support import (
     authenticate as _authenticate,
@@ -77,6 +79,7 @@ def create_app(
     work: Work | None = None,
     projections: Projections | None = None,
     attention: Attention | None = None,
+    catalog: BundleCatalog | None = None,
     telemetry: TelemetryRecorder | None = None,
 ) -> FastAPI:
     """Compose the private command API without embedding durable decisions."""
@@ -99,7 +102,10 @@ def create_app(
     _install_ticket_create_route(app, access, record, work_module, recorder)
     _install_custody_route(app, access, record, work_module, recorder)
     _install_ticket_read_routes(app, access, record, recorder)
+    install_comment_routes(app, access, record, recorder)
     install_task_routes(app, access, record, work_module, workflow, recorder)
+    if catalog is not None:
+        install_catalog_routes(app, access, record, catalog, recorder)
     if proof is not None and workflow is not None:
         install_proof_workflow_routes(app, access, record, proof, workflow, recorder)
     if projections is not None:
