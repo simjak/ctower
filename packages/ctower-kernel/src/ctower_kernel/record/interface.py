@@ -9,9 +9,11 @@ from enum import StrEnum
 from typing import Literal, Protocol
 from uuid import UUID
 
+from ctower_kernel.record.comments import TicketCommentCommand, TicketCommentResult
 from ctower_kernel.record.events import (
     CustodyTransferredPayload,
     EventKind,
+    TicketCommentAddedPayload,
     TicketCreatedPayload,
     TicketEventPayload,
 )
@@ -325,6 +327,7 @@ class TimelineEvent:
         expected_payload = {
             EventKind.TICKET_CREATED: TicketCreatedPayload,
             EventKind.CUSTODY_TRANSFERRED: CustodyTransferredPayload,
+            EventKind.TICKET_COMMENT_ADDED: TicketCommentAddedPayload,
         }.get(self.kind)
         if expected_payload is None:
             raise ValueError("timeline kind must be a ticket event")
@@ -487,6 +490,19 @@ class Record(Protocol):
         telemetry: TelemetryContext,
     ) -> TicketCommandResult | RecordProblem:
         """Atomically close and open the ticket's accountable custody interval."""
+
+        ...
+
+    def add_comment(
+        self,
+        actor: Actor,
+        command: TicketCommentCommand,
+        *,
+        request_digest: bytes,
+        now: datetime,
+        telemetry: TelemetryContext,
+    ) -> TicketCommentResult | RecordProblem:
+        """Append or exactly replay one authenticated ticket comment."""
 
         ...
 

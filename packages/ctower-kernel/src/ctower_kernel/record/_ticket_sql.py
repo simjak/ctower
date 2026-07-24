@@ -177,7 +177,11 @@ def ticket_timeline(
                 server_time, payload
             FROM events
             WHERE tenant_id = %s AND aggregate_id = %s
-              AND kind IN ('ticket.created', 'ticket.custody_transferred')
+              AND kind IN (
+                'ticket.created',
+                'ticket.custody_transferred',
+                'ticket.comment_added'
+              )
             ORDER BY sequence
             """,
             (actor.tenant_id, ticket_id),

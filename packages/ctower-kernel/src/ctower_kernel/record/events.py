@@ -11,10 +11,29 @@ from datetime import UTC, datetime
 from enum import StrEnum
 from uuid import UUID
 
+from ctower_kernel.record.catalog_events import (
+    CatalogBundleActivatedPayload,
+    CatalogComponentPublishedPayload,
+    CatalogComponentReference,
+    CatalogEventPayload,
+)
+from ctower_kernel.record.ticket_events import (
+    CustodyTransferredPayload,
+    TicketCommentAddedPayload,
+    TicketCreatedPayload,
+    TicketEventPayload,
+)
+from ctower_kernel.record.ticket_events import (
+    ticket_payload_from_mapping as _ticket_payload_from_mapping,
+)
 from ctower_kernel.record.work_events import WorkChangedPayload
 
 __all__ = [
     "BootstrapCreatedPayload",
+    "CatalogBundleActivatedPayload",
+    "CatalogComponentPublishedPayload",
+    "CatalogComponentReference",
+    "CatalogEventPayload",
     "CustodyTransferredPayload",
     "EventEnvelope",
     "EventKind",
@@ -22,6 +41,7 @@ __all__ = [
     "PoisonDispositionRecordedPayload",
     "ProofChangedPayload",
     "RoutineOccurrenceRecordedPayload",
+    "TicketCommentAddedPayload",
     "TicketCreatedPayload",
     "TicketEventPayload",
     "WorkChangedPayload",
@@ -36,6 +56,9 @@ class EventKind(StrEnum):
     BOOTSTRAP_CREATED = "bootstrap.first_tenant_created"
     TICKET_CREATED = "ticket.created"
     CUSTODY_TRANSFERRED = "ticket.custody_transferred"
+    TICKET_COMMENT_ADDED = "ticket.comment_added"
+    CATALOG_COMPONENT_PUBLISHED = "catalog.component_published"
+    CATALOG_BUNDLE_ACTIVATED = "catalog.bundle_activated"
     PROOF_CHANGED = "proof.changed"
     WORKFLOW_CHANGED = "workflow.changed"
     WORK_CHANGED = "work.changed"
@@ -49,6 +72,14 @@ class EventOrigin(StrEnum):
     CONTROL_WORKER = "control_worker"
 
 
+_STREAM_PREFIXES = {
+    EventKind.CATALOG_BUNDLE_ACTIVATED: "catalog",
+    EventKind.CATALOG_COMPONENT_PUBLISHED: "catalog",
+    EventKind.POISON_DISPOSITION_RECORDED: "poison-disposition",
+    EventKind.PROOF_CHANGED: "proof",
+    EventKind.ROUTINE_OCCURRENCE_RECORDED: "routine-occurrence",
+    EventKind.WORKFLOW_CHANGED: "workflow",
+}
 _DIGEST_BYTES = 32
 _MAX_UTC_OFFSET_SECONDS = 64800
 _DIGEST_TEXT = re.compile(r"^sha256:[0-9a-f]{64}$")
@@ -85,50 +116,6 @@ class BootstrapCreatedPayload:
             "operator_vault_ref": self.operator_vault_ref,
             "tenant_id": str(self.tenant_id),
             "tenant_slug": self.tenant_slug,
-        }
-
-
-@dataclass(frozen=True, slots=True)
-class TicketCreatedPayload:
-    custodian_id: UUID
-    priority: str
-    source_kind: str
-    source_ref: str
-    title: str
-
-    def __post_init__(self) -> None:
-        _require_uuid_fields(self, ("custodian_id",))
-        if self.priority not in {"P0", "P1", "P2"}:
-            raise ValueError("priority is outside the authored event contract")
-        _bounded("source_kind", self.source_kind, minimum=1, maximum=64)
-        _bounded("source_ref", self.source_ref, minimum=1, maximum=256)
-        _bounded("title", self.title, minimum=1, maximum=200)
-
-    def to_mapping(self) -> dict[str, object]:
-        return {
-            "custodian_id": str(self.custodian_id),
-            "priority": self.priority,
-            "source_kind": self.source_kind,
-            "source_ref": self.source_ref,
-            "title": self.title,
-        }
-
-
-@dataclass(frozen=True, slots=True)
-class CustodyTransferredPayload:
-    from_custodian_id: UUID
-    reason: str
-    to_custodian_id: UUID
-
-    def __post_init__(self) -> None:
-        _require_uuid_fields(self, ("from_custodian_id", "to_custodian_id"))
-        _bounded("reason", self.reason, minimum=1, maximum=500)
-
-    def to_mapping(self) -> dict[str, object]:
-        return {
-            "from_custodian_id": str(self.from_custodian_id),
-            "reason": self.reason,
-            "to_custodian_id": str(self.to_custodian_id),
         }
 
 
@@ -292,15 +279,17 @@ class PoisonDispositionRecordedPayload:
 
 type EventPayload = (
     BootstrapCreatedPayload
+    | CatalogComponentPublishedPayload
+    | CatalogBundleActivatedPayload
     | TicketCreatedPayload
     | CustodyTransferredPayload
+    | TicketCommentAddedPayload
     | ProofChangedPayload
     | WorkflowChangedPayload
     | WorkChangedPayload
     | RoutineOccurrenceRecordedPayload
     | PoisonDispositionRecordedPayload
 )
-type TicketEventPayload = TicketCreatedPayload | CustodyTransferredPayload
 
 
 @dataclass(frozen=True, slots=True)
@@ -365,32 +354,22 @@ def ticket_payload_from_mapping(
 ) -> TicketEventPayload:
     """Rebuild one typed ticket payload at the persistence read boundary."""
 
-    if kind is EventKind.TICKET_CREATED:
-        _require_keys(
-            payload,
-            {"custodian_id", "priority", "source_kind", "source_ref", "title"},
-        )
-        return TicketCreatedPayload(
-            custodian_id=_uuid(payload["custodian_id"], "custodian_id"),
-            priority=_string(payload["priority"], "priority"),
-            source_kind=_string(payload["source_kind"], "source_kind"),
-            source_ref=_string(payload["source_ref"], "source_ref"),
-            title=_string(payload["title"], "title"),
-        )
-    if kind is EventKind.CUSTODY_TRANSFERRED:
-        _require_keys(payload, {"from_custodian_id", "reason", "to_custodian_id"})
-        return CustodyTransferredPayload(
-            from_custodian_id=_uuid(payload["from_custodian_id"], "from_custodian_id"),
-            reason=_string(payload["reason"], "reason"),
-            to_custodian_id=_uuid(payload["to_custodian_id"], "to_custodian_id"),
-        )
-    raise ValueError(f"{kind} is not a ticket timeline event")
+    return _ticket_payload_from_mapping(kind.value, payload)
 
 
 _EVENT_VARIANTS: dict[EventKind, tuple[type[object], EventOrigin]] = {
     EventKind.BOOTSTRAP_CREATED: (BootstrapCreatedPayload, EventOrigin.BOOTSTRAP),
     EventKind.TICKET_CREATED: (TicketCreatedPayload, EventOrigin.API),
     EventKind.CUSTODY_TRANSFERRED: (CustodyTransferredPayload, EventOrigin.API),
+    EventKind.TICKET_COMMENT_ADDED: (TicketCommentAddedPayload, EventOrigin.API),
+    EventKind.CATALOG_COMPONENT_PUBLISHED: (
+        CatalogComponentPublishedPayload,
+        EventOrigin.API,
+    ),
+    EventKind.CATALOG_BUNDLE_ACTIVATED: (
+        CatalogBundleActivatedPayload,
+        EventOrigin.API,
+    ),
     EventKind.PROOF_CHANGED: (ProofChangedPayload, EventOrigin.API),
     EventKind.WORKFLOW_CHANGED: (WorkflowChangedPayload, EventOrigin.API),
     EventKind.WORK_CHANGED: (WorkChangedPayload, EventOrigin.API),
@@ -459,14 +438,43 @@ def _validate_timestamp(value: object) -> None:
 def _validate_event_identity(event: EventEnvelope) -> None:
     if event.stream_id != _stream_id(event.kind, event.aggregate_id):
         raise ValueError("event stream does not match its kind and aggregate identity")
+    _validate_bootstrap_identity(event)
+    _validate_ticket_identity(event)
+    _validate_catalog_identity(event)
+    _validate_occurrence_identity(event)
+    _validate_poison_identity(event)
+
+
+def _validate_bootstrap_identity(event: EventEnvelope) -> None:
     if isinstance(event.payload, BootstrapCreatedPayload) and (
         event.aggregate_id != event.tenant_id or event.payload.tenant_id != event.tenant_id
     ):
         raise ValueError("bootstrap aggregate, payload, and tenant identity must match")
+
+
+def _validate_ticket_identity(event: EventEnvelope) -> None:
+    if isinstance(event.payload, TicketCommentAddedPayload) and (
+        event.aggregate_id != event.payload.ticket_id
+    ):
+        raise ValueError("comment aggregate and ticket identity must match")
+
+
+def _validate_catalog_identity(event: EventEnvelope) -> None:
+    if (
+        isinstance(event.payload, CatalogComponentPublishedPayload | CatalogBundleActivatedPayload)
+        and event.aggregate_id != event.tenant_id
+    ):
+        raise ValueError("Catalog aggregate and tenant identity must match")
+
+
+def _validate_occurrence_identity(event: EventEnvelope) -> None:
     if isinstance(event.payload, RoutineOccurrenceRecordedPayload) and (
         event.aggregate_id != event.payload.occurrence_id
     ):
         raise ValueError("Routine aggregate and occurrence identity must match")
+
+
+def _validate_poison_identity(event: EventEnvelope) -> None:
     if isinstance(event.payload, PoisonDispositionRecordedPayload) and (
         event.aggregate_id != event.client_command_id
     ):
@@ -476,15 +484,7 @@ def _validate_event_identity(event: EventEnvelope) -> None:
 def _stream_id(kind: EventKind, aggregate_id: UUID) -> str:
     if kind is EventKind.BOOTSTRAP_CREATED:
         return f"tenant:{aggregate_id}:bootstrap"
-    if kind is EventKind.PROOF_CHANGED:
-        return f"proof:{aggregate_id}"
-    if kind is EventKind.WORKFLOW_CHANGED:
-        return f"workflow:{aggregate_id}"
-    if kind is EventKind.ROUTINE_OCCURRENCE_RECORDED:
-        return f"routine-occurrence:{aggregate_id}"
-    if kind is EventKind.POISON_DISPOSITION_RECORDED:
-        return f"poison-disposition:{aggregate_id}"
-    return f"ticket:{aggregate_id}"
+    return f"{_STREAM_PREFIXES.get(kind, 'ticket')}:{aggregate_id}"
 
 
 def _bounded(label: str, value: object, *, minimum: int, maximum: int | None = None) -> None:
@@ -503,23 +503,6 @@ def _require_uuid_fields(value: object, names: tuple[str, ...]) -> None:
 def _require_uuid_tuple(label: str, value: object) -> None:
     if not isinstance(value, tuple) or not all(isinstance(item, UUID) for item in value):
         raise TypeError(f"{label} must be a UUID tuple")
-
-
-def _require_keys(payload: Mapping[str, object], expected: set[str]) -> None:
-    if set(payload) != expected:
-        raise ValueError("event payload fields do not match the authored variant")
-
-
-def _uuid(value: object, label: str) -> UUID:
-    if not isinstance(value, str):
-        raise TypeError(f"{label} must be a UUID string")
-    return UUID(value)
-
-
-def _string(value: object, label: str) -> str:
-    if not isinstance(value, str):
-        raise TypeError(f"{label} must be a string")
-    return value
 
 
 def _canonical(value: object) -> str:
