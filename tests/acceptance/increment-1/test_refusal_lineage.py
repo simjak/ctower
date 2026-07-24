@@ -2,16 +2,23 @@
 
 from __future__ import annotations
 
+import hashlib
+import json
 from collections.abc import Callable
 from datetime import UTC, datetime, timedelta
+from pathlib import Path
 from typing import cast
 from uuid import UUID, uuid4
 
+import httpx
+import psycopg
 import pytest
-from support.server import running_api
+from support.server import running_api, start_and_admit
+from support.telemetry import telemetry_headers
 from support.tenant_fixture import TenantFixture
 
 from ctower_client import (
+    AdmitIntent,
     AuditEvent,
     BlockIntent,
     CtowerClient,
@@ -27,13 +34,19 @@ from ctower_client import (
     SourceReference,
     TicketCreateRequest,
     TicketIntentRequest,
+    WorkflowStartRequest,
 )
+from ctower_kernel.workflow import WorkflowGraph
 
 __all__: tuple[str, ...] = ()
 
 INDEPENDENT_TICKET_VERSION = 3
 THREE_EVENT_TRACE = 3
 TWO_EVENT_TRACE = 2
+HTTP_PENDING = 202
+HTTP_UNAUTHORIZED = 401
+HTTP_CONFLICT = 409
+ROOT = Path(__file__).parents[3]
 
 
 def test_ticket_relation_and_blocker_refusals_replay_without_mutation(
@@ -181,6 +194,79 @@ def test_custody_and_proof_refusals_replay_original_versions(
             _assert_proof_refusal(commander, tenant)
 
 
+def test_http_refusal_survives_state_change_and_preauth_does_not_reserve(
+    tenant: TenantFixture,
+) -> None:
+    with (
+        running_api(tenant.database.runtime_dsn) as base_url,
+        CtowerClient(base_url, credential=tenant.commander_credential) as commander,
+        httpx.Client(base_url=base_url) as raw,
+    ):
+        ticket_id = _create_public_ticket(commander, tenant, "workflow-refusal")
+        _start(commander, ticket_id)
+        command_id = uuid4()
+        request = {
+            "expected_version": 1,
+            "workflow_ref": "ctower.trust-spine-four-stage@1",
+            "source_stage": "capture",
+            "destination_stage": "frame",
+        }
+        before = _record_counts(tenant, command_id)
+        first = raw.post(
+            f"/v1/tickets/{ticket_id}/workflow/transition",
+            json=request,
+            headers=_headers(tenant.commander_credential, command_id, ticket_id),
+        )
+        after = _record_counts(tenant, command_id)
+        commander.apply_ticket_intent(
+            ticket_id,
+            TicketIntentRequest(
+                intent=AdmitIntent(
+                    kind="admit",
+                    expected_version=1,
+                    reason="Business predicate is now satisfied",
+                )
+            ),
+            command_id=uuid4(),
+        )
+        replay = raw.post(
+            f"/v1/tickets/{ticket_id}/workflow/transition",
+            json=request,
+            headers=_headers(tenant.commander_credential, command_id, ticket_id),
+        )
+        changed = raw.post(
+            f"/v1/tickets/{ticket_id}/workflow/transition",
+            json={**request, "destination_stage": "verify"},
+            headers=_headers(tenant.commander_credential, command_id, ticket_id),
+        )
+
+        ready_id = _create_public_ticket(commander, tenant, "preauth-key")
+        start_and_admit(commander, ready_id)
+        preauth_id = uuid4()
+        unauthorized = raw.post(
+            f"/v1/tickets/{ready_id}/workflow/transition",
+            json=request,
+            headers=_headers("invalid-credential", preauth_id, ready_id),
+        )
+        assert _record_counts(tenant, preauth_id) == (0, 0, 0)
+        authorized = raw.post(
+            f"/v1/tickets/{ready_id}/workflow/transition",
+            json=request,
+            headers=_headers(tenant.commander_credential, preauth_id, ready_id),
+        )
+
+    assert first.status_code == HTTP_CONFLICT
+    assert first.json()["code"] == "workflow-predicate-unsatisfied"
+    assert before == (0, 0, 0)
+    assert after == (1, 0, 0)
+    assert replay.content == first.content
+    assert changed.status_code == HTTP_CONFLICT
+    assert changed.json()["code"] == "idempotency-conflict"
+    assert unauthorized.status_code == HTTP_UNAUTHORIZED
+    assert authorized.status_code == HTTP_PENDING
+    assert _record_counts(tenant, preauth_id) == (1, 1, 1)
+
+
 def _assert_custody_refusal(client: CtowerClient, tenant: TenantFixture) -> None:
     ticket_id = client.create_ticket(
         _ticket_request(tenant.commander_id, "custody-ticket"), command_id=uuid4()
@@ -227,6 +313,7 @@ def _assert_proof_refusal(client: CtowerClient, tenant: TenantFixture) -> None:
     ticket_id = client.create_ticket(
         _ticket_request(tenant.commander_id, "proof-ticket"), command_id=uuid4()
     ).ticket.ticket_id
+    _start(client, ticket_id)
     command_id = uuid4()
     refused_request = _freeze_request(expected_version=1, fill="a")
     first = _problem(
@@ -253,7 +340,7 @@ def _assert_proof_refusal(client: CtowerClient, tenant: TenantFixture) -> None:
     assert changed.code == "idempotency-conflict"
     assert committed.version == 1
     events = _audit(client, ticket_id)
-    assert len(events) == TWO_EVENT_TRACE
+    assert len(events) == THREE_EVENT_TRACE
     assert all(event.command_id != command_id for event in events)
 
 
@@ -291,12 +378,74 @@ def _freeze_request(*, expected_version: int, fill: str) -> FreezeCriteriaReques
         criteria=(
             ProofCriterion(
                 key="artifact-current",
-                description="Artifact matches the candidate",
+                description="Artifact evidence matches the current candidate.",
                 candidate_dependent=True,
                 requires_verdict=True,
             ),
         ),
     )
+
+
+def _create_public_ticket(client: CtowerClient, tenant: TenantFixture, suffix: str) -> UUID:
+    return client.create_ticket(
+        _ticket_request(tenant.commander_id, suffix), command_id=uuid4()
+    ).ticket.ticket_id
+
+
+def _start(client: CtowerClient, ticket_id: UUID) -> None:
+    graph = WorkflowGraph.from_mapping(
+        json.loads(
+            (ROOT / "packs/workflows/ctower.trust-spine-four-stage/v1.yaml").read_text(
+                encoding="utf-8"
+            )
+        )
+    )
+    client.start_ticket_workflow(
+        ticket_id,
+        WorkflowStartRequest(
+            workflow_ref=graph.reference,
+            workflow_digest=graph.digest,
+            execution_policy_ref="ctower.trust-spine-four-stage.execution@1",
+            execution_policy_digest=_digest(
+                "packs/policies/execution/trust-spine-four-stage-v1.yaml"
+            ),
+            gate_policy_ref="ctower.trust-spine-four-stage.gates@1",
+            gate_policy_digest=_digest("packs/policies/gates/trust-spine-four-stage-v1.yaml"),
+            evidence_policy_ref="ctower.trust-spine-four-stage.evidence@1",
+            evidence_policy_digest=_digest(
+                "packs/policies/evidence/trust-spine-four-stage-v1.yaml"
+            ),
+        ),
+        command_id=uuid4(),
+    )
+
+
+def _digest(relative: str) -> str:
+    return "sha256:" + hashlib.sha256((ROOT / relative).read_bytes()).hexdigest()
+
+
+def _headers(credential: str, command_id: UUID, ticket_id: UUID) -> dict[str, str]:
+    return {
+        "Authorization": f"Bearer {credential}",
+        "Idempotency-Key": str(command_id),
+        **telemetry_headers(command_id, ticket_id=ticket_id),
+    }
+
+
+def _record_counts(tenant: TenantFixture, command_id: UUID) -> tuple[int, int, int]:
+    with psycopg.connect(tenant.database.admin_dsn) as connection:
+        row = connection.execute(
+            """
+            SELECT
+                (SELECT count(*) FROM command_results WHERE client_command_id = %s),
+                (SELECT count(*) FROM events WHERE client_command_id = %s),
+                (SELECT count(*) FROM outbox WHERE event_id IN (
+                    SELECT event_id FROM events WHERE client_command_id = %s
+                ))
+            """,
+            (command_id, command_id, command_id),
+        ).fetchone()
+    return cast(tuple[int, int, int], row)
 
 
 def _problem[T](operation: Callable[[], T]) -> Problem:

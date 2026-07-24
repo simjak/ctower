@@ -11,6 +11,7 @@ from ctower_kernel.proof import (
     Criterion,
     Evidence,
     Proof,
+    ProofPolicy,
     ProofSnapshot,
     Verdict,
     VerdictDecision,
@@ -22,6 +23,7 @@ __all__: tuple[str, ...] = ()
 def proof_is_current(
     connection: psycopg.Connection[dict[str, object]],
     evaluator: Proof,
+    policy: ProofPolicy,
     tenant_id: UUID,
     ticket_id: UUID,
 ) -> bool:
@@ -36,7 +38,7 @@ def proof_is_current(
         (tenant_id, ticket_id),
     ).fetchone()
     return bundle is not None and evaluator.is_satisfied(
-        load_snapshot(connection, bundle, tenant_id)
+        load_snapshot(connection, bundle, tenant_id), policy=policy
     )
 
 

@@ -15,6 +15,7 @@ from uuid import UUID
 from ctower_kernel.telemetry import TelemetryContext
 
 if TYPE_CHECKING:
+    from ctower_kernel.proof.policy import ProofPolicy
     from ctower_kernel.record import RecordProblem
 
 __all__ = [
@@ -272,28 +273,39 @@ class Proof:
         actor: ProofActor,
         snapshot: ProofSnapshot,
         command: ProofCommand,
+        *,
+        policy: ProofPolicy | None = None,
     ) -> ProofDecision:
         """Decide one immutable proof command."""
 
+        if policy is not None and snapshot.criteria and snapshot.criteria != policy.criteria:
+            return _refusal("policy-mismatch", snapshot)
         if isinstance(command, RecordEvidence):
             return self._record_evidence(actor, snapshot, command)
         if isinstance(command, RecordVerdict):
             return self._record_verdict(actor, snapshot, command)
         if isinstance(command, ChangeCandidate):
             return self._change_candidate(actor, snapshot, command)
-        return self._freeze_criteria(actor, snapshot, command)
+        return self._freeze_criteria(actor, snapshot, command, policy=policy)
 
-    def is_satisfied(self, snapshot: ProofSnapshot) -> bool:
+    def is_satisfied(self, snapshot: ProofSnapshot, *, policy: ProofPolicy | None = None) -> bool:
         """Require current evidence and every configured protected verdict."""
 
         if not snapshot.criteria or snapshot.candidate_digest is None:
+            return False
+        if policy is not None and snapshot.criteria != policy.criteria:
             return False
         return all(
             self._criterion_satisfied(snapshot, criterion) for criterion in snapshot.criteria
         )
 
     def _freeze_criteria(
-        self, actor: ProofActor, snapshot: ProofSnapshot, command: FreezeCriteria
+        self,
+        actor: ProofActor,
+        snapshot: ProofSnapshot,
+        command: FreezeCriteria,
+        *,
+        policy: ProofPolicy | None,
     ) -> ProofDecision:
         if snapshot.criteria:
             return ProofDecision(
@@ -315,6 +327,8 @@ class Proof:
                 reason="criteria-invalid",
                 snapshot=snapshot,
             )
+        if policy is not None and command.criteria != policy.criteria:
+            return _refusal("criteria-policy-mismatch", snapshot)
         if _DIGEST.fullmatch(command.candidate_digest) is None:
             return ProofDecision(
                 accepted=False,
@@ -326,7 +340,7 @@ class Proof:
             reason="accepted",
             snapshot=replace(
                 snapshot,
-                criteria=command.criteria,
+                criteria=policy.criteria if policy is not None else command.criteria,
                 candidate_digest=command.candidate_digest,
                 candidate_author_id=command.candidate_author_id,
             ),

@@ -8,7 +8,14 @@ from uuid import UUID
 
 import psycopg
 
-from ctower_kernel.proof import Proof, ProofActor, ProofMutation, ProofReceipt, RecordEvidence
+from ctower_kernel.proof import (
+    Proof,
+    ProofActor,
+    ProofMutation,
+    ProofPolicy,
+    ProofReceipt,
+    RecordEvidence,
+)
 from ctower_kernel.proof._object_sql import (
     complete_erasure,
     inline_objects,
@@ -16,7 +23,7 @@ from ctower_kernel.proof._object_sql import (
     prepare_erasure,
     record_backfill,
 )
-from ctower_kernel.proof._postgres_sql import mutate_proof
+from ctower_kernel.proof._postgres_sql import ProofPolicyPins, mutate_proof
 from ctower_kernel.proof._snapshot_sql import proof_is_current
 from ctower_kernel.proof.objects import (
     ObjectIntegrityError,
@@ -38,12 +45,16 @@ class PostgresProof:
         self,
         dsn: str,
         *,
+        policies: tuple[ProofPolicy, ...] = (),
+        policy_pins: ProofPolicyPins | None = None,
         object_store: ProofObjectStore | None = None,
         object_key_reference: str | None = None,
         telemetry: Telemetry | None = None,
         clock: Callable[[], datetime] | None = None,
     ) -> None:
         self._dsn = dsn
+        self._policies = policies
+        self._policy_pins = policy_pins or _UnavailableProofPolicyPins()
         self._object_store = object_store
         self._object_key_reference = object_key_reference
         self._telemetry = telemetry or NoopTelemetry()
@@ -68,6 +79,8 @@ class PostgresProof:
             lambda: mutate_proof(
                 self._dsn,
                 evaluator,
+                self._policies,
+                self._policy_pins,
                 actor,
                 mutation,
                 request_digest=request_digest,
@@ -184,7 +197,11 @@ class PostgresProof:
     ) -> bool:
         """Evaluate current proof inside a caller-owned atomic transaction."""
 
-        return proof_is_current(connection, Proof(), tenant_id, ticket_id)
+        pin = self._policy_pins.proof_policy_pin(connection, tenant_id, ticket_id)
+        policy = next((item for item in self._policies if item.pin == pin), None)
+        return policy is not None and proof_is_current(
+            connection, Proof(), policy, tenant_id, ticket_id
+        )
 
     def _prepare_object(
         self,
@@ -229,3 +246,14 @@ class PostgresProof:
         if self._object_store is None or self._object_key_reference is None:
             raise ObjectIntegrityError("encrypted object storage is not configured")
         return self._object_store, self._object_key_reference
+
+
+class _UnavailableProofPolicyPins:
+    def proof_policy_pin(
+        self,
+        connection: psycopg.Connection[dict[str, object]],
+        tenant_id: UUID,
+        ticket_id: UUID,
+    ) -> tuple[str, str, str, str, str] | None:
+        del connection, tenant_id, ticket_id
+        return None

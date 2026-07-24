@@ -3,24 +3,36 @@
 from __future__ import annotations
 
 import hashlib
+from collections.abc import Callable
 from dataclasses import dataclass
 from uuid import UUID, uuid4
 
 import psycopg
 import pytest
 from psycopg.rows import dict_row
-from support.server import running_api, start_and_admit
+from support.server import (
+    fixture_proof_policy,
+    fixture_proof_store,
+    running_api,
+    start_and_admit,
+)
 from support.tenant_fixture import TenantFixture
 
 from ctower_client import (
+    AssignmentChangeRequest,
+    AssignmentList,
     CtowerClient,
     CtowerProblemError,
     EvidenceRequest,
     FreezeCriteriaRequest,
+    MutableAssignmentKind,
     Priority,
+    Problem,
     ProofCriterion,
+    ReopenIntent,
     ResolveCloseRequest,
     TicketCreateRequest,
+    TicketIntentRequest,
     VerdictRequest,
     WorkflowTransitionRequest,
 )
@@ -35,6 +47,9 @@ from ctower_client import (
 )
 from ctower_client import (
     WorkflowReceipt as HttpWorkflowReceipt,
+)
+from ctower_client import (
+    WorkReceipt as HttpWorkReceipt,
 )
 from ctower_kernel.proof import (
     Criterion,
@@ -86,6 +101,19 @@ class _PreparedTrace:
     self_review_code: str
 
 
+@dataclass(frozen=True, slots=True)
+class _OwnershipTrace:
+    verdict: HttpProofReceipt
+    terminal: HttpWorkflowReceipt
+    closed: HttpWorkflowReceipt
+    assignments: AssignmentList
+    refused: Problem
+    reopened: HttpWorkReceipt
+    replay: Problem
+    reassigned: HttpWorkReceipt
+    hidden: Problem
+
+
 class _AlwaysReady:
     def unmet_facts(
         self,
@@ -97,7 +125,9 @@ class _AlwaysReady:
         return ()
 
 
-def test_generated_client_drives_the_four_stage_fixture(tenant: TenantFixture) -> None:
+def test_generated_client_drives_the_four_stage_fixture(
+    tenant: TenantFixture, second_tenant: TenantFixture
+) -> None:
     candidate_digest = "sha256:" + "c" * 64
     content = "four-stage evidence"
     artifact_digest = "sha256:" + hashlib.sha256(content.encode()).hexdigest()
@@ -106,20 +136,9 @@ def test_generated_client_drives_the_four_stage_fixture(tenant: TenantFixture) -
             prepared = _prepare_public_trace(
                 commander, tenant, candidate_digest, artifact_digest, content
             )
-        with CtowerClient(base_url, credential=tenant.operator_credential) as operator:
-            verdict = operator.record_proof_verdict(
-                prepared.ticket_id,
-                VerdictRequest(
-                    expected_version=2,
-                    verdict_id=uuid4(),
-                    criterion_key="artifact-current",
-                    candidate_digest=candidate_digest,
-                    decision=HttpVerdictDecision.PASS,
-                ),
-                command_id=uuid4(),
-            )
-        with CtowerClient(base_url, credential=tenant.commander_credential) as commander:
-            terminal, closed = _close_public_trace(commander, prepared.ticket_id)
+        ownership = _exercise_ownership(
+            base_url, tenant, second_tenant, prepared.ticket_id, candidate_digest
+        )
 
     assert prepared.frame.stage == "frame"
     assert prepared.frozen.version == 1
@@ -127,9 +146,87 @@ def test_generated_client_drives_the_four_stage_fixture(tenant: TenantFixture) -
     assert prepared.corrupt_code == "proof-evidence-digest-mismatch"
     assert prepared.evidence.version == prepared.frozen.version + 1
     assert prepared.self_review_code == "proof-self-review-refused"
-    assert verdict.satisfied is True
-    assert terminal.stage == "close"
-    assert closed.lifecycle_facts == ("resolved", "closed")
+    assert ownership.verdict.satisfied is True
+    assert ownership.terminal.stage == "close"
+    assert ownership.closed.lifecycle_facts == ("resolved", "closed")
+    assert all(item.released_at is not None for item in ownership.assignments.assignments)
+    assert ownership.refused.code == "work-ticket-terminal"
+    assert ownership.replay == ownership.refused
+    assert ownership.reopened.operation == "reopened"
+    assert ownership.reassigned.operation == "assignment_changed"
+    assert ownership.hidden.code == "tenant-scope-denied"
+
+
+def _exercise_ownership(
+    base_url: str,
+    tenant: TenantFixture,
+    second_tenant: TenantFixture,
+    ticket_id: UUID,
+    candidate_digest: str,
+) -> _OwnershipTrace:
+    with CtowerClient(base_url, credential=tenant.commander_credential) as commander:
+        commander.change_ticket_assignment(
+            ticket_id,
+            AssignmentChangeRequest(
+                assignment_kind=MutableAssignmentKind.CURRENT_ASSIGNEE,
+                expected_version=2,
+                reason="Own the final candidate",
+                to_principal_id=tenant.operator_id,
+            ),
+            command_id=uuid4(),
+        )
+    with CtowerClient(base_url, credential=tenant.operator_credential) as operator:
+        verdict = operator.record_proof_verdict(
+            ticket_id,
+            VerdictRequest(
+                expected_version=2,
+                verdict_id=uuid4(),
+                criterion_key="artifact-current",
+                candidate_digest=candidate_digest,
+                decision=HttpVerdictDecision.PASS,
+            ),
+            command_id=uuid4(),
+        )
+    with CtowerClient(base_url, credential=tenant.commander_credential) as commander:
+        terminal, closed = _close_public_trace(commander, ticket_id)
+        assignments = commander.list_ticket_assignments(ticket_id)
+        refused_id = uuid4()
+        request = AssignmentChangeRequest(
+            assignment_kind=MutableAssignmentKind.CURRENT_ASSIGNEE,
+            expected_version=3,
+            reason="Closed ownership is forbidden",
+            to_principal_id=tenant.commander_id,
+        )
+        refused = _problem(
+            lambda: commander.change_ticket_assignment(ticket_id, request, command_id=refused_id)
+        )
+        reopened = commander.apply_ticket_intent(
+            ticket_id,
+            TicketIntentRequest(
+                intent=ReopenIntent(
+                    kind="reopen",
+                    expected_version=3,
+                    reason="A new episode is authorized",
+                    priority_policy="carry_forward",
+                )
+            ),
+            command_id=uuid4(),
+        )
+        replay = _problem(
+            lambda: commander.change_ticket_assignment(ticket_id, request, command_id=refused_id)
+        )
+        reassigned = commander.change_ticket_assignment(
+            ticket_id,
+            request.model_copy(
+                update={"expected_version": 4, "reason": "Own the reopened episode"}
+            ),
+            command_id=uuid4(),
+        )
+    with CtowerClient(base_url, credential=second_tenant.commander_credential) as foreign:
+        hidden = _problem(lambda: foreign.list_ticket_assignments(ticket_id))
+    return _OwnershipTrace(
+        verdict, terminal, closed, assignments, refused, reopened, replay, reassigned, hidden
+    )
 
 
 def _prepare_public_trace(
@@ -187,7 +284,7 @@ def _reach_verification(
             criteria=(
                 ProofCriterion(
                     key="artifact-current",
-                    description="Current artifact.",
+                    description="Artifact evidence matches the current candidate.",
                     candidate_dependent=True,
                     requires_verdict=True,
                 ),
@@ -329,7 +426,17 @@ def test_close_requires_current_proof_and_appends_resolved_then_closed_atomicall
 def _terminal_context(
     tenant: TenantFixture,
 ) -> tuple[PostgresProof, Workflow, WorkflowActor, UUID]:
-    proof_store = PostgresProof(tenant.database.runtime_dsn)
+    criterion = Criterion(
+        key="current",
+        description="Evidence is current.",
+        candidate_dependent=True,
+        requires_verdict=True,
+    )
+    policy = fixture_proof_policy(
+        "fixture.atomic-close@1",
+        criterion,
+    )
+    proof_store = fixture_proof_store(tenant.database.runtime_dsn, policy)
     workflow_store = PostgresWorkflow(
         tenant.database.runtime_dsn,
         proof_gate=proof_store,
@@ -342,8 +449,8 @@ def _terminal_context(
         writer=workflow_store,
         policy_digests={
             "fixture.execution@1": "sha256:" + "1" * 64,
-            "fixture.gates@1": "sha256:" + "2" * 64,
-            "fixture.evidence@1": "sha256:" + "3" * 64,
+            policy.gate_policy_ref: policy.gate_policy_digest,
+            policy.evidence_policy_ref: policy.evidence_policy_digest,
         },
     )
     actor = WorkflowActor(tenant.commander_id, tenant.tenant_id)
@@ -356,10 +463,10 @@ def _terminal_context(
             graph.digest,
             "fixture.execution@1",
             "sha256:" + "1" * 64,
-            "fixture.gates@1",
-            "sha256:" + "2" * 64,
-            "fixture.evidence@1",
-            "sha256:" + "3" * 64,
+            policy.gate_policy_ref,
+            policy.gate_policy_digest,
+            policy.evidence_policy_ref,
+            policy.evidence_policy_digest,
         ),
         telemetry=_telemetry(),
     )
@@ -520,6 +627,12 @@ def _assert_lifecycle(
         )
         == expected
     )
+
+
+def _problem[T](operation: Callable[[], T]) -> Problem:
+    with pytest.raises(CtowerProblemError) as captured:
+        operation()
+    return Problem.model_validate(captured.value.problem)
 
 
 def _telemetry() -> TelemetryContext:

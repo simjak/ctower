@@ -16,6 +16,7 @@ from ctower_kernel.proof.interface import (
     Verdict,
     VerdictDecision,
 )
+from ctower_kernel.proof.policy import ProofPolicy
 
 __all__ = [
     "ChangeCandidate",
@@ -26,6 +27,7 @@ __all__ = [
     "ProofActor",
     "ProofDecision",
     "ProofMutation",
+    "ProofPolicy",
     "ProofReceipt",
     "ProofSnapshot",
     "RecordEvidence",

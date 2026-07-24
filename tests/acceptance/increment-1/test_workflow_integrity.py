@@ -11,7 +11,12 @@ from uuid import UUID, uuid4
 import psycopg
 import pytest
 from psycopg.rows import dict_row
-from support.server import running_api, start_and_admit
+from support.server import (
+    fixture_proof_policy,
+    fixture_proof_store,
+    running_api,
+    start_and_admit,
+)
 from support.tenant_fixture import TenantFixture
 
 from ctower_client import (
@@ -38,6 +43,7 @@ from ctower_kernel.proof import (
     Proof,
     ProofActor,
     ProofMutation,
+    ProofPolicy,
     ProofReceipt,
     RecordEvidence,
     RecordVerdict,
@@ -323,7 +329,7 @@ def _record_current_evidence(client: CtowerClient, ticket_id: UUID) -> None:
             criteria=(
                 ProofCriterion(
                     key="artifact-current",
-                    description="The candidate artifact is current.",
+                    description="Artifact evidence matches the current candidate.",
                     candidate_dependent=True,
                     requires_verdict=True,
                 ),
@@ -376,7 +382,8 @@ def _prepare_verification_stage(
     )
     assert not isinstance(ticket, RecordProblem)
     ticket_id = ticket.ticket.ticket_id
-    proof_store = PostgresProof(tenant.database.runtime_dsn)
+    policy = _verdict_order_policy()
+    proof_store = fixture_proof_store(tenant.database.runtime_dsn, policy)
     workflow_store = PostgresWorkflow(
         tenant.database.runtime_dsn,
         proof_gate=proof_store,
@@ -388,8 +395,8 @@ def _prepare_verification_stage(
         writer=workflow_store,
         policy_digests={
             "fixture.execution@1": "sha256:" + "1" * 64,
-            "fixture.gates@1": "sha256:" + "2" * 64,
-            "fixture.evidence@1": "sha256:" + "3" * 64,
+            policy.gate_policy_ref: policy.gate_policy_digest,
+            policy.evidence_policy_ref: policy.evidence_policy_digest,
         },
     )
     actor = WorkflowActor(tenant.commander_id, tenant.tenant_id)
@@ -402,10 +409,10 @@ def _prepare_verification_stage(
             graph.digest,
             "fixture.execution@1",
             "sha256:" + "1" * 64,
-            "fixture.gates@1",
-            "sha256:" + "2" * 64,
-            "fixture.evidence@1",
-            "sha256:" + "3" * 64,
+            policy.gate_policy_ref,
+            policy.gate_policy_digest,
+            policy.evidence_policy_ref,
+            policy.evidence_policy_digest,
         ),
         telemetry=_telemetry(),
     )
@@ -424,6 +431,18 @@ def _prepare_verification_stage(
     )
     assert isinstance(verification, WorkflowReceipt)
     return proof_store, workflow, ticket_id
+
+
+def _verdict_order_policy() -> ProofPolicy:
+    return fixture_proof_policy(
+        "fixture.verdict-order@1",
+        Criterion(
+            key="artifact-current",
+            description="The candidate artifact is current.",
+            candidate_dependent=True,
+            requires_verdict=True,
+        ),
+    )
 
 
 def _verdict_workflow_graph() -> WorkflowGraph:

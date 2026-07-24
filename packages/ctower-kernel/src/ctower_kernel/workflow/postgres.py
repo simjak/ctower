@@ -3,6 +3,10 @@
 from __future__ import annotations
 
 from datetime import datetime
+from typing import cast
+from uuid import UUID
+
+import psycopg
 
 from ctower_kernel.record import RecordProblem
 from ctower_kernel.record.transaction import recover_ambiguous_commit
@@ -20,7 +24,44 @@ from ctower_kernel.workflow._postgres_sql import ProofGate, WorkReadinessGate
 from ctower_kernel.workflow._postgres_sql import advance_workflow as _advance
 from ctower_kernel.workflow._start_sql import start_workflow as _start
 
-__all__ = ["PostgresWorkflow"]
+__all__ = ["PostgresWorkflow", "PostgresWorkflowPolicyPins"]
+
+
+class PostgresWorkflowPolicyPins:
+    """Expose only current immutable proof pins to the composed Proof adapter."""
+
+    def proof_policy_pin(
+        self,
+        connection: psycopg.Connection[dict[str, object]],
+        tenant_id: UUID,
+        ticket_id: UUID,
+    ) -> tuple[str, str, str, str, str] | None:
+        row = connection.execute(
+            """
+            SELECT workflow_key, workflow_revision, gate_policy_ref, gate_policy_digest,
+                evidence_policy_ref, evidence_policy_digest
+            FROM workflow_runs AS run
+            WHERE run.tenant_id = %s AND run.ticket_id = %s
+              AND run.episode_number = (
+                  SELECT current_episode FROM tickets
+                  WHERE tenant_id = %s AND ticket_id = %s
+              )
+            """,
+            (tenant_id, ticket_id, tenant_id, ticket_id),
+        ).fetchone()
+        if row is None:
+            return None
+        return (
+            f"{row['workflow_key']}@{row['workflow_revision']}",
+            str(row["gate_policy_ref"]),
+            _digest(row["gate_policy_digest"]),
+            str(row["evidence_policy_ref"]),
+            _digest(row["evidence_policy_digest"]),
+        )
+
+
+def _digest(value: object) -> str:
+    return "sha256:" + bytes(cast(bytes, value)).hex()
 
 
 class PostgresWorkflow:

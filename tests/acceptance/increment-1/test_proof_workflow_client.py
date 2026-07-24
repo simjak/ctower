@@ -35,7 +35,7 @@ def test_generated_client_exposes_a_typed_missing_ticket_problem(
                 criteria=(
                     ProofCriterion(
                         key="artifact-current",
-                        description="Artifact matches the reviewed candidate.",
+                        description="Artifact evidence matches the current candidate.",
                         candidate_dependent=True,
                         requires_verdict=True,
                     ),

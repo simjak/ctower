@@ -24,6 +24,7 @@ from ctower_kernel.proof import (
     Proof,
     ProofActor,
     ProofMutation,
+    ProofPolicy,
     RecordEvidence,
 )
 from ctower_kernel.proof.objects import (
@@ -57,6 +58,22 @@ from ctower_kernel.work import Work
 NOW = datetime(2026, 7, 23, 10, 0, tzinfo=UTC)
 _RECOVERY_ROLE_COUNT = 4
 __all__: tuple[str, ...] = ()
+
+
+class _FixturePolicyPins:
+    """Return one immutable server-owned pin for this direct persistence fixture."""
+
+    def __init__(self, pin: tuple[str, str, str, str, str]) -> None:
+        self._pin = pin
+
+    def proof_policy_pin(
+        self,
+        connection: psycopg.Connection[dict[str, object]],
+        tenant_id: UUID,
+        ticket_id: UUID,
+    ) -> tuple[str, str, str, str, str]:
+        del connection, tenant_id, ticket_id
+        return self._pin
 
 
 class DeterministicEncryptedStore:
@@ -195,8 +212,48 @@ def test_external_object_backfill_restore_and_erasure_fail_closed(
 
 def _record_inline_object(tenant: TenantFixture) -> tuple[bytes, str]:
     ticket_id = _ticket(tenant)
+    criterion = Criterion(
+        key="current",
+        description="Object bytes are current.",
+        candidate_dependent=True,
+        requires_verdict=False,
+    )
+    policy = ProofPolicy.from_bytes(
+        b"""
+{
+  "schema": "ctower.gate-policy/v1",
+  "key": "fixture.cp3c-object.gates",
+  "revision": 1,
+  "workflow_ref": "fixture.cp3c-object@1",
+  "evidence_policy_ref": "fixture.cp3c-object.evidence@1",
+  "criteria": [{
+    "key": "current",
+    "description": "Object bytes are current.",
+    "candidate_dependent": true,
+    "requires_verdict": false
+  }],
+  "protected_verdict": {"reviewer_kind": "operator", "self_review": "forbidden"}
+}
+""",
+        b"""
+{
+  "schema": "ctower.evidence-policy/v1",
+  "key": "fixture.cp3c-object.evidence",
+  "revision": 1,
+  "digest_algorithm": "sha256",
+  "content_encoding": "utf-8",
+  "candidate_binding": "current_digest",
+  "corruption_policy": "reject",
+  "missing_policy": "reject"
+}
+""",
+    )
     proof = Proof(
-        writer=PostgresProof(tenant.database.runtime_dsn),
+        writer=PostgresProof(
+            tenant.database.runtime_dsn,
+            policies=(policy,),
+            policy_pins=_FixturePolicyPins(policy.pin),
+        ),
         clock=lambda: NOW,
     )
     actor = ProofActor(tenant.commander_id, tenant.tenant_id, "commander")
@@ -210,14 +267,7 @@ def _record_inline_object(tenant: TenantFixture) -> tuple[bytes, str]:
             command=FreezeCriteria(
                 candidate_digest=candidate,
                 candidate_author_id=tenant.commander_id,
-                criteria=(
-                    Criterion(
-                        key="current",
-                        description="Object bytes are current.",
-                        candidate_dependent=True,
-                        requires_verdict=False,
-                    ),
-                ),
+                criteria=(criterion,),
             ),
         ),
         telemetry=_telemetry(),

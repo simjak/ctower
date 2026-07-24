@@ -25,13 +25,13 @@ from ctower_client import (
 )
 from ctower_kernel.projections import Projections
 from ctower_kernel.projections.postgres import PostgresProjections
-from ctower_kernel.proof import Proof
+from ctower_kernel.proof import Criterion, Proof, ProofPolicy
 from ctower_kernel.proof.postgres import PostgresProof
 from ctower_kernel.record.postgres import PostgresRecord
 from ctower_kernel.work import Work
 from ctower_kernel.work.postgres import PostgresWork
 from ctower_kernel.workflow import Workflow, WorkflowGraph
-from ctower_kernel.workflow.postgres import PostgresWorkflow
+from ctower_kernel.workflow.postgres import PostgresWorkflow, PostgresWorkflowPolicyPins
 
 __all__: tuple[str, ...] = ()
 ROOT = Path(__file__).parents[4]
@@ -87,6 +87,70 @@ def _policy_digests() -> dict[str, str]:
             "packs/policies/evidence/trust-spine-four-stage-v1.yaml"
         ),
     }
+
+
+def proof_policy() -> ProofPolicy:
+    """Load proof obligations from the exact authored bytes pinned by Workflow."""
+
+    gate_bytes = (ROOT / "packs/policies/gates/trust-spine-four-stage-v1.yaml").read_bytes()
+    evidence_bytes = (ROOT / "packs/policies/evidence/trust-spine-four-stage-v1.yaml").read_bytes()
+    return ProofPolicy.from_bytes(gate_bytes, evidence_bytes)
+
+
+def fixture_proof_policy(workflow_ref: str, criterion: Criterion) -> ProofPolicy:
+    """Build the exact synthetic pin used by direct persistence acceptance fixtures."""
+
+    gate_bytes = json.dumps(
+        {
+            "schema": "ctower.gate-policy/v1",
+            "key": "fixture.gates",
+            "revision": 1,
+            "workflow_ref": workflow_ref,
+            "evidence_policy_ref": "fixture.evidence@1",
+            "criteria": [
+                {
+                    "key": criterion.key,
+                    "description": criterion.description,
+                    "candidate_dependent": criterion.candidate_dependent,
+                    "requires_verdict": criterion.requires_verdict,
+                }
+            ],
+            "protected_verdict": {
+                "reviewer_kind": "operator",
+                "self_review": "forbidden",
+            },
+        },
+        separators=(",", ":"),
+        sort_keys=True,
+    ).encode()
+    evidence_bytes = json.dumps(
+        {
+            "schema": "ctower.evidence-policy/v1",
+            "key": "fixture.evidence",
+            "revision": 1,
+            "digest_algorithm": "sha256",
+            "content_encoding": "utf-8",
+            "candidate_binding": "current_digest",
+            "corruption_policy": "reject",
+            "missing_policy": "reject",
+        },
+        separators=(",", ":"),
+        sort_keys=True,
+    ).encode()
+    return ProofPolicy.from_bytes(
+        gate_bytes,
+        evidence_bytes,
+    )
+
+
+def fixture_proof_store(dsn: str, policy: ProofPolicy) -> PostgresProof:
+    """Compose a fail-closed Proof store for one synthetic Workflow pin."""
+
+    return PostgresProof(
+        dsn,
+        policies=(policy,),
+        policy_pins=PostgresWorkflowPolicyPins(),
+    )
 
 
 class _Process(Protocol):
@@ -146,7 +210,12 @@ def _serve(
         if telemetry_capture is not None or telemetry_failure
         else None
     )
-    proof_store = PostgresProof(runtime_dsn, telemetry=recorder)
+    proof_store = PostgresProof(
+        runtime_dsn,
+        policies=(proof_policy(),),
+        policy_pins=PostgresWorkflowPolicyPins(),
+        telemetry=recorder,
+    )
     workflow_store = PostgresWorkflow(
         runtime_dsn,
         proof_gate=proof_store,
