@@ -192,7 +192,7 @@
     },
     {
       "path": "0020_recovery_roles.sql",
-      "sha256": "sha256:bb5370231d52b7df6c29d97c48765e0996c37ce4119cc6d7f66a2257d6da26c0",
+      "sha256": "sha256:d5854efda905b33d1d60795057752720cf1c5749149e85a6e59ebc0162135365",
       "scope": "cluster",
       "minimum_service_version": "0.0.0",
       "maximum_service_version": "0.0.0",

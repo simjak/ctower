@@ -68,7 +68,7 @@ class _RoleShape:
     outgoing_memberships: frozenset[str] = frozenset()
     incoming_memberships: frozenset[str] = frozenset()
     has_settings: bool = False
-    owns_objects: bool = False
+    has_forbidden_cluster_authority: bool = False
 
 
 def _table_grants(*entries: tuple[str, tuple[str, ...]]) -> frozenset[_Grant]:
@@ -223,13 +223,13 @@ def _validate_existing_role(
     attributes_match = _attributes_match(role, shape)
     memberships = _membership_closures(connection, role_id)
     has_settings = _has_settings(connection, role_id)
-    owns_objects = _owns_objects(connection, role_id)
+    has_forbidden_cluster_authority = _has_forbidden_cluster_authority(connection, role_id)
     grants = _direct_grants(connection, role_id)
     if (
         not attributes_match
         or memberships != (shape.outgoing_memberships, shape.incoming_memberships)
         or has_settings is not shape.has_settings
-        or owns_objects is not shape.owns_objects
+        or has_forbidden_cluster_authority is not shape.has_forbidden_cluster_authority
         or grants != expected_grants
     ):
         raise RecoveryRoleConfigurationError
@@ -335,7 +335,7 @@ def _has_settings(
     )
 
 
-def _owns_objects(
+def _has_forbidden_cluster_authority(
     connection: psycopg.Connection[dict[str, object]],
     role_id: int,
 ) -> bool:
@@ -343,18 +343,17 @@ def _owns_objects(
         connection.execute(
             """
             SELECT 1
-            FROM pg_catalog.pg_shdepend
-            WHERE refclassid = 'pg_catalog.pg_authid'::regclass
-              AND refobjid = %s
-              AND deptype = 'o'
+            FROM pg_catalog.pg_shdepend AS dependency
+            WHERE dependency.refclassid = 'pg_catalog.pg_authid'::regclass
+              AND dependency.refobjid = %s
               AND (
-                  dbid = (SELECT oid FROM pg_catalog.pg_database WHERE datname = current_database())
+                  dependency.deptype = 'o'
                   OR (
-                      dbid = 0
-                      AND classid = 'pg_catalog.pg_database'::regclass
-                      AND objid = (
-                          SELECT oid FROM pg_catalog.pg_database
-                          WHERE datname = current_database()
+                      dependency.deptype = 'a'
+                      AND dependency.dbid <> (
+                          SELECT database.oid
+                          FROM pg_catalog.pg_database AS database
+                          WHERE database.datname = current_database()
                       )
                   )
               )

@@ -23,6 +23,23 @@ BEGIN
                       SELECT 1 FROM pg_catalog.pg_db_role_setting AS setting
                       WHERE setting.setrole = role.oid
                   )
+                  OR EXISTS (
+                      SELECT 1
+                      FROM pg_catalog.pg_shdepend AS dependency
+                      WHERE dependency.refclassid = 'pg_catalog.pg_authid'::regclass
+                        AND dependency.refobjid = role.oid
+                        AND (
+                            dependency.deptype = 'o'
+                            OR (
+                                dependency.deptype = 'a'
+                                AND dependency.dbid <> (
+                                    SELECT database.oid
+                                    FROM pg_catalog.pg_database AS database
+                                    WHERE database.datname = current_database()
+                                )
+                            )
+                        )
+                  )
               )
         ) THEN
             RAISE EXCEPTION
