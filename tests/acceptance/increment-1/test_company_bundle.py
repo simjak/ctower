@@ -11,6 +11,7 @@ from typing import cast
 from uuid import UUID, uuid4
 
 import psycopg
+import rfc8785
 from psycopg.rows import dict_row
 from support.catalog import (
     FileSchemas,
@@ -29,7 +30,7 @@ from ctower_kernel.catalog import (
     CompanyBundleCommandResult,
     PostgresCatalog,
 )
-from ctower_kernel.record import RecordProblem, SourceReference, TicketCommand
+from ctower_kernel.record import Actor, RecordProblem, SourceReference, TicketCommand
 from ctower_kernel.record.comments import TicketCommentCommand, TicketCommentResult
 from ctower_kernel.record.postgres import (
     PostgresRecord,
@@ -57,6 +58,8 @@ CATALOG_TABLES = {
 }
 IMMUTABLE_CATALOG_TABLES = CATALOG_TABLES - {"company_bundle_active"}
 _SECOND_VERSION = 2
+_SUPERSESSION_EVENT_COUNT = 2
+_CONFLICT_STATUS = 409
 
 
 def test_fresh_and_0023_upgrade_catalog_migrations_are_additive_and_least_privilege(
@@ -154,11 +157,39 @@ def test_company_bundle_apply_replay_export_and_zero_diff_are_atomic(
     assert replanned.actions == ()
     assert replanned.proposed_bundle_digest == applied.bundle_digest
     _assert_catalog_commit(tenant.database.admin_dsn, command_id, len(applied.event_ids))
-    changed = exported.bundle.model_copy(
+    _assert_successor_round_trip(
+        catalog,
+        actor,
+        exported.bundle,
+        tenant.database.admin_dsn,
+        initial_event_count=len(applied.event_ids),
+    )
+
+
+def _assert_successor_round_trip(
+    catalog: PostgresCatalog,
+    actor: Actor,
+    active_bundle: CompanyBundle,
+    dsn: str,
+    *,
+    initial_event_count: int,
+) -> None:
+    changed = _superseding_bundle(active_bundle, "company.trusted-delivery")
+    dependency = next(
+        resource for resource in changed.resources if resource.component.key == "protected.cli"
+    ).component.compatibility.requires[0]
+    incomplete = changed.model_copy(
         update={
-            "company": exported.bundle.company.model_copy(update={"display_name": "Ctower Control"})
+            "resources": tuple(
+                resource
+                for resource in changed.resources
+                if resource.component.reference() != dependency
+            )
         }
     )
+    refused = catalog.plan(actor, incomplete)
+    assert isinstance(refused, CatalogProblem)
+    assert refused.code == "bundle-reference-invalid"
     second_plan = catalog.plan(actor, changed)
     assert not isinstance(second_plan, CatalogProblem)
     second_id = uuid4()
@@ -174,11 +205,17 @@ def test_company_bundle_apply_replay_export_and_zero_diff_are_atomic(
     )
     assert isinstance(second, CompanyBundleCommandResult)
     assert second.active_version == _SECOND_VERSION
-    assert len(second.event_ids) == 1
-    assert _catalog_counts(tenant.database.admin_dsn) == (
-        len(bundle.resources),
+    assert len(second.event_ids) == _SUPERSESSION_EVENT_COUNT
+    second_export = catalog.export(actor)
+    assert not isinstance(second_export, CatalogProblem)
+    second_replan = catalog.plan(actor, second_export.bundle)
+    assert not isinstance(second_replan, CatalogProblem)
+    assert second_replan.actions == ()
+    assert second_replan.proposed_bundle_digest == second.bundle_digest
+    assert _catalog_counts(dsn) == (
+        len(active_bundle.resources) + 1,
         _SECOND_VERSION,
-        len(applied.event_ids) + 1,
+        initial_event_count + len(second.event_ids),
     )
 
 
@@ -238,6 +275,49 @@ def test_ticket_comment_is_canonical_replay_safe_and_table_free(
         "ticket.comment_added",
     ]
     _assert_comment_commit(tenant.database.admin_dsn, command_id)
+
+
+def test_cancelled_ticket_comment_is_durably_refused(
+    tenant: TenantFixture,
+) -> None:
+    actor = actor_for(tenant.tenant_id, tenant.operator_id)
+    record = PostgresRecord(tenant.database.runtime_dsn)
+    ticket_id = _create_comment_ticket(record, actor, tenant, "Cancelled comment")
+    with psycopg.connect(tenant.database.admin_dsn) as connection:
+        connection.execute(
+            """
+            UPDATE lifecycle_episodes SET state = 'cancelled'
+            WHERE tenant_id = %s AND ticket_id = %s
+            """,
+            (tenant.tenant_id, ticket_id),
+        )
+    command_id = uuid4()
+    command = TicketCommentCommand(
+        client_command_id=command_id,
+        ticket_id=ticket_id,
+        body="This must remain absent.",
+    )
+    request_digest = _digest(command.request_payload())
+
+    refused = record.add_comment(
+        actor,
+        command,
+        request_digest=request_digest,
+        now=datetime(2026, 7, 24, 0, 3, tzinfo=UTC),
+        telemetry=telemetry_for(actor, command_id),
+    )
+    replay = record.add_comment(
+        actor,
+        command,
+        request_digest=request_digest,
+        now=datetime(2026, 7, 24, 0, 4, tzinfo=UTC),
+        telemetry=telemetry_for(actor, command_id),
+    )
+
+    assert isinstance(refused, RecordProblem)
+    assert replay == refused
+    assert refused.code == "ticket-comment-ineligible"
+    _assert_comment_refusal(tenant.database.admin_dsn, command_id, ticket_id)
 
 
 def _insert_upgrade_probe(
@@ -364,6 +444,54 @@ def _tenant_bundle() -> CompanyBundle:
     )
 
 
+def _superseding_bundle(bundle: CompanyBundle, key: str) -> CompanyBundle:
+    resource = next(item for item in bundle.resources if item.component.key == key)
+    previous = resource.component.reference()
+    payload = {**resource.payload, "display_name": "Trusted delivery revision two"}
+    digest = "sha256:" + hashlib.sha256(rfc8785.dumps(payload)).hexdigest()
+    replacement = resource.model_copy(
+        update={
+            "component": resource.component.model_copy(
+                update={
+                    "content_digest": digest,
+                    "payload_ref": "object:" + digest,
+                    "revision": previous.revision + 1,
+                    "supersedes": previous,
+                }
+            ),
+            "payload": payload,
+        }
+    )
+    resources = tuple(
+        replacement if item.component.key == key else item for item in bundle.resources
+    )
+    return bundle.model_copy(update={"resources": resources})
+
+
+def _create_comment_ticket(
+    record: PostgresRecord,
+    actor: Actor,
+    tenant: TenantFixture,
+    title: str,
+) -> UUID:
+    command_id = uuid4()
+    created = record.create_ticket(
+        actor,
+        TicketCommand(
+            client_command_id=command_id,
+            title=title,
+            source=SourceReference("acceptance", "company-bundle"),
+            priority="P1",
+            initial_custodian_id=tenant.commander_id,
+        ),
+        request_digest=hashlib.sha256(title.encode()).digest(),
+        now=datetime(2026, 7, 24, tzinfo=UTC),
+        telemetry=telemetry_for(actor, command_id),
+    )
+    assert not isinstance(created, RecordProblem)
+    return created.ticket.ticket_id
+
+
 def _assert_catalog_commit(dsn: str, command_id: UUID, event_count: int) -> None:
     with psycopg.connect(dsn, row_factory=dict_row) as connection:
         result = connection.execute(
@@ -420,6 +548,29 @@ def _assert_comment_commit(dsn: str, command_id: UUID) -> None:
     assert len(row["event_ids"]) == 1
     assert row["topic"] == "record.events"
     assert comments_table is None
+
+
+def _assert_comment_refusal(dsn: str, command_id: UUID, ticket_id: UUID) -> None:
+    with psycopg.connect(dsn, row_factory=dict_row) as connection:
+        result = connection.execute(
+            """
+            SELECT status_code, response_body, event_ids
+            FROM command_results WHERE client_command_id = %s
+            """,
+            (command_id,),
+        ).fetchone()
+        comments = connection.execute(
+            """
+            SELECT count(*) AS count FROM events
+            WHERE aggregate_id = %s AND kind = 'ticket.comment_added'
+            """,
+            (ticket_id,),
+        ).fetchone()
+    assert result is not None
+    assert result["status_code"] == _CONFLICT_STATUS
+    assert result["response_body"]["code"] == "ticket-comment-ineligible"
+    assert result["event_ids"] == []
+    assert comments == {"count": 0}
 
 
 def _digest(payload: dict[str, object]) -> bytes:

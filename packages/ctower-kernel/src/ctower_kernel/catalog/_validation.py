@@ -80,7 +80,7 @@ def validate_bundle(
     bundle: CompanyBundle,
     schemas: SchemaCatalog,
     *,
-    existing_refs: Iterable[ComponentReference] = (),
+    existing_refs: Iterable[ComponentReference] | None = None,
 ) -> BundleValidation | CatalogProblem:
     """Validate without I/O or authoritative state mutation."""
 
@@ -243,28 +243,25 @@ def _validate_payload_digest_and_compatibility(
 
 
 def _validate_references(
-    bundle: CompanyBundle, existing_refs: Iterable[ComponentReference]
+    bundle: CompanyBundle,
+    existing_refs: Iterable[ComponentReference] | None,
 ) -> CatalogProblem | None:
-    exact = {resource.component.reference() for resource in bundle.resources}
-    supersession_targets = exact | set(existing_refs)
+    proposed_refs = {resource.component.reference() for resource in bundle.resources}
+    known_refs = None if existing_refs is None else set(existing_refs)
     for resource in bundle.resources:
-        own_reference = resource.component.reference()
-        for required in resource.component.compatibility.requires:
-            if required not in exact or required == own_reference:
-                return _problem(
-                    "bundle-reference-invalid",
-                    "A component dependency does not resolve to one exact digest pin.",
-                )
+        if _has_invalid_dependency(resource, proposed_refs):
+            return _problem(
+                "bundle-reference-invalid",
+                "A component dependency does not resolve to one exact digest pin.",
+            )
         supersedes = resource.component.supersedes
-        if supersedes is not None and not _valid_supersession(
-            resource, supersedes, supersession_targets
-        ):
+        if supersedes is not None and not _valid_supersession(resource, supersedes, known_refs):
             return _problem(
                 "bundle-reference-invalid",
                 "A supersession reference is not an exact older revision of the same component.",
             )
     for assignment in bundle.assignments:
-        if assignment.component not in exact:
+        if assignment.component not in proposed_refs:
             return _problem(
                 "bundle-reference-invalid",
                 "An assignment does not resolve to one exact component digest pin.",
@@ -272,14 +269,25 @@ def _validate_references(
     return None
 
 
+def _has_invalid_dependency(
+    resource: CompanyBundleResource,
+    proposed_refs: set[ComponentReference],
+) -> bool:
+    own_reference = resource.component.reference()
+    return any(
+        required not in proposed_refs or required == own_reference
+        for required in resource.component.compatibility.requires
+    )
+
+
 def _valid_supersession(
     resource: CompanyBundleResource,
     supersedes: ComponentReference,
-    exact: set[ComponentReference],
+    known_refs: set[ComponentReference] | None,
 ) -> bool:
     component = resource.component
     return (
-        supersedes in exact
+        (known_refs is None or supersedes in known_refs or component.reference() in known_refs)
         and supersedes.kind is component.kind
         and supersedes.key == component.key
         and supersedes.revision < component.revision

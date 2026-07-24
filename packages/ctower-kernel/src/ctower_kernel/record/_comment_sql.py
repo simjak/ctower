@@ -10,7 +10,11 @@ import psycopg
 
 from ctower_kernel.record import Actor, RecordProblem
 from ctower_kernel.record._ticket_sql import _uuid7
-from ctower_kernel.record.comments import TicketCommentCommand, TicketCommentResult
+from ctower_kernel.record.comments import (
+    TicketCommentCommand,
+    TicketCommentResult,
+    ticket_accepts_comments,
+)
 from ctower_kernel.record.events import (
     EventEnvelope,
     EventKind,
@@ -65,14 +69,9 @@ def add_comment(
                 "Ticket unavailable",
             )
             return _refuse(transaction, actor, command, request_digest, problem, now)
-        if str(ticket["state"]) == "closed":
-            problem = _problem(
-                command,
-                "ticket-comment-ineligible",
-                409,
-                "Closed ticket comment refused",
-            )
-            return _refuse(transaction, actor, command, request_digest, problem, now)
+        ineligibility = _comment_ineligibility(command, ticket["state"])
+        if ineligibility is not None:
+            return _refuse(transaction, actor, command, request_digest, ineligibility, now)
         result = _append_comment(
             connection,
             actor,
@@ -83,6 +82,20 @@ def add_comment(
             telemetry=telemetry,
         )
     return result
+
+
+def _comment_ineligibility(
+    command: TicketCommentCommand,
+    state: object,
+) -> RecordProblem | None:
+    if ticket_accepts_comments(str(state)):
+        return None
+    return _problem(
+        command,
+        "ticket-comment-ineligible",
+        409,
+        "Terminal ticket comment refused",
+    )
 
 
 def _locked_ticket(

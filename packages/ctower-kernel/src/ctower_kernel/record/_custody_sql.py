@@ -15,6 +15,7 @@ from ctower_kernel.record import (
     RecordProblem,
     TicketCommandResult,
 )
+from ctower_kernel.record._lifecycle import TERMINAL_TICKET_STATES
 from ctower_kernel.record._ticket_sql import (
     _result_from_payload,
     _ticket_from_row,
@@ -151,7 +152,7 @@ def _transfer_refusal(
 ) -> RecordProblem | None:
     current_version = int(cast(int, ticket_row["version"]))
     current_custodian = cast(UUID, ticket_row["custodian_principal_id"])
-    if str(ticket_row["lifecycle_state"]) in {"closed", "cancelled"}:
+    if str(ticket_row["lifecycle_state"]) in TERMINAL_TICKET_STATES:
         return _version_problem(
             command, current_version, "Closed ticket custody cannot be transferred."
         )

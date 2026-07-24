@@ -5,9 +5,17 @@ from __future__ import annotations
 from dataclasses import dataclass
 from uuid import UUID
 
-__all__ = ["TicketCommentCommand", "TicketCommentResult"]
+from ctower_kernel.record._lifecycle import TERMINAL_TICKET_STATES
+
+__all__ = ["TicketCommentCommand", "TicketCommentResult", "ticket_accepts_comments"]
 
 _MAX_COMMENT_BODY_LENGTH = 4_000
+
+
+def ticket_accepts_comments(state: str) -> bool:
+    """Return whether the ticket lifecycle permits an append-only comment."""
+
+    return state not in TERMINAL_TICKET_STATES
 
 
 @dataclass(frozen=True, slots=True)

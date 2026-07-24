@@ -5,7 +5,7 @@ from uuid import UUID
 
 import pytest
 
-from ctower_kernel.record.comments import TicketCommentCommand
+from ctower_kernel.record.comments import TicketCommentCommand, ticket_accepts_comments
 from ctower_kernel.record.events import (
     EventEnvelope,
     EventKind,
@@ -82,6 +82,15 @@ def test_comment_body_rejects_empty_or_unbounded_content(body: str) -> None:
             ticket_id=_TICKET_ID,
             body=body,
         )
+
+
+@pytest.mark.parametrize("state", ["closed", "cancelled"])
+def test_comment_refuses_every_terminal_ticket_state(state: str) -> None:
+    assert ticket_accepts_comments(state) is False
+
+
+def test_comment_allows_non_terminal_ticket_state() -> None:
+    assert ticket_accepts_comments("active") is True
 
 
 def test_comment_event_refuses_mismatched_ticket_identity() -> None:

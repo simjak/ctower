@@ -113,6 +113,57 @@ def test_changed_header_produces_an_explicit_pointer_action() -> None:
     }
 
 
+def test_requires_are_bundle_closed_while_supersedes_resolves_from_active() -> None:
+    bundle = minimal_bundle()
+    policy = CatalogPolicy(FileSchemas())
+    initial = policy.plan("example-company", bundle, None)
+    assert not isinstance(initial, CatalogProblem)
+    active = ActiveBundle(
+        version=1,
+        bundle_digest=initial.proposed_bundle_digest,
+        bundle=bundle,
+        command_id=_COMMAND_ID,
+        actor_principal_id=_ACTOR_ID,
+        activated_at=datetime(2026, 7, 24, tzinfo=UTC),
+        checks=initial.checks,
+    )
+    successor = _superseding_bundle(bundle, "company.trusted-delivery")
+
+    validated = policy.validate("example-company", successor)
+    planned = policy.plan("example-company", successor, active)
+
+    assert not isinstance(validated, CatalogProblem)
+    assert not isinstance(planned, CatalogProblem)
+    assert BundleActionKind.SUPERSEDE in {action.kind for action in planned.actions}
+    successor_active = active.model_copy(
+        update={
+            "version": 2,
+            "bundle_digest": planned.proposed_bundle_digest,
+            "bundle": successor,
+        }
+    )
+    repeated = policy.plan("example-company", successor, successor_active)
+    assert not isinstance(repeated, CatalogProblem)
+    assert repeated.actions == ()
+    dependency = next(
+        resource for resource in bundle.resources if resource.component.key == "protected.cli"
+    ).component.compatibility.requires[0]
+    incomplete = successor.model_copy(
+        update={
+            "resources": tuple(
+                resource
+                for resource in successor.resources
+                if resource.component.reference() != dependency
+            )
+        }
+    )
+
+    refused = policy.plan("example-company", incomplete, active)
+
+    assert isinstance(refused, CatalogProblem)
+    assert refused.code == "bundle-reference-invalid"
+
+
 def test_activation_replans_against_the_locked_base_and_exact_plan_digest() -> None:
     bundle = minimal_bundle()
     policy = CatalogPolicy(FileSchemas())
@@ -275,3 +326,22 @@ def _replace_resource(
         for item in bundle.resources
     )
     return bundle.model_copy(update={"resources": resources})
+
+
+def _superseding_bundle(bundle: CompanyBundle, key: str) -> CompanyBundle:
+    resource = next(item for item in bundle.resources if item.component.key == key)
+    previous = resource.component.reference()
+    payload = {**resource.payload, "display_name": "Trusted delivery revision two"}
+    digest = "sha256:" + hashlib.sha256(rfc8785.dumps(payload)).hexdigest()
+    component = resource.component.model_copy(
+        update={
+            "content_digest": digest,
+            "payload_ref": "object:" + digest,
+            "revision": previous.revision + 1,
+            "supersedes": previous,
+        }
+    )
+    return _replace_resource(
+        bundle,
+        resource.model_copy(update={"component": component, "payload": payload}),
+    )
