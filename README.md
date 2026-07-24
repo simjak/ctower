@@ -31,7 +31,10 @@ Read [Core concepts](https://simjak.github.io/ctower/concepts/) for the shared v
 The current development slice has first-tenant bootstrap, durable ticket facts, a six-lane Board projection,
 the proof-gated four-stage fixture, generated clients, and a small online CLI subset. The normal development
 configuration is `pending_only`. An acknowledged-durability path is exercised only by the verifier-owned
-primary/standby PostgreSQL test topology; it is not a supported deployment.
+primary/standby PostgreSQL test topology; it is not a supported deployment. Local, verifier-only CP3-C
+evidence also covers digest-bound object handling, backup and anchors, key recovery, isolated restore,
+rollback, and recovery evidence. Those pages describe a bounded checkpoint, not a production recovery
+service or CP3-D activation.
 
 After following the [repository setup guide](https://simjak.github.io/ctower/start-here/repository-setup/),
 clone the repository and run the warm verification gate:
@@ -53,8 +56,13 @@ fixtures through Docker Compose. It validates the repository; it does not instal
 - **HTTP/OpenAPI:** the development OpenAPI contract contains a broader set of ticket, Work, Proof,
   Workflow, Board, health, and outbox operations. CLI/API parity is not claimed.
 - **Not available:** no supported package/install path, product Compose stack, configuration contract,
-  backup/restore runbook, CompanyBundle path, browser UI, runner, remote agent adapter, or production
-  release exists.
+  production backup/restore runbook, CompanyBundle path, browser UI, runner, remote agent adapter, or
+  production release exists.
+
+For the local CP3-C boundary, read [Backup and anchors](https://simjak.github.io/ctower/operations/backup-and-anchors/),
+[Key recovery](https://simjak.github.io/ctower/operations/key-recovery/), and
+[Isolated restore](https://simjak.github.io/ctower/operations/isolated-restore/). Do not treat these
+verifier-only guides as an installation or deployment path.
 
 Public API + protected CLI precede I1 source-of-truth cutover. Browser implementation, browser evidence,
 and browser E2E first activate at CT-I2-005 / I2.4.
