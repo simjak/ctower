@@ -30,7 +30,7 @@ request -> Work -> Workflow -> evidence -> gate -> outcome
 - [Operations](operations/current-boundary.md) state the present operational boundary.
 - [Reference](https://github.com/simjak/ctower/tree/main/contracts) begins with authored contracts and the
   [development OpenAPI](https://github.com/simjak/ctower/blob/main/contracts/http/openapi.yaml).
-- [Internals](https://github.com/simjak/ctower/blob/main/ARCHITECTURE.md) are deliberately behind the
+- [Advanced internals](https://github.com/simjak/ctower/blob/main/ARCHITECTURE.md) are deliberately behind the
   architecture atlas and specification.
 - [Contributing](contributing/development.md) explains how to make a verified change.
 

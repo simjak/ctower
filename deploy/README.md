@@ -6,7 +6,7 @@ Deployment configuration belongs here; runtime credentials do not.
 loopback-bound, uses temporary storage, and does **not** compose a ctower API, control worker, durable
 topology, credentials, backups, or a product deployment.
 
-The repository also contains observability collector, dashboard, and alert homes. None establishes a
-supported deployment, backup/restore procedure, or operational configuration contract. Compose, Postgres
-roles, systemd units, VPS manifests, release images, and root-owned release-supervisor configuration require
-their own stable work and conformance evidence before they become operator documentation.
+The repository also contains observability collector, dashboard, and alert homes. `private-vps/` adds the
+secret-free CP3-C recovery shape. Neither establishes a supported product deployment: there is no external
+endpoint, credential, systemd activation, or production durability switch. Those require CP3-D conformance
+evidence before becoming operator deployment documentation.
