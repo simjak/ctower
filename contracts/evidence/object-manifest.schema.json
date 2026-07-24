@@ -1,0 +1,47 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://ctower.dev/contracts/evidence/object-manifest.schema.json",
+  "title": "Immutable encrypted object manifest",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema_id", "tenant_id", "created_at", "artifact_rpo_seconds", "objects"],
+  "properties": {
+    "schema_id": {"const": "ctower.object-manifest/v1"},
+    "tenant_id": {"type": "string", "format": "uuid"},
+    "created_at": {"type": "string", "format": "date-time"},
+    "artifact_rpo_seconds": {"type": "integer", "minimum": 0, "maximum": 300},
+    "objects": {
+      "type": "array",
+      "uniqueItems": true,
+      "items": {"$ref": "#/$defs/object"}
+    }
+  },
+  "$defs": {
+    "digest": {"type": "string", "pattern": "^sha256:[0-9a-f]{64}$"},
+    "reference": {"type": "string", "pattern": "^[a-z][a-z0-9._:/-]{2,255}$"},
+    "object": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "artifact_digest",
+        "object_key",
+        "object_version",
+        "ciphertext_sha256",
+        "key_reference",
+        "key_version",
+        "wrapped_key_sha256",
+        "verified_at"
+      ],
+      "properties": {
+        "artifact_digest": {"$ref": "#/$defs/digest"},
+        "object_key": {"type": "string", "minLength": 1, "maxLength": 512},
+        "object_version": {"type": "string", "minLength": 1, "maxLength": 256},
+        "ciphertext_sha256": {"$ref": "#/$defs/digest"},
+        "key_reference": {"$ref": "#/$defs/reference"},
+        "key_version": {"type": "string", "pattern": "^[A-Za-z0-9._:-]{1,128}$"},
+        "wrapped_key_sha256": {"$ref": "#/$defs/digest"},
+        "verified_at": {"type": "string", "format": "date-time"}
+      }
+    }
+  }
+}

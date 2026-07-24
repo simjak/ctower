@@ -44,6 +44,14 @@
       ]
     },
     {
+      "path": "contracts/evidence/object-manifest.schema.json",
+      "references": [
+        "SPEC#retention-erasure-backup-and-restore",
+        "AC-EVD-06",
+        "AC-SEC-08"
+      ]
+    },
+    {
       "path": "contracts/execution/evidence-policy.schema.json",
       "references": [
         "SPEC#workflow-and-verification-architecture",
@@ -165,6 +173,41 @@
         "INV-28",
         "AC-OPS-01",
         "AC-OPS-15"
+      ]
+    },
+    {
+      "path": "contracts/operations/anchor.schema.json",
+      "references": [
+        "SPEC#retention-erasure-backup-and-restore",
+        "AC-DUR-05"
+      ]
+    },
+    {
+      "path": "contracts/operations/backup-manifest.schema.json",
+      "references": [
+        "SPEC#retention-erasure-backup-and-restore",
+        "SPEC#backup-restore-and-reboot-drills",
+        "AC-DUR-05",
+        "AC-OPS-05"
+      ]
+    },
+    {
+      "path": "contracts/operations/expected-source-inventory.schema.json",
+      "references": [
+        "SPEC#retention-erasure-backup-and-restore",
+        "SPEC#backup-restore-and-reboot-drills",
+        "AC-DUR-05",
+        "AC-OPS-05"
+      ]
+    },
+    {
+      "path": "contracts/operations/restore-report.schema.json",
+      "references": [
+        "SPEC#retention-erasure-backup-and-restore",
+        "SPEC#backup-restore-and-reboot-drills",
+        "AC-DUR-05",
+        "AC-SEC-08",
+        "AC-OPS-05"
       ]
     },
     {
@@ -586,6 +629,49 @@
         "AC-OPS-02",
         "AC-OPS-13",
         "AC-OPS-16"
+      ]
+    },
+    {
+      "path": "packages/ctower-kernel/migrations/0020_recovery_roles.sql",
+      "references": [
+        "SPEC#security-objectives",
+        "SPEC#backup-restore-and-reboot-drills",
+        "INV-01",
+        "AC-DUR-05",
+        "AC-DUR-07",
+        "AC-OPS-05"
+      ]
+    },
+    {
+      "path": "packages/ctower-kernel/migrations/0021_object_backup_anchor.sql",
+      "references": [
+        "SPEC#retention-erasure-backup-and-restore",
+        "SPEC#backup-restore-and-reboot-drills",
+        "AC-DUR-05",
+        "AC-EVD-06",
+        "AC-SEC-08",
+        "AC-OPS-05"
+      ]
+    },
+    {
+      "path": "packages/ctower-kernel/migrations/0022_restore_inventory.sql",
+      "references": [
+        "SPEC#retention-erasure-backup-and-restore",
+        "SPEC#backup-restore-and-reboot-drills",
+        "AC-DUR-05",
+        "AC-SEC-08",
+        "AC-OPS-05"
+      ]
+    },
+    {
+      "path": "packages/ctower-kernel/migrations/0023_cp3c_privileges.sql",
+      "references": [
+        "SPEC#security-objectives",
+        "SPEC#backup-restore-and-reboot-drills",
+        "INV-01",
+        "AC-DUR-05",
+        "AC-DUR-07",
+        "AC-OPS-05"
       ]
     },
     {

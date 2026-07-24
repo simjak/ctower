@@ -26,7 +26,11 @@ does not inherit PostgreSQL monitor roles.
 Its default policy remains `pending_only`; accepted behavior is exercised only by the verifier-owned local
 PostgreSQL 17 primary/hot-standby fixture. Projections can replace only disposable Board rows/cursors and
 cannot mutate authority. Runtime materializes only the three authored fixed-operation jobs; it does not
-dispatch them. Catalog, Effects, real backup/anchor/object/synthetic handlers, and the rest of I1/I2 remain deferred.
+dispatch them. Proof now owns digest-bound inline/external object metadata, safe backfill, and durable
+erasure tombstones. Record owns immutable backup/anchor/inventory/restore evidence and exact
+installation/report enablement policy. The local recovery checkpoint does not activate production
+objects, backups, effects, or external targets; Catalog, Effects, synthetic handlers, and the rest of
+I1/I2 remain deferred.
 
 There is no executable Extension Host in I1 or I2; that runtime remains deferred until a real use case and
 two real Adapters earn its Seam. The kernel may depend on authored/generated contracts and allowlisted public

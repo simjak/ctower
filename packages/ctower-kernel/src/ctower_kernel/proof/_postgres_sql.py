@@ -20,7 +20,9 @@ from ctower_kernel.proof import (
     RecordEvidence,
     RecordVerdict,
 )
+from ctower_kernel.proof._object_sql import insert_external_object
 from ctower_kernel.proof._snapshot_sql import load_snapshot
+from ctower_kernel.proof.objects import StoredObject
 from ctower_kernel.record import RecordProblem
 from ctower_kernel.record.events import (
     EventEnvelope,
@@ -45,6 +47,7 @@ def mutate_proof(
     request_digest: bytes,
     now: datetime,
     telemetry: TelemetryContext,
+    object_receipt: StoredObject | None = None,
 ) -> ProofReceipt | RecordProblem:
     with authority_connection(dsn) as connection:
         connection.execute("SET ROLE ctower_svc")
@@ -88,6 +91,7 @@ def mutate_proof(
             request_digest=request_digest,
             now=now,
             telemetry=telemetry,
+            object_receipt=object_receipt,
         )
 
 
@@ -135,6 +139,7 @@ def _commit_decision(
     request_digest: bytes,
     now: datetime,
     telemetry: TelemetryContext,
+    object_receipt: StoredObject | None,
 ) -> ProofReceipt:
     proof_id = cast(UUID, bundle["proof_id"]) if bundle is not None else _uuid7(now)
     version = current_version + 1
@@ -146,6 +151,7 @@ def _commit_decision(
         proof_id=proof_id,
         version=version,
         now=now,
+        object_receipt=object_receipt,
     )
     receipt = _receipt(evaluator, mutation, decision, proof_id=proof_id, version=version)
     return _append_change(
@@ -191,6 +197,7 @@ def _persist_decision(
     proof_id: UUID,
     version: int,
     now: datetime,
+    object_receipt: StoredObject | None,
 ) -> None:
     command = mutation.command
     if isinstance(command, FreezeCriteria):
@@ -201,7 +208,15 @@ def _persist_decision(
         (version, _digest_bytes(decision.snapshot.candidate_digest), proof_id),
     )
     if isinstance(command, RecordEvidence):
-        _insert_evidence(connection, actor, mutation, command, proof_id=proof_id, now=now)
+        _insert_evidence(
+            connection,
+            actor,
+            mutation,
+            command,
+            proof_id=proof_id,
+            now=now,
+            object_receipt=object_receipt,
+        )
     elif isinstance(command, RecordVerdict):
         _insert_verdict(
             connection,
@@ -273,15 +288,29 @@ def _insert_evidence(
     *,
     proof_id: UUID,
     now: datetime,
+    object_receipt: StoredObject | None,
 ) -> None:
     artifact_digest = _digest_bytes(command.artifact_digest)
-    connection.execute(
-        """
-        INSERT INTO proof_objects (tenant_id, artifact_digest, content, producer_id, recorded_at)
-        VALUES (%s, %s, %s, %s, %s) ON CONFLICT (tenant_id, artifact_digest) DO NOTHING
-        """,
-        (actor.tenant_id, artifact_digest, command.content, actor.principal_id, now),
-    )
+    if object_receipt is None:
+        connection.execute(
+            """
+            INSERT INTO proof_objects (
+                tenant_id, artifact_digest, content, producer_id, recorded_at
+            )
+            VALUES (%s, %s, %s, %s, %s)
+            ON CONFLICT (tenant_id, artifact_digest) DO NOTHING
+            """,
+            (actor.tenant_id, artifact_digest, command.content, actor.principal_id, now),
+        )
+    else:
+        insert_external_object(
+            connection,
+            actor.tenant_id,
+            actor.principal_id,
+            command.content,
+            object_receipt,
+            recorded_at=now,
+        )
     connection.execute(
         """
         INSERT INTO proof_evidence (

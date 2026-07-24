@@ -42,6 +42,11 @@ nav:
       - Releases: contributing/releases.md
   - Operations:
       - Observability: operations/observability.md
+      - Backup and anchors: operations/backup-and-anchors.md
+      - Key recovery: operations/key-recovery.md
+      - Isolated restore: operations/isolated-restore.md
+      - Rollback: operations/rollback.md
+      - Recovery evidence: operations/recovery-evidence.md
   - Security:
       - Secret handling: security/secret-handling.md
   - Canonical design:

@@ -1,0 +1,59 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://ctower.dev/contracts/operations/backup-manifest.schema.json",
+  "title": "Verified daily backup manifest",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_id",
+    "backup_id",
+    "tenant_id",
+    "repository_ref",
+    "repository_object_version",
+    "base_backup_sha256",
+    "wal_start_lsn",
+    "wal_stop_lsn",
+    "logical_dump_sha256",
+    "object_manifest_sha256",
+    "migration_manifest_sha256",
+    "key_reference",
+    "key_version",
+    "started_at",
+    "completed_at",
+    "verification"
+  ],
+  "properties": {
+    "schema_id": {"const": "ctower.backup-manifest/v1"},
+    "backup_id": {"type": "string", "format": "uuid"},
+    "tenant_id": {"type": "string", "format": "uuid"},
+    "repository_ref": {"$ref": "#/$defs/reference"},
+    "repository_object_version": {"type": "string", "minLength": 1, "maxLength": 256},
+    "base_backup_sha256": {"$ref": "#/$defs/digest"},
+    "wal_start_lsn": {"$ref": "#/$defs/lsn"},
+    "wal_stop_lsn": {"$ref": "#/$defs/lsn"},
+    "logical_dump_sha256": {"$ref": "#/$defs/digest"},
+    "object_manifest_sha256": {"$ref": "#/$defs/digest"},
+    "migration_manifest_sha256": {"$ref": "#/$defs/digest"},
+    "key_reference": {"$ref": "#/$defs/reference"},
+    "key_version": {"type": "string", "pattern": "^[A-Za-z0-9._:-]{1,128}$"},
+    "started_at": {"type": "string", "format": "date-time"},
+    "completed_at": {"type": "string", "format": "date-time"},
+    "verification": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["base", "wal", "logical_dump", "objects", "key_reference"],
+      "properties": {
+        "base": {"const": true},
+        "wal": {"const": true},
+        "logical_dump": {"const": true},
+        "objects": {"const": true},
+        "key_reference": {"const": true}
+      }
+    }
+  },
+  "$defs": {
+    "digest": {"type": "string", "pattern": "^sha256:[0-9a-f]{64}$"},
+    "lsn": {"type": "string", "pattern": "^[0-9A-F]+/[0-9A-F]+$"},
+    "reference": {"type": "string", "pattern": "^[a-z][a-z0-9._:/-]{2,255}$"}
+  }
+}

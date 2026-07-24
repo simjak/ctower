@@ -1,0 +1,45 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://ctower.dev/contracts/operations/anchor.schema.json",
+  "title": "Append-only external record anchor receipt",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_id",
+    "anchor_id",
+    "tenant_id",
+    "source_start_position",
+    "source_end_position",
+    "previous_anchor_sha256",
+    "anchor_sha256",
+    "signature",
+    "signing_key_reference",
+    "signing_key_version",
+    "public_key_sha256",
+    "object_key",
+    "object_version",
+    "anchored_at"
+  ],
+  "properties": {
+    "schema_id": {"const": "ctower.record-anchor/v1"},
+    "anchor_id": {"type": "string", "format": "uuid"},
+    "tenant_id": {"type": "string", "format": "uuid"},
+    "source_start_position": {"type": "integer", "minimum": 1},
+    "source_end_position": {"type": "integer", "minimum": 1},
+    "previous_anchor_sha256": {
+      "oneOf": [{"$ref": "#/$defs/digest"}, {"type": "null"}]
+    },
+    "anchor_sha256": {"$ref": "#/$defs/digest"},
+    "signature": {"type": "string", "minLength": 1, "maxLength": 4096},
+    "signing_key_reference": {"$ref": "#/$defs/reference"},
+    "signing_key_version": {"type": "string", "pattern": "^[A-Za-z0-9._:-]{1,128}$"},
+    "public_key_sha256": {"$ref": "#/$defs/digest"},
+    "object_key": {"type": "string", "minLength": 1, "maxLength": 512},
+    "object_version": {"type": "string", "minLength": 1, "maxLength": 256},
+    "anchored_at": {"type": "string", "format": "date-time"}
+  },
+  "$defs": {
+    "digest": {"type": "string", "pattern": "^sha256:[0-9a-f]{64}$"},
+    "reference": {"type": "string", "pattern": "^[a-z][a-z0-9._:/-]{2,255}$"}
+  }
+}

@@ -4,12 +4,15 @@ from __future__ import annotations
 
 import io
 import json
+import runpy
 import shutil
+import sys
 import tempfile
 import textwrap
 import unittest
 from contextlib import redirect_stdout
 from pathlib import Path
+from unittest.mock import patch
 
 from tools.checks.cli import main
 
@@ -39,6 +42,19 @@ class RepositoryPolicyCliTests(unittest.TestCase):
             exit_code = main(["--root", str(root), "--expected-suites"])
         self.assertEqual(exit_code, 1)
         self.assertIn("ERROR suite.manifest", output.getvalue())
+
+    def test_module_entrypoint_returns_the_public_cli_status(self) -> None:
+        root = self.fixtures / "positive"
+        output = io.StringIO()
+        argv = ["tools.checks", "--root", str(root), "--profile", "full"]
+        with (
+            patch.object(sys, "argv", argv),
+            redirect_stdout(output),
+            self.assertRaises(SystemExit) as raised,
+        ):
+            runpy.run_module("tools.checks", run_name="__main__")
+        self.assertEqual(raised.exception.code, 0)
+        self.assertIn("repository-policy profile=full ok=true", output.getvalue())
 
     def test_execute_suites_uses_manifest_command_and_json_report(self) -> None:
         with tempfile.TemporaryDirectory() as name:
