@@ -11,7 +11,7 @@ from urllib.parse import urlsplit
 import httpx
 from pydantic import BaseModel, ConfigDict, field_validator, model_validator
 
-from ctower_kernel.proof.objects import ObjectIntegrityError
+from ctower_kernel.objects import ObjectIntegrityError
 
 __all__: tuple[str, ...] = ()
 

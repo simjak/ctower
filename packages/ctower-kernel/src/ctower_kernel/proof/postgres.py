@@ -8,6 +8,12 @@ from uuid import UUID
 
 import psycopg
 
+from ctower_kernel.objects import (
+    ObjectIntegrityError,
+    ObjectStore,
+    StoredObject,
+    verify_digest,
+)
 from ctower_kernel.proof import (
     Proof,
     ProofActor,
@@ -25,12 +31,6 @@ from ctower_kernel.proof._object_sql import (
 )
 from ctower_kernel.proof._postgres_sql import ProofPolicyPins, mutate_proof
 from ctower_kernel.proof._snapshot_sql import proof_is_current
-from ctower_kernel.proof.objects import (
-    ObjectIntegrityError,
-    ProofObjectStore,
-    StoredObject,
-    verify_digest,
-)
 from ctower_kernel.record import RecordProblem
 from ctower_kernel.record.transaction import authority_connection, recover_ambiguous_commit
 from ctower_kernel.telemetry import NoopTelemetry, Telemetry, TelemetryContext
@@ -47,7 +47,7 @@ class PostgresProof:
         *,
         policies: tuple[ProofPolicy, ...] = (),
         policy_pins: ProofPolicyPins | None = None,
-        object_store: ProofObjectStore | None = None,
+        object_store: ObjectStore | None = None,
         object_key_reference: str | None = None,
         telemetry: Telemetry | None = None,
         clock: Callable[[], datetime] | None = None,
@@ -242,7 +242,7 @@ class PostgresProof:
             key_reference=key_reference,
         )
 
-    def _configured_store(self) -> tuple[ProofObjectStore, str]:
+    def _configured_store(self) -> tuple[ObjectStore, str]:
         if self._object_store is None or self._object_key_reference is None:
             raise ObjectIntegrityError("encrypted object storage is not configured")
         return self._object_store, self._object_key_reference

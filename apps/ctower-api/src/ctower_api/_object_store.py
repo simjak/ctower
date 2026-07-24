@@ -12,7 +12,7 @@ import httpx
 from pydantic import BaseModel, ConfigDict, field_validator
 
 from ctower_api._kms import EncryptionReceipt, ExternalKms
-from ctower_kernel.proof.objects import (
+from ctower_kernel.objects import (
     ObjectIntegrityError,
     StoredObject,
     digest_bytes,
