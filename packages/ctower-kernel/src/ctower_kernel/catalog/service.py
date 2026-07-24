@@ -9,6 +9,7 @@ from ctower_kernel.catalog._planning import plan_bundle
 from ctower_kernel.catalog._validation import validate_bundle
 from ctower_kernel.catalog.interface import (
     ActiveBundle,
+    BundleActionKind,
     BundleValidation,
     CatalogProblem,
     CompanyBundle,
@@ -76,10 +77,18 @@ class CatalogPolicy:
             )
         if command.plan_digest != plan.plan_digest:
             return CatalogProblem(
-                code="bundle-plan-conflict",
+                code="bundle-plan-mismatch",
                 detail="The supplied plan digest does not match the locked semantic plan.",
                 status=409,
-                title="Bundle plan conflict",
+                title="Bundle plan mismatch",
+                command_id=command.client_command_id,
+            )
+        if any(action.kind is BundleActionKind.DEPRECATE for action in plan.actions):
+            return CatalogProblem(
+                code="bundle-compatibility-refused",
+                detail="Increment 1 cannot apply component removal or deprecation.",
+                status=422,
+                title="Bundle lifecycle unsupported",
                 command_id=command.client_command_id,
             )
         return plan
