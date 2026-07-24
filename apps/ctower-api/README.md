@@ -1,10 +1,11 @@
 # ctower-api boundary
 
 Python composition root for the development walking slice. Its FastAPI handlers validate generated HTTP
-models and call the public Access, Work, Record, Proof, Workflow, Projections, and Attention Interfaces for bootstrap, ticket
-create/read, protected custody transfer, typed task commands, assignment/audit queries, explicit Workflow
-start, server-policy-pinned proof commands, legal transitions, ownership-releasing proof-gated close, and
-the read-only Board projection.
+models and call the public Access, Catalog, Work, Record, Proof, Workflow, Projections, and Attention
+Interfaces for bootstrap, ticket create/read/comment, protected custody transfer, typed task commands,
+assignment/audit queries, CompanyBundle validate/plan/apply/export, explicit Workflow start,
+server-policy-pinned proof commands, legal transitions, ownership-releasing proof-gated close, and the
+read-only Board projection.
 Durable decisions remain in the owning kernel Modules; the API never connects around those Interfaces.
 Work and Proof implementations are injected into Workflow only as narrow readiness/current-proof
 capabilities at composition. Board reads return only stored accepted-state projection rows; request handlers
@@ -20,3 +21,6 @@ application-owned signing keys or arbitrary commands. Real off-host targets, sys
 effects, production drills, and deployment remain deferred to CP3-D.
 The common mutation envelope threads the authenticated principal into every Record reconciliation call, so
 same-tenant principals may independently reuse the same command UUID without weakening exact replay.
+Catalog receives the same injected generic object capability as Proof; API composition does not create a
+second object store. Bundle validate/plan/export are read-only, while apply retains auth-before-validation,
+Record-owned command/event/outbox durability, locked-base re-planning, and an atomic future-only pointer.

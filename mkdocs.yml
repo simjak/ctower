@@ -39,6 +39,8 @@ nav:
       - Exercise the development walking slice: getting-started.md
       - What is deliberately unavailable: start-here/availability.md
   - Guides:
+      - Protected CLI and spool: guides/protected-cli.md
+      - CompanyBundle: guides/company-bundle.md
       - Contribution guide: https://github.com/simjak/ctower/blob/main/CONTRIBUTING.md
   - Concepts:
       - Core concepts: concepts.md
