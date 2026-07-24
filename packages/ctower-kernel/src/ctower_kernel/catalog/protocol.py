@@ -17,6 +17,8 @@ from ctower_kernel.catalog.interface import (
     VersionedComponent,
 )
 from ctower_kernel.catalog.lifecycle import CatalogDecision
+from ctower_kernel.record import Actor
+from ctower_kernel.telemetry import TelemetryContext
 
 __all__ = ["Catalog"]
 
@@ -25,42 +27,44 @@ class Catalog(Protocol):
     """Single tenant Catalog and CompanyBundle lifecycle authority."""
 
     def validate(
-        self, tenant_key: str, bundle: CompanyBundle
+        self, actor: Actor, bundle: CompanyBundle
     ) -> BundleValidation | CatalogProblem: ...
 
-    def plan(
-        self, tenant_key: str, bundle: CompanyBundle
-    ) -> CompanyBundlePlan | CatalogProblem: ...
+    def plan(self, actor: Actor, bundle: CompanyBundle) -> CompanyBundlePlan | CatalogProblem: ...
 
     def apply(
-        self, tenant_key: str, command: CompanyBundleApply
+        self,
+        actor: Actor,
+        command: CompanyBundleApply,
+        *,
+        telemetry: TelemetryContext,
     ) -> CompanyBundleCommandResult | CatalogProblem: ...
 
-    def export(self, tenant_key: str) -> CompanyBundleExport | CatalogProblem: ...
+    def export(self, actor: Actor) -> CompanyBundleExport | CatalogProblem: ...
 
     def stage(
         self,
-        tenant_key: str,
+        actor: Actor,
         component: VersionedComponent,
         payload: dict[str, JsonValue],
     ) -> CatalogDecision | CatalogProblem: ...
 
     def publish(
-        self, tenant_key: str, component: ComponentReference
+        self, actor: Actor, component: ComponentReference
     ) -> CatalogDecision | CatalogProblem: ...
 
     def resolve(
-        self, tenant_key: str, component: ComponentReference
+        self, actor: Actor, component: ComponentReference
     ) -> CatalogDecision | CatalogProblem: ...
 
     def supersede(
-        self, tenant_key: str, component: VersionedComponent
+        self, actor: Actor, component: VersionedComponent
     ) -> CatalogDecision | CatalogProblem: ...
 
     def deprecate(
-        self, tenant_key: str, component: ComponentReference
+        self, actor: Actor, component: ComponentReference
     ) -> CatalogDecision | CatalogProblem: ...
 
     def revoke(
-        self, tenant_key: str, component: ComponentReference
+        self, actor: Actor, component: ComponentReference
     ) -> CatalogDecision | CatalogProblem: ...

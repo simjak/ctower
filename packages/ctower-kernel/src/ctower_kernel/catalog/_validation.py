@@ -246,16 +246,19 @@ def _validate_references(
     bundle: CompanyBundle, existing_refs: Iterable[ComponentReference]
 ) -> CatalogProblem | None:
     exact = {resource.component.reference() for resource in bundle.resources}
-    exact.update(existing_refs)
+    supersession_targets = exact | set(existing_refs)
     for resource in bundle.resources:
+        own_reference = resource.component.reference()
         for required in resource.component.compatibility.requires:
-            if required not in exact:
+            if required not in exact or required == own_reference:
                 return _problem(
                     "bundle-reference-invalid",
                     "A component dependency does not resolve to one exact digest pin.",
                 )
         supersedes = resource.component.supersedes
-        if supersedes is not None and not _valid_supersession(resource, supersedes, exact):
+        if supersedes is not None and not _valid_supersession(
+            resource, supersedes, supersession_targets
+        ):
             return _problem(
                 "bundle-reference-invalid",
                 "A supersession reference is not an exact older revision of the same component.",

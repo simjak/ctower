@@ -59,6 +59,8 @@ def test_migration_manifest_is_ordered_and_checksum_exact() -> None:
         "0021_object_backup_anchor.sql",
         "0022_restore_inventory.sql",
         "0023_cp3c_privileges.sql",
+        "0024_catalog_authority.sql",
+        "0025_ticket_comment_event.sql",
     ]
     for entry in entries:
         digest = hashlib.sha256((MIGRATIONS / entry["path"]).read_bytes()).hexdigest()

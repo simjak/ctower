@@ -13,6 +13,7 @@ from ctower_kernel.catalog.interface import (
 )
 from ctower_kernel.catalog.lifecycle import CatalogDecision, CatalogDecisionKind
 from ctower_kernel.catalog.object_interface import CatalogObjectError
+from ctower_kernel.catalog.postgres import PostgresCatalog
 from ctower_kernel.catalog.protocol import Catalog
 from ctower_kernel.catalog.service import CatalogPayloadStager, CatalogPolicy
 
@@ -31,5 +32,6 @@ __all__ = [
     "CompanyBundleCommandResult",
     "CompanyBundleExport",
     "CompanyBundlePlan",
+    "PostgresCatalog",
     "SchemaCatalog",
 ]
