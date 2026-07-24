@@ -218,15 +218,35 @@ def _record_inline_object(tenant: TenantFixture) -> tuple[bytes, str]:
         candidate_dependent=True,
         requires_verdict=False,
     )
-    policy = ProofPolicy(
-        workflow_ref="fixture.cp3c-object@1",
-        gate_policy_ref="fixture.cp3c-object.gates@1",
-        gate_policy_digest="sha256:" + "2" * 64,
-        evidence_policy_ref="fixture.cp3c-object.evidence@1",
-        evidence_policy_digest="sha256:" + "3" * 64,
-        criteria=(criterion,),
-        reviewer_kind="operator",
-        self_review_forbidden=True,
+    policy = ProofPolicy.from_bytes(
+        b"""
+{
+  "schema": "ctower.gate-policy/v1",
+  "key": "fixture.cp3c-object.gates",
+  "revision": 1,
+  "workflow_ref": "fixture.cp3c-object@1",
+  "evidence_policy_ref": "fixture.cp3c-object.evidence@1",
+  "criteria": [{
+    "key": "current",
+    "description": "Object bytes are current.",
+    "candidate_dependent": true,
+    "requires_verdict": false
+  }],
+  "protected_verdict": {"reviewer_kind": "operator", "self_review": "forbidden"}
+}
+""",
+        b"""
+{
+  "schema": "ctower.evidence-policy/v1",
+  "key": "fixture.cp3c-object.evidence",
+  "revision": 1,
+  "digest_algorithm": "sha256",
+  "content_encoding": "utf-8",
+  "candidate_binding": "current_digest",
+  "corruption_policy": "reject",
+  "missing_policy": "reject"
+}
+""",
     )
     proof = Proof(
         writer=PostgresProof(

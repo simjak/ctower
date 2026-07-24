@@ -2,6 +2,9 @@
 
 from __future__ import annotations
 
+import hashlib
+import json
+from pathlib import Path
 from typing import cast
 
 import pytest
@@ -9,24 +12,58 @@ import pytest
 from ctower_kernel.proof import Criterion, ProofPolicy
 
 __all__: tuple[str, ...] = ()
-GATE_DIGEST = "sha256:" + "2" * 64
-EVIDENCE_DIGEST = "sha256:" + "3" * 64
+ROOT = Path(__file__).parents[3]
 
 
-def test_exact_gate_and_evidence_mappings_form_one_pinned_policy() -> None:
-    policy = ProofPolicy.from_mappings(
-        _gate(),
-        _evidence(),
-        gate_policy_digest=GATE_DIGEST,
-        evidence_policy_digest=EVIDENCE_DIGEST,
+def test_exact_authoritative_bytes_are_inseparable_from_their_digests() -> None:
+    gate_bytes = (ROOT / "packs/policies/gates/trust-spine-four-stage-v1.yaml").read_bytes()
+    evidence_bytes = (ROOT / "packs/policies/evidence/trust-spine-four-stage-v1.yaml").read_bytes()
+    gate_digest = "sha256:" + hashlib.sha256(gate_bytes).hexdigest()
+    evidence_digest = "sha256:" + hashlib.sha256(evidence_bytes).hexdigest()
+
+    policy = ProofPolicy.from_bytes(
+        gate_bytes,
+        evidence_bytes,
+        expected_gate_policy_digest=gate_digest,
+        expected_evidence_policy_digest=evidence_digest,
     )
+
+    assert policy.pin == (
+        "ctower.trust-spine-four-stage@1",
+        "ctower.trust-spine-four-stage.gates@1",
+        gate_digest,
+        "ctower.trust-spine-four-stage.evidence@1",
+        evidence_digest,
+    )
+    weakened_gate_bytes = gate_bytes.replace(
+        b'"requires_verdict": true',
+        b'"requires_verdict": false',
+    )
+    assert weakened_gate_bytes != gate_bytes
+    with pytest.raises(ValueError, match="gate policy digest does not identify supplied bytes"):
+        ProofPolicy.from_bytes(
+            weakened_gate_bytes,
+            evidence_bytes,
+            expected_gate_policy_digest=gate_digest,
+            expected_evidence_policy_digest=evidence_digest,
+        )
+
+
+def test_exact_gate_and_evidence_bytes_form_one_pinned_policy() -> None:
+    gate, evidence = _gate(), _evidence()
+    gate_bytes = _policy_bytes(gate)
+    evidence_bytes = _policy_bytes(evidence)
+    gate_digest = "sha256:" + hashlib.sha256(gate_bytes).hexdigest()
+    evidence_digest = "sha256:" + hashlib.sha256(evidence_bytes).hexdigest()
+
+    policy = ProofPolicy.from_bytes(gate_bytes, evidence_bytes)
 
     assert policy.pin == (
         "fixture.workflow@1",
         "fixture.gates@1",
-        GATE_DIGEST,
+        gate_digest,
         "fixture.evidence@1",
-        EVIDENCE_DIGEST,
+        evidence_digest,
     )
     assert policy.criteria == (
         Criterion(
@@ -83,65 +120,35 @@ def test_gate_shape_and_protected_verdict_fail_closed() -> None:
 
 
 def test_policy_identity_and_independence_fail_closed() -> None:
-    criterion = Criterion(
-        key="artifact-current",
-        description="Artifact is current.",
-        candidate_dependent=True,
-        requires_verdict=True,
-    )
+    gate, evidence = _gate(), _evidence()
+    gate["workflow_ref"] = "not-versioned"
     with pytest.raises(ValueError, match="references must be versioned"):
-        ProofPolicy(
-            workflow_ref="not-versioned",
-            gate_policy_ref="fixture.gates@1",
-            gate_policy_digest=GATE_DIGEST,
-            evidence_policy_ref="fixture.evidence@1",
-            evidence_policy_digest=EVIDENCE_DIGEST,
-            criteria=(criterion,),
-            reviewer_kind="operator",
-            self_review_forbidden=True,
+        _parse(gate, evidence)
+
+    with pytest.raises(ValueError, match="expected gate policy digest must be content addressed"):
+        ProofPolicy.from_bytes(
+            _policy_bytes(_gate()),
+            _policy_bytes(_evidence()),
+            expected_gate_policy_digest="mutable",
         )
-    with pytest.raises(ValueError, match="digests must be content addressed"):
-        ProofPolicy(
-            workflow_ref="fixture.workflow@1",
-            gate_policy_ref="fixture.gates@1",
-            gate_policy_digest="mutable",
-            evidence_policy_ref="fixture.evidence@1",
-            evidence_policy_digest=EVIDENCE_DIGEST,
-            criteria=(criterion,),
-            reviewer_kind="operator",
-            self_review_forbidden=True,
-        )
+
+    gate = _gate()
+    gate["criteria"] = []
     with pytest.raises(ValueError, match="nonempty and unique"):
-        ProofPolicy(
-            workflow_ref="fixture.workflow@1",
-            gate_policy_ref="fixture.gates@1",
-            gate_policy_digest=GATE_DIGEST,
-            evidence_policy_ref="fixture.evidence@1",
-            evidence_policy_digest=EVIDENCE_DIGEST,
-            criteria=(),
-            reviewer_kind="operator",
-            self_review_forbidden=True,
-        )
+        _parse(gate, _evidence())
+
+    gate = _gate()
+    cast(dict[str, object], gate["protected_verdict"])["self_review"] = "allowed"
     with pytest.raises(ValueError, match="independent operator review"):
-        ProofPolicy(
-            workflow_ref="fixture.workflow@1",
-            gate_policy_ref="fixture.gates@1",
-            gate_policy_digest=GATE_DIGEST,
-            evidence_policy_ref="fixture.evidence@1",
-            evidence_policy_digest=EVIDENCE_DIGEST,
-            criteria=(criterion,),
-            reviewer_kind="operator",
-            self_review_forbidden=False,
-        )
+        _parse(gate, _evidence())
 
 
 def _parse(gate: dict[str, object], evidence: dict[str, object]) -> ProofPolicy:
-    return ProofPolicy.from_mappings(
-        gate,
-        evidence,
-        gate_policy_digest=GATE_DIGEST,
-        evidence_policy_digest=EVIDENCE_DIGEST,
-    )
+    return ProofPolicy.from_bytes(_policy_bytes(gate), _policy_bytes(evidence))
+
+
+def _policy_bytes(policy: dict[str, object]) -> bytes:
+    return json.dumps(policy, separators=(",", ":"), sort_keys=True).encode()
 
 
 def _gate() -> dict[str, object]:

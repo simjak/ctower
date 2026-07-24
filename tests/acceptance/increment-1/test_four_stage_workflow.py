@@ -10,7 +10,12 @@ from uuid import UUID, uuid4
 import psycopg
 import pytest
 from psycopg.rows import dict_row
-from support.server import fixture_proof_store, running_api, start_and_admit
+from support.server import (
+    fixture_proof_policy,
+    fixture_proof_store,
+    running_api,
+    start_and_admit,
+)
 from support.tenant_fixture import TenantFixture
 
 from ctower_client import (
@@ -421,12 +426,17 @@ def test_close_requires_current_proof_and_appends_resolved_then_closed_atomicall
 def _terminal_context(
     tenant: TenantFixture,
 ) -> tuple[PostgresProof, Workflow, WorkflowActor, UUID]:
-    proof_store = fixture_proof_store(
-        tenant.database.runtime_dsn,
-        "fixture.atomic-close@1",
-        "current",
-        "Evidence is current.",
+    criterion = Criterion(
+        key="current",
+        description="Evidence is current.",
+        candidate_dependent=True,
+        requires_verdict=True,
     )
+    policy = fixture_proof_policy(
+        "fixture.atomic-close@1",
+        criterion,
+    )
+    proof_store = fixture_proof_store(tenant.database.runtime_dsn, policy)
     workflow_store = PostgresWorkflow(
         tenant.database.runtime_dsn,
         proof_gate=proof_store,
@@ -439,8 +449,8 @@ def _terminal_context(
         writer=workflow_store,
         policy_digests={
             "fixture.execution@1": "sha256:" + "1" * 64,
-            "fixture.gates@1": "sha256:" + "2" * 64,
-            "fixture.evidence@1": "sha256:" + "3" * 64,
+            policy.gate_policy_ref: policy.gate_policy_digest,
+            policy.evidence_policy_ref: policy.evidence_policy_digest,
         },
     )
     actor = WorkflowActor(tenant.commander_id, tenant.tenant_id)
@@ -453,10 +463,10 @@ def _terminal_context(
             graph.digest,
             "fixture.execution@1",
             "sha256:" + "1" * 64,
-            "fixture.gates@1",
-            "sha256:" + "2" * 64,
-            "fixture.evidence@1",
-            "sha256:" + "3" * 64,
+            policy.gate_policy_ref,
+            policy.gate_policy_digest,
+            policy.evidence_policy_ref,
+            policy.evidence_policy_digest,
         ),
         telemetry=_telemetry(),
     )

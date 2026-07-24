@@ -94,43 +94,61 @@ def proof_policy() -> ProofPolicy:
 
     gate_bytes = (ROOT / "packs/policies/gates/trust-spine-four-stage-v1.yaml").read_bytes()
     evidence_bytes = (ROOT / "packs/policies/evidence/trust-spine-four-stage-v1.yaml").read_bytes()
-    return ProofPolicy.from_mappings(
-        json.loads(gate_bytes),
-        json.loads(evidence_bytes),
-        gate_policy_digest="sha256:" + hashlib.sha256(gate_bytes).hexdigest(),
-        evidence_policy_digest="sha256:" + hashlib.sha256(evidence_bytes).hexdigest(),
-    )
+    return ProofPolicy.from_bytes(gate_bytes, evidence_bytes)
 
 
 def fixture_proof_policy(workflow_ref: str, criterion: Criterion) -> ProofPolicy:
     """Build the exact synthetic pin used by direct persistence acceptance fixtures."""
 
-    return ProofPolicy(
-        workflow_ref=workflow_ref,
-        gate_policy_ref="fixture.gates@1",
-        gate_policy_digest="sha256:" + "2" * 64,
-        evidence_policy_ref="fixture.evidence@1",
-        evidence_policy_digest="sha256:" + "3" * 64,
-        criteria=(criterion,),
-        reviewer_kind="operator",
-        self_review_forbidden=True,
+    gate_bytes = json.dumps(
+        {
+            "schema": "ctower.gate-policy/v1",
+            "key": "fixture.gates",
+            "revision": 1,
+            "workflow_ref": workflow_ref,
+            "evidence_policy_ref": "fixture.evidence@1",
+            "criteria": [
+                {
+                    "key": criterion.key,
+                    "description": criterion.description,
+                    "candidate_dependent": criterion.candidate_dependent,
+                    "requires_verdict": criterion.requires_verdict,
+                }
+            ],
+            "protected_verdict": {
+                "reviewer_kind": "operator",
+                "self_review": "forbidden",
+            },
+        },
+        separators=(",", ":"),
+        sort_keys=True,
+    ).encode()
+    evidence_bytes = json.dumps(
+        {
+            "schema": "ctower.evidence-policy/v1",
+            "key": "fixture.evidence",
+            "revision": 1,
+            "digest_algorithm": "sha256",
+            "content_encoding": "utf-8",
+            "candidate_binding": "current_digest",
+            "corruption_policy": "reject",
+            "missing_policy": "reject",
+        },
+        separators=(",", ":"),
+        sort_keys=True,
+    ).encode()
+    return ProofPolicy.from_bytes(
+        gate_bytes,
+        evidence_bytes,
     )
 
 
-def fixture_proof_store(
-    dsn: str, workflow_ref: str, criterion_key: str, description: str
-) -> PostgresProof:
+def fixture_proof_store(dsn: str, policy: ProofPolicy) -> PostgresProof:
     """Compose a fail-closed Proof store for one synthetic Workflow pin."""
 
-    criterion = Criterion(
-        key=criterion_key,
-        description=description,
-        candidate_dependent=True,
-        requires_verdict=True,
-    )
     return PostgresProof(
         dsn,
-        policies=(fixture_proof_policy(workflow_ref, criterion),),
+        policies=(policy,),
         policy_pins=PostgresWorkflowPolicyPins(),
     )
 

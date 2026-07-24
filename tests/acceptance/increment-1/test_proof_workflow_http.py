@@ -17,9 +17,10 @@ from support.telemetry import telemetry_headers
 from support.tenant_fixture import TenantFixture
 
 from ctower_api.interface import create_app
-from ctower_kernel.proof import Proof
+from ctower_kernel.proof import Proof, ProofPolicy
 from ctower_kernel.proof.postgres import PostgresProof
 from ctower_kernel.record.postgres import PostgresRecord
+from ctower_kernel.record.transaction import authority_connection
 from ctower_kernel.work import Work
 from ctower_kernel.work.postgres import PostgresWork
 from ctower_kernel.workflow import Workflow, WorkflowGraph
@@ -274,6 +275,68 @@ def test_caller_cannot_weaken_the_pinned_gate_policy(tenant: TenantFixture) -> N
     assert exact.json()["version"] == 1
 
 
+def test_postgres_policy_registration_binds_exact_bytes_to_the_workflow_pin(
+    tenant: TenantFixture,
+) -> None:
+    weakened_store = PostgresProof(
+        tenant.database.runtime_dsn,
+        policies=(_weakened_proof_policy(),),
+        policy_pins=PostgresWorkflowPolicyPins(),
+    )
+    candidate_digest = "sha256:" + "e" * 64
+    content = "exact policy bytes"
+    artifact_digest = "sha256:" + hashlib.sha256(content.encode()).hexdigest()
+
+    with TestClient(_app(tenant, proof_store=weakened_store)) as client:
+        ticket_id = _create_ticket(client, tenant)
+        _start_and_admit(client, tenant, ticket_id)
+        weakened = _post_command(
+            client,
+            tenant.commander_credential,
+            ticket_id,
+            "proof/criteria",
+            {
+                "expected_version": 0,
+                "candidate_digest": candidate_digest,
+                "criteria": [
+                    {
+                        "key": "artifact-current",
+                        "description": "Artifact evidence matches the current candidate.",
+                        "candidate_dependent": True,
+                        "requires_verdict": False,
+                    }
+                ],
+            },
+        )
+
+    exact_store = PostgresProof(
+        tenant.database.runtime_dsn,
+        policies=(proof_policy(),),
+        policy_pins=PostgresWorkflowPolicyPins(),
+    )
+    with TestClient(_app(tenant, proof_store=exact_store)) as client:
+        exact = _prepare_current_proof(
+            client,
+            tenant,
+            ticket_id,
+            candidate_digest,
+            artifact_digest,
+            content,
+        )
+
+    assert (weakened.status_code, weakened.json()["code"]) == (
+        HTTP_CONFLICT,
+        "proof-policy-pin-mismatch",
+    )
+    assert not _is_current(weakened_store, tenant, ticket_id)
+    assert (exact.frozen.status_code, exact.frozen.json()["version"]) == (HTTP_PENDING, 1)
+    assert (exact.verdict.status_code, exact.verdict.json()["satisfied"]) == (
+        HTTP_PENDING,
+        True,
+    )
+    assert _is_current(exact_store, tenant, ticket_id)
+
+
 def _prepare_current_proof(
     client: TestClient,
     tenant: TenantFixture,
@@ -471,6 +534,27 @@ def _file_digest(relative: str) -> str:
     return f"sha256:{hashlib.sha256((ROOT / relative).read_bytes()).hexdigest()}"
 
 
+def _weakened_proof_policy() -> ProofPolicy:
+    gate_bytes = (ROOT / "packs/policies/gates/trust-spine-four-stage-v1.yaml").read_bytes()
+    evidence_bytes = (ROOT / "packs/policies/evidence/trust-spine-four-stage-v1.yaml").read_bytes()
+    weakened_gate_bytes = gate_bytes.replace(
+        b'"requires_verdict": true',
+        b'"requires_verdict": false',
+    )
+    assert weakened_gate_bytes != gate_bytes
+    return ProofPolicy.from_bytes(weakened_gate_bytes, evidence_bytes)
+
+
+def _is_current(
+    store: PostgresProof,
+    tenant: TenantFixture,
+    ticket_id: UUID,
+) -> bool:
+    with authority_connection(tenant.database.runtime_dsn) as connection:
+        connection.execute("SET ROLE ctower_svc")
+        return store.is_current(connection, tenant.tenant_id, ticket_id)
+
+
 def _command_headers(
     credential: str, command_id: UUID, ticket_id: UUID | None = None
 ) -> dict[str, str]:
@@ -499,12 +583,14 @@ def _post_command(
     )
 
 
-def _app(tenant: TenantFixture) -> FastAPI:
+def _app(
+    tenant: TenantFixture,
+    *,
+    proof_store: PostgresProof | None = None,
+) -> FastAPI:
     runtime_dsn = tenant.database.runtime_dsn
-    proof_store = PostgresProof(
-        runtime_dsn,
-        policies=(proof_policy(),),
-        policy_pins=PostgresWorkflowPolicyPins(),
+    proof_store = proof_store or PostgresProof(
+        runtime_dsn, policies=(proof_policy(),), policy_pins=PostgresWorkflowPolicyPins()
     )
     workflow_store = PostgresWorkflow(
         runtime_dsn, proof_gate=proof_store, readiness_gate=PostgresWork(runtime_dsn)
