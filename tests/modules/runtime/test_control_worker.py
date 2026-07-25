@@ -71,6 +71,7 @@ class _RoutineStore:
 class _ProjectionStore:
     def __init__(self) -> None:
         self.tenants: list[UUID] = []
+        self.delivery_tenants: list[UUID] = []
 
     def catch_up(self, tenant_id: UUID, through_watermark: int | None = None) -> BoardView:
         assert through_watermark is None
@@ -92,6 +93,14 @@ class _ProjectionStore:
         raise NotImplementedError
 
     def project_delivery(self, actor: Actor, project_key: str) -> ProjectDeliveryView | None:
+        raise NotImplementedError
+
+    def reconcile_project_delivery(self, tenant_id: UUID, *, now: datetime) -> int:
+        assert now.tzinfo is not None
+        self.delivery_tenants.append(tenant_id)
+        return 0
+
+    def rebuild_project_delivery(self, tenant_id: UUID, *, now: datetime) -> int:
         raise NotImplementedError
 
 
@@ -162,6 +171,7 @@ def test_worker_loads_exact_fixed_packs_and_ticks_each_owned_loop() -> None:
     )
     assert routine_store.scans == EXPECTED_TICKS
     assert projection_store.tenants == [tenant_id, tenant_id]
+    assert projection_store.delivery_tenants == [tenant_id, tenant_id]
     with pytest.raises(ValueError, match="interval"):
         worker.run(Event(), interval_seconds=0.0)
 

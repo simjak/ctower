@@ -271,6 +271,15 @@
       "forward_test": "pytest:tests/modules/migration/test_postgres.py::test_importer_is_run_scoped_replay_safe_and_database_guarded",
       "rollback_or_forward_compensation": "Preserve every immutable import run, credential lifecycle, batch/result, alias, source-link, relation-validity, correction, reconciliation, fence, command, event, and outbox fact; append reviewed forward compensation and never reactivate a finalized importer credential.",
       "backup_checkpoint": "Before a nonempty installation applies this dormant importer storage, capture and verify principal, credential, ticket, relation, event, command, outbox, cutover, and migration-fact counts plus a database backup; no live cutover is authorized."
+    },
+    {
+      "path": "0029_i17b_checkpoint_catalog_kind.sql",
+      "sha256": "sha256:f7179ab7ceb166f8395a81dcc49f99aa38b299513b998238e2ec967d66f66d27",
+      "minimum_service_version": "0.0.0",
+      "maximum_service_version": "0.0.0",
+      "forward_test": "pytest:tests/acceptance/increment-1/test_checkpoint_delivery.py::test_checkpoint_bundle_materializes_all_14_definitions_atomically_and_replays",
+      "rollback_or_forward_compensation": "Keep checkpoint component revisions readable by a checkpoint-aware build or append a reviewed forward constraint supersession; never delete Catalog or Project Delivery authority facts.",
+      "backup_checkpoint": "Before applying to a nonempty installation, capture and verify the catalog_components constraint definition plus component, revision, definition, and criterion counts."
     }
   ]
 }

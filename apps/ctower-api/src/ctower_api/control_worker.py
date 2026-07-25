@@ -11,6 +11,7 @@ from typing import Protocol
 from uuid import UUID
 
 from ctower_api._outbox_loop import OutboxLoop
+from ctower_api._project_delivery_loop import ProjectDeliveryLoop
 from ctower_api._routine_loop import RoutineLoop, load_routine_revisions
 from ctower_api.synthetic_handler import (
     SyntheticFourStageHandler,
@@ -48,6 +49,7 @@ class ControlWorker:
     runtime: Routine
     routine_loop: RoutineLoop
     outbox_loop: OutboxLoop
+    project_delivery_loop: ProjectDeliveryLoop
     fixed_operations: FixedOperations | None = None
     synthetic_handler: _SyntheticHandler | None = None
 
@@ -55,6 +57,7 @@ class ControlWorker:
         tenant_ids = self.runtime.tenant_ids()
         self.routine_loop.tick(tenant_ids)
         self.outbox_loop.tick(tenant_ids)
+        self.project_delivery_loop.tick(tenant_ids)
         self._tick_synthetic()
 
     def run(self, stop: Event, *, interval_seconds: float = 1.0) -> None:
@@ -131,6 +134,7 @@ def build_worker(
         runtime,
         RoutineLoop(runtime, load_routine_revisions(pack_root)),
         OutboxLoop(projections),
+        ProjectDeliveryLoop(projections),
         fixed_operations,
         synthetic_handler,
     )

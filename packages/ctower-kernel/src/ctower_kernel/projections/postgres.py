@@ -10,6 +10,12 @@ from ctower_kernel.projections._health_sql import health as _health
 from ctower_kernel.projections._postgres_sql import board as _board
 from ctower_kernel.projections._postgres_sql import catch_up as _catch_up
 from ctower_kernel.projections._postgres_sql import rebuild as _rebuild
+from ctower_kernel.projections._project_delivery_reconcile_sql import (
+    rebuild as _rebuild_project_delivery,
+)
+from ctower_kernel.projections._project_delivery_reconcile_sql import (
+    reconcile as _reconcile_project_delivery,
+)
 from ctower_kernel.projections._project_delivery_sql import cutover_health as _cutover_health
 from ctower_kernel.projections._project_delivery_sql import (
     project_delivery as _project_delivery,
@@ -48,3 +54,9 @@ class PostgresProjections:
 
     def project_delivery(self, actor: Actor, project_key: str) -> ProjectDeliveryView | None:
         return _project_delivery(self._dsn, actor, project_key)
+
+    def reconcile_project_delivery(self, tenant_id: UUID, *, now: datetime) -> int:
+        return _reconcile_project_delivery(self._dsn, tenant_id, now=now)
+
+    def rebuild_project_delivery(self, tenant_id: UUID, *, now: datetime) -> int:
+        return _rebuild_project_delivery(self._dsn, tenant_id, now=now)

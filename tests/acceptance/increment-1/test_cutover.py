@@ -17,6 +17,7 @@ from support.telemetry import telemetry_headers
 from support.tenant_fixture import TenantFixture
 
 from ctower_api.interface import create_app
+from ctower_client.models import CtowerProjectEpochRefusalRequest
 from ctower_kernel.projections import (
     CheckpointDefinition,
     DeliveryFacts,
@@ -119,12 +120,11 @@ def test_i17a_storage_is_append_only_and_projection_only(
             )
 
 
-def test_i17a_api_reads_blocked_cp3_d_and_stubs_mutate_nothing(
+def test_i17b_api_reads_blocked_cp3_d_and_refuses_epoch_mutation(
     tenant: TenantFixture,
 ) -> None:
     _seed_project_delivery_row(tenant)
     before = _cutover_fact_count(tenant)
-    command_id = uuid4()
 
     with TestClient(_app(tenant)) as client:
         health = client.get(
@@ -135,7 +135,7 @@ def test_i17a_api_reads_blocked_cp3_d_and_stubs_mutate_nothing(
             "/v1/projects/ctower/delivery",
             headers=_headers(tenant),
         )
-        _assert_i17a_refusals(client, tenant, command_id)
+        _assert_i17b_epoch_refusals(client, tenant)
 
     assert health.status_code == HTTP_OK
     assert health.json()["authority_mode"] == "legacy_writable"
@@ -263,40 +263,24 @@ def test_i17a_health_reports_unknown_when_rows_exist_without_an_authority_fact(
     assert health.projection_watermark == _DELIVERY_WATERMARK
 
 
-def _assert_i17a_refusals(
+def _assert_i17b_epoch_refusals(
     client: TestClient,
     tenant: TenantFixture,
-    command_id: UUID,
 ) -> None:
+    epoch = CtowerProjectEpochRefusalRequest(
+        cutover_id=uuid4(),
+        run_id=uuid4(),
+        reconciliation_digest=_DIGEST,
+        fence_registry_digest=_DIGEST,
+    )
     refused = [
         client.post(
             f"/v1/migrations/ctower-project/{phase}",
-            json={"cutover_id": str(uuid4()), "input_digest": _DIGEST},
-            headers=_headers(tenant, command_id=command_id),
+            content=epoch.model_dump_json(),
+            headers=_headers(tenant, command_id=uuid4()),
         )
-        for phase in (
-            "inventory",
-            "export",
-            "plan",
-            "import",
-            "reconcile",
-            "prepare",
-            "commit-development-epoch",
-        )
+        for phase in ("prepare", "commit-development-epoch")
     ]
-    invalid_stub = client.post(
-        "/v1/migrations/ctower-project/inventory",
-        json={"cutover_id": str(uuid4())},
-        headers=_headers(tenant, command_id=command_id),
-    )
-    unauthenticated = client.post(
-        "/v1/migrations/ctower-project/import",
-        content=b"not-json",
-        headers={
-            "Idempotency-Key": str(uuid4()),
-            **telemetry_headers(),
-        },
-    )
     invalid_project = client.get("/v1/projects/x!/delivery", headers=_headers(tenant))
     missing_project = client.get("/v1/projects/other/delivery", headers=_headers(tenant))
     unauthenticated_health = client.get(
@@ -309,10 +293,8 @@ def _assert_i17a_refusals(
     )
 
     assert {(response.status_code, response.json()["code"]) for response in refused} == {
-        (HTTP_CONFLICT, "i1-7b-required")
+        (HTTP_CONFLICT, "i1-7c-required")
     }
-    assert invalid_stub.status_code == HTTP_UNPROCESSABLE_ENTITY
-    assert unauthenticated.status_code == HTTP_UNAUTHORIZED
     assert invalid_project.status_code == HTTP_UNPROCESSABLE_ENTITY
     assert missing_project.status_code == HTTP_NOT_FOUND
     assert unauthenticated_health.status_code == HTTP_UNAUTHORIZED

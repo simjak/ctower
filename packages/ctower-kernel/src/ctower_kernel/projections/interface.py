@@ -245,6 +245,10 @@ class _ProjectionStore(Protocol):
 
     def project_delivery(self, actor: Actor, project_key: str) -> ProjectDeliveryView | None: ...
 
+    def reconcile_project_delivery(self, tenant_id: UUID, *, now: datetime) -> int: ...
+
+    def rebuild_project_delivery(self, tenant_id: UUID, *, now: datetime) -> int: ...
+
 
 class Projections:
     """Expose catch-up, read, and deterministic rebuild without mutation commands."""
@@ -273,6 +277,16 @@ class Projections:
         """Read stored compact rows without accepting a desired status."""
 
         return self._store.project_delivery(actor, project_key)
+
+    def reconcile_project_delivery(self, tenant_id: UUID, *, now: datetime) -> int:
+        """Reconcile changed or freshness-due rows outside request handling."""
+
+        return self._store.reconcile_project_delivery(tenant_id, now=now)
+
+    def rebuild_project_delivery(self, tenant_id: UUID, *, now: datetime) -> int:
+        """Delete and deterministically rebuild disposable Project Delivery rows."""
+
+        return self._store.rebuild_project_delivery(tenant_id, now=now)
 
 
 def derive_board_card(facts: BoardFacts) -> BoardCard:

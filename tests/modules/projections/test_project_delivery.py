@@ -25,6 +25,7 @@ _CRITERIA = (
     "development_dogfood",
     "cp3_d",
 )
+_REBUILD_GENERATION = 7
 
 
 def test_i17_retains_verified_maturity_but_cp3_d_blocks_done() -> None:
@@ -74,6 +75,25 @@ def test_health_faults_are_loud_without_moving_lifecycle_or_proof() -> None:
     assert stale.freshness == "stale"
     assert unknown.health == "STATE_UNKNOWN"
     assert unknown.confidence == "STATE_UNKNOWN"
+
+
+def test_semantic_digest_excludes_heartbeat_generation_and_wording() -> None:
+    first = derive_project_delivery_row(_definition(), _facts())
+    heartbeat_at = _facts().last_reconciled_at + timedelta(hours=2)
+    heartbeat = derive_project_delivery_row(
+        replace(_definition(), label="Reworded label", outcome="Reworded outcome"),
+        replace(
+            _facts(),
+            last_reconciled_at=heartbeat_at,
+            observed_at=heartbeat_at,
+            rebuild_generation=_REBUILD_GENERATION,
+        ),
+    )
+
+    assert heartbeat.semantic_digest == first.semantic_digest
+    assert heartbeat.source_ids == first.source_ids
+    assert heartbeat.derivation_reasons == first.derivation_reasons
+    assert heartbeat.rebuild_generation == _REBUILD_GENERATION
 
 
 def test_fold_rejects_zero_criteria_unknown_proof_and_invalid_time() -> None:

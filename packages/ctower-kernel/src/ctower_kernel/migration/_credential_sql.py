@@ -157,6 +157,39 @@ def resolve_importer(
     )
 
 
+def resolve_fence_observer(
+    dsn: str,
+    credential_digest: bytes,
+    *,
+    now: datetime,
+) -> Actor | None:
+    """Resolve a credential that can only append degrading fence observations."""
+
+    del now
+    with psycopg.connect(dsn, row_factory=dict_row) as connection:
+        connection.execute("SET ROLE ctower_svc")
+        row = connection.execute(
+            """
+            SELECT principal.principal_id, principal.tenant_id
+            FROM principal_credentials AS credential
+            JOIN principals AS principal
+              ON principal.principal_id = credential.principal_id
+             AND principal.tenant_id = credential.tenant_id
+            WHERE credential.credential_digest = %s
+              AND credential.revoked_at IS NULL AND NOT principal.disabled
+              AND principal.kind = 'fence_observer'
+            """,
+            (credential_digest,),
+        ).fetchone()
+    if row is None:
+        return None
+    return Actor(
+        cast(UUID, row["principal_id"]),
+        cast(UUID, row["tenant_id"]),
+        PrincipalKind.FENCE_OBSERVER,
+    )
+
+
 def _digest_bytes(value: str) -> bytes:
     return bytes.fromhex(value.removeprefix("sha256:"))
 

@@ -66,6 +66,9 @@ _AUTHORED_COMMAND_NAMES = frozenset(
         "migration ctower-project plan",
         "migration ctower-project import",
         "migration ctower-project reconcile",
+        "migration ctower-project run get",
+        "migration ctower-project correction append",
+        "migration ctower-project fence observe",
         "migration ctower-project prepare",
         "migration ctower-project commit-development-epoch",
         "migration ctower-project verify",
@@ -422,8 +425,27 @@ def _migration_parser(parser: argparse.ArgumentParser) -> None:
         phase = actions.add_parser(name)
         phase.set_defaults(cli_name=f"migration ctower-project {name}")
         _command_id(phase)
-        phase.add_argument("--cutover-id", required=True, type=UUID)
-        phase.add_argument("--input-digest", required=True, type=_sha256_digest)
+        phase.add_argument("--request-file", required=True, type=Path)
+    run = actions.add_parser("run").add_subparsers(
+        dest="run_action", required=True, parser_class=_Parser
+    )
+    run_get = run.add_parser("get")
+    run_get.set_defaults(cli_name="migration ctower-project run get")
+    run_get.add_argument("run_id", type=UUID)
+    correction = actions.add_parser("correction").add_subparsers(
+        dest="correction_action", required=True, parser_class=_Parser
+    )
+    correction_append = correction.add_parser("append")
+    correction_append.set_defaults(cli_name="migration ctower-project correction append")
+    _command_id(correction_append)
+    correction_append.add_argument("--request-file", required=True, type=Path)
+    fence = actions.add_parser("fence").add_subparsers(
+        dest="fence_action", required=True, parser_class=_Parser
+    )
+    fence_observe = fence.add_parser("observe")
+    fence_observe.set_defaults(cli_name="migration ctower-project fence observe")
+    _command_id(fence_observe)
+    fence_observe.add_argument("--request-file", required=True, type=Path)
     actions.add_parser("verify").set_defaults(cli_name="migration ctower-project verify")
 
 

@@ -1204,6 +1204,32 @@
       ]
     },
     {
+      "path": "packages/ctower-kernel/migrations/0028_i17b_importer_isolation.sql",
+      "references": [
+        "SPEC#canonical-event-and-command-contract",
+        "SPEC#one-ctower-project-source-of-truth-barrier",
+        "SPEC#persistence-authority",
+        "INV-35",
+        "INV-37",
+        "AC-MIG-03",
+        "AC-SEC-03",
+        "AC-SEC-05"
+      ]
+    },
+    {
+      "path": "packages/ctower-kernel/migrations/0029_i17b_checkpoint_catalog_kind.sql",
+      "references": [
+        "SPEC#companybundle-validate-plan-apply-and-export",
+        "SPEC#project-delivery-projection",
+        "INV-47",
+        "INV-60",
+        "AC-COMP-03",
+        "AC-PD-01",
+        "AC-PD-02",
+        "AC-PD-04"
+      ]
+    },
+    {
       "path": "packages/ctower-kernel/migrations/manifest.json",
       "references": [
         "SPEC#executable-authority-and-requirement-traceability",

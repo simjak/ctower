@@ -3,6 +3,8 @@
 from __future__ import annotations
 
 from collections.abc import Awaitable, Callable
+from datetime import datetime
+from typing import cast
 from uuid import UUID
 
 from fastapi import FastAPI, Request
@@ -36,6 +38,7 @@ from ctower_api._http_support import (
 from ctower_api._http_support import (
     validation_problem as _validation_problem,
 )
+from ctower_api._migration_port import MigrationPort
 from ctower_api._mutation_response import mutation_response as _mutation_response
 from ctower_api._proof_workflow_routes import install_proof_workflow_routes
 from ctower_api._synthetic_routes import SyntheticRuntime, install_synthetic_routes
@@ -85,13 +88,22 @@ def create_app(
     catalog: BundleCatalog | None = None,
     synthetic_runtime: SyntheticRuntime | None = None,
     synthetic_revision: RoutineRevision | None = None,
+    migration: object | None = None,
+    migration_importer_resolver: Callable[[bytes, UUID, UUID, str, datetime], Actor | None]
+    | None = None,
+    fence_observer_resolver: Callable[[bytes, datetime], Actor | None] | None = None,
     telemetry: TelemetryRecorder | None = None,
 ) -> FastAPI:
     """Compose the private command API without embedding durable decisions."""
 
     app = FastAPI(title="ctower control API", version="0.0.0")
     recorder = telemetry or TelemetryRecorder()
-    access = Access(record, telemetry=recorder)
+    access = Access(
+        record,
+        importer_resolver=migration_importer_resolver,
+        fence_observer_resolver=fence_observer_resolver,
+        telemetry=recorder,
+    )
     work_module = work or Work(record, telemetry=recorder)
 
     @app.middleware("http")
@@ -115,8 +127,8 @@ def create_app(
         install_proof_workflow_routes(app, access, record, proof, workflow, recorder)
     if projections is not None:
         install_board_routes(app, access, projections, recorder)
-        install_cutover_routes(app, access, projections, recorder)
         install_health_routes(app, access, record, projections, recorder, attention)
+    _install_cutover_boundary(app, access, projections, migration, recorder)
     if (synthetic_runtime is None) is not (synthetic_revision is None):
         raise ValueError("synthetic runtime and revision must be composed together")
     if synthetic_runtime is not None and synthetic_revision is not None:
@@ -129,6 +141,24 @@ def create_app(
             recorder,
         )
     return app
+
+
+def _install_cutover_boundary(
+    app: FastAPI,
+    access: Access,
+    projections: Projections | None,
+    migration: object | None,
+    recorder: TelemetryRecorder,
+) -> None:
+    if projections is None and migration is None:
+        return
+    install_cutover_routes(
+        app,
+        access,
+        projections,
+        cast(MigrationPort | None, migration),
+        recorder,
+    )
 
 
 def _install_bootstrap_route(

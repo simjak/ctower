@@ -50,7 +50,24 @@ _EXPECTED_SCHEMAS: dict[ComponentKind, str] = {
     ComponentKind.CADENCE_POLICY: "ctower.scheduling-policy/v1",
     ComponentKind.NOTIFICATION: "ctower.notification/v1",
     ComponentKind.INTEGRATION: "ctower.integration/v1",
+    ComponentKind.CHECKPOINT: "ctower.checkpoint/v1",
 }
+_CTOWER_CHECKPOINTS = (
+    "I1.0",
+    "I1.1",
+    "I1.2",
+    "I1.3",
+    "I1.4",
+    "I1.5",
+    "I1.6",
+    "I1.7",
+    "I2.1",
+    "I2.2",
+    "I2.3",
+    "I2.4",
+    "I2.5",
+    "I2.6",
+)
 _FORBIDDEN_KEYS = frozenset(
     {
         "access_token",
@@ -87,6 +104,8 @@ def validate_bundle(
     failure = _validate_identity(tenant_key, bundle)
     if failure is None:
         failure = _validate_resources(bundle, schemas)
+    if failure is None:
+        failure = _validate_checkpoint_set(bundle)
     if failure is None:
         failure = _validate_references(bundle, existing_refs)
     if failure is None:
@@ -144,6 +163,28 @@ def _validate_resources(bundle: CompanyBundle, schemas: SchemaCatalog) -> Catalo
         problem = _validate_resource(resource, schemas)
         if problem is not None:
             return problem
+    return None
+
+
+def _validate_checkpoint_set(bundle: CompanyBundle) -> CatalogProblem | None:
+    checkpoints = tuple(
+        resource
+        for resource in bundle.resources
+        if resource.component.kind is ComponentKind.CHECKPOINT
+    )
+    if not checkpoints:
+        return None
+    keys = tuple(str(resource.payload.get("checkpoint_key")) for resource in checkpoints)
+    if keys != _CTOWER_CHECKPOINTS or len(keys) != len(set(keys)):
+        return _problem(
+            "bundle-reference-invalid",
+            "The ctower checkpoint hierarchy must publish all 14 definitions in order.",
+        )
+    if any(resource.component.scope.project != "ctower" for resource in checkpoints):
+        return _problem(
+            "bundle-grant-refused",
+            "The frozen checkpoint hierarchy is scoped only to project ctower.",
+        )
     return None
 
 

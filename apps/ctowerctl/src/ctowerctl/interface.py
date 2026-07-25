@@ -178,12 +178,12 @@ def _execute_online_mutation(
     arguments: argparse.Namespace,
     operation: OperationSpec,
 ) -> tuple[BaseModel, ExitCode]:
-    """Execute a cutover stub online once; delayed replay is explicitly forbidden."""
+    """Execute one cutover mutation online; delayed replay is forbidden."""
 
     if operation.spool_policy is not SpoolPolicy.FORBIDDEN:
         raise ValueError("usage: online migration operation has unsafe spool metadata")
     with CtowerClient(base_url, credential=credential) as client:
-        result = _migration_commands.execute_online_stub(arguments, client)
+        result = _migration_commands.execute_online(arguments, client)
     return result, ExitCode.SUCCESS
 
 

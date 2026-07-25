@@ -145,3 +145,14 @@ class PostgresMigration:
             project_key,
             now=now,
         )
+
+    def resolve_fence_observer(
+        self,
+        credential_digest: bytes,
+        now: datetime,
+    ) -> Actor | None:
+        return _credential_sql.resolve_fence_observer(
+            self._dsn,
+            credential_digest,
+            now=now,
+        )

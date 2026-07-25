@@ -10,6 +10,7 @@ from uuid import UUID
 import psycopg
 
 from ctower_kernel.catalog._canonical import normalized_bundle
+from ctower_kernel.catalog._checkpoint_sql import materialize_checkpoints
 from ctower_kernel.catalog._postgres_activation import insert_activation_facts
 from ctower_kernel.catalog._postgres_events import catalog_events
 from ctower_kernel.catalog._postgres_read import ActiveCatalog, load_active_catalog
@@ -194,6 +195,7 @@ def _commit_bundle(
         result=result,
         now=now,
     )
+    materialize_checkpoints(connection, actor, bundle, prepared, now=now)
     return result
 
 

@@ -1,8 +1,9 @@
-"""Explicit generated-client calls for I1.7A reads and refusing phase stubs."""
+"""Explicit online-only generated-client calls for the ctower-project cutover."""
 
 from __future__ import annotations
 
 import argparse
+from pathlib import Path
 from typing import cast
 from uuid import UUID
 
@@ -10,73 +11,119 @@ from pydantic import BaseModel
 
 from ctower_client import CtowerClient
 from ctower_client.models import (
-    CtowerProjectMigrationStubRequest,
+    CtowerProjectAliasPlanBindRequest,
+    CtowerProjectEpochRefusalRequest,
+    CtowerProjectExportEqualityBindRequest,
+    CtowerProjectFenceObservationRequest,
+    CtowerProjectImportBatchRequest,
+    CtowerProjectImportCorrectionRequest,
+    CtowerProjectImportFinalizeRequest,
+    CtowerProjectImportRunCreateRequest,
     ProjectDeliveryView,
 )
 
 __all__: tuple[str, ...] = ()
 
+_REQUEST_MODELS: dict[str, type[BaseModel]] = {
+    "migration ctower-project inventory": CtowerProjectImportRunCreateRequest,
+    "migration ctower-project export": CtowerProjectExportEqualityBindRequest,
+    "migration ctower-project plan": CtowerProjectAliasPlanBindRequest,
+    "migration ctower-project import": CtowerProjectImportBatchRequest,
+    "migration ctower-project reconcile": CtowerProjectImportFinalizeRequest,
+    "migration ctower-project correction append": CtowerProjectImportCorrectionRequest,
+    "migration ctower-project fence observe": CtowerProjectFenceObservationRequest,
+    "migration ctower-project prepare": CtowerProjectEpochRefusalRequest,
+    "migration ctower-project commit-development-epoch": CtowerProjectEpochRefusalRequest,
+}
 
-def execute_online_stub(arguments: argparse.Namespace, client: CtowerClient) -> BaseModel:
-    """Invoke one authored online-only operation without touching the replay spool."""
+
+def execute_online(arguments: argparse.Namespace, client: CtowerClient) -> BaseModel:
+    """Validate one command-specific DTO and send it without replay spooling."""
 
     cli_name = cast(str, arguments.cli_name)
-    request = CtowerProjectMigrationStubRequest(
-        cutover_id=cast(UUID, arguments.cutover_id),
-        input_digest=cast(str, arguments.input_digest),
+    model = _REQUEST_MODELS.get(cli_name)
+    if model is None:
+        raise ValueError("usage: unsupported ctower-project mutation")
+    payload = model.model_validate_json(
+        cast(Path, arguments.request_file).read_text(encoding="utf-8")
     )
     command_id = cast(UUID, arguments.command_id)
     if cli_name in {
         "migration ctower-project inventory",
         "migration ctower-project export",
         "migration ctower-project plan",
-        "migration ctower-project import",
     }:
-        return _execute_source_stub(cli_name, client, request, command_id)
-    return _execute_cutover_stub(cli_name, client, request, command_id)
+        return _execute_binding(cli_name, client, payload, command_id)
+    return _execute_import_cutover(cli_name, client, payload, command_id)
 
 
-def _execute_source_stub(
+def _execute_binding(
     cli_name: str,
     client: CtowerClient,
-    request: CtowerProjectMigrationStubRequest,
+    payload: BaseModel,
     command_id: UUID,
 ) -> BaseModel:
     if cli_name == "migration ctower-project inventory":
-        return client.inventory_ctower_project_migration(request, command_id=command_id)
+        return client.create_ctower_project_import_run(
+            cast(CtowerProjectImportRunCreateRequest, payload),
+            command_id=command_id,
+        )
     if cli_name == "migration ctower-project export":
-        return client.export_ctower_project_migration(request, command_id=command_id)
-    if cli_name == "migration ctower-project plan":
-        return client.plan_ctower_project_migration(request, command_id=command_id)
-    if cli_name == "migration ctower-project import":
-        return client.import_ctower_project_migration(request, command_id=command_id)
-    raise ValueError("usage: unsupported ctower-project source stub")
+        return client.bind_ctower_project_export_equality(
+            cast(CtowerProjectExportEqualityBindRequest, payload),
+            command_id=command_id,
+        )
+    return client.bind_ctower_project_alias_plan(
+        cast(CtowerProjectAliasPlanBindRequest, payload),
+        command_id=command_id,
+    )
 
 
-def _execute_cutover_stub(
+def _execute_import_cutover(
     cli_name: str,
     client: CtowerClient,
-    request: CtowerProjectMigrationStubRequest,
+    payload: BaseModel,
     command_id: UUID,
 ) -> BaseModel:
+    if cli_name == "migration ctower-project import":
+        return client.apply_ctower_project_import_batch(
+            cast(CtowerProjectImportBatchRequest, payload),
+            command_id=command_id,
+        )
     if cli_name == "migration ctower-project reconcile":
-        return client.reconcile_ctower_project_migration(request, command_id=command_id)
+        return client.finalize_ctower_project_import_run(
+            cast(CtowerProjectImportFinalizeRequest, payload),
+            command_id=command_id,
+        )
+    if cli_name == "migration ctower-project correction append":
+        return client.append_ctower_project_import_correction(
+            cast(CtowerProjectImportCorrectionRequest, payload),
+            command_id=command_id,
+        )
+    if cli_name == "migration ctower-project fence observe":
+        return client.report_ctower_project_fence_observation(
+            cast(CtowerProjectFenceObservationRequest, payload),
+            command_id=command_id,
+        )
+    refusal = cast(CtowerProjectEpochRefusalRequest, payload)
     if cli_name == "migration ctower-project prepare":
-        return client.prepare_ctower_project_cutover(request, command_id=command_id)
+        return client.prepare_ctower_project_cutover(refusal, command_id=command_id)
     if cli_name == "migration ctower-project commit-development-epoch":
-        return client.commit_ctower_project_development_epoch(request, command_id=command_id)
-    raise ValueError("usage: unsupported ctower-project cutover stub")
+        return client.commit_ctower_project_development_epoch(refusal, command_id=command_id)
+    raise AssertionError("closed migration dispatch fell through")
 
 
 def execute_query(arguments: argparse.Namespace, client: CtowerClient) -> BaseModel:
-    """Invoke one real I1.7A read."""
+    """Invoke one exact migration or Project Delivery read."""
 
     cli_name = cast(str, arguments.cli_name)
     if cli_name == "migration ctower-project verify":
         return client.get_ctower_project_cutover_health()
+    if cli_name == "migration ctower-project run get":
+        return client.get_ctower_project_import_run(arguments.run_id)
     if cli_name == "project delivery query":
         return client.get_project_delivery(cast(str, arguments.project_key))
-    raise ValueError("usage: unsupported I1.7A query")
+    raise ValueError("usage: unsupported ctower-project query")
 
 
 def delivery_text(view: ProjectDeliveryView) -> str:
@@ -101,27 +148,18 @@ def delivery_text(view: ProjectDeliveryView) -> str:
 
 
 def mutation_command_names() -> frozenset[str]:
-    """Return only the explicit online-only, unspoolable phase stubs."""
+    """Return the exact online-only, unspoolable mutation inventory."""
 
-    return frozenset(
-        {
-            "migration ctower-project inventory",
-            "migration ctower-project export",
-            "migration ctower-project plan",
-            "migration ctower-project import",
-            "migration ctower-project reconcile",
-            "migration ctower-project prepare",
-            "migration ctower-project commit-development-epoch",
-        }
-    )
+    return frozenset(_REQUEST_MODELS)
 
 
 def query_command_names() -> frozenset[str]:
-    """Return the two generated-client-backed I1.7A reads."""
+    """Return the exact generated-client-backed read inventory."""
 
     return frozenset(
         {
             "migration ctower-project verify",
+            "migration ctower-project run get",
             "project delivery query",
         }
     )
