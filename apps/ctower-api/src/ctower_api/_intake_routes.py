@@ -31,6 +31,12 @@ from ctower_kernel.work import Intake
 
 __all__: tuple[str, ...] = ()
 
+_INTAKE_BODY_LIMIT_BYTES = 512 * 1024
+
+
+class _BodyTooLargeError(Exception):
+    """Authenticated intake exceeded the fixed transport envelope."""
+
 
 def install_intake_routes(
     app: FastAPI,
@@ -60,7 +66,9 @@ def _install_submit_route(
         try:
             telemetry = telemetry_context(request)
             command_id = uuid_value(request.headers.get("Idempotency-Key"))
-            payload = IntakeSubmitRequest.model_validate_json(await request.body())
+            payload = IntakeSubmitRequest.model_validate_json(await _bounded_body(request))
+        except _BodyTooLargeError:
+            return problem_response(_body_too_large_problem())
         except (ValidationError, ValueError):
             return problem_response(validation_problem())
         telemetry = telemetry.bind(
@@ -120,7 +128,9 @@ def _install_promotion_route(
             telemetry = telemetry_context(request)
             command_id = uuid_value(request.headers.get("Idempotency-Key"))
             event_id = uuid_value(inbound_event_id)
-            payload = IntakePromotionRequest.model_validate_json(await request.body())
+            payload = IntakePromotionRequest.model_validate_json(await _bounded_body(request))
+        except _BodyTooLargeError:
+            return problem_response(_body_too_large_problem())
         except (ValidationError, ValueError):
             return problem_response(validation_problem())
         telemetry = telemetry.bind(
@@ -154,3 +164,30 @@ def _install_promotion_route(
             boundary_model=HttpIntakeCommandResult,
             accepted_status=200,
         )
+
+
+async def _bounded_body(request: Request) -> bytes:
+    declared = request.headers.get("content-length")
+    if declared is not None:
+        try:
+            if int(declared) > _INTAKE_BODY_LIMIT_BYTES:
+                raise _BodyTooLargeError
+        except ValueError:
+            pass
+    chunks: list[bytes] = []
+    total = 0
+    async for chunk in request.stream():
+        total += len(chunk)
+        if total > _INTAKE_BODY_LIMIT_BYTES:
+            raise _BodyTooLargeError
+        chunks.append(chunk)
+    return b"".join(chunks)
+
+
+def _body_too_large_problem() -> RecordProblem:
+    return RecordProblem(
+        code="request-body-too-large",
+        detail=f"Authenticated intake bodies are limited to {_INTAKE_BODY_LIMIT_BYTES} bytes.",
+        status=413,
+        title="Request body too large",
+    )

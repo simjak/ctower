@@ -31,6 +31,7 @@ class IntakeThreadState:
     version: int
     next_position: int
     previous_hash: bytes
+    is_new: bool
 
 
 @dataclass(frozen=True, slots=True)
@@ -42,6 +43,33 @@ class IntakeAction:
     ticket_ids: _TicketIds | None
 
 
+@dataclass(frozen=True, slots=True)
+class _SubmitIds:
+    thread: UUID
+    inbound_event: UUID
+    ticket: _TicketIds | None
+    ticket_subject: UUID | None
+
+
+def resolve_inbound_for_promotion(
+    connection: psycopg.Connection[dict[str, object]],
+    actor: Actor,
+    command: IntakePromotionCommand,
+) -> UUID | RecordProblem:
+    """Resolve the durability subject without taking an aggregate lock."""
+
+    row = connection.execute(
+        """
+        SELECT thread_id FROM inbound_events
+        WHERE tenant_id = %s AND inbound_event_id = %s
+        """,
+        (actor.tenant_id, command.inbound_event_id),
+    ).fetchone()
+    if row is None:
+        return scope_problem(command.client_command_id)
+    return cast(UUID, row["thread_id"])
+
+
 def lock_inbound_for_promotion(
     connection: psycopg.Connection[dict[str, object]],
     actor: Actor,
@@ -50,6 +78,7 @@ def lock_inbound_for_promotion(
     row = connection.execute(
         """
         SELECT inbound.thread_id, inbound.source_kind, inbound.source_ref,
+            inbound.initial_outcome, inbound.taint,
             thread.project_key, thread.version,
             (
                 SELECT event_hash FROM events
@@ -57,7 +86,12 @@ def lock_inbound_for_promotion(
                   AND stream_id = 'inbound-thread:' || thread.thread_id::text
                 ORDER BY sequence DESC LIMIT 1
             ) AS event_hash,
-            link.ticket_id AS linked_ticket_id
+            link.ticket_id AS linked_ticket_id,
+            EXISTS (
+                SELECT 1 FROM inbound_quarantines AS quarantine
+                WHERE quarantine.tenant_id = inbound.tenant_id
+                  AND quarantine.inbound_event_id = inbound.inbound_event_id
+            ) AS governed_by_quarantine
         FROM inbound_events AS inbound
         JOIN inbound_threads AS thread
           ON thread.thread_id = inbound.thread_id AND thread.tenant_id = inbound.tenant_id
@@ -71,6 +105,18 @@ def lock_inbound_for_promotion(
     ).fetchone()
     if row is None:
         return scope_problem(command.client_command_id)
+    if (
+        str(row["initial_outcome"]) != IntakeOutcome.DISCUSSION.value
+        or str(row["taint"]) != "authenticated"
+        or bool(row["governed_by_quarantine"])
+    ):
+        return RecordProblem(
+            code="intake-promotion-ineligible",
+            detail="Only an authenticated, ungoverned discussion event may be promoted.",
+            status=409,
+            title="Inbound event is not promotable",
+            command_id=command.client_command_id,
+        )
     if row["linked_ticket_id"] is not None:
         return RecordProblem(
             code="intake-already-promoted",

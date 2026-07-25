@@ -42,6 +42,12 @@ staging immutable payloads; an exact replay returns its stored result without co
 I1 additive and successor activation remains supported, but lifecycle removal/deprecation is a typed refusal
 that leaves the prior active Catalog authoritative.
 
+Thread-first intake is bounded to the already-declared `ctower` project in the tenant's Project Delivery
+hierarchy because I1 has no separate actor-to-project grant authority. Ticket creation and link validation
+use the existing immutable `ticket_project_bindings` authority for both migration and intake provenance;
+there is no intake-only project ledger. Complete sorted durability-subject locks precede thread/ticket
+locks, and only authenticated, unquarantined discussion events may be promoted.
+
 There is no executable Extension Host in I1 or I2; that runtime remains deferred until a real use case and
 two real Adapters earn its Seam. The kernel may depend on authored/generated contracts and allowlisted public
 Module Interfaces, never on apps, runner/provider implementations, web, CLI, or mutable YAML state.

@@ -104,6 +104,7 @@
           "403": {"$ref": "#/components/responses/ProblemResponse"},
           "404": {"$ref": "#/components/responses/ProblemResponse"},
           "409": {"$ref": "#/components/responses/ProblemResponse"},
+          "413": {"$ref": "#/components/responses/ProblemResponse"},
           "422": {"$ref": "#/components/responses/ProblemResponse"}
         }
       }
@@ -144,6 +145,7 @@
           "403": {"$ref": "#/components/responses/ProblemResponse"},
           "404": {"$ref": "#/components/responses/ProblemResponse"},
           "409": {"$ref": "#/components/responses/ProblemResponse"},
+          "413": {"$ref": "#/components/responses/ProblemResponse"},
           "422": {"$ref": "#/components/responses/ProblemResponse"}
         }
       }
@@ -2240,6 +2242,7 @@
               "i1-7c-required",
               "idempotency-conflict",
               "intake-already-promoted",
+              "intake-promotion-ineligible",
               "intake-source-conflict",
               "migration-alias-conflict",
               "migration-capability-denied",
@@ -2256,6 +2259,7 @@
               "migration-source-tainted",
               "poison-not-found",
               "project-delivery-unavailable",
+              "request-body-too-large",
               "proof-candidate-author-mismatch",
               "proof-candidate-digest-invalid",
               "proof-candidate-digest-not-current",
@@ -2353,7 +2357,7 @@
               {"type": "null"}
             ]
           },
-          "project_key": {"type": "string", "pattern": "^[a-z][a-z0-9._-]{2,127}$"},
+          "project_key": {"type": "string", "pattern": "^[a-z][a-z0-9-]{2,63}$"},
           "source": {"$ref": "#/components/schemas/SourceReference"},
           "taint": {"$ref": "#/components/schemas/IntakeTaint", "default": "authenticated"},
           "target_ticket_id": {"type": ["string", "null"], "format": "uuid"},
@@ -2408,7 +2412,7 @@
           },
           "inbound_event_id": {"type": "string", "format": "uuid"},
           "outcome": {"$ref": "#/components/schemas/IntakeOutcome"},
-          "project_key": {"type": "string", "pattern": "^[a-z][a-z0-9._-]{2,127}$"},
+          "project_key": {"type": "string", "pattern": "^[a-z][a-z0-9-]{2,63}$"},
           "quarantine_reason": {"type": ["string", "null"], "maxLength": 500},
           "source": {"$ref": "#/components/schemas/SourceReference"},
           "thread_id": {"type": "string", "format": "uuid"},

@@ -27,8 +27,8 @@ ALTER TABLE durability_subject_heads
 CREATE TABLE inbound_threads (
     thread_id uuid PRIMARY KEY,
     tenant_id uuid NOT NULL REFERENCES tenants(tenant_id),
-    project_key text NOT NULL CHECK (project_key ~ '^[a-z][a-z0-9._-]{2,127}$'),
-    version integer NOT NULL CHECK (version >= 0),
+    project_key text NOT NULL CHECK (project_key ~ '^[a-z][a-z0-9-]{2,63}$'),
+    version integer NOT NULL CHECK (version >= 1),
     created_by uuid NOT NULL,
     created_at timestamptz NOT NULL,
     FOREIGN KEY (created_by, tenant_id) REFERENCES principals(principal_id, tenant_id),
@@ -67,7 +67,7 @@ CREATE TABLE inbound_source_aliases (
     source_ref text NOT NULL CHECK (length(source_ref) BETWEEN 1 AND 256),
     inbound_event_id uuid NOT NULL,
     thread_id uuid NOT NULL,
-    project_key text NOT NULL CHECK (project_key ~ '^[a-z][a-z0-9._-]{2,127}$'),
+    project_key text NOT NULL CHECK (project_key ~ '^[a-z][a-z0-9-]{2,63}$'),
     recorded_at timestamptz NOT NULL,
     PRIMARY KEY (tenant_id, source_kind, source_ref),
     FOREIGN KEY (inbound_event_id, tenant_id)
@@ -76,17 +76,35 @@ CREATE TABLE inbound_source_aliases (
     UNIQUE (inbound_event_id)
 );
 
-CREATE TABLE intake_ticket_projects (
-    ticket_id uuid PRIMARY KEY,
-    tenant_id uuid NOT NULL REFERENCES tenants(tenant_id),
-    project_key text NOT NULL CHECK (project_key ~ '^[a-z][a-z0-9._-]{2,127}$'),
-    inbound_event_id uuid NOT NULL UNIQUE,
-    recorded_at timestamptz NOT NULL,
-    FOREIGN KEY (ticket_id, tenant_id) REFERENCES tickets(ticket_id, tenant_id),
-    FOREIGN KEY (inbound_event_id, tenant_id)
+-- Extend the existing canonical ticket/project authority with an intake
+-- provenance variant. Migration-imported bindings retain their exact
+-- run/source provenance; intake-created bindings cite their immutable inbound
+-- event instead. A ticket can still have only one immutable project binding.
+ALTER TABLE ticket_project_bindings
+    ALTER COLUMN run_id DROP NOT NULL,
+    ALTER COLUMN source_namespace DROP NOT NULL,
+    ALTER COLUMN immutable_source_id DROP NOT NULL,
+    ADD COLUMN inbound_event_id uuid,
+    ADD CONSTRAINT ticket_project_bindings_intake_event_fk
+        FOREIGN KEY (inbound_event_id, tenant_id)
         REFERENCES inbound_events(inbound_event_id, tenant_id),
-    UNIQUE (ticket_id, tenant_id)
-);
+    ADD CONSTRAINT ticket_project_bindings_provenance_check CHECK (
+        (
+            run_id IS NOT NULL
+            AND source_namespace IS NOT NULL
+            AND immutable_source_id IS NOT NULL
+            AND inbound_event_id IS NULL
+        )
+        OR (
+            run_id IS NULL
+            AND source_namespace IS NULL
+            AND immutable_source_id IS NULL
+            AND inbound_event_id IS NOT NULL
+        )
+    );
+CREATE UNIQUE INDEX ticket_project_bindings_intake_event
+    ON ticket_project_bindings (inbound_event_id)
+    WHERE inbound_event_id IS NOT NULL;
 
 CREATE TABLE inbound_ticket_links (
     inbound_event_id uuid PRIMARY KEY,
@@ -123,9 +141,9 @@ CREATE INDEX inbound_ticket_links_ticket
     ON inbound_ticket_links (tenant_id, ticket_id, inbound_event_id);
 
 REVOKE ALL ON inbound_threads, inbound_events, inbound_source_aliases,
-    intake_ticket_projects, inbound_ticket_links, inbound_quarantines
+    inbound_ticket_links, inbound_quarantines
     FROM PUBLIC, ctower_svc, ctower_projection;
 GRANT INSERT, SELECT ON inbound_threads, inbound_events, inbound_source_aliases,
-    intake_ticket_projects, inbound_ticket_links, inbound_quarantines TO ctower_svc;
+    inbound_ticket_links, inbound_quarantines TO ctower_svc;
 REVOKE UPDATE ON inbound_threads FROM ctower_svc;
 GRANT UPDATE (version) ON inbound_threads TO ctower_svc;

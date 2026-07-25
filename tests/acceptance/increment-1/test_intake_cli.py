@@ -10,6 +10,7 @@ from uuid import uuid4
 
 import pytest
 from support.acceptance import accept_pending_commands
+from support.project_hierarchy import declare_ctower_project
 from support.server import running_api
 from support.tenant_fixture import TenantFixture
 
@@ -45,6 +46,7 @@ def test_intake_cli_uses_generated_client_and_spools_before_every_send(
     tmp_path: Path,
 ) -> None:
     del protected_state
+    declare_ctower_project(tenant)
     content = tmp_path / "discussion.txt"
     content.write_text("CLI durable discussion", encoding="utf-8")
     with running_api(tenant.database.runtime_dsn) as base_url:
