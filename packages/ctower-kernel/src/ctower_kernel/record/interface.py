@@ -17,6 +17,11 @@ from ctower_kernel.record.events import (
     TicketCreatedPayload,
     TicketEventPayload,
 )
+from ctower_kernel.record.intake import (
+    IntakeCommandResult,
+    IntakePromotionCommand,
+    IntakeSubmitCommand,
+)
 from ctower_kernel.telemetry import TelemetryContext
 
 _SHA256_PATTERN = re.compile(r"sha256:[0-9a-f]{64}")
@@ -452,6 +457,32 @@ class Record(Protocol):
         telemetry: TelemetryContext,
     ) -> TicketCommandResult | RecordProblem:
         """Atomically append or exactly replay one ticket creation."""
+
+        ...
+
+    def submit_intake(
+        self,
+        actor: Actor,
+        command: IntakeSubmitCommand,
+        *,
+        request_digest: bytes,
+        now: datetime,
+        telemetry: TelemetryContext,
+    ) -> IntakeCommandResult | RecordProblem:
+        """Atomically record one inbound event and its explicit initial intent."""
+
+        ...
+
+    def promote_intake(
+        self,
+        actor: Actor,
+        command: IntakePromotionCommand,
+        *,
+        request_digest: bytes,
+        now: datetime,
+        telemetry: TelemetryContext,
+    ) -> IntakeCommandResult | RecordProblem:
+        """Atomically attach one unlinked inbound event to exactly one ticket."""
 
         ...
 

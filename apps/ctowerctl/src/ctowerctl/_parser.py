@@ -14,6 +14,9 @@ from uuid import UUID, uuid4
 
 from ctower_client.models import (
     BoardLane,
+    IntakeIntent,
+    IntakePromotionIntent,
+    IntakeTaint,
     PoisonDispositionAction,
     Priority,
     RelationKind,
@@ -29,6 +32,8 @@ _SHA256_DIGEST = re.compile(r"^sha256:[0-9a-f]{64}$")
 _AUTHORED_COMMAND_NAMES = frozenset(
     {
         "bootstrap first-tenant",
+        "intake promote",
+        "intake submit",
         "ticket capture",
         "ticket create",
         "ticket query",
@@ -102,6 +107,7 @@ def _parser() -> argparse.ArgumentParser:
     parser.add_argument("--base-url", required=True, type=_safe_base_url)
     areas = parser.add_subparsers(dest="area", required=True, parser_class=_Parser)
     _bootstrap_parser(areas.add_parser("bootstrap"))
+    _intake_parser(areas.add_parser("intake"))
     _ticket_parser(areas.add_parser("ticket"))
     _board_parser(areas.add_parser("board"))
     _control_parser(areas.add_parser("control"))
@@ -135,6 +141,38 @@ def _ticket_parser(parser: argparse.ArgumentParser) -> None:
     _ticket_work(actions)
     _ticket_proof(actions)
     _ticket_workflow(actions)
+
+
+def _intake_parser(parser: argparse.ArgumentParser) -> None:
+    actions = parser.add_subparsers(dest="action", required=True, parser_class=_Parser)
+    submit = actions.add_parser("submit")
+    submit.set_defaults(cli_name="intake submit")
+    _command_id(submit)
+    submit.add_argument("--project-key", required=True)
+    submit.add_argument("--source-kind", required=True)
+    submit.add_argument("--source-ref", required=True)
+    submit.add_argument("--content-file", required=True, type=Path)
+    submit.add_argument("--intent", choices=tuple(IntakeIntent), default="discussion")
+    submit.add_argument("--taint", choices=tuple(IntakeTaint), default="authenticated")
+    submit.add_argument("--thread-id", type=UUID)
+    submit.add_argument("--expected-thread-version", type=_positive_int)
+    _intake_ticket_fields(submit)
+
+    promote = actions.add_parser("promote")
+    promote.set_defaults(cli_name="intake promote")
+    promote.add_argument("inbound_event_id", type=UUID)
+    _command_id(promote)
+    promote.add_argument("--expected-thread-version", required=True, type=_positive_int)
+    promote.add_argument("--intent", required=True, choices=tuple(IntakePromotionIntent))
+    _intake_ticket_fields(promote)
+
+
+def _intake_ticket_fields(parser: argparse.ArgumentParser) -> None:
+    parser.add_argument("--initial-custodian-id", type=UUID)
+    parser.add_argument("--priority", choices=tuple(Priority))
+    parser.add_argument("--title")
+    parser.add_argument("--target-ticket-id", type=UUID)
+    parser.add_argument("--expected-ticket-version", type=_positive_int)
 
 
 def _ticket_capture_and_reads(actions: argparse._SubParsersAction[_Parser]) -> None:

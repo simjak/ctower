@@ -25,7 +25,7 @@ from tools.codegen.generator import CodegenError, check, write
 
 ROOT = Path(__file__).parents[3]
 __all__: tuple[str, ...] = ()
-_EXPECTED_OPERATION_COUNT = 39
+_EXPECTED_OPERATION_COUNT = 41
 
 
 class _MutatedClient(Protocol):
@@ -77,6 +77,12 @@ def test_generated_client_is_owned_and_byte_stable() -> None:
         "generated/python/ctower_contracts/__main__.py",
         "generated/python/ctower_contracts/catalog.py",
         "generated/python/ctower_contracts/schemas.json",
+        "generated/typescript/ctower-client/package.json",
+        "generated/typescript/ctower-client/src/client.ts",
+        "generated/typescript/ctower-client/src/index.ts",
+        "generated/typescript/ctower-client/src/models.ts",
+        "generated/typescript/ctower-client/src/operations.ts",
+        "generated/typescript/ctower-client/tsconfig.json",
     }
     for entry in outputs:
         digest = hashlib.sha256((ROOT / entry["path"]).read_bytes()).hexdigest()
@@ -108,6 +114,33 @@ def test_generated_python_carries_do_not_edit_notice() -> None:
         (ROOT / "generated/python/ctower_contracts/schemas.json").read_text(encoding="utf-8")
     )
     assert resources["_notice"] == "DO NOT EDIT: generated file; regenerate from declared inputs."
+
+
+def test_generated_typescript_has_exact_intake_models_operations_and_notice() -> None:
+    root = ROOT / "generated/typescript/ctower-client"
+    sources = tuple(sorted((root / "src").glob("*.ts")))
+
+    assert {path.name for path in sources} == {
+        "client.ts",
+        "index.ts",
+        "models.ts",
+        "operations.ts",
+    }
+    for path in sources:
+        assert path.read_text(encoding="utf-8").startswith(
+            "// DO NOT EDIT: generated file; regenerate from declared inputs."
+        )
+    client = (root / "src/client.ts").read_text(encoding="utf-8")
+    models = (root / "src/models.ts").read_text(encoding="utf-8")
+    operations = (root / "src/operations.ts").read_text(encoding="utf-8")
+    for operation in ("submitIntake", "promoteIntakeEvent"):
+        assert f"public async {operation}(" in client
+        assert f'"{operation}"' in operations
+    for model in ("IntakeSubmitRequest", "IntakePromotionRequest", "IntakeCommandResult"):
+        assert f"export type {model} =" in models
+    python_client = (ROOT / "generated/python/ctower_client/client.py").read_text(encoding="utf-8")
+    assert "def submit_intake(" in python_client
+    assert "def promote_intake_event(" in python_client
 
 
 def test_generated_operation_registry_is_the_exact_authored_replay_allowlist() -> None:

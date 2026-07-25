@@ -18,6 +18,9 @@ from ctower_kernel.record import (
     CustodyCommand,
     DurabilityDecision,
     DurabilityHealth,
+    IntakeCommandResult,
+    IntakePromotionCommand,
+    IntakeSubmitCommand,
     RecordProblem,
     Ticket,
     TicketCommand,
@@ -34,6 +37,8 @@ from ctower_kernel.record._comment_sql import add_comment as _add_comment
 from ctower_kernel.record._custody_sql import transfer_custody as _transfer_custody
 from ctower_kernel.record._durability_health_sql import durability_health as _durability_health
 from ctower_kernel.record._durability_sql import reconcile_durability as _reconcile_durability
+from ctower_kernel.record._intake_sql import promote_intake as _promote_intake
+from ctower_kernel.record._intake_sql import submit_intake as _submit_intake
 from ctower_kernel.record._setup_sql import (
     RecoveryRoleConfigurationError,
     apply_migrations,
@@ -181,6 +186,54 @@ class PostgresRecord:
             )
         )
         self._emit("record.create_ticket", telemetry, outcome)
+        return outcome
+
+    def submit_intake(
+        self,
+        actor: Actor,
+        command: IntakeSubmitCommand,
+        *,
+        request_digest: bytes,
+        now: datetime,
+        telemetry: TelemetryContext,
+    ) -> IntakeCommandResult | RecordProblem:
+        """Record an inbound event before applying its explicit semantic intent."""
+
+        outcome = recover_ambiguous_commit(
+            lambda: _submit_intake(
+                self._dsn,
+                actor,
+                command,
+                request_digest=request_digest,
+                now=now,
+                telemetry=telemetry,
+            )
+        )
+        self._emit("record.submit_intake", telemetry, outcome)
+        return outcome
+
+    def promote_intake(
+        self,
+        actor: Actor,
+        command: IntakePromotionCommand,
+        *,
+        request_digest: bytes,
+        now: datetime,
+        telemetry: TelemetryContext,
+    ) -> IntakeCommandResult | RecordProblem:
+        """Attach one prior inbound event to exactly one ticket."""
+
+        outcome = recover_ambiguous_commit(
+            lambda: _promote_intake(
+                self._dsn,
+                actor,
+                command,
+                request_digest=request_digest,
+                now=now,
+                telemetry=telemetry,
+            )
+        )
+        self._emit("record.promote_intake", telemetry, outcome)
         return outcome
 
     def get_ticket(

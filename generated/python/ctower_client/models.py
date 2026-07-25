@@ -1,6 +1,6 @@
 """DO NOT EDIT: generated file; regenerate from declared inputs.
 
-Authored contract digest: sha256:e4e4901322fe1437191f8d8465ffb6e41b253ec044639cfaf8fe7554037cc55a
+Authored contract digest: sha256:5dd74178cb9d1f066b1f89e01c057314020992f882e65773d2b5451084d0bb9d
 """
 
 from __future__ import annotations
@@ -81,6 +81,13 @@ __all__ = [
     "HealthContributorKey",
     "HealthDimension",
     "HealthStatus",
+    "IntakeCommandResult",
+    "IntakeIntent",
+    "IntakeOutcome",
+    "IntakePromotionIntent",
+    "IntakePromotionRequest",
+    "IntakeSubmitRequest",
+    "IntakeTaint",
     "MigrationAliasCorrection",
     "MigrationConservation",
     "MigrationCorrectionReplacement",
@@ -431,6 +438,30 @@ class HealthStatus(StrEnum):
     STATE_UNKNOWN = "STATE_UNKNOWN"
 
 
+class IntakeIntent(StrEnum):
+    DISCUSSION = "discussion"
+    CREATE_TICKET = "create_ticket"
+    LINK_TICKET = "link_ticket"
+
+
+class IntakeOutcome(StrEnum):
+    DISCUSSION = "discussion"
+    TICKET_CREATED = "ticket_created"
+    TICKET_LINKED = "ticket_linked"
+    QUARANTINED = "quarantined"
+
+
+class IntakePromotionIntent(StrEnum):
+    CREATE_TICKET = "create_ticket"
+    LINK_TICKET = "link_ticket"
+
+
+class IntakeTaint(StrEnum):
+    AUTHENTICATED = "authenticated"
+    EXTERNAL_UNTRUSTED = "external_untrusted"
+    QUARANTINE_REQUIRED = "quarantine_required"
+
+
 class MigrationAliasCorrection(_BoundaryModel):
     kind: Literal["alias"]
     target_ticket_id: UUID
@@ -687,6 +718,8 @@ class Problem(_BoundaryModel):
         "durability_pending",
         "i1-7c-required",
         "idempotency-conflict",
+        "intake-already-promoted",
+        "intake-source-conflict",
         "migration-alias-conflict",
         "migration-capability-denied",
         "migration-correction-conflict",
@@ -1210,6 +1243,46 @@ class HealthContributor(_BoundaryModel):
     observed_at: datetime
     owner: Annotated[str, Field(min_length=1, max_length=128)]
     reason: Annotated[str, Field(min_length=1, max_length=500)]
+
+
+class IntakeCommandResult(_BoundaryModel):
+    command_id: UUID
+    durability_state: DurabilityState
+    event_ids: Annotated[tuple[UUID, ...], Field(min_length=1, max_length=2)]
+    inbound_event_id: UUID
+    outcome: IntakeOutcome
+    project_key: Annotated[str, Field(pattern="^[a-z][a-z0-9._-]{2,127}$")]
+    quarantine_reason: Annotated[str, Field(max_length=500)] | None
+    source: SourceReference
+    thread_id: UUID
+    thread_version: Annotated[int, Field(ge=1)]
+    ticket_id: UUID | None
+    ticket_version: Annotated[int, Field(ge=1)] | None
+
+
+class IntakePromotionRequest(_BoundaryModel):
+    expected_thread_version: Annotated[int, Field(ge=1)]
+    expected_ticket_version: Annotated[int, Field(ge=1)] | None = None
+    initial_custodian_id: UUID | None = None
+    intent: IntakePromotionIntent
+    priority: Priority | None = None
+    target_ticket_id: UUID | None = None
+    title: Annotated[str, Field(min_length=1, max_length=200)] | None = None
+
+
+class IntakeSubmitRequest(_BoundaryModel):
+    content: Annotated[str, Field(min_length=1, max_length=65536)]
+    expected_thread_version: Annotated[int, Field(ge=1)] | None = None
+    expected_ticket_version: Annotated[int, Field(ge=1)] | None = None
+    initial_custodian_id: UUID | None = None
+    intent: IntakeIntent | None = None
+    priority: Priority | None = None
+    project_key: Annotated[str, Field(pattern="^[a-z][a-z0-9._-]{2,127}$")]
+    source: SourceReference
+    taint: IntakeTaint | None = None
+    target_ticket_id: UUID | None = None
+    thread_id: UUID | None = None
+    title: Annotated[str, Field(min_length=1, max_length=200)] | None = None
 
 
 type MigrationCorrectionReplacement = MigrationAliasCorrection | MigrationSourceLinkCorrection | MigrationRelationCorrection

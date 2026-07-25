@@ -11,6 +11,8 @@ from uuid import UUID
 
 from ctower_kernel.record.events import (
     EventKind,
+    InboundEventPromotedPayload,
+    InboundEventRecordedPayload,
     WorkflowChangedPayload,
     ticket_payload_from_mapping,
 )
@@ -70,24 +72,58 @@ def safe_payload_bytes(value: object) -> bytes:
 def _validate_payload(kind: EventKind, payload: Mapping[str, object]) -> None:
     if kind in {EventKind.TICKET_CREATED, EventKind.CUSTODY_TRANSFERRED}:
         ticket_payload_from_mapping(kind, payload)
-    elif kind is EventKind.WORK_CHANGED:
+        return
+    if kind is EventKind.WORK_CHANGED:
         WorkChangedPayload(
             operation=str(payload["operation"]),
             ticket_id=UUID(str(payload["ticket_id"])),
             work_version=int(cast(int, payload["work_version"])),
             data=cast(Mapping[str, object], payload["data"]),
         )
-    elif kind is EventKind.WORKFLOW_CHANGED:
-        WorkflowChangedPayload(
-            operation=str(payload["operation"]),
+        return
+    if kind is EventKind.WORKFLOW_CHANGED:
+        _validate_workflow_payload(payload)
+        return
+    if kind is EventKind.INBOUND_EVENT_RECORDED:
+        _validate_recorded_payload(payload)
+        return
+    if kind is EventKind.INBOUND_EVENT_PROMOTED:
+        InboundEventPromotedPayload(
+            inbound_event_id=UUID(str(payload["inbound_event_id"])),
+            source_kind=str(payload["source_kind"]),
+            source_ref=str(payload["source_ref"]),
+            project_key=str(payload["project_key"]),
+            intent=str(payload["intent"]),
+            outcome=str(payload["outcome"]),
             ticket_id=UUID(str(payload["ticket_id"])),
-            workflow_ref=str(payload["workflow_ref"]),
-            workflow_version=int(cast(int, payload["workflow_version"])),
-            stage=str(payload["stage"]),
-            lifecycle_facts=tuple(
-                str(item) for item in cast(list[object], payload["lifecycle_facts"])
-            ),
         )
+
+
+def _validate_workflow_payload(payload: Mapping[str, object]) -> None:
+    WorkflowChangedPayload(
+        operation=str(payload["operation"]),
+        ticket_id=UUID(str(payload["ticket_id"])),
+        workflow_ref=str(payload["workflow_ref"]),
+        workflow_version=int(cast(int, payload["workflow_version"])),
+        stage=str(payload["stage"]),
+        lifecycle_facts=tuple(str(item) for item in cast(list[object], payload["lifecycle_facts"])),
+    )
+
+
+def _validate_recorded_payload(payload: Mapping[str, object]) -> None:
+    ticket_id = payload["ticket_id"]
+    InboundEventRecordedPayload(
+        inbound_event_id=UUID(str(payload["inbound_event_id"])),
+        source_kind=str(payload["source_kind"]),
+        source_ref=str(payload["source_ref"]),
+        project_key=str(payload["project_key"]),
+        position=int(cast(int, payload["position"])),
+        intent=str(payload["intent"]),
+        taint=str(payload["taint"]),
+        outcome=str(payload["outcome"]),
+        content_digest=str(payload["content_digest"]),
+        ticket_id=UUID(str(ticket_id)) if ticket_id is not None else None,
+    )
 
 
 def _expected_envelope(message: dict[str, object]) -> dict[str, object]:

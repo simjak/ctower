@@ -1,5 +1,6 @@
 """Work Module public surface."""
 
+from ctower_kernel.work.intake import Intake
 from ctower_kernel.work.interface import (
     AddRelation,
     Admit,
@@ -29,6 +30,7 @@ __all__ = [
     "ChangeAssignment",
     "ChangePriority",
     "Defer",
+    "Intake",
     "RelationKind",
     "Reopen",
     "SchedulingCandidate",

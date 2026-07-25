@@ -238,6 +238,23 @@ command = [
 timeout_seconds = 300
 
 [[suite]]
+id = "thread-first-intake"
+owner = "CT-I1-004"
+phase = "CT-I1-004"
+status = "required"
+path = "tests/acceptance/increment-1"
+patterns = ["test_intake.py", "test_intake_cli.py"]
+command = [
+  "{python}",
+  "-m",
+  "pytest",
+  "tests/acceptance/increment-1/test_intake.py",
+  "tests/acceptance/increment-1/test_intake_cli.py",
+  "-q",
+]
+timeout_seconds = 900
+
+[[suite]]
 id = "protected-cli-secret-service"
 owner = "CT-I1-004"
 phase = "CT-I1-004"

@@ -47,6 +47,7 @@
     "ctower.target/v1": "contracts/components/target.schema.json",
     "ctower.telemetry-context/v1": "contracts/observability/telemetry-context.schema.json",
     "ctower.telemetry/v1": "contracts/components/telemetry.schema.json",
+    "ctower.thread-intake/v1": "contracts/domain/intake/thread-intake.schema.json",
     "ctower.tool/v1": "contracts/components/tool.schema.json",
     "ctower.traceability-sources/v1": "contracts/traceability/traceability-sources.schema.json",
     "ctower.versioned-component/v1": "contracts/components/versioned-component.schema.json",
@@ -119,6 +120,7 @@
     "https://ctower.local/contracts/components/tool.schema.json": "contracts/components/tool.schema.json",
     "https://ctower.local/contracts/components/versioned-component.schema.json": "contracts/components/versioned-component.schema.json",
     "https://ctower.local/contracts/components/workspace.schema.json": "contracts/components/workspace.schema.json",
+    "https://ctower.local/contracts/domain/intake/thread-intake.schema.json": "contracts/domain/intake/thread-intake.schema.json",
     "https://ctower.local/contracts/observability/telemetry-context.schema.json": "contracts/observability/telemetry-context.schema.json"
   },
   "resources": {
@@ -2748,6 +2750,127 @@
           ],
           "type": "object"
         },
+        "inboundEventPromoted": {
+          "additionalProperties": false,
+          "properties": {
+            "inbound_event_id": {
+              "format": "uuid",
+              "type": "string"
+            },
+            "intent": {
+              "enum": [
+                "create_ticket",
+                "link_ticket"
+              ]
+            },
+            "outcome": {
+              "enum": [
+                "ticket_created",
+                "ticket_linked"
+              ]
+            },
+            "project_key": {
+              "pattern": "^[a-z][a-z0-9._-]{2,127}$",
+              "type": "string"
+            },
+            "source_kind": {
+              "maxLength": 64,
+              "minLength": 1,
+              "type": "string"
+            },
+            "source_ref": {
+              "maxLength": 256,
+              "minLength": 1,
+              "type": "string"
+            },
+            "ticket_id": {
+              "format": "uuid",
+              "type": "string"
+            }
+          },
+          "required": [
+            "inbound_event_id",
+            "intent",
+            "outcome",
+            "project_key",
+            "source_kind",
+            "source_ref",
+            "ticket_id"
+          ],
+          "type": "object"
+        },
+        "inboundEventRecorded": {
+          "additionalProperties": false,
+          "properties": {
+            "content_digest": {
+              "$ref": "#/$defs/sha256"
+            },
+            "inbound_event_id": {
+              "format": "uuid",
+              "type": "string"
+            },
+            "intent": {
+              "enum": [
+                "discussion",
+                "create_ticket",
+                "link_ticket"
+              ]
+            },
+            "outcome": {
+              "enum": [
+                "discussion",
+                "ticket_created",
+                "ticket_linked",
+                "quarantined"
+              ]
+            },
+            "position": {
+              "minimum": 1,
+              "type": "integer"
+            },
+            "project_key": {
+              "pattern": "^[a-z][a-z0-9._-]{2,127}$",
+              "type": "string"
+            },
+            "source_kind": {
+              "maxLength": 64,
+              "minLength": 1,
+              "type": "string"
+            },
+            "source_ref": {
+              "maxLength": 256,
+              "minLength": 1,
+              "type": "string"
+            },
+            "taint": {
+              "enum": [
+                "authenticated",
+                "external_untrusted",
+                "quarantine_required"
+              ]
+            },
+            "ticket_id": {
+              "format": "uuid",
+              "type": [
+                "string",
+                "null"
+              ]
+            }
+          },
+          "required": [
+            "content_digest",
+            "inbound_event_id",
+            "intent",
+            "outcome",
+            "position",
+            "project_key",
+            "source_kind",
+            "source_ref",
+            "taint",
+            "ticket_id"
+          ],
+          "type": "object"
+        },
         "poisonDispositionRecorded": {
           "additionalProperties": false,
           "properties": {
@@ -3432,6 +3555,38 @@
                   "pattern": "^poison-disposition:[0-9a-f-]{36}$"
                 }
               }
+            },
+            {
+              "properties": {
+                "kind": {
+                  "const": "intake.inbound_event_recorded"
+                },
+                "origin": {
+                  "const": "api"
+                },
+                "payload": {
+                  "$ref": "#/$defs/inboundEventRecorded"
+                },
+                "stream_id": {
+                  "pattern": "^inbound-thread:[0-9a-f-]{36}$"
+                }
+              }
+            },
+            {
+              "properties": {
+                "kind": {
+                  "const": "intake.inbound_event_promoted"
+                },
+                "origin": {
+                  "const": "api"
+                },
+                "payload": {
+                  "$ref": "#/$defs/inboundEventPromoted"
+                },
+                "stream_id": {
+                  "pattern": "^inbound-thread:[0-9a-f-]{36}$"
+                }
+              }
             }
           ]
         }
@@ -3476,7 +3631,9 @@
             "proof.changed",
             "workflow.changed",
             "routine.occurrence_recorded",
-            "attention.poison_disposition_recorded"
+            "attention.poison_disposition_recorded",
+            "intake.inbound_event_recorded",
+            "intake.inbound_event_promoted"
           ],
           "type": "string"
         },
@@ -3509,7 +3666,7 @@
           "type": "string"
         },
         "stream_id": {
-          "pattern": "^(tenant:[0-9a-f-]{36}:bootstrap|ticket:[0-9a-f-]{36}|catalog:[0-9a-f-]{36}|proof:[0-9a-f-]{36}|workflow:[0-9a-f-]{36}|routine-occurrence:[0-9a-f-]{36}|poison-disposition:[0-9a-f-]{36})$",
+          "pattern": "^(tenant:[0-9a-f-]{36}:bootstrap|ticket:[0-9a-f-]{36}|catalog:[0-9a-f-]{36}|proof:[0-9a-f-]{36}|workflow:[0-9a-f-]{36}|routine-occurrence:[0-9a-f-]{36}|poison-disposition:[0-9a-f-]{36}|inbound-thread:[0-9a-f-]{36})$",
           "type": "string"
         },
         "tenant_id": {
@@ -3536,6 +3693,209 @@
         "tenant_id"
       ],
       "title": "CtowerEventEnvelope",
+      "type": "object"
+    },
+    "contracts/domain/intake/thread-intake.schema.json": {
+      "$defs": {
+        "inboundEvent": {
+          "additionalProperties": false,
+          "properties": {
+            "content_digest": {
+              "pattern": "^sha256:[0-9a-f]{64}$",
+              "type": "string"
+            },
+            "inbound_event_id": {
+              "format": "uuid",
+              "type": "string"
+            },
+            "initial_intent": {
+              "enum": [
+                "discussion",
+                "create_ticket",
+                "link_ticket"
+              ]
+            },
+            "initial_outcome": {
+              "enum": [
+                "discussion",
+                "ticket_created",
+                "ticket_linked",
+                "quarantined"
+              ]
+            },
+            "position": {
+              "minimum": 1,
+              "type": "integer"
+            },
+            "source": {
+              "$ref": "#/$defs/source"
+            },
+            "taint": {
+              "enum": [
+                "authenticated",
+                "external_untrusted",
+                "quarantine_required"
+              ]
+            },
+            "thread_id": {
+              "format": "uuid",
+              "type": "string"
+            }
+          },
+          "required": [
+            "inbound_event_id",
+            "thread_id",
+            "position",
+            "source",
+            "content_digest",
+            "taint",
+            "initial_intent",
+            "initial_outcome"
+          ],
+          "type": "object"
+        },
+        "quarantine": {
+          "additionalProperties": false,
+          "properties": {
+            "inbound_event_id": {
+              "format": "uuid",
+              "type": "string"
+            },
+            "reason": {
+              "maxLength": 500,
+              "minLength": 1,
+              "type": "string"
+            }
+          },
+          "required": [
+            "inbound_event_id",
+            "reason"
+          ],
+          "type": "object"
+        },
+        "source": {
+          "additionalProperties": false,
+          "properties": {
+            "kind": {
+              "maxLength": 64,
+              "minLength": 1,
+              "type": "string"
+            },
+            "ref": {
+              "maxLength": 256,
+              "minLength": 1,
+              "type": "string"
+            }
+          },
+          "required": [
+            "kind",
+            "ref"
+          ],
+          "type": "object"
+        },
+        "thread": {
+          "additionalProperties": false,
+          "properties": {
+            "project_key": {
+              "pattern": "^[a-z][a-z0-9._-]{2,127}$",
+              "type": "string"
+            },
+            "tenant_id": {
+              "format": "uuid",
+              "type": "string"
+            },
+            "thread_id": {
+              "format": "uuid",
+              "type": "string"
+            },
+            "version": {
+              "minimum": 1,
+              "type": "integer"
+            }
+          },
+          "required": [
+            "thread_id",
+            "tenant_id",
+            "project_key",
+            "version"
+          ],
+          "type": "object"
+        },
+        "ticketLink": {
+          "additionalProperties": false,
+          "properties": {
+            "command_id": {
+              "format": "uuid",
+              "type": "string"
+            },
+            "inbound_event_id": {
+              "format": "uuid",
+              "type": "string"
+            },
+            "kind": {
+              "enum": [
+                "initial_create",
+                "initial_link",
+                "promotion_create",
+                "promotion_link"
+              ]
+            },
+            "ticket_id": {
+              "format": "uuid",
+              "type": "string"
+            }
+          },
+          "required": [
+            "inbound_event_id",
+            "ticket_id",
+            "kind",
+            "command_id"
+          ],
+          "type": "object"
+        }
+      },
+      "$id": "https://ctower.local/contracts/domain/intake/thread-intake.schema.json",
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "additionalProperties": false,
+      "properties": {
+        "inbound_event": {
+          "$ref": "#/$defs/inboundEvent"
+        },
+        "quarantine": {
+          "oneOf": [
+            {
+              "type": "null"
+            },
+            {
+              "$ref": "#/$defs/quarantine"
+            }
+          ]
+        },
+        "schema": {
+          "const": "ctower.thread-intake/v1"
+        },
+        "thread": {
+          "$ref": "#/$defs/thread"
+        },
+        "ticket_link": {
+          "oneOf": [
+            {
+              "type": "null"
+            },
+            {
+              "$ref": "#/$defs/ticketLink"
+            }
+          ]
+        }
+      },
+      "required": [
+        "schema",
+        "thread",
+        "inbound_event",
+        "ticket_link",
+        "quarantine"
+      ],
+      "title": "Ctower durable inbound-thread authority",
       "type": "object"
     },
     "contracts/domain/migration/ctower-project-alias-map-v2.schema.json": {
@@ -11459,7 +11819,12 @@
     {
       "id": "https://ctower.dev/contracts/domain/events/event-envelope.schema.json",
       "path": "contracts/domain/events/event-envelope.schema.json",
-      "sha256": "sha256:d4c4b63ee3da6e19f9c29d2ca83c29e7501f2bce557826c21ba8301a61d4bc3a"
+      "sha256": "sha256:004080b1af7a1c83345790581492d72c9c9cbe9aa9f72d8ad8a8448abc176a87"
+    },
+    {
+      "id": "https://ctower.local/contracts/domain/intake/thread-intake.schema.json",
+      "path": "contracts/domain/intake/thread-intake.schema.json",
+      "sha256": "sha256:33ffb07ebd2cc6864204035f3c55150bdef4f41ed8330a07d1cb527cb9371628"
     },
     {
       "id": "https://ctower.dev/contracts/domain/migration/ctower-project-alias-map-v2.schema.json",

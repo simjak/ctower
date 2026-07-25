@@ -111,6 +111,7 @@ _EXPECTED_OPERATION_METADATA: dict[str, tuple[object, bool, str, object, bool]] 
         "operator",
         True,
     ),
+    "promoteIntakeEvent": ("intake promote", True, "allowed", None, False),
     "recordOutboxPoisonDisposition": (
         "ops outbox poison dispose",
         True,
@@ -130,6 +131,7 @@ _EXPECTED_OPERATION_METADATA: dict[str, tuple[object, bool, str, object, bool]] 
     "resolveCloseWorkflow": ("ticket resolve", True, "allowed", None, False),
     "runSyntheticWorkflow": ("synthetic run", True, "allowed", None, False),
     "startTicketWorkflow": ("ticket workflow start", True, "allowed", None, False),
+    "submitIntake": ("intake submit", True, "allowed", None, False),
     "transferTicketCustody": ("ticket custody transfer", True, "allowed", None, False),
     "transitionWorkflow": ("ticket transition", True, "allowed", None, False),
     "validateCompanyBundle": ("company bundle validate", False, "forbidden", None, False),
@@ -154,6 +156,8 @@ _EXPECTED_PROBLEM_CODES = {
     "durability_pending",
     "i1-7c-required",
     "idempotency-conflict",
+    "intake-already-promoted",
+    "intake-source-conflict",
     "migration-alias-conflict",
     "migration-capability-denied",
     "migration-correction-conflict",
@@ -265,6 +269,21 @@ def test_problem_vocabulary_and_boundary_objects_are_strict() -> None:
     for name, schema in schemas.items():
         if schema.get("type") == "object":
             assert schema.get("additionalProperties") is False, name
+
+
+def test_intake_contract_is_explicit_and_has_no_classifier_or_dispatch_surface() -> None:
+    document = json.loads((ROOT / "contracts/http/openapi.yaml").read_text(encoding="utf-8"))
+    paths = cast(dict[str, object], document["paths"])
+    schemas = cast(dict[str, object], document["components"]["schemas"])
+    intake = {
+        "paths": {key: value for key, value in paths.items() if key.startswith("/v1/intake")},
+        "schemas": {key: value for key, value in schemas.items() if key.startswith("Intake")},
+    }
+    rendered = json.dumps(intake, sort_keys=True).casefold()
+
+    assert '"default": "discussion"' in rendered
+    for forbidden in ("classifier", "fuzzy", "commander override", "agent dispatch"):
+        assert forbidden not in rendered
 
 
 def test_i1_7b_reuses_paths_adds_only_planned_paths_and_refuses_i1_7c() -> None:
