@@ -406,6 +406,16 @@ command = [
 timeout_seconds = 900
 
 [[suite]]
+id = "checkpoint-component-contracts"
+owner = "CT-I1-007"
+phase = "CT-I1-007"
+status = "required"
+path = "tests/contracts/components"
+patterns = ["test_*.py"]
+command = ["{python}", "-m", "pytest", "tests/contracts/components", "-q"]
+timeout_seconds = 300
+
+[[suite]]
 id = "migration-contracts"
 owner = "CT-I1-007"
 phase = "CT-I1-007"

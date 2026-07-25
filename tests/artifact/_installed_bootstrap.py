@@ -63,6 +63,7 @@ import os
 from pathlib import Path
 import ctower_kernel
 from ctower_api._outbox_loop import OutboxLoop
+from ctower_api._project_delivery_loop import ProjectDeliveryLoop
 from ctower_api._routine_loop import RoutineLoop
 from ctower_api.control_worker import ControlWorker
 from ctower_kernel.projections import Projections
@@ -71,7 +72,12 @@ from ctower_kernel.runtime import Routine
 from ctower_kernel.runtime.postgres import PostgresRuntime
 runtime = Routine(PostgresRuntime(os.environ["CTOWER_RUNTIME_DSN"]))
 projections = Projections(PostgresProjections(os.environ["CTOWER_PROJECTION_DSN"]))
-ControlWorker(runtime, RoutineLoop(runtime, ()), OutboxLoop(projections)).tick()
+ControlWorker(
+    runtime,
+    RoutineLoop(runtime, ()),
+    OutboxLoop(projections),
+    ProjectDeliveryLoop(projections),
+).tick()
 print(json.dumps({
     "kernel_path": str(Path(ctower_kernel.__file__).resolve()),
     "tenant_count": len(runtime.tenant_ids()),

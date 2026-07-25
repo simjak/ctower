@@ -97,6 +97,8 @@ def test_explicit_handlers_cover_every_generated_operation_class() -> None:
         "migration ctower-project plan",
         "migration ctower-project import",
         "migration ctower-project reconcile",
+        "migration ctower-project correction append",
+        "migration ctower-project fence observe",
         "migration ctower-project prepare",
         "migration ctower-project commit-development-epoch",
     }
