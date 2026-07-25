@@ -8,10 +8,16 @@ from dataclasses import dataclass
 from pathlib import Path
 from threading import Event
 from typing import Protocol
+from uuid import UUID
 
 from ctower_api._outbox_loop import OutboxLoop
 from ctower_api._routine_loop import RoutineLoop, load_routine_revisions
-from ctower_api.synthetic_handler import SyntheticRetryError
+from ctower_api.synthetic_handler import (
+    SyntheticFourStageHandler,
+    SyntheticPolicyPins,
+    SyntheticRetryError,
+)
+from ctower_client import CtowerClient
 from ctower_kernel.projections import Projections
 from ctower_kernel.projections.postgres import PostgresProjections
 from ctower_kernel.runtime import (
@@ -27,6 +33,8 @@ __all__ = ["ControlWorker", "build_worker", "main"]
 _ROOT = Path(__file__).parents[4]
 _MIN_INTERVAL_SECONDS = 0.1
 _MAX_INTERVAL_SECONDS = 60.0
+_DIGEST_PREFIX = "sha256:"
+_SHA256_HEX_LENGTH = 64
 
 
 class _SyntheticHandler(Protocol):
@@ -74,15 +82,39 @@ def main() -> None:
 
     runtime_dsn = _required_environment("CTOWER_DATABASE_DSN")
     projection_dsn = _required_environment("CTOWER_PROJECTION_DSN")
+    api_base_url = _required_environment("CTOWER_CONTROL_API_BASE_URL")
+    author_credential = _required_environment("CTOWER_SYNTHETIC_AUTHOR_CREDENTIAL")
+    reviewer_credential = _required_environment("CTOWER_SYNTHETIC_REVIEWER_CREDENTIAL")
+    if author_credential == reviewer_credential:
+        raise RuntimeError("synthetic author and reviewer credentials must be distinct")
+    author_id = _required_uuid("CTOWER_SYNTHETIC_AUTHOR_ID")
+    pins = SyntheticPolicyPins(
+        workflow_digest=_required_digest("CTOWER_SYNTHETIC_WORKFLOW_DIGEST"),
+        execution_policy_digest=_required_digest("CTOWER_SYNTHETIC_EXECUTION_POLICY_DIGEST"),
+        gate_policy_digest=_required_digest("CTOWER_SYNTHETIC_GATE_POLICY_DIGEST"),
+        evidence_policy_digest=_required_digest("CTOWER_SYNTHETIC_EVIDENCE_POLICY_DIGEST"),
+    )
     interval = _interval(os.environ.get("CTOWER_CONTROL_INTERVAL_SECONDS", "1"))
     pack_root = Path(os.environ.get("CTOWER_PACK_ROOT", str(_ROOT / "packs")))
-    runtime = Routine(PostgresRuntime(runtime_dsn))
+    runtime_store = PostgresRuntime(runtime_dsn)
+    runtime = Routine(runtime_store)
     projections = Projections(PostgresProjections(projection_dsn))
-    worker = build_worker(runtime, projections, pack_root=pack_root)
-    stop = Event()
-    signal.signal(signal.SIGTERM, lambda _signum, _frame: stop.set())
-    signal.signal(signal.SIGINT, lambda _signum, _frame: stop.set())
-    worker.run(stop, interval_seconds=interval)
+    fixed_operations = FixedOperations(runtime_store)
+    with (
+        CtowerClient(api_base_url, credential=author_credential) as author,
+        CtowerClient(api_base_url, credential=reviewer_credential) as reviewer,
+    ):
+        worker = build_worker(
+            runtime,
+            projections,
+            pack_root=pack_root,
+            fixed_operations=fixed_operations,
+            synthetic_handler=SyntheticFourStageHandler(author, reviewer, author_id, pins),
+        )
+        stop = Event()
+        signal.signal(signal.SIGTERM, lambda _signum, _frame: stop.set())
+        signal.signal(signal.SIGINT, lambda _signum, _frame: stop.set())
+        worker.run(stop, interval_seconds=interval)
 
 
 def build_worker(
@@ -108,6 +140,26 @@ def _required_environment(key: str) -> str:
     value = os.environ.get(key)
     if value is None or not value.strip():
         raise RuntimeError(f"{key} must name a configured connection reference")
+    return value
+
+
+def _required_uuid(key: str) -> UUID:
+    value = _required_environment(key)
+    try:
+        return UUID(value)
+    except ValueError as error:
+        raise RuntimeError(f"{key} must be a UUID") from error
+
+
+def _required_digest(key: str) -> str:
+    value = _required_environment(key)
+    hex_digest = value[len(_DIGEST_PREFIX) :]
+    if (
+        not value.startswith(_DIGEST_PREFIX)
+        or len(hex_digest) != _SHA256_HEX_LENGTH
+        or any(character not in "0123456789abcdef" for character in hex_digest)
+    ):
+        raise RuntimeError(f"{key} must be a lowercase sha256 digest")
     return value
 
 
