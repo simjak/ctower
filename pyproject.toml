@@ -42,6 +42,7 @@ packages = [
   "ctower_kernel.access",
   "ctower_kernel.attention",
   "ctower_kernel.catalog",
+  "ctower_kernel.migrations",
   "ctower_kernel.objects",
   "ctower_kernel.projections",
   "ctower_kernel.proof",
@@ -59,10 +60,12 @@ ctower_api = "apps/ctower-api/src/ctower_api"
 ctower_client = "generated/python/ctower_client"
 ctower_contracts = "generated/python/ctower_contracts"
 ctower_kernel = "packages/ctower-kernel/src/ctower_kernel"
+"ctower_kernel.migrations" = "packages/ctower-kernel/migrations"
 ctowerctl = "apps/ctowerctl/src/ctowerctl"
 
 [tool.setuptools.package-data]
 ctower_contracts = ["schemas.json"]
+"ctower_kernel.migrations" = ["manifest.json", "*.sql"]
 
 [dependency-groups]
 dev = [
