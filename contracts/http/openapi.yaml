@@ -76,6 +76,78 @@
         }
       }
     },
+    "/v1/intake": {
+      "post": {
+        "operationId": "submitIntake",
+        "x-ctower-cli": "intake submit",
+        "x-ctower-mutation": true,
+        "x-ctower-spool": "allowed",
+        "security": [{"bearerAuth": []}],
+        "parameters": [{"$ref": "#/components/parameters/IdempotencyKey"}],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {"schema": {"$ref": "#/components/schemas/IntakeSubmitRequest"}}
+          }
+        },
+        "responses": {
+          "202": {
+            "description": "Inbound event committed; off-host durability acknowledgement pending",
+            "headers": {"Retry-After": {"$ref": "#/components/headers/RetryAfter"}},
+            "content": {"application/json": {"schema": {"$ref": "#/components/schemas/IntakeCommandResult"}}}
+          },
+          "201": {
+            "description": "Inbound event and explicit intent accepted off host",
+            "content": {"application/json": {"schema": {"$ref": "#/components/schemas/IntakeCommandResult"}}}
+          },
+          "401": {"$ref": "#/components/responses/ProblemResponse"},
+          "403": {"$ref": "#/components/responses/ProblemResponse"},
+          "404": {"$ref": "#/components/responses/ProblemResponse"},
+          "409": {"$ref": "#/components/responses/ProblemResponse"},
+          "422": {"$ref": "#/components/responses/ProblemResponse"}
+        }
+      }
+    },
+    "/v1/intake/events/{inbound_event_id}/promotion": {
+      "post": {
+        "operationId": "promoteIntakeEvent",
+        "x-ctower-cli": "intake promote",
+        "x-ctower-mutation": true,
+        "x-ctower-spool": "allowed",
+        "security": [{"bearerAuth": []}],
+        "parameters": [
+          {
+            "name": "inbound_event_id",
+            "in": "path",
+            "required": true,
+            "schema": {"type": "string", "format": "uuid"}
+          },
+          {"$ref": "#/components/parameters/IdempotencyKey"}
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {"schema": {"$ref": "#/components/schemas/IntakePromotionRequest"}}
+          }
+        },
+        "responses": {
+          "202": {
+            "description": "Promotion committed; off-host durability acknowledgement pending",
+            "headers": {"Retry-After": {"$ref": "#/components/headers/RetryAfter"}},
+            "content": {"application/json": {"schema": {"$ref": "#/components/schemas/IntakeCommandResult"}}}
+          },
+          "200": {
+            "description": "Exactly-one promotion accepted off host",
+            "content": {"application/json": {"schema": {"$ref": "#/components/schemas/IntakeCommandResult"}}}
+          },
+          "401": {"$ref": "#/components/responses/ProblemResponse"},
+          "403": {"$ref": "#/components/responses/ProblemResponse"},
+          "404": {"$ref": "#/components/responses/ProblemResponse"},
+          "409": {"$ref": "#/components/responses/ProblemResponse"},
+          "422": {"$ref": "#/components/responses/ProblemResponse"}
+        }
+      }
+    },
     "/v1/tickets/{ticket_id}": {
       "get": {
         "operationId": "getTicket",
@@ -2167,6 +2239,8 @@
               "durability_pending",
               "i1-7c-required",
               "idempotency-conflict",
+              "intake-already-promoted",
+              "intake-source-conflict",
               "migration-alias-conflict",
               "migration-capability-denied",
               "migration-correction-conflict",
@@ -2245,6 +2319,102 @@
         "properties": {
           "kind": {"type": "string", "minLength": 1, "maxLength": 64},
           "ref": {"type": "string", "minLength": 1, "maxLength": 256}
+        }
+      },
+      "IntakeIntent": {
+        "type": "string",
+        "enum": ["discussion", "create_ticket", "link_ticket"]
+      },
+      "IntakePromotionIntent": {
+        "type": "string",
+        "enum": ["create_ticket", "link_ticket"]
+      },
+      "IntakeTaint": {
+        "type": "string",
+        "enum": ["authenticated", "external_untrusted", "quarantine_required"]
+      },
+      "IntakeOutcome": {
+        "type": "string",
+        "enum": ["discussion", "ticket_created", "ticket_linked", "quarantined"]
+      },
+      "IntakeSubmitRequest": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["content", "project_key", "source"],
+        "properties": {
+          "content": {"type": "string", "minLength": 1, "maxLength": 65536},
+          "expected_thread_version": {"type": ["integer", "null"], "minimum": 1},
+          "expected_ticket_version": {"type": ["integer", "null"], "minimum": 1},
+          "initial_custodian_id": {"type": ["string", "null"], "format": "uuid"},
+          "intent": {"$ref": "#/components/schemas/IntakeIntent", "default": "discussion"},
+          "priority": {
+            "oneOf": [
+              {"$ref": "#/components/schemas/Priority"},
+              {"type": "null"}
+            ]
+          },
+          "project_key": {"type": "string", "pattern": "^[a-z][a-z0-9._-]{2,127}$"},
+          "source": {"$ref": "#/components/schemas/SourceReference"},
+          "taint": {"$ref": "#/components/schemas/IntakeTaint", "default": "authenticated"},
+          "target_ticket_id": {"type": ["string", "null"], "format": "uuid"},
+          "thread_id": {"type": ["string", "null"], "format": "uuid"},
+          "title": {"type": ["string", "null"], "minLength": 1, "maxLength": 200}
+        }
+      },
+      "IntakePromotionRequest": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["expected_thread_version", "intent"],
+        "properties": {
+          "expected_thread_version": {"type": "integer", "minimum": 1},
+          "expected_ticket_version": {"type": ["integer", "null"], "minimum": 1},
+          "initial_custodian_id": {"type": ["string", "null"], "format": "uuid"},
+          "intent": {"$ref": "#/components/schemas/IntakePromotionIntent"},
+          "priority": {
+            "oneOf": [
+              {"$ref": "#/components/schemas/Priority"},
+              {"type": "null"}
+            ]
+          },
+          "target_ticket_id": {"type": ["string", "null"], "format": "uuid"},
+          "title": {"type": ["string", "null"], "minLength": 1, "maxLength": 200}
+        }
+      },
+      "IntakeCommandResult": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "command_id",
+          "durability_state",
+          "event_ids",
+          "inbound_event_id",
+          "outcome",
+          "project_key",
+          "quarantine_reason",
+          "source",
+          "thread_id",
+          "thread_version",
+          "ticket_id",
+          "ticket_version"
+        ],
+        "properties": {
+          "command_id": {"type": "string", "format": "uuid"},
+          "durability_state": {"$ref": "#/components/schemas/DurabilityState"},
+          "event_ids": {
+            "type": "array",
+            "minItems": 1,
+            "maxItems": 2,
+            "items": {"type": "string", "format": "uuid"}
+          },
+          "inbound_event_id": {"type": "string", "format": "uuid"},
+          "outcome": {"$ref": "#/components/schemas/IntakeOutcome"},
+          "project_key": {"type": "string", "pattern": "^[a-z][a-z0-9._-]{2,127}$"},
+          "quarantine_reason": {"type": ["string", "null"], "maxLength": 500},
+          "source": {"$ref": "#/components/schemas/SourceReference"},
+          "thread_id": {"type": "string", "format": "uuid"},
+          "thread_version": {"type": "integer", "minimum": 1},
+          "ticket_id": {"type": ["string", "null"], "format": "uuid"},
+          "ticket_version": {"type": ["integer", "null"], "minimum": 1}
         }
       },
       "TicketCreateRequest": {

@@ -17,6 +17,11 @@ from ctower_kernel.record.catalog_events import (
     CatalogComponentReference,
     CatalogEventPayload,
 )
+from ctower_kernel.record.intake_events import (
+    InboundEventPromotedPayload,
+    InboundEventRecordedPayload,
+    IntakeEventPayload,
+)
 from ctower_kernel.record.migration_events import MigrationChangedPayload
 from ctower_kernel.record.ticket_events import (
     CustodyTransferredPayload,
@@ -39,6 +44,9 @@ __all__ = [
     "EventEnvelope",
     "EventKind",
     "EventOrigin",
+    "InboundEventPromotedPayload",
+    "InboundEventRecordedPayload",
+    "IntakeEventPayload",
     "MigrationChangedPayload",
     "PoisonDispositionRecordedPayload",
     "ProofChangedPayload",
@@ -67,6 +75,8 @@ class EventKind(StrEnum):
     ROUTINE_OCCURRENCE_RECORDED = "routine.occurrence_recorded"
     POISON_DISPOSITION_RECORDED = "attention.poison_disposition_recorded"
     MIGRATION_CHANGED = "migration.changed"
+    INBOUND_EVENT_RECORDED = "intake.inbound_event_recorded"
+    INBOUND_EVENT_PROMOTED = "intake.inbound_event_promoted"
 
 
 class EventOrigin(StrEnum):
@@ -84,6 +94,8 @@ _STREAM_PREFIXES = {
     EventKind.ROUTINE_OCCURRENCE_RECORDED: "routine-occurrence",
     EventKind.WORKFLOW_CHANGED: "workflow",
     EventKind.MIGRATION_CHANGED: "migration",
+    EventKind.INBOUND_EVENT_RECORDED: "inbound-thread",
+    EventKind.INBOUND_EVENT_PROMOTED: "inbound-thread",
 }
 _DIGEST_BYTES = 32
 _MAX_UTC_OFFSET_SECONDS = 64800
@@ -295,6 +307,7 @@ type EventPayload = (
     | RoutineOccurrenceRecordedPayload
     | PoisonDispositionRecordedPayload
     | MigrationChangedPayload
+    | IntakeEventPayload
 )
 
 
@@ -397,6 +410,14 @@ _EVENT_VARIANTS: dict[EventKind, tuple[type[object], frozenset[EventOrigin]]] = 
         MigrationChangedPayload,
         frozenset({EventOrigin.API, EventOrigin.MIGRATION_IMPORTER}),
     ),
+    EventKind.INBOUND_EVENT_RECORDED: (
+        InboundEventRecordedPayload,
+        frozenset({EventOrigin.API}),
+    ),
+    EventKind.INBOUND_EVENT_PROMOTED: (
+        InboundEventPromotedPayload,
+        frozenset({EventOrigin.API}),
+    ),
 }
 
 
@@ -459,6 +480,7 @@ def _validate_event_identity(event: EventEnvelope) -> None:
     _validate_catalog_identity(event)
     _validate_occurrence_identity(event)
     _validate_poison_identity(event)
+    _validate_intake_identity(event)
 
 
 def _validate_bootstrap_identity(event: EventEnvelope) -> None:
@@ -495,6 +517,13 @@ def _validate_poison_identity(event: EventEnvelope) -> None:
         event.aggregate_id != event.client_command_id
     ):
         raise ValueError("poison disposition aggregate must be its command identity")
+
+
+def _validate_intake_identity(event: EventEnvelope) -> None:
+    if isinstance(event.payload, InboundEventRecordedPayload | InboundEventPromotedPayload) and (
+        event.stream_id != f"inbound-thread:{event.aggregate_id}"
+    ):
+        raise ValueError("intake event must use its inbound thread stream")
 
 
 def _stream_id(kind: EventKind, aggregate_id: UUID) -> str:

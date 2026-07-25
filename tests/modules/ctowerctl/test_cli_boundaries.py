@@ -18,6 +18,7 @@ from ctowerctl._company_commands import (
 from ctowerctl._company_commands import (
     query_command_names as company_queries,
 )
+from ctowerctl._intake_commands import mutation_command_names as intake_mutations
 from ctowerctl._migration_commands import (
     mutation_command_names as migration_mutations,
 )
@@ -73,6 +74,7 @@ def test_explicit_handlers_cover_every_generated_operation_class() -> None:
         | ops_mutations()
         | synthetic_mutations()
         | migration_mutations()
+        | intake_mutations()
     )
     queries = (
         ticket_queries()

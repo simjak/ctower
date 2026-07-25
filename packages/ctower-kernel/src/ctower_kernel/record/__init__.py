@@ -1,5 +1,12 @@
 """Record Module public surface."""
 
+from ctower_kernel.record.intake import (
+    InboundSource,
+    IntakeCommandResult,
+    IntakeIntent,
+    IntakePromotionCommand,
+    IntakeSubmitCommand,
+)
 from ctower_kernel.record.interface import (
     Actor,
     AuditEvent,
@@ -35,6 +42,11 @@ __all__ = [
     "DurabilityHealthStatus",
     "DurabilityReason",
     "DurabilityState",
+    "InboundSource",
+    "IntakeCommandResult",
+    "IntakeIntent",
+    "IntakePromotionCommand",
+    "IntakeSubmitCommand",
     "PrincipalKind",
     "Record",
     "RecordProblem",

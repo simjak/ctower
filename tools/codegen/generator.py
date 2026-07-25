@@ -22,6 +22,7 @@ from tools.codegen._inventory import EXPECTED_OPERATIONS, EXPECTED_SCHEMAS
 from tools.codegen._model_codegen import render_init, render_models
 from tools.codegen._operation_codegen import render_operations
 from tools.codegen._schema_codegen import render_schema_resources
+from tools.codegen._typescript_codegen import render_typescript
 
 __all__ = ["CodegenError", "check", "write"]
 
@@ -35,6 +36,15 @@ _CLIENT_OUTPUTS = {
     "models.py": Path("generated/python/ctower_client/models.py"),
     "operations.py": Path("generated/python/ctower_client/operations.py"),
 }
+_TYPESCRIPT_ROOT = Path("generated/typescript/ctower-client")
+_TYPESCRIPT_OUTPUTS = {
+    "client.ts": _TYPESCRIPT_ROOT / "src/client.ts",
+    "index.ts": _TYPESCRIPT_ROOT / "src/index.ts",
+    "models.ts": _TYPESCRIPT_ROOT / "src/models.ts",
+    "operations.ts": _TYPESCRIPT_ROOT / "src/operations.ts",
+    "package.json": _TYPESCRIPT_ROOT / "package.json",
+    "tsconfig.json": _TYPESCRIPT_ROOT / "tsconfig.json",
+}
 _BASE_INPUTS = (
     _OPENAPI,
     _TELEMETRY,
@@ -45,6 +55,7 @@ _BASE_INPUTS = (
     Path("tools/codegen/_model_codegen.py"),
     Path("tools/codegen/_operation_codegen.py"),
     Path("tools/codegen/_schema_codegen.py"),
+    Path("tools/codegen/_typescript_codegen.py"),
     Path("tools/codegen/generator.py"),
     Path("tools/checks/generated.py"),
 )
@@ -97,16 +108,21 @@ def _render(root: Path) -> _Rendered:
             "models.py": render_models(generated_contract, contract_digest),
             "operations.py": render_operations(generated_contract, contract_digest),
         }
+        typescript = render_typescript(generated_contract, contract_digest)
         contract_resources = render_schema_resources(root, contract_digest)
     except (TypeError, ValueError) as error:
         raise CodegenError(str(error)) from error
     client_outputs = tuple(
         (output, rendered[name]) for name, output in sorted(_CLIENT_OUTPUTS.items())
     )
+    typescript_outputs = tuple(
+        (output, typescript[name]) for name, output in sorted(_TYPESCRIPT_OUTPUTS.items())
+    )
     outputs = tuple(
         sorted(
             (
                 *client_outputs,
+                *typescript_outputs,
                 *contract_resources.outputs,
                 (_README, _render_readme()),
             )
@@ -179,9 +195,9 @@ Do not edit files in this directory. Regenerate them from authored contracts wit
 python3 -m tools.codegen --root . --write
 ```
 
-`python/ctower_client` is the strict OpenAPI client/model package. Its generated operation
-registry is the closed replay inventory for the protected CLI; it is not an arbitrary
-dispatcher.
+`python/ctower_client` and `typescript/ctower-client` are strict OpenAPI client/model
+packages. The Python operation registry is the closed replay inventory for the protected CLI;
+it is not an arbitrary dispatcher. Both clients expose the same authored operation set.
 
 `python/ctower_contracts` vendors authored JSON schemas into a local-only runtime resource.
 Resolution rejects network references and paths that escape the authored contract tree.

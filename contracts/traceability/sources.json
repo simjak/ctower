@@ -103,6 +103,20 @@
       ]
     },
     {
+      "path": "contracts/domain/intake/thread-intake.schema.json",
+      "references": [
+        "SPEC#aggregate-boundaries-and-relationships",
+        "SPEC#stage-contracts",
+        "INV-01",
+        "INV-02",
+        "INV-03",
+        "INV-06",
+        "INV-07",
+        "INV-08",
+        "AC-PROD-01"
+      ]
+    },
+    {
       "path": "contracts/domain/outbox-delivery.schema.json",
       "references": [
         "SPEC#persistence-authority",
@@ -1341,6 +1355,19 @@
         "AC-PD-04",
         "AC-SEC-03",
         "AC-SEC-05"
+      ]
+    },
+    {
+      "path": "packages/ctower-kernel/migrations/0032_thread_first_intake.sql",
+      "references": [
+        "SPEC#aggregate-boundaries-and-relationships",
+        "SPEC#canonical-event-and-command-contract",
+        "SPEC#persistence-authority",
+        "INV-01",
+        "INV-03",
+        "INV-05",
+        "AC-DUR-02",
+        "AC-DUR-03"
       ]
     },
     {

@@ -19,6 +19,7 @@ from ctower_client.operations import OperationSpec, SpoolPolicy, operation_for_c
 from ctowerctl import (
     _bootstrap_commands,
     _company_commands,
+    _intake_commands,
     _migration_commands,
     _ops_commands,
     _spool_commands,
@@ -163,6 +164,8 @@ def _build_mutation(arguments: object) -> MutationPayload:
     area = cast(str, namespace.area)
     if area == "ticket":
         return _ticket_commands.build_mutation(namespace)
+    if area == "intake":
+        return _intake_commands.build_mutation(namespace)
     if area == "company":
         return _company_commands.build_mutation(namespace)
     if area == "ops":

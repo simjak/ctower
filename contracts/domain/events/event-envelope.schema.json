@@ -42,7 +42,9 @@
         "proof.changed",
         "workflow.changed",
         "routine.occurrence_recorded",
-        "attention.poison_disposition_recorded"
+        "attention.poison_disposition_recorded",
+        "intake.inbound_event_recorded",
+        "intake.inbound_event_promoted"
       ]
     },
     "origin": {"type": "string", "enum": ["api", "bootstrap", "control_worker"]},
@@ -54,7 +56,7 @@
     "server_time": {"type": "string", "format": "date-time"},
     "stream_id": {
       "type": "string",
-      "pattern": "^(tenant:[0-9a-f-]{36}:bootstrap|ticket:[0-9a-f-]{36}|catalog:[0-9a-f-]{36}|proof:[0-9a-f-]{36}|workflow:[0-9a-f-]{36}|routine-occurrence:[0-9a-f-]{36}|poison-disposition:[0-9a-f-]{36})$"
+      "pattern": "^(tenant:[0-9a-f-]{36}:bootstrap|ticket:[0-9a-f-]{36}|catalog:[0-9a-f-]{36}|proof:[0-9a-f-]{36}|workflow:[0-9a-f-]{36}|routine-occurrence:[0-9a-f-]{36}|poison-disposition:[0-9a-f-]{36}|inbound-thread:[0-9a-f-]{36})$"
     },
     "tenant_id": {"type": "string", "format": "uuid"}
   },
@@ -147,6 +149,22 @@
             "origin": {"const": "api"},
             "stream_id": {"pattern": "^poison-disposition:[0-9a-f-]{36}$"},
             "payload": {"$ref": "#/$defs/poisonDispositionRecorded"}
+          }
+        },
+        {
+          "properties": {
+            "kind": {"const": "intake.inbound_event_recorded"},
+            "origin": {"const": "api"},
+            "stream_id": {"pattern": "^inbound-thread:[0-9a-f-]{36}$"},
+            "payload": {"$ref": "#/$defs/inboundEventRecorded"}
+          }
+        },
+        {
+          "properties": {
+            "kind": {"const": "intake.inbound_event_promoted"},
+            "origin": {"const": "api"},
+            "stream_id": {"pattern": "^inbound-thread:[0-9a-f-]{36}$"},
+            "payload": {"$ref": "#/$defs/inboundEventPromoted"}
           }
         }
       ]
@@ -335,6 +353,60 @@
         "outbox_id": {"type": "string", "format": "uuid"},
         "reason": {"type": "string", "minLength": 1, "maxLength": 500},
         "topic": {"type": "string", "pattern": "^[a-z][a-z0-9._-]*$"}
+      }
+    },
+    "inboundEventRecorded": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "content_digest",
+        "inbound_event_id",
+        "intent",
+        "outcome",
+        "position",
+        "project_key",
+        "source_kind",
+        "source_ref",
+        "taint",
+        "ticket_id"
+      ],
+      "properties": {
+        "content_digest": {"$ref": "#/$defs/sha256"},
+        "inbound_event_id": {"type": "string", "format": "uuid"},
+        "intent": {"enum": ["discussion", "create_ticket", "link_ticket"]},
+        "outcome": {
+          "enum": ["discussion", "ticket_created", "ticket_linked", "quarantined"]
+        },
+        "position": {"type": "integer", "minimum": 1},
+        "project_key": {"type": "string", "pattern": "^[a-z][a-z0-9._-]{2,127}$"},
+        "source_kind": {"type": "string", "minLength": 1, "maxLength": 64},
+        "source_ref": {"type": "string", "minLength": 1, "maxLength": 256},
+        "taint": {
+          "enum": ["authenticated", "external_untrusted", "quarantine_required"]
+        },
+        "ticket_id": {"type": ["string", "null"], "format": "uuid"}
+      }
+    },
+    "inboundEventPromoted": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "inbound_event_id",
+        "intent",
+        "outcome",
+        "project_key",
+        "source_kind",
+        "source_ref",
+        "ticket_id"
+      ],
+      "properties": {
+        "inbound_event_id": {"type": "string", "format": "uuid"},
+        "intent": {"enum": ["create_ticket", "link_ticket"]},
+        "outcome": {"enum": ["ticket_created", "ticket_linked"]},
+        "project_key": {"type": "string", "pattern": "^[a-z][a-z0-9._-]{2,127}$"},
+        "source_kind": {"type": "string", "minLength": 1, "maxLength": 64},
+        "source_ref": {"type": "string", "minLength": 1, "maxLength": 256},
+        "ticket_id": {"type": "string", "format": "uuid"}
       }
     },
     "workChanged": {
