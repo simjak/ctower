@@ -244,6 +244,15 @@
       "forward_test": "pytest:tests/acceptance/increment-1/test_company_bundle.py::test_ticket_comment_is_canonical_replay_safe_and_table_free",
       "rollback_or_forward_compensation": "Keep canonical ticket.comment_added events readable by a comment-aware build or append reviewed forward compensation; never delete comment events, command results, outbox rows, event links, or durability evidence.",
       "backup_checkpoint": "Before applying to a nonempty installation, capture and verify ticket, event, event-link, command-result, outbox, and durability-head counts plus a database backup."
+    },
+    {
+      "path": "0026_fixed_operation_attempt_receipts.sql",
+      "sha256": "sha256:8b65a496e4e20c98044c3616f6560348040982e35357cdf2ce6fc6c1a0550ee0",
+      "minimum_service_version": "0.0.0",
+      "maximum_service_version": "0.0.0",
+      "forward_test": "pytest:tests/acceptance/increment-1/test_synthetic_operations.py::test_fixed_synthetic_attempt_fence_and_terminal_result_are_immutable",
+      "rollback_or_forward_compensation": "Keep immutable fixed-operation attempts and terminal results readable by a receipt-aware build, or append reviewed forward compensation; never update or delete a claim, fence, or terminal semantic result.",
+      "backup_checkpoint": "Before applying to a nonempty installation, capture and verify operation-job, occurrence, acceptance-confirmation, attempt, and result counts plus a database backup."
     }
   ]
 }

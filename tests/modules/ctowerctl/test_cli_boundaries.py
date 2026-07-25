@@ -25,6 +25,12 @@ from ctowerctl._ops_commands import (
     query_command_names as ops_queries,
 )
 from ctowerctl._parser import authored_command_names, parse_arguments
+from ctowerctl._synthetic_commands import (
+    mutation_command_names as synthetic_mutations,
+)
+from ctowerctl._synthetic_commands import (
+    query_command_names as synthetic_queries,
+)
 from ctowerctl._ticket_commands import (
     build_mutation,
 )
@@ -52,8 +58,8 @@ def test_parser_exposes_every_authored_name_without_operation_dispatch() -> None
 
 
 def test_explicit_handlers_cover_every_generated_operation_class() -> None:
-    mutations = ticket_mutations() | company_mutations() | ops_mutations()
-    queries = ticket_queries() | company_queries() | ops_queries()
+    mutations = ticket_mutations() | company_mutations() | ops_mutations() | synthetic_mutations()
+    queries = ticket_queries() | company_queries() | ops_queries() | synthetic_queries()
     expected_mutations = {
         name
         for name, operation in CLI_OPERATIONS.items()

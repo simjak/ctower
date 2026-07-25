@@ -14,7 +14,9 @@ from typing import Protocol
 from uuid import UUID, uuid4
 
 import uvicorn
+from support.catalog import FileSchemas, MemoryObjectStore
 
+from ctower_api.catalog_resolver import CatalogComponentResolver
 from ctower_api.interface import create_app
 from ctower_api.telemetry import TelemetryRecorder
 from ctower_client import (
@@ -23,6 +25,7 @@ from ctower_client import (
     TicketIntentRequest,
     WorkflowStartRequest,
 )
+from ctower_kernel.catalog import PostgresCatalog
 from ctower_kernel.projections import Projections
 from ctower_kernel.projections.postgres import PostgresProjections
 from ctower_kernel.proof import Criterion, Proof, ProofPolicy
@@ -166,6 +169,7 @@ def running_api(
     telemetry_capture: Path | None = None,
     telemetry_failure: bool = False,
     projection_dsn: str | None = None,
+    catalog_backed: bool = False,
 ) -> Iterator[str]:
     """Run the composed API in another process and yield its loopback URL."""
 
@@ -181,6 +185,7 @@ def running_api(
             port,
             telemetry_capture,
             int(telemetry_failure),
+            int(catalog_backed),
         ),
         daemon=True,
     )
@@ -204,16 +209,27 @@ def _serve(
     port: int,
     telemetry_capture: Path | None,
     telemetry_failure: int,
+    catalog_backed: int,
 ) -> None:
     recorder = TelemetryRecorder(
         _exporter(telemetry_capture, fail=bool(telemetry_failure))
         if telemetry_capture is not None or telemetry_failure
         else None
     )
+    catalog_store = MemoryObjectStore()
+    catalog = PostgresCatalog(
+        runtime_dsn,
+        FileSchemas(),
+        catalog_store,
+        key_reference="kms:test:catalog",
+        telemetry=recorder,
+    )
+    resolver = CatalogComponentResolver(catalog) if catalog_backed else None
     proof_store = PostgresProof(
         runtime_dsn,
-        policies=(proof_policy(),),
+        policies=() if catalog_backed else (proof_policy(),),
         policy_pins=PostgresWorkflowPolicyPins(),
+        policy_resolver=resolver,
         telemetry=recorder,
     )
     workflow_store = PostgresWorkflow(
@@ -232,11 +248,13 @@ def _serve(
             record,
             proof=Proof(writer=proof_store),
             workflow=Workflow(
-                (WorkflowGraph.from_mapping(graph_payload),),
+                () if catalog_backed else (WorkflowGraph.from_mapping(graph_payload),),
                 writer=workflow_store,
-                policy_digests=_policy_digests(),
+                policy_digests={} if catalog_backed else _policy_digests(),
+                resolver=resolver,
             ),
             work=work,
+            catalog=catalog if catalog_backed else None,
             projections=(
                 Projections(PostgresProjections(projection_dsn))
                 if projection_dsn is not None

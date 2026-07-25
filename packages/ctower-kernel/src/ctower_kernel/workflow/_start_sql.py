@@ -56,7 +56,7 @@ def start_workflow(
         )
         if pending is not None:
             return pending
-        decision = evaluator.validate_start(command)
+        decision = evaluator.validate_start(command, tenant_id=actor.tenant_id)
         if not decision.accepted:
             problem = _problem(command, decision.reason, "Workflow pin refused")
             transaction.refuse(

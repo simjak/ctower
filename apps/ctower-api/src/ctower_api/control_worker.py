@@ -7,12 +7,19 @@ import signal
 from dataclasses import dataclass
 from pathlib import Path
 from threading import Event
+from typing import Protocol
 
 from ctower_api._outbox_loop import OutboxLoop
 from ctower_api._routine_loop import RoutineLoop, load_routine_revisions
+from ctower_api.synthetic_handler import SyntheticRetryError
 from ctower_kernel.projections import Projections
 from ctower_kernel.projections.postgres import PostgresProjections
-from ctower_kernel.runtime import Routine
+from ctower_kernel.runtime import (
+    FixedOperationAttempt,
+    FixedOperationCompletion,
+    FixedOperations,
+    Routine,
+)
 from ctower_kernel.runtime.postgres import PostgresRuntime
 
 __all__ = ["ControlWorker", "build_worker", "main"]
@@ -22,6 +29,10 @@ _MIN_INTERVAL_SECONDS = 0.1
 _MAX_INTERVAL_SECONDS = 60.0
 
 
+class _SyntheticHandler(Protocol):
+    def execute(self, attempt: FixedOperationAttempt) -> FixedOperationCompletion: ...
+
+
 @dataclass(frozen=True, slots=True)
 class ControlWorker:
     """Coordinate separately owned loops without owning their durable decisions."""
@@ -29,11 +40,14 @@ class ControlWorker:
     runtime: Routine
     routine_loop: RoutineLoop
     outbox_loop: OutboxLoop
+    fixed_operations: FixedOperations | None = None
+    synthetic_handler: _SyntheticHandler | None = None
 
     def tick(self) -> None:
         tenant_ids = self.runtime.tenant_ids()
         self.routine_loop.tick(tenant_ids)
         self.outbox_loop.tick(tenant_ids)
+        self._tick_synthetic()
 
     def run(self, stop: Event, *, interval_seconds: float = 1.0) -> None:
         if not _valid_interval(interval_seconds):
@@ -41,6 +55,18 @@ class ControlWorker:
         while not stop.is_set():
             self.tick()
             stop.wait(interval_seconds)
+
+    def _tick_synthetic(self) -> None:
+        if self.fixed_operations is None or self.synthetic_handler is None:
+            return
+        attempt = self.fixed_operations.claim_synthetic("ctower.control-worker.synthetic")
+        if attempt is None:
+            return
+        try:
+            completion = self.synthetic_handler.execute(attempt)
+        except SyntheticRetryError:
+            return
+        self.fixed_operations.complete_synthetic(attempt, completion)
 
 
 def main() -> None:
@@ -59,13 +85,22 @@ def main() -> None:
     worker.run(stop, interval_seconds=interval)
 
 
-def build_worker(runtime: Routine, projections: Projections, *, pack_root: Path) -> ControlWorker:
+def build_worker(
+    runtime: Routine,
+    projections: Projections,
+    *,
+    pack_root: Path,
+    fixed_operations: FixedOperations | None = None,
+    synthetic_handler: _SyntheticHandler | None = None,
+) -> ControlWorker:
     """Compose the same worker around public kernel Interfaces."""
 
     return ControlWorker(
         runtime,
         RoutineLoop(runtime, load_routine_revisions(pack_root)),
         OutboxLoop(projections),
+        fixed_operations,
+        synthetic_handler,
     )
 
 

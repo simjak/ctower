@@ -37,6 +37,7 @@ from ctower_api._http_support import (
 )
 from ctower_api._mutation_response import mutation_response as _mutation_response
 from ctower_api._proof_workflow_routes import install_proof_workflow_routes
+from ctower_api._synthetic_routes import SyntheticRuntime, install_synthetic_routes
 from ctower_api._task_routes import install_task_routes
 from ctower_api.telemetry import TelemetryRecorder
 from ctower_client.models import BootstrapReceipt as HttpBootstrapReceipt
@@ -64,6 +65,7 @@ from ctower_kernel.record import (
     TicketCommandResult,
     TicketTimeline,
 )
+from ctower_kernel.runtime import RoutineRevision
 from ctower_kernel.telemetry import TelemetryContext
 from ctower_kernel.work import Work
 from ctower_kernel.workflow import Workflow
@@ -80,6 +82,8 @@ def create_app(
     projections: Projections | None = None,
     attention: Attention | None = None,
     catalog: BundleCatalog | None = None,
+    synthetic_runtime: SyntheticRuntime | None = None,
+    synthetic_revision: RoutineRevision | None = None,
     telemetry: TelemetryRecorder | None = None,
 ) -> FastAPI:
     """Compose the private command API without embedding durable decisions."""
@@ -111,6 +115,17 @@ def create_app(
     if projections is not None:
         install_board_routes(app, access, projections, recorder)
         install_health_routes(app, access, record, projections, recorder, attention)
+    if (synthetic_runtime is None) is not (synthetic_revision is None):
+        raise ValueError("synthetic runtime and revision must be composed together")
+    if synthetic_runtime is not None and synthetic_revision is not None:
+        install_synthetic_routes(
+            app,
+            access,
+            record,
+            synthetic_runtime,
+            synthetic_revision,
+            recorder,
+        )
     return app
 
 

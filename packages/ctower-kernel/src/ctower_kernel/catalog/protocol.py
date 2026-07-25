@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from typing import Protocol
+from uuid import UUID
 
 from ctower_kernel.catalog.interface import (
     BundleValidation,
@@ -12,6 +13,7 @@ from ctower_kernel.catalog.interface import (
     CompanyBundleCommandResult,
     CompanyBundleExport,
     CompanyBundlePlan,
+    ComponentKind,
     ComponentReference,
     JsonValue,
     VersionedComponent,
@@ -41,6 +43,16 @@ class Catalog(Protocol):
     ) -> CompanyBundleCommandResult | CatalogProblem: ...
 
     def export(self, actor: Actor) -> CompanyBundleExport | CatalogProblem: ...
+
+    def component_bytes(
+        self,
+        tenant_id: UUID,
+        kind: ComponentKind,
+        key: str,
+        revision: int,
+        *,
+        content_digest: str | None = None,
+    ) -> bytes | None: ...
 
     def stage(
         self,

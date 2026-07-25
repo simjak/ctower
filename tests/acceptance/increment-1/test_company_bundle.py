@@ -23,6 +23,7 @@ from support.catalog import (
 from support.postgres import DatabaseFixture
 from support.tenant_fixture import TenantFixture
 
+from ctower_api.catalog_resolver import CatalogComponentResolver
 from ctower_kernel.catalog import (
     CatalogProblem,
     CompanyBundle,
@@ -60,6 +61,7 @@ IMMUTABLE_CATALOG_TABLES = CATALOG_TABLES - {"company_bundle_active"}
 _SECOND_VERSION = 2
 _SUPERSESSION_EVENT_COUNT = 2
 _CONFLICT_STATUS = 409
+_WORKFLOW_DIGEST = "sha256:7fd54a98f6ad57f36252aeefbed974fee04e55c7192c85df58626d8769f829a9"
 
 
 def test_fresh_and_0023_upgrade_catalog_migrations_are_additive_and_least_privilege(
@@ -164,6 +166,52 @@ def test_company_bundle_apply_replay_export_and_zero_diff_are_atomic(
         tenant.database.admin_dsn,
         initial_event_count=len(applied.event_ids),
     )
+
+
+def test_catalog_resolver_reads_exact_historical_workflow_and_proof_bytes(
+    tenant: TenantFixture,
+) -> None:
+    actor = actor_for(tenant.tenant_id, tenant.operator_id)
+    store = MemoryObjectStore()
+    catalog = PostgresCatalog(
+        tenant.database.runtime_dsn,
+        FileSchemas(),
+        store,
+        key_reference="vault:catalog-key",
+    )
+    bundle = _tenant_bundle()
+    plan = catalog.plan(actor, bundle)
+    assert not isinstance(plan, CatalogProblem)
+    command_id = uuid4()
+    applied = catalog.apply(
+        actor,
+        CompanyBundleApply(
+            client_command_id=command_id,
+            bundle=bundle,
+            expected_active_version=0,
+            plan_digest=plan.plan_digest,
+        ),
+        telemetry=telemetry_for(actor, command_id),
+    )
+    assert isinstance(applied, CompanyBundleCommandResult)
+    resolver = CatalogComponentResolver(catalog)
+    graph = resolver.workflow_graph(
+        tenant.tenant_id,
+        "ctower.trust-spine-four-stage@1",
+        _WORKFLOW_DIGEST,
+    )
+    pin = (
+        "ctower.trust-spine-four-stage@1",
+        "ctower.trust-spine-four-stage.gates@1",
+        "sha256:1ea9adf4527c28f1debca1c8cbc556c73ff6b8eb19f06fbda81808e2ea59fd21",
+        "ctower.trust-spine-four-stage.evidence@1",
+        "sha256:559bfb59c68ac1a6147021bfd56637692623c40c57387cc95bbbdb2e186e70f6",
+    )
+
+    assert graph is not None
+    assert graph.reference == pin[0]
+    assert resolver.proof_policy(tenant.tenant_id, pin) is not None
+    assert resolver.workflow_graph(tenant.tenant_id, pin[0], "sha256:" + "0" * 64) is None
 
 
 def _assert_successor_round_trip(

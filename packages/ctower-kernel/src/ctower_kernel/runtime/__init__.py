@@ -3,7 +3,11 @@
 from ctower_kernel.runtime.interface import (
     CatchUpPolicy,
     ConcurrencyPolicy,
+    FixedOperationAttempt,
+    FixedOperationCompletion,
     FixedOperationJob,
+    FixedOperationResult,
+    FixedOperations,
     OccurrenceOutcome,
     OccurrencePlan,
     Routine,
@@ -12,12 +16,20 @@ from ctower_kernel.runtime.interface import (
     ScheduleKind,
     ScheduleOffsetDecision,
     SchedulerScan,
+    SyntheticRun,
+    SyntheticRunCommand,
+    SyntheticRunReceipt,
+    SyntheticRunState,
 )
 
 __all__ = [
     "CatchUpPolicy",
     "ConcurrencyPolicy",
+    "FixedOperationAttempt",
+    "FixedOperationCompletion",
     "FixedOperationJob",
+    "FixedOperationResult",
+    "FixedOperations",
     "OccurrenceOutcome",
     "OccurrencePlan",
     "Routine",
@@ -26,4 +38,8 @@ __all__ = [
     "ScheduleKind",
     "ScheduleOffsetDecision",
     "SchedulerScan",
+    "SyntheticRun",
+    "SyntheticRunCommand",
+    "SyntheticRunReceipt",
+    "SyntheticRunState",
 ]

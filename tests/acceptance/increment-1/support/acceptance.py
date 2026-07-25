@@ -2,13 +2,15 @@
 
 from __future__ import annotations
 
-import hashlib
 from datetime import UTC, datetime
 from typing import cast
 from uuid import UUID
 
 import psycopg
 from psycopg.rows import dict_row
+
+from ctower_kernel.record import RecordProblem
+from ctower_kernel.record.postgres import PostgresRecord
 
 __all__ = ["accept_command", "accept_pending_commands"]
 
@@ -62,7 +64,8 @@ def accept_command(dsn: str, tenant_id: UUID, principal_id: UUID, command_id: UU
         ).fetchone()
         if command is None:
             raise AssertionError("cannot accept a missing command")
-        root = hashlib.sha256(command_id.bytes).digest()
+        root = PostgresRecord(dsn).command_root(tenant_id, principal_id, command_id)
+        assert not isinstance(root, RecordProblem), "cannot snapshot an unavailable command"
         receipt = connection.execute(
             """
             INSERT INTO durability_acknowledgements (
