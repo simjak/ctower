@@ -18,11 +18,18 @@ temporary storage are test-fixture choices, not an operational security or durab
 The development `pending_only` configuration is likewise not a deployment mode. A verifier-owned
 primary/standby topology exercises acknowledged durability, but it is not packaged as an operator path.
 
+`deploy/private-vps/development/compose.yaml` separately records a secret-free reference composition for
+the intended one-host development topology. Its verifier binds the whole normalized Compose authority and
+development recurrence artifacts, but it supplies no released image, credentials, installation,
+activation, off-host failure domain, CP3-D proof, or accepted I1-exit claim.
+
 ## Operational guidance today
 
 Use Docker Compose only to run the documented repository acceptance tests. Do not put tenant data,
-credentials, or real work into their fixture database. For current health vocabulary and redaction rules,
-see [Observability](observability.md) and [Secret handling](../security/secret-handling.md).
+credentials, or real work into either fixture or the private-VPS reference composition. The latter is
+present for read-only source/configuration/evidence verification, not as a start command or operator path.
+For current health vocabulary and redaction rules, see [Observability](observability.md) and
+[Secret handling](../security/secret-handling.md).
 
 ## Local CP3-C recovery evidence
 
@@ -31,9 +38,9 @@ anchors](backup-and-anchors.md), [key recovery](key-recovery.md), [isolated rest
 [rollback](rollback.md), and [recovery evidence](recovery-evidence.md). These bounded procedures do not
 provide external targets, a supported installation, production activation, or CP3-D recovery.
 
-A lean Docker Compose deployment direction may be proposed in future work, but no product Compose contract
-has shipped. Production deployment, configuration, monitoring, and recovery require their own conformance
-evidence and operator path.
+The checked-in private-VPS development composition is not a product Compose contract. Production
+deployment, configuration, monitoring, and recovery require their own conformance evidence and operator
+path.
 
 ## I1.7A cutover boundary
 

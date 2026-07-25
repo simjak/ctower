@@ -1,21 +1,24 @@
-"""Strict, immutable boundary models for the private-VPS source packet."""
+"""Strict immutable models mirroring the authored private-VPS schemas."""
 
 from __future__ import annotations
 
-import ipaddress
 from datetime import date, datetime
-from pathlib import PurePosixPath
-from typing import Annotated, Literal, Self
+from typing import Annotated, Literal
 
-from pydantic import BaseModel, ConfigDict, Field, StringConstraints, model_validator
+from pydantic import BaseModel, ConfigDict, Field, StringConstraints
 
 __all__ = [
     "ArtifactFile",
-    "Cp3dManifest",
+    "CheckArtifact",
+    "Claim",
     "DeploymentBindings",
     "EvidenceManifest",
     "OperationResult",
+    "RootOwnedDirectory",
+    "RootOwnedFile",
+    "ScheduledOccurrence",
     "SchedulerReceipt",
+    "SyntheticResult",
 ]
 
 Digest = Annotated[str, StringConstraints(pattern=r"^sha256:[0-9a-f]{64}$")]
@@ -30,6 +33,12 @@ ImageDigest = Annotated[
         pattern=r"^[a-z0-9][A-Za-z0-9._/:/-]*@sha256:[0-9a-f]{64}$",
     ),
 ]
+_IPV4_OCTET = r"(?:25[0-5]|2[0-4][0-9]|1[0-9]{2}|[1-9]?[0-9])"
+_PRIVATE_IPV4_PATTERN = (
+    rf"^(?:10\.{_IPV4_OCTET}\.{_IPV4_OCTET}\.{_IPV4_OCTET}|"
+    rf"172\.(?:1[6-9]|2[0-9]|3[01])\.{_IPV4_OCTET}\.{_IPV4_OCTET}|"
+    rf"192\.168\.{_IPV4_OCTET}\.{_IPV4_OCTET})$"
+)
 Reference = Annotated[
     str,
     StringConstraints(
@@ -41,11 +50,33 @@ Reference = Annotated[
 ]
 RelativePath = Annotated[
     str,
-    StringConstraints(pattern=r"^[A-Za-z0-9._-]+(?:/[A-Za-z0-9._-]+)*$"),
+    StringConstraints(pattern=r"^[A-Za-z0-9][A-Za-z0-9._-]*(?:/[A-Za-z0-9][A-Za-z0-9._-]*)*$"),
 ]
-AbsolutePath = Annotated[str, StringConstraints(min_length=2, max_length=300)]
+AbsolutePath = Annotated[
+    str,
+    StringConstraints(
+        min_length=2,
+        max_length=300,
+        pattern=r"^/(?:[A-Za-z0-9][A-Za-z0-9._-]*/)*[A-Za-z0-9][A-Za-z0-9._-]*$",
+    ),
+]
+PrivateIpv4 = Annotated[
+    str,
+    StringConstraints(pattern=_PRIVATE_IPV4_PATTERN),
+]
 FileMode = Literal["0400", "0440"]
 Claim = Literal["development_rehearsal", "i1_exit"]
+CheckKind = Literal[
+    "tls_access",
+    "database_bootstrap",
+    "health_telemetry",
+    "upgrade_rollback",
+    "worker_restart",
+    "host_reboot",
+    "restore_report",
+    "clean_install",
+    "legacy_baseline",
+]
 ArtifactKind = Literal[
     "deployment_preflight",
     "tls_access",
@@ -60,6 +91,13 @@ ArtifactKind = Literal[
     "synthetic_occurrence",
     "scheduler_receipt",
 ]
+ContentSchema = Literal[
+    "ctower.private-vps-deployment/v1",
+    "ctower.private-vps-check/v1",
+    "ctower.private-vps-synthetic-result/v1",
+    "ctower.private-vps-scheduler-receipt/v1",
+]
+DevelopmentProvenance = Literal["self_declared_development_reference"]
 
 
 class FrozenModel(BaseModel):
@@ -74,52 +112,39 @@ class SourceBinding(FrozenModel):
 
 
 class RootOwnedFile(FrozenModel):
-    """Metadata only for one externally installed file; never its contents."""
+    """Metadata only for one externally installed file."""
 
     reference: Reference
     path: AbsolutePath
     owner: Literal["root"]
     group: Literal["ctower"]
+    group_id: Literal[10001]
     mode: FileMode
     sha256: Digest
 
-    @model_validator(mode="after")
-    def validate_reference(self) -> Self:
-        if not self.reference.startswith(
-            ("file-ref://", "credential-file-ref://", "telemetry-ref://")
-        ):
-            raise ValueError("installed files require a file reference")
-        _require_absolute_path(self.path, "installed file")
-        return self
-
 
 class OutputFile(FrozenModel):
-    """A protected output target which need not exist before bootstrap."""
+    """Final bootstrap output contract."""
 
     reference: Reference
     path: AbsolutePath
     owner: Literal["root"]
     group: Literal["ctower"]
+    group_id: Literal[10001]
     mode: Literal["0400"]
 
-    @model_validator(mode="after")
-    def validate_reference(self) -> Self:
-        if not self.reference.startswith("file-ref://"):
-            raise ValueError("bootstrap output requires a file reference")
-        _require_absolute_path(self.path, "bootstrap output")
-        return self
+
+class RootOwnedDirectory(FrozenModel):
+    path: AbsolutePath
+    owner: Literal["root"]
+    group: Literal["ctower"]
+    group_id: Literal[10001]
+    mode: Literal["0750"]
 
 
 class DirectoryBinding(FrozenModel):
     reference: Reference
     path: AbsolutePath
-
-    @model_validator(mode="after")
-    def validate_reference(self) -> Self:
-        if not self.reference.startswith("object-root-ref://"):
-            raise ValueError("object root requires an object-root reference")
-        _require_absolute_path(self.path, "object root")
-        return self
 
 
 class ConfigArtifact(FrozenModel):
@@ -151,7 +176,8 @@ class TlsBindings(FrozenModel):
 
 class DatabaseBindings(FrozenModel):
     postgres_admin_password: RootOwnedFile
-    service_dsn: RootOwnedFile
+    api_dsn: RootOwnedFile
+    worker_dsn: RootOwnedFile
     projection_dsn: RootOwnedFile
     migration_dsn: RootOwnedFile
     role_admin_dsn: RootOwnedFile
@@ -159,55 +185,59 @@ class DatabaseBindings(FrozenModel):
     def credentials(self) -> tuple[RootOwnedFile, ...]:
         return (
             self.postgres_admin_password,
-            self.service_dsn,
+            self.api_dsn,
+            self.worker_dsn,
             self.projection_dsn,
             self.migration_dsn,
             self.role_admin_dsn,
         )
 
-    @model_validator(mode="after")
-    def validate_distinct_credentials(self) -> Self:
-        _require_distinct_files(self.credentials(), "database credentials")
-        return self
-
 
 class BootstrapBindings(FrozenModel):
+    parent: RootOwnedDirectory
     output: OutputFile
 
 
 class ObjectBindings(FrozenModel):
     adapter: Literal["local_encrypted_filesystem"]
     root: DirectoryBinding
-    key: RootOwnedFile
+    api_key: RootOwnedFile
+    worker_key: RootOwnedFile
+
+    def keys(self) -> tuple[RootOwnedFile, ...]:
+        return (self.api_key, self.worker_key)
 
 
 class TelemetryBindings(FrozenModel):
     exporter: RootOwnedFile
     alert_owner_ref: Reference
 
-    @model_validator(mode="after")
-    def validate_reference_types(self) -> Self:
-        if not self.exporter.reference.startswith("telemetry-ref://"):
-            raise ValueError("telemetry exporter requires a telemetry reference")
-        if not self.alert_owner_ref.startswith("alert-owner-ref://"):
-            raise ValueError("alert owner requires an alert-owner reference")
-        return self
+
+class WorkloadIdentity(FrozenModel):
+    reference: Reference
+    uid: int = Field(ge=0, le=65535)
+    gid: int = Field(ge=0, le=65535)
 
 
 class WorkloadIdentities(FrozenModel):
-    api: Reference
-    worker: Reference
-    migrator: Reference
-    role_admin: Reference
+    postgres: WorkloadIdentity
+    role_admin: WorkloadIdentity
+    migrator: WorkloadIdentity
+    api: WorkloadIdentity
+    worker: WorkloadIdentity
+    collector: WorkloadIdentity
+    edge: WorkloadIdentity
 
-    @model_validator(mode="after")
-    def validate_distinct_identities(self) -> Self:
-        values = (self.api, self.worker, self.migrator, self.role_admin)
-        if any(not value.startswith("identity-ref://") for value in values):
-            raise ValueError("workloads require identity references")
-        if len(set(values)) != len(values):
-            raise ValueError("privileged and service identities must be distinct")
-        return self
+    def services(self) -> tuple[tuple[str, WorkloadIdentity], ...]:
+        return (
+            ("postgres", self.postgres),
+            ("role-admin", self.role_admin),
+            ("migrator", self.migrator),
+            ("api", self.api),
+            ("worker", self.worker),
+            ("collector", self.collector),
+            ("edge", self.edge),
+        )
 
 
 class DeploymentBindings(FrozenModel):
@@ -223,7 +253,7 @@ class DeploymentBindings(FrozenModel):
     data_classification: Literal["disposable_synthetic_non_sensitive"]
     authoritative_ctower_project_writer: Literal[False]
     accepted_write_rpo0_claim: Literal[False]
-    bind_address: str
+    bind_address: PrivateIpv4
     images: ImageBindings
     configuration: ConfigurationBindings
     tls: TlsBindings
@@ -233,25 +263,13 @@ class DeploymentBindings(FrozenModel):
     telemetry: TelemetryBindings
     workload_identities: WorkloadIdentities
 
-    @model_validator(mode="after")
-    def validate_boundaries(self) -> Self:
-        _require_private_address(self.bind_address)
-        sensitive = (
-            *self.database.credentials(),
-            self.tls.private_key,
-            self.objects.key,
-            self.telemetry.exporter,
-        )
-        _require_distinct_files(sensitive, "privileged and service credentials")
-        return self
-
     def referenced_files(self) -> tuple[RootOwnedFile, ...]:
         """Return every required installed file without exposing file contents."""
         return (
             self.tls.certificate,
             self.tls.private_key,
             *self.database.credentials(),
-            self.objects.key,
+            *self.objects.keys(),
             self.telemetry.exporter,
         )
 
@@ -261,6 +279,8 @@ class ArtifactFile(FrozenModel):
     kind: ArtifactKind
     path: RelativePath
     sha256: Digest
+    media_type: Literal["application/json"]
+    content_schema: ContentSchema
 
 
 class EvidenceInputs(FrozenModel):
@@ -274,75 +294,71 @@ class ScheduledOccurrence(FrozenModel):
     schedule_ref: Reference
     scheduled_for: datetime
     working_day: date
-    trigger: Literal["scheduled", "manual"]
-    origin: Literal["routine_scheduler", "manual_cli"]
+    trigger: Literal["scheduled"]
+    origin: Literal["routine_scheduler_reference"]
     result_artifact_id: Identifier
-    scheduler_receipt_artifact_id: Identifier | None
-    manual_command_ref: Reference | None
+    scheduler_receipt_artifact_id: Identifier
+    manual_command_ref: None
 
 
 class EvidenceManifest(FrozenModel):
-    """Evidence-root declaration whose artifacts are verified from exact bytes."""
+    """Development-only evidence root; it cannot express an I1-exit claim."""
 
     schema_: Literal["ctower.private-vps-evidence/v1"] = Field(alias="schema")
     evidence_id: Identifier
-    claim: Claim
-    assurance: Literal["development", "cp3d"]
-    durability_policy: Literal["pending_only", "cutover_rpo0"]
-    object_adapter: Literal["local_encrypted_filesystem", "external_s3"]
-    key_adapter: Literal["local_file", "external_kms"]
-    producer_ref: Reference
-    verifier_ref: Reference
-    deployment_manifest: ArtifactFile
-    cp3d_manifest: ArtifactFile | None
+    claim: Literal["development_rehearsal"]
+    assurance: Literal["development"]
+    durability_policy: Literal["pending_only"]
+    object_adapter: Literal["local_encrypted_filesystem"]
+    key_adapter: Literal["local_file"]
+    provenance: DevelopmentProvenance
+    schedule_ref: Reference
+    calendar: Literal["weekday_mon_fri_utc"]
+    window_start: date
+    window_end: date
+    deployment_manifest_artifact_id: Identifier
     bound_inputs: EvidenceInputs
-    artifacts: tuple[ArtifactFile, ...]
-    occurrences: tuple[ScheduledOccurrence, ...]
-
-    @model_validator(mode="after")
-    def validate_identities(self) -> Self:
-        _require_identity(self.producer_ref, "producer")
-        _require_identity(self.verifier_ref, "verifier")
-        if self.producer_ref == self.verifier_ref:
-            raise ValueError("producer and verifier identities must be distinct")
-        return self
+    artifacts: Annotated[tuple[ArtifactFile, ...], Field(min_length=20, max_length=50)]
+    occurrences: Annotated[
+        tuple[ScheduledOccurrence, ...],
+        Field(min_length=5, max_length=20),
+    ]
 
 
-class Cp3dManifest(FrozenModel):
-    """Minimal separately verified CP3-D activation binding for I1-exit proof."""
-
-    schema_: Literal["ctower.cp3d-activation/v1"] = Field(alias="schema")
-    activation_id: Identifier
+class CheckArtifact(FrozenModel):
+    schema_: Literal["ctower.private-vps-check/v1"] = Field(alias="schema")
+    artifact_id: Identifier
+    kind: CheckKind
+    outcome: Literal["pass"]
+    provenance: DevelopmentProvenance
+    observed_at: datetime
     source: SourceBinding
-    deployment_manifest_sha256: Digest
     control_image: ImageDigest
-    configuration: ConfigurationBindings
-    assurance: Literal["cp3d"]
-    durability_policy: Literal["cutover_rpo0"]
-    failure_domain_count: int = Field(ge=2, le=16)
-    cp3d_qualified: Literal[True]
-    accepted_record_rpo_seconds: Literal[0]
-    object_adapter: Literal["external_s3"]
-    key_adapter: Literal["external_kms"]
-    producer_ref: Reference
-    verifier_ref: Reference
-    verification_artifact: ArtifactFile
-
-    @model_validator(mode="after")
-    def validate_independence(self) -> Self:
-        _require_identity(self.producer_ref, "CP3-D producer")
-        _require_identity(self.verifier_ref, "CP3-D verifier")
-        if self.producer_ref == self.verifier_ref:
-            raise ValueError("CP3-D producer and verifier must be distinct")
-        return self
 
 
-class SchedulerReceipt(FrozenModel):
-    schema_: Literal["ctower.scheduler-receipt/v1"] = Field(alias="schema")
+class SyntheticResult(FrozenModel):
+    schema_: Literal["ctower.private-vps-synthetic-result/v1"] = Field(alias="schema")
     occurrence_id: Identifier
     schedule_ref: Reference
     scheduled_for: datetime
-    source: Literal["routine_scheduler"]
+    working_day: date
+    outcome: Literal["pass"]
+    provenance: DevelopmentProvenance
+    source: SourceBinding
+    control_image: ImageDigest
+
+
+class SchedulerReceipt(FrozenModel):
+    schema_: Literal["ctower.private-vps-scheduler-receipt/v1"] = Field(alias="schema")
+    occurrence_id: Identifier
+    schedule_ref: Reference
+    scheduled_for: datetime
+    working_day: date
+    trigger: Literal["scheduled"]
+    origin: Literal["routine_scheduler_reference"]
+    provenance: DevelopmentProvenance
+    source: SourceBinding
+    control_image: ImageDigest
     manual_command_ref: None
 
 
@@ -362,37 +378,3 @@ class OperationResult(FrozenModel):
     artifact_count: int = Field(ge=0)
     qualifying_working_days: int = Field(ge=0)
     issues: tuple[ResultIssue, ...]
-
-
-def _require_private_address(value: str) -> None:
-    try:
-        address = ipaddress.ip_address(value)
-    except ValueError as error:
-        raise ValueError("bind address must be an IP address") from error
-    networks = (
-        ipaddress.ip_network("10.0.0.0/8"),
-        ipaddress.ip_network("172.16.0.0/12"),
-        ipaddress.ip_network("192.168.0.0/16"),
-        ipaddress.ip_network("fc00::/7"),
-    )
-    outside_private_networks = not any(address in item for item in networks)
-    if address.is_unspecified or address.is_loopback or outside_private_networks:
-        raise ValueError("bind address must be a non-local private IP address")
-
-
-def _require_absolute_path(value: str, label: str) -> None:
-    path = PurePosixPath(value)
-    if not path.is_absolute() or ".." in path.parts:
-        raise ValueError(f"{label} path must be absolute without parent traversal")
-
-
-def _require_distinct_files(files: tuple[RootOwnedFile, ...], label: str) -> None:
-    if len({item.reference for item in files}) != len(files):
-        raise ValueError(f"{label} must use distinct references")
-    if len({item.path for item in files}) != len(files):
-        raise ValueError(f"{label} must use distinct mounted files")
-
-
-def _require_identity(value: str, label: str) -> None:
-    if not value.startswith("identity-ref://"):
-        raise ValueError(f"{label} requires an identity reference")

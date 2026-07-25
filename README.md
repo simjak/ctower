@@ -35,7 +35,9 @@ development configuration is `pending_only`. An acknowledged-durability path is 
 verifier-owned primary/standby PostgreSQL test topology; it is not a supported deployment. Local,
 verifier-only CP3-C evidence also covers digest-bound object handling, backup and anchors, key recovery,
 isolated restore, rollback, and recovery evidence. Those pages describe bounded checkpoints, not a
-production recovery service or CP3-D activation.
+production recovery service or CP3-D activation. A secret-free private-VPS development reference
+composition now captures the intended one-host topology for source verification only; it cannot express
+I1 exit and is not a supported deployment.
 
 After following the [repository setup guide](https://simjak.github.io/ctower/start-here/repository-setup/),
 clone the repository and run the warm verification gate:
@@ -62,7 +64,7 @@ fixtures through Docker Compose. It validates the repository; it does not instal
 - **I1.7A visibility:** strict cutover-health and read-only Project Delivery contracts expose the
   development boundary. Migration commands are online-only refusing stubs; they do not import, fence, or
   rewire ctower-project work.
-- **Not available:** no published/supported package or deployment, product Compose stack, production
+- **Not available:** no published/supported package or deployment, supported product Compose path, production
   backup/restore runbook, browser UI, runner, remote agent adapter, CP3-D activation, or production release
   exists.
 

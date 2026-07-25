@@ -23,7 +23,7 @@
   "configuration": {
     "compose": {
       "path": "compose.yaml",
-      "sha256": "sha256:a350c4dad4875bce15c79af5a8ffbe46d532a652534473b873a72517fddd0326"
+      "sha256": "sha256:982ff447999bb83b6b1a88b41aee79f1bd49cb173b32114959754882cf24fa5e"
     },
     "caddyfile": {
       "path": "Caddyfile",
@@ -40,6 +40,7 @@
       "path": "/run/ctower/refs/tls-certificate",
       "owner": "root",
       "group": "ctower",
+      "group_id": 10001,
       "mode": "0440",
       "sha256": "sha256:5111111111111111111111111111111111111111111111111111111111111111"
     },
@@ -48,6 +49,7 @@
       "path": "/run/ctower/refs/tls-private-key",
       "owner": "root",
       "group": "ctower",
+      "group_id": 10001,
       "mode": "0440",
       "sha256": "sha256:6111111111111111111111111111111111111111111111111111111111111111"
     }
@@ -58,22 +60,34 @@
       "path": "/run/ctower/refs/postgres-admin-password",
       "owner": "root",
       "group": "ctower",
+      "group_id": 10001,
       "mode": "0440",
       "sha256": "sha256:7111111111111111111111111111111111111111111111111111111111111111"
     },
-    "service_dsn": {
-      "reference": "credential-file-ref://private-vps/service-dsn",
-      "path": "/run/ctower/refs/service-dsn",
+    "api_dsn": {
+      "reference": "credential-file-ref://private-vps/api-dsn",
+      "path": "/run/ctower/refs/api-dsn",
       "owner": "root",
       "group": "ctower",
+      "group_id": 10001,
       "mode": "0440",
       "sha256": "sha256:8111111111111111111111111111111111111111111111111111111111111111"
+    },
+    "worker_dsn": {
+      "reference": "credential-file-ref://private-vps/worker-dsn",
+      "path": "/run/ctower/refs/worker-dsn",
+      "owner": "root",
+      "group": "ctower",
+      "group_id": 10001,
+      "mode": "0440",
+      "sha256": "sha256:8211111111111111111111111111111111111111111111111111111111111111"
     },
     "projection_dsn": {
       "reference": "credential-file-ref://private-vps/projection-dsn",
       "path": "/run/ctower/refs/projection-dsn",
       "owner": "root",
       "group": "ctower",
+      "group_id": 10001,
       "mode": "0440",
       "sha256": "sha256:9111111111111111111111111111111111111111111111111111111111111111"
     },
@@ -82,6 +96,7 @@
       "path": "/run/ctower/refs/migration-dsn",
       "owner": "root",
       "group": "ctower",
+      "group_id": 10001,
       "mode": "0440",
       "sha256": "sha256:a111111111111111111111111111111111111111111111111111111111111111"
     },
@@ -90,16 +105,25 @@
       "path": "/run/ctower/refs/role-admin-dsn",
       "owner": "root",
       "group": "ctower",
+      "group_id": 10001,
       "mode": "0440",
       "sha256": "sha256:b111111111111111111111111111111111111111111111111111111111111111"
     }
   },
   "bootstrap": {
+    "parent": {
+      "path": "/run/ctower/bootstrap",
+      "owner": "root",
+      "group": "ctower",
+      "group_id": 10001,
+      "mode": "0750"
+    },
     "output": {
       "reference": "file-ref://private-vps/bootstrap-output",
       "path": "/run/ctower/bootstrap/first-tenant.json",
       "owner": "root",
       "group": "ctower",
+      "group_id": 10001,
       "mode": "0400"
     }
   },
@@ -109,13 +133,23 @@
       "reference": "object-root-ref://private-vps/development",
       "path": "/var/lib/ctower/objects"
     },
-    "key": {
-      "reference": "credential-file-ref://private-vps/object-key",
-      "path": "/run/ctower/refs/object-key",
+    "api_key": {
+      "reference": "credential-file-ref://private-vps/api-object-key",
+      "path": "/run/ctower/refs/api-object-key",
       "owner": "root",
       "group": "ctower",
+      "group_id": 10001,
       "mode": "0440",
       "sha256": "sha256:c111111111111111111111111111111111111111111111111111111111111111"
+    },
+    "worker_key": {
+      "reference": "credential-file-ref://private-vps/worker-object-key",
+      "path": "/run/ctower/refs/worker-object-key",
+      "owner": "root",
+      "group": "ctower",
+      "group_id": 10001,
+      "mode": "0440",
+      "sha256": "sha256:c211111111111111111111111111111111111111111111111111111111111111"
     }
   },
   "telemetry": {
@@ -124,15 +158,47 @@
       "path": "/run/ctower/refs/telemetry-exporter",
       "owner": "root",
       "group": "ctower",
+      "group_id": 10001,
       "mode": "0440",
       "sha256": "sha256:d111111111111111111111111111111111111111111111111111111111111111"
     },
     "alert_owner_ref": "alert-owner-ref://private-vps/development"
   },
   "workload_identities": {
-    "api": "identity-ref://private-vps/api",
-    "worker": "identity-ref://private-vps/worker",
-    "migrator": "identity-ref://private-vps/migrator",
-    "role_admin": "identity-ref://private-vps/role-admin"
+    "postgres": {
+      "reference": "identity-ref://private-vps/postgres",
+      "uid": 999,
+      "gid": 10001
+    },
+    "role_admin": {
+      "reference": "identity-ref://private-vps/role-admin",
+      "uid": 0,
+      "gid": 10001
+    },
+    "migrator": {
+      "reference": "identity-ref://private-vps/migrator",
+      "uid": 10001,
+      "gid": 10001
+    },
+    "api": {
+      "reference": "identity-ref://private-vps/api",
+      "uid": 10001,
+      "gid": 10001
+    },
+    "worker": {
+      "reference": "identity-ref://private-vps/worker",
+      "uid": 10002,
+      "gid": 10001
+    },
+    "collector": {
+      "reference": "identity-ref://private-vps/collector",
+      "uid": 10003,
+      "gid": 10001
+    },
+    "edge": {
+      "reference": "identity-ref://private-vps/edge",
+      "uid": 10004,
+      "gid": 10001
+    }
   }
 }

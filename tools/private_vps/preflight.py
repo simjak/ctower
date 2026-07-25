@@ -1,30 +1,88 @@
-"""Read-only source, configuration, and installed-reference preflight."""
+"""Read-only source, configuration, identity, and installed-file preflight."""
 
 from __future__ import annotations
 
-import hashlib
-import os
-import stat
+import ipaddress
 from collections.abc import Callable
 from dataclasses import dataclass
-from pathlib import Path
-from typing import Any, cast
+from pathlib import Path, PurePosixPath
 
-from ruamel.yaml import YAML
-from ruamel.yaml.error import YAMLError
+from tools.private_vps.compose_policy import verify_compose
+from tools.private_vps.manifest import (
+    MAX_COMPOSE_BYTES,
+    MAX_CONFIGURATION_BYTES,
+    MAX_DOCUMENT_BYTES,
+    ConfinedRoot,
+    PacketError,
+    load_snapshot,
+)
+from tools.private_vps.models import (
+    DeploymentBindings,
+    RootOwnedDirectory,
+    RootOwnedFile,
+)
 
-from tools.private_vps.manifest import PacketError, digest_file, load_model, resolve_artifact
-from tools.private_vps.models import DeploymentBindings, RootOwnedFile
+__all__ = [
+    "DirectoryObservation",
+    "FileObservation",
+    "validate_deployment",
+    "verify_configuration",
+    "verify_configuration_confined",
+]
 
-__all__ = ["FileObservation", "validate_deployment", "verify_configuration"]
+_CONFIGURATION_PATHS = ("compose.yaml", "Caddyfile", "otel-collector.yaml")
+_REFERENCE_PATHS = (
+    "/run/ctower/refs/tls-certificate",
+    "/run/ctower/refs/tls-private-key",
+    "/run/ctower/refs/postgres-admin-password",
+    "/run/ctower/refs/api-dsn",
+    "/run/ctower/refs/worker-dsn",
+    "/run/ctower/refs/projection-dsn",
+    "/run/ctower/refs/migration-dsn",
+    "/run/ctower/refs/role-admin-dsn",
+    "/run/ctower/refs/api-object-key",
+    "/run/ctower/refs/worker-object-key",
+    "/run/ctower/refs/telemetry-exporter",
+)
+_REFERENCE_NAMES = (
+    "file-ref://private-vps/tls-certificate",
+    "credential-file-ref://private-vps/tls-private-key",
+    "credential-file-ref://private-vps/postgres-admin-password",
+    "credential-file-ref://private-vps/api-dsn",
+    "credential-file-ref://private-vps/worker-dsn",
+    "credential-file-ref://private-vps/projection-dsn",
+    "credential-file-ref://private-vps/migration-dsn",
+    "credential-file-ref://private-vps/role-admin-dsn",
+    "credential-file-ref://private-vps/api-object-key",
+    "credential-file-ref://private-vps/worker-object-key",
+    "telemetry-ref://private-vps/exporter",
+)
+_IDENTITIES = {
+    "postgres": (999, 10001),
+    "role-admin": (0, 10001),
+    "migrator": (10001, 10001),
+    "api": (10001, 10001),
+    "worker": (10002, 10001),
+    "collector": (10003, 10001),
+    "edge": (10004, 10001),
+}
+_IPV4_VERSION = 4
 
 
 @dataclass(frozen=True, slots=True)
 class FileObservation:
     regular: bool
     owner_uid: int
+    owner_gid: int
     mode: str
     sha256: str
+
+
+@dataclass(frozen=True, slots=True)
+class DirectoryObservation:
+    owner_uid: int
+    owner_gid: int
+    mode: str
 
 
 def validate_deployment(
@@ -33,59 +91,157 @@ def validate_deployment(
     expected_source_tree: str,
     *,
     observer: Callable[[RootOwnedFile], FileObservation] | None = None,
+    directory_observer: Callable[[RootOwnedDirectory], DirectoryObservation] | None = None,
 ) -> DeploymentBindings:
-    """Validate exact source/config bytes and root-owned reference metadata."""
-    bindings = load_model(path, DeploymentBindings, field="bindings")
-    if bindings.source.sha != expected_source_sha:
-        raise PacketError("source_changed", "source.sha")
-    if bindings.source.tree != expected_source_tree:
-        raise PacketError("source_changed", "source.tree")
-    verify_configuration(bindings, path.parent)
+    """Validate one exact, development-only deployment declaration."""
+    absolute = path.absolute()
+    with ConfinedRoot(absolute.parent) as packet_root:
+        snapshot = packet_root.read(
+            absolute.name,
+            field="bindings",
+            max_bytes=MAX_DOCUMENT_BYTES,
+        )
+        bindings = load_snapshot(snapshot, DeploymentBindings, field="bindings")
+        _verify_source(bindings, expected_source_sha, expected_source_tree)
+        _verify_authority(bindings)
+        verify_configuration_confined(bindings, packet_root, prefix="")
     inspect = observer or observe_file
     for index, reference in enumerate(bindings.referenced_files()):
         _validate_file(reference, inspect(reference), field=f"references.{index}")
-    _validate_output_parent(bindings.bootstrap.output.path)
+    inspect_directory = directory_observer or observe_directory
+    _validate_directory(
+        bindings.bootstrap.parent,
+        inspect_directory(bindings.bootstrap.parent),
+        field="bootstrap.parent",
+    )
     return bindings
 
 
 def verify_configuration(bindings: DeploymentBindings, base: Path) -> None:
-    """Verify bound config digests and Compose isolation without daemon access."""
-    for index, artifact in enumerate(bindings.configuration.artifacts()):
-        path = resolve_artifact(base, artifact.path, field=f"configuration.{index}.path")
-        observed = digest_file(path, field=f"configuration.{index}")
-        if observed != artifact.sha256:
-            raise PacketError("configuration_changed", f"configuration.{index}.sha256")
-    _verify_compose(bindings, base)
+    """Verify exact bound configuration snapshots beneath one safe root."""
+    with ConfinedRoot(base) as root:
+        verify_configuration_confined(bindings, root, prefix="")
 
 
 def observe_file(reference: RootOwnedFile) -> FileObservation:
-    """Observe only metadata and a digest; never return installed file bytes."""
-    path = Path(reference.path)
-    try:
-        descriptor = os.open(path, os.O_RDONLY | os.O_NOFOLLOW)
-        metadata = os.fstat(descriptor)
-    except OSError as error:
-        raise PacketError("missing_or_unsafe_reference", "references") from error
-    try:
-        digest = hashlib.sha256()
-        while block := os.read(descriptor, 64 * 1024):
-            digest.update(block)
-    except OSError as error:
-        raise PacketError("unreadable_reference", "references") from error
-    finally:
-        os.close(descriptor)
+    """Observe installed bytes and UID/GID metadata without following symlinks."""
+    with ConfinedRoot(Path("/")) as root:
+        snapshot = root.read(
+            reference.path.removeprefix("/"),
+            field="references",
+            max_bytes=MAX_CONFIGURATION_BYTES,
+        )
     return FileObservation(
-        regular=stat.S_ISREG(metadata.st_mode),
-        owner_uid=metadata.st_uid,
-        mode=f"{stat.S_IMODE(metadata.st_mode):04o}",
-        sha256=f"sha256:{digest.hexdigest()}",
+        regular=True,
+        owner_uid=snapshot.owner_uid,
+        owner_gid=snapshot.owner_gid,
+        mode=snapshot.mode,
+        sha256=snapshot.sha256,
     )
 
 
-def _validate_file(reference: RootOwnedFile, observed: FileObservation, *, field: str) -> None:
+def observe_directory(reference: RootOwnedDirectory) -> DirectoryObservation:
+    """Observe the bootstrap parent from a descriptor-confined root."""
+    with ConfinedRoot(Path("/")) as root:
+        snapshot = root.directory(
+            reference.path.removeprefix("/"),
+            field="bootstrap.parent",
+        )
+    return DirectoryObservation(
+        owner_uid=snapshot.owner_uid,
+        owner_gid=snapshot.owner_gid,
+        mode=snapshot.mode,
+    )
+
+
+def verify_configuration_confined(
+    bindings: DeploymentBindings,
+    root: ConfinedRoot,
+    *,
+    prefix: str,
+) -> None:
+    artifacts = bindings.configuration.artifacts()
+    if tuple(artifact.path for artifact in artifacts) != _CONFIGURATION_PATHS:
+        raise PacketError("configuration_path_changed", "configuration")
+    compose_snapshot = None
+    for index, artifact in enumerate(artifacts):
+        maximum = MAX_COMPOSE_BYTES if index == 0 else MAX_CONFIGURATION_BYTES
+        snapshot = root.read(
+            _join(prefix, artifact.path),
+            field=f"configuration.{index}",
+            max_bytes=maximum,
+        )
+        if snapshot.sha256 != artifact.sha256:
+            raise PacketError("configuration_changed", f"configuration.{index}.sha256")
+        if index == 0:
+            compose_snapshot = snapshot
+    if compose_snapshot is None:
+        raise PacketError("invalid_compose", "configuration.compose")
+    verify_compose(compose_snapshot, bindings)
+
+
+def _verify_source(bindings: DeploymentBindings, sha: str, tree: str) -> None:
+    if bindings.source.sha != sha:
+        raise PacketError("source_changed", "source.sha")
+    if bindings.source.tree != tree:
+        raise PacketError("source_changed", "source.tree")
+
+
+def _verify_authority(bindings: DeploymentBindings) -> None:
+    _verify_bind_address(bindings.bind_address)
+    _verify_paths(bindings)
+    _verify_identities(bindings)
+
+
+def _verify_bind_address(raw: str) -> None:
+    try:
+        address = ipaddress.ip_address(raw)
+    except ValueError as error:
+        raise PacketError("unsafe_bind_address", "bind_address") from error
+    if address.version != _IPV4_VERSION or not address.is_private or address.is_loopback:
+        raise PacketError("unsafe_bind_address", "bind_address")
+
+
+def _verify_paths(bindings: DeploymentBindings) -> None:
+    files = bindings.referenced_files()
+    if tuple(item.path for item in files) != _REFERENCE_PATHS:
+        raise PacketError("reference_path_changed", "references")
+    if tuple(item.reference for item in files) != _REFERENCE_NAMES:
+        raise PacketError("reference_changed", "references")
+    if bindings.bootstrap.parent.path != "/run/ctower/bootstrap":
+        raise PacketError("bootstrap_path_changed", "bootstrap.parent")
+    if bindings.bootstrap.output.path != "/run/ctower/bootstrap/first-tenant.json":
+        raise PacketError("bootstrap_path_changed", "bootstrap.output")
+    if bindings.objects.root.path != "/var/lib/ctower/objects":
+        raise PacketError("object_path_changed", "objects.root")
+    if bindings.objects.root.reference != "object-root-ref://private-vps/development":
+        raise PacketError("object_reference_changed", "objects.root")
+    if bindings.bootstrap.output.reference != "file-ref://private-vps/bootstrap-output":
+        raise PacketError("bootstrap_reference_changed", "bootstrap.output")
+    if bindings.telemetry.alert_owner_ref != "alert-owner-ref://private-vps/development":
+        raise PacketError("alert_owner_changed", "telemetry.alert_owner_ref")
+
+
+def _verify_identities(bindings: DeploymentBindings) -> None:
+    services = bindings.workload_identities.services()
+    if len({identity.reference for _, identity in services}) != len(services):
+        raise PacketError("duplicate_identity", "workload_identities")
+    for name, identity in services:
+        if identity.reference != f"identity-ref://private-vps/{name}":
+            raise PacketError("identity_reference_changed", f"workload_identities.{name}")
+        if (identity.uid, identity.gid) != _IDENTITIES[name]:
+            raise PacketError("identity_changed", f"workload_identities.{name}")
+
+
+def _validate_file(
+    reference: RootOwnedFile,
+    observed: FileObservation,
+    *,
+    field: str,
+) -> None:
     if not observed.regular:
         raise PacketError("unsafe_reference_type", field)
-    if observed.owner_uid != 0:
+    if observed.owner_uid != 0 or observed.owner_gid != reference.group_id:
         raise PacketError("unsafe_reference_owner", field)
     if observed.mode != reference.mode:
         raise PacketError("unsafe_reference_permissions", field)
@@ -93,71 +249,19 @@ def _validate_file(reference: RootOwnedFile, observed: FileObservation, *, field
         raise PacketError("reference_changed", field)
 
 
-def _validate_output_parent(raw_path: str) -> None:
-    parent = Path(raw_path).parent
-    try:
-        metadata = parent.lstat()
-    except OSError as error:
-        raise PacketError("missing_output_parent", "bootstrap.output") from error
-    if parent.is_symlink() or not stat.S_ISDIR(metadata.st_mode):
-        raise PacketError("unsafe_output_parent", "bootstrap.output")
-    if metadata.st_uid != 0 or stat.S_IMODE(metadata.st_mode) & 0o022:
-        raise PacketError("unsafe_output_permissions", "bootstrap.output")
+def _validate_directory(
+    reference: RootOwnedDirectory,
+    observed: DirectoryObservation,
+    *,
+    field: str,
+) -> None:
+    if observed.owner_uid != 0 or observed.owner_gid != reference.group_id:
+        raise PacketError("unsafe_output_owner", field)
+    if observed.mode != reference.mode:
+        raise PacketError("unsafe_output_permissions", field)
 
 
-def _verify_compose(bindings: DeploymentBindings, base: Path) -> None:
-    path = resolve_artifact(
-        base,
-        bindings.configuration.compose.path,
-        field="configuration.compose.path",
-    )
-    try:
-        raw = YAML(typ="safe", pure=True).load(path.read_text(encoding="utf-8"))
-    except (OSError, UnicodeError, YAMLError) as error:
-        raise PacketError("invalid_compose", "configuration.compose") from error
-    document = _mapping(raw, "configuration.compose")
-    services = _mapping(document.get("services"), "configuration.compose.services")
-    _verify_images(bindings, services)
-    _verify_host_exposure(services)
-    postgres = _mapping(services.get("postgres"), "configuration.compose.services.postgres")
-    if postgres.get("networks") != ["record"]:
-        raise PacketError("postgres_network_changed", "configuration.compose.services.postgres")
-    edge = _mapping(services.get("edge"), "configuration.compose.services.edge")
-    expected_port = f"{bindings.bind_address}:443:443"
-    if edge.get("ports") != [expected_port]:
-        raise PacketError("edge_bind_changed", "configuration.compose.services.edge.ports")
-    networks = _mapping(document.get("networks"), "configuration.compose.networks")
-    record = _mapping(networks.get("record"), "configuration.compose.networks.record")
-    if record.get("internal") is not True:
-        raise PacketError("postgres_network_not_internal", "configuration.compose.networks.record")
-
-
-def _verify_host_exposure(services: dict[str, Any]) -> None:
-    for name, raw in services.items():
-        service = _mapping(raw, f"configuration.compose.services.{name}")
-        if name != "edge" and (service.get("ports") or service.get("network_mode") == "host"):
-            code = "postgres_host_exposure" if name == "postgres" else "non_edge_host_exposure"
-            raise PacketError(code, f"configuration.compose.services.{name}")
-
-
-def _verify_images(bindings: DeploymentBindings, services: dict[str, Any]) -> None:
-    expected = {
-        "api": bindings.images.control,
-        "worker": bindings.images.control,
-        "migrator": bindings.images.control,
-        "role-admin": bindings.images.control,
-        "postgres": bindings.images.postgres,
-        "edge": bindings.images.edge,
-        "collector": bindings.images.collector,
-    }
-    for name, image in expected.items():
-        service = _mapping(services.get(name), f"configuration.compose.services.{name}")
-        if service.get("image") != image:
-            field = f"configuration.compose.services.{name}.image"
-            raise PacketError("image_binding_changed", field)
-
-
-def _mapping(value: object, field: str) -> dict[str, Any]:
-    if not isinstance(value, dict):
-        raise PacketError("invalid_compose", field)
-    return cast("dict[str, Any]", value)
+def _join(prefix: str, relative: str) -> str:
+    if not prefix:
+        return relative
+    return (PurePosixPath(prefix) / relative).as_posix()

@@ -1,4 +1,20 @@
-# CP3-C private-VPS recovery templates
+# Private-VPS development and recovery boundary
+
+## Development reference composition
+
+`development/` is a secret-free, source-verifiable reference composition for the intended one-host
+private-VPS shape. Its authored deployment and evidence schemas describe only
+`development`/`pending_only`, single-failure-domain, disposable synthetic use. The verifier checks exact
+source, image, configuration, identity, UID/GID, root-owned reference, bootstrap-parent, network, volume,
+mount, capability, command, and recurrence bindings from bounded descriptor-confined snapshots.
+
+This composition is not an installer, supported deployment, container release, credential ceremony,
+CP3-D proof, accepted-write RPO-zero path, or I1 exit. The evidence language cannot represent `i1_exit`;
+the CLI refuses that claim before reading a manifest. Do not start the composition with tenant data or
+real credentials. Its image digests and external references are examples, and the named volumes remain
+inside one failure domain.
+
+## CP3-C recovery templates
 
 These files describe the local recovery shape without activating a production target. They contain
 identifiers and references only. Do not add passwords, tokens, private keys, wrapped data keys, TLS

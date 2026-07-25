@@ -1,4 +1,4 @@
-"""Bounded JSON and artifact helpers for the private-VPS packet."""
+"""Descriptor-confined, bounded document handling for the private-VPS packet."""
 
 from __future__ import annotations
 
@@ -7,16 +7,43 @@ import json
 import os
 import re
 import stat
-from pathlib import Path
-from typing import Any, cast
+from dataclasses import dataclass
+from pathlib import Path, PurePosixPath
+from typing import Any, Self, cast
 from urllib.parse import urlsplit
 
+from jsonschema import Draft202012Validator, FormatChecker
+from jsonschema.exceptions import ValidationError as SchemaValidationError
 from pydantic import BaseModel, ValidationError
 
-__all__ = ["PacketError", "digest_file", "load_model", "resolve_artifact"]
+__all__ = [
+    "MAX_ARTIFACT_BYTES",
+    "MAX_COMPOSE_BYTES",
+    "MAX_CONFIGURATION_BYTES",
+    "MAX_DOCUMENT_BYTES",
+    "ConfinedRoot",
+    "DirectorySnapshot",
+    "FileSnapshot",
+    "PacketError",
+    "digest_file",
+    "load_model",
+    "load_snapshot",
+]
 
 JsonObject = dict[str, Any]
-MAX_DOCUMENT_BYTES = 1_000_000
+MAX_DOCUMENT_BYTES = 256 * 1024
+MAX_COMPOSE_BYTES = 256 * 1024
+MAX_CONFIGURATION_BYTES = 64 * 1024
+MAX_ARTIFACT_BYTES = 64 * 1024
+_READ_BLOCK_BYTES = 64 * 1024
+_SCHEMA_ROOT = Path(__file__).parents[2] / "contracts/operations"
+_MODEL_SCHEMAS: dict[str, tuple[str, str | None]] = {
+    "DeploymentBindings": ("private-vps-deployment.schema.json", None),
+    "EvidenceManifest": ("private-vps-evidence.schema.json", None),
+    "CheckArtifact": ("private-vps-evidence.schema.json", "checkArtifact"),
+    "SyntheticResult": ("private-vps-evidence.schema.json", "syntheticResult"),
+    "SchedulerReceipt": ("private-vps-evidence.schema.json", "schedulerReceipt"),
+}
 _REFERENCE = re.compile(
     r"^(?:alert-owner|credential-file|file|identity|object-root|schedule|"
     r"telemetry)-ref://[A-Za-z0-9._~:/-]+$"
@@ -25,6 +52,11 @@ _CREDENTIAL_ASSIGNMENT = re.compile(
     r"(?i)(?:password|passphrase|private[_-]?key|secret|token|access[_-]?key)\s*[:=]"
 )
 _INLINE_MARKERS = ("-----BEGIN ", "postgresql://", "postgres://", "Bearer ")
+_DIRECTORY_FLAGS = os.O_RDONLY | os.O_DIRECTORY | os.O_NOFOLLOW
+_FILE_FLAGS = os.O_RDONLY | os.O_NOFOLLOW
+if hasattr(os, "O_CLOEXEC"):
+    _DIRECTORY_FLAGS |= os.O_CLOEXEC
+    _FILE_FLAGS |= os.O_CLOEXEC
 
 
 class PacketError(RuntimeError):
@@ -36,78 +68,247 @@ class PacketError(RuntimeError):
         self.field = field
 
 
-def load_model[ModelT: BaseModel](path: Path, model: type[ModelT], *, field: str) -> ModelT:
-    """Read one bounded regular JSON file and strictly parse it."""
-    raw = _read_json(path, field=field)
+@dataclass(frozen=True, slots=True)
+class FileSnapshot:
+    """The exact bounded bytes and metadata read from one open descriptor."""
+
+    data: bytes
+    sha256: str
+    size: int
+    owner_uid: int
+    owner_gid: int
+    mode: str
+
+
+@dataclass(frozen=True, slots=True)
+class DirectorySnapshot:
+    """Metadata observed from one descriptor-confined directory."""
+
+    owner_uid: int
+    owner_gid: int
+    mode: str
+
+
+class ConfinedRoot:
+    """Retain an opened directory authority and resolve children with openat."""
+
+    def __init__(self, path: Path) -> None:
+        self._descriptor = _open_absolute_directory(path)
+
+    def __enter__(self) -> Self:
+        return self
+
+    def __exit__(self, *_: object) -> None:
+        self.close()
+
+    def close(self) -> None:
+        if self._descriptor >= 0:
+            os.close(self._descriptor)
+            self._descriptor = -1
+
+    def read(self, relative: str, *, field: str, max_bytes: int) -> FileSnapshot:
+        """Read one regular child exactly once under this retained root."""
+        parts = _relative_parts(relative, field=field)
+        parent = self._open_parent(parts, field=field)
+        try:
+            descriptor = os.open(parts[-1], _FILE_FLAGS, dir_fd=parent)
+        except OSError as error:
+            raise PacketError("missing_or_unsafe_file", field) from error
+        finally:
+            os.close(parent)
+        try:
+            before = os.fstat(descriptor)
+            if not stat.S_ISREG(before.st_mode) or before.st_nlink != 1:
+                raise PacketError("missing_or_unsafe_file", field)
+            if before.st_size > max_bytes:
+                raise PacketError("document_too_large", field)
+            data = _read_bounded(descriptor, max_bytes=max_bytes, field=field)
+            after = os.fstat(descriptor)
+            if _identity(before) != _identity(after) or len(data) != after.st_size:
+                raise PacketError("file_changed_during_read", field)
+        except OSError as error:
+            raise PacketError("unreadable_file", field) from error
+        finally:
+            os.close(descriptor)
+        return FileSnapshot(
+            data=data,
+            sha256=f"sha256:{hashlib.sha256(data).hexdigest()}",
+            size=len(data),
+            owner_uid=after.st_uid,
+            owner_gid=after.st_gid,
+            mode=f"{stat.S_IMODE(after.st_mode):04o}",
+        )
+
+    def directory(self, relative: str, *, field: str) -> DirectorySnapshot:
+        """Observe one directory without following any component symlink."""
+        parts = _relative_parts(relative, field=field)
+        parent = self._open_parent(parts, field=field)
+        try:
+            descriptor = os.open(parts[-1], _DIRECTORY_FLAGS, dir_fd=parent)
+        except OSError as error:
+            raise PacketError("missing_or_unsafe_directory", field) from error
+        finally:
+            os.close(parent)
+        try:
+            metadata = os.fstat(descriptor)
+        finally:
+            os.close(descriptor)
+        return DirectorySnapshot(
+            owner_uid=metadata.st_uid,
+            owner_gid=metadata.st_gid,
+            mode=f"{stat.S_IMODE(metadata.st_mode):04o}",
+        )
+
+    def _open_parent(self, parts: tuple[str, ...], *, field: str) -> int:
+        try:
+            current = os.dup(self._descriptor)
+        except OSError as error:
+            raise PacketError("closed_root", field) from error
+        try:
+            for component in parts[:-1]:
+                child = os.open(component, _DIRECTORY_FLAGS, dir_fd=current)
+                os.close(current)
+                current = child
+        except OSError as error:
+            os.close(current)
+            raise PacketError("missing_or_unsafe_directory", field) from error
+        return current
+
+
+def load_model[ModelT: BaseModel](
+    path: Path,
+    model: type[ModelT],
+    *,
+    field: str,
+) -> ModelT:
+    """Read one bounded document once, then schema- and model-validate those bytes."""
+    absolute = _lexical_absolute(path)
+    with ConfinedRoot(absolute.parent) as root:
+        snapshot = root.read(absolute.name, field=field, max_bytes=MAX_DOCUMENT_BYTES)
+    return load_snapshot(snapshot, model, field=field)
+
+
+def load_snapshot[ModelT: BaseModel](
+    snapshot: FileSnapshot,
+    model: type[ModelT],
+    *,
+    field: str,
+) -> ModelT:
+    """Validate one retained byte snapshot against authored schema and its mirror."""
+    raw = _json_object(snapshot.data, field=field)
     _reject_inline_material(raw, field=field)
+    schema_file, definition = _MODEL_SCHEMAS[model.__name__]
+    schema = _schema_document(schema_file)
+    validation_schema = schema
+    if definition is not None:
+        validation_schema = {
+            "$schema": schema["$schema"],
+            "$defs": schema["$defs"],
+            "$ref": f"#/$defs/{definition}",
+        }
     try:
-        return model.model_validate_json(json.dumps(raw))
+        Draft202012Validator(
+            validation_schema,
+            format_checker=FormatChecker(),
+        ).validate(raw)
+    except SchemaValidationError as error:
+        raise PacketError("invalid_document", _schema_location(field, error)) from error
+    try:
+        return model.model_validate_json(snapshot.data)
     except ValidationError as error:
         location = _validation_location(error)
-        raise PacketError("invalid_document", f"{field}.{location}") from error
+        raise PacketError("schema_model_divergence", f"{field}.{location}") from error
 
 
 def digest_file(path: Path, *, field: str) -> str:
-    """Hash a regular non-symlink file without exposing its bytes."""
-    descriptor = _open_regular(path, field=field)
-    digest = hashlib.sha256()
+    """Hash a bounded regular file from the same safe snapshot primitive."""
+    absolute = _lexical_absolute(path)
+    with ConfinedRoot(absolute.parent) as root:
+        return root.read(
+            absolute.name,
+            field=field,
+            max_bytes=MAX_DOCUMENT_BYTES,
+        ).sha256
+
+
+def _open_absolute_directory(path: Path) -> int:
+    absolute = _lexical_absolute(path)
+    parts = absolute.parts
+    if not absolute.is_absolute() or not parts or parts[0] != "/":
+        raise PacketError("unsafe_root", "root")
+    current = -1
     try:
-        while block := os.read(descriptor, 64 * 1024):
-            digest.update(block)
+        current = os.open("/", _DIRECTORY_FLAGS)
+        for component in parts[1:]:
+            child = os.open(component, _DIRECTORY_FLAGS, dir_fd=current)
+            os.close(current)
+            current = child
     except OSError as error:
-        raise PacketError("unreadable_file", field) from error
-    finally:
-        os.close(descriptor)
-    return f"sha256:{digest.hexdigest()}"
+        if current >= 0:
+            os.close(current)
+        raise PacketError("missing_or_unsafe_directory", "root") from error
+    return current
 
 
-def resolve_artifact(base: Path, relative: str, *, field: str) -> Path:
-    """Resolve one traversal-free path relative to its declaring document."""
-    candidate = Path(relative)
-    if candidate.is_absolute() or ".." in candidate.parts:
+def _relative_parts(relative: str, *, field: str) -> tuple[str, ...]:
+    path = PurePosixPath(relative)
+    parts = path.parts
+    if path.is_absolute() or not parts or any(part in {"", ".", ".."} for part in parts):
         raise PacketError("unsafe_path", field)
-    resolved_base = base.resolve()
-    resolved = (resolved_base / candidate).resolve(strict=False)
-    if not resolved.is_relative_to(resolved_base):
-        raise PacketError("unsafe_path", field)
-    return resolved
+    return parts
 
 
-def _read_json(path: Path, *, field: str) -> JsonObject:
-    descriptor = _open_regular(path, field=field)
+def _lexical_absolute(path: Path) -> Path:
+    raw = path if path.is_absolute() else Path.cwd() / path
+    components: list[str] = []
+    for component in raw.parts[1:]:
+        if component in {"", "."}:
+            continue
+        if component == "..":
+            if components:
+                components.pop()
+            continue
+        components.append(component)
+    return Path("/").joinpath(*components)
+
+
+def _read_bounded(descriptor: int, *, max_bytes: int, field: str) -> bytes:
+    encoded = bytearray()
+    while block := os.read(descriptor, _READ_BLOCK_BYTES):
+        encoded.extend(block)
+        if len(encoded) > max_bytes:
+            raise PacketError("document_too_large", field)
+    return bytes(encoded)
+
+
+def _identity(metadata: os.stat_result) -> tuple[int, int, int, int, int]:
+    return (
+        metadata.st_dev,
+        metadata.st_ino,
+        metadata.st_size,
+        metadata.st_mtime_ns,
+        metadata.st_ctime_ns,
+    )
+
+
+def _json_object(data: bytes, *, field: str) -> JsonObject:
     try:
-        encoded = _read_bounded(descriptor, field=field)
-        raw = json.loads(encoded)
-    except PacketError:
-        raise
-    except (OSError, UnicodeError, json.JSONDecodeError) as error:
+        raw = json.loads(data)
+    except (UnicodeError, json.JSONDecodeError) as error:
         raise PacketError("invalid_json", field) from error
-    finally:
-        os.close(descriptor)
     if not isinstance(raw, dict):
         raise PacketError("invalid_document", field)
     return cast("JsonObject", raw)
 
 
-def _open_regular(path: Path, *, field: str) -> int:
+def _schema_document(name: str) -> JsonObject:
     try:
-        descriptor = os.open(path, os.O_RDONLY | os.O_NOFOLLOW)
-        metadata = os.fstat(descriptor)
-    except OSError as error:
-        raise PacketError("missing_or_unsafe_file", field) from error
-    if not stat.S_ISREG(metadata.st_mode):
-        os.close(descriptor)
-        raise PacketError("missing_or_unsafe_file", field)
-    return descriptor
-
-
-def _read_bounded(descriptor: int, *, field: str) -> bytes:
-    encoded = bytearray()
-    while block := os.read(descriptor, 64 * 1024):
-        encoded.extend(block)
-        if len(encoded) > MAX_DOCUMENT_BYTES:
-            raise PacketError("document_too_large", field)
-    return bytes(encoded)
+        raw = json.loads((_SCHEMA_ROOT / name).read_bytes())
+    except (OSError, UnicodeError, json.JSONDecodeError) as error:
+        raise PacketError("invalid_authored_schema", "schema") from error
+    if not isinstance(raw, dict):
+        raise PacketError("invalid_authored_schema", "schema")
+    return cast("JsonObject", raw)
 
 
 def _reject_inline_material(value: object, *, field: str) -> None:
@@ -150,3 +351,8 @@ def _validation_location(error: ValidationError) -> str:
     if first["type"] == "extra_forbidden":
         return "root"
     return ".".join(str(item) for item in first["loc"]) or "root"
+
+
+def _schema_location(field: str, error: SchemaValidationError) -> str:
+    location = ".".join(str(item) for item in error.absolute_path)
+    return field if not location else f"{field}.{location}"

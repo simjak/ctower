@@ -96,9 +96,14 @@ paths = ["tools/codegen/**"]
 allowed_dependencies = ["repository-policy"]
 
 [[ownership]]
+name = "private-vps-tools"
+paths = ["tools/private_vps/**"]
+allowed_dependencies = []
+
+[[ownership]]
 name = "contract-tests"
 paths = ["tests/contracts/**"]
-allowed_dependencies = ["http-client-codegen", "repository-policy"]
+allowed_dependencies = ["http-client-codegen", "private-vps-tools", "repository-policy"]
 
 [[ownership]]
 name = "kernel-record"
@@ -182,7 +187,7 @@ allowed_dependencies = []
 [[ownership]]
 name = "increment-1-acceptance-tests"
 paths = ["tests/acceptance/increment-1/**"]
-allowed_dependencies = ["control-api", "control-cli", "kernel-access", "kernel-attention", "kernel-catalog", "kernel-migration", "kernel-objects", "kernel-projections", "kernel-proof", "kernel-record", "kernel-runtime", "kernel-telemetry", "kernel-work", "kernel-workflow"]
+allowed_dependencies = ["control-api", "control-cli", "kernel-access", "kernel-attention", "kernel-catalog", "kernel-migration", "kernel-objects", "kernel-projections", "kernel-proof", "kernel-record", "kernel-runtime", "kernel-telemetry", "kernel-work", "kernel-workflow", "private-vps-tools"]
 
 [[ownership]]
 name = "kernel-module-tests"

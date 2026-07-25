@@ -36,7 +36,7 @@
     "data_classification": {"const": "disposable_synthetic_non_sensitive"},
     "authoritative_ctower_project_writer": {"const": false},
     "accepted_write_rpo0_claim": {"const": false},
-    "bind_address": {"type": "string", "minLength": 7, "maxLength": 45},
+    "bind_address": {"$ref": "#/$defs/privateIpv4"},
     "images": {
       "type": "object",
       "additionalProperties": false,
@@ -64,14 +64,16 @@
       "additionalProperties": false,
       "required": [
         "postgres_admin_password",
-        "service_dsn",
+        "api_dsn",
+        "worker_dsn",
         "projection_dsn",
         "migration_dsn",
         "role_admin_dsn"
       ],
       "properties": {
         "postgres_admin_password": {"$ref": "#/$defs/rootOwnedFile"},
-        "service_dsn": {"$ref": "#/$defs/rootOwnedFile"},
+        "api_dsn": {"$ref": "#/$defs/rootOwnedFile"},
+        "worker_dsn": {"$ref": "#/$defs/rootOwnedFile"},
         "projection_dsn": {"$ref": "#/$defs/rootOwnedFile"},
         "migration_dsn": {"$ref": "#/$defs/rootOwnedFile"},
         "role_admin_dsn": {"$ref": "#/$defs/rootOwnedFile"}
@@ -80,15 +82,16 @@
     "bootstrap": {
       "type": "object",
       "additionalProperties": false,
-      "required": ["output"],
+      "required": ["parent", "output"],
       "properties": {
+        "parent": {"$ref": "#/$defs/rootOwnedDirectory"},
         "output": {"$ref": "#/$defs/outputFile"}
       }
     },
     "objects": {
       "type": "object",
       "additionalProperties": false,
-      "required": ["adapter", "root", "key"],
+      "required": ["adapter", "root", "api_key", "worker_key"],
       "properties": {
         "adapter": {"const": "local_encrypted_filesystem"},
         "root": {
@@ -100,7 +103,8 @@
             "path": {"$ref": "#/$defs/absolutePath"}
           }
         },
-        "key": {"$ref": "#/$defs/rootOwnedFile"}
+        "api_key": {"$ref": "#/$defs/rootOwnedFile"},
+        "worker_key": {"$ref": "#/$defs/rootOwnedFile"}
       }
     },
     "telemetry": {
@@ -115,12 +119,23 @@
     "workload_identities": {
       "type": "object",
       "additionalProperties": false,
-      "required": ["api", "worker", "migrator", "role_admin"],
+      "required": [
+        "postgres",
+        "role_admin",
+        "migrator",
+        "api",
+        "worker",
+        "collector",
+        "edge"
+      ],
       "properties": {
-        "api": {"$ref": "#/$defs/reference"},
-        "worker": {"$ref": "#/$defs/reference"},
-        "migrator": {"$ref": "#/$defs/reference"},
-        "role_admin": {"$ref": "#/$defs/reference"}
+        "postgres": {"$ref": "#/$defs/workloadIdentity"},
+        "role_admin": {"$ref": "#/$defs/workloadIdentity"},
+        "migrator": {"$ref": "#/$defs/workloadIdentity"},
+        "api": {"$ref": "#/$defs/workloadIdentity"},
+        "worker": {"$ref": "#/$defs/workloadIdentity"},
+        "collector": {"$ref": "#/$defs/workloadIdentity"},
+        "edge": {"$ref": "#/$defs/workloadIdentity"}
       }
     }
   },
@@ -138,9 +153,18 @@
     },
     "relativePath": {
       "type": "string",
-      "pattern": "^[A-Za-z0-9._-]+(/[A-Za-z0-9._-]+)*$"
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]*(/[A-Za-z0-9][A-Za-z0-9._-]*)*$"
     },
-    "absolutePath": {"type": "string", "pattern": "^/[^\\n]{1,299}$"},
+    "absolutePath": {
+      "type": "string",
+      "minLength": 2,
+      "maxLength": 300,
+      "pattern": "^/([A-Za-z0-9][A-Za-z0-9._-]*/)*[A-Za-z0-9][A-Za-z0-9._-]*$"
+    },
+    "privateIpv4": {
+      "type": "string",
+      "pattern": "^(?:10\\.(?:25[0-5]|2[0-4][0-9]|1[0-9]{2}|[1-9]?[0-9])\\.(?:25[0-5]|2[0-4][0-9]|1[0-9]{2}|[1-9]?[0-9])\\.(?:25[0-5]|2[0-4][0-9]|1[0-9]{2}|[1-9]?[0-9])|172\\.(?:1[6-9]|2[0-9]|3[01])\\.(?:25[0-5]|2[0-4][0-9]|1[0-9]{2}|[1-9]?[0-9])\\.(?:25[0-5]|2[0-4][0-9]|1[0-9]{2}|[1-9]?[0-9])|192\\.168\\.(?:25[0-5]|2[0-4][0-9]|1[0-9]{2}|[1-9]?[0-9])\\.(?:25[0-5]|2[0-4][0-9]|1[0-9]{2}|[1-9]?[0-9]))$"
+    },
     "source": {
       "type": "object",
       "additionalProperties": false,
@@ -172,26 +196,50 @@
     "rootOwnedFile": {
       "type": "object",
       "additionalProperties": false,
-      "required": ["reference", "path", "owner", "group", "mode", "sha256"],
+      "required": ["reference", "path", "owner", "group", "group_id", "mode", "sha256"],
       "properties": {
         "reference": {"$ref": "#/$defs/reference"},
         "path": {"$ref": "#/$defs/absolutePath"},
         "owner": {"const": "root"},
         "group": {"const": "ctower"},
+        "group_id": {"const": 10001},
         "mode": {"enum": ["0400", "0440"]},
         "sha256": {"$ref": "#/$defs/digest"}
+      }
+    },
+    "rootOwnedDirectory": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["path", "owner", "group", "group_id", "mode"],
+      "properties": {
+        "path": {"$ref": "#/$defs/absolutePath"},
+        "owner": {"const": "root"},
+        "group": {"const": "ctower"},
+        "group_id": {"const": 10001},
+        "mode": {"const": "0750"}
       }
     },
     "outputFile": {
       "type": "object",
       "additionalProperties": false,
-      "required": ["reference", "path", "owner", "group", "mode"],
+      "required": ["reference", "path", "owner", "group", "group_id", "mode"],
       "properties": {
         "reference": {"$ref": "#/$defs/reference"},
         "path": {"$ref": "#/$defs/absolutePath"},
         "owner": {"const": "root"},
         "group": {"const": "ctower"},
+        "group_id": {"const": 10001},
         "mode": {"const": "0400"}
+      }
+    },
+    "workloadIdentity": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["reference", "uid", "gid"],
+      "properties": {
+        "reference": {"$ref": "#/$defs/reference"},
+        "uid": {"type": "integer", "minimum": 0, "maximum": 65535},
+        "gid": {"type": "integer", "minimum": 0, "maximum": 65535}
       }
     }
   }

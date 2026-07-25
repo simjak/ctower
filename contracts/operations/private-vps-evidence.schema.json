@@ -1,7 +1,7 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://ctower.dev/contracts/operations/private-vps-evidence.schema.json",
-  "title": "Bound private-VPS recurring evidence root",
+  "title": "Development-only private-VPS recurrence evidence",
   "type": "object",
   "additionalProperties": false,
   "required": [
@@ -12,10 +12,12 @@
     "durability_policy",
     "object_adapter",
     "key_adapter",
-    "producer_ref",
-    "verifier_ref",
-    "deployment_manifest",
-    "cp3d_manifest",
+    "provenance",
+    "schedule_ref",
+    "calendar",
+    "window_start",
+    "window_end",
+    "deployment_manifest_artifact_id",
     "bound_inputs",
     "artifacts",
     "occurrences"
@@ -23,20 +25,17 @@
   "properties": {
     "schema": {"const": "ctower.private-vps-evidence/v1"},
     "evidence_id": {"$ref": "#/$defs/identifier"},
-    "claim": {"enum": ["development_rehearsal", "i1_exit"]},
-    "assurance": {"enum": ["development", "cp3d"]},
-    "durability_policy": {"enum": ["pending_only", "cutover_rpo0"]},
-    "object_adapter": {"enum": ["local_encrypted_filesystem", "external_s3"]},
-    "key_adapter": {"enum": ["local_file", "external_kms"]},
-    "producer_ref": {"$ref": "#/$defs/reference"},
-    "verifier_ref": {"$ref": "#/$defs/reference"},
-    "deployment_manifest": {"$ref": "#/$defs/artifact"},
-    "cp3d_manifest": {
-      "oneOf": [
-        {"$ref": "#/$defs/artifact"},
-        {"type": "null"}
-      ]
-    },
+    "claim": {"const": "development_rehearsal"},
+    "assurance": {"const": "development"},
+    "durability_policy": {"const": "pending_only"},
+    "object_adapter": {"const": "local_encrypted_filesystem"},
+    "key_adapter": {"const": "local_file"},
+    "provenance": {"const": "self_declared_development_reference"},
+    "schedule_ref": {"$ref": "#/$defs/reference"},
+    "calendar": {"const": "weekday_mon_fri_utc"},
+    "window_start": {"type": "string", "format": "date"},
+    "window_end": {"type": "string", "format": "date"},
+    "deployment_manifest_artifact_id": {"$ref": "#/$defs/identifier"},
     "bound_inputs": {
       "type": "object",
       "additionalProperties": false,
@@ -50,13 +49,13 @@
     "artifacts": {
       "type": "array",
       "minItems": 20,
-      "maxItems": 200,
+      "maxItems": 50,
       "items": {"$ref": "#/$defs/artifact"}
     },
     "occurrences": {
       "type": "array",
       "minItems": 5,
-      "maxItems": 60,
+      "maxItems": 20,
       "items": {"$ref": "#/$defs/occurrence"}
     }
   },
@@ -74,7 +73,7 @@
     },
     "relativePath": {
       "type": "string",
-      "pattern": "^[A-Za-z0-9._-]+(/[A-Za-z0-9._-]+)*$"
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]*(/[A-Za-z0-9][A-Za-z0-9._-]*)*$"
     },
     "source": {
       "type": "object",
@@ -107,7 +106,7 @@
     "artifact": {
       "type": "object",
       "additionalProperties": false,
-      "required": ["artifact_id", "kind", "path", "sha256"],
+      "required": ["artifact_id", "kind", "path", "sha256", "media_type", "content_schema"],
       "properties": {
         "artifact_id": {"$ref": "#/$defs/identifier"},
         "kind": {
@@ -127,7 +126,16 @@
           ]
         },
         "path": {"$ref": "#/$defs/relativePath"},
-        "sha256": {"$ref": "#/$defs/digest"}
+        "sha256": {"$ref": "#/$defs/digest"},
+        "media_type": {"const": "application/json"},
+        "content_schema": {
+          "enum": [
+            "ctower.private-vps-deployment/v1",
+            "ctower.private-vps-check/v1",
+            "ctower.private-vps-synthetic-result/v1",
+            "ctower.private-vps-scheduler-receipt/v1"
+          ]
+        }
       }
     },
     "occurrence": {
@@ -149,21 +157,103 @@
         "schedule_ref": {"$ref": "#/$defs/reference"},
         "scheduled_for": {"type": "string", "format": "date-time"},
         "working_day": {"type": "string", "format": "date"},
-        "trigger": {"enum": ["scheduled", "manual"]},
-        "origin": {"enum": ["routine_scheduler", "manual_cli"]},
+        "trigger": {"const": "scheduled"},
+        "origin": {"const": "routine_scheduler_reference"},
         "result_artifact_id": {"$ref": "#/$defs/identifier"},
-        "scheduler_receipt_artifact_id": {
-          "oneOf": [
-            {"$ref": "#/$defs/identifier"},
-            {"type": "null"}
+        "scheduler_receipt_artifact_id": {"$ref": "#/$defs/identifier"},
+        "manual_command_ref": {"type": "null"}
+      }
+    },
+    "checkArtifact": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "schema",
+        "artifact_id",
+        "kind",
+        "outcome",
+        "provenance",
+        "observed_at",
+        "source",
+        "control_image"
+      ],
+      "properties": {
+        "schema": {"const": "ctower.private-vps-check/v1"},
+        "artifact_id": {"$ref": "#/$defs/identifier"},
+        "kind": {
+          "enum": [
+            "tls_access",
+            "database_bootstrap",
+            "health_telemetry",
+            "upgrade_rollback",
+            "worker_restart",
+            "host_reboot",
+            "restore_report",
+            "clean_install",
+            "legacy_baseline"
           ]
         },
-        "manual_command_ref": {
-          "oneOf": [
-            {"$ref": "#/$defs/reference"},
-            {"type": "null"}
-          ]
-        }
+        "outcome": {"const": "pass"},
+        "provenance": {"const": "self_declared_development_reference"},
+        "observed_at": {"type": "string", "format": "date-time"},
+        "source": {"$ref": "#/$defs/source"},
+        "control_image": {"$ref": "#/$defs/image"}
+      }
+    },
+    "syntheticResult": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "schema",
+        "occurrence_id",
+        "schedule_ref",
+        "scheduled_for",
+        "working_day",
+        "outcome",
+        "provenance",
+        "source",
+        "control_image"
+      ],
+      "properties": {
+        "schema": {"const": "ctower.private-vps-synthetic-result/v1"},
+        "occurrence_id": {"$ref": "#/$defs/identifier"},
+        "schedule_ref": {"$ref": "#/$defs/reference"},
+        "scheduled_for": {"type": "string", "format": "date-time"},
+        "working_day": {"type": "string", "format": "date"},
+        "outcome": {"const": "pass"},
+        "provenance": {"const": "self_declared_development_reference"},
+        "source": {"$ref": "#/$defs/source"},
+        "control_image": {"$ref": "#/$defs/image"}
+      }
+    },
+    "schedulerReceipt": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "schema",
+        "occurrence_id",
+        "schedule_ref",
+        "scheduled_for",
+        "working_day",
+        "trigger",
+        "origin",
+        "provenance",
+        "source",
+        "control_image",
+        "manual_command_ref"
+      ],
+      "properties": {
+        "schema": {"const": "ctower.private-vps-scheduler-receipt/v1"},
+        "occurrence_id": {"$ref": "#/$defs/identifier"},
+        "schedule_ref": {"$ref": "#/$defs/reference"},
+        "scheduled_for": {"type": "string", "format": "date-time"},
+        "working_day": {"type": "string", "format": "date"},
+        "trigger": {"const": "scheduled"},
+        "origin": {"const": "routine_scheduler_reference"},
+        "provenance": {"const": "self_declared_development_reference"},
+        "source": {"$ref": "#/$defs/source"},
+        "control_image": {"$ref": "#/$defs/image"},
+        "manual_command_ref": {"type": "null"}
       }
     }
   }

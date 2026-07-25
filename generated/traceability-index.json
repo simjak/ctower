@@ -36,6 +36,9 @@
       "contracts/http/openapi.yaml",
       "packages/ctower-kernel/migrations/0002_ticket_slice.sql"
     ],
+    "AC-ADM-03": [
+      "contracts/operations/private-vps-deployment.schema.json"
+    ],
     "AC-COMP-01": [
       "contracts/components/agent-profile.schema.json",
       "contracts/components/capability.schema.json",
@@ -143,6 +146,7 @@
     "AC-EVD-01": [
       "contracts/evidence/evidence-manifest.schema.json",
       "contracts/execution/evidence-policy.schema.json",
+      "contracts/operations/private-vps-evidence.schema.json",
       "packs/policies/evidence/trust-spine-four-stage-v1.yaml"
     ],
     "AC-EVD-03": [
@@ -151,6 +155,7 @@
     "AC-EVD-04": [
       "contracts/execution/gate-policy.schema.json",
       "contracts/http/openapi.yaml",
+      "contracts/operations/private-vps-evidence.schema.json",
       "packages/ctower-kernel/migrations/0004_proof_workflow.sql",
       "packs/policies/gates/trust-spine-four-stage-v1.yaml"
     ],
@@ -504,12 +509,14 @@
     "INV-18": [
       "contracts/evidence/evidence-manifest.schema.json",
       "contracts/execution/evidence-policy.schema.json",
+      "contracts/operations/private-vps-evidence.schema.json",
       "packages/ctower-kernel/migrations/0004_proof_workflow.sql",
       "packs/policies/evidence/trust-spine-four-stage-v1.yaml"
     ],
     "INV-19": [
       "contracts/execution/gate-policy.schema.json",
       "contracts/http/openapi.yaml",
+      "contracts/operations/private-vps-evidence.schema.json",
       "packages/ctower-kernel/migrations/0004_proof_workflow.sql",
       "packs/policies/gates/software-factory-v1.yaml",
       "packs/policies/gates/trust-spine-four-stage-v1.yaml"
@@ -521,6 +528,9 @@
     ],
     "INV-21": [
       "packages/ctower-kernel/migrations/0005_proof_verdict_sequence.sql"
+    ],
+    "INV-25": [
+      "contracts/operations/private-vps-deployment.schema.json"
     ],
     "INV-28": [
       "contracts/domain/outbox-delivery.schema.json",
@@ -551,7 +561,9 @@
       "contracts/domain/migration/ctower-project-import-run.schema.json",
       "contracts/domain/migration/ctower-project-source-selection.schema.json",
       "contracts/domain/migration/migration-boundary.schema.json",
-      "contracts/domain/migration/migration-vectors.json"
+      "contracts/domain/migration/migration-vectors.json",
+      "contracts/operations/private-vps-deployment.schema.json",
+      "contracts/operations/private-vps-evidence.schema.json"
     ],
     "INV-34": [
       "contracts/domain/outbox-delivery.schema.json",
@@ -851,6 +863,9 @@
       "packages/ctower-kernel/migrations/0027_i17a_cutover_delivery.sql",
       "packages/ctower-kernel/migrations/0029_i17b_checkpoint_catalog_kind.sql"
     ],
+    "SPEC#required-stack-and-deployment-posture": [
+      "contracts/operations/private-vps-deployment.schema.json"
+    ],
     "SPEC#retention-erasure-backup-and-restore": [
       "contracts/evidence/object-manifest.schema.json",
       "contracts/operations/anchor.schema.json",
@@ -892,7 +907,11 @@
       "packs/workflows/engineering.software-factory/v1.yaml"
     ],
     "SPEC#test-and-evidence-matrix": [
-      "contracts/evidence/evidence-manifest.schema.json"
+      "contracts/evidence/evidence-manifest.schema.json",
+      "contracts/operations/private-vps-evidence.schema.json"
+    ],
+    "SPEC#trusted-control-plane-record-tier-and-replaceable-worker-plane": [
+      "contracts/operations/private-vps-deployment.schema.json"
     ],
     "SPEC#universal-versionedcomponent-catalog-and-company-desired-state": [
       "contracts/components/agent-profile.schema.json",

@@ -12,7 +12,7 @@
         },
         {
           "path": "contracts/traceability/sources.json",
-          "sha256": "sha256:86de06d6fcb7df8f6f7ba46ae3c5ced198ab2c8bd1bc5a5522a3f8602741adaf"
+          "sha256": "sha256:0cd147333ac43d19d60993645ffdc4796637003fc66faaa16cb48e8a5b34afb9"
         },
         {
           "path": "contracts/traceability/traceability-sources.schema.json",
@@ -38,7 +38,7 @@
       "outputs": [
         {
           "path": "generated/traceability-index.json",
-          "sha256": "sha256:06f603f03585e441ba5dea755c7c7836452fea033fe5819ca210e38edc69aecf"
+          "sha256": "sha256:94c120758f818ce485c17189a3f80f4d3de5c0ddc54067f8069c4532234ae30e"
         }
       ],
       "tool_version": "2"
@@ -301,6 +301,14 @@
           "sha256": "sha256:802af0ebb4cca11ec4a5c5986b94b5d5ba2e788cfab3dd860106adfda8b7539e"
         },
         {
+          "path": "contracts/operations/private-vps-deployment.schema.json",
+          "sha256": "sha256:87910071d5b2c9ac5ed26ba8c4bfea009ddda3cc0408265d9aec075ac1a4e99d"
+        },
+        {
+          "path": "contracts/operations/private-vps-evidence.schema.json",
+          "sha256": "sha256:f0e27d1e03bd8b64b261f2e82865e1f1150a51f4ed131ddc4de3f4575b29b902"
+        },
+        {
           "path": "contracts/operations/restore-report.schema.json",
           "sha256": "sha256:a7cadf4b123e1cf76a4079b964c094099bc4b35b9ad1c4cc69ec098f1e85c78e"
         },
@@ -428,7 +436,7 @@
         },
         {
           "path": "generated/python/ctower_contracts/schemas.json",
-          "sha256": "sha256:046dcac7d0da23c5d13c0d2768a618fd3257744bcd2721008706169141a41c94"
+          "sha256": "sha256:029e32b176a240534debf01ace14352cf884f9abc006bc2b5b16644d8b3602d3"
         },
         {
           "path": "generated/typescript/ctower-client/package.json",

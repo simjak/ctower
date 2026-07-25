@@ -38,6 +38,8 @@
     "ctower.integration/v1": "contracts/components/integration.schema.json",
     "ctower.notification/v1": "contracts/components/notification.schema.json",
     "ctower.persona/v1": "contracts/components/persona.schema.json",
+    "ctower.private-vps-deployment/v1": "contracts/operations/private-vps-deployment.schema.json",
+    "ctower.private-vps-evidence/v1": "contracts/operations/private-vps-evidence.schema.json",
     "ctower.project-delivery/v1": "contracts/domain/project-delivery/project-delivery.schema.json",
     "ctower.project/v1": "contracts/components/project.schema.json",
     "ctower.review-plan/v1": "contracts/workflow/review-plan.schema.json",
@@ -89,6 +91,8 @@
     "https://ctower.dev/contracts/operations/durability-policy.schema.json": "contracts/operations/durability-policy.schema.json",
     "https://ctower.dev/contracts/operations/expected-source-inventory.schema.json": "contracts/operations/expected-source-inventory.schema.json",
     "https://ctower.dev/contracts/operations/health.schema.json": "contracts/operations/health.schema.json",
+    "https://ctower.dev/contracts/operations/private-vps-deployment.schema.json": "contracts/operations/private-vps-deployment.schema.json",
+    "https://ctower.dev/contracts/operations/private-vps-evidence.schema.json": "contracts/operations/private-vps-evidence.schema.json",
     "https://ctower.dev/contracts/operations/restore-report.schema.json": "contracts/operations/restore-report.schema.json",
     "https://ctower.dev/contracts/runtime/operation-job.schema.json": "contracts/runtime/operation-job.schema.json",
     "https://ctower.dev/contracts/runtime/routine-occurrence.schema.json": "contracts/runtime/routine-occurrence.schema.json",
@@ -10692,6 +10696,893 @@
       "title": "Control health snapshot",
       "type": "object"
     },
+    "contracts/operations/private-vps-deployment.schema.json": {
+      "$defs": {
+        "absolutePath": {
+          "maxLength": 300,
+          "minLength": 2,
+          "pattern": "^/([A-Za-z0-9][A-Za-z0-9._-]*/)*[A-Za-z0-9][A-Za-z0-9._-]*$",
+          "type": "string"
+        },
+        "configArtifact": {
+          "additionalProperties": false,
+          "properties": {
+            "path": {
+              "$ref": "#/$defs/relativePath"
+            },
+            "sha256": {
+              "$ref": "#/$defs/digest"
+            }
+          },
+          "required": [
+            "path",
+            "sha256"
+          ],
+          "type": "object"
+        },
+        "configuration": {
+          "additionalProperties": false,
+          "properties": {
+            "caddyfile": {
+              "$ref": "#/$defs/configArtifact"
+            },
+            "compose": {
+              "$ref": "#/$defs/configArtifact"
+            },
+            "otel_collector": {
+              "$ref": "#/$defs/configArtifact"
+            }
+          },
+          "required": [
+            "compose",
+            "caddyfile",
+            "otel_collector"
+          ],
+          "type": "object"
+        },
+        "digest": {
+          "pattern": "^sha256:[0-9a-f]{64}$",
+          "type": "string"
+        },
+        "gitObject": {
+          "pattern": "^[0-9a-f]{40}$",
+          "type": "string"
+        },
+        "identifier": {
+          "pattern": "^[a-z][a-z0-9._:-]{2,127}$",
+          "type": "string"
+        },
+        "image": {
+          "pattern": "^[a-z0-9][A-Za-z0-9._/:/-]*@sha256:[0-9a-f]{64}$",
+          "type": "string"
+        },
+        "outputFile": {
+          "additionalProperties": false,
+          "properties": {
+            "group": {
+              "const": "ctower"
+            },
+            "group_id": {
+              "const": 10001
+            },
+            "mode": {
+              "const": "0400"
+            },
+            "owner": {
+              "const": "root"
+            },
+            "path": {
+              "$ref": "#/$defs/absolutePath"
+            },
+            "reference": {
+              "$ref": "#/$defs/reference"
+            }
+          },
+          "required": [
+            "reference",
+            "path",
+            "owner",
+            "group",
+            "group_id",
+            "mode"
+          ],
+          "type": "object"
+        },
+        "privateIpv4": {
+          "pattern": "^(?:10\\.(?:25[0-5]|2[0-4][0-9]|1[0-9]{2}|[1-9]?[0-9])\\.(?:25[0-5]|2[0-4][0-9]|1[0-9]{2}|[1-9]?[0-9])\\.(?:25[0-5]|2[0-4][0-9]|1[0-9]{2}|[1-9]?[0-9])|172\\.(?:1[6-9]|2[0-9]|3[01])\\.(?:25[0-5]|2[0-4][0-9]|1[0-9]{2}|[1-9]?[0-9])\\.(?:25[0-5]|2[0-4][0-9]|1[0-9]{2}|[1-9]?[0-9])|192\\.168\\.(?:25[0-5]|2[0-4][0-9]|1[0-9]{2}|[1-9]?[0-9])\\.(?:25[0-5]|2[0-4][0-9]|1[0-9]{2}|[1-9]?[0-9]))$",
+          "type": "string"
+        },
+        "reference": {
+          "pattern": "^(alert-owner|credential-file|file|identity|object-root|schedule|telemetry)-ref://[A-Za-z0-9._~:/-]+$",
+          "type": "string"
+        },
+        "relativePath": {
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]*(/[A-Za-z0-9][A-Za-z0-9._-]*)*$",
+          "type": "string"
+        },
+        "rootOwnedDirectory": {
+          "additionalProperties": false,
+          "properties": {
+            "group": {
+              "const": "ctower"
+            },
+            "group_id": {
+              "const": 10001
+            },
+            "mode": {
+              "const": "0750"
+            },
+            "owner": {
+              "const": "root"
+            },
+            "path": {
+              "$ref": "#/$defs/absolutePath"
+            }
+          },
+          "required": [
+            "path",
+            "owner",
+            "group",
+            "group_id",
+            "mode"
+          ],
+          "type": "object"
+        },
+        "rootOwnedFile": {
+          "additionalProperties": false,
+          "properties": {
+            "group": {
+              "const": "ctower"
+            },
+            "group_id": {
+              "const": 10001
+            },
+            "mode": {
+              "enum": [
+                "0400",
+                "0440"
+              ]
+            },
+            "owner": {
+              "const": "root"
+            },
+            "path": {
+              "$ref": "#/$defs/absolutePath"
+            },
+            "reference": {
+              "$ref": "#/$defs/reference"
+            },
+            "sha256": {
+              "$ref": "#/$defs/digest"
+            }
+          },
+          "required": [
+            "reference",
+            "path",
+            "owner",
+            "group",
+            "group_id",
+            "mode",
+            "sha256"
+          ],
+          "type": "object"
+        },
+        "source": {
+          "additionalProperties": false,
+          "properties": {
+            "sha": {
+              "$ref": "#/$defs/gitObject"
+            },
+            "tree": {
+              "$ref": "#/$defs/gitObject"
+            }
+          },
+          "required": [
+            "sha",
+            "tree"
+          ],
+          "type": "object"
+        },
+        "workloadIdentity": {
+          "additionalProperties": false,
+          "properties": {
+            "gid": {
+              "maximum": 65535,
+              "minimum": 0,
+              "type": "integer"
+            },
+            "reference": {
+              "$ref": "#/$defs/reference"
+            },
+            "uid": {
+              "maximum": 65535,
+              "minimum": 0,
+              "type": "integer"
+            }
+          },
+          "required": [
+            "reference",
+            "uid",
+            "gid"
+          ],
+          "type": "object"
+        }
+      },
+      "$id": "https://ctower.dev/contracts/operations/private-vps-deployment.schema.json",
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "additionalProperties": false,
+      "properties": {
+        "accepted_write_rpo0_claim": {
+          "const": false
+        },
+        "assurance": {
+          "const": "development"
+        },
+        "authoritative_ctower_project_writer": {
+          "const": false
+        },
+        "bind_address": {
+          "$ref": "#/$defs/privateIpv4"
+        },
+        "bootstrap": {
+          "additionalProperties": false,
+          "properties": {
+            "output": {
+              "$ref": "#/$defs/outputFile"
+            },
+            "parent": {
+              "$ref": "#/$defs/rootOwnedDirectory"
+            }
+          },
+          "required": [
+            "parent",
+            "output"
+          ],
+          "type": "object"
+        },
+        "configuration": {
+          "$ref": "#/$defs/configuration"
+        },
+        "cp3d_qualified": {
+          "const": false
+        },
+        "data_classification": {
+          "const": "disposable_synthetic_non_sensitive"
+        },
+        "database": {
+          "additionalProperties": false,
+          "properties": {
+            "api_dsn": {
+              "$ref": "#/$defs/rootOwnedFile"
+            },
+            "migration_dsn": {
+              "$ref": "#/$defs/rootOwnedFile"
+            },
+            "postgres_admin_password": {
+              "$ref": "#/$defs/rootOwnedFile"
+            },
+            "projection_dsn": {
+              "$ref": "#/$defs/rootOwnedFile"
+            },
+            "role_admin_dsn": {
+              "$ref": "#/$defs/rootOwnedFile"
+            },
+            "worker_dsn": {
+              "$ref": "#/$defs/rootOwnedFile"
+            }
+          },
+          "required": [
+            "postgres_admin_password",
+            "api_dsn",
+            "worker_dsn",
+            "projection_dsn",
+            "migration_dsn",
+            "role_admin_dsn"
+          ],
+          "type": "object"
+        },
+        "deployment_id": {
+          "$ref": "#/$defs/identifier"
+        },
+        "durability_policy": {
+          "const": "pending_only"
+        },
+        "failure_domain_count": {
+          "const": 1
+        },
+        "images": {
+          "additionalProperties": false,
+          "properties": {
+            "collector": {
+              "$ref": "#/$defs/image"
+            },
+            "control": {
+              "$ref": "#/$defs/image"
+            },
+            "edge": {
+              "$ref": "#/$defs/image"
+            },
+            "postgres": {
+              "$ref": "#/$defs/image"
+            },
+            "postgres_major": {
+              "const": 17
+            }
+          },
+          "required": [
+            "control",
+            "postgres",
+            "postgres_major",
+            "edge",
+            "collector"
+          ],
+          "type": "object"
+        },
+        "objects": {
+          "additionalProperties": false,
+          "properties": {
+            "adapter": {
+              "const": "local_encrypted_filesystem"
+            },
+            "api_key": {
+              "$ref": "#/$defs/rootOwnedFile"
+            },
+            "root": {
+              "additionalProperties": false,
+              "properties": {
+                "path": {
+                  "$ref": "#/$defs/absolutePath"
+                },
+                "reference": {
+                  "$ref": "#/$defs/reference"
+                }
+              },
+              "required": [
+                "reference",
+                "path"
+              ],
+              "type": "object"
+            },
+            "worker_key": {
+              "$ref": "#/$defs/rootOwnedFile"
+            }
+          },
+          "required": [
+            "adapter",
+            "root",
+            "api_key",
+            "worker_key"
+          ],
+          "type": "object"
+        },
+        "schema": {
+          "const": "ctower.private-vps-deployment/v1"
+        },
+        "source": {
+          "$ref": "#/$defs/source"
+        },
+        "telemetry": {
+          "additionalProperties": false,
+          "properties": {
+            "alert_owner_ref": {
+              "$ref": "#/$defs/reference"
+            },
+            "exporter": {
+              "$ref": "#/$defs/rootOwnedFile"
+            }
+          },
+          "required": [
+            "exporter",
+            "alert_owner_ref"
+          ],
+          "type": "object"
+        },
+        "tls": {
+          "additionalProperties": false,
+          "properties": {
+            "certificate": {
+              "$ref": "#/$defs/rootOwnedFile"
+            },
+            "private_key": {
+              "$ref": "#/$defs/rootOwnedFile"
+            }
+          },
+          "required": [
+            "certificate",
+            "private_key"
+          ],
+          "type": "object"
+        },
+        "workload_identities": {
+          "additionalProperties": false,
+          "properties": {
+            "api": {
+              "$ref": "#/$defs/workloadIdentity"
+            },
+            "collector": {
+              "$ref": "#/$defs/workloadIdentity"
+            },
+            "edge": {
+              "$ref": "#/$defs/workloadIdentity"
+            },
+            "migrator": {
+              "$ref": "#/$defs/workloadIdentity"
+            },
+            "postgres": {
+              "$ref": "#/$defs/workloadIdentity"
+            },
+            "role_admin": {
+              "$ref": "#/$defs/workloadIdentity"
+            },
+            "worker": {
+              "$ref": "#/$defs/workloadIdentity"
+            }
+          },
+          "required": [
+            "postgres",
+            "role_admin",
+            "migrator",
+            "api",
+            "worker",
+            "collector",
+            "edge"
+          ],
+          "type": "object"
+        }
+      },
+      "required": [
+        "schema",
+        "deployment_id",
+        "source",
+        "assurance",
+        "durability_policy",
+        "failure_domain_count",
+        "cp3d_qualified",
+        "data_classification",
+        "authoritative_ctower_project_writer",
+        "accepted_write_rpo0_claim",
+        "bind_address",
+        "images",
+        "configuration",
+        "tls",
+        "database",
+        "bootstrap",
+        "objects",
+        "telemetry",
+        "workload_identities"
+      ],
+      "title": "Reference-only private-VPS development deployment",
+      "type": "object"
+    },
+    "contracts/operations/private-vps-evidence.schema.json": {
+      "$defs": {
+        "artifact": {
+          "additionalProperties": false,
+          "properties": {
+            "artifact_id": {
+              "$ref": "#/$defs/identifier"
+            },
+            "content_schema": {
+              "enum": [
+                "ctower.private-vps-deployment/v1",
+                "ctower.private-vps-check/v1",
+                "ctower.private-vps-synthetic-result/v1",
+                "ctower.private-vps-scheduler-receipt/v1"
+              ]
+            },
+            "kind": {
+              "enum": [
+                "deployment_preflight",
+                "tls_access",
+                "database_bootstrap",
+                "health_telemetry",
+                "upgrade_rollback",
+                "worker_restart",
+                "host_reboot",
+                "restore_report",
+                "clean_install",
+                "legacy_baseline",
+                "synthetic_occurrence",
+                "scheduler_receipt"
+              ]
+            },
+            "media_type": {
+              "const": "application/json"
+            },
+            "path": {
+              "$ref": "#/$defs/relativePath"
+            },
+            "sha256": {
+              "$ref": "#/$defs/digest"
+            }
+          },
+          "required": [
+            "artifact_id",
+            "kind",
+            "path",
+            "sha256",
+            "media_type",
+            "content_schema"
+          ],
+          "type": "object"
+        },
+        "checkArtifact": {
+          "additionalProperties": false,
+          "properties": {
+            "artifact_id": {
+              "$ref": "#/$defs/identifier"
+            },
+            "control_image": {
+              "$ref": "#/$defs/image"
+            },
+            "kind": {
+              "enum": [
+                "tls_access",
+                "database_bootstrap",
+                "health_telemetry",
+                "upgrade_rollback",
+                "worker_restart",
+                "host_reboot",
+                "restore_report",
+                "clean_install",
+                "legacy_baseline"
+              ]
+            },
+            "observed_at": {
+              "format": "date-time",
+              "type": "string"
+            },
+            "outcome": {
+              "const": "pass"
+            },
+            "provenance": {
+              "const": "self_declared_development_reference"
+            },
+            "schema": {
+              "const": "ctower.private-vps-check/v1"
+            },
+            "source": {
+              "$ref": "#/$defs/source"
+            }
+          },
+          "required": [
+            "schema",
+            "artifact_id",
+            "kind",
+            "outcome",
+            "provenance",
+            "observed_at",
+            "source",
+            "control_image"
+          ],
+          "type": "object"
+        },
+        "configArtifact": {
+          "additionalProperties": false,
+          "properties": {
+            "path": {
+              "$ref": "#/$defs/relativePath"
+            },
+            "sha256": {
+              "$ref": "#/$defs/digest"
+            }
+          },
+          "required": [
+            "path",
+            "sha256"
+          ],
+          "type": "object"
+        },
+        "configuration": {
+          "additionalProperties": false,
+          "properties": {
+            "caddyfile": {
+              "$ref": "#/$defs/configArtifact"
+            },
+            "compose": {
+              "$ref": "#/$defs/configArtifact"
+            },
+            "otel_collector": {
+              "$ref": "#/$defs/configArtifact"
+            }
+          },
+          "required": [
+            "compose",
+            "caddyfile",
+            "otel_collector"
+          ],
+          "type": "object"
+        },
+        "digest": {
+          "pattern": "^sha256:[0-9a-f]{64}$",
+          "type": "string"
+        },
+        "gitObject": {
+          "pattern": "^[0-9a-f]{40}$",
+          "type": "string"
+        },
+        "identifier": {
+          "pattern": "^[a-z][a-z0-9._:-]{2,127}$",
+          "type": "string"
+        },
+        "image": {
+          "pattern": "^[a-z0-9][A-Za-z0-9._/:/-]*@sha256:[0-9a-f]{64}$",
+          "type": "string"
+        },
+        "occurrence": {
+          "additionalProperties": false,
+          "properties": {
+            "manual_command_ref": {
+              "type": "null"
+            },
+            "occurrence_id": {
+              "$ref": "#/$defs/identifier"
+            },
+            "origin": {
+              "const": "routine_scheduler_reference"
+            },
+            "result_artifact_id": {
+              "$ref": "#/$defs/identifier"
+            },
+            "schedule_ref": {
+              "$ref": "#/$defs/reference"
+            },
+            "scheduled_for": {
+              "format": "date-time",
+              "type": "string"
+            },
+            "scheduler_receipt_artifact_id": {
+              "$ref": "#/$defs/identifier"
+            },
+            "trigger": {
+              "const": "scheduled"
+            },
+            "working_day": {
+              "format": "date",
+              "type": "string"
+            }
+          },
+          "required": [
+            "occurrence_id",
+            "schedule_ref",
+            "scheduled_for",
+            "working_day",
+            "trigger",
+            "origin",
+            "result_artifact_id",
+            "scheduler_receipt_artifact_id",
+            "manual_command_ref"
+          ],
+          "type": "object"
+        },
+        "reference": {
+          "pattern": "^(alert-owner|credential-file|file|identity|object-root|schedule|telemetry)-ref://[A-Za-z0-9._~:/-]+$",
+          "type": "string"
+        },
+        "relativePath": {
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]*(/[A-Za-z0-9][A-Za-z0-9._-]*)*$",
+          "type": "string"
+        },
+        "schedulerReceipt": {
+          "additionalProperties": false,
+          "properties": {
+            "control_image": {
+              "$ref": "#/$defs/image"
+            },
+            "manual_command_ref": {
+              "type": "null"
+            },
+            "occurrence_id": {
+              "$ref": "#/$defs/identifier"
+            },
+            "origin": {
+              "const": "routine_scheduler_reference"
+            },
+            "provenance": {
+              "const": "self_declared_development_reference"
+            },
+            "schedule_ref": {
+              "$ref": "#/$defs/reference"
+            },
+            "scheduled_for": {
+              "format": "date-time",
+              "type": "string"
+            },
+            "schema": {
+              "const": "ctower.private-vps-scheduler-receipt/v1"
+            },
+            "source": {
+              "$ref": "#/$defs/source"
+            },
+            "trigger": {
+              "const": "scheduled"
+            },
+            "working_day": {
+              "format": "date",
+              "type": "string"
+            }
+          },
+          "required": [
+            "schema",
+            "occurrence_id",
+            "schedule_ref",
+            "scheduled_for",
+            "working_day",
+            "trigger",
+            "origin",
+            "provenance",
+            "source",
+            "control_image",
+            "manual_command_ref"
+          ],
+          "type": "object"
+        },
+        "source": {
+          "additionalProperties": false,
+          "properties": {
+            "sha": {
+              "$ref": "#/$defs/gitObject"
+            },
+            "tree": {
+              "$ref": "#/$defs/gitObject"
+            }
+          },
+          "required": [
+            "sha",
+            "tree"
+          ],
+          "type": "object"
+        },
+        "syntheticResult": {
+          "additionalProperties": false,
+          "properties": {
+            "control_image": {
+              "$ref": "#/$defs/image"
+            },
+            "occurrence_id": {
+              "$ref": "#/$defs/identifier"
+            },
+            "outcome": {
+              "const": "pass"
+            },
+            "provenance": {
+              "const": "self_declared_development_reference"
+            },
+            "schedule_ref": {
+              "$ref": "#/$defs/reference"
+            },
+            "scheduled_for": {
+              "format": "date-time",
+              "type": "string"
+            },
+            "schema": {
+              "const": "ctower.private-vps-synthetic-result/v1"
+            },
+            "source": {
+              "$ref": "#/$defs/source"
+            },
+            "working_day": {
+              "format": "date",
+              "type": "string"
+            }
+          },
+          "required": [
+            "schema",
+            "occurrence_id",
+            "schedule_ref",
+            "scheduled_for",
+            "working_day",
+            "outcome",
+            "provenance",
+            "source",
+            "control_image"
+          ],
+          "type": "object"
+        }
+      },
+      "$id": "https://ctower.dev/contracts/operations/private-vps-evidence.schema.json",
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "additionalProperties": false,
+      "properties": {
+        "artifacts": {
+          "items": {
+            "$ref": "#/$defs/artifact"
+          },
+          "maxItems": 50,
+          "minItems": 20,
+          "type": "array"
+        },
+        "assurance": {
+          "const": "development"
+        },
+        "bound_inputs": {
+          "additionalProperties": false,
+          "properties": {
+            "configuration": {
+              "$ref": "#/$defs/configuration"
+            },
+            "control_image": {
+              "$ref": "#/$defs/image"
+            },
+            "source": {
+              "$ref": "#/$defs/source"
+            }
+          },
+          "required": [
+            "source",
+            "control_image",
+            "configuration"
+          ],
+          "type": "object"
+        },
+        "calendar": {
+          "const": "weekday_mon_fri_utc"
+        },
+        "claim": {
+          "const": "development_rehearsal"
+        },
+        "deployment_manifest_artifact_id": {
+          "$ref": "#/$defs/identifier"
+        },
+        "durability_policy": {
+          "const": "pending_only"
+        },
+        "evidence_id": {
+          "$ref": "#/$defs/identifier"
+        },
+        "key_adapter": {
+          "const": "local_file"
+        },
+        "object_adapter": {
+          "const": "local_encrypted_filesystem"
+        },
+        "occurrences": {
+          "items": {
+            "$ref": "#/$defs/occurrence"
+          },
+          "maxItems": 20,
+          "minItems": 5,
+          "type": "array"
+        },
+        "provenance": {
+          "const": "self_declared_development_reference"
+        },
+        "schedule_ref": {
+          "$ref": "#/$defs/reference"
+        },
+        "schema": {
+          "const": "ctower.private-vps-evidence/v1"
+        },
+        "window_end": {
+          "format": "date",
+          "type": "string"
+        },
+        "window_start": {
+          "format": "date",
+          "type": "string"
+        }
+      },
+      "required": [
+        "schema",
+        "evidence_id",
+        "claim",
+        "assurance",
+        "durability_policy",
+        "object_adapter",
+        "key_adapter",
+        "provenance",
+        "schedule_ref",
+        "calendar",
+        "window_start",
+        "window_end",
+        "deployment_manifest_artifact_id",
+        "bound_inputs",
+        "artifacts",
+        "occurrences"
+      ],
+      "title": "Development-only private-VPS recurrence evidence",
+      "type": "object"
+    },
     "contracts/operations/restore-report.schema.json": {
       "$defs": {
         "anchorsVerified": {
@@ -12015,6 +12906,16 @@
       "id": "https://ctower.dev/contracts/operations/health.schema.json",
       "path": "contracts/operations/health.schema.json",
       "sha256": "sha256:802af0ebb4cca11ec4a5c5986b94b5d5ba2e788cfab3dd860106adfda8b7539e"
+    },
+    {
+      "id": "https://ctower.dev/contracts/operations/private-vps-deployment.schema.json",
+      "path": "contracts/operations/private-vps-deployment.schema.json",
+      "sha256": "sha256:87910071d5b2c9ac5ed26ba8c4bfea009ddda3cc0408265d9aec075ac1a4e99d"
+    },
+    {
+      "id": "https://ctower.dev/contracts/operations/private-vps-evidence.schema.json",
+      "path": "contracts/operations/private-vps-evidence.schema.json",
+      "sha256": "sha256:f0e27d1e03bd8b64b261f2e82865e1f1150a51f4ed131ddc4de3f4575b29b902"
     },
     {
       "id": "https://ctower.dev/contracts/operations/restore-report.schema.json",
