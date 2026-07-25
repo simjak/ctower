@@ -82,6 +82,7 @@ def test_generated_client_is_owned_and_byte_stable() -> None:
         "generated/typescript/ctower-client/src/index.ts",
         "generated/typescript/ctower-client/src/models.ts",
         "generated/typescript/ctower-client/src/operations.ts",
+        "generated/typescript/ctower-client/src/validators.ts",
         "generated/typescript/ctower-client/tsconfig.json",
     }
     for entry in outputs:
@@ -125,6 +126,7 @@ def test_generated_typescript_has_exact_intake_models_operations_and_notice() ->
         "index.ts",
         "models.ts",
         "operations.ts",
+        "validators.ts",
     }
     for path in sources:
         assert path.read_text(encoding="utf-8").startswith(

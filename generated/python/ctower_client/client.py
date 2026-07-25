@@ -1,6 +1,6 @@
 """DO NOT EDIT: generated file; regenerate from declared inputs.
 
-Authored contract digest: sha256:5dd74178cb9d1f066b1f89e01c057314020992f882e65773d2b5451084d0bb9d
+Authored contract digest: sha256:799c441c9397cb850d0d2aee75828ffcdabc2fe2c9d759ebf623a80894c9e17b
 """
 
 from __future__ import annotations
@@ -705,7 +705,7 @@ class CtowerClient:
                 },
             ),
         )
-        return _response(response, IntakeCommandResult, {401: Problem, 403: Problem, 404: Problem, 409: Problem, 422: Problem})
+        return _response(response, IntakeCommandResult, {401: Problem, 403: Problem, 404: Problem, 409: Problem, 413: Problem, 422: Problem})
 
     @validate_call(config=ConfigDict(strict=True, arbitrary_types_allowed=True))
     def record_outbox_poison_disposition(
@@ -878,7 +878,7 @@ class CtowerClient:
                 },
             ),
         )
-        return _response(response, IntakeCommandResult, {401: Problem, 403: Problem, 404: Problem, 409: Problem, 422: Problem})
+        return _response(response, IntakeCommandResult, {401: Problem, 403: Problem, 404: Problem, 409: Problem, 413: Problem, 422: Problem})
 
     @validate_call(config=ConfigDict(strict=True, arbitrary_types_allowed=True))
     def transfer_ticket_custody(

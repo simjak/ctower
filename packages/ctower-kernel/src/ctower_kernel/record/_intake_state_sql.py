@@ -20,7 +20,6 @@ from ctower_kernel.record import (
 )
 from ctower_kernel.record._intake_command_sql import IntakeAction, IntakeThreadState
 from ctower_kernel.record._intake_command_sql import scope_problem as _scope_problem
-from ctower_kernel.record._intake_command_sql import uuid7 as _uuid7
 from ctower_kernel.record._intake_command_sql import version_problem as _version_problem
 from ctower_kernel.record._ticket_sql import (
     _eligible_custodian,
@@ -33,24 +32,34 @@ __all__: tuple[str, ...] = ()
 _ZERO_HASH = bytes(32)
 
 
-def lock_or_create_thread(
+def project_available(
+    connection: psycopg.Connection[dict[str, object]],
+    actor: Actor,
+    project_key: str,
+) -> bool:
+    """Recognize only the declared I1 ctower project hierarchy."""
+
+    if project_key != "ctower":
+        return False
+    row = connection.execute(
+        """
+        SELECT 1 FROM project_delivery_checkpoint_definitions
+        WHERE tenant_id = %s AND company_key = 'ctower' AND project_key = %s
+        LIMIT 1
+        """,
+        (actor.tenant_id, project_key),
+    ).fetchone()
+    return row is not None
+
+
+def lock_thread(
     connection: psycopg.Connection[dict[str, object]],
     actor: Actor,
     command: IntakeSubmitCommand,
     thread_id: UUID,
-    *,
-    now: datetime,
 ) -> IntakeThreadState | RecordProblem:
     if command.thread_id is None:
-        connection.execute(
-            """
-            INSERT INTO inbound_threads (
-                thread_id, tenant_id, project_key, version, created_by, created_at
-            ) VALUES (%s, %s, %s, 0, %s, %s)
-            """,
-            (thread_id, actor.tenant_id, command.project_key, actor.principal_id, now),
-        )
-        return IntakeThreadState(thread_id, 1, 1, _ZERO_HASH)
+        return IntakeThreadState(thread_id, 1, 1, _ZERO_HASH, is_new=True)
     row = connection.execute(
         """
         SELECT thread.version, thread.project_key,
@@ -88,6 +97,27 @@ def lock_or_create_thread(
         current + 1,
         int(cast(int, position["next_position"])),
         bytes(cast(bytes, previous)),
+        is_new=False,
+    )
+
+
+def insert_new_thread(
+    connection: psycopg.Connection[dict[str, object]],
+    actor: Actor,
+    command: IntakeSubmitCommand,
+    state: IntakeThreadState,
+    *,
+    now: datetime,
+) -> None:
+    if not state.is_new:
+        return
+    connection.execute(
+        """
+        INSERT INTO inbound_threads (
+            thread_id, tenant_id, project_key, version, created_by, created_at
+        ) VALUES (%s, %s, %s, 1, %s, %s)
+        """,
+        (state.thread_id, actor.tenant_id, command.project_key, actor.principal_id, now),
     )
 
 
@@ -127,7 +157,7 @@ def prepare_action(
     *,
     project_key: str | None = None,
     source: InboundSource | None = None,
-    now: datetime,
+    ticket_ids: _TicketIds | None = None,
 ) -> IntakeAction | RecordProblem:
     if (
         isinstance(command, IntakeSubmitCommand)
@@ -138,7 +168,13 @@ def prepare_action(
         return IntakeAction(IntakeOutcome.DISCUSSION, None, None, None, None)
     if command.intent is IntakeIntent.LINK_TICKET:
         return _prepare_link_action(connection, actor, command, project_key=project_key)
-    return _prepare_create_action(connection, actor, command, source=source, now=now)
+    return _prepare_create_action(
+        connection,
+        actor,
+        command,
+        source=source,
+        ticket_ids=ticket_ids,
+    )
 
 
 def _prepare_create_action(
@@ -147,13 +183,14 @@ def _prepare_create_action(
     command: IntakeSubmitCommand | IntakePromotionCommand,
     *,
     source: InboundSource | None,
-    now: datetime,
+    ticket_ids: _TicketIds | None,
 ) -> IntakeAction | RecordProblem:
     if command.initial_custodian_id is None or command.priority is None or command.title is None:
         raise RuntimeError("Work admitted incomplete create-ticket intake")
     if not _eligible_custodian(connection, actor, command.initial_custodian_id):
         return _scope_problem(command.client_command_id)
-    ticket_ids = _TicketIds(*(_uuid7(now) for _ in range(3)))
+    if ticket_ids is None:
+        raise RuntimeError("create-ticket intake identifiers are unavailable")
     inbound_source = command.source if isinstance(command, IntakeSubmitCommand) else source
     if inbound_source is None:
         raise RuntimeError("promotion source provenance is unavailable")
@@ -186,7 +223,7 @@ def _prepare_link_action(
         """
         SELECT ticket.version, project.project_key
         FROM tickets AS ticket
-        JOIN intake_ticket_projects AS project
+        JOIN ticket_project_bindings AS project
           ON project.ticket_id = ticket.ticket_id AND project.tenant_id = ticket.tenant_id
         WHERE ticket.tenant_id = %s AND ticket.ticket_id = %s
         FOR UPDATE OF ticket

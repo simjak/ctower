@@ -39,7 +39,7 @@
       "properties": {
         "thread_id": {"type": "string", "format": "uuid"},
         "tenant_id": {"type": "string", "format": "uuid"},
-        "project_key": {"type": "string", "pattern": "^[a-z][a-z0-9._-]{2,127}$"},
+        "project_key": {"type": "string", "pattern": "^[a-z][a-z0-9-]{2,63}$"},
         "version": {"type": "integer", "minimum": 1}
       }
     },

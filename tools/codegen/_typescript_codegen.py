@@ -8,6 +8,8 @@ from collections.abc import Mapping
 from dataclasses import dataclass
 from typing import cast
 
+from tools.codegen._typescript_validation_codegen import render_validators
+
 __all__ = ["render_typescript"]
 
 
@@ -28,11 +30,16 @@ class _Operation:
     parameters: tuple[_Parameter, ...]
     request_model: str | None
     response_model: str | None
+    problem_models: tuple[tuple[int, str], ...]
     authenticated: bool
 
 
 def render_typescript(document: dict[str, object], contract_digest: str) -> dict[str, str]:
     operations = _operations(document)
+    schemas = _mapping(
+        _mapping(document.get("components"), "components").get("schemas"),
+        "components.schemas",
+    )
     return {
         "client.ts": _client(operations, contract_digest),
         "index.ts": _index(contract_digest),
@@ -40,6 +47,16 @@ def render_typescript(document: dict[str, object], contract_digest: str) -> dict
         "operations.ts": _operation_registry(operations, contract_digest),
         "package.json": _package(),
         "tsconfig.json": _tsconfig(),
+        "validators.ts": render_validators(
+            schemas,
+            {
+                item.operation_id: item.response_model
+                for item in operations
+                if item.response_model is not None
+            },
+            {item.operation_id: item.problem_models for item in operations},
+            contract_digest,
+        ),
     }
 
 
@@ -174,6 +191,7 @@ def _client(operations: tuple[_Operation, ...], digest: str) -> str:
 
 import type * as Models from "./models.js";
 import {{ OPERATIONS, type OperationId }} from "./operations.js";
+import {{ validateOperationProblem, validateOperationResult }} from "./validators.js";
 
 export type ClientOptions = Readonly<{{
   baseUrl: string;
@@ -257,9 +275,18 @@ export class CtowerClient {{
     }});
     const payload: unknown = await response.json();
     if (!response.ok) {{
-      throw new CtowerProblemError(payload as Models.Problem);
+      const contentType = response.headers.get("content-type")?.split(";", 1)[0];
+      if (contentType !== "application/problem+json") {{
+        throw new TypeError("ctower returned a non-problem failure");
+      }}
+      const problem = validateOperationProblem(
+        operationId,
+        response.status,
+        payload,
+      ) as Models.Problem;
+      throw new CtowerProblemError(problem);
     }}
-    return payload as OperationResults[Id];
+    return validateOperationResult(operationId, payload) as OperationResults[Id];
   }}
 }}
 """
@@ -344,6 +371,7 @@ def _operations(document: dict[str, object]) -> tuple[_Operation, ...]:
     paths = _mapping(document.get("paths"), "paths")
     components = _mapping(document.get("components"), "components")
     definitions = _mapping(components.get("parameters"), "components.parameters")
+    response_definitions = _mapping(components.get("responses"), "components.responses")
     operations: list[_Operation] = []
     for path, path_item in paths.items():
         for method, value in _mapping(path_item, f"path {path}").items():
@@ -361,6 +389,7 @@ def _operations(document: dict[str, object]) -> tuple[_Operation, ...]:
                     _parameters(operation, definitions),
                     _request_model(operation),
                     _response_model(operation),
+                    _problem_models(operation, response_definitions),
                     bool(operation.get("security")),
                 )
             )
@@ -416,6 +445,33 @@ def _response_model(operation: Mapping[str, object]) -> str | None:
         media = _mapping(content.get("application/json"), "application/json")
         return _reference_name(str(_mapping(media.get("schema"), "response schema")["$ref"]))
     return None
+
+
+def _problem_models(
+    operation: Mapping[str, object], definitions: Mapping[str, object]
+) -> tuple[tuple[int, str], ...]:
+    responses = _mapping(operation.get("responses"), "responses")
+    models: list[tuple[int, str]] = []
+    for status, value in sorted(responses.items()):
+        if status.startswith("2"):
+            continue
+        try:
+            status_code = int(status)
+        except ValueError as error:
+            raise ValueError(f"failure response status must be exact: {status}") from error
+        response = _mapping(value, f"response {status}")
+        reference = response.get("$ref")
+        if isinstance(reference, str):
+            name = reference.removeprefix("#/components/responses/")
+            response = _mapping(definitions.get(name), f"response {name}")
+        content = _mapping(response.get("content"), f"response {status}.content")
+        media = _mapping(
+            content.get("application/problem+json"),
+            f"response {status} application/problem+json",
+        )
+        schema = _mapping(media.get("schema"), f"response {status}.schema")
+        models.append((status_code, _reference_name(str(schema["$ref"]))))
+    return tuple(models)
 
 
 def _mapping(value: object, label: str) -> Mapping[str, object]:

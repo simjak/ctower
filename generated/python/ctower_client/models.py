@@ -1,6 +1,6 @@
 """DO NOT EDIT: generated file; regenerate from declared inputs.
 
-Authored contract digest: sha256:5dd74178cb9d1f066b1f89e01c057314020992f882e65773d2b5451084d0bb9d
+Authored contract digest: sha256:799c441c9397cb850d0d2aee75828ffcdabc2fe2c9d759ebf623a80894c9e17b
 """
 
 from __future__ import annotations
@@ -719,6 +719,7 @@ class Problem(_BoundaryModel):
         "i1-7c-required",
         "idempotency-conflict",
         "intake-already-promoted",
+        "intake-promotion-ineligible",
         "intake-source-conflict",
         "migration-alias-conflict",
         "migration-capability-denied",
@@ -735,6 +736,7 @@ class Problem(_BoundaryModel):
         "migration-source-tainted",
         "poison-not-found",
         "project-delivery-unavailable",
+        "request-body-too-large",
         "proof-candidate-author-mismatch",
         "proof-candidate-digest-invalid",
         "proof-candidate-digest-not-current",
@@ -1251,7 +1253,7 @@ class IntakeCommandResult(_BoundaryModel):
     event_ids: Annotated[tuple[UUID, ...], Field(min_length=1, max_length=2)]
     inbound_event_id: UUID
     outcome: IntakeOutcome
-    project_key: Annotated[str, Field(pattern="^[a-z][a-z0-9._-]{2,127}$")]
+    project_key: Annotated[str, Field(pattern="^[a-z][a-z0-9-]{2,63}$")]
     quarantine_reason: Annotated[str, Field(max_length=500)] | None
     source: SourceReference
     thread_id: UUID
@@ -1277,7 +1279,7 @@ class IntakeSubmitRequest(_BoundaryModel):
     initial_custodian_id: UUID | None = None
     intent: IntakeIntent | None = None
     priority: Priority | None = None
-    project_key: Annotated[str, Field(pattern="^[a-z][a-z0-9._-]{2,127}$")]
+    project_key: Annotated[str, Field(pattern="^[a-z][a-z0-9-]{2,63}$")]
     source: SourceReference
     taint: IntakeTaint | None = None
     target_ticket_id: UUID | None = None

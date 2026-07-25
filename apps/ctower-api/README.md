@@ -5,7 +5,10 @@ models and call the public Access, Catalog, Work, Record, Proof, Workflow, Proje
 Interfaces for bootstrap, ticket create/read/comment, protected custody transfer, typed task commands,
 assignment/audit queries, CompanyBundle validate/plan/apply/export, explicit Workflow start,
 server-policy-pinned proof commands, legal transitions, ownership-releasing proof-gated close, and the
-read-only Board projection.
+read-only Board projection. The API also exposes explicit
+`discussion|create_ticket|link_ticket` thread-first intake and one-time discussion promotion. Both intake
+routes authenticate before reading a body, then enforce the same 524,288-byte streaming limit without
+trusting `Content-Length`.
 Durable decisions remain in the owning kernel Modules; the API never connects around those Interfaces.
 Work and Proof implementations are injected into Workflow only as narrow readiness/current-proof
 capabilities at composition. Board reads return only stored accepted-state projection rows; request handlers

@@ -22,7 +22,7 @@ from ctower_kernel.telemetry import NoopTelemetry, Telemetry, TelemetryContext
 
 __all__ = ["Intake"]
 
-_PROJECT_KEY = re.compile(r"^[a-z][a-z0-9._-]{2,127}$")
+_PROJECT_KEY = re.compile(r"^[a-z][a-z0-9-]{2,63}$")
 _PRIORITIES = frozenset({"P0", "P1", "P2"})
 _MAX_CONTENT_LENGTH = 65536
 _MAX_SOURCE_KIND_LENGTH = 64

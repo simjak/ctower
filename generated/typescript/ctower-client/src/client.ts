@@ -1,8 +1,9 @@
 // DO NOT EDIT: generated file; regenerate from declared inputs.
-// Authored contract digest: sha256:5dd74178cb9d1f066b1f89e01c057314020992f882e65773d2b5451084d0bb9d
+// Authored contract digest: sha256:799c441c9397cb850d0d2aee75828ffcdabc2fe2c9d759ebf623a80894c9e17b
 
 import type * as Models from "./models.js";
 import { OPERATIONS, type OperationId } from "./operations.js";
+import { validateOperationProblem, validateOperationResult } from "./validators.js";
 
 export type ClientOptions = Readonly<{
   baseUrl: string;
@@ -621,8 +622,17 @@ export class CtowerClient {
     });
     const payload: unknown = await response.json();
     if (!response.ok) {
-      throw new CtowerProblemError(payload as Models.Problem);
+      const contentType = response.headers.get("content-type")?.split(";", 1)[0];
+      if (contentType !== "application/problem+json") {
+        throw new TypeError("ctower returned a non-problem failure");
+      }
+      const problem = validateOperationProblem(
+        operationId,
+        response.status,
+        payload,
+      ) as Models.Problem;
+      throw new CtowerProblemError(problem);
     }
-    return payload as OperationResults[Id];
+    return validateOperationResult(operationId, payload) as OperationResults[Id];
   }
 }

@@ -8,7 +8,8 @@ python3 -m tools.codegen --root . --write
 
 `python/ctower_client` and `typescript/ctower-client` are strict OpenAPI client/model
 packages. The Python operation registry is the closed replay inventory for the protected CLI;
-it is not an arbitrary dispatcher. Both clients expose the same authored operation set.
+it is not an arbitrary dispatcher. Both clients expose the same authored operation set and
+validate operation-specific success and problem payloads at runtime before returning them.
 
 `python/ctower_contracts` vendors authored JSON schemas into a local-only runtime resource.
 Resolution rejects network references and paths that escape the authored contract tree.

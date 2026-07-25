@@ -16,12 +16,69 @@ from support.postgres import DatabaseFixture
 from support.telemetry import telemetry_headers
 from support.tenant_fixture import TenantFixture
 
-__all__: tuple[str, ...] = ()
+__all__ = ["assert_intake_promotion_serialization", "assert_subject_serialization"]
 
 HTTP_PENDING = 202
 HTTP_CONFLICT = 409
+HTTP_OK = 200
+HTTP_CREATED = 201
 SERIALIZATION_LOCK_KEY = 712_040_120
 BOUND_SECONDS = 8.0
+
+
+def assert_intake_promotion_serialization(
+    client: TestClient,
+    concurrent_client: TestClient,
+    tenant: TenantFixture,
+    database: DatabaseFixture,
+) -> None:
+    """Prove promotion wins one declared serial order over a concurrent append."""
+
+    seeded = _submit_discussion(client, tenant, uuid4())
+    assert seeded.status_code == HTTP_CREATED, seeded.text
+    thread_id = UUID(cast(str, seeded.json()["thread_id"]))
+    inbound_event_id = UUID(cast(str, seeded.json()["inbound_event_id"]))
+    promotion_command, append_command = uuid4(), uuid4()
+    with (
+        _serialization_deadline(database.admin_dsn),
+        _event_barrier(database.admin_dsn, promotion_command) as release_barrier,
+        ThreadPoolExecutor(max_workers=2) as executor,
+    ):
+        promotion_future = executor.submit(
+            _promote_discussion,
+            client,
+            tenant,
+            inbound_event_id,
+            promotion_command,
+        )
+        _wait_for_lock(database.admin_dsn, "advisory", promotion_future)
+        append_future = executor.submit(
+            _append_discussion,
+            concurrent_client,
+            tenant,
+            thread_id,
+            append_command,
+        )
+        _wait_for_subject_head_lock(database.admin_dsn, append_future)
+        release_barrier()
+        promotion = promotion_future.result(timeout=BOUND_SECONDS)
+        append = append_future.result(timeout=BOUND_SECONDS)
+
+    assert promotion.status_code == HTTP_OK
+    assert append.status_code == HTTP_CONFLICT
+    assert append.json()["code"] == "durability_pending"
+    _assert_intake_replay_and_authority(
+        client,
+        concurrent_client,
+        tenant,
+        database,
+        inbound_event_id,
+        thread_id,
+        promotion_command,
+        append_command,
+        promotion,
+        append,
+    )
 
 
 def assert_subject_serialization(
@@ -76,6 +133,127 @@ def assert_subject_serialization(
         second_command,
     )
     return first_command, second_command
+
+
+def _submit_discussion(
+    client: TestClient,
+    tenant: TenantFixture,
+    command_id: UUID,
+) -> Response:
+    return cast(
+        Response,
+        client.post(
+            "/v1/intake",
+            json={
+                "content": "Durability serialization seed",
+                "project_key": "ctower",
+                "source": {"kind": "test", "ref": f"serialization:{command_id}"},
+            },
+            headers=_headers(tenant, command_id),
+        ),
+    )
+
+
+def _promote_discussion(
+    client: TestClient,
+    tenant: TenantFixture,
+    inbound_event_id: UUID,
+    command_id: UUID,
+) -> Response:
+    return cast(
+        Response,
+        client.post(
+            f"/v1/intake/events/{inbound_event_id}/promotion",
+            json={
+                "expected_thread_version": 1,
+                "initial_custodian_id": str(tenant.commander_id),
+                "intent": "create_ticket",
+                "priority": "P1",
+                "title": "Serialized promotion",
+            },
+            headers=_headers(tenant, command_id),
+        ),
+    )
+
+
+def _append_discussion(
+    client: TestClient,
+    tenant: TenantFixture,
+    thread_id: UUID,
+    command_id: UUID,
+) -> Response:
+    return cast(
+        Response,
+        client.post(
+            "/v1/intake",
+            json={
+                "content": "Concurrent append",
+                "expected_thread_version": 1,
+                "project_key": "ctower",
+                "source": {"kind": "test", "ref": f"concurrent:{command_id}"},
+                "thread_id": str(thread_id),
+            },
+            headers=_headers(tenant, command_id),
+        ),
+    )
+
+
+def _assert_intake_replay_and_authority(
+    client: TestClient,
+    concurrent_client: TestClient,
+    tenant: TenantFixture,
+    database: DatabaseFixture,
+    inbound_event_id: UUID,
+    thread_id: UUID,
+    promotion_command: UUID,
+    append_command: UUID,
+    promotion: Response,
+    append: Response,
+) -> None:
+    promotion_replay = _promote_discussion(
+        client,
+        tenant,
+        inbound_event_id,
+        promotion_command,
+    )
+    append_replay = _append_discussion(
+        concurrent_client,
+        tenant,
+        thread_id,
+        append_command,
+    )
+    assert promotion_replay.content == promotion.content
+    assert append_replay.content == append.content
+    with psycopg.connect(database.admin_dsn) as connection:
+        row = connection.execute(
+            """
+            SELECT thread.version,
+              (SELECT count(*) FROM inbound_ticket_links
+               WHERE inbound_event_id = %s),
+              (SELECT count(*) FROM ticket_project_bindings AS project
+               JOIN inbound_ticket_links AS link ON link.ticket_id = project.ticket_id
+               WHERE link.inbound_event_id = %s),
+              (SELECT count(*) FROM events WHERE client_command_id = %s)
+            FROM inbound_threads AS thread
+            WHERE thread.tenant_id = %s AND thread.thread_id = %s
+            """,
+            (
+                inbound_event_id,
+                inbound_event_id,
+                promotion_command,
+                tenant.tenant_id,
+                thread_id,
+            ),
+        ).fetchone()
+    assert row == (2, 1, 1, 2)
+
+
+def _headers(tenant: TenantFixture, command_id: UUID) -> dict[str, str]:
+    return {
+        "Authorization": f"Bearer {tenant.commander_credential}",
+        "Idempotency-Key": str(command_id),
+        **telemetry_headers(command_id),
+    }
 
 
 @contextmanager

@@ -42,6 +42,7 @@ _TYPESCRIPT_OUTPUTS = {
     "index.ts": _TYPESCRIPT_ROOT / "src/index.ts",
     "models.ts": _TYPESCRIPT_ROOT / "src/models.ts",
     "operations.ts": _TYPESCRIPT_ROOT / "src/operations.ts",
+    "validators.ts": _TYPESCRIPT_ROOT / "src/validators.ts",
     "package.json": _TYPESCRIPT_ROOT / "package.json",
     "tsconfig.json": _TYPESCRIPT_ROOT / "tsconfig.json",
 }
@@ -56,6 +57,7 @@ _BASE_INPUTS = (
     Path("tools/codegen/_operation_codegen.py"),
     Path("tools/codegen/_schema_codegen.py"),
     Path("tools/codegen/_typescript_codegen.py"),
+    Path("tools/codegen/_typescript_validation_codegen.py"),
     Path("tools/codegen/generator.py"),
     Path("tools/checks/generated.py"),
 )
@@ -197,7 +199,8 @@ python3 -m tools.codegen --root . --write
 
 `python/ctower_client` and `typescript/ctower-client` are strict OpenAPI client/model
 packages. The Python operation registry is the closed replay inventory for the protected CLI;
-it is not an arbitrary dispatcher. Both clients expose the same authored operation set.
+it is not an arbitrary dispatcher. Both clients expose the same authored operation set and
+validate operation-specific success and problem payloads at runtime before returning them.
 
 `python/ctower_contracts` vendors authored JSON schemas into a local-only runtime resource.
 Resolution rejects network references and paths that escape the authored contract tree.

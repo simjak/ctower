@@ -11,6 +11,7 @@ from fastapi.testclient import TestClient
 from httpx import Response
 from psycopg.types.json import Jsonb
 from support.acceptance import accept_pending_commands
+from support.project_hierarchy import declare_ctower_project
 from support.telemetry import telemetry_headers
 from support.tenant_fixture import TenantFixture
 
@@ -27,6 +28,11 @@ HTTP_UNAUTHORIZED = 401
 HTTP_NOT_FOUND = 404
 HTTP_CONFLICT = 409
 SECOND_VERSION = 2
+
+
+@pytest.fixture(autouse=True)
+def declared_project(tenant: TenantFixture) -> None:
+    declare_ctower_project(tenant)
 
 
 def test_thread_first_intake_is_atomic_replay_safe_and_board_neutral(
@@ -57,7 +63,7 @@ def test_thread_first_intake_is_atomic_replay_safe_and_board_neutral(
         tenant.tenant_id
     )
     assert board.cards == ()
-    assert _authority_counts(tenant) == (1, 1, 1, 0, 0)
+    assert _authority_counts(tenant) == (1, 1, 1, 0, 0, 0)
 
 
 def test_create_link_promotion_cas_quarantine_and_restart_replay(
@@ -395,7 +401,7 @@ def _assert_exact_provenance(tenant: TenantFixture, inbound_event_id: UUID) -> N
     assert row == (1, "promotion_create", alias[0], alias[1])
 
 
-def _authority_counts(tenant: TenantFixture) -> tuple[int, int, int, int, int]:
+def _authority_counts(tenant: TenantFixture) -> tuple[int, int, int, int, int, int]:
     with psycopg.connect(tenant.database.admin_dsn) as connection:
         row = connection.execute(
             """
@@ -404,13 +410,14 @@ def _authority_counts(tenant: TenantFixture) -> tuple[int, int, int, int, int]:
               (SELECT count(*) FROM inbound_events WHERE tenant_id = %s),
               (SELECT count(*) FROM inbound_source_aliases WHERE tenant_id = %s),
               (SELECT count(*) FROM inbound_ticket_links WHERE tenant_id = %s),
-              (SELECT count(*) FROM tickets WHERE tenant_id = %s)
+              (SELECT count(*) FROM tickets WHERE tenant_id = %s),
+              (SELECT count(*) FROM ticket_project_bindings WHERE tenant_id = %s)
             """,
-            (tenant.tenant_id,) * 5,
+            (tenant.tenant_id,) * 6,
         ).fetchone()
     if row is None:
         raise RuntimeError("authority count query returned no row")
-    return cast(tuple[int, int, int, int, int], row)
+    return cast(tuple[int, int, int, int, int, int], row)
 
 
 def _client(tenant: TenantFixture) -> TestClient:
