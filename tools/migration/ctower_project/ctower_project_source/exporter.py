@@ -1,4 +1,4 @@
-"""Reviewed selection verification and deterministic canonical export."""
+"""Reviewed selection verification and canonical deterministic export."""
 
 from __future__ import annotations
 

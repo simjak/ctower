@@ -10,12 +10,13 @@ from pathlib import Path
 from typing import Any, Literal, cast
 
 import pytest
-from ctower_project_source.canonical import (
+
+from tools.migration.ctower_project.ctower_project_source.canonical import (
     canonical_bytes,
     sha256_digest,
     strict_json,
 )
-from ctower_project_source.exporter import (
+from tools.migration.ctower_project.ctower_project_source.exporter import (
     EXPORT_A,
     EXPORT_B,
     FrozenExport,
@@ -23,10 +24,15 @@ from ctower_project_source.exporter import (
     equality_manifest_bytes,
     freeze_export,
 )
-from ctower_project_source.import_plan import build_import_plan
-from ctower_project_source.refusal import MigrationRefusal, RefusalCode
-from ctower_project_source.signing import ArtifactVerifier
-from ctower_project_source.source import (
+from tools.migration.ctower_project.ctower_project_source.import_plan import (
+    build_import_plan,
+)
+from tools.migration.ctower_project.ctower_project_source.refusal import (
+    MigrationRefusal,
+    RefusalCode,
+)
+from tools.migration.ctower_project.ctower_project_source.signing import ArtifactVerifier
+from tools.migration.ctower_project.ctower_project_source.source import (
     PositionedRecord,
     ReadOnlySourceRoot,
     SourceIdentity,

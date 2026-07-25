@@ -1,4 +1,4 @@
-"""Isolated deterministic ctower-project source tooling."""
+"""Isolated deterministic ctower-project source tool package."""
 
 from .refusal import MigrationRefusal, RefusalCode
 

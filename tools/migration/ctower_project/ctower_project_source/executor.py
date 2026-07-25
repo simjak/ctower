@@ -1,4 +1,4 @@
-"""Explicit generated-client-only import execution and exact replay proof."""
+"""Generated-client-only import execution and exact replay proof."""
 
 from __future__ import annotations
 

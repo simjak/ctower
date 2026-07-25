@@ -1,4 +1,4 @@
-"""Typed, non-sensitive refusals for the isolated migration tool."""
+"""Typed non-sensitive refusals for the isolated migration source tool."""
 
 from __future__ import annotations
 

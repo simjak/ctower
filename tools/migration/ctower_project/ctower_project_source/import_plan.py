@@ -1,4 +1,4 @@
-"""Deterministic planning of only the four frozen generated-client operations."""
+"""Plan only the four deterministic frozen generated-client operations."""
 
 from __future__ import annotations
 

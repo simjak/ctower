@@ -5,10 +5,17 @@ from pathlib import Path
 from typing import Any
 
 import pytest
-from ctower_project_source.canonical import canonical_bytes, sha256_digest
-from ctower_project_source.exporter import freeze_export
-from ctower_project_source.refusal import MigrationRefusal, RefusalCode
-from ctower_project_source.source import ReadOnlySourceRoot
+
+from tools.migration.ctower_project.ctower_project_source.canonical import (
+    canonical_bytes,
+    sha256_digest,
+)
+from tools.migration.ctower_project.ctower_project_source.exporter import freeze_export
+from tools.migration.ctower_project.ctower_project_source.refusal import (
+    MigrationRefusal,
+    RefusalCode,
+)
+from tools.migration.ctower_project.ctower_project_source.source import ReadOnlySourceRoot
 
 from .fixtures import CUTOVER_ID, SyntheticFixture, make_fixture
 
