@@ -1,0 +1,30 @@
+{
+	admin off
+	auto_https disable_redirects
+	servers {
+		protocols h1 h2
+		strict_sni_host on
+	}
+}
+
+https://ctower.invalid {
+	tls /run/ctower/refs/tls-certificate /run/ctower/refs/tls-private-key {
+		protocols tls1.3
+	}
+	header {
+		-Server
+		Strict-Transport-Security "max-age=31536000"
+		X-Content-Type-Options "nosniff"
+		X-Frame-Options "DENY"
+		Referrer-Policy "no-referrer"
+	}
+	request_body {
+		max_size 2MB
+	}
+	reverse_proxy api:8000 {
+		transport http {
+			keepalive 30s
+			response_header_timeout 30s
+		}
+	}
+}

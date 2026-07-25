@@ -1,0 +1,170 @@
+name: ctower-private-vps-development
+
+x-control-service: &control-service
+  image: example.invalid/ctower/control@sha256:1111111111111111111111111111111111111111111111111111111111111111
+  user: "10001:10001"
+  read_only: true
+  init: true
+  cap_drop: ["ALL"]
+  security_opt: ["no-new-privileges:true"]
+  restart: "no"
+  tmpfs:
+    - /tmp:rw,noexec,nosuid,nodev,mode=0700
+    - /run/ctower:rw,noexec,nosuid,nodev,mode=0700
+
+services:
+  postgres:
+    image: example.invalid/library/postgres@sha256:2222222222222222222222222222222222222222222222222222222222222222
+    read_only: true
+    init: true
+    cap_drop: ["ALL"]
+    security_opt: ["no-new-privileges:true"]
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ctower
+      POSTGRES_INITDB_ARGS: "--auth-host=scram-sha-256 --auth-local=peer"
+      POSTGRES_PASSWORD_FILE: /run/ctower/refs/postgres-admin-password
+      POSTGRES_USER: ctower_role_admin
+    healthcheck:
+      test: ["CMD", "pg_isready", "-U", "ctower_role_admin", "-d", "ctower"]
+      interval: 5s
+      timeout: 3s
+      retries: 30
+    tmpfs:
+      - /run/postgresql:rw,noexec,nosuid,nodev,mode=0750
+      - /tmp:rw,noexec,nosuid,nodev,mode=0700
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+      - type: bind
+        source: /run/ctower/refs/postgres-admin-password
+        target: /run/ctower/refs/postgres-admin-password
+        read_only: true
+    networks: [record]
+
+  role-admin:
+    <<: *control-service
+    profiles: ["admin"]
+    command: ["python", "-m", "ctower_api._deployment_admin", "provision-roles"]
+    depends_on:
+      postgres:
+        condition: service_healthy
+    volumes:
+      - type: bind
+        source: /run/ctower/refs/role-admin-dsn
+        target: /run/ctower/refs/role-admin-dsn
+        read_only: true
+      - type: bind
+        source: /run/ctower/bootstrap
+        target: /run/ctower/bootstrap
+    networks: [record]
+
+  migrator:
+    <<: *control-service
+    profiles: ["admin"]
+    command: ["python", "-m", "ctower_api._deployment_admin", "migrate"]
+    depends_on:
+      postgres:
+        condition: service_healthy
+    volumes:
+      - type: bind
+        source: /run/ctower/refs/migration-dsn
+        target: /run/ctower/refs/migration-dsn
+        read_only: true
+    networks: [record]
+
+  api:
+    <<: *control-service
+    command: ["python", "-m", "ctower_api._deployment_server"]
+    restart: unless-stopped
+    depends_on:
+      postgres:
+        condition: service_healthy
+    volumes:
+      - type: bind
+        source: /run/ctower/refs/service-dsn
+        target: /run/ctower/refs/service-dsn
+        read_only: true
+      - type: bind
+        source: /run/ctower/refs/object-key
+        target: /run/ctower/refs/object-key
+        read_only: true
+      - object-data:/var/lib/ctower/objects
+    networks: [control, record]
+
+  worker:
+    <<: *control-service
+    command: ["ctower-control-worker"]
+    restart: unless-stopped
+    depends_on:
+      postgres:
+        condition: service_healthy
+    volumes:
+      - type: bind
+        source: /run/ctower/refs/service-dsn
+        target: /run/ctower/refs/service-dsn
+        read_only: true
+      - type: bind
+        source: /run/ctower/refs/projection-dsn
+        target: /run/ctower/refs/projection-dsn
+        read_only: true
+      - type: bind
+        source: /run/ctower/refs/object-key
+        target: /run/ctower/refs/object-key
+        read_only: true
+      - object-data:/var/lib/ctower/objects
+    networks: [control, record]
+
+  collector:
+    image: example.invalid/otel/opentelemetry-collector-contrib@sha256:4444444444444444444444444444444444444444444444444444444444444444
+    user: "10001:10001"
+    command: ["--config=/etc/otelcol-contrib/config.yaml"]
+    read_only: true
+    cap_drop: ["ALL"]
+    security_opt: ["no-new-privileges:true"]
+    restart: unless-stopped
+    tmpfs:
+      - /tmp:rw,noexec,nosuid,nodev,mode=0700
+    volumes:
+      - ./otel-collector.yaml:/etc/otelcol-contrib/config.yaml:ro
+      - type: bind
+        source: /run/ctower/refs/telemetry-exporter
+        target: /run/ctower/refs/telemetry-exporter
+        read_only: true
+    networks: [control]
+
+  edge:
+    image: example.invalid/library/caddy@sha256:3333333333333333333333333333333333333333333333333333333333333333
+    user: "10001:10001"
+    read_only: true
+    cap_drop: ["ALL"]
+    cap_add: ["NET_BIND_SERVICE"]
+    security_opt: ["no-new-privileges:true"]
+    restart: unless-stopped
+    depends_on: [api]
+    ports:
+      - "10.0.0.10:443:443"
+    tmpfs:
+      - /config:rw,noexec,nosuid,nodev,mode=0700
+      - /data:rw,noexec,nosuid,nodev,mode=0700
+      - /tmp:rw,noexec,nosuid,nodev,mode=0700
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - type: bind
+        source: /run/ctower/refs/tls-certificate
+        target: /run/ctower/refs/tls-certificate
+        read_only: true
+      - type: bind
+        source: /run/ctower/refs/tls-private-key
+        target: /run/ctower/refs/tls-private-key
+        read_only: true
+    networks: [control]
+
+networks:
+  control:
+    internal: true
+  record:
+    internal: true
+
+volumes:
+  object-data:
+  postgres-data:

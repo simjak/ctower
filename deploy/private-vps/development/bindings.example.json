@@ -1,0 +1,138 @@
+{
+  "schema": "ctower.private-vps-deployment/v1",
+  "deployment_id": "ctower.private-vps.development-example",
+  "source": {
+    "sha": "bf2ffb851ab31c0fb1e32792ca1230e38b66ba1e",
+    "tree": "029ff306a7c5495223d6c3e5fff78a3977e778cc"
+  },
+  "assurance": "development",
+  "durability_policy": "pending_only",
+  "failure_domain_count": 1,
+  "cp3d_qualified": false,
+  "data_classification": "disposable_synthetic_non_sensitive",
+  "authoritative_ctower_project_writer": false,
+  "accepted_write_rpo0_claim": false,
+  "bind_address": "10.0.0.10",
+  "images": {
+    "control": "example.invalid/ctower/control@sha256:1111111111111111111111111111111111111111111111111111111111111111",
+    "postgres": "example.invalid/library/postgres@sha256:2222222222222222222222222222222222222222222222222222222222222222",
+    "postgres_major": 17,
+    "edge": "example.invalid/library/caddy@sha256:3333333333333333333333333333333333333333333333333333333333333333",
+    "collector": "example.invalid/otel/opentelemetry-collector-contrib@sha256:4444444444444444444444444444444444444444444444444444444444444444"
+  },
+  "configuration": {
+    "compose": {
+      "path": "compose.yaml",
+      "sha256": "sha256:a350c4dad4875bce15c79af5a8ffbe46d532a652534473b873a72517fddd0326"
+    },
+    "caddyfile": {
+      "path": "Caddyfile",
+      "sha256": "sha256:f563133e6cb9f600e89da6c1f1cecf3c806049dafcbaaf5e2c9f2edd4045f4ad"
+    },
+    "otel_collector": {
+      "path": "otel-collector.yaml",
+      "sha256": "sha256:a735d2a553736df537851255896abc515e73e645aa66f2853cead01f3a76df9c"
+    }
+  },
+  "tls": {
+    "certificate": {
+      "reference": "file-ref://private-vps/tls-certificate",
+      "path": "/run/ctower/refs/tls-certificate",
+      "owner": "root",
+      "group": "ctower",
+      "mode": "0440",
+      "sha256": "sha256:5111111111111111111111111111111111111111111111111111111111111111"
+    },
+    "private_key": {
+      "reference": "credential-file-ref://private-vps/tls-private-key",
+      "path": "/run/ctower/refs/tls-private-key",
+      "owner": "root",
+      "group": "ctower",
+      "mode": "0440",
+      "sha256": "sha256:6111111111111111111111111111111111111111111111111111111111111111"
+    }
+  },
+  "database": {
+    "postgres_admin_password": {
+      "reference": "credential-file-ref://private-vps/postgres-admin-password",
+      "path": "/run/ctower/refs/postgres-admin-password",
+      "owner": "root",
+      "group": "ctower",
+      "mode": "0440",
+      "sha256": "sha256:7111111111111111111111111111111111111111111111111111111111111111"
+    },
+    "service_dsn": {
+      "reference": "credential-file-ref://private-vps/service-dsn",
+      "path": "/run/ctower/refs/service-dsn",
+      "owner": "root",
+      "group": "ctower",
+      "mode": "0440",
+      "sha256": "sha256:8111111111111111111111111111111111111111111111111111111111111111"
+    },
+    "projection_dsn": {
+      "reference": "credential-file-ref://private-vps/projection-dsn",
+      "path": "/run/ctower/refs/projection-dsn",
+      "owner": "root",
+      "group": "ctower",
+      "mode": "0440",
+      "sha256": "sha256:9111111111111111111111111111111111111111111111111111111111111111"
+    },
+    "migration_dsn": {
+      "reference": "credential-file-ref://private-vps/migration-dsn",
+      "path": "/run/ctower/refs/migration-dsn",
+      "owner": "root",
+      "group": "ctower",
+      "mode": "0440",
+      "sha256": "sha256:a111111111111111111111111111111111111111111111111111111111111111"
+    },
+    "role_admin_dsn": {
+      "reference": "credential-file-ref://private-vps/role-admin-dsn",
+      "path": "/run/ctower/refs/role-admin-dsn",
+      "owner": "root",
+      "group": "ctower",
+      "mode": "0440",
+      "sha256": "sha256:b111111111111111111111111111111111111111111111111111111111111111"
+    }
+  },
+  "bootstrap": {
+    "output": {
+      "reference": "file-ref://private-vps/bootstrap-output",
+      "path": "/run/ctower/bootstrap/first-tenant.json",
+      "owner": "root",
+      "group": "ctower",
+      "mode": "0400"
+    }
+  },
+  "objects": {
+    "adapter": "local_encrypted_filesystem",
+    "root": {
+      "reference": "object-root-ref://private-vps/development",
+      "path": "/var/lib/ctower/objects"
+    },
+    "key": {
+      "reference": "credential-file-ref://private-vps/object-key",
+      "path": "/run/ctower/refs/object-key",
+      "owner": "root",
+      "group": "ctower",
+      "mode": "0440",
+      "sha256": "sha256:c111111111111111111111111111111111111111111111111111111111111111"
+    }
+  },
+  "telemetry": {
+    "exporter": {
+      "reference": "telemetry-ref://private-vps/exporter",
+      "path": "/run/ctower/refs/telemetry-exporter",
+      "owner": "root",
+      "group": "ctower",
+      "mode": "0440",
+      "sha256": "sha256:d111111111111111111111111111111111111111111111111111111111111111"
+    },
+    "alert_owner_ref": "alert-owner-ref://private-vps/development"
+  },
+  "workload_identities": {
+    "api": "identity-ref://private-vps/api",
+    "worker": "identity-ref://private-vps/worker",
+    "migrator": "identity-ref://private-vps/migrator",
+    "role_admin": "identity-ref://private-vps/role-admin"
+  }
+}

@@ -1,0 +1,198 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://ctower.dev/contracts/operations/private-vps-deployment.schema.json",
+  "title": "Reference-only private-VPS development deployment",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema",
+    "deployment_id",
+    "source",
+    "assurance",
+    "durability_policy",
+    "failure_domain_count",
+    "cp3d_qualified",
+    "data_classification",
+    "authoritative_ctower_project_writer",
+    "accepted_write_rpo0_claim",
+    "bind_address",
+    "images",
+    "configuration",
+    "tls",
+    "database",
+    "bootstrap",
+    "objects",
+    "telemetry",
+    "workload_identities"
+  ],
+  "properties": {
+    "schema": {"const": "ctower.private-vps-deployment/v1"},
+    "deployment_id": {"$ref": "#/$defs/identifier"},
+    "source": {"$ref": "#/$defs/source"},
+    "assurance": {"const": "development"},
+    "durability_policy": {"const": "pending_only"},
+    "failure_domain_count": {"const": 1},
+    "cp3d_qualified": {"const": false},
+    "data_classification": {"const": "disposable_synthetic_non_sensitive"},
+    "authoritative_ctower_project_writer": {"const": false},
+    "accepted_write_rpo0_claim": {"const": false},
+    "bind_address": {"type": "string", "minLength": 7, "maxLength": 45},
+    "images": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["control", "postgres", "postgres_major", "edge", "collector"],
+      "properties": {
+        "control": {"$ref": "#/$defs/image"},
+        "postgres": {"$ref": "#/$defs/image"},
+        "postgres_major": {"const": 17},
+        "edge": {"$ref": "#/$defs/image"},
+        "collector": {"$ref": "#/$defs/image"}
+      }
+    },
+    "configuration": {"$ref": "#/$defs/configuration"},
+    "tls": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["certificate", "private_key"],
+      "properties": {
+        "certificate": {"$ref": "#/$defs/rootOwnedFile"},
+        "private_key": {"$ref": "#/$defs/rootOwnedFile"}
+      }
+    },
+    "database": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "postgres_admin_password",
+        "service_dsn",
+        "projection_dsn",
+        "migration_dsn",
+        "role_admin_dsn"
+      ],
+      "properties": {
+        "postgres_admin_password": {"$ref": "#/$defs/rootOwnedFile"},
+        "service_dsn": {"$ref": "#/$defs/rootOwnedFile"},
+        "projection_dsn": {"$ref": "#/$defs/rootOwnedFile"},
+        "migration_dsn": {"$ref": "#/$defs/rootOwnedFile"},
+        "role_admin_dsn": {"$ref": "#/$defs/rootOwnedFile"}
+      }
+    },
+    "bootstrap": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["output"],
+      "properties": {
+        "output": {"$ref": "#/$defs/outputFile"}
+      }
+    },
+    "objects": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["adapter", "root", "key"],
+      "properties": {
+        "adapter": {"const": "local_encrypted_filesystem"},
+        "root": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["reference", "path"],
+          "properties": {
+            "reference": {"$ref": "#/$defs/reference"},
+            "path": {"$ref": "#/$defs/absolutePath"}
+          }
+        },
+        "key": {"$ref": "#/$defs/rootOwnedFile"}
+      }
+    },
+    "telemetry": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["exporter", "alert_owner_ref"],
+      "properties": {
+        "exporter": {"$ref": "#/$defs/rootOwnedFile"},
+        "alert_owner_ref": {"$ref": "#/$defs/reference"}
+      }
+    },
+    "workload_identities": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["api", "worker", "migrator", "role_admin"],
+      "properties": {
+        "api": {"$ref": "#/$defs/reference"},
+        "worker": {"$ref": "#/$defs/reference"},
+        "migrator": {"$ref": "#/$defs/reference"},
+        "role_admin": {"$ref": "#/$defs/reference"}
+      }
+    }
+  },
+  "$defs": {
+    "digest": {"type": "string", "pattern": "^sha256:[0-9a-f]{64}$"},
+    "gitObject": {"type": "string", "pattern": "^[0-9a-f]{40}$"},
+    "identifier": {"type": "string", "pattern": "^[a-z][a-z0-9._:-]{2,127}$"},
+    "image": {
+      "type": "string",
+      "pattern": "^[a-z0-9][A-Za-z0-9._/:/-]*@sha256:[0-9a-f]{64}$"
+    },
+    "reference": {
+      "type": "string",
+      "pattern": "^(alert-owner|credential-file|file|identity|object-root|schedule|telemetry)-ref://[A-Za-z0-9._~:/-]+$"
+    },
+    "relativePath": {
+      "type": "string",
+      "pattern": "^[A-Za-z0-9._-]+(/[A-Za-z0-9._-]+)*$"
+    },
+    "absolutePath": {"type": "string", "pattern": "^/[^\\n]{1,299}$"},
+    "source": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["sha", "tree"],
+      "properties": {
+        "sha": {"$ref": "#/$defs/gitObject"},
+        "tree": {"$ref": "#/$defs/gitObject"}
+      }
+    },
+    "configArtifact": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["path", "sha256"],
+      "properties": {
+        "path": {"$ref": "#/$defs/relativePath"},
+        "sha256": {"$ref": "#/$defs/digest"}
+      }
+    },
+    "configuration": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["compose", "caddyfile", "otel_collector"],
+      "properties": {
+        "compose": {"$ref": "#/$defs/configArtifact"},
+        "caddyfile": {"$ref": "#/$defs/configArtifact"},
+        "otel_collector": {"$ref": "#/$defs/configArtifact"}
+      }
+    },
+    "rootOwnedFile": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["reference", "path", "owner", "group", "mode", "sha256"],
+      "properties": {
+        "reference": {"$ref": "#/$defs/reference"},
+        "path": {"$ref": "#/$defs/absolutePath"},
+        "owner": {"const": "root"},
+        "group": {"const": "ctower"},
+        "mode": {"enum": ["0400", "0440"]},
+        "sha256": {"$ref": "#/$defs/digest"}
+      }
+    },
+    "outputFile": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["reference", "path", "owner", "group", "mode"],
+      "properties": {
+        "reference": {"$ref": "#/$defs/reference"},
+        "path": {"$ref": "#/$defs/absolutePath"},
+        "owner": {"const": "root"},
+        "group": {"const": "ctower"},
+        "mode": {"const": "0400"}
+      }
+    }
+  }
+}

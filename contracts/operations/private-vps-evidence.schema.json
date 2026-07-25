@@ -1,0 +1,170 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://ctower.dev/contracts/operations/private-vps-evidence.schema.json",
+  "title": "Bound private-VPS recurring evidence root",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema",
+    "evidence_id",
+    "claim",
+    "assurance",
+    "durability_policy",
+    "object_adapter",
+    "key_adapter",
+    "producer_ref",
+    "verifier_ref",
+    "deployment_manifest",
+    "cp3d_manifest",
+    "bound_inputs",
+    "artifacts",
+    "occurrences"
+  ],
+  "properties": {
+    "schema": {"const": "ctower.private-vps-evidence/v1"},
+    "evidence_id": {"$ref": "#/$defs/identifier"},
+    "claim": {"enum": ["development_rehearsal", "i1_exit"]},
+    "assurance": {"enum": ["development", "cp3d"]},
+    "durability_policy": {"enum": ["pending_only", "cutover_rpo0"]},
+    "object_adapter": {"enum": ["local_encrypted_filesystem", "external_s3"]},
+    "key_adapter": {"enum": ["local_file", "external_kms"]},
+    "producer_ref": {"$ref": "#/$defs/reference"},
+    "verifier_ref": {"$ref": "#/$defs/reference"},
+    "deployment_manifest": {"$ref": "#/$defs/artifact"},
+    "cp3d_manifest": {
+      "oneOf": [
+        {"$ref": "#/$defs/artifact"},
+        {"type": "null"}
+      ]
+    },
+    "bound_inputs": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["source", "control_image", "configuration"],
+      "properties": {
+        "source": {"$ref": "#/$defs/source"},
+        "control_image": {"$ref": "#/$defs/image"},
+        "configuration": {"$ref": "#/$defs/configuration"}
+      }
+    },
+    "artifacts": {
+      "type": "array",
+      "minItems": 20,
+      "maxItems": 200,
+      "items": {"$ref": "#/$defs/artifact"}
+    },
+    "occurrences": {
+      "type": "array",
+      "minItems": 5,
+      "maxItems": 60,
+      "items": {"$ref": "#/$defs/occurrence"}
+    }
+  },
+  "$defs": {
+    "digest": {"type": "string", "pattern": "^sha256:[0-9a-f]{64}$"},
+    "gitObject": {"type": "string", "pattern": "^[0-9a-f]{40}$"},
+    "identifier": {"type": "string", "pattern": "^[a-z][a-z0-9._:-]{2,127}$"},
+    "image": {
+      "type": "string",
+      "pattern": "^[a-z0-9][A-Za-z0-9._/:/-]*@sha256:[0-9a-f]{64}$"
+    },
+    "reference": {
+      "type": "string",
+      "pattern": "^(alert-owner|credential-file|file|identity|object-root|schedule|telemetry)-ref://[A-Za-z0-9._~:/-]+$"
+    },
+    "relativePath": {
+      "type": "string",
+      "pattern": "^[A-Za-z0-9._-]+(/[A-Za-z0-9._-]+)*$"
+    },
+    "source": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["sha", "tree"],
+      "properties": {
+        "sha": {"$ref": "#/$defs/gitObject"},
+        "tree": {"$ref": "#/$defs/gitObject"}
+      }
+    },
+    "configArtifact": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["path", "sha256"],
+      "properties": {
+        "path": {"$ref": "#/$defs/relativePath"},
+        "sha256": {"$ref": "#/$defs/digest"}
+      }
+    },
+    "configuration": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["compose", "caddyfile", "otel_collector"],
+      "properties": {
+        "compose": {"$ref": "#/$defs/configArtifact"},
+        "caddyfile": {"$ref": "#/$defs/configArtifact"},
+        "otel_collector": {"$ref": "#/$defs/configArtifact"}
+      }
+    },
+    "artifact": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["artifact_id", "kind", "path", "sha256"],
+      "properties": {
+        "artifact_id": {"$ref": "#/$defs/identifier"},
+        "kind": {
+          "enum": [
+            "deployment_preflight",
+            "tls_access",
+            "database_bootstrap",
+            "health_telemetry",
+            "upgrade_rollback",
+            "worker_restart",
+            "host_reboot",
+            "restore_report",
+            "clean_install",
+            "legacy_baseline",
+            "synthetic_occurrence",
+            "scheduler_receipt"
+          ]
+        },
+        "path": {"$ref": "#/$defs/relativePath"},
+        "sha256": {"$ref": "#/$defs/digest"}
+      }
+    },
+    "occurrence": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "occurrence_id",
+        "schedule_ref",
+        "scheduled_for",
+        "working_day",
+        "trigger",
+        "origin",
+        "result_artifact_id",
+        "scheduler_receipt_artifact_id",
+        "manual_command_ref"
+      ],
+      "properties": {
+        "occurrence_id": {"$ref": "#/$defs/identifier"},
+        "schedule_ref": {"$ref": "#/$defs/reference"},
+        "scheduled_for": {"type": "string", "format": "date-time"},
+        "working_day": {"type": "string", "format": "date"},
+        "trigger": {"enum": ["scheduled", "manual"]},
+        "origin": {"enum": ["routine_scheduler", "manual_cli"]},
+        "result_artifact_id": {"$ref": "#/$defs/identifier"},
+        "scheduler_receipt_artifact_id": {
+          "oneOf": [
+            {"$ref": "#/$defs/identifier"},
+            {"type": "null"}
+          ]
+        },
+        "manual_command_ref": {
+          "oneOf": [
+            {"$ref": "#/$defs/reference"},
+            {"type": "null"}
+          ]
+        }
+      }
+    }
+  }
+}
