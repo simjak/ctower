@@ -1,0 +1,54 @@
+"""Typed, non-sensitive refusals for the isolated migration tool."""
+
+from __future__ import annotations
+
+from enum import StrEnum
+
+__all__ = ("MigrationRefusal", "RefusalCode")
+
+
+class RefusalCode(StrEnum):
+    PATH_OUTSIDE_ALLOWLIST = "PATH_OUTSIDE_ALLOWLIST"
+    SOURCE_SYMLINK = "SOURCE_SYMLINK"
+    SOURCE_NOT_REGULAR = "SOURCE_NOT_REGULAR"
+    SOURCE_UNREADABLE = "SOURCE_UNREADABLE"
+    SOURCE_TOO_LARGE = "SOURCE_TOO_LARGE"
+    MALFORMED_JSON = "MALFORMED_JSON"
+    DUPLICATE_JSON_KEY = "DUPLICATE_JSON_KEY"
+    TRUNCATED_JSONL = "TRUNCATED_JSONL"
+    NONCONTIGUOUS_POSITION = "NONCONTIGUOUS_POSITION"
+    SOURCE_DRIFT = "SOURCE_DRIFT"
+    SOURCE_SELECTION_DRIFT = "SOURCE_SELECTION_DRIFT"
+    OUTSIDE_REVIEWED_CLOSURE = "OUTSIDE_REVIEWED_CLOSURE"
+    UNREVIEWED_CANDIDATE = "UNREVIEWED_CANDIDATE"
+    FORBIDDEN_DATA_CLASS = "FORBIDDEN_DATA_CLASS"
+    SIGNATURE_INVALID = "SIGNATURE_INVALID"
+    SIGNATURE_REBOUND = "SIGNATURE_REBOUND"
+    KEY_REFERENCE_UNKNOWN = "KEY_REFERENCE_UNKNOWN"
+    KEY_FILE_INSECURE = "KEY_FILE_INSECURE"
+    CONTRACT_INVALID = "CONTRACT_INVALID"
+    EXPORT_NONDETERMINISM = "EXPORT_NONDETERMINISM"
+    ALIAS_ATTENTION_REQUIRED = "ALIAS_ATTENTION_REQUIRED"
+    ALIAS_IDENTITY_DUPLICATE = "ALIAS_IDENTITY_DUPLICATE"
+    ALIAS_OUTSIDE_EXPORT = "ALIAS_OUTSIDE_EXPORT"
+    IMPORT_SCOPE_MISMATCH = "IMPORT_SCOPE_MISMATCH"
+    IMPORT_REPLAY_DRIFT = "IMPORT_REPLAY_DRIFT"
+    IMPORT_SEQUENCE_GAP = "IMPORT_SEQUENCE_GAP"
+    RECONCILIATION_MISMATCH = "RECONCILIATION_MISMATCH"
+    TARGET_STATE_UNKNOWN = "TARGET_STATE_UNKNOWN"
+    MUTATION_NOT_EXPLICIT = "MUTATION_NOT_EXPLICIT"
+
+
+class MigrationRefusalError(Exception):
+    """A stable refusal code plus bounded context that never contains source bytes."""
+
+    def __init__(self, code: RefusalCode, context: str) -> None:
+        self.code = code
+        self.context = context[:256]
+        super().__init__(f"{code.value}: {self.context}")
+
+    def as_dict(self) -> dict[str, str]:
+        return {"code": self.code.value, "context": self.context}
+
+
+MigrationRefusal = MigrationRefusalError
