@@ -2,7 +2,7 @@
 # Compile with uv 0.11.3 using the command documented in the development guide.
 build==1.5.0
 coverage[toml]==7.15.2
-cryptography==46.0.7
+cryptography==48.0.1
 fastapi==0.139.2
 httpx==0.28.1
 jsonschema==4.26.0
