@@ -86,11 +86,6 @@ paths = ["tools/compatibility/**"]
 allowed_dependencies = []
 
 [[ownership]]
-name = "ctower-project-migration-source-tool"
-paths = ["tools/migration/ctower-project/**"]
-allowed_dependencies = []
-
-[[ownership]]
 name = "compatibility-tests"
 paths = ["tests/compatibility/**"]
 allowed_dependencies = ["compatibility-tools"]
@@ -132,7 +127,11 @@ allowed_dependencies = ["kernel-record", "kernel-telemetry"]
 
 [[ownership]]
 name = "kernel-migration"
-paths = ["packages/ctower-kernel/src/ctower_kernel/migration/**"]
+paths = [
+  "packages/ctower-kernel/src/ctower_kernel/migration/**",
+  "tools/migration/__init__.py",
+  "tools/migration/ctower_project/**",
+]
 allowed_dependencies = ["kernel-record", "kernel-telemetry"]
 
 [[ownership]]

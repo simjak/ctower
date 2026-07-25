@@ -1,4 +1,4 @@
-"""Strict JSON, RFC 8785 canonicalization, digests, and contract validation."""
+"""Strict JSON, RFC 8785 canonicalization, digest, and contract validation."""
 
 from __future__ import annotations
 

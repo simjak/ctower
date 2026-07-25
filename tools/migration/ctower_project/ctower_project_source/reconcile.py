@@ -1,4 +1,4 @@
-"""Read-only generated-target reconciliation against frozen equations."""
+"""Reconcile read-only generated-target results against frozen equations."""
 
 from __future__ import annotations
 

@@ -12,7 +12,8 @@ Run the focused proof with the repository verification interpreter:
 /srv/projects/ctower/.venv/bin/python -m pytest tests/modules/migration/source_tool -q
 ```
 
-`main.py export` is the only command that reads source files. Paths are relative
+`python -m tools.migration.ctower_project.main export` is the only command that
+reads source files. Paths are relative
 to an explicit allowlisted root, every component is checked without following
 symlinks, and only regular files are accepted. `main.py plan` is read-only and
 emits canonical generated DTO batches. Mutation is available only through the

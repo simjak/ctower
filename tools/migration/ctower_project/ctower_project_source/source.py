@@ -1,4 +1,4 @@
-"""Read-only allowlisted source adapters and reviewed-closure enforcement."""
+"""Read-only allowlisted adapters with reviewed-closure enforcement."""
 
 from __future__ import annotations
 

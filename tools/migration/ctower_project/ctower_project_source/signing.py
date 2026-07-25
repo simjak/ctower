@@ -1,4 +1,4 @@
-"""Reference-only Ed25519 signing and detached-signature verification."""
+"""Reference-only Ed25519 signing with detached-signature verification."""
 
 from __future__ import annotations
 

@@ -8,8 +8,16 @@ from uuid import UUID, uuid5
 
 from cryptography.hazmat.primitives import serialization
 from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PrivateKey
-from ctower_project_source.canonical import canonical_bytes, canonical_digest, sha256_digest
-from ctower_project_source.signing import ArtifactSigner, ArtifactVerifier
+
+from tools.migration.ctower_project.ctower_project_source.canonical import (
+    canonical_bytes,
+    canonical_digest,
+    sha256_digest,
+)
+from tools.migration.ctower_project.ctower_project_source.signing import (
+    ArtifactSigner,
+    ArtifactVerifier,
+)
 
 __all__: tuple[str, ...] = ()
 
