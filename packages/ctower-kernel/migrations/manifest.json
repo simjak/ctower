@@ -262,6 +262,15 @@
       "forward_test": "pytest:tests/acceptance/increment-1/test_cutover.py::test_i17a_storage_is_append_only_and_projection_only",
       "rollback_or_forward_compensation": "Preserve append-only cutover and checkpoint-definition facts and rebuild disposable Project Delivery rows, or append reviewed forward compensation; never delete an authority fact or manufacture a completed epoch.",
       "backup_checkpoint": "Before a future I1.7B/C authority mutation, capture and verify cutover, definition, criterion, event, and projection counts plus a database backup; I1.7A records no live epoch."
+    },
+    {
+      "path": "0028_i17b_importer_isolation.sql",
+      "sha256": "sha256:0422eab6f90141fe444f07cd93ecf2b190be28733c45f7347c9750ecdd8e39cf",
+      "minimum_service_version": "0.0.0",
+      "maximum_service_version": "0.0.0",
+      "forward_test": "pytest:tests/modules/migration/test_postgres.py::test_importer_is_run_scoped_replay_safe_and_database_guarded",
+      "rollback_or_forward_compensation": "Preserve every immutable import run, credential lifecycle, batch/result, alias, source-link, relation-validity, correction, reconciliation, fence, command, event, and outbox fact; append reviewed forward compensation and never reactivate a finalized importer credential.",
+      "backup_checkpoint": "Before a nonempty installation applies this dormant importer storage, capture and verify principal, credential, ticket, relation, event, command, outbox, cutover, and migration-fact counts plus a database backup; no live cutover is authorized."
     }
   ]
 }

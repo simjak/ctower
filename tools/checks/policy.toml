@@ -126,6 +126,11 @@ paths = ["packages/ctower-kernel/src/ctower_kernel/access/**"]
 allowed_dependencies = ["kernel-record", "kernel-telemetry"]
 
 [[ownership]]
+name = "kernel-migration"
+paths = ["packages/ctower-kernel/src/ctower_kernel/migration/**"]
+allowed_dependencies = ["kernel-record", "kernel-telemetry"]
+
+[[ownership]]
 name = "kernel-work"
 paths = ["packages/ctower-kernel/src/ctower_kernel/work/**"]
 allowed_dependencies = ["kernel-record", "kernel-telemetry"]
@@ -173,7 +178,7 @@ allowed_dependencies = []
 [[ownership]]
 name = "increment-1-acceptance-tests"
 paths = ["tests/acceptance/increment-1/**"]
-allowed_dependencies = ["control-api", "control-cli", "kernel-access", "kernel-attention", "kernel-catalog", "kernel-objects", "kernel-projections", "kernel-proof", "kernel-record", "kernel-runtime", "kernel-telemetry", "kernel-work", "kernel-workflow"]
+allowed_dependencies = ["control-api", "control-cli", "kernel-access", "kernel-attention", "kernel-catalog", "kernel-migration", "kernel-objects", "kernel-projections", "kernel-proof", "kernel-record", "kernel-runtime", "kernel-telemetry", "kernel-work", "kernel-workflow"]
 
 [[ownership]]
 name = "kernel-module-tests"
@@ -182,6 +187,7 @@ paths = [
   "tests/modules/access/**",
   "tests/modules/attention/**",
   "tests/modules/catalog/**",
+  "tests/modules/migration/**",
   "tests/modules/objects/**",
   "tests/modules/projections/**",
   "tests/modules/proof/**",
@@ -190,7 +196,7 @@ paths = [
   "tests/modules/work/**",
   "tests/modules/workflow/**",
 ]
-allowed_dependencies = ["control-api", "kernel-access", "kernel-attention", "kernel-catalog", "kernel-objects", "kernel-projections", "kernel-proof", "kernel-record", "kernel-runtime", "kernel-telemetry", "kernel-work", "kernel-workflow"]
+allowed_dependencies = ["control-api", "kernel-access", "kernel-attention", "kernel-catalog", "kernel-migration", "kernel-objects", "kernel-projections", "kernel-proof", "kernel-record", "kernel-runtime", "kernel-telemetry", "kernel-work", "kernel-workflow"]
 
 [[ownership]]
 name = "web"

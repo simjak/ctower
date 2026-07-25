@@ -42,6 +42,7 @@ packages = [
   "ctower_kernel.access",
   "ctower_kernel.attention",
   "ctower_kernel.catalog",
+  "ctower_kernel.migration",
   "ctower_kernel.objects",
   "ctower_kernel.projections",
   "ctower_kernel.proof",
