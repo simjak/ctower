@@ -51,6 +51,73 @@ def tenant_key(connection: psycopg.Connection[dict[str, object]], tenant_id: UUI
     return str(row["slug"]) if row is not None else None
 
 
+def load_component_bytes(
+    connection: psycopg.Connection[dict[str, object]],
+    tenant_id: UUID,
+    kind: ComponentKind,
+    key: str,
+    revision: int,
+    store: ObjectStore,
+    *,
+    content_digest: str | None = None,
+) -> bytes | None:
+    """Read one exact published historical component through its stored object receipt."""
+
+    row = connection.execute(
+        """
+        SELECT revision.content_digest, receipt.object_key, receipt.object_version,
+            receipt.ciphertext_sha256, receipt.key_reference, receipt.key_version,
+            receipt.wrapped_key_sha256, receipt.uploaded_at, receipt.verified_at,
+            (
+                SELECT lifecycle.action
+                FROM catalog_component_lifecycle_facts AS lifecycle
+                WHERE lifecycle.tenant_id = revision.tenant_id
+                  AND lifecycle.component_revision_id = revision.component_revision_id
+                ORDER BY lifecycle.recorded_at DESC, lifecycle.lifecycle_fact_id DESC
+                LIMIT 1
+            ) AS lifecycle
+        FROM catalog_component_revisions AS revision
+        JOIN catalog_components AS component
+          ON component.component_id = revision.component_id
+         AND component.tenant_id = revision.tenant_id
+        JOIN catalog_payload_receipts AS receipt
+          ON receipt.component_revision_id = revision.component_revision_id
+         AND receipt.tenant_id = revision.tenant_id
+        WHERE revision.tenant_id = %s
+          AND component.kind = %s
+          AND component.component_key = %s
+          AND revision.revision_number = %s
+          AND (%s::bytea IS NULL OR revision.content_digest = %s)
+        """,
+        (
+            tenant_id,
+            kind.value,
+            key,
+            revision,
+            (
+                bytes.fromhex(content_digest.removeprefix("sha256:"))
+                if content_digest is not None
+                else None
+            ),
+            (
+                bytes.fromhex(content_digest.removeprefix("sha256:"))
+                if content_digest is not None
+                else None
+            ),
+        ),
+    ).fetchone()
+    if row is None or row["lifecycle"] not in {"published", "deprecated"}:
+        return None
+    stored_digest = _digest(row["content_digest"])
+    receipt = _receipt(row, stored_digest)
+    try:
+        content = store.read_verified(tenant_id, receipt)
+        verify_digest(content, stored_digest)
+    except (ObjectIntegrityError, OSError, RuntimeError, ValueError) as error:
+        raise CatalogObjectError("exact Catalog component read failed closed") from error
+    return content
+
+
 def load_active_catalog(
     connection: psycopg.Connection[dict[str, object]],
     tenant_id: UUID,

@@ -61,6 +61,7 @@ def test_migration_manifest_is_ordered_and_checksum_exact() -> None:
         "0023_cp3c_privileges.sql",
         "0024_catalog_authority.sql",
         "0025_ticket_comment_event.sql",
+        "0026_fixed_operation_attempt_receipts.sql",
     ]
     for entry in entries:
         digest = hashlib.sha256((MIGRATIONS / entry["path"]).read_bytes()).hexdigest()

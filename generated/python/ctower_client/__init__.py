@@ -1,6 +1,6 @@
 """DO NOT EDIT: generated file; regenerate from declared inputs.
 
-Authored contract digest: sha256:e679caeb8e3e0cc16ec529ace13d751e4d44fed44fcb2d144a39dda47d84c0ba
+Authored contract digest: sha256:e1263c9e3ab91876558e63c26af7f1a2bb7e6f0ba30d5984a3499e17cd78c3e8
 """
 
 from ctower_client.client import CtowerClient, CtowerProblemError
@@ -76,6 +76,10 @@ from ctower_client.models import (
     ResolveCloseRequest,
     SecretBindingReference,
     SourceReference,
+    SyntheticRunReceipt,
+    SyntheticRunRequest,
+    SyntheticRunResource,
+    SyntheticRunState,
     TelemetryContext,
     TicketCommandResult,
     TicketCommentAddedAuditEvent,
@@ -185,6 +189,10 @@ __all__ = [
     "ResolveCloseRequest",
     "SecretBindingReference",
     "SourceReference",
+    "SyntheticRunReceipt",
+    "SyntheticRunRequest",
+    "SyntheticRunResource",
+    "SyntheticRunState",
     "TelemetryContext",
     "TicketCommandResult",
     "TicketCommentAddedAuditEvent",

@@ -12,7 +12,11 @@ from psycopg.rows import dict_row
 
 from ctower_kernel.catalog._canonical import canonical_bytes
 from ctower_kernel.catalog._postgres_apply import apply_bundle
-from ctower_kernel.catalog._postgres_read import load_active_catalog, tenant_key
+from ctower_kernel.catalog._postgres_read import (
+    load_active_catalog,
+    load_component_bytes,
+    tenant_key,
+)
 from ctower_kernel.catalog.interface import (
     BundleValidation,
     CatalogProblem,
@@ -21,6 +25,7 @@ from ctower_kernel.catalog.interface import (
     CompanyBundleCommandResult,
     CompanyBundleExport,
     CompanyBundlePlan,
+    ComponentKind,
     SchemaCatalog,
 )
 from ctower_kernel.catalog.object_interface import CatalogObjectError
@@ -151,6 +156,29 @@ class PostgresCatalog:
             command_id=value.command_id,
             checks=value.checks,
         )
+
+    def component_bytes(
+        self,
+        tenant_id: UUID,
+        kind: ComponentKind,
+        key: str,
+        revision: int,
+        *,
+        content_digest: str | None = None,
+    ) -> bytes | None:
+        """Resolve exact immutable component bytes without consulting the active pointer."""
+
+        with psycopg.connect(self._dsn, row_factory=dict_row) as connection:
+            connection.execute("SET ROLE ctower_svc")
+            return load_component_bytes(
+                connection,
+                tenant_id,
+                kind,
+                key,
+                revision,
+                self._store,
+                content_digest=content_digest,
+            )
 
     def _apply_with_serialization_retry(
         self,

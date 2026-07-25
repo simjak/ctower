@@ -1,6 +1,6 @@
 """DO NOT EDIT: generated file; regenerate from declared inputs.
 
-Authored contract digest: sha256:e679caeb8e3e0cc16ec529ace13d751e4d44fed44fcb2d144a39dda47d84c0ba
+Authored contract digest: sha256:e1263c9e3ab91876558e63c26af7f1a2bb7e6f0ba30d5984a3499e17cd78c3e8
 """
 
 from __future__ import annotations
@@ -84,6 +84,10 @@ __all__ = [
     "ResolveCloseRequest",
     "SecretBindingReference",
     "SourceReference",
+    "SyntheticRunReceipt",
+    "SyntheticRunRequest",
+    "SyntheticRunResource",
+    "SyntheticRunState",
     "TelemetryContext",
     "TicketCommandResult",
     "TicketCommentAddedAuditEvent",
@@ -470,6 +474,17 @@ class SourceReference(_BoundaryModel):
     ref: Annotated[str, Field(min_length=1, max_length=256)]
 
 
+class SyntheticRunRequest(_BoundaryModel):
+    workflow_ref: Literal["ctower.trust-spine-four-stage@1"]
+
+
+class SyntheticRunState(StrEnum):
+    PENDING = "pending"
+    RUNNING = "running"
+    SUCCEEDED = "succeeded"
+    FAILED = "failed"
+
+
 class TelemetryContext(_BoundaryModel):
     schema_id: Literal["ctower.telemetry-context/v1"] = Field(
         alias="schema", serialization_alias="schema"
@@ -720,6 +735,28 @@ class ReopenedAuditData(_BoundaryModel):
     episode_number: Annotated[int, Field(ge=2)]
     priority: Priority
     reason: Annotated[str, Field(min_length=1, max_length=500)]
+
+
+class SyntheticRunReceipt(_BoundaryModel):
+    command_id: UUID
+    durability_state: DurabilityState
+    event_ids: Annotated[tuple[UUID, ...], Field(min_length=1)]
+    job_id: UUID
+    run_id: UUID
+    workflow_ref: Literal["ctower.trust-spine-four-stage@1"]
+
+
+class SyntheticRunResource(_BoundaryModel):
+    attempt_count: Annotated[int, Field(ge=0, le=8)]
+    completed_at: datetime | None
+    created_at: datetime
+    detail_code: Annotated[str, Field(pattern="^[a-z][a-z0-9._-]{2,95}$")] | None
+    job_id: UUID
+    lifecycle_facts: Annotated[tuple[Literal["resolved", "closed"], ...], Field(max_length=2)]
+    run_id: UUID
+    state: SyntheticRunState
+    ticket_id: UUID | None
+    workflow_ref: Literal["ctower.trust-spine-four-stage@1"]
 
 
 class TicketCommentAddedAuditEvent(_BoundaryModel):

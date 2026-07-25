@@ -6,14 +6,21 @@ import re
 from dataclasses import dataclass
 from datetime import UTC, date, datetime, time, timedelta
 from enum import StrEnum
-from typing import Protocol
+from typing import TYPE_CHECKING, Protocol
 from uuid import UUID
 from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
+
+if TYPE_CHECKING:
+    from ctower_kernel.record import RecordProblem
 
 __all__ = [
     "CatchUpPolicy",
     "ConcurrencyPolicy",
+    "FixedOperationAttempt",
+    "FixedOperationCompletion",
     "FixedOperationJob",
+    "FixedOperationResult",
+    "FixedOperations",
     "OccurrenceOutcome",
     "OccurrencePlan",
     "Routine",
@@ -22,6 +29,10 @@ __all__ = [
     "ScheduleKind",
     "ScheduleOffsetDecision",
     "SchedulerScan",
+    "SyntheticRun",
+    "SyntheticRunCommand",
+    "SyntheticRunReceipt",
+    "SyntheticRunState",
 ]
 
 _DIGEST = re.compile(r"^sha256:[0-9a-f]{64}$")
@@ -97,6 +108,87 @@ class FixedOperationJob:
     created_at: datetime
 
 
+class SyntheticRunState(StrEnum):
+    PENDING = "pending"
+    RUNNING = "running"
+    SUCCEEDED = "succeeded"
+    FAILED = "failed"
+
+
+@dataclass(frozen=True, slots=True)
+class SyntheticRunCommand:
+    client_command_id: UUID
+    workflow_ref: str
+
+    def request_payload(self) -> dict[str, object]:
+        return {"workflow_ref": self.workflow_ref}
+
+
+@dataclass(frozen=True, slots=True)
+class SyntheticRunReceipt:
+    command_id: UUID
+    event_ids: tuple[UUID, ...]
+    run_id: UUID
+    job_id: UUID
+    workflow_ref: str
+
+    def response_payload(self) -> dict[str, object]:
+        return {
+            "command_id": str(self.command_id),
+            "durability_state": "durability_pending",
+            "event_ids": [str(item) for item in self.event_ids],
+            "job_id": str(self.job_id),
+            "run_id": str(self.run_id),
+            "workflow_ref": self.workflow_ref,
+        }
+
+
+@dataclass(frozen=True, slots=True)
+class FixedOperationAttempt:
+    attempt_id: UUID
+    job: FixedOperationJob
+    attempt_number: int
+    fencing_token: UUID
+    worker_ref: str
+    claimed_at: datetime
+    claim_expires_at: datetime
+
+
+@dataclass(frozen=True, slots=True)
+class FixedOperationCompletion:
+    succeeded: bool
+    ticket_id: UUID | None
+    lifecycle_facts: tuple[str, ...]
+    detail_code: str
+
+
+@dataclass(frozen=True, slots=True)
+class FixedOperationResult:
+    result_id: UUID
+    job_id: UUID
+    attempt_id: UUID
+    fencing_token: UUID
+    state: SyntheticRunState
+    ticket_id: UUID | None
+    lifecycle_facts: tuple[str, ...]
+    detail_code: str
+    recorded_at: datetime
+
+
+@dataclass(frozen=True, slots=True)
+class SyntheticRun:
+    run_id: UUID
+    job_id: UUID
+    workflow_ref: str
+    state: SyntheticRunState
+    attempt_count: int
+    ticket_id: UUID | None
+    lifecycle_facts: tuple[str, ...]
+    detail_code: str | None
+    created_at: datetime
+    completed_at: datetime | None
+
+
 @dataclass(frozen=True, slots=True)
 class SchedulerScan:
     tenant_id: UUID
@@ -114,6 +206,55 @@ class _RoutineStore(Protocol):
     def scan(self, tenant_id: UUID) -> SchedulerScan: ...
 
     def tenant_ids(self) -> tuple[UUID, ...]: ...
+
+
+class _FixedOperationStore(Protocol):
+    def start_synthetic(
+        self,
+        tenant_id: UUID,
+        principal_id: UUID,
+        command: SyntheticRunCommand,
+        revision: RoutineRevision,
+    ) -> SyntheticRunReceipt | RecordProblem: ...
+
+    def claim_synthetic(self, worker_ref: str) -> FixedOperationAttempt | None: ...
+
+    def complete_synthetic(
+        self,
+        attempt: FixedOperationAttempt,
+        completion: FixedOperationCompletion,
+    ) -> FixedOperationResult: ...
+
+    def synthetic_run(self, tenant_id: UUID, run_id: UUID) -> SyntheticRun | None: ...
+
+
+class FixedOperations:
+    """Execute only the fixed synthetic operation through immutable receipts."""
+
+    def __init__(self, store: _FixedOperationStore) -> None:
+        self._store = store
+
+    def start_synthetic(
+        self,
+        tenant_id: UUID,
+        principal_id: UUID,
+        command: SyntheticRunCommand,
+        revision: RoutineRevision,
+    ) -> SyntheticRunReceipt | RecordProblem:
+        return self._store.start_synthetic(tenant_id, principal_id, command, revision)
+
+    def claim_synthetic(self, worker_ref: str) -> FixedOperationAttempt | None:
+        return self._store.claim_synthetic(worker_ref)
+
+    def complete_synthetic(
+        self,
+        attempt: FixedOperationAttempt,
+        completion: FixedOperationCompletion,
+    ) -> FixedOperationResult:
+        return self._store.complete_synthetic(attempt, completion)
+
+    def synthetic_run(self, tenant_id: UUID, run_id: UUID) -> SyntheticRun | None:
+        return self._store.synthetic_run(tenant_id, run_id)
 
 
 class Routine:

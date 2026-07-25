@@ -1,6 +1,6 @@
 """DO NOT EDIT: generated file; regenerate from declared inputs.
 
-Authored contract digest: sha256:e679caeb8e3e0cc16ec529ace13d751e4d44fed44fcb2d144a39dda47d84c0ba
+Authored contract digest: sha256:e1263c9e3ab91876558e63c26af7f1a2bb7e6f0ba30d5984a3499e17cd78c3e8
 """
 
 from __future__ import annotations
@@ -175,6 +175,17 @@ OPERATIONS = MappingProxyType(
             mutation=False,
             spool_policy=SpoolPolicy.FORBIDDEN,
         ),
+        "getSyntheticWorkflowRun": OperationSpec(
+            operation_id="getSyntheticWorkflowRun",
+            client_method="get_synthetic_workflow_run",
+            method="GET",
+            path="/v1/control/synthetic-runs/{run_id}",
+            request_model=None,
+            response_model=_models.SyntheticRunResource,
+            cli_names=('synthetic query',),
+            mutation=False,
+            spool_policy=SpoolPolicy.FORBIDDEN,
+        ),
         "getTicket": OperationSpec(
             operation_id="getTicket",
             client_method="get_ticket",
@@ -274,6 +285,17 @@ OPERATIONS = MappingProxyType(
             mutation=True,
             spool_policy=SpoolPolicy.ALLOWED,
         ),
+        "runSyntheticWorkflow": OperationSpec(
+            operation_id="runSyntheticWorkflow",
+            client_method="run_synthetic_workflow",
+            method="POST",
+            path="/v1/control/synthetic-runs",
+            request_model=_models.SyntheticRunRequest,
+            response_model=_models.SyntheticRunReceipt,
+            cli_names=('synthetic run',),
+            mutation=True,
+            spool_policy=SpoolPolicy.ALLOWED,
+        ),
         "startTicketWorkflow": OperationSpec(
             operation_id="startTicketWorkflow",
             client_method="start_ticket_workflow",
@@ -340,6 +362,7 @@ CLI_OPERATIONS = MappingProxyType(
         "ticket criteria freeze": OPERATIONS["freezeProofCriteria"],
         "board query": OPERATIONS["getBoard"],
         "control health": OPERATIONS["getControlHealth"],
+        "synthetic query": OPERATIONS["getSyntheticWorkflowRun"],
         "ticket query": OPERATIONS["getTicket"],
         "ticket show": OPERATIONS["getTicket"],
         "ticket timeline": OPERATIONS["getTicketTimeline"],
@@ -350,6 +373,7 @@ CLI_OPERATIONS = MappingProxyType(
         "ticket evidence add": OPERATIONS["recordProofEvidence"],
         "ticket gate verdict": OPERATIONS["recordProofVerdict"],
         "ticket resolve": OPERATIONS["resolveCloseWorkflow"],
+        "synthetic run": OPERATIONS["runSyntheticWorkflow"],
         "ticket workflow start": OPERATIONS["startTicketWorkflow"],
         "ticket custody transfer": OPERATIONS["transferTicketCustody"],
         "ticket transition": OPERATIONS["transitionWorkflow"],

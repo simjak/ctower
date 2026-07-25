@@ -174,7 +174,8 @@ def _refusal(
             "Workflow terminal state required",
             current_version=current_version,
         )
-    if not _pins_match(evaluator, stored_ref, run):
+    workflow_digest = _digest(run["workflow_digest"])
+    if not _pins_match(evaluator, actor.tenant_id, stored_ref, run):
         return _problem(
             command,
             "workflow-pin-mismatch",
@@ -182,7 +183,12 @@ def _refusal(
             "Persisted Workflow pins do not match the composed catalog",
             current_version=current_version,
         )
-    if not evaluator.is_terminal(stored_ref, str(run["current_stage"])):
+    if not evaluator.is_terminal(
+        stored_ref,
+        str(run["current_stage"]),
+        tenant_id=actor.tenant_id,
+        workflow_digest=workflow_digest,
+    ):
         return _problem(
             command,
             "workflow-not-terminal",
@@ -201,7 +207,12 @@ def _refusal(
     return None
 
 
-def _pins_match(evaluator: Workflow, workflow_ref: str, run: dict[str, object]) -> bool:
+def _pins_match(
+    evaluator: Workflow,
+    tenant_id: UUID,
+    workflow_ref: str,
+    run: dict[str, object],
+) -> bool:
     def digest(value: object) -> str:
         return f"sha256:{bytes(cast(bytes, value)).hex()}"
 
@@ -213,7 +224,12 @@ def _pins_match(evaluator: Workflow, workflow_ref: str, run: dict[str, object]) 
             (str(run["gate_policy_ref"]), digest(run["gate_policy_digest"])),
             (str(run["evidence_policy_ref"]), digest(run["evidence_policy_digest"])),
         ),
+        tenant_id=tenant_id,
     )
+
+
+def _digest(value: object) -> str:
+    return f"sha256:{bytes(cast(bytes, value)).hex()}"
 
 
 def _insert_lifecycle(

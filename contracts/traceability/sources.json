@@ -979,6 +979,17 @@
       ]
     },
     {
+      "path": "packages/ctower-kernel/migrations/0026_fixed_operation_attempt_receipts.sql",
+      "references": [
+        "SPEC#event-driven-default-and-routine-revisions",
+        "SPEC#persistence-authority",
+        "INV-04",
+        "AC-DUR-06",
+        "AC-OPS-13",
+        "AC-OPS-14"
+      ]
+    },
+    {
       "path": "packages/ctower-kernel/migrations/manifest.json",
       "references": [
         "SPEC#executable-authority-and-requirement-traceability",

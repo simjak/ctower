@@ -9,7 +9,7 @@ from datetime import datetime
 from pathlib import Path
 from typing import Never
 from urllib.parse import SplitResult, urlsplit
-from uuid import UUID
+from uuid import UUID, uuid4
 
 from ctower_client.models import (
     BoardLane,
@@ -57,6 +57,8 @@ _AUTHORED_COMMAND_NAMES = frozenset(
         "company bundle plan",
         "company bundle apply",
         "company bundle export",
+        "synthetic query",
+        "synthetic run",
     }
 )
 
@@ -69,7 +71,10 @@ class _Parser(argparse.ArgumentParser):
 def parse_arguments(argv: Sequence[str] | None = None) -> argparse.Namespace:
     """Parse only explicit authored commands; unknown operations are usage errors."""
 
-    return _parser().parse_args(argv)
+    parsed = _parser().parse_args(argv)
+    if getattr(parsed, "cli_name", None) == "synthetic run" and parsed.command_id is None:
+        parsed.command_id = uuid4()
+    return parsed
 
 
 def authored_command_names() -> frozenset[str]:
@@ -88,6 +93,7 @@ def _parser() -> argparse.ArgumentParser:
     _control_parser(areas.add_parser("control"))
     _ops_parser(areas.add_parser("ops"))
     _company_parser(areas.add_parser("company"))
+    _synthetic_parser(areas.add_parser("synthetic"))
     _spool_parser(areas.add_parser("spool"))
     return parser
 
@@ -368,6 +374,24 @@ def _company_parser(parser: argparse.ArgumentParser) -> None:
     export.set_defaults(cli_name="company bundle export")
 
 
+def _synthetic_parser(parser: argparse.ArgumentParser) -> None:
+    actions = parser.add_subparsers(dest="action", required=True, parser_class=_Parser)
+    run = actions.add_parser("run")
+    run.set_defaults(cli_name="synthetic run")
+    run.add_argument(
+        "--workflow",
+        dest="workflow_ref",
+        required=True,
+        choices=("ctower.trust-spine-four-stage@1",),
+    )
+    run.add_argument("--command-id", type=UUID)
+    run.add_argument("--wait", action="store_true", required=True)
+    run.add_argument("--assert", dest="assertions", required=True, type=_assertions)
+    query = actions.add_parser("query")
+    query.set_defaults(cli_name="synthetic query")
+    query.add_argument("run_id", type=UUID)
+
+
 def _spool_parser(parser: argparse.ArgumentParser) -> None:
     actions = parser.add_subparsers(dest="action", required=True, parser_class=_Parser)
     actions.add_parser("status").set_defaults(local_command="spool status")
@@ -420,6 +444,13 @@ def _nonnegative_int(value: str) -> int:
     parsed = int(value)
     if parsed < 0:
         raise argparse.ArgumentTypeError("value must not be negative")
+    return parsed
+
+
+def _assertions(value: str) -> tuple[str, ...]:
+    parsed = tuple(value.split(","))
+    if parsed != ("resolved", "closed"):
+        raise argparse.ArgumentTypeError("synthetic assertion must be resolved,closed")
     return parsed
 
 

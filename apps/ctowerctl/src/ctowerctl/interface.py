@@ -5,6 +5,7 @@ from __future__ import annotations
 import argparse
 import json
 import sys
+import time
 from collections.abc import Sequence
 from typing import Literal, TextIO, cast
 from uuid import UUID
@@ -20,6 +21,7 @@ from ctowerctl import (
     _company_commands,
     _ops_commands,
     _spool_commands,
+    _synthetic_commands,
     _ticket_commands,
 )
 from ctowerctl._auth import read_authority
@@ -111,6 +113,8 @@ def _execute(
         raise ValueError("usage: command is absent from generated registry")
     credential = read_authority(authority_stream)
     if operation.mutation:
+        if cli_name == "synthetic run":
+            return _execute_synthetic(base_url, credential, namespace, operation)
         return _execute_mutation(base_url, credential, namespace, operation)
     with CtowerClient(base_url, credential=credential) as client:
         return _execute_query(namespace, client), ExitCode.SUCCESS
@@ -160,6 +164,8 @@ def _build_mutation(arguments: object) -> MutationPayload:
         return _company_commands.build_mutation(namespace)
     if area == "ops":
         return _ops_commands.build_mutation(namespace)
+    if area == "synthetic":
+        return _synthetic_commands.build_mutation(namespace)
     raise ValueError("usage: unsupported mutation family")
 
 
@@ -172,7 +178,35 @@ def _execute_query(arguments: object, client: CtowerClient) -> BaseModel:
         return _company_commands.execute_query(namespace, client)
     if area in {"board", "control"}:
         return _ops_commands.execute_query(namespace, client)
+    if area == "synthetic":
+        return _synthetic_commands.execute_query(namespace, client)
     raise ValueError("usage: unsupported query family")
+
+
+def _execute_synthetic(
+    base_url: str,
+    credential: str,
+    arguments: argparse.Namespace,
+    operation: OperationSpec,
+) -> tuple[BaseModel, ExitCode]:
+    outcome, code = _execute_mutation(base_url, credential, arguments, operation)
+    if code is not ExitCode.SUCCESS or outcome.result is None:
+        return outcome, code
+    raw_run_id = outcome.result.get("run_id")
+    if not isinstance(raw_run_id, str):
+        raise TypeError("synthetic receipt omitted run identity")
+    deadline = time.monotonic() + 60
+    with CtowerClient(base_url, credential=credential) as client:
+        while time.monotonic() < deadline:
+            run = client.get_synthetic_workflow_run(UUID(raw_run_id))
+            if run.state.value == "succeeded":
+                if run.lifecycle_facts != cast(tuple[str, ...], arguments.assertions):
+                    return run, ExitCode.PERMANENT
+                return run, ExitCode.SUCCESS
+            if run.state.value == "failed":
+                return run, ExitCode.PERMANENT
+            time.sleep(0.2)
+    return run, ExitCode.TEMPORARY
 
 
 def _write_result(arguments: object, result: BaseModel, stream: TextIO) -> None:

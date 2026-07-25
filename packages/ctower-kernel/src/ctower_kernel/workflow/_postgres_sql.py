@@ -85,7 +85,7 @@ def advance_workflow(
                 now,
             )
         run = _lock_run(connection, actor, mutation.ticket_id)
-        refusal = _transition_refusal(evaluator, mutation, run)
+        refusal = _transition_refusal(evaluator, actor, mutation, run)
         if refusal is not None:
             return _refuse(transaction, actor, mutation, request_digest, refusal, now)
         decision, unmet_facts = _evaluate_transition(
@@ -160,6 +160,8 @@ def _evaluate_transition(
             current_stage=mutation.source_stage,
             satisfied_predicates=predicates,
             run_started=run is not None,
+            tenant_id=actor.tenant_id,
+            workflow_digest=_stored_digest(run, "workflow_digest"),
         ),
         WorkflowCommand(mutation.destination_stage),
     )
@@ -259,6 +261,7 @@ def _lock_run(
 
 def _transition_refusal(
     evaluator: Workflow,
+    actor: WorkflowActor,
     mutation: WorkflowMutation,
     run: dict[str, object] | None,
 ) -> RecordProblem | None:
@@ -288,7 +291,7 @@ def _transition_refusal(
             "Workflow state conflict",
             current_version=current_version,
         )
-    if not _pins_match(evaluator, stored_ref, run):
+    if not _pins_match(evaluator, actor.tenant_id, stored_ref, run):
         return _problem(
             mutation,
             "workflow-pin-mismatch",
@@ -296,7 +299,12 @@ def _transition_refusal(
             "Persisted Workflow pins do not match the composed catalog",
             current_version=current_version,
         )
-    if evaluator.is_terminal(mutation.workflow_ref, mutation.source_stage):
+    if evaluator.is_terminal(
+        mutation.workflow_ref,
+        mutation.source_stage,
+        tenant_id=actor.tenant_id,
+        workflow_digest=_stored_digest(run, "workflow_digest"),
+    ):
         return _problem(
             mutation,
             "workflow-terminal",
@@ -326,7 +334,12 @@ def _refuse(
     return problem
 
 
-def _pins_match(evaluator: Workflow, workflow_ref: str, run: dict[str, object]) -> bool:
+def _pins_match(
+    evaluator: Workflow,
+    tenant_id: UUID,
+    workflow_ref: str,
+    run: dict[str, object],
+) -> bool:
     def digest(value: object) -> str:
         return f"sha256:{bytes(cast(bytes, value)).hex()}"
 
@@ -338,7 +351,14 @@ def _pins_match(evaluator: Workflow, workflow_ref: str, run: dict[str, object]) 
             (str(run["gate_policy_ref"]), digest(run["gate_policy_digest"])),
             (str(run["evidence_policy_ref"]), digest(run["evidence_policy_digest"])),
         ),
+        tenant_id=tenant_id,
     )
+
+
+def _stored_digest(run: dict[str, object] | None, key: str) -> str | None:
+    if run is None:
+        return None
+    return "sha256:" + bytes(cast(bytes, run[key])).hex()
 
 
 def _satisfied_predicates(

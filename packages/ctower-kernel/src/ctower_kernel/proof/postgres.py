@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from collections.abc import Callable
 from datetime import UTC, datetime
+from typing import Protocol
 from uuid import UUID
 
 import psycopg
@@ -29,13 +30,30 @@ from ctower_kernel.proof._object_sql import (
     prepare_erasure,
     record_backfill,
 )
-from ctower_kernel.proof._postgres_sql import ProofPolicyPins, mutate_proof
+from ctower_kernel.proof._postgres_sql import mutate_proof
 from ctower_kernel.proof._snapshot_sql import proof_is_current
 from ctower_kernel.record import RecordProblem
 from ctower_kernel.record.transaction import authority_connection, recover_ambiguous_commit
 from ctower_kernel.telemetry import NoopTelemetry, Telemetry, TelemetryContext
 
 __all__ = ["PostgresProof"]
+
+
+class ProofPolicyPins(Protocol):
+    def proof_policy_pin(
+        self,
+        connection: psycopg.Connection[dict[str, object]],
+        tenant_id: UUID,
+        ticket_id: UUID,
+    ) -> tuple[str, str, str, str, str] | None: ...
+
+
+class ProofPolicyResolver(Protocol):
+    def proof_policy(
+        self,
+        tenant_id: UUID,
+        pin: tuple[str, str, str, str, str],
+    ) -> ProofPolicy | None: ...
 
 
 class PostgresProof:
@@ -47,6 +65,7 @@ class PostgresProof:
         *,
         policies: tuple[ProofPolicy, ...] = (),
         policy_pins: ProofPolicyPins | None = None,
+        policy_resolver: ProofPolicyResolver | None = None,
         object_store: ObjectStore | None = None,
         object_key_reference: str | None = None,
         telemetry: Telemetry | None = None,
@@ -55,6 +74,12 @@ class PostgresProof:
         self._dsn = dsn
         self._policies = policies
         self._policy_pins = policy_pins or _UnavailableProofPolicyPins()
+        self._policy_resolver = policy_resolver
+        self._policy_source = _PolicySource(
+            self._policies,
+            self._policy_pins,
+            self._policy_resolver,
+        )
         self._object_store = object_store
         self._object_key_reference = object_key_reference
         self._telemetry = telemetry or NoopTelemetry()
@@ -79,8 +104,7 @@ class PostgresProof:
             lambda: mutate_proof(
                 self._dsn,
                 evaluator,
-                self._policies,
-                self._policy_pins,
+                self._policy_source,
                 actor,
                 mutation,
                 request_digest=request_digest,
@@ -197,8 +221,7 @@ class PostgresProof:
     ) -> bool:
         """Evaluate current proof inside a caller-owned atomic transaction."""
 
-        pin = self._policy_pins.proof_policy_pin(connection, tenant_id, ticket_id)
-        policy = next((item for item in self._policies if item.pin == pin), None)
+        policy = self._policy_source.resolve(connection, tenant_id, ticket_id)
         return policy is not None and proof_is_current(
             connection, Proof(), policy, tenant_id, ticket_id
         )
@@ -257,3 +280,27 @@ class _UnavailableProofPolicyPins:
     ) -> tuple[str, str, str, str, str] | None:
         del connection, tenant_id, ticket_id
         return None
+
+
+class _PolicySource:
+    def __init__(
+        self,
+        policies: tuple[ProofPolicy, ...],
+        pins: ProofPolicyPins,
+        resolver: ProofPolicyResolver | None,
+    ) -> None:
+        self._policies = policies
+        self._pins = pins
+        self._resolver = resolver
+
+    def resolve(
+        self,
+        connection: psycopg.Connection[dict[str, object]],
+        tenant_id: UUID,
+        ticket_id: UUID,
+    ) -> ProofPolicy | None:
+        pin = self._pins.proof_policy_pin(connection, tenant_id, ticket_id)
+        policy = next((item for item in self._policies if item.pin == pin), None)
+        if policy is not None or pin is None or self._resolver is None:
+            return policy
+        return self._resolver.proof_policy(tenant_id, pin)

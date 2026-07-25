@@ -29,6 +29,7 @@ from ctower_kernel.record._bootstrap_sql import (
     bootstrap_problem,
     bootstrap_transaction,
 )
+from ctower_kernel.record._command_root import command_snapshot as _command_snapshot
 from ctower_kernel.record._comment_sql import add_comment as _add_comment
 from ctower_kernel.record._custody_sql import transfer_custody as _transfer_custody
 from ctower_kernel.record._durability_health_sql import durability_health as _durability_health
@@ -284,6 +285,21 @@ class PostgresRecord:
         )
         self._emit("record.reconcile_durability", telemetry, outcome)
         return outcome
+
+    def command_root(
+        self,
+        tenant_id: UUID,
+        principal_id: UUID,
+        command_id: UUID,
+    ) -> bytes | RecordProblem:
+        """Read the exact canonical root used by durability evidence fixtures."""
+
+        with psycopg.connect(self._dsn, row_factory=dict_row) as connection:
+            connection.execute("SET ROLE ctower_svc")
+            snapshot = _command_snapshot(connection, tenant_id, principal_id, command_id)
+        if isinstance(snapshot, RecordProblem):
+            return snapshot
+        return snapshot.root
 
     def durability_health(self, *, now: datetime) -> DurabilityHealth:
         """Read the fail-closed durability target health snapshot."""

@@ -25,6 +25,7 @@ __all__ = [
     "Workflow",
     "WorkflowActor",
     "WorkflowCommand",
+    "WorkflowComponentResolver",
     "WorkflowContextSnapshot",
     "WorkflowDecision",
     "WorkflowGraph",
@@ -45,6 +46,8 @@ class WorkflowContextSnapshot:
     current_stage: str
     satisfied_predicates: frozenset[str]
     run_started: bool
+    tenant_id: UUID | None = None
+    workflow_digest: str | None = None
 
 
 @dataclass(frozen=True, slots=True)
@@ -212,6 +215,25 @@ class _WorkflowWriter(Protocol):
     ) -> WorkflowReceipt | RecordProblem: ...
 
 
+class WorkflowComponentResolver(Protocol):
+    """Resolve exact historical component pins without a Catalog dependency."""
+
+    def workflow_graph(
+        self,
+        tenant_id: UUID,
+        reference: str,
+        semantic_digest: str,
+    ) -> WorkflowGraph | None: ...
+
+    def policy_matches(
+        self,
+        tenant_id: UUID,
+        policy_kind: str,
+        reference: str,
+        content_digest: str,
+    ) -> bool: ...
+
+
 class Workflow:
     """Evaluate graph legality without domain-stage branches or persistence imports."""
 
@@ -221,6 +243,7 @@ class Workflow:
         *,
         writer: _WorkflowWriter | None = None,
         policy_digests: Mapping[str, str] | None = None,
+        resolver: WorkflowComponentResolver | None = None,
         clock: Callable[[], datetime] | None = None,
     ) -> None:
         self._graphs = {graph.reference: graph for graph in graphs}
@@ -228,6 +251,7 @@ class Workflow:
             raise ValueError("workflow graph references must be unique")
         self._writer = writer
         self._policy_digests = dict(policy_digests or {})
+        self._resolver = resolver
         self._clock = clock or (lambda: datetime.now(UTC))
 
     def advance(
@@ -270,10 +294,19 @@ class Workflow:
             telemetry=telemetry,
         )
 
-    def validate_start(self, command: WorkflowStart) -> WorkflowDecision:
+    def validate_start(
+        self,
+        command: WorkflowStart,
+        *,
+        tenant_id: UUID | None = None,
+    ) -> WorkflowDecision:
         """Validate exact graph and policy references before persistence."""
 
-        graph = self._graphs.get(command.workflow_ref)
+        graph = self._graphs.get(command.workflow_ref) or self._graph(
+            command.workflow_ref,
+            tenant_id=tenant_id,
+            workflow_digest=command.workflow_digest,
+        )
         if graph is None:
             return WorkflowDecision(accepted=False, reason="workflow-version-unknown")
         references = (
@@ -292,8 +325,13 @@ class Workflow:
             and graph.gate_policy_ref == command.gate_policy_ref
         )
         exact_policy_digests = all(
-            self._policy_digests.get(reference) == digest
-            for reference, digest in zip(references, digests[1:], strict=True)
+            self._policy_matches(tenant_id, kind, reference, digest)
+            for kind, reference, digest in zip(
+                ("execution_policy", "gate_policy", "evidence_policy"),
+                references,
+                digests[1:],
+                strict=True,
+            )
         )
         if (
             command.workflow_digest != graph.digest
@@ -338,7 +376,11 @@ class Workflow:
     ) -> WorkflowDecision:
         """Evaluate one requested transition against pinned graph facts."""
 
-        graph = self._graphs.get(snapshot.workflow_ref)
+        graph = self._graph(
+            snapshot.workflow_ref,
+            tenant_id=snapshot.tenant_id,
+            workflow_digest=snapshot.workflow_digest,
+        )
         if graph is None:
             return WorkflowDecision(accepted=False, reason="workflow-version-unknown")
         if not snapshot.run_started:
@@ -371,10 +413,21 @@ class Workflow:
             initial_stage=graph.initial_stage,
         )
 
-    def is_terminal(self, workflow_ref: str, stage_key: str) -> bool:
+    def is_terminal(
+        self,
+        workflow_ref: str,
+        stage_key: str,
+        *,
+        tenant_id: UUID | None = None,
+        workflow_digest: str | None = None,
+    ) -> bool:
         """Return whether a known stage has no declared outgoing edge."""
 
-        graph = self._graphs.get(workflow_ref)
+        graph = self._graph(
+            workflow_ref,
+            tenant_id=tenant_id,
+            workflow_digest=workflow_digest,
+        )
         if graph is None or not any(stage.key == stage_key for stage in graph.stages):
             return False
         return not any(edge.source == stage_key for edge in graph.transitions)
@@ -384,16 +437,56 @@ class Workflow:
         workflow_ref: str,
         workflow_digest: str,
         policy_pins: tuple[tuple[str, str], ...],
+        *,
+        tenant_id: UUID | None = None,
     ) -> bool:
         """Verify that persisted immutable pins still match this composed catalog."""
 
-        graph = self._graphs.get(workflow_ref)
+        graph = self._graph(
+            workflow_ref,
+            tenant_id=tenant_id,
+            workflow_digest=workflow_digest,
+        )
         return (
             graph is not None
             and graph.digest == workflow_digest
             and all(
-                self._policy_digests.get(reference) == digest for reference, digest in policy_pins
+                self._policy_matches(tenant_id, kind, reference, digest)
+                for kind, (reference, digest) in zip(
+                    ("execution_policy", "gate_policy", "evidence_policy"),
+                    policy_pins,
+                    strict=True,
+                )
             )
+        )
+
+    def _graph(
+        self,
+        reference: str,
+        *,
+        tenant_id: UUID | None,
+        workflow_digest: str | None,
+    ) -> WorkflowGraph | None:
+        graph = self._graphs.get(reference)
+        if graph is not None and (workflow_digest is None or graph.digest == workflow_digest):
+            return graph
+        if self._resolver is None or tenant_id is None or workflow_digest is None:
+            return None
+        return self._resolver.workflow_graph(tenant_id, reference, workflow_digest)
+
+    def _policy_matches(
+        self,
+        tenant_id: UUID | None,
+        kind: str,
+        reference: str,
+        digest: str,
+    ) -> bool:
+        if self._policy_digests.get(reference) == digest:
+            return True
+        return (
+            self._resolver is not None
+            and tenant_id is not None
+            and self._resolver.policy_matches(tenant_id, kind, reference, digest)
         )
 
 

@@ -39,22 +39,21 @@ __all__: tuple[str, ...] = ()
 ZERO_HASH = bytes(32)
 
 
-class ProofPolicyPins(Protocol):
-    """Read immutable Workflow-owned pins without importing Workflow into Proof."""
+class ProofPolicySource(Protocol):
+    """Resolve one exact stored policy pin without importing its owner."""
 
-    def proof_policy_pin(
+    def resolve(
         self,
         connection: psycopg.Connection[dict[str, object]],
         tenant_id: UUID,
         ticket_id: UUID,
-    ) -> tuple[str, str, str, str, str] | None: ...
+    ) -> ProofPolicy | None: ...
 
 
 def mutate_proof(
     dsn: str,
     evaluator: Proof,
-    policies: tuple[ProofPolicy, ...],
-    policy_pins: ProofPolicyPins,
+    policy_source: ProofPolicySource,
     actor: ProofActor,
     mutation: ProofMutation,
     *,
@@ -83,8 +82,7 @@ def mutate_proof(
             return pending
         policy = _locked_policy(
             connection,
-            policies,
-            policy_pins,
+            policy_source,
             actor,
             mutation,
         )
@@ -608,33 +606,15 @@ def _decision_problem(
     )
 
 
-def _resolve_policy(
-    connection: psycopg.Connection[dict[str, object]],
-    policies: tuple[ProofPolicy, ...],
-    policy_pins: ProofPolicyPins,
-    tenant_id: UUID,
-    ticket_id: UUID,
-) -> ProofPolicy | None:
-    pin = policy_pins.proof_policy_pin(connection, tenant_id, ticket_id)
-    return next((policy for policy in policies if policy.pin == pin), None)
-
-
 def _locked_policy(
     connection: psycopg.Connection[dict[str, object]],
-    policies: tuple[ProofPolicy, ...],
-    policy_pins: ProofPolicyPins,
+    policy_source: ProofPolicySource,
     actor: ProofActor,
     mutation: ProofMutation,
 ) -> ProofPolicy | RecordProblem:
     if not _lock_ticket(connection, actor, mutation.ticket_id):
         return _problem(mutation, "tenant-scope-denied", 404, "Ticket not found")
-    policy = _resolve_policy(
-        connection,
-        policies,
-        policy_pins,
-        actor.tenant_id,
-        mutation.ticket_id,
-    )
+    policy = policy_source.resolve(connection, actor.tenant_id, mutation.ticket_id)
     return policy or _problem(
         mutation,
         "proof-policy-pin-mismatch",
