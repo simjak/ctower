@@ -3406,6 +3406,195 @@
       "$id": "https://ctower.dev/contracts/domain/migration/ctower-project-cutover-health.schema.json",
       "$schema": "https://json-schema.org/draft/2020-12/schema",
       "additionalProperties": false,
+      "allOf": [
+        {
+          "$comment": "phase and authority_mode are 1:1 coupled (migration 0027). not_started is the pre-cutover default and pairs only with legacy_writable.",
+          "if": {
+            "properties": {
+              "phase": {
+                "const": "prepared"
+              }
+            },
+            "required": [
+              "phase"
+            ]
+          },
+          "then": {
+            "properties": {
+              "authority_mode": {
+                "const": "legacy_writable"
+              }
+            },
+            "required": [
+              "authority_mode"
+            ]
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "phase": {
+                "const": "development_epoch_committed"
+              }
+            },
+            "required": [
+              "phase"
+            ]
+          },
+          "then": {
+            "properties": {
+              "authority_mode": {
+                "const": "development_single_writer"
+              }
+            },
+            "required": [
+              "authority_mode"
+            ]
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "phase": {
+                "const": "disaster_safe_active"
+              }
+            },
+            "required": [
+              "phase"
+            ]
+          },
+          "then": {
+            "properties": {
+              "authority_mode": {
+                "const": "disaster_safe"
+              }
+            },
+            "required": [
+              "authority_mode"
+            ]
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "phase": {
+                "const": "not_started"
+              }
+            },
+            "required": [
+              "phase"
+            ]
+          },
+          "then": {
+            "properties": {
+              "authority_mode": {
+                "const": "legacy_writable"
+              }
+            },
+            "required": [
+              "authority_mode"
+            ]
+          }
+        },
+        {
+          "$comment": "disaster_safe authority requires proven CP3-D, proven external failure-domain recovery, and disaster-safe data class; every non-disaster mode requires the unproven/reconstructible set.",
+          "if": {
+            "properties": {
+              "authority_mode": {
+                "const": "disaster_safe"
+              }
+            },
+            "required": [
+              "authority_mode"
+            ]
+          },
+          "then": {
+            "properties": {
+              "data_class": {
+                "const": "DISASTER_SAFE_CTOWER_ENGINEERING"
+              },
+              "durability_claim": {
+                "const": "CP3_D_PROVEN"
+              },
+              "recovery_claim": {
+                "const": "EXTERNAL_FAILURE_DOMAIN_PROVEN"
+              }
+            },
+            "required": [
+              "durability_claim",
+              "recovery_claim",
+              "data_class"
+            ]
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "authority_mode": {
+                "enum": [
+                  "legacy_writable",
+                  "development_single_writer"
+                ]
+              }
+            },
+            "required": [
+              "authority_mode"
+            ]
+          },
+          "then": {
+            "properties": {
+              "data_class": {
+                "const": "RECONSTRUCTIBLE_ONLY"
+              },
+              "durability_claim": {
+                "const": "CP3_D_NOT_PROVEN"
+              },
+              "recovery_claim": {
+                "const": "EXTERNAL_FAILURE_DOMAIN_UNPROVEN"
+              }
+            },
+            "required": [
+              "durability_claim",
+              "recovery_claim",
+              "data_class"
+            ]
+          }
+        },
+        {
+          "$comment": "writes_enabled requires an enforced fence, a clear split-brain, and a non-legacy authority mode (migration 0027 writes_enabled CHECK).",
+          "if": {
+            "properties": {
+              "writes_enabled": {
+                "const": true
+              }
+            },
+            "required": [
+              "writes_enabled"
+            ]
+          },
+          "then": {
+            "properties": {
+              "authority_mode": {
+                "enum": [
+                  "development_single_writer",
+                  "disaster_safe"
+                ]
+              },
+              "legacy_writer_fence": {
+                "const": "enforced"
+              },
+              "split_brain": {
+                "const": "clear"
+              }
+            },
+            "required": [
+              "legacy_writer_fence",
+              "split_brain",
+              "authority_mode"
+            ]
+          }
+        }
+      ],
       "properties": {
         "authority_mode": {
           "enum": [
@@ -7133,7 +7322,7 @@
     {
       "id": "https://ctower.dev/contracts/domain/migration/ctower-project-cutover-health.schema.json",
       "path": "contracts/domain/migration/ctower-project-cutover-health.schema.json",
-      "sha256": "sha256:81210b4453f55d6d67cce22aa0dbf2227b0a8c66488eb3330bde179436db22a0"
+      "sha256": "sha256:61a63467d806c0356023861cc0e16fa49436f90c8c717cdf706a0cfa8c24f4a7"
     },
     {
       "id": "https://ctower.dev/contracts/domain/migration/ctower-project-phase.schema.json",

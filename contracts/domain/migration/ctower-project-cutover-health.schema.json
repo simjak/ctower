@@ -112,5 +112,114 @@
     "banner"
   ],
   "title": "ctower-project cutover health",
-  "type": "object"
+  "type": "object",
+  "allOf": [
+    {
+      "$comment": "phase and authority_mode are 1:1 coupled (migration 0027). not_started is the pre-cutover default and pairs only with legacy_writable.",
+      "if": {
+        "properties": {
+          "phase": {"const": "prepared"}
+        },
+        "required": ["phase"]
+      },
+      "then": {
+        "properties": {
+          "authority_mode": {"const": "legacy_writable"}
+        },
+        "required": ["authority_mode"]
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "phase": {"const": "development_epoch_committed"}
+        },
+        "required": ["phase"]
+      },
+      "then": {
+        "properties": {
+          "authority_mode": {"const": "development_single_writer"}
+        },
+        "required": ["authority_mode"]
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "phase": {"const": "disaster_safe_active"}
+        },
+        "required": ["phase"]
+      },
+      "then": {
+        "properties": {
+          "authority_mode": {"const": "disaster_safe"}
+        },
+        "required": ["authority_mode"]
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "phase": {"const": "not_started"}
+        },
+        "required": ["phase"]
+      },
+      "then": {
+        "properties": {
+          "authority_mode": {"const": "legacy_writable"}
+        },
+        "required": ["authority_mode"]
+      }
+    },
+    {
+      "$comment": "disaster_safe authority requires proven CP3-D, proven external failure-domain recovery, and disaster-safe data class; every non-disaster mode requires the unproven/reconstructible set.",
+      "if": {
+        "properties": {
+          "authority_mode": {"const": "disaster_safe"}
+        },
+        "required": ["authority_mode"]
+      },
+      "then": {
+        "properties": {
+          "durability_claim": {"const": "CP3_D_PROVEN"},
+          "recovery_claim": {"const": "EXTERNAL_FAILURE_DOMAIN_PROVEN"},
+          "data_class": {"const": "DISASTER_SAFE_CTOWER_ENGINEERING"}
+        },
+        "required": ["durability_claim", "recovery_claim", "data_class"]
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "authority_mode": {"enum": ["legacy_writable", "development_single_writer"]}
+        },
+        "required": ["authority_mode"]
+      },
+      "then": {
+        "properties": {
+          "durability_claim": {"const": "CP3_D_NOT_PROVEN"},
+          "recovery_claim": {"const": "EXTERNAL_FAILURE_DOMAIN_UNPROVEN"},
+          "data_class": {"const": "RECONSTRUCTIBLE_ONLY"}
+        },
+        "required": ["durability_claim", "recovery_claim", "data_class"]
+      }
+    },
+    {
+      "$comment": "writes_enabled requires an enforced fence, a clear split-brain, and a non-legacy authority mode (migration 0027 writes_enabled CHECK).",
+      "if": {
+        "properties": {
+          "writes_enabled": {"const": true}
+        },
+        "required": ["writes_enabled"]
+      },
+      "then": {
+        "properties": {
+          "legacy_writer_fence": {"const": "enforced"},
+          "split_brain": {"const": "clear"},
+          "authority_mode": {"enum": ["development_single_writer", "disaster_safe"]}
+        },
+        "required": ["legacy_writer_fence", "split_brain", "authority_mode"]
+      }
+    }
+  ]
 }

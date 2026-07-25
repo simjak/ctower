@@ -1,6 +1,6 @@
 """DO NOT EDIT: generated file; regenerate from declared inputs.
 
-Authored contract digest: sha256:5bc97dcbc6daeb0c380a7bb0edc8bddbb949846837cfdf69d8483b3af7b8b3d2
+Authored contract digest: sha256:d110be83601a088f160efa3fa859e9e3ed40119c7ab47e3e60d43a170e7163ce
 """
 
 from __future__ import annotations
@@ -426,7 +426,7 @@ class CtowerClient:
                 },
             ),
         )
-        return _response(response, ProjectDeliveryView, {401: Problem, 404: Problem})
+        return _response(response, ProjectDeliveryView, {401: Problem, 404: Problem, 422: Problem})
 
     @validate_call(config=ConfigDict(strict=True, arbitrary_types_allowed=True))
     def get_synthetic_workflow_run(

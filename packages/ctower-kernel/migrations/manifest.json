@@ -256,7 +256,7 @@
     },
     {
       "path": "0027_i17a_cutover_delivery.sql",
-      "sha256": "sha256:7ccea6e224eb642d3d3b33783594b7c83a358f65e2e8f240884b99556c10592d",
+      "sha256": "sha256:123b9d098b29fdebd41a2383bd5bf9c90e6f262f466427738977fce60ad46e0d",
       "minimum_service_version": "0.0.0",
       "maximum_service_version": "0.0.0",
       "forward_test": "pytest:tests/acceptance/increment-1/test_cutover.py::test_i17a_storage_is_append_only_and_projection_only",

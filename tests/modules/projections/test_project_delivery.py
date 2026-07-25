@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from collections.abc import Callable
 from dataclasses import replace
 from datetime import UTC, datetime, timedelta
 
@@ -89,6 +90,97 @@ def test_fold_rejects_zero_criteria_unknown_proof_and_invalid_time() -> None:
             _facts(),
             observed_at=datetime(2026, 7, 25, 9, tzinfo=UTC),
         )
+
+
+type _FactsOverride = Callable[[DeliveryFacts], DeliveryFacts]
+
+_DONE_GATE_CASES: tuple[
+    tuple[str, _FactsOverride, tuple[str, ...] | None, DeliveryState, set[str]], ...
+] = (
+    (
+        "cp3_d_unproven_even_when_criterion_reported_proven",
+        lambda facts: replace(facts, proven_criteria=frozenset(_CRITERIA)),
+        None,
+        DeliveryState.BLOCKED,
+        {"cp3_d_unproven", "effective_blocker:cp3_d"},
+    ),
+    (
+        "cp3_d_omitted_from_definition_but_still_unproven",
+        lambda facts: replace(facts, proven_criteria=frozenset(_CRITERIA[:-1])),
+        _CRITERIA[:-1],
+        DeliveryState.BLOCKED,
+        {"cp3_d_unproven", "effective_blocker:cp3_d"},
+    ),
+    (
+        "effective_blockers_open_with_full_proof_and_cp3_proven",
+        lambda facts: replace(
+            facts,
+            proven_criteria=frozenset(_CRITERIA),
+            effective_blockers=("legacy_writer_unfenced", "split_brain_detected"),
+            cp3_d_proven=True,
+        ),
+        None,
+        DeliveryState.BLOCKED,
+        {"effective_blocker:legacy_writer_unfenced", "effective_blocker:split_brain_detected"},
+    ),
+    (
+        "source_incomplete_with_full_proof_cp3_proven_no_blockers",
+        lambda facts: replace(
+            facts,
+            proven_criteria=frozenset(_CRITERIA),
+            effective_blockers=(),
+            cp3_d_proven=True,
+            source_complete=False,
+        ),
+        None,
+        DeliveryState.BLOCKED,
+        {"source_incomplete"},
+    ),
+    (
+        "fully_done_when_source_complete_no_blockers_cp3_proven",
+        lambda facts: replace(
+            facts,
+            proven_criteria=frozenset(_CRITERIA),
+            effective_blockers=(),
+            cp3_d_proven=True,
+            source_complete=True,
+        ),
+        None,
+        DeliveryState.DONE,
+        set(),
+    ),
+)
+
+
+@pytest.mark.parametrize(
+    ("label", "apply_facts", "criteria_override", "expected_headline", "expected_reasons"),
+    _DONE_GATE_CASES,
+)
+def test_fold_never_publishes_done_over_unproven_gapped_or_blocked_sources(
+    label: str,
+    apply_facts: _FactsOverride,
+    criteria_override: tuple[str, ...] | None,
+    expected_headline: DeliveryState,
+    expected_reasons: set[str],
+) -> None:
+    del label
+    definition = _definition()
+    if criteria_override is not None:
+        definition = replace(definition, criteria=criteria_override)
+    facts = apply_facts(_facts())
+
+    row = derive_project_delivery_row(definition, facts)
+
+    assert row.headline_state is expected_headline
+    assert row.underlying_maturity is facts.maturity
+    assert expected_reasons <= set(row.derivation_reasons)
+    if expected_headline is DeliveryState.DONE:
+        assert row.confidence == "disaster_safe"
+        assert row.health == "CURRENT"
+    elif facts.source_complete is False:
+        assert row.freshness == "STATE_UNKNOWN"
+        assert row.confidence == "STATE_UNKNOWN"
+        assert row.health == "STATE_UNKNOWN"
 
 
 def _definition() -> CheckpointDefinition:

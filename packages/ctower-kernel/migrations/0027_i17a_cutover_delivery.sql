@@ -10,8 +10,7 @@ ALTER TABLE events ADD CONSTRAINT events_kind_check CHECK (kind IN (
     'routine.occurrence_recorded',
     'attention.poison_disposition_recorded',
     'catalog.component_published',
-    'catalog.bundle_activated',
-    'migration.changed'
+    'catalog.bundle_activated'
 ));
 
 CREATE TABLE ctower_project_cutover_facts (
@@ -51,6 +50,12 @@ CREATE TABLE ctower_project_cutover_facts (
         REFERENCES principals(principal_id, tenant_id),
     UNIQUE (tenant_id, cutover_id, fact_sequence),
     UNIQUE (event_id),
+    CHECK (
+        (phase = 'prepared' AND authority_mode = 'legacy_writable')
+        OR (phase = 'development_epoch_committed'
+            AND authority_mode = 'development_single_writer')
+        OR (phase = 'disaster_safe_active' AND authority_mode = 'disaster_safe')
+    ),
     CHECK (
         (authority_mode = 'disaster_safe'
             AND durability_claim = 'CP3_D_PROVEN'
@@ -157,8 +162,13 @@ REVOKE ALL ON ctower_project_cutover_facts,
     project_delivery_projection_rows
     FROM PUBLIC, ctower_svc, ctower_projection;
 
-GRANT INSERT, SELECT ON ctower_project_cutover_facts,
-    project_delivery_checkpoint_definitions,
+-- I1.7A has no production writer. ctower_svc may read cutover facts but must not
+-- INSERT them: arming an epoch authority fact (writes_enabled, development
+-- phase) is the I1.7B/C point of no return and is deferred to that independent
+-- review. Checkpoint definitions and exit criteria remain INSERTable by the
+-- future I1.7B importer; cutover facts do not.
+GRANT SELECT ON ctower_project_cutover_facts TO ctower_svc;
+GRANT INSERT, SELECT ON project_delivery_checkpoint_definitions,
     project_delivery_exit_criteria
     TO ctower_svc;
 GRANT SELECT ON ctower_project_cutover_facts,

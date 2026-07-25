@@ -4,16 +4,18 @@ from __future__ import annotations
 
 import argparse
 import io
+import json
 from typing import Literal, Self, cast
 from uuid import UUID, uuid4
 
 import pytest
 
-from ctower_client import CtowerClient
+from ctower_client import CtowerClient, CtowerProblemError
+from ctower_client.client import _ProblemModel
 from ctower_client.models import (
     CtowerProjectCutoverHealth,
     CtowerProjectMigrationStubRequest,
-    CtowerProjectMigrationStubResult,
+    Problem,
     ProjectDeliveryCriteria,
     ProjectDeliveryRow,
     ProjectDeliveryView,
@@ -26,6 +28,7 @@ from ctowerctl.spool import Spool
 __all__: tuple[str, ...] = ()
 
 _DIGEST = "sha256:" + ("a" * 64)
+_HTTP_CONFLICT = 409
 type _Phase = Literal[
     "inventory",
     "export",
@@ -47,7 +50,7 @@ _PHASES: tuple[tuple[str, _Phase], ...] = (
 
 
 @pytest.mark.parametrize(("command", "phase"), _PHASES)
-def test_each_migration_stub_calls_one_explicit_generated_method(
+def test_each_migration_stub_routes_to_one_generated_method_and_refuses(
     command: str,
     phase: str,
 ) -> None:
@@ -61,45 +64,60 @@ def test_each_migration_stub_calls_one_explicit_generated_method(
         input_digest=_DIGEST,
     )
 
-    result = _migration_commands.execute_online_stub(arguments, cast(CtowerClient, client))
+    with pytest.raises(CtowerProblemError) as info:
+        _migration_commands.execute_online_stub(arguments, cast(CtowerClient, client))
 
-    assert isinstance(result, CtowerProjectMigrationStubResult)
-    assert result.phase == phase
+    problem = cast(Problem, info.value.problem)
+    assert problem.code == "i1-7b-required"
+    assert problem.status == _HTTP_CONFLICT
+    assert problem.command_id == command_id
+    # Dispatch routing is still verified: each CLI spelling hits exactly one
+    # generated client method before the typed refusal propagates.
     assert client.calls == [(phase, cutover_id, command_id)]
 
 
-def test_cli_routes_stub_online_without_creating_a_spool(
+def test_cli_routes_stub_online_to_permanent_refusal_without_spool(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     client = _MigrationClient()
     command_id = uuid4()
     cutover_id = uuid4()
-    arguments = parse_arguments(
-        [
-            "--base-url",
-            "https://ctower.example",
-            "migration",
-            "ctower-project",
-            "inventory",
-            "--command-id",
-            str(command_id),
-            "--cutover-id",
-            str(cutover_id),
-            "--input-digest",
-            _DIGEST,
-        ]
-    )
+    argv = [
+        "--base-url",
+        "https://ctower.example",
+        "migration",
+        "ctower-project",
+        "inventory",
+        "--command-id",
+        str(command_id),
+        "--cutover-id",
+        str(cutover_id),
+        "--input-digest",
+        _DIGEST,
+    ]
     monkeypatch.setattr(interface, "CtowerClient", lambda *_args, **_kwargs: client)
 
     def spool_refused(*_args: object, **_kwargs: object) -> Spool:
         raise AssertionError("online-only migration command touched the replay spool")
 
     monkeypatch.setattr(Spool, "for_origin", spool_refused)
-    result, code = interface._execute(arguments, io.StringIO("ephemeral-authority\n"))
+    stdout = io.StringIO()
+    stderr = io.StringIO()
+    code = interface.main(
+        argv,
+        stdin=io.StringIO("ephemeral-authority\n"),
+        stdout=stdout,
+        stderr=stderr,
+    )
 
-    assert code is ExitCode.SUCCESS
-    assert cast(CtowerProjectMigrationStubResult, result).phase == "inventory"
+    assert code == int(ExitCode.PERMANENT)
     assert client.calls == [("inventory", cutover_id, command_id)]
+    assert stdout.getvalue() == ""
+    problem = json.loads(stderr.getvalue())
+    assert problem["code"] == "i1-7b-required"
+    assert problem["status"] == _HTTP_CONFLICT
+    assert problem["command_id"] == str(command_id)
+    assert problem["type"] == "https://ctower.dev/problems/i1-7b-required"
 
 
 def test_parser_and_query_dispatch_are_closed_and_digest_strict() -> None:
@@ -150,6 +168,38 @@ def test_parser_and_query_dispatch_are_closed_and_digest_strict() -> None:
                 str(uuid4()),
                 "--input-digest",
                 "unbound",
+            ]
+        )
+
+
+@pytest.mark.parametrize(
+    "digest",
+    [
+        "unbound",
+        "sha256:" + "a" * 63,
+        "sha256:" + "a" * 65,
+        "sha256:" + "A" * 64,
+        "sha256:" + ("a" * 32) + "_" + ("a" * 31),
+        "sha256:+" + "a" * 63,
+        "sha256:" + "g" * 64,
+        "sha256:" + ("a" * 64) + " ",
+    ],
+)
+def test_sha256_digest_parser_enforces_exact_contract_regex(digest: str) -> None:
+    with pytest.raises(ValueError, match="digest"):
+        parse_arguments(
+            [
+                "--base-url",
+                "https://ctower.example",
+                "migration",
+                "ctower-project",
+                "plan",
+                "--command-id",
+                str(uuid4()),
+                "--cutover-id",
+                str(uuid4()),
+                "--input-digest",
+                digest,
             ]
         )
 
@@ -225,6 +275,14 @@ def test_migration_dispatch_rejects_unknown_internal_spellings() -> None:
 
 
 class _MigrationClient:
+    """Fake client that reproduces the real I1.7A typed 409 refusal.
+
+    The seven online-only phase stubs always refuse with a typed
+    ``i1-7b-required`` problem; the I1.7A reads return canned payloads so query
+    dispatch can be exercised without a live server. No stub ever produces the
+    ``deferred_to_i1_7b_or_c`` 202 receipt, because no real server does either.
+    """
+
     def __init__(self) -> None:
         self.calls: list[tuple[_Phase, UUID, UUID]] = []
 
@@ -236,38 +294,38 @@ class _MigrationClient:
 
     def inventory_ctower_project_migration(
         self, request: CtowerProjectMigrationStubRequest, *, command_id: UUID
-    ) -> CtowerProjectMigrationStubResult:
-        return self._phase("inventory", request, command_id)
+    ) -> Problem:
+        return self._refuse("inventory", request, command_id)
 
     def export_ctower_project_migration(
         self, request: CtowerProjectMigrationStubRequest, *, command_id: UUID
-    ) -> CtowerProjectMigrationStubResult:
-        return self._phase("export", request, command_id)
+    ) -> Problem:
+        return self._refuse("export", request, command_id)
 
     def plan_ctower_project_migration(
         self, request: CtowerProjectMigrationStubRequest, *, command_id: UUID
-    ) -> CtowerProjectMigrationStubResult:
-        return self._phase("plan", request, command_id)
+    ) -> Problem:
+        return self._refuse("plan", request, command_id)
 
     def import_ctower_project_migration(
         self, request: CtowerProjectMigrationStubRequest, *, command_id: UUID
-    ) -> CtowerProjectMigrationStubResult:
-        return self._phase("import", request, command_id)
+    ) -> Problem:
+        return self._refuse("import", request, command_id)
 
     def reconcile_ctower_project_migration(
         self, request: CtowerProjectMigrationStubRequest, *, command_id: UUID
-    ) -> CtowerProjectMigrationStubResult:
-        return self._phase("reconcile", request, command_id)
+    ) -> Problem:
+        return self._refuse("reconcile", request, command_id)
 
     def prepare_ctower_project_cutover(
         self, request: CtowerProjectMigrationStubRequest, *, command_id: UUID
-    ) -> CtowerProjectMigrationStubResult:
-        return self._phase("prepare", request, command_id)
+    ) -> Problem:
+        return self._refuse("prepare", request, command_id)
 
     def commit_ctower_project_development_epoch(
         self, request: CtowerProjectMigrationStubRequest, *, command_id: UUID
-    ) -> CtowerProjectMigrationStubResult:
-        return self._phase("commit_development_epoch", request, command_id)
+    ) -> Problem:
+        return self._refuse("commit_development_epoch", request, command_id)
 
     def get_ctower_project_cutover_health(self) -> CtowerProjectCutoverHealth:
         return CtowerProjectCutoverHealth(
@@ -295,16 +353,22 @@ class _MigrationClient:
             rows=(),
         )
 
-    def _phase(
+    def _refuse(
         self,
         phase: _Phase,
         request: CtowerProjectMigrationStubRequest,
         command_id: UUID,
-    ) -> CtowerProjectMigrationStubResult:
+    ) -> Problem:
         self.calls.append((phase, request.cutover_id, command_id))
-        return CtowerProjectMigrationStubResult(
-            cutover_id=request.cutover_id,
-            phase=phase,
-            state="deferred_to_i1_7b_or_c",
-            detail="Not implemented in I1.7A.",
+        problem = Problem(
+            code="i1-7b-required",
+            detail=(
+                f"The {phase} phase is an online-only I1.7A stub. "
+                "I1.7B/C must implement and independently review it."
+            ),
+            status=_HTTP_CONFLICT,
+            title="ctower-project migration phase deferred",
+            type_uri="https://ctower.dev/problems/i1-7b-required",
+            command_id=command_id,
         )
+        raise CtowerProblemError(cast(_ProblemModel, problem))

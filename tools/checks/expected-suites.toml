@@ -1,6 +1,6 @@
 schema = "ctower.expected-suites/v1"
 manifest_version = 1
-active_phase = "CT-I1-006"
+active_phase = "CT-I1-007"
 phase_order = [
   "CT-L0-007",
   "CT-L0-001",
@@ -14,6 +14,7 @@ phase_order = [
   "CT-L0-008",
   "CT-I1-003",
   "CT-I1-006",
+  "CT-I1-007",
   "CT-I1-008",
   "CT-I2-005",
   "CT-I2-010",
@@ -275,6 +276,16 @@ command = [
 timeout_seconds = 900
 
 [[suite]]
+id = "company-contracts"
+owner = "CT-I1-004"
+phase = "CT-I1-004"
+status = "required"
+path = "tests/contracts/company"
+patterns = ["test_*.py"]
+command = ["{python}", "-m", "pytest", "tests/contracts/company", "-q"]
+timeout_seconds = 300
+
+[[suite]]
 id = "proof-workflow-acceptance"
 owner = "CT-I1-003"
 phase = "CT-I1-003"
@@ -393,6 +404,26 @@ command = [
   "-q",
 ]
 timeout_seconds = 900
+
+[[suite]]
+id = "migration-contracts"
+owner = "CT-I1-007"
+phase = "CT-I1-007"
+status = "required"
+path = "tests/contracts/migration"
+patterns = ["test_*.py"]
+command = ["{python}", "-m", "pytest", "tests/contracts/migration", "-q"]
+timeout_seconds = 300
+
+[[suite]]
+id = "project-delivery-contracts"
+owner = "CT-I1-007"
+phase = "CT-I1-007"
+status = "required"
+path = "tests/contracts/project_delivery"
+patterns = ["test_*.py"]
+command = ["{python}", "-m", "pytest", "tests/contracts/project_delivery", "-q"]
+timeout_seconds = 300
 
 [[suite]]
 id = "increment-1-acceptance"

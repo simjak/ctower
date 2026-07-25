@@ -1,6 +1,6 @@
 """DO NOT EDIT: generated file; regenerate from declared inputs.
 
-Authored contract digest: sha256:5bc97dcbc6daeb0c380a7bb0edc8bddbb949846837cfdf69d8483b3af7b8b3d2
+Authored contract digest: sha256:d110be83601a088f160efa3fa859e9e3ed40119c7ab47e3e60d43a170e7163ce
 """
 
 from ctower_contracts.catalog import (

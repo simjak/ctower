@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import argparse
 import ipaddress
+import re
 from collections.abc import Sequence
 from datetime import datetime
 from pathlib import Path
@@ -24,7 +25,7 @@ __all__: tuple[str, ...] = ()
 _ASSIGNMENT_KINDS = ("current_assignee", "stage_owner", "reviewer")
 _BLOCKER_KINDS = ("dependency", "operator_action", "policy", "resource", "technical")
 _SPOOL_STATES = ("pending", "accepted_archive", "quarantine")
-_SHA256_DIGEST_LENGTH = 71
+_SHA256_DIGEST = re.compile(r"^sha256:[0-9a-f]{64}$")
 _AUTHORED_COMMAND_NAMES = frozenset(
     {
         "bootstrap first-tenant",
@@ -507,12 +508,10 @@ def _aware_datetime(value: str) -> datetime:
 
 
 def _sha256_digest(value: str) -> str:
-    if len(value) != _SHA256_DIGEST_LENGTH or not value.startswith("sha256:"):
-        raise argparse.ArgumentTypeError("digest must be one SHA-256 value")
-    try:
-        int(value.removeprefix("sha256:"), 16)
-    except ValueError as error:
-        raise argparse.ArgumentTypeError("digest must be one SHA-256 value") from error
+    if _SHA256_DIGEST.fullmatch(value) is None:
+        raise argparse.ArgumentTypeError(
+            "digest must be 'sha256:' followed by exactly 64 lowercase hex digits"
+        )
     return value
 
 

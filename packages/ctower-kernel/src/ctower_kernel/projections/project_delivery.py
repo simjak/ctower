@@ -202,19 +202,10 @@ def derive_project_delivery_row(
     proven = tuple(sorted(facts.proven_criteria))
     missing = tuple(sorted(set(definition.criteria).difference(proven)))
     blockers = tuple(sorted(set(facts.effective_blockers)))
-    complete = not missing
-    headline = DeliveryState.DONE if complete else facts.maturity
-    if not complete and blockers:
-        headline = DeliveryState.BLOCKED
+    headline = _headline(missing, facts, blockers)
     if headline not in definition.applicable_states and headline is not DeliveryState.BLOCKED:
         raise ValueError("facts name a lifecycle state absent from the checkpoint")
     freshness, confidence, health = _health(facts)
-    reasons = (
-        *(f"criterion_current:{item}" for item in proven),
-        *(f"criterion_missing:{item}" for item in missing),
-        *(f"effective_blocker:{item}" for item in blockers),
-        f"underlying_maturity:{facts.maturity.value}",
-    )
     return ProjectDeliveryRow(
         checkpoint_key=definition.key,
         checkpoint_label=definition.label,
@@ -230,8 +221,51 @@ def derive_project_delivery_row(
         confidence=confidence,
         health=health,
         source_ids=tuple(sorted(set(facts.source_ids))),
-        derivation_reasons=tuple(reasons),
+        derivation_reasons=_derivation_reasons(proven, missing, blockers, facts),
     )
+
+
+def _headline(
+    missing: tuple[str, ...],
+    facts: DeliveryFacts,
+    blockers: tuple[str, ...],
+) -> DeliveryState:
+    """Resolve the visible headline, failing closed away from `done`.
+
+    `done` requires every declared criterion proven AND a complete source AND
+    no open effective blocker AND (for the development dogfood checkpoint) a
+    proven CP3-D. An unproven CP3-D is itself an effective blocker
+    (SPEC "Project Delivery projection"), so it forces `blocked` even when a
+    caller forgets to declare it. A gapped source likewise cannot host `done`;
+    the visible headline fails closed to `blocked` while the underlying maturity
+    is retained in `derivation_reasons`.
+    """
+
+    complete = not missing
+    if complete and facts.source_complete and not blockers and facts.cp3_d_proven:
+        return DeliveryState.DONE
+    if blockers or not facts.source_complete or not facts.cp3_d_proven:
+        return DeliveryState.BLOCKED
+    return facts.maturity
+
+
+def _derivation_reasons(
+    proven: tuple[str, ...],
+    missing: tuple[str, ...],
+    blockers: tuple[str, ...],
+    facts: DeliveryFacts,
+) -> tuple[str, ...]:
+    reasons: list[str] = [
+        *(f"criterion_current:{item}" for item in proven),
+        *(f"criterion_missing:{item}" for item in missing),
+        *(f"effective_blocker:{item}" for item in blockers),
+    ]
+    if not facts.cp3_d_proven:
+        reasons.append("cp3_d_unproven")
+    if not facts.source_complete:
+        reasons.append("source_incomplete")
+    reasons.append(f"underlying_maturity:{facts.maturity.value}")
+    return tuple(reasons)
 
 
 def _health(facts: DeliveryFacts) -> tuple[str, str, str]:

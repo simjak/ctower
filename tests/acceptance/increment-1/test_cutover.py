@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import secrets
 from datetime import UTC, datetime
 from typing import cast
 from uuid import UUID, uuid4
@@ -35,6 +36,7 @@ HTTP_NOT_FOUND = 404
 HTTP_UNAUTHORIZED = 401
 HTTP_UNPROCESSABLE_ENTITY = 422
 _DIGEST = "sha256:" + ("a" * 64)
+_DELIVERY_WATERMARK = 27
 _CRITERIA = (
     "authority_decision",
     "contracts",
@@ -60,13 +62,23 @@ def test_i17a_storage_is_append_only_and_projection_only(
     assert health.projection_completeness == "current"
     assert health.source_watermark == health.projection_watermark == 0
 
+    # I1.7A has no production writer. ctower_svc may read cutover facts but must
+    # not INSERT them: arming an epoch authority fact is the I1.7B/C point of no
+    # return. Checkpoint definitions and exit criteria remain INSERTable by the
+    # future I1.7B importer; cutover facts do not.
+    assert not _has_privilege(tenant, "ctower_svc", "ctower_project_cutover_facts", "INSERT")
+    assert _has_privilege(tenant, "ctower_svc", "ctower_project_cutover_facts", "SELECT")
     for table in (
-        "ctower_project_cutover_facts",
         "project_delivery_checkpoint_definitions",
         "project_delivery_exit_criteria",
     ):
         assert _has_privilege(tenant, "ctower_svc", table, "INSERT")
         assert _has_privilege(tenant, "ctower_svc", table, "SELECT")
+    for table in (
+        "ctower_project_cutover_facts",
+        "project_delivery_checkpoint_definitions",
+        "project_delivery_exit_criteria",
+    ):
         assert not _has_privilege(tenant, "ctower_svc", table, "UPDATE")
         assert not _has_privilege(tenant, "ctower_svc", table, "DELETE")
 
@@ -138,6 +150,117 @@ def test_i17a_api_reads_blocked_cp3_d_and_stubs_mutate_nothing(
     assert row["confidence"] == "development_degraded"
     assert row["health"] == "CP3_D_NOT_PROVEN"
     assert _cutover_fact_count(tenant) == before == 0
+
+
+def test_i17a_authority_uses_append_order_not_wall_clock(tenant: TenantFixture) -> None:
+    """A backdated corrective fact must suppress an older armed fact.
+
+    The repository's authority order is the transactional ``record_position``
+    (with an ``event_id`` tie-break), not the caller-supplied ``recorded_at``.
+    Fact A is armed (``writes_enabled`` true, clear split-brain) but stamped
+    later in wall time; fact B is the corrective append (``writes_enabled`` false,
+    detected split-brain, unknown fence) stamped earlier. The read must publish
+    fact B, the newest append, never fact A.
+    """
+
+    cutover_id = uuid4()
+    armed_at = datetime(2026, 7, 25, 11, 23, tzinfo=UTC)
+    corrective_at = datetime(2026, 7, 25, 11, 14, tzinfo=UTC)
+    with psycopg.connect(tenant.database.admin_dsn) as connection:
+        _insert_cutover_fact(
+            connection,
+            tenant,
+            cutover_id=cutover_id,
+            fact_sequence=1,
+            phase="development_epoch_committed",
+            authority_mode="development_single_writer",
+            writes_enabled=True,
+            legacy_writer_fence="enforced",
+            split_brain="clear",
+            source_watermark=0,
+            recorded_at=armed_at,
+        )
+        _insert_cutover_fact(
+            connection,
+            tenant,
+            cutover_id=cutover_id,
+            fact_sequence=2,
+            phase="development_epoch_committed",
+            authority_mode="development_single_writer",
+            writes_enabled=False,
+            legacy_writer_fence="unknown",
+            split_brain="detected",
+            source_watermark=0,
+            recorded_at=corrective_at,
+        )
+
+    health = Projections(PostgresProjections(tenant.database.projection_dsn)).cutover_health(
+        Actor(tenant.operator_id, tenant.tenant_id, PrincipalKind.OPERATOR)
+    )
+
+    assert health.cutover_id == cutover_id
+    assert health.authority_mode == "development_single_writer"
+    assert health.phase == "development_epoch_committed"
+    assert health.writes_enabled is False
+    assert health.split_brain == "detected"
+    assert health.legacy_writer_fence == "unknown"
+
+
+def test_i17a_authority_fails_closed_when_multiple_cutover_lineages_exist(
+    tenant: TenantFixture,
+) -> None:
+    """Two active cutover lineages make the current authority ambiguous.
+
+    The schema has no active-cutover selector, so the read must fail closed:
+    ``writes_enabled`` false and ``projection_completeness`` STATE_UNKNOWN,
+    rather than silently picking one cutover's armed fact.
+    """
+
+    first = uuid4()
+    second = uuid4()
+    stamped = datetime(2026, 7, 25, 11, 30, tzinfo=UTC)
+    with psycopg.connect(tenant.database.admin_dsn) as connection:
+        for cutover_id in (first, second):
+            _insert_cutover_fact(
+                connection,
+                tenant,
+                cutover_id=cutover_id,
+                fact_sequence=1,
+                phase="development_epoch_committed",
+                authority_mode="development_single_writer",
+                writes_enabled=True,
+                legacy_writer_fence="enforced",
+                split_brain="clear",
+                source_watermark=0,
+                recorded_at=stamped,
+            )
+
+    health = Projections(PostgresProjections(tenant.database.projection_dsn)).cutover_health(
+        Actor(tenant.operator_id, tenant.tenant_id, PrincipalKind.OPERATOR)
+    )
+
+    assert health.cutover_id is None
+    assert health.authority_mode == "legacy_writable"
+    assert health.phase == "not_started"
+    assert health.writes_enabled is False
+    assert health.projection_completeness == "STATE_UNKNOWN"
+
+
+def test_i17a_health_reports_unknown_when_rows_exist_without_an_authority_fact(
+    tenant: TenantFixture,
+) -> None:
+    """Delivery rows without a cutover fact must not claim current completeness."""
+
+    _seed_project_delivery_row(tenant)
+    assert _cutover_fact_count(tenant) == 0
+
+    health = Projections(PostgresProjections(tenant.database.projection_dsn)).cutover_health(
+        Actor(tenant.operator_id, tenant.tenant_id, PrincipalKind.OPERATOR)
+    )
+
+    assert health.writes_enabled is False
+    assert health.projection_completeness == "STATE_UNKNOWN"
+    assert health.projection_watermark == _DELIVERY_WATERMARK
 
 
 def _assert_i17a_refusals(
@@ -247,6 +370,106 @@ def _seed_authority_rows(tenant: TenantFixture) -> tuple[UUID, UUID]:
             ),
         )
     return cutover_id, definition_id
+
+
+def _insert_cutover_fact(
+    connection: psycopg.Connection[tuple[object, ...]],
+    tenant: TenantFixture,
+    *,
+    cutover_id: UUID,
+    fact_sequence: int,
+    phase: str,
+    authority_mode: str,
+    writes_enabled: bool,
+    legacy_writer_fence: str,
+    split_brain: str,
+    source_watermark: int,
+    recorded_at: datetime,
+) -> UUID:
+    """Insert one authority fact bound to a fresh transactionally-ordered event.
+
+    The event is appended through the ``record_position_ledger`` exactly like
+    the record tier (``_event_store._append``) so the read's
+    ``ORDER BY record_position DESC`` ordering is deterministic and independent
+    of the caller-supplied ``recorded_at``.
+    """
+
+    event_id = _insert_cutover_event(connection, tenant, recorded_at=recorded_at)
+    connection.execute(
+        """
+        INSERT INTO ctower_project_cutover_facts (
+            cutover_fact_id, tenant_id, cutover_id, fact_sequence, phase,
+            authority_mode, writes_enabled, durability_claim, recovery_claim,
+            data_class, legacy_writer_fence, split_brain, source_watermark,
+            event_id, actor_principal_id, client_command_id, recorded_at
+        ) VALUES (
+            %s, %s, %s, %s, %s, %s, %s, 'CP3_D_NOT_PROVEN',
+            'EXTERNAL_FAILURE_DOMAIN_UNPROVEN', 'RECONSTRUCTIBLE_ONLY', %s, %s, %s,
+            %s, %s, %s, %s
+        )
+        """,
+        (
+            uuid4(),
+            tenant.tenant_id,
+            cutover_id,
+            fact_sequence,
+            phase,
+            authority_mode,
+            writes_enabled,
+            legacy_writer_fence,
+            split_brain,
+            source_watermark,
+            event_id,
+            tenant.operator_id,
+            uuid4(),
+            recorded_at,
+        ),
+    )
+    return event_id
+
+
+def _insert_cutover_event(
+    connection: psycopg.Connection[tuple[object, ...]],
+    tenant: TenantFixture,
+    *,
+    recorded_at: datetime,
+) -> UUID:
+    event_id = uuid4()
+    position_row = connection.execute(
+        "UPDATE record_position_ledger SET last_position = last_position + 1 "
+        "WHERE singleton RETURNING last_position"
+    ).fetchone()
+    assert position_row is not None
+    position = cast(int, position_row[0])
+    connection.execute(
+        """
+        INSERT INTO events (
+            event_id, tenant_id, stream_id, aggregate_id, sequence, kind,
+            schema_version, actor_principal_id, client_command_id, request_sha256,
+            correlation_id, causation_id, origin, server_time, payload,
+            prev_hash, event_hash, record_position
+        ) VALUES (
+            %s, %s, %s, %s, 1, 'work.changed', 1, %s, %s, %s,
+            %s, NULL, 'api', %s, %s, %s, %s, %s
+        )
+        """,
+        (
+            event_id,
+            tenant.tenant_id,
+            f"ticket:{event_id}",
+            event_id,
+            tenant.operator_id,
+            uuid4(),
+            secrets.token_bytes(32),
+            uuid4(),
+            recorded_at,
+            Jsonb({}),
+            secrets.token_bytes(32),
+            secrets.token_bytes(32),
+            position,
+        ),
+    )
+    return event_id
 
 
 def _seed_project_delivery_row(tenant: TenantFixture) -> None:
