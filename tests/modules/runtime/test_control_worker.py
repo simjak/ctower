@@ -20,6 +20,8 @@ from ctower_kernel.projections import (
     BoardQuery,
     BoardView,
     ControlHealth,
+    CtowerProjectCutoverHealth,
+    ProjectDeliveryView,
     ProjectionHealth,
     Projections,
 )
@@ -84,6 +86,12 @@ class _ProjectionStore:
     def health(
         self, tenant_id: UUID, durability: DurabilityHealth, *, now: datetime
     ) -> ControlHealth:
+        raise NotImplementedError
+
+    def cutover_health(self, actor: Actor) -> CtowerProjectCutoverHealth:
+        raise NotImplementedError
+
+    def project_delivery(self, actor: Actor, project_key: str) -> ProjectDeliveryView | None:
         raise NotImplementedError
 
 

@@ -253,6 +253,15 @@
       "forward_test": "pytest:tests/acceptance/increment-1/test_synthetic_operations.py::test_fixed_synthetic_attempt_fence_and_terminal_result_are_immutable",
       "rollback_or_forward_compensation": "Keep immutable fixed-operation attempts and terminal results readable by a receipt-aware build, or append reviewed forward compensation; never update or delete a claim, fence, or terminal semantic result.",
       "backup_checkpoint": "Before applying to a nonempty installation, capture and verify operation-job, occurrence, acceptance-confirmation, attempt, and result counts plus a database backup."
+    },
+    {
+      "path": "0027_i17a_cutover_delivery.sql",
+      "sha256": "sha256:7ccea6e224eb642d3d3b33783594b7c83a358f65e2e8f240884b99556c10592d",
+      "minimum_service_version": "0.0.0",
+      "maximum_service_version": "0.0.0",
+      "forward_test": "pytest:tests/acceptance/increment-1/test_cutover.py::test_i17a_storage_is_append_only_and_projection_only",
+      "rollback_or_forward_compensation": "Preserve append-only cutover and checkpoint-definition facts and rebuild disposable Project Delivery rows, or append reviewed forward compensation; never delete an authority fact or manufacture a completed epoch.",
+      "backup_checkpoint": "Before a future I1.7B/C authority mutation, capture and verify cutover, definition, criterion, event, and projection counts plus a database backup; I1.7A records no live epoch."
     }
   ]
 }

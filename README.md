@@ -55,10 +55,13 @@ fixtures through Docker Compose. It validates the repository; it does not instal
 - **CLI:** `ctowerctl` and `ctl` expose the authored ticket, Work, Proof, Workflow, Board/health, protected
   outbox, CompanyBundle, and local spool families. Non-bootstrap mutations are encrypted and durable before
   send; Linux verification uses a real Secret Service.
-- **HTTP/OpenAPI:** all 25 development operations carry explicit CLI/query-mutation/spool metadata and
+- **HTTP/OpenAPI:** all 36 development operations carry explicit CLI/query-mutation/spool metadata and
   generate the strict client plus runtime contract resource package.
 - **CompanyBundle:** validate/plan/export are read-only; apply atomically advances one future-only Catalog
   pointer through server authority. It does not activate runtime/effects.
+- **I1.7A visibility:** strict cutover-health and read-only Project Delivery contracts expose the
+  development boundary. Migration commands are online-only refusing stubs; they do not import, fence, or
+  rewire ctower-project work.
 - **Not available:** no published/supported package or deployment, product Compose stack, production
   backup/restore runbook, browser UI, runner, remote agent adapter, CP3-D activation, or production release
   exists.

@@ -1,0 +1,116 @@
+{
+  "$id": "https://ctower.dev/contracts/domain/migration/ctower-project-cutover-health.schema.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": false,
+  "properties": {
+    "schema": {
+      "const": "ctower.ctower-project-cutover-health/v1"
+    },
+    "cutover_id": {
+      "oneOf": [
+        {
+          "format": "uuid",
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "authority_mode": {
+      "enum": [
+        "legacy_writable",
+        "development_single_writer",
+        "disaster_safe"
+      ],
+      "type": "string"
+    },
+    "phase": {
+      "enum": [
+        "not_started",
+        "prepared",
+        "development_epoch_committed",
+        "disaster_safe_active"
+      ],
+      "type": "string"
+    },
+    "writes_enabled": {
+      "type": "boolean"
+    },
+    "durability_claim": {
+      "enum": [
+        "CP3_D_NOT_PROVEN",
+        "CP3_D_PROVEN"
+      ],
+      "type": "string"
+    },
+    "recovery_claim": {
+      "enum": [
+        "EXTERNAL_FAILURE_DOMAIN_UNPROVEN",
+        "EXTERNAL_FAILURE_DOMAIN_PROVEN"
+      ],
+      "type": "string"
+    },
+    "data_class": {
+      "enum": [
+        "RECONSTRUCTIBLE_ONLY",
+        "DISASTER_SAFE_CTOWER_ENGINEERING"
+      ],
+      "type": "string"
+    },
+    "legacy_writer_fence": {
+      "enum": [
+        "not_armed",
+        "enforced",
+        "unknown"
+      ],
+      "type": "string"
+    },
+    "split_brain": {
+      "enum": [
+        "clear",
+        "detected",
+        "unknown"
+      ],
+      "type": "string"
+    },
+    "projection_completeness": {
+      "enum": [
+        "current",
+        "stale",
+        "STATE_UNKNOWN"
+      ],
+      "type": "string"
+    },
+    "source_watermark": {
+      "minimum": 0,
+      "type": "integer"
+    },
+    "projection_watermark": {
+      "minimum": 0,
+      "type": "integer"
+    },
+    "banner": {
+      "minLength": 1,
+      "type": "string"
+    }
+  },
+  "required": [
+    "schema",
+    "cutover_id",
+    "authority_mode",
+    "phase",
+    "writes_enabled",
+    "durability_claim",
+    "recovery_claim",
+    "data_class",
+    "legacy_writer_fence",
+    "split_brain",
+    "projection_completeness",
+    "source_watermark",
+    "projection_watermark",
+    "banner"
+  ],
+  "title": "ctower-project cutover health",
+  "type": "object"
+}

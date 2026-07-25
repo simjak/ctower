@@ -11,8 +11,9 @@ planned work so a visible package, schema, or directory is not mistaken for an a
 | First-tenant bootstrap and durable ticket facts | Development fixture | The test topology exercises bootstrap, ticket creation/read/timeline, custody, assignments, priority, blockers, relations, and audit facts. It is not an installer or hosted service. |
 | Workflow, Proof, and Board | Development fixture | The four-stage `ctower.trust-spine-four-stage@1` fixture, protected Proof flow, and read-only six-lane Board projection are exercised in development tests. They are not a general production workflow service. |
 | Protected CLI and encrypted spool | Development fixture | `ctowerctl`/`ctl` expose every authored CLI mapping through the generated client. Non-bootstrap mutations are encrypted and durable before send; Linux verification exercises real Secret Service. This is not a published operator package or off-host recovery path. |
-| HTTP/OpenAPI and generated clients | Development fixture | The authored OpenAPI has 25 operations with explicit CLI/query-mutation/spool metadata. It generates strict client models, methods, replay registry, and runtime schema resources. It is not a stable supported external API. |
+| HTTP/OpenAPI and generated clients | Development fixture | The authored OpenAPI has 36 operations with explicit CLI/query-mutation/spool metadata. It generates strict client models, methods, replay registry, and runtime schema resources. It is not a stable supported external API. |
 | CompanyBundle and Catalog | Development fixture | Strict validate/plan/apply/export and ticket comments are exercised against real PostgreSQL. Apply is atomic/idempotent and moves one future-only pointer; it does not activate runners, effects, or external targets. |
+| I1.7A cutover visibility | Development fixture | Strict cutover-health and compact read-only Project Delivery contracts, generated reads, and a CP3-D-blocked fold exist. Migration commands are online-only refusal stubs. No legacy record is imported or fenced and no development epoch is committed. |
 | Off-host acknowledgement | Verifier-only proof | The ordinary configuration is `pending_only`. A verifier-owned PostgreSQL primary/standby topology exercises acknowledged durability; that evidence is not a supported deployment, backup, or restore path. |
 | Deterministic control loops and health vocabulary | Development fixture | Fixed Routine/outbox/projection loops and health reporting are tested. Routine names alone do not constitute a supported operational service. |
 | Local CP3-C backup and recovery evidence | Verifier-only proof | Local/verifier evidence covers digest-bound object handling, backup and anchors, key recovery, isolated restore, rollback, and recovery evidence. It does not activate external targets, a supported deployment, or CP3-D production recovery. |
@@ -23,6 +24,10 @@ planned work so a visible package, schema, or directory is not mistaken for an a
 
 Public API + protected CLI precede I1 source-of-truth cutover. Browser implementation, browser evidence,
 and browser E2E first activate at CT-I2-005 / I2.4.
+
+I1.7B will implement reviewed source selection/import/reconciliation and the permanent legacy fence.
+I1.7C will commit the narrow reconstructible-data development epoch and run the first API/CLI dogfood
+target. CP3-D and disaster-safe promotion remain later blocking evidence.
 
 ## How to interpret the labels
 

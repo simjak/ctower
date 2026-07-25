@@ -13,6 +13,7 @@ from starlette.responses import Response
 from ctower_api._board_routes import install_board_routes
 from ctower_api._catalog_routes import BundleCatalog, install_catalog_routes
 from ctower_api._comment_routes import install_comment_routes
+from ctower_api._cutover_routes import install_cutover_routes
 from ctower_api._health_routes import install_health_routes
 from ctower_api._http_support import (
     authenticate as _authenticate,
@@ -114,6 +115,7 @@ def create_app(
         install_proof_workflow_routes(app, access, record, proof, workflow, recorder)
     if projections is not None:
         install_board_routes(app, access, projections, recorder)
+        install_cutover_routes(app, access, projections, recorder)
         install_health_routes(app, access, record, projections, recorder, attention)
     if (synthetic_runtime is None) is not (synthetic_revision is None):
         raise ValueError("synthetic runtime and revision must be composed together")

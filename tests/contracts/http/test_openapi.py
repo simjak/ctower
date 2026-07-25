@@ -20,17 +20,58 @@ _EXPECTED_OPERATION_METADATA: dict[str, tuple[object, bool, str]] = {
     "bootstrapFirstTenant": ("bootstrap first-tenant", True, "forbidden"),
     "changeTicketAssignment": ("ticket assign", True, "allowed"),
     "changeTicketPriority": ("ticket prioritize", True, "allowed"),
+    "commitCtowerProjectDevelopmentEpoch": (
+        "migration ctower-project commit-development-epoch",
+        True,
+        "forbidden",
+    ),
     "createTicket": (["ticket capture", "ticket create"], True, "allowed"),
     "exportCompanyBundle": ("company bundle export", False, "forbidden"),
+    "exportCtowerProjectMigration": (
+        "migration ctower-project export",
+        True,
+        "forbidden",
+    ),
     "freezeProofCriteria": ("ticket criteria freeze", True, "allowed"),
     "getBoard": ("board query", False, "forbidden"),
     "getControlHealth": ("control health", False, "forbidden"),
+    "getCtowerProjectCutoverHealth": (
+        "migration ctower-project verify",
+        False,
+        "forbidden",
+    ),
+    "getProjectDelivery": ("project delivery query", False, "forbidden"),
     "getSyntheticWorkflowRun": ("synthetic query", False, "forbidden"),
     "getTicket": (["ticket query", "ticket show"], False, "forbidden"),
     "getTicketTimeline": ("ticket timeline", False, "forbidden"),
     "listTicketAssignments": ("ticket assignments", False, "forbidden"),
     "listTicketAuditEvents": ("ticket audit", False, "forbidden"),
+    "importCtowerProjectMigration": (
+        "migration ctower-project import",
+        True,
+        "forbidden",
+    ),
+    "inventoryCtowerProjectMigration": (
+        "migration ctower-project inventory",
+        True,
+        "forbidden",
+    ),
     "planCompanyBundle": ("company bundle plan", False, "forbidden"),
+    "planCtowerProjectMigration": (
+        "migration ctower-project plan",
+        True,
+        "forbidden",
+    ),
+    "prepareCtowerProjectCutover": (
+        "migration ctower-project prepare",
+        True,
+        "forbidden",
+    ),
+    "reconcileCtowerProjectMigration": (
+        "migration ctower-project reconcile",
+        True,
+        "forbidden",
+    ),
     "recordOutboxPoisonDisposition": ("ops outbox poison dispose", True, "allowed"),
     "recordProofEvidence": ("ticket evidence add", True, "allowed"),
     "recordProofVerdict": ("ticket gate verdict", True, "allowed"),
@@ -59,8 +100,10 @@ _EXPECTED_PROBLEM_CODES = {
     "bundle-schema-invalid",
     "bundle-security-refused",
     "durability_pending",
+    "i1-7b-required",
     "idempotency-conflict",
     "poison-not-found",
+    "project-delivery-unavailable",
     "proof-candidate-author-mismatch",
     "proof-candidate-digest-invalid",
     "proof-candidate-digest-not-current",
@@ -132,7 +175,16 @@ def test_openapi_exposes_exact_i1_operations_and_generated_routing_metadata() ->
         operation_id
         for operation_id, (_, is_mutation, spool_policy) in operations.items()
         if is_mutation and spool_policy == "forbidden"
-    } == {"bootstrapFirstTenant"}
+    } == {
+        "bootstrapFirstTenant",
+        "commitCtowerProjectDevelopmentEpoch",
+        "exportCtowerProjectMigration",
+        "importCtowerProjectMigration",
+        "inventoryCtowerProjectMigration",
+        "planCtowerProjectMigration",
+        "prepareCtowerProjectCutover",
+        "reconcileCtowerProjectMigration",
+    }
 
 
 def test_problem_vocabulary_and_boundary_objects_are_strict() -> None:

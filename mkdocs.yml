@@ -51,6 +51,7 @@ nav:
       - Key recovery: operations/key-recovery.md
       - Isolated restore: operations/isolated-restore.md
       - Rollback: operations/rollback.md
+      - ctower-project cutover: operations/ctower-project-cutover.md
       - Recovery evidence: operations/recovery-evidence.md
   - Security:
       - Secret handling: security/secret-handling.md

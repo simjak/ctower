@@ -735,6 +735,153 @@
           "422": {"$ref": "#/components/responses/ProblemResponse"}
         }
       }
+    },
+    "/v1/migrations/ctower-project/inventory": {
+      "post": {
+        "operationId": "inventoryCtowerProjectMigration",
+        "x-ctower-cli": "migration ctower-project inventory",
+        "x-ctower-mutation": true,
+        "x-ctower-spool": "forbidden",
+        "security": [{"bearerAuth": []}],
+        "parameters": [{"$ref": "#/components/parameters/IdempotencyKey"}],
+        "requestBody": {"required": true, "content": {"application/json": {"schema": {"$ref": "#/components/schemas/CtowerProjectMigrationStubRequest"}}}},
+        "responses": {
+          "202": {"description": "Future I1.7B phase receipt; I1.7A refuses this operation", "headers": {"Retry-After": {"$ref": "#/components/headers/RetryAfter"}}, "content": {"application/json": {"schema": {"$ref": "#/components/schemas/CtowerProjectMigrationStubResult"}}}},
+          "401": {"$ref": "#/components/responses/ProblemResponse"},
+          "409": {"$ref": "#/components/responses/ProblemResponse"},
+          "422": {"$ref": "#/components/responses/ProblemResponse"}
+        }
+      }
+    },
+    "/v1/migrations/ctower-project/export": {
+      "post": {
+        "operationId": "exportCtowerProjectMigration",
+        "x-ctower-cli": "migration ctower-project export",
+        "x-ctower-mutation": true,
+        "x-ctower-spool": "forbidden",
+        "security": [{"bearerAuth": []}],
+        "parameters": [{"$ref": "#/components/parameters/IdempotencyKey"}],
+        "requestBody": {"required": true, "content": {"application/json": {"schema": {"$ref": "#/components/schemas/CtowerProjectMigrationStubRequest"}}}},
+        "responses": {
+          "202": {"description": "Future I1.7B phase receipt; I1.7A refuses this operation", "headers": {"Retry-After": {"$ref": "#/components/headers/RetryAfter"}}, "content": {"application/json": {"schema": {"$ref": "#/components/schemas/CtowerProjectMigrationStubResult"}}}},
+          "401": {"$ref": "#/components/responses/ProblemResponse"},
+          "409": {"$ref": "#/components/responses/ProblemResponse"},
+          "422": {"$ref": "#/components/responses/ProblemResponse"}
+        }
+      }
+    },
+    "/v1/migrations/ctower-project/plan": {
+      "post": {
+        "operationId": "planCtowerProjectMigration",
+        "x-ctower-cli": "migration ctower-project plan",
+        "x-ctower-mutation": true,
+        "x-ctower-spool": "forbidden",
+        "security": [{"bearerAuth": []}],
+        "parameters": [{"$ref": "#/components/parameters/IdempotencyKey"}],
+        "requestBody": {"required": true, "content": {"application/json": {"schema": {"$ref": "#/components/schemas/CtowerProjectMigrationStubRequest"}}}},
+        "responses": {
+          "202": {"description": "Future I1.7B phase receipt; I1.7A refuses this operation", "headers": {"Retry-After": {"$ref": "#/components/headers/RetryAfter"}}, "content": {"application/json": {"schema": {"$ref": "#/components/schemas/CtowerProjectMigrationStubResult"}}}},
+          "401": {"$ref": "#/components/responses/ProblemResponse"},
+          "409": {"$ref": "#/components/responses/ProblemResponse"},
+          "422": {"$ref": "#/components/responses/ProblemResponse"}
+        }
+      }
+    },
+    "/v1/migrations/ctower-project/import": {
+      "post": {
+        "operationId": "importCtowerProjectMigration",
+        "x-ctower-cli": "migration ctower-project import",
+        "x-ctower-mutation": true,
+        "x-ctower-spool": "forbidden",
+        "security": [{"bearerAuth": []}],
+        "parameters": [{"$ref": "#/components/parameters/IdempotencyKey"}],
+        "requestBody": {"required": true, "content": {"application/json": {"schema": {"$ref": "#/components/schemas/CtowerProjectMigrationStubRequest"}}}},
+        "responses": {
+          "202": {"description": "Future I1.7B phase receipt; I1.7A refuses this operation", "headers": {"Retry-After": {"$ref": "#/components/headers/RetryAfter"}}, "content": {"application/json": {"schema": {"$ref": "#/components/schemas/CtowerProjectMigrationStubResult"}}}},
+          "401": {"$ref": "#/components/responses/ProblemResponse"},
+          "409": {"$ref": "#/components/responses/ProblemResponse"},
+          "422": {"$ref": "#/components/responses/ProblemResponse"}
+        }
+      }
+    },
+    "/v1/migrations/ctower-project/reconcile": {
+      "post": {
+        "operationId": "reconcileCtowerProjectMigration",
+        "x-ctower-cli": "migration ctower-project reconcile",
+        "x-ctower-mutation": true,
+        "x-ctower-spool": "forbidden",
+        "security": [{"bearerAuth": []}],
+        "parameters": [{"$ref": "#/components/parameters/IdempotencyKey"}],
+        "requestBody": {"required": true, "content": {"application/json": {"schema": {"$ref": "#/components/schemas/CtowerProjectMigrationStubRequest"}}}},
+        "responses": {
+          "202": {"description": "Future I1.7B phase receipt; I1.7A refuses this operation", "headers": {"Retry-After": {"$ref": "#/components/headers/RetryAfter"}}, "content": {"application/json": {"schema": {"$ref": "#/components/schemas/CtowerProjectMigrationStubResult"}}}},
+          "401": {"$ref": "#/components/responses/ProblemResponse"},
+          "409": {"$ref": "#/components/responses/ProblemResponse"},
+          "422": {"$ref": "#/components/responses/ProblemResponse"}
+        }
+      }
+    },
+    "/v1/migrations/ctower-project/prepare": {
+      "post": {
+        "operationId": "prepareCtowerProjectCutover",
+        "x-ctower-cli": "migration ctower-project prepare",
+        "x-ctower-mutation": true,
+        "x-ctower-spool": "forbidden",
+        "security": [{"bearerAuth": []}],
+        "parameters": [{"$ref": "#/components/parameters/IdempotencyKey"}],
+        "requestBody": {"required": true, "content": {"application/json": {"schema": {"$ref": "#/components/schemas/CtowerProjectMigrationStubRequest"}}}},
+        "responses": {
+          "202": {"description": "Future I1.7B phase receipt; I1.7A refuses this operation", "headers": {"Retry-After": {"$ref": "#/components/headers/RetryAfter"}}, "content": {"application/json": {"schema": {"$ref": "#/components/schemas/CtowerProjectMigrationStubResult"}}}},
+          "401": {"$ref": "#/components/responses/ProblemResponse"},
+          "409": {"$ref": "#/components/responses/ProblemResponse"},
+          "422": {"$ref": "#/components/responses/ProblemResponse"}
+        }
+      }
+    },
+    "/v1/migrations/ctower-project/commit-development-epoch": {
+      "post": {
+        "operationId": "commitCtowerProjectDevelopmentEpoch",
+        "x-ctower-cli": "migration ctower-project commit-development-epoch",
+        "x-ctower-mutation": true,
+        "x-ctower-spool": "forbidden",
+        "security": [{"bearerAuth": []}],
+        "parameters": [{"$ref": "#/components/parameters/IdempotencyKey"}],
+        "requestBody": {"required": true, "content": {"application/json": {"schema": {"$ref": "#/components/schemas/CtowerProjectMigrationStubRequest"}}}},
+        "responses": {
+          "202": {"description": "Future I1.7C epoch receipt; I1.7A refuses this operation", "headers": {"Retry-After": {"$ref": "#/components/headers/RetryAfter"}}, "content": {"application/json": {"schema": {"$ref": "#/components/schemas/CtowerProjectMigrationStubResult"}}}},
+          "401": {"$ref": "#/components/responses/ProblemResponse"},
+          "409": {"$ref": "#/components/responses/ProblemResponse"},
+          "422": {"$ref": "#/components/responses/ProblemResponse"}
+        }
+      }
+    },
+    "/v1/migrations/ctower-project/cutover-health": {
+      "get": {
+        "operationId": "getCtowerProjectCutoverHealth",
+        "x-ctower-cli": "migration ctower-project verify",
+        "x-ctower-mutation": false,
+        "x-ctower-spool": "forbidden",
+        "security": [{"bearerAuth": []}],
+        "responses": {
+          "200": {"description": "Current development/disaster-safe authority boundary", "content": {"application/json": {"schema": {"$ref": "#/components/schemas/CtowerProjectCutoverHealth"}}}},
+          "401": {"$ref": "#/components/responses/ProblemResponse"}
+        }
+      }
+    },
+    "/v1/projects/{project_key}/delivery": {
+      "get": {
+        "operationId": "getProjectDelivery",
+        "x-ctower-cli": "project delivery query",
+        "x-ctower-mutation": false,
+        "x-ctower-spool": "forbidden",
+        "security": [{"bearerAuth": []}],
+        "parameters": [{"$ref": "#/components/parameters/ProjectKey"}],
+        "responses": {
+          "200": {"description": "Compact read-only Project Delivery rows", "content": {"application/json": {"schema": {"$ref": "#/components/schemas/ProjectDeliveryView"}}}},
+          "401": {"$ref": "#/components/responses/ProblemResponse"},
+          "404": {"$ref": "#/components/responses/ProblemResponse"}
+        }
+      }
     }
   },
   "components": {
@@ -778,6 +925,12 @@
         "required": true,
         "schema": {"type": "string", "format": "uuid"}
       },
+      "ProjectKey": {
+        "name": "project_key",
+        "in": "path",
+        "required": true,
+        "schema": {"type": "string", "pattern": "^[a-z][a-z0-9-]{2,63}$"}
+      },
       "AuditCursor": {
         "name": "cursor", "in": "query", "required": false,
         "schema": {"type": "integer", "minimum": 0, "default": 0}
@@ -816,6 +969,88 @@
       }
     },
     "schemas": {
+      "CtowerProjectMigrationStubRequest": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["cutover_id", "input_digest"],
+        "properties": {
+          "cutover_id": {"type": "string", "format": "uuid"},
+          "input_digest": {"type": "string", "pattern": "^sha256:[0-9a-f]{64}$"}
+        }
+      },
+      "CtowerProjectMigrationStubResult": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["cutover_id", "phase", "state", "detail"],
+        "properties": {
+          "cutover_id": {"type": "string", "format": "uuid"},
+          "phase": {"type": "string", "enum": ["inventory", "export", "plan", "import", "reconcile", "prepare", "commit_development_epoch"]},
+          "state": {"const": "deferred_to_i1_7b_or_c"},
+          "detail": {"type": "string", "minLength": 1, "maxLength": 500}
+        }
+      },
+      "CtowerProjectCutoverHealth": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["schema", "cutover_id", "authority_mode", "phase", "writes_enabled", "durability_claim", "recovery_claim", "data_class", "legacy_writer_fence", "split_brain", "projection_completeness", "source_watermark", "projection_watermark", "banner"],
+        "properties": {
+          "schema": {"const": "ctower.ctower-project-cutover-health/v1"},
+          "cutover_id": {"type": ["string", "null"], "format": "uuid"},
+          "authority_mode": {"type": "string", "enum": ["legacy_writable", "development_single_writer", "disaster_safe"]},
+          "phase": {"type": "string", "enum": ["not_started", "prepared", "development_epoch_committed", "disaster_safe_active"]},
+          "writes_enabled": {"type": "boolean"},
+          "durability_claim": {"type": "string", "enum": ["CP3_D_NOT_PROVEN", "CP3_D_PROVEN"]},
+          "recovery_claim": {"type": "string", "enum": ["EXTERNAL_FAILURE_DOMAIN_UNPROVEN", "EXTERNAL_FAILURE_DOMAIN_PROVEN"]},
+          "data_class": {"type": "string", "enum": ["RECONSTRUCTIBLE_ONLY", "DISASTER_SAFE_CTOWER_ENGINEERING"]},
+          "legacy_writer_fence": {"type": "string", "enum": ["not_armed", "enforced", "unknown"]},
+          "split_brain": {"type": "string", "enum": ["clear", "detected", "unknown"]},
+          "projection_completeness": {"type": "string", "enum": ["current", "stale", "STATE_UNKNOWN"]},
+          "source_watermark": {"type": "integer", "minimum": 0},
+          "projection_watermark": {"type": "integer", "minimum": 0},
+          "banner": {"type": "string", "minLength": 1}
+        }
+      },
+      "ProjectDeliveryCriteria": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["proven", "declared"],
+        "properties": {
+          "proven": {"type": "integer", "minimum": 0},
+          "declared": {"type": "integer", "minimum": 1}
+        }
+      },
+      "ProjectDeliveryRow": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["checkpoint_key", "checkpoint_label", "headline_state", "underlying_maturity", "outcome", "accountable_owner", "criteria", "source_watermark", "projection_watermark", "freshness", "confidence", "health", "source_ids", "derivation_reasons"],
+        "properties": {
+          "checkpoint_key": {"type": "string", "pattern": "^I[12]\\.[0-9]+$"},
+          "checkpoint_label": {"type": "string", "minLength": 1},
+          "headline_state": {"type": "string", "enum": ["planned", "in_progress", "ready_to_land", "merged", "verified", "released", "blocked", "done"]},
+          "underlying_maturity": {"type": "string", "enum": ["planned", "in_progress", "ready_to_land", "merged", "verified", "released"]},
+          "outcome": {"type": "string", "minLength": 1},
+          "accountable_owner": {"type": "string", "minLength": 1},
+          "criteria": {"$ref": "#/components/schemas/ProjectDeliveryCriteria"},
+          "source_watermark": {"type": "integer", "minimum": 0},
+          "projection_watermark": {"type": "integer", "minimum": 0},
+          "freshness": {"type": "string", "enum": ["fresh", "stale", "STATE_UNKNOWN"]},
+          "confidence": {"type": "string", "enum": ["development_degraded", "disaster_safe", "STATE_UNKNOWN"]},
+          "health": {"type": "string", "enum": ["CP3_D_NOT_PROVEN", "CURRENT", "STATE_UNKNOWN"]},
+          "source_ids": {"type": "array", "items": {"type": "string", "minLength": 1}},
+          "derivation_reasons": {"type": "array", "minItems": 1, "items": {"type": "string", "minLength": 1}}
+        }
+      },
+      "ProjectDeliveryView": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["schema", "company_key", "project_key", "rows"],
+        "properties": {
+          "schema": {"const": "ctower.project-delivery/v1"},
+          "company_key": {"type": "string", "pattern": "^[a-z][a-z0-9-]{2,63}$"},
+          "project_key": {"type": "string", "pattern": "^[a-z][a-z0-9-]{2,63}$"},
+          "rows": {"type": "array", "items": {"$ref": "#/components/schemas/ProjectDeliveryRow"}}
+        }
+      },
       "BootstrapRequest": {
         "type": "object",
         "additionalProperties": false,
@@ -1269,8 +1504,10 @@
               "bundle-schema-invalid",
               "bundle-security-refused",
               "durability_pending",
+              "i1-7b-required",
               "idempotency-conflict",
               "poison-not-found",
+              "project-delivery-unavailable",
               "proof-candidate-author-mismatch",
               "proof-candidate-digest-invalid",
               "proof-candidate-digest-not-current",

@@ -34,3 +34,13 @@ provide external targets, a supported installation, production activation, or CP
 A lean Docker Compose deployment direction may be proposed in future work, but no product Compose contract
 has shipped. Production deployment, configuration, monitoring, and recovery require their own conformance
 evidence and operator path.
+
+## I1.7A cutover boundary
+
+I1.7A exposes strict cutover-health and read-only Project Delivery data and accepts the documented
+migration command spellings only as authenticated, online-only refusal stubs. It does not freeze Mission
+Control, import a record, publish a client pointer, commit an epoch, or enable ctower-project writes.
+
+I1.7B owns source selection/import/reconciliation and the legacy fence. I1.7C owns the development epoch
+and dogfood proof. Even then the allowed cohort is reconstructible ctower engineering data only and health
+must remain `CP3_D_NOT_PROVEN` until the separate CP3-D promotion gate passes.

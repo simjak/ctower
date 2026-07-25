@@ -24,6 +24,7 @@ __all__: tuple[str, ...] = ()
 _ASSIGNMENT_KINDS = ("current_assignee", "stage_owner", "reviewer")
 _BLOCKER_KINDS = ("dependency", "operator_action", "policy", "resource", "technical")
 _SPOOL_STATES = ("pending", "accepted_archive", "quarantine")
+_SHA256_DIGEST_LENGTH = 71
 _AUTHORED_COMMAND_NAMES = frozenset(
     {
         "bootstrap first-tenant",
@@ -59,6 +60,15 @@ _AUTHORED_COMMAND_NAMES = frozenset(
         "company bundle export",
         "synthetic query",
         "synthetic run",
+        "migration ctower-project inventory",
+        "migration ctower-project export",
+        "migration ctower-project plan",
+        "migration ctower-project import",
+        "migration ctower-project reconcile",
+        "migration ctower-project prepare",
+        "migration ctower-project commit-development-epoch",
+        "migration ctower-project verify",
+        "project delivery query",
     }
 )
 
@@ -94,6 +104,8 @@ def _parser() -> argparse.ArgumentParser:
     _ops_parser(areas.add_parser("ops"))
     _company_parser(areas.add_parser("company"))
     _synthetic_parser(areas.add_parser("synthetic"))
+    _migration_parser(areas.add_parser("migration"))
+    _project_parser(areas.add_parser("project"))
     _spool_parser(areas.add_parser("spool"))
     return parser
 
@@ -392,6 +404,39 @@ def _synthetic_parser(parser: argparse.ArgumentParser) -> None:
     query.add_argument("run_id", type=UUID)
 
 
+def _migration_parser(parser: argparse.ArgumentParser) -> None:
+    projects = parser.add_subparsers(dest="subject", required=True, parser_class=_Parser)
+    actions = projects.add_parser("ctower-project").add_subparsers(
+        dest="migration_action", required=True, parser_class=_Parser
+    )
+    for name in (
+        "inventory",
+        "export",
+        "plan",
+        "import",
+        "reconcile",
+        "prepare",
+        "commit-development-epoch",
+    ):
+        phase = actions.add_parser(name)
+        phase.set_defaults(cli_name=f"migration ctower-project {name}")
+        _command_id(phase)
+        phase.add_argument("--cutover-id", required=True, type=UUID)
+        phase.add_argument("--input-digest", required=True, type=_sha256_digest)
+    actions.add_parser("verify").set_defaults(cli_name="migration ctower-project verify")
+
+
+def _project_parser(parser: argparse.ArgumentParser) -> None:
+    subjects = parser.add_subparsers(dest="subject", required=True, parser_class=_Parser)
+    actions = subjects.add_parser("delivery").add_subparsers(
+        dest="delivery_action", required=True, parser_class=_Parser
+    )
+    query = actions.add_parser("query")
+    query.set_defaults(cli_name="project delivery query")
+    query.add_argument("project_key", choices=("ctower",))
+    query.add_argument("--output", choices=("text", "json"), default="text")
+
+
 def _spool_parser(parser: argparse.ArgumentParser) -> None:
     actions = parser.add_subparsers(dest="action", required=True, parser_class=_Parser)
     actions.add_parser("status").set_defaults(local_command="spool status")
@@ -459,6 +504,16 @@ def _aware_datetime(value: str) -> datetime:
     if parsed.tzinfo is None:
         raise argparse.ArgumentTypeError("timestamp must include a UTC offset")
     return parsed
+
+
+def _sha256_digest(value: str) -> str:
+    if len(value) != _SHA256_DIGEST_LENGTH or not value.startswith("sha256:"):
+        raise argparse.ArgumentTypeError("digest must be one SHA-256 value")
+    try:
+        int(value.removeprefix("sha256:"), 16)
+    except ValueError as error:
+        raise argparse.ArgumentTypeError("digest must be one SHA-256 value") from error
+    return value
 
 
 def _safe_base_url(value: str) -> str:

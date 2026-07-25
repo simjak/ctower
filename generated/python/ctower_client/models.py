@@ -1,6 +1,6 @@
 """DO NOT EDIT: generated file; regenerate from declared inputs.
 
-Authored contract digest: sha256:e1263c9e3ab91876558e63c26af7f1a2bb7e6f0ba30d5984a3499e17cd78c3e8
+Authored contract digest: sha256:5bc97dcbc6daeb0c380a7bb0edc8bddbb949846837cfdf69d8483b3af7b8b3d2
 """
 
 from __future__ import annotations
@@ -51,6 +51,9 @@ __all__ = [
     "ComponentReference",
     "ComponentScope",
     "ControlHealth",
+    "CtowerProjectCutoverHealth",
+    "CtowerProjectMigrationStubRequest",
+    "CtowerProjectMigrationStubResult",
     "CustodyTransferRequest",
     "CustodyTransferredAuditEvent",
     "CustodyTransferredPayload",
@@ -71,6 +74,9 @@ __all__ = [
     "PriorityChangeRequest",
     "PriorityChangedAuditData",
     "Problem",
+    "ProjectDeliveryCriteria",
+    "ProjectDeliveryRow",
+    "ProjectDeliveryView",
     "ProjectionHealth",
     "ProofChangedAuditEvent",
     "ProofChangedAuditPayload",
@@ -265,6 +271,50 @@ class ComponentScope(_BoundaryModel):
     tenant: Annotated[str, Field(pattern="^[a-z][a-z0-9-]{2,63}$")]
 
 
+class CtowerProjectCutoverHealth(_BoundaryModel):
+    schema_id: Literal["ctower.ctower-project-cutover-health/v1"] = Field(
+        alias="schema", serialization_alias="schema"
+    )
+    cutover_id: UUID | None
+    authority_mode: Literal["legacy_writable", "development_single_writer", "disaster_safe"]
+    phase: Literal[
+        "not_started",
+        "prepared",
+        "development_epoch_committed",
+        "disaster_safe_active",
+    ]
+    writes_enabled: bool
+    durability_claim: Literal["CP3_D_NOT_PROVEN", "CP3_D_PROVEN"]
+    recovery_claim: Literal["EXTERNAL_FAILURE_DOMAIN_UNPROVEN", "EXTERNAL_FAILURE_DOMAIN_PROVEN"]
+    data_class: Literal["RECONSTRUCTIBLE_ONLY", "DISASTER_SAFE_CTOWER_ENGINEERING"]
+    legacy_writer_fence: Literal["not_armed", "enforced", "unknown"]
+    split_brain: Literal["clear", "detected", "unknown"]
+    projection_completeness: Literal["current", "stale", "STATE_UNKNOWN"]
+    source_watermark: Annotated[int, Field(ge=0)]
+    projection_watermark: Annotated[int, Field(ge=0)]
+    banner: Annotated[str, Field(min_length=1)]
+
+
+class CtowerProjectMigrationStubRequest(_BoundaryModel):
+    cutover_id: UUID
+    input_digest: Annotated[str, Field(pattern="^sha256:[0-9a-f]{64}$")]
+
+
+class CtowerProjectMigrationStubResult(_BoundaryModel):
+    cutover_id: UUID
+    phase: Literal[
+        "inventory",
+        "export",
+        "plan",
+        "import",
+        "reconcile",
+        "prepare",
+        "commit_development_epoch",
+    ]
+    state: Literal["deferred_to_i1_7b_or_c"]
+    detail: Annotated[str, Field(min_length=1, max_length=500)]
+
+
 class CustodyTransferRequest(_BoundaryModel):
     expected_version: Annotated[int, Field(ge=1)]
     from_custodian_id: UUID
@@ -359,8 +409,10 @@ class Problem(_BoundaryModel):
         "bundle-schema-invalid",
         "bundle-security-refused",
         "durability_pending",
+        "i1-7b-required",
         "idempotency-conflict",
         "poison-not-found",
+        "project-delivery-unavailable",
         "proof-candidate-author-mismatch",
         "proof-candidate-digest-invalid",
         "proof-candidate-digest-not-current",
@@ -414,6 +466,11 @@ class Problem(_BoundaryModel):
     title: str
     type_uri: str = Field(alias="type", serialization_alias="type")
     unmet_facts: tuple[str, ...] | None = None
+
+
+class ProjectDeliveryCriteria(_BoundaryModel):
+    proven: Annotated[int, Field(ge=0)]
+    declared: Annotated[int, Field(ge=1)]
 
 
 class ProjectionHealth(StrEnum):
@@ -698,6 +755,32 @@ class PriorityChangedAuditData(_BoundaryModel):
     urgent_evidence_ref: Annotated[str, Field(min_length=1, max_length=256)] | None
 
 
+class ProjectDeliveryRow(_BoundaryModel):
+    checkpoint_key: Annotated[str, Field(pattern="^I[12]\\.[0-9]+$")]
+    checkpoint_label: Annotated[str, Field(min_length=1)]
+    headline_state: Literal[
+        "planned",
+        "in_progress",
+        "ready_to_land",
+        "merged",
+        "verified",
+        "released",
+        "blocked",
+        "done",
+    ]
+    underlying_maturity: Literal["planned", "in_progress", "ready_to_land", "merged", "verified", "released"]
+    outcome: Annotated[str, Field(min_length=1)]
+    accountable_owner: Annotated[str, Field(min_length=1)]
+    criteria: ProjectDeliveryCriteria
+    source_watermark: Annotated[int, Field(ge=0)]
+    projection_watermark: Annotated[int, Field(ge=0)]
+    freshness: Literal["fresh", "stale", "STATE_UNKNOWN"]
+    confidence: Literal["development_degraded", "disaster_safe", "STATE_UNKNOWN"]
+    health: Literal["CP3_D_NOT_PROVEN", "CURRENT", "STATE_UNKNOWN"]
+    source_ids: tuple[Annotated[str, Field(min_length=1)], ...]
+    derivation_reasons: Annotated[tuple[Annotated[str, Field(min_length=1)], ...], Field(min_length=1)]
+
+
 class ProofChangedAuditEvent(_BoundaryModel):
     actor_principal_id: UUID
     command_id: UUID
@@ -935,6 +1018,15 @@ class ComponentCompatibility(_BoundaryModel):
 class HealthDimension(_BoundaryModel):
     status: HealthStatus
     contributors: Annotated[tuple[HealthContributor, ...], Field(min_length=1)]
+
+
+class ProjectDeliveryView(_BoundaryModel):
+    schema_id: Literal["ctower.project-delivery/v1"] = Field(
+        alias="schema", serialization_alias="schema"
+    )
+    company_key: Annotated[str, Field(pattern="^[a-z][a-z0-9-]{2,63}$")]
+    project_key: Annotated[str, Field(pattern="^[a-z][a-z0-9-]{2,63}$")]
+    rows: tuple[ProjectDeliveryRow, ...]
 
 
 class TicketCommandResult(_BoundaryModel):

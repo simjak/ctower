@@ -113,6 +113,31 @@
       ]
     },
     {
+      "path": "contracts/domain/migration/ctower-project-cutover-health.schema.json",
+      "references": [
+        "SPEC#one-ctower-project-source-of-truth-barrier",
+        "INV-60",
+        "AC-PD-04"
+      ]
+    },
+    {
+      "path": "contracts/domain/migration/ctower-project-phase.schema.json",
+      "references": [
+        "SPEC#one-ctower-project-source-of-truth-barrier"
+      ]
+    },
+    {
+      "path": "contracts/domain/project-delivery/project-delivery.schema.json",
+      "references": [
+        "SPEC#project-delivery-projection",
+        "INV-59",
+        "INV-60",
+        "AC-PD-01",
+        "AC-PD-02",
+        "AC-PD-04"
+      ]
+    },
+    {
       "path": "contracts/domain/tickets/ticket-event.schema.json",
       "references": [
         "SPEC#canonical-event-and-command-contract",
@@ -987,6 +1012,18 @@
         "AC-DUR-06",
         "AC-OPS-13",
         "AC-OPS-14"
+      ]
+    },
+    {
+      "path": "packages/ctower-kernel/migrations/0027_i17a_cutover_delivery.sql",
+      "references": [
+        "SPEC#one-ctower-project-source-of-truth-barrier",
+        "SPEC#project-delivery-projection",
+        "INV-59",
+        "INV-60",
+        "AC-PD-01",
+        "AC-PD-02",
+        "AC-PD-04"
       ]
     },
     {

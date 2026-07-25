@@ -1,6 +1,6 @@
 """DO NOT EDIT: generated file; regenerate from declared inputs.
 
-Authored contract digest: sha256:e1263c9e3ab91876558e63c26af7f1a2bb7e6f0ba30d5984a3499e17cd78c3e8
+Authored contract digest: sha256:5bc97dcbc6daeb0c380a7bb0edc8bddbb949846837cfdf69d8483b3af7b8b3d2
 """
 
 from ctower_client.client import CtowerClient, CtowerProblemError
@@ -43,6 +43,9 @@ from ctower_client.models import (
     ComponentReference,
     ComponentScope,
     ControlHealth,
+    CtowerProjectCutoverHealth,
+    CtowerProjectMigrationStubRequest,
+    CtowerProjectMigrationStubResult,
     CustodyTransferredAuditEvent,
     CustodyTransferredPayload,
     CustodyTransferRequest,
@@ -63,6 +66,9 @@ from ctower_client.models import (
     PriorityChangedAuditData,
     PriorityChangeRequest,
     Problem,
+    ProjectDeliveryCriteria,
+    ProjectDeliveryRow,
+    ProjectDeliveryView,
     ProjectionHealth,
     ProofChangedAuditEvent,
     ProofChangedAuditPayload,
@@ -156,6 +162,9 @@ __all__ = [
     "ControlHealth",
     "CtowerClient",
     "CtowerProblemError",
+    "CtowerProjectCutoverHealth",
+    "CtowerProjectMigrationStubRequest",
+    "CtowerProjectMigrationStubResult",
     "CustodyTransferRequest",
     "CustodyTransferredAuditEvent",
     "CustodyTransferredPayload",
@@ -176,6 +185,9 @@ __all__ = [
     "PriorityChangeRequest",
     "PriorityChangedAuditData",
     "Problem",
+    "ProjectDeliveryCriteria",
+    "ProjectDeliveryRow",
+    "ProjectDeliveryView",
     "ProjectionHealth",
     "ProofChangedAuditEvent",
     "ProofChangedAuditPayload",
