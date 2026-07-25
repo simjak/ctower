@@ -9,9 +9,9 @@ roadmap item.
 - Installing or deploying ctower as a service, with Docker Compose or otherwise.
 - Running a supported backup, restore, migration, recovery, monitoring, or incident procedure.
 - Managing real tenants, tickets, credentials, or production work.
-- Using CompanyBundle as a live configuration surface.
+- Treating the development CompanyBundle pointer as runtime/effect activation or a production rollout.
 - Using a browser UI, runner, local/remote agent adapter, or external effect provider.
-- Depending on a stable Python runtime, CLI/API compatibility promise, or production release.
+- Depending on a published package, stable Python runtime, compatibility promise, or production release.
 
 The checked-in Compose file supports disposable PostgreSQL acceptance tests only. Read
 [Current operational boundary](../operations/current-boundary.md) before treating it as infrastructure.
@@ -20,6 +20,7 @@ The checked-in Compose file supports disposable PostgreSQL acceptance tests only
 
 - Read the canonical design and decisions.
 - Run repository verification against synthetic/disposable fixtures.
+- Exercise the protected CLI/spool and CompanyBundle guides against disposable verifier fixtures.
 - Improve documentation, contracts, tests, or one complete development vertical through the contribution
   process.
 

@@ -1,0 +1,8 @@
+{
+  "schema": "ctower.target/v1",
+  "key": "local.control",
+  "environment_ref": "local.linux@1",
+  "image_ref": "local.control@1",
+  "network": "local_only",
+  "execution": "not_exercised"
+}

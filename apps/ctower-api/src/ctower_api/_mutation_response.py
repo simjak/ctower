@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from collections.abc import Mapping
 from datetime import UTC, datetime
 from typing import Protocol, cast
 from uuid import UUID
@@ -17,7 +18,7 @@ __all__ = ["mutation_response"]
 
 
 class _SemanticResult(Protocol):
-    def response_payload(self) -> dict[str, object]: ...
+    def response_payload(self) -> Mapping[str, object]: ...
 
 
 def mutation_response(

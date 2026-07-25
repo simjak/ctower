@@ -12,9 +12,9 @@ check: python-check web-check docs-check workflow-check version-check repository
     {{python}} -m tools.checks --root . --profile fast
 
 python-check: compatibility-coverage
-    {{python}} -m ruff format --check apps/ctower-api/src apps/ctowerctl/src packages/ctower-kernel/src tools/checks tools/codegen tools/compatibility tests/repository tests/contracts tests/compatibility tests/modules tests/acceptance/increment-1
-    {{python}} -m ruff check --no-cache apps/ctower-api/src apps/ctowerctl/src packages/ctower-kernel/src tools/checks tools/codegen tools/compatibility tests/repository tests/contracts tests/compatibility tests/modules tests/acceptance/increment-1
-    {{python}} -m mypy --no-incremental apps/ctower-api/src apps/ctowerctl/src packages/ctower-kernel/src tools/checks tools/codegen tools/compatibility generated/python tests/repository tests/contracts tests/compatibility tests/modules tests/acceptance/increment-1
+    {{python}} -m ruff format --check apps/ctower-api/src apps/ctowerctl/src packages/ctower-kernel/src tools/checks tools/codegen tools/compatibility tests/repository tests/contracts tests/compatibility tests/integration tests/modules tests/artifact tests/acceptance/increment-1
+    {{python}} -m ruff check --no-cache apps/ctower-api/src apps/ctowerctl/src packages/ctower-kernel/src tools/checks tools/codegen tools/compatibility tests/repository tests/contracts tests/compatibility tests/integration tests/modules tests/artifact tests/acceptance/increment-1
+    {{python}} -m mypy --no-incremental apps/ctower-api/src apps/ctowerctl/src packages/ctower-kernel/src tools/checks tools/codegen tools/compatibility generated/python tests/repository tests/contracts tests/compatibility tests/integration tests/modules tests/artifact tests/acceptance/increment-1
 
 compatibility-coverage:
     @coverage_file="$(mktemp)"; trap 'rm -f "$coverage_file"' EXIT; COVERAGE_FILE="$coverage_file" {{python}} -m pytest -p no:cacheprovider --cov=tools.compatibility --cov-branch --cov-fail-under=90 tests/compatibility

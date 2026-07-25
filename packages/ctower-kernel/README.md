@@ -1,9 +1,11 @@
 # ctower-kernel boundary
 
-Trusted modular-monolith artifact. The development walking slice implements small Access, Record, Work,
-Proof, Workflow, Runtime, Projections, and Attention Interfaces: authentication and bootstrap authority; atomic Postgres
-command/event/outbox persistence; ticket lifecycle, priority, custody, assignment, blocker, relation, and
-typed-intent policy; server-pinned frozen criteria, digest-bound evidence, protected verdicts and selective
+Trusted modular-monolith artifact. The development walking slice implements small Access, Catalog, Record,
+Work, Proof, Workflow, Runtime, Projections, Attention, and generic Object Interfaces: authentication and
+bootstrap authority; atomic Postgres command/event/outbox persistence; ticket lifecycle, comments, priority,
+custody, assignment, blocker, relation, and typed-intent policy; universal component/bundle
+validation/planning plus an atomic future-only Catalog pointer; server-pinned frozen criteria, digest-bound
+evidence, protected verdicts and selective
 invalidation; explicitly pinned legal graph movement plus proof-gated atomic resolve/close that releases
 every current-episode ownership interval; and a disposable six-lane
 Board fold over accepted outbox records; immutable delivery attempts, poison, deduplicated Attention findings,
@@ -27,11 +29,18 @@ does not inherit PostgreSQL monitor roles.
 Its default policy remains `pending_only`; accepted behavior is exercised only by the verifier-owned local
 PostgreSQL 17 primary/hot-standby fixture. Projections can replace only disposable Board rows/cursors and
 cannot mutate authority. Runtime materializes only the three authored fixed-operation jobs; it does not
-dispatch them. Proof now owns digest-bound inline/external object metadata, safe backfill, and durable
-erasure tombstones. Record owns immutable backup/anchor/inventory/restore evidence and exact
+dispatch them. The neutral Object port is shared by injected Proof and Catalog capabilities; Proof retains
+digest-bound inline/external object metadata, safe backfill, and durable erasure tombstones without owning
+the generic protocol. Record owns immutable backup/anchor/inventory/restore evidence and exact
 installation/report enablement policy. The local recovery checkpoint does not activate production
-objects, backups, effects, or external targets; Catalog, Effects, synthetic handlers, and the rest of
-I1/I2 remain deferred.
+objects, backups, effects, or external targets; Catalog declarations do not activate Effects, synthetic
+handlers, or the remaining I1/I2 runtimes.
+CompanyBundle validate, plan, and export remain authenticated read operations, including for Commander,
+while apply requires current operator/platform-administrator authority. Apply resolves exact
+principal-command replay, locked base and plan equivalence, and unsupported removal/deprecation before
+staging immutable payloads; an exact replay returns its stored result without consulting the Object port.
+I1 additive and successor activation remains supported, but lifecycle removal/deprecation is a typed refusal
+that leaves the prior active Catalog authoritative.
 
 There is no executable Extension Host in I1 or I2; that runtime remains deferred until a real use case and
 two real Adapters earn its Seam. The kernel may depend on authored/generated contracts and allowlisted public

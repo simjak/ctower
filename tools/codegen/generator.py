@@ -18,134 +18,36 @@ from tools.checks.generated import (
     render_generated_manifest,
 )
 from tools.codegen._client_codegen import render_client
+from tools.codegen._inventory import EXPECTED_OPERATIONS, EXPECTED_SCHEMAS
 from tools.codegen._model_codegen import render_init, render_models
+from tools.codegen._operation_codegen import render_operations
+from tools.codegen._schema_codegen import render_schema_resources
 
 __all__ = ["CodegenError", "check", "write"]
 
 _MANIFEST = Path("generated/.generated-manifest.json")
+_README = Path("generated/README.md")
 _OPENAPI = Path("contracts/http/openapi.yaml")
 _TELEMETRY = Path("contracts/observability/telemetry-context.schema.json")
-_OUTPUTS = {
+_CLIENT_OUTPUTS = {
     "__init__.py": Path("generated/python/ctower_client/__init__.py"),
     "client.py": Path("generated/python/ctower_client/client.py"),
     "models.py": Path("generated/python/ctower_client/models.py"),
+    "operations.py": Path("generated/python/ctower_client/operations.py"),
 }
-_INPUTS = (
+_BASE_INPUTS = (
     _OPENAPI,
     _TELEMETRY,
-    Path("contracts/domain/events/event-envelope.schema.json"),
-    Path("contracts/domain/tickets/ticket-event.schema.json"),
-    Path("contracts/domain/task-management/board-view.schema.json"),
-    Path("contracts/domain/task-management/task-command.schema.json"),
     Path("tools/codegen/__init__.py"),
     Path("tools/codegen/__main__.py"),
     Path("tools/codegen/_client_codegen.py"),
+    Path("tools/codegen/_inventory.py"),
     Path("tools/codegen/_model_codegen.py"),
+    Path("tools/codegen/_operation_codegen.py"),
+    Path("tools/codegen/_schema_codegen.py"),
     Path("tools/codegen/generator.py"),
     Path("tools/checks/generated.py"),
 )
-_EXPECTED_OPERATIONS = {
-    "addTicketRelation",
-    "applyTicketIntent",
-    "bootstrapFirstTenant",
-    "changeTicketAssignment",
-    "changeTicketPriority",
-    "createTicket",
-    "freezeProofCriteria",
-    "getBoard",
-    "getControlHealth",
-    "getTicket",
-    "getTicketTimeline",
-    "listTicketAssignments",
-    "listTicketAuditEvents",
-    "recordProofEvidence",
-    "recordProofVerdict",
-    "recordOutboxPoisonDisposition",
-    "resolveCloseWorkflow",
-    "startTicketWorkflow",
-    "transferTicketCustody",
-    "transitionWorkflow",
-}
-_EXPECTED_SCHEMAS = {
-    "ActivityClass",
-    "AdmitIntent",
-    "AdmittedAuditData",
-    "AssignmentChangeRequest",
-    "AssignmentChangedAuditData",
-    "AssignmentInterval",
-    "AssignmentKind",
-    "AssignmentList",
-    "AuditEvent",
-    "AuditPage",
-    "BlockIntent",
-    "BlockerOpenedAuditData",
-    "BlockerResolvedAuditData",
-    "BoardCard",
-    "BoardLane",
-    "BoardView",
-    "BootstrapReceipt",
-    "BootstrapRequest",
-    "CustodyTransferredPayload",
-    "CustodyTransferredAuditEvent",
-    "CustodyTransferRequest",
-    "ControlHealth",
-    "DeferIntent",
-    "DeferredAuditData",
-    "DurabilityState",
-    "EvidenceRequest",
-    "FreezeCriteriaRequest",
-    "HealthContributor",
-    "HealthContributorKey",
-    "HealthDimension",
-    "HealthStatus",
-    "MutableAssignmentKind",
-    "Priority",
-    "PriorityChangeRequest",
-    "PriorityChangedAuditData",
-    "Problem",
-    "PoisonDispositionAction",
-    "PoisonDispositionReceipt",
-    "PoisonDispositionRequest",
-    "ProjectionHealth",
-    "ProofChangedAuditEvent",
-    "ProofChangedAuditPayload",
-    "ProofCriterion",
-    "ProofReceipt",
-    "RelationKind",
-    "RelationAddedAuditData",
-    "RelationRequest",
-    "ReopenIntent",
-    "ReopenedAuditData",
-    "ResolveCloseRequest",
-    "SourceReference",
-    "TicketCommandResult",
-    "TicketCreateRequest",
-    "TicketCreatedPayload",
-    "TicketCreatedAuditEvent",
-    "TicketIntentRequest",
-    "TicketResource",
-    "TimelineEvent",
-    "TimelineResponse",
-    "UnblockIntent",
-    "VerdictDecision",
-    "VerdictRequest",
-    "WorkReceipt",
-    "WorkAdmittedAuditPayload",
-    "WorkAssignmentChangedAuditPayload",
-    "WorkBlockerOpenedAuditPayload",
-    "WorkBlockerResolvedAuditPayload",
-    "WorkChangedAuditEvent",
-    "WorkChangedAuditPayload",
-    "WorkDeferredAuditPayload",
-    "WorkPriorityChangedAuditPayload",
-    "WorkRelationAddedAuditPayload",
-    "WorkReopenedAuditPayload",
-    "WorkflowChangedAuditEvent",
-    "WorkflowChangedAuditPayload",
-    "WorkflowReceipt",
-    "WorkflowStartRequest",
-    "WorkflowTransitionRequest",
-}
 
 
 class CodegenError(ValueError):
@@ -188,12 +90,29 @@ def _render(root: Path) -> _Rendered:
     contract_digest = hashlib.sha256(
         json.dumps(generated_contract, separators=(",", ":"), sort_keys=True).encode()
     ).hexdigest()
-    rendered = {
-        "__init__.py": render_init(generated_contract, contract_digest),
-        "client.py": render_client(generated_contract, contract_digest),
-        "models.py": render_models(generated_contract, contract_digest),
-    }
-    outputs = tuple((output, rendered[name]) for name, output in sorted(_OUTPUTS.items()))
+    try:
+        rendered = {
+            "__init__.py": render_init(generated_contract, contract_digest),
+            "client.py": render_client(generated_contract, contract_digest),
+            "models.py": render_models(generated_contract, contract_digest),
+            "operations.py": render_operations(generated_contract, contract_digest),
+        }
+        contract_resources = render_schema_resources(root, contract_digest)
+    except (TypeError, ValueError) as error:
+        raise CodegenError(str(error)) from error
+    client_outputs = tuple(
+        (output, rendered[name]) for name, output in sorted(_CLIENT_OUTPUTS.items())
+    )
+    outputs = tuple(
+        sorted(
+            (
+                *client_outputs,
+                *contract_resources.outputs,
+                (_README, _render_readme()),
+            )
+        )
+    )
+    inputs = tuple(sorted({*_BASE_INPUTS, *contract_resources.inputs}))
     try:
         manifest = load_generated_manifest(root, _MANIFEST)
         generator_digest = digest_file(root, Path("tools/codegen/generator.py")).sha256
@@ -202,7 +121,7 @@ def _render(root: Path) -> _Rendered:
             generator="tools.codegen",
             tool_version=f"1+{generator_digest}",
             command="python3 -m tools.codegen --root . --write",
-            inputs=tuple(digest_file(root, path) for path in _INPUTS),
+            inputs=tuple(digest_file(root, path) for path in inputs),
             outputs=tuple(digest_bytes(path, content.encode()) for path, content in outputs),
         )
     except GeneratedManifestError as error:
@@ -220,9 +139,9 @@ def _load_openapi(root: Path) -> dict[str, object]:
     document = cast(dict[str, object], payload)
     operations = _operation_ids(document)
     schemas = _schema_names(document)
-    if operations != _EXPECTED_OPERATIONS:
+    if operations != EXPECTED_OPERATIONS:
         raise CodegenError(f"unexpected operation set: {sorted(operations)}")
-    if schemas != _EXPECTED_SCHEMAS:
+    if schemas != EXPECTED_SCHEMAS:
         raise CodegenError(f"unexpected schema set: {sorted(schemas)}")
     return document
 
@@ -249,6 +168,29 @@ def _schema_names(document: dict[str, object]) -> set[str]:
     if not isinstance(components, dict) or not isinstance(components.get("schemas"), dict):
         raise CodegenError("OpenAPI components.schemas must be an object")
     return set(cast(dict[str, object], components["schemas"]))
+
+
+def _render_readme() -> str:
+    return """# Generated artifacts
+
+Do not edit files in this directory. Regenerate them from authored contracts with:
+
+```text
+python3 -m tools.codegen --root . --write
+```
+
+`python/ctower_client` is the strict OpenAPI client/model package. Its generated operation
+registry is the closed replay inventory for the protected CLI; it is not an arbitrary
+dispatcher.
+
+`python/ctower_contracts` vendors authored JSON schemas into a local-only runtime resource.
+Resolution rejects network references and paths that escape the authored contract tree.
+
+Both packages and `ctower_contracts/schemas.json` are included in the verified development
+wheel. Generated presence does not establish a stable external API, supported package release,
+deployment, or runtime/effect activation. Exact source/output digests are owned by
+`.generated-manifest.json`.
+"""
 
 
 def _with_telemetry_schema(root: Path, contract: dict[str, object]) -> dict[str, object]:

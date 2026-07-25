@@ -10,9 +10,9 @@ request -> Work -> Workflow -> evidence -> gate -> outcome
 ```
 
 !!! warning "Pre-alpha and development-only"
-    ctower is not a supported install, deployment, hosted service, backup/restore product, browser UI,
-    runner, or production release. Its current value is a tested development slice and a public design for
-    earning those capabilities honestly.
+    ctower is not a supported or published install, deployment, hosted service, backup/restore product,
+    browser UI, runner, or production release. Its current value is a tested development slice and a public
+    design for earning those capabilities honestly.
 
 ## Start here
 
@@ -25,7 +25,8 @@ request -> Work -> Workflow -> evidence -> gate -> outcome
 
 ## Navigate by need
 
-- [Guides](contributing/development.md) explain repository development and verification.
+- [Guides](guides/protected-cli.md) explain the protected CLI/spool and
+  [CompanyBundle](guides/company-bundle.md) development checkpoints.
 - [Concepts](concepts.md) define the durable-authority vocabulary.
 - [Operations](operations/current-boundary.md) state the present operational boundary.
 - [Reference](https://github.com/simjak/ctower/tree/main/contracts) begins with authored contracts and the

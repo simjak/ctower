@@ -1,11 +1,33 @@
 # ctowerctl boundary
 
-The current development CLI is a thin online Adapter over the generated Python client. It supports
-`bootstrap first-tenant` and `ticket create/show/assign`; mutation commands require a caller-supplied stable
-command ID. Bootstrap capability and bearer authority are read as one line from stdin and never accepted in
-arguments or environment variables.
+`ctowerctl` and its shorter `ctl` alias are thin development Adapters over the generated Python client.
+They expose only explicit authored command families: bootstrap; ticket, Work, Proof, and Workflow commands;
+Board and health reads; protected outbox disposition; CompanyBundle validate/plan/apply/export; and local
+spool inspection/recovery. There is no arbitrary operation dispatcher or client-side authorization engine.
 
-Successful writes print the server's `durability_pending` result. An unreachable server exits nonzero and
-prints `unsent` with the caller command ID; the CLI does not claim acceptance or queue a hidden write.
-Encrypted offline spool/quarantine remains deferred. The CLI cannot bypass server authorization, validation,
-or custody policy.
+Bearer authority and the one-use bootstrap capability are read as one bounded line from stdin. They are
+never accepted as arguments or environment configuration, written to the spool, or echoed. Server
+authentication, authorization, validation, idempotency, CAS, and durability decisions remain authoritative.
+
+Every non-bootstrap mutation is encrypted and durably appended before its first network send. The spool is
+origin-scoped, owner-only, sequence/hash chained, and keyed only through an allowlisted operating-system
+credential backend. On Linux the development path requires an active D-Bus session, Secret Service, and an
+unlocked collection. There is no plaintext, file, environment, or `keyrings.alt` fallback. A missing or
+locked keyring exits `74` before enqueue/send and does not change existing ciphertext; reads can continue.
+Each command also carries only a keyed opaque identity for the stdin credential used at enqueue. Replay
+compares the current stdin credential before every send. Rotation or a different principal quarantines the
+old command with zero network sends; restore the original identity and explicitly retry, or discard and
+re-enqueue under the new identity.
+
+Corrupt command ciphertext remains visible as a bounded quarantine row with its sequence, byte count, and
+artifact digest. It blocks replay until an operator discards that exact sequence and digest. The disposition
+is authenticated and append-only; the corrupt ciphertext remains as local audit evidence.
+
+Exit meanings are stable: `0` read/accepted, `64` usage/input, `69` permanent rejection or quarantine,
+`74` local/keyring/integrity failure, and `75` queued, unreachable, or `durability_pending`. Exit `75` never
+claims server acceptance. Mutation output always identifies the stable command ID and local state.
+
+The wheel and Secret Service paths are verification artifacts for the pre-alpha development slice, not a
+published package, supported deployment, or production recovery promise. See the
+[protected CLI guide](../../docs/guides/protected-cli.md) and
+[CompanyBundle guide](../../docs/guides/company-bundle.md).

@@ -9,6 +9,7 @@ from uuid import UUID
 
 import psycopg
 
+from ctower_kernel.objects import StoredObject
 from ctower_kernel.proof import (
     ChangeCandidate,
     FreezeCriteria,
@@ -23,7 +24,6 @@ from ctower_kernel.proof import (
 )
 from ctower_kernel.proof._object_sql import insert_external_object
 from ctower_kernel.proof._snapshot_sql import load_snapshot
-from ctower_kernel.proof.objects import StoredObject
 from ctower_kernel.record import RecordProblem
 from ctower_kernel.record.events import (
     EventEnvelope,

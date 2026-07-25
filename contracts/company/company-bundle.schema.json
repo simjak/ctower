@@ -4,7 +4,7 @@
   "title": "CompanyBundle",
   "type": "object",
   "additionalProperties": false,
-  "required": ["schema", "company", "component_refs", "assignments", "secret_binding_refs"],
+  "required": ["schema", "company", "resources", "assignments", "secret_binding_refs"],
   "properties": {
     "schema": { "const": "ctower.company-bundle/v1" },
     "company": {
@@ -16,9 +16,19 @@
         "display_name": { "type": "string", "minLength": 1, "maxLength": 128 }
       }
     },
-    "component_refs": {
+    "resources": {
       "type": "array",
-      "items": { "$ref": "#/$defs/componentRef" },
+      "minItems": 1,
+      "maxItems": 512,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["component", "payload"],
+        "properties": {
+          "component": { "$ref": "../components/versioned-component.schema.json" },
+          "payload": { "type": "object" }
+        }
+      },
       "uniqueItems": true
     },
     "assignments": {
@@ -28,8 +38,11 @@
         "additionalProperties": false,
         "required": ["subject", "slot", "component"],
         "properties": {
-          "subject": { "type": "string", "minLength": 1 },
-          "slot": { "type": "string", "minLength": 1 },
+          "subject": {
+            "type": "string",
+            "pattern": "^[a-z][a-z0-9._-]*:[a-z][a-z0-9._-]*$"
+          },
+          "slot": { "type": "string", "pattern": "^[a-z][a-z0-9._-]{1,63}$" },
           "component": { "$ref": "#/$defs/componentRef" }
         }
       }

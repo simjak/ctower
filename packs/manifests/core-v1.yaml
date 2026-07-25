@@ -3,6 +3,48 @@ status: draft
 manifest_key: core
 revision: 1
 components:
+  - kind: goal
+    key: company.trusted-delivery
+    source: packs/components/goals/company.trusted-delivery/v1.yaml
+  - kind: project
+    key: ctower.control-plane
+    source: packs/components/projects/ctower.control-plane/v1.yaml
+  - kind: persona
+    key: operator.commander
+    source: packs/components/personas/operator.commander/v1.yaml
+  - kind: capability
+    key: control.api
+    source: packs/components/capabilities/control.api/v1.yaml
+  - kind: skill
+    key: protected.cli
+    source: packs/components/skills/protected.cli/v1.yaml
+  - kind: tool
+    key: ctowerctl.client
+    source: packs/components/tools/ctowerctl.client/v1.yaml
+  - kind: environment
+    key: local.linux
+    source: packs/components/environments/local.linux/v1.yaml
+  - kind: image
+    key: local.control
+    source: packs/components/images/local.control/v1.yaml
+  - kind: harness
+    key: local.generated-client
+    source: packs/components/harnesses/local.generated-client/v1.yaml
+  - kind: supervisor
+    key: local.process
+    source: packs/components/supervisors/local.process/v1.yaml
+  - kind: target
+    key: local.control
+    source: packs/components/targets/local.control/v1.yaml
+  - kind: workspace
+    key: local.checkout
+    source: packs/components/workspaces/local.checkout/v1.yaml
+  - kind: telemetry
+    key: local.otlp
+    source: packs/components/telemetry/local.otlp/v1.yaml
+  - kind: agent_profile
+    key: commander.protected-cli
+    source: packs/components/agent-profiles/commander.protected-cli/v1.yaml
   - kind: workflow
     key: ctower.trust-spine-four-stage
     source: packs/workflows/ctower.trust-spine-four-stage/v1.yaml

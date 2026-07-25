@@ -29,6 +29,7 @@ from ctower_kernel.record._bootstrap_sql import (
     bootstrap_problem,
     bootstrap_transaction,
 )
+from ctower_kernel.record._comment_sql import add_comment as _add_comment
 from ctower_kernel.record._custody_sql import transfer_custody as _transfer_custody
 from ctower_kernel.record._durability_health_sql import durability_health as _durability_health
 from ctower_kernel.record._durability_sql import reconcile_durability as _reconcile_durability
@@ -42,6 +43,7 @@ from ctower_kernel.record._ticket_sql import actor_for_credential as _actor_for_
 from ctower_kernel.record._ticket_sql import create_ticket as _create_ticket
 from ctower_kernel.record._ticket_sql import get_ticket as _get_ticket
 from ctower_kernel.record._ticket_sql import ticket_timeline as _ticket_timeline
+from ctower_kernel.record.comments import TicketCommentCommand, TicketCommentResult
 from ctower_kernel.record.transaction import recover_ambiguous_commit
 from ctower_kernel.telemetry import NoopTelemetry, Telemetry, TelemetryContext
 
@@ -235,6 +237,30 @@ class PostgresRecord:
             )
         )
         self._emit("record.transfer_custody", telemetry, outcome)
+        return outcome
+
+    def add_comment(
+        self,
+        actor: Actor,
+        command: TicketCommentCommand,
+        *,
+        request_digest: bytes,
+        now: datetime,
+        telemetry: TelemetryContext,
+    ) -> TicketCommentResult | RecordProblem:
+        """Atomically append or exactly replay one ticket comment."""
+
+        outcome = recover_ambiguous_commit(
+            lambda: _add_comment(
+                self._dsn,
+                actor,
+                command,
+                request_digest=request_digest,
+                now=now,
+                telemetry=telemetry,
+            )
+        )
+        self._emit("record.add_comment", telemetry, outcome)
         return outcome
 
     def reconcile_durability(

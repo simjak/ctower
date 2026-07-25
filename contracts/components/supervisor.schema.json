@@ -1,0 +1,23 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://ctower.local/contracts/components/supervisor.schema.json",
+  "title": "SupervisorComponent",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema", "key", "adapter", "operations", "execution"],
+  "properties": {
+    "schema": { "const": "ctower.supervisor/v1" },
+    "key": { "type": "string", "pattern": "^[a-z][a-z0-9.-]{2,127}$" },
+    "adapter": { "type": "string", "pattern": "^[a-z][a-z0-9._-]{2,127}$" },
+    "operations": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "string",
+        "enum": ["probe", "observe", "interrupt", "terminate", "snapshot", "adopt"]
+      },
+      "uniqueItems": true
+    },
+    "execution": { "const": "not_exercised" }
+  }
+}

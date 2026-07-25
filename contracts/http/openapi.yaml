@@ -10,6 +10,8 @@
       "post": {
         "operationId": "bootstrapFirstTenant",
         "x-ctower-cli": "bootstrap first-tenant",
+        "x-ctower-mutation": true,
+        "x-ctower-spool": "forbidden",
         "parameters": [
           {"$ref": "#/components/parameters/IdempotencyKey"},
           {"$ref": "#/components/parameters/BootstrapCapability"}
@@ -43,7 +45,9 @@
     "/v1/tickets": {
       "post": {
         "operationId": "createTicket",
-        "x-ctower-cli": "ticket create",
+        "x-ctower-cli": ["ticket capture", "ticket create"],
+        "x-ctower-mutation": true,
+        "x-ctower-spool": "allowed",
         "security": [{"bearerAuth": []}],
         "parameters": [{"$ref": "#/components/parameters/IdempotencyKey"}],
         "requestBody": {
@@ -75,7 +79,9 @@
     "/v1/tickets/{ticket_id}": {
       "get": {
         "operationId": "getTicket",
-        "x-ctower-cli": "ticket show",
+        "x-ctower-cli": ["ticket query", "ticket show"],
+        "x-ctower-mutation": false,
+        "x-ctower-spool": "forbidden",
         "security": [{"bearerAuth": []}],
         "parameters": [{"$ref": "#/components/parameters/TicketId"}],
         "responses": {
@@ -95,6 +101,8 @@
       "get": {
         "operationId": "getTicketTimeline",
         "x-ctower-cli": "ticket timeline",
+        "x-ctower-mutation": false,
+        "x-ctower-spool": "forbidden",
         "security": [{"bearerAuth": []}],
         "parameters": [{"$ref": "#/components/parameters/TicketId"}],
         "responses": {
@@ -113,7 +121,9 @@
     "/v1/tickets/{ticket_id}/custody": {
       "post": {
         "operationId": "transferTicketCustody",
-        "x-ctower-cli": "ticket assign",
+        "x-ctower-cli": "ticket custody transfer",
+        "x-ctower-mutation": true,
+        "x-ctower-spool": "allowed",
         "security": [{"bearerAuth": []}],
         "parameters": [
           {"$ref": "#/components/parameters/TicketId"},
@@ -148,6 +158,9 @@
     "/v1/tickets/{ticket_id}/workflow/start": {
       "post": {
         "operationId": "startTicketWorkflow",
+        "x-ctower-cli": "ticket workflow start",
+        "x-ctower-mutation": true,
+        "x-ctower-spool": "allowed",
         "security": [{"bearerAuth": []}],
         "parameters": [
           {"$ref": "#/components/parameters/TicketId"},
@@ -167,6 +180,9 @@
     "/v1/tickets/{ticket_id}/priority": {
       "post": {
         "operationId": "changeTicketPriority",
+        "x-ctower-cli": "ticket prioritize",
+        "x-ctower-mutation": true,
+        "x-ctower-spool": "allowed",
         "security": [{"bearerAuth": []}],
         "parameters": [
           {"$ref": "#/components/parameters/TicketId"},
@@ -187,6 +203,9 @@
     "/v1/tickets/{ticket_id}/assignments": {
       "get": {
         "operationId": "listTicketAssignments",
+        "x-ctower-cli": "ticket assignments",
+        "x-ctower-mutation": false,
+        "x-ctower-spool": "forbidden",
         "security": [{"bearerAuth": []}],
         "parameters": [{"$ref": "#/components/parameters/TicketId"}],
         "responses": {
@@ -198,6 +217,9 @@
       },
       "post": {
         "operationId": "changeTicketAssignment",
+        "x-ctower-cli": "ticket assign",
+        "x-ctower-mutation": true,
+        "x-ctower-spool": "allowed",
         "security": [{"bearerAuth": []}],
         "parameters": [
           {"$ref": "#/components/parameters/TicketId"},
@@ -217,6 +239,15 @@
     "/v1/tickets/{ticket_id}/intents": {
       "post": {
         "operationId": "applyTicketIntent",
+        "x-ctower-cli": [
+          "ticket admit",
+          "ticket defer",
+          "ticket block",
+          "ticket unblock",
+          "ticket reopen"
+        ],
+        "x-ctower-mutation": true,
+        "x-ctower-spool": "allowed",
         "security": [{"bearerAuth": []}],
         "parameters": [
           {"$ref": "#/components/parameters/TicketId"},
@@ -236,6 +267,9 @@
     "/v1/tickets/{ticket_id}/relations": {
       "post": {
         "operationId": "addTicketRelation",
+        "x-ctower-cli": "ticket relation add",
+        "x-ctower-mutation": true,
+        "x-ctower-spool": "allowed",
         "security": [{"bearerAuth": []}],
         "parameters": [
           {"$ref": "#/components/parameters/TicketId"},
@@ -255,6 +289,9 @@
     "/v1/tickets/{ticket_id}/audit": {
       "get": {
         "operationId": "listTicketAuditEvents",
+        "x-ctower-cli": "ticket audit",
+        "x-ctower-mutation": false,
+        "x-ctower-spool": "forbidden",
         "security": [{"bearerAuth": []}],
         "parameters": [
           {"$ref": "#/components/parameters/TicketId"},
@@ -272,6 +309,9 @@
     "/v1/board": {
       "get": {
         "operationId": "getBoard",
+        "x-ctower-cli": "board query",
+        "x-ctower-mutation": false,
+        "x-ctower-spool": "forbidden",
         "security": [{"bearerAuth": []}],
         "parameters": [
           {"$ref": "#/components/parameters/BoardLaneFilter"},
@@ -290,6 +330,9 @@
     "/health": {
       "get": {
         "operationId": "getControlHealth",
+        "x-ctower-cli": "control health",
+        "x-ctower-mutation": false,
+        "x-ctower-spool": "forbidden",
         "security": [{"bearerAuth": []}],
         "responses": {
           "200": {"description": "Fail-loud independent control-loop watermarks", "content": {"application/json": {"schema": {"$ref": "#/components/schemas/ControlHealth"}}}},
@@ -300,6 +343,9 @@
     "/v1/outbox/{outbox_id}/dispositions": {
       "post": {
         "operationId": "recordOutboxPoisonDisposition",
+        "x-ctower-cli": "ops outbox poison dispose",
+        "x-ctower-mutation": true,
+        "x-ctower-spool": "allowed",
         "security": [{"bearerAuth": []}],
         "parameters": [
           {"$ref": "#/components/parameters/OutboxId"},
@@ -326,6 +372,9 @@
     "/v1/tickets/{ticket_id}/proof/criteria": {
       "post": {
         "operationId": "freezeProofCriteria",
+        "x-ctower-cli": "ticket criteria freeze",
+        "x-ctower-mutation": true,
+        "x-ctower-spool": "allowed",
         "security": [{"bearerAuth": []}],
         "parameters": [
           {"$ref": "#/components/parameters/TicketId"},
@@ -360,6 +409,9 @@
     "/v1/tickets/{ticket_id}/proof/evidence": {
       "post": {
         "operationId": "recordProofEvidence",
+        "x-ctower-cli": "ticket evidence add",
+        "x-ctower-mutation": true,
+        "x-ctower-spool": "allowed",
         "security": [{"bearerAuth": []}],
         "parameters": [
           {"$ref": "#/components/parameters/TicketId"},
@@ -394,6 +446,9 @@
     "/v1/tickets/{ticket_id}/proof/verdict": {
       "post": {
         "operationId": "recordProofVerdict",
+        "x-ctower-cli": "ticket gate verdict",
+        "x-ctower-mutation": true,
+        "x-ctower-spool": "allowed",
         "security": [{"bearerAuth": []}],
         "parameters": [
           {"$ref": "#/components/parameters/TicketId"},
@@ -428,6 +483,9 @@
     "/v1/tickets/{ticket_id}/workflow/transition": {
       "post": {
         "operationId": "transitionWorkflow",
+        "x-ctower-cli": "ticket transition",
+        "x-ctower-mutation": true,
+        "x-ctower-spool": "allowed",
         "security": [{"bearerAuth": []}],
         "parameters": [
           {"$ref": "#/components/parameters/TicketId"},
@@ -461,6 +519,9 @@
     "/v1/tickets/{ticket_id}/workflow/resolve-close": {
       "post": {
         "operationId": "resolveCloseWorkflow",
+        "x-ctower-cli": "ticket resolve",
+        "x-ctower-mutation": true,
+        "x-ctower-spool": "allowed",
         "security": [{"bearerAuth": []}],
         "parameters": [
           {"$ref": "#/components/parameters/TicketId"},
@@ -488,6 +549,140 @@
           "404": {"$ref": "#/components/responses/ProblemResponse"},
           "409": {"$ref": "#/components/responses/ProblemResponse"},
           "422": {"$ref": "#/components/responses/ProblemResponse"}
+        }
+      }
+    },
+    "/v1/tickets/{ticket_id}/comments": {
+      "post": {
+        "operationId": "addTicketComment",
+        "x-ctower-cli": "ticket comment add",
+        "x-ctower-mutation": true,
+        "x-ctower-spool": "allowed",
+        "security": [{"bearerAuth": []}],
+        "parameters": [
+          {"$ref": "#/components/parameters/TicketId"},
+          {"$ref": "#/components/parameters/IdempotencyKey"}
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {"schema": {"$ref": "#/components/schemas/TicketCommentRequest"}}
+          }
+        },
+        "responses": {
+          "202": {
+            "description": "Comment fact committed; off-host durability acknowledgement pending",
+            "headers": {"Retry-After": {"$ref": "#/components/headers/RetryAfter"}},
+            "content": {"application/json": {"schema": {"$ref": "#/components/schemas/TicketCommentResult"}}}
+          },
+          "200": {
+            "description": "Comment fact accepted off host",
+            "content": {"application/json": {"schema": {"$ref": "#/components/schemas/TicketCommentResult"}}}
+          },
+          "401": {"$ref": "#/components/responses/ProblemResponse"},
+          "403": {"$ref": "#/components/responses/ProblemResponse"},
+          "404": {"$ref": "#/components/responses/ProblemResponse"},
+          "409": {"$ref": "#/components/responses/ProblemResponse"},
+          "422": {"$ref": "#/components/responses/ProblemResponse"}
+        }
+      }
+    },
+    "/v1/company/bundle/validate": {
+      "post": {
+        "operationId": "validateCompanyBundle",
+        "x-ctower-cli": "company bundle validate",
+        "x-ctower-mutation": false,
+        "x-ctower-spool": "forbidden",
+        "security": [{"bearerAuth": []}],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {"schema": {"$ref": "#/components/schemas/CompanyBundleRequest"}}
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Strict semantic validation with no authoritative write",
+            "content": {"application/json": {"schema": {"$ref": "#/components/schemas/CompanyBundleValidationResult"}}}
+          },
+          "401": {"$ref": "#/components/responses/ProblemResponse"},
+          "403": {"$ref": "#/components/responses/ProblemResponse"},
+          "422": {"$ref": "#/components/responses/ProblemResponse"}
+        }
+      }
+    },
+    "/v1/company/bundle/plan": {
+      "post": {
+        "operationId": "planCompanyBundle",
+        "x-ctower-cli": "company bundle plan",
+        "x-ctower-mutation": false,
+        "x-ctower-spool": "forbidden",
+        "security": [{"bearerAuth": []}],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {"schema": {"$ref": "#/components/schemas/CompanyBundleRequest"}}
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Deterministic read-only plan",
+            "content": {"application/json": {"schema": {"$ref": "#/components/schemas/CompanyBundlePlan"}}}
+          },
+          "401": {"$ref": "#/components/responses/ProblemResponse"},
+          "403": {"$ref": "#/components/responses/ProblemResponse"},
+          "409": {"$ref": "#/components/responses/ProblemResponse"},
+          "422": {"$ref": "#/components/responses/ProblemResponse"}
+        }
+      }
+    },
+    "/v1/company/bundle/apply": {
+      "post": {
+        "operationId": "applyCompanyBundle",
+        "x-ctower-cli": "company bundle apply",
+        "x-ctower-mutation": true,
+        "x-ctower-spool": "allowed",
+        "security": [{"bearerAuth": []}],
+        "parameters": [{"$ref": "#/components/parameters/IdempotencyKey"}],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {"schema": {"$ref": "#/components/schemas/CompanyBundleApplyRequest"}}
+          }
+        },
+        "responses": {
+          "202": {
+            "description": "Atomic activation committed; off-host durability acknowledgement pending",
+            "headers": {"Retry-After": {"$ref": "#/components/headers/RetryAfter"}},
+            "content": {"application/json": {"schema": {"$ref": "#/components/schemas/CompanyBundleCommandResult"}}}
+          },
+          "200": {
+            "description": "Atomic future-only bundle activation accepted off host",
+            "content": {"application/json": {"schema": {"$ref": "#/components/schemas/CompanyBundleCommandResult"}}}
+          },
+          "401": {"$ref": "#/components/responses/ProblemResponse"},
+          "403": {"$ref": "#/components/responses/ProblemResponse"},
+          "409": {"$ref": "#/components/responses/ProblemResponse"},
+          "422": {"$ref": "#/components/responses/ProblemResponse"},
+          "503": {"$ref": "#/components/responses/ProblemResponse"}
+        }
+      }
+    },
+    "/v1/company/bundle/export": {
+      "get": {
+        "operationId": "exportCompanyBundle",
+        "x-ctower-cli": "company bundle export",
+        "x-ctower-mutation": false,
+        "x-ctower-spool": "forbidden",
+        "security": [{"bearerAuth": []}],
+        "responses": {
+          "200": {
+            "description": "Deterministic active desired-state bundle",
+            "content": {"application/json": {"schema": {"$ref": "#/components/schemas/CompanyBundleExportResult"}}}
+          },
+          "401": {"$ref": "#/components/responses/ProblemResponse"},
+          "403": {"$ref": "#/components/responses/ProblemResponse"},
+          "404": {"$ref": "#/components/responses/ProblemResponse"}
         }
       }
     }
@@ -622,6 +817,329 @@
         }
       },
       "DurabilityState": {"type": "string", "enum": ["durability_pending", "accepted"]},
+      "ComponentKind": {
+        "type": "string",
+        "enum": [
+          "workflow",
+          "execution_policy",
+          "gate_policy",
+          "evidence_policy",
+          "goal",
+          "project",
+          "agent_profile",
+          "persona",
+          "skill",
+          "tool",
+          "capability",
+          "environment",
+          "image",
+          "harness",
+          "supervisor",
+          "target",
+          "workspace",
+          "telemetry",
+          "placement_policy",
+          "extension",
+          "cadence_policy",
+          "notification",
+          "integration",
+          "adapter"
+        ]
+      },
+      "ComponentReference": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["content_digest", "key", "kind", "revision"],
+        "properties": {
+          "content_digest": {"type": "string", "pattern": "^sha256:[0-9a-f]{64}$"},
+          "key": {"type": "string", "pattern": "^[a-z][a-z0-9.-]{2,127}$"},
+          "kind": {"$ref": "#/components/schemas/ComponentKind"},
+          "revision": {"type": "integer", "minimum": 1}
+        }
+      },
+      "ComponentScope": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["project", "tenant"],
+        "properties": {
+          "project": {"type": ["string", "null"], "pattern": "^[a-z][a-z0-9.-]{2,127}$"},
+          "tenant": {"type": "string", "pattern": "^[a-z][a-z0-9-]{2,63}$"}
+        }
+      },
+      "ComponentCompatibility": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["ctower", "requires"],
+        "properties": {
+          "ctower": {"type": "string", "minLength": 1, "maxLength": 80},
+          "requires": {
+            "type": "array",
+            "maxItems": 128,
+            "items": {"$ref": "#/components/schemas/ComponentReference"}
+          }
+        }
+      },
+      "ComponentProvenance": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["digest", "kind", "source"],
+        "properties": {
+          "digest": {"type": "string", "pattern": "^sha256:[0-9a-f]{64}$"},
+          "kind": {"type": "string", "pattern": "^[a-z][a-z0-9._-]{1,63}$"},
+          "source": {"type": "string", "minLength": 1, "maxLength": 512}
+        }
+      },
+      "VersionedComponent": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "compatibility",
+          "content_digest",
+          "key",
+          "kind",
+          "lifecycle",
+          "payload_ref",
+          "provenance",
+          "revision",
+          "schema",
+          "schema_ref",
+          "scope"
+        ],
+        "properties": {
+          "compatibility": {"$ref": "#/components/schemas/ComponentCompatibility"},
+          "content_digest": {"type": "string", "pattern": "^sha256:[0-9a-f]{64}$"},
+          "key": {"type": "string", "pattern": "^[a-z][a-z0-9.-]{2,127}$"},
+          "kind": {"$ref": "#/components/schemas/ComponentKind"},
+          "lifecycle": {"type": "string", "enum": ["draft", "published", "deprecated", "revoked"]},
+          "payload_ref": {"type": "string", "pattern": "^object:sha256:[0-9a-f]{64}$"},
+          "provenance": {
+            "type": "array",
+            "minItems": 1,
+            "maxItems": 64,
+            "items": {"$ref": "#/components/schemas/ComponentProvenance"}
+          },
+          "revision": {"type": "integer", "minimum": 1},
+          "schema": {"const": "ctower.versioned-component/v1"},
+          "schema_ref": {"type": "string", "pattern": "^ctower\\.[a-z][a-z0-9.-]*/v[1-9][0-9]*$"},
+          "scope": {"$ref": "#/components/schemas/ComponentScope"},
+          "supersedes": {"$ref": "#/components/schemas/ComponentReference"}
+        }
+      },
+      "CompanyIdentity": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["display_name", "key"],
+        "properties": {
+          "display_name": {"type": "string", "minLength": 1, "maxLength": 128},
+          "key": {"type": "string", "pattern": "^[a-z][a-z0-9-]{2,63}$"}
+        }
+      },
+      "CompanyBundleResource": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["component", "payload"],
+        "properties": {
+          "component": {"$ref": "#/components/schemas/VersionedComponent"},
+          "payload": {"type": "object"}
+        }
+      },
+      "CompanyBundleAssignment": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["component", "slot", "subject"],
+        "properties": {
+          "component": {"$ref": "#/components/schemas/ComponentReference"},
+          "slot": {"type": "string", "pattern": "^[a-z][a-z0-9._-]{1,63}$"},
+          "subject": {"type": "string", "pattern": "^[a-z][a-z0-9._-]*:[a-z][a-z0-9._-]*$"}
+        }
+      },
+      "SecretBindingReference": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["name", "reference_class"],
+        "properties": {
+          "name": {"type": "string", "pattern": "^[A-Z][A-Z0-9_]{2,127}$"},
+          "reference_class": {
+            "type": "string",
+            "enum": ["os-credential", "vault-path", "runtime-binding"]
+          }
+        }
+      },
+      "CompanyBundleDocument": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["assignments", "company", "resources", "schema", "secret_binding_refs"],
+        "properties": {
+          "assignments": {
+            "type": "array",
+            "maxItems": 512,
+            "items": {"$ref": "#/components/schemas/CompanyBundleAssignment"}
+          },
+          "company": {"$ref": "#/components/schemas/CompanyIdentity"},
+          "resources": {
+            "type": "array",
+            "minItems": 1,
+            "maxItems": 512,
+            "items": {"$ref": "#/components/schemas/CompanyBundleResource"}
+          },
+          "schema": {"const": "ctower.company-bundle/v1"},
+          "secret_binding_refs": {
+            "type": "array",
+            "maxItems": 128,
+            "items": {"$ref": "#/components/schemas/SecretBindingReference"}
+          }
+        }
+      },
+      "CompanyBundleRequest": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["bundle"],
+        "properties": {
+          "bundle": {"$ref": "#/components/schemas/CompanyBundleDocument"}
+        }
+      },
+      "BundleCheck": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["code", "status"],
+        "properties": {
+          "code": {"type": "string", "pattern": "^[a-z][a-z0-9._-]{1,95}$"},
+          "status": {"type": "string", "enum": ["passed", "warning"]}
+        }
+      },
+      "BundleActionKind": {
+        "type": "string",
+        "enum": [
+          "create",
+          "reuse_exact",
+          "supersede",
+          "deprecate",
+          "assignment_change",
+          "pointer_change",
+          "no_op"
+        ]
+      },
+      "BundleAction": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["component", "kind"],
+        "properties": {
+          "component": {"$ref": "#/components/schemas/ComponentReference"},
+          "kind": {"$ref": "#/components/schemas/BundleActionKind"}
+        }
+      },
+      "CompanyBundleValidationResult": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["bundle_digest", "checks", "valid", "warnings"],
+        "properties": {
+          "bundle_digest": {"type": "string", "pattern": "^sha256:[0-9a-f]{64}$"},
+          "checks": {"type": "array", "items": {"$ref": "#/components/schemas/BundleCheck"}},
+          "valid": {"type": "boolean"},
+          "warnings": {"type": "array", "items": {"type": "string", "maxLength": 500}}
+        }
+      },
+      "CompanyBundlePlan": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "actions",
+          "base_bundle_digest",
+          "base_version",
+          "checks",
+          "plan_digest",
+          "proposed_bundle_digest",
+          "warnings"
+        ],
+        "properties": {
+          "actions": {"type": "array", "items": {"$ref": "#/components/schemas/BundleAction"}},
+          "base_bundle_digest": {
+            "type": ["string", "null"],
+            "pattern": "^sha256:[0-9a-f]{64}$"
+          },
+          "base_version": {"type": "integer", "minimum": 0},
+          "checks": {"type": "array", "items": {"$ref": "#/components/schemas/BundleCheck"}},
+          "plan_digest": {"type": "string", "pattern": "^sha256:[0-9a-f]{64}$"},
+          "proposed_bundle_digest": {"type": "string", "pattern": "^sha256:[0-9a-f]{64}$"},
+          "warnings": {"type": "array", "items": {"type": "string", "maxLength": 500}}
+        }
+      },
+      "CompanyBundleApplyRequest": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["bundle", "expected_active_version", "plan_digest"],
+        "properties": {
+          "bundle": {"$ref": "#/components/schemas/CompanyBundleDocument"},
+          "expected_active_version": {"type": "integer", "minimum": 0},
+          "plan_digest": {"type": "string", "pattern": "^sha256:[0-9a-f]{64}$"}
+        }
+      },
+      "CompanyBundleCommandResult": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "active_version",
+          "bundle_digest",
+          "command_id",
+          "durability_state",
+          "event_ids",
+          "plan_digest"
+        ],
+        "properties": {
+          "active_version": {"type": "integer", "minimum": 1},
+          "bundle_digest": {"type": "string", "pattern": "^sha256:[0-9a-f]{64}$"},
+          "command_id": {"type": "string", "format": "uuid"},
+          "durability_state": {"$ref": "#/components/schemas/DurabilityState"},
+          "event_ids": {
+            "type": "array",
+            "minItems": 1,
+            "items": {"type": "string", "format": "uuid"}
+          },
+          "plan_digest": {"type": "string", "pattern": "^sha256:[0-9a-f]{64}$"}
+        }
+      },
+      "CompanyBundleExportMetadata": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["activated_at", "actor_principal_id", "checks", "command_id"],
+        "properties": {
+          "activated_at": {"type": "string", "format": "date-time"},
+          "actor_principal_id": {"type": "string", "format": "uuid"},
+          "checks": {"type": "array", "items": {"$ref": "#/components/schemas/BundleCheck"}},
+          "command_id": {"type": "string", "format": "uuid"}
+        }
+      },
+      "CompanyBundleExportResult": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["active_version", "bundle", "bundle_digest", "metadata"],
+        "properties": {
+          "active_version": {"type": "integer", "minimum": 1},
+          "bundle": {"$ref": "#/components/schemas/CompanyBundleDocument"},
+          "bundle_digest": {"type": "string", "pattern": "^sha256:[0-9a-f]{64}$"},
+          "metadata": {"$ref": "#/components/schemas/CompanyBundleExportMetadata"}
+        }
+      },
+      "TicketCommentRequest": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["body"],
+        "properties": {
+          "body": {"type": "string", "minLength": 1, "maxLength": 4000}
+        }
+      },
+      "TicketCommentResult": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["command_id", "comment_id", "durability_state", "event_id", "ticket_id"],
+        "properties": {
+          "command_id": {"type": "string", "format": "uuid"},
+          "comment_id": {"type": "string", "format": "uuid"},
+          "durability_state": {"$ref": "#/components/schemas/DurabilityState"},
+          "event_id": {"type": "string", "format": "uuid"},
+          "ticket_id": {"type": "string", "format": "uuid"}
+        }
+      },
       "Priority": {"type": "string", "enum": ["P0", "P1", "P2"]},
       "Problem": {
         "type": "object",
@@ -635,6 +1153,18 @@
               "bootstrap-expired",
               "bootstrap-nonempty",
               "bootstrap-origin",
+              "bundle-base-conflict",
+              "bundle-compatibility-refused",
+              "bundle-digest-mismatch",
+              "bundle-grant-refused",
+              "bundle-independence-refused",
+              "bundle-no-effect-refused",
+              "bundle-not-active",
+              "bundle-plan-mismatch",
+              "bundle-recovery-unavailable",
+              "bundle-reference-invalid",
+              "bundle-schema-invalid",
+              "bundle-security-refused",
               "durability_pending",
               "idempotency-conflict",
               "poison-not-found",
@@ -655,6 +1185,8 @@
               "proof-self-review-refused",
               "proof-verdict-id-conflict",
               "tenant-scope-denied",
+              "ticket-comment-ineligible",
+              "ticket-comment-invalid",
               "unauthorized",
               "validation-error",
               "version-conflict",
@@ -1395,6 +1927,16 @@
           "workflow_version": {"type": "integer", "minimum": 1}
         }
       },
+      "TicketCommentAddedPayload": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["body", "comment_id", "ticket_id"],
+        "properties": {
+          "body": {"type": "string", "minLength": 1, "maxLength": 4000},
+          "comment_id": {"type": "string", "format": "uuid"},
+          "ticket_id": {"type": "string", "format": "uuid"}
+        }
+      },
       "TicketCreatedAuditEvent": {
         "type": "object", "additionalProperties": false,
         "required": ["actor_principal_id", "command_id", "event_hash", "event_id", "kind", "occurred_at", "payload", "record_position", "sequence", "stream_id"],
@@ -1414,6 +1956,17 @@
           "event_hash": {"type": "string", "pattern": "^sha256:[0-9a-f]{64}$"}, "event_id": {"type": "string", "format": "uuid"},
           "kind": {"const": "ticket.custody_transferred"}, "occurred_at": {"type": "string", "format": "date-time"},
           "payload": {"$ref": "#/components/schemas/CustodyTransferredPayload"}, "record_position": {"type": "integer", "minimum": 1},
+          "sequence": {"type": "integer", "minimum": 1}, "stream_id": {"type": "string", "pattern": "^ticket:[0-9a-f-]{36}$"}
+        }
+      },
+      "TicketCommentAddedAuditEvent": {
+        "type": "object", "additionalProperties": false,
+        "required": ["actor_principal_id", "command_id", "event_hash", "event_id", "kind", "occurred_at", "payload", "record_position", "sequence", "stream_id"],
+        "properties": {
+          "actor_principal_id": {"type": "string", "format": "uuid"}, "command_id": {"type": "string", "format": "uuid"},
+          "event_hash": {"type": "string", "pattern": "^sha256:[0-9a-f]{64}$"}, "event_id": {"type": "string", "format": "uuid"},
+          "kind": {"const": "ticket.comment_added"}, "occurred_at": {"type": "string", "format": "date-time"},
+          "payload": {"$ref": "#/components/schemas/TicketCommentAddedPayload"}, "record_position": {"type": "integer", "minimum": 1},
           "sequence": {"type": "integer", "minimum": 1}, "stream_id": {"type": "string", "pattern": "^ticket:[0-9a-f-]{36}$"}
         }
       },
@@ -1454,6 +2007,7 @@
         "oneOf": [
           {"$ref": "#/components/schemas/TicketCreatedAuditEvent"},
           {"$ref": "#/components/schemas/CustodyTransferredAuditEvent"},
+          {"$ref": "#/components/schemas/TicketCommentAddedAuditEvent"},
           {"$ref": "#/components/schemas/WorkChangedAuditEvent"},
           {"$ref": "#/components/schemas/WorkflowChangedAuditEvent"},
           {"$ref": "#/components/schemas/ProofChangedAuditEvent"}
@@ -1476,12 +2030,16 @@
           "actor_principal_id": {"type": "string", "format": "uuid"},
           "command_id": {"type": "string", "format": "uuid"},
           "event_id": {"type": "string", "format": "uuid"},
-          "kind": {"type": "string", "enum": ["ticket.created", "ticket.custody_transferred"]},
+          "kind": {
+            "type": "string",
+            "enum": ["ticket.created", "ticket.custody_transferred", "ticket.comment_added"]
+          },
           "occurred_at": {"type": "string", "format": "date-time"},
           "payload": {
             "oneOf": [
               {"$ref": "#/components/schemas/TicketCreatedPayload"},
-              {"$ref": "#/components/schemas/CustodyTransferredPayload"}
+              {"$ref": "#/components/schemas/CustodyTransferredPayload"},
+              {"$ref": "#/components/schemas/TicketCommentAddedPayload"}
             ]
           },
           "sequence": {"type": "integer", "minimum": 1}

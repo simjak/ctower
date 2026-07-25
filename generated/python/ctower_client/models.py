@@ -1,6 +1,6 @@
 """DO NOT EDIT: generated file; regenerate from declared inputs.
 
-Authored contract digest: sha256:31a1026b047b222db8e967419ee87aed8af21d415533c8347f574a200bac6cde
+Authored contract digest: sha256:e679caeb8e3e0cc16ec529ace13d751e4d44fed44fcb2d144a39dda47d84c0ba
 """
 
 from __future__ import annotations
@@ -31,6 +31,25 @@ __all__ = [
     "BoardView",
     "BootstrapReceipt",
     "BootstrapRequest",
+    "BundleAction",
+    "BundleActionKind",
+    "BundleCheck",
+    "CompanyBundleApplyRequest",
+    "CompanyBundleAssignment",
+    "CompanyBundleCommandResult",
+    "CompanyBundleDocument",
+    "CompanyBundleExportMetadata",
+    "CompanyBundleExportResult",
+    "CompanyBundlePlan",
+    "CompanyBundleRequest",
+    "CompanyBundleResource",
+    "CompanyBundleValidationResult",
+    "CompanyIdentity",
+    "ComponentCompatibility",
+    "ComponentKind",
+    "ComponentProvenance",
+    "ComponentReference",
+    "ComponentScope",
     "ControlHealth",
     "CustodyTransferRequest",
     "CustodyTransferredAuditEvent",
@@ -63,9 +82,14 @@ __all__ = [
     "ReopenIntent",
     "ReopenedAuditData",
     "ResolveCloseRequest",
+    "SecretBindingReference",
     "SourceReference",
     "TelemetryContext",
     "TicketCommandResult",
+    "TicketCommentAddedAuditEvent",
+    "TicketCommentAddedPayload",
+    "TicketCommentRequest",
+    "TicketCommentResult",
     "TicketCreateRequest",
     "TicketCreatedAuditEvent",
     "TicketCreatedPayload",
@@ -76,6 +100,7 @@ __all__ = [
     "UnblockIntent",
     "VerdictDecision",
     "VerdictRequest",
+    "VersionedComponent",
     "WorkAdmittedAuditPayload",
     "WorkAssignmentChangedAuditPayload",
     "WorkBlockerOpenedAuditPayload",
@@ -178,6 +203,64 @@ class BootstrapRequest(_BoundaryModel):
     tenant_slug: Annotated[str, Field(pattern="^[a-z][a-z0-9-]{1,62}$")]
 
 
+class BundleActionKind(StrEnum):
+    CREATE = "create"
+    REUSE_EXACT = "reuse_exact"
+    SUPERSEDE = "supersede"
+    DEPRECATE = "deprecate"
+    ASSIGNMENT_CHANGE = "assignment_change"
+    POINTER_CHANGE = "pointer_change"
+    NO_OP = "no_op"
+
+
+class BundleCheck(_BoundaryModel):
+    code: Annotated[str, Field(pattern="^[a-z][a-z0-9._-]{1,95}$")]
+    status: Literal["passed", "warning"]
+
+
+class CompanyIdentity(_BoundaryModel):
+    display_name: Annotated[str, Field(min_length=1, max_length=128)]
+    key: Annotated[str, Field(pattern="^[a-z][a-z0-9-]{2,63}$")]
+
+
+class ComponentKind(StrEnum):
+    WORKFLOW = "workflow"
+    EXECUTION_POLICY = "execution_policy"
+    GATE_POLICY = "gate_policy"
+    EVIDENCE_POLICY = "evidence_policy"
+    GOAL = "goal"
+    PROJECT = "project"
+    AGENT_PROFILE = "agent_profile"
+    PERSONA = "persona"
+    SKILL = "skill"
+    TOOL = "tool"
+    CAPABILITY = "capability"
+    ENVIRONMENT = "environment"
+    IMAGE = "image"
+    HARNESS = "harness"
+    SUPERVISOR = "supervisor"
+    TARGET = "target"
+    WORKSPACE = "workspace"
+    TELEMETRY = "telemetry"
+    PLACEMENT_POLICY = "placement_policy"
+    EXTENSION = "extension"
+    CADENCE_POLICY = "cadence_policy"
+    NOTIFICATION = "notification"
+    INTEGRATION = "integration"
+    ADAPTER = "adapter"
+
+
+class ComponentProvenance(_BoundaryModel):
+    digest: Annotated[str, Field(pattern="^sha256:[0-9a-f]{64}$")]
+    kind: Annotated[str, Field(pattern="^[a-z][a-z0-9._-]{1,63}$")]
+    source: Annotated[str, Field(min_length=1, max_length=512)]
+
+
+class ComponentScope(_BoundaryModel):
+    project: Annotated[str, Field(pattern="^[a-z][a-z0-9.-]{2,127}$")] | None
+    tenant: Annotated[str, Field(pattern="^[a-z][a-z0-9-]{2,63}$")]
+
+
 class CustodyTransferRequest(_BoundaryModel):
     expected_version: Annotated[int, Field(ge=1)]
     from_custodian_id: UUID
@@ -259,6 +342,18 @@ class Problem(_BoundaryModel):
         "bootstrap-expired",
         "bootstrap-nonempty",
         "bootstrap-origin",
+        "bundle-base-conflict",
+        "bundle-compatibility-refused",
+        "bundle-digest-mismatch",
+        "bundle-grant-refused",
+        "bundle-independence-refused",
+        "bundle-no-effect-refused",
+        "bundle-not-active",
+        "bundle-plan-mismatch",
+        "bundle-recovery-unavailable",
+        "bundle-reference-invalid",
+        "bundle-schema-invalid",
+        "bundle-security-refused",
         "durability_pending",
         "idempotency-conflict",
         "poison-not-found",
@@ -279,6 +374,8 @@ class Problem(_BoundaryModel):
         "proof-self-review-refused",
         "proof-verdict-id-conflict",
         "tenant-scope-denied",
+        "ticket-comment-ineligible",
+        "ticket-comment-invalid",
         "unauthorized",
         "validation-error",
         "version-conflict",
@@ -363,6 +460,11 @@ class ResolveCloseRequest(_BoundaryModel):
     workflow_ref: Annotated[str, Field(pattern="^[a-z][a-z0-9._-]*@[1-9][0-9]*$")]
 
 
+class SecretBindingReference(_BoundaryModel):
+    name: Annotated[str, Field(pattern="^[A-Z][A-Z0-9_]{2,127}$")]
+    reference_class: Literal["os-credential", "vault-path", "runtime-binding"]
+
+
 class SourceReference(_BoundaryModel):
     kind: Annotated[str, Field(min_length=1, max_length=64)]
     ref: Annotated[str, Field(min_length=1, max_length=256)]
@@ -390,6 +492,16 @@ class TelemetryContext(_BoundaryModel):
     effect_id: Annotated[str, Field(min_length=1, max_length=128)] | None = None
     component_revision_id: Annotated[str, Field(min_length=1, max_length=128)] | None = None
     deployment_id: Annotated[str, Field(min_length=1, max_length=128)] | None = None
+
+
+class TicketCommentAddedPayload(_BoundaryModel):
+    body: Annotated[str, Field(min_length=1, max_length=4000)]
+    comment_id: UUID
+    ticket_id: UUID
+
+
+class TicketCommentRequest(_BoundaryModel):
+    body: Annotated[str, Field(min_length=1, max_length=4000)]
 
 
 class UnblockIntent(_BoundaryModel):
@@ -478,6 +590,36 @@ class BootstrapReceipt(_BoundaryModel):
     operator_id: UUID
     receipt_digest: Annotated[str, Field(pattern="^sha256:[0-9a-f]{64}$")]
     tenant_id: UUID
+
+
+class CompanyBundleCommandResult(_BoundaryModel):
+    active_version: Annotated[int, Field(ge=1)]
+    bundle_digest: Annotated[str, Field(pattern="^sha256:[0-9a-f]{64}$")]
+    command_id: UUID
+    durability_state: DurabilityState
+    event_ids: Annotated[tuple[UUID, ...], Field(min_length=1)]
+    plan_digest: Annotated[str, Field(pattern="^sha256:[0-9a-f]{64}$")]
+
+
+class CompanyBundleExportMetadata(_BoundaryModel):
+    activated_at: datetime
+    actor_principal_id: UUID
+    checks: tuple[BundleCheck, ...]
+    command_id: UUID
+
+
+class CompanyBundleValidationResult(_BoundaryModel):
+    bundle_digest: Annotated[str, Field(pattern="^sha256:[0-9a-f]{64}$")]
+    checks: tuple[BundleCheck, ...]
+    valid: bool
+    warnings: tuple[Annotated[str, Field(max_length=500)], ...]
+
+
+class ComponentReference(_BoundaryModel):
+    content_digest: Annotated[str, Field(pattern="^sha256:[0-9a-f]{64}$")]
+    key: Annotated[str, Field(pattern="^[a-z][a-z0-9.-]{2,127}$")]
+    kind: ComponentKind
+    revision: Annotated[int, Field(ge=1)]
 
 
 class CustodyTransferredAuditEvent(_BoundaryModel):
@@ -578,6 +720,27 @@ class ReopenedAuditData(_BoundaryModel):
     episode_number: Annotated[int, Field(ge=2)]
     priority: Priority
     reason: Annotated[str, Field(min_length=1, max_length=500)]
+
+
+class TicketCommentAddedAuditEvent(_BoundaryModel):
+    actor_principal_id: UUID
+    command_id: UUID
+    event_hash: Annotated[str, Field(pattern="^sha256:[0-9a-f]{64}$")]
+    event_id: UUID
+    kind: Literal["ticket.comment_added"]
+    occurred_at: datetime
+    payload: TicketCommentAddedPayload
+    record_position: Annotated[int, Field(ge=1)]
+    sequence: Annotated[int, Field(ge=1)]
+    stream_id: Annotated[str, Field(pattern="^ticket:[0-9a-f-]{36}$")]
+
+
+class TicketCommentResult(_BoundaryModel):
+    command_id: UUID
+    comment_id: UUID
+    durability_state: DurabilityState
+    event_id: UUID
+    ticket_id: UUID
 
 
 class TicketCreateRequest(_BoundaryModel):
@@ -716,6 +879,22 @@ class BoardView(_BoundaryModel):
     source_watermark: Annotated[int, Field(ge=0)]
 
 
+class BundleAction(_BoundaryModel):
+    component: ComponentReference
+    kind: BundleActionKind
+
+
+class CompanyBundleAssignment(_BoundaryModel):
+    component: ComponentReference
+    slot: Annotated[str, Field(pattern="^[a-z][a-z0-9._-]{1,63}$")]
+    subject: Annotated[str, Field(pattern="^[a-z][a-z0-9._-]*:[a-z][a-z0-9._-]*$")]
+
+
+class ComponentCompatibility(_BoundaryModel):
+    ctower: Annotated[str, Field(min_length=1, max_length=80)]
+    requires: Annotated[tuple[ComponentReference, ...], Field(max_length=128)]
+
+
 class HealthDimension(_BoundaryModel):
     status: HealthStatus
     contributors: Annotated[tuple[HealthContributor, ...], Field(min_length=1)]
@@ -745,9 +924,9 @@ class TimelineEvent(_BoundaryModel):
     actor_principal_id: UUID
     command_id: UUID
     event_id: UUID
-    kind: Literal["ticket.created", "ticket.custody_transferred"]
+    kind: Literal["ticket.created", "ticket.custody_transferred", "ticket.comment_added"]
     occurred_at: datetime
-    payload: TicketCreatedPayload | CustodyTransferredPayload
+    payload: TicketCreatedPayload | CustodyTransferredPayload | TicketCommentAddedPayload
     sequence: Annotated[int, Field(ge=1)]
 
 
@@ -765,6 +944,16 @@ class WorkReopenedAuditPayload(_BoundaryModel):
     work_version: Annotated[int, Field(ge=2)]
 
 
+class CompanyBundlePlan(_BoundaryModel):
+    actions: tuple[BundleAction, ...]
+    base_bundle_digest: Annotated[str, Field(pattern="^sha256:[0-9a-f]{64}$")] | None
+    base_version: Annotated[int, Field(ge=0)]
+    checks: tuple[BundleCheck, ...]
+    plan_digest: Annotated[str, Field(pattern="^sha256:[0-9a-f]{64}$")]
+    proposed_bundle_digest: Annotated[str, Field(pattern="^sha256:[0-9a-f]{64}$")]
+    warnings: tuple[Annotated[str, Field(max_length=500)], ...]
+
+
 class ControlHealth(_BoundaryModel):
     schema_id: Literal["ctower.health/v1"]
     status: HealthStatus
@@ -780,7 +969,29 @@ class TimelineResponse(_BoundaryModel):
     ticket_id: UUID
 
 
+class VersionedComponent(_BoundaryModel):
+    compatibility: ComponentCompatibility
+    content_digest: Annotated[str, Field(pattern="^sha256:[0-9a-f]{64}$")]
+    key: Annotated[str, Field(pattern="^[a-z][a-z0-9.-]{2,127}$")]
+    kind: ComponentKind
+    lifecycle: Literal["draft", "published", "deprecated", "revoked"]
+    payload_ref: Annotated[str, Field(pattern="^object:sha256:[0-9a-f]{64}$")]
+    provenance: Annotated[tuple[ComponentProvenance, ...], Field(min_length=1, max_length=64)]
+    revision: Annotated[int, Field(ge=1)]
+    schema_id: Literal["ctower.versioned-component/v1"] = Field(
+        alias="schema", serialization_alias="schema"
+    )
+    schema_ref: Annotated[str, Field(pattern="^ctower\\.[a-z][a-z0-9.-]*/v[1-9][0-9]*$")]
+    scope: ComponentScope
+    supersedes: ComponentReference | None = None
+
+
 type WorkChangedAuditPayload = WorkPriorityChangedAuditPayload | WorkAssignmentChangedAuditPayload | WorkAdmittedAuditPayload | WorkDeferredAuditPayload | WorkBlockerOpenedAuditPayload | WorkBlockerResolvedAuditPayload | WorkReopenedAuditPayload | WorkRelationAddedAuditPayload
+
+
+class CompanyBundleResource(_BoundaryModel):
+    component: VersionedComponent
+    payload: dict[str, object]
 
 
 class WorkChangedAuditEvent(_BoundaryModel):
@@ -796,10 +1007,37 @@ class WorkChangedAuditEvent(_BoundaryModel):
     stream_id: Annotated[str, Field(pattern="^ticket:[0-9a-f-]{36}$")]
 
 
-type AuditEvent = TicketCreatedAuditEvent | CustodyTransferredAuditEvent | WorkChangedAuditEvent | WorkflowChangedAuditEvent | ProofChangedAuditEvent
+type AuditEvent = TicketCreatedAuditEvent | CustodyTransferredAuditEvent | TicketCommentAddedAuditEvent | WorkChangedAuditEvent | WorkflowChangedAuditEvent | ProofChangedAuditEvent
+
+
+class CompanyBundleDocument(_BoundaryModel):
+    assignments: Annotated[tuple[CompanyBundleAssignment, ...], Field(max_length=512)]
+    company: CompanyIdentity
+    resources: Annotated[tuple[CompanyBundleResource, ...], Field(min_length=1, max_length=512)]
+    schema_id: Literal["ctower.company-bundle/v1"] = Field(
+        alias="schema", serialization_alias="schema"
+    )
+    secret_binding_refs: Annotated[tuple[SecretBindingReference, ...], Field(max_length=128)]
 
 
 class AuditPage(_BoundaryModel):
     events: tuple[AuditEvent, ...]
     next_cursor: Annotated[int, Field(ge=1)] | None
     ticket_id: UUID
+
+
+class CompanyBundleApplyRequest(_BoundaryModel):
+    bundle: CompanyBundleDocument
+    expected_active_version: Annotated[int, Field(ge=0)]
+    plan_digest: Annotated[str, Field(pattern="^sha256:[0-9a-f]{64}$")]
+
+
+class CompanyBundleExportResult(_BoundaryModel):
+    active_version: Annotated[int, Field(ge=1)]
+    bundle: CompanyBundleDocument
+    bundle_digest: Annotated[str, Field(pattern="^sha256:[0-9a-f]{64}$")]
+    metadata: CompanyBundleExportMetadata
+
+
+class CompanyBundleRequest(_BoundaryModel):
+    bundle: CompanyBundleDocument

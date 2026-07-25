@@ -11,7 +11,7 @@ from ctower_api._kms import (
     VerificationReceipt,
 )
 from ctower_api._object_store import ObjectStoreConfig, S3CompatibleObjectStore
-from ctower_kernel.proof.objects import StoredObject
+from ctower_kernel.objects import StoredObject
 from ctower_kernel.record.recovery import SignatureVerification
 
 __all__ = [

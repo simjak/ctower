@@ -22,3 +22,9 @@ The CP3-B Runtime contracts under `runtime/` define content-addressed Routine re
 offset decisions and outcomes, and fixed pending-only jobs. `runtime/routine-vectors.json` is the
 deterministic digest and DST/refusal vector set; canonical occurrence and poison-disposition events remain
 under the single `domain/events/` authority.
+
+The I1.4 CompanyBundle contract under `company/` carries strict portable desired state: one tenant identity,
+complete VersionedComponent envelopes, inline non-secret payloads, assignments, and secret-reference names.
+Category schemas include the current configuration kinds, while generated `ctower_contracts` packages them
+as a local-only runtime resource with network/path-escape `$ref` refusal. Contract presence does not
+activate runners, effects, external targets, or production configuration.

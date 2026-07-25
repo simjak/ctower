@@ -5,6 +5,7 @@ from __future__ import annotations
 import hashlib
 from collections.abc import Callable
 from contextlib import suppress
+from dataclasses import dataclass
 from datetime import datetime
 from threading import Timer
 from typing import cast
@@ -20,9 +21,23 @@ from ctower_kernel.record._event_store import EventSubject, append_event, enqueu
 from ctower_kernel.record.events import EventEnvelope
 from ctower_kernel.telemetry import TelemetryContext
 
-__all__ = ["RecordTransaction", "authority_connection", "recover_ambiguous_commit"]
+__all__ = [
+    "EventCommit",
+    "RecordTransaction",
+    "authority_connection",
+    "recover_ambiguous_commit",
+]
 
 _CONNECT_TIMEOUT_SECONDS = 2
+
+
+@dataclass(frozen=True, slots=True)
+class EventCommit:
+    """One canonical event/outbox pair in a Record-owned atomic batch."""
+
+    event: EventEnvelope
+    outbox_id: UUID
+    topic: str = "record.events"
 
 
 class _AuthorityConnection(psycopg.Connection[dict[str, object]]):
@@ -162,8 +177,31 @@ class RecordTransaction:
     ) -> None:
         """Append one event, exact result, and outbox row in the caller's transaction."""
 
+        self.commit_batch(
+            (EventCommit(event=event, outbox_id=outbox_id, topic=topic),),
+            response_body=response_body,
+            status_code=status_code,
+            telemetry=telemetry,
+            now=now,
+            subjects=subjects,
+        )
+
+    def commit_batch(
+        self,
+        commits: tuple[EventCommit, ...],
+        *,
+        response_body: dict[str, object],
+        status_code: int,
+        telemetry: TelemetryContext,
+        now: datetime,
+        subjects: tuple[EventSubject, ...] = (),
+    ) -> None:
+        """Append one command's events, exact result, and outbox rows atomically."""
+
+        first = self._validate_batch(commits)
         ordered_subjects = self._ordered_subjects(subjects)
-        append_event(self._connection, event, subjects=ordered_subjects)
+        for item in commits:
+            append_event(self._connection, item.event, subjects=ordered_subjects)
         self._connection.execute(
             """
             INSERT INTO command_results (
@@ -172,18 +210,52 @@ class RecordTransaction:
             ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s)
             """,
             (
-                event.tenant_id,
-                event.actor_principal_id,
-                event.client_command_id,
-                event.request_sha256,
+                first.tenant_id,
+                first.actor_principal_id,
+                first.client_command_id,
+                first.request_sha256,
                 status_code,
                 Jsonb(response_body),
-                [event.event_id],
+                [item.event.event_id for item in commits],
                 now,
             ),
         )
-        enqueue_event(self._connection, outbox_id, event, telemetry, now, topic=topic)
-        self._move_subject_heads(event, ordered_subjects, now=now)
+        for item in commits:
+            enqueue_event(
+                self._connection,
+                item.outbox_id,
+                item.event,
+                telemetry,
+                now,
+                topic=item.topic,
+            )
+        self._move_subject_heads(commits[-1].event, ordered_subjects, now=now)
+
+    @staticmethod
+    def _validate_batch(commits: tuple[EventCommit, ...]) -> EventEnvelope:
+        if not commits:
+            raise ValueError("event batch must not be empty")
+        first = commits[0].event
+        identity = (
+            first.tenant_id,
+            first.actor_principal_id,
+            first.client_command_id,
+            first.request_sha256,
+        )
+        if any(
+            (
+                item.event.tenant_id,
+                item.event.actor_principal_id,
+                item.event.client_command_id,
+                item.event.request_sha256,
+            )
+            != identity
+            for item in commits[1:]
+        ):
+            raise ValueError("event batch must belong to one exact command")
+        if len({item.event.event_id for item in commits}) != len(commits):
+            raise ValueError("event batch IDs must be unique")
+        return first
 
     def commit_control(
         self,

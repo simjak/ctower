@@ -1,0 +1,6 @@
+{
+  "schema": "ctower.persona/v1",
+  "key": "operator.commander",
+  "display_name": "Commander",
+  "instructions_digest": "sha256:461112220f4c223404b6979a3133d375c34753350d4a9fa9f6a4ece0a12c19db"
+}

@@ -226,6 +226,24 @@
       "forward_test": "pytest:tests/acceptance/increment-1/test_backup_restore.py::test_cp3c_migrations_are_additive_and_roles_are_least_privilege",
       "rollback_or_forward_compensation": "Keep runtime denied and append reviewed privilege compensation from an exact grant snapshot; never grant API, projection, or migrator a recovery-writer role as fallback.",
       "backup_checkpoint": "Before applying, capture all grants on proof, backup, anchor, inventory, installation, restore, finding, and enablement tables; the migration is privilege-only."
+    },
+    {
+      "path": "0024_catalog_authority.sql",
+      "sha256": "sha256:9ce87da22a75192da9e2b798852e53d24dc8101ea1dd33533f7a99ea470dd074",
+      "minimum_service_version": "0.0.0",
+      "maximum_service_version": "0.0.0",
+      "forward_test": "pytest:tests/acceptance/increment-1/test_company_bundle.py::test_fresh_and_0023_upgrade_catalog_migrations_are_additive_and_least_privilege",
+      "rollback_or_forward_compensation": "Keep immutable Catalog/component/bundle facts and the future-only active pointer readable by a Catalog-aware build, or append reviewed forward compensation; never delete published revisions, activation manifests, events, or payload receipts.",
+      "backup_checkpoint": "Before applying to a nonempty installation, capture and verify tenant, principal, command, event, durability-head, component, bundle, and object-receipt counts plus a database and object-inventory backup."
+    },
+    {
+      "path": "0025_ticket_comment_event.sql",
+      "sha256": "sha256:731457acf756c605822d7c097fda9082dce23008890ded8a3a8eaa79810f7bbe",
+      "minimum_service_version": "0.0.0",
+      "maximum_service_version": "0.0.0",
+      "forward_test": "pytest:tests/acceptance/increment-1/test_company_bundle.py::test_ticket_comment_is_canonical_replay_safe_and_table_free",
+      "rollback_or_forward_compensation": "Keep canonical ticket.comment_added events readable by a comment-aware build or append reviewed forward compensation; never delete comment events, command results, outbox rows, event links, or durability evidence.",
+      "backup_checkpoint": "Before applying to a nonempty installation, capture and verify ticket, event, event-link, command-result, outbox, and durability-head counts plus a database backup."
     }
   ]
 }

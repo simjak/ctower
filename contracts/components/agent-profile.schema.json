@@ -1,0 +1,30 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://ctower.local/contracts/components/agent-profile.schema.json",
+  "title": "AgentProfileComponent",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema", "key", "persona_ref", "harness_ref", "skill_refs", "tool_refs",
+    "execution"
+  ],
+  "properties": {
+    "schema": { "const": "ctower.agent-profile/v1" },
+    "key": { "type": "string", "pattern": "^[a-z][a-z0-9.-]{2,127}$" },
+    "persona_ref": { "type": "string", "pattern": "^[a-z][a-z0-9.-]{2,127}@[1-9][0-9]*$" },
+    "harness_ref": { "type": "string", "pattern": "^[a-z][a-z0-9.-]{2,127}@[1-9][0-9]*$" },
+    "skill_refs": {
+      "type": "array",
+      "maxItems": 64,
+      "items": { "type": "string", "pattern": "^[a-z][a-z0-9.-]{2,127}@[1-9][0-9]*$" },
+      "uniqueItems": true
+    },
+    "tool_refs": {
+      "type": "array",
+      "maxItems": 64,
+      "items": { "type": "string", "pattern": "^[a-z][a-z0-9.-]{2,127}@[1-9][0-9]*$" },
+      "uniqueItems": true
+    },
+    "execution": { "const": "not_exercised" }
+  }
+}

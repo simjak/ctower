@@ -1,0 +1,7 @@
+{
+  "schema": "ctower.supervisor/v1",
+  "key": "local.process",
+  "adapter": "ctower.local_process",
+  "operations": ["probe", "observe"],
+  "execution": "not_exercised"
+}

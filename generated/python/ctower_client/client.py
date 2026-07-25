@@ -1,6 +1,6 @@
 """DO NOT EDIT: generated file; regenerate from declared inputs.
 
-Authored contract digest: sha256:31a1026b047b222db8e967419ee87aed8af21d415533c8347f574a200bac6cde
+Authored contract digest: sha256:e679caeb8e3e0cc16ec529ace13d751e4d44fed44fcb2d144a39dda47d84c0ba
 """
 
 from __future__ import annotations
@@ -22,6 +22,12 @@ from ctower_client.models import (
     BoardView,
     BootstrapReceipt,
     BootstrapRequest,
+    CompanyBundleApplyRequest,
+    CompanyBundleCommandResult,
+    CompanyBundleExportResult,
+    CompanyBundlePlan,
+    CompanyBundleRequest,
+    CompanyBundleValidationResult,
     ControlHealth,
     CustodyTransferRequest,
     EvidenceRequest,
@@ -35,6 +41,8 @@ from ctower_client.models import (
     ResolveCloseRequest,
     TelemetryContext,
     TicketCommandResult,
+    TicketCommentRequest,
+    TicketCommentResult,
     TicketCreateRequest,
     TicketIntentRequest,
     TicketResource,
@@ -92,6 +100,28 @@ class CtowerClient:
         self._http.close()
 
     @validate_call(config=ConfigDict(strict=True, arbitrary_types_allowed=True))
+    def add_ticket_comment(
+        self,
+        ticket_id: UUID,
+        request: TicketCommentRequest,
+        *,
+        command_id: UUID,
+    ) -> TicketCommentResult:
+        response = self._http.post(
+            f"/v1/tickets/{quote(str(ticket_id), safe='')}/comments",
+            content=request.model_dump_json(),
+            headers=self._telemetry_headers(
+                self._context(command_id, ticket_id=ticket_id),
+                {
+                    **self._auth_headers(),
+                    "Content-Type": "application/json",
+                    "Idempotency-Key": str(command_id),
+                },
+            ),
+        )
+        return _response(response, TicketCommentResult, {401: Problem, 403: Problem, 404: Problem, 409: Problem, 422: Problem})
+
+    @validate_call(config=ConfigDict(strict=True, arbitrary_types_allowed=True))
     def add_ticket_relation(
         self,
         ticket_id: UUID,
@@ -112,6 +142,27 @@ class CtowerClient:
             ),
         )
         return _response(response, WorkReceipt, {401: Problem, 404: Problem, 409: Problem, 422: Problem})
+
+    @validate_call(config=ConfigDict(strict=True, arbitrary_types_allowed=True))
+    def apply_company_bundle(
+        self,
+        request: CompanyBundleApplyRequest,
+        *,
+        command_id: UUID,
+    ) -> CompanyBundleCommandResult:
+        response = self._http.post(
+            "/v1/company/bundle/apply",
+            content=request.model_dump_json(),
+            headers=self._telemetry_headers(
+                self._context(command_id),
+                {
+                    **self._auth_headers(),
+                    "Content-Type": "application/json",
+                    "Idempotency-Key": str(command_id),
+                },
+            ),
+        )
+        return _response(response, CompanyBundleCommandResult, {401: Problem, 403: Problem, 409: Problem, 422: Problem, 503: Problem})
 
     @validate_call(config=ConfigDict(strict=True, arbitrary_types_allowed=True))
     def apply_ticket_intent(
@@ -222,6 +273,21 @@ class CtowerClient:
             ),
         )
         return _response(response, TicketCommandResult, {401: Problem, 403: Problem, 404: Problem, 409: Problem, 422: Problem})
+
+    @validate_call(config=ConfigDict(strict=True, arbitrary_types_allowed=True))
+    def export_company_bundle(
+        self,
+    ) -> CompanyBundleExportResult:
+        response = self._http.get(
+            "/v1/company/bundle/export",
+            headers=self._telemetry_headers(
+                self._context(uuid4()),
+                {
+                    **self._auth_headers(),
+                },
+            ),
+        )
+        return _response(response, CompanyBundleExportResult, {401: Problem, 403: Problem, 404: Problem})
 
     @validate_call(config=ConfigDict(strict=True, arbitrary_types_allowed=True))
     def freeze_proof_criteria(
@@ -349,6 +415,24 @@ class CtowerClient:
             ),
         )
         return _response(response, AuditPage, {401: Problem, 404: Problem, 422: Problem})
+
+    @validate_call(config=ConfigDict(strict=True, arbitrary_types_allowed=True))
+    def plan_company_bundle(
+        self,
+        request: CompanyBundleRequest,
+    ) -> CompanyBundlePlan:
+        response = self._http.post(
+            "/v1/company/bundle/plan",
+            content=request.model_dump_json(),
+            headers=self._telemetry_headers(
+                self._context(uuid4()),
+                {
+                    **self._auth_headers(),
+                    "Content-Type": "application/json",
+                },
+            ),
+        )
+        return _response(response, CompanyBundlePlan, {401: Problem, 403: Problem, 409: Problem, 422: Problem})
 
     @validate_call(config=ConfigDict(strict=True, arbitrary_types_allowed=True))
     def record_outbox_poison_disposition(
@@ -503,6 +587,24 @@ class CtowerClient:
             ),
         )
         return _response(response, WorkflowReceipt, {401: Problem, 404: Problem, 409: Problem, 422: Problem})
+
+    @validate_call(config=ConfigDict(strict=True, arbitrary_types_allowed=True))
+    def validate_company_bundle(
+        self,
+        request: CompanyBundleRequest,
+    ) -> CompanyBundleValidationResult:
+        response = self._http.post(
+            "/v1/company/bundle/validate",
+            content=request.model_dump_json(),
+            headers=self._telemetry_headers(
+                self._context(uuid4()),
+                {
+                    **self._auth_headers(),
+                    "Content-Type": "application/json",
+                },
+            ),
+        )
+        return _response(response, CompanyBundleValidationResult, {401: Problem, 403: Problem, 422: Problem})
 
     def _auth_headers(self) -> dict[str, str]:
         if self._credential is None:

@@ -13,6 +13,15 @@ standing credential merely because it can request work.
 Secret references are metadata, not proof that the credential is valid or that an effect succeeded. External
 mutations still require idempotency, receipts, and reconciliation.
 
+## Protected CLI boundary
+
+The CLI reads current bearer/bootstrap authority from one bounded stdin line and never persists it. Its
+offline mutation spool keeps only redacted request fields in AES-GCM records and stores the random master
+key in an allowlisted operating-system credential service. Linux requires an active D-Bus Secret Service
+session with an unlocked collection. Missing, locked, null, or unapproved keyring state fails before
+enqueue/send and leaves ciphertext unchanged; there is no plaintext, file, environment, or `keyrings.alt`
+fallback. CompanyBundle carries secret-binding names and reference classes only.
+
 ## Repository boundary
 
 - Keep local values in ignored environment or vault tooling; never commit them.

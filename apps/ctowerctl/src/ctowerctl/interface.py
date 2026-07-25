@@ -1,4 +1,4 @@
-"""Argument parsing and generated-client composition for ctowerctl."""
+"""Thin composition root for explicit generated-client and encrypted-spool commands."""
 
 from __future__ import annotations
 
@@ -6,27 +6,40 @@ import argparse
 import json
 import sys
 from collections.abc import Sequence
-from typing import TextIO, cast
-from urllib.parse import urlsplit
+from typing import Literal, TextIO, cast
 from uuid import UUID
 
 import httpx
+from pydantic import BaseModel, ValidationError
 
 from ctower_client import CtowerClient, CtowerProblemError
-from ctower_client.models import (
-    BootstrapReceipt,
-    BootstrapRequest,
-    CustodyTransferRequest,
-    Priority,
-    SourceReference,
-    TicketCommandResult,
-    TicketCreateRequest,
-    TicketResource,
+from ctower_client.models import CompanyBundleExportResult, Problem
+from ctower_client.operations import OperationSpec, SpoolPolicy, operation_for_cli
+from ctowerctl import (
+    _bootstrap_commands,
+    _company_commands,
+    _ops_commands,
+    _spool_commands,
+    _ticket_commands,
 )
+from ctowerctl._auth import read_authority
+from ctowerctl._command_types import MutationPayload
+from ctowerctl._generated_replay import GeneratedReplayExecutor, ReplayObservation
+from ctowerctl._output import (
+    CommandOutcome,
+    ExitCode,
+    LocalFailure,
+    reason_code,
+    write_json,
+    write_text,
+)
+from ctowerctl._parser import parse_arguments
+from ctowerctl.spool import Spool, SpoolCommand, SpoolEntry, SpoolError, SpoolState
 
 __all__ = ["main"]
 
-CliResult = BootstrapReceipt | TicketCommandResult | TicketResource
+type JsonValue = str | int | float | bool | list[JsonValue] | dict[str, JsonValue] | None
+type JsonObject = dict[str, JsonValue]
 
 
 def main(
@@ -36,163 +49,206 @@ def main(
     stdout: TextIO | None = None,
     stderr: TextIO | None = None,
 ) -> int:
-    """Execute one online command and report committed-but-pending truth."""
+    """Execute one explicit command with durable-before-send mutation semantics."""
 
     input_stream = stdin or sys.stdin
     output_stream = stdout or sys.stdout
     error_stream = stderr or sys.stderr
-    arguments = _parser().parse_args(argv)
-    command_id = _command_id(arguments)
     try:
-        result = _invoke(arguments, input_stream)
-    except (httpx.RequestError, CtowerProblemError, ValueError) as error:
-        return _report_failure(error, command_id=command_id, stderr=error_stream)
-    output_stream.write(_encoded(result) + "\n")
-    return 0
+        arguments = parse_arguments(argv)
+    except (TypeError, ValueError):
+        error_stream.write("usage: invalid command input or missing stdin authority\n")
+        return int(ExitCode.USAGE)
+    return _run_command(arguments, input_stream, output_stream, error_stream)
 
 
-def _parser() -> argparse.ArgumentParser:
-    parser = argparse.ArgumentParser(prog="ctowerctl")
-    parser.add_argument("--base-url", required=True, type=_safe_base_url)
-    areas = parser.add_subparsers(dest="area", required=True)
-    _bootstrap_parser(areas.add_parser("bootstrap"))
-    _ticket_parser(areas.add_parser("ticket"))
-    return parser
-
-
-def _report_failure(
-    error: httpx.RequestError | CtowerProblemError | ValueError,
-    *,
-    command_id: UUID | None,
-    stderr: TextIO,
+def _run_command(
+    arguments: argparse.Namespace,
+    input_stream: TextIO,
+    output_stream: TextIO,
+    error_stream: TextIO,
 ) -> int:
-    if isinstance(error, httpx.RequestError):
-        subject = f"command_id={command_id}" if command_id is not None else "query"
-        stderr.write(f"unsent {subject}: ctower is unreachable\n")
-        return 2
-    if isinstance(error, CtowerProblemError):
-        stderr.write(f"refused code={error.problem.code}: {error.problem.detail}\n")
-        return 3
-    stderr.write("refused input: invalid command input or missing stdin authority\n")
-    return 4
-
-
-def _bootstrap_parser(parser: argparse.ArgumentParser) -> None:
-    actions = parser.add_subparsers(dest="action", required=True)
-    first = actions.add_parser("first-tenant")
-    first.add_argument("--command-id", required=True, type=UUID)
-    first.add_argument("--tenant-name", required=True)
-    first.add_argument("--tenant-slug", required=True)
-    first.add_argument("--operator-name", required=True)
-    first.add_argument("--operator-credential-ref", required=True)
-    first.add_argument("--operator-vault-ref", required=True)
-    first.add_argument("--commander-name", required=True)
-    first.add_argument("--commander-vault-ref", required=True)
-
-
-def _ticket_parser(parser: argparse.ArgumentParser) -> None:
-    actions = parser.add_subparsers(dest="action", required=True)
-    create = actions.add_parser("create")
-    create.add_argument("--command-id", required=True, type=UUID)
-    create.add_argument("--initial-custodian-id", required=True, type=UUID)
-    create.add_argument("--priority", required=True, choices=tuple(Priority))
-    create.add_argument("--source-kind", required=True)
-    create.add_argument("--source-ref", required=True)
-    create.add_argument("--title", required=True)
-    show = actions.add_parser("show")
-    show.add_argument("ticket_id", type=UUID)
-    assign = actions.add_parser("assign")
-    assign.add_argument("ticket_id", type=UUID)
-    assign.add_argument("--command-id", required=True, type=UUID)
-    assign.add_argument("--expected-version", required=True, type=int)
-    assign.add_argument("--from-custodian-id", required=True, type=UUID)
-    assign.add_argument("--to-custodian-id", required=True, type=UUID)
-    assign.add_argument("--reason", required=True)
-    assign.add_argument("--protected-transfer", required=True, action="store_true")
-
-
-def _invoke(arguments: argparse.Namespace, stdin: TextIO) -> CliResult:
-    base_url = cast(str, arguments.base_url)
-    area = cast(str, arguments.area)
-    action = cast(str, arguments.action)
-    if area == "bootstrap" and action == "first-tenant":
-        return _bootstrap(base_url, arguments, stdin)
-    credential = _read_authority(stdin)
-    with CtowerClient(base_url, credential=credential) as client:
-        if action == "create":
-            return _create_ticket(client, arguments)
-        if action == "show":
-            return client.get_ticket(cast(UUID, arguments.ticket_id))
-        if action == "assign":
-            return _assign_ticket(client, arguments)
-    raise ValueError("unsupported ctowerctl command")
-
-
-def _bootstrap(base_url: str, arguments: argparse.Namespace, stdin: TextIO) -> BootstrapReceipt:
-    request = BootstrapRequest(
-        commander_name=cast(str, arguments.commander_name),
-        commander_vault_ref=cast(str, arguments.commander_vault_ref),
-        operator_credential_ref=cast(str, arguments.operator_credential_ref),
-        operator_name=cast(str, arguments.operator_name),
-        operator_vault_ref=cast(str, arguments.operator_vault_ref),
-        tenant_name=cast(str, arguments.tenant_name),
-        tenant_slug=cast(str, arguments.tenant_slug),
-    )
-    with CtowerClient(base_url) as client:
-        return client.bootstrap_first_tenant(
-            request,
-            command_id=cast(UUID, arguments.command_id),
-            capability=_read_authority(stdin),
+    try:
+        result, code = _execute(arguments, input_stream)
+    except SpoolError as error:
+        command_id = _command_id(arguments)
+        write_json(
+            output_stream,
+            LocalFailure(command_id=command_id, reason_code=reason_code(error.code)),
         )
+        error_stream.write(f"local_failure code={reason_code(error.code)}\n")
+        return int(ExitCode.LOCAL_FAILURE)
+    except (ValidationError, OSError, TypeError, ValueError):
+        error_stream.write("usage: invalid command input or missing stdin authority\n")
+        return int(ExitCode.USAGE)
+    except CtowerProblemError as error:
+        _write_problem(error, error_stream)
+        return int(ExitCode.PERMANENT)
+    except httpx.RequestError:
+        subject = _command_id(arguments)
+        identity = f"command_id={subject}" if subject is not None else "query"
+        error_stream.write(f"temporary {identity}: ctower is unreachable\n")
+        return int(ExitCode.TEMPORARY)
+    _write_result(arguments, result, output_stream)
+    return int(code)
 
 
-def _create_ticket(client: CtowerClient, arguments: argparse.Namespace) -> TicketCommandResult:
-    request = TicketCreateRequest(
-        initial_custodian_id=cast(UUID, arguments.initial_custodian_id),
-        priority=Priority(cast(str, arguments.priority)),
-        source=SourceReference(
-            kind=cast(str, arguments.source_kind), ref=cast(str, arguments.source_ref)
-        ),
-        title=cast(str, arguments.title),
+def _execute(
+    arguments: object,
+    authority_stream: TextIO,
+) -> tuple[BaseModel, ExitCode]:
+    namespace = cast("argparse.Namespace", arguments)
+    base_url = cast(str, namespace.base_url)
+    if hasattr(namespace, "local_command"):
+        return _spool_commands.execute(base_url, namespace, authority_stream)
+    cli_name = cast(str, namespace.cli_name)
+    if cli_name == "bootstrap first-tenant":
+        result = _bootstrap_commands.execute(base_url, namespace, authority_stream)
+        code = ExitCode.SUCCESS if result.durability_state == "accepted" else ExitCode.TEMPORARY
+        return result, code
+    operation = operation_for_cli(cli_name)
+    if operation is None:
+        raise ValueError("usage: command is absent from generated registry")
+    credential = read_authority(authority_stream)
+    if operation.mutation:
+        return _execute_mutation(base_url, credential, namespace, operation)
+    with CtowerClient(base_url, credential=credential) as client:
+        return _execute_query(namespace, client), ExitCode.SUCCESS
+
+
+def _execute_mutation(
+    base_url: str,
+    credential: str,
+    arguments: object,
+    operation: OperationSpec,
+) -> tuple[CommandOutcome, ExitCode]:
+    namespace = cast("argparse.Namespace", arguments)
+    if operation.spool_policy is not SpoolPolicy.ALLOWED:
+        raise ValueError("usage: mutation is not allowlisted for encrypted replay")
+    payload = _build_mutation(namespace)
+    command_id = cast(UUID, namespace.command_id)
+    command = SpoolCommand(
+        operation_id=operation.operation_id,
+        path_parameters=cast(JsonObject, payload.path_parameters),
+        request_body=_model_payload(payload.request),
+        command_id=command_id,
     )
-    return client.create_ticket(request, command_id=cast(UUID, arguments.command_id))
-
-
-def _assign_ticket(client: CtowerClient, arguments: argparse.Namespace) -> TicketCommandResult:
-    request = CustodyTransferRequest(
-        expected_version=cast(int, arguments.expected_version),
-        from_custodian_id=cast(UUID, arguments.from_custodian_id),
-        protected_transfer=cast(bool, arguments.protected_transfer),
-        reason=cast(str, arguments.reason),
-        to_custodian_id=cast(UUID, arguments.to_custodian_id),
+    spool = Spool.for_origin(base_url).bind_credential(credential)
+    spool.enqueue(command)
+    with CtowerClient(base_url, credential=credential) as client:
+        executor = GeneratedReplayExecutor(client)
+        report = spool.drain(executor)
+    current = _current_entry(spool, command_id)
+    observation = executor.observations.get(command_id)
+    result = _observation_result(observation)
+    outcome = CommandOutcome(
+        command_id=command_id,
+        state=_outcome_state(current.state),
+        reason_code=_outcome_reason(current, report.reason_code),
+        sequence=current.sequence,
+        result=result,
     )
-    return client.transfer_ticket_custody(
-        cast(UUID, arguments.ticket_id),
-        request,
-        command_id=cast(UUID, arguments.command_id),
+    return outcome, _outcome_code(current.state, report.barrier_sequence)
+
+
+def _build_mutation(arguments: object) -> MutationPayload:
+    namespace = cast("argparse.Namespace", arguments)
+    area = cast(str, namespace.area)
+    if area == "ticket":
+        return _ticket_commands.build_mutation(namespace)
+    if area == "company":
+        return _company_commands.build_mutation(namespace)
+    if area == "ops":
+        return _ops_commands.build_mutation(namespace)
+    raise ValueError("usage: unsupported mutation family")
+
+
+def _execute_query(arguments: object, client: CtowerClient) -> BaseModel:
+    namespace = cast("argparse.Namespace", arguments)
+    area = cast(str, namespace.area)
+    if area == "ticket":
+        return _ticket_commands.execute_query(namespace, client)
+    if area == "company":
+        return _company_commands.execute_query(namespace, client)
+    if area in {"board", "control"}:
+        return _ops_commands.execute_query(namespace, client)
+    raise ValueError("usage: unsupported query family")
+
+
+def _write_result(arguments: object, result: BaseModel, stream: TextIO) -> None:
+    namespace = cast("argparse.Namespace", arguments)
+    if getattr(namespace, "cli_name", None) == "company bundle export" and isinstance(
+        result, CompanyBundleExportResult
+    ):
+        write_text(stream, _company_commands.export_yaml(result))
+        return
+    write_json(stream, result)
+
+
+def _model_payload(model: BaseModel) -> JsonObject:
+    return cast(JsonObject, json.loads(model.model_dump_json(by_alias=True)))
+
+
+def _current_entry(spool: Spool, command_id: UUID) -> SpoolEntry:
+    entry = next(
+        (item for item in spool.list_entries(limit=10_000) if item.command_id == command_id),
+        None,
+    )
+    if entry is None:
+        raise SpoolError("local_failure", "spooled command disappeared")
+    return entry
+
+
+def _outcome_state(
+    state: SpoolState,
+) -> Literal["accepted", "queued", "quarantined"]:
+    if state is SpoolState.ACCEPTED_ARCHIVE:
+        return "accepted"
+    if state is SpoolState.PENDING:
+        return "queued"
+    return "quarantined"
+
+
+def _outcome_reason(entry: SpoolEntry, drain_reason: str) -> str:
+    if entry.reason_code is not None:
+        return reason_code(entry.reason_code)
+    if entry.state is SpoolState.ACCEPTED_ARCHIVE:
+        return "accepted"
+    return reason_code(drain_reason)
+
+
+def _observation_result(observation: ReplayObservation | None) -> JsonObject | None:
+    if observation is None:
+        return None
+    if observation.problem is not None:
+        return cast(
+            JsonObject,
+            json.loads(observation.problem.model_dump_json(by_alias=True, exclude_none=True)),
+        )
+    return observation.response.response
+
+
+def _outcome_code(state: SpoolState, barrier: int | None) -> ExitCode:
+    if state is SpoolState.ACCEPTED_ARCHIVE:
+        return ExitCode.SUCCESS
+    if state is SpoolState.QUARANTINE or barrier is not None:
+        return ExitCode.PERMANENT
+    return ExitCode.TEMPORARY
+
+
+def _write_problem(error: CtowerProblemError, stream: TextIO) -> None:
+    problem = cast(Problem, error.problem)
+    stream.write(
+        json.dumps(
+            problem.model_dump(mode="json", by_alias=True, exclude_none=True),
+            ensure_ascii=False,
+            separators=(",", ":"),
+            sort_keys=True,
+        )
+        + "\n"
     )
 
 
-def _command_id(arguments: argparse.Namespace) -> UUID | None:
+def _command_id(arguments: object | None) -> UUID | None:
     value = getattr(arguments, "command_id", None)
     return value if isinstance(value, UUID) else None
-
-
-def _read_authority(stream: TextIO) -> str:
-    authority = stream.readline().rstrip("\r\n")
-    if not authority:
-        raise ValueError("an authority value is required on stdin")
-    return authority
-
-
-def _safe_base_url(value: str) -> str:
-    parsed = urlsplit(value)
-    if parsed.scheme not in {"http", "https"} or not parsed.hostname:
-        raise argparse.ArgumentTypeError("base URL must be an absolute HTTP(S) URL")
-    if parsed.username is not None or parsed.password is not None:
-        raise argparse.ArgumentTypeError("base URL must not contain authority credentials")
-    return value
-
-
-def _encoded(result: CliResult) -> str:
-    return json.dumps(result.model_dump(mode="json"), separators=(",", ":"), sort_keys=True)

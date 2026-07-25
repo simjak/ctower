@@ -43,12 +43,23 @@ def test_http_contract_declares_pending_and_accepted_mutation_outcomes() -> None
     document = json.loads((ROOT / "contracts/http/openapi.yaml").read_text(encoding="utf-8"))
     schemas = document["components"]["schemas"]
     paths = document["paths"]
+    expected_read_only_posts = {"planCompanyBundle", "validateCompanyBundle"}
+    read_only_posts: set[str] = set()
 
     assert schemas["DurabilityState"]["enum"] == ["durability_pending", "accepted"]
     for path in paths.values():
-        post = path.get("post")
-        if post is None:
-            continue
-        responses = post["responses"]
-        assert "202" in responses
-        assert "Retry-After" in responses["202"]["headers"]
+        for method, operation in path.items():
+            operation_id = operation["operationId"]
+            responses = operation["responses"]
+            if operation_id in expected_read_only_posts:
+                assert method == "post"
+                assert operation["x-ctower-mutation"] is False
+                assert operation["x-ctower-spool"] == "forbidden"
+                assert "200" in responses
+                assert "202" not in responses
+                read_only_posts.add(operation_id)
+            if operation["x-ctower-mutation"] is True:
+                assert "202" in responses, operation_id
+                assert "Retry-After" in responses["202"]["headers"], operation_id
+
+    assert read_only_posts == expected_read_only_posts

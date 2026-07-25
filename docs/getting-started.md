@@ -1,7 +1,8 @@
 # Exercise the development walking slice
 
-This is not a product quickstart. ctower has no supported service installation or deployment path. The
-current walking slice is exercised by repository verification against disposable fixtures.
+This is not a product quickstart. ctower has no published/supported service installation or deployment
+path. The current walking slice is exercised by repository verification against disposable fixtures,
+including an externally installed development wheel.
 
 ## Before you run it
 
@@ -21,10 +22,11 @@ install ctower, make the local database durable, create a supported tenant, or p
 
 ## What the development slice proves
 
-The tests cover a one-use first-tenant ceremony; durable ticket facts and custody; the protected Proof and
-four-stage Workflow fixture; a read-only Board projection; the thin online CLI subset; and selected
-idempotency, authorization, projection, health, and acknowledgement behaviours. See
-[Project status](project-status.md) for the precise boundary.
+The tests cover a one-use first-tenant ceremony; durable ticket/comment/Work facts and custody; the
+protected Proof and four-stage Workflow fixture; a read-only Board projection; CompanyBundle
+validate/plan/apply/export; the generated-operation-backed CLI; the encrypted spool and real Linux Secret
+Service boundary; and selected idempotency, authorization, projection, health, and acknowledgement
+behaviours. See [Project status](project-status.md) for the precise boundary.
 
 The normal development configuration reports `pending_only`. A separate verifier-owned primary/standby
 PostgreSQL topology exercises acknowledged durability. Neither topology is a supported operational setup.
@@ -33,8 +35,9 @@ PostgreSQL topology exercises acknowledged durability. Neither topology is a sup
 
 - [OpenAPI](https://github.com/simjak/ctower/blob/main/contracts/http/openapi.yaml) is the authored HTTP
   contract for the development slice.
-- [`apps/ctowerctl/README.md`](https://github.com/simjak/ctower/blob/main/apps/ctowerctl/README.md) defines
-  the smaller online CLI subset.
+- [Protected CLI and spool](guides/protected-cli.md) defines the installed-artifact, keyring, output, and
+  recovery boundary.
+- [CompanyBundle](guides/company-bundle.md) defines the strict desired-state round trip and its exclusions.
 - [Contracts](https://github.com/simjak/ctower/tree/main/contracts) and
   [packs](https://github.com/simjak/ctower/tree/main/packs) distinguish authored inputs from activated
   behaviour.

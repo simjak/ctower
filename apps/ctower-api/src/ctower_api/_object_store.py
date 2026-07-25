@@ -12,7 +12,7 @@ import httpx
 from pydantic import BaseModel, ConfigDict, field_validator
 
 from ctower_api._kms import EncryptionReceipt, ExternalKms
-from ctower_kernel.proof.objects import (
+from ctower_kernel.objects import (
     ObjectIntegrityError,
     StoredObject,
     digest_bytes,
@@ -21,6 +21,9 @@ from ctower_kernel.proof.objects import (
 
 __all__: tuple[str, ...] = ()
 _HTTP_OK = 200
+_HTTP_NOT_FOUND = 404
+_HTTP_PRECONDITION_FAILED = 412
+_METADATA_PREFIX = "X-Amz-Meta-Ctower-"
 
 
 class ObjectStoreConfig(BaseModel):
@@ -80,6 +83,13 @@ class S3CompatibleObjectStore:
         key_reference: str,
     ) -> StoredObject:
         verify_digest(content, artifact_digest)
+        existing = self._reconcile_existing(
+            tenant_id,
+            artifact_digest,
+            key_reference=key_reference,
+        )
+        if existing is not None:
+            return existing
         encrypted = self._kms.encrypt(content, key_reference=key_reference)
         object_key = _object_key(tenant_id, artifact_digest)
         uploaded_at = self._clock()
@@ -89,10 +99,18 @@ class S3CompatibleObjectStore:
             headers={
                 "Content-Type": "application/octet-stream",
                 "If-None-Match": "*",
-                "X-Ctower-Ciphertext-Sha256": encrypted.ciphertext_sha256,
                 "X-Ctower-Workload-Identity-Ref": self._config.workload_identity_ref,
+                **_receipt_metadata(encrypted, uploaded_at=uploaded_at),
             },
         )
+        if response.status_code == _HTTP_PRECONDITION_FAILED:
+            reconciled = self._reconcile_existing(
+                tenant_id,
+                artifact_digest,
+                key_reference=key_reference,
+            )
+            if reconciled is not None:
+                return reconciled
         if response.status_code not in (200, 201):
             raise ObjectIntegrityError(f"immutable object PUT failed: {response.status_code}")
         object_version = response.headers.get("X-Amz-Version-Id")
@@ -106,6 +124,37 @@ class S3CompatibleObjectStore:
             uploaded_at=uploaded_at,
             verified_at=self._clock(),
         )
+        self.read_verified(tenant_id, receipt)
+        return receipt
+
+    def _reconcile_existing(
+        self,
+        tenant_id: UUID,
+        artifact_digest: str,
+        *,
+        key_reference: str,
+    ) -> StoredObject | None:
+        object_key = _object_key(tenant_id, artifact_digest)
+        response = self._client.head(
+            self._url(object_key),
+            headers={
+                "X-Ctower-Workload-Identity-Ref": self._config.workload_identity_ref,
+            },
+        )
+        if response.status_code == _HTTP_NOT_FOUND:
+            return None
+        if response.status_code != _HTTP_OK:
+            raise ObjectIntegrityError(
+                f"immutable object reconciliation failed: {response.status_code}"
+            )
+        receipt = _receipt_from_headers(
+            artifact_digest,
+            object_key,
+            response,
+            verified_at=self._clock(),
+        )
+        if receipt.key_reference != key_reference:
+            raise ObjectIntegrityError("existing object receipt uses the wrong key reference")
         self.read_verified(tenant_id, receipt)
         return receipt
 
@@ -188,3 +237,41 @@ def _stored_receipt(
         uploaded_at=uploaded_at,
         verified_at=verified_at,
     )
+
+
+def _receipt_metadata(
+    encrypted: EncryptionReceipt,
+    *,
+    uploaded_at: datetime,
+) -> dict[str, str]:
+    return {
+        f"{_METADATA_PREFIX}Ciphertext-Sha256": encrypted.ciphertext_sha256,
+        f"{_METADATA_PREFIX}Key-Reference": encrypted.key_reference,
+        f"{_METADATA_PREFIX}Key-Version": encrypted.key_version,
+        f"{_METADATA_PREFIX}Wrapped-Key-Sha256": encrypted.wrapped_key_sha256,
+        f"{_METADATA_PREFIX}Uploaded-At": uploaded_at.isoformat(),
+    }
+
+
+def _receipt_from_headers(
+    artifact_digest: str,
+    object_key: str,
+    response: httpx.Response,
+    *,
+    verified_at: datetime,
+) -> StoredObject:
+    try:
+        uploaded_at = datetime.fromisoformat(response.headers[f"{_METADATA_PREFIX}Uploaded-At"])
+        return StoredObject(
+            artifact_digest=artifact_digest,
+            object_key=object_key,
+            object_version=response.headers["X-Amz-Version-Id"],
+            ciphertext_sha256=response.headers[f"{_METADATA_PREFIX}Ciphertext-Sha256"],
+            key_reference=response.headers[f"{_METADATA_PREFIX}Key-Reference"],
+            key_version=response.headers[f"{_METADATA_PREFIX}Key-Version"],
+            wrapped_key_sha256=response.headers[f"{_METADATA_PREFIX}Wrapped-Key-Sha256"],
+            uploaded_at=uploaded_at,
+            verified_at=verified_at,
+        )
+    except (KeyError, ValueError) as error:
+        raise ObjectIntegrityError("existing object omitted a valid receipt") from error

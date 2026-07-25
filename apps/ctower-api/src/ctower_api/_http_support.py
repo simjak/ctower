@@ -13,6 +13,7 @@ from ctower_api.telemetry import TelemetryRecorder
 from ctower_client.models import Problem
 from ctower_client.models import TelemetryContext as HttpTelemetryContext
 from ctower_kernel.access import Access
+from ctower_kernel.catalog import CatalogProblem
 from ctower_kernel.record import Actor, RecordProblem
 from ctower_kernel.telemetry import TelemetryContext
 
@@ -36,7 +37,7 @@ def emit_auth_denial(recorder: TelemetryRecorder, name: str, problem: RecordProb
     recorder.emit(name, _denial_telemetry(), outcome="error", reason=problem.code)
 
 
-def problem_response(problem: RecordProblem) -> JSONResponse:
+def problem_response(problem: RecordProblem | CatalogProblem) -> JSONResponse:
     """Validate one kernel refusal through the generated RFC 9457 boundary."""
 
     boundary = Problem.model_validate_json(encoded(problem.response_payload()))
@@ -47,7 +48,7 @@ def problem_response(problem: RecordProblem) -> JSONResponse:
     )
 
 
-def encoded(payload: dict[str, object]) -> str:
+def encoded(payload: object) -> str:
     """Encode one stable public response payload."""
 
     return json.dumps(payload, separators=(",", ":"), sort_keys=True)

@@ -9,7 +9,7 @@ from uuid import NAMESPACE_URL, UUID, uuid5
 
 import psycopg
 
-from ctower_kernel.proof.objects import ObjectIntegrityError, StoredObject
+from ctower_kernel.objects import ObjectIntegrityError, StoredObject
 
 __all__: tuple[str, ...] = ()
 

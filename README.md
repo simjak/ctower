@@ -28,13 +28,14 @@ Read [Core concepts](https://simjak.github.io/ctower/concepts/) for the shared v
 
 ## What you can use today
 
-The current development slice has first-tenant bootstrap, durable ticket facts, a six-lane Board projection,
-the proof-gated four-stage fixture, generated clients, and a small online CLI subset. The normal development
-configuration is `pending_only`. An acknowledged-durability path is exercised only by the verifier-owned
-primary/standby PostgreSQL test topology; it is not a supported deployment. Local, verifier-only CP3-C
-evidence also covers digest-bound object handling, backup and anchors, key recovery, isolated restore,
-rollback, and recovery evidence. Those pages describe a bounded checkpoint, not a production recovery
-service or CP3-D activation.
+The current development slice has first-tenant bootstrap, durable ticket/comment/Work facts, a six-lane
+Board projection, the proof-gated four-stage fixture, generated clients/contracts, a universal
+CompanyBundle Catalog checkpoint, and a protected CLI with an encrypted local replay spool. The normal
+development configuration is `pending_only`. An acknowledged-durability path is exercised only by the
+verifier-owned primary/standby PostgreSQL test topology; it is not a supported deployment. Local,
+verifier-only CP3-C evidence also covers digest-bound object handling, backup and anchors, key recovery,
+isolated restore, rollback, and recovery evidence. Those pages describe bounded checkpoints, not a
+production recovery service or CP3-D activation.
 
 After following the [repository setup guide](https://simjak.github.io/ctower/start-here/repository-setup/),
 clone the repository and run the warm verification gate:
@@ -51,18 +52,25 @@ fixtures through Docker Compose. It validates the repository; it does not instal
 
 ## Current interfaces
 
-- **CLI:** `ctowerctl` is a thin online development adapter for `bootstrap first-tenant` and ticket
-  `create`, `show`, and `assign`. It has no encrypted spool or offline mode.
-- **HTTP/OpenAPI:** the development OpenAPI contract contains a broader set of ticket, Work, Proof,
-  Workflow, Board, health, and outbox operations. CLI/API parity is not claimed.
-- **Not available:** no supported package/install path, product Compose stack, configuration contract,
-  production backup/restore runbook, CompanyBundle path, browser UI, runner, remote agent adapter, or
-  production release exists.
+- **CLI:** `ctowerctl` and `ctl` expose the authored ticket, Work, Proof, Workflow, Board/health, protected
+  outbox, CompanyBundle, and local spool families. Non-bootstrap mutations are encrypted and durable before
+  send; Linux verification uses a real Secret Service.
+- **HTTP/OpenAPI:** all 25 development operations carry explicit CLI/query-mutation/spool metadata and
+  generate the strict client plus runtime contract resource package.
+- **CompanyBundle:** validate/plan/export are read-only; apply atomically advances one future-only Catalog
+  pointer through server authority. It does not activate runtime/effects.
+- **Not available:** no published/supported package or deployment, product Compose stack, production
+  backup/restore runbook, browser UI, runner, remote agent adapter, CP3-D activation, or production release
+  exists.
 
 For the local CP3-C boundary, read [Backup and anchors](https://simjak.github.io/ctower/operations/backup-and-anchors/),
 [Key recovery](https://simjak.github.io/ctower/operations/key-recovery/), and
 [Isolated restore](https://simjak.github.io/ctower/operations/isolated-restore/). Do not treat these
 verifier-only guides as an installation or deployment path.
+
+For the development I1.4 surfaces, read the
+[protected CLI guide](https://simjak.github.io/ctower/guides/protected-cli/) and
+[CompanyBundle guide](https://simjak.github.io/ctower/guides/company-bundle/).
 
 Public API + protected CLI precede I1 source-of-truth cutover. Browser implementation, browser evidence,
 and browser E2E first activate at CT-I2-005 / I2.4.

@@ -35,6 +35,9 @@
         "bootstrap.first_tenant_created",
         "ticket.created",
         "ticket.custody_transferred",
+        "ticket.comment_added",
+        "catalog.component_published",
+        "catalog.bundle_activated",
         "work.changed",
         "proof.changed",
         "workflow.changed",
@@ -51,7 +54,7 @@
     "server_time": {"type": "string", "format": "date-time"},
     "stream_id": {
       "type": "string",
-      "pattern": "^(tenant:[0-9a-f-]{36}:bootstrap|ticket:[0-9a-f-]{36}|proof:[0-9a-f-]{36}|workflow:[0-9a-f-]{36}|routine-occurrence:[0-9a-f-]{36}|poison-disposition:[0-9a-f-]{36})$"
+      "pattern": "^(tenant:[0-9a-f-]{36}:bootstrap|ticket:[0-9a-f-]{36}|catalog:[0-9a-f-]{36}|proof:[0-9a-f-]{36}|workflow:[0-9a-f-]{36}|routine-occurrence:[0-9a-f-]{36}|poison-disposition:[0-9a-f-]{36})$"
     },
     "tenant_id": {"type": "string", "format": "uuid"}
   },
@@ -88,6 +91,30 @@
             "origin": {"const": "api"},
             "stream_id": {"pattern": "^ticket:[0-9a-f-]{36}$"},
             "payload": {"$ref": "#/$defs/custodyTransferred"}
+          }
+        },
+        {
+          "properties": {
+            "kind": {"const": "ticket.comment_added"},
+            "origin": {"const": "api"},
+            "stream_id": {"pattern": "^ticket:[0-9a-f-]{36}$"},
+            "payload": {"$ref": "#/$defs/ticketCommentAdded"}
+          }
+        },
+        {
+          "properties": {
+            "kind": {"const": "catalog.component_published"},
+            "origin": {"const": "api"},
+            "stream_id": {"pattern": "^catalog:[0-9a-f-]{36}$"},
+            "payload": {"$ref": "#/$defs/catalogComponentPublished"}
+          }
+        },
+        {
+          "properties": {
+            "kind": {"const": "catalog.bundle_activated"},
+            "origin": {"const": "api"},
+            "stream_id": {"pattern": "^catalog:[0-9a-f-]{36}$"},
+            "payload": {"$ref": "#/$defs/catalogBundleActivated"}
           }
         },
         {
@@ -169,6 +196,57 @@
         "from_custodian_id": {"type": "string", "format": "uuid"},
         "reason": {"type": "string", "minLength": 1, "maxLength": 500},
         "to_custodian_id": {"type": "string", "format": "uuid"}
+      }
+    },
+    "ticketCommentAdded": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["body", "comment_id", "ticket_id"],
+      "properties": {
+        "body": {"type": "string", "minLength": 1, "maxLength": 4000},
+        "comment_id": {"type": "string", "format": "uuid"},
+        "ticket_id": {"type": "string", "format": "uuid"}
+      }
+    },
+    "componentReference": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["content_digest", "key", "kind", "revision"],
+      "properties": {
+        "content_digest": {"$ref": "#/$defs/sha256"},
+        "key": {"type": "string", "pattern": "^[a-z][a-z0-9.-]{2,127}$"},
+        "kind": {"type": "string", "pattern": "^[a-z][a-z0-9_]{2,63}$"},
+        "revision": {"type": "integer", "minimum": 1}
+      }
+    },
+    "catalogComponentPublished": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["component", "object_version", "payload_ref"],
+      "properties": {
+        "component": {"$ref": "#/$defs/componentReference"},
+        "object_version": {"type": "string", "minLength": 1, "maxLength": 256},
+        "payload_ref": {"type": "string", "pattern": "^object:sha256:[0-9a-f]{64}$"}
+      }
+    },
+    "catalogBundleActivated": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "active_version",
+        "bundle_digest",
+        "member_event_ids",
+        "plan_digest"
+      ],
+      "properties": {
+        "active_version": {"type": "integer", "minimum": 1},
+        "bundle_digest": {"$ref": "#/$defs/sha256"},
+        "member_event_ids": {
+          "type": "array",
+          "minItems": 1,
+          "items": {"type": "string", "format": "uuid"}
+        },
+        "plan_digest": {"$ref": "#/$defs/sha256"}
       }
     },
     "proofChanged": {

@@ -1,0 +1,7 @@
+{
+  "schema": "ctower.tool/v1",
+  "key": "ctowerctl.client",
+  "display_name": "Ctower generated client",
+  "capability": "control.api",
+  "authority": "requested_not_granted"
+}

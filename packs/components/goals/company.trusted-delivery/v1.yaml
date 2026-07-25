@@ -1,0 +1,10 @@
+{
+  "schema": "ctower.goal/v1",
+  "key": "company.trusted-delivery",
+  "display_name": "Trusted delivery",
+  "outcome": "Every accepted change is attributable, durable, and supported by current proof.",
+  "success_criteria": [
+    "The protected CLI preserves one command identity through acceptance or explicit refusal.",
+    "Every active configuration resource is pinned to an immutable revision and digest."
+  ]
+}
