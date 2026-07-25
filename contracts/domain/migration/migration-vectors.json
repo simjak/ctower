@@ -1,0 +1,359 @@
+{
+  "schema": "ctower.ctower-project-migration-vectors/v1",
+  "sealed_source": {
+    "project_key": "ctower",
+    "stable_ticket_ids": [
+      "CT-L0-001",
+      "CT-L0-002",
+      "CT-L0-003",
+      "CT-L0-004",
+      "CT-L0-005",
+      "CT-L0-006",
+      "CT-L0-007",
+      "CT-L0-008",
+      "CT-L0-009",
+      "CT-I1-001",
+      "CT-I1-002",
+      "CT-I1-003",
+      "CT-I1-004",
+      "CT-I1-005",
+      "CT-I1-006",
+      "CT-I1-007",
+      "CT-I1-008",
+      "CT-I2-001",
+      "CT-I2-002",
+      "CT-I2-003",
+      "CT-I2-004",
+      "CT-I2-005",
+      "CT-I2-006",
+      "CT-I2-007",
+      "CT-I2-008",
+      "CT-I2-009",
+      "CT-I2-010"
+    ],
+    "checkpoint_keys": [
+      "I1.0",
+      "I1.1",
+      "I1.2",
+      "I1.3",
+      "I1.4",
+      "I1.5",
+      "I1.6",
+      "I1.7",
+      "I2.1",
+      "I2.2",
+      "I2.3",
+      "I2.4",
+      "I2.5",
+      "I2.6"
+    ],
+    "mission_control_request_ids": [
+      "R325",
+      "R358",
+      "R359",
+      "R360",
+      "R361",
+      "R362",
+      "R363",
+      "R364",
+      "R365",
+      "R366",
+      "R367",
+      "R368",
+      "R369",
+      "R374",
+      "R375",
+      "R377",
+      "R378",
+      "R396",
+      "R397",
+      "R398",
+      "R403",
+      "R436",
+      "R440",
+      "R441",
+      "R444",
+      "R451",
+      "R452",
+      "R462",
+      "R463",
+      "R464",
+      "R470",
+      "R488",
+      "R489",
+      "R490",
+      "R491",
+      "R492",
+      "R493",
+      "R494",
+      "R497",
+      "R498",
+      "R499",
+      "R500",
+      "R505",
+      "R506",
+      "R507",
+      "R508",
+      "R509",
+      "R510",
+      "R511",
+      "R512",
+      "R513",
+      "R514",
+      "R525",
+      "R531",
+      "R532",
+      "R533",
+      "R534",
+      "R535",
+      "R536",
+      "R537",
+      "R543",
+      "R547",
+      "R554",
+      "R556",
+      "R559",
+      "R583",
+      "R593",
+      "R599",
+      "R600",
+      "R607",
+      "R608",
+      "R609",
+      "R610",
+      "R611",
+      "R612",
+      "R613",
+      "R614",
+      "R617",
+      "R627",
+      "R629",
+      "R638",
+      "R642",
+      "R652",
+      "R663",
+      "R667",
+      "R668"
+    ],
+    "mission_control_task_ids": [],
+    "mission_control_requests": {
+      "source_digest": "sha256:2d03b2b24a5545a3cba7bb67d879b911c838ba4be78d131e63afd4657ceeec7a",
+      "source_bytes": 3136405,
+      "source_rows": 2059,
+      "selected_logical": 86,
+      "selected_physical_snapshots": 243,
+      "selected_statuses": {
+        "DONE": 72,
+        "NEW": 5,
+        "WIP": 8,
+        "WONT-DO": 1
+      }
+    },
+    "mission_control_tasks": {
+      "source_digest": "sha256:d101963f046e9d4546ec2f37935b5f72d4e7b6a0b1fe203a65317a4fd1c7c133",
+      "source_bytes": 669184,
+      "source_rows": 390,
+      "selected_logical": 0
+    },
+    "coordination_closure": {
+      "path_count": 89,
+      "source_bytes": 906533,
+      "closure_digest": "sha256:9ed12162ed0821bc51b0015cf04c8d6ab5a7b86dff5f91c7f01973b633a1948a"
+    },
+    "github_release_count": 0,
+    "reviewed_exclusions": [
+      {
+        "source_id": "R546",
+        "reason_code": "false_positive"
+      },
+      {
+        "source_id": "R669+",
+        "reason_code": "outside_sealed_range"
+      }
+    ]
+  },
+  "required_namespaces": [
+    "stable-backlog",
+    "mission-control:request",
+    "mission-control:task",
+    "mission-control:decision",
+    "mission-control:coordination",
+    "git:github.com/simjak/ctower:commit",
+    "github:simjak/ctower:issue",
+    "github:simjak/ctower:pull-request",
+    "github:simjak/ctower:review",
+    "github:simjak/ctower:check-run",
+    "github:simjak/ctower:release",
+    "catalog:ctower:checkpoint"
+  ],
+  "capability_matrix": {
+    "operator": [
+      "createCtowerProjectImportRun",
+      "bindCtowerProjectExportEquality",
+      "bindCtowerProjectAliasPlan",
+      "finalizeCtowerProjectImportRun",
+      "getCtowerProjectImportRun",
+      "appendCtowerProjectImportCorrection",
+      "prepareCtowerProjectCutover:refusal_only",
+      "commitCtowerProjectDevelopmentEpoch:refusal_only"
+    ],
+    "migration_importer": [
+      "applyCtowerProjectImportBatch"
+    ],
+    "fence_observer": [
+      "reportCtowerProjectFenceObservation"
+    ],
+    "migration_importer_forbidden_classes": [
+      "assignment",
+      "catalog",
+      "delivery",
+      "effect",
+      "lifecycle",
+      "priority",
+      "proof",
+      "resolution",
+      "workflow"
+    ]
+  },
+  "typed_batch_union": {
+    "operation_kinds": [
+      "ticket_seed",
+      "exact_alias",
+      "ticket_relation",
+      "source_link"
+    ],
+    "maximum_items": 64,
+    "maximum_canonical_request_bytes": 262144,
+    "ticket_seed_priority": "P2",
+    "project_key": "ctower",
+    "forbidden_fields": [
+      "arbitrary_status",
+      "assignment",
+      "closure",
+      "delivery",
+      "effect",
+      "executable_payload",
+      "gate",
+      "lifecycle",
+      "proof",
+      "resolution",
+      "stage",
+      "verdict"
+    ]
+  },
+  "disposition_equation": {
+    "selected_logical_items_sum": [
+      "created_ticket",
+      "alias_linked_existing",
+      "project_checkpoint_definition",
+      "decision_link",
+      "external_effect_link",
+      "artifact_linked_not_proof",
+      "provenance_only",
+      "exact_duplicate",
+      "excluded_out_of_scope"
+    ],
+    "attention_required": 0,
+    "vectors": [
+      {
+        "name": "exact_conservation",
+        "selected_logical_items": 86,
+        "dispositions": {
+          "created_ticket": 40,
+          "alias_linked_existing": 20,
+          "project_checkpoint_definition": 14,
+          "decision_link": 5,
+          "external_effect_link": 1,
+          "artifact_linked_not_proof": 1,
+          "provenance_only": 3,
+          "exact_duplicate": 1,
+          "excluded_out_of_scope": 1
+        },
+        "valid": true
+      },
+      {
+        "name": "one_missing_disposition",
+        "selected_logical_items": 87,
+        "dispositions": {
+          "created_ticket": 40,
+          "alias_linked_existing": 20,
+          "project_checkpoint_definition": 14,
+          "decision_link": 5,
+          "external_effect_link": 1,
+          "artifact_linked_not_proof": 1,
+          "provenance_only": 3,
+          "exact_duplicate": 1,
+          "excluded_out_of_scope": 1
+        },
+        "valid": false
+      }
+    ]
+  },
+  "conservation_equations": {
+    "selected_request_logical": 86,
+    "selected_request_physical_snapshots": 243,
+    "stable_aliases": 27,
+    "checkpoint_definitions": 14,
+    "attention_required": 0,
+    "unresolved_aliases": 0,
+    "alias_forks_or_cycles": 0,
+    "missing_relation_endpoints": 0,
+    "forbidden_relation_cycles": 0,
+    "unresolved_active_claims": 0,
+    "unexpected_sources": 0,
+    "forbidden_data_items": 0,
+    "pass_two_new_domain_facts": 0,
+    "pass_two_new_events": 0,
+    "pass_two_new_outbox_rows": 0,
+    "pass_two_record_position_delta": 0,
+    "pass_two_projection_semantic_delta": 0
+  },
+  "canonical_signature": {
+    "payload": {
+      "cutover_id": "00000000-0000-4000-8000-000000000100",
+      "project_key": "ctower",
+      "selection_digest": "sha256:1111111111111111111111111111111111111111111111111111111111111111"
+    },
+    "canonical_hex": "7b226375746f7665725f6964223a2230303030303030302d303030302d343030302d383030302d303030303030303030313030222c2270726f6a6563745f6b6579223a2263746f776572222c2273656c656374696f6e5f646967657374223a227368613235363a31313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131313131227d",
+    "signed_digest": "sha256:2c5586070d753993d94acf6a3c7015899519163dc5e448bc56da3da1742535c6",
+    "public_key_base64url": "-JpzALUAQ5Pu0rkjfqLcUkctZM6KT9bDZ0rqgnYFmX4",
+    "public_key_digest": "sha256:c3c8e5075bd7c52c053c729ef2d41fd4212ed904ae1a1e32941d9b7d7bf16b05",
+    "signature": "wVBLKnSjo8ikbJSHevcdS3u3nKRX_8g8qy7uwXiGsSkSyPOIUFt3Fi7X5xhyFwS8SbMzM_w6J895711v3-mSBw",
+    "rebindings_that_must_fail": [
+      "cutover_id",
+      "project_key",
+      "selection_digest",
+      "signed_digest",
+      "public_key_digest"
+    ]
+  },
+  "negative_cases": [
+    "unknown_field",
+    "operation_kind_drift",
+    "digest_rebinding",
+    "signature_rebinding",
+    "cross_project",
+    "cross_tenant",
+    "alias_cycle",
+    "alias_fork",
+    "stale_correction_tip",
+    "missing_relation_endpoint",
+    "forbidden_relation_cycle",
+    "noncontiguous_fence_observation"
+  ],
+  "synthetic_fence_registry": {
+    "mode": "synthetic_dormant",
+    "direct_writers": [
+      "tools/req",
+      "tools/task",
+      "tools/fleet-drive"
+    ],
+    "indirect_clients": [
+      "tools/dispatch",
+      "tools/crew-watch",
+      "tools/durable-mc-pilot"
+    ],
+    "observer_can_disable": true,
+    "observer_can_enable": false
+  }
+}

@@ -1,0 +1,277 @@
+{
+  "$id": "https://ctower.dev/contracts/domain/migration/ctower-project-import-correction.schema.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Append-only ctower-project import correction",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema",
+    "correction_id",
+    "run_id",
+    "cutover_id",
+    "tenant_key",
+    "project_key",
+    "correction_kind",
+    "superseded_revision",
+    "expected_current_digest",
+    "replacement",
+    "reason",
+    "reviewer",
+    "operator_id"
+  ],
+  "properties": {
+    "schema": {
+      "const": "ctower.ctower-project-import-correction/v1"
+    },
+    "correction_id": {
+      "type": "string",
+      "format": "uuid"
+    },
+    "run_id": {
+      "type": "string",
+      "format": "uuid"
+    },
+    "cutover_id": {
+      "type": "string",
+      "format": "uuid"
+    },
+    "tenant_key": {
+      "const": "ctower"
+    },
+    "project_key": {
+      "const": "ctower"
+    },
+    "correction_kind": {
+      "type": "string",
+      "enum": [
+        "alias",
+        "source_link",
+        "relation"
+      ]
+    },
+    "superseded_revision": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "object_id",
+        "revision"
+      ],
+      "properties": {
+        "object_id": {
+          "type": "string",
+          "format": "uuid"
+        },
+        "revision": {
+          "type": "integer",
+          "minimum": 1
+        }
+      }
+    },
+    "expected_current_digest": {
+      "$ref": "migration-boundary.schema.json#/$defs/digest"
+    },
+    "replacement": {
+      "oneOf": [
+        {
+          "$ref": "#/$defs/aliasReplacement"
+        },
+        {
+          "$ref": "#/$defs/sourceLinkReplacement"
+        },
+        {
+          "$ref": "#/$defs/relationReplacement"
+        }
+      ]
+    },
+    "reason": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 1000
+    },
+    "reviewer": {
+      "$ref": "migration-boundary.schema.json#/$defs/review"
+    },
+    "operator_id": {
+      "type": "string",
+      "format": "uuid"
+    }
+  },
+  "$defs": {
+    "aliasReplacement": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "kind",
+        "identity",
+        "target_ticket_id",
+        "disposition"
+      ],
+      "properties": {
+        "kind": {
+          "const": "alias"
+        },
+        "identity": {
+          "$ref": "migration-boundary.schema.json#/$defs/sourceIdentity"
+        },
+        "target_ticket_id": {
+          "type": "string",
+          "format": "uuid"
+        },
+        "disposition": {
+          "enum": [
+            "alias_linked_existing",
+            "exact_duplicate",
+            "provenance_only"
+          ]
+        }
+      }
+    },
+    "sourceLinkReplacement": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "kind",
+        "target_kind",
+        "target_id",
+        "disposition"
+      ],
+      "properties": {
+        "kind": {
+          "const": "source_link"
+        },
+        "target_kind": {
+          "enum": [
+            "ticket",
+            "ticket_relation",
+            "checkpoint",
+            "decision",
+            "artifact",
+            "external_effect"
+          ]
+        },
+        "target_id": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 256
+        },
+        "disposition": {
+          "enum": [
+            "decision_link",
+            "external_effect_link",
+            "artifact_linked_not_proof",
+            "provenance_only",
+            "excluded_out_of_scope"
+          ]
+        }
+      }
+    },
+    "relationReplacement": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "kind",
+        "superseded_relation_active",
+        "replacement_relation"
+      ],
+      "properties": {
+        "kind": {
+          "const": "relation"
+        },
+        "superseded_relation_active": {
+          "const": false
+        },
+        "replacement_relation": {
+          "oneOf": [
+            {
+              "type": "object",
+              "additionalProperties": false,
+              "required": [
+                "relation_id",
+                "relation_kind",
+                "source_ticket_id",
+                "target_ticket_id"
+              ],
+              "properties": {
+                "relation_id": {
+                  "type": "string",
+                  "format": "uuid"
+                },
+                "relation_kind": {
+                  "enum": [
+                    "parent_of",
+                    "depends_on",
+                    "blocks",
+                    "duplicates",
+                    "relates_to",
+                    "caused_by"
+                  ]
+                },
+                "source_ticket_id": {
+                  "type": "string",
+                  "format": "uuid"
+                },
+                "target_ticket_id": {
+                  "type": "string",
+                  "format": "uuid"
+                }
+              }
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      }
+    }
+  },
+  "allOf": [
+    {
+      "if": {
+        "properties": {
+          "correction_kind": {
+            "const": "alias"
+          }
+        }
+      },
+      "then": {
+        "properties": {
+          "replacement": {
+            "$ref": "#/$defs/aliasReplacement"
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "correction_kind": {
+            "const": "source_link"
+          }
+        }
+      },
+      "then": {
+        "properties": {
+          "replacement": {
+            "$ref": "#/$defs/sourceLinkReplacement"
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "correction_kind": {
+            "const": "relation"
+          }
+        }
+      },
+      "then": {
+        "properties": {
+          "replacement": {
+            "$ref": "#/$defs/relationReplacement"
+          }
+        }
+      }
+    }
+  ]
+}

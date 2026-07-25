@@ -1,0 +1,128 @@
+{
+  "$id": "https://ctower.dev/contracts/domain/migration/ctower-project-source-link.schema.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "type": "object",
+  "title": "Append-only ctower-project migration source link",
+  "additionalProperties": false,
+  "required": [
+    "schema",
+    "link_id",
+    "revision",
+    "identity",
+    "physical_positions",
+    "target_kind",
+    "target_id",
+    "project_key",
+    "disposition",
+    "reason_code",
+    "selection_digest",
+    "export_digest",
+    "alias_map_digest",
+    "import_run_id",
+    "command_id",
+    "event_ids",
+    "record_position",
+    "durability_state",
+    "accepted_position",
+    "linked_not_proof"
+  ],
+  "properties": {
+    "schema": {
+      "const": "ctower.ctower-project-source-link/v1"
+    },
+    "link_id": {
+      "type": "string",
+      "format": "uuid"
+    },
+    "revision": {
+      "type": "integer",
+      "minimum": 1
+    },
+    "identity": {
+      "$ref": "migration-boundary.schema.json#/$defs/sourceIdentity"
+    },
+    "physical_positions": {
+      "type": "array",
+      "uniqueItems": true,
+      "items": {
+        "$ref": "migration-boundary.schema.json#/$defs/physicalPosition"
+      }
+    },
+    "target_kind": {
+      "type": "string",
+      "enum": [
+        "ticket",
+        "ticket_relation",
+        "checkpoint",
+        "external_effect",
+        "artifact",
+        "decision"
+      ]
+    },
+    "target_id": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 256
+    },
+    "project_key": {
+      "const": "ctower"
+    },
+    "disposition": {
+      "type": "string",
+      "enum": [
+        "created_ticket",
+        "alias_linked_existing",
+        "project_checkpoint_definition",
+        "decision_link",
+        "external_effect_link",
+        "artifact_linked_not_proof",
+        "provenance_only",
+        "exact_duplicate",
+        "excluded_out_of_scope"
+      ]
+    },
+    "reason_code": {
+      "type": "string",
+      "pattern": "^[a-z][a-z0-9._-]{2,95}$"
+    },
+    "selection_digest": {
+      "$ref": "migration-boundary.schema.json#/$defs/digest"
+    },
+    "export_digest": {
+      "$ref": "migration-boundary.schema.json#/$defs/digest"
+    },
+    "alias_map_digest": {
+      "$ref": "migration-boundary.schema.json#/$defs/digest"
+    },
+    "import_run_id": {
+      "type": "string",
+      "format": "uuid"
+    },
+    "command_id": {
+      "type": "string",
+      "format": "uuid"
+    },
+    "event_ids": {
+      "type": "array",
+      "minItems": 1,
+      "uniqueItems": true,
+      "items": {
+        "type": "string",
+        "format": "uuid"
+      }
+    },
+    "record_position": {
+      "type": "integer",
+      "minimum": 1
+    },
+    "durability_state": {
+      "const": "durability_pending"
+    },
+    "accepted_position": {
+      "type": "null"
+    },
+    "linked_not_proof": {
+      "const": true
+    }
+  }
+}

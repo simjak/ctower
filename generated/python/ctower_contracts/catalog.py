@@ -1,6 +1,6 @@
 """DO NOT EDIT: generated file; regenerate from declared inputs.
 
-Authored contract digest: sha256:d110be83601a088f160efa3fa859e9e3ed40119c7ab47e3e60d43a170e7163ce
+Authored contract digest: sha256:17cf75a06dc1b6485702746d67fe72fdf16f73b35fe11f9fe7e5fb30a3c62611
 """
 
 from __future__ import annotations
@@ -14,7 +14,7 @@ from typing import cast
 from jsonschema import Draft202012Validator, FormatChecker
 from referencing import Registry, Resource
 
-__all__ = ["CATALOG", "ContractCatalog", "schema_for", "validator_for"]
+__all__ = ["CATALOG", "ContractCatalog", "schema_for", "validator_for", "verify_all"]
 
 type JsonValue = str | int | float | bool | None | list["JsonValue"] | dict[str, "JsonValue"]
 
@@ -43,17 +43,24 @@ class ContractCatalog:
         path = aliases.get(schema_ref)
         if path is None:
             raise KeyError(schema_ref)
-        registry = Registry()
+        return Draft202012Validator(
+            resources[path],
+            registry=_registry(resources),
+            format_checker=FormatChecker(),
+        )
+
+    def verify_all(self) -> int:
+        _, resources = self._resources()
+        registry = _registry(resources)
         for document in resources.values():
+            Draft202012Validator.check_schema(document)
             schema_id = document.get("$id")
             if not isinstance(schema_id, str):
                 raise RuntimeError("generated contract resource lacks $id")
-            registry = registry.with_resource(schema_id, Resource.from_contents(document))
-        return Draft202012Validator(
-            resources[path],
-            registry=registry,
-            format_checker=FormatChecker(),
-        )
+            resolver = registry.resolver(base_uri=schema_id)
+            for reference in _references(document):
+                resolver.lookup(reference)
+        return len(resources)
 
     def _resources(
         self,
@@ -67,9 +74,35 @@ class ContractCatalog:
 CATALOG = ContractCatalog()
 
 
+def _registry(resources: dict[str, dict[str, JsonValue]]) -> Registry:
+    registry = Registry()
+    for document in resources.values():
+        schema_id = document.get("$id")
+        if not isinstance(schema_id, str):
+            raise RuntimeError("generated contract resource lacks $id")
+        registry = registry.with_resource(schema_id, Resource.from_contents(document))
+    return registry
+
+
+def _references(value: JsonValue) -> tuple[str, ...]:
+    if isinstance(value, list):
+        return tuple(reference for item in value for reference in _references(item))
+    if not isinstance(value, dict):
+        return ()
+    candidate = value.get("$ref")
+    own = (candidate,) if isinstance(candidate, str) else ()
+    return own + tuple(
+        reference for item in value.values() for reference in _references(item)
+    )
+
+
 def schema_for(schema_ref: str) -> dict[str, JsonValue] | None:
     return CATALOG.schema_for(schema_ref)
 
 
 def validator_for(schema_ref: str) -> Draft202012Validator:
     return CATALOG.validator_for(schema_ref)
+
+
+def verify_all() -> int:
+    return CATALOG.verify_all()

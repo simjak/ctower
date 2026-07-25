@@ -1,6 +1,6 @@
 """DO NOT EDIT: generated file; regenerate from declared inputs.
 
-Authored contract digest: sha256:d110be83601a088f160efa3fa859e9e3ed40119c7ab47e3e60d43a170e7163ce
+Authored contract digest: sha256:17cf75a06dc1b6485702746d67fe72fdf16f73b35fe11f9fe7e5fb30a3c62611
 """
 
 from __future__ import annotations
@@ -51,9 +51,24 @@ __all__ = [
     "ComponentReference",
     "ComponentScope",
     "ControlHealth",
+    "CtowerProjectAliasPlanBindRequest",
     "CtowerProjectCutoverHealth",
-    "CtowerProjectMigrationStubRequest",
-    "CtowerProjectMigrationStubResult",
+    "CtowerProjectEpochRefusalRequest",
+    "CtowerProjectExactAliasOperation",
+    "CtowerProjectExportEqualityBindRequest",
+    "CtowerProjectFenceObservationRequest",
+    "CtowerProjectImportBatchRequest",
+    "CtowerProjectImportBatchResult",
+    "CtowerProjectImportCorrectionRequest",
+    "CtowerProjectImportFinalizeRequest",
+    "CtowerProjectImportOperation",
+    "CtowerProjectImportRun",
+    "CtowerProjectImportRunCreateRequest",
+    "CtowerProjectMigrationReceipt",
+    "CtowerProjectReconciliationResult",
+    "CtowerProjectSourceLinkOperation",
+    "CtowerProjectTicketRelationOperation",
+    "CtowerProjectTicketSeedOperation",
     "CustodyTransferRequest",
     "CustodyTransferredAuditEvent",
     "CustodyTransferredPayload",
@@ -66,6 +81,22 @@ __all__ = [
     "HealthContributorKey",
     "HealthDimension",
     "HealthStatus",
+    "MigrationAliasCorrection",
+    "MigrationConservation",
+    "MigrationCorrectionReplacement",
+    "MigrationCorrectionRevision",
+    "MigrationDispositions",
+    "MigrationFenceFileIdentity",
+    "MigrationHealthDigests",
+    "MigrationImportCounts",
+    "MigrationImportOperationResult",
+    "MigrationImporterBinding",
+    "MigrationOperationIdentity",
+    "MigrationPinnedDigests",
+    "MigrationRefusal",
+    "MigrationRelationCorrection",
+    "MigrationSourceIdentity",
+    "MigrationSourceLinkCorrection",
     "MutableAssignmentKind",
     "PoisonDispositionAction",
     "PoisonDispositionReceipt",
@@ -258,6 +289,7 @@ class ComponentKind(StrEnum):
     NOTIFICATION = "notification"
     INTEGRATION = "integration"
     ADAPTER = "adapter"
+    CHECKPOINT = "checkpoint"
 
 
 class ComponentProvenance(_BoundaryModel):
@@ -271,48 +303,63 @@ class ComponentScope(_BoundaryModel):
     tenant: Annotated[str, Field(pattern="^[a-z][a-z0-9-]{2,63}$")]
 
 
-class CtowerProjectCutoverHealth(_BoundaryModel):
-    schema_id: Literal["ctower.ctower-project-cutover-health/v1"] = Field(
-        alias="schema", serialization_alias="schema"
-    )
-    cutover_id: UUID | None
-    authority_mode: Literal["legacy_writable", "development_single_writer", "disaster_safe"]
-    phase: Literal[
-        "not_started",
-        "prepared",
-        "development_epoch_committed",
-        "disaster_safe_active",
-    ]
-    writes_enabled: bool
-    durability_claim: Literal["CP3_D_NOT_PROVEN", "CP3_D_PROVEN"]
-    recovery_claim: Literal["EXTERNAL_FAILURE_DOMAIN_UNPROVEN", "EXTERNAL_FAILURE_DOMAIN_PROVEN"]
-    data_class: Literal["RECONSTRUCTIBLE_ONLY", "DISASTER_SAFE_CTOWER_ENGINEERING"]
-    legacy_writer_fence: Literal["not_armed", "enforced", "unknown"]
-    split_brain: Literal["clear", "detected", "unknown"]
-    projection_completeness: Literal["current", "stale", "STATE_UNKNOWN"]
-    source_watermark: Annotated[int, Field(ge=0)]
-    projection_watermark: Annotated[int, Field(ge=0)]
-    banner: Annotated[str, Field(min_length=1)]
-
-
-class CtowerProjectMigrationStubRequest(_BoundaryModel):
+class CtowerProjectAliasPlanBindRequest(_BoundaryModel):
+    run_id: UUID
     cutover_id: UUID
-    input_digest: Annotated[str, Field(pattern="^sha256:[0-9a-f]{64}$")]
+    export_equality_digest: Annotated[str, Field(pattern="^sha256:[0-9a-f]{64}$")]
+    alias_map_digest: Annotated[str, Field(pattern="^sha256:[0-9a-f]{64}$")]
+    reviewer_public_key_digest: Annotated[str, Field(pattern="^sha256:[0-9a-f]{64}$")]
+    attention_required: Literal[0]
 
 
-class CtowerProjectMigrationStubResult(_BoundaryModel):
+class CtowerProjectEpochRefusalRequest(_BoundaryModel):
     cutover_id: UUID
-    phase: Literal[
-        "inventory",
-        "export",
-        "plan",
-        "import",
-        "reconcile",
-        "prepare",
-        "commit_development_epoch",
-    ]
-    state: Literal["deferred_to_i1_7b_or_c"]
-    detail: Annotated[str, Field(min_length=1, max_length=500)]
+    run_id: UUID
+    reconciliation_digest: Annotated[str, Field(pattern="^sha256:[0-9a-f]{64}$")]
+    fence_registry_digest: Annotated[str, Field(pattern="^sha256:[0-9a-f]{64}$")]
+
+
+class CtowerProjectExportEqualityBindRequest(_BoundaryModel):
+    run_id: UUID
+    cutover_id: UUID
+    selection_digest: Annotated[str, Field(pattern="^sha256:[0-9a-f]{64}$")]
+    inventory_a_digest: Annotated[str, Field(pattern="^sha256:[0-9a-f]{64}$")]
+    inventory_b_digest: Annotated[str, Field(pattern="^sha256:[0-9a-f]{64}$")]
+    export_digest: Annotated[str, Field(pattern="^sha256:[0-9a-f]{64}$")]
+    equality_report_digest: Annotated[str, Field(pattern="^sha256:[0-9a-f]{64}$")]
+    reviewer_public_key_digest: Annotated[str, Field(pattern="^sha256:[0-9a-f]{64}$")]
+    result: Literal["equal"]
+
+
+class CtowerProjectImportFinalizeRequest(_BoundaryModel):
+    run_id: UUID
+    cutover_id: UUID
+    expected_run_semantic_digest: Annotated[str, Field(pattern="^sha256:[0-9a-f]{64}$")]
+
+
+class CtowerProjectImportRunCreateRequest(_BoundaryModel):
+    cutover_id: UUID
+    tenant_key: Literal["ctower"]
+    project_key: Literal["ctower"]
+    source_selection_digest: Annotated[str, Field(pattern="^sha256:[0-9a-f]{64}$")]
+    build_digest: Annotated[str, Field(pattern="^sha256:[0-9a-f]{64}$")]
+    client_digest: Annotated[str, Field(pattern="^sha256:[0-9a-f]{64}$")]
+    schema_digest: Annotated[str, Field(pattern="^sha256:[0-9a-f]{64}$")]
+    operation_registry_digest: Annotated[str, Field(pattern="^sha256:[0-9a-f]{64}$")]
+    reviewer_public_key_digest: Annotated[str, Field(pattern="^sha256:[0-9a-f]{64}$")]
+    importer_credential_digest: Annotated[str, Field(pattern="^sha256:[0-9a-f]{64}$")]
+    importer_expires_at: datetime
+
+
+class CtowerProjectMigrationReceipt(_BoundaryModel):
+    object_id: UUID
+    revision: Annotated[int, Field(ge=1)]
+    command_id: UUID
+    event_ids: Annotated[tuple[UUID, ...], Field(min_length=1)]
+    record_position: Annotated[int, Field(ge=1)]
+    semantic_digest: Annotated[str, Field(pattern="^sha256:[0-9a-f]{64}$")]
+    durability_state: Literal["durability_pending"]
+    accepted_position: None
 
 
 class CustodyTransferRequest(_BoundaryModel):
@@ -373,6 +420,149 @@ class HealthStatus(StrEnum):
     STATE_UNKNOWN = "STATE_UNKNOWN"
 
 
+class MigrationAliasCorrection(_BoundaryModel):
+    kind: Literal["alias"]
+    target_ticket_id: UUID
+    disposition: Literal["alias_linked_existing", "exact_duplicate", "provenance_only"]
+
+
+class MigrationConservation(_BoundaryModel):
+    selected_logical_items: Annotated[int, Field(ge=1)]
+    selected_request_logical: Literal[86]
+    selected_request_physical_snapshots: Literal[243]
+    stable_aliases: Literal[27]
+    checkpoint_definitions: Literal[14]
+    unresolved_aliases: Literal[0]
+    alias_forks_or_cycles: Literal[0]
+    missing_relation_endpoints: Literal[0]
+    forbidden_relation_cycles: Literal[0]
+    unresolved_active_claims: Literal[0]
+    unexpected_sources: Literal[0]
+    forbidden_data_items: Literal[0]
+    pass_two_new_domain_facts: Literal[0]
+    pass_two_new_events: Literal[0]
+    pass_two_new_outbox_rows: Literal[0]
+    pass_two_record_position_delta: Literal[0]
+    pass_two_projection_semantic_delta: Literal[0]
+
+
+class MigrationCorrectionRevision(_BoundaryModel):
+    object_id: UUID
+    revision: Annotated[int, Field(ge=1)]
+
+
+class MigrationDispositions(_BoundaryModel):
+    created_ticket: Annotated[int, Field(ge=0)]
+    alias_linked_existing: Annotated[int, Field(ge=0)]
+    project_checkpoint_definition: Annotated[int, Field(ge=0)]
+    decision_link: Annotated[int, Field(ge=0)]
+    external_effect_link: Annotated[int, Field(ge=0)]
+    artifact_linked_not_proof: Annotated[int, Field(ge=0)]
+    provenance_only: Annotated[int, Field(ge=0)]
+    exact_duplicate: Annotated[int, Field(ge=0)]
+    excluded_out_of_scope: Annotated[int, Field(ge=0)]
+    attention_required: Literal[0]
+
+
+class MigrationFenceFileIdentity(_BoundaryModel):
+    device: Annotated[int, Field(ge=0)]
+    inode: Annotated[int, Field(ge=1)]
+    scoped_rows_digest: Annotated[str, Field(pattern="^sha256:[0-9a-f]{64}$")]
+
+
+class MigrationHealthDigests(_BoundaryModel):
+    source_selection: Annotated[str, Field(pattern="^sha256:[0-9a-f]{64}$")] | None
+    export_equality: Annotated[str, Field(pattern="^sha256:[0-9a-f]{64}$")] | None
+    alias_map: Annotated[str, Field(pattern="^sha256:[0-9a-f]{64}$")] | None
+    reconciliation: Annotated[str, Field(pattern="^sha256:[0-9a-f]{64}$")] | None
+    fence_registry: Annotated[str, Field(pattern="^sha256:[0-9a-f]{64}$")] | None
+    fence_observation: Annotated[str, Field(pattern="^sha256:[0-9a-f]{64}$")] | None
+
+
+class MigrationImportCounts(_BoundaryModel):
+    planned_operations: Annotated[int, Field(ge=0)]
+    applied_operations: Annotated[int, Field(ge=0)]
+    replayed_operations: Annotated[int, Field(ge=0)]
+    refused_operations: Annotated[int, Field(ge=0)]
+
+
+class MigrationImportOperationResult(_BoundaryModel):
+    command_id: UUID
+    operation_kind: Literal["ticket_seed", "exact_alias", "ticket_relation", "source_link"]
+    replayed: bool
+    target_id: Annotated[str, Field(min_length=1, max_length=256)]
+    event_ids: tuple[UUID, ...]
+    record_position: Annotated[int, Field(ge=1)]
+    occurred_at: datetime
+
+
+class MigrationImporterBinding(_BoundaryModel):
+    principal_kind: Literal["migration_importer"]
+    credential_digest: Annotated[str, Field(pattern="^sha256:[0-9a-f]{64}$")]
+    expires_at: datetime
+    revoked: bool
+
+
+class MigrationOperationIdentity(_BoundaryModel):
+    namespace: Annotated[str, Field(min_length=1, max_length=128)]
+    immutable_source_id: Annotated[str, Field(min_length=1, max_length=512)]
+    source_version_or_digest: Annotated[str, Field(min_length=1, max_length=256)]
+    operation_kind: Literal["ticket_seed", "exact_alias", "ticket_relation", "source_link"]
+    planned_target_ref: Annotated[str, Field(min_length=1, max_length=256)]
+    command_id: UUID
+
+
+class MigrationPinnedDigests(_BoundaryModel):
+    source_selection: Annotated[str, Field(pattern="^sha256:[0-9a-f]{64}$")]
+    export_equality: Annotated[str, Field(pattern="^sha256:[0-9a-f]{64}$")] | None
+    alias_map: Annotated[str, Field(pattern="^sha256:[0-9a-f]{64}$")] | None
+    build: Annotated[str, Field(pattern="^sha256:[0-9a-f]{64}$")]
+    client: Annotated[str, Field(pattern="^sha256:[0-9a-f]{64}$")]
+    schema_id: Annotated[str, Field(pattern="^sha256:[0-9a-f]{64}$")] = Field(
+        alias="schema", serialization_alias="schema"
+    )
+    operation_registry: Annotated[str, Field(pattern="^sha256:[0-9a-f]{64}$")]
+    reviewer_public_key: Annotated[str, Field(pattern="^sha256:[0-9a-f]{64}$")]
+
+
+class MigrationRefusal(_BoundaryModel):
+    code: Annotated[str, Field(pattern="^[A-Z][A-Z0-9_]{2,95}$")]
+    operation_identity: Annotated[str, Field(min_length=1, max_length=512)]
+
+
+class MigrationRelationCorrection(_BoundaryModel):
+    kind: Literal["relation"]
+    superseded_relation_active: Literal[False]
+    replacement_relation_id: UUID | None
+
+
+class MigrationSourceIdentity(_BoundaryModel):
+    namespace: Annotated[str, Field(min_length=1, max_length=128)]
+    immutable_source_id: Annotated[str, Field(min_length=1, max_length=512)]
+    source_version: Annotated[str, Field(min_length=1, max_length=256)]
+    source_digest: Annotated[str, Field(pattern="^sha256:[0-9a-f]{64}$")]
+
+
+class MigrationSourceLinkCorrection(_BoundaryModel):
+    kind: Literal["source_link"]
+    target_kind: Literal[
+        "ticket",
+        "ticket_relation",
+        "checkpoint",
+        "decision",
+        "artifact",
+        "external_effect",
+    ]
+    target_id: Annotated[str, Field(min_length=1, max_length=256)]
+    disposition: Literal[
+        "decision_link",
+        "external_effect_link",
+        "artifact_linked_not_proof",
+        "provenance_only",
+        "excluded_out_of_scope",
+    ]
+
+
 class MutableAssignmentKind(StrEnum):
     CURRENT_ASSIGNEE = "current_assignee"
     STAGE_OWNER = "stage_owner"
@@ -409,8 +599,21 @@ class Problem(_BoundaryModel):
         "bundle-schema-invalid",
         "bundle-security-refused",
         "durability_pending",
-        "i1-7b-required",
+        "i1-7c-required",
         "idempotency-conflict",
+        "migration-alias-conflict",
+        "migration-capability-denied",
+        "migration-correction-conflict",
+        "migration-digest-mismatch",
+        "migration-export-nondeterminism",
+        "migration-fence-detected",
+        "migration-import-finalization-refused",
+        "migration-operation-drift",
+        "migration-relation-invalid",
+        "migration-run-conflict",
+        "migration-signature-invalid",
+        "migration-source-selection-drift",
+        "migration-source-tainted",
         "poison-not-found",
         "project-delivery-unavailable",
         "proof-candidate-author-mismatch",
@@ -694,6 +897,176 @@ class ComponentReference(_BoundaryModel):
     revision: Annotated[int, Field(ge=1)]
 
 
+class CtowerProjectCutoverHealth(_BoundaryModel):
+    schema_id: Literal["ctower.ctower-project-cutover-health/v1"] = Field(
+        alias="schema", serialization_alias="schema"
+    )
+    cutover_id: UUID | None
+    authority_mode: Literal["legacy_writable", "development_single_writer", "disaster_safe"]
+    phase: Literal[
+        "not_started",
+        "source_selection_frozen",
+        "export_equal",
+        "alias_plan_bound",
+        "import_in_progress",
+        "reconciled",
+        "prepared",
+        "development_epoch_committed",
+        "disaster_safe_active",
+    ]
+    writes_enabled: bool
+    durability_claim: Literal["CP3_D_NOT_PROVEN", "CP3_D_PROVEN"]
+    recovery_claim: Literal["EXTERNAL_FAILURE_DOMAIN_UNPROVEN", "EXTERNAL_FAILURE_DOMAIN_PROVEN"]
+    data_class: Literal["RECONSTRUCTIBLE_ONLY", "DISASTER_SAFE_CTOWER_ENGINEERING"]
+    legacy_writer_fence: Literal["not_armed", "enforced", "unknown"]
+    split_brain: Literal["clear", "detected", "unknown"]
+    projection_completeness: Literal["current", "stale", "STATE_UNKNOWN"]
+    source_watermark: Annotated[int, Field(ge=0)]
+    projection_watermark: Annotated[int, Field(ge=0)]
+    import_run_id: UUID | None
+    migration_digests: MigrationHealthDigests
+    banner: Annotated[str, Field(min_length=1)]
+
+
+class CtowerProjectExactAliasOperation(_BoundaryModel):
+    operation: Literal["exact_alias"]
+    identity: MigrationOperationIdentity
+    project_key: Literal["ctower"]
+    source: MigrationSourceIdentity
+    target_ticket_id: UUID
+
+
+class CtowerProjectFenceObservationRequest(_BoundaryModel):
+    schema_id: Literal["ctower.ctower-project-fence-observation/v1"] = Field(
+        alias="schema", serialization_alias="schema"
+    )
+    observation_id: UUID
+    registry_id: UUID
+    registry_revision: Annotated[int, Field(ge=1)]
+    registry_digest: Annotated[str, Field(pattern="^sha256:[0-9a-f]{64}$")]
+    sequence: Annotated[int, Field(ge=1)]
+    previous_observation_digest: Annotated[str, Field(pattern="^sha256:[0-9a-f]{64}$")] | None
+    observed_at: datetime
+    from_offset: Annotated[int, Field(ge=0)]
+    to_offset: Annotated[int, Field(ge=0)]
+    file_identity: MigrationFenceFileIdentity
+    status: Literal["clear", "detected", "unknown"]
+    reason_code: Literal[
+        "no_scoped_append",
+        "scoped_row_appended",
+        "truncated_row",
+        "inode_replaced",
+        "file_truncated",
+        "unreadable_gap",
+        "classifier_unknown",
+        "monitor_interval_missing",
+        "registry_mismatch",
+    ]
+    observation_digest: Annotated[str, Field(pattern="^sha256:[0-9a-f]{64}$")]
+    disables_writes: bool
+    may_enable_writes: Literal[False]
+
+
+class CtowerProjectImportBatchResult(_BoundaryModel):
+    run_id: UUID
+    batch_index: Annotated[int, Field(ge=0)]
+    batch_digest: Annotated[str, Field(pattern="^sha256:[0-9a-f]{64}$")]
+    results: Annotated[tuple[MigrationImportOperationResult, ...], Field(min_length=1, max_length=64)]
+    record_watermark: Annotated[int, Field(ge=1)]
+    projection_watermark: Annotated[int, Field(ge=0)]
+    durability_state: Literal["durability_pending"]
+    accepted_position: None
+
+
+class CtowerProjectImportRun(_BoundaryModel):
+    schema_id: Literal["ctower.ctower-project-import-run/v1"] = Field(
+        alias="schema", serialization_alias="schema"
+    )
+    run_id: UUID
+    cutover_id: UUID
+    tenant_key: Literal["ctower"]
+    project_key: Literal["ctower"]
+    state: Literal[
+        "created",
+        "export_equality_bound",
+        "alias_plan_bound",
+        "importing",
+        "pass_one_complete",
+        "pass_two_noop",
+        "reconciled",
+    ]
+    pinned_digests: MigrationPinnedDigests
+    importer_binding: MigrationImporterBinding
+    counts: MigrationImportCounts
+    record_watermark: Annotated[int, Field(ge=0)]
+    projection_watermark: Annotated[int, Field(ge=0)]
+    refusals: tuple[MigrationRefusal, ...]
+    semantic_digest: Annotated[str, Field(pattern="^sha256:[0-9a-f]{64}$")]
+    durability_state: Literal["durability_pending"]
+    accepted_position: None
+
+
+class CtowerProjectReconciliationResult(_BoundaryModel):
+    schema_id: Literal["ctower.ctower-project-reconciliation/v1"] = Field(
+        alias="schema", serialization_alias="schema"
+    )
+    reconciliation_id: UUID
+    run_id: UUID
+    cutover_id: UUID
+    project_key: Literal["ctower"]
+    pinned_digests: MigrationPinnedDigests
+    dispositions: MigrationDispositions
+    conservation: MigrationConservation
+    source_native_watermark: Annotated[int, Field(ge=0)]
+    export_native_watermark: Annotated[int, Field(ge=0)]
+    record_watermark: Annotated[int, Field(ge=0)]
+    projection_watermark: Annotated[int, Field(ge=0)]
+    target_semantic_digest: Annotated[str, Field(pattern="^sha256:[0-9a-f]{64}$")]
+    report_digest: Annotated[str, Field(pattern="^sha256:[0-9a-f]{64}$")]
+    durability_state: Literal["durability_pending"]
+    accepted_position: None
+
+
+class CtowerProjectSourceLinkOperation(_BoundaryModel):
+    operation: Literal["source_link"]
+    identity: MigrationOperationIdentity
+    project_key: Literal["ctower"]
+    source: MigrationSourceIdentity
+    link_class: Literal["decision", "external_effect", "artifact_not_proof", "provenance"]
+    target_kind: Literal[
+        "ticket",
+        "ticket_relation",
+        "checkpoint",
+        "decision",
+        "artifact",
+        "external_effect",
+    ]
+    target_id: Annotated[str, Field(min_length=1, max_length=256)]
+    reason_code: Annotated[str, Field(pattern="^[a-z][a-z0-9._-]{2,95}$")]
+    linked_not_proof: Literal[True]
+
+
+class CtowerProjectTicketRelationOperation(_BoundaryModel):
+    operation: Literal["ticket_relation"]
+    identity: MigrationOperationIdentity
+    project_key: Literal["ctower"]
+    relation_id: UUID
+    relation_kind: Literal["parent_of", "depends_on", "blocks", "duplicates", "relates_to", "caused_by"]
+    source_ticket_id: UUID
+    target_ticket_id: UUID
+    reason: Annotated[str, Field(min_length=1, max_length=500)]
+
+
+class CtowerProjectTicketSeedOperation(_BoundaryModel):
+    operation: Literal["ticket_seed"]
+    identity: MigrationOperationIdentity
+    project_key: Literal["ctower"]
+    priority: Literal["P2"]
+    title: Annotated[str, Field(min_length=1, max_length=200)]
+    source: MigrationSourceIdentity
+    initial_commander_custodian_id: UUID
+
+
 class CustodyTransferredAuditEvent(_BoundaryModel):
     actor_principal_id: UUID
     command_id: UUID
@@ -721,6 +1094,9 @@ class HealthContributor(_BoundaryModel):
     observed_at: datetime
     owner: Annotated[str, Field(min_length=1, max_length=128)]
     reason: Annotated[str, Field(min_length=1, max_length=500)]
+
+
+type MigrationCorrectionReplacement = MigrationAliasCorrection | MigrationSourceLinkCorrection | MigrationRelationCorrection
 
 
 class PoisonDispositionReceipt(_BoundaryModel):
@@ -777,6 +1153,17 @@ class ProjectDeliveryRow(_BoundaryModel):
     freshness: Literal["fresh", "stale", "STATE_UNKNOWN"]
     confidence: Literal["development_degraded", "disaster_safe", "STATE_UNKNOWN"]
     health: Literal["CP3_D_NOT_PROVEN", "CURRENT", "STATE_UNKNOWN"]
+    durability: Literal["CP3_D_NOT_PROVEN", "CP3_D_PROVEN", "STATE_UNKNOWN"]
+    recovery: Literal[
+        "EXTERNAL_FAILURE_DOMAIN_UNPROVEN",
+        "EXTERNAL_FAILURE_DOMAIN_PROVEN",
+        "STATE_UNKNOWN",
+    ]
+    data_class: Literal["RECONSTRUCTIBLE_ONLY", "DISASTER_SAFE_CTOWER_ENGINEERING", "STATE_UNKNOWN"]
+    semantic_digest: Annotated[str, Field(pattern="^sha256:[0-9a-f]{64}$")]
+    reconciled_at: datetime
+    freshness_due_at: datetime
+    rebuild_generation: Annotated[int, Field(ge=0)]
     source_ids: tuple[Annotated[str, Field(min_length=1)], ...]
     derivation_reasons: Annotated[tuple[Annotated[str, Field(min_length=1)], ...], Field(min_length=1)]
 
@@ -1015,6 +1402,26 @@ class ComponentCompatibility(_BoundaryModel):
     requires: Annotated[tuple[ComponentReference, ...], Field(max_length=128)]
 
 
+class CtowerProjectImportCorrectionRequest(_BoundaryModel):
+    schema_id: Literal["ctower.ctower-project-import-correction/v1"] = Field(
+        alias="schema", serialization_alias="schema"
+    )
+    correction_id: UUID
+    run_id: UUID
+    cutover_id: UUID
+    tenant_key: Literal["ctower"]
+    project_key: Literal["ctower"]
+    correction_kind: Literal["alias", "source_link", "relation"]
+    superseded_revision: MigrationCorrectionRevision
+    expected_current_digest: Annotated[str, Field(pattern="^sha256:[0-9a-f]{64}$")]
+    replacement: MigrationCorrectionReplacement
+    reason: Annotated[str, Field(min_length=1, max_length=1000)]
+    reviewer_id: UUID
+
+
+type CtowerProjectImportOperation = CtowerProjectTicketSeedOperation | CtowerProjectExactAliasOperation | CtowerProjectTicketRelationOperation | CtowerProjectSourceLinkOperation
+
+
 class HealthDimension(_BoundaryModel):
     status: HealthStatus
     contributors: Annotated[tuple[HealthContributor, ...], Field(min_length=1)]
@@ -1026,6 +1433,12 @@ class ProjectDeliveryView(_BoundaryModel):
     )
     company_key: Annotated[str, Field(pattern="^[a-z][a-z0-9-]{2,63}$")]
     project_key: Annotated[str, Field(pattern="^[a-z][a-z0-9-]{2,63}$")]
+    source_record_position: Annotated[int, Field(ge=0)]
+    projection_record_position: Annotated[int, Field(ge=0)]
+    reconciled_at: datetime
+    freshness_due_at: datetime
+    projection_semantic_digest: Annotated[str, Field(pattern="^sha256:[0-9a-f]{64}$")]
+    rebuild_generation: Annotated[int, Field(ge=0)]
     rows: tuple[ProjectDeliveryRow, ...]
 
 
@@ -1090,6 +1503,17 @@ class ControlHealth(_BoundaryModel):
     availability: HealthDimension
     completeness: HealthDimension
     integrity: HealthDimension
+
+
+class CtowerProjectImportBatchRequest(_BoundaryModel):
+    schema_id: Literal["ctower.ctower-project-import-batch/v1"] = Field(
+        alias="schema", serialization_alias="schema"
+    )
+    run_id: UUID
+    cutover_id: UUID
+    batch_index: Annotated[int, Field(ge=0)]
+    batch_digest: Annotated[str, Field(pattern="^sha256:[0-9a-f]{64}$")]
+    operations: Annotated[tuple[CtowerProjectImportOperation, ...], Field(min_length=1, max_length=64)]
 
 
 class TimelineResponse(_BoundaryModel):

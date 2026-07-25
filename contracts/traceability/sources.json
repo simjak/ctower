@@ -113,17 +113,171 @@
       ]
     },
     {
+      "path": "contracts/domain/migration/ctower-project-alias-map.schema.json",
+      "references": [
+        "SPEC#one-ctower-project-source-of-truth-barrier",
+        "INV-37",
+        "AC-MIG-02",
+        "AC-MIG-05",
+        "AC-SEC-03",
+        "AC-SEC-05"
+      ]
+    },
+    {
       "path": "contracts/domain/migration/ctower-project-cutover-health.schema.json",
       "references": [
         "SPEC#one-ctower-project-source-of-truth-barrier",
+        "INV-35",
         "INV-60",
+        "AC-MIG-04",
         "AC-PD-04"
       ]
     },
     {
-      "path": "contracts/domain/migration/ctower-project-phase.schema.json",
+      "path": "contracts/domain/migration/ctower-project-export-equality.schema.json",
       "references": [
-        "SPEC#one-ctower-project-source-of-truth-barrier"
+        "SPEC#one-ctower-project-source-of-truth-barrier",
+        "INV-31",
+        "INV-32",
+        "AC-MIG-01",
+        "AC-SEC-01",
+        "AC-SEC-07"
+      ]
+    },
+    {
+      "path": "contracts/domain/migration/ctower-project-export-manifest.schema.json",
+      "references": [
+        "SPEC#one-ctower-project-source-of-truth-barrier",
+        "INV-31",
+        "INV-37",
+        "AC-MIG-01",
+        "AC-MIG-05"
+      ]
+    },
+    {
+      "path": "contracts/domain/migration/ctower-project-fence-observation.schema.json",
+      "references": [
+        "SPEC#one-ctower-project-source-of-truth-barrier",
+        "INV-35",
+        "INV-37",
+        "AC-MIG-01",
+        "AC-MIG-04"
+      ]
+    },
+    {
+      "path": "contracts/domain/migration/ctower-project-fence-registry.schema.json",
+      "references": [
+        "SPEC#one-ctower-project-source-of-truth-barrier",
+        "INV-32",
+        "INV-35",
+        "INV-37",
+        "AC-MIG-01",
+        "AC-MIG-04",
+        "AC-SEC-01"
+      ]
+    },
+    {
+      "path": "contracts/domain/migration/ctower-project-import-batch.schema.json",
+      "references": [
+        "SPEC#canonical-event-and-command-contract",
+        "SPEC#one-ctower-project-source-of-truth-barrier",
+        "INV-31",
+        "INV-37",
+        "AC-MIG-03",
+        "AC-SEC-03",
+        "AC-SEC-05"
+      ]
+    },
+    {
+      "path": "contracts/domain/migration/ctower-project-import-correction.schema.json",
+      "references": [
+        "SPEC#canonical-event-and-command-contract",
+        "SPEC#one-ctower-project-source-of-truth-barrier",
+        "INV-37",
+        "AC-MIG-02",
+        "AC-MIG-05",
+        "AC-SEC-05"
+      ]
+    },
+    {
+      "path": "contracts/domain/migration/ctower-project-import-run.schema.json",
+      "references": [
+        "SPEC#persistence-authority",
+        "SPEC#one-ctower-project-source-of-truth-barrier",
+        "INV-32",
+        "INV-37",
+        "AC-MIG-03",
+        "AC-SEC-01",
+        "AC-SEC-03"
+      ]
+    },
+    {
+      "path": "contracts/domain/migration/ctower-project-reconciliation.schema.json",
+      "references": [
+        "SPEC#one-ctower-project-source-of-truth-barrier",
+        "INV-35",
+        "INV-37",
+        "AC-MIG-03",
+        "AC-MIG-05",
+        "AC-SEC-05"
+      ]
+    },
+    {
+      "path": "contracts/domain/migration/ctower-project-source-link.schema.json",
+      "references": [
+        "SPEC#canonical-event-and-command-contract",
+        "SPEC#one-ctower-project-source-of-truth-barrier",
+        "INV-37",
+        "AC-MIG-03",
+        "AC-MIG-05"
+      ]
+    },
+    {
+      "path": "contracts/domain/migration/ctower-project-source-selection.schema.json",
+      "references": [
+        "SPEC#one-ctower-project-source-of-truth-barrier",
+        "INV-31",
+        "INV-32",
+        "INV-37",
+        "AC-MIG-01",
+        "AC-MIG-02",
+        "AC-SEC-01",
+        "AC-SEC-07"
+      ]
+    },
+    {
+      "path": "contracts/domain/migration/migration-boundary.schema.json",
+      "references": [
+        "SPEC#canonical-event-and-command-contract",
+        "SPEC#one-ctower-project-source-of-truth-barrier",
+        "INV-31",
+        "INV-32",
+        "INV-37",
+        "AC-MIG-01",
+        "AC-SEC-01",
+        "AC-SEC-05",
+        "AC-SEC-07"
+      ]
+    },
+    {
+      "path": "contracts/domain/migration/migration-vectors.json",
+      "references": [
+        "SPEC#canonical-event-and-command-contract",
+        "SPEC#one-ctower-project-source-of-truth-barrier",
+        "INV-31",
+        "INV-32",
+        "INV-35",
+        "INV-37",
+        "AC-MIG-01",
+        "AC-MIG-02",
+        "AC-MIG-03",
+        "AC-MIG-04",
+        "AC-MIG-05",
+        "AC-QUAL-05",
+        "AC-SEC-01",
+        "AC-SEC-03",
+        "AC-SEC-05",
+        "AC-SEC-07"
       ]
     },
     {
@@ -135,6 +289,18 @@
         "AC-PD-01",
         "AC-PD-02",
         "AC-PD-04"
+      ]
+    },
+    {
+      "path": "contracts/domain/project-delivery/project-delivery-vectors.json",
+      "references": [
+        "SPEC#project-delivery-projection",
+        "INV-59",
+        "INV-60",
+        "AC-PD-01",
+        "AC-PD-02",
+        "AC-PD-04",
+        "AC-PD-05"
       ]
     },
     {
@@ -299,6 +465,17 @@
         "SPEC#universal-versionedcomponent-catalog-and-company-desired-state",
         "INV-45",
         "AC-COMP-01"
+      ]
+    },
+    {
+      "path": "contracts/components/checkpoint.schema.json",
+      "references": [
+        "SPEC#universal-versionedcomponent-catalog-and-company-desired-state",
+        "SPEC#project-delivery-projection",
+        "INV-45",
+        "INV-59",
+        "AC-COMP-01",
+        "AC-PD-01"
       ]
     },
     {

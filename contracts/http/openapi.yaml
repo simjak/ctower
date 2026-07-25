@@ -738,15 +738,16 @@
     },
     "/v1/migrations/ctower-project/inventory": {
       "post": {
-        "operationId": "inventoryCtowerProjectMigration",
+        "operationId": "createCtowerProjectImportRun",
         "x-ctower-cli": "migration ctower-project inventory",
         "x-ctower-mutation": true,
         "x-ctower-spool": "forbidden",
+        "x-ctower-principal": "operator",
         "security": [{"bearerAuth": []}],
         "parameters": [{"$ref": "#/components/parameters/IdempotencyKey"}],
-        "requestBody": {"required": true, "content": {"application/json": {"schema": {"$ref": "#/components/schemas/CtowerProjectMigrationStubRequest"}}}},
+        "requestBody": {"required": true, "content": {"application/json": {"schema": {"$ref": "#/components/schemas/CtowerProjectImportRunCreateRequest"}}}},
         "responses": {
-          "202": {"description": "Future I1.7B phase receipt; I1.7A refuses this operation", "headers": {"Retry-After": {"$ref": "#/components/headers/RetryAfter"}}, "content": {"application/json": {"schema": {"$ref": "#/components/schemas/CtowerProjectMigrationStubResult"}}}},
+          "202": {"description": "Pinned import run and run-scoped importer credential digest", "content": {"application/json": {"schema": {"$ref": "#/components/schemas/CtowerProjectImportRun"}}}},
           "401": {"$ref": "#/components/responses/ProblemResponse"},
           "409": {"$ref": "#/components/responses/ProblemResponse"},
           "422": {"$ref": "#/components/responses/ProblemResponse"}
@@ -755,15 +756,16 @@
     },
     "/v1/migrations/ctower-project/export": {
       "post": {
-        "operationId": "exportCtowerProjectMigration",
+        "operationId": "bindCtowerProjectExportEquality",
         "x-ctower-cli": "migration ctower-project export",
         "x-ctower-mutation": true,
         "x-ctower-spool": "forbidden",
+        "x-ctower-principal": "operator",
         "security": [{"bearerAuth": []}],
         "parameters": [{"$ref": "#/components/parameters/IdempotencyKey"}],
-        "requestBody": {"required": true, "content": {"application/json": {"schema": {"$ref": "#/components/schemas/CtowerProjectMigrationStubRequest"}}}},
+        "requestBody": {"required": true, "content": {"application/json": {"schema": {"$ref": "#/components/schemas/CtowerProjectExportEqualityBindRequest"}}}},
         "responses": {
-          "202": {"description": "Future I1.7B phase receipt; I1.7A refuses this operation", "headers": {"Retry-After": {"$ref": "#/components/headers/RetryAfter"}}, "content": {"application/json": {"schema": {"$ref": "#/components/schemas/CtowerProjectMigrationStubResult"}}}},
+          "200": {"description": "Import run with equal signed export digests bound", "content": {"application/json": {"schema": {"$ref": "#/components/schemas/CtowerProjectImportRun"}}}},
           "401": {"$ref": "#/components/responses/ProblemResponse"},
           "409": {"$ref": "#/components/responses/ProblemResponse"},
           "422": {"$ref": "#/components/responses/ProblemResponse"}
@@ -772,15 +774,16 @@
     },
     "/v1/migrations/ctower-project/plan": {
       "post": {
-        "operationId": "planCtowerProjectMigration",
+        "operationId": "bindCtowerProjectAliasPlan",
         "x-ctower-cli": "migration ctower-project plan",
         "x-ctower-mutation": true,
         "x-ctower-spool": "forbidden",
+        "x-ctower-principal": "operator",
         "security": [{"bearerAuth": []}],
         "parameters": [{"$ref": "#/components/parameters/IdempotencyKey"}],
-        "requestBody": {"required": true, "content": {"application/json": {"schema": {"$ref": "#/components/schemas/CtowerProjectMigrationStubRequest"}}}},
+        "requestBody": {"required": true, "content": {"application/json": {"schema": {"$ref": "#/components/schemas/CtowerProjectAliasPlanBindRequest"}}}},
         "responses": {
-          "202": {"description": "Future I1.7B phase receipt; I1.7A refuses this operation", "headers": {"Retry-After": {"$ref": "#/components/headers/RetryAfter"}}, "content": {"application/json": {"schema": {"$ref": "#/components/schemas/CtowerProjectMigrationStubResult"}}}},
+          "200": {"description": "Import run with reviewed zero-attention alias plan bound", "content": {"application/json": {"schema": {"$ref": "#/components/schemas/CtowerProjectImportRun"}}}},
           "401": {"$ref": "#/components/responses/ProblemResponse"},
           "409": {"$ref": "#/components/responses/ProblemResponse"},
           "422": {"$ref": "#/components/responses/ProblemResponse"}
@@ -789,16 +792,19 @@
     },
     "/v1/migrations/ctower-project/import": {
       "post": {
-        "operationId": "importCtowerProjectMigration",
+        "operationId": "applyCtowerProjectImportBatch",
         "x-ctower-cli": "migration ctower-project import",
         "x-ctower-mutation": true,
         "x-ctower-spool": "forbidden",
+        "x-ctower-principal": "migration_importer",
+        "x-ctower-max-canonical-bytes": 262144,
         "security": [{"bearerAuth": []}],
         "parameters": [{"$ref": "#/components/parameters/IdempotencyKey"}],
-        "requestBody": {"required": true, "content": {"application/json": {"schema": {"$ref": "#/components/schemas/CtowerProjectMigrationStubRequest"}}}},
+        "requestBody": {"required": true, "content": {"application/json": {"schema": {"$ref": "#/components/schemas/CtowerProjectImportBatchRequest"}}}},
         "responses": {
-          "202": {"description": "Future I1.7B phase receipt; I1.7A refuses this operation", "headers": {"Retry-After": {"$ref": "#/components/headers/RetryAfter"}}, "content": {"application/json": {"schema": {"$ref": "#/components/schemas/CtowerProjectMigrationStubResult"}}}},
+          "200": {"description": "Exact batch results, including byte-identical replay facts", "content": {"application/json": {"schema": {"$ref": "#/components/schemas/CtowerProjectImportBatchResult"}}}},
           "401": {"$ref": "#/components/responses/ProblemResponse"},
+          "403": {"$ref": "#/components/responses/ProblemResponse"},
           "409": {"$ref": "#/components/responses/ProblemResponse"},
           "422": {"$ref": "#/components/responses/ProblemResponse"}
         }
@@ -806,16 +812,70 @@
     },
     "/v1/migrations/ctower-project/reconcile": {
       "post": {
-        "operationId": "reconcileCtowerProjectMigration",
+        "operationId": "finalizeCtowerProjectImportRun",
         "x-ctower-cli": "migration ctower-project reconcile",
         "x-ctower-mutation": true,
         "x-ctower-spool": "forbidden",
+        "x-ctower-principal": "operator",
         "security": [{"bearerAuth": []}],
         "parameters": [{"$ref": "#/components/parameters/IdempotencyKey"}],
-        "requestBody": {"required": true, "content": {"application/json": {"schema": {"$ref": "#/components/schemas/CtowerProjectMigrationStubRequest"}}}},
+        "requestBody": {"required": true, "content": {"application/json": {"schema": {"$ref": "#/components/schemas/CtowerProjectImportFinalizeRequest"}}}},
         "responses": {
-          "202": {"description": "Future I1.7B phase receipt; I1.7A refuses this operation", "headers": {"Retry-After": {"$ref": "#/components/headers/RetryAfter"}}, "content": {"application/json": {"schema": {"$ref": "#/components/schemas/CtowerProjectMigrationStubResult"}}}},
+          "200": {"description": "Server-recomputed signed exhaustive reconciliation", "content": {"application/json": {"schema": {"$ref": "#/components/schemas/CtowerProjectReconciliationResult"}}}},
           "401": {"$ref": "#/components/responses/ProblemResponse"},
+          "409": {"$ref": "#/components/responses/ProblemResponse"},
+          "422": {"$ref": "#/components/responses/ProblemResponse"}
+        }
+      }
+    },
+    "/v1/migrations/ctower-project/import-runs/{run_id}": {
+      "get": {
+        "operationId": "getCtowerProjectImportRun",
+        "x-ctower-cli": "migration ctower-project run get",
+        "x-ctower-mutation": false,
+        "x-ctower-spool": "forbidden",
+        "x-ctower-principal": "operator",
+        "security": [{"bearerAuth": []}],
+        "parameters": [{"$ref": "#/components/parameters/MigrationRunId"}],
+        "responses": {
+          "200": {"description": "Pinned import run state and semantic digest", "content": {"application/json": {"schema": {"$ref": "#/components/schemas/CtowerProjectImportRun"}}}},
+          "401": {"$ref": "#/components/responses/ProblemResponse"},
+          "404": {"$ref": "#/components/responses/ProblemResponse"}
+        }
+      }
+    },
+    "/v1/migrations/ctower-project/corrections": {
+      "post": {
+        "operationId": "appendCtowerProjectImportCorrection",
+        "x-ctower-cli": "migration ctower-project correction append",
+        "x-ctower-mutation": true,
+        "x-ctower-spool": "forbidden",
+        "x-ctower-principal": "operator",
+        "security": [{"bearerAuth": []}],
+        "parameters": [{"$ref": "#/components/parameters/IdempotencyKey"}],
+        "requestBody": {"required": true, "content": {"application/json": {"schema": {"$ref": "#/components/schemas/CtowerProjectImportCorrectionRequest"}}}},
+        "responses": {
+          "201": {"description": "Append-only correction receipt", "content": {"application/json": {"schema": {"$ref": "#/components/schemas/CtowerProjectMigrationReceipt"}}}},
+          "401": {"$ref": "#/components/responses/ProblemResponse"},
+          "409": {"$ref": "#/components/responses/ProblemResponse"},
+          "422": {"$ref": "#/components/responses/ProblemResponse"}
+        }
+      }
+    },
+    "/v1/migrations/ctower-project/fence-observations": {
+      "post": {
+        "operationId": "reportCtowerProjectFenceObservation",
+        "x-ctower-cli": "migration ctower-project fence observe",
+        "x-ctower-mutation": true,
+        "x-ctower-spool": "forbidden",
+        "x-ctower-principal": "fence_observer",
+        "security": [{"bearerAuth": []}],
+        "parameters": [{"$ref": "#/components/parameters/IdempotencyKey"}],
+        "requestBody": {"required": true, "content": {"application/json": {"schema": {"$ref": "#/components/schemas/CtowerProjectFenceObservationRequest"}}}},
+        "responses": {
+          "201": {"description": "Contiguous append-only fence observation receipt", "content": {"application/json": {"schema": {"$ref": "#/components/schemas/CtowerProjectMigrationReceipt"}}}},
+          "401": {"$ref": "#/components/responses/ProblemResponse"},
+          "403": {"$ref": "#/components/responses/ProblemResponse"},
           "409": {"$ref": "#/components/responses/ProblemResponse"},
           "422": {"$ref": "#/components/responses/ProblemResponse"}
         }
@@ -827,13 +887,14 @@
         "x-ctower-cli": "migration ctower-project prepare",
         "x-ctower-mutation": true,
         "x-ctower-spool": "forbidden",
+        "x-ctower-principal": "operator",
+        "x-ctower-refusal-only": true,
         "security": [{"bearerAuth": []}],
         "parameters": [{"$ref": "#/components/parameters/IdempotencyKey"}],
-        "requestBody": {"required": true, "content": {"application/json": {"schema": {"$ref": "#/components/schemas/CtowerProjectMigrationStubRequest"}}}},
+        "requestBody": {"required": true, "content": {"application/json": {"schema": {"$ref": "#/components/schemas/CtowerProjectEpochRefusalRequest"}}}},
         "responses": {
-          "202": {"description": "Future I1.7B phase receipt; I1.7A refuses this operation", "headers": {"Retry-After": {"$ref": "#/components/headers/RetryAfter"}}, "content": {"application/json": {"schema": {"$ref": "#/components/schemas/CtowerProjectMigrationStubResult"}}}},
           "401": {"$ref": "#/components/responses/ProblemResponse"},
-          "409": {"$ref": "#/components/responses/ProblemResponse"},
+          "409": {"description": "I1.7C live authority decision is required", "content": {"application/problem+json": {"schema": {"$ref": "#/components/schemas/Problem"}}}},
           "422": {"$ref": "#/components/responses/ProblemResponse"}
         }
       }
@@ -844,13 +905,14 @@
         "x-ctower-cli": "migration ctower-project commit-development-epoch",
         "x-ctower-mutation": true,
         "x-ctower-spool": "forbidden",
+        "x-ctower-principal": "operator",
+        "x-ctower-refusal-only": true,
         "security": [{"bearerAuth": []}],
         "parameters": [{"$ref": "#/components/parameters/IdempotencyKey"}],
-        "requestBody": {"required": true, "content": {"application/json": {"schema": {"$ref": "#/components/schemas/CtowerProjectMigrationStubRequest"}}}},
+        "requestBody": {"required": true, "content": {"application/json": {"schema": {"$ref": "#/components/schemas/CtowerProjectEpochRefusalRequest"}}}},
         "responses": {
-          "202": {"description": "Future I1.7C epoch receipt; I1.7A refuses this operation", "headers": {"Retry-After": {"$ref": "#/components/headers/RetryAfter"}}, "content": {"application/json": {"schema": {"$ref": "#/components/schemas/CtowerProjectMigrationStubResult"}}}},
           "401": {"$ref": "#/components/responses/ProblemResponse"},
-          "409": {"$ref": "#/components/responses/ProblemResponse"},
+          "409": {"description": "I1.7C epoch choice is required", "content": {"application/problem+json": {"schema": {"$ref": "#/components/schemas/Problem"}}}},
           "422": {"$ref": "#/components/responses/ProblemResponse"}
         }
       }
@@ -861,6 +923,7 @@
         "x-ctower-cli": "migration ctower-project verify",
         "x-ctower-mutation": false,
         "x-ctower-spool": "forbidden",
+        "x-ctower-principal": "authenticated",
         "security": [{"bearerAuth": []}],
         "responses": {
           "200": {"description": "Current development/disaster-safe authority boundary", "content": {"application/json": {"schema": {"$ref": "#/components/schemas/CtowerProjectCutoverHealth"}}}},
@@ -874,6 +937,7 @@
         "x-ctower-cli": "project delivery query",
         "x-ctower-mutation": false,
         "x-ctower-spool": "forbidden",
+        "x-ctower-principal": "authenticated",
         "security": [{"bearerAuth": []}],
         "parameters": [{"$ref": "#/components/parameters/ProjectKey"}],
         "responses": {
@@ -926,6 +990,12 @@
         "required": true,
         "schema": {"type": "string", "format": "uuid"}
       },
+      "MigrationRunId": {
+        "name": "run_id",
+        "in": "path",
+        "required": true,
+        "schema": {"type": "string", "format": "uuid"}
+      },
       "ProjectKey": {
         "name": "project_key",
         "in": "path",
@@ -970,35 +1040,460 @@
       }
     },
     "schemas": {
-      "CtowerProjectMigrationStubRequest": {
+      "MigrationPinnedDigests": {
         "type": "object",
         "additionalProperties": false,
-        "required": ["cutover_id", "input_digest"],
+        "required": ["source_selection", "export_equality", "alias_map", "build", "client", "schema", "operation_registry", "reviewer_public_key"],
         "properties": {
-          "cutover_id": {"type": "string", "format": "uuid"},
-          "input_digest": {"type": "string", "pattern": "^sha256:[0-9a-f]{64}$"}
+          "source_selection": {"type": "string", "pattern": "^sha256:[0-9a-f]{64}$"},
+          "export_equality": {"type": ["string", "null"], "pattern": "^sha256:[0-9a-f]{64}$"},
+          "alias_map": {"type": ["string", "null"], "pattern": "^sha256:[0-9a-f]{64}$"},
+          "build": {"type": "string", "pattern": "^sha256:[0-9a-f]{64}$"},
+          "client": {"type": "string", "pattern": "^sha256:[0-9a-f]{64}$"},
+          "schema": {"type": "string", "pattern": "^sha256:[0-9a-f]{64}$"},
+          "operation_registry": {"type": "string", "pattern": "^sha256:[0-9a-f]{64}$"},
+          "reviewer_public_key": {"type": "string", "pattern": "^sha256:[0-9a-f]{64}$"}
         }
       },
-      "CtowerProjectMigrationStubResult": {
+      "MigrationImporterBinding": {
         "type": "object",
         "additionalProperties": false,
-        "required": ["cutover_id", "phase", "state", "detail"],
+        "required": ["principal_kind", "credential_digest", "expires_at", "revoked"],
+        "properties": {
+          "principal_kind": {"const": "migration_importer"},
+          "credential_digest": {"type": "string", "pattern": "^sha256:[0-9a-f]{64}$"},
+          "expires_at": {"type": "string", "format": "date-time"},
+          "revoked": {"type": "boolean"}
+        }
+      },
+      "MigrationImportCounts": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["planned_operations", "applied_operations", "replayed_operations", "refused_operations"],
+        "properties": {
+          "planned_operations": {"type": "integer", "minimum": 0},
+          "applied_operations": {"type": "integer", "minimum": 0},
+          "replayed_operations": {"type": "integer", "minimum": 0},
+          "refused_operations": {"type": "integer", "minimum": 0}
+        }
+      },
+      "MigrationRefusal": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["code", "operation_identity"],
+        "properties": {
+          "code": {"type": "string", "pattern": "^[A-Z][A-Z0-9_]{2,95}$"},
+          "operation_identity": {"type": "string", "minLength": 1, "maxLength": 512}
+        }
+      },
+      "CtowerProjectImportRunCreateRequest": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["cutover_id", "tenant_key", "project_key", "source_selection_digest", "build_digest", "client_digest", "schema_digest", "operation_registry_digest", "reviewer_public_key_digest", "importer_credential_digest", "importer_expires_at"],
         "properties": {
           "cutover_id": {"type": "string", "format": "uuid"},
-          "phase": {"type": "string", "enum": ["inventory", "export", "plan", "import", "reconcile", "prepare", "commit_development_epoch"]},
-          "state": {"const": "deferred_to_i1_7b_or_c"},
-          "detail": {"type": "string", "minLength": 1, "maxLength": 500}
+          "tenant_key": {"const": "ctower"},
+          "project_key": {"const": "ctower"},
+          "source_selection_digest": {"type": "string", "pattern": "^sha256:[0-9a-f]{64}$"},
+          "build_digest": {"type": "string", "pattern": "^sha256:[0-9a-f]{64}$"},
+          "client_digest": {"type": "string", "pattern": "^sha256:[0-9a-f]{64}$"},
+          "schema_digest": {"type": "string", "pattern": "^sha256:[0-9a-f]{64}$"},
+          "operation_registry_digest": {"type": "string", "pattern": "^sha256:[0-9a-f]{64}$"},
+          "reviewer_public_key_digest": {"type": "string", "pattern": "^sha256:[0-9a-f]{64}$"},
+          "importer_credential_digest": {"type": "string", "pattern": "^sha256:[0-9a-f]{64}$"},
+          "importer_expires_at": {"type": "string", "format": "date-time"}
+        }
+      },
+      "CtowerProjectImportRun": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["schema", "run_id", "cutover_id", "tenant_key", "project_key", "state", "pinned_digests", "importer_binding", "counts", "record_watermark", "projection_watermark", "refusals", "semantic_digest", "durability_state", "accepted_position"],
+        "properties": {
+          "schema": {"const": "ctower.ctower-project-import-run/v1"},
+          "run_id": {"type": "string", "format": "uuid"},
+          "cutover_id": {"type": "string", "format": "uuid"},
+          "tenant_key": {"const": "ctower"},
+          "project_key": {"const": "ctower"},
+          "state": {"type": "string", "enum": ["created", "export_equality_bound", "alias_plan_bound", "importing", "pass_one_complete", "pass_two_noop", "reconciled"]},
+          "pinned_digests": {"$ref": "#/components/schemas/MigrationPinnedDigests"},
+          "importer_binding": {"$ref": "#/components/schemas/MigrationImporterBinding"},
+          "counts": {"$ref": "#/components/schemas/MigrationImportCounts"},
+          "record_watermark": {"type": "integer", "minimum": 0},
+          "projection_watermark": {"type": "integer", "minimum": 0},
+          "refusals": {"type": "array", "items": {"$ref": "#/components/schemas/MigrationRefusal"}},
+          "semantic_digest": {"type": "string", "pattern": "^sha256:[0-9a-f]{64}$"},
+          "durability_state": {"const": "durability_pending"},
+          "accepted_position": {"type": "null"}
+        }
+      },
+      "CtowerProjectExportEqualityBindRequest": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["run_id", "cutover_id", "selection_digest", "inventory_a_digest", "inventory_b_digest", "export_digest", "equality_report_digest", "reviewer_public_key_digest", "result"],
+        "properties": {
+          "run_id": {"type": "string", "format": "uuid"},
+          "cutover_id": {"type": "string", "format": "uuid"},
+          "selection_digest": {"type": "string", "pattern": "^sha256:[0-9a-f]{64}$"},
+          "inventory_a_digest": {"type": "string", "pattern": "^sha256:[0-9a-f]{64}$"},
+          "inventory_b_digest": {"type": "string", "pattern": "^sha256:[0-9a-f]{64}$"},
+          "export_digest": {"type": "string", "pattern": "^sha256:[0-9a-f]{64}$"},
+          "equality_report_digest": {"type": "string", "pattern": "^sha256:[0-9a-f]{64}$"},
+          "reviewer_public_key_digest": {"type": "string", "pattern": "^sha256:[0-9a-f]{64}$"},
+          "result": {"const": "equal"}
+        }
+      },
+      "CtowerProjectAliasPlanBindRequest": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["run_id", "cutover_id", "export_equality_digest", "alias_map_digest", "reviewer_public_key_digest", "attention_required"],
+        "properties": {
+          "run_id": {"type": "string", "format": "uuid"},
+          "cutover_id": {"type": "string", "format": "uuid"},
+          "export_equality_digest": {"type": "string", "pattern": "^sha256:[0-9a-f]{64}$"},
+          "alias_map_digest": {"type": "string", "pattern": "^sha256:[0-9a-f]{64}$"},
+          "reviewer_public_key_digest": {"type": "string", "pattern": "^sha256:[0-9a-f]{64}$"},
+          "attention_required": {"const": 0}
+        }
+      },
+      "MigrationSourceIdentity": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["namespace", "immutable_source_id", "source_version", "source_digest"],
+        "properties": {
+          "namespace": {"type": "string", "minLength": 1, "maxLength": 128},
+          "immutable_source_id": {"type": "string", "minLength": 1, "maxLength": 512},
+          "source_version": {"type": "string", "minLength": 1, "maxLength": 256},
+          "source_digest": {"type": "string", "pattern": "^sha256:[0-9a-f]{64}$"}
+        }
+      },
+      "MigrationOperationIdentity": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["namespace", "immutable_source_id", "source_version_or_digest", "operation_kind", "planned_target_ref", "command_id"],
+        "properties": {
+          "namespace": {"type": "string", "minLength": 1, "maxLength": 128},
+          "immutable_source_id": {"type": "string", "minLength": 1, "maxLength": 512},
+          "source_version_or_digest": {"type": "string", "minLength": 1, "maxLength": 256},
+          "operation_kind": {"type": "string", "enum": ["ticket_seed", "exact_alias", "ticket_relation", "source_link"]},
+          "planned_target_ref": {"type": "string", "minLength": 1, "maxLength": 256},
+          "command_id": {"type": "string", "format": "uuid"}
+        }
+      },
+      "CtowerProjectTicketSeedOperation": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["operation", "identity", "project_key", "priority", "title", "source", "initial_commander_custodian_id"],
+        "properties": {
+          "operation": {"const": "ticket_seed"},
+          "identity": {"$ref": "#/components/schemas/MigrationOperationIdentity"},
+          "project_key": {"const": "ctower"},
+          "priority": {"const": "P2"},
+          "title": {"type": "string", "minLength": 1, "maxLength": 200},
+          "source": {"$ref": "#/components/schemas/MigrationSourceIdentity"},
+          "initial_commander_custodian_id": {"type": "string", "format": "uuid"}
+        }
+      },
+      "CtowerProjectExactAliasOperation": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["operation", "identity", "project_key", "source", "target_ticket_id"],
+        "properties": {
+          "operation": {"const": "exact_alias"},
+          "identity": {"$ref": "#/components/schemas/MigrationOperationIdentity"},
+          "project_key": {"const": "ctower"},
+          "source": {"$ref": "#/components/schemas/MigrationSourceIdentity"},
+          "target_ticket_id": {"type": "string", "format": "uuid"}
+        }
+      },
+      "CtowerProjectTicketRelationOperation": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["operation", "identity", "project_key", "relation_id", "relation_kind", "source_ticket_id", "target_ticket_id", "reason"],
+        "properties": {
+          "operation": {"const": "ticket_relation"},
+          "identity": {"$ref": "#/components/schemas/MigrationOperationIdentity"},
+          "project_key": {"const": "ctower"},
+          "relation_id": {"type": "string", "format": "uuid"},
+          "relation_kind": {"type": "string", "enum": ["parent_of", "depends_on", "blocks", "duplicates", "relates_to", "caused_by"]},
+          "source_ticket_id": {"type": "string", "format": "uuid"},
+          "target_ticket_id": {"type": "string", "format": "uuid"},
+          "reason": {"type": "string", "minLength": 1, "maxLength": 500}
+        }
+      },
+      "CtowerProjectSourceLinkOperation": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["operation", "identity", "project_key", "source", "link_class", "target_kind", "target_id", "reason_code", "linked_not_proof"],
+        "properties": {
+          "operation": {"const": "source_link"},
+          "identity": {"$ref": "#/components/schemas/MigrationOperationIdentity"},
+          "project_key": {"const": "ctower"},
+          "source": {"$ref": "#/components/schemas/MigrationSourceIdentity"},
+          "link_class": {"type": "string", "enum": ["decision", "external_effect", "artifact_not_proof", "provenance"]},
+          "target_kind": {"type": "string", "enum": ["ticket", "ticket_relation", "checkpoint", "decision", "artifact", "external_effect"]},
+          "target_id": {"type": "string", "minLength": 1, "maxLength": 256},
+          "reason_code": {"type": "string", "pattern": "^[a-z][a-z0-9._-]{2,95}$"},
+          "linked_not_proof": {"const": true}
+        }
+      },
+      "CtowerProjectImportOperation": {
+        "oneOf": [
+          {"$ref": "#/components/schemas/CtowerProjectTicketSeedOperation"},
+          {"$ref": "#/components/schemas/CtowerProjectExactAliasOperation"},
+          {"$ref": "#/components/schemas/CtowerProjectTicketRelationOperation"},
+          {"$ref": "#/components/schemas/CtowerProjectSourceLinkOperation"}
+        ]
+      },
+      "CtowerProjectImportBatchRequest": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["schema", "run_id", "cutover_id", "batch_index", "batch_digest", "operations"],
+        "properties": {
+          "schema": {"const": "ctower.ctower-project-import-batch/v1"},
+          "run_id": {"type": "string", "format": "uuid"},
+          "cutover_id": {"type": "string", "format": "uuid"},
+          "batch_index": {"type": "integer", "minimum": 0},
+          "batch_digest": {"type": "string", "pattern": "^sha256:[0-9a-f]{64}$"},
+          "operations": {"type": "array", "minItems": 1, "maxItems": 64, "items": {"$ref": "#/components/schemas/CtowerProjectImportOperation"}}
+        }
+      },
+      "MigrationImportOperationResult": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["command_id", "operation_kind", "replayed", "target_id", "event_ids", "record_position", "occurred_at"],
+        "properties": {
+          "command_id": {"type": "string", "format": "uuid"},
+          "operation_kind": {"type": "string", "enum": ["ticket_seed", "exact_alias", "ticket_relation", "source_link"]},
+          "replayed": {"type": "boolean"},
+          "target_id": {"type": "string", "minLength": 1, "maxLength": 256},
+          "event_ids": {"type": "array", "items": {"type": "string", "format": "uuid"}},
+          "record_position": {"type": "integer", "minimum": 1},
+          "occurred_at": {"type": "string", "format": "date-time"}
+        }
+      },
+      "CtowerProjectImportBatchResult": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["run_id", "batch_index", "batch_digest", "results", "record_watermark", "projection_watermark", "durability_state", "accepted_position"],
+        "properties": {
+          "run_id": {"type": "string", "format": "uuid"},
+          "batch_index": {"type": "integer", "minimum": 0},
+          "batch_digest": {"type": "string", "pattern": "^sha256:[0-9a-f]{64}$"},
+          "results": {"type": "array", "minItems": 1, "maxItems": 64, "items": {"$ref": "#/components/schemas/MigrationImportOperationResult"}},
+          "record_watermark": {"type": "integer", "minimum": 1},
+          "projection_watermark": {"type": "integer", "minimum": 0},
+          "durability_state": {"const": "durability_pending"},
+          "accepted_position": {"type": "null"}
+        }
+      },
+      "CtowerProjectImportFinalizeRequest": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["run_id", "cutover_id", "expected_run_semantic_digest"],
+        "properties": {
+          "run_id": {"type": "string", "format": "uuid"},
+          "cutover_id": {"type": "string", "format": "uuid"},
+          "expected_run_semantic_digest": {"type": "string", "pattern": "^sha256:[0-9a-f]{64}$"}
+        }
+      },
+      "MigrationDispositions": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["created_ticket", "alias_linked_existing", "project_checkpoint_definition", "decision_link", "external_effect_link", "artifact_linked_not_proof", "provenance_only", "exact_duplicate", "excluded_out_of_scope", "attention_required"],
+        "properties": {
+          "created_ticket": {"type": "integer", "minimum": 0},
+          "alias_linked_existing": {"type": "integer", "minimum": 0},
+          "project_checkpoint_definition": {"type": "integer", "minimum": 0},
+          "decision_link": {"type": "integer", "minimum": 0},
+          "external_effect_link": {"type": "integer", "minimum": 0},
+          "artifact_linked_not_proof": {"type": "integer", "minimum": 0},
+          "provenance_only": {"type": "integer", "minimum": 0},
+          "exact_duplicate": {"type": "integer", "minimum": 0},
+          "excluded_out_of_scope": {"type": "integer", "minimum": 0},
+          "attention_required": {"const": 0}
+        }
+      },
+      "MigrationConservation": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["selected_logical_items", "selected_request_logical", "selected_request_physical_snapshots", "stable_aliases", "checkpoint_definitions", "unresolved_aliases", "alias_forks_or_cycles", "missing_relation_endpoints", "forbidden_relation_cycles", "unresolved_active_claims", "unexpected_sources", "forbidden_data_items", "pass_two_new_domain_facts", "pass_two_new_events", "pass_two_new_outbox_rows", "pass_two_record_position_delta", "pass_two_projection_semantic_delta"],
+        "properties": {
+          "selected_logical_items": {"type": "integer", "minimum": 1},
+          "selected_request_logical": {"const": 86},
+          "selected_request_physical_snapshots": {"const": 243},
+          "stable_aliases": {"const": 27},
+          "checkpoint_definitions": {"const": 14},
+          "unresolved_aliases": {"const": 0},
+          "alias_forks_or_cycles": {"const": 0},
+          "missing_relation_endpoints": {"const": 0},
+          "forbidden_relation_cycles": {"const": 0},
+          "unresolved_active_claims": {"const": 0},
+          "unexpected_sources": {"const": 0},
+          "forbidden_data_items": {"const": 0},
+          "pass_two_new_domain_facts": {"const": 0},
+          "pass_two_new_events": {"const": 0},
+          "pass_two_new_outbox_rows": {"const": 0},
+          "pass_two_record_position_delta": {"const": 0},
+          "pass_two_projection_semantic_delta": {"const": 0}
+        }
+      },
+      "CtowerProjectReconciliationResult": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["schema", "reconciliation_id", "run_id", "cutover_id", "project_key", "pinned_digests", "dispositions", "conservation", "source_native_watermark", "export_native_watermark", "record_watermark", "projection_watermark", "target_semantic_digest", "report_digest", "durability_state", "accepted_position"],
+        "properties": {
+          "schema": {"const": "ctower.ctower-project-reconciliation/v1"},
+          "reconciliation_id": {"type": "string", "format": "uuid"},
+          "run_id": {"type": "string", "format": "uuid"},
+          "cutover_id": {"type": "string", "format": "uuid"},
+          "project_key": {"const": "ctower"},
+          "pinned_digests": {"$ref": "#/components/schemas/MigrationPinnedDigests"},
+          "dispositions": {"$ref": "#/components/schemas/MigrationDispositions"},
+          "conservation": {"$ref": "#/components/schemas/MigrationConservation"},
+          "source_native_watermark": {"type": "integer", "minimum": 0},
+          "export_native_watermark": {"type": "integer", "minimum": 0},
+          "record_watermark": {"type": "integer", "minimum": 0},
+          "projection_watermark": {"type": "integer", "minimum": 0},
+          "target_semantic_digest": {"type": "string", "pattern": "^sha256:[0-9a-f]{64}$"},
+          "report_digest": {"type": "string", "pattern": "^sha256:[0-9a-f]{64}$"},
+          "durability_state": {"const": "durability_pending"},
+          "accepted_position": {"type": "null"}
+        }
+      },
+      "MigrationCorrectionRevision": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["object_id", "revision"],
+        "properties": {
+          "object_id": {"type": "string", "format": "uuid"},
+          "revision": {"type": "integer", "minimum": 1}
+        }
+      },
+      "MigrationAliasCorrection": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["kind", "target_ticket_id", "disposition"],
+        "properties": {
+          "kind": {"const": "alias"},
+          "target_ticket_id": {"type": "string", "format": "uuid"},
+          "disposition": {"type": "string", "enum": ["alias_linked_existing", "exact_duplicate", "provenance_only"]}
+        }
+      },
+      "MigrationSourceLinkCorrection": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["kind", "target_kind", "target_id", "disposition"],
+        "properties": {
+          "kind": {"const": "source_link"},
+          "target_kind": {"type": "string", "enum": ["ticket", "ticket_relation", "checkpoint", "decision", "artifact", "external_effect"]},
+          "target_id": {"type": "string", "minLength": 1, "maxLength": 256},
+          "disposition": {"type": "string", "enum": ["decision_link", "external_effect_link", "artifact_linked_not_proof", "provenance_only", "excluded_out_of_scope"]}
+        }
+      },
+      "MigrationRelationCorrection": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["kind", "superseded_relation_active", "replacement_relation_id"],
+        "properties": {
+          "kind": {"const": "relation"},
+          "superseded_relation_active": {"const": false},
+          "replacement_relation_id": {"type": ["string", "null"], "format": "uuid"}
+        }
+      },
+      "MigrationCorrectionReplacement": {
+        "oneOf": [
+          {"$ref": "#/components/schemas/MigrationAliasCorrection"},
+          {"$ref": "#/components/schemas/MigrationSourceLinkCorrection"},
+          {"$ref": "#/components/schemas/MigrationRelationCorrection"}
+        ]
+      },
+      "CtowerProjectImportCorrectionRequest": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["schema", "correction_id", "run_id", "cutover_id", "tenant_key", "project_key", "correction_kind", "superseded_revision", "expected_current_digest", "replacement", "reason", "reviewer_id"],
+        "properties": {
+          "schema": {"const": "ctower.ctower-project-import-correction/v1"},
+          "correction_id": {"type": "string", "format": "uuid"},
+          "run_id": {"type": "string", "format": "uuid"},
+          "cutover_id": {"type": "string", "format": "uuid"},
+          "tenant_key": {"const": "ctower"},
+          "project_key": {"const": "ctower"},
+          "correction_kind": {"type": "string", "enum": ["alias", "source_link", "relation"]},
+          "superseded_revision": {"$ref": "#/components/schemas/MigrationCorrectionRevision"},
+          "expected_current_digest": {"type": "string", "pattern": "^sha256:[0-9a-f]{64}$"},
+          "replacement": {"$ref": "#/components/schemas/MigrationCorrectionReplacement"},
+          "reason": {"type": "string", "minLength": 1, "maxLength": 1000},
+          "reviewer_id": {"type": "string", "format": "uuid"}
+        }
+      },
+      "MigrationFenceFileIdentity": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["device", "inode", "scoped_rows_digest"],
+        "properties": {
+          "device": {"type": "integer", "minimum": 0},
+          "inode": {"type": "integer", "minimum": 1},
+          "scoped_rows_digest": {"type": "string", "pattern": "^sha256:[0-9a-f]{64}$"}
+        }
+      },
+      "CtowerProjectFenceObservationRequest": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["schema", "observation_id", "registry_id", "registry_revision", "registry_digest", "sequence", "previous_observation_digest", "observed_at", "from_offset", "to_offset", "file_identity", "status", "reason_code", "observation_digest", "disables_writes", "may_enable_writes"],
+        "properties": {
+          "schema": {"const": "ctower.ctower-project-fence-observation/v1"},
+          "observation_id": {"type": "string", "format": "uuid"},
+          "registry_id": {"type": "string", "format": "uuid"},
+          "registry_revision": {"type": "integer", "minimum": 1},
+          "registry_digest": {"type": "string", "pattern": "^sha256:[0-9a-f]{64}$"},
+          "sequence": {"type": "integer", "minimum": 1},
+          "previous_observation_digest": {"type": ["string", "null"], "pattern": "^sha256:[0-9a-f]{64}$"},
+          "observed_at": {"type": "string", "format": "date-time"},
+          "from_offset": {"type": "integer", "minimum": 0},
+          "to_offset": {"type": "integer", "minimum": 0},
+          "file_identity": {"$ref": "#/components/schemas/MigrationFenceFileIdentity"},
+          "status": {"type": "string", "enum": ["clear", "detected", "unknown"]},
+          "reason_code": {"type": "string", "enum": ["no_scoped_append", "scoped_row_appended", "truncated_row", "inode_replaced", "file_truncated", "unreadable_gap", "classifier_unknown", "monitor_interval_missing", "registry_mismatch"]},
+          "observation_digest": {"type": "string", "pattern": "^sha256:[0-9a-f]{64}$"},
+          "disables_writes": {"type": "boolean"},
+          "may_enable_writes": {"const": false}
+        }
+      },
+      "CtowerProjectMigrationReceipt": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["object_id", "revision", "command_id", "event_ids", "record_position", "semantic_digest", "durability_state", "accepted_position"],
+        "properties": {
+          "object_id": {"type": "string", "format": "uuid"},
+          "revision": {"type": "integer", "minimum": 1},
+          "command_id": {"type": "string", "format": "uuid"},
+          "event_ids": {"type": "array", "minItems": 1, "items": {"type": "string", "format": "uuid"}},
+          "record_position": {"type": "integer", "minimum": 1},
+          "semantic_digest": {"type": "string", "pattern": "^sha256:[0-9a-f]{64}$"},
+          "durability_state": {"const": "durability_pending"},
+          "accepted_position": {"type": "null"}
+        }
+      },
+      "CtowerProjectEpochRefusalRequest": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["cutover_id", "run_id", "reconciliation_digest", "fence_registry_digest"],
+        "properties": {
+          "cutover_id": {"type": "string", "format": "uuid"},
+          "run_id": {"type": "string", "format": "uuid"},
+          "reconciliation_digest": {"type": "string", "pattern": "^sha256:[0-9a-f]{64}$"},
+          "fence_registry_digest": {"type": "string", "pattern": "^sha256:[0-9a-f]{64}$"}
         }
       },
       "CtowerProjectCutoverHealth": {
         "type": "object",
         "additionalProperties": false,
-        "required": ["schema", "cutover_id", "authority_mode", "phase", "writes_enabled", "durability_claim", "recovery_claim", "data_class", "legacy_writer_fence", "split_brain", "projection_completeness", "source_watermark", "projection_watermark", "banner"],
+        "required": ["schema", "cutover_id", "authority_mode", "phase", "writes_enabled", "durability_claim", "recovery_claim", "data_class", "legacy_writer_fence", "split_brain", "projection_completeness", "source_watermark", "projection_watermark", "import_run_id", "migration_digests", "banner"],
         "properties": {
           "schema": {"const": "ctower.ctower-project-cutover-health/v1"},
           "cutover_id": {"type": ["string", "null"], "format": "uuid"},
           "authority_mode": {"type": "string", "enum": ["legacy_writable", "development_single_writer", "disaster_safe"]},
-          "phase": {"type": "string", "enum": ["not_started", "prepared", "development_epoch_committed", "disaster_safe_active"]},
+          "phase": {"type": "string", "enum": ["not_started", "source_selection_frozen", "export_equal", "alias_plan_bound", "import_in_progress", "reconciled", "prepared", "development_epoch_committed", "disaster_safe_active"]},
           "writes_enabled": {"type": "boolean"},
           "durability_claim": {"type": "string", "enum": ["CP3_D_NOT_PROVEN", "CP3_D_PROVEN"]},
           "recovery_claim": {"type": "string", "enum": ["EXTERNAL_FAILURE_DOMAIN_UNPROVEN", "EXTERNAL_FAILURE_DOMAIN_PROVEN"]},
@@ -1008,7 +1503,22 @@
           "projection_completeness": {"type": "string", "enum": ["current", "stale", "STATE_UNKNOWN"]},
           "source_watermark": {"type": "integer", "minimum": 0},
           "projection_watermark": {"type": "integer", "minimum": 0},
+          "import_run_id": {"type": ["string", "null"], "format": "uuid"},
+          "migration_digests": {"$ref": "#/components/schemas/MigrationHealthDigests"},
           "banner": {"type": "string", "minLength": 1}
+        }
+      },
+      "MigrationHealthDigests": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["source_selection", "export_equality", "alias_map", "reconciliation", "fence_registry", "fence_observation"],
+        "properties": {
+          "source_selection": {"type": ["string", "null"], "pattern": "^sha256:[0-9a-f]{64}$"},
+          "export_equality": {"type": ["string", "null"], "pattern": "^sha256:[0-9a-f]{64}$"},
+          "alias_map": {"type": ["string", "null"], "pattern": "^sha256:[0-9a-f]{64}$"},
+          "reconciliation": {"type": ["string", "null"], "pattern": "^sha256:[0-9a-f]{64}$"},
+          "fence_registry": {"type": ["string", "null"], "pattern": "^sha256:[0-9a-f]{64}$"},
+          "fence_observation": {"type": ["string", "null"], "pattern": "^sha256:[0-9a-f]{64}$"}
         }
       },
       "ProjectDeliveryCriteria": {
@@ -1023,7 +1533,7 @@
       "ProjectDeliveryRow": {
         "type": "object",
         "additionalProperties": false,
-        "required": ["checkpoint_key", "checkpoint_label", "headline_state", "underlying_maturity", "outcome", "accountable_owner", "criteria", "source_watermark", "projection_watermark", "freshness", "confidence", "health", "source_ids", "derivation_reasons"],
+        "required": ["checkpoint_key", "checkpoint_label", "headline_state", "underlying_maturity", "outcome", "accountable_owner", "criteria", "source_watermark", "projection_watermark", "freshness", "confidence", "health", "durability", "recovery", "data_class", "semantic_digest", "reconciled_at", "freshness_due_at", "rebuild_generation", "source_ids", "derivation_reasons"],
         "properties": {
           "checkpoint_key": {"type": "string", "pattern": "^I[12]\\.[0-9]+$"},
           "checkpoint_label": {"type": "string", "minLength": 1},
@@ -1037,6 +1547,13 @@
           "freshness": {"type": "string", "enum": ["fresh", "stale", "STATE_UNKNOWN"]},
           "confidence": {"type": "string", "enum": ["development_degraded", "disaster_safe", "STATE_UNKNOWN"]},
           "health": {"type": "string", "enum": ["CP3_D_NOT_PROVEN", "CURRENT", "STATE_UNKNOWN"]},
+          "durability": {"type": "string", "enum": ["CP3_D_NOT_PROVEN", "CP3_D_PROVEN", "STATE_UNKNOWN"]},
+          "recovery": {"type": "string", "enum": ["EXTERNAL_FAILURE_DOMAIN_UNPROVEN", "EXTERNAL_FAILURE_DOMAIN_PROVEN", "STATE_UNKNOWN"]},
+          "data_class": {"type": "string", "enum": ["RECONSTRUCTIBLE_ONLY", "DISASTER_SAFE_CTOWER_ENGINEERING", "STATE_UNKNOWN"]},
+          "semantic_digest": {"type": "string", "pattern": "^sha256:[0-9a-f]{64}$"},
+          "reconciled_at": {"type": "string", "format": "date-time"},
+          "freshness_due_at": {"type": "string", "format": "date-time"},
+          "rebuild_generation": {"type": "integer", "minimum": 0},
           "source_ids": {"type": "array", "items": {"type": "string", "minLength": 1}},
           "derivation_reasons": {"type": "array", "minItems": 1, "items": {"type": "string", "minLength": 1}}
         }
@@ -1044,11 +1561,17 @@
       "ProjectDeliveryView": {
         "type": "object",
         "additionalProperties": false,
-        "required": ["schema", "company_key", "project_key", "rows"],
+        "required": ["schema", "company_key", "project_key", "source_record_position", "projection_record_position", "reconciled_at", "freshness_due_at", "projection_semantic_digest", "rebuild_generation", "rows"],
         "properties": {
           "schema": {"const": "ctower.project-delivery/v1"},
           "company_key": {"type": "string", "pattern": "^[a-z][a-z0-9-]{2,63}$"},
           "project_key": {"type": "string", "pattern": "^[a-z][a-z0-9-]{2,63}$"},
+          "source_record_position": {"type": "integer", "minimum": 0},
+          "projection_record_position": {"type": "integer", "minimum": 0},
+          "reconciled_at": {"type": "string", "format": "date-time"},
+          "freshness_due_at": {"type": "string", "format": "date-time"},
+          "projection_semantic_digest": {"type": "string", "pattern": "^sha256:[0-9a-f]{64}$"},
+          "rebuild_generation": {"type": "integer", "minimum": 0},
           "rows": {"type": "array", "items": {"$ref": "#/components/schemas/ProjectDeliveryRow"}}
         }
       },
@@ -1182,7 +1705,8 @@
           "cadence_policy",
           "notification",
           "integration",
-          "adapter"
+          "adapter",
+          "checkpoint"
         ]
       },
       "ComponentReference": {
@@ -1505,8 +2029,21 @@
               "bundle-schema-invalid",
               "bundle-security-refused",
               "durability_pending",
-              "i1-7b-required",
+              "i1-7c-required",
               "idempotency-conflict",
+              "migration-alias-conflict",
+              "migration-capability-denied",
+              "migration-correction-conflict",
+              "migration-digest-mismatch",
+              "migration-export-nondeterminism",
+              "migration-fence-detected",
+              "migration-import-finalization-refused",
+              "migration-operation-drift",
+              "migration-relation-invalid",
+              "migration-run-conflict",
+              "migration-signature-invalid",
+              "migration-source-selection-drift",
+              "migration-source-tainted",
               "poison-not-found",
               "project-delivery-unavailable",
               "proof-candidate-author-mismatch",

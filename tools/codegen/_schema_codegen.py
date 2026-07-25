@@ -51,6 +51,7 @@ def render_schema_resources(root: Path, contract_digest: str) -> SchemaResources
         ],
     }
     outputs = (
+        (_PACKAGE / "__main__.py", _render_main(contract_digest)),
         (_PACKAGE / "__init__.py", _render_init(contract_digest)),
         (_PACKAGE / "catalog.py", _render_catalog(contract_digest)),
         (_PACKAGE / "schemas.json", json.dumps(payload, indent=2, sort_keys=True) + "\n"),
@@ -213,9 +214,43 @@ from ctower_contracts.catalog import (
     ContractCatalog,
     schema_for,
     validator_for,
+    verify_all,
 )
 
-__all__ = ["CATALOG", "ContractCatalog", "schema_for", "validator_for"]
+__all__ = ["CATALOG", "ContractCatalog", "schema_for", "validator_for", "verify_all"]
+'''
+
+
+def _render_main(contract_digest: str) -> str:
+    return f'''"""DO NOT EDIT: generated file; regenerate from declared inputs.
+
+Authored contract digest: sha256:{contract_digest}
+"""
+
+from __future__ import annotations
+
+import argparse
+from collections.abc import Sequence
+
+from ctower_contracts.catalog import verify_all
+
+__all__ = ["main"]
+
+
+def main(argv: Sequence[str] | None = None) -> int:
+    """Verify every generated local schema and reference without network access."""
+
+    parser = argparse.ArgumentParser(prog="python -m ctower_contracts")
+    parser.add_argument("command", choices=("verify",))
+    parser.add_argument("--all", action="store_true", required=True, dest="all_schemas")
+    parser.parse_args(argv)
+    count = verify_all()
+    print(f"verified {{count}} authored schemas")
+    return 0
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())
 '''
 
 
@@ -236,7 +271,7 @@ from typing import cast
 from jsonschema import Draft202012Validator, FormatChecker
 from referencing import Registry, Resource
 
-__all__ = ["CATALOG", "ContractCatalog", "schema_for", "validator_for"]
+__all__ = ["CATALOG", "ContractCatalog", "schema_for", "validator_for", "verify_all"]
 
 type JsonValue = str | int | float | bool | None | list["JsonValue"] | dict[str, "JsonValue"]
 
@@ -265,17 +300,24 @@ class ContractCatalog:
         path = aliases.get(schema_ref)
         if path is None:
             raise KeyError(schema_ref)
-        registry = Registry()
+        return Draft202012Validator(
+            resources[path],
+            registry=_registry(resources),
+            format_checker=FormatChecker(),
+        )
+
+    def verify_all(self) -> int:
+        _, resources = self._resources()
+        registry = _registry(resources)
         for document in resources.values():
+            Draft202012Validator.check_schema(document)
             schema_id = document.get("$id")
             if not isinstance(schema_id, str):
                 raise RuntimeError("generated contract resource lacks $id")
-            registry = registry.with_resource(schema_id, Resource.from_contents(document))
-        return Draft202012Validator(
-            resources[path],
-            registry=registry,
-            format_checker=FormatChecker(),
-        )
+            resolver = registry.resolver(base_uri=schema_id)
+            for reference in _references(document):
+                resolver.lookup(reference)
+        return len(resources)
 
     def _resources(
         self,
@@ -289,10 +331,36 @@ class ContractCatalog:
 CATALOG = ContractCatalog()
 
 
+def _registry(resources: dict[str, dict[str, JsonValue]]) -> Registry:
+    registry = Registry()
+    for document in resources.values():
+        schema_id = document.get("$id")
+        if not isinstance(schema_id, str):
+            raise RuntimeError("generated contract resource lacks $id")
+        registry = registry.with_resource(schema_id, Resource.from_contents(document))
+    return registry
+
+
+def _references(value: JsonValue) -> tuple[str, ...]:
+    if isinstance(value, list):
+        return tuple(reference for item in value for reference in _references(item))
+    if not isinstance(value, dict):
+        return ()
+    candidate = value.get("$ref")
+    own = (candidate,) if isinstance(candidate, str) else ()
+    return own + tuple(
+        reference for item in value.values() for reference in _references(item)
+    )
+
+
 def schema_for(schema_ref: str) -> dict[str, JsonValue] | None:
     return CATALOG.schema_for(schema_ref)
 
 
 def validator_for(schema_ref: str) -> Draft202012Validator:
     return CATALOG.validator_for(schema_ref)
+
+
+def verify_all() -> int:
+    return CATALOG.verify_all()
 '''

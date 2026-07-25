@@ -96,6 +96,46 @@
           ],
           "type": "string"
         },
+        "durability": {
+          "enum": [
+            "CP3_D_NOT_PROVEN",
+            "CP3_D_PROVEN",
+            "STATE_UNKNOWN"
+          ],
+          "type": "string"
+        },
+        "recovery": {
+          "enum": [
+            "EXTERNAL_FAILURE_DOMAIN_UNPROVEN",
+            "EXTERNAL_FAILURE_DOMAIN_PROVEN",
+            "STATE_UNKNOWN"
+          ],
+          "type": "string"
+        },
+        "data_class": {
+          "enum": [
+            "RECONSTRUCTIBLE_ONLY",
+            "DISASTER_SAFE_CTOWER_ENGINEERING",
+            "STATE_UNKNOWN"
+          ],
+          "type": "string"
+        },
+        "semantic_digest": {
+          "pattern": "^sha256:[a-f0-9]{64}$",
+          "type": "string"
+        },
+        "reconciled_at": {
+          "format": "date-time",
+          "type": "string"
+        },
+        "freshness_due_at": {
+          "format": "date-time",
+          "type": "string"
+        },
+        "rebuild_generation": {
+          "minimum": 0,
+          "type": "integer"
+        },
         "source_ids": {
           "items": {
             "minLength": 1,
@@ -127,10 +167,84 @@
         "freshness",
         "confidence",
         "health",
+        "durability",
+        "recovery",
+        "data_class",
+        "semantic_digest",
+        "reconciled_at",
+        "freshness_due_at",
+        "rebuild_generation",
         "source_ids",
         "derivation_reasons"
       ],
-      "type": "object"
+      "type": "object",
+      "allOf": [
+        {
+          "$comment": "I1.7 remains visibly blocked/degraded until disaster-safe authority is separately proven.",
+          "if": {
+            "properties": {
+              "checkpoint_key": {
+                "const": "I1.7"
+              },
+              "freshness": {
+                "const": "fresh"
+              }
+            },
+            "required": [
+              "checkpoint_key",
+              "freshness"
+            ]
+          },
+          "then": {
+            "properties": {
+              "headline_state": {
+                "const": "blocked"
+              },
+              "confidence": {
+                "const": "development_degraded"
+              },
+              "health": {
+                "const": "CP3_D_NOT_PROVEN"
+              },
+              "durability": {
+                "const": "CP3_D_NOT_PROVEN"
+              },
+              "recovery": {
+                "const": "EXTERNAL_FAILURE_DOMAIN_UNPROVEN"
+              },
+              "data_class": {
+                "const": "RECONSTRUCTIBLE_ONLY"
+              }
+            }
+          }
+        },
+        {
+          "$comment": "A stale or unknown projection cannot advertise current health.",
+          "if": {
+            "properties": {
+              "freshness": {
+                "enum": [
+                  "stale",
+                  "STATE_UNKNOWN"
+                ]
+              }
+            },
+            "required": [
+              "freshness"
+            ]
+          },
+          "then": {
+            "properties": {
+              "health": {
+                "enum": [
+                  "CP3_D_NOT_PROVEN",
+                  "STATE_UNKNOWN"
+                ]
+              }
+            }
+          }
+        }
+      ]
     }
   },
   "$id": "https://ctower.dev/contracts/domain/project-delivery/project-delivery.schema.json",
@@ -148,6 +262,30 @@
       "pattern": "^[a-z][a-z0-9-]{2,63}$",
       "type": "string"
     },
+    "source_record_position": {
+      "minimum": 0,
+      "type": "integer"
+    },
+    "projection_record_position": {
+      "minimum": 0,
+      "type": "integer"
+    },
+    "reconciled_at": {
+      "format": "date-time",
+      "type": "string"
+    },
+    "freshness_due_at": {
+      "format": "date-time",
+      "type": "string"
+    },
+    "projection_semantic_digest": {
+      "pattern": "^sha256:[a-f0-9]{64}$",
+      "type": "string"
+    },
+    "rebuild_generation": {
+      "minimum": 0,
+      "type": "integer"
+    },
     "rows": {
       "items": {
         "$ref": "#/$defs/row"
@@ -159,6 +297,12 @@
     "schema",
     "company_key",
     "project_key",
+    "source_record_position",
+    "projection_record_position",
+    "reconciled_at",
+    "freshness_due_at",
+    "projection_semantic_digest",
+    "rebuild_generation",
     "rows"
   ],
   "title": "compact read-only Project Delivery projection",

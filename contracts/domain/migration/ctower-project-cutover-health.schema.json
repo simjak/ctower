@@ -28,6 +28,11 @@
     "phase": {
       "enum": [
         "not_started",
+        "source_selection_frozen",
+        "export_equal",
+        "alias_plan_bound",
+        "import_in_progress",
+        "reconciled",
         "prepared",
         "development_epoch_committed",
         "disaster_safe_active"
@@ -90,6 +95,91 @@
       "minimum": 0,
       "type": "integer"
     },
+    "import_run_id": {
+      "oneOf": [
+        {
+          "format": "uuid",
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "migration_digests": {
+      "additionalProperties": false,
+      "properties": {
+        "source_selection": {
+          "oneOf": [
+            {
+              "$ref": "migration-boundary.schema.json#/$defs/digest"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "export_equality": {
+          "oneOf": [
+            {
+              "$ref": "migration-boundary.schema.json#/$defs/digest"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "alias_map": {
+          "oneOf": [
+            {
+              "$ref": "migration-boundary.schema.json#/$defs/digest"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "reconciliation": {
+          "oneOf": [
+            {
+              "$ref": "migration-boundary.schema.json#/$defs/digest"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "fence_registry": {
+          "oneOf": [
+            {
+              "$ref": "migration-boundary.schema.json#/$defs/digest"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "fence_observation": {
+          "oneOf": [
+            {
+              "$ref": "migration-boundary.schema.json#/$defs/digest"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      },
+      "required": [
+        "source_selection",
+        "export_equality",
+        "alias_map",
+        "reconciliation",
+        "fence_registry",
+        "fence_observation"
+      ],
+      "type": "object"
+    },
     "banner": {
       "minLength": 1,
       "type": "string"
@@ -109,16 +199,28 @@
     "projection_completeness",
     "source_watermark",
     "projection_watermark",
+    "import_run_id",
+    "migration_digests",
     "banner"
   ],
   "title": "ctower-project cutover health",
   "type": "object",
   "allOf": [
     {
-      "$comment": "phase and authority_mode are 1:1 coupled (migration 0027). not_started is the pre-cutover default and pairs only with legacy_writable.",
+      "$comment": "Every pre-epoch I1.7B phase remains legacy_writable. prepared is an I1.7C-only state.",
       "if": {
         "properties": {
-          "phase": {"const": "prepared"}
+          "phase": {
+            "enum": [
+              "not_started",
+              "source_selection_frozen",
+              "export_equal",
+              "alias_plan_bound",
+              "import_in_progress",
+              "reconciled",
+              "prepared"
+            ]
+          }
         },
         "required": ["phase"]
       },
@@ -153,20 +255,6 @@
       "then": {
         "properties": {
           "authority_mode": {"const": "disaster_safe"}
-        },
-        "required": ["authority_mode"]
-      }
-    },
-    {
-      "if": {
-        "properties": {
-          "phase": {"const": "not_started"}
-        },
-        "required": ["phase"]
-      },
-      "then": {
-        "properties": {
-          "authority_mode": {"const": "legacy_writable"}
         },
         "required": ["authority_mode"]
       }
@@ -219,6 +307,52 @@
           "authority_mode": {"enum": ["development_single_writer", "disaster_safe"]}
         },
         "required": ["legacy_writer_fence", "split_brain", "authority_mode"]
+      }
+    },
+    {
+      "$comment": "A fence finding can only degrade health and must disable writes.",
+      "if": {
+        "properties": {
+          "split_brain": {
+            "enum": [
+              "detected",
+              "unknown"
+            ]
+          }
+        },
+        "required": ["split_brain"]
+      },
+      "then": {
+        "properties": {
+          "writes_enabled": {"const": false},
+          "projection_completeness": {"const": "STATE_UNKNOWN"}
+        },
+        "required": ["writes_enabled", "projection_completeness"]
+      }
+    },
+    {
+      "$comment": "No pre-epoch migration phase may advertise ctower writes.",
+      "if": {
+        "properties": {
+          "phase": {
+            "enum": [
+              "not_started",
+              "source_selection_frozen",
+              "export_equal",
+              "alias_plan_bound",
+              "import_in_progress",
+              "reconciled",
+              "prepared"
+            ]
+          }
+        },
+        "required": ["phase"]
+      },
+      "then": {
+        "properties": {
+          "writes_enabled": {"const": false}
+        },
+        "required": ["writes_enabled"]
       }
     }
   ]

@@ -1,0 +1,75 @@
+{
+  "schema": "ctower.project-delivery-vectors/v1",
+  "checkpoint_keys": [
+    "I1.0",
+    "I1.1",
+    "I1.2",
+    "I1.3",
+    "I1.4",
+    "I1.5",
+    "I1.6",
+    "I1.7",
+    "I2.1",
+    "I2.2",
+    "I2.3",
+    "I2.4",
+    "I2.5",
+    "I2.6"
+  ],
+  "i1_7_criteria": [
+    "source-conservation",
+    "development-single-writer",
+    "api-cli-dogfood",
+    "project-delivery-rebuild",
+    "i1-evidence-archive",
+    "disaster-safe-authority"
+  ],
+  "headline_precedence": [
+    "done",
+    "blocked",
+    "released",
+    "verified",
+    "merged",
+    "ready_to_land",
+    "in_progress",
+    "planned"
+  ],
+  "development_truth": {
+    "checkpoint_key": "I1.7",
+    "headline_state": "blocked",
+    "confidence": "development_degraded",
+    "health": "CP3_D_NOT_PROVEN",
+    "durability": "CP3_D_NOT_PROVEN",
+    "recovery": "EXTERNAL_FAILURE_DOMAIN_UNPROVEN",
+    "data_class": "RECONSTRUCTIBLE_ONLY"
+  },
+  "freshness": {
+    "recompute_after_seconds": 3600,
+    "states": [
+      "fresh",
+      "stale",
+      "STATE_UNKNOWN"
+    ],
+    "gap_or_poison_or_unknown_scope": "STATE_UNKNOWN",
+    "request_time_mutation": false,
+    "watermark_kind": "record_position",
+    "accepted_position": null,
+    "durability_state": "durability_pending"
+  },
+  "semantic_rebuild": {
+    "delete_then_rebuild_same_watermark": "byte_identical",
+    "compared_fields": [
+      "semantic_row_bytes",
+      "source_ids",
+      "derivation_reasons"
+    ],
+    "excluded_inputs": [
+      "heartbeat",
+      "wording",
+      "ticket_count",
+      "priority",
+      "legacy_status",
+      "github_state_alone"
+    ]
+  }
+}
