@@ -6,6 +6,8 @@ import hashlib
 import hmac
 import re
 from datetime import datetime
+from importlib.resources import files
+from importlib.resources.abc import Traversable
 from pathlib import Path
 from typing import Literal, TextIO
 
@@ -31,7 +33,6 @@ __all__ = [
     "provision_database_roles",
 ]
 
-MIGRATIONS = Path(__file__).parents[3] / "migrations"
 MINIMUM_CAPABILITY_LENGTH = 32
 MAXIMUM_CAPABILITY_LENGTH = 256
 PROJECTION_RUNTIME_ROLE = "ctower_projection_runtime"
@@ -151,13 +152,35 @@ class _MigrationManifest(BaseModel):
         return self
 
 
-def _migration_scripts(scope: str) -> tuple[str, ...]:
+def _migration_resources() -> Traversable:
+    packaged = files("ctower_kernel").joinpath("migrations")
+    if packaged.is_dir():
+        return packaged
+    source_root = Path(__file__).parents[2]
+    authored = source_root.parent / "migrations"
+    if source_root.name == "src" and authored.is_dir():
+        return authored
+    raise FileNotFoundError("ctower migration resources are unavailable")
+
+
+def _migration_scripts(scope: Literal["cluster", "database"]) -> tuple[str, ...]:
+    resources = _migration_resources()
     manifest = _MigrationManifest.model_validate_json(
-        (MIGRATIONS / "manifest.json").read_text(encoding="utf-8")
+        resources.joinpath("manifest.json").read_text(encoding="utf-8")
     )
+    declared = tuple(entry.path for entry in manifest.migrations)
+    packaged = tuple(
+        sorted(
+            resource.name
+            for resource in resources.iterdir()
+            if resource.is_file() and resource.name.endswith(".sql")
+        )
+    )
+    if packaged != declared:
+        raise ValueError("migration resource inventory does not match manifest")
     scripts: list[str] = []
     for entry in manifest.migrations:
-        content = (MIGRATIONS / entry.path).read_bytes()
+        content = resources.joinpath(entry.path).read_bytes()
         actual = f"sha256:{hashlib.sha256(content).hexdigest()}"
         if not hmac.compare_digest(actual, entry.sha256):
             raise ValueError(f"migration checksum mismatch: {entry.path}")
