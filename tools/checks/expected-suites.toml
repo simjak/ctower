@@ -253,6 +253,7 @@ command = [
   "no:cacheprovider",
   "tests/integration/keyring",
   "-q",
+  "-s",
 ]
 timeout_seconds = 180
 
