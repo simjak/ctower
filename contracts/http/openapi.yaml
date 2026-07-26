@@ -5,6 +5,17 @@
     "version": "0.0.0"
   },
   "servers": [{"url": "http://127.0.0.1:8080"}],
+  "x-ctower-rfc3339-profile": {
+    "calendar": "proleptic-gregorian",
+    "date-time-separator": "T",
+    "fractional-second-digits": [1, 6],
+    "leap-seconds": "rejected",
+    "numeric-offset-range": "00:00-23:59",
+    "timezone": "required",
+    "unknown-local-offset": "rejected",
+    "year-range": [1, 9999],
+    "zero-offset": "Z-or-plus-00:00"
+  },
   "paths": {
     "/v1/bootstrap/first-tenant": {
       "post": {

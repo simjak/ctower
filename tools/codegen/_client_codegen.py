@@ -28,6 +28,7 @@ class _Operation:
     parameters: tuple[_Parameter, ...]
     request_model: str | None
     response_model: str | None
+    success_models: tuple[tuple[int, str], ...]
     problem_models: tuple[tuple[int, str], ...]
     authenticated: bool
     refusal_only: bool
@@ -38,7 +39,7 @@ def render_client(document: dict[str, object], contract_digest: str) -> str:
     model_names = sorted(
         {
             "TelemetryContext",
-            *(operation.response_model for operation in operations if operation.response_model),
+            *(model for operation in operations for _, model in operation.success_models),
             *(model for operation in operations for _, model in operation.problem_models),
             *(operation.request_model for operation in operations if operation.request_model),
         }
@@ -72,6 +73,10 @@ __all__ = ["CtowerClient", "CtowerProblemError"]
 class _ProblemModel(Protocol):
     code: str
     detail: str
+
+
+class _StatusProblemModel(_ProblemModel, Protocol):
+    status: int
 
 
 class CtowerProblemError(Exception):
@@ -151,11 +156,18 @@ class CtowerClient:
 
 def _response[ModelT: BaseModel](
     response: httpx.Response,
-    model: type[ModelT],
+    success_models: Mapping[int, type[ModelT]],
     problem_models: Mapping[int, type[BaseModel]],
 ) -> ModelT:
-    if response.is_success:
+    model = success_models.get(response.status_code)
+    if model is not None:
         return model.model_validate_json(response.content)
+    if response.is_success:
+        raise httpx.HTTPStatusError(
+            "ctower returned an undeclared success status",
+            request=response.request,
+            response=response,
+        )
     _raise_problem(response, problem_models)
 
 
@@ -175,8 +187,10 @@ def _raise_problem(
             request=response.request,
             response=response,
         )
-    problem = problem_model.model_validate_json(response.content)
-    raise CtowerProblemError(cast(_ProblemModel, problem))
+    problem = cast(_StatusProblemModel, problem_model.model_validate_json(response.content))
+    if problem.status != response.status_code:
+        raise ValueError("Problem status does not match HTTP response status")
+    raise CtowerProblemError(problem)
 
 
 def _refusal(
@@ -211,6 +225,7 @@ def _operations(document: dict[str, object]) -> tuple[_Operation, ...]:
             if not isinstance(refusal_only, bool):
                 raise TypeError(f"{operation_id} has non-boolean x-ctower-refusal-only")
             parameters = _parameters(operation, parameter_definitions)
+            success_models = _success_models(operation, refusal_only=refusal_only)
             operations.append(
                 _Operation(
                     operation_id=operation_id,
@@ -218,7 +233,11 @@ def _operations(document: dict[str, object]) -> tuple[_Operation, ...]:
                     path=path,
                     parameters=parameters,
                     request_model=_request_model(operation),
-                    response_model=_response_model(operation, refusal_only=refusal_only),
+                    response_model=_response_model(
+                        success_models,
+                        refusal_only=refusal_only,
+                    ),
+                    success_models=success_models,
                     problem_models=_problem_models(operation, response_definitions),
                     authenticated=bool(operation.get("security")),
                     refusal_only=refusal_only,
@@ -271,19 +290,42 @@ def _request_model(operation: Mapping[str, object]) -> str | None:
     return _schema_reference(_mapping(media.get("schema"), "requestBody schema"))
 
 
-def _response_model(operation: Mapping[str, object], *, refusal_only: bool) -> str | None:
+def _success_models(
+    operation: Mapping[str, object],
+    *,
+    refusal_only: bool,
+) -> tuple[tuple[int, str], ...]:
     responses = _mapping(operation.get("responses"), "responses")
+    models: list[tuple[int, str]] = []
     for status, value in sorted(responses.items()):
         if not status.startswith("2"):
             continue
         if refusal_only:
             raise ValueError("refusal-only operation advertises a success response")
+        try:
+            status_code = int(status)
+        except ValueError as error:
+            raise ValueError(f"success response status must be exact: {status}") from error
         content = _mapping(_mapping(value, f"response {status}").get("content"), "response content")
         media = _mapping(content.get("application/json"), "response application/json")
-        return _schema_reference(_mapping(media.get("schema"), "response schema"))
+        model = _schema_reference(_mapping(media.get("schema"), "response schema"))
+        models.append((status_code, model))
+    return tuple(models)
+
+
+def _response_model(
+    success_models: tuple[tuple[int, str], ...],
+    *,
+    refusal_only: bool,
+) -> str | None:
+    models = {model for _, model in success_models}
     if refusal_only:
         return None
-    raise ValueError("operation has no JSON success response")
+    if not models:
+        raise ValueError("operation has no JSON success response")
+    if len(models) > 1:
+        raise ValueError("one operation cannot expose multiple Python success model types")
+    return next(iter(models))
 
 
 def _problem_models(
@@ -359,8 +401,9 @@ def _render_method(operation: _Operation) -> str:
 
 def _response_render(operation: _Operation) -> tuple[str, str]:
     problems = ", ".join(f"{status}: {model}" for status, model in operation.problem_models)
+    successes = ", ".join(f"{status}: {model}" for status, model in operation.success_models)
     if operation.response_model:
-        call = f"return _response(response, {operation.response_model}, {{{problems}}})"
+        call = f"return _response(response, {{{successes}}}, {{{problems}}})"
         return operation.response_model, call
     return "NoReturn", f"_refusal(response, {{{problems}}})"
 

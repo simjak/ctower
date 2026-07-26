@@ -8,6 +8,7 @@ from collections.abc import Mapping
 from dataclasses import dataclass
 from typing import cast
 
+from tools.codegen._rfc3339_codegen import require_rfc3339_profile
 from tools.codegen._typescript_validation_codegen import render_validators
 
 __all__ = ["render_typescript"]
@@ -30,11 +31,13 @@ class _Operation:
     parameters: tuple[_Parameter, ...]
     request_model: str | None
     response_model: str | None
+    success_models: tuple[tuple[int, str], ...]
     problem_models: tuple[tuple[int, str], ...]
     authenticated: bool
 
 
 def render_typescript(document: dict[str, object], contract_digest: str) -> dict[str, str]:
+    require_rfc3339_profile(document)
     operations = _operations(document)
     schemas = _mapping(
         _mapping(document.get("components"), "components").get("schemas"),
@@ -49,11 +52,7 @@ def render_typescript(document: dict[str, object], contract_digest: str) -> dict
         "tsconfig.json": _tsconfig(),
         "validators.ts": render_validators(
             schemas,
-            {
-                item.operation_id: item.response_model
-                for item in operations
-                if item.response_model is not None
-            },
+            {item.operation_id: item.success_models for item in operations},
             {item.operation_id: item.problem_models for item in operations},
             contract_digest,
         ),
@@ -274,7 +273,7 @@ export class CtowerClient {{
       ...(body === undefined ? {{}} : {{ body }}),
     }});
     const payload: unknown = await response.json();
-    if (!response.ok) {{
+    if (response.status < 200 || response.status > 299) {{
       const contentType = response.headers.get("content-type")?.split(";", 1)[0];
       if (contentType !== "application/problem+json") {{
         throw new TypeError("ctower returned a non-problem failure");
@@ -286,7 +285,11 @@ export class CtowerClient {{
       ) as Models.Problem;
       throw new CtowerProblemError(problem);
     }}
-    return validateOperationResult(operationId, payload) as OperationResults[Id];
+    return validateOperationResult(
+      operationId,
+      response.status,
+      payload,
+    ) as OperationResults[Id];
   }}
 }}
 """
@@ -335,6 +338,10 @@ export {{ CtowerClient, CtowerProblemError }} from "./client.js";
 export type {{ ClientOptions, OperationInputs, OperationResults }} from "./client.js";
 export {{ OPERATIONS }} from "./operations.js";
 export type {{ OperationId, OperationSpec }} from "./operations.js";
+export {{
+  OPERATION_PROBLEM_MODELS,
+  OPERATION_SUCCESS_MODELS,
+}} from "./validators.js";
 export type * from "./models.js";
 """
 
@@ -381,6 +388,7 @@ def _operations(document: dict[str, object]) -> tuple[_Operation, ...]:
             operation_id = operation.get("operationId")
             if not isinstance(operation_id, str):
                 raise TypeError(f"{method} {path} lacks operationId")
+            success_models = _success_models(operation)
             operations.append(
                 _Operation(
                     operation_id,
@@ -388,7 +396,8 @@ def _operations(document: dict[str, object]) -> tuple[_Operation, ...]:
                     path,
                     _parameters(operation, definitions),
                     _request_model(operation),
-                    _response_model(operation),
+                    _response_model(success_models),
+                    success_models,
                     _problem_models(operation, response_definitions),
                     bool(operation.get("security")),
                 )
@@ -436,15 +445,30 @@ def _request_model(operation: Mapping[str, object]) -> str | None:
     return _reference_name(str(_mapping(media.get("schema"), "request schema")["$ref"]))
 
 
-def _response_model(operation: Mapping[str, object]) -> str | None:
+def _success_models(
+    operation: Mapping[str, object],
+) -> tuple[tuple[int, str], ...]:
     responses = _mapping(operation.get("responses"), "responses")
+    models: list[tuple[int, str]] = []
     for status, value in sorted(responses.items()):
         if not status.startswith("2"):
             continue
+        try:
+            status_code = int(status)
+        except ValueError as error:
+            raise ValueError(f"success response status must be exact: {status}") from error
         content = _mapping(_mapping(value, f"response {status}").get("content"), "content")
         media = _mapping(content.get("application/json"), "application/json")
-        return _reference_name(str(_mapping(media.get("schema"), "response schema")["$ref"]))
-    return None
+        model = _reference_name(str(_mapping(media.get("schema"), "response schema")["$ref"]))
+        models.append((status_code, model))
+    return tuple(models)
+
+
+def _response_model(success_models: tuple[tuple[int, str], ...]) -> str | None:
+    models = {model for _, model in success_models}
+    if len(models) > 1:
+        raise ValueError("one operation cannot expose multiple TypeScript success model types")
+    return next(iter(models), None)
 
 
 def _problem_models(

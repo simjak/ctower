@@ -77,6 +77,8 @@ from ctower_kernel.workflow import Workflow
 
 __all__ = ["create_app"]
 
+type _MigrationImporterResolver = Callable[[bytes, UUID, UUID, str, datetime], Actor | None]
+
 
 def create_app(
     record: Record,
@@ -90,8 +92,7 @@ def create_app(
     synthetic_runtime: SyntheticRuntime | None = None,
     synthetic_revision: RoutineRevision | None = None,
     migration: object | None = None,
-    migration_importer_resolver: Callable[[bytes, UUID, UUID, str, datetime], Actor | None]
-    | None = None,
+    migration_importer_resolver: _MigrationImporterResolver | None = None,
     migration_importer_credential_resolver: Callable[[bytes, datetime], Actor | None] | None = None,
     fence_observer_resolver: Callable[[bytes, datetime], Actor | None] | None = None,
     telemetry: TelemetryRecorder | None = None,
@@ -108,7 +109,6 @@ def create_app(
         telemetry=recorder,
     )
     work_module = work or Work(record, telemetry=recorder)
-    intake_module = Intake(record, telemetry=recorder)
 
     @app.middleware("http")
     async def telemetry_health(
@@ -123,7 +123,7 @@ def create_app(
     _install_ticket_create_route(app, access, record, work_module, recorder)
     _install_custody_route(app, access, record, work_module, recorder)
     _install_ticket_read_routes(app, access, record, recorder)
-    install_intake_routes(app, access, record, intake_module, recorder)
+    install_intake_routes(app, access, record, Intake(record, telemetry=recorder), recorder)
     install_comment_routes(app, access, record, recorder)
     install_task_routes(app, access, record, work_module, workflow, recorder)
     if catalog is not None:

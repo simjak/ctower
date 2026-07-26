@@ -7,6 +7,8 @@ import re
 from collections.abc import Mapping
 from typing import cast
 
+from tools.codegen._rfc3339_codegen import require_rfc3339_profile
+
 __all__: tuple[str, ...] = ()
 
 _INLINE_WIDTH = 88
@@ -14,9 +16,10 @@ _MAX_LINE_WIDTH = 100
 
 
 def render_models(document: dict[str, object], contract_digest: str) -> str:
+    require_rfc3339_profile(document)
     schemas = _schemas(document)
     names = tuple(sorted(schemas))
-    sections = [_header(contract_digest, names), _boundary_model()]
+    sections = [_header(contract_digest, names), _date_time_validator(), _boundary_model()]
     for name in _schema_order(schemas):
         schema = _mapping(schemas[name], f"schema {name}")
         sections.append(_render_schema(name, schema))
@@ -54,16 +57,74 @@ Authored contract digest: sha256:{contract_digest}
 
 from __future__ import annotations
 
-from datetime import datetime
+from datetime import datetime, timedelta, timezone
 from enum import StrEnum
+import re
 from typing import Annotated, Literal
 from uuid import UUID
 
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, BeforeValidator, ConfigDict, Field
 
 __all__ = [
 {exports}
 ]'''
+
+
+def _date_time_validator() -> str:
+    return r"""_RFC3339_PATTERN = re.compile(
+    r"^(?P<year>\d{4})-(?P<month>\d{2})-(?P<day>\d{2})"
+    r"T(?P<hour>\d{2}):(?P<minute>\d{2}):(?P<second>\d{2})"
+    r"(?:\.(?P<fraction>\d{1,6}))?"
+    r"(?P<zone>Z|(?P<sign>[+-])(?P<offset_hour>\d{2}):(?P<offset_minute>\d{2}))$"
+)
+
+
+def _validate_rfc3339(value: object) -> datetime:
+    if isinstance(value, datetime):
+        offset = value.utcoffset()
+        if offset is None:
+            raise ValueError("RFC 3339 timestamps require a timezone")
+        offset_seconds = offset.total_seconds()
+        if offset_seconds % 60 != 0 or abs(offset_seconds) > 86_340:
+            raise ValueError("RFC 3339 timestamp has an invalid numeric offset")
+        return value
+    if not isinstance(value, str):
+        raise ValueError("RFC 3339 timestamp must be a string or datetime")
+    match = _RFC3339_PATTERN.fullmatch(value)
+    if match is None or match.group("zone") == "-00:00":
+        raise ValueError("timestamp is outside the authored RFC 3339 profile")
+    parts = {name: int(match.group(name)) for name in (
+        "year", "month", "day", "hour", "minute", "second"
+    )}
+    if not 1 <= parts["year"] <= 9999:
+        raise ValueError("RFC 3339 timestamp year is outside 0001-9999")
+    if parts["hour"] > 23 or parts["minute"] > 59 or parts["second"] > 59:
+        raise ValueError("RFC 3339 timestamp has an invalid time")
+    offset_hour = int(match.group("offset_hour") or 0)
+    offset_minute = int(match.group("offset_minute") or 0)
+    if offset_hour > 23 or offset_minute > 59:
+        raise ValueError("RFC 3339 timestamp has an invalid numeric offset")
+    offset = timedelta(hours=offset_hour, minutes=offset_minute)
+    if match.group("sign") == "-":
+        offset = -offset
+    zone = timezone.utc if match.group("zone") == "Z" else timezone(offset)
+    fraction = (match.group("fraction") or "").ljust(6, "0")
+    try:
+        return datetime(
+            parts["year"],
+            parts["month"],
+            parts["day"],
+            parts["hour"],
+            parts["minute"],
+            parts["second"],
+            int(fraction or 0),
+            zone,
+        )
+    except ValueError as error:
+        raise ValueError("timestamp is outside the proleptic Gregorian calendar") from error
+
+
+_Rfc3339DateTime = Annotated[datetime, BeforeValidator(_validate_rfc3339)]"""
 
 
 def _boundary_model() -> str:
@@ -210,7 +271,10 @@ def _string_expression(schema: Mapping[str, object]) -> str:
         if len(inline) <= _INLINE_WIDTH:
             return inline
         return "Literal[\n        " + ",\n        ".join(values) + ",\n    ]"
-    base = {"uuid": "UUID", "date-time": "datetime"}.get(str(schema.get("format")), "str")
+    base = {
+        "uuid": "UUID",
+        "date-time": "_Rfc3339DateTime",
+    }.get(str(schema.get("format")), "str")
     constraints: list[tuple[str, object]] = []
     for source, target in (
         ("minLength", "min_length"),

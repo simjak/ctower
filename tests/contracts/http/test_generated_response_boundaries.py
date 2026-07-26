@@ -8,6 +8,7 @@ import shutil
 import subprocess
 import sys
 from pathlib import Path
+from typing import cast
 from uuid import uuid4
 
 import httpx
@@ -19,6 +20,7 @@ from ctower_client import (
     CtowerProblemError,
     IntakeSubmitRequest,
     SourceReference,
+    TicketResource,
 )
 
 __all__: tuple[str, ...] = ()
@@ -26,6 +28,7 @@ __all__: tuple[str, ...] = ()
 ROOT = Path(__file__).parents[3]
 TSC = ROOT / "node_modules/typescript/bin/tsc"
 UUID = "018f7a40-1234-7abc-8def-1234567890ab"
+LEAP_YEAR = 2024
 
 
 @pytest.mark.parametrize(
@@ -105,6 +108,42 @@ def test_generated_python_client_validates_problem_payloads() -> None:
             client.submit_intake(_python_request(), command_id=uuid4())
         client.close()
 
+    mismatch = _python_client({**valid, "status": 404}, status=409, problem=True)
+    with pytest.raises(ValueError, match="Problem status does not match"):
+        mismatch.submit_intake(_python_request(), command_id=uuid4())
+    mismatch.close()
+
+
+def test_generated_python_client_rejects_undeclared_success_status() -> None:
+    client = _python_client(_intake_result(), status=299)
+    with pytest.raises(httpx.HTTPStatusError, match="undeclared success status"):
+        client.submit_intake(_python_request(), command_id=uuid4())
+    client.close()
+
+
+@pytest.mark.parametrize(
+    ("timestamp", "accepted"),
+    (
+        ("2024-02-29T23:59:59.123456+23:59", True),
+        ("2023-02-29T20:00:00Z", False),
+        ("2026-07-25T20:00:00", False),
+        ("2026-07-25T20:00:00+24:00", False),
+        ("2026-07-25T20:00:60Z", False),
+        ("2026-07-25T20:00:00-00:00", False),
+    ),
+)
+def test_generated_python_models_enforce_authored_rfc3339_profile(
+    timestamp: str,
+    *,
+    accepted: bool,
+) -> None:
+    payload = json.dumps(_ticket(timestamp))
+    if accepted:
+        assert TicketResource.model_validate_json(payload).created_at.year == LEAP_YEAR
+    else:
+        with pytest.raises(ValidationError):
+            TicketResource.model_validate_json(payload)
+
 
 def test_generated_typescript_client_runtime_validates_success_and_problem_vectors(
     tmp_path: Path,
@@ -180,6 +219,19 @@ def _problem() -> dict[str, object]:
     }
 
 
+def _ticket(created_at: str) -> dict[str, object]:
+    return {
+        "created_at": created_at,
+        "custodian_id": UUID,
+        "durability_state": "accepted",
+        "priority": "P2",
+        "source": {"kind": "test", "ref": "generated:ticket"},
+        "ticket_id": UUID,
+        "title": "Ticket resource",
+        "version": 1,
+    }
+
+
 def _compile_typescript_client(target: Path) -> None:
     completed = _run_command(
         (
@@ -232,11 +284,41 @@ def _run_command(
 def _typescript_runner() -> str:
     result = json.dumps(_intake_result(), sort_keys=True)
     problem = json.dumps(_problem(), sort_keys=True)
+    ticket = json.dumps(_ticket("2024-02-29T23:59:59.123456+23:59"), sort_keys=True)
+    successes, problems = _authored_response_inventories()
+    success_inventory = json.dumps(successes, sort_keys=True)
+    problem_inventory = json.dumps(problems, sort_keys=True)
     return f"""
-import {{ CtowerClient, CtowerProblemError }} from "./index.js";
+import {{
+  CtowerClient,
+  CtowerProblemError,
+  OPERATION_PROBLEM_MODELS,
+  OPERATION_SUCCESS_MODELS,
+}} from "./index.js";
 
 const valid = {result};
 const problem = {problem};
+const ticket = {ticket};
+const expectedSuccesses = {success_inventory};
+const expectedProblems = {problem_inventory};
+const canonical = (value) => {{
+  if (Array.isArray(value)) return value.map(canonical);
+  if (value !== null && typeof value === "object") {{
+    return Object.fromEntries(
+      Object.entries(value).sort(([left], [right]) => left.localeCompare(right))
+        .map(([key, nested]) => [key, canonical(nested)]),
+    );
+  }}
+  return value;
+}};
+if (
+  JSON.stringify(canonical(OPERATION_SUCCESS_MODELS)) !==
+  JSON.stringify(canonical(expectedSuccesses))
+) throw new Error("generated success inventory diverges from OpenAPI");
+if (
+  JSON.stringify(canonical(OPERATION_PROBLEM_MODELS)) !==
+  JSON.stringify(canonical(expectedProblems))
+) throw new Error("generated Problem inventory diverges from OpenAPI");
 const responses = [];
 const client = new CtowerClient({{
   baseUrl: "http://contract.invalid",
@@ -259,6 +341,7 @@ const promote = () => client.promoteIntakeEvent({{
   IdempotencyKey: "{UUID}",
   body: {{expected_thread_version: 1, intent: "create_ticket"}},
 }});
+const getTicket = () => client.getTicket({{ticketId: "{UUID}"}});
 async function expectTypeError(payload, operation = submit, status = 202, isProblem = false) {{
   responses.push({{payload, status, problem: isProblem}});
   try {{
@@ -274,8 +357,11 @@ responses.push({{payload: valid, status: 202, problem: false}});
 if ((await submit()).thread_version !== 1) throw new Error("valid success rejected");
 responses.push({{payload: valid, status: 200, problem: false}});
 if ((await promote()).outcome !== "discussion") throw new Error("valid promotion rejected");
+responses.push({{payload: ticket, status: 200, problem: false}});
+if ((await getTicket()).version !== 1) throw new Error("valid leap-day timestamp rejected");
 
 await expectTypeError([]);
+await expectTypeError(valid, submit, 299);
 await expectTypeError({{malformed: true}});
 await expectTypeError({{...valid, unknown: "field"}});
 await expectTypeError({{...valid, command_id: "not-a-uuid"}});
@@ -296,6 +382,11 @@ await expectTypeError({{
   version: 1,
 }});
 await expectTypeError({{...valid, unknown: "promotion-field"}}, promote, 200);
+await expectTypeError({{...ticket, created_at: "2023-02-29T20:00:00Z"}}, getTicket, 200);
+await expectTypeError({{...ticket, created_at: "2026-07-25T20:00:00"}}, getTicket, 200);
+await expectTypeError({{...ticket, created_at: "2026-07-25T20:00:00+24:00"}}, getTicket, 200);
+await expectTypeError({{...ticket, created_at: "2026-07-25T20:00:60Z"}}, getTicket, 200);
+await expectTypeError({{...ticket, created_at: "2026-07-25T20:00:00-00:00"}}, getTicket, 200);
 
 responses.push({{payload: problem, status: 409, problem: true}});
 try {{
@@ -308,7 +399,46 @@ await expectTypeError([], submit, 409, true);
 await expectTypeError({{...problem, unknown: "field"}}, submit, 409, true);
 await expectTypeError({{...problem, code: "not-a-problem"}}, submit, 409, true);
 await expectTypeError({{...problem, status: 399}}, submit, 409, true);
+await expectTypeError({{...problem, status: 404}}, submit, 409, true);
 await expectTypeError(problem, submit, 418, true);
 
 console.log("typescript response vectors: passed");
 """.lstrip()
+
+
+def _authored_response_inventories() -> tuple[
+    dict[str, dict[str, str]],
+    dict[str, dict[str, str]],
+]:
+    document = cast(
+        dict[str, object],
+        json.loads((ROOT / "contracts/http/openapi.yaml").read_text(encoding="utf-8")),
+    )
+    paths = cast(dict[str, dict[str, object]], document["paths"])
+    components = cast(dict[str, object], document["components"])
+    definitions = cast(dict[str, dict[str, object]], components["responses"])
+    successes: dict[str, dict[str, str]] = {}
+    problems: dict[str, dict[str, str]] = {}
+    for path_item in paths.values():
+        for method, value in path_item.items():
+            if method not in {"get", "post"}:
+                continue
+            operation = cast(dict[str, object], value)
+            operation_id = cast(str, operation["operationId"])
+            successes[operation_id] = {}
+            problems[operation_id] = {}
+            responses = cast(dict[str, dict[str, object]], operation["responses"])
+            for status, response_value in responses.items():
+                response = response_value
+                reference = response.get("$ref")
+                if isinstance(reference, str):
+                    response = definitions[reference.rsplit("/", 1)[-1]]
+                content = cast(dict[str, dict[str, object]], response["content"])
+                media_type = (
+                    "application/json" if status.startswith("2") else "application/problem+json"
+                )
+                schema = cast(dict[str, str], content[media_type]["schema"])
+                model = schema["$ref"].rsplit("/", 1)[-1]
+                target = successes if status.startswith("2") else problems
+                target[operation_id][status] = model
+    return successes, problems
