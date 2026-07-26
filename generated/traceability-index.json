@@ -39,6 +39,7 @@
     "AC-COMP-01": [
       "contracts/components/agent-profile.schema.json",
       "contracts/components/capability.schema.json",
+      "contracts/components/checkpoint.schema.json",
       "contracts/components/environment.schema.json",
       "contracts/components/goal.schema.json",
       "contracts/components/harness.schema.json",
@@ -72,7 +73,8 @@
     ],
     "AC-COMP-03": [
       "contracts/company/company-bundle.schema.json",
-      "packages/ctower-kernel/migrations/0024_catalog_authority.sql"
+      "packages/ctower-kernel/migrations/0024_catalog_authority.sql",
+      "packages/ctower-kernel/migrations/0029_i17b_checkpoint_catalog_kind.sql"
     ],
     "AC-DUR-01": [
       "contracts/http/openapi.yaml",
@@ -157,6 +159,58 @@
       "packages/ctower-kernel/migrations/0021_object_backup_anchor.sql",
       "packs/policies/evidence/trust-spine-four-stage-v1.yaml"
     ],
+    "AC-MIG-01": [
+      "contracts/domain/migration/ctower-project-export-equality.schema.json",
+      "contracts/domain/migration/ctower-project-export-manifest.schema.json",
+      "contracts/domain/migration/ctower-project-fence-observation-v2.schema.json",
+      "contracts/domain/migration/ctower-project-fence-observation.schema.json",
+      "contracts/domain/migration/ctower-project-fence-registry-v2.schema.json",
+      "contracts/domain/migration/ctower-project-fence-registry.schema.json",
+      "contracts/domain/migration/ctower-project-source-selection.schema.json",
+      "contracts/domain/migration/migration-boundary.schema.json",
+      "contracts/domain/migration/migration-vectors.json"
+    ],
+    "AC-MIG-02": [
+      "contracts/domain/migration/ctower-project-alias-map-v2.schema.json",
+      "contracts/domain/migration/ctower-project-alias-map.schema.json",
+      "contracts/domain/migration/ctower-project-import-correction.schema.json",
+      "contracts/domain/migration/ctower-project-import-plan-v2.schema.json",
+      "contracts/domain/migration/ctower-project-import-plan.schema.json",
+      "contracts/domain/migration/ctower-project-source-selection.schema.json",
+      "contracts/domain/migration/migration-vectors.json"
+    ],
+    "AC-MIG-03": [
+      "contracts/domain/migration/ctower-project-import-batch.schema.json",
+      "contracts/domain/migration/ctower-project-import-plan-v2.schema.json",
+      "contracts/domain/migration/ctower-project-import-plan.schema.json",
+      "contracts/domain/migration/ctower-project-import-run-v2.schema.json",
+      "contracts/domain/migration/ctower-project-import-run.schema.json",
+      "contracts/domain/migration/ctower-project-reconciliation-v2.schema.json",
+      "contracts/domain/migration/ctower-project-reconciliation.schema.json",
+      "contracts/domain/migration/ctower-project-source-link.schema.json",
+      "contracts/domain/migration/migration-vectors.json",
+      "packages/ctower-kernel/migrations/0028_i17b_importer_isolation.sql",
+      "packages/ctower-kernel/migrations/0030_i17b_migration_truth_spine.sql",
+      "packages/ctower-kernel/migrations/0031_i17b_bounded_truth_spine.sql"
+    ],
+    "AC-MIG-04": [
+      "contracts/domain/migration/ctower-project-cutover-health.schema.json",
+      "contracts/domain/migration/ctower-project-fence-observation-v2.schema.json",
+      "contracts/domain/migration/ctower-project-fence-observation.schema.json",
+      "contracts/domain/migration/ctower-project-fence-registry-v2.schema.json",
+      "contracts/domain/migration/ctower-project-fence-registry.schema.json",
+      "contracts/domain/migration/migration-vectors.json"
+    ],
+    "AC-MIG-05": [
+      "contracts/domain/migration/ctower-project-alias-map-v2.schema.json",
+      "contracts/domain/migration/ctower-project-alias-map.schema.json",
+      "contracts/domain/migration/ctower-project-export-manifest.schema.json",
+      "contracts/domain/migration/ctower-project-import-correction.schema.json",
+      "contracts/domain/migration/ctower-project-reconciliation-v2.schema.json",
+      "contracts/domain/migration/ctower-project-reconciliation.schema.json",
+      "contracts/domain/migration/ctower-project-source-link.schema.json",
+      "contracts/domain/migration/migration-vectors.json"
+    ],
     "AC-OPS-01": [
       "contracts/http/openapi.yaml",
       "contracts/observability/telemetry-context.schema.json",
@@ -200,6 +254,31 @@
       "contracts/http/openapi.yaml",
       "packages/ctower-kernel/migrations/0019_outbox_routine_health.sql"
     ],
+    "AC-PD-01": [
+      "contracts/components/checkpoint.schema.json",
+      "contracts/domain/project-delivery/project-delivery-vectors.json",
+      "contracts/domain/project-delivery/project-delivery.schema.json",
+      "packages/ctower-kernel/migrations/0027_i17a_cutover_delivery.sql",
+      "packages/ctower-kernel/migrations/0029_i17b_checkpoint_catalog_kind.sql"
+    ],
+    "AC-PD-02": [
+      "contracts/domain/project-delivery/project-delivery-vectors.json",
+      "contracts/domain/project-delivery/project-delivery.schema.json",
+      "packages/ctower-kernel/migrations/0027_i17a_cutover_delivery.sql",
+      "packages/ctower-kernel/migrations/0029_i17b_checkpoint_catalog_kind.sql"
+    ],
+    "AC-PD-04": [
+      "contracts/domain/migration/ctower-project-cutover-health.schema.json",
+      "contracts/domain/project-delivery/project-delivery-vectors.json",
+      "contracts/domain/project-delivery/project-delivery.schema.json",
+      "packages/ctower-kernel/migrations/0027_i17a_cutover_delivery.sql",
+      "packages/ctower-kernel/migrations/0029_i17b_checkpoint_catalog_kind.sql",
+      "packages/ctower-kernel/migrations/0030_i17b_migration_truth_spine.sql",
+      "packages/ctower-kernel/migrations/0031_i17b_bounded_truth_spine.sql"
+    ],
+    "AC-PD-05": [
+      "contracts/domain/project-delivery/project-delivery-vectors.json"
+    ],
     "AC-PROD-04": [
       "contracts/domain/tickets/ticket-event.schema.json",
       "packages/ctower-kernel/migrations/0002_ticket_slice.sql",
@@ -211,14 +290,57 @@
       "contracts/compatibility/matrix-result.schema.json"
     ],
     "AC-QUAL-05": [
+      "contracts/domain/migration/migration-vectors.json",
       "contracts/http/openapi.yaml"
     ],
+    "AC-SEC-01": [
+      "contracts/domain/migration/ctower-project-export-equality.schema.json",
+      "contracts/domain/migration/ctower-project-fence-registry-v2.schema.json",
+      "contracts/domain/migration/ctower-project-fence-registry.schema.json",
+      "contracts/domain/migration/ctower-project-import-run-v2.schema.json",
+      "contracts/domain/migration/ctower-project-import-run.schema.json",
+      "contracts/domain/migration/ctower-project-source-selection.schema.json",
+      "contracts/domain/migration/migration-boundary.schema.json",
+      "contracts/domain/migration/migration-vectors.json"
+    ],
     "AC-SEC-03": [
+      "contracts/domain/migration/ctower-project-alias-map-v2.schema.json",
+      "contracts/domain/migration/ctower-project-alias-map.schema.json",
+      "contracts/domain/migration/ctower-project-import-batch.schema.json",
+      "contracts/domain/migration/ctower-project-import-plan-v2.schema.json",
+      "contracts/domain/migration/ctower-project-import-plan.schema.json",
+      "contracts/domain/migration/ctower-project-import-run-v2.schema.json",
+      "contracts/domain/migration/ctower-project-import-run.schema.json",
+      "contracts/domain/migration/migration-vectors.json",
       "packages/ctower-kernel/migrations/0006_narrow_head_update_privileges.sql",
       "packages/ctower-kernel/migrations/0012_projection_runtime_role.sql",
       "packages/ctower-kernel/migrations/0015_durability_probe_role.sql",
       "packages/ctower-kernel/migrations/0017_durability_probe_schema_boundary.sql",
-      "packages/ctower-kernel/migrations/0018_durability_probe_search_path.sql"
+      "packages/ctower-kernel/migrations/0018_durability_probe_search_path.sql",
+      "packages/ctower-kernel/migrations/0028_i17b_importer_isolation.sql",
+      "packages/ctower-kernel/migrations/0030_i17b_migration_truth_spine.sql",
+      "packages/ctower-kernel/migrations/0031_i17b_bounded_truth_spine.sql"
+    ],
+    "AC-SEC-05": [
+      "contracts/domain/migration/ctower-project-alias-map-v2.schema.json",
+      "contracts/domain/migration/ctower-project-alias-map.schema.json",
+      "contracts/domain/migration/ctower-project-import-batch.schema.json",
+      "contracts/domain/migration/ctower-project-import-correction.schema.json",
+      "contracts/domain/migration/ctower-project-import-plan-v2.schema.json",
+      "contracts/domain/migration/ctower-project-import-plan.schema.json",
+      "contracts/domain/migration/ctower-project-reconciliation-v2.schema.json",
+      "contracts/domain/migration/ctower-project-reconciliation.schema.json",
+      "contracts/domain/migration/migration-boundary.schema.json",
+      "contracts/domain/migration/migration-vectors.json",
+      "packages/ctower-kernel/migrations/0028_i17b_importer_isolation.sql",
+      "packages/ctower-kernel/migrations/0030_i17b_migration_truth_spine.sql",
+      "packages/ctower-kernel/migrations/0031_i17b_bounded_truth_spine.sql"
+    ],
+    "AC-SEC-07": [
+      "contracts/domain/migration/ctower-project-export-equality.schema.json",
+      "contracts/domain/migration/ctower-project-source-selection.schema.json",
+      "contracts/domain/migration/migration-boundary.schema.json",
+      "contracts/domain/migration/migration-vectors.json"
     ],
     "AC-SEC-08": [
       "contracts/evidence/object-manifest.schema.json",
@@ -391,12 +513,47 @@
       "packages/ctower-kernel/migrations/0018_durability_probe_search_path.sql",
       "packages/ctower-kernel/migrations/0019_outbox_routine_health.sql"
     ],
+    "INV-31": [
+      "contracts/domain/migration/ctower-project-export-equality.schema.json",
+      "contracts/domain/migration/ctower-project-export-manifest.schema.json",
+      "contracts/domain/migration/ctower-project-import-batch.schema.json",
+      "contracts/domain/migration/ctower-project-import-plan-v2.schema.json",
+      "contracts/domain/migration/ctower-project-import-plan.schema.json",
+      "contracts/domain/migration/ctower-project-source-selection.schema.json",
+      "contracts/domain/migration/migration-boundary.schema.json",
+      "contracts/domain/migration/migration-vectors.json"
+    ],
+    "INV-32": [
+      "contracts/domain/migration/ctower-project-export-equality.schema.json",
+      "contracts/domain/migration/ctower-project-fence-registry-v2.schema.json",
+      "contracts/domain/migration/ctower-project-fence-registry.schema.json",
+      "contracts/domain/migration/ctower-project-import-plan-v2.schema.json",
+      "contracts/domain/migration/ctower-project-import-plan.schema.json",
+      "contracts/domain/migration/ctower-project-import-run-v2.schema.json",
+      "contracts/domain/migration/ctower-project-import-run.schema.json",
+      "contracts/domain/migration/ctower-project-source-selection.schema.json",
+      "contracts/domain/migration/migration-boundary.schema.json",
+      "contracts/domain/migration/migration-vectors.json"
+    ],
     "INV-34": [
       "contracts/domain/outbox-delivery.schema.json",
       "contracts/domain/task-management/board-view.schema.json",
       "packages/ctower-kernel/migrations/0008_board_projection.sql",
       "packages/ctower-kernel/migrations/0009_transactional_record_positions.sql",
       "packages/ctower-kernel/migrations/0019_outbox_routine_health.sql"
+    ],
+    "INV-35": [
+      "contracts/domain/migration/ctower-project-cutover-health.schema.json",
+      "contracts/domain/migration/ctower-project-fence-observation-v2.schema.json",
+      "contracts/domain/migration/ctower-project-fence-observation.schema.json",
+      "contracts/domain/migration/ctower-project-fence-registry-v2.schema.json",
+      "contracts/domain/migration/ctower-project-fence-registry.schema.json",
+      "contracts/domain/migration/ctower-project-reconciliation-v2.schema.json",
+      "contracts/domain/migration/ctower-project-reconciliation.schema.json",
+      "contracts/domain/migration/migration-vectors.json",
+      "packages/ctower-kernel/migrations/0028_i17b_importer_isolation.sql",
+      "packages/ctower-kernel/migrations/0030_i17b_migration_truth_spine.sql",
+      "packages/ctower-kernel/migrations/0031_i17b_bounded_truth_spine.sql"
     ],
     "INV-36": [
       "contracts/operations/durability-ack.schema.json",
@@ -405,6 +562,30 @@
       "packages/ctower-kernel/migrations/0014_durability_acceptance_finalization.sql",
       "packages/ctower-kernel/migrations/0016_durability_finalization_confirmation.sql",
       "packages/ctower-kernel/migrations/0019_outbox_routine_health.sql"
+    ],
+    "INV-37": [
+      "contracts/domain/migration/ctower-project-alias-map-v2.schema.json",
+      "contracts/domain/migration/ctower-project-alias-map.schema.json",
+      "contracts/domain/migration/ctower-project-export-manifest.schema.json",
+      "contracts/domain/migration/ctower-project-fence-observation-v2.schema.json",
+      "contracts/domain/migration/ctower-project-fence-observation.schema.json",
+      "contracts/domain/migration/ctower-project-fence-registry-v2.schema.json",
+      "contracts/domain/migration/ctower-project-fence-registry.schema.json",
+      "contracts/domain/migration/ctower-project-import-batch.schema.json",
+      "contracts/domain/migration/ctower-project-import-correction.schema.json",
+      "contracts/domain/migration/ctower-project-import-plan-v2.schema.json",
+      "contracts/domain/migration/ctower-project-import-plan.schema.json",
+      "contracts/domain/migration/ctower-project-import-run-v2.schema.json",
+      "contracts/domain/migration/ctower-project-import-run.schema.json",
+      "contracts/domain/migration/ctower-project-reconciliation-v2.schema.json",
+      "contracts/domain/migration/ctower-project-reconciliation.schema.json",
+      "contracts/domain/migration/ctower-project-source-link.schema.json",
+      "contracts/domain/migration/ctower-project-source-selection.schema.json",
+      "contracts/domain/migration/migration-boundary.schema.json",
+      "contracts/domain/migration/migration-vectors.json",
+      "packages/ctower-kernel/migrations/0028_i17b_importer_isolation.sql",
+      "packages/ctower-kernel/migrations/0030_i17b_migration_truth_spine.sql",
+      "packages/ctower-kernel/migrations/0031_i17b_bounded_truth_spine.sql"
     ],
     "INV-43": [
       "contracts/workflow/review-plan.schema.json",
@@ -419,6 +600,7 @@
     "INV-45": [
       "contracts/components/agent-profile.schema.json",
       "contracts/components/capability.schema.json",
+      "contracts/components/checkpoint.schema.json",
       "contracts/components/environment.schema.json",
       "contracts/components/goal.schema.json",
       "contracts/components/harness.schema.json",
@@ -456,7 +638,8 @@
     ],
     "INV-47": [
       "contracts/company/company-bundle.schema.json",
-      "packages/ctower-kernel/migrations/0024_catalog_authority.sql"
+      "packages/ctower-kernel/migrations/0024_catalog_authority.sql",
+      "packages/ctower-kernel/migrations/0029_i17b_checkpoint_catalog_kind.sql"
     ],
     "INV-48": [
       "contracts/components/environment.schema.json",
@@ -485,6 +668,21 @@
       "packs/policies/scheduling/i1-priority-aging-v1.yaml",
       "packs/workflows/engineering.software-factory/v1.yaml"
     ],
+    "INV-59": [
+      "contracts/components/checkpoint.schema.json",
+      "contracts/domain/project-delivery/project-delivery-vectors.json",
+      "contracts/domain/project-delivery/project-delivery.schema.json",
+      "packages/ctower-kernel/migrations/0027_i17a_cutover_delivery.sql"
+    ],
+    "INV-60": [
+      "contracts/domain/migration/ctower-project-cutover-health.schema.json",
+      "contracts/domain/project-delivery/project-delivery-vectors.json",
+      "contracts/domain/project-delivery/project-delivery.schema.json",
+      "packages/ctower-kernel/migrations/0027_i17a_cutover_delivery.sql",
+      "packages/ctower-kernel/migrations/0029_i17b_checkpoint_catalog_kind.sql",
+      "packages/ctower-kernel/migrations/0030_i17b_migration_truth_spine.sql",
+      "packages/ctower-kernel/migrations/0031_i17b_bounded_truth_spine.sql"
+    ],
     "SPEC#backup-restore-and-reboot-drills": [
       "contracts/operations/backup-manifest.schema.json",
       "contracts/operations/expected-source-inventory.schema.json",
@@ -497,9 +695,19 @@
     "SPEC#canonical-event-and-command-contract": [
       "contracts/domain/events/canonical-vectors.json",
       "contracts/domain/events/event-envelope.schema.json",
+      "contracts/domain/migration/ctower-project-import-batch.schema.json",
+      "contracts/domain/migration/ctower-project-import-correction.schema.json",
+      "contracts/domain/migration/ctower-project-import-plan-v2.schema.json",
+      "contracts/domain/migration/ctower-project-import-plan.schema.json",
+      "contracts/domain/migration/ctower-project-source-link.schema.json",
+      "contracts/domain/migration/migration-boundary.schema.json",
+      "contracts/domain/migration/migration-vectors.json",
       "contracts/domain/tickets/ticket-event.schema.json",
       "contracts/http/openapi.yaml",
-      "packages/ctower-kernel/migrations/0025_ticket_comment_event.sql"
+      "packages/ctower-kernel/migrations/0025_ticket_comment_event.sql",
+      "packages/ctower-kernel/migrations/0028_i17b_importer_isolation.sql",
+      "packages/ctower-kernel/migrations/0030_i17b_migration_truth_spine.sql",
+      "packages/ctower-kernel/migrations/0031_i17b_bounded_truth_spine.sql"
     ],
     "SPEC#client-acknowledgement-and-offline-behavior": [
       "contracts/http/openapi.yaml",
@@ -511,7 +719,8 @@
     ],
     "SPEC#companybundle-validate-plan-apply-and-export": [
       "contracts/company/company-bundle.schema.json",
-      "packages/ctower-kernel/migrations/0024_catalog_authority.sql"
+      "packages/ctower-kernel/migrations/0024_catalog_authority.sql",
+      "packages/ctower-kernel/migrations/0029_i17b_checkpoint_catalog_kind.sql"
     ],
     "SPEC#consistency-concurrency-and-deduplication": [
       "packages/ctower-kernel/migrations/0005_proof_verdict_sequence.sql",
@@ -557,12 +766,41 @@
     "SPEC#observability-from-day-one": [
       "contracts/observability/telemetry-context.schema.json"
     ],
+    "SPEC#one-ctower-project-source-of-truth-barrier": [
+      "contracts/domain/migration/ctower-project-alias-map-v2.schema.json",
+      "contracts/domain/migration/ctower-project-alias-map.schema.json",
+      "contracts/domain/migration/ctower-project-cutover-health.schema.json",
+      "contracts/domain/migration/ctower-project-export-equality.schema.json",
+      "contracts/domain/migration/ctower-project-export-manifest.schema.json",
+      "contracts/domain/migration/ctower-project-fence-observation-v2.schema.json",
+      "contracts/domain/migration/ctower-project-fence-observation.schema.json",
+      "contracts/domain/migration/ctower-project-fence-registry-v2.schema.json",
+      "contracts/domain/migration/ctower-project-fence-registry.schema.json",
+      "contracts/domain/migration/ctower-project-import-batch.schema.json",
+      "contracts/domain/migration/ctower-project-import-correction.schema.json",
+      "contracts/domain/migration/ctower-project-import-plan-v2.schema.json",
+      "contracts/domain/migration/ctower-project-import-plan.schema.json",
+      "contracts/domain/migration/ctower-project-import-run-v2.schema.json",
+      "contracts/domain/migration/ctower-project-import-run.schema.json",
+      "contracts/domain/migration/ctower-project-reconciliation-v2.schema.json",
+      "contracts/domain/migration/ctower-project-reconciliation.schema.json",
+      "contracts/domain/migration/ctower-project-source-link.schema.json",
+      "contracts/domain/migration/ctower-project-source-selection.schema.json",
+      "contracts/domain/migration/migration-boundary.schema.json",
+      "contracts/domain/migration/migration-vectors.json",
+      "packages/ctower-kernel/migrations/0027_i17a_cutover_delivery.sql",
+      "packages/ctower-kernel/migrations/0028_i17b_importer_isolation.sql",
+      "packages/ctower-kernel/migrations/0030_i17b_migration_truth_spine.sql",
+      "packages/ctower-kernel/migrations/0031_i17b_bounded_truth_spine.sql"
+    ],
     "SPEC#operational-health-and-degraded-behavior": [
       "contracts/http/openapi.yaml",
       "contracts/operations/health.schema.json",
       "packages/ctower-kernel/migrations/0019_outbox_routine_health.sql"
     ],
     "SPEC#persistence-authority": [
+      "contracts/domain/migration/ctower-project-import-run-v2.schema.json",
+      "contracts/domain/migration/ctower-project-import-run.schema.json",
       "contracts/domain/outbox-delivery.schema.json",
       "packages/ctower-kernel/migrations/0005_proof_verdict_sequence.sql",
       "packages/ctower-kernel/migrations/0006_narrow_head_update_privileges.sql",
@@ -577,7 +815,17 @@
       "packages/ctower-kernel/migrations/0019_outbox_routine_health.sql",
       "packages/ctower-kernel/migrations/0024_catalog_authority.sql",
       "packages/ctower-kernel/migrations/0025_ticket_comment_event.sql",
-      "packages/ctower-kernel/migrations/0026_fixed_operation_attempt_receipts.sql"
+      "packages/ctower-kernel/migrations/0026_fixed_operation_attempt_receipts.sql",
+      "packages/ctower-kernel/migrations/0028_i17b_importer_isolation.sql",
+      "packages/ctower-kernel/migrations/0030_i17b_migration_truth_spine.sql",
+      "packages/ctower-kernel/migrations/0031_i17b_bounded_truth_spine.sql"
+    ],
+    "SPEC#project-delivery-projection": [
+      "contracts/components/checkpoint.schema.json",
+      "contracts/domain/project-delivery/project-delivery-vectors.json",
+      "contracts/domain/project-delivery/project-delivery.schema.json",
+      "packages/ctower-kernel/migrations/0027_i17a_cutover_delivery.sql",
+      "packages/ctower-kernel/migrations/0029_i17b_checkpoint_catalog_kind.sql"
     ],
     "SPEC#retention-erasure-backup-and-restore": [
       "contracts/evidence/object-manifest.schema.json",
@@ -622,6 +870,7 @@
     "SPEC#universal-versionedcomponent-catalog-and-company-desired-state": [
       "contracts/components/agent-profile.schema.json",
       "contracts/components/capability.schema.json",
+      "contracts/components/checkpoint.schema.json",
       "contracts/components/environment.schema.json",
       "contracts/components/goal.schema.json",
       "contracts/components/harness.schema.json",

@@ -36,6 +36,7 @@ _KINDS = {
     "agent_profile",
     "cadence_policy",
     "capability",
+    "checkpoint",
     "environment",
     "evidence_policy",
     "execution_policy",

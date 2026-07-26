@@ -27,9 +27,10 @@ class _Operation:
     path: str
     parameters: tuple[_Parameter, ...]
     request_model: str | None
-    response_model: str
+    response_model: str | None
     problem_models: tuple[tuple[int, str], ...]
     authenticated: bool
+    refusal_only: bool
 
 
 def render_client(document: dict[str, object], contract_digest: str) -> str:
@@ -37,7 +38,7 @@ def render_client(document: dict[str, object], contract_digest: str) -> str:
     model_names = sorted(
         {
             "TelemetryContext",
-            *(operation.response_model for operation in operations),
+            *(operation.response_model for operation in operations if operation.response_model),
             *(model for operation in operations for _, model in operation.problem_models),
             *(operation.request_model for operation in operations if operation.request_model),
         }
@@ -54,7 +55,7 @@ from __future__ import annotations
 from collections.abc import Mapping
 import secrets
 from types import TracebackType
-from typing import Annotated, Protocol, Self, cast
+from typing import Annotated, NoReturn, Protocol, Self, cast
 from urllib.parse import quote
 from uuid import UUID, uuid4
 
@@ -155,6 +156,13 @@ def _response[ModelT: BaseModel](
 ) -> ModelT:
     if response.is_success:
         return model.model_validate_json(response.content)
+    _raise_problem(response, problem_models)
+
+
+def _raise_problem(
+    response: httpx.Response,
+    problem_models: Mapping[int, type[BaseModel]],
+) -> NoReturn:
     content_type = response.headers.get("content-type", "").partition(";")[0]
     if content_type != "application/problem+json":
         raise httpx.HTTPStatusError(
@@ -169,6 +177,19 @@ def _response[ModelT: BaseModel](
         )
     problem = problem_model.model_validate_json(response.content)
     raise CtowerProblemError(cast(_ProblemModel, problem))
+
+
+def _refusal(
+    response: httpx.Response,
+    problem_models: Mapping[int, type[BaseModel]],
+) -> NoReturn:
+    if response.is_success:
+        raise httpx.HTTPStatusError(
+            "refusal-only operation returned success",
+            request=response.request,
+            response=response,
+        )
+    _raise_problem(response, problem_models)
 '''
 
 
@@ -186,6 +207,9 @@ def _operations(document: dict[str, object]) -> tuple[_Operation, ...]:
             operation_id = operation.get("operationId")
             if not isinstance(operation_id, str):
                 raise TypeError(f"{method} {path} lacks operationId")
+            refusal_only = operation.get("x-ctower-refusal-only", False)
+            if not isinstance(refusal_only, bool):
+                raise TypeError(f"{operation_id} has non-boolean x-ctower-refusal-only")
             parameters = _parameters(operation, parameter_definitions)
             operations.append(
                 _Operation(
@@ -194,9 +218,10 @@ def _operations(document: dict[str, object]) -> tuple[_Operation, ...]:
                     path=path,
                     parameters=parameters,
                     request_model=_request_model(operation),
-                    response_model=_response_model(operation),
+                    response_model=_response_model(operation, refusal_only=refusal_only),
                     problem_models=_problem_models(operation, response_definitions),
                     authenticated=bool(operation.get("security")),
+                    refusal_only=refusal_only,
                 )
             )
     return tuple(sorted(operations, key=lambda item: item.operation_id))
@@ -246,14 +271,18 @@ def _request_model(operation: Mapping[str, object]) -> str | None:
     return _schema_reference(_mapping(media.get("schema"), "requestBody schema"))
 
 
-def _response_model(operation: Mapping[str, object]) -> str:
+def _response_model(operation: Mapping[str, object], *, refusal_only: bool) -> str | None:
     responses = _mapping(operation.get("responses"), "responses")
     for status, value in sorted(responses.items()):
         if not status.startswith("2"):
             continue
+        if refusal_only:
+            raise ValueError("refusal-only operation advertises a success response")
         content = _mapping(_mapping(value, f"response {status}").get("content"), "response content")
         media = _mapping(content.get("application/json"), "response application/json")
         return _schema_reference(_mapping(media.get("schema"), "response schema"))
+    if refusal_only:
+        return None
     raise ValueError("operation has no JSON success response")
 
 
@@ -317,15 +346,23 @@ def _render_method(operation: _Operation) -> str:
         arguments.append(f"            params={_query_expression(query_parameters)},")
     arguments.append(f"            headers={_headers_expression(operation, header_parameters)},")
     call = "\n".join(arguments)
-    problems = ", ".join(f"{status}: {model}" for status, model in operation.problem_models)
+    response_type, response_call = _response_render(operation)
     return f"""    @validate_call(config=ConfigDict(strict=True, arbitrary_types_allowed=True))
     def {_snake_case(operation.operation_id)}(
 {chr(10).join(signature)}
-    ) -> {operation.response_model}:
+    ) -> {response_type}:
         response = self._http.{operation.method}(
 {call}
         )
-        return _response(response, {operation.response_model}, {{{problems}}})"""
+        {response_call}"""
+
+
+def _response_render(operation: _Operation) -> tuple[str, str]:
+    problems = ", ".join(f"{status}: {model}" for status, model in operation.problem_models)
+    if operation.response_model:
+        call = f"return _response(response, {operation.response_model}, {{{problems}}})"
+        return operation.response_model, call
+    return "NoReturn", f"_refusal(response, {{{problems}}})"
 
 
 def _query_expression(parameters: list[_Parameter]) -> str:

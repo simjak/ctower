@@ -14,11 +14,12 @@ import httpx
 from pydantic import BaseModel, ValidationError
 
 from ctower_client import CtowerClient, CtowerProblemError
-from ctower_client.models import CompanyBundleExportResult, Problem
+from ctower_client.models import CompanyBundleExportResult, Problem, ProjectDeliveryView
 from ctower_client.operations import OperationSpec, SpoolPolicy, operation_for_cli
 from ctowerctl import (
     _bootstrap_commands,
     _company_commands,
+    _migration_commands,
     _ops_commands,
     _spool_commands,
     _synthetic_commands,
@@ -112,6 +113,8 @@ def _execute(
     if operation is None:
         raise ValueError("usage: command is absent from generated registry")
     credential = read_authority(authority_stream)
+    if namespace.area == "migration" and (operation.mutation or operation.refusal_only):
+        return _execute_online_migration(base_url, credential, namespace, operation)
     if operation.mutation:
         if cli_name == "synthetic run":
             return _execute_synthetic(base_url, credential, namespace, operation)
@@ -169,6 +172,21 @@ def _build_mutation(arguments: object) -> MutationPayload:
     raise ValueError("usage: unsupported mutation family")
 
 
+def _execute_online_migration(
+    base_url: str,
+    credential: str,
+    arguments: argparse.Namespace,
+    operation: OperationSpec,
+) -> tuple[BaseModel, ExitCode]:
+    """Execute one cutover write or unconditional refusal online."""
+
+    if operation.spool_policy is not SpoolPolicy.FORBIDDEN:
+        raise ValueError("usage: online migration operation has unsafe spool metadata")
+    with CtowerClient(base_url, credential=credential) as client:
+        result = _migration_commands.execute_online(arguments, client)
+    return result, ExitCode.SUCCESS
+
+
 def _execute_query(arguments: object, client: CtowerClient) -> BaseModel:
     namespace = cast("argparse.Namespace", arguments)
     area = cast(str, namespace.area)
@@ -180,6 +198,8 @@ def _execute_query(arguments: object, client: CtowerClient) -> BaseModel:
         return _ops_commands.execute_query(namespace, client)
     if area == "synthetic":
         return _synthetic_commands.execute_query(namespace, client)
+    if area in {"migration", "project"}:
+        return _migration_commands.execute_query(namespace, client)
     raise ValueError("usage: unsupported query family")
 
 
@@ -215,6 +235,13 @@ def _write_result(arguments: object, result: BaseModel, stream: TextIO) -> None:
         result, CompanyBundleExportResult
     ):
         write_text(stream, _company_commands.export_yaml(result))
+        return
+    if (
+        getattr(namespace, "cli_name", None) == "project delivery query"
+        and getattr(namespace, "output", None) == "text"
+        and isinstance(result, ProjectDeliveryView)
+    ):
+        write_text(stream, _migration_commands.delivery_text(result))
         return
     write_json(stream, result)
 

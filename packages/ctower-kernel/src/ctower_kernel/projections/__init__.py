@@ -15,6 +15,15 @@ from ctower_kernel.projections.interface import (
     Projections,
     derive_board_card,
 )
+from ctower_kernel.projections.project_delivery import (
+    CheckpointDefinition,
+    CtowerProjectCutoverHealth,
+    DeliveryFacts,
+    DeliveryState,
+    ProjectDeliveryRow,
+    ProjectDeliveryView,
+    derive_project_delivery_row,
+)
 
 __all__ = [
     "BoardCard",
@@ -22,12 +31,19 @@ __all__ = [
     "BoardLane",
     "BoardQuery",
     "BoardView",
+    "CheckpointDefinition",
     "ControlHealth",
+    "CtowerProjectCutoverHealth",
+    "DeliveryFacts",
+    "DeliveryState",
     "HealthContributor",
     "HealthContributorKey",
     "HealthDimension",
     "HealthStatus",
+    "ProjectDeliveryRow",
+    "ProjectDeliveryView",
     "ProjectionHealth",
     "Projections",
     "derive_board_card",
+    "derive_project_delivery_row",
 ]

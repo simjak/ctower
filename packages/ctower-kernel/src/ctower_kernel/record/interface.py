@@ -51,6 +51,8 @@ class PrincipalKind(StrEnum):
 
     OPERATOR = "operator"
     COMMANDER = "commander"
+    MIGRATION_IMPORTER = "migration_importer"
+    FENCE_OBSERVER = "fence_observer"
 
 
 class DurabilityState(StrEnum):

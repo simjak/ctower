@@ -8,6 +8,10 @@ from enum import StrEnum
 from typing import Protocol
 from uuid import UUID
 
+from ctower_kernel.projections.project_delivery import (
+    CtowerProjectCutoverHealth,
+    ProjectDeliveryView,
+)
 from ctower_kernel.record import Actor, DurabilityHealth
 
 __all__ = [
@@ -237,6 +241,14 @@ class _ProjectionStore(Protocol):
         self, tenant_id: UUID, durability: DurabilityHealth, *, now: datetime
     ) -> ControlHealth: ...
 
+    def cutover_health(self, actor: Actor) -> CtowerProjectCutoverHealth: ...
+
+    def project_delivery(self, actor: Actor, project_key: str) -> ProjectDeliveryView | None: ...
+
+    def reconcile_project_delivery(self, tenant_id: UUID, *, now: datetime) -> int: ...
+
+    def rebuild_project_delivery(self, tenant_id: UUID, *, now: datetime) -> int: ...
+
 
 class Projections:
     """Expose catch-up, read, and deterministic rebuild without mutation commands."""
@@ -255,6 +267,26 @@ class Projections:
 
     def health(self, actor: Actor, durability: DurabilityHealth, *, now: datetime) -> ControlHealth:
         return self._store.health(actor.tenant_id, durability, now=now)
+
+    def cutover_health(self, actor: Actor) -> CtowerProjectCutoverHealth:
+        """Read the latest append-only authority fact or the safe pre-cutover default."""
+
+        return self._store.cutover_health(actor)
+
+    def project_delivery(self, actor: Actor, project_key: str) -> ProjectDeliveryView | None:
+        """Read stored compact rows without accepting a desired status."""
+
+        return self._store.project_delivery(actor, project_key)
+
+    def reconcile_project_delivery(self, tenant_id: UUID, *, now: datetime) -> int:
+        """Reconcile changed or freshness-due rows outside request handling."""
+
+        return self._store.reconcile_project_delivery(tenant_id, now=now)
+
+    def rebuild_project_delivery(self, tenant_id: UUID, *, now: datetime) -> int:
+        """Delete and deterministically rebuild disposable Project Delivery rows."""
+
+        return self._store.rebuild_project_delivery(tenant_id, now=now)
 
 
 def derive_board_card(facts: BoardFacts) -> BoardCard:

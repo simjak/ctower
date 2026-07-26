@@ -1,0 +1,276 @@
+{
+  "$id": "https://ctower.dev/contracts/domain/migration/ctower-project-reconciliation.schema.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Exhaustive signed ctower-project reconciliation",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema",
+    "reconciliation_id",
+    "run_id",
+    "cutover_id",
+    "project_key",
+    "pinned_digests",
+    "dispositions",
+    "conservation",
+    "watermarks",
+    "target_semantic_digest",
+    "reconciled_at",
+    "review",
+    "report_digest",
+    "signature",
+    "durability_state",
+    "accepted_position"
+  ],
+  "properties": {
+    "schema": {
+      "const": "ctower.ctower-project-reconciliation/v1"
+    },
+    "reconciliation_id": {
+      "type": "string",
+      "format": "uuid"
+    },
+    "run_id": {
+      "type": "string",
+      "format": "uuid"
+    },
+    "cutover_id": {
+      "type": "string",
+      "format": "uuid"
+    },
+    "project_key": {
+      "const": "ctower"
+    },
+    "pinned_digests": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "source_selection",
+        "export_equality",
+        "alias_map",
+        "build",
+        "client",
+        "schema",
+        "operation_registry"
+      ],
+      "properties": {
+        "source_selection": {
+          "$ref": "migration-boundary.schema.json#/$defs/digest"
+        },
+        "export_equality": {
+          "$ref": "migration-boundary.schema.json#/$defs/digest"
+        },
+        "alias_map": {
+          "$ref": "migration-boundary.schema.json#/$defs/digest"
+        },
+        "build": {
+          "$ref": "migration-boundary.schema.json#/$defs/digest"
+        },
+        "client": {
+          "$ref": "migration-boundary.schema.json#/$defs/digest"
+        },
+        "schema": {
+          "$ref": "migration-boundary.schema.json#/$defs/digest"
+        },
+        "operation_registry": {
+          "$ref": "migration-boundary.schema.json#/$defs/digest"
+        }
+      }
+    },
+    "dispositions": {
+      "$ref": "#/$defs/dispositions"
+    },
+    "conservation": {
+      "$ref": "#/$defs/conservation"
+    },
+    "watermarks": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "source_native",
+        "export_native",
+        "record_position",
+        "projection_position"
+      ],
+      "properties": {
+        "source_native": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "export_native": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "record_position": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "projection_position": {
+          "type": "integer",
+          "minimum": 0
+        }
+      }
+    },
+    "target_semantic_digest": {
+      "$ref": "migration-boundary.schema.json#/$defs/digest"
+    },
+    "reconciled_at": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "review": {
+      "$ref": "migration-boundary.schema.json#/$defs/review"
+    },
+    "report_digest": {
+      "$ref": "migration-boundary.schema.json#/$defs/digest"
+    },
+    "signature": {
+      "$ref": "migration-boundary.schema.json#/$defs/detachedSignature"
+    },
+    "durability_state": {
+      "const": "durability_pending"
+    },
+    "accepted_position": {
+      "type": "null"
+    }
+  },
+  "$defs": {
+    "zero": {
+      "const": 0
+    },
+    "dispositions": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "created_ticket",
+        "alias_linked_existing",
+        "project_checkpoint_definition",
+        "decision_link",
+        "external_effect_link",
+        "artifact_linked_not_proof",
+        "provenance_only",
+        "exact_duplicate",
+        "excluded_out_of_scope",
+        "attention_required"
+      ],
+      "properties": {
+        "created_ticket": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "alias_linked_existing": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "project_checkpoint_definition": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "decision_link": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "external_effect_link": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "artifact_linked_not_proof": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "provenance_only": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "exact_duplicate": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "excluded_out_of_scope": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "attention_required": {
+          "$ref": "#/$defs/zero"
+        }
+      }
+    },
+    "conservation": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "selected_logical_items",
+        "selected_request_logical",
+        "selected_request_physical_snapshots",
+        "stable_aliases",
+        "checkpoint_definitions",
+        "unresolved_aliases",
+        "alias_forks_or_cycles",
+        "missing_relation_endpoints",
+        "forbidden_relation_cycles",
+        "unresolved_active_claims",
+        "unexpected_sources",
+        "forbidden_data_items",
+        "pass_two_new_domain_facts",
+        "pass_two_new_events",
+        "pass_two_new_outbox_rows",
+        "pass_two_record_position_delta",
+        "pass_two_projection_semantic_delta"
+      ],
+      "properties": {
+        "selected_logical_items": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "selected_request_logical": {
+          "const": 86
+        },
+        "selected_request_physical_snapshots": {
+          "const": 243
+        },
+        "stable_aliases": {
+          "const": 27
+        },
+        "checkpoint_definitions": {
+          "const": 14
+        },
+        "unresolved_aliases": {
+          "$ref": "#/$defs/zero"
+        },
+        "alias_forks_or_cycles": {
+          "$ref": "#/$defs/zero"
+        },
+        "missing_relation_endpoints": {
+          "$ref": "#/$defs/zero"
+        },
+        "forbidden_relation_cycles": {
+          "$ref": "#/$defs/zero"
+        },
+        "unresolved_active_claims": {
+          "$ref": "#/$defs/zero"
+        },
+        "unexpected_sources": {
+          "$ref": "#/$defs/zero"
+        },
+        "forbidden_data_items": {
+          "$ref": "#/$defs/zero"
+        },
+        "pass_two_new_domain_facts": {
+          "$ref": "#/$defs/zero"
+        },
+        "pass_two_new_events": {
+          "$ref": "#/$defs/zero"
+        },
+        "pass_two_new_outbox_rows": {
+          "$ref": "#/$defs/zero"
+        },
+        "pass_two_record_position_delta": {
+          "$ref": "#/$defs/zero"
+        },
+        "pass_two_projection_semantic_delta": {
+          "$ref": "#/$defs/zero"
+        }
+      }
+    }
+  }
+}

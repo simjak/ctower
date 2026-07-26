@@ -21,6 +21,8 @@ from uuid import uuid4
 
 import pytest
 
+from ._installed_bootstrap import run_installed_bootstrap_smoke
+
 __all__: tuple[str, ...] = ()
 
 ROOT = Path(__file__).parents[2]
@@ -57,13 +59,33 @@ def test_wheel_has_explicit_packages_resources_dependencies_and_scripts(
         entry_name = next(name for name in names if name.endswith(".dist-info/entry_points.txt"))
         metadata = message_from_bytes(archive.read(metadata_name))
         entry_points = archive.read(entry_name).decode("utf-8")
+        migration_manifest = json.loads(archive.read("ctower_kernel/migrations/manifest.json"))
 
     required_roots = ("ctower_api/", "ctower_client/", "ctower_kernel/", "ctowerctl/")
     assert all(any(name.startswith(root) for name in names) for root in required_roots)
     assert "ctower_contracts/schemas.json" in names
+    declared_migrations = {
+        f"ctower_kernel/migrations/{entry['path']}" for entry in migration_manifest["migrations"]
+    }
+    packaged_migrations = {
+        name
+        for name in names
+        if name.startswith("ctower_kernel/migrations/") and name.endswith(".sql")
+    }
+    assert packaged_migrations == declared_migrations
     assert not any(
         name.startswith(("tests/", "apps/", "packages/", "generated/")) for name in names
     )
+    forbidden_residue = (
+        "/.coverage",
+        "/.env",
+        "/.git",
+        "/.mypy_cache",
+        "/.pytest_cache",
+        "/.ruff_cache",
+        "/__pycache__",
+    )
+    assert not any(any(residue in f"/{name}" for residue in forbidden_residue) for name in names)
     requirements = tuple(metadata.get_all("Requires-Dist", ()))
     for dependency in ("cryptography", "keyring", "platformdirs", "SecretStorage"):
         assert any(requirement.startswith(dependency) for requirement in requirements)
@@ -96,6 +118,25 @@ def test_installed_alias_help_and_generated_resource_are_checkout_independent(
     installed_path = Path(resource.stdout.strip())
     assert installed_path.is_relative_to(installed_wheel.binary_directory.parent)
     assert not installed_path.is_relative_to(ROOT)
+
+
+def test_installed_bootstrap_api_control_worker_and_cli_use_packaged_migrations(
+    installed_wheel: _InstalledWheel,
+) -> None:
+    result = run_installed_bootstrap_smoke(
+        binary_directory=installed_wheel.binary_directory,
+        environment=installed_wheel.environment,
+        outside_checkout=installed_wheel.outside_checkout,
+    )
+
+    bootstrap = cast(dict[str, object], result["bootstrap"])
+    worker = cast(dict[str, object], result["worker"])
+    assert result["bootstrap_status"] == EXIT_TEMPORARY
+    assert bootstrap["durability_state"] == "durability_pending"
+    assert worker["tenant_count"] == 1
+    kernel_path = Path(cast(str, worker["kernel_path"]))
+    assert kernel_path.is_relative_to(installed_wheel.binary_directory.parent)
+    assert not kernel_path.is_relative_to(ROOT)
 
 
 def test_installed_read_continues_without_keyring(
@@ -168,6 +209,7 @@ def _build_wheel(workspace: Path) -> Path:
         "apps/ctower-api/src",
         "apps/ctowerctl/src",
         "generated/python",
+        "packages/ctower-kernel/migrations",
         "packages/ctower-kernel/src",
     ):
         destination = source / relative

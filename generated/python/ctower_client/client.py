@@ -1,6 +1,6 @@
 """DO NOT EDIT: generated file; regenerate from declared inputs.
 
-Authored contract digest: sha256:e1263c9e3ab91876558e63c26af7f1a2bb7e6f0ba30d5984a3499e17cd78c3e8
+Authored contract digest: sha256:e4e4901322fe1437191f8d8465ffb6e41b253ec044639cfaf8fe7554037cc55a
 """
 
 from __future__ import annotations
@@ -8,7 +8,7 @@ from __future__ import annotations
 from collections.abc import Mapping
 import secrets
 from types import TracebackType
-from typing import Annotated, Protocol, Self, cast
+from typing import Annotated, NoReturn, Protocol, Self, cast
 from urllib.parse import quote
 from uuid import UUID, uuid4
 
@@ -29,6 +29,19 @@ from ctower_client.models import (
     CompanyBundleRequest,
     CompanyBundleValidationResult,
     ControlHealth,
+    CtowerProjectAliasPlanBindRequest,
+    CtowerProjectCutoverHealth,
+    CtowerProjectEpochRefusalRequest,
+    CtowerProjectExportEqualityBindRequest,
+    CtowerProjectFenceObservationRequest,
+    CtowerProjectImportBatchRequest,
+    CtowerProjectImportBatchResult,
+    CtowerProjectImportCorrectionRequest,
+    CtowerProjectImportFinalizeRequest,
+    CtowerProjectImportRun,
+    CtowerProjectImportRunCreateRequest,
+    CtowerProjectMigrationReceipt,
+    CtowerProjectReconciliationResult,
     CustodyTransferRequest,
     EvidenceRequest,
     FreezeCriteriaRequest,
@@ -36,6 +49,7 @@ from ctower_client.models import (
     PoisonDispositionRequest,
     PriorityChangeRequest,
     Problem,
+    ProjectDeliveryView,
     ProofReceipt,
     RelationRequest,
     ResolveCloseRequest,
@@ -147,6 +161,27 @@ class CtowerClient:
         return _response(response, WorkReceipt, {401: Problem, 404: Problem, 409: Problem, 422: Problem})
 
     @validate_call(config=ConfigDict(strict=True, arbitrary_types_allowed=True))
+    def append_ctower_project_import_correction(
+        self,
+        request: CtowerProjectImportCorrectionRequest,
+        *,
+        command_id: UUID,
+    ) -> CtowerProjectMigrationReceipt:
+        response = self._http.post(
+            "/v1/migrations/ctower-project/corrections",
+            content=request.model_dump_json(),
+            headers=self._telemetry_headers(
+                self._context(command_id),
+                {
+                    **self._auth_headers(),
+                    "Content-Type": "application/json",
+                    "Idempotency-Key": str(command_id),
+                },
+            ),
+        )
+        return _response(response, CtowerProjectMigrationReceipt, {401: Problem, 409: Problem, 422: Problem})
+
+    @validate_call(config=ConfigDict(strict=True, arbitrary_types_allowed=True))
     def apply_company_bundle(
         self,
         request: CompanyBundleApplyRequest,
@@ -166,6 +201,27 @@ class CtowerClient:
             ),
         )
         return _response(response, CompanyBundleCommandResult, {401: Problem, 403: Problem, 409: Problem, 422: Problem, 503: Problem})
+
+    @validate_call(config=ConfigDict(strict=True, arbitrary_types_allowed=True))
+    def apply_ctower_project_import_batch(
+        self,
+        request: CtowerProjectImportBatchRequest,
+        *,
+        command_id: UUID,
+    ) -> CtowerProjectImportBatchResult:
+        response = self._http.post(
+            "/v1/migrations/ctower-project/import",
+            content=request.model_dump_json(),
+            headers=self._telemetry_headers(
+                self._context(command_id),
+                {
+                    **self._auth_headers(),
+                    "Content-Type": "application/json",
+                    "Idempotency-Key": str(command_id),
+                },
+            ),
+        )
+        return _response(response, CtowerProjectImportBatchResult, {401: Problem, 403: Problem, 409: Problem, 422: Problem})
 
     @validate_call(config=ConfigDict(strict=True, arbitrary_types_allowed=True))
     def apply_ticket_intent(
@@ -188,6 +244,48 @@ class CtowerClient:
             ),
         )
         return _response(response, WorkReceipt, {401: Problem, 404: Problem, 409: Problem, 422: Problem})
+
+    @validate_call(config=ConfigDict(strict=True, arbitrary_types_allowed=True))
+    def bind_ctower_project_alias_plan(
+        self,
+        request: CtowerProjectAliasPlanBindRequest,
+        *,
+        command_id: UUID,
+    ) -> CtowerProjectImportRun:
+        response = self._http.post(
+            "/v1/migrations/ctower-project/plan",
+            content=request.model_dump_json(),
+            headers=self._telemetry_headers(
+                self._context(command_id),
+                {
+                    **self._auth_headers(),
+                    "Content-Type": "application/json",
+                    "Idempotency-Key": str(command_id),
+                },
+            ),
+        )
+        return _response(response, CtowerProjectImportRun, {401: Problem, 409: Problem, 422: Problem})
+
+    @validate_call(config=ConfigDict(strict=True, arbitrary_types_allowed=True))
+    def bind_ctower_project_export_equality(
+        self,
+        request: CtowerProjectExportEqualityBindRequest,
+        *,
+        command_id: UUID,
+    ) -> CtowerProjectImportRun:
+        response = self._http.post(
+            "/v1/migrations/ctower-project/export",
+            content=request.model_dump_json(),
+            headers=self._telemetry_headers(
+                self._context(command_id),
+                {
+                    **self._auth_headers(),
+                    "Content-Type": "application/json",
+                    "Idempotency-Key": str(command_id),
+                },
+            ),
+        )
+        return _response(response, CtowerProjectImportRun, {401: Problem, 409: Problem, 422: Problem})
 
     @validate_call(config=ConfigDict(strict=True, arbitrary_types_allowed=True))
     def bootstrap_first_tenant(
@@ -257,6 +355,48 @@ class CtowerClient:
         return _response(response, WorkReceipt, {401: Problem, 403: Problem, 404: Problem, 409: Problem, 422: Problem})
 
     @validate_call(config=ConfigDict(strict=True, arbitrary_types_allowed=True))
+    def commit_ctower_project_development_epoch(
+        self,
+        request: CtowerProjectEpochRefusalRequest,
+        *,
+        command_id: UUID,
+    ) -> NoReturn:
+        response = self._http.post(
+            "/v1/migrations/ctower-project/commit-development-epoch",
+            content=request.model_dump_json(),
+            headers=self._telemetry_headers(
+                self._context(command_id),
+                {
+                    **self._auth_headers(),
+                    "Content-Type": "application/json",
+                    "Idempotency-Key": str(command_id),
+                },
+            ),
+        )
+        _refusal(response, {401: Problem, 409: Problem, 422: Problem})
+
+    @validate_call(config=ConfigDict(strict=True, arbitrary_types_allowed=True))
+    def create_ctower_project_import_run(
+        self,
+        request: CtowerProjectImportRunCreateRequest,
+        *,
+        command_id: UUID,
+    ) -> CtowerProjectImportRun:
+        response = self._http.post(
+            "/v1/migrations/ctower-project/inventory",
+            content=request.model_dump_json(),
+            headers=self._telemetry_headers(
+                self._context(command_id),
+                {
+                    **self._auth_headers(),
+                    "Content-Type": "application/json",
+                    "Idempotency-Key": str(command_id),
+                },
+            ),
+        )
+        return _response(response, CtowerProjectImportRun, {401: Problem, 409: Problem, 422: Problem})
+
+    @validate_call(config=ConfigDict(strict=True, arbitrary_types_allowed=True))
     def create_ticket(
         self,
         request: TicketCreateRequest,
@@ -291,6 +431,27 @@ class CtowerClient:
             ),
         )
         return _response(response, CompanyBundleExportResult, {401: Problem, 403: Problem, 404: Problem})
+
+    @validate_call(config=ConfigDict(strict=True, arbitrary_types_allowed=True))
+    def finalize_ctower_project_import_run(
+        self,
+        request: CtowerProjectImportFinalizeRequest,
+        *,
+        command_id: UUID,
+    ) -> CtowerProjectReconciliationResult:
+        response = self._http.post(
+            "/v1/migrations/ctower-project/reconcile",
+            content=request.model_dump_json(),
+            headers=self._telemetry_headers(
+                self._context(command_id),
+                {
+                    **self._auth_headers(),
+                    "Content-Type": "application/json",
+                    "Idempotency-Key": str(command_id),
+                },
+            ),
+        )
+        return _response(response, CtowerProjectReconciliationResult, {401: Problem, 409: Problem, 422: Problem})
 
     @validate_call(config=ConfigDict(strict=True, arbitrary_types_allowed=True))
     def freeze_proof_criteria(
@@ -350,6 +511,53 @@ class CtowerClient:
             ),
         )
         return _response(response, ControlHealth, {401: Problem})
+
+    @validate_call(config=ConfigDict(strict=True, arbitrary_types_allowed=True))
+    def get_ctower_project_cutover_health(
+        self,
+    ) -> CtowerProjectCutoverHealth:
+        response = self._http.get(
+            "/v1/migrations/ctower-project/cutover-health",
+            headers=self._telemetry_headers(
+                self._context(uuid4()),
+                {
+                    **self._auth_headers(),
+                },
+            ),
+        )
+        return _response(response, CtowerProjectCutoverHealth, {401: Problem})
+
+    @validate_call(config=ConfigDict(strict=True, arbitrary_types_allowed=True))
+    def get_ctower_project_import_run(
+        self,
+        run_id: UUID,
+    ) -> CtowerProjectImportRun:
+        response = self._http.get(
+            f"/v1/migrations/ctower-project/import-runs/{quote(str(run_id), safe='')}",
+            headers=self._telemetry_headers(
+                self._context(uuid4()),
+                {
+                    **self._auth_headers(),
+                },
+            ),
+        )
+        return _response(response, CtowerProjectImportRun, {401: Problem, 404: Problem})
+
+    @validate_call(config=ConfigDict(strict=True, arbitrary_types_allowed=True))
+    def get_project_delivery(
+        self,
+        project_key: str,
+    ) -> ProjectDeliveryView:
+        response = self._http.get(
+            f"/v1/projects/{quote(str(project_key), safe='')}/delivery",
+            headers=self._telemetry_headers(
+                self._context(uuid4()),
+                {
+                    **self._auth_headers(),
+                },
+            ),
+        )
+        return _response(response, ProjectDeliveryView, {401: Problem, 404: Problem, 422: Problem})
 
     @validate_call(config=ConfigDict(strict=True, arbitrary_types_allowed=True))
     def get_synthetic_workflow_run(
@@ -454,6 +662,27 @@ class CtowerClient:
         return _response(response, CompanyBundlePlan, {401: Problem, 403: Problem, 409: Problem, 422: Problem})
 
     @validate_call(config=ConfigDict(strict=True, arbitrary_types_allowed=True))
+    def prepare_ctower_project_cutover(
+        self,
+        request: CtowerProjectEpochRefusalRequest,
+        *,
+        command_id: UUID,
+    ) -> NoReturn:
+        response = self._http.post(
+            "/v1/migrations/ctower-project/prepare",
+            content=request.model_dump_json(),
+            headers=self._telemetry_headers(
+                self._context(command_id),
+                {
+                    **self._auth_headers(),
+                    "Content-Type": "application/json",
+                    "Idempotency-Key": str(command_id),
+                },
+            ),
+        )
+        _refusal(response, {401: Problem, 409: Problem, 422: Problem})
+
+    @validate_call(config=ConfigDict(strict=True, arbitrary_types_allowed=True))
     def record_outbox_poison_disposition(
         self,
         outbox_id: UUID,
@@ -518,6 +747,27 @@ class CtowerClient:
             ),
         )
         return _response(response, ProofReceipt, {401: Problem, 403: Problem, 404: Problem, 409: Problem, 422: Problem})
+
+    @validate_call(config=ConfigDict(strict=True, arbitrary_types_allowed=True))
+    def report_ctower_project_fence_observation(
+        self,
+        request: CtowerProjectFenceObservationRequest,
+        *,
+        command_id: UUID,
+    ) -> CtowerProjectMigrationReceipt:
+        response = self._http.post(
+            "/v1/migrations/ctower-project/fence-observations",
+            content=request.model_dump_json(),
+            headers=self._telemetry_headers(
+                self._context(command_id),
+                {
+                    **self._auth_headers(),
+                    "Content-Type": "application/json",
+                    "Idempotency-Key": str(command_id),
+                },
+            ),
+        )
+        return _response(response, CtowerProjectMigrationReceipt, {401: Problem, 403: Problem, 409: Problem, 422: Problem})
 
     @validate_call(config=ConfigDict(strict=True, arbitrary_types_allowed=True))
     def resolve_close_workflow(
@@ -689,6 +939,13 @@ def _response[ModelT: BaseModel](
 ) -> ModelT:
     if response.is_success:
         return model.model_validate_json(response.content)
+    _raise_problem(response, problem_models)
+
+
+def _raise_problem(
+    response: httpx.Response,
+    problem_models: Mapping[int, type[BaseModel]],
+) -> NoReturn:
     content_type = response.headers.get("content-type", "").partition(";")[0]
     if content_type != "application/problem+json":
         raise httpx.HTTPStatusError(
@@ -703,3 +960,16 @@ def _response[ModelT: BaseModel](
         )
     problem = problem_model.model_validate_json(response.content)
     raise CtowerProblemError(cast(_ProblemModel, problem))
+
+
+def _refusal(
+    response: httpx.Response,
+    problem_models: Mapping[int, type[BaseModel]],
+) -> NoReturn:
+    if response.is_success:
+        raise httpx.HTTPStatusError(
+            "refusal-only operation returned success",
+            request=response.request,
+            response=response,
+        )
+    _raise_problem(response, problem_models)

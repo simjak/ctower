@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import hashlib
+from typing import Literal
 from uuid import UUID
 
 from ctower_kernel.proof import (
@@ -27,7 +28,10 @@ __all__: tuple[str, ...] = ()
 def _actor(
     principal_id: UUID = AUTHOR_ID, kind: PrincipalKind = PrincipalKind.COMMANDER
 ) -> ProofActor:
-    return ProofActor(principal_id=principal_id, tenant_id=TENANT_ID, kind=kind.value)
+    proof_kind: Literal["operator", "commander"] = (
+        "operator" if kind is PrincipalKind.OPERATOR else "commander"
+    )
+    return ProofActor(principal_id=principal_id, tenant_id=TENANT_ID, kind=proof_kind)
 
 
 def test_criteria_freeze_once_and_incompatible_mutation_is_refused() -> None:

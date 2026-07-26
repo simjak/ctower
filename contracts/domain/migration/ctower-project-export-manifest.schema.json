@@ -1,0 +1,223 @@
+{
+  "$id": "https://ctower.dev/contracts/domain/migration/ctower-project-export-manifest.schema.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "type": "object",
+  "title": "Canonical ctower-project inventory and export manifest",
+  "additionalProperties": false,
+  "required": [
+    "schema",
+    "export_id",
+    "cutover_id",
+    "exporter_pass",
+    "selection_digest",
+    "created_at",
+    "canonicalization",
+    "sources",
+    "target_inventory",
+    "path_manifest_digest",
+    "semantic_export_digest",
+    "artifact_digest"
+  ],
+  "properties": {
+    "schema": {
+      "const": "ctower.ctower-project-export-manifest/v1"
+    },
+    "export_id": {
+      "type": "string",
+      "format": "uuid"
+    },
+    "cutover_id": {
+      "type": "string",
+      "format": "uuid"
+    },
+    "exporter_pass": {
+      "type": "string",
+      "enum": [
+        "export_a",
+        "export_b"
+      ]
+    },
+    "selection_digest": {
+      "$ref": "migration-boundary.schema.json#/$defs/digest"
+    },
+    "created_at": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "canonicalization": {
+      "const": "RFC8785"
+    },
+    "sources": {
+      "type": "array",
+      "minItems": 8,
+      "uniqueItems": true,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "source_key",
+          "file_identity",
+          "watermark",
+          "last_complete_offset",
+          "logical_count",
+          "physical_count",
+          "content_digest",
+          "selected_items"
+        ],
+        "properties": {
+          "source_key": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 128
+          },
+          "file_identity": {
+            "oneOf": [
+              {
+                "type": "object",
+                "additionalProperties": false,
+                "required": [
+                  "device",
+                  "inode"
+                ],
+                "properties": {
+                  "device": {
+                    "type": "integer",
+                    "minimum": 0
+                  },
+                  "inode": {
+                    "type": "integer",
+                    "minimum": 1
+                  }
+                }
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "watermark": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 512
+          },
+          "last_complete_offset": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "logical_count": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "physical_count": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "content_digest": {
+            "$ref": "migration-boundary.schema.json#/$defs/digest"
+          },
+          "selected_items": {
+            "type": "array",
+            "uniqueItems": true,
+            "items": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": [
+                "identity",
+                "positions"
+              ],
+              "properties": {
+                "identity": {
+                  "$ref": "migration-boundary.schema.json#/$defs/sourceIdentity"
+                },
+                "positions": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "migration-boundary.schema.json#/$defs/physicalPosition"
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "target_inventory": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "tenant_key",
+        "company_key",
+        "project_key",
+        "catalog_revision_digest",
+        "record_position",
+        "projection_watermark",
+        "schema_digest",
+        "build_digest",
+        "client_digest",
+        "operation_registry_digest",
+        "explicit_zero_sources",
+        "inventory_digest"
+      ],
+      "properties": {
+        "tenant_key": {
+          "const": "ctower"
+        },
+        "company_key": {
+          "const": "ctower"
+        },
+        "project_key": {
+          "const": "ctower"
+        },
+        "catalog_revision_digest": {
+          "$ref": "migration-boundary.schema.json#/$defs/digest"
+        },
+        "record_position": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "projection_watermark": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "schema_digest": {
+          "$ref": "migration-boundary.schema.json#/$defs/digest"
+        },
+        "build_digest": {
+          "$ref": "migration-boundary.schema.json#/$defs/digest"
+        },
+        "client_digest": {
+          "$ref": "migration-boundary.schema.json#/$defs/digest"
+        },
+        "operation_registry_digest": {
+          "$ref": "migration-boundary.schema.json#/$defs/digest"
+        },
+        "explicit_zero_sources": {
+          "type": "array",
+          "minItems": 3,
+          "maxItems": 3,
+          "uniqueItems": true,
+          "items": {
+            "type": "string",
+            "enum": [
+              "root_supervisor",
+              "effect_provider",
+              "runtime_provider"
+            ]
+          }
+        },
+        "inventory_digest": {
+          "$ref": "migration-boundary.schema.json#/$defs/digest"
+        }
+      }
+    },
+    "path_manifest_digest": {
+      "$ref": "migration-boundary.schema.json#/$defs/digest"
+    },
+    "semantic_export_digest": {
+      "$ref": "migration-boundary.schema.json#/$defs/digest"
+    },
+    "artifact_digest": {
+      "$ref": "migration-boundary.schema.json#/$defs/digest"
+    }
+  }
+}

@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from collections.abc import Mapping
 from datetime import UTC, datetime
-from typing import Protocol, cast
+from typing import Protocol, cast, runtime_checkable
 from uuid import UUID
 
 from fastapi.responses import JSONResponse
@@ -17,13 +17,14 @@ from ctower_kernel.telemetry import TelemetryContext
 __all__ = ["mutation_response"]
 
 
+@runtime_checkable
 class _SemanticResult(Protocol):
     def response_payload(self) -> Mapping[str, object]: ...
 
 
 def mutation_response(
     record: Record,
-    outcome: _SemanticResult | RecordProblem,
+    outcome: BaseModel | _SemanticResult | RecordProblem,
     *,
     tenant_id: UUID,
     principal_id: UUID,
@@ -47,7 +48,15 @@ def mutation_response(
         return problem_response(decision)
     payload = cast(
         dict[str, object],
-        _durability_overlay(outcome.response_payload(), decision.state.value),
+        _durability_overlay(
+            (
+                outcome.response_payload()
+                if isinstance(outcome, _SemanticResult)
+                else outcome.model_dump(mode="json", by_alias=True)
+            ),
+            decision.state.value,
+            decision.acceptance_position,
+        ),
     )
     boundary = boundary_model.model_validate_json(encoded(payload))
     if decision.accepted:
@@ -59,14 +68,20 @@ def mutation_response(
     )
 
 
-def _durability_overlay(value: object, state: str) -> object:
+def _durability_overlay(value: object, state: str, accepted_position: int | None) -> object:
     if isinstance(value, dict):
         return {
-            key: state if key == "durability_state" else _durability_overlay(item, state)
+            key: (
+                state
+                if key == "durability_state"
+                else accepted_position
+                if key == "accepted_position"
+                else _durability_overlay(item, state, accepted_position)
+            )
             for key, item in value.items()
         }
     if isinstance(value, list | tuple):
-        return [_durability_overlay(item, state) for item in value]
+        return [_durability_overlay(item, state, accepted_position) for item in value]
     return value
 
 

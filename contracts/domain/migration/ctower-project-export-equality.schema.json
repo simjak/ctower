@@ -1,0 +1,137 @@
+{
+  "$id": "https://ctower.dev/contracts/domain/migration/ctower-project-export-equality.schema.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "type": "object",
+  "title": "Signed two-process ctower-project export equality",
+  "additionalProperties": false,
+  "required": [
+    "schema",
+    "equality_id",
+    "cutover_id",
+    "selection_digest",
+    "export_a_digest",
+    "export_b_digest",
+    "result",
+    "compared_dimensions",
+    "mismatches",
+    "report_digest",
+    "review",
+    "signature"
+  ],
+  "properties": {
+    "schema": {
+      "const": "ctower.ctower-project-export-equality/v1"
+    },
+    "equality_id": {
+      "type": "string",
+      "format": "uuid"
+    },
+    "cutover_id": {
+      "type": "string",
+      "format": "uuid"
+    },
+    "selection_digest": {
+      "$ref": "migration-boundary.schema.json#/$defs/digest"
+    },
+    "export_a_digest": {
+      "$ref": "migration-boundary.schema.json#/$defs/digest"
+    },
+    "export_b_digest": {
+      "$ref": "migration-boundary.schema.json#/$defs/digest"
+    },
+    "result": {
+      "type": "string",
+      "enum": [
+        "equal",
+        "EXPORT_NONDETERMINISM",
+        "SOURCE_SELECTION_DRIFT"
+      ]
+    },
+    "compared_dimensions": {
+      "type": "array",
+      "minItems": 10,
+      "uniqueItems": true,
+      "items": {
+        "type": "string",
+        "enum": [
+          "logical_identities",
+          "physical_slice_digests",
+          "counts",
+          "byte_ranges",
+          "native_watermarks",
+          "file_identities",
+          "last_complete_offsets",
+          "path_manifest",
+          "git_refs_and_objects",
+          "github_nodes_and_checks",
+          "expected_zero_sources",
+          "target_inventory",
+          "semantic_export"
+        ]
+      }
+    },
+    "mismatches": {
+      "type": "array",
+      "uniqueItems": true,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "dimension",
+          "export_a_digest",
+          "export_b_digest"
+        ],
+        "properties": {
+          "dimension": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 128
+          },
+          "export_a_digest": {
+            "$ref": "migration-boundary.schema.json#/$defs/digest"
+          },
+          "export_b_digest": {
+            "$ref": "migration-boundary.schema.json#/$defs/digest"
+          }
+        }
+      }
+    },
+    "report_digest": {
+      "$ref": "migration-boundary.schema.json#/$defs/digest"
+    },
+    "review": {
+      "$ref": "migration-boundary.schema.json#/$defs/review"
+    },
+    "signature": {
+      "$ref": "migration-boundary.schema.json#/$defs/detachedSignature"
+    }
+  },
+  "allOf": [
+    {
+      "if": {
+        "properties": {
+          "result": {
+            "const": "equal"
+          }
+        },
+        "required": [
+          "result"
+        ]
+      },
+      "then": {
+        "properties": {
+          "mismatches": {
+            "maxItems": 0
+          }
+        }
+      },
+      "else": {
+        "properties": {
+          "mismatches": {
+            "minItems": 1
+          }
+        }
+      }
+    }
+  ]
+}

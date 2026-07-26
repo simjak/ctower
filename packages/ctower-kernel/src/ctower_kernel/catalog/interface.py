@@ -80,6 +80,7 @@ class ComponentKind(StrEnum):
     NOTIFICATION = "notification"
     INTEGRATION = "integration"
     ADAPTER = "adapter"
+    CHECKPOINT = "checkpoint"
 
 
 class ComponentLifecycle(StrEnum):

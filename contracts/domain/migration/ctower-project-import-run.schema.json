@@ -1,0 +1,224 @@
+{
+  "$id": "https://ctower.dev/contracts/domain/migration/ctower-project-import-run.schema.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "type": "object",
+  "title": "Pinned ctower-project import run",
+  "additionalProperties": false,
+  "required": [
+    "schema",
+    "run_id",
+    "cutover_id",
+    "tenant_key",
+    "project_key",
+    "state",
+    "pinned_digests",
+    "importer_binding",
+    "counts",
+    "record_watermark",
+    "projection_watermark",
+    "refusals",
+    "semantic_digest",
+    "durability_state",
+    "accepted_position"
+  ],
+  "properties": {
+    "schema": {
+      "const": "ctower.ctower-project-import-run/v1"
+    },
+    "run_id": {
+      "type": "string",
+      "format": "uuid"
+    },
+    "cutover_id": {
+      "type": "string",
+      "format": "uuid"
+    },
+    "tenant_key": {
+      "const": "ctower"
+    },
+    "project_key": {
+      "const": "ctower"
+    },
+    "state": {
+      "type": "string",
+      "enum": [
+        "created",
+        "export_equality_bound",
+        "alias_plan_bound",
+        "importing",
+        "pass_one_complete",
+        "pass_two_noop",
+        "reconciled"
+      ]
+    },
+    "pinned_digests": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "source_selection",
+        "export_equality",
+        "alias_map",
+        "import_plan",
+        "fence_registry",
+        "build",
+        "client",
+        "schema",
+        "operation_registry",
+        "reviewer_public_key"
+      ],
+      "properties": {
+        "source_selection": {
+          "$ref": "migration-boundary.schema.json#/$defs/digest"
+        },
+        "export_equality": {
+          "oneOf": [
+            {
+              "$ref": "migration-boundary.schema.json#/$defs/digest"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "alias_map": {
+          "oneOf": [
+            {
+              "$ref": "migration-boundary.schema.json#/$defs/digest"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "import_plan": {
+          "oneOf": [
+            {
+              "$ref": "migration-boundary.schema.json#/$defs/digest"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "fence_registry": {
+          "oneOf": [
+            {
+              "$ref": "migration-boundary.schema.json#/$defs/digest"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "build": {
+          "$ref": "migration-boundary.schema.json#/$defs/digest"
+        },
+        "client": {
+          "$ref": "migration-boundary.schema.json#/$defs/digest"
+        },
+        "schema": {
+          "$ref": "migration-boundary.schema.json#/$defs/digest"
+        },
+        "operation_registry": {
+          "$ref": "migration-boundary.schema.json#/$defs/digest"
+        },
+        "reviewer_public_key": {
+          "$ref": "migration-boundary.schema.json#/$defs/digest"
+        }
+      }
+    },
+    "importer_binding": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "principal_kind",
+        "credential_digest",
+        "expires_at",
+        "revoked"
+      ],
+      "properties": {
+        "principal_kind": {
+          "const": "migration_importer"
+        },
+        "credential_digest": {
+          "$ref": "migration-boundary.schema.json#/$defs/digest"
+        },
+        "expires_at": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "revoked": {
+          "type": "boolean"
+        }
+      }
+    },
+    "counts": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "planned_operations",
+        "applied_operations",
+        "replayed_operations",
+        "refused_operations"
+      ],
+      "properties": {
+        "planned_operations": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "applied_operations": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "replayed_operations": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "refused_operations": {
+          "type": "integer",
+          "minimum": 0
+        }
+      }
+    },
+    "record_watermark": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "projection_watermark": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "refusals": {
+      "type": "array",
+      "uniqueItems": true,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "code",
+          "operation_identity"
+        ],
+        "properties": {
+          "code": {
+            "type": "string",
+            "pattern": "^[A-Z][A-Z0-9_]{2,95}$"
+          },
+          "operation_identity": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 512
+          }
+        }
+      }
+    },
+    "semantic_digest": {
+      "$ref": "migration-boundary.schema.json#/$defs/digest"
+    },
+    "durability_state": {
+      "const": "durability_pending"
+    },
+    "accepted_position": {
+      "type": "null"
+    }
+  }
+}

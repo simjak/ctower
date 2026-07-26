@@ -1,0 +1,248 @@
+{
+  "$id": "https://ctower.dev/contracts/domain/migration/ctower-project-source-selection.schema.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "type": "object",
+  "title": "Reviewed ctower-project source selection",
+  "additionalProperties": false,
+  "required": [
+    "schema",
+    "selection_id",
+    "revision",
+    "cutover_scope",
+    "canonicalization",
+    "created_at",
+    "stable_item_ids",
+    "checkpoint_keys",
+    "selected_request_ids",
+    "selected_task_ids",
+    "explicit_exclusions",
+    "source_inventories",
+    "forbidden_classes",
+    "review",
+    "manifest_digest",
+    "signature"
+  ],
+  "properties": {
+    "schema": {
+      "const": "ctower.ctower-project-source-selection/v1"
+    },
+    "selection_id": {
+      "type": "string",
+      "format": "uuid"
+    },
+    "revision": {
+      "type": "integer",
+      "minimum": 1
+    },
+    "cutover_scope": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "tenant_key",
+        "company_key",
+        "project_key",
+        "repository"
+      ],
+      "properties": {
+        "tenant_key": {
+          "const": "ctower"
+        },
+        "company_key": {
+          "const": "ctower"
+        },
+        "project_key": {
+          "const": "ctower"
+        },
+        "repository": {
+          "const": "github.com/simjak/ctower"
+        }
+      }
+    },
+    "canonicalization": {
+      "const": "RFC8785"
+    },
+    "created_at": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "stable_item_ids": {
+      "type": "array",
+      "minItems": 27,
+      "maxItems": 27,
+      "uniqueItems": true,
+      "items": {
+        "type": "string",
+        "pattern": "^CT-(?:L0|I1|I2)-[0-9]{3}$"
+      }
+    },
+    "checkpoint_keys": {
+      "type": "array",
+      "minItems": 14,
+      "maxItems": 14,
+      "uniqueItems": true,
+      "items": {
+        "type": "string",
+        "pattern": "^I[12]\\.[0-9]+$"
+      }
+    },
+    "selected_request_ids": {
+      "type": "array",
+      "minItems": 86,
+      "maxItems": 86,
+      "uniqueItems": true,
+      "items": {
+        "type": "string",
+        "pattern": "^R[1-9][0-9]*$"
+      }
+    },
+    "selected_task_ids": {
+      "type": "array",
+      "maxItems": 0
+    },
+    "explicit_exclusions": {
+      "type": "array",
+      "minItems": 2,
+      "uniqueItems": true,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "source_id",
+          "reason_code"
+        ],
+        "properties": {
+          "source_id": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 256
+          },
+          "reason_code": {
+            "type": "string",
+            "enum": [
+              "reviewed_false_positive",
+              "outside_signed_baseline",
+              "forbidden_data_class",
+              "non_ctower_scope"
+            ]
+          }
+        }
+      }
+    },
+    "source_inventories": {
+      "type": "array",
+      "minItems": 8,
+      "maxItems": 16,
+      "uniqueItems": true,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "source_key",
+          "authority_class",
+          "path",
+          "whole_source_digest",
+          "whole_source_bytes",
+          "whole_source_rows",
+          "selected_logical_items",
+          "selected_physical_items",
+          "expected_zero",
+          "watermark"
+        ],
+        "properties": {
+          "source_key": {
+            "type": "string",
+            "enum": [
+              "mission_control_requests",
+              "mission_control_tasks",
+              "mission_control_project",
+              "mission_control_decisions",
+              "mission_control_coordination",
+              "git_ctower",
+              "github_ctower",
+              "ctower_target"
+            ]
+          },
+          "authority_class": {
+            "type": "string",
+            "enum": [
+              "migration_provenance",
+              "external_native_authority",
+              "target_inventory"
+            ]
+          },
+          "path": {
+            "oneOf": [
+              {
+                "$ref": "migration-boundary.schema.json#/$defs/safeRelativePath"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "whole_source_digest": {
+            "$ref": "migration-boundary.schema.json#/$defs/digest"
+          },
+          "whole_source_bytes": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "whole_source_rows": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "selected_logical_items": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "selected_physical_items": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "expected_zero": {
+            "type": "boolean"
+          },
+          "watermark": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 512
+          }
+        }
+      }
+    },
+    "forbidden_classes": {
+      "type": "array",
+      "minItems": 12,
+      "uniqueItems": true,
+      "items": {
+        "type": "string",
+        "enum": [
+          "non_ctower_scope",
+          "bulk_crew_log",
+          "raw_session_or_transcript",
+          "prompt_or_model_context",
+          "secret_or_authentication_value",
+          "pii_or_client_data",
+          "accounting_payment_tax_invoice",
+          "production_approval_effect_or_incident",
+          "large_binary",
+          "irreplaceable_or_expensive_sole_copy",
+          "derived_board_markdown",
+          "unreferenced_coordination",
+          "pass_or_done_prose_as_proof",
+          "browser_session_or_csrf",
+          "yaml_as_live_work_truth"
+        ]
+      }
+    },
+    "review": {
+      "$ref": "migration-boundary.schema.json#/$defs/review"
+    },
+    "manifest_digest": {
+      "$ref": "migration-boundary.schema.json#/$defs/digest"
+    },
+    "signature": {
+      "$ref": "migration-boundary.schema.json#/$defs/detachedSignature"
+    }
+  }
+}

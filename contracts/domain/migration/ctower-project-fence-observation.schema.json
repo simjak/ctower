@@ -1,0 +1,177 @@
+{
+  "$id": "https://ctower.dev/contracts/domain/migration/ctower-project-fence-observation.schema.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Append-only scoped legacy fence observation",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema",
+    "observation_id",
+    "run_id",
+    "cutover_id",
+    "tenant_key",
+    "project_key",
+    "registry_id",
+    "registry_revision",
+    "registry_digest",
+    "sequence",
+    "previous_observation_digest",
+    "observed_at",
+    "from_offset",
+    "to_offset",
+    "file_identity",
+    "status",
+    "reason_code",
+    "observation_digest",
+    "disables_writes",
+    "may_enable_writes"
+  ],
+  "properties": {
+    "schema": {
+      "const": "ctower.ctower-project-fence-observation/v1"
+    },
+    "observation_id": {
+      "type": "string",
+      "format": "uuid"
+    },
+    "run_id": {
+      "type": "string",
+      "format": "uuid"
+    },
+    "cutover_id": {
+      "type": "string",
+      "format": "uuid"
+    },
+    "tenant_key": {
+      "const": "ctower"
+    },
+    "project_key": {
+      "const": "ctower"
+    },
+    "registry_id": {
+      "type": "string",
+      "format": "uuid"
+    },
+    "registry_revision": {
+      "type": "integer",
+      "minimum": 1
+    },
+    "registry_digest": {
+      "$ref": "migration-boundary.schema.json#/$defs/digest"
+    },
+    "sequence": {
+      "type": "integer",
+      "minimum": 1
+    },
+    "previous_observation_digest": {
+      "oneOf": [
+        {
+          "$ref": "migration-boundary.schema.json#/$defs/digest"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "observed_at": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "from_offset": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "to_offset": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "file_identity": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "device",
+        "inode",
+        "scoped_rows_digest"
+      ],
+      "properties": {
+        "device": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "inode": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "scoped_rows_digest": {
+          "$ref": "migration-boundary.schema.json#/$defs/digest"
+        }
+      }
+    },
+    "status": {
+      "enum": [
+        "clear",
+        "detected",
+        "unknown"
+      ]
+    },
+    "reason_code": {
+      "enum": [
+        "no_scoped_append",
+        "scoped_row_appended",
+        "truncated_row",
+        "inode_replaced",
+        "file_truncated",
+        "unreadable_gap",
+        "classifier_unknown",
+        "monitor_interval_missing",
+        "registry_mismatch"
+      ]
+    },
+    "observation_digest": {
+      "$ref": "migration-boundary.schema.json#/$defs/digest"
+    },
+    "disables_writes": {
+      "type": "boolean"
+    },
+    "may_enable_writes": {
+      "const": false
+    }
+  },
+  "allOf": [
+    {
+      "if": {
+        "properties": {
+          "status": {
+            "enum": [
+              "detected",
+              "unknown"
+            ]
+          }
+        }
+      },
+      "then": {
+        "properties": {
+          "disables_writes": {
+            "const": true
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "status": {
+            "const": "clear"
+          }
+        }
+      },
+      "then": {
+        "properties": {
+          "reason_code": {
+            "const": "no_scoped_append"
+          }
+        }
+      }
+    }
+  ]
+}

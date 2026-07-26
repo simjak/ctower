@@ -162,7 +162,7 @@ def _type_expression(schema: Mapping[str, object]) -> str:
     if isinstance(reference, str):
         return _reference_name(reference)
     if "const" in schema:
-        return f"Literal[{_literal(str(schema['const']))}]"
+        return f"Literal[{_literal(schema['const'])}]"
     one_of = schema.get("oneOf")
     if isinstance(one_of, list):
         return " | ".join(_type_expression(_mapping(item, "oneOf item")) for item in one_of)
@@ -185,6 +185,8 @@ def _primitive_expression(schema: Mapping[str, object], schema_type: object) -> 
         return _integer_expression(schema)
     if schema_type == "boolean":
         return "bool"
+    if schema_type == "null":
+        return "None"
     if schema_type == "object":
         return "dict[str, object]"
     raise ValueError(f"unsupported OpenAPI schema shape: {dict(schema)}")

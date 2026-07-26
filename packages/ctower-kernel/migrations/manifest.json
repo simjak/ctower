@@ -253,6 +253,51 @@
       "forward_test": "pytest:tests/acceptance/increment-1/test_synthetic_operations.py::test_fixed_synthetic_attempt_fence_and_terminal_result_are_immutable",
       "rollback_or_forward_compensation": "Keep immutable fixed-operation attempts and terminal results readable by a receipt-aware build, or append reviewed forward compensation; never update or delete a claim, fence, or terminal semantic result.",
       "backup_checkpoint": "Before applying to a nonempty installation, capture and verify operation-job, occurrence, acceptance-confirmation, attempt, and result counts plus a database backup."
+    },
+    {
+      "path": "0027_i17a_cutover_delivery.sql",
+      "sha256": "sha256:123b9d098b29fdebd41a2383bd5bf9c90e6f262f466427738977fce60ad46e0d",
+      "minimum_service_version": "0.0.0",
+      "maximum_service_version": "0.0.0",
+      "forward_test": "pytest:tests/acceptance/increment-1/test_cutover.py::test_i17a_storage_is_append_only_and_projection_only",
+      "rollback_or_forward_compensation": "Preserve append-only cutover and checkpoint-definition facts and rebuild disposable Project Delivery rows, or append reviewed forward compensation; never delete an authority fact or manufacture a completed epoch.",
+      "backup_checkpoint": "Before a future I1.7B/C authority mutation, capture and verify cutover, definition, criterion, event, and projection counts plus a database backup; I1.7A records no live epoch."
+    },
+    {
+      "path": "0028_i17b_importer_isolation.sql",
+      "sha256": "sha256:0422eab6f90141fe444f07cd93ecf2b190be28733c45f7347c9750ecdd8e39cf",
+      "minimum_service_version": "0.0.0",
+      "maximum_service_version": "0.0.0",
+      "forward_test": "pytest:tests/modules/migration/test_postgres.py::test_complete_reviewed_two_pass_is_measured_and_partial_finalize_refuses",
+      "rollback_or_forward_compensation": "Preserve every immutable import run, credential lifecycle, batch/result, alias, source-link, relation-validity, correction, reconciliation, fence, command, event, and outbox fact; append reviewed forward compensation and never reactivate a finalized importer credential.",
+      "backup_checkpoint": "Before a nonempty installation applies this dormant importer storage, capture and verify principal, credential, ticket, relation, event, command, outbox, cutover, and migration-fact counts plus a database backup; no live cutover is authorized."
+    },
+    {
+      "path": "0029_i17b_checkpoint_catalog_kind.sql",
+      "sha256": "sha256:f7179ab7ceb166f8395a81dcc49f99aa38b299513b998238e2ec967d66f66d27",
+      "minimum_service_version": "0.0.0",
+      "maximum_service_version": "0.0.0",
+      "forward_test": "pytest:tests/acceptance/increment-1/test_checkpoint_delivery.py::test_checkpoint_bundle_materializes_all_14_definitions_atomically_and_replays",
+      "rollback_or_forward_compensation": "Keep checkpoint component revisions readable by a checkpoint-aware build or append a reviewed forward constraint supersession; never delete Catalog or Project Delivery authority facts.",
+      "backup_checkpoint": "Before applying to a nonempty installation, capture and verify the catalog_components constraint definition plus component, revision, definition, and criterion counts."
+    },
+    {
+      "path": "0030_i17b_migration_truth_spine.sql",
+      "sha256": "sha256:e74ab617b6579726ebfc9874d6a4ee72ba00820c5117577ade8f6b5c8197c4ce",
+      "minimum_service_version": "0.0.0",
+      "maximum_service_version": "0.0.0",
+      "forward_test": "pytest:tests/modules/migration/test_postgres.py::test_complete_reviewed_two_pass_is_measured_and_partial_finalize_refuses",
+      "rollback_or_forward_compensation": "Preserve verified artifacts, exhaustive plans, replay receipts, fence registries, observer bindings, importer lifecycle facts, commands, events, and outbox rows; append reviewed forward compensation and never manufacture a verified graph or reactivate a revoked importer.",
+      "backup_checkpoint": "Before applying to a nonempty installation, capture and verify migration run, credential, artifact, plan, replay, fence, command, event, and outbox counts plus a database backup; no live cutover is authorized."
+    },
+    {
+      "path": "0031_i17b_bounded_truth_spine.sql",
+      "sha256": "sha256:e40cbf8c36f5d08c00804632767348d95259d33a4da08f202d782d1efb1a7791",
+      "minimum_service_version": "0.0.0",
+      "maximum_service_version": "0.0.0",
+      "forward_test": "pytest:tests/modules/migration/test_postgres.py::test_complete_reviewed_two_pass_is_measured_and_partial_finalize_refuses",
+      "rollback_or_forward_compensation": "Preserve reviewer-key pins, stable aliases, measured pass-two snapshots, exact reconciliation bytes, canonical credential revocation, commands, events, and outbox rows; append reviewed forward compensation and never infer a pass-two or reconciliation fact.",
+      "backup_checkpoint": "Before applying to a nonempty installation, capture and verify migration run, credential, artifact, stable-alias, pass-two snapshot, reconciliation, command, event, and outbox counts plus a database backup; no live cutover is authorized."
     }
   ]
 }

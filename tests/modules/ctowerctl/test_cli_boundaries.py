@@ -18,6 +18,15 @@ from ctowerctl._company_commands import (
 from ctowerctl._company_commands import (
     query_command_names as company_queries,
 )
+from ctowerctl._migration_commands import (
+    mutation_command_names as migration_mutations,
+)
+from ctowerctl._migration_commands import (
+    query_command_names as migration_queries,
+)
+from ctowerctl._migration_commands import (
+    refusal_command_names as migration_refusals,
+)
 from ctowerctl._ops_commands import (
     mutation_command_names as ops_mutations,
 )
@@ -58,15 +67,29 @@ def test_parser_exposes_every_authored_name_without_operation_dispatch() -> None
 
 
 def test_explicit_handlers_cover_every_generated_operation_class() -> None:
-    mutations = ticket_mutations() | company_mutations() | ops_mutations() | synthetic_mutations()
-    queries = ticket_queries() | company_queries() | ops_queries() | synthetic_queries()
-    expected_mutations = {
+    mutations = (
+        ticket_mutations()
+        | company_mutations()
+        | ops_mutations()
+        | synthetic_mutations()
+        | migration_mutations()
+    )
+    queries = (
+        ticket_queries()
+        | company_queries()
+        | ops_queries()
+        | synthetic_queries()
+        | migration_queries()
+    )
+    refusals = migration_refusals()
+    expected_mutations = {name for name, operation in CLI_OPERATIONS.items() if operation.mutation}
+    expected_queries = {
         name
         for name, operation in CLI_OPERATIONS.items()
-        if operation.mutation and operation.spool_policy is SpoolPolicy.ALLOWED
+        if not operation.mutation and not operation.refusal_only
     }
-    expected_queries = {
-        name for name, operation in CLI_OPERATIONS.items() if not operation.mutation
+    expected_refusals = {
+        name for name, operation in CLI_OPERATIONS.items() if operation.refusal_only
     }
     forbidden = {
         name
@@ -74,9 +97,19 @@ def test_explicit_handlers_cover_every_generated_operation_class() -> None:
         if operation.mutation and operation.spool_policy is SpoolPolicy.FORBIDDEN
     }
 
-    assert mutations == expected_mutations
+    assert mutations == expected_mutations - {"bootstrap first-tenant"}
     assert queries == expected_queries
-    assert forbidden == {"bootstrap first-tenant"}
+    assert refusals == expected_refusals
+    assert forbidden == {
+        "bootstrap first-tenant",
+        "migration ctower-project inventory",
+        "migration ctower-project export",
+        "migration ctower-project plan",
+        "migration ctower-project import",
+        "migration ctower-project reconcile",
+        "migration ctower-project correction append",
+        "migration ctower-project fence observe",
+    }
 
 
 def test_assignment_and_custody_build_distinct_generated_requests() -> None:

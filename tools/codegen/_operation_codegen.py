@@ -21,10 +21,12 @@ class _Operation:
     method: _Method
     path: str
     request_model: str | None
-    response_model: str
+    response_model: str | None
     cli_names: tuple[str, ...]
     mutation: bool
     spool_policy: _SpoolPolicy
+    principal: str | None
+    refusal_only: bool
 
 
 def render_operations(document: dict[str, object], contract_digest: str) -> str:
@@ -72,10 +74,12 @@ class OperationSpec:
     method: Literal["GET", "POST"]
     path: str
     request_model: type[BaseModel] | None
-    response_model: type[BaseModel]
+    response_model: type[BaseModel] | None
     cli_names: tuple[str, ...]
     mutation: bool
     spool_policy: SpoolPolicy
+    principal: str | None
+    refusal_only: bool
 
 
 OPERATIONS = MappingProxyType(
@@ -123,6 +127,32 @@ def _operation(path: str, method: str, value: Mapping[str, object]) -> _Operatio
     operation_id = value.get("operationId")
     if not isinstance(operation_id, str):
         raise TypeError(f"{method} {path} lacks operationId")
+    mutation, spool = _mutation_and_spool(operation_id, value)
+    principal, refusal_only = _principal_and_refusal(
+        operation_id,
+        value,
+        mutation=mutation,
+        spool=spool,
+    )
+    return _Operation(
+        operation_id=operation_id,
+        client_method=_snake_case(operation_id),
+        method=cast(_Method, method.upper()),
+        path=path,
+        request_model=_request_model(value),
+        response_model=_response_model(value, refusal_only=refusal_only),
+        cli_names=_cli_names(operation_id, value.get("x-ctower-cli")),
+        mutation=mutation,
+        spool_policy=spool,
+        principal=principal,
+        refusal_only=refusal_only,
+    )
+
+
+def _mutation_and_spool(
+    operation_id: str,
+    value: Mapping[str, object],
+) -> tuple[bool, _SpoolPolicy]:
     mutation = value.get("x-ctower-mutation")
     if not isinstance(mutation, bool):
         raise TypeError(f"{operation_id} lacks boolean x-ctower-mutation")
@@ -131,17 +161,27 @@ def _operation(path: str, method: str, value: Mapping[str, object]) -> _Operatio
         raise ValueError(f"{operation_id} lacks exact x-ctower-spool policy")
     if not mutation and spool != "forbidden":
         raise ValueError(f"query operation {operation_id} cannot be spooled")
-    return _Operation(
-        operation_id=operation_id,
-        client_method=_snake_case(operation_id),
-        method=cast(_Method, method.upper()),
-        path=path,
-        request_model=_request_model(value),
-        response_model=_response_model(value),
-        cli_names=_cli_names(operation_id, value.get("x-ctower-cli")),
-        mutation=mutation,
-        spool_policy=cast(_SpoolPolicy, spool),
-    )
+    return mutation, cast(_SpoolPolicy, spool)
+
+
+def _principal_and_refusal(
+    operation_id: str,
+    value: Mapping[str, object],
+    *,
+    mutation: bool,
+    spool: _SpoolPolicy,
+) -> tuple[str | None, bool]:
+    refusal_only = value.get("x-ctower-refusal-only", False)
+    if not isinstance(refusal_only, bool):
+        raise TypeError(f"{operation_id} has non-boolean x-ctower-refusal-only")
+    principal = value.get("x-ctower-principal")
+    if principal is not None and (not isinstance(principal, str) or not principal):
+        raise TypeError(f"{operation_id} has invalid x-ctower-principal")
+    if refusal_only and (mutation or spool != "forbidden"):
+        raise ValueError(
+            f"refusal-only operation {operation_id} must be non-mutating and unspoolable"
+        )
+    return principal, refusal_only
 
 
 def _cli_names(operation_id: str, value: object) -> tuple[str, ...]:
@@ -161,21 +201,28 @@ def _request_model(operation: Mapping[str, object]) -> str | None:
     return _schema_reference(_mapping(media.get("schema"), "requestBody schema"))
 
 
-def _response_model(operation: Mapping[str, object]) -> str:
+def _response_model(operation: Mapping[str, object], *, refusal_only: bool) -> str | None:
     responses = _mapping(operation.get("responses"), "responses")
     for status, value in sorted(responses.items()):
         if not status.startswith("2"):
             continue
+        if refusal_only:
+            raise ValueError("refusal-only operation advertises a success response")
         response = _mapping(value, f"response {status}")
         content = _mapping(response.get("content"), f"response {status}.content")
         media = _mapping(content.get("application/json"), "response application/json")
         return _schema_reference(_mapping(media.get("schema"), "response schema"))
+    if refusal_only:
+        return None
     raise ValueError("operation has no JSON success response")
 
 
 def _entry(operation: _Operation) -> str:
     request = (
         f"_models.{operation.request_model}" if operation.request_model is not None else "None"
+    )
+    response = (
+        f"_models.{operation.response_model}" if operation.response_model is not None else "None"
     )
     cli_names = repr(operation.cli_names)
     return f"""        {json.dumps(operation.operation_id)}: OperationSpec(
@@ -184,10 +231,12 @@ def _entry(operation: _Operation) -> str:
             method={json.dumps(operation.method)},
             path={json.dumps(operation.path)},
             request_model={request},
-            response_model=_models.{operation.response_model},
+            response_model={response},
             cli_names={cli_names},
             mutation={operation.mutation!r},
             spool_policy=SpoolPolicy.{operation.spool_policy.upper()},
+            principal={operation.principal!r},
+            refusal_only={operation.refusal_only!r},
         ),"""
 
 

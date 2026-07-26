@@ -302,6 +302,8 @@ class Work:
     ) -> TicketCommandResult | RecordProblem:
         """Enforce priority policy before appending a ticket."""
 
+        if actor.kind is PrincipalKind.MIGRATION_IMPORTER:
+            return _importer_refusal(command.client_command_id)
         if command.priority not in PRIORITIES:
             return _refusal(command, "Ticket priority is outside P0/P1/P2.")
         if command.priority == "P0" and actor.kind is not PrincipalKind.OPERATOR:
@@ -322,6 +324,8 @@ class Work:
     ) -> TicketCommandResult | RecordProblem:
         """Require protected operator authority before transferring custody."""
 
+        if actor.kind is PrincipalKind.MIGRATION_IMPORTER:
+            return _importer_refusal(command.client_command_id)
         if actor.kind is not PrincipalKind.OPERATOR or not command.protected_transfer:
             return RecordProblem(
                 code="unauthorized",
@@ -372,6 +376,8 @@ class Work:
     ) -> tuple[AssignmentInterval, ...] | RecordProblem:
         """Return tenant-scoped assignment interval history."""
 
+        if actor.kind is PrincipalKind.MIGRATION_IMPORTER:
+            return _importer_refusal()
         if self._writer is None:
             raise RuntimeError("Work persistence is not configured")
         return self._writer.assignments(actor, ticket_id)
@@ -379,6 +385,8 @@ class Work:
     def readiness(self, actor: Actor, ticket_id: UUID) -> WorkReadiness | RecordProblem:
         """Return the immutable admission/blocker observation consumed by Workflow."""
 
+        if actor.kind is PrincipalKind.MIGRATION_IMPORTER:
+            return _importer_refusal()
         if self._writer is None:
             raise RuntimeError("Work persistence is not configured")
         return self._writer.readiness(actor, ticket_id)
@@ -416,6 +424,8 @@ def _refusal(command: TicketCommand, detail: str) -> RecordProblem:
 
 
 def _work_refusal(actor: Actor, command: WorkCommand) -> RecordProblem | None:
+    if actor.kind is PrincipalKind.MIGRATION_IMPORTER:
+        return _importer_refusal(command.client_command_id)
     if (
         command.expected_version < 1
         or not command.reason
@@ -431,6 +441,16 @@ def _work_refusal(actor: Actor, command: WorkCommand) -> RecordProblem | None:
     if isinstance(command, Reopen) and command.priority_policy != "carry_forward":
         return _work_problem(command, "validation-error", 422, "Unsupported priority policy")
     return None
+
+
+def _importer_refusal(command_id: UUID | None = None) -> RecordProblem:
+    return RecordProblem(
+        code="migration-capability-denied",
+        detail="The migration importer has no general Work authority.",
+        status=403,
+        title="Migration capability denied",
+        command_id=command_id,
+    )
 
 
 def _assignment_refusal(command: ChangeAssignment) -> RecordProblem | None:

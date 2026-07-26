@@ -8,7 +8,12 @@
 | Owners | Operator/CEO (product and human gates), Commander (orchestration contract), Engineering Manager (architecture and risk contract) |
 | Decision authority | [`DECISIONS.md`](DECISIONS.md) |
 
-**Implementation reality:** The ctower service described here is **target architecture**. The only verified implementation today is the legacy local Mission Control/Control Tower substrate: JSONL ledgers, coordination task/status files, `bin/mux`, `tmux -L mc`, and the local Control Tower UI. No statement in this specification should be read as evidence that the target service already exists.
+**Implementation reality:** The repository now contains a tested, pre-alpha development walking slice for
+the API, protected CLI, Record/Work/Proof/Workflow/Catalog responsibilities, deterministic control loops,
+and verifier-only recovery evidence. It is not a supported installation or deployment. Mission
+Control/Control Tower remains the writable ctower-project source until the later I1.7B/C development
+cutover work completes. I1.7A adds contracts and read-only visibility only; no migration stub response is
+cutover evidence.
 
 ## Executive summary
 
@@ -378,6 +383,10 @@ label, headline state, outcome, accountable owner, explicit `proven exit criteri
 source watermark, freshness, authorized source IDs, and derivation reasons. It has deterministic text and
 optional JSON forms; it never fabricates a completion percentage from ticket counts. Zero declared criteria
 is visibly unconfigured, not 0% and not `done`. I2.4 adds the authorized Board/Ticket drill-through.
+
+During the operator-authorized development phase, an unproven CP3-D criterion is an effective blocker.
+The I1.7 row therefore remains `blocked` with degraded confidence and retains its underlying maturity; it
+cannot become `done` merely because development cutover or API/CLI dogfood criteria pass.
 
 The I2.4 interactive row detail additionally exposes:
 
@@ -2652,6 +2661,13 @@ For the I1 ctower-project cutover, relevant Mission Control JSONL/boards, Paperc
 
 ### One ctower-project source-of-truth barrier
 
+The barrier has two explicit authority milestones. A future
+`development_single_writer` epoch may cover only reviewed public, low-value, reconstructible ctower
+engineering work and must remain visibly `CP3_D_NOT_PROVEN`. Disaster-safe authority remains blocked until
+CP3-D proves the required external acknowledgement and restore boundary. Credentials, accounting,
+production approvals/effects, incidents, client data, and irreplaceable artifacts are excluded from the
+development cohort.
+
 ```text
 inventory -> freeze relevant legacy writers -> hash/export -> reviewed dedupe/alias map
           -> idempotent restricted import -> reconcile -> atomic client rewire -> seal read-only
@@ -2667,6 +2683,12 @@ The barrier is one maintenance event, never multi-day dual write:
 6. Seal exports read-only and monitor for post-barrier legacy writes. Any write is a split-brain incident.
 
 Before rewire, rollback discards the incomplete import and unfreezes scoped legacy tools. After rewire, rollback means a compatible ctower build/restore or explicit read-only mode while clients spool; it never resumes dual writing. An omission is corrected by an authenticated provenance-bearing ctower command.
+
+Implementation is review-staged: I1.7A freezes the authority/health/read contracts, append-only storage
+shape, read-only Project Delivery fold, and online-only refusing migration stubs. I1.7B owns reviewed
+selection/export/import/reconciliation and the permanent legacy fence. I1.7C owns epoch commit and the
+issue-#1 API/CLI dogfood run. Until I1.7C, Mission Control remains the writable ctower-project source and no
+stub may claim otherwise.
 
 ## Acceptance criteria
 

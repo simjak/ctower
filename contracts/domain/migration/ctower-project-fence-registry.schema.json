@@ -1,0 +1,181 @@
+{
+  "$id": "https://ctower.dev/contracts/domain/migration/ctower-project-fence-registry.schema.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Signed scoped legacy writer fence registry",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema",
+    "registry_id",
+    "revision",
+    "previous_revision_digest",
+    "cutover_id",
+    "source_selection_digest",
+    "tenant_key",
+    "project_key",
+    "mode",
+    "selected_request_ids",
+    "selected_task_ids",
+    "direct_writers",
+    "indirect_clients",
+    "source_pointer",
+    "operation_registry_digest",
+    "created_at",
+    "registry_digest",
+    "review",
+    "signature"
+  ],
+  "properties": {
+    "schema": {
+      "const": "ctower.ctower-project-fence-registry/v1"
+    },
+    "registry_id": {
+      "type": "string",
+      "format": "uuid"
+    },
+    "revision": {
+      "type": "integer",
+      "minimum": 1
+    },
+    "previous_revision_digest": {
+      "oneOf": [
+        {
+          "$ref": "migration-boundary.schema.json#/$defs/digest"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "cutover_id": {
+      "type": "string",
+      "format": "uuid"
+    },
+    "source_selection_digest": {
+      "$ref": "migration-boundary.schema.json#/$defs/digest"
+    },
+    "tenant_key": {
+      "const": "ctower"
+    },
+    "project_key": {
+      "const": "ctower"
+    },
+    "mode": {
+      "enum": [
+        "synthetic_dormant",
+        "legacy_writable",
+        "development_single_writer"
+      ]
+    },
+    "selected_request_ids": {
+      "type": "array",
+      "minItems": 86,
+      "maxItems": 86,
+      "uniqueItems": true,
+      "items": {
+        "type": "string",
+        "pattern": "^R[1-9][0-9]*$"
+      }
+    },
+    "selected_task_ids": {
+      "type": "array",
+      "maxItems": 0
+    },
+    "direct_writers": {
+      "type": "array",
+      "minItems": 3,
+      "uniqueItems": true,
+      "items": {
+        "$ref": "#/$defs/client"
+      }
+    },
+    "indirect_clients": {
+      "type": "array",
+      "minItems": 1,
+      "uniqueItems": true,
+      "items": {
+        "$ref": "#/$defs/client"
+      }
+    },
+    "source_pointer": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "path",
+        "device",
+        "inode",
+        "last_complete_offset",
+        "scoped_rows_digest"
+      ],
+      "properties": {
+        "path": {
+          "$ref": "migration-boundary.schema.json#/$defs/safeRelativePath"
+        },
+        "device": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "inode": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "last_complete_offset": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "scoped_rows_digest": {
+          "$ref": "migration-boundary.schema.json#/$defs/digest"
+        }
+      }
+    },
+    "operation_registry_digest": {
+      "$ref": "migration-boundary.schema.json#/$defs/digest"
+    },
+    "created_at": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "registry_digest": {
+      "$ref": "migration-boundary.schema.json#/$defs/digest"
+    },
+    "review": {
+      "$ref": "migration-boundary.schema.json#/$defs/review"
+    },
+    "signature": {
+      "$ref": "migration-boundary.schema.json#/$defs/detachedSignature"
+    }
+  },
+  "$defs": {
+    "client": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "client_id",
+        "path",
+        "executable_digest",
+        "scope_behavior"
+      ],
+      "properties": {
+        "client_id": {
+          "type": "string",
+          "pattern": "^[a-z][a-z0-9._-]{2,95}$"
+        },
+        "path": {
+          "$ref": "migration-boundary.schema.json#/$defs/safeRelativePath"
+        },
+        "executable_digest": {
+          "$ref": "migration-boundary.schema.json#/$defs/digest"
+        },
+        "scope_behavior": {
+          "enum": [
+            "deny_scoped_mutation",
+            "route_scoped_ticket_create",
+            "exclude_scoped_rows",
+            "frozen_legacy_mirror",
+            "observe_only"
+          ]
+        }
+      }
+    }
+  }
+}

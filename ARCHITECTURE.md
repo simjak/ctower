@@ -484,6 +484,12 @@ a source active before the first associated grant/effect. Ordinary reads and all
 while any activated source is absent or unreconciled; quarantine remains degraded evidence and never turns
 absence into restore success.
 
+D24 permits an earlier, narrower `development_single_writer` milestone for reviewed reconstructible ctower
+engineering data only. It is always labeled `CP3_D_NOT_PROVEN`; unknown fence, integrity, source, or
+projection state disables writes. It excludes credentials, accounting, production authority/effects,
+incidents, client data, and irreplaceable artifacts. The disaster-safe milestone and I1.7 completion still
+require the full acknowledgement and restore evidence above.
+
 The cutover is therefore ordered:
 
 ```text
@@ -498,6 +504,16 @@ prove acceptance + backup + isolated restore
 
 There is no dual-write period. After rewire, rollback means a compatible ctower build/restore or explicit
 read-only/spool mode, never restarting legacy mutation.
+
+The reviewed import plan pins each checkpoint key, Catalog revision, definition/content digest, and
+ordered-criteria digest. Pass two and final reconciliation derive the latest Catalog identity independently
+and require exact equality. Final reconciliation acquires the scoped Project Delivery writer fence before
+its serializable snapshot, then locks every run-bound ticket in deterministic order through the
+reconciliation commit; Catalog activation and projection rebuild/reconcile share that fence.
+
+I1.7A installs only the contracts, append-only storage shape, read-only projection fold, generated query
+path, and refusing online migration stubs. I1.7B owns import and the legacy fence; I1.7C owns the epoch and
+dogfood proof. No I1.7A process rewires a writer.
 
 ## Build sequence and earned Seams
 

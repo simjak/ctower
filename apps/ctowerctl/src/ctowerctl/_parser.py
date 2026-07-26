@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import argparse
 import ipaddress
+import re
 from collections.abc import Sequence
 from datetime import datetime
 from pathlib import Path
@@ -24,6 +25,7 @@ __all__: tuple[str, ...] = ()
 _ASSIGNMENT_KINDS = ("current_assignee", "stage_owner", "reviewer")
 _BLOCKER_KINDS = ("dependency", "operator_action", "policy", "resource", "technical")
 _SPOOL_STATES = ("pending", "accepted_archive", "quarantine")
+_SHA256_DIGEST = re.compile(r"^sha256:[0-9a-f]{64}$")
 _AUTHORED_COMMAND_NAMES = frozenset(
     {
         "bootstrap first-tenant",
@@ -59,6 +61,18 @@ _AUTHORED_COMMAND_NAMES = frozenset(
         "company bundle export",
         "synthetic query",
         "synthetic run",
+        "migration ctower-project inventory",
+        "migration ctower-project export",
+        "migration ctower-project plan",
+        "migration ctower-project import",
+        "migration ctower-project reconcile",
+        "migration ctower-project run get",
+        "migration ctower-project correction append",
+        "migration ctower-project fence observe",
+        "migration ctower-project prepare",
+        "migration ctower-project commit-development-epoch",
+        "migration ctower-project verify",
+        "project delivery query",
     }
 )
 
@@ -94,6 +108,8 @@ def _parser() -> argparse.ArgumentParser:
     _ops_parser(areas.add_parser("ops"))
     _company_parser(areas.add_parser("company"))
     _synthetic_parser(areas.add_parser("synthetic"))
+    _migration_parser(areas.add_parser("migration"))
+    _project_parser(areas.add_parser("project"))
     _spool_parser(areas.add_parser("spool"))
     return parser
 
@@ -392,6 +408,58 @@ def _synthetic_parser(parser: argparse.ArgumentParser) -> None:
     query.add_argument("run_id", type=UUID)
 
 
+def _migration_parser(parser: argparse.ArgumentParser) -> None:
+    projects = parser.add_subparsers(dest="subject", required=True, parser_class=_Parser)
+    actions = projects.add_parser("ctower-project").add_subparsers(
+        dest="migration_action", required=True, parser_class=_Parser
+    )
+    for name in (
+        "inventory",
+        "export",
+        "plan",
+        "import",
+        "reconcile",
+        "prepare",
+        "commit-development-epoch",
+    ):
+        phase = actions.add_parser(name)
+        phase.set_defaults(cli_name=f"migration ctower-project {name}")
+        _command_id(phase)
+        phase.add_argument("--request-file", required=True, type=Path)
+    run = actions.add_parser("run").add_subparsers(
+        dest="run_action", required=True, parser_class=_Parser
+    )
+    run_get = run.add_parser("get")
+    run_get.set_defaults(cli_name="migration ctower-project run get")
+    run_get.add_argument("run_id", type=UUID)
+    correction = actions.add_parser("correction").add_subparsers(
+        dest="correction_action", required=True, parser_class=_Parser
+    )
+    correction_append = correction.add_parser("append")
+    correction_append.set_defaults(cli_name="migration ctower-project correction append")
+    _command_id(correction_append)
+    correction_append.add_argument("--request-file", required=True, type=Path)
+    fence = actions.add_parser("fence").add_subparsers(
+        dest="fence_action", required=True, parser_class=_Parser
+    )
+    fence_observe = fence.add_parser("observe")
+    fence_observe.set_defaults(cli_name="migration ctower-project fence observe")
+    _command_id(fence_observe)
+    fence_observe.add_argument("--request-file", required=True, type=Path)
+    actions.add_parser("verify").set_defaults(cli_name="migration ctower-project verify")
+
+
+def _project_parser(parser: argparse.ArgumentParser) -> None:
+    subjects = parser.add_subparsers(dest="subject", required=True, parser_class=_Parser)
+    actions = subjects.add_parser("delivery").add_subparsers(
+        dest="delivery_action", required=True, parser_class=_Parser
+    )
+    query = actions.add_parser("query")
+    query.set_defaults(cli_name="project delivery query")
+    query.add_argument("project_key", choices=("ctower",))
+    query.add_argument("--output", choices=("text", "json"), default="text")
+
+
 def _spool_parser(parser: argparse.ArgumentParser) -> None:
     actions = parser.add_subparsers(dest="action", required=True, parser_class=_Parser)
     actions.add_parser("status").set_defaults(local_command="spool status")
@@ -459,6 +527,14 @@ def _aware_datetime(value: str) -> datetime:
     if parsed.tzinfo is None:
         raise argparse.ArgumentTypeError("timestamp must include a UTC offset")
     return parsed
+
+
+def _sha256_digest(value: str) -> str:
+    if _SHA256_DIGEST.fullmatch(value) is None:
+        raise argparse.ArgumentTypeError(
+            "digest must be 'sha256:' followed by exactly 64 lowercase hex digits"
+        )
+    return value
 
 
 def _safe_base_url(value: str) -> str:

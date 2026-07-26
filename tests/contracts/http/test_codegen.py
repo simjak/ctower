@@ -25,7 +25,7 @@ from tools.codegen.generator import CodegenError, check, write
 
 ROOT = Path(__file__).parents[3]
 __all__: tuple[str, ...] = ()
-_EXPECTED_OPERATION_COUNT = 27
+_EXPECTED_OPERATION_COUNT = 39
 
 
 class _MutatedClient(Protocol):
@@ -74,6 +74,7 @@ def test_generated_client_is_owned_and_byte_stable() -> None:
         "generated/python/ctower_client/models.py",
         "generated/python/ctower_client/operations.py",
         "generated/python/ctower_contracts/__init__.py",
+        "generated/python/ctower_contracts/__main__.py",
         "generated/python/ctower_contracts/catalog.py",
         "generated/python/ctower_contracts/schemas.json",
     }
@@ -96,6 +97,7 @@ def test_generated_python_carries_do_not_edit_notice() -> None:
         "ctower_client/models.py",
         "ctower_client/operations.py",
         "ctower_contracts/__init__.py",
+        "ctower_contracts/__main__.py",
         "ctower_contracts/catalog.py",
     }
     for path in paths:
@@ -128,6 +130,8 @@ def test_generated_operation_registry_is_the_exact_authored_replay_allowlist() -
                 cli_names,
                 operation["x-ctower-mutation"],
                 operation["x-ctower-spool"],
+                operation.get("x-ctower-principal"),
+                operation.get("x-ctower-refusal-only", False),
             )
 
     with _generated_package(ROOT):
@@ -137,10 +141,12 @@ def test_generated_operation_registry_is_the_exact_authored_replay_allowlist() -
                 spec.method,
                 spec.path,
                 spec.request_model.__name__ if spec.request_model is not None else None,
-                spec.response_model.__name__,
+                spec.response_model.__name__ if spec.response_model is not None else None,
                 spec.cli_names,
                 spec.mutation,
                 spec.spool_policy.value,
+                spec.principal,
+                spec.refusal_only,
             )
             for operation_id, spec in generated.OPERATIONS.items()
         }
@@ -161,6 +167,10 @@ def test_generated_runtime_contracts_validate_offline_and_are_defensive() -> Non
         assert generated.schema_for("ctower.company-bundle/v1")["title"] != "mutated caller copy"
         generated.validator_for("ctower.company-bundle/v1").validate(payload)
         assert generated.schema_for("ctower.unknown/v1") is None
+        resources = json.loads(
+            (ROOT / "generated/python/ctower_contracts/schemas.json").read_text(encoding="utf-8")
+        )
+        assert generated.verify_all() == len(resources["resources"])
 
 
 @pytest.mark.parametrize(
@@ -217,9 +227,15 @@ def _boundary_name(value: object) -> str | None:
     return schema["$ref"].removeprefix("#/components/schemas/")
 
 
-def _success_boundary(operation: dict[str, object]) -> str:
+def _success_boundary(operation: dict[str, object]) -> str | None:
     responses = cast(dict[str, dict[str, object]], operation["responses"])
-    response = next(value for status, value in sorted(responses.items()) if status.startswith("2"))
+    response = next(
+        (value for status, value in sorted(responses.items()) if status.startswith("2")),
+        None,
+    )
+    if response is None:
+        assert operation.get("x-ctower-refusal-only") is True
+        return None
     content = cast(dict[str, object], response["content"])
     media = cast(dict[str, object], content["application/json"])
     schema = cast(dict[str, str], media["schema"])
@@ -295,6 +311,94 @@ def test_generated_client_exposes_proof_and_workflow_commands() -> None:
     assert "def record_proof_verdict(" in client
     assert "def transition_workflow(" in client
     assert "def resolve_close_workflow(" in client
+
+
+def test_generated_client_exposes_only_explicit_i1_7b_methods_and_refusals() -> None:
+    client = (ROOT / "generated/python/ctower_client/client.py").read_text(encoding="utf-8")
+
+    for method in (
+        "create_ctower_project_import_run",
+        "bind_ctower_project_export_equality",
+        "bind_ctower_project_alias_plan",
+        "apply_ctower_project_import_batch",
+        "finalize_ctower_project_import_run",
+        "get_ctower_project_import_run",
+        "append_ctower_project_import_correction",
+        "report_ctower_project_fence_observation",
+        "prepare_ctower_project_cutover",
+        "commit_ctower_project_development_epoch",
+    ):
+        assert f"def {method}(" in client
+    assert "dispatch_operation" not in client
+    assert "def request(" not in client
+    assert ") -> NoReturn:" in client
+
+
+def test_generated_import_union_rejects_unknown_drift_and_cross_project() -> None:
+    with _generated_package(ROOT) as generated:
+        identity = {
+            "namespace": "mission-control:request",
+            "immutable_source_id": "R325",
+            "source_version_or_digest": "line:1",
+            "operation_kind": "ticket_seed",
+            "planned_target_ref": "new_ticket",
+            "command_id": uuid4(),
+        }
+        source = {
+            "namespace": "mission-control:request",
+            "immutable_source_id": "R325",
+            "source_version": "line:1",
+            "source_digest": "sha256:" + ("0" * 64),
+        }
+        payload = {
+            "operation": "ticket_seed",
+            "identity": identity,
+            "project_key": "ctower",
+            "priority": "P2",
+            "title": "Synthetic import",
+            "source": source,
+            "initial_commander_custodian_id": uuid4(),
+        }
+        generated.CtowerProjectTicketSeedOperation.model_validate(payload)
+        for invalid in (
+            {**payload, "proof": {"verdict": "passed"}},
+            {**payload, "project_key": "other"},
+            {**payload, "operation": "workflow_transition"},
+        ):
+            with pytest.raises(ValidationError):
+                generated.CtowerProjectTicketSeedOperation.model_validate(invalid)
+
+
+def test_refusal_only_generated_method_raises_typed_i1_7c_problem() -> None:
+    with _generated_package(ROOT) as generated:
+        client = generated.CtowerClient("http://contract.invalid", credential="opaque")
+        request = generated.CtowerProjectEpochRefusalRequest(
+            cutover_id=uuid4(),
+            run_id=uuid4(),
+            reconciliation_digest="sha256:" + ("0" * 64),
+            fence_registry_digest="sha256:" + ("1" * 64),
+        )
+
+        def handler(_http_request: httpx.Request) -> httpx.Response:
+            return httpx.Response(
+                409,
+                headers={"content-type": "application/problem+json"},
+                json={
+                    "code": "i1-7c-required",
+                    "detail": "Live epoch authority is not active",
+                    "status": 409,
+                    "title": "I1.7C required",
+                    "type": "https://ctower.dev/problems/i1-7c-required",
+                },
+            )
+
+        client._http = httpx.Client(
+            transport=httpx.MockTransport(handler), base_url="http://contract.invalid"
+        )
+        with pytest.raises(generated.CtowerProblemError) as raised:
+            client.prepare_ctower_project_cutover(request, command_id=uuid4())
+        assert raised.value.problem.code == "i1-7c-required"
+        client.close()
 
 
 def test_contract_semantics_drive_generated_model_constraints_and_client_paths() -> None:

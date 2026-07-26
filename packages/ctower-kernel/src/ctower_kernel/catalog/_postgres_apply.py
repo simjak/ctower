@@ -10,6 +10,7 @@ from uuid import UUID
 import psycopg
 
 from ctower_kernel.catalog._canonical import normalized_bundle
+from ctower_kernel.catalog._checkpoint_sql import materialize_checkpoints
 from ctower_kernel.catalog._postgres_activation import insert_activation_facts
 from ctower_kernel.catalog._postgres_events import catalog_events
 from ctower_kernel.catalog._postgres_read import ActiveCatalog, load_active_catalog
@@ -29,7 +30,11 @@ from ctower_kernel.catalog.object_interface import CatalogObjectError
 from ctower_kernel.catalog.service import CatalogPayloadStager, CatalogPolicy
 from ctower_kernel.objects import ObjectStore
 from ctower_kernel.record import Actor, RecordProblem
-from ctower_kernel.record.transaction import RecordTransaction, authority_connection
+from ctower_kernel.record.transaction import (
+    RecordTransaction,
+    authority_connection,
+    project_delivery_scope_transaction,
+)
 from ctower_kernel.telemetry import TelemetryContext
 
 __all__: tuple[str, ...] = ()
@@ -49,31 +54,33 @@ def apply_bundle(
     telemetry: TelemetryContext,
 ) -> CompanyBundleCommandResult | CatalogProblem:
     with authority_connection(dsn) as connection:
-        connection.execute("SET TRANSACTION ISOLATION LEVEL SERIALIZABLE")
+        connection.autocommit = True
         connection.execute("SET ROLE ctower_svc")
-        transaction = RecordTransaction(connection)
-        reserved = _reserve_or_replay(
-            transaction,
-            actor,
-            command,
-            request_digest,
-            now,
-        )
-        if reserved is not None:
-            return reserved
-        return _apply_reserved_bundle(
-            connection,
-            transaction,
-            actor,
-            tenant_key,
-            command,
-            policy,
-            stager,
-            store,
-            request_digest=request_digest,
-            now=now,
-            telemetry=telemetry,
-        )
+        with project_delivery_scope_transaction(connection, actor.tenant_id, "ctower"):
+            connection.execute("SET TRANSACTION ISOLATION LEVEL SERIALIZABLE")
+            transaction = RecordTransaction(connection)
+            reserved = _reserve_or_replay(
+                transaction,
+                actor,
+                command,
+                request_digest,
+                now,
+            )
+            if reserved is not None:
+                return reserved
+            return _apply_reserved_bundle(
+                connection,
+                transaction,
+                actor,
+                tenant_key,
+                command,
+                policy,
+                stager,
+                store,
+                request_digest=request_digest,
+                now=now,
+                telemetry=telemetry,
+            )
 
 
 def _apply_reserved_bundle(
@@ -194,6 +201,7 @@ def _commit_bundle(
         result=result,
         now=now,
     )
+    materialize_checkpoints(connection, actor, bundle, prepared, now=now)
     return result
 
 

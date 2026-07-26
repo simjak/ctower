@@ -208,6 +208,16 @@ This is an acceptance target, not current behavior.
 
 **Stable work:** `CT-I1-007`, `CT-I1-008`.
 
+Deliver this checkpoint in three reviewable parts without changing its final exit contract:
+
+- **I1.7A:** development-only authority truth, cutover-health and Project Delivery contracts, generated
+  read clients, minimal append-only storage, a pure read-only fold, and online-only migration stubs that
+  refuse until implementation exists.
+- **I1.7B:** reviewed source selection, deterministic export/import, exact aliases and reconciliation, and
+  the permanent scope-aware legacy fence.
+- **I1.7C:** commit the narrow reconstructible-data development epoch and run issue #1 through ordinary
+  API/CLI facts. The row remains CP3-D-blocked/degraded.
+
 Only after acknowledged durability, isolated restore, API/protected CLI, and the four-stage fixture pass:
 
 ```text
@@ -222,6 +232,10 @@ There is no tailer or dual-write interval. The importer uses the generated HTTP 
 proof, gates, effects, delivery, resolution, or closure. Before rewire, rollback may discard the incomplete
 import and unfreeze scoped legacy tools. After rewire, rollback is a compatible ctower restore/build or
 explicit read-only/spool mode; legacy mutation never resumes.
+
+The development epoch does not satisfy the disaster-safe authority criterion. It excludes credentials,
+accounting, production authority/effects, incidents, client data, and irreplaceable artifacts. CP3-D
+promotion remains a later gate; I1.7A contracts or stubs establish no writer cutover.
 
 The same checkpoint establishes only the hierarchy needed to dogfood project delivery:
 

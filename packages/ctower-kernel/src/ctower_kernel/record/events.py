@@ -17,6 +17,7 @@ from ctower_kernel.record.catalog_events import (
     CatalogComponentReference,
     CatalogEventPayload,
 )
+from ctower_kernel.record.migration_events import MigrationChangedPayload
 from ctower_kernel.record.ticket_events import (
     CustodyTransferredPayload,
     TicketCommentAddedPayload,
@@ -38,6 +39,7 @@ __all__ = [
     "EventEnvelope",
     "EventKind",
     "EventOrigin",
+    "MigrationChangedPayload",
     "PoisonDispositionRecordedPayload",
     "ProofChangedPayload",
     "RoutineOccurrenceRecordedPayload",
@@ -64,12 +66,14 @@ class EventKind(StrEnum):
     WORK_CHANGED = "work.changed"
     ROUTINE_OCCURRENCE_RECORDED = "routine.occurrence_recorded"
     POISON_DISPOSITION_RECORDED = "attention.poison_disposition_recorded"
+    MIGRATION_CHANGED = "migration.changed"
 
 
 class EventOrigin(StrEnum):
     API = "api"
     BOOTSTRAP = "bootstrap"
     CONTROL_WORKER = "control_worker"
+    MIGRATION_IMPORTER = "migration_importer"
 
 
 _STREAM_PREFIXES = {
@@ -79,6 +83,7 @@ _STREAM_PREFIXES = {
     EventKind.PROOF_CHANGED: "proof",
     EventKind.ROUTINE_OCCURRENCE_RECORDED: "routine-occurrence",
     EventKind.WORKFLOW_CHANGED: "workflow",
+    EventKind.MIGRATION_CHANGED: "migration",
 }
 _DIGEST_BYTES = 32
 _MAX_UTC_OFFSET_SECONDS = 64800
@@ -289,6 +294,7 @@ type EventPayload = (
     | WorkChangedPayload
     | RoutineOccurrenceRecordedPayload
     | PoisonDispositionRecordedPayload
+    | MigrationChangedPayload
 )
 
 
@@ -357,29 +363,39 @@ def ticket_payload_from_mapping(
     return _ticket_payload_from_mapping(kind.value, payload)
 
 
-_EVENT_VARIANTS: dict[EventKind, tuple[type[object], EventOrigin]] = {
-    EventKind.BOOTSTRAP_CREATED: (BootstrapCreatedPayload, EventOrigin.BOOTSTRAP),
-    EventKind.TICKET_CREATED: (TicketCreatedPayload, EventOrigin.API),
-    EventKind.CUSTODY_TRANSFERRED: (CustodyTransferredPayload, EventOrigin.API),
-    EventKind.TICKET_COMMENT_ADDED: (TicketCommentAddedPayload, EventOrigin.API),
+_EVENT_VARIANTS: dict[EventKind, tuple[type[object], frozenset[EventOrigin]]] = {
+    EventKind.BOOTSTRAP_CREATED: (BootstrapCreatedPayload, frozenset({EventOrigin.BOOTSTRAP})),
+    EventKind.TICKET_CREATED: (
+        TicketCreatedPayload,
+        frozenset({EventOrigin.API, EventOrigin.MIGRATION_IMPORTER}),
+    ),
+    EventKind.CUSTODY_TRANSFERRED: (CustodyTransferredPayload, frozenset({EventOrigin.API})),
+    EventKind.TICKET_COMMENT_ADDED: (TicketCommentAddedPayload, frozenset({EventOrigin.API})),
     EventKind.CATALOG_COMPONENT_PUBLISHED: (
         CatalogComponentPublishedPayload,
-        EventOrigin.API,
+        frozenset({EventOrigin.API}),
     ),
     EventKind.CATALOG_BUNDLE_ACTIVATED: (
         CatalogBundleActivatedPayload,
-        EventOrigin.API,
+        frozenset({EventOrigin.API}),
     ),
-    EventKind.PROOF_CHANGED: (ProofChangedPayload, EventOrigin.API),
-    EventKind.WORKFLOW_CHANGED: (WorkflowChangedPayload, EventOrigin.API),
-    EventKind.WORK_CHANGED: (WorkChangedPayload, EventOrigin.API),
+    EventKind.PROOF_CHANGED: (ProofChangedPayload, frozenset({EventOrigin.API})),
+    EventKind.WORKFLOW_CHANGED: (WorkflowChangedPayload, frozenset({EventOrigin.API})),
+    EventKind.WORK_CHANGED: (
+        WorkChangedPayload,
+        frozenset({EventOrigin.API, EventOrigin.MIGRATION_IMPORTER}),
+    ),
     EventKind.ROUTINE_OCCURRENCE_RECORDED: (
         RoutineOccurrenceRecordedPayload,
-        EventOrigin.CONTROL_WORKER,
+        frozenset({EventOrigin.CONTROL_WORKER}),
     ),
     EventKind.POISON_DISPOSITION_RECORDED: (
         PoisonDispositionRecordedPayload,
-        EventOrigin.API,
+        frozenset({EventOrigin.API}),
+    ),
+    EventKind.MIGRATION_CHANGED: (
+        MigrationChangedPayload,
+        frozenset({EventOrigin.API, EventOrigin.MIGRATION_IMPORTER}),
     ),
 }
 
@@ -387,11 +403,11 @@ _EVENT_VARIANTS: dict[EventKind, tuple[type[object], EventOrigin]] = {
 def _validate_variant(event: EventEnvelope) -> None:
     if not isinstance(event.kind, EventKind) or not isinstance(event.origin, EventOrigin):
         raise TypeError("event kind and origin must use authored enums")
-    expected_payload, expected_origin = _EVENT_VARIANTS[event.kind]
+    expected_payload, expected_origins = _EVENT_VARIANTS[event.kind]
     if not isinstance(event.payload, expected_payload):
         raise TypeError(f"{event.kind} requires {expected_payload.__name__}")
-    if event.origin is not expected_origin:
-        raise ValueError(f"{event.kind} requires origin {expected_origin}")
+    if event.origin not in expected_origins:
+        raise ValueError(f"{event.kind} has an unauthorized origin")
 
 
 def _validate_envelope_values(event: EventEnvelope) -> None:

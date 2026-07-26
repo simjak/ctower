@@ -754,3 +754,44 @@ This sequencing does not weaken off-host acknowledgement, protected CLI spool be
 semantics, typed intents, risk provenance, proof/gate requirements, restore, auditability, source-of-truth
 cutover, no-dual-write, or `STATE UNKNOWN`/degraded behavior. It is reversible before I2.4 because no
 browser artifact or route is introduced in I1; implementation begins later against D22's preserved choices.
+
+## D24 — Development dogfood authority precedes disaster-safe promotion (locked 2026-07-25, operator)
+
+The operator authorized a narrow development-only authority mode so ctower can dogfood reconstructible
+ctower engineering work before CP3-D exists. This entry preserves D17, D21, and D23 and supersedes only
+their implication that no single-writer cutover stage may exist before disaster-safe acknowledgement and
+restore evidence. It does not mark I1.7 or I1 complete.
+
+1. **Two authority milestones.** `development_single_writer` may eventually make ctower the sole active
+   writer for an exact allowlist of public, low-value, reconstructible ctower engineering records.
+   `disaster_safe` remains a later promotion that requires CP3-D off-host acknowledgement, external
+   failure-domain recovery, key recovery, isolated destructive restore, and measured RPO/RTO evidence.
+2. **The development cohort is permanently narrow.** Credentials and secret values, accounting, payments,
+   production approvals or effects, incidents, client data, irreplaceable artifacts, and expensive
+   sole-copy work are forbidden. Development health must say `CP3_D_NOT_PROVEN`,
+   `EXTERNAL_FAILURE_DOMAIN_UNPROVEN`, and `RECONSTRUCTIBLE_ONLY`; uncertainty disables writes and renders
+   `STATE_UNKNOWN`.
+3. **One point of no return, no dual write.** Before a future development epoch commit, an incomplete
+   import may be discarded and scoped legacy writers may be unfrozen after integrity proof. After commit,
+   those writers never resume. Rollback is a compatible ctower build/restore or explicit read-only/spool
+   mode, never a return to legacy mutation.
+4. **Least privilege and derived delivery remain mandatory.** A future importer may create only typed
+   ticket seeds, exact aliases, initial Commander custody, relations, and provenance/source links. It
+   cannot write Proof, Workflow, delivery/effects, resolution, closure, or arbitrary status. Project
+   Delivery remains read-only and fact-derived; in development mode I1.7 stays visibly blocked/degraded on
+   the unproven CP3-D criterion.
+5. **I1.7 is split for reviewability.** I1.7A adds this decision and truthful docs, strict cutover-health
+   and Project Delivery contracts, generated client/CLI visibility, minimal append-only storage, a pure
+   read-only projection fold, and online-only unspoolable migration command stubs. I1.7B implements the
+   reviewed source selection, exporter/importer, alias/reconciliation path, and permanent legacy fence.
+   I1.7C performs the development epoch and the issue-#1 API/CLI dogfood proof. An I1.7A stub must refuse;
+   it cannot manufacture a successful phase receipt.
+
+Rejected alternatives:
+
+- Calling verifier-only acknowledged-durability evidence CP3-D: this would overstate the external
+  failure-domain and restore boundary.
+- Temporarily dual-writing or re-enabling legacy mutation after the epoch: this creates split-brain
+  authority and an unsafe rollback.
+- Landing the decision, importer, legacy fence, projection, and live dogfood event in one change: this
+  makes the authority boundary too large to review independently.

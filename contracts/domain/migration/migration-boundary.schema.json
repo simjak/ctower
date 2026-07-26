@@ -1,0 +1,147 @@
+{
+  "$id": "https://ctower.dev/contracts/domain/migration/migration-boundary.schema.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$defs": {
+    "digest": {
+      "type": "string",
+      "pattern": "^sha256:[0-9a-f]{64}$"
+    },
+    "safeRelativePath": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 512,
+      "pattern": "^(?!/)(?!.*(?:^|/)\\.\\.(?:/|$))(?!.*//)[A-Za-z0-9._/-]+$"
+    },
+    "sourceIdentity": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "namespace",
+        "immutable_source_id",
+        "source_version",
+        "source_digest"
+      ],
+      "properties": {
+        "namespace": {
+          "type": "string",
+          "enum": [
+            "stable-backlog",
+            "mission-control:request",
+            "mission-control:task",
+            "mission-control:decision",
+            "mission-control:coordination",
+            "git:github.com/simjak/ctower:commit",
+            "github:simjak/ctower:issue",
+            "github:simjak/ctower:pull-request",
+            "github:simjak/ctower:review",
+            "github:simjak/ctower:check-run",
+            "github:simjak/ctower:release",
+            "catalog:ctower:checkpoint"
+          ]
+        },
+        "immutable_source_id": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 512
+        },
+        "source_version": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 256
+        },
+        "source_digest": {
+          "$ref": "#/$defs/digest"
+        }
+      }
+    },
+    "physicalPosition": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "path",
+        "line_number",
+        "byte_start",
+        "byte_end",
+        "slice_digest"
+      ],
+      "properties": {
+        "path": {
+          "$ref": "#/$defs/safeRelativePath"
+        },
+        "line_number": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "byte_start": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "byte_end": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "slice_digest": {
+          "$ref": "#/$defs/digest"
+        }
+      }
+    },
+    "detachedSignature": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "algorithm",
+        "signed_digest",
+        "key_ref",
+        "key_version",
+        "public_key_digest",
+        "signature"
+      ],
+      "properties": {
+        "algorithm": {
+          "const": "Ed25519"
+        },
+        "signed_digest": {
+          "$ref": "#/$defs/digest"
+        },
+        "key_ref": {
+          "type": "string",
+          "pattern": "^signing-key-ref:[a-z0-9/_-]{3,255}$"
+        },
+        "key_version": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "public_key_digest": {
+          "$ref": "#/$defs/digest"
+        },
+        "signature": {
+          "type": "string",
+          "pattern": "^[A-Za-z0-9_-]{86}$"
+        }
+      }
+    },
+    "review": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "reviewer_principal_id",
+        "reviewed_at",
+        "decision"
+      ],
+      "properties": {
+        "reviewer_principal_id": {
+          "type": "string",
+          "format": "uuid"
+        },
+        "reviewed_at": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "decision": {
+          "const": "approved"
+        }
+      }
+    }
+  },
+  "title": "Shared strict ctower-project migration boundary definitions"
+}

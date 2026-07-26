@@ -7,6 +7,7 @@ import ipaddress
 import json
 from collections.abc import Callable
 from datetime import UTC, datetime
+from uuid import UUID
 
 from ctower_kernel.record import Actor, BootstrapCommand, BootstrapReceipt, Record, RecordProblem
 from ctower_kernel.telemetry import NoopTelemetry, Telemetry, TelemetryContext
@@ -21,10 +22,16 @@ class Access:
         self,
         record: Record,
         *,
+        importer_resolver: Callable[[bytes, UUID, UUID, str, datetime], Actor | None] | None = None,
+        importer_credential_resolver: Callable[[bytes, datetime], Actor | None] | None = None,
+        fence_observer_resolver: Callable[[bytes, datetime], Actor | None] | None = None,
         clock: Callable[[], datetime] | None = None,
         telemetry: Telemetry | None = None,
     ) -> None:
         self._record = record
+        self._importer_resolver = importer_resolver
+        self._importer_credential_resolver = importer_credential_resolver
+        self._fence_observer_resolver = fence_observer_resolver
         self._clock = clock or (lambda: datetime.now(UTC))
         self._telemetry = telemetry or NoopTelemetry()
 
@@ -91,6 +98,58 @@ class Access:
         actor = self._record.actor_for_credential(hashlib.sha256(credential.encode()).digest())
         return actor if actor is not None else _unauthorized()
 
+    def authenticate_importer(
+        self,
+        authorization: str | None,
+        *,
+        run_id: UUID,
+        cutover_id: UUID,
+        project_key: str,
+    ) -> Actor | RecordProblem:
+        """Resolve one bearer only when its immutable import scope matches exactly."""
+
+        credential = _bearer(authorization)
+        if credential is None or self._importer_resolver is None:
+            return _unauthorized()
+        actor = self._importer_resolver(
+            hashlib.sha256(credential.encode()).digest(),
+            run_id,
+            cutover_id,
+            project_key,
+            self._clock(),
+        )
+        return actor if actor is not None else _unauthorized()
+
+    def authenticate_importer_credential(
+        self,
+        authorization: str | None,
+    ) -> Actor | RecordProblem:
+        """Authenticate the bounded importer bearer before parsing its scope DTO."""
+
+        credential = _bearer(authorization)
+        if credential is None or self._importer_credential_resolver is None:
+            return _unauthorized()
+        actor = self._importer_credential_resolver(
+            hashlib.sha256(credential.encode()).digest(),
+            self._clock(),
+        )
+        return actor if actor is not None else _unauthorized()
+
+    def authenticate_fence_observer(
+        self,
+        authorization: str | None,
+    ) -> Actor | RecordProblem:
+        """Resolve only a separately bound, active fence-observer bearer."""
+
+        credential = _bearer(authorization)
+        if credential is None or self._fence_observer_resolver is None:
+            return _unauthorized()
+        actor = self._fence_observer_resolver(
+            hashlib.sha256(credential.encode()).digest(),
+            self._clock(),
+        )
+        return actor if actor is not None else _unauthorized()
+
 
 def digest_capability(capability: str) -> bytes:
     """Reduce plaintext bootstrap authority to its one-way Record representation."""
@@ -123,3 +182,11 @@ def _unauthorized() -> RecordProblem:
         status=401,
         title="Authentication refused",
     )
+
+
+def _bearer(authorization: str | None) -> str | None:
+    prefix = "Bearer "
+    if authorization is None or not authorization.startswith(prefix):
+        return None
+    credential = authorization.removeprefix(prefix)
+    return credential if credential and credential.strip() == credential else None

@@ -1,6 +1,6 @@
 """DO NOT EDIT: generated file; regenerate from declared inputs.
 
-Authored contract digest: sha256:e1263c9e3ab91876558e63c26af7f1a2bb7e6f0ba30d5984a3499e17cd78c3e8
+Authored contract digest: sha256:e4e4901322fe1437191f8d8465ffb6e41b253ec044639cfaf8fe7554037cc55a
 """
 
 from ctower_contracts.catalog import (
@@ -8,6 +8,7 @@ from ctower_contracts.catalog import (
     ContractCatalog,
     schema_for,
     validator_for,
+    verify_all,
 )
 
-__all__ = ["CATALOG", "ContractCatalog", "schema_for", "validator_for"]
+__all__ = ["CATALOG", "ContractCatalog", "schema_for", "validator_for", "verify_all"]
