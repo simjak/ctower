@@ -13,6 +13,9 @@ def render_validators(
     success_models: Mapping[str, tuple[tuple[int, str], ...]],
     problem_models: Mapping[str, tuple[tuple[int, str], ...]],
     digest: str,
+    *,
+    integer_minimum: int,
+    integer_maximum: int,
 ) -> str:
     """Render one strict recursive validator and operation boundary maps."""
 
@@ -31,6 +34,8 @@ import type {{ OperationId }} from "./operations.js";
 
 type JsonObject = Readonly<Record<string, unknown>>;
 
+const JSON_INTEGER_MINIMUM = {integer_minimum};
+const JSON_INTEGER_MAXIMUM = {integer_maximum};
 const SCHEMAS: JsonObject = {_json(schemas)};
 export const OPERATION_SUCCESS_MODELS: Readonly<
   Record<OperationId, Readonly<Record<string, string>>>
@@ -218,8 +223,14 @@ function validateNumber(
   integer: boolean,
   path: string,
 ): void {{
-  if (!Number.isFinite(value) || (integer && !Number.isInteger(value))) {{
-    fail(path, integer ? "value is not an integer" : "value is not finite");
+  if (
+    !Number.isFinite(value) ||
+    (integer &&
+      (!Number.isInteger(value) ||
+        value < JSON_INTEGER_MINIMUM ||
+        value > JSON_INTEGER_MAXIMUM))
+  ) {{
+    fail(path, integer ? "value is not a lossless JSON integer" : "value is not finite");
   }}
   const minimum = schema["minimum"];
   const maximum = schema["maximum"];
@@ -306,7 +317,7 @@ function fail(path: string, reason: string): never {{
 const UUID_PATTERN =
   /^[0-9a-f]{{8}}-[0-9a-f]{{4}}-[0-9a-f]{{4}}-[0-9a-f]{{4}}-[0-9a-f]{{12}}$/iu;
 const DATE_TIME_PATTERN =
-  /^(\\d{{4}})-(\\d{{2}})-(\\d{{2}})T(\\d{{2}}):(\\d{{2}}):(\\d{{2}})(?:\\.\\d{{1,6}})?(Z|([+-])(\\d{{2}}):(\\d{{2}}))$/u;
+  /^([0-9]{{4}})-([0-9]{{2}})-([0-9]{{2}})T([0-9]{{2}}):([0-9]{{2}}):([0-9]{{2}})(?:\\.[0-9]{{1,6}})?(Z|([+-])([0-9]{{2}}):([0-9]{{2}}))$/u;
 """
 
 

@@ -7,6 +7,11 @@ import re
 from collections.abc import Mapping
 from typing import cast
 
+from tools.codegen._json_integer_codegen import (
+    JSON_INTEGER_MAXIMUM,
+    JSON_INTEGER_MINIMUM,
+    require_json_integer_profile,
+)
 from tools.codegen._rfc3339_codegen import require_rfc3339_profile
 
 __all__: tuple[str, ...] = ()
@@ -16,10 +21,11 @@ _MAX_LINE_WIDTH = 100
 
 
 def render_models(document: dict[str, object], contract_digest: str) -> str:
+    require_json_integer_profile(document)
     require_rfc3339_profile(document)
     schemas = _schemas(document)
     names = tuple(sorted(schemas))
-    sections = [_header(contract_digest, names), _date_time_validator(), _boundary_model()]
+    sections = [_header(contract_digest, names), _scalar_validators(), _boundary_model()]
     for name in _schema_order(schemas):
         schema = _mapping(schemas[name], f"schema {name}")
         sections.append(_render_schema(name, schema))
@@ -63,20 +69,22 @@ import re
 from typing import Annotated, Literal
 from uuid import UUID
 
-from pydantic import BaseModel, BeforeValidator, ConfigDict, Field
+from pydantic import AnyUrl, BaseModel, BeforeValidator, ConfigDict, Field, TypeAdapter
 
 __all__ = [
 {exports}
 ]'''
 
 
-def _date_time_validator() -> str:
+def _scalar_validators() -> str:
     return r"""_RFC3339_PATTERN = re.compile(
-    r"^(?P<year>\d{4})-(?P<month>\d{2})-(?P<day>\d{2})"
-    r"T(?P<hour>\d{2}):(?P<minute>\d{2}):(?P<second>\d{2})"
-    r"(?:\.(?P<fraction>\d{1,6}))?"
-    r"(?P<zone>Z|(?P<sign>[+-])(?P<offset_hour>\d{2}):(?P<offset_minute>\d{2}))$"
+    r"^(?P<year>[0-9]{4})-(?P<month>[0-9]{2})-(?P<day>[0-9]{2})"
+    r"T(?P<hour>[0-9]{2}):(?P<minute>[0-9]{2}):(?P<second>[0-9]{2})"
+    r"(?:\.(?P<fraction>[0-9]{1,6}))?"
+    r"(?P<zone>Z|(?P<sign>[+-])(?P<offset_hour>[0-9]{2}):"
+    r"(?P<offset_minute>[0-9]{2}))$"
 )
+_ABSOLUTE_URI_ADAPTER = TypeAdapter(AnyUrl)
 
 
 def _validate_rfc3339(value: object) -> datetime:
@@ -124,6 +132,17 @@ def _validate_rfc3339(value: object) -> datetime:
         raise ValueError("timestamp is outside the proleptic Gregorian calendar") from error
 
 
+def _validate_absolute_uri(value: object) -> str:
+    if not isinstance(value, str):
+        raise ValueError("absolute URI must be a string")
+    try:
+        _ABSOLUTE_URI_ADAPTER.validate_python(value, strict=True)
+    except ValueError as error:
+        raise ValueError("string is not an absolute URI") from error
+    return value
+
+
+_AbsoluteUri = Annotated[str, BeforeValidator(_validate_absolute_uri)]
 _Rfc3339DateTime = Annotated[datetime, BeforeValidator(_validate_rfc3339)]"""
 
 
@@ -274,6 +293,7 @@ def _string_expression(schema: Mapping[str, object]) -> str:
     base = {
         "uuid": "UUID",
         "date-time": "_Rfc3339DateTime",
+        "uri": "_AbsoluteUri",
     }.get(str(schema.get("format")), "str")
     constraints: list[tuple[str, object]] = []
     for source, target in (
@@ -287,11 +307,20 @@ def _string_expression(schema: Mapping[str, object]) -> str:
 
 
 def _integer_expression(schema: Mapping[str, object]) -> str:
-    constraints = []
-    if "minimum" in schema:
-        constraints.append(("ge", schema["minimum"]))
-    if "maximum" in schema:
-        constraints.append(("le", schema["maximum"]))
+    minimum = schema.get("minimum", JSON_INTEGER_MINIMUM)
+    maximum = schema.get("maximum", JSON_INTEGER_MAXIMUM)
+    if (
+        isinstance(minimum, bool)
+        or not isinstance(minimum, (int, float))
+        or isinstance(maximum, bool)
+        or not isinstance(maximum, (int, float))
+    ):
+        raise TypeError("integer bounds must be numbers")
+    lower = max(JSON_INTEGER_MINIMUM, minimum)
+    upper = min(JSON_INTEGER_MAXIMUM, maximum)
+    if lower > upper:
+        raise ValueError("integer schema has no value inside the lossless JSON range")
+    constraints: list[tuple[str, object]] = [("ge", lower), ("le", upper)]
     return _annotated("int", constraints)
 
 
