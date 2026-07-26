@@ -14,7 +14,7 @@ import psycopg
 import rfc8785
 from psycopg.types.json import Jsonb
 
-from ctower_kernel.migration import _target_anomaly
+from ctower_kernel.migration import _checkpoint_expectation_sql, _target_anomaly
 
 __all__ = [
     "TargetSnapshot",
@@ -266,8 +266,12 @@ def _checkpoint_rows(
             SELECT checkpoint_definition_id, company_key, project_key, checkpoint_key,
                 definition_revision, catalog_revision, catalog_digest, checkpoint_label,
                 outcome, accountable_owner, ordered_position, applicable_states
-            FROM project_delivery_checkpoint_definitions
-            WHERE tenant_id = %s AND project_key = 'ctower'
+            FROM (
+                SELECT DISTINCT ON (checkpoint_key) *
+                FROM project_delivery_checkpoint_definitions
+                WHERE tenant_id = %s AND project_key = 'ctower'
+                ORDER BY checkpoint_key, definition_revision DESC
+            ) AS definition
             ORDER BY checkpoint_key, definition_revision
             """,
             (tenant_id,),
@@ -280,14 +284,19 @@ def _checkpoint_rows(
                 criterion.proof_ticket_id, criterion.proof_criterion_key,
                 criterion.source_ids
             FROM project_delivery_exit_criteria AS criterion
-            JOIN project_delivery_checkpoint_definitions AS definition
+            JOIN (
+                SELECT DISTINCT ON (checkpoint_key) *
+                FROM project_delivery_checkpoint_definitions
+                WHERE tenant_id = %s AND project_key = 'ctower'
+                ORDER BY checkpoint_key, definition_revision DESC
+            ) AS definition
               ON definition.checkpoint_definition_id = criterion.checkpoint_definition_id
              AND definition.tenant_id = criterion.tenant_id
-            WHERE criterion.tenant_id = %s AND definition.project_key = 'ctower'
+            WHERE criterion.tenant_id = %s
             ORDER BY definition.checkpoint_key, definition.definition_revision,
                 criterion.ordinal
             """,
-            (tenant_id,),
+            (tenant_id, tenant_id),
         ),
         "project_delivery_rows": _rows(
             connection,
@@ -404,13 +413,21 @@ def zero_delta(before: TargetSnapshot, after: TargetSnapshot) -> bool:
     return before.digest == after.digest and before.body == after.body
 
 
-def ready_for_pass_two(snapshot: TargetSnapshot) -> bool:
+def ready_for_pass_two(
+    connection: psycopg.Connection[dict[str, object]],
+    run_id: UUID,
+    snapshot: TargetSnapshot,
+) -> bool:
     """Require the complete reviewed alias/Catalog projection at the run watermark."""
 
     measured = graph(snapshot.body)
-    return snapshot.project_delivery_current and not any(
-        cast(list[object], measured[key])
-        for key in ("unexpected", "forbidden", "unresolved", "cycles")
+    return (
+        snapshot.project_delivery_current
+        and _checkpoint_expectation_sql.matches(connection, run_id, snapshot.body)
+        and not any(
+            cast(list[object], measured[key])
+            for key in ("unexpected", "forbidden", "unresolved", "cycles")
+        )
     )
 
 
@@ -468,6 +485,9 @@ def graph(snapshot_body: dict[str, object]) -> dict[str, object]:
     relations = _set(snapshot_body, "relations")
     custody = cast(list[dict[str, object]], snapshot_body["custody_intervals"])
     unexpected, forbidden, unresolved, cycles = _target_anomaly.sets(snapshot_body)
+    checkpoint_definitions, checkpoint_criteria = _checkpoint_expectation_sql.graph_sets(
+        snapshot_body
+    )
     value: dict[str, object] = {
         "stable_aliases": _set(snapshot_body, "stable_aliases"),
         "operation_identities": _set(snapshot_body, "planned_operations"),
@@ -486,8 +506,8 @@ def graph(snapshot_body: dict[str, object]) -> dict[str, object]:
             }
         ),
         "source_links": _set(snapshot_body, "source_link_revisions"),
-        "checkpoint_definitions": _set(snapshot_body, "checkpoint_definitions"),
-        "checkpoint_criteria": _set(snapshot_body, "checkpoint_criteria"),
+        "checkpoint_definitions": checkpoint_definitions,
+        "checkpoint_criteria": checkpoint_criteria,
         "project_delivery_rows": _canonical_set(_project_delivery_values(snapshot_body)),
         "events": _set(snapshot_body, "event_ids"),
         "outbox_rows": _set(snapshot_body, "outbox_rows"),

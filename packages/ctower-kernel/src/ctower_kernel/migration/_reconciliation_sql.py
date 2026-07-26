@@ -5,6 +5,8 @@ from __future__ import annotations
 import hashlib
 import json
 import secrets
+from collections.abc import Iterator
+from contextlib import contextmanager
 from datetime import datetime
 from typing import Any, cast
 from uuid import UUID
@@ -18,7 +20,7 @@ from ctower_client.models import (
     CtowerProjectImportRun,
     CtowerProjectReconciliationResult,
 )
-from ctower_kernel.migration import _pass_two_sql
+from ctower_kernel.migration import _checkpoint_expectation_sql, _pass_two_sql
 from ctower_kernel.migration._artifact import (
     ArtifactError,
     TrustedReviewerKeys,
@@ -30,7 +32,11 @@ from ctower_kernel.migration._operation_result_sql import canonical, migration_s
 from ctower_kernel.migration._run_read_sql import load_run
 from ctower_kernel.record import Actor, RecordProblem
 from ctower_kernel.record.events import EventKind
-from ctower_kernel.record.transaction import authority_connection, recover_ambiguous_commit
+from ctower_kernel.record.transaction import (
+    authority_connection,
+    project_delivery_scope_transaction,
+    recover_ambiguous_commit,
+)
 from ctower_kernel.telemetry import TelemetryContext
 
 __all__: tuple[str, ...] = ()
@@ -47,7 +53,7 @@ def finalize_run(
     trusted_keys: TrustedReviewerKeys,
 ) -> CtowerProjectReconciliationResult | RecordProblem:
     return recover_ambiguous_commit(
-        lambda: _finalize(
+        lambda: _retry_serialization(
             dsn,
             actor,
             request,
@@ -82,14 +88,14 @@ def _finalize(
         )
     except (ArtifactError, ValidationError):
         return _problem(command_id, "migration-import-finalization-refused")
-    with authority_connection(dsn) as connection:
-        connection.execute("SET ROLE ctower_svc")
+    with _finalization_connection(dsn, actor) as connection:
         replay = _replay(connection, actor, command_id, request_digest)
         if replay is not None:
             return replay
         run = load_run(connection, actor, request.run_id, lock=True)
         if isinstance(run, RecordProblem) or not _scope(run, request, result):
             return _problem(command_id, "migration-import-finalization-refused")
+        _lock_run_tickets(connection, actor, request.run_id)
         graph, pass_two = _pass_two_sql.evidence(connection, request.run_id)
         if (
             graph is None
@@ -133,10 +139,76 @@ def _current_target_matches(
     run_id: UUID,
     expected_graph: dict[str, object],
 ) -> bool:
-    before = _pass_two_sql.capture(connection, run_id)
-    after = _pass_two_sql.capture(connection, run_id)
-    actual_graph = _pass_two_sql.graph(after.body)
-    return _pass_two_sql.zero_delta(before, after) and actual_graph == expected_graph
+    current = _pass_two_sql.capture(connection, run_id)
+    actual_graph = _pass_two_sql.graph(current.body)
+    return (
+        _checkpoint_expectation_sql.matches(connection, run_id, current.body)
+        and actual_graph == expected_graph
+    )
+
+
+def _retry_serialization(
+    dsn: str,
+    actor: Actor,
+    request: CtowerProjectImportFinalizeRequest,
+    *,
+    command_id: UUID,
+    now: datetime,
+    telemetry: TelemetryContext,
+    trusted_keys: TrustedReviewerKeys,
+) -> CtowerProjectReconciliationResult | RecordProblem:
+    for attempt in range(2):
+        try:
+            return _finalize(
+                dsn,
+                actor,
+                request,
+                command_id=command_id,
+                now=now,
+                telemetry=telemetry,
+                trusted_keys=trusted_keys,
+            )
+        except psycopg.errors.SerializationFailure:
+            if attempt == 1:
+                return _problem(command_id, "migration-import-finalization-refused")
+    raise AssertionError("serialization retry loop did not return")
+
+
+@contextmanager
+def _finalization_connection(
+    dsn: str,
+    actor: Actor,
+) -> Iterator[psycopg.Connection[dict[str, object]]]:
+    """Acquire the project fence before the serializable target snapshot."""
+
+    with authority_connection(dsn) as connection:
+        connection.autocommit = True
+        connection.execute("SET ROLE ctower_svc")
+        with project_delivery_scope_transaction(connection, actor.tenant_id, "ctower"):
+            connection.execute("SET TRANSACTION ISOLATION LEVEL SERIALIZABLE")
+            yield connection
+
+
+def _lock_run_tickets(
+    connection: psycopg.Connection[dict[str, object]],
+    actor: Actor,
+    run_id: UUID,
+) -> None:
+    """Hold every mutable Work head in the same UUID order as ordinary writers."""
+
+    connection.execute(
+        """
+        SELECT ticket.ticket_id
+        FROM tickets AS ticket
+        JOIN ticket_project_bindings AS binding
+          ON binding.tenant_id = ticket.tenant_id
+         AND binding.ticket_id = ticket.ticket_id
+        WHERE binding.run_id = %s AND ticket.tenant_id = %s
+        ORDER BY ticket.ticket_id
+        FOR SHARE OF ticket
+        """,
+        (run_id, actor.tenant_id),
+    ).fetchall()
 
 
 def _artifact_matches(

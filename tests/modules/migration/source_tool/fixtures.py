@@ -19,6 +19,8 @@ from tools.migration.ctower_project.ctower_project_source.signing import (
     ArtifactVerifier,
 )
 
+from .._checkpoint_fixture import checkpoint_identity
+
 __all__: tuple[str, ...] = ()
 
 REVIEW = {
@@ -239,7 +241,7 @@ def _record(
     decision: str = "included",
     title: str | None,
 ) -> dict[str, Any]:
-    return {
+    row: dict[str, Any] = {
         "schema": "ctower.synthetic-migration-source/v1",
         "identity": _identity(namespace, source_id),
         "candidate": True,
@@ -248,9 +250,20 @@ def _record(
         "title": title,
         "operation_hint": None,
     }
+    if namespace == "catalog:ctower:checkpoint":
+        row["checkpoint_criteria_digest"] = checkpoint_identity(source_id)["criteria_digest"]
+    return row
 
 
 def _identity(namespace: str, source_id: str) -> dict[str, str]:
+    if namespace == "catalog:ctower:checkpoint":
+        checkpoint = checkpoint_identity(source_id)
+        return {
+            "namespace": namespace,
+            "immutable_source_id": source_id,
+            "source_version": checkpoint["catalog_revision"],
+            "source_digest": checkpoint["definition_digest"],
+        }
     return {
         "namespace": namespace,
         "immutable_source_id": source_id,

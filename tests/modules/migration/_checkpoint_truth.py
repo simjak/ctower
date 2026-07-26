@@ -2,15 +2,13 @@
 
 from __future__ import annotations
 
-import hashlib
 import json
+from collections.abc import Mapping
 from datetime import datetime
 from pathlib import Path
-from typing import cast
 from uuid import UUID, uuid4
 
 import psycopg
-import rfc8785
 
 from ctower_kernel.catalog import (
     CatalogProblem,
@@ -19,7 +17,6 @@ from ctower_kernel.catalog import (
     CompanyBundleCommandResult,
     PostgresCatalog,
 )
-from ctower_kernel.catalog.interface import JsonValue
 from ctower_kernel.objects import ObjectIntegrityError, StoredObject
 from ctower_kernel.projections import Projections
 from ctower_kernel.projections.postgres import PostgresProjections
@@ -27,10 +24,10 @@ from ctower_kernel.record import Actor, PrincipalKind
 from ctower_kernel.telemetry import TelemetryContext
 from modules.catalog.support import FileSchemas
 
+from ._checkpoint_fixture import checkpoint_resource
 from ._postgres import Database
 
 __all__ = ["materialize_checkpoint_truth", "refresh_checkpoint_truth"]
-_ROOT = Path(__file__).parents[3]
 _CHECKPOINT_COUNT = 14
 
 
@@ -79,7 +76,12 @@ class _MemoryObjectStore:
         self._receipts.pop(receipt.artifact_digest, None)
 
 
-def materialize_checkpoint_truth(database: Database, *, now: datetime) -> None:
+def materialize_checkpoint_truth(
+    database: Database,
+    *,
+    now: datetime,
+    outcome_overrides: Mapping[str, str] | None = None,
+) -> None:
     actor = Actor(database.operator_id, database.tenant_id, PrincipalKind.OPERATOR)
     catalog = PostgresCatalog(
         database.runtime_dsn,
@@ -88,7 +90,7 @@ def materialize_checkpoint_truth(database: Database, *, now: datetime) -> None:
         key_reference="vault:catalog-key",
         clock=lambda: now,
     )
-    bundle = _checkpoint_bundle()
+    bundle = _checkpoint_bundle(outcome_overrides or {})
     plan = catalog.plan(actor, bundle)
     assert not isinstance(plan, CatalogProblem)
     command_id = uuid4()
@@ -135,18 +137,18 @@ def refresh_checkpoint_truth(database: Database, *, now: datetime) -> None:
     assert affected in {0, _CHECKPOINT_COUNT}
 
 
-def _checkpoint_bundle() -> CompanyBundle:
-    vectors = cast(
-        dict[str, object],
-        json.loads(
-            (_ROOT / "contracts/domain/project-delivery/project-delivery-vectors.json").read_text(
-                encoding="utf-8"
-            )
-        ),
+def _checkpoint_bundle(outcome_overrides: Mapping[str, str]) -> CompanyBundle:
+    vectors_path = (
+        Path(__file__).parents[3]
+        / "contracts/domain/project-delivery/project-delivery-vectors.json"
     )
+    vectors = json.loads(vectors_path.read_text(encoding="utf-8"))
     resources = [
-        _checkpoint_resource(checkpoint_key, vectors)
-        for checkpoint_key in cast(list[str], vectors["checkpoint_keys"])
+        checkpoint_resource(
+            checkpoint_key,
+            outcome=outcome_overrides.get(checkpoint_key),
+        )
+        for checkpoint_key in vectors["checkpoint_keys"]
     ]
     return CompanyBundle.model_validate_json(
         json.dumps(
@@ -159,56 +161,6 @@ def _checkpoint_bundle() -> CompanyBundle:
             }
         )
     )
-
-
-def _checkpoint_resource(checkpoint_key: str, vectors: dict[str, object]) -> JsonValue:
-    criterion_keys = (
-        cast(list[str], vectors["i1_7_criteria"])
-        if checkpoint_key == "I1.7"
-        else ["declared-outcome"]
-    )
-    key = checkpoint_key.casefold().replace(".", "-")
-    payload: JsonValue = {
-        "schema": "ctower.checkpoint/v1",
-        "key": f"ctower.{key}",
-        "checkpoint_key": checkpoint_key,
-        "display_name": f"ctower checkpoint {checkpoint_key}",
-        "outcome": f"ctower establishes the declared {checkpoint_key} outcome",
-        "accountable_owner": "ctower-operator",
-        "criteria": [
-            {
-                "key": criterion,
-                "description": f"Current proof for {criterion}",
-                "required": True,
-                "evidence_policy_refs": [],
-            }
-            for criterion in criterion_keys
-        ],
-        "dependency_refs": [],
-    }
-    digest = f"sha256:{hashlib.sha256(rfc8785.dumps(payload)).hexdigest()}"
-    return {
-        "component": {
-            "schema": "ctower.versioned-component/v1",
-            "kind": "checkpoint",
-            "key": f"ctower.{key}",
-            "scope": {"tenant": "ctower", "project": "ctower"},
-            "revision": 1,
-            "content_digest": digest,
-            "schema_ref": "ctower.checkpoint/v1",
-            "lifecycle": "published",
-            "compatibility": {"ctower": ">=0.0.0,<1.0.0", "requires": []},
-            "provenance": [
-                {
-                    "kind": "reviewed-contract",
-                    "source": "SPEC#project-delivery-projection",
-                    "digest": digest,
-                }
-            ],
-            "payload_ref": f"object:{digest}",
-        },
-        "payload": payload,
-    }
 
 
 def _telemetry(actor: Actor, command_id: UUID) -> TelemetryContext:

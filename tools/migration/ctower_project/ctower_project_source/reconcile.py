@@ -14,7 +14,7 @@ from ctower_client.models import (
     ProjectDeliveryView,
 )
 
-from .canonical import validate_contract
+from .canonical import canonical_bytes, canonical_digest, validate_contract
 from .executor import ImportPassReceipt, prove_pass_two
 from .exporter import FrozenExport
 from .import_plan import ImportPlan, seal_import_plan
@@ -28,6 +28,8 @@ _REQUEST_COUNT = 86
 _REQUEST_PHYSICAL_COUNT = 243
 _STABLE_COUNT = 27
 _CHECKPOINT_COUNT = 14
+
+
 class GeneratedTargetReader(Protocol):
     def get_ctower_project_import_run(self, run_id: UUID) -> CtowerProjectImportRun: ...
 
@@ -65,7 +67,7 @@ def reconcile(
     entries = cast(list[dict[str, Any]], alias_map["entries"])
     _verify_alias_conservation(frozen, entries)
     _verify_relations(plan)
-    artifact = _report_payload(plan, run, review)
+    artifact = _report_payload(plan, run, signed_plan, review)
     sealed = signer.seal(artifact, "report_digest")
     validate_contract("ctower-project-reconciliation-v2.schema.json", sealed)
     return sealed
@@ -74,10 +76,12 @@ def reconcile(
 def _report_payload(
     plan: ImportPlan,
     run: CtowerProjectImportRun,
+    signed_plan: Mapping[str, Any],
     review: Mapping[str, Any],
 ) -> dict[str, Any]:
     if run.reconciliation_graph is None or run.pass_two_measurement is None:
         raise MigrationRefusal(RefusalCode.TARGET_STATE_UNKNOWN, "server reconciliation graph")
+    actual_graph = run.reconciliation_graph.model_dump(mode="json")
     artifact: dict[str, Any] = {
         "schema": "ctower.ctower-project-reconciliation/v2",
         "reconciliation_id": str(
@@ -91,8 +95,8 @@ def _report_payload(
         "project_key": "ctower",
         "pinned_digests": run.pinned_digests.model_dump(mode="json", by_alias=True),
         "reviewer_key": run.reviewer_key.model_dump(mode="json"),
-        "expected_graph": run.reconciliation_graph.model_dump(mode="json"),
-        "actual_graph": run.reconciliation_graph.model_dump(mode="json"),
+        "expected_graph": _expected_graph(actual_graph, signed_plan),
+        "actual_graph": actual_graph,
         "pass_two_measurement": run.pass_two_measurement.model_dump(mode="json"),
         "watermarks": {
             "source_native": run.source_native_watermark,
@@ -107,6 +111,39 @@ def _report_payload(
         "accepted_position": None,
     }
     return artifact
+
+
+def _expected_graph(
+    measured: dict[str, Any],
+    signed_plan: Mapping[str, Any],
+) -> dict[str, Any]:
+    definitions = cast(list[dict[str, str]], signed_plan["checkpoint_definitions"])
+    expected = {
+        **measured,
+        "checkpoint_definitions": sorted(
+            canonical_bytes(
+                {
+                    "checkpoint_key": item["checkpoint_key"],
+                    "catalog_revision": item["catalog_revision"],
+                    "definition_digest": item["definition_digest"],
+                }
+            ).decode()
+            for item in definitions
+        ),
+        "checkpoint_criteria": sorted(
+            canonical_bytes(
+                {
+                    "checkpoint_key": item["checkpoint_key"],
+                    "criteria_digest": item["criteria_digest"],
+                }
+            ).decode()
+            for item in definitions
+        ),
+    }
+    expected["graph_digest"] = canonical_digest(
+        {key: value for key, value in expected.items() if key != "graph_digest"}
+    )
+    return expected
 
 
 def _verify_target(

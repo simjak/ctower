@@ -65,6 +65,10 @@ class SourceRecord(BaseModel):
     data_classes: list[str]
     title: str | None = Field(default=None, max_length=200)
     operation_hint: OperationHint | None = None
+    checkpoint_criteria_digest: str | None = Field(
+        default=None,
+        pattern=r"^sha256:[0-9a-f]{64}$",
+    )
 
 
 @dataclass(frozen=True)

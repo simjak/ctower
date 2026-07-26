@@ -34,7 +34,11 @@ from ctower_kernel.migration._operation_result_sql import canonical, migration_s
 from ctower_kernel.migration._run_read_sql import load_run
 from ctower_kernel.record import Actor, RecordProblem
 from ctower_kernel.record.events import EventKind
-from ctower_kernel.record.transaction import authority_connection, recover_ambiguous_commit
+from ctower_kernel.record.transaction import (
+    authority_connection,
+    lock_project_delivery_scope,
+    recover_ambiguous_commit,
+)
 from ctower_kernel.telemetry import TelemetryContext
 
 __all__: tuple[str, ...] = ()
@@ -139,6 +143,7 @@ def _guard_batch(
     now: datetime,
     telemetry: TelemetryContext,
 ) -> CtowerProjectImportRun | CtowerProjectImportBatchResult | RecordProblem:
+    lock_project_delivery_scope(connection, actor.tenant_id, "ctower")
     run = load_run(connection, actor, request.run_id, lock=True)
     if isinstance(run, RecordProblem) or not _batch_scope(connection, actor, request, run, now):
         return _problem(None, "migration-capability-denied", "Import binding unavailable", 403)
@@ -378,7 +383,7 @@ def _prepare_pass_two(
         if request.batch_index != 0:
             return _problem(None, "migration-run-conflict", "Pass two must start at batch zero")
         start = _pass_two_sql.capture(connection, request.run_id)
-        if not _pass_two_sql.ready_for_pass_two(start):
+        if not _pass_two_sql.ready_for_pass_two(connection, request.run_id, start):
             return _problem(
                 None,
                 "migration-run-conflict",

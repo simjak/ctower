@@ -505,6 +505,12 @@ prove acceptance + backup + isolated restore
 There is no dual-write period. After rewire, rollback means a compatible ctower build/restore or explicit
 read-only/spool mode, never restarting legacy mutation.
 
+The reviewed import plan pins each checkpoint key, Catalog revision, definition/content digest, and
+ordered-criteria digest. Pass two and final reconciliation derive the latest Catalog identity independently
+and require exact equality. Final reconciliation acquires the scoped Project Delivery writer fence before
+its serializable snapshot, then locks every run-bound ticket in deterministic order through the
+reconciliation commit; Catalog activation and projection rebuild/reconcile share that fence.
+
 I1.7A installs only the contracts, append-only storage shape, read-only projection fold, generated query
 path, and refusing online migration stubs. I1.7B owns import and the legacy fence; I1.7C owns the epoch and
 dogfood proof. No I1.7A process rewires a writer.

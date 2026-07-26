@@ -158,12 +158,7 @@ def seal_import_plan(
         "operation_count": plan.operation_count,
         "batches": [batch.model_dump(mode="json", by_alias=True) for batch in plan.batches],
         "checkpoint_definitions": [
-            {
-                "checkpoint_key": record.identity.immutable_source_id,
-                "catalog_revision": record.identity.source_version,
-                "definition_digest": record.identity.source_digest,
-                "criteria_digest": record.identity.source_digest,
-            }
+            _checkpoint_definition(record)
             for record in sorted(
                 (
                     item
@@ -180,6 +175,21 @@ def seal_import_plan(
     sealed = signer.seal(artifact, "plan_digest")
     validate_contract("ctower-project-import-plan-v2.schema.json", sealed)
     return sealed
+
+
+def _checkpoint_definition(record: SourceRecord) -> dict[str, str]:
+    criteria_digest = record.checkpoint_criteria_digest
+    if criteria_digest is None:
+        raise MigrationRefusal(
+            RefusalCode.IMPORT_SCOPE_MISMATCH,
+            "checkpoint criteria digest",
+        )
+    return {
+        "checkpoint_key": record.identity.immutable_source_id,
+        "catalog_revision": record.identity.source_version,
+        "definition_digest": record.identity.source_digest,
+        "criteria_digest": criteria_digest,
+    }
 
 
 def _verify_equality(

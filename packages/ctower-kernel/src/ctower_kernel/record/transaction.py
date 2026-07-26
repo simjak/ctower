@@ -3,8 +3,8 @@
 from __future__ import annotations
 
 import hashlib
-from collections.abc import Callable
-from contextlib import suppress
+from collections.abc import Callable, Iterator
+from contextlib import contextmanager, suppress
 from dataclasses import dataclass
 from datetime import datetime
 from threading import Timer
@@ -25,6 +25,8 @@ __all__ = [
     "EventCommit",
     "RecordTransaction",
     "authority_connection",
+    "lock_project_delivery_scope",
+    "project_delivery_scope_transaction",
     "recover_ambiguous_commit",
 ]
 
@@ -97,6 +99,60 @@ def recover_ambiguous_commit[Outcome](operation: Callable[[], Outcome]) -> Outco
         return operation()
     except (psycopg.errors.QueryCanceled, psycopg.OperationalError):
         return operation()
+
+
+def lock_project_delivery_scope(
+    connection: psycopg.Connection[dict[str, object]],
+    tenant_id: UUID,
+    project_key: str,
+) -> None:
+    """Fence mutable Catalog and Project Delivery heads for one project."""
+
+    connection.execute(
+        "SELECT pg_advisory_xact_lock(hashtextextended(%s, 0))",
+        (_project_delivery_scope(tenant_id, project_key),),
+    )
+
+
+@contextmanager
+def project_delivery_scope_transaction(
+    connection: psycopg.Connection[dict[str, object]],
+    tenant_id: UUID,
+    project_key: str,
+) -> Iterator[None]:
+    """Acquire the project fence before opening a fixed-snapshot transaction."""
+
+    if connection.info.transaction_status is not psycopg.pq.TransactionStatus.IDLE:
+        raise RuntimeError("project delivery scope requires an idle connection")
+    previous_autocommit = connection.autocommit
+    connection.autocommit = True
+    connection.execute(
+        "SELECT pg_advisory_lock(hashtextextended(%s, 0))",
+        (_project_delivery_scope(tenant_id, project_key),),
+    )
+    connection.autocommit = False
+    try:
+        yield
+        connection.commit()
+    except BaseException:
+        with suppress(psycopg.Error):
+            connection.rollback()
+        raise
+    finally:
+        if not connection.closed:
+            with suppress(psycopg.Error):
+                if not connection.autocommit:
+                    connection.rollback()
+                    connection.autocommit = True
+                connection.execute(
+                    "SELECT pg_advisory_unlock(hashtextextended(%s, 0))",
+                    (_project_delivery_scope(tenant_id, project_key),),
+                )
+            connection.autocommit = previous_autocommit
+
+
+def _project_delivery_scope(tenant_id: UUID, project_key: str) -> str:
+    return f"project-delivery:{tenant_id}:{project_key}"
 
 
 class RecordTransaction:

@@ -34,6 +34,7 @@ from ctower_kernel.projections.project_delivery import (
     DeliveryState,
     derive_project_delivery_row,
 )
+from ctower_kernel.record.transaction import project_delivery_scope_transaction
 
 __all__: tuple[str, ...] = ()
 
@@ -41,29 +42,31 @@ __all__: tuple[str, ...] = ()
 def reconcile(dsn: str, tenant_id: UUID, *, now: datetime) -> int:
     """Recompute stored rows at one scoped Record-position snapshot."""
 
-    with psycopg.connect(dsn, row_factory=dict_row) as connection:
-        connection.execute("SET TRANSACTION ISOLATION LEVEL REPEATABLE READ")
+    with psycopg.connect(dsn, row_factory=dict_row, autocommit=True) as connection:
         connection.execute("SET ROLE ctower_projection")
-        return _reconcile(connection, tenant_id, now=now, rebuild_generation=None)
+        with project_delivery_scope_transaction(connection, tenant_id, "ctower"):
+            connection.execute("SET TRANSACTION ISOLATION LEVEL REPEATABLE READ")
+            return _reconcile(connection, tenant_id, now=now, rebuild_generation=None)
 
 
 def rebuild(dsn: str, tenant_id: UUID, *, now: datetime) -> int:
     """Delete disposable rows and reproduce their semantic values in one snapshot."""
 
-    with psycopg.connect(dsn, row_factory=dict_row) as connection:
-        connection.execute("SET TRANSACTION ISOLATION LEVEL REPEATABLE READ")
+    with psycopg.connect(dsn, row_factory=dict_row, autocommit=True) as connection:
         connection.execute("SET ROLE ctower_projection")
-        generation = _next_generation(connection, tenant_id)
-        connection.execute(
-            "DELETE FROM project_delivery_projection_rows WHERE tenant_id = %s",
-            (tenant_id,),
-        )
-        return _reconcile(
-            connection,
-            tenant_id,
-            now=now,
-            rebuild_generation=generation,
-        )
+        with project_delivery_scope_transaction(connection, tenant_id, "ctower"):
+            connection.execute("SET TRANSACTION ISOLATION LEVEL REPEATABLE READ")
+            generation = _next_generation(connection, tenant_id)
+            connection.execute(
+                "DELETE FROM project_delivery_projection_rows WHERE tenant_id = %s",
+                (tenant_id,),
+            )
+            return _reconcile(
+                connection,
+                tenant_id,
+                now=now,
+                rebuild_generation=generation,
+            )
 
 
 def _reconcile(

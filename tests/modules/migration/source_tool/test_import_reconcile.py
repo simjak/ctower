@@ -28,6 +28,7 @@ from ctower_client.models import (
 )
 from tools.migration.ctower_project.ctower_project_source.canonical import (
     canonical_bytes,
+    canonical_digest,
     sha256_digest,
 )
 from tools.migration.ctower_project.ctower_project_source.executor import (
@@ -339,7 +340,7 @@ def _run(
             attention_required=0,
         ),
         conservation=_conservation(),
-        reconciliation_graph=_graph(fixture),
+        reconciliation_graph=_graph(fixture, signed_plan),
         pass_two_measurement=_pass_two(),
         source_native_watermark=243,
         export_native_watermark=243,
@@ -352,32 +353,57 @@ def _run(
     )
 
 
-def _graph(fixture: SyntheticFixture) -> MigrationReconciliationGraph:
-    digest = sha256_digest(b"synthetic reconciliation graph")
-    return MigrationReconciliationGraph(
-        stable_aliases=tuple(f"stable:{item}" for item in fixture.stable_ids),
-        operation_identities=(),
-        operation_results=(),
-        tickets=(),
-        lifecycle_facts=(),
-        priority_facts=(),
-        custody_intervals=(),
-        active_claims=(),
-        alias_revisions=(),
-        relations=(),
-        relation_endpoints=(),
-        source_links=(),
-        checkpoint_definitions=tuple(f"checkpoint:{item}" for item in fixture.checkpoint_keys),
-        checkpoint_criteria=tuple(f"criterion:{item}" for item in fixture.checkpoint_keys),
-        project_delivery_rows=tuple(f"delivery:{item}" for item in fixture.checkpoint_keys),
-        events=(),
-        outbox_rows=(),
-        unexpected=(),
-        forbidden=(),
-        unresolved=(),
-        cycles=(),
-        graph_digest=digest,
-    )
+def _graph(
+    fixture: SyntheticFixture,
+    signed_plan: dict[str, Any],
+) -> MigrationReconciliationGraph:
+    definitions = signed_plan["checkpoint_definitions"]
+    value: dict[str, Any] = {
+        "stable_aliases": tuple(f"stable:{item}" for item in fixture.stable_ids),
+        "operation_identities": (),
+        "operation_results": (),
+        "tickets": (),
+        "lifecycle_facts": (),
+        "priority_facts": (),
+        "custody_intervals": (),
+        "active_claims": (),
+        "alias_revisions": (),
+        "relations": (),
+        "relation_endpoints": (),
+        "source_links": (),
+        "checkpoint_definitions": tuple(
+            sorted(
+                canonical_bytes(
+                    {
+                        "checkpoint_key": item["checkpoint_key"],
+                        "catalog_revision": item["catalog_revision"],
+                        "definition_digest": item["definition_digest"],
+                    }
+                ).decode()
+                for item in definitions
+            )
+        ),
+        "checkpoint_criteria": tuple(
+            sorted(
+                canonical_bytes(
+                    {
+                        "checkpoint_key": item["checkpoint_key"],
+                        "criteria_digest": item["criteria_digest"],
+                    }
+                ).decode()
+                for item in definitions
+            )
+        ),
+        "project_delivery_rows": tuple(f"delivery:{item}" for item in fixture.checkpoint_keys),
+        "events": (),
+        "outbox_rows": (),
+        "unexpected": (),
+        "forbidden": (),
+        "unresolved": (),
+        "cycles": (),
+    }
+    value["graph_digest"] = canonical_digest(value)
+    return MigrationReconciliationGraph.model_validate(value)
 
 
 def _pass_two() -> MigrationPassTwoMeasurement:
