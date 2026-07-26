@@ -8,6 +8,11 @@ from collections.abc import Mapping
 from dataclasses import dataclass
 from typing import cast
 
+from tools.codegen._json_integer_codegen import (
+    JSON_INTEGER_MAXIMUM,
+    JSON_INTEGER_MINIMUM,
+    require_json_integer_profile,
+)
 from tools.codegen._rfc3339_codegen import require_rfc3339_profile
 from tools.codegen._typescript_validation_codegen import render_validators
 
@@ -37,6 +42,7 @@ class _Operation:
 
 
 def render_typescript(document: dict[str, object], contract_digest: str) -> dict[str, str]:
+    require_json_integer_profile(document)
     require_rfc3339_profile(document)
     operations = _operations(document)
     schemas = _mapping(
@@ -55,6 +61,8 @@ def render_typescript(document: dict[str, object], contract_digest: str) -> dict
             {item.operation_id: item.success_models for item in operations},
             {item.operation_id: item.problem_models for item in operations},
             contract_digest,
+            integer_minimum=JSON_INTEGER_MINIMUM,
+            integer_maximum=JSON_INTEGER_MAXIMUM,
         ),
     }
 

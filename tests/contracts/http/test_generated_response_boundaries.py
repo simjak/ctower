@@ -19,8 +19,8 @@ from ctower_client import (
     CtowerClient,
     CtowerProblemError,
     IntakeSubmitRequest,
+    Problem,
     SourceReference,
-    TicketResource,
 )
 
 __all__: tuple[str, ...] = ()
@@ -29,6 +29,8 @@ ROOT = Path(__file__).parents[3]
 TSC = ROOT / "node_modules/typescript/bin/tsc"
 UUID = "018f7a40-1234-7abc-8def-1234567890ab"
 LEAP_YEAR = 2024
+JSON_SAFE_INTEGER_MAXIMUM = 9_007_199_254_740_991
+JSON_UNSAFE_INTEGER = 9_007_199_254_740_993
 
 
 @pytest.mark.parametrize(
@@ -94,6 +96,7 @@ def test_generated_python_client_validates_problem_payloads() -> None:
     with pytest.raises(CtowerProblemError) as raised:
         client.submit_intake(_python_request(), command_id=uuid4())
     assert raised.value.problem.code == "version-conflict"
+    assert cast(Problem, raised.value.problem).type_uri == valid["type"]
     client.close()
 
     invalid_payloads: tuple[object, ...] = (
@@ -101,6 +104,7 @@ def test_generated_python_client_validates_problem_payloads() -> None:
         {**valid, "unknown": "field"},
         {**valid, "code": "not-a-problem"},
         {**valid, "status": 399},
+        {**valid, "type": "not-an-absolute-uri"},
     )
     for invalid in invalid_payloads:
         client = _python_client(invalid, status=409, problem=True)
@@ -130,19 +134,40 @@ def test_generated_python_client_rejects_undeclared_success_status() -> None:
         ("2026-07-25T20:00:00+24:00", False),
         ("2026-07-25T20:00:60Z", False),
         ("2026-07-25T20:00:00-00:00", False),
+        (
+            "\u0662\u0660\u0662\u0666-\u0660\u0667-\u0662\u0665"
+            "T\u0662\u0660:\u0660\u0660:\u0660\u0660Z",
+            False,
+        ),
     ),
 )
-def test_generated_python_models_enforce_authored_rfc3339_profile(
+def test_generated_python_client_enforces_authored_rfc3339_profile(
     timestamp: str,
     *,
     accepted: bool,
 ) -> None:
-    payload = json.dumps(_ticket(timestamp))
+    client = _python_client(_ticket(timestamp), status=200)
     if accepted:
-        assert TicketResource.model_validate_json(payload).created_at.year == LEAP_YEAR
+        assert client.get_ticket(uuid4()).created_at.year == LEAP_YEAR
     else:
         with pytest.raises(ValidationError):
-            TicketResource.model_validate_json(payload)
+            client.get_ticket(uuid4())
+    client.close()
+
+
+def test_generated_python_client_enforces_lossless_json_integers() -> None:
+    client = _python_client(
+        _ticket("2026-07-25T20:00:00Z", version=JSON_SAFE_INTEGER_MAXIMUM), status=200
+    )
+    assert client.get_ticket(uuid4()).version == JSON_SAFE_INTEGER_MAXIMUM
+    client.close()
+
+    client = _python_client(
+        _ticket("2026-07-25T20:00:00Z", version=JSON_UNSAFE_INTEGER), status=200
+    )
+    with pytest.raises(ValidationError):
+        client.get_ticket(uuid4())
+    client.close()
 
 
 def test_generated_typescript_client_runtime_validates_success_and_problem_vectors(
@@ -215,11 +240,11 @@ def _problem() -> dict[str, object]:
         "detail": "The expected version is stale.",
         "status": 409,
         "title": "Version conflict",
-        "type": "https://ctower.dev/problems/version-conflict",
+        "type": "HTTPS://CTOWER.DEV:443/problems/version-conflict?source=%2Fwire#Exact",
     }
 
 
-def _ticket(created_at: str) -> dict[str, object]:
+def _ticket(created_at: str, *, version: int = 1) -> dict[str, object]:
     return {
         "created_at": created_at,
         "custodian_id": UUID,
@@ -228,7 +253,7 @@ def _ticket(created_at: str) -> dict[str, object]:
         "source": {"kind": "test", "ref": "generated:ticket"},
         "ticket_id": UUID,
         "title": "Ticket resource",
-        "version": 1,
+        "version": version,
     }
 
 
@@ -285,6 +310,10 @@ def _typescript_runner() -> str:
     result = json.dumps(_intake_result(), sort_keys=True)
     problem = json.dumps(_problem(), sort_keys=True)
     ticket = json.dumps(_ticket("2024-02-29T23:59:59.123456+23:59"), sort_keys=True)
+    unsafe_ticket = json.dumps(
+        _ticket("2026-07-25T20:00:00Z", version=JSON_UNSAFE_INTEGER),
+        sort_keys=True,
+    )
     successes, problems = _authored_response_inventories()
     success_inventory = json.dumps(successes, sort_keys=True)
     problem_inventory = json.dumps(problems, sort_keys=True)
@@ -299,6 +328,7 @@ import {{
 const valid = {result};
 const problem = {problem};
 const ticket = {ticket};
+const unsafeTicketJson = {json.dumps(unsafe_ticket)};
 const expectedSuccesses = {success_inventory};
 const expectedProblems = {problem_inventory};
 const canonical = (value) => {{
@@ -326,7 +356,7 @@ const client = new CtowerClient({{
   fetch: async () => {{
     const next = responses.shift();
     if (next === undefined) throw new Error("response queue exhausted");
-    return new Response(JSON.stringify(next.payload), {{
+    return new Response(next.raw ?? JSON.stringify(next.payload), {{
       status: next.status,
       headers: {{"content-type": next.problem ? "application/problem+json" : "application/json"}},
     }});
@@ -342,8 +372,18 @@ const promote = () => client.promoteIntakeEvent({{
   body: {{expected_thread_version: 1, intent: "create_ticket"}},
 }});
 const getTicket = () => client.getTicket({{ticketId: "{UUID}"}});
-async function expectTypeError(payload, operation = submit, status = 202, isProblem = false) {{
-  responses.push({{payload, status, problem: isProblem}});
+async function expectTypeError(
+  payload,
+  operation = submit,
+  status = 202,
+  isProblem = false,
+  raw = false,
+) {{
+  responses.push(
+    raw
+      ? {{raw: payload, status, problem: isProblem}}
+      : {{payload, status, problem: isProblem}},
+  );
   try {{
     await operation();
   }} catch (error) {{
@@ -359,6 +399,14 @@ responses.push({{payload: valid, status: 200, problem: false}});
 if ((await promote()).outcome !== "discussion") throw new Error("valid promotion rejected");
 responses.push({{payload: ticket, status: 200, problem: false}});
 if ((await getTicket()).version !== 1) throw new Error("valid leap-day timestamp rejected");
+responses.push({{
+  payload: {{...ticket, version: {JSON_SAFE_INTEGER_MAXIMUM}}},
+  status: 200,
+  problem: false,
+}});
+if ((await getTicket()).version !== {JSON_SAFE_INTEGER_MAXIMUM}) {{
+  throw new Error("safe integer boundary rejected");
+}}
 
 await expectTypeError([]);
 await expectTypeError(valid, submit, 299);
@@ -387,6 +435,12 @@ await expectTypeError({{...ticket, created_at: "2026-07-25T20:00:00"}}, getTicke
 await expectTypeError({{...ticket, created_at: "2026-07-25T20:00:00+24:00"}}, getTicket, 200);
 await expectTypeError({{...ticket, created_at: "2026-07-25T20:00:60Z"}}, getTicket, 200);
 await expectTypeError({{...ticket, created_at: "2026-07-25T20:00:00-00:00"}}, getTicket, 200);
+await expectTypeError({{
+  ...ticket,
+  created_at: "\u0662\u0660\u0662\u0666-\u0660\u0667-\u0662\u0665"
+    + "T\u0662\u0660:\u0660\u0660:\u0660\u0660Z",
+}}, getTicket, 200);
+await expectTypeError(unsafeTicketJson, getTicket, 200, false, true);
 
 responses.push({{payload: problem, status: 409, problem: true}});
 try {{
@@ -394,11 +448,13 @@ try {{
   throw new Error("valid problem was returned as success");
 }} catch (error) {{
   if (!(error instanceof CtowerProblemError)) throw error;
+  if (error.problem.type !== problem.type) throw new Error("valid absolute URI was normalized");
 }}
 await expectTypeError([], submit, 409, true);
 await expectTypeError({{...problem, unknown: "field"}}, submit, 409, true);
 await expectTypeError({{...problem, code: "not-a-problem"}}, submit, 409, true);
 await expectTypeError({{...problem, status: 399}}, submit, 409, true);
+await expectTypeError({{...problem, type: "not-an-absolute-uri"}}, submit, 409, true);
 await expectTypeError({{...problem, status: 404}}, submit, 409, true);
 await expectTypeError(problem, submit, 418, true);
 

@@ -53,6 +53,7 @@ _BASE_INPUTS = (
     Path("tools/codegen/__main__.py"),
     Path("tools/codegen/_client_codegen.py"),
     Path("tools/codegen/_inventory.py"),
+    Path("tools/codegen/_json_integer_codegen.py"),
     Path("tools/codegen/_model_codegen.py"),
     Path("tools/codegen/_operation_codegen.py"),
     Path("tools/codegen/_rfc3339_codegen.py"),

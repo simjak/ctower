@@ -16,6 +16,11 @@
     "year-range": [1, 9999],
     "zero-offset": "Z-or-plus-00:00"
   },
+  "x-ctower-json-integer-profile": {
+    "maximum": 9007199254740991,
+    "minimum": -9007199254740991,
+    "semantics": "exact-integer-interoperability"
+  },
   "paths": {
     "/v1/bootstrap/first-tenant": {
       "post": {
