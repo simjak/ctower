@@ -7,29 +7,26 @@ import json
 from dataclasses import dataclass
 from datetime import UTC, datetime
 from pathlib import Path
-from typing import Literal
 from uuid import UUID, uuid4
 
+import psycopg
+from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PrivateKey
+from psycopg.rows import dict_row
+
 from ctower_client.models import (
-    CtowerProjectAliasPlanBindRequest,
     CtowerProjectImportBatchRequest,
     CtowerProjectImportBatchResult,
-    CtowerProjectImportCorrectionRequest,
     CtowerProjectImportFinalizeRequest,
     CtowerProjectImportRun,
     CtowerProjectReconciliationResult,
-    MigrationAliasCorrection,
-    MigrationCorrectionRevision,
-    MigrationSourceLinkCorrection,
 )
-from ctower_kernel.migration import Migration, PostgresMigration
+from ctower_kernel.migration import Migration, PostgresMigration, _pass_two_sql
 from ctower_kernel.record import Actor, PrincipalKind, RecordProblem, SourceReference, TicketCommand
 from ctower_kernel.record.postgres import PostgresRecord
 from ctower_kernel.telemetry import TelemetryContext
 from ctower_kernel.work import Work
 from tools.migration.ctower_project.ctower_project_source.canonical import (
     canonical_bytes,
-    canonical_digest,
 )
 from tools.migration.ctower_project.ctower_project_source.executor import (
     ImportPassReceipt,
@@ -37,12 +34,20 @@ from tools.migration.ctower_project.ctower_project_source.executor import (
     prove_pass_two,
 )
 from tools.migration.ctower_project.ctower_project_source.import_plan import ImportPlan
+from tools.migration.ctower_project.ctower_project_source.signing import ArtifactSigner
 
-from ._postgres import Database, alias_digest, semantic_counts, source_link_digest
+from ._checkpoint_truth import materialize_checkpoint_truth, refresh_checkpoint_truth
+from ._correction_evidence import assert_append_only_corrections
+from ._postgres import Database, semantic_counts
+from ._review_graph_evidence import (
+    assert_export_graph_refusals,
+    assert_plan_graph_refusals,
+)
 from ._reviewed import ReviewedSource, reviewed_source
-from .source_tool.fixtures import CUTOVER_ID
+from ._target_drift_evidence import assert_live_target_drift_refusal
+from .source_tool.fixtures import CUTOVER_ID, REVIEW
 
-_OPERATION_COUNT = 71
+_OPERATION_COUNT = 98
 _REQUEST_PHYSICAL_COUNT = 243
 __all__: tuple[str, ...] = ()
 
@@ -56,6 +61,7 @@ class _RunContext:
     operator: Actor
     created: CtowerProjectImportRun
     credential_digest: bytes
+    alternate_signer: ArtifactSigner
 
 
 def test_complete_reviewed_two_pass_is_measured_and_partial_finalize_refuses(
@@ -70,13 +76,33 @@ def test_complete_reviewed_two_pass_is_measured_and_partial_finalize_refuses(
         importer,
         plan,
     )
-    _assert_append_only_corrections(context, migration_database, plan, first_batch)
+    assert_append_only_corrections(context, migration_database, plan, first_batch)
+    ready = _finish_two_pass(
+        context,
+        migration_database,
+        importer,
+        plan,
+        first_batch,
+    )
+    _assert_reconciliation_refusals(context, migration_database, ready)
+    artifact = _reconciliation_artifact(context, ready)
+    _assert_finalize_replay(context, migration_database, ready, artifact)
+
+
+def _finish_two_pass(
+    context: _RunContext,
+    database: Database,
+    importer: Actor,
+    plan: ImportPlan,
+    first_batch: CtowerProjectImportBatchResult,
+) -> CtowerProjectImportRun:
     first = execute_import(
         plan,
         client=_MigrationClient(context.migration, importer),
         apply=True,
         completed=(first_batch,),
     )
+    refresh_checkpoint_truth(database, now=datetime.now(UTC))
     second = execute_import(
         plan,
         client=_MigrationClient(context.migration, importer),
@@ -88,10 +114,22 @@ def test_complete_reviewed_two_pass_is_measured_and_partial_finalize_refuses(
     ready = context.migration.get_run(context.operator, context.created.run_id)
     assert not isinstance(ready, RecordProblem)
     _assert_measured(ready)
+    _assert_phase_and_measurement_rows(database, ready.run_id)
+    return ready
+
+
+def _assert_finalize_replay(
+    context: _RunContext,
+    database: Database,
+    ready: CtowerProjectImportRun,
+    artifact: str,
+) -> None:
+    finalize = _finalize(ready, artifact)
+    command_id = uuid4()
     result = context.migration.finalize_run(
         context.operator,
-        _finalize(ready),
-        command_id=uuid4(),
+        finalize,
+        command_id=command_id,
         telemetry=_telemetry(context.operator),
     )
     _assert_finalized(
@@ -101,14 +139,139 @@ def test_complete_reviewed_two_pass_is_measured_and_partial_finalize_refuses(
         context.credential_digest,
         context.now,
     )
+    before_replay = semantic_counts(database)
+    assert (
+        context.migration.finalize_run(
+            context.operator,
+            finalize,
+            command_id=command_id,
+            telemetry=_telemetry(context.operator),
+        )
+        == result
+    )
+    assert semantic_counts(database) == before_replay
+    _assert_exact_reconciliation_bytes(database, ready.run_id, artifact)
+    changed = finalize.model_copy(
+        update={"reconciliation_artifact": _reconciliation_artifact(context, ready)}
+    )
+    drifted = context.migration.finalize_run(
+        context.operator,
+        changed,
+        command_id=command_id,
+        telemetry=_telemetry(context.operator),
+    )
+    assert isinstance(drifted, RecordProblem)
+    assert drifted.code == "migration-operation-drift"
+    assert semantic_counts(database) == before_replay
+
+
+def test_canonical_importer_revocation_refuses_preparsed_actor_without_delta(
+    migration_database: Database,
+    tmp_path: Path,
+) -> None:
+    context = _start_run(migration_database, tmp_path)
+    importer, plan = _bind_reviewed_plan(context, migration_database)
+    with psycopg.connect(migration_database.admin_dsn) as connection:
+        changed = connection.execute(
+            """
+            UPDATE principal_credentials
+            SET revoked_at = %s
+            WHERE tenant_id = %s AND principal_id = %s
+              AND credential_digest = %s AND revoked_at IS NULL
+            """,
+            (
+                datetime.now(UTC),
+                importer.tenant_id,
+                importer.principal_id,
+                context.credential_digest,
+            ),
+        )
+        assert changed.rowcount == 1
+    assert (
+        context.store.resolve_importer_credential(
+            context.credential_digest,
+            context.now,
+        )
+        is None
+    )
+    before = semantic_counts(migration_database)
+    refused = context.migration.apply_batch(
+        importer,
+        plan.batches[0],
+        telemetry=_telemetry(importer),
+    )
+    assert isinstance(refused, RecordProblem)
+    assert refused.code == "migration-capability-denied"
+    assert semantic_counts(migration_database) == before
+
+
+def test_unexpected_run_source_link_blocks_pass_two_with_exact_identity(
+    migration_database: Database,
+    tmp_path: Path,
+) -> None:
+    context = _start_run(migration_database, tmp_path)
+    importer, plan = _bind_reviewed_plan(context, migration_database)
+    first = execute_import(
+        plan,
+        client=_MigrationClient(context.migration, importer),
+        apply=True,
+    )
+    assert isinstance(first, ImportPassReceipt)
+    refresh_checkpoint_truth(migration_database, now=datetime.now(UTC))
+    link_id = uuid4()
+    with psycopg.connect(migration_database.admin_dsn) as connection:
+        connection.execute(
+            """
+            INSERT INTO migration_source_link_revisions (
+                link_id, revision, run_id, namespace, immutable_source_id,
+                link_class, target_kind, target_id, reason_code, semantic_digest,
+                supersedes_revision, command_id, recorded_at
+            ) VALUES (%s, 1, %s, 'unexpected', 'test-extra-source',
+                'provenance', 'decision', 'decision:unexpected',
+                'unexpected.source', %s, NULL, %s, %s)
+            """,
+            (
+                link_id,
+                context.created.run_id,
+                hashlib.sha256(b"unexpected-source-link").digest(),
+                link_id,
+                context.now,
+            ),
+        )
+    with psycopg.connect(migration_database.admin_dsn, row_factory=dict_row) as connection:
+        measured = _pass_two_sql.graph(
+            _pass_two_sql.capture(connection, context.created.run_id).body
+        )
+    assert measured["unexpected"] == [
+        "source_link:unexpected:test-extra-source",
+    ]
+    before = semantic_counts(migration_database)
+    refused = context.migration.apply_batch(
+        importer,
+        plan.batches[0],
+        telemetry=_telemetry(importer),
+    )
+    assert isinstance(refused, RecordProblem)
+    assert refused.code == "migration-run-conflict"
+    assert semantic_counts(migration_database) == before
 
 
 def _start_run(database: Database, tmp_path: Path) -> _RunContext:
     now = datetime.now(UTC)
+    materialize_checkpoint_truth(database, now=now)
     source = reviewed_source(tmp_path, CUTOVER_ID)
+    alternate_private = Ed25519PrivateKey.generate()
+    alternate_signer = ArtifactSigner(
+        "signing-key-ref:test/alternate-reviewer",
+        1,
+        alternate_private,
+    )
     store = PostgresMigration(
         database.runtime_dsn,
-        trusted_reviewer_keys=source.trusted_keys,
+        trusted_reviewer_keys={
+            **source.trusted_keys,
+            ("signing-key-ref:test/alternate-reviewer", 1): (alternate_private.public_key()),
+        },
     )
     migration = Migration(store, clock=lambda: now)
     operator = Actor(database.operator_id, database.tenant_id, PrincipalKind.OPERATOR)
@@ -119,6 +282,18 @@ def _start_run(database: Database, tmp_path: Path) -> _RunContext:
         (
             migration,
             request.model_copy(update={"source_selection_digest": f"sha256:{'0' * 64}"}),
+        ),
+        (
+            migration,
+            request.model_copy(
+                update={
+                    "source_selection_artifact": _resign(
+                        alternate_signer,
+                        request.source_selection_artifact,
+                        "manifest_digest",
+                    )
+                }
+            ),
         ),
     ):
         refused = candidate.create_run(
@@ -146,6 +321,7 @@ def _start_run(database: Database, tmp_path: Path) -> _RunContext:
         operator,
         created,
         credential_digest,
+        alternate_signer,
     )
 
 
@@ -153,7 +329,7 @@ def _bind_reviewed_plan(
     context: _RunContext,
     database: Database,
 ) -> tuple[Actor, ImportPlan]:
-    _assert_export_graph_refusals(context, database)
+    assert_export_graph_refusals(context, database)
     exported = context.migration.bind_export_equality(
         context.operator,
         context.source.export_request(context.created.run_id),
@@ -167,7 +343,7 @@ def _bind_reviewed_plan(
         database.commander_id,
         context.now,
     )
-    _assert_plan_graph_refusals(context, database, plan_request)
+    assert_plan_graph_refusals(context, database, plan_request)
     planned = context.migration.bind_alias_plan(
         context.operator,
         plan_request,
@@ -203,124 +379,14 @@ def _bind_reviewed_plan(
     return importer, plan
 
 
-def _assert_export_graph_refusals(context: _RunContext, database: Database) -> None:
-    request = context.source.export_request(context.created.run_id)
-    malformed = request.model_copy(
-        update={"export_equality_artifact": canonical_bytes({"invalid": True}).decode()}
-    )
-    export_a = json.loads(request.export_a_artifact)
-    export_a["artifact_digest"] = f"sha256:{'0' * 64}"
-    bad_export_digest = request.model_copy(
-        update={"export_a_artifact": canonical_bytes(export_a).decode()}
-    )
-    equality = _reseal(
-        context,
-        request.export_equality_artifact,
-        "report_digest",
-        {"cutover_id": str(uuid4())},
-    )
-    rebound = request.model_copy(
-        update={
-            "equality_report_digest": equality["report_digest"],
-            "export_equality_artifact": canonical_bytes(equality).decode(),
-        }
-    )
-    bad_inventory = request.model_copy(update={"inventory_a_digest": f"sha256:{'0' * 64}"})
-    for candidate in (malformed, bad_export_digest, rebound, bad_inventory):
-        before = semantic_counts(database)
-        refused = context.migration.bind_export_equality(
-            context.operator,
-            candidate,
-            command_id=uuid4(),
-            telemetry=_telemetry(context.operator),
-        )
-        assert isinstance(refused, RecordProblem)
-        assert semantic_counts(database) == before
-
-
-def _assert_plan_graph_refusals(
-    context: _RunContext,
-    database: Database,
-    plan_request: CtowerProjectAliasPlanBindRequest,
-) -> None:
-    plan_nonexhaustive = json.loads(plan_request.import_plan_artifact)
-    plan_nonexhaustive["operation_count"] += 1
-    plan_batch = json.loads(plan_request.import_plan_artifact)
-    plan_batch["batches"][0]["batch_index"] = 9
-    plan_command = json.loads(plan_request.import_plan_artifact)
-    plan_command["batches"][0]["operations"][0]["identity"]["command_id"] = str(uuid4())
-    batch = plan_command["batches"][0]
-    batch["batch_digest"] = canonical_digest(
-        {key: value for key, value in batch.items() if key != "batch_digest"}
-    )
-    candidates = (
-        plan_request.model_copy(update={"alias_map_digest": f"sha256:{'0' * 64}"}),
-        _plan_candidate(context, plan_request, plan_nonexhaustive),
-        _plan_candidate(context, plan_request, plan_batch),
-        _plan_candidate(context, plan_request, plan_command),
-        _artifact_candidate(
-            context,
-            plan_request,
-            "alias_map_artifact",
-            "map_digest",
-            {"attention_required": 1},
-        ),
-        _artifact_candidate(
-            context,
-            plan_request,
-            "fence_registry_artifact",
-            "registry_digest",
-            {"cutover_id": str(uuid4())},
-        ),
-    )
-    for candidate in candidates:
-        before = semantic_counts(database)
-        refused = context.migration.bind_alias_plan(
-            context.operator,
-            candidate,
-            command_id=uuid4(),
-            telemetry=_telemetry(context.operator),
-        )
-        assert isinstance(refused, RecordProblem)
-        assert semantic_counts(database) == before
-
-
-def _plan_candidate(
-    context: _RunContext,
-    request: CtowerProjectAliasPlanBindRequest,
-    plan: dict[str, object],
-) -> CtowerProjectAliasPlanBindRequest:
-    unsigned = {
-        key: value for key, value in plan.items() if key not in {"plan_digest", "signature"}
-    }
-    sealed = context.source.fixture.signer.seal(unsigned, "plan_digest")
-    return request.model_copy(update={"import_plan_artifact": canonical_bytes(sealed).decode()})
-
-
-def _artifact_candidate(
-    context: _RunContext,
-    request: CtowerProjectAliasPlanBindRequest,
-    field: Literal["alias_map_artifact", "fence_registry_artifact"],
-    digest_field: Literal["map_digest", "registry_digest"],
-    update: dict[str, object],
-) -> CtowerProjectAliasPlanBindRequest:
-    artifact = getattr(request, field)
-    sealed = _reseal(context, artifact, digest_field, update)
-    return request.model_copy(update={field: canonical_bytes(sealed).decode()})
-
-
-def _reseal(
-    context: _RunContext,
+def _resign(
+    signer: ArtifactSigner,
     artifact_text: str,
-    digest_field: Literal["report_digest", "map_digest", "registry_digest"],
-    update: dict[str, object],
-) -> dict[str, object]:
+    digest_field: str,
+) -> str:
     artifact = json.loads(artifact_text)
-    unsigned = {
-        key: value for key, value in artifact.items() if key not in {digest_field, "signature"}
-    }
-    unsigned.update(update)
-    return context.source.fixture.signer.seal(unsigned, digest_field)
+    body = {key: value for key, value in artifact.items() if key not in {digest_field, "signature"}}
+    return canonical_bytes(signer.seal(body, digest_field)).decode()
 
 
 def _apply_first_and_refuse_partial(
@@ -360,6 +426,15 @@ def _apply_first_and_refuse_partial(
         telemetry=_telemetry(importer),
     )
     assert not isinstance(first_batch, RecordProblem)
+    before_premature_replay = semantic_counts(database)
+    premature_replay = context.migration.apply_batch(
+        importer,
+        plan.batches[0],
+        telemetry=_telemetry(importer),
+    )
+    assert isinstance(premature_replay, RecordProblem)
+    assert premature_replay.code == "migration-run-conflict"
+    assert semantic_counts(database) == before_premature_replay
     partial = context.migration.get_run(context.operator, context.created.run_id)
     assert not isinstance(partial, RecordProblem)
     before_finalize = semantic_counts(database)
@@ -372,151 +447,6 @@ def _apply_first_and_refuse_partial(
     assert isinstance(partial_result, RecordProblem)
     assert semantic_counts(database) == before_finalize
     return first_batch
-
-
-def _assert_append_only_corrections(
-    context: _RunContext,
-    database: Database,
-    plan: ImportPlan,
-    first_batch: CtowerProjectImportBatchResult,
-) -> None:
-    target_id = UUID(first_batch.results[0].target_id)
-    alias = next(item for item in plan.batches[0].operations if item.operation == "exact_alias")
-    source_link = next(
-        item for item in plan.batches[0].operations if item.operation == "source_link"
-    )
-    _assert_alias_correction(
-        context,
-        database,
-        target_id,
-        alias.identity.command_id,
-    )
-    _assert_source_link_correction(
-        context,
-        database,
-        target_id,
-        source_link.identity.command_id,
-    )
-
-
-def _assert_alias_correction(
-    context: _RunContext,
-    database: Database,
-    target_id: UUID,
-    alias_id: UUID,
-) -> None:
-    request = _correction(
-        context,
-        "alias",
-        alias_id,
-        alias_digest(database, alias_id),
-        MigrationAliasCorrection(
-            kind="alias",
-            target_ticket_id=uuid4(),
-            disposition="provenance_only",
-        ),
-    )
-    before = semantic_counts(database)
-    refused = _append(context, request, uuid4())
-    assert isinstance(refused, RecordProblem)
-    assert semantic_counts(database) == before
-    accepted = request.model_copy(
-        update={
-            "correction_id": uuid4(),
-            "replacement": request.replacement.model_copy(update={"target_ticket_id": target_id}),
-        }
-    )
-    _assert_correction_replay_and_stale(context, database, accepted)
-
-
-def _assert_source_link_correction(
-    context: _RunContext,
-    database: Database,
-    target_id: UUID,
-    link_id: UUID,
-) -> None:
-    request = _correction(
-        context,
-        "source_link",
-        link_id,
-        source_link_digest(database, link_id),
-        MigrationSourceLinkCorrection(
-            kind="source_link",
-            target_kind="ticket",
-            target_id=f"ticket:{uuid4()}",
-            disposition="provenance_only",
-        ),
-    )
-    before = semantic_counts(database)
-    refused = _append(context, request, uuid4())
-    assert isinstance(refused, RecordProblem)
-    assert semantic_counts(database) == before
-    accepted = request.model_copy(
-        update={
-            "correction_id": uuid4(),
-            "replacement": request.replacement.model_copy(
-                update={"target_id": f"ticket:{target_id}"}
-            ),
-        }
-    )
-    _assert_correction_replay_and_stale(context, database, accepted)
-
-
-def _correction(
-    context: _RunContext,
-    kind: Literal["alias", "source_link"],
-    object_id: UUID,
-    expected_digest: str,
-    replacement: MigrationAliasCorrection | MigrationSourceLinkCorrection,
-) -> CtowerProjectImportCorrectionRequest:
-    return CtowerProjectImportCorrectionRequest(
-        schema_id="ctower.ctower-project-import-correction/v1",
-        correction_id=uuid4(),
-        run_id=context.created.run_id,
-        cutover_id=context.created.cutover_id,
-        tenant_key="ctower",
-        project_key="ctower",
-        correction_kind=kind,
-        superseded_revision=MigrationCorrectionRevision(object_id=object_id, revision=1),
-        expected_current_digest=expected_digest,
-        replacement=replacement,
-        reason="Reviewed append-only correction",
-        reviewer_id=context.operator.principal_id,
-    )
-
-
-def _append(
-    context: _RunContext,
-    request: CtowerProjectImportCorrectionRequest,
-    command_id: UUID,
-) -> object:
-    return context.migration.append_correction(
-        context.operator,
-        request,
-        command_id=command_id,
-        telemetry=_telemetry(context.operator),
-    )
-
-
-def _assert_correction_replay_and_stale(
-    context: _RunContext,
-    database: Database,
-    request: CtowerProjectImportCorrectionRequest,
-) -> None:
-    command_id = uuid4()
-    receipt = _append(context, request, command_id)
-    assert not isinstance(receipt, RecordProblem)
-    before = semantic_counts(database)
-    assert _append(context, request, command_id) == receipt
-    drift = request.model_copy(update={"reason": "Changed replay"})
-    drifted = _append(context, drift, command_id)
-    assert isinstance(drifted, RecordProblem)
-    assert drifted.code == "migration-operation-drift"
-    stale = request.model_copy(update={"correction_id": uuid4()})
-    refused = _append(context, stale, uuid4())
-    assert isinstance(refused, RecordProblem)
-    assert refused.code == "migration-correction-conflict"
-    assert semantic_counts(database) == before
 
 
 class _MigrationClient:
@@ -549,6 +479,108 @@ def _assert_measured(ready: CtowerProjectImportRun) -> None:
     assert ready.conservation.pass_two_new_events == 0
 
 
+def _assert_phase_and_measurement_rows(database: Database, run_id: UUID) -> None:
+    with psycopg.connect(database.admin_dsn) as connection:
+        states = [
+            str(row[0])
+            for row in connection.execute(
+                """
+                SELECT state FROM migration_import_run_facts
+                WHERE run_id = %s ORDER BY fact_sequence
+                """,
+                (run_id,),
+            ).fetchall()
+        ]
+        snapshots = connection.execute(
+            """
+            SELECT boundary, snapshot_digest, snapshot_body, domain_fact_count,
+                event_count, outbox_count, record_position, project_delivery_digest
+            FROM migration_import_pass_two_snapshots
+            WHERE run_id = %s ORDER BY boundary
+            """,
+            (run_id,),
+        ).fetchall()
+        replay_rows = connection.execute(
+            """
+            SELECT new_domain_facts, new_events, new_outbox_rows,
+                record_position_delta, projection_semantic_delta
+            FROM migration_import_replay_receipts
+            WHERE run_id = %s ORDER BY batch_index
+            """,
+            (run_id,),
+        ).fetchall()
+    assert states[-3:] == [
+        "pass_one_complete",
+        "pass_two_started",
+        "pass_two_noop",
+    ]
+    assert [str(row[0]) for row in snapshots] == ["end", "start"]
+    end, start = snapshots
+    assert bytes(end[1]) == bytes(start[1])
+    assert end[2] == start[2]
+    assert tuple(end[3:]) == tuple(start[3:])
+    assert replay_rows
+    assert all(tuple(int(value) for value in row) == (0, 0, 0, 0, 0) for row in replay_rows)
+
+
+def _assert_reconciliation_refusals(
+    context: _RunContext,
+    database: Database,
+    ready: CtowerProjectImportRun,
+) -> None:
+    accepted = _reconciliation_artifact(context, ready)
+    assert_live_target_drift_refusal(context, database, ready, accepted)
+    missing = json.loads(accepted)
+    missing["actual_graph"]["stable_aliases"].pop()
+    missing_artifact = _resign(
+        context.source.fixture.signer,
+        canonical_bytes(missing).decode(),
+        "report_digest",
+    )
+    alternate_artifact = _resign(
+        context.alternate_signer,
+        accepted,
+        "report_digest",
+    )
+    for artifact in (missing_artifact, alternate_artifact):
+        before = semantic_counts(database)
+        refused = context.migration.finalize_run(
+            context.operator,
+            _finalize(ready, artifact),
+            command_id=uuid4(),
+            telemetry=_telemetry(context.operator),
+        )
+        assert isinstance(refused, RecordProblem)
+        assert refused.code == "migration-import-finalization-refused"
+        assert semantic_counts(database) == before
+
+
+def _assert_exact_reconciliation_bytes(
+    database: Database,
+    run_id: UUID,
+    artifact: str,
+) -> None:
+    with psycopg.connect(database.admin_dsn) as connection:
+        row = connection.execute(
+            """
+            SELECT verified.artifact_canonical_bytes,
+                reconciliation.report_canonical_bytes,
+                reconciliation.report_body
+            FROM migration_verified_artifacts AS verified
+            JOIN migration_reconciliation_facts AS reconciliation
+              ON reconciliation.run_id = verified.run_id
+             AND reconciliation.report_digest = verified.artifact_digest
+            WHERE verified.run_id = %s AND verified.artifact_kind = 'reconciliation'
+            """,
+            (run_id,),
+        ).fetchone()
+    assert row is not None
+    expected = artifact.encode()
+    assert bytes(row[0]) == expected
+    assert bytes(row[1]) == expected
+    assert row[2] == json.loads(artifact)
+
+
 def _assert_finalized(
     result: object,
     ready: CtowerProjectImportRun,
@@ -558,7 +590,10 @@ def _assert_finalized(
 ) -> None:
     assert not isinstance(result, RecordProblem)
     assert isinstance(result, CtowerProjectReconciliationResult)
-    assert result.conservation == ready.conservation
+    assert result.expected_graph == ready.reconciliation_graph
+    assert result.actual_graph == ready.reconciliation_graph
+    assert result.pass_two_measurement == ready.pass_two_measurement
+    assert result.target_semantic_digest == ready.semantic_digest
     assert store.resolve_importer_credential(credential_digest, now) is None
 
 
@@ -578,12 +613,48 @@ def _create_target(database: Database, operator: Actor) -> UUID:
     return outcome.ticket.ticket_id
 
 
-def _finalize(run: CtowerProjectImportRun) -> CtowerProjectImportFinalizeRequest:
+def _finalize(
+    run: CtowerProjectImportRun,
+    artifact: str = "{}",
+) -> CtowerProjectImportFinalizeRequest:
     return CtowerProjectImportFinalizeRequest(
         run_id=run.run_id,
         cutover_id=run.cutover_id,
         expected_run_semantic_digest=run.semantic_digest,
+        reconciliation_artifact=artifact,
     )
+
+
+def _reconciliation_artifact(
+    context: _RunContext,
+    run: CtowerProjectImportRun,
+) -> str:
+    assert run.reconciliation_graph is not None
+    assert run.pass_two_measurement is not None
+    artifact = {
+        "schema": "ctower.ctower-project-reconciliation/v2",
+        "reconciliation_id": str(uuid4()),
+        "run_id": str(run.run_id),
+        "cutover_id": str(run.cutover_id),
+        "project_key": "ctower",
+        "pinned_digests": run.pinned_digests.model_dump(mode="json", by_alias=True),
+        "reviewer_key": run.reviewer_key.model_dump(mode="json"),
+        "expected_graph": run.reconciliation_graph.model_dump(mode="json"),
+        "actual_graph": run.reconciliation_graph.model_dump(mode="json"),
+        "pass_two_measurement": run.pass_two_measurement.model_dump(mode="json"),
+        "watermarks": {
+            "source_native": run.source_native_watermark,
+            "export_native": run.export_native_watermark,
+            "record_position": run.record_watermark,
+            "projection_position": run.projection_watermark,
+        },
+        "target_semantic_digest": run.semantic_digest,
+        "reconciled_at": REVIEW["reviewed_at"],
+        "review": REVIEW,
+        "durability_state": "durability_pending",
+        "accepted_position": None,
+    }
+    return canonical_bytes(context.source.fixture.signer.seal(artifact, "report_digest")).decode()
 
 
 def _telemetry(actor: Actor) -> TelemetryContext:

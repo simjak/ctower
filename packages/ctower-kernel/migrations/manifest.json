@@ -289,6 +289,15 @@
       "forward_test": "pytest:tests/modules/migration/test_postgres.py::test_complete_reviewed_two_pass_is_measured_and_partial_finalize_refuses",
       "rollback_or_forward_compensation": "Preserve verified artifacts, exhaustive plans, replay receipts, fence registries, observer bindings, importer lifecycle facts, commands, events, and outbox rows; append reviewed forward compensation and never manufacture a verified graph or reactivate a revoked importer.",
       "backup_checkpoint": "Before applying to a nonempty installation, capture and verify migration run, credential, artifact, plan, replay, fence, command, event, and outbox counts plus a database backup; no live cutover is authorized."
+    },
+    {
+      "path": "0031_i17b_bounded_truth_spine.sql",
+      "sha256": "sha256:e40cbf8c36f5d08c00804632767348d95259d33a4da08f202d782d1efb1a7791",
+      "minimum_service_version": "0.0.0",
+      "maximum_service_version": "0.0.0",
+      "forward_test": "pytest:tests/modules/migration/test_postgres.py::test_complete_reviewed_two_pass_is_measured_and_partial_finalize_refuses",
+      "rollback_or_forward_compensation": "Preserve reviewer-key pins, stable aliases, measured pass-two snapshots, exact reconciliation bytes, canonical credential revocation, commands, events, and outbox rows; append reviewed forward compensation and never infer a pass-two or reconciliation fact.",
+      "backup_checkpoint": "Before applying to a nonempty installation, capture and verify migration run, credential, artifact, stable-alias, pass-two snapshot, reconciliation, command, event, and outbox counts plus a database backup; no live cutover is authorized."
     }
   ]
 }

@@ -18,7 +18,10 @@ from ctower_client.models import (
     MigrationImportCounts,
     MigrationImporterBinding,
     MigrationImportOperationResult,
+    MigrationPassTwoMeasurement,
     MigrationPinnedDigests,
+    MigrationReconciliationGraph,
+    MigrationReviewerKey,
     ProjectDeliveryCriteria,
     ProjectDeliveryRow,
     ProjectDeliveryView,
@@ -41,6 +44,7 @@ from tools.migration.ctower_project.ctower_project_source.exporter import (
 from tools.migration.ctower_project.ctower_project_source.import_plan import (
     ImportPlan,
     build_import_plan,
+    seal_import_plan,
 )
 from tools.migration.ctower_project.ctower_project_source.reconcile import reconcile
 from tools.migration.ctower_project.ctower_project_source.refusal import (
@@ -61,6 +65,8 @@ from .fixtures import (
 )
 
 __all__: tuple[str, ...] = ()
+_CHECKPOINT_COUNT = 14
+_STABLE_COUNT = 27
 
 NOW = datetime(2026, 7, 25, 15, 45, tzinfo=UTC)
 REQUEST_COUNT = 86
@@ -168,7 +174,7 @@ def test_deterministic_64_item_plan_default_dry_run_and_exact_replay(
     fixture = make_fixture(tmp_path)
     _, _, _, plan = _frozen_pair(fixture)
     repeated = _frozen_pair(fixture)[3]
-    assert [len(batch.operations) for batch in plan.batches] == [64, 7]
+    assert [len(batch.operations) for batch in plan.batches] == [64, 34]
     assert canonical_bytes(
         [batch.model_dump(mode="json", by_alias=True) for batch in plan.batches]
     ) == canonical_bytes(
@@ -237,20 +243,11 @@ def test_reconciliation_proves_frozen_equations_from_generated_reads(
         review=REVIEW,
         signer=fixture.signer,
     )
-    assert report["conservation"]["selected_logical_items"] == REQUEST_COUNT
-    assert report["conservation"]["selected_request_physical_snapshots"] == REQUEST_PHYSICAL_COUNT
-    assert report["dispositions"] == {
-        "created_ticket": 40,
-        "alias_linked_existing": 20,
-        "project_checkpoint_definition": 14,
-        "decision_link": 5,
-        "external_effect_link": 1,
-        "artifact_linked_not_proof": 1,
-        "provenance_only": 3,
-        "exact_duplicate": 1,
-        "excluded_out_of_scope": 1,
-        "attention_required": 0,
-    }
+    assert report["expected_graph"] == report["actual_graph"]
+    assert len(report["actual_graph"]["stable_aliases"]) == _STABLE_COUNT
+    assert len(report["actual_graph"]["checkpoint_definitions"]) == _CHECKPOINT_COUNT
+    assert report["pass_two_measurement"]["new_domain_facts"] == 0
+    assert report["pass_two_measurement"]["new_events"] == 0
     assert fixture.verifier.verify(report, "report_digest") == report["report_digest"]
 
 
@@ -295,8 +292,14 @@ def _run(
     fixture: SyntheticFixture, frozen: FrozenExport, plan: ImportPlan
 ) -> CtowerProjectImportRun:
     target = frozen.manifest["target_inventory"]
+    signed_plan = seal_import_plan(
+        plan,
+        frozen,
+        review=REVIEW,
+        signer=fixture.signer,
+    )
     return CtowerProjectImportRun(
-        schema_id="ctower.ctower-project-import-run/v1",
+        schema_id="ctower.ctower-project-import-run/v2",
         run_id=plan.run_id,
         cutover_id=plan.cutover_id,
         tenant_key="ctower",
@@ -306,13 +309,18 @@ def _run(
             source_selection=plan.selection_digest,
             export_equality=plan.equality_digest,
             alias_map=plan.alias_map_digest,
-            import_plan=plan.plan_digest,
+            import_plan=signed_plan["plan_digest"],
             fence_registry=sha256_digest(b"fence registry"),
             build=target["build_digest"],
             client=target["client_digest"],
             schema_id=target["schema_digest"],
             operation_registry=target["operation_registry_digest"],
             reviewer_public_key=fixture.verifier.public_key_digest,
+        ),
+        reviewer_key=MigrationReviewerKey(
+            public_key_ref="signing-key-ref:test/reviewer",
+            key_version=1,
+            public_key_digest=fixture.verifier.public_key_digest,
         ),
         importer_binding=MigrationImporterBinding(
             principal_kind="migration_importer",
@@ -331,6 +339,8 @@ def _run(
             attention_required=0,
         ),
         conservation=_conservation(),
+        reconciliation_graph=_graph(fixture),
+        pass_two_measurement=_pass_two(),
         source_native_watermark=243,
         export_native_watermark=243,
         record_watermark=plan.operation_count,
@@ -339,6 +349,58 @@ def _run(
         semantic_digest=sha256_digest(b"synthetic target facts"),
         durability_state=DurabilityState.DURABILITY_PENDING,
         accepted_position=None,
+    )
+
+
+def _graph(fixture: SyntheticFixture) -> MigrationReconciliationGraph:
+    digest = sha256_digest(b"synthetic reconciliation graph")
+    return MigrationReconciliationGraph(
+        stable_aliases=tuple(f"stable:{item}" for item in fixture.stable_ids),
+        operation_identities=(),
+        operation_results=(),
+        tickets=(),
+        lifecycle_facts=(),
+        priority_facts=(),
+        custody_intervals=(),
+        active_claims=(),
+        alias_revisions=(),
+        relations=(),
+        relation_endpoints=(),
+        source_links=(),
+        checkpoint_definitions=tuple(f"checkpoint:{item}" for item in fixture.checkpoint_keys),
+        checkpoint_criteria=tuple(f"criterion:{item}" for item in fixture.checkpoint_keys),
+        project_delivery_rows=tuple(f"delivery:{item}" for item in fixture.checkpoint_keys),
+        events=(),
+        outbox_rows=(),
+        unexpected=(),
+        forbidden=(),
+        unresolved=(),
+        cycles=(),
+        graph_digest=digest,
+    )
+
+
+def _pass_two() -> MigrationPassTwoMeasurement:
+    digest = sha256_digest(b"synthetic pass-two snapshot")
+    delivery = sha256_digest(b"synthetic project delivery")
+    return MigrationPassTwoMeasurement(
+        start_snapshot_digest=digest,
+        end_snapshot_digest=digest,
+        start_domain_facts=0,
+        end_domain_facts=0,
+        new_domain_facts=0,
+        start_events=0,
+        end_events=0,
+        new_events=0,
+        start_outbox_rows=0,
+        end_outbox_rows=0,
+        new_outbox_rows=0,
+        start_record_position=0,
+        end_record_position=0,
+        record_position_delta=0,
+        start_project_delivery_digest=delivery,
+        end_project_delivery_digest=delivery,
+        projection_semantic_delta=0,
     )
 
 

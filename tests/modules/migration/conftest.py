@@ -11,6 +11,6 @@ from ._postgres import Database, isolated_database
 __all__: tuple[str, ...] = ()
 
 
-@pytest.fixture(scope="module")
+@pytest.fixture
 def migration_database() -> Iterator[Database]:
     yield from isolated_database()

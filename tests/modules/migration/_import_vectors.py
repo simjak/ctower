@@ -35,6 +35,8 @@ def run_request(credential: str, now: datetime) -> CtowerProjectImportRunCreateR
         client_digest=ZERO_DIGEST,
         schema_digest=ZERO_DIGEST,
         operation_registry_digest=ZERO_DIGEST,
+        reviewer_key_ref="signing-key-ref:test/reviewer",
+        reviewer_key_version=1,
         reviewer_public_key_digest=ZERO_DIGEST,
         importer_credential_digest=f"sha256:{hashlib.sha256(credential.encode()).hexdigest()}",
         importer_expires_at=now + timedelta(hours=1),
@@ -154,7 +156,7 @@ def fence_request(
     resolved_registry_id = registry_id or uuid4()
     observed_at = datetime.now(UTC)
     body = {
-        "schema": "ctower.ctower-project-fence-observation/v1",
+        "schema": "ctower.ctower-project-fence-observation/v2",
         "observation_id": str(observation_id),
         "run_id": str(run_id),
         "cutover_id": str(cutover_id),
@@ -163,6 +165,7 @@ def fence_request(
         "registry_id": str(resolved_registry_id),
         "registry_revision": 1,
         "registry_digest": ZERO_DIGEST,
+        "source_pointer_digest": ZERO_DIGEST,
         "sequence": sequence,
         "previous_observation_digest": previous,
         "observed_at": observed_at.isoformat(),

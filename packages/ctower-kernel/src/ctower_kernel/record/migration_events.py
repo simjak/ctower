@@ -13,6 +13,8 @@ _OPERATIONS = frozenset(
         "export_equality_bound",
         "alias_plan_bound",
         "import_batch_applied",
+        "pass_two_started",
+        "pass_two_noop",
         "ticket_seed",
         "exact_alias",
         "ticket_relation",

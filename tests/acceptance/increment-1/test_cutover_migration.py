@@ -10,8 +10,9 @@ from uuid import UUID, uuid4
 import pytest
 from fastapi import FastAPI
 from fastapi.testclient import TestClient
-from modules.migration._reviewed import reviewed_source
-from modules.migration.source_tool.fixtures import CUTOVER_ID
+from modules.migration._reviewed import ReviewedSource, reviewed_source
+from modules.migration.source_tool.fixtures import CUTOVER_ID, REVIEW
+from support.project_delivery import materialize_checkpoint_truth, refresh_project_delivery
 from support.tenant_fixture import TenantFixture
 
 from ctower_api.interface import create_app
@@ -43,6 +44,8 @@ from tools.migration.ctower_project.ctower_project_source.executor import (
     execute_import,
     prove_pass_two,
 )
+from tools.migration.ctower_project.ctower_project_source.import_plan import ImportPlan
+from tools.migration.ctower_project.ctower_project_source.reconcile import reconcile
 
 _HTTP_ACCEPTED = 202
 _HTTP_NOT_FOUND = 404
@@ -57,6 +60,7 @@ def test_generated_client_completes_real_two_pass_with_pending_http_parity(
 ) -> None:
     now = datetime.now(UTC)
     source = reviewed_source(tmp_path, CUTOVER_ID)
+    materialize_checkpoint_truth(tenant, now=now)
     store = PostgresMigration(
         tenant.database.runtime_dsn,
         trusted_reviewer_keys=source.trusted_keys,
@@ -80,6 +84,10 @@ def test_generated_client_completes_real_two_pass_with_pending_http_parity(
         )
         assert exported.state == "export_equality_bound"
         target = _create_target(tenant)
+        alias_map = source.fixture.alias_map(
+            source.equality,
+            existing_ticket_id=target,
+        )
         plan_request, plan = source.plan_request(
             created.run_id,
             target,
@@ -105,25 +113,58 @@ def test_generated_client_completes_real_two_pass_with_pending_http_parity(
             plan_request.fence_registry_artifact,
         )
 
-        importer = _client(transport, source.importer_credential)
-        first = execute_import(plan, client=importer, apply=True)
-        second = execute_import(plan, client=importer, apply=True)
-        assert isinstance(first, ImportPassReceipt)
-        assert isinstance(second, ImportPassReceipt)
-        prove_pass_two(first, second)
-        ready = operator.get_ctower_project_import_run(created.run_id)
-        assert ready.state == "pass_two_noop"
-        assert ready.counts.replayed_operations == plan.operation_count
-        assert ready.conservation is not None
-        result = operator.finalize_ctower_project_import_run(
-            CtowerProjectImportFinalizeRequest(
-                run_id=ready.run_id,
-                cutover_id=ready.cutover_id,
-                expected_run_semantic_digest=ready.semantic_digest,
-            ),
-            command_id=uuid4(),
+        _execute_and_finalize(
+            operator,
+            _client(transport, source.importer_credential),
+            source,
+            alias_map,
+            plan,
+            tenant,
         )
-        assert result.conservation == ready.conservation
+
+
+def _execute_and_finalize(
+    operator: CtowerClient,
+    importer: CtowerClient,
+    source: ReviewedSource,
+    alias_map: dict[str, object],
+    plan: ImportPlan,
+    tenant: TenantFixture,
+) -> None:
+    first = execute_import(plan, client=importer, apply=True)
+    refresh_project_delivery(tenant, now=datetime.now(UTC))
+    second = execute_import(plan, client=importer, apply=True)
+    assert isinstance(first, ImportPassReceipt)
+    assert isinstance(second, ImportPassReceipt)
+    prove_pass_two(first, second)
+    ready = operator.get_ctower_project_import_run(plan.run_id)
+    assert ready.state == "pass_two_noop"
+    assert ready.counts.replayed_operations == plan.operation_count
+    assert ready.conservation is not None
+    refresh_project_delivery(tenant, now=datetime.now(UTC))
+    reconciliation = reconcile(
+        source.first,
+        source.equality,
+        alias_map,
+        plan,
+        first,
+        second,
+        client=operator,
+        review=REVIEW,
+        signer=source.fixture.signer,
+    )
+    result = operator.finalize_ctower_project_import_run(
+        CtowerProjectImportFinalizeRequest(
+            run_id=ready.run_id,
+            cutover_id=ready.cutover_id,
+            expected_run_semantic_digest=ready.semantic_digest,
+            reconciliation_artifact=canonical_bytes(reconciliation).decode(),
+        ),
+        command_id=uuid4(),
+    )
+    assert result.expected_graph == ready.reconciliation_graph
+    assert result.actual_graph == ready.reconciliation_graph
+    assert result.pass_two_measurement == ready.pass_two_measurement
 
 
 def _assert_raw_pending_create(
@@ -245,7 +286,7 @@ def _observation(
     registry: dict[str, object],
 ) -> CtowerProjectFenceObservationRequest:
     body: dict[str, object] = {
-        "schema": "ctower.ctower-project-fence-observation/v1",
+        "schema": "ctower.ctower-project-fence-observation/v2",
         "observation_id": str(uuid4()),
         "run_id": str(run_id),
         "cutover_id": registry["cutover_id"],
@@ -254,6 +295,7 @@ def _observation(
         "registry_id": registry["registry_id"],
         "registry_revision": registry["revision"],
         "registry_digest": registry["registry_digest"],
+        "source_pointer_digest": registry["source_pointer_digest"],
         "sequence": 1,
         "previous_observation_digest": None,
         "observed_at": datetime.now(UTC).isoformat().replace("+00:00", "Z"),
@@ -312,6 +354,7 @@ def test_generated_client_refuses_partial_finalize(
                     run_id=partial.run_id,
                     cutover_id=partial.cutover_id,
                     expected_run_semantic_digest=partial.semantic_digest,
+                    reconciliation_artifact="{}",
                 ),
                 command_id=uuid4(),
             )

@@ -5,7 +5,7 @@ from __future__ import annotations
 import hashlib
 import json
 from dataclasses import dataclass, replace
-from datetime import UTC, datetime
+from datetime import datetime
 from typing import cast
 from uuid import UUID
 
@@ -166,7 +166,8 @@ def project_delivery(
         connection.execute("SET ROLE ctower_projection")
         rows = connection.execute(
             """
-            SELECT row.row_payload, definition.company_key
+            SELECT row.row_payload, definition.company_key,
+                transaction_timestamp() AS server_now
             FROM project_delivery_projection_rows AS row
             JOIN LATERAL (
                 SELECT company_key, ordered_position
@@ -184,9 +185,9 @@ def project_delivery(
     if not rows:
         return None
     company_key = str(rows[0]["company_key"])
+    server_now = cast(datetime, rows[0]["server_now"])
     projected_rows = tuple(
-        _row(cast(dict[str, object], item["row_payload"]), observed_at=datetime.now(UTC))
-        for item in rows
+        _row(cast(dict[str, object], item["row_payload"]), observed_at=server_now) for item in rows
     )
     reconciled_at = max(row.reconciled_at for row in projected_rows)
     freshness_due_at = min(row.freshness_due_at for row in projected_rows)
@@ -255,7 +256,25 @@ def _migration_state(
             fact.record_watermark, fact.projection_watermark,
             reconciliation.report_digest,
             registry.registry_digest,
-            observation.observation_digest, observation.observation_body
+            observation.observation_digest, observation.observation_body,
+            CASE
+                WHEN observation.observation_body IS NULL THEN NULL
+                WHEN registry.max_observation_age_seconds IS NULL
+                  OR registry.max_future_clock_skew_seconds IS NULL
+                  OR registry.source_pointer_digest IS NULL
+                  OR observation.observation_body ->> 'schema'
+                     <> 'ctower.ctower-project-fence-observation/v2'
+                  OR observation.observation_body ->> 'source_pointer_digest'
+                     <> 'sha256:' || encode(registry.source_pointer_digest, 'hex')
+                  OR (observation.observation_body ->> 'observed_at')::timestamptz
+                     < transaction_timestamp()
+                       - make_interval(secs => registry.max_observation_age_seconds)
+                  OR (observation.observation_body ->> 'observed_at')::timestamptz
+                     > transaction_timestamp()
+                       + make_interval(secs => registry.max_future_clock_skew_seconds)
+                THEN 'unknown'
+                ELSE observation.observation_body ->> 'status'
+            END AS fence_status
         FROM migration_import_runs AS run
         JOIN LATERAL (
             SELECT * FROM migration_import_run_facts
@@ -283,7 +302,6 @@ def _migration_state(
     ).fetchone()
     if row is None:
         return None
-    observation = cast(dict[str, object] | None, row["observation_body"])
     return _MigrationState(
         run_id=cast(UUID, row["run_id"]),
         cutover_id=cast(UUID, row["cutover_id"]),
@@ -298,7 +316,7 @@ def _migration_state(
             fence_registry=_digest(row["registry_digest"]),
             fence_observation=_digest(row["observation_digest"]),
         ),
-        fence_status=str(observation["status"]) if observation is not None else None,
+        fence_status=str(row["fence_status"]) if row["fence_status"] is not None else None,
     )
 
 
@@ -309,6 +327,7 @@ def _migration_phase(state: str) -> str:
         "alias_plan_bound": "alias_plan_bound",
         "importing": "import_in_progress",
         "pass_one_complete": "import_in_progress",
+        "pass_two_started": "import_in_progress",
         "pass_two_noop": "import_in_progress",
         "reconciled": "reconciled",
     }[state]

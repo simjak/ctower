@@ -18,7 +18,7 @@ from ctower_client.models import (
     CtowerProjectImportRunCreateRequest,
     MigrationPinnedDigests,
 )
-from ctower_kernel.migration._artifact import ArtifactError, TrustedReviewerKeys
+from ctower_kernel.migration._artifact import ArtifactError, TrustedReviewerKeys, reviewer_key
 from ctower_kernel.migration._artifact_sql import (
     persist_export_graph,
     persist_plan_graph,
@@ -97,6 +97,7 @@ def _create(
             connection,
             actor,
             request,
+            selection_artifact,
             run_id=run_id,
             principal_id=principal_id,
             command_id=command_id,
@@ -435,19 +436,25 @@ def _insert_run(
     connection: psycopg.Connection[dict[str, object]],
     actor: Actor,
     request: CtowerProjectImportRunCreateRequest,
+    selection_artifact: dict[str, object],
     *,
     run_id: UUID,
     principal_id: UUID,
     command_id: UUID,
     now: datetime,
 ) -> None:
+    reviewer_key_ref, reviewer_key_version, _reviewer_key_digest = reviewer_key(selection_artifact)
     connection.execute(
         """
         INSERT INTO migration_import_runs (
             run_id, tenant_id, cutover_id, tenant_key, project_key,
             source_selection_digest, build_digest, client_digest, schema_digest,
-            operation_registry_digest, reviewer_public_key_digest, created_by, created_at
-        ) VALUES (%s, %s, %s, 'ctower', 'ctower', %s, %s, %s, %s, %s, %s, %s, %s)
+            operation_registry_digest, reviewer_public_key_digest,
+            reviewer_key_ref, reviewer_key_version, created_by, created_at
+        ) VALUES (
+            %s, %s, %s, 'ctower', 'ctower', %s, %s, %s, %s, %s, %s,
+            %s, %s, %s, %s
+        )
         """,
         (
             run_id,
@@ -459,6 +466,8 @@ def _insert_run(
             _digest_bytes(request.schema_digest),
             _digest_bytes(request.operation_registry_digest),
             _digest_bytes(request.reviewer_public_key_digest),
+            reviewer_key_ref,
+            reviewer_key_version,
             actor.principal_id,
             now,
         ),

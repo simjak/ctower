@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from collections import Counter, defaultdict
+from collections import defaultdict
 from collections.abc import Mapping
 from typing import Any, Protocol, cast
 from uuid import UUID, uuid5
@@ -17,7 +17,7 @@ from ctower_client.models import (
 from .canonical import validate_contract
 from .executor import ImportPassReceipt, prove_pass_two
 from .exporter import FrozenExport
-from .import_plan import ImportPlan
+from .import_plan import ImportPlan, seal_import_plan
 from .refusal import MigrationRefusal, RefusalCode
 from .signing import ArtifactSigner
 
@@ -28,20 +28,6 @@ _REQUEST_COUNT = 86
 _REQUEST_PHYSICAL_COUNT = 243
 _STABLE_COUNT = 27
 _CHECKPOINT_COUNT = 14
-_DISPOSITIONS = (
-    "created_ticket",
-    "alias_linked_existing",
-    "project_checkpoint_definition",
-    "decision_link",
-    "external_effect_link",
-    "artifact_linked_not_proof",
-    "provenance_only",
-    "exact_duplicate",
-    "excluded_out_of_scope",
-    "attention_required",
-)
-
-
 class GeneratedTargetReader(Protocol):
     def get_ctower_project_import_run(self, run_id: UUID) -> CtowerProjectImportRun: ...
 
@@ -68,33 +54,32 @@ def reconcile(
         raise MigrationRefusal(RefusalCode.RECONCILIATION_MISMATCH, "artifact binding")
     run = client.get_ctower_project_import_run(plan.run_id)
     delivery = client.get_project_delivery("ctower")
-    _verify_target(run, delivery, frozen, plan)
+    signed_plan = seal_import_plan(plan, frozen, review=review, signer=signer)
+    _verify_target(
+        run,
+        delivery,
+        frozen,
+        plan,
+        import_plan_digest=cast(str, signed_plan["plan_digest"]),
+    )
     entries = cast(list[dict[str, Any]], alias_map["entries"])
     _verify_alias_conservation(frozen, entries)
     _verify_relations(plan)
-    artifact = _report_payload(frozen, plan, run, delivery, entries, review)
+    artifact = _report_payload(plan, run, review)
     sealed = signer.seal(artifact, "report_digest")
-    validate_contract("ctower-project-reconciliation.schema.json", sealed)
+    validate_contract("ctower-project-reconciliation-v2.schema.json", sealed)
     return sealed
 
 
 def _report_payload(
-    frozen: FrozenExport,
     plan: ImportPlan,
     run: CtowerProjectImportRun,
-    delivery: ProjectDeliveryView,
-    entries: list[dict[str, Any]],
     review: Mapping[str, Any],
 ) -> dict[str, Any]:
-    if run.dispositions is None or run.conservation is None:
-        raise MigrationRefusal(RefusalCode.TARGET_STATE_UNKNOWN, "server measurement")
-    expected_dispositions = Counter(str(entry["disposition"]) for entry in entries)
-    if run.dispositions.model_dump() != {
-        key: expected_dispositions.get(key, 0) for key in _DISPOSITIONS
-    }:
-        raise MigrationRefusal(RefusalCode.RECONCILIATION_MISMATCH, "server dispositions")
+    if run.reconciliation_graph is None or run.pass_two_measurement is None:
+        raise MigrationRefusal(RefusalCode.TARGET_STATE_UNKNOWN, "server reconciliation graph")
     artifact: dict[str, Any] = {
-        "schema": "ctower.ctower-project-reconciliation/v1",
+        "schema": "ctower.ctower-project-reconciliation/v2",
         "reconciliation_id": str(
             uuid5(
                 _RECONCILIATION_NAMESPACE,
@@ -104,22 +89,16 @@ def _report_payload(
         "run_id": str(plan.run_id),
         "cutover_id": str(plan.cutover_id),
         "project_key": "ctower",
-        "pinned_digests": {
-            "source_selection": plan.selection_digest,
-            "export_equality": plan.equality_digest,
-            "alias_map": plan.alias_map_digest,
-            "build": frozen.manifest["target_inventory"]["build_digest"],
-            "client": frozen.manifest["target_inventory"]["client_digest"],
-            "schema": frozen.manifest["target_inventory"]["schema_digest"],
-            "operation_registry": frozen.manifest["target_inventory"]["operation_registry_digest"],
-        },
-        "dispositions": run.dispositions.model_dump(mode="json"),
-        "conservation": run.conservation.model_dump(mode="json"),
+        "pinned_digests": run.pinned_digests.model_dump(mode="json", by_alias=True),
+        "reviewer_key": run.reviewer_key.model_dump(mode="json"),
+        "expected_graph": run.reconciliation_graph.model_dump(mode="json"),
+        "actual_graph": run.reconciliation_graph.model_dump(mode="json"),
+        "pass_two_measurement": run.pass_two_measurement.model_dump(mode="json"),
         "watermarks": {
             "source_native": run.source_native_watermark,
             "export_native": run.export_native_watermark,
             "record_position": run.record_watermark,
-            "projection_position": delivery.projection_record_position,
+            "projection_position": run.projection_watermark,
         },
         "target_semantic_digest": run.semantic_digest,
         "reconciled_at": review["reviewed_at"],
@@ -135,6 +114,8 @@ def _verify_target(
     delivery: ProjectDeliveryView,
     frozen: FrozenExport,
     plan: ImportPlan,
+    *,
+    import_plan_digest: str,
 ) -> None:
     _verify_run_scope(run, plan)
     pinned = run.pinned_digests.model_dump(mode="json", by_alias=True)
@@ -145,7 +126,7 @@ def _verify_target(
             RefusalCode.RECONCILIATION_MISMATCH,
             "verified fence registry pin",
         )
-    if pinned != _expected_pins(frozen, plan):
+    if pinned != _expected_pins(frozen, plan, import_plan_digest=import_plan_digest):
         raise MigrationRefusal(RefusalCode.RECONCILIATION_MISMATCH, "pinned target digests")
     _verify_import_counts(run, plan)
     _verify_delivery(delivery, run)
@@ -168,12 +149,17 @@ def _verify_run_scope(run: CtowerProjectImportRun, plan: ImportPlan) -> None:
         raise MigrationRefusal(code, "target import run state")
 
 
-def _expected_pins(frozen: FrozenExport, plan: ImportPlan) -> dict[str, Any]:
+def _expected_pins(
+    frozen: FrozenExport,
+    plan: ImportPlan,
+    *,
+    import_plan_digest: str,
+) -> dict[str, Any]:
     return {
         "source_selection": plan.selection_digest,
         "export_equality": plan.equality_digest,
         "alias_map": plan.alias_map_digest,
-        "import_plan": plan.plan_digest,
+        "import_plan": import_plan_digest,
         "build": frozen.manifest["target_inventory"]["build_digest"],
         "client": frozen.manifest["target_inventory"]["client_digest"],
         "schema": frozen.manifest["target_inventory"]["schema_digest"],

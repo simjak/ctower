@@ -136,6 +136,10 @@ def resolve_importer(
             JOIN principals AS principal
               ON principal.principal_id = binding.principal_id
              AND principal.tenant_id = binding.tenant_id
+            JOIN principal_credentials AS credential
+              ON credential.principal_id = binding.principal_id
+             AND credential.tenant_id = binding.tenant_id
+             AND credential.credential_digest = binding.credential_digest
             JOIN LATERAL (
                 SELECT lifecycle FROM migration_importer_credential_facts
                 WHERE run_id = binding.run_id ORDER BY fact_sequence DESC LIMIT 1
@@ -144,6 +148,7 @@ def resolve_importer(
               AND binding.run_id = %s AND binding.cutover_id = %s
               AND binding.project_key = %s AND binding.expires_at > %s
               AND fact.lifecycle = 'activated' AND NOT principal.disabled
+              AND credential.revoked_at IS NULL
               AND principal.kind = 'migration_importer'
             """,
             (credential_digest, run_id, cutover_id, project_key, now),
@@ -174,12 +179,17 @@ def resolve_importer_credential(
             JOIN principals AS principal
               ON principal.principal_id = binding.principal_id
              AND principal.tenant_id = binding.tenant_id
+            JOIN principal_credentials AS credential
+              ON credential.principal_id = binding.principal_id
+             AND credential.tenant_id = binding.tenant_id
+             AND credential.credential_digest = binding.credential_digest
             JOIN LATERAL (
                 SELECT lifecycle FROM migration_importer_credential_facts
                 WHERE run_id = binding.run_id ORDER BY fact_sequence DESC LIMIT 1
             ) AS fact ON true
             WHERE binding.credential_digest = %s AND binding.expires_at > %s
               AND fact.lifecycle = 'activated' AND NOT principal.disabled
+              AND credential.revoked_at IS NULL
               AND principal.kind = 'migration_importer'
             """,
             (credential_digest, now),
@@ -210,8 +220,13 @@ def resolve_fence_observer(
             JOIN principals AS principal
               ON principal.principal_id = binding.principal_id
              AND principal.tenant_id = binding.tenant_id
+            JOIN principal_credentials AS credential
+              ON credential.principal_id = binding.principal_id
+             AND credential.tenant_id = binding.tenant_id
+             AND credential.credential_digest = binding.credential_digest
             WHERE binding.credential_digest = %s AND binding.expires_at > %s
               AND NOT principal.disabled
+              AND credential.revoked_at IS NULL
               AND principal.kind = 'fence_observer'
             """,
             (credential_digest, now),

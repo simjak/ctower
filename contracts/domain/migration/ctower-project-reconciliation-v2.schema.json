@@ -1,0 +1,179 @@
+{
+  "$id": "https://ctower.dev/contracts/domain/migration/ctower-project-reconciliation-v2.schema.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Exhaustive signed ctower-project reconciliation v2",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema",
+    "reconciliation_id",
+    "run_id",
+    "cutover_id",
+    "project_key",
+    "pinned_digests",
+    "reviewer_key",
+    "expected_graph",
+    "actual_graph",
+    "pass_two_measurement",
+    "watermarks",
+    "target_semantic_digest",
+    "reconciled_at",
+    "review",
+    "report_digest",
+    "signature",
+    "durability_state",
+    "accepted_position"
+  ],
+  "properties": {
+    "schema": {"const": "ctower.ctower-project-reconciliation/v2"},
+    "reconciliation_id": {"type": "string", "format": "uuid"},
+    "run_id": {"type": "string", "format": "uuid"},
+    "cutover_id": {"type": "string", "format": "uuid"},
+    "project_key": {"const": "ctower"},
+    "pinned_digests": {
+      "$ref": "ctower-project-import-run-v2.schema.json#/$defs/pins"
+    },
+    "reviewer_key": {
+      "$ref": "ctower-project-import-run-v2.schema.json#/$defs/reviewerKey"
+    },
+    "expected_graph": {"$ref": "#/$defs/graph"},
+    "actual_graph": {"$ref": "#/$defs/graph"},
+    "pass_two_measurement": {"$ref": "#/$defs/passTwo"},
+    "watermarks": {"$ref": "#/$defs/watermarks"},
+    "target_semantic_digest": {"$ref": "migration-boundary.schema.json#/$defs/digest"},
+    "reconciled_at": {"type": "string", "format": "date-time"},
+    "review": {"$ref": "migration-boundary.schema.json#/$defs/review"},
+    "report_digest": {"$ref": "migration-boundary.schema.json#/$defs/digest"},
+    "signature": {"$ref": "migration-boundary.schema.json#/$defs/detachedSignature"},
+    "durability_state": {"const": "durability_pending"},
+    "accepted_position": {"type": "null"}
+  },
+  "$defs": {
+    "stringSet": {
+      "type": "array",
+      "uniqueItems": true,
+      "items": {"type": "string", "minLength": 1, "maxLength": 8192}
+    },
+    "graph": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "stable_aliases",
+        "operation_identities",
+        "operation_results",
+        "tickets",
+        "lifecycle_facts",
+        "priority_facts",
+        "custody_intervals",
+        "active_claims",
+        "alias_revisions",
+        "relations",
+        "relation_endpoints",
+        "source_links",
+        "checkpoint_definitions",
+        "checkpoint_criteria",
+        "project_delivery_rows",
+        "events",
+        "outbox_rows",
+        "unexpected",
+        "forbidden",
+        "unresolved",
+        "cycles",
+        "graph_digest"
+      ],
+      "properties": {
+        "stable_aliases": {"$ref": "#/$defs/stringSet"},
+        "operation_identities": {"$ref": "#/$defs/stringSet"},
+        "operation_results": {"$ref": "#/$defs/stringSet"},
+        "tickets": {"$ref": "#/$defs/stringSet"},
+        "lifecycle_facts": {"$ref": "#/$defs/stringSet"},
+        "priority_facts": {"$ref": "#/$defs/stringSet"},
+        "custody_intervals": {"$ref": "#/$defs/stringSet"},
+        "active_claims": {"$ref": "#/$defs/stringSet"},
+        "alias_revisions": {"$ref": "#/$defs/stringSet"},
+        "relations": {"$ref": "#/$defs/stringSet"},
+        "relation_endpoints": {"$ref": "#/$defs/stringSet"},
+        "source_links": {"$ref": "#/$defs/stringSet"},
+        "checkpoint_definitions": {
+          "type": "array",
+          "minItems": 14,
+          "maxItems": 14,
+          "uniqueItems": true,
+          "items": {"type": "string", "minLength": 1, "maxLength": 8192}
+        },
+        "checkpoint_criteria": {"$ref": "#/$defs/stringSet"},
+        "project_delivery_rows": {
+          "type": "array",
+          "minItems": 14,
+          "maxItems": 14,
+          "uniqueItems": true,
+          "items": {"type": "string", "minLength": 1, "maxLength": 8192}
+        },
+        "events": {"$ref": "#/$defs/stringSet"},
+        "outbox_rows": {"$ref": "#/$defs/stringSet"},
+        "unexpected": {"type": "array", "maxItems": 0},
+        "forbidden": {"type": "array", "maxItems": 0},
+        "unresolved": {"type": "array", "maxItems": 0},
+        "cycles": {"type": "array", "maxItems": 0},
+        "graph_digest": {"$ref": "migration-boundary.schema.json#/$defs/digest"}
+      }
+    },
+    "passTwo": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "start_snapshot_digest",
+        "end_snapshot_digest",
+        "start_domain_facts",
+        "end_domain_facts",
+        "new_domain_facts",
+        "start_events",
+        "end_events",
+        "new_events",
+        "start_outbox_rows",
+        "end_outbox_rows",
+        "new_outbox_rows",
+        "start_record_position",
+        "end_record_position",
+        "record_position_delta",
+        "start_project_delivery_digest",
+        "end_project_delivery_digest",
+        "projection_semantic_delta"
+      ],
+      "properties": {
+        "start_snapshot_digest": {"$ref": "migration-boundary.schema.json#/$defs/digest"},
+        "end_snapshot_digest": {"$ref": "migration-boundary.schema.json#/$defs/digest"},
+        "start_domain_facts": {"type": "integer", "minimum": 0},
+        "end_domain_facts": {"type": "integer", "minimum": 0},
+        "new_domain_facts": {"const": 0},
+        "start_events": {"type": "integer", "minimum": 0},
+        "end_events": {"type": "integer", "minimum": 0},
+        "new_events": {"const": 0},
+        "start_outbox_rows": {"type": "integer", "minimum": 0},
+        "end_outbox_rows": {"type": "integer", "minimum": 0},
+        "new_outbox_rows": {"const": 0},
+        "start_record_position": {"type": "integer", "minimum": 0},
+        "end_record_position": {"type": "integer", "minimum": 0},
+        "record_position_delta": {"const": 0},
+        "start_project_delivery_digest": {
+          "$ref": "migration-boundary.schema.json#/$defs/digest"
+        },
+        "end_project_delivery_digest": {
+          "$ref": "migration-boundary.schema.json#/$defs/digest"
+        },
+        "projection_semantic_delta": {"const": 0}
+      }
+    },
+    "watermarks": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["source_native", "export_native", "record_position", "projection_position"],
+      "properties": {
+        "source_native": {"type": "integer", "minimum": 0},
+        "export_native": {"type": "integer", "minimum": 0},
+        "record_position": {"type": "integer", "minimum": 0},
+        "projection_position": {"type": "integer", "minimum": 0}
+      }
+    }
+  }
+}

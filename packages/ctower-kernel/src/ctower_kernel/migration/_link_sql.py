@@ -183,6 +183,8 @@ def _target_exists(
     if operation.target_kind == "ticket_relation":
         relation_id = _target_uuid(operation.target_id, "ticket_relation:")
         return relation_id is not None and _relation_target(connection, batch, relation_id)
+    if operation.target_kind == "checkpoint":
+        return _checkpoint_target(connection, actor, operation.target_id)
     return True
 
 
@@ -217,6 +219,26 @@ def _relation_target(
         ORDER BY revision DESC LIMIT 1
         """,
             (batch.run_id, relation_id),
+        ).fetchone()
+        is not None
+    )
+
+
+def _checkpoint_target(
+    connection: psycopg.Connection[dict[str, object]],
+    actor: Actor,
+    checkpoint_key: str,
+) -> bool:
+    return (
+        connection.execute(
+            """
+            SELECT 1
+            FROM project_delivery_checkpoint_definitions
+            WHERE tenant_id = %s AND project_key = 'ctower'
+              AND checkpoint_key = %s
+            ORDER BY definition_revision DESC LIMIT 1
+            """,
+            (actor.tenant_id, checkpoint_key),
         ).fetchone()
         is not None
     )

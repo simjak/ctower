@@ -1,6 +1,6 @@
 """DO NOT EDIT: generated file; regenerate from declared inputs.
 
-Authored contract digest: sha256:a5866983d52055111283a4b0b9e7f71624524cf2a34c18869479d3b1d6430aff
+Authored contract digest: sha256:e4e4901322fe1437191f8d8465ffb6e41b253ec044639cfaf8fe7554037cc55a
 """
 
 from __future__ import annotations
@@ -85,6 +85,7 @@ __all__ = [
     "MigrationConservation",
     "MigrationCorrectionReplacement",
     "MigrationCorrectionRevision",
+    "MigrationDetachedSignature",
     "MigrationDispositions",
     "MigrationFenceFileIdentity",
     "MigrationHealthDigests",
@@ -92,11 +93,16 @@ __all__ = [
     "MigrationImportOperationResult",
     "MigrationImporterBinding",
     "MigrationOperationIdentity",
+    "MigrationPassTwoMeasurement",
     "MigrationPinnedDigests",
+    "MigrationReconciliationGraph",
     "MigrationRefusal",
     "MigrationRelationCorrection",
+    "MigrationReview",
+    "MigrationReviewerKey",
     "MigrationSourceIdentity",
     "MigrationSourceLinkCorrection",
+    "MigrationWatermarks",
     "MutableAssignmentKind",
     "PoisonDispositionAction",
     "PoisonDispositionReceipt",
@@ -308,6 +314,8 @@ class CtowerProjectAliasPlanBindRequest(_BoundaryModel):
     cutover_id: UUID
     export_equality_digest: Annotated[str, Field(pattern="^sha256:[0-9a-f]{64}$")]
     alias_map_digest: Annotated[str, Field(pattern="^sha256:[0-9a-f]{64}$")]
+    reviewer_key_ref: Annotated[str, Field(pattern="^signing-key-ref:[a-z0-9/_-]{3,255}$")]
+    reviewer_key_version: Annotated[int, Field(ge=1)]
     reviewer_public_key_digest: Annotated[str, Field(pattern="^sha256:[0-9a-f]{64}$")]
     attention_required: Literal[0]
     alias_map_artifact: Annotated[str, Field(min_length=2, max_length=4194304)]
@@ -332,6 +340,8 @@ class CtowerProjectExportEqualityBindRequest(_BoundaryModel):
     inventory_b_digest: Annotated[str, Field(pattern="^sha256:[0-9a-f]{64}$")]
     export_digest: Annotated[str, Field(pattern="^sha256:[0-9a-f]{64}$")]
     equality_report_digest: Annotated[str, Field(pattern="^sha256:[0-9a-f]{64}$")]
+    reviewer_key_ref: Annotated[str, Field(pattern="^signing-key-ref:[a-z0-9/_-]{3,255}$")]
+    reviewer_key_version: Annotated[int, Field(ge=1)]
     reviewer_public_key_digest: Annotated[str, Field(pattern="^sha256:[0-9a-f]{64}$")]
     result: Literal["equal"]
     export_a_artifact: Annotated[str, Field(min_length=2, max_length=4194304)]
@@ -343,6 +353,7 @@ class CtowerProjectImportFinalizeRequest(_BoundaryModel):
     run_id: UUID
     cutover_id: UUID
     expected_run_semantic_digest: Annotated[str, Field(pattern="^sha256:[0-9a-f]{64}$")]
+    reconciliation_artifact: Annotated[str, Field(min_length=2, max_length=16777216)]
 
 
 class CtowerProjectImportRunCreateRequest(_BoundaryModel):
@@ -355,6 +366,8 @@ class CtowerProjectImportRunCreateRequest(_BoundaryModel):
     client_digest: Annotated[str, Field(pattern="^sha256:[0-9a-f]{64}$")]
     schema_digest: Annotated[str, Field(pattern="^sha256:[0-9a-f]{64}$")]
     operation_registry_digest: Annotated[str, Field(pattern="^sha256:[0-9a-f]{64}$")]
+    reviewer_key_ref: Annotated[str, Field(pattern="^signing-key-ref:[a-z0-9/_-]{3,255}$")]
+    reviewer_key_version: Annotated[int, Field(ge=1)]
     reviewer_public_key_digest: Annotated[str, Field(pattern="^sha256:[0-9a-f]{64}$")]
     importer_credential_digest: Annotated[str, Field(pattern="^sha256:[0-9a-f]{64}$")]
     importer_expires_at: datetime
@@ -449,6 +462,15 @@ class MigrationCorrectionRevision(_BoundaryModel):
     revision: Annotated[int, Field(ge=1)]
 
 
+class MigrationDetachedSignature(_BoundaryModel):
+    algorithm: Literal["Ed25519"]
+    signed_digest: Annotated[str, Field(pattern="^sha256:[0-9a-f]{64}$")]
+    key_ref: Annotated[str, Field(pattern="^signing-key-ref:[a-z0-9/_-]{3,255}$")]
+    key_version: Annotated[int, Field(ge=1)]
+    public_key_digest: Annotated[str, Field(pattern="^sha256:[0-9a-f]{64}$")]
+    signature: Annotated[str, Field(pattern="^[A-Za-z0-9_-]{86}$")]
+
+
 class MigrationDispositions(_BoundaryModel):
     created_ticket: Annotated[int, Field(ge=0)]
     alias_linked_existing: Annotated[int, Field(ge=0)]
@@ -510,6 +532,26 @@ class MigrationOperationIdentity(_BoundaryModel):
     command_id: UUID
 
 
+class MigrationPassTwoMeasurement(_BoundaryModel):
+    start_snapshot_digest: Annotated[str, Field(pattern="^sha256:[0-9a-f]{64}$")]
+    end_snapshot_digest: Annotated[str, Field(pattern="^sha256:[0-9a-f]{64}$")]
+    start_domain_facts: Annotated[int, Field(ge=0)]
+    end_domain_facts: Annotated[int, Field(ge=0)]
+    new_domain_facts: Literal[0]
+    start_events: Annotated[int, Field(ge=0)]
+    end_events: Annotated[int, Field(ge=0)]
+    new_events: Literal[0]
+    start_outbox_rows: Annotated[int, Field(ge=0)]
+    end_outbox_rows: Annotated[int, Field(ge=0)]
+    new_outbox_rows: Literal[0]
+    start_record_position: Annotated[int, Field(ge=0)]
+    end_record_position: Annotated[int, Field(ge=0)]
+    record_position_delta: Literal[0]
+    start_project_delivery_digest: Annotated[str, Field(pattern="^sha256:[0-9a-f]{64}$")]
+    end_project_delivery_digest: Annotated[str, Field(pattern="^sha256:[0-9a-f]{64}$")]
+    projection_semantic_delta: Literal[0]
+
+
 class MigrationPinnedDigests(_BoundaryModel):
     source_selection: Annotated[str, Field(pattern="^sha256:[0-9a-f]{64}$")]
     export_equality: Annotated[str, Field(pattern="^sha256:[0-9a-f]{64}$")] | None
@@ -525,6 +567,31 @@ class MigrationPinnedDigests(_BoundaryModel):
     reviewer_public_key: Annotated[str, Field(pattern="^sha256:[0-9a-f]{64}$")]
 
 
+class MigrationReconciliationGraph(_BoundaryModel):
+    stable_aliases: tuple[Annotated[str, Field(min_length=1, max_length=8192)], ...]
+    operation_identities: tuple[Annotated[str, Field(min_length=1, max_length=8192)], ...]
+    operation_results: tuple[Annotated[str, Field(min_length=1, max_length=8192)], ...]
+    tickets: tuple[Annotated[str, Field(min_length=1, max_length=8192)], ...]
+    lifecycle_facts: tuple[Annotated[str, Field(min_length=1, max_length=8192)], ...]
+    priority_facts: tuple[Annotated[str, Field(min_length=1, max_length=8192)], ...]
+    custody_intervals: tuple[Annotated[str, Field(min_length=1, max_length=8192)], ...]
+    active_claims: tuple[Annotated[str, Field(min_length=1, max_length=8192)], ...]
+    alias_revisions: tuple[Annotated[str, Field(min_length=1, max_length=8192)], ...]
+    relations: tuple[Annotated[str, Field(min_length=1, max_length=8192)], ...]
+    relation_endpoints: tuple[Annotated[str, Field(min_length=1, max_length=8192)], ...]
+    source_links: tuple[Annotated[str, Field(min_length=1, max_length=8192)], ...]
+    checkpoint_definitions: Annotated[tuple[Annotated[str, Field(min_length=1, max_length=8192)], ...], Field(min_length=14, max_length=14)]
+    checkpoint_criteria: tuple[Annotated[str, Field(min_length=1, max_length=8192)], ...]
+    project_delivery_rows: Annotated[tuple[Annotated[str, Field(min_length=1, max_length=8192)], ...], Field(min_length=14, max_length=14)]
+    events: tuple[Annotated[str, Field(min_length=1, max_length=8192)], ...]
+    outbox_rows: tuple[Annotated[str, Field(min_length=1, max_length=8192)], ...]
+    unexpected: Annotated[tuple[str, ...], Field(max_length=0)]
+    forbidden: Annotated[tuple[str, ...], Field(max_length=0)]
+    unresolved: Annotated[tuple[str, ...], Field(max_length=0)]
+    cycles: Annotated[tuple[str, ...], Field(max_length=0)]
+    graph_digest: Annotated[str, Field(pattern="^sha256:[0-9a-f]{64}$")]
+
+
 class MigrationRefusal(_BoundaryModel):
     code: Annotated[str, Field(pattern="^[A-Z][A-Z0-9_]{2,95}$")]
     operation_identity: Annotated[str, Field(min_length=1, max_length=512)]
@@ -534,6 +601,18 @@ class MigrationRelationCorrection(_BoundaryModel):
     kind: Literal["relation"]
     superseded_relation_active: Literal[False]
     replacement_relation_id: UUID | None
+
+
+class MigrationReview(_BoundaryModel):
+    reviewer_principal_id: UUID
+    reviewed_at: datetime
+    decision: Literal["approved"]
+
+
+class MigrationReviewerKey(_BoundaryModel):
+    public_key_ref: Annotated[str, Field(pattern="^signing-key-ref:[a-z0-9/_-]{3,255}$")]
+    key_version: Annotated[int, Field(ge=1)]
+    public_key_digest: Annotated[str, Field(pattern="^sha256:[0-9a-f]{64}$")]
 
 
 class MigrationSourceIdentity(_BoundaryModel):
@@ -561,6 +640,13 @@ class MigrationSourceLinkCorrection(_BoundaryModel):
         "provenance_only",
         "excluded_out_of_scope",
     ]
+
+
+class MigrationWatermarks(_BoundaryModel):
+    source_native: Annotated[int, Field(ge=0)]
+    export_native: Annotated[int, Field(ge=0)]
+    record_position: Annotated[int, Field(ge=0)]
+    projection_position: Annotated[int, Field(ge=0)]
 
 
 class MutableAssignmentKind(StrEnum):
@@ -937,7 +1023,7 @@ class CtowerProjectExactAliasOperation(_BoundaryModel):
 
 
 class CtowerProjectFenceObservationRequest(_BoundaryModel):
-    schema_id: Literal["ctower.ctower-project-fence-observation/v1"] = Field(
+    schema_id: Literal["ctower.ctower-project-fence-observation/v2"] = Field(
         alias="schema", serialization_alias="schema"
     )
     observation_id: UUID
@@ -948,6 +1034,7 @@ class CtowerProjectFenceObservationRequest(_BoundaryModel):
     registry_id: UUID
     registry_revision: Annotated[int, Field(ge=1)]
     registry_digest: Annotated[str, Field(pattern="^sha256:[0-9a-f]{64}$")]
+    source_pointer_digest: Annotated[str, Field(pattern="^sha256:[0-9a-f]{64}$")]
     sequence: Annotated[int, Field(ge=1)]
     previous_observation_digest: Annotated[str, Field(pattern="^sha256:[0-9a-f]{64}$")] | None
     observed_at: datetime
@@ -965,6 +1052,10 @@ class CtowerProjectFenceObservationRequest(_BoundaryModel):
         "classifier_unknown",
         "monitor_interval_missing",
         "registry_mismatch",
+        "observation_stale",
+        "observation_from_future",
+        "offset_reversed",
+        "pointer_mismatch",
     ]
     observation_digest: Annotated[str, Field(pattern="^sha256:[0-9a-f]{64}$")]
     disables_writes: bool
@@ -983,7 +1074,7 @@ class CtowerProjectImportBatchResult(_BoundaryModel):
 
 
 class CtowerProjectImportRun(_BoundaryModel):
-    schema_id: Literal["ctower.ctower-project-import-run/v1"] = Field(
+    schema_id: Literal["ctower.ctower-project-import-run/v2"] = Field(
         alias="schema", serialization_alias="schema"
     )
     run_id: UUID
@@ -996,14 +1087,18 @@ class CtowerProjectImportRun(_BoundaryModel):
         "alias_plan_bound",
         "importing",
         "pass_one_complete",
+        "pass_two_started",
         "pass_two_noop",
         "reconciled",
     ]
     pinned_digests: MigrationPinnedDigests
+    reviewer_key: MigrationReviewerKey
     importer_binding: MigrationImporterBinding
     counts: MigrationImportCounts
     dispositions: MigrationDispositions | None
     conservation: MigrationConservation | None
+    reconciliation_graph: MigrationReconciliationGraph | None
+    pass_two_measurement: MigrationPassTwoMeasurement | None
     source_native_watermark: Annotated[int, Field(ge=0)]
     export_native_watermark: Annotated[int, Field(ge=0)]
     record_watermark: Annotated[int, Field(ge=0)]
@@ -1026,7 +1121,7 @@ class CtowerProjectMigrationReceipt(_BoundaryModel):
 
 
 class CtowerProjectReconciliationResult(_BoundaryModel):
-    schema_id: Literal["ctower.ctower-project-reconciliation/v1"] = Field(
+    schema_id: Literal["ctower.ctower-project-reconciliation/v2"] = Field(
         alias="schema", serialization_alias="schema"
     )
     reconciliation_id: UUID
@@ -1034,14 +1129,16 @@ class CtowerProjectReconciliationResult(_BoundaryModel):
     cutover_id: UUID
     project_key: Literal["ctower"]
     pinned_digests: MigrationPinnedDigests
-    dispositions: MigrationDispositions
-    conservation: MigrationConservation
-    source_native_watermark: Annotated[int, Field(ge=0)]
-    export_native_watermark: Annotated[int, Field(ge=0)]
-    record_watermark: Annotated[int, Field(ge=0)]
-    projection_watermark: Annotated[int, Field(ge=0)]
+    reviewer_key: MigrationReviewerKey
+    expected_graph: MigrationReconciliationGraph
+    actual_graph: MigrationReconciliationGraph
+    pass_two_measurement: MigrationPassTwoMeasurement
+    watermarks: MigrationWatermarks
     target_semantic_digest: Annotated[str, Field(pattern="^sha256:[0-9a-f]{64}$")]
+    reconciled_at: datetime
+    review: MigrationReview
     report_digest: Annotated[str, Field(pattern="^sha256:[0-9a-f]{64}$")]
+    signature: MigrationDetachedSignature
     durability_state: DurabilityState
     accepted_position: Annotated[int, Field(ge=1)] | None
 

@@ -9,6 +9,7 @@ from uuid import UUID
 import psycopg
 
 from ctower_client.models import MigrationConservation, MigrationDispositions
+from ctower_kernel.migration import _pass_two_sql
 
 __all__ = ["MigrationMeasurement", "measure"]
 
@@ -16,7 +17,7 @@ __all__ = ["MigrationMeasurement", "measure"]
 @dataclass(frozen=True, slots=True)
 class MigrationMeasurement:
     dispositions: MigrationDispositions
-    conservation: MigrationConservation
+    conservation: MigrationConservation | None
     source_native_watermark: int
     export_native_watermark: int
 
@@ -45,33 +46,19 @@ def measure(
         return None
     entries = cast(list[dict[str, object]], alias["entries"])
     dispositions = _dispositions(entries)
-    deltas = _deltas(connection, run_id)
     inventories = cast(list[dict[str, object]], selection["source_inventories"])
     request_physical = sum(
         int(cast(int, item["selected_physical_items"]))
         for item in inventories
         if item["source_key"] == "mission_control_requests"
     )
-    conservation = MigrationConservation.model_validate(
-        {
-            "selected_logical_items": len(entries),
-            "selected_request_logical": len(cast(list[object], selection["selected_request_ids"])),
-            "selected_request_physical_snapshots": request_physical,
-            "stable_aliases": len(cast(list[object], selection["stable_item_ids"])),
-            "checkpoint_definitions": len(cast(list[object], selection["checkpoint_keys"])),
-            "unresolved_aliases": 0,
-            "alias_forks_or_cycles": 0,
-            "missing_relation_endpoints": 0,
-            "forbidden_relation_cycles": 0,
-            "unresolved_active_claims": 0,
-            "unexpected_sources": 0,
-            "forbidden_data_items": 0,
-            "pass_two_new_domain_facts": deltas["domain_facts"],
-            "pass_two_new_events": deltas["events"],
-            "pass_two_new_outbox_rows": deltas["outbox"],
-            "pass_two_record_position_delta": deltas["record_delta"],
-            "pass_two_projection_semantic_delta": deltas["projection_delta"],
-        }
+    graph, pass_two = _pass_two_sql.evidence(connection, run_id)
+    conservation = _conservation(
+        selection,
+        entries,
+        request_physical,
+        graph,
+        pass_two,
     )
     return MigrationMeasurement(
         dispositions,
@@ -102,27 +89,39 @@ def _dispositions(entries: list[dict[str, object]]) -> MigrationDispositions:
     )
 
 
-def _deltas(
-    connection: psycopg.Connection[dict[str, object]],
-    run_id: UUID,
-) -> dict[str, int]:
-    row = connection.execute(
-        """
-        SELECT coalesce(sum(new_domain_facts), 0) AS domain_facts,
-            coalesce(sum(new_events), 0) AS events,
-            coalesce(sum(new_outbox_rows), 0) AS outbox,
-            coalesce(sum(record_position_delta), 0) AS record_delta,
-            coalesce(sum(projection_semantic_delta), 0) AS projection_delta
-        FROM migration_import_replay_receipts WHERE run_id = %s
-        """,
-        (run_id,),
-    ).fetchone()
-    if row is None:
-        return {
-            "domain_facts": 0,
-            "events": 0,
-            "outbox": 0,
-            "record_delta": 0,
-            "projection_delta": 0,
+def _conservation(
+    selection: dict[str, object],
+    entries: list[dict[str, object]],
+    request_physical: int,
+    graph: dict[str, object] | None,
+    pass_two: dict[str, object] | None,
+) -> MigrationConservation | None:
+    if graph is None or pass_two is None:
+        return None
+    anomalies = {
+        key: len(cast(list[object], graph[key]))
+        for key in ("unexpected", "forbidden", "unresolved", "cycles")
+    }
+    if any(anomalies.values()):
+        return None
+    return MigrationConservation.model_validate(
+        {
+            "selected_logical_items": len(entries),
+            "selected_request_logical": len(cast(list[object], selection["selected_request_ids"])),
+            "selected_request_physical_snapshots": request_physical,
+            "stable_aliases": len(cast(list[object], graph["stable_aliases"])),
+            "checkpoint_definitions": len(cast(list[object], graph["checkpoint_definitions"])),
+            "unresolved_aliases": anomalies["unresolved"],
+            "alias_forks_or_cycles": anomalies["cycles"],
+            "missing_relation_endpoints": anomalies["unresolved"],
+            "forbidden_relation_cycles": anomalies["cycles"],
+            "unresolved_active_claims": anomalies["unresolved"],
+            "unexpected_sources": anomalies["unexpected"],
+            "forbidden_data_items": anomalies["forbidden"],
+            "pass_two_new_domain_facts": pass_two["new_domain_facts"],
+            "pass_two_new_events": pass_two["new_events"],
+            "pass_two_new_outbox_rows": pass_two["new_outbox_rows"],
+            "pass_two_record_position_delta": pass_two["record_position_delta"],
+            "pass_two_projection_semantic_delta": pass_two["projection_semantic_delta"],
         }
-    return {key: int(cast(int, row[key])) for key in row}
+    )

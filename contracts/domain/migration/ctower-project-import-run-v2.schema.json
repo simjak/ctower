@@ -1,0 +1,167 @@
+{
+  "$id": "https://ctower.dev/contracts/domain/migration/ctower-project-import-run-v2.schema.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Pinned ctower-project import run v2",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema",
+    "run_id",
+    "cutover_id",
+    "tenant_key",
+    "project_key",
+    "state",
+    "pinned_digests",
+    "reviewer_key",
+    "importer_binding",
+    "counts",
+    "reconciliation_graph",
+    "pass_two_measurement",
+    "record_watermark",
+    "projection_watermark",
+    "refusals",
+    "semantic_digest",
+    "durability_state",
+    "accepted_position"
+  ],
+  "properties": {
+    "schema": {"const": "ctower.ctower-project-import-run/v2"},
+    "run_id": {"type": "string", "format": "uuid"},
+    "cutover_id": {"type": "string", "format": "uuid"},
+    "tenant_key": {"const": "ctower"},
+    "project_key": {"const": "ctower"},
+    "state": {
+      "enum": [
+        "created",
+        "export_equality_bound",
+        "alias_plan_bound",
+        "importing",
+        "pass_one_complete",
+        "pass_two_started",
+        "pass_two_noop",
+        "reconciled"
+      ]
+    },
+    "pinned_digests": {"$ref": "#/$defs/pins"},
+    "reviewer_key": {"$ref": "#/$defs/reviewerKey"},
+    "importer_binding": {"$ref": "#/$defs/importerBinding"},
+    "counts": {"$ref": "#/$defs/counts"},
+    "reconciliation_graph": {
+      "oneOf": [
+        {"$ref": "ctower-project-reconciliation-v2.schema.json#/$defs/graph"},
+        {"type": "null"}
+      ]
+    },
+    "pass_two_measurement": {
+      "oneOf": [
+        {"$ref": "ctower-project-reconciliation-v2.schema.json#/$defs/passTwo"},
+        {"type": "null"}
+      ]
+    },
+    "record_watermark": {"type": "integer", "minimum": 0},
+    "projection_watermark": {"type": "integer", "minimum": 0},
+    "refusals": {
+      "type": "array",
+      "uniqueItems": true,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["code", "operation_identity"],
+        "properties": {
+          "code": {"type": "string", "pattern": "^[A-Z][A-Z0-9_]{2,95}$"},
+          "operation_identity": {"type": "string", "minLength": 1, "maxLength": 512}
+        }
+      }
+    },
+    "semantic_digest": {"$ref": "migration-boundary.schema.json#/$defs/digest"},
+    "durability_state": {"const": "durability_pending"},
+    "accepted_position": {"type": "null"}
+  },
+  "$defs": {
+    "reviewerKey": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["public_key_ref", "key_version", "public_key_digest"],
+      "properties": {
+        "public_key_ref": {"type": "string", "pattern": "^signing-key-ref:[a-z0-9/_-]{3,255}$"},
+        "key_version": {"type": "integer", "minimum": 1},
+        "public_key_digest": {"$ref": "migration-boundary.schema.json#/$defs/digest"}
+      }
+    },
+    "pins": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "source_selection",
+        "export_equality",
+        "alias_map",
+        "import_plan",
+        "fence_registry",
+        "build",
+        "client",
+        "schema",
+        "operation_registry",
+        "reviewer_public_key"
+      ],
+      "properties": {
+        "source_selection": {"$ref": "migration-boundary.schema.json#/$defs/digest"},
+        "export_equality": {
+          "oneOf": [
+            {"$ref": "migration-boundary.schema.json#/$defs/digest"},
+            {"type": "null"}
+          ]
+        },
+        "alias_map": {
+          "oneOf": [
+            {"$ref": "migration-boundary.schema.json#/$defs/digest"},
+            {"type": "null"}
+          ]
+        },
+        "import_plan": {
+          "oneOf": [
+            {"$ref": "migration-boundary.schema.json#/$defs/digest"},
+            {"type": "null"}
+          ]
+        },
+        "fence_registry": {
+          "oneOf": [
+            {"$ref": "migration-boundary.schema.json#/$defs/digest"},
+            {"type": "null"}
+          ]
+        },
+        "build": {"$ref": "migration-boundary.schema.json#/$defs/digest"},
+        "client": {"$ref": "migration-boundary.schema.json#/$defs/digest"},
+        "schema": {"$ref": "migration-boundary.schema.json#/$defs/digest"},
+        "operation_registry": {"$ref": "migration-boundary.schema.json#/$defs/digest"}
+        ,"reviewer_public_key": {"$ref": "migration-boundary.schema.json#/$defs/digest"}
+      }
+    },
+    "importerBinding": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["principal_kind", "credential_digest", "expires_at", "revoked"],
+      "properties": {
+        "principal_kind": {"const": "migration_importer"},
+        "credential_digest": {"$ref": "migration-boundary.schema.json#/$defs/digest"},
+        "expires_at": {"type": "string", "format": "date-time"},
+        "revoked": {"type": "boolean"}
+      }
+    },
+    "counts": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "planned_operations",
+        "applied_operations",
+        "replayed_operations",
+        "refused_operations"
+      ],
+      "properties": {
+        "planned_operations": {"type": "integer", "minimum": 0},
+        "applied_operations": {"type": "integer", "minimum": 0},
+        "replayed_operations": {"type": "integer", "minimum": 0},
+        "refused_operations": {"type": "integer", "minimum": 0}
+      }
+    }
+  }
+}

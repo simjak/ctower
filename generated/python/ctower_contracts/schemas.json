@@ -9,16 +9,22 @@
     "ctower.compatibility-input/v1": "contracts/compatibility/matrix-input.schema.json",
     "ctower.compatibility-result/v1": "contracts/compatibility/matrix-result.schema.json",
     "ctower.ctower-project-alias-map/v1": "contracts/domain/migration/ctower-project-alias-map.schema.json",
+    "ctower.ctower-project-alias-map/v2": "contracts/domain/migration/ctower-project-alias-map-v2.schema.json",
     "ctower.ctower-project-cutover-health/v1": "contracts/domain/migration/ctower-project-cutover-health.schema.json",
     "ctower.ctower-project-export-equality/v1": "contracts/domain/migration/ctower-project-export-equality.schema.json",
     "ctower.ctower-project-export-manifest/v1": "contracts/domain/migration/ctower-project-export-manifest.schema.json",
     "ctower.ctower-project-fence-observation/v1": "contracts/domain/migration/ctower-project-fence-observation.schema.json",
+    "ctower.ctower-project-fence-observation/v2": "contracts/domain/migration/ctower-project-fence-observation-v2.schema.json",
     "ctower.ctower-project-fence-registry/v1": "contracts/domain/migration/ctower-project-fence-registry.schema.json",
+    "ctower.ctower-project-fence-registry/v2": "contracts/domain/migration/ctower-project-fence-registry-v2.schema.json",
     "ctower.ctower-project-import-batch/v1": "contracts/domain/migration/ctower-project-import-batch.schema.json",
     "ctower.ctower-project-import-correction/v1": "contracts/domain/migration/ctower-project-import-correction.schema.json",
     "ctower.ctower-project-import-plan/v1": "contracts/domain/migration/ctower-project-import-plan.schema.json",
+    "ctower.ctower-project-import-plan/v2": "contracts/domain/migration/ctower-project-import-plan-v2.schema.json",
     "ctower.ctower-project-import-run/v1": "contracts/domain/migration/ctower-project-import-run.schema.json",
+    "ctower.ctower-project-import-run/v2": "contracts/domain/migration/ctower-project-import-run-v2.schema.json",
     "ctower.ctower-project-reconciliation/v1": "contracts/domain/migration/ctower-project-reconciliation.schema.json",
+    "ctower.ctower-project-reconciliation/v2": "contracts/domain/migration/ctower-project-reconciliation-v2.schema.json",
     "ctower.ctower-project-source-link/v1": "contracts/domain/migration/ctower-project-source-link.schema.json",
     "ctower.ctower-project-source-selection/v1": "contracts/domain/migration/ctower-project-source-selection.schema.json",
     "ctower.environment/v1": "contracts/components/environment.schema.json",
@@ -49,16 +55,22 @@
     "https://ctower.dev/contracts/compatibility/matrix-input/v1": "contracts/compatibility/matrix-input.schema.json",
     "https://ctower.dev/contracts/compatibility/matrix-result/v1": "contracts/compatibility/matrix-result.schema.json",
     "https://ctower.dev/contracts/domain/events/event-envelope.schema.json": "contracts/domain/events/event-envelope.schema.json",
+    "https://ctower.dev/contracts/domain/migration/ctower-project-alias-map-v2.schema.json": "contracts/domain/migration/ctower-project-alias-map-v2.schema.json",
     "https://ctower.dev/contracts/domain/migration/ctower-project-alias-map.schema.json": "contracts/domain/migration/ctower-project-alias-map.schema.json",
     "https://ctower.dev/contracts/domain/migration/ctower-project-cutover-health.schema.json": "contracts/domain/migration/ctower-project-cutover-health.schema.json",
     "https://ctower.dev/contracts/domain/migration/ctower-project-export-equality.schema.json": "contracts/domain/migration/ctower-project-export-equality.schema.json",
     "https://ctower.dev/contracts/domain/migration/ctower-project-export-manifest.schema.json": "contracts/domain/migration/ctower-project-export-manifest.schema.json",
+    "https://ctower.dev/contracts/domain/migration/ctower-project-fence-observation-v2.schema.json": "contracts/domain/migration/ctower-project-fence-observation-v2.schema.json",
     "https://ctower.dev/contracts/domain/migration/ctower-project-fence-observation.schema.json": "contracts/domain/migration/ctower-project-fence-observation.schema.json",
+    "https://ctower.dev/contracts/domain/migration/ctower-project-fence-registry-v2.schema.json": "contracts/domain/migration/ctower-project-fence-registry-v2.schema.json",
     "https://ctower.dev/contracts/domain/migration/ctower-project-fence-registry.schema.json": "contracts/domain/migration/ctower-project-fence-registry.schema.json",
     "https://ctower.dev/contracts/domain/migration/ctower-project-import-batch.schema.json": "contracts/domain/migration/ctower-project-import-batch.schema.json",
     "https://ctower.dev/contracts/domain/migration/ctower-project-import-correction.schema.json": "contracts/domain/migration/ctower-project-import-correction.schema.json",
+    "https://ctower.dev/contracts/domain/migration/ctower-project-import-plan-v2.schema.json": "contracts/domain/migration/ctower-project-import-plan-v2.schema.json",
     "https://ctower.dev/contracts/domain/migration/ctower-project-import-plan.schema.json": "contracts/domain/migration/ctower-project-import-plan.schema.json",
+    "https://ctower.dev/contracts/domain/migration/ctower-project-import-run-v2.schema.json": "contracts/domain/migration/ctower-project-import-run-v2.schema.json",
     "https://ctower.dev/contracts/domain/migration/ctower-project-import-run.schema.json": "contracts/domain/migration/ctower-project-import-run.schema.json",
+    "https://ctower.dev/contracts/domain/migration/ctower-project-reconciliation-v2.schema.json": "contracts/domain/migration/ctower-project-reconciliation-v2.schema.json",
     "https://ctower.dev/contracts/domain/migration/ctower-project-reconciliation.schema.json": "contracts/domain/migration/ctower-project-reconciliation.schema.json",
     "https://ctower.dev/contracts/domain/migration/ctower-project-source-link.schema.json": "contracts/domain/migration/ctower-project-source-link.schema.json",
     "https://ctower.dev/contracts/domain/migration/ctower-project-source-selection.schema.json": "contracts/domain/migration/ctower-project-source-selection.schema.json",
@@ -3526,6 +3538,138 @@
       "title": "CtowerEventEnvelope",
       "type": "object"
     },
+    "contracts/domain/migration/ctower-project-alias-map-v2.schema.json": {
+      "$id": "https://ctower.dev/contracts/domain/migration/ctower-project-alias-map-v2.schema.json",
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "additionalProperties": false,
+      "properties": {
+        "alias_map_id": {
+          "format": "uuid",
+          "type": "string"
+        },
+        "attention_required": {
+          "const": 0
+        },
+        "created_at": {
+          "format": "date-time",
+          "type": "string"
+        },
+        "cutover_id": {
+          "format": "uuid",
+          "type": "string"
+        },
+        "entries": {
+          "items": {
+            "additionalProperties": false,
+            "properties": {
+              "disposition": {
+                "enum": [
+                  "created_ticket",
+                  "alias_linked_existing",
+                  "project_checkpoint_definition",
+                  "decision_link",
+                  "external_effect_link",
+                  "artifact_linked_not_proof",
+                  "provenance_only",
+                  "exact_duplicate",
+                  "excluded_out_of_scope",
+                  "attention_required"
+                ]
+              },
+              "identity": {
+                "$ref": "https://ctower.dev/contracts/domain/migration/migration-boundary.schema.json#/$defs/sourceIdentity"
+              },
+              "planned_target_ref": {
+                "oneOf": [
+                  {
+                    "const": "new_ticket"
+                  },
+                  {
+                    "pattern": "^(?:ticket|checkpoint|decision|artifact|external-effect):[A-Za-z0-9._:-]{1,240}$",
+                    "type": "string"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              },
+              "reason_code": {
+                "pattern": "^[a-z][a-z0-9._-]{2,95}$",
+                "type": "string"
+              }
+            },
+            "required": [
+              "identity",
+              "disposition",
+              "planned_target_ref",
+              "reason_code"
+            ],
+            "type": "object"
+          },
+          "minItems": 1,
+          "type": "array",
+          "uniqueItems": true
+        },
+        "export_equality_digest": {
+          "$ref": "https://ctower.dev/contracts/domain/migration/migration-boundary.schema.json#/$defs/digest"
+        },
+        "map_digest": {
+          "$ref": "https://ctower.dev/contracts/domain/migration/migration-boundary.schema.json#/$defs/digest"
+        },
+        "review": {
+          "$ref": "https://ctower.dev/contracts/domain/migration/migration-boundary.schema.json#/$defs/review"
+        },
+        "schema": {
+          "const": "ctower.ctower-project-alias-map/v2"
+        },
+        "selection_digest": {
+          "$ref": "https://ctower.dev/contracts/domain/migration/migration-boundary.schema.json#/$defs/digest"
+        },
+        "signature": {
+          "$ref": "https://ctower.dev/contracts/domain/migration/migration-boundary.schema.json#/$defs/detachedSignature"
+        },
+        "stable_aliases": {
+          "items": {
+            "additionalProperties": false,
+            "properties": {
+              "stable_item_id": {
+                "pattern": "^CT-(?:L0|I1|I2)-[0-9]{3}$",
+                "type": "string"
+              },
+              "target_ticket_id": {
+                "format": "uuid",
+                "type": "string"
+              }
+            },
+            "required": [
+              "stable_item_id",
+              "target_ticket_id"
+            ],
+            "type": "object"
+          },
+          "maxItems": 27,
+          "minItems": 27,
+          "type": "array",
+          "uniqueItems": true
+        }
+      },
+      "required": [
+        "schema",
+        "alias_map_id",
+        "cutover_id",
+        "selection_digest",
+        "export_equality_digest",
+        "created_at",
+        "stable_aliases",
+        "entries",
+        "attention_required",
+        "map_digest",
+        "review",
+        "signature"
+      ],
+      "title": "Reviewed exact alias, stable-ticket, and disposition map v2",
+      "type": "object"
+    },
     "contracts/domain/migration/ctower-project-alias-map.schema.json": {
       "$id": "https://ctower.dev/contracts/domain/migration/ctower-project-alias-map.schema.json",
       "$schema": "https://json-schema.org/draft/2020-12/schema",
@@ -4438,6 +4582,191 @@
       "title": "Canonical ctower-project inventory and export manifest",
       "type": "object"
     },
+    "contracts/domain/migration/ctower-project-fence-observation-v2.schema.json": {
+      "$id": "https://ctower.dev/contracts/domain/migration/ctower-project-fence-observation-v2.schema.json",
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "additionalProperties": false,
+      "allOf": [
+        {
+          "if": {
+            "properties": {
+              "status": {
+                "enum": [
+                  "detected",
+                  "unknown"
+                ]
+              }
+            }
+          },
+          "then": {
+            "properties": {
+              "disables_writes": {
+                "const": true
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "status": {
+                "const": "clear"
+              }
+            }
+          },
+          "then": {
+            "properties": {
+              "reason_code": {
+                "const": "no_scoped_append"
+              }
+            }
+          }
+        }
+      ],
+      "properties": {
+        "cutover_id": {
+          "format": "uuid",
+          "type": "string"
+        },
+        "disables_writes": {
+          "type": "boolean"
+        },
+        "file_identity": {
+          "additionalProperties": false,
+          "properties": {
+            "device": {
+              "minimum": 0,
+              "type": "integer"
+            },
+            "inode": {
+              "minimum": 1,
+              "type": "integer"
+            },
+            "scoped_rows_digest": {
+              "$ref": "https://ctower.dev/contracts/domain/migration/migration-boundary.schema.json#/$defs/digest"
+            }
+          },
+          "required": [
+            "device",
+            "inode",
+            "scoped_rows_digest"
+          ],
+          "type": "object"
+        },
+        "from_offset": {
+          "minimum": 0,
+          "type": "integer"
+        },
+        "may_enable_writes": {
+          "const": false
+        },
+        "observation_digest": {
+          "$ref": "https://ctower.dev/contracts/domain/migration/migration-boundary.schema.json#/$defs/digest"
+        },
+        "observation_id": {
+          "format": "uuid",
+          "type": "string"
+        },
+        "observed_at": {
+          "format": "date-time",
+          "type": "string"
+        },
+        "previous_observation_digest": {
+          "oneOf": [
+            {
+              "$ref": "https://ctower.dev/contracts/domain/migration/migration-boundary.schema.json#/$defs/digest"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "project_key": {
+          "const": "ctower"
+        },
+        "reason_code": {
+          "enum": [
+            "no_scoped_append",
+            "scoped_row_appended",
+            "truncated_row",
+            "inode_replaced",
+            "file_truncated",
+            "unreadable_gap",
+            "classifier_unknown",
+            "monitor_interval_missing",
+            "registry_mismatch",
+            "observation_stale",
+            "observation_from_future",
+            "offset_reversed",
+            "pointer_mismatch"
+          ]
+        },
+        "registry_digest": {
+          "$ref": "https://ctower.dev/contracts/domain/migration/migration-boundary.schema.json#/$defs/digest"
+        },
+        "registry_id": {
+          "format": "uuid",
+          "type": "string"
+        },
+        "registry_revision": {
+          "minimum": 1,
+          "type": "integer"
+        },
+        "run_id": {
+          "format": "uuid",
+          "type": "string"
+        },
+        "schema": {
+          "const": "ctower.ctower-project-fence-observation/v2"
+        },
+        "sequence": {
+          "minimum": 1,
+          "type": "integer"
+        },
+        "source_pointer_digest": {
+          "$ref": "https://ctower.dev/contracts/domain/migration/migration-boundary.schema.json#/$defs/digest"
+        },
+        "status": {
+          "enum": [
+            "clear",
+            "detected",
+            "unknown"
+          ]
+        },
+        "tenant_key": {
+          "const": "ctower"
+        },
+        "to_offset": {
+          "minimum": 0,
+          "type": "integer"
+        }
+      },
+      "required": [
+        "schema",
+        "observation_id",
+        "run_id",
+        "cutover_id",
+        "tenant_key",
+        "project_key",
+        "registry_id",
+        "registry_revision",
+        "registry_digest",
+        "source_pointer_digest",
+        "sequence",
+        "previous_observation_digest",
+        "observed_at",
+        "from_offset",
+        "to_offset",
+        "file_identity",
+        "status",
+        "reason_code",
+        "observation_digest",
+        "disables_writes",
+        "may_enable_writes"
+      ],
+      "title": "Append-only scoped legacy fence observation v2",
+      "type": "object"
+    },
     "contracts/domain/migration/ctower-project-fence-observation.schema.json": {
       "$id": "https://ctower.dev/contracts/domain/migration/ctower-project-fence-observation.schema.json",
       "$schema": "https://json-schema.org/draft/2020-12/schema",
@@ -4613,6 +4942,212 @@
         "may_enable_writes"
       ],
       "title": "Append-only scoped legacy fence observation",
+      "type": "object"
+    },
+    "contracts/domain/migration/ctower-project-fence-registry-v2.schema.json": {
+      "$defs": {
+        "client": {
+          "additionalProperties": false,
+          "properties": {
+            "client_id": {
+              "pattern": "^[a-z][a-z0-9._-]{2,95}$",
+              "type": "string"
+            },
+            "executable_digest": {
+              "$ref": "https://ctower.dev/contracts/domain/migration/migration-boundary.schema.json#/$defs/digest"
+            },
+            "path": {
+              "$ref": "https://ctower.dev/contracts/domain/migration/migration-boundary.schema.json#/$defs/safeRelativePath"
+            },
+            "scope_behavior": {
+              "enum": [
+                "deny_scoped_mutation",
+                "route_scoped_ticket_create",
+                "exclude_scoped_rows",
+                "frozen_legacy_mirror",
+                "observe_only"
+              ]
+            }
+          },
+          "required": [
+            "client_id",
+            "path",
+            "executable_digest",
+            "scope_behavior"
+          ],
+          "type": "object"
+        },
+        "pointer": {
+          "additionalProperties": false,
+          "properties": {
+            "device": {
+              "minimum": 0,
+              "type": "integer"
+            },
+            "inode": {
+              "minimum": 1,
+              "type": "integer"
+            },
+            "last_complete_offset": {
+              "minimum": 0,
+              "type": "integer"
+            },
+            "path": {
+              "$ref": "https://ctower.dev/contracts/domain/migration/migration-boundary.schema.json#/$defs/safeRelativePath"
+            },
+            "scoped_rows_digest": {
+              "$ref": "https://ctower.dev/contracts/domain/migration/migration-boundary.schema.json#/$defs/digest"
+            }
+          },
+          "required": [
+            "path",
+            "device",
+            "inode",
+            "last_complete_offset",
+            "scoped_rows_digest"
+          ],
+          "type": "object"
+        }
+      },
+      "$id": "https://ctower.dev/contracts/domain/migration/ctower-project-fence-registry-v2.schema.json",
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "additionalProperties": false,
+      "properties": {
+        "created_at": {
+          "format": "date-time",
+          "type": "string"
+        },
+        "cutover_id": {
+          "format": "uuid",
+          "type": "string"
+        },
+        "direct_writers": {
+          "items": {
+            "$ref": "#/$defs/client"
+          },
+          "minItems": 3,
+          "type": "array",
+          "uniqueItems": true
+        },
+        "indirect_clients": {
+          "items": {
+            "$ref": "#/$defs/client"
+          },
+          "minItems": 1,
+          "type": "array",
+          "uniqueItems": true
+        },
+        "max_future_clock_skew_seconds": {
+          "maximum": 300,
+          "minimum": 0,
+          "type": "integer"
+        },
+        "max_observation_age_seconds": {
+          "maximum": 86400,
+          "minimum": 1,
+          "type": "integer"
+        },
+        "mode": {
+          "enum": [
+            "synthetic_dormant",
+            "legacy_writable",
+            "development_single_writer"
+          ]
+        },
+        "monitor_interval_seconds": {
+          "maximum": 3600,
+          "minimum": 1,
+          "type": "integer"
+        },
+        "operation_registry_digest": {
+          "$ref": "https://ctower.dev/contracts/domain/migration/migration-boundary.schema.json#/$defs/digest"
+        },
+        "previous_revision_digest": {
+          "oneOf": [
+            {
+              "$ref": "https://ctower.dev/contracts/domain/migration/migration-boundary.schema.json#/$defs/digest"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "project_key": {
+          "const": "ctower"
+        },
+        "registry_digest": {
+          "$ref": "https://ctower.dev/contracts/domain/migration/migration-boundary.schema.json#/$defs/digest"
+        },
+        "registry_id": {
+          "format": "uuid",
+          "type": "string"
+        },
+        "review": {
+          "$ref": "https://ctower.dev/contracts/domain/migration/migration-boundary.schema.json#/$defs/review"
+        },
+        "revision": {
+          "minimum": 1,
+          "type": "integer"
+        },
+        "schema": {
+          "const": "ctower.ctower-project-fence-registry/v2"
+        },
+        "selected_request_ids": {
+          "items": {
+            "pattern": "^R[1-9][0-9]*$",
+            "type": "string"
+          },
+          "maxItems": 86,
+          "minItems": 86,
+          "type": "array",
+          "uniqueItems": true
+        },
+        "selected_task_ids": {
+          "maxItems": 0,
+          "type": "array"
+        },
+        "signature": {
+          "$ref": "https://ctower.dev/contracts/domain/migration/migration-boundary.schema.json#/$defs/detachedSignature"
+        },
+        "source_pointer": {
+          "$ref": "#/$defs/pointer"
+        },
+        "source_pointer_digest": {
+          "$ref": "https://ctower.dev/contracts/domain/migration/migration-boundary.schema.json#/$defs/digest"
+        },
+        "source_selection_digest": {
+          "$ref": "https://ctower.dev/contracts/domain/migration/migration-boundary.schema.json#/$defs/digest"
+        },
+        "tenant_key": {
+          "const": "ctower"
+        }
+      },
+      "required": [
+        "schema",
+        "registry_id",
+        "revision",
+        "previous_revision_digest",
+        "cutover_id",
+        "source_selection_digest",
+        "tenant_key",
+        "project_key",
+        "mode",
+        "selected_request_ids",
+        "selected_task_ids",
+        "direct_writers",
+        "indirect_clients",
+        "source_pointer",
+        "source_pointer_digest",
+        "monitor_interval_seconds",
+        "max_observation_age_seconds",
+        "max_future_clock_skew_seconds",
+        "operation_registry_digest",
+        "created_at",
+        "registry_digest",
+        "review",
+        "signature"
+      ],
+      "title": "Signed scoped legacy writer fence registry v2",
       "type": "object"
     },
     "contracts/domain/migration/ctower-project-fence-registry.schema.json": {
@@ -5361,6 +5896,128 @@
       "title": "Append-only ctower-project import correction",
       "type": "object"
     },
+    "contracts/domain/migration/ctower-project-import-plan-v2.schema.json": {
+      "$id": "https://ctower.dev/contracts/domain/migration/ctower-project-import-plan-v2.schema.json",
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "additionalProperties": false,
+      "properties": {
+        "alias_map_digest": {
+          "$ref": "https://ctower.dev/contracts/domain/migration/migration-boundary.schema.json#/$defs/digest"
+        },
+        "batch_count": {
+          "minimum": 1,
+          "type": "integer"
+        },
+        "batches": {
+          "items": {
+            "$ref": "https://ctower.dev/contracts/domain/migration/ctower-project-import-batch.schema.json"
+          },
+          "minItems": 1,
+          "type": "array",
+          "uniqueItems": true
+        },
+        "checkpoint_definitions": {
+          "items": {
+            "additionalProperties": false,
+            "properties": {
+              "catalog_revision": {
+                "maxLength": 256,
+                "minLength": 1,
+                "type": "string"
+              },
+              "checkpoint_key": {
+                "pattern": "^I[12]\\.[0-9]+$",
+                "type": "string"
+              },
+              "criteria_digest": {
+                "$ref": "https://ctower.dev/contracts/domain/migration/migration-boundary.schema.json#/$defs/digest"
+              },
+              "definition_digest": {
+                "$ref": "https://ctower.dev/contracts/domain/migration/migration-boundary.schema.json#/$defs/digest"
+              }
+            },
+            "required": [
+              "checkpoint_key",
+              "catalog_revision",
+              "definition_digest",
+              "criteria_digest"
+            ],
+            "type": "object"
+          },
+          "maxItems": 14,
+          "minItems": 14,
+          "type": "array",
+          "uniqueItems": true
+        },
+        "created_at": {
+          "format": "date-time",
+          "type": "string"
+        },
+        "cutover_id": {
+          "format": "uuid",
+          "type": "string"
+        },
+        "export_equality_digest": {
+          "$ref": "https://ctower.dev/contracts/domain/migration/migration-boundary.schema.json#/$defs/digest"
+        },
+        "export_native_watermark": {
+          "minimum": 0,
+          "type": "integer"
+        },
+        "operation_count": {
+          "minimum": 1,
+          "type": "integer"
+        },
+        "plan_digest": {
+          "$ref": "https://ctower.dev/contracts/domain/migration/migration-boundary.schema.json#/$defs/digest"
+        },
+        "plan_id": {
+          "format": "uuid",
+          "type": "string"
+        },
+        "review": {
+          "$ref": "https://ctower.dev/contracts/domain/migration/migration-boundary.schema.json#/$defs/review"
+        },
+        "run_id": {
+          "format": "uuid",
+          "type": "string"
+        },
+        "schema": {
+          "const": "ctower.ctower-project-import-plan/v2"
+        },
+        "selection_digest": {
+          "$ref": "https://ctower.dev/contracts/domain/migration/migration-boundary.schema.json#/$defs/digest"
+        },
+        "signature": {
+          "$ref": "https://ctower.dev/contracts/domain/migration/migration-boundary.schema.json#/$defs/detachedSignature"
+        },
+        "source_native_watermark": {
+          "minimum": 0,
+          "type": "integer"
+        }
+      },
+      "required": [
+        "schema",
+        "plan_id",
+        "run_id",
+        "cutover_id",
+        "selection_digest",
+        "export_equality_digest",
+        "alias_map_digest",
+        "created_at",
+        "batch_count",
+        "operation_count",
+        "batches",
+        "checkpoint_definitions",
+        "source_native_watermark",
+        "export_native_watermark",
+        "review",
+        "plan_digest",
+        "signature"
+      ],
+      "title": "Signed exhaustive ctower-project import plan v2",
+      "type": "object"
+    },
     "contracts/domain/migration/ctower-project-import-plan.schema.json": {
       "$id": "https://ctower.dev/contracts/domain/migration/ctower-project-import-plan.schema.json",
       "$schema": "https://json-schema.org/draft/2020-12/schema",
@@ -5447,6 +6104,289 @@
         "signature"
       ],
       "title": "Signed exhaustive ctower-project import plan",
+      "type": "object"
+    },
+    "contracts/domain/migration/ctower-project-import-run-v2.schema.json": {
+      "$defs": {
+        "counts": {
+          "additionalProperties": false,
+          "properties": {
+            "applied_operations": {
+              "minimum": 0,
+              "type": "integer"
+            },
+            "planned_operations": {
+              "minimum": 0,
+              "type": "integer"
+            },
+            "refused_operations": {
+              "minimum": 0,
+              "type": "integer"
+            },
+            "replayed_operations": {
+              "minimum": 0,
+              "type": "integer"
+            }
+          },
+          "required": [
+            "planned_operations",
+            "applied_operations",
+            "replayed_operations",
+            "refused_operations"
+          ],
+          "type": "object"
+        },
+        "importerBinding": {
+          "additionalProperties": false,
+          "properties": {
+            "credential_digest": {
+              "$ref": "https://ctower.dev/contracts/domain/migration/migration-boundary.schema.json#/$defs/digest"
+            },
+            "expires_at": {
+              "format": "date-time",
+              "type": "string"
+            },
+            "principal_kind": {
+              "const": "migration_importer"
+            },
+            "revoked": {
+              "type": "boolean"
+            }
+          },
+          "required": [
+            "principal_kind",
+            "credential_digest",
+            "expires_at",
+            "revoked"
+          ],
+          "type": "object"
+        },
+        "pins": {
+          "additionalProperties": false,
+          "properties": {
+            "alias_map": {
+              "oneOf": [
+                {
+                  "$ref": "https://ctower.dev/contracts/domain/migration/migration-boundary.schema.json#/$defs/digest"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "build": {
+              "$ref": "https://ctower.dev/contracts/domain/migration/migration-boundary.schema.json#/$defs/digest"
+            },
+            "client": {
+              "$ref": "https://ctower.dev/contracts/domain/migration/migration-boundary.schema.json#/$defs/digest"
+            },
+            "export_equality": {
+              "oneOf": [
+                {
+                  "$ref": "https://ctower.dev/contracts/domain/migration/migration-boundary.schema.json#/$defs/digest"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "fence_registry": {
+              "oneOf": [
+                {
+                  "$ref": "https://ctower.dev/contracts/domain/migration/migration-boundary.schema.json#/$defs/digest"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "import_plan": {
+              "oneOf": [
+                {
+                  "$ref": "https://ctower.dev/contracts/domain/migration/migration-boundary.schema.json#/$defs/digest"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "operation_registry": {
+              "$ref": "https://ctower.dev/contracts/domain/migration/migration-boundary.schema.json#/$defs/digest"
+            },
+            "reviewer_public_key": {
+              "$ref": "https://ctower.dev/contracts/domain/migration/migration-boundary.schema.json#/$defs/digest"
+            },
+            "schema": {
+              "$ref": "https://ctower.dev/contracts/domain/migration/migration-boundary.schema.json#/$defs/digest"
+            },
+            "source_selection": {
+              "$ref": "https://ctower.dev/contracts/domain/migration/migration-boundary.schema.json#/$defs/digest"
+            }
+          },
+          "required": [
+            "source_selection",
+            "export_equality",
+            "alias_map",
+            "import_plan",
+            "fence_registry",
+            "build",
+            "client",
+            "schema",
+            "operation_registry",
+            "reviewer_public_key"
+          ],
+          "type": "object"
+        },
+        "reviewerKey": {
+          "additionalProperties": false,
+          "properties": {
+            "key_version": {
+              "minimum": 1,
+              "type": "integer"
+            },
+            "public_key_digest": {
+              "$ref": "https://ctower.dev/contracts/domain/migration/migration-boundary.schema.json#/$defs/digest"
+            },
+            "public_key_ref": {
+              "pattern": "^signing-key-ref:[a-z0-9/_-]{3,255}$",
+              "type": "string"
+            }
+          },
+          "required": [
+            "public_key_ref",
+            "key_version",
+            "public_key_digest"
+          ],
+          "type": "object"
+        }
+      },
+      "$id": "https://ctower.dev/contracts/domain/migration/ctower-project-import-run-v2.schema.json",
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "additionalProperties": false,
+      "properties": {
+        "accepted_position": {
+          "type": "null"
+        },
+        "counts": {
+          "$ref": "#/$defs/counts"
+        },
+        "cutover_id": {
+          "format": "uuid",
+          "type": "string"
+        },
+        "durability_state": {
+          "const": "durability_pending"
+        },
+        "importer_binding": {
+          "$ref": "#/$defs/importerBinding"
+        },
+        "pass_two_measurement": {
+          "oneOf": [
+            {
+              "$ref": "https://ctower.dev/contracts/domain/migration/ctower-project-reconciliation-v2.schema.json#/$defs/passTwo"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "pinned_digests": {
+          "$ref": "#/$defs/pins"
+        },
+        "project_key": {
+          "const": "ctower"
+        },
+        "projection_watermark": {
+          "minimum": 0,
+          "type": "integer"
+        },
+        "reconciliation_graph": {
+          "oneOf": [
+            {
+              "$ref": "https://ctower.dev/contracts/domain/migration/ctower-project-reconciliation-v2.schema.json#/$defs/graph"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "record_watermark": {
+          "minimum": 0,
+          "type": "integer"
+        },
+        "refusals": {
+          "items": {
+            "additionalProperties": false,
+            "properties": {
+              "code": {
+                "pattern": "^[A-Z][A-Z0-9_]{2,95}$",
+                "type": "string"
+              },
+              "operation_identity": {
+                "maxLength": 512,
+                "minLength": 1,
+                "type": "string"
+              }
+            },
+            "required": [
+              "code",
+              "operation_identity"
+            ],
+            "type": "object"
+          },
+          "type": "array",
+          "uniqueItems": true
+        },
+        "reviewer_key": {
+          "$ref": "#/$defs/reviewerKey"
+        },
+        "run_id": {
+          "format": "uuid",
+          "type": "string"
+        },
+        "schema": {
+          "const": "ctower.ctower-project-import-run/v2"
+        },
+        "semantic_digest": {
+          "$ref": "https://ctower.dev/contracts/domain/migration/migration-boundary.schema.json#/$defs/digest"
+        },
+        "state": {
+          "enum": [
+            "created",
+            "export_equality_bound",
+            "alias_plan_bound",
+            "importing",
+            "pass_one_complete",
+            "pass_two_started",
+            "pass_two_noop",
+            "reconciled"
+          ]
+        },
+        "tenant_key": {
+          "const": "ctower"
+        }
+      },
+      "required": [
+        "schema",
+        "run_id",
+        "cutover_id",
+        "tenant_key",
+        "project_key",
+        "state",
+        "pinned_digests",
+        "reviewer_key",
+        "importer_binding",
+        "counts",
+        "reconciliation_graph",
+        "pass_two_measurement",
+        "record_watermark",
+        "projection_watermark",
+        "refusals",
+        "semantic_digest",
+        "durability_state",
+        "accepted_position"
+      ],
+      "title": "Pinned ctower-project import run v2",
       "type": "object"
     },
     "contracts/domain/migration/ctower-project-import-run.schema.json": {
@@ -5671,6 +6611,332 @@
         "accepted_position"
       ],
       "title": "Pinned ctower-project import run",
+      "type": "object"
+    },
+    "contracts/domain/migration/ctower-project-reconciliation-v2.schema.json": {
+      "$defs": {
+        "graph": {
+          "additionalProperties": false,
+          "properties": {
+            "active_claims": {
+              "$ref": "#/$defs/stringSet"
+            },
+            "alias_revisions": {
+              "$ref": "#/$defs/stringSet"
+            },
+            "checkpoint_criteria": {
+              "$ref": "#/$defs/stringSet"
+            },
+            "checkpoint_definitions": {
+              "items": {
+                "maxLength": 8192,
+                "minLength": 1,
+                "type": "string"
+              },
+              "maxItems": 14,
+              "minItems": 14,
+              "type": "array",
+              "uniqueItems": true
+            },
+            "custody_intervals": {
+              "$ref": "#/$defs/stringSet"
+            },
+            "cycles": {
+              "maxItems": 0,
+              "type": "array"
+            },
+            "events": {
+              "$ref": "#/$defs/stringSet"
+            },
+            "forbidden": {
+              "maxItems": 0,
+              "type": "array"
+            },
+            "graph_digest": {
+              "$ref": "https://ctower.dev/contracts/domain/migration/migration-boundary.schema.json#/$defs/digest"
+            },
+            "lifecycle_facts": {
+              "$ref": "#/$defs/stringSet"
+            },
+            "operation_identities": {
+              "$ref": "#/$defs/stringSet"
+            },
+            "operation_results": {
+              "$ref": "#/$defs/stringSet"
+            },
+            "outbox_rows": {
+              "$ref": "#/$defs/stringSet"
+            },
+            "priority_facts": {
+              "$ref": "#/$defs/stringSet"
+            },
+            "project_delivery_rows": {
+              "items": {
+                "maxLength": 8192,
+                "minLength": 1,
+                "type": "string"
+              },
+              "maxItems": 14,
+              "minItems": 14,
+              "type": "array",
+              "uniqueItems": true
+            },
+            "relation_endpoints": {
+              "$ref": "#/$defs/stringSet"
+            },
+            "relations": {
+              "$ref": "#/$defs/stringSet"
+            },
+            "source_links": {
+              "$ref": "#/$defs/stringSet"
+            },
+            "stable_aliases": {
+              "$ref": "#/$defs/stringSet"
+            },
+            "tickets": {
+              "$ref": "#/$defs/stringSet"
+            },
+            "unexpected": {
+              "maxItems": 0,
+              "type": "array"
+            },
+            "unresolved": {
+              "maxItems": 0,
+              "type": "array"
+            }
+          },
+          "required": [
+            "stable_aliases",
+            "operation_identities",
+            "operation_results",
+            "tickets",
+            "lifecycle_facts",
+            "priority_facts",
+            "custody_intervals",
+            "active_claims",
+            "alias_revisions",
+            "relations",
+            "relation_endpoints",
+            "source_links",
+            "checkpoint_definitions",
+            "checkpoint_criteria",
+            "project_delivery_rows",
+            "events",
+            "outbox_rows",
+            "unexpected",
+            "forbidden",
+            "unresolved",
+            "cycles",
+            "graph_digest"
+          ],
+          "type": "object"
+        },
+        "passTwo": {
+          "additionalProperties": false,
+          "properties": {
+            "end_domain_facts": {
+              "minimum": 0,
+              "type": "integer"
+            },
+            "end_events": {
+              "minimum": 0,
+              "type": "integer"
+            },
+            "end_outbox_rows": {
+              "minimum": 0,
+              "type": "integer"
+            },
+            "end_project_delivery_digest": {
+              "$ref": "https://ctower.dev/contracts/domain/migration/migration-boundary.schema.json#/$defs/digest"
+            },
+            "end_record_position": {
+              "minimum": 0,
+              "type": "integer"
+            },
+            "end_snapshot_digest": {
+              "$ref": "https://ctower.dev/contracts/domain/migration/migration-boundary.schema.json#/$defs/digest"
+            },
+            "new_domain_facts": {
+              "const": 0
+            },
+            "new_events": {
+              "const": 0
+            },
+            "new_outbox_rows": {
+              "const": 0
+            },
+            "projection_semantic_delta": {
+              "const": 0
+            },
+            "record_position_delta": {
+              "const": 0
+            },
+            "start_domain_facts": {
+              "minimum": 0,
+              "type": "integer"
+            },
+            "start_events": {
+              "minimum": 0,
+              "type": "integer"
+            },
+            "start_outbox_rows": {
+              "minimum": 0,
+              "type": "integer"
+            },
+            "start_project_delivery_digest": {
+              "$ref": "https://ctower.dev/contracts/domain/migration/migration-boundary.schema.json#/$defs/digest"
+            },
+            "start_record_position": {
+              "minimum": 0,
+              "type": "integer"
+            },
+            "start_snapshot_digest": {
+              "$ref": "https://ctower.dev/contracts/domain/migration/migration-boundary.schema.json#/$defs/digest"
+            }
+          },
+          "required": [
+            "start_snapshot_digest",
+            "end_snapshot_digest",
+            "start_domain_facts",
+            "end_domain_facts",
+            "new_domain_facts",
+            "start_events",
+            "end_events",
+            "new_events",
+            "start_outbox_rows",
+            "end_outbox_rows",
+            "new_outbox_rows",
+            "start_record_position",
+            "end_record_position",
+            "record_position_delta",
+            "start_project_delivery_digest",
+            "end_project_delivery_digest",
+            "projection_semantic_delta"
+          ],
+          "type": "object"
+        },
+        "stringSet": {
+          "items": {
+            "maxLength": 8192,
+            "minLength": 1,
+            "type": "string"
+          },
+          "type": "array",
+          "uniqueItems": true
+        },
+        "watermarks": {
+          "additionalProperties": false,
+          "properties": {
+            "export_native": {
+              "minimum": 0,
+              "type": "integer"
+            },
+            "projection_position": {
+              "minimum": 0,
+              "type": "integer"
+            },
+            "record_position": {
+              "minimum": 0,
+              "type": "integer"
+            },
+            "source_native": {
+              "minimum": 0,
+              "type": "integer"
+            }
+          },
+          "required": [
+            "source_native",
+            "export_native",
+            "record_position",
+            "projection_position"
+          ],
+          "type": "object"
+        }
+      },
+      "$id": "https://ctower.dev/contracts/domain/migration/ctower-project-reconciliation-v2.schema.json",
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "additionalProperties": false,
+      "properties": {
+        "accepted_position": {
+          "type": "null"
+        },
+        "actual_graph": {
+          "$ref": "#/$defs/graph"
+        },
+        "cutover_id": {
+          "format": "uuid",
+          "type": "string"
+        },
+        "durability_state": {
+          "const": "durability_pending"
+        },
+        "expected_graph": {
+          "$ref": "#/$defs/graph"
+        },
+        "pass_two_measurement": {
+          "$ref": "#/$defs/passTwo"
+        },
+        "pinned_digests": {
+          "$ref": "https://ctower.dev/contracts/domain/migration/ctower-project-import-run-v2.schema.json#/$defs/pins"
+        },
+        "project_key": {
+          "const": "ctower"
+        },
+        "reconciled_at": {
+          "format": "date-time",
+          "type": "string"
+        },
+        "reconciliation_id": {
+          "format": "uuid",
+          "type": "string"
+        },
+        "report_digest": {
+          "$ref": "https://ctower.dev/contracts/domain/migration/migration-boundary.schema.json#/$defs/digest"
+        },
+        "review": {
+          "$ref": "https://ctower.dev/contracts/domain/migration/migration-boundary.schema.json#/$defs/review"
+        },
+        "reviewer_key": {
+          "$ref": "https://ctower.dev/contracts/domain/migration/ctower-project-import-run-v2.schema.json#/$defs/reviewerKey"
+        },
+        "run_id": {
+          "format": "uuid",
+          "type": "string"
+        },
+        "schema": {
+          "const": "ctower.ctower-project-reconciliation/v2"
+        },
+        "signature": {
+          "$ref": "https://ctower.dev/contracts/domain/migration/migration-boundary.schema.json#/$defs/detachedSignature"
+        },
+        "target_semantic_digest": {
+          "$ref": "https://ctower.dev/contracts/domain/migration/migration-boundary.schema.json#/$defs/digest"
+        },
+        "watermarks": {
+          "$ref": "#/$defs/watermarks"
+        }
+      },
+      "required": [
+        "schema",
+        "reconciliation_id",
+        "run_id",
+        "cutover_id",
+        "project_key",
+        "pinned_digests",
+        "reviewer_key",
+        "expected_graph",
+        "actual_graph",
+        "pass_two_measurement",
+        "watermarks",
+        "target_semantic_digest",
+        "reconciled_at",
+        "review",
+        "report_digest",
+        "signature",
+        "durability_state",
+        "accepted_position"
+      ],
+      "title": "Exhaustive signed ctower-project reconciliation v2",
       "type": "object"
     },
     "contracts/domain/migration/ctower-project-reconciliation.schema.json": {
@@ -10196,6 +11462,11 @@
       "sha256": "sha256:d4c4b63ee3da6e19f9c29d2ca83c29e7501f2bce557826c21ba8301a61d4bc3a"
     },
     {
+      "id": "https://ctower.dev/contracts/domain/migration/ctower-project-alias-map-v2.schema.json",
+      "path": "contracts/domain/migration/ctower-project-alias-map-v2.schema.json",
+      "sha256": "sha256:f3b065dd93697c1a7ea4253d7daddbd44b6bf78fd7052b23cf9de39431eb5e39"
+    },
+    {
       "id": "https://ctower.dev/contracts/domain/migration/ctower-project-alias-map.schema.json",
       "path": "contracts/domain/migration/ctower-project-alias-map.schema.json",
       "sha256": "sha256:57eccdf8f303bc2a8f6237ecfde2289ee1818b9fd11a330500aca769aafaf69b"
@@ -10216,9 +11487,19 @@
       "sha256": "sha256:1c12062fb88e719984cce6f88caec10703fe71fcb76209d0d798c547bc5dbbe7"
     },
     {
+      "id": "https://ctower.dev/contracts/domain/migration/ctower-project-fence-observation-v2.schema.json",
+      "path": "contracts/domain/migration/ctower-project-fence-observation-v2.schema.json",
+      "sha256": "sha256:f6063808eaaf3d87567459d7add5db38670963674f9814418f0e6dd36de5ef99"
+    },
+    {
       "id": "https://ctower.dev/contracts/domain/migration/ctower-project-fence-observation.schema.json",
       "path": "contracts/domain/migration/ctower-project-fence-observation.schema.json",
       "sha256": "sha256:d86166ce1cfedacc39c8d64996f769c2f2454bdbea5f6f00a2d5d79bd8bd6f73"
+    },
+    {
+      "id": "https://ctower.dev/contracts/domain/migration/ctower-project-fence-registry-v2.schema.json",
+      "path": "contracts/domain/migration/ctower-project-fence-registry-v2.schema.json",
+      "sha256": "sha256:5f0e8d08df4e0da0b636e03e3e280a98803119f9e981d1ef5eca3a45d6035f45"
     },
     {
       "id": "https://ctower.dev/contracts/domain/migration/ctower-project-fence-registry.schema.json",
@@ -10236,14 +11517,29 @@
       "sha256": "sha256:2b086363c3687bd28ff67619a56ff89dae311d5427d00b936c65d9d307597aeb"
     },
     {
+      "id": "https://ctower.dev/contracts/domain/migration/ctower-project-import-plan-v2.schema.json",
+      "path": "contracts/domain/migration/ctower-project-import-plan-v2.schema.json",
+      "sha256": "sha256:10eea7c9e7c633a941c60ab94240fdb58798fe0f1e9895103ae173044827104a"
+    },
+    {
       "id": "https://ctower.dev/contracts/domain/migration/ctower-project-import-plan.schema.json",
       "path": "contracts/domain/migration/ctower-project-import-plan.schema.json",
       "sha256": "sha256:cff5b123cc81e56bf6eb661f7db7e21e130eb8aa62b9903ce64a369532c46885"
     },
     {
+      "id": "https://ctower.dev/contracts/domain/migration/ctower-project-import-run-v2.schema.json",
+      "path": "contracts/domain/migration/ctower-project-import-run-v2.schema.json",
+      "sha256": "sha256:2bbb1505b63976b0a8a6ec96e64d44cda0763774e0551fa35c0d6c14266efad1"
+    },
+    {
       "id": "https://ctower.dev/contracts/domain/migration/ctower-project-import-run.schema.json",
       "path": "contracts/domain/migration/ctower-project-import-run.schema.json",
       "sha256": "sha256:b269c7130cda0571d4540a3b9316111efa7df3dac0abc8d57d58d30e1e67e663"
+    },
+    {
+      "id": "https://ctower.dev/contracts/domain/migration/ctower-project-reconciliation-v2.schema.json",
+      "path": "contracts/domain/migration/ctower-project-reconciliation-v2.schema.json",
+      "sha256": "sha256:4777fbecc08bcd63a71c6b59d795013b605fcb944c2e4ad47f3a0f5a3689ffad"
     },
     {
       "id": "https://ctower.dev/contracts/domain/migration/ctower-project-reconciliation.schema.json",

@@ -131,7 +131,13 @@ class PostgresMigration:
         telemetry: TelemetryContext,
     ) -> CtowerProjectReconciliationResult | RecordProblem:
         return _reconciliation_sql.finalize_run(
-            self._dsn, actor, request, command_id=command_id, now=now, telemetry=telemetry
+            self._dsn,
+            actor,
+            request,
+            command_id=command_id,
+            now=now,
+            telemetry=telemetry,
+            trusted_keys=self._trusted_reviewer_keys,
         )
 
     def get_run(self, actor: Actor, run_id: UUID) -> CtowerProjectImportRun | RecordProblem:

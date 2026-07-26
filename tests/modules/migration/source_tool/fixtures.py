@@ -98,12 +98,21 @@ class SyntheticFixture:
                 }
             )
         artifact: dict[str, Any] = {
-            "schema": "ctower.ctower-project-alias-map/v1",
+            "schema": "ctower.ctower-project-alias-map/v2",
             "alias_map_id": str(uuid5(UUID_NAMESPACE, "alias-map")),
             "cutover_id": str(CUTOVER_ID),
             "selection_digest": self.selection["manifest_digest"],
             "export_equality_digest": equality["report_digest"],
             "created_at": REVIEW["reviewed_at"],
+            "stable_aliases": [
+                {
+                    "stable_item_id": stable_id,
+                    "target_ticket_id": str(
+                        existing_ticket_id or uuid5(UUID_NAMESPACE, f"stable-target:{stable_id}")
+                    ),
+                }
+                for stable_id in self.stable_ids
+            ],
             "entries": entries,
             "attention_required": 0,
             "review": REVIEW,

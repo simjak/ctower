@@ -16,7 +16,10 @@ from ctower_client.models import (
     CtowerProjectExportEqualityBindRequest,
     CtowerProjectImportRunCreateRequest,
 )
-from tools.migration.ctower_project.ctower_project_source.canonical import canonical_bytes
+from tools.migration.ctower_project.ctower_project_source.canonical import (
+    canonical_bytes,
+    canonical_digest,
+)
 from tools.migration.ctower_project.ctower_project_source.exporter import (
     FrozenExport,
     compare_exports,
@@ -62,6 +65,8 @@ class ReviewedSource:
             client_digest=target["client_digest"],
             schema_digest=target["schema_digest"],
             operation_registry_digest=target["operation_registry_digest"],
+            reviewer_key_ref=signature["key_ref"],
+            reviewer_key_version=signature["key_version"],
             reviewer_public_key_digest=signature["public_key_digest"],
             importer_credential_digest=_credential_digest(self.importer_credential),
             importer_expires_at=now + timedelta(hours=1),
@@ -76,6 +81,8 @@ class ReviewedSource:
             inventory_b_digest=self.second.manifest["target_inventory"]["inventory_digest"],
             export_digest=self.first.manifest["artifact_digest"],
             equality_report_digest=self.equality["report_digest"],
+            reviewer_key_ref=self.equality["signature"]["key_ref"],
+            reviewer_key_version=self.equality["signature"]["key_version"],
             reviewer_public_key_digest=self.equality["signature"]["public_key_digest"],
             result="equal",
             export_a_artifact=canonical_bytes(self.first.manifest).decode(),
@@ -115,6 +122,8 @@ class ReviewedSource:
             cutover_id=self.cutover_id,
             export_equality_digest=self.equality["report_digest"],
             alias_map_digest=alias["map_digest"],
+            reviewer_key_ref=alias["signature"]["key_ref"],
+            reviewer_key_version=alias["signature"]["key_version"],
             reviewer_public_key_digest=alias["signature"]["public_key_digest"],
             attention_required=0,
             alias_map_artifact=canonical_bytes(alias).decode(),
@@ -169,7 +178,7 @@ def _registry(source: ReviewedSource, run_id: UUID) -> dict[str, Any]:
         for index in range(3)
     ]
     artifact: dict[str, Any] = {
-        "schema": "ctower.ctower-project-fence-registry/v1",
+        "schema": "ctower.ctower-project-fence-registry/v2",
         "registry_id": str(uuid5(_REGISTRY_NAMESPACE, f"{run_id}:registry")),
         "revision": 1,
         "previous_revision_digest": None,
@@ -196,6 +205,18 @@ def _registry(source: ReviewedSource, run_id: UUID) -> dict[str, Any]:
             "last_complete_offset": 0,
             "scoped_rows_digest": digest,
         },
+        "source_pointer_digest": canonical_digest(
+            {
+                "path": "requests.jsonl",
+                "device": 1,
+                "inode": 1,
+                "last_complete_offset": 0,
+                "scoped_rows_digest": digest,
+            }
+        ),
+        "monitor_interval_seconds": 30,
+        "max_observation_age_seconds": 90,
+        "max_future_clock_skew_seconds": 5,
         "operation_registry_digest": digest,
         "created_at": REVIEW["reviewed_at"],
         "review": REVIEW,

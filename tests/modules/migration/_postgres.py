@@ -30,6 +30,7 @@ class Database:
     admin_dsn: str
     migrator_dsn: str
     runtime_dsn: str
+    projection_dsn: str
     tenant_id: UUID
     operator_id: UUID
     commander_id: UUID
@@ -56,6 +57,7 @@ def isolated_database() -> Iterator[Database]:
             f"postgresql://postgres@{base}",
             f"postgresql://ctower_migrator@{base}",
             f"postgresql://ctower_runtime@{base}",
+            f"postgresql://ctower_projection_runtime@{base}",
         )
     finally:
         with psycopg.connect(cluster_dsn, autocommit=True) as connection:
@@ -163,7 +165,12 @@ def add_fence_observer(database: Database) -> Actor:
     return Actor(observer_id, database.tenant_id, PrincipalKind.FENCE_OBSERVER)
 
 
-def _setup_database(admin_dsn: str, migrator_dsn: str, runtime_dsn: str) -> Database:
+def _setup_database(
+    admin_dsn: str,
+    migrator_dsn: str,
+    runtime_dsn: str,
+    projection_dsn: str,
+) -> Database:
     provision_database_roles(admin_dsn)
     apply_migrations(migrator_dsn, role_admin_dsn=admin_dsn)
     now = datetime.now(UTC)
@@ -184,7 +191,15 @@ def _setup_database(admin_dsn: str, migrator_dsn: str, runtime_dsn: str) -> Data
                 (commander_id, tenant_id, "commander", "Ctower Commander", now),
             ),
         )
-    return Database(admin_dsn, migrator_dsn, runtime_dsn, tenant_id, operator_id, commander_id)
+    return Database(
+        admin_dsn,
+        migrator_dsn,
+        runtime_dsn,
+        projection_dsn,
+        tenant_id,
+        operator_id,
+        commander_id,
+    )
 
 
 def _available_port() -> int:

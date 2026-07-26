@@ -20,7 +20,10 @@ from ctower_client.models import (
     MigrationImportCounts,
     MigrationImporterBinding,
     MigrationPinnedDigests,
+    MigrationReconciliationGraph,
+    MigrationReviewerKey,
 )
+from ctower_kernel.migration import _pass_two_sql
 from ctower_kernel.migration._measurement_sql import MigrationMeasurement, measure
 from ctower_kernel.record import Actor, RecordProblem
 
@@ -28,18 +31,9 @@ __all__: tuple[str, ...] = ()
 
 _RUN_QUERY = """
     SELECT run.*, binding.credential_digest, binding.expires_at,
+        canonical_credential.revoked_at AS credential_revoked_at,
         credential.lifecycle,
-        CASE
-            WHEN fact.state = 'pass_one_complete'
-             AND coalesce(plan.operation_count, 0) > 0
-             AND coalesce((
-                SELECT sum(operation_count)
-                FROM migration_import_replay_receipts AS replay_state
-                WHERE replay_state.run_id = run.run_id
-             ), 0) = plan.operation_count
-            THEN 'pass_two_noop'
-            ELSE fact.state
-        END AS state,
+        fact.state,
         fact.export_equality_digest,
         fact.alias_map_digest, fact.semantic_digest, fact.record_watermark,
         fact.projection_watermark, plan.plan_digest, registry.registry_digest,
@@ -51,6 +45,10 @@ _RUN_QUERY = """
          WHERE replay.run_id = run.run_id) AS replayed_operations
     FROM migration_import_runs AS run
     JOIN migration_importer_bindings AS binding ON binding.run_id = run.run_id
+    JOIN principal_credentials AS canonical_credential
+      ON canonical_credential.principal_id = binding.principal_id
+     AND canonical_credential.tenant_id = binding.tenant_id
+     AND canonical_credential.credential_digest = binding.credential_digest
     JOIN LATERAL (
         SELECT lifecycle FROM migration_importer_credential_facts
         WHERE run_id = run.run_id ORDER BY fact_sequence DESC LIMIT 1
@@ -91,7 +89,8 @@ def load_run(
             404,
             "Import run unavailable",
         )
-    return _model_from_row(row, measure(connection, run_id))
+    graph, pass_two = _pass_two_sql.evidence(connection, run_id)
+    return _model_from_row(row, measure(connection, run_id), graph, pass_two)
 
 
 def initial_model(
@@ -102,13 +101,18 @@ def initial_model(
 ) -> CtowerProjectImportRun:
     return CtowerProjectImportRun.model_validate(
         {
-            "schema": "ctower.ctower-project-import-run/v1",
+            "schema": "ctower.ctower-project-import-run/v2",
             "run_id": run_id,
             "cutover_id": request.cutover_id,
             "tenant_key": "ctower",
             "project_key": "ctower",
             "state": "created",
             "pinned_digests": _initial_pins(request),
+            "reviewer_key": {
+                "public_key_ref": request.reviewer_key_ref,
+                "key_version": request.reviewer_key_version,
+                "public_key_digest": request.reviewer_public_key_digest,
+            },
             "importer_binding": {
                 "principal_kind": "migration_importer",
                 "credential_digest": request.importer_credential_digest,
@@ -118,6 +122,8 @@ def initial_model(
             "counts": _counts(0, 0, 0),
             "dispositions": None,
             "conservation": None,
+            "reconciliation_graph": None,
+            "pass_two_measurement": None,
             "source_native_watermark": 0,
             "export_native_watermark": 0,
             "record_watermark": 0,
@@ -160,6 +166,8 @@ def valid_export(
         current.state == "created"
         and current.cutover_id == request.cutover_id
         and current.pinned_digests.source_selection == request.selection_digest
+        and current.reviewer_key.public_key_ref == request.reviewer_key_ref
+        and current.reviewer_key.key_version == request.reviewer_key_version
         and current.pinned_digests.reviewer_public_key == request.reviewer_public_key_digest
     )
 
@@ -171,6 +179,8 @@ def valid_alias(
         current.state == "export_equality_bound"
         and current.cutover_id == request.cutover_id
         and current.pinned_digests.export_equality == request.export_equality_digest
+        and current.reviewer_key.public_key_ref == request.reviewer_key_ref
+        and current.reviewer_key.key_version == request.reviewer_key_version
         and current.pinned_digests.reviewer_public_key == request.reviewer_public_key_digest
     )
 
@@ -209,6 +219,8 @@ def _initial_pins(request: CtowerProjectImportRunCreateRequest) -> dict[str, obj
 def _model_from_row(
     row: dict[str, object],
     measurement: MigrationMeasurement | None,
+    reconciliation_graph: dict[str, object] | None,
+    pass_two_measurement: dict[str, object] | None,
 ) -> CtowerProjectImportRun:
     pinned = MigrationPinnedDigests.model_validate(
         {
@@ -226,13 +238,18 @@ def _model_from_row(
     )
     return CtowerProjectImportRun.model_validate(
         {
-            "schema": "ctower.ctower-project-import-run/v1",
+            "schema": "ctower.ctower-project-import-run/v2",
             "run_id": row["run_id"],
             "cutover_id": row["cutover_id"],
             "tenant_key": "ctower",
             "project_key": "ctower",
             "state": row["state"],
             "pinned_digests": pinned,
+            "reviewer_key": MigrationReviewerKey(
+                public_key_ref=cast(str, row["reviewer_key_ref"]),
+                key_version=int(cast(int, row["reviewer_key_version"])),
+                public_key_digest=_digest_text(row["reviewer_public_key_digest"]),
+            ),
             "importer_binding": _binding(row),
             "counts": _counts(
                 int(cast(int, row["planned_operations"])),
@@ -241,6 +258,12 @@ def _model_from_row(
             ),
             "dispositions": measurement.dispositions if measurement is not None else None,
             "conservation": measurement.conservation if measurement is not None else None,
+            "reconciliation_graph": (
+                MigrationReconciliationGraph.model_validate_json(json.dumps(reconciliation_graph))
+                if reconciliation_graph is not None
+                else None
+            ),
+            "pass_two_measurement": pass_two_measurement,
             "source_native_watermark": (
                 measurement.source_native_watermark if measurement is not None else 0
             ),
@@ -262,7 +285,7 @@ def _binding(row: dict[str, object]) -> MigrationImporterBinding:
         principal_kind="migration_importer",
         credential_digest=_digest_text(row["credential_digest"]),
         expires_at=cast(datetime, row["expires_at"]),
-        revoked=row["lifecycle"] == "revoked",
+        revoked=row["lifecycle"] == "revoked" or row["credential_revoked_at"] is not None,
     )
 
 

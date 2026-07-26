@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import hashlib
 import json
-from datetime import datetime
+from datetime import datetime, timedelta
 from typing import cast
 from uuid import UUID
 
@@ -17,6 +17,7 @@ from ctower_client.models import (
     CtowerProjectFenceObservationRequest,
     CtowerProjectMigrationReceipt,
     DurabilityState,
+    MigrationFenceFileIdentity,
 )
 from ctower_kernel.migration._event_sql import commit_event, migration_payload
 from ctower_kernel.migration._operation_result_sql import canonical
@@ -57,7 +58,7 @@ def _report(
         replay = _replay(connection, actor, command_id, request_digest)
         if replay is not None:
             return replay
-        if not _valid_observation(connection, actor, request):
+        if not _valid_observation(connection, actor, request, now=now):
             return _problem(command_id, "Fence observation is stale or may enable writes")
         return _commit_observation(
             connection,
@@ -74,26 +75,65 @@ def _valid_observation(
     connection: psycopg.Connection[dict[str, object]],
     actor: Actor,
     request: CtowerProjectFenceObservationRequest,
+    *,
+    now: datetime,
 ) -> bool:
-    body = request.model_dump(mode="json", by_alias=True)
-    claimed = body.pop("observation_digest")
-    recomputed = f"sha256:{hashlib.sha256(rfc8785.dumps(body)).hexdigest()}"
-    if claimed != recomputed:
-        return False
-    if request.status in {"detected", "unknown"} and not request.disables_writes:
-        return False
-    if request.status == "clear" and request.reason_code != "no_scoped_append":
+    del now
+    if not _request_is_safe(request):
         return False
     connection.execute(
         "SELECT pg_advisory_xact_lock(hashtextextended(%s, 0))",
         (f"migration-fence:{actor.tenant_id}:{request.registry_id}",),
     )
-    binding = connection.execute(
+    binding = _registry_binding(connection, actor, request)
+    server_clock = connection.execute("SELECT transaction_timestamp() AS value").fetchone()
+    if not _binding_is_timely(binding, server_clock, request):
+        return False
+    previous = _latest_observation(connection, actor, request)
+    if previous is None:
+        return _first(cast(dict[str, object], binding), request)
+    return _continues(cast(dict[str, object], binding), previous, request)
+
+
+def _request_is_safe(request: CtowerProjectFenceObservationRequest) -> bool:
+    body = request.model_dump(mode="json", by_alias=True)
+    claimed = body.pop("observation_digest")
+    recomputed = f"sha256:{hashlib.sha256(rfc8785.dumps(body)).hexdigest()}"
+    invalid_claim = claimed != recomputed
+    unsafe_degradation = request.status in {"detected", "unknown"} and not request.disables_writes
+    invalid_clear = request.status == "clear" and request.reason_code != "no_scoped_append"
+    return not (
+        invalid_claim
+        or unsafe_degradation
+        or invalid_clear
+        or request.to_offset < request.from_offset
+    )
+
+
+def _registry_binding(
+    connection: psycopg.Connection[dict[str, object]],
+    actor: Actor,
+    request: CtowerProjectFenceObservationRequest,
+) -> dict[str, object] | None:
+    return connection.execute(
         """
-        SELECT 1 FROM migration_fence_observer_bindings
-        WHERE run_id = %s AND tenant_id = %s AND cutover_id = %s
-          AND project_key = %s AND registry_id = %s AND registry_revision = %s
-          AND registry_digest = %s AND principal_id = %s
+        SELECT registry.source_pointer_digest, registry.source_pointer_device,
+            registry.source_pointer_inode, registry.source_pointer_offset,
+            registry.source_pointer_scoped_digest,
+            registry.max_observation_age_seconds,
+            registry.max_future_clock_skew_seconds
+        FROM migration_fence_observer_bindings AS binding
+        JOIN migration_fence_registries AS registry ON registry.run_id = binding.run_id
+        JOIN principal_credentials AS credential
+          ON credential.principal_id = binding.principal_id
+         AND credential.tenant_id = binding.tenant_id
+         AND credential.credential_digest = binding.credential_digest
+        WHERE binding.run_id = %s AND binding.tenant_id = %s
+          AND binding.cutover_id = %s
+          AND binding.project_key = %s AND binding.registry_id = %s
+          AND binding.registry_revision = %s
+          AND binding.registry_digest = %s AND binding.principal_id = %s
+          AND credential.revoked_at IS NULL
         """,
         (
             request.run_id,
@@ -106,9 +146,25 @@ def _valid_observation(
             actor.principal_id,
         ),
     ).fetchone()
-    if binding is None:
+
+
+def _binding_is_timely(
+    binding: dict[str, object] | None,
+    server_clock: dict[str, object] | None,
+    request: CtowerProjectFenceObservationRequest,
+) -> bool:
+    if binding is None or server_clock is None:
         return False
-    previous = connection.execute(
+    value = server_clock["value"]
+    return isinstance(value, datetime) and _timely(binding, request, value)
+
+
+def _latest_observation(
+    connection: psycopg.Connection[dict[str, object]],
+    actor: Actor,
+    request: CtowerProjectFenceObservationRequest,
+) -> dict[str, object] | None:
+    return connection.execute(
         """
         SELECT sequence, observation_digest, status, disables_writes, observation_body
         FROM migration_fence_observations
@@ -117,24 +173,79 @@ def _valid_observation(
         """,
         (actor.tenant_id, request.registry_id, request.registry_revision),
     ).fetchone()
-    if previous is None:
-        return request.sequence == 1 and request.previous_observation_digest is None
-    return _continues(previous, request)
+
+
+def _timely(
+    registry: dict[str, object],
+    request: CtowerProjectFenceObservationRequest,
+    now: datetime,
+) -> bool:
+    age = registry["max_observation_age_seconds"]
+    skew = registry["max_future_clock_skew_seconds"]
+    if not isinstance(age, int) or not isinstance(skew, int):
+        return False
+    return now - timedelta(seconds=age) <= request.observed_at <= now + timedelta(seconds=skew)
+
+
+def _first(
+    registry: dict[str, object],
+    request: CtowerProjectFenceObservationRequest,
+) -> bool:
+    identity = request.file_identity
+    return (
+        request.sequence == 1
+        and request.previous_observation_digest is None
+        and request.source_pointer_digest == _digest_text(registry["source_pointer_digest"])
+        and request.from_offset == int(cast(int, registry["source_pointer_offset"]))
+        and identity.device == int(cast(int, registry["source_pointer_device"]))
+        and identity.inode == int(cast(int, registry["source_pointer_inode"]))
+        and identity.scoped_rows_digest == _digest_text(registry["source_pointer_scoped_digest"])
+    )
 
 
 def _continues(
+    registry: dict[str, object],
     previous: dict[str, object],
     request: CtowerProjectFenceObservationRequest,
 ) -> bool:
     previous_body = cast(dict[str, object], previous["observation_body"])
+    previous_identity = cast(dict[str, object], previous_body["file_identity"])
+    current_identity = request.file_identity
     status_rank = {"clear": 0, "unknown": 1, "detected": 2}
+    return (
+        _chain_continues(registry, previous, previous_body, request)
+        and _identity_continues(previous_identity, current_identity)
+        and status_rank[request.status] >= status_rank[str(previous["status"])]
+        and not (previous["disables_writes"] is True and not request.disables_writes)
+    )
+
+
+def _chain_continues(
+    registry: dict[str, object],
+    previous: dict[str, object],
+    previous_body: dict[str, object],
+    request: CtowerProjectFenceObservationRequest,
+) -> bool:
     return (
         request.sequence == int(cast(int, previous["sequence"])) + 1
         and request.previous_observation_digest == _digest_text(previous["observation_digest"])
         and request.registry_digest == previous_body["registry_digest"]
+        and request.source_pointer_digest == previous_body["source_pointer_digest"]
+        and request.source_pointer_digest == _digest_text(registry["source_pointer_digest"])
         and request.from_offset == previous_body["to_offset"]
-        and status_rank[request.status] >= status_rank[str(previous["status"])]
-        and not (previous["disables_writes"] is True and not request.disables_writes)
+        and request.to_offset >= request.from_offset
+        and request.observed_at >= datetime.fromisoformat(str(previous_body["observed_at"]))
+    )
+
+
+def _identity_continues(
+    previous_identity: dict[str, object],
+    current_identity: MigrationFenceFileIdentity,
+) -> bool:
+    return (
+        current_identity.device == previous_identity["device"]
+        and current_identity.inode == previous_identity["inode"]
+        and current_identity.scoped_rows_digest == previous_identity["scoped_rows_digest"]
     )
 
 

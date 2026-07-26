@@ -23,7 +23,12 @@ from ctower_client.models import (
     DurabilityState,
     MigrationImportOperationResult,
 )
-from ctower_kernel.migration import _link_sql, _ticket_operation_sql
+from ctower_kernel.migration import (
+    _link_sql,
+    _pass_state_sql,
+    _pass_two_sql,
+    _ticket_operation_sql,
+)
 from ctower_kernel.migration._event_sql import commit_event, migration_payload
 from ctower_kernel.migration._operation_result_sql import canonical, migration_sequence
 from ctower_kernel.migration._run_read_sql import load_run
@@ -79,6 +84,7 @@ def _apply(
             command_id=command_id,
             request_digest=request_digest,
             now=now,
+            telemetry=telemetry,
         )
         if not isinstance(guarded, CtowerProjectImportRun):
             return guarded
@@ -131,15 +137,26 @@ def _guard_batch(
     command_id: UUID,
     request_digest: bytes,
     now: datetime,
+    telemetry: TelemetryContext,
 ) -> CtowerProjectImportRun | CtowerProjectImportBatchResult | RecordProblem:
     run = load_run(connection, actor, request.run_id, lock=True)
     if isinstance(run, RecordProblem) or not _batch_scope(connection, actor, request, run, now):
         return _problem(None, "migration-capability-denied", "Import binding unavailable", 403)
     if not _expected_batch(connection, request, request_digest):
         return _problem(command_id, "migration-operation-drift", "Batch is outside signed plan")
-    replay = _batch_replay(connection, request, request_digest, now)
+    replay = _batch_replay(
+        connection,
+        actor,
+        run,
+        request,
+        request_digest,
+        now,
+        telemetry,
+    )
     if replay is not None:
         return replay
+    if run.state not in {"alias_plan_bound", "importing"}:
+        return _problem(None, "migration-run-conflict", "Pass one is already closed")
     return _preflight(connection, request) or run
 
 
@@ -251,6 +268,7 @@ def _batch_scope(
         "alias_plan_bound",
         "importing",
         "pass_one_complete",
+        "pass_two_started",
         "pass_two_noop",
     }:
         return False
@@ -258,6 +276,10 @@ def _batch_scope(
         connection.execute(
             """
         SELECT 1 FROM migration_importer_bindings AS binding
+        JOIN principal_credentials AS credential
+          ON credential.principal_id = binding.principal_id
+         AND credential.tenant_id = binding.tenant_id
+         AND credential.credential_digest = binding.credential_digest
         JOIN LATERAL (
             SELECT lifecycle FROM migration_importer_credential_facts
             WHERE run_id = binding.run_id ORDER BY fact_sequence DESC LIMIT 1
@@ -266,6 +288,7 @@ def _batch_scope(
           AND binding.project_key = 'ctower' AND binding.principal_id = %s
           AND binding.tenant_id = %s AND binding.expires_at > %s
           AND fact.lifecycle = 'activated'
+          AND credential.revoked_at IS NULL
         """,
             (request.run_id, request.cutover_id, actor.principal_id, actor.tenant_id, now),
         ).fetchone()
@@ -275,9 +298,12 @@ def _batch_scope(
 
 def _batch_replay(
     connection: psycopg.Connection[dict[str, object]],
+    actor: Actor,
+    run: CtowerProjectImportRun,
     request: CtowerProjectImportBatchRequest,
     request_digest: bytes,
     now: datetime,
+    telemetry: TelemetryContext,
 ) -> CtowerProjectImportBatchResult | RecordProblem | None:
     row = connection.execute(
         """
@@ -294,9 +320,159 @@ def _batch_replay(
     ):
         return _problem(None, "migration-operation-drift", "Batch replay changed")
     original = CtowerProjectImportBatchResult.model_validate_json(json.dumps(row["response_body"]))
-    refusal = _record_replay(connection, request, request_digest, now)
-    if refusal is not None:
-        return refusal
+    receipt = connection.execute(
+        """
+        SELECT request_digest FROM migration_import_replay_receipts
+        WHERE run_id = %s AND batch_index = %s
+        """,
+        (request.run_id, request.batch_index),
+    ).fetchone()
+    if receipt is not None:
+        return _existing_replay(receipt, request_digest, original)
+    preparation = _prepare_pass_two(
+        connection,
+        actor,
+        run,
+        request,
+        now=now,
+        telemetry=telemetry,
+    )
+    if preparation is not None:
+        return preparation
+    measured = _measure_replay(connection, request, request_digest, now)
+    if isinstance(measured, RecordProblem):
+        return measured
+    if _last_planned_batch(connection, request):
+        _pass_two_sql.persist(connection, request.run_id, "end", measured, now=now)
+        _pass_state_sql.transition(
+            connection,
+            actor,
+            request,
+            "pass_two_noop",
+            now=now,
+            telemetry=telemetry,
+        )
+    return _replayed(original)
+
+
+def _existing_replay(
+    receipt: dict[str, object],
+    request_digest: bytes,
+    original: CtowerProjectImportBatchResult,
+) -> CtowerProjectImportBatchResult | RecordProblem:
+    if bytes(cast(bytes, receipt["request_digest"])) != request_digest:
+        return _problem(None, "migration-operation-drift", "Replay receipt changed")
+    return _replayed(original)
+
+
+def _prepare_pass_two(
+    connection: psycopg.Connection[dict[str, object]],
+    actor: Actor,
+    run: CtowerProjectImportRun,
+    request: CtowerProjectImportBatchRequest,
+    *,
+    now: datetime,
+    telemetry: TelemetryContext,
+) -> RecordProblem | None:
+    if run.state == "pass_one_complete":
+        if request.batch_index != 0:
+            return _problem(None, "migration-run-conflict", "Pass two must start at batch zero")
+        start = _pass_two_sql.capture(connection, request.run_id)
+        if not _pass_two_sql.ready_for_pass_two(start):
+            return _problem(
+                None,
+                "migration-run-conflict",
+                "Project Delivery target is not current for pass two",
+            )
+        _pass_state_sql.transition(
+            connection,
+            actor,
+            request,
+            "pass_two_started",
+            now=now,
+            telemetry=telemetry,
+        )
+        _pass_two_sql.persist(
+            connection,
+            request.run_id,
+            "start",
+            start,
+            now=now,
+        )
+    elif run.state != "pass_two_started":
+        return _problem(None, "migration-run-conflict", "Pass two is not active")
+    return None
+
+
+def _measure_replay(
+    connection: psycopg.Connection[dict[str, object]],
+    request: CtowerProjectImportBatchRequest,
+    request_digest: bytes,
+    now: datetime,
+) -> _pass_two_sql.TargetSnapshot | RecordProblem:
+    if not _next_replay_is_contiguous(connection, request):
+        return _problem(None, "migration-run-conflict", "Pass-two batch is not contiguous")
+    before = _pass_two_sql.capture(connection, request.run_id)
+    after = _pass_two_sql.capture(connection, request.run_id)
+    if not _pass_two_sql.zero_delta(before, after):
+        connection.rollback()
+        return _problem(None, "migration-pass-two-drift", "Pass-two target state changed")
+    _record_replay(connection, request, request_digest, before, after, now)
+    return after
+
+
+def _next_replay_is_contiguous(
+    connection: psycopg.Connection[dict[str, object]],
+    request: CtowerProjectImportBatchRequest,
+) -> bool:
+    row = connection.execute(
+        """
+        SELECT coalesce(max(batch_index), -1) + 1 AS next_index
+        FROM migration_import_replay_receipts WHERE run_id = %s
+        """,
+        (request.run_id,),
+    ).fetchone()
+    return row is not None and int(cast(int, row["next_index"])) == request.batch_index
+
+
+def _record_replay(
+    connection: psycopg.Connection[dict[str, object]],
+    request: CtowerProjectImportBatchRequest,
+    request_digest: bytes,
+    before: _pass_two_sql.TargetSnapshot,
+    after: _pass_two_sql.TargetSnapshot,
+    now: datetime,
+) -> None:
+    measured = (
+        after.domain_fact_count - before.domain_fact_count,
+        after.event_count - before.event_count,
+        after.outbox_count - before.outbox_count,
+        after.record_position - before.record_position,
+        0 if after.project_delivery_digest == before.project_delivery_digest else 1,
+    )
+    if measured != (0, 0, 0, 0, 0):
+        raise RuntimeError("nonzero pass-two measurement escaped zero-delta validation")
+    connection.execute(
+        """
+        INSERT INTO migration_import_replay_receipts (
+            run_id, batch_index, batch_digest, request_digest, operation_count,
+            new_domain_facts, new_events, new_outbox_rows, record_position_delta,
+            projection_semantic_delta, recorded_at
+        ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+        """,
+        (
+            request.run_id,
+            request.batch_index,
+            _digest_bytes(request.batch_digest),
+            request_digest,
+            len(request.operations),
+            *measured,
+            now,
+        ),
+    )
+
+
+def _replayed(original: CtowerProjectImportBatchResult) -> CtowerProjectImportBatchResult:
     return original.model_copy(
         update={
             "results": tuple(
@@ -306,52 +482,22 @@ def _batch_replay(
     )
 
 
-def _record_replay(
+def _last_planned_batch(
     connection: psycopg.Connection[dict[str, object]],
     request: CtowerProjectImportBatchRequest,
-    request_digest: bytes,
-    now: datetime,
-) -> RecordProblem | None:
-    existing = connection.execute(
-        """
-        SELECT request_digest FROM migration_import_replay_receipts
-        WHERE run_id = %s AND batch_index = %s
-        """,
-        (request.run_id, request.batch_index),
-    ).fetchone()
-    if existing is not None:
-        return (
-            None
-            if bytes(cast(bytes, existing["request_digest"])) == request_digest
-            else _problem(None, "migration-operation-drift", "Replay receipt changed")
-        )
+) -> bool:
     row = connection.execute(
         """
-        SELECT coalesce(max(batch_index), -1) + 1 AS next_index
-        FROM migration_import_replay_receipts WHERE run_id = %s
+        SELECT plan.batch_count,
+            (SELECT count(*) FROM migration_import_replay_receipts AS receipt
+             WHERE receipt.run_id = plan.run_id) AS replay_count
+        FROM migration_import_plans AS plan WHERE plan.run_id = %s
         """,
         (request.run_id,),
     ).fetchone()
-    if row is None or int(cast(int, row["next_index"])) != request.batch_index:
-        return _problem(None, "migration-run-conflict", "Pass-two batch is not contiguous")
-    connection.execute(
-        """
-        INSERT INTO migration_import_replay_receipts (
-            run_id, batch_index, batch_digest, request_digest, operation_count,
-            new_domain_facts, new_events, new_outbox_rows, record_position_delta,
-            projection_semantic_delta, recorded_at
-        ) VALUES (%s, %s, %s, %s, %s, 0, 0, 0, 0, 0, %s)
-        """,
-        (
-            request.run_id,
-            request.batch_index,
-            _digest_bytes(request.batch_digest),
-            request_digest,
-            len(request.operations),
-            now,
-        ),
-    )
-    return None
+    if row is None:
+        raise RuntimeError("signed import plan is unavailable")
+    return int(cast(int, row["replay_count"])) == int(cast(int, row["batch_count"]))
 
 
 def _commit_batch_response(

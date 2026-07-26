@@ -124,6 +124,17 @@
       ]
     },
     {
+      "path": "contracts/domain/migration/ctower-project-alias-map-v2.schema.json",
+      "references": [
+        "SPEC#one-ctower-project-source-of-truth-barrier",
+        "INV-37",
+        "AC-MIG-02",
+        "AC-MIG-05",
+        "AC-SEC-03",
+        "AC-SEC-05"
+      ]
+    },
+    {
       "path": "contracts/domain/migration/ctower-project-cutover-health.schema.json",
       "references": [
         "SPEC#one-ctower-project-source-of-truth-barrier",
@@ -165,7 +176,29 @@
       ]
     },
     {
+      "path": "contracts/domain/migration/ctower-project-fence-observation-v2.schema.json",
+      "references": [
+        "SPEC#one-ctower-project-source-of-truth-barrier",
+        "INV-35",
+        "INV-37",
+        "AC-MIG-01",
+        "AC-MIG-04"
+      ]
+    },
+    {
       "path": "contracts/domain/migration/ctower-project-fence-registry.schema.json",
+      "references": [
+        "SPEC#one-ctower-project-source-of-truth-barrier",
+        "INV-32",
+        "INV-35",
+        "INV-37",
+        "AC-MIG-01",
+        "AC-MIG-04",
+        "AC-SEC-01"
+      ]
+    },
+    {
+      "path": "contracts/domain/migration/ctower-project-fence-registry-v2.schema.json",
       "references": [
         "SPEC#one-ctower-project-source-of-truth-barrier",
         "INV-32",
@@ -214,6 +247,20 @@
       ]
     },
     {
+      "path": "contracts/domain/migration/ctower-project-import-plan-v2.schema.json",
+      "references": [
+        "SPEC#canonical-event-and-command-contract",
+        "SPEC#one-ctower-project-source-of-truth-barrier",
+        "INV-31",
+        "INV-32",
+        "INV-37",
+        "AC-MIG-02",
+        "AC-MIG-03",
+        "AC-SEC-03",
+        "AC-SEC-05"
+      ]
+    },
+    {
       "path": "contracts/domain/migration/ctower-project-import-run.schema.json",
       "references": [
         "SPEC#persistence-authority",
@@ -226,7 +273,30 @@
       ]
     },
     {
+      "path": "contracts/domain/migration/ctower-project-import-run-v2.schema.json",
+      "references": [
+        "SPEC#persistence-authority",
+        "SPEC#one-ctower-project-source-of-truth-barrier",
+        "INV-32",
+        "INV-37",
+        "AC-MIG-03",
+        "AC-SEC-01",
+        "AC-SEC-03"
+      ]
+    },
+    {
       "path": "contracts/domain/migration/ctower-project-reconciliation.schema.json",
+      "references": [
+        "SPEC#one-ctower-project-source-of-truth-barrier",
+        "INV-35",
+        "INV-37",
+        "AC-MIG-03",
+        "AC-MIG-05",
+        "AC-SEC-05"
+      ]
+    },
+    {
+      "path": "contracts/domain/migration/ctower-project-reconciliation-v2.schema.json",
       "references": [
         "SPEC#one-ctower-project-source-of-truth-barrier",
         "INV-35",
@@ -1245,6 +1315,21 @@
     },
     {
       "path": "packages/ctower-kernel/migrations/0030_i17b_migration_truth_spine.sql",
+      "references": [
+        "SPEC#canonical-event-and-command-contract",
+        "SPEC#one-ctower-project-source-of-truth-barrier",
+        "SPEC#persistence-authority",
+        "INV-35",
+        "INV-37",
+        "INV-60",
+        "AC-MIG-03",
+        "AC-PD-04",
+        "AC-SEC-03",
+        "AC-SEC-05"
+      ]
+    },
+    {
+      "path": "packages/ctower-kernel/migrations/0031_i17b_bounded_truth_spine.sql",
       "references": [
         "SPEC#canonical-event-and-command-contract",
         "SPEC#one-ctower-project-source-of-truth-barrier",

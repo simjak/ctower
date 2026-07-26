@@ -69,6 +69,7 @@ def build_import_plan(
     records = _unique_records(frozen.records)
     operations: list[CtowerProjectImportOperation] = []
     entries = cast(list[dict[str, Any]], alias_map["entries"])
+    operations.extend(_stable_alias_operations(alias_map, records))
     for entry in sorted(entries, key=_entry_key):
         source = _source_identity(entry["identity"])
         record = records.get(source.key())
@@ -96,6 +97,43 @@ def build_import_plan(
     )
 
 
+def _stable_alias_operations(
+    alias_map: Mapping[str, Any],
+    records: Mapping[tuple[str, str, str], SourceRecord],
+) -> list[CtowerProjectImportOperation]:
+    operations: list[CtowerProjectImportOperation] = []
+    for mapping in cast(list[dict[str, Any]], alias_map["stable_aliases"]):
+        stable_id = str(mapping["stable_item_id"])
+        candidates = [
+            record
+            for key, record in records.items()
+            if key[0] == "stable-backlog" and key[1] == stable_id
+        ]
+        if len(candidates) != 1:
+            raise MigrationRefusal(
+                RefusalCode.ALIAS_OUTSIDE_EXPORT,
+                "stable alias identity",
+            )
+        record = candidates[0]
+        target_ref = f"ticket:{mapping['target_ticket_id']}"
+        operation = _primary_operation(
+            {
+                "disposition": "alias_linked_existing",
+                "planned_target_ref": target_ref,
+            },
+            record,
+            record.identity,
+            UUID(int=0),
+        )
+        if operation is None:
+            raise MigrationRefusal(
+                RefusalCode.ALIAS_ATTENTION_REQUIRED,
+                "stable alias operation",
+            )
+        operations.append(operation)
+    return operations
+
+
 def seal_import_plan(
     plan: ImportPlan,
     frozen: FrozenExport,
@@ -108,7 +146,7 @@ def seal_import_plan(
     sources = cast(list[dict[str, Any]], frozen.manifest["sources"])
     watermark = max(int(source["last_complete_offset"]) for source in sources)
     artifact: dict[str, Any] = {
-        "schema": "ctower.ctower-project-import-plan/v1",
+        "schema": "ctower.ctower-project-import-plan/v2",
         "plan_id": str(uuid5(_PLAN_NAMESPACE, f"{plan.run_id}:{plan.cutover_id}")),
         "run_id": str(plan.run_id),
         "cutover_id": str(plan.cutover_id),
@@ -119,12 +157,28 @@ def seal_import_plan(
         "batch_count": len(plan.batches),
         "operation_count": plan.operation_count,
         "batches": [batch.model_dump(mode="json", by_alias=True) for batch in plan.batches],
+        "checkpoint_definitions": [
+            {
+                "checkpoint_key": record.identity.immutable_source_id,
+                "catalog_revision": record.identity.source_version,
+                "definition_digest": record.identity.source_digest,
+                "criteria_digest": record.identity.source_digest,
+            }
+            for record in sorted(
+                (
+                    item
+                    for item in frozen.records
+                    if item.identity.namespace == "catalog:ctower:checkpoint"
+                ),
+                key=lambda item: item.identity.immutable_source_id,
+            )
+        ],
         "source_native_watermark": watermark,
         "export_native_watermark": watermark,
         "review": dict(review),
     }
     sealed = signer.seal(artifact, "plan_digest")
-    validate_contract("ctower-project-import-plan.schema.json", sealed)
+    validate_contract("ctower-project-import-plan-v2.schema.json", sealed)
     return sealed
 
 
@@ -155,7 +209,7 @@ def _verify_alias_map(
     cutover_id: UUID,
     verifier: ArtifactVerifier,
 ) -> str:
-    validate_contract("ctower-project-alias-map.schema.json", alias_map)
+    validate_contract("ctower-project-alias-map-v2.schema.json", alias_map)
     digest = verifier.verify(alias_map, "map_digest")
     if alias_map.get("attention_required") != 0 or any(
         item.get("disposition") == "attention_required"

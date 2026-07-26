@@ -1064,6 +1064,103 @@
           "reviewer_public_key": {"type": "string", "pattern": "^sha256:[0-9a-f]{64}$"}
         }
       },
+      "MigrationReviewerKey": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["public_key_ref", "key_version", "public_key_digest"],
+        "properties": {
+          "public_key_ref": {"type": "string", "pattern": "^signing-key-ref:[a-z0-9/_-]{3,255}$"},
+          "key_version": {"type": "integer", "minimum": 1},
+          "public_key_digest": {"type": "string", "pattern": "^sha256:[0-9a-f]{64}$"}
+        }
+      },
+      "MigrationReconciliationGraph": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["stable_aliases", "operation_identities", "operation_results", "tickets", "lifecycle_facts", "priority_facts", "custody_intervals", "active_claims", "alias_revisions", "relations", "relation_endpoints", "source_links", "checkpoint_definitions", "checkpoint_criteria", "project_delivery_rows", "events", "outbox_rows", "unexpected", "forbidden", "unresolved", "cycles", "graph_digest"],
+        "properties": {
+          "stable_aliases": {"type": "array", "uniqueItems": true, "items": {"type": "string", "minLength": 1, "maxLength": 8192}},
+          "operation_identities": {"type": "array", "uniqueItems": true, "items": {"type": "string", "minLength": 1, "maxLength": 8192}},
+          "operation_results": {"type": "array", "uniqueItems": true, "items": {"type": "string", "minLength": 1, "maxLength": 8192}},
+          "tickets": {"type": "array", "uniqueItems": true, "items": {"type": "string", "minLength": 1, "maxLength": 8192}},
+          "lifecycle_facts": {"type": "array", "uniqueItems": true, "items": {"type": "string", "minLength": 1, "maxLength": 8192}},
+          "priority_facts": {"type": "array", "uniqueItems": true, "items": {"type": "string", "minLength": 1, "maxLength": 8192}},
+          "custody_intervals": {"type": "array", "uniqueItems": true, "items": {"type": "string", "minLength": 1, "maxLength": 8192}},
+          "active_claims": {"type": "array", "uniqueItems": true, "items": {"type": "string", "minLength": 1, "maxLength": 8192}},
+          "alias_revisions": {"type": "array", "uniqueItems": true, "items": {"type": "string", "minLength": 1, "maxLength": 8192}},
+          "relations": {"type": "array", "uniqueItems": true, "items": {"type": "string", "minLength": 1, "maxLength": 8192}},
+          "relation_endpoints": {"type": "array", "uniqueItems": true, "items": {"type": "string", "minLength": 1, "maxLength": 8192}},
+          "source_links": {"type": "array", "uniqueItems": true, "items": {"type": "string", "minLength": 1, "maxLength": 8192}},
+          "checkpoint_definitions": {"type": "array", "minItems": 14, "maxItems": 14, "uniqueItems": true, "items": {"type": "string", "minLength": 1, "maxLength": 8192}},
+          "checkpoint_criteria": {"type": "array", "uniqueItems": true, "items": {"type": "string", "minLength": 1, "maxLength": 8192}},
+          "project_delivery_rows": {"type": "array", "minItems": 14, "maxItems": 14, "uniqueItems": true, "items": {"type": "string", "minLength": 1, "maxLength": 8192}},
+          "events": {"type": "array", "uniqueItems": true, "items": {"type": "string", "minLength": 1, "maxLength": 8192}},
+          "outbox_rows": {"type": "array", "uniqueItems": true, "items": {"type": "string", "minLength": 1, "maxLength": 8192}},
+          "unexpected": {"type": "array", "maxItems": 0, "items": {"type": "string"}},
+          "forbidden": {"type": "array", "maxItems": 0, "items": {"type": "string"}},
+          "unresolved": {"type": "array", "maxItems": 0, "items": {"type": "string"}},
+          "cycles": {"type": "array", "maxItems": 0, "items": {"type": "string"}},
+          "graph_digest": {"type": "string", "pattern": "^sha256:[0-9a-f]{64}$"}
+        }
+      },
+      "MigrationPassTwoMeasurement": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["start_snapshot_digest", "end_snapshot_digest", "start_domain_facts", "end_domain_facts", "new_domain_facts", "start_events", "end_events", "new_events", "start_outbox_rows", "end_outbox_rows", "new_outbox_rows", "start_record_position", "end_record_position", "record_position_delta", "start_project_delivery_digest", "end_project_delivery_digest", "projection_semantic_delta"],
+        "properties": {
+          "start_snapshot_digest": {"type": "string", "pattern": "^sha256:[0-9a-f]{64}$"},
+          "end_snapshot_digest": {"type": "string", "pattern": "^sha256:[0-9a-f]{64}$"},
+          "start_domain_facts": {"type": "integer", "minimum": 0},
+          "end_domain_facts": {"type": "integer", "minimum": 0},
+          "new_domain_facts": {"const": 0},
+          "start_events": {"type": "integer", "minimum": 0},
+          "end_events": {"type": "integer", "minimum": 0},
+          "new_events": {"const": 0},
+          "start_outbox_rows": {"type": "integer", "minimum": 0},
+          "end_outbox_rows": {"type": "integer", "minimum": 0},
+          "new_outbox_rows": {"const": 0},
+          "start_record_position": {"type": "integer", "minimum": 0},
+          "end_record_position": {"type": "integer", "minimum": 0},
+          "record_position_delta": {"const": 0},
+          "start_project_delivery_digest": {"type": "string", "pattern": "^sha256:[0-9a-f]{64}$"},
+          "end_project_delivery_digest": {"type": "string", "pattern": "^sha256:[0-9a-f]{64}$"},
+          "projection_semantic_delta": {"const": 0}
+        }
+      },
+      "MigrationWatermarks": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["source_native", "export_native", "record_position", "projection_position"],
+        "properties": {
+          "source_native": {"type": "integer", "minimum": 0},
+          "export_native": {"type": "integer", "minimum": 0},
+          "record_position": {"type": "integer", "minimum": 0},
+          "projection_position": {"type": "integer", "minimum": 0}
+        }
+      },
+      "MigrationReview": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["reviewer_principal_id", "reviewed_at", "decision"],
+        "properties": {
+          "reviewer_principal_id": {"type": "string", "format": "uuid"},
+          "reviewed_at": {"type": "string", "format": "date-time"},
+          "decision": {"const": "approved"}
+        }
+      },
+      "MigrationDetachedSignature": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["algorithm", "signed_digest", "key_ref", "key_version", "public_key_digest", "signature"],
+        "properties": {
+          "algorithm": {"const": "Ed25519"},
+          "signed_digest": {"type": "string", "pattern": "^sha256:[0-9a-f]{64}$"},
+          "key_ref": {"type": "string", "pattern": "^signing-key-ref:[a-z0-9/_-]{3,255}$"},
+          "key_version": {"type": "integer", "minimum": 1},
+          "public_key_digest": {"type": "string", "pattern": "^sha256:[0-9a-f]{64}$"},
+          "signature": {"type": "string", "pattern": "^[A-Za-z0-9_-]{86}$"}
+        }
+      },
       "MigrationImporterBinding": {
         "type": "object",
         "additionalProperties": false,
@@ -1098,7 +1195,7 @@
       "CtowerProjectImportRunCreateRequest": {
         "type": "object",
         "additionalProperties": false,
-        "required": ["cutover_id", "tenant_key", "project_key", "source_selection_digest", "source_selection_artifact", "build_digest", "client_digest", "schema_digest", "operation_registry_digest", "reviewer_public_key_digest", "importer_credential_digest", "importer_expires_at"],
+        "required": ["cutover_id", "tenant_key", "project_key", "source_selection_digest", "source_selection_artifact", "build_digest", "client_digest", "schema_digest", "operation_registry_digest", "reviewer_key_ref", "reviewer_key_version", "reviewer_public_key_digest", "importer_credential_digest", "importer_expires_at"],
         "properties": {
           "cutover_id": {"type": "string", "format": "uuid"},
           "tenant_key": {"const": "ctower"},
@@ -1109,6 +1206,8 @@
           "client_digest": {"type": "string", "pattern": "^sha256:[0-9a-f]{64}$"},
           "schema_digest": {"type": "string", "pattern": "^sha256:[0-9a-f]{64}$"},
           "operation_registry_digest": {"type": "string", "pattern": "^sha256:[0-9a-f]{64}$"},
+          "reviewer_key_ref": {"type": "string", "pattern": "^signing-key-ref:[a-z0-9/_-]{3,255}$"},
+          "reviewer_key_version": {"type": "integer", "minimum": 1},
           "reviewer_public_key_digest": {"type": "string", "pattern": "^sha256:[0-9a-f]{64}$"},
           "importer_credential_digest": {"type": "string", "pattern": "^sha256:[0-9a-f]{64}$"},
           "importer_expires_at": {"type": "string", "format": "date-time"}
@@ -1117,19 +1216,22 @@
       "CtowerProjectImportRun": {
         "type": "object",
         "additionalProperties": false,
-        "required": ["schema", "run_id", "cutover_id", "tenant_key", "project_key", "state", "pinned_digests", "importer_binding", "counts", "dispositions", "conservation", "source_native_watermark", "export_native_watermark", "record_watermark", "projection_watermark", "refusals", "semantic_digest", "durability_state", "accepted_position"],
+        "required": ["schema", "run_id", "cutover_id", "tenant_key", "project_key", "state", "pinned_digests", "reviewer_key", "importer_binding", "counts", "dispositions", "conservation", "reconciliation_graph", "pass_two_measurement", "source_native_watermark", "export_native_watermark", "record_watermark", "projection_watermark", "refusals", "semantic_digest", "durability_state", "accepted_position"],
         "properties": {
-          "schema": {"const": "ctower.ctower-project-import-run/v1"},
+          "schema": {"const": "ctower.ctower-project-import-run/v2"},
           "run_id": {"type": "string", "format": "uuid"},
           "cutover_id": {"type": "string", "format": "uuid"},
           "tenant_key": {"const": "ctower"},
           "project_key": {"const": "ctower"},
-          "state": {"type": "string", "enum": ["created", "export_equality_bound", "alias_plan_bound", "importing", "pass_one_complete", "pass_two_noop", "reconciled"]},
+          "state": {"type": "string", "enum": ["created", "export_equality_bound", "alias_plan_bound", "importing", "pass_one_complete", "pass_two_started", "pass_two_noop", "reconciled"]},
           "pinned_digests": {"$ref": "#/components/schemas/MigrationPinnedDigests"},
+          "reviewer_key": {"$ref": "#/components/schemas/MigrationReviewerKey"},
           "importer_binding": {"$ref": "#/components/schemas/MigrationImporterBinding"},
           "counts": {"$ref": "#/components/schemas/MigrationImportCounts"},
           "dispositions": {"oneOf": [{"$ref": "#/components/schemas/MigrationDispositions"}, {"type": "null"}]},
           "conservation": {"oneOf": [{"$ref": "#/components/schemas/MigrationConservation"}, {"type": "null"}]},
+          "reconciliation_graph": {"oneOf": [{"$ref": "#/components/schemas/MigrationReconciliationGraph"}, {"type": "null"}]},
+          "pass_two_measurement": {"oneOf": [{"$ref": "#/components/schemas/MigrationPassTwoMeasurement"}, {"type": "null"}]},
           "source_native_watermark": {"type": "integer", "minimum": 0},
           "export_native_watermark": {"type": "integer", "minimum": 0},
           "record_watermark": {"type": "integer", "minimum": 0},
@@ -1143,7 +1245,7 @@
       "CtowerProjectExportEqualityBindRequest": {
         "type": "object",
         "additionalProperties": false,
-        "required": ["run_id", "cutover_id", "selection_digest", "inventory_a_digest", "inventory_b_digest", "export_digest", "equality_report_digest", "reviewer_public_key_digest", "result", "export_a_artifact", "export_b_artifact", "export_equality_artifact"],
+        "required": ["run_id", "cutover_id", "selection_digest", "inventory_a_digest", "inventory_b_digest", "export_digest", "equality_report_digest", "reviewer_key_ref", "reviewer_key_version", "reviewer_public_key_digest", "result", "export_a_artifact", "export_b_artifact", "export_equality_artifact"],
         "properties": {
           "run_id": {"type": "string", "format": "uuid"},
           "cutover_id": {"type": "string", "format": "uuid"},
@@ -1152,6 +1254,8 @@
           "inventory_b_digest": {"type": "string", "pattern": "^sha256:[0-9a-f]{64}$"},
           "export_digest": {"type": "string", "pattern": "^sha256:[0-9a-f]{64}$"},
           "equality_report_digest": {"type": "string", "pattern": "^sha256:[0-9a-f]{64}$"},
+          "reviewer_key_ref": {"type": "string", "pattern": "^signing-key-ref:[a-z0-9/_-]{3,255}$"},
+          "reviewer_key_version": {"type": "integer", "minimum": 1},
           "reviewer_public_key_digest": {"type": "string", "pattern": "^sha256:[0-9a-f]{64}$"},
           "result": {"const": "equal"}
           ,"export_a_artifact": {"type": "string", "minLength": 2, "maxLength": 4194304}
@@ -1162,12 +1266,14 @@
       "CtowerProjectAliasPlanBindRequest": {
         "type": "object",
         "additionalProperties": false,
-        "required": ["run_id", "cutover_id", "export_equality_digest", "alias_map_digest", "reviewer_public_key_digest", "attention_required", "alias_map_artifact", "import_plan_artifact", "fence_registry_artifact", "fence_observer_credential_digest", "fence_observer_expires_at"],
+        "required": ["run_id", "cutover_id", "export_equality_digest", "alias_map_digest", "reviewer_key_ref", "reviewer_key_version", "reviewer_public_key_digest", "attention_required", "alias_map_artifact", "import_plan_artifact", "fence_registry_artifact", "fence_observer_credential_digest", "fence_observer_expires_at"],
         "properties": {
           "run_id": {"type": "string", "format": "uuid"},
           "cutover_id": {"type": "string", "format": "uuid"},
           "export_equality_digest": {"type": "string", "pattern": "^sha256:[0-9a-f]{64}$"},
           "alias_map_digest": {"type": "string", "pattern": "^sha256:[0-9a-f]{64}$"},
+          "reviewer_key_ref": {"type": "string", "pattern": "^signing-key-ref:[a-z0-9/_-]{3,255}$"},
+          "reviewer_key_version": {"type": "integer", "minimum": 1},
           "reviewer_public_key_digest": {"type": "string", "pattern": "^sha256:[0-9a-f]{64}$"},
           "attention_required": {"const": 0}
           ,"alias_map_artifact": {"type": "string", "minLength": 2, "maxLength": 4194304}
@@ -1311,11 +1417,12 @@
       "CtowerProjectImportFinalizeRequest": {
         "type": "object",
         "additionalProperties": false,
-        "required": ["run_id", "cutover_id", "expected_run_semantic_digest"],
+        "required": ["run_id", "cutover_id", "expected_run_semantic_digest", "reconciliation_artifact"],
         "properties": {
           "run_id": {"type": "string", "format": "uuid"},
           "cutover_id": {"type": "string", "format": "uuid"},
-          "expected_run_semantic_digest": {"type": "string", "pattern": "^sha256:[0-9a-f]{64}$"}
+          "expected_run_semantic_digest": {"type": "string", "pattern": "^sha256:[0-9a-f]{64}$"},
+          "reconciliation_artifact": {"type": "string", "minLength": 2, "maxLength": 16777216}
         }
       },
       "MigrationDispositions": {
@@ -1362,22 +1469,24 @@
       "CtowerProjectReconciliationResult": {
         "type": "object",
         "additionalProperties": false,
-        "required": ["schema", "reconciliation_id", "run_id", "cutover_id", "project_key", "pinned_digests", "dispositions", "conservation", "source_native_watermark", "export_native_watermark", "record_watermark", "projection_watermark", "target_semantic_digest", "report_digest", "durability_state", "accepted_position"],
+        "required": ["schema", "reconciliation_id", "run_id", "cutover_id", "project_key", "pinned_digests", "reviewer_key", "expected_graph", "actual_graph", "pass_two_measurement", "watermarks", "target_semantic_digest", "reconciled_at", "review", "report_digest", "signature", "durability_state", "accepted_position"],
         "properties": {
-          "schema": {"const": "ctower.ctower-project-reconciliation/v1"},
+          "schema": {"const": "ctower.ctower-project-reconciliation/v2"},
           "reconciliation_id": {"type": "string", "format": "uuid"},
           "run_id": {"type": "string", "format": "uuid"},
           "cutover_id": {"type": "string", "format": "uuid"},
           "project_key": {"const": "ctower"},
           "pinned_digests": {"$ref": "#/components/schemas/MigrationPinnedDigests"},
-          "dispositions": {"$ref": "#/components/schemas/MigrationDispositions"},
-          "conservation": {"$ref": "#/components/schemas/MigrationConservation"},
-          "source_native_watermark": {"type": "integer", "minimum": 0},
-          "export_native_watermark": {"type": "integer", "minimum": 0},
-          "record_watermark": {"type": "integer", "minimum": 0},
-          "projection_watermark": {"type": "integer", "minimum": 0},
+          "reviewer_key": {"$ref": "#/components/schemas/MigrationReviewerKey"},
+          "expected_graph": {"$ref": "#/components/schemas/MigrationReconciliationGraph"},
+          "actual_graph": {"$ref": "#/components/schemas/MigrationReconciliationGraph"},
+          "pass_two_measurement": {"$ref": "#/components/schemas/MigrationPassTwoMeasurement"},
+          "watermarks": {"$ref": "#/components/schemas/MigrationWatermarks"},
           "target_semantic_digest": {"type": "string", "pattern": "^sha256:[0-9a-f]{64}$"},
+          "reconciled_at": {"type": "string", "format": "date-time"},
+          "review": {"$ref": "#/components/schemas/MigrationReview"},
           "report_digest": {"type": "string", "pattern": "^sha256:[0-9a-f]{64}$"},
+          "signature": {"$ref": "#/components/schemas/MigrationDetachedSignature"},
           "durability_state": {"$ref": "#/components/schemas/DurabilityState"},
           "accepted_position": {"type": ["integer", "null"], "minimum": 1}
         }
@@ -1461,9 +1570,9 @@
       "CtowerProjectFenceObservationRequest": {
         "type": "object",
         "additionalProperties": false,
-        "required": ["schema", "observation_id", "run_id", "cutover_id", "tenant_key", "project_key", "registry_id", "registry_revision", "registry_digest", "sequence", "previous_observation_digest", "observed_at", "from_offset", "to_offset", "file_identity", "status", "reason_code", "observation_digest", "disables_writes", "may_enable_writes"],
+        "required": ["schema", "observation_id", "run_id", "cutover_id", "tenant_key", "project_key", "registry_id", "registry_revision", "registry_digest", "source_pointer_digest", "sequence", "previous_observation_digest", "observed_at", "from_offset", "to_offset", "file_identity", "status", "reason_code", "observation_digest", "disables_writes", "may_enable_writes"],
         "properties": {
-          "schema": {"const": "ctower.ctower-project-fence-observation/v1"},
+          "schema": {"const": "ctower.ctower-project-fence-observation/v2"},
           "observation_id": {"type": "string", "format": "uuid"},
           "run_id": {"type": "string", "format": "uuid"},
           "cutover_id": {"type": "string", "format": "uuid"},
@@ -1472,6 +1581,7 @@
           "registry_id": {"type": "string", "format": "uuid"},
           "registry_revision": {"type": "integer", "minimum": 1},
           "registry_digest": {"type": "string", "pattern": "^sha256:[0-9a-f]{64}$"},
+          "source_pointer_digest": {"type": "string", "pattern": "^sha256:[0-9a-f]{64}$"},
           "sequence": {"type": "integer", "minimum": 1},
           "previous_observation_digest": {"type": ["string", "null"], "pattern": "^sha256:[0-9a-f]{64}$"},
           "observed_at": {"type": "string", "format": "date-time"},
@@ -1479,7 +1589,7 @@
           "to_offset": {"type": "integer", "minimum": 0},
           "file_identity": {"$ref": "#/components/schemas/MigrationFenceFileIdentity"},
           "status": {"type": "string", "enum": ["clear", "detected", "unknown"]},
-          "reason_code": {"type": "string", "enum": ["no_scoped_append", "scoped_row_appended", "truncated_row", "inode_replaced", "file_truncated", "unreadable_gap", "classifier_unknown", "monitor_interval_missing", "registry_mismatch"]},
+          "reason_code": {"type": "string", "enum": ["no_scoped_append", "scoped_row_appended", "truncated_row", "inode_replaced", "file_truncated", "unreadable_gap", "classifier_unknown", "monitor_interval_missing", "registry_mismatch", "observation_stale", "observation_from_future", "offset_reversed", "pointer_mismatch"]},
           "observation_digest": {"type": "string", "pattern": "^sha256:[0-9a-f]{64}$"},
           "disables_writes": {"type": "boolean"},
           "may_enable_writes": {"const": false}

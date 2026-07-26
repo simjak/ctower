@@ -15,9 +15,17 @@ from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PublicKey
 from ctower_contracts import validator_for
 from jsonschema import ValidationError
 
-__all__ = ["ArtifactError", "TrustedReviewerKeys", "parse_artifact", "verify_signed_artifact"]
+__all__ = [
+    "ArtifactError",
+    "ReviewerKey",
+    "TrustedReviewerKeys",
+    "parse_artifact",
+    "reviewer_key",
+    "verify_signed_artifact",
+]
 
 type TrustedReviewerKeys = Mapping[tuple[str, int], Ed25519PublicKey]
+type ReviewerKey = tuple[str, int, str]
 
 
 def parse_artifact(text: str, schema_ref: str) -> dict[str, Any]:
@@ -62,6 +70,24 @@ def verify_signed_artifact(
         raise ArtifactError("signature-rebound")
     _verify_detached(signature, digest, trusted_keys)
     return artifact, digest
+
+
+def reviewer_key(artifact: Mapping[str, object]) -> ReviewerKey:
+    """Return the exact reviewer key tuple carried by a verified artifact."""
+
+    signature = artifact.get("signature")
+    if not isinstance(signature, Mapping):
+        raise ArtifactError("signature-invalid")
+    key_ref = signature.get("key_ref")
+    key_version = signature.get("key_version")
+    key_digest = signature.get("public_key_digest")
+    if (
+        not isinstance(key_ref, str)
+        or not isinstance(key_version, int)
+        or not isinstance(key_digest, str)
+    ):
+        raise ArtifactError("signature-invalid")
+    return key_ref, key_version, key_digest
 
 
 def _verify_detached(

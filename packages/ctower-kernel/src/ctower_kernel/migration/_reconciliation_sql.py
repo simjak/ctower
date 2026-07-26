@@ -1,13 +1,12 @@
-"""Server-recomputed reconciliation and importer credential finalization."""
+"""Exact signed reconciliation acceptance and importer finalization."""
 
 from __future__ import annotations
 
 import hashlib
 import json
 import secrets
-from collections.abc import Callable
 from datetime import datetime
-from typing import cast
+from typing import Any, cast
 from uuid import UUID
 
 import psycopg
@@ -18,11 +17,15 @@ from ctower_client.models import (
     CtowerProjectImportFinalizeRequest,
     CtowerProjectImportRun,
     CtowerProjectReconciliationResult,
-    DurabilityState,
-    MigrationDispositions,
+)
+from ctower_kernel.migration import _pass_two_sql
+from ctower_kernel.migration._artifact import (
+    ArtifactError,
+    TrustedReviewerKeys,
+    reviewer_key,
+    verify_signed_artifact,
 )
 from ctower_kernel.migration._event_sql import commit_event, migration_payload
-from ctower_kernel.migration._measurement_sql import MigrationMeasurement, measure
 from ctower_kernel.migration._operation_result_sql import canonical, migration_sequence
 from ctower_kernel.migration._run_read_sql import load_run
 from ctower_kernel.record import Actor, RecordProblem
@@ -41,9 +44,18 @@ def finalize_run(
     command_id: UUID,
     now: datetime,
     telemetry: TelemetryContext,
+    trusted_keys: TrustedReviewerKeys,
 ) -> CtowerProjectReconciliationResult | RecordProblem:
     return recover_ambiguous_commit(
-        lambda: _finalize(dsn, actor, request, command_id=command_id, now=now, telemetry=telemetry)
+        lambda: _finalize(
+            dsn,
+            actor,
+            request,
+            command_id=command_id,
+            now=now,
+            telemetry=telemetry,
+            trusted_keys=trusted_keys,
+        )
     )
 
 
@@ -55,61 +67,152 @@ def _finalize(
     command_id: UUID,
     now: datetime,
     telemetry: TelemetryContext,
+    trusted_keys: TrustedReviewerKeys,
 ) -> CtowerProjectReconciliationResult | RecordProblem:
     request_digest = hashlib.sha256(canonical(request)).digest()
+    try:
+        artifact, report_digest = verify_signed_artifact(
+            request.reconciliation_artifact,
+            "ctower.ctower-project-reconciliation/v2",
+            "report_digest",
+            trusted_keys,
+        )
+        result = CtowerProjectReconciliationResult.model_validate_json(
+            request.reconciliation_artifact
+        )
+    except (ArtifactError, ValidationError):
+        return _problem(command_id, "migration-import-finalization-refused")
     with authority_connection(dsn) as connection:
         connection.execute("SET ROLE ctower_svc")
         replay = _replay(connection, actor, command_id, request_digest)
         if replay is not None:
             return replay
         run = load_run(connection, actor, request.run_id, lock=True)
-        if isinstance(run, RecordProblem) or not _scope(run, request):
+        if isinstance(run, RecordProblem) or not _scope(run, request, result):
             return _problem(command_id, "migration-import-finalization-refused")
-        measured = measure(connection, request.run_id)
-        if measured is None:
-            return _problem(command_id, "migration-import-finalization-refused")
-        dispositions = measured.dispositions
-        selected = sum(dispositions.model_dump().values())
+        graph, pass_two = _pass_two_sql.evidence(connection, request.run_id)
         if (
-            selected != measured.conservation.selected_logical_items
-            or run.counts.planned_operations < 1
-            or run.counts.applied_operations != run.counts.planned_operations
-            or run.counts.replayed_operations != run.counts.planned_operations
+            graph is None
+            or pass_two is None
+            or not _current_target_matches(connection, request.run_id, graph)
+            or not _artifact_matches(
+                artifact,
+                run,
+                graph,
+                pass_two,
+                report_digest,
+            )
         ):
             return _problem(command_id, "migration-import-finalization-refused")
-        report_digest = _report_digest(request_digest, run.semantic_digest, dispositions)
-        return _commit_reconciliation(
+        event_id, position = _commit_reconciliation(
             connection,
             actor,
             request,
-            run=run,
-            dispositions=dispositions,
-            measured=measured,
-            report_digest=report_digest,
+            result,
             command_id=command_id,
             request_digest=request_digest,
             now=now,
             telemetry=telemetry,
         )
+        _insert_facts(
+            connection,
+            actor,
+            request,
+            result,
+            artifact,
+            event_id=event_id,
+            position=position,
+            command_id=command_id,
+            now=now,
+        )
+        return result
+
+
+def _current_target_matches(
+    connection: psycopg.Connection[dict[str, object]],
+    run_id: UUID,
+    expected_graph: dict[str, object],
+) -> bool:
+    before = _pass_two_sql.capture(connection, run_id)
+    after = _pass_two_sql.capture(connection, run_id)
+    actual_graph = _pass_two_sql.graph(after.body)
+    return _pass_two_sql.zero_delta(before, after) and actual_graph == expected_graph
+
+
+def _artifact_matches(
+    artifact: dict[str, Any],
+    run: CtowerProjectImportRun,
+    graph: dict[str, object],
+    pass_two: dict[str, object],
+    report_digest: str,
+) -> bool:
+    key_ref, key_version, key_digest = reviewer_key(artifact)
+    pins = cast(dict[str, object], artifact["pinned_digests"])
+    watermarks = cast(dict[str, object], artifact["watermarks"])
+    return (
+        _artifact_scope_matches(artifact, run, graph, pass_two, report_digest)
+        and _reviewer_matches(run, key_ref, key_version, key_digest)
+        and pins == run.pinned_digests.model_dump(mode="json", by_alias=True)
+        and _watermarks_match(run, watermarks)
+    )
+
+
+def _artifact_scope_matches(
+    artifact: dict[str, Any],
+    run: CtowerProjectImportRun,
+    graph: dict[str, object],
+    pass_two: dict[str, object],
+    report_digest: str,
+) -> bool:
+    return (
+        artifact.get("report_digest") == report_digest
+        and artifact.get("run_id") == str(run.run_id)
+        and artifact.get("cutover_id") == str(run.cutover_id)
+        and artifact.get("project_key") == "ctower"
+        and artifact.get("expected_graph") == graph
+        and artifact.get("actual_graph") == graph
+        and artifact.get("pass_two_measurement") == pass_two
+        and artifact.get("target_semantic_digest") == run.semantic_digest
+    )
+
+
+def _reviewer_matches(
+    run: CtowerProjectImportRun,
+    key_ref: str,
+    key_version: int,
+    key_digest: str,
+) -> bool:
+    return (
+        key_ref == run.reviewer_key.public_key_ref
+        and key_version == run.reviewer_key.key_version
+        and key_digest == run.reviewer_key.public_key_digest
+    )
+
+
+def _watermarks_match(
+    run: CtowerProjectImportRun,
+    watermarks: dict[str, object],
+) -> bool:
+    return (
+        watermarks.get("source_native") == run.source_native_watermark
+        and watermarks.get("export_native") == run.export_native_watermark
+        and watermarks.get("record_position") == run.record_watermark
+        and watermarks.get("projection_position") == run.projection_watermark
+    )
 
 
 def _commit_reconciliation(
     connection: psycopg.Connection[dict[str, object]],
     actor: Actor,
     request: CtowerProjectImportFinalizeRequest,
+    result: CtowerProjectReconciliationResult,
     *,
-    run: CtowerProjectImportRun,
-    dispositions: MigrationDispositions,
-    measured: MigrationMeasurement,
-    report_digest: str,
     command_id: UUID,
     request_digest: bytes,
     now: datetime,
     telemetry: TelemetryContext,
-) -> CtowerProjectReconciliationResult:
-    reconciliation_id = _uuid7(now)
-    captured: list[CtowerProjectReconciliationResult] = []
-    event_id, position = commit_event(
+) -> tuple[UUID, int]:
+    return commit_event(
         connection,
         actor,
         aggregate_id=request.run_id,
@@ -119,93 +222,18 @@ def _commit_reconciliation(
             "reconciled",
             run_id=request.run_id,
             cutover_id=request.cutover_id,
-            target_id=str(reconciliation_id),
+            target_id=str(result.reconciliation_id),
         ),
         request_digest=request_digest,
         sequence=migration_sequence(connection, actor, request.run_id),
         stream_id=f"migration:{request.run_id}",
         now=now,
         telemetry=telemetry,
-        response=_result_response(
-            captured,
-            reconciliation_id,
-            request,
-            run=run,
-            dispositions=dispositions,
-            measured=measured,
-            report_digest=report_digest,
+        response=lambda _event_id, _position: cast(
+            dict[str, object],
+            result.model_dump(mode="json", by_alias=True),
         ),
         subjects=(("migration", request.run_id),),
-    )
-    _insert_facts(
-        connection,
-        actor,
-        request,
-        captured[0],
-        event_id=event_id,
-        position=position,
-        command_id=command_id,
-        now=now,
-    )
-    return captured[0]
-
-
-def _result_response(
-    captured: list[CtowerProjectReconciliationResult],
-    reconciliation_id: UUID,
-    request: CtowerProjectImportFinalizeRequest,
-    *,
-    run: CtowerProjectImportRun,
-    dispositions: MigrationDispositions,
-    measured: MigrationMeasurement,
-    report_digest: str,
-) -> Callable[[UUID, int], dict[str, object]]:
-    def response(event_id: UUID, position: int) -> dict[str, object]:
-        del event_id
-        result = _result(
-            reconciliation_id,
-            request,
-            run=run,
-            dispositions=dispositions,
-            measured=measured,
-            report_digest=report_digest,
-            record_position=position,
-        )
-        captured.append(result)
-        return cast(dict[str, object], result.model_dump(mode="json", by_alias=True))
-
-    return response
-
-
-def _result(
-    reconciliation_id: UUID,
-    request: CtowerProjectImportFinalizeRequest,
-    *,
-    run: CtowerProjectImportRun,
-    dispositions: MigrationDispositions,
-    measured: MigrationMeasurement,
-    report_digest: str,
-    record_position: int,
-) -> CtowerProjectReconciliationResult:
-    return CtowerProjectReconciliationResult.model_validate(
-        {
-            "schema": "ctower.ctower-project-reconciliation/v1",
-            "reconciliation_id": reconciliation_id,
-            "run_id": request.run_id,
-            "cutover_id": request.cutover_id,
-            "project_key": "ctower",
-            "pinned_digests": run.pinned_digests,
-            "dispositions": dispositions,
-            "conservation": measured.conservation,
-            "source_native_watermark": measured.source_native_watermark,
-            "export_native_watermark": measured.export_native_watermark,
-            "record_watermark": record_position,
-            "projection_watermark": 0,
-            "target_semantic_digest": run.semantic_digest,
-            "report_digest": report_digest,
-            "durability_state": DurabilityState.DURABILITY_PENDING,
-            "accepted_position": None,
-        }
     )
 
 
@@ -214,29 +242,57 @@ def _insert_facts(
     actor: Actor,
     request: CtowerProjectImportFinalizeRequest,
     result: CtowerProjectReconciliationResult,
+    artifact: dict[str, Any],
     *,
     event_id: UUID,
     position: int,
     command_id: UUID,
     now: datetime,
 ) -> None:
+    signature = cast(dict[str, object], artifact["signature"])
+    canonical_bytes = request.reconciliation_artifact.encode("utf-8")
+    connection.execute(
+        """
+        INSERT INTO migration_verified_artifacts (
+            run_id, artifact_kind, artifact_digest, artifact_body,
+            reviewer_key_ref, reviewer_key_version, reviewer_key_digest,
+            actor_principal_id, command_id, recorded_at, artifact_canonical_bytes
+        ) VALUES (%s, 'reconciliation', %s, %s, %s, %s, %s, %s, %s, %s, %s)
+        """,
+        (
+            request.run_id,
+            _digest_bytes(result.report_digest),
+            Jsonb(artifact),
+            signature["key_ref"],
+            signature["key_version"],
+            _digest_bytes(cast(str, signature["public_key_digest"])),
+            actor.principal_id,
+            command_id,
+            now,
+            canonical_bytes,
+        ),
+    )
     connection.execute(
         """
         INSERT INTO migration_reconciliation_facts (
             reconciliation_id, run_id, report_digest, target_semantic_digest,
-            report_body, event_id, actor_principal_id, command_id, recorded_at
-        ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s)
+            report_body, event_id, actor_principal_id, command_id, recorded_at,
+            report_canonical_bytes, pass_two_start_digest, pass_two_end_digest
+        ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
         """,
         (
             result.reconciliation_id,
             request.run_id,
             _digest_bytes(result.report_digest),
             _digest_bytes(result.target_semantic_digest),
-            Jsonb(result.model_dump(mode="json", by_alias=True)),
+            Jsonb(artifact),
             event_id,
             actor.principal_id,
             command_id,
             now,
+            canonical_bytes,
+            _digest_bytes(result.pass_two_measurement.start_snapshot_digest),
+            _digest_bytes(result.pass_two_measurement.end_snapshot_digest),
         ),
     )
     _insert_run_finalization(
@@ -296,6 +352,19 @@ def _revoke_importer(
 ) -> None:
     connection.execute(
         """
+        UPDATE principal_credentials AS credential
+        SET revoked_at = %s
+        FROM migration_importer_bindings AS binding
+        WHERE binding.run_id = %s
+          AND credential.principal_id = binding.principal_id
+          AND credential.tenant_id = binding.tenant_id
+          AND credential.credential_digest = binding.credential_digest
+          AND credential.revoked_at IS NULL
+        """,
+        (now, run_id),
+    )
+    connection.execute(
+        """
         INSERT INTO migration_importer_credential_facts (
             credential_fact_id, run_id, principal_id, fact_sequence, lifecycle,
             actor_principal_id, command_id, recorded_at
@@ -313,10 +382,15 @@ def _revoke_importer(
     )
 
 
-def _scope(run: CtowerProjectImportRun, request: CtowerProjectImportFinalizeRequest) -> bool:
+def _scope(
+    run: CtowerProjectImportRun,
+    request: CtowerProjectImportFinalizeRequest,
+    result: CtowerProjectReconciliationResult,
+) -> bool:
     return (
         run.state == "pass_two_noop"
-        and run.cutover_id == request.cutover_id
+        and run.cutover_id == request.cutover_id == result.cutover_id
+        and run.run_id == result.run_id
         and run.semantic_digest == request.expected_run_semantic_digest
     )
 
@@ -344,15 +418,6 @@ def _replay(
         )
     except ValidationError:
         return _problem(command_id, "migration-operation-drift")
-
-
-def _report_digest(
-    request_digest: bytes,
-    semantic_digest: str,
-    dispositions: MigrationDispositions,
-) -> str:
-    body = json.dumps(dispositions.model_dump(), separators=(",", ":"), sort_keys=True).encode()
-    return f"sha256:{hashlib.sha256(request_digest + semantic_digest.encode() + body).hexdigest()}"
 
 
 def _digest_bytes(value: str) -> bytes:

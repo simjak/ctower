@@ -97,6 +97,8 @@ def _create_request() -> CtowerProjectImportRunCreateRequest:
         client_digest=ZERO_DIGEST,
         schema_digest=ZERO_DIGEST,
         operation_registry_digest=ZERO_DIGEST,
+        reviewer_key_ref="signing-key-ref:test/reviewer",
+        reviewer_key_version=1,
         reviewer_public_key_digest=ZERO_DIGEST,
         importer_credential_digest=ZERO_DIGEST,
         importer_expires_at=datetime(2030, 1, 1, tzinfo=UTC),
