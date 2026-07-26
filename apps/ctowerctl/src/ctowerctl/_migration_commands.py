@@ -35,6 +35,12 @@ _REQUEST_MODELS: dict[str, type[BaseModel]] = {
     "migration ctower-project prepare": CtowerProjectEpochRefusalRequest,
     "migration ctower-project commit-development-epoch": CtowerProjectEpochRefusalRequest,
 }
+_REFUSAL_COMMANDS = frozenset(
+    {
+        "migration ctower-project prepare",
+        "migration ctower-project commit-development-epoch",
+    }
+)
 
 
 def execute_online(arguments: argparse.Namespace, client: CtowerClient) -> BaseModel:
@@ -150,7 +156,13 @@ def delivery_text(view: ProjectDeliveryView) -> str:
 def mutation_command_names() -> frozenset[str]:
     """Return the exact online-only, unspoolable mutation inventory."""
 
-    return frozenset(_REQUEST_MODELS)
+    return frozenset(_REQUEST_MODELS) - _REFUSAL_COMMANDS
+
+
+def refusal_command_names() -> frozenset[str]:
+    """Return the exact online-only, unspoolable non-mutating refusal inventory."""
+
+    return _REFUSAL_COMMANDS
 
 
 def query_command_names() -> frozenset[str]:

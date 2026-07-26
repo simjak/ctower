@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from collections import Counter
 from datetime import UTC, datetime, timedelta
 from pathlib import Path
 from typing import Any
@@ -11,6 +12,9 @@ from ctower_client.models import (
     CtowerProjectImportBatchRequest,
     CtowerProjectImportBatchResult,
     CtowerProjectImportRun,
+    DurabilityState,
+    MigrationConservation,
+    MigrationDispositions,
     MigrationImportCounts,
     MigrationImporterBinding,
     MigrationImportOperationResult,
@@ -48,6 +52,7 @@ from tools.migration.ctower_project.ctower_project_source.source import ReadOnly
 from .fixtures import (
     COMMANDER_ID,
     CUTOVER_ID,
+    DISPOSITIONS,
     REVIEW,
     RUN_ID,
     UUID_NAMESPACE,
@@ -108,7 +113,7 @@ class FakeGeneratedClient:
             results=results,
             record_watermark=max(item.record_position for item in results),
             projection_watermark=0,
-            durability_state="durability_pending",
+            durability_state=DurabilityState.DURABILITY_PENDING,
             accepted_position=None,
         )
         self.responses[command_id] = response
@@ -301,6 +306,8 @@ def _run(
             source_selection=plan.selection_digest,
             export_equality=plan.equality_digest,
             alias_map=plan.alias_map_digest,
+            import_plan=plan.plan_digest,
+            fence_registry=sha256_digest(b"fence registry"),
             build=target["build_digest"],
             client=target["client_digest"],
             schema_id=target["schema_digest"],
@@ -319,12 +326,41 @@ def _run(
             replayed_operations=plan.operation_count,
             refused_operations=0,
         ),
+        dispositions=MigrationDispositions(
+            **Counter(DISPOSITIONS),
+            attention_required=0,
+        ),
+        conservation=_conservation(),
+        source_native_watermark=243,
+        export_native_watermark=243,
         record_watermark=plan.operation_count,
         projection_watermark=plan.operation_count,
         refusals=(),
         semantic_digest=sha256_digest(b"synthetic target facts"),
-        durability_state="durability_pending",
+        durability_state=DurabilityState.DURABILITY_PENDING,
         accepted_position=None,
+    )
+
+
+def _conservation() -> MigrationConservation:
+    return MigrationConservation(
+        selected_logical_items=86,
+        selected_request_logical=86,
+        selected_request_physical_snapshots=243,
+        stable_aliases=27,
+        checkpoint_definitions=14,
+        unresolved_aliases=0,
+        alias_forks_or_cycles=0,
+        missing_relation_endpoints=0,
+        forbidden_relation_cycles=0,
+        unresolved_active_claims=0,
+        unexpected_sources=0,
+        forbidden_data_items=0,
+        pass_two_new_domain_facts=0,
+        pass_two_new_events=0,
+        pass_two_new_outbox_rows=0,
+        pass_two_record_position_delta=0,
+        pass_two_projection_semantic_delta=0,
     )
 
 

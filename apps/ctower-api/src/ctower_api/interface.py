@@ -91,6 +91,7 @@ def create_app(
     migration: object | None = None,
     migration_importer_resolver: Callable[[bytes, UUID, UUID, str, datetime], Actor | None]
     | None = None,
+    migration_importer_credential_resolver: Callable[[bytes, datetime], Actor | None] | None = None,
     fence_observer_resolver: Callable[[bytes, datetime], Actor | None] | None = None,
     telemetry: TelemetryRecorder | None = None,
 ) -> FastAPI:
@@ -101,6 +102,7 @@ def create_app(
     access = Access(
         record,
         importer_resolver=migration_importer_resolver,
+        importer_credential_resolver=migration_importer_credential_resolver,
         fence_observer_resolver=fence_observer_resolver,
         telemetry=recorder,
     )
@@ -128,7 +130,7 @@ def create_app(
     if projections is not None:
         install_board_routes(app, access, projections, recorder)
         install_health_routes(app, access, record, projections, recorder, attention)
-    _install_cutover_boundary(app, access, projections, migration, recorder)
+    _install_cutover_boundary(app, access, record, projections, migration, recorder)
     if (synthetic_runtime is None) is not (synthetic_revision is None):
         raise ValueError("synthetic runtime and revision must be composed together")
     if synthetic_runtime is not None and synthetic_revision is not None:
@@ -146,6 +148,7 @@ def create_app(
 def _install_cutover_boundary(
     app: FastAPI,
     access: Access,
+    record: Record,
     projections: Projections | None,
     migration: object | None,
     recorder: TelemetryRecorder,
@@ -155,6 +158,7 @@ def _install_cutover_boundary(
     install_cutover_routes(
         app,
         access,
+        record,
         projections,
         cast(MigrationPort | None, migration),
         recorder,

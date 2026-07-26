@@ -1,6 +1,6 @@
 """DO NOT EDIT: generated file; regenerate from declared inputs.
 
-Authored contract digest: sha256:17cf75a06dc1b6485702746d67fe72fdf16f73b35fe11f9fe7e5fb30a3c62611
+Authored contract digest: sha256:a5866983d52055111283a4b0b9e7f71624524cf2a34c18869479d3b1d6430aff
 """
 
 from __future__ import annotations

@@ -64,7 +64,7 @@ def test_checkpoint_bundle_materializes_all_14_definitions_atomically_and_replay
     assert partial.code == "bundle-reference-invalid"
 
 
-def test_project_delivery_heartbeat_poison_and_rebuild_are_deterministic(
+def test_project_delivery_missing_lagging_poison_and_rebuild_are_deterministic(
     tenant: TenantFixture,
 ) -> None:
     _apply_checkpoint_bundle(tenant)
@@ -72,40 +72,45 @@ def test_project_delivery_heartbeat_poison_and_rebuild_are_deterministic(
     actor = Actor(tenant.operator_id, tenant.tenant_id, PrincipalKind.OPERATOR)
     now = datetime.now(UTC)
 
-    first_count = projections.reconcile_project_delivery(tenant.tenant_id, now=now)
-    first = projections.project_delivery(actor, "ctower")
-    unchanged = projections.reconcile_project_delivery(
-        tenant.tenant_id, now=now + timedelta(minutes=30)
+    missing_count = projections.reconcile_project_delivery(tenant.tenant_id, now=now)
+    missing = projections.project_delivery(actor, "ctower")
+    source = _record_watermark(tenant)
+    _set_project_delivery_source(tenant, acceptance_position=source)
+    recovery_count = projections.reconcile_project_delivery(
+        tenant.tenant_id, now=now + timedelta(minutes=1)
     )
-    heartbeat_count = projections.reconcile_project_delivery(
-        tenant.tenant_id, now=now + timedelta(hours=2)
+    recovered = projections.project_delivery(actor, "ctower")
+    _set_project_delivery_source(tenant, acceptance_position=source - 1)
+    lagging_count = projections.reconcile_project_delivery(
+        tenant.tenant_id, now=now + timedelta(minutes=2)
     )
-    heartbeat = projections.project_delivery(actor, "ctower")
+    lagging = projections.project_delivery(actor, "ctower")
     _poison_project_delivery_source(tenant)
     poison_count = projections.reconcile_project_delivery(
-        tenant.tenant_id, now=now + timedelta(hours=2, minutes=1)
+        tenant.tenant_id, now=now + timedelta(minutes=3)
     )
     poisoned = projections.project_delivery(actor, "ctower")
-    _recover_project_delivery_source(tenant)
+    _set_project_delivery_source(tenant, acceptance_position=source)
     rebuild_count = projections.rebuild_project_delivery(
-        tenant.tenant_id, now=now + timedelta(hours=2, minutes=2)
+        tenant.tenant_id, now=now + timedelta(minutes=4)
     )
     rebuilt = projections.project_delivery(actor, "ctower")
 
-    assert first is not None and heartbeat is not None
-    assert poisoned is not None and rebuilt is not None
-    assert (first_count, unchanged, heartbeat_count, poison_count, rebuild_count) == (
-        14,
-        0,
-        14,
-        14,
-        14,
-    )
-    first_semantics = tuple(row.semantic_digest for row in first.rows)
-    assert len(first_semantics) == _CHECKPOINT_COUNT
-    assert tuple(row.semantic_digest for row in heartbeat.rows) == first_semantics
+    assert missing is not None and recovered is not None
+    assert lagging is not None and poisoned is not None and rebuilt is not None
+    assert (
+        missing_count,
+        recovery_count,
+        lagging_count,
+        poison_count,
+        rebuild_count,
+    ) == (14, 14, 14, 0, 14)
+    assert {row.health for row in missing.rows} == {"STATE_UNKNOWN"}
+    recovered_semantics = tuple(row.semantic_digest for row in recovered.rows)
+    assert len(recovered_semantics) == _CHECKPOINT_COUNT
+    assert {row.health for row in lagging.rows} == {"STATE_UNKNOWN"}
     assert {row.health for row in poisoned.rows} == {"STATE_UNKNOWN"}
-    assert tuple(row.semantic_digest for row in rebuilt.rows) == first_semantics
+    assert tuple(row.semantic_digest for row in rebuilt.rows) == recovered_semantics
     assert rebuilt.rebuild_generation == 1
 
 
@@ -224,32 +229,51 @@ def _poison_project_delivery_source(tenant: TenantFixture) -> None:
             (tenant.tenant_id,),
         ).fetchone()
         assert row is not None
+        result = connection.execute(
+            """
+            UPDATE outbox_consumer_cursors
+            SET health = 'STATE_UNKNOWN', detail = 'synthetic-poison',
+                blocked_outbox_id = %s, updated_at = %s
+            WHERE consumer_key = 'board_projection' AND tenant_id = %s
+              AND topic = 'record.events'
+            """,
+            (row[0], datetime.now(UTC), tenant.tenant_id),
+        )
+        assert result.rowcount == 1
+
+
+def _set_project_delivery_source(
+    tenant: TenantFixture,
+    *,
+    acceptance_position: int,
+) -> None:
+    with psycopg.connect(tenant.database.admin_dsn) as connection:
         connection.execute(
             """
             INSERT INTO outbox_consumer_cursors (
                 consumer_key, tenant_id, topic, generation, acceptance_position,
                 health, detail, blocked_outbox_id, updated_at
             ) VALUES (
-                'board_projection', %s, 'record.events', 1, 0,
-                'STATE_UNKNOWN', 'synthetic-poison', %s, %s
+                'board_projection', %s, 'record.events', 1, %s,
+                'CURRENT', 'synthetic-recovery', NULL, %s
             )
+            ON CONFLICT (consumer_key, tenant_id, topic) DO UPDATE
+            SET acceptance_position = EXCLUDED.acceptance_position,
+                health = EXCLUDED.health, detail = EXCLUDED.detail,
+                blocked_outbox_id = NULL, updated_at = EXCLUDED.updated_at
             """,
-            (tenant.tenant_id, row[0], datetime.now(UTC)),
+            (tenant.tenant_id, acceptance_position, datetime.now(UTC)),
         )
 
 
-def _recover_project_delivery_source(tenant: TenantFixture) -> None:
+def _record_watermark(tenant: TenantFixture) -> int:
     with psycopg.connect(tenant.database.admin_dsn) as connection:
-        connection.execute(
-            """
-            UPDATE outbox_consumer_cursors
-            SET health = 'CURRENT', detail = 'synthetic-recovery',
-                blocked_outbox_id = NULL, updated_at = %s
-            WHERE consumer_key = 'board_projection' AND tenant_id = %s
-              AND topic = 'record.events'
-            """,
-            (datetime.now(UTC), tenant.tenant_id),
-        )
+        row = connection.execute(
+            "SELECT COALESCE(MAX(record_position), 0) FROM events WHERE tenant_id = %s",
+            (tenant.tenant_id,),
+        ).fetchone()
+    assert row is not None and int(row[0]) > 0
+    return int(row[0])
 
 
 def _checkpoint_counts(dsn: str) -> tuple[int, int, int]:

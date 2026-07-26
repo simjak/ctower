@@ -200,6 +200,20 @@
       ]
     },
     {
+      "path": "contracts/domain/migration/ctower-project-import-plan.schema.json",
+      "references": [
+        "SPEC#canonical-event-and-command-contract",
+        "SPEC#one-ctower-project-source-of-truth-barrier",
+        "INV-31",
+        "INV-32",
+        "INV-37",
+        "AC-MIG-02",
+        "AC-MIG-03",
+        "AC-SEC-03",
+        "AC-SEC-05"
+      ]
+    },
+    {
       "path": "contracts/domain/migration/ctower-project-import-run.schema.json",
       "references": [
         "SPEC#persistence-authority",
@@ -1227,6 +1241,21 @@
         "AC-PD-01",
         "AC-PD-02",
         "AC-PD-04"
+      ]
+    },
+    {
+      "path": "packages/ctower-kernel/migrations/0030_i17b_migration_truth_spine.sql",
+      "references": [
+        "SPEC#canonical-event-and-command-contract",
+        "SPEC#one-ctower-project-source-of-truth-barrier",
+        "SPEC#persistence-authority",
+        "INV-35",
+        "INV-37",
+        "INV-60",
+        "AC-MIG-03",
+        "AC-PD-04",
+        "AC-SEC-03",
+        "AC-SEC-05"
       ]
     },
     {

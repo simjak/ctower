@@ -82,6 +82,12 @@ def semantic_counts(database: Database) -> tuple[int, ...]:
         "migration_corrections",
         "migration_reconciliation_facts",
         "migration_fence_observations",
+        "migration_verified_artifacts",
+        "migration_import_plans",
+        "migration_import_plan_batches",
+        "migration_import_replay_receipts",
+        "migration_fence_registries",
+        "migration_fence_observer_bindings",
     )
     with psycopg.connect(database.admin_dsn) as connection:
         counts: list[int] = []
@@ -112,6 +118,20 @@ def relation_digest(database: Database, relation_id: UUID) -> str:
         ).fetchone()
     if row is None:
         raise RuntimeError("relation validity fact is unavailable")
+    return f"sha256:{bytes(row[0]).hex()}"
+
+
+def alias_digest(database: Database, alias_id: UUID) -> str:
+    with psycopg.connect(database.admin_dsn) as connection:
+        row = connection.execute(
+            """
+            SELECT semantic_digest FROM migration_alias_revisions
+            WHERE alias_id = %s ORDER BY revision DESC LIMIT 1
+            """,
+            (alias_id,),
+        ).fetchone()
+    if row is None:
+        raise RuntimeError("alias revision is unavailable")
     return f"sha256:{bytes(row[0]).hex()}"
 
 

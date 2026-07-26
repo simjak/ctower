@@ -21,12 +21,13 @@ from ctower_client.models import (
 from .canonical import canonical_digest, validate_contract
 from .exporter import FrozenExport
 from .refusal import MigrationRefusal, RefusalCode
-from .signing import ArtifactVerifier
+from .signing import ArtifactSigner, ArtifactVerifier
 from .source import SourceIdentity, SourceRecord
 
-__all__ = ("ImportPlan", "build_import_plan")
+__all__ = ("ImportPlan", "build_import_plan", "seal_import_plan")
 
 _COMMAND_NAMESPACE = UUID("7c4ef338-17fd-5be3-a6b7-c89205ecb574")
+_PLAN_NAMESPACE = UUID("60d52ae5-e001-5922-ae0c-6b5e4c7aa6fa")
 _BATCH_SIZE = 64
 _CONTROL_CHARACTER_LIMIT = 32
 _DELETE_CHARACTER = 127
@@ -93,6 +94,38 @@ def build_import_plan(
         batches,
         plan_digest,
     )
+
+
+def seal_import_plan(
+    plan: ImportPlan,
+    frozen: FrozenExport,
+    *,
+    review: Mapping[str, Any],
+    signer: ArtifactSigner,
+) -> dict[str, Any]:
+    """Seal the exhaustive generated-client requests reviewed by the server."""
+
+    sources = cast(list[dict[str, Any]], frozen.manifest["sources"])
+    watermark = max(int(source["last_complete_offset"]) for source in sources)
+    artifact: dict[str, Any] = {
+        "schema": "ctower.ctower-project-import-plan/v1",
+        "plan_id": str(uuid5(_PLAN_NAMESPACE, f"{plan.run_id}:{plan.cutover_id}")),
+        "run_id": str(plan.run_id),
+        "cutover_id": str(plan.cutover_id),
+        "selection_digest": plan.selection_digest,
+        "export_equality_digest": plan.equality_digest,
+        "alias_map_digest": plan.alias_map_digest,
+        "created_at": review["reviewed_at"],
+        "batch_count": len(plan.batches),
+        "operation_count": plan.operation_count,
+        "batches": [batch.model_dump(mode="json", by_alias=True) for batch in plan.batches],
+        "source_native_watermark": watermark,
+        "export_native_watermark": watermark,
+        "review": dict(review),
+    }
+    sealed = signer.seal(artifact, "plan_digest")
+    validate_contract("ctower-project-import-plan.schema.json", sealed)
+    return sealed
 
 
 def _verify_equality(

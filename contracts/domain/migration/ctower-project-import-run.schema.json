@@ -58,6 +58,8 @@
         "source_selection",
         "export_equality",
         "alias_map",
+        "import_plan",
+        "fence_registry",
         "build",
         "client",
         "schema",
@@ -79,6 +81,26 @@
           ]
         },
         "alias_map": {
+          "oneOf": [
+            {
+              "$ref": "migration-boundary.schema.json#/$defs/digest"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "import_plan": {
+          "oneOf": [
+            {
+              "$ref": "migration-boundary.schema.json#/$defs/digest"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "fence_registry": {
           "oneOf": [
             {
               "$ref": "migration-boundary.schema.json#/$defs/digest"

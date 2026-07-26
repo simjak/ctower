@@ -23,12 +23,14 @@ class Access:
         record: Record,
         *,
         importer_resolver: Callable[[bytes, UUID, UUID, str, datetime], Actor | None] | None = None,
+        importer_credential_resolver: Callable[[bytes, datetime], Actor | None] | None = None,
         fence_observer_resolver: Callable[[bytes, datetime], Actor | None] | None = None,
         clock: Callable[[], datetime] | None = None,
         telemetry: Telemetry | None = None,
     ) -> None:
         self._record = record
         self._importer_resolver = importer_resolver
+        self._importer_credential_resolver = importer_credential_resolver
         self._fence_observer_resolver = fence_observer_resolver
         self._clock = clock or (lambda: datetime.now(UTC))
         self._telemetry = telemetry or NoopTelemetry()
@@ -114,6 +116,21 @@ class Access:
             run_id,
             cutover_id,
             project_key,
+            self._clock(),
+        )
+        return actor if actor is not None else _unauthorized()
+
+    def authenticate_importer_credential(
+        self,
+        authorization: str | None,
+    ) -> Actor | RecordProblem:
+        """Authenticate the bounded importer bearer before parsing its scope DTO."""
+
+        credential = _bearer(authorization)
+        if credential is None or self._importer_credential_resolver is None:
+            return _unauthorized()
+        actor = self._importer_credential_resolver(
+            hashlib.sha256(credential.encode()).digest(),
             self._clock(),
         )
         return actor if actor is not None else _unauthorized()

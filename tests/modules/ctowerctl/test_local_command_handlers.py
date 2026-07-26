@@ -14,7 +14,7 @@ from pydantic import BaseModel, ConfigDict
 
 from ctower_client import CtowerClient, CtowerProblemError
 from ctower_client.models import PoisonDispositionRequest, Problem
-from ctower_client.operations import operation_for_cli
+from ctower_client.operations import OperationSpec, operation_for_cli
 from ctowerctl import _ops_commands, _spool_commands, interface
 from ctowerctl._generated_replay import ReplayObservation
 from ctowerctl._output import ExitCode
@@ -299,6 +299,35 @@ def test_interface_outcome_helpers_fail_closed() -> None:
         interface._current_entry(cast(Spool, spool), uuid4())
     assert interface._command_id(argparse.Namespace(command_id=outbox_id)) == outbox_id
     assert interface._command_id(argparse.Namespace(command_id=str(outbox_id))) is None
+
+
+def test_refusal_only_migration_command_uses_online_nonmutation_dispatch(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    result = _Result(marker="refusal")
+    observed: list[tuple[str, bool]] = []
+
+    def dispatch(
+        _base_url: str,
+        _credential: str,
+        _arguments: argparse.Namespace,
+        operation: OperationSpec,
+    ) -> tuple[BaseModel, ExitCode]:
+        observed.append((operation.operation_id, operation.refusal_only))
+        return result, ExitCode.SUCCESS
+
+    monkeypatch.setattr(interface, "_execute_online_migration", dispatch)
+    arguments = argparse.Namespace(
+        area="migration",
+        base_url="https://ctower.example",
+        cli_name="migration ctower-project prepare",
+    )
+
+    assert interface._execute(arguments, io.StringIO("ephemeral-authority\n")) == (
+        result,
+        ExitCode.SUCCESS,
+    )
+    assert observed == [("prepareCtowerProjectCutover", True)]
 
 
 def test_interface_maps_usage_problem_and_transport_failures(

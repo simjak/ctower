@@ -59,6 +59,7 @@ class MigrationPort(Protocol):
         actor: Actor,
         request: CtowerProjectImportBatchRequest,
         *,
+        command_id: UUID,
         telemetry: TelemetryContext,
     ) -> MigrationOutcome: ...
 

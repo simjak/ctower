@@ -20,12 +20,15 @@ from ctower_client.models import (
     CtowerProjectImportRun,
     CtowerProjectTicketRelationOperation,
     CtowerProjectTicketSeedOperation,
+    DurabilityState,
     MigrationImportOperationResult,
 )
 from ctower_kernel.migration import _link_sql, _ticket_operation_sql
-from ctower_kernel.migration._operation_result_sql import canonical
+from ctower_kernel.migration._event_sql import commit_event, migration_payload
+from ctower_kernel.migration._operation_result_sql import canonical, migration_sequence
 from ctower_kernel.migration._run_read_sql import load_run
 from ctower_kernel.record import Actor, RecordProblem
+from ctower_kernel.record.events import EventKind
 from ctower_kernel.record.transaction import authority_connection, recover_ambiguous_commit
 from ctower_kernel.telemetry import TelemetryContext
 
@@ -38,11 +41,19 @@ def apply_batch(
     actor: Actor,
     request: CtowerProjectImportBatchRequest,
     *,
+    command_id: UUID,
     now: datetime,
     telemetry: TelemetryContext,
 ) -> CtowerProjectImportBatchResult | RecordProblem:
     return recover_ambiguous_commit(
-        lambda: _apply(dsn, actor, request, now=now, telemetry=telemetry)
+        lambda: _apply(
+            dsn,
+            actor,
+            request,
+            command_id=command_id,
+            now=now,
+            telemetry=telemetry,
+        )
     )
 
 
@@ -51,6 +62,7 @@ def _apply(
     actor: Actor,
     request: CtowerProjectImportBatchRequest,
     *,
+    command_id: UUID,
     now: datetime,
     telemetry: TelemetryContext,
 ) -> CtowerProjectImportBatchResult | RecordProblem:
@@ -60,17 +72,17 @@ def _apply(
     request_digest = hashlib.sha256(request_bytes).digest()
     with authority_connection(dsn) as connection:
         connection.execute("SET ROLE ctower_svc")
-        run = load_run(connection, actor, request.run_id, lock=True)
-        if isinstance(run, RecordProblem) or not _batch_scope(connection, actor, request, run, now):
-            return _problem(
-                None, "migration-capability-denied", "Import binding is unavailable", 403
-            )
-        replay = _batch_replay(connection, request, request_digest)
-        if replay is not None:
-            return replay
-        refusal = _preflight(connection, request)
-        if refusal is not None:
-            return refusal
+        guarded = _guard_batch(
+            connection,
+            actor,
+            request,
+            command_id=command_id,
+            request_digest=request_digest,
+            now=now,
+        )
+        if not isinstance(guarded, CtowerProjectImportRun):
+            return guarded
+        run = guarded
         results: list[MigrationImportOperationResult] = []
         for operation in request.operations:
             outcome = _apply_operation(
@@ -85,22 +97,50 @@ def _apply(
                 connection.rollback()
                 return outcome
             results.append(outcome)
-        response = CtowerProjectImportBatchResult(
-            run_id=request.run_id,
-            batch_index=request.batch_index,
-            batch_digest=request.batch_digest,
-            results=tuple(results),
-            record_watermark=max(result.record_position for result in results),
-            projection_watermark=0,
-            durability_state="durability_pending",
-            accepted_position=None,
+        response, event_id, position = _commit_batch_response(
+            connection,
+            actor,
+            request,
+            results,
+            command_id=command_id,
+            request_digest=request_digest,
+            now=now,
+            telemetry=telemetry,
         )
         _record_batch(connection, request, request_digest, response, now)
-        if run.state == "alias_plan_bound":
-            _record_importing_state(
-                connection, actor, run.semantic_digest, request, results, now=now
-            )
+        state = _pass_one_state(connection, request)
+        _record_run_state(
+            connection,
+            actor,
+            run.semantic_digest,
+            request,
+            state=state,
+            event_id=event_id,
+            position=position,
+            command_id=command_id,
+            now=now,
+        )
         return response
+
+
+def _guard_batch(
+    connection: psycopg.Connection[dict[str, object]],
+    actor: Actor,
+    request: CtowerProjectImportBatchRequest,
+    *,
+    command_id: UUID,
+    request_digest: bytes,
+    now: datetime,
+) -> CtowerProjectImportRun | CtowerProjectImportBatchResult | RecordProblem:
+    run = load_run(connection, actor, request.run_id, lock=True)
+    if isinstance(run, RecordProblem) or not _batch_scope(connection, actor, request, run, now):
+        return _problem(None, "migration-capability-denied", "Import binding unavailable", 403)
+    if not _expected_batch(connection, request, request_digest):
+        return _problem(command_id, "migration-operation-drift", "Batch is outside signed plan")
+    replay = _batch_replay(connection, request, request_digest, now)
+    if replay is not None:
+        return replay
+    return _preflight(connection, request) or run
 
 
 def _apply_operation(
@@ -178,6 +218,27 @@ def _preflight(
     return None
 
 
+def _expected_batch(
+    connection: psycopg.Connection[dict[str, object]],
+    request: CtowerProjectImportBatchRequest,
+    request_digest: bytes,
+) -> bool:
+    row = connection.execute(
+        """
+        SELECT batch_digest, request_digest, operation_count
+        FROM migration_import_plan_batches
+        WHERE run_id = %s AND batch_index = %s
+        """,
+        (request.run_id, request.batch_index),
+    ).fetchone()
+    return (
+        row is not None
+        and bytes(cast(bytes, row["batch_digest"])) == _digest_bytes(request.batch_digest)
+        and bytes(cast(bytes, row["request_digest"])) == request_digest
+        and int(cast(int, row["operation_count"])) == len(request.operations)
+    )
+
+
 def _batch_scope(
     connection: psycopg.Connection[dict[str, object]],
     actor: Actor,
@@ -186,7 +247,12 @@ def _batch_scope(
     now: datetime,
 ) -> bool:
     state = run.state
-    if run.cutover_id != request.cutover_id or state not in {"alias_plan_bound", "importing"}:
+    if run.cutover_id != request.cutover_id or state not in {
+        "alias_plan_bound",
+        "importing",
+        "pass_one_complete",
+        "pass_two_noop",
+    }:
         return False
     return (
         connection.execute(
@@ -211,6 +277,7 @@ def _batch_replay(
     connection: psycopg.Connection[dict[str, object]],
     request: CtowerProjectImportBatchRequest,
     request_digest: bytes,
+    now: datetime,
 ) -> CtowerProjectImportBatchResult | RecordProblem | None:
     row = connection.execute(
         """
@@ -227,6 +294,9 @@ def _batch_replay(
     ):
         return _problem(None, "migration-operation-drift", "Batch replay changed")
     original = CtowerProjectImportBatchResult.model_validate_json(json.dumps(row["response_body"]))
+    refusal = _record_replay(connection, request, request_digest, now)
+    if refusal is not None:
+        return refusal
     return original.model_copy(
         update={
             "results": tuple(
@@ -234,6 +304,104 @@ def _batch_replay(
             )
         }
     )
+
+
+def _record_replay(
+    connection: psycopg.Connection[dict[str, object]],
+    request: CtowerProjectImportBatchRequest,
+    request_digest: bytes,
+    now: datetime,
+) -> RecordProblem | None:
+    existing = connection.execute(
+        """
+        SELECT request_digest FROM migration_import_replay_receipts
+        WHERE run_id = %s AND batch_index = %s
+        """,
+        (request.run_id, request.batch_index),
+    ).fetchone()
+    if existing is not None:
+        return (
+            None
+            if bytes(cast(bytes, existing["request_digest"])) == request_digest
+            else _problem(None, "migration-operation-drift", "Replay receipt changed")
+        )
+    row = connection.execute(
+        """
+        SELECT coalesce(max(batch_index), -1) + 1 AS next_index
+        FROM migration_import_replay_receipts WHERE run_id = %s
+        """,
+        (request.run_id,),
+    ).fetchone()
+    if row is None or int(cast(int, row["next_index"])) != request.batch_index:
+        return _problem(None, "migration-run-conflict", "Pass-two batch is not contiguous")
+    connection.execute(
+        """
+        INSERT INTO migration_import_replay_receipts (
+            run_id, batch_index, batch_digest, request_digest, operation_count,
+            new_domain_facts, new_events, new_outbox_rows, record_position_delta,
+            projection_semantic_delta, recorded_at
+        ) VALUES (%s, %s, %s, %s, %s, 0, 0, 0, 0, 0, %s)
+        """,
+        (
+            request.run_id,
+            request.batch_index,
+            _digest_bytes(request.batch_digest),
+            request_digest,
+            len(request.operations),
+            now,
+        ),
+    )
+    return None
+
+
+def _commit_batch_response(
+    connection: psycopg.Connection[dict[str, object]],
+    actor: Actor,
+    request: CtowerProjectImportBatchRequest,
+    results: list[MigrationImportOperationResult],
+    *,
+    command_id: UUID,
+    request_digest: bytes,
+    now: datetime,
+    telemetry: TelemetryContext,
+) -> tuple[CtowerProjectImportBatchResult, UUID, int]:
+    captured: list[CtowerProjectImportBatchResult] = []
+
+    def response(_event_id: UUID, position: int) -> dict[str, object]:
+        result = CtowerProjectImportBatchResult(
+            run_id=request.run_id,
+            batch_index=request.batch_index,
+            batch_digest=request.batch_digest,
+            results=tuple(results),
+            record_watermark=position,
+            projection_watermark=0,
+            durability_state=DurabilityState.DURABILITY_PENDING,
+            accepted_position=None,
+        )
+        captured.append(result)
+        return cast(dict[str, object], result.model_dump(mode="json", by_alias=True))
+
+    event_id, position = commit_event(
+        connection,
+        actor,
+        aggregate_id=request.run_id,
+        command_id=command_id,
+        kind=EventKind.MIGRATION_CHANGED,
+        payload=migration_payload(
+            "import_batch_applied",
+            run_id=request.run_id,
+            cutover_id=request.cutover_id,
+            target_id=str(request.batch_index),
+        ),
+        request_digest=request_digest,
+        sequence=migration_sequence(connection, actor, request.run_id),
+        stream_id=f"migration:{request.run_id}",
+        now=now,
+        telemetry=telemetry,
+        response=response,
+        subjects=(("migration", request.run_id),),
+    )
+    return captured[0], event_id, position
 
 
 def _record_batch(
@@ -262,13 +430,16 @@ def _record_batch(
     )
 
 
-def _record_importing_state(
+def _record_run_state(
     connection: psycopg.Connection[dict[str, object]],
     actor: Actor,
     previous_semantic: str,
     request: CtowerProjectImportBatchRequest,
-    results: list[MigrationImportOperationResult],
     *,
+    state: str,
+    event_id: UUID,
+    position: int,
+    command_id: UUID,
     now: datetime,
 ) -> None:
     row = connection.execute(
@@ -281,7 +452,7 @@ def _record_importing_state(
     if row is None:
         raise RuntimeError("run state sequence is unavailable")
     semantic = hashlib.sha256(
-        previous_semantic.encode() + canonical(request) + b"importing"
+        previous_semantic.encode() + canonical(request) + state.encode()
     ).digest()
     connection.execute(
         """
@@ -289,7 +460,7 @@ def _record_importing_state(
             run_fact_id, run_id, fact_sequence, state, export_equality_digest,
             alias_map_digest, semantic_digest, record_watermark, projection_watermark,
             event_id, actor_principal_id, command_id, recorded_at
-        ) SELECT %s, run.run_id, %s, 'importing', fact.export_equality_digest,
+        ) SELECT %s, run.run_id, %s, %s, fact.export_equality_digest,
             fact.alias_map_digest, %s, %s, fact.projection_watermark, %s, %s, %s, %s
         FROM migration_import_runs AS run
         JOIN LATERAL (
@@ -300,14 +471,32 @@ def _record_importing_state(
         (
             _uuid7(now),
             int(cast(int, row["sequence"])),
+            state,
             semantic,
-            max(item.record_position for item in results),
-            results[0].event_ids[0],
+            position,
+            event_id,
             actor.principal_id,
-            results[0].command_id,
+            command_id,
             now,
             request.run_id,
         ),
+    )
+
+
+def _pass_one_state(
+    connection: psycopg.Connection[dict[str, object]],
+    request: CtowerProjectImportBatchRequest,
+) -> str:
+    row = connection.execute(
+        "SELECT batch_count FROM migration_import_plans WHERE run_id = %s",
+        (request.run_id,),
+    ).fetchone()
+    if row is None:
+        raise RuntimeError("signed import plan is unavailable")
+    return (
+        "pass_one_complete"
+        if request.batch_index + 1 == int(cast(int, row["batch_count"]))
+        else "importing"
     )
 
 

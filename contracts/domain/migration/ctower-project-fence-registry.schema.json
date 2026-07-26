@@ -9,6 +9,8 @@
     "registry_id",
     "revision",
     "previous_revision_digest",
+    "cutover_id",
+    "source_selection_digest",
     "tenant_key",
     "project_key",
     "mode",
@@ -44,6 +46,13 @@
           "type": "null"
         }
       ]
+    },
+    "cutover_id": {
+      "type": "string",
+      "format": "uuid"
+    },
+    "source_selection_digest": {
+      "$ref": "migration-boundary.schema.json#/$defs/digest"
     },
     "tenant_key": {
       "const": "ctower"

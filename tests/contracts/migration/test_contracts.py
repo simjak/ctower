@@ -285,6 +285,10 @@ def test_fence_observations_can_degrade_but_never_enable_writes() -> None:
     observation = {
         "schema": "ctower.ctower-project-fence-observation/v1",
         "observation_id": str(uuid4()),
+        "run_id": str(uuid4()),
+        "cutover_id": str(uuid4()),
+        "tenant_key": "ctower",
+        "project_key": "ctower",
         "registry_id": str(uuid4()),
         "registry_revision": 1,
         "registry_digest": ZERO_DIGEST,

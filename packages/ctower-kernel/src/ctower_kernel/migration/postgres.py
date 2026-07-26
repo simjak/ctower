@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from datetime import datetime
+from types import MappingProxyType
 from uuid import UUID
 
 from ctower_client.models import (
@@ -26,6 +27,7 @@ from ctower_kernel.migration import (
     _reconciliation_sql,
     _run_sql,
 )
+from ctower_kernel.migration._artifact import TrustedReviewerKeys
 from ctower_kernel.record import Actor, RecordProblem
 from ctower_kernel.telemetry import TelemetryContext
 
@@ -35,8 +37,14 @@ __all__ = ["PostgresMigration"]
 class PostgresMigration:
     """Persist one dormant, run-scoped ctower-project import authority."""
 
-    def __init__(self, dsn: str) -> None:
+    def __init__(
+        self,
+        dsn: str,
+        *,
+        trusted_reviewer_keys: TrustedReviewerKeys | None = None,
+    ) -> None:
         self._dsn = dsn
+        self._trusted_reviewer_keys = trusted_reviewer_keys or MappingProxyType({})
 
     def create_run(
         self,
@@ -48,7 +56,13 @@ class PostgresMigration:
         telemetry: TelemetryContext,
     ) -> CtowerProjectImportRun | RecordProblem:
         return _run_sql.create_run(
-            self._dsn, actor, request, command_id=command_id, now=now, telemetry=telemetry
+            self._dsn,
+            actor,
+            request,
+            command_id=command_id,
+            now=now,
+            telemetry=telemetry,
+            trusted_keys=self._trusted_reviewer_keys,
         )
 
     def bind_export_equality(
@@ -61,7 +75,13 @@ class PostgresMigration:
         telemetry: TelemetryContext,
     ) -> CtowerProjectImportRun | RecordProblem:
         return _run_sql.bind_export_equality(
-            self._dsn, actor, request, command_id=command_id, now=now, telemetry=telemetry
+            self._dsn,
+            actor,
+            request,
+            command_id=command_id,
+            now=now,
+            telemetry=telemetry,
+            trusted_keys=self._trusted_reviewer_keys,
         )
 
     def bind_alias_plan(
@@ -74,7 +94,13 @@ class PostgresMigration:
         telemetry: TelemetryContext,
     ) -> CtowerProjectImportRun | RecordProblem:
         return _run_sql.bind_alias_plan(
-            self._dsn, actor, request, command_id=command_id, now=now, telemetry=telemetry
+            self._dsn,
+            actor,
+            request,
+            command_id=command_id,
+            now=now,
+            telemetry=telemetry,
+            trusted_keys=self._trusted_reviewer_keys,
         )
 
     def apply_batch(
@@ -82,10 +108,18 @@ class PostgresMigration:
         actor: Actor,
         request: CtowerProjectImportBatchRequest,
         *,
+        command_id: UUID,
         now: datetime,
         telemetry: TelemetryContext,
     ) -> CtowerProjectImportBatchResult | RecordProblem:
-        return _operation_sql.apply_batch(self._dsn, actor, request, now=now, telemetry=telemetry)
+        return _operation_sql.apply_batch(
+            self._dsn,
+            actor,
+            request,
+            command_id=command_id,
+            now=now,
+            telemetry=telemetry,
+        )
 
     def finalize_run(
         self,
@@ -143,6 +177,17 @@ class PostgresMigration:
             run_id,
             cutover_id,
             project_key,
+            now=now,
+        )
+
+    def resolve_importer_credential(
+        self,
+        credential_digest: bytes,
+        now: datetime,
+    ) -> Actor | None:
+        return _credential_sql.resolve_importer_credential(
+            self._dsn,
+            credential_digest,
             now=now,
         )
 

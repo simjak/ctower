@@ -254,6 +254,7 @@ def _migration_state(
             fact.state, fact.export_equality_digest, fact.alias_map_digest,
             fact.record_watermark, fact.projection_watermark,
             reconciliation.report_digest,
+            registry.registry_digest,
             observation.observation_digest, observation.observation_body
         FROM migration_import_runs AS run
         JOIN LATERAL (
@@ -262,11 +263,18 @@ def _migration_state(
         ) AS fact ON true
         LEFT JOIN migration_reconciliation_facts AS reconciliation
           ON reconciliation.run_id = run.run_id
+        LEFT JOIN migration_fence_registries AS registry
+          ON registry.run_id = run.run_id
         LEFT JOIN LATERAL (
             SELECT observation_digest, observation_body
             FROM migration_fence_observations
             WHERE tenant_id = run.tenant_id
-            ORDER BY recorded_at DESC, observation_id DESC LIMIT 1
+              AND registry_id = registry.registry_id
+              AND registry_revision = registry.registry_revision
+              AND observation_body ->> 'run_id' = run.run_id::text
+              AND observation_body ->> 'cutover_id' = run.cutover_id::text
+              AND observation_body ->> 'project_key' = run.project_key
+            ORDER BY sequence DESC LIMIT 1
         ) AS observation ON true
         WHERE run.tenant_id = %s
         ORDER BY run.created_at DESC, run.run_id DESC LIMIT 1
@@ -287,9 +295,7 @@ def _migration_state(
             export_equality=_digest(row["export_equality_digest"]),
             alias_map=_digest(row["alias_map_digest"]),
             reconciliation=_digest(row["report_digest"]),
-            fence_registry=(
-                str(observation["registry_digest"]) if observation is not None else None
-            ),
+            fence_registry=_digest(row["registry_digest"]),
             fence_observation=_digest(row["observation_digest"]),
         ),
         fence_status=str(observation["status"]) if observation is not None else None,
@@ -313,8 +319,10 @@ def _digest(value: object) -> str | None:
 
 
 def _fence_health(migration: _MigrationState | None) -> str:
-    if migration is None or migration.fence_status is None:
+    if migration is None:
         return "clear"
+    if migration.fence_status is None:
+        return "unknown"
     return "clear" if migration.fence_status == "clear" else migration.fence_status
 
 

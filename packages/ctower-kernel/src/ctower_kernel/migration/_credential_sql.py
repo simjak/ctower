@@ -49,7 +49,7 @@ def create_binding(
         INSERT INTO migration_importer_credential_facts (
             credential_fact_id, run_id, principal_id, fact_sequence, lifecycle,
             actor_principal_id, command_id, recorded_at
-        ) VALUES (%s, %s, %s, 1, 'activated', %s, %s, %s)
+        ) VALUES (%s, %s, %s, 1, 'pending', %s, %s, %s)
         """,
         (_uuid7(now), run_id, principal_id, actor.principal_id, command_id, now),
     )
@@ -157,6 +157,42 @@ def resolve_importer(
     )
 
 
+def resolve_importer_credential(
+    dsn: str,
+    credential_digest: bytes,
+    *,
+    now: datetime,
+) -> Actor | None:
+    """Authenticate an active importer before its DTO is read or parsed."""
+
+    with psycopg.connect(dsn, row_factory=dict_row) as connection:
+        connection.execute("SET ROLE ctower_svc")
+        row = connection.execute(
+            """
+            SELECT binding.principal_id, binding.tenant_id
+            FROM migration_importer_bindings AS binding
+            JOIN principals AS principal
+              ON principal.principal_id = binding.principal_id
+             AND principal.tenant_id = binding.tenant_id
+            JOIN LATERAL (
+                SELECT lifecycle FROM migration_importer_credential_facts
+                WHERE run_id = binding.run_id ORDER BY fact_sequence DESC LIMIT 1
+            ) AS fact ON true
+            WHERE binding.credential_digest = %s AND binding.expires_at > %s
+              AND fact.lifecycle = 'activated' AND NOT principal.disabled
+              AND principal.kind = 'migration_importer'
+            """,
+            (credential_digest, now),
+        ).fetchone()
+    if row is None:
+        return None
+    return Actor(
+        cast(UUID, row["principal_id"]),
+        cast(UUID, row["tenant_id"]),
+        PrincipalKind.MIGRATION_IMPORTER,
+    )
+
+
 def resolve_fence_observer(
     dsn: str,
     credential_digest: bytes,
@@ -165,21 +201,20 @@ def resolve_fence_observer(
 ) -> Actor | None:
     """Resolve a credential that can only append degrading fence observations."""
 
-    del now
     with psycopg.connect(dsn, row_factory=dict_row) as connection:
         connection.execute("SET ROLE ctower_svc")
         row = connection.execute(
             """
             SELECT principal.principal_id, principal.tenant_id
-            FROM principal_credentials AS credential
+            FROM migration_fence_observer_bindings AS binding
             JOIN principals AS principal
-              ON principal.principal_id = credential.principal_id
-             AND principal.tenant_id = credential.tenant_id
-            WHERE credential.credential_digest = %s
-              AND credential.revoked_at IS NULL AND NOT principal.disabled
+              ON principal.principal_id = binding.principal_id
+             AND principal.tenant_id = binding.tenant_id
+            WHERE binding.credential_digest = %s AND binding.expires_at > %s
+              AND NOT principal.disabled
               AND principal.kind = 'fence_observer'
             """,
-            (credential_digest,),
+            (credential_digest, now),
         ).fetchone()
     if row is None:
         return None

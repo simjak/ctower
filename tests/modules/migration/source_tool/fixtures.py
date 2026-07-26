@@ -7,7 +7,7 @@ from typing import Any
 from uuid import UUID, uuid5
 
 from cryptography.hazmat.primitives import serialization
-from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PrivateKey
+from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PrivateKey, Ed25519PublicKey
 
 from tools.migration.ctower_project.ctower_project_source.canonical import (
     canonical_bytes,
@@ -70,15 +70,25 @@ class SyntheticFixture:
     signer: ArtifactSigner
     verifier: ArtifactVerifier
     public_key_path: Path
+    public_key: Ed25519PublicKey
     request_ids: list[str]
     stable_ids: list[str]
     checkpoint_keys: list[str]
 
-    def alias_map(self, equality: dict[str, Any]) -> dict[str, Any]:
+    def alias_map(
+        self,
+        equality: dict[str, Any],
+        *,
+        existing_ticket_id: UUID | None = None,
+    ) -> dict[str, Any]:
         entries: list[dict[str, Any]] = []
         for index, source_id in enumerate(self.request_ids):
             identity = _identity("mission-control:request", source_id)
-            disposition, target = _disposition(index, self.checkpoint_keys)
+            disposition, target = _disposition(
+                index,
+                self.checkpoint_keys,
+                existing_ticket_id=existing_ticket_id,
+            )
             entries.append(
                 {
                     "identity": identity,
@@ -138,6 +148,7 @@ def make_fixture(root: Path) -> SyntheticFixture:
         signer,
         ArtifactVerifier(public),
         public_path,
+        public,
         request_ids,
         stable_ids,
         checkpoint_keys,
@@ -340,14 +351,23 @@ def _target_inventory() -> dict[str, Any]:
     return target
 
 
-def _disposition(index: int, checkpoints: list[str]) -> tuple[str, str | None]:
+def _disposition(
+    index: int,
+    checkpoints: list[str],
+    *,
+    existing_ticket_id: UUID | None,
+) -> tuple[str, str | None]:
     disposition = DISPOSITIONS[index]
     target: str | None
     match disposition:
         case "created_ticket":
             target = "new_ticket"
         case "alias_linked_existing" | "provenance_only" | "exact_duplicate":
-            target = _ticket_target(index)
+            target = (
+                f"ticket:{existing_ticket_id}"
+                if existing_ticket_id is not None
+                else _ticket_target(index)
+            )
         case "project_checkpoint_definition":
             target = f"checkpoint:{checkpoints[index - CHECKPOINT_DISPOSITION_START]}"
         case "decision_link":

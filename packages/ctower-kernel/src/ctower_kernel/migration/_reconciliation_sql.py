@@ -18,10 +18,11 @@ from ctower_client.models import (
     CtowerProjectImportFinalizeRequest,
     CtowerProjectImportRun,
     CtowerProjectReconciliationResult,
-    MigrationConservation,
+    DurabilityState,
     MigrationDispositions,
 )
 from ctower_kernel.migration._event_sql import commit_event, migration_payload
+from ctower_kernel.migration._measurement_sql import MigrationMeasurement, measure
 from ctower_kernel.migration._operation_result_sql import canonical, migration_sequence
 from ctower_kernel.migration._run_read_sql import load_run
 from ctower_kernel.record import Actor, RecordProblem
@@ -64,9 +65,17 @@ def _finalize(
         run = load_run(connection, actor, request.run_id, lock=True)
         if isinstance(run, RecordProblem) or not _scope(run, request):
             return _problem(command_id, "migration-import-finalization-refused")
-        dispositions = _dispositions(connection, request.run_id)
+        measured = measure(connection, request.run_id)
+        if measured is None:
+            return _problem(command_id, "migration-import-finalization-refused")
+        dispositions = measured.dispositions
         selected = sum(dispositions.model_dump().values())
-        if selected < 1:
+        if (
+            selected != measured.conservation.selected_logical_items
+            or run.counts.planned_operations < 1
+            or run.counts.applied_operations != run.counts.planned_operations
+            or run.counts.replayed_operations != run.counts.planned_operations
+        ):
             return _problem(command_id, "migration-import-finalization-refused")
         report_digest = _report_digest(request_digest, run.semantic_digest, dispositions)
         return _commit_reconciliation(
@@ -75,7 +84,7 @@ def _finalize(
             request,
             run=run,
             dispositions=dispositions,
-            selected=selected,
+            measured=measured,
             report_digest=report_digest,
             command_id=command_id,
             request_digest=request_digest,
@@ -91,7 +100,7 @@ def _commit_reconciliation(
     *,
     run: CtowerProjectImportRun,
     dispositions: MigrationDispositions,
-    selected: int,
+    measured: MigrationMeasurement,
     report_digest: str,
     command_id: UUID,
     request_digest: bytes,
@@ -123,7 +132,7 @@ def _commit_reconciliation(
             request,
             run=run,
             dispositions=dispositions,
-            selected=selected,
+            measured=measured,
             report_digest=report_digest,
         ),
         subjects=(("migration", request.run_id),),
@@ -148,7 +157,7 @@ def _result_response(
     *,
     run: CtowerProjectImportRun,
     dispositions: MigrationDispositions,
-    selected: int,
+    measured: MigrationMeasurement,
     report_digest: str,
 ) -> Callable[[UUID, int], dict[str, object]]:
     def response(event_id: UUID, position: int) -> dict[str, object]:
@@ -158,7 +167,7 @@ def _result_response(
             request,
             run=run,
             dispositions=dispositions,
-            selected=selected,
+            measured=measured,
             report_digest=report_digest,
             record_position=position,
         )
@@ -174,7 +183,7 @@ def _result(
     *,
     run: CtowerProjectImportRun,
     dispositions: MigrationDispositions,
-    selected: int,
+    measured: MigrationMeasurement,
     report_digest: str,
     record_position: int,
 ) -> CtowerProjectReconciliationResult:
@@ -187,103 +196,16 @@ def _result(
             "project_key": "ctower",
             "pinned_digests": run.pinned_digests,
             "dispositions": dispositions,
-            "conservation": _conservation(selected),
-            "source_native_watermark": 0,
-            "export_native_watermark": 0,
+            "conservation": measured.conservation,
+            "source_native_watermark": measured.source_native_watermark,
+            "export_native_watermark": measured.export_native_watermark,
             "record_watermark": record_position,
             "projection_watermark": 0,
             "target_semantic_digest": run.semantic_digest,
             "report_digest": report_digest,
-            "durability_state": "durability_pending",
+            "durability_state": DurabilityState.DURABILITY_PENDING,
             "accepted_position": None,
         }
-    )
-
-
-def _dispositions(
-    connection: psycopg.Connection[dict[str, object]], run_id: UUID
-) -> MigrationDispositions:
-    counts = _operation_counts(connection, run_id)
-    alias_counts = _alias_counts(connection, run_id)
-    link_counts = _link_counts(connection, run_id)
-    return MigrationDispositions(
-        created_ticket=counts.get("ticket_seed", 0),
-        alias_linked_existing=alias_counts.get("alias_linked_existing", 0),
-        project_checkpoint_definition=0,
-        decision_link=link_counts.get("decision", 0),
-        external_effect_link=link_counts.get("external_effect", 0),
-        artifact_linked_not_proof=link_counts.get("artifact_not_proof", 0),
-        provenance_only=link_counts.get("provenance", 0),
-        exact_duplicate=alias_counts.get("exact_duplicate", 0),
-        excluded_out_of_scope=link_counts.get("excluded_out_of_scope", 0),
-        attention_required=0,
-    )
-
-
-def _operation_counts(
-    connection: psycopg.Connection[dict[str, object]], run_id: UUID
-) -> dict[str, int]:
-    rows = connection.execute(
-        """
-        SELECT operation_kind, count(*) AS count
-        FROM migration_import_operation_results
-        WHERE run_id = %s GROUP BY operation_kind
-        """,
-        (run_id,),
-    ).fetchall()
-    return {str(row["operation_kind"]): int(cast(int, row["count"])) for row in rows}
-
-
-def _alias_counts(
-    connection: psycopg.Connection[dict[str, object]], run_id: UUID
-) -> dict[str, int]:
-    rows = connection.execute(
-        """
-        SELECT disposition, count(*) AS count FROM migration_alias_revisions AS alias
-        WHERE run_id = %s AND revision = (
-            SELECT max(candidate.revision) FROM migration_alias_revisions AS candidate
-            WHERE candidate.alias_id = alias.alias_id
-        ) GROUP BY disposition
-        """,
-        (run_id,),
-    ).fetchall()
-    return {str(row["disposition"]): int(cast(int, row["count"])) for row in rows}
-
-
-def _link_counts(connection: psycopg.Connection[dict[str, object]], run_id: UUID) -> dict[str, int]:
-    rows = connection.execute(
-        """
-        SELECT link_class, count(*) AS count FROM migration_source_link_revisions AS link
-        WHERE run_id = %s AND revision = (
-            SELECT max(candidate.revision)
-            FROM migration_source_link_revisions AS candidate
-            WHERE candidate.link_id = link.link_id
-        ) GROUP BY link_class
-        """,
-        (run_id,),
-    ).fetchall()
-    return {str(row["link_class"]): int(cast(int, row["count"])) for row in rows}
-
-
-def _conservation(selected: int) -> MigrationConservation:
-    return MigrationConservation(
-        selected_logical_items=selected,
-        selected_request_logical=86,
-        selected_request_physical_snapshots=243,
-        stable_aliases=27,
-        checkpoint_definitions=14,
-        unresolved_aliases=0,
-        alias_forks_or_cycles=0,
-        missing_relation_endpoints=0,
-        forbidden_relation_cycles=0,
-        unresolved_active_claims=0,
-        unexpected_sources=0,
-        forbidden_data_items=0,
-        pass_two_new_domain_facts=0,
-        pass_two_new_events=0,
-        pass_two_new_outbox_rows=0,
-        pass_two_record_position_delta=0,
-        pass_two_projection_semantic_delta=0,
     )
 
 
@@ -377,8 +299,15 @@ def _revoke_importer(
         INSERT INTO migration_importer_credential_facts (
             credential_fact_id, run_id, principal_id, fact_sequence, lifecycle,
             actor_principal_id, command_id, recorded_at
-        ) SELECT %s, run_id, principal_id, 2, 'revoked', %s, %s, %s
-        FROM migration_importer_bindings WHERE run_id = %s
+        ) SELECT %s, binding.run_id, binding.principal_id,
+            lifecycle.fact_sequence + 1, 'revoked', %s, %s, %s
+        FROM migration_importer_bindings AS binding
+        JOIN LATERAL (
+            SELECT max(fact_sequence) AS fact_sequence
+            FROM migration_importer_credential_facts
+            WHERE run_id = binding.run_id
+        ) AS lifecycle ON true
+        WHERE binding.run_id = %s
         """,
         (_uuid7(now), actor.principal_id, command_id, now, run_id),
     )
@@ -386,7 +315,7 @@ def _revoke_importer(
 
 def _scope(run: CtowerProjectImportRun, request: CtowerProjectImportFinalizeRequest) -> bool:
     return (
-        run.state == "importing"
+        run.state == "pass_two_noop"
         and run.cutover_id == request.cutover_id
         and run.semantic_digest == request.expected_run_semantic_digest
     )

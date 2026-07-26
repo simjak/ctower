@@ -16,23 +16,39 @@ from ctower_client.models import (
     CtowerProjectExportEqualityBindRequest,
     CtowerProjectImportRun,
     CtowerProjectImportRunCreateRequest,
+    DurabilityState,
     MigrationImportCounts,
     MigrationImporterBinding,
     MigrationPinnedDigests,
 )
+from ctower_kernel.migration._measurement_sql import MigrationMeasurement, measure
 from ctower_kernel.record import Actor, RecordProblem
 
 __all__: tuple[str, ...] = ()
 
 _RUN_QUERY = """
     SELECT run.*, binding.credential_digest, binding.expires_at,
-        credential.lifecycle, fact.state, fact.export_equality_digest,
+        credential.lifecycle,
+        CASE
+            WHEN fact.state = 'pass_one_complete'
+             AND coalesce(plan.operation_count, 0) > 0
+             AND coalesce((
+                SELECT sum(operation_count)
+                FROM migration_import_replay_receipts AS replay_state
+                WHERE replay_state.run_id = run.run_id
+             ), 0) = plan.operation_count
+            THEN 'pass_two_noop'
+            ELSE fact.state
+        END AS state,
+        fact.export_equality_digest,
         fact.alias_map_digest, fact.semantic_digest, fact.record_watermark,
-        fact.projection_watermark,
+        fact.projection_watermark, plan.plan_digest, registry.registry_digest,
         (SELECT count(*) FROM migration_import_operation_results AS operation
          WHERE operation.run_id = run.run_id) AS applied_operations,
-        (SELECT coalesce(sum(operation_count), 0) FROM migration_import_batches AS batch
-         WHERE batch.run_id = run.run_id) AS planned_operations
+        coalesce(plan.operation_count, 0) AS planned_operations,
+        (SELECT coalesce(sum(operation_count), 0)
+         FROM migration_import_replay_receipts AS replay
+         WHERE replay.run_id = run.run_id) AS replayed_operations
     FROM migration_import_runs AS run
     JOIN migration_importer_bindings AS binding ON binding.run_id = run.run_id
     JOIN LATERAL (
@@ -43,6 +59,8 @@ _RUN_QUERY = """
         SELECT * FROM migration_import_run_facts
         WHERE run_id = run.run_id ORDER BY fact_sequence DESC LIMIT 1
     ) AS fact ON true
+    LEFT JOIN migration_import_plans AS plan ON plan.run_id = run.run_id
+    LEFT JOIN migration_fence_registries AS registry ON registry.run_id = run.run_id
     WHERE run.run_id = %s AND run.tenant_id = %s
 """
 
@@ -73,7 +91,7 @@ def load_run(
             404,
             "Import run unavailable",
         )
-    return _model_from_row(row)
+    return _model_from_row(row, measure(connection, run_id))
 
 
 def initial_model(
@@ -97,12 +115,16 @@ def initial_model(
                 "expires_at": request.importer_expires_at,
                 "revoked": False,
             },
-            "counts": _counts(0, 0),
+            "counts": _counts(0, 0, 0),
+            "dispositions": None,
+            "conservation": None,
+            "source_native_watermark": 0,
+            "export_native_watermark": 0,
             "record_watermark": 0,
             "projection_watermark": 0,
             "refusals": (),
             "semantic_digest": semantic_digest,
-            "durability_state": "durability_pending",
+            "durability_state": DurabilityState.DURABILITY_PENDING,
             "accepted_position": None,
         }
     )
@@ -174,6 +196,8 @@ def _initial_pins(request: CtowerProjectImportRunCreateRequest) -> dict[str, obj
         "source_selection": request.source_selection_digest,
         "export_equality": None,
         "alias_map": None,
+        "import_plan": None,
+        "fence_registry": None,
         "build": request.build_digest,
         "client": request.client_digest,
         "schema": request.schema_digest,
@@ -182,12 +206,17 @@ def _initial_pins(request: CtowerProjectImportRunCreateRequest) -> dict[str, obj
     }
 
 
-def _model_from_row(row: dict[str, object]) -> CtowerProjectImportRun:
+def _model_from_row(
+    row: dict[str, object],
+    measurement: MigrationMeasurement | None,
+) -> CtowerProjectImportRun:
     pinned = MigrationPinnedDigests.model_validate(
         {
             "source_selection": _digest_text(row["source_selection_digest"]),
             "export_equality": _optional_digest(row["export_equality_digest"]),
             "alias_map": _optional_digest(row["alias_map_digest"]),
+            "import_plan": _optional_digest(row["plan_digest"]),
+            "fence_registry": _optional_digest(row["registry_digest"]),
             "build": _digest_text(row["build_digest"]),
             "client": _digest_text(row["client_digest"]),
             "schema": _digest_text(row["schema_digest"]),
@@ -208,12 +237,21 @@ def _model_from_row(row: dict[str, object]) -> CtowerProjectImportRun:
             "counts": _counts(
                 int(cast(int, row["planned_operations"])),
                 int(cast(int, row["applied_operations"])),
+                int(cast(int, row["replayed_operations"])),
+            ),
+            "dispositions": measurement.dispositions if measurement is not None else None,
+            "conservation": measurement.conservation if measurement is not None else None,
+            "source_native_watermark": (
+                measurement.source_native_watermark if measurement is not None else 0
+            ),
+            "export_native_watermark": (
+                measurement.export_native_watermark if measurement is not None else 0
             ),
             "record_watermark": row["record_watermark"],
             "projection_watermark": row["projection_watermark"],
             "refusals": (),
             "semantic_digest": _digest_text(row["semantic_digest"]),
-            "durability_state": "durability_pending",
+            "durability_state": DurabilityState.DURABILITY_PENDING,
             "accepted_position": None,
         }
     )
@@ -228,11 +266,11 @@ def _binding(row: dict[str, object]) -> MigrationImporterBinding:
     )
 
 
-def _counts(planned: int, applied: int) -> MigrationImportCounts:
+def _counts(planned: int, applied: int, replayed: int) -> MigrationImportCounts:
     return MigrationImportCounts(
         planned_operations=planned,
         applied_operations=applied,
-        replayed_operations=0,
+        replayed_operations=replayed,
         refused_operations=0,
     )
 

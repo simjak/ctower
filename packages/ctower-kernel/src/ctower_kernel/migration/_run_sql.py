@@ -18,6 +18,13 @@ from ctower_client.models import (
     CtowerProjectImportRunCreateRequest,
     MigrationPinnedDigests,
 )
+from ctower_kernel.migration._artifact import ArtifactError, TrustedReviewerKeys
+from ctower_kernel.migration._artifact_sql import (
+    persist_export_graph,
+    persist_plan_graph,
+    persist_source_selection,
+    verify_source_selection,
+)
 from ctower_kernel.migration._credential_sql import create_binding
 from ctower_kernel.migration._event_sql import commit_event, migration_payload
 from ctower_kernel.migration._operation_result_sql import canonical
@@ -46,9 +53,18 @@ def create_run(
     command_id: UUID,
     now: datetime,
     telemetry: TelemetryContext,
+    trusted_keys: TrustedReviewerKeys,
 ) -> CtowerProjectImportRun | RecordProblem:
     return recover_ambiguous_commit(
-        lambda: _create(dsn, actor, request, command_id=command_id, now=now, telemetry=telemetry)
+        lambda: _create(
+            dsn,
+            actor,
+            request,
+            command_id=command_id,
+            now=now,
+            telemetry=telemetry,
+            trusted_keys=trusted_keys,
+        )
     )
 
 
@@ -60,8 +76,13 @@ def _create(
     command_id: UUID,
     now: datetime,
     telemetry: TelemetryContext,
+    trusted_keys: TrustedReviewerKeys,
 ) -> CtowerProjectImportRun | RecordProblem:
     digest = _request_digest(request)
+    try:
+        selection_artifact, selection_digest = verify_source_selection(request, trusted_keys)
+    except ArtifactError as error:
+        return _problem(command_id, str(error), "Source selection refused")
     with authority_connection(dsn) as connection:
         connection.execute("SET ROLE ctower_svc")
         replay = replay_run(connection, actor, command_id, digest)
@@ -81,6 +102,15 @@ def _create(
             command_id=command_id,
             now=now,
         )
+        persist_source_selection(
+            connection,
+            actor,
+            selection_artifact,
+            selection_digest,
+            run_id=run_id,
+            command_id=command_id,
+            now=now,
+        )
         current = initial_model(
             request,
             run_id,
@@ -96,6 +126,8 @@ def _create(
             operation="run_created",
             export_digest=None,
             alias_digest=None,
+            plan_digest=None,
+            fence_digest=None,
             now=now,
             telemetry=telemetry,
         )
@@ -109,10 +141,17 @@ def bind_export_equality(
     command_id: UUID,
     now: datetime,
     telemetry: TelemetryContext,
+    trusted_keys: TrustedReviewerKeys,
 ) -> CtowerProjectImportRun | RecordProblem:
     return recover_ambiguous_commit(
         lambda: _bind_export(
-            dsn, actor, request, command_id=command_id, now=now, telemetry=telemetry
+            dsn,
+            actor,
+            request,
+            command_id=command_id,
+            now=now,
+            telemetry=telemetry,
+            trusted_keys=trusted_keys,
         )
     )
 
@@ -125,6 +164,7 @@ def _bind_export(
     command_id: UUID,
     now: datetime,
     telemetry: TelemetryContext,
+    trusted_keys: TrustedReviewerKeys,
 ) -> CtowerProjectImportRun | RecordProblem:
     digest = _request_digest(request)
     with authority_connection(dsn) as connection:
@@ -135,6 +175,18 @@ def _bind_export(
         current = load_run(connection, actor, request.run_id, lock=True)
         if isinstance(current, RecordProblem) or not valid_export(current, request):
             return _problem(command_id, "migration-digest-mismatch", "Export binding refused")
+        try:
+            persist_export_graph(
+                connection,
+                actor,
+                current,
+                request,
+                command_id=command_id,
+                now=now,
+                trusted_keys=trusted_keys,
+            )
+        except ArtifactError as error:
+            return _problem(command_id, str(error), "Export binding refused")
         return _append_state(
             connection,
             actor,
@@ -145,6 +197,8 @@ def _bind_export(
             operation="export_equality_bound",
             export_digest=request.equality_report_digest,
             alias_digest=None,
+            plan_digest=None,
+            fence_digest=None,
             now=now,
             telemetry=telemetry,
         )
@@ -158,10 +212,17 @@ def bind_alias_plan(
     command_id: UUID,
     now: datetime,
     telemetry: TelemetryContext,
+    trusted_keys: TrustedReviewerKeys,
 ) -> CtowerProjectImportRun | RecordProblem:
     return recover_ambiguous_commit(
         lambda: _bind_alias(
-            dsn, actor, request, command_id=command_id, now=now, telemetry=telemetry
+            dsn,
+            actor,
+            request,
+            command_id=command_id,
+            now=now,
+            telemetry=telemetry,
+            trusted_keys=trusted_keys,
         )
     )
 
@@ -174,6 +235,7 @@ def _bind_alias(
     command_id: UUID,
     now: datetime,
     telemetry: TelemetryContext,
+    trusted_keys: TrustedReviewerKeys,
 ) -> CtowerProjectImportRun | RecordProblem:
     digest = _request_digest(request)
     with authority_connection(dsn) as connection:
@@ -184,6 +246,20 @@ def _bind_alias(
         current = load_run(connection, actor, request.run_id, lock=True)
         if isinstance(current, RecordProblem) or not valid_alias(current, request):
             return _problem(command_id, "migration-digest-mismatch", "Alias binding refused")
+        if request.fence_observer_expires_at <= now:
+            return _problem(command_id, "fence-observer-expired", "Alias binding refused")
+        try:
+            plan_digest, fence_digest = persist_plan_graph(
+                connection,
+                actor,
+                current,
+                request,
+                command_id=command_id,
+                now=now,
+                trusted_keys=trusted_keys,
+            )
+        except ArtifactError as error:
+            return _problem(command_id, str(error), "Alias binding refused")
         return _append_state(
             connection,
             actor,
@@ -194,6 +270,8 @@ def _bind_alias(
             operation="alias_plan_bound",
             export_digest=current.pinned_digests.export_equality,
             alias_digest=request.alias_map_digest,
+            plan_digest=plan_digest,
+            fence_digest=fence_digest,
             now=now,
             telemetry=telemetry,
         )
@@ -214,13 +292,20 @@ def _append_state(
     operation: str,
     export_digest: str | None,
     alias_digest: str | None,
+    plan_digest: str | None,
+    fence_digest: str | None,
     now: datetime,
     telemetry: TelemetryContext,
 ) -> CtowerProjectImportRun:
     sequence = _next_fact_sequence(connection, current.run_id)
     semantic = _semantic(current.semantic_digest, request_digest, state)
     pinned = current.pinned_digests.model_copy(
-        update={"export_equality": export_digest, "alias_map": alias_digest}
+        update={
+            "export_equality": export_digest,
+            "alias_map": alias_digest,
+            "import_plan": plan_digest,
+            "fence_registry": fence_digest,
+        }
     )
     event_id, position, updated = _commit_state_event(
         connection,

@@ -77,7 +77,7 @@ def _reconcile(
     if not definitions:
         return 0
     source = _source_position(connection, tenant_id)
-    complete = _source_complete(connection, tenant_id, definitions)
+    complete = _source_complete(connection, tenant_id, definitions, source)
     projection = source if complete else _prior_projection(connection, tenant_id)
     generation = (
         rebuild_generation

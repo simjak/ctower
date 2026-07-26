@@ -142,11 +142,8 @@ def _alias_forks(
     batch: CtowerProjectImportBatchRequest,
     operation: CtowerProjectExactAliasOperation,
 ) -> bool:
-    return target["run_id"] is not None and (
-        target["run_id"] != batch.run_id
-        or target["source_namespace"] != operation.source.namespace
-        or target["immutable_source_id"] != operation.source.immutable_source_id
-    )
+    del operation
+    return target["run_id"] is not None and target["run_id"] != batch.run_id
 
 
 def _insert_ticket_binding(

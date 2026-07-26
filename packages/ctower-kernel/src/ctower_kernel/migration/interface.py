@@ -5,7 +5,7 @@ from __future__ import annotations
 from collections.abc import Callable
 from datetime import UTC, datetime
 from typing import Protocol
-from uuid import UUID
+from uuid import UUID, uuid5
 
 from ctower_client.models import (
     CtowerProjectAliasPlanBindRequest,
@@ -24,6 +24,7 @@ from ctower_kernel.record import Actor, PrincipalKind, RecordProblem
 from ctower_kernel.telemetry import TelemetryContext
 
 __all__ = ["Migration"]
+_BATCH_COMMAND_NAMESPACE = UUID("5b0e2050-794d-5f39-ae31-c1fd1ab932b4")
 
 
 class _MigrationStore(Protocol):
@@ -62,6 +63,7 @@ class _MigrationStore(Protocol):
         actor: Actor,
         request: CtowerProjectImportBatchRequest,
         *,
+        command_id: UUID,
         now: datetime,
         telemetry: TelemetryContext,
     ) -> CtowerProjectImportBatchResult | RecordProblem: ...
@@ -155,11 +157,22 @@ class Migration:
         actor: Actor,
         request: CtowerProjectImportBatchRequest,
         *,
+        command_id: UUID | None = None,
         telemetry: TelemetryContext,
     ) -> CtowerProjectImportBatchResult | RecordProblem:
         if actor.kind is not PrincipalKind.MIGRATION_IMPORTER:
             return _denied()
-        return self._store.apply_batch(actor, request, now=self._clock(), telemetry=telemetry)
+        resolved_command_id = command_id or uuid5(
+            _BATCH_COMMAND_NAMESPACE,
+            f"{request.run_id}:{request.cutover_id}:{request.batch_index}:{request.batch_digest}",
+        )
+        return self._store.apply_batch(
+            actor,
+            request,
+            command_id=resolved_command_id,
+            now=self._clock(),
+            telemetry=telemetry,
+        )
 
     def finalize_run(
         self,

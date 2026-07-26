@@ -53,7 +53,7 @@ _EXPECTED_OPERATION_METADATA: dict[str, tuple[object, bool, str, object, bool]] 
     "changeTicketPriority": ("ticket prioritize", True, "allowed", None, False),
     "commitCtowerProjectDevelopmentEpoch": (
         "migration ctower-project commit-development-epoch",
-        True,
+        False,
         "forbidden",
         "operator",
         True,
@@ -106,7 +106,7 @@ _EXPECTED_OPERATION_METADATA: dict[str, tuple[object, bool, str, object, bool]] 
     "planCompanyBundle": ("company bundle plan", False, "forbidden", None, False),
     "prepareCtowerProjectCutover": (
         "migration ctower-project prepare",
-        True,
+        False,
         "forbidden",
         "operator",
         True,
@@ -248,10 +248,8 @@ def test_openapi_exposes_exact_i1_operations_and_generated_routing_metadata() ->
         "bindCtowerProjectAliasPlan",
         "bindCtowerProjectExportEquality",
         "bootstrapFirstTenant",
-        "commitCtowerProjectDevelopmentEpoch",
         "createCtowerProjectImportRun",
         "finalizeCtowerProjectImportRun",
-        "prepareCtowerProjectCutover",
         "reportCtowerProjectFenceObservation",
     }
 
@@ -297,6 +295,7 @@ def test_i1_7b_reuses_paths_adds_only_planned_paths_and_refuses_i1_7c() -> None:
     ):
         operation = paths[path]["post"]
         assert operation["x-ctower-refusal-only"] is True
+        assert operation["x-ctower-mutation"] is False
         responses = cast(dict[str, object], operation["responses"])
         assert not any(status.startswith("2") for status in responses)
         assert "409" in responses

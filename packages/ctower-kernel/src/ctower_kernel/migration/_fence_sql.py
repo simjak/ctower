@@ -9,12 +9,14 @@ from typing import cast
 from uuid import UUID
 
 import psycopg
+import rfc8785
 from psycopg.types.json import Jsonb
 from pydantic import ValidationError
 
 from ctower_client.models import (
     CtowerProjectFenceObservationRequest,
     CtowerProjectMigrationReceipt,
+    DurabilityState,
 )
 from ctower_kernel.migration._event_sql import commit_event, migration_payload
 from ctower_kernel.migration._operation_result_sql import canonical
@@ -73,6 +75,11 @@ def _valid_observation(
     actor: Actor,
     request: CtowerProjectFenceObservationRequest,
 ) -> bool:
+    body = request.model_dump(mode="json", by_alias=True)
+    claimed = body.pop("observation_digest")
+    recomputed = f"sha256:{hashlib.sha256(rfc8785.dumps(body)).hexdigest()}"
+    if claimed != recomputed:
+        return False
     if request.status in {"detected", "unknown"} and not request.disables_writes:
         return False
     if request.status == "clear" and request.reason_code != "no_scoped_append":
@@ -81,6 +88,26 @@ def _valid_observation(
         "SELECT pg_advisory_xact_lock(hashtextextended(%s, 0))",
         (f"migration-fence:{actor.tenant_id}:{request.registry_id}",),
     )
+    binding = connection.execute(
+        """
+        SELECT 1 FROM migration_fence_observer_bindings
+        WHERE run_id = %s AND tenant_id = %s AND cutover_id = %s
+          AND project_key = %s AND registry_id = %s AND registry_revision = %s
+          AND registry_digest = %s AND principal_id = %s
+        """,
+        (
+            request.run_id,
+            actor.tenant_id,
+            request.cutover_id,
+            request.project_key,
+            request.registry_id,
+            request.registry_revision,
+            _digest_bytes(request.registry_digest),
+            actor.principal_id,
+        ),
+    ).fetchone()
+    if binding is None:
+        return False
     previous = connection.execute(
         """
         SELECT sequence, observation_digest, status, disables_writes, observation_body
@@ -131,7 +158,7 @@ def _commit_observation(
             event_ids=(event_id,),
             record_position=position,
             semantic_digest=request.observation_digest,
-            durability_state="durability_pending",
+            durability_state=DurabilityState.DURABILITY_PENDING,
             accepted_position=None,
         )
         captured.append(receipt)
@@ -145,8 +172,8 @@ def _commit_observation(
         kind=EventKind.MIGRATION_CHANGED,
         payload=migration_payload(
             "fence_observed",
-            run_id=None,
-            cutover_id=None,
+            run_id=request.run_id,
+            cutover_id=request.cutover_id,
             target_id=str(request.observation_id),
         ),
         request_digest=request_digest,
@@ -155,6 +182,7 @@ def _commit_observation(
         now=now,
         telemetry=telemetry,
         response=response,
+        subjects=(("migration", request.run_id),),
     )
     _insert_observation(
         connection,

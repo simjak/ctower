@@ -18,6 +18,7 @@ from ctower_client.models import (
     CtowerProjectImportCorrectionRequest,
     CtowerProjectImportRun,
     CtowerProjectMigrationReceipt,
+    DurabilityState,
 )
 from ctower_kernel.migration._correction_revision_sql import (
     append_revision,
@@ -167,7 +168,7 @@ def _receipt_response(
             event_ids=(event_id,),
             record_position=position,
             semantic_digest=_digest_text(semantic),
-            durability_state="durability_pending",
+            durability_state=DurabilityState.DURABILITY_PENDING,
             accepted_position=None,
         )
         captured.append(receipt)

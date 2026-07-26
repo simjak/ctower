@@ -268,7 +268,7 @@
       "sha256": "sha256:0422eab6f90141fe444f07cd93ecf2b190be28733c45f7347c9750ecdd8e39cf",
       "minimum_service_version": "0.0.0",
       "maximum_service_version": "0.0.0",
-      "forward_test": "pytest:tests/modules/migration/test_postgres.py::test_importer_is_run_scoped_replay_safe_and_database_guarded",
+      "forward_test": "pytest:tests/modules/migration/test_postgres.py::test_complete_reviewed_two_pass_is_measured_and_partial_finalize_refuses",
       "rollback_or_forward_compensation": "Preserve every immutable import run, credential lifecycle, batch/result, alias, source-link, relation-validity, correction, reconciliation, fence, command, event, and outbox fact; append reviewed forward compensation and never reactivate a finalized importer credential.",
       "backup_checkpoint": "Before a nonempty installation applies this dormant importer storage, capture and verify principal, credential, ticket, relation, event, command, outbox, cutover, and migration-fact counts plus a database backup; no live cutover is authorized."
     },
@@ -280,6 +280,15 @@
       "forward_test": "pytest:tests/acceptance/increment-1/test_checkpoint_delivery.py::test_checkpoint_bundle_materializes_all_14_definitions_atomically_and_replays",
       "rollback_or_forward_compensation": "Keep checkpoint component revisions readable by a checkpoint-aware build or append a reviewed forward constraint supersession; never delete Catalog or Project Delivery authority facts.",
       "backup_checkpoint": "Before applying to a nonempty installation, capture and verify the catalog_components constraint definition plus component, revision, definition, and criterion counts."
+    },
+    {
+      "path": "0030_i17b_migration_truth_spine.sql",
+      "sha256": "sha256:e74ab617b6579726ebfc9874d6a4ee72ba00820c5117577ade8f6b5c8197c4ce",
+      "minimum_service_version": "0.0.0",
+      "maximum_service_version": "0.0.0",
+      "forward_test": "pytest:tests/modules/migration/test_postgres.py::test_complete_reviewed_two_pass_is_measured_and_partial_finalize_refuses",
+      "rollback_or_forward_compensation": "Preserve verified artifacts, exhaustive plans, replay receipts, fence registries, observer bindings, importer lifecycle facts, commands, events, and outbox rows; append reviewed forward compensation and never manufacture a verified graph or reactivate a revoked importer.",
+      "backup_checkpoint": "Before applying to a nonempty installation, capture and verify migration run, credential, artifact, plan, replay, fence, command, event, and outbox counts plus a database backup; no live cutover is authorized."
     }
   ]
 }

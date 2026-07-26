@@ -24,6 +24,9 @@ from ctowerctl._migration_commands import (
 from ctowerctl._migration_commands import (
     query_command_names as migration_queries,
 )
+from ctowerctl._migration_commands import (
+    refusal_command_names as migration_refusals,
+)
 from ctowerctl._ops_commands import (
     mutation_command_names as ops_mutations,
 )
@@ -78,9 +81,15 @@ def test_explicit_handlers_cover_every_generated_operation_class() -> None:
         | synthetic_queries()
         | migration_queries()
     )
+    refusals = migration_refusals()
     expected_mutations = {name for name, operation in CLI_OPERATIONS.items() if operation.mutation}
     expected_queries = {
-        name for name, operation in CLI_OPERATIONS.items() if not operation.mutation
+        name
+        for name, operation in CLI_OPERATIONS.items()
+        if not operation.mutation and not operation.refusal_only
+    }
+    expected_refusals = {
+        name for name, operation in CLI_OPERATIONS.items() if operation.refusal_only
     }
     forbidden = {
         name
@@ -90,6 +99,7 @@ def test_explicit_handlers_cover_every_generated_operation_class() -> None:
 
     assert mutations == expected_mutations - {"bootstrap first-tenant"}
     assert queries == expected_queries
+    assert refusals == expected_refusals
     assert forbidden == {
         "bootstrap first-tenant",
         "migration ctower-project inventory",
@@ -99,8 +109,6 @@ def test_explicit_handlers_cover_every_generated_operation_class() -> None:
         "migration ctower-project reconcile",
         "migration ctower-project correction append",
         "migration ctower-project fence observe",
-        "migration ctower-project prepare",
-        "migration ctower-project commit-development-epoch",
     }
 
 

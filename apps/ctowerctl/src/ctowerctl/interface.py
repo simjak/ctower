@@ -113,11 +113,11 @@ def _execute(
     if operation is None:
         raise ValueError("usage: command is absent from generated registry")
     credential = read_authority(authority_stream)
+    if namespace.area == "migration" and (operation.mutation or operation.refusal_only):
+        return _execute_online_migration(base_url, credential, namespace, operation)
     if operation.mutation:
         if cli_name == "synthetic run":
             return _execute_synthetic(base_url, credential, namespace, operation)
-        if namespace.area == "migration":
-            return _execute_online_mutation(base_url, credential, namespace, operation)
         return _execute_mutation(base_url, credential, namespace, operation)
     with CtowerClient(base_url, credential=credential) as client:
         return _execute_query(namespace, client), ExitCode.SUCCESS
@@ -172,13 +172,13 @@ def _build_mutation(arguments: object) -> MutationPayload:
     raise ValueError("usage: unsupported mutation family")
 
 
-def _execute_online_mutation(
+def _execute_online_migration(
     base_url: str,
     credential: str,
     arguments: argparse.Namespace,
     operation: OperationSpec,
 ) -> tuple[BaseModel, ExitCode]:
-    """Execute one cutover mutation online; delayed replay is forbidden."""
+    """Execute one cutover write or unconditional refusal online."""
 
     if operation.spool_policy is not SpoolPolicy.FORBIDDEN:
         raise ValueError("usage: online migration operation has unsafe spool metadata")

@@ -177,8 +177,10 @@ def _principal_and_refusal(
     principal = value.get("x-ctower-principal")
     if principal is not None and (not isinstance(principal, str) or not principal):
         raise TypeError(f"{operation_id} has invalid x-ctower-principal")
-    if refusal_only and (not mutation or spool != "forbidden"):
-        raise ValueError(f"refusal-only operation {operation_id} must be unspoolable mutation")
+    if refusal_only and (mutation or spool != "forbidden"):
+        raise ValueError(
+            f"refusal-only operation {operation_id} must be non-mutating and unspoolable"
+        )
     return principal, refusal_only
 
 

@@ -18,6 +18,7 @@ from ctower_client.models import (
     MigrationOperationIdentity,
     MigrationSourceIdentity,
 )
+from tools.migration.ctower_project.ctower_project_source.canonical import canonical_digest
 
 __all__: tuple[str, ...] = ()
 ZERO_DIGEST = f"sha256:{'0' * 64}"
@@ -29,6 +30,7 @@ def run_request(credential: str, now: datetime) -> CtowerProjectImportRunCreateR
         tenant_key="ctower",
         project_key="ctower",
         source_selection_digest=ZERO_DIGEST,
+        source_selection_artifact="{}",
         build_digest=ZERO_DIGEST,
         client_digest=ZERO_DIGEST,
         schema_digest=ZERO_DIGEST,
@@ -118,14 +120,24 @@ def batch(
     batch_index: int,
     operations: tuple[object, ...],
 ) -> CtowerProjectImportBatchRequest:
+    seed = {
+        "schema": "ctower.ctower-project-import-batch/v1",
+        "run_id": str(run_id),
+        "cutover_id": str(cutover_id),
+        "batch_index": batch_index,
+        "operations": [
+            item.model_dump(mode="json", by_alias=True)
+            for item in operations
+            if hasattr(item, "model_dump")
+        ],
+    }
     return CtowerProjectImportBatchRequest.model_validate(
         {
-            "schema": "ctower.ctower-project-import-batch/v1",
+            **seed,
             "run_id": run_id,
             "cutover_id": cutover_id,
-            "batch_index": batch_index,
-            "batch_digest": f"sha256:{batch_index:064x}",
             "operations": operations,
+            "batch_digest": canonical_digest(seed),
         }
     )
 
@@ -136,23 +148,44 @@ def fence_request(
     previous: str | None,
     registry_id: UUID | None = None,
 ) -> CtowerProjectFenceObservationRequest:
-    return CtowerProjectFenceObservationRequest(
-        schema_id="ctower.ctower-project-fence-observation/v1",
-        observation_id=uuid4(),
-        registry_id=registry_id or uuid4(),
-        registry_revision=1,
-        registry_digest=ZERO_DIGEST,
-        sequence=sequence,
-        previous_observation_digest=previous,
-        observed_at=datetime.now(UTC),
-        from_offset=0,
-        to_offset=0,
-        file_identity=MigrationFenceFileIdentity(device=1, inode=1, scoped_rows_digest=ZERO_DIGEST),
-        status="unknown",
-        reason_code="classifier_unknown",
-        observation_digest=f"sha256:{sequence:064x}",
-        disables_writes=True,
-        may_enable_writes=False,
+    observation_id = uuid4()
+    run_id = uuid4()
+    cutover_id = uuid4()
+    resolved_registry_id = registry_id or uuid4()
+    observed_at = datetime.now(UTC)
+    body = {
+        "schema": "ctower.ctower-project-fence-observation/v1",
+        "observation_id": str(observation_id),
+        "run_id": str(run_id),
+        "cutover_id": str(cutover_id),
+        "tenant_key": "ctower",
+        "project_key": "ctower",
+        "registry_id": str(resolved_registry_id),
+        "registry_revision": 1,
+        "registry_digest": ZERO_DIGEST,
+        "sequence": sequence,
+        "previous_observation_digest": previous,
+        "observed_at": observed_at.isoformat(),
+        "from_offset": 0,
+        "to_offset": 0,
+        "file_identity": MigrationFenceFileIdentity(
+            device=1, inode=1, scoped_rows_digest=ZERO_DIGEST
+        ).model_dump(mode="json"),
+        "status": "unknown",
+        "reason_code": "classifier_unknown",
+        "disables_writes": True,
+        "may_enable_writes": False,
+    }
+    return CtowerProjectFenceObservationRequest.model_validate(
+        {
+            **body,
+            "observation_id": observation_id,
+            "run_id": run_id,
+            "cutover_id": cutover_id,
+            "registry_id": resolved_registry_id,
+            "observed_at": observed_at,
+            "observation_digest": canonical_digest(body),
+        }
     )
 
 

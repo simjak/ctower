@@ -112,6 +112,7 @@ def source_complete(
     connection: psycopg.Connection[dict[str, object]],
     tenant_id: UUID,
     definitions: list[dict[str, object]],
+    source_watermark: int,
 ) -> bool:
     streams = connection.execute(
         """
@@ -127,13 +128,19 @@ def source_complete(
     )
     board = connection.execute(
         """
-        SELECT blocked_outbox_id FROM outbox_consumer_cursors
+        SELECT acceptance_position, health, blocked_outbox_id
+        FROM outbox_consumer_cursors
         WHERE consumer_key = 'board_projection' AND tenant_id = %s
           AND topic = 'record.events'
         """,
         (tenant_id,),
     ).fetchone()
-    board_complete = board is None or board["blocked_outbox_id"] is None
+    board_complete = (
+        board is not None
+        and board["blocked_outbox_id"] is None
+        and board["health"] == "CURRENT"
+        and int(cast(int, board["acceptance_position"])) >= source_watermark
+    )
     projects = {(str(row["project_key"]), str(row["checkpoint_key"])) for row in definitions}
     checkpoint_complete = bool(projects) and all(
         sum(1 for item in projects if item[0] == project) == _CHECKPOINT_COUNT

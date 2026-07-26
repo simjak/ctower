@@ -12,6 +12,7 @@ _OPERATIONS = frozenset(
         "run_created",
         "export_equality_bound",
         "alias_plan_bound",
+        "import_batch_applied",
         "ticket_seed",
         "exact_alias",
         "ticket_relation",
@@ -37,10 +38,7 @@ class MigrationChangedPayload:
     def __post_init__(self) -> None:
         if self.operation not in _OPERATIONS:
             raise ValueError("migration operation is outside the restricted event contract")
-        if self.operation == "fence_observed":
-            if self.run_id is not None or self.cutover_id is not None:
-                raise ValueError("fence observations do not carry import-run authority")
-        elif not isinstance(self.run_id, UUID) or not isinstance(self.cutover_id, UUID):
+        if not isinstance(self.run_id, UUID) or not isinstance(self.cutover_id, UUID):
             raise TypeError("migration run and cutover identity must be UUIDs")
         if self.project_key != "ctower":
             raise ValueError("migration events are restricted to the ctower project")

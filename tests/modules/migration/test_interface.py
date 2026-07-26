@@ -52,7 +52,9 @@ def test_importer_reaches_only_batch_authority() -> None:
         importer, create, command_id=uuid4(), telemetry=_telemetry()
     )
     denied_apply = migration.apply_batch(operator, batch, telemetry=_telemetry())
-    accepted_apply = migration.apply_batch(importer, batch, telemetry=_telemetry())
+    accepted_apply = migration.apply_batch(
+        importer, batch, command_id=uuid4(), telemetry=_telemetry()
+    )
 
     assert isinstance(denied_create, RecordProblem)
     assert isinstance(denied_apply, RecordProblem)
@@ -90,6 +92,7 @@ def _create_request() -> CtowerProjectImportRunCreateRequest:
         tenant_key="ctower",
         project_key="ctower",
         source_selection_digest=ZERO_DIGEST,
+        source_selection_artifact="{}",
         build_digest=ZERO_DIGEST,
         client_digest=ZERO_DIGEST,
         schema_digest=ZERO_DIGEST,

@@ -1,579 +1,589 @@
-"""PostgreSQL threat tests for the dormant restricted importer."""
+"""Real PostgreSQL proof for the reviewed migration truth spine."""
 
 from __future__ import annotations
 
 import hashlib
+import json
 from dataclasses import dataclass
 from datetime import UTC, datetime
-from typing import cast
+from pathlib import Path
+from typing import Literal
 from uuid import UUID, uuid4
-
-import psycopg
-import pytest
-from psycopg.types.json import Jsonb
 
 from ctower_client.models import (
     CtowerProjectAliasPlanBindRequest,
-    CtowerProjectExportEqualityBindRequest,
     CtowerProjectImportBatchRequest,
+    CtowerProjectImportBatchResult,
     CtowerProjectImportCorrectionRequest,
     CtowerProjectImportFinalizeRequest,
     CtowerProjectImportRun,
+    CtowerProjectReconciliationResult,
+    MigrationAliasCorrection,
     MigrationCorrectionRevision,
-    MigrationRelationCorrection,
     MigrationSourceLinkCorrection,
 )
-from ctower_kernel.access import Access
 from ctower_kernel.migration import Migration, PostgresMigration
-from ctower_kernel.record import (
-    Actor,
-    PrincipalKind,
-    Record,
-    RecordProblem,
-    SourceReference,
-    TicketCommand,
-)
-from ctower_kernel.record.postgres import (
-    PostgresRecord,
-)
+from ctower_kernel.record import Actor, PrincipalKind, RecordProblem, SourceReference, TicketCommand
+from ctower_kernel.record.postgres import PostgresRecord
 from ctower_kernel.telemetry import TelemetryContext
 from ctower_kernel.work import Work
+from tools.migration.ctower_project.ctower_project_source.canonical import (
+    canonical_bytes,
+    canonical_digest,
+)
+from tools.migration.ctower_project.ctower_project_source.executor import (
+    ImportPassReceipt,
+    execute_import,
+    prove_pass_two,
+)
+from tools.migration.ctower_project.ctower_project_source.import_plan import ImportPlan
 
-from ._import_vectors import (
-    ZERO_DIGEST,
-)
-from ._import_vectors import (
-    alias_batch as _alias_batch,
-)
-from ._import_vectors import (
-    batch as _batch,
-)
-from ._import_vectors import (
-    relation_batch as _relation_batch,
-)
-from ._import_vectors import (
-    run_request as _run_request,
-)
-from ._import_vectors import (
-    seed_batch as _seed_batch,
-)
-from ._import_vectors import (
-    source_link_batch as _source_link_batch,
-)
-from ._import_vectors import (
-    ticket_seed as _ticket_seed,
-)
-from ._postgres import (
-    Database as _Database,
-)
-from ._postgres import (
-    relation_digest as _relation_digest,
-)
-from ._postgres import (
-    semantic_counts as _semantic_counts,
-)
-from ._postgres import (
-    source_link_digest as _source_link_digest,
-)
+from ._postgres import Database, alias_digest, semantic_counts, source_link_digest
+from ._reviewed import ReviewedSource, reviewed_source
+from .source_tool.fixtures import CUTOVER_ID
 
+_OPERATION_COUNT = 71
+_REQUEST_PHYSICAL_COUNT = 243
 __all__: tuple[str, ...] = ()
 
 
 @dataclass(frozen=True, slots=True)
-class _ImportContext:
-    database: _Database
+class _RunContext:
     now: datetime
-    credential: str
+    source: ReviewedSource
     store: PostgresMigration
     migration: Migration
     operator: Actor
-    run: CtowerProjectImportRun
-    importer: Actor
-    access: Access
+    created: CtowerProjectImportRun
+    credential_digest: bytes
 
 
-def test_importer_is_run_scoped_replay_safe_and_database_guarded(
-    migration_database: _Database,
+def test_complete_reviewed_two_pass_is_measured_and_partial_finalize_refuses(
+    migration_database: Database,
+    tmp_path: Path,
 ) -> None:
-    context = _start_import(migration_database)
-    _assert_scope_and_guards(context)
-    _bind_run(
-        context.migration,
+    context = _start_run(migration_database, tmp_path)
+    importer, plan = _bind_reviewed_plan(context, migration_database)
+    first_batch = _apply_first_and_refuse_partial(
+        context,
+        migration_database,
+        importer,
+        plan,
+    )
+    _assert_append_only_corrections(context, migration_database, plan, first_batch)
+    first = execute_import(
+        plan,
+        client=_MigrationClient(context.migration, importer),
+        apply=True,
+        completed=(first_batch,),
+    )
+    second = execute_import(
+        plan,
+        client=_MigrationClient(context.migration, importer),
+        apply=True,
+    )
+    assert isinstance(first, ImportPassReceipt)
+    assert isinstance(second, ImportPassReceipt)
+    prove_pass_two(first, second)
+    ready = context.migration.get_run(context.operator, context.created.run_id)
+    assert not isinstance(ready, RecordProblem)
+    _assert_measured(ready)
+    result = context.migration.finalize_run(
         context.operator,
-        context.run.run_id,
-        context.run.cutover_id,
-    )
-    ticket_a, ticket_b = _apply_seed_and_replay(context)
-    relation_id, link_batch = _apply_alias_relation_links(context, ticket_a, ticket_b)
-    _assert_invalid_link_correction(context, link_batch)
-    _assert_correction_and_stale_refusal(context, relation_id)
-    _assert_reconciliation_revokes_importer(context, link_batch)
-
-
-def _start_import(database: _Database) -> _ImportContext:
-    now = datetime.now(UTC)
-    credential = "synthetic-importer-credential"
-    store = PostgresMigration(database.runtime_dsn)
-    migration = Migration(store, clock=lambda: now)
-    operator = Actor(
-        database.operator_id,
-        database.tenant_id,
-        PrincipalKind.OPERATOR,
-    )
-    request = _run_request(credential, now)
-    created = migration.create_run(
-        operator, request, command_id=uuid4(), telemetry=_telemetry(operator)
-    )
-    assert not isinstance(created, RecordProblem)
-    importer = store.resolve_importer(
-        hashlib.sha256(credential.encode()).digest(),
-        created.run_id,
-        created.cutover_id,
-        "ctower",
-        now,
-    )
-    assert importer is not None
-    access = Access(
-        cast(Record, _NoGeneralCredential()),
-        importer_resolver=store.resolve_importer,
-        clock=lambda: now,
-    )
-    return _ImportContext(
-        database, now, credential, store, migration, operator, created, importer, access
-    )
-
-
-def _assert_scope_and_guards(context: _ImportContext) -> None:
-    digest = hashlib.sha256(context.credential.encode()).digest()
-    assert (
-        context.store.resolve_importer(
-            digest,
-            context.run.run_id,
-            uuid4(),
-            "ctower",
-            context.now,
-        )
-        is None
-    )
-    assert (
-        context.store.resolve_importer(
-            digest,
-            context.run.run_id,
-            context.run.cutover_id,
-            "other",
-            context.now,
-        )
-        is None
-    )
-    general = context.access.authenticate(f"Bearer {context.credential}")
-    assert isinstance(general, RecordProblem)
-    assert general.code == "unauthorized"
-    assert (
-        context.access.authenticate_importer(
-            f"Bearer {context.credential}",
-            run_id=context.run.run_id,
-            cutover_id=context.run.cutover_id,
-            project_key="ctower",
-        )
-        == context.importer
-    )
-    _assert_database_event_guard(context.database, context.importer)
-    _assert_run_is_immutable(context.database, context.run.run_id)
-
-
-def _apply_seed_and_replay(context: _ImportContext) -> tuple[UUID, UUID]:
-    first = _seed_batch(
-        context.run.run_id,
-        context.run.cutover_id,
-        context.database.commander_id,
-        batch_index=0,
-    )
-    applied = context.migration.apply_batch(
-        context.importer, first, telemetry=_telemetry(context.importer)
-    )
-    assert not isinstance(applied, RecordProblem)
-    ticket_a, ticket_b = (UUID(result.target_id) for result in applied.results)
-    before_replay = _semantic_counts(context.database)
-    replayed = context.migration.apply_batch(
-        context.importer, first, telemetry=_telemetry(context.importer)
-    )
-    assert not isinstance(replayed, RecordProblem)
-    assert all(result.replayed for result in replayed.results)
-    assert _semantic_counts(context.database) == before_replay
-    changed = first.model_copy(
-        update={
-            "operations": (
-                first.operations[0].model_copy(update={"title": "Changed replay"}),
-                first.operations[1],
-            )
-        }
-    )
-    assert isinstance(
-        context.migration.apply_batch(
-            context.importer, changed, telemetry=_telemetry(context.importer)
-        ),
-        RecordProblem,
-    )
-    assert _semantic_counts(context.database) == before_replay
-    _assert_crash_rollback(
-        context.database,
-        context.migration,
-        context.importer,
-        context.run.run_id,
-        context.run.cutover_id,
-    )
-    _assert_cross_tenant_refused(context, first)
-    return ticket_a, ticket_b
-
-
-def _apply_alias_relation_links(
-    context: _ImportContext, ticket_a: UUID, ticket_b: UUID
-) -> tuple[UUID, CtowerProjectImportBatchRequest]:
-    alias_ticket = _create_operator_ticket(context.database, context.operator)
-    alias_batch = _alias_batch(
-        context.run.run_id, context.run.cutover_id, alias_ticket, batch_index=1
-    )
-    assert not isinstance(
-        context.migration.apply_batch(
-            context.importer, alias_batch, telemetry=_telemetry(context.importer)
-        ),
-        RecordProblem,
-    )
-    _assert_alias_fork_refused(context, ticket_a)
-    relation_id = uuid4()
-    relation_batch = _relation_batch(
-        context.run.run_id,
-        context.run.cutover_id,
-        relation_id,
-        ticket_a,
-        ticket_b,
-        batch_index=2,
-    )
-    assert not isinstance(
-        context.migration.apply_batch(
-            context.importer, relation_batch, telemetry=_telemetry(context.importer)
-        ),
-        RecordProblem,
-    )
-    _assert_cycle_refused(context, ticket_a, ticket_b)
-    link_batch = _source_link_batch(
-        context.run.run_id, context.run.cutover_id, ticket_a, batch_index=3
-    )
-    assert not isinstance(
-        context.migration.apply_batch(
-            context.importer, link_batch, telemetry=_telemetry(context.importer)
-        ),
-        RecordProblem,
-    )
-    return relation_id, link_batch
-
-
-def _bind_run(migration: Migration, operator: Actor, run_id: UUID, cutover_id: UUID) -> None:
-    equality = CtowerProjectExportEqualityBindRequest(
-        run_id=run_id,
-        cutover_id=cutover_id,
-        selection_digest=ZERO_DIGEST,
-        inventory_a_digest=ZERO_DIGEST,
-        inventory_b_digest=ZERO_DIGEST,
-        export_digest=ZERO_DIGEST,
-        equality_report_digest=ZERO_DIGEST,
-        reviewer_public_key_digest=ZERO_DIGEST,
-        result="equal",
-    )
-    exported = migration.bind_export_equality(
-        operator, equality, command_id=uuid4(), telemetry=_telemetry(operator)
-    )
-    assert not isinstance(exported, RecordProblem)
-    alias = CtowerProjectAliasPlanBindRequest(
-        run_id=run_id,
-        cutover_id=cutover_id,
-        export_equality_digest=ZERO_DIGEST,
-        alias_map_digest=ZERO_DIGEST,
-        reviewer_public_key_digest=ZERO_DIGEST,
-        attention_required=0,
-    )
-    bound = migration.bind_alias_plan(
-        operator, alias, command_id=uuid4(), telemetry=_telemetry(operator)
-    )
-    assert not isinstance(bound, RecordProblem)
-    assert bound.state == "alias_plan_bound"
-
-
-def _assert_crash_rollback(
-    database: _Database,
-    migration: Migration,
-    importer: Actor,
-    run_id: UUID,
-    cutover_id: UUID,
-) -> None:
-    seed = _ticket_seed("crash-seed", database.commander_id)
-    invalid_link = _source_link_batch(run_id, cutover_id, uuid4(), batch_index=1).operations[0]
-    request = _batch(run_id, cutover_id, 1, (seed, invalid_link))
-    before = _semantic_counts(database)
-    outcome = migration.apply_batch(importer, request, telemetry=_telemetry(importer))
-    assert isinstance(outcome, RecordProblem)
-    assert _semantic_counts(database) == before
-
-
-def _assert_cross_tenant_refused(
-    context: _ImportContext, request: CtowerProjectImportBatchRequest
-) -> None:
-    foreign = Actor(
-        context.importer.principal_id,
-        uuid4(),
-        PrincipalKind.MIGRATION_IMPORTER,
-    )
-    next_batch = request.model_copy(update={"batch_index": 1})
-    before = _semantic_counts(context.database)
-    outcome = context.migration.apply_batch(foreign, next_batch, telemetry=_telemetry(foreign))
-    assert isinstance(outcome, RecordProblem)
-    assert _semantic_counts(context.database) == before
-
-
-def _assert_alias_fork_refused(context: _ImportContext, ticket_id: UUID) -> None:
-    fork = _alias_batch(
-        context.run.run_id,
-        context.run.cutover_id,
-        ticket_id,
-        batch_index=2,
-    )
-    before = _semantic_counts(context.database)
-    outcome = context.migration.apply_batch(
-        context.importer, fork, telemetry=_telemetry(context.importer)
-    )
-    assert isinstance(outcome, RecordProblem)
-    assert _semantic_counts(context.database) == before
-
-
-def _assert_cycle_refused(
-    context: _ImportContext,
-    ticket_a: UUID,
-    ticket_b: UUID,
-) -> None:
-    cycle = _relation_batch(
-        context.run.run_id,
-        context.run.cutover_id,
-        uuid4(),
-        ticket_b,
-        ticket_a,
-        batch_index=3,
-    )
-    before = _semantic_counts(context.database)
-    outcome = context.migration.apply_batch(
-        context.importer, cycle, telemetry=_telemetry(context.importer)
-    )
-    assert isinstance(outcome, RecordProblem)
-    assert outcome.code == "migration-relation-invalid"
-    assert _semantic_counts(context.database) == before
-
-
-def _assert_correction_and_stale_refusal(
-    context: _ImportContext,
-    relation_id: UUID,
-) -> None:
-    current_digest = _relation_digest(context.database, relation_id)
-    request = CtowerProjectImportCorrectionRequest(
-        schema_id="ctower.ctower-project-import-correction/v1",
-        correction_id=uuid4(),
-        run_id=context.run.run_id,
-        cutover_id=context.run.cutover_id,
-        tenant_key="ctower",
-        project_key="ctower",
-        correction_kind="relation",
-        superseded_revision=MigrationCorrectionRevision(object_id=relation_id, revision=1),
-        expected_current_digest=current_digest,
-        replacement=MigrationRelationCorrection(
-            kind="relation",
-            superseded_relation_active=False,
-            replacement_relation_id=None,
-        ),
-        reason="Reviewed relation correction",
-        reviewer_id=context.operator.principal_id,
-    )
-    command_id = uuid4()
-    receipt = context.migration.append_correction(
-        context.operator,
-        request,
-        command_id=command_id,
-        telemetry=_telemetry(context.operator),
-    )
-    assert not isinstance(receipt, RecordProblem)
-    before = _semantic_counts(context.database)
-    replay = context.migration.append_correction(
-        context.operator,
-        request,
-        command_id=command_id,
-        telemetry=_telemetry(context.operator),
-    )
-    assert replay == receipt
-    assert _semantic_counts(context.database) == before
-    stale = request.model_copy(update={"correction_id": uuid4()})
-    outcome = context.migration.append_correction(
-        context.operator,
-        stale,
+        _finalize(ready),
         command_id=uuid4(),
         telemetry=_telemetry(context.operator),
     )
-    assert isinstance(outcome, RecordProblem)
-    assert outcome.code == "migration-correction-conflict"
-    assert _semantic_counts(context.database) == before
+    _assert_finalized(
+        result,
+        ready,
+        context.store,
+        context.credential_digest,
+        context.now,
+    )
 
 
-def _assert_invalid_link_correction(
-    context: _ImportContext,
-    link_batch: CtowerProjectImportBatchRequest,
-) -> None:
-    link_id = link_batch.operations[0].identity.command_id
-    request = CtowerProjectImportCorrectionRequest(
-        schema_id="ctower.ctower-project-import-correction/v1",
-        correction_id=uuid4(),
-        run_id=context.run.run_id,
-        cutover_id=context.run.cutover_id,
-        tenant_key="ctower",
-        project_key="ctower",
-        correction_kind="source_link",
-        superseded_revision=MigrationCorrectionRevision(
-            object_id=link_id,
-            revision=1,
+def _start_run(database: Database, tmp_path: Path) -> _RunContext:
+    now = datetime.now(UTC)
+    source = reviewed_source(tmp_path, CUTOVER_ID)
+    store = PostgresMigration(
+        database.runtime_dsn,
+        trusted_reviewer_keys=source.trusted_keys,
+    )
+    migration = Migration(store, clock=lambda: now)
+    operator = Actor(database.operator_id, database.tenant_id, PrincipalKind.OPERATOR)
+    request = source.create_request(now)
+    before = semantic_counts(database)
+    for candidate, candidate_request in (
+        (Migration(PostgresMigration(database.runtime_dsn), clock=lambda: now), request),
+        (
+            migration,
+            request.model_copy(update={"source_selection_digest": f"sha256:{'0' * 64}"}),
         ),
-        expected_current_digest=_source_link_digest(context.database, link_id),
-        replacement=MigrationSourceLinkCorrection(
+    ):
+        refused = candidate.create_run(
+            operator,
+            candidate_request,
+            command_id=uuid4(),
+            telemetry=_telemetry(operator),
+        )
+        assert isinstance(refused, RecordProblem)
+        assert semantic_counts(database) == before
+    created = migration.create_run(
+        operator,
+        request,
+        command_id=uuid4(),
+        telemetry=_telemetry(operator),
+    )
+    assert not isinstance(created, RecordProblem)
+    credential_digest = hashlib.sha256(source.importer_credential.encode()).digest()
+    assert store.resolve_importer_credential(credential_digest, now) is None
+    return _RunContext(
+        now,
+        source,
+        store,
+        migration,
+        operator,
+        created,
+        credential_digest,
+    )
+
+
+def _bind_reviewed_plan(
+    context: _RunContext,
+    database: Database,
+) -> tuple[Actor, ImportPlan]:
+    _assert_export_graph_refusals(context, database)
+    exported = context.migration.bind_export_equality(
+        context.operator,
+        context.source.export_request(context.created.run_id),
+        command_id=uuid4(),
+        telemetry=_telemetry(context.operator),
+    )
+    assert not isinstance(exported, RecordProblem)
+    plan_request, plan = context.source.plan_request(
+        context.created.run_id,
+        _create_target(database, context.operator),
+        database.commander_id,
+        context.now,
+    )
+    _assert_plan_graph_refusals(context, database, plan_request)
+    planned = context.migration.bind_alias_plan(
+        context.operator,
+        plan_request,
+        command_id=uuid4(),
+        telemetry=_telemetry(context.operator),
+    )
+    assert not isinstance(planned, RecordProblem)
+    importer = context.store.resolve_importer_credential(
+        context.credential_digest,
+        context.now,
+    )
+    assert importer is not None
+    assert (
+        context.store.resolve_importer(
+            context.credential_digest,
+            context.created.run_id,
+            context.created.cutover_id,
+            "ctower",
+            context.now,
+        )
+        == importer
+    )
+    assert (
+        context.store.resolve_importer(
+            context.credential_digest,
+            context.created.run_id,
+            context.created.cutover_id,
+            "another-project",
+            context.now,
+        )
+        is None
+    )
+    return importer, plan
+
+
+def _assert_export_graph_refusals(context: _RunContext, database: Database) -> None:
+    request = context.source.export_request(context.created.run_id)
+    malformed = request.model_copy(
+        update={"export_equality_artifact": canonical_bytes({"invalid": True}).decode()}
+    )
+    export_a = json.loads(request.export_a_artifact)
+    export_a["artifact_digest"] = f"sha256:{'0' * 64}"
+    bad_export_digest = request.model_copy(
+        update={"export_a_artifact": canonical_bytes(export_a).decode()}
+    )
+    equality = _reseal(
+        context,
+        request.export_equality_artifact,
+        "report_digest",
+        {"cutover_id": str(uuid4())},
+    )
+    rebound = request.model_copy(
+        update={
+            "equality_report_digest": equality["report_digest"],
+            "export_equality_artifact": canonical_bytes(equality).decode(),
+        }
+    )
+    bad_inventory = request.model_copy(update={"inventory_a_digest": f"sha256:{'0' * 64}"})
+    for candidate in (malformed, bad_export_digest, rebound, bad_inventory):
+        before = semantic_counts(database)
+        refused = context.migration.bind_export_equality(
+            context.operator,
+            candidate,
+            command_id=uuid4(),
+            telemetry=_telemetry(context.operator),
+        )
+        assert isinstance(refused, RecordProblem)
+        assert semantic_counts(database) == before
+
+
+def _assert_plan_graph_refusals(
+    context: _RunContext,
+    database: Database,
+    plan_request: CtowerProjectAliasPlanBindRequest,
+) -> None:
+    plan_nonexhaustive = json.loads(plan_request.import_plan_artifact)
+    plan_nonexhaustive["operation_count"] += 1
+    plan_batch = json.loads(plan_request.import_plan_artifact)
+    plan_batch["batches"][0]["batch_index"] = 9
+    plan_command = json.loads(plan_request.import_plan_artifact)
+    plan_command["batches"][0]["operations"][0]["identity"]["command_id"] = str(uuid4())
+    batch = plan_command["batches"][0]
+    batch["batch_digest"] = canonical_digest(
+        {key: value for key, value in batch.items() if key != "batch_digest"}
+    )
+    candidates = (
+        plan_request.model_copy(update={"alias_map_digest": f"sha256:{'0' * 64}"}),
+        _plan_candidate(context, plan_request, plan_nonexhaustive),
+        _plan_candidate(context, plan_request, plan_batch),
+        _plan_candidate(context, plan_request, plan_command),
+        _artifact_candidate(
+            context,
+            plan_request,
+            "alias_map_artifact",
+            "map_digest",
+            {"attention_required": 1},
+        ),
+        _artifact_candidate(
+            context,
+            plan_request,
+            "fence_registry_artifact",
+            "registry_digest",
+            {"cutover_id": str(uuid4())},
+        ),
+    )
+    for candidate in candidates:
+        before = semantic_counts(database)
+        refused = context.migration.bind_alias_plan(
+            context.operator,
+            candidate,
+            command_id=uuid4(),
+            telemetry=_telemetry(context.operator),
+        )
+        assert isinstance(refused, RecordProblem)
+        assert semantic_counts(database) == before
+
+
+def _plan_candidate(
+    context: _RunContext,
+    request: CtowerProjectAliasPlanBindRequest,
+    plan: dict[str, object],
+) -> CtowerProjectAliasPlanBindRequest:
+    unsigned = {
+        key: value for key, value in plan.items() if key not in {"plan_digest", "signature"}
+    }
+    sealed = context.source.fixture.signer.seal(unsigned, "plan_digest")
+    return request.model_copy(update={"import_plan_artifact": canonical_bytes(sealed).decode()})
+
+
+def _artifact_candidate(
+    context: _RunContext,
+    request: CtowerProjectAliasPlanBindRequest,
+    field: Literal["alias_map_artifact", "fence_registry_artifact"],
+    digest_field: Literal["map_digest", "registry_digest"],
+    update: dict[str, object],
+) -> CtowerProjectAliasPlanBindRequest:
+    artifact = getattr(request, field)
+    sealed = _reseal(context, artifact, digest_field, update)
+    return request.model_copy(update={field: canonical_bytes(sealed).decode()})
+
+
+def _reseal(
+    context: _RunContext,
+    artifact_text: str,
+    digest_field: Literal["report_digest", "map_digest", "registry_digest"],
+    update: dict[str, object],
+) -> dict[str, object]:
+    artifact = json.loads(artifact_text)
+    unsigned = {
+        key: value for key, value in artifact.items() if key not in {digest_field, "signature"}
+    }
+    unsigned.update(update)
+    return context.source.fixture.signer.seal(unsigned, digest_field)
+
+
+def _apply_first_and_refuse_partial(
+    context: _RunContext,
+    database: Database,
+    importer: Actor,
+    plan: ImportPlan,
+) -> CtowerProjectImportBatchResult:
+    before_out_of_order = semantic_counts(database)
+    out_of_order = context.migration.apply_batch(
+        importer,
+        plan.batches[1],
+        telemetry=_telemetry(importer),
+    )
+    assert isinstance(out_of_order, RecordProblem)
+    denied = context.migration.apply_batch(
+        context.operator,
+        plan.batches[0],
+        telemetry=_telemetry(context.operator),
+    )
+    assert isinstance(denied, RecordProblem)
+    assert semantic_counts(database) == before_out_of_order
+    changed = plan.batches[0].model_copy(
+        update={"operations": tuple(reversed(plan.batches[0].operations))}
+    )
+    before_changed = semantic_counts(database)
+    rejected = context.migration.apply_batch(
+        importer,
+        changed,
+        telemetry=_telemetry(importer),
+    )
+    assert isinstance(rejected, RecordProblem)
+    assert semantic_counts(database) == before_changed
+    first_batch = context.migration.apply_batch(
+        importer,
+        plan.batches[0],
+        telemetry=_telemetry(importer),
+    )
+    assert not isinstance(first_batch, RecordProblem)
+    partial = context.migration.get_run(context.operator, context.created.run_id)
+    assert not isinstance(partial, RecordProblem)
+    before_finalize = semantic_counts(database)
+    partial_result = context.migration.finalize_run(
+        context.operator,
+        _finalize(partial),
+        command_id=uuid4(),
+        telemetry=_telemetry(context.operator),
+    )
+    assert isinstance(partial_result, RecordProblem)
+    assert semantic_counts(database) == before_finalize
+    return first_batch
+
+
+def _assert_append_only_corrections(
+    context: _RunContext,
+    database: Database,
+    plan: ImportPlan,
+    first_batch: CtowerProjectImportBatchResult,
+) -> None:
+    target_id = UUID(first_batch.results[0].target_id)
+    alias = next(item for item in plan.batches[0].operations if item.operation == "exact_alias")
+    source_link = next(
+        item for item in plan.batches[0].operations if item.operation == "source_link"
+    )
+    _assert_alias_correction(
+        context,
+        database,
+        target_id,
+        alias.identity.command_id,
+    )
+    _assert_source_link_correction(
+        context,
+        database,
+        target_id,
+        source_link.identity.command_id,
+    )
+
+
+def _assert_alias_correction(
+    context: _RunContext,
+    database: Database,
+    target_id: UUID,
+    alias_id: UUID,
+) -> None:
+    request = _correction(
+        context,
+        "alias",
+        alias_id,
+        alias_digest(database, alias_id),
+        MigrationAliasCorrection(
+            kind="alias",
+            target_ticket_id=uuid4(),
+            disposition="provenance_only",
+        ),
+    )
+    before = semantic_counts(database)
+    refused = _append(context, request, uuid4())
+    assert isinstance(refused, RecordProblem)
+    assert semantic_counts(database) == before
+    accepted = request.model_copy(
+        update={
+            "correction_id": uuid4(),
+            "replacement": request.replacement.model_copy(update={"target_ticket_id": target_id}),
+        }
+    )
+    _assert_correction_replay_and_stale(context, database, accepted)
+
+
+def _assert_source_link_correction(
+    context: _RunContext,
+    database: Database,
+    target_id: UUID,
+    link_id: UUID,
+) -> None:
+    request = _correction(
+        context,
+        "source_link",
+        link_id,
+        source_link_digest(database, link_id),
+        MigrationSourceLinkCorrection(
             kind="source_link",
             target_kind="ticket",
             target_id=f"ticket:{uuid4()}",
             disposition="provenance_only",
         ),
-        reason="Synthetic cross-scope target",
+    )
+    before = semantic_counts(database)
+    refused = _append(context, request, uuid4())
+    assert isinstance(refused, RecordProblem)
+    assert semantic_counts(database) == before
+    accepted = request.model_copy(
+        update={
+            "correction_id": uuid4(),
+            "replacement": request.replacement.model_copy(
+                update={"target_id": f"ticket:{target_id}"}
+            ),
+        }
+    )
+    _assert_correction_replay_and_stale(context, database, accepted)
+
+
+def _correction(
+    context: _RunContext,
+    kind: Literal["alias", "source_link"],
+    object_id: UUID,
+    expected_digest: str,
+    replacement: MigrationAliasCorrection | MigrationSourceLinkCorrection,
+) -> CtowerProjectImportCorrectionRequest:
+    return CtowerProjectImportCorrectionRequest(
+        schema_id="ctower.ctower-project-import-correction/v1",
+        correction_id=uuid4(),
+        run_id=context.created.run_id,
+        cutover_id=context.created.cutover_id,
+        tenant_key="ctower",
+        project_key="ctower",
+        correction_kind=kind,
+        superseded_revision=MigrationCorrectionRevision(object_id=object_id, revision=1),
+        expected_current_digest=expected_digest,
+        replacement=replacement,
+        reason="Reviewed append-only correction",
         reviewer_id=context.operator.principal_id,
     )
-    before = _semantic_counts(context.database)
-    outcome = context.migration.append_correction(
+
+
+def _append(
+    context: _RunContext,
+    request: CtowerProjectImportCorrectionRequest,
+    command_id: UUID,
+) -> object:
+    return context.migration.append_correction(
         context.operator,
         request,
-        command_id=uuid4(),
+        command_id=command_id,
         telemetry=_telemetry(context.operator),
     )
-    assert isinstance(outcome, RecordProblem)
-    assert outcome.code == "migration-correction-conflict"
-    assert _semantic_counts(context.database) == before
 
 
-def _assert_reconciliation_revokes_importer(
-    context: _ImportContext,
-    next_batch: CtowerProjectImportBatchRequest,
+def _assert_correction_replay_and_stale(
+    context: _RunContext,
+    database: Database,
+    request: CtowerProjectImportCorrectionRequest,
 ) -> None:
-    current = context.migration.get_run(context.operator, context.run.run_id)
-    assert not isinstance(current, RecordProblem)
-    request = CtowerProjectImportFinalizeRequest(
-        run_id=context.run.run_id,
-        cutover_id=context.run.cutover_id,
-        expected_run_semantic_digest=current.semantic_digest,
-    )
     command_id = uuid4()
-    result = context.migration.finalize_run(
-        context.operator,
-        request,
-        command_id=command_id,
-        telemetry=_telemetry(context.operator),
-    )
-    assert not isinstance(result, RecordProblem)
-    before = _semantic_counts(context.database)
-    replay = context.migration.finalize_run(
-        context.operator,
-        request,
-        command_id=command_id,
-        telemetry=_telemetry(context.operator),
-    )
-    assert replay == result
-    assert _semantic_counts(context.database) == before
-    assert (
-        context.store.resolve_importer(
-            hashlib.sha256(context.credential.encode()).digest(),
-            context.run.run_id,
-            context.run.cutover_id,
-            "ctower",
-            datetime.now(UTC),
+    receipt = _append(context, request, command_id)
+    assert not isinstance(receipt, RecordProblem)
+    before = semantic_counts(database)
+    assert _append(context, request, command_id) == receipt
+    drift = request.model_copy(update={"reason": "Changed replay"})
+    drifted = _append(context, drift, command_id)
+    assert isinstance(drifted, RecordProblem)
+    assert drifted.code == "migration-operation-drift"
+    stale = request.model_copy(update={"correction_id": uuid4()})
+    refused = _append(context, stale, uuid4())
+    assert isinstance(refused, RecordProblem)
+    assert refused.code == "migration-correction-conflict"
+    assert semantic_counts(database) == before
+
+
+class _MigrationClient:
+    def __init__(self, migration: Migration, importer: Actor) -> None:
+        self._migration = migration
+        self._importer = importer
+
+    def apply_ctower_project_import_batch(
+        self,
+        request: CtowerProjectImportBatchRequest,
+        *,
+        command_id: UUID,
+    ) -> CtowerProjectImportBatchResult:
+        outcome = self._migration.apply_batch(
+            self._importer,
+            request,
+            command_id=command_id,
+            telemetry=_telemetry(self._importer),
         )
-        is None
-    )
-    refused_auth = context.access.authenticate_importer(
-        f"Bearer {context.credential}",
-        run_id=context.run.run_id,
-        cutover_id=context.run.cutover_id,
-        project_key="ctower",
-    )
-    assert isinstance(refused_auth, RecordProblem)
-    finalized_batch = next_batch.model_copy(update={"batch_index": 4})
-    assert isinstance(
-        context.migration.apply_batch(
-            context.importer,
-            finalized_batch,
-            telemetry=_telemetry(context.importer),
+        assert not isinstance(outcome, RecordProblem)
+        return outcome
+
+
+def _assert_measured(ready: CtowerProjectImportRun) -> None:
+    assert ready.state == "pass_two_noop"
+    assert ready.counts.planned_operations == ready.counts.applied_operations == _OPERATION_COUNT
+    assert ready.counts.replayed_operations == _OPERATION_COUNT
+    assert ready.conservation is not None
+    assert ready.conservation.selected_request_physical_snapshots == _REQUEST_PHYSICAL_COUNT
+    assert ready.conservation.pass_two_new_events == 0
+
+
+def _assert_finalized(
+    result: object,
+    ready: CtowerProjectImportRun,
+    store: PostgresMigration,
+    credential_digest: bytes,
+    now: datetime,
+) -> None:
+    assert not isinstance(result, RecordProblem)
+    assert isinstance(result, CtowerProjectReconciliationResult)
+    assert result.conservation == ready.conservation
+    assert store.resolve_importer_credential(credential_digest, now) is None
+
+
+def _create_target(database: Database, operator: Actor) -> UUID:
+    outcome = Work(PostgresRecord(database.runtime_dsn)).create_ticket(
+        operator,
+        TicketCommand(
+            client_command_id=uuid4(),
+            initial_custodian_id=database.commander_id,
+            priority="P2",
+            source=SourceReference("synthetic", "synthetic:alias-target"),
+            title="Existing exact alias target",
         ),
-        RecordProblem,
+        telemetry=_telemetry(operator),
     )
-
-
-def _create_operator_ticket(database: _Database, operator: Actor) -> UUID:
-    work = Work(PostgresRecord(database.runtime_dsn))
-    command = TicketCommand(
-        client_command_id=uuid4(),
-        initial_custodian_id=database.commander_id,
-        priority="P2",
-        source=SourceReference("synthetic", "synthetic:alias-target"),
-        title="Existing exact alias target",
-    )
-    outcome = work.create_ticket(operator, command, telemetry=_telemetry(operator))
     assert not isinstance(outcome, RecordProblem)
     return outcome.ticket.ticket_id
 
 
-class _NoGeneralCredential:
-    def actor_for_credential(self, credential_digest: bytes) -> None:
-        del credential_digest
-
-
-def _assert_database_event_guard(database: _Database, importer: Actor) -> None:
-    with (
-        pytest.raises(psycopg.errors.InsufficientPrivilege),
-        psycopg.connect(database.admin_dsn) as connection,
-    ):
-        connection.execute(
-            """
-            INSERT INTO events (
-                event_id, tenant_id, stream_id, aggregate_id, sequence, kind,
-                schema_version, actor_principal_id, client_command_id,
-                request_sha256, correlation_id, origin, server_time, payload,
-                prev_hash, event_hash, record_position
-            ) VALUES (%s, %s, %s, %s, 1, 'proof.changed', 1, %s, %s,
-                %s, %s, 'migration_importer', %s, %s, %s, %s, 999999)
-            """,
-            (
-                uuid4(),
-                database.tenant_id,
-                f"proof:{uuid4()}",
-                uuid4(),
-                importer.principal_id,
-                uuid4(),
-                bytes(32),
-                uuid4(),
-                datetime.now(UTC),
-                Jsonb({}),
-                bytes(32),
-                bytes.fromhex("01" * 32),
-            ),
-        )
-
-
-def _assert_run_is_immutable(database: _Database, run_id: UUID) -> None:
-    with (
-        pytest.raises(psycopg.errors.ObjectNotInPrerequisiteState),
-        psycopg.connect(database.admin_dsn) as connection,
-    ):
-        connection.execute(
-            "UPDATE migration_import_runs SET project_key = 'ctower' WHERE run_id = %s",
-            (run_id,),
-        )
+def _finalize(run: CtowerProjectImportRun) -> CtowerProjectImportFinalizeRequest:
+    return CtowerProjectImportFinalizeRequest(
+        run_id=run.run_id,
+        cutover_id=run.cutover_id,
+        expected_run_semantic_digest=run.semantic_digest,
+    )
 
 
 def _telemetry(actor: Actor) -> TelemetryContext:

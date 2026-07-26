@@ -86,11 +86,13 @@ def _report_payload(
     entries: list[dict[str, Any]],
     review: Mapping[str, Any],
 ) -> dict[str, Any]:
-    dispositions = Counter(str(entry["disposition"]) for entry in entries)
-    source_watermark = max(
-        int(source["last_complete_offset"])
-        for source in cast(list[dict[str, Any]], frozen.manifest["sources"])
-    )
+    if run.dispositions is None or run.conservation is None:
+        raise MigrationRefusal(RefusalCode.TARGET_STATE_UNKNOWN, "server measurement")
+    expected_dispositions = Counter(str(entry["disposition"]) for entry in entries)
+    if run.dispositions.model_dump() != {
+        key: expected_dispositions.get(key, 0) for key in _DISPOSITIONS
+    }:
+        raise MigrationRefusal(RefusalCode.RECONCILIATION_MISMATCH, "server dispositions")
     artifact: dict[str, Any] = {
         "schema": "ctower.ctower-project-reconciliation/v1",
         "reconciliation_id": str(
@@ -111,11 +113,11 @@ def _report_payload(
             "schema": frozen.manifest["target_inventory"]["schema_digest"],
             "operation_registry": frozen.manifest["target_inventory"]["operation_registry_digest"],
         },
-        "dispositions": {key: dispositions.get(key, 0) for key in _DISPOSITIONS},
-        "conservation": _conservation(len(entries)),
+        "dispositions": run.dispositions.model_dump(mode="json"),
+        "conservation": run.conservation.model_dump(mode="json"),
         "watermarks": {
-            "source_native": source_watermark,
-            "export_native": source_watermark,
+            "source_native": run.source_native_watermark,
+            "export_native": run.export_native_watermark,
             "record_position": run.record_watermark,
             "projection_position": delivery.projection_record_position,
         },
@@ -137,6 +139,12 @@ def _verify_target(
     _verify_run_scope(run, plan)
     pinned = run.pinned_digests.model_dump(mode="json", by_alias=True)
     pinned.pop("reviewer_public_key", None)
+    fence_registry = pinned.pop("fence_registry", None)
+    if fence_registry is None:
+        raise MigrationRefusal(
+            RefusalCode.RECONCILIATION_MISMATCH,
+            "verified fence registry pin",
+        )
     if pinned != _expected_pins(frozen, plan):
         raise MigrationRefusal(RefusalCode.RECONCILIATION_MISMATCH, "pinned target digests")
     _verify_import_counts(run, plan)
@@ -165,6 +173,7 @@ def _expected_pins(frozen: FrozenExport, plan: ImportPlan) -> dict[str, Any]:
         "source_selection": plan.selection_digest,
         "export_equality": plan.equality_digest,
         "alias_map": plan.alias_map_digest,
+        "import_plan": plan.plan_digest,
         "build": frozen.manifest["target_inventory"]["build_digest"],
         "client": frozen.manifest["target_inventory"]["client_digest"],
         "schema": frozen.manifest["target_inventory"]["schema_digest"],
@@ -279,25 +288,3 @@ def _record_key(identity: Mapping[str, Any]) -> tuple[str, str, str]:
         str(identity["immutable_source_id"]),
         str(identity["source_version"]),
     )
-
-
-def _conservation(selected: int) -> dict[str, int]:
-    return {
-        "selected_logical_items": selected,
-        "selected_request_logical": 86,
-        "selected_request_physical_snapshots": 243,
-        "stable_aliases": 27,
-        "checkpoint_definitions": 14,
-        "unresolved_aliases": 0,
-        "alias_forks_or_cycles": 0,
-        "missing_relation_endpoints": 0,
-        "forbidden_relation_cycles": 0,
-        "unresolved_active_claims": 0,
-        "unexpected_sources": 0,
-        "forbidden_data_items": 0,
-        "pass_two_new_domain_facts": 0,
-        "pass_two_new_events": 0,
-        "pass_two_new_outbox_rows": 0,
-        "pass_two_record_position_delta": 0,
-        "pass_two_projection_semantic_delta": 0,
-    }
