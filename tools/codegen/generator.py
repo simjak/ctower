@@ -55,6 +55,7 @@ _BASE_INPUTS = (
     Path("tools/codegen/_inventory.py"),
     Path("tools/codegen/_model_codegen.py"),
     Path("tools/codegen/_operation_codegen.py"),
+    Path("tools/codegen/_rfc3339_codegen.py"),
     Path("tools/codegen/_schema_codegen.py"),
     Path("tools/codegen/_typescript_codegen.py"),
     Path("tools/codegen/_typescript_validation_codegen.py"),

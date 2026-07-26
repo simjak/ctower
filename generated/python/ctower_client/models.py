@@ -1,16 +1,17 @@
 """DO NOT EDIT: generated file; regenerate from declared inputs.
 
-Authored contract digest: sha256:799c441c9397cb850d0d2aee75828ffcdabc2fe2c9d759ebf623a80894c9e17b
+Authored contract digest: sha256:ec332d50921e294c31199c47a3560e5720596238b75992d5e0ae3d6065a0fd89
 """
 
 from __future__ import annotations
 
-from datetime import datetime
+from datetime import datetime, timedelta, timezone
 from enum import StrEnum
+import re
 from typing import Annotated, Literal
 from uuid import UUID
 
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, BeforeValidator, ConfigDict, Field
 
 __all__ = [
     "ActivityClass",
@@ -174,6 +175,62 @@ __all__ = [
 ]
 
 
+_RFC3339_PATTERN = re.compile(
+    r"^(?P<year>\d{4})-(?P<month>\d{2})-(?P<day>\d{2})"
+    r"T(?P<hour>\d{2}):(?P<minute>\d{2}):(?P<second>\d{2})"
+    r"(?:\.(?P<fraction>\d{1,6}))?"
+    r"(?P<zone>Z|(?P<sign>[+-])(?P<offset_hour>\d{2}):(?P<offset_minute>\d{2}))$"
+)
+
+
+def _validate_rfc3339(value: object) -> datetime:
+    if isinstance(value, datetime):
+        offset = value.utcoffset()
+        if offset is None:
+            raise ValueError("RFC 3339 timestamps require a timezone")
+        offset_seconds = offset.total_seconds()
+        if offset_seconds % 60 != 0 or abs(offset_seconds) > 86_340:
+            raise ValueError("RFC 3339 timestamp has an invalid numeric offset")
+        return value
+    if not isinstance(value, str):
+        raise ValueError("RFC 3339 timestamp must be a string or datetime")
+    match = _RFC3339_PATTERN.fullmatch(value)
+    if match is None or match.group("zone") == "-00:00":
+        raise ValueError("timestamp is outside the authored RFC 3339 profile")
+    parts = {name: int(match.group(name)) for name in (
+        "year", "month", "day", "hour", "minute", "second"
+    )}
+    if not 1 <= parts["year"] <= 9999:
+        raise ValueError("RFC 3339 timestamp year is outside 0001-9999")
+    if parts["hour"] > 23 or parts["minute"] > 59 or parts["second"] > 59:
+        raise ValueError("RFC 3339 timestamp has an invalid time")
+    offset_hour = int(match.group("offset_hour") or 0)
+    offset_minute = int(match.group("offset_minute") or 0)
+    if offset_hour > 23 or offset_minute > 59:
+        raise ValueError("RFC 3339 timestamp has an invalid numeric offset")
+    offset = timedelta(hours=offset_hour, minutes=offset_minute)
+    if match.group("sign") == "-":
+        offset = -offset
+    zone = timezone.utc if match.group("zone") == "Z" else timezone(offset)
+    fraction = (match.group("fraction") or "").ljust(6, "0")
+    try:
+        return datetime(
+            parts["year"],
+            parts["month"],
+            parts["day"],
+            parts["hour"],
+            parts["minute"],
+            parts["second"],
+            int(fraction or 0),
+            zone,
+        )
+    except ValueError as error:
+        raise ValueError("timestamp is outside the proleptic Gregorian calendar") from error
+
+
+_Rfc3339DateTime = Annotated[datetime, BeforeValidator(_validate_rfc3339)]
+
+
 class _BoundaryModel(BaseModel):
     model_config = ConfigDict(extra="forbid", frozen=True, populate_by_name=True, strict=True)
 
@@ -221,7 +278,7 @@ class BlockIntent(_BoundaryModel):
     source_ref: Annotated[str, Field(min_length=1, max_length=256)]
     affected_stage: Annotated[str, Field(pattern="^[a-z][a-z0-9._-]*$")] | None
     resolution_condition: Annotated[str, Field(min_length=1, max_length=500)]
-    next_check_at: datetime | None
+    next_check_at: _Rfc3339DateTime | None
     dependency_ref: Annotated[str, Field(max_length=256)] | None
     board_impact: bool
 
@@ -329,7 +386,7 @@ class CtowerProjectAliasPlanBindRequest(_BoundaryModel):
     import_plan_artifact: Annotated[str, Field(min_length=2, max_length=8388608)]
     fence_registry_artifact: Annotated[str, Field(min_length=2, max_length=2097152)]
     fence_observer_credential_digest: Annotated[str, Field(pattern="^sha256:[0-9a-f]{64}$")]
-    fence_observer_expires_at: datetime
+    fence_observer_expires_at: _Rfc3339DateTime
 
 
 class CtowerProjectEpochRefusalRequest(_BoundaryModel):
@@ -377,7 +434,7 @@ class CtowerProjectImportRunCreateRequest(_BoundaryModel):
     reviewer_key_version: Annotated[int, Field(ge=1)]
     reviewer_public_key_digest: Annotated[str, Field(pattern="^sha256:[0-9a-f]{64}$")]
     importer_credential_digest: Annotated[str, Field(pattern="^sha256:[0-9a-f]{64}$")]
-    importer_expires_at: datetime
+    importer_expires_at: _Rfc3339DateTime
 
 
 class CustodyTransferRequest(_BoundaryModel):
@@ -398,13 +455,13 @@ class DeferIntent(_BoundaryModel):
     kind: Literal["defer"]
     expected_version: Annotated[int, Field(ge=1)]
     reason: Annotated[str, Field(min_length=1, max_length=500)]
-    review_after: datetime
+    review_after: _Rfc3339DateTime
 
 
 class DeferredAuditData(_BoundaryModel):
     episode_number: Annotated[int, Field(ge=1)]
     reason: Annotated[str, Field(min_length=1, max_length=500)]
-    review_after: datetime
+    review_after: _Rfc3339DateTime
 
 
 class DurabilityState(StrEnum):
@@ -544,13 +601,13 @@ class MigrationImportOperationResult(_BoundaryModel):
     target_id: Annotated[str, Field(min_length=1, max_length=256)]
     event_ids: tuple[UUID, ...]
     record_position: Annotated[int, Field(ge=1)]
-    occurred_at: datetime
+    occurred_at: _Rfc3339DateTime
 
 
 class MigrationImporterBinding(_BoundaryModel):
     principal_kind: Literal["migration_importer"]
     credential_digest: Annotated[str, Field(pattern="^sha256:[0-9a-f]{64}$")]
-    expires_at: datetime
+    expires_at: _Rfc3339DateTime
     revoked: bool
 
 
@@ -636,7 +693,7 @@ class MigrationRelationCorrection(_BoundaryModel):
 
 class MigrationReview(_BoundaryModel):
     reviewer_principal_id: UUID
-    reviewed_at: datetime
+    reviewed_at: _Rfc3339DateTime
     decision: Literal["approved"]
 
 
@@ -949,13 +1006,13 @@ class AssignmentChangeRequest(_BoundaryModel):
 
 
 class AssignmentInterval(_BoundaryModel):
-    assigned_at: datetime
+    assigned_at: _Rfc3339DateTime
     assignment_kind: AssignmentKind
     changed_by: UUID
     episode_number: Annotated[int, Field(ge=1)]
     principal_id: UUID
     reason: str
-    released_at: datetime | None
+    released_at: _Rfc3339DateTime | None
     scope_ref: str | None
     sequence: Annotated[int, Field(ge=1)]
 
@@ -963,7 +1020,7 @@ class AssignmentInterval(_BoundaryModel):
 class BoardCard(_BoundaryModel):
     activity_class: Literal["work", "verification", "None"] | None
     assignee_id: UUID | None
-    blocker_opened_at: datetime | None
+    blocker_opened_at: _Rfc3339DateTime | None
     blocker_reason: str | None
     custodian_id: UUID
     delivery_facts: tuple[str, ...]
@@ -998,7 +1055,7 @@ class CompanyBundleCommandResult(_BoundaryModel):
 
 
 class CompanyBundleExportMetadata(_BoundaryModel):
-    activated_at: datetime
+    activated_at: _Rfc3339DateTime
     actor_principal_id: UUID
     checks: tuple[BundleCheck, ...]
     command_id: UUID
@@ -1072,7 +1129,7 @@ class CtowerProjectFenceObservationRequest(_BoundaryModel):
     source_pointer_digest: Annotated[str, Field(pattern="^sha256:[0-9a-f]{64}$")]
     sequence: Annotated[int, Field(ge=1)]
     previous_observation_digest: Annotated[str, Field(pattern="^sha256:[0-9a-f]{64}$")] | None
-    observed_at: datetime
+    observed_at: _Rfc3339DateTime
     from_offset: Annotated[int, Field(ge=0)]
     to_offset: Annotated[int, Field(ge=0)]
     file_identity: MigrationFenceFileIdentity
@@ -1170,7 +1227,7 @@ class CtowerProjectReconciliationResult(_BoundaryModel):
     pass_two_measurement: MigrationPassTwoMeasurement
     watermarks: MigrationWatermarks
     target_semantic_digest: Annotated[str, Field(pattern="^sha256:[0-9a-f]{64}$")]
-    reconciled_at: datetime
+    reconciled_at: _Rfc3339DateTime
     review: MigrationReview
     report_digest: Annotated[str, Field(pattern="^sha256:[0-9a-f]{64}$")]
     signature: MigrationDetachedSignature
@@ -1224,7 +1281,7 @@ class CustodyTransferredAuditEvent(_BoundaryModel):
     event_hash: Annotated[str, Field(pattern="^sha256:[0-9a-f]{64}$")]
     event_id: UUID
     kind: Literal["ticket.custody_transferred"]
-    occurred_at: datetime
+    occurred_at: _Rfc3339DateTime
     payload: CustodyTransferredPayload
     record_position: Annotated[int, Field(ge=1)]
     sequence: Annotated[int, Field(ge=1)]
@@ -1242,7 +1299,7 @@ class HealthContributor(_BoundaryModel):
     status: HealthStatus
     watermark: Annotated[int, Field(ge=0)] | None
     threshold_seconds: Annotated[int, Field(ge=0)]
-    observed_at: datetime
+    observed_at: _Rfc3339DateTime
     owner: Annotated[str, Field(min_length=1, max_length=128)]
     reason: Annotated[str, Field(min_length=1, max_length=500)]
 
@@ -1296,7 +1353,7 @@ class PoisonDispositionReceipt(_BoundaryModel):
     action: PoisonDispositionAction
     durability_state: DurabilityState
     event_ids: Annotated[tuple[UUID, ...], Field(min_length=1)]
-    recorded_at: datetime
+    recorded_at: _Rfc3339DateTime
 
 
 class PoisonDispositionRequest(_BoundaryModel):
@@ -1352,8 +1409,8 @@ class ProjectDeliveryRow(_BoundaryModel):
     ]
     data_class: Literal["RECONSTRUCTIBLE_ONLY", "DISASTER_SAFE_CTOWER_ENGINEERING", "STATE_UNKNOWN"]
     semantic_digest: Annotated[str, Field(pattern="^sha256:[0-9a-f]{64}$")]
-    reconciled_at: datetime
-    freshness_due_at: datetime
+    reconciled_at: _Rfc3339DateTime
+    freshness_due_at: _Rfc3339DateTime
     rebuild_generation: Annotated[int, Field(ge=0)]
     source_ids: tuple[Annotated[str, Field(min_length=1)], ...]
     derivation_reasons: Annotated[tuple[Annotated[str, Field(min_length=1)], ...], Field(min_length=1)]
@@ -1365,7 +1422,7 @@ class ProofChangedAuditEvent(_BoundaryModel):
     event_hash: Annotated[str, Field(pattern="^sha256:[0-9a-f]{64}$")]
     event_id: UUID
     kind: Literal["proof.changed"]
-    occurred_at: datetime
+    occurred_at: _Rfc3339DateTime
     payload: ProofChangedAuditPayload
     record_position: Annotated[int, Field(ge=1)]
     sequence: Annotated[int, Field(ge=1)]
@@ -1409,8 +1466,8 @@ class SyntheticRunReceipt(_BoundaryModel):
 
 class SyntheticRunResource(_BoundaryModel):
     attempt_count: Annotated[int, Field(ge=0, le=8)]
-    completed_at: datetime | None
-    created_at: datetime
+    completed_at: _Rfc3339DateTime | None
+    created_at: _Rfc3339DateTime
     detail_code: Annotated[str, Field(pattern="^[a-z][a-z0-9._-]{2,95}$")] | None
     job_id: UUID
     lifecycle_facts: Annotated[tuple[Literal["resolved", "closed"], ...], Field(max_length=2)]
@@ -1426,7 +1483,7 @@ class TicketCommentAddedAuditEvent(_BoundaryModel):
     event_hash: Annotated[str, Field(pattern="^sha256:[0-9a-f]{64}$")]
     event_id: UUID
     kind: Literal["ticket.comment_added"]
-    occurred_at: datetime
+    occurred_at: _Rfc3339DateTime
     payload: TicketCommentAddedPayload
     record_position: Annotated[int, Field(ge=1)]
     sequence: Annotated[int, Field(ge=1)]
@@ -1461,7 +1518,7 @@ class TicketIntentRequest(_BoundaryModel):
 
 
 class TicketResource(_BoundaryModel):
-    created_at: datetime
+    created_at: _Rfc3339DateTime
     custodian_id: UUID
     durability_state: DurabilityState
     priority: Priority
@@ -1545,7 +1602,7 @@ class WorkflowChangedAuditEvent(_BoundaryModel):
     event_hash: Annotated[str, Field(pattern="^sha256:[0-9a-f]{64}$")]
     event_id: UUID
     kind: Literal["workflow.changed"]
-    occurred_at: datetime
+    occurred_at: _Rfc3339DateTime
     payload: WorkflowChangedAuditPayload
     record_position: Annotated[int, Field(ge=1)]
     sequence: Annotated[int, Field(ge=1)]
@@ -1626,8 +1683,8 @@ class ProjectDeliveryView(_BoundaryModel):
     project_key: Annotated[str, Field(pattern="^[a-z][a-z0-9-]{2,63}$")]
     source_record_position: Annotated[int, Field(ge=0)]
     projection_record_position: Annotated[int, Field(ge=0)]
-    reconciled_at: datetime
-    freshness_due_at: datetime
+    reconciled_at: _Rfc3339DateTime
+    freshness_due_at: _Rfc3339DateTime
     projection_semantic_digest: Annotated[str, Field(pattern="^sha256:[0-9a-f]{64}$")]
     rebuild_generation: Annotated[int, Field(ge=0)]
     rows: tuple[ProjectDeliveryRow, ...]
@@ -1646,7 +1703,7 @@ class TicketCreatedAuditEvent(_BoundaryModel):
     event_hash: Annotated[str, Field(pattern="^sha256:[0-9a-f]{64}$")]
     event_id: UUID
     kind: Literal["ticket.created"]
-    occurred_at: datetime
+    occurred_at: _Rfc3339DateTime
     payload: TicketCreatedPayload
     record_position: Annotated[int, Field(ge=1)]
     sequence: Annotated[int, Field(ge=1)]
@@ -1658,7 +1715,7 @@ class TimelineEvent(_BoundaryModel):
     command_id: UUID
     event_id: UUID
     kind: Literal["ticket.created", "ticket.custody_transferred", "ticket.comment_added"]
-    occurred_at: datetime
+    occurred_at: _Rfc3339DateTime
     payload: TicketCreatedPayload | CustodyTransferredPayload | TicketCommentAddedPayload
     sequence: Annotated[int, Field(ge=1)]
 
@@ -1690,7 +1747,7 @@ class CompanyBundlePlan(_BoundaryModel):
 class ControlHealth(_BoundaryModel):
     schema_id: Literal["ctower.health/v1"]
     status: HealthStatus
-    observed_at: datetime
+    observed_at: _Rfc3339DateTime
     availability: HealthDimension
     completeness: HealthDimension
     integrity: HealthDimension
@@ -1744,7 +1801,7 @@ class WorkChangedAuditEvent(_BoundaryModel):
     event_hash: Annotated[str, Field(pattern="^sha256:[0-9a-f]{64}$")]
     event_id: UUID
     kind: Literal["work.changed"]
-    occurred_at: datetime
+    occurred_at: _Rfc3339DateTime
     payload: WorkChangedAuditPayload
     record_position: Annotated[int, Field(ge=1)]
     sequence: Annotated[int, Field(ge=1)]

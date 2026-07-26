@@ -1,6 +1,6 @@
 """DO NOT EDIT: generated file; regenerate from declared inputs.
 
-Authored contract digest: sha256:799c441c9397cb850d0d2aee75828ffcdabc2fe2c9d759ebf623a80894c9e17b
+Authored contract digest: sha256:ec332d50921e294c31199c47a3560e5720596238b75992d5e0ae3d6065a0fd89
 """
 
 from __future__ import annotations
@@ -82,6 +82,10 @@ class _ProblemModel(Protocol):
     detail: str
 
 
+class _StatusProblemModel(_ProblemModel, Protocol):
+    status: int
+
+
 class CtowerProblemError(Exception):
     """Typed RFC 9457 response from ctower."""
 
@@ -139,7 +143,7 @@ class CtowerClient:
                 },
             ),
         )
-        return _response(response, TicketCommentResult, {401: Problem, 403: Problem, 404: Problem, 409: Problem, 422: Problem})
+        return _response(response, {200: TicketCommentResult, 202: TicketCommentResult}, {401: Problem, 403: Problem, 404: Problem, 409: Problem, 422: Problem})
 
     @validate_call(config=ConfigDict(strict=True, arbitrary_types_allowed=True))
     def add_ticket_relation(
@@ -161,7 +165,7 @@ class CtowerClient:
                 },
             ),
         )
-        return _response(response, WorkReceipt, {401: Problem, 404: Problem, 409: Problem, 422: Problem})
+        return _response(response, {200: WorkReceipt, 202: WorkReceipt}, {401: Problem, 404: Problem, 409: Problem, 422: Problem})
 
     @validate_call(config=ConfigDict(strict=True, arbitrary_types_allowed=True))
     def append_ctower_project_import_correction(
@@ -182,7 +186,7 @@ class CtowerClient:
                 },
             ),
         )
-        return _response(response, CtowerProjectMigrationReceipt, {401: Problem, 409: Problem, 422: Problem})
+        return _response(response, {201: CtowerProjectMigrationReceipt, 202: CtowerProjectMigrationReceipt}, {401: Problem, 409: Problem, 422: Problem})
 
     @validate_call(config=ConfigDict(strict=True, arbitrary_types_allowed=True))
     def apply_company_bundle(
@@ -203,7 +207,7 @@ class CtowerClient:
                 },
             ),
         )
-        return _response(response, CompanyBundleCommandResult, {401: Problem, 403: Problem, 409: Problem, 422: Problem, 503: Problem})
+        return _response(response, {200: CompanyBundleCommandResult, 202: CompanyBundleCommandResult}, {401: Problem, 403: Problem, 409: Problem, 422: Problem, 503: Problem})
 
     @validate_call(config=ConfigDict(strict=True, arbitrary_types_allowed=True))
     def apply_ctower_project_import_batch(
@@ -224,7 +228,7 @@ class CtowerClient:
                 },
             ),
         )
-        return _response(response, CtowerProjectImportBatchResult, {401: Problem, 403: Problem, 409: Problem, 422: Problem})
+        return _response(response, {200: CtowerProjectImportBatchResult, 202: CtowerProjectImportBatchResult}, {401: Problem, 403: Problem, 409: Problem, 422: Problem})
 
     @validate_call(config=ConfigDict(strict=True, arbitrary_types_allowed=True))
     def apply_ticket_intent(
@@ -246,7 +250,7 @@ class CtowerClient:
                 },
             ),
         )
-        return _response(response, WorkReceipt, {401: Problem, 404: Problem, 409: Problem, 422: Problem})
+        return _response(response, {200: WorkReceipt, 202: WorkReceipt}, {401: Problem, 404: Problem, 409: Problem, 422: Problem})
 
     @validate_call(config=ConfigDict(strict=True, arbitrary_types_allowed=True))
     def bind_ctower_project_alias_plan(
@@ -267,7 +271,7 @@ class CtowerClient:
                 },
             ),
         )
-        return _response(response, CtowerProjectImportRun, {401: Problem, 409: Problem, 422: Problem})
+        return _response(response, {200: CtowerProjectImportRun, 202: CtowerProjectImportRun}, {401: Problem, 409: Problem, 422: Problem})
 
     @validate_call(config=ConfigDict(strict=True, arbitrary_types_allowed=True))
     def bind_ctower_project_export_equality(
@@ -288,7 +292,7 @@ class CtowerClient:
                 },
             ),
         )
-        return _response(response, CtowerProjectImportRun, {401: Problem, 409: Problem, 422: Problem})
+        return _response(response, {200: CtowerProjectImportRun, 202: CtowerProjectImportRun}, {401: Problem, 409: Problem, 422: Problem})
 
     @validate_call(config=ConfigDict(strict=True, arbitrary_types_allowed=True))
     def bootstrap_first_tenant(
@@ -311,7 +315,7 @@ class CtowerClient:
                 },
             ),
         )
-        return _response(response, BootstrapReceipt, {401: Problem, 403: Problem, 409: Problem, 410: Problem, 422: Problem})
+        return _response(response, {201: BootstrapReceipt, 202: BootstrapReceipt}, {401: Problem, 403: Problem, 409: Problem, 410: Problem, 422: Problem})
 
     @validate_call(config=ConfigDict(strict=True, arbitrary_types_allowed=True))
     def change_ticket_assignment(
@@ -333,7 +337,7 @@ class CtowerClient:
                 },
             ),
         )
-        return _response(response, WorkReceipt, {401: Problem, 404: Problem, 409: Problem, 422: Problem})
+        return _response(response, {200: WorkReceipt, 202: WorkReceipt}, {401: Problem, 404: Problem, 409: Problem, 422: Problem})
 
     @validate_call(config=ConfigDict(strict=True, arbitrary_types_allowed=True))
     def change_ticket_priority(
@@ -355,7 +359,7 @@ class CtowerClient:
                 },
             ),
         )
-        return _response(response, WorkReceipt, {401: Problem, 403: Problem, 404: Problem, 409: Problem, 422: Problem})
+        return _response(response, {200: WorkReceipt, 202: WorkReceipt}, {401: Problem, 403: Problem, 404: Problem, 409: Problem, 422: Problem})
 
     @validate_call(config=ConfigDict(strict=True, arbitrary_types_allowed=True))
     def commit_ctower_project_development_epoch(
@@ -397,7 +401,7 @@ class CtowerClient:
                 },
             ),
         )
-        return _response(response, CtowerProjectImportRun, {401: Problem, 409: Problem, 422: Problem})
+        return _response(response, {201: CtowerProjectImportRun, 202: CtowerProjectImportRun}, {401: Problem, 409: Problem, 422: Problem})
 
     @validate_call(config=ConfigDict(strict=True, arbitrary_types_allowed=True))
     def create_ticket(
@@ -418,7 +422,7 @@ class CtowerClient:
                 },
             ),
         )
-        return _response(response, TicketCommandResult, {401: Problem, 403: Problem, 404: Problem, 409: Problem, 422: Problem})
+        return _response(response, {201: TicketCommandResult, 202: TicketCommandResult}, {401: Problem, 403: Problem, 404: Problem, 409: Problem, 422: Problem})
 
     @validate_call(config=ConfigDict(strict=True, arbitrary_types_allowed=True))
     def export_company_bundle(
@@ -433,7 +437,7 @@ class CtowerClient:
                 },
             ),
         )
-        return _response(response, CompanyBundleExportResult, {401: Problem, 403: Problem, 404: Problem})
+        return _response(response, {200: CompanyBundleExportResult}, {401: Problem, 403: Problem, 404: Problem})
 
     @validate_call(config=ConfigDict(strict=True, arbitrary_types_allowed=True))
     def finalize_ctower_project_import_run(
@@ -454,7 +458,7 @@ class CtowerClient:
                 },
             ),
         )
-        return _response(response, CtowerProjectReconciliationResult, {401: Problem, 409: Problem, 422: Problem})
+        return _response(response, {200: CtowerProjectReconciliationResult, 202: CtowerProjectReconciliationResult}, {401: Problem, 409: Problem, 422: Problem})
 
     @validate_call(config=ConfigDict(strict=True, arbitrary_types_allowed=True))
     def freeze_proof_criteria(
@@ -476,7 +480,7 @@ class CtowerClient:
                 },
             ),
         )
-        return _response(response, ProofReceipt, {401: Problem, 403: Problem, 404: Problem, 409: Problem, 422: Problem})
+        return _response(response, {200: ProofReceipt, 202: ProofReceipt}, {401: Problem, 403: Problem, 404: Problem, 409: Problem, 422: Problem})
 
     @validate_call(config=ConfigDict(strict=True, arbitrary_types_allowed=True))
     def get_board(
@@ -498,7 +502,7 @@ class CtowerClient:
                 },
             ),
         )
-        return _response(response, BoardView, {401: Problem, 422: Problem})
+        return _response(response, {200: BoardView}, {401: Problem, 422: Problem})
 
     @validate_call(config=ConfigDict(strict=True, arbitrary_types_allowed=True))
     def get_control_health(
@@ -513,7 +517,7 @@ class CtowerClient:
                 },
             ),
         )
-        return _response(response, ControlHealth, {401: Problem})
+        return _response(response, {200: ControlHealth}, {401: Problem})
 
     @validate_call(config=ConfigDict(strict=True, arbitrary_types_allowed=True))
     def get_ctower_project_cutover_health(
@@ -528,7 +532,7 @@ class CtowerClient:
                 },
             ),
         )
-        return _response(response, CtowerProjectCutoverHealth, {401: Problem})
+        return _response(response, {200: CtowerProjectCutoverHealth}, {401: Problem})
 
     @validate_call(config=ConfigDict(strict=True, arbitrary_types_allowed=True))
     def get_ctower_project_import_run(
@@ -544,7 +548,7 @@ class CtowerClient:
                 },
             ),
         )
-        return _response(response, CtowerProjectImportRun, {401: Problem, 404: Problem})
+        return _response(response, {200: CtowerProjectImportRun}, {401: Problem, 404: Problem})
 
     @validate_call(config=ConfigDict(strict=True, arbitrary_types_allowed=True))
     def get_project_delivery(
@@ -560,7 +564,7 @@ class CtowerClient:
                 },
             ),
         )
-        return _response(response, ProjectDeliveryView, {401: Problem, 404: Problem, 422: Problem})
+        return _response(response, {200: ProjectDeliveryView}, {401: Problem, 404: Problem, 422: Problem})
 
     @validate_call(config=ConfigDict(strict=True, arbitrary_types_allowed=True))
     def get_synthetic_workflow_run(
@@ -576,7 +580,7 @@ class CtowerClient:
                 },
             ),
         )
-        return _response(response, SyntheticRunResource, {401: Problem, 404: Problem, 422: Problem})
+        return _response(response, {200: SyntheticRunResource}, {401: Problem, 404: Problem, 422: Problem})
 
     @validate_call(config=ConfigDict(strict=True, arbitrary_types_allowed=True))
     def get_ticket(
@@ -592,7 +596,7 @@ class CtowerClient:
                 },
             ),
         )
-        return _response(response, TicketResource, {401: Problem, 404: Problem, 422: Problem})
+        return _response(response, {200: TicketResource}, {401: Problem, 404: Problem, 422: Problem})
 
     @validate_call(config=ConfigDict(strict=True, arbitrary_types_allowed=True))
     def get_ticket_timeline(
@@ -608,7 +612,7 @@ class CtowerClient:
                 },
             ),
         )
-        return _response(response, TimelineResponse, {401: Problem, 404: Problem, 422: Problem})
+        return _response(response, {200: TimelineResponse}, {401: Problem, 404: Problem, 422: Problem})
 
     @validate_call(config=ConfigDict(strict=True, arbitrary_types_allowed=True))
     def list_ticket_assignments(
@@ -624,7 +628,7 @@ class CtowerClient:
                 },
             ),
         )
-        return _response(response, AssignmentList, {401: Problem, 404: Problem, 422: Problem})
+        return _response(response, {200: AssignmentList}, {401: Problem, 404: Problem, 422: Problem})
 
     @validate_call(config=ConfigDict(strict=True, arbitrary_types_allowed=True))
     def list_ticket_audit_events(
@@ -644,7 +648,7 @@ class CtowerClient:
                 },
             ),
         )
-        return _response(response, AuditPage, {401: Problem, 404: Problem, 422: Problem})
+        return _response(response, {200: AuditPage}, {401: Problem, 404: Problem, 422: Problem})
 
     @validate_call(config=ConfigDict(strict=True, arbitrary_types_allowed=True))
     def plan_company_bundle(
@@ -662,7 +666,7 @@ class CtowerClient:
                 },
             ),
         )
-        return _response(response, CompanyBundlePlan, {401: Problem, 403: Problem, 409: Problem, 422: Problem})
+        return _response(response, {200: CompanyBundlePlan}, {401: Problem, 403: Problem, 409: Problem, 422: Problem})
 
     @validate_call(config=ConfigDict(strict=True, arbitrary_types_allowed=True))
     def prepare_ctower_project_cutover(
@@ -705,7 +709,7 @@ class CtowerClient:
                 },
             ),
         )
-        return _response(response, IntakeCommandResult, {401: Problem, 403: Problem, 404: Problem, 409: Problem, 413: Problem, 422: Problem})
+        return _response(response, {200: IntakeCommandResult, 202: IntakeCommandResult}, {401: Problem, 403: Problem, 404: Problem, 409: Problem, 413: Problem, 422: Problem})
 
     @validate_call(config=ConfigDict(strict=True, arbitrary_types_allowed=True))
     def record_outbox_poison_disposition(
@@ -727,7 +731,7 @@ class CtowerClient:
                 },
             ),
         )
-        return _response(response, PoisonDispositionReceipt, {401: Problem, 404: Problem, 409: Problem, 422: Problem})
+        return _response(response, {200: PoisonDispositionReceipt, 202: PoisonDispositionReceipt}, {401: Problem, 404: Problem, 409: Problem, 422: Problem})
 
     @validate_call(config=ConfigDict(strict=True, arbitrary_types_allowed=True))
     def record_proof_evidence(
@@ -749,7 +753,7 @@ class CtowerClient:
                 },
             ),
         )
-        return _response(response, ProofReceipt, {401: Problem, 403: Problem, 404: Problem, 409: Problem, 422: Problem})
+        return _response(response, {200: ProofReceipt, 202: ProofReceipt}, {401: Problem, 403: Problem, 404: Problem, 409: Problem, 422: Problem})
 
     @validate_call(config=ConfigDict(strict=True, arbitrary_types_allowed=True))
     def record_proof_verdict(
@@ -771,7 +775,7 @@ class CtowerClient:
                 },
             ),
         )
-        return _response(response, ProofReceipt, {401: Problem, 403: Problem, 404: Problem, 409: Problem, 422: Problem})
+        return _response(response, {200: ProofReceipt, 202: ProofReceipt}, {401: Problem, 403: Problem, 404: Problem, 409: Problem, 422: Problem})
 
     @validate_call(config=ConfigDict(strict=True, arbitrary_types_allowed=True))
     def report_ctower_project_fence_observation(
@@ -792,7 +796,7 @@ class CtowerClient:
                 },
             ),
         )
-        return _response(response, CtowerProjectMigrationReceipt, {401: Problem, 403: Problem, 409: Problem, 422: Problem})
+        return _response(response, {201: CtowerProjectMigrationReceipt, 202: CtowerProjectMigrationReceipt}, {401: Problem, 403: Problem, 409: Problem, 422: Problem})
 
     @validate_call(config=ConfigDict(strict=True, arbitrary_types_allowed=True))
     def resolve_close_workflow(
@@ -814,7 +818,7 @@ class CtowerClient:
                 },
             ),
         )
-        return _response(response, WorkflowReceipt, {401: Problem, 404: Problem, 409: Problem, 422: Problem})
+        return _response(response, {200: WorkflowReceipt, 202: WorkflowReceipt}, {401: Problem, 404: Problem, 409: Problem, 422: Problem})
 
     @validate_call(config=ConfigDict(strict=True, arbitrary_types_allowed=True))
     def run_synthetic_workflow(
@@ -835,7 +839,7 @@ class CtowerClient:
                 },
             ),
         )
-        return _response(response, SyntheticRunReceipt, {401: Problem, 403: Problem, 409: Problem, 422: Problem})
+        return _response(response, {201: SyntheticRunReceipt, 202: SyntheticRunReceipt}, {401: Problem, 403: Problem, 409: Problem, 422: Problem})
 
     @validate_call(config=ConfigDict(strict=True, arbitrary_types_allowed=True))
     def start_ticket_workflow(
@@ -857,7 +861,7 @@ class CtowerClient:
                 },
             ),
         )
-        return _response(response, WorkflowReceipt, {401: Problem, 404: Problem, 409: Problem, 422: Problem})
+        return _response(response, {200: WorkflowReceipt, 202: WorkflowReceipt}, {401: Problem, 404: Problem, 409: Problem, 422: Problem})
 
     @validate_call(config=ConfigDict(strict=True, arbitrary_types_allowed=True))
     def submit_intake(
@@ -878,7 +882,7 @@ class CtowerClient:
                 },
             ),
         )
-        return _response(response, IntakeCommandResult, {401: Problem, 403: Problem, 404: Problem, 409: Problem, 413: Problem, 422: Problem})
+        return _response(response, {201: IntakeCommandResult, 202: IntakeCommandResult}, {401: Problem, 403: Problem, 404: Problem, 409: Problem, 413: Problem, 422: Problem})
 
     @validate_call(config=ConfigDict(strict=True, arbitrary_types_allowed=True))
     def transfer_ticket_custody(
@@ -900,7 +904,7 @@ class CtowerClient:
                 },
             ),
         )
-        return _response(response, TicketCommandResult, {401: Problem, 403: Problem, 404: Problem, 409: Problem, 422: Problem})
+        return _response(response, {200: TicketCommandResult, 202: TicketCommandResult}, {401: Problem, 403: Problem, 404: Problem, 409: Problem, 422: Problem})
 
     @validate_call(config=ConfigDict(strict=True, arbitrary_types_allowed=True))
     def transition_workflow(
@@ -922,7 +926,7 @@ class CtowerClient:
                 },
             ),
         )
-        return _response(response, WorkflowReceipt, {401: Problem, 404: Problem, 409: Problem, 422: Problem})
+        return _response(response, {200: WorkflowReceipt, 202: WorkflowReceipt}, {401: Problem, 404: Problem, 409: Problem, 422: Problem})
 
     @validate_call(config=ConfigDict(strict=True, arbitrary_types_allowed=True))
     def validate_company_bundle(
@@ -940,7 +944,7 @@ class CtowerClient:
                 },
             ),
         )
-        return _response(response, CompanyBundleValidationResult, {401: Problem, 403: Problem, 422: Problem})
+        return _response(response, {200: CompanyBundleValidationResult}, {401: Problem, 403: Problem, 422: Problem})
 
     def _auth_headers(self) -> dict[str, str]:
         if self._credential is None:
@@ -980,11 +984,18 @@ class CtowerClient:
 
 def _response[ModelT: BaseModel](
     response: httpx.Response,
-    model: type[ModelT],
+    success_models: Mapping[int, type[ModelT]],
     problem_models: Mapping[int, type[BaseModel]],
 ) -> ModelT:
-    if response.is_success:
+    model = success_models.get(response.status_code)
+    if model is not None:
         return model.model_validate_json(response.content)
+    if response.is_success:
+        raise httpx.HTTPStatusError(
+            "ctower returned an undeclared success status",
+            request=response.request,
+            response=response,
+        )
     _raise_problem(response, problem_models)
 
 
@@ -1004,8 +1015,10 @@ def _raise_problem(
             request=response.request,
             response=response,
         )
-    problem = problem_model.model_validate_json(response.content)
-    raise CtowerProblemError(cast(_ProblemModel, problem))
+    problem = cast(_StatusProblemModel, problem_model.model_validate_json(response.content))
+    if problem.status != response.status_code:
+        raise ValueError("Problem status does not match HTTP response status")
+    raise CtowerProblemError(problem)
 
 
 def _refusal(

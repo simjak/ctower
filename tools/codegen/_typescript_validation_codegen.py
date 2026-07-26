@@ -10,12 +10,16 @@ __all__ = ["render_validators"]
 
 def render_validators(
     schemas: Mapping[str, object],
-    result_models: Mapping[str, str],
+    success_models: Mapping[str, tuple[tuple[int, str], ...]],
     problem_models: Mapping[str, tuple[tuple[int, str], ...]],
     digest: str,
 ) -> str:
     """Render one strict recursive validator and operation boundary maps."""
 
+    successes = {
+        operation_id: {str(status): model for status, model in models}
+        for operation_id, models in success_models.items()
+    }
     problems = {
         operation_id: {str(status): model for status, model in models}
         for operation_id, models in problem_models.items()
@@ -28,18 +32,21 @@ import type {{ OperationId }} from "./operations.js";
 type JsonObject = Readonly<Record<string, unknown>>;
 
 const SCHEMAS: JsonObject = {_json(schemas)};
-const RESULT_MODELS: Readonly<Partial<Record<OperationId, string>>> = {_json(result_models)};
-const PROBLEM_MODELS: Readonly<
-  Partial<Record<OperationId, Readonly<Record<string, string>>>>
+export const OPERATION_SUCCESS_MODELS: Readonly<
+  Record<OperationId, Readonly<Record<string, string>>>
+> = {_json(successes)};
+export const OPERATION_PROBLEM_MODELS: Readonly<
+  Record<OperationId, Readonly<Record<string, string>>>
 > = {_json(problems)};
 
 export function validateOperationResult(
   operationId: OperationId,
+  status: number,
   value: unknown,
 ): unknown {{
-  const model = RESULT_MODELS[operationId];
+  const model = OPERATION_SUCCESS_MODELS[operationId][String(status)];
   if (model === undefined) {{
-    return fail(operationId, "operation has no success model");
+    return fail(operationId, `undeclared success status ${{status}}`);
   }}
   return validateNamed(model, value, operationId);
 }}
@@ -49,11 +56,16 @@ export function validateOperationProblem(
   status: number,
   value: unknown,
 ): unknown {{
-  const model = PROBLEM_MODELS[operationId]?.[String(status)];
+  const model = OPERATION_PROBLEM_MODELS[operationId][String(status)];
   if (model === undefined) {{
     return fail(operationId, `undeclared problem status ${{status}}`);
   }}
-  return validateNamed(model, value, `${{operationId}}.problem`);
+  const path = `${{operationId}}.problem`;
+  const problem = objectValue(validateNamed(model, value, path), path);
+  if (problem["status"] !== status) {{
+    return fail(`${{path}}.status`, "Problem status does not match HTTP status");
+  }}
+  return problem;
 }}
 
 function validateNamed(name: string, value: unknown, path: string): unknown {{
@@ -150,11 +162,8 @@ function validateFormat(format: unknown, value: string, path: string): void {{
   if (format === "uuid" && !UUID_PATTERN.test(value)) {{
     fail(path, "string is not a UUID");
   }}
-  if (
-    format === "date-time" &&
-    (!DATE_TIME_PATTERN.test(value) || Number.isNaN(Date.parse(value)))
-  ) {{
-    fail(path, "string is not an RFC 3339 timestamp");
+  if (format === "date-time") {{
+    validateDateTime(value, path);
   }}
   if (format === "uri") {{
     try {{
@@ -163,6 +172,44 @@ function validateFormat(format: unknown, value: string, path: string): void {{
       fail(path, "string is not an absolute URI");
     }}
   }}
+}}
+
+function validateDateTime(value: string, path: string): void {{
+  const match = DATE_TIME_PATTERN.exec(value);
+  if (match === null || match[7] === "-00:00") {{
+    fail(path, "string is outside the authored RFC 3339 profile");
+  }}
+  const year = Number(match[1]);
+  const month = Number(match[2]);
+  const day = Number(match[3]);
+  const hour = Number(match[4]);
+  const minute = Number(match[5]);
+  const second = Number(match[6]);
+  if (
+    year < 1 ||
+    month < 1 ||
+    month > 12 ||
+    day < 1 ||
+    day > daysInMonth(year, month) ||
+    hour > 23 ||
+    minute > 59 ||
+    second > 59
+  ) {{
+    fail(path, "string is outside the proleptic Gregorian calendar");
+  }}
+  const offsetHour = Number(match[9] ?? 0);
+  const offsetMinute = Number(match[10] ?? 0);
+  if (offsetHour > 23 || offsetMinute > 59) {{
+    fail(path, "string has an invalid RFC 3339 numeric offset");
+  }}
+}}
+
+function daysInMonth(year: number, month: number): number {{
+  if (month === 2) {{
+    const leap = year % 4 === 0 && (year % 100 !== 0 || year % 400 === 0);
+    return leap ? 29 : 28;
+  }}
+  return [4, 6, 9, 11].includes(month) ? 30 : 31;
 }}
 
 function validateNumber(
@@ -259,7 +306,7 @@ function fail(path: string, reason: string): never {{
 const UUID_PATTERN =
   /^[0-9a-f]{{8}}-[0-9a-f]{{4}}-[0-9a-f]{{4}}-[0-9a-f]{{4}}-[0-9a-f]{{12}}$/iu;
 const DATE_TIME_PATTERN =
-  /^\\d{{4}}-\\d{{2}}-\\d{{2}}T\\d{{2}}:\\d{{2}}:\\d{{2}}(?:\\.\\d+)?(?:Z|[+-]\\d{{2}}:\\d{{2}})$/u;
+  /^(\\d{{4}})-(\\d{{2}})-(\\d{{2}})T(\\d{{2}}):(\\d{{2}}):(\\d{{2}})(?:\\.\\d{{1,6}})?(Z|([+-])(\\d{{2}}):(\\d{{2}}))$/u;
 """
 
 
