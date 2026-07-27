@@ -223,7 +223,9 @@ class SecretScanCorpusTests(unittest.TestCase):
                 ),
             )
         )
-        return _run(_scratch_line("secrets-intended-tree").replace("{{gitleaks}}", scanner), workspace)
+        return _run(
+            _scratch_line("secrets-intended-tree").replace("{{gitleaks}}", scanner), workspace
+        )
 
 
 if __name__ == "__main__":
