@@ -15,6 +15,7 @@ from pathlib import Path, PurePosixPath
 
 from tools.checks.owned_processes import (
     TerminationOutcome,
+    TerminationResult,
     terminate_owned_processes,
 )
 from tools.checks.report import ExpectedSuitesReport, SuiteDisposition, SuiteResult
@@ -397,40 +398,56 @@ async def _execute_suite(root: Path, suite: _SuiteSpec) -> SuiteResult:
     try:
         return_code = await asyncio.wait_for(process.wait(), timeout=suite.timeout_seconds)
     except TimeoutError:
-        cleaned = await _terminate_suite_process(process, process_owner)
-        suffix = "" if cleaned else "; owned process cleanup failed"
+        cleanup = await _terminate_suite_process(process, process_owner)
+        cleanup_failure = _cleanup_failure_message(cleanup)
+        suffix = "" if cleanup_failure is None else f"; {cleanup_failure}"
         return _failure(suite, f"command timed out after {suite.timeout_seconds} seconds{suffix}")
     except BaseException:
         await _terminate_suite_process(process, process_owner)
         raise
-    cleaned = await _terminate_suite_process(process, process_owner)
-    return _completed_suite_result(suite, return_code, cleaned=cleaned)
+    cleanup = await _terminate_suite_process(process, process_owner)
+    return _completed_suite_result(suite, return_code, cleanup=cleanup)
 
 
-def _completed_suite_result(suite: _SuiteSpec, return_code: int, *, cleaned: bool) -> SuiteResult:
-    if not cleaned:
-        return _failure(suite, "owned process cleanup failed")
+def _completed_suite_result(
+    suite: _SuiteSpec, return_code: int, *, cleanup: TerminationResult
+) -> SuiteResult:
+    cleanup_failure = _cleanup_failure_message(cleanup)
+    if cleanup_failure is not None:
+        return _failure(suite, cleanup_failure)
     if return_code != 0:
         return _failure(suite, f"command failed with exit code {return_code}")
     return _result(suite, SuiteDisposition.PASSED, "current required suite command passed")
 
 
-async def _terminate_suite_process(process: asyncio.subprocess.Process, process_owner: str) -> bool:
-    outcome = await terminate_owned_processes(
+async def _terminate_suite_process(
+    process: asyncio.subprocess.Process, process_owner: str
+) -> TerminationResult:
+    result = await terminate_owned_processes(
         _SUITE_OWNER_ENV,
         process_owner,
         term_grace_seconds=_PROCESS_TERM_GRACE_SECONDS,
         kill_grace_seconds=_PROCESS_KILL_GRACE_SECONDS,
+        candidate_pids=(process.pid,),
+        candidate_session_ids=(process.pid,),
     )
-    if outcome is TerminationOutcome.SURVIVED:
-        return False
+    if result.outcome in {TerminationOutcome.SURVIVED, TerminationOutcome.UNKNOWN}:
+        return result
     if process.returncode is not None:
-        return True
+        return result
     try:
         await asyncio.wait_for(process.wait(), timeout=_PROCESS_KILL_GRACE_SECONDS)
     except TimeoutError:
-        return False
-    return True
+        return result.with_outcome(TerminationOutcome.SURVIVED)
+    return result
+
+
+def _cleanup_failure_message(cleanup: TerminationResult) -> str | None:
+    if cleanup.outcome is TerminationOutcome.UNKNOWN:
+        return f"owned process cleanup UNKNOWN ({cleanup.observation_summary()})"
+    if cleanup.outcome is TerminationOutcome.SURVIVED:
+        return "owned process cleanup failed"
+    return None
 
 
 def _execution_command(command: tuple[str, ...]) -> tuple[str, ...]:

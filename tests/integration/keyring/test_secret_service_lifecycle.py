@@ -33,12 +33,21 @@ def test_launcher_waits_for_setsid_before_signalling_the_daemon_group(
 
     result = _run_launcher(environment)
     service_pid, inherited_pgid, service_root = _read_trace(trace)
+    candidate_pids = (service_pid,)
     try:
         assert service_pid != inherited_pgid
         assert result.returncode == 0, result.stderr
-        _assert_no_residue(service_root)
+        _assert_no_residue(
+            service_root,
+            candidate_pids=candidate_pids,
+            candidate_session_ids=(service_pid,),
+        )
     finally:
-        _cleanup_exact_root(service_root)
+        _cleanup_exact_root(
+            service_root,
+            candidate_pids=candidate_pids,
+            candidate_session_ids=(service_pid,),
+        )
 
 
 def test_cleanup_kills_owned_descendant_after_daemon_leader_exit(
@@ -56,12 +65,21 @@ def test_cleanup_kills_owned_descendant_after_daemon_leader_exit(
     environment["CTOWER_TEST_DAEMON_TRACE"] = str(trace)
 
     result = _run_launcher(environment)
-    service_root = _read_daemon_root(trace)
+    leader_pid, child_pid, service_root = _read_daemon_trace(trace)
+    candidate_pids = (leader_pid, child_pid)
     try:
         assert result.returncode != 0
-        _assert_no_residue(service_root)
+        _assert_no_residue(
+            service_root,
+            candidate_pids=candidate_pids,
+            candidate_session_ids=(leader_pid,),
+        )
     finally:
-        _cleanup_exact_root(service_root)
+        _cleanup_exact_root(
+            service_root,
+            candidate_pids=candidate_pids,
+            candidate_session_ids=(leader_pid,),
+        )
 
 
 def _run_launcher(environment: dict[str, str]) -> subprocess.CompletedProcess[str]:
@@ -79,7 +97,14 @@ def _run_launcher(environment: dict[str, str]) -> subprocess.CompletedProcess[st
     try:
         stdout, stderr = process.communicate(timeout=10)
     except subprocess.TimeoutExpired:
-        _terminate_owned(_LAUNCHER_OWNER_ENV, owner, term_grace=0.25, kill_grace=1)
+        _terminate_owned(
+            _LAUNCHER_OWNER_ENV,
+            owner,
+            term_grace=0.25,
+            kill_grace=1,
+            candidate_pids=(process.pid,),
+            candidate_session_ids=(process.pid,),
+        )
         stdout, stderr = process.communicate(timeout=2)
     return subprocess.CompletedProcess(process.args, process.returncode, stdout, stderr)
 
@@ -95,38 +120,78 @@ def _read_trace(trace: Path) -> tuple[int, int, Path]:
     )
 
 
-def _read_daemon_root(trace: Path) -> Path:
+def _read_daemon_trace(trace: Path) -> tuple[int, int, Path]:
     values = dict(
         field.split("=", maxsplit=1) for field in trace.read_text(encoding="utf-8").split()
     )
-    return Path(values["service_root"]).resolve()
+    return (
+        int(values["leader_pid"]),
+        int(values["child_pid"]),
+        Path(values["service_root"]).resolve(),
+    )
 
 
-def _assert_no_residue(service_root: Path) -> None:
+def _assert_no_residue(
+    service_root: Path,
+    *,
+    candidate_pids: tuple[int, ...],
+    candidate_session_ids: tuple[int, ...],
+) -> None:
     deadline = time.monotonic() + 2
-    while time.monotonic() < deadline and _processes_for_root(service_root):
+    observation = _observe_root(
+        service_root,
+        candidate_pids=candidate_pids,
+        candidate_session_ids=candidate_session_ids,
+    )
+    while time.monotonic() < deadline and observation.returncode == 1:
         time.sleep(0.02)
+        observation = _observe_root(
+            service_root,
+            candidate_pids=candidate_pids,
+            candidate_session_ids=candidate_session_ids,
+        )
     assert not service_root.exists()
-    assert not _processes_for_root(service_root)
+    assert observation.returncode == 0, observation.stderr
 
 
-def _processes_for_root(service_root: Path) -> set[int]:
-    owner_entry = os.fsencode(f"{_SERVICE_ROOT_ENV}={service_root}")
-    matches: set[int] = set()
-    for process_directory in Path("/proc").iterdir():
-        if not process_directory.name.isdigit():
-            continue
-        try:
-            environment = (process_directory / "environ").read_bytes().split(b"\0")
-        except (FileNotFoundError, PermissionError, ProcessLookupError):
-            continue
-        if owner_entry in environment:
-            matches.add(int(process_directory.name))
-    return matches
+def _observe_root(
+    service_root: Path,
+    *,
+    candidate_pids: tuple[int, ...],
+    candidate_session_ids: tuple[int, ...],
+) -> subprocess.CompletedProcess[str]:
+    command = _process_helper_command(
+        _SERVICE_ROOT_ENV,
+        str(service_root),
+        term_grace=0,
+        kill_grace=0,
+        candidate_pids=candidate_pids,
+        candidate_session_ids=candidate_session_ids,
+        observe_only=True,
+    )
+    return subprocess.run(  # noqa: S603 - fixed repository helper
+        command,
+        cwd=_ROOT,
+        check=False,
+        capture_output=True,
+        text=True,
+    )
 
 
-def _cleanup_exact_root(service_root: Path) -> None:
-    _terminate_owned(_SERVICE_ROOT_ENV, str(service_root), term_grace=0, kill_grace=1)
+def _cleanup_exact_root(
+    service_root: Path,
+    *,
+    candidate_pids: tuple[int, ...],
+    candidate_session_ids: tuple[int, ...],
+) -> None:
+    _terminate_owned(
+        _SERVICE_ROOT_ENV,
+        str(service_root),
+        term_grace=0,
+        kill_grace=1,
+        candidate_pids=candidate_pids,
+        candidate_session_ids=candidate_session_ids,
+    )
     temporary_root = Path(tempfile.gettempdir()).resolve()
     if service_root.parent == temporary_root and service_root.name.startswith("tmp."):
         shutil.rmtree(service_root, ignore_errors=True)
@@ -138,21 +203,52 @@ def _terminate_owned(
     *,
     term_grace: float,
     kill_grace: float,
+    candidate_pids: tuple[int, ...],
+    candidate_session_ids: tuple[int, ...],
 ) -> None:
+    command = _process_helper_command(
+        environment_name,
+        owner,
+        term_grace=term_grace,
+        kill_grace=kill_grace,
+        candidate_pids=candidate_pids,
+        candidate_session_ids=candidate_session_ids,
+        observe_only=False,
+    )
     subprocess.run(  # noqa: S603 - fixed repository helper
-        (
-            sys.executable,
-            str(_PROCESS_HELPER),
-            environment_name,
-            owner,
-            "--term-grace-seconds",
-            str(term_grace),
-            "--kill-grace-seconds",
-            str(kill_grace),
-        ),
+        command,
         cwd=_ROOT,
         check=False,
     )
+
+
+def _process_helper_command(
+    environment_name: str,
+    owner: str,
+    *,
+    term_grace: float,
+    kill_grace: float,
+    candidate_pids: tuple[int, ...],
+    candidate_session_ids: tuple[int, ...],
+    observe_only: bool,
+) -> list[str]:
+    command = [
+        sys.executable,
+        str(_PROCESS_HELPER),
+        environment_name,
+        owner,
+        "--term-grace-seconds",
+        str(term_grace),
+        "--kill-grace-seconds",
+        str(kill_grace),
+    ]
+    for candidate_pid in candidate_pids:
+        command.extend(("--candidate-pid", str(candidate_pid)))
+    for candidate_session_id in candidate_session_ids:
+        command.extend(("--candidate-session-id", str(candidate_session_id)))
+    if observe_only:
+        command.append("--observe-only")
+    return command
 
 
 _SETSID_SHIM = """#!/usr/bin/python3

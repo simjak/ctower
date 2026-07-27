@@ -12,9 +12,12 @@ import unittest
 from collections.abc import Iterator
 from contextlib import contextmanager
 from pathlib import Path
+from unittest import mock
 
 from tools.checks import SuiteDisposition, verify_expected_suites
 from tools.checks.owned_processes import (
+    TerminationOutcome,
+    TerminationResult,
     owned_process_ids,
     terminate_owned_processes,
 )
@@ -156,6 +159,32 @@ class ExpectedSuitesTests(unittest.TestCase):
                     report = verify_expected_suites(root, execute=True)
                 self.assertFalse(report.ok)
                 self.assertIn(expected, report.failures[0].message)
+
+    def test_unknown_owned_process_cleanup_fails_loudly_by_name(self) -> None:
+        cleanup = TerminationResult(
+            outcome=TerminationOutcome.UNKNOWN,
+            scanned=1,
+            readable=0,
+            unreadable_pids=(123,),
+            candidate_unreadable_pids=(123,),
+            owned_pids=(),
+        )
+        with self._repository() as root:
+            self._write_test(
+                root, "tests/current/test_current.py", "def test_current():\n    pass\n"
+            )
+            self._write_manifest(root, self._one_suite_manifest(command_exit=0))
+            with mock.patch(
+                "tools.checks._impl.suites.terminate_owned_processes",
+                new=mock.AsyncMock(return_value=cleanup),
+            ):
+                report = verify_expected_suites(root, execute=True)
+
+        message = report.failures[0].message
+        self.assertFalse(report.ok)
+        self.assertIn("UNKNOWN", message)
+        self.assertIn("candidate unreadable pids: 123", message)
+        self.assertIn("scanned 1, readable 0, unreadable 1", message)
 
     def test_leader_exit_and_timeout_cannot_leave_a_descendant_alive(self) -> None:
         child = (
