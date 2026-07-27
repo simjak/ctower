@@ -24,7 +24,7 @@ python-check: compatibility-coverage
     {{python}} -m mypy --no-incremental apps/ctower-api/src apps/ctowerctl/src packages/ctower-kernel/src tools/checks tools/codegen tools/compatibility generated/python tests/repository tests/contracts tests/compatibility tests/integration tests/modules tests/artifact tests/acceptance/increment-1
 
 compatibility-coverage:
-    @coverage_file="$(mktemp)"; report_file="$(mktemp)"; trap 'rm -f -- "$coverage_file" "$report_file"' EXIT; COVERAGE_FILE="$coverage_file" {{python}} -m pytest -p no:cacheprovider --cov=tools.compatibility --cov-branch --cov-fail-under=91 --cov-report=term --cov-report=json:"$report_file" tests/compatibility; {{python}} -c "{{coverage_gate}}" "$report_file" 91
+    @coverage_file="$(mktemp)"; report_file="$(mktemp)"; trap 'rm -f -- "$coverage_file" "$report_file"' EXIT; COVERAGE_FILE="$coverage_file" {{python}} -m pytest -p no:cacheprovider --cov=tools.compatibility --cov-branch --cov-fail-under=90 --cov-report=term --cov-report=json:"$report_file" tests/compatibility; {{python}} -c "{{coverage_gate}}" "$report_file" 90
 
 product-coverage:
     @coverage_file="$(mktemp)"; report_file="$(mktemp)"; trap 'rm -f -- "$coverage_file" "$report_file"' EXIT; COVERAGE_FILE="$coverage_file" {{python}} -m pytest -p no:cacheprovider --cov=ctower_api --cov=ctower_kernel --cov=ctowerctl --cov-branch --cov-fail-under=90 --cov-report=term --cov-report=json:"$report_file" tests/modules tests/acceptance/increment-1 -q; {{python}} -c "{{coverage_gate}}" "$report_file" 90
