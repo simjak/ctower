@@ -1,5 +1,5 @@
 // DO NOT EDIT: generated file; regenerate from declared inputs.
-// Authored contract digest: sha256:88cf467bdbbcb58a8e48b20094eea18b2468ef25666878a1c2dc45e077b16891
+// Authored contract digest: sha256:f4af8606f2de20320e2a8baf3744b36f04ebb1ee992bf58baf75c3fe992d4075
 
 import type { OperationId } from "./operations.js";
 import type {
@@ -242,7 +242,7 @@ function decodeObject(
     } else {
       const additional = schema["additionalProperties"];
       if (additional === false) fail(path, `unknown field ${name}`);
-      if (additional === true || additional === undefined) {
+      if (hasFreeFormAdditionalProperties(additional)) {
         value = decodeUntyped(member, `${path}.${name}`);
       } else {
         value = decodeSchema(additional, member, `${path}.${name}`);
@@ -258,9 +258,26 @@ function decodeObject(
   return result;
 }
 
+function hasFreeFormAdditionalProperties(value: unknown): boolean {
+  return (
+    value === undefined ||
+    value === true ||
+    value !== null &&
+      typeof value === "object" &&
+      !Array.isArray(value) &&
+      Object.keys(value).length === 0
+  );
+}
+
+const FREE_FORM_NUMBER_SCHEMA: SchemaObject = Object.freeze({});
+
 function decodeUntyped(node: JsonNode, path: string): unknown {
   if (node === null || typeof node === "string" || typeof node === "boolean") return node;
-  if (node.kind === "number") return fail(path, "unconstrained numeric response leaf");
+  if (node.kind === "number") {
+    return /[.eE]/u.test(node.raw)
+      ? decodeNumber(FREE_FORM_NUMBER_SCHEMA, node, path)
+      : decodeInteger(FREE_FORM_NUMBER_SCHEMA, node, path);
+  }
   if (node.kind === "array") {
     return node.items.map((item, index) => decodeUntyped(item, `${path}[${index}]`));
   }
@@ -471,7 +488,7 @@ function parseUriAuthority(value: string): readonly [boolean, string] {
     const close = hostPort.indexOf("]");
     if (close < 0 || !validIpLiteral(hostPort.slice(1, close))) return [false, ""];
     const suffix = hostPort.slice(close + 1);
-    if (suffix.length > 0 && (!suffix.startsWith(":") || !asciiDigits(suffix.slice(1)))) {
+    if (suffix.length > 0 && (!suffix.startsWith(":") || !validPort(suffix.slice(1)))) {
       return [false, ""];
     }
     return [true, hostPort.slice(0, close + 1)];
@@ -483,7 +500,7 @@ function parseUriAuthority(value: string): readonly [boolean, string] {
   const colon = hostPort.lastIndexOf(":");
   if (colon >= 0) {
     host = hostPort.slice(0, colon);
-    if (!asciiDigits(hostPort.slice(colon + 1))) return [false, ""];
+    if (!validPort(hostPort.slice(colon + 1))) return [false, ""];
   }
   if (!validUriToken(host, URI_UNRESERVED + URI_SUB_DELIMITERS)) return [false, ""];
   return [true, host];
@@ -554,4 +571,8 @@ function asciiDigit(value: string): boolean {
 
 function asciiDigits(value: string): boolean {
   return value.length > 0 && [...value].every(asciiDigit);
+}
+
+function validPort(value: string): boolean {
+  return value.length === 0 || asciiDigits(value);
 }

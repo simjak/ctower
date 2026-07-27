@@ -9,6 +9,7 @@ from dataclasses import dataclass
 from typing import cast
 
 from tools.codegen._absolute_uri_codegen import require_absolute_uri_profile
+from tools.codegen._free_form_json_codegen import FreeFormJsonProfile
 from tools.codegen._json_integer_codegen import require_json_integer_profile
 from tools.codegen._rfc3339_codegen import require_rfc3339_profile
 from tools.codegen._typescript_json_codegen import render_typescript_json_parser
@@ -39,7 +40,12 @@ class _Operation:
     authenticated: bool
 
 
-def render_typescript(document: dict[str, object], contract_digest: str) -> dict[str, str]:
+def render_typescript(
+    document: dict[str, object],
+    contract_digest: str,
+    *,
+    free_form_profile: FreeFormJsonProfile,
+) -> dict[str, str]:
     integer_profile = require_json_integer_profile(document)
     require_rfc3339_profile(document)
     uri_profile = require_absolute_uri_profile(document)
@@ -51,6 +57,7 @@ def render_typescript(document: dict[str, object], contract_digest: str) -> dict
         {item.operation_id: item.success_models for item in operations},
         {item.operation_id: item.problem_models for item in operations},
         contract_digest,
+        free_form_profile=free_form_profile,
         integer_profile=integer_profile,
         uri_profile=uri_profile,
     )

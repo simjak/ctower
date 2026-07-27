@@ -158,14 +158,14 @@ def _parse_uri_authority(value: str) -> tuple[bool, str]:
         if close < 0 or not _valid_ip_literal(host_port[1:close]):
             return False, ""
         suffix = host_port[close + 1:]
-        if suffix and (not suffix.startswith(":") or not _ascii_digits(suffix[1:])):
+        if suffix and (not suffix.startswith(":") or not _valid_port(suffix[1:])):
             return False, ""
         return True, host_port[:close + 1]
     if "[" in host_port or "]" in host_port or host_port.count(":") > 1:
         return False, ""
     if ":" in host_port:
         host, port = host_port.rsplit(":", 1)
-        if not _ascii_digits(port):
+        if not _valid_port(port):
             return False, ""
     else:
         host = host_port
@@ -242,7 +242,11 @@ def _ascii_digit(value: str) -> bool:
 
 
 def _ascii_digits(value: str) -> bool:
-    return bool(value) and all(_ascii_digit(char) for char in value)"""
+    return bool(value) and all(_ascii_digit(char) for char in value)
+
+
+def _valid_port(value: str) -> bool:
+    return not value or _ascii_digits(value)"""
 
 
 def render_typescript_uri_validator(profile: AbsoluteUriProfile) -> str:
@@ -347,7 +351,7 @@ function parseUriAuthority(value: string): readonly [boolean, string] {{
     const close = hostPort.indexOf("]");
     if (close < 0 || !validIpLiteral(hostPort.slice(1, close))) return [false, ""];
     const suffix = hostPort.slice(close + 1);
-    if (suffix.length > 0 && (!suffix.startsWith(":") || !asciiDigits(suffix.slice(1)))) {{
+    if (suffix.length > 0 && (!suffix.startsWith(":") || !validPort(suffix.slice(1)))) {{
       return [false, ""];
     }}
     return [true, hostPort.slice(0, close + 1)];
@@ -359,7 +363,7 @@ function parseUriAuthority(value: string): readonly [boolean, string] {{
   const colon = hostPort.lastIndexOf(":");
   if (colon >= 0) {{
     host = hostPort.slice(0, colon);
-    if (!asciiDigits(hostPort.slice(colon + 1))) return [false, ""];
+    if (!validPort(hostPort.slice(colon + 1))) return [false, ""];
   }}
   if (!validUriToken(host, URI_UNRESERVED + URI_SUB_DELIMITERS)) return [false, ""];
   return [true, host];
@@ -430,6 +434,10 @@ function asciiDigit(value: string): boolean {{
 
 function asciiDigits(value: string): boolean {{
   return value.length > 0 && [...value].every(asciiDigit);
+}}
+
+function validPort(value: string): boolean {{
+  return value.length === 0 || asciiDigits(value);
 }}"""
 
 

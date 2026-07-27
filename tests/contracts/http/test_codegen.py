@@ -96,6 +96,7 @@ def test_generated_client_is_owned_and_byte_stable() -> None:
     } <= input_paths
     assert {
         "tools/codegen/_absolute_uri_codegen.py",
+        "tools/codegen/_free_form_json_codegen.py",
         "tools/codegen/_typescript_json_codegen.py",
         "tools/codegen/_typescript_validation_codegen.py",
     } <= input_paths

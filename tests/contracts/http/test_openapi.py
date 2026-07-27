@@ -276,6 +276,17 @@ def test_problem_vocabulary_and_boundary_objects_are_strict() -> None:
 def test_scalar_profiles_are_exact_root_contracts() -> None:
     document = json.loads((ROOT / "contracts/http/openapi.yaml").read_text(encoding="utf-8"))
     expected = {
+        "x-ctower-free-form-json-profile": {
+            "containers": "recursive-arrays-and-objects",
+            "duplicate-object-members": "last-member-wins",
+            "fraction-exponent-negative-zero": "preserve-sign",
+            "fraction-exponent-semantics": "finite-ieee-754-binary64",
+            "integer-lexemes": "x-ctower-json-integer-profile",
+            "nonfinite": "rejected",
+            "overflow": "rejected",
+            "trust": "opaque-until-component-schema-validation",
+            "underflow": "preserve-binary64-signed-zero",
+        },
         "x-ctower-json-integer-profile": {
             "maximum": 9_007_199_254_740_991,
             "minimum": -9_007_199_254_740_991,

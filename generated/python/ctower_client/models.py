@@ -1,12 +1,13 @@
 """DO NOT EDIT: generated file; regenerate from declared inputs.
 
-Authored contract digest: sha256:88cf467bdbbcb58a8e48b20094eea18b2468ef25666878a1c2dc45e077b16891
+Authored contract digest: sha256:f4af8606f2de20320e2a8baf3744b36f04ebb1ee992bf58baf75c3fe992d4075
 """
 
 from __future__ import annotations
 
 from datetime import datetime, timedelta, timezone
 from enum import StrEnum
+import math
 import re
 from typing import Annotated, Literal
 from uuid import UUID
@@ -335,14 +336,14 @@ def _parse_uri_authority(value: str) -> tuple[bool, str]:
         if close < 0 or not _valid_ip_literal(host_port[1:close]):
             return False, ""
         suffix = host_port[close + 1:]
-        if suffix and (not suffix.startswith(":") or not _ascii_digits(suffix[1:])):
+        if suffix and (not suffix.startswith(":") or not _valid_port(suffix[1:])):
             return False, ""
         return True, host_port[:close + 1]
     if "[" in host_port or "]" in host_port or host_port.count(":") > 1:
         return False, ""
     if ":" in host_port:
         host, port = host_port.rsplit(":", 1)
-        if not _ascii_digits(port):
+        if not _valid_port(port):
             return False, ""
     else:
         host = host_port
@@ -420,6 +421,46 @@ def _ascii_digit(value: str) -> bool:
 
 def _ascii_digits(value: str) -> bool:
     return bool(value) and all(_ascii_digit(char) for char in value)
+
+
+def _valid_port(value: str) -> bool:
+    return not value or _ascii_digits(value)
+
+def _validate_free_form_json(value: object) -> None:
+    if value is None or isinstance(value, (str, bool)):
+        return
+    if type(value) is int:
+        if -9007199254740991 <= value <= 9007199254740991:
+            return
+        raise ValueError("free-form JSON integer is outside the lossless JSON range")
+    if type(value) is float:
+        if math.isfinite(value):
+            return
+        raise ValueError("free-form JSON number must be finite")
+    if isinstance(value, list):
+        for item in value:
+            _validate_free_form_json(item)
+        return
+    if isinstance(value, dict):
+        for key, item in value.items():
+            if not isinstance(key, str):
+                raise ValueError("free-form JSON object keys must be strings")
+            _validate_free_form_json(item)
+        return
+    raise ValueError("free-form JSON contains a non-JSON value")
+
+
+def _validate_free_form_json_object(value: object) -> object:
+    if not isinstance(value, dict):
+        raise ValueError("free-form JSON object must be a dictionary")
+    _validate_free_form_json(value)
+    return value
+
+
+_FreeFormJsonObject = Annotated[
+    dict[str, object],
+    BeforeValidator(_validate_free_form_json_object),
+]
 
 
 class _BoundaryModel(BaseModel):
@@ -1983,7 +2024,7 @@ type WorkChangedAuditPayload = WorkPriorityChangedAuditPayload | WorkAssignmentC
 
 class CompanyBundleResource(_BoundaryModel):
     component: VersionedComponent
-    payload: dict[str, object]
+    payload: _FreeFormJsonObject
 
 
 class WorkChangedAuditEvent(_BoundaryModel):

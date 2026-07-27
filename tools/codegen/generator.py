@@ -18,6 +18,7 @@ from tools.checks.generated import (
     render_generated_manifest,
 )
 from tools.codegen._client_codegen import render_client
+from tools.codegen._free_form_json_codegen import require_free_form_json_profile
 from tools.codegen._inventory import EXPECTED_OPERATIONS, EXPECTED_SCHEMAS
 from tools.codegen._model_codegen import render_init, render_models
 from tools.codegen._operation_codegen import render_operations
@@ -54,6 +55,7 @@ _BASE_INPUTS = (
     Path("tools/codegen/__main__.py"),
     Path("tools/codegen/_absolute_uri_codegen.py"),
     Path("tools/codegen/_client_codegen.py"),
+    Path("tools/codegen/_free_form_json_codegen.py"),
     Path("tools/codegen/_inventory.py"),
     Path("tools/codegen/_json_integer_codegen.py"),
     Path("tools/codegen/_model_codegen.py"),
@@ -109,7 +111,12 @@ def render_typescript_fixture(
     """Render one in-memory TypeScript contract fixture through production codegen."""
 
     try:
-        return render_typescript(document, contract_digest)
+        free_form_profile = require_free_form_json_profile(document)
+        return render_typescript(
+            document,
+            contract_digest,
+            free_form_profile=free_form_profile,
+        )
     except (TypeError, ValueError) as error:
         raise CodegenError(str(error)) from error
 
@@ -121,13 +128,7 @@ def _render(root: Path) -> _Rendered:
         json.dumps(generated_contract, separators=(",", ":"), sort_keys=True).encode()
     ).hexdigest()
     try:
-        rendered = {
-            "__init__.py": render_init(generated_contract, contract_digest),
-            "client.py": render_client(generated_contract, contract_digest),
-            "models.py": render_models(generated_contract, contract_digest),
-            "operations.py": render_operations(generated_contract, contract_digest),
-        }
-        typescript = render_typescript(generated_contract, contract_digest)
+        rendered, typescript = _render_clients(generated_contract, contract_digest)
         contract_resources = render_schema_resources(root, contract_digest)
     except (TypeError, ValueError) as error:
         raise CodegenError(str(error)) from error
@@ -162,6 +163,29 @@ def _render(root: Path) -> _Rendered:
     except GeneratedManifestError as error:
         raise CodegenError(str(error)) from error
     return _Rendered(outputs, render_generated_manifest(manifest.upsert(artifact)))
+
+
+def _render_clients(
+    document: dict[str, object],
+    contract_digest: str,
+) -> tuple[dict[str, str], dict[str, str]]:
+    free_form_profile = require_free_form_json_profile(document)
+    python = {
+        "__init__.py": render_init(document, contract_digest),
+        "client.py": render_client(document, contract_digest),
+        "models.py": render_models(
+            document,
+            contract_digest,
+            free_form_profile=free_form_profile,
+        ),
+        "operations.py": render_operations(document, contract_digest),
+    }
+    typescript = render_typescript(
+        document,
+        contract_digest,
+        free_form_profile=free_form_profile,
+    )
+    return python, typescript
 
 
 def _load_openapi(root: Path) -> dict[str, object]:

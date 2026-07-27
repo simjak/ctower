@@ -32,6 +32,12 @@ PROBLEM_STATUS = 409
 POSITIVE_URIS = (
     "HTTPS://CTOWER.DEV:443/problems/version-conflict?source=%2Fwire#Exact",
     "https://ctower.dev/problems/version-conflict",
+    "https://ctower.dev:",
+    "https://ctower.dev:0",
+    "https://ctower.dev:00080",
+    "https://[::1]",
+    "https://[::1]:",
+    "https://[::1]:00080",
     "https://ctower.dev/%2fwire?x=%2F#Case",
     "mailto:ops@ctower.dev",
     "urn:ctower:problem:version-conflict",
@@ -41,6 +47,11 @@ NEGATIVE_URIS = (
     "/relative/problem",
     "1https://ctower.dev/problem",
     "https://",
+    "https://:",
+    "https://:80",
+    "https://ctower.dev:x",
+    "https://ctower.dev:+80",
+    "https://[]:",
     "https://ctower.dev/%",
     "https://ctower.dev/%0",
     "https://ctower.dev/%GG",
@@ -354,6 +365,7 @@ def _typescript_runner() -> str:
         "acceptedTickets": accepted_tickets,
         "rejectedTickets": rejected_tickets,
         "malformed": malformed,
+        "malformedProblems": ("{", _problem_raw().replace('"title":', '"title":NaN,')),
         "problems": problems,
         "invalidProblemStatuses": invalid_problem_statuses,
         "acceptedSynthetic": accepted_synthetic,
@@ -402,6 +414,16 @@ async function expectTypeError(raw, operation, status = 200, problem = false) {{
   }}
   throw new Error(`invalid scalar response accepted: ${{raw}}`);
 }}
+async function expectSyntaxError(raw, operation, status = 200, problem = false) {{
+  enqueue(raw, status, problem);
+  try {{
+    await operation();
+  }} catch (error) {{
+    if (error instanceof SyntaxError) return;
+    throw error;
+  }}
+  throw new Error(`malformed JSON response accepted: ${{raw}}`);
+}}
 async function acceptProblem(raw, expectedCurrent, expectedUri) {{
   enqueue(raw, 409, true);
   try {{
@@ -423,8 +445,10 @@ for (const [raw, expected] of vectors.acceptedTickets) {{
   enqueue(raw, 200);
   if (!Object.is((await ticket()).version, expected)) throw new Error("integer changed");
 }}
-for (const raw of [...vectors.rejectedTickets, ...vectors.malformed]) {{
-  await expectTypeError(raw, ticket);
+for (const raw of vectors.rejectedTickets) await expectTypeError(raw, ticket);
+for (const raw of vectors.malformed) await expectSyntaxError(raw, ticket);
+for (const raw of vectors.malformedProblems) {{
+  await expectSyntaxError(raw, submit, 409, true);
 }}
 for (const [raw, expected] of vectors.problems) await acceptProblem(raw, expected);
 for (const raw of vectors.invalidProblemStatuses) {{
