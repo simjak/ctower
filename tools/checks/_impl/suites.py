@@ -6,14 +6,18 @@ import ast
 import asyncio
 import os
 import re
-import signal
 import sys
 import tomllib
+import uuid
 from collections.abc import Mapping
-from contextlib import suppress
 from dataclasses import dataclass
 from pathlib import Path, PurePosixPath
 
+from tools.checks.owned_processes import (
+    TerminationOutcome,
+    TerminationResult,
+    terminate_owned_processes,
+)
 from tools.checks.report import ExpectedSuitesReport, SuiteDisposition, SuiteResult
 
 __all__ = ["verify_expected_suites"]
@@ -21,7 +25,9 @@ __all__ = ["verify_expected_suites"]
 _SCHEMA = "ctower.expected-suites/v1"
 _MANIFEST_PATH = "tools/checks/expected-suites.toml"
 _MAX_TIMEOUT_SECONDS = 3600
-_PROCESS_GROUP_GRACE_SECONDS = 0.25
+_PROCESS_TERM_GRACE_SECONDS = 0.25
+_PROCESS_KILL_GRACE_SECONDS = 0.25
+_SUITE_OWNER_ENV = "CTOWER_VERIFY_SUITE_OWNER"
 _MANIFEST_FIELDS = {"schema", "manifest_version", "active_phase", "phase_order", "suite"}
 _BACKLOG_ID = re.compile(r"^CT-(?:L0|I[1-9][0-9]*)-[0-9]{3}$")
 _SUITE_ID = re.compile(r"^[a-z][a-z0-9-]{2,63}$")
@@ -377,63 +383,71 @@ async def _execute_required_suites(
 
 async def _execute_suite(root: Path, suite: _SuiteSpec) -> SuiteResult:
     command = _execution_command(suite.command)
+    process_owner = f"{suite.suite_id}-{uuid.uuid4().hex}"
+    environment = os.environ.copy()
+    environment[_SUITE_OWNER_ENV] = process_owner
     try:
-        process = await asyncio.create_subprocess_exec(*command, cwd=root, start_new_session=True)
+        process = await asyncio.create_subprocess_exec(
+            *command,
+            cwd=root,
+            env=environment,
+            start_new_session=True,
+        )
     except OSError as error:
         return _failure(suite, f"cannot execute command: {error}")
     try:
         return_code = await asyncio.wait_for(process.wait(), timeout=suite.timeout_seconds)
     except TimeoutError:
-        await _terminate_process_group(process)
-        return _failure(suite, f"command timed out after {suite.timeout_seconds} seconds")
+        cleanup = await _terminate_suite_process(process, process_owner)
+        cleanup_failure = _cleanup_failure_message(cleanup)
+        suffix = "" if cleanup_failure is None else f"; {cleanup_failure}"
+        return _failure(suite, f"command timed out after {suite.timeout_seconds} seconds{suffix}")
     except BaseException:
-        await _terminate_process_group(process)
+        await _terminate_suite_process(process, process_owner)
         raise
-    await _terminate_process_group(process)
+    cleanup = await _terminate_suite_process(process, process_owner)
+    return _completed_suite_result(suite, return_code, cleanup=cleanup)
+
+
+def _completed_suite_result(
+    suite: _SuiteSpec, return_code: int, *, cleanup: TerminationResult
+) -> SuiteResult:
+    cleanup_failure = _cleanup_failure_message(cleanup)
+    if cleanup_failure is not None:
+        return _failure(suite, cleanup_failure)
     if return_code != 0:
         return _failure(suite, f"command failed with exit code {return_code}")
     return _result(suite, SuiteDisposition.PASSED, "current required suite command passed")
 
 
-async def _terminate_process_group(process: asyncio.subprocess.Process) -> None:
-    group_id = process.pid
-    if not _process_group_exists(group_id):
-        return
-    _signal_process_group(group_id, signal.SIGTERM)
-    if await _wait_for_process_group_exit(group_id):
-        await _reap_leader(process)
-        return
-    _signal_process_group(group_id, signal.SIGKILL)
-    await _wait_for_process_group_exit(group_id)
-    await _reap_leader(process)
-
-
-async def _wait_for_process_group_exit(group_id: int) -> bool:
-    await asyncio.sleep(_PROCESS_GROUP_GRACE_SECONDS)
-    return not _process_group_exists(group_id)
-
-
-async def _reap_leader(process: asyncio.subprocess.Process) -> None:
+async def _terminate_suite_process(
+    process: asyncio.subprocess.Process, process_owner: str
+) -> TerminationResult:
+    result = await terminate_owned_processes(
+        _SUITE_OWNER_ENV,
+        process_owner,
+        term_grace_seconds=_PROCESS_TERM_GRACE_SECONDS,
+        kill_grace_seconds=_PROCESS_KILL_GRACE_SECONDS,
+        candidate_pids=(process.pid,),
+        candidate_session_ids=(process.pid,),
+    )
+    if result.outcome in {TerminationOutcome.SURVIVED, TerminationOutcome.UNKNOWN}:
+        return result
     if process.returncode is not None:
-        return
+        return result
     try:
-        await asyncio.wait_for(process.wait(), timeout=_PROCESS_GROUP_GRACE_SECONDS)
+        await asyncio.wait_for(process.wait(), timeout=_PROCESS_KILL_GRACE_SECONDS)
     except TimeoutError:
-        process.kill()
-        await process.wait()
+        return result.with_outcome(TerminationOutcome.SURVIVED)
+    return result
 
 
-def _signal_process_group(group_id: int, signal_number: signal.Signals) -> None:
-    with suppress(ProcessLookupError):
-        os.killpg(group_id, signal_number)
-
-
-def _process_group_exists(group_id: int) -> bool:
-    try:
-        os.killpg(group_id, 0)
-    except ProcessLookupError:
-        return False
-    return True
+def _cleanup_failure_message(cleanup: TerminationResult) -> str | None:
+    if cleanup.outcome is TerminationOutcome.UNKNOWN:
+        return f"owned process cleanup UNKNOWN ({cleanup.observation_summary()})"
+    if cleanup.outcome is TerminationOutcome.SURVIVED:
+        return "owned process cleanup failed"
+    return None
 
 
 def _execution_command(command: tuple[str, ...]) -> tuple[str, ...]:
