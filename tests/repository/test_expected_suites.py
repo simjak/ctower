@@ -2,9 +2,8 @@
 
 from __future__ import annotations
 
+import asyncio
 import json
-import os
-import signal
 import sys
 import tempfile
 import textwrap
@@ -15,8 +14,14 @@ from contextlib import contextmanager
 from pathlib import Path
 
 from tools.checks import SuiteDisposition, verify_expected_suites
+from tools.checks.owned_processes import (
+    owned_process_ids,
+    terminate_owned_processes,
+)
 
 __all__ = ()
+
+_EXPECTED_SUITE_OWNER_ENV = "CTOWER_VERIFY_SUITE_OWNER"
 
 
 class ExpectedSuitesTests(unittest.TestCase):
@@ -153,26 +158,33 @@ class ExpectedSuitesTests(unittest.TestCase):
                 self.assertIn(expected, report.failures[0].message)
 
     def test_leader_exit_and_timeout_cannot_leave_a_descendant_alive(self) -> None:
-        child = "import signal,time; signal.signal(signal.SIGTERM, signal.SIG_IGN); time.sleep(60)"
+        child = (
+            "import os,signal,time; from pathlib import Path; "
+            "signal.signal(signal.SIGTERM, signal.SIG_IGN); "
+            f"Path('descendant.owner').write_text("
+            f"os.environ[{_EXPECTED_SUITE_OWNER_ENV!r}], encoding='utf-8'); "
+            "print('r', flush=True); time.sleep(60)"
+        )
         prefix = (
             "import subprocess,sys,time; from pathlib import Path; "
-            f"child=subprocess.Popen([sys.executable, '-c', {child!r}]); "
-            "Path('descendant.pid').write_text(str(child.pid), encoding='utf-8'); "
+            f"child=subprocess.Popen([sys.executable, '-c', {child!r}], "
+            "stdout=subprocess.PIPE, text=True); "
+            "child.stdout.read(1); "
         )
         for label, suffix, timeout, expected_ok in (
             ("leader exit", "", 30, True),
             ("leader timeout", "time.sleep(60)", 1, False),
         ):
             with self.subTest(label=label):
-                self._assert_group_descendant_absent(
+                self._assert_owned_descendant_absent(
                     prefix + suffix, timeout, expected_ok=expected_ok
                 )
 
-    def _assert_group_descendant_absent(
+    def _assert_owned_descendant_absent(
         self, leader: str, timeout: int, *, expected_ok: bool
     ) -> None:
         command = json.dumps(["{python}", "-c", leader])
-        pid = 0
+        owner = ""
         with self._repository() as root:
             self._write_test(
                 root, "tests/current/test_current.py", "def test_current():\n    pass\n"
@@ -190,15 +202,28 @@ class ExpectedSuitesTests(unittest.TestCase):
             )
             try:
                 report = verify_expected_suites(root, execute=True)
-                pid = int((root / "descendant.pid").read_text(encoding="utf-8"))
+                owner = (root / "descendant.owner").read_text(encoding="utf-8")
                 deadline = time.monotonic() + 1.0
-                while _pid_exists(pid) and time.monotonic() < deadline:
+                while (
+                    owned_process_ids(_EXPECTED_SUITE_OWNER_ENV, owner)
+                    and time.monotonic() < deadline
+                ):
                     time.sleep(0.02)
                 self.assertEqual(report.ok, expected_ok, report.to_dict())
-                self.assertFalse(_pid_exists(pid), "suite descendant survived leader completion")
+                self.assertFalse(
+                    owned_process_ids(_EXPECTED_SUITE_OWNER_ENV, owner),
+                    "suite descendant survived leader completion",
+                )
             finally:
-                if pid and _pid_exists(pid):
-                    os.kill(pid, signal.SIGKILL)
+                if owner:
+                    asyncio.run(
+                        terminate_owned_processes(
+                            _EXPECTED_SUITE_OWNER_ENV,
+                            owner,
+                            term_grace_seconds=0,
+                            kill_grace_seconds=1,
+                        )
+                    )
 
     def test_manifest_header_and_suite_field_errors_fail_closed(self) -> None:
         valid = textwrap.dedent(self._header()) + self._one_suite_manifest()
@@ -392,14 +417,6 @@ class PortableCommandValidationTests(unittest.TestCase):
             self.assertFalse(report.ok)
             self.assertTrue(report.manifest_errors)
             self.assertIn("token", report.manifest_errors[0])
-
-
-def _pid_exists(pid: int) -> bool:
-    try:
-        os.kill(pid, 0)
-    except ProcessLookupError:
-        return False
-    return True
 
 
 if __name__ == "__main__":
