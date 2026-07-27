@@ -1,4 +1,4 @@
-"""Generation proofs for the authored integer and absolute-URI profiles."""
+"""Generation proofs for the authored scalar and free-form JSON profiles."""
 
 from __future__ import annotations
 
@@ -27,6 +27,7 @@ RESPONSE_INTEGER_NODES = 92
 PROFILE_KEYS = (
     "x-ctower-rfc3339-profile",
     "x-ctower-json-integer-profile",
+    "x-ctower-free-form-json-profile",
     "x-ctower-absolute-uri-profile",
 )
 SIGNED_FIELDS = (
@@ -36,6 +37,7 @@ SIGNED_FIELDS = (
     "nullable_slot",
     "union_slot",
 )
+_OMITTED = object()
 
 
 @pytest.mark.parametrize("profile", PROFILE_KEYS)
@@ -109,6 +111,77 @@ def test_codegen_rejects_an_unconstrained_numeric_response_leaf() -> None:
 
     with pytest.raises(ValueError, match="unconstrained numeric response leaf"):
         render_typescript_fixture(document, "0" * 64)
+
+
+@pytest.mark.parametrize(
+    "additional_properties",
+    (_OMITTED, True, {}),
+    ids=("omitted", "true", "empty-schema"),
+)
+def test_free_form_profile_is_selected_by_object_structure(
+    additional_properties: object,
+    tmp_path: Path,
+) -> None:
+    fixture = _free_form_fixture(tmp_path, additional_properties)
+    write(fixture)
+    _assert_structural_free_form_generation(fixture)
+
+
+def _free_form_fixture(tmp_path: Path, additional_properties: object) -> Path:
+    fixture = tmp_path / "fixture"
+    shutil.copytree(
+        ROOT,
+        fixture,
+        ignore=shutil.ignore_patterns(".git", "node_modules", "__pycache__"),
+    )
+    path = fixture / "contracts/http/openapi.yaml"
+    document = cast(
+        dict[str, object],
+        json.loads(path.read_text(encoding="utf-8")),
+    )
+    components = cast(dict[str, object], document["components"])
+    schemas = cast(dict[str, dict[str, object]], components["schemas"])
+    resource = schemas["CompanyBundleResource"]
+    properties = cast(dict[str, object], resource["properties"])
+    free_form: dict[str, object] = {"type": "object"}
+    if additional_properties is not _OMITTED:
+        free_form["additionalProperties"] = additional_properties
+    properties["payload"] = free_form
+    path.write_text(json.dumps(document, indent=2) + "\n", encoding="utf-8")
+    return fixture
+
+
+def _assert_structural_free_form_generation(fixture: Path) -> None:
+    validators = (fixture / "generated/typescript/ctower-client/src/validators.ts").read_text(
+        encoding="utf-8"
+    )
+    decoder = validators.split("function decodeUntyped", 1)[1].split(
+        "function validateConstAndEnum",
+        1,
+    )[0]
+    assert "decodeInteger(FREE_FORM_NUMBER_SCHEMA" in decoder
+    assert "decodeNumber(FREE_FORM_NUMBER_SCHEMA" in decoder
+    assert all(
+        forbidden not in decoder
+        for forbidden in (
+            "CompanyBundleResource",
+            "payload",
+            "revision",
+            "exportCompanyBundle",
+        )
+    )
+    python_models = (fixture / "generated/python/ctower_client/models.py").read_text(
+        encoding="utf-8"
+    )
+    python_init = (fixture / "generated/python/ctower_client/__init__.py").read_text(
+        encoding="utf-8"
+    )
+    typescript_models = (fixture / "generated/typescript/ctower-client/src/models.ts").read_text(
+        encoding="utf-8"
+    )
+    assert "payload: _FreeFormJsonObject" in python_models
+    assert "_FreeFormJsonObject" not in python_init
+    assert 'readonly "payload": Readonly<Record<string, unknown>>' in typescript_models
 
 
 def _authored_document() -> dict[str, object]:

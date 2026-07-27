@@ -189,7 +189,7 @@ class JsonResponseParser {{
   }}
 
   #fail(reason: string): never {{
-    throw new TypeError(`Invalid ctower JSON response at offset ${{this.#index}}: ${{reason}}`);
+    throw new SyntaxError(`Invalid ctower JSON response at offset ${{this.#index}}: ${{reason}}`);
   }}
 }}
 

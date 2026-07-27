@@ -9,6 +9,11 @@ from tools.codegen._absolute_uri_codegen import (
     AbsoluteUriProfile,
     render_typescript_uri_validator,
 )
+from tools.codegen._free_form_json_codegen import (
+    FreeFormJsonProfile,
+    has_free_form_additional_properties,
+    render_typescript_free_form_decoder,
+)
 from tools.codegen._json_integer_codegen import JsonIntegerProfile
 
 __all__ = ["render_validators"]
@@ -22,6 +27,7 @@ def render_validators(
     problem_models: Mapping[str, tuple[tuple[int, str], ...]],
     digest: str,
     *,
+    free_form_profile: FreeFormJsonProfile,
     integer_profile: JsonIntegerProfile,
     uri_profile: AbsoluteUriProfile,
 ) -> str:
@@ -37,6 +43,7 @@ def render_validators(
         for operation_id, models in problem_models.items()
     }
     uri_validator = render_typescript_uri_validator(uri_profile)
+    free_form_decoder = render_typescript_free_form_decoder(free_form_profile)
     return f"""// DO NOT EDIT: generated file; regenerate from declared inputs.
 // Authored contract digest: sha256:{digest}
 
@@ -281,7 +288,7 @@ function decodeObject(
     }} else {{
       const additional = schema["additionalProperties"];
       if (additional === false) fail(path, `unknown field ${{name}}`);
-      if (additional === true || additional === undefined) {{
+      if (hasFreeFormAdditionalProperties(additional)) {{
         value = decodeUntyped(member, `${{path}}.${{name}}`);
       }} else {{
         value = decodeSchema(additional, member, `${{path}}.${{name}}`);
@@ -297,25 +304,7 @@ function decodeObject(
   return result;
 }}
 
-function decodeUntyped(node: JsonNode, path: string): unknown {{
-  if (node === null || typeof node === "string" || typeof node === "boolean") return node;
-  if (node.kind === "number") return fail(path, "unconstrained numeric response leaf");
-  if (node.kind === "array") {{
-    return node.items.map((item, index) => decodeUntyped(item, `${{path}}[${{index}}]`));
-  }}
-  const members = new Map<string, JsonNode>();
-  for (const [name, member] of node.members) members.set(name, member);
-  const result: Record<string, unknown> = {{}};
-  for (const [name, member] of members) {{
-    Object.defineProperty(result, name, {{
-      configurable: true,
-      enumerable: true,
-      value: decodeUntyped(member, `${{path}}.${{name}}`),
-      writable: true,
-    }});
-  }}
-  return result;
-}}
+{free_form_decoder}
 
 function validateConstAndEnum(schema: SchemaObject, value: unknown, path: string): void {{
   if ("const" in schema && !Object.is(value, schema["const"])) {{
@@ -535,9 +524,9 @@ def _visit_materializable_object(
         raise TypeError(f"{path}.properties must be an object")
     for name, child in properties.items():
         _visit_materializable_schema(child, f"{path}.{name}", schemas, seen)
-    additional = schema.get("additionalProperties")
-    if additional in (False, None):
+    if has_free_form_additional_properties(schema):
         return
-    if additional is True:
-        raise ValueError(f"{path} has unconstrained numeric response properties")
+    additional = schema.get("additionalProperties")
+    if additional is False:
+        return
     _visit_materializable_schema(additional, f"{path}.additionalProperties", schemas, seen)

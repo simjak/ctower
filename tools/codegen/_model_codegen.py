@@ -12,9 +12,15 @@ from tools.codegen._absolute_uri_codegen import (
     render_python_uri_validator,
     require_absolute_uri_profile,
 )
+from tools.codegen._free_form_json_codegen import (
+    FreeFormJsonProfile,
+    has_free_form_additional_properties,
+    render_python_free_form_validator,
+)
 from tools.codegen._json_integer_codegen import (
     JSON_INTEGER_MAXIMUM,
     JSON_INTEGER_MINIMUM,
+    JsonIntegerProfile,
     require_json_integer_profile,
 )
 from tools.codegen._rfc3339_codegen import require_rfc3339_profile
@@ -25,15 +31,20 @@ _INLINE_WIDTH = 88
 _MAX_LINE_WIDTH = 100
 
 
-def render_models(document: dict[str, object], contract_digest: str) -> str:
-    require_json_integer_profile(document)
+def render_models(
+    document: dict[str, object],
+    contract_digest: str,
+    *,
+    free_form_profile: FreeFormJsonProfile,
+) -> str:
+    integer_profile = require_json_integer_profile(document)
     require_rfc3339_profile(document)
     uri_profile = require_absolute_uri_profile(document)
     schemas = _schemas(document)
     names = tuple(sorted(schemas))
     sections = [
         _header(contract_digest, names),
-        _scalar_validators(uri_profile),
+        _scalar_validators(uri_profile, free_form_profile, integer_profile),
         _boundary_model(),
     ]
     for name in _schema_order(schemas):
@@ -75,6 +86,7 @@ from __future__ import annotations
 
 from datetime import datetime, timedelta, timezone
 from enum import StrEnum
+import math
 import re
 from typing import Annotated, Literal
 from uuid import UUID
@@ -86,7 +98,11 @@ __all__ = [
 ]'''
 
 
-def _scalar_validators(uri_profile: AbsoluteUriProfile) -> str:
+def _scalar_validators(
+    uri_profile: AbsoluteUriProfile,
+    free_form_profile: FreeFormJsonProfile,
+    integer_profile: JsonIntegerProfile,
+) -> str:
     scalar_validators = r"""_RFC3339_PATTERN = re.compile(
     r"^(?P<year>[0-9]{4})-(?P<month>[0-9]{2})-(?P<day>[0-9]{2})"
     r"T(?P<hour>[0-9]{2}):(?P<minute>[0-9]{2}):(?P<second>[0-9]{2})"
@@ -151,7 +167,13 @@ def _validate_absolute_uri(value: object) -> str:
 
 _AbsoluteUri = Annotated[str, BeforeValidator(_validate_absolute_uri)]
 _Rfc3339DateTime = Annotated[datetime, BeforeValidator(_validate_rfc3339)]"""
-    return scalar_validators + "\n\n" + render_python_uri_validator(uri_profile)
+    return "\n\n".join(
+        (
+            scalar_validators,
+            render_python_uri_validator(uri_profile),
+            render_python_free_form_validator(free_form_profile, integer_profile),
+        )
+    )
 
 
 def _boundary_model() -> str:
@@ -276,7 +298,11 @@ def _primitive_expression(schema: Mapping[str, object], schema_type: object) -> 
     if schema_type == "null":
         return "None"
     if schema_type == "object":
-        return "dict[str, object]"
+        return (
+            "_FreeFormJsonObject"
+            if has_free_form_additional_properties(schema)
+            else "dict[str, object]"
+        )
     raise ValueError(f"unsupported OpenAPI schema shape: {dict(schema)}")
 
 

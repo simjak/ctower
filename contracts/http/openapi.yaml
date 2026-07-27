@@ -23,6 +23,17 @@
     "semantics": "exact-integer-interoperability",
     "token-syntax": "minus-zero-or-nonzero-decimal-digits-only"
   },
+  "x-ctower-free-form-json-profile": {
+    "containers": "recursive-arrays-and-objects",
+    "duplicate-object-members": "last-member-wins",
+    "fraction-exponent-negative-zero": "preserve-sign",
+    "fraction-exponent-semantics": "finite-ieee-754-binary64",
+    "integer-lexemes": "x-ctower-json-integer-profile",
+    "nonfinite": "rejected",
+    "overflow": "rejected",
+    "trust": "opaque-until-component-schema-validation",
+    "underflow": "preserve-binary64-signed-zero"
+  },
   "x-ctower-absolute-uri-profile": {
     "characters": "ascii-rfc3986",
     "fragment": "allowed",
