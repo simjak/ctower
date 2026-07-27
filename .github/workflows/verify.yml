@@ -38,6 +38,27 @@ jobs:
           fetch-depth: 0
           persist-credentials: false
 
+      - name: Establish complete repository graph
+        shell: bash
+        run: |
+          set -euo pipefail
+          shallow_state="$(git rev-parse --is-shallow-repository)"
+          printf 'is-shallow-repository=%s\n' "${shallow_state}"
+          shallow_path="$(git rev-parse --git-path shallow)"
+          if [[ -f "${shallow_path}" ]]; then
+            printf '.git/shallow:\n'
+            cat "${shallow_path}"
+          fi
+          if [[ "${shallow_state}" == "true" ]]; then
+            git fetch --unshallow origin
+          fi
+          final_shallow_state="$(git rev-parse --is-shallow-repository)"
+          printf 'is-shallow-repository-after=%s\n' "${final_shallow_state}"
+          if [[ "${final_shallow_state}" != "false" ]]; then
+            printf 'repository graph must be complete\n' >&2
+            exit 1
+          fi
+
       - name: Install verification-host Python
         uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1 # v6.3.0
         with:
