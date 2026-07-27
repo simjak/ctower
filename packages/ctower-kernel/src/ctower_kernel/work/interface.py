@@ -45,6 +45,7 @@ __all__ = [
 
 PRIORITIES = frozenset({"P0", "P1", "P2"})
 MAX_REASON_LENGTH = 500
+_PRIORITY_AUTHORITIES = frozenset({PrincipalKind.COMMANDER, PrincipalKind.OPERATOR})
 
 
 class AssignmentKind(StrEnum):
@@ -452,7 +453,7 @@ def _assignment_refusal(command: ChangeAssignment) -> RecordProblem | None:
 def _priority_refusal(actor: Actor, command: ChangePriority) -> RecordProblem | None:
     if command.priority not in PRIORITIES:
         return _work_problem(command, "validation-error", 422, "Invalid priority")
-    if actor.kind not in {PrincipalKind.COMMANDER, PrincipalKind.OPERATOR}:
+    if actor.kind not in _PRIORITY_AUTHORITIES:
         return _work_problem(
             command, "unauthorized", 403, "Priority change requires task authority"
         )

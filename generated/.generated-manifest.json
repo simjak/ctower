@@ -262,7 +262,7 @@
         },
         {
           "path": "tools/codegen/_operation_codegen.py",
-          "sha256": "sha256:33eb7a884b4f95c7dfec67db32359e061977daeea07d9ce348d29c712775bc7d"
+          "sha256": "sha256:3f6f3de3635582a3b03aa361d2f5f6069b3b2a77324f8381e0df15d06d383c5f"
         },
         {
           "path": "tools/codegen/_schema_codegen.py",

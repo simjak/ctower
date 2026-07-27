@@ -140,7 +140,7 @@ def _operation(path: str, method: str, value: Mapping[str, object]) -> _Operatio
         response_model=_response_model(value),
         cli_names=_cli_names(operation_id, value.get("x-ctower-cli")),
         mutation=mutation,
-        spool_policy=cast(_SpoolPolicy, spool),
+        spool_policy=spool,
     )
 
 
