@@ -14,10 +14,15 @@ from typing import cast
 
 _PINNED_ACTION = re.compile(r"[^@\s]+@[0-9a-f]{40}")
 _IDENTIFIER = re.compile(r"[0-9A-Za-z-]+")
+# Release Please 17.6.0 recognizes case-insensitive Release-As footer types with
+# ":" or "#" separators. The history check below is intentionally a superset.
+_RELEASE_AS_DIRECTIVE = re.compile(
+    r"^release-as[ \t]*(?::|#)[ \t]*(.*)$",
+    re.IGNORECASE,
+)
+_RELEASE_PLEASE_ACTION = "googleapis/release-please-action@45996ed1f6d02564a971a2fa1b5860e934307cf7"
 _SEMVER_CORE_COMPONENTS = 3
 _PRE1_FEATURE_COMMIT = "79e292e437457f92bb6a39bfbfdb2a3a62146529"
-_PRE1_RELEASE_POLICY_HISTORY_HEAD = "d9de5e08373e7b9ed1c5382a6cfdc637fdfca038"
-_RELEASE_PLEASE_DEFAULT_INITIAL_VERSION = "1.0.0"
 
 
 def _is_valid_semver(value: str) -> bool:
@@ -135,28 +140,27 @@ class ReleaseFoundationTests(unittest.TestCase):
     def test_first_release_proposal_preserves_pre_1_0_policy(self) -> None:
         config = self._read_json("release-please-config.json")
         manifest = self._read_json(".release-please-manifest.json")
+        workflow = (self.root / ".github/workflows/release-please.yml").read_text(encoding="utf-8")
         root_package = self._as_object(
             self._as_object(config["packages"], "Release Please packages")["."],
             "Release Please root package",
         )
 
+        self.assertIn(f"uses: {_RELEASE_PLEASE_ACTION}", workflow)
         self.assertEqual(manifest["."], "0.0.0")
         self.assertEqual(
             self._pre1_release_tags(),
             [],
         )
         self._assert_pre1_feature_history()
-
-        configured_initial = root_package.get("initial-version", config.get("initial-version"))
-        proposal = (
-            self._as_string(configured_initial, "Release Please initial version")
-            if configured_initial is not None
-            else _RELEASE_PLEASE_DEFAULT_INITIAL_VERSION
-        )
         self.assertEqual(
             "0.1.0",
-            proposal,
-            f"Release Please would propose {proposal} for the pre-1.0 feature history",
+            root_package.get("initial-version", config.get("initial-version")),
+        )
+        self.assertEqual(
+            [],
+            self._release_as_policy_violations(config, root_package),
+            "unreleased history can override Release Please's pre-1.0 initial version",
         )
 
     def test_workflow_actions_are_sha_pinned_and_unsafe_trigger_is_absent(self) -> None:
@@ -236,20 +240,16 @@ class ReleaseFoundationTests(unittest.TestCase):
         return cast(str, value)
 
     def _pre1_release_tags(self) -> list[str]:
-        environment = {
-            **os.environ,
-            "PRE1_RELEASE_POLICY_HISTORY_HEAD": _PRE1_RELEASE_POLICY_HISTORY_HEAD,
-        }
         result = subprocess.run(
             (
-                sys.executable,
-                "-c",
-                "import os; os.execv('/usr/bin/git', "
-                "['/usr/bin/git', 'tag', '--merged', "
-                "os.environ['PRE1_RELEASE_POLICY_HISTORY_HEAD'], '--list', 'v[0-9]*'])",
+                "/usr/bin/git",
+                "tag",
+                "--merged",
+                "HEAD",
+                "--list",
+                "v[0-9]*",
             ),
             cwd=self.root,
-            env=environment,
             check=True,
             capture_output=True,
             text=True,
@@ -260,7 +260,6 @@ class ReleaseFoundationTests(unittest.TestCase):
         environment = {
             **os.environ,
             "PRE1_FEATURE_COMMIT": _PRE1_FEATURE_COMMIT,
-            "PRE1_RELEASE_POLICY_HISTORY_HEAD": _PRE1_RELEASE_POLICY_HISTORY_HEAD,
         }
         result = subprocess.run(
             (
@@ -268,8 +267,7 @@ class ReleaseFoundationTests(unittest.TestCase):
                 "-c",
                 "import os; os.execv('/usr/bin/git', "
                 "['/usr/bin/git', 'merge-base', '--is-ancestor', "
-                "os.environ['PRE1_FEATURE_COMMIT'], "
-                "os.environ['PRE1_RELEASE_POLICY_HISTORY_HEAD']])",
+                "os.environ['PRE1_FEATURE_COMMIT'], 'HEAD'])",
             ),
             cwd=self.root,
             env=environment,
@@ -282,6 +280,47 @@ class ReleaseFoundationTests(unittest.TestCase):
             0,
             f"{_PRE1_FEATURE_COMMIT} must exist in pre-1.0 history: {result.stderr.strip()}",
         )
+
+    def _release_as_policy_violations(
+        self,
+        config: dict[str, object],
+        root_package: dict[str, object],
+    ) -> list[str]:
+        violations = [
+            f"{source}: {value!r}"
+            for source, value in (
+                ("config release-as", config.get("release-as")),
+                ("root package release-as", root_package.get("release-as")),
+            )
+            if value is not None and not self._is_pre1_release_as(value)
+        ]
+        for commit, message in self._commit_messages():
+            for line in message.splitlines():
+                match = _RELEASE_AS_DIRECTIVE.match(line.lstrip(" \t"))
+                if match is not None and not self._is_pre1_release_as(match.group(1)):
+                    violations.append(f"commit {commit}: {line.strip()}")
+        return violations
+
+    def _commit_messages(self) -> list[tuple[str, str]]:
+        result = subprocess.run(
+            (
+                "/usr/bin/git",
+                "log",
+                "-z",
+                "--format=%H%x00%B",
+                "HEAD",
+            ),
+            cwd=self.root,
+            check=True,
+            capture_output=True,
+            text=True,
+        )
+        fields = result.stdout.rstrip("\0").split("\0")
+        self.assertEqual(len(fields) % 2, 0, "git log returned incomplete commit records")
+        return list(zip(fields[::2], fields[1::2], strict=True))
+
+    def _is_pre1_release_as(self, value: object) -> bool:
+        return isinstance(value, str) and _is_valid_semver(value) and value.startswith("0.")
 
     def _workflow_values(self, workflow: str, key: str) -> list[str]:
         prefix = f"{key}:"
