@@ -23,6 +23,7 @@ class VerificationSupplyChainTests(unittest.TestCase):
         self.assertEqual(workflow.count("run: just check"), 1)
         self.assertEqual(workflow.count("run: just verify"), 1)
         self.assertIn("permissions:\n  contents: read", workflow)
+        self.assertIn("ref: ${{ github.event.pull_request.head.sha || github.sha }}", workflow)
         self.assertIn("fetch-depth: 0", workflow)
         self.assertIn("persist-credentials: false", workflow)
         self.assertNotIn("secrets.", workflow)
