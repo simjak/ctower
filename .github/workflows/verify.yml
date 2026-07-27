@@ -45,11 +45,12 @@ jobs:
           shallow_state="$(git rev-parse --is-shallow-repository)"
           printf 'is-shallow-repository=%s\n' "${shallow_state}"
           shallow_path="$(git rev-parse --git-path shallow)"
-          if [[ -f "${shallow_path}" ]]; then
-            printf '.git/shallow:\n'
-            cat "${shallow_path}"
-          fi
           if [[ "${shallow_state}" == "true" ]]; then
+            printf '.git/shallow stat:\n'
+            stat "${shallow_path}"
+            printf '.git/shallow contents:\n'
+            cat "${shallow_path}"
+            printf 'origin/main=%s\n' "$(git rev-parse --verify 'origin/main^{commit}')"
             git fetch --unshallow origin
           fi
           final_shallow_state="$(git rev-parse --is-shallow-repository)"
@@ -133,8 +134,52 @@ jobs:
       - name: Install frozen JavaScript verification dependencies
         run: pnpm install --frozen-lockfile --ignore-scripts
 
+      - name: Establish complete repository graph
+        shell: bash
+        run: |
+          set -euo pipefail
+          shallow_state="$(git rev-parse --is-shallow-repository)"
+          printf 'is-shallow-repository=%s\n' "${shallow_state}"
+          shallow_path="$(git rev-parse --git-path shallow)"
+          if [[ "${shallow_state}" == "true" ]]; then
+            printf '.git/shallow stat:\n'
+            stat "${shallow_path}"
+            printf '.git/shallow contents:\n'
+            cat "${shallow_path}"
+            printf 'origin/main=%s\n' "$(git rev-parse --verify 'origin/main^{commit}')"
+            git fetch --unshallow origin
+          fi
+          final_shallow_state="$(git rev-parse --is-shallow-repository)"
+          printf 'is-shallow-repository-after=%s\n' "${final_shallow_state}"
+          if [[ "${final_shallow_state}" != "false" ]]; then
+            printf 'repository graph must be complete\n' >&2
+            exit 1
+          fi
+
       - name: Run canonical warm gate
         run: just check
+
+      - name: Establish complete repository graph
+        shell: bash
+        run: |
+          set -euo pipefail
+          shallow_state="$(git rev-parse --is-shallow-repository)"
+          printf 'is-shallow-repository=%s\n' "${shallow_state}"
+          shallow_path="$(git rev-parse --git-path shallow)"
+          if [[ "${shallow_state}" == "true" ]]; then
+            printf '.git/shallow stat:\n'
+            stat "${shallow_path}"
+            printf '.git/shallow contents:\n'
+            cat "${shallow_path}"
+            printf 'origin/main=%s\n' "$(git rev-parse --verify 'origin/main^{commit}')"
+            git fetch --unshallow origin
+          fi
+          final_shallow_state="$(git rev-parse --is-shallow-repository)"
+          printf 'is-shallow-repository-after=%s\n' "${final_shallow_state}"
+          if [[ "${final_shallow_state}" != "false" ]]; then
+            printf 'repository graph must be complete\n' >&2
+            exit 1
+          fi
 
       - name: Run canonical release gate
         run: just verify
