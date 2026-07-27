@@ -143,6 +143,7 @@ pythonpath = [
 
 [tool.coverage.run]
 branch = true
+patch = ["subprocess"]
 source = ["tools/checks"]
 omit = ["tests/repository/fixtures/*"]
 
