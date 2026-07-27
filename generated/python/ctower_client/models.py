@@ -1,6 +1,6 @@
 """DO NOT EDIT: generated file; regenerate from declared inputs.
 
-Authored contract digest: sha256:3632dc6fe1f1f88a5def5de6142b4565f0fffc884cbb3a1f04aacdb39a40eb77
+Authored contract digest: sha256:88cf467bdbbcb58a8e48b20094eea18b2468ef25666878a1c2dc45e077b16891
 """
 
 from __future__ import annotations
@@ -11,7 +11,7 @@ import re
 from typing import Annotated, Literal
 from uuid import UUID
 
-from pydantic import AnyUrl, BaseModel, BeforeValidator, ConfigDict, Field, TypeAdapter
+from pydantic import BaseModel, BeforeValidator, ConfigDict, Field
 
 __all__ = [
     "ActivityClass",
@@ -182,7 +182,6 @@ _RFC3339_PATTERN = re.compile(
     r"(?P<zone>Z|(?P<sign>[+-])(?P<offset_hour>[0-9]{2}):"
     r"(?P<offset_minute>[0-9]{2}))$"
 )
-_ABSOLUTE_URI_ADAPTER = TypeAdapter(AnyUrl)
 
 
 def _validate_rfc3339(value: object) -> datetime:
@@ -233,15 +232,194 @@ def _validate_rfc3339(value: object) -> datetime:
 def _validate_absolute_uri(value: object) -> str:
     if not isinstance(value, str):
         raise ValueError("absolute URI must be a string")
-    try:
-        _ABSOLUTE_URI_ADAPTER.validate_python(value, strict=True)
-    except ValueError as error:
-        raise ValueError("string is not an absolute URI") from error
+    if not _is_absolute_uri(value):
+        raise ValueError("string is not an absolute URI")
     return value
 
 
 _AbsoluteUri = Annotated[str, BeforeValidator(_validate_absolute_uri)]
 _Rfc3339DateTime = Annotated[datetime, BeforeValidator(_validate_rfc3339)]
+
+_URI_UNRESERVED = frozenset('ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-._~')
+_URI_SUB_DELIMITERS = frozenset("!$&'()*+,;=")
+_URI_HEX_DIGITS = frozenset('0123456789ABCDEFabcdef')
+_URI_PCHAR = _URI_UNRESERVED | _URI_SUB_DELIMITERS | frozenset(":@")
+
+
+def _is_absolute_uri(value: str) -> bool:
+    if not value or any(ord(char) <= 32 or ord(char) >= 127 or char == "\\" for char in value):
+        return False
+    colon = value.find(":")
+    if colon <= 0 or not _is_uri_scheme(value[:colon]):
+        return False
+    scheme = value[:colon]
+    remainder = value[colon + 1:]
+    fragment_at = remainder.find("#")
+    if fragment_at >= 0:
+        fragment = remainder[fragment_at + 1:]
+        remainder = remainder[:fragment_at]
+        if not _valid_uri_component(fragment, allow_slash=True, allow_question=True):
+            return False
+    query_at = remainder.find("?")
+    if query_at >= 0:
+        query = remainder[query_at + 1:]
+        remainder = remainder[:query_at]
+        if not _valid_uri_component(query, allow_slash=True, allow_question=True):
+            return False
+    has_authority = remainder.startswith("//")
+    host = ""
+    if has_authority:
+        authority_and_path = remainder[2:]
+        slash_at = authority_and_path.find("/")
+        authority = authority_and_path if slash_at < 0 else authority_and_path[:slash_at]
+        path = "" if slash_at < 0 else authority_and_path[slash_at:]
+        valid_authority, host = _parse_uri_authority(authority)
+        if not valid_authority:
+            return False
+    else:
+        path = remainder
+    if not _valid_uri_component(path, allow_slash=True, allow_question=False):
+        return False
+    return scheme.lower() not in {"http", "https"} or (has_authority and bool(host))
+
+
+def _is_uri_scheme(value: str) -> bool:
+    return (
+        bool(value)
+        and _ascii_alpha(value[0])
+        and all(_ascii_alpha(char) or _ascii_digit(char) or char in "+-." for char in value[1:])
+    )
+
+
+def _valid_uri_component(value: str, *, allow_slash: bool, allow_question: bool) -> bool:
+    allowed = _URI_PCHAR
+    if allow_slash:
+        allowed = allowed | frozenset("/")
+    if allow_question:
+        allowed = allowed | frozenset("?")
+    return _valid_uri_token(value, allowed)
+
+
+def _valid_uri_token(value: str, allowed: frozenset[str]) -> bool:
+    index = 0
+    while index < len(value):
+        char = value[index]
+        if char == "%":
+            if (
+                index + 2 >= len(value)
+                or value[index + 1] not in _URI_HEX_DIGITS
+                or value[index + 2] not in _URI_HEX_DIGITS
+            ):
+                return False
+            index += 3
+        elif char in allowed:
+            index += 1
+        else:
+            return False
+    return True
+
+
+def _parse_uri_authority(value: str) -> tuple[bool, str]:
+    if value.count("@") > 1:
+        return False, ""
+    if "@" in value:
+        userinfo, host_port = value.rsplit("@", 1)
+        if not _valid_uri_token(
+            userinfo, _URI_UNRESERVED | _URI_SUB_DELIMITERS | frozenset(":")
+        ):
+            return False, ""
+    else:
+        host_port = value
+    if host_port.startswith("["):
+        close = host_port.find("]")
+        if close < 0 or not _valid_ip_literal(host_port[1:close]):
+            return False, ""
+        suffix = host_port[close + 1:]
+        if suffix and (not suffix.startswith(":") or not _ascii_digits(suffix[1:])):
+            return False, ""
+        return True, host_port[:close + 1]
+    if "[" in host_port or "]" in host_port or host_port.count(":") > 1:
+        return False, ""
+    if ":" in host_port:
+        host, port = host_port.rsplit(":", 1)
+        if not _ascii_digits(port):
+            return False, ""
+    else:
+        host = host_port
+    if not _valid_uri_token(host, _URI_UNRESERVED | _URI_SUB_DELIMITERS):
+        return False, ""
+    return True, host
+
+
+def _valid_ip_literal(value: str) -> bool:
+    if len(value) >= 4 and value[0] in "vV":
+        version, separator, address = value[1:].partition(".")
+        allowed = _URI_UNRESERVED | _URI_SUB_DELIMITERS | frozenset(":")
+        return (
+            separator == "."
+            and bool(version)
+            and all(char in _URI_HEX_DIGITS for char in version)
+            and bool(address)
+            and all(char in allowed for char in address)
+        )
+    return _valid_ipv6(value)
+
+
+def _valid_ipv6(value: str) -> bool:
+    if not value or value.count("::") > 1:
+        return False
+    if "::" not in value:
+        groups = _ipv6_side_groups(value, allow_ipv4=True)
+        return groups == 8
+    left, right = value.split("::", 1)
+    left_groups = _ipv6_side_groups(left, allow_ipv4=False)
+    right_groups = _ipv6_side_groups(right, allow_ipv4=True)
+    return (
+        left_groups is not None
+        and right_groups is not None
+        and left_groups + right_groups < 8
+    )
+
+
+def _ipv6_side_groups(value: str, *, allow_ipv4: bool) -> int | None:
+    if not value:
+        return 0
+    parts = value.split(":")
+    if any(not part for part in parts):
+        return None
+    count = 0
+    for index, part in enumerate(parts):
+        if "." in part:
+            if not allow_ipv4 or index != len(parts) - 1 or not _valid_ipv4(part):
+                return None
+            count += 2
+        elif len(part) > 4 or any(char not in _URI_HEX_DIGITS for char in part):
+            return None
+        else:
+            count += 1
+    return count
+
+
+def _valid_ipv4(value: str) -> bool:
+    parts = value.split(".")
+    return len(parts) == 4 and all(
+        _ascii_digits(part)
+        and (len(part) == 1 or not part.startswith("0"))
+        and int(part) <= 255
+        for part in parts
+    )
+
+
+def _ascii_alpha(value: str) -> bool:
+    return "A" <= value <= "Z" or "a" <= value <= "z"
+
+
+def _ascii_digit(value: str) -> bool:
+    return "0" <= value <= "9"
+
+
+def _ascii_digits(value: str) -> bool:
+    return bool(value) and all(_ascii_digit(char) for char in value)
 
 
 class _BoundaryModel(BaseModel):

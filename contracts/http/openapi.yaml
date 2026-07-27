@@ -19,7 +19,19 @@
   "x-ctower-json-integer-profile": {
     "maximum": 9007199254740991,
     "minimum": -9007199254740991,
-    "semantics": "exact-integer-interoperability"
+    "negative-zero": "normalize-to-zero",
+    "semantics": "exact-integer-interoperability",
+    "token-syntax": "minus-zero-or-nonzero-decimal-digits-only"
+  },
+  "x-ctower-absolute-uri-profile": {
+    "characters": "ascii-rfc3986",
+    "fragment": "allowed",
+    "grammar": "rfc3986-uri-with-required-scheme",
+    "http-authority": "required-with-nonempty-host",
+    "normalization": "none-return-original",
+    "percent-encoding": "complete-two-hex-digit-triplets",
+    "raw-backslash": "rejected",
+    "raw-whitespace-controls": "rejected"
   },
   "paths": {
     "/v1/bootstrap/first-tenant": {

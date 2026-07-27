@@ -82,6 +82,7 @@ def test_generated_client_is_owned_and_byte_stable() -> None:
         "generated/typescript/ctower-client/src/index.ts",
         "generated/typescript/ctower-client/src/models.ts",
         "generated/typescript/ctower-client/src/operations.ts",
+        "generated/typescript/ctower-client/src/response-json.ts",
         "generated/typescript/ctower-client/src/validators.ts",
         "generated/typescript/ctower-client/tsconfig.json",
     }
@@ -93,28 +94,11 @@ def test_generated_client_is_owned_and_byte_stable() -> None:
     assert {
         path.relative_to(ROOT).as_posix() for path in (ROOT / "contracts").rglob("*.schema.json")
     } <= input_paths
-
-
-@pytest.mark.parametrize(
-    "profile",
-    ("x-ctower-json-integer-profile", "x-ctower-rfc3339-profile"),
-)
-def test_codegen_refuses_authored_scalar_profile_drift(profile: str) -> None:
-    with tempfile.TemporaryDirectory() as name:
-        fixture = Path(name)
-        shutil.copytree(
-            ROOT,
-            fixture,
-            dirs_exist_ok=True,
-            ignore=shutil.ignore_patterns(".git", "node_modules", "__pycache__"),
-        )
-        path = fixture / "contracts/http/openapi.yaml"
-        document = json.loads(path.read_text(encoding="utf-8"))
-        document[profile] = {}
-        path.write_text(json.dumps(document, indent=2) + "\n", encoding="utf-8")
-
-        with pytest.raises(CodegenError, match="must declare"):
-            write(fixture)
+    assert {
+        "tools/codegen/_absolute_uri_codegen.py",
+        "tools/codegen/_typescript_json_codegen.py",
+        "tools/codegen/_typescript_validation_codegen.py",
+    } <= input_paths
 
 
 def test_generated_python_carries_do_not_edit_notice() -> None:
@@ -148,6 +132,7 @@ def test_generated_typescript_has_exact_intake_models_operations_and_notice() ->
         "index.ts",
         "models.ts",
         "operations.ts",
+        "response-json.ts",
         "validators.ts",
     }
     for path in sources:

@@ -7,6 +7,11 @@ import re
 from collections.abc import Mapping
 from typing import cast
 
+from tools.codegen._absolute_uri_codegen import (
+    AbsoluteUriProfile,
+    render_python_uri_validator,
+    require_absolute_uri_profile,
+)
 from tools.codegen._json_integer_codegen import (
     JSON_INTEGER_MAXIMUM,
     JSON_INTEGER_MINIMUM,
@@ -23,9 +28,14 @@ _MAX_LINE_WIDTH = 100
 def render_models(document: dict[str, object], contract_digest: str) -> str:
     require_json_integer_profile(document)
     require_rfc3339_profile(document)
+    uri_profile = require_absolute_uri_profile(document)
     schemas = _schemas(document)
     names = tuple(sorted(schemas))
-    sections = [_header(contract_digest, names), _scalar_validators(), _boundary_model()]
+    sections = [
+        _header(contract_digest, names),
+        _scalar_validators(uri_profile),
+        _boundary_model(),
+    ]
     for name in _schema_order(schemas):
         schema = _mapping(schemas[name], f"schema {name}")
         sections.append(_render_schema(name, schema))
@@ -69,22 +79,21 @@ import re
 from typing import Annotated, Literal
 from uuid import UUID
 
-from pydantic import AnyUrl, BaseModel, BeforeValidator, ConfigDict, Field, TypeAdapter
+from pydantic import BaseModel, BeforeValidator, ConfigDict, Field
 
 __all__ = [
 {exports}
 ]'''
 
 
-def _scalar_validators() -> str:
-    return r"""_RFC3339_PATTERN = re.compile(
+def _scalar_validators(uri_profile: AbsoluteUriProfile) -> str:
+    scalar_validators = r"""_RFC3339_PATTERN = re.compile(
     r"^(?P<year>[0-9]{4})-(?P<month>[0-9]{2})-(?P<day>[0-9]{2})"
     r"T(?P<hour>[0-9]{2}):(?P<minute>[0-9]{2}):(?P<second>[0-9]{2})"
     r"(?:\.(?P<fraction>[0-9]{1,6}))?"
     r"(?P<zone>Z|(?P<sign>[+-])(?P<offset_hour>[0-9]{2}):"
     r"(?P<offset_minute>[0-9]{2}))$"
 )
-_ABSOLUTE_URI_ADAPTER = TypeAdapter(AnyUrl)
 
 
 def _validate_rfc3339(value: object) -> datetime:
@@ -135,15 +144,14 @@ def _validate_rfc3339(value: object) -> datetime:
 def _validate_absolute_uri(value: object) -> str:
     if not isinstance(value, str):
         raise ValueError("absolute URI must be a string")
-    try:
-        _ABSOLUTE_URI_ADAPTER.validate_python(value, strict=True)
-    except ValueError as error:
-        raise ValueError("string is not an absolute URI") from error
+    if not _is_absolute_uri(value):
+        raise ValueError("string is not an absolute URI")
     return value
 
 
 _AbsoluteUri = Annotated[str, BeforeValidator(_validate_absolute_uri)]
 _Rfc3339DateTime = Annotated[datetime, BeforeValidator(_validate_rfc3339)]"""
+    return scalar_validators + "\n\n" + render_python_uri_validator(uri_profile)
 
 
 def _boundary_model() -> str:
