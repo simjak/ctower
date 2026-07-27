@@ -24,7 +24,7 @@ from tools.codegen._operation_codegen import render_operations
 from tools.codegen._schema_codegen import render_schema_resources
 from tools.codegen._typescript_codegen import render_typescript
 
-__all__ = ["CodegenError", "check", "write"]
+__all__ = ["CodegenError", "check", "render_typescript_fixture", "write"]
 
 _MANIFEST = Path("generated/.generated-manifest.json")
 _README = Path("generated/README.md")
@@ -42,6 +42,7 @@ _TYPESCRIPT_OUTPUTS = {
     "index.ts": _TYPESCRIPT_ROOT / "src/index.ts",
     "models.ts": _TYPESCRIPT_ROOT / "src/models.ts",
     "operations.ts": _TYPESCRIPT_ROOT / "src/operations.ts",
+    "response-json.ts": _TYPESCRIPT_ROOT / "src/response-json.ts",
     "validators.ts": _TYPESCRIPT_ROOT / "src/validators.ts",
     "package.json": _TYPESCRIPT_ROOT / "package.json",
     "tsconfig.json": _TYPESCRIPT_ROOT / "tsconfig.json",
@@ -51,6 +52,7 @@ _BASE_INPUTS = (
     _TELEMETRY,
     Path("tools/codegen/__init__.py"),
     Path("tools/codegen/__main__.py"),
+    Path("tools/codegen/_absolute_uri_codegen.py"),
     Path("tools/codegen/_client_codegen.py"),
     Path("tools/codegen/_inventory.py"),
     Path("tools/codegen/_json_integer_codegen.py"),
@@ -59,6 +61,7 @@ _BASE_INPUTS = (
     Path("tools/codegen/_rfc3339_codegen.py"),
     Path("tools/codegen/_schema_codegen.py"),
     Path("tools/codegen/_typescript_codegen.py"),
+    Path("tools/codegen/_typescript_json_codegen.py"),
     Path("tools/codegen/_typescript_validation_codegen.py"),
     Path("tools/codegen/generator.py"),
     Path("tools/checks/generated.py"),
@@ -97,6 +100,18 @@ def check(root: Path) -> None:
             raise CodegenError(f"cannot read generated output {path}: {error}") from error
         if current != expected:
             raise CodegenError(f"generated output is stale: {path}")
+
+
+def render_typescript_fixture(
+    document: dict[str, object],
+    contract_digest: str,
+) -> dict[str, str]:
+    """Render one in-memory TypeScript contract fixture through production codegen."""
+
+    try:
+        return render_typescript(document, contract_digest)
+    except (TypeError, ValueError) as error:
+        raise CodegenError(str(error)) from error
 
 
 def _render(root: Path) -> _Rendered:

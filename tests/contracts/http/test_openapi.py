@@ -273,6 +273,33 @@ def test_problem_vocabulary_and_boundary_objects_are_strict() -> None:
             assert schema.get("additionalProperties") is False, name
 
 
+def test_scalar_profiles_are_exact_root_contracts() -> None:
+    document = json.loads((ROOT / "contracts/http/openapi.yaml").read_text(encoding="utf-8"))
+    expected = {
+        "x-ctower-json-integer-profile": {
+            "maximum": 9_007_199_254_740_991,
+            "minimum": -9_007_199_254_740_991,
+            "negative-zero": "normalize-to-zero",
+            "semantics": "exact-integer-interoperability",
+            "token-syntax": "minus-zero-or-nonzero-decimal-digits-only",
+        },
+        "x-ctower-absolute-uri-profile": {
+            "characters": "ascii-rfc3986",
+            "fragment": "allowed",
+            "grammar": "rfc3986-uri-with-required-scheme",
+            "http-authority": "required-with-nonempty-host",
+            "normalization": "none-return-original",
+            "percent-encoding": "complete-two-hex-digit-triplets",
+            "raw-backslash": "rejected",
+            "raw-whitespace-controls": "rejected",
+        },
+    }
+
+    assert {key: document[key] for key in expected} == expected
+    nested = json.dumps({key: value for key, value in document.items() if key not in expected})
+    assert all(key not in nested for key in expected)
+
+
 def test_intake_contract_is_explicit_and_has_no_classifier_or_dispatch_surface() -> None:
     document = json.loads((ROOT / "contracts/http/openapi.yaml").read_text(encoding="utf-8"))
     paths = cast(dict[str, object], document["paths"])

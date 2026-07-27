@@ -3,10 +3,6 @@
 from __future__ import annotations
 
 import json
-import os
-import shutil
-import subprocess
-import sys
 from pathlib import Path
 from typing import cast
 from uuid import uuid4
@@ -23,10 +19,15 @@ from ctower_client import (
     SourceReference,
 )
 
+from ._generated_client_runtime import (
+    compile_typescript_client,
+    node_executable,
+    run_command,
+)
+
 __all__: tuple[str, ...] = ()
 
 ROOT = Path(__file__).parents[3]
-TSC = ROOT / "node_modules/typescript/bin/tsc"
 UUID = "018f7a40-1234-7abc-8def-1234567890ab"
 LEAP_YEAR = 2024
 JSON_SAFE_INTEGER_MAXIMUM = 9_007_199_254_740_991
@@ -173,10 +174,10 @@ def test_generated_python_client_enforces_lossless_json_integers() -> None:
 def test_generated_typescript_client_runtime_validates_success_and_problem_vectors(
     tmp_path: Path,
 ) -> None:
-    _compile_typescript_client(tmp_path)
+    compile_typescript_client(tmp_path)
     runner = tmp_path / "runtime-boundary.mjs"
     runner.write_text(_typescript_runner(), encoding="utf-8")
-    completed = _run_command((_node_executable(), str(runner)), cwd=tmp_path)
+    completed = run_command((node_executable(), str(runner)), cwd=tmp_path)
     assert completed.returncode == 0, completed.stdout + completed.stderr
     assert completed.stdout.strip() == "typescript response vectors: passed"
 
@@ -186,7 +187,7 @@ def test_typescript_runtime_fails_closed_without_node_on_path(
 ) -> None:
     monkeypatch.setenv("PATH", "")
     with pytest.raises(RuntimeError, match=r"Node\.js is required"):
-        _node_executable()
+        node_executable()
 
 
 def _python_client(
@@ -255,55 +256,6 @@ def _ticket(created_at: str, *, version: int = 1) -> dict[str, object]:
         "title": "Ticket resource",
         "version": version,
     }
-
-
-def _compile_typescript_client(target: Path) -> None:
-    completed = _run_command(
-        (
-            _node_executable(),
-            str(TSC),
-            "--project",
-            str(ROOT / "generated/typescript/ctower-client/tsconfig.json"),
-            "--noEmit",
-            "false",
-            "--outDir",
-            str(target),
-        ),
-        cwd=ROOT,
-    )
-    assert completed.returncode == 0, completed.stdout + completed.stderr
-    (target / "package.json").write_text('{"type":"module"}\n', encoding="utf-8")
-
-
-def _node_executable() -> str:
-    node = shutil.which("node", path=os.environ.get("PATH"))
-    if node is None:
-        raise RuntimeError("Node.js is required on PATH for TypeScript runtime vectors")
-    return node
-
-
-def _run_command(
-    command: tuple[str, ...],
-    *,
-    cwd: Path,
-) -> subprocess.CompletedProcess[str]:
-    environment = {**os.environ, "CTOWER_TEST_COMMAND": json.dumps(command)}
-    return subprocess.run(
-        (
-            sys.executable,
-            "-I",
-            "-c",
-            "import json, os; "
-            "command = json.loads(os.environ.pop('CTOWER_TEST_COMMAND')); "
-            "os.execv(command[0], command)",
-        ),
-        check=False,
-        cwd=cwd,
-        capture_output=True,
-        env=environment,
-        text=True,
-        timeout=30,
-    )
 
 
 def _typescript_runner() -> str:

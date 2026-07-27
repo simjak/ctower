@@ -8,12 +8,10 @@ from collections.abc import Mapping
 from dataclasses import dataclass
 from typing import cast
 
-from tools.codegen._json_integer_codegen import (
-    JSON_INTEGER_MAXIMUM,
-    JSON_INTEGER_MINIMUM,
-    require_json_integer_profile,
-)
+from tools.codegen._absolute_uri_codegen import require_absolute_uri_profile
+from tools.codegen._json_integer_codegen import require_json_integer_profile
 from tools.codegen._rfc3339_codegen import require_rfc3339_profile
+from tools.codegen._typescript_json_codegen import render_typescript_json_parser
 from tools.codegen._typescript_validation_codegen import render_validators
 
 __all__ = ["render_typescript"]
@@ -42,12 +40,19 @@ class _Operation:
 
 
 def render_typescript(document: dict[str, object], contract_digest: str) -> dict[str, str]:
-    require_json_integer_profile(document)
+    integer_profile = require_json_integer_profile(document)
     require_rfc3339_profile(document)
+    uri_profile = require_absolute_uri_profile(document)
     operations = _operations(document)
-    schemas = _mapping(
-        _mapping(document.get("components"), "components").get("schemas"),
-        "components.schemas",
+    components = _mapping(document.get("components"), "components")
+    schemas = _mapping(components.get("schemas"), "components.schemas")
+    validators = render_validators(
+        schemas,
+        {item.operation_id: item.success_models for item in operations},
+        {item.operation_id: item.problem_models for item in operations},
+        contract_digest,
+        integer_profile=integer_profile,
+        uri_profile=uri_profile,
     )
     return {
         "client.ts": _client(operations, contract_digest),
@@ -55,15 +60,9 @@ def render_typescript(document: dict[str, object], contract_digest: str) -> dict
         "models.ts": _models(document, contract_digest),
         "operations.ts": _operation_registry(operations, contract_digest),
         "package.json": _package(),
+        "response-json.ts": render_typescript_json_parser(contract_digest),
         "tsconfig.json": _tsconfig(),
-        "validators.ts": render_validators(
-            schemas,
-            {item.operation_id: item.success_models for item in operations},
-            {item.operation_id: item.problem_models for item in operations},
-            contract_digest,
-            integer_minimum=JSON_INTEGER_MINIMUM,
-            integer_maximum=JSON_INTEGER_MAXIMUM,
-        ),
+        "validators.ts": validators,
     }
 
 
@@ -198,7 +197,8 @@ def _client(operations: tuple[_Operation, ...], digest: str) -> str:
 
 import type * as Models from "./models.js";
 import {{ OPERATIONS, type OperationId }} from "./operations.js";
-import {{ validateOperationProblem, validateOperationResult }} from "./validators.js";
+import {{ parseJsonResponse }} from "./response-json.js";
+import {{ decodeOperationProblem, decodeOperationResult }} from "./validators.js";
 
 export type ClientOptions = Readonly<{{
   baseUrl: string;
@@ -280,20 +280,20 @@ export class CtowerClient {{
       headers,
       ...(body === undefined ? {{}} : {{ body }}),
     }});
-    const payload: unknown = await response.json();
+    const payload = parseJsonResponse(await response.text());
     if (response.status < 200 || response.status > 299) {{
       const contentType = response.headers.get("content-type")?.split(";", 1)[0];
       if (contentType !== "application/problem+json") {{
         throw new TypeError("ctower returned a non-problem failure");
       }}
-      const problem = validateOperationProblem(
+      const problem = decodeOperationProblem(
         operationId,
         response.status,
         payload,
       ) as Models.Problem;
       throw new CtowerProblemError(problem);
     }}
-    return validateOperationResult(
+    return decodeOperationResult(
       operationId,
       response.status,
       payload,
