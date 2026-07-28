@@ -19,14 +19,16 @@ class ReleaseHistoryAuthorityTests(unittest.TestCase):
     gate_source = root / "tests/repository/test_release_foundation.py"
     authority_source = root / "tests/repository/_release_history.py"
     protected_feature = "79e292e437457f92bb6a39bfbfdb2a3a62146529"
+    first_release = "171b49242e8abe0e3084552e6dac6939732bb738"
 
-    def test_release_proposal_candidate_at_0_1_0_preserves_pre_1_0_policy(self) -> None:
-        with self._repository() as repository:
-            self._set_manifest_version(repository, "0.1.0")
+    def test_pre_1_0_release_proposals_preserve_policy(self) -> None:
+        for version in ("0.1.0", "0.1.1", "0.2.0"):
+            with self.subTest(version=version), self._repository() as repository:
+                self._set_manifest_version(repository, version)
 
-            result = self._run_gate(repository)
+                result = self._run_gate(repository)
 
-        self._assert_gate_success(result)
+            self._assert_gate_success(result)
 
     def test_release_proposal_at_or_above_1_0_is_policy_failure(self) -> None:
         for version in ("1.0.0", "1.2.3", "2.0.0"):
@@ -48,17 +50,44 @@ class ReleaseHistoryAuthorityTests(unittest.TestCase):
 
         self._assert_gate_failure(result, "[POLICY]", "Release-As: 1.0.0")
 
-    def test_shallow_overlay_cannot_hide_merged_release_tag(self) -> None:
+    def test_pre_1_0_successor_tags_are_permitted(self) -> None:
         with self._repository() as repository:
-            tagged = self._commit(repository, "chore: hidden release tag target")
-            self._git(repository, "tag", "v0.0.9", tagged)
-            boundary = self._commit(repository, "chore: overlay boundary")
-            self._commit(repository, "chore: benign candidate")
-            self._write_shallow_boundary(repository, boundary)
+            tagged = self._commit(repository, "chore: pre-1.0 successor tag target")
+            for version in ("0.1.1", "0.2.0"):
+                self._git(repository, "tag", f"v{version}", tagged)
 
             result = self._run_gate(repository)
 
-        self._assert_gate_failure(result, "[POLICY]", "v0.0.9")
+        self._assert_gate_success(result)
+
+    def test_shallow_overlay_and_tag_config_cannot_hide_1_0_release_tag(self) -> None:
+        for version in ("1.0.0", "1.2.3", "2.0.0"):
+            with self.subTest(version=version), self._repository() as repository:
+                tagged = self._commit(repository, "chore: hidden release tag target")
+                self._git(repository, "tag", f"v{version}", tagged)
+                boundary = self._commit(repository, "chore: overlay boundary")
+                self._commit(repository, "chore: benign candidate")
+                self._git(repository, "config", "remote.origin.tagOpt", "--no-tags")
+                self._write_shallow_boundary(repository, boundary)
+
+                result = self._run_gate(repository)
+
+            self._assert_gate_failure(result, "[POLICY]", f"v{version}")
+
+    def test_full_no_tags_clone_fails_closed_after_first_release(self) -> None:
+        with self._repository() as repository, self._clone(repository, "--no-tags") as checkout:
+            result = self._run_gate(checkout)
+
+        self._assert_gate_failure(result, "[GRAPH-INFRASTRUCTURE]", "v0.1.0")
+
+    def test_shallow_no_tags_clone_fails_closed(self) -> None:
+        with (
+            self._repository() as repository,
+            self._clone(repository, "--depth=1", "--no-tags") as checkout,
+        ):
+            result = self._run_gate(checkout)
+
+        self._assert_gate_failure(result, "[GRAPH-INFRASTRUCTURE]", "missing or unreadable")
 
     def test_replacement_ref_cannot_mask_release_as_policy_violation(self) -> None:
         with self._repository() as repository:
@@ -134,7 +163,26 @@ class ReleaseHistoryAuthorityTests(unittest.TestCase):
             self._bind_protected_feature(repository, protected_feature)
             self._git(repository, "add", "tests/repository/test_release_foundation.py")
             self._commit(repository, "chore: bind protected feature")
+            first_release = self._commit(repository, "chore(main): release 0.1.0")
+            self._git(repository, "tag", "v0.1.0", first_release)
+            self._bind_first_release(repository, first_release)
+            self._git(repository, "add", "tests/repository/test_release_foundation.py")
+            self._commit(repository, "chore: bind first release")
             yield repository
+
+    @contextmanager
+    def _clone(self, repository: Path, *arguments: str) -> Iterator[Path]:
+        with tempfile.TemporaryDirectory(prefix="ctower-release-checkout-") as temporary:
+            checkout = Path(temporary) / "repository"
+            self._git_process(
+                Path(temporary),
+                "clone",
+                "--quiet",
+                *arguments,
+                f"file://{repository}",
+                str(checkout),
+            )
+            yield checkout
 
     def _copy_policy_fixture(self, repository: Path) -> None:
         sources = (
@@ -155,6 +203,13 @@ class ReleaseHistoryAuthorityTests(unittest.TestCase):
         source = gate.read_text(encoding="utf-8")
         bound = source.replace(self.protected_feature, commit)
         self.assertNotEqual(bound, source, "fixture must bind its protected feature")
+        gate.write_text(bound, encoding="utf-8")
+
+    def _bind_first_release(self, repository: Path, commit: str) -> None:
+        gate = repository / "tests/repository/test_release_foundation.py"
+        source = gate.read_text(encoding="utf-8")
+        bound = source.replace(self.first_release, commit)
+        self.assertNotEqual(bound, source, "fixture must bind its first release")
         gate.write_text(bound, encoding="utf-8")
 
     def _set_manifest_version(self, repository: Path, version: str) -> None:

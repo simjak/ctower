@@ -38,6 +38,7 @@ class RawHistory:
 @dataclass(frozen=True)
 class RawReleaseTags:
     names: tuple[str, ...]
+    targets: tuple[tuple[str, str], ...]
     problems: tuple[str, ...]
 
 
@@ -109,11 +110,13 @@ class RawHistoryReader:
         if result.returncode != 0:
             return RawReleaseTags(
                 (),
+                (),
                 (f"release tag references could not be enumerated: {result.stderr.strip()}",),
             )
         history_ids = {commit.object_id for commit in history.commits}
         object_id_length = len(history.candidate)
         names: list[str] = []
+        targets: list[tuple[str, str]] = []
         problems: list[str] = []
         for row in result.stdout.splitlines():
             tag_name, object_id, problem = self._tag_reference(row)
@@ -132,7 +135,8 @@ class RawHistoryReader:
                 problems.append(problem)
             elif target in history_ids:
                 names.append(tag_name)
-        return RawReleaseTags(tuple(names), tuple(problems))
+                targets.append((tag_name, target))
+        return RawReleaseTags(tuple(names), tuple(targets), tuple(problems))
 
     def _tag_reference(
         self,
