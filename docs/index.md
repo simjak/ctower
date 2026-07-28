@@ -26,8 +26,10 @@ Three failures, in order of how much they cost:
 3. **Untracked side effects.** A command is dispatched to merge, deploy, or send. The dispatch is recorded
    as if it were the outcome. When the external system disagrees, the record is already wrong.
 
-ctower answers each with a durable fact rather than a convention: one accountable custodian interval per
-ticket, evidence bound to an exact candidate digest, and desired state reconciled against observed state.
+ctower answers the first two with a durable fact rather than a convention: one accountable custodian
+interval per ticket, and evidence bound to an exact candidate digest. The third answer — desired state
+reconciled against observed state — is designed and unbuilt, because nothing here dispatches an external
+effect in the first place.
 
 ## The core model
 
@@ -47,15 +49,19 @@ Five things, in the order work moves through them:
   changes. Exactly one custodian is accountable at any moment. Its Kanban status and its workflow stage are
   separate facts, so "blocked" and "in the design stage" can both be true.
 - A **[workflow revision](concepts/workflows.md)** is an immutable stage graph, and an **execution policy**
-  says who may execute or review within it. Both are versioned *data* loaded from a pack. The engine has no
-  built-in engineering stages: the software factory is one workflow package, not the product.
+  is meant to say who may execute or review within it. Both are versioned *data* loaded from a pack, and both
+  are pinned to a run by reference and digest — but only the stage graph is read. Nothing evaluates an
+  execution policy at this revision. The engine has no built-in engineering stages: the software factory is
+  one workflow package, not the product.
 - **[Proof](concepts/proof.md)** is what makes "done" checkable. Criteria are frozen against a candidate
-  digest, evidence is bound to that same digest, and an *independent* principal records the verdict — the
-  author cannot pass their own work. Change the candidate and the evidence that depended on it stops
-  counting. At this revision current proof is what the move into the final stage requires, and what
-  resolving and closing a ticket require; every stage carrying its own proof requirement, expressed as typed
-  evidence *slots*, is required by `SPEC.md` and not implemented (see
-  [Proof](concepts/proof.md#typed-evidence-slots)).
+  digest, evidence is bound to that same digest, and the principal who froze those criteria — the
+  candidate's author — is refused if they try to record the verdict. Change the candidate and the evidence
+  that depended on it stops counting. Two limits are load-bearing: the reviewer is not compared with
+  whoever produced the evidence, so producer independence is
+  [specified and not enforced](concepts/proof.md#verdicts-and-independence); and current proof guards only
+  the move into the final stage and the resolve/close of a ticket, because every stage carrying its own
+  proof requirement, as typed evidence *slots*, is
+  [required by `SPEC.md` and not implemented](concepts/proof.md#typed-evidence-slots).
 - **[Projections](concepts/board.md)** — the Board and [Project Delivery](concepts/project-delivery.md) —
   are read-only folds of those facts, carrying their own watermark and freshness so a stale read announces
   itself instead of lying.

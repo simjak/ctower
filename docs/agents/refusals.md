@@ -116,9 +116,11 @@ Notable ones:
 
 Notable ones:
 
-- `proof-self-review-refused` — you authored the evidence you are trying to approve. This is structural.
-  There is no retry, no flag, and no custody manoeuvre that satisfies it. A different principal must record
-  the verdict.
+- `proof-self-review-refused` — you froze the criteria, so you are the candidate's author and cannot record
+  a verdict on this ticket. This is structural. There is no retry, no flag, and no custody manoeuvre that
+  satisfies it: a different principal must record the verdict. It does **not** fire when you approve
+  evidence you produced yourself but did not author the candidate for — that case is
+  [specified and not enforced](../concepts/proof.md#verdicts-and-independence).
 - `proof-candidate-digest-not-current` — the candidate moved. Your evidence is about an older artifact.
   Produce evidence for the current candidate; do not resubmit.
 - `proof-evidence-digest-mismatch` — the content you supplied does not hash to the `artifact_digest` you

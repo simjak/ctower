@@ -162,21 +162,29 @@ Never edit, copy between origins, or delete spool files.
 
 ## Rule 8 — do not treat dispatch as outcome
 
-ctower records desired state and observed state separately, and so should you. A command that was accepted
-means the control plane holds the fact. It does not mean an external effect occurred.
+ctower is designed to record desired state and observed state separately, and so should you. A command that
+was accepted means the control plane holds the fact. It does not mean an external effect occurred. At this
+revision that gap is total rather than partial: no effect provider exists, so nothing ctower accepts reaches
+anything outside it.
 
 Similarly, a projection read is a fold with its own watermark. If a [Board](../concepts/board.md) view
 reports `STATE_UNKNOWN`, that is an answer — do not re-read until it looks better and then act on the
 prettier result.
 
-## Rule 9 — you cannot approve your own work
+## Rule 9 — you cannot approve the candidate you authored
 
-If you recorded the evidence, you cannot record its verdict. The attempt is refused as
-`proof-self-review-refused`. A pinned gate policy may require several independent perspectives, and may seal
-them so reviewers cannot see each other's reports until all required verdicts are in.
+If you ran `ticket criteria freeze`, you are the candidate's author and you cannot record a verdict on that
+ticket. The attempt is refused as `proof-self-review-refused`. Recording a verdict also requires protected
+operator authority, or it is refused as `proof-protected-authority-required`.
 
-Do not attempt to work around this by transferring custody to yourself; custody transfer is a protected
-operation and is separately audited.
+Know the exact edge of this, because it is narrower than it sounds: the server does **not** compare you with
+whoever recorded the evidence. If you are not the candidate's author, you can record evidence and then
+record a passing verdict on your own evidence, and nothing refuses you. The stronger rule is specified and
+[not enforced at this revision](../concepts/proof.md#verdicts-and-independence). Treat producer/reviewer
+separation as your obligation, not the server's guarantee.
+
+Do not attempt to work around the check that *is* enforced by transferring custody to yourself; custody
+transfer is a protected operation and is separately audited.
 
 ## A worked loop
 

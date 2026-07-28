@@ -126,8 +126,11 @@ timestamp is rejected.
 Digests are `sha256:` followed by exactly 64 lowercase hex characters. `--criteria-file` and
 `--content-file` are paths; evidence content is capped at 100 000 characters by the contract.
 
-The principal recording a verdict must differ from the principal who supplied the evidence, or the request
-is refused as `proof-self-review-refused`.
+The principal recording a verdict must differ from the principal who ran `ticket criteria freeze` — the
+candidate's author — or the request is refused as `proof-self-review-refused`. It must also hold protected
+operator authority, or the request is refused as `proof-protected-authority-required`. The reviewer is
+**not** compared with the principal who supplied the evidence; see
+[verdicts and independence](../concepts/proof.md#verdicts-and-independence).
 
 ## Ticket: workflow {#workflow}
 

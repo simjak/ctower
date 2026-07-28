@@ -8,7 +8,7 @@ criterion  ──frozen against──>  candidate digest
     │                                 │
     │ evidence names a criterion      │ bound to the same digest
     ▼                                 ▼
-evidence  ──judged by──>  verdict (from an independent principal)
+evidence  ──judged by──>  verdict (never from the candidate's author)
                                       │
                           candidate changes → invalidation
 ```
@@ -21,9 +21,13 @@ A worker says a change passes. That statement is prose about a moving target. Th
 - The claim is not bound to *what* was checked, so "tested" can mean anything.
 - The claim is approved by the same principal who made it.
 
-ctower binds all three. Evidence names an exact candidate digest and cannot be approved by its own author.
-The third binding — evidence filling a *declared typed slot* — is required by `SPEC.md` and is
-[not implemented at this revision](#typed-evidence-slots).
+ctower binds the first of those, and part of the third. Evidence names an exact candidate digest, and the
+principal who froze the criteria against that digest cannot record a verdict on it.
+
+The remaining two are weaker than the list implies, and both are stated exactly below. *What* was checked is
+bound only by a criterion key, not by a declared typed slot ([not implemented](#typed-evidence-slots)). And
+*who may approve* is bound only against the candidate's author, not against the principal who produced the
+evidence ([not enforced](#verdicts-and-independence)).
 
 ## Frozen criteria
 
@@ -31,7 +35,7 @@ An acceptance criterion has a stable `key` (matching `^[a-z][a-z0-9._-]*$`), a d
 booleans:
 
 - `candidate_dependent` — does this criterion's proof expire when the candidate changes?
-- `requires_verdict` — does it need an independent human or agent verdict, or is evidence alone enough?
+- `requires_verdict` — does it need a protected verdict on top of its evidence, or is evidence alone enough?
 
 `ticket criteria freeze` pins the criteria set against `--candidate-digest` at a given
 `--expected-version`. After freezing, criteria are not edited; a second freeze is refused as
@@ -39,6 +43,11 @@ booleans:
 
 Freezing before evidence exists is the point. It stops the acceptance bar from being lowered to fit whatever
 the worker happened to produce.
+
+Freezing also decides who counts as the candidate's author. The HTTP route records the freezing principal as
+the bundle's `candidate_author_id`, and two later commands are checked against it: only that principal may
+declare a new candidate digest (`proof-candidate-author-mismatch`), and only that principal is refused from
+recording a verdict (`proof-self-review-refused`).
 
 ## Evidence
 
@@ -126,10 +135,38 @@ is refused.
 `ticket gate verdict` records a `pass` or `fail` decision against a criterion and a candidate digest, with a
 caller-supplied `verdict_id`.
 
-The author of the evidence cannot record its verdict. Trying is refused as `proof-self-review-refused` —
-proven in `tests/acceptance/increment-1/test_four_stage_workflow.py`. A pinned gate policy may require more:
-several independent perspectives, or sealed review where reviewers cannot see each other's reports until all
-required verdicts are in.
+**The enforced rule is candidate-author independence.** `ticket criteria freeze` records the freezing
+principal as the candidate's author, and recording a verdict is refused when the caller *is* that principal:
+
+| Check when a verdict is recorded | Refusal |
+|---|---|
+| The caller is not the candidate's author | `proof-self-review-refused` |
+| The caller holds protected operator authority | `proof-protected-authority-required` |
+| The verdict names the current candidate digest | `proof-candidate-digest-not-current` |
+| Current evidence exists for that criterion and digest | `proof-current-evidence-missing` |
+
+All four checks live in `Proof._record_verdict`
+(`packages/ctower-kernel/src/ctower_kernel/proof/interface.py`), and the first is proven in
+`tests/acceptance/increment-1/test_four_stage_workflow.py`. Note *where* the independence check lives: it
+runs when the verdict is written. The `proof.current@1` predicate re-reads the recorded verdicts but does
+not re-evaluate who recorded them.
+
+!!! warning "Not enforced at this revision: evidence-producer independence"
+    Evidence stores the principal who recorded it as `producer_id`, but nothing compares that producer with
+    the reviewer. A principal who is *not* the candidate's author can record evidence and then record a
+    passing verdict on that same evidence, and the ticket's proof reads as current.
+
+    `SPEC.md` `INV-19` requires the stronger rule — no principal or effective agent identity that authored
+    an input artifact may issue a satisfying verdict for it — together with the declared perspective
+    independence (`independent_of`) that a pinned gate policy is meant to carry. Delivering that is part of
+    the same specified stage-signing work as [typed evidence slots](#typed-evidence-slots). Until it lands,
+    do not rely on ctower to keep a producer away from their own evidence.
+
+The pinned gate policy does not widen any of this. It is parsed for the criteria set, and it must declare
+`reviewer_kind: operator` and `self_review: forbidden` or it is rejected outright — those two values are
+asserted, not configured. The richer gate topology `SPEC.md` describes, such as several required
+perspectives or sealed review where reviewers cannot see each other's reports until all required verdicts
+are in, is specified and has no runtime behaviour at this revision.
 
 ## Invalidation
 
@@ -173,10 +210,12 @@ must render as `unfilled (STATE_UNKNOWN)` — never as a pass, never hidden, nev
 
 ## Implementation status
 
-Criteria freezing, criterion-bound evidence, protected verdicts, self-review refusal, and proof-gated
-resolve/close are **implemented and exercised** against real PostgreSQL in the Increment-1 acceptance suite.
-Candidate-digest invalidation is implemented in the Proof kernel and its persistence writer, and is covered
-by module tests rather than by that suite, because no HTTP or CLI surface reaches it yet.
+Criteria freezing, criterion-bound evidence, operator-only verdicts, candidate-author self-review refusal,
+and proof-gated resolve/close are **implemented and exercised** against real PostgreSQL in the Increment-1
+acceptance suite. Candidate-digest invalidation is implemented in the Proof kernel and its persistence
+writer, and is covered by module tests rather than by that suite, because no HTTP or CLI surface reaches it
+yet. Evidence-producer independence and gate topology are **not** implemented — see
+[Verdicts and independence](#verdicts-and-independence).
 
 Where that gate sits is worth stating exactly: in the workflow that ships, current proof is what the move
 into the final stage requires, and what resolving and closing the ticket require. The two earlier moves check

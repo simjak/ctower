@@ -70,9 +70,8 @@ capture ──entry.ready@1──> frame ──criteria.frozen@1──> verify �
 
 The three predicates are not equally strong, and the difference matters: `entry.ready@1` asks whether the
 ticket is admitted and unblocked, `criteria.frozen@1` asks whether the acceptance criteria are frozen, and
-only `proof.current@1` requires evidence that is current for this candidate — plus a passing verdict,
-never from the evidence's own author, wherever a criterion demands one. Resolving and closing the ticket
-check `proof.current@1` again.
+only `proof.current@1` requires evidence that is current for this candidate, plus a passing verdict wherever
+a criterion demands one. Resolving and closing the ticket check `proof.current@1` again.
 
 In order, the ticket:
 
@@ -84,8 +83,10 @@ In order, the ticket:
    only superseded;
 5. **moved to `verify`**;
 6. **recorded evidence** binding an artifact digest to a named criterion and to that exact candidate;
-7. **received a verdict from a different principal** — the author of the evidence cannot pass their own
-   gate, and trying is refused as `proof-self-review-refused`;
+7. **received a verdict from a different principal** — the principal who froze the criteria cannot record
+   the verdict, and trying is refused as `proof-self-review-refused`. That is the independence the kernel
+   enforces; it does not compare the reviewer with whoever produced the evidence, which is
+   [specified and not enforced](concepts/proof.md#verdicts-and-independence);
 8. **moved to `close`** only because current proof existed for the current candidate;
 9. **resolved and closed**, appending the two lifecycle facts atomically.
 

@@ -26,7 +26,7 @@ A read of `GET /v1/tickets/{ticket_id}` returns exactly these fields — the con
 | `custodian_id` | UUID | The one principal accountable right now |
 | `version` | integer ≥ 1 | Aggregate version, used for optimistic concurrency |
 | `created_at` | timestamp | Creation time |
-| `durability_state` | `durability_pending` \| `accepted` | Whether the write is acknowledged off-host — see [Durability](durability.md) |
+| `durability_state` | `durability_pending` \| `accepted` | Whether the write is acknowledged off-host. The contract allows both; the stored column is constrained to `durability_pending`, so a read returns that — see [Durability](durability.md) |
 
 `version` is not decoration. Every mutating command that changes the ticket carries
 `--expected-version`, and a mismatch is refused as `version-conflict` with the server's `current_version`
@@ -38,8 +38,8 @@ Collapsing these is the mistake ctower is built to avoid:
 
 | Fact | Answers | Where it lives |
 |---|---|---|
-| **Lifecycle** | Is the promised outcome open, active, waiting, resolved, closed, or cancelled? | Ticket episode |
-| **Workflow stage** | Which pinned stage and attempt is being evaluated? | [Workflow run](workflows.md) |
+| **Lifecycle** | Is the promised outcome open, active, waiting, or closed? | Ticket episode |
+| **Workflow stage** | Which pinned stage is being evaluated? | [Workflow run](workflows.md) |
 | **Board lane** | Where does this appear in the cross-ticket index? | [Board projection](board.md) |
 | **Custody** | Who is accountable, right now, with no gap? | Assignment interval |
 
@@ -51,9 +51,17 @@ A ticket can be `blocked` on the Board while its workflow stage is `implement` a
 A **lifecycle episode** is one open-to-terminal interval on a ticket: an opening event, an outcome, and the
 resolution, closure, or cancellation facts that ended it.
 
-- `resolved` means the criteria, gates, and delivery contract passed.
+Four episode states are reachable at this revision. `ticket create` opens an episode as `open`,
+`ticket admit` moves it to `active`, `ticket defer` moves it to `waiting`, and `ticket resolve` moves it to
+`closed` while appending the two lifecycle facts `resolved` and `closed` in one transaction.
+
+- `resolved` is a lifecycle fact, not an episode state, and it means exactly one thing here: the
+  `proof.current@1` predicate held when resolve-close ran. Gates and a delivery contract are part of the
+  specified meaning and are not evaluated — see [Proof](proof.md#verdicts-and-independence).
 - `closed` means administratively complete.
-- `cancelled` means intentionally stopped without the promised outcome.
+- `cancelled` — meaning intentionally stopped without the promised outcome — is declared in the schema and
+  read by the terminal-state checks, but **nothing writes it**. There is no cancel operation, CLI command,
+  or kernel command at this revision.
 
 Reopening does **not** rewrite history. `reopened` closes no prior record; it starts episode N+1 on the same
 permanent ticket, records the reason and the prior episode, and appends that episode's initial priority
@@ -66,16 +74,36 @@ This is why "reopened" is an event and not a status: a status would imply the ol
 `INV-09` requires exactly one current custodian interval — no gap, no overlap — for every actionable episode
 that is not closed or cancelled.
 
-- It is normally a durable Commander principal.
-- A stage executor, collaborator, reviewer, runner, model session, or provider handle is **never** eligible.
-- An operator may take custody only through an explicit protected suspension or transfer.
-- Transfer atomically closes the old interval and opens the new one, fences the old Commander reasoning
-  lease, records the context handoff, and starts no new work until the new custodian can rehydrate it.
-- `resolved` retains custody through administrative close; only close or cancellation ends the interval.
+What the transfer transaction does, in `packages/ctower-kernel/src/ctower_kernel/record/_custody_sql.py`:
+
+- **Eligibility is enforced.** The incoming custodian must be an enabled principal of kind `commander` or
+  `operator` in the same tenant. A stage executor, collaborator, reviewer, runner, model session, or
+  provider handle is not one of those kinds and is refused.
+- **The interval is replaced atomically.** One `UPDATE` releases the outgoing custodian's open interval and
+  one `INSERT` opens the incoming custodian's, in the same transaction, and the transfer fails hard if
+  exactly one interval was not released.
+- **It is version-guarded and origin-guarded.** A stale `--expected-version`, a `--from-custodian-id` that
+  is not the current custodian, a transfer to the principal who already holds custody, or a ticket in a
+  terminal state are each refused without writing anything.
+- **It appends one event.** A `CUSTODY_TRANSFERRED` event carrying `from_custodian_id`, `to_custodian_id`,
+  and `reason` joins the ticket's hash-chained trail.
+- **Close releases it.** Resolve-and-close releases the custodian interval in the same transaction that
+  appends the `resolved` and `closed` facts.
 
 Because of this, custody transfer is a protected command: `ticket custody transfer` requires the explicit
 `--protected-transfer` flag alongside both principal IDs, and it is a different operation from an ordinary
 assignment change.
+
+!!! warning "Specified, not implemented at this revision"
+    Transfer is specified to do more than move the interval: fence the outgoing Commander's reasoning
+    lease, record a context handoff, and dispatch no new work until the incoming custodian has rehydrated
+    it. No reasoning lease, handoff payload, or work-dispatch barrier exists in this revision — a transfer
+    replaces the interval and appends its event, and that is all.
+
+    `SPEC.md` also separates `resolved` from administrative close, so that custody survives resolution until
+    a distinct close or cancellation. Here there is no separate resolve command and no cancellation command
+    at all: `ticket resolve` calls one operation that appends `resolved` and `closed` together and releases
+    custody in the same transaction.
 
 ## Assignments versus custody
 

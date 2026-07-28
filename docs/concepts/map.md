@@ -52,9 +52,12 @@ accountable at any moment, a priority, links to related tickets, and a complete 
 stages, which for the shipped one are capture, frame, verify and close. Different work can follow different
 processes; the engine is the same. *Built as a development fixture.*
 
-**4a. Policy for this stage.** The rules attached to that process: who is allowed to act, who is allowed to
-review, and what counts as proof. This is where "the author may not approve their own work" is written down
-rather than remembered. *Built.*
+**4a. Policy for this stage.** The proof rules attached to that process, pinned to the run by digest: which
+criteria must hold, and the two protections the policy has to declare or be rejected outright — that a
+verdict needs protected authority, and that the author of the version being judged may not record it. This
+is where those two are written down rather than remembered. *Built.* The box covers only that. Deciding who
+may act, who may review, or how many rounds are allowed is not depicted here because nothing reads it — see
+[the workflow page](workflows.md#what-is-implemented-at-this-revision).
 
 **5. The work is done.** A durable job, with attempts recorded, run by a supervised worker. If it fails, the
 failure is a recorded fact rather than a lost message. *Built, for a fixed set of operations.*
@@ -74,17 +77,24 @@ version stops counting. *Built.*
 kind of re-checkable artifact, so prose can never fill in for a test run or an image digest.
 *Required by the specification, not built.*
 
-**8. Someone else checks it.** The verdict on a stage cannot come from whoever did the work. *Built.*
+**8. Someone else checks it.** The verdict cannot come from whoever froze the acceptance criteria — the
+author of the version being judged — and it needs protected authority. *Built.* Read "someone else"
+narrowly: the check is against that one author, not against whoever attached the proof, so a third party can
+still approve evidence they produced themselves. Closing that gap is
+[specified and not built](proof.md#verdicts-and-independence).
 
 **9. Can this stage close?** The one question the design turns on: are the criteria frozen, is the evidence
 current for this exact version, and did an independent reviewer pass it — all checked together, in one
 transaction, before anything moves.
 
 *Partly built.* In the flow that ships today every move carries one declared rule, and the whole question —
-frozen criteria, evidence still current for this exact version, and an independent verdict wherever the
-criteria demand one — guards the move into the last stage and the resolving and closing of the ticket. The
-two earlier moves check their own rule instead: that the ticket is ready to start, and that the criteria are
-frozen. Asking the whole question at every stage is [specified, not built](proof.md#typed-evidence-slots).
+frozen criteria, evidence still current for this exact version, and a passing verdict wherever the criteria
+demand one — guards the move into the last stage and the resolving and closing of the ticket. The two
+earlier moves check their own rule instead: that the ticket is ready to start, and that the criteria are
+frozen. Two gaps are worth naming: this check re-reads the recorded verdicts without re-checking who
+recorded them (independence is enforced when the verdict is written, and only against the version's
+author), and asking the whole question at every stage is
+[specified, not built](proof.md#typed-evidence-slots).
 
 **10. It closes.** The stage completes and the work moves to the next stage, or the ticket reaches resolved
 and closed. *Built.*

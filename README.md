@@ -4,9 +4,9 @@
 
 A ticket that says "done" because somebody moved a card is a claim. ctower keeps the proof attached to the
 work instead: a ticket cannot be resolved or closed until proof exists that is current for this exact
-version of the work — a test run, a screenshot, the digest of what was deployed, a review by someone other
-than the author. If that proof is missing or has gone stale, the close is refused and ctower says exactly
-what was missing rather than letting it through.
+version of the work — a test run, a screenshot, the digest of what was deployed, a passing review that the
+author of that version is refused from giving. If that proof is missing or has gone stale, the close is
+refused and ctower says exactly what was missing rather than letting it through.
 
 **The rule it is built around:** agents can plan, build and finish work without asking permission at every
 step, and nothing they do reaches the outside world without a narrow, short-lived permission and a receipt
@@ -64,7 +64,8 @@ decided on the evidence.
   |  CAN THIS CLOSE?                                         |
   |    Is the proof attached?                                |
   |    Does it match this exact version of the work?         |
-  |    Did someone other than the author pass it?            |
+  |    Was it passed by someone who did not author           |
+  |      that version?                                       |
   |                                                          |
   |  today: asked before a ticket resolves or closes         |
   |  planned: asked before every step closes                 |
@@ -130,12 +131,14 @@ project's own checks. Everything in the right column is specified and designed, 
 | Works today | Designed, not built yet |
 |---|---|
 | Open a ticket, set its priority, assign it, block and unblock it, defer it, comment on it, link it to other tickets, resolve and close it | Any supported way to install, deploy, or run a hosted instance |
-| A four-step flow — take it in, agree what "done" means, check it, close it — where every move is refused unless the flow declares it and its rule is met, and where the move into the last step, and resolving or closing the ticket, require proof that is current for this exact version of the work and passed by someone other than its author | A web interface. The command line is the only one, on purpose, for now |
+| A four-step flow — take it in, agree what "done" means, check it, close it — where every move is refused unless the flow declares it and its rule is met, and where the move into the last step, and resolving or closing the ticket, require proof that is current for this exact version of the work and a pass recorded by someone other than the principal who fixed that version | A web interface. The command line is the only one, on purpose, for now |
 | Proof tied to the exact version of the work it checked: change the work and the proof that depended on the old version stops counting | Anything that reaches the outside world: real deploys, messages, payments, receipts, incident recovery |
 | A board with six lanes, the full history of every ticket, and a per-project delivery view, all rebuilt from recorded facts | Fleets of agents working in parallel, with permissions that expire and automatic resume after a crash |
 | A command line that writes every ticket, intake and workflow change to an encrypted local queue before it sends it, so an interrupted change is not lost if the server or the network is down. Reads, first-time setup and the migration commands go straight to the server and are not queued | Connectors that read from email, chat, or a source host |
 | Inbound messages stored durably with their source, and a step that turns one into a ticket without duplicating it if the request is retried | Memory that lets a worker recall how something was solved months ago |
 | A self-test that drives one ticket through the whole four-step flow against a real PostgreSQL database | Proof required at *every* step, with each step naming the kinds of proof it accepts — see [typed evidence slots](https://simjak.github.io/ctower/concepts/proof/#typed-evidence-slots) — plus richer process authoring than the flow above |
+| — | Refusing a pass from whoever *attached* the proof. Today only the author of the version is refused, so someone else can still approve evidence they produced themselves — see [verdicts and independence](https://simjak.github.io/ctower/concepts/proof/#verdicts-and-independence) |
+| — | Cancelling a ticket, moving a running ticket to a new version of its process, or a run/step state machine with typed repair attempts |
 
 One boundary worth naming plainly. Nothing in this repository starts a ctower instance. What
 [`deploy/`](deploy/README.md) holds today is a disposable PostgreSQL fixture that the tests start and stop

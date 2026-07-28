@@ -58,10 +58,11 @@ at the same source watermark must reproduce byte-equivalent semantic rows and th
 that is what `projection_semantic_digest` is for. A projection you cannot rebuild is a second source of
 truth, and ctower does not allow one.
 
-Expiry, revocation, a dependency-digest change, rollback, an incident, or a superseding outcome removes
-exactly the conditions that depended on invalidated proof, before the row may keep saying `done`. Doing that
-slot by slot is part of the [typed evidence slots](proof.md#typed-evidence-slots) rule, which is specified
-and not built.
+`SPEC.md` requires that expiry, revocation, a dependency-digest change, rollback, an incident, or a
+superseding outcome remove exactly the conditions that depended on invalidated proof before a row may keep
+saying `done`. None of those invalidation sources exists at this revision — only candidate-digest
+invalidation does, and it names evidence and verdict IDs rather than rows. Doing it slot by slot is part of
+the [typed evidence slots](proof.md#typed-evidence-slots) rule, which is specified and not built.
 
 ## Reading it
 

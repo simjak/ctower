@@ -28,8 +28,12 @@ committed but pending, with the description *"Semantic result committed; off-hos
 pending"*. A `202` carries a `Retry-After` header — an integer between 1 and 60 seconds — telling you when
 to replay the same idempotency key.
 
-**Resources.** `TicketResource` carries a required `durability_state` field, so a later read tells you
-whether the fact ever reached `accepted`.
+**Resources.** `TicketResource` carries a required `durability_state` field. Read what it does today
+exactly: the stored `tickets.durability_state` column is `CHECK`-constrained to `durability_pending`
+(`packages/ctower-kernel/migrations/0002_ticket_slice.sql`) and `GET /v1/tickets/{ticket_id}` returns the
+stored value without overlay, so a read always says `durability_pending`. `accepted` appears only on a
+mutation response, where the durability decision is overlaid onto the semantic payload. A read is not yet a
+way to ask whether a fact reached `accepted`.
 
 **CLI.** A pending mutation exits **`75`** and prints `"state":"queued"` with
 `"reason_code":"durability_pending"`. An accepted one exits `0` with `"state":"accepted"`.
@@ -59,9 +63,14 @@ replay the same `--command-id`, never a new one.
 
 ## Getting from pending to accepted
 
-A ticket that returns `durability_pending` becomes `accepted` when the acknowledgement arrives and a
-finalizer records it. That is a background transition, not something the caller performs. Replaying the
-exact command afterwards returns the accepted result rather than creating a second ticket.
+Reconciliation is not a background service at this revision. Every HTTP mutation response calls
+`Record.reconcile_durability` for that exact command before it is written
+(`apps/ctower-api/src/ctower_api/_mutation_response.py`), and that call is what commits the acceptance
+finalization against the named standby and overlays the resulting state onto the response.
+
+So the way a pending command becomes accepted is to **replay it**: replaying the same idempotency key
+re-runs reconciliation against the acknowledgement that has since arrived, and returns the accepted result
+rather than creating a second ticket. Nothing flips a pending write to accepted while you wait.
 
 If replication stalls, writes keep returning `durability_pending` honestly for as long as the stall lasts.
 The system does not fabricate acceptance to keep a graph green.

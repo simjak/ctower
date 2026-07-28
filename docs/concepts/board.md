@@ -35,7 +35,8 @@ Three consequences worth internalising:
 3. **`complete` wins over `blocked`.** A resolved ticket with a stale open blocker reads as complete, and
    `underlying_lane` is cleared.
 
-Cancellation is a separate terminal disposition, not a lane.
+Cancellation is specified as a separate terminal disposition rather than a lane. Nothing produces it at this
+revision — see [lifecycle episode](tickets.md#lifecycle-episode).
 
 ## What a card carries
 

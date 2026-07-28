@@ -29,6 +29,11 @@ pinned — and two tickets can run different processes at the same time without 
 An **evidence policy** (`contracts/execution/evidence-policy.schema.json`) declares the evidence contract.
 All four are pinned together when a run starts.
 
+The table says what each document *answers*, not what the engine reads. At this revision the engine reads
+the workflow graph and part of the gate and evidence policies; the execution policy is pinned and never
+interpreted. [What is implemented at this revision](#what-is-implemented-at-this-revision) draws that line
+exactly.
+
 ## What a workflow revision looks like
 
 The four-stage fixture, from `packs/workflows/ctower.trust-spine-four-stage/v1.yaml`:
@@ -55,8 +60,9 @@ The four-stage fixture, from `packs/workflows/ctower.trust-spine-four-stage/v1.y
 
 Two things to notice:
 
-1. **`activity_class`** distinguishes `work` from `verification`. That distinction is what lets independence
-   rules apply to the right stages without naming them.
+1. **`activity_class`** distinguishes `work` from `verification`. What that buys today is a Board that never
+   has to learn your stage vocabulary: a run sitting on any `verification` stage lands in the `in_review`
+   lane. Keying independence rules to it, rather than to stage names, is specified and not built.
 2. **Every transition names a predicate.** A move whose predicate is unsatisfied is refused as
    `workflow-predicate-unsatisfied`, and the refusal body lists the `unmet_facts`. A move that the graph does
    not declare at all is refused as `workflow-transition-not-declared`.
@@ -67,7 +73,12 @@ Read those three predicates literally, because they are not the same strength:
 |---|---|---|
 | `capture` → `frame` | `entry.ready@1` | The ticket has been admitted and carries no unresolved blocker that affects the board. No evidence is involved |
 | `frame` → `verify` | `criteria.frozen@1` | Acceptance criteria have been frozen against a candidate digest. Still no evidence |
-| `verify` → `close` | `proof.current@1` | Every frozen criterion holds evidence that has not been invalidated — bound to the current candidate digest where the criterion is candidate-dependent — plus a passing verdict wherever the criterion requires one, and a verdict can never come from the author of the evidence it judges |
+| `verify` → `close` | `proof.current@1` | Every frozen criterion holds evidence that has not been invalidated — bound to the current candidate digest where the criterion is candidate-dependent — plus a passing verdict wherever the criterion requires one |
+
+`proof.current@1` reads recorded facts only. Independence is not part of it: the candidate's author is
+refused at the moment a verdict is *written*, and the predicate does not re-evaluate who wrote it. Which
+independence is enforced, and which is not, is stated exactly under
+[Verdicts and independence](proof.md#verdicts-and-independence).
 
 Resolving and closing the ticket re-check `proof.current@1` and refuse with `proof-incomplete` if it no
 longer holds. So in this workflow, proof guards the last move and the ticket's end — not each of the four
@@ -99,42 +110,54 @@ refused as `workflow-pin-mismatch`, which the CLI surfaces as exit `69`.
 The digest is the canonical digest of the workflow graph, not the digest of the file on disk. Computing it
 from the raw pack file produces a pin mismatch.
 
-An authorized migration between revisions must name source and destination revisions, the stage mapping,
-compatibility proof, invalidations, and rollback. Otherwise in-flight work stays pinned where it is.
+There is no way to move an in-flight run to another workflow revision at this revision: no operation, CLI
+command, or kernel command performs one, so a run stays on the bytes it started with. `SPEC.md` specifies
+what such a migration would have to name — source and destination revisions, the stage mapping,
+compatibility proof, invalidations, and rollback — and none of it is built.
 
-## Run state and stage state are separate
+## What a run actually stores
 
-The workflow run has its own states — `pending`, `running`, `waiting`, `succeeded`, `failed`, `cancelled` —
-and each stage instance has its own: `blocked`, `ready`, `active`, `waiting_gate`, `succeeded`, `failed`,
-`skipped`, `cancelled`.
+A started run is one row per ticket in `workflow_runs`
+(`packages/ctower-kernel/migrations/0004_proof_workflow.sql`). It holds the pinned workflow key and
+revision, the four pinned policy refs and digests, `initial_stage`, `current_stage`, the current stage's
+`activity_class`, and an aggregate `version`. Each accepted move appends one immutable row to
+`workflow_transition_facts` naming the source stage, destination stage, the predicate that allowed it, the
+acting principal, and the client command ID.
 
-A stage failure does not imply the workflow failed, and neither implies the ticket was cancelled. A failed
-stage returns to `ready` only through an authorized typed repair route, which creates a new declared attempt
-rather than editing the old one.
+That is the whole runtime model. A run has a current stage; it does not have a state.
 
-## The four configurable bounds
+!!! warning "Specified, not implemented at this revision"
+    Everything in this subsection is canonical in `SPEC.md` and has no runtime object, column, or command
+    here. There is no stage-instance, attempt, repair, escalation, or bound-consumption table at this
+    revision, and nothing evaluates an execution policy beyond matching its pinned digest.
 
-An execution policy declares finite bounds and a no-progress rule. The platform supplies no universal tier
-table; concrete values belong to the pinned pack.
+    **Run and stage state machines.** The workflow run is specified to have its own states — `pending`,
+    `running`, `waiting`, `succeeded`, `failed`, `cancelled` — and each stage instance its own: `blocked`,
+    `ready`, `active`, `waiting_gate`, `succeeded`, `failed`, `skipped`, `cancelled`. A stage failure is not
+    to imply the workflow failed, and neither is to imply the ticket was cancelled. A failed stage returns
+    to `ready` only through an authorized typed repair route, creating a new declared attempt rather than
+    editing the old one.
 
-- `required_perspectives` — which independent checks must pass on one current candidate digest. A
-  perspective can be any capability, not only "code review", and each one is attributable to whoever
-  performed it.
-- `max_nonpassing_rounds` — how many review rounds may end without every required perspective passing.
-- `max_repairs_per_lineage` — how many times one line of repair work may be re-cut. A *lineage* is one chain
-  of attempts descending from the same failure, as the server groups them, so this bounds "keep fixing the
-  same thing".
-- `max_candidate_generations` — how many versions of the work may exist in total: the first one plus every
-  governed change to it, across all repair chains, so branching cannot produce an endless loop.
+    **The four configurable bounds.** An execution policy declares finite bounds and a no-progress rule. The
+    platform supplies no universal tier table; concrete values belong to the pinned pack.
 
-Separately, `total_executions` counts every check that was started, whatever its outcome. The server owns
-that count, no client may write it, and it is not a limit.
+    - `required_perspectives` — which independent checks must pass on one current candidate digest. A
+      perspective can be any capability, not only "code review", and each one is attributable to whoever
+      performed it.
+    - `max_nonpassing_rounds` — how many review rounds may end without every required perspective passing.
+    - `max_repairs_per_lineage` — how many times one line of repair work may be re-cut. A *lineage* is one
+      chain of attempts descending from the same failure, as the server groups them, so this bounds "keep
+      fixing the same thing".
+    - `max_candidate_generations` — how many versions of the work may exist in total: the first one plus
+      every governed change to it, across all repair chains, so branching cannot produce an endless loop.
 
-A round passes when every required perspective holds a current passing verdict, with no blockers, on the
-exact digest. Repeating an identical pass adds nothing.
+    Separately, `total_executions` is to count every check that was started, whatever its outcome, owned by
+    the server, unwritable by a client, and not a limit.
 
-A missing perspective, an attempt chain the server cannot place, stale evidence, an exhausted bound, or a
-policy state it cannot establish all fail closed and raise exactly one escalation, not a stream of them.
+    A round is to pass when every required perspective holds a current passing verdict, with no blockers, on
+    the exact digest, and repeating an identical pass is to add nothing. A missing perspective, an attempt
+    chain the server cannot place, stale evidence, an exhausted bound, or a policy state it cannot establish
+    are all to fail closed and raise exactly one escalation rather than a stream of them.
 
 ## What is implemented at this revision
 
@@ -146,6 +169,10 @@ that suite changes a candidate to populate them — see [Invalidation](proof.md#
 Runner dispatch, remote execution, images, effects, and executable extensions are `not_exercised` in the
 packs and are **not** implemented. Publishing new workflow packs through a supported path is not available
 either; the packs in `packs/` are staged fixtures.
+
+The execution policy is pinned and digest-checked, never interpreted. The gate policy is read only for the
+criteria set and for two protections it must declare (`reviewer_kind: operator`, `self_review: forbidden`)
+or be rejected. Nothing reads a bound, a perspective set, a repair route, or an escalation route.
 
 ## Related
 

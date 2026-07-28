@@ -17,6 +17,12 @@ Start with the page that matches your question:
 
 ## The shared vocabulary
 
+!!! note "This section defines terms; it does not claim they are built"
+    Below is the vocabulary `SPEC.md`, the contracts, and the CLI share. Several of these terms name
+    designed behaviour that has no runtime here, and each one says so where it appears. For what is
+    actually implemented, the linked pages carry an implementation-status section, and
+    [Delivery state](../project-status.md) is the unsoftened list.
+
 ### Company and project
 
 A **Company** is an isolation and governance boundary. It owns members, roles, secrets references,
@@ -25,35 +31,34 @@ tickets without becoming a separate source of truth.
 
 ### Ticket, status, and stage
 
-A **Ticket** is the permanent case file for an outcome. It carries intent, acceptance criteria, priority,
-ownership history, dependencies, artifacts, evidence, workflow state, decisions, attempts, effects, and the
-append-only event trail.
+A **Ticket** is the permanent case file for an outcome. At this revision it carries intent, acceptance
+criteria, priority, ownership history, relations, evidence and verdicts, the pinned workflow run's current
+stage, and the append-only hash-chained event trail. Decisions, attempts, and effects are part of the
+specified case file and have no runtime here.
 
 Two independent dimensions prevent overloaded status labels:
 
 | Dimension | Answers | Example values |
 |---|---|---|
-| **Status** | What is the ticket's operational Kanban condition? | backlog, todo, in progress, in review, blocked, done |
-| **Stage** | Which step of its selected workflow is being evaluated? | think, plan, design, implement, QA, release, retro |
+| **Status** | What is the ticket's operational Kanban condition? | The six derived [Board lanes](board.md): `backlog`, `ready`, `in_progress`, `in_review`, `blocked`, `complete` |
+| **Stage** | Which step of its selected workflow is being evaluated? | Whatever the pinned pack declares — `capture`, `frame`, `verify`, `close` in the four-stage fixture that ships |
 
-A ticket can be blocked during any stage. Changing an assignee does not reset its identity, history, proof,
-or consumed attempt counters. Details: [Ticket and lifecycle episode](tickets.md).
+A ticket can be blocked during any stage. Changing an assignee does not reset its identity, history, or
+proof — and it cannot reset consumed attempt counters, because none exist yet. Details:
+[Ticket and lifecycle episode](tickets.md).
 
 ### Workflow and execution policy
 
-A versioned **Workflow** answers:
+A versioned **Workflow** answers which stages exist, in what order, and which transitions are legal. The
+shipped evaluator reads exactly that much: it refuses any move the graph does not declare, and refuses a
+declared move whose named predicate is unmet. Which evidence advances a stage, and where failures, repairs,
+escalations, and cancellations route, are specified in the workflow schema and have no runtime here.
 
-- Which stages exist and in what order?
-- Which transitions are legal?
-- Which evidence advances a stage?
-- Where do failures, repairs, escalations, and cancellations route?
-
-A versioned **Execution Policy** answers:
-
-- Which persona, capability, model, harness, and environment may execute or review?
-- Which gates and independent perspectives are mandatory?
-- How many review rounds, repair attempts, and candidate generations are allowed?
-- Which costs, timeouts, security rules, and escalation routes apply?
+A versioned **Execution Policy** is specified to answer which persona, capability, model, harness, and
+environment may execute or review; which gates and independent perspectives are mandatory; how many review
+rounds, repair attempts, and candidate generations are allowed; and which costs, timeouts, security rules,
+and escalation routes apply. **None of that is evaluated at this revision.** The execution policy is pinned
+to the run by reference and digest and is never read again.
 
 Workflows define the process graph; execution policies define how a particular run is governed. Both are
 versioned inputs to a ticket run, not mutable prose instructions. Details:
@@ -61,12 +66,15 @@ versioned inputs to a ticket run, not mutable prose instructions. Details:
 
 ### Commander, agent, persona, and harness
 
-The **Commander** is the stable accountable principal that owns orchestration until verified closure. Its
-reasoning process or model may be replaced, but its custody rehydrates from durable state.
+The **Commander** is the stable accountable principal that owns orchestration until verified closure.
+`commander` is one of the two principal kinds eligible to hold custody, and custody is stored as an
+assignment interval outside any worker, so replacing the reasoning process does not move it. Rehydrating a
+replacement Commander from that durable state is specified; no rehydration command or payload exists here.
 
 An **Agent** is a governed worker identity. A **Persona** describes responsibility and review perspective. A
 **Harness** is the execution environment—such as a local process, terminal multiplexer, or future remote
-sandbox. Harness liveness never determines ticket truth.
+sandbox. Harness liveness never determines ticket truth. Agent profiles can be declared through
+CompanyBundle; nothing runs one.
 
 ### Evidence, gates, and artifacts
 
@@ -75,8 +83,9 @@ or release bundle. **Evidence** is a typed claim that links an artifact or obser
 exact candidate digest.
 
 A **Gate** evaluates current evidence under policy. Passing evidence for an older candidate cannot approve a
-new digest. Review accounting, repair accounting, and total execution cost remain distinct append-only facts.
-Details: [Proof: criteria, evidence, verdicts](proof.md).
+new digest — that much is enforced. Review accounting, repair accounting, and total execution cost are
+specified to remain distinct append-only facts, and none of those counters exists at this revision. Details:
+[Proof: criteria, evidence, verdicts](proof.md).
 
 ### Desired state, observed state, and effects
 
@@ -91,10 +100,14 @@ implemented at this revision.
 
 ### Heartbeats, wakes, routines, and schedules
 
-- A **Heartbeat** reports liveness and progress; it does not confer authority or advance a ticket by itself.
-- A **Wake** asks the control plane to reconsider desired versus observed state.
-- A **Routine** is a versioned recurring work definition that materializes auditable tickets or runs.
-- A **Schedule** or cron expression determines when a routine should be considered.
+- A **Routine** is a versioned recurring work definition that materializes auditable runs. Routine
+  revisions, triggers, and occurrences are stored, and the scheduler drives a fixed set of operations.
+- A **Schedule** or cron expression determines when a routine should be considered. *Implemented for that
+  fixed set.*
+- A **Heartbeat** reports liveness and progress; it does not confer authority or advance a ticket by
+  itself. *Specified; no heartbeat exists at this revision.*
+- A **Wake** asks the control plane to reconsider desired versus observed state. *Specified; no wake exists
+  at this revision.*
 
 These concepts are deliberately separate so a missed heartbeat, delayed cron, or duplicate wake cannot
 silently rewrite task history.
