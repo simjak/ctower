@@ -199,6 +199,33 @@ class SecretScanCorpusTests(unittest.TestCase):
             self.assertIn("refusing to report a clean scan", observed.stderr)
             self.assertFalse(marker.exists(), "the scanner must not run on an empty corpus")
 
+    def test_truncated_manifest_refuses_before_scanning(self) -> None:
+        with tempfile.TemporaryDirectory() as name:
+            workspace = Path(name)
+            (workspace / ".gitleaks.toml").write_text("", encoding="utf-8")
+            (workspace / "README.md").write_text("corpus\n", encoding="utf-8")
+            shim_dir = workspace / "shim-bin"
+            shim_dir.mkdir()
+            git_shim = shim_dir / "git"
+            git_shim.write_text(
+                "#!/usr/bin/env python3\n"
+                "import sys\n"
+                "sys.stdout.buffer.write(b'.gitleaks.toml\\0README.md')\n",
+                encoding="utf-8",
+            )
+            git_shim.chmod(0o755)
+            marker = workspace / "scanned.marker"
+
+            observed = self._run_scan(workspace, marker, exit_status=0, path_prefix=shim_dir)
+
+            self.assertFalse(
+                marker.exists(), f"the scanner must not run on a truncated manifest: {observed}"
+            )
+            self.assertNotEqual(observed.returncode, 0, observed)
+            self.assertIn("secret scan corpus: listed=1 scanned=1", observed.stdout)
+            self.assertIn("manifest-bytes=24 consumed-bytes=15", observed.stdout)
+            self.assertIn("refusing to report a clean scan", observed.stderr)
+
     def test_unlistable_tree_fails_instead_of_scanning_nothing(self) -> None:
         with tempfile.TemporaryDirectory() as name:
             workspace = Path(name)
@@ -210,7 +237,12 @@ class SecretScanCorpusTests(unittest.TestCase):
             self.assertFalse(marker.exists(), "the scanner must not run without a listing")
 
     def _run_scan(
-        self, workspace: Path, marker: Path, *, exit_status: int
+        self,
+        workspace: Path,
+        marker: Path,
+        *,
+        exit_status: int,
+        path_prefix: Path | None = None,
     ) -> subprocess.CompletedProcess[str]:
         scanner = " ".join(
             (
@@ -223,8 +255,12 @@ class SecretScanCorpusTests(unittest.TestCase):
                 ),
             )
         )
+        command = _scratch_line("secrets-intended-tree").replace("{{gitleaks}}", scanner)
+        if path_prefix is not None:
+            command = f"PATH={shlex.quote(str(path_prefix))}:$PATH; {command}"
         return _run(
-            _scratch_line("secrets-intended-tree").replace("{{gitleaks}}", scanner), workspace
+            command,
+            workspace,
         )
 
 
