@@ -12,7 +12,12 @@ import tomllib
 import unittest
 from dataclasses import dataclass
 from pathlib import Path
-from typing import cast
+from typing import TYPE_CHECKING, cast
+
+if TYPE_CHECKING:
+    from repository._release_history import RawHistory, RawHistoryReader
+else:
+    from tests.repository._release_history import RawHistory, RawHistoryReader
 
 _PINNED_ACTION = re.compile(r"[^@\s]+@[0-9a-f]{40}")
 _IDENTIFIER = re.compile(r"[0-9A-Za-z-]+")
@@ -58,8 +63,7 @@ class _GraphWalk:
 class _GraphProbe:
     candidate: str
     is_shallow: bool
-    raw_contains_feature: bool
-    raw_walk_problems: tuple[str, ...]
+    raw_history: RawHistory
     walks: tuple[_GraphWalk, ...]
     capture_problems: tuple[str, ...]
     telemetry: str
@@ -178,7 +182,8 @@ class ReleaseFoundationTests(unittest.TestCase):
         )
 
     def test_first_release_proposal_preserves_pre_1_0_policy(self) -> None:
-        candidate = self._assert_pre1_feature_history()
+        history = self._assert_pre1_feature_history()
+        candidate = history.candidate
         config = self._read_json("release-please-config.json")
         manifest = self._read_json(".release-please-manifest.json")
         workflow = (self.root / ".github/workflows/release-please.yml").read_text(encoding="utf-8")
@@ -190,7 +195,7 @@ class ReleaseFoundationTests(unittest.TestCase):
         self.assertIn(f"uses: {_RELEASE_PLEASE_ACTION}", workflow)
         self.assertEqual(manifest["."], "0.0.0")
         self.assertEqual(
-            self._pre1_release_tags(candidate),
+            self._pre1_release_tags(history),
             [],
             f"[POLICY] candidate={candidate}: pre-1.0 history must have no merged release tag",
         )
@@ -201,7 +206,7 @@ class ReleaseFoundationTests(unittest.TestCase):
         )
         self.assertEqual(
             [],
-            self._release_as_policy_violations(config, root_package, candidate),
+            self._release_as_policy_violations(config, root_package, history),
             f"[POLICY] candidate={candidate}: unreleased history can override "
             "Release Please's pre-1.0 initial version",
         )
@@ -282,12 +287,19 @@ class ReleaseFoundationTests(unittest.TestCase):
         self.assertIsInstance(value, str, f"{source} must be a string")
         return cast(str, value)
 
-    def _pre1_release_tags(self, candidate: str) -> list[str]:
-        result = self._git("tag", "--merged", candidate, "--list", "v[0-9]*")
-        self.assertEqual(result.returncode, 0, result.stderr)
-        return result.stdout.splitlines()
+    def _pre1_release_tags(self, history: RawHistory) -> list[str]:
+        result = RawHistoryReader(
+            self.root,
+            _PRE1_FEATURE_COMMIT,
+        ).merged_release_tags(history)
+        if result.problems:
+            self.fail(
+                f"[GRAPH-INFRASTRUCTURE] candidate={history.candidate}: "
+                f"{'; '.join(result.problems)}"
+            )
+        return list(result.names)
 
-    def _assert_pre1_feature_history(self) -> str:
+    def _assert_pre1_feature_history(self) -> RawHistory:
         probe = self._capture_graph_probe()
         sys.stdout.write(f"{probe.telemetry}\n")
         sys.stdout.flush()
@@ -300,11 +312,11 @@ class ReleaseFoundationTests(unittest.TestCase):
         # Shallow overlays can alter revision walkers without altering stored parents.
         # The no-replace raw walk is authoritative; the other modes remain telemetry.
         self.assertTrue(
-            probe.raw_contains_feature,
+            probe.raw_history.feature_is_member,
             f"[POLICY] candidate={probe.candidate}: {_PRE1_FEATURE_COMMIT} "
             "must exist in pre-1.0 history",
         )
-        return probe.candidate
+        return probe.raw_history
 
     def _capture_graph_probe(self) -> _GraphProbe:
         problems: list[str] = []
@@ -315,14 +327,20 @@ class ReleaseFoundationTests(unittest.TestCase):
                 ("rev-parse", "--show-toplevel", "--git-dir"),
             )
         )
-        candidate_result = self._git("rev-parse", "--verify", "HEAD^{commit}")
+        candidate_arguments = (
+            "--no-replace-objects",
+            "rev-parse",
+            "--verify",
+            "HEAD^{commit}",
+        )
+        candidate_result = self._git(*candidate_arguments)
         candidate = candidate_result.stdout.strip() or "<unresolved>"
         if candidate_result.returncode != 0:
             problems.append("candidate digest could not be resolved")
         sections.append(
             self._render_result(
                 "resolved candidate",
-                ("rev-parse", "--verify", "HEAD^{commit}"),
+                candidate_arguments,
                 candidate_result,
             )
         )
@@ -330,15 +348,17 @@ class ReleaseFoundationTests(unittest.TestCase):
         sections.extend(shallow_sections)
         sections.extend(self._configuration_telemetry())
         sections.extend(self._cat_file_telemetry(candidate))
-        raw_found, raw_problems, raw_telemetry = self._raw_parent_walk(candidate)
-        sections.append(raw_telemetry)
+        raw_history = RawHistoryReader(
+            self.root,
+            _PRE1_FEATURE_COMMIT,
+        ).walk(candidate)
+        sections.append(raw_history.telemetry)
         walks, walk_sections = self._graph_walk_telemetry(candidate)
         sections.extend(walk_sections)
         return _GraphProbe(
             candidate=candidate,
             is_shallow=is_shallow,
-            raw_contains_feature=raw_found,
-            raw_walk_problems=raw_problems,
+            raw_history=raw_history,
             walks=walks,
             capture_problems=tuple(problems),
             telemetry="\n".join(sections),
@@ -418,50 +438,6 @@ class ReleaseFoundationTests(unittest.TestCase):
                 )
         return sections
 
-    def _raw_parent_walk(self, candidate: str) -> tuple[bool, tuple[str, ...], str]:
-        pending = [(candidate, False)]
-        active: set[str] = set()
-        visited: set[str] = set()
-        rows: list[str] = []
-        feature_is_ancestor = False
-        problems: list[str] = []
-        while pending:
-            commit, leaving = pending.pop()
-            if leaving:
-                active.remove(commit)
-                visited.add(commit)
-                continue
-            if commit in active:
-                rows.append(f"{commit} cycle=true")
-                problems.append(f"raw parent walk cycle detected at {commit}")
-                break
-            if commit in visited:
-                continue
-            active.add(commit)
-            result = self._git("--no-replace-objects", "cat-file", "-p", commit)
-            parents = [
-                line.removeprefix("parent ")
-                for line in result.stdout.splitlines()
-                if line.startswith("parent ")
-            ]
-            rows.append(f"{commit} rc={result.returncode} parents={','.join(parents) or '<root>'}")
-            if result.returncode != 0:
-                problems.append(
-                    f"raw parent walk encountered missing or unreadable object {commit}"
-                )
-                break
-            if not result.stdout.startswith("tree "):
-                problems.append(f"raw parent walk encountered unreadable commit object {commit}")
-                break
-            feature_is_ancestor |= commit == _PRE1_FEATURE_COMMIT
-            pending.append((commit, True))
-            pending.extend((parent, False) for parent in reversed(parents))
-        return (
-            feature_is_ancestor,
-            tuple(problems),
-            "## raw no-replace parent walk\n" + "\n".join(rows),
-        )
-
     def _graph_walk_telemetry(
         self,
         candidate: str,
@@ -533,7 +509,7 @@ class ReleaseFoundationTests(unittest.TestCase):
         ]
 
     def _graph_infrastructure_problems(self, probe: _GraphProbe) -> list[str]:
-        return [*probe.capture_problems, *probe.raw_walk_problems]
+        return [*probe.capture_problems, *probe.raw_history.problems]
 
     def _git(self, *arguments: str) -> subprocess.CompletedProcess[str]:
         environment = {
@@ -595,7 +571,7 @@ class ReleaseFoundationTests(unittest.TestCase):
         self,
         config: dict[str, object],
         root_package: dict[str, object],
-        candidate: str,
+        history: RawHistory,
     ) -> list[str]:
         violations = [
             f"{source}: {value!r}"
@@ -605,19 +581,12 @@ class ReleaseFoundationTests(unittest.TestCase):
             )
             if value is not None and not self._is_pre1_release_as(value)
         ]
-        for commit, message in self._commit_messages(candidate):
-            for line in message.splitlines():
+        for commit in history.commits:
+            for line in commit.message.splitlines():
                 match = _RELEASE_AS_DIRECTIVE.match(line.lstrip(" \t"))
                 if match is not None and not self._is_pre1_release_as(match.group(1)):
-                    violations.append(f"commit {commit}: {line.strip()}")
+                    violations.append(f"commit {commit.object_id}: {line.strip()}")
         return violations
-
-    def _commit_messages(self, candidate: str) -> list[tuple[str, str]]:
-        result = self._git("log", "-z", "--format=%H%x00%B", candidate)
-        self.assertEqual(result.returncode, 0, result.stderr)
-        fields = result.stdout.rstrip("\0").split("\0")
-        self.assertEqual(len(fields) % 2, 0, "git log returned incomplete commit records")
-        return list(zip(fields[::2], fields[1::2], strict=True))
 
     def _is_pre1_release_as(self, value: object) -> bool:
         return isinstance(value, str) and _is_valid_semver(value) and value.startswith("0.")
