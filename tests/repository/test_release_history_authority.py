@@ -18,6 +18,7 @@ class ReleaseHistoryAuthorityTests(unittest.TestCase):
     root = Path(__file__).parents[2]
     gate_source = root / "tests/repository/test_release_foundation.py"
     authority_source = root / "tests/repository/_release_history.py"
+    protected_feature = "79e292e437457f92bb6a39bfbfdb2a3a62146529"
 
     def test_shallow_overlay_cannot_hide_release_as_policy_violation(self) -> None:
         with self._repository() as repository:
@@ -105,21 +106,39 @@ class ReleaseHistoryAuthorityTests(unittest.TestCase):
             repository = Path(temporary) / "repository"
             self._git_process(
                 Path(temporary),
-                "clone",
+                "init",
                 "--quiet",
-                "--no-local",
-                str(self.root),
+                "--initial-branch=main",
                 str(repository),
             )
-            shutil.copy2(
-                self.gate_source,
-                repository / "tests/repository/test_release_foundation.py",
-            )
-            shutil.copy2(
-                self.authority_source,
-                repository / "tests/repository/_release_history.py",
-            )
+            self._copy_policy_fixture(repository)
+            self._git(repository, "add", ".")
+            protected_feature = self._commit(repository, "feat: protected fixture")
+            self._bind_protected_feature(repository, protected_feature)
+            self._git(repository, "add", "tests/repository/test_release_foundation.py")
+            self._commit(repository, "chore: bind protected feature")
             yield repository
+
+    def _copy_policy_fixture(self, repository: Path) -> None:
+        sources = (
+            self.gate_source,
+            self.authority_source,
+            self.root / "release-please-config.json",
+            self.root / ".release-please-manifest.json",
+            self.root / ".github/workflows/release-please.yml",
+        )
+        for source in sources:
+            relative = source.relative_to(self.root)
+            destination = repository / relative
+            destination.parent.mkdir(parents=True, exist_ok=True)
+            shutil.copy2(source, destination)
+
+    def _bind_protected_feature(self, repository: Path, commit: str) -> None:
+        gate = repository / "tests/repository/test_release_foundation.py"
+        source = gate.read_text(encoding="utf-8")
+        bound = source.replace(self.protected_feature, commit)
+        self.assertNotEqual(bound, source, "fixture must bind its protected feature")
+        gate.write_text(bound, encoding="utf-8")
 
     def _commit(self, repository: Path, message: str) -> str:
         self._git(repository, "commit", "--allow-empty", "-m", message)
