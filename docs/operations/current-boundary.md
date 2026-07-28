@@ -15,13 +15,17 @@ It does not compose ctower API or control-worker processes, a durable primary/st
 TLS, an object store, backups, restore, monitoring, or release artifacts. Its trust authentication and
 temporary storage are test-fixture choices, not an operational security or durability design.
 
-The development `pending_only` configuration is likewise not a deployment mode. A verifier-owned
-primary/standby topology exercises acknowledged durability, but it is not packaged as an operator path.
+The ordinary development `pending_only` configuration is likewise not a deployment mode. A separate E2
+shadow instance on this VPS has now proved persistent PostgreSQL 17.10 primary/synchronous-development-ACK
+storage, supervised API/worker units, ordinary finalization, and lifecycle replay. It is an installed
+development observation from a separate candidate, not a supported operator path, external failure
+domain, backup/restore proof, or CP3-D result; health remains `CP3_D_NOT_PROVEN`.
 
 `deploy/private-vps/development/compose.yaml` separately records a secret-free reference composition for
-the intended one-host development topology. Its verifier binds the whole normalized Compose authority and
-development recurrence artifacts, but it supplies no released image, credentials, installation,
-activation, off-host failure domain, CP3-D proof, or accepted I1-exit claim.
+an alternate one-host source-contract topology. Its verifier binds the whole normalized Compose authority,
+review-sealed Caddy/collector sources, and development recurrence artifacts, but it neither observes nor
+describes the running E2 systemd topology and supplies no released image, credentials, installation,
+activation, external failure domain, CP3-D proof, or accepted I1-exit claim.
 
 ## Operational guidance today
 

@@ -36,8 +36,11 @@ verifier-owned primary/standby PostgreSQL test topology; it is not a supported d
 verifier-only CP3-C evidence also covers digest-bound object handling, backup and anchors, key recovery,
 isolated restore, rollback, and recovery evidence. Those pages describe bounded checkpoints, not a
 production recovery service or CP3-D activation. A secret-free private-VPS development reference
-composition now captures the intended one-host topology for source verification only; it cannot express
-I1 exit and is not a supported deployment.
+composition captures an alternate one-host source-contract topology for verification only; it cannot
+express I1 exit and is not a supported deployment. Separately, an E2 shadow instance has been proved on
+this VPS with persistent PostgreSQL 17.10 synchronous development-ACK storage, supervised API/worker
+units, ordinary finalization, and lifecycle replay. That instance remains `CP3_D_NOT_PROVEN` and is not
+created, described, or verified by the reference Compose packet.
 
 After following the [repository setup guide](https://simjak.github.io/ctower/start-here/repository-setup/),
 clone the repository and run the warm verification gate:

@@ -6,7 +6,7 @@ import argparse
 import json
 from collections.abc import Sequence
 from pathlib import Path
-from typing import Literal, cast
+from typing import Literal, NoReturn, cast
 
 from tools.private_vps.evidence import verify_evidence
 from tools.private_vps.manifest import PacketError
@@ -15,14 +15,22 @@ from tools.private_vps.preflight import validate_deployment
 
 __all__ = ["main"]
 
-Operation = Literal["validate", "evidence-verify"]
+Operation = Literal["arguments", "validate", "evidence-verify"]
+
+
+class _RedactedParser(argparse.ArgumentParser):
+    def error(self, message: str) -> NoReturn:
+        del message
+        raise PacketError("invalid_arguments", "arguments")
 
 
 def main(argv: Sequence[str] | None = None) -> int:
     """Run one non-mutating operation and emit one secret-free JSON result."""
-    arguments = _parser().parse_args(argv)
-    operation = cast("Operation", arguments.operation)
+    operation: Operation = "arguments"
+    claim: Claim | None = None
     try:
+        arguments = _parser().parse_args(argv)
+        operation = cast("Operation", arguments.operation)
         if operation == "validate":
             validate_deployment(
                 arguments.bindings,
@@ -44,7 +52,7 @@ def main(argv: Sequence[str] | None = None) -> int:
             operation=operation,
             ok=False,
             code=error.code,
-            claim=getattr(arguments, "claim", None),
+            claim=claim,
             issue=ResultIssue(code=error.code, field=error.field),
         )
     print(
@@ -58,7 +66,7 @@ def main(argv: Sequence[str] | None = None) -> int:
 
 
 def _parser() -> argparse.ArgumentParser:
-    parser = argparse.ArgumentParser(prog="python -m tools.private_vps")
+    parser = _RedactedParser(prog="python -m tools.private_vps")
     operations = parser.add_subparsers(dest="operation", required=True)
     validate = operations.add_parser("validate")
     validate.add_argument("--bindings", type=Path, required=True)

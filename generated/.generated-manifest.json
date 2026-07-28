@@ -12,7 +12,7 @@
         },
         {
           "path": "contracts/traceability/sources.json",
-          "sha256": "sha256:0cd147333ac43d19d60993645ffdc4796637003fc66faaa16cb48e8a5b34afb9"
+          "sha256": "sha256:6098bc70e3a8c367dfc44c68d81af51035070b9b47a11ba2b5afc85c28784c19"
         },
         {
           "path": "contracts/traceability/traceability-sources.schema.json",
@@ -38,7 +38,7 @@
       "outputs": [
         {
           "path": "generated/traceability-index.json",
-          "sha256": "sha256:94c120758f818ce485c17189a3f80f4d3de5c0ddc54067f8069c4532234ae30e"
+          "sha256": "sha256:efc991ed4dd54f4150a345b1df8cbe15f224cce2db4a3675b5ecf24d40f21b91"
         }
       ],
       "tool_version": "2"
@@ -306,7 +306,7 @@
         },
         {
           "path": "contracts/operations/private-vps-evidence.schema.json",
-          "sha256": "sha256:f0e27d1e03bd8b64b261f2e82865e1f1150a51f4ed131ddc4de3f4575b29b902"
+          "sha256": "sha256:b402c307f0f5c2cfdf47c1032f2157e2f6aed6e106e00c78fbbb20938a90961f"
         },
         {
           "path": "contracts/operations/restore-report.schema.json",
@@ -436,7 +436,7 @@
         },
         {
           "path": "generated/python/ctower_contracts/schemas.json",
-          "sha256": "sha256:029e32b176a240534debf01ace14352cf884f9abc006bc2b5b16644d8b3602d3"
+          "sha256": "sha256:12ef15326e6248e2848aaf462be834c62ba9fcae05534325bd72bf82605e43de"
         },
         {
           "path": "generated/typescript/ctower-client/package.json",

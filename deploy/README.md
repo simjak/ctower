@@ -8,7 +8,10 @@ topology, credentials, backups, or a product deployment.
 
 The repository also contains observability collector, dashboard, and alert homes.
 `private-vps/development/` is a secret-free, exact-bound reference composition of the one-host development
-shape; it is source verification material, not an operator installation path. `private-vps/` also contains
-the CP3-C recovery templates. None establishes a supported product deployment: there is no released image,
-credential ceremony, systemd activation, external durability target, or production durability switch.
-Those require CP3-D conformance evidence before becoming operator deployment documentation.
+shape; it is source verification material, not the topology of the separately proven E2 shadow runtime or
+an operator installation path. That runtime has supervised systemd API/worker units and a persistent
+PostgreSQL 17.10 synchronous development-ACK pair, while remaining `CP3_D_NOT_PROVEN`.
+`private-vps/` also contains the CP3-C recovery templates. None establishes a supported product
+deployment: there is no released image, credential ceremony, supported activation path, external failure
+domain, or production durability switch. Those require CP3-D conformance evidence before becoming
+operator deployment documentation.

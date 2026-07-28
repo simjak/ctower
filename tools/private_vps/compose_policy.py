@@ -6,9 +6,24 @@ from typing import Any
 
 from ruamel.yaml import YAML
 from ruamel.yaml.error import YAMLError
-from ruamel.yaml.tokens import AliasToken, AnchorToken
+from ruamel.yaml.tokens import (
+    AliasToken,
+    AnchorToken,
+    BlockEndToken,
+    BlockMappingStartToken,
+    BlockSequenceStartToken,
+    FlowMappingEndToken,
+    FlowMappingStartToken,
+    FlowSequenceEndToken,
+    FlowSequenceStartToken,
+)
 
-from tools.private_vps.manifest import FileSnapshot, PacketError
+from tools.private_vps.manifest import (
+    MAX_STRUCTURE_DEPTH,
+    MAX_STRUCTURE_TOKENS,
+    FileSnapshot,
+    PacketError,
+)
 from tools.private_vps.models import DeploymentBindings, WorkloadIdentity
 
 __all__ = ["verify_compose"]
@@ -22,19 +37,63 @@ def verify_compose(snapshot: FileSnapshot, bindings: DeploymentBindings) -> None
     try:
         text = snapshot.data.decode("utf-8")
         yaml = YAML(typ="safe", pure=True)
-        tokens = list(yaml.scan(text))
-    except (UnicodeError, YAMLError) as error:
+    except UnicodeError as error:
         raise PacketError("invalid_compose", "configuration.compose") from error
-    if any(isinstance(token, (AliasToken, AnchorToken)) for token in tokens):
-        raise PacketError("compose_alias_forbidden", "configuration.compose")
+    _verify_yaml_tokens(yaml, text)
     try:
         documents = list(yaml.load_all(text))
-    except YAMLError as error:
+    except (MemoryError, RecursionError, YAMLError) as error:
         raise PacketError("invalid_compose", "configuration.compose") from error
     if len(documents) != 1:
         raise PacketError("compose_document_count", "configuration.compose")
     if documents[0] != _expected(bindings):
         raise PacketError("compose_authority_changed", "configuration.compose")
+
+
+def _verify_yaml_tokens(yaml: YAML, text: str) -> None:
+    depth = 0
+    count = 0
+    starts = (
+        BlockMappingStartToken,
+        BlockSequenceStartToken,
+        FlowMappingStartToken,
+        FlowSequenceStartToken,
+    )
+    ends = (BlockEndToken, FlowMappingEndToken, FlowSequenceEndToken)
+    try:
+        for token in yaml.scan(text):
+            count += 1
+            _reject_yaml_alias(token)
+            depth = _yaml_depth(token, depth, starts=starts, ends=ends)
+            _verify_yaml_budget(depth, count)
+    except PacketError:
+        raise
+    except (MemoryError, RecursionError, YAMLError) as error:
+        raise PacketError("invalid_compose", "configuration.compose") from error
+
+
+def _reject_yaml_alias(token: object) -> None:
+    if isinstance(token, (AliasToken, AnchorToken)):
+        raise PacketError("compose_alias_forbidden", "configuration.compose")
+
+
+def _yaml_depth(
+    token: object,
+    depth: int,
+    *,
+    starts: tuple[type[object], ...],
+    ends: tuple[type[object], ...],
+) -> int:
+    if isinstance(token, starts):
+        return depth + 1
+    if isinstance(token, ends):
+        return depth - 1
+    return depth
+
+
+def _verify_yaml_budget(depth: int, count: int) -> None:
+    if depth > MAX_STRUCTURE_DEPTH or count > MAX_STRUCTURE_TOKENS:
+        raise PacketError("structure_limit_exceeded", "configuration.compose")
 
 
 def _expected(bindings: DeploymentBindings) -> dict[str, Any]:

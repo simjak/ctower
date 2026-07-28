@@ -13,10 +13,13 @@ from tools.private_vps.manifest import (
     MAX_CONFIGURATION_BYTES,
     MAX_DOCUMENT_BYTES,
     ConfinedRoot,
+    FileSnapshot,
     PacketError,
     load_snapshot,
+    verify_secret_free_text,
 )
 from tools.private_vps.models import (
+    ConfigArtifact,
     DeploymentBindings,
     RootOwnedDirectory,
     RootOwnedFile,
@@ -28,6 +31,7 @@ __all__ = [
     "validate_deployment",
     "verify_configuration",
     "verify_configuration_confined",
+    "verify_deployment_authority",
 ]
 
 _CONFIGURATION_PATHS = ("compose.yaml", "Caddyfile", "otel-collector.yaml")
@@ -67,6 +71,17 @@ _IDENTITIES = {
     "edge": (10004, 10001),
 }
 _IPV4_VERSION = 4
+_CONFIGURATION_REVISION = "ctower.private-vps-effective-configuration/v1"
+_SEALED_EFFECTIVE_CONFIGURATION = {
+    (
+        "deploy/private-vps/development/Caddyfile",
+        _CONFIGURATION_REVISION,
+    ): "sha256:f563133e6cb9f600e89da6c1f1cecf3c806049dafcbaaf5e2c9f2edd4045f4ad",
+    (
+        "deploy/private-vps/development/otel-collector.yaml",
+        _CONFIGURATION_REVISION,
+    ): "sha256:a735d2a553736df537851255896abc515e73e645aa66f2853cead01f3a76df9c",
+}
 
 
 @dataclass(frozen=True, slots=True)
@@ -103,7 +118,6 @@ def validate_deployment(
         )
         bindings = load_snapshot(snapshot, DeploymentBindings, field="bindings")
         _verify_source(bindings, expected_source_sha, expected_source_tree)
-        _verify_authority(bindings)
         verify_configuration_confined(bindings, packet_root, prefix="")
     inspect = observer or observe_file
     for index, reference in enumerate(bindings.referenced_files()):
@@ -160,6 +174,7 @@ def verify_configuration_confined(
     *,
     prefix: str,
 ) -> None:
+    verify_deployment_authority(bindings)
     artifacts = bindings.configuration.artifacts()
     if tuple(artifact.path for artifact in artifacts) != _CONFIGURATION_PATHS:
         raise PacketError("configuration_path_changed", "configuration")
@@ -175,9 +190,18 @@ def verify_configuration_confined(
             raise PacketError("configuration_changed", f"configuration.{index}.sha256")
         if index == 0:
             compose_snapshot = snapshot
+        else:
+            _verify_effective_configuration(artifact, snapshot, index=index)
     if compose_snapshot is None:
         raise PacketError("invalid_compose", "configuration.compose")
     verify_compose(compose_snapshot, bindings)
+
+
+def verify_deployment_authority(bindings: DeploymentBindings) -> None:
+    """Enforce the one exact source-packet deployment authority."""
+    _verify_bind_address(bindings.bind_address)
+    _verify_paths(bindings)
+    _verify_identities(bindings)
 
 
 def _verify_source(bindings: DeploymentBindings, sha: str, tree: str) -> None:
@@ -187,10 +211,18 @@ def _verify_source(bindings: DeploymentBindings, sha: str, tree: str) -> None:
         raise PacketError("source_changed", "source.tree")
 
 
-def _verify_authority(bindings: DeploymentBindings) -> None:
-    _verify_bind_address(bindings.bind_address)
-    _verify_paths(bindings)
-    _verify_identities(bindings)
+def _verify_effective_configuration(
+    artifact: ConfigArtifact,
+    snapshot: FileSnapshot,
+    *,
+    index: int,
+) -> None:
+    source_path = f"deploy/private-vps/development/{artifact.path}"
+    expected = _SEALED_EFFECTIVE_CONFIGURATION.get((source_path, _CONFIGURATION_REVISION))
+    field = f"configuration.{index}"
+    if expected is None or artifact.sha256 != expected or snapshot.sha256 != expected:
+        raise PacketError("effective_configuration_changed", field)
+    verify_secret_free_text(snapshot, field=field)
 
 
 def _verify_bind_address(raw: str) -> None:

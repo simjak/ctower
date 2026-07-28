@@ -2,10 +2,12 @@
 
 from __future__ import annotations
 
+import math
+import re
 from datetime import date, datetime
-from typing import Annotated, Literal
+from typing import Annotated, Literal, NoReturn
 
-from pydantic import BaseModel, ConfigDict, Field, StringConstraints
+from pydantic import BaseModel, BeforeValidator, ConfigDict, Field, StringConstraints
 
 __all__ = [
     "ArtifactFile",
@@ -78,7 +80,7 @@ CheckKind = Literal[
     "legacy_baseline",
 ]
 ArtifactKind = Literal[
-    "deployment_preflight",
+    "deployment_contract_validation",
     "tls_access",
     "database_bootstrap",
     "health_telemetry",
@@ -98,6 +100,48 @@ ContentSchema = Literal[
     "ctower.private-vps-scheduler-receipt/v1",
 ]
 DevelopmentProvenance = Literal["self_declared_development_reference"]
+_DATE_PATTERN = (
+    r"(?:(?:(?!0000)[0-9]{4})-(?:(?:01|03|05|07|08|10|12)-"
+    r"(?:0[1-9]|[12][0-9]|3[01])|(?:04|06|09|11)-(?:0[1-9]|[12][0-9]|30)|"
+    r"02-(?:0[1-9]|1[0-9]|2[0-8]))|(?:(?:[0-9]{2}(?:0[48]|[2468][048]|[13579][26]))|"
+    r"(?:(?:0[48]|[2468][048]|[13579][26])00))-02-29)"
+)
+_TIMESTAMP_PATTERN = re.compile(
+    rf"^{_DATE_PATTERN}"
+    r"T(?:[01][0-9]|2[0-3]):[0-5][0-9]:[0-5][0-9]"
+    r"(?:\.[0-9]{1,6})?(?:Z|[+-](?:[01][0-9]|2[0-3]):[0-5][0-9])$"
+)
+
+
+def _mathematical_integer(value: object) -> int:
+    if isinstance(value, bool):
+        _invalid_integer()
+    if isinstance(value, int):
+        return value
+    if isinstance(value, float) and math.isfinite(value) and value.is_integer():
+        return int(value)
+    _invalid_integer()
+
+
+def _invalid_integer() -> NoReturn:
+    raise ValueError("value is not a mathematical integer")
+
+
+def _timestamp(value: object) -> datetime:
+    if not isinstance(value, str) or _TIMESTAMP_PATTERN.fullmatch(value) is None:
+        raise ValueError("timestamp is outside the authored language")
+    try:
+        return datetime.fromisoformat(value)
+    except ValueError as error:
+        raise ValueError("timestamp is outside the authored language") from error
+
+
+MathematicalInteger = Annotated[int, BeforeValidator(_mathematical_integer)]
+UserGroupId = Annotated[MathematicalInteger, Field(ge=10001, le=10001)]
+UnixIdentity = Annotated[MathematicalInteger, Field(ge=0, le=65535)]
+PostgresMajor = Annotated[MathematicalInteger, Field(ge=17, le=17)]
+SingleFailureDomain = Annotated[MathematicalInteger, Field(ge=1, le=1)]
+Timestamp = Annotated[datetime, BeforeValidator(_timestamp)]
 
 
 class FrozenModel(BaseModel):
@@ -118,7 +162,7 @@ class RootOwnedFile(FrozenModel):
     path: AbsolutePath
     owner: Literal["root"]
     group: Literal["ctower"]
-    group_id: Literal[10001]
+    group_id: UserGroupId
     mode: FileMode
     sha256: Digest
 
@@ -130,7 +174,7 @@ class OutputFile(FrozenModel):
     path: AbsolutePath
     owner: Literal["root"]
     group: Literal["ctower"]
-    group_id: Literal[10001]
+    group_id: UserGroupId
     mode: Literal["0400"]
 
 
@@ -138,7 +182,7 @@ class RootOwnedDirectory(FrozenModel):
     path: AbsolutePath
     owner: Literal["root"]
     group: Literal["ctower"]
-    group_id: Literal[10001]
+    group_id: UserGroupId
     mode: Literal["0750"]
 
 
@@ -164,7 +208,7 @@ class ConfigurationBindings(FrozenModel):
 class ImageBindings(FrozenModel):
     control: ImageDigest
     postgres: ImageDigest
-    postgres_major: Literal[17]
+    postgres_major: PostgresMajor
     edge: ImageDigest
     collector: ImageDigest
 
@@ -215,8 +259,8 @@ class TelemetryBindings(FrozenModel):
 
 class WorkloadIdentity(FrozenModel):
     reference: Reference
-    uid: int = Field(ge=0, le=65535)
-    gid: int = Field(ge=0, le=65535)
+    uid: UnixIdentity
+    gid: UnixIdentity
 
 
 class WorkloadIdentities(FrozenModel):
@@ -248,7 +292,7 @@ class DeploymentBindings(FrozenModel):
     source: SourceBinding
     assurance: Literal["development"]
     durability_policy: Literal["pending_only"]
-    failure_domain_count: Literal[1]
+    failure_domain_count: SingleFailureDomain
     cp3d_qualified: Literal[False]
     data_classification: Literal["disposable_synthetic_non_sensitive"]
     authoritative_ctower_project_writer: Literal[False]
@@ -292,7 +336,7 @@ class EvidenceInputs(FrozenModel):
 class ScheduledOccurrence(FrozenModel):
     occurrence_id: Identifier
     schedule_ref: Reference
-    scheduled_for: datetime
+    scheduled_for: Timestamp
     working_day: date
     trigger: Literal["scheduled"]
     origin: Literal["routine_scheduler_reference"]
@@ -331,7 +375,7 @@ class CheckArtifact(FrozenModel):
     kind: CheckKind
     outcome: Literal["pass"]
     provenance: DevelopmentProvenance
-    observed_at: datetime
+    observed_at: Timestamp
     source: SourceBinding
     control_image: ImageDigest
 
@@ -340,7 +384,7 @@ class SyntheticResult(FrozenModel):
     schema_: Literal["ctower.private-vps-synthetic-result/v1"] = Field(alias="schema")
     occurrence_id: Identifier
     schedule_ref: Reference
-    scheduled_for: datetime
+    scheduled_for: Timestamp
     working_day: date
     outcome: Literal["pass"]
     provenance: DevelopmentProvenance
@@ -352,7 +396,7 @@ class SchedulerReceipt(FrozenModel):
     schema_: Literal["ctower.private-vps-scheduler-receipt/v1"] = Field(alias="schema")
     occurrence_id: Identifier
     schedule_ref: Reference
-    scheduled_for: datetime
+    scheduled_for: Timestamp
     working_day: date
     trigger: Literal["scheduled"]
     origin: Literal["routine_scheduler_reference"]
@@ -371,7 +415,7 @@ class OperationResult(FrozenModel):
     """Stable machine-readable CLI result with no input values or secrets."""
 
     schema_: Literal["ctower.private-vps-result/v1"] = Field(alias="schema")
-    operation: Literal["validate", "evidence-verify"]
+    operation: Literal["arguments", "validate", "evidence-verify"]
     ok: bool
     code: Identifier
     claim: Claim | None = None

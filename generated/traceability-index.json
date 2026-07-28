@@ -36,9 +36,6 @@
       "contracts/http/openapi.yaml",
       "packages/ctower-kernel/migrations/0002_ticket_slice.sql"
     ],
-    "AC-ADM-03": [
-      "contracts/operations/private-vps-deployment.schema.json"
-    ],
     "AC-COMP-01": [
       "contracts/components/agent-profile.schema.json",
       "contracts/components/capability.schema.json",
@@ -146,7 +143,6 @@
     "AC-EVD-01": [
       "contracts/evidence/evidence-manifest.schema.json",
       "contracts/execution/evidence-policy.schema.json",
-      "contracts/operations/private-vps-evidence.schema.json",
       "packs/policies/evidence/trust-spine-four-stage-v1.yaml"
     ],
     "AC-EVD-03": [
@@ -155,7 +151,6 @@
     "AC-EVD-04": [
       "contracts/execution/gate-policy.schema.json",
       "contracts/http/openapi.yaml",
-      "contracts/operations/private-vps-evidence.schema.json",
       "packages/ctower-kernel/migrations/0004_proof_workflow.sql",
       "packs/policies/gates/trust-spine-four-stage-v1.yaml"
     ],
@@ -509,14 +504,12 @@
     "INV-18": [
       "contracts/evidence/evidence-manifest.schema.json",
       "contracts/execution/evidence-policy.schema.json",
-      "contracts/operations/private-vps-evidence.schema.json",
       "packages/ctower-kernel/migrations/0004_proof_workflow.sql",
       "packs/policies/evidence/trust-spine-four-stage-v1.yaml"
     ],
     "INV-19": [
       "contracts/execution/gate-policy.schema.json",
       "contracts/http/openapi.yaml",
-      "contracts/operations/private-vps-evidence.schema.json",
       "packages/ctower-kernel/migrations/0004_proof_workflow.sql",
       "packs/policies/gates/software-factory-v1.yaml",
       "packs/policies/gates/trust-spine-four-stage-v1.yaml"
@@ -907,8 +900,7 @@
       "packs/workflows/engineering.software-factory/v1.yaml"
     ],
     "SPEC#test-and-evidence-matrix": [
-      "contracts/evidence/evidence-manifest.schema.json",
-      "contracts/operations/private-vps-evidence.schema.json"
+      "contracts/evidence/evidence-manifest.schema.json"
     ],
     "SPEC#trusted-control-plane-record-tier-and-replaceable-worker-plane": [
       "contracts/operations/private-vps-deployment.schema.json"

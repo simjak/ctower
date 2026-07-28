@@ -11172,7 +11172,7 @@
             },
             "kind": {
               "enum": [
-                "deployment_preflight",
+                "deployment_contract_validation",
                 "tls_access",
                 "database_bootstrap",
                 "health_telemetry",
@@ -11229,8 +11229,7 @@
               ]
             },
             "observed_at": {
-              "format": "date-time",
-              "type": "string"
+              "$ref": "#/$defs/timestamp"
             },
             "outcome": {
               "const": "pass"
@@ -11328,8 +11327,7 @@
               "$ref": "#/$defs/reference"
             },
             "scheduled_for": {
-              "format": "date-time",
-              "type": "string"
+              "$ref": "#/$defs/timestamp"
             },
             "scheduler_receipt_artifact_id": {
               "$ref": "#/$defs/identifier"
@@ -11385,8 +11383,7 @@
               "$ref": "#/$defs/reference"
             },
             "scheduled_for": {
-              "format": "date-time",
-              "type": "string"
+              "$ref": "#/$defs/timestamp"
             },
             "schema": {
               "const": "ctower.private-vps-scheduler-receipt/v1"
@@ -11452,8 +11449,7 @@
               "$ref": "#/$defs/reference"
             },
             "scheduled_for": {
-              "format": "date-time",
-              "type": "string"
+              "$ref": "#/$defs/timestamp"
             },
             "schema": {
               "const": "ctower.private-vps-synthetic-result/v1"
@@ -11478,6 +11474,11 @@
             "control_image"
           ],
           "type": "object"
+        },
+        "timestamp": {
+          "format": "date-time",
+          "pattern": "^(?:(?:(?!0000)[0-9]{4})-(?:(?:01|03|05|07|08|10|12)-(?:0[1-9]|[12][0-9]|3[01])|(?:04|06|09|11)-(?:0[1-9]|[12][0-9]|30)|02-(?:0[1-9]|1[0-9]|2[0-8]))|(?:(?:[0-9]{2}(?:0[48]|[2468][048]|[13579][26]))|(?:(?:0[48]|[2468][048]|[13579][26])00))-02-29)T(?:[01][0-9]|2[0-3]):[0-5][0-9]:[0-5][0-9](?:\\.[0-9]{1,6})?(?:Z|[+-](?:[01][0-9]|2[0-3]):[0-5][0-9])$",
+          "type": "string"
         }
       },
       "$id": "https://ctower.dev/contracts/operations/private-vps-evidence.schema.json",
@@ -12915,7 +12916,7 @@
     {
       "id": "https://ctower.dev/contracts/operations/private-vps-evidence.schema.json",
       "path": "contracts/operations/private-vps-evidence.schema.json",
-      "sha256": "sha256:f0e27d1e03bd8b64b261f2e82865e1f1150a51f4ed131ddc4de3f4575b29b902"
+      "sha256": "sha256:b402c307f0f5c2cfdf47c1032f2157e2f6aed6e106e00c78fbbb20938a90961f"
     },
     {
       "id": "https://ctower.dev/contracts/operations/restore-report.schema.json",

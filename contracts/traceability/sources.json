@@ -470,19 +470,13 @@
         "SPEC#trusted-control-plane-record-tier-and-replaceable-worker-plane",
         "SPEC#required-stack-and-deployment-posture",
         "INV-25",
-        "INV-32",
-        "AC-ADM-03"
+        "INV-32"
       ]
     },
     {
       "path": "contracts/operations/private-vps-evidence.schema.json",
       "references": [
-        "SPEC#test-and-evidence-matrix",
-        "INV-18",
-        "INV-19",
-        "INV-32",
-        "AC-EVD-01",
-        "AC-EVD-04"
+        "INV-32"
       ]
     },
     {

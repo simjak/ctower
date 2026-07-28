@@ -39,9 +39,9 @@ _CHECK_KINDS = {
     "clean_install",
     "legacy_baseline",
 }
-_REQUIRED_SINGLETONS = {"deployment_preflight", *_CHECK_KINDS}
+_REQUIRED_SINGLETONS = {"deployment_contract_validation", *_CHECK_KINDS}
 _CONTENT_SCHEMA = {
-    "deployment_preflight": "ctower.private-vps-deployment/v1",
+    "deployment_contract_validation": "ctower.private-vps-deployment/v1",
     **dict.fromkeys(_CHECK_KINDS, "ctower.private-vps-check/v1"),
     "synthetic_occurrence": "ctower.private-vps-synthetic-result/v1",
     "scheduler_receipt": "ctower.private-vps-scheduler-receipt/v1",
@@ -137,7 +137,7 @@ def _verify_deployment(
     artifacts: dict[str, VerifiedArtifact],
 ) -> DeploymentBindings:
     artifact = artifacts.get(manifest.deployment_manifest_artifact_id)
-    if artifact is None or artifact.descriptor.kind != "deployment_preflight":
+    if artifact is None or artifact.descriptor.kind != "deployment_contract_validation":
         raise PacketError("missing_artifact", "deployment_manifest_artifact_id")
     deployment = load_snapshot(
         artifact.snapshot,
@@ -272,7 +272,8 @@ def _verify_check_documents(
             raise PacketError("source_changed", "artifacts.source")
         if parsed.control_image != manifest.bound_inputs.control_image:
             raise PacketError("control_image_changed", "artifacts.control_image")
-        if not manifest.window_start <= parsed.observed_at.date() <= manifest.window_end:
+        observed_day = parsed.observed_at.astimezone(UTC).date()
+        if not manifest.window_start <= observed_day <= manifest.window_end:
             raise PacketError("check_outside_window", "artifacts.observed_at")
 
 

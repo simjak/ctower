@@ -2,8 +2,8 @@
   "schema": "ctower.private-vps-deployment/v1",
   "deployment_id": "ctower.private-vps.development-example",
   "source": {
-    "sha": "bf2ffb851ab31c0fb1e32792ca1230e38b66ba1e",
-    "tree": "029ff306a7c5495223d6c3e5fff78a3977e778cc"
+    "sha": "711152066a9f21c0ffa092b91515f3339d5751a3",
+    "tree": "7c8e53c7623935582e6c01b50c4e0cb66710e3c1"
   },
   "assurance": "development",
   "durability_policy": "pending_only",

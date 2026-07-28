@@ -45,7 +45,7 @@ CHECK_KINDS = (
     "legacy_baseline",
 )
 CONTENT_SCHEMAS = {
-    "deployment_preflight": "ctower.private-vps-deployment/v1",
+    "deployment_contract_validation": "ctower.private-vps-deployment/v1",
     **dict.fromkeys(CHECK_KINDS, "ctower.private-vps-check/v1"),
     "synthetic_occurrence": "ctower.private-vps-synthetic-result/v1",
     "scheduler_receipt": "ctower.private-vps-scheduler-receipt/v1",
@@ -144,8 +144,8 @@ def _artifacts_and_occurrences(
 ) -> tuple[list[dict[str, str]], list[dict[str, object]]]:
     artifacts = [
         _descriptor(
-            "artifact.deployment-preflight",
-            "deployment_preflight",
+            "artifact.deployment-contract-validation",
+            "deployment_contract_validation",
             deployment_path,
             root,
         )
@@ -201,7 +201,7 @@ def _evidence(root: Path) -> tuple[Path, dict[str, Any]]:
         "calendar": "weekday_mon_fri_utc",
         "window_start": START_DAY.isoformat(),
         "window_end": (START_DAY + timedelta(days=4)).isoformat(),
-        "deployment_manifest_artifact_id": "artifact.deployment-preflight",
+        "deployment_manifest_artifact_id": "artifact.deployment-contract-validation",
         "bound_inputs": {
             "source": deployment["source"],
             "control_image": deployment["images"]["control"],

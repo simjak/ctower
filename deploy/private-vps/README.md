@@ -2,17 +2,34 @@
 
 ## Development reference composition
 
-`development/` is a secret-free, source-verifiable reference composition for the intended one-host
+`development/` is a secret-free, source-verifiable reference composition for one reviewed source-contract
 private-VPS shape. Its authored deployment and evidence schemas describe only
 `development`/`pending_only`, single-failure-domain, disposable synthetic use. The verifier checks exact
-source, image, configuration, identity, UID/GID, root-owned reference, bootstrap-parent, network, volume,
-mount, capability, command, and recurrence bindings from bounded descriptor-confined snapshots.
+source, image, review-sealed Caddy/collector configuration, identity, UID/GID, root-owned reference,
+bootstrap-parent, network, volume, mount, capability, command, and recurrence bindings from bounded
+descriptor-confined snapshots. Its recurrence artifact is a deployment contract validation, not a claim
+that installed state was observed.
 
 This composition is not an installer, supported deployment, container release, credential ceremony,
 CP3-D proof, accepted-write RPO-zero path, or I1 exit. The evidence language cannot represent `i1_exit`;
 the CLI refuses that claim before reading a manifest. Do not start the composition with tenant data or
 real credentials. Its image digests and external references are examples, and the named volumes remain
 inside one failure domain.
+
+## Observed VPS reality
+
+The verification VPS now has a separately gated E2 shadow runtime installed from source
+`10951fc3c568f1d6115d1e029b1f0194a6d531a1`, not from this packet's bound current-main source. That
+instance has persistent PostgreSQL 17.10 primary and synchronous development-ACK volumes, supervised API
+and worker units, ordinary finalizer processing, and lifecycle replay across service restarts and release
+swaps. It identifies its policy as `development_offhost_ack` while remaining visibly
+`CP3_D_NOT_PROVEN`.
+
+That running instance does not use or validate this reference Compose topology, its example images, its
+Caddy/collector configuration, or its self-declared recurrence documents. Conversely, a passing
+`development_rehearsal` result from this packet is only source-contract consistency evidence and is not
+evidence that the running instance is healthy, installed from this candidate, externally durable,
+supported, or production-ready.
 
 ## CP3-C recovery templates
 

@@ -28,6 +28,7 @@ __all__ = [
     "digest_file",
     "load_model",
     "load_snapshot",
+    "verify_secret_free_text",
 ]
 
 JsonObject = dict[str, Any]
@@ -35,6 +36,8 @@ MAX_DOCUMENT_BYTES = 256 * 1024
 MAX_COMPOSE_BYTES = 256 * 1024
 MAX_CONFIGURATION_BYTES = 64 * 1024
 MAX_ARTIFACT_BYTES = 64 * 1024
+MAX_STRUCTURE_DEPTH = 64
+MAX_STRUCTURE_TOKENS = 32_768
 _READ_BLOCK_BYTES = 64 * 1024
 _SCHEMA_ROOT = Path(__file__).parents[2] / "contracts/operations"
 _MODEL_SCHEMAS: dict[str, tuple[str, str | None]] = {
@@ -87,6 +90,58 @@ class DirectorySnapshot:
     owner_uid: int
     owner_gid: int
     mode: str
+
+
+@dataclass(slots=True)
+class _JsonStructureGuard:
+    depth: int = 0
+    tokens: int = 0
+    in_string: bool = False
+    escaped: bool = False
+    in_scalar: bool = False
+
+    def consume(self, byte: int, *, field: str) -> None:
+        if self.in_string:
+            self._consume_string(byte)
+        else:
+            self._consume_unquoted(byte)
+        if self.depth > MAX_STRUCTURE_DEPTH or self.tokens > MAX_STRUCTURE_TOKENS:
+            raise PacketError("structure_limit_exceeded", field)
+
+    def _consume_string(self, byte: int) -> None:
+        if self.escaped:
+            self.escaped = False
+        elif byte == ord("\\"):
+            self.escaped = True
+        elif byte == ord('"'):
+            self.in_string = False
+            self.tokens += 1
+
+    def _consume_unquoted(self, byte: int) -> None:
+        if byte == ord('"'):
+            self.in_string = True
+            self.in_scalar = False
+            return
+        if byte in b"{[":
+            self.depth += 1
+            self.tokens += 1
+            self.in_scalar = False
+            return
+        if byte in b"}]":
+            self.depth -= 1
+            self.tokens += 1
+            self.in_scalar = False
+            return
+        if byte in b",:":
+            self.tokens += 1
+            self.in_scalar = False
+            return
+        if byte in b" \t\r\n":
+            self.in_scalar = False
+            return
+        if not self.in_scalar:
+            self.tokens += 1
+            self.in_scalar = True
 
 
 class ConfinedRoot:
@@ -213,11 +268,15 @@ def load_snapshot[ModelT: BaseModel](
         ).validate(raw)
     except SchemaValidationError as error:
         raise PacketError("invalid_document", _schema_location(field, error)) from error
+    except (MemoryError, RecursionError) as error:
+        raise PacketError("invalid_document", field) from error
     try:
         return model.model_validate_json(snapshot.data)
     except ValidationError as error:
         location = _validation_location(error)
         raise PacketError("schema_model_divergence", f"{field}.{location}") from error
+    except (MemoryError, RecursionError) as error:
+        raise PacketError("invalid_document", field) from error
 
 
 def digest_file(path: Path, *, field: str) -> str:
@@ -229,6 +288,15 @@ def digest_file(path: Path, *, field: str) -> str:
             field=field,
             max_bytes=MAX_DOCUMENT_BYTES,
         ).sha256
+
+
+def verify_secret_free_text(snapshot: FileSnapshot, *, field: str) -> None:
+    """Apply the packet's bounded inline-material policy to retained text."""
+    try:
+        text = snapshot.data.decode("utf-8")
+    except UnicodeError as error:
+        raise PacketError("invalid_text", field) from error
+    _reject_inline_text(text, field=field)
 
 
 def _open_absolute_directory(path: Path) -> int:
@@ -292,9 +360,10 @@ def _identity(metadata: os.stat_result) -> tuple[int, int, int, int, int]:
 
 
 def _json_object(data: bytes, *, field: str) -> JsonObject:
+    _guard_json_structure(data, field=field)
     try:
         raw = json.loads(data)
-    except (UnicodeError, json.JSONDecodeError) as error:
+    except (UnicodeError, json.JSONDecodeError, MemoryError, RecursionError) as error:
         raise PacketError("invalid_json", field) from error
     if not isinstance(raw, dict):
         raise PacketError("invalid_document", field)
@@ -304,11 +373,17 @@ def _json_object(data: bytes, *, field: str) -> JsonObject:
 def _schema_document(name: str) -> JsonObject:
     try:
         raw = json.loads((_SCHEMA_ROOT / name).read_bytes())
-    except (OSError, UnicodeError, json.JSONDecodeError) as error:
+    except (OSError, UnicodeError, json.JSONDecodeError, MemoryError, RecursionError) as error:
         raise PacketError("invalid_authored_schema", "schema") from error
     if not isinstance(raw, dict):
         raise PacketError("invalid_authored_schema", "schema")
     return cast("JsonObject", raw)
+
+
+def _guard_json_structure(data: bytes, *, field: str) -> None:
+    guard = _JsonStructureGuard()
+    for byte in data:
+        guard.consume(byte, field=field)
 
 
 def _reject_inline_material(value: object, *, field: str) -> None:
