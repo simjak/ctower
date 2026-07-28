@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.1.1](https://github.com/simjak/ctower/compare/v0.1.0...v0.1.1) (2026-07-28)
+
+
+### Bug Fixes
+
+* **release:** enforce post-release pre-1.0 policy ([#76](https://github.com/simjak/ctower/issues/76)) ([b583088](https://github.com/simjak/ctower/commit/b583088641f007491779c7f36141807cd138e6ce))
+
 ## 0.1.0 (2026-07-28)
 
 
