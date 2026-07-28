@@ -153,6 +153,30 @@ def reserve_source_alias(
     )
 
 
+def initial_custody_problem(
+    connection: psycopg.Connection[dict[str, object]],
+    actor: Actor,
+    command: IntakeSubmitCommand | IntakePromotionCommand,
+) -> RecordProblem | None:
+    """Establish target authority before consulting observable intake state."""
+
+    if (
+        command.intent is not IntakeIntent.CREATE_TICKET
+        or command.initial_custodian_id is None
+        or (
+            isinstance(command, IntakeSubmitCommand)
+            and command.taint is IntakeTaint.QUARANTINE_REQUIRED
+        )
+    ):
+        return None
+    return _initial_custody_problem(
+        connection,
+        actor,
+        command.client_command_id,
+        command.initial_custodian_id,
+    )
+
+
 def prepare_action(
     connection: psycopg.Connection[dict[str, object]],
     actor: Actor,
@@ -191,12 +215,7 @@ def _prepare_create_action(
     if command.initial_custodian_id is None or command.priority is None or command.title is None:
         raise RuntimeError("Work admitted incomplete create-ticket intake")
     source_reference = _ticket_source(command, source)
-    custody_problem = _initial_custody_problem(
-        connection,
-        actor,
-        command.client_command_id,
-        command.initial_custodian_id,
-    )
+    custody_problem = initial_custody_problem(connection, actor, command)
     if custody_problem is not None:
         return custody_problem
     if ticket_ids is None:

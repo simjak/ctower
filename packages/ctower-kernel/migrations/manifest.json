@@ -327,7 +327,7 @@
       "backup_checkpoint": "Before applying to nonempty data, capture command, confirmation, finalizer-attempt, and terminal-quarantine counts plus a database backup."
     },
     {
-      "path": "0033_board_source_lookup.sql",
+      "path": "0035_board_source_lookup.sql",
       "sha256": "sha256:4d8d1148766271eb134ca40f0eba2036d4ae993a2c83b412b28e749de3a435c6",
       "minimum_service_version": "0.0.0",
       "maximum_service_version": "0.0.0",

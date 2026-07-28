@@ -1391,7 +1391,7 @@
       ]
     },
     {
-      "path": "packages/ctower-kernel/migrations/0033_board_source_lookup.sql",
+      "path": "packages/ctower-kernel/migrations/0035_board_source_lookup.sql",
       "references": [
         "SPEC#aggregate-boundaries-and-relationships",
         "SPEC#persistence-authority",

@@ -79,6 +79,69 @@ def test_create_intake_authorizes_custody_before_source_existence(
     assert _source_ticket_count(tenant, "chat", promotion_ref) == 1
 
 
+def test_unauthorized_custody_cannot_reveal_intake_source_or_event_existence(
+    tenant: TenantFixture,
+) -> None:
+    occupied_ref = f"custody-oracle:{uuid4()}"
+    missing_ref = f"custody-oracle:{uuid4()}"
+    ineligible_custodian_id = _add_ineligible_principal(tenant)
+    with _client(tenant) as client:
+        discussion = _submit(
+            client,
+            tenant,
+            _discussion("chat", occupied_ref),
+            uuid4(),
+        )
+        assert discussion.status_code == HTTP_PENDING
+
+        source_probes = (
+            _submit(
+                client,
+                tenant,
+                _create("chat", occupied_ref, ineligible_custodian_id),
+                uuid4(),
+                credential=tenant.operator_credential,
+            ),
+            _submit(
+                client,
+                tenant,
+                _create("chat", missing_ref, ineligible_custodian_id),
+                uuid4(),
+                credential=tenant.operator_credential,
+            ),
+        )
+        promotion_body = {
+            "expected_thread_version": discussion.json()["thread_version"],
+            "initial_custodian_id": str(ineligible_custodian_id),
+            "intent": "create_ticket",
+            "priority": "P2",
+            "title": "Unauthorized promotion custody",
+        }
+        event_probes = (
+            _promote(
+                client,
+                tenant,
+                UUID(str(discussion.json()["inbound_event_id"])),
+                promotion_body,
+                uuid4(),
+                credential=tenant.operator_credential,
+            ),
+            _promote(
+                client,
+                tenant,
+                uuid4(),
+                promotion_body,
+                uuid4(),
+                credential=tenant.operator_credential,
+            ),
+        )
+
+    for probes in (source_probes, event_probes):
+        assert {_problem_shape(response) for response in probes} == {
+            (HTTP_FORBIDDEN, "unauthorized", ())
+        }
+
+
 def test_create_intake_defaults_only_authorized_commander_custody(
     tenant: TenantFixture,
 ) -> None:
@@ -407,13 +470,15 @@ def _submit(
     tenant: TenantFixture,
     body: dict[str, object],
     command_id: UUID,
+    *,
+    credential: str | None = None,
 ) -> Response:
     return cast(
         Response,
         client.post(
             "/v1/intake",
             json=body,
-            headers=_headers(tenant, command_id),
+            headers=_headers(tenant, command_id, credential=credential),
         ),
     )
 
@@ -424,20 +489,27 @@ def _promote(
     inbound_event_id: UUID,
     body: dict[str, object],
     command_id: UUID,
+    *,
+    credential: str | None = None,
 ) -> Response:
     return cast(
         Response,
         client.post(
             f"/v1/intake/events/{inbound_event_id}/promotion",
             json=body,
-            headers=_headers(tenant, command_id),
+            headers=_headers(tenant, command_id, credential=credential),
         ),
     )
 
 
-def _headers(tenant: TenantFixture, command_id: UUID) -> dict[str, str]:
+def _headers(
+    tenant: TenantFixture,
+    command_id: UUID,
+    *,
+    credential: str | None = None,
+) -> dict[str, str]:
     return {
-        "Authorization": f"Bearer {tenant.commander_credential}",
+        "Authorization": f"Bearer {credential or tenant.commander_credential}",
         "Idempotency-Key": str(command_id),
         **telemetry_headers(command_id),
     }
@@ -536,6 +608,15 @@ def _source_ticket_count(tenant: TenantFixture, source_kind: str, source_ref: st
     if row is None:
         raise RuntimeError("ticket count query returned no row")
     return int(row[0])
+
+
+def _problem_shape(response: Response) -> tuple[int, str, tuple[str, ...]]:
+    payload = response.json()
+    return (
+        response.status_code,
+        str(payload["code"]),
+        tuple(cast(list[str], payload.get("unmet_facts", []))),
+    )
 
 
 def _ticket_custodian(tenant: TenantFixture, ticket_id: UUID) -> UUID:

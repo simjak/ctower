@@ -54,6 +54,9 @@ from ctower_kernel.record._intake_event_sql import (
     submit_commits as _submit_commits,
 )
 from ctower_kernel.record._intake_state_sql import (
+    initial_custody_problem as _initial_custody_problem,
+)
+from ctower_kernel.record._intake_state_sql import (
     insert_new_thread as _insert_new_thread,
 )
 from ctower_kernel.record._intake_state_sql import (
@@ -186,6 +189,16 @@ def _prepare_submit(
             command.client_command_id,
             request_digest,
             policy_refusal,
+            now,
+        )
+    custody_problem = _initial_custody_problem(connection, actor, command)
+    if custody_problem is not None:
+        return _refuse(
+            transaction,
+            actor,
+            command.client_command_id,
+            request_digest,
+            custody_problem,
             now,
         )
     identifiers = _submit_ids(command, now)
@@ -324,6 +337,16 @@ def _prepare_promotion(
             command.client_command_id,
             request_digest,
             policy_refusal,
+            now,
+        )
+    custody_problem = _initial_custody_problem(connection, actor, command)
+    if custody_problem is not None:
+        return _refuse(
+            transaction,
+            actor,
+            command.client_command_id,
+            request_digest,
+            custody_problem,
             now,
         )
     resolved = _resolve_inbound_for_promotion(connection, actor, command)
