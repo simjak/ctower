@@ -69,6 +69,7 @@ def test_wheel_has_explicit_packages_resources_dependencies_and_scripts(
         "tools/",
     )
     assert all(any(name.startswith(root) for name in names) for root in required_roots)
+    assert "tools/process_execution.py" in names
     assert "ctower_contracts/schemas.json" in names
     declared_migrations = {
         f"ctower_kernel/migrations/{entry['path']}" for entry in migration_manifest["migrations"]
@@ -220,7 +221,12 @@ def test_installed_mutation_queues_then_missing_keyring_fails_without_state_chan
 def _build_wheel(workspace: Path) -> Path:
     source = workspace / "source"
     source.mkdir()
-    for relative in ("LICENSE", "pyproject.toml", "tools/__init__.py"):
+    for relative in (
+        "LICENSE",
+        "pyproject.toml",
+        "tools/__init__.py",
+        "tools/process_execution.py",
+    ):
         destination = source / relative
         destination.parent.mkdir(parents=True, exist_ok=True)
         shutil.copy2(ROOT / relative, destination)
