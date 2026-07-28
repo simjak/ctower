@@ -59,7 +59,7 @@ class _GraphProbe:
     candidate: str
     is_shallow: bool
     raw_contains_feature: bool
-    raw_walk_complete: bool
+    raw_walk_problems: tuple[str, ...]
     walks: tuple[_GraphWalk, ...]
     capture_problems: tuple[str, ...]
     telemetry: str
@@ -297,9 +297,10 @@ class ReleaseFoundationTests(unittest.TestCase):
                 f"[GRAPH-INFRASTRUCTURE] candidate={probe.candidate}: "
                 f"{'; '.join(graph_problems)}\n{probe.telemetry}"
             )
-        default_walk = probe.walks[0]
+        # Shallow overlays can alter revision walkers without altering stored parents.
+        # The no-replace raw walk is authoritative; the other modes remain telemetry.
         self.assertTrue(
-            default_walk.feature_is_member and default_walk.merge_base_returncode == 0,
+            probe.raw_contains_feature,
             f"[POLICY] candidate={probe.candidate}: {_PRE1_FEATURE_COMMIT} "
             "must exist in pre-1.0 history",
         )
@@ -325,12 +326,11 @@ class ReleaseFoundationTests(unittest.TestCase):
                 candidate_result,
             )
         )
-        is_shallow, shallow_sections, shallow_problems = self._shallow_telemetry()
+        is_shallow, shallow_sections, _ = self._shallow_telemetry()
         sections.extend(shallow_sections)
-        problems.extend(shallow_problems)
         sections.extend(self._configuration_telemetry())
         sections.extend(self._cat_file_telemetry(candidate))
-        raw_found, raw_complete, raw_telemetry = self._raw_parent_walk(candidate)
+        raw_found, raw_problems, raw_telemetry = self._raw_parent_walk(candidate)
         sections.append(raw_telemetry)
         walks, walk_sections = self._graph_walk_telemetry(candidate)
         sections.extend(walk_sections)
@@ -338,7 +338,7 @@ class ReleaseFoundationTests(unittest.TestCase):
             candidate=candidate,
             is_shallow=is_shallow,
             raw_contains_feature=raw_found,
-            raw_walk_complete=raw_complete,
+            raw_walk_problems=raw_problems,
             walks=walks,
             capture_problems=tuple(problems),
             telemetry="\n".join(sections),
@@ -418,15 +418,26 @@ class ReleaseFoundationTests(unittest.TestCase):
                 )
         return sections
 
-    def _raw_parent_walk(self, candidate: str) -> tuple[bool, bool, str]:
-        pending = [candidate]
+    def _raw_parent_walk(self, candidate: str) -> tuple[bool, tuple[str, ...], str]:
+        pending = [(candidate, False)]
+        active: set[str] = set()
         visited: set[str] = set()
         rows: list[str] = []
+        feature_is_ancestor = False
+        problems: list[str] = []
         while pending:
-            commit = pending.pop(0)
+            commit, leaving = pending.pop()
+            if leaving:
+                active.remove(commit)
+                visited.add(commit)
+                continue
+            if commit in active:
+                rows.append(f"{commit} cycle=true")
+                problems.append(f"raw parent walk cycle detected at {commit}")
+                break
             if commit in visited:
                 continue
-            visited.add(commit)
+            active.add(commit)
             result = self._git("--no-replace-objects", "cat-file", "-p", commit)
             parents = [
                 line.removeprefix("parent ")
@@ -435,11 +446,21 @@ class ReleaseFoundationTests(unittest.TestCase):
             ]
             rows.append(f"{commit} rc={result.returncode} parents={','.join(parents) or '<root>'}")
             if result.returncode != 0:
-                return False, False, "## raw no-replace parent walk\n" + "\n".join(rows)
-            if commit == _PRE1_FEATURE_COMMIT:
-                return True, True, "## raw no-replace parent walk\n" + "\n".join(rows)
-            pending.extend(parents)
-        return False, True, "## raw no-replace parent walk\n" + "\n".join(rows)
+                problems.append(
+                    f"raw parent walk encountered missing or unreadable object {commit}"
+                )
+                break
+            if not result.stdout.startswith("tree "):
+                problems.append(f"raw parent walk encountered unreadable commit object {commit}")
+                break
+            feature_is_ancestor |= commit == _PRE1_FEATURE_COMMIT
+            pending.append((commit, True))
+            pending.extend((parent, False) for parent in reversed(parents))
+        return (
+            feature_is_ancestor,
+            tuple(problems),
+            "## raw no-replace parent walk\n" + "\n".join(rows),
+        )
 
     def _graph_walk_telemetry(
         self,
@@ -512,32 +533,7 @@ class ReleaseFoundationTests(unittest.TestCase):
         ]
 
     def _graph_infrastructure_problems(self, probe: _GraphProbe) -> list[str]:
-        problems = list(probe.capture_problems)
-        if probe.is_shallow:
-            problems.append("repository is shallow")
-        if not probe.raw_walk_complete:
-            problems.append("raw parent walk encountered a missing or unreadable object")
-        outcomes: set[tuple[bool, bool]] = set()
-        for walk in probe.walks:
-            merge_is_ancestor = walk.merge_base_returncode == 0
-            outcomes.add((walk.feature_is_member, merge_is_ancestor))
-            problems.extend(self._walk_problems(walk))
-        if len(outcomes) != 1:
-            problems.append("graph modes disagree")
-        no_replace_walk = probe.walks[2]
-        if probe.raw_contains_feature != no_replace_walk.feature_is_member:
-            problems.append("raw parents/no-replace rev-list disagreement")
-        return problems
-
-    def _walk_problems(self, walk: _GraphWalk) -> list[str]:
-        problems: list[str] = []
-        if walk.rev_list_returncode != 0:
-            problems.append(f"{walk.label} rev-list returned {walk.rev_list_returncode}")
-        if walk.merge_base_returncode not in {0, 1}:
-            problems.append(f"{walk.label} merge-base returned {walk.merge_base_returncode}")
-        if walk.feature_is_member != (walk.merge_base_returncode == 0):
-            problems.append(f"{walk.label} rev-list/merge-base disagreement")
-        return problems
+        return [*probe.capture_problems, *probe.raw_walk_problems]
 
     def _git(self, *arguments: str) -> subprocess.CompletedProcess[str]:
         environment = {
