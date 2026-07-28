@@ -19,14 +19,16 @@ from ctower_client.models import IntakeCommandResult as HttpIntakeCommandResult
 from ctower_client.models import IntakePromotionRequest, IntakeSubmitRequest
 from ctower_kernel.access import Access
 from ctower_kernel.record import (
+    Record,
+    RecordProblem,
+)
+from ctower_kernel.record.intake import (
     InboundSource,
     IntakeIntent,
     IntakePromotionCommand,
     IntakeSubmitCommand,
-    Record,
-    RecordProblem,
+    IntakeTaint,
 )
-from ctower_kernel.record.intake import IntakeTaint
 from ctower_kernel.work import Intake
 
 __all__: tuple[str, ...] = ()

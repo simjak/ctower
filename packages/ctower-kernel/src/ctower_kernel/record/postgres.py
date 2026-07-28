@@ -18,9 +18,6 @@ from ctower_kernel.record import (
     CustodyCommand,
     DurabilityDecision,
     DurabilityHealth,
-    IntakeCommandResult,
-    IntakePromotionCommand,
-    IntakeSubmitCommand,
     RecordProblem,
     Ticket,
     TicketCommand,
@@ -50,6 +47,11 @@ from ctower_kernel.record._ticket_sql import create_ticket as _create_ticket
 from ctower_kernel.record._ticket_sql import get_ticket as _get_ticket
 from ctower_kernel.record._ticket_sql import ticket_timeline as _ticket_timeline
 from ctower_kernel.record.comments import TicketCommentCommand, TicketCommentResult
+from ctower_kernel.record.intake import (
+    IntakeCommandResult,
+    IntakePromotionCommand,
+    IntakeSubmitCommand,
+)
 from ctower_kernel.record.transaction import recover_ambiguous_commit
 from ctower_kernel.telemetry import NoopTelemetry, Telemetry, TelemetryContext
 

@@ -7,15 +7,17 @@ from uuid import uuid4
 
 from ctower_kernel.record import (
     Actor,
-    InboundSource,
-    IntakeCommandResult,
-    IntakeIntent,
-    IntakePromotionCommand,
-    IntakeSubmitCommand,
     PrincipalKind,
     RecordProblem,
 )
-from ctower_kernel.record.intake import IntakeOutcome
+from ctower_kernel.record.intake import (
+    InboundSource,
+    IntakeCommandResult,
+    IntakeIntent,
+    IntakeOutcome,
+    IntakePromotionCommand,
+    IntakeSubmitCommand,
+)
 from ctower_kernel.telemetry import TelemetryContext
 from ctower_kernel.work import Intake
 

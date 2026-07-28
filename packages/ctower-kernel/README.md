@@ -46,7 +46,9 @@ Thread-first intake is bounded to the already-declared `ctower` project in the t
 hierarchy because I1 has no separate actor-to-project grant authority. Ticket creation and link validation
 use the existing immutable `ticket_project_bindings` authority for both migration and intake provenance;
 there is no intake-only project ledger. Complete sorted durability-subject locks precede thread/ticket
-locks, and only authenticated, unquarantined discussion events may be promoted.
+locks, and only authenticated, unquarantined discussion events may be promoted. The Record package facade
+keeps core authority types at `ctower_kernel.record` and groups inbound-thread command, result, and policy
+types under the exported `ctower_kernel.record.intake` namespace instead of flattening those leaf symbols.
 
 There is no executable Extension Host in I1 or I2; that runtime remains deferred until a real use case and
 two real Adapters earn its Seam. The kernel may depend on authored/generated contracts and allowlisted public

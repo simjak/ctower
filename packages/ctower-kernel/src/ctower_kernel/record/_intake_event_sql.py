@@ -7,12 +7,7 @@ from datetime import datetime
 from typing import cast
 from uuid import UUID
 
-from ctower_kernel.record import (
-    Actor,
-    IntakeCommandResult,
-    IntakePromotionCommand,
-    IntakeSubmitCommand,
-)
+from ctower_kernel.record import Actor
 from ctower_kernel.record._intake_command_sql import IntakeAction, IntakeThreadState
 from ctower_kernel.record.events import (
     EventEnvelope,
@@ -21,6 +16,11 @@ from ctower_kernel.record.events import (
     InboundEventPromotedPayload,
     InboundEventRecordedPayload,
     TicketCreatedPayload,
+)
+from ctower_kernel.record.intake import (
+    IntakeCommandResult,
+    IntakePromotionCommand,
+    IntakeSubmitCommand,
 )
 from ctower_kernel.record.transaction import EventCommit
 from ctower_kernel.telemetry import TelemetryContext

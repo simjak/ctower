@@ -11,10 +11,6 @@ import psycopg
 
 from ctower_kernel.record import (
     Actor,
-    InboundSource,
-    IntakeCommandResult,
-    IntakePromotionCommand,
-    IntakeSubmitCommand,
     RecordProblem,
 )
 from ctower_kernel.record._intake_command_sql import (
@@ -73,7 +69,15 @@ from ctower_kernel.record._intake_state_sql import (
     reserve_source_alias as _reserve_source_alias,
 )
 from ctower_kernel.record._ticket_sql import _insert_ticket_state, _TicketIds
-from ctower_kernel.record.intake import IntakeIntent, IntakeOutcome, IntakeTaint
+from ctower_kernel.record.intake import (
+    InboundSource,
+    IntakeCommandResult,
+    IntakeIntent,
+    IntakeOutcome,
+    IntakePromotionCommand,
+    IntakeSubmitCommand,
+    IntakeTaint,
+)
 from ctower_kernel.record.transaction import RecordTransaction, authority_connection
 from ctower_kernel.telemetry import TelemetryContext
 
