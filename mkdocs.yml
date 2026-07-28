@@ -32,40 +32,54 @@ markdown_extensions:
       permalink: true
 
 nav:
-  - Home: index.md
-  - Start here:
-      - Project status: project-status.md
-      - Repository setup: start-here/repository-setup.md
-      - Exercise the development walking slice: getting-started.md
-      - What is deliberately unavailable: start-here/availability.md
+  - Overview: index.md
+  - Quickstart: quickstart.md
+  - Concepts:
+      - concepts/index.md
+      - The whole picture in one map: concepts/map.md
+      - Ticket and lifecycle episode: concepts/tickets.md
+      - Workflow revision and execution policy: concepts/workflows.md
+      - Proof, evidence, and verdicts: concepts/proof.md
+      - Board lanes: concepts/board.md
+      - Project Delivery projection: concepts/project-delivery.md
+      - Durability and acceptance: concepts/durability.md
+  - Reference:
+      - CLI: reference/cli.md
+      - HTTP API: reference/http-api.md
+      - Generated clients and contracts: reference/clients.md
+      - Authored OpenAPI document: https://github.com/simjak/ctower/blob/main/contracts/http/openapi.yaml
+      - Authored contracts: https://github.com/simjak/ctower/tree/main/contracts
+  - For agents:
+      - Operating contract: agents/operating-contract.md
+      - Refusals: agents/refusals.md
   - Guides:
       - Protected CLI and spool: guides/protected-cli.md
       - CompanyBundle: guides/company-bundle.md
       - Contribution guide: https://github.com/simjak/ctower/blob/main/CONTRIBUTING.md
-  - Concepts:
-      - Core concepts: concepts.md
-  - Operations:
-      - Current operational boundary: operations/current-boundary.md
-      - Observability: operations/observability.md
-      - Backup and anchors: operations/backup-and-anchors.md
-      - Key recovery: operations/key-recovery.md
-      - Isolated restore: operations/isolated-restore.md
-      - Rollback: operations/rollback.md
-      - ctower-project cutover: operations/ctower-project-cutover.md
-      - Recovery evidence: operations/recovery-evidence.md
-  - Security:
-      - Secret handling: security/secret-handling.md
-  - Reference:
-      - HTTP/OpenAPI development contract: https://github.com/simjak/ctower/blob/main/contracts/http/openapi.yaml
-      - Authored contracts: https://github.com/simjak/ctower/tree/main/contracts
-      - Component boundaries: https://github.com/simjak/ctower/tree/main/apps
-  - Advanced internals:
-      - Architecture atlas: https://github.com/simjak/ctower/blob/main/ARCHITECTURE.md
-      - System specification: https://github.com/simjak/ctower/blob/main/SPEC.md
-      - Decision log: https://github.com/simjak/ctower/blob/main/DECISIONS.md
-      - Implementation roadmap: https://github.com/simjak/ctower/blob/main/IMPLEMENTATION-ROADMAP.md
-  - Contributing:
-      - Development guide: contributing/development.md
-      - Coding standards: contributing/CODING_STANDARDS.md
-      - Documentation policy: contributing/documentation.md
-      - Releases: contributing/releases.md
+  - Advanced and internals:
+      - internals.md
+      - Delivery state: project-status.md
+      - What is deliberately unavailable: start-here/availability.md
+      - Repository setup: start-here/repository-setup.md
+      - Exercise the development walking slice: getting-started.md
+      - Operations:
+          - Current operational boundary: operations/current-boundary.md
+          - Observability: operations/observability.md
+          - Backup and anchors: operations/backup-and-anchors.md
+          - Key recovery: operations/key-recovery.md
+          - Isolated restore: operations/isolated-restore.md
+          - Rollback: operations/rollback.md
+          - ctower-project cutover: operations/ctower-project-cutover.md
+          - Recovery evidence: operations/recovery-evidence.md
+      - Security:
+          - Secret handling: security/secret-handling.md
+      - Contributing:
+          - Development guide: contributing/development.md
+          - Coding standards: contributing/CODING_STANDARDS.md
+          - Documentation policy: contributing/documentation.md
+          - Releases: contributing/releases.md
+      - Canonical sources:
+          - System specification: https://github.com/simjak/ctower/blob/main/SPEC.md
+          - Decision log: https://github.com/simjak/ctower/blob/main/DECISIONS.md
+          - Architecture atlas: https://github.com/simjak/ctower/blob/main/ARCHITECTURE.md
+          - Implementation roadmap: https://github.com/simjak/ctower/blob/main/IMPLEMENTATION-ROADMAP.md

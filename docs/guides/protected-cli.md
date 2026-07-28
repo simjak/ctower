@@ -5,10 +5,11 @@ production install or operations procedure. Use only synthetic data and a dispos
 
 ## Security prerequisites
 
-All commands read one bounded authority line from stdin. Mutations additionally require the encrypted local
-spool. On Linux that spool supports only an allowlisted Secret Service backend in an active D-Bus session
-with an unlocked collection, such as `gnome-keyring-daemon --components=secrets` under the user's normal
-login session.
+All commands read one bounded authority line from stdin. Spoolable mutations — the ones whose generated
+operation carries `spool_policy: allowed` — additionally require the encrypted local spool; reads,
+`bootstrap first-tenant`, and the `migration ctower-project` commands do not use it. On Linux that spool
+supports only an allowlisted Secret Service backend in an active D-Bus session with an unlocked collection,
+such as `gnome-keyring-daemon --components=secrets` under the user's normal login session.
 
 Do not install `keyrings.alt`, choose a plaintext/file backend, place credentials in CLI arguments, or use
 an environment/file fallback. The verifier runs a non-skipped `dbus-run-session` case against a real
