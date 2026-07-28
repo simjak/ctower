@@ -191,9 +191,9 @@ class ReleaseFoundationTests(unittest.TestCase):
             self._as_object(config["packages"], "Release Please packages")["."],
             "Release Please root package",
         )
+        manifest_version = self._as_string(manifest["."], "release manifest")
 
         self.assertIn(f"uses: {_RELEASE_PLEASE_ACTION}", workflow)
-        self.assertEqual(manifest["."], "0.0.0")
         self.assertEqual(
             self._pre1_release_tags(history),
             [],
@@ -204,6 +204,12 @@ class ReleaseFoundationTests(unittest.TestCase):
             root_package.get("initial-version", config.get("initial-version")),
             f"[POLICY] candidate={candidate}: first release must begin at 0.1.0",
         )
+        if manifest_version != "0.0.0":
+            self.assertEqual(
+                "0.1.0",
+                manifest_version,
+                f"[POLICY] candidate={candidate}: first release proposal must be 0.1.0",
+            )
         self.assertEqual(
             [],
             self._release_as_policy_violations(config, root_package, history),

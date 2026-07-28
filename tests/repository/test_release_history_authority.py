@@ -20,6 +20,23 @@ class ReleaseHistoryAuthorityTests(unittest.TestCase):
     authority_source = root / "tests/repository/_release_history.py"
     protected_feature = "79e292e437457f92bb6a39bfbfdb2a3a62146529"
 
+    def test_release_proposal_candidate_at_0_1_0_preserves_pre_1_0_policy(self) -> None:
+        with self._repository() as repository:
+            self._set_manifest_version(repository, "0.1.0")
+
+            result = self._run_gate(repository)
+
+        self._assert_gate_success(result)
+
+    def test_release_proposal_at_or_above_1_0_is_policy_failure(self) -> None:
+        for version in ("1.0.0", "1.2.3", "2.0.0"):
+            with self.subTest(version=version), self._repository() as repository:
+                self._set_manifest_version(repository, version)
+
+                result = self._run_gate(repository)
+
+            self._assert_gate_failure(result, "[POLICY]", version)
+
     def test_shallow_overlay_cannot_hide_release_as_policy_violation(self) -> None:
         with self._repository() as repository:
             self._commit(repository, "feat: forbidden\n\nRelease-As: 1.0.0")
@@ -140,6 +157,14 @@ class ReleaseHistoryAuthorityTests(unittest.TestCase):
         self.assertNotEqual(bound, source, "fixture must bind its protected feature")
         gate.write_text(bound, encoding="utf-8")
 
+    def _set_manifest_version(self, repository: Path, version: str) -> None:
+        manifest_path = repository / ".release-please-manifest.json"
+        manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
+        manifest["."] = version
+        manifest_path.write_text(json.dumps(manifest, indent=2) + "\n", encoding="utf-8")
+        self._git(repository, "add", ".release-please-manifest.json")
+        self._commit(repository, f"chore(main): release {version}")
+
     def _commit(self, repository: Path, message: str) -> str:
         self._git(repository, "commit", "--allow-empty", "-m", message)
         return self._git(repository, "rev-parse", "HEAD").stdout.strip()
@@ -208,6 +233,10 @@ class ReleaseHistoryAuthorityTests(unittest.TestCase):
         self.assertNotEqual(result.returncode, 0, transcript)
         self.assertIn(classification, transcript)
         self.assertIn(evidence, transcript)
+
+    def _assert_gate_success(self, result: subprocess.CompletedProcess[str]) -> None:
+        transcript = f"{result.stdout}\n{result.stderr}"
+        self.assertEqual(result.returncode, 0, transcript)
 
 
 if __name__ == "__main__":
