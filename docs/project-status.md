@@ -21,11 +21,12 @@ planned work so a visible package, schema, or directory is not mistaken for an a
 | Inbound threads and intake | Development fixture | Inbound threads, events, and provenance are stored durably; `POST /v1/intake` and `intake promote` submit an event and promote it into a linked ticket, idempotently and projection-safely. Taint-quarantined content is held and never promoted on submission. There is no email, chat, or webhook connector feeding this. |
 | CompanyBundle and Catalog | Development fixture | Strict validate/plan/apply/export and ticket comments are exercised against real PostgreSQL. Apply is atomic/idempotent and moves one future-only pointer; it does not activate runners, effects, or external targets. |
 | I1.7A cutover visibility | Development fixture | Strict cutover-health and compact read-only Project Delivery contracts, generated reads, and a CP3-D-blocked fold exist. Migration commands are online-only refusal stubs. No legacy record is imported or fenced and no development epoch is committed. |
-| Off-host acknowledgement | Verifier-only proof | The ordinary configuration is `pending_only`. A verifier-owned PostgreSQL primary/standby topology exercises acknowledged durability; that evidence is not a supported deployment, backup, or restore path. |
+| Off-host acknowledgement | Development shadow | The ordinary configuration remains `pending_only`. The private-VPS E2 shadow runtime explicitly selects `development_offhost_ack`, uses a PostgreSQL primary/ACK pair and ordinary finalizer, and remains `SHADOW_ONLY_CP3_D_NOT_PROVEN`; it is not CP3-D, backup, or restore proof. |
 | Deterministic control loops and health vocabulary | Development fixture | Fixed Routine/outbox/projection loops and health reporting are tested. Routine names alone do not constitute a supported operational service. |
 | Local CP3-C backup and recovery evidence | Verifier-only proof | Local/verifier evidence covers digest-bound object handling, backup and anchors, key recovery, isolated restore, rollback, and recovery evidence. It does not activate external targets, a supported deployment, or CP3-D production recovery. |
 | Runtime compatibility evidence | Diagnostic only | The compatibility validator accepts a closed, sanitized external report. It does not choose a product runtime, create a lock, or establish a support promise. |
-| Product installation, deployment, and recovery | Unsupported | A clean-wheel test proves the development artifact, but there is no published/supported package, product Compose stack, container image, production backup/restore runbook, or production monitoring/incident path. |
+| Persistent E2 runtime installation | Development shadow | An operator may install the verified wheel at the fixed private-VPS development path and supervise loopback-only API, worker, keyring, and database services. This path is only for low-value reconstructible dogfood and makes no production or source-of-truth claim. |
+| Product deployment and recovery | Unsupported | There is no published package, external/product Compose stack, container image, production backup/restore runbook, or production monitoring/incident path. |
 | Browser UI, runner, effects, and agent adapters | Planned | These surfaces remain deferred. CompanyBundle component declarations do not activate their runtime behaviour. |
 | Production release | Unsupported | Release automation currently creates source tags and notes only. No ctower runtime release has been published. |
 
@@ -42,6 +43,8 @@ target. CP3-D and disaster-safe promotion remain later blocking evidence.
   does not mean a supported product path exists.
 - **Verifier-only proof** means a stronger property is exercised by an isolated test topology, not offered as
   an operator deployment.
+- **Development shadow** means the exact private-VPS development path is operator-installable but remains
+  loopback-only, explicitly non-production, and unsuitable for authoritative or irreplaceable work.
 - **Diagnostic only** means the artifact informs a later decision without satisfying it.
 - **Planned** means the design may name a capability, but no reader should attempt to use it.
 - **Unsupported** means no installation, operations, compatibility, or recovery promise is made.

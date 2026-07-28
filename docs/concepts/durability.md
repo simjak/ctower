@@ -88,13 +88,11 @@ rather than being rounded down to healthy or up to broken.
 ## What is proven at this revision
 
 The ordinary development configuration is **`pending_only`**: writes return `durability_pending` and stay
-there. That is the expected result in the acceptance suite, not a misconfiguration.
-
-Acknowledged durability — a real primary/standby pair reaching `accepted` — is exercised by a verifier-owned
-PostgreSQL topology in the test suite. That is proof of the mechanism, not a supported deployment: there is
-no operator path to configure it, no second failure domain, and no backup or restore promise. The
-[Project Delivery](project-delivery.md) view says the same thing in its own words: the disaster-recovery
-checkpoint is not proven.
+there. The private-VPS E2 shadow runtime explicitly selects `development_offhost_ack`; its ordinary worker
+reconciles a real primary/ACK pair to `accepted`, with finite durable quarantine for refused finalization.
+That operator path remains `SHADOW_ONLY_CP3_D_NOT_PROVEN`: it has no independent failure domain and makes
+no backup, restore, source-of-truth, or production promise. The [Project Delivery](project-delivery.md)
+view says the same thing in its own words: the disaster-recovery checkpoint is not proven.
 
 `cutover_rpo0` is declared in the policy schema and is **not** enabled.
 
