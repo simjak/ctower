@@ -308,6 +308,7 @@ class Ticket:
     custodian_id: UUID
     version: int
     created_at: datetime
+    durability_state: DurabilityState = DurabilityState.PENDING
 
     def response_payload(self) -> dict[str, object]:
         """Return the generated HTTP resource shape."""
@@ -315,7 +316,7 @@ class Ticket:
         return {
             "created_at": self.created_at.isoformat(),
             "custodian_id": str(self.custodian_id),
-            "durability_state": "durability_pending",
+            "durability_state": self.durability_state.value,
             "priority": self.priority,
             "source": asdict(self.source),
             "ticket_id": str(self.ticket_id),
