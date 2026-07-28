@@ -2325,7 +2325,6 @@
               "proof-policy-pin-mismatch",
               "proof-self-review-refused",
               "proof-verdict-id-conflict",
-              "source-already-ticketed",
               "tenant-scope-denied",
               "ticket-comment-ineligible",
               "ticket-comment-invalid",

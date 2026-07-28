@@ -1,6 +1,6 @@
 """DO NOT EDIT: generated file; regenerate from declared inputs.
 
-Authored contract digest: sha256:ea8f83c472216ed3641c511e2bd6c29da7b384180ef6e8e5dbd39a15829e1192
+Authored contract digest: sha256:d7522e80aa4e3ac9563b24c90ecbfd9f437442ba6d0e85c758dc0889e6dfcf69
 """
 
 from __future__ import annotations
@@ -1042,7 +1042,6 @@ class Problem(_BoundaryModel):
         "proof-policy-pin-mismatch",
         "proof-self-review-refused",
         "proof-verdict-id-conflict",
-        "source-already-ticketed",
         "tenant-scope-denied",
         "ticket-comment-ineligible",
         "ticket-comment-invalid",

@@ -159,29 +159,22 @@ def test_process_exact_replay_and_changed_body_conflict(
     assert _command_counts(tenant.database.admin_dsn, command_id) == (1, 1, 1)
 
 
-def test_process_concurrent_same_source_creates_one_ticket(
+def test_process_same_source_commands_create_distinct_tickets(
     process_tenant: _ProcessTenant,
 ) -> None:
     tenant = process_tenant
-    source = SourceReference(kind="mission-control", ref="R2258-concurrent")
+    source = SourceReference(kind="mission-control", ref="R2258-lookup-only")
+    request = TicketCreateRequest(
+        initial_custodian_id=tenant.commander_id,
+        priority=Priority.P2,
+        source=source,
+        title="Source lookup is not identity authority",
+    )
+    with _client(tenant) as client:
+        first = client.create_ticket(request, command_id=uuid4())
+        second = client.create_ticket(request, command_id=uuid4())
 
-    def create(command_id: UUID) -> TicketCommandResult | Problem:
-        request = TicketCreateRequest(
-            initial_custodian_id=tenant.commander_id,
-            priority=Priority.P2,
-            source=source,
-            title="Concurrent source mirror",
-        )
-        with _client(tenant) as client:
-            return _outcome(lambda: client.create_ticket(request, command_id=command_id))
-
-    with ThreadPoolExecutor(max_workers=2) as executor:
-        outcomes = tuple(executor.map(create, (uuid4(), uuid4())))
-
-    successes = [item for item in outcomes if isinstance(item, TicketCommandResult)]
-    problems = [item for item in outcomes if isinstance(item, Problem)]
-    assert len(successes) == len(problems) == 1
-    assert problems[0].code == "source-already-ticketed"
+    assert first.ticket.ticket_id != second.ticket.ticket_id
     with psycopg.connect(tenant.database.admin_dsn) as connection:
         count = connection.execute(
             """
@@ -190,7 +183,7 @@ def test_process_concurrent_same_source_creates_one_ticket(
             """,
             (tenant.tenant_id, source.kind, source.ref),
         ).fetchone()
-    assert count == (1,)
+    assert count == (2,)
 
 
 def test_process_p0_authority_denial_is_typed_and_does_not_mutate(
@@ -477,7 +470,7 @@ def _ticket_request(
     return TicketCreateRequest(
         initial_custodian_id=tenant.commander_id,
         priority=priority,
-        source=SourceReference(kind="process", ref=f"generated-client:{title}"),
+        source=SourceReference(kind="process", ref="generated-client"),
         title=title,
     )
 

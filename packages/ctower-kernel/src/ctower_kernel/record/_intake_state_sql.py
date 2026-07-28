@@ -18,8 +18,7 @@ from ctower_kernel.record._intake_command_sql import IntakeAction, IntakeThreadS
 from ctower_kernel.record._intake_command_sql import scope_problem as _scope_problem
 from ctower_kernel.record._intake_command_sql import version_problem as _version_problem
 from ctower_kernel.record._ticket_sql import (
-    _eligible_custodian,
-    _reserve_ticket_source,
+    _initial_custody_problem,
     _TicketIds,
 )
 from ctower_kernel.record.intake import (
@@ -192,16 +191,14 @@ def _prepare_create_action(
     if command.initial_custodian_id is None or command.priority is None or command.title is None:
         raise RuntimeError("Work admitted incomplete create-ticket intake")
     source_reference = _ticket_source(command, source)
-    source_problem = _reserve_ticket_source(
+    custody_problem = _initial_custody_problem(
         connection,
         actor,
         command.client_command_id,
-        source_reference,
+        command.initial_custodian_id,
     )
-    if source_problem is not None:
-        return source_problem
-    if not _eligible_custodian(connection, actor, command.initial_custodian_id):
-        return _scope_problem(command.client_command_id)
+    if custody_problem is not None:
+        return custody_problem
     if ticket_ids is None:
         raise RuntimeError("create-ticket intake identifiers are unavailable")
     ticket_command = TicketCommand(

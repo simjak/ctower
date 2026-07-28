@@ -30,8 +30,9 @@ An omitted ticket command ID is safe for the CLI's own encrypted-spool replay. S
 another process must coordinate the retry.
 
 For `ticket capture` and `ticket create`, omitting `--initial-custodian-id` selects the authenticated
-principal already resolved from stdin authority. An explicit value wins. In both cases the server still
-validates that the selected principal is an eligible custodian in the authenticated tenant.
+principal already resolved from stdin authority. A Commander may establish its own custody. An operator
+must explicitly name an eligible Commander; omission is refused rather than silently putting the operator
+in custody. Any explicit value is still an authorization request, not authority by itself.
 
 ## Rule 2 — you supply the expected version, and you read it back from refusals
 
@@ -219,7 +220,7 @@ attempt:
 Note the asymmetry in the last line: `64` is the only code where nothing can possibly have been recorded, so
 it is the only one where starting over with a fresh key is safe.
 
-## Race-safe source mirroring
+## Source lookup and the mirroring race
 
 The Board is the cross-ticket index. For source `mission-control / R2238`, use this exact sequence:
 
@@ -237,18 +238,12 @@ printf '%s\n' "${authority}" |
     --title "Mirror R2238"
 ```
 
-Ticket source identity is unique per authenticated tenant, source kind, and source ref. Concurrent creators
-therefore cannot create two tickets. If the create loses the race, it exits `69` with
-`source-already-ticketed`; run the same `board query` again, adopt the returned `ticket_id`, then explicitly
-discard the quarantined local spool row using its reported sequence:
-
-```bash
-ctl --base-url "${base_url}" spool discard "${sequence}" \
-  --reason "source was created concurrently; adopted the source lookup result"
-```
-
-The check makes an existing mirror cheap; the server-side source reservation and unique index make the
-create race-safe.
+This lookup is a read capability, not a uniqueness or provenance claim. Two callers can both observe an
+empty Board projection and create separate tickets for the same source pair. A caller that needs idempotent
+mirroring must use one stable explicit command ID across its retries and must reconcile duplicates if
+independent creators race. [Issue #68](https://github.com/simjak/ctower/issues/68) tracks the source
+namespace, ownership/grant, accepted-data upgrade, and all-writer locking design required before source
+uniqueness can be enforced safely.
 
 ## Related
 

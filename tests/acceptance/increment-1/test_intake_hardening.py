@@ -24,6 +24,7 @@ __all__: tuple[str, ...] = ()
 BODY_LIMIT_BYTES = 512 * 1024
 HTTP_UNAUTHORIZED = 401
 HTTP_PENDING = 202
+HTTP_FORBIDDEN = 403
 HTTP_NOT_FOUND = 404
 HTTP_CONFLICT = 409
 HTTP_TOO_LARGE = 413
@@ -32,6 +33,91 @@ HTTP_TOO_LARGE = 413
 @pytest.fixture(autouse=True)
 def declared_project(tenant: TenantFixture) -> None:
     declare_ctower_project(tenant)
+
+
+def test_create_intake_authorizes_custody_before_source_existence(
+    tenant: TenantFixture,
+) -> None:
+    submit_ref = f"custody-submit:{uuid4()}"
+    promotion_ref = f"custody-promotion:{uuid4()}"
+    _direct_ticket_for_source(tenant, "chat", submit_ref)
+    _direct_ticket_for_source(tenant, "chat", promotion_ref)
+
+    with _client(tenant) as client:
+        submit = _submit(
+            client,
+            tenant,
+            _create("chat", submit_ref, tenant.operator_id),
+            uuid4(),
+        )
+        discussion = _submit(
+            client,
+            tenant,
+            _discussion("chat", promotion_ref),
+            uuid4(),
+        )
+        promotion = _promote(
+            client,
+            tenant,
+            UUID(str(discussion.json()["inbound_event_id"])),
+            {
+                "expected_thread_version": discussion.json()["thread_version"],
+                "initial_custodian_id": str(tenant.operator_id),
+                "intent": "create_ticket",
+                "priority": "P2",
+                "title": "Unauthorized promotion custody",
+            },
+            uuid4(),
+        )
+
+    assert discussion.status_code == HTTP_PENDING
+    for refusal in (submit, promotion):
+        assert refusal.status_code == HTTP_FORBIDDEN
+        assert refusal.json()["code"] == "unauthorized"
+        assert "unmet_facts" not in refusal.json()
+    assert _source_ticket_count(tenant, "chat", submit_ref) == 1
+    assert _source_ticket_count(tenant, "chat", promotion_ref) == 1
+
+
+def test_create_intake_defaults_only_authorized_commander_custody(
+    tenant: TenantFixture,
+) -> None:
+    commander_ref = f"commander-default:{uuid4()}"
+    operator_ref = f"operator-default:{uuid4()}"
+    create_fields = {
+        "intent": "create_ticket",
+        "priority": "P2",
+        "title": "Defaulted intake custody",
+    }
+    with _client(tenant) as client:
+        commander_default = _submit(
+            client,
+            tenant,
+            {**_discussion("chat", commander_ref), **create_fields},
+            uuid4(),
+        )
+        operator_command_id = uuid4()
+        operator_default = client.post(
+            "/v1/intake",
+            json={**_discussion("chat", operator_ref), **create_fields},
+            headers={
+                "Authorization": f"Bearer {tenant.operator_credential}",
+                "Idempotency-Key": str(operator_command_id),
+                **telemetry_headers(operator_command_id),
+            },
+        )
+
+    assert commander_default.status_code == HTTP_PENDING
+    assert (
+        _ticket_custodian(
+            tenant,
+            UUID(str(commander_default.json()["ticket_id"])),
+        )
+        == tenant.commander_id
+    )
+    assert operator_default.status_code == HTTP_FORBIDDEN
+    assert operator_default.json()["code"] == "unauthorized"
+    assert _source_ticket_count(tenant, "chat", operator_ref) == 0
 
 
 def test_every_refused_first_submit_has_zero_authority_delta_and_exact_replay(
@@ -70,13 +156,13 @@ def test_every_refused_first_submit_has_zero_authority_delta_and_exact_replay(
         ),
         (
             _create("chat", f"ineligible:{uuid4()}", local_ineligible),
-            HTTP_NOT_FOUND,
-            "tenant-scope-denied",
+            HTTP_FORBIDDEN,
+            "unauthorized",
         ),
         (
             _create("chat", f"foreign-custodian:{uuid4()}", second_tenant.commander_id),
-            HTTP_NOT_FOUND,
-            "tenant-scope-denied",
+            HTTP_FORBIDDEN,
+            "unauthorized",
         ),
         (
             _link(f"foreign-target:{uuid4()}", foreign_ticket, version=1),
@@ -420,6 +506,50 @@ def _unbound_ticket(tenant: TenantFixture, title: str) -> UUID:
         )
     assert response.status_code == HTTP_PENDING
     return UUID(str(response.json()["ticket"]["ticket_id"]))
+
+
+def _direct_ticket_for_source(tenant: TenantFixture, kind: str, ref: str) -> UUID:
+    command_id = uuid4()
+    with _client(tenant) as client:
+        response = client.post(
+            "/v1/tickets",
+            json={
+                "priority": "P2",
+                "source": {"kind": kind, "ref": ref},
+                "title": "Existing source",
+            },
+            headers=_headers(tenant, command_id),
+        )
+    assert response.status_code == HTTP_PENDING
+    return UUID(str(response.json()["ticket"]["ticket_id"]))
+
+
+def _source_ticket_count(tenant: TenantFixture, source_kind: str, source_ref: str) -> int:
+    with psycopg.connect(tenant.database.admin_dsn) as connection:
+        row = connection.execute(
+            """
+            SELECT count(*) FROM tickets
+            WHERE tenant_id = %s AND source_kind = %s AND source_ref = %s
+            """,
+            (tenant.tenant_id, source_kind, source_ref),
+        ).fetchone()
+    if row is None:
+        raise RuntimeError("ticket count query returned no row")
+    return int(row[0])
+
+
+def _ticket_custodian(tenant: TenantFixture, ticket_id: UUID) -> UUID:
+    with psycopg.connect(tenant.database.admin_dsn) as connection:
+        row = connection.execute(
+            """
+            SELECT custodian_principal_id FROM tickets
+            WHERE tenant_id = %s AND ticket_id = %s
+            """,
+            (tenant.tenant_id, ticket_id),
+        ).fetchone()
+    if row is None:
+        raise RuntimeError("ticket custody query returned no row")
+    return cast(UUID, row[0])
 
 
 def _migration_run(tenant: TenantFixture, label: str) -> UUID:

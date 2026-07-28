@@ -488,6 +488,7 @@ class Record(Protocol):
         command: TicketCommand,
         *,
         request_digest: bytes,
+        policy_refusal: RecordProblem | None = None,
         now: datetime,
         telemetry: TelemetryContext,
     ) -> TicketCommandResult | RecordProblem:
@@ -501,6 +502,7 @@ class Record(Protocol):
         command: IntakeSubmitCommand,
         *,
         request_digest: bytes,
+        policy_refusal: RecordProblem | None = None,
         now: datetime,
         telemetry: TelemetryContext,
     ) -> IntakeCommandResult | RecordProblem:
@@ -514,6 +516,7 @@ class Record(Protocol):
         command: IntakePromotionCommand,
         *,
         request_digest: bytes,
+        policy_refusal: RecordProblem | None = None,
         now: datetime,
         telemetry: TelemetryContext,
     ) -> IntakeCommandResult | RecordProblem:

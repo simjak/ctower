@@ -38,7 +38,7 @@ seconds. See [Durability and acceptance](../concepts/durability.md).
 ### Refusals
 
 Refusals are typed problem documents carrying `type`, `title`, `status`, `detail`, and a `code` from a
-closed enumeration of 84 values, plus the optional diagnostic fields `command_id`, `current_version`, and
+closed enumeration of 83 values, plus the optional diagnostic fields `command_id`, `current_version`, and
 `unmet_facts`. See [Refusals](../agents/refusals.md).
 
 ### Path and query parameters
@@ -90,8 +90,9 @@ means it is sent online or not at all.
 | `POST` | `/v1/tickets/{ticket_id}/workflow/transition` | `transitionWorkflow` | `ticket transition` | mutation | allowed | `200`, `202`, `401`, `404`, `409`, `422` |
 
 `TicketCreateRequest.initial_custodian_id` is optional at this HTTP boundary. Omission selects the
-authenticated principal; supplying a UUID selects that principal instead. The unchanged Work command still
-requires and validates one eligible custodian either way.
+authenticated principal. A Commander may establish its own custody; an operator omission is refused and
+an operator must explicitly name an eligible Commander. Supplying a UUID requests that placement, but the
+server authorizes the actor before accepting it.
 
 ### Intake
 

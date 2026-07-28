@@ -88,7 +88,8 @@ All `*-ref` values are references. Never pass a credential value.
 When `--command-id` is omitted, the CLI generates it before encrypted spool enqueue and prints it. Use
 `spool drain` for a queued retry; entering the create command again without the printed key starts a new
 intent. When `--initial-custodian-id` is omitted, the authenticated principal becomes the requested initial
-custodian; an explicit value remains authoritative, and server eligibility checks apply to both.
+custodian. A Commander may establish only self-custody; an operator omission is refused and an operator
+must explicitly name an eligible Commander. Explicit values are authorization requests, not authority.
 
 ## Ticket: authority
 
@@ -174,10 +175,10 @@ changing anything.
 
 Both are queries and are never spooled.
 
-For race-safe mirroring, query the exact source pair first, create only on an empty `cards` result, and
-query again if create returns `source-already-ticketed`. The server serializes and uniquely constrains that
-source pair, so concurrent creators produce one ticket. See
-[Race-safe source mirroring](../agents/operating-contract.md#race-safe-source-mirroring).
+For mirroring, query the exact source pair first and create only on an empty `cards` result. This is a
+check-then-create workflow with a race window: source lookup does not assert uniqueness or ownership, and
+independent creators can produce duplicates. See
+[Source lookup and the mirroring race](../agents/operating-contract.md#source-lookup-and-the-mirroring-race).
 
 ## Operations
 

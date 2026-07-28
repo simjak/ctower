@@ -147,8 +147,9 @@ printf '%s\n' "${authority}" |
     --title "First durable ticket"
 ```
 
-The CLI generates and prints the command ID. The authenticated principal becomes the initial custodian;
-both values can still be supplied explicitly when a caller needs coordinated replay or deliberate custody.
+The CLI generates and prints the command ID. An authenticated Commander becomes its own initial custodian.
+An operator must explicitly name an eligible Commander; an explicit custody value is authorized by the
+server and cannot be used by a Commander to delegate custody.
 
 A normal, healthy result here is **exit `75`** with `"state":"queued"` and
 `"reason_code":"durability_pending"` — the machine-readable way of saying "committed here, waiting for

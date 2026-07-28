@@ -54,7 +54,7 @@ def seed_ticket(
         custodian_id=operation.initial_commander_custodian_id,
         priority="P2",
         source_kind="ctower-project-import",
-        source_ref=_ticket_source_ref(operation),
+        source_ref=operation.source.source_digest,
         title=operation.title,
     )
     return commit_result(
@@ -95,7 +95,7 @@ def _insert_seed_state(
             ticket_id,
             actor.tenant_id,
             operation.title,
-            _ticket_source_ref(operation),
+            operation.source.source_digest,
             operation.initial_commander_custodian_id,
             actor.principal_id,
             now,
@@ -118,11 +118,6 @@ def _insert_seed_state(
             now,
         ),
     )
-
-
-def _ticket_source_ref(operation: CtowerProjectTicketSeedOperation) -> str:
-    material = f"{operation.source.namespace}\0{operation.source.immutable_source_id}".encode()
-    return f"sha256:{hashlib.sha256(material).hexdigest()}"
 
 
 def add_relation(

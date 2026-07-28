@@ -418,7 +418,7 @@ def _seed_ticket(tenant: TenantFixture, title: str) -> UUID:
             json={
                 "initial_custodian_id": str(tenant.commander_id),
                 "priority": "P1",
-                "source": {"kind": "test", "ref": f"test:ctl-seed:{title}"},
+                "source": {"kind": "test", "ref": "test:ctl-seed"},
                 "title": title,
             },
             headers={

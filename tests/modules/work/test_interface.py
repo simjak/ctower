@@ -45,10 +45,11 @@ class _CommandRecord:
         command: TicketCommand,
         *,
         request_digest: bytes,
+        policy_refusal: RecordProblem | None = None,
         now: datetime,
         telemetry: TelemetryContext,
     ) -> TicketCommandResult:
-        del actor, command, now, telemetry
+        del actor, command, now, policy_refusal, telemetry
         self.create_digest = request_digest
         return self.result
 

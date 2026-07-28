@@ -16,6 +16,3 @@ ALTER TABLE board_projection_rows
         CHECK (length(source_kind) BETWEEN 1 AND 64),
     ADD CONSTRAINT board_projection_source_ref_length
         CHECK (length(source_ref) BETWEEN 1 AND 256);
-
-CREATE UNIQUE INDEX tickets_tenant_source_unique
-    ON tickets (tenant_id, source_kind, source_ref);

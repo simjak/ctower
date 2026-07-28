@@ -375,7 +375,6 @@ def create_ticket(
     *,
     title: str,
     credential: str | None = None,
-    source_ref: str | None = None,
 ) -> Response:
     return cast(
         Response,
@@ -384,10 +383,7 @@ def create_ticket(
             json={
                 "initial_custodian_id": str(tenant.commander_id),
                 "priority": "P1",
-                "source": {
-                    "kind": "test",
-                    "ref": source_ref or f"test:durability:{command_id}",
-                },
+                "source": {"kind": "test", "ref": f"test:durability:{command_id}"},
                 "title": title,
             },
             headers={
