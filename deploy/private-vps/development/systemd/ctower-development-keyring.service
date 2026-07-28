@@ -1,5 +1,5 @@
 [Unit]
-Description=Unlock owner-only Ctower development Secret Service collection
+Description=Unlock the login keyring for the owner-only Ctower development account
 Requires=gnome-keyring-daemon.service
 After=gnome-keyring-daemon.service
 

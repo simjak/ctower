@@ -3,44 +3,40 @@
 from __future__ import annotations
 
 import argparse
-import io
 import json
 import os
 import secrets
 import shutil
 import subprocess
 import time
-from datetime import UTC, datetime, timedelta
+from datetime import UTC, datetime
 from pathlib import Path
-from uuid import uuid4
 
 import psycopg
 from psycopg import sql
 
 from ctower_api.development_config import (
     DevelopmentConfig,
-    DevelopmentState,
+    SecretReferenceMissingError,
     config_path,
     development_dsn,
     load_config,
     load_secret,
     load_state,
+    observe_finalizer_health,
     put_secret,
-    state_path,
     unlock_development_keyring,
     write_config,
-    write_state,
 )
-from ctower_client import BootstrapRequest, CtowerClient
 from ctower_kernel.record.postgres import (
     PostgresRecord,
     apply_migrations,
     configure_development_durability,
-    provision_bootstrap,
     provision_database_roles,
-    provision_principal_credential,
 )
-from tools.release_manifest import verify_manifest
+from tools.development_runtime.bootstrap import bootstrap_instance
+from tools.development_runtime.primary import start_primary
+from tools.development_runtime.release import install_release, release_home, rollback
 
 __all__ = ["keyring_unlock_main", "main"]
 
@@ -60,7 +56,7 @@ _SECRET_REFS = {
     "commander_secret_ref": "secret-service:ctower-development/commander",
 }
 _HBA = """local all all trust
-host replication postgres 10.253.216.0/24 trust
+host replication postgres 10.253.216.0/24 scram-sha-256
 host all all 0.0.0.0/0 scram-sha-256
 host all all ::/0 scram-sha-256
 """
@@ -82,6 +78,7 @@ def main() -> None:
     release.add_argument("--manifest", type=Path, required=True)
     release.add_argument("--packs", type=Path, required=True)
     release.add_argument("--python", type=Path, required=True)
+    release.add_argument("--source-root", type=Path, required=True)
     commands.add_parser("rollback")
     commands.add_parser("observe")
     arguments = parser.parse_args()
@@ -98,6 +95,7 @@ def main() -> None:
                 arguments.manifest,
                 arguments.packs,
                 arguments.python,
+                arguments.source_root,
             )
         case "rollback":
             rollback()
@@ -108,22 +106,34 @@ def main() -> None:
 def database_up() -> None:
     """Create or restart the fixed persistent PostgreSQL 17 ACK pair."""
 
-    config = _ensure_config_and_secrets()
     primary_exists = _container_exists(_PRIMARY)
     standby_exists = _container_exists(_STANDBY)
     if primary_exists != standby_exists:
         raise RuntimeError("incomplete development database pair requires operator recovery")
+    config = _ensure_config_and_secrets(create_missing=not primary_exists)
     if primary_exists:
-        _docker("start", _PRIMARY, _STANDBY)
-        _wait_for_database(development_dsn(config, "postgres"))
-        _wait_for_database(development_dsn(config, "postgres", standby=True), recovery=True)
-        _wait_for_sync(config)
+        _restart_database(config)
         return
+    _create_database(config)
+
+
+def _restart_database(config: DevelopmentConfig) -> None:
+    _docker("start", _PRIMARY, _STANDBY)
+    admin_dsn = development_dsn(config, "postgres")
+    _wait_for_database(admin_dsn)
+    _wait_for_database(development_dsn(config, "postgres", standby=True), recovery=True)
+    migrator_dsn = development_dsn(config, "ctower_migrator")
+    apply_migrations(migrator_dsn, role_admin_dsn=admin_dsn)
+    configure_development_durability(migrator_dsn)
+    _wait_for_sync(config)
+
+
+def _create_database(config: DevelopmentConfig) -> None:
     _verify_local_image()
     _docker("network", "create", "--subnet", _SUBNET, _NETWORK)
     _docker("volume", "create", _PRIMARY_VOLUME)
     _docker("volume", "create", _STANDBY_VOLUME)
-    _start_primary(config)
+    start_primary(config)
     admin_dsn = development_dsn(config, "postgres")
     _wait_for_database(admin_dsn)
     _enable_replication_hba()
@@ -133,7 +143,7 @@ def database_up() -> None:
         role_admin_dsn=admin_dsn,
     )
     _set_role_passwords(config)
-    _clone_standby()
+    _clone_standby(config)
     _start_standby(config)
     _enable_sync(config)
     configure_development_durability(development_dsn(config, "ctower_migrator"))
@@ -183,142 +193,8 @@ def install_units(unit_root: Path) -> None:
     )
 
 
-def bootstrap_instance(tenant_name: str, tenant_slug: str) -> None:
-    """Create the first tenant, bind keyring credentials, and enable the full target."""
-
-    if state_path().exists():
-        load_state()
-        raise RuntimeError("development instance is already bootstrapped")
-    config = load_config()
-    capability = secrets.token_urlsafe(48)
-    provision_bootstrap(
-        development_dsn(config, "ctower_migrator"),
-        capability_input=io.StringIO(capability + "\n"),
-        allowed_origin=config.api_host,
-        expires_at=datetime.now(UTC) + timedelta(minutes=5),
-    )
-    with CtowerClient(f"http://{config.api_host}:{config.api_port}") as client:
-        receipt = client.bootstrap_first_tenant(
-            BootstrapRequest(
-                commander_name="Development Commander",
-                commander_vault_ref="vault-ref:ctower/development/commander",
-                operator_credential_ref="credential-ref:ctower/development/operator",
-                operator_name="Development Operator",
-                operator_vault_ref="vault-ref:ctower/development/operator",
-                tenant_name=tenant_name,
-                tenant_slug=tenant_slug,
-            ),
-            command_id=uuid4(),
-            capability=capability,
-        )
-    provision_principal_credential(
-        development_dsn(config, "ctower_migrator"),
-        receipt.tenant_id,
-        receipt.operator_id,
-        credential_input=io.StringIO(load_secret(config.operator_secret_ref) + "\n"),
-    )
-    provision_principal_credential(
-        development_dsn(config, "ctower_migrator"),
-        receipt.tenant_id,
-        receipt.commander_id,
-        credential_input=io.StringIO(load_secret(config.commander_secret_ref) + "\n"),
-    )
-    write_state(
-        DevelopmentState.model_validate(
-            {
-                "schema": "ctower.development-state/v1",
-                "tenant_id": receipt.tenant_id,
-                "operator_id": receipt.operator_id,
-                "commander_id": receipt.commander_id,
-            }
-        )
-    )
-    _systemctl(
-        "enable",
-        "ctower-development-worker.service",
-        "ctower-development.target",
-    )
-    _systemctl("restart", "ctower-development-worker.service")
-    _systemctl("start", "ctower-development.target")
-
-
-def install_release(wheel: Path, manifest_path: Path, packs: Path, python: Path) -> None:
-    """Verify, install, and atomically select one unprivileged release."""
-
-    manifest = verify_manifest(
-        manifest_path,
-        wheel,
-        packs,
-        python_executable=python,
-    )
-    release_id = f"{manifest.source_commit[:12]}-{manifest.wheel.sha256[7:19]}"
-    home = _release_home()
-    release = home / "releases" / release_id
-    if release.exists():
-        raise FileExistsError(f"release already exists: {release_id}")
-    release.mkdir(mode=0o700, parents=True)
-    shutil.copy2(wheel, release / wheel.name)
-    shutil.copy2(manifest_path, release / "manifest.json")
-    shutil.copytree(packs, release / "packs")
-    _run([str(python.resolve(strict=True)), "-m", "venv", str(release / "venv")])
-    uv = shutil.which("uv")
-    if uv is None:
-        raise RuntimeError("uv is required to install the verified development artifact")
-    _run(
-        [
-            uv,
-            "pip",
-            "install",
-            "--python",
-            str(release / "venv/bin/python"),
-            str(release / wheel.name),
-        ]
-    )
-    freeze = _run(
-        [
-            str(release / "venv/bin/python"),
-            "-m",
-            "pip",
-            "freeze",
-            "--all",
-        ],
-        capture=True,
-    )
-    (release / "installed-distributions.txt").write_text(freeze, encoding="utf-8")
-    current = home / "current"
-    previous = home / "previous"
-    if current.is_symlink():
-        _replace_symlink(previous, current.resolve(strict=True))
-    _replace_symlink(current, release)
-    if _unit_known("ctower-development-api.service"):
-        _systemctl(
-            "restart",
-            "ctower-development-api.service",
-            "ctower-development-worker.service",
-        )
-
-
-def rollback() -> None:
-    """Atomically select the verified predecessor and restart same-artifact services."""
-
-    home = _release_home()
-    current = home / "current"
-    previous = home / "previous"
-    if not current.is_symlink() or not previous.is_symlink():
-        raise RuntimeError("rollback requires both current and previous verified releases")
-    old_current = current.resolve(strict=True)
-    old_previous = previous.resolve(strict=True)
-    _replace_symlink(current, old_previous)
-    _replace_symlink(previous, old_current)
-    _systemctl(
-        "restart",
-        "ctower-development-api.service",
-        "ctower-development-worker.service",
-    )
-
-
 def keyring_unlock_main() -> None:
-    """Unlock only the fixed owner-only development Secret Service collection."""
+    """Unlock the login collection of the owner-only development account."""
 
     unlock_development_keyring()
 
@@ -345,11 +221,13 @@ def observe() -> dict[str, object]:
         development_dsn(config, "ctower_runtime"),
         standby_dsn=development_dsn(config, "postgres", standby=True),
     ).durability_health(now=datetime.now(UTC))
+    worker_state = _systemctl_state("ctower-development-worker.service")
+    finalizer_health = observe_finalizer_health(worker_state)
     return {
         "schema": "ctower.development-observation/v1",
         "label": config.label,
         "api": _systemctl_state("ctower-development-api.service"),
-        "worker": _systemctl_state("ctower-development-worker.service"),
+        "worker": worker_state,
         "database": _systemctl_state("ctower-development-db.service"),
         "primary_container": _container_state(_PRIMARY),
         "standby_container": _container_state(_STANDBY),
@@ -359,13 +237,14 @@ def observe() -> dict[str, object]:
             "status": health.status.value,
             "reason": health.reason,
         },
+        "finalizer_health": finalizer_health.model_dump(mode="json", by_alias=True),
         "tenant_id": str(state.tenant_id),
         "counts": {"tenants": counts[0], "tickets": counts[1]} if counts is not None else None,
-        "release": str((_release_home() / "current").resolve(strict=True)),
+        "release": str((release_home() / "current").resolve(strict=True)),
     }
 
 
-def _ensure_config_and_secrets() -> DevelopmentConfig:
+def _ensure_config_and_secrets(*, create_missing: bool) -> DevelopmentConfig:
     expected = DevelopmentConfig.model_validate(
         {
             "schema": "ctower.development-runtime/v1",
@@ -384,54 +263,22 @@ def _ensure_config_and_secrets() -> DevelopmentConfig:
         if load_config() != expected:
             raise RuntimeError("existing development configuration differs from the fixed E2 shape")
     else:
+        if not create_missing:
+            raise RuntimeError("existing development database configuration is missing")
         write_config(expected)
     for reference in _SECRET_REFS.values():
         try:
             load_secret(reference)
-        except RuntimeError:
+        except SecretReferenceMissingError:
+            if not create_missing:
+                raise RuntimeError(
+                    "existing development database secret reference is missing"
+                ) from None
             put_secret(reference, secrets.token_urlsafe(48))
     return expected
 
 
-def _start_primary(config: DevelopmentConfig) -> None:
-    _docker(
-        "run",
-        "-d",
-        "--pull",
-        "never",
-        "--restart",
-        "unless-stopped",
-        "--name",
-        _PRIMARY,
-        "--network",
-        _NETWORK,
-        "--network-alias",
-        "primary",
-        "-p",
-        f"127.0.0.1:{config.primary_port}:5432",
-        "-e",
-        "POSTGRES_DB=ctower",
-        "-e",
-        "POSTGRES_HOST_AUTH_METHOD=trust",
-        "-e",
-        "POSTGRES_USER=postgres",
-        "-v",
-        f"{_PRIMARY_VOLUME}:/var/lib/postgresql/data",
-        _IMAGE,
-        "-c",
-        "wal_level=replica",
-        "-c",
-        "max_wal_senders=10",
-        "-c",
-        "max_replication_slots=10",
-        "-c",
-        "hot_standby=on",
-        "-c",
-        "cluster_name=ctower_i1_primary",
-    )
-
-
-def _clone_standby() -> None:
+def _clone_standby(config: DevelopmentConfig) -> None:
     _docker(
         "run",
         "--rm",
@@ -444,25 +291,31 @@ def _clone_standby() -> None:
         "-c",
         "chown postgres:postgres /var/lib/postgresql/data && chmod 700 /var/lib/postgresql/data",
     )
-    _docker(
-        "run",
-        "--rm",
-        "--pull",
-        "never",
-        "--user",
-        "postgres",
-        "--network",
-        _NETWORK,
-        "-v",
-        f"{_STANDBY_VOLUME}:/var/lib/postgresql/data",
-        _IMAGE,
-        "pg_basebackup",
-        "--dbname=host=primary user=postgres application_name=ctower_i1_ack",
-        "--pgdata=/var/lib/postgresql/data",
-        "--write-recovery-conf",
-        "--wal-method=stream",
-        "--create-slot",
-        "--slot=ctower_development_ack",
+    _run(
+        [
+            _docker_path(),
+            "run",
+            "--rm",
+            "-i",
+            "--pull",
+            "never",
+            "--user",
+            "postgres",
+            "--network",
+            _NETWORK,
+            "-v",
+            f"{_STANDBY_VOLUME}:/var/lib/postgresql/data",
+            _IMAGE,
+            "pg_basebackup",
+            "--dbname=host=primary user=postgres application_name=ctower_i1_ack",
+            "--password",
+            "--pgdata=/var/lib/postgresql/data",
+            "--write-recovery-conf",
+            "--wal-method=stream",
+            "--create-slot",
+            "--slot=ctower_development_ack",
+        ],
+        input_text=load_secret(config.postgres_admin_secret_ref) + "\n",
     )
 
 
@@ -500,7 +353,8 @@ def _enable_replication_hba() -> None:
             "sh",
             "-c",
             (
-                "printf '%s\\n' 'host replication postgres 10.253.216.0/24 trust' "
+                "printf '%s\\n' "
+                "'host replication postgres 10.253.216.0/24 scram-sha-256' "
                 ">> /var/lib/postgresql/data/pg_hba.conf"
             ),
         ]
@@ -554,15 +408,19 @@ def _wait_for_database(dsn: str, *, recovery: bool = False) -> None:
     last_error: psycopg.Error | None = None
     while time.monotonic() < deadline:
         try:
-            with psycopg.connect(dsn, connect_timeout=1) as connection:
-                if not recovery or connection.execute("SELECT pg_is_in_recovery()").fetchone() == (
-                    True,
-                ):
-                    return
+            if _database_ready(dsn, recovery=recovery):
+                return
         except psycopg.Error as error:
             last_error = error
         time.sleep(0.1)
     raise RuntimeError("development PostgreSQL did not reach its required state") from last_error
+
+
+def _database_ready(dsn: str, *, recovery: bool) -> bool:
+    with psycopg.connect(dsn, connect_timeout=1) as connection:
+        return not recovery or connection.execute("SELECT pg_is_in_recovery()").fetchone() == (
+            True,
+        )
 
 
 def _wait_for_sync(config: DevelopmentConfig) -> None:
@@ -652,23 +510,6 @@ def _run(
         text=True,
     )
     return result.stdout if capture else ""
-
-
-def _replace_symlink(link: Path, target: Path) -> None:
-    link.parent.mkdir(mode=0o700, parents=True, exist_ok=True)
-    temporary = link.with_name(link.name + ".next")
-    if temporary.exists() or temporary.is_symlink():
-        raise FileExistsError(f"stale release pointer requires operator review: {temporary}")
-    temporary.symlink_to(target)
-    temporary.replace(link)
-
-
-def _release_home() -> Path:
-    return _data_home() / "ctower-development"
-
-
-def _data_home() -> Path:
-    return Path(os.environ.get("XDG_DATA_HOME", str(Path.home() / ".local/share")))
 
 
 def _config_home() -> Path:

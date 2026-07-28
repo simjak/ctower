@@ -19,8 +19,8 @@ from ctower_kernel.record._lifecycle import TERMINAL_TICKET_STATES
 from ctower_kernel.record._ticket_sql import (
     _result_from_payload,
     _ticket_from_row,
-    _uuid7,
 )
+from ctower_kernel.record._uuid import uuid7 as _uuid7
 from ctower_kernel.record.events import (
     CustodyTransferredPayload,
     EventEnvelope,

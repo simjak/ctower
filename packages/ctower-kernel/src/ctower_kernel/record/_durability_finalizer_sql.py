@@ -29,6 +29,10 @@ class _PendingCommand:
     tenant_id: UUID
     principal_id: UUID
     command_id: UUID
+    created_at: datetime
+
+
+type FinalizerCursor = tuple[datetime, UUID, UUID]
 
 
 def finalize_pending(
@@ -36,13 +40,14 @@ def finalize_pending(
     standby_dsn: str | None,
     *,
     limit: int,
+    after: FinalizerCursor | None = None,
     telemetry: Telemetry | None = None,
-) -> DurabilityFinalizationBatch:
-    """Reconcile one bounded oldest-first batch through Record's existing authority."""
+) -> tuple[DurabilityFinalizationBatch, FinalizerCursor | None]:
+    """Reconcile one bounded rotating batch through Record's existing authority."""
 
     if not 1 <= limit <= _MAX_BATCH_SIZE:
         raise ValueError("durability finalizer limit must be between 1 and 1000")
-    pending = _pending_commands(primary_dsn, limit=limit)
+    pending = _pending_commands(primary_dsn, limit=limit, after=after)
     recorder = telemetry or NoopTelemetry()
     accepted = 0
     still_pending = 0
@@ -68,15 +73,25 @@ def finalize_pending(
             accepted += 1
         else:
             still_pending += 1
-    return DurabilityFinalizationBatch(
+    batch = DurabilityFinalizationBatch(
         attempted=len(pending),
         accepted=accepted,
         pending=still_pending,
         refused=refused,
     )
+    return batch, _next_cursor(pending)
 
 
-def _pending_commands(dsn: str, *, limit: int) -> tuple[_PendingCommand, ...]:
+def _next_cursor(pending: tuple[_PendingCommand, ...]) -> FinalizerCursor | None:
+    if not pending:
+        return None
+    last = pending[-1]
+    return (last.created_at, last.principal_id, last.command_id)
+
+
+def _pending_commands(
+    dsn: str, *, limit: int, after: FinalizerCursor | None
+) -> tuple[_PendingCommand, ...]:
     with psycopg.connect(dsn, row_factory=dict_row) as connection:
         connection.execute("SET ROLE ctower_svc")
         policy = connection.execute(
@@ -84,24 +99,47 @@ def _pending_commands(dsn: str, *, limit: int) -> tuple[_PendingCommand, ...]:
         ).fetchone()
         if policy is None or policy["mode"] == "pending_only":
             return ()
-        rows = connection.execute(
-            """
-            SELECT result.tenant_id, result.principal_id, result.client_command_id
-            FROM command_results AS result
-            LEFT JOIN durability_acceptance_confirmations AS confirmation
-              ON confirmation.tenant_id = result.tenant_id
-             AND confirmation.principal_id = result.principal_id
-             AND confirmation.client_command_id = result.client_command_id
-            WHERE confirmation.client_command_id IS NULL
-            ORDER BY result.created_at, result.principal_id, result.client_command_id
-            LIMIT %s
-            """,
-            (limit,),
-        ).fetchall()
+        rows = _select_pending(connection, limit=limit, after=after)
+        if not rows and after is not None:
+            rows = _select_pending(connection, limit=limit, after=None)
     return tuple(
-        _PendingCommand(row["tenant_id"], row["principal_id"], row["client_command_id"])
+        _PendingCommand(
+            cast(UUID, row["tenant_id"]),
+            cast(UUID, row["principal_id"]),
+            cast(UUID, row["client_command_id"]),
+            cast(datetime, row["created_at"]),
+        )
         for row in rows
     )
+
+
+def _select_pending(
+    connection: psycopg.Connection[dict[str, object]],
+    *,
+    limit: int,
+    after: FinalizerCursor | None,
+) -> list[dict[str, object]]:
+    cursor_time, cursor_principal, cursor_command = (None, None, None) if after is None else after
+    return connection.execute(
+        """
+        SELECT result.tenant_id, result.principal_id, result.client_command_id,
+            result.created_at
+        FROM command_results AS result
+        LEFT JOIN durability_acceptance_confirmations AS confirmation
+          ON confirmation.tenant_id = result.tenant_id
+         AND confirmation.principal_id = result.principal_id
+         AND confirmation.client_command_id = result.client_command_id
+        WHERE confirmation.client_command_id IS NULL
+          AND (
+              %s::timestamptz IS NULL
+              OR (result.created_at, result.principal_id, result.client_command_id)
+                 > (%s::timestamptz, %s::uuid, %s::uuid)
+          )
+        ORDER BY result.created_at, result.principal_id, result.client_command_id
+        LIMIT %s
+        """,
+        (cursor_time, cursor_time, cursor_principal, cursor_command, limit),
+    ).fetchall()
 
 
 def _database_now(dsn: str) -> datetime:

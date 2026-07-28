@@ -506,6 +506,14 @@ Record's exact named-standby receipt/finalization authority but forces degraded 
 `development_offhost_ack_cp3_d_not_proven`. It proves usable shadow mechanics, not an external failure
 domain, CP3-D, production durability, or single-writer cutover. Secret Service resolves database and CLI
 references inside the owning process; service files, release manifests, and config never contain values.
+Host authentication is SCRAM from initial publication. A network-isolated initializer receives its secret
+only through stdin, leaves the initialized volume, and is replaced by the steady-state container without a
+password environment entry; the clone password is likewise stdin-only. Separately from the forced-degraded
+policy dimension, the worker writes monotonic typed finalizer progress:
+inactive/failed/refusing/unknown/future/stale state is degraded, and only an active worker with a completed
+scan no older than ten seconds is healthy. Bootstrap and two-pointer release selection each have strict
+owner-only replay checkpoints, so interruption resumes exact identities instead of minting a capability,
+exposing a partial release, or silently completing a no-op rollback.
 
 The cutover is therefore ordered:
 

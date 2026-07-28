@@ -18,7 +18,9 @@ def main() -> NoReturn:
         "--as", dest="identity", choices=("operator", "commander"), default="operator"
     )
     known, remaining = parser.parse_known_args()
-    if not remaining or "--base-url" in remaining:
+    if not remaining or any(
+        argument == "--base-url" or argument.startswith("--base-url=") for argument in remaining
+    ):
         raise SystemExit("usage: ctower-shadow-ctl [--as operator|commander] COMMAND")
     config = load_config()
     reference = (

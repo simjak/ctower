@@ -5,7 +5,6 @@ from __future__ import annotations
 import hashlib
 import hmac
 import re
-import secrets
 from datetime import datetime
 from importlib.resources import files
 from importlib.resources.abc import Traversable
@@ -27,6 +26,7 @@ from ctower_kernel.record._recovery_role_shape_sql import (
     RecoveryRoleConfigurationError,
     validate_recovery_role_shapes,
 )
+from ctower_kernel.record._uuid import uuid7 as _uuid7
 
 __all__ = [
     "RecoveryRoleConfigurationError",
@@ -419,14 +419,33 @@ def provision_bootstrap(
         raise ValueError("bootstrap capability must have at most 256 characters")
     with psycopg.connect(dsn) as connection:
         connection.execute("SET ROLE ctower_admin")
+        capability_digest = hashlib.sha256(capability.encode("utf-8")).digest()
         connection.execute(
             """
             INSERT INTO bootstrap_capability (
                 singleton, capability_digest, allowed_origin, expires_at
             ) VALUES (true, %s, %s, %s)
+            ON CONFLICT (singleton) DO UPDATE
+            SET expires_at = EXCLUDED.expires_at
+            WHERE bootstrap_capability.capability_digest = EXCLUDED.capability_digest
+              AND bootstrap_capability.allowed_origin = EXCLUDED.allowed_origin
+              AND bootstrap_capability.consumed_at IS NULL
             """,
-            (hashlib.sha256(capability.encode("utf-8")).digest(), allowed_origin, expires_at),
+            (capability_digest, allowed_origin, expires_at),
         )
+        stored = connection.execute(
+            """
+            SELECT capability_digest, host(allowed_origin)
+            FROM bootstrap_capability
+            WHERE singleton
+            """
+        ).fetchone()
+        if (
+            stored is None
+            or not hmac.compare_digest(bytes(stored[0]), capability_digest)
+            or str(stored[1]) != allowed_origin
+        ):
+            raise RuntimeError("existing bootstrap capability differs from retry checkpoint")
 
 
 def provision_principal_credential(
@@ -444,6 +463,7 @@ def provision_principal_credential(
     if len(credential) > MAXIMUM_CAPABILITY_LENGTH:
         raise ValueError("principal credential must have at most 256 characters")
     now = datetime.now().astimezone()
+    credential_digest = hashlib.sha256(credential.encode("utf-8")).digest()
     with psycopg.connect(dsn) as connection:
         connection.execute("SET ROLE ctower_admin")
         connection.execute(
@@ -451,15 +471,26 @@ def provision_principal_credential(
             INSERT INTO principal_credentials (
                 credential_id, principal_id, tenant_id, credential_digest, created_at
             ) VALUES (%s, %s, %s, %s, %s)
+            ON CONFLICT (credential_digest) DO NOTHING
             """,
             (
                 _uuid7(now),
                 principal_id,
                 tenant_id,
-                hashlib.sha256(credential.encode("utf-8")).digest(),
+                credential_digest,
                 now,
             ),
         )
+        stored = connection.execute(
+            """
+            SELECT tenant_id, principal_id, revoked_at
+            FROM principal_credentials
+            WHERE credential_digest = %s
+            """,
+            (credential_digest,),
+        ).fetchone()
+        if stored != (tenant_id, principal_id, None):
+            raise RuntimeError("existing principal credential differs from bootstrap retry")
 
 
 def configure_development_durability(dsn: str) -> None:
@@ -477,14 +508,3 @@ def configure_development_durability(dsn: str) -> None:
             WHERE singleton
             """
         )
-
-
-def _uuid7(now: datetime) -> UUID:
-    milliseconds = int(now.timestamp() * 1000) & ((1 << 48) - 1)
-    random_bits = secrets.randbits(74)
-    value = milliseconds << 80
-    value |= 0x7 << 76
-    value |= ((random_bits >> 62) & 0xFFF) << 64
-    value |= 0b10 << 62
-    value |= random_bits & ((1 << 62) - 1)
-    return UUID(int=value)
