@@ -191,6 +191,7 @@ Each story names observable user value and links to pass/fail acceptance criteri
 | US-OP-06 | Operator/CEO | I can distinguish merged, staging verified, production verified, rolled back, and incident states without relying on wording such as “shipped.” | [AC-REL-01](#ac-rel-01), [AC-REL-04](#ac-rel-04), [AC-UX-06](#ac-ux-06) |
 | US-OP-07 | Operator/CEO | I use a familiar Board without losing process truth: priority, queue lane, arbitrary workflow stage/activity, blockers, accountable custody, active assignment, and typed delivery milestone remain separate and explainable. | [AC-TM-01](#ac-tm-01), [AC-TM-02](#ac-tm-02), [AC-TM-05](#ac-tm-05) |
 | US-OP-08 | Operator/CEO | Before a harness dispatches a catastrophic or ambiguous command, I see the normalized target and policy reason, can authorize only that exact command and target once for a short time, and can audit the result without exposing secret command content. | [AC-RUN-15](#ac-run-15), [AC-SEC-03](#ac-sec-03), [AC-UX-10](#ac-ux-10) |
+| US-OP-09 | Operator/CEO | Every actionable ticket traverses the declared stage groups of its own pinned Workflow — for engineering work that is the one `engineering.software-factory` delivery sprint — and I see each group's `filled / required` evidence coverage; a group that cannot complete names the exact missing slot, perspective, or gate instead of advancing or being quietly dropped. | [AC-WF-25](#ac-wf-25), [AC-WF-26](#ac-wf-26), [AC-WF-27](#ac-wf-27), [AC-EVD-08](#ac-evd-08) |
 | US-PD-01 | Operator/CEO | I open a project and see whether its declared increments or milestones are actually being delivered, using compact checkpoint rows derived from current exit-criterion proof rather than manually entered status or ticket-count percentages. | [AC-PD-01](#ac-pd-01), [AC-PD-02](#ac-pd-02), [AC-PD-04](#ac-pd-04) |
 | US-PD-02 | Accountable project owner | I drill into a checkpoint and see its owner, stage and Kanban facts, linked work and outcomes, passed and missing gates, blockers/dependencies, evidence, decisions, estimates versus actuals, and projection freshness; when proof changes, the row changes without erasing the underlying lifecycle history. | [AC-PD-02](#ac-pd-02), [AC-PD-03](#ac-pd-03), [AC-PD-05](#ac-pd-05) |
 | US-PD-03 | Operator and cross-domain owner | I use the same Project Delivery projection for software, accounting, compliance, hiring, and other configured Workflows; restore/rebuild reproduces the same rows, while stale or incomplete source truth is visibly unknown instead of guessed. | [AC-PD-04](#ac-pd-04), [AC-PD-05](#ac-pd-05), [AC-PD-06](#ac-pd-06) |
@@ -655,17 +656,17 @@ An aggregate owns only the invariants that must be transactional together. Cross
 | **Inbound thread / conversation** | Durable channel-neutral thread, participants, source scope, ordered inbound/outbound command events, classification, and promotion provenance | May link zero or more tickets; source event IDs are immutable aliases |
 | **Inbound conversation/command event** | Original payload reference, authenticated or source-verified actor, taint level, idempotency key, classification result, and append position | Belongs to one thread; may promote/link a ticket or attach to another aggregate |
 | **Ticket** | Permanent ID, tenant/project scope, promised outcome, lifecycle episode pointer, accountable owner, aggregate version, and ticket-event hash-chain head | Links relations, workflow runs, criteria, attention, changes, costs, and retros; does not own their internal state |
-| **Project / delivery checkpoint definition** | Versioned Company -> Project -> Increment/Milestone hierarchy, checkpoint outcome/order, accountable owner, declared exit criteria, and explicit qualifying-work links or rules | References tickets, Workflow runs, Proof, decisions, costs, and applicable release/outcome facts; it never owns their lifecycle or verdicts |
+| **Project / delivery checkpoint definition** | Versioned Company -> Project -> Increment/Milestone hierarchy, checkpoint outcome/order, accountable owner, declared exit criteria, explicit qualifying-work links or rules, and the declared delivery surface — its landing boundary, its non-production environments, and its externally effective outcome, each either declared with identity or declared explicitly absent | References tickets, Workflow runs, Proof, decisions, costs, and applicable release/outcome facts; it never owns their lifecycle or verdicts. A delivery-surface field that is neither declared present nor declared absent is `STATE_UNKNOWN`, never an absence a skip predicate may rely on |
 | **Project Delivery projection row** | Disposable checkpoint summary, derivation reasons, source watermark, proof coverage, confidence/freshness, and health | Rebuilds from authorized project/checkpoint definitions plus durable Work, Workflow, Proof, gate, cost, and outcome facts; accepts no mutation |
 | **Priority fact / blocker** | Append-only P0/P1/P2 changes and durable typed unmet conditions with owner, source, affected stage, resolution contract, next check/SLA, and evidence | Work truth is orthogonal to risk, stage, Board lane, delivery, and Attention; multiple effective blockers coexist |
 | **Ticket relation** | Typed edge with source, target, actor, rationale, and validity; `parent_of`, `depends_on`, `blocks`, `duplicates`, `relates_to`, `caused_by` | Parent graph and blocker graph are separately cycle-checked; child tickets require independent value |
 | **Lifecycle episode** | One open-to-terminal interval with opening event, outcome, resolution/closure/cancellation facts, and optional next episode | `reopened` closes no history; it starts a new numbered episode on the same ticket |
-| **Workflow component revision** | Immutable named stage graph, roles, capabilities, contracts, transitions, retry policy, failure routes, and gate policy inside the universal component envelope | One workflow run pins one revision/digest; revisions are never edited in place |
-| **Execution policy revision** | Participant/capability resolution, activated gates, `required_perspectives`, finite nonpassing-round/repair/candidate-generation bounds, timeouts, placement, budgets, escalation, and waiver constraints | A run pins a compatible revision; values are workflow/domain specific, and policy may narrow/select within a Workflow but cannot invent a stage, edge, or terminal condition |
+| **Workflow component revision** | Immutable named stage graph, roles, capabilities, contracts, transitions, retry policy, failure routes, gate policy, and an optional ordered stage-group vocabulary inside the universal component envelope | One workflow run pins one revision/digest; revisions are never edited in place; a declared stage group labels stages and creates no edge, gate, or terminal condition |
+| **Execution policy revision** | Participant/capability resolution, activated gates, `required_perspectives`, finite nonpassing-round/repair/candidate-generation/nonprogressing-candidate-mutation bounds, timeouts, placement, budgets, escalation, and waiver constraints | A run pins a compatible revision; values are workflow/domain specific, and policy may narrow/select within a Workflow but cannot invent a stage, edge, or terminal condition |
 | **Workflow run** | Application of one workflow version to one lifecycle episode, desired/observed state, and terminal disposition | Owns stage instances; links ticket episode and policy snapshot |
 | **Commander orchestration plan / revision** | Immutable per-run revision naming resolved Commander capability/profile, context/risk facts, pinned policy option, required perspectives, selected nonpassing-round/repair/candidate-generation bounds, rationale, evidence, and superseded revision | One active revision per workflow run; proposes only policy-permitted choices. It never accepts consumption; `total_executions` and all other counters are server-owned facts. |
-| **Stage definition** | Immutable node within a workflow version, including entry/exit contracts, an ordered nonempty set of typed required evidence slots, the criterion/evidence contract for each slot, the signing contract, and allowed parallelism | Copied by reference into stage instances; never derives from ticket status |
-| **Stage instance** | One logical occurrence of a stage in a workflow run, dependency readiness, pinned required-slot-set digest, required gates, signing Evidence/assignment references, and terminal result | Owns ordered attempts; Proof decides current slot fulfillment, and a success-equivalent disposition requires every slot filled and current; parallel instances only where graph permits |
+| **Stage definition** | Immutable node within a workflow version, including entry/exit contracts, an ordered nonempty ordinary set of typed required evidence slots, the criterion/evidence contract and signing slot for that set, allowed parallelism, an optional declared stage-group membership, and an optional declared skip predicate with its own alternative skip slot set and signing slot | Copied by reference into stage instances; never derives from ticket status; the two slot sets are alternatives rather than a union; group membership, skip predicate, and both slot sets are authored package data, never agent assertions |
+| **Stage instance** | One logical occurrence of a stage in a workflow run, dependency readiness, the resolved required-slot-set digest and which declared set it resolved, required gates, signing Evidence/assignment references, and terminal result | Owns ordered attempts; Proof decides current slot fulfillment, and a success-equivalent disposition requires every slot of the resolved set filled and current; parallel instances only where graph permits |
 | **Stage attempt** | One execution/verification attempt, input digest manifest, executor, failure occurrence/lineage references, timeout, output digest manifest, and disposition | Links one or more durable jobs/runs and evidence; does not transfer ticket custody |
 | **Failure lineage / occurrence / repair consumption** | Server-owned normalized defect identity plus immutable digest-specific occurrences and append-only repair-consumed events | A lineage remains stable across candidate mutations; deterministic policy or independent adjudication alone may split it. A monotonic projection supplies current consumption and exhaustion. |
 | **Assignment / custody interval** | Exclusive accountable ticket owner or exclusive stage-attempt executor over a time interval, including from/to, actor, reason, and source command | Ticket ownership, stage execution, and reviewer assignment are different assignment kinds |
@@ -983,7 +984,7 @@ The ticket is the human join point, not the transaction boundary for the entire 
 | Blockers | Typed `opened`, `rechecked`, `resolved`, `expired`, `superseded` facts | Explicit unmet conditions; queueing is not blocking and multiple effective blockers may coexist. |
 | Reopen | `reopened` event | Starts episode N+1 on the same permanent ticket, records reason and prior episode, and never rewrites prior resolution evidence. It is not a stable status. |
 | Workflow run | `pending`, `running`, `waiting`, `succeeded`, `failed`, `cancelled` | Overall execution of a pinned workflow version for one episode. |
-| Stage instance | `blocked`, `ready`, `active`, `waiting_gate`, `succeeded`, `failed`, `skipped`, `cancelled` | Process position; independent of ticket lifecycle. `succeeded` and evidence-backed `skipped` are success-equivalent and require all pinned evidence slots current at transition time; failed/cancelled history never projects as a pass. |
+| Stage instance | `blocked`, `ready`, `active`, `waiting_gate`, `succeeded`, `failed`, `skipped`, `cancelled` | Process position; independent of ticket lifecycle. `succeeded` and evidence-backed `skipped` are success-equivalent and require every slot of the resolved required slot set current at transition time. The requested disposition resolves the set: `succeeded` resolves the stage's ordinary set, and evidence-backed `skipped` resolves its declared skip set **in place of** the ordinary set and is admissible only while the pinned skip predicate holds on accepted durable facts. Failed/cancelled history never projects as a pass. |
 | Stage attempt | `created`, `executing`, `verifying`, `passed`, `failed`, `timed_out`, `cancelled`, `superseded` | Immutable attempt history and failure routing. |
 | Durable job | `accepted`, `leased`, `running`, `terminal` plus terminal outcome `succeeded|failed|cancelled|lost` | Dispatch and runner protocol. Health projections such as suspect do not rewrite the job state. |
 | Gate instance | `required`, `collecting`, `verdict_recorded`, `invalidated`, `superseded` | Requirement and validity for one policy/input snapshot. Verdict attempts are `pass|fail|changes_requested|error|abstain`. |
@@ -1054,8 +1055,10 @@ The ticket is the human join point, not the transaction boundary for the entire 
 58. **INV-58 — Guard before harness dispatch.** Every registered local or remote Harness or Supervisor Adapter that can launch, invoke, or submit a harness command obtains and enforces a current versioned CommandGuard decision for the exact normalized execution plan at its final trusted pre-dispatch boundary. `block` and `needs_operator` dispatch nothing; changed plans or targets, unresolved protected targets, expired/replayed grants, missing required local or remote enforcement receipts, and direct guard bypass fail closed.
 59. **INV-59 — Project Delivery projection is derived.** Every Project Delivery projection row is rebuilt only from versioned hierarchy/exit-criterion definitions and accepted durable Work, Workflow, Proof, gate, cost, and outcome facts. The exact precedence is deterministic; manual row status, projection writes, ticket-count percentages, and wording cannot establish delivery or completion.
 60. **INV-60 — Project Delivery projection freshness is honest.** Relevant authoritative events reconcile affected rows immediately; one hour without a relevant change publishes a freshness heartbeat that cannot mutate lifecycle state. Missing or overdue reconciliation, unknown authorization-safe coverage, source gaps, or invalid proof renders the row stale or `STATE UNKNOWN`, and restore/replay at one watermark reproduces the same derivation.
-61. **INV-61 — Typed stage evidence is complete or unfilled.** Every success-capable stage pins at least one required evidence slot with a stable key, recognized evidence kind, stage-scoped criterion, and immutable evidence contract. A stage instance cannot become `succeeded` or evidence-backed `skipped` while any required slot lacks current matching Evidence; missing, invalidated, expired, revoked, mismatched, or `STATE UNKNOWN` evidence is unfilled and never pass-capable. Later invalidation preserves the immutable transition history but removes current completion validity, invalidates declared dependents, blocks advancement/effects/resolution, and routes repair through a new declared attempt rather than rewriting the old success.
-62. **INV-62 — Stage sign-off has one attributable seat.** Every success-equivalent stage transition references one satisfying Evidence item and its verifier assignment interval under the stage's signing contract. `Evidence.verifier_principal` is the canonical signing principal and must equal the principal of that interval at evidence time; the assignment supplies the seat/crew context, so no duplicate `signing_seat` or copied principal field may drift. Anonymous, unmatched, expired-assignment, or prose-only sign-off is refused.
+61. **INV-61 — Typed stage evidence is complete or unfilled.** Every success-capable stage pins at least one required evidence slot with a stable key, recognized evidence kind, stage-scoped criterion, and immutable evidence contract. A stage that declares a skip predicate pins a second alternative slot set for the skip path; the two sets are alternatives, never a union. The requested disposition resolves exactly one of them: `succeeded` resolves the ordinary set and its signing slot, and evidence-backed `skipped` resolves the skip set and its signing slot in place of the ordinary set. A stage instance cannot reach either disposition while any slot of its resolved set lacks current matching Evidence; missing, invalidated, expired, revoked, mismatched, or `STATE UNKNOWN` evidence is unfilled and never pass-capable. A skip is earned, never assumed: `skipped` is admissible only while the stage's pinned skip predicate holds on accepted durable facts, and a `skipped` request with an unsatisfied, unevaluable, stale, or revoked predicate is refused with the predicate as its unmet item rather than defaulted in either direction. Later invalidation preserves the immutable transition history but removes current completion validity, invalidates declared dependents, blocks advancement/effects/resolution, and routes repair through a new declared attempt rather than rewriting the old success.
+62. **INV-62 — Stage sign-off has one attributable seat.** Every success-equivalent stage transition references one satisfying Evidence item and its verifier assignment interval under the signing contract of the stage instance's resolved required slot set; the skip set carries its own declared signing slot, which is the signing contract for an evidence-backed skip. `Evidence.verifier_principal` is the canonical signing principal and must equal the principal of that interval at evidence time; the assignment supplies the seat/crew context, so no duplicate `signing_seat` or copied principal field may drift. Anonymous, unmatched, expired-assignment, or prose-only sign-off is refused.
+63. **INV-63 — Declared stage groups are total, derived, and never omittable.** A Workflow revision may declare an ordered stage-group vocabulary. When it does, every stage names exactly one declared group, every declared group owns at least one stage, and every group rollup, projection, or readiness explanation derives only from that declaration; no engine, policy, projection, or test may branch on a stage key or a group key. A group is complete only when every stage it owns reached a success-equivalent disposition on the current digest set. A stage leaves a group only through its declared skip predicate and its filled, signed skip slot set, which is that stage instance's resolved required slot set; omission, silence, absent evidence, or an agent assertion of irrelevance never completes a group.
+64. **INV-64 — Bounded no-progress.** Every Execution Policy declares one finite `max_nonprogressing_candidate_mutations`, at least `1` and never more than the number of governed candidate mutations `max_candidate_generations` permits, so the bound is always reachable; publication fails on a policy that declares it absent, zero, or above that ceiling. A candidate reaches its **verification disposition** at the first of these its pinned package records against that candidate's digest: the outcome of a terminal review round, or the failure of a mandatory stage gate that routes the candidate to repair. A candidate's **outstanding set** is the run's open server-owned failure lineages plus the required evidence slots unfilled on that candidate's digest, observed at that disposition. A governed candidate mutation is **progressing** only when the outstanding set of the candidate it produced is a strict subset of the outstanding set of the candidate it replaced; every mutation has such a predecessor, because the initial candidate is a generation and never a mutation, so no mutation is exempt from the test. An identical set, a larger set, and an exchanged set that resolves one lineage while opening another are each non-progressing and increment one append-only server-owned count keyed to the workflow run. The count moves at most once per mutation, in the transaction recording that candidate's verification disposition; a candidate superseded or cancelled before it reaches one moves no count, and repeated or later-invalidated verification of the same candidate neither re-tests nor un-counts it. Only a progressing mutation clears that count, and it clears it completely. Reaching the declared maximum creates exactly one deduplicated escalation and blocks further automatic dispatch even while repair, nonpassing-round, and candidate-generation capacity remain. This bound alone stops the run on *reaching* its maximum rather than on the next request beyond it; that is what a no-progress rule is for. Changed prose, a new candidate digest, reassignment, model or harness replacement, and restart reset nothing; a reopen starts a new lifecycle episode and therefore a new workflow run with its own count under [INV-11](#non-negotiable-invariants), which is an authenticated audited event rather than a reset path an executor can take.
 
 ## Workflow and verification architecture
 
@@ -1101,9 +1104,10 @@ execution_policy:
   max_nonpassing_rounds: 2
   max_repairs_per_lineage: 2
   max_candidate_generations: 4
+  max_nonprogressing_candidate_mutations: 2
 ```
 
-The four required configurable controls and the separate observed execution count have precise meanings:
+The five required configurable controls and the separate observed execution count have precise meanings:
 
 - `required_perspectives` is the complete set of independently attributable verdict perspectives required
   on one current candidate digest. A perspective may bind any domain capability; it is not assumed to mean
@@ -1112,6 +1116,11 @@ The four required configurable controls and the separate observed execution coun
 - `max_repairs_per_lineage` caps mutations for each server-normalized stable failure lineage.
 - `max_candidate_generations` caps the initial candidate plus subsequent governed candidate mutations
   across all lineages, preventing lineage fan-out from creating an unbounded global loop.
+- `max_nonprogressing_candidate_mutations` is the no-progress rule required by
+  [INV-64](#non-negotiable-invariants). It caps consecutive governed candidate mutations that shrink
+  nothing, so churn stops before generation capacity runs out. It is at least `1` and at most
+  `max_candidate_generations - 1`, which is the number of governed mutations the policy permits;
+  publication fails otherwise.
 - `total_executions` is an immutable server-owned audit/cost count of every started perspective execution,
   whatever its outcome. It is never a client-authored field or a limit in ReviewPlan v1.
 
@@ -1168,21 +1177,25 @@ stateDiagram-v2
         state "active" as SActive
         state "waiting_gate" as SWaitingGate
         state "succeeded" as SSucceeded
+        state "skipped" as SSkipped
         state "failed" as SFailed
         [*] --> SBlocked
         SBlocked --> SReady: dependencies and entry criteria met
         SReady --> SActive: attempt created
+        SReady --> SSkipped: skip predicate holds and skip slot set filled and signed
         SActive --> SWaitingGate: outputs recorded and gate required
         SActive --> SSucceeded: exit criteria satisfied without gate
+        SActive --> SSkipped: attempt produced the skip proof and the predicate holds
         SActive --> SFailed: attempt failed or timed out
         SWaitingGate --> SSucceeded: all gate instances valid
         SWaitingGate --> SFailed: fail or changes requested
         SFailed --> SReady: typed repair route authorized
         SSucceeded --> [*]
+        SSkipped --> [*]
     }
 ```
 
-The workflow run and each stage instance have separate states. A stage failure does not imply ticket cancellation or workflow failure. The orchestrator derives readiness from dependencies and entry criteria, creates immutable attempts, and advances only through declared transitions.
+The workflow run and each stage instance have separate states. A stage failure does not imply ticket cancellation or workflow failure. The orchestrator derives readiness from dependencies and entry criteria, creates immutable attempts, and advances only through declared transitions. `skipped` is reachable only for a stage whose definition declares a skip predicate, and only on the evidence-backed terms below; it is success-equivalent to `succeeded` and is never an omission, a timeout, or a silent edge.
 
 ### Typed stage evidence slots and signing
 
@@ -1196,6 +1209,23 @@ declares an ordered nonempty `required_evidence_slots` set. Each slot pins:
 - source, command, environment, producer-run, verifier-capability/independence, trust, freshness/expiry, and
   dependency/invalidation requirements; and
 - whether the slot may supply stage sign-off, together with the required assignment kind/capability.
+
+A stage that declares a skip predicate declares a second named set, `skip_evidence_slots`, whose slots pin
+the same fields and which names its own signing slot. **The two sets are alternatives, never a union.** The
+requested disposition selects which one a transition resolves, and the resolved set is the complete pinned
+slot set that every success-equivalent rule quantifies over:
+
+- a `succeeded` transition resolves the **ordinary** set and its signing slot, always, and is available to
+  every success-capable stage including one whose skip predicate happens to hold;
+- an evidence-backed `skipped` transition resolves the **skip** set and its signing slot **in place of**
+  the ordinary set, and is admissible only while the stage's pinned skip predicate holds on accepted
+  durable facts.
+
+A skip is therefore earned by its predicate and its proof, never assumed and never defaulted into. A
+`skipped` request whose predicate does not hold, cannot be evaluated, or is stale or revoked is refused
+outright, with the predicate itself as the unmet item; the stage then advances only by completing its
+ordinary set. The skip set proves only that the stage does not apply — it names the predicate revision, the
+exact accepted facts that satisfied it, and the signer — and never asserts that the stage's work happened.
 
 The minimum v1 evidence-kind vocabulary is:
 
@@ -1222,12 +1252,12 @@ missing / type mismatch / invalid / expired / revoked -> unfilled
 source or validity cannot be established              -> unfilled (STATE_UNKNOWN)
 ```
 
-The transition transaction evaluates the complete pinned slot set under the same current digest snapshot
-as the exit contract and gates. Any unfilled slot returns an exact no-mutation unmet item naming the slot,
-kind, owning assignment/capability, and reason. `failed`, `timed_out`, and `cancelled` attempts may terminate
-without completed slots because they make no success claim; they cannot be projected as passed. An
-evidence-backed skip still fills its declared not-applicable/skip-proof slot with an artifact and cannot
-erase the stage by omission.
+The transition transaction resolves the required slot set, then evaluates that complete resolved set under
+the same current digest snapshot as the exit contract and gates. Any unfilled slot returns an exact
+no-mutation unmet item naming the slot, kind, owning assignment/capability, and reason. `failed`,
+`timed_out`, and `cancelled` attempts may terminate without completed slots because they make no success
+claim; they cannot be projected as passed. An evidence-backed skip still fills every slot of its declared
+skip set with an artifact and cannot erase the stage by omission.
 
 Stage sign-off reuses Evidence and assignment truth. The success event references the complete satisfying
 slot-manifest digest, one satisfying Evidence item selected by the pinned signing contract, and that
@@ -1241,17 +1271,333 @@ signer is the seat accountable for the stage completion manifest.
 
 Slots and gates remain distinct. Filling every slot does not pass a required gate, and a passing verdict
 does not fill a slot. A gate may consume the same Evidence items, but both slot completeness and valid gate
-instances are independently required. If a dependency later changes, Proof marks exactly affected slots
+instances are independently required on the ordinary path. A stage's declared mandatory gates belong to
+that ordinary path: when a transition resolves the skip set, they are never activated, because the
+predicate holding is exactly the statement that the gate has no subject to verify. No gate instance is
+created, so none has to be closed and no gate state or disposition is added to the model. A stage that has
+already reached `waiting_gate` has an activated gate and a live instance; it completes or fails on its
+ordinary path and cannot be skipped from there, which is why `skipped` is reachable only from `ready` or
+`active`. Otherwise gate independence is unchanged. If a dependency later changes, Proof marks exactly affected slots
 unfilled and invalidates dependent gates. The prior stage-success event remains immutable history; current
 readiness, effects, resolution, and all projections treat that stage's completion proof as invalid until a
 declared repair route creates fresh Evidence on a new attempt.
 
 Every Board, Ticket, and Project Delivery projection that displays a stage or completion claim includes
-`filled / required` slot coverage and never removes a declared slot from the denominator. Board summaries
-show the unfilled/unknown count and expose slot keys in their API/CLI detail; Ticket detail shows every slot,
-contract, current Evidence, signer, invalidation, and history; Project Delivery proof coverage excludes
-unfilled slots and names them in derivation reasons. `STATE_UNKNOWN` is rendered as
-`unfilled (STATE_UNKNOWN)`, never as pass, hidden, zero-required, or absent-so-fine.
+`filled / required` slot coverage over the stage instance's resolved set and never removes a declared slot
+of that set from the denominator. A stage instance that resolved its skip set reads its coverage over the
+skip set and renders the ordinary set's slots as `not applicable (skipped)` with the predicate reference,
+never as filled and never as silently absent, so a skip can never be read as coverage of work that did not
+happen. Board summaries show the unfilled/unknown count and expose slot keys in their API/CLI detail;
+Ticket detail shows every slot, contract, current Evidence, signer, invalidation, and history; Project
+Delivery proof coverage excludes unfilled slots and names them in derivation reasons. `STATE_UNKNOWN` is
+rendered as `unfilled (STATE_UNKNOWN)`, never as pass, hidden, zero-required, or absent-so-fine.
+
+### Delivery-sprint stage groups and the enforced software-factory package
+
+The delivery sprint — think, plan, build, review, test, ship, reflect — is package data that the generic
+evaluator refuses to violate. It is the shape of the existing `engineering.software-factory` package, not a
+second production workflow package, a second engine, a second state machine, a prose convention that humans
+and agents are asked to remember, or the separate `Sprint/Cadence policy` component category that owns
+admission and cadence bounds. The seven sprint words name declared groups over the sixteen pinned stages;
+they never replace a stage key, because merge, deployment, and environment verification must stay separate
+typed facts.
+
+#### Stage groups are declared package vocabulary
+
+A Workflow revision may declare an ordered `stage_groups` list of stable keys; that list order is the
+group order. When a Workflow declares groups, every stage names exactly one declared group, and every
+declared group owns at least one stage. Publication fails on a duplicate group key, a stage naming an
+undeclared group, a stage naming no group, or a declared group that owns no stage. A group labels the pinned
+graph and declares no edge, gate, terminal condition, parallelism, or ordering authority of its own; the
+pinned transitions remain the only movement authority. Board, Ticket, and Project Delivery derive per-group
+`filled / required` slot coverage from this declaration alone, exactly as the six-lane fold derives
+`in_review` from `activity_class` rather than from a stage name. A Workflow that declares no groups is
+ungrouped and renders no rollup; the `ctower.trust-spine-four-stage@1` fixture stays ungrouped.
+
+#### The `engineering.software-factory` groups
+
+| Delivery-sprint group | Stages, in pinned graph order | Group contract |
+|---|---|---|
+| `think` | `intake`, `think` | The accepted intent is durable, classified, and stated as an outcome with constraints, non-goals, and an operator-attention budget before planning consumes it. |
+| `plan` | `plan`, `design` | One approved plan revision and one frozen acceptance/verification criterion set exist before any candidate; design is evaluated and either contracted or refused as not applicable with proof. |
+| `build` | `implement` | Exactly one current candidate manifest exists, and it passes the repository's own warm quality gate before it is offered to verification. |
+| `review` | `risk-derived-review` | One terminal round on the current candidate digest carries every required and applicable independent perspective, with zero open blockers. |
+| `test` | `local-verification-qa`, `staging-qa`, `production-smoke-live-qa` | Each declared environment is proven by a re-checkable use-proof against the exact deployed or candidate digest, never by a checklist assertion. |
+| `ship` | `documentation`, `release-preflight`, `merge`, `staging-deploy`, `production-deploy` | Docs truth, preflight, merge, and each brokered deployment are separate typed facts with separate receipts. |
+| `reflect` | `retro`, `resolve-close` | A retro exists with either a linked improvement and evaluation window or an evidence-backed no-change record, and the server, not a claimant, validates resolution. |
+
+Group order is the human summary of the package. Two groups are deliberately non-contiguous in graph order,
+and this is the resolution of the only real conflict between the mnemonic order and ctower's locked
+contract:
+
+- `test` precedes `review` for the local candidate, because a repaired candidate must obtain fresh QA
+  before a new review round ([AC-WF-15](#ac-wf-15)); `test` then recurs after `ship` because staging and
+  production verification are separate typed delivery facts ([INV-39](#non-negotiable-invariants)).
+- `ship` owns merge and both deploys, because merge, deployment, and environment verification never imply
+  one another.
+
+Reading the seven words as an edge order would either delete the pre-review QA requirement or collapse the
+delivery facts. The mnemonic is a rollup; the pinned graph is authority.
+
+#### Required typed evidence slots per stage
+
+Each slot's frozen stage-scoped criterion version is `<stage-key>.<slot-key>-current`. Every kind below is
+already in the recognized v1 vocabulary; the delivery sprint needs no new evidence kind. Two of the seven
+recognized kinds are declared by no slot in this package: `image-digest`, which stays reserved for packages
+that install container images, and `screenshot`, because the content-addressed rendered capture that the
+user-interface predicate requires is bound inside its `transcript` slot's contract rather than as a
+separate slot. The remaining five are exercised.
+
+The last column is the stage's alternative skip slot set. On an evidence-backed `skipped` transition it
+**replaces** the ordinary required slots and the ordinary signing slot; it never adds to them, and that
+transition is admissible only while the stage's skip predicate holds.
+
+| Stage | Group | Ordinary required slots (`slot_key`: `evidence_kind`) | Ordinary signing slot and assignment kind | Mandatory stage gate | Skip slot set: slot / signing assignment kind |
+|---|---|---|---|---|---|
+| `intake` | think | `record`: `artifact-digest` | `record` / `stage_owner` | — | none |
+| `think` | think | `brief`: `artifact-digest` | `brief` / `stage_owner` | — | none |
+| `plan` | plan | `spec`: `artifact-digest`; `criteria`: `artifact-digest` | `spec` / `stage_owner` | plan review when `engineering.change.sizeable@1` holds | none |
+| `design` | plan | `contract`: `artifact-digest` | `contract` / `stage_owner` | pre-build design QA when `engineering.change.user-interface@1` holds | `not-applicable`: `artifact-digest` / `stage_owner` |
+| `implement` | build | `candidate`: `artifact-digest`; `warm-gate`: `ci-job` | `candidate` / `stage_owner` | — | none |
+| `local-verification-qa` | test | `suite`: `ci-job`; `use-proof`: `transcript` | `use-proof` / `reviewer_assignment` | local QA | none |
+| `risk-derived-review` | review | `code-review`: `artifact-digest`; `round-manifest`: `artifact-digest` | `round-manifest` / `reviewer_assignment` | review round | none |
+| `documentation` | ship | `revision`: `artifact-digest`; `truth-check`: `ci-job` | `truth-check` / `reviewer_assignment` | documentation truth | none |
+| `release-preflight` | ship | `manifest`: `artifact-digest` | `manifest` / `stage_owner` | release preflight | none |
+| `merge` | ship | `fact`: `url+digest` | `fact` / `stage_owner` | — | `not-applicable`: `artifact-digest` / `stage_owner` |
+| `staging-deploy` | ship | `receipt`: `artifact-digest`; `deployed`: `tag` | `receipt` / `stage_owner` | — | `not-applicable`: `artifact-digest` / `stage_owner` |
+| `staging-qa` | test | `verification`: `url+digest`; `use-proof`: `transcript` | `verification` / `reviewer_assignment` | staging QA | `not-applicable`: `artifact-digest` / `stage_owner` |
+| `production-deploy` | ship | `receipt`: `artifact-digest`; `deployed`: `tag` | `receipt` / `stage_owner` | — | `not-applicable`: `artifact-digest` / `stage_owner` |
+| `production-smoke-live-qa` | test | `smoke`: `url+digest`; `live-use-proof`: `transcript` | `live-use-proof` / `reviewer_assignment` | production smoke and live QA | `not-applicable`: `artifact-digest` / `stage_owner` |
+| `retro` | reflect | `record`: `artifact-digest` | `record` / `stage_owner` | retro | none |
+| `resolve-close` | reflect | `criteria-manifest`: `artifact-digest` | `criteria-manifest` / `ticket_custodian` | — | none |
+
+Four slot contracts carry extra bound requirements because they are the ones prose most often replaces:
+
+- `plan.criteria` must bind, per frozen acceptance criterion, both its exact pass condition and its
+  evidence contract, which is the criterion's named verification method. A criterion frozen with a pass
+  condition but no evidence contract fails the slot contract, and the `plan` stage does not complete. This is the machine form of the rule that
+  work does not start without acceptance criteria and the verification that proves each one.
+- `implement.warm-gate` must bind the repository's own declared warm quality-gate command, its exit
+  status, its environment/image digest, and the current candidate digest.
+- every `use-proof`, `live-use-proof`, and `verification` slot must bind the exact scenario or probe, the
+  bounded cursor or time range, the environment identity, and the subject digest, and must additionally
+  bind a content-addressed rendered capture whenever the user-interface predicate applies. A transcript
+  that only asserts an outcome fails its contract.
+- `risk-derived-review.round-manifest` must enumerate the complete required and applicable perspective set
+  for the current candidate digest, each perspective's verdict identity and effective-identity family, and
+  a zero-open-blocker assertion. A manifest that omits an applicable perspective, names a candidate author
+  as a verdict holder, or references a verdict on a superseded digest fails its contract and leaves the
+  slot unfilled. Conditional perspectives are therefore enforced through gate applicability plus this one
+  always-required manifest slot, so the required slot set stays total as [INV-61](#non-negotiable-invariants)
+  demands.
+
+#### Execution Policy: gates, perspectives, independence, and finite bounds
+
+Mandatory stage gates are the ones named in the table above. They are stage gates, not review perspectives,
+and a review round never repeats them. Each belongs to its stage's ordinary path: on an evidence-backed
+`skipped` transition the stage's gate is never activated and no gate instance is created, since the skip
+predicate holding is the statement that the gate has no subject. A skipped `staging-qa` therefore owes no staging-QA gate verdict and a
+skipped `production-smoke-live-qa` owes no production smoke gate verdict, exactly as neither owes its
+ordinary slots.
+
+Independence is a property of perspectives, never a vendor list. Each declared perspective carries an
+independence contract: the `independent_of` identity sets, at minimum the candidate authors. That contract
+is identity truth. It is never waivable, and no operator command reaches it
+([INV-19](#non-negotiable-invariants), [INV-44](#non-negotiable-invariants)).
+
+Family diversity is a separate, weaker control and is modelled outside the independence contract, as a
+declared **placement eligibility rule** on the Gate Policy. It does not answer "did someone other than the
+author verify this" — `independent_of` and INV-19 already answer that, at every tier, unwaivably. It
+answers a different question: whether the verifying identity is likely to share the *author's* blind spots.
+Because it is a policy-declared bound rather than an independence property, a tier may declare it waivable
+and a protected operator command may waive it exactly where the pinned policy says so, which is the only
+waiver [INV-44](#non-negotiable-invariants) permits. Waiving it never permits self-review, never lowers
+`independent_of`, and never fabricates a verdict. The software-factory Gate Policy declares:
+
+- `family_diversity: candidate_producer` on `code-review` at every tier — the satisfying verdict's
+  effective identity must resolve to a declared eligible family other than the family that produced the
+  current candidate. Waivable by protected operator command at Low and Standard; not waivable at Elevated
+  or Critical. Each waiver is one audited, run-scoped, single-use act that names the unavailable families
+  and appends an attention fact; it is never a standing policy state.
+- `family_diversity: across_required_set` at Elevated and Critical — the required perspective set of one
+  terminal round may not resolve entirely to one eligible family. This rule applies only to a terminal
+  round whose required perspective set has two or more members. When Elevated's set resolves to
+  `{code-review}` alone because neither the `security` nor the `rendered-design` trigger applies, a
+  one-member set cannot be diverse across itself, so only `candidate_producer` applies to that round;
+  declaring `across_required_set` never makes a single-perspective round unsatisfiable.
+
+An eligible family is a named eligibility class declared by the pinned capability policy revision and
+referenced from the Gate Policy by `<capability-policy-key>@<revision>#families.<name>`, exactly like any
+other exact component pin. The capability policy alone maps concrete profiles into a family; publication
+fails when a referenced family does not resolve or declares no member profile. No vendor, product, or model
+name appears in a Workflow, Execution Policy, or Gate Policy payload. A placement that would violate either
+diversity rule is refused before dispatch and records no verdict or execution fact; when no compliant
+eligible identity is currently healthy, the run waits and reports the unmet placement rather than falling
+back to a same-family reviewer.
+
+The finite bounds are the package tier values already declared under
+[software-factory risk and review policy](#software-factory-risk-and-review-policy); this section adds no
+platform ceiling and no new number for them. It adds the missing fourth control that every executable
+policy is already required to declare:
+
+**No-progress rule.** The Execution Policy declares one finite `max_nonprogressing_candidate_mutations`,
+evaluated by the server under [INV-64](#non-negotiable-invariants). It is a separate dimension from
+`max_nonpassing_rounds`, `max_repairs_per_lineage`, and `max_candidate_generations`, it is not a ReviewPlan
+v1 field, and it never becomes a cap on the observed `total_executions` audit fact. Its exact mechanics
+are:
+
+- **Boundary.** The unit is one governed candidate mutation, the same event that consumes
+  `max_candidate_generations`. Its progress is decided later, because a mutation's effect is an intention
+  until it has been verified. A candidate reaches its **verification disposition** at the first of these
+  the run records against that candidate's digest: the outcome of a terminal review round, or the failure
+  of a mandatory stage gate that routes the candidate to repair. Both are already-defined events, and
+  either one makes the candidate's outstanding set a durable fact. The count is appended in that
+  transaction, at most once per mutation, under the workflow-run lock. A candidate superseded or cancelled
+  before it reaches a verification disposition is never progress-tested and moves no count; a repeated or
+  later-invalidated verification of the same candidate does not re-test, re-count, or un-count that
+  mutation, because consumption facts are append-only and reset nothing.
+- **Observation.** A candidate's **outstanding set** is the run's open server-owned failure lineages plus
+  the required evidence slots unfilled on that candidate's digest, taken when that candidate's verification
+  completes. Nothing is measured before it has been verified.
+- **Progress test.** A mutation is *progressing* when the outstanding set of the candidate it produced is a
+  strict subset of the outstanding set of the candidate it replaced. Every governed mutation has such a
+  predecessor — the initial candidate is a generation, never a mutation — so the first mutation of a run is
+  tested like any other and no mutation is exempt. Everything else is non-progressing: an identical set, a
+  larger set, and — the case the bound exists for — an exchanged set that resolves one lineage while
+  opening another. A repair loop trading defect A for B for C and back to A therefore trips this bound
+  instead of running to generation exhaustion.
+- **Key.** The *count* is keyed to the `workflow_run` alone. Per-lineage attribution is what
+  `max_repairs_per_lineage` already provides; this bound measures whole-run churn, so a single count makes
+  "consecutive" literally true and leaves no stale key to escape through. Its *escalation* keys as every
+  other bound's does, to the run and the bound, which for this bound yields exactly one per run.
+- **Reset.** Only a progressing mutation clears the count, and it clears it completely. Restart,
+  reassignment, model or harness replacement, plan revision, changed prose, and a new digest reset nothing.
+  A reopen is not a reset: it starts a new lifecycle episode and therefore a new workflow run with its own
+  count ([INV-11](#non-negotiable-invariants)), through an authenticated audited command no executor can
+  issue for itself.
+
+**Bound coherence.** `max_candidate_generations` caps the initial candidate plus subsequent governed
+mutations, so a tier permits `max_candidate_generations - 1` governed mutations, and every one of them is
+progress-tested. A policy's `max_nonprogressing_candidate_mutations` must be at least `1` and at most that
+number, or publication fails; this is what makes the bound reachable rather than decorative. Worked
+against the tier table: Low permits one mutation and sets `1`, so a single non-progressing repair
+escalates; Critical permits two and sets `1`, so it escalates with a mutation still unspent; Standard and
+Elevated permit three and set `2`, so they escalate at the second consecutive stall with a mutation still
+unspent. At a tier that permits exactly one governed mutation, that mutation consumes the last generation
+and then, at its candidate's verification disposition, decides the no-progress bound. Full consumption is
+not exhaustion, so the no-progress escalation is the one that fires, and generation exhaustion never
+follows it, because exhausting the generation bound would require a further mutation request that this
+escalation already blocks. The escalation keys to the run and the bound exactly as every other bound's
+does, so this bound yields at most one escalation per run.
+
+#### What the evaluator refuses
+
+Each row refuses the requested transition, returns an exact unmet checklist, and records one transition
+evaluation. **Zero-mutation means zero authoritative transition mutation:** no stage instance, gate
+instance, Evidence, candidate, or typed delivery fact changes state, and the refusal is visible as a
+refusal rather than as progress. The server-owned audit and consumption facts a refusal itself produces are
+not transition mutations and are required, not optional — the recorded transition evaluation, a nonpassing-
+round consumption fact when a terminal round did not pass, and the single deduplicated escalation on bound
+exhaustion. A refusal that appended none of those would be an unaudited refusal, which is the failure this
+table exists to prevent. The no-progress count is not one of them: it is appended when a candidate's
+verification completes, not by a refusal.
+
+| Refusal | Trigger | Result |
+|---|---|---|
+| Unfilled required slot | Success-equivalent disposition requested while any slot of the stage instance's resolved required slot set is missing, type-mismatched, invalidated, expired, revoked, or `STATE_UNKNOWN` | No mutation; the unmet item names the slot key, kind, owning assignment/capability, reason, and which set resolved ([INV-61](#non-negotiable-invariants), [AC-EVD-07](#ac-evd-07)) |
+| Missing perspective | A terminal review round whose manifest omits an applicable required perspective, or whose named verdict is not current on the candidate digest | The round is nonpassing rather than passing, the `round-manifest` slot stays unfilled, and the stage does not advance |
+| Self-review | A verdict holder or stage signer shares an effective identity with a producer of the input being verified | The verdict is refused before recording ([INV-19](#non-negotiable-invariants)); the signing binding is refused ([INV-62](#non-negotiable-invariants)) |
+| Family collapse | A declared family-diversity rule would be violated by the resolved placement | Placement refused before dispatch; no verdict, no execution fact |
+| Stale evidence | A success-equivalent disposition requested on proof the candidate digest has already superseded | The digest change itself, not this refusal, unfilled every declared candidate-dependent slot and invalidated every dependent gate instance ([INV-20](#non-negotiable-invariants), [AC-WF-09](#ac-wf-09), [AC-WF-15](#ac-wf-15)); the transition is then refused naming those slots and gates, and fresh QA precedes any new review round ([AC-WF-15](#ac-wf-15)) |
+| Silent skip | A `skipped` disposition requested for a stage that declares no skip predicate, or whose predicate does not currently hold or cannot be evaluated on accepted durable facts, or which holds but leaves a slot of the skip set unfilled or unsigned | Refused with the predicate or the skip-set slot as the unmet item; the request is never converted into a success and never defaulted, and the stage advances only by completing its ordinary set, so a stage leaves the sprint only with proof ([INV-61](#non-negotiable-invariants), [INV-63](#non-negotiable-invariants)) |
+| Bound exhaustion | A consuming event requested beyond `max_nonpassing_rounds`, `max_repairs_per_lineage`, or `max_candidate_generations`; an elapsed declared deadline or quota; a hard-safety stop; or `max_nonprogressing_candidate_mutations` reached, that one bound stopping the run on reaching its maximum rather than on the next request | Every request that would consume an exhausted bound is refused with zero mutation and names the bound as its unmet item; consuming a bound up to its maximum is not yet exhaustion, so a run at full generation capacity still completes the QA and review its current candidate already requires. The escalation is created once where the bound is decided — at the refused transition for every bound except no-progress, at the deciding verification disposition for no-progress — keyed to the run and the bound or lineage, exactly as every other exhausted bound is. Blocks further automatic dispatch; later duplicate evidence attaches to that escalation |
+
+#### Skips and non-software runs
+
+Six stages declare a skip predicate and a skip slot set: `design`, `merge`, `staging-deploy`,
+`staging-qa`, `production-deploy`, and `production-smoke-live-qa`. The other ten declare none and therefore
+cannot be omitted at any risk tier: `intake`, `think`, `plan`, `implement`, `local-verification-qa`,
+`risk-derived-review`, `documentation`, `release-preflight`, `retro`, and `resolve-close` are the enforced
+spine. A skip predicate is a pinned predicate reference over declared checkpoint and change facts, never an
+agent judgement:
+
+| Stage | Skip predicate reference | Holds when |
+|---|---|---|
+| `design` | `engineering.change.user-interface@1` and `engineering.change.material-architecture@1` both false | The change presents no user-visible surface and introduces no new Module boundary, persistent model, protocol, or topology |
+| `merge` | `engineering.checkpoint.no-landing-boundary@1` | The checkpoint declares no configured main or default integration target |
+| `staging-deploy` | `engineering.checkpoint.no-non-production-environment@1` | The checkpoint declares no non-production deployment environment |
+| `staging-qa` | `engineering.checkpoint.no-non-production-environment@1` | The checkpoint declares no non-production environment, so its deploy stage has none to produce and none to verify |
+| `production-deploy` | `engineering.checkpoint.no-effective-outcome@1` | The checkpoint declares no production or externally effective outcome |
+| `production-smoke-live-qa` | `engineering.checkpoint.no-effective-outcome@1` | The checkpoint declares no externally effective outcome, so its deploy stage has none to produce and none to verify |
+
+Each QA stage shares its deploy stage's predicate rather than reading whether that deploy stage was
+skipped. The two are equivalent — a deploy stage's only skip predicate is exactly the checkpoint fact its
+QA stage reads — and sharing the predicate keeps every predicate a function of durable checkpoint and
+change facts alone, with no run state in it.
+
+`engineering.change.material-architecture@1` reads *new* architecture, not any change to an existing one.
+An operation added inside an already-published protocol surface, under that surface's existing
+compatibility contract, introduces no new protocol; a new surface, a new external boundary, or a breaking
+revision does. The `no-landing-boundary`, `no-non-production-environment`, and `no-effective-outcome`
+predicates each read one field of the checkpoint definition's declared delivery surface. Absence must be
+**declared**: a field that is neither declared present nor declared absent is `STATE_UNKNOWN` and its
+predicate does not hold, so a misconfigured checkpoint refuses its stages rather than skipping them.
+
+A predicate evaluates only accepted durable facts: the pinned checkpoint definition's declared delivery
+surface, and the accepted classification facts of the current change. It reads no prose, no agent claim,
+and no ticket wording. Publication fails when a declared skip predicate reference does not resolve, and a
+run refuses a skip whose predicate does not currently hold.
+
+`design` is the one skippable stage that runs before any candidate exists, so its two change predicates
+evaluate the change classification accepted at `plan`, not a candidate digest. That classification is
+itself a declared dependency of the skip proof: when a later candidate changes it — the change turns out to
+present a user surface, or to introduce a new Module boundary, persistent model, protocol, or topology —
+[INV-20](#non-negotiable-invariants) invalidates the skip proof exactly as it invalidates any other
+dependent evidence, `design` loses its completion validity, and the run cannot advance until `design`
+completes on its ordinary set. A skip is a claim about accepted facts, and it expires with them.
+
+**Entry contracts follow the same rule as slots and gates, in both directions.** A stage's own ordinary
+entry contract belongs to its ordinary path: when its skip predicate holds, that predicate is its
+readiness, so `staging-qa` does not wait for the staging report its skipped deploy never produced. And an
+entry item that names an artifact of an *upstream* stage is satisfied by whichever success-equivalent
+disposition that stage reached — by its skip proof when it was skipped, not by the artifact that proof
+says could not exist. Concretely, in a run with no landing boundary, `staging-deploy` is entered on the
+`merge` skip proof rather than a merge fact; with no non-production environment, `production-deploy` is
+entered on the `staging-qa` skip proof rather than a staging QA pass; with no externally effective
+outcome, the non-skippable `retro` is entered on the `production-smoke-live-qa` skip proof rather than a
+production verification. Graph dependencies still hold in full — each predecessor must reach a
+success-equivalent disposition, and `skipped` is one — so this releases the successor without loosening
+the graph. It invents no evidence: a skip proof is a signed statement on accepted durable facts that the
+named artifact could not exist. An entry item whose predecessor actually ran still owes that predecessor's
+ordinary artifact, unchanged.
+
+One narrow companion rule covers the non-skippable stages whose entry names a delivery target rather than a
+predecessor's artifact — `release-preflight`'s "release target known" is the only such item in this package.
+An entry item naming a delivery-surface fact that the pinned checkpoint definition declares **absent** is
+satisfied by that declared absence, on the same accepted durable facts the skip predicates read, so a
+run with no landing boundary and no effective outcome enters preflight rather than waiting forever for a
+target its checkpoint says does not exist. The rule is deliberately narrow: it satisfies entry items only.
+`release-preflight` still runs, still fills its `manifest` slot, and still passes its release-preflight
+gate, because a change set is preflighted whether or not it will be released. An undeclared field is
+`STATE_UNKNOWN`, not an absence, and satisfies nothing.
+
+**A skipped stage's skip slot set replaces its ordinary required slots and its ordinary signing slot; it
+never adds to them.** On an evidence-backed `skipped` transition that set — one `not-applicable` artifact
+naming the predicate revision, the exact accepted facts that satisfied it, and the signer, signed under the
+`stage_owner` assignment — is the complete required slot set and signing contract that
+[INV-61](#non-negotiable-invariants), [INV-62](#non-negotiable-invariants), and [AC-EVD-07](#ac-evd-07)
+quantify over for that transition. A skipped `staging-deploy` owes no `receipt` and no `deployed`; a
+skipped `merge` owes no `fact`; a skipped `design` owes no `contract`. This keeps success-equivalence
+honest in both directions: a skipped stage carries proof of why it does not apply, never proof of work it
+never did, and the skip is refused unless the predicate holds and the proof is filled and signed. The stage's mandatory gate is
+never activated on that path, so no gate instance exists and no gate verdict is owed for verification that
+had no subject. The six-lane Board fold treats it
+exactly like `succeeded`, and the Project Delivery precedence already skips lifecycle states a checkpoint
+does not declare, so an accounting, compliance, hiring, or research checkpoint moves from `in_progress` to
+`done` with no merge, staging, or release fact and still cannot reach `done` without current proof for
+every declared exit criterion. Nothing in the engine, the group mechanism, the slot vocabulary, or the fold
+assumes that a `ship` group exists; a non-engineering package declares its own groups, stages, slots,
+perspectives, and bounds on the same evaluator.
 
 ### Default software-factory path
 
@@ -1531,12 +1877,12 @@ Risk tiers are local vocabulary of the versioned software-factory policy package
 enums and do not constrain other Workflows. Classification derives from observed change/capability facts,
 records rule IDs, and chooses the highest matching package tier. The package's initial defaults are:
 
-| Package tier | Deterministic software-change classification | Base required perspectives | max nonpassing / repairs per lineage / candidate generations |
+| Package tier | Deterministic software-change classification | Base required perspectives | max nonpassing / repairs per lineage / candidate generations / nonprogressing mutations |
 |---|---|---|---|
-| Low | Docs, tests, or mechanical refactor only; no runtime, schema, UI, security, data, infra, or effect change | One scoped `code-review` perspective | 1 / 1 / 2 |
-| Standard | Bounded reversible runtime behavior with no elevated/critical trigger | One `code-review` perspective covering correctness plus maintainability | 2 / 2 / 4 |
-| Elevated | Auth/PII/schema/concurrency/durability/tenant-sensitive UI/shared infra/material architecture or high blast radius | `code-review`, plus `security` and/or `rendered-design` when their triggers apply | 2 / 2 / 4 |
-| Critical | New trust boundary, destructive/irreversible action, production IAM/network/key/payment/publish/send, public surface, or materially uncertain incident recovery | `code-review` plus `security`, with `rendered-design` when UI/design applies; human decisions remain stage gates | 1 / 1 / 3 |
+| Low | Docs, tests, or mechanical refactor only; no runtime, schema, UI, security, data, infra, or effect change | One scoped `code-review` perspective | 1 / 1 / 2 / 1 |
+| Standard | Bounded reversible runtime behavior with no elevated/critical trigger | One `code-review` perspective covering correctness plus maintainability | 2 / 2 / 4 / 2 |
+| Elevated | Auth/PII/schema/concurrency/durability/tenant-sensitive UI/shared infra/material architecture or high blast radius | `code-review`, plus `security` and/or `rendered-design` when their triggers apply | 2 / 2 / 4 / 2 |
+| Critical | New trust boundary, destructive/irreversible action, production IAM/network/key/payment/publish/send, public surface, or materially uncertain incident recovery | `code-review` plus `security`, with `rendered-design` when UI/design applies; human decisions remain stage gates | 1 / 1 / 3 / 1 |
 
 These numbers are defaults inside this package's revision. A later package revision or another Workflow may
 use different values, names, or no risk tiers at all. ReviewPlan v1 defines no aggregate execution stop;
@@ -1545,6 +1891,16 @@ enforcement. A future aggregate cost/resource stop requires a separately version
 real use case, and an executable semantic validator before publication. A plan can select only a policy-declared option or protected
 operator-authorized waiver; it cannot lower a hard requirement, fall below consumption, or reset facts.
 Higher risk may add perspectives while deliberately reducing repair latitude.
+
+The fourth number is `max_nonprogressing_candidate_mutations`. Each value satisfies the coherence rule in
+[delivery-sprint stage groups](#delivery-sprint-stage-groups-and-the-enforced-software-factory-package): at
+least `1`, and at most the `max_candidate_generations - 1` governed mutations the tier permits, so the
+bound is reachable at every tier. Low and Critical permit one and two governed mutations respectively, so
+their value is `1`; Standard and Elevated permit three, so `2` bites strictly before generation capacity
+runs out. Each tier also declares the perspective independence contracts and the family-diversity
+placement rules described in that same section. Tier selection changes which perspectives are required and
+how much latitude remains; it never changes which stage gates are mandatory, which evidence slots a stage
+requires, or whether a stage may be omitted.
 
 #### Package overlays
 
@@ -1676,6 +2032,12 @@ The six loops have different authorities: the agent may repair within its attemp
 
 Evidence is current only while its declared inputs, environment class, verifier authority, and expiry remain valid.
 
+Each row states a stage's **ordinary** path, entry contract included. A stage whose pinned definition
+declares a skip predicate may instead become ready on that predicate and complete on its skip slot set,
+owing none of the evidence in its row; and any row whose entry names an artifact of a stage that was
+skipped is entered on that stage's skip proof instead. Both rules are in
+[skips and non-software runs](#skips-and-non-software-runs).
+
 | Major stage/fact | Verifier | Required evidence | Invalidation trigger | Failure route |
 |---|---|---|---|---|
 | Intake durability | API integration test + synthetic source | Accepted command ID, committed inbound event, outbox row, create/link result | Hash-chain failure, missing outbox, source dedupe conflict | Quarantine and operations incident if accepted response was returned |
@@ -1705,9 +2067,14 @@ For a stage transition, the server:
 2. Returns an exact idempotent replay if `(principal, client_command_id, request_hash)` already exists.
 3. Locks the workflow run and relevant stage instance, compares expected versions, and re-evaluates dependencies.
 4. Loads the pinned workflow/risk/gate policy and current digest/evidence graph.
-5. Verifies every pinned required evidence slot is filled by current type-matching Evidence, verifies the
-   signing Evidence/principal/assignment binding, then verifies the remaining stage exit contract and valid
-   required gate instances.
+5. Resolves the required slot set from the requested disposition — the ordinary set for `succeeded`, the
+   declared skip set for an evidence-backed `skipped`, the latter only while the stage's pinned skip
+   predicate holds on accepted durable facts — then verifies every slot of that resolved set is filled by
+   current type-matching Evidence, verifies the signing Evidence/principal/assignment binding under that
+   set's signing slot, then verifies the remaining stage exit contract and, on the ordinary path, valid
+   required gate instances. On the skip path the exit contract is the skip predicate plus that filled,
+   signed skip set and nothing else, and no stage gate is activated, so there is no gate instance to
+   verify.
 6. Appends the stage/workflow events, invalidations, new ready-stage facts, attention/outbox entries, and command result atomically.
 7. Emits `NOTIFY` only after commit as a hint; consumers drain the durable outbox by cursor.
 
@@ -2911,6 +3278,9 @@ Each criterion is pass/fail. Evidence must be attached to the ctower build ticke
 | <a id="ac-wf-22"></a>AC-WF-22 | The engine rejects a missing perspective/gate, non-finite applicable ReviewPlan v1 bound, client-authored or reset `total_executions`, any field outside the exact ReviewPlan v1 vocabulary, a limit below consumption, an undeclared policy choice, or a non-independent reviewer. A future aggregate stop remains outside ReviewPlan v1 until a separate versioned policy component has a real use case, executable semantic validator, and actual enforcement. A protected operator waiver changes only declared waivable scope and never fabricates a pass; no universal tier number or cap is assumed. | Removal/count/below-consumed and unknown-field denials, future-component publication guard, and protected decision audit |
 | <a id="ac-wf-23"></a>AC-WF-23 | `total_executions`, nonpassing rounds, candidate generations, and per-lineage repairs are distinct append-only facts. Only nonpassing terminal rounds consume their bound; every candidate consumes generation; restart/reassignment/digest change resets none. Any applicable ReviewPlan, no-progress, deadline, quota, or hard-safety exhaustion yields one escalation and zero further dispatch. | Counter properties plus `d1 QA fail -> d2 review fail -> d3 all-perspective pass` and multi-lineage chaos traces |
 | <a id="ac-wf-24"></a>AC-WF-24 | Software-factory and non-engineering fixtures publish distinct mandatory stage gates, required perspectives, stages, and finite limits. Stage QA/docs/environment gates execute at their stage/digest; one all-perspective current-digest pass advances without repeated ceremonial passes. | Cross-package snapshots, dispatch counts, invalidation matrix, coherent elevated-UI trace |
+| <a id="ac-wf-25"></a>AC-WF-25 | A Workflow that declares stage groups publishes only when group keys are unique, every stage names exactly one declared group, and every declared group owns at least one stage; duplicate-key, undeclared-group, no-group, and empty-group fixtures are each refused with the offending key named. The declared list order is the group order. API/CLI Board, Ticket, and Project Delivery reads expose per-group `filled / required` slot coverage derived only from that declaration, an ungrouped Workflow renders no rollup, and a fixture proves no engine, policy, projection, or readiness explanation branches on a stage key or a group key. | Publication negative fixture per rule with the named key in each refusal, grouped and ungrouped package snapshots, per-group coverage API/CLI transcripts, and a forbidden stage-key/group-key branch check |
+| <a id="ac-wf-26"></a>AC-WF-26 | Each delivery-sprint refusal produces zero authoritative transition mutation — no stage instance, gate instance, Evidence, candidate, or typed delivery fact changes state — plus an exact unmet checklist and one recorded transition evaluation: a slot of the resolved required slot set unfilled; a terminal review round whose manifest omits an applicable required perspective or cites a superseded-digest verdict; a verdict holder or stage signer sharing an effective identity with a producer of its input; a placement violating a declared family-diversity placement rule; candidate-dependent proof after a candidate digest change; a `skipped` disposition whose predicate does not hold or cannot be evaluated, or which leaves a skip-set slot unfilled or unsigned; and a transition or automatic dispatch requested while any nonpassing-round, per-lineage repair, candidate-generation, nonprogressing-candidate-mutation, deadline, quota, or hard-safety bound is exhausted. The server-owned audit and consumption facts a refusal itself appends — the transition evaluation, a nonpassing-round consumption fact, the escalation — are required and are not transition mutations; the no-progress count is appended at the candidate's verification disposition instead, never by a refusal. Consuming a bound up to its maximum is not exhaustion — a run at full generation capacity still completes the QA and review its current candidate already requires — and exhaustion is a request beyond the maximum, except for the no-progress bound, which stops the run on reaching its maximum. Each bound's escalation is created where that bound is decided: at the refused transition for every bound except no-progress, and at the deciding verification disposition for no-progress. Exhaustion creates exactly one deduplicated escalation keyed to the run and that bound or lineage, which for the no-progress bound is exactly one per run, blocks further automatic dispatch, and attaches later duplicate evidence to it. Restart, reassignment, model or harness replacement, changed prose, and a new digest reset no consumed count. When no family-compliant eligible identity is healthy, the run waits with an unmet placement item and never falls back to a same-family reviewer; a protected waiver is available only where the pinned tier declares that rule waivable, is single-use and run-scoped, and never reaches `independent_of` or self-review denial. Every governed mutation including a run's first is progress-tested at the verification disposition of the candidate it produced; only a progressing mutation clears the run's no-progress count and it clears it completely; an exchanged outstanding set that resolves one lineage while opening another does not clear it. | Refusal payload and state-diff snapshot per row, family-diversity placement denial, no-healthy-family wait trace and waiver-scope negative, `d1 -> QA -> review fail -> d2` invalidation trace, no-progress counter properties including same-lineage-different-digest and A-to-B-to-A exchange fixtures, simultaneous-exhaustion single-escalation case, escalation dedupe query, and a restart/reassignment no-reset matrix |
+| <a id="ac-wf-27"></a>AC-WF-27 | A run whose checkpoint declares no landing boundary, no non-production environment, or no externally effective outcome completes through evidence-backed skips: each skipped stage resolves its skip slot set **in place of** its ordinary slots, reaches `skipped` with that set filled and signed and with none of its ordinary slots filled, and is never refused for owing a `receipt`, `deployed`, `fact`, `verification`, `smoke`, `use-proof`, `live-use-proof`, or `contract` it could not have produced. Its mandatory stage gate is never activated on that path and no gate instance is created, so a skipped `staging-qa` and `production-smoke-live-qa` complete with no staging-QA or production-smoke gate verdict and add no gate state to the model; a stage already at `waiting_gate` cannot be skipped and completes or fails on its ordinary path. Its Board lane folds skipped exactly as `succeeded`, its per-group coverage reports the skip set as the denominator with the ordinary slots marked `not applicable (skipped)`, and its Project Delivery row reaches `done` from `in_progress` without merge, staging, or release facts while still requiring current proof for every declared exit criterion. The one non-skippable stage whose entry names a delivery target, `release-preflight`, is entered on the checkpoint's declared absence of that target, still fills its `manifest` slot, and still passes its gate. A skipped stage's ordinary entry contract does not gate its readiness — `staging-qa` becomes ready behind a skipped `staging-deploy` with no staging report in existence, and `production-smoke-live-qa` behind a skipped `production-deploy` with no production receipt — while every pinned graph dependency still holds, `skipped` counting as the predecessor's success-equivalent disposition. A stage that declares no skip predicate cannot be skipped at any risk tier; an unsatisfied predicate refuses the `skipped` request outright rather than converting or defaulting it, leaving the ordinary set as the stage's only path; a checkpoint whose delivery-surface field is undeclared rather than declared-absent is `STATE_UNKNOWN`, refuses the skip, and is not treated as absence; and a zero-exit-criterion checkpoint remains visibly unconfigured rather than `done`. | Non-software run trace with filled skip sets and an assertion that no ordinary slot and no stage gate of a skipped stage is filled, demanded, or passed, plus a `waiting_gate`-cannot-be-skipped negative, per-stage skippability matrix, a readiness trace showing no stage waits on an entry artifact its skipped predecessor never produced, unsatisfied-predicate and undeclared-surface denials, per-group coverage snapshot, Board fold and Project Delivery row snapshots, and a zero-criterion anti-fixture |
 
 ### Evidence
 
@@ -2922,7 +3292,8 @@ Each criterion is pass/fail. Evidence must be attached to the ctower build ticke
 | <a id="ac-evd-04"></a>AC-EVD-04 | Crew/runner cannot append protected verdict/resolution/freeze events or satisfy an independent gate on authored content. | Complete negative authorization matrix |
 | <a id="ac-evd-05"></a>AC-EVD-05 | Every major stage verifier in the matrix emits reproducible evidence; when the I2.4 browser surface is active, UI QA uses every visible control and proves outcome/tenant isolation, not page load. | Stage evidence report; I2.4 browser recording/screenshots and tenant identities where applicable |
 | <a id="ac-evd-06"></a>AC-EVD-06 | Evidence/object bytes verify by digest after upload and after restore; corruption is rejected/detected and never linked as durable evidence. | Corrupt upload/restore object tests |
-| <a id="ac-evd-07"></a>AC-EVD-07 | Each success-capable stage declares at least one stable required slot using the recognized `ci-job`, `image-digest`, `screenshot`, `tag`, `url+digest`, `artifact-digest`, or `transcript` vocabulary and a criterion-bound evidence contract. `succeeded` and evidence-backed `skipped` are rejected with an exact zero-mutation unmet list while any slot is missing, mismatched, invalidated, expired, revoked, or unknown. Board, Ticket, and Project Delivery render such a slot as unfilled, with `STATE_UNKNOWN` when applicable, and never as pass or omission. The successful stage references the complete slot-manifest digest plus one satisfying signing Evidence and assignment interval whose principal matches `Evidence.verifier_principal`; no duplicate seat/principal field exists. | Publication negatives for empty/duplicate/unknown slot contracts; transition state-diff matrix for every unfilled reason; Board/Ticket/Project Delivery API/CLI snapshots and I2.4 browser captures; signer-principal/assignment/manifest mismatch and invalidation-after-success trace |
+| <a id="ac-evd-07"></a>AC-EVD-07 | Each success-capable stage declares at least one stable required slot using the recognized `ci-job`, `image-digest`, `screenshot`, `tag`, `url+digest`, `artifact-digest`, or `transcript` vocabulary and a criterion-bound evidence contract, and a skip-declaring stage declares a second alternative skip slot set with its own signing slot. The requested disposition resolves exactly one set — `succeeded` the ordinary set, evidence-backed `skipped` the skip set, the latter admissible only while the pinned predicate holds on accepted durable facts — and both dispositions are rejected with an exact zero-mutation unmet list while any slot **of the resolved set** is missing, mismatched, invalidated, expired, revoked, or unknown. A run proves both directions: a stage whose predicate holds completes on its skip set alone with no ordinary slot filled, and the same stage with an unsatisfied or `STATE_UNKNOWN` predicate has its `skipped` request refused with the predicate as the unmet item and advances only by completing its ordinary set. Board, Ticket, and Project Delivery render an unfilled slot as unfilled, with `STATE_UNKNOWN` when applicable, and never as pass or omission, and render a skipped stage's ordinary slots as `not applicable (skipped)` with the predicate reference rather than as filled. The successful stage references the resolved set's complete slot-manifest digest plus one satisfying signing Evidence and assignment interval whose principal matches `Evidence.verifier_principal`; no duplicate seat/principal field exists. | Publication negatives for empty/duplicate/unknown slot contracts; resolved-set transition state-diff matrix for every unfilled reason plus a skip-completes/skip-refused pair on the same stage; Board/Ticket/Project Delivery API/CLI snapshots and I2.4 browser captures; signer-principal/assignment/manifest mismatch and invalidation-after-success trace |
+| <a id="ac-evd-08"></a>AC-EVD-08 | Every slot of the published `engineering.software-factory` package, ordinary and skip alike, resolves to a recognized v1 evidence kind and a re-checkable reference, and no new evidence kind is introduced; the inventory diff names each recognized kind the package declares no slot for and why. Each of the six skip slot sets binds the predicate revision, the exact accepted durable facts that satisfied it, and the signer, and binds no claim that the stage's work occurred. `plan.criteria` binds each frozen acceptance criterion's pass condition and its evidence contract, the named verification method; `implement.warm-gate` binds the declared warm-gate command, exit status, environment/image digest, and candidate digest; every `use-proof`, `live-use-proof`, and `verification` slot binds scenario or probe, bounded cursor or time range, environment identity, and subject digest, plus a content-addressed rendered capture when the user-interface predicate applies; `risk-derived-review.round-manifest` binds the complete required and applicable perspective set with each verdict identity and effective-identity family. A prose claim that work was reviewed, tested, documented, or shipped fills no slot, and a criterion with no verification method fails publication. | Per-slot contract conformance suite, evidence-kind inventory diff against the v1 vocabulary, prose-only rejection corpus, missing-verification-method publication negative, and a golden filled-slot manifest snapshot |
 
 ### Release
 
@@ -3179,6 +3550,18 @@ attestations, while I2.4 owns Board, Ticket, and Project Delivery **browser** re
 Thus R2134 changes the I1 contract and evidence fixtures explicitly but does not move a checkpoint or pull
 the deferred browser into I1.
 
+**Delivery-sprint increment placement.** The enforced delivery sprint is Increment 2 work with exactly one
+declared L0 precursor, named here rather than absorbed silently. L0/I1 add only the optional stage-group
+field and its two publication rules to the same Stage/Workflow schema that CT-L0-004 is already deepening
+for typed evidence slots, plus their negative fixtures; this is schema surface with zero I1 behavior. I1
+publishes no grouped package, renders no group rollup, and keeps `ctower.trust-spine-four-stage@1`
+ungrouped, so no I1 acceptance criterion, projection, evidence fixture, or checkpoint moves. Everything
+else — the seven declared groups, the per-stage required slot sets, the mandatory stage gates, the
+perspective independence contracts and family-diversity placement rules, the finite bounds including
+`max_nonprogressing_candidate_mutations`, the skip predicates, the refusal semantics, and the non-engineering
+counterpart fixture — belongs to I2.1, and executing the whole sprint once on a real ticket belongs to
+I2.6.
+
 #### I1 exit evidence
 
 - Repository, product, task-management, durability, evidence, security, UX, migration, and operations criteria applicable to I1 pass; every deferred capability is explicitly `not exercised`.
@@ -3222,9 +3605,21 @@ The same generic Workflow Module now drives arbitrary versioned graphs and polic
 
 The pinned `engineering.software-factory@1` policy selects, for this ticket only, one required `code-review` perspective covering correctness plus maintainability, `max_nonpassing_rounds: 2`, `max_repairs_per_lineage: 2`, and `max_candidate_generations: 4`. Every started review job increments the immutable observed `total_executions`; it is never plan-authored capacity. These are software-package values, not platform tiers, and automation is additionally bounded by no-progress, deadline, quota, and hard-safety rules. One current-digest `code-review` pass advances the review bundle immediately; only a terminal nonpassing round consumes `max_nonpassing_rounds`. API/CLI QA, documentation verification, release preflight, staging QA, production smoke/live QA, and retro remain mandatory stage gates rather than extra review perspectives; the ticket also forces one local runner loss and one Commander reasoning-job failover.
 
+The golden ticket traverses all seven declared delivery-sprint groups and omits none. `design` is the only
+stage it may reach through an evidence-backed skip, because a read-only build-metadata endpoint satisfies
+neither the user-interface nor the material-architecture predicate: it presents no user-visible surface,
+and it adds one operation inside the already-published `/v1` HTTP surface and one command inside the
+already-published `ctowerctl` surface, under their existing compatibility contracts, so it introduces no
+new Module boundary, persistent model, protocol, or topology. That stage completes on its skip slot set
+alone, with no `contract` slot filled; every other stage completes with its ordinary required slots filled
+and signed. Its Standard-tier selection keeps the single required `code-review` perspective, and that
+perspective's satisfying verdict must resolve to a declared eligible family other than the family that
+produced the candidate. The compact traceability report shows per-group `filled / required` coverage plus
+the one skip proof.
+
 #### I2 included scope
 
-1. Complete the deep generic Workflow Module behind the I1 interface: arbitrary pinned graphs, stage attempts/jobs, package-defined classification, required perspectives and gates, configurable finite bounds, stable failure lineages, candidate/nonpassing/repair/execution facts, selective proof invalidation, typed routes, operator waivers, and readiness explanations.
+1. Complete the deep generic Workflow Module behind the I1 interface: arbitrary pinned graphs, declared stage groups and their derived coverage rollup, stage attempts/jobs, package-defined classification, required perspectives and gates, perspective independence contracts and the separate declared family-diversity placement rules, configurable finite bounds including the no-progress rule, declared skip predicates with their replacing skip slot sets, stable failure lineages, candidate/nonpassing/repair/execution facts, selective proof invalidation, typed routes, operator waivers, and readiness explanations.
 2. Versioned Commander capability resolution, durable accountable custody, orchestration-plan revisions, strongest-healthy profile selection, wake/reasoning jobs, checkpoints, escalation, and recovery without counter or ownership reset.
 3. Content-bearing Persona/Skill/Profile materialization; full evidence attestations and dependency graph; independent/sealed review where the pinned package requires it.
 4. Durable accepted/leased/running/terminal jobs, leases/fencing, cursors, ACKs, continuous structured chunks and explicit gaps, checkpoint/reconciliation, a versioned CommandGuard enforced at every final pre-dispatch boundary, and the local Codex/Claude harness plus process/tmux supervisor compositions required by the golden ticket. No general remote-provider or image Seam.
@@ -3241,7 +3636,8 @@ The pinned `engineering.software-factory@1` policy selects, for this ticket only
 
 #### I2 exit evidence
 
-- Generic software and non-engineering fixtures prove stage names, classification, perspectives, gates, and finite limits are package data rather than engine branches or universal tiers.
+- Generic software and non-engineering fixtures prove stage names, stage groups, classification, perspectives, gates, and finite limits are package data rather than engine branches or universal tiers.
+- The published `engineering.software-factory` package declares the seven delivery-sprint groups, one total stage-to-group mapping, every stage's required typed evidence slots and signing slot, its mandatory stage gates, its perspective independence contracts and family-diversity placement rules, its finite bounds including `max_nonprogressing_candidate_mutations`, and its six declared skip predicates with their replacing skip slot sets. Each refusal in [AC-WF-26](#ac-wf-26) is proven with zero mutation, and a non-software run completes through evidence-backed skips per [AC-WF-27](#ac-wf-27).
 - Every plan field is policy-valid; consumed facts are server-owned and survive restart/reassignment. Missing required gates/perspectives, invalid bounds, client counters, non-independent reviewers, and exhausted lineages fail closed with one escalation.
 - Ticket detail reconstructs the journey without legacy ledgers, task/status files, raw terminal state, or vendor session state.
 - Forced runner loss is detected within 60 seconds, stale fencing is rejected, and checkpointable work resumes within five minutes. Commander-job loss preserves the same accountable principal and plan history.
@@ -3305,7 +3701,7 @@ Each validation command below is designated as part of the item’s deliverable.
 | CT-L0-001 | Freeze authoritative DDL/FKs for Record, Catalog, Work, Workflow/Proof, Runtime, effects, imports, outbox, and projections; record only durable invariant fields needed to add future placement/image packages without publishing their Seams. | None | Engineer + Engineering Manager + CSO review | `packages/ctower-kernel/migrations/`; `contracts/domain/`; `contracts/execution/` | FK/owner equality, privileges/immutability, reference-safe GC, projection rebuild | `uv run pytest tests/contracts/repository tests/contracts/execution tests/modules/record -q` |
 | CT-L0-002 | Freeze canonical event bytes/hash chain, `Idempotency-Key=client_command_id`, replay tombstones, CAS, and cross-process vectors. | CT-L0-001 | Engineer + Review | `contracts/domain/events/`; `tests/contracts/events/` | Mutation proof, day29/multi-aggregate exact replay and conflict vectors | `uv run pytest tests/contracts/events -q` |
 | CT-L0-003 | Freeze canonical OpenAPI/RFC 9457, operation IDs, generated clients, CLI parity registry, and protected-command schemas. | CT-L0-001 | Engineer + Tech-writer | `contracts/http/`; `generated/`; `tests/conformance/http/` | Lint/examples, clean codegen, zero unmapped nonexempt operations | `just codegen-check && uv run pytest tests/conformance/http -q` |
-| CT-L0-004 | Freeze domain-neutral Workflow/Execution/Gate/Evidence schemas, the typed required-stage-evidence-slot vocabulary/contracts and signing-assignment binding, configurable plan fields, server-owned counters/stable lineages, revision-pinned Routine/trigger and wake/job/lease/cursor/ACK/gap vocabulary, four-stage fixture, and local execution composition. Record remote/image/extension fail-closed invariants as deferred; create no general provider Seam. | CT-L0-001..003 | Engineering Manager + Engineer + CSO | `contracts/workflow/`; `contracts/runner/`; `contracts/execution/`; `contracts/runtime/`; `packs/workflows/`; `packs/policies/`; `packs/routines/` | Cross-package slot/publication/signing/no-reset/exhaustion and clock/DST/restart vectors; forbidden stage-name branch; local composition; deferred capability manifest | `uv run pytest tests/contracts/workflow tests/contracts/execution tests/contracts/runtime tests/conformance/runner -q` |
+| CT-L0-004 | Freeze domain-neutral Workflow/Execution/Gate/Evidence schemas, the typed required-stage-evidence-slot vocabulary/contracts and signing-assignment binding, the optional stage-group field and its total-mapping/nonempty-group publication rules, configurable plan fields, server-owned counters/stable lineages, revision-pinned Routine/trigger and wake/job/lease/cursor/ACK/gap vocabulary, four-stage fixture, and local execution composition. Record remote/image/extension fail-closed invariants as deferred; create no general provider Seam. | CT-L0-001..003 | Engineering Manager + Engineer + CSO | `contracts/workflow/`; `contracts/runner/`; `contracts/execution/`; `contracts/runtime/`; `packs/workflows/`; `packs/policies/`; `packs/routines/` | Cross-package slot/publication/signing/no-reset/exhaustion and clock/DST/restart vectors; stage-group publication negatives with the four-stage fixture staying ungrouped; forbidden stage-name and group-name branch; local composition; deferred capability manifest | `uv run pytest tests/contracts/workflow tests/contracts/execution tests/contracts/runtime tests/conformance/runner -q` |
 | CT-L0-005 | Build the canonical acceptance/chaos fixture corpus and evidence-manifest format for both increments, including typed filled/unfilled/unknown stage slots and signer mismatch, off-host acknowledgement, restore/key/journal, API/CLI/outbox poison, local host/log/finalize, deferred-browser, and deferred-capability failures. | CT-L0-001..004 | QA + Engineer | `tests/fixtures/`; `tests/chaos/`; `contracts/evidence/` | Deterministic tenant/principal/clock corpus, slot invalidation/signing fixtures, acceptance-loss and fault manifests | `uv run pytest tests/contracts/evidence tests/chaos/contracts -q` |
 | CT-L0-006 | Publish all required Persona/Skill/Profile component revisions, migration provenance, fixtures, aliases, and harness materializations; reject unresolved content refs. | CT-L0-003, CT-L0-004 | Engineering Manager + owning personas + Review | `packs/personas/`; `packs/skills/`; `tests/contracts/components/` | Content for office-hours/plan/design/review/ui-qa; source digests; missing-content/alias/conformance denials | `uv run pytest tests/contracts/components/test_materialization.py -q` |
 | CT-L0-007 | Establish the docs-first monorepo skeleton, Repository Policy Module, coding standards, strict lint/type/format/security/pre-commit/observability configs, manifest-scoped `just check`/`just verify`, Python compatibility gate, dependency/ownership rules, universal `VersionedComponent` Catalog, CompanyBundle and first-tenant bootstrap schemas/examples, generated-client path, and deployment homes. | None | Engineering Manager + Engineer + CSO | Root manifests/configs; `docs/contributing/CODING_STANDARDS.md`; `tools/checks/`; `tests/repository/`; `contracts/observability/`; `deploy/observability/`; `contracts/components/`; `contracts/company/`; `company/` | AC-ADM/COMP/ARCH/QUAL vectors, exact runtime report, expected-suite manifest, bootstrap authority/replay/disable matrix, bundle round trip/no-secret/no-runtime matrix, Interface/deletion/size/complexity/exception/telemetry/cycle/owner/codegen clean | `just check && just verify` |
@@ -3329,16 +3725,16 @@ Each validation command below is designated as part of the item’s deliverable.
 
 | Stable ID | Goal | Dependencies | Owning capability/persona | Files/components | Exit evidence | Designated validation command |
 |---|---|---|---|---|---|---|
-| CT-I2-001 | Deepen the generic Workflow Module and publish `engineering.software-factory@1` Workflow/Execution/Gate/Evidence revisions: arbitrary stages, package classification, `required_perspectives`, configurable finite bounds, append-only facts, stable lineages, typed routes, and readiness evaluations. | CT-I1-008, CT-L0-004, CT-L0-006..007 | Engineer + Engineering Manager | Kernel `workflow/`; `packs/workflows/`; `packs/policies/execution/` | Cross-package graph/lineage/no-reset/refusal/single-escalation proofs | `uv run pytest tests/modules/workflow tests/acceptance/increment-2/test_workflow.py -q` |
+| CT-I2-001 | Deepen the generic Workflow Module and publish `engineering.software-factory@1` Workflow/Execution/Gate/Evidence revisions: arbitrary stages, the seven declared delivery-sprint stage groups and their derived coverage rollup, per-stage required evidence slots and signing slots, package classification, `required_perspectives`, configurable finite bounds including `max_nonprogressing_candidate_mutations`, declared skip predicates with their replacing skip slot sets, append-only facts, stable lineages, typed routes, and readiness evaluations. | CT-I1-008, CT-L0-004, CT-L0-006..007 | Engineer + Engineering Manager | Kernel `workflow/`; `packs/workflows/`; `packs/policies/execution/` | Cross-package graph/group/lineage/no-reset/refusal/single-escalation proofs; AC-WF-25 publication negatives; AC-WF-27 non-software skip run | `uv run pytest tests/modules/workflow tests/acceptance/increment-2/test_workflow.py -q` |
 | CT-I2-002 | Implement keyed documents/artifacts, full typed stage-slot Evidence/attestations/signing assignments/dependencies/invalidation, gate instances and sealed verdict attempts. | CT-I2-001, CT-I1-003 | Engineer + Review + CSO | Kernel `proof/`; `contracts/evidence/` | Self-review and signer mismatch denial, sealed reveal, selective slot/gate invalidation, quarantine promotion | `uv run pytest tests/modules/proof tests/acceptance/increment-2/test_gates.py -q` |
 | CT-I2-003 | Implement strongest-healthy Commander profile resolution and effective manifests pinning the local harness/supervisor/target/workspace/telemetry revisions, secret refs, egress/resources, and provenance. | CT-I2-001, CT-L0-007 | Engineer + CSO | Kernel `catalog/`, `runtime/`; `packs/personas/`; `apps/ctower-runner/compose.py` | Selection/failover, support-only denial, immutable local pins, and no-plaintext scans | `uv run pytest tests/modules/catalog tests/modules/runtime/test_profiles.py -q` |
 | CT-I2-004 | Implement Runtime jobs/leases/fencing/cursors/ACKs/log chunks/gaps/checkpoints/reconciler; the versioned CommandGuard required by [issue #17](https://github.com/simjak/ctower/issues/17) at every final local Harness and Supervisor command-dispatch boundary; and the justified local process/tmux plus Codex/Claude compositions. Freeze exact guard mechanics with these first real consumers, not before, and publish no general remote/image Seam. | CT-I2-001, CT-I2-003 | Engineer + DevOps + QA + CSO | Kernel `runtime/`; `packages/ctower-runner-sdk/`; `apps/ctower-runner/`; conformance tests | Forced loss/resume, stale denial, zero orphans, local composition; every registered command-dispatch Adapter's guard invocation, target resolution, zero block execution, one-use override/replay/expiry, redacted receipts, and bypass rejection; remote/image absent and not exercised | `uv run pytest tests/conformance/runner tests/chaos -q` |
 | CT-I2-005 | I2.4 browser sub-checkpoint: realize D22's React/Vite/browser-session/CSRF choices as Home, Board, contextual Ticket, narrow Fleet/Analytics, and the rich Ticket journey; deepen them with run manifest, local placement, ACK/gap, steering, readiness refusal, typed required evidence-slot/signing-seat state, CommandGuard Attention/grant/receipt state, source-linked project proof/gates/blockers/decisions, cost/time, incidents, retro, and interactive Project Delivery projection row detail. | CT-I2-002, CT-I2-004, CT-L0-009; deferred alias CT-I1-005 | Designer + UI QA | `contracts/http/`; generated Python/TS clients; `apps/ctower-api/`; `apps/ctowerctl/`; `apps/ctower-web/src/surfaces/` | Exactly-five routes, every-control trace, replay/gap/steer modes, browser-session/CSRF/tenant-isolation proof, filled/unfilled/invalidated/unknown slot and signer browser states, generated API snapshots and CLI transcript, authorized Project Delivery projection drill-down, exact-scope guard confirmation and linked receipt views, accepted/refused zero-diff screenshots | `uv run pytest tests/acceptance/increment-2/test_guard_attention.py -q && pnpm run test:e2e` |
-| CT-I2-006 | Implement package-defined classification/overlays and Execution Policy evaluation, mandatory stage gates, required perspectives, configurable limits, independence/conflict/diversity, protected waivers, and software/non-engineering fixtures. | CT-I2-002..003 | Engineering Manager + Engineer + CSO | Kernel `workflow/`, `access/`; policy packs | Missing/invalid-bound/removal/client-count/independence denials and coherent current-digest traces | `uv run pytest tests/modules/workflow/test_execution_policy.py -q` |
+| CT-I2-006 | Implement package-defined classification/overlays and Execution Policy evaluation, the delivery sprint's mandatory stage gates, required perspectives, configurable limits, non-waivable independence/conflict rules, the separate declared family-diversity placement rules and their per-tier waivability, the no-progress rule, protected waivers, and software/non-engineering fixtures. | CT-I2-002..003 | Engineering Manager + Engineer + CSO | Kernel `workflow/`, `access/`; policy packs | Missing/invalid-bound/removal/client-count/independence/family-collapse denials, no-progress escalation, and coherent current-digest traces | `uv run pytest tests/modules/workflow/test_execution_policy.py -q` |
 | CT-I2-007 | Implement Effects releases/environments, one live `systemd-vps/v1` integration plus its fault-injection test implementation, scoped grants/receipts, root-owned artifact trust verification, self-restart journal recovery, and effect reconciliation. Activation must commit the signed expected-source inventory revision before the first grant/effect. Keep the boundary internal until a second real provider Adapter earns a public Seam. | CT-I2-006, CT-I2-004 | DevOps + Engineer + CSO | Kernel `effects/`; `packages/ctower-systemd-vps/`; `deploy/systemd/`; effect conformance | Wrong-target/expired/direct/provenance denials, pre-activation inventory-update proof, missing-source restore denial, crash matrix, real staging/prod digest, self-upgrade recovery, and no generalized provider Seam | `uv run pytest tests/modules/effects tests/conformance/effect-provider -q` |
 | CT-I2-008 | Implement production smoke/live-QA incident -> grant revoke -> safe containment/rollback -> exact verification -> triage-before-repair and retro linkage. | CT-I2-007 | DevOps + CSO + QA | Kernel `effects/`, `attention/`, `workflow/`; runbooks | Injected smoke/live-QA failures, rollback receipt/verification, direct-repair denial | `uv run pytest tests/acceptance/increment-2/test_incident_rollback.py -q` |
 | CT-I2-009 | Implement Projections/Analytics for cost allocation, attention baseline, approved task-flow/priority/blocker measures, stage/recovery/release/stream/local-placement KPIs, Project Delivery projection visualizations/trends/cost-time and cross-domain views, retro, and improvement evaluation. | CT-I2-001..008 | Engineer + Commander/Tech-writer review | Kernel `projections/`, `work/`; Analytics surface | Allocation=1, precision, WIP provenance, KPI watermarks, Project Delivery projection invalidation/restore/cross-domain proofs, baseline/absolute targets, and retro evaluation | `uv run pytest tests/modules/projections tests/acceptance/increment-2/test_metrics.py -q` |
-| CT-I2-010 | Execute the golden ticket with Commander continuity, configurable policy fields, forced Commander/runner loss, `/v1/meta/build` + `ctowerctl`, independent gates, signed root-verified systemd staging/prod effects, incident/rollback rehearsal, retro, resolve, close, and compact traceability audit. | CT-I2-001..009 | Commander accountable to terminal; Engineer author; independent Review/QA/DevOps | Whole `ctower` deployment | All I2 evidence, local component pins, failover/receipts, permanent journey; no remote/image/executable-extension claim | `ctowerctl ticket verify CT-I2-010 --require workflow-complete,evidence-current,gates-valid,staging-verified,production-verified,retro,resolved,closed` |
+| CT-I2-010 | Execute the golden ticket across all seven declared delivery-sprint groups with Commander continuity, configurable policy fields, forced Commander/runner loss, `/v1/meta/build` + `ctowerctl`, independent gates, signed root-verified systemd staging/prod effects, incident/rollback rehearsal, retro, resolve, close, and compact traceability audit. | CT-I2-001..009 | Commander accountable to terminal; Engineer author; independent Review/QA/DevOps | Whole `ctower` deployment | All I2 evidence, per-group `filled / required` coverage with the single `design` skip proof, family-diverse `code-review` verdict, local component pins, failover/receipts, permanent journey; no remote/image/executable-extension claim | `ctowerctl ticket verify CT-I2-010 --require workflow-complete,evidence-current,gates-valid,staging-verified,production-verified,retro,resolved,closed` |
 
 ### Bootstrap backlog import completion
 

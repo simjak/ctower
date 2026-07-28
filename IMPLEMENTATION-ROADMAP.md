@@ -6,7 +6,7 @@
 | Product increments | Exactly two: Increment 1 and Increment 2 |
 | Work authority before cutover | SPEC temporary bootstrap backlog |
 | Work authority after cutover | ctower tickets only |
-| Last reviewed | 2026-07-23 |
+| Last reviewed | 2026-07-28 |
 
 This roadmap makes the normative build order easier to execute. It does not create a third scope model,
 approve work, mirror ticket status, or override the stable IDs, acceptance criteria, validation commands,
@@ -274,9 +274,18 @@ candidate/nonpassing/repair/execution facts, typed failure routes, selective Pro
 review, readiness explanations, and protected waivers. A different four-stage non-engineering package must
 run on the same evaluator with different stages, participants, perspectives, gates, and bounds.
 
-**Exit:** no engine branch or platform default depends on software-factory stage/tier vocabulary; missing
-perspectives/gates, client-authored counters, self-review, invalid bounds, no-progress, and exhaustion fail
-closed with one deduplicated escalation.
+This is also where the delivery sprint stops being a convention and becomes package data. The published
+`engineering.software-factory` revisions declare the seven sprint stage groups over the sixteen pinned
+stages, each stage's ordinary required typed evidence slots and signing slot, the mandatory stage gates,
+the perspective independence contracts and family-diversity placement rules, the finite bounds including
+the no-progress rule, and the six skip predicates whose alternative skip slot sets replace the ordinary
+required slots and signing slot of the stage they excuse. The only earlier work is the optional stage-group
+field frozen with CT-L0-004's stage schema; I1 publishes no grouped package and renders no group rollup.
+
+**Exit:** no engine branch or platform default depends on software-factory stage/tier/group vocabulary;
+missing perspectives/gates, client-authored counters, self-review, family collapse, invalid bounds,
+unfilled required slots, silent skips, no-progress, and exhaustion fail closed with one deduplicated
+escalation.
 
 ### I2.2 — Durable Runtime and local execution continuity
 
@@ -383,6 +392,14 @@ Use one permanent software-factory ticket to add `GET /v1/meta/build` and matchi
 package, not the engine, declares the full path from think/plan/design through implementation, local QA,
 review, docs, release preflight, merge, staging, production verification, retro, resolve, and close.
 
+The ticket traverses all seven declared sprint groups and omits none. `design` is its only evidence-backed
+skip, because a read-only build-metadata endpoint satisfies neither the user-interface nor the
+material-architecture predicate: it adds one operation inside the already-published `/v1` surface and one
+command inside the already-published `ctowerctl` surface, under their existing compatibility contracts, so
+it introduces no new protocol. That stage completes on its skip slot set alone, with no `contract` slot
+filled; every other stage completes with its ordinary required slots filled and signed, and the
+traceability report shows per-group `filled / required` coverage plus that one skip proof.
+
 The golden policy selects one base `code-review` perspective covering correctness plus maintainability,
 with package-specific finite nonpassing, repair, and candidate-generation bounds. Conditional `security`
 or `rendered-design` activates only when its predicate applies. API/CLI QA, docs truth, release preflight,
@@ -403,8 +420,8 @@ Every package composes the same two platform concepts:
 
 | Concept | Answers | Never owns |
 |---|---|---|
-| Workflow | Which stages and activity classes exist? Which edges, parallel groups, failure routes, gate locations, and terminal conditions are legal? | Participants, model choice, consumed counters, or undeclared edges |
-| Execution Policy | Who may execute/review? Which declared gates/perspectives activate? What finite bounds, timeouts, placement, budgets, escalation, and waiver constraints apply? | New Workflow nodes/edges, verdicts, evidence, or server-owned consumption |
+| Workflow | Which stages, activity classes, and optional stage groups exist? Which edges, parallel groups, failure routes, gate locations, skip predicates, required evidence slots, and terminal conditions are legal? | Participants, model choice, consumed counters, or undeclared edges |
+| Execution Policy | Who may execute/review? Which declared gates/perspectives activate? What independence, finite bounds, timeouts, placement, budgets, escalation, and waiver constraints apply? | New Workflow nodes/edges, groups, slots, verdicts, evidence, or server-owned consumption |
 
 The software factory is one versioned package using those concepts. A research, hiring, legal, incident,
 or accounting package may choose completely different stage keys and review perspectives without changing
