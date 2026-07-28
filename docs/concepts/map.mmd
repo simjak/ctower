@@ -1,0 +1,66 @@
+graph LR
+    CAT["1. Set it up"]
+    PROF["1a. Agent profile: declared only"]
+
+    THREAD["2. Work arrives"]
+    TRIGS["2a. Scheduled routine"]
+    TRIGP["2b. Webhook or event: not built"]
+
+    TICKET["3. It becomes a ticket"]
+
+    WF["4. It picks a process"]
+    POL["4a. Policy for this stage"]
+
+    JOB["5. The work is done"]
+    RUN["5a. Runners and leases: not built"]
+
+    CRIT["6. Done is agreed first"]
+
+    EV["7. Proof is attached"]
+    SLOT["7a. Typed slots: not built"]
+
+    VER["8. Someone else checks it"]
+
+    GATE{"9. Can this stage close?"}
+    CLOSE["10. It closes"]
+    REFUSE["10a. Refusal: nothing changes"]
+
+    EFF["11. It reaches the world: not built"]
+
+    BOARD["12. You can see it all"]
+    ATT["12a. Needs You: no API yet"]
+
+    RETRO["13. It learns: not built"]
+
+    CAT --> PROF
+    CAT --> THREAD
+    THREAD -->|promote| TICKET
+    TICKET --> WF
+    WF --> POL
+    WF --> JOB
+    JOB --> CRIT
+    CRIT --> EV
+    EV --> VER
+    VER --> GATE
+    GATE -->|yes| CLOSE
+    GATE -->|no| REFUSE
+    CLOSE --> EFF
+    EFF --> BOARD
+    BOARD --> RETRO
+    BOARD -.-> ATT
+    TRIGS --> THREAD
+    TRIGP -.-> THREAD
+    PROF -.-> JOB
+    RUN -.-> JOB
+    SLOT -.-> EV
+    RETRO -.->|a new revision| CAT
+
+    classDef built fill:#dafbe1,stroke:#1a7f37,stroke-width:2px,color:#0a3622
+    classDef declared fill:#fff8c5,stroke:#9a6700,stroke-width:2px,color:#4d2d00
+    classDef planned fill:#f6f8fa,stroke:#8c959f,stroke-width:1px,color:#57606a
+    classDef gate fill:#ddf4ff,stroke:#0969da,stroke-width:2px,color:#032f62
+
+    class CAT,THREAD,TRIGS,TICKET,WF,POL,CRIT,EV,VER,CLOSE,REFUSE,JOB,BOARD built
+    class PROF,ATT declared
+    class TRIGP,SLOT,RUN,EFF,RETRO planned
+    class GATE gate

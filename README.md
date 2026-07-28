@@ -7,15 +7,19 @@ instead: a step cannot close until the thing that proves it is attached — a te
 digest of what was deployed, a review by someone other than the author. If the proof is missing, the work
 is not done, and ctower says so plainly rather than letting it through.
 
-**In one sentence:** agents can plan, build and finish work without asking permission at every step, and
-nothing they do reaches the outside world without a narrow, short-lived permission and a receipt that
-records what happened.
+**The rule it is built around:** agents can plan, build and finish work without asking permission at every
+step, and nothing they do reaches the outside world without a narrow, short-lived permission and a receipt
+that records what happened.
 
 > [!IMPORTANT]
 > **Status: pre-alpha, version `0.0.0`.** There is no release, no package, and no supported way to install
 > or deploy ctower. The command line is the only interface; browser work is deliberately deferred. The part
 > that reaches the outside world — deploys, messages, payments — is specified but not built. Do not use
 > this to manage real work yet. [What works today](#what-works-today) is the honest split.
+
+**Right now you can:** [see exactly what works](#what-works-today) ·
+[clone it and run its checks](#getting-started) ·
+[read the docs](https://simjak.github.io/ctower/) · [see the whole design in one map](docs/concepts/map.md)
 
 ## Why it exists
 
@@ -129,8 +133,12 @@ project's own checks. Everything in the right column is specified and designed, 
 | Inbound messages stored durably with their source, and a step that turns one into a ticket without duplicating it if the request is retried | Memory that lets a worker recall how something was solved months ago |
 | A self-test that drives one ticket through the whole four-step flow against a real PostgreSQL database | Richer process authoring and deeper rules than the flow above |
 
-One thing worth naming: a long-running instance that keeps its data across restarts has been proven on a
-development branch, but it is **not** in the main line yet, so it is not claimed above.
+One boundary worth naming plainly. Development instances of ctower do get stood up and left running, and
+work is under way to make that repeatable. None of that is a supported deployment: such an instance listens
+only on its own machine, makes no production or data-safety promise, and is not something you should put real
+work into. Whatever exists for standing one up lives in the deployment notes under
+[`deploy/`](deploy/README.md) and in the [development walking slice](https://simjak.github.io/ctower/getting-started/),
+never in this README.
 
 ## Getting started
 
@@ -153,9 +161,11 @@ pnpm install --frozen-lockfile --ignore-scripts
 just check
 ```
 
-You also need a [Gitleaks](https://github.com/gitleaks/gitleaks) binary on your `PATH`; the checks call it
-and never download anything themselves. The
-[development guide](https://simjak.github.io/ctower/contributing/development/) covers the rest.
+Before that last line works you need Python 3.12–3.14, Node 24 with pnpm, and `just`, Actionlint and
+Gitleaks on your `PATH`. The checks call those binaries and never download anything themselves, so a missing
+one is a `command not found`, not a silent skip.
+[Repository setup](https://simjak.github.io/ctower/start-here/repository-setup/) lists every prerequisite
+with its exact version.
 
 **3. Read the test that proves the flow.** `tests/acceptance/increment-1/test_four_stage_workflow.py` is
 the shortest honest description of what ctower actually enforces. `just verify` runs the full set against
