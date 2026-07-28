@@ -1,0 +1,249 @@
+# CLI reference
+
+`ctowerctl` — also installed as `ctl` — is the complete command surface. There are **45 authored server
+commands** and **7 local spool commands**. There is no operation-ID escape hatch: an unrecognized command is
+a usage error, not a passthrough.
+
+!!! info "Where this page comes from"
+    Every command name, flag, and choice list on this page is derived from
+    `apps/ctowerctl/src/ctowerctl/_parser.py`, and the command set is contract-bound: the test
+    `test_parser_exposes_every_authored_name_without_operation_dispatch` in
+    `tests/modules/ctowerctl/test_cli_boundaries.py` asserts the parser's authored names equal the generated
+    registry `CLI_OPERATIONS`, which is generated from `contracts/http/openapi.yaml`. If a command exists,
+    it appears here; if it appears here, it exists.
+
+## Invocation shape
+
+```text
+ctl --base-url <url> <area> <action> [<positional>] [--flags]
+```
+
+`--base-url` is required on **every** invocation, including local spool commands, because the spool is
+scoped per origin.
+
+### `--base-url` rules
+
+- Must be absolute `http` or `https`.
+- Cleartext `http` is permitted **only** for loopback (`localhost`, or any loopback IP).
+- Must not carry userinfo, a query string, or a fragment.
+
+Violations are usage errors (exit `64`).
+
+### Authority
+
+Every server command reads one authority line from **stdin**. It is never a flag and never an environment
+variable. Maximum 8192 characters; the trailing newline is stripped.
+
+```bash
+printf '%s\n' "${authority}" | ctl --base-url http://127.0.0.1:8080 control health
+```
+
+Missing or oversized authority is a usage error.
+
+### Exit codes
+
+| Exit | Meaning |
+|---:|---|
+| `0` | Query succeeded, or mutation accepted |
+| `64` | Invalid command, invalid input, or missing stdin authority |
+| `69` | Permanent server refusal, quarantine barrier, or failed assertion |
+| `74` | Local spool, keyring, filesystem, or integrity failure |
+| `75` | Durably queued, server unreachable, or `durability_pending` |
+
+Full semantics, including what to retry: [the agent operating contract](../agents/operating-contract.md).
+
+### Common flags
+
+| Flag | Applies to | Notes |
+|---|---|---|
+| `--command-id` | Every non-read mutation | Caller-supplied UUID; becomes the idempotency key. Reuse it to replay, never to submit different content |
+| `--expected-version` | Version-guarded mutations | Optimistic concurrency; a mismatch is `version-conflict` |
+| `--reason` | Authority and work mutations | Bounded metadata, never secret material |
+
+`<ticket_id>`, `<run_id>`, `<outbox_id>`, and `<sequence>` are positional.
+
+## Bootstrap
+
+One-time first-tenant ceremony. Not spooled.
+
+| Command | Flags |
+|---|---|
+| `bootstrap first-tenant` | `--command-id`, `--tenant-name`, `--tenant-slug`, `--operator-name`, `--operator-credential-ref`, `--operator-vault-ref`, `--commander-name`, `--commander-vault-ref` |
+
+All `*-ref` values are references. Never pass a credential value.
+
+## Ticket: capture and reads
+
+| Command | Positional | Flags |
+|---|---|---|
+| `ticket capture` | — | `--command-id`, `--initial-custodian-id`, `--priority {P0,P1,P2}`, `--source-kind`, `--source-ref`, `--title` |
+| `ticket create` | — | identical to `ticket capture` |
+| `ticket query` | `<ticket_id>` | — |
+| `ticket show` | `<ticket_id>` | identical to `ticket query` |
+| `ticket timeline` | `<ticket_id>` | — |
+| `ticket assignments` | `<ticket_id>` | — |
+| `ticket audit` | `<ticket_id>` | `--cursor` (≥ 0), `--limit` (≥ 1, server max 100) |
+
+`capture`/`create` and `query`/`show` are aliases of the same operations, `createTicket` and `getTicket`.
+
+## Ticket: authority
+
+| Command | Positional | Flags |
+|---|---|---|
+| `ticket comment add` | `<ticket_id>` | `--command-id`, `--body` |
+| `ticket assign` | `<ticket_id>` | `--command-id`, `--expected-version`, `--reason`, `--kind {current_assignee,stage_owner,reviewer}`, `--to-principal-id`, `--scope-ref` (optional) |
+| `ticket custody transfer` | `<ticket_id>` | `--command-id`, `--expected-version`, `--reason`, `--from-custodian-id`, `--to-custodian-id`, `--protected-transfer` (required flag) |
+
+`--protected-transfer` is mandatory and has no negative form. Custody transfer is a protected operation,
+distinct from assignment. See [custody](../concepts/tickets.md#custody).
+
+## Ticket: work and intents
+
+| Command | Positional | Flags |
+|---|---|---|
+| `ticket prioritize` | `<ticket_id>` | `--command-id`, `--expected-version`, `--reason`, `--priority {P0,P1,P2}`, `--urgent-evidence-ref` (optional) |
+| `ticket admit` | `<ticket_id>` | `--command-id`, `--expected-version`, `--reason` |
+| `ticket reopen` | `<ticket_id>` | `--command-id`, `--expected-version`, `--reason` |
+| `ticket defer` | `<ticket_id>` | `--command-id`, `--expected-version`, `--reason`, `--review-after` |
+| `ticket block` | `<ticket_id>` | `--command-id`, `--expected-version`, `--reason`, `--blocker-id`, `--blocker-kind {dependency,operator_action,policy,resource,technical}`, `--reason-class`, `--owner-principal-id`, `--source-ref`, `--resolution-condition`, `--board-impact` / `--no-board-impact`, plus optional `--affected-stage`, `--next-check-at`, `--dependency-ref` |
+| `ticket unblock` | `<ticket_id>` | `--command-id`, `--expected-version`, `--reason`, `--blocker-id`, `--resolution-evidence-ref` |
+| `ticket relation add` | `<ticket_id>` | `--command-id`, `--expected-version`, `--reason`, `--kind {parent_of,depends_on,blocks,duplicates,relates_to,caused_by}`, `--target-ticket-id` |
+
+`--review-after` and `--next-check-at` are ISO-8601 timestamps that **must** carry a UTC offset. A naive
+timestamp is rejected.
+
+`--board-impact` uses argparse's boolean-optional form: pass either `--board-impact` or
+`--no-board-impact`. Omitting both is an error.
+
+## Ticket: proof
+
+| Command | Positional | Flags |
+|---|---|---|
+| `ticket criteria freeze` | `<ticket_id>` | `--command-id`, `--expected-version` (≥ 0), `--candidate-digest`, `--criteria-file` |
+| `ticket evidence add` | `<ticket_id>` | `--command-id`, `--expected-version` (≥ 1), `--evidence-id`, `--criterion-key`, `--candidate-digest`, `--artifact-digest`, `--content-file` |
+| `ticket gate verdict` | `<ticket_id>` | `--command-id`, `--expected-version` (≥ 1), `--verdict-id`, `--criterion-key`, `--candidate-digest`, `--decision {pass,fail}` |
+
+Digests are `sha256:` followed by exactly 64 lowercase hex characters. `--criteria-file` and
+`--content-file` are paths; evidence content is capped at 100 000 characters by the contract.
+
+The principal recording a verdict must differ from the principal who supplied the evidence, or the request
+is refused as `proof-self-review-refused`.
+
+## Ticket: workflow {#workflow}
+
+| Command | Positional | Flags |
+|---|---|---|
+| `ticket workflow start` | `<ticket_id>` | `--command-id`, and a ref/digest pair for each of `--workflow`, `--execution-policy`, `--gate-policy`, `--evidence-policy` (eight flags: `--workflow-ref`, `--workflow-digest`, …) |
+| `ticket transition` | `<ticket_id>` | `--command-id`, `--expected-version`, `--workflow-ref`, `--source-stage`, `--destination-stage` |
+| `ticket resolve` | `<ticket_id>` | `--command-id`, `--expected-version`, `--workflow-ref` |
+
+Refs match `<key>@<revision>`, for example `ctower.trust-spine-four-stage@1`. Digests must match the pinned
+revision's canonical graph digest, not the digest of the pack file on disk. See
+[workflow pinning](../concepts/workflows.md#pinning-what-start-actually-does).
+
+## Board and health {#board-and-health}
+
+| Command | Flags |
+|---|---|
+| `board query` | all optional: `--lane {backlog,ready,in_progress,in_review,blocked,complete}`, `--priority {P0,P1,P2}`, `--stage-key`, `--custodian-id`, `--assignee-id` |
+| `control health` | — |
+
+Both are queries and are never spooled.
+
+## Operations
+
+| Command | Positional | Flags |
+|---|---|---|
+| `ops outbox poison dispose` | `<outbox_id>` | `--command-id`, `--consumer-key`, `--topic`, `--action {retry,tombstone}`, `--reason` |
+
+## Company bundle
+
+| Command | Positional | Flags |
+|---|---|---|
+| `company bundle validate` | `<bundle_file>` | — |
+| `company bundle plan` | `<bundle_file>` | — |
+| `company bundle apply` | `<bundle_file>` | `--command-id`, `--expected-active-version` (≥ 0), `--plan-digest` |
+| `company bundle export` | — | — |
+
+`validate` and `plan` are read-only. `apply` moves one future-only Catalog pointer and requires the exact
+digest from the plan you are applying. See the [CompanyBundle guide](../guides/company-bundle.md).
+
+## Synthetic
+
+| Command | Positional | Flags |
+|---|---|---|
+| `synthetic run` | — | `--workflow {ctower.trust-spine-four-stage@1}`, `--wait` (required), `--assert` (required, must be exactly `resolved,closed`), `--command-id` (optional, generated if omitted) |
+| `synthetic query` | `<run_id>` | — |
+
+`synthetic run` is the one public command that drives the whole four-stage lifecycle server-side. `--wait`
+and `--assert` are both mandatory, and `--assert` accepts only the literal `resolved,closed` — the contract
+does not let you assert a weaker outcome.
+
+Waiting polls for up to 60 seconds. A run that ends `failed`, or that succeeds with lifecycle facts other
+than those asserted, exits `69`. A timeout exits `75`.
+
+## Migration (ctower-project)
+
+All eleven commands are authenticated and online-only. They are **not** spoolable.
+
+| Command | Positional | Flags |
+|---|---|---|
+| `migration ctower-project inventory` | — | `--command-id`, `--request-file` |
+| `migration ctower-project export` | — | `--command-id`, `--request-file` |
+| `migration ctower-project plan` | — | `--command-id`, `--request-file` |
+| `migration ctower-project import` | — | `--command-id`, `--request-file` |
+| `migration ctower-project reconcile` | — | `--command-id`, `--request-file` |
+| `migration ctower-project prepare` | — | `--command-id`, `--request-file` |
+| `migration ctower-project commit-development-epoch` | — | `--command-id`, `--request-file` |
+| `migration ctower-project correction append` | — | `--command-id`, `--request-file` |
+| `migration ctower-project fence observe` | — | `--command-id`, `--request-file` |
+| `migration ctower-project run get` | `<run_id>` | — |
+| `migration ctower-project verify` | — | — |
+
+`prepare` and `commit-development-epoch` are **refusal-only** in the generated registry: they exist so the
+spelling is stable and authenticated, and they always refuse. They do not import, fence, or rewire anything.
+
+## Project delivery
+
+| Command | Positional | Flags |
+|---|---|---|
+| `project delivery query` | `<project_key>` (only `ctower` is accepted) | `--output {text,json}` (default `text`) |
+
+A read-only projection. See [Project Delivery](../concepts/project-delivery.md).
+
+## Local spool
+
+Seven commands that never leave the machine except where noted. See the
+[protected CLI guide](../guides/protected-cli.md) for the recovery procedures.
+
+| Command | Positional | Flags |
+|---|---|---|
+| `spool status` | — | — |
+| `spool list` | — | `--state {pending,accepted_archive,quarantine}`, `--limit` (default 1000) |
+| `spool quarantine list` | — | `--limit` (default 1000) |
+| `spool doctor` | — | — |
+| `spool drain` | — | — (reads stdin authority and sends) |
+| `spool retry` | `<sequence>` | `--reason` |
+| `spool discard` | `<sequence>` | `--reason`, `--artifact-digest` (optional) |
+
+`spool status` and `spool doctor` exit `74` when the spool is unhealthy or its state cannot be established.
+`spool drain` exits `69` at a quarantine barrier, `75` while entries remain pending, `0` when the spool is
+empty.
+
+## Output
+
+Machine output is one JSON object per invocation: deterministic key order, no ASCII escaping, compact
+separators, and a single trailing newline. Two exceptions render text instead: `company bundle export`
+emits YAML, and `project delivery query --output text` emits the compact delivery projection.
+
+A mutation prints `command_id`, `state` (`accepted`, `queued`, `quarantined`, or `local_failure`),
+`reason_code`, and `sequence`, plus `result` when a current server result is available. A refusal prints the
+[problem document](../agents/refusals.md) on stderr.
+
+Authority values never appear in output.
+
+## Related
+
+- [HTTP API reference](http-api.md) — the operation each command calls.
+- [Generated clients and contracts](clients.md) — using the same surface from code.
+- [For agents](../agents/operating-contract.md) — replay, idempotency, and refusal handling.

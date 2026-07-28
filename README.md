@@ -24,7 +24,9 @@ request -> Work -> Workflow -> evidence -> gate -> outcome
 - **Workflow** constrains legal movement; a harness or agent executes work but never becomes the source of
   truth.
 
-Read [Core concepts](https://simjak.github.io/ctower/concepts/) for the shared vocabulary.
+Read [Concepts](https://simjak.github.io/ctower/concepts/) for the shared vocabulary, the
+[Quickstart](https://simjak.github.io/ctower/quickstart/) to run a first ticket end to end, and
+[For agents](https://simjak.github.io/ctower/agents/operating-contract/) if you are automating ctower.
 
 ## What you can use today
 
@@ -37,8 +39,9 @@ verifier-only CP3-C evidence also covers digest-bound object handling, backup an
 isolated restore, rollback, and recovery evidence. Those pages describe bounded checkpoints, not a
 production recovery service or CP3-D activation.
 
-After following the [repository setup guide](https://simjak.github.io/ctower/start-here/repository-setup/),
-clone the repository and run the warm verification gate:
+Follow the [Quickstart](https://simjak.github.io/ctower/quickstart/) to go from a clone to a ticket that
+reaches `resolved`/`closed` inside the acceptance gate. The shortest form is to clone the repository and run
+the warm verification gate:
 
 ```bash
 git clone https://github.com/simjak/ctower.git
@@ -55,7 +58,7 @@ fixtures through Docker Compose. It validates the repository; it does not instal
 - **CLI:** `ctowerctl` and `ctl` expose the authored ticket, Work, Proof, Workflow, Board/health, protected
   outbox, CompanyBundle, and local spool families. Non-bootstrap mutations are encrypted and durable before
   send; Linux verification uses a real Secret Service.
-- **HTTP/OpenAPI:** all 41 development operations carry explicit CLI/query-mutation/spool metadata and
+- **HTTP/OpenAPI:** all 39 development operations carry explicit CLI/query-mutation/spool metadata and
   generate the strict client plus runtime contract resource package.
 - **CompanyBundle:** validate/plan/export are read-only; apply atomically advances one future-only Catalog
   pointer through server authority. It does not activate runtime/effects.
@@ -78,13 +81,20 @@ For the development I1.4 surfaces, read the
 Public API + protected CLI precede I1 source-of-truth cutover. Browser implementation, browser evidence,
 and browser E2E first activate at CT-I2-005 / I2.4.
 
-See [Project status](https://simjak.github.io/ctower/project-status/) for the exact capability
+See [Delivery state](https://simjak.github.io/ctower/project-status/) for the exact capability
 boundary and [the OpenAPI contract](contracts/http/openapi.yaml) for the authored development surface.
 
 ## Go deeper
 
-- [Start here](https://simjak.github.io/ctower/project-status/) — maturity, setup, and what not
-  to attempt.
+- [Overview](https://simjak.github.io/ctower/) and [Quickstart](https://simjak.github.io/ctower/quickstart/)
+  — what ctower is, and the shortest path to a first ticket.
+- [Concepts](https://simjak.github.io/ctower/concepts/) — tickets, workflows, proof, projections, and
+  durability.
+- [Reference](https://simjak.github.io/ctower/reference/cli/) — every CLI command and HTTP operation.
+- [For agents](https://simjak.github.io/ctower/agents/operating-contract/) — idempotency, exit codes, and
+  refusal semantics.
+- [Advanced and internals](https://simjak.github.io/ctower/internals/) — delivery state, verification
+  evidence, operational boundaries, and the canonical sources.
 - [Development guide](https://simjak.github.io/ctower/contributing/development/) — source ownership and
   verification gates.
 - [Security policy](SECURITY.md) — private vulnerability reporting.
