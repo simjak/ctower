@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from datetime import UTC, date, timedelta
+from datetime import UTC, date, datetime, timedelta
 from pathlib import Path, PurePosixPath
 
 from tools.private_vps.manifest import (
@@ -68,6 +68,7 @@ def verify_evidence(path: Path, claim: Claim) -> EvidenceSummary:
     """Verify a complete development recurrence from exact retained bytes."""
     if claim == "i1_exit":
         raise PacketError("unsupported_claim", "claim")
+    verified_at = _verification_time()
     absolute = path.absolute()
     with ConfinedRoot(absolute.parent) as root:
         manifest_snapshot = root.read(
@@ -80,8 +81,8 @@ def verify_evidence(path: Path, claim: Claim) -> EvidenceSummary:
             raise PacketError("claim_changed", "claim")
         artifacts = _verify_artifact_inventory(root, manifest)
         deployment = _verify_deployment(root, manifest, artifacts)
-        working_days = _verify_recurrence(manifest, artifacts)
-        _verify_check_documents(manifest, artifacts)
+        working_days = _verify_recurrence(manifest, artifacts, verified_at)
+        _verify_check_documents(manifest, artifacts, verified_at)
         _verify_bound_inputs(manifest, deployment)
     return EvidenceSummary(
         artifact_count=len(manifest.artifacts),
@@ -152,7 +153,10 @@ def _verify_deployment(
 def _verify_recurrence(
     manifest: EvidenceManifest,
     artifacts: dict[str, VerifiedArtifact],
+    verified_at: datetime,
 ) -> tuple[date, ...]:
+    if manifest.window_end > verified_at.date():
+        raise PacketError("evidence_from_future", "window_end")
     expected_days = _working_days(manifest.window_start, manifest.window_end)
     actual_days = tuple(item.working_day for item in manifest.occurrences)
     if actual_days != expected_days:
@@ -165,7 +169,7 @@ def _verify_recurrence(
         raise PacketError("duplicate_occurrence_artifact", "occurrences")
     _verify_occurrence_inventory(artifacts, result_ids, receipt_ids)
     for occurrence in manifest.occurrences:
-        _verify_occurrence(manifest, occurrence, artifacts)
+        _verify_occurrence(manifest, occurrence, artifacts, verified_at)
     return expected_days
 
 
@@ -202,12 +206,16 @@ def _verify_occurrence(
     manifest: EvidenceManifest,
     occurrence: ScheduledOccurrence,
     artifacts: dict[str, VerifiedArtifact],
+    verified_at: datetime,
 ) -> None:
     if occurrence.schedule_ref != manifest.schedule_ref:
         raise PacketError("schedule_changed", "occurrences.schedule_ref")
     if occurrence.scheduled_for.utcoffset() != timedelta(0):
         raise PacketError("non_utc_schedule", "occurrences.scheduled_for")
-    if occurrence.scheduled_for.astimezone(UTC).date() != occurrence.working_day:
+    scheduled = _as_utc(occurrence.scheduled_for, "occurrences.scheduled_for")
+    if scheduled > verified_at:
+        raise PacketError("evidence_from_future", "occurrences.scheduled_for")
+    if scheduled.date() != occurrence.working_day:
         raise PacketError("scheduled_day_changed", "occurrences.scheduled_for")
     result_artifact = artifacts[occurrence.result_artifact_id]
     receipt_artifact = artifacts[occurrence.scheduler_receipt_artifact_id]
@@ -255,26 +263,47 @@ def _verify_occurrence_document(
 def _verify_check_documents(
     manifest: EvidenceManifest,
     artifacts: dict[str, VerifiedArtifact],
+    verified_at: datetime,
 ) -> None:
     for artifact in artifacts.values():
-        if artifact.descriptor.kind not in _CHECK_KINDS:
-            continue
-        parsed = load_snapshot(
-            artifact.snapshot,
-            CheckArtifact,
-            field=f"checks.{artifact.descriptor.artifact_id}",
-        )
-        if parsed.artifact_id != artifact.descriptor.artifact_id:
-            raise PacketError("check_artifact_changed", "artifacts.artifact_id")
-        if parsed.kind != artifact.descriptor.kind:
-            raise PacketError("check_artifact_changed", "artifacts.kind")
-        if parsed.source != manifest.bound_inputs.source:
-            raise PacketError("source_changed", "artifacts.source")
-        if parsed.control_image != manifest.bound_inputs.control_image:
-            raise PacketError("control_image_changed", "artifacts.control_image")
-        observed_day = parsed.observed_at.astimezone(UTC).date()
-        if not manifest.window_start <= observed_day <= manifest.window_end:
-            raise PacketError("check_outside_window", "artifacts.observed_at")
+        if artifact.descriptor.kind in _CHECK_KINDS:
+            _verify_check_document(manifest, artifact, verified_at)
+
+
+def _verify_check_document(
+    manifest: EvidenceManifest,
+    artifact: VerifiedArtifact,
+    verified_at: datetime,
+) -> None:
+    parsed = load_snapshot(
+        artifact.snapshot,
+        CheckArtifact,
+        field=f"checks.{artifact.descriptor.artifact_id}",
+    )
+    if parsed.artifact_id != artifact.descriptor.artifact_id:
+        raise PacketError("check_artifact_changed", "artifacts.artifact_id")
+    if parsed.kind != artifact.descriptor.kind:
+        raise PacketError("check_artifact_changed", "artifacts.kind")
+    if parsed.source != manifest.bound_inputs.source:
+        raise PacketError("source_changed", "artifacts.source")
+    if parsed.control_image != manifest.bound_inputs.control_image:
+        raise PacketError("control_image_changed", "artifacts.control_image")
+    observed = _as_utc(parsed.observed_at, "artifacts.observed_at")
+    if observed > verified_at:
+        raise PacketError("evidence_from_future", "artifacts.observed_at")
+    if not manifest.window_start <= observed.date() <= manifest.window_end:
+        raise PacketError("check_outside_window", "artifacts.observed_at")
+
+
+def _verification_time() -> datetime:
+    return datetime.now(UTC)
+
+
+def _as_utc(value: datetime, field: str) -> datetime:
+    try:
+        return value.astimezone(UTC)
+    except (OverflowError, ValueError) as error:
+        raise PacketError("invalid_timestamp", field) from error
 
 
 def _verify_bound_inputs(

@@ -167,6 +167,12 @@ class RootOwnedFile(FrozenModel):
     sha256: Digest
 
 
+class GroupReadableFile(RootOwnedFile):
+    """Installed reference consumed by a non-root workload."""
+
+    mode: Literal["0440"]
+
+
 class OutputFile(FrozenModel):
     """Final bootstrap output contract."""
 
@@ -214,16 +220,16 @@ class ImageBindings(FrozenModel):
 
 
 class TlsBindings(FrozenModel):
-    certificate: RootOwnedFile
-    private_key: RootOwnedFile
+    certificate: GroupReadableFile
+    private_key: GroupReadableFile
 
 
 class DatabaseBindings(FrozenModel):
-    postgres_admin_password: RootOwnedFile
-    api_dsn: RootOwnedFile
-    worker_dsn: RootOwnedFile
-    projection_dsn: RootOwnedFile
-    migration_dsn: RootOwnedFile
+    postgres_admin_password: GroupReadableFile
+    api_dsn: GroupReadableFile
+    worker_dsn: GroupReadableFile
+    projection_dsn: GroupReadableFile
+    migration_dsn: GroupReadableFile
     role_admin_dsn: RootOwnedFile
 
     def credentials(self) -> tuple[RootOwnedFile, ...]:
@@ -245,15 +251,15 @@ class BootstrapBindings(FrozenModel):
 class ObjectBindings(FrozenModel):
     adapter: Literal["local_encrypted_filesystem"]
     root: DirectoryBinding
-    api_key: RootOwnedFile
-    worker_key: RootOwnedFile
+    api_key: GroupReadableFile
+    worker_key: GroupReadableFile
 
     def keys(self) -> tuple[RootOwnedFile, ...]:
         return (self.api_key, self.worker_key)
 
 
 class TelemetryBindings(FrozenModel):
-    exporter: RootOwnedFile
+    exporter: GroupReadableFile
     alert_owner_ref: Reference
 
 

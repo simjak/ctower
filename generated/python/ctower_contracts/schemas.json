@@ -10748,6 +10748,20 @@
           "pattern": "^[0-9a-f]{40}$",
           "type": "string"
         },
+        "groupReadableFile": {
+          "allOf": [
+            {
+              "$ref": "#/$defs/rootOwnedFile"
+            },
+            {
+              "properties": {
+                "mode": {
+                  "const": "0440"
+                }
+              }
+            }
+          ]
+        },
         "identifier": {
           "pattern": "^[a-z][a-z0-9._:-]{2,127}$",
           "type": "string"
@@ -10953,22 +10967,22 @@
           "additionalProperties": false,
           "properties": {
             "api_dsn": {
-              "$ref": "#/$defs/rootOwnedFile"
+              "$ref": "#/$defs/groupReadableFile"
             },
             "migration_dsn": {
-              "$ref": "#/$defs/rootOwnedFile"
+              "$ref": "#/$defs/groupReadableFile"
             },
             "postgres_admin_password": {
-              "$ref": "#/$defs/rootOwnedFile"
+              "$ref": "#/$defs/groupReadableFile"
             },
             "projection_dsn": {
-              "$ref": "#/$defs/rootOwnedFile"
+              "$ref": "#/$defs/groupReadableFile"
             },
             "role_admin_dsn": {
               "$ref": "#/$defs/rootOwnedFile"
             },
             "worker_dsn": {
-              "$ref": "#/$defs/rootOwnedFile"
+              "$ref": "#/$defs/groupReadableFile"
             }
           },
           "required": [
@@ -11025,7 +11039,7 @@
               "const": "local_encrypted_filesystem"
             },
             "api_key": {
-              "$ref": "#/$defs/rootOwnedFile"
+              "$ref": "#/$defs/groupReadableFile"
             },
             "root": {
               "additionalProperties": false,
@@ -11044,7 +11058,7 @@
               "type": "object"
             },
             "worker_key": {
-              "$ref": "#/$defs/rootOwnedFile"
+              "$ref": "#/$defs/groupReadableFile"
             }
           },
           "required": [
@@ -11068,7 +11082,7 @@
               "$ref": "#/$defs/reference"
             },
             "exporter": {
-              "$ref": "#/$defs/rootOwnedFile"
+              "$ref": "#/$defs/groupReadableFile"
             }
           },
           "required": [
@@ -11081,10 +11095,10 @@
           "additionalProperties": false,
           "properties": {
             "certificate": {
-              "$ref": "#/$defs/rootOwnedFile"
+              "$ref": "#/$defs/groupReadableFile"
             },
             "private_key": {
-              "$ref": "#/$defs/rootOwnedFile"
+              "$ref": "#/$defs/groupReadableFile"
             }
           },
           "required": [
@@ -12911,7 +12925,7 @@
     {
       "id": "https://ctower.dev/contracts/operations/private-vps-deployment.schema.json",
       "path": "contracts/operations/private-vps-deployment.schema.json",
-      "sha256": "sha256:87910071d5b2c9ac5ed26ba8c4bfea009ddda3cc0408265d9aec075ac1a4e99d"
+      "sha256": "sha256:4355150fefae26a426370ea23bac4c8ddd2574879efb338cd6afb1eba88b670d"
     },
     {
       "id": "https://ctower.dev/contracts/operations/private-vps-evidence.schema.json",

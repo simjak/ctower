@@ -37,10 +37,11 @@ verifier-only CP3-C evidence also covers digest-bound object handling, backup an
 isolated restore, rollback, and recovery evidence. Those pages describe bounded checkpoints, not a
 production recovery service or CP3-D activation. A secret-free private-VPS development reference
 composition captures an alternate one-host source-contract topology for verification only; it cannot
-express I1 exit and is not a supported deployment. Separately, an E2 shadow instance has been proved on
-this VPS with persistent PostgreSQL 17.10 synchronous development-ACK storage, supervised API/worker
-units, ordinary finalization, and lifecycle replay. That instance remains `CP3_D_NOT_PROVEN` and is not
-created, described, or verified by the reference Compose packet.
+express I1 exit and is not a supported deployment. A signed 2026-07-28 E2 observation in Mission Control
+artifact `coordination/2026-07-28_1030--engineer-r2164-e2-runtime--persistent-slice.status.md` recorded
+persistent PostgreSQL 17.10 synchronous development-ACK storage, supervised API/worker units, ordinary
+finalization, and lifecycle replay on that VPS at that time. That dated observation remained
+`CP3_D_NOT_PROVEN`; it is not current health and was not created or verified by the reference packet.
 
 After following the [repository setup guide](https://simjak.github.io/ctower/start-here/repository-setup/),
 clone the repository and run the warm verification gate:

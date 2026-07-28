@@ -6,7 +6,7 @@ import hashlib
 import json
 import os
 import shutil
-from datetime import date, timedelta
+from datetime import UTC, date, datetime, timedelta
 from pathlib import Path
 from typing import Any
 
@@ -437,6 +437,64 @@ def test_scheduler_receipt_schema_is_runtime_validated(tmp_path: Path) -> None:
         verify_evidence(path, "development_rehearsal")
     with pytest.raises(ValidationError):
         SchedulerReceipt.model_validate_json(json.dumps(payload))
+
+
+def test_future_window_occurrence_and_check_instants_fail_closed(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    verification_time = [datetime(2026, 7, 23, 23, 59, tzinfo=UTC)]
+    monkeypatch.setattr(
+        "tools.private_vps.evidence._verification_time",
+        lambda: verification_time[0],
+    )
+    path, _ = _evidence(tmp_path / "window")
+    with pytest.raises(PacketError, match="evidence_from_future"):
+        verify_evidence(path, "development_rehearsal")
+
+    verification_time[0] = datetime(2026, 7, 24, 7, 59, tzinfo=UTC)
+    path, _ = _evidence(tmp_path / "occurrence")
+    with pytest.raises(PacketError, match="evidence_from_future"):
+        verify_evidence(path, "development_rehearsal")
+
+    verification_time[0] = datetime(2026, 7, 24, 8, 30, tzinfo=UTC)
+    root = tmp_path / "check"
+    path, raw = _evidence(root)
+    check_path = _artifact_path(root, raw, "artifact.tls_access")
+    payload = json.loads(check_path.read_text())
+    payload["observed_at"] = "2026-07-24T09:00:00Z"
+    _write_json(check_path, payload)
+    _refresh_digest(root, raw, "artifact.tls_access")
+    _rewrite(path, raw)
+    with pytest.raises(PacketError, match="evidence_from_future"):
+        verify_evidence(path, "development_rehearsal")
+
+
+@pytest.mark.parametrize(
+    "timestamp",
+    ["0001-01-01T00:00:00+23:59", "9999-12-31T23:59:59-23:59"],
+)
+def test_unrepresentable_utc_instants_return_typed_cli_failure(
+    tmp_path: Path,
+    capsys: pytest.CaptureFixture[str],
+    timestamp: str,
+) -> None:
+    path, raw = _evidence(tmp_path)
+    check_path = _artifact_path(tmp_path, raw, "artifact.tls_access")
+    payload = json.loads(check_path.read_text())
+    payload["observed_at"] = timestamp
+    _write_json(check_path, payload)
+    _refresh_digest(tmp_path, raw, "artifact.tls_access")
+    _rewrite(path, raw)
+
+    result = main(["evidence-verify", "--manifest", str(path), "--claim", "development_rehearsal"])
+    captured = capsys.readouterr()
+    decoded = json.loads(captured.out)
+    assert result == CLI_FAILURE
+    assert decoded["code"] == "invalid_timestamp"
+    assert decoded["issues"] == [{"code": "invalid_timestamp", "field": "artifacts.observed_at"}]
+    assert "traceback" not in captured.out.lower()
+    assert captured.err == ""
 
 
 def test_deployment_configuration_cannot_escape_its_artifact_directory(

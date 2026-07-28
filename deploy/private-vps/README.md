@@ -16,20 +16,20 @@ the CLI refuses that claim before reading a manifest. Do not start the compositi
 real credentials. Its image digests and external references are examples, and the named volumes remain
 inside one failure domain.
 
-## Observed VPS reality
+## Dated VPS observation
 
-The verification VPS now has a separately gated E2 shadow runtime installed from source
-`10951fc3c568f1d6115d1e029b1f0194a6d531a1`, not from this packet's bound current-main source. That
-instance has persistent PostgreSQL 17.10 primary and synchronous development-ACK volumes, supervised API
-and worker units, ordinary finalizer processing, and lifecycle replay across service restarts and release
-swaps. It identifies its policy as `development_offhost_ack` while remaining visibly
-`CP3_D_NOT_PROVEN`.
+The signed 2026-07-28 Mission Control artifact
+`coordination/2026-07-28_1030--engineer-r2164-e2-runtime--persistent-slice.status.md` recorded persistent
+PostgreSQL 17.10 primary and synchronous development-ACK volumes, supervised API and worker units,
+ordinary finalizer processing, and lifecycle replay across service restarts and release swaps on that VPS
+at that time. The observed policy was `development_offhost_ack`, with `CP3_D_NOT_PROVEN` explicit. This is
+durable historical provenance, not a volatile source pin or current-health statement; re-observe the
+runtime before making any current claim.
 
-That running instance does not use or validate this reference Compose topology, its example images, its
+That observation did not use or validate this reference Compose topology, its example images, its
 Caddy/collector configuration, or its self-declared recurrence documents. Conversely, a passing
-`development_rehearsal` result from this packet is only source-contract consistency evidence and is not
-evidence that the running instance is healthy, installed from this candidate, externally durable,
-supported, or production-ready.
+`development_rehearsal` result from this packet is only source-contract consistency evidence and says
+nothing about current VPS health, external durability, support, or production readiness.
 
 ## CP3-C recovery templates
 

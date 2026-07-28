@@ -71,6 +71,10 @@ class PacketError(RuntimeError):
         self.field = field
 
 
+class _DuplicateJsonMemberError(ValueError):
+    """Internal signal for an ambiguous JSON object."""
+
+
 @dataclass(frozen=True, slots=True)
 class FileSnapshot:
     """The exact bounded bytes and metadata read from one open descriptor."""
@@ -362,7 +366,9 @@ def _identity(metadata: os.stat_result) -> tuple[int, int, int, int, int]:
 def _json_object(data: bytes, *, field: str) -> JsonObject:
     _guard_json_structure(data, field=field)
     try:
-        raw = json.loads(data)
+        raw = json.loads(data, object_pairs_hook=_unique_json_object)
+    except _DuplicateJsonMemberError as error:
+        raise PacketError("duplicate_json_member", field) from error
     except (UnicodeError, json.JSONDecodeError, MemoryError, RecursionError) as error:
         raise PacketError("invalid_json", field) from error
     if not isinstance(raw, dict):
@@ -372,12 +378,31 @@ def _json_object(data: bytes, *, field: str) -> JsonObject:
 
 def _schema_document(name: str) -> JsonObject:
     try:
-        raw = json.loads((_SCHEMA_ROOT / name).read_bytes())
-    except (OSError, UnicodeError, json.JSONDecodeError, MemoryError, RecursionError) as error:
+        raw = json.loads(
+            (_SCHEMA_ROOT / name).read_bytes(),
+            object_pairs_hook=_unique_json_object,
+        )
+    except (
+        OSError,
+        UnicodeError,
+        json.JSONDecodeError,
+        _DuplicateJsonMemberError,
+        MemoryError,
+        RecursionError,
+    ) as error:
         raise PacketError("invalid_authored_schema", "schema") from error
     if not isinstance(raw, dict):
         raise PacketError("invalid_authored_schema", "schema")
     return cast("JsonObject", raw)
+
+
+def _unique_json_object(pairs: list[tuple[str, Any]]) -> JsonObject:
+    value: JsonObject = {}
+    for key, child in pairs:
+        if key in value:
+            raise _DuplicateJsonMemberError
+        value[key] = child
+    return value
 
 
 def _guard_json_structure(data: bytes, *, field: str) -> None:

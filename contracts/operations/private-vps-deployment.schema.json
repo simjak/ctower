@@ -55,8 +55,8 @@
       "additionalProperties": false,
       "required": ["certificate", "private_key"],
       "properties": {
-        "certificate": {"$ref": "#/$defs/rootOwnedFile"},
-        "private_key": {"$ref": "#/$defs/rootOwnedFile"}
+        "certificate": {"$ref": "#/$defs/groupReadableFile"},
+        "private_key": {"$ref": "#/$defs/groupReadableFile"}
       }
     },
     "database": {
@@ -71,11 +71,11 @@
         "role_admin_dsn"
       ],
       "properties": {
-        "postgres_admin_password": {"$ref": "#/$defs/rootOwnedFile"},
-        "api_dsn": {"$ref": "#/$defs/rootOwnedFile"},
-        "worker_dsn": {"$ref": "#/$defs/rootOwnedFile"},
-        "projection_dsn": {"$ref": "#/$defs/rootOwnedFile"},
-        "migration_dsn": {"$ref": "#/$defs/rootOwnedFile"},
+        "postgres_admin_password": {"$ref": "#/$defs/groupReadableFile"},
+        "api_dsn": {"$ref": "#/$defs/groupReadableFile"},
+        "worker_dsn": {"$ref": "#/$defs/groupReadableFile"},
+        "projection_dsn": {"$ref": "#/$defs/groupReadableFile"},
+        "migration_dsn": {"$ref": "#/$defs/groupReadableFile"},
         "role_admin_dsn": {"$ref": "#/$defs/rootOwnedFile"}
       }
     },
@@ -103,8 +103,8 @@
             "path": {"$ref": "#/$defs/absolutePath"}
           }
         },
-        "api_key": {"$ref": "#/$defs/rootOwnedFile"},
-        "worker_key": {"$ref": "#/$defs/rootOwnedFile"}
+        "api_key": {"$ref": "#/$defs/groupReadableFile"},
+        "worker_key": {"$ref": "#/$defs/groupReadableFile"}
       }
     },
     "telemetry": {
@@ -112,7 +112,7 @@
       "additionalProperties": false,
       "required": ["exporter", "alert_owner_ref"],
       "properties": {
-        "exporter": {"$ref": "#/$defs/rootOwnedFile"},
+        "exporter": {"$ref": "#/$defs/groupReadableFile"},
         "alert_owner_ref": {"$ref": "#/$defs/reference"}
       }
     },
@@ -206,6 +206,12 @@
         "mode": {"enum": ["0400", "0440"]},
         "sha256": {"$ref": "#/$defs/digest"}
       }
+    },
+    "groupReadableFile": {
+      "allOf": [
+        {"$ref": "#/$defs/rootOwnedFile"},
+        {"properties": {"mode": {"const": "0440"}}}
+      ]
     },
     "rootOwnedDirectory": {
       "type": "object",

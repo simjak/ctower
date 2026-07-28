@@ -202,6 +202,19 @@ def verify_deployment_authority(bindings: DeploymentBindings) -> None:
     _verify_bind_address(bindings.bind_address)
     _verify_paths(bindings)
     _verify_identities(bindings)
+    _verify_credential_separation(bindings)
+
+
+def _verify_credential_separation(bindings: DeploymentBindings) -> None:
+    groups = (
+        ("database.sha256", bindings.database.credentials()),
+        ("tls.sha256", (bindings.tls.certificate, bindings.tls.private_key)),
+        ("objects.sha256", bindings.objects.keys()),
+    )
+    for field, references in groups:
+        digests = tuple(reference.sha256 for reference in references)
+        if len(set(digests)) != len(digests):
+            raise PacketError("credential_digest_reused", field)
 
 
 def _verify_source(bindings: DeploymentBindings, sha: str, tree: str) -> None:

@@ -134,6 +134,7 @@ def test_authored_schemas_and_runtime_models_accept_the_example() -> None:
         (("failure_domain_count",), 2),
         (("cp3d_qualified",), True),
         (("accepted_write_rpo0_claim",), True),
+        (("database", "api_dsn", "mode"), "0400"),
         (("configuration", "compose", "path"), "../compose.yaml"),
         (("workload_identities", "api"), "identity-ref://private-vps/api"),
     ],
@@ -229,6 +230,34 @@ def test_preflight_binds_source_config_uid_gid_and_bootstrap_parent(
             START_SHA,
             START_TREE,
             observer=wrong_gid,
+            directory_observer=_directory,
+        )
+
+
+@pytest.mark.parametrize(
+    ("group", "left", "right"),
+    [
+        ("database", "worker_dsn", "role_admin_dsn"),
+        ("tls", "private_key", "certificate"),
+        ("objects", "worker_key", "api_key"),
+    ],
+)
+def test_preflight_rejects_reused_credential_material(
+    tmp_path: Path,
+    group: str,
+    left: str,
+    right: str,
+) -> None:
+    raw = _raw()
+    raw[group][left]["sha256"] = raw[group][right]["sha256"]
+    path = _write_packet(tmp_path, raw)
+
+    with pytest.raises(PacketError, match="credential_digest_reused"):
+        validate_deployment(
+            path,
+            START_SHA,
+            START_TREE,
+            observer=_observed,
             directory_observer=_directory,
         )
 

@@ -302,7 +302,7 @@
         },
         {
           "path": "contracts/operations/private-vps-deployment.schema.json",
-          "sha256": "sha256:87910071d5b2c9ac5ed26ba8c4bfea009ddda3cc0408265d9aec075ac1a4e99d"
+          "sha256": "sha256:4355150fefae26a426370ea23bac4c8ddd2574879efb338cd6afb1eba88b670d"
         },
         {
           "path": "contracts/operations/private-vps-evidence.schema.json",
@@ -436,7 +436,7 @@
         },
         {
           "path": "generated/python/ctower_contracts/schemas.json",
-          "sha256": "sha256:12ef15326e6248e2848aaf462be834c62ba9fcae05534325bd72bf82605e43de"
+          "sha256": "sha256:40ca6aa87758d4342cbcbc4dce501941893ff5c48832dac920ca3c110bb4c7d6"
         },
         {
           "path": "generated/typescript/ctower-client/package.json",

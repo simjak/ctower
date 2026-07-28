@@ -236,11 +236,89 @@ def _refresh_deployment(
     _write(manifest_path, manifest)
 
 
+def _prepend_deployment_members(
+    manifest_path: Path,
+    manifest: dict[str, Any],
+    deployment_path: Path,
+    members: str,
+) -> None:
+    original = deployment_path.read_text()
+    assert original.startswith("{")
+    deployment_path.write_text(f"{{{members},{original[1:]}")
+    manifest["artifacts"][0]["sha256"] = _digest(deployment_path)
+    _write(manifest_path, manifest)
+
+
+def _assert_duplicate_member_cli_refusal(
+    capsys: pytest.CaptureFixture[str],
+    manifest_path: Path,
+) -> None:
+    result = main(
+        [
+            "evidence-verify",
+            "--manifest",
+            str(manifest_path),
+            "--claim",
+            "development_rehearsal",
+        ]
+    )
+    captured = capsys.readouterr()
+    decoded = json.loads(captured.out)
+
+    assert result == CLI_FAILURE
+    assert decoded["ok"] is False
+    assert decoded["code"] == "duplicate_json_member"
+    assert decoded["issues"] == [
+        {
+            "code": "duplicate_json_member",
+            "field": "deployment_manifest",
+        }
+    ]
+    assert "traceback" not in captured.out.lower()
+    assert captured.err == ""
+
+
+def test_duplicate_members_cannot_forge_certified_deployment_authority(
+    capsys: pytest.CaptureFixture[str],
+    tmp_path: Path,
+) -> None:
+    manifest_path, manifest, deployment_path, _ = _evidence_fixture(tmp_path)
+    dangerous = (
+        '"assurance":"production",'
+        '"durability_policy":"cutover_rpo0",'
+        '"cp3d_qualified":true,'
+        '"failure_domain_count":2,'
+        '"accepted_write_rpo0_claim":true,'
+        '"authoritative_ctower_project_writer":true'
+    )
+    _prepend_deployment_members(manifest_path, manifest, deployment_path, dangerous)
+
+    _assert_duplicate_member_cli_refusal(capsys, manifest_path)
+
+
+def test_duplicate_members_cannot_smuggle_inline_secret_material(
+    capsys: pytest.CaptureFixture[str],
+    tmp_path: Path,
+) -> None:
+    manifest_path, manifest, deployment_path, _ = _evidence_fixture(tmp_path)
+    credential = (b"S3cr3t" + b"-Admin" + b"-Passw0rd").decode()
+    dsn = f"postgresql://ctower_role_admin:{credential}@10.0.0.7:5432/ctower"
+    _prepend_deployment_members(
+        manifest_path,
+        manifest,
+        deployment_path,
+        f'"assurance":{json.dumps(dsn)}',
+    )
+
+    _assert_duplicate_member_cli_refusal(capsys, manifest_path)
+
+
 @pytest.mark.parametrize(
     ("counterexample", "expected_code"),
     [
         ("root_worker", "identity_changed"),
         ("role_admin_dsn", "reference_path_changed"),
+        ("credential_digest", "credential_digest_reused"),
     ],
 )
 def test_evidence_entry_invokes_shared_deployment_authority(
@@ -254,9 +332,13 @@ def test_evidence_entry_invokes_shared_deployment_authority(
     if counterexample == "root_worker":
         deployment["workload_identities"]["worker"]["uid"] = 0
         compose = compose.replace('user: "10002:10001"', 'user: "0:10001"')
-    else:
+    elif counterexample == "role_admin_dsn":
         deployment["database"]["worker_dsn"] = deployment["database"]["role_admin_dsn"]
         compose = compose.replace("worker-dsn", "role-admin-dsn")
+    else:
+        deployment["database"]["worker_dsn"]["sha256"] = deployment["database"]["role_admin_dsn"][
+            "sha256"
+        ]
     compose_path.write_text(compose)
     _refresh_deployment(manifest_path, manifest, deployment_path, deployment)
 
@@ -411,13 +493,24 @@ def test_rendered_traceability_is_honestly_nonqualifying() -> None:
     assert evidence in rendered["INV-32"]
 
 
-def test_packet_docs_distinguish_the_running_shadow_instance() -> None:
+def test_packet_docs_bind_the_dated_shadow_observation() -> None:
     text = (ROOT / "deploy/private-vps/README.md").read_text()
     assert "PostgreSQL 17.10" in text
     assert "development_offhost_ack" in text
     assert "ordinary finalizer" in text
     assert "CP3_D_NOT_PROVEN" in text
     assert "deployment preflight" not in text.lower()
+    artifact = "2026-07-28_1030--engineer-r2164-e2-runtime--persistent-slice.status.md"
+    for relative in (
+        "README.md",
+        "deploy/README.md",
+        "deploy/private-vps/README.md",
+        "docs/operations/current-boundary.md",
+        "docs/project-status.md",
+    ):
+        documented = (ROOT / relative).read_text()
+        assert artifact in documented
+        assert "10951fc3" not in documented
 
 
 def _receipt(timestamp: str) -> dict[str, object]:
