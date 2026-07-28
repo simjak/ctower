@@ -17,6 +17,7 @@ from ctower_kernel.record import (
     BootstrapReceipt,
     CustodyCommand,
     DurabilityDecision,
+    DurabilityFinalizationBatch,
     DurabilityHealth,
     RecordProblem,
     Ticket,
@@ -32,6 +33,7 @@ from ctower_kernel.record._bootstrap_sql import (
 from ctower_kernel.record._command_root import command_snapshot as _command_snapshot
 from ctower_kernel.record._comment_sql import add_comment as _add_comment
 from ctower_kernel.record._custody_sql import transfer_custody as _transfer_custody
+from ctower_kernel.record._durability_finalizer_sql import finalize_pending as _finalize_pending
 from ctower_kernel.record._durability_health_sql import durability_health as _durability_health
 from ctower_kernel.record._durability_sql import reconcile_durability as _reconcile_durability
 from ctower_kernel.record._intake_sql import promote_intake as _promote_intake
@@ -39,8 +41,10 @@ from ctower_kernel.record._intake_sql import submit_intake as _submit_intake
 from ctower_kernel.record._setup_sql import (
     RecoveryRoleConfigurationError,
     apply_migrations,
+    configure_development_durability,
     provision_bootstrap,
     provision_database_roles,
+    provision_principal_credential,
 )
 from ctower_kernel.record._ticket_sql import actor_for_credential as _actor_for_credential
 from ctower_kernel.record._ticket_sql import create_ticket as _create_ticket
@@ -56,14 +60,42 @@ from ctower_kernel.record.transaction import recover_ambiguous_commit
 from ctower_kernel.telemetry import NoopTelemetry, Telemetry, TelemetryContext
 
 __all__ = [
+    "PostgresDurabilityFinalizer",
     "PostgresRecord",
     "RecoveryRoleConfigurationError",
     "apply_migrations",
+    "configure_development_durability",
     "provision_bootstrap",
     "provision_database_roles",
+    "provision_principal_credential",
 ]
 
 _BOOTSTRAP_SERIALIZATION_ATTEMPTS = 3
+
+
+class PostgresDurabilityFinalizer:
+    """Ordinary bounded finalizer over the Record durability authority."""
+
+    def __init__(
+        self,
+        primary_dsn: str,
+        *,
+        standby_dsn: str | None,
+        telemetry: Telemetry | None = None,
+    ) -> None:
+        self._primary_dsn = primary_dsn
+        self._standby_dsn = standby_dsn
+        self._telemetry = telemetry
+
+    def finalize_pending(self, *, limit: int = 100) -> DurabilityFinalizationBatch:
+        """Reconcile the oldest incomplete command receipts."""
+
+        return _finalize_pending(
+            self._primary_dsn,
+            self._standby_dsn,
+            limit=limit,
+            telemetry=self._telemetry,
+        )
 
 
 class PostgresRecord:

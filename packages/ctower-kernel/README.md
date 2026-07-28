@@ -26,8 +26,10 @@ uses two fixed-search-path, narrowly executable probes owned by a quarantined no
 its schema-CREATE and administration-assumption authority end after probe creation, unsafe pre-existing
 authority is rejected, and NULL or malformed live evidence degrades with a typed reason. `ctower_svc`
 does not inherit PostgreSQL monitor roles.
-Its default policy remains `pending_only`; accepted behavior is exercised only by the verifier-owned local
-PostgreSQL 17 primary/hot-standby fixture. Projections can replace only disposable Board rows/cursors and
+Its default policy remains `pending_only`. The approved persistent E2 shadow runtime may explicitly select
+`development_offhost_ack`; its ordinary bounded finalizer uses the same exact named-standby evidence as the
+verifier fixture while health remains `development_offhost_ack_cp3_d_not_proven`. It does not establish an
+external failure domain or CP3-D. Projections can replace only disposable Board rows/cursors and
 cannot mutate authority. Runtime materializes only the three authored fixed-operation jobs; it does not
 dispatch them. The neutral Object port is shared by injected Proof and Catalog capabilities; Proof retains
 digest-bound inline/external object metadata, safe backfill, and durable erasure tombstones without owning

@@ -21,6 +21,7 @@ from ctower_api.synthetic_handler import (
 from ctower_client import CtowerClient
 from ctower_kernel.projections import Projections
 from ctower_kernel.projections.postgres import PostgresProjections
+from ctower_kernel.record import DurabilityFinalizer
 from ctower_kernel.runtime import (
     FixedOperationAttempt,
     FixedOperationCompletion,
@@ -50,10 +51,13 @@ class ControlWorker:
     routine_loop: RoutineLoop
     outbox_loop: OutboxLoop
     project_delivery_loop: ProjectDeliveryLoop
+    durability_finalizer: DurabilityFinalizer | None = None
     fixed_operations: FixedOperations | None = None
     synthetic_handler: _SyntheticHandler | None = None
 
     def tick(self) -> None:
+        if self.durability_finalizer is not None:
+            self.durability_finalizer.finalize_pending()
         tenant_ids = self.runtime.tenant_ids()
         self.routine_loop.tick(tenant_ids)
         self.outbox_loop.tick(tenant_ids)
@@ -127,6 +131,7 @@ def build_worker(
     pack_root: Path,
     fixed_operations: FixedOperations | None = None,
     synthetic_handler: _SyntheticHandler | None = None,
+    durability_finalizer: DurabilityFinalizer | None = None,
 ) -> ControlWorker:
     """Compose the same worker around public kernel Interfaces."""
 
@@ -135,6 +140,7 @@ def build_worker(
         RoutineLoop(runtime, load_routine_revisions(pack_root)),
         OutboxLoop(projections),
         ProjectDeliveryLoop(projections),
+        durability_finalizer,
         fixed_operations,
         synthetic_handler,
     )

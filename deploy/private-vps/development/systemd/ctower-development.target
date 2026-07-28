@@ -1,0 +1,7 @@
+[Unit]
+Description=Ctower shadow-only persistent development target (CP3-D not proven)
+Requires=ctower-development-keyring.service ctower-development-db.service ctower-development-api.service ctower-development-worker.service
+After=ctower-development-keyring.service ctower-development-db.service ctower-development-api.service ctower-development-worker.service
+
+[Install]
+WantedBy=default.target

@@ -1371,6 +1371,16 @@
       ]
     },
     {
+      "path": "packages/ctower-kernel/migrations/0033_development_offhost_ack.sql",
+      "references": [
+        "SPEC#one-ctower-project-source-of-truth-barrier",
+        "SPEC#persistence-authority",
+        "INV-36",
+        "AC-DUR-01",
+        "AC-DUR-06"
+      ]
+    },
+    {
       "path": "packages/ctower-kernel/migrations/manifest.json",
       "references": [
         "SPEC#executable-authority-and-requirement-traceability",

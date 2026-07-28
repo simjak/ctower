@@ -17,10 +17,11 @@ step, and nothing they do reaches the outside world without a narrow, short-live
 that records what happened.
 
 > [!IMPORTANT]
-> **Status: pre-alpha, version `0.0.0`.** There is no release, no package, and no supported way to install
-> or deploy ctower. The command line is the only interface; browser work is deliberately deferred. The part
-> that reaches the outside world — deploys, messages, payments — is specified but not built. Do not use
-> this to manage real work yet. [What works today](#what-works-today) is the honest split.
+> **Status: pre-alpha, version `0.0.0`.** The only supported install is the private-VPS, loopback-only E2
+> shadow runtime for low-value reconstructible dogfood. There is no release, published package, hosted
+> service, external/product deployment, backup/restore product, browser UI, runner, CP3-D deployment, or
+> source-of-truth authority. Do not use this to manage real work yet.
+> [What works today](#what-works-today) is the honest split.
 
 **Right now you can:** [see exactly what works](#what-works-today) ·
 [clone it and run its checks](#getting-started) ·
@@ -184,7 +185,7 @@ disposable PostgreSQL containers and needs Docker.
 
 **4. Follow along, or help.** [SPEC.md](SPEC.md) is what is being built and
 [IMPLEMENTATION-ROADMAP.md](IMPLEMENTATION-ROADMAP.md) is the order it is being built in. Watch the
-repository to hear when the first installable version lands.
+repository as the shadow runtime and the rest of the project mature.
 
 ## Words you will meet
 

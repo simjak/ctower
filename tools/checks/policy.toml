@@ -96,6 +96,21 @@ paths = ["tools/codegen/**"]
 allowed_dependencies = ["repository-policy"]
 
 [[ownership]]
+name = "release-manifest-tools"
+paths = ["tools/release_manifest/**"]
+allowed_dependencies = []
+
+[[ownership]]
+name = "development-runtime-tools"
+paths = ["tools/development_runtime/**"]
+allowed_dependencies = [
+  "control-api",
+  "control-cli",
+  "kernel-record",
+  "release-manifest-tools",
+]
+
+[[ownership]]
 name = "contract-tests"
 paths = ["tests/contracts/**"]
 allowed_dependencies = ["http-client-codegen", "repository-policy"]
@@ -177,7 +192,7 @@ paths = [
   "tests/modules/ctowerctl/**",
   "tests/artifact/**",
 ]
-allowed_dependencies = []
+allowed_dependencies = ["release-manifest-tools"]
 
 [[ownership]]
 name = "increment-1-acceptance-tests"

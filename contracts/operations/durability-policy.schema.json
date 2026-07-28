@@ -18,7 +18,10 @@
   "properties": {
     "schema_id": {"const": "ctower.durability-policy/v1"},
     "policy_ref": {"type": "string", "pattern": "^[a-z][a-z0-9._-]*@[1-9][0-9]*$"},
-    "mode": {"type": "string", "enum": ["pending_only", "cutover_rpo0"]},
+    "mode": {
+      "type": "string",
+      "enum": ["pending_only", "development_offhost_ack", "cutover_rpo0"]
+    },
     "synchronous_commit": {"const": "remote_apply"},
     "standby_count": {"const": 1},
     "standby_application_name": {"const": "ctower_i1_ack"},

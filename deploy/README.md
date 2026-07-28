@@ -10,3 +10,8 @@ The repository also contains observability collector, dashboard, and alert homes
 secret-free CP3-C recovery shape. Neither establishes a supported product deployment: there is no external
 endpoint, credential, systemd activation, or production durability switch. Those require CP3-D conformance
 evidence before becoming operator deployment documentation.
+
+The operator-approved E2 exception is the loopback-only
+[`private-vps/development`](private-vps/development/README.md) walking slice. It is a supported development
+runtime, always says `SHADOW_ONLY_CP3_D_NOT_PROVEN`, and activates neither production nor authoritative
+single-writer scope.

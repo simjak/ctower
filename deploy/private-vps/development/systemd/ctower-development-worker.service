@@ -1,0 +1,19 @@
+[Unit]
+Description=Ctower shadow-only control worker and durability finalizer (CP3-D not proven)
+Requires=ctower-development-api.service
+After=ctower-development-api.service
+
+[Service]
+Type=simple
+ExecStart=%h/.local/share/ctower-development/current/venv/bin/ctower-development-worker
+Restart=on-failure
+RestartSec=2
+NoNewPrivileges=yes
+PrivateTmp=yes
+ProtectSystem=strict
+ProtectHome=read-only
+ReadWritePaths=%h/.local/state/ctower %h/.local/share/ctower-development
+UMask=0077
+
+[Install]
+WantedBy=default.target

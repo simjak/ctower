@@ -18,6 +18,11 @@ configuration remains `pending_only`. The same artifact exposes `ctower-control-
 fixed Routine scan and accepted-outbox projection loops. Authenticated health reports independent
 contributors, and the optional Attention composition exposes canonical, acceptance-gated append-only
 retry/tombstone poison recovery with exact command replay.
+The separately approved E2 composition exposes `ctower-development-api` and
+`ctower-development-worker`. It resolves Secret Service references in-process, binds the API to loopback,
+and adds Record's bounded ordinary durability finalizer to the same worker loop. Its
+`development_offhost_ack` health is deliberately degraded as
+`development_offhost_ack_cp3_d_not_proven`; it is never a production or authority-promotion composition.
 The artifact also contains private fixed-shape object/KMS/backup Adapters and isolated-restore quarantine
 composition for deterministic local CP3-C proof. They accept references and typed receipts, never
 application-owned signing keys or arbitrary commands. Real off-host targets, system activation, synthetic

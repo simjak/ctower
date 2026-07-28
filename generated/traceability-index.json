@@ -82,7 +82,8 @@
       "contracts/operations/durability-policy.schema.json",
       "packages/ctower-kernel/migrations/0013_durability_authority.sql",
       "packages/ctower-kernel/migrations/0014_durability_acceptance_finalization.sql",
-      "packages/ctower-kernel/migrations/0016_durability_finalization_confirmation.sql"
+      "packages/ctower-kernel/migrations/0016_durability_finalization_confirmation.sql",
+      "packages/ctower-kernel/migrations/0033_development_offhost_ack.sql"
     ],
     "AC-DUR-02": [
       "contracts/domain/events/event-envelope.schema.json",
@@ -121,6 +122,7 @@
       "packages/ctower-kernel/migrations/0024_catalog_authority.sql",
       "packages/ctower-kernel/migrations/0025_ticket_comment_event.sql",
       "packages/ctower-kernel/migrations/0026_fixed_operation_attempt_receipts.sql",
+      "packages/ctower-kernel/migrations/0033_development_offhost_ack.sql",
       "packages/ctower-kernel/migrations/manifest.json"
     ],
     "AC-DUR-07": [
@@ -579,7 +581,8 @@
       "packages/ctower-kernel/migrations/0013_durability_authority.sql",
       "packages/ctower-kernel/migrations/0014_durability_acceptance_finalization.sql",
       "packages/ctower-kernel/migrations/0016_durability_finalization_confirmation.sql",
-      "packages/ctower-kernel/migrations/0019_outbox_routine_health.sql"
+      "packages/ctower-kernel/migrations/0019_outbox_routine_health.sql",
+      "packages/ctower-kernel/migrations/0033_development_offhost_ack.sql"
     ],
     "INV-37": [
       "contracts/domain/migration/ctower-project-alias-map-v2.schema.json",
@@ -814,7 +817,8 @@
       "packages/ctower-kernel/migrations/0027_i17a_cutover_delivery.sql",
       "packages/ctower-kernel/migrations/0028_i17b_importer_isolation.sql",
       "packages/ctower-kernel/migrations/0030_i17b_migration_truth_spine.sql",
-      "packages/ctower-kernel/migrations/0031_i17b_bounded_truth_spine.sql"
+      "packages/ctower-kernel/migrations/0031_i17b_bounded_truth_spine.sql",
+      "packages/ctower-kernel/migrations/0033_development_offhost_ack.sql"
     ],
     "SPEC#operational-health-and-degraded-behavior": [
       "contracts/http/openapi.yaml",
@@ -842,7 +846,8 @@
       "packages/ctower-kernel/migrations/0028_i17b_importer_isolation.sql",
       "packages/ctower-kernel/migrations/0030_i17b_migration_truth_spine.sql",
       "packages/ctower-kernel/migrations/0031_i17b_bounded_truth_spine.sql",
-      "packages/ctower-kernel/migrations/0032_thread_first_intake.sql"
+      "packages/ctower-kernel/migrations/0032_thread_first_intake.sql",
+      "packages/ctower-kernel/migrations/0033_development_offhost_ack.sql"
     ],
     "SPEC#project-delivery-projection": [
       "contracts/components/checkpoint.schema.json",

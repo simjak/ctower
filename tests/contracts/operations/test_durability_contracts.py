@@ -26,13 +26,17 @@ def test_durability_contracts_are_strict_draft_2020_12_schemas() -> None:
         assert schema["additionalProperties"] is False
 
 
-def test_policy_has_no_local_accepted_mode_and_ack_has_global_cursor() -> None:
+def test_policy_has_one_development_only_ack_mode_and_global_cursor() -> None:
     policy = json.loads((OPERATIONS / "durability-policy.schema.json").read_text(encoding="utf-8"))
     acknowledgement = json.loads(
         (OPERATIONS / "durability-ack.schema.json").read_text(encoding="utf-8")
     )
 
-    assert policy["properties"]["mode"]["enum"] == ["pending_only", "cutover_rpo0"]
+    assert policy["properties"]["mode"]["enum"] == [
+        "pending_only",
+        "development_offhost_ack",
+        "cutover_rpo0",
+    ]
     assert policy["properties"]["synchronous_commit"]["const"] == "remote_apply"
     assert policy["properties"]["standby_count"]["const"] == 1
     assert "acceptance_position" in acknowledgement["required"]

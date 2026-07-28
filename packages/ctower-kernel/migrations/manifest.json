@@ -307,6 +307,15 @@
       "forward_test": "pytest:tests/acceptance/increment-1/test_intake.py::test_thread_first_intake_is_atomic_replay_safe_and_board_neutral",
       "rollback_or_forward_compensation": "Keep immutable inbound threads, events, source aliases, quarantine facts, ticket-project bindings, provenance links, canonical events, command results, and outbox rows readable by an intake-aware build, or append reviewed forward compensation; never delete or relink an inbound event.",
       "backup_checkpoint": "Before applying to a nonempty installation, capture and verify tenant, principal, ticket, event, command-result, outbox, durability-head, inbound-thread, inbound-event, source-alias, quarantine, and provenance-link counts plus a database backup."
+    },
+    {
+      "path": "0033_development_offhost_ack.sql",
+      "sha256": "sha256:444e9fc9a8029d3de124f8af0f93556f9d0bb3290acaf9438a340f3f913dbe1d",
+      "minimum_service_version": "0.0.0",
+      "maximum_service_version": "0.0.0",
+      "forward_test": "pytest:tests/acceptance/increment-1/test_persistent_runtime.py::test_ordinary_finalizer_reconciles_development_ack_without_cp3d_claim",
+      "rollback_or_forward_compensation": "Keep existing immutable acknowledgements and finalizations readable; switch policy back to pending_only or append reviewed forward compensation, never relabel development evidence as CP3-D.",
+      "backup_checkpoint": "Before enabling the development-only mode on nonempty data, capture command, acknowledgement, finalization, confirmation, and policy facts; the mode authorizes reconstructible shadow data only."
     }
   ]
 }

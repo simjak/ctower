@@ -33,7 +33,9 @@ Exit meanings are stable: `0` read/accepted, `64` usage/input, `69` permanent re
 `74` local/keyring/integrity failure, and `75` queued, unreachable, or `durability_pending`. Exit `75` never
 claims server acceptance. Mutation output always identifies the stable command ID and local state.
 
-The wheel and Secret Service paths are verification artifacts for the pre-alpha development slice, not a
-published package, supported deployment, or production recovery promise. See the
+The E2 private-VPS install adds `ctower-shadow-ctl`, a local wrapper that resolves one operator or Commander
+reference from Secret Service and calls this exact public CLI in-process; it adds no operations or
+authorization. The wheel and Secret Service paths remain development artifacts, not a published package or
+production recovery promise. See the
 [protected CLI guide](../../docs/guides/protected-cli.md) and
 [CompanyBundle guide](../../docs/guides/company-bundle.md).
