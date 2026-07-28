@@ -1,0 +1,97 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://ctower.local/contracts/domain/intake/thread-intake.schema.json",
+  "title": "Ctower durable inbound-thread authority",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema", "thread", "inbound_event", "ticket_link", "quarantine"],
+  "properties": {
+    "schema": {"const": "ctower.thread-intake/v1"},
+    "thread": {"$ref": "#/$defs/thread"},
+    "inbound_event": {"$ref": "#/$defs/inboundEvent"},
+    "ticket_link": {
+      "oneOf": [
+        {"type": "null"},
+        {"$ref": "#/$defs/ticketLink"}
+      ]
+    },
+    "quarantine": {
+      "oneOf": [
+        {"type": "null"},
+        {"$ref": "#/$defs/quarantine"}
+      ]
+    }
+  },
+  "$defs": {
+    "source": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["kind", "ref"],
+      "properties": {
+        "kind": {"type": "string", "minLength": 1, "maxLength": 64},
+        "ref": {"type": "string", "minLength": 1, "maxLength": 256}
+      }
+    },
+    "thread": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["thread_id", "tenant_id", "project_key", "version"],
+      "properties": {
+        "thread_id": {"type": "string", "format": "uuid"},
+        "tenant_id": {"type": "string", "format": "uuid"},
+        "project_key": {"type": "string", "pattern": "^[a-z][a-z0-9-]{2,63}$"},
+        "version": {"type": "integer", "minimum": 1}
+      }
+    },
+    "inboundEvent": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "inbound_event_id",
+        "thread_id",
+        "position",
+        "source",
+        "content_digest",
+        "taint",
+        "initial_intent",
+        "initial_outcome"
+      ],
+      "properties": {
+        "inbound_event_id": {"type": "string", "format": "uuid"},
+        "thread_id": {"type": "string", "format": "uuid"},
+        "position": {"type": "integer", "minimum": 1},
+        "source": {"$ref": "#/$defs/source"},
+        "content_digest": {"type": "string", "pattern": "^sha256:[0-9a-f]{64}$"},
+        "taint": {
+          "enum": ["authenticated", "external_untrusted", "quarantine_required"]
+        },
+        "initial_intent": {"enum": ["discussion", "create_ticket", "link_ticket"]},
+        "initial_outcome": {
+          "enum": ["discussion", "ticket_created", "ticket_linked", "quarantined"]
+        }
+      }
+    },
+    "ticketLink": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["inbound_event_id", "ticket_id", "kind", "command_id"],
+      "properties": {
+        "inbound_event_id": {"type": "string", "format": "uuid"},
+        "ticket_id": {"type": "string", "format": "uuid"},
+        "kind": {
+          "enum": ["initial_create", "initial_link", "promotion_create", "promotion_link"]
+        },
+        "command_id": {"type": "string", "format": "uuid"}
+      }
+    },
+    "quarantine": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["inbound_event_id", "reason"],
+      "properties": {
+        "inbound_event_id": {"type": "string", "format": "uuid"},
+        "reason": {"type": "string", "minLength": 1, "maxLength": 500}
+      }
+    }
+  }
+}

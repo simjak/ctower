@@ -38,6 +38,7 @@ from ctower_api._http_support import (
 from ctower_api._http_support import (
     validation_problem as _validation_problem,
 )
+from ctower_api._intake_routes import install_intake_routes
 from ctower_api._migration_port import MigrationPort
 from ctower_api._mutation_response import mutation_response as _mutation_response
 from ctower_api._proof_workflow_routes import install_proof_workflow_routes
@@ -71,10 +72,12 @@ from ctower_kernel.record import (
 )
 from ctower_kernel.runtime import RoutineRevision
 from ctower_kernel.telemetry import TelemetryContext
-from ctower_kernel.work import Work
+from ctower_kernel.work import Intake, Work
 from ctower_kernel.workflow import Workflow
 
 __all__ = ["create_app"]
+
+type _MigrationImporterResolver = Callable[[bytes, UUID, UUID, str, datetime], Actor | None]
 
 
 def create_app(
@@ -89,8 +92,7 @@ def create_app(
     synthetic_runtime: SyntheticRuntime | None = None,
     synthetic_revision: RoutineRevision | None = None,
     migration: object | None = None,
-    migration_importer_resolver: Callable[[bytes, UUID, UUID, str, datetime], Actor | None]
-    | None = None,
+    migration_importer_resolver: _MigrationImporterResolver | None = None,
     migration_importer_credential_resolver: Callable[[bytes, datetime], Actor | None] | None = None,
     fence_observer_resolver: Callable[[bytes, datetime], Actor | None] | None = None,
     telemetry: TelemetryRecorder | None = None,
@@ -121,6 +123,7 @@ def create_app(
     _install_ticket_create_route(app, access, record, work_module, recorder)
     _install_custody_route(app, access, record, work_module, recorder)
     _install_ticket_read_routes(app, access, record, recorder)
+    install_intake_routes(app, access, record, Intake(record, telemetry=recorder), recorder)
     install_comment_routes(app, access, record, recorder)
     install_task_routes(app, access, record, work_module, workflow, recorder)
     if catalog is not None:

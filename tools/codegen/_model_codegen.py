@@ -7,16 +7,46 @@ import re
 from collections.abc import Mapping
 from typing import cast
 
+from tools.codegen._absolute_uri_codegen import (
+    AbsoluteUriProfile,
+    render_python_uri_validator,
+    require_absolute_uri_profile,
+)
+from tools.codegen._free_form_json_codegen import (
+    FreeFormJsonProfile,
+    has_free_form_additional_properties,
+    render_python_free_form_validator,
+)
+from tools.codegen._json_integer_codegen import (
+    JSON_INTEGER_MAXIMUM,
+    JSON_INTEGER_MINIMUM,
+    JsonIntegerProfile,
+    require_json_integer_profile,
+)
+from tools.codegen._rfc3339_codegen import require_rfc3339_profile
+
 __all__: tuple[str, ...] = ()
 
 _INLINE_WIDTH = 88
 _MAX_LINE_WIDTH = 100
 
 
-def render_models(document: dict[str, object], contract_digest: str) -> str:
+def render_models(
+    document: dict[str, object],
+    contract_digest: str,
+    *,
+    free_form_profile: FreeFormJsonProfile,
+) -> str:
+    integer_profile = require_json_integer_profile(document)
+    require_rfc3339_profile(document)
+    uri_profile = require_absolute_uri_profile(document)
     schemas = _schemas(document)
     names = tuple(sorted(schemas))
-    sections = [_header(contract_digest, names), _boundary_model()]
+    sections = [
+        _header(contract_digest, names),
+        _scalar_validators(uri_profile, free_form_profile, integer_profile),
+        _boundary_model(),
+    ]
     for name in _schema_order(schemas):
         schema = _mapping(schemas[name], f"schema {name}")
         sections.append(_render_schema(name, schema))
@@ -54,16 +84,96 @@ Authored contract digest: sha256:{contract_digest}
 
 from __future__ import annotations
 
-from datetime import datetime
+from datetime import datetime, timedelta, timezone
 from enum import StrEnum
+import math
+import re
 from typing import Annotated, Literal
 from uuid import UUID
 
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, BeforeValidator, ConfigDict, Field
 
 __all__ = [
 {exports}
 ]'''
+
+
+def _scalar_validators(
+    uri_profile: AbsoluteUriProfile,
+    free_form_profile: FreeFormJsonProfile,
+    integer_profile: JsonIntegerProfile,
+) -> str:
+    scalar_validators = r"""_RFC3339_PATTERN = re.compile(
+    r"^(?P<year>[0-9]{4})-(?P<month>[0-9]{2})-(?P<day>[0-9]{2})"
+    r"T(?P<hour>[0-9]{2}):(?P<minute>[0-9]{2}):(?P<second>[0-9]{2})"
+    r"(?:\.(?P<fraction>[0-9]{1,6}))?"
+    r"(?P<zone>Z|(?P<sign>[+-])(?P<offset_hour>[0-9]{2}):"
+    r"(?P<offset_minute>[0-9]{2}))$"
+)
+
+
+def _validate_rfc3339(value: object) -> datetime:
+    if isinstance(value, datetime):
+        offset = value.utcoffset()
+        if offset is None:
+            raise ValueError("RFC 3339 timestamps require a timezone")
+        offset_seconds = offset.total_seconds()
+        if offset_seconds % 60 != 0 or abs(offset_seconds) > 86_340:
+            raise ValueError("RFC 3339 timestamp has an invalid numeric offset")
+        return value
+    if not isinstance(value, str):
+        raise ValueError("RFC 3339 timestamp must be a string or datetime")
+    match = _RFC3339_PATTERN.fullmatch(value)
+    if match is None or match.group("zone") == "-00:00":
+        raise ValueError("timestamp is outside the authored RFC 3339 profile")
+    parts = {name: int(match.group(name)) for name in (
+        "year", "month", "day", "hour", "minute", "second"
+    )}
+    if not 1 <= parts["year"] <= 9999:
+        raise ValueError("RFC 3339 timestamp year is outside 0001-9999")
+    if parts["hour"] > 23 or parts["minute"] > 59 or parts["second"] > 59:
+        raise ValueError("RFC 3339 timestamp has an invalid time")
+    offset_hour = int(match.group("offset_hour") or 0)
+    offset_minute = int(match.group("offset_minute") or 0)
+    if offset_hour > 23 or offset_minute > 59:
+        raise ValueError("RFC 3339 timestamp has an invalid numeric offset")
+    offset = timedelta(hours=offset_hour, minutes=offset_minute)
+    if match.group("sign") == "-":
+        offset = -offset
+    zone = timezone.utc if match.group("zone") == "Z" else timezone(offset)
+    fraction = (match.group("fraction") or "").ljust(6, "0")
+    try:
+        return datetime(
+            parts["year"],
+            parts["month"],
+            parts["day"],
+            parts["hour"],
+            parts["minute"],
+            parts["second"],
+            int(fraction or 0),
+            zone,
+        )
+    except ValueError as error:
+        raise ValueError("timestamp is outside the proleptic Gregorian calendar") from error
+
+
+def _validate_absolute_uri(value: object) -> str:
+    if not isinstance(value, str):
+        raise ValueError("absolute URI must be a string")
+    if not _is_absolute_uri(value):
+        raise ValueError("string is not an absolute URI")
+    return value
+
+
+_AbsoluteUri = Annotated[str, BeforeValidator(_validate_absolute_uri)]
+_Rfc3339DateTime = Annotated[datetime, BeforeValidator(_validate_rfc3339)]"""
+    return "\n\n".join(
+        (
+            scalar_validators,
+            render_python_uri_validator(uri_profile),
+            render_python_free_form_validator(free_form_profile, integer_profile),
+        )
+    )
 
 
 def _boundary_model() -> str:
@@ -188,7 +298,11 @@ def _primitive_expression(schema: Mapping[str, object], schema_type: object) -> 
     if schema_type == "null":
         return "None"
     if schema_type == "object":
-        return "dict[str, object]"
+        return (
+            "_FreeFormJsonObject"
+            if has_free_form_additional_properties(schema)
+            else "dict[str, object]"
+        )
     raise ValueError(f"unsupported OpenAPI schema shape: {dict(schema)}")
 
 
@@ -210,7 +324,11 @@ def _string_expression(schema: Mapping[str, object]) -> str:
         if len(inline) <= _INLINE_WIDTH:
             return inline
         return "Literal[\n        " + ",\n        ".join(values) + ",\n    ]"
-    base = {"uuid": "UUID", "date-time": "datetime"}.get(str(schema.get("format")), "str")
+    base = {
+        "uuid": "UUID",
+        "date-time": "_Rfc3339DateTime",
+        "uri": "_AbsoluteUri",
+    }.get(str(schema.get("format")), "str")
     constraints: list[tuple[str, object]] = []
     for source, target in (
         ("minLength", "min_length"),
@@ -223,11 +341,20 @@ def _string_expression(schema: Mapping[str, object]) -> str:
 
 
 def _integer_expression(schema: Mapping[str, object]) -> str:
-    constraints = []
-    if "minimum" in schema:
-        constraints.append(("ge", schema["minimum"]))
-    if "maximum" in schema:
-        constraints.append(("le", schema["maximum"]))
+    minimum = schema.get("minimum", JSON_INTEGER_MINIMUM)
+    maximum = schema.get("maximum", JSON_INTEGER_MAXIMUM)
+    if (
+        isinstance(minimum, bool)
+        or not isinstance(minimum, (int, float))
+        or isinstance(maximum, bool)
+        or not isinstance(maximum, (int, float))
+    ):
+        raise TypeError("integer bounds must be numbers")
+    lower = max(JSON_INTEGER_MINIMUM, minimum)
+    upper = min(JSON_INTEGER_MAXIMUM, maximum)
+    if lower > upper:
+        raise ValueError("integer schema has no value inside the lossless JSON range")
+    constraints: list[tuple[str, object]] = [("ge", lower), ("le", upper)]
     return _annotated("int", constraints)
 
 

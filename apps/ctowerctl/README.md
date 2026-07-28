@@ -3,7 +3,10 @@
 `ctowerctl` and its shorter `ctl` alias are thin development Adapters over the generated Python client.
 They expose only explicit authored command families: bootstrap; ticket, Work, Proof, and Workflow commands;
 Board and health reads; protected outbox disposition; CompanyBundle validate/plan/apply/export; and local
-spool inspection/recovery. There is no arbitrary operation dispatcher or client-side authorization engine.
+spool inspection/recovery. Thread-first intake uses only the authored
+`discussion|create_ticket|link_ticket` commands and one-time discussion promotion through that same
+generated-client and encrypted-spool path. There is no arbitrary operation dispatcher or client-side
+authorization engine.
 
 Bearer authority and the one-use bootstrap capability are read as one bounded line from stdin. They are
 never accepted as arguments or environment configuration, written to the spool, or echoed. Server

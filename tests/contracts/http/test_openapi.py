@@ -111,6 +111,7 @@ _EXPECTED_OPERATION_METADATA: dict[str, tuple[object, bool, str, object, bool]] 
         "operator",
         True,
     ),
+    "promoteIntakeEvent": ("intake promote", True, "allowed", None, False),
     "recordOutboxPoisonDisposition": (
         "ops outbox poison dispose",
         True,
@@ -130,6 +131,7 @@ _EXPECTED_OPERATION_METADATA: dict[str, tuple[object, bool, str, object, bool]] 
     "resolveCloseWorkflow": ("ticket resolve", True, "allowed", None, False),
     "runSyntheticWorkflow": ("synthetic run", True, "allowed", None, False),
     "startTicketWorkflow": ("ticket workflow start", True, "allowed", None, False),
+    "submitIntake": ("intake submit", True, "allowed", None, False),
     "transferTicketCustody": ("ticket custody transfer", True, "allowed", None, False),
     "transitionWorkflow": ("ticket transition", True, "allowed", None, False),
     "validateCompanyBundle": ("company bundle validate", False, "forbidden", None, False),
@@ -154,6 +156,9 @@ _EXPECTED_PROBLEM_CODES = {
     "durability_pending",
     "i1-7c-required",
     "idempotency-conflict",
+    "intake-already-promoted",
+    "intake-promotion-ineligible",
+    "intake-source-conflict",
     "migration-alias-conflict",
     "migration-capability-denied",
     "migration-correction-conflict",
@@ -169,6 +174,7 @@ _EXPECTED_PROBLEM_CODES = {
     "migration-source-tainted",
     "poison-not-found",
     "project-delivery-unavailable",
+    "request-body-too-large",
     "proof-candidate-author-mismatch",
     "proof-candidate-digest-invalid",
     "proof-candidate-digest-not-current",
@@ -265,6 +271,59 @@ def test_problem_vocabulary_and_boundary_objects_are_strict() -> None:
     for name, schema in schemas.items():
         if schema.get("type") == "object":
             assert schema.get("additionalProperties") is False, name
+
+
+def test_scalar_profiles_are_exact_root_contracts() -> None:
+    document = json.loads((ROOT / "contracts/http/openapi.yaml").read_text(encoding="utf-8"))
+    expected = {
+        "x-ctower-free-form-json-profile": {
+            "containers": "recursive-arrays-and-objects",
+            "duplicate-object-members": "last-member-wins",
+            "fraction-exponent-negative-zero": "preserve-sign",
+            "fraction-exponent-semantics": "finite-ieee-754-binary64",
+            "integer-lexemes": "x-ctower-json-integer-profile",
+            "nonfinite": "rejected",
+            "overflow": "rejected",
+            "trust": "opaque-until-component-schema-validation",
+            "underflow": "preserve-binary64-signed-zero",
+        },
+        "x-ctower-json-integer-profile": {
+            "maximum": 9_007_199_254_740_991,
+            "minimum": -9_007_199_254_740_991,
+            "negative-zero": "normalize-to-zero",
+            "semantics": "exact-integer-interoperability",
+            "token-syntax": "minus-zero-or-nonzero-decimal-digits-only",
+        },
+        "x-ctower-absolute-uri-profile": {
+            "characters": "ascii-rfc3986",
+            "fragment": "allowed",
+            "grammar": "rfc3986-uri-with-required-scheme",
+            "http-authority": "required-with-nonempty-host",
+            "normalization": "none-return-original",
+            "percent-encoding": "complete-two-hex-digit-triplets",
+            "raw-backslash": "rejected",
+            "raw-whitespace-controls": "rejected",
+        },
+    }
+
+    assert {key: document[key] for key in expected} == expected
+    nested = json.dumps({key: value for key, value in document.items() if key not in expected})
+    assert all(key not in nested for key in expected)
+
+
+def test_intake_contract_is_explicit_and_has_no_classifier_or_dispatch_surface() -> None:
+    document = json.loads((ROOT / "contracts/http/openapi.yaml").read_text(encoding="utf-8"))
+    paths = cast(dict[str, object], document["paths"])
+    schemas = cast(dict[str, object], document["components"]["schemas"])
+    intake = {
+        "paths": {key: value for key, value in paths.items() if key.startswith("/v1/intake")},
+        "schemas": {key: value for key, value in schemas.items() if key.startswith("Intake")},
+    }
+    rendered = json.dumps(intake, sort_keys=True).casefold()
+
+    assert '"default": "discussion"' in rendered
+    for forbidden in ("classifier", "fuzzy", "commander override", "agent dispatch"):
+        assert forbidden not in rendered
 
 
 def test_i1_7b_reuses_paths_adds_only_planned_paths_and_refuses_i1_7c() -> None:

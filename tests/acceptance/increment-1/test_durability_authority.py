@@ -90,7 +90,10 @@ from support.durability_health import (
     assert_live_health_faults,
     unreadable_standby_replay_evidence,
 )
-from support.durability_serialization import assert_subject_serialization
+from support.durability_serialization import (
+    assert_intake_promotion_serialization,
+    assert_subject_serialization,
+)
 from support.postgres import (
     DatabaseFixture,
     DurabilityPair,
@@ -99,6 +102,7 @@ from support.postgres import (
     stop_durability_pair,
     wait_for_durability_replay_current,
 )
+from support.project_hierarchy import declare_ctower_project
 from support.tenant_fixture import TenantFixture, create_first_tenant
 
 from ctower_api.interface import create_app
@@ -167,6 +171,26 @@ def test_unreadable_standby_replay_evidence_fails_closed(
 
     assert health.status is DurabilityHealthStatus.DEGRADED
     assert health.reason == reason
+
+
+def test_concurrent_intake_append_and_promotion_have_one_serial_order(
+    authority: _AuthorityFixture,
+) -> None:
+    declare_ctower_project(authority.tenant)
+    record = PostgresRecord(
+        authority.database.runtime_dsn,
+        standby_dsn=authority.standby_dsn,
+    )
+    with (
+        TestClient(create_app(record), client=("127.0.0.1", 51002)) as client,
+        TestClient(create_app(record), client=("127.0.0.1", 51003)) as concurrent_client,
+    ):
+        assert_intake_promotion_serialization(
+            client,
+            concurrent_client,
+            authority.tenant,
+            authority.database,
+        )
 
 
 def test_named_standby_authority_is_replay_safe_and_fail_closed(

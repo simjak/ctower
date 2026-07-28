@@ -1,6 +1,6 @@
 """DO NOT EDIT: generated file; regenerate from declared inputs.
 
-Authored contract digest: sha256:e4e4901322fe1437191f8d8465ffb6e41b253ec044639cfaf8fe7554037cc55a
+Authored contract digest: sha256:f4af8606f2de20320e2a8baf3744b36f04ebb1ee992bf58baf75c3fe992d4075
 """
 
 from __future__ import annotations
@@ -422,6 +422,19 @@ OPERATIONS = MappingProxyType(
             principal='operator',
             refusal_only=True,
         ),
+        "promoteIntakeEvent": OperationSpec(
+            operation_id="promoteIntakeEvent",
+            client_method="promote_intake_event",
+            method="POST",
+            path="/v1/intake/events/{inbound_event_id}/promotion",
+            request_model=_models.IntakePromotionRequest,
+            response_model=_models.IntakeCommandResult,
+            cli_names=('intake promote',),
+            mutation=True,
+            spool_policy=SpoolPolicy.ALLOWED,
+            principal=None,
+            refusal_only=False,
+        ),
         "recordOutboxPoisonDisposition": OperationSpec(
             operation_id="recordOutboxPoisonDisposition",
             client_method="record_outbox_poison_disposition",
@@ -513,6 +526,19 @@ OPERATIONS = MappingProxyType(
             principal=None,
             refusal_only=False,
         ),
+        "submitIntake": OperationSpec(
+            operation_id="submitIntake",
+            client_method="submit_intake",
+            method="POST",
+            path="/v1/intake",
+            request_model=_models.IntakeSubmitRequest,
+            response_model=_models.IntakeCommandResult,
+            cli_names=('intake submit',),
+            mutation=True,
+            spool_policy=SpoolPolicy.ALLOWED,
+            principal=None,
+            refusal_only=False,
+        ),
         "transferTicketCustody": OperationSpec(
             operation_id="transferTicketCustody",
             client_method="transfer_ticket_custody",
@@ -592,6 +618,7 @@ CLI_OPERATIONS = MappingProxyType(
         "ticket audit": OPERATIONS["listTicketAuditEvents"],
         "company bundle plan": OPERATIONS["planCompanyBundle"],
         "migration ctower-project prepare": OPERATIONS["prepareCtowerProjectCutover"],
+        "intake promote": OPERATIONS["promoteIntakeEvent"],
         "ops outbox poison dispose": OPERATIONS["recordOutboxPoisonDisposition"],
         "ticket evidence add": OPERATIONS["recordProofEvidence"],
         "ticket gate verdict": OPERATIONS["recordProofVerdict"],
@@ -599,6 +626,7 @@ CLI_OPERATIONS = MappingProxyType(
         "ticket resolve": OPERATIONS["resolveCloseWorkflow"],
         "synthetic run": OPERATIONS["runSyntheticWorkflow"],
         "ticket workflow start": OPERATIONS["startTicketWorkflow"],
+        "intake submit": OPERATIONS["submitIntake"],
         "ticket custody transfer": OPERATIONS["transferTicketCustody"],
         "ticket transition": OPERATIONS["transitionWorkflow"],
         "company bundle validate": OPERATIONS["validateCompanyBundle"],

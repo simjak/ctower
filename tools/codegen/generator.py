@@ -18,12 +18,14 @@ from tools.checks.generated import (
     render_generated_manifest,
 )
 from tools.codegen._client_codegen import render_client
+from tools.codegen._free_form_json_codegen import require_free_form_json_profile
 from tools.codegen._inventory import EXPECTED_OPERATIONS, EXPECTED_SCHEMAS
 from tools.codegen._model_codegen import render_init, render_models
 from tools.codegen._operation_codegen import render_operations
 from tools.codegen._schema_codegen import render_schema_resources
+from tools.codegen._typescript_codegen import render_typescript
 
-__all__ = ["CodegenError", "check", "write"]
+__all__ = ["CodegenError", "check", "render_typescript_fixture", "write"]
 
 _MANIFEST = Path("generated/.generated-manifest.json")
 _README = Path("generated/README.md")
@@ -35,16 +37,34 @@ _CLIENT_OUTPUTS = {
     "models.py": Path("generated/python/ctower_client/models.py"),
     "operations.py": Path("generated/python/ctower_client/operations.py"),
 }
+_TYPESCRIPT_ROOT = Path("generated/typescript/ctower-client")
+_TYPESCRIPT_OUTPUTS = {
+    "client.ts": _TYPESCRIPT_ROOT / "src/client.ts",
+    "index.ts": _TYPESCRIPT_ROOT / "src/index.ts",
+    "models.ts": _TYPESCRIPT_ROOT / "src/models.ts",
+    "operations.ts": _TYPESCRIPT_ROOT / "src/operations.ts",
+    "response-json.ts": _TYPESCRIPT_ROOT / "src/response-json.ts",
+    "validators.ts": _TYPESCRIPT_ROOT / "src/validators.ts",
+    "package.json": _TYPESCRIPT_ROOT / "package.json",
+    "tsconfig.json": _TYPESCRIPT_ROOT / "tsconfig.json",
+}
 _BASE_INPUTS = (
     _OPENAPI,
     _TELEMETRY,
     Path("tools/codegen/__init__.py"),
     Path("tools/codegen/__main__.py"),
+    Path("tools/codegen/_absolute_uri_codegen.py"),
     Path("tools/codegen/_client_codegen.py"),
+    Path("tools/codegen/_free_form_json_codegen.py"),
     Path("tools/codegen/_inventory.py"),
+    Path("tools/codegen/_json_integer_codegen.py"),
     Path("tools/codegen/_model_codegen.py"),
     Path("tools/codegen/_operation_codegen.py"),
+    Path("tools/codegen/_rfc3339_codegen.py"),
     Path("tools/codegen/_schema_codegen.py"),
+    Path("tools/codegen/_typescript_codegen.py"),
+    Path("tools/codegen/_typescript_json_codegen.py"),
+    Path("tools/codegen/_typescript_validation_codegen.py"),
     Path("tools/codegen/generator.py"),
     Path("tools/checks/generated.py"),
 )
@@ -84,6 +104,23 @@ def check(root: Path) -> None:
             raise CodegenError(f"generated output is stale: {path}")
 
 
+def render_typescript_fixture(
+    document: dict[str, object],
+    contract_digest: str,
+) -> dict[str, str]:
+    """Render one in-memory TypeScript contract fixture through production codegen."""
+
+    try:
+        free_form_profile = require_free_form_json_profile(document)
+        return render_typescript(
+            document,
+            contract_digest,
+            free_form_profile=free_form_profile,
+        )
+    except (TypeError, ValueError) as error:
+        raise CodegenError(str(error)) from error
+
+
 def _render(root: Path) -> _Rendered:
     contract = _load_openapi(root)
     generated_contract = _with_telemetry_schema(root, contract)
@@ -91,22 +128,21 @@ def _render(root: Path) -> _Rendered:
         json.dumps(generated_contract, separators=(",", ":"), sort_keys=True).encode()
     ).hexdigest()
     try:
-        rendered = {
-            "__init__.py": render_init(generated_contract, contract_digest),
-            "client.py": render_client(generated_contract, contract_digest),
-            "models.py": render_models(generated_contract, contract_digest),
-            "operations.py": render_operations(generated_contract, contract_digest),
-        }
+        rendered, typescript = _render_clients(generated_contract, contract_digest)
         contract_resources = render_schema_resources(root, contract_digest)
     except (TypeError, ValueError) as error:
         raise CodegenError(str(error)) from error
     client_outputs = tuple(
         (output, rendered[name]) for name, output in sorted(_CLIENT_OUTPUTS.items())
     )
+    typescript_outputs = tuple(
+        (output, typescript[name]) for name, output in sorted(_TYPESCRIPT_OUTPUTS.items())
+    )
     outputs = tuple(
         sorted(
             (
                 *client_outputs,
+                *typescript_outputs,
                 *contract_resources.outputs,
                 (_README, _render_readme()),
             )
@@ -127,6 +163,29 @@ def _render(root: Path) -> _Rendered:
     except GeneratedManifestError as error:
         raise CodegenError(str(error)) from error
     return _Rendered(outputs, render_generated_manifest(manifest.upsert(artifact)))
+
+
+def _render_clients(
+    document: dict[str, object],
+    contract_digest: str,
+) -> tuple[dict[str, str], dict[str, str]]:
+    free_form_profile = require_free_form_json_profile(document)
+    python = {
+        "__init__.py": render_init(document, contract_digest),
+        "client.py": render_client(document, contract_digest),
+        "models.py": render_models(
+            document,
+            contract_digest,
+            free_form_profile=free_form_profile,
+        ),
+        "operations.py": render_operations(document, contract_digest),
+    }
+    typescript = render_typescript(
+        document,
+        contract_digest,
+        free_form_profile=free_form_profile,
+    )
+    return python, typescript
 
 
 def _load_openapi(root: Path) -> dict[str, object]:
@@ -179,9 +238,10 @@ Do not edit files in this directory. Regenerate them from authored contracts wit
 python3 -m tools.codegen --root . --write
 ```
 
-`python/ctower_client` is the strict OpenAPI client/model package. Its generated operation
-registry is the closed replay inventory for the protected CLI; it is not an arbitrary
-dispatcher.
+`python/ctower_client` and `typescript/ctower-client` are strict OpenAPI client/model
+packages. The Python operation registry is the closed replay inventory for the protected CLI;
+it is not an arbitrary dispatcher. Both clients expose the same authored operation set and
+validate operation-specific success and problem payloads at runtime before returning them.
 
 `python/ctower_contracts` vendors authored JSON schemas into a local-only runtime resource.
 Resolution rejects network references and paths that escape the authored contract tree.

@@ -29,6 +29,8 @@ importers:
 
   apps/ctower-web: {}
 
+  generated/typescript/ctower-client: {}
+
 packages:
 
   '@eslint-community/eslint-utils@4.9.1':

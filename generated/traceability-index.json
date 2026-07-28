@@ -92,11 +92,13 @@
       "packages/ctower-kernel/migrations/0011_persisted_command_refusals.sql",
       "packages/ctower-kernel/migrations/0014_durability_acceptance_finalization.sql",
       "packages/ctower-kernel/migrations/0016_durability_finalization_confirmation.sql",
-      "packages/ctower-kernel/migrations/0025_ticket_comment_event.sql"
+      "packages/ctower-kernel/migrations/0025_ticket_comment_event.sql",
+      "packages/ctower-kernel/migrations/0032_thread_first_intake.sql"
     ],
     "AC-DUR-03": [
       "contracts/domain/events/canonical-vectors.json",
-      "contracts/domain/events/event-envelope.schema.json"
+      "contracts/domain/events/event-envelope.schema.json",
+      "packages/ctower-kernel/migrations/0032_thread_first_intake.sql"
     ],
     "AC-DUR-05": [
       "contracts/evidence/evidence-manifest.schema.json",
@@ -279,6 +281,9 @@
     "AC-PD-05": [
       "contracts/domain/project-delivery/project-delivery-vectors.json"
     ],
+    "AC-PROD-01": [
+      "contracts/domain/intake/thread-intake.schema.json"
+    ],
     "AC-PROD-04": [
       "contracts/domain/tickets/ticket-event.schema.json",
       "packages/ctower-kernel/migrations/0002_ticket_slice.sql",
@@ -421,6 +426,7 @@
       "packs/policies/gates/software-factory-v1.yaml"
     ],
     "INV-01": [
+      "contracts/domain/intake/thread-intake.schema.json",
       "packages/ctower-kernel/migrations/0001_roles.sql",
       "packages/ctower-kernel/migrations/0002_ticket_slice.sql",
       "packages/ctower-kernel/migrations/0003_privileges.sql",
@@ -431,17 +437,21 @@
       "packages/ctower-kernel/migrations/0017_durability_probe_schema_boundary.sql",
       "packages/ctower-kernel/migrations/0018_durability_probe_search_path.sql",
       "packages/ctower-kernel/migrations/0020_recovery_roles.sql",
-      "packages/ctower-kernel/migrations/0023_cp3c_privileges.sql"
+      "packages/ctower-kernel/migrations/0023_cp3c_privileges.sql",
+      "packages/ctower-kernel/migrations/0032_thread_first_intake.sql"
     ],
     "INV-02": [
       "contracts/bootstrap/first-tenant-request.schema.json",
+      "contracts/domain/intake/thread-intake.schema.json",
       "packages/ctower-kernel/migrations/0002_ticket_slice.sql",
       "packages/ctower-kernel/migrations/0003_privileges.sql"
     ],
     "INV-03": [
       "contracts/domain/events/event-envelope.schema.json",
+      "contracts/domain/intake/thread-intake.schema.json",
       "contracts/http/openapi.yaml",
-      "packages/ctower-kernel/migrations/0002_ticket_slice.sql"
+      "packages/ctower-kernel/migrations/0002_ticket_slice.sql",
+      "packages/ctower-kernel/migrations/0032_thread_first_intake.sql"
     ],
     "INV-04": [
       "contracts/domain/events/event-envelope.schema.json",
@@ -454,10 +464,18 @@
     ],
     "INV-05": [
       "contracts/domain/events/canonical-vectors.json",
-      "contracts/domain/events/event-envelope.schema.json"
+      "contracts/domain/events/event-envelope.schema.json",
+      "packages/ctower-kernel/migrations/0032_thread_first_intake.sql"
     ],
     "INV-06": [
+      "contracts/domain/intake/thread-intake.schema.json",
       "contracts/domain/tickets/ticket-event.schema.json"
+    ],
+    "INV-07": [
+      "contracts/domain/intake/thread-intake.schema.json"
+    ],
+    "INV-08": [
+      "contracts/domain/intake/thread-intake.schema.json"
     ],
     "INV-09": [
       "contracts/domain/tickets/ticket-event.schema.json",
@@ -683,6 +701,10 @@
       "packages/ctower-kernel/migrations/0030_i17b_migration_truth_spine.sql",
       "packages/ctower-kernel/migrations/0031_i17b_bounded_truth_spine.sql"
     ],
+    "SPEC#aggregate-boundaries-and-relationships": [
+      "contracts/domain/intake/thread-intake.schema.json",
+      "packages/ctower-kernel/migrations/0032_thread_first_intake.sql"
+    ],
     "SPEC#backup-restore-and-reboot-drills": [
       "contracts/operations/backup-manifest.schema.json",
       "contracts/operations/expected-source-inventory.schema.json",
@@ -707,7 +729,8 @@
       "packages/ctower-kernel/migrations/0025_ticket_comment_event.sql",
       "packages/ctower-kernel/migrations/0028_i17b_importer_isolation.sql",
       "packages/ctower-kernel/migrations/0030_i17b_migration_truth_spine.sql",
-      "packages/ctower-kernel/migrations/0031_i17b_bounded_truth_spine.sql"
+      "packages/ctower-kernel/migrations/0031_i17b_bounded_truth_spine.sql",
+      "packages/ctower-kernel/migrations/0032_thread_first_intake.sql"
     ],
     "SPEC#client-acknowledgement-and-offline-behavior": [
       "contracts/http/openapi.yaml",
@@ -818,7 +841,8 @@
       "packages/ctower-kernel/migrations/0026_fixed_operation_attempt_receipts.sql",
       "packages/ctower-kernel/migrations/0028_i17b_importer_isolation.sql",
       "packages/ctower-kernel/migrations/0030_i17b_migration_truth_spine.sql",
-      "packages/ctower-kernel/migrations/0031_i17b_bounded_truth_spine.sql"
+      "packages/ctower-kernel/migrations/0031_i17b_bounded_truth_spine.sql",
+      "packages/ctower-kernel/migrations/0032_thread_first_intake.sql"
     ],
     "SPEC#project-delivery-projection": [
       "contracts/components/checkpoint.schema.json",
@@ -849,6 +873,9 @@
       "packages/ctower-kernel/migrations/0018_durability_probe_search_path.sql",
       "packages/ctower-kernel/migrations/0020_recovery_roles.sql",
       "packages/ctower-kernel/migrations/0023_cp3c_privileges.sql"
+    ],
+    "SPEC#stage-contracts": [
+      "contracts/domain/intake/thread-intake.schema.json"
     ],
     "SPEC#task-management-foundation": [
       "contracts/domain/task-management/board-view.schema.json",

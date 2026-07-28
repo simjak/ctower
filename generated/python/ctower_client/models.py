@@ -1,16 +1,18 @@
 """DO NOT EDIT: generated file; regenerate from declared inputs.
 
-Authored contract digest: sha256:e4e4901322fe1437191f8d8465ffb6e41b253ec044639cfaf8fe7554037cc55a
+Authored contract digest: sha256:f4af8606f2de20320e2a8baf3744b36f04ebb1ee992bf58baf75c3fe992d4075
 """
 
 from __future__ import annotations
 
-from datetime import datetime
+from datetime import datetime, timedelta, timezone
 from enum import StrEnum
+import math
+import re
 from typing import Annotated, Literal
 from uuid import UUID
 
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, BeforeValidator, ConfigDict, Field
 
 __all__ = [
     "ActivityClass",
@@ -81,6 +83,13 @@ __all__ = [
     "HealthContributorKey",
     "HealthDimension",
     "HealthStatus",
+    "IntakeCommandResult",
+    "IntakeIntent",
+    "IntakeOutcome",
+    "IntakePromotionIntent",
+    "IntakePromotionRequest",
+    "IntakeSubmitRequest",
+    "IntakeTaint",
     "MigrationAliasCorrection",
     "MigrationConservation",
     "MigrationCorrectionReplacement",
@@ -167,6 +176,293 @@ __all__ = [
 ]
 
 
+_RFC3339_PATTERN = re.compile(
+    r"^(?P<year>[0-9]{4})-(?P<month>[0-9]{2})-(?P<day>[0-9]{2})"
+    r"T(?P<hour>[0-9]{2}):(?P<minute>[0-9]{2}):(?P<second>[0-9]{2})"
+    r"(?:\.(?P<fraction>[0-9]{1,6}))?"
+    r"(?P<zone>Z|(?P<sign>[+-])(?P<offset_hour>[0-9]{2}):"
+    r"(?P<offset_minute>[0-9]{2}))$"
+)
+
+
+def _validate_rfc3339(value: object) -> datetime:
+    if isinstance(value, datetime):
+        offset = value.utcoffset()
+        if offset is None:
+            raise ValueError("RFC 3339 timestamps require a timezone")
+        offset_seconds = offset.total_seconds()
+        if offset_seconds % 60 != 0 or abs(offset_seconds) > 86_340:
+            raise ValueError("RFC 3339 timestamp has an invalid numeric offset")
+        return value
+    if not isinstance(value, str):
+        raise ValueError("RFC 3339 timestamp must be a string or datetime")
+    match = _RFC3339_PATTERN.fullmatch(value)
+    if match is None or match.group("zone") == "-00:00":
+        raise ValueError("timestamp is outside the authored RFC 3339 profile")
+    parts = {name: int(match.group(name)) for name in (
+        "year", "month", "day", "hour", "minute", "second"
+    )}
+    if not 1 <= parts["year"] <= 9999:
+        raise ValueError("RFC 3339 timestamp year is outside 0001-9999")
+    if parts["hour"] > 23 or parts["minute"] > 59 or parts["second"] > 59:
+        raise ValueError("RFC 3339 timestamp has an invalid time")
+    offset_hour = int(match.group("offset_hour") or 0)
+    offset_minute = int(match.group("offset_minute") or 0)
+    if offset_hour > 23 or offset_minute > 59:
+        raise ValueError("RFC 3339 timestamp has an invalid numeric offset")
+    offset = timedelta(hours=offset_hour, minutes=offset_minute)
+    if match.group("sign") == "-":
+        offset = -offset
+    zone = timezone.utc if match.group("zone") == "Z" else timezone(offset)
+    fraction = (match.group("fraction") or "").ljust(6, "0")
+    try:
+        return datetime(
+            parts["year"],
+            parts["month"],
+            parts["day"],
+            parts["hour"],
+            parts["minute"],
+            parts["second"],
+            int(fraction or 0),
+            zone,
+        )
+    except ValueError as error:
+        raise ValueError("timestamp is outside the proleptic Gregorian calendar") from error
+
+
+def _validate_absolute_uri(value: object) -> str:
+    if not isinstance(value, str):
+        raise ValueError("absolute URI must be a string")
+    if not _is_absolute_uri(value):
+        raise ValueError("string is not an absolute URI")
+    return value
+
+
+_AbsoluteUri = Annotated[str, BeforeValidator(_validate_absolute_uri)]
+_Rfc3339DateTime = Annotated[datetime, BeforeValidator(_validate_rfc3339)]
+
+_URI_UNRESERVED = frozenset('ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-._~')
+_URI_SUB_DELIMITERS = frozenset("!$&'()*+,;=")
+_URI_HEX_DIGITS = frozenset('0123456789ABCDEFabcdef')
+_URI_PCHAR = _URI_UNRESERVED | _URI_SUB_DELIMITERS | frozenset(":@")
+
+
+def _is_absolute_uri(value: str) -> bool:
+    if not value or any(ord(char) <= 32 or ord(char) >= 127 or char == "\\" for char in value):
+        return False
+    colon = value.find(":")
+    if colon <= 0 or not _is_uri_scheme(value[:colon]):
+        return False
+    scheme = value[:colon]
+    remainder = value[colon + 1:]
+    fragment_at = remainder.find("#")
+    if fragment_at >= 0:
+        fragment = remainder[fragment_at + 1:]
+        remainder = remainder[:fragment_at]
+        if not _valid_uri_component(fragment, allow_slash=True, allow_question=True):
+            return False
+    query_at = remainder.find("?")
+    if query_at >= 0:
+        query = remainder[query_at + 1:]
+        remainder = remainder[:query_at]
+        if not _valid_uri_component(query, allow_slash=True, allow_question=True):
+            return False
+    has_authority = remainder.startswith("//")
+    host = ""
+    if has_authority:
+        authority_and_path = remainder[2:]
+        slash_at = authority_and_path.find("/")
+        authority = authority_and_path if slash_at < 0 else authority_and_path[:slash_at]
+        path = "" if slash_at < 0 else authority_and_path[slash_at:]
+        valid_authority, host = _parse_uri_authority(authority)
+        if not valid_authority:
+            return False
+    else:
+        path = remainder
+    if not _valid_uri_component(path, allow_slash=True, allow_question=False):
+        return False
+    return scheme.lower() not in {"http", "https"} or (has_authority and bool(host))
+
+
+def _is_uri_scheme(value: str) -> bool:
+    return (
+        bool(value)
+        and _ascii_alpha(value[0])
+        and all(_ascii_alpha(char) or _ascii_digit(char) or char in "+-." for char in value[1:])
+    )
+
+
+def _valid_uri_component(value: str, *, allow_slash: bool, allow_question: bool) -> bool:
+    allowed = _URI_PCHAR
+    if allow_slash:
+        allowed = allowed | frozenset("/")
+    if allow_question:
+        allowed = allowed | frozenset("?")
+    return _valid_uri_token(value, allowed)
+
+
+def _valid_uri_token(value: str, allowed: frozenset[str]) -> bool:
+    index = 0
+    while index < len(value):
+        char = value[index]
+        if char == "%":
+            if (
+                index + 2 >= len(value)
+                or value[index + 1] not in _URI_HEX_DIGITS
+                or value[index + 2] not in _URI_HEX_DIGITS
+            ):
+                return False
+            index += 3
+        elif char in allowed:
+            index += 1
+        else:
+            return False
+    return True
+
+
+def _parse_uri_authority(value: str) -> tuple[bool, str]:
+    if value.count("@") > 1:
+        return False, ""
+    if "@" in value:
+        userinfo, host_port = value.rsplit("@", 1)
+        if not _valid_uri_token(
+            userinfo, _URI_UNRESERVED | _URI_SUB_DELIMITERS | frozenset(":")
+        ):
+            return False, ""
+    else:
+        host_port = value
+    if host_port.startswith("["):
+        close = host_port.find("]")
+        if close < 0 or not _valid_ip_literal(host_port[1:close]):
+            return False, ""
+        suffix = host_port[close + 1:]
+        if suffix and (not suffix.startswith(":") or not _valid_port(suffix[1:])):
+            return False, ""
+        return True, host_port[:close + 1]
+    if "[" in host_port or "]" in host_port or host_port.count(":") > 1:
+        return False, ""
+    if ":" in host_port:
+        host, port = host_port.rsplit(":", 1)
+        if not _valid_port(port):
+            return False, ""
+    else:
+        host = host_port
+    if not _valid_uri_token(host, _URI_UNRESERVED | _URI_SUB_DELIMITERS):
+        return False, ""
+    return True, host
+
+
+def _valid_ip_literal(value: str) -> bool:
+    if len(value) >= 4 and value[0] in "vV":
+        version, separator, address = value[1:].partition(".")
+        allowed = _URI_UNRESERVED | _URI_SUB_DELIMITERS | frozenset(":")
+        return (
+            separator == "."
+            and bool(version)
+            and all(char in _URI_HEX_DIGITS for char in version)
+            and bool(address)
+            and all(char in allowed for char in address)
+        )
+    return _valid_ipv6(value)
+
+
+def _valid_ipv6(value: str) -> bool:
+    if not value or value.count("::") > 1:
+        return False
+    if "::" not in value:
+        groups = _ipv6_side_groups(value, allow_ipv4=True)
+        return groups == 8
+    left, right = value.split("::", 1)
+    left_groups = _ipv6_side_groups(left, allow_ipv4=False)
+    right_groups = _ipv6_side_groups(right, allow_ipv4=True)
+    return (
+        left_groups is not None
+        and right_groups is not None
+        and left_groups + right_groups < 8
+    )
+
+
+def _ipv6_side_groups(value: str, *, allow_ipv4: bool) -> int | None:
+    if not value:
+        return 0
+    parts = value.split(":")
+    if any(not part for part in parts):
+        return None
+    count = 0
+    for index, part in enumerate(parts):
+        if "." in part:
+            if not allow_ipv4 or index != len(parts) - 1 or not _valid_ipv4(part):
+                return None
+            count += 2
+        elif len(part) > 4 or any(char not in _URI_HEX_DIGITS for char in part):
+            return None
+        else:
+            count += 1
+    return count
+
+
+def _valid_ipv4(value: str) -> bool:
+    parts = value.split(".")
+    return len(parts) == 4 and all(
+        _ascii_digits(part)
+        and (len(part) == 1 or not part.startswith("0"))
+        and int(part) <= 255
+        for part in parts
+    )
+
+
+def _ascii_alpha(value: str) -> bool:
+    return "A" <= value <= "Z" or "a" <= value <= "z"
+
+
+def _ascii_digit(value: str) -> bool:
+    return "0" <= value <= "9"
+
+
+def _ascii_digits(value: str) -> bool:
+    return bool(value) and all(_ascii_digit(char) for char in value)
+
+
+def _valid_port(value: str) -> bool:
+    return not value or _ascii_digits(value)
+
+def _validate_free_form_json(value: object) -> None:
+    if value is None or isinstance(value, (str, bool)):
+        return
+    if type(value) is int:
+        if -9007199254740991 <= value <= 9007199254740991:
+            return
+        raise ValueError("free-form JSON integer is outside the lossless JSON range")
+    if type(value) is float:
+        if math.isfinite(value):
+            return
+        raise ValueError("free-form JSON number must be finite")
+    if isinstance(value, list):
+        for item in value:
+            _validate_free_form_json(item)
+        return
+    if isinstance(value, dict):
+        for key, item in value.items():
+            if not isinstance(key, str):
+                raise ValueError("free-form JSON object keys must be strings")
+            _validate_free_form_json(item)
+        return
+    raise ValueError("free-form JSON contains a non-JSON value")
+
+
+def _validate_free_form_json_object(value: object) -> object:
+    if not isinstance(value, dict):
+        raise ValueError("free-form JSON object must be a dictionary")
+    _validate_free_form_json(value)
+    return value
+
+
+_FreeFormJsonObject = Annotated[
+    dict[str, object],
+    BeforeValidator(_validate_free_form_json_object),
+]
+
+
 class _BoundaryModel(BaseModel):
     model_config = ConfigDict(extra="forbid", frozen=True, populate_by_name=True, strict=True)
 
@@ -178,12 +474,12 @@ class ActivityClass(StrEnum):
 
 class AdmitIntent(_BoundaryModel):
     kind: Literal["admit"]
-    expected_version: Annotated[int, Field(ge=1)]
+    expected_version: Annotated[int, Field(ge=1, le=9007199254740991)]
     reason: Annotated[str, Field(min_length=1, max_length=500)]
 
 
 class AdmittedAuditData(_BoundaryModel):
-    episode_number: Annotated[int, Field(ge=1)]
+    episode_number: Annotated[int, Field(ge=1, le=9007199254740991)]
     reason: Annotated[str, Field(min_length=1, max_length=500)]
 
 
@@ -205,7 +501,7 @@ class AssignmentKind(StrEnum):
 
 class BlockIntent(_BoundaryModel):
     kind: Literal["block"]
-    expected_version: Annotated[int, Field(ge=1)]
+    expected_version: Annotated[int, Field(ge=1, le=9007199254740991)]
     reason: Annotated[str, Field(min_length=1, max_length=500)]
     blocker_id: UUID
     blocker_kind: Literal["dependency", "operator_action", "policy", "resource", "technical"]
@@ -214,7 +510,7 @@ class BlockIntent(_BoundaryModel):
     source_ref: Annotated[str, Field(min_length=1, max_length=256)]
     affected_stage: Annotated[str, Field(pattern="^[a-z][a-z0-9._-]*$")] | None
     resolution_condition: Annotated[str, Field(min_length=1, max_length=500)]
-    next_check_at: datetime | None
+    next_check_at: _Rfc3339DateTime | None
     dependency_ref: Annotated[str, Field(max_length=256)] | None
     board_impact: bool
 
@@ -315,14 +611,14 @@ class CtowerProjectAliasPlanBindRequest(_BoundaryModel):
     export_equality_digest: Annotated[str, Field(pattern="^sha256:[0-9a-f]{64}$")]
     alias_map_digest: Annotated[str, Field(pattern="^sha256:[0-9a-f]{64}$")]
     reviewer_key_ref: Annotated[str, Field(pattern="^signing-key-ref:[a-z0-9/_-]{3,255}$")]
-    reviewer_key_version: Annotated[int, Field(ge=1)]
+    reviewer_key_version: Annotated[int, Field(ge=1, le=9007199254740991)]
     reviewer_public_key_digest: Annotated[str, Field(pattern="^sha256:[0-9a-f]{64}$")]
     attention_required: Literal[0]
     alias_map_artifact: Annotated[str, Field(min_length=2, max_length=4194304)]
     import_plan_artifact: Annotated[str, Field(min_length=2, max_length=8388608)]
     fence_registry_artifact: Annotated[str, Field(min_length=2, max_length=2097152)]
     fence_observer_credential_digest: Annotated[str, Field(pattern="^sha256:[0-9a-f]{64}$")]
-    fence_observer_expires_at: datetime
+    fence_observer_expires_at: _Rfc3339DateTime
 
 
 class CtowerProjectEpochRefusalRequest(_BoundaryModel):
@@ -341,7 +637,7 @@ class CtowerProjectExportEqualityBindRequest(_BoundaryModel):
     export_digest: Annotated[str, Field(pattern="^sha256:[0-9a-f]{64}$")]
     equality_report_digest: Annotated[str, Field(pattern="^sha256:[0-9a-f]{64}$")]
     reviewer_key_ref: Annotated[str, Field(pattern="^signing-key-ref:[a-z0-9/_-]{3,255}$")]
-    reviewer_key_version: Annotated[int, Field(ge=1)]
+    reviewer_key_version: Annotated[int, Field(ge=1, le=9007199254740991)]
     reviewer_public_key_digest: Annotated[str, Field(pattern="^sha256:[0-9a-f]{64}$")]
     result: Literal["equal"]
     export_a_artifact: Annotated[str, Field(min_length=2, max_length=4194304)]
@@ -367,14 +663,14 @@ class CtowerProjectImportRunCreateRequest(_BoundaryModel):
     schema_digest: Annotated[str, Field(pattern="^sha256:[0-9a-f]{64}$")]
     operation_registry_digest: Annotated[str, Field(pattern="^sha256:[0-9a-f]{64}$")]
     reviewer_key_ref: Annotated[str, Field(pattern="^signing-key-ref:[a-z0-9/_-]{3,255}$")]
-    reviewer_key_version: Annotated[int, Field(ge=1)]
+    reviewer_key_version: Annotated[int, Field(ge=1, le=9007199254740991)]
     reviewer_public_key_digest: Annotated[str, Field(pattern="^sha256:[0-9a-f]{64}$")]
     importer_credential_digest: Annotated[str, Field(pattern="^sha256:[0-9a-f]{64}$")]
-    importer_expires_at: datetime
+    importer_expires_at: _Rfc3339DateTime
 
 
 class CustodyTransferRequest(_BoundaryModel):
-    expected_version: Annotated[int, Field(ge=1)]
+    expected_version: Annotated[int, Field(ge=1, le=9007199254740991)]
     from_custodian_id: UUID
     protected_transfer: bool
     reason: Annotated[str, Field(min_length=1, max_length=500)]
@@ -389,15 +685,15 @@ class CustodyTransferredPayload(_BoundaryModel):
 
 class DeferIntent(_BoundaryModel):
     kind: Literal["defer"]
-    expected_version: Annotated[int, Field(ge=1)]
+    expected_version: Annotated[int, Field(ge=1, le=9007199254740991)]
     reason: Annotated[str, Field(min_length=1, max_length=500)]
-    review_after: datetime
+    review_after: _Rfc3339DateTime
 
 
 class DeferredAuditData(_BoundaryModel):
-    episode_number: Annotated[int, Field(ge=1)]
+    episode_number: Annotated[int, Field(ge=1, le=9007199254740991)]
     reason: Annotated[str, Field(min_length=1, max_length=500)]
-    review_after: datetime
+    review_after: _Rfc3339DateTime
 
 
 class DurabilityState(StrEnum):
@@ -406,7 +702,7 @@ class DurabilityState(StrEnum):
 
 
 class EvidenceRequest(_BoundaryModel):
-    expected_version: Annotated[int, Field(ge=1)]
+    expected_version: Annotated[int, Field(ge=1, le=9007199254740991)]
     evidence_id: UUID
     criterion_key: Annotated[str, Field(pattern="^[a-z][a-z0-9._-]*$")]
     candidate_digest: Annotated[str, Field(pattern="^sha256:[0-9a-f]{64}$")]
@@ -431,6 +727,30 @@ class HealthStatus(StrEnum):
     STATE_UNKNOWN = "STATE_UNKNOWN"
 
 
+class IntakeIntent(StrEnum):
+    DISCUSSION = "discussion"
+    CREATE_TICKET = "create_ticket"
+    LINK_TICKET = "link_ticket"
+
+
+class IntakeOutcome(StrEnum):
+    DISCUSSION = "discussion"
+    TICKET_CREATED = "ticket_created"
+    TICKET_LINKED = "ticket_linked"
+    QUARANTINED = "quarantined"
+
+
+class IntakePromotionIntent(StrEnum):
+    CREATE_TICKET = "create_ticket"
+    LINK_TICKET = "link_ticket"
+
+
+class IntakeTaint(StrEnum):
+    AUTHENTICATED = "authenticated"
+    EXTERNAL_UNTRUSTED = "external_untrusted"
+    QUARANTINE_REQUIRED = "quarantine_required"
+
+
 class MigrationAliasCorrection(_BoundaryModel):
     kind: Literal["alias"]
     target_ticket_id: UUID
@@ -438,7 +758,7 @@ class MigrationAliasCorrection(_BoundaryModel):
 
 
 class MigrationConservation(_BoundaryModel):
-    selected_logical_items: Annotated[int, Field(ge=1)]
+    selected_logical_items: Annotated[int, Field(ge=1, le=9007199254740991)]
     selected_request_logical: Literal[86]
     selected_request_physical_snapshots: Literal[243]
     stable_aliases: Literal[27]
@@ -459,34 +779,34 @@ class MigrationConservation(_BoundaryModel):
 
 class MigrationCorrectionRevision(_BoundaryModel):
     object_id: UUID
-    revision: Annotated[int, Field(ge=1)]
+    revision: Annotated[int, Field(ge=1, le=9007199254740991)]
 
 
 class MigrationDetachedSignature(_BoundaryModel):
     algorithm: Literal["Ed25519"]
     signed_digest: Annotated[str, Field(pattern="^sha256:[0-9a-f]{64}$")]
     key_ref: Annotated[str, Field(pattern="^signing-key-ref:[a-z0-9/_-]{3,255}$")]
-    key_version: Annotated[int, Field(ge=1)]
+    key_version: Annotated[int, Field(ge=1, le=9007199254740991)]
     public_key_digest: Annotated[str, Field(pattern="^sha256:[0-9a-f]{64}$")]
     signature: Annotated[str, Field(pattern="^[A-Za-z0-9_-]{86}$")]
 
 
 class MigrationDispositions(_BoundaryModel):
-    created_ticket: Annotated[int, Field(ge=0)]
-    alias_linked_existing: Annotated[int, Field(ge=0)]
-    project_checkpoint_definition: Annotated[int, Field(ge=0)]
-    decision_link: Annotated[int, Field(ge=0)]
-    external_effect_link: Annotated[int, Field(ge=0)]
-    artifact_linked_not_proof: Annotated[int, Field(ge=0)]
-    provenance_only: Annotated[int, Field(ge=0)]
-    exact_duplicate: Annotated[int, Field(ge=0)]
-    excluded_out_of_scope: Annotated[int, Field(ge=0)]
+    created_ticket: Annotated[int, Field(ge=0, le=9007199254740991)]
+    alias_linked_existing: Annotated[int, Field(ge=0, le=9007199254740991)]
+    project_checkpoint_definition: Annotated[int, Field(ge=0, le=9007199254740991)]
+    decision_link: Annotated[int, Field(ge=0, le=9007199254740991)]
+    external_effect_link: Annotated[int, Field(ge=0, le=9007199254740991)]
+    artifact_linked_not_proof: Annotated[int, Field(ge=0, le=9007199254740991)]
+    provenance_only: Annotated[int, Field(ge=0, le=9007199254740991)]
+    exact_duplicate: Annotated[int, Field(ge=0, le=9007199254740991)]
+    excluded_out_of_scope: Annotated[int, Field(ge=0, le=9007199254740991)]
     attention_required: Literal[0]
 
 
 class MigrationFenceFileIdentity(_BoundaryModel):
-    device: Annotated[int, Field(ge=0)]
-    inode: Annotated[int, Field(ge=1)]
+    device: Annotated[int, Field(ge=0, le=9007199254740991)]
+    inode: Annotated[int, Field(ge=1, le=9007199254740991)]
     scoped_rows_digest: Annotated[str, Field(pattern="^sha256:[0-9a-f]{64}$")]
 
 
@@ -500,10 +820,10 @@ class MigrationHealthDigests(_BoundaryModel):
 
 
 class MigrationImportCounts(_BoundaryModel):
-    planned_operations: Annotated[int, Field(ge=0)]
-    applied_operations: Annotated[int, Field(ge=0)]
-    replayed_operations: Annotated[int, Field(ge=0)]
-    refused_operations: Annotated[int, Field(ge=0)]
+    planned_operations: Annotated[int, Field(ge=0, le=9007199254740991)]
+    applied_operations: Annotated[int, Field(ge=0, le=9007199254740991)]
+    replayed_operations: Annotated[int, Field(ge=0, le=9007199254740991)]
+    refused_operations: Annotated[int, Field(ge=0, le=9007199254740991)]
 
 
 class MigrationImportOperationResult(_BoundaryModel):
@@ -512,14 +832,14 @@ class MigrationImportOperationResult(_BoundaryModel):
     replayed: bool
     target_id: Annotated[str, Field(min_length=1, max_length=256)]
     event_ids: tuple[UUID, ...]
-    record_position: Annotated[int, Field(ge=1)]
-    occurred_at: datetime
+    record_position: Annotated[int, Field(ge=1, le=9007199254740991)]
+    occurred_at: _Rfc3339DateTime
 
 
 class MigrationImporterBinding(_BoundaryModel):
     principal_kind: Literal["migration_importer"]
     credential_digest: Annotated[str, Field(pattern="^sha256:[0-9a-f]{64}$")]
-    expires_at: datetime
+    expires_at: _Rfc3339DateTime
     revoked: bool
 
 
@@ -535,17 +855,17 @@ class MigrationOperationIdentity(_BoundaryModel):
 class MigrationPassTwoMeasurement(_BoundaryModel):
     start_snapshot_digest: Annotated[str, Field(pattern="^sha256:[0-9a-f]{64}$")]
     end_snapshot_digest: Annotated[str, Field(pattern="^sha256:[0-9a-f]{64}$")]
-    start_domain_facts: Annotated[int, Field(ge=0)]
-    end_domain_facts: Annotated[int, Field(ge=0)]
+    start_domain_facts: Annotated[int, Field(ge=0, le=9007199254740991)]
+    end_domain_facts: Annotated[int, Field(ge=0, le=9007199254740991)]
     new_domain_facts: Literal[0]
-    start_events: Annotated[int, Field(ge=0)]
-    end_events: Annotated[int, Field(ge=0)]
+    start_events: Annotated[int, Field(ge=0, le=9007199254740991)]
+    end_events: Annotated[int, Field(ge=0, le=9007199254740991)]
     new_events: Literal[0]
-    start_outbox_rows: Annotated[int, Field(ge=0)]
-    end_outbox_rows: Annotated[int, Field(ge=0)]
+    start_outbox_rows: Annotated[int, Field(ge=0, le=9007199254740991)]
+    end_outbox_rows: Annotated[int, Field(ge=0, le=9007199254740991)]
     new_outbox_rows: Literal[0]
-    start_record_position: Annotated[int, Field(ge=0)]
-    end_record_position: Annotated[int, Field(ge=0)]
+    start_record_position: Annotated[int, Field(ge=0, le=9007199254740991)]
+    end_record_position: Annotated[int, Field(ge=0, le=9007199254740991)]
     record_position_delta: Literal[0]
     start_project_delivery_digest: Annotated[str, Field(pattern="^sha256:[0-9a-f]{64}$")]
     end_project_delivery_digest: Annotated[str, Field(pattern="^sha256:[0-9a-f]{64}$")]
@@ -605,13 +925,13 @@ class MigrationRelationCorrection(_BoundaryModel):
 
 class MigrationReview(_BoundaryModel):
     reviewer_principal_id: UUID
-    reviewed_at: datetime
+    reviewed_at: _Rfc3339DateTime
     decision: Literal["approved"]
 
 
 class MigrationReviewerKey(_BoundaryModel):
     public_key_ref: Annotated[str, Field(pattern="^signing-key-ref:[a-z0-9/_-]{3,255}$")]
-    key_version: Annotated[int, Field(ge=1)]
+    key_version: Annotated[int, Field(ge=1, le=9007199254740991)]
     public_key_digest: Annotated[str, Field(pattern="^sha256:[0-9a-f]{64}$")]
 
 
@@ -643,10 +963,10 @@ class MigrationSourceLinkCorrection(_BoundaryModel):
 
 
 class MigrationWatermarks(_BoundaryModel):
-    source_native: Annotated[int, Field(ge=0)]
-    export_native: Annotated[int, Field(ge=0)]
-    record_position: Annotated[int, Field(ge=0)]
-    projection_position: Annotated[int, Field(ge=0)]
+    source_native: Annotated[int, Field(ge=0, le=9007199254740991)]
+    export_native: Annotated[int, Field(ge=0, le=9007199254740991)]
+    record_position: Annotated[int, Field(ge=0, le=9007199254740991)]
+    projection_position: Annotated[int, Field(ge=0, le=9007199254740991)]
 
 
 class MutableAssignmentKind(StrEnum):
@@ -687,6 +1007,9 @@ class Problem(_BoundaryModel):
         "durability_pending",
         "i1-7c-required",
         "idempotency-conflict",
+        "intake-already-promoted",
+        "intake-promotion-ineligible",
+        "intake-source-conflict",
         "migration-alias-conflict",
         "migration-capability-denied",
         "migration-correction-conflict",
@@ -702,6 +1025,7 @@ class Problem(_BoundaryModel):
         "migration-source-tainted",
         "poison-not-found",
         "project-delivery-unavailable",
+        "request-body-too-large",
         "proof-candidate-author-mismatch",
         "proof-candidate-digest-invalid",
         "proof-candidate-digest-not-current",
@@ -749,17 +1073,17 @@ class Problem(_BoundaryModel):
         "workflow-not-terminal",
     ]
     command_id: UUID | None = None
-    current_version: Annotated[int, Field(ge=0)] | None = None
+    current_version: Annotated[int, Field(ge=0, le=9007199254740991)] | None = None
     detail: str
     status: Annotated[int, Field(ge=400, le=599)]
     title: str
-    type_uri: str = Field(alias="type", serialization_alias="type")
+    type_uri: _AbsoluteUri = Field(alias="type", serialization_alias="type")
     unmet_facts: tuple[str, ...] | None = None
 
 
 class ProjectDeliveryCriteria(_BoundaryModel):
-    proven: Annotated[int, Field(ge=0)]
-    declared: Annotated[int, Field(ge=1)]
+    proven: Annotated[int, Field(ge=0, le=9007199254740991)]
+    declared: Annotated[int, Field(ge=1, le=9007199254740991)]
 
 
 class ProjectionHealth(StrEnum):
@@ -772,7 +1096,7 @@ class ProofChangedAuditPayload(_BoundaryModel):
     invalidated_evidence_ids: tuple[UUID, ...]
     invalidated_verdict_ids: tuple[UUID, ...]
     operation: Literal["freeze_criteria", "record_evidence", "record_verdict", "change_candidate"]
-    proof_version: Annotated[int, Field(ge=1)]
+    proof_version: Annotated[int, Field(ge=1, le=9007199254740991)]
     ticket_id: UUID
 
 
@@ -800,13 +1124,13 @@ class RelationKind(StrEnum):
 
 class ReopenIntent(_BoundaryModel):
     kind: Literal["reopen"]
-    expected_version: Annotated[int, Field(ge=1)]
+    expected_version: Annotated[int, Field(ge=1, le=9007199254740991)]
     reason: Annotated[str, Field(min_length=1, max_length=500)]
     priority_policy: Literal["carry_forward"]
 
 
 class ResolveCloseRequest(_BoundaryModel):
-    expected_version: Annotated[int, Field(ge=1)]
+    expected_version: Annotated[int, Field(ge=1, le=9007199254740991)]
     workflow_ref: Annotated[str, Field(pattern="^[a-z][a-z0-9._-]*@[1-9][0-9]*$")]
 
 
@@ -849,7 +1173,7 @@ class TelemetryContext(_BoundaryModel):
     stage_attempt_id: Annotated[str, Field(min_length=1, max_length=128)] | None = None
     job_id: Annotated[str, Field(min_length=1, max_length=128)] | None = None
     runner_id: Annotated[str, Field(min_length=1, max_length=128)] | None = None
-    fencing_token: Annotated[int, Field(ge=1)] | None = None
+    fencing_token: Annotated[int, Field(ge=1, le=9007199254740991)] | None = None
     effect_id: Annotated[str, Field(min_length=1, max_length=128)] | None = None
     component_revision_id: Annotated[str, Field(min_length=1, max_length=128)] | None = None
     deployment_id: Annotated[str, Field(min_length=1, max_length=128)] | None = None
@@ -867,7 +1191,7 @@ class TicketCommentRequest(_BoundaryModel):
 
 class UnblockIntent(_BoundaryModel):
     kind: Literal["unblock"]
-    expected_version: Annotated[int, Field(ge=1)]
+    expected_version: Annotated[int, Field(ge=1, le=9007199254740991)]
     reason: Annotated[str, Field(min_length=1, max_length=500)]
     blocker_id: UUID
     resolution_evidence_ref: Annotated[str, Field(min_length=1, max_length=256)]
@@ -884,7 +1208,7 @@ class WorkflowChangedAuditPayload(_BoundaryModel):
     stage: Annotated[str, Field(pattern="^[a-z][a-z0-9._-]*$")]
     ticket_id: UUID
     workflow_ref: Annotated[str, Field(pattern="^[a-z][a-z0-9._-]*@[1-9][0-9]*$")]
-    workflow_version: Annotated[int, Field(ge=1)]
+    workflow_version: Annotated[int, Field(ge=1, le=9007199254740991)]
 
 
 class WorkflowStartRequest(_BoundaryModel):
@@ -899,7 +1223,7 @@ class WorkflowStartRequest(_BoundaryModel):
 
 
 class WorkflowTransitionRequest(_BoundaryModel):
-    expected_version: Annotated[int, Field(ge=0)]
+    expected_version: Annotated[int, Field(ge=0, le=9007199254740991)]
     workflow_ref: Annotated[str, Field(pattern="^[a-z][a-z0-9._-]*@[1-9][0-9]*$")]
     source_stage: Annotated[str, Field(pattern="^[a-z][a-z0-9._-]*$")]
     destination_stage: Annotated[str, Field(pattern="^[a-z][a-z0-9._-]*$")]
@@ -907,28 +1231,28 @@ class WorkflowTransitionRequest(_BoundaryModel):
 
 class AssignmentChangeRequest(_BoundaryModel):
     assignment_kind: MutableAssignmentKind
-    expected_version: Annotated[int, Field(ge=1)]
+    expected_version: Annotated[int, Field(ge=1, le=9007199254740991)]
     reason: Annotated[str, Field(min_length=1, max_length=500)]
     scope_ref: Annotated[str, Field(min_length=1, max_length=256)] | None = None
     to_principal_id: UUID
 
 
 class AssignmentInterval(_BoundaryModel):
-    assigned_at: datetime
+    assigned_at: _Rfc3339DateTime
     assignment_kind: AssignmentKind
     changed_by: UUID
-    episode_number: Annotated[int, Field(ge=1)]
+    episode_number: Annotated[int, Field(ge=1, le=9007199254740991)]
     principal_id: UUID
     reason: str
-    released_at: datetime | None
+    released_at: _Rfc3339DateTime | None
     scope_ref: str | None
-    sequence: Annotated[int, Field(ge=1)]
+    sequence: Annotated[int, Field(ge=1, le=9007199254740991)]
 
 
 class BoardCard(_BoundaryModel):
     activity_class: Literal["work", "verification", "None"] | None
     assignee_id: UUID | None
-    blocker_opened_at: datetime | None
+    blocker_opened_at: _Rfc3339DateTime | None
     blocker_reason: str | None
     custodian_id: UUID
     delivery_facts: tuple[str, ...]
@@ -940,7 +1264,7 @@ class BoardCard(_BoundaryModel):
     ticket_id: UUID
     title: str
     underlying_lane: Literal["backlog", "ready", "in_progress", "in_review", "complete", "None"] | None
-    version: Annotated[int, Field(ge=1)]
+    version: Annotated[int, Field(ge=1, le=9007199254740991)]
 
 
 class BootstrapReceipt(_BoundaryModel):
@@ -954,7 +1278,7 @@ class BootstrapReceipt(_BoundaryModel):
 
 
 class CompanyBundleCommandResult(_BoundaryModel):
-    active_version: Annotated[int, Field(ge=1)]
+    active_version: Annotated[int, Field(ge=1, le=9007199254740991)]
     bundle_digest: Annotated[str, Field(pattern="^sha256:[0-9a-f]{64}$")]
     command_id: UUID
     durability_state: DurabilityState
@@ -963,7 +1287,7 @@ class CompanyBundleCommandResult(_BoundaryModel):
 
 
 class CompanyBundleExportMetadata(_BoundaryModel):
-    activated_at: datetime
+    activated_at: _Rfc3339DateTime
     actor_principal_id: UUID
     checks: tuple[BundleCheck, ...]
     command_id: UUID
@@ -980,7 +1304,7 @@ class ComponentReference(_BoundaryModel):
     content_digest: Annotated[str, Field(pattern="^sha256:[0-9a-f]{64}$")]
     key: Annotated[str, Field(pattern="^[a-z][a-z0-9.-]{2,127}$")]
     kind: ComponentKind
-    revision: Annotated[int, Field(ge=1)]
+    revision: Annotated[int, Field(ge=1, le=9007199254740991)]
 
 
 class CtowerProjectCutoverHealth(_BoundaryModel):
@@ -1007,8 +1331,8 @@ class CtowerProjectCutoverHealth(_BoundaryModel):
     legacy_writer_fence: Literal["not_armed", "enforced", "unknown"]
     split_brain: Literal["clear", "detected", "unknown"]
     projection_completeness: Literal["current", "stale", "STATE_UNKNOWN"]
-    source_watermark: Annotated[int, Field(ge=0)]
-    projection_watermark: Annotated[int, Field(ge=0)]
+    source_watermark: Annotated[int, Field(ge=0, le=9007199254740991)]
+    projection_watermark: Annotated[int, Field(ge=0, le=9007199254740991)]
     import_run_id: UUID | None
     migration_digests: MigrationHealthDigests
     banner: Annotated[str, Field(min_length=1)]
@@ -1032,14 +1356,14 @@ class CtowerProjectFenceObservationRequest(_BoundaryModel):
     tenant_key: Literal["ctower"]
     project_key: Literal["ctower"]
     registry_id: UUID
-    registry_revision: Annotated[int, Field(ge=1)]
+    registry_revision: Annotated[int, Field(ge=1, le=9007199254740991)]
     registry_digest: Annotated[str, Field(pattern="^sha256:[0-9a-f]{64}$")]
     source_pointer_digest: Annotated[str, Field(pattern="^sha256:[0-9a-f]{64}$")]
-    sequence: Annotated[int, Field(ge=1)]
+    sequence: Annotated[int, Field(ge=1, le=9007199254740991)]
     previous_observation_digest: Annotated[str, Field(pattern="^sha256:[0-9a-f]{64}$")] | None
-    observed_at: datetime
-    from_offset: Annotated[int, Field(ge=0)]
-    to_offset: Annotated[int, Field(ge=0)]
+    observed_at: _Rfc3339DateTime
+    from_offset: Annotated[int, Field(ge=0, le=9007199254740991)]
+    to_offset: Annotated[int, Field(ge=0, le=9007199254740991)]
     file_identity: MigrationFenceFileIdentity
     status: Literal["clear", "detected", "unknown"]
     reason_code: Literal[
@@ -1064,13 +1388,13 @@ class CtowerProjectFenceObservationRequest(_BoundaryModel):
 
 class CtowerProjectImportBatchResult(_BoundaryModel):
     run_id: UUID
-    batch_index: Annotated[int, Field(ge=0)]
+    batch_index: Annotated[int, Field(ge=0, le=9007199254740991)]
     batch_digest: Annotated[str, Field(pattern="^sha256:[0-9a-f]{64}$")]
     results: Annotated[tuple[MigrationImportOperationResult, ...], Field(min_length=1, max_length=64)]
-    record_watermark: Annotated[int, Field(ge=1)]
-    projection_watermark: Annotated[int, Field(ge=0)]
+    record_watermark: Annotated[int, Field(ge=1, le=9007199254740991)]
+    projection_watermark: Annotated[int, Field(ge=0, le=9007199254740991)]
     durability_state: DurabilityState
-    accepted_position: Annotated[int, Field(ge=1)] | None
+    accepted_position: Annotated[int, Field(ge=1, le=9007199254740991)] | None
 
 
 class CtowerProjectImportRun(_BoundaryModel):
@@ -1099,25 +1423,25 @@ class CtowerProjectImportRun(_BoundaryModel):
     conservation: MigrationConservation | None
     reconciliation_graph: MigrationReconciliationGraph | None
     pass_two_measurement: MigrationPassTwoMeasurement | None
-    source_native_watermark: Annotated[int, Field(ge=0)]
-    export_native_watermark: Annotated[int, Field(ge=0)]
-    record_watermark: Annotated[int, Field(ge=0)]
-    projection_watermark: Annotated[int, Field(ge=0)]
+    source_native_watermark: Annotated[int, Field(ge=0, le=9007199254740991)]
+    export_native_watermark: Annotated[int, Field(ge=0, le=9007199254740991)]
+    record_watermark: Annotated[int, Field(ge=0, le=9007199254740991)]
+    projection_watermark: Annotated[int, Field(ge=0, le=9007199254740991)]
     refusals: tuple[MigrationRefusal, ...]
     semantic_digest: Annotated[str, Field(pattern="^sha256:[0-9a-f]{64}$")]
     durability_state: DurabilityState
-    accepted_position: Annotated[int, Field(ge=1)] | None
+    accepted_position: Annotated[int, Field(ge=1, le=9007199254740991)] | None
 
 
 class CtowerProjectMigrationReceipt(_BoundaryModel):
     object_id: UUID
-    revision: Annotated[int, Field(ge=1)]
+    revision: Annotated[int, Field(ge=1, le=9007199254740991)]
     command_id: UUID
     event_ids: Annotated[tuple[UUID, ...], Field(min_length=1)]
-    record_position: Annotated[int, Field(ge=1)]
+    record_position: Annotated[int, Field(ge=1, le=9007199254740991)]
     semantic_digest: Annotated[str, Field(pattern="^sha256:[0-9a-f]{64}$")]
     durability_state: DurabilityState
-    accepted_position: Annotated[int, Field(ge=1)] | None
+    accepted_position: Annotated[int, Field(ge=1, le=9007199254740991)] | None
 
 
 class CtowerProjectReconciliationResult(_BoundaryModel):
@@ -1135,12 +1459,12 @@ class CtowerProjectReconciliationResult(_BoundaryModel):
     pass_two_measurement: MigrationPassTwoMeasurement
     watermarks: MigrationWatermarks
     target_semantic_digest: Annotated[str, Field(pattern="^sha256:[0-9a-f]{64}$")]
-    reconciled_at: datetime
+    reconciled_at: _Rfc3339DateTime
     review: MigrationReview
     report_digest: Annotated[str, Field(pattern="^sha256:[0-9a-f]{64}$")]
     signature: MigrationDetachedSignature
     durability_state: DurabilityState
-    accepted_position: Annotated[int, Field(ge=1)] | None
+    accepted_position: Annotated[int, Field(ge=1, le=9007199254740991)] | None
 
 
 class CtowerProjectSourceLinkOperation(_BoundaryModel):
@@ -1189,15 +1513,15 @@ class CustodyTransferredAuditEvent(_BoundaryModel):
     event_hash: Annotated[str, Field(pattern="^sha256:[0-9a-f]{64}$")]
     event_id: UUID
     kind: Literal["ticket.custody_transferred"]
-    occurred_at: datetime
+    occurred_at: _Rfc3339DateTime
     payload: CustodyTransferredPayload
-    record_position: Annotated[int, Field(ge=1)]
-    sequence: Annotated[int, Field(ge=1)]
+    record_position: Annotated[int, Field(ge=1, le=9007199254740991)]
+    sequence: Annotated[int, Field(ge=1, le=9007199254740991)]
     stream_id: Annotated[str, Field(pattern="^ticket:[0-9a-f-]{36}$")]
 
 
 class FreezeCriteriaRequest(_BoundaryModel):
-    expected_version: Annotated[int, Field(ge=0)]
+    expected_version: Annotated[int, Field(ge=0, le=9007199254740991)]
     candidate_digest: Annotated[str, Field(pattern="^sha256:[0-9a-f]{64}$")]
     criteria: Annotated[tuple[ProofCriterion, ...], Field(min_length=1)]
 
@@ -1205,11 +1529,51 @@ class FreezeCriteriaRequest(_BoundaryModel):
 class HealthContributor(_BoundaryModel):
     key: HealthContributorKey
     status: HealthStatus
-    watermark: Annotated[int, Field(ge=0)] | None
-    threshold_seconds: Annotated[int, Field(ge=0)]
-    observed_at: datetime
+    watermark: Annotated[int, Field(ge=0, le=9007199254740991)] | None
+    threshold_seconds: Annotated[int, Field(ge=0, le=9007199254740991)]
+    observed_at: _Rfc3339DateTime
     owner: Annotated[str, Field(min_length=1, max_length=128)]
     reason: Annotated[str, Field(min_length=1, max_length=500)]
+
+
+class IntakeCommandResult(_BoundaryModel):
+    command_id: UUID
+    durability_state: DurabilityState
+    event_ids: Annotated[tuple[UUID, ...], Field(min_length=1, max_length=2)]
+    inbound_event_id: UUID
+    outcome: IntakeOutcome
+    project_key: Annotated[str, Field(pattern="^[a-z][a-z0-9-]{2,63}$")]
+    quarantine_reason: Annotated[str, Field(max_length=500)] | None
+    source: SourceReference
+    thread_id: UUID
+    thread_version: Annotated[int, Field(ge=1, le=9007199254740991)]
+    ticket_id: UUID | None
+    ticket_version: Annotated[int, Field(ge=1, le=9007199254740991)] | None
+
+
+class IntakePromotionRequest(_BoundaryModel):
+    expected_thread_version: Annotated[int, Field(ge=1, le=9007199254740991)]
+    expected_ticket_version: Annotated[int, Field(ge=1, le=9007199254740991)] | None = None
+    initial_custodian_id: UUID | None = None
+    intent: IntakePromotionIntent
+    priority: Priority | None = None
+    target_ticket_id: UUID | None = None
+    title: Annotated[str, Field(min_length=1, max_length=200)] | None = None
+
+
+class IntakeSubmitRequest(_BoundaryModel):
+    content: Annotated[str, Field(min_length=1, max_length=65536)]
+    expected_thread_version: Annotated[int, Field(ge=1, le=9007199254740991)] | None = None
+    expected_ticket_version: Annotated[int, Field(ge=1, le=9007199254740991)] | None = None
+    initial_custodian_id: UUID | None = None
+    intent: IntakeIntent | None = None
+    priority: Priority | None = None
+    project_key: Annotated[str, Field(pattern="^[a-z][a-z0-9-]{2,63}$")]
+    source: SourceReference
+    taint: IntakeTaint | None = None
+    target_ticket_id: UUID | None = None
+    thread_id: UUID | None = None
+    title: Annotated[str, Field(min_length=1, max_length=200)] | None = None
 
 
 type MigrationCorrectionReplacement = MigrationAliasCorrection | MigrationSourceLinkCorrection | MigrationRelationCorrection
@@ -1221,7 +1585,7 @@ class PoisonDispositionReceipt(_BoundaryModel):
     action: PoisonDispositionAction
     durability_state: DurabilityState
     event_ids: Annotated[tuple[UUID, ...], Field(min_length=1)]
-    recorded_at: datetime
+    recorded_at: _Rfc3339DateTime
 
 
 class PoisonDispositionRequest(_BoundaryModel):
@@ -1232,7 +1596,7 @@ class PoisonDispositionRequest(_BoundaryModel):
 
 
 class PriorityChangeRequest(_BoundaryModel):
-    expected_version: Annotated[int, Field(ge=1)]
+    expected_version: Annotated[int, Field(ge=1, le=9007199254740991)]
     priority: Priority
     reason: Annotated[str, Field(min_length=1, max_length=500)]
     urgent_evidence_ref: Annotated[str, Field(min_length=1, max_length=256)] | None = None
@@ -1264,8 +1628,8 @@ class ProjectDeliveryRow(_BoundaryModel):
     outcome: Annotated[str, Field(min_length=1)]
     accountable_owner: Annotated[str, Field(min_length=1)]
     criteria: ProjectDeliveryCriteria
-    source_watermark: Annotated[int, Field(ge=0)]
-    projection_watermark: Annotated[int, Field(ge=0)]
+    source_watermark: Annotated[int, Field(ge=0, le=9007199254740991)]
+    projection_watermark: Annotated[int, Field(ge=0, le=9007199254740991)]
     freshness: Literal["fresh", "stale", "STATE_UNKNOWN"]
     confidence: Literal["development_degraded", "disaster_safe", "STATE_UNKNOWN"]
     health: Literal["CP3_D_NOT_PROVEN", "CURRENT", "STATE_UNKNOWN"]
@@ -1277,9 +1641,9 @@ class ProjectDeliveryRow(_BoundaryModel):
     ]
     data_class: Literal["RECONSTRUCTIBLE_ONLY", "DISASTER_SAFE_CTOWER_ENGINEERING", "STATE_UNKNOWN"]
     semantic_digest: Annotated[str, Field(pattern="^sha256:[0-9a-f]{64}$")]
-    reconciled_at: datetime
-    freshness_due_at: datetime
-    rebuild_generation: Annotated[int, Field(ge=0)]
+    reconciled_at: _Rfc3339DateTime
+    freshness_due_at: _Rfc3339DateTime
+    rebuild_generation: Annotated[int, Field(ge=0, le=9007199254740991)]
     source_ids: tuple[Annotated[str, Field(min_length=1)], ...]
     derivation_reasons: Annotated[tuple[Annotated[str, Field(min_length=1)], ...], Field(min_length=1)]
 
@@ -1290,10 +1654,10 @@ class ProofChangedAuditEvent(_BoundaryModel):
     event_hash: Annotated[str, Field(pattern="^sha256:[0-9a-f]{64}$")]
     event_id: UUID
     kind: Literal["proof.changed"]
-    occurred_at: datetime
+    occurred_at: _Rfc3339DateTime
     payload: ProofChangedAuditPayload
-    record_position: Annotated[int, Field(ge=1)]
-    sequence: Annotated[int, Field(ge=1)]
+    record_position: Annotated[int, Field(ge=1, le=9007199254740991)]
+    sequence: Annotated[int, Field(ge=1, le=9007199254740991)]
     stream_id: Annotated[str, Field(pattern="^proof:[0-9a-f-]{36}$")]
 
 
@@ -1307,18 +1671,18 @@ class ProofReceipt(_BoundaryModel):
     proof_id: UUID
     satisfied: bool
     ticket_id: UUID
-    version: Annotated[int, Field(ge=1)]
+    version: Annotated[int, Field(ge=1, le=9007199254740991)]
 
 
 class RelationRequest(_BoundaryModel):
-    expected_version: Annotated[int, Field(ge=1)]
+    expected_version: Annotated[int, Field(ge=1, le=9007199254740991)]
     reason: Annotated[str, Field(min_length=1, max_length=500)]
     relation_kind: RelationKind
     target_ticket_id: UUID
 
 
 class ReopenedAuditData(_BoundaryModel):
-    episode_number: Annotated[int, Field(ge=2)]
+    episode_number: Annotated[int, Field(ge=2, le=9007199254740991)]
     priority: Priority
     reason: Annotated[str, Field(min_length=1, max_length=500)]
 
@@ -1334,8 +1698,8 @@ class SyntheticRunReceipt(_BoundaryModel):
 
 class SyntheticRunResource(_BoundaryModel):
     attempt_count: Annotated[int, Field(ge=0, le=8)]
-    completed_at: datetime | None
-    created_at: datetime
+    completed_at: _Rfc3339DateTime | None
+    created_at: _Rfc3339DateTime
     detail_code: Annotated[str, Field(pattern="^[a-z][a-z0-9._-]{2,95}$")] | None
     job_id: UUID
     lifecycle_facts: Annotated[tuple[Literal["resolved", "closed"], ...], Field(max_length=2)]
@@ -1351,10 +1715,10 @@ class TicketCommentAddedAuditEvent(_BoundaryModel):
     event_hash: Annotated[str, Field(pattern="^sha256:[0-9a-f]{64}$")]
     event_id: UUID
     kind: Literal["ticket.comment_added"]
-    occurred_at: datetime
+    occurred_at: _Rfc3339DateTime
     payload: TicketCommentAddedPayload
-    record_position: Annotated[int, Field(ge=1)]
-    sequence: Annotated[int, Field(ge=1)]
+    record_position: Annotated[int, Field(ge=1, le=9007199254740991)]
+    sequence: Annotated[int, Field(ge=1, le=9007199254740991)]
     stream_id: Annotated[str, Field(pattern="^ticket:[0-9a-f-]{36}$")]
 
 
@@ -1386,18 +1750,18 @@ class TicketIntentRequest(_BoundaryModel):
 
 
 class TicketResource(_BoundaryModel):
-    created_at: datetime
+    created_at: _Rfc3339DateTime
     custodian_id: UUID
     durability_state: DurabilityState
     priority: Priority
     source: SourceReference
     ticket_id: UUID
     title: str
-    version: Annotated[int, Field(ge=1)]
+    version: Annotated[int, Field(ge=1, le=9007199254740991)]
 
 
 class VerdictRequest(_BoundaryModel):
-    expected_version: Annotated[int, Field(ge=1)]
+    expected_version: Annotated[int, Field(ge=1, le=9007199254740991)]
     verdict_id: UUID
     criterion_key: Annotated[str, Field(pattern="^[a-z][a-z0-9._-]*$")]
     candidate_digest: Annotated[str, Field(pattern="^sha256:[0-9a-f]{64}$")]
@@ -1408,35 +1772,35 @@ class WorkAdmittedAuditPayload(_BoundaryModel):
     data: AdmittedAuditData
     operation: Literal["admitted"]
     ticket_id: UUID
-    work_version: Annotated[int, Field(ge=2)]
+    work_version: Annotated[int, Field(ge=2, le=9007199254740991)]
 
 
 class WorkAssignmentChangedAuditPayload(_BoundaryModel):
     data: AssignmentChangedAuditData
     operation: Literal["assignment_changed"]
     ticket_id: UUID
-    work_version: Annotated[int, Field(ge=2)]
+    work_version: Annotated[int, Field(ge=2, le=9007199254740991)]
 
 
 class WorkBlockerOpenedAuditPayload(_BoundaryModel):
     data: BlockerOpenedAuditData
     operation: Literal["blocker_opened"]
     ticket_id: UUID
-    work_version: Annotated[int, Field(ge=2)]
+    work_version: Annotated[int, Field(ge=2, le=9007199254740991)]
 
 
 class WorkBlockerResolvedAuditPayload(_BoundaryModel):
     data: BlockerResolvedAuditData
     operation: Literal["blocker_resolved"]
     ticket_id: UUID
-    work_version: Annotated[int, Field(ge=2)]
+    work_version: Annotated[int, Field(ge=2, le=9007199254740991)]
 
 
 class WorkDeferredAuditPayload(_BoundaryModel):
     data: DeferredAuditData
     operation: Literal["deferred"]
     ticket_id: UUID
-    work_version: Annotated[int, Field(ge=2)]
+    work_version: Annotated[int, Field(ge=2, le=9007199254740991)]
 
 
 class WorkReceipt(_BoundaryModel):
@@ -1454,14 +1818,14 @@ class WorkReceipt(_BoundaryModel):
         "relation_added",
     ]
     ticket_id: UUID
-    version: Annotated[int, Field(ge=2)]
+    version: Annotated[int, Field(ge=2, le=9007199254740991)]
 
 
 class WorkRelationAddedAuditPayload(_BoundaryModel):
     data: RelationAddedAuditData
     operation: Literal["relation_added"]
     ticket_id: UUID
-    work_version: Annotated[int, Field(ge=2)]
+    work_version: Annotated[int, Field(ge=2, le=9007199254740991)]
 
 
 class WorkflowChangedAuditEvent(_BoundaryModel):
@@ -1470,10 +1834,10 @@ class WorkflowChangedAuditEvent(_BoundaryModel):
     event_hash: Annotated[str, Field(pattern="^sha256:[0-9a-f]{64}$")]
     event_id: UUID
     kind: Literal["workflow.changed"]
-    occurred_at: datetime
+    occurred_at: _Rfc3339DateTime
     payload: WorkflowChangedAuditPayload
-    record_position: Annotated[int, Field(ge=1)]
-    sequence: Annotated[int, Field(ge=1)]
+    record_position: Annotated[int, Field(ge=1, le=9007199254740991)]
+    sequence: Annotated[int, Field(ge=1, le=9007199254740991)]
     stream_id: Annotated[str, Field(pattern="^workflow:[0-9a-f-]{36}$")]
 
 
@@ -1485,7 +1849,7 @@ class WorkflowReceipt(_BoundaryModel):
     lifecycle_facts: Annotated[tuple[Literal["resolved", "closed"], ...], Field(max_length=2)]
     stage: Annotated[str, Field(pattern="^[a-z][a-z0-9._-]*$")]
     ticket_id: UUID
-    version: Annotated[int, Field(ge=1)]
+    version: Annotated[int, Field(ge=1, le=9007199254740991)]
     workflow_ref: Annotated[str, Field(pattern="^[a-z][a-z0-9._-]*@[1-9][0-9]*$")]
     workflow_run_id: UUID
 
@@ -1498,8 +1862,8 @@ class AssignmentList(_BoundaryModel):
 class BoardView(_BoundaryModel):
     cards: tuple[BoardCard, ...]
     health: ProjectionHealth
-    projection_watermark: Annotated[int, Field(ge=0)]
-    source_watermark: Annotated[int, Field(ge=0)]
+    projection_watermark: Annotated[int, Field(ge=0, le=9007199254740991)]
+    source_watermark: Annotated[int, Field(ge=0, le=9007199254740991)]
 
 
 class BundleAction(_BoundaryModel):
@@ -1549,12 +1913,12 @@ class ProjectDeliveryView(_BoundaryModel):
     )
     company_key: Annotated[str, Field(pattern="^[a-z][a-z0-9-]{2,63}$")]
     project_key: Annotated[str, Field(pattern="^[a-z][a-z0-9-]{2,63}$")]
-    source_record_position: Annotated[int, Field(ge=0)]
-    projection_record_position: Annotated[int, Field(ge=0)]
-    reconciled_at: datetime
-    freshness_due_at: datetime
+    source_record_position: Annotated[int, Field(ge=0, le=9007199254740991)]
+    projection_record_position: Annotated[int, Field(ge=0, le=9007199254740991)]
+    reconciled_at: _Rfc3339DateTime
+    freshness_due_at: _Rfc3339DateTime
     projection_semantic_digest: Annotated[str, Field(pattern="^sha256:[0-9a-f]{64}$")]
-    rebuild_generation: Annotated[int, Field(ge=0)]
+    rebuild_generation: Annotated[int, Field(ge=0, le=9007199254740991)]
     rows: tuple[ProjectDeliveryRow, ...]
 
 
@@ -1571,10 +1935,10 @@ class TicketCreatedAuditEvent(_BoundaryModel):
     event_hash: Annotated[str, Field(pattern="^sha256:[0-9a-f]{64}$")]
     event_id: UUID
     kind: Literal["ticket.created"]
-    occurred_at: datetime
+    occurred_at: _Rfc3339DateTime
     payload: TicketCreatedPayload
-    record_position: Annotated[int, Field(ge=1)]
-    sequence: Annotated[int, Field(ge=1)]
+    record_position: Annotated[int, Field(ge=1, le=9007199254740991)]
+    sequence: Annotated[int, Field(ge=1, le=9007199254740991)]
     stream_id: Annotated[str, Field(pattern="^ticket:[0-9a-f-]{36}$")]
 
 
@@ -1583,29 +1947,29 @@ class TimelineEvent(_BoundaryModel):
     command_id: UUID
     event_id: UUID
     kind: Literal["ticket.created", "ticket.custody_transferred", "ticket.comment_added"]
-    occurred_at: datetime
+    occurred_at: _Rfc3339DateTime
     payload: TicketCreatedPayload | CustodyTransferredPayload | TicketCommentAddedPayload
-    sequence: Annotated[int, Field(ge=1)]
+    sequence: Annotated[int, Field(ge=1, le=9007199254740991)]
 
 
 class WorkPriorityChangedAuditPayload(_BoundaryModel):
     data: PriorityChangedAuditData
     operation: Literal["priority_changed"]
     ticket_id: UUID
-    work_version: Annotated[int, Field(ge=2)]
+    work_version: Annotated[int, Field(ge=2, le=9007199254740991)]
 
 
 class WorkReopenedAuditPayload(_BoundaryModel):
     data: ReopenedAuditData
     operation: Literal["reopened"]
     ticket_id: UUID
-    work_version: Annotated[int, Field(ge=2)]
+    work_version: Annotated[int, Field(ge=2, le=9007199254740991)]
 
 
 class CompanyBundlePlan(_BoundaryModel):
     actions: tuple[BundleAction, ...]
     base_bundle_digest: Annotated[str, Field(pattern="^sha256:[0-9a-f]{64}$")] | None
-    base_version: Annotated[int, Field(ge=0)]
+    base_version: Annotated[int, Field(ge=0, le=9007199254740991)]
     checks: tuple[BundleCheck, ...]
     plan_digest: Annotated[str, Field(pattern="^sha256:[0-9a-f]{64}$")]
     proposed_bundle_digest: Annotated[str, Field(pattern="^sha256:[0-9a-f]{64}$")]
@@ -1615,7 +1979,7 @@ class CompanyBundlePlan(_BoundaryModel):
 class ControlHealth(_BoundaryModel):
     schema_id: Literal["ctower.health/v1"]
     status: HealthStatus
-    observed_at: datetime
+    observed_at: _Rfc3339DateTime
     availability: HealthDimension
     completeness: HealthDimension
     integrity: HealthDimension
@@ -1627,7 +1991,7 @@ class CtowerProjectImportBatchRequest(_BoundaryModel):
     )
     run_id: UUID
     cutover_id: UUID
-    batch_index: Annotated[int, Field(ge=0)]
+    batch_index: Annotated[int, Field(ge=0, le=9007199254740991)]
     batch_digest: Annotated[str, Field(pattern="^sha256:[0-9a-f]{64}$")]
     operations: Annotated[tuple[CtowerProjectImportOperation, ...], Field(min_length=1, max_length=64)]
 
@@ -1646,7 +2010,7 @@ class VersionedComponent(_BoundaryModel):
     lifecycle: Literal["draft", "published", "deprecated", "revoked"]
     payload_ref: Annotated[str, Field(pattern="^object:sha256:[0-9a-f]{64}$")]
     provenance: Annotated[tuple[ComponentProvenance, ...], Field(min_length=1, max_length=64)]
-    revision: Annotated[int, Field(ge=1)]
+    revision: Annotated[int, Field(ge=1, le=9007199254740991)]
     schema_id: Literal["ctower.versioned-component/v1"] = Field(
         alias="schema", serialization_alias="schema"
     )
@@ -1660,7 +2024,7 @@ type WorkChangedAuditPayload = WorkPriorityChangedAuditPayload | WorkAssignmentC
 
 class CompanyBundleResource(_BoundaryModel):
     component: VersionedComponent
-    payload: dict[str, object]
+    payload: _FreeFormJsonObject
 
 
 class WorkChangedAuditEvent(_BoundaryModel):
@@ -1669,10 +2033,10 @@ class WorkChangedAuditEvent(_BoundaryModel):
     event_hash: Annotated[str, Field(pattern="^sha256:[0-9a-f]{64}$")]
     event_id: UUID
     kind: Literal["work.changed"]
-    occurred_at: datetime
+    occurred_at: _Rfc3339DateTime
     payload: WorkChangedAuditPayload
-    record_position: Annotated[int, Field(ge=1)]
-    sequence: Annotated[int, Field(ge=1)]
+    record_position: Annotated[int, Field(ge=1, le=9007199254740991)]
+    sequence: Annotated[int, Field(ge=1, le=9007199254740991)]
     stream_id: Annotated[str, Field(pattern="^ticket:[0-9a-f-]{36}$")]
 
 
@@ -1691,18 +2055,18 @@ class CompanyBundleDocument(_BoundaryModel):
 
 class AuditPage(_BoundaryModel):
     events: tuple[AuditEvent, ...]
-    next_cursor: Annotated[int, Field(ge=1)] | None
+    next_cursor: Annotated[int, Field(ge=1, le=9007199254740991)] | None
     ticket_id: UUID
 
 
 class CompanyBundleApplyRequest(_BoundaryModel):
     bundle: CompanyBundleDocument
-    expected_active_version: Annotated[int, Field(ge=0)]
+    expected_active_version: Annotated[int, Field(ge=0, le=9007199254740991)]
     plan_digest: Annotated[str, Field(pattern="^sha256:[0-9a-f]{64}$")]
 
 
 class CompanyBundleExportResult(_BoundaryModel):
-    active_version: Annotated[int, Field(ge=1)]
+    active_version: Annotated[int, Field(ge=1, le=9007199254740991)]
     bundle: CompanyBundleDocument
     bundle_digest: Annotated[str, Field(pattern="^sha256:[0-9a-f]{64}$")]
     metadata: CompanyBundleExportMetadata
