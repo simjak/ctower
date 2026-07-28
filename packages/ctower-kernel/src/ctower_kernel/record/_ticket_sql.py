@@ -138,6 +138,9 @@ def _reserve_ticket_outcome(
         return existing
     if existing is not None:
         return _result_from_payload(existing)
+    if not _eligible_custodian(connection, actor, command.initial_custodian_id):
+        problem = _scope_problem(command.client_command_id)
+        return _refuse(transaction, actor, command, request_digest, problem, now)
     source_problem = _reserve_ticket_source(
         connection,
         actor,
@@ -146,10 +149,7 @@ def _reserve_ticket_outcome(
     )
     if source_problem is not None:
         return _refuse(transaction, actor, command, request_digest, source_problem, now)
-    if _eligible_custodian(connection, actor, command.initial_custodian_id):
-        return None
-    problem = _scope_problem(command.client_command_id)
-    return _refuse(transaction, actor, command, request_digest, problem, now)
+    return None
 
 
 def get_ticket(

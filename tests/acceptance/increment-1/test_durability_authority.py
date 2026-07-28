@@ -276,6 +276,7 @@ def _same_command_id_is_principal_scoped(client: TestClient, authority: _Authori
         command_id,
         title="Operator command identity",
         credential=authority.tenant.operator_credential,
+        source_ref="test:durability:operator-command-identity",
     )
     commander = _create_ticket(
         client,
@@ -283,6 +284,7 @@ def _same_command_id_is_principal_scoped(client: TestClient, authority: _Authori
         command_id,
         title="Commander command identity",
         credential=authority.tenant.commander_credential,
+        source_ref="test:durability:commander-command-identity",
     )
     operator_replay = _create_ticket(
         client,
@@ -290,6 +292,7 @@ def _same_command_id_is_principal_scoped(client: TestClient, authority: _Authori
         command_id,
         title="Operator command identity",
         credential=authority.tenant.operator_credential,
+        source_ref="test:durability:operator-command-identity",
     )
     commander_replay = _create_ticket(
         client,
@@ -297,6 +300,7 @@ def _same_command_id_is_principal_scoped(client: TestClient, authority: _Authori
         command_id,
         title="Commander command identity",
         credential=authority.tenant.commander_credential,
+        source_ref="test:durability:commander-command-identity",
     )
 
     assert operator.status_code == HTTP_ACCEPTED
