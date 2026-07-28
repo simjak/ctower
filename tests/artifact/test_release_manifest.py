@@ -52,19 +52,13 @@ def test_manifest_binds_clean_source_artifact_resources_runtime_and_predecessor(
             output,
             wheel,
             source / "packs",
+            source_root=source,
             python_executable=Path("/approved/python"),
+            predecessor="sha256:" + "1" * 64,
         )
         == manifest
     )
-
-    wheel.write_bytes(b"tampered-wheel")
-    with pytest.raises(ValueError, match="differs"):
-        interface.verify_manifest(
-            output,
-            wheel,
-            source / "packs",
-            python_executable=Path("/approved/python"),
-        )
+    _assert_verification_refusals(source, output, wheel)
 
 
 def test_manifest_refuses_dirty_source_and_nonapproved_runtime(
@@ -102,6 +96,40 @@ def test_manifest_refuses_dirty_source_and_nonapproved_runtime(
     fake_python.chmod(0o700)
     with pytest.raises(ValueError, match="approved exact"):
         interface._python_identity(fake_python)
+
+
+def _assert_verification_refusals(source: Path, manifest: Path, wheel: Path) -> None:
+    with pytest.raises(ValueError, match="predecessor"):
+        interface.verify_manifest(
+            manifest,
+            wheel,
+            source / "packs",
+            source_root=source,
+            python_executable=Path("/approved/python"),
+            predecessor=None,
+        )
+    migration_manifest = source / "packages/ctower-kernel/migrations/manifest.json"
+    migration_manifest.write_text('{"migrations":["tampered"]}\n', encoding="utf-8")
+    with pytest.raises(ValueError, match="source"):
+        interface.verify_manifest(
+            manifest,
+            wheel,
+            source / "packs",
+            source_root=source,
+            python_executable=Path("/approved/python"),
+            predecessor="sha256:" + "1" * 64,
+        )
+    migration_manifest.write_text('{"migrations":[]}\n', encoding="utf-8")
+    wheel.write_bytes(b"tampered-wheel")
+    with pytest.raises(ValueError, match="differs"):
+        interface.verify_manifest(
+            manifest,
+            wheel,
+            source / "packs",
+            source_root=source,
+            python_executable=Path("/approved/python"),
+            predecessor="sha256:" + "1" * 64,
+        )
 
 
 def _write(path: Path, content: str) -> None:

@@ -2760,13 +2760,28 @@ effect, incident, credential, client-data, irreplaceable, or sole-copy record.
 
 The E2 installation is unprivileged and reboot-persistent through user systemd plus persistent container
 volumes. Secret values reside only in an allowlisted operating-system keyring; files and unit definitions
-contain references. On an unattended linger host, the dedicated development collection may be passwordless
-and owner-only so an exact pre-service unit can unlock it; this is never a production secret-at-rest claim.
-Each release manifest binds the clean source commit/tree, exact approved standard-GIL
-CPython patch, wheel digest, generated/migration manifests, pack digest, and predecessor. Upgrade and
-rollback atomically switch verified release pointers and never reverse an accepted migration or resume a
-legacy writer. TLS/external exposure, full telemetry, backup/restore drills, and production claims remain
-deferred.
+contain references. On an unattended linger host, the login collection of the dedicated development account
+may be passwordless and owner-only so an exact pre-service unit can unlock it; this is never a production
+secret-at-rest claim. A network-isolated one-time PostgreSQL initializer reads its referenced secret through
+stdin and leaves only the initialized volume; the steady-state published container carries no password
+environment entry, and host authentication is SCRAM from initial loopback publication. Standby cloning also
+reads the referenced password through stdin, never an argument, environment value, config file, or status
+payload.
+
+The forced-degraded durability-policy health above is distinct from ordinary-finalizer liveness. Finalizer
+health is `HEALTHY` only when its worker is active and a typed completed scan advances within ten seconds.
+Missing, malformed, future, or stale progress, an inactive/crash-looping worker, a failed scan, or any
+refused command is `DEGRADED`; unknown is fail-closed. The worker persists monotonic scan progress before
+continuing and persists a typed failure before allowing an exception to terminate it.
+
+Each release manifest binds and installation re-verifies the source commit/tree, exact approved
+standard-GIL CPython patch, wheel digest, generated/migration manifests, pack digest, and predecessor.
+Release construction uses a private staging directory; upgrade and rollback use a strict owner-only
+transition journal to complete both verified pointers after interruption, and never reverse an accepted
+migration or resume a legacy writer. First-tenant bootstrap similarly checkpoints one command ID and one
+Secret Service reference until credential binding, state persistence, and service activation finish; retry
+replays those exact identities rather than minting replacements. TLS/external exposure, full telemetry,
+backup/restore drills, and production claims remain deferred.
 
 ```text
 inventory -> freeze relevant legacy writers -> hash/export -> reviewed dedupe/alias map

@@ -114,7 +114,9 @@ def verify_manifest(
     wheel: Path,
     packs: Path,
     *,
+    source_root: Path,
     python_executable: Path,
+    predecessor: str | None,
 ) -> DevelopmentReleaseManifest:
     """Fail closed when installed bytes differ from any bound release fact."""
 
@@ -123,21 +125,33 @@ def verify_manifest(
     )
     version, gil = _python_identity(python_executable)
     observed = (
+        _git(source_root, "rev-parse", "HEAD"),
+        _git(source_root, "rev-parse", "HEAD^{tree}"),
         wheel.name,
         _digest_file(wheel),
+        _digest_file(source_root / "packages/ctower-kernel/migrations/manifest.json"),
+        _digest_file(source_root / "generated/.generated-manifest.json"),
         _digest_tree(packs),
+        _digest_tree(source_root / "packs"),
         version,
         gil,
+        predecessor,
     )
     expected = (
+        manifest.source_commit,
+        manifest.source_tree,
         manifest.wheel.filename,
         manifest.wheel.sha256,
+        manifest.migration_manifest_sha256,
+        manifest.generated_manifest_sha256,
+        manifest.packs_sha256,
         manifest.packs_sha256,
         manifest.python.version,
         manifest.python.gil,
+        manifest.predecessor,
     )
     if observed != expected:
-        raise ValueError("release artifact, packs, or Python differs from the pinned manifest")
+        raise ValueError("release source, artifact, runtime, or predecessor differs from manifest")
     return manifest
 
 

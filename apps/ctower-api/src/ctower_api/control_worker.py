@@ -21,7 +21,7 @@ from ctower_api.synthetic_handler import (
 from ctower_client import CtowerClient, CtowerProblemError
 from ctower_kernel.projections import Projections
 from ctower_kernel.projections.postgres import PostgresProjections
-from ctower_kernel.record import DurabilityFinalizer
+from ctower_kernel.record import DurabilityFinalizationBatch, DurabilityFinalizer
 from ctower_kernel.runtime import (
     FixedOperationAttempt,
     FixedOperationCompletion,
@@ -43,6 +43,12 @@ class _SyntheticHandler(Protocol):
     def execute(self, attempt: FixedOperationAttempt) -> FixedOperationCompletion: ...
 
 
+class _DurabilityProgressRecorder(Protocol):
+    def completed(self, batch: DurabilityFinalizationBatch) -> None: ...
+
+    def failed(self) -> None: ...
+
+
 @dataclass(frozen=True, slots=True)
 class ControlWorker:
     """Coordinate separately owned loops without owning their durable decisions."""
@@ -52,17 +58,34 @@ class ControlWorker:
     outbox_loop: OutboxLoop
     project_delivery_loop: ProjectDeliveryLoop
     durability_finalizer: DurabilityFinalizer | None = None
+    durability_progress: _DurabilityProgressRecorder | None = None
     fixed_operations: FixedOperations | None = None
     synthetic_handler: _SyntheticHandler | None = None
 
     def tick(self) -> None:
-        if self.durability_finalizer is not None:
-            self.durability_finalizer.finalize_pending()
+        self._tick_finalizer()
         tenant_ids = self.runtime.tenant_ids()
         self.routine_loop.tick(tenant_ids)
         self.outbox_loop.tick(tenant_ids)
         self.project_delivery_loop.tick(tenant_ids)
         self._tick_synthetic()
+
+    def _tick_finalizer(self) -> None:
+        if self.durability_finalizer is None:
+            return
+        batch: DurabilityFinalizationBatch | None = None
+        try:
+            batch = self.durability_finalizer.finalize_pending()
+        finally:
+            self._record_finalizer_progress(batch)
+
+    def _record_finalizer_progress(self, batch: DurabilityFinalizationBatch | None) -> None:
+        if self.durability_progress is None:
+            return
+        if batch is None:
+            self.durability_progress.failed()
+        else:
+            self.durability_progress.completed(batch)
 
     def run(self, stop: Event, *, interval_seconds: float = 1.0) -> None:
         if not _valid_interval(interval_seconds):
@@ -139,6 +162,7 @@ def build_worker(
     fixed_operations: FixedOperations | None = None,
     synthetic_handler: _SyntheticHandler | None = None,
     durability_finalizer: DurabilityFinalizer | None = None,
+    durability_progress: _DurabilityProgressRecorder | None = None,
 ) -> ControlWorker:
     """Compose the same worker around public kernel Interfaces."""
 
@@ -148,6 +172,7 @@ def build_worker(
         OutboxLoop(projections),
         ProjectDeliveryLoop(projections),
         durability_finalizer,
+        durability_progress,
         fixed_operations,
         synthetic_handler,
     )

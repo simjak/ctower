@@ -9,7 +9,7 @@ from uuid import UUID
 import psycopg
 
 from ctower_kernel.record import Actor, RecordProblem
-from ctower_kernel.record._ticket_sql import _uuid7
+from ctower_kernel.record._uuid import uuid7 as _uuid7
 from ctower_kernel.record.comments import (
     TicketCommentCommand,
     TicketCommentResult,

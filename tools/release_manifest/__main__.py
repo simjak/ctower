@@ -21,7 +21,9 @@ def main() -> None:
     verify.add_argument("--manifest", type=Path, required=True)
     verify.add_argument("--wheel", type=Path, required=True)
     verify.add_argument("--packs", type=Path, required=True)
+    verify.add_argument("--source-root", type=Path, required=True)
     verify.add_argument("--python", type=Path, required=True)
+    verify.add_argument("--predecessor")
     arguments = parser.parse_args()
     if arguments.command == "build":
         build_manifest(
@@ -36,7 +38,9 @@ def main() -> None:
             arguments.manifest,
             arguments.wheel,
             arguments.packs,
+            source_root=arguments.source_root,
             python_executable=arguments.python,
+            predecessor=arguments.predecessor,
         )
 
 

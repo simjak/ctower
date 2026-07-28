@@ -185,6 +185,11 @@ paths = ["apps/ctower-api/src/**"]
 allowed_dependencies = ["kernel-access", "kernel-attention", "kernel-catalog", "kernel-objects", "kernel-projections", "kernel-proof", "kernel-record", "kernel-runtime", "kernel-telemetry", "kernel-work", "kernel-workflow"]
 
 [[ownership]]
+name = "development-runtime-tests"
+paths = ["tests/development_runtime/**"]
+allowed_dependencies = ["control-api", "development-runtime-tools", "kernel-record"]
+
+[[ownership]]
 name = "control-cli"
 paths = [
   "apps/ctowerctl/src/**",

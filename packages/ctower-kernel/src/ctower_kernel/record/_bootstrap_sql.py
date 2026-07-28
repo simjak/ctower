@@ -5,7 +5,6 @@ from __future__ import annotations
 import hashlib
 import hmac
 import json
-import secrets
 from dataclasses import dataclass
 from datetime import datetime
 from typing import cast
@@ -15,6 +14,7 @@ import psycopg
 from psycopg.types.json import Jsonb
 
 from ctower_kernel.record import BootstrapCommand, BootstrapReceipt, RecordProblem
+from ctower_kernel.record._uuid import uuid7 as _uuid7
 from ctower_kernel.record.events import (
     BootstrapCreatedPayload,
     EventEnvelope,
@@ -352,17 +352,6 @@ def _receipt_from_payload(payload: dict[str, object], *, principal_id: UUID) -> 
         receipt_digest=str(payload["receipt_digest"]),
         tenant_id=UUID(str(payload["tenant_id"])),
     )
-
-
-def _uuid7(now: datetime) -> UUID:
-    milliseconds = int(now.timestamp() * 1000) & ((1 << 48) - 1)
-    random_bits = secrets.randbits(74)
-    value = milliseconds << 80
-    value |= 0x7 << 76
-    value |= ((random_bits >> 62) & 0xFFF) << 64
-    value |= 0b10 << 62
-    value |= random_bits & ((1 << 62) - 1)
-    return UUID(int=value)
 
 
 def _canonical_json(payload: dict[str, object]) -> bytes:

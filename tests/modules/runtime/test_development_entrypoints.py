@@ -6,6 +6,7 @@ import hashlib
 import importlib
 import signal
 import sys
+from datetime import UTC, datetime, timedelta
 from pathlib import Path
 from threading import Event
 from types import SimpleNamespace
@@ -19,6 +20,7 @@ import ctower_api.development_config as config_module
 import ctower_api.development_runtime as runtime_module
 from ctower_api.development_config import DevelopmentConfig, DevelopmentState
 from ctower_kernel.proof import ProofPolicy
+from ctower_kernel.record import DurabilityFinalizationBatch
 from ctower_kernel.runtime import RoutineRevision
 from ctower_kernel.workflow import WorkflowGraph
 
@@ -28,6 +30,7 @@ ROOT = Path(__file__).parents[3]
 REFERENCE = "secret-service:ctower-development/runtime"
 OWNER_MODE = 0o600
 EXPECTED_ROLE_COUNT = 4
+FINALIZER_ATTEMPTS = 2
 SIGNAL_COUNT = 2
 
 
@@ -44,6 +47,9 @@ class Keyring:
 
     def set_password(self, service: str, username: str, password: str) -> None:
         self.values[(service, username)] = password
+
+    def delete_password(self, service: str, username: str) -> None:
+        self.values.pop((service, username), None)
 
 
 Keyring.__module__ = "keyring.backends.SecretService"
@@ -240,6 +246,132 @@ def test_config_home_defaults_to_owner_home(
     )
 
 
+def test_stalled_finalizer_progress_is_observably_degraded(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    monkeypatch.setenv("XDG_STATE_HOME", str(tmp_path / "state"))
+    observe_health = getattr(config_module, "observe_finalizer_health", None)
+    write_progress = getattr(config_module, "write_finalizer_progress", None)
+    progress_type = getattr(config_module, "DevelopmentFinalizerProgress", None)
+    assert observe_health is not None
+    assert write_progress is not None
+    assert progress_type is not None
+    now = datetime(2026, 7, 28, 17, 40, tzinfo=UTC)
+    write_progress(
+        progress_type.model_validate(
+            {
+                "schema": "ctower.development-finalizer-progress/v1",
+                "sequence": 7,
+                "observed_at": now - timedelta(seconds=11),
+                "scan_status": "completed",
+                "attempted": 0,
+                "accepted": 0,
+                "pending": 0,
+                "refused": 0,
+                "detail_code": None,
+            }
+        )
+    )
+
+    health = observe_health("active", now=now)
+
+    assert health.status == "DEGRADED"
+    assert health.reason == "progress_stalled"
+
+
+def test_refusing_finalizer_progress_is_observably_degraded(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    monkeypatch.setenv("XDG_STATE_HOME", str(tmp_path / "state"))
+    observe_health = getattr(config_module, "observe_finalizer_health", None)
+    write_progress = getattr(config_module, "write_finalizer_progress", None)
+    progress_type = getattr(config_module, "DevelopmentFinalizerProgress", None)
+    assert observe_health is not None
+    assert write_progress is not None
+    assert progress_type is not None
+    now = datetime(2026, 7, 28, 17, 40, tzinfo=UTC)
+    write_progress(
+        progress_type.model_validate(
+            {
+                "schema": "ctower.development-finalizer-progress/v1",
+                "sequence": 8,
+                "observed_at": now,
+                "scan_status": "completed",
+                "attempted": 1,
+                "accepted": 0,
+                "pending": 0,
+                "refused": 1,
+                "detail_code": None,
+            }
+        )
+    )
+
+    health = observe_health("active", now=now)
+
+    assert health.status == "DEGRADED"
+    assert health.reason == "finalizer_refused"
+
+
+def test_finalizer_health_fails_closed_and_requires_current_completed_progress(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    monkeypatch.setenv("XDG_STATE_HOME", str(tmp_path / "state"))
+    now = datetime(2026, 7, 28, 17, 40, tzinfo=UTC)
+
+    unknown = config_module.observe_finalizer_health("active", now=now)
+    assert (unknown.status, unknown.reason) == ("DEGRADED", "progress_unknown")
+    progress = config_module.DevelopmentFinalizerProgress(
+        schema="ctower.development-finalizer-progress/v1",
+        sequence=1,
+        observed_at=now,
+        scan_status="completed",
+        attempted=0,
+        accepted=0,
+        pending=0,
+        refused=0,
+        detail_code=None,
+    )
+    config_module.write_finalizer_progress(progress)
+    healthy = config_module.observe_finalizer_health("active", now=now)
+    assert (healthy.status, healthy.reason, healthy.sequence) == (
+        "HEALTHY",
+        "progress_observed",
+        1,
+    )
+    inactive = config_module.observe_finalizer_health("activating", now=now)
+    assert (inactive.status, inactive.reason) == ("DEGRADED", "worker_inactive")
+    config_module.write_finalizer_progress(
+        progress.model_copy(
+            update={"sequence": 2, "scan_status": "failed", "detail_code": "finalizer-exception"}
+        )
+    )
+    failed = config_module.observe_finalizer_health("active", now=now)
+    assert (failed.status, failed.reason) == ("DEGRADED", "finalizer_failed")
+
+
+def test_development_finalizer_progress_recorder_is_monotonic_and_typed(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    written: list[config_module.DevelopmentFinalizerProgress] = []
+    monkeypatch.setattr(
+        runtime_module,
+        "load_finalizer_progress",
+        lambda: (_ for _ in ()).throw(FileNotFoundError()),
+    )
+    monkeypatch.setattr(runtime_module, "write_finalizer_progress", written.append)
+    recorder = runtime_module._DevelopmentFinalizerProgressRecorder.from_persisted_state()
+
+    recorder.completed(DurabilityFinalizationBatch(2, 1, 1, 0))
+    recorder.failed()
+
+    assert [(item.sequence, item.scan_status) for item in written] == [
+        (1, "completed"),
+        (2, "failed"),
+    ]
+    assert written[0].attempted == FINALIZER_ATTEMPTS
+    assert written[1].detail_code == "finalizer-exception"
+
+
 def test_development_api_composes_only_typed_same_artifact_adapters(
     monkeypatch: pytest.MonkeyPatch, tmp_path: Path
 ) -> None:
@@ -354,6 +486,7 @@ def test_development_worker_composes_finalizer_and_stops_by_signal(
     assert stop.is_set()
     worker = cast(tuple[object, dict[str, object]], observed["worker"])
     assert "durability_finalizer" in worker[1]
+    assert "durability_progress" in worker[1]
 
 
 def test_pack_policy_digest_and_exact_revision_helpers(

@@ -33,7 +33,12 @@ from ctower_kernel.record._bootstrap_sql import (
 from ctower_kernel.record._command_root import command_snapshot as _command_snapshot
 from ctower_kernel.record._comment_sql import add_comment as _add_comment
 from ctower_kernel.record._custody_sql import transfer_custody as _transfer_custody
-from ctower_kernel.record._durability_finalizer_sql import finalize_pending as _finalize_pending
+from ctower_kernel.record._durability_finalizer_sql import (
+    FinalizerCursor,
+)
+from ctower_kernel.record._durability_finalizer_sql import (
+    finalize_pending as _finalize_pending,
+)
 from ctower_kernel.record._durability_health_sql import durability_health as _durability_health
 from ctower_kernel.record._durability_sql import reconcile_durability as _reconcile_durability
 from ctower_kernel.record._intake_sql import promote_intake as _promote_intake
@@ -86,16 +91,19 @@ class PostgresDurabilityFinalizer:
         self._primary_dsn = primary_dsn
         self._standby_dsn = standby_dsn
         self._telemetry = telemetry
+        self._cursor: FinalizerCursor | None = None
 
     def finalize_pending(self, *, limit: int = 100) -> DurabilityFinalizationBatch:
         """Reconcile the oldest incomplete command receipts."""
 
-        return _finalize_pending(
+        batch, self._cursor = _finalize_pending(
             self._primary_dsn,
             self._standby_dsn,
             limit=limit,
+            after=self._cursor,
             telemetry=self._telemetry,
         )
+        return batch
 
 
 class PostgresRecord:

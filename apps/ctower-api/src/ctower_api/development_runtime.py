@@ -6,6 +6,8 @@ import hashlib
 import json
 import signal
 import sys
+from dataclasses import dataclass
+from datetime import UTC, datetime
 from pathlib import Path
 from threading import Event
 
@@ -14,10 +16,13 @@ import uvicorn
 from ctower_api._routine_loop import load_routine_revisions
 from ctower_api.control_worker import build_worker
 from ctower_api.development_config import (
+    DevelopmentFinalizerProgress,
     development_dsn,
     load_config,
+    load_finalizer_progress,
     load_secret,
     load_state,
+    write_finalizer_progress,
 )
 from ctower_api.interface import create_app
 from ctower_api.synthetic_handler import SyntheticFourStageHandler, SyntheticPolicyPins
@@ -28,6 +33,7 @@ from ctower_kernel.projections import Projections
 from ctower_kernel.projections.postgres import PostgresProjections
 from ctower_kernel.proof import Proof, ProofPolicy
 from ctower_kernel.proof.postgres import PostgresProof
+from ctower_kernel.record import DurabilityFinalizationBatch
 from ctower_kernel.record.postgres import PostgresDurabilityFinalizer, PostgresRecord
 from ctower_kernel.runtime import FixedOperations, Routine, RoutineRevision
 from ctower_kernel.runtime.postgres import PostgresRuntime
@@ -43,6 +49,51 @@ _WORKFLOW = "workflows/ctower.trust-spine-four-stage/v1.yaml"
 _EXECUTION = "policies/execution/trust-spine-four-stage-v1.yaml"
 _GATE = "policies/gates/trust-spine-four-stage-v1.yaml"
 _EVIDENCE = "policies/evidence/trust-spine-four-stage-v1.yaml"
+
+
+@dataclass(slots=True)
+class _DevelopmentFinalizerProgressRecorder:
+    sequence: int
+
+    @classmethod
+    def from_persisted_state(cls) -> _DevelopmentFinalizerProgressRecorder:
+        try:
+            sequence = load_finalizer_progress().sequence
+        except (OSError, ValueError):
+            sequence = 0
+        return cls(sequence)
+
+    def completed(self, batch: DurabilityFinalizationBatch) -> None:
+        self.sequence += 1
+        write_finalizer_progress(
+            DevelopmentFinalizerProgress(
+                schema="ctower.development-finalizer-progress/v1",
+                sequence=self.sequence,
+                observed_at=datetime.now(UTC),
+                scan_status="completed",
+                attempted=batch.attempted,
+                accepted=batch.accepted,
+                pending=batch.pending,
+                refused=batch.refused,
+                detail_code=None,
+            )
+        )
+
+    def failed(self) -> None:
+        self.sequence += 1
+        write_finalizer_progress(
+            DevelopmentFinalizerProgress(
+                schema="ctower.development-finalizer-progress/v1",
+                sequence=self.sequence,
+                observed_at=datetime.now(UTC),
+                scan_status="failed",
+                attempted=0,
+                accepted=0,
+                pending=0,
+                refused=0,
+                detail_code="finalizer-exception",
+            )
+        )
 
 
 def api_main() -> None:
@@ -126,6 +177,7 @@ def worker_main() -> None:
                 runtime_dsn,
                 standby_dsn=standby_dsn,
             ),
+            durability_progress=_DevelopmentFinalizerProgressRecorder.from_persisted_state(),
         )
         stop = Event()
         signal.signal(signal.SIGTERM, lambda _signum, _frame: stop.set())

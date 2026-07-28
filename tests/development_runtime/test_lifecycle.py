@@ -1,0 +1,470 @@
+"""Direct lifecycle and protected-wrapper tests for the E2 development runtime."""
+
+from __future__ import annotations
+
+import subprocess
+import sys
+from datetime import UTC, datetime
+from pathlib import Path
+from types import SimpleNamespace
+from typing import ClassVar, Self, TextIO
+from uuid import UUID, uuid4
+
+import psycopg
+import pytest
+
+import ctower_kernel.record.postgres as record_postgres
+import tools.development_runtime.bootstrap as bootstrap_module
+import tools.development_runtime.ctl as ctl_module
+import tools.development_runtime.interface as lifecycle
+import tools.development_runtime.primary as primary_module
+import tools.development_runtime.release as release_module
+from ctower_api.development_config import (
+    DevelopmentConfig,
+    SecretReferenceMissingError,
+    bootstrap_checkpoint_path,
+    load_bootstrap_checkpoint,
+    load_state,
+)
+from ctower_kernel.record import DurabilityFinalizationBatch
+
+__all__: tuple[str, ...] = ()
+EXPECTED_REPLAY_ATTEMPTS = 2
+
+
+def _config() -> DevelopmentConfig:
+    return DevelopmentConfig.model_validate(
+        {
+            "schema": "ctower.development-runtime/v1",
+            "label": "SHADOW_ONLY_CP3_D_NOT_PROVEN",
+            "api_host": "127.0.0.1",
+            "api_port": 8091,
+            "database_host": "127.0.0.1",
+            "database_name": "ctower",
+            "primary_port": 55432,
+            "standby_port": 55433,
+            "postgres_image": lifecycle._IMAGE,
+            **lifecycle._SECRET_REFS,
+        }
+    )
+
+
+@pytest.mark.parametrize("override", ["--base-url", "--base-url=https://override.invalid"])
+def test_shadow_ctl_refuses_every_base_url_override(
+    monkeypatch: pytest.MonkeyPatch, override: str
+) -> None:
+    monkeypatch.setattr(sys, "argv", ["ctower-shadow-ctl", "ticket", "list", override])
+    monkeypatch.setattr(
+        ctl_module,
+        "load_config",
+        lambda: (_ for _ in ()).throw(AssertionError("config must not be loaded")),
+    )
+
+    with pytest.raises(SystemExit, match="usage"):
+        ctl_module.main()
+
+
+def test_locked_keyring_never_mints_replacement_secrets(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    monkeypatch.setenv("XDG_CONFIG_HOME", str(tmp_path / "config"))
+    minted: list[tuple[str, str]] = []
+    monkeypatch.setattr(
+        lifecycle,
+        "load_secret",
+        lambda _reference: (_ for _ in ()).throw(RuntimeError("keyring locked")),
+    )
+    monkeypatch.setattr(lifecycle, "put_secret", lambda key, value: minted.append((key, value)))
+
+    with pytest.raises(RuntimeError, match="keyring locked"):
+        lifecycle._ensure_config_and_secrets(create_missing=True)
+
+    assert minted == []
+
+
+def test_existing_database_pair_reapplies_migrations_and_policy(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    config = _config()
+    observed: list[object] = []
+
+    def ensure(*, create_missing: bool) -> DevelopmentConfig:
+        observed.append(("secrets", create_missing))
+        return config
+
+    def docker(*args: str) -> str:
+        observed.append(("docker", args))
+        return ""
+
+    monkeypatch.setattr(lifecycle, "_container_exists", lambda _name: True)
+    monkeypatch.setattr(lifecycle, "_ensure_config_and_secrets", ensure)
+    monkeypatch.setattr(lifecycle, "_docker", docker)
+    monkeypatch.setattr(
+        lifecycle,
+        "development_dsn",
+        lambda _config, role, *, standby=False: f"{role}:{standby}",
+    )
+    monkeypatch.setattr(
+        lifecycle,
+        "_wait_for_database",
+        lambda dsn, *, recovery=False: observed.append(("wait", dsn, recovery)),
+    )
+    monkeypatch.setattr(
+        lifecycle,
+        "apply_migrations",
+        lambda dsn, *, role_admin_dsn: observed.append(("migrate", dsn, role_admin_dsn)),
+    )
+    monkeypatch.setattr(
+        lifecycle,
+        "configure_development_durability",
+        lambda dsn: observed.append(("policy", dsn)),
+    )
+    monkeypatch.setattr(lifecycle, "_wait_for_sync", lambda _config: observed.append(("sync",)))
+
+    lifecycle.database_up()
+
+    assert ("secrets", False) in observed
+    assert ("migrate", "ctower_migrator:False", "postgres:False") in observed
+    assert ("policy", "ctower_migrator:False") in observed
+    assert observed[-1] == ("sync",)
+
+
+def test_primary_and_clone_use_stdin_secret_without_trust_payloads(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    config = _config()
+    credential_value = "v" * 48
+    run_calls: list[tuple[list[str], str | None]] = []
+    docker_calls: list[tuple[str, ...]] = []
+    attachments: list[tuple[str, str]] = []
+    readiness = iter((False, True))
+
+    def observe_run(
+        arguments: list[str], *, input_text: str | None = None, capture: bool = False
+    ) -> str:
+        del capture
+        run_calls.append((arguments, input_text))
+        return ""
+
+    def observe_docker(*arguments: str) -> str:
+        docker_calls.append(arguments)
+        return ""
+
+    monkeypatch.setattr(primary_module, "_docker_path", lambda: "/usr/bin/docker")
+    monkeypatch.setattr(primary_module, "load_secret", lambda _reference: credential_value)
+    monkeypatch.setattr(lifecycle, "load_secret", lambda _reference: credential_value)
+    monkeypatch.setattr(primary_module, "_container_exists", lambda _name: False)
+    monkeypatch.setattr(primary_module, "_container_state", lambda _name: "created")
+    monkeypatch.setattr(primary_module, "_container_database_ready", lambda: next(readiness))
+    monkeypatch.setattr(lifecycle, "_run", observe_run)
+    monkeypatch.setattr(primary_module, "_docker", observe_docker)
+    monkeypatch.setattr(
+        primary_module,
+        "_attach_container_input",
+        lambda value: attachments.append((primary_module._INITIALIZER, value)),
+    )
+
+    primary_module.start_primary(config)
+    lifecycle._clone_standby(config)
+
+    rendered = tuple(" ".join(arguments) for arguments in docker_calls) + tuple(
+        " ".join(arguments) for arguments, _input in run_calls
+    )
+    assert all(credential_value not in command for command in rendered)
+    assert all("POSTGRES_HOST_AUTH_METHOD=trust" not in command for command in rendered)
+    assert "POSTGRES_PASSWORD_FILE=/dev/stdin" in rendered[0]
+    assert any("pg_basebackup" in command and "--password" in command for command in rendered)
+    assert attachments == [(primary_module._INITIALIZER, credential_value)]
+    assert run_calls[-1][1] == credential_value + "\n"
+
+
+def test_finalizer_cursor_rotates_past_a_refusing_head_row(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    cursor = (datetime.now(UTC), uuid4(), uuid4())
+    observed: list[object] = []
+    results = iter(
+        (
+            (DurabilityFinalizationBatch(1, 0, 0, 1), cursor),
+            (DurabilityFinalizationBatch(1, 1, 0, 0), None),
+        )
+    )
+
+    def finalize(
+        _primary: str,
+        _standby: str | None,
+        *,
+        limit: int,
+        after: object,
+        telemetry: object,
+    ) -> tuple[DurabilityFinalizationBatch, object]:
+        observed.append((limit, after, telemetry))
+        return next(results)
+
+    monkeypatch.setattr(record_postgres, "_finalize_pending", finalize)
+    finalizer = record_postgres.PostgresDurabilityFinalizer("primary", standby_dsn="standby")
+
+    assert finalizer.finalize_pending(limit=1).refused == 1
+    assert finalizer.finalize_pending(limit=1).accepted == 1
+    assert observed == [(1, None, None), (1, cursor, None)]
+
+
+def test_initialization_attach_requires_a_still_running_container(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setattr(primary_module, "_docker_path", lambda: "/usr/bin/docker")
+    monkeypatch.setattr(
+        subprocess,
+        "run",
+        lambda *_args, **_kwargs: (_ for _ in ()).throw(
+            subprocess.TimeoutExpired("docker attach", 1)
+        ),
+    )
+    primary_module._attach_container_input("value")
+    monkeypatch.setattr(
+        subprocess,
+        "run",
+        lambda *_args, **_kwargs: SimpleNamespace(returncode=0),
+    )
+    with pytest.raises(RuntimeError, match="exited"):
+        primary_module._attach_container_input("value")
+
+
+class _BootstrapClient:
+    attempts: ClassVar[list[tuple[UUID, str]]] = []
+    fail_first = True
+
+    def __init__(self, _base_url: str) -> None:
+        pass
+
+    def __enter__(self) -> Self:
+        return self
+
+    def __exit__(self, *_args: object) -> None:
+        pass
+
+    def bootstrap_first_tenant(
+        self, _request: object, *, command_id: UUID, capability: str
+    ) -> object:
+        self.attempts.append((command_id, capability))
+        if self.fail_first:
+            type(self).fail_first = False
+            raise RuntimeError("simulated client interruption")
+        return SimpleNamespace(tenant_id=uuid4(), operator_id=uuid4(), commander_id=uuid4())
+
+
+class _ObservationConnection:
+    def __enter__(self) -> Self:
+        return self
+
+    def __exit__(self, *_args: object) -> None:
+        pass
+
+    def execute(self, statement: str) -> object:
+        if "durability_policy_state" in statement:
+            row: tuple[object, ...] | None = ("policy", "development_offhost_ack", "standby")
+        elif "count(*)" in statement:
+            row = (1, 2)
+        else:
+            row = ("streaming", "sync")
+        return SimpleNamespace(fetchone=lambda: row)
+
+
+def test_observe_exposes_finalizer_liveness_as_a_separate_typed_dimension(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    config = _config()
+    tenant_id = uuid4()
+    release = tmp_path / "release"
+    release.mkdir()
+    release_home = tmp_path / "home"
+    release_home.mkdir()
+    (release_home / "current").symlink_to(release)
+    health = SimpleNamespace(status=SimpleNamespace(value="DEGRADED"), reason="cp3d")
+    finalizer = {
+        "schema": "ctower.development-finalizer-health/v1",
+        "status": "HEALTHY",
+        "reason": "progress_observed",
+    }
+    monkeypatch.setattr(lifecycle, "load_config", lambda: config)
+    monkeypatch.setattr(lifecycle, "load_state", lambda: SimpleNamespace(tenant_id=tenant_id))
+    monkeypatch.setattr(psycopg, "connect", lambda *_args, **_kwargs: _ObservationConnection())
+    monkeypatch.setattr(lifecycle, "development_dsn", lambda *_args, **_kwargs: "dsn")
+    monkeypatch.setattr(
+        lifecycle,
+        "PostgresRecord",
+        lambda *_args, **_kwargs: SimpleNamespace(durability_health=lambda **_values: health),
+    )
+    monkeypatch.setattr(lifecycle, "_systemctl_state", lambda _name: "active")
+    monkeypatch.setattr(lifecycle, "_container_state", lambda _name: "running")
+    monkeypatch.setattr(lifecycle, "release_home", lambda: release_home)
+    monkeypatch.setattr(
+        lifecycle,
+        "observe_finalizer_health",
+        lambda _state: SimpleNamespace(model_dump=lambda **_options: finalizer),
+    )
+
+    observation = lifecycle.observe()
+
+    assert observation["durability_health"] == {"status": "DEGRADED", "reason": "cp3d"}
+    assert observation["finalizer_health"] == finalizer
+
+
+def test_bootstrap_retry_reuses_checkpoint_and_finishes_after_interruption(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    monkeypatch.setenv("XDG_STATE_HOME", str(tmp_path / "state"))
+    config = _config()
+    secrets_by_reference = {
+        config.operator_secret_ref: "o" * 48,
+        config.commander_secret_ref: "c" * 48,
+    }
+    provisioned: list[tuple[str, datetime]] = []
+    systemctl: list[tuple[str, ...]] = []
+    _BootstrapClient.attempts = []
+    _BootstrapClient.fail_first = True
+
+    _patch_bootstrap_storage(monkeypatch, config, secrets_by_reference)
+    _patch_bootstrap_services(monkeypatch, provisioned, systemctl)
+
+    with pytest.raises(RuntimeError, match="simulated client interruption"):
+        bootstrap_module.bootstrap_instance("Tenant", "tenant-one")
+    checkpoint = load_bootstrap_checkpoint()
+    assert bootstrap_checkpoint_path().exists()
+
+    bootstrap_module.bootstrap_instance("Tenant", "tenant-one")
+
+    assert len(_BootstrapClient.attempts) == EXPECTED_REPLAY_ATTEMPTS
+    assert _BootstrapClient.attempts[0] == _BootstrapClient.attempts[1]
+    assert _BootstrapClient.attempts[0][0] == checkpoint.command_id
+    assert provisioned[0][0] == provisioned[1][0]
+    assert load_state().tenant_id is not None
+    assert not bootstrap_checkpoint_path().exists()
+    assert systemctl[-1] == ("start", "ctower-development.target")
+
+
+def _patch_bootstrap_storage(
+    monkeypatch: pytest.MonkeyPatch,
+    config: DevelopmentConfig,
+    secrets_by_reference: dict[str, str],
+) -> None:
+    def store_value(reference: str, value: str) -> None:
+        secrets_by_reference[reference] = value
+
+    monkeypatch.setattr(bootstrap_module, "load_config", lambda: config)
+    monkeypatch.setattr(
+        bootstrap_module,
+        "development_dsn",
+        lambda _config, _role, *, standby=False: f"dsn:{standby}",
+    )
+    monkeypatch.setattr(bootstrap_module, "put_secret", store_value)
+    monkeypatch.setattr(bootstrap_module, "load_secret", secrets_by_reference.__getitem__)
+    monkeypatch.setattr(
+        bootstrap_module,
+        "delete_secret",
+        lambda reference: secrets_by_reference.pop(reference, None),
+    )
+
+
+def _patch_bootstrap_services(
+    monkeypatch: pytest.MonkeyPatch,
+    provisioned: list[tuple[str, datetime]],
+    systemctl: list[tuple[str, ...]],
+) -> None:
+    def observe_provision(
+        _dsn: str,
+        *,
+        capability_input: TextIO,
+        allowed_origin: str,
+        expires_at: datetime,
+    ) -> None:
+        del allowed_origin
+        provisioned.append((capability_input.readline().strip(), expires_at))
+
+    monkeypatch.setattr(bootstrap_module, "provision_bootstrap", observe_provision)
+    monkeypatch.setattr(
+        bootstrap_module, "provision_principal_credential", lambda *_args, **_kwargs: None
+    )
+    monkeypatch.setattr(bootstrap_module, "CtowerClient", _BootstrapClient)
+    monkeypatch.setattr(bootstrap_module, "_systemctl", lambda *args: systemctl.append(args))
+
+
+def test_release_transition_recovers_exact_pointer_exchange(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    home = tmp_path / "release-home"
+    releases = home / "releases"
+    current_release = releases / "current-release"
+    previous_release = releases / "previous-release"
+    current_release.mkdir(parents=True)
+    previous_release.mkdir()
+    (home / "current").symlink_to(current_release)
+    (home / "previous").symlink_to(previous_release)
+    transition = release_module._ReleaseTransition(
+        "rollback",
+        current_release,
+        previous_release,
+        previous_release,
+        current_release,
+    )
+    release_module._write_release_transition(home, transition)
+    release_module._replace_symlink(home / "current", previous_release)
+    restarted: list[tuple[str, ...]] = []
+    monkeypatch.setattr(release_module, "_unit_known", lambda _name: True)
+    monkeypatch.setattr(release_module, "_systemctl", lambda *args: restarted.append(args))
+
+    recovered = release_module._recover_release_transition(home)
+
+    assert (home / "current").resolve() == previous_release
+    assert (home / "previous").resolve() == current_release
+    assert not release_module._release_transition_path(home).exists()
+    assert recovered == "rollback"
+    assert restarted == [
+        (
+            "restart",
+            "ctower-development-api.service",
+            "ctower-development-worker.service",
+        )
+    ]
+
+
+def test_failed_release_staging_leaves_no_partial_release(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    release = tmp_path / "releases/release-id"
+    wheel = tmp_path / "artifact.whl"
+    manifest = tmp_path / "manifest.json"
+    packs = tmp_path / "packs"
+    python = tmp_path / "python"
+    wheel.write_bytes(b"wheel")
+    manifest.write_text("{}\n", encoding="utf-8")
+    packs.mkdir()
+    (packs / "pack.yaml").write_text("pack: test\n", encoding="utf-8")
+    python.write_text("#!/bin/sh\n", encoding="utf-8")
+    monkeypatch.setattr(
+        release_module,
+        "_run",
+        lambda *_args, **_kwargs: (_ for _ in ()).throw(RuntimeError("venv failed")),
+    )
+
+    with pytest.raises(RuntimeError, match="venv failed"):
+        release_module._stage_release(release, wheel, manifest, packs, python)
+
+    assert not release.exists()
+    assert list(release.parent.iterdir()) == []
+
+
+def test_database_unit_retries_without_fake_user_docker_dependency() -> None:
+    unit = (
+        Path(__file__).parents[2]
+        / "deploy/private-vps/development/systemd/ctower-development-db.service"
+    ).read_text(encoding="utf-8")
+
+    assert "After=docker.service" not in unit
+    assert "ExecStartPre=/usr/bin/docker info" in unit
+    assert "Restart=on-failure" in unit
+    assert "StartLimitIntervalSec=0" in unit
+
+
+def test_missing_existing_secret_has_a_distinct_typed_failure() -> None:
+    assert issubclass(SecretReferenceMissingError, RuntimeError)
