@@ -100,7 +100,7 @@ deployment, or any runtime activation. The packages are build outputs of a pre-a
 | `contracts/execution/` | Execution, gate, and evidence policy schemas |
 | `contracts/evidence/` | Evidence and object manifest schemas |
 | `contracts/operations/` | Durability policy and acknowledgement, health, anchors, backup, restore |
-| `contracts/components/` | The universal `VersionedComponent` envelope and its component kinds |
+| `contracts/components/` | The one envelope every versioned setup record shares (`VersionedComponent`) and the kinds that fit inside it |
 | `packs/` | Staged workflow, policy, routine, and component payloads |
 
 `packs/` are **staged fixtures**: draft or staged desired-state payloads for review and code generation,

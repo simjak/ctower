@@ -2,10 +2,11 @@
 
 **A control plane for work done by people and AI agents, where the proof stays attached to the work.**
 
-Most trackers store claims. A ticket says "done" because somebody moved a card. ctower stores proof
-instead: a step cannot close until the thing that proves it is attached — a test run, a screenshot, the
-digest of what was deployed, a review by someone other than the author. If the proof is missing, the work
-is not done, and ctower says so plainly rather than letting it through.
+A ticket that says "done" because somebody moved a card is a claim. ctower keeps the proof attached to the
+work instead: a ticket cannot be resolved or closed until proof exists that is current for this exact
+version of the work — a test run, a screenshot, the digest of what was deployed, a review by someone other
+than the author. If that proof is missing or has gone stale, the close is refused and ctower says exactly
+what was missing rather than letting it through.
 
 **The rule it is built around:** agents can plan, build and finish work without asking permission at every
 step, and nothing they do reaches the outside world without a narrow, short-lived permission and a receipt
@@ -60,10 +61,13 @@ decided on the evidence.
         |
         v
   +----------------------------------------------------------+
-  |  CAN THIS STEP CLOSE?                                    |
+  |  CAN THIS CLOSE?                                         |
   |    Is the proof attached?                                |
   |    Does it match this exact version of the work?         |
   |    Did someone other than the author pass it?            |
+  |                                                          |
+  |  today: asked before a ticket resolves or closes         |
+  |  planned: asked before every step closes                 |
   +----------------------------------------------------------+
         |                                |
        yes                              no
@@ -97,8 +101,8 @@ decided on the evidence.
 
 ## A day in the life
 
-These are the three situations ctower is being built for. Parts of each work today and parts do not — the
-next section says exactly which.
+These are the three situations ctower is being built for, told as if all of it already worked. Parts of each
+do and parts do not — the next section says exactly which.
 
 **A bug arrives at 3am.**
 The message becomes a thread, then a ticket. The process for bugs says *find the cause before you fix
@@ -126,19 +130,19 @@ project's own checks. Everything in the right column is specified and designed, 
 | Works today | Designed, not built yet |
 |---|---|
 | Open a ticket, set its priority, assign it, block and unblock it, defer it, comment on it, link it to other tickets, resolve and close it | Any supported way to install, deploy, or run a hosted instance |
-| A four-step flow — take it in, agree what "done" means, check it, close it — where every step is gated on proof and the verdict cannot come from the author | A web interface. The command line is the only one, on purpose, for now |
+| A four-step flow — take it in, agree what "done" means, check it, close it — where every move is refused unless the flow declares it and its rule is met, and where the move into the last step, and resolving or closing the ticket, require proof that is current for this exact version of the work and passed by someone other than its author | A web interface. The command line is the only one, on purpose, for now |
 | Proof tied to the exact version of the work it checked: change the work and the proof that depended on the old version stops counting | Anything that reaches the outside world: real deploys, messages, payments, receipts, incident recovery |
 | A board with six lanes, the full history of every ticket, and a per-project delivery view, all rebuilt from recorded facts | Fleets of agents working in parallel, with permissions that expire and automatic resume after a crash |
-| A command line that keeps each command in an encrypted local queue and sends it when it can, so nothing is lost if the server or the network is down | Connectors that read from email, chat, or a source host |
+| A command line that writes every ticket, intake and workflow change to an encrypted local queue before it sends it, so an interrupted change is not lost if the server or the network is down. Reads, first-time setup and the migration commands go straight to the server and are not queued | Connectors that read from email, chat, or a source host |
 | Inbound messages stored durably with their source, and a step that turns one into a ticket without duplicating it if the request is retried | Memory that lets a worker recall how something was solved months ago |
-| A self-test that drives one ticket through the whole four-step flow against a real PostgreSQL database | Richer process authoring and deeper rules than the flow above |
+| A self-test that drives one ticket through the whole four-step flow against a real PostgreSQL database | Proof required at *every* step, with each step naming the kinds of proof it accepts — see [typed evidence slots](https://simjak.github.io/ctower/concepts/proof/#typed-evidence-slots) — plus richer process authoring than the flow above |
 
-One boundary worth naming plainly. Development instances of ctower do get stood up and left running, and
-work is under way to make that repeatable. None of that is a supported deployment: such an instance listens
-only on its own machine, makes no production or data-safety promise, and is not something you should put real
-work into. Whatever exists for standing one up lives in the deployment notes under
-[`deploy/`](deploy/README.md) and in the [development walking slice](https://simjak.github.io/ctower/getting-started/),
-never in this README.
+One boundary worth naming plainly. Nothing in this repository starts a ctower instance. What
+[`deploy/`](deploy/README.md) holds today is a disposable PostgreSQL fixture that the tests start and stop
+for themselves, plus homes for observability and recovery configuration with no endpoint, no credential and
+no service to activate. A repeatable development instance is being worked on and is not part of this
+revision; even when it lands it will listen only on its own machine, make no production or data-safety
+promise, and still not be a supported deployment.
 
 ## Getting started
 

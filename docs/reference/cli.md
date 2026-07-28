@@ -56,7 +56,7 @@ Full semantics, including what to retry: [the agent operating contract](../agent
 
 | Flag | Applies to | Notes |
 |---|---|---|
-| `--command-id` | Every non-read mutation | Caller-supplied UUID; becomes the idempotency key. Reuse it to replay, never to submit different content |
+| `--command-id` | Every mutation except `synthetic run`, where it is optional and generated when omitted | Caller-supplied UUID; becomes the idempotency key. Reuse it to replay, never to submit different content |
 | `--expected-version` | Version-guarded mutations | Optimistic concurrency; a mismatch is `version-conflict` |
 | `--reason` | Authority and work mutations | Bounded metadata, never secret material |
 
@@ -145,8 +145,8 @@ revision's canonical graph digest, not the digest of the pack file on disk. See
 
 | Command | Positional | Flags |
 |---|---|---|
-| `intake submit` | — | required: `--project-key`, `--source-kind`, `--source-ref`, `--content-file`; optional: `--command-id`, `--intent {discussion,create_ticket,link_ticket}` (default `discussion`), `--taint {authenticated,external_untrusted,quarantine_required}` (default `authenticated`), `--thread-id`, `--expected-thread-version`, plus the ticket fields below |
-| `intake promote` | `<inbound_event_id>` | required: `--expected-thread-version`, `--intent {create_ticket,link_ticket}`; optional: `--command-id`, plus the ticket fields below |
+| `intake submit` | — | required: `--command-id`, `--project-key`, `--source-kind`, `--source-ref`, `--content-file`; optional: `--intent {discussion,create_ticket,link_ticket}` (default `discussion`), `--taint {authenticated,external_untrusted,quarantine_required}` (default `authenticated`), `--thread-id`, `--expected-thread-version`, plus the ticket fields below |
+| `intake promote` | `<inbound_event_id>` | required: `--command-id`, `--expected-thread-version`, `--intent {create_ticket,link_ticket}`; optional: the ticket fields below |
 
 Both accept the same optional ticket fields: `--initial-custodian-id`, `--priority {P0,P1,P2}`, `--title`,
 `--target-ticket-id`, `--expected-ticket-version`. Both are mutations and are spoolable.

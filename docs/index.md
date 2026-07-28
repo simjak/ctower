@@ -52,16 +52,19 @@ Five things, in the order work moves through them:
 - **[Proof](concepts/proof.md)** is what makes "done" checkable. Criteria are frozen against a candidate
   digest, evidence is bound to that same digest, and an *independent* principal records the verdict — the
   author cannot pass their own work. Change the candidate and the evidence that depended on it stops
-  counting. (Typed evidence *slots* are required by `SPEC.md` and are not implemented at this revision; see
-  [Proof](concepts/proof.md#typed-evidence-slots).)
+  counting. At this revision current proof is what the move into the final stage requires, and what
+  resolving and closing a ticket require; every stage carrying its own proof requirement, expressed as typed
+  evidence *slots*, is required by `SPEC.md` and not implemented (see
+  [Proof](concepts/proof.md#typed-evidence-slots)).
 - **[Projections](concepts/board.md)** — the Board and [Project Delivery](concepts/project-delivery.md) —
   are read-only folds of those facts, carrying their own watermark and freshness so a stale read announces
   itself instead of lying.
-- **[Durability](concepts/durability.md)** is explicit at the API boundary. A write that is committed but
-  not yet acknowledged off-host returns `durability_pending`, not a fake success.
+- **[Durability](concepts/durability.md)** is explicit at the API boundary. A write that is committed here
+  but not yet acknowledged on another host says exactly that — "committed, acknowledgement pending" — rather
+  than reporting a success it cannot guarantee.
 
-Inbound threads landed in `7111520`: an authenticated caller can submit an inbound event and promote it into
-a linked ticket, and re-sending the same promotion returns the same ticket instead of a second one. Tickets
+Inbound threads are implemented: an authenticated caller can submit an inbound event and promote it into a
+linked ticket, and re-sending the same promotion returns the same ticket instead of a second one. Tickets
 can still be created directly. What does **not** exist is anything that feeds intake automatically — no
 email, chat, or webhook connector — so in practice something has to call it. Everything else in that chain
 runs in the development slice.
@@ -75,7 +78,7 @@ runs in the development slice.
 | Watch a ticket go capture → resolved/closed against real PostgreSQL | Yes, inside the acceptance gate — see the [Quickstart](quickstart.md) |
 | Call the HTTP API or drive `ctowerctl` against your own instance | Not yet — no supported way to stand an instance up from this revision |
 | Install, deploy, or host ctower | No |
-| Use a browser UI, a runner, or a remote agent adapter | No — browser work first activates at CT-I2-005 / I2.4 |
+| Use a browser UI, a runner, or a remote agent adapter | No — browser work starts at a later planned stage, which the roadmap calls `CT-I2-005` / I2.4 |
 | Put real tenants, credentials, or work into it | No |
 
 Nothing here is a stability promise: the HTTP surface is a development contract, not a supported external

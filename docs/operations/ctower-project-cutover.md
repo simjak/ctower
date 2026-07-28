@@ -9,7 +9,8 @@ I1.7 visibly `blocked` with degraded confidence while CP3-D is unproven. Its mig
 authenticated, online-only, unspoolable refusal stubs. They do not freeze, export, import, reconcile,
 prepare, commit, or verify a real cutover.
 
-Mission Control remains the writable ctower-project source throughout I1.7A.
+The existing file-based coordination store this project runs on remains the writable ctower-project source
+throughout I1.7A.
 
 ## I1.7B — import and fence (not implemented)
 

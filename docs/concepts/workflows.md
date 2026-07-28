@@ -12,9 +12,8 @@ generic Workflow Module. There is no separate Factory service or state machine."
 
 ## The problem this solves
 
-Hard-coded process is the reason most task tools become a straitjacket. Once "in review" is a code path
-rather than a row, every team that works differently has to fight the tool, and every process change is a
-deployment.
+When a process is hard-coded, "in review" is a code path rather than a row: a team that works differently
+has to work around the tool, and every change to the process is a deployment.
 
 Splitting the graph from the engine means a workflow revision is reviewable, diffable, versioned, and
 pinned — and two tickets can run different processes at the same time without branching the codebase.
@@ -62,6 +61,19 @@ Two things to notice:
    `workflow-predicate-unsatisfied`, and the refusal body lists the `unmet_facts`. A move that the graph does
    not declare at all is refused as `workflow-transition-not-declared`.
 
+Read those three predicates literally, because they are not the same strength:
+
+| Transition | Predicate | What has to be true |
+|---|---|---|
+| `capture` → `frame` | `entry.ready@1` | The ticket has been admitted and carries no unresolved blocker that affects the board. No evidence is involved |
+| `frame` → `verify` | `criteria.frozen@1` | Acceptance criteria have been frozen against a candidate digest. Still no evidence |
+| `verify` → `close` | `proof.current@1` | Every frozen criterion holds evidence that has not been invalidated — bound to the current candidate digest where the criterion is candidate-dependent — plus a passing verdict wherever the criterion requires one, and a verdict can never come from the author of the evidence it judges |
+
+Resolving and closing the ticket re-check `proof.current@1` and refuse with `proof-incomplete` if it no
+longer holds. So in this workflow, proof guards the last move and the ticket's end — not each of the four
+stages. A workflow in which *every* stage carries its own evidence requirement is what the
+[typed evidence slots](proof.md#typed-evidence-slots) rule specifies, and that rule is not implemented.
+
 Compare the sixteen-stage `engineering.software-factory` pack in the same directory. Same schema, same
 engine, entirely different process. Its status is `draft`: publication requires typed transitions,
 contracts, failure routes, invalidation, skip predicates, and conformance evidence.
@@ -105,21 +117,24 @@ rather than editing the old one.
 An execution policy declares finite bounds and a no-progress rule. The platform supplies no universal tier
 table; concrete values belong to the pinned pack.
 
-- `required_perspectives` — the complete set of independently attributable verdict perspectives required on
-  one current candidate digest. A perspective may bind any capability; it does not mean "code review".
-- `max_nonpassing_rounds` — caps review rounds where not all required perspectives pass.
-- `max_repairs_per_lineage` — caps mutations per server-normalized failure lineage.
-- `max_candidate_generations` — caps the initial candidate plus governed mutations across all lineages, so
-  lineage fan-out cannot create an unbounded loop.
+- `required_perspectives` — which independent checks must pass on one current candidate digest. A
+  perspective can be any capability, not only "code review", and each one is attributable to whoever
+  performed it.
+- `max_nonpassing_rounds` — how many review rounds may end without every required perspective passing.
+- `max_repairs_per_lineage` — how many times one line of repair work may be re-cut. A *lineage* is one chain
+  of attempts descending from the same failure, as the server groups them, so this bounds "keep fixing the
+  same thing".
+- `max_candidate_generations` — how many versions of the work may exist in total: the first one plus every
+  governed change to it, across all repair chains, so branching cannot produce an endless loop.
 
-Separately, `total_executions` is an immutable server-owned count of every started perspective execution,
-whatever its outcome. It is never client-authored and never a limit.
+Separately, `total_executions` counts every check that was started, whatever its outcome. The server owns
+that count, no client may write it, and it is not a limit.
 
-A round passes when all required perspectives hold current passing verdicts with zero blockers on the exact
-digest. Repeating an identical pass does not accumulate toward anything.
+A round passes when every required perspective holds a current passing verdict, with no blockers, on the
+exact digest. Repeating an identical pass adds nothing.
 
-Missing perspective, ambiguous lineage, stale evidence, an exhausted bound, or unknown policy state fails
-closed and raises exactly one deduplicated escalation.
+A missing perspective, an attempt chain the server cannot place, stale evidence, an exhausted bound, or a
+policy state it cannot establish all fail closed and raise exactly one escalation, not a stream of them.
 
 ## What is implemented at this revision
 

@@ -13,7 +13,7 @@ Start with the page that matches your question:
 | What makes "done" checkable rather than asserted? | [Proof: criteria, evidence, verdicts](proof.md) |
 | Why does the Board show what it shows? | [Board lanes](board.md) |
 | How is delivery progress reported without overclaiming? | [Project Delivery projection](project-delivery.md) |
-| What does `durability_pending` mean, and when is a write really accepted? | [Durability and acceptance](durability.md) |
+| Why does a write say "committed here, acknowledgement pending", and when is it really accepted? | [Durability and acceptance](durability.md) |
 
 ## The shared vocabulary
 

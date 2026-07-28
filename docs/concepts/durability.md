@@ -1,7 +1,7 @@
 # Durability and acceptance
 
-Most APIs have two answers: it worked, or it failed. ctower has three, because there is a real state in
-between that matters and that most systems lie about.
+An API usually has two answers: it worked, or it failed. ctower has three, because there is a real state in
+between — committed here, not yet safe anywhere else — and reporting it as success would be a lie.
 
 | State | Meaning |
 |---|---|
@@ -83,8 +83,9 @@ there. That is the expected result in the acceptance suite, not a misconfigurati
 
 Acknowledged durability — a real primary/standby pair reaching `accepted` — is exercised by a verifier-owned
 PostgreSQL topology in the test suite. That is proof of the mechanism, not a supported deployment: there is
-no operator path to configure it, no external failure domain, and no backup or restore promise. Project
-Delivery correspondingly reports `CP3_D_NOT_PROVEN`.
+no operator path to configure it, no second failure domain, and no backup or restore promise. The
+[Project Delivery](project-delivery.md) view says the same thing in its own words: the disaster-recovery
+checkpoint is not proven.
 
 `cutover_rpo0` is declared in the policy schema and is **not** enabled.
 

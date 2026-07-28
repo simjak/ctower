@@ -59,12 +59,13 @@ A `BoardView` carries `source_watermark`, `projection_watermark`, and a `health`
 `STATE_UNKNOWN`.
 
 A projection that has fallen behind, or cannot establish its own validity, says so. It does not serve
-plausible old rows as if they were current. This is the same discipline as
-[`durability_pending`](durability.md): the system reports what it knows, including that it does not know.
+plausible old rows as if they were current. This is the same discipline that makes a write report
+["committed here, acknowledgement pending"](durability.md): the system reports what it knows, including that
+it does not know.
 
-When [evidence slots](proof.md#typed-evidence-slots) are unfilled, Board summaries must show the
-unfilled/unknown count and expose the slot keys in API and CLI detail. A declared slot is never dropped
-from the denominator to make coverage look better.
+The specified — and [not yet built](proof.md#typed-evidence-slots) — evidence-slot rule extends this: once
+slots exist, Board summaries must show the unfilled and unknown counts and expose the slot keys in API and
+CLI detail, and a declared slot is never dropped from the denominator to make coverage look better.
 
 ## Querying it
 

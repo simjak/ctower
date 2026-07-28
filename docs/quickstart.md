@@ -52,7 +52,7 @@ python3 -m pytest tests/acceptance/increment-1/test_four_stage_workflow.py -q
 ```
 
 Expect `2 passed` in a few seconds. The test session starts `deploy/development/compose.yaml`, migrates a
-fresh database, bootstraps a tenant, drives one ticket through the whole Proof-gated workflow, and tears the
+fresh database, bootstraps a tenant, drives one ticket through the whole four-stage workflow, and tears the
 fixture down again.
 
 Docker is required. Without it the session fails immediately with
@@ -67,6 +67,12 @@ predicate — the engine refuses any move that is not declared:
 ```text
 capture ──entry.ready@1──> frame ──criteria.frozen@1──> verify ──proof.current@1──> close
 ```
+
+The three predicates are not equally strong, and the difference matters: `entry.ready@1` asks whether the
+ticket is admitted and unblocked, `criteria.frozen@1` asks whether the acceptance criteria are frozen, and
+only `proof.current@1` requires evidence that is current for this candidate — plus a passing verdict,
+never from the evidence's own author, wherever a criterion demands one. Resolving and closing the ticket
+check `proof.current@1` again.
 
 In order, the ticket:
 
@@ -94,8 +100,9 @@ python3 -m pytest tests/acceptance/increment-1/test_synthetic_operations.py test
 
 `test_synthetic_operations.py` exercises the public `synthetic run` operation, which drives that entire
 four-stage lifecycle server-side and asserts the run finished with lifecycle facts `resolved,closed`.
-`test_ctl.py` exercises `ctowerctl` itself: stdin-only authority, durable-before-send spooling, and the
-`durability_pending` result you should expect from a normal write.
+`test_ctl.py` exercises `ctowerctl` itself: stdin-only authority, writing a command to the encrypted local
+queue before sending it, and the "committed here, off-host acknowledgement still pending" result
+(`durability_pending`) you should expect from a normal write.
 
 ## 5. Run the full gate
 
@@ -135,14 +142,15 @@ printf '%s\n' "${authority}" |
     --command-id 018f5f67-89ab-7def-8123-456789abcdef \
     --initial-custodian-id 018f5f67-89ab-7def-8123-000000000001 \
     --priority P1 \
-    --source-kind mission-control \
-    --source-ref mission-control:cli \
+    --source-kind operator-cli \
+    --source-ref operator-cli:first-ticket \
     --title "First durable ticket"
 ```
 
 A normal, healthy result here is **exit `75`** with `"state":"queued"` and
-`"reason_code":"durability_pending"`. That is not a failure: the semantic result is committed and the
-off-host acknowledgement has not landed yet. Read
+`"reason_code":"durability_pending"` — the machine-readable way of saying "committed here, waiting for
+another host to acknowledge it". That is not a failure: the result is committed and the off-host
+acknowledgement has not landed yet. Read
 [Durability and acceptance](concepts/durability.md) before treating `75` as an error, and
 [the agent operating contract](agents/operating-contract.md) before retrying anything.
 

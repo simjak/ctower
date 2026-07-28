@@ -6,7 +6,7 @@ parts, and they are deliberately not interchangeable:
 ```text
 criterion  ──frozen against──>  candidate digest
     │                                 │
-    │ evidence fills a typed slot     │ bound to the same digest
+    │ evidence names a criterion      │ bound to the same digest
     ▼                                 ▼
 evidence  ──judged by──>  verdict (from an independent principal)
                                       │
@@ -59,11 +59,11 @@ refuses with `proof-evidence-digest-mismatch` and writes nothing.
 ## Typed evidence slots
 
 !!! warning "Specified, not implemented at this revision"
-    This section describes a **required rule**, not current runtime behaviour. It is canonical in `SPEC.md`
-    as `INV-61`, `INV-62`, and `AC-EVD-07`, merged as the specification change `e5d6d1dd`
-    (`docs(spec): require typed stage evidence slots`, PR #52). The shipped evidence record has no slot
-    field: what runs today is the criterion/digest/verdict binding described above. Read this section as the
-    contract the implementation must meet.
+    This section describes a **required rule**, not current behaviour. It is canonical in `SPEC.md` as
+    `INV-61`, `INV-62`, and `AC-EVD-07`. The evidence record that ships has no slot field: what runs today is
+    the criterion/digest/verdict binding described above, and proof is required at the move into the last
+    stage and at resolve and close, not at every stage. Read this section as the contract the implementation
+    must meet.
 
 Every stage that can reach `succeeded` — or an evidence-backed `skipped` — declares an ordered, nonempty
 set of **required evidence slots**. A slot is a named child contract of the stage definition, not a new
@@ -112,13 +112,14 @@ skip-proof slot; a stage cannot be erased by omission.
 Filling every slot does not pass a required gate. A passing verdict does not fill a slot. A gate may consume
 the same evidence items, but both slot completeness and valid gate instances are separately required.
 
-### Sign-off has one attributable seat
+### Sign-off names exactly one accountable party
 
-The stage-success event references the complete satisfying slot-manifest digest, one satisfying evidence
-item chosen by the pinned signing contract, and that item's assignment interval.
-`Evidence.verifier_principal` is the canonical signer and must equal the interval's principal at evidence
-time. The interval supplies the seat and crew context, so there is no second `signing_seat` field that could
-drift out of sync. Anonymous, unmatched, expired-assignment, or prose-only sign-off is refused.
+The stage-success event references the digest of the complete satisfying slot set, one satisfying evidence
+item chosen by the pinned signing contract, and the assignment that evidence item was recorded under.
+`Evidence.verifier_principal` is the signer, and it must be the principal who held that assignment at the
+time. Because the assignment already says who was acting and in what role, there is no second "who signed"
+field that could drift out of sync with it. Anonymous, unmatched, expired-assignment, or prose-only sign-off
+is refused.
 
 ## Verdicts and independence
 
@@ -148,17 +149,23 @@ What happens next is precise:
 Passing evidence for an older candidate can never approve a newer digest. That is the whole point of
 `candidate_dependent`.
 
-## How projections must render it
+## How projections must render slots
 
-Every Board, Ticket, and Project Delivery view that shows a stage or completion claim includes
-`filled / required` slot coverage, and never removes a declared slot from the denominator. `STATE_UNKNOWN`
-renders as `unfilled (STATE_UNKNOWN)` — never as pass, never hidden, never "absent so fine".
+This is the rest of the specified slot rule, and it is not built either. When slots exist, every Board,
+Ticket, and Project Delivery view that shows a stage or completion claim must include `filled / required`
+slot coverage and never drop a declared slot from the denominator. A slot whose state cannot be established
+must render as `unfilled (STATE_UNKNOWN)` — never as a pass, never hidden, never "absent so fine".
 
 ## Implementation status
 
 Criteria freezing, criterion-bound evidence, protected verdicts, self-review refusal, digest-based
 invalidation, and proof-gated resolve/close are **implemented and exercised** against real PostgreSQL in the
 Increment-1 acceptance suite.
+
+Where that gate sits is worth stating exactly: in the workflow that ships, current proof is what the move
+into the final stage requires, and what resolving and closing the ticket require. The two earlier moves check
+readiness and frozen criteria instead — see
+[the three predicates](workflows.md#what-a-workflow-revision-looks-like).
 
 The typed-slot structure described above is **canonical specification** at this revision: `SPEC.md` requires
 it, and the runtime/schema implementation is explicitly out of scope of the commit that introduced it. Do

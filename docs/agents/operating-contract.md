@@ -10,10 +10,11 @@ retry against a typed refusal is the failure mode this contract exists to preven
 
 ## Rule 1 — you supply the idempotency key, and you reuse it
 
-Every mutation requires a caller-supplied UUID.
+Every mutation carries a caller-supplied UUID, and every mutation but one requires you to supply it.
 
 - HTTP: the `Idempotency-Key` header.
-- CLI: `--command-id`.
+- CLI: `--command-id`. The single exception is `synthetic run`, which generates one when you omit it — supply
+  your own anyway, or you cannot replay the command.
 
 The rules:
 
@@ -59,9 +60,9 @@ printf '%s\n' "${authority}" | ctl --base-url http://127.0.0.1:8080 ticket query
 Never place a credential in an argument, an environment variable, or a file the CLI reads. Missing or
 oversized authority is exit `64`. Authority never appears in ctower's output.
 
-Mutations additionally require the local encrypted spool, which on Linux needs an allowlisted Secret Service
-backend in an active D-Bus session. Reads work without it; mutations fail closed with `keyring_unavailable`
-at exit `74`.
+Spooled mutations — the ones rule 7 lists — additionally require the local encrypted spool, which on Linux
+needs an allowlisted Secret Service backend in an active D-Bus session. Reads and the unspooled commands work
+without it; a spooled mutation fails closed with `keyring_unavailable` at exit `74`.
 
 ## Rule 4 — know what each exit code means
 
@@ -132,10 +133,21 @@ happened — check `state`.
 
 ## Rule 7 — the spool is durable-before-send, and it fails closed
 
-Non-bootstrap mutations are encrypted and written to a local spool **before** any network send. That is why
-an offline mutation still returns a stable `command_id` at exit `75` instead of an error.
+Every `ticket` and `intake` mutation, plus `company bundle apply`, `ops outbox poison dispose` and
+`synthetic run`, is encrypted and written to a local spool **before** any network send. That is why one of
+these issued offline still returns a stable `command_id` at exit `75` instead of an error.
 
-Consequences you must handle:
+Three groups of commands never touch the spool, and offline they simply fail:
+
+- every read;
+- `bootstrap first-tenant`, the one-time tenant ceremony;
+- every `migration ctower-project` command, which is authenticated and online-only.
+
+The authoritative list is the `spool_policy` field on each operation in the generated registry
+(`generated/python/ctower_client/operations.py`): only an operation marked `allowed` is ever written to the
+spool. The [CLI reference](../reference/cli.md) marks each section.
+
+Consequences you must handle for the spooled commands:
 
 - The spool is scoped to the canonical `--base-url`. Use the same origin for every command, including local
   spool commands, or you will address a different spool.

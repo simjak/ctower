@@ -9,7 +9,7 @@ Colour tells you what is real today:
 | Colour | Meaning |
 |---|---|
 | Green | Built and covered by tests that run in the project's own checks |
-| Blue | The decision the whole design turns on |
+| Blue | The decision the whole design turns on. It is only partly built — note 9 says exactly how far |
 | Yellow | You can declare it today, but nothing acts on it yet |
 | Grey, dashed | Specified and designed. Not built |
 
@@ -27,9 +27,11 @@ records: each one has a number, and its contents are fixed by a digest, so "whic
 answerable. You can validate a change, see a plan of what it would do, and apply it as one atomic step.
 *Built.*
 
-**1a. Agent profile.** Who the worker is: its persona, the skills and tools it may use, its budget, and
-where it may run. *You can declare all of this today and nothing runs it yet* — declaring an agent profile
-does not start an agent.
+**1a. Agent profile.** Who the worker is. Today a profile declares four things and nothing more: which
+persona it takes, which harness runs it, and which skills and tools it may use. *You can declare that much
+today and nothing runs it* — declaring an agent profile does not start an agent. A budget and where the
+agent may run are *specified, not built*: the profile record has no field for either, and adding one is
+refused.
 
 **2. Work arrives.** An inbound message becomes a thread. Every message in that thread is kept, in order,
 with a record of where it came from. Nothing is summarised away, and content that arrives untrusted can be
@@ -74,9 +76,15 @@ kind of re-checkable artifact, so prose can never fill in for a test run or an i
 
 **8. Someone else checks it.** The verdict on a stage cannot come from whoever did the work. *Built.*
 
-**9. Can this stage close?** The one question the design turns on. All of it is checked in a single step:
-are the criteria frozen, is the evidence current for this exact version, and did an independent reviewer
-pass it.
+**9. Can this stage close?** The one question the design turns on: are the criteria frozen, is the evidence
+current for this exact version, and did an independent reviewer pass it — all checked together, in one
+transaction, before anything moves.
+
+*Partly built.* In the flow that ships today every move carries one declared rule, and the whole question —
+frozen criteria, evidence still current for this exact version, and an independent verdict wherever the
+criteria demand one — guards the move into the last stage and the resolving and closing of the ticket. The
+two earlier moves check their own rule instead: that the ticket is ready to start, and that the criteria are
+frozen. Asking the whole question at every stage is [specified, not built](proof.md#typed-evidence-slots).
 
 **10. It closes.** The stage completes and the work moves to the next stage, or the ticket reaches resolved
 and closed. *Built.*

@@ -84,8 +84,9 @@ Assignments are the working roles; custody is the accountability. The assignment
 which only `current_assignee`, `stage_owner`, and `reviewer_assignment` are mutable through
 `ticket assign`. The CLI spells the last one `--kind reviewer`.
 
-Assignment intervals are not bookkeeping: [stage sign-off](proof.md#sign-off-has-one-attributable-seat) is
-derived from the verifier's assignment interval, so an expired assignment invalidates the signature.
+Assignment intervals are not bookkeeping: in the specified stage-sign-off rule the signature is derived from
+the verifier's assignment interval, so an expired assignment invalidates it. See
+[sign-off](proof.md#sign-off-names-exactly-one-accountable-party).
 
 ## Intents
 
