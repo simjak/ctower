@@ -3,7 +3,6 @@ from __future__ import annotations
 import json
 import subprocess
 from pathlib import Path
-from types import SimpleNamespace
 
 import pytest
 
@@ -48,12 +47,15 @@ def test_manifest_binds_clean_source_artifact_resources_runtime_and_predecessor(
         "gil": "standard",
     }
     assert encoded["predecessor"] == "sha256:" + "1" * 64
-    assert interface.verify_manifest(
-        output,
-        wheel,
-        source / "packs",
-        python_executable=Path("/approved/python"),
-    ) == manifest
+    assert (
+        interface.verify_manifest(
+            output,
+            wheel,
+            source / "packs",
+            python_executable=Path("/approved/python"),
+        )
+        == manifest
+    )
 
     wheel.write_bytes(b"tampered-wheel")
     with pytest.raises(ValueError, match="differs"):
@@ -95,13 +97,11 @@ def test_manifest_refuses_dirty_source_and_nonapproved_runtime(
         )
 
     monkeypatch.undo()
-    monkeypatch.setattr(
-        interface.subprocess,
-        "run",
-        lambda *_args, **_kwargs: SimpleNamespace(stdout="CPython\n3.12.0\nstandard\n"),
-    )
+    fake_python = tmp_path / "python"
+    _write(fake_python, "#!/bin/sh\nprintf 'CPython\\n3.12.0\\nstandard\\n'\n")
+    fake_python.chmod(0o700)
     with pytest.raises(ValueError, match="approved exact"):
-        interface._python_identity(Path("/usr/bin/python3"))
+        interface._python_identity(fake_python)
 
 
 def _write(path: Path, content: str) -> None:
@@ -110,7 +110,7 @@ def _write(path: Path, content: str) -> None:
 
 
 def _git(root: Path, *arguments: str) -> str:
-    return subprocess.run(
+    return subprocess.run(  # noqa: S603 - test passes only fixed Git subcommands
         ["/usr/bin/git", "-C", str(root), *arguments],
         check=True,
         capture_output=True,
