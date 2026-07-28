@@ -22,6 +22,8 @@ __all__ = [
 _LEDGER = "ctower_schema_migrations"
 _LEDGER_LOCK = 712040119
 _SEMANTIC_CHECKS = "ctower.pre-ledger/v1"
+type _SchemaRecord = tuple[str, str, str]
+type _SchemaRecords = tuple[_SchemaRecord, ...]
 
 
 @dataclass(frozen=True, slots=True)
@@ -41,6 +43,8 @@ class MigrationBaseline:
     through: str
     schema_sha256: str
     semantic_checks: Literal["ctower.pre-ledger/v1"]
+    # Diagnostic only: canonical schema_sha256 remains the acceptance authority.
+    schema_object_sum256: str
 
 
 class MigrationStateError(ValueError):
@@ -93,11 +97,18 @@ def _adopt_preledger_database(
     baseline: MigrationBaseline,
 ) -> None:
     baseline_index = _baseline_index(migrations, baseline)
-    actual_schema = _schema_fingerprint(connection)
-    if not hmac.compare_digest(actual_schema, baseline.schema_sha256):
+    actual_records = _schema_records(connection)
+    actual_fingerprint = _schema_fingerprint(actual_records)
+    if not hmac.compare_digest(actual_fingerprint, baseline.schema_sha256):
         raise MigrationAdoptionError(
             "baseline-schema-mismatch",
-            f"expected {baseline.schema_sha256} through {baseline.through}, got {actual_schema}",
+            _schema_difference(
+                baseline.schema_sha256,
+                actual_fingerprint,
+                actual_records,
+                expected_object_sum=baseline.schema_object_sum256,
+                through=baseline.through,
+            ),
         )
     semantic_rejections = _baseline_semantic_rejections(connection, baseline)
     if semantic_rejections:
@@ -342,15 +353,50 @@ def _close_ledger_privileges(connection: psycopg.Connection[tuple[object, ...]])
     )
 
 
-def _schema_fingerprint(connection: psycopg.Connection[tuple[object, ...]]) -> str:
-    records: list[tuple[str, str, str]] = []
-    for query in _FINGERPRINT_QUERIES:
+def _schema_records(
+    connection: psycopg.Connection[tuple[object, ...]],
+) -> _SchemaRecords:
+    records: list[_SchemaRecord] = []
+    for query in _SCHEMA_QUERIES:
         parameters = tuple(_LEDGER for _ in range(query.count("%s")))
-        records.extend(
-            cast(list[tuple[str, str, str]], connection.execute(query, parameters).fetchall())
-        )
+        records.extend(cast(list[_SchemaRecord], connection.execute(query, parameters).fetchall()))
+    return tuple(sorted(records))
+
+
+def _schema_fingerprint(records: _SchemaRecords) -> str:
     canonical = json.dumps(records, ensure_ascii=True, separators=(",", ":")).encode()
     return f"sha256:{hashlib.sha256(canonical).hexdigest()}"
+
+
+def _schema_difference(
+    expected_fingerprint: str,
+    actual_fingerprint: str,
+    actual_records: _SchemaRecords,
+    *,
+    expected_object_sum: str,
+    through: str,
+) -> str:
+    # The additive digest identifies one unexpected dependency-discovered object in
+    # linear time. It never authorizes adoption: the canonical SHA-256 comparison did
+    # that above and has already failed.
+    expected_sum = int(expected_object_sum.removeprefix("sum256:"), 16)
+    unexpected_digest = (_schema_object_sum(actual_records) - expected_sum) % (1 << 256)
+    for record in actual_records:
+        if record[0] == "schema-object" and _record_digest(record) == unexpected_digest:
+            kind, identity, _ = record
+            return f"unexpected {kind} {identity}"
+    return f"expected {expected_fingerprint} through {through}, got {actual_fingerprint}"
+
+
+def _schema_object_sum(records: _SchemaRecords) -> int:
+    return sum(_record_digest(record) for record in records if record[0] == "schema-object") % (
+        1 << 256
+    )
+
+
+def _record_digest(record: _SchemaRecord) -> int:
+    canonical = json.dumps(record, ensure_ascii=True, separators=(",", ":")).encode()
+    return int.from_bytes(hashlib.sha256(canonical).digest())
 
 
 def _baseline_semantic_rejections(
@@ -370,7 +416,38 @@ def _baseline_semantic_rejections(
     return tuple(rejected)
 
 
-_FINGERPRINT_QUERIES = (
+# PostgreSQL records schema-contained objects and their internally dependent children
+# in pg_depend. Starting at public and following the dependency graph discovers catalog
+# object kinds without maintaining another hand-authored allowlist.
+_SCHEMA_QUERIES = (
+    """
+    WITH RECURSIVE schema_objects(classid, objid, objsubid) AS (
+        SELECT 'pg_catalog.pg_namespace'::regclass::oid, namespace.oid, 0
+        FROM pg_namespace AS namespace
+        WHERE namespace.nspname = 'public'
+        UNION
+        SELECT dependency.classid, dependency.objid, dependency.objsubid
+        FROM pg_depend AS dependency
+        JOIN schema_objects AS referenced
+          ON referenced.classid = dependency.refclassid
+         AND referenced.objid = dependency.refobjid
+         AND referenced.objsubid = dependency.refobjsubid
+        WHERE dependency.deptype <> 'p'
+    )
+    SELECT DISTINCT
+           'schema-object',
+           identified.type || ':' ||
+               COALESCE(array_to_string(identified.object_names, '.'), ''),
+           jsonb_build_object(
+               'names', COALESCE(identified.object_names, ARRAY[]::text[]),
+               'arguments', COALESCE(identified.object_args, ARRAY[]::text[])
+           )::text
+    FROM schema_objects AS object
+    CROSS JOIN LATERAL pg_identify_object_as_address(
+        object.classid, object.objid, object.objsubid
+    ) AS identified
+    ORDER BY 2, 3
+    """,
     """
     SELECT 'relation', class.relname,
            jsonb_build_object(

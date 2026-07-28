@@ -158,6 +158,7 @@ class _AdoptionBaseline(BaseModel):
     through: str
     schema_sha256: str
     semantic_checks: Literal["ctower.pre-ledger/v1"]
+    schema_object_sum256: str
 
     @field_validator("through")
     @classmethod
@@ -171,6 +172,13 @@ class _AdoptionBaseline(BaseModel):
     def _valid_schema_sha256(cls, value: str) -> str:
         if not re.fullmatch(r"sha256:[0-9a-f]{64}", value):
             raise ValueError("adoption baseline must have one lowercase SHA-256 digest")
+        return value
+
+    @field_validator("schema_object_sum256")
+    @classmethod
+    def _valid_schema_object_sum256(cls, value: str) -> str:
+        if not re.fullmatch(r"sum256:[0-9a-f]{64}", value):
+            raise ValueError("adoption baseline must have one lowercase object-sum digest")
         return value
 
 
@@ -240,6 +248,7 @@ def _load_migrations() -> _LoadedMigrations:
             baseline.through,
             baseline.schema_sha256,
             baseline.semantic_checks,
+            baseline.schema_object_sum256,
         ),
     )
 

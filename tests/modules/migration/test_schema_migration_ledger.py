@@ -70,6 +70,62 @@ def test_matching_preledger_database_is_adopted_and_repeat_is_noop(
     assert _ledger_rows(migration_database) == first
 
 
+def test_rewrite_rule_probe_is_typed_refusal_naming_the_mismatch(
+    migration_database: Database,
+) -> None:
+    with psycopg.connect(migration_database.admin_dsn) as connection:
+        connection.execute("DROP TABLE ctower_schema_migrations")
+        connection.execute(
+            "CREATE RULE ctower_review_probe AS ON INSERT TO tenants DO INSTEAD NOTHING"
+        )
+
+    with pytest.raises(MigrationAdoptionError) as raised:
+        apply_migrations(
+            migration_database.migrator_dsn,
+            role_admin_dsn=migration_database.admin_dsn,
+        )
+
+    assert raised.value.code == "baseline-schema-mismatch"
+    assert "rule:public.tenants.ctower_review_probe" in raised.value.detail
+    _assert_no_migration_ledger(migration_database)
+
+
+def test_row_security_policy_probe_is_typed_refusal_naming_the_mismatch(
+    migration_database: Database,
+) -> None:
+    with psycopg.connect(migration_database.admin_dsn) as connection:
+        connection.execute("DROP TABLE ctower_schema_migrations")
+        connection.execute("CREATE POLICY ctower_policy_probe ON tenants USING (true)")
+
+    with pytest.raises(MigrationAdoptionError) as raised:
+        apply_migrations(
+            migration_database.migrator_dsn,
+            role_admin_dsn=migration_database.admin_dsn,
+        )
+
+    assert raised.value.code == "baseline-schema-mismatch"
+    assert "policy:public.tenants.ctower_policy_probe" in raised.value.detail
+    _assert_no_migration_ledger(migration_database)
+
+
+def test_collation_probe_is_typed_refusal_naming_the_mismatch(
+    migration_database: Database,
+) -> None:
+    with psycopg.connect(migration_database.admin_dsn) as connection:
+        connection.execute("DROP TABLE ctower_schema_migrations")
+        connection.execute('CREATE COLLATION ctower_collation_probe FROM "C"')
+
+    with pytest.raises(MigrationAdoptionError) as raised:
+        apply_migrations(
+            migration_database.migrator_dsn,
+            role_admin_dsn=migration_database.admin_dsn,
+        )
+
+    assert raised.value.code == "baseline-schema-mismatch"
+    assert "collation:public.ctower_collation_probe" in raised.value.detail
+    _assert_no_migration_ledger(migration_database)
+
+
 def test_preledger_schema_mismatch_is_typed_refusal_without_ledger(
     migration_database: Database,
 ) -> None:
@@ -158,6 +214,7 @@ def test_failed_migration_rolls_back_schema_and_ledger(
         "9001_broken_probe.sql",
         "sha256:" + ("0" * 64),
         "ctower.pre-ledger/v1",
+        "sum256:" + ("0" * 64),
     )
 
     with (
@@ -216,6 +273,13 @@ def _ledger_rows(database: Database) -> list[tuple[object, ...]]:
             ORDER BY migration_id
             """
         ).fetchall()
+
+
+def _assert_no_migration_ledger(database: Database) -> None:
+    with psycopg.connect(database.admin_dsn) as connection:
+        assert connection.execute(
+            "SELECT to_regclass('public.ctower_schema_migrations')"
+        ).fetchone() == (None,)
 
 
 def _database_migration_count() -> int:
