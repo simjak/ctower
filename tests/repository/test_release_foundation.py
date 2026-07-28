@@ -30,6 +30,8 @@ _RELEASE_AS_DIRECTIVE = re.compile(
 _RELEASE_PLEASE_ACTION = "googleapis/release-please-action@45996ed1f6d02564a971a2fa1b5860e934307cf7"
 _SEMVER_CORE_COMPONENTS = 3
 _PRE1_FEATURE_COMMIT = "79e292e437457f92bb6a39bfbfdb2a3a62146529"
+_FIRST_RELEASE_TAG = "v0.1.0"
+_FIRST_RELEASE_COMMIT = "171b49242e8abe0e3084552e6dac6939732bb738"
 _GRAPH_CHAIN_REVISIONS = (
     ("head", "HEAD"),
     ("pre-rebase main", "1ef74d30bc0e5cd7241dc2c1a0dc80ea03748b1c"),
@@ -192,12 +194,13 @@ class ReleaseFoundationTests(unittest.TestCase):
             "Release Please root package",
         )
         manifest_version = self._as_string(manifest["."], "release manifest")
+        release_tags = self._release_tags(history)
 
         self.assertIn(f"uses: {_RELEASE_PLEASE_ACTION}", workflow)
         self.assertEqual(
-            self._pre1_release_tags(history),
+            [tag for tag in release_tags if not self._is_pre1_version(tag.removeprefix("v"))],
             [],
-            f"[POLICY] candidate={candidate}: pre-1.0 history must have no merged release tag",
+            f"[POLICY] candidate={candidate}: merged release tags must remain below 1.0.0",
         )
         self.assertEqual(
             "0.1.0",
@@ -205,10 +208,10 @@ class ReleaseFoundationTests(unittest.TestCase):
             f"[POLICY] candidate={candidate}: first release must begin at 0.1.0",
         )
         if manifest_version != "0.0.0":
-            self.assertEqual(
-                "0.1.0",
-                manifest_version,
-                f"[POLICY] candidate={candidate}: first release proposal must be 0.1.0",
+            self.assertTrue(
+                self._is_pre1_version(manifest_version),
+                f"[POLICY] candidate={candidate}: release proposal {manifest_version!r} "
+                "must remain below 1.0.0",
             )
         self.assertEqual(
             [],
@@ -273,12 +276,15 @@ class ReleaseFoundationTests(unittest.TestCase):
 
     def test_release_workflow_is_write_capable_only_for_trusted_main_pushes(self) -> None:
         workflow = (self.root / ".github/workflows/release-please.yml").read_text(encoding="utf-8")
+        verify = (self.root / ".github/workflows/verify.yml").read_text(encoding="utf-8")
 
         self.assertNotIn("workflow_dispatch", workflow)
         self.assertIn("branches: [main]", workflow)
         self.assertIn("github.event_name == 'push'", workflow)
         self.assertIn("github.ref == 'refs/heads/main'", workflow)
         self.assertIn("github.repository == 'simjak/ctower'", workflow)
+        self.assertEqual(self._workflow_values(verify, "fetch-depth"), ["0"])
+        self.assertEqual(self._workflow_values(verify, "fetch-tags"), ["true"])
 
     def _read_json(self, path: str) -> dict[str, object]:
         payload = json.loads((self.root / path).read_text(encoding="utf-8"))
@@ -293,7 +299,7 @@ class ReleaseFoundationTests(unittest.TestCase):
         self.assertIsInstance(value, str, f"{source} must be a string")
         return cast(str, value)
 
-    def _pre1_release_tags(self, history: RawHistory) -> list[str]:
+    def _release_tags(self, history: RawHistory) -> list[str]:
         result = RawHistoryReader(
             self.root,
             _PRE1_FEATURE_COMMIT,
@@ -303,6 +309,14 @@ class ReleaseFoundationTests(unittest.TestCase):
                 f"[GRAPH-INFRASTRUCTURE] candidate={history.candidate}: "
                 f"{'; '.join(result.problems)}"
             )
+        history_ids = {commit.object_id for commit in history.commits}
+        if _FIRST_RELEASE_COMMIT in history_ids:
+            targets = dict(result.targets)
+            if targets.get(_FIRST_RELEASE_TAG) != _FIRST_RELEASE_COMMIT:
+                self.fail(
+                    f"[GRAPH-INFRASTRUCTURE] candidate={history.candidate}: "
+                    f"expected {_FIRST_RELEASE_TAG} -> {_FIRST_RELEASE_COMMIT} is not visible"
+                )
         return list(result.names)
 
     def _assert_pre1_feature_history(self) -> RawHistory:
@@ -585,16 +599,16 @@ class ReleaseFoundationTests(unittest.TestCase):
                 ("config release-as", config.get("release-as")),
                 ("root package release-as", root_package.get("release-as")),
             )
-            if value is not None and not self._is_pre1_release_as(value)
+            if value is not None and not self._is_pre1_version(value)
         ]
         for commit in history.commits:
             for line in commit.message.splitlines():
                 match = _RELEASE_AS_DIRECTIVE.match(line.lstrip(" \t"))
-                if match is not None and not self._is_pre1_release_as(match.group(1)):
+                if match is not None and not self._is_pre1_version(match.group(1)):
                     violations.append(f"commit {commit.object_id}: {line.strip()}")
         return violations
 
-    def _is_pre1_release_as(self, value: object) -> bool:
+    def _is_pre1_version(self, value: object) -> bool:
         return isinstance(value, str) and _is_valid_semver(value) and value.startswith("0.")
 
     def _workflow_values(self, workflow: str, key: str) -> list[str]:
