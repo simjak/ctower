@@ -16,6 +16,7 @@ import pytest
 import ctower_api.control_worker as control_worker_module
 from ctower_api.control_worker import build_worker
 from ctower_api.synthetic_handler import SyntheticFourStageHandler
+from ctower_client import CtowerProblemError
 from ctower_kernel.projections import (
     BoardQuery,
     BoardView,
@@ -25,7 +26,7 @@ from ctower_kernel.projections import (
     ProjectionHealth,
     Projections,
 )
-from ctower_kernel.record import Actor, DurabilityHealth
+from ctower_kernel.record import Actor, DurabilityFinalizationBatch, DurabilityHealth
 from ctower_kernel.runtime import (
     FixedOperationAttempt,
     FixedOperationCompletion,
@@ -41,6 +42,7 @@ __all__: tuple[str, ...] = ()
 ROOT = Path(__file__).parents[3]
 EXPECTED_TICKS = 2
 CONTROL_INTERVAL_SECONDS = 0.5
+DEFAULT_FINALIZER_LIMIT = 100
 
 
 class _RoutineStore:
@@ -149,6 +151,41 @@ class _SyntheticHandler:
         return self._completion
 
 
+class _ProblemSyntheticHandler:
+    def execute(self, attempt: FixedOperationAttempt) -> FixedOperationCompletion:
+        del attempt
+        raise CtowerProblemError(_RaisedProblem())
+
+
+class _Finalizer:
+    def __init__(self, *, fail: bool = False) -> None:
+        self.fail = fail
+
+    def finalize_pending(self, *, limit: int = 100) -> DurabilityFinalizationBatch:
+        assert limit == DEFAULT_FINALIZER_LIMIT
+        if self.fail:
+            raise RuntimeError("finalizer failed")
+        return DurabilityFinalizationBatch(1, 0, 1, 0)
+
+
+class _FinalizerProgress:
+    def __init__(self) -> None:
+        self.completed_batches: list[DurabilityFinalizationBatch] = []
+        self.failures = 0
+
+    def completed(self, batch: DurabilityFinalizationBatch) -> None:
+        self.completed_batches.append(batch)
+
+    def failed(self) -> None:
+        self.failures += 1
+
+
+class _RaisedProblem:
+    def __init__(self) -> None:
+        self.code = "workflow-pin-mismatch"
+        self.detail = "Workflow pin refused"
+
+
 def test_worker_loads_exact_fixed_packs_and_ticks_each_owned_loop() -> None:
     tenant_id = uuid4()
     routine_store = _RoutineStore(tenant_id)
@@ -218,6 +255,79 @@ def test_worker_tick_claims_executes_and_completes_synthetic_operation() -> None
     assert fixed.claims == ["ctower.control-worker.synthetic"]
     assert handler.attempts == [attempt]
     assert fixed.completions == [(attempt, completion)]
+
+
+def test_worker_persists_completed_and_failed_finalizer_progress() -> None:
+    tenant_id = uuid4()
+    completed = _FinalizerProgress()
+    worker = build_worker(
+        Routine(_RoutineStore(tenant_id)),
+        Projections(_ProjectionStore()),
+        pack_root=ROOT / "packs",
+        durability_finalizer=_Finalizer(),
+        durability_progress=completed,
+    )
+
+    worker.tick()
+
+    assert completed.completed_batches == [DurabilityFinalizationBatch(1, 0, 1, 0)]
+    assert completed.failures == 0
+    failed = _FinalizerProgress()
+    worker = build_worker(
+        Routine(_RoutineStore(tenant_id)),
+        Projections(_ProjectionStore()),
+        pack_root=ROOT / "packs",
+        durability_finalizer=_Finalizer(fail=True),
+        durability_progress=failed,
+    )
+    with pytest.raises(RuntimeError, match="finalizer failed"):
+        worker.tick()
+    assert failed.completed_batches == []
+    assert failed.failures == 1
+
+
+def test_worker_records_a_terminal_failed_result_for_public_semantic_problem() -> None:
+    tenant_id = uuid4()
+    now = datetime.now(UTC)
+    attempt = FixedOperationAttempt(
+        uuid4(),
+        FixedOperationJob(
+            uuid4(),
+            tenant_id,
+            uuid4(),
+            "synthetic_four_stage",
+            60,
+            (),
+            now,
+        ),
+        1,
+        uuid4(),
+        "test-worker",
+        now,
+        now + timedelta(seconds=30),
+    )
+    fixed = _FixedOperations(attempt)
+    worker = build_worker(
+        Routine(_RoutineStore(tenant_id)),
+        Projections(_ProjectionStore()),
+        pack_root=ROOT / "packs",
+        fixed_operations=cast(FixedOperations, fixed),
+        synthetic_handler=_ProblemSyntheticHandler(),
+    )
+
+    worker.tick()
+
+    assert fixed.completions == [
+        (
+            attempt,
+            FixedOperationCompletion(
+                succeeded=False,
+                ticket_id=None,
+                lifecycle_facts=(),
+                detail_code="synthetic-workflow-pin-mismatch",
+            ),
+        )
+    ]
 
 
 def test_worker_main_and_environment_boundary_are_strict(

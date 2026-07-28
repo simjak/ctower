@@ -10,6 +10,7 @@ from importlib.resources import files
 from importlib.resources.abc import Traversable
 from pathlib import Path
 from typing import Literal, TextIO
+from uuid import UUID
 
 import psycopg
 from psycopg.rows import dict_row
@@ -25,12 +26,15 @@ from ctower_kernel.record._recovery_role_shape_sql import (
     RecoveryRoleConfigurationError,
     validate_recovery_role_shapes,
 )
+from ctower_kernel.record._uuid import uuid7 as _uuid7
 
 __all__ = [
     "RecoveryRoleConfigurationError",
     "apply_migrations",
+    "configure_development_durability",
     "provision_bootstrap",
     "provision_database_roles",
+    "provision_principal_credential",
 ]
 
 MINIMUM_CAPABILITY_LENGTH = 32
@@ -415,11 +419,92 @@ def provision_bootstrap(
         raise ValueError("bootstrap capability must have at most 256 characters")
     with psycopg.connect(dsn) as connection:
         connection.execute("SET ROLE ctower_admin")
+        capability_digest = hashlib.sha256(capability.encode("utf-8")).digest()
         connection.execute(
             """
             INSERT INTO bootstrap_capability (
                 singleton, capability_digest, allowed_origin, expires_at
             ) VALUES (true, %s, %s, %s)
+            ON CONFLICT (singleton) DO UPDATE
+            SET expires_at = EXCLUDED.expires_at
+            WHERE bootstrap_capability.capability_digest = EXCLUDED.capability_digest
+              AND bootstrap_capability.allowed_origin = EXCLUDED.allowed_origin
+              AND bootstrap_capability.consumed_at IS NULL
             """,
-            (hashlib.sha256(capability.encode("utf-8")).digest(), allowed_origin, expires_at),
+            (capability_digest, allowed_origin, expires_at),
+        )
+        stored = connection.execute(
+            """
+            SELECT capability_digest, host(allowed_origin)
+            FROM bootstrap_capability
+            WHERE singleton
+            """
+        ).fetchone()
+        if (
+            stored is None
+            or not hmac.compare_digest(bytes(stored[0]), capability_digest)
+            or str(stored[1]) != allowed_origin
+        ):
+            raise RuntimeError("existing bootstrap capability differs from retry checkpoint")
+
+
+def provision_principal_credential(
+    dsn: str,
+    tenant_id: UUID,
+    principal_id: UUID,
+    *,
+    credential_input: TextIO,
+) -> None:
+    """Bind one runtime credential while persisting only its digest."""
+
+    credential = credential_input.readline().rstrip("\r\n")
+    if len(credential) < MINIMUM_CAPABILITY_LENGTH:
+        raise ValueError("principal credential must have at least 32 characters")
+    if len(credential) > MAXIMUM_CAPABILITY_LENGTH:
+        raise ValueError("principal credential must have at most 256 characters")
+    now = datetime.now().astimezone()
+    credential_digest = hashlib.sha256(credential.encode("utf-8")).digest()
+    with psycopg.connect(dsn) as connection:
+        connection.execute("SET ROLE ctower_admin")
+        connection.execute(
+            """
+            INSERT INTO principal_credentials (
+                credential_id, principal_id, tenant_id, credential_digest, created_at
+            ) VALUES (%s, %s, %s, %s, %s)
+            ON CONFLICT (credential_digest) DO NOTHING
+            """,
+            (
+                _uuid7(now),
+                principal_id,
+                tenant_id,
+                credential_digest,
+                now,
+            ),
+        )
+        stored = connection.execute(
+            """
+            SELECT tenant_id, principal_id, revoked_at
+            FROM principal_credentials
+            WHERE credential_digest = %s
+            """,
+            (credential_digest,),
+        ).fetchone()
+        if stored != (tenant_id, principal_id, None):
+            raise RuntimeError("existing principal credential differs from bootstrap retry")
+
+
+def configure_development_durability(dsn: str) -> None:
+    """Select the approved shadow-only ACK policy without making a CP3-D claim."""
+
+    with psycopg.connect(dsn) as connection:
+        connection.execute("SET ROLE ctower_admin")
+        connection.execute(
+            """
+            UPDATE durability_policy_state
+            SET policy_ref = 'ctower.development-offhost-ack@1',
+                mode = 'development_offhost_ack',
+                standby_identity = 'ctower_i1_standby',
+                configured_at = clock_timestamp()
+            WHERE singleton
+            """
         )

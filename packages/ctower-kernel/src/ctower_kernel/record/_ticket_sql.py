@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import secrets
 from dataclasses import dataclass
 from datetime import datetime
 from typing import cast
@@ -13,6 +12,7 @@ from psycopg.rows import dict_row
 
 from ctower_kernel.record import (
     Actor,
+    DurabilityState,
     PrincipalKind,
     RecordProblem,
     SourceReference,
@@ -22,6 +22,7 @@ from ctower_kernel.record import (
     TicketTimeline,
     TimelineEvent,
 )
+from ctower_kernel.record._uuid import uuid7 as _uuid7
 from ctower_kernel.record.events import (
     EventEnvelope,
     EventKind,
@@ -153,10 +154,22 @@ def get_ticket(
         connection.execute("SET ROLE ctower_svc")
         row = connection.execute(
             """
-            SELECT ticket_id, title, source_kind, source_ref, priority,
-                custodian_principal_id, version, created_at
-            FROM tickets
-            WHERE tenant_id = %s AND ticket_id = %s
+            SELECT ticket.ticket_id, ticket.title, ticket.source_kind, ticket.source_ref,
+                ticket.priority, ticket.custodian_principal_id, ticket.version,
+                ticket.created_at,
+                CASE WHEN confirmation.client_command_id IS NULL
+                    THEN 'durability_pending' ELSE 'accepted'
+                END AS durability_state
+            FROM tickets AS ticket
+            LEFT JOIN durability_subject_heads AS head
+              ON head.tenant_id = ticket.tenant_id
+             AND head.subject_kind = 'ticket'
+             AND head.subject_id = ticket.ticket_id
+            LEFT JOIN durability_acceptance_confirmations AS confirmation
+              ON confirmation.tenant_id = head.tenant_id
+             AND confirmation.principal_id = head.principal_id
+             AND confirmation.client_command_id = head.client_command_id
+            WHERE ticket.tenant_id = %s AND ticket.ticket_id = %s
             """,
             (actor.tenant_id, ticket_id),
         ).fetchone()
@@ -376,6 +389,7 @@ def _ticket_from_row(row: dict[str, object]) -> Ticket:
         custodian_id=cast(UUID, row["custodian_principal_id"]),
         version=int(cast(int, row["version"])),
         created_at=cast(datetime, row["created_at"]),
+        durability_state=DurabilityState(str(row["durability_state"])),
     )
 
 
@@ -421,14 +435,3 @@ def _scope_problem(command_id: UUID | None = None) -> RecordProblem:
         title="Ticket unavailable",
         command_id=command_id,
     )
-
-
-def _uuid7(now: datetime) -> UUID:
-    milliseconds = int(now.timestamp() * 1000) & ((1 << 48) - 1)
-    random_bits = secrets.randbits(74)
-    value = milliseconds << 80
-    value |= 0x7 << 76
-    value |= ((random_bits >> 62) & 0xFFF) << 64
-    value |= 0b10 << 62
-    value |= random_bits & ((1 << 62) - 1)
-    return UUID(int=value)

@@ -5,10 +5,11 @@ complete four-stage lifecycle — capture, frame, verify, close — against a re
 ending in the immutable facts `resolved` and `closed`.
 
 !!! note "What this quickstart is not"
-    There is no supported way to stand up a long-running ctower instance from this revision, so there is no
-    step where you start a server and point a CLI at it. The lifecycle below runs inside the repository's
-    acceptance gate, which owns its own disposable database. Every command on this page is one you can run
-    today; the parts that are not yet runnable are labelled where they appear.
+    This page verifies a checkout; it does not install the separately documented
+    [private-VPS E2 shadow runtime](https://github.com/simjak/ctower/tree/main/deploy/private-vps/development).
+    The lifecycle below runs
+    inside the repository's acceptance gate, which owns its own disposable database. The shadow runtime is
+    loopback-only, `SHADOW_ONLY_CP3_D_NOT_PROVEN`, and restricted to low-value reconstructible dogfood.
 
 ## 1. Prerequisites
 
@@ -120,10 +121,10 @@ tenant.
 
 ## 6. What the commands look like
 
-Once a supported runtime exists, work is driven through `ctowerctl` (installed as both `ctowerctl` and
-`ctl`). The shapes below are exact — every flag is checked against
-`apps/ctowerctl/src/ctowerctl/_parser.py` — but they are **illustrative**: this revision ships no supported
-way to run the server they would talk to.
+The private-VPS E2 shadow runtime drives work through the same `ctowerctl` interface (installed as both
+`ctowerctl` and `ctl`, with a local `ctower-shadow-ctl` secret-reference wrapper). The shapes below are
+exact — every flag is checked against `apps/ctowerctl/src/ctowerctl/_parser.py` — but they remain
+development-only examples, not a stable external API.
 
 Authority is always one line on stdin, never an argument or an environment variable:
 

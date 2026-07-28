@@ -490,6 +490,39 @@ projection state disables writes. It excludes credentials, accounting, productio
 incidents, client data, and irreplaceable artifacts. The disaster-safe milestone and I1.7 completion still
 require the full acknowledgement and restore evidence above.
 
+D25 places a smaller persistent shadow runtime before that authority milestone:
+
+```text
+loopback API (verified wheel) ----> PostgreSQL 17 primary
+          ^                              |
+          |                        physical WAL replay
+same-wheel control worker                |
+  + ordinary finalizer ------------> named ACK standby
+```
+
+Both database ports and the API are loopback-only. User systemd supervises the API and worker; persistent
+container volumes retain the primary and ACK copy. The approved `development_offhost_ack` policy reuses
+Record's exact named-standby receipt/finalization authority but forces degraded health reason
+`development_offhost_ack_cp3_d_not_proven`. It proves usable shadow mechanics, not an external failure
+domain, CP3-D, production durability, or single-writer cutover. Secret Service resolves database and CLI
+references inside the owning process; service files, release manifests, and config never contain values.
+Host authentication is SCRAM from initial publication. A network-isolated initializer receives its secret
+only through stdin, leaves the initialized volume, and is replaced by the steady-state container without a
+password environment entry; the clone password is likewise stdin-only. Separately from the forced-degraded
+policy dimension, the worker writes monotonic typed finalizer progress:
+inactive/failed/refusing/unknown/future/stale state is degraded, and only an active worker with a completed
+scan no older than ten seconds is healthy. A refused finalization appends an immutable attempt with
+exponential eligibility; three refusals or ten minutes of age append a terminal quarantine, remove that row
+from ordinary scans, and leave later rows serviceable. Configuration/state, Secret Service/DSN authority,
+and finalizer progress/health have separate small control-API Interfaces. Bootstrap has a strict owner-only
+replay checkpoint, so
+interruption resumes exact identities instead of minting a capability. The Part A runtime manifest is
+verified before a one-time install directly at the permanent service path, and that path's installed console
+entry point must execute before install succeeds. Runtime installation, lifecycle, systemd, Docker, Git,
+and interpreter helper processes share one deadline-requiring execution Seam that terminates its owned
+process group on timeout. Staging, pointer exchange, release-triggered service restart, and rollback remain
+in the separately reviewed release-lifecycle follow-up.
+
 The cutover is therefore ordered:
 
 ```text

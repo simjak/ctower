@@ -795,3 +795,54 @@ Rejected alternatives:
   authority and an unsafe rollback.
 - Landing the decision, importer, legacy fence, projection, and live dogfood event in one change: this
   makes the authority boundary too large to review independently.
+
+## D25 — Persistent E2 shadow runtime before authority promotion (locked 2026-07-28, operator R2164)
+
+The operator authorized the smallest supported persistent development runtime from current main, independent
+of other PR ordering. This supersedes only the statement that acknowledged durability may run solely inside
+verifier fixtures. D17, D21, D23, and D24 continue to govern production, disaster safety, and source-of-truth
+promotion.
+
+1. **Fixed shadow topology.** One persistent PostgreSQL 17 primary and one named physical ACK standby run on
+   the same private VPS. The API and same-artifact control worker are user-supervised long-running services.
+   PostgreSQL and HTTP bind only to loopback; no DNS, firewall, TLS, or external endpoint is activated.
+2. **Honest acceptance mode.** `development_offhost_ack` may finalize shadow commands through Record's exact
+   receipt/finalization protocol and the ordinary worker loop. Health always reports degraded reason
+   `development_offhost_ack_cp3_d_not_proven`. The topology is not an independent failure domain and never
+   proves CP3-D.
+3. **No authority expansion.** The runtime authorizes no `development_single_writer` epoch, `i1_exit`,
+   production/effects/incidents, secret/client/irreplaceable data, or legacy-writer rewire. Mission Control
+   remains authoritative until the separately gated D24 milestone.
+4. **Unprivileged, referenced, pinned operation.** Secret values live only in an allowlisted OS keyring.
+   This unattended linger host uses one dedicated owner-only passwordless development collection so an exact
+   unit can unlock it after reboot; that is an explicit shadow-only tradeoff, not a production secret-at-rest
+   claim. User systemd units and strict config contain references and labels. A release manifest binds clean
+   source, the exact approved standard-GIL CPython patch (3.14.6 primary, 3.13.14 sole fallback), wheel,
+   generated contracts, migrations, packs, and predecessor; upgrade/rollback switches verified pointers
+   without reversing accepted schema facts.
+5. **Deferred evidence remains explicit.** TLS/external exposure, full telemetry, backup and key/restore
+   drills, independent failure-domain ACK, real-host reboot evidence, production claims, and root release
+   supervision remain later work.
+
+Rejected alternatives:
+
+- Calling the same-VPS ACK copy “off-host” or CP3-D evidence: it proves replay mechanics but not a separate
+  host/failure domain.
+- Passing credential values through unit files, environment files, arguments, or config: the existing Secret
+  Service boundary is available and required.
+- Running a verifier-only finalization command after each mutation: it strands ordinary CLI and synthetic
+  work; finalization belongs in the supervised ordinary worker.
+
+## D26 — Split persistent runtime from release lifecycle (locked 2026-07-28, Commander R2164)
+
+The Commander split PR #60 after successive candidate generations exposed distinct defects in the same
+bundled subsystem: a staged-then-renamed virtual environment left console-script shebangs pointing at the
+deleted staging path, and rollback under an exhausted systemd start limit restored the predecessor pointer
+without restoring API/worker availability. This supersedes only D25's inclusion of automated release
+selection, upgrade, and rollback in the persistent-runtime candidate. D25's fixed shadow topology,
+ordinary finalizer, health semantics, secret boundary, bootstrap, and honest authority limits remain.
+
+Part A installs one verified runtime artifact directly at one fixed permanent path and executes an installed
+entry point before the service units select it. It includes no staging rename, mutable release pointer,
+release-triggered restart, automated upgrade, or rollback. Part B owns those release-lifecycle concerns in
+a separate lineage and must not be inferred complete from Part A's running-service evidence.

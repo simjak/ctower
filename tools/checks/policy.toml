@@ -78,7 +78,7 @@ allowed_dependencies = []
 [[ownership]]
 name = "repository-tests"
 paths = ["tests/repository/**"]
-allowed_dependencies = ["repository-policy"]
+allowed_dependencies = ["process-execution-tools", "repository-policy"]
 
 [[ownership]]
 name = "compatibility-tools"
@@ -94,6 +94,27 @@ allowed_dependencies = ["compatibility-tools"]
 name = "http-client-codegen"
 paths = ["tools/codegen/**"]
 allowed_dependencies = ["repository-policy"]
+
+[[ownership]]
+name = "runtime-manifest-tools"
+paths = ["tools/runtime_manifest/**"]
+allowed_dependencies = ["process-execution-tools"]
+
+[[ownership]]
+name = "process-execution-tools"
+paths = ["tools/process_execution.py"]
+allowed_dependencies = []
+
+[[ownership]]
+name = "development-runtime-tools"
+paths = ["tools/development_runtime/**"]
+allowed_dependencies = [
+  "control-api",
+  "control-cli",
+  "kernel-record",
+  "process-execution-tools",
+  "runtime-manifest-tools",
+]
 
 [[ownership]]
 name = "contract-tests"
@@ -170,6 +191,16 @@ paths = ["apps/ctower-api/src/**"]
 allowed_dependencies = ["kernel-access", "kernel-attention", "kernel-catalog", "kernel-objects", "kernel-projections", "kernel-proof", "kernel-record", "kernel-runtime", "kernel-telemetry", "kernel-work", "kernel-workflow"]
 
 [[ownership]]
+name = "development-runtime-tests"
+paths = ["tests/development_runtime/**"]
+allowed_dependencies = [
+  "control-api",
+  "development-runtime-tools",
+  "kernel-record",
+  "process-execution-tools",
+]
+
+[[ownership]]
 name = "control-cli"
 paths = [
   "apps/ctowerctl/src/**",
@@ -177,7 +208,7 @@ paths = [
   "tests/modules/ctowerctl/**",
   "tests/artifact/**",
 ]
-allowed_dependencies = []
+allowed_dependencies = ["runtime-manifest-tools"]
 
 [[ownership]]
 name = "increment-1-acceptance-tests"

@@ -423,6 +423,32 @@ command = [
 timeout_seconds = 900
 
 [[suite]]
+id = "persistent-shadow-runtime-acceptance"
+owner = "CT-I1-006"
+phase = "CT-I1-006"
+status = "required"
+path = "tests/acceptance/increment-1"
+patterns = ["test_persistent_runtime.py"]
+command = [
+  "{python}",
+  "-m",
+  "pytest",
+  "tests/acceptance/increment-1/test_persistent_runtime.py",
+  "-q",
+]
+timeout_seconds = 900
+
+[[suite]]
+id = "persistent-shadow-runtime-lifecycle"
+owner = "CT-I1-006"
+phase = "CT-I1-006"
+status = "required"
+path = "tests/development_runtime"
+patterns = ["test_*.py"]
+command = ["{python}", "-m", "pytest", "tests/development_runtime", "-q"]
+timeout_seconds = 300
+
+[[suite]]
 id = "checkpoint-component-contracts"
 owner = "CT-I1-007"
 phase = "CT-I1-007"

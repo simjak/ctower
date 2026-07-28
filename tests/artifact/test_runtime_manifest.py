@@ -1,0 +1,132 @@
+from __future__ import annotations
+
+import json
+import subprocess
+from pathlib import Path
+
+import pytest
+
+from tools.runtime_manifest import interface
+
+
+def test_manifest_binds_clean_source_artifact_resources_and_runtime(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    source = tmp_path / "source"
+    artifacts = tmp_path / "artifacts"
+    source.mkdir()
+    artifacts.mkdir()
+    _write(source / "packages/ctower-kernel/migrations/manifest.json", '{"migrations":[]}\n')
+    _write(source / "generated/.generated-manifest.json", '{"artifacts":[]}\n')
+    _write(source / "packs/workflow.yaml", "schema: ctower.test/v1\n")
+    _git(source, "init")
+    _git(source, "config", "user.name", "Ctower Test")
+    _git(source, "config", "user.email", "ctower-test@example.invalid")
+    _git(source, "add", ".")
+    _git(source, "commit", "-m", "fixture")
+    wheel = artifacts / "ctower_workspace-0.0.0-py3-none-any.whl"
+    wheel.write_bytes(b"tested-wheel")
+    output = artifacts / "manifest.json"
+    monkeypatch.setattr(interface, "_python_identity", lambda _path: ("3.13.14", "standard"))
+
+    manifest = interface.build_manifest(
+        source,
+        wheel,
+        output,
+        python_executable=Path("/approved/python"),
+    )
+
+    encoded = json.loads(output.read_text(encoding="utf-8"))
+    assert manifest.source_commit == _git(source, "rev-parse", "HEAD")
+    assert manifest.source_tree == _git(source, "rev-parse", "HEAD^{tree}")
+    assert encoded["python"] == {
+        "implementation": "CPython",
+        "version": "3.13.14",
+        "gil": "standard",
+    }
+    assert encoded["schema"] == "ctower.development-runtime-artifact/v1"
+    assert (
+        interface.verify_manifest(
+            output,
+            wheel,
+            source / "packs",
+            source_root=source,
+            python_executable=Path("/approved/python"),
+        )
+        == manifest
+    )
+    _assert_verification_refusals(source, output, wheel)
+
+
+def test_manifest_refuses_dirty_source_and_nonapproved_runtime(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    source = tmp_path / "source"
+    source.mkdir()
+    _write(source / "packages/ctower-kernel/migrations/manifest.json", "{}\n")
+    _write(source / "generated/.generated-manifest.json", "{}\n")
+    _write(source / "packs/pack.yaml", "pack: fixed\n")
+    _git(source, "init")
+    _git(source, "config", "user.name", "Ctower Test")
+    _git(source, "config", "user.email", "ctower-test@example.invalid")
+    _git(source, "add", ".")
+    _git(source, "commit", "-m", "fixture")
+    wheel = tmp_path / "artifact.whl"
+    wheel.write_bytes(b"wheel")
+    output = tmp_path / "manifest.json"
+    _write(source / "dirty.txt", "not committed\n")
+    monkeypatch.setattr(interface, "_python_identity", lambda _path: ("3.13.14", "standard"))
+
+    with pytest.raises(ValueError, match="clean source"):
+        interface.build_manifest(
+            source,
+            wheel,
+            output,
+            python_executable=Path("/approved/python"),
+        )
+
+    monkeypatch.undo()
+    fake_python = tmp_path / "python"
+    _write(fake_python, "#!/bin/sh\nprintf 'CPython\\n3.12.0\\nstandard\\n'\n")
+    fake_python.chmod(0o700)
+    with pytest.raises(ValueError, match="approved exact"):
+        interface._python_identity(fake_python)
+
+
+def _assert_verification_refusals(source: Path, manifest: Path, wheel: Path) -> None:
+    migration_manifest = source / "packages/ctower-kernel/migrations/manifest.json"
+    migration_manifest.write_text('{"migrations":["tampered"]}\n', encoding="utf-8")
+    with pytest.raises(ValueError, match="source"):
+        interface.verify_manifest(
+            manifest,
+            wheel,
+            source / "packs",
+            source_root=source,
+            python_executable=Path("/approved/python"),
+        )
+    migration_manifest.write_text('{"migrations":[]}\n', encoding="utf-8")
+    wheel.write_bytes(b"tampered-wheel")
+    with pytest.raises(ValueError, match="differ"):
+        interface.verify_manifest(
+            manifest,
+            wheel,
+            source / "packs",
+            source_root=source,
+            python_executable=Path("/approved/python"),
+        )
+
+
+def _write(path: Path, content: str) -> None:
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_text(content, encoding="utf-8")
+
+
+def _git(root: Path, *arguments: str) -> str:
+    return subprocess.run(  # noqa: S603 - test passes only fixed Git subcommands
+        ["/usr/bin/git", "-C", str(root), *arguments],
+        check=True,
+        capture_output=True,
+        text=True,
+    ).stdout.strip()

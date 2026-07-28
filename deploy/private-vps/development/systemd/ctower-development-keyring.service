@@ -1,0 +1,15 @@
+[Unit]
+Description=Unlock the login keyring for the owner-only Ctower development account
+Requires=gnome-keyring-daemon.service
+After=gnome-keyring-daemon.service
+
+[Service]
+Type=oneshot
+RemainAfterExit=yes
+ExecStart=%h/.local/share/ctower-development/runtime/venv/bin/ctower-development-keyring-unlock
+NoNewPrivileges=yes
+PrivateTmp=yes
+UMask=0077
+
+[Install]
+WantedBy=default.target

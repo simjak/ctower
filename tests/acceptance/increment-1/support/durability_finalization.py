@@ -18,6 +18,7 @@ from support.durability_assertions import (
     remove_finalization_refusal,
 )
 from support.postgres import DatabaseFixture, DurabilityPair, stop_durability_standby
+from support.telemetry import telemetry_headers
 from support.tenant_fixture import TenantFixture
 
 from ctower_api.interface import create_app
@@ -27,6 +28,7 @@ __all__: tuple[str, ...] = ()
 
 _ADVISORY_KEY = 7_221_643
 _BOUND_SECONDS = 8.0
+_HTTP_OK = 200
 _HTTP_PENDING = 202
 
 
@@ -96,6 +98,15 @@ def create_ambiguous_finalization(
     )
     assert replay.status_code == _HTTP_PENDING
     assert replay.content == response.content
+    ticket = client.get(
+        f"/v1/tickets/{response.json()['ticket']['ticket_id']}",
+        headers={
+            **telemetry_headers(),
+            "Authorization": f"Bearer {authority.tenant.operator_credential}",
+        },
+    )
+    assert ticket.status_code == _HTTP_OK
+    assert ticket.json()["durability_state"] == "durability_pending"
     return AmbiguousFinalization(command_id, response.content)
 
 

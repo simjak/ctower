@@ -8,11 +8,11 @@
       "inputs": [
         {
           "path": "SPEC.md",
-          "sha256": "sha256:f7c5b28f7c028d8af074c2c3aebf3414a3999fddf167dd16c962caa87800bdf5"
+          "sha256": "sha256:a4d9fd80cdac0696b9220ab3e71f85c73a505f2107c50ce9bef26573794d8ece"
         },
         {
           "path": "contracts/traceability/sources.json",
-          "sha256": "sha256:86de06d6fcb7df8f6f7ba46ae3c5ced198ab2c8bd1bc5a5522a3f8602741adaf"
+          "sha256": "sha256:1ebd3df65ffbb7349d3c2552ac696c0ec5cf20317f2a09c2c59154cf18d83104"
         },
         {
           "path": "contracts/traceability/traceability-sources.schema.json",
@@ -38,7 +38,7 @@
       "outputs": [
         {
           "path": "generated/traceability-index.json",
-          "sha256": "sha256:06f603f03585e441ba5dea755c7c7836452fea033fe5819ca210e38edc69aecf"
+          "sha256": "sha256:0fb1dbd7e97736b34de7c962803b6826d5d194b1d80dc4bc61d838f5cdd3039c"
         }
       ],
       "tool_version": "2"
@@ -290,7 +290,7 @@
         },
         {
           "path": "contracts/operations/durability-policy.schema.json",
-          "sha256": "sha256:ceef013fe815d39d522964ab74fab117b17a140b5d7cf7a4c888a664deacfc2b"
+          "sha256": "sha256:2399e843ea7690151b89072d6ac99c0cfeefe034ec7896805e88a5508cbc7bed"
         },
         {
           "path": "contracts/operations/expected-source-inventory.schema.json",
@@ -428,7 +428,7 @@
         },
         {
           "path": "generated/python/ctower_contracts/schemas.json",
-          "sha256": "sha256:046dcac7d0da23c5d13c0d2768a618fd3257744bcd2721008706169141a41c94"
+          "sha256": "sha256:598984e51dae1e7f0becb5e2e411572479c8608d0095e200a5dce691a7f558ba"
         },
         {
           "path": "generated/typescript/ctower-client/package.json",

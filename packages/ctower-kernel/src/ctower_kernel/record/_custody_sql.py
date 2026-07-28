@@ -19,8 +19,8 @@ from ctower_kernel.record._lifecycle import TERMINAL_TICKET_STATES
 from ctower_kernel.record._ticket_sql import (
     _result_from_payload,
     _ticket_from_row,
-    _uuid7,
 )
+from ctower_kernel.record._uuid import uuid7 as _uuid7
 from ctower_kernel.record.events import (
     CustodyTransferredPayload,
     EventEnvelope,
@@ -123,7 +123,7 @@ def _locked_ticket(
     ticket = connection.execute(
         """
         SELECT ticket_id, title, source_kind, source_ref, priority,
-            custodian_principal_id, version, created_at, current_episode
+            custodian_principal_id, version, durability_state, created_at, current_episode
         FROM tickets WHERE tenant_id = %s AND ticket_id = %s
         FOR UPDATE
         """,

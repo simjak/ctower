@@ -11,9 +11,10 @@ ctower holds those facts outside the worker, in a database behind one authentica
 write path. The worker becomes replaceable. The record does not.
 
 !!! warning "Pre-alpha: read this before you plan anything"
-    Version `0.0.0`. There is **no supported installation, deployment, published package, or hosted
-    service**, no browser UI, and no runner. What exists is a tested development slice plus its verification
-    gates. See [What you can and cannot do today](#what-you-can-and-cannot-do-today).
+    Version `0.0.0`. The only supported installation is the private-VPS, loopback-only E2 shadow runtime
+    for low-value reconstructible dogfood. There is **no published package, hosted service,
+    external/product deployment, or production runtime**, no browser UI, and no runner. See
+    [What you can and cannot do today](#what-you-can-and-cannot-do-today).
 
 ## The problem it solves
 
@@ -82,10 +83,10 @@ runs in the development slice.
 | Read the design and the contracts | Yes — `SPEC.md`, `contracts/`, and this site |
 | Verify a checkout end to end | Yes — [`just check` and `just verify`](quickstart.md) |
 | Watch a ticket go capture → resolved/closed against real PostgreSQL | Yes, inside the acceptance gate — see the [Quickstart](quickstart.md) |
-| Call the HTTP API or drive `ctowerctl` against your own instance | Not yet — no supported way to stand an instance up from this revision |
-| Install, deploy, or host ctower | No |
+| Call the HTTP API or drive `ctowerctl` against your own instance | Yes, only through the [private-VPS E2 shadow runtime](https://github.com/simjak/ctower/tree/main/deploy/private-vps/development) for low-value reconstructible dogfood |
+| Install, deploy, or host ctower | Private-VPS loopback shadow only; no hosted, external/product, or production deployment |
 | Use a browser UI, a runner, or a remote agent adapter | No — browser work starts at a later planned stage, which the roadmap calls `CT-I2-005` / I2.4 |
-| Put real tenants, credentials, or work into it | No |
+| Put real tenants, production credentials, or authoritative/irreplaceable work into it | No |
 
 Nothing here is a stability promise: the HTTP surface is a development contract, not a supported external
 API, and there is no compatibility guarantee between revisions.

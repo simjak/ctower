@@ -5,8 +5,9 @@ durable-ticket slice*, version `0.0.0`. It declares **41 operations**.
 
 !!! warning "Development contract, not a supported API"
     This surface exists so the CLI, the generated clients, and the tests share one definition. It is not a
-    stable external API, there is no compatibility promise between revisions, and there is no supported way
-    to run a server that serves it from this revision. See the [Quickstart](../quickstart.md).
+    stable external API and there is no compatibility promise between revisions. The private-VPS E2 shadow
+    runtime serves it only on loopback for low-value reconstructible dogfood; that is not external or
+    production API support. See the [Quickstart](../quickstart.md).
 
 !!! info "Where this page comes from"
     The tables below are derived from the generated operation registry

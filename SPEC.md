@@ -2750,6 +2750,40 @@ CP3-D proves the required external acknowledgement and restore boundary. Credent
 production approvals/effects, incidents, client data, and irreplaceable artifacts are excluded from the
 development cohort.
 
+Before that epoch, the E2 persistent shadow runtime may use
+`durability_policy=development_offhost_ack` for dogfood mechanics on one private VPS. It consists of one
+persistent PostgreSQL 17 primary, one named physical ACK standby, a loopback-only API, and the same-artifact
+ordinary control worker/finalizer. Acceptance may be reported for this shadow runtime only; health is always
+degraded with `development_offhost_ack_cp3_d_not_proven`. Its ACK copy is not an independent failure domain,
+does not satisfy CP3-D, and authorizes neither the `development_single_writer` epoch nor any production,
+effect, incident, credential, client-data, irreplaceable, or sole-copy record.
+
+The E2 installation is unprivileged and reboot-persistent through user systemd plus persistent container
+volumes. Secret values reside only in an allowlisted operating-system keyring; files and unit definitions
+contain references. On an unattended linger host, the login collection of the dedicated development account
+may be passwordless and owner-only so an exact pre-service unit can unlock it; this is never a production
+secret-at-rest claim. A network-isolated one-time PostgreSQL initializer reads its referenced secret through
+stdin and leaves only the initialized volume; the steady-state published container carries no password
+environment entry, and host authentication is SCRAM from initial loopback publication. Standby cloning also
+reads the referenced password through stdin, never an argument, environment value, config file, or status
+payload.
+
+The forced-degraded durability-policy health above is distinct from ordinary-finalizer liveness. Finalizer
+health is `HEALTHY` only when its worker is active and a typed completed scan advances within ten seconds.
+Missing, malformed, future, or stale progress, an inactive/crash-looping worker, a failed scan, or any
+refused command is `DEGRADED`; unknown is fail-closed. The worker persists monotonic scan progress before
+continuing and persists a typed failure before allowing an exception to terminate it.
+
+Each runtime manifest binds and installation re-verifies the source commit/tree, exact approved
+standard-GIL CPython patch, wheel digest, generated/migration manifests, and pack digest. Part A installs
+once directly into its fixed permanent runtime path and executes an installed console entry point before
+the service units may select it; it has no staging rename, release pointer, upgrade, release-triggered
+restart, or rollback path. First-tenant bootstrap checkpoints one command ID and one Secret Service
+reference until credential binding, state persistence, and service activation finish; retry replays those
+exact identities rather than minting replacements. Automated release staging, atomic pointer exchange,
+service cutover/restart, and rollback are deferred to the separately reviewed release-lifecycle follow-up.
+TLS/external exposure, full telemetry, backup/restore drills, and production claims remain deferred.
+
 ```text
 inventory -> freeze relevant legacy writers -> hash/export -> reviewed dedupe/alias map
           -> idempotent restricted import -> reconcile -> atomic client rewire -> seal read-only

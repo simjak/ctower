@@ -17,10 +17,11 @@ step, and nothing they do reaches the outside world without a narrow, short-live
 that records what happened.
 
 > [!IMPORTANT]
-> **Status: pre-alpha, version `0.0.0`.** There is no release, no package, and no supported way to install
-> or deploy ctower. The command line is the only interface; browser work is deliberately deferred. The part
-> that reaches the outside world — deploys, messages, payments — is specified but not built. Do not use
-> this to manage real work yet. [What works today](#what-works-today) is the honest split.
+> **Status: pre-alpha, version `0.0.0`.** The only supported install is the private-VPS, loopback-only E2
+> shadow runtime for low-value reconstructible dogfood. There is no release, published package, hosted
+> service, external/product deployment, backup/restore product, browser UI, runner, CP3-D deployment, or
+> source-of-truth authority. Do not use this to manage real work yet.
+> [What works today](#what-works-today) is the honest split.
 
 **Right now you can:** [see exactly what works](#what-works-today) ·
 [clone it and run its checks](#getting-started) ·
@@ -134,27 +135,27 @@ project's own checks. Everything in the right column is specified and designed, 
 
 | Works today | Designed, not built yet |
 |---|---|
-| Open a ticket, set its priority, assign it, block and unblock it, defer it, comment on it, link it to other tickets, resolve and close it | Any supported way to install, deploy, or run a hosted instance |
+| Open a ticket, set its priority, assign it, block and unblock it, defer it, comment on it, link it to other tickets, resolve and close it | Any hosted or external/product deployment |
 | A four-step flow — take it in, agree what "done" means, check it, close it — where every move is refused unless the flow declares it and its rule is met, and where the move into the last step, and resolving or closing the ticket, require proof that is current for this exact version of the work and a pass recorded by someone other than the principal who froze the criteria for that candidate | A web interface. The command line is the only one, on purpose, for now |
 | Proof tied to the exact version of the work it checked: change the work and the proof that depended on the old version stops counting | Anything that reaches the outside world: real deploys, messages, payments, receipts, incident recovery |
 | A board with six lanes, the full history of every ticket, and a per-project delivery view, all rebuilt from recorded facts | Fleets of agents working in parallel, with permissions that expire and automatic resume after a crash |
 | A command line that writes every ticket, intake and workflow change to an encrypted local queue before it sends it, so an interrupted change is not lost if the server or the network is down. Reads, first-time setup and the migration commands go straight to the server and are not queued | Connectors that read from email, chat, or a source host |
 | Inbound messages stored durably with their source, and a step that turns one into a ticket without duplicating it if the request is retried | Memory that lets a worker recall how something was solved months ago |
 | A self-test that drives one ticket through the whole four-step flow against a real PostgreSQL database | Proof required at *every* step, with each step naming the kinds of proof it accepts — see [typed evidence slots](https://simjak.github.io/ctower/concepts/proof/#typed-evidence-slots) — plus richer process authoring than the flow above |
+| An operator-installed private-VPS E2 shadow runtime with supervised loopback services, an ordinary durability finalizer, and the explicit `SHADOW_ONLY_CP3_D_NOT_PROVEN` label | A production runtime, CP3-D activation, authoritative or irreplaceable work, and release lifecycle |
 | — | `[planned]` Refusing a pass from whoever authored or fixed the candidate, or recorded its evidence. Today the verdict writer is compared only with the principal who froze the candidate criteria — see [verdicts and independence](https://simjak.github.io/ctower/concepts/proof/#verdicts-and-independence) |
 | — | Cancelling a ticket, moving a running ticket to a new version of its process, or a run/step state machine with typed repair attempts |
 
-One boundary worth naming plainly. Nothing in this repository starts a ctower instance. What
-[`deploy/`](deploy/README.md) holds today is a disposable PostgreSQL fixture that the tests start and stop
-for themselves, plus homes for observability and recovery configuration with no endpoint, no credential and
-no service to activate. A repeatable development instance is being worked on and is not part of this
-revision; even when it lands it will listen only on its own machine, make no production or data-safety
-promise, and still not be a supported deployment.
+One boundary worth naming plainly. The operator-approved
+[private-VPS development runtime](deploy/private-vps/development/README.md) adds the strictly
+development-labeled `development_offhost_ack` mode and supervised loopback services. It makes no
+production, independent-failure-domain, source-of-truth, or data-safety promise. The rest of
+[`deploy/`](deploy/README.md) remains verifier-owned fixtures or inactive configuration homes.
 
 ## Getting started
 
-There is no supported way to install or deploy ctower, and nothing to `pip install`. That is the honest
-answer, and it stays in this README until it changes.
+There is no published package or supported external/product deployment, and nothing to `pip install`.
+The private-VPS development runtime is the sole supported installation path and remains shadow-only.
 
 What you *can* do right now:
 
@@ -184,7 +185,7 @@ disposable PostgreSQL containers and needs Docker.
 
 **4. Follow along, or help.** [SPEC.md](SPEC.md) is what is being built and
 [IMPLEMENTATION-ROADMAP.md](IMPLEMENTATION-ROADMAP.md) is the order it is being built in. Watch the
-repository to hear when the first installable version lands.
+repository as the shadow runtime and the rest of the project mature.
 
 ## Words you will meet
 

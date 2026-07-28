@@ -2,8 +2,9 @@
 
 ctower uses [Semantic Versioning](https://semver.org/) and Release Please. The repository
 currently records version `0.0.0`: this is a development baseline, not a published release.
-There is no package or deployable runtime artifact yet. Until one exists, a release contains
-the tagged source tree, generated changelog, and GitHub release notes only.
+The private-VPS E2 shadow path builds and verifies a wheel plus runtime manifest from source, but neither is
+published and the release workflow does not deploy them. A release contains the tagged source tree,
+generated changelog, and GitHub release notes only.
 
 ## Public API
 

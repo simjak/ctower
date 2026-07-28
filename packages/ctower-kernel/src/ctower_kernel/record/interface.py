@@ -35,6 +35,8 @@ __all__ = [
     "BootstrapReceipt",
     "CustodyCommand",
     "DurabilityDecision",
+    "DurabilityFinalizationBatch",
+    "DurabilityFinalizer",
     "DurabilityHealth",
     "DurabilityHealthStatus",
     "DurabilityReason",
@@ -129,6 +131,38 @@ class DurabilityHealth:
     acceptance_position: int | None
     observed_at: datetime
     reason: str
+
+
+@dataclass(frozen=True, slots=True)
+class DurabilityFinalizationBatch:
+    """One bounded ordinary-finalizer observation."""
+
+    attempted: int
+    accepted: int
+    pending: int
+    refused: int
+    quarantined: int = 0
+
+    def __post_init__(self) -> None:
+        values = (
+            self.attempted,
+            self.accepted,
+            self.pending,
+            self.refused,
+            self.quarantined,
+        )
+        if any(value < 0 for value in values):
+            raise ValueError("durability finalizer counts cannot be negative")
+        if self.attempted != self.accepted + self.pending + self.refused:
+            raise ValueError("durability finalizer counts must conserve attempts")
+        if self.quarantined > self.refused:
+            raise ValueError("quarantined durability attempts must be refused")
+
+
+class DurabilityFinalizer(Protocol):
+    """Small maintenance Interface for ordinary pending-command reconciliation."""
+
+    def finalize_pending(self, *, limit: int = 100) -> DurabilityFinalizationBatch: ...
 
 
 @dataclass(frozen=True, slots=True)
@@ -283,6 +317,7 @@ class Ticket:
     custodian_id: UUID
     version: int
     created_at: datetime
+    durability_state: DurabilityState = DurabilityState.PENDING
 
     def response_payload(self) -> dict[str, object]:
         """Return the generated HTTP resource shape."""
@@ -290,7 +325,7 @@ class Ticket:
         return {
             "created_at": self.created_at.isoformat(),
             "custodian_id": str(self.custodian_id),
-            "durability_state": "durability_pending",
+            "durability_state": self.durability_state.value,
             "priority": self.priority,
             "source": asdict(self.source),
             "ticket_id": str(self.ticket_id),

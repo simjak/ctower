@@ -1,0 +1,19 @@
+[Unit]
+Description=Ctower shadow-only loopback API (CP3-D not proven)
+Requires=ctower-development-db.service
+After=ctower-development-db.service
+
+[Service]
+Type=simple
+ExecStart=%h/.local/share/ctower-development/runtime/venv/bin/ctower-development-api
+Restart=on-failure
+RestartSec=2
+NoNewPrivileges=yes
+PrivateTmp=yes
+ProtectSystem=strict
+ProtectHome=read-only
+ReadWritePaths=%h/.local/state/ctower %h/.local/share/ctower-development
+UMask=0077
+
+[Install]
+WantedBy=default.target

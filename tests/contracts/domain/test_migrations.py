@@ -68,6 +68,8 @@ def test_migration_manifest_is_ordered_and_checksum_exact() -> None:
         "0030_i17b_migration_truth_spine.sql",
         "0031_i17b_bounded_truth_spine.sql",
         "0032_thread_first_intake.sql",
+        "0033_development_offhost_ack.sql",
+        "0034_durability_finalizer_quarantine.sql",
     ]
     for entry in entries:
         digest = hashlib.sha256((MIGRATIONS / entry["path"]).read_bytes()).hexdigest()
