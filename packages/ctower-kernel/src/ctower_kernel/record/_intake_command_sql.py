@@ -12,14 +12,16 @@ import psycopg
 
 from ctower_kernel.record import (
     Actor,
-    InboundSource,
-    IntakeCommandResult,
-    IntakePromotionCommand,
     RecordProblem,
     TicketCommand,
 )
 from ctower_kernel.record._ticket_sql import _TicketIds
-from ctower_kernel.record.intake import IntakeOutcome
+from ctower_kernel.record.intake import (
+    InboundSource,
+    IntakeCommandResult,
+    IntakeOutcome,
+    IntakePromotionCommand,
+)
 from ctower_kernel.record.transaction import RecordTransaction
 
 __all__: tuple[str, ...] = ()
