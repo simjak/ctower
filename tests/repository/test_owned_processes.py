@@ -193,5 +193,116 @@ class OwnedProcessTests(unittest.TestCase):
             owned_processes._open_pidfd(impossible_pid)
 
 
+class ProcessScanEvidenceTests(unittest.TestCase):
+    """Observation paths a busy host reaches by accident and a quiet runner never does.
+
+    The `/proc` scan's vanished-entry branches were covered only when unrelated processes
+    happened to exit mid-scan, which made this module's measured coverage — and therefore
+    the release gate's verdict — depend on host load rather than on the code under test.
+    """
+
+    def _impossible_pid(self) -> int:
+        return int(Path("/proc/sys/kernel/pid_max").read_text(encoding="utf-8").strip()) + 1
+
+    def test_entries_that_vanish_between_listing_and_reading_are_classified(self) -> None:
+        impossible_pid = self._impossible_pid()
+
+        self.assertIs(
+            owned_processes._process_entry_state(impossible_pid, b"CTOWER_TEST_OWNER=absent"),
+            owned_processes._EntryState.VANISHED,
+        )
+        self.assertFalse(
+            owned_processes._is_candidate(
+                impossible_pid,
+                candidate_pids=(),
+                candidate_session_ids=(1,),
+            )
+        )
+
+    def test_a_scan_of_only_vanished_entries_counts_nothing(self) -> None:
+        with mock.patch.object(
+            owned_processes,
+            "_process_entry_state",
+            return_value=owned_processes._EntryState.VANISHED,
+        ):
+            observation = owned_processes._observe_owned_processes(
+                b"CTOWER_TEST_OWNER=absent",
+                candidate_pids=(),
+                candidate_session_ids=(),
+            )
+
+        self.assertEqual((observation.scanned, observation.readable), (0, 0))
+        self.assertEqual(observation.owned_pids, ())
+        self.assertFalse(observation.is_unknown)
+
+    def test_observation_reports_a_live_owned_process_without_signalling_it(self) -> None:
+        owner = "observation-evidence"
+        process = subprocess.Popen(
+            (sys.executable, "-c", "import sys; sys.stdin.read()"),
+            env=os.environ | {_OWNER_ENV: owner},
+            stdin=subprocess.PIPE,
+            text=True,
+            start_new_session=True,
+        )
+        try:
+            result = owned_processes.observe_owned_processes(
+                _OWNER_ENV,
+                owner,
+                candidate_pids=(process.pid,),
+                candidate_session_ids=(process.pid,),
+            )
+
+            self.assertIs(result.outcome, TerminationOutcome.SURVIVED)
+            self.assertEqual(result.owned_pids, (process.pid,))
+            self.assertEqual(result.candidate_unreadable_pids, ())
+            self.assertEqual(owned_processes.owned_process_ids(_OWNER_ENV, owner), (process.pid,))
+            self.assertIsNone(process.poll())
+        finally:
+            assert process.stdin is not None
+            process.stdin.close()
+            process.wait(timeout=2)
+
+    def test_observation_separates_an_absent_owner_from_incomplete_evidence(self) -> None:
+        absent = owned_processes.observe_owned_processes(
+            _OWNER_ENV,
+            "absent-observation-owner",
+            candidate_pids=(self._impossible_pid(),),
+        )
+        unreadable = owned_processes._OwnershipObservation(
+            scanned=1,
+            readable=0,
+            unreadable_pids=(7,),
+            candidate_unreadable_pids=(7,),
+            owned_pids=(),
+        )
+        with mock.patch.object(
+            owned_processes, "_observe_owned_processes", return_value=unreadable
+        ):
+            unknown = owned_processes.observe_owned_processes(_OWNER_ENV, "unreadable-owner")
+
+        self.assertIs(absent.outcome, TerminationOutcome.GRACEFUL)
+        self.assertEqual(absent.owned_pids, ())
+        self.assertIs(unknown.outcome, TerminationOutcome.UNKNOWN)
+
+    def test_refined_evidence_preserves_the_observed_numbers(self) -> None:
+        observation = owned_processes._OwnershipObservation(
+            scanned=2,
+            readable=2,
+            unreadable_pids=(),
+            candidate_unreadable_pids=(),
+            owned_pids=(11, 12),
+        )
+
+        refined = observation.with_candidate_unreadable((12,))
+        result = refined.result(TerminationOutcome.UNKNOWN).with_outcome(
+            TerminationOutcome.SURVIVED
+        )
+
+        self.assertEqual((refined.readable, refined.unreadable_pids), (1, (12,)))
+        self.assertEqual(refined.owned_pids, (11,))
+        self.assertIs(result.outcome, TerminationOutcome.SURVIVED)
+        self.assertEqual((result.scanned, result.readable), (2, 1))
+
+
 if __name__ == "__main__":
     unittest.main()

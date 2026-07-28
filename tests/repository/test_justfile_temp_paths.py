@@ -95,7 +95,16 @@ class JustfileTempPathTests(unittest.TestCase):
         body = self._recipe_body(recipe)
         command = body.removeprefix("@")
         probe_command = f"{shlex.quote(sys.executable)} {shlex.quote(str(probe))}"
-        return command.replace("{{python}}", probe_command)
+        return command.replace("{{python}}", probe_command).replace(
+            "{{coverage_gate}}", self._justfile_variable("coverage_gate")
+        )
+
+    def _justfile_variable(self, name: str) -> str:
+        prefix = f"{name} := "
+        for line in self.justfile.read_text(encoding="utf-8").splitlines():
+            if line.startswith(prefix):
+                return line[len(prefix) :].strip().removeprefix('"').removesuffix('"')
+        self.fail(f"justfile defines no {name} variable")
 
     def _recipe_body(self, recipe: str) -> str:
         lines = self.justfile.read_text(encoding="utf-8").splitlines()
@@ -119,11 +128,15 @@ class JustfileTempPathTests(unittest.TestCase):
 
     def _probe_source(self) -> str:
         return """\
+import json
 import os
 import sys
 from pathlib import Path
 
 arguments = sys.argv[1:]
+if arguments[:1] == ["-c"]:
+    # The coverage verdict runs for real against the report the probe just wrote.
+    os.execv(sys.executable, [sys.executable, *arguments])
 if "--site-dir" in arguments:
     scratch = Path(arguments[arguments.index("--site-dir") + 1])
     scratch.mkdir(parents=True, exist_ok=True)
@@ -131,6 +144,11 @@ if "--site-dir" in arguments:
 else:
     scratch = Path(os.environ["COVERAGE_FILE"])
     scratch.write_text("probe\\n", encoding="utf-8")
+for argument in arguments:
+    if argument.startswith("--cov-report=json:"):
+        Path(argument.removeprefix("--cov-report=json:")).write_text(
+            json.dumps({"totals": {"percent_covered": 100.0}}), encoding="utf-8"
+        )
 Path(os.environ["CTOWER_SCRATCH_RECORD"]).write_text(
     str(scratch.resolve()), encoding="utf-8"
 )

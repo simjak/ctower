@@ -4,6 +4,13 @@ python := env_var_or_default("PYTHON", "python3")
 gitleaks := env_var_or_default("GITLEAKS", "gitleaks")
 export PYTHONDONTWRITEBYTECODE := "1"
 
+# Authoritative coverage verdict, applied to a machine report emitted by the same run.
+# `--cov-fail-under` decides its exit status on `round(total, report precision)` and this
+# repository reports at the default precision 0, so pytest-cov prints `FAIL ... not reached`
+# and still exits 0 for every total in `[threshold - 0.5, threshold)`. Gates therefore fail
+# on the exact measured total, never on pytest's exit status alone.
+coverage_gate := "import json, sys; total = json.load(open(sys.argv[1], encoding='utf-8'))['totals']['percent_covered']; required = float(sys.argv[2]); sys.exit(f'coverage gate FAILED: exact total {total:.4f}% is below the required {required:g}%') if total < required else print(f'coverage gate passed: exact total {total:.4f}% meets the required {required:g}%')"
+
 default:
     @just --list
 
@@ -17,10 +24,10 @@ python-check: compatibility-coverage
     {{python}} -m mypy --no-incremental apps/ctower-api/src apps/ctowerctl/src packages/ctower-kernel/src tools/checks tools/codegen tools/compatibility generated/python tests/repository tests/contracts tests/compatibility tests/integration tests/modules tests/artifact tests/acceptance/increment-1
 
 compatibility-coverage:
-    @coverage_file="$(mktemp)"; trap 'rm -f "$coverage_file"' EXIT; COVERAGE_FILE="$coverage_file" {{python}} -m pytest -p no:cacheprovider --cov=tools.compatibility --cov-branch --cov-fail-under=90 tests/compatibility
+    @coverage_file="$(mktemp)"; report_file="$(mktemp)"; trap 'rm -f -- "$coverage_file" "$report_file"' EXIT; COVERAGE_FILE="$coverage_file" {{python}} -m pytest -p no:cacheprovider --cov=tools.compatibility --cov-branch --cov-fail-under=90 --cov-report=term --cov-report=json:"$report_file" tests/compatibility; {{python}} -c "{{coverage_gate}}" "$report_file" 90
 
 product-coverage:
-    @coverage_file="$(mktemp)"; trap 'rm -f "$coverage_file"' EXIT; COVERAGE_FILE="$coverage_file" {{python}} -m pytest -p no:cacheprovider --cov=ctower_api --cov=ctower_kernel --cov=ctowerctl --cov-branch --cov-fail-under=90 tests/modules tests/acceptance/increment-1 -q
+    @coverage_file="$(mktemp)"; report_file="$(mktemp)"; trap 'rm -f -- "$coverage_file" "$report_file"' EXIT; COVERAGE_FILE="$coverage_file" {{python}} -m pytest -p no:cacheprovider --cov=ctower_api --cov=ctower_kernel --cov=ctowerctl --cov-branch --cov-fail-under=90 --cov-report=term --cov-report=json:"$report_file" tests/modules tests/acceptance/increment-1 -q; {{python}} -c "{{coverage_gate}}" "$report_file" 90
 
 web-check:
     pnpm run format:check
@@ -60,8 +67,12 @@ _verify-clean-tree:
 
 # Scan exactly Git's tracked plus nonignored-untracked intended tree. Building an external
 # view avoids traversing `.git`, ignored dependency trees, caches, or runtime state.
+# The listing is materialized through a file, not a process substitution, so a failing
+# `git ls-files` is visible. Raw-versus-consumed byte accounting validates its NUL framing,
+# and the scanned count is observed independently from the materialized tree. An empty,
+# malformed, or partial corpus refuses. `no leaks found` is trustworthy only with that evidence.
 secrets-intended-tree:
-    @scan_root="$(mktemp -d)"; config_path="$(pwd -P)/.gitleaks.toml"; trap 'rm -rf -- "$scan_root"' EXIT; while IFS= read -r -d '' file_path; do target="$scan_root/$file_path"; mkdir -p -- "$(dirname -- "$target")"; if [[ -L "$file_path" ]]; then readlink "$file_path" > "$target"; elif [[ -f "$file_path" ]]; then cp -p -- "$file_path" "$target"; fi; done < <(git ls-files --cached --others --exclude-standard -z); cd "$scan_root"; {{gitleaks}} dir . --config "$config_path" --no-banner --redact --verbose
+    @scan_root="$(mktemp -d)"; file_list="$(mktemp)"; config_path="$(pwd -P)/.gitleaks.toml"; trap 'rm -rf -- "$scan_root" "$file_list"' EXIT; git ls-files --cached --others --exclude-standard -z > "$file_list"; LC_ALL=C; manifest_bytes="$(wc -c < "$file_list")"; listed=0; consumed_bytes=0; skipped=""; while IFS= read -r -d '' file_path; do listed=$((listed + 1)); consumed_bytes=$((consumed_bytes + ${#file_path} + 1)); target="$scan_root/$file_path"; mkdir -p -- "$(dirname -- "$target")"; if [[ -L "$file_path" ]]; then readlink "$file_path" > "$target"; elif [[ -f "$file_path" ]]; then cp -p -- "$file_path" "$target"; else skipped="$skipped $file_path"; fi; done < "$file_list"; scanned="$(find "$scan_root" -type f -printf . | wc -c)"; printf 'secret scan corpus: listed=%s scanned=%s manifest-bytes=%s consumed-bytes=%s\n' "$listed" "$scanned" "$manifest_bytes" "$consumed_bytes"; if [[ "$manifest_bytes" -ne "$consumed_bytes" || "$listed" -eq 0 || "$scanned" -ne "$listed" ]]; then printf 'secret scan corpus is empty or incomplete; refusing to report a clean scan (skipped:%s)\n' "${skipped:- none}" >&2; exit 1; fi; cd "$scan_root"; {{gitleaks}} dir . --config "$config_path" --no-banner --redact --verbose
 
 secrets-history:
     {{gitleaks}} git . --config .gitleaks.toml --no-banner --redact --verbose
@@ -69,7 +80,7 @@ secrets-history:
 # Full, non-mutating release gate. CT-L0-007 makes CI invoke this exact recipe.
 verify: _verify-clean-tree check product-coverage
     {{python}} -m tools.checks --root . --profile full --execute-suites
-    @coverage_file="$(mktemp)"; trap 'rm -f "$coverage_file"' EXIT; COVERAGE_FILE="$coverage_file" {{python}} -m pytest -p no:cacheprovider --cov=tools.checks --cov-branch --cov-fail-under=90 tests/repository
+    @coverage_file="$(mktemp)"; report_file="$(mktemp)"; trap 'rm -f -- "$coverage_file" "$report_file"' EXIT; COVERAGE_FILE="$coverage_file" {{python}} -m pytest -p no:cacheprovider --cov=tools.checks --cov-branch --cov-fail-under=90 --cov-report=term --cov-report=json:"$report_file" tests/repository; {{python}} -c "{{coverage_gate}}" "$report_file" 90
     @just secrets-history
     git diff --check
     @just _verify-clean-tree
