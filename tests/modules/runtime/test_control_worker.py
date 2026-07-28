@@ -16,6 +16,7 @@ import pytest
 import ctower_api.control_worker as control_worker_module
 from ctower_api.control_worker import build_worker
 from ctower_api.synthetic_handler import SyntheticFourStageHandler
+from ctower_client import CtowerProblemError
 from ctower_kernel.projections import (
     BoardQuery,
     BoardView,
@@ -149,6 +150,18 @@ class _SyntheticHandler:
         return self._completion
 
 
+class _ProblemSyntheticHandler:
+    def execute(self, attempt: FixedOperationAttempt) -> FixedOperationCompletion:
+        del attempt
+        raise CtowerProblemError(_RaisedProblem())
+
+
+class _RaisedProblem:
+    def __init__(self) -> None:
+        self.code = "workflow-pin-mismatch"
+        self.detail = "Workflow pin refused"
+
+
 def test_worker_loads_exact_fixed_packs_and_ticks_each_owned_loop() -> None:
     tenant_id = uuid4()
     routine_store = _RoutineStore(tenant_id)
@@ -218,6 +231,50 @@ def test_worker_tick_claims_executes_and_completes_synthetic_operation() -> None
     assert fixed.claims == ["ctower.control-worker.synthetic"]
     assert handler.attempts == [attempt]
     assert fixed.completions == [(attempt, completion)]
+
+
+def test_worker_records_a_terminal_failed_result_for_public_semantic_problem() -> None:
+    tenant_id = uuid4()
+    now = datetime.now(UTC)
+    attempt = FixedOperationAttempt(
+        uuid4(),
+        FixedOperationJob(
+            uuid4(),
+            tenant_id,
+            uuid4(),
+            "synthetic_four_stage",
+            60,
+            (),
+            now,
+        ),
+        1,
+        uuid4(),
+        "test-worker",
+        now,
+        now + timedelta(seconds=30),
+    )
+    fixed = _FixedOperations(attempt)
+    worker = build_worker(
+        Routine(_RoutineStore(tenant_id)),
+        Projections(_ProjectionStore()),
+        pack_root=ROOT / "packs",
+        fixed_operations=cast(FixedOperations, fixed),
+        synthetic_handler=_ProblemSyntheticHandler(),
+    )
+
+    worker.tick()
+
+    assert fixed.completions == [
+        (
+            attempt,
+            FixedOperationCompletion(
+                succeeded=False,
+                ticket_id=None,
+                lifecycle_facts=(),
+                detail_code="synthetic-workflow-pin-mismatch",
+            ),
+        )
+    ]
 
 
 def test_worker_main_and_environment_boundary_are_strict(

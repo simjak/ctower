@@ -18,7 +18,7 @@ from ctower_api.synthetic_handler import (
     SyntheticPolicyPins,
     SyntheticRetryError,
 )
-from ctower_client import CtowerClient
+from ctower_client import CtowerClient, CtowerProblemError
 from ctower_kernel.projections import Projections
 from ctower_kernel.projections.postgres import PostgresProjections
 from ctower_kernel.record import DurabilityFinalizer
@@ -81,6 +81,13 @@ class ControlWorker:
             completion = self.synthetic_handler.execute(attempt)
         except SyntheticRetryError:
             return
+        except CtowerProblemError as error:
+            completion = FixedOperationCompletion(
+                succeeded=False,
+                ticket_id=None,
+                lifecycle_facts=(),
+                detail_code=f"synthetic-{error.problem.code}",
+            )
         self.fixed_operations.complete_synthetic(attempt, completion)
 
 

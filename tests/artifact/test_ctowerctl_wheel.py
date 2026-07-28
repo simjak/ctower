@@ -61,7 +61,13 @@ def test_wheel_has_explicit_packages_resources_dependencies_and_scripts(
         entry_points = archive.read(entry_name).decode("utf-8")
         migration_manifest = json.loads(archive.read("ctower_kernel/migrations/manifest.json"))
 
-    required_roots = ("ctower_api/", "ctower_client/", "ctower_kernel/", "ctowerctl/")
+    required_roots = (
+        "ctower_api/",
+        "ctower_client/",
+        "ctower_kernel/",
+        "ctowerctl/",
+        "tools/",
+    )
     assert all(any(name.startswith(root) for name in names) for root in required_roots)
     assert "ctower_contracts/schemas.json" in names
     declared_migrations = {
@@ -91,6 +97,12 @@ def test_wheel_has_explicit_packages_resources_dependencies_and_scripts(
         assert any(requirement.startswith(dependency) for requirement in requirements)
     assert "ctl = ctowerctl:main" in entry_points
     assert "ctowerctl = ctowerctl:main" in entry_points
+    assert "ctower-development-keyring-unlock = tools.development_runtime:keyring_unlock_main" in (
+        entry_points
+    )
+    assert "ctower-private-vps = tools.development_runtime:main" in entry_points
+    assert "ctower-release-manifest = tools.release_manifest.__main__:main" in entry_points
+    assert "ctower-shadow-ctl = tools.development_runtime.ctl:main" in entry_points
 
 
 def test_installed_alias_help_and_generated_resource_are_checkout_independent(
@@ -203,14 +215,18 @@ def test_installed_mutation_queues_then_missing_keyring_fails_without_state_chan
 def _build_wheel(workspace: Path) -> Path:
     source = workspace / "source"
     source.mkdir()
-    for relative in ("LICENSE", "pyproject.toml"):
-        shutil.copy2(ROOT / relative, source / relative)
+    for relative in ("LICENSE", "pyproject.toml", "tools/__init__.py"):
+        destination = source / relative
+        destination.parent.mkdir(parents=True, exist_ok=True)
+        shutil.copy2(ROOT / relative, destination)
     for relative in (
         "apps/ctower-api/src",
         "apps/ctowerctl/src",
         "generated/python",
         "packages/ctower-kernel/migrations",
         "packages/ctower-kernel/src",
+        "tools/development_runtime",
+        "tools/release_manifest",
     ):
         destination = source / relative
         destination.parent.mkdir(parents=True, exist_ok=True)

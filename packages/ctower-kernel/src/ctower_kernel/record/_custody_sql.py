@@ -123,7 +123,7 @@ def _locked_ticket(
     ticket = connection.execute(
         """
         SELECT ticket_id, title, source_kind, source_ref, priority,
-            custodian_principal_id, version, created_at, current_episode
+            custodian_principal_id, version, durability_state, created_at, current_episode
         FROM tickets WHERE tenant_id = %s AND ticket_id = %s
         FOR UPDATE
         """,

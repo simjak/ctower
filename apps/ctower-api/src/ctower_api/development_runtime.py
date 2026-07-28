@@ -102,7 +102,7 @@ def worker_main() -> None:
     runtime = Routine(runtime_store)
     projections = Projections(PostgresProjections(projection_dsn))
     pins = SyntheticPolicyPins(
-        workflow_digest=_digest(packs / _WORKFLOW),
+        workflow_digest=_workflow_graph(packs).digest,
         execution_policy_digest=_digest(packs / _EXECUTION),
         gate_policy_digest=_digest(packs / _GATE),
         evidence_policy_digest=_digest(packs / _EVIDENCE),
