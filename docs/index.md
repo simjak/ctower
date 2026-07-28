@@ -40,8 +40,7 @@ Five things, in the order work moves through them:
  │ thread │ promo│ identity │ start│ stage graph│ gate│ evidence + │ fold│ Project     │
  │        │ -tion│ + custody│      │ + policies │     │ verdict    │     │ Delivery    │
  └────────┘      └──────────┘      └────────────┘     └────────────┘     └─────────────┘
-  specified,        shipped            shipped            shipped            shipped
-  not shipped
+   shipped          shipped            shipped            shipped            shipped
 ```
 
 - A **[ticket](concepts/tickets.md)** is the permanent case file for one promised outcome. Its ID never
@@ -51,16 +50,21 @@ Five things, in the order work moves through them:
   says who may execute or review within it. Both are versioned *data* loaded from a pack. The engine has no
   built-in engineering stages: the software factory is one workflow package, not the product.
 - **[Proof](concepts/proof.md)** is what makes "done" checkable. Criteria are frozen against a candidate
-  digest, evidence fills typed slots, and an *independent* principal records the verdict. Change the
-  candidate and the evidence that depended on it stops counting.
+  digest, evidence is bound to that same digest, and an *independent* principal records the verdict — the
+  author cannot pass their own work. Change the candidate and the evidence that depended on it stops
+  counting. (Typed evidence *slots* are required by `SPEC.md` and are not implemented at this revision; see
+  [Proof](concepts/proof.md#typed-evidence-slots).)
 - **[Projections](concepts/board.md)** — the Board and [Project Delivery](concepts/project-delivery.md) —
   are read-only folds of those facts, carrying their own watermark and freshness so a stale read announces
   itself instead of lying.
 - **[Durability](concepts/durability.md)** is explicit at the API boundary. A write that is committed but
   not yet acknowledged off-host returns `durability_pending`, not a fake success.
 
-Inbound threads are specified in `SPEC.md` (INV-08) but are **not implemented at this revision**; tickets
-today are created directly. Everything else in that chain runs in the development slice.
+Inbound threads landed in `7111520`: an authenticated caller can submit an inbound event and promote it into
+a linked ticket, and re-sending the same promotion returns the same ticket instead of a second one. Tickets
+can still be created directly. What does **not** exist is anything that feeds intake automatically — no
+email, chat, or webhook connector — so in practice something has to call it. Everything else in that chain
+runs in the development slice.
 
 ## What you can and cannot do today
 

@@ -1,6 +1,6 @@
 # CLI reference
 
-`ctowerctl` — also installed as `ctl` — is the complete command surface. There are **45 authored server
+`ctowerctl` — also installed as `ctl` — is the complete command surface. There are **47 authored server
 commands** and **7 local spool commands**. There is no operation-ID escape hatch: an unrecognized command is
 a usage error, not a passthrough.
 
@@ -140,6 +140,23 @@ is refused as `proof-self-review-refused`.
 Refs match `<key>@<revision>`, for example `ctower.trust-spine-four-stage@1`. Digests must match the pinned
 revision's canonical graph digest, not the digest of the pack file on disk. See
 [workflow pinning](../concepts/workflows.md#pinning-what-start-actually-does).
+
+## Intake
+
+| Command | Positional | Flags |
+|---|---|---|
+| `intake submit` | — | required: `--project-key`, `--source-kind`, `--source-ref`, `--content-file`; optional: `--command-id`, `--intent {discussion,create_ticket,link_ticket}` (default `discussion`), `--taint {authenticated,external_untrusted,quarantine_required}` (default `authenticated`), `--thread-id`, `--expected-thread-version`, plus the ticket fields below |
+| `intake promote` | `<inbound_event_id>` | required: `--expected-thread-version`, `--intent {create_ticket,link_ticket}`; optional: `--command-id`, plus the ticket fields below |
+
+Both accept the same optional ticket fields: `--initial-custodian-id`, `--priority {P0,P1,P2}`, `--title`,
+`--target-ticket-id`, `--expected-ticket-version`. Both are mutations and are spoolable.
+
+Submitting without `--thread-id` starts a new thread; supplying one appends to that thread and then
+`--expected-thread-version` is required. Supplying exactly one of the pair is a usage refusal, not a guess.
+Content submitted as `--taint quarantine_required` is stored and held: it is recorded as quarantined and
+never becomes a ticket on submission. Promotion is idempotent — promoting an event that already produced a
+ticket returns the same ticket instead of creating another, and an ineligible event is refused without
+changing anything.
 
 ## Board and health {#board-and-health}
 

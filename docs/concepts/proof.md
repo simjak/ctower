@@ -21,8 +21,9 @@ A worker says a change passes. That statement is prose about a moving target. Th
 - The claim is not bound to *what* was checked, so "tested" can mean anything.
 - The claim is approved by the same principal who made it.
 
-ctower binds all three. Evidence names an exact candidate digest, fills a declared typed slot, and cannot be
-approved by its own author.
+ctower binds all three. Evidence names an exact candidate digest and cannot be approved by its own author.
+The third binding — evidence filling a *declared typed slot* — is required by `SPEC.md` and is
+[not implemented at this revision](#typed-evidence-slots).
 
 ## Frozen criteria
 
@@ -57,8 +58,12 @@ refuses with `proof-evidence-digest-mismatch` and writes nothing.
 
 ## Typed evidence slots
 
-This is the rule merged in `e5d6d1dd` (`docs(spec): require typed stage evidence slots`, PR #52). It is
-canonical in `SPEC.md` as `INV-61`, `INV-62`, and `AC-EVD-07`.
+!!! warning "Specified, not implemented at this revision"
+    This section describes a **required rule**, not current runtime behaviour. It is canonical in `SPEC.md`
+    as `INV-61`, `INV-62`, and `AC-EVD-07`, merged as the specification change `e5d6d1dd`
+    (`docs(spec): require typed stage evidence slots`, PR #52). The shipped evidence record has no slot
+    field: what runs today is the criterion/digest/verdict binding described above. Read this section as the
+    contract the implementation must meet.
 
 Every stage that can reach `succeeded` — or an evidence-backed `skipped` — declares an ordered, nonempty
 set of **required evidence slots**. A slot is a named child contract of the stage definition, not a new

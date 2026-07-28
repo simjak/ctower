@@ -1,7 +1,7 @@
 # HTTP API reference
 
 The authored HTTP contract is `contracts/http/openapi.yaml` — an OpenAPI 3.1.0 document titled *ctower first
-durable-ticket slice*, version `0.0.0`. It declares **39 operations**.
+durable-ticket slice*, version `0.0.0`. It declares **41 operations**.
 
 !!! warning "Development contract, not a supported API"
     This surface exists so the CLI, the generated clients, and the tests share one definition. It is not a
@@ -37,7 +37,7 @@ seconds. See [Durability and acceptance](../concepts/durability.md).
 ### Refusals
 
 Refusals are typed problem documents carrying `type`, `title`, `status`, `detail`, and a `code` from a
-closed enumeration of 79 values, plus the optional diagnostic fields `command_id`, `current_version`, and
+closed enumeration of 83 values, plus the optional diagnostic fields `command_id`, `current_version`, and
 `unmet_facts`. See [Refusals](../agents/refusals.md).
 
 ### Path and query parameters
@@ -85,6 +85,17 @@ means it is sent online or not at all.
 | `POST` | `/v1/tickets/{ticket_id}/workflow/resolve-close` | `resolveCloseWorkflow` | `ticket resolve` | mutation | allowed | `200`, `202`, `401`, `404`, `409`, `422` |
 | `POST` | `/v1/tickets/{ticket_id}/workflow/start` | `startTicketWorkflow` | `ticket workflow start` | mutation | allowed | `200`, `202`, `401`, `404`, `409`, `422` |
 | `POST` | `/v1/tickets/{ticket_id}/workflow/transition` | `transitionWorkflow` | `ticket transition` | mutation | allowed | `200`, `202`, `401`, `404`, `409`, `422` |
+
+### Intake
+
+| Method | Path | Operation | CLI | Kind | Spool | Responses |
+|---|---|---|---|---|---|---|
+| `POST` | `/v1/intake` | `submitIntake` | `intake submit` | mutation | allowed | `201`, `202`, `401`, `403`, `404`, `409`, `413`, `422` |
+| `POST` | `/v1/intake/events/{inbound_event_id}/promotion` | `promoteIntakeEvent` | `intake promote` | mutation | allowed | `200`, `202`, `401`, `403`, `404`, `409`, `413`, `422` |
+
+`413` is the request-body bound (`request-body-too-large`). Promotion is idempotent: promoting an event that
+already produced a ticket returns that ticket rather than creating a second one, and an event that is not
+eligible is refused as `intake-promotion-ineligible` without changing anything.
 
 ### Projections and health
 

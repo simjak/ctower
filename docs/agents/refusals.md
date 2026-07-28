@@ -1,7 +1,7 @@
 # Refusals
 
 ctower refuses with a typed problem document rather than a generic error. The `code` field is a closed
-enumeration of **79 values** declared in `contracts/http/openapi.yaml`. If you see a code that is not on this
+enumeration of **83 values** declared in `contracts/http/openapi.yaml`. If you see a code that is not on this
 page, the contract changed and this page is a defect.
 
 The point of the enumeration is that a caller can branch on it. This page groups every code by **what you
@@ -14,7 +14,7 @@ should do about it**.
 | `type` | yes | URI identifying the problem type |
 | `title` | yes | Short human summary |
 | `status` | yes | HTTP status, 400–599 |
-| `code` | yes | One of the 79 values below |
+| `code` | yes | One of the 83 values below |
 | `detail` | yes | Human-readable specifics |
 | `command_id` | no | Correlates to your idempotency key |
 | `current_version` | no | The server's actual version, on version conflicts |
@@ -48,10 +48,11 @@ only code on this page that a plain retry can resolve.
 
 Escalate. Retrying with the same credential produces the same refusal.
 
-### Request shape and replay (3)
+### Request shape and replay (4)
 
-`idempotency-conflict`, `validation-error`, `version-conflict`
+`idempotency-conflict`, `request-body-too-large`, `validation-error`, `version-conflict`
 
+`request-body-too-large` means the body exceeded the declared bound; send less, do not retry unchanged.
 Only `version-conflict` is recoverable in-loop, and only by re-reading first. See
 [Rule 2](operating-contract.md#rule-2-you-supply-the-expected-version-and-you-read-it-back-from-refusals).
 
@@ -149,6 +150,15 @@ active base. Re-plan and apply the fresh `plan_digest`; the active pointer was n
 
 `i1-7c-required` is the refusal returned by the refusal-only cutover operations. It is the designed
 response, not a transient state.
+
+### Intake (3)
+
+`intake-already-promoted`, `intake-promotion-ineligible`, `intake-source-conflict`
+
+`intake-already-promoted` is usually success arriving twice: read the event and use the ticket it already
+produced. `intake-promotion-ineligible` means this event cannot become a ticket in its current state — read
+the thread rather than retrying. `intake-source-conflict` means the same source reference is already
+recorded against different content; nothing changed.
 
 ### Projections and operations (2)
 
