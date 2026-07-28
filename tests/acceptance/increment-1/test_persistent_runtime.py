@@ -21,6 +21,7 @@ from support.postgres import (
     stop_durability_pair,
     wait_for_durability_replay_current,
 )
+from support.telemetry import telemetry_headers
 from support.tenant_fixture import TenantFixture, create_first_tenant
 
 from ctower_api.interface import create_app
@@ -75,11 +76,20 @@ def test_ordinary_finalizer_reconciles_development_ack_without_cp3d_claim() -> N
                 command_id,
                 title="Ordinary development finalizer",
             )
+            ticket_id = pending.json()["ticket"]["ticket_id"]
+            durable_ticket = client.get(
+                f"/v1/tickets/{ticket_id}",
+                headers={
+                    **telemetry_headers(),
+                    "Authorization": f"Bearer {authority.tenant.operator_credential}",
+                },
+            )
         health = record.durability_health(now=_database_now(authority.database.admin_dsn))
 
         assert batch.accepted >= 1
         assert replay.status_code == _HTTP_CREATED
         assert replay.json()["durability_state"] == "accepted"
+        assert durable_ticket.json()["durability_state"] == "accepted"
         assert health.status is DurabilityHealthStatus.DEGRADED
         assert health.reason == "development_offhost_ack_cp3_d_not_proven"
 

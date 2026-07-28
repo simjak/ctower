@@ -13,6 +13,7 @@ from psycopg.rows import dict_row
 
 from ctower_kernel.record import (
     Actor,
+    DurabilityState,
     PrincipalKind,
     RecordProblem,
     SourceReference,
@@ -153,10 +154,22 @@ def get_ticket(
         connection.execute("SET ROLE ctower_svc")
         row = connection.execute(
             """
-            SELECT ticket_id, title, source_kind, source_ref, priority,
-                custodian_principal_id, version, created_at
-            FROM tickets
-            WHERE tenant_id = %s AND ticket_id = %s
+            SELECT ticket.ticket_id, ticket.title, ticket.source_kind, ticket.source_ref,
+                ticket.priority, ticket.custodian_principal_id, ticket.version,
+                ticket.created_at,
+                CASE WHEN finalization.client_command_id IS NULL
+                    THEN 'durability_pending' ELSE 'accepted'
+                END AS durability_state
+            FROM tickets AS ticket
+            LEFT JOIN durability_subject_heads AS head
+              ON head.tenant_id = ticket.tenant_id
+             AND head.subject_kind = 'ticket'
+             AND head.subject_id = ticket.ticket_id
+            LEFT JOIN durability_acceptance_finalizations AS finalization
+              ON finalization.tenant_id = head.tenant_id
+             AND finalization.principal_id = head.principal_id
+             AND finalization.client_command_id = head.client_command_id
+            WHERE ticket.tenant_id = %s AND ticket.ticket_id = %s
             """,
             (actor.tenant_id, ticket_id),
         ).fetchone()
@@ -376,6 +389,7 @@ def _ticket_from_row(row: dict[str, object]) -> Ticket:
         custodian_id=cast(UUID, row["custodian_principal_id"]),
         version=int(cast(int, row["version"])),
         created_at=cast(datetime, row["created_at"]),
+        durability_state=DurabilityState(str(row["durability_state"])),
     )
 
 
