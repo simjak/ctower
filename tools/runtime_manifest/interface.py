@@ -4,16 +4,19 @@ from __future__ import annotations
 
 import hashlib
 import re
-import subprocess
 from pathlib import Path
 from typing import Literal
 
 from pydantic import BaseModel, ConfigDict, Field, field_validator
 
+import tools.process_execution as process_execution  # noqa: PLR0402
+
 __all__ = ["DevelopmentRuntimeManifest", "build_manifest", "verify_manifest"]
 
 _DIGEST = re.compile(r"^sha256:[0-9a-f]{64}$")
 _COMMIT = re.compile(r"^[0-9a-f]{40}$")
+_GIT_TIMEOUT_SECONDS = 30.0
+_INTERPRETER_TIMEOUT_SECONDS = 10.0
 
 
 class _StrictModel(BaseModel):
@@ -158,11 +161,11 @@ def _python_identity(executable: Path) -> tuple[str, str]:
         "or sys._is_gil_enabled() else 'free')"
     )
     resolved = executable.resolve(strict=True)
-    result = subprocess.run(  # noqa: S603 - exact operator-selected interpreter is verified below
+    result = process_execution.run(
         [str(resolved), "-c", script],
+        timeout_seconds=_INTERPRETER_TIMEOUT_SECONDS,
         check=True,
         capture_output=True,
-        text=True,
     )
     implementation, version, gil = result.stdout.splitlines()
     if implementation != "CPython" or version not in {"3.14.6", "3.13.14"} or gil != "standard":
@@ -171,12 +174,13 @@ def _python_identity(executable: Path) -> tuple[str, str]:
 
 
 def _git(root: Path, *arguments: str) -> str:
-    return subprocess.run(  # noqa: S603 - arguments are closed helper-owned literals
+    result = process_execution.run(
         ["/usr/bin/git", "-C", str(root), *arguments],
+        timeout_seconds=_GIT_TIMEOUT_SECONDS,
         check=True,
         capture_output=True,
-        text=True,
-    ).stdout.strip()
+    )
+    return (result.stdout or "").strip()
 
 
 def _digest_file(path: Path) -> str:

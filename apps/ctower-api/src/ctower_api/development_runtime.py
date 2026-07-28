@@ -15,15 +15,13 @@ import uvicorn
 
 from ctower_api._routine_loop import load_routine_revisions
 from ctower_api.control_worker import build_worker
-from ctower_api.development_config import (
+from ctower_api.development_config import load_config, load_state
+from ctower_api.development_finalizer import (
     DevelopmentFinalizerProgress,
-    development_dsn,
-    load_config,
     load_finalizer_progress,
-    load_secret,
-    load_state,
     write_finalizer_progress,
 )
+from ctower_api.development_secrets import development_dsn, load_secret
 from ctower_api.interface import create_app
 from ctower_api.synthetic_handler import SyntheticFourStageHandler, SyntheticPolicyPins
 from ctower_client import CtowerClient
@@ -75,6 +73,7 @@ class _DevelopmentFinalizerProgressRecorder:
                 accepted=batch.accepted,
                 pending=batch.pending,
                 refused=batch.refused,
+                quarantined=batch.quarantined,
                 detail_code=None,
             )
         )
@@ -91,6 +90,7 @@ class _DevelopmentFinalizerProgressRecorder:
                 accepted=0,
                 pending=0,
                 refused=0,
+                quarantined=0,
                 detail_code="finalizer-exception",
             )
         )

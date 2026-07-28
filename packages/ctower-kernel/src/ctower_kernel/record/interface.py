@@ -141,13 +141,22 @@ class DurabilityFinalizationBatch:
     accepted: int
     pending: int
     refused: int
+    quarantined: int = 0
 
     def __post_init__(self) -> None:
-        values = (self.attempted, self.accepted, self.pending, self.refused)
+        values = (
+            self.attempted,
+            self.accepted,
+            self.pending,
+            self.refused,
+            self.quarantined,
+        )
         if any(value < 0 for value in values):
             raise ValueError("durability finalizer counts cannot be negative")
         if self.attempted != self.accepted + self.pending + self.refused:
             raise ValueError("durability finalizer counts must conserve attempts")
+        if self.quarantined > self.refused:
+            raise ValueError("quarantined durability attempts must be refused")
 
 
 class DurabilityFinalizer(Protocol):

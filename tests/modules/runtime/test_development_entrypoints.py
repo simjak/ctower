@@ -16,8 +16,18 @@ from uuid import uuid4
 import pytest
 import uvicorn
 
-import ctower_api.development_config as config_module
-import ctower_api.development_runtime as runtime_module
+from ctower_api import (
+    development_config as config_module,
+)
+from ctower_api import (
+    development_finalizer as finalizer_module,
+)
+from ctower_api import (
+    development_runtime as runtime_module,
+)
+from ctower_api import (
+    development_secrets as secrets_module,
+)
 from ctower_api.development_config import DevelopmentConfig, DevelopmentState
 from ctower_kernel.proof import ProofPolicy
 from ctower_kernel.record import DurabilityFinalizationBatch
@@ -32,6 +42,7 @@ OWNER_MODE = 0o600
 EXPECTED_ROLE_COUNT = 4
 FINALIZER_ATTEMPTS = 2
 SIGNAL_COUNT = 2
+MAX_PUBLIC_EXPORTS = 15
 
 
 class Keyring:
@@ -101,6 +112,20 @@ def _config() -> DevelopmentConfig:
     return DevelopmentConfig.model_validate(_config_payload())
 
 
+def test_development_runtime_concerns_have_small_non_passthrough_interfaces() -> None:
+    moved_names = {
+        "DevelopmentFinalizerProgress",
+        "development_dsn",
+        "load_secret",
+        "observe_finalizer_health",
+    }
+
+    assert len(config_module.__all__) <= MAX_PUBLIC_EXPORTS
+    assert len(finalizer_module.__all__) <= MAX_PUBLIC_EXPORTS
+    assert len(secrets_module.__all__) <= MAX_PUBLIC_EXPORTS
+    assert moved_names.isdisjoint(config_module.__all__)
+
+
 def test_config_state_owner_only_round_trip_and_strict_validation(
     monkeypatch: pytest.MonkeyPatch, tmp_path: Path
 ) -> None:
@@ -141,47 +166,55 @@ def test_dsn_resolves_only_supported_keyring_references(
         observed.append(reference)
         return "slash/value ?"
 
-    monkeypatch.setattr(config_module, "load_secret", load)
+    monkeypatch.setattr(secrets_module, "load_secret", load)
     for role in (
         "postgres",
         "ctower_migrator",
         "ctower_runtime",
         "ctower_projection_runtime",
     ):
-        dsn = config_module.development_dsn(development_config, role, standby=role == "postgres")
+        dsn = secrets_module.development_dsn(
+            development_config,
+            role,
+            standby=role == "postgres",
+        )
         assert "slash%2Fvalue%20%3F" in dsn
     assert len(observed) == EXPECTED_ROLE_COUNT
-    assert ":55433/" in config_module.development_dsn(development_config, "postgres", standby=True)
+    assert ":55433/" in secrets_module.development_dsn(
+        development_config,
+        "postgres",
+        standby=True,
+    )
     with pytest.raises(ValueError, match="unsupported"):
-        config_module.development_dsn(development_config, "unknown")
+        secrets_module.development_dsn(development_config, "unknown")
 
 
 def test_keyring_adapter_persists_exact_values_and_fails_closed(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     backend = Keyring()
-    monkeypatch.setattr(config_module, "_secure_backend", lambda: backend)
+    monkeypatch.setattr(secrets_module, "_secure_backend", lambda: backend)
 
-    config_module.put_secret(REFERENCE, "current-value")
+    secrets_module.put_secret(REFERENCE, "current-value")
 
-    assert config_module.load_secret(REFERENCE) == "current-value"
+    assert secrets_module.load_secret(REFERENCE) == "current-value"
     with pytest.raises(ValueError, match="invalid"):
-        config_module.put_secret("bad-ref", "value")
+        secrets_module.put_secret("bad-ref", "value")
     with pytest.raises(ValueError, match="invalid"):
-        config_module.put_secret(REFERENCE, "")
+        secrets_module.put_secret(REFERENCE, "")
     with pytest.raises(ValueError, match="invalid"):
-        config_module.load_secret("bad-ref")
+        secrets_module.load_secret("bad-ref")
     with pytest.raises(RuntimeError, match="missing reference"):
-        config_module.load_secret("secret-service:ctower-development/missing")
+        secrets_module.load_secret("secret-service:ctower-development/missing")
 
     monkeypatch.setattr(backend, "set_password", lambda *_args: None)
     with pytest.raises(RuntimeError, match="did not persist"):
-        config_module.put_secret(REFERENCE, "different")
+        secrets_module.put_secret(REFERENCE, "different")
     monkeypatch.setattr(backend, "get_password", lambda *_args: (_ for _ in ()).throw(OSError()))
     with pytest.raises(RuntimeError, match="refused"):
-        config_module.put_secret(REFERENCE, "different")
+        secrets_module.put_secret(REFERENCE, "different")
     with pytest.raises(RuntimeError, match="unavailable"):
-        config_module.load_secret(REFERENCE)
+        secrets_module.load_secret(REFERENCE)
 
 
 def test_keyring_backend_identity_and_unlock_protocol(
@@ -194,18 +227,18 @@ def test_keyring_backend_identity_and_unlock_protocol(
         "import_module",
         lambda name: keyring_module if name == "keyring" else None,
     )
-    assert config_module._secure_backend() is backend
+    assert secrets_module._secure_backend() is backend
 
     backend.priority = 0.0
     with pytest.raises(RuntimeError, match="not allowlisted"):
-        config_module._secure_backend()
+        secrets_module._secure_backend()
     monkeypatch.setattr(
         importlib,
         "import_module",
         lambda _name: (_ for _ in ()).throw(ImportError()),
     )
     with pytest.raises(RuntimeError, match="allowlisted"):
-        config_module._secure_backend()
+        secrets_module._secure_backend()
 
     calls: list[tuple[object, ...]] = []
     service = SimpleNamespace(call=lambda *args: calls.append(args))
@@ -220,9 +253,9 @@ def test_keyring_backend_identity_and_unlock_protocol(
         "secretstorage.util": util,
     }
     monkeypatch.setattr(importlib, "import_module", lambda name: modules[name])
-    monkeypatch.setattr(config_module, "load_secret", lambda reference: reference)
+    monkeypatch.setattr(secrets_module, "load_secret", lambda reference: reference)
 
-    config_module.unlock_development_keyring()
+    secrets_module.unlock_development_keyring()
 
     assert calls[0][0] == "UnlockWithMasterPassword"
     monkeypatch.setattr(
@@ -231,7 +264,7 @@ def test_keyring_backend_identity_and_unlock_protocol(
         lambda _name: (_ for _ in ()).throw(ImportError()),
     )
     with pytest.raises(RuntimeError, match="passwordless"):
-        config_module.unlock_development_keyring()
+        secrets_module.unlock_development_keyring()
 
 
 def test_config_home_defaults_to_owner_home(
@@ -250,9 +283,9 @@ def test_stalled_finalizer_progress_is_observably_degraded(
     monkeypatch: pytest.MonkeyPatch, tmp_path: Path
 ) -> None:
     monkeypatch.setenv("XDG_STATE_HOME", str(tmp_path / "state"))
-    observe_health = getattr(config_module, "observe_finalizer_health", None)
-    write_progress = getattr(config_module, "write_finalizer_progress", None)
-    progress_type = getattr(config_module, "DevelopmentFinalizerProgress", None)
+    observe_health = finalizer_module.observe_finalizer_health
+    write_progress = finalizer_module.write_finalizer_progress
+    progress_type = finalizer_module.DevelopmentFinalizerProgress
     assert observe_health is not None
     assert write_progress is not None
     assert progress_type is not None
@@ -283,9 +316,9 @@ def test_refusing_finalizer_progress_is_observably_degraded(
     monkeypatch: pytest.MonkeyPatch, tmp_path: Path
 ) -> None:
     monkeypatch.setenv("XDG_STATE_HOME", str(tmp_path / "state"))
-    observe_health = getattr(config_module, "observe_finalizer_health", None)
-    write_progress = getattr(config_module, "write_finalizer_progress", None)
-    progress_type = getattr(config_module, "DevelopmentFinalizerProgress", None)
+    observe_health = finalizer_module.observe_finalizer_health
+    write_progress = finalizer_module.write_finalizer_progress
+    progress_type = finalizer_module.DevelopmentFinalizerProgress
     assert observe_health is not None
     assert write_progress is not None
     assert progress_type is not None
@@ -318,9 +351,9 @@ def test_finalizer_health_fails_closed_and_requires_current_completed_progress(
     monkeypatch.setenv("XDG_STATE_HOME", str(tmp_path / "state"))
     now = datetime(2026, 7, 28, 17, 40, tzinfo=UTC)
 
-    unknown = config_module.observe_finalizer_health("active", now=now)
+    unknown = finalizer_module.observe_finalizer_health("active", now=now)
     assert (unknown.status, unknown.reason) == ("DEGRADED", "progress_unknown")
-    progress = config_module.DevelopmentFinalizerProgress(
+    progress = finalizer_module.DevelopmentFinalizerProgress(
         schema="ctower.development-finalizer-progress/v1",
         sequence=1,
         observed_at=now,
@@ -331,28 +364,28 @@ def test_finalizer_health_fails_closed_and_requires_current_completed_progress(
         refused=0,
         detail_code=None,
     )
-    config_module.write_finalizer_progress(progress)
-    healthy = config_module.observe_finalizer_health("active", now=now)
+    finalizer_module.write_finalizer_progress(progress)
+    healthy = finalizer_module.observe_finalizer_health("active", now=now)
     assert (healthy.status, healthy.reason, healthy.sequence) == (
         "HEALTHY",
         "progress_observed",
         1,
     )
-    inactive = config_module.observe_finalizer_health("activating", now=now)
+    inactive = finalizer_module.observe_finalizer_health("activating", now=now)
     assert (inactive.status, inactive.reason) == ("DEGRADED", "worker_inactive")
-    config_module.write_finalizer_progress(
+    finalizer_module.write_finalizer_progress(
         progress.model_copy(
             update={"sequence": 2, "scan_status": "failed", "detail_code": "finalizer-exception"}
         )
     )
-    failed = config_module.observe_finalizer_health("active", now=now)
+    failed = finalizer_module.observe_finalizer_health("active", now=now)
     assert (failed.status, failed.reason) == ("DEGRADED", "finalizer_failed")
 
 
 def test_development_finalizer_progress_recorder_is_monotonic_and_typed(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    written: list[config_module.DevelopmentFinalizerProgress] = []
+    written: list[finalizer_module.DevelopmentFinalizerProgress] = []
     monkeypatch.setattr(
         runtime_module,
         "load_finalizer_progress",

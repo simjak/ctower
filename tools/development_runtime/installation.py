@@ -4,12 +4,16 @@ from __future__ import annotations
 
 import os
 import shutil
-import subprocess
 from pathlib import Path
 
+import tools.process_execution as process_execution  # noqa: PLR0402
 from tools.runtime_manifest import verify_manifest
 
 __all__ = ["install_runtime", "runtime_home"]
+
+_CREATE_ENVIRONMENT_TIMEOUT_SECONDS = 60.0
+_INSTALL_TIMEOUT_SECONDS = 300.0
+_VERIFY_TIMEOUT_SECONDS = 60.0
 
 
 def install_runtime(
@@ -38,17 +42,8 @@ def install_runtime(
         shutil.copy2(wheel, installed_wheel)
         shutil.copy2(manifest_path, home / "manifest.json")
         shutil.copytree(packs, home / "packs")
-        environment_python = home / "venv/bin/python"
-        _run([str(python.resolve(strict=True)), "-m", "venv", str(home / "venv")])
-        uv = _uv_path()
-        _run([uv, "pip", "install", "--python", str(environment_python), str(installed_wheel)])
-        _run([uv, "pip", "check", "--python", str(environment_python)])
-        freeze = _run(
-            [uv, "pip", "freeze", "--python", str(environment_python)],
-            capture=True,
-        )
+        freeze = _install_environment(home, installed_wheel, python)
         (home / "installed-distributions.txt").write_text(freeze, encoding="utf-8")
-        _run([str(home / "venv/bin/ctower-private-vps"), "--help"], capture=True)
     except Exception:
         shutil.rmtree(home)
         raise
@@ -60,18 +55,47 @@ def runtime_home() -> Path:
     return _data_home() / "ctower-development" / "runtime"
 
 
+def _install_environment(home: Path, installed_wheel: Path, python: Path) -> str:
+    environment_python = home / "venv/bin/python"
+    _run(
+        [str(python.resolve(strict=True)), "-m", "venv", str(home / "venv")],
+        timeout_seconds=_CREATE_ENVIRONMENT_TIMEOUT_SECONDS,
+    )
+    uv = _uv_path()
+    _run(
+        [uv, "pip", "install", "--python", str(environment_python), str(installed_wheel)],
+        timeout_seconds=_INSTALL_TIMEOUT_SECONDS,
+    )
+    _run(
+        [uv, "pip", "check", "--python", str(environment_python)],
+        timeout_seconds=_VERIFY_TIMEOUT_SECONDS,
+    )
+    freeze = _run(
+        [uv, "pip", "freeze", "--python", str(environment_python)],
+        timeout_seconds=_VERIFY_TIMEOUT_SECONDS,
+        capture=True,
+    )
+    _run(
+        [str(home / "venv/bin/ctower-private-vps"), "--help"],
+        timeout_seconds=_VERIFY_TIMEOUT_SECONDS,
+        capture=True,
+    )
+    return freeze
+
+
 def _run(
     arguments: list[str],
     *,
+    timeout_seconds: float,
     capture: bool = False,
 ) -> str:
-    result = subprocess.run(  # noqa: S603 - callers construct bounded install commands
+    result = process_execution.run(
         arguments,
+        timeout_seconds=timeout_seconds,
         check=True,
         capture_output=capture,
-        text=True,
     )
-    return result.stdout if capture else ""
+    return (result.stdout or "") if capture else ""
 
 
 def _uv_path() -> str:

@@ -7,7 +7,6 @@ import json
 import os
 import secrets
 import shutil
-import subprocess
 import time
 from datetime import UTC, datetime
 from pathlib import Path
@@ -15,18 +14,21 @@ from pathlib import Path
 import psycopg
 from psycopg import sql
 
+import tools.process_execution as process_execution  # noqa: PLR0402
 from ctower_api.development_config import (
     DevelopmentConfig,
-    SecretReferenceMissingError,
     config_path,
-    development_dsn,
     load_config,
-    load_secret,
     load_state,
-    observe_finalizer_health,
+    write_config,
+)
+from ctower_api.development_finalizer import observe_finalizer_health
+from ctower_api.development_secrets import (
+    SecretReferenceMissingError,
+    development_dsn,
+    load_secret,
     put_secret,
     unlock_development_keyring,
-    write_config,
 )
 from ctower_kernel.record.postgres import (
     PostgresRecord,
@@ -60,6 +62,9 @@ host replication postgres 10.253.216.0/24 scram-sha-256
 host all all 0.0.0.0/0 scram-sha-256
 host all all ::/0 scram-sha-256
 """
+_INSPECT_TIMEOUT_SECONDS = 10.0
+_LIFECYCLE_TIMEOUT_SECONDS = 120.0
+_SYSTEMD_TIMEOUT_SECONDS = 60.0
 
 
 def main() -> None:
@@ -312,6 +317,7 @@ def _clone_standby(config: DevelopmentConfig) -> None:
             "--create-slot",
             "--slot=ctower_development_ack",
         ],
+        timeout_seconds=_LIFECYCLE_TIMEOUT_SECONDS,
         input_text=load_secret(config.postgres_admin_secret_ref) + "\n",
     )
 
@@ -354,7 +360,8 @@ def _enable_replication_hba() -> None:
                 "'host replication postgres 10.253.216.0/24 scram-sha-256' "
                 ">> /var/lib/postgresql/data/pg_hba.conf"
             ),
-        ]
+        ],
+        timeout_seconds=_LIFECYCLE_TIMEOUT_SECONDS,
     )
     config = load_config()
     with psycopg.connect(development_dsn(config, "postgres"), autocommit=True) as connection:
@@ -396,6 +403,7 @@ def _replace_hba(container: str) -> None:
             "-c",
             "cat > /var/lib/postgresql/data/pg_hba.conf",
         ],
+        timeout_seconds=_LIFECYCLE_TIMEOUT_SECONDS,
         input_text=_HBA,
     )
 
@@ -445,11 +453,11 @@ def _verify_local_image() -> None:
 
 
 def _container_exists(name: str) -> bool:
-    result = subprocess.run(  # noqa: S603 - executable and inspect arguments are closed constants
+    result = process_execution.run(
         [_docker_path(), "container", "inspect", name],
+        timeout_seconds=_INSPECT_TIMEOUT_SECONDS,
         check=False,
-        stdout=subprocess.DEVNULL,
-        stderr=subprocess.DEVNULL,
+        discard_output=True,
     )
     return result.returncode == 0
 
@@ -459,27 +467,31 @@ def _container_state(name: str) -> str:
 
 
 def _unit_known(name: str) -> bool:
-    result = subprocess.run(  # noqa: S603 - exact user-unit query
+    result = process_execution.run(
         ["/usr/bin/systemctl", "--user", "cat", name],
+        timeout_seconds=_INSPECT_TIMEOUT_SECONDS,
         check=False,
-        stdout=subprocess.DEVNULL,
-        stderr=subprocess.DEVNULL,
+        discard_output=True,
     )
     return result.returncode == 0
 
 
 def _systemctl_state(name: str) -> str:
-    result = subprocess.run(  # noqa: S603 - exact user-unit observation
+    result = process_execution.run(
         ["/usr/bin/systemctl", "--user", "is-active", name],
+        timeout_seconds=_INSPECT_TIMEOUT_SECONDS,
         check=False,
         capture_output=True,
-        text=True,
     )
     return result.stdout.strip()
 
 
 def _docker(*arguments: str) -> str:
-    return _run([_docker_path(), *arguments], capture=True)
+    return _run(
+        [_docker_path(), *arguments],
+        timeout_seconds=_LIFECYCLE_TIMEOUT_SECONDS,
+        capture=True,
+    )
 
 
 def _docker_path() -> str:
@@ -490,23 +502,27 @@ def _docker_path() -> str:
 
 
 def _systemctl(*arguments: str) -> None:
-    _run(["/usr/bin/systemctl", "--user", *arguments])
+    _run(
+        ["/usr/bin/systemctl", "--user", *arguments],
+        timeout_seconds=_SYSTEMD_TIMEOUT_SECONDS,
+    )
 
 
 def _run(
     arguments: list[str],
     *,
+    timeout_seconds: float,
     input_text: str | None = None,
     capture: bool = False,
 ) -> str:
-    result = subprocess.run(  # noqa: S603 - callers construct bounded lifecycle commands
+    result = process_execution.run(
         arguments,
+        timeout_seconds=timeout_seconds,
         check=True,
-        input=input_text,
+        input_text=input_text,
         capture_output=capture,
-        text=True,
     )
-    return result.stdout if capture else ""
+    return (result.stdout or "") if capture else ""
 
 
 def _config_home() -> Path:

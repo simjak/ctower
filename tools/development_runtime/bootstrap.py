@@ -4,27 +4,29 @@ from __future__ import annotations
 
 import io
 import secrets
-import subprocess
 from datetime import UTC, datetime, timedelta
 from typing import Literal
 from uuid import UUID, uuid4
 
+import tools.process_execution as process_execution  # noqa: PLR0402
 from ctower_api.development_config import (
     DevelopmentBootstrapCheckpoint,
     DevelopmentConfig,
     DevelopmentState,
     bootstrap_checkpoint_path,
     delete_bootstrap_checkpoint,
-    delete_secret,
-    development_dsn,
     load_bootstrap_checkpoint,
     load_config,
-    load_secret,
     load_state,
-    put_secret,
     state_path,
     write_bootstrap_checkpoint,
     write_state,
+)
+from ctower_api.development_secrets import (
+    delete_secret,
+    development_dsn,
+    load_secret,
+    put_secret,
 )
 from ctower_client import BootstrapRequest, CtowerClient
 from ctower_kernel.record.postgres import (
@@ -37,6 +39,7 @@ __all__ = ["bootstrap_instance"]
 _CAPABILITY_REF: Literal["secret-service:ctower-development/bootstrap-capability"] = (
     "secret-service:ctower-development/bootstrap-capability"
 )
+_SYSTEMD_TIMEOUT_SECONDS = 60.0
 
 
 def bootstrap_instance(tenant_name: str, tenant_slug: str) -> None:
@@ -146,7 +149,8 @@ def _clear_checkpoint() -> None:
 
 
 def _systemctl(*arguments: str) -> None:
-    subprocess.run(  # noqa: S603 - fixed systemctl path and bounded owned unit arguments
+    process_execution.run(
         ["/usr/bin/systemctl", "--user", *arguments],
+        timeout_seconds=_SYSTEMD_TIMEOUT_SECONDS,
         check=True,
     )

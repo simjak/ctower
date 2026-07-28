@@ -316,6 +316,15 @@
       "forward_test": "pytest:tests/acceptance/increment-1/test_persistent_runtime.py::test_ordinary_finalizer_reconciles_development_ack_without_cp3d_claim",
       "rollback_or_forward_compensation": "Keep existing immutable acknowledgements and finalizations readable; switch policy back to pending_only or append reviewed forward compensation, never relabel development evidence as CP3-D.",
       "backup_checkpoint": "Before enabling the development-only mode on nonempty data, capture command, acknowledgement, finalization, confirmation, and policy facts; the mode authorizes reconstructible shadow data only."
+    },
+    {
+      "path": "0034_durability_finalizer_quarantine.sql",
+      "sha256": "sha256:46a1e6463c761073574c4ae97b23d54633afc935f4d385a601f59e0d07d70a67",
+      "minimum_service_version": "0.0.0",
+      "maximum_service_version": "0.0.0",
+      "forward_test": "pytest:tests/acceptance/increment-1/test_persistent_runtime.py::test_refused_finalization_quarantines_finitely_and_later_work_is_serviced",
+      "rollback_or_forward_compensation": "Preserve immutable refusal attempts and quarantine dispositions for audit; append reviewed forward compensation and never erase or relabel a terminal refusal.",
+      "backup_checkpoint": "Before applying to nonempty data, capture command, confirmation, finalizer-attempt, and terminal-quarantine counts plus a database backup."
     }
   ]
 }

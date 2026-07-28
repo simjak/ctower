@@ -6,7 +6,8 @@ import argparse
 import io
 from typing import NoReturn
 
-from ctower_api.development_config import load_config, load_secret
+from ctower_api.development_config import load_config
+from ctower_api.development_secrets import load_secret
 from ctowerctl import main as ctowerctl_main
 
 

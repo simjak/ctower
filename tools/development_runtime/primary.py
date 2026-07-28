@@ -3,11 +3,12 @@
 from __future__ import annotations
 
 import shutil
-import subprocess
 import time
 from pathlib import Path
 
-from ctower_api.development_config import DevelopmentConfig, load_secret
+import tools.process_execution as process_execution  # noqa: PLR0402
+from ctower_api.development_config import DevelopmentConfig
+from ctower_api.development_secrets import load_secret
 
 __all__ = ["start_primary"]
 
@@ -17,6 +18,8 @@ _PRIMARY = "ctower-development-primary"
 _INITIALIZER = "ctower-development-primary-initializer"
 _PRIMARY_VOLUME = "ctower-development-primary-data"
 _ATTACH_SECONDS = 1.0
+_INSPECT_TIMEOUT_SECONDS = 10.0
+_LIFECYCLE_TIMEOUT_SECONDS = 120.0
 
 
 def start_primary(config: DevelopmentConfig) -> None:
@@ -91,11 +94,11 @@ def _run_primary(config: DevelopmentConfig) -> None:
 
 
 def _container_exists(name: str) -> bool:
-    result = subprocess.run(  # noqa: S603 - exact local container inspection
+    result = process_execution.run(
         [_docker_path(), "container", "inspect", name],
+        timeout_seconds=_INSPECT_TIMEOUT_SECONDS,
         check=False,
-        stdout=subprocess.DEVNULL,
-        stderr=subprocess.DEVNULL,
+        discard_output=True,
     )
     return result.returncode == 0
 
@@ -105,11 +108,11 @@ def _container_state(name: str) -> str:
 
 
 def _container_database_ready() -> bool:
-    result = subprocess.run(  # noqa: S603 - exact local container probe
+    result = process_execution.run(
         [_docker_path(), "exec", _INITIALIZER, "pg_isready", "-U", "postgres"],
+        timeout_seconds=_INSPECT_TIMEOUT_SECONDS,
         check=False,
-        stdout=subprocess.DEVNULL,
-        stderr=subprocess.DEVNULL,
+        discard_output=True,
     )
     return result.returncode == 0
 
@@ -125,15 +128,14 @@ def _wait_for_database() -> None:
 
 def _attach_container_input(value: str) -> None:
     try:
-        result = subprocess.run(  # noqa: S603 - fixed Docker attach operation
+        result = process_execution.run(
             [_docker_path(), "attach", "--sig-proxy=false", _INITIALIZER],
+            timeout_seconds=_ATTACH_SECONDS,
             check=False,
-            input=value,
+            input_text=value,
             capture_output=True,
-            text=True,
-            timeout=_ATTACH_SECONDS,
         )
-    except subprocess.TimeoutExpired:
+    except process_execution.ProcessTimeoutError:
         return
     if result.returncode:
         raise RuntimeError("Docker refused the bounded initialization attachment")
@@ -141,13 +143,13 @@ def _attach_container_input(value: str) -> None:
 
 
 def _docker(*arguments: str) -> str:
-    result = subprocess.run(  # noqa: S603 - closed lifecycle arguments
+    result = process_execution.run(
         [_docker_path(), *arguments],
+        timeout_seconds=_LIFECYCLE_TIMEOUT_SECONDS,
         check=True,
         capture_output=True,
-        text=True,
     )
-    return result.stdout
+    return result.stdout or ""
 
 
 def _docker_path() -> str:

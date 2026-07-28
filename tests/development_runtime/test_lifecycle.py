@@ -5,6 +5,7 @@ from __future__ import annotations
 import subprocess
 import sys
 from datetime import UTC, datetime
+from functools import partial
 from pathlib import Path
 from types import SimpleNamespace
 from typing import ClassVar, Self, TextIO
@@ -19,13 +20,14 @@ import tools.development_runtime.ctl as ctl_module
 import tools.development_runtime.installation as installation_module
 import tools.development_runtime.interface as lifecycle
 import tools.development_runtime.primary as primary_module
+import tools.process_execution as process_execution  # noqa: PLR0402
 from ctower_api.development_config import (
     DevelopmentConfig,
-    SecretReferenceMissingError,
     bootstrap_checkpoint_path,
     load_bootstrap_checkpoint,
     load_state,
 )
+from ctower_api.development_secrets import SecretReferenceMissingError
 from ctower_kernel.record import DurabilityFinalizationBatch
 
 __all__: tuple[str, ...] = ()
@@ -47,6 +49,24 @@ def _config() -> DevelopmentConfig:
             **lifecycle._SECRET_REFS,
         }
     )
+
+
+def _observe_runtime_run(
+    calls: list[tuple[list[str], str | None]],
+    arguments: list[str],
+    *,
+    timeout_seconds: float,
+    input_text: str | None = None,
+    capture: bool = False,
+) -> str:
+    del capture, timeout_seconds
+    calls.append((arguments, input_text))
+    return ""
+
+
+def _observe_docker(calls: list[tuple[str, ...]], *arguments: str) -> str:
+    calls.append(arguments)
+    return ""
 
 
 @pytest.mark.parametrize("override", ["--base-url", "--base-url=https://override.invalid"])
@@ -139,25 +159,18 @@ def test_primary_and_clone_use_stdin_secret_without_trust_payloads(
     attachments: list[tuple[str, str]] = []
     readiness = iter((False, True))
 
-    def observe_run(
-        arguments: list[str], *, input_text: str | None = None, capture: bool = False
-    ) -> str:
-        del capture
-        run_calls.append((arguments, input_text))
-        return ""
-
-    def observe_docker(*arguments: str) -> str:
-        docker_calls.append(arguments)
-        return ""
-
     monkeypatch.setattr(primary_module, "_docker_path", lambda: "/usr/bin/docker")
     monkeypatch.setattr(primary_module, "load_secret", lambda _reference: credential_value)
     monkeypatch.setattr(lifecycle, "load_secret", lambda _reference: credential_value)
     monkeypatch.setattr(primary_module, "_container_exists", lambda _name: False)
     monkeypatch.setattr(primary_module, "_container_state", lambda _name: "created")
     monkeypatch.setattr(primary_module, "_container_database_ready", lambda: next(readiness))
-    monkeypatch.setattr(lifecycle, "_run", observe_run)
-    monkeypatch.setattr(primary_module, "_docker", observe_docker)
+    monkeypatch.setattr(lifecycle, "_run", partial(_observe_runtime_run, run_calls))
+    monkeypatch.setattr(
+        primary_module,
+        "_docker",
+        partial(_observe_docker, docker_calls),
+    )
     monkeypatch.setattr(
         primary_module,
         "_attach_container_input",
@@ -214,15 +227,15 @@ def test_initialization_attach_requires_a_still_running_container(
 ) -> None:
     monkeypatch.setattr(primary_module, "_docker_path", lambda: "/usr/bin/docker")
     monkeypatch.setattr(
-        subprocess,
+        process_execution,
         "run",
         lambda *_args, **_kwargs: (_ for _ in ()).throw(
-            subprocess.TimeoutExpired("docker attach", 1)
+            process_execution.ProcessTimeoutError(["docker", "attach"], 1)
         ),
     )
     primary_module._attach_container_input("value")
     monkeypatch.setattr(
-        subprocess,
+        process_execution,
         "run",
         lambda *_args, **_kwargs: SimpleNamespace(returncode=0),
     )
@@ -415,7 +428,9 @@ done
 case "$2" in
     install)
         entrypoint="$(dirname "$python_path")/ctower-private-vps"
-        printf '#!%s\\ntest "$1" = "--help"\\n' "$python_path" > "$entrypoint"
+        printf '#!%s\\n' "$python_path" > "$entrypoint"
+        printf 'test "$1" = "--help"\\n' >> "$entrypoint"
+        printf 'printf executed > "$(dirname "$0")/entrypoint-executed"\\n' >> "$entrypoint"
         chmod 700 "$entrypoint"
         ;;
     check) ;;
@@ -446,7 +461,63 @@ esac
     assert (runtime / "installed-distributions.txt").read_text(encoding="utf-8") == (
         "ctower-workspace==0.0.0\n"
     )
+    assert (runtime / "venv/bin/entrypoint-executed").read_text(encoding="utf-8") == "executed"
     assert not any("staging" in part for part in entrypoint.parts)
+
+
+def test_refusing_runtime_entrypoint_fails_install_and_removes_runtime(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    python = tmp_path / "python"
+    python.write_text(
+        """#!/bin/sh
+set -eu
+test "$1" = "-m"
+test "$2" = "venv"
+mkdir -p "$3/bin"
+ln -s /bin/sh "$3/bin/python"
+""",
+        encoding="utf-8",
+    )
+    python.chmod(0o700)
+    uv = tmp_path / "uv"
+    uv.write_text(
+        """#!/bin/sh
+set -eu
+python_path=
+previous=
+for argument in "$@"; do
+    if test "$previous" = "--python"; then python_path="$argument"; fi
+    previous="$argument"
+done
+case "$2" in
+    install)
+        entrypoint="$(dirname "$python_path")/ctower-private-vps"
+        printf '#!%s\\nexit 23\\n' "$python_path" > "$entrypoint"
+        chmod 700 "$entrypoint"
+        ;;
+    check) ;;
+    freeze) printf 'ctower-workspace==0.0.0\\n' ;;
+esac
+""",
+        encoding="utf-8",
+    )
+    uv.chmod(0o700)
+    wheel = tmp_path / "artifact.whl"
+    manifest = tmp_path / "manifest.json"
+    packs = tmp_path / "packs"
+    wheel.write_bytes(b"wheel")
+    manifest.write_text("{}\n", encoding="utf-8")
+    packs.mkdir()
+    (packs / "pack.yaml").write_text("pack: test\n", encoding="utf-8")
+    monkeypatch.setattr(installation_module, "_data_home", lambda: tmp_path / "data")
+    monkeypatch.setattr(installation_module, "verify_manifest", lambda *_args, **_kwargs: None)
+    monkeypatch.setattr(installation_module, "_uv_path", lambda: str(uv))
+
+    with pytest.raises(subprocess.CalledProcessError):
+        installation_module.install_runtime(wheel, manifest, packs, python, tmp_path)
+
+    assert not installation_module.runtime_home().exists()
 
 
 def test_failed_runtime_install_leaves_no_partial_home(

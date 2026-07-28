@@ -12,7 +12,7 @@
         },
         {
           "path": "contracts/traceability/sources.json",
-          "sha256": "sha256:7b229d6261de4798dd5e1034a75b257c43d1ef9f973b8c234eb99fd0333cdbc5"
+          "sha256": "sha256:1ebd3df65ffbb7349d3c2552ac696c0ec5cf20317f2a09c2c59154cf18d83104"
         },
         {
           "path": "contracts/traceability/traceability-sources.schema.json",
@@ -38,7 +38,7 @@
       "outputs": [
         {
           "path": "generated/traceability-index.json",
-          "sha256": "sha256:108ba48a1e650cdd419191a1d74613e966f4fe55cc8f42dc20490ae3c13e9a37"
+          "sha256": "sha256:0fb1dbd7e97736b34de7c962803b6826d5d194b1d80dc4bc61d838f5cdd3039c"
         }
       ],
       "tool_version": "2"
