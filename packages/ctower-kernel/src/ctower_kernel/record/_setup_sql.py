@@ -5,11 +5,13 @@ from __future__ import annotations
 import hashlib
 import hmac
 import re
+import secrets
 from datetime import datetime
 from importlib.resources import files
 from importlib.resources.abc import Traversable
 from pathlib import Path
 from typing import Literal, TextIO
+from uuid import UUID
 
 import psycopg
 from psycopg.rows import dict_row
@@ -29,8 +31,10 @@ from ctower_kernel.record._recovery_role_shape_sql import (
 __all__ = [
     "RecoveryRoleConfigurationError",
     "apply_migrations",
+    "configure_development_durability",
     "provision_bootstrap",
     "provision_database_roles",
+    "provision_principal_credential",
 ]
 
 MINIMUM_CAPABILITY_LENGTH = 32
@@ -423,3 +427,64 @@ def provision_bootstrap(
             """,
             (hashlib.sha256(capability.encode("utf-8")).digest(), allowed_origin, expires_at),
         )
+
+
+def provision_principal_credential(
+    dsn: str,
+    tenant_id: UUID,
+    principal_id: UUID,
+    *,
+    credential_input: TextIO,
+) -> None:
+    """Bind one runtime credential while persisting only its digest."""
+
+    credential = credential_input.readline().rstrip("\r\n")
+    if len(credential) < MINIMUM_CAPABILITY_LENGTH:
+        raise ValueError("principal credential must have at least 32 characters")
+    if len(credential) > MAXIMUM_CAPABILITY_LENGTH:
+        raise ValueError("principal credential must have at most 256 characters")
+    now = datetime.now().astimezone()
+    with psycopg.connect(dsn) as connection:
+        connection.execute("SET ROLE ctower_admin")
+        connection.execute(
+            """
+            INSERT INTO principal_credentials (
+                credential_id, principal_id, tenant_id, credential_digest, created_at
+            ) VALUES (%s, %s, %s, %s, %s)
+            """,
+            (
+                _uuid7(now),
+                principal_id,
+                tenant_id,
+                hashlib.sha256(credential.encode("utf-8")).digest(),
+                now,
+            ),
+        )
+
+
+def configure_development_durability(dsn: str) -> None:
+    """Select the approved shadow-only ACK policy without making a CP3-D claim."""
+
+    with psycopg.connect(dsn) as connection:
+        connection.execute("SET ROLE ctower_admin")
+        connection.execute(
+            """
+            UPDATE durability_policy_state
+            SET policy_ref = 'ctower.development-offhost-ack@1',
+                mode = 'development_offhost_ack',
+                standby_identity = 'ctower_i1_standby',
+                configured_at = clock_timestamp()
+            WHERE singleton
+            """
+        )
+
+
+def _uuid7(now: datetime) -> UUID:
+    milliseconds = int(now.timestamp() * 1000) & ((1 << 48) - 1)
+    random_bits = secrets.randbits(74)
+    value = milliseconds << 80
+    value |= 0x7 << 76
+    value |= ((random_bits >> 62) & 0xFFF) << 64
+    value |= 0b10 << 62
+    value |= random_bits & ((1 << 62) - 1)
+    return UUID(int=value)

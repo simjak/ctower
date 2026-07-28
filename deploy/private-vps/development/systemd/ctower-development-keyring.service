@@ -1,0 +1,15 @@
+[Unit]
+Description=Unlock owner-only Ctower development Secret Service collection
+Requires=gnome-keyring-daemon.service
+After=gnome-keyring-daemon.service
+
+[Service]
+Type=oneshot
+RemainAfterExit=yes
+ExecStart=%h/.local/share/ctower-development/current/venv/bin/ctower-development-keyring-unlock
+NoNewPrivileges=yes
+PrivateTmp=yes
+UMask=0077
+
+[Install]
+WantedBy=default.target

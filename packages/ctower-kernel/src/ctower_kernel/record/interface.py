@@ -35,6 +35,8 @@ __all__ = [
     "BootstrapReceipt",
     "CustodyCommand",
     "DurabilityDecision",
+    "DurabilityFinalizationBatch",
+    "DurabilityFinalizer",
     "DurabilityHealth",
     "DurabilityHealthStatus",
     "DurabilityReason",
@@ -129,6 +131,29 @@ class DurabilityHealth:
     acceptance_position: int | None
     observed_at: datetime
     reason: str
+
+
+@dataclass(frozen=True, slots=True)
+class DurabilityFinalizationBatch:
+    """One bounded ordinary-finalizer observation."""
+
+    attempted: int
+    accepted: int
+    pending: int
+    refused: int
+
+    def __post_init__(self) -> None:
+        values = (self.attempted, self.accepted, self.pending, self.refused)
+        if any(value < 0 for value in values):
+            raise ValueError("durability finalizer counts cannot be negative")
+        if self.attempted != self.accepted + self.pending + self.refused:
+            raise ValueError("durability finalizer counts must conserve attempts")
+
+
+class DurabilityFinalizer(Protocol):
+    """Small maintenance Interface for ordinary pending-command reconciliation."""
+
+    def finalize_pending(self, *, limit: int = 100) -> DurabilityFinalizationBatch: ...
 
 
 @dataclass(frozen=True, slots=True)

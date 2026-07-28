@@ -2750,6 +2750,24 @@ CP3-D proves the required external acknowledgement and restore boundary. Credent
 production approvals/effects, incidents, client data, and irreplaceable artifacts are excluded from the
 development cohort.
 
+Before that epoch, the E2 persistent shadow runtime may use
+`durability_policy=development_offhost_ack` for dogfood mechanics on one private VPS. It consists of one
+persistent PostgreSQL 17 primary, one named physical ACK standby, a loopback-only API, and the same-artifact
+ordinary control worker/finalizer. Acceptance may be reported for this shadow runtime only; health is always
+degraded with `development_offhost_ack_cp3_d_not_proven`. Its ACK copy is not an independent failure domain,
+does not satisfy CP3-D, and authorizes neither the `development_single_writer` epoch nor any production,
+effect, incident, credential, client-data, irreplaceable, or sole-copy record.
+
+The E2 installation is unprivileged and reboot-persistent through user systemd plus persistent container
+volumes. Secret values reside only in an allowlisted operating-system keyring; files and unit definitions
+contain references. On an unattended linger host, the dedicated development collection may be passwordless
+and owner-only so an exact pre-service unit can unlock it; this is never a production secret-at-rest claim.
+Each release manifest binds the clean source commit/tree, exact approved standard-GIL
+CPython patch, wheel digest, generated/migration manifests, pack digest, and predecessor. Upgrade and
+rollback atomically switch verified release pointers and never reverse an accepted migration or resume a
+legacy writer. TLS/external exposure, full telemetry, backup/restore drills, and production claims remain
+deferred.
+
 ```text
 inventory -> freeze relevant legacy writers -> hash/export -> reviewed dedupe/alias map
           -> idempotent restricted import -> reconcile -> atomic client rewire -> seal read-only

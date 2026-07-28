@@ -82,6 +82,15 @@ def durability_health(
     if isinstance(standby, DurabilityHealth):
         return standby
     failure = _validated_target_failure(primary, standby)
+    if failure is None and policy.mode == "development_offhost_ack":
+        return _health(
+            DurabilityHealthStatus.DEGRADED,
+            policy.policy_ref,
+            policy.standby_identity,
+            primary.acceptance_position,
+            now,
+            "development_offhost_ack_cp3_d_not_proven",
+        )
     return _health(
         DurabilityHealthStatus.HEALTHY if failure is None else DurabilityHealthStatus.DEGRADED,
         policy.policy_ref,

@@ -5,9 +5,10 @@ keeps the work's ownership, workflow position, evidence, decisions, and audit tr
 terminal, model, machine, or worker disappears.
 
 > [!IMPORTANT]
-> ctower is a **pre-alpha, development-only project**. It is not a supported install, deployment, hosted
-> service, backup/restore product, browser UI, runner, or production release. Do not use it to manage real
-> work yet.
+> ctower is a **pre-alpha, development-only project**. The only supported install is the private-VPS,
+> loopback-only E2 shadow runtime for low-value reconstructible dogfood. It is not a hosted service,
+> backup/restore product, browser UI, runner, production release, CP3-D deployment, or source-of-truth
+> authority.
 
 ## The two-minute orientation
 
@@ -31,8 +32,10 @@ Read [Core concepts](https://simjak.github.io/ctower/concepts/) for the shared v
 The current development slice has first-tenant bootstrap, durable ticket/comment/Work facts, a six-lane
 Board projection, the proof-gated four-stage fixture, generated clients/contracts, a universal
 CompanyBundle Catalog checkpoint, and a protected CLI with an encrypted local replay spool. The normal
-development configuration is `pending_only`. An acknowledged-durability path is exercised only by the
-verifier-owned primary/standby PostgreSQL test topology; it is not a supported deployment. Local,
+development configuration is `pending_only`. The operator-approved persistent E2 runtime adds the strictly
+development-labeled `development_offhost_ack` mode, an ordinary finalizer, and supervised loopback services;
+see [`deploy/private-vps/development`](deploy/private-vps/development/README.md). It is always
+`SHADOW_ONLY_CP3_D_NOT_PROVEN` and cannot hold authoritative or irreplaceable work. Local,
 verifier-only CP3-C evidence also covers digest-bound object handling, backup and anchors, key recovery,
 isolated restore, rollback, and recovery evidence. Those pages describe bounded checkpoints, not a
 production recovery service or CP3-D activation.
@@ -62,9 +65,8 @@ fixtures through Docker Compose. It validates the repository; it does not instal
 - **I1.7A visibility:** strict cutover-health and read-only Project Delivery contracts expose the
   development boundary. Migration commands are online-only refusing stubs; they do not import, fence, or
   rewire ctower-project work.
-- **Not available:** no published/supported package or deployment, product Compose stack, production
-  backup/restore runbook, browser UI, runner, remote agent adapter, CP3-D activation, or production release
-  exists.
+- **Not available:** no published package, external/product deployment, production backup/restore runbook,
+  browser UI, runner, remote agent adapter, CP3-D activation, or production release exists.
 
 For the local CP3-C boundary, read [Backup and anchors](https://simjak.github.io/ctower/operations/backup-and-anchors/),
 [Key recovery](https://simjak.github.io/ctower/operations/key-recovery/), and

@@ -10303,6 +10303,7 @@
         "mode": {
           "enum": [
             "pending_only",
+            "development_offhost_ack",
             "cutover_rpo0"
           ],
           "type": "string"
@@ -12004,7 +12005,7 @@
     {
       "id": "https://ctower.dev/contracts/operations/durability-policy.schema.json",
       "path": "contracts/operations/durability-policy.schema.json",
-      "sha256": "sha256:ceef013fe815d39d522964ab74fab117b17a140b5d7cf7a4c888a664deacfc2b"
+      "sha256": "sha256:2399e843ea7690151b89072d6ac99c0cfeefe034ec7896805e88a5508cbc7bed"
     },
     {
       "id": "https://ctower.dev/contracts/operations/expected-source-inventory.schema.json",

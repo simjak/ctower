@@ -1,0 +1,15 @@
+[Unit]
+Description=Ctower shadow-only PostgreSQL 17 ACK pair (CP3-D not proven)
+Requires=ctower-development-keyring.service
+After=docker.service ctower-development-keyring.service
+
+[Service]
+Type=oneshot
+RemainAfterExit=yes
+ExecStart=/usr/bin/docker start ctower-development-primary ctower-development-ack
+ExecStop=/usr/bin/docker stop --time 30 ctower-development-ack ctower-development-primary
+TimeoutStartSec=60
+TimeoutStopSec=90
+
+[Install]
+WantedBy=default.target

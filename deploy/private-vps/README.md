@@ -28,3 +28,7 @@ Runbooks:
 - [isolated restore](../../docs/operations/isolated-restore.md)
 - [rollback](../../docs/operations/rollback.md)
 - [evidence capture](../../docs/operations/recovery-evidence.md)
+
+The separately authorized, shadow-only E2 walking slice is documented under
+[`development/`](development/README.md). Its same-VPS ACK copy is deliberately labeled
+`CP3_D_NOT_PROVEN` and does not activate any CP3-C/CP3-D target in this directory.

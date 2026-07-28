@@ -1,0 +1,175 @@
+"""Same-artifact API and worker composition for the approved E2 shadow runtime."""
+
+from __future__ import annotations
+
+import hashlib
+import json
+import signal
+import sys
+from pathlib import Path
+from threading import Event
+
+import uvicorn
+
+from ctower_api._routine_loop import load_routine_revisions
+from ctower_api.control_worker import build_worker
+from ctower_api.development_config import (
+    development_dsn,
+    load_config,
+    load_secret,
+    load_state,
+)
+from ctower_api.interface import create_app
+from ctower_api.synthetic_handler import SyntheticFourStageHandler, SyntheticPolicyPins
+from ctower_client import CtowerClient
+from ctower_kernel.attention import Attention
+from ctower_kernel.attention.postgres import PostgresAttention
+from ctower_kernel.projections import Projections
+from ctower_kernel.projections.postgres import PostgresProjections
+from ctower_kernel.proof import Proof, ProofPolicy
+from ctower_kernel.proof.postgres import PostgresProof
+from ctower_kernel.record.postgres import PostgresDurabilityFinalizer, PostgresRecord
+from ctower_kernel.runtime import FixedOperations, Routine, RoutineRevision
+from ctower_kernel.runtime.postgres import PostgresRuntime
+from ctower_kernel.work import Work
+from ctower_kernel.work.postgres import PostgresWork
+from ctower_kernel.workflow import Workflow, WorkflowGraph
+from ctower_kernel.workflow.postgres import PostgresWorkflow, PostgresWorkflowPolicyPins
+
+__all__ = ["api_main", "worker_main"]
+
+_SOURCE_ROOT = Path(__file__).parents[4]
+_WORKFLOW = "workflows/ctower.trust-spine-four-stage/v1.yaml"
+_EXECUTION = "policies/execution/trust-spine-four-stage-v1.yaml"
+_GATE = "policies/gates/trust-spine-four-stage-v1.yaml"
+_EVIDENCE = "policies/evidence/trust-spine-four-stage-v1.yaml"
+
+
+def api_main() -> None:
+    """Serve the explicitly shadow-labeled local API."""
+
+    config = load_config()
+    runtime_dsn = development_dsn(config, "ctower_runtime")
+    standby_dsn = development_dsn(config, "postgres", standby=True)
+    projection_dsn = development_dsn(config, "ctower_projection_runtime")
+    packs = _pack_root()
+    record = PostgresRecord(runtime_dsn, standby_dsn=standby_dsn)
+    proof_store = PostgresProof(
+        runtime_dsn,
+        policies=(_proof_policy(packs),),
+        policy_pins=PostgresWorkflowPolicyPins(),
+    )
+    workflow_store = PostgresWorkflow(
+        runtime_dsn,
+        proof_gate=proof_store,
+        readiness_gate=PostgresWork(runtime_dsn),
+    )
+    runtime_store = PostgresRuntime(runtime_dsn)
+    revisions = load_routine_revisions(packs)
+    uvicorn.run(
+        create_app(
+            record,
+            proof=Proof(writer=proof_store),
+            workflow=Workflow(
+                (_workflow_graph(packs),),
+                writer=workflow_store,
+                policy_digests=_policy_digests(packs),
+            ),
+            work=Work(record, writer=PostgresWork(runtime_dsn)),
+            projections=Projections(PostgresProjections(projection_dsn)),
+            attention=Attention(PostgresAttention(runtime_dsn)),
+            synthetic_runtime=FixedOperations(runtime_store),
+            synthetic_revision=_synthetic_revision(revisions),
+        ),
+        host=config.api_host,
+        port=config.api_port,
+        log_level="info",
+        access_log=False,
+    )
+
+
+def worker_main() -> None:
+    """Run scheduler, projection, synthetic, and ordinary durability loops."""
+
+    config = load_config()
+    state = load_state()
+    runtime_dsn = development_dsn(config, "ctower_runtime")
+    standby_dsn = development_dsn(config, "postgres", standby=True)
+    projection_dsn = development_dsn(config, "ctower_projection_runtime")
+    base_url = f"http://{config.api_host}:{config.api_port}"
+    packs = _pack_root()
+    runtime_store = PostgresRuntime(runtime_dsn)
+    runtime = Routine(runtime_store)
+    projections = Projections(PostgresProjections(projection_dsn))
+    pins = SyntheticPolicyPins(
+        workflow_digest=_digest(packs / _WORKFLOW),
+        execution_policy_digest=_digest(packs / _EXECUTION),
+        gate_policy_digest=_digest(packs / _GATE),
+        evidence_policy_digest=_digest(packs / _EVIDENCE),
+    )
+    with (
+        CtowerClient(base_url, credential=load_secret(config.commander_secret_ref)) as author,
+        CtowerClient(base_url, credential=load_secret(config.operator_secret_ref)) as reviewer,
+    ):
+        worker = build_worker(
+            runtime,
+            projections,
+            pack_root=packs,
+            fixed_operations=FixedOperations(runtime_store),
+            synthetic_handler=SyntheticFourStageHandler(
+                author,
+                reviewer,
+                state.commander_id,
+                pins,
+            ),
+            durability_finalizer=PostgresDurabilityFinalizer(
+                runtime_dsn,
+                standby_dsn=standby_dsn,
+            ),
+        )
+        stop = Event()
+        signal.signal(signal.SIGTERM, lambda _signum, _frame: stop.set())
+        signal.signal(signal.SIGINT, lambda _signum, _frame: stop.set())
+        worker.run(stop)
+
+
+def _pack_root() -> Path:
+    installed = Path(sys.prefix).parent / "packs"
+    return installed if installed.is_dir() else _SOURCE_ROOT / "packs"
+
+
+def _proof_policy(packs: Path) -> ProofPolicy:
+    return ProofPolicy.from_bytes(
+        (packs / _GATE).read_bytes(),
+        (packs / _EVIDENCE).read_bytes(),
+    )
+
+
+def _workflow_graph(packs: Path) -> WorkflowGraph:
+    payload = json.loads((packs / _WORKFLOW).read_text(encoding="utf-8"))
+    if not isinstance(payload, dict):
+        raise TypeError("authored Workflow pack must be an object")
+    return WorkflowGraph.from_mapping(payload)
+
+
+def _policy_digests(packs: Path) -> dict[str, str]:
+    return {
+        "ctower.trust-spine-four-stage.execution@1": _digest(packs / _EXECUTION),
+        "ctower.trust-spine-four-stage.gates@1": _digest(packs / _GATE),
+        "ctower.trust-spine-four-stage.evidence@1": _digest(packs / _EVIDENCE),
+    }
+
+
+def _digest(path: Path) -> str:
+    return f"sha256:{hashlib.sha256(path.read_bytes()).hexdigest()}"
+
+
+def _synthetic_revision(revisions: tuple[RoutineRevision, ...]) -> RoutineRevision:
+    matches = tuple(
+        revision
+        for revision in revisions
+        if revision.routine_ref == "ctower.i1.synthetic-four-stage@1"
+    )
+    if len(matches) != 1:
+        raise ValueError("the exact synthetic Routine revision is unavailable")
+    return matches[0]
