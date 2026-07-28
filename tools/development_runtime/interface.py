@@ -36,6 +36,7 @@ from ctower_kernel.record.postgres import (
     configure_development_durability,
     provision_database_roles,
 )
+from tools.development_runtime._postgres_scram import postgres_scram_verifier
 from tools.development_runtime.bootstrap import bootstrap_instance
 from tools.development_runtime.installation import install_runtime, runtime_home
 from tools.development_runtime.primary import start_primary
@@ -47,6 +48,8 @@ _NETWORK = "ctower-development-network"
 _SUBNET = "10.253.216.0/24"
 _PRIMARY = "ctower-development-primary"
 _STANDBY = "ctower-development-ack"
+_STANDBY_CLONE = "ctower-development-ack-clone"
+_STANDBY_PREPARER = "ctower-development-ack-volume-preparer"
 _PRIMARY_VOLUME = "ctower-development-primary-data"
 _STANDBY_VOLUME = "ctower-development-ack-data"
 _SECRET_REFS = {
@@ -281,44 +284,54 @@ def _ensure_config_and_secrets(*, create_missing: bool) -> DevelopmentConfig:
 
 
 def _clone_standby(config: DevelopmentConfig) -> None:
-    _docker(
-        "run",
-        "--rm",
-        "--pull",
-        "never",
-        "-v",
-        f"{_STANDBY_VOLUME}:/var/lib/postgresql/data",
-        _IMAGE,
-        "sh",
-        "-c",
-        "chown postgres:postgres /var/lib/postgresql/data && chmod 700 /var/lib/postgresql/data",
-    )
-    _run(
+    _prepare_standby_volume()
+    try:
+        _run_owned_container(
+            _STANDBY_CLONE,
+            [
+                "-i",
+                "--pull",
+                "never",
+                "--user",
+                "postgres",
+                "--network",
+                _NETWORK,
+                "-v",
+                f"{_STANDBY_VOLUME}:/var/lib/postgresql/data",
+                _IMAGE,
+                "pg_basebackup",
+                "--dbname=host=primary user=postgres application_name=ctower_i1_ack",
+                "--password",
+                "--pgdata=/var/lib/postgresql/data",
+                "--write-recovery-conf",
+                "--wal-method=stream",
+                "--create-slot",
+                "--slot=ctower_development_ack",
+            ],
+            input_text=load_secret(config.postgres_admin_secret_ref) + "\n",
+        )
+    except process_execution.ProcessTimeoutError:
+        _prepare_standby_volume()
+        raise
+
+
+def _prepare_standby_volume() -> None:
+    _run_owned_container(
+        _STANDBY_PREPARER,
         [
-            _docker_path(),
-            "run",
-            "--rm",
-            "-i",
             "--pull",
             "never",
-            "--user",
-            "postgres",
-            "--network",
-            _NETWORK,
             "-v",
             f"{_STANDBY_VOLUME}:/var/lib/postgresql/data",
             _IMAGE,
-            "pg_basebackup",
-            "--dbname=host=primary user=postgres application_name=ctower_i1_ack",
-            "--password",
-            "--pgdata=/var/lib/postgresql/data",
-            "--write-recovery-conf",
-            "--wal-method=stream",
-            "--create-slot",
-            "--slot=ctower_development_ack",
+            "sh",
+            "-c",
+            (
+                "find /var/lib/postgresql/data -mindepth 1 -delete && "
+                "chown postgres:postgres /var/lib/postgresql/data && "
+                "chmod 700 /var/lib/postgresql/data"
+            ),
         ],
-        timeout_seconds=_LIFECYCLE_TIMEOUT_SECONDS,
-        input_text=load_secret(config.postgres_admin_secret_ref) + "\n",
     )
 
 
@@ -380,7 +393,7 @@ def _set_role_passwords(config: DevelopmentConfig) -> None:
             connection.execute(
                 sql.SQL("ALTER ROLE {} PASSWORD {}").format(
                     sql.Identifier(role),
-                    sql.Literal(load_secret(reference)),
+                    sql.Literal(postgres_scram_verifier(load_secret(reference))),
                 )
             )
 
@@ -491,6 +504,32 @@ def _docker(*arguments: str) -> str:
         [_docker_path(), *arguments],
         timeout_seconds=_LIFECYCLE_TIMEOUT_SECONDS,
         capture=True,
+    )
+
+
+def _run_owned_container(
+    name: str,
+    arguments: list[str],
+    *,
+    input_text: str | None = None,
+) -> None:
+    try:
+        _run(
+            [_docker_path(), "run", "--rm", "--name", name, *arguments],
+            timeout_seconds=_LIFECYCLE_TIMEOUT_SECONDS,
+            input_text=input_text,
+        )
+    except process_execution.ProcessTimeoutError:
+        _force_remove_container(name)
+        raise
+
+
+def _force_remove_container(name: str) -> None:
+    process_execution.run(
+        [_docker_path(), "container", "rm", "--force", name],
+        timeout_seconds=_LIFECYCLE_TIMEOUT_SECONDS,
+        check=False,
+        discard_output=True,
     )
 
 
