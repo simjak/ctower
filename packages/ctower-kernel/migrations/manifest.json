@@ -1,5 +1,10 @@
 {
-  "schema": "ctower.migrations/v2",
+  "schema": "ctower.migrations/v3",
+  "adoption_baseline": {
+    "through": "0034_durability_finalizer_quarantine.sql",
+    "schema_sha256": "sha256:f6d9e9c80e7c2c97bb3e03a6020ac469b0cbdc208df913e7d6f2af287c879221",
+    "semantic_checks": "ctower.pre-ledger/v1"
+  },
   "migrations": [
     {
       "path": "0001_roles.sql",

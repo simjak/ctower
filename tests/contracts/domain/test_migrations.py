@@ -33,7 +33,15 @@ def test_migration_manifest_is_ordered_and_checksum_exact() -> None:
     entries = cast(list[dict[str, str]], manifest["migrations"])
     names = [entry["path"] for entry in entries]
 
-    assert manifest["schema"] == "ctower.migrations/v2"
+    assert set(manifest) == {"adoption_baseline", "migrations", "schema"}
+    assert manifest["schema"] == "ctower.migrations/v3"
+    assert manifest["adoption_baseline"] == {
+        "through": "0034_durability_finalizer_quarantine.sql",
+        "schema_sha256": (
+            "sha256:f6d9e9c80e7c2c97bb3e03a6020ac469b0cbdc208df913e7d6f2af287c879221"
+        ),
+        "semantic_checks": "ctower.pre-ledger/v1",
+    }
     assert names == sorted(names)
     assert names == [
         "0001_roles.sql",

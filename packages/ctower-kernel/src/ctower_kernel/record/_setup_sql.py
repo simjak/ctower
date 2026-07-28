@@ -5,6 +5,7 @@ from __future__ import annotations
 import hashlib
 import hmac
 import re
+from dataclasses import dataclass
 from datetime import datetime
 from importlib.resources import files
 from importlib.resources.abc import Traversable
@@ -22,6 +23,13 @@ from ctower_kernel.record._durability_probe_role_sql import (
     probe_role_rejection_reasons,
     quarantine_durability_probe,
 )
+from ctower_kernel.record._migration_ledger_sql import (
+    MigrationAdoptionError,
+    MigrationBaseline,
+    MigrationScript,
+    MigrationStateError,
+    apply_database_migrations,
+)
 from ctower_kernel.record._recovery_role_shape_sql import (
     RecoveryRoleConfigurationError,
     validate_recovery_role_shapes,
@@ -29,6 +37,8 @@ from ctower_kernel.record._recovery_role_shape_sql import (
 from ctower_kernel.record._uuid import uuid7 as _uuid7
 
 __all__ = [
+    "MigrationAdoptionError",
+    "MigrationStateError",
     "RecoveryRoleConfigurationError",
     "apply_migrations",
     "configure_development_durability",
@@ -140,12 +150,37 @@ class _MigrationDeclaration(BaseModel):
         return self
 
 
+class _AdoptionBaseline(BaseModel):
+    """One exact current pre-ledger state eligible for adoption."""
+
+    model_config = ConfigDict(extra="forbid", frozen=True, strict=True)
+
+    through: str
+    schema_sha256: str
+    semantic_checks: Literal["ctower.pre-ledger/v1"]
+
+    @field_validator("through")
+    @classmethod
+    def _valid_through(cls, value: str) -> str:
+        if not re.fullmatch(r"[0-9]{4}_[a-z0-9_]+\.sql", value):
+            raise ValueError("adoption baseline must name one numbered SQL filename")
+        return value
+
+    @field_validator("schema_sha256")
+    @classmethod
+    def _valid_schema_sha256(cls, value: str) -> str:
+        if not re.fullmatch(r"sha256:[0-9a-f]{64}", value):
+            raise ValueError("adoption baseline must have one lowercase SHA-256 digest")
+        return value
+
+
 class _MigrationManifest(BaseModel):
     """The one strict ordered migration declaration."""
 
     model_config = ConfigDict(extra="forbid", frozen=True, strict=True)
 
-    schema_id: Literal["ctower.migrations/v2"] = Field(alias="schema")
+    schema_id: Literal["ctower.migrations/v3"] = Field(alias="schema")
+    adoption_baseline: _AdoptionBaseline
     migrations: tuple[_MigrationDeclaration, ...]
 
     @model_validator(mode="after")
@@ -153,6 +188,9 @@ class _MigrationManifest(BaseModel):
         paths = tuple(entry.path for entry in self.migrations)
         if paths != tuple(sorted(set(paths))):
             raise ValueError("migration paths must be unique and ordered")
+        database_paths = tuple(entry.path for entry in self.migrations if entry.scope == "database")
+        if self.adoption_baseline.through not in database_paths:
+            raise ValueError("adoption baseline must name one database migration")
         return self
 
 
@@ -167,7 +205,13 @@ def _migration_resources() -> Traversable:
     raise FileNotFoundError("ctower migration resources are unavailable")
 
 
-def _migration_scripts(scope: Literal["cluster", "database"]) -> tuple[str, ...]:
+@dataclass(frozen=True, slots=True)
+class _LoadedMigrations:
+    scripts: tuple[MigrationScript, ...]
+    baseline: MigrationBaseline
+
+
+def _load_migrations() -> _LoadedMigrations:
     resources = _migration_resources()
     manifest = _MigrationManifest.model_validate_json(
         resources.joinpath("manifest.json").read_text(encoding="utf-8")
@@ -182,15 +226,26 @@ def _migration_scripts(scope: Literal["cluster", "database"]) -> tuple[str, ...]
     )
     if packaged != declared:
         raise ValueError("migration resource inventory does not match manifest")
-    scripts: list[str] = []
+    scripts: list[MigrationScript] = []
     for entry in manifest.migrations:
         content = resources.joinpath(entry.path).read_bytes()
         actual = f"sha256:{hashlib.sha256(content).hexdigest()}"
         if not hmac.compare_digest(actual, entry.sha256):
             raise ValueError(f"migration checksum mismatch: {entry.path}")
-        if entry.scope == scope:
-            scripts.append(content.decode())
-    return tuple(scripts)
+        scripts.append(MigrationScript(entry.path, entry.sha256, entry.scope, content.decode()))
+    baseline = manifest.adoption_baseline
+    return _LoadedMigrations(
+        tuple(scripts),
+        MigrationBaseline(
+            baseline.through,
+            baseline.schema_sha256,
+            baseline.semantic_checks,
+        ),
+    )
+
+
+def _migration_scripts(scope: Literal["cluster", "database"]) -> tuple[MigrationScript, ...]:
+    return tuple(script for script in _load_migrations().scripts if script.scope == scope)
 
 
 def provision_database_roles(admin_dsn: str) -> None:
@@ -232,8 +287,8 @@ def provision_database_roles(admin_dsn: str) -> None:
 def _apply_cluster_migrations(
     connection: psycopg.Connection[dict[str, object]],
 ) -> None:
-    for script in _migration_scripts("cluster"):
-        _execute_cluster_migration(connection, script)
+    for migration in _migration_scripts("cluster"):
+        _execute_cluster_migration(connection, migration.content)
 
 
 def _execute_cluster_migration(
@@ -397,9 +452,12 @@ def apply_migrations(migrator_dsn: str, *, role_admin_dsn: str) -> None:
 
     with psycopg.connect(migrator_dsn) as connection:
         connection.execute("SET ROLE ctower_admin")
-        connection.execute("SELECT pg_advisory_xact_lock(712040119)")
-        for script in _migration_scripts("database"):
-            connection.execute(script)
+        loaded = _load_migrations()
+        apply_database_migrations(
+            connection,
+            tuple(migration for migration in loaded.scripts if migration.scope == "database"),
+            loaded.baseline,
+        )
     provision_database_roles(role_admin_dsn)
 
 
