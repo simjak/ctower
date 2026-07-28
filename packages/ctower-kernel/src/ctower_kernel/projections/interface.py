@@ -212,6 +212,8 @@ class BoardQuery:
     custodian_id: UUID | None = None
     assignee_id: UUID | None = None
     risk: str | None = None
+    source_kind: str | None = None
+    source_ref: str | None = None
 
 
 @dataclass(frozen=True, slots=True)

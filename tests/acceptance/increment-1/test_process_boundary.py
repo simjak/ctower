@@ -159,6 +159,40 @@ def test_process_exact_replay_and_changed_body_conflict(
     assert _command_counts(tenant.database.admin_dsn, command_id) == (1, 1, 1)
 
 
+def test_process_concurrent_same_source_creates_one_ticket(
+    process_tenant: _ProcessTenant,
+) -> None:
+    tenant = process_tenant
+    source = SourceReference(kind="mission-control", ref="R2258-concurrent")
+
+    def create(command_id: UUID) -> TicketCommandResult | Problem:
+        request = TicketCreateRequest(
+            initial_custodian_id=tenant.commander_id,
+            priority=Priority.P2,
+            source=source,
+            title="Concurrent source mirror",
+        )
+        with _client(tenant) as client:
+            return _outcome(lambda: client.create_ticket(request, command_id=command_id))
+
+    with ThreadPoolExecutor(max_workers=2) as executor:
+        outcomes = tuple(executor.map(create, (uuid4(), uuid4())))
+
+    successes = [item for item in outcomes if isinstance(item, TicketCommandResult)]
+    problems = [item for item in outcomes if isinstance(item, Problem)]
+    assert len(successes) == len(problems) == 1
+    assert problems[0].code == "source-already-ticketed"
+    with psycopg.connect(tenant.database.admin_dsn) as connection:
+        count = connection.execute(
+            """
+            SELECT count(*) FROM tickets
+            WHERE tenant_id = %s AND source_kind = %s AND source_ref = %s
+            """,
+            (tenant.tenant_id, source.kind, source.ref),
+        ).fetchone()
+    assert count == (1,)
+
+
 def test_process_p0_authority_denial_is_typed_and_does_not_mutate(
     process_tenant: _ProcessTenant,
 ) -> None:
@@ -443,7 +477,7 @@ def _ticket_request(
     return TicketCreateRequest(
         initial_custodian_id=tenant.commander_id,
         priority=priority,
-        source=SourceReference(kind="process", ref="generated-client"),
+        source=SourceReference(kind="process", ref=f"generated-client:{title}"),
         title=title,
     )
 

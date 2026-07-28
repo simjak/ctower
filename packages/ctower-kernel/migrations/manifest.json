@@ -325,6 +325,15 @@
       "forward_test": "pytest:tests/acceptance/increment-1/test_persistent_runtime.py::test_refused_finalization_quarantines_finitely_and_later_work_is_serviced",
       "rollback_or_forward_compensation": "Preserve immutable refusal attempts and quarantine dispositions for audit; append reviewed forward compensation and never erase or relabel a terminal refusal.",
       "backup_checkpoint": "Before applying to nonempty data, capture command, confirmation, finalizer-attempt, and terminal-quarantine counts plus a database backup."
+    },
+    {
+      "path": "0033_ticket_source_lookup.sql",
+      "sha256": "sha256:016428869f7a67d08ee6b195fce2f4e6d5e73f6d748676fcab73dc3faed38b77",
+      "minimum_service_version": "0.0.0",
+      "maximum_service_version": "0.0.0",
+      "forward_test": "pytest:tests/acceptance/increment-1/test_process_boundary.py::test_process_concurrent_same_source_creates_one_ticket",
+      "rollback_or_forward_compensation": "Keep the source identity index and disposable projection columns readable by a source-aware build, or append reviewed forward compensation; never delete a ticket to resolve a source conflict.",
+      "backup_checkpoint": "Before applying to a nonempty installation, capture and verify ticket source uniqueness, ticket counts, Board projection row counts, and a database backup; projection rows remain disposable."
     }
   ]
 }

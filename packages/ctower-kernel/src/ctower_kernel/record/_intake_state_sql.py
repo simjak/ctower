@@ -19,6 +19,7 @@ from ctower_kernel.record._intake_command_sql import scope_problem as _scope_pro
 from ctower_kernel.record._intake_command_sql import version_problem as _version_problem
 from ctower_kernel.record._ticket_sql import (
     _eligible_custodian,
+    _reserve_ticket_source,
     _TicketIds,
 )
 from ctower_kernel.record.intake import (
@@ -190,18 +191,24 @@ def _prepare_create_action(
 ) -> IntakeAction | RecordProblem:
     if command.initial_custodian_id is None or command.priority is None or command.title is None:
         raise RuntimeError("Work admitted incomplete create-ticket intake")
+    source_reference = _ticket_source(command, source)
+    source_problem = _reserve_ticket_source(
+        connection,
+        actor,
+        command.client_command_id,
+        source_reference,
+    )
+    if source_problem is not None:
+        return source_problem
     if not _eligible_custodian(connection, actor, command.initial_custodian_id):
         return _scope_problem(command.client_command_id)
     if ticket_ids is None:
         raise RuntimeError("create-ticket intake identifiers are unavailable")
-    inbound_source = command.source if isinstance(command, IntakeSubmitCommand) else source
-    if inbound_source is None:
-        raise RuntimeError("promotion source provenance is unavailable")
     ticket_command = TicketCommand(
         client_command_id=command.client_command_id,
         initial_custodian_id=command.initial_custodian_id,
         priority=command.priority,
-        source=SourceReference(inbound_source.kind, inbound_source.ref),
+        source=source_reference,
         title=command.title,
     )
     return IntakeAction(
@@ -211,6 +218,18 @@ def _prepare_create_action(
         ticket_command,
         ticket_ids,
     )
+
+
+def _ticket_source(
+    command: IntakeSubmitCommand | IntakePromotionCommand,
+    promotion_source: InboundSource | None,
+) -> SourceReference:
+    inbound_source = (
+        command.source if isinstance(command, IntakeSubmitCommand) else promotion_source
+    )
+    if inbound_source is None:
+        raise RuntimeError("promotion source provenance is unavailable")
+    return SourceReference(inbound_source.kind, inbound_source.ref)
 
 
 def _prepare_link_action(

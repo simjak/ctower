@@ -138,6 +138,14 @@ def _reserve_ticket_outcome(
         return existing
     if existing is not None:
         return _result_from_payload(existing)
+    source_problem = _reserve_ticket_source(
+        connection,
+        actor,
+        command.client_command_id,
+        command.source,
+    )
+    if source_problem is not None:
+        return _refuse(transaction, actor, command, request_digest, source_problem, now)
     if _eligible_custodian(connection, actor, command.initial_custodian_id):
         return None
     problem = _scope_problem(command.client_command_id)
@@ -236,6 +244,36 @@ def _eligible_custodian(
         (actor.tenant_id, custodian_id),
     ).fetchone()
     return row is not None
+
+
+def _reserve_ticket_source(
+    connection: psycopg.Connection[dict[str, object]],
+    actor: Actor,
+    command_id: UUID,
+    source: SourceReference,
+) -> RecordProblem | None:
+    source_key = f"ticket-source:{actor.tenant_id}:{len(source.kind)}:{source.kind}:{source.ref}"
+    connection.execute(
+        "SELECT pg_advisory_xact_lock(hashtextextended(%s, 0))",
+        (source_key,),
+    )
+    row = connection.execute(
+        """
+        SELECT ticket_id FROM tickets
+        WHERE tenant_id = %s AND source_kind = %s AND source_ref = %s
+        """,
+        (actor.tenant_id, source.kind, source.ref),
+    ).fetchone()
+    if row is None:
+        return None
+    return RecordProblem(
+        code="source-already-ticketed",
+        detail="The source already identifies a ticket in the authenticated tenant.",
+        status=409,
+        title="Source already ticketed",
+        command_id=command_id,
+        unmet_facts=(f"ticket:{row['ticket_id']}",),
+    )
 
 
 def _insert_ticket_state(

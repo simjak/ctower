@@ -78,7 +78,7 @@ def query_command_names() -> frozenset[str]:
 
 def _capture(arguments: argparse.Namespace) -> MutationPayload:
     request = TicketCreateRequest(
-        initial_custodian_id=cast(UUID, arguments.initial_custodian_id),
+        initial_custodian_id=cast(UUID | None, arguments.initial_custodian_id),
         priority=Priority(cast(str, arguments.priority)),
         source=SourceReference(
             kind=cast(str, arguments.source_kind),

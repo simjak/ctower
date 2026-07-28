@@ -141,13 +141,14 @@ Creating a ticket:
 ```bash
 printf '%s\n' "${authority}" |
   ctl --base-url http://127.0.0.1:8080 ticket create \
-    --command-id 018f5f67-89ab-7def-8123-456789abcdef \
-    --initial-custodian-id 018f5f67-89ab-7def-8123-000000000001 \
     --priority P1 \
     --source-kind operator-cli \
     --source-ref operator-cli:first-ticket \
     --title "First durable ticket"
 ```
+
+The CLI generates and prints the command ID. The authenticated principal becomes the initial custodian;
+both values can still be supplied explicitly when a caller needs coordinated replay or deliberate custody.
 
 A normal, healthy result here is **exit `75`** with `"state":"queued"` and
 `"reason_code":"durability_pending"` — the machine-readable way of saying "committed here, waiting for

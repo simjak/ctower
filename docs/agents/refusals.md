@@ -1,7 +1,7 @@
 # Refusals
 
 ctower refuses with a typed problem document rather than a generic error. The `code` field is a closed
-enumeration of **83 values** declared in `contracts/http/openapi.yaml`. If you see a code that is not on this
+enumeration of **84 values** declared in `contracts/http/openapi.yaml`. If you see a code that is not on this
 page, the contract changed and this page is a defect.
 
 The point of the enumeration is that a caller can branch on it. This page groups every code by **what you
@@ -14,7 +14,7 @@ should do about it**.
 | `type` | yes | URI identifying the problem type |
 | `title` | yes | Short human summary |
 | `status` | yes | HTTP status, 400–599 |
-| `code` | yes | One of the 83 values below |
+| `code` | yes | One of the 84 values below |
 | `detail` | yes | Human-readable specifics |
 | `command_id` | no | Correlates to your idempotency key |
 | `current_version` | no | The server's actual version, on version conflicts |
@@ -29,6 +29,7 @@ The CLI writes the problem document to **stderr** and exits `69`.
 | `durability_pending` | Committed here, not yet acknowledged off host | **Wait and replay the same key.** Honour `Retry-After`. This is not an error |
 | `version-conflict` | Someone else changed the aggregate | Re-read, re-evaluate your intent, re-issue with `current_version` |
 | `idempotency-conflict` | Same key, different semantics | You have a bug. Do not retry. Either replay the original content or use a new key for genuinely new content |
+| `source-already-ticketed` | Another command already created this source pair | Query the Board by source kind/ref and adopt the returned ticket |
 | `validation-error` | The request shape is wrong | Fix the request. Never retry unchanged |
 | `unauthorized`, `tenant-scope-denied` | Credential or scope problem | Escalate. Do not retry with the same credential |
 | anything `workflow-*` | A pin, predicate, or declared-transition problem | Read `unmet_facts`. Satisfy the named fact, then act |
@@ -69,9 +70,9 @@ The one retryable code. See [Durability and acceptance](../concepts/durability.m
 The first-tenant ceremony is one-use. `bootstrap-consumed` means it already ran — that is a correct refusal,
 not a race to retry through.
 
-### Work and tickets (15)
+### Work and tickets (16)
 
-`ticket-comment-ineligible`, `ticket-comment-invalid`, `work-assignment-kind-refused`,
+`source-already-ticketed`, `ticket-comment-ineligible`, `ticket-comment-invalid`, `work-assignment-kind-refused`,
 `work-assignment-target-ineligible`, `work-assignment-unchanged`, `work-blocker-already-resolved`,
 `work-blocker-id-conflict`, `work-blocker-owner-ineligible`, `work-blocker-unknown`, `work-intent-unmet`,
 `work-priority-unchanged`, `work-relation-cycle`, `work-relation-exists`, `work-reopen-unmet`,

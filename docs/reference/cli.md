@@ -56,7 +56,7 @@ Full semantics, including what to retry: [the agent operating contract](../agent
 
 | Flag | Applies to | Notes |
 |---|---|---|
-| `--command-id` | Every mutation except `synthetic run`, where it is optional and generated when omitted | Caller-supplied UUID; becomes the idempotency key. Reuse it to replay, never to submit different content |
+| `--command-id` | Mutations; optional for `ticket capture`, `ticket create`, and `synthetic run` | Caller-supplied UUID becomes the idempotency key. The three optional commands generate and print one when omitted |
 | `--expected-version` | Version-guarded mutations | Optimistic concurrency; a mismatch is `version-conflict` |
 | `--reason` | Authority and work mutations | Bounded metadata, never secret material |
 
@@ -76,7 +76,7 @@ All `*-ref` values are references. Never pass a credential value.
 
 | Command | Positional | Flags |
 |---|---|---|
-| `ticket capture` | — | `--command-id`, `--initial-custodian-id`, `--priority {P0,P1,P2}`, `--source-kind`, `--source-ref`, `--title` |
+| `ticket capture` | — | required: `--priority {P0,P1,P2}`, `--source-kind`, `--source-ref`, `--title`; optional: `--command-id`, `--initial-custodian-id` |
 | `ticket create` | — | identical to `ticket capture` |
 | `ticket query` | `<ticket_id>` | — |
 | `ticket show` | `<ticket_id>` | identical to `ticket query` |
@@ -85,6 +85,10 @@ All `*-ref` values are references. Never pass a credential value.
 | `ticket audit` | `<ticket_id>` | `--cursor` (≥ 0), `--limit` (≥ 1, server max 100) |
 
 `capture`/`create` and `query`/`show` are aliases of the same operations, `createTicket` and `getTicket`.
+When `--command-id` is omitted, the CLI generates it before encrypted spool enqueue and prints it. Use
+`spool drain` for a queued retry; entering the create command again without the printed key starts a new
+intent. When `--initial-custodian-id` is omitted, the authenticated principal becomes the requested initial
+custodian; an explicit value remains authoritative, and server eligibility checks apply to both.
 
 ## Ticket: authority
 
@@ -165,10 +169,15 @@ changing anything.
 
 | Command | Flags |
 |---|---|
-| `board query` | all optional: `--lane {backlog,ready,in_progress,in_review,blocked,complete}`, `--priority {P0,P1,P2}`, `--stage-key`, `--custodian-id`, `--assignee-id` |
+| `board query` | all optional: `--lane {backlog,ready,in_progress,in_review,blocked,complete}`, `--priority {P0,P1,P2}`, `--stage-key`, `--custodian-id`, `--assignee-id`, `--source-kind`, `--source-ref` |
 | `control health` | — |
 
 Both are queries and are never spooled.
+
+For race-safe mirroring, query the exact source pair first, create only on an empty `cards` result, and
+query again if create returns `source-already-ticketed`. The server serializes and uniquely constrains that
+source pair, so concurrent creators produce one ticket. See
+[Race-safe source mirroring](../agents/operating-contract.md#race-safe-source-mirroring).
 
 ## Operations
 

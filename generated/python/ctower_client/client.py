@@ -1,6 +1,6 @@
 """DO NOT EDIT: generated file; regenerate from declared inputs.
 
-Authored contract digest: sha256:f4af8606f2de20320e2a8baf3744b36f04ebb1ee992bf58baf75c3fe992d4075
+Authored contract digest: sha256:ea8f83c472216ed3641c511e2bd6c29da7b384180ef6e8e5dbd39a15829e1192
 """
 
 from __future__ import annotations
@@ -491,10 +491,12 @@ class CtowerClient:
         stage_key: str | None = None,
         custodian_id: UUID | None = None,
         assignee_id: UUID | None = None,
+        source_kind: Annotated[str, Field(min_length=1, max_length=64)] | None = None,
+        source_ref: Annotated[str, Field(min_length=1, max_length=256)] | None = None,
     ) -> BoardView:
         response = self._http.get(
             "/v1/board",
-            params={**({"lane": lane} if lane is not None else {}), **({"priority": priority} if priority is not None else {}), **({"stage_key": stage_key} if stage_key is not None else {}), **({"custodian_id": str(custodian_id)} if custodian_id is not None else {}), **({"assignee_id": str(assignee_id)} if assignee_id is not None else {})},
+            params={**({"lane": lane} if lane is not None else {}), **({"priority": priority} if priority is not None else {}), **({"stage_key": stage_key} if stage_key is not None else {}), **({"custodian_id": str(custodian_id)} if custodian_id is not None else {}), **({"assignee_id": str(assignee_id)} if assignee_id is not None else {}), **({"source_kind": source_kind} if source_kind is not None else {}), **({"source_ref": source_ref} if source_ref is not None else {})},
             headers=self._telemetry_headers(
                 self._context(uuid4()),
                 {

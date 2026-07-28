@@ -39,6 +39,8 @@ def install_board_routes(
         stage_key: str | None = None,
         custodian_id: str | None = None,
         assignee_id: str | None = None,
+        source_kind: str | None = None,
+        source_ref: str | None = None,
     ) -> JSONResponse:
         actor = _authenticate(access, recorder, request)
         if isinstance(actor, RecordProblem):
@@ -50,6 +52,8 @@ def install_board_routes(
                 stage_key=_stage_filter(stage_key),
                 custodian_id=_uuid(custodian_id) if custodian_id is not None else None,
                 assignee_id=_uuid(assignee_id) if assignee_id is not None else None,
+                source_kind=_source_filter(source_kind, maximum=64),
+                source_ref=_source_filter(source_ref, maximum=256),
             )
         except ValueError:
             return _problem_response(_validation_problem())
@@ -61,4 +65,10 @@ def install_board_routes(
 def _stage_filter(value: str | None) -> str | None:
     if value is not None and _STABLE_KEY.fullmatch(value) is None:
         raise ValueError("invalid stage filter")
+    return value
+
+
+def _source_filter(value: str | None, *, maximum: int) -> str | None:
+    if value is not None and not 1 <= len(value) <= maximum:
+        raise ValueError("invalid source filter")
     return value

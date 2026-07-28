@@ -1391,6 +1391,18 @@
       ]
     },
     {
+      "path": "packages/ctower-kernel/migrations/0033_ticket_source_lookup.sql",
+      "references": [
+        "SPEC#aggregate-boundaries-and-relationships",
+        "SPEC#persistence-authority",
+        "INV-03",
+        "INV-34",
+        "AC-DUR-02",
+        "AC-DUR-07",
+        "AC-PROD-01"
+      ]
+    },
+    {
       "path": "packages/ctower-kernel/migrations/manifest.json",
       "references": [
         "SPEC#executable-authority-and-requirement-traceability",

@@ -131,6 +131,47 @@ def test_assignment_and_custody_build_distinct_generated_requests() -> None:
     assert isinstance(custody_payload.request, CustodyTransferRequest)
 
 
+def test_ticket_create_defaults_only_derivable_identifiers() -> None:
+    arguments = [
+        "--base-url",
+        "https://ctower.example",
+        "ticket",
+        "create",
+        "--priority",
+        "P2",
+        "--source-kind",
+        "mission-control",
+        "--source-ref",
+        "R2257",
+        "--title",
+        "First-day ticket creation",
+    ]
+
+    first = parse_arguments(arguments)
+    second = parse_arguments(arguments)
+    capture = parse_arguments(
+        [argument if argument != "create" else "capture" for argument in arguments]
+    )
+    explicit_command_id = uuid4()
+    explicit_custodian_id = uuid4()
+    explicit = parse_arguments(
+        [
+            *arguments,
+            "--command-id",
+            str(explicit_command_id),
+            "--initial-custodian-id",
+            str(explicit_custodian_id),
+        ]
+    )
+
+    assert first.command_id != second.command_id
+    assert first.initial_custodian_id is None
+    assert capture.command_id not in {first.command_id, second.command_id}
+    assert capture.initial_custodian_id is None
+    assert explicit.command_id == explicit_command_id
+    assert explicit.initial_custodian_id == explicit_custodian_id
+
+
 def _assignment_arguments(ticket_id: object, command_id: object, principal_id: object) -> list[str]:
     return [
         "--base-url",

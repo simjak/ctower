@@ -260,7 +260,11 @@ def _install_ticket_create_route(
             actor,
             TicketCommand(
                 client_command_id=command_id,
-                initial_custodian_id=payload.initial_custodian_id,
+                initial_custodian_id=(
+                    payload.initial_custodian_id
+                    if payload.initial_custodian_id is not None
+                    else actor.principal_id
+                ),
                 priority=payload.priority.value,
                 source=SourceReference(payload.source.kind, payload.source.ref),
                 title=payload.title,

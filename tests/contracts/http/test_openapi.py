@@ -192,6 +192,7 @@ _EXPECTED_PROBLEM_CODES = {
     "proof-protected-authority-required",
     "proof-self-review-refused",
     "proof-verdict-id-conflict",
+    "source-already-ticketed",
     "tenant-scope-denied",
     "ticket-comment-ineligible",
     "ticket-comment-invalid",

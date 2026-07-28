@@ -78,7 +78,7 @@ def read_view(dsn: str, tenant_id: UUID, query: BoardQuery, *, source: int) -> B
         and projection == source
         and len(rows) == expected_cards
     )
-    cards = tuple(_card(row) for row in rows)
+    cards = tuple(_card(row) for row in rows if _matches_source(row, query))
     return BoardView(
         cards=tuple(card for card in cards if _matches(card, query)),
         health=ProjectionHealth.CURRENT if current else ProjectionHealth.STATE_UNKNOWN,
@@ -97,10 +97,10 @@ def _create_card(
     connection.execute(
         """
         INSERT INTO board_projection_rows (
-            tenant_id, ticket_id, title, lane, underlying_lane, priority,
+            tenant_id, ticket_id, title, source_kind, source_ref, lane, underlying_lane, priority,
             stage_key, activity_class, custodian_id, assignee_id, blocker_reason,
             blocker_opened_at, risk, delivery_facts, ticket_version, source_position
-        ) VALUES (%s, %s, %s, 'backlog', NULL, %s, NULL, NULL, %s, NULL, NULL,
+        ) VALUES (%s, %s, %s, %s, %s, 'backlog', NULL, %s, NULL, NULL, %s, NULL, NULL,
             NULL, NULL, '[]'::jsonb, 1, %s)
         ON CONFLICT (tenant_id, ticket_id) DO NOTHING
         """,
@@ -108,6 +108,8 @@ def _create_card(
             tenant_id,
             message["aggregate_id"],
             payload["title"],
+            payload["source_kind"],
+            payload["source_ref"],
             payload["priority"],
             UUID(str(payload["custodian_id"])),
             position,
@@ -329,4 +331,10 @@ def _matches(card: BoardCard, query: BoardQuery) -> bool:
             query.assignee_id is None or card.assignee_id == query.assignee_id,
             query.risk is None or card.risk == query.risk,
         )
+    )
+
+
+def _matches_source(row: dict[str, object], query: BoardQuery) -> bool:
+    return (query.source_kind is None or str(row["source_kind"]) == query.source_kind) and (
+        query.source_ref is None or str(row["source_ref"]) == query.source_ref
     )

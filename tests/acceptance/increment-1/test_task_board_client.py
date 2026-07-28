@@ -286,6 +286,32 @@ def test_generated_client_refuses_relation_cycles_and_cross_tenant_targets(
     assert cycle.value.problem.code == "work-relation-cycle"
 
 
+def test_generated_board_source_lookup_returns_hit_and_empty_miss(
+    tenant: TenantFixture,
+) -> None:
+    source_ref = "R2238"
+    with running_api(
+        tenant.database.runtime_dsn, projection_dsn=tenant.database.projection_dsn
+    ) as base_url:
+        client = CtowerClient(base_url, credential=tenant.commander_credential)
+        created = client.create_ticket(
+            TicketCreateRequest(
+                initial_custodian_id=tenant.commander_id,
+                priority=Priority.P2,
+                source=SourceReference(kind="mission-control", ref=source_ref),
+                title="Source lookup acceptance",
+            ),
+            command_id=uuid4(),
+        )
+        _refresh_board(tenant, client)
+        hit = client.get_board(source_kind="mission-control", source_ref=source_ref)
+        miss = client.get_board(source_ref="R-does-not-exist")
+        client.close()
+
+    assert [card.ticket_id for card in hit.cards] == [created.ticket.ticket_id]
+    assert miss.cards == ()
+
+
 def _new_ticket(client: CtowerClient, custodian_id: UUID, suffix: str) -> UUID:
     return client.create_ticket(
         TicketCreateRequest(

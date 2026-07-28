@@ -46,6 +46,8 @@ def execute_query(arguments: argparse.Namespace, client: CtowerClient) -> BaseMo
             stage_key=cast(str | None, arguments.stage_key),
             custodian_id=cast(UUID | None, arguments.custodian_id),
             assignee_id=cast(UUID | None, arguments.assignee_id),
+            source_kind=cast(str | None, arguments.source_kind),
+            source_ref=cast(str | None, arguments.source_ref),
         )
     raise ValueError("usage: unsupported operations query")
 

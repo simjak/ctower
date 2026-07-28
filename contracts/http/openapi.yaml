@@ -431,7 +431,9 @@
           {"$ref": "#/components/parameters/PriorityFilter"},
           {"$ref": "#/components/parameters/StageFilter"},
           {"$ref": "#/components/parameters/CustodianFilter"},
-          {"$ref": "#/components/parameters/AssigneeFilter"}
+          {"$ref": "#/components/parameters/AssigneeFilter"},
+          {"$ref": "#/components/parameters/SourceKindFilter"},
+          {"$ref": "#/components/parameters/SourceRefFilter"}
         ],
         "responses": {
           "200": {"description": "Watermark-bearing Board view", "content": {"application/json": {"schema": {"$ref": "#/components/schemas/BoardView"}}}},
@@ -1149,6 +1151,14 @@
       "AssigneeFilter": {
         "name": "assignee_id", "in": "query", "required": false,
         "schema": {"type": "string", "format": "uuid"}
+      },
+      "SourceKindFilter": {
+        "name": "source_kind", "in": "query", "required": false,
+        "schema": {"type": "string", "minLength": 1, "maxLength": 64}
+      },
+      "SourceRefFilter": {
+        "name": "source_ref", "in": "query", "required": false,
+        "schema": {"type": "string", "minLength": 1, "maxLength": 256}
       }
     },
     "responses": {
@@ -2315,6 +2325,7 @@
               "proof-policy-pin-mismatch",
               "proof-self-review-refused",
               "proof-verdict-id-conflict",
+              "source-already-ticketed",
               "tenant-scope-denied",
               "ticket-comment-ineligible",
               "ticket-comment-invalid",
@@ -2463,9 +2474,9 @@
       "TicketCreateRequest": {
         "type": "object",
         "additionalProperties": false,
-        "required": ["initial_custodian_id", "priority", "source", "title"],
+        "required": ["priority", "source", "title"],
         "properties": {
-          "initial_custodian_id": {"type": "string", "format": "uuid"},
+          "initial_custodian_id": {"type": ["string", "null"], "format": "uuid"},
           "priority": {"$ref": "#/components/schemas/Priority"},
           "source": {"$ref": "#/components/schemas/SourceReference"},
           "title": {"type": "string", "minLength": 1, "maxLength": 200}
