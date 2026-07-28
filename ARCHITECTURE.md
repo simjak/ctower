@@ -511,9 +511,11 @@ only through stdin, leaves the initialized volume, and is replaced by the steady
 password environment entry; the clone password is likewise stdin-only. Separately from the forced-degraded
 policy dimension, the worker writes monotonic typed finalizer progress:
 inactive/failed/refusing/unknown/future/stale state is degraded, and only an active worker with a completed
-scan no older than ten seconds is healthy. Bootstrap and two-pointer release selection each have strict
-owner-only replay checkpoints, so interruption resumes exact identities instead of minting a capability,
-exposing a partial release, or silently completing a no-op rollback.
+scan no older than ten seconds is healthy. Bootstrap has a strict owner-only replay checkpoint, so
+interruption resumes exact identities instead of minting a capability. The Part A runtime manifest is
+verified before a one-time install directly at the permanent service path, and that path's installed console
+entry point must execute before install succeeds. Staging, pointer exchange, release-triggered service
+restart, and rollback remain in the separately reviewed release-lifecycle follow-up.
 
 The cutover is therefore ordered:
 

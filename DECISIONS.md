@@ -832,3 +832,17 @@ Rejected alternatives:
   Service boundary is available and required.
 - Running a verifier-only finalization command after each mutation: it strands ordinary CLI and synthetic
   work; finalization belongs in the supervised ordinary worker.
+
+## D26 — Split persistent runtime from release lifecycle (locked 2026-07-28, Commander R2164)
+
+The Commander split PR #60 after successive candidate generations exposed distinct defects in the same
+bundled subsystem: a staged-then-renamed virtual environment left console-script shebangs pointing at the
+deleted staging path, and rollback under an exhausted systemd start limit restored the predecessor pointer
+without restoring API/worker availability. This supersedes only D25's inclusion of automated release
+selection, upgrade, and rollback in the persistent-runtime candidate. D25's fixed shadow topology,
+ordinary finalizer, health semantics, secret boundary, bootstrap, and honest authority limits remain.
+
+Part A installs one verified runtime artifact directly at one fixed permanent path and executes an installed
+entry point before the service units select it. It includes no staging rename, mutable release pointer,
+release-triggered restart, automated upgrade, or rollback. Part B owns those release-lifecycle concerns in
+a separate lineage and must not be inferred complete from Part A's running-service evidence.

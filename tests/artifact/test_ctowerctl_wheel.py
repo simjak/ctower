@@ -97,11 +97,13 @@ def test_wheel_has_explicit_packages_resources_dependencies_and_scripts(
         assert any(requirement.startswith(dependency) for requirement in requirements)
     assert "ctl = ctowerctl:main" in entry_points
     assert "ctowerctl = ctowerctl:main" in entry_points
+    assert "ctower-development-api = ctower_api.development_runtime:api_main" in entry_points
     assert "ctower-development-keyring-unlock = tools.development_runtime:keyring_unlock_main" in (
         entry_points
     )
+    assert "ctower-development-worker = ctower_api.development_runtime:worker_main" in entry_points
     assert "ctower-private-vps = tools.development_runtime:main" in entry_points
-    assert "ctower-release-manifest = tools.release_manifest.__main__:main" in entry_points
+    assert "ctower-runtime-manifest = tools.runtime_manifest.__main__:main" in entry_points
     assert "ctower-shadow-ctl = tools.development_runtime.ctl:main" in entry_points
 
 
@@ -110,8 +112,10 @@ def test_installed_alias_help_and_generated_resource_are_checkout_independent(
 ) -> None:
     ctowerctl = installed_wheel.binary_directory / "ctowerctl"
     ctl = installed_wheel.binary_directory / "ctl"
+    private_vps = installed_wheel.binary_directory / "ctower-private-vps"
     primary = _run((ctowerctl, "--help"), installed_wheel)
     alias = _run((ctl, "--help"), installed_wheel)
+    installed_runtime_entrypoint = _run((private_vps, "--help"), installed_wheel)
     resource = _run(
         (
             installed_wheel.binary_directory / "python",
@@ -126,6 +130,7 @@ def test_installed_alias_help_and_generated_resource_are_checkout_independent(
     )
 
     assert primary.returncode == alias.returncode == 0
+    assert installed_runtime_entrypoint.returncode == 0
     assert primary.stdout == alias.stdout
     installed_path = Path(resource.stdout.strip())
     assert installed_path.is_relative_to(installed_wheel.binary_directory.parent)
@@ -226,7 +231,7 @@ def _build_wheel(workspace: Path) -> Path:
         "packages/ctower-kernel/migrations",
         "packages/ctower-kernel/src",
         "tools/development_runtime",
-        "tools/release_manifest",
+        "tools/runtime_manifest",
     ):
         destination = source / relative
         destination.parent.mkdir(parents=True, exist_ok=True)

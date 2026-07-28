@@ -6,10 +6,10 @@ from pathlib import Path
 
 import pytest
 
-from tools.release_manifest import interface
+from tools.runtime_manifest import interface
 
 
-def test_manifest_binds_clean_source_artifact_resources_runtime_and_predecessor(
+def test_manifest_binds_clean_source_artifact_resources_and_runtime(
     tmp_path: Path,
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
@@ -35,7 +35,6 @@ def test_manifest_binds_clean_source_artifact_resources_runtime_and_predecessor(
         wheel,
         output,
         python_executable=Path("/approved/python"),
-        predecessor="sha256:" + "1" * 64,
     )
 
     encoded = json.loads(output.read_text(encoding="utf-8"))
@@ -46,7 +45,7 @@ def test_manifest_binds_clean_source_artifact_resources_runtime_and_predecessor(
         "version": "3.13.14",
         "gil": "standard",
     }
-    assert encoded["predecessor"] == "sha256:" + "1" * 64
+    assert encoded["schema"] == "ctower.development-runtime-artifact/v1"
     assert (
         interface.verify_manifest(
             output,
@@ -54,7 +53,6 @@ def test_manifest_binds_clean_source_artifact_resources_runtime_and_predecessor(
             source / "packs",
             source_root=source,
             python_executable=Path("/approved/python"),
-            predecessor="sha256:" + "1" * 64,
         )
         == manifest
     )
@@ -87,7 +85,6 @@ def test_manifest_refuses_dirty_source_and_nonapproved_runtime(
             wheel,
             output,
             python_executable=Path("/approved/python"),
-            predecessor=None,
         )
 
     monkeypatch.undo()
@@ -99,15 +96,6 @@ def test_manifest_refuses_dirty_source_and_nonapproved_runtime(
 
 
 def _assert_verification_refusals(source: Path, manifest: Path, wheel: Path) -> None:
-    with pytest.raises(ValueError, match="predecessor"):
-        interface.verify_manifest(
-            manifest,
-            wheel,
-            source / "packs",
-            source_root=source,
-            python_executable=Path("/approved/python"),
-            predecessor=None,
-        )
     migration_manifest = source / "packages/ctower-kernel/migrations/manifest.json"
     migration_manifest.write_text('{"migrations":["tampered"]}\n', encoding="utf-8")
     with pytest.raises(ValueError, match="source"):
@@ -117,18 +105,16 @@ def _assert_verification_refusals(source: Path, manifest: Path, wheel: Path) -> 
             source / "packs",
             source_root=source,
             python_executable=Path("/approved/python"),
-            predecessor="sha256:" + "1" * 64,
         )
     migration_manifest.write_text('{"migrations":[]}\n', encoding="utf-8")
     wheel.write_bytes(b"tampered-wheel")
-    with pytest.raises(ValueError, match="differs"):
+    with pytest.raises(ValueError, match="differ"):
         interface.verify_manifest(
             manifest,
             wheel,
             source / "packs",
             source_root=source,
             python_executable=Path("/approved/python"),
-            predecessor="sha256:" + "1" * 64,
         )
 
 

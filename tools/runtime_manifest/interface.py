@@ -1,4 +1,4 @@
-"""Deterministic provenance binding for the unprivileged E2 release artifact."""
+"""Deterministic provenance binding for the unprivileged E2 runtime artifact."""
 
 from __future__ import annotations
 
@@ -10,7 +10,7 @@ from typing import Literal
 
 from pydantic import BaseModel, ConfigDict, Field, field_validator
 
-__all__ = ["DevelopmentReleaseManifest", "build_manifest", "verify_manifest"]
+__all__ = ["DevelopmentRuntimeManifest", "build_manifest", "verify_manifest"]
 
 _DIGEST = re.compile(r"^sha256:[0-9a-f]{64}$")
 _COMMIT = re.compile(r"^[0-9a-f]{40}$")
@@ -38,8 +38,8 @@ class PythonPin(_StrictModel):
     gil: Literal["standard"]
 
 
-class DevelopmentReleaseManifest(_StrictModel):
-    schema_id: Literal["ctower.development-release/v1"] = Field(alias="schema")
+class DevelopmentRuntimeManifest(_StrictModel):
+    schema_id: Literal["ctower.development-runtime-artifact/v1"] = Field(alias="schema")
     label: Literal["SHADOW_ONLY_CP3_D_NOT_PROVEN"]
     source_commit: str
     source_tree: str
@@ -48,7 +48,6 @@ class DevelopmentReleaseManifest(_StrictModel):
     migration_manifest_sha256: str
     generated_manifest_sha256: str
     packs_sha256: str
-    predecessor: str | None
 
     @field_validator("source_commit", "source_tree")
     @classmethod
@@ -65,7 +64,7 @@ class DevelopmentReleaseManifest(_StrictModel):
     @classmethod
     def _bound_digest(cls, value: str) -> str:
         if _DIGEST.fullmatch(value) is None:
-            raise ValueError("release provenance must use lowercase SHA-256")
+            raise ValueError("runtime provenance must use lowercase SHA-256")
         return value
 
 
@@ -75,16 +74,15 @@ def build_manifest(
     output: Path,
     *,
     python_executable: Path,
-    predecessor: str | None,
-) -> DevelopmentReleaseManifest:
+) -> DevelopmentRuntimeManifest:
     """Bind one clean source tree, wheel, runtime, contracts, migrations, and packs."""
 
     if _git(source_root, "status", "--porcelain"):
-        raise ValueError("release manifests require a clean source tree")
+        raise ValueError("runtime manifests require a clean source tree")
     version, gil = _python_identity(python_executable)
-    manifest = DevelopmentReleaseManifest.model_validate(
+    manifest = DevelopmentRuntimeManifest.model_validate(
         {
-            "schema": "ctower.development-release/v1",
+            "schema": "ctower.development-runtime-artifact/v1",
             "label": "SHADOW_ONLY_CP3_D_NOT_PROVEN",
             "source_commit": _git(source_root, "rev-parse", "HEAD"),
             "source_tree": _git(source_root, "rev-parse", "HEAD^{tree}"),
@@ -101,7 +99,6 @@ def build_manifest(
                 source_root / "generated/.generated-manifest.json"
             ),
             "packs_sha256": _digest_tree(source_root / "packs"),
-            "predecessor": predecessor,
         }
     )
     output.parent.mkdir(parents=True, exist_ok=True)
@@ -116,11 +113,10 @@ def verify_manifest(
     *,
     source_root: Path,
     python_executable: Path,
-    predecessor: str | None,
-) -> DevelopmentReleaseManifest:
-    """Fail closed when installed bytes differ from any bound release fact."""
+) -> DevelopmentRuntimeManifest:
+    """Fail closed when installed bytes differ from any bound runtime fact."""
 
-    manifest = DevelopmentReleaseManifest.model_validate_json(
+    manifest = DevelopmentRuntimeManifest.model_validate_json(
         manifest_path.read_text(encoding="utf-8")
     )
     version, gil = _python_identity(python_executable)
@@ -135,7 +131,6 @@ def verify_manifest(
         _digest_tree(source_root / "packs"),
         version,
         gil,
-        predecessor,
     )
     expected = (
         manifest.source_commit,
@@ -148,10 +143,9 @@ def verify_manifest(
         manifest.packs_sha256,
         manifest.python.version,
         manifest.python.gil,
-        manifest.predecessor,
     )
     if observed != expected:
-        raise ValueError("release source, artifact, runtime, or predecessor differs from manifest")
+        raise ValueError("runtime source, artifact, interpreter, or resources differ from manifest")
     return manifest
 
 
@@ -172,7 +166,7 @@ def _python_identity(executable: Path) -> tuple[str, str]:
     )
     implementation, version, gil = result.stdout.splitlines()
     if implementation != "CPython" or version not in {"3.14.6", "3.13.14"} or gil != "standard":
-        raise ValueError("release Python is not the approved exact standard-GIL runtime")
+        raise ValueError("runtime Python is not the approved exact standard-GIL interpreter")
     return version, gil
 
 

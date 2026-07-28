@@ -1,4 +1,4 @@
-"""Direct lifecycle and protected-wrapper tests for the E2 development runtime."""
+"""Direct operation and protected-wrapper tests for the E2 development runtime."""
 
 from __future__ import annotations
 
@@ -16,9 +16,9 @@ import pytest
 import ctower_kernel.record.postgres as record_postgres
 import tools.development_runtime.bootstrap as bootstrap_module
 import tools.development_runtime.ctl as ctl_module
+import tools.development_runtime.installation as installation_module
 import tools.development_runtime.interface as lifecycle
 import tools.development_runtime.primary as primary_module
-import tools.development_runtime.release as release_module
 from ctower_api.development_config import (
     DevelopmentConfig,
     SecretReferenceMissingError,
@@ -275,11 +275,8 @@ def test_observe_exposes_finalizer_liveness_as_a_separate_typed_dimension(
 ) -> None:
     config = _config()
     tenant_id = uuid4()
-    release = tmp_path / "release"
-    release.mkdir()
-    release_home = tmp_path / "home"
-    release_home.mkdir()
-    (release_home / "current").symlink_to(release)
+    runtime_home = tmp_path / "runtime"
+    runtime_home.mkdir()
     health = SimpleNamespace(status=SimpleNamespace(value="DEGRADED"), reason="cp3d")
     finalizer = {
         "schema": "ctower.development-finalizer-health/v1",
@@ -297,7 +294,7 @@ def test_observe_exposes_finalizer_liveness_as_a_separate_typed_dimension(
     )
     monkeypatch.setattr(lifecycle, "_systemctl_state", lambda _name: "active")
     monkeypatch.setattr(lifecycle, "_container_state", lambda _name: "running")
-    monkeypatch.setattr(lifecycle, "release_home", lambda: release_home)
+    monkeypatch.setattr(lifecycle, "runtime_home", lambda: runtime_home)
     monkeypatch.setattr(
         lifecycle,
         "observe_finalizer_health",
@@ -308,6 +305,7 @@ def test_observe_exposes_finalizer_liveness_as_a_separate_typed_dimension(
 
     assert observation["durability_health"] == {"status": "DEGRADED", "reason": "cp3d"}
     assert observation["finalizer_health"] == finalizer
+    assert observation["installation"] == str(runtime_home)
 
 
 def test_bootstrap_retry_reuses_checkpoint_and_finishes_after_interruption(
@@ -389,49 +387,71 @@ def _patch_bootstrap_services(
     monkeypatch.setattr(bootstrap_module, "_systemctl", lambda *args: systemctl.append(args))
 
 
-def test_release_transition_recovers_exact_pointer_exchange(
+def test_runtime_install_executes_entrypoint_at_its_permanent_path(
     monkeypatch: pytest.MonkeyPatch, tmp_path: Path
 ) -> None:
-    home = tmp_path / "release-home"
-    releases = home / "releases"
-    current_release = releases / "current-release"
-    previous_release = releases / "previous-release"
-    current_release.mkdir(parents=True)
-    previous_release.mkdir()
-    (home / "current").symlink_to(current_release)
-    (home / "previous").symlink_to(previous_release)
-    transition = release_module._ReleaseTransition(
-        "rollback",
-        current_release,
-        previous_release,
-        previous_release,
-        current_release,
+    python = tmp_path / "python"
+    python.write_text(
+        """#!/bin/sh
+set -eu
+test "$1" = "-m"
+test "$2" = "venv"
+mkdir -p "$3/bin"
+ln -s /bin/sh "$3/bin/python"
+""",
+        encoding="utf-8",
     )
-    release_module._write_release_transition(home, transition)
-    release_module._replace_symlink(home / "current", previous_release)
-    restarted: list[tuple[str, ...]] = []
-    monkeypatch.setattr(release_module, "_unit_known", lambda _name: True)
-    monkeypatch.setattr(release_module, "_systemctl", lambda *args: restarted.append(args))
+    python.chmod(0o700)
+    uv = tmp_path / "uv"
+    uv.write_text(
+        """#!/bin/sh
+set -eu
+python_path=
+previous=
+for argument in "$@"; do
+    if test "$previous" = "--python"; then python_path="$argument"; fi
+    previous="$argument"
+done
+case "$2" in
+    install)
+        entrypoint="$(dirname "$python_path")/ctower-private-vps"
+        printf '#!%s\\ntest "$1" = "--help"\\n' "$python_path" > "$entrypoint"
+        chmod 700 "$entrypoint"
+        ;;
+    check) ;;
+    freeze) printf 'ctower-workspace==0.0.0\\n' ;;
+esac
+""",
+        encoding="utf-8",
+    )
+    uv.chmod(0o700)
+    wheel = tmp_path / "artifact.whl"
+    manifest = tmp_path / "manifest.json"
+    packs = tmp_path / "packs"
+    wheel.write_bytes(b"wheel")
+    manifest.write_text("{}\n", encoding="utf-8")
+    packs.mkdir()
+    (packs / "pack.yaml").write_text("pack: test\n", encoding="utf-8")
+    runtime = tmp_path / "data/ctower-development/runtime"
+    monkeypatch.setattr(installation_module, "_data_home", lambda: tmp_path / "data")
+    monkeypatch.setattr(installation_module, "verify_manifest", lambda *_args, **_kwargs: None)
+    monkeypatch.setattr(installation_module, "_uv_path", lambda: str(uv))
 
-    recovered = release_module._recover_release_transition(home)
+    installation_module.install_runtime(wheel, manifest, packs, python, tmp_path)
 
-    assert (home / "current").resolve() == previous_release
-    assert (home / "previous").resolve() == current_release
-    assert not release_module._release_transition_path(home).exists()
-    assert recovered == "rollback"
-    assert restarted == [
-        (
-            "restart",
-            "ctower-development-api.service",
-            "ctower-development-worker.service",
-        )
-    ]
+    entrypoint = runtime / "venv/bin/ctower-private-vps"
+    assert entrypoint.read_text(encoding="utf-8").splitlines()[0] == (
+        f"#!{runtime}/venv/bin/python"
+    )
+    assert (runtime / "installed-distributions.txt").read_text(encoding="utf-8") == (
+        "ctower-workspace==0.0.0\n"
+    )
+    assert not any("staging" in part for part in entrypoint.parts)
 
 
-def test_failed_release_staging_leaves_no_partial_release(
+def test_failed_runtime_install_leaves_no_partial_home(
     monkeypatch: pytest.MonkeyPatch, tmp_path: Path
 ) -> None:
-    release = tmp_path / "releases/release-id"
     wheel = tmp_path / "artifact.whl"
     manifest = tmp_path / "manifest.json"
     packs = tmp_path / "packs"
@@ -440,18 +460,19 @@ def test_failed_release_staging_leaves_no_partial_release(
     manifest.write_text("{}\n", encoding="utf-8")
     packs.mkdir()
     (packs / "pack.yaml").write_text("pack: test\n", encoding="utf-8")
-    python.write_text("#!/bin/sh\n", encoding="utf-8")
+    python.write_text("#!/bin/sh\nexit 1\n", encoding="utf-8")
+    python.chmod(0o700)
+    monkeypatch.setattr(installation_module, "_data_home", lambda: tmp_path / "data")
     monkeypatch.setattr(
-        release_module,
-        "_run",
-        lambda *_args, **_kwargs: (_ for _ in ()).throw(RuntimeError("venv failed")),
+        installation_module,
+        "verify_manifest",
+        lambda *_args, **_kwargs: None,
     )
 
-    with pytest.raises(RuntimeError, match="venv failed"):
-        release_module._stage_release(release, wheel, manifest, packs, python)
+    with pytest.raises(subprocess.CalledProcessError):
+        installation_module.install_runtime(wheel, manifest, packs, python, tmp_path)
 
-    assert not release.exists()
-    assert list(release.parent.iterdir()) == []
+    assert not installation_module.runtime_home().exists()
 
 
 def test_database_unit_retries_without_fake_user_docker_dependency() -> None:
@@ -464,6 +485,18 @@ def test_database_unit_retries_without_fake_user_docker_dependency() -> None:
     assert "ExecStartPre=/usr/bin/docker info" in unit
     assert "Restart=on-failure" in unit
     assert "StartLimitIntervalSec=0" in unit
+
+
+def test_service_units_select_only_the_fixed_runtime_installation() -> None:
+    unit_root = Path(__file__).parents[2] / "deploy/private-vps/development/systemd"
+    for name in (
+        "ctower-development-keyring.service",
+        "ctower-development-api.service",
+        "ctower-development-worker.service",
+    ):
+        unit = (unit_root / name).read_text(encoding="utf-8")
+        assert ".local/share/ctower-development/runtime/venv/bin/" in unit
+        assert ".local/share/ctower-development/current/" not in unit
 
 
 def test_missing_existing_secret_has_a_distinct_typed_failure() -> None:

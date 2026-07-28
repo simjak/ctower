@@ -1,4 +1,4 @@
-"""Unprivileged lifecycle tooling for the approved E2 persistent shadow instance."""
+"""Unprivileged operations tooling for the approved E2 persistent shadow instance."""
 
 from __future__ import annotations
 
@@ -35,8 +35,8 @@ from ctower_kernel.record.postgres import (
     provision_database_roles,
 )
 from tools.development_runtime.bootstrap import bootstrap_instance
+from tools.development_runtime.installation import install_runtime, runtime_home
 from tools.development_runtime.primary import start_primary
-from tools.development_runtime.release import install_release, release_home, rollback
 
 __all__ = ["keyring_unlock_main", "main"]
 
@@ -63,7 +63,7 @@ host all all ::/0 scram-sha-256
 
 
 def main() -> None:
-    """Execute one bounded local deployment lifecycle action."""
+    """Execute one bounded persistent-runtime operation."""
 
     parser = argparse.ArgumentParser(prog="ctower-private-vps")
     commands = parser.add_subparsers(dest="command", required=True)
@@ -73,13 +73,12 @@ def main() -> None:
     bootstrap = commands.add_parser("bootstrap")
     bootstrap.add_argument("--tenant-name", default="Ctower Development")
     bootstrap.add_argument("--tenant-slug", default="ctower-development")
-    release = commands.add_parser("install-release")
-    release.add_argument("--wheel", type=Path, required=True)
-    release.add_argument("--manifest", type=Path, required=True)
-    release.add_argument("--packs", type=Path, required=True)
-    release.add_argument("--python", type=Path, required=True)
-    release.add_argument("--source-root", type=Path, required=True)
-    commands.add_parser("rollback")
+    installation = commands.add_parser("install-runtime")
+    installation.add_argument("--wheel", type=Path, required=True)
+    installation.add_argument("--manifest", type=Path, required=True)
+    installation.add_argument("--packs", type=Path, required=True)
+    installation.add_argument("--python", type=Path, required=True)
+    installation.add_argument("--source-root", type=Path, required=True)
     commands.add_parser("observe")
     arguments = parser.parse_args()
     match arguments.command:
@@ -89,16 +88,14 @@ def main() -> None:
             install_units(arguments.unit_root)
         case "bootstrap":
             bootstrap_instance(arguments.tenant_name, arguments.tenant_slug)
-        case "install-release":
-            install_release(
+        case "install-runtime":
+            install_runtime(
                 arguments.wheel,
                 arguments.manifest,
                 arguments.packs,
                 arguments.python,
                 arguments.source_root,
             )
-        case "rollback":
-            rollback()
         case _:
             print(json.dumps(observe(), sort_keys=True))
 
@@ -240,7 +237,7 @@ def observe() -> dict[str, object]:
         "finalizer_health": finalizer_health.model_dump(mode="json", by_alias=True),
         "tenant_id": str(state.tenant_id),
         "counts": {"tenants": counts[0], "tickets": counts[1]} if counts is not None else None,
-        "release": str((release_home() / "current").resolve(strict=True)),
+        "installation": str(runtime_home().resolve(strict=True)),
     }
 
 

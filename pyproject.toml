@@ -35,7 +35,7 @@ ctower-development-api = "ctower_api.development_runtime:api_main"
 ctower-development-keyring-unlock = "tools.development_runtime:keyring_unlock_main"
 ctower-development-worker = "ctower_api.development_runtime:worker_main"
 ctower-private-vps = "tools.development_runtime:main"
-ctower-release-manifest = "tools.release_manifest.__main__:main"
+ctower-runtime-manifest = "tools.runtime_manifest.__main__:main"
 ctower-shadow-ctl = "tools.development_runtime.ctl:main"
 
 [tool.setuptools]
@@ -62,7 +62,7 @@ packages = [
   "ctowerctl.spool",
   "tools",
   "tools.development_runtime",
-  "tools.release_manifest",
+  "tools.runtime_manifest",
 ]
 
 [tool.setuptools.package-dir]
@@ -74,7 +74,7 @@ ctower_kernel = "packages/ctower-kernel/src/ctower_kernel"
 ctowerctl = "apps/ctowerctl/src/ctowerctl"
 tools = "tools"
 "tools.development_runtime" = "tools/development_runtime"
-"tools.release_manifest" = "tools/release_manifest"
+"tools.runtime_manifest" = "tools/runtime_manifest"
 
 [tool.setuptools.package-data]
 ctower_contracts = ["schemas.json"]

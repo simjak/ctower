@@ -11,9 +11,9 @@ durability finalizer. Docker publishes PostgreSQL only on `127.0.0.1`; the API b
 
 Configuration under `~/.config/ctower/` contains labels, ports, image digests, and Secret Service
 references only. PostgreSQL passwords and operator/commander bearer values live in the allowlisted OS
-keyring. The systemd units contain no secret values. Release directories live under
-`~/.local/share/ctower-development/releases/`; staged releases become visible only when complete, and a
-strict owner-only transition journal makes `current`/`previous` pointer updates crash-resumable.
+keyring. The systemd units contain no secret values. The verified runtime is installed once at
+`~/.local/share/ctower-development/runtime/`; its virtual environment is created at that permanent path,
+and installation executes an installed console entry point before succeeding.
 
 This unattended linger host uses the passwordless GNOME login collection of a dedicated development
 account, owner-only on disk, and an exact user unit that unlocks that login collection before ctower
@@ -24,21 +24,21 @@ referenced administrator secret through stdin, leaves only the initialized volum
 steady-state published container with no password environment entry; standby cloning is likewise
 stdin-only.
 
-From a clean release source tree, build the wheel with the approved standard-GIL interpreter and bind it:
+From a clean source tree, build the wheel with the approved standard-GIL interpreter, bind it, and install
+the fixed runtime:
 
 ```text
 uv build --wheel --python /path/to/python3.13
-ctower-release-manifest build --source-root . --wheel dist/ctower_workspace-0.0.0-py3-none-any.whl \
+ctower-runtime-manifest build --source-root . --wheel dist/ctower_workspace-0.0.0-py3-none-any.whl \
   --output dist/development-manifest.json --python /path/to/python3.13
-ctower-private-vps install-release --wheel dist/ctower_workspace-0.0.0-py3-none-any.whl \
+ctower-private-vps install-runtime --wheel dist/ctower_workspace-0.0.0-py3-none-any.whl \
   --manifest dist/development-manifest.json --packs packs --python /path/to/python3.13 \
   --source-root .
 ```
 
-For an upgrade, add `--predecessor sha256:<current-manifest-sha256>` to the manifest build,
-where the value is the SHA-256 digest of the exact `current/manifest.json`. Omit it only
-when no current release exists. Installation refuses a predecessor that does not match the
-current pointer.
+`install-runtime` is deliberately first-install-only and refuses an existing runtime path. Automated
+upgrade/replacement, staging, pointer exchange, release-triggered service restart, and rollback belong to
+the separately reviewed release-lifecycle follow-up.
 
 First install:
 
@@ -66,10 +66,6 @@ ctower-shadow-ctl ticket query TICKET_ID
 ctower-shadow-ctl synthetic run --workflow ctower.trust-spine-four-stage@1 \
   --wait --assert resolved,closed
 ```
-
-`ctower-private-vps rollback` journals and completes the exact `current`/`previous` exchange before
-restarting the API and worker. Database migrations are append-only; rollback never reverses accepted facts
-or resumes a legacy writer.
 
 The Docker containers use `--restart unless-stopped`, the user units are enabled under
 `default.target`, and user lingering is a host prerequisite. A service restart is proven in this slice;

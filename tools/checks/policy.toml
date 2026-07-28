@@ -96,8 +96,8 @@ paths = ["tools/codegen/**"]
 allowed_dependencies = ["repository-policy"]
 
 [[ownership]]
-name = "release-manifest-tools"
-paths = ["tools/release_manifest/**"]
+name = "runtime-manifest-tools"
+paths = ["tools/runtime_manifest/**"]
 allowed_dependencies = []
 
 [[ownership]]
@@ -107,7 +107,7 @@ allowed_dependencies = [
   "control-api",
   "control-cli",
   "kernel-record",
-  "release-manifest-tools",
+  "runtime-manifest-tools",
 ]
 
 [[ownership]]
@@ -197,7 +197,7 @@ paths = [
   "tests/modules/ctowerctl/**",
   "tests/artifact/**",
 ]
-allowed_dependencies = ["release-manifest-tools"]
+allowed_dependencies = ["runtime-manifest-tools"]
 
 [[ownership]]
 name = "increment-1-acceptance-tests"
