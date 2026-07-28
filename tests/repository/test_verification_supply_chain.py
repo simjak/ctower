@@ -18,13 +18,56 @@ class VerificationSupplyChainTests(unittest.TestCase):
 
     def test_release_gate_has_one_stable_safe_full_history_context(self) -> None:
         workflow = self._read(".github/workflows/verify.yml")
+        graph_completion_script = """\
+          set -euo pipefail
+          shallow_state="$(git rev-parse --is-shallow-repository)"
+          printf 'is-shallow-repository=%s\\n' "${shallow_state}"
+          shallow_path="$(git rev-parse --git-path shallow)"
+          if [[ "${shallow_state}" == "true" ]]; then
+            printf '.git/shallow stat:\\n'
+            stat "${shallow_path}"
+            printf '.git/shallow contents:\\n'
+            cat "${shallow_path}"
+            printf 'origin/main=%s\\n' "$(git rev-parse --verify 'origin/main^{commit}')"
+            git fetch --unshallow origin
+          fi
+          final_shallow_state="$(git rev-parse --is-shallow-repository)"
+          printf 'is-shallow-repository-after=%s\\n' "${final_shallow_state}"
+          if [[ "${final_shallow_state}" != "false" ]]; then
+            printf 'repository graph must be complete\\n' >&2
+            exit 1
+          fi
+"""
+        graph_completion_step = f"""\
+      - name: Establish complete repository graph
+        shell: bash
+        run: |
+{graph_completion_script}"""
 
         self.assertEqual(workflow.count("name: release gate"), 1)
         self.assertEqual(workflow.count("run: just check"), 1)
         self.assertEqual(workflow.count("run: just verify"), 1)
         self.assertIn("permissions:\n  contents: read", workflow)
+        self.assertIn("ref: ${{ github.event.pull_request.head.sha || github.sha }}", workflow)
         self.assertIn("fetch-depth: 0", workflow)
         self.assertIn("persist-credentials: false", workflow)
+        self.assertEqual(workflow.count(graph_completion_step), 3)
+        self.assertIn(
+            "          persist-credentials: false\n\n" + graph_completion_step,
+            workflow,
+        )
+        self.assertIn(
+            graph_completion_step
+            + "\n      - name: Run canonical warm gate\n"
+            + "        run: just check",
+            workflow,
+        )
+        self.assertIn(
+            graph_completion_step
+            + "\n      - name: Run canonical release gate\n"
+            + "        run: just verify",
+            workflow,
+        )
         self.assertNotIn("secrets.", workflow)
         self.assertNotIn("pull_request_target", workflow)
 
