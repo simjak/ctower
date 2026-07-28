@@ -12,11 +12,14 @@ Bearer authority and the one-use bootstrap capability are read as one bounded li
 never accepted as arguments or environment configuration, written to the spool, or echoed. Server
 authentication, authorization, validation, idempotency, CAS, and durability decisions remain authoritative.
 
-Every non-bootstrap mutation is encrypted and durably appended before its first network send. The spool is
-origin-scoped, owner-only, sequence/hash chained, and keyed only through an allowlisted operating-system
-credential backend. On Linux the development path requires an active D-Bus session, Secret Service, and an
-unlocked collection. There is no plaintext, file, environment, or `keyrings.alt` fallback. A missing or
-locked keyring exits `74` before enqueue/send and does not change existing ciphertext; reads can continue.
+A mutation is encrypted and durably appended before its first network send only when the generated operation
+behind it carries `spool_policy: allowed`. Reads, `bootstrap first-tenant`, and the authenticated online-only
+`migration ctower-project` operations carry `spool_policy: forbidden`: they are never appended, and they fail
+rather than queue when the server is unreachable. The spool is origin-scoped, owner-only, sequence/hash
+chained, and keyed only through an allowlisted operating-system credential backend. On Linux the development
+path requires an active D-Bus session, Secret Service, and an unlocked collection. There is no plaintext,
+file, environment, or `keyrings.alt` fallback. A missing or locked keyring exits `74` before enqueue/send and
+does not change existing ciphertext; reads and the unspooled commands can continue.
 Each command also carries only a keyed opaque identity for the stdin credential used at enqueue. Replay
 compares the current stdin credential before every send. Rotation or a different principal quarantines the
 old command with zero network sends; restore the original identity and explicitly retry, or discard and

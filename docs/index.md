@@ -3,12 +3,12 @@
 ctower is a control plane for work that outlives the thing doing it.
 
 An agent's terminal dies mid-task. A model session hits its context limit and is replaced. A laptop goes to
-sleep, a container is evicted, a vendor API times out. In most tooling, the state of the work lives in that
-process — so when the process dies, you lose the answer to "who owns this, how far did it get, and is the
-claim that it passed actually true?"
+sleep, a container is evicted, a vendor API times out. When the state of the work lives inside the process
+doing the work, the process ending takes the answers with it: who owns this, how far did it get, and is the
+claim that it passed actually true?
 
-ctower puts those facts in a database instead, behind one authenticated, idempotent, append-only write path.
-The worker becomes replaceable. The record does not.
+ctower holds those facts outside the worker, in a database behind one authenticated, idempotent, append-only
+write path. The worker becomes replaceable. The record does not.
 
 !!! warning "Pre-alpha: read this before you plan anything"
     Version `0.0.0`. There is **no supported installation, deployment, published package, or hosted

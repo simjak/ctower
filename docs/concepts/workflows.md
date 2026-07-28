@@ -139,8 +139,9 @@ policy state it cannot establish all fail closed and raise exactly one escalatio
 ## What is implemented at this revision
 
 The generic evaluator subset that interprets `ctower.trust-spine-four-stage@1` is implemented and exercised
-against real PostgreSQL: start, declared transitions, predicates, criteria freezing, evidence, verdicts,
-invalidation, and server-side resolve/close.
+against real PostgreSQL: start, declared transitions, predicates, criteria freezing, evidence, verdicts, and
+server-side resolve/close. `proof.current@1` reads the invalidated evidence and verdict sets, but nothing in
+that suite changes a candidate to populate them — see [Invalidation](proof.md#invalidation).
 
 Runner dispatch, remote execution, images, effects, and executable extensions are `not_exercised` in the
 packs and are **not** implemented. Publishing new workflow packs through a supported path is not available

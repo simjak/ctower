@@ -135,19 +135,34 @@ required verdicts are in.
 
 This is the property that makes the rest worth having.
 
-When a candidate digest changes, or a dependency changes, or evidence expires or is revoked, Proof marks
-exactly the affected slots unfilled and invalidates the gates that depended on them.
-
-What happens next is precise:
-
-- The prior stage-success event **remains immutable history**. It is not rewritten, deleted, or downgraded.
-- Current completion validity is gone. Readiness, effects, resolution, and every projection treat that
-  stage's completion proof as invalid.
-- Repair routes through a **new declared attempt** that produces fresh evidence. It does not patch the old
-  success.
+What runs at this revision is candidate-digest invalidation. Declaring a new candidate digest — which only
+the principal who froze the criteria may do — adds every evidence item and every verdict recorded
+against a `candidate_dependent` criterion to that ticket's invalidated set, and appends one
+`candidate-digest-changed` row per affected ID. Proof recorded against criteria that are not
+`candidate_dependent` is untouched. Nothing is deleted or rewritten: invalidation is an append, and the
+superseded records stay readable as history.
 
 Passing evidence for an older candidate can never approve a newer digest. That is the whole point of
 `candidate_dependent`.
+
+Two limits are worth stating exactly. The invalidated set names evidence and verdict IDs — not slots, gates,
+or stage completion, none of which exist as runtime concepts here. And changing the candidate is a Proof
+kernel command covered by module tests; it has no HTTP operation and no CLI command at this revision, so no
+caller outside the kernel can trigger invalidation yet.
+
+!!! warning "Specified, not implemented at this revision"
+    The rest of the invalidation rule is canonical in `SPEC.md` and has no runtime behaviour here:
+
+    - dependency change, evidence expiry, and revocation as further invalidation sources;
+    - marking exactly the affected typed slots unfilled and invalidating the gates that depended on them;
+    - a prior stage-success event that **remains immutable history** while current completion validity is
+      gone, so readiness, effects, resolution, and every projection treat that stage's completion proof as
+      invalid;
+    - repair routed through a **new declared attempt** producing fresh evidence rather than patching the old
+      success.
+
+    The Proof interface exposes freeze-criteria, record-evidence, record-verdict, and change-candidate, and
+    has no slot, dependency, expiry, or revocation command.
 
 ## How projections must render slots
 
@@ -158,9 +173,10 @@ must render as `unfilled (STATE_UNKNOWN)` — never as a pass, never hidden, nev
 
 ## Implementation status
 
-Criteria freezing, criterion-bound evidence, protected verdicts, self-review refusal, digest-based
-invalidation, and proof-gated resolve/close are **implemented and exercised** against real PostgreSQL in the
-Increment-1 acceptance suite.
+Criteria freezing, criterion-bound evidence, protected verdicts, self-review refusal, and proof-gated
+resolve/close are **implemented and exercised** against real PostgreSQL in the Increment-1 acceptance suite.
+Candidate-digest invalidation is implemented in the Proof kernel and its persistence writer, and is covered
+by module tests rather than by that suite, because no HTTP or CLI surface reaches it yet.
 
 Where that gate sits is worth stating exactly: in the workflow that ships, current proof is what the move
 into the final stage requires, and what resolving and closing the ticket require. The two earlier moves check
