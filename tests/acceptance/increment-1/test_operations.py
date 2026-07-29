@@ -130,7 +130,9 @@ def test_routine_due_transaction_has_canonical_lineage_and_acceptance_gated_job(
         timeout_seconds=60,
         component_digests=("sha256:" + "7" * 64,),
     )
-    first_fire = datetime.now(UTC).replace(hour=1, minute=0, second=0, microsecond=0)
+    first_fire = datetime.now(UTC).replace(hour=1, minute=0, second=0, microsecond=0) - timedelta(
+        days=1
+    )
 
     runtime.register(tenant.tenant_id, revision, first_fire_at=first_fire)
     scan = runtime.scan(tenant.tenant_id)
