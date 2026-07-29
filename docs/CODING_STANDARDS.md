@@ -21,6 +21,8 @@ Each network call site MUST satisfy all of these properties:
 2. **Exponential backoff with jitter.** Delay grows exponentially between retryable failures,
    includes jitter, and is capped. An unbounded retry loop, uncapped sleep, or policy without a
    finite age limit is a defect and a potential hang.
+   Unbounded retry is the same defect as no retry, because it converts an error into a hang, and
+   a hang is harder to diagnose than an error.
 3. **A legible typed retry predicate.** The call site selects, or visibly inherits, a predicate
    that distinguishes transient failures from permanent failures. Timeouts, connection resets,
    rate limiting (`429` or its typed provider equivalent), and transient `5xx` responses may be
@@ -48,6 +50,9 @@ A hand list can provide labels or ownership after discovery, but it cannot defin
 Until an automated structural check exists, reviewers MUST perform the same repository-wide
 discovery and record its result. The absence of a common network chokepoint does not waive this
 rule; it is a gap to close.
+No repository-wide network-request chokepoint exists today — the KMS adapter, the object-store
+adapter, the generated Python client and many direct PostgreSQL connection sites all have separate
+entry points.
 
 ## Reviewer yes/no check
 
