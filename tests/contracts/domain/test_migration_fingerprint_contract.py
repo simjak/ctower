@@ -29,6 +29,25 @@ def test_catalog_denominator_and_property_records_cover_cso_classes() -> None:
         "pg_seclabel",
         "pg_publication_rel",
         "pg_publication_namespace",
+        "constraint-trigger",
+        "trigger.tgisinternal",
+        "trigger.tgconstraint",
+        "trigger.tgfoid",
+        "trigger.tgtype",
+        "trigger.tgenabled",
     ):
         assert required_catalog in source
     assert "type.typtype IN ('c', 'd', 'e', 'm', 'r')" in source
+
+
+def test_internal_constraint_trigger_state_uses_stable_descriptors() -> None:
+    source = LEDGER_SOURCE.read_text(encoding="utf-8")
+    query = source.split("SELECT 'constraint-trigger'", maxsplit=1)[1].split('"""', maxsplit=1)[0]
+
+    assert "trigger.tgname" not in query
+    assert "trigger.oid" not in query
+    assert "pg_identify_object_as_address" in query
+    assert "pg_get_function_identity_arguments" in query
+    assert "'relation'" in query
+    assert "'type', trigger.tgtype" in query
+    assert "'enabled', trigger.tgenabled" in query

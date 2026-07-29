@@ -773,6 +773,48 @@ _SCHEMA_QUERIES = (
     ORDER BY class.relname, trigger.tgname
     """,
     """
+    SELECT 'constraint-trigger',
+           identified.type || ':' ||
+               COALESCE(array_to_string(identified.object_names, '.'), '') || ':' ||
+               class_namespace.nspname || '.' || class.relname || ':' ||
+               routine_namespace.nspname || '.' || routine.proname || '(' ||
+               pg_get_function_identity_arguments(routine.oid) || '):' ||
+               trigger.tgtype::text,
+           jsonb_build_object(
+               'constraint_names', COALESCE(
+                   identified.object_names, ARRAY[]::text[]
+               ),
+               'constraint_arguments', COALESCE(
+                   identified.object_args, ARRAY[]::text[]
+               ),
+               'relation', class_namespace.nspname || '.' || class.relname,
+               'function', routine_namespace.nspname || '.' || routine.proname || '(' ||
+                   pg_get_function_identity_arguments(routine.oid) || ')',
+               'type', trigger.tgtype,
+               'enabled', trigger.tgenabled,
+               'deferrable', trigger.tgdeferrable,
+               'initially_deferred', trigger.tginitdeferred
+           )::text
+    FROM pg_trigger AS trigger
+    JOIN pg_constraint AS constraint_row
+      ON constraint_row.oid = trigger.tgconstraint
+    JOIN pg_namespace AS constraint_namespace
+      ON constraint_namespace.oid = constraint_row.connamespace
+    JOIN pg_class AS class ON class.oid = trigger.tgrelid
+    JOIN pg_namespace AS class_namespace ON class_namespace.oid = class.relnamespace
+    JOIN pg_proc AS routine ON routine.oid = trigger.tgfoid
+    JOIN pg_namespace AS routine_namespace
+      ON routine_namespace.oid = routine.pronamespace
+    CROSS JOIN LATERAL pg_identify_object_as_address(
+        'pg_catalog.pg_constraint'::regclass::oid, constraint_row.oid, 0
+    ) AS identified
+    WHERE constraint_namespace.nspname = 'public'
+      AND class.relname <> %s
+      AND trigger.tgisinternal
+      AND trigger.tgconstraint <> 0
+    ORDER BY 2, 3
+    """,
+    """
     SELECT 'sequence', class.relname,
            jsonb_build_object(
                'type', format_type(sequence.seqtypid, NULL),
