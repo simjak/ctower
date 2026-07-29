@@ -846,3 +846,42 @@ Part A installs one verified runtime artifact directly at one fixed permanent pa
 entry point before the service units select it. It includes no staging rename, mutable release pointer,
 release-triggered restart, automated upgrade, or rollback. Part B owns those release-lifecycle concerns in
 a separate lineage and must not be inferred complete from Part A's running-service evidence.
+
+## D27 — Fresh-start authority, minimal carry-forward, and the split I1 gate (locked 2026-07-29, operator)
+
+The operator approved the authority shape and milestone meaning below. This entry preserves D21's derived
+Project Delivery model and D24's narrow development cohort, no-dual-write rule, and disaster-safe
+requirements. It supersedes D7's one-time open-item import, D17.3 and D23.2's required
+freeze/import/rewire sequence, and D24.3–5's importer/fence phases. It also supersedes D24's statement that
+development authority cannot mark I1.7 complete: that wording hid two different gates. A development
+dogfood verdict may now complete the development Project Delivery pilot while full normative I1 remains
+incomplete. The supersession removes bulk import from the active path and gives each completion claim one
+unambiguous scope; it does not weaken CP3-D.
+
+1. **Authority shape — fresh start plus minimal carry-forward.** Establish the ctower Company / Project /
+   checkpoint hierarchy and the Project Delivery projection on the **fresh database**. Retain the archived
+   legacy corpus as **signed read-only provenance**. Carry forward only an exact reviewed set of
+   still-actionable items through ordinary generated API/CLI commands with stable legacy aliases. **Bulk
+   legacy import stays dormant behind a separate future decision.**
+2. **CT-I1-008 is the development dogfood go/no-go.** Its verdict may be `GO_WITH_LIMITS` while CP3-D is
+   red. That verdict authorizes only the reviewed reconstructible ctower-project cohort and may mark the
+   development Project Delivery pilot/I1.7 checkpoint complete; it does not claim disaster-safe durability,
+   satisfy full normative I1 exit, or authorize Increment 2.
+3. **Full normative I1 exit is a separate gate.** It remains `NO-GO` until CP3-D proves
+   external-failure-domain acknowledgement, key recovery, isolated destructive restore, and measured
+   RPO/RTO. CP3-D is red and required, never satisfied, waived, or optional because development dogfood
+   passed.
+4. **CT-I2-001 dependency meaning is fail-closed.** Where the backlog says CT-I2-001 depends on CT-I1-008,
+   the dependency is satisfied only by the **full normative I1 exit** gate associated with the archived I1
+   evidence—not by a development `GO` or `GO_WITH_LIMITS`. Therefore no I2 implementation is authorized
+   while CP3-D is red.
+5. **No implicit migration authority.** The legacy archive is provenance, not a writer, fallback, or bulk
+   import queue. Each approved carry-forward item is created through the same strict authenticated command
+   path as new work, records its stable legacy alias and source digest, and receives no imported proof,
+   gate, delivery, resolution, closure, or arbitrary state. Any bulk importer, automatic corpus
+   reconciliation, or legacy reactivation requires a later operator decision and new acceptance evidence.
+
+**Reality at this decision:** the repository's I1.7A contracts, refusing migration stubs, and read-only
+Project Delivery visibility do not themselves establish fresh-database authority, complete the reviewed
+minimal carry-forward, issue a CT-I1-008 development verdict, or prove CP3-D. Those remain designed gates
+until their exact evidence is accepted.
