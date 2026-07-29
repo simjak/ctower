@@ -163,6 +163,12 @@ def _validate_preledger_database(
     actual_records = _schema_records(connection)
     actual_fingerprint = _schema_fingerprint(actual_records)
     if not hmac.compare_digest(actual_fingerprint, baseline.schema_sha256):
+        configuration_difference = _persisted_configuration_difference(actual_records)
+        if configuration_difference is not None:
+            raise MigrationAdoptionError(
+                "baseline-configuration-mismatch",
+                configuration_difference,
+            )
         raise MigrationAdoptionError(
             "baseline-schema-mismatch",
             _schema_difference(
@@ -512,6 +518,13 @@ def _schema_difference(
     return f"expected {expected_fingerprint} through {through}, got {actual_fingerprint}"
 
 
+def _persisted_configuration_difference(records: _SchemaRecords) -> str | None:
+    for kind, identity, _ in records:
+        if kind == "persisted-setting":
+            return f"unexpected {kind} {identity}"
+    return None
+
+
 def _schema_object_sum(records: _SchemaRecords) -> int:
     return sum(_record_digest(record) for record in records if record[0] == "schema-object") % (
         1 << 256
@@ -602,6 +615,46 @@ _SCHEMA_QUERIES = (
           OR identified.object_names[1] NOT IN ('pg_catalog', 'pg_toast')
       )
     ORDER BY 2, 3
+    """,
+    # pg_db_role_setting is the complete authored persistence surface behind
+    # ALTER DATABASE/ALTER ROLE SET. PostgreSQL does not classify GUCs by whether
+    # they alter write semantics, so measure the category instead of maintaining a
+    # setting-name list. Current-database rows cover database and database+role
+    # settings; role-wide rows cover every ctower-owned authority role.
+    """
+    WITH persisted_settings AS (
+        SELECT setting.setdatabase, setting.setrole, role.rolname,
+               unnest(setting.setconfig) AS configured
+        FROM pg_db_role_setting AS setting
+        LEFT JOIN pg_roles AS role ON role.oid = setting.setrole
+        WHERE setting.setdatabase = (
+                  SELECT database.oid
+                  FROM pg_database AS database
+                  WHERE database.datname = current_database()
+              )
+           OR (
+                  setting.setdatabase = 0
+              AND role.rolname LIKE 'ctower\\_%%' ESCAPE '\\'
+           )
+    ),
+    normalized AS (
+        SELECT CASE
+                   WHEN setting.setdatabase <> 0 AND setting.setrole = 0
+                       THEN 'database'
+                   WHEN setting.setdatabase = 0
+                       THEN 'role:' || setting.rolname
+                   ELSE 'database-role:' || setting.rolname
+               END AS scope,
+               split_part(setting.configured, '=', 1) AS name,
+               substring(
+                   setting.configured FROM strpos(setting.configured, '=') + 1
+               ) AS value
+        FROM persisted_settings AS setting
+    )
+    SELECT 'persisted-setting', setting.scope || '.' || setting.name,
+           jsonb_build_object('value', setting.value)::text
+    FROM normalized AS setting
+    ORDER BY setting.scope, setting.name, setting.value
     """,
     """
     SELECT 'relation', class.relname,
