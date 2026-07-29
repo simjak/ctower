@@ -14,12 +14,16 @@ import psycopg
 __all__ = [
     "MigrationAdoptionError",
     "MigrationBaseline",
+    "MigrationExecutionError",
     "MigrationScript",
     "MigrationStateError",
+    "acquire_migration_control_lock",
     "apply_database_migrations",
+    "record_database_migrations",
 ]
 
 _LEDGER = "ctower_schema_migrations"
+_LEDGER_ROLE = "ctower_migration_ledger"
 _LEDGER_LOCK = 712040119
 _SEMANTIC_CHECKS = "ctower.pre-ledger/v1"
 type _SchemaRecord = tuple[str, str, str]
@@ -47,6 +51,12 @@ class MigrationBaseline:
     schema_object_sum256: str
 
 
+@dataclass(frozen=True, slots=True)
+class _PendingMigration:
+    migration: MigrationScript
+    application_kind: Literal["applied", "baseline"]
+
+
 class MigrationStateError(ValueError):
     """The migration ledger is malformed or contradicts the authored history."""
 
@@ -60,42 +70,95 @@ class MigrationAdoptionError(MigrationStateError):
     """A pre-ledger database cannot prove the exact supported baseline."""
 
 
+class MigrationExecutionError(MigrationStateError):
+    """Authored migration SQL failed behind a bounded data-safe error."""
+
+
+def acquire_migration_control_lock(
+    connection: psycopg.Connection[tuple[object, ...]],
+) -> None:
+    """Serialize the complete cross-connection migration operation."""
+
+    connection.execute("SELECT pg_advisory_lock(%s)", (_LEDGER_LOCK,))
+
+
 def apply_database_migrations(
     connection: psycopg.Connection[tuple[object, ...]],
     migrations: tuple[MigrationScript, ...],
     baseline: MigrationBaseline,
-) -> None:
-    """Serialize, adopt or advance one database in the caller's transaction."""
+) -> tuple[_PendingMigration, ...]:
+    """Validate and advance schema; return rows for the narrow ledger authority."""
 
-    connection.execute("SELECT pg_advisory_xact_lock(%s)", (_LEDGER_LOCK,))
     ledger_exists = _ledger_exists(connection)
     if ledger_exists:
         _validate_ledger_shape(connection)
+        applied = _validated_applied_prefix(connection, migrations, baseline)
+        applied_count = len(applied)
+    else:
+        applied = []
+        applied_count = 0
+    pending: list[_PendingMigration] = []
+    if applied:
+        _validate_recorded_application_state(connection, applied, baseline)
     elif _has_preledger_objects(connection):
-        _adopt_preledger_database(connection, migrations, baseline)
-        ledger_exists = True
+        baseline_index = _validate_preledger_database(connection, migrations, baseline)
+        pending.extend(
+            _PendingMigration(migration, "baseline")
+            for migration in migrations[: baseline_index + 1]
+        )
+        applied_count = baseline_index + 1
+    for migration in migrations[applied_count:]:
+        _execute_migration(connection, migration)
+        pending.append(_PendingMigration(migration, "applied"))
+    return tuple(pending)
+
+
+def record_database_migrations(
+    connection: psycopg.Connection[tuple[object, ...]],
+    pending: tuple[_PendingMigration, ...],
+    baseline: MigrationBaseline,
+) -> None:
+    """Attest and record completed work only as the isolated ledger role."""
+
+    if not pending:
+        return
+    actual_records = _schema_records(connection)
+    actual_fingerprint = _schema_fingerprint(actual_records)
+    if pending[-1].migration.migration_id == baseline.through and not hmac.compare_digest(
+        actual_fingerprint,
+        baseline.schema_sha256,
+    ):
+        raise MigrationStateError(
+            "ledger-attestation-mismatch",
+            f"completed schema does not match {baseline.through}",
+        )
+    if pending[-1].migration.migration_id == baseline.through:
+        semantic_rejections = _baseline_semantic_rejections(connection, baseline)
+        if semantic_rejections:
+            raise MigrationStateError(
+                "ledger-semantic-mismatch",
+                ", ".join(semantic_rejections),
+            )
+    connection.execute(f"SET ROLE {_LEDGER_ROLE}")
+    if _ledger_exists(connection):
+        _validate_ledger_shape(connection)
     else:
         _create_ledger(connection)
-        ledger_exists = True
-    if not ledger_exists:  # pragma: no cover - defensive state narrowing
-        raise AssertionError("migration ledger was not created")
-    applied = _validated_applied_prefix(connection, migrations, baseline)
-    if not applied and _has_preledger_objects(connection):
-        raise MigrationStateError(
-            "ledger-history-mismatch",
-            "an empty ledger cannot accompany pre-existing migration objects",
+    for item in pending:
+        _record_migration(
+            connection,
+            item.migration,
+            application_kind=item.application_kind,
+            result_schema_sha256=actual_fingerprint,
         )
-    for migration in migrations[len(applied) :]:
-        connection.execute(migration.content)
-        _record_migration(connection, migration, application_kind="applied")
     _close_ledger_privileges(connection)
 
 
-def _adopt_preledger_database(
+def _validate_preledger_database(
     connection: psycopg.Connection[tuple[object, ...]],
     migrations: tuple[MigrationScript, ...],
     baseline: MigrationBaseline,
-) -> None:
+) -> int:
     baseline_index = _baseline_index(migrations, baseline)
     actual_records = _schema_records(connection)
     actual_fingerprint = _schema_fingerprint(actual_records)
@@ -116,9 +179,52 @@ def _adopt_preledger_database(
             "baseline-semantic-mismatch",
             ", ".join(semantic_rejections),
         )
-    _create_ledger(connection)
-    for migration in migrations[: baseline_index + 1]:
-        _record_migration(connection, migration, application_kind="baseline")
+    return baseline_index
+
+
+def _validate_recorded_application_state(
+    connection: psycopg.Connection[tuple[object, ...]],
+    applied: list[tuple[str, str, str, str, datetime]],
+    baseline: MigrationBaseline,
+) -> None:
+    actual_fingerprint = _schema_fingerprint(_schema_records(connection))
+    if not hmac.compare_digest(actual_fingerprint, applied[-1][3]):
+        raise MigrationStateError(
+            "ledger-schema-mismatch",
+            f"schema does not match the attestation for {applied[-1][0]}",
+        )
+    if applied[-1][0] == baseline.through and not hmac.compare_digest(
+        applied[-1][3],
+        baseline.schema_sha256,
+    ):
+        raise MigrationStateError(
+            "ledger-attestation-mismatch",
+            f"recorded schema does not match the authored baseline for {baseline.through}",
+        )
+
+
+def _execute_migration(
+    connection: psycopg.Connection[tuple[object, ...]],
+    migration: MigrationScript,
+) -> None:
+    try:
+        connection.execute(migration.content)
+    except psycopg.Error as error:
+        raise _migration_execution_error(migration.migration_id, error) from None
+
+
+def _migration_execution_error(
+    migration_id: str,
+    error: psycopg.Error,
+) -> MigrationExecutionError:
+    sqlstate = error.sqlstate or "unknown"
+    return MigrationExecutionError(
+        "migration-execution-failed",
+        (
+            f"{migration_id} failed with SQLSTATE {sqlstate}; "
+            "inspect access-controlled PostgreSQL diagnostics"
+        ),
+    )
 
 
 def _baseline_index(
@@ -177,6 +283,8 @@ def _create_ledger(connection: psycopg.Connection[tuple[object, ...]]) -> None:
                 CHECK (sha256 ~ '^sha256:[0-9a-f]{64}$'),
             application_kind text NOT NULL
                 CHECK (application_kind IN ('applied', 'baseline')),
+            result_schema_sha256 text NOT NULL
+                CHECK (result_schema_sha256 ~ '^sha256:[0-9a-f]{64}$'),
             applied_at timestamptz NOT NULL DEFAULT clock_timestamp()
         )
         """
@@ -216,9 +324,10 @@ def _validate_ledger_shape(connection: psycopg.Connection[tuple[object, ...]]) -
         ("migration_id", "text", True, ""),
         ("sha256", "text", True, ""),
         ("application_kind", "text", True, ""),
+        ("result_schema_sha256", "text", True, ""),
         ("applied_at", "timestamp with time zone", True, "clock_timestamp()"),
     ]
-    if relation != ("r", "ctower_admin") or columns != expected:
+    if relation != ("r", _LEDGER_ROLE) or columns != expected:
         raise MigrationStateError(
             "ledger-shape-mismatch",
             "ctower_schema_migrations is not the exact owned ledger table",
@@ -248,14 +357,19 @@ def _validate_ledger_shape(connection: psycopg.Connection[tuple[object, ...]]) -
         ),
         ("ctower_schema_migrations_pkey", "p", "PRIMARY KEY (migration_id)"),
         (
+            "ctower_schema_migrations_result_schema_sha256_check",
+            "c",
+            "CHECK ((result_schema_sha256 ~ '^sha256:[0-9a-f]{64}$'::text))",
+        ),
+        (
             "ctower_schema_migrations_sha256_check",
             "c",
             "CHECK ((sha256 ~ '^sha256:[0-9a-f]{64}$'::text))",
         ),
     ]
-    unexpected_access = connection.execute(
+    nonowner_access = connection.execute(
         """
-        SELECT 1
+        SELECT pg_get_userbyid(entry.grantee), entry.privilege_type, entry.is_grantable
         FROM pg_class AS class
         JOIN pg_namespace AS namespace ON namespace.oid = class.relnamespace
         CROSS JOIN LATERAL aclexplode(COALESCE(
@@ -263,11 +377,13 @@ def _validate_ledger_shape(connection: psycopg.Connection[tuple[object, ...]]) -
         )) AS entry
         WHERE namespace.nspname = 'public' AND class.relname = %s
           AND entry.grantee <> class.relowner
-        LIMIT 1
+        ORDER BY 1, 2, 3
         """,
         (_LEDGER,),
-    ).fetchone()
-    if constraints != expected_constraints or unexpected_access is not None:
+    ).fetchall()
+    if constraints != expected_constraints or nonowner_access != [
+        ("ctower_admin", "SELECT", False)
+    ]:
         raise MigrationStateError(
             "ledger-shape-mismatch",
             "ctower_schema_migrations constraints or privileges differ",
@@ -278,12 +394,13 @@ def _validated_applied_prefix(
     connection: psycopg.Connection[tuple[object, ...]],
     migrations: tuple[MigrationScript, ...],
     baseline: MigrationBaseline,
-) -> list[tuple[str, str, str, datetime]]:
+) -> list[tuple[str, str, str, str, datetime]]:
     rows = cast(
-        list[tuple[str, str, str, datetime]],
+        list[tuple[str, str, str, str, datetime]],
         connection.execute(
             """
-            SELECT migration_id, sha256, application_kind, applied_at
+            SELECT migration_id, sha256, application_kind,
+                   result_schema_sha256, applied_at
             FROM ctower_schema_migrations
             ORDER BY migration_id
             """
@@ -307,7 +424,7 @@ def _validated_applied_prefix(
 
 
 def _validate_baseline_rows(
-    rows: list[tuple[str, str, str, datetime]],
+    rows: list[tuple[str, str, str, str, datetime]],
     migrations: tuple[MigrationScript, ...],
     baseline: MigrationBaseline,
 ) -> None:
@@ -332,14 +449,20 @@ def _record_migration(
     migration: MigrationScript,
     *,
     application_kind: Literal["applied", "baseline"],
+    result_schema_sha256: str,
 ) -> None:
     connection.execute(
         """
         INSERT INTO ctower_schema_migrations (
-            migration_id, sha256, application_kind, applied_at
-        ) VALUES (%s, %s, %s, clock_timestamp())
+            migration_id, sha256, application_kind, result_schema_sha256, applied_at
+        ) VALUES (%s, %s, %s, %s, clock_timestamp())
         """,
-        (migration.migration_id, migration.sha256, application_kind),
+        (
+            migration.migration_id,
+            migration.sha256,
+            application_kind,
+            result_schema_sha256,
+        ),
     )
 
 
@@ -347,10 +470,11 @@ def _close_ledger_privileges(connection: psycopg.Connection[tuple[object, ...]])
     connection.execute(
         """
         REVOKE ALL ON ctower_schema_migrations
-        FROM PUBLIC, ctower_svc, ctower_projection, ctower_runtime,
+        FROM PUBLIC, ctower_admin, ctower_svc, ctower_projection, ctower_runtime,
              ctower_projection_runtime
         """
     )
+    connection.execute("GRANT SELECT ON ctower_schema_migrations TO ctower_admin")
 
 
 def _schema_records(
@@ -417,18 +541,38 @@ def _baseline_semantic_rejections(
 
 
 # PostgreSQL records schema-contained objects and their internally dependent children
-# in pg_depend. Starting at public and following the dependency graph discovers catalog
-# object kinds without maintaining another hand-authored allowlist.
+# in pg_depend. Starting at every user schema and following the dependency graph makes
+# PostgreSQL itself define the object-kind denominator. The private ledger and all of
+# its dependent catalog objects are removed as a dependency-discovered subtree.
 _SCHEMA_QUERIES = (
     """
-    WITH RECURSIVE schema_objects(classid, objid, objsubid) AS (
+    WITH RECURSIVE user_schemas(classid, objid, objsubid) AS (
         SELECT 'pg_catalog.pg_namespace'::regclass::oid, namespace.oid, 0
         FROM pg_namespace AS namespace
-        WHERE namespace.nspname = 'public'
+        WHERE namespace.nspname NOT IN ('pg_catalog', 'information_schema', 'pg_toast')
+          AND namespace.nspname NOT LIKE 'pg_temp_%%'
+          AND namespace.nspname NOT LIKE 'pg_toast_temp_%%'
+    ),
+    schema_objects(classid, objid, objsubid) AS (
+        SELECT * FROM user_schemas
         UNION
         SELECT dependency.classid, dependency.objid, dependency.objsubid
         FROM pg_depend AS dependency
         JOIN schema_objects AS referenced
+          ON referenced.classid = dependency.refclassid
+         AND referenced.objid = dependency.refobjid
+         AND referenced.objsubid = dependency.refobjsubid
+        WHERE dependency.deptype <> 'p'
+    ),
+    ledger_objects(classid, objid, objsubid) AS (
+        SELECT 'pg_catalog.pg_class'::regclass::oid, class.oid, 0
+        FROM pg_class AS class
+        JOIN pg_namespace AS namespace ON namespace.oid = class.relnamespace
+        WHERE namespace.nspname = 'public' AND class.relname = %s
+        UNION
+        SELECT dependency.classid, dependency.objid, dependency.objsubid
+        FROM pg_depend AS dependency
+        JOIN ledger_objects AS referenced
           ON referenced.classid = dependency.refclassid
          AND referenced.objid = dependency.refobjid
          AND referenced.objsubid = dependency.refobjsubid
@@ -446,6 +590,17 @@ _SCHEMA_QUERIES = (
     CROSS JOIN LATERAL pg_identify_object_as_address(
         object.classid, object.objid, object.objsubid
     ) AS identified
+    WHERE NOT EXISTS (
+        SELECT 1
+        FROM ledger_objects AS ledger
+        WHERE ledger.classid = object.classid
+          AND ledger.objid = object.objid
+          AND ledger.objsubid = object.objsubid
+    )
+      AND (
+          identified.object_names[1] IS NULL
+          OR identified.object_names[1] NOT IN ('pg_catalog', 'pg_toast')
+      )
     ORDER BY 2, 3
     """,
     """
@@ -457,7 +612,30 @@ _SCHEMA_QUERIES = (
                'replica_identity', class.relreplident,
                'row_security', class.relrowsecurity,
                'force_row_security', class.relforcerowsecurity,
+               'options', COALESCE((
+                   SELECT jsonb_agg(option ORDER BY option)
+                   FROM unnest(class.reloptions) AS option
+               ), '[]'::jsonb),
+               'access_method', COALESCE(access_method.amname, ''),
+               'tablespace', COALESCE(tablespace.spcname, ''),
+               'inherits', COALESCE((
+                   SELECT jsonb_agg(
+                       parent_namespace.nspname || '.' || parent.relname
+                       ORDER BY inheritance.inhseqno
+                   )
+                   FROM pg_inherits AS inheritance
+                   JOIN pg_class AS parent ON parent.oid = inheritance.inhparent
+                   JOIN pg_namespace AS parent_namespace
+                     ON parent_namespace.oid = parent.relnamespace
+                   WHERE inheritance.inhrelid = class.oid
+               ), '[]'::jsonb),
+               'partition_key', COALESCE(pg_get_partkeydef(class.oid), ''),
                'partition_bound', COALESCE(pg_get_expr(class.relpartbound, class.oid), ''),
+               'foreign_server', COALESCE(foreign_server.srvname, ''),
+               'foreign_options', COALESCE((
+                   SELECT jsonb_agg(option ORDER BY option)
+                   FROM unnest(foreign_table.ftoptions) AS option
+               ), '[]'::jsonb),
                'view_definition', CASE
                    WHEN class.relkind IN ('v', 'm') THEN pg_get_viewdef(class.oid, false)
                    ELSE ''
@@ -465,9 +643,37 @@ _SCHEMA_QUERIES = (
            )::text
     FROM pg_class AS class
     JOIN pg_namespace AS namespace ON namespace.oid = class.relnamespace
+    LEFT JOIN pg_am AS access_method ON access_method.oid = class.relam
+    LEFT JOIN pg_tablespace AS tablespace ON tablespace.oid = class.reltablespace
+    LEFT JOIN pg_foreign_table AS foreign_table ON foreign_table.ftrelid = class.oid
+    LEFT JOIN pg_foreign_server AS foreign_server
+      ON foreign_server.oid = foreign_table.ftserver
     WHERE namespace.nspname = 'public' AND class.relname <> %s
       AND class.relkind IN ('r', 'p', 'v', 'm', 'S', 'f')
     ORDER BY class.relname
+    """,
+    """
+    SELECT 'policy', class.relname || '.' || policy.polname,
+           jsonb_build_object(
+               'permissive', policy.polpermissive,
+               'command', policy.polcmd,
+               'roles', COALESCE((
+                   SELECT jsonb_agg(
+                       CASE WHEN role_id = 0 THEN 'PUBLIC'
+                            ELSE pg_get_userbyid(role_id) END
+                       ORDER BY CASE WHEN role_id = 0 THEN 'PUBLIC'
+                                     ELSE pg_get_userbyid(role_id) END
+                   )
+                   FROM unnest(policy.polroles) AS role_id
+               ), '[]'::jsonb),
+               'using', COALESCE(pg_get_expr(policy.polqual, policy.polrelid), ''),
+               'check', COALESCE(pg_get_expr(policy.polwithcheck, policy.polrelid), '')
+           )::text
+    FROM pg_policy AS policy
+    JOIN pg_class AS class ON class.oid = policy.polrelid
+    JOIN pg_namespace AS namespace ON namespace.oid = class.relnamespace
+    WHERE namespace.nspname = 'public' AND class.relname <> %s
+    ORDER BY class.relname, policy.polname
     """,
     """
     SELECT 'column', class.relname || '.' || attribute.attnum || '.' || attribute.attname,
@@ -596,13 +802,137 @@ _SCHEMA_QUERIES = (
                'enum', COALESCE((
                    SELECT jsonb_agg(enum.enumlabel ORDER BY enum.enumsortorder)
                    FROM pg_enum AS enum WHERE enum.enumtypid = type.oid
-               ), '[]'::jsonb)
+               ), '[]'::jsonb),
+               'composite_attributes', COALESCE((
+                   SELECT jsonb_agg(
+                       jsonb_build_object(
+                           'number', attribute.attnum,
+                           'name', attribute.attname,
+                           'type', format_type(attribute.atttypid, attribute.atttypmod),
+                           'not_null', attribute.attnotnull,
+                           'collation', CASE WHEN attribute.attcollation = 0 THEN ''
+                               ELSE attribute.attcollation::regcollation::text END
+                       )
+                       ORDER BY attribute.attnum
+                   )
+                   FROM pg_attribute AS attribute
+                   WHERE attribute.attrelid = type.typrelid
+                     AND attribute.attnum > 0 AND NOT attribute.attisdropped
+               ), '[]'::jsonb),
+               'range', COALESCE((
+                   SELECT jsonb_build_object(
+                       'range_type', format_type(range_row.rngtypid, NULL),
+                       'multirange_type', format_type(range_row.rngmultitypid, NULL),
+                       'subtype', format_type(range_row.rngsubtype, NULL),
+                       'collation', CASE WHEN range_row.rngcollation = 0 THEN ''
+                           ELSE range_row.rngcollation::regcollation::text END,
+                       'operator_class',
+                           operator_namespace.nspname || '.' || operator_class.opcname,
+                       'canonical', CASE WHEN range_row.rngcanonical = 0 THEN ''
+                           ELSE range_row.rngcanonical::regprocedure::text END,
+                       'subtype_diff', CASE WHEN range_row.rngsubdiff = 0 THEN ''
+                           ELSE range_row.rngsubdiff::regprocedure::text END
+                   )
+                   FROM pg_range AS range_row
+                   JOIN pg_opclass AS operator_class
+                     ON operator_class.oid = range_row.rngsubopc
+                   JOIN pg_namespace AS operator_namespace
+                     ON operator_namespace.oid = operator_class.opcnamespace
+                   WHERE type.oid IN (range_row.rngtypid, range_row.rngmultitypid)
+               ), '{}'::jsonb)
            )::text
     FROM pg_type AS type
     JOIN pg_namespace AS namespace ON namespace.oid = type.typnamespace
     WHERE namespace.nspname = 'public' AND type.typname <> %s
-      AND type.typtype IN ('d', 'e', 'r')
+      AND type.typtype IN ('c', 'd', 'e', 'm', 'r')
     ORDER BY type.typname
+    """,
+    """
+    SELECT 'extended-statistics', statistics.stxname,
+           jsonb_build_object(
+               'owner', pg_get_userbyid(statistics.stxowner),
+               'kinds', statistics.stxkind,
+               'keys', statistics.stxkeys::text,
+               'expressions', COALESCE(pg_get_expr(
+                   statistics.stxexprs, statistics.stxrelid
+               ), ''),
+               'definition', pg_get_statisticsobjdef(statistics.oid)
+           )::text
+    FROM pg_statistic_ext AS statistics
+    JOIN pg_namespace AS namespace ON namespace.oid = statistics.stxnamespace
+    WHERE namespace.nspname = 'public'
+    ORDER BY statistics.stxname
+    """,
+    """
+    SELECT 'comment',
+           identified.type || ':' ||
+               COALESCE(array_to_string(identified.object_names, '.'), ''),
+           description.description
+    FROM pg_description AS description
+    CROSS JOIN LATERAL pg_identify_object_as_address(
+        description.classoid, description.objoid, description.objsubid
+    ) AS identified
+    WHERE identified.object_names[1] = 'public'
+      AND NOT (%s = ANY(identified.object_names))
+    ORDER BY 2, 3
+    """,
+    """
+    SELECT 'security-label',
+           identified.type || ':' ||
+               COALESCE(array_to_string(identified.object_names, '.'), '') || '.' ||
+               security_label.provider,
+           security_label.label
+    FROM pg_seclabel AS security_label
+    CROSS JOIN LATERAL pg_identify_object_as_address(
+        security_label.classoid, security_label.objoid, security_label.objsubid
+    ) AS identified
+    WHERE identified.object_names[1] = 'public'
+      AND NOT (%s = ANY(identified.object_names))
+    ORDER BY 2, 3
+    """,
+    """
+    SELECT 'publication', publication.pubname,
+           jsonb_build_object(
+               'owner', pg_get_userbyid(publication.pubowner),
+               'all_tables', publication.puballtables,
+               'insert', publication.pubinsert,
+               'update', publication.pubupdate,
+               'delete', publication.pubdelete,
+               'truncate', publication.pubtruncate,
+               'via_partition_root', publication.pubviaroot,
+               'tables', COALESCE((
+                   SELECT jsonb_agg(
+                       jsonb_build_object(
+                           'name', member_namespace.nspname || '.' || member.relname,
+                           'filter', COALESCE(
+                               pg_get_expr(membership.prqual, membership.prrelid), ''
+                           ),
+                           'columns', COALESCE((
+                               SELECT jsonb_agg(attribute.attname ORDER BY attribute.attnum)
+                               FROM unnest(membership.prattrs) AS number
+                               JOIN pg_attribute AS attribute
+                                 ON attribute.attrelid = membership.prrelid
+                                AND attribute.attnum = number
+                           ), '[]'::jsonb)
+                       )
+                       ORDER BY member_namespace.nspname, member.relname
+                   )
+                   FROM pg_publication_rel AS membership
+                   JOIN pg_class AS member ON member.oid = membership.prrelid
+                   JOIN pg_namespace AS member_namespace
+                     ON member_namespace.oid = member.relnamespace
+                   WHERE membership.prpubid = publication.oid
+               ), '[]'::jsonb),
+               'schemas', COALESCE((
+                   SELECT jsonb_agg(namespace.nspname ORDER BY namespace.nspname)
+                   FROM pg_publication_namespace AS membership
+                   JOIN pg_namespace AS namespace
+                     ON namespace.oid = membership.pnnspid
+                   WHERE membership.pnpubid = publication.oid
+               ), '[]'::jsonb)
+           )::text
+    FROM pg_publication AS publication
+    ORDER BY publication.pubname
     """,
     """
     WITH access AS (
@@ -694,6 +1024,12 @@ _SEMANTIC_QUERIES = (
         """,
     ),
     (
+        "record-position-history-unprovable",
+        """
+        SELECT EXISTS (SELECT 1 FROM events)
+        """,
+    ),
+    (
         "durability-policy-singleton",
         "SELECT (SELECT count(*) FROM durability_policy_state) <> 1",
     ),
@@ -753,9 +1089,13 @@ _SEMANTIC_QUERIES = (
             WHERE event.kind = 'proof.changed'
         )
         SELECT EXISTS (
-            SELECT * FROM expected
-            EXCEPT
-            SELECT event_id, tenant_id, subject_kind, subject_id FROM event_links
+            (SELECT * FROM expected
+             EXCEPT
+             SELECT event_id, tenant_id, subject_kind, subject_id FROM event_links)
+            UNION ALL
+            (SELECT event_id, tenant_id, subject_kind, subject_id FROM event_links
+             EXCEPT
+             SELECT * FROM expected)
         )
         """,
     ),
@@ -795,13 +1135,28 @@ _SEMANTIC_QUERIES = (
     (
         "workflow-start-fact-backfill",
         """
+        WITH expected AS (
+            SELECT event.event_id, event.tenant_id, run.workflow_run_id, run.ticket_id,
+                   run.activity_class, event.server_time AS recorded_at
+            FROM events AS event
+            JOIN workflow_runs AS run
+              ON run.tenant_id = event.tenant_id
+             AND run.workflow_run_id = event.aggregate_id
+            WHERE event.kind = 'workflow.changed'
+              AND event.payload ->> 'operation' = 'start'
+        )
         SELECT EXISTS (
-            SELECT 1
-            FROM workflow_runs AS run
-            LEFT JOIN workflow_start_facts AS fact
-              ON fact.tenant_id = run.tenant_id
-             AND fact.workflow_run_id = run.workflow_run_id
-            WHERE fact.event_id IS NULL
+            (SELECT * FROM expected
+             EXCEPT
+             SELECT event_id, tenant_id, workflow_run_id, ticket_id,
+                    activity_class, recorded_at
+             FROM workflow_start_facts)
+            UNION ALL
+            (SELECT event_id, tenant_id, workflow_run_id, ticket_id,
+                    activity_class, recorded_at
+             FROM workflow_start_facts
+             EXCEPT
+             SELECT * FROM expected)
         )
         """,
     ),

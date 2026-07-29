@@ -26,9 +26,13 @@ from ctower_kernel.record._durability_probe_role_sql import (
 from ctower_kernel.record._migration_ledger_sql import (
     MigrationAdoptionError,
     MigrationBaseline,
+    MigrationExecutionError,
     MigrationScript,
     MigrationStateError,
+    _migration_execution_error,
+    acquire_migration_control_lock,
     apply_database_migrations,
+    record_database_migrations,
 )
 from ctower_kernel.record._recovery_role_shape_sql import (
     RecoveryRoleConfigurationError,
@@ -38,6 +42,7 @@ from ctower_kernel.record._uuid import uuid7 as _uuid7
 
 __all__ = [
     "MigrationAdoptionError",
+    "MigrationExecutionError",
     "MigrationStateError",
     "RecoveryRoleConfigurationError",
     "apply_migrations",
@@ -197,8 +202,8 @@ class _MigrationManifest(BaseModel):
         if paths != tuple(sorted(set(paths))):
             raise ValueError("migration paths must be unique and ordered")
         database_paths = tuple(entry.path for entry in self.migrations if entry.scope == "database")
-        if self.adoption_baseline.through not in database_paths:
-            raise ValueError("adoption baseline must name one database migration")
+        if not database_paths or self.adoption_baseline.through != database_paths[-1]:
+            raise ValueError("adoption baseline must name the final database migration")
         return self
 
 
@@ -297,19 +302,21 @@ def _apply_cluster_migrations(
     connection: psycopg.Connection[dict[str, object]],
 ) -> None:
     for migration in _migration_scripts("cluster"):
-        _execute_cluster_migration(connection, migration.content)
+        _execute_cluster_migration(connection, migration)
 
 
 def _execute_cluster_migration(
     connection: psycopg.Connection[dict[str, object]],
-    script: str,
+    migration: MigrationScript,
 ) -> None:
     try:
-        connection.execute(script)
+        connection.execute(migration.content)
     except psycopg.errors.RaiseException as error:
         if error.diag.message_primary == RecoveryRoleConfigurationError.MESSAGE:
             raise RecoveryRoleConfigurationError from None
-        raise
+        raise _migration_execution_error(migration.migration_id, error) from None
+    except psycopg.Error as error:
+        raise _migration_execution_error(migration.migration_id, error) from None
 
 
 def _quarantine_projection_runtime(admin_dsn: str) -> bool:
@@ -457,17 +464,27 @@ def _projection_membership_rejections(
 
 
 def apply_migrations(migrator_dsn: str, *, role_admin_dsn: str) -> None:
-    """Apply database migrations, then close the transient server-role boundary."""
+    """Reconcile roles, then serialize, apply, attest, and record migrations."""
 
-    with psycopg.connect(migrator_dsn) as connection:
-        connection.execute("SET ROLE ctower_admin")
-        loaded = _load_migrations()
-        apply_database_migrations(
-            connection,
-            tuple(migration for migration in loaded.scripts if migration.scope == "database"),
-            loaded.baseline,
-        )
+    loaded = _load_migrations()
+    database_migrations = tuple(
+        migration for migration in loaded.scripts if migration.scope == "database"
+    )
     provision_database_roles(role_admin_dsn)
+    with psycopg.connect(role_admin_dsn) as control:
+        acquire_migration_control_lock(control)
+        with psycopg.connect(migrator_dsn) as connection:
+            connection.execute("SET ROLE ctower_admin")
+            pending = apply_database_migrations(
+                connection,
+                database_migrations,
+                loaded.baseline,
+            )
+        # Database migrations can create functions and grants governed by the
+        # cluster-role boundary. Close that boundary before attesting completion.
+        # A failure here leaves no ledger, which is the explicit resumable marker.
+        provision_database_roles(role_admin_dsn)
+        record_database_migrations(control, pending, loaded.baseline)
 
 
 def provision_bootstrap(

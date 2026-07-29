@@ -46,6 +46,7 @@ from ctower_kernel.record._intake_sql import submit_intake as _submit_intake
 from ctower_kernel.record._migration_ledger_sql import (
     MigrationAdoptionError,
     MigrationBaseline,
+    MigrationExecutionError,
     MigrationScript,
     MigrationStateError,
     apply_database_migrations,
@@ -74,6 +75,7 @@ from ctower_kernel.telemetry import NoopTelemetry, Telemetry, TelemetryContext
 __all__ = [
     "MigrationAdoptionError",
     "MigrationBaseline",
+    "MigrationExecutionError",
     "MigrationScript",
     "MigrationStateError",
     "PostgresDurabilityFinalizer",

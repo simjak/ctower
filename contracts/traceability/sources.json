@@ -1403,6 +1403,14 @@
       ]
     },
     {
+      "path": "packages/ctower-kernel/migrations/0036_migration_ledger_role.sql",
+      "references": [
+        "SPEC#persistence-authority",
+        "AC-DUR-06",
+        "AC-DUR-07"
+      ]
+    },
+    {
       "path": "packages/ctower-kernel/migrations/manifest.json",
       "references": [
         "SPEC#executable-authority-and-requirement-traceability",
