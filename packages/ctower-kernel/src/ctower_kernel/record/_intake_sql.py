@@ -54,6 +54,9 @@ from ctower_kernel.record._intake_event_sql import (
     submit_commits as _submit_commits,
 )
 from ctower_kernel.record._intake_state_sql import (
+    initial_custody_problem as _initial_custody_problem,
+)
+from ctower_kernel.record._intake_state_sql import (
     insert_new_thread as _insert_new_thread,
 )
 from ctower_kernel.record._intake_state_sql import (
@@ -94,6 +97,7 @@ def submit_intake(
     command: IntakeSubmitCommand,
     *,
     request_digest: bytes,
+    policy_refusal: RecordProblem | None = None,
     now: datetime,
     telemetry: TelemetryContext,
 ) -> IntakeCommandResult | RecordProblem:
@@ -106,6 +110,7 @@ def submit_intake(
             actor,
             command,
             request_digest=request_digest,
+            policy_refusal=policy_refusal,
             now=now,
         )
         if not isinstance(prepared, tuple):
@@ -131,6 +136,7 @@ def promote_intake(
     command: IntakePromotionCommand,
     *,
     request_digest: bytes,
+    policy_refusal: RecordProblem | None = None,
     now: datetime,
     telemetry: TelemetryContext,
 ) -> IntakeCommandResult | RecordProblem:
@@ -143,6 +149,7 @@ def promote_intake(
             actor,
             command,
             request_digest=request_digest,
+            policy_refusal=policy_refusal,
             now=now,
         )
         if not isinstance(prepared, tuple):
@@ -169,11 +176,31 @@ def _prepare_submit(
     command: IntakeSubmitCommand,
     *,
     request_digest: bytes,
+    policy_refusal: RecordProblem | None,
     now: datetime,
 ) -> _SubmitPreparation | IntakeCommandResult | RecordProblem:
     replay = transaction.reserve(actor.principal_id, command.client_command_id, request_digest)
     if replay is not None:
         return replay if isinstance(replay, RecordProblem) else _result_from_payload(replay)
+    if policy_refusal is not None:
+        return _refuse(
+            transaction,
+            actor,
+            command.client_command_id,
+            request_digest,
+            policy_refusal,
+            now,
+        )
+    custody_problem = _initial_custody_problem(connection, actor, command)
+    if custody_problem is not None:
+        return _refuse(
+            transaction,
+            actor,
+            command.client_command_id,
+            request_digest,
+            custody_problem,
+            now,
+        )
     identifiers = _submit_ids(command, now)
     durable = transaction.require_durable_subjects(
         actor.tenant_id,
@@ -297,11 +324,31 @@ def _prepare_promotion(
     command: IntakePromotionCommand,
     *,
     request_digest: bytes,
+    policy_refusal: RecordProblem | None,
     now: datetime,
 ) -> _PromotionPreparation | IntakeCommandResult | RecordProblem:
     replay = transaction.reserve(actor.principal_id, command.client_command_id, request_digest)
     if replay is not None:
         return replay if isinstance(replay, RecordProblem) else _result_from_payload(replay)
+    if policy_refusal is not None:
+        return _refuse(
+            transaction,
+            actor,
+            command.client_command_id,
+            request_digest,
+            policy_refusal,
+            now,
+        )
+    custody_problem = _initial_custody_problem(connection, actor, command)
+    if custody_problem is not None:
+        return _refuse(
+            transaction,
+            actor,
+            command.client_command_id,
+            request_digest,
+            custody_problem,
+            now,
+        )
     resolved = _resolve_inbound_for_promotion(connection, actor, command)
     if isinstance(resolved, RecordProblem):
         return _refuse(transaction, actor, command.client_command_id, request_digest, resolved, now)

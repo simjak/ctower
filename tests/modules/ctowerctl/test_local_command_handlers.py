@@ -65,6 +65,8 @@ def test_operations_handlers_build_and_route_only_authored_commands() -> None:
             stage_key="verification",
             custodian_id=custodian_id,
             assignee_id=assignee_id,
+            source_kind="mission-control",
+            source_ref="R2258",
         ),
         cast(CtowerClient, client),
     )
@@ -78,6 +80,8 @@ def test_operations_handlers_build_and_route_only_authored_commands() -> None:
         "verification",
         custodian_id,
         assignee_id,
+        "mission-control",
+        "R2258",
     )
     with pytest.raises(ValueError, match="unsupported operations query"):
         _ops_commands.execute_query(
@@ -218,6 +222,8 @@ def test_interface_dispatch_fails_closed(
             stage_key=None,
             custodian_id=None,
             assignee_id=None,
+            source_kind=None,
+            source_ref=None,
         ),
         cast(CtowerClient, client),
     )
@@ -381,7 +387,9 @@ class _OperationsClient:
             str | None,
             UUID | None,
             UUID | None,
-        ] = (None, None, None, None, None)
+            str | None,
+            str | None,
+        ] = (None, None, None, None, None, None, None)
 
     def get_control_health(self) -> _Result:
         self.calls.append("health")
@@ -395,9 +403,19 @@ class _OperationsClient:
         stage_key: str | None,
         custodian_id: UUID | None,
         assignee_id: UUID | None,
+        source_kind: str | None,
+        source_ref: str | None,
     ) -> _Result:
         self.calls.append("board")
-        self.board_filters = (lane, priority, stage_key, custodian_id, assignee_id)
+        self.board_filters = (
+            lane,
+            priority,
+            stage_key,
+            custodian_id,
+            assignee_id,
+            source_kind,
+            source_ref,
+        )
         return _Result(marker="board")
 
 

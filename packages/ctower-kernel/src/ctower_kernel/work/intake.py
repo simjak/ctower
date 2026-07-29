@@ -19,6 +19,7 @@ from ctower_kernel.record.intake import (
     IntakeTaint,
 )
 from ctower_kernel.telemetry import NoopTelemetry, Telemetry, TelemetryContext
+from ctower_kernel.work._custody_policy import initial_custody_refusal
 
 __all__ = ["Intake"]
 
@@ -37,6 +38,7 @@ class _IntakeWriter(Protocol):
         command: IntakeSubmitCommand,
         *,
         request_digest: bytes,
+        policy_refusal: RecordProblem | None,
         now: datetime,
         telemetry: TelemetryContext,
     ) -> IntakeCommandResult | RecordProblem: ...
@@ -47,6 +49,7 @@ class _IntakeWriter(Protocol):
         command: IntakePromotionCommand,
         *,
         request_digest: bytes,
+        policy_refusal: RecordProblem | None,
         now: datetime,
         telemetry: TelemetryContext,
     ) -> IntakeCommandResult | RecordProblem: ...
@@ -76,6 +79,7 @@ class Intake:
             actor,
             command,
             request_digest=_digest(command.request_payload()),
+            policy_refusal=_custody_refusal(actor, command),
             now=self._clock(),
             telemetry=telemetry,
         )
@@ -92,6 +96,7 @@ class Intake:
             actor,
             command,
             request_digest=_digest(command.request_payload()),
+            policy_refusal=_custody_refusal(actor, command),
             now=self._clock(),
             telemetry=telemetry,
         )
@@ -218,6 +223,25 @@ def _create_refusal(
     if priority == "P0" and actor.kind is not PrincipalKind.OPERATOR:
         return _unauthorized(command_id, "Only an operator may create a P0 intake ticket")
     return None
+
+
+def _custody_refusal(
+    actor: Actor, command: IntakeSubmitCommand | IntakePromotionCommand
+) -> RecordProblem | None:
+    if (
+        command.intent is not IntakeIntent.CREATE_TICKET
+        or command.initial_custodian_id is None
+        or (
+            isinstance(command, IntakeSubmitCommand)
+            and command.taint is IntakeTaint.QUARANTINE_REQUIRED
+        )
+    ):
+        return None
+    return initial_custody_refusal(
+        actor,
+        command.client_command_id,
+        command.initial_custodian_id,
+    )
 
 
 def _link_refusal(

@@ -72,12 +72,12 @@ CLI detail, and a declared slot is never dropped from the denominator to make co
 
 ```bash
 ctl --base-url http://127.0.0.1:8080 board query \
-  --lane in_progress --priority P1 --stage-key implement
+  --source-kind mission-control --source-ref R2238
 ```
 
-All five filters are optional and combine: `--lane`, `--priority`, `--stage-key`, `--custodian-id`,
-`--assignee-id`. The operation is `GET /v1/board`. It is a query, never spooled, and returns exit `0` on
-success.
+All seven filters are optional and combine: `--lane`, `--priority`, `--stage-key`, `--custodian-id`,
+`--assignee-id`, `--source-kind`, and `--source-ref`. The operation is `GET /v1/board`. It is a query,
+never spooled, and returns exit `0` on success.
 
 ## Related
 

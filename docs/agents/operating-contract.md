@@ -8,13 +8,13 @@ If you follow only one rule, follow this one:
 ctower refuses with typed, machine-readable codes precisely so that a caller can decide correctly. Blind
 retry against a typed refusal is the failure mode this contract exists to prevent.
 
-## Rule 1 — you supply the idempotency key, and you reuse it
+## Rule 1 — one intent gets one idempotency key
 
-Every mutation carries a caller-supplied UUID, and every mutation but one requires you to supply it.
+Every mutation carries a UUID idempotency key. Most commands require you to supply it:
 
 - HTTP: the `Idempotency-Key` header.
-- CLI: `--command-id`. The single exception is `synthetic run`, which generates one when you omit it — supply
-  your own anyway, or you cannot replay the command.
+- CLI: `--command-id`. `ticket capture`, `ticket create`, and `synthetic run` generate one client-side when
+  you omit it and print it in their result.
 
 The rules:
 
@@ -22,11 +22,17 @@ The rules:
 2. **Reuse the same key for every replay of the same intent.** Replaying a key with the same semantics
    returns the original result. This is how you recover from an unknown outcome without creating duplicates.
 3. **Never reuse a key for different content.** That is refused as `idempotency-conflict`.
-4. **A new attempt at the same intent is still the same key.** If you generate a fresh key because the last
-   call returned `75`, you have just created a second ticket.
+4. **A new attempt at the same intent is still the same key.** If a defaulted ticket command returns `75`,
+   run `spool drain` or replay the printed `command_id` explicitly. Re-entering the create command without
+   `--command-id` generates a new intent.
 
-`ticket capture`/`ticket create` are the only place where a duplicate is expensive and invisible, but the
-rule is universal.
+An omitted ticket command ID is safe for the CLI's own encrypted-spool replay. Supply one explicitly when
+another process must coordinate the retry.
+
+For `ticket capture` and `ticket create`, omitting `--initial-custodian-id` selects the authenticated
+principal already resolved from stdin authority. A Commander may establish its own custody. An operator
+must explicitly name an eligible Commander; omission is refused rather than silently putting the operator
+in custody. Any explicit value is still an authorization request, not authority by itself.
 
 ## Rule 2 — you supply the expected version, and you read it back from refusals
 
@@ -188,7 +194,15 @@ transfer is a protected operation and is separately audited.
 
 ## A worked loop
 
-Creating a ticket, correctly, as an agent:
+For one-off interactive creation, let the client create the key:
+
+```text
+run: ticket create --priority P2 --source-kind mission-control --source-ref R2257 --title …
+exit 0   -> accepted. record command_id and ticket_id. done.
+exit 75  -> do not enter create again. run `spool drain` with the same origin and authority.
+```
+
+For caller-coordinated retries, create the key once and pass it explicitly:
 
 ```text
 command_id := new UUID                      # once
@@ -205,6 +219,31 @@ attempt:
 
 Note the asymmetry in the last line: `64` is the only code where nothing can possibly have been recorded, so
 it is the only one where starting over with a fresh key is safe.
+
+## Source lookup and the mirroring race
+
+The Board is the cross-ticket index. For source `mission-control / R2238`, use this exact sequence:
+
+```bash
+printf '%s\n' "${authority}" |
+  ctl --base-url "${base_url}" board query \
+    --source-kind mission-control --source-ref R2238
+
+# Only when cards is empty:
+printf '%s\n' "${authority}" |
+  ctl --base-url "${base_url}" ticket create \
+    --priority P2 \
+    --source-kind mission-control \
+    --source-ref R2238 \
+    --title "Mirror R2238"
+```
+
+This lookup is a read capability, not a uniqueness or provenance claim. Two callers can both observe an
+empty Board projection and create separate tickets for the same source pair. A caller that needs idempotent
+mirroring must use one stable explicit command ID across its retries and must reconcile duplicates if
+independent creators race. [Issue #68](https://github.com/simjak/ctower/issues/68) tracks the source
+namespace, ownership/grant, accepted-data upgrade, and all-writer locking design required before source
+uniqueness can be enforced safely.
 
 ## Related
 

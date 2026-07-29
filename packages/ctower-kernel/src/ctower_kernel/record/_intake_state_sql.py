@@ -18,7 +18,7 @@ from ctower_kernel.record._intake_command_sql import IntakeAction, IntakeThreadS
 from ctower_kernel.record._intake_command_sql import scope_problem as _scope_problem
 from ctower_kernel.record._intake_command_sql import version_problem as _version_problem
 from ctower_kernel.record._ticket_sql import (
-    _eligible_custodian,
+    _initial_custody_problem,
     _TicketIds,
 )
 from ctower_kernel.record.intake import (
@@ -153,6 +153,30 @@ def reserve_source_alias(
     )
 
 
+def initial_custody_problem(
+    connection: psycopg.Connection[dict[str, object]],
+    actor: Actor,
+    command: IntakeSubmitCommand | IntakePromotionCommand,
+) -> RecordProblem | None:
+    """Establish target authority before consulting observable intake state."""
+
+    if (
+        command.intent is not IntakeIntent.CREATE_TICKET
+        or command.initial_custodian_id is None
+        or (
+            isinstance(command, IntakeSubmitCommand)
+            and command.taint is IntakeTaint.QUARANTINE_REQUIRED
+        )
+    ):
+        return None
+    return _initial_custody_problem(
+        connection,
+        actor,
+        command.client_command_id,
+        command.initial_custodian_id,
+    )
+
+
 def prepare_action(
     connection: psycopg.Connection[dict[str, object]],
     actor: Actor,
@@ -190,18 +214,17 @@ def _prepare_create_action(
 ) -> IntakeAction | RecordProblem:
     if command.initial_custodian_id is None or command.priority is None or command.title is None:
         raise RuntimeError("Work admitted incomplete create-ticket intake")
-    if not _eligible_custodian(connection, actor, command.initial_custodian_id):
-        return _scope_problem(command.client_command_id)
+    source_reference = _ticket_source(command, source)
+    custody_problem = initial_custody_problem(connection, actor, command)
+    if custody_problem is not None:
+        return custody_problem
     if ticket_ids is None:
         raise RuntimeError("create-ticket intake identifiers are unavailable")
-    inbound_source = command.source if isinstance(command, IntakeSubmitCommand) else source
-    if inbound_source is None:
-        raise RuntimeError("promotion source provenance is unavailable")
     ticket_command = TicketCommand(
         client_command_id=command.client_command_id,
         initial_custodian_id=command.initial_custodian_id,
         priority=command.priority,
-        source=SourceReference(inbound_source.kind, inbound_source.ref),
+        source=source_reference,
         title=command.title,
     )
     return IntakeAction(
@@ -211,6 +234,18 @@ def _prepare_create_action(
         ticket_command,
         ticket_ids,
     )
+
+
+def _ticket_source(
+    command: IntakeSubmitCommand | IntakePromotionCommand,
+    promotion_source: InboundSource | None,
+) -> SourceReference:
+    inbound_source = (
+        command.source if isinstance(command, IntakeSubmitCommand) else promotion_source
+    )
+    if inbound_source is None:
+        raise RuntimeError("promotion source provenance is unavailable")
+    return SourceReference(inbound_source.kind, inbound_source.ref)
 
 
 def _prepare_link_action(

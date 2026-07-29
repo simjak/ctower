@@ -20,6 +20,7 @@ import pytest
 import uvicorn
 from ctower_contracts import CATALOG
 from fastapi.testclient import TestClient
+from support.acceptance import accept_pending_commands
 from support.catalog import MemoryObjectStore, minimal_bundle
 from support.postgres import DatabaseFixture
 from support.telemetry import telemetry_headers
@@ -118,6 +119,57 @@ def test_ticket_capture_and_query_use_stable_queued_command(
     assert created["result"]["durability_state"] == "durability_pending"
     assert shown == created["result"]["ticket"]
     assert tenant.operator_credential not in created_text + shown_text
+
+
+def test_ticket_create_without_hand_minted_identifiers_uses_authenticated_principal(
+    tenant: TenantFixture,
+    cli_state: _MemoryBackend,
+) -> None:
+    del cli_state
+    with _server(tenant.database.runtime_dsn) as base_url:
+        status, created_text, error = _run(
+            _first_day_create_arguments(base_url, source_ref="R2257-defaults"),
+            authority=tenant.commander_credential,
+        )
+
+    created = json.loads(created_text)
+    assert status == EXIT_TEMPORARY
+    assert error == ""
+    assert UUID(created["command_id"])
+    assert created["result"]["ticket"]["custodian_id"] == str(tenant.commander_id)
+    assert created["result"]["ticket"]["source"] == {
+        "kind": "mission-control",
+        "ref": "R2257-defaults",
+    }
+
+
+def test_explicit_ticket_command_id_replay_still_deduplicates_with_default_custodian(
+    tenant: TenantFixture,
+    cli_state: _MemoryBackend,
+) -> None:
+    del cli_state
+    command_id = uuid4()
+    with _server(tenant.database.runtime_dsn) as base_url:
+        arguments = _first_day_create_arguments(
+            base_url,
+            source_ref="R2257-explicit-replay",
+            command_id=command_id,
+        )
+        first = _run(arguments, authority=tenant.commander_credential)
+        accept_pending_commands(tenant.database.admin_dsn, tenant.tenant_id)
+        replay = _run(arguments, authority=tenant.commander_credential)
+
+    first_payload = json.loads(first[1])
+    replay_payload = json.loads(replay[1])
+    assert (first[0], replay[0]) == (EXIT_TEMPORARY, 0)
+    assert first[2] == replay[2] == ""
+    assert first_payload["command_id"] == replay_payload["command_id"] == str(command_id)
+    assert {
+        **first_payload["result"]["ticket"],
+        "durability_state": "accepted",
+    } == replay_payload["result"]["ticket"]
+    assert first_payload["result"]["event_ids"] == replay_payload["result"]["event_ids"]
+    assert _ticket_count(tenant.database.admin_dsn) == 1
 
 
 def test_assignment_and_protected_custody_are_distinct_generated_commands(
@@ -261,6 +313,31 @@ def _create_arguments(base_url: str, tenant: TenantFixture, command_id: UUID) ->
         "--title",
         "CLI durable ticket",
     ]
+
+
+def _first_day_create_arguments(
+    base_url: str,
+    *,
+    source_ref: str,
+    command_id: UUID | None = None,
+) -> list[str]:
+    arguments = [
+        "--base-url",
+        base_url,
+        "ticket",
+        "create",
+        "--priority",
+        "P2",
+        "--source-kind",
+        "mission-control",
+        "--source-ref",
+        source_ref,
+        "--title",
+        "First-day usable ticket",
+    ]
+    if command_id is not None:
+        arguments.extend(("--command-id", str(command_id)))
+    return arguments
 
 
 def _bootstrap_arguments(base_url: str, command_id: UUID) -> list[str]:

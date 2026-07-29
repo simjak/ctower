@@ -1,5 +1,5 @@
 // DO NOT EDIT: generated file; regenerate from declared inputs.
-// Authored contract digest: sha256:f4af8606f2de20320e2a8baf3744b36f04ebb1ee992bf58baf75c3fe992d4075
+// Authored contract digest: sha256:d7522e80aa4e3ac9563b24c90ecbfd9f437442ba6d0e85c758dc0889e6dfcf69
 
 export type ActivityClass = "work" | "verification";
 
@@ -1090,7 +1090,7 @@ export type TicketCommentResult = Readonly<{
 }>;
 
 export type TicketCreateRequest = Readonly<{
-  readonly "initial_custodian_id": string;
+  readonly "initial_custodian_id"?: string | null;
   readonly "priority": Priority;
   readonly "source": SourceReference;
   readonly "title": string;

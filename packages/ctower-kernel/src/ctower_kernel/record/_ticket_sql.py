@@ -76,6 +76,7 @@ def create_ticket(
     command: TicketCommand,
     *,
     request_digest: bytes,
+    policy_refusal: RecordProblem | None = None,
     now: datetime,
     telemetry: TelemetryContext,
 ) -> TicketCommandResult | RecordProblem:
@@ -86,7 +87,13 @@ def create_ticket(
         transaction = RecordTransaction(connection)
         identifiers = _TicketIds(*(_uuid7(now) for _ in range(3)))
         reserved = _reserve_ticket_outcome(
-            connection, transaction, actor, command, request_digest=request_digest, now=now
+            connection,
+            transaction,
+            actor,
+            command,
+            request_digest=request_digest,
+            policy_refusal=policy_refusal,
+            now=now,
         )
         if reserved is not None:
             return reserved
@@ -131,6 +138,7 @@ def _reserve_ticket_outcome(
     command: TicketCommand,
     *,
     request_digest: bytes,
+    policy_refusal: RecordProblem | None,
     now: datetime,
 ) -> TicketCommandResult | RecordProblem | None:
     existing = transaction.reserve(actor.principal_id, command.client_command_id, request_digest)
@@ -138,10 +146,17 @@ def _reserve_ticket_outcome(
         return existing
     if existing is not None:
         return _result_from_payload(existing)
-    if _eligible_custodian(connection, actor, command.initial_custodian_id):
-        return None
-    problem = _scope_problem(command.client_command_id)
-    return _refuse(transaction, actor, command, request_digest, problem, now)
+    if policy_refusal is not None:
+        return _refuse(transaction, actor, command, request_digest, policy_refusal, now)
+    custody_problem = _initial_custody_problem(
+        connection,
+        actor,
+        command.client_command_id,
+        command.initial_custodian_id,
+    )
+    if custody_problem is not None:
+        return _refuse(transaction, actor, command, request_digest, custody_problem, now)
+    return None
 
 
 def get_ticket(
@@ -224,18 +239,37 @@ def _refuse(
     return problem
 
 
-def _eligible_custodian(
-    connection: psycopg.Connection[dict[str, object]], actor: Actor, custodian_id: UUID
-) -> bool:
+def _initial_custody_problem(
+    connection: psycopg.Connection[dict[str, object]],
+    actor: Actor,
+    command_id: UUID,
+    custodian_id: UUID,
+) -> RecordProblem | None:
     row = connection.execute(
         """
-        SELECT 1 FROM principals
+        SELECT kind FROM principals
         WHERE tenant_id = %s AND principal_id = %s AND NOT disabled
-          AND kind IN ('commander', 'operator')
         """,
         (actor.tenant_id, custodian_id),
     ).fetchone()
-    return row is not None
+    if row is None:
+        return _scope_problem(command_id)
+    authorized = str(row["kind"]) == PrincipalKind.COMMANDER.value and (
+        actor.kind is PrincipalKind.OPERATOR
+        or (actor.kind is PrincipalKind.COMMANDER and custodian_id == actor.principal_id)
+    )
+    if authorized:
+        return None
+    return RecordProblem(
+        code="unauthorized",
+        detail=(
+            "Initial custody requires Commander self-custody or an operator placing "
+            "custody with an eligible Commander."
+        ),
+        status=403,
+        title="Initial custody refused",
+        command_id=command_id,
+    )
 
 
 def _insert_ticket_state(

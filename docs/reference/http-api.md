@@ -53,6 +53,8 @@ closed enumeration of 83 values, plus the optional diagnostic fields `command_id
 | `priority` | query | `P0`, `P1`, `P2` |
 | `stage_key` | query | `^[a-z][a-z0-9._-]*$` |
 | `custodian_id`, `assignee_id` | query | UUID |
+| `source_kind` | query | 1–64 characters |
+| `source_ref` | query | 1–256 characters |
 
 ## Operations
 
@@ -86,6 +88,11 @@ means it is sent online or not at all.
 | `POST` | `/v1/tickets/{ticket_id}/workflow/resolve-close` | `resolveCloseWorkflow` | `ticket resolve` | mutation | allowed | `200`, `202`, `401`, `404`, `409`, `422` |
 | `POST` | `/v1/tickets/{ticket_id}/workflow/start` | `startTicketWorkflow` | `ticket workflow start` | mutation | allowed | `200`, `202`, `401`, `404`, `409`, `422` |
 | `POST` | `/v1/tickets/{ticket_id}/workflow/transition` | `transitionWorkflow` | `ticket transition` | mutation | allowed | `200`, `202`, `401`, `404`, `409`, `422` |
+
+`TicketCreateRequest.initial_custodian_id` is optional at this HTTP boundary. Omission selects the
+authenticated principal. A Commander may establish its own custody; an operator omission is refused and
+an operator must explicitly name an eligible Commander. Supplying a UUID requests that placement, but the
+server authorizes the actor before accepting it.
 
 ### Intake
 

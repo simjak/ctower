@@ -212,6 +212,7 @@ class PostgresRecord:
         command: TicketCommand,
         *,
         request_digest: bytes,
+        policy_refusal: RecordProblem | None = None,
         now: datetime,
         telemetry: TelemetryContext,
     ) -> TicketCommandResult | RecordProblem:
@@ -223,6 +224,7 @@ class PostgresRecord:
                 actor,
                 command,
                 request_digest=request_digest,
+                policy_refusal=policy_refusal,
                 now=now,
                 telemetry=telemetry,
             )
@@ -236,6 +238,7 @@ class PostgresRecord:
         command: IntakeSubmitCommand,
         *,
         request_digest: bytes,
+        policy_refusal: RecordProblem | None = None,
         now: datetime,
         telemetry: TelemetryContext,
     ) -> IntakeCommandResult | RecordProblem:
@@ -247,6 +250,7 @@ class PostgresRecord:
                 actor,
                 command,
                 request_digest=request_digest,
+                policy_refusal=policy_refusal,
                 now=now,
                 telemetry=telemetry,
             )
@@ -260,6 +264,7 @@ class PostgresRecord:
         command: IntakePromotionCommand,
         *,
         request_digest: bytes,
+        policy_refusal: RecordProblem | None = None,
         now: datetime,
         telemetry: TelemetryContext,
     ) -> IntakeCommandResult | RecordProblem:
@@ -271,6 +276,7 @@ class PostgresRecord:
                 actor,
                 command,
                 request_digest=request_digest,
+                policy_refusal=policy_refusal,
                 now=now,
                 telemetry=telemetry,
             )

@@ -43,6 +43,60 @@ HTTP_CONFLICT = 409
 VERSION_AFTER_FIRST_TRANSFER = 2
 
 
+def test_create_requires_authority_to_place_initial_custody(
+    tenant: TenantFixture,
+) -> None:
+    occupied_ref = f"custody-authority:{uuid4()}"
+    with _client(tenant) as client:
+        occupied = client.post(
+            "/v1/tickets",
+            json={
+                "priority": "P2",
+                "source": {"kind": "mission-control", "ref": occupied_ref},
+                "title": "Existing source owner",
+            },
+            headers={
+                **_auth(tenant.commander_credential),
+                "Idempotency-Key": str(uuid4()),
+            },
+        )
+        delegated = client.post(
+            "/v1/tickets",
+            json={
+                "initial_custodian_id": str(tenant.operator_id),
+                "priority": "P2",
+                "source": {"kind": "mission-control", "ref": occupied_ref},
+                "title": "Unauthorized delegated custody",
+            },
+            headers={
+                **_auth(tenant.commander_credential),
+                "Idempotency-Key": str(uuid4()),
+            },
+        )
+        operator_default = client.post(
+            "/v1/tickets",
+            json={
+                "priority": "P2",
+                "source": {
+                    "kind": "mission-control",
+                    "ref": f"operator-default:{uuid4()}",
+                },
+                "title": "Operator cannot default into custody",
+            },
+            headers={
+                **_auth(tenant.operator_credential),
+                "Idempotency-Key": str(uuid4()),
+            },
+        )
+
+    assert occupied.status_code == HTTP_PENDING
+    for refusal in (delegated, operator_default):
+        assert refusal.status_code == HTTP_FORBIDDEN
+        assert refusal.json()["code"] == "unauthorized"
+        assert "unmet_facts" not in refusal.json()
+    assert _source_ticket_count(tenant, "mission-control", occupied_ref) == 1
+
+
 def test_atomic_reassign_exact_replay_and_stale_from(tenant: TenantFixture) -> None:
     ticket = _create_ticket(tenant)
     ticket_id = UUID(str(ticket["ticket_id"]))
@@ -96,14 +150,26 @@ def _assert_transfer_outcomes(
 
 
 def test_operator_custody_can_transfer_to_commander_after_restart(tenant: TenantFixture) -> None:
-    ticket_id = UUID(str(_create_ticket(tenant, custodian_id=tenant.operator_id)["ticket_id"]))
+    ticket_id = UUID(str(_create_ticket(tenant)["ticket_id"]))
+    with _client(tenant) as client:
+        suspended = _transfer(
+            client,
+            tenant.operator_credential,
+            ticket_id=ticket_id,
+            command_id=uuid4(),
+            expected_version=1,
+            from_id=tenant.commander_id,
+            to_id=tenant.operator_id,
+            reason="Protected operator suspension",
+        )
+    assert suspended.status_code == HTTP_PENDING
     with _client(tenant) as client:
         transferred = _transfer(
             client,
             tenant.operator_credential,
             ticket_id=ticket_id,
             command_id=uuid4(),
-            expected_version=1,
+            expected_version=2,
             from_id=tenant.operator_id,
             to_id=tenant.commander_id,
             reason="Commander accountability restored",
@@ -115,8 +181,8 @@ def test_operator_custody_can_transfer_to_commander_after_restart(tenant: Tenant
     assert transferred.status_code == HTTP_PENDING
     assert shown.json() == transferred.json()["ticket"]
     assert shown.json()["custodian_id"] == str(tenant.commander_id)
-    assert [event["sequence"] for event in timeline.json()["events"]] == [1, 2]
-    assert timeline.json()["events"][1]["payload"] == {
+    assert [event["sequence"] for event in timeline.json()["events"]] == [1, 2, 3]
+    assert timeline.json()["events"][2]["payload"] == {
         "from_custodian_id": str(tenant.operator_id),
         "reason": "Commander accountability restored",
         "to_custodian_id": str(tenant.commander_id),
@@ -575,3 +641,17 @@ def _auth(credential: str) -> dict[str, str]:
         "Authorization": f"Bearer {credential}",
         **telemetry_headers(),
     }
+
+
+def _source_ticket_count(tenant: TenantFixture, source_kind: str, source_ref: str) -> int:
+    with psycopg.connect(tenant.database.admin_dsn) as connection:
+        row = connection.execute(
+            """
+            SELECT count(*) FROM tickets
+            WHERE tenant_id = %s AND source_kind = %s AND source_ref = %s
+            """,
+            (tenant.tenant_id, source_kind, source_ref),
+        ).fetchone()
+    if row is None:
+        raise RuntimeError("ticket count query returned no row")
+    return int(row[0])

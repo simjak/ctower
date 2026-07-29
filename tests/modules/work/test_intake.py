@@ -35,10 +35,11 @@ class _Writer:
         command: IntakeSubmitCommand,
         *,
         request_digest: bytes,
+        policy_refusal: RecordProblem | None,
         now: datetime,
         telemetry: TelemetryContext,
     ) -> IntakeCommandResult:
-        del actor, now, telemetry
+        del actor, now, policy_refusal, telemetry
         self.digests.append(request_digest)
         event_id, thread_id = uuid4(), uuid4()
         return IntakeCommandResult(
@@ -58,10 +59,11 @@ class _Writer:
         command: IntakePromotionCommand,
         *,
         request_digest: bytes,
+        policy_refusal: RecordProblem | None,
         now: datetime,
         telemetry: TelemetryContext,
     ) -> IntakeCommandResult:
-        del actor, now, telemetry
+        del actor, now, policy_refusal, telemetry
         self.digests.append(request_digest)
         ticket_id, event_id, thread_id = uuid4(), uuid4(), uuid4()
         return IntakeCommandResult(

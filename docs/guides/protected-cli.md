@@ -34,7 +34,9 @@ custody, priority, intents, blockers, relations, Proof, and Workflow; Board/heal
 disposition; CompanyBundle; and the local spool. The names are generated-contract checked, but handlers are
 authored and closed—there is no operation-ID dispatcher.
 
-Every non-bootstrap mutation requires `--command-id`. A successful read or accepted mutation exits `0`.
+Every non-bootstrap mutation carries a command ID. `ticket capture`, `ticket create`, and `synthetic run`
+generate one client-side when it is omitted; other mutations require `--command-id`. A successful read or
+accepted mutation exits `0`.
 Other stable exits are:
 
 | Exit | Meaning |

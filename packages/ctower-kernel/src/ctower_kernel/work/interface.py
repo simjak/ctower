@@ -21,6 +21,7 @@ from ctower_kernel.record import (
     TicketCommandResult,
 )
 from ctower_kernel.telemetry import NoopTelemetry, Telemetry, TelemetryContext
+from ctower_kernel.work._custody_policy import initial_custody_refusal
 from ctower_kernel.work._scheduling import schedule
 
 __all__ = [
@@ -304,6 +305,23 @@ class Work:
 
         if actor.kind is PrincipalKind.MIGRATION_IMPORTER:
             return _importer_refusal(command.client_command_id)
+        custody_refusal = initial_custody_refusal(
+            actor,
+            command.client_command_id,
+            command.initial_custodian_id,
+        )
+        if custody_refusal is not None:
+            request_digest = hashlib.sha256(_canonical_json(command.request_payload())).digest()
+            outcome = self._record.create_ticket(
+                actor,
+                command,
+                request_digest=request_digest,
+                policy_refusal=custody_refusal,
+                now=self._clock(),
+                telemetry=telemetry,
+            )
+            self._emit("work.create_ticket", telemetry, outcome)
+            return outcome
         if command.priority not in PRIORITIES:
             return _refusal(command, "Ticket priority is outside P0/P1/P2.")
         if command.priority == "P0" and actor.kind is not PrincipalKind.OPERATOR:

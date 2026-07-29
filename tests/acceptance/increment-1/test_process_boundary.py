@@ -159,6 +159,33 @@ def test_process_exact_replay_and_changed_body_conflict(
     assert _command_counts(tenant.database.admin_dsn, command_id) == (1, 1, 1)
 
 
+def test_process_same_source_commands_create_distinct_tickets(
+    process_tenant: _ProcessTenant,
+) -> None:
+    tenant = process_tenant
+    source = SourceReference(kind="mission-control", ref="R2258-lookup-only")
+    request = TicketCreateRequest(
+        initial_custodian_id=tenant.commander_id,
+        priority=Priority.P2,
+        source=source,
+        title="Source lookup is not identity authority",
+    )
+    with _client(tenant) as client:
+        first = client.create_ticket(request, command_id=uuid4())
+        second = client.create_ticket(request, command_id=uuid4())
+
+    assert first.ticket.ticket_id != second.ticket.ticket_id
+    with psycopg.connect(tenant.database.admin_dsn) as connection:
+        count = connection.execute(
+            """
+            SELECT count(*) FROM tickets
+            WHERE tenant_id = %s AND source_kind = %s AND source_ref = %s
+            """,
+            (tenant.tenant_id, source.kind, source.ref),
+        ).fetchone()
+    assert count == (2,)
+
+
 def test_process_p0_authority_denial_is_typed_and_does_not_mutate(
     process_tenant: _ProcessTenant,
 ) -> None:

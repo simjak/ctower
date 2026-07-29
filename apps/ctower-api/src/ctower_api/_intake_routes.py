@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+from uuid import UUID
+
 from fastapi import FastAPI, Request
 from fastapi.responses import JSONResponse
 from pydantic import ValidationError
@@ -19,6 +21,7 @@ from ctower_client.models import IntakeCommandResult as HttpIntakeCommandResult
 from ctower_client.models import IntakePromotionRequest, IntakeSubmitRequest
 from ctower_kernel.access import Access
 from ctower_kernel.record import (
+    Actor,
     Record,
     RecordProblem,
 )
@@ -79,6 +82,7 @@ def _install_submit_route(
             command_id=str(command_id),
         )
         recorder.emit("access.authenticate", telemetry, outcome="ok", reason="authorized")
+        intent = IntakeIntent(payload.intent.value if payload.intent is not None else "discussion")
         outcome = intake.submit(
             actor,
             IntakeSubmitCommand(
@@ -86,15 +90,17 @@ def _install_submit_route(
                 project_key=payload.project_key,
                 source=InboundSource(payload.source.kind, payload.source.ref),
                 content=payload.content,
-                intent=IntakeIntent(
-                    payload.intent.value if payload.intent is not None else "discussion"
-                ),
+                intent=intent,
                 taint=IntakeTaint(
                     payload.taint.value if payload.taint is not None else "authenticated"
                 ),
                 thread_id=payload.thread_id,
                 expected_thread_version=payload.expected_thread_version,
-                initial_custodian_id=payload.initial_custodian_id,
+                initial_custodian_id=_initial_custodian(
+                    actor,
+                    intent,
+                    payload.initial_custodian_id,
+                ),
                 priority=payload.priority.value if payload.priority is not None else None,
                 title=payload.title,
                 target_ticket_id=payload.target_ticket_id,
@@ -141,14 +147,19 @@ def _install_promotion_route(
             command_id=str(command_id),
         )
         recorder.emit("access.authenticate", telemetry, outcome="ok", reason="authorized")
+        intent = IntakeIntent(payload.intent.value)
         outcome = intake.promote(
             actor,
             IntakePromotionCommand(
                 client_command_id=command_id,
                 inbound_event_id=event_id,
                 expected_thread_version=payload.expected_thread_version,
-                intent=IntakeIntent(payload.intent.value),
-                initial_custodian_id=payload.initial_custodian_id,
+                intent=intent,
+                initial_custodian_id=_initial_custodian(
+                    actor,
+                    intent,
+                    payload.initial_custodian_id,
+                ),
                 priority=payload.priority.value if payload.priority is not None else None,
                 title=payload.title,
                 target_ticket_id=payload.target_ticket_id,
@@ -166,6 +177,16 @@ def _install_promotion_route(
             boundary_model=HttpIntakeCommandResult,
             accepted_status=200,
         )
+
+
+def _initial_custodian(
+    actor: Actor,
+    intent: IntakeIntent,
+    selected: UUID | None,
+) -> UUID | None:
+    if intent is IntakeIntent.CREATE_TICKET and selected is None:
+        return actor.principal_id
+    return selected
 
 
 async def _bounded_body(request: Request) -> bytes:

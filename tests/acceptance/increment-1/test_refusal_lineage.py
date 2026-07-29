@@ -76,7 +76,7 @@ def _assert_ticket_refusal(client: CtowerClient, tenant: TenantFixture) -> None:
         )
     )
 
-    assert first.code == "tenant-scope-denied"
+    assert first.code == "unauthorized"
     assert replay == first
     assert changed.code == "idempotency-conflict"
     assert all(
