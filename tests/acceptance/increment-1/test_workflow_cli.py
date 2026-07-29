@@ -10,7 +10,9 @@ from pathlib import Path
 from typing import IO, Self, cast
 from uuid import uuid4
 
+import pytest
 from support.acceptance import accept_pending_commands
+from support.installed_cli import install_ctowerctl
 from support.server import running_api
 from support.tenant_fixture import TenantFixture
 
@@ -20,14 +22,18 @@ EXIT_PENDING = 75
 EXIT_PERMANENT = 69
 _ROOT = Path(__file__).parents[3]
 _SECRET_SERVICE_LAUNCHER = _ROOT / "tests/integration/keyring/secret_service_launcher.py"
-_INSTALLED_CLI = Path(sys.executable).with_name("ctowerctl")
+_CLI_BROKER = Path(__file__).with_name("support") / "cli_broker.py"
 
 
 def test_cli_reaches_resolved_closed_with_installed_defaults(
     tenant: TenantFixture,
     tmp_path: Path,
+    installed_ctowerctl: Path,
 ) -> None:
-    with _InstalledCli(tmp_path) as cli, running_api(tenant.database.runtime_dsn) as base_url:
+    with (
+        _InstalledCli(tmp_path, installed_ctowerctl) as cli,
+        running_api(tenant.database.runtime_dsn) as base_url,
+    ):
         ticket_id, workflow_ref, started = _begin(cli, base_url, tenant, "R2426")
         frozen = _reach_verification(cli, base_url, tenant, ticket_id, workflow_ref)
         evidence, verdict = _prove(cli, base_url, tenant, ticket_id)
@@ -50,8 +56,12 @@ def test_cli_reaches_resolved_closed_with_installed_defaults(
 def test_cli_accepts_exact_workflow_selection_and_refuses_wrong_digest(
     tenant: TenantFixture,
     tmp_path: Path,
+    installed_ctowerctl: Path,
 ) -> None:
-    with _InstalledCli(tmp_path) as cli, running_api(tenant.database.runtime_dsn) as base_url:
+    with (
+        _InstalledCli(tmp_path, installed_ctowerctl) as cli,
+        running_api(tenant.database.runtime_dsn) as base_url,
+    ):
         discovery = _success(cli, base_url, ["ticket", "workflow", "list"])
         revision = cast(list[dict[str, object]], discovery["revisions"])[0]
         exact_ticket = _admitted_ticket(cli, base_url, tenant, "R2426-exact")
@@ -82,8 +92,12 @@ def test_cli_accepts_exact_workflow_selection_and_refuses_wrong_digest(
 def test_cli_accepts_explicit_proof_digests_and_refuses_a_wrong_one(
     tenant: TenantFixture,
     tmp_path: Path,
+    installed_ctowerctl: Path,
 ) -> None:
-    with _InstalledCli(tmp_path) as cli, running_api(tenant.database.runtime_dsn) as base_url:
+    with (
+        _InstalledCli(tmp_path, installed_ctowerctl) as cli,
+        running_api(tenant.database.runtime_dsn) as base_url,
+    ):
         proof_ticket, workflow_ref, _ = _begin(cli, base_url, tenant, "R2426-explicit-proof")
         frozen = _reach_verification(cli, base_url, tenant, proof_ticket, workflow_ref)
         candidate_digest = cast(str, _result(frozen)["candidate_digest"])
@@ -115,13 +129,26 @@ def test_cli_accepts_explicit_proof_digests_and_refuses_a_wrong_one(
             artifact_digest,
         )
 
-    explicit_result = _result(explicit)
-    wrong_result = _result(wrong)
-    assert explicit_result["candidate_digest"] == candidate_digest
-    assert explicit_result["artifact_digest"] == artifact_digest
-    assert wrong_status == EXIT_PERMANENT
-    assert wrong["state"] == "quarantined"
-    assert wrong_result["code"] == "proof-evidence-digest-mismatch"
+    _assert_explicit_proof(explicit, wrong_status, wrong, candidate_digest, artifact_digest)
+
+
+def _assert_explicit_proof(
+    explicit: dict[str, object],
+    wrong_status: int,
+    wrong: dict[str, object],
+    candidate_digest: str,
+    artifact_digest: str,
+) -> None:
+    explicit_result, wrong_result = _result(explicit), _result(wrong)
+    assert (
+        explicit_result["candidate_digest"],
+        explicit_result["artifact_digest"],
+    ) == (candidate_digest, artifact_digest)
+    assert (wrong_status, wrong["state"], wrong_result["code"]) == (
+        EXIT_PERMANENT,
+        "quarantined",
+        "proof-evidence-digest-mismatch",
+    )
 
 
 def _explicit_proof_attempts(
@@ -136,21 +163,7 @@ def _explicit_proof_attempts(
         cli,
         base_url,
         tenant.commander_credential,
-        _ticket_command(
-            "evidence",
-            "add",
-            ticket_id,
-            "--expected-version",
-            "2",
-            "--evidence-id",
-            str(uuid4()),
-            "--candidate-digest",
-            candidate_digest,
-            "--artifact-digest",
-            artifact_digest,
-            "--content",
-            "explicit proof evidence",
-        ),
+        _explicit_evidence_command(ticket_id, "2", candidate_digest, artifact_digest),
     )
     _accept(tenant)
     _drain(cli, base_url, tenant.commander_credential)
@@ -158,30 +171,40 @@ def _explicit_proof_attempts(
         cli,
         base_url,
         tenant.commander_credential,
-        _ticket_command(
-            "evidence",
-            "add",
-            ticket_id,
-            "--expected-version",
-            "3",
-            "--evidence-id",
-            str(uuid4()),
-            "--candidate-digest",
-            candidate_digest,
-            "--artifact-digest",
-            "sha256:" + "f" * 64,
-            "--content",
-            "explicit proof evidence",
-        ),
+        _explicit_evidence_command(ticket_id, "3", candidate_digest, "sha256:" + "f" * 64),
     )
     return explicit, wrong_status, wrong
+
+
+def _explicit_evidence_command(
+    ticket_id: str,
+    expected_version: str,
+    candidate_digest: str,
+    artifact_digest: str,
+) -> list[str]:
+    return _ticket_command(
+        "evidence",
+        "add",
+        ticket_id,
+        "--expected-version",
+        expected_version,
+        "--evidence-id",
+        str(uuid4()),
+        "--candidate-digest",
+        candidate_digest,
+        "--artifact-digest",
+        artifact_digest,
+        "--content",
+        "explicit proof evidence",
+    )
 
 
 class _InstalledCli:
     """Keep one isolated Secret Service alive across installed CLI invocations."""
 
-    def __init__(self, state_root: Path) -> None:
+    def __init__(self, state_root: Path, executable: Path) -> None:
         self._state_root = state_root
+        self._executable = executable
         self._process: subprocess.Popen[str] | None = None
 
     def __enter__(self) -> Self:
@@ -191,8 +214,8 @@ class _InstalledCli:
             (
                 sys.executable,
                 str(_SECRET_SERVICE_LAUNCHER),
-                str(Path(__file__).resolve()),
-                "--cli-broker",
+                str(_CLI_BROKER),
+                str(self._executable),
             ),
             cwd=_ROOT,
             env=environment,
@@ -252,38 +275,10 @@ class _InstalledCli:
         return self._process
 
 
-def _cli_broker() -> int:
-    for line in sys.stdin:
-        request = json.loads(line)
-        if request is None:
-            print(json.dumps({"stopped": True}), flush=True)
-            return 0
-        command = cast(dict[str, object], request)
-        completed = subprocess.run(  # noqa: S603 - fixed installed executable
-            (
-                str(_INSTALLED_CLI),
-                "--base-url",
-                cast(str, command["base_url"]),
-                *cast(list[str], command["arguments"]),
-            ),
-            cwd=_ROOT,
-            input=cast(str, command["credential"]) + "\n",
-            check=False,
-            capture_output=True,
-            text=True,
-            timeout=30,
-        )
-        print(
-            json.dumps(
-                {
-                    "status": completed.returncode,
-                    "stdout": completed.stdout,
-                    "stderr": completed.stderr,
-                }
-            ),
-            flush=True,
-        )
-    return 0
+@pytest.fixture(scope="module")
+def installed_ctowerctl(tmp_path_factory: pytest.TempPathFactory) -> Path:
+    workspace = tmp_path_factory.mktemp("workflow-cli-installed")
+    return install_ctowerctl(workspace)
 
 
 def _begin(
@@ -542,9 +537,3 @@ def _result(payload: dict[str, object]) -> dict[str, object]:
 
 def _accept(tenant: TenantFixture) -> None:
     accept_pending_commands(tenant.database.admin_dsn, tenant.tenant_id)
-
-
-if __name__ == "__main__":
-    if sys.argv[1:] != ["--cli-broker"]:
-        raise SystemExit(2)
-    raise SystemExit(_cli_broker())
