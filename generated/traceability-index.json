@@ -126,6 +126,7 @@
       "packages/ctower-kernel/migrations/0026_fixed_operation_attempt_receipts.sql",
       "packages/ctower-kernel/migrations/0033_development_offhost_ack.sql",
       "packages/ctower-kernel/migrations/0034_durability_finalizer_quarantine.sql",
+      "packages/ctower-kernel/migrations/0036_migration_ledger_role.sql",
       "packages/ctower-kernel/migrations/manifest.json"
     ],
     "AC-DUR-07": [
@@ -144,6 +145,7 @@
       "packages/ctower-kernel/migrations/0023_cp3c_privileges.sql",
       "packages/ctower-kernel/migrations/0024_catalog_authority.sql",
       "packages/ctower-kernel/migrations/0035_board_source_lookup.sql",
+      "packages/ctower-kernel/migrations/0036_migration_ledger_role.sql",
       "packages/ctower-kernel/migrations/manifest.json"
     ],
     "AC-EVD-01": [
@@ -859,7 +861,8 @@
       "packages/ctower-kernel/migrations/0032_thread_first_intake.sql",
       "packages/ctower-kernel/migrations/0033_development_offhost_ack.sql",
       "packages/ctower-kernel/migrations/0034_durability_finalizer_quarantine.sql",
-      "packages/ctower-kernel/migrations/0035_board_source_lookup.sql"
+      "packages/ctower-kernel/migrations/0035_board_source_lookup.sql",
+      "packages/ctower-kernel/migrations/0036_migration_ledger_role.sql"
     ],
     "SPEC#project-delivery-projection": [
       "contracts/components/checkpoint.schema.json",

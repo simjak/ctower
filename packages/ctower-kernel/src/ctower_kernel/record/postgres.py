@@ -43,6 +43,14 @@ from ctower_kernel.record._durability_health_sql import durability_health as _du
 from ctower_kernel.record._durability_sql import reconcile_durability as _reconcile_durability
 from ctower_kernel.record._intake_sql import promote_intake as _promote_intake
 from ctower_kernel.record._intake_sql import submit_intake as _submit_intake
+from ctower_kernel.record._migration_ledger_sql import (
+    MigrationAdoptionError,
+    MigrationBaseline,
+    MigrationExecutionError,
+    MigrationScript,
+    MigrationStateError,
+    apply_database_migrations,
+)
 from ctower_kernel.record._setup_sql import (
     RecoveryRoleConfigurationError,
     apply_migrations,
@@ -65,9 +73,15 @@ from ctower_kernel.record.transaction import recover_ambiguous_commit
 from ctower_kernel.telemetry import NoopTelemetry, Telemetry, TelemetryContext
 
 __all__ = [
+    "MigrationAdoptionError",
+    "MigrationBaseline",
+    "MigrationExecutionError",
+    "MigrationScript",
+    "MigrationStateError",
     "PostgresDurabilityFinalizer",
     "PostgresRecord",
     "RecoveryRoleConfigurationError",
+    "apply_database_migrations",
     "apply_migrations",
     "configure_development_durability",
     "provision_bootstrap",

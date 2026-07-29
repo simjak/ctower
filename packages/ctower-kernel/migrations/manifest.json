@@ -1,5 +1,11 @@
 {
-  "schema": "ctower.migrations/v2",
+  "schema": "ctower.migrations/v3",
+  "adoption_baseline": {
+    "through": "0035_board_source_lookup.sql",
+    "schema_sha256": "sha256:e36519153ff3d6ce5cbe9c690b8975dae74f1107a700df657a9c55dfd10c286c",
+    "semantic_checks": "ctower.pre-ledger/v1",
+    "schema_object_sum256": "sum256:00235ba6a1b0a153e4655d2214c13ebda142d82e395fc7e250b97902e629ef6e"
+  },
   "migrations": [
     {
       "path": "0001_roles.sql",
@@ -334,6 +340,16 @@
       "forward_test": "pytest:tests/acceptance/increment-1/test_task_board_client.py::test_generated_board_source_lookup_returns_hit_and_empty_miss",
       "rollback_or_forward_compensation": "Keep the disposable Board source columns readable by a source-filter-aware build or rebuild the projection after reviewed forward compensation; ticket source authority is unchanged.",
       "backup_checkpoint": "Before applying to a nonempty installation, capture and verify ticket and Board projection row counts plus a database backup; projection rows remain disposable and rebuildable."
+    },
+    {
+      "path": "0036_migration_ledger_role.sql",
+      "sha256": "sha256:f7102ee054c3cbc20212b7804e3497fecd339718497515143fb4f3beca3a561b",
+      "scope": "cluster",
+      "minimum_service_version": "0.1.0",
+      "maximum_service_version": "0.1.0",
+      "forward_test": "pytest:tests/modules/migration/test_schema_migration_ledger.py::test_valid_looking_ledger_without_migrations_is_refused",
+      "rollback_or_forward_compensation": "Keep the NOLOGIN ledger authority isolated from migration and runtime roles; append reviewed forward compensation before changing ownership or write authority.",
+      "backup_checkpoint": "Before reconciling a nonempty installation, capture the exact ledger role attributes, memberships, settings, and owned ledger objects plus a verified database backup."
     }
   ]
 }
