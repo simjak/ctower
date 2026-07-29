@@ -37,9 +37,13 @@ booleans:
 - `candidate_dependent` — does this criterion's proof expire when the candidate changes?
 - `requires_verdict` — does it need a protected verdict on top of its evidence, or is evidence alone enough?
 
-`ticket criteria freeze` pins the criteria set against `--candidate-digest` at a given
-`--expected-version`. After freezing, criteria are not edited; a second freeze is refused as
-`proof-criteria-already-frozen`. This is what the workflow's `criteria.frozen@1` predicate checks.
+`ticket criteria freeze` pins the criteria set against a candidate digest at a given `--expected-version`.
+The caller can supply an explicit `--candidate-digest` or literal `--candidate-content`; the CLI hashes
+literal content as exact UTF-8 bytes. When exactly one executable Workflow is installed,
+`--criteria-file` may be omitted and the CLI sends the criteria from that exact gate policy. The receipt
+names the candidate digest that was recorded. After freezing, criteria are not edited; a second freeze is
+refused as `proof-criteria-already-frozen`. This is what the workflow's `criteria.frozen@1` predicate
+checks.
 
 Freezing before evidence exists is the point. It stops the acceptance bar from being lowered to fit whatever
 the worker happened to produce.
@@ -51,19 +55,20 @@ recording a verdict (`proof-self-review-refused`).
 
 ## Evidence
 
-`ticket evidence add` records one evidence item. Every field is required:
+`ticket evidence add` records one evidence item. The stored evidence remains fully bound:
 
 | Field | Constraint |
 |---|---|
 | `evidence_id` | UUID, caller-supplied; a reused ID with different content is `proof-evidence-id-conflict` |
-| `criterion_key` | Must name a frozen criterion, else `proof-criterion-unknown` |
-| `candidate_digest` | `sha256:` + 64 hex; must be the current candidate, else `proof-candidate-digest-not-current` |
-| `artifact_digest` | `sha256:` + 64 hex; must match the supplied content, else `proof-evidence-digest-mismatch` |
-| `content` | 1–100 000 characters, read from `--content-file` |
+| `criterion_key` | Must name a frozen criterion, else `proof-criterion-unknown`; the CLI defaults the sole installed criterion |
+| `candidate_digest` | `sha256:` + 64 hex; an omitted request value resolves only to the frozen current candidate, while a stale explicit value is `proof-candidate-digest-not-current` |
+| `artifact_digest` | `sha256:` + 64 hex; the CLI computes an omitted value from exact UTF-8 content, while a wrong explicit value is `proof-evidence-digest-mismatch` |
+| `content` | 1–100 000 characters, supplied by `--content` or read from `--content-file` |
 | `expected_version` | Optimistic concurrency against the ticket |
 
-The digest check is real: the acceptance suite feeds deliberately corrupt content and asserts the server
-refuses with `proof-evidence-digest-mismatch` and writes nothing.
+The receipt names both the resolved current candidate and the exact artifact digest. The digest check is
+real: the acceptance suite feeds deliberately corrupt content with an explicit wrong digest and asserts the
+server refuses with `proof-evidence-digest-mismatch` and writes nothing.
 
 ## Typed evidence slots
 
@@ -133,7 +138,8 @@ is refused.
 ## Verdicts and independence
 
 `ticket gate verdict` records a `pass` or `fail` decision against a criterion and a candidate digest, with a
-caller-supplied `verdict_id`.
+caller-supplied `verdict_id`. The CLI can default the sole installed criterion, and an omitted candidate
+digest resolves only to the frozen current candidate. The receipt names the candidate digest used.
 
 **The enforced rule is candidate-author independence.** `ticket criteria freeze` records the freezing
 principal as the candidate's author, and recording a verdict is refused when the caller *is* that principal:

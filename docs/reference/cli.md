@@ -124,12 +124,17 @@ timestamp is rejected.
 
 | Command | Positional | Flags |
 |---|---|---|
-| `ticket criteria freeze` | `<ticket_id>` | `--command-id`, `--expected-version` (≥ 0), `--candidate-digest`, `--criteria-file` |
-| `ticket evidence add` | `<ticket_id>` | `--command-id`, `--expected-version` (≥ 1), `--evidence-id`, `--criterion-key`, `--candidate-digest`, `--artifact-digest`, `--content-file` |
-| `ticket gate verdict` | `<ticket_id>` | `--command-id`, `--expected-version` (≥ 1), `--verdict-id`, `--criterion-key`, `--candidate-digest`, `--decision {pass,fail}` |
+| `ticket criteria freeze` | `<ticket_id>` | required: `--command-id`, `--expected-version` (≥ 0), exactly one of `--candidate-content` or `--candidate-digest`; optional: `--criteria-file` |
+| `ticket evidence add` | `<ticket_id>` | required: `--command-id`, `--expected-version` (≥ 1), `--evidence-id`, exactly one of `--content` or `--content-file`; optional: `--criterion-key`, `--candidate-digest`, `--artifact-digest` |
+| `ticket gate verdict` | `<ticket_id>` | required: `--command-id`, `--expected-version` (≥ 1), `--verdict-id`, `--decision {pass,fail}`; optional: `--criterion-key`, `--candidate-digest` |
 
-Digests are `sha256:` followed by exactly 64 lowercase hex characters. `--criteria-file` and
-`--content-file` are paths; evidence content is capped at 100 000 characters by the contract.
+Digests are `sha256:` followed by exactly 64 lowercase hex characters. Candidate and evidence literal
+content is hashed as exact UTF-8 bytes. With one installed Workflow revision and one criterion,
+`--criteria-file` and `--criterion-key` default to that exact gate policy. Evidence omitting
+`--candidate-digest` binds server-side to the frozen current candidate; omitting `--artifact-digest`
+computes it from the supplied content. Proof receipts state the resolved candidate digest and, for evidence,
+the artifact digest. Explicit values remain authoritative and a stale candidate or wrong artifact digest is
+refused. Evidence content is capped at 100 000 characters by the contract.
 
 The principal recording a verdict must differ from the principal who ran `ticket criteria freeze` — the
 candidate's author — or the request is refused as `proof-self-review-refused`. It must also hold protected

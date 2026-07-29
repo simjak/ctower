@@ -320,8 +320,10 @@ def _ticket_proof(actions: argparse._SubParsersAction[_Parser]) -> None:
     _ticket_id(criteria)
     _command_id(criteria)
     criteria.add_argument("--expected-version", required=True, type=_nonnegative_int)
-    criteria.add_argument("--candidate-digest", required=True)
-    criteria.add_argument("--criteria-file", required=True, type=Path)
+    candidate = criteria.add_mutually_exclusive_group(required=True)
+    candidate.add_argument("--candidate-digest")
+    candidate.add_argument("--candidate-content")
+    criteria.add_argument("--criteria-file", type=Path)
 
     evidence_actions = actions.add_parser("evidence").add_subparsers(
         dest="evidence_action", required=True, parser_class=_Parser
@@ -332,10 +334,12 @@ def _ticket_proof(actions: argparse._SubParsersAction[_Parser]) -> None:
     _command_id(evidence)
     _version(evidence)
     evidence.add_argument("--evidence-id", required=True, type=UUID)
-    evidence.add_argument("--criterion-key", required=True)
-    evidence.add_argument("--candidate-digest", required=True)
-    evidence.add_argument("--artifact-digest", required=True)
-    evidence.add_argument("--content-file", required=True, type=Path)
+    evidence.add_argument("--criterion-key")
+    evidence.add_argument("--candidate-digest")
+    evidence.add_argument("--artifact-digest")
+    content = evidence.add_mutually_exclusive_group(required=True)
+    content.add_argument("--content")
+    content.add_argument("--content-file", type=Path)
     _verdict_parser(actions)
 
 
@@ -349,8 +353,8 @@ def _verdict_parser(actions: argparse._SubParsersAction[_Parser]) -> None:
     _command_id(verdict)
     _version(verdict)
     verdict.add_argument("--verdict-id", required=True, type=UUID)
-    verdict.add_argument("--criterion-key", required=True)
-    verdict.add_argument("--candidate-digest", required=True)
+    verdict.add_argument("--criterion-key")
+    verdict.add_argument("--candidate-digest")
     verdict.add_argument("--decision", required=True, choices=tuple(VerdictDecision))
 
 

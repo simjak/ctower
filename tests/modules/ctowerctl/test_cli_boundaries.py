@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import hashlib
 import io
 import json
 import shutil
@@ -13,7 +14,10 @@ import pytest
 from ctower_client.models import (
     AssignmentChangeRequest,
     CustodyTransferRequest,
+    EvidenceRequest,
+    FreezeCriteriaRequest,
     ResolveCloseRequest,
+    VerdictRequest,
     WorkflowStartRequest,
 )
 from ctower_client.operations import CLI_OPERATIONS, SpoolPolicy
@@ -252,6 +256,75 @@ def test_workflow_start_requires_all_explicit_pins_together() -> None:
 
     with pytest.raises(ValueError, match="omitted or supplied together"):
         build_mutation(arguments)
+
+
+def test_proof_commands_derive_installed_defaults_and_exact_content_digests() -> None:
+    ticket_id = uuid4()
+    criteria_request = _proof_request(
+        "criteria",
+        "freeze",
+        str(ticket_id),
+        "--expected-version",
+        "0",
+        "--candidate-content",
+        "candidate bytes",
+    )
+    evidence_request = _proof_request(
+        "evidence",
+        "add",
+        str(ticket_id),
+        "--expected-version",
+        "1",
+        "--evidence-id",
+        str(uuid4()),
+        "--content",
+        "evidence bytes",
+    )
+    verdict_request = _proof_request(
+        "gate",
+        "verdict",
+        str(ticket_id),
+        "--expected-version",
+        "2",
+        "--verdict-id",
+        str(uuid4()),
+        "--decision",
+        "pass",
+    )
+
+    assert isinstance(criteria_request, FreezeCriteriaRequest)
+    assert (
+        criteria_request.candidate_digest,
+        [item.key for item in criteria_request.criteria],
+    ) == (_digest("candidate bytes"), ["artifact-current"])
+    assert isinstance(evidence_request, EvidenceRequest)
+    assert (
+        evidence_request.candidate_digest,
+        evidence_request.artifact_digest,
+        evidence_request.criterion_key,
+    ) == (None, _digest("evidence bytes"), "artifact-current")
+    assert isinstance(verdict_request, VerdictRequest)
+    assert verdict_request.candidate_digest is None
+    assert verdict_request.criterion_key == "artifact-current"
+
+
+def _proof_request(*arguments: str) -> object:
+    return build_mutation(
+        parse_arguments(
+            [
+                "--base-url",
+                "https://ctower.example",
+                "ticket",
+                *arguments,
+                "--command-id",
+                str(uuid4()),
+            ]
+        )
+    ).request
+
+
+def _digest(value: str) -> str:
+    return "sha256:" + hashlib.sha256(value.encode()).hexdigest()
 
 
 def test_workflow_discovery_changes_with_installed_pack_bytes(

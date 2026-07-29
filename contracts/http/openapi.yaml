@@ -2572,7 +2572,6 @@
           "expected_version",
           "evidence_id",
           "criterion_key",
-          "candidate_digest",
           "artifact_digest",
           "content"
         ],
@@ -2580,7 +2579,10 @@
           "expected_version": {"type": "integer", "minimum": 1},
           "evidence_id": {"type": "string", "format": "uuid"},
           "criterion_key": {"type": "string", "pattern": "^[a-z][a-z0-9._-]*$"},
-          "candidate_digest": {"type": "string", "pattern": "^sha256:[0-9a-f]{64}$"},
+          "candidate_digest": {
+            "type": ["string", "null"],
+            "pattern": "^sha256:[0-9a-f]{64}$"
+          },
           "artifact_digest": {"type": "string", "pattern": "^sha256:[0-9a-f]{64}$"},
           "content": {"type": "string", "minLength": 1, "maxLength": 100000}
         }
@@ -2592,14 +2594,16 @@
           "expected_version",
           "verdict_id",
           "criterion_key",
-          "candidate_digest",
           "decision"
         ],
         "properties": {
           "expected_version": {"type": "integer", "minimum": 1},
           "verdict_id": {"type": "string", "format": "uuid"},
           "criterion_key": {"type": "string", "pattern": "^[a-z][a-z0-9._-]*$"},
-          "candidate_digest": {"type": "string", "pattern": "^sha256:[0-9a-f]{64}$"},
+          "candidate_digest": {
+            "type": ["string", "null"],
+            "pattern": "^sha256:[0-9a-f]{64}$"
+          },
           "decision": {"$ref": "#/components/schemas/VerdictDecision"}
         }
       },
@@ -2638,6 +2642,7 @@
         "type": "object",
         "additionalProperties": false,
         "required": [
+          "artifact_digest",
           "candidate_digest",
           "command_id",
           "durability_state",
@@ -2650,6 +2655,10 @@
           "version"
         ],
         "properties": {
+          "artifact_digest": {
+            "type": ["string", "null"],
+            "pattern": "^sha256:[0-9a-f]{64}$"
+          },
           "candidate_digest": {"type": "string", "pattern": "^sha256:[0-9a-f]{64}$"},
           "command_id": {"type": "string", "format": "uuid"},
           "durability_state": {"$ref": "#/components/schemas/DurabilityState"},

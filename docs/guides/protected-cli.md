@@ -40,6 +40,13 @@ executable refs and digests from the installed pack tree. When the list contains
 enqueue. `ticket resolve` may omit `--workflow-ref`; the server resolves it from the persisted run and
 returns that exact ref.
 
+Proof commands use the same exact-default rule. Freeze with `--candidate-content` to have the CLI hash the
+literal UTF-8 bytes and use the sole installed gate policy, then add evidence with `--content` to have it
+compute the artifact digest and bind to the server's frozen current candidate. The returned Proof receipts
+state the candidate digest and, for evidence, the artifact digest. You can still supply explicit digests,
+criteria files, and criterion keys; explicit values are authoritative, and mismatches refuse rather than
+falling back to a default.
+
 Every non-bootstrap mutation carries a command ID. `ticket capture`, `ticket create`, and `synthetic run`
 generate one client-side when it is omitted; other mutations require `--command-id`. A successful read or
 accepted mutation exits `0`.

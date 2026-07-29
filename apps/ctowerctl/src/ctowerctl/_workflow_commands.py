@@ -112,6 +112,22 @@ def default_pins() -> WorkflowStartPins:
     return revisions[0]
 
 
+def default_criteria() -> tuple[Mapping[str, object], ...]:
+    """Return exact criteria from the sole installed executable gate policy."""
+
+    raw = _array(_default_gate_policy().payload, "criteria")
+    return tuple(_mapping(item, "gate policy criterion") for item in raw)
+
+
+def default_criterion_key() -> str:
+    """Return the sole installed criterion key or require an explicit choice."""
+
+    criteria = default_criteria()
+    if len(criteria) != 1:
+        raise ValueError("usage: explicit criterion key required")
+    return _string(criteria[0], "key")
+
+
 def installed_pins() -> tuple[WorkflowStartPins, ...]:
     """Return generated exact pins without a hand-maintained component list."""
 
@@ -126,6 +142,15 @@ def installed_pins() -> tuple[WorkflowStartPins, ...]:
     if len({item.workflow_ref for item in pins}) != len(pins):
         raise ValueError("installed Workflow references must be unique")
     return tuple(sorted(pins, key=lambda item: item.workflow_ref))
+
+
+def _default_gate_policy() -> _Component:
+    pins = default_pins()
+    gates = _index(_components(_pack_root() / "policies" / "gates", "ctower.gate-policy/v1"))
+    policy = _required(gates, pins.gate_policy_ref, "gate")
+    if policy.digest != pins.gate_policy_digest:
+        raise ValueError("installed Workflow gate policy digest is inconsistent")
+    return policy
 
 
 def _pack_root() -> Path:

@@ -1,128 +1,303 @@
-"""First-day Workflow lifecycle through ctowerctl alone."""
+"""First-day Workflow lifecycle through the installed ctowerctl executable alone."""
 
 from __future__ import annotations
 
-import hashlib
-import io
 import json
+import os
+import subprocess
+import sys
 from pathlib import Path
-from typing import cast
+from typing import IO, Self, cast
 from uuid import uuid4
 
-import pytest
 from support.acceptance import accept_pending_commands
 from support.server import running_api
 from support.tenant_fixture import TenantFixture
-
-from ctowerctl import main
 
 __all__: tuple[str, ...] = ()
 
 EXIT_PENDING = 75
 EXIT_PERMANENT = 69
-
-
-class _MemoryBackend:
-    def __init__(self) -> None:
-        self.values: dict[tuple[str, str], str] = {}
-
-    def get_password(self, service: str, username: str) -> str | None:
-        return self.values.get((service, username))
-
-    def set_password(self, service: str, username: str, password: str) -> None:
-        self.values[(service, username)] = password
+_ROOT = Path(__file__).parents[3]
+_SECRET_SERVICE_LAUNCHER = _ROOT / "tests/integration/keyring/secret_service_launcher.py"
+_INSTALLED_CLI = Path(sys.executable).with_name("ctowerctl")
 
 
 def test_cli_reaches_resolved_closed_with_installed_defaults(
     tenant: TenantFixture,
-    monkeypatch: pytest.MonkeyPatch,
     tmp_path: Path,
 ) -> None:
-    _configure_spool(monkeypatch, tmp_path)
-    proof_input = _proof_input(tmp_path)
+    with _InstalledCli(tmp_path) as cli, running_api(tenant.database.runtime_dsn) as base_url:
+        ticket_id, workflow_ref, started = _begin(cli, base_url, tenant, "R2426")
+        frozen = _reach_verification(cli, base_url, tenant, ticket_id, workflow_ref)
+        evidence, verdict = _prove(cli, base_url, tenant, ticket_id)
+        closed = _finish(cli, base_url, tenant, ticket_id, workflow_ref)
 
-    with running_api(tenant.database.runtime_dsn) as base_url:
-        ticket_id, workflow_ref, started = _begin(base_url, tenant)
-        _reach_verification(base_url, tenant, ticket_id, workflow_ref, proof_input)
-        _prove(base_url, tenant, ticket_id, proof_input)
-        closed = _finish(base_url, tenant, ticket_id, workflow_ref)
-
-    start_result = cast(dict[str, object], started["result"])
-    close_result = cast(dict[str, object], closed["result"])
+    start_result = _result(started)
+    frozen_result = _result(frozen)
+    evidence_result = _result(evidence)
+    verdict_result = _result(verdict)
+    close_result = _result(closed)
     assert start_result["workflow_ref"] == workflow_ref
+    assert frozen_result["candidate_digest"] == evidence_result["candidate_digest"]
+    assert cast(str, evidence_result["artifact_digest"]).startswith("sha256:")
+    assert verdict_result["candidate_digest"] == frozen_result["candidate_digest"]
+    assert verdict_result["artifact_digest"] is None
     assert close_result["workflow_ref"] == workflow_ref
     assert close_result["lifecycle_facts"] == ["resolved", "closed"]
 
 
-def test_cli_accepts_exact_selection_and_refuses_wrong_digest(
+def test_cli_accepts_exact_workflow_selection_and_refuses_wrong_digest(
     tenant: TenantFixture,
-    monkeypatch: pytest.MonkeyPatch,
     tmp_path: Path,
 ) -> None:
-    _configure_spool(monkeypatch, tmp_path)
-    with running_api(tenant.database.runtime_dsn) as base_url:
-        discovery = _success(base_url, ["ticket", "workflow", "list"])
+    with _InstalledCli(tmp_path) as cli, running_api(tenant.database.runtime_dsn) as base_url:
+        discovery = _success(cli, base_url, ["ticket", "workflow", "list"])
         revision = cast(list[dict[str, object]], discovery["revisions"])[0]
-        exact_ticket = _admitted_ticket(base_url, tenant, "R2426-exact")
+        exact_ticket = _admitted_ticket(cli, base_url, tenant, "R2426-exact")
         exact = _pending(
+            cli,
             base_url,
             tenant.commander_credential,
             _explicit_start(exact_ticket, revision),
         )
         _accept(tenant)
-        _drain(base_url, tenant.commander_credential)
-        wrong_ticket = _admitted_ticket(base_url, tenant, "R2426-wrong")
+        _drain(cli, base_url, tenant.commander_credential)
+        wrong_ticket = _admitted_ticket(cli, base_url, tenant, "R2426-wrong")
         wrong_revision = dict(revision)
         wrong_revision["workflow_digest"] = "sha256:" + "f" * 64
         wrong_status, wrong = _run(
+            cli,
             base_url,
             tenant.commander_credential,
             _explicit_start(wrong_ticket, wrong_revision),
         )
 
-    exact_result = cast(dict[str, object], exact["result"])
-    wrong_result = cast(dict[str, object], wrong["result"])
-    assert exact_result["workflow_ref"] == revision["workflow_ref"]
+    assert _result(exact)["workflow_ref"] == revision["workflow_ref"]
     assert wrong_status == EXIT_PERMANENT
     assert wrong["state"] == "quarantined"
-    assert wrong_result["code"] == "workflow-pin-mismatch"
+    assert _result(wrong)["code"] == "workflow-pin-mismatch"
 
 
-def _configure_spool(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
-    backend = _MemoryBackend()
-    monkeypatch.setattr("ctowerctl.spool._keyring._secure_backend", lambda: backend)
-    monkeypatch.setenv("XDG_STATE_HOME", str(tmp_path / "state"))
+def test_cli_accepts_explicit_proof_digests_and_refuses_a_wrong_one(
+    tenant: TenantFixture,
+    tmp_path: Path,
+) -> None:
+    with _InstalledCli(tmp_path) as cli, running_api(tenant.database.runtime_dsn) as base_url:
+        proof_ticket, workflow_ref, _ = _begin(cli, base_url, tenant, "R2426-explicit-proof")
+        frozen = _reach_verification(cli, base_url, tenant, proof_ticket, workflow_ref)
+        candidate_digest = cast(str, _result(frozen)["candidate_digest"])
+        derived = _pending(
+            cli,
+            base_url,
+            tenant.commander_credential,
+            _ticket_command(
+                "evidence",
+                "add",
+                proof_ticket,
+                "--expected-version",
+                "1",
+                "--evidence-id",
+                str(uuid4()),
+                "--content",
+                "explicit proof evidence",
+            ),
+        )
+        _accept(tenant)
+        _drain(cli, base_url, tenant.commander_credential)
+        artifact_digest = cast(str, _result(derived)["artifact_digest"])
+        explicit, wrong_status, wrong = _explicit_proof_attempts(
+            cli,
+            base_url,
+            tenant,
+            proof_ticket,
+            candidate_digest,
+            artifact_digest,
+        )
+
+    explicit_result = _result(explicit)
+    wrong_result = _result(wrong)
+    assert explicit_result["candidate_digest"] == candidate_digest
+    assert explicit_result["artifact_digest"] == artifact_digest
+    assert wrong_status == EXIT_PERMANENT
+    assert wrong["state"] == "quarantined"
+    assert wrong_result["code"] == "proof-evidence-digest-mismatch"
 
 
-def _proof_input(tmp_path: Path) -> tuple[str, str, Path, Path]:
-    content = "workflow cli evidence"
-    candidate_digest = "sha256:" + "c" * 64
-    artifact_digest = "sha256:" + hashlib.sha256(content.encode()).hexdigest()
-    criteria_path = tmp_path / "criteria.json"
-    evidence_path = tmp_path / "evidence.txt"
-    criteria_path.write_text(
-        json.dumps(
-            [
-                {
-                    "key": "artifact-current",
-                    "description": "Artifact evidence matches the current candidate.",
-                    "candidate_dependent": True,
-                    "requires_verdict": True,
-                }
-            ]
+def _explicit_proof_attempts(
+    cli: _InstalledCli,
+    base_url: str,
+    tenant: TenantFixture,
+    ticket_id: str,
+    candidate_digest: str,
+    artifact_digest: str,
+) -> tuple[dict[str, object], int, dict[str, object]]:
+    explicit = _pending(
+        cli,
+        base_url,
+        tenant.commander_credential,
+        _ticket_command(
+            "evidence",
+            "add",
+            ticket_id,
+            "--expected-version",
+            "2",
+            "--evidence-id",
+            str(uuid4()),
+            "--candidate-digest",
+            candidate_digest,
+            "--artifact-digest",
+            artifact_digest,
+            "--content",
+            "explicit proof evidence",
         ),
-        encoding="utf-8",
     )
-    evidence_path.write_text(content, encoding="utf-8")
-    return candidate_digest, artifact_digest, criteria_path, evidence_path
+    _accept(tenant)
+    _drain(cli, base_url, tenant.commander_credential)
+    wrong_status, wrong = _run(
+        cli,
+        base_url,
+        tenant.commander_credential,
+        _ticket_command(
+            "evidence",
+            "add",
+            ticket_id,
+            "--expected-version",
+            "3",
+            "--evidence-id",
+            str(uuid4()),
+            "--candidate-digest",
+            candidate_digest,
+            "--artifact-digest",
+            "sha256:" + "f" * 64,
+            "--content",
+            "explicit proof evidence",
+        ),
+    )
+    return explicit, wrong_status, wrong
 
 
-def _begin(base_url: str, tenant: TenantFixture) -> tuple[str, str, dict[str, object]]:
-    discovery = _success(base_url, ["ticket", "workflow", "list"])
+class _InstalledCli:
+    """Keep one isolated Secret Service alive across installed CLI invocations."""
+
+    def __init__(self, state_root: Path) -> None:
+        self._state_root = state_root
+        self._process: subprocess.Popen[str] | None = None
+
+    def __enter__(self) -> Self:
+        environment = os.environ.copy()
+        environment["XDG_STATE_HOME"] = str(self._state_root / "state")
+        self._process = subprocess.Popen(  # noqa: S603 - fixed repository harness
+            (
+                sys.executable,
+                str(_SECRET_SERVICE_LAUNCHER),
+                str(Path(__file__).resolve()),
+                "--cli-broker",
+            ),
+            cwd=_ROOT,
+            env=environment,
+            stdin=subprocess.PIPE,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+            text=True,
+            bufsize=1,
+        )
+        return self
+
+    def __exit__(self, *_: object) -> None:
+        process = self._require_process()
+        if process.poll() is not None:
+            stderr = cast(IO[str], process.stderr).read()
+            raise AssertionError(f"installed CLI broker exited early: {stderr}")
+        stdin = cast(IO[str], process.stdin)
+        stdout = cast(IO[str], process.stdout)
+        stdin.write("null\n")
+        stdin.flush()
+        response = json.loads(stdout.readline())
+        assert response == {"stopped": True}
+        status = process.wait(timeout=30)
+        stderr = cast(IO[str], process.stderr).read()
+        assert status == 0, stderr
+
+    def run(
+        self,
+        base_url: str,
+        credential: str,
+        arguments: list[str],
+    ) -> tuple[int, str, str]:
+        process = self._require_process()
+        stdin = cast(IO[str], process.stdin)
+        stdout = cast(IO[str], process.stdout)
+        stdin.write(
+            json.dumps(
+                {
+                    "arguments": arguments,
+                    "base_url": base_url,
+                    "credential": credential,
+                }
+            )
+            + "\n"
+        )
+        stdin.flush()
+        response = cast(dict[str, object], json.loads(stdout.readline()))
+        return (
+            cast(int, response["status"]),
+            cast(str, response["stdout"]),
+            cast(str, response["stderr"]),
+        )
+
+    def _require_process(self) -> subprocess.Popen[str]:
+        if self._process is None:
+            raise RuntimeError("installed CLI broker is not running")
+        return self._process
+
+
+def _cli_broker() -> int:
+    for line in sys.stdin:
+        request = json.loads(line)
+        if request is None:
+            print(json.dumps({"stopped": True}), flush=True)
+            return 0
+        command = cast(dict[str, object], request)
+        completed = subprocess.run(  # noqa: S603 - fixed installed executable
+            (
+                str(_INSTALLED_CLI),
+                "--base-url",
+                cast(str, command["base_url"]),
+                *cast(list[str], command["arguments"]),
+            ),
+            cwd=_ROOT,
+            input=cast(str, command["credential"]) + "\n",
+            check=False,
+            capture_output=True,
+            text=True,
+            timeout=30,
+        )
+        print(
+            json.dumps(
+                {
+                    "status": completed.returncode,
+                    "stdout": completed.stdout,
+                    "stderr": completed.stderr,
+                }
+            ),
+            flush=True,
+        )
+    return 0
+
+
+def _begin(
+    cli: _InstalledCli,
+    base_url: str,
+    tenant: TenantFixture,
+    source_ref: str,
+) -> tuple[str, str, dict[str, object]]:
+    discovery = _success(cli, base_url, ["ticket", "workflow", "list"])
     revisions = cast(list[dict[str, object]], discovery["revisions"])
     workflow_ref = cast(str, revisions[0]["workflow_ref"])
-    ticket_id = _admitted_ticket(base_url, tenant, "R2426")
+    ticket_id = _admitted_ticket(cli, base_url, tenant, source_ref)
     started = _pending(
+        cli,
         base_url,
         tenant.commander_credential,
         _ticket_command("workflow", "start", ticket_id),
@@ -131,8 +306,14 @@ def _begin(base_url: str, tenant: TenantFixture) -> tuple[str, str, dict[str, ob
     return ticket_id, workflow_ref, started
 
 
-def _admitted_ticket(base_url: str, tenant: TenantFixture, source_ref: str) -> str:
+def _admitted_ticket(
+    cli: _InstalledCli,
+    base_url: str,
+    tenant: TenantFixture,
+    source_ref: str,
+) -> str:
     created = _pending(
+        cli,
         base_url,
         tenant.commander_credential,
         [
@@ -148,11 +329,11 @@ def _admitted_ticket(base_url: str, tenant: TenantFixture, source_ref: str) -> s
             "Reachable lifecycle",
         ],
     )
-    create_result = cast(dict[str, object], created["result"])
-    created_ticket = cast(dict[str, object], create_result["ticket"])
+    created_ticket = cast(dict[str, object], _result(created)["ticket"])
     ticket_id = cast(str, created_ticket["ticket_id"])
     _accept(tenant)
     _pending(
+        cli,
         base_url,
         tenant.commander_credential,
         _ticket_command(
@@ -169,20 +350,21 @@ def _admitted_ticket(base_url: str, tenant: TenantFixture, source_ref: str) -> s
 
 
 def _reach_verification(
+    cli: _InstalledCli,
     base_url: str,
     tenant: TenantFixture,
     ticket_id: str,
     workflow_ref: str,
-    proof_input: tuple[str, str, Path, Path],
-) -> None:
-    candidate_digest, _, criteria_path, _ = proof_input
+) -> dict[str, object]:
     _pending(
+        cli,
         base_url,
         tenant.commander_credential,
         _transition(ticket_id, workflow_ref, 1, "capture", "frame"),
     )
     _accept(tenant)
-    _pending(
+    frozen = _pending(
+        cli,
         base_url,
         tenant.commander_credential,
         _ticket_command(
@@ -191,29 +373,29 @@ def _reach_verification(
             ticket_id,
             "--expected-version",
             "0",
-            "--candidate-digest",
-            candidate_digest,
-            "--criteria-file",
-            str(criteria_path),
+            "--candidate-content",
+            "workflow cli candidate",
         ),
     )
     _accept(tenant)
     _pending(
+        cli,
         base_url,
         tenant.commander_credential,
         _transition(ticket_id, workflow_ref, 2, "frame", "verify"),
     )
     _accept(tenant)
+    return frozen
 
 
 def _prove(
+    cli: _InstalledCli,
     base_url: str,
     tenant: TenantFixture,
     ticket_id: str,
-    proof_input: tuple[str, str, Path, Path],
-) -> None:
-    candidate_digest, artifact_digest, _, evidence_path = proof_input
-    _pending(
+) -> tuple[dict[str, object], dict[str, object]]:
+    evidence = _pending(
+        cli,
         base_url,
         tenant.commander_credential,
         _ticket_command(
@@ -224,19 +406,14 @@ def _prove(
             "1",
             "--evidence-id",
             str(uuid4()),
-            "--criterion-key",
-            "artifact-current",
-            "--candidate-digest",
-            candidate_digest,
-            "--artifact-digest",
-            artifact_digest,
-            "--content-file",
-            str(evidence_path),
+            "--content",
+            "workflow cli evidence",
         ),
     )
     _accept(tenant)
-    _drain(base_url, tenant.commander_credential)
-    _pending(
+    _drain(cli, base_url, tenant.commander_credential)
+    verdict = _pending(
+        cli,
         base_url,
         tenant.operator_credential,
         _ticket_command(
@@ -247,37 +424,37 @@ def _prove(
             "2",
             "--verdict-id",
             str(uuid4()),
-            "--criterion-key",
-            "artifact-current",
-            "--candidate-digest",
-            candidate_digest,
             "--decision",
             "pass",
         ),
     )
     _accept(tenant)
-    _drain(base_url, tenant.operator_credential)
+    _drain(cli, base_url, tenant.operator_credential)
+    return evidence, verdict
 
 
 def _finish(
+    cli: _InstalledCli,
     base_url: str,
     tenant: TenantFixture,
     ticket_id: str,
     workflow_ref: str,
 ) -> dict[str, object]:
     _pending(
+        cli,
         base_url,
         tenant.commander_credential,
         _transition(ticket_id, workflow_ref, 3, "verify", "close"),
     )
     _accept(tenant)
     closed = _pending(
+        cli,
         base_url,
         tenant.commander_credential,
         _ticket_command("resolve", ticket_id, "--expected-version", "4"),
     )
     _accept(tenant)
-    _drain(base_url, tenant.commander_credential)
+    _drain(cli, base_url, tenant.commander_credential)
     return closed
 
 
@@ -322,39 +499,52 @@ def _explicit_start(ticket_id: str, revision: dict[str, object]) -> list[str]:
     return command
 
 
-def _pending(base_url: str, credential: str, arguments: list[str]) -> dict[str, object]:
-    status, payload = _run(base_url, credential, arguments)
+def _pending(
+    cli: _InstalledCli,
+    base_url: str,
+    credential: str,
+    arguments: list[str],
+) -> dict[str, object]:
+    status, payload = _run(cli, base_url, credential, arguments)
     assert status == EXIT_PENDING
     return payload
 
 
-def _success(base_url: str, arguments: list[str]) -> dict[str, object]:
-    status, payload = _run(base_url, "", arguments)
+def _success(
+    cli: _InstalledCli,
+    base_url: str,
+    arguments: list[str],
+) -> dict[str, object]:
+    status, payload = _run(cli, base_url, "", arguments)
     assert status == 0
     return payload
 
 
-def _drain(base_url: str, credential: str) -> None:
-    status, _ = _run(base_url, credential, ["spool", "drain"])
+def _drain(cli: _InstalledCli, base_url: str, credential: str) -> None:
+    status, _ = _run(cli, base_url, credential, ["spool", "drain"])
     assert status == 0
 
 
 def _run(
+    cli: _InstalledCli,
     base_url: str,
     credential: str,
     arguments: list[str],
 ) -> tuple[int, dict[str, object]]:
-    stdout = io.StringIO()
-    stderr = io.StringIO()
-    status = main(
-        ["--base-url", base_url, *arguments],
-        stdin=io.StringIO(credential + "\n"),
-        stdout=stdout,
-        stderr=stderr,
-    )
-    assert stderr.getvalue() == ""
-    return status, cast(dict[str, object], json.loads(stdout.getvalue()))
+    status, stdout, stderr = cli.run(base_url, credential, arguments)
+    assert stderr == ""
+    return status, cast(dict[str, object], json.loads(stdout))
+
+
+def _result(payload: dict[str, object]) -> dict[str, object]:
+    return cast(dict[str, object], payload["result"])
 
 
 def _accept(tenant: TenantFixture) -> None:
     accept_pending_commands(tenant.database.admin_dsn, tenant.tenant_id)
+
+
+if __name__ == "__main__":
+    if sys.argv[1:] != ["--cli-broker"]:
+        raise SystemExit(2)
+    raise SystemExit(_cli_broker())
