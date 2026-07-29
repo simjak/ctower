@@ -464,15 +464,15 @@ def _projection_membership_rejections(
 
 
 def apply_migrations(migrator_dsn: str, *, role_admin_dsn: str) -> None:
-    """Reconcile roles, then serialize, apply, attest, and record migrations."""
+    """Serialize role reconciliation, application, attestation, and recording."""
 
     loaded = _load_migrations()
     database_migrations = tuple(
         migration for migration in loaded.scripts if migration.scope == "database"
     )
-    provision_database_roles(role_admin_dsn)
     with psycopg.connect(role_admin_dsn) as control:
         acquire_migration_control_lock(control)
+        provision_database_roles(role_admin_dsn)
         with psycopg.connect(migrator_dsn) as connection:
             connection.execute("SET ROLE ctower_admin")
             pending = apply_database_migrations(
