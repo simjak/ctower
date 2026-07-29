@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.2.1](https://github.com/simjak/ctower/compare/v0.2.0...v0.2.1) (2026-07-29)
+
+
+### Bug Fixes
+
+* **migrations:** adopt existing databases with a migration ledger ([#75](https://github.com/simjak/ctower/issues/75)) ([b4e1f66](https://github.com/simjak/ctower/commit/b4e1f66c0629c476a7a3813a8af70e4ec3aa46df))
+
 ## [0.2.0](https://github.com/simjak/ctower/compare/v0.1.1...v0.2.0) (2026-07-29)
 
 
