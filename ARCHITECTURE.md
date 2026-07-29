@@ -5,7 +5,7 @@
 | Status | Compact derived operator and implementer map |
 | Normative authority | [`SPEC.md`](SPEC.md), version 1.10 |
 | Decision history | [`DECISIONS.md`](DECISIONS.md) |
-| Last reviewed | 2026-07-23 |
+| Last reviewed | 2026-07-28 |
 
 This is the sole terminal-safe derived architecture atlas. It explains the canonical specification; it
 does not add requirements, authorize work, or define exact schemas, operations, DDL, package values, or
@@ -207,14 +207,17 @@ folds, SQL, and Adapter mechanics remain local to the owning Module.
 ## Workflow and Execution Policy compose at runtime
 
 ```text
-  immutable Workflow revision             compatible Execution Policy revision
-  +----------------------------------+     +------------------------------------+
-  | stages + activity metadata       |     | participants/capabilities          |
-  | legal edges + parallelism        |     | mandatory stage gates              |
-  | typed failure routes             |     | required review perspectives       |
-  | gate locations                   |     | finite nonpass/repair/generation    |
-  | terminal conditions              |     | timeouts, placement, escalation     |
-  +----------------+-----------------+     +------------------+-----------------+
+  immutable Workflow revision               compatible Execution Policy revision
+  +-----------------------------------+     +----------------------------------+
+  | stages + activity metadata        |     | participants/capabilities        |
+  | declared stage groups (optional)  |     | mandatory stage gates            |
+  | legal edges + parallelism         |     | required review perspectives     |
+  | typed failure routes              |     | family-diversity placement rules |
+  | gate locations                    |     | finite nonpass/repair/generation |
+  | required evidence slots per stage |     | finite nonprogressing mutations  |
+  | skip predicate + skip slot set    |     | timeouts, placement, escalation  |
+  | terminal conditions               |     |                                  |
+  +----------------+------------------+     +-----------------+----------------+
                    \                                      /
                     +---------------+----------------------+
                                     v
@@ -240,6 +243,47 @@ Every Workflow chooses its stage vocabulary and order. Every compatible Executio
 executes and reviews, which declared gates activate, and which finite bounds apply. A policy can select or
 narrow declared behavior; it cannot invent a missing stage or edge. `engineering.software-factory` is the
 first package, not the engine's built-in process.
+
+A Workflow may also declare an ordered stage-group vocabulary. Groups label the pinned graph so a rollup
+can say "review" or "ship" without any engine, policy, projection, or test branching on a stage key; they
+declare no edge, gate, terminal condition, or ordering authority. The delivery sprint — think, plan, build,
+review, test, ship, reflect — is exactly that: seven declared groups over the sixteen stages
+`engineering.software-factory` already has, not a second package and not a process the engine knows.
+
+Each stage declares its ordinary required evidence slots and the signing slot among them. A stage that
+declares a skip predicate declares a second, alternative skip slot set with its own signing slot. The two
+sets are alternatives, never a union, and the requested disposition picks one: `succeeded` resolves the
+ordinary set, evidence-backed `skipped` resolves the skip set in its place and is admissible only while
+the pinned predicate holds on accepted durable facts. A skipped stage therefore owes its skip proof
+instead of the work it did not do, and a `skipped` request with an unsatisfied predicate is refused rather
+than converted or assumed. `SPEC.md` INV-61, INV-62, and INV-63 are authority for all of this.
+
+At I2.1, the publishable software-factory revision must materialize one complete authored activation/edge
+sequence, `sf.e00..e15`. It is linear from activation through `intake -> think -> plan -> design ->
+implement -> local-verification-qa -> risk-derived-review -> documentation -> release-preflight -> merge
+-> staging-deploy -> staging-qa -> production-deploy -> production-smoke-live-qa -> retro ->
+resolve-close`. Documentation has no pre-review parallel start or policy-created alternative. Each edge
+reads one accepted snapshot: current predecessor completion, exact slot/gate/digest facts, and any
+destination checkpoint/change predicate. False or unknown inputs leave the destination blocked and are
+recorded; Runtime availability can delay dispatch but cannot invent movement. The checked-in
+`packs/workflows/engineering.software-factory/v1.yaml` remains a draft skeleton with empty transition and
+failure-route arrays; this atlas does not claim those I2.1 mechanics are current.
+
+Each stage also declares a closed set of typed failure reason codes whose authored action is exactly one of
+retry, return to a named stage, wait for a named durable fact, or incident-first. A report that matches no
+code or more than one becomes `classification_unknown` and dispatches nothing. Incident/hard-safety holds
+win over that unknown-classification hold, which wins over the earliest declared repair destination when
+one disposition contains multiple failures. Product defects reach plan, design, or implement only through
+distinct typed codes, and production failures cannot repair until containment, exact-environment
+verification, and typed triage are committed. `SPEC.md` contains the complete predicate-input and
+stage-by-reason tables.
+
+The no-stage-name/group-name conformance proof derives its denominator rather than maintaining it. It
+recursively parses every authored Workflow below the sole pack root, enumerates every published Workflow
+revision from Catalog, walks every stage/group key field, and requires discovered identity-set equality
+with the exercised set. Arbitrary injective key renames must preserve behavior after references are
+rewritten structurally; a temporary extra stage/group must be discovered and exercised without editing a
+key list.
 
 A ReviewPlan is a named child revision inside its pinned Gate Policy component. The only reference form is
 `<gate-policy-key>@<gate-policy-revision>#review-plans.<name>`; the parent revision/digest owns its bytes, so
@@ -295,6 +339,22 @@ For the software-factory package, `code-review` is the base perspective and cove
 maintainability. `security` and `rendered-design` activate only when their package predicates apply.
 Functional QA, documentation truth, release preflight, staging QA, production smoke/live QA, and retro
 remain stage gates rather than duplicate review perspectives.
+
+Two different things guard a verdict, and the atlas keeps them apart because their waiver rules differ.
+**Independence** is identity truth — `independent_of`, at minimum the candidate authors, plus INV-19's
+author-cannot-review-self. It is never waivable and no operator command reaches it. **Family diversity** is
+a placement eligibility rule that asks a weaker question: whether the verifying identity likely shares the
+author's blind spots. It is referenced as a revision-pinned eligibility class, never a vendor or model
+name, and because it is a policy-declared bound a tier may declare it waivable by protected operator
+command. Waiving it never permits self-review.
+
+The fourth bound every Execution Policy declares is `max_nonprogressing_candidate_mutations`, the
+no-progress rule. A candidate's outstanding set is the run's open failure lineages plus the required slots
+unfilled on that candidate's digest, taken when it finishes verification. A governed mutation is
+progressing only when the outstanding set of the candidate it produced is a strict subset of the set of
+the candidate it replaced. Trading one open defect for another is not progress, which is the case the
+bound exists for; the count is per run, only a progressing mutation clears it, and the declared value is
+capped at the number of governed mutations the generation bound permits so it is always reachable.
 
 ## One ticket, orthogonal state and changing owners
 
