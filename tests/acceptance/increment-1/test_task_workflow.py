@@ -175,6 +175,15 @@ def test_workflow_requires_exact_explicit_pin_and_replays_start(tenant: TenantFi
         WorkflowMutation(uuid4(), absent_ticket_id, graph.reference, 0, "capture", "frame"),
         telemetry=_telemetry(),
     )
+    wrong_digest = workflow.start(
+        actor,
+        replace(
+            command,
+            client_command_id=uuid4(),
+            workflow_digest="sha256:" + "f" * 64,
+        ),
+        telemetry=_telemetry(),
+    )
     started = workflow.start(actor, command, telemetry=_telemetry())
     replay = workflow.start(actor, command, telemetry=_telemetry())
     second = workflow.start(actor, _start(graph, ticket_id), telemetry=_telemetry())
@@ -189,6 +198,8 @@ def test_workflow_requires_exact_explicit_pin_and_replays_start(tenant: TenantFi
     )
     assert isinstance(absent, RecordProblem)
     assert absent.code == "workflow-run-not-started"
+    assert isinstance(wrong_digest, RecordProblem)
+    assert wrong_digest.code == "workflow-pin-mismatch"
     assert isinstance(started, WorkflowReceipt)
     assert started.stage == "capture"
     assert started.version == 1

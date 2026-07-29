@@ -403,7 +403,7 @@ def test_close_requires_current_proof_and_appends_resolved_then_closed_atomicall
     committed_close = ResolveClose(
         client_command_id=committed_close_id,
         ticket_id=ticket_id,
-        workflow_ref="fixture.atomic-close@1",
+        workflow_ref=None,
         expected_version=2,
     )
     committed = workflow.resolve_close(workflow_actor, committed_close, telemetry=_telemetry())
@@ -411,6 +411,7 @@ def test_close_requires_current_proof_and_appends_resolved_then_closed_atomicall
 
     assert refused_replay == refused
     assert isinstance(committed, WorkflowReceipt)
+    assert committed.workflow_ref == "fixture.atomic-close@1"
     assert replay == committed
     assert committed.lifecycle_facts == ("resolved", "closed")
     _assert_lifecycle(

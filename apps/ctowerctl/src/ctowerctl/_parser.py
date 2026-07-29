@@ -358,13 +358,14 @@ def _ticket_workflow(actions: argparse._SubParsersAction[_Parser]) -> None:
     workflow_actions = actions.add_parser("workflow").add_subparsers(
         dest="workflow_action", required=True, parser_class=_Parser
     )
+    workflow_actions.add_parser("list").set_defaults(local_command="ticket workflow list")
     start = workflow_actions.add_parser("start")
     start.set_defaults(cli_name="ticket workflow start")
     _ticket_id(start)
     _command_id(start)
     for name in ("workflow", "execution-policy", "gate-policy", "evidence-policy"):
-        start.add_argument(f"--{name}-ref", required=True)
-        start.add_argument(f"--{name}-digest", required=True)
+        start.add_argument(f"--{name}-ref")
+        start.add_argument(f"--{name}-digest")
     transition = actions.add_parser("transition")
     transition.set_defaults(cli_name="ticket transition")
     _ticket_id(transition)
@@ -378,7 +379,7 @@ def _ticket_workflow(actions: argparse._SubParsersAction[_Parser]) -> None:
     _ticket_id(resolve)
     _command_id(resolve)
     _version(resolve)
-    resolve.add_argument("--workflow-ref", required=True)
+    resolve.add_argument("--workflow-ref")
 
 
 def _board_parser(parser: argparse.ArgumentParser) -> None:

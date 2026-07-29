@@ -8,6 +8,11 @@ spool inspection/recovery. Thread-first intake uses only the authored
 generated-client and encrypted-spool path. There is no arbitrary operation dispatcher or client-side
 authorization engine.
 
+`ticket workflow list` is the one local Workflow read: it enumerates coherent active revisions from the
+installed pack tree without a network request. With exactly one revision, omitted start pins expand to that
+exact installed revision before enqueue. The existing resolve operation derives an omitted ref from the
+persisted run. Complete explicit pins and refs remain supported and server validation remains authoritative.
+
 Bearer authority and the one-use bootstrap capability are read as one bounded line from stdin. They are
 never accepted as arguments or environment configuration, written to the spool, or echoed. Server
 authentication, authorization, validation, idempotency, CAS, and durability decisions remain authoritative.

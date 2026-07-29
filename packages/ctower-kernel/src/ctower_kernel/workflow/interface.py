@@ -136,7 +136,7 @@ class ResolveClose:
 
     client_command_id: UUID
     ticket_id: UUID
-    workflow_ref: str
+    workflow_ref: str | None
     expected_version: int
 
     def request_payload(self) -> dict[str, object]:

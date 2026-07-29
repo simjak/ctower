@@ -38,6 +38,7 @@ from ctower_client.models import (
 )
 from ctowerctl._command_types import MutationPayload
 from ctowerctl._input import load_yaml_json, read_text
+from ctowerctl._workflow_commands import default_pins
 
 __all__: tuple[str, ...] = ()
 
@@ -239,16 +240,24 @@ def _verdict(arguments: argparse.Namespace) -> MutationPayload:
 
 
 def _workflow_start(arguments: argparse.Namespace) -> MutationPayload:
-    request = WorkflowStartRequest(
-        workflow_ref=cast(str, arguments.workflow_ref),
-        workflow_digest=cast(str, arguments.workflow_digest),
-        execution_policy_ref=cast(str, arguments.execution_policy_ref),
-        execution_policy_digest=cast(str, arguments.execution_policy_digest),
-        gate_policy_ref=cast(str, arguments.gate_policy_ref),
-        gate_policy_digest=cast(str, arguments.gate_policy_digest),
-        evidence_policy_ref=cast(str, arguments.evidence_policy_ref),
-        evidence_policy_digest=cast(str, arguments.evidence_policy_digest),
+    names = (
+        "workflow_ref",
+        "workflow_digest",
+        "execution_policy_ref",
+        "execution_policy_digest",
+        "gate_policy_ref",
+        "gate_policy_digest",
+        "evidence_policy_ref",
+        "evidence_policy_digest",
     )
+    values = tuple(getattr(arguments, name, None) for name in names)
+    if not any(value is not None for value in values):
+        payload = default_pins().response_payload()
+    elif all(isinstance(value, str) for value in values):
+        payload = dict(zip(names, cast(tuple[str, ...], values), strict=True))
+    else:
+        raise ValueError("usage: Workflow pins must be omitted or supplied together")
+    request = WorkflowStartRequest(**payload)
     return _ticket_payload(arguments, request)
 
 
@@ -265,7 +274,7 @@ def _transition(arguments: argparse.Namespace) -> MutationPayload:
 def _resolve(arguments: argparse.Namespace) -> MutationPayload:
     request = ResolveCloseRequest(
         expected_version=cast(int, arguments.expected_version),
-        workflow_ref=cast(str, arguments.workflow_ref),
+        workflow_ref=cast(str | None, arguments.workflow_ref),
     )
     return _ticket_payload(arguments, request)
 

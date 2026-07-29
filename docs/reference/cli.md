@@ -1,16 +1,16 @@
 # CLI reference
 
 `ctowerctl` — also installed as `ctl` — is the complete command surface. There are **47 authored server
-commands** and **7 local spool commands**. There is no operation-ID escape hatch: an unrecognized command is
-a usage error, not a passthrough.
+commands**, **7 local spool commands**, and one local installed-Workflow discovery command. There is no
+operation-ID escape hatch: an unrecognized command is a usage error, not a passthrough.
 
 !!! info "Where this page comes from"
     Every command name, flag, and choice list on this page is derived from
-    `apps/ctowerctl/src/ctowerctl/_parser.py`, and the command set is contract-bound: the test
+    `apps/ctowerctl/src/ctowerctl/_parser.py`. Server commands are contract-bound: the test
     `test_parser_exposes_every_authored_name_without_operation_dispatch` in
-    `tests/modules/ctowerctl/test_cli_boundaries.py` asserts the parser's authored names equal the generated
-    registry `CLI_OPERATIONS`, which is generated from `contracts/http/openapi.yaml`. If a command exists,
-    it appears here; if it appears here, it exists.
+    `tests/modules/ctowerctl/test_cli_boundaries.py` asserts the parser's authored server names equal the
+    generated registry `CLI_OPERATIONS`, which is generated from `contracts/http/openapi.yaml`. The local
+    Workflow discovery command reads the installed pack tree and performs no network request.
 
 ## Invocation shape
 
@@ -141,13 +141,21 @@ operator authority, or the request is refused as `proof-protected-authority-requ
 
 | Command | Positional | Flags |
 |---|---|---|
-| `ticket workflow start` | `<ticket_id>` | `--command-id`, and a ref/digest pair for each of `--workflow`, `--execution-policy`, `--gate-policy`, `--evidence-policy` (eight flags: `--workflow-ref`, `--workflow-digest`, …) |
+| `ticket workflow list` | — | — |
+| `ticket workflow start` | `<ticket_id>` | `--command-id`; optionally all four ref/digest pairs (`--workflow-ref`, `--workflow-digest`, …) |
 | `ticket transition` | `<ticket_id>` | `--command-id`, `--expected-version`, `--workflow-ref`, `--source-stage`, `--destination-stage` |
-| `ticket resolve` | `<ticket_id>` | `--command-id`, `--expected-version`, `--workflow-ref` |
+| `ticket resolve` | `<ticket_id>` | `--command-id`, `--expected-version`; optional `--workflow-ref` |
 
 Refs match `<key>@<revision>`, for example `ctower.trust-spine-four-stage@1`. Digests must match the pinned
 revision's canonical graph digest, not the digest of the pack file on disk. See
 [workflow pinning](../concepts/workflows.md#pinning-what-start-actually-does).
+
+`ticket workflow list` enumerates coherent `staged` or `published` revisions from the installed pack tree
+and prints the exact eight values accepted by `start`. When exactly one revision is installed, omitting all
+eight start flags selects it and writes those exact pins into the spooled request. Supplying only some pins
+is a usage error. An omitted resolve ref is resolved by the server from the run's persisted immutable ref;
+the committed result names that exact ref. If discovery lists zero or multiple revisions, start requires an
+explicit complete selection.
 
 ## Intake
 

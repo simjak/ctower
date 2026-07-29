@@ -91,7 +91,8 @@ contracts, failure routes, invalidation, skip predicates, and conformance eviden
 
 ## Pinning: what "start" actually does
 
-`ticket workflow start` takes four reference/digest pairs and binds them to the run:
+`ticket workflow list` derives the installed, executable revisions and their digests from the local pack
+tree. `ticket workflow start` takes four reference/digest pairs and binds them to the run:
 
 ```text
 --workflow-ref / --workflow-digest
@@ -102,6 +103,10 @@ contracts, failure routes, invalidation, skip predicates, and conformance eviden
 
 Each ref matches `^[a-z][a-z0-9._-]*@[1-9][0-9]*$` — a key and a revision, like
 `ctower.trust-spine-four-stage@1`. Each digest matches `^sha256:[0-9a-f]{64}$`.
+
+When discovery finds exactly one revision, `start` may omit all eight flags; the CLI expands the default
+into the same exact request before encrypted spool enqueue. It never sends an unpinned start. Explicit
+flags remain authoritative, must be supplied as a complete set, and retain the same mismatch refusal.
 
 Once pinned, the run evaluates against *those exact bytes* for its whole life. Republishing a workflow
 does not silently change a ticket already in flight. A digest that does not match the pinned revision is
