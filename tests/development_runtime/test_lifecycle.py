@@ -13,6 +13,7 @@ from uuid import UUID, uuid4
 
 import psycopg
 import pytest
+from modules.migration._postgres import Database
 
 import ctower_kernel.record.postgres as record_postgres
 import tools.development_runtime.bootstrap as bootstrap_module
@@ -102,11 +103,16 @@ def test_locked_keyring_never_mints_replacement_secrets(
     assert minted == []
 
 
-def test_existing_database_pair_reapplies_migrations_and_policy(
+def test_existing_database_pair_adopts_preledger_schema_and_reuses_ledger(
     monkeypatch: pytest.MonkeyPatch,
+    migration_database: Database,
 ) -> None:
     config = _config()
     observed: list[object] = []
+    admin_dsn = migration_database.admin_dsn
+    migrator_dsn = migration_database.migrator_dsn
+    with psycopg.connect(admin_dsn) as connection:
+        connection.execute("DROP TABLE IF EXISTS ctower_schema_migrations")
 
     def ensure(*, create_missing: bool) -> DevelopmentConfig:
         observed.append(("secrets", create_missing))
@@ -116,36 +122,48 @@ def test_existing_database_pair_reapplies_migrations_and_policy(
         observed.append(("docker", args))
         return ""
 
+    def dsn(_config: DevelopmentConfig, role: str, *, standby: bool = False) -> str:
+        del standby
+        return migrator_dsn if role == "ctower_migrator" else admin_dsn
+
     monkeypatch.setattr(lifecycle, "_container_exists", lambda _name: True)
     monkeypatch.setattr(lifecycle, "_ensure_config_and_secrets", ensure)
     monkeypatch.setattr(lifecycle, "_docker", docker)
-    monkeypatch.setattr(
-        lifecycle,
-        "development_dsn",
-        lambda _config, role, *, standby=False: f"{role}:{standby}",
-    )
+    monkeypatch.setattr(lifecycle, "development_dsn", dsn)
     monkeypatch.setattr(
         lifecycle,
         "_wait_for_database",
         lambda dsn, *, recovery=False: observed.append(("wait", dsn, recovery)),
     )
-    monkeypatch.setattr(
-        lifecycle,
-        "apply_migrations",
-        lambda dsn, *, role_admin_dsn: observed.append(("migrate", dsn, role_admin_dsn)),
-    )
-    monkeypatch.setattr(
-        lifecycle,
-        "configure_development_durability",
-        lambda dsn: observed.append(("policy", dsn)),
-    )
     monkeypatch.setattr(lifecycle, "_wait_for_sync", lambda _config: observed.append(("sync",)))
 
     lifecycle.database_up()
+    with psycopg.connect(admin_dsn) as connection:
+        first_ledger = connection.execute(
+            """
+            SELECT migration_id, sha256, application_kind, applied_at
+            FROM ctower_schema_migrations
+            ORDER BY migration_id
+            """
+        ).fetchall()
+        policy = connection.execute(
+            "SELECT mode FROM durability_policy_state WHERE singleton"
+        ).fetchone()
+    lifecycle.database_up()
+    with psycopg.connect(admin_dsn) as connection:
+        second_ledger = connection.execute(
+            """
+            SELECT migration_id, sha256, application_kind, applied_at
+            FROM ctower_schema_migrations
+            ORDER BY migration_id
+            """
+        ).fetchall()
 
     assert ("secrets", False) in observed
-    assert ("migrate", "ctower_migrator:False", "postgres:False") in observed
-    assert ("policy", "ctower_migrator:False") in observed
+    assert first_ledger
+    assert all(row[2] == "baseline" for row in first_ledger)
+    assert second_ledger == first_ledger
+    assert policy == ("development_offhost_ack",)
     assert observed[-1] == ("sync",)
 
 
