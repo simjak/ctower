@@ -258,6 +258,33 @@ the pinned predicate holds on accepted durable facts. A skipped stage therefore 
 instead of the work it did not do, and a `skipped` request with an unsatisfied predicate is refused rather
 than converted or assumed. `SPEC.md` INV-61, INV-62, and INV-63 are authority for all of this.
 
+At I2.1, the publishable software-factory revision must materialize one complete authored activation/edge
+sequence, `sf.e00..e15`. It is linear from activation through `intake -> think -> plan -> design ->
+implement -> local-verification-qa -> risk-derived-review -> documentation -> release-preflight -> merge
+-> staging-deploy -> staging-qa -> production-deploy -> production-smoke-live-qa -> retro ->
+resolve-close`. Documentation has no pre-review parallel start or policy-created alternative. Each edge
+reads one accepted snapshot: current predecessor completion, exact slot/gate/digest facts, and any
+destination checkpoint/change predicate. False or unknown inputs leave the destination blocked and are
+recorded; Runtime availability can delay dispatch but cannot invent movement. The checked-in
+`packs/workflows/engineering.software-factory/v1.yaml` remains a draft skeleton with empty transition and
+failure-route arrays; this atlas does not claim those I2.1 mechanics are current.
+
+Each stage also declares a closed set of typed failure reason codes whose authored action is exactly one of
+retry, return to a named stage, wait for a named durable fact, or incident-first. A report that matches no
+code or more than one becomes `classification_unknown` and dispatches nothing. Incident/hard-safety holds
+win over that unknown-classification hold, which wins over the earliest declared repair destination when
+one disposition contains multiple failures. Product defects reach plan, design, or implement only through
+distinct typed codes, and production failures cannot repair until containment, exact-environment
+verification, and typed triage are committed. `SPEC.md` contains the complete predicate-input and
+stage-by-reason tables.
+
+The no-stage-name/group-name conformance proof derives its denominator rather than maintaining it. It
+recursively parses every authored Workflow below the sole pack root, enumerates every published Workflow
+revision from Catalog, walks every stage/group key field, and requires discovered identity-set equality
+with the exercised set. Arbitrary injective key renames must preserve behavior after references are
+rewritten structurally; a temporary extra stage/group must be discovered and exercised without editing a
+key list.
+
 A ReviewPlan is a named child revision inside its pinned Gate Policy component. The only reference form is
 `<gate-policy-key>@<gate-policy-revision>#review-plans.<name>`; the parent revision/digest owns its bytes, so
 the enclosing `review_plans` map name is its identity and it has no independent key, revision, status, or

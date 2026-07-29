@@ -274,6 +274,13 @@ candidate/nonpassing/repair/execution facts, typed failure routes, selective Pro
 review, readiness explanations, and protected waivers. A different four-stage non-engineering package must
 run on the same evaluator with different stages, participants, perspectives, gates, and bounds.
 
+The software-factory publication materializes the SPEC's complete `sf.e00..e15` edge table, including each
+predicate revision and accepted-input contract, and its complete stage-by-reason retry/return/wait/incident
+table. Documentation has exactly one incoming edge after current-digest review. Unknown predicate input
+blocks movement; unknown or ambiguous failure classification dispatches no repair. Conformance exercises
+every edge in true and refused form and every route action, including local/staging
+requirements-versus-design-versus-implementation defects and production incident-before-repair.
+
 This is also where the delivery sprint stops being a convention and becomes package data. The published
 `engineering.software-factory` revisions declare the seven sprint stage groups over the sixteen pinned
 stages, each stage's ordinary required typed evidence slots and signing slot, the mandatory stage gates,
@@ -285,7 +292,10 @@ field frozen with CT-L0-004's stage schema; I1 publishes no grouped package and 
 **Exit:** no engine branch or platform default depends on software-factory stage/tier/group vocabulary;
 missing perspectives/gates, client-authored counters, self-review, family collapse, invalid bounds,
 unfilled required slots, silent skips, no-progress, and exhaustion fail closed with one deduplicated
-escalation.
+escalation. The no-name proof recursively discovers every authored Workflow document and every published
+Workflow Catalog revision, derives all stage/group keys from parsed payloads, asserts
+discovered=exercised identity equality, applies behavior-preserving arbitrary renames, and proves with an
+omission sentinel that a newly authored key enters the test without a maintained denominator.
 
 ### I2.2 — Durable Runtime and local execution continuity
 
