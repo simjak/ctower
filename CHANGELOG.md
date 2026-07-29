@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.2.0](https://github.com/simjak/ctower/compare/v0.1.1...v0.2.0) (2026-07-29)
+
+
+### Features
+
+* make first-day ticket creation and source lookup usable ([#66](https://github.com/simjak/ctower/issues/66)) ([4c1c6e9](https://github.com/simjak/ctower/commit/4c1c6e9822a08fb3066b2a09b0d1f8ad315f19c1))
+
 ## [0.1.1](https://github.com/simjak/ctower/compare/v0.1.0...v0.1.1) (2026-07-28)
 
 
