@@ -1,5 +1,5 @@
 // DO NOT EDIT: generated file; regenerate from declared inputs.
-// Authored contract digest: sha256:d7522e80aa4e3ac9563b24c90ecbfd9f437442ba6d0e85c758dc0889e6dfcf69
+// Authored contract digest: sha256:0c1f9ce3700bb324f33b56a78f24def92c20e4ef5fa802111e01cc1570f84b70
 
 export type ActivityClass = "work" | "verification";
 
@@ -538,7 +538,7 @@ export type DurabilityState = "durability_pending" | "accepted";
 
 export type EvidenceRequest = Readonly<{
   readonly "artifact_digest": string;
-  readonly "candidate_digest": string;
+  readonly "candidate_digest"?: string | null;
   readonly "content": string;
   readonly "criterion_key": string;
   readonly "evidence_id": string;
@@ -946,6 +946,7 @@ export type ProofCriterion = Readonly<{
 }>;
 
 export type ProofReceipt = Readonly<{
+  readonly "artifact_digest": string | null;
   readonly "candidate_digest": string;
   readonly "command_id": string;
   readonly "durability_state": DurabilityState;
@@ -988,7 +989,7 @@ export type ReopenedAuditData = Readonly<{
 
 export type ResolveCloseRequest = Readonly<{
   readonly "expected_version": number;
-  readonly "workflow_ref": string;
+  readonly "workflow_ref"?: string | null;
 }>;
 
 export type SecretBindingReference = Readonly<{
@@ -1159,7 +1160,7 @@ export type UnblockIntent = Readonly<{
 export type VerdictDecision = "pass" | "fail";
 
 export type VerdictRequest = Readonly<{
-  readonly "candidate_digest": string;
+  readonly "candidate_digest"?: string | null;
   readonly "criterion_key": string;
   readonly "decision": VerdictDecision;
   readonly "expected_version": number;

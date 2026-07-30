@@ -3,8 +3,10 @@
 from __future__ import annotations
 
 import argparse
+import hashlib
 import json
 from collections.abc import Callable
+from pathlib import Path
 from typing import cast
 from uuid import UUID
 
@@ -38,6 +40,7 @@ from ctower_client.models import (
 )
 from ctowerctl._command_types import MutationPayload
 from ctowerctl._input import load_yaml_json, read_text
+from ctowerctl._workflow_commands import default_criteria, default_criterion_key, default_pins
 
 __all__: tuple[str, ...] = ()
 
@@ -199,9 +202,20 @@ def _relation(arguments: argparse.Namespace) -> MutationPayload:
 
 
 def _criteria(arguments: argparse.Namespace) -> MutationPayload:
-    criteria = load_yaml_json(arguments.criteria_file, label="criteria input")
+    criteria_file = cast(Path | None, getattr(arguments, "criteria_file", None))
+    criteria = (
+        load_yaml_json(criteria_file, label="criteria input")
+        if criteria_file is not None
+        else default_criteria()
+    )
+    candidate_digest = cast(str | None, getattr(arguments, "candidate_digest", None))
+    if candidate_digest is None:
+        candidate_content = cast(str | None, getattr(arguments, "candidate_content", None))
+        if candidate_content is None:
+            raise ValueError("usage: candidate digest or content required")
+        candidate_digest = _text_digest(candidate_content)
     payload = {
-        "candidate_digest": cast(str, arguments.candidate_digest),
+        "candidate_digest": candidate_digest,
         "criteria": criteria,
         "expected_version": cast(int, arguments.expected_version),
     }
@@ -212,17 +226,31 @@ def _criteria(arguments: argparse.Namespace) -> MutationPayload:
 
 
 def _evidence(arguments: argparse.Namespace) -> MutationPayload:
+    content_file = cast(Path | None, getattr(arguments, "content_file", None))
+    literal_content = cast(str | None, getattr(arguments, "content", None))
+    if content_file is None and literal_content is None:
+        raise ValueError("usage: evidence content or content file required")
+    content = (
+        read_text(
+            content_file,
+            maximum_bytes=_EVIDENCE_MAX_BYTES,
+            label="evidence content",
+        )
+        if content_file is not None
+        else cast(str, literal_content)
+    )
+    artifact_digest = cast(str | None, getattr(arguments, "artifact_digest", None))
     request = EvidenceRequest(
         expected_version=cast(int, arguments.expected_version),
         evidence_id=cast(UUID, arguments.evidence_id),
-        criterion_key=cast(str, arguments.criterion_key),
-        candidate_digest=cast(str, arguments.candidate_digest),
-        artifact_digest=cast(str, arguments.artifact_digest),
-        content=read_text(
-            arguments.content_file,
-            maximum_bytes=_EVIDENCE_MAX_BYTES,
-            label="evidence content",
+        criterion_key=(
+            cast(str, arguments.criterion_key)
+            if getattr(arguments, "criterion_key", None) is not None
+            else default_criterion_key()
         ),
+        candidate_digest=cast(str | None, getattr(arguments, "candidate_digest", None)),
+        artifact_digest=(_text_digest(content) if artifact_digest is None else artifact_digest),
+        content=content,
     )
     return _ticket_payload(arguments, request)
 
@@ -231,24 +259,36 @@ def _verdict(arguments: argparse.Namespace) -> MutationPayload:
     request = VerdictRequest(
         expected_version=cast(int, arguments.expected_version),
         verdict_id=cast(UUID, arguments.verdict_id),
-        criterion_key=cast(str, arguments.criterion_key),
-        candidate_digest=cast(str, arguments.candidate_digest),
+        criterion_key=(
+            cast(str, arguments.criterion_key)
+            if getattr(arguments, "criterion_key", None) is not None
+            else default_criterion_key()
+        ),
+        candidate_digest=cast(str | None, getattr(arguments, "candidate_digest", None)),
         decision=VerdictDecision(cast(str, arguments.decision)),
     )
     return _ticket_payload(arguments, request)
 
 
 def _workflow_start(arguments: argparse.Namespace) -> MutationPayload:
-    request = WorkflowStartRequest(
-        workflow_ref=cast(str, arguments.workflow_ref),
-        workflow_digest=cast(str, arguments.workflow_digest),
-        execution_policy_ref=cast(str, arguments.execution_policy_ref),
-        execution_policy_digest=cast(str, arguments.execution_policy_digest),
-        gate_policy_ref=cast(str, arguments.gate_policy_ref),
-        gate_policy_digest=cast(str, arguments.gate_policy_digest),
-        evidence_policy_ref=cast(str, arguments.evidence_policy_ref),
-        evidence_policy_digest=cast(str, arguments.evidence_policy_digest),
+    names = (
+        "workflow_ref",
+        "workflow_digest",
+        "execution_policy_ref",
+        "execution_policy_digest",
+        "gate_policy_ref",
+        "gate_policy_digest",
+        "evidence_policy_ref",
+        "evidence_policy_digest",
     )
+    values = tuple(getattr(arguments, name, None) for name in names)
+    if not any(value is not None for value in values):
+        payload = default_pins().response_payload()
+    elif all(isinstance(value, str) for value in values):
+        payload = dict(zip(names, cast(tuple[str, ...], values), strict=True))
+    else:
+        raise ValueError("usage: Workflow pins must be omitted or supplied together")
+    request = WorkflowStartRequest(**payload)
     return _ticket_payload(arguments, request)
 
 
@@ -265,7 +305,7 @@ def _transition(arguments: argparse.Namespace) -> MutationPayload:
 def _resolve(arguments: argparse.Namespace) -> MutationPayload:
     request = ResolveCloseRequest(
         expected_version=cast(int, arguments.expected_version),
-        workflow_ref=cast(str, arguments.workflow_ref),
+        workflow_ref=cast(str | None, arguments.workflow_ref),
     )
     return _ticket_payload(arguments, request)
 
@@ -276,6 +316,10 @@ def _ticket_payload(arguments: argparse.Namespace, request: BaseModel) -> Mutati
 
 def _payload(request: BaseModel, **path_parameters: str) -> MutationPayload:
     return MutationPayload(request=request, path_parameters=path_parameters)
+
+
+def _text_digest(content: str) -> str:
+    return "sha256:" + hashlib.sha256(content.encode("utf-8")).hexdigest()
 
 
 def _ticket_query(client: CtowerClient, arguments: argparse.Namespace) -> BaseModel:

@@ -8,6 +8,20 @@ spool inspection/recovery. Thread-first intake uses only the authored
 generated-client and encrypted-spool path. There is no arbitrary operation dispatcher or client-side
 authorization engine.
 
+`ticket workflow list` is the one local Workflow read: it enumerates coherent active revisions from the
+installed pack tree without a network request. With exactly one revision, omitted start pins expand to that
+exact installed revision before enqueue. The existing resolve operation derives an omitted ref from the
+persisted run. Complete explicit pins and refs remain supported and server validation remains authoritative.
+
+The same installed-policy rule closes the Proof input loop. Criteria freeze accepts either an explicit
+candidate digest or literal candidate content, hashing the latter as exact UTF-8 bytes, and defaults omitted
+criteria to the sole installed gate policy. Evidence add accepts literal content or a bounded content file,
+computes an omitted artifact digest over the exact UTF-8 content, defaults the sole installed criterion, and
+lets Proof resolve an omitted candidate digest only to the frozen current candidate. Verdict does the same
+current-candidate and sole-criterion resolution. Proof receipts name the resolved candidate digest and name
+the artifact digest for evidence. Explicit values are never replaced; server validation still refuses a
+stale candidate or a content/digest mismatch.
+
 Bearer authority and the one-use bootstrap capability are read as one bounded line from stdin. They are
 never accepted as arguments or environment configuration, written to the spool, or echoed. Server
 authentication, authorization, validation, idempotency, CAS, and durability decisions remain authoritative.

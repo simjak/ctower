@@ -1,6 +1,6 @@
 """DO NOT EDIT: generated file; regenerate from declared inputs.
 
-Authored contract digest: sha256:d7522e80aa4e3ac9563b24c90ecbfd9f437442ba6d0e85c758dc0889e6dfcf69
+Authored contract digest: sha256:0c1f9ce3700bb324f33b56a78f24def92c20e4ef5fa802111e01cc1570f84b70
 """
 
 from __future__ import annotations
@@ -705,7 +705,7 @@ class EvidenceRequest(_BoundaryModel):
     expected_version: Annotated[int, Field(ge=1, le=9007199254740991)]
     evidence_id: UUID
     criterion_key: Annotated[str, Field(pattern="^[a-z][a-z0-9._-]*$")]
-    candidate_digest: Annotated[str, Field(pattern="^sha256:[0-9a-f]{64}$")]
+    candidate_digest: Annotated[str, Field(pattern="^sha256:[0-9a-f]{64}$")] | None = None
     artifact_digest: Annotated[str, Field(pattern="^sha256:[0-9a-f]{64}$")]
     content: Annotated[str, Field(min_length=1, max_length=100000)]
 
@@ -1131,7 +1131,7 @@ class ReopenIntent(_BoundaryModel):
 
 class ResolveCloseRequest(_BoundaryModel):
     expected_version: Annotated[int, Field(ge=1, le=9007199254740991)]
-    workflow_ref: Annotated[str, Field(pattern="^[a-z][a-z0-9._-]*@[1-9][0-9]*$")]
+    workflow_ref: Annotated[str, Field(pattern="^[a-z][a-z0-9._-]*@[1-9][0-9]*$")] | None = None
 
 
 class SecretBindingReference(_BoundaryModel):
@@ -1662,6 +1662,7 @@ class ProofChangedAuditEvent(_BoundaryModel):
 
 
 class ProofReceipt(_BoundaryModel):
+    artifact_digest: Annotated[str, Field(pattern="^sha256:[0-9a-f]{64}$")] | None
     candidate_digest: Annotated[str, Field(pattern="^sha256:[0-9a-f]{64}$")]
     command_id: UUID
     durability_state: DurabilityState
@@ -1764,7 +1765,7 @@ class VerdictRequest(_BoundaryModel):
     expected_version: Annotated[int, Field(ge=1, le=9007199254740991)]
     verdict_id: UUID
     criterion_key: Annotated[str, Field(pattern="^[a-z][a-z0-9._-]*$")]
-    candidate_digest: Annotated[str, Field(pattern="^sha256:[0-9a-f]{64}$")]
+    candidate_digest: Annotated[str, Field(pattern="^sha256:[0-9a-f]{64}$")] | None = None
     decision: VerdictDecision
 
 

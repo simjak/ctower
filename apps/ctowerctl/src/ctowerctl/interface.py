@@ -25,6 +25,7 @@ from ctowerctl import (
     _spool_commands,
     _synthetic_commands,
     _ticket_commands,
+    _workflow_commands,
 )
 from ctowerctl._auth import read_authority
 from ctowerctl._command_types import MutationPayload
@@ -73,7 +74,11 @@ def _run_command(
     error_stream: TextIO,
 ) -> int:
     try:
-        result, code = _execute(arguments, input_stream)
+        result, code = (
+            _execute_local(arguments, input_stream)
+            if hasattr(arguments, "local_command")
+            else _execute(arguments, input_stream)
+        )
     except SpoolError as error:
         command_id = _command_id(arguments)
         write_json(
@@ -103,8 +108,6 @@ def _execute(
 ) -> tuple[BaseModel, ExitCode]:
     namespace = cast("argparse.Namespace", arguments)
     base_url = cast(str, namespace.base_url)
-    if hasattr(namespace, "local_command"):
-        return _spool_commands.execute(base_url, namespace, authority_stream)
     cli_name = cast(str, namespace.cli_name)
     if cli_name == "bootstrap first-tenant":
         result = _bootstrap_commands.execute(base_url, namespace, authority_stream)
@@ -122,6 +125,15 @@ def _execute(
         return _execute_mutation(base_url, credential, namespace, operation)
     with CtowerClient(base_url, credential=credential) as client:
         return _execute_query(namespace, client), ExitCode.SUCCESS
+
+
+def _execute_local(
+    arguments: argparse.Namespace,
+    authority_stream: TextIO,
+) -> tuple[BaseModel, ExitCode]:
+    if arguments.local_command == "ticket workflow list":
+        return _workflow_commands.execute_local()
+    return _spool_commands.execute(cast(str, arguments.base_url), arguments, authority_stream)
 
 
 def _execute_mutation(

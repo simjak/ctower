@@ -249,6 +249,7 @@ def _persist_decision(
             actor,
             mutation,
             command,
+            candidate_digest=cast(str, decision.snapshot.candidate_digest),
             proof_id=proof_id,
             now=now,
             object_receipt=object_receipt,
@@ -259,6 +260,7 @@ def _persist_decision(
             actor,
             mutation,
             command,
+            candidate_digest=cast(str, decision.snapshot.candidate_digest),
             proof_id=proof_id,
             proof_sequence=version,
             now=now,
@@ -323,6 +325,7 @@ def _insert_evidence(
     mutation: ProofMutation,
     command: RecordEvidence,
     *,
+    candidate_digest: str,
     proof_id: UUID,
     now: datetime,
     object_receipt: StoredObject | None,
@@ -360,7 +363,7 @@ def _insert_evidence(
             proof_id,
             actor.tenant_id,
             command.criterion_key,
-            _digest_bytes(command.candidate_digest),
+            _digest_bytes(candidate_digest),
             artifact_digest,
             actor.principal_id,
             mutation.client_command_id,
@@ -375,6 +378,7 @@ def _insert_verdict(
     mutation: ProofMutation,
     command: RecordVerdict,
     *,
+    candidate_digest: str,
     proof_id: UUID,
     proof_sequence: int,
     now: datetime,
@@ -392,7 +396,7 @@ def _insert_verdict(
             proof_id,
             actor.tenant_id,
             command.criterion_key,
-            _digest_bytes(command.candidate_digest),
+            _digest_bytes(candidate_digest),
             actor.principal_id,
             command.decision.value,
             mutation.client_command_id,
@@ -454,6 +458,11 @@ def _receipt(
         ticket_id=mutation.ticket_id,
         version=version,
         candidate_digest=cast(str, decision.snapshot.candidate_digest),
+        artifact_digest=(
+            mutation.command.artifact_digest
+            if isinstance(mutation.command, RecordEvidence)
+            else None
+        ),
         satisfied=evaluator.is_satisfied(decision.snapshot, policy=policy),
         invalidated_evidence_ids=decision.invalidated_evidence_ids,
         invalidated_verdict_ids=decision.invalidated_verdict_ids,
@@ -544,6 +553,7 @@ def _with_event(receipt: ProofReceipt, event_id: UUID) -> ProofReceipt:
         ticket_id=receipt.ticket_id,
         version=receipt.version,
         candidate_digest=receipt.candidate_digest,
+        artifact_digest=receipt.artifact_digest,
         satisfied=receipt.satisfied,
         invalidated_evidence_ids=receipt.invalidated_evidence_ids,
         invalidated_verdict_ids=receipt.invalidated_verdict_ids,
@@ -569,6 +579,9 @@ def _receipt_from_payload(payload: dict[str, object]) -> ProofReceipt:
         ticket_id=UUID(str(payload["ticket_id"])),
         version=int(cast(int, payload["version"])),
         candidate_digest=str(payload["candidate_digest"]),
+        artifact_digest=(
+            str(payload["artifact_digest"]) if payload.get("artifact_digest") is not None else None
+        ),
         satisfied=bool(payload["satisfied"]),
         invalidated_evidence_ids=tuple(
             UUID(str(item)) for item in cast(list[object], payload["invalidated_evidence_ids"])

@@ -166,7 +166,7 @@ def _refusal(
             current_version=current_version,
         )
     stored_ref = f"{run['workflow_key']}@{run['workflow_revision']}"
-    if command.workflow_ref != stored_ref:
+    if command.workflow_ref is not None and command.workflow_ref != stored_ref:
         return _problem(
             command,
             "workflow-not-terminal",
@@ -313,12 +313,13 @@ def _insert_lifecycle(
 
 
 def _closed_receipt(run: dict[str, object], command: ResolveClose) -> WorkflowReceipt:
+    workflow_ref = f"{run['workflow_key']}@{run['workflow_revision']}"
     return WorkflowReceipt(
         command_id=command.client_command_id,
         event_ids=(),
         workflow_run_id=cast(UUID, run["workflow_run_id"]),
         ticket_id=command.ticket_id,
-        workflow_ref=command.workflow_ref,
+        workflow_ref=workflow_ref,
         stage=str(run["current_stage"]),
         activity_class=ActivityClass(str(run["activity_class"])),
         version=int(cast(int, run["version"])),
