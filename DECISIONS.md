@@ -885,3 +885,56 @@ unambiguous scope; it does not weaken CP3-D.
 Project Delivery visibility do not themselves establish fresh-database authority, complete the reviewed
 minimal carry-forward, issue a CT-I1-008 development verdict, or prove CP3-D. Those remain designed gates
 until their exact evidence is accepted.
+
+## D28 — Per-slot seat accountability on Project Delivery (locked 2026-07-30, operator)
+
+The operator directed on 2026-07-30 that every qualifying stage of delivery carry a first-class
+queryable seat, so the board is an accountability ledger rather than only a status display: who owns
+each open slot now, and who signed each completed slot after the fact. This entry preserves D21's
+derived Project Delivery model, D27's fresh-start authority and fail-closed CT-I2-001 dependency rule,
+S1 contract-closure semantics (generic configured keys, no product-code roster), and INV-61/INV-62
+evidence completeness and signing rules. It does not weaken CP3-D, dual-write prohibition, or minimal
+carry-forward.
+
+This decision is in the same family as open delivery-surface declaration work (#115) — declare
+present/absent/unknown as explicit data rather than inferred shape — but it is a **separate** decision
+and does not resolve or pre-empt that open question beyond that family note.
+
+1. **Seat catalog is data.** Seats are members of a versioned configured **seat catalog**, the same
+   class of configuration as the active checkpoint set S1/S2 establish. Membership, keys, labels, and
+   order change through authenticated versioned configuration; product code, schemas, projections,
+   packs, and tests never hard-code a fixed seat roster or branch on particular seat-key strings.
+   Adding, removing, renaming, or reordering seats requires no product-code change and is proven by a
+   mutation test of the same class as the S1/S2 checkpoint-set proof.
+2. **Assigned seat.** Each qualifying-stage evidence slot MAY carry exactly one assigned seat key drawn
+   from the active catalog revision. Assignment is forward-looking accountability for an open or pending
+   slot. It does not move the Workflow graph, fill evidence, pass a gate, or rewrite headline-state
+   derivation.
+3. **Signing seat.** Completed slot Evidence records the signing seat supplied by the Evidence verifier
+   assignment interval under INV-62. `Evidence.verifier_principal` remains the canonical signing
+   principal; the assignment supplies seat context without a drifting free-text or duplicate principal
+   field.
+4. **Assigned ≠ signed is data.** When both seats are present and differ, both remain visible. The
+   difference never silently overwrites either fact and never becomes an error that blocks the record,
+   transition history, or projection rebuild.
+5. **Unassigned is data.** A slot with no assigned seat reads as explicitly unassigned. Surfaces never
+   guess a seat from stage key, group key, evidence kind, principal display name, ticket custodian, or
+   silence, and never omit the unassigned state so a client must invent a default.
+6. **Derivation.** Board, Ticket, and Project Delivery seat surfaces derive only from the configured
+   catalog plus explicit assignment and Evidence facts at the source watermark — consistent with S2's
+   configured-set-plus-facts rule for checkpoints (INV-59, INV-64).
+7. **Sequencing and bounds.** This decision authorizes the SPEC model only (US-PD-04, AC-PD-07..09,
+   INV-64, and the seat fields on AC-PD-01/03/05/06). Contract, fold, projection, and generated-client
+   carriage are a separate implementation slice stacked after S2 (#118) on the same Project Delivery
+   surface. No new environment variables or feature flags. D27 and CT-I2-001 remain fail-closed.
+
+Non-normative example of catalog members a configuration might declare for today's crew (not platform
+vocabulary): commander, eng-manager, engineer, designer, qa, tech-writer, release-manager, devops-sre,
+cso, triage.
+
+Rejected alternatives:
+
+- Hard-coding today's crew names into product schema, fold branches, or normative SPEC vocabulary.
+- Inferring a seat from stage key or ticket custodian when assignment is missing.
+- Collapsing assigned and signing into one field that rewrites history on sign-off.
+- Blocking the record when assigned and signing seats differ.
