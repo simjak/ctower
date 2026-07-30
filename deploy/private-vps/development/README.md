@@ -43,9 +43,11 @@ uv pip install --python /tmp/ctower-bootstrap-UNIQUE/venv/bin/python \
 
 Before any persistent-runtime command, run the read-only preflight from the checkout with the approved
 interpreter. It reads every entry from this checkout's `[project.scripts]`, then asks the isolated
-bootstrap-venv interpreter to load the matching installed entry point. A missing, mismatched,
-unimportable, or non-callable entry point refuses the install. It never treats a pathname or executable bit
-as proof.
+bootstrap-venv interpreter to load the matching installed entry point and inspect the exact script pathname
+the commands below will use. A missing, mismatched, unimportable, or non-callable entry point refuses the
+install. The installed script must also be a current-user-executable regular file with a nonempty,
+syntactically valid Python shim whose shebang resolves to that bootstrap interpreter. The preflight does not
+execute scripts because some entries start services or unlock the development keyring.
 
 ```text
 /path/to/python3.13 -m tools.runtime_preflight --pyproject pyproject.toml \

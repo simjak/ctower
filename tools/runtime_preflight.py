@@ -18,34 +18,91 @@ _RESULT_PREFIX = "runtime-preflight-result: "
 _PROBE = f"""
 import importlib.metadata
 import json
+import os
+import pathlib
 import sys
+import sysconfig
 
 expected = json.loads(sys.stdin.read())
 installed = {{}}
 for entry_point in importlib.metadata.entry_points(group="console_scripts"):
     installed.setdefault(entry_point.name, []).append(entry_point)
 
+def script_artifact_error(name):
+    script = pathlib.Path(sysconfig.get_path("scripts")) / name
+    if not script.is_file():
+        return "script path check failed: installed script does not exist"
+    if not os.access(script, os.X_OK):
+        return "executable-bit check failed: installed script is not executable by current user"
+    try:
+        contents = script.read_text(encoding="utf-8")
+    except (OSError, UnicodeError) as exc:
+        return (
+            "launchability check failed: cannot read installed script: "
+            f"{{type(exc).__name__}}: {{exc}}"
+        )
+    if not contents:
+        return "launchability check failed: installed script is empty"
+    first_line, separator, body = contents.partition("\\n")
+    if not first_line.startswith("#!"):
+        return "launchability check failed: installed script has no shebang"
+    interpreter_parts = first_line[2:].strip().split()
+    if len(interpreter_parts) != 1:
+        return "launchability check failed: installed script has an unsupported shebang"
+    interpreter = pathlib.Path(interpreter_parts[0])
+    if not interpreter.is_file():
+        return "launchability check failed: shebang interpreter does not exist"
+    if not os.access(interpreter, os.X_OK):
+        return "launchability check failed: shebang interpreter is not executable"
+    try:
+        candidate_interpreter = interpreter.samefile(sys.executable)
+    except OSError as exc:
+        return (
+            "launchability check failed: cannot resolve shebang interpreter: "
+            f"{{type(exc).__name__}}: {{exc}}"
+        )
+    if not candidate_interpreter:
+        return "launchability check failed: shebang does not name the candidate interpreter"
+    if not separator or not body.strip():
+        return "launchability check failed: installed script body is empty"
+    try:
+        compile(contents, str(script), "exec")
+    except (SyntaxError, ValueError) as exc:
+        return (
+            "launchability check failed: installed script is not valid Python: "
+            f"{{type(exc).__name__}}: {{exc}}"
+        )
+    return None
+
 checks = []
 for name, target in sorted(expected.items()):
     candidates = installed.get(name, [])
     error = None
     if not candidates:
-        error = "console entry point is not installed"
+        error = "metadata check failed: console entry point is not installed"
     elif len(candidates) != 1:
-        error = f"expected one installed entry point, found {{len(candidates)}}"
+        error = (
+            "metadata check failed: expected one installed entry point, "
+            f"found {{len(candidates)}}"
+        )
     elif candidates[0].value != target:
         error = (
-            f"installed target {{candidates[0].value!r}} does not match "
+            f"metadata check failed: installed target {{candidates[0].value!r}} does not match "
             f"checkout target {{target!r}}"
         )
     else:
         try:
             loaded = candidates[0].load()
         except Exception as exc:
-            error = f"cannot load {{target!r}}: {{type(exc).__name__}}: {{exc}}"
+            error = (
+                f"metadata check failed: cannot load {{target!r}}: "
+                f"{{type(exc).__name__}}: {{exc}}"
+            )
         else:
             if not callable(loaded):
-                error = f"loaded target {{target!r}} is not callable"
+                error = f"metadata check failed: loaded target {{target!r}} is not callable"
+            else:
+                error = script_artifact_error(name)
     checks.append({{"name": name, "target": target, "error": error}})
 
 print({_RESULT_PREFIX!r} + json.dumps({{"checks": checks}}, sort_keys=True))
