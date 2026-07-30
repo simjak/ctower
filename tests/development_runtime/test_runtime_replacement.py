@@ -23,11 +23,18 @@ _PROCESS_TIMEOUT_SECONDS = 10.0
 _REPOSITORY_ROOT = Path(__file__).parents[2]
 
 _RUNTIME_OPERATION = """
+import importlib.util
 from pathlib import Path
 import sys
 import time
 
-import tools.development_runtime.installation as installation
+module_path = Path.cwd() / "tools/development_runtime/installation.py"
+spec = importlib.util.spec_from_file_location("runtime_installation_proof", module_path)
+if spec is None or spec.loader is None:
+    raise RuntimeError("cannot load the runtime installation proof module")
+installation = importlib.util.module_from_spec(spec)
+sys.modules[spec.name] = installation
+spec.loader.exec_module(installation)
 
 (
     operation,
