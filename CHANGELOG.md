@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.2.2](https://github.com/simjak/ctower/compare/v0.2.1...v0.2.2) (2026-07-30)
+
+
+### Bug Fixes
+
+* **cli:** make workflow lifecycle reachable ([#84](https://github.com/simjak/ctower/issues/84)) ([4d88a99](https://github.com/simjak/ctower/commit/4d88a9962e06f2ee3325e43cb31ff5036f6ac77d))
+
 ## [0.2.1](https://github.com/simjak/ctower/compare/v0.2.0...v0.2.1) (2026-07-29)
 
 
