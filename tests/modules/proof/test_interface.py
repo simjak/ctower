@@ -104,7 +104,7 @@ def test_evidence_must_match_its_bytes_and_the_current_candidate_digest() -> Non
         RecordEvidence(
             evidence_id=UUID("30000000-0000-4000-8000-000000000001"),
             criterion_key="artifact-current",
-            candidate_digest=candidate_digest,
+            candidate_digest=None,
             artifact_digest=digest,
             content=content,
         ),
@@ -133,6 +133,7 @@ def test_evidence_must_match_its_bytes_and_the_current_candidate_digest() -> Non
     )
 
     assert current.accepted is True
+    assert current.snapshot.evidence[0].candidate_digest == candidate_digest
     assert current.snapshot.evidence[0].artifact_digest == digest
     assert current.facts == ("evidence.recorded",)
     assert corrupt.reason == "evidence-digest-mismatch"
@@ -175,7 +176,7 @@ def test_protected_verdict_requires_an_authorized_non_self_reviewer() -> None:
     command = RecordVerdict(
         verdict_id=UUID("40000000-0000-4000-8000-000000000001"),
         criterion_key="artifact-current",
-        candidate_digest=candidate_digest,
+        candidate_digest=None,
         decision=VerdictDecision.PASSING,
     )
 
@@ -196,6 +197,7 @@ def test_protected_verdict_requires_an_authorized_non_self_reviewer() -> None:
     assert self_review.reason == "self-review-refused"
     assert unprotected.reason == "protected-authority-required"
     assert accepted.accepted is True
+    assert accepted.snapshot.verdicts[0].candidate_digest == candidate_digest
     assert accepted.snapshot.verdicts[0].reviewer_id == REVIEWER_ID
     assert accepted.facts == ("verdict.recorded",)
     assert proof.is_satisfied(accepted.snapshot) is True

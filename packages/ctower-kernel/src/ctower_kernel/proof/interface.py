@@ -135,7 +135,7 @@ class RecordEvidence:
 
     evidence_id: UUID
     criterion_key: str
-    candidate_digest: str
+    candidate_digest: str | None
     artifact_digest: str
     content: bytes
 
@@ -146,7 +146,7 @@ class RecordVerdict:
 
     verdict_id: UUID
     criterion_key: str
-    candidate_digest: str
+    candidate_digest: str | None
     decision: VerdictDecision
 
 
@@ -189,6 +189,7 @@ class ProofReceipt:
     ticket_id: UUID
     version: int
     candidate_digest: str
+    artifact_digest: str | None
     satisfied: bool
     invalidated_evidence_ids: tuple[UUID, ...] = ()
     invalidated_verdict_ids: tuple[UUID, ...] = ()
@@ -197,6 +198,7 @@ class ProofReceipt:
         """Return the stable public command receipt."""
 
         return {
+            "artifact_digest": self.artifact_digest,
             "candidate_digest": self.candidate_digest,
             "command_id": str(self.command_id),
             "durability_state": "durability_pending",
@@ -350,7 +352,12 @@ class Proof:
     def _record_evidence(
         self, actor: ProofActor, snapshot: ProofSnapshot, command: RecordEvidence
     ) -> ProofDecision:
-        if command.candidate_digest != snapshot.candidate_digest:
+        candidate_digest = (
+            snapshot.candidate_digest
+            if command.candidate_digest is None
+            else command.candidate_digest
+        )
+        if candidate_digest is None or candidate_digest != snapshot.candidate_digest:
             return _refusal("candidate-digest-not-current", snapshot)
         criterion = next(
             (item for item in snapshot.criteria if item.key == command.criterion_key), None
@@ -365,7 +372,7 @@ class Proof:
         evidence = Evidence(
             evidence_id=command.evidence_id,
             criterion_key=criterion.key,
-            candidate_digest=command.candidate_digest,
+            candidate_digest=candidate_digest,
             artifact_digest=command.artifact_digest,
             producer_id=actor.principal_id,
         )
@@ -383,7 +390,12 @@ class Proof:
             return _refusal("self-review-refused", snapshot)
         if actor.kind != "operator":
             return _refusal("protected-authority-required", snapshot)
-        if command.candidate_digest != snapshot.candidate_digest:
+        candidate_digest = (
+            snapshot.candidate_digest
+            if command.candidate_digest is None
+            else command.candidate_digest
+        )
+        if candidate_digest is None or candidate_digest != snapshot.candidate_digest:
             return _refusal("candidate-digest-not-current", snapshot)
         if not any(
             item.criterion_key == command.criterion_key
@@ -396,7 +408,7 @@ class Proof:
         verdict = Verdict(
             verdict_id=command.verdict_id,
             criterion_key=command.criterion_key,
-            candidate_digest=command.candidate_digest,
+            candidate_digest=candidate_digest,
             reviewer_id=actor.principal_id,
             decision=command.decision,
         )

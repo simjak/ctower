@@ -240,7 +240,7 @@ def test_interface_dispatch_fails_closed(
         "execute",
         lambda _base_url, _arguments, _stream: (local_result, ExitCode.SUCCESS),
     )
-    assert interface._execute(
+    assert interface._execute_local(
         argparse.Namespace(
             base_url="https://ctower.example",
             local_command="spool status",

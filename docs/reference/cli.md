@@ -1,16 +1,16 @@
 # CLI reference
 
 `ctowerctl` — also installed as `ctl` — is the complete command surface. There are **47 authored server
-commands** and **7 local spool commands**. There is no operation-ID escape hatch: an unrecognized command is
-a usage error, not a passthrough.
+commands**, **7 local spool commands**, and one local installed-Workflow discovery command. There is no
+operation-ID escape hatch: an unrecognized command is a usage error, not a passthrough.
 
 !!! info "Where this page comes from"
     Every command name, flag, and choice list on this page is derived from
-    `apps/ctowerctl/src/ctowerctl/_parser.py`, and the command set is contract-bound: the test
+    `apps/ctowerctl/src/ctowerctl/_parser.py`. Server commands are contract-bound: the test
     `test_parser_exposes_every_authored_name_without_operation_dispatch` in
-    `tests/modules/ctowerctl/test_cli_boundaries.py` asserts the parser's authored names equal the generated
-    registry `CLI_OPERATIONS`, which is generated from `contracts/http/openapi.yaml`. If a command exists,
-    it appears here; if it appears here, it exists.
+    `tests/modules/ctowerctl/test_cli_boundaries.py` asserts the parser's authored server names equal the
+    generated registry `CLI_OPERATIONS`, which is generated from `contracts/http/openapi.yaml`. The local
+    Workflow discovery command reads the installed pack tree and performs no network request.
 
 ## Invocation shape
 
@@ -124,12 +124,17 @@ timestamp is rejected.
 
 | Command | Positional | Flags |
 |---|---|---|
-| `ticket criteria freeze` | `<ticket_id>` | `--command-id`, `--expected-version` (≥ 0), `--candidate-digest`, `--criteria-file` |
-| `ticket evidence add` | `<ticket_id>` | `--command-id`, `--expected-version` (≥ 1), `--evidence-id`, `--criterion-key`, `--candidate-digest`, `--artifact-digest`, `--content-file` |
-| `ticket gate verdict` | `<ticket_id>` | `--command-id`, `--expected-version` (≥ 1), `--verdict-id`, `--criterion-key`, `--candidate-digest`, `--decision {pass,fail}` |
+| `ticket criteria freeze` | `<ticket_id>` | required: `--command-id`, `--expected-version` (≥ 0), exactly one of `--candidate-content` or `--candidate-digest`; optional: `--criteria-file` |
+| `ticket evidence add` | `<ticket_id>` | required: `--command-id`, `--expected-version` (≥ 1), `--evidence-id`, exactly one of `--content` or `--content-file`; optional: `--criterion-key`, `--candidate-digest`, `--artifact-digest` |
+| `ticket gate verdict` | `<ticket_id>` | required: `--command-id`, `--expected-version` (≥ 1), `--verdict-id`, `--decision {pass,fail}`; optional: `--criterion-key`, `--candidate-digest` |
 
-Digests are `sha256:` followed by exactly 64 lowercase hex characters. `--criteria-file` and
-`--content-file` are paths; evidence content is capped at 100 000 characters by the contract.
+Digests are `sha256:` followed by exactly 64 lowercase hex characters. Candidate and evidence literal
+content is hashed as exact UTF-8 bytes. With one installed Workflow revision and one criterion,
+`--criteria-file` and `--criterion-key` default to that exact gate policy. Evidence omitting
+`--candidate-digest` binds server-side to the frozen current candidate; omitting `--artifact-digest`
+computes it from the supplied content. Proof receipts state the resolved candidate digest and, for evidence,
+the artifact digest. Explicit values remain authoritative and a stale candidate or wrong artifact digest is
+refused. Evidence content is capped at 100 000 characters by the contract.
 
 The principal recording a verdict must differ from the principal who ran `ticket criteria freeze` — the
 candidate's author — or the request is refused as `proof-self-review-refused`. It must also hold protected
@@ -141,13 +146,21 @@ operator authority, or the request is refused as `proof-protected-authority-requ
 
 | Command | Positional | Flags |
 |---|---|---|
-| `ticket workflow start` | `<ticket_id>` | `--command-id`, and a ref/digest pair for each of `--workflow`, `--execution-policy`, `--gate-policy`, `--evidence-policy` (eight flags: `--workflow-ref`, `--workflow-digest`, …) |
+| `ticket workflow list` | — | — |
+| `ticket workflow start` | `<ticket_id>` | `--command-id`; optionally all four ref/digest pairs (`--workflow-ref`, `--workflow-digest`, …) |
 | `ticket transition` | `<ticket_id>` | `--command-id`, `--expected-version`, `--workflow-ref`, `--source-stage`, `--destination-stage` |
-| `ticket resolve` | `<ticket_id>` | `--command-id`, `--expected-version`, `--workflow-ref` |
+| `ticket resolve` | `<ticket_id>` | `--command-id`, `--expected-version`; optional `--workflow-ref` |
 
 Refs match `<key>@<revision>`, for example `ctower.trust-spine-four-stage@1`. Digests must match the pinned
 revision's canonical graph digest, not the digest of the pack file on disk. See
 [workflow pinning](../concepts/workflows.md#pinning-what-start-actually-does).
+
+`ticket workflow list` enumerates coherent `staged` or `published` revisions from the installed pack tree
+and prints the exact eight values accepted by `start`. When exactly one revision is installed, omitting all
+eight start flags selects it and writes those exact pins into the spooled request. Supplying only some pins
+is a usage error. An omitted resolve ref is resolved by the server from the run's persisted immutable ref;
+the committed result names that exact ref. If discovery lists zero or multiple revisions, start requires an
+explicit complete selection.
 
 ## Intake
 
