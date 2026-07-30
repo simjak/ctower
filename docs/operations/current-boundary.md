@@ -35,12 +35,24 @@ A lean Docker Compose deployment direction may be proposed in future work, but n
 has shipped. Production deployment, configuration, monitoring, and recovery require their own conformance
 evidence and operator path.
 
-## I1.7A cutover boundary
+## Development authority and full-I1 boundary
 
-I1.7A exposes strict cutover-health and read-only Project Delivery data and accepts the documented
-migration command spellings only as authenticated, online-only refusal stubs. It does not freeze Mission
-Control, import a record, publish a client pointer, commit an epoch, or enable ctower-project writes.
+The current I1.7A surface exposes strict cutover-health and read-only Project Delivery data and accepts the
+documented migration command spellings only as authenticated, online-only refusal stubs. That current
+visibility does not establish fresh-database authority, carry an item forward, issue a CT-I1-008 verdict,
+or prove CP3-D. Mission Control remains the writable ctower-project source.
 
-I1.7B owns source selection/import/reconciliation and the legacy fence. I1.7C owns the development epoch
-and dogfood proof. Even then the allowed cohort is reconstructible ctower engineering data only and health
-must remain `CP3_D_NOT_PROVEN` until the separate CP3-D promotion gate passes.
+The approved later development path creates the ctower Company / Project / checkpoint hierarchy and
+Project Delivery projection on a fresh database. It retains the complete legacy corpus as signed read-only
+provenance and recreates only an exact reviewed still-actionable set through ordinary generated API/CLI
+commands with stable legacy aliases and source digests. Bulk legacy import is dormant behind a separate
+future decision; there is no corpus importer, automatic backfill, or dual-write interval.
+
+CT-I1-008 is the development dogfood go/no-go. It may be `GO_WITH_LIMITS` while CP3-D is red and may
+complete only the development Project Delivery pilot/I1.7 checkpoint for reconstructible ctower
+engineering data. Credentials, accounting, production authority/effects, incidents, client data, and
+irreplaceable artifacts remain forbidden, and health must continue to expose `CP3_D_NOT_PROVEN`.
+
+Full normative I1 exit remains `NO-GO` until CP3-D proves external-failure-domain acknowledgement, key
+recovery, isolated destructive restore, and measured RPO/RTO. The CT-I2-001 dependency on CT-I1-008 means
+that full exit, not a development `GO` or `GO_WITH_LIMITS`; I2 is unauthorized while CP3-D is red.

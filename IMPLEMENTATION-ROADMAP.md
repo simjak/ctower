@@ -2,17 +2,25 @@
 
 | Field | Value |
 |---|---|
-| Status | Non-normative execution sequence derived from `SPEC.md` 1.10 |
+| Status | Non-normative execution sequence derived from `SPEC.md` 1.11 |
 | Product increments | Exactly two: Increment 1 and Increment 2 |
-| Work authority before cutover | SPEC temporary bootstrap backlog |
-| Work authority after cutover | ctower tickets only |
-| Last reviewed | 2026-07-28 |
+| Work authority before development epoch | SPEC temporary bootstrap backlog / Mission Control |
+| Work authority after development epoch | ctower tickets for the reviewed cohort only |
+| Last reviewed | 2026-07-29 |
 
 This roadmap makes the normative build order easier to execute. It does not create a third scope model,
 approve work, mirror ticket status, or override the stable IDs, acceptance criteria, validation commands,
 or two product increments in [`SPEC.md`](SPEC.md). [`DECISIONS.md`](DECISIONS.md) preserves rationale.
-No extra operator decision is required to begin L0, I1, or I2 as specified; normal operator-only gates still
-apply to material taste, a newly discovered architecture/security direction, destructive action, or incident.
+No extra operator decision is required to begin L0 or I1 as specified. I2 remains unauthorized until full
+normative I1 exit; a CT-I1-008 development `GO` or `GO_WITH_LIMITS` does not satisfy that dependency while
+CP3-D is red. Normal operator-only gates still apply to material taste, a newly discovered
+architecture/security direction, destructive action, or incident.
+
+The approved authority shape is fresh start plus minimal carry-forward: create the ctower Company /
+Project / checkpoint hierarchy and Project Delivery projection on a fresh database; keep the complete
+legacy corpus as signed read-only provenance; recreate only the exact reviewed still-actionable set through
+ordinary generated API/CLI commands with stable aliases. Bulk legacy import is dormant pending a separate
+future decision.
 
 ## One checkpoint sequence
 
@@ -35,9 +43,13 @@ INCREMENT 1 — durable task-management dogfood
               |
  [four-stage fixture on final generic evaluator]
               |
- [ctower-project cutover + compact Project Delivery projection + I1 archive]
+ [fresh Project Delivery pilot + exact minimal carry-forward]
               |
-============== SOURCE-OF-TRUTH BARRIER ==============
+ [CT-I1-008 development GO / GO_WITH_LIMITS]
+              |
+ [CP3-D: external ACK + keys + destructive restore + measured RPO/RTO]
+              |
+============== FULL NORMATIVE I1 EXIT ==============
               |
 INCREMENT 2 — autonomous generic workflow + one golden path
 
@@ -52,9 +64,11 @@ INCREMENT 2 — autonomous generic workflow + one golden path
  [one software-factory production golden ticket]
 ```
 
-The order matters. Disaster-recoverable record truth precedes project cutover. Always-on scheduling,
-reconciliation, restart, and restore proof precede unattended Commander autonomy. The I1 fixture uses the
-same generic Workflow Module Interface that I2 deepens; no temporary stage-name engine is allowed.
+The order matters. Development dogfood may begin with limits before CP3-D, but its authority is confined to
+the reviewed reconstructible cohort and remains visibly `CP3_D_NOT_PROVEN`. Full normative I1 exit remains
+`NO-GO` until CP3-D passes, and only that exit authorizes CT-I2-001. Always-on scheduling, reconciliation,
+restart, and restore proof precede unattended Commander autonomy. The I1 fixture uses the same generic
+Workflow Module Interface that I2 deepens; no temporary stage-name engine is allowed.
 
 ## Checkpoint exit contract
 
@@ -77,8 +91,8 @@ A checkpoint is complete only when all applicable conditions hold:
 10. Any Project Delivery projection row is derived from current authoritative facts at a visible watermark;
     manual status, ticket-count completion, a freshness heartbeat, or a missing source cannot claim progress.
 
-Execution status belongs to the temporary SPEC backlog before cutover and to ctower tickets afterward.
-This file records sequence and exit logic only.
+Execution status belongs to the temporary SPEC backlog before the development epoch and to ctower tickets
+for the reviewed cohort afterward. This file records sequence and exit logic only.
 
 ## Increment 1 — durable task-management dogfood
 
@@ -155,8 +169,9 @@ present and reconciled from its trusted cursor before ordinary reads or effects 
 
 **Exit:** host-loss accepted-record RPO is 0; artifact RPO is explicitly separate and no worse than the
 SPEC target. Restore records measured RPO/RTO. Missing keys, objects, receipts, cursors, or journal matches
-keep the environment isolated and visibly degraded. A missing activated inventory source fails closed. This
-proof is mandatory before source-of-truth cutover.
+keep the environment isolated and visibly degraded. A missing activated inventory source fails closed.
+This CP3-D proof is mandatory for full normative I1 exit and CT-I2-001 authorization; it is not optional
+merely because development dogfood received `GO_WITH_LIMITS`.
 
 ### I1.4 — Protected spool-backed CLI and CompanyBundle path
 
@@ -204,38 +219,44 @@ bootstraps, applies the minimal CompanyBundle, captures one ticket, and complete
 protected CLI within 60 minutes of operator elapsed time, without direct DB/legacy writes or hidden recovery.
 This is an acceptance target, not current behavior.
 
-### I1.7 — ctower-project source-of-truth barrier and I1 archive
+### I1.7 — fresh ctower-project authority and development dogfood
 
 **Stable work:** `CT-I1-007`, `CT-I1-008`.
 
-Deliver this checkpoint in three reviewable parts without changing its final exit contract:
+Deliver this checkpoint in reviewable parts:
 
-- **I1.7A:** development-only authority truth, cutover-health and Project Delivery contracts, generated
-  read clients, minimal append-only storage, a pure read-only fold, and online-only migration stubs that
-  refuse until implementation exists.
-- **I1.7B:** reviewed source selection, deterministic export/import, exact aliases and reconciliation, and
-  the permanent scope-aware legacy fence.
-- **I1.7C:** commit the narrow reconstructible-data development epoch and run issue #1 through ordinary
-  API/CLI facts. The row remains CP3-D-blocked/degraded.
+- **Current I1.7A visibility boundary:** development-only authority truth, cutover-health and Project
+  Delivery contracts, generated read clients, minimal append-only storage, a pure read-only fold, and
+  online-only migration stubs that refuse. These are not writer or completion evidence.
+- **Fresh authority preparation:** establish the Company / Project / checkpoint hierarchy and compact
+  Project Delivery projection on a fresh database; inventory the full legacy corpus and exact
+  still-actionable carry-forward allowlist.
+- **Minimal carry-forward and dogfood:** hash/sign/seal the full legacy corpus read-only; recreate only the
+  reviewed actionable set through ordinary generated API/CLI commands with stable aliases/source digests;
+  reconcile through public reads; then issue the CT-I1-008 development verdict and commit the writer epoch.
 
-Only after acknowledged durability, isolated restore, API/protected CLI, and the four-stage fixture pass:
+The development path is:
 
 ```text
-inventory -> freeze ctower-project legacy writers -> hash/export
-          -> reviewed alias/dedupe map -> idempotent restricted import
-          -> reconcile every disposition/owner/relation/claim
-          -> atomic API/CLI/Commander/runner-facing client rewire
-          -> seal legacy inputs read-only
+fresh Company / Project / checkpoints + Project Delivery projection
+  -> signed read-only legacy archive + exact reviewed carry-forward allowlist
+  -> ordinary generated API/CLI create/link/assign commands + stable aliases
+  -> exact public-read reconciliation
+  -> CT-I1-008 development GO or GO_WITH_LIMITS
+  -> writer epoch; reject every later legacy mutation
 ```
 
-There is no tailer or dual-write interval. The importer uses the generated HTTP client and cannot forge
-proof, gates, effects, delivery, resolution, or closure. Before rewire, rollback may discard the incomplete
-import and unfreeze scoped legacy tools. After rewire, rollback is a compatible ctower restore/build or
-explicit read-only/spool mode; legacy mutation never resumes.
+There is no tailer, dual-write interval, fuzzy dedupe, automatic backfill, or active bulk importer. Ordinary
+commands cannot forge proof, gates, effects, delivery, resolution, closure, or arbitrary state. Before the
+epoch, rollback may discard the incomplete fresh database while Mission Control remains authoritative.
+After the epoch, rollback is a compatible ctower restore/build or explicit read-only/spool mode; legacy
+mutation never resumes. Bulk import stays dormant behind a separate future operator decision.
 
-The development epoch does not satisfy the disaster-safe authority criterion. It excludes credentials,
-accounting, production authority/effects, incidents, client data, and irreplaceable artifacts. CP3-D
-promotion remains a later gate; I1.7A contracts or stubs establish no writer cutover.
+The CT-I1-008 development verdict may be `GO_WITH_LIMITS` and may complete the development Project Delivery
+pilot/I1.7 checkpoint. It does not satisfy the disaster-safe authority criterion and excludes credentials,
+accounting, production authority/effects, incidents, client data, and irreplaceable artifacts. Full
+normative I1 exit remains `NO-GO` until CP3-D proves external-failure-domain acknowledgement, key recovery,
+isolated destructive restore, and measured RPO/RTO.
 
 The same checkpoint establishes only the hierarchy needed to dogfood project delivery:
 
@@ -255,18 +276,27 @@ percentage, browser drill-through, interactive row-detail product, broad visuali
 analytics, or reusable cross-domain UI in I1.7; those depend on this proven hierarchy/rebuild contract and
 belong to I2.4.
 
-**Exit:** every selected ctower-project item and stable alias is accounted for exactly once, zero
-post-barrier legacy writes occur, the attention baseline is frozen, and applicable I1 evidence is archived.
-The ctower checkpoints reproduce the same compact Project Delivery projection after restart/restore, apply
-the canonical eight-state precedence with proof-aware `done`/`blocked`, and expose immediate reconciliation,
-hourly no-change freshness, and stale/unknown faults without accepting a projection write.
-From this point, ctower tickets—not this file or the SPEC table—own implementation status.
+**Development exit:** every reviewed carry-forward item and stable alias is accounted for exactly once
+through ordinary commands; the complete legacy corpus has a signed read-only manifest; zero post-epoch
+legacy writes occur; the attention baseline is frozen; and applicable development evidence is archived.
+The ctower checkpoints reproduce the same compact Project Delivery projection after restart, apply the
+canonical eight-state precedence with proof-aware `done`/`blocked`, and expose immediate reconciliation,
+hourly no-change freshness, and stale/unknown faults without accepting a projection write. A
+`GO_WITH_LIMITS` result keeps `CP3_D_NOT_PROVEN` visible.
+
+**Full I1 exit:** remains `NO-GO` until the required CP3-D evidence passes. Only that full exit satisfies
+CT-I2-001's dependency on CT-I1-008. From the development epoch, ctower tickets—not this file or the SPEC
+table—own implementation status for the reviewed cohort.
 
 ## Increment 2 — autonomous generic workflow and one factory golden path
 
 ### I2.1 — Deepen generic Workflow and Proof/policy
 
 **Stable work:** `CT-I2-001`, `CT-I2-002`, `CT-I2-006`.
+
+**Authorization gate:** CT-I2-001's dependency on CT-I1-008 means the full normative I1 exit, not the
+development dogfood verdict. Do not start this checkpoint while CP3-D is red, even if CT-I1-008 recorded
+`GO` or `GO_WITH_LIMITS` for the development cohort.
 
 Deepen the same I1 Workflow Interface with arbitrary stage attempts/jobs, package-defined classification,
 mandatory stage gates, required perspectives, finite anti-spin bounds, stable cross-digest failure lineages,
@@ -489,5 +519,7 @@ just verify    full manifest-scoped, drift/cleanliness/conformance/acceptance ga
 ```
 
 Every checkpoint extends the committed expected-suite manifest in the same change that makes its suite
-current. The source-of-truth barrier imports every stable backlog ID exactly once; after that, ctower ticket
-history is the only live implementation board.
+current. The development authority epoch recreates only the exact reviewed still-actionable stable backlog
+set through ordinary generated commands, with one stable alias each; the signed legacy archive keeps
+everything else as read-only provenance and bulk import remains dormant. After that, ctower ticket history
+is the only live implementation board for the reviewed cohort. Full normative I1 exit still gates I2.
