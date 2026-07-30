@@ -24,16 +24,52 @@ referenced administrator secret through stdin, leaves only the initialized volum
 steady-state published container with no password environment entry; standby cloning is likewise
 stdin-only.
 
-From a clean source tree, build the wheel with the approved standard-GIL interpreter, bind it, and install
-the fixed runtime:
+The old order below was not executable from a clean checkout: its unqualified
+`ctower-runtime-manifest` and `ctower-private-vps` commands silently selected whichever environment happened
+to be on `PATH`. On the development host that was `/srv/projects/ctower/.venv`, which can be older than the
+checkout. Do not use that repository verification environment for an install.
+
+Prepare a disposable bootstrap environment outside the checkout with the approved standard-GIL
+interpreter. Replace `UNIQUE` with a new owner-only temporary directory for this attempt. Building this
+environment does not alter or remove an installed runtime:
 
 ```text
-uv build --wheel --python /path/to/python3.13
-ctower-runtime-manifest build --source-root . --wheel dist/ctower_workspace-0.0.0-py3-none-any.whl \
-  --output dist/development-manifest.json --python /path/to/python3.13
-ctower-private-vps install-runtime --wheel dist/ctower_workspace-0.0.0-py3-none-any.whl \
-  --manifest dist/development-manifest.json --packs packs --python /path/to/python3.13 \
-  --source-root .
+uv build --wheel --python /path/to/python3.13 \
+  --out-dir /tmp/ctower-bootstrap-UNIQUE/dist
+/path/to/python3.13 -m venv /tmp/ctower-bootstrap-UNIQUE/venv
+uv pip install --python /tmp/ctower-bootstrap-UNIQUE/venv/bin/python \
+  /tmp/ctower-bootstrap-UNIQUE/dist/ctower_workspace-*.whl
+```
+
+Before any persistent-runtime command, run the read-only preflight from the checkout with the approved
+interpreter. It reads every entry from this checkout's `[project.scripts]`, then asks the isolated
+bootstrap-venv interpreter to load the matching installed entry point and inspect the exact script pathname
+the commands below will use. A missing, mismatched, unimportable, or non-callable entry point refuses the
+install. The installed script must also be a current-user-executable regular file with a nonempty,
+syntactically valid Python shim whose shebang resolves to that bootstrap interpreter. The preflight does not
+execute scripts because some entries start services or unlock the development keyring.
+
+```text
+/path/to/python3.13 -m tools.runtime_preflight --pyproject pyproject.toml \
+  --python /tmp/ctower-bootstrap-UNIQUE/venv/bin/python
+```
+
+Only a passing preflight starts the persistent-runtime install sequence; it is the first command after
+disposable preparation and precedes every mutation of installed runtime state. The first two commands below
+use console scripts from `/tmp/ctower-bootstrap-UNIQUE/venv`, which was built from the wheel above.
+`install-runtime` creates and verifies the separate permanent venv at
+`~/.local/share/ctower-development/runtime/venv`; later systemd and public-CLI commands use only that
+permanent venv.
+
+```text
+/tmp/ctower-bootstrap-UNIQUE/venv/bin/ctower-runtime-manifest build \
+  --source-root . --wheel /tmp/ctower-bootstrap-UNIQUE/dist/ctower_workspace-*.whl \
+  --output /tmp/ctower-bootstrap-UNIQUE/development-manifest.json \
+  --python /path/to/python3.13
+/tmp/ctower-bootstrap-UNIQUE/venv/bin/ctower-private-vps install-runtime \
+  --wheel /tmp/ctower-bootstrap-UNIQUE/dist/ctower_workspace-*.whl \
+  --manifest /tmp/ctower-bootstrap-UNIQUE/development-manifest.json \
+  --packs packs --python /path/to/python3.13 --source-root .
 ```
 
 `install-runtime` is deliberately first-install-only and refuses an existing runtime path. Automated
@@ -43,10 +79,11 @@ the separately reviewed release-lifecycle follow-up.
 First install:
 
 ```text
-ctower-private-vps database-up
-ctower-private-vps install-units --unit-root deploy/private-vps/development/systemd
-ctower-private-vps bootstrap
-ctower-private-vps observe
+~/.local/share/ctower-development/runtime/venv/bin/ctower-private-vps database-up
+~/.local/share/ctower-development/runtime/venv/bin/ctower-private-vps install-units \
+  --unit-root deploy/private-vps/development/systemd
+~/.local/share/ctower-development/runtime/venv/bin/ctower-private-vps bootstrap
+~/.local/share/ctower-development/runtime/venv/bin/ctower-private-vps observe
 ```
 
 Bootstrap persists only a command ID and Secret Service reference until the first-tenant operation,
@@ -61,9 +98,10 @@ clock data, or progress older than ten seconds is typed `DEGRADED`; unknown is n
 Drive the instance only through the protected public CLI wrapper:
 
 ```text
-ctower-shadow-ctl ticket create ...
-ctower-shadow-ctl ticket query TICKET_ID
-ctower-shadow-ctl synthetic run --workflow ctower.trust-spine-four-stage@1 \
+~/.local/share/ctower-development/runtime/venv/bin/ctower-shadow-ctl ticket create ...
+~/.local/share/ctower-development/runtime/venv/bin/ctower-shadow-ctl ticket query TICKET_ID
+~/.local/share/ctower-development/runtime/venv/bin/ctower-shadow-ctl synthetic run \
+  --workflow ctower.trust-spine-four-stage@1 \
   --wait --assert resolved,closed
 ```
 
@@ -73,3 +111,401 @@ an actual host reboot remains deferred operational evidence unless the operator 
 
 Explicit debt: TLS and any external endpoint, complete telemetry/export, backup/key-recovery/restore
 drills, independent failure-domain ACK, CP3-D, production claims, and authoritative-writer promotion.
+
+## Upgrade an existing installation
+
+This path upgrades an already complete fixed-path runtime. It composes the disposable bootstrap,
+preflight, manifest-build, and protected-CLI steps documented above; do not rebuild those steps around the
+repository verification environment or unqualified commands. The replacement verb changes runtime files
+only. It does not apply database migrations, reinstall units, or restart already-running processes.
+
+The procedure below therefore refuses a candidate with a migration or unit delta. Such a release needs a
+separately reviewed lifecycle plan. It is not safe to hide that delta inside this filesystem-only upgrade.
+Run the whole procedure from the clean candidate checkout as the dedicated development account, with no
+secret values in the shell environment.
+
+### Secure rollback material and pre-state
+
+Create a new archive; never reuse, modify, or delete an existing entry under
+`~/.local/state/ctower/development-archives/`. Copy the installed wheel, manifest, packs, and installed
+distribution list before candidate preparation. Stream `pg_dumpall` through compression and encryption so
+no plaintext dump is retained. The existing PostgreSQL administrator secret is read from Secret Service
+through an anonymous file descriptor; it never appears in a file, argument, environment variable, or log.
+
+Run this Bash block from the candidate checkout:
+
+```bash
+set -euo pipefail
+umask 077
+
+runtime_root="$HOME/.local/share/ctower-development/runtime"
+archive_parent="$HOME/.local/state/ctower/development-archives"
+archive_root="$archive_parent/$(date -u +%Y%m%dT%H%M%SZ)-runtime-upgrade"
+database_backup="$archive_root/database/ctower-development-pg17-all.sql.gz.gpg"
+
+test -d "$runtime_root"
+test -f "$runtime_root/manifest.json"
+test -x "$runtime_root/venv/bin/ctower-private-vps"
+mkdir -m 0700 "$archive_root"
+mkdir -m 0700 "$archive_root/runtime" "$archive_root/database"
+
+wheel_name="$(
+  "$runtime_root/venv/bin/python" - "$runtime_root/manifest.json" <<'PY'
+import json
+import pathlib
+import sys
+
+name = json.loads(pathlib.Path(sys.argv[1]).read_text(encoding="utf-8"))["wheel"]["filename"]
+if not isinstance(name, str) or not name or pathlib.PurePath(name).name != name:
+    raise SystemExit("installed manifest has an unsafe wheel filename")
+print(name)
+PY
+)"
+test -f "$runtime_root/$wheel_name"
+install -m 0600 "$runtime_root/$wheel_name" "$archive_root/runtime/$wheel_name"
+install -m 0600 "$runtime_root/manifest.json" "$archive_root/runtime/manifest.json"
+install -m 0600 \
+  "$runtime_root/installed-distributions.txt" \
+  "$archive_root/runtime/installed-distributions.txt"
+cp --archive --no-target-directory "$runtime_root/packs" "$archive_root/runtime/packs"
+find "$archive_root/runtime" -type f -print0 |
+  sort -z |
+  xargs -0 sha256sum > "$archive_root/runtime.sha256"
+
+exec {archive_key_fd}< <(
+  "$runtime_root/venv/bin/python" -c \
+    'from ctower_api.development_secrets import load_secret; print(load_secret("secret-service:ctower-development/postgres-admin"), end="")'
+)
+docker exec --user postgres ctower-development-primary \
+  pg_dumpall --clean --if-exists --quote-all-identifiers |
+  gzip --stdout |
+  gpg --batch --quiet --no-symkey-cache --symmetric --cipher-algo AES256 \
+    --pinentry-mode loopback --passphrase-fd "$archive_key_fd" \
+    --output "$database_backup"
+exec {archive_key_fd}<&-
+
+exec {archive_key_fd}< <(
+  "$runtime_root/venv/bin/python" -c \
+    'from ctower_api.development_secrets import load_secret; print(load_secret("secret-service:ctower-development/postgres-admin"), end="")'
+)
+gpg --batch --quiet --no-symkey-cache --decrypt \
+  --pinentry-mode loopback --passphrase-fd "$archive_key_fd" \
+  "$database_backup" |
+  gzip --test
+exec {archive_key_fd}<&-
+
+sync -f "$database_backup"
+sha256sum "$database_backup" > "$archive_root/database.sha256"
+test ! -e "$archive_root/database/ctower-development-pg17-all.sql.gz"
+printf 'archive_root=%s\n' "$archive_root"
+```
+
+Keep the printed `archive_root`. The `.gpg` file is the only retained database dump. Do not add a
+decrypted dump to the archive later.
+
+Capture the old source revision and read-only live baseline through installed, protected commands:
+
+```bash
+set -euo pipefail
+
+runtime_root="$HOME/.local/share/ctower-development/runtime"
+old_source_commit="$(
+  "$runtime_root/venv/bin/python" - "$runtime_root/manifest.json" <<'PY'
+import json
+import pathlib
+import sys
+
+print(json.loads(pathlib.Path(sys.argv[1]).read_text(encoding="utf-8"))["source_commit"])
+PY
+)"
+git cat-file -e "$old_source_commit^{commit}"
+git diff --exit-code "$old_source_commit"..HEAD -- \
+  packages/ctower-kernel/migrations \
+  deploy/private-vps/development/systemd
+
+"$runtime_root/venv/bin/ctower-private-vps" observe |
+  tee "$archive_root/pre-observe.json"
+"$runtime_root/venv/bin/ctower-shadow-ctl" control health |
+  tee "$archive_root/pre-health.json"
+"$runtime_root/venv/bin/ctower-shadow-ctl" board query |
+  tee "$archive_root/pre-board.json"
+```
+
+A nonzero `git diff --exit-code` is a stop, not permission to run `database-up`, reinstall units, or
+improvise a mixed lifecycle.
+
+### Prepare and preflight the candidate
+
+Use the exact approved standard-GIL interpreter and unique disposable bootstrap directory selected in the
+shared preparation above. Retain those concrete paths in this shell:
+
+```bash
+approved_python=/path/to/python3.13
+bootstrap_root=/tmp/ctower-bootstrap-UNIQUE
+test -x "$approved_python"
+test -x "$bootstrap_root/venv/bin/python"
+```
+
+Before manifest generation, `install-runtime`, or any installed-runtime mutation, run the shared preflight
+against that candidate environment:
+
+```bash
+"$approved_python" -m tools.runtime_preflight \
+  --pyproject pyproject.toml \
+  --python "$bootstrap_root/venv/bin/python"
+```
+
+A usable candidate prints `runtime preflight: PASS`, the candidate environment, `project scripts: 9`, and
+one named `PASS <script> -> <target>` line for each checkout script. A refusal exits 1 and names each
+failed script and check, for example:
+
+```text
+runtime preflight: FAIL
+environment: /tmp/ctower-bootstrap-UNIQUE/venv/bin/python
+project scripts: 9
+  FAIL ctower-runtime-manifest -> tools.runtime_manifest.__main__:main: script path check failed: installed script does not exist
+```
+
+Metadata identity, target loading and callability, script-file existence, current-user executable mode,
+shim shebang/interpreter identity, nonempty body, and Python syntax are independently checked. Any `FAIL`
+is the end of this attempt: retain its complete output, leave the old runtime serving, and do not repair the
+candidate and continue.
+
+Only after all nine scripts pass, build `development-manifest.json` with the shared manifest command above.
+Do not substitute the checkout's `.venv` for either bootstrap path.
+
+### Replace once
+
+Record the candidate commit and invoke the bootstrap-installed verb exactly once:
+
+```bash
+set -euo pipefail
+
+candidate_commit="$(git rev-parse HEAD)"
+candidate_wheel=("$bootstrap_root"/dist/ctower_workspace-*.whl)
+test "${#candidate_wheel[@]}" -eq 1
+test -f "${candidate_wheel[0]}"
+test -f "$bootstrap_root/development-manifest.json"
+
+"$bootstrap_root/venv/bin/ctower-private-vps" install-runtime \
+  --wheel "${candidate_wheel[0]}" \
+  --manifest "$bootstrap_root/development-manifest.json" \
+  --packs packs \
+  --python "$approved_python" \
+  --source-root . \
+  --replace
+```
+
+The verb takes an exclusive `flock` on the runtime parent for its whole operation. While holding it, the
+verb verifies the manifest, creates and verifies a complete
+`runtime-replacement-<uuid>` sibling, runs the candidate's installed
+`ctower-private-vps --help`, creates the exchange peer, and makes one Linux
+`renameat2(RENAME_EXCHANGE)` call. There is no two-rename fallback and no missing-runtime pathname window.
+On success, `runtime` selects the candidate and the displaced runtime is retained at `runtime-previous`.
+
+If the verb exits nonzero before the exchange, the old `runtime` remains selected and already-running
+processes continue using their open old files. Stop after capturing the complete output; read the current
+manifest and make a real protected API query to prove the old service still serves. Do not retry. A failed
+or interrupted attempt can consume an earlier retained predecessor or leave an unreferenced sibling, so
+neither a retry nor cleanup is authorized by this runbook.
+
+Success changes the filesystem selection only. Existing API and worker processes still execute the old
+generation until explicitly restarted.
+
+### Restart and verify
+
+First prove that the filesystem exchange selected the candidate and retained the archived manifest:
+
+```bash
+set -euo pipefail
+
+runtime_root="$HOME/.local/share/ctower-development/runtime"
+runtime_previous="$HOME/.local/share/ctower-development/runtime-previous"
+
+"$bootstrap_root/venv/bin/python" - \
+  "$runtime_root/manifest.json" \
+  "$runtime_previous/manifest.json" \
+  "$archive_root/runtime/manifest.json" \
+  "$candidate_commit" <<'PY'
+import json
+import pathlib
+import sys
+
+current = json.loads(pathlib.Path(sys.argv[1]).read_text(encoding="utf-8"))
+previous = json.loads(pathlib.Path(sys.argv[2]).read_text(encoding="utf-8"))
+archived = json.loads(pathlib.Path(sys.argv[3]).read_text(encoding="utf-8"))
+if current["source_commit"] != sys.argv[4]:
+    raise SystemExit("current runtime does not select the candidate commit")
+if previous != archived:
+    raise SystemExit("runtime-previous does not match the archived predecessor manifest")
+print(json.dumps({"current": current, "previous": previous}, sort_keys=True))
+PY
+
+systemctl --user restart \
+  ctower-development-api.service \
+  ctower-development-worker.service
+systemctl --user is-active \
+  ctower-development-keyring.service \
+  ctower-development-db.service \
+  ctower-development-api.service \
+  ctower-development-worker.service
+
+health_ready=false
+for attempt in {1..30}; do
+  if "$runtime_root/venv/bin/ctower-shadow-ctl" control health \
+    > "$archive_root/post-health.json.tmp"; then
+    mv "$archive_root/post-health.json.tmp" "$archive_root/post-health.json"
+    health_ready=true
+    break
+  fi
+  sleep 1
+done
+test "$health_ready" = true
+
+observe_ready=false
+for attempt in {1..30}; do
+  if "$runtime_root/venv/bin/ctower-private-vps" observe \
+      > "$archive_root/post-observe.json.tmp" &&
+    "$bootstrap_root/venv/bin/python" - "$archive_root/post-observe.json.tmp" <<'PY'
+import json
+import pathlib
+import sys
+
+observation = json.loads(pathlib.Path(sys.argv[1]).read_text(encoding="utf-8"))
+ready = (
+    observation["api"] == "active"
+    and observation["worker"] == "active"
+    and observation["primary_container"] == "running"
+    and observation["standby_container"] == "running"
+    and observation["replication"] == ["streaming", "sync"]
+    and observation["finalizer_health"]["status"] == "HEALTHY"
+)
+raise SystemExit(0 if ready else 1)
+PY
+  then
+    mv "$archive_root/post-observe.json.tmp" "$archive_root/post-observe.json"
+    observe_ready=true
+    break
+  fi
+  sleep 1
+done
+test "$observe_ready" = true
+
+"$bootstrap_root/venv/bin/python" -m json.tool "$archive_root/post-health.json"
+"$bootstrap_root/venv/bin/python" -m json.tool "$archive_root/post-observe.json"
+"$runtime_root/venv/bin/ctower-shadow-ctl" board query |
+  tee "$archive_root/post-board.json"
+```
+
+The two 30-second loops are bounded readiness polling, never replacement retries. The health query must
+succeed through the loopback API. `observe` must name the selected installation, show API and worker
+`active`, both containers `running`, replication `streaming/sync`, and `finalizer_health.status`
+`HEALTHY`. The shadow-only durability status remains explicitly `DEGRADED` with reason
+`development_offhost_ack_cp3_d_not_proven`; it is not the finalizer result.
+
+Compare the pre/post ticket count and Board state, then make a record-specific protected read:
+
+```bash
+set -euo pipefail
+
+"$runtime_root/venv/bin/python" - \
+  "$archive_root/pre-observe.json" \
+  "$archive_root/post-observe.json" \
+  "$archive_root/pre-board.json" \
+  "$archive_root/post-board.json" <<'PY'
+import json
+import pathlib
+import sys
+
+pre_observe, post_observe, pre_board, post_board = (
+    json.loads(pathlib.Path(path).read_text(encoding="utf-8")) for path in sys.argv[1:]
+)
+if post_observe["counts"]["tickets"] != pre_observe["counts"]["tickets"]:
+    raise SystemExit("ticket count changed across the runtime upgrade")
+if post_board["health"] != "CURRENT":
+    raise SystemExit("post-upgrade Board is not CURRENT")
+if post_board["projection_watermark"] != post_board["source_watermark"]:
+    raise SystemExit("post-upgrade Board projection is not caught up")
+if post_board["source_watermark"] < pre_board["source_watermark"]:
+    raise SystemExit("post-upgrade Board watermark moved backwards")
+if not pre_board["cards"]:
+    raise SystemExit("pre-upgrade Board has no ticket available for a read proof")
+print(pre_board["cards"][0]["ticket_id"])
+PY
+
+read_ticket_id="$(
+  "$runtime_root/venv/bin/python" - "$archive_root/pre-board.json" <<'PY'
+import json
+import pathlib
+import sys
+
+print(json.loads(pathlib.Path(sys.argv[1]).read_text(encoding="utf-8"))["cards"][0]["ticket_id"])
+PY
+)"
+"$runtime_root/venv/bin/ctower-shadow-ctl" ticket query "$read_ticket_id"
+```
+
+Any post-exchange restart or verification failure is not an `install-runtime` failure and does not
+automatically restore the predecessor. Capture the current and previous manifests, service state, health,
+observation, and protected-read output, then stop for a rollback decision.
+
+### Rollback readiness and rollback
+
+Do not exercise rollback merely to test it on the live instance. Readiness requires the predecessor
+manifest to equal the secured pre-upgrade manifest and the two exact preconditions enforced by
+`rollback-runtime`: both `runtime` and `runtime-previous` contain `manifest.json` and an executable
+`venv/bin/ctower-private-vps`.
+
+```bash
+set -euo pipefail
+
+test -f "$runtime_root/manifest.json"
+test -x "$runtime_root/venv/bin/ctower-private-vps"
+test -f "$runtime_previous/manifest.json"
+test -x "$runtime_previous/venv/bin/ctower-private-vps"
+"$bootstrap_root/venv/bin/python" - \
+  "$archive_root/runtime/manifest.json" \
+  "$runtime_previous/manifest.json" <<'PY'
+import json
+import pathlib
+import sys
+
+archived = json.loads(pathlib.Path(sys.argv[1]).read_text(encoding="utf-8"))
+previous = json.loads(pathlib.Path(sys.argv[2]).read_text(encoding="utf-8"))
+if previous != archived:
+    raise SystemExit("runtime-previous is not the secured predecessor")
+print(json.dumps(previous, sort_keys=True))
+PY
+```
+
+The relocated predecessor venv has fixed-path shebangs, so executing its entry point while it is named
+`runtime-previous` is not version evidence. The manifest and executable-file checks above are the actual
+verb preconditions; execute the entry point only after an authorized exchange returns it to `runtime`.
+
+If rollback is authorized, use the currently selected installed verb, restart the processes so they open
+the restored files, and repeat every post-verification read:
+
+```bash
+set -euo pipefail
+
+"$runtime_root/venv/bin/ctower-private-vps" rollback-runtime
+systemctl --user restart \
+  ctower-development-api.service \
+  ctower-development-worker.service
+systemctl --user is-active \
+  ctower-development-keyring.service \
+  ctower-development-db.service \
+  ctower-development-api.service \
+  ctower-development-worker.service
+"$bootstrap_root/venv/bin/python" -m json.tool "$runtime_root/manifest.json"
+"$runtime_root/venv/bin/ctower-shadow-ctl" control health
+"$runtime_root/venv/bin/ctower-private-vps" observe
+"$runtime_root/venv/bin/ctower-shadow-ctl" board query
+"$runtime_root/venv/bin/ctower-shadow-ctl" ticket query "$read_ticket_id"
+```
+
+`rollback-runtime` holds the same whole-verb lock and performs one atomic exchange. It swaps the two slots;
+it is not a multi-generation history, does not reverse database migrations or unit changes, and does not
+restart services. If either slot is incomplete or the predecessor manifest is not the expected secured
+generation, do not run it. Preserve the state and use a separately reviewed recovery decision; the archive
+is rollback material, not authority to improvise an in-place restore.
