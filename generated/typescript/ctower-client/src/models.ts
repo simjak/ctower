@@ -1,5 +1,5 @@
 // DO NOT EDIT: generated file; regenerate from declared inputs.
-// Authored contract digest: sha256:0c1f9ce3700bb324f33b56a78f24def92c20e4ef5fa802111e01cc1570f84b70
+// Authored contract digest: sha256:1ca4a6823b673e720c5e1fd0e39445905a701d279b773eb99689536a8de41c62
 
 export type ActivityClass = "work" | "verification";
 
@@ -892,6 +892,9 @@ export type ProjectDeliveryRow = Readonly<{
   readonly "health": "CP3_D_NOT_PROVEN" | "CURRENT" | "STATE_UNKNOWN";
   readonly "outcome": string;
   readonly "projection_watermark": number;
+  readonly "qualifying_stage_slots_filled": number;
+  readonly "qualifying_stage_slots_required": number;
+  readonly "qualifying_stage_unfilled_or_unknown_slot_keys": ReadonlyArray<string>;
   readonly "rebuild_generation": number;
   readonly "reconciled_at": string;
   readonly "recovery": "EXTERNAL_FAILURE_DOMAIN_UNPROVEN" | "EXTERNAL_FAILURE_DOMAIN_PROVEN" | "STATE_UNKNOWN";

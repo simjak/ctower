@@ -1,6 +1,6 @@
 """DO NOT EDIT: generated file; regenerate from declared inputs.
 
-Authored contract digest: sha256:0c1f9ce3700bb324f33b56a78f24def92c20e4ef5fa802111e01cc1570f84b70
+Authored contract digest: sha256:1ca4a6823b673e720c5e1fd0e39445905a701d279b773eb99689536a8de41c62
 """
 
 from __future__ import annotations
@@ -1612,7 +1612,7 @@ class PriorityChangedAuditData(_BoundaryModel):
 
 
 class ProjectDeliveryRow(_BoundaryModel):
-    checkpoint_key: Annotated[str, Field(pattern="^I[12]\\.[0-9]+$")]
+    checkpoint_key: Annotated[str, Field(pattern="^[A-Za-z0-9][A-Za-z0-9._-]{0,127}$")]
     checkpoint_label: Annotated[str, Field(min_length=1)]
     headline_state: Literal[
         "planned",
@@ -1628,6 +1628,9 @@ class ProjectDeliveryRow(_BoundaryModel):
     outcome: Annotated[str, Field(min_length=1)]
     accountable_owner: Annotated[str, Field(min_length=1)]
     criteria: ProjectDeliveryCriteria
+    qualifying_stage_slots_filled: Annotated[int, Field(ge=0, le=9007199254740991)]
+    qualifying_stage_slots_required: Annotated[int, Field(ge=0, le=9007199254740991)]
+    qualifying_stage_unfilled_or_unknown_slot_keys: tuple[Annotated[str, Field(pattern="^[a-z][a-z0-9._-]*$")], ...]
     source_watermark: Annotated[int, Field(ge=0, le=9007199254740991)]
     projection_watermark: Annotated[int, Field(ge=0, le=9007199254740991)]
     freshness: Literal["fresh", "stale", "STATE_UNKNOWN"]
