@@ -20,6 +20,7 @@ __all__: tuple[str, ...] = ()
 _RETAINED_RUNTIME_COUNT = 2
 _LOCK_BLOCK_SECONDS = 0.2
 _PROCESS_TIMEOUT_SECONDS = 10.0
+_REPOSITORY_ROOT = Path(__file__).parents[2]
 
 _RUNTIME_OPERATION = """
 from pathlib import Path
@@ -293,7 +294,7 @@ def test_rollback_waits_for_replace_and_remains_reversible(
         ready=ready,
         release=release,
     )
-    _wait_for_path(ready)
+    _wait_for_path(ready, replacing)
 
     started = time.monotonic()
     rolling_back = _start_runtime_operation(
@@ -330,7 +331,7 @@ def test_replace_waits_for_rollback_and_remains_reversible(
         ready=ready,
         release=release,
     )
-    _wait_for_path(ready)
+    _wait_for_path(ready, rolling_back)
 
     started = time.monotonic()
     replacing = _start_runtime_operation(inputs, data_home=tmp_path / "data")
@@ -359,7 +360,7 @@ def test_runtime_change_lock_is_released_when_holder_is_killed(
         ready=ready,
         release=release,
     )
-    _wait_for_path(ready)
+    _wait_for_path(ready, holder)
 
     holder.kill()
     holder.communicate(timeout=_PROCESS_TIMEOUT_SECONDS)
@@ -489,18 +490,24 @@ def _start_runtime_operation(
             str(ready or ""),
             str(release or ""),
         ],
-        cwd=Path.cwd(),
+        cwd=_REPOSITORY_ROOT,
         stdout=subprocess.PIPE,
         stderr=subprocess.PIPE,
         text=True,
     )
 
 
-def _wait_for_path(path: Path) -> None:
+def _wait_for_path(path: Path, process: subprocess.Popen[str]) -> None:
     deadline = time.monotonic() + _PROCESS_TIMEOUT_SECONDS
     while time.monotonic() < deadline:
         if path.exists():
             return
+        if process.poll() is not None:
+            stdout, stderr = process.communicate()
+            raise AssertionError(
+                f"runtime subprocess exited before {path.name}: "
+                f"returncode={process.returncode}, stdout={stdout!r}, stderr={stderr!r}"
+            )
         time.sleep(0.01)
     raise AssertionError(f"timed out waiting for subprocess boundary: {path.name}")
 
