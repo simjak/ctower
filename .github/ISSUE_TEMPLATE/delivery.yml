@@ -1,0 +1,200 @@
+name: Delivery item
+description: A unit of work the factory will schedule, build, gate and ship. Must belong to an epic.
+title: "<verb the outcome, not the task>"
+labels:
+  - delivery
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Every delivery item belongs to an **epic** and declares a **layer** and a **component**.
+        An item nobody can place is an item nobody can schedule.
+
+        Write the title as the **outcome**, not the task — "an unrouted number reaches the routed
+        agent", not "implement the trunk editor".
+  - type: input
+    id: epic
+    attributes:
+      label: Epic
+      description: The epic issue this belongs to. If none fits, open an epic first.
+      placeholder: "#101"
+    validations:
+      required: true
+  - type: dropdown
+    id: layer
+    attributes:
+      label: Layer
+      options:
+        - UI
+        - API
+        - INFRA
+    validations:
+      required: true
+  - type: dropdown
+    id: component
+    attributes:
+      label: Production component
+      options:
+        - runtime
+        - kernel/record
+        - api
+        - cli
+        - gate
+        - deploy
+        - harness
+        - docs
+    validations:
+      required: true
+  - type: dropdown
+    id: priority
+    attributes:
+      label: Priority
+      options:
+        - P0 — the factory is stopped or shipping something wrong
+        - P1 — blocks the current increment
+        - P2 — real, scheduled
+        - P3 — carried debt
+    validations:
+      required: true
+  - type: textarea
+    id: problem
+    attributes:
+      label: What problem does this solve?
+      description: The problem as it exists today, in observable terms. No solution here.
+      placeholder: "Today the deployed instance can only be upgraded by removing the old runtime first, so a failed upgrade leaves no service at all."
+    validations:
+      required: true
+  - type: textarea
+    id: why
+    attributes:
+      label: Why does this need to exist?
+      description: What forces it now. What breaks, or stays broken, if it is not done this increment.
+    validations:
+      required: true
+  - type: textarea
+    id: value
+    attributes:
+      label: What value does it add?
+      description: Who is better off and how you would know. If the only beneficiary is the codebase's elegance, say so — that is a legitimate answer, and it changes the priority.
+    validations:
+      required: true
+  - type: textarea
+    id: acceptance
+    attributes:
+      label: Acceptance criteria — what must be TRUE
+      description: Testable, observable, behavioural. Never "implement X". Numbered.
+      value: |
+        1.
+        2.
+        3.
+    validations:
+      required: true
+  - type: textarea
+    id: verification
+    attributes:
+      label: Verification — how each criterion is PROVEN
+      description: One row per acceptance criterion. Name the command, the test, or the real artifact (transcript, screenshot, pod-image digest). "It works" is not a verification.
+      value: |
+        | # | How it is proven |
+        |---|---|
+        | 1 | |
+        | 2 | |
+        | 3 | |
+    validations:
+      required: true
+  - type: textarea
+    id: stages
+    attributes:
+      label: Delivery stages
+      description: "A stage closes only when every sub-box is ticked AND its Evidence line names a real artifact. A tick with no evidence is the exact failure this checklist exists to prevent. Merging does not close this issue — production QA does."
+      value: |
+        ### 1 · Planning / design / spec — `/spec`
+        - [ ] Problem, value and non-goals written; this is one outcome, not a bundle
+        - [ ] Acceptance criteria are observable outcomes, never "implement X"
+        - [ ] Every acceptance criterion has a named verification method
+        - [ ] Files/surfaces this item owns are stated, so lanes stay disjoint
+        - [ ] Product surface only: 1:1 mockup approved by the operator — `/design-review`
+        - Evidence:
+
+        ### 2 · Implementation
+        - [ ] Scoped to the declared files; no drive-by edits into another lane
+        - [ ] No new env var or feature flag (or: operator approved it, linked here)
+        - [ ] Every network request carries bounded retry, exponential backoff and jitter
+        - [ ] Everything visible is wired — no control the runtime ignores
+        - Evidence (commit/PR):
+
+        ### 3 · QA locally reviewed — `/qa`
+        - [ ] The reviewer **used** the feature, not just loaded the page
+        - [ ] Each acceptance criterion exercised and its outcome confirmed
+        - [ ] Selections from a known set are dropdowns of real options, not free text
+        - [ ] No unresolved template literals, placeholder or dev text visible to a user
+        - [ ] Failure paths driven, not only the happy path
+        - Evidence (transcript / screenshots):
+
+        ### 4 · Test
+        - [ ] Automated coverage for each acceptance criterion, running in CI
+        - [ ] A mutation proof: break the behaviour, the test goes RED; restore it, GREEN
+        - [ ] Pre-existing failures named and shown unchanged (no NEW failure from this diff)
+        - Evidence (test names + CI run):
+
+        ### 5 · Review — `/review`
+        - [ ] Independent reviewer, **different model family than the author**
+        - [ ] Judged against `docs/CODING_STANDARDS.md`, not only for bugs
+        - [ ] Deep-modules lens: nesting ≤3, no god-functions, no duplicated source of truth
+        - [ ] No value validated by its name or shape where its identity should be resolved
+        - [ ] Correct-but-ugly is CHANGES-REQUESTED
+        - Evidence (verdict + exact SHA reviewed):
+
+        ### 6 · CSO — `/cso`
+        - [ ] Auth, secrets, tool exposure, PII and external surfaces reviewed
+        - [ ] No secret, token or credential in code, argv, logs or error text
+        - [ ] New security boundary? → operator sign-off linked here
+        - [ ] Or: explicitly recorded as not security-relevant, with the reason
+        - Evidence (verdict + exact SHA):
+
+        ### 7 · Documentation — `/document-release`
+        - [ ] Public docs and release notes updated where a surface changed
+        - [ ] Generated inventories do not count as documentation
+        - Evidence (doc PR/section):
+
+        ### 8 · Merged
+        - [ ] On `main`, green gate, all review threads resolved
+        - [ ] **This is not done and not released.**
+        - Evidence (merge SHA):
+
+        ### 9 · QA verified on STAGING — `/qa`
+        - [ ] Deployed to staging; the running revision is the one built here
+        - [ ] Real user flow driven end to end against staging
+        - [ ] E2E suite green against staging
+        - Evidence (staging URL + screenshots + revision):
+
+        ### 10 · Shipped to PRODUCTION
+        - [ ] Deployed rollback-ready
+        - [ ] Running image/revision digest verified — not inferred from the merge
+        - Evidence (digest):
+
+        ### 11 · QA verified in PRODUCTION — `/qa`
+        - [ ] The same flow driven against production, with evidence
+        - [ ] Headline capability actually used, not just reachable
+        - [ ] No feature left dark behind an unset flag
+        - Evidence (prod artifacts):
+
+        > **Only when box 11 is ticked with evidence may this issue close.**
+    validations:
+      required: true
+  - type: textarea
+    id: blocked
+    attributes:
+      label: Blocked by / depends on
+      description: Issue or PR numbers. Leave empty if independent.
+    validations:
+      required: false
+  - type: checkboxes
+    id: hygiene
+    attributes:
+      label: Before you file
+      options:
+        - label: This is one outcome, not a bundle. A second outcome is a second issue.
+          required: true
+        - label: No secrets, tokens, personal data or customer data in this issue.
+          required: true
