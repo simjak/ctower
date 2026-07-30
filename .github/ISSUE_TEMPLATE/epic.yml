@@ -1,0 +1,60 @@
+name: Epic
+description: A capability of the product. Delivery items hang off an epic; an epic never hangs off nothing.
+title: "EPIC: "
+labels:
+  - epic
+body:
+  - type: markdown
+    attributes:
+      value: |
+        An epic is a **capability the product either has or does not have** — not a phase, not a
+        sprint, not a container for unrelated work. If you cannot say what becomes possible when it
+        closes, it is not an epic.
+  - type: dropdown
+    id: layer
+    attributes:
+      label: Primary layer
+      options:
+        - UI
+        - API
+        - INFRA
+    validations:
+      required: true
+  - type: textarea
+    id: capability
+    attributes:
+      label: What becomes possible when this closes?
+      description: One sentence, in the operator's terms.
+      placeholder: "The runtime can be upgraded and rolled back without a window in which there is no service."
+    validations:
+      required: true
+  - type: textarea
+    id: why
+    attributes:
+      label: Why this epic exists
+      description: What it unlocks in the roadmap, and what stays blocked without it.
+    validations:
+      required: true
+  - type: textarea
+    id: done
+    attributes:
+      label: Definition of done
+      description: The observable state of the world when every child item is closed. Not a list of tasks.
+    validations:
+      required: true
+  - type: textarea
+    id: children
+    attributes:
+      label: Delivery items
+      description: Child issues. Keep this list current — it is how the board rolls up.
+      value: |
+        - [ ] #
+    validations:
+      required: false
+  - type: textarea
+    id: nongoals
+    attributes:
+      label: Non-goals
+      description: What this epic deliberately does not cover, so scope cannot drift into it.
+    validations:
+      required: true
