@@ -25,11 +25,11 @@ def checkpoint_resource(
             )
         ),
     )
-    criterion_keys = (
-        cast(list[str], vectors["i1_7_criteria"])
-        if checkpoint_key == "I1.7"
-        else ["declared-outcome"]
+    configured_criteria = cast(
+        dict[str, list[str]],
+        vectors["configured_checkpoint_criteria"],
     )
+    criterion_keys = configured_criteria[checkpoint_key]
     key = checkpoint_key.casefold().replace(".", "-")
     payload: dict[str, Any] = {
         "schema": "ctower.checkpoint/v1",

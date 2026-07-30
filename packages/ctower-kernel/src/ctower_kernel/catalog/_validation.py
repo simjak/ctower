@@ -52,22 +52,6 @@ _EXPECTED_SCHEMAS: dict[ComponentKind, str] = {
     ComponentKind.INTEGRATION: "ctower.integration/v1",
     ComponentKind.CHECKPOINT: "ctower.checkpoint/v1",
 }
-_CTOWER_CHECKPOINTS = (
-    "I1.0",
-    "I1.1",
-    "I1.2",
-    "I1.3",
-    "I1.4",
-    "I1.5",
-    "I1.6",
-    "I1.7",
-    "I2.1",
-    "I2.2",
-    "I2.3",
-    "I2.4",
-    "I2.5",
-    "I2.6",
-)
 _FORBIDDEN_KEYS = frozenset(
     {
         "access_token",
@@ -174,16 +158,22 @@ def _validate_checkpoint_set(bundle: CompanyBundle) -> CatalogProblem | None:
     )
     if not checkpoints:
         return None
-    keys = tuple(str(resource.payload.get("checkpoint_key")) for resource in checkpoints)
-    if keys != _CTOWER_CHECKPOINTS or len(keys) != len(set(keys)):
-        return _problem(
-            "bundle-reference-invalid",
-            "The ctower checkpoint hierarchy must publish all 14 definitions in order.",
-        )
-    if any(resource.component.scope.project != "ctower" for resource in checkpoints):
+    if any(resource.component.scope.project is None for resource in checkpoints):
         return _problem(
             "bundle-grant-refused",
-            "The frozen checkpoint hierarchy is scoped only to project ctower.",
+            "Every checkpoint must be scoped to one project.",
+        )
+    identities = tuple(
+        (
+            resource.component.scope.project,
+            str(resource.payload.get("checkpoint_key")),
+        )
+        for resource in checkpoints
+    )
+    if len(identities) != len(set(identities)):
+        return _problem(
+            "bundle-reference-invalid",
+            "A project checkpoint key may occur only once in an active bundle.",
         )
     return None
 

@@ -26,6 +26,7 @@ from ctower_kernel.projections import (
     derive_project_delivery_row,
 )
 from ctower_kernel.projections.postgres import PostgresProjections
+from ctower_kernel.projections.project_delivery import EvidenceSlotFact, EvidenceSlotState
 from ctower_kernel.record import Actor, PrincipalKind
 from ctower_kernel.record.postgres import PostgresRecord
 
@@ -38,6 +39,7 @@ HTTP_UNAUTHORIZED = 401
 HTTP_UNPROCESSABLE_ENTITY = 422
 _DIGEST = "sha256:" + ("a" * 64)
 _DELIVERY_WATERMARK = 27
+_SLOT_COUNT = 2
 _CRITERIA = (
     "authority_decision",
     "contracts",
@@ -147,6 +149,9 @@ def test_i17b_api_reads_blocked_cp3_d_and_refuses_epoch_mutation(
     assert row["headline_state"] == "blocked"
     assert row["underlying_maturity"] == "verified"
     assert row["criteria"] == {"declared": 6, "proven": 5}
+    assert row["qualifying_stage_slots_filled"] == 1
+    assert row["qualifying_stage_slots_required"] == _SLOT_COUNT
+    assert row["qualifying_stage_unfilled_or_unknown_slot_keys"] == ["cp3-d-proof"]
     assert row["confidence"] == "development_degraded"
     assert row["health"] == "CP3_D_NOT_PROVEN"
     assert _cutover_fact_count(tenant) == before == 0
@@ -471,6 +476,10 @@ def _seed_project_delivery_row(tenant: TenantFixture) -> None:
             observed_at=datetime(2026, 7, 25, 10, 30, tzinfo=UTC),
             source_complete=True,
             cp3_d_proven=False,
+            qualifying_stage_slots=(
+                EvidenceSlotFact("dogfood-proof", EvidenceSlotState.FILLED),
+                EvidenceSlotFact("cp3-d-proof", EvidenceSlotState.UNFILLED),
+            ),
         ),
     )
     with psycopg.connect(tenant.database.admin_dsn) as connection:

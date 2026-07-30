@@ -35,13 +35,18 @@ def materialize_checkpoints(
 ) -> None:
     """Insert every newly published definition and its criteria in one transaction."""
 
-    positions = {
-        str(resource.payload["checkpoint_key"]): position
-        for position, resource in enumerate(
-            (item for item in bundle.resources if item.component.kind is ComponentKind.CHECKPOINT),
-            start=1,
-        )
-    }
+    positions: dict[tuple[str, str], int] = {}
+    project_positions: dict[str, int] = {}
+    for resource in bundle.resources:
+        if resource.component.kind is not ComponentKind.CHECKPOINT:
+            continue
+        project_key = resource.component.scope.project
+        if project_key is None:
+            raise RuntimeError("validated checkpoint is missing its project scope")
+        project_positions[project_key] = project_positions.get(project_key, 0) + 1
+        positions[(project_key, str(resource.payload["checkpoint_key"]))] = project_positions[
+            project_key
+        ]
     for state in states:
         if not state.is_new or state.resource.component.kind is not ComponentKind.CHECKPOINT:
             continue
@@ -52,7 +57,7 @@ def _insert_definition(
     connection: psycopg.Connection[dict[str, object]],
     actor: Actor,
     state: RevisionState,
-    positions: dict[str, int],
+    positions: dict[tuple[str, str], int],
     *,
     now: datetime,
 ) -> None:
@@ -63,6 +68,7 @@ def _insert_definition(
     publication_event_id = state.publication_event_id
     if publication_event_id is None or component.scope.project is None:
         raise RuntimeError("new checkpoint publication facts are incomplete")
+    position = positions[(component.scope.project, checkpoint_key)]
     connection.execute(
         """
         INSERT INTO project_delivery_checkpoint_definitions (
@@ -83,7 +89,7 @@ def _insert_definition(
             component.scope.project,
             checkpoint_key,
             component.revision,
-            positions[checkpoint_key],
+            position,
             payload["display_name"],
             payload["outcome"],
             payload["accountable_owner"],

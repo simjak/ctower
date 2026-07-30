@@ -29,7 +29,6 @@ from ctower_kernel.record import Actor, PrincipalKind
 __all__: tuple[str, ...] = ()
 
 _ROOT = Path(__file__).parents[3]
-_CHECKPOINT_COUNT = 14
 
 
 def test_checkpoint_bundle_materializes_all_14_definitions_atomically_and_replays(
@@ -37,31 +36,56 @@ def test_checkpoint_bundle_materializes_all_14_definitions_atomically_and_replay
 ) -> None:
     actor = actor_for(tenant.tenant_id, tenant.operator_id)
     catalog = _catalog(tenant)
-    bundle = _checkpoint_bundle()
+    prior_bundle = _checkpoint_bundle(prior=True)
+    _apply_checkpoint_bundle(tenant, catalog=catalog, bundle=prior_bundle)
+    projections = Projections(PostgresProjections(tenant.database.projection_dsn))
+    initial_source = _record_watermark(tenant)
+    _set_project_delivery_source(tenant, acceptance_position=initial_source)
+    assert projections.reconcile_project_delivery(tenant.tenant_id, now=datetime.now(UTC)) == len(
+        prior_bundle.resources
+    )
+    prior_view = projections.project_delivery(
+        Actor(tenant.operator_id, tenant.tenant_id, PrincipalKind.OPERATOR),
+        "ctower",
+    )
+    assert prior_view is not None
+    assert len(prior_view.rows) == len(prior_bundle.resources)
+
+    bundle = _checkpoint_bundle(mutated=True)
     plan = catalog.plan(actor, bundle)
     assert not isinstance(plan, CatalogProblem)
     command_id = uuid4()
     command = CompanyBundleApply(
         client_command_id=command_id,
         bundle=bundle,
-        expected_active_version=0,
+        expected_active_version=1,
         plan_digest=plan.plan_digest,
     )
 
     applied = catalog.apply(actor, command, telemetry=telemetry_for(actor, command_id))
-    counts = _checkpoint_counts(tenant.database.admin_dsn)
     replayed = catalog.apply(actor, command, telemetry=telemetry_for(actor, command_id))
-    partial = catalog.validate(
-        actor,
-        bundle.model_copy(update={"resources": bundle.resources[:-1]}),
-    )
+    configured_count = len(bundle.resources)
 
     assert isinstance(applied, CompanyBundleCommandResult)
     assert replayed == applied
-    assert counts == (14, 19, 14)
-    assert _checkpoint_counts(tenant.database.admin_dsn) == counts
-    assert isinstance(partial, CatalogProblem)
-    assert partial.code == "bundle-reference-invalid"
+    source = _record_watermark(tenant)
+    _set_project_delivery_source(tenant, acceptance_position=source)
+    affected = projections.reconcile_project_delivery(tenant.tenant_id, now=datetime.now(UTC))
+    view = projections.project_delivery(
+        Actor(tenant.operator_id, tenant.tenant_id, PrincipalKind.OPERATOR),
+        "ctower",
+    )
+    assert view is not None
+    configured_keys = {str(resource.payload["checkpoint_key"]) for resource in bundle.resources}
+    assert {row.checkpoint_key for row in view.rows} == configured_keys
+    assert len(view.rows) == configured_count
+    assert affected == configured_count
+    assert configured_count == len(prior_view.rows) + 1
+    renamed = next(row for row in view.rows if row.checkpoint_key == "I1.9")
+    prior = next(row for row in prior_view.rows if row.checkpoint_key == "I1.9")
+    assert prior.checkpoint_label == "ctower checkpoint I1.9"
+    assert renamed.checkpoint_label == "Renamed fixture checkpoint"
+    assert renamed.qualifying_stage_unfilled_or_unknown_slot_keys == ("declared-outcome",)
 
 
 def test_project_delivery_missing_lagging_poison_and_rebuild_are_deterministic(
@@ -107,24 +131,50 @@ def test_project_delivery_missing_lagging_poison_and_rebuild_are_deterministic(
     ) == (14, 14, 14, 0, 14)
     assert {row.health for row in missing.rows} == {"STATE_UNKNOWN"}
     recovered_semantics = tuple(row.semantic_digest for row in recovered.rows)
-    assert len(recovered_semantics) == _CHECKPOINT_COUNT
+    assert len(recovered_semantics) == len(_checkpoint_bundle().resources)
     assert {row.health for row in lagging.rows} == {"STATE_UNKNOWN"}
     assert {row.health for row in poisoned.rows} == {"STATE_UNKNOWN"}
     assert tuple(row.semantic_digest for row in rebuilt.rows) == recovered_semantics
     assert rebuilt.rebuild_generation == 1
 
 
-def _checkpoint_bundle() -> CompanyBundle:
-    vectors = json.loads(
-        (_ROOT / "contracts/domain/project-delivery/project-delivery-vectors.json").read_text(
-            encoding="utf-8"
-        )
+def _checkpoint_bundle(
+    *,
+    mutated: bool = False,
+    prior: bool = False,
+) -> CompanyBundle:
+    vectors = cast(
+        dict[str, object],
+        json.loads(
+            (_ROOT / "contracts/domain/project-delivery/project-delivery-vectors.json").read_text(
+                encoding="utf-8"
+            )
+        ),
     )
+    if mutated or prior:
+        keys = cast(list[str], vectors["checkpoint_keys"])
+        configured = cast(
+            dict[str, list[str]],
+            vectors["configured_checkpoint_criteria"],
+        )
+        checkpoint_keys = ["I1.9", *keys[1:-1]]
+        if mutated:
+            checkpoint_keys.append("I2.9")
+        vectors = {
+            **vectors,
+            "checkpoint_keys": checkpoint_keys,
+            "configured_checkpoint_criteria": {
+                "I1.9": configured[keys[0]],
+                **{key: configured[key] for key in keys[1:-1]},
+                **({"I2.9": configured[keys[-1]]} if mutated else {}),
+            },
+            "checkpoint_labels": ({"I1.9": "Renamed fixture checkpoint"} if mutated else {}),
+        }
     resources = [
         _checkpoint_resource(checkpoint_key, vectors)
         for checkpoint_key in cast(list[str], vectors["checkpoint_keys"])
     ]
-    return CompanyBundle.model_validate_json(
+    bundle = CompanyBundle.model_validate_json(
         json.dumps(
             {
                 "schema": "ctower.company-bundle/v1",
@@ -135,21 +185,42 @@ def _checkpoint_bundle() -> CompanyBundle:
             }
         )
     )
+    if not mutated:
+        return bundle
+    previous = next(
+        item.component.reference()
+        for item in _checkpoint_bundle(prior=True).resources
+        if item.component.key == "ctower.i1-9"
+    )
+    superseding_resources = tuple(
+        item.model_copy(
+            update={
+                "component": item.component.model_copy(
+                    update={"revision": 2, "supersedes": previous}
+                )
+            }
+        )
+        if item.component.key == "ctower.i1-9"
+        else item
+        for item in bundle.resources
+    )
+    return bundle.model_copy(update={"resources": superseding_resources})
 
 
 def _checkpoint_resource(checkpoint_key: str, vectors: object) -> JsonValue:
     typed_vectors = cast(dict[str, object], vectors)
-    criterion_keys = (
-        cast(list[str], typed_vectors["i1_7_criteria"])
-        if checkpoint_key == "I1.7"
-        else ["declared-outcome"]
-    )
+    configured = cast(dict[str, object], typed_vectors["configured_checkpoint_criteria"])
+    criterion_keys = cast(list[str], configured[checkpoint_key])
+    labels = cast(dict[str, str], typed_vectors.get("checkpoint_labels", {}))
     key = checkpoint_key.casefold().replace(".", "-")
     payload: JsonValue = {
         "schema": "ctower.checkpoint/v1",
         "key": f"ctower.{key}",
         "checkpoint_key": checkpoint_key,
-        "display_name": f"ctower checkpoint {checkpoint_key}",
+        "display_name": labels.get(
+            checkpoint_key,
+            f"ctower checkpoint {checkpoint_key}",
+        ),
         "outcome": f"ctower establishes the declared {checkpoint_key} outcome",
         "accountable_owner": "ctower-operator",
         "criteria": [
@@ -202,18 +273,23 @@ def _catalog(tenant: TenantFixture) -> PostgresCatalog:
     )
 
 
-def _apply_checkpoint_bundle(tenant: TenantFixture) -> None:
+def _apply_checkpoint_bundle(
+    tenant: TenantFixture,
+    *,
+    catalog: PostgresCatalog | None = None,
+    bundle: CompanyBundle | None = None,
+) -> None:
     actor = actor_for(tenant.tenant_id, tenant.operator_id)
-    catalog = _catalog(tenant)
-    bundle = _checkpoint_bundle()
-    plan = catalog.plan(actor, bundle)
+    selected_catalog = catalog or _catalog(tenant)
+    selected_bundle = bundle or _checkpoint_bundle()
+    plan = selected_catalog.plan(actor, selected_bundle)
     assert not isinstance(plan, CatalogProblem)
     command_id = uuid4()
-    result = catalog.apply(
+    result = selected_catalog.apply(
         actor,
         CompanyBundleApply(
             client_command_id=command_id,
-            bundle=bundle,
+            bundle=selected_bundle,
             expected_active_version=0,
             plan_digest=plan.plan_digest,
         ),
