@@ -19,7 +19,7 @@ ROOT = Path(__file__).parents[2]
 _PRODUCTION_ROOTS = ("apps", "packages", "tools")
 _ADAPTER = Path("tools/process_execution.py")
 _EXPECTED_DIRECT_SITE = (_ADAPTER, "subprocess.Popen")
-_EXPECTED_ADAPTER_CALLS = 13
+_EXPECTED_ADAPTER_CALLS = 14
 type _ResolvedReference = str | None
 
 
