@@ -38,7 +38,11 @@ from ctower_kernel.record.postgres import (
 )
 from tools.development_runtime._postgres_scram import postgres_scram_verifier
 from tools.development_runtime.bootstrap import bootstrap_instance
-from tools.development_runtime.installation import install_runtime, runtime_home
+from tools.development_runtime.installation import (
+    install_runtime,
+    rollback_runtime,
+    runtime_home,
+)
 from tools.development_runtime.primary import start_primary
 
 __all__ = ["keyring_unlock_main", "main"]
@@ -87,6 +91,8 @@ def main() -> None:
     installation.add_argument("--packs", type=Path, required=True)
     installation.add_argument("--python", type=Path, required=True)
     installation.add_argument("--source-root", type=Path, required=True)
+    installation.add_argument("--replace", action="store_true")
+    commands.add_parser("rollback-runtime")
     commands.add_parser("observe")
     arguments = parser.parse_args()
     match arguments.command:
@@ -103,7 +109,10 @@ def main() -> None:
                 arguments.packs,
                 arguments.python,
                 arguments.source_root,
+                replace=arguments.replace,
             )
+        case "rollback-runtime":
+            rollback_runtime()
         case _:
             print(json.dumps(observe(), sort_keys=True))
 
