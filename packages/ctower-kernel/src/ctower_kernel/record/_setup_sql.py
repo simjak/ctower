@@ -17,6 +17,7 @@ import psycopg
 from psycopg.rows import dict_row
 from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
 
+from ctower_kernel.record import _migration_control_sql
 from ctower_kernel.record._durability_probe_role_sql import (
     DURABILITY_PROBE_ROLE,
     close_durability_probe_boundary,
@@ -30,7 +31,6 @@ from ctower_kernel.record._migration_ledger_sql import (
     MigrationScript,
     MigrationStateError,
     _migration_execution_error,
-    acquire_migration_control_lock,
     apply_database_migrations,
     record_database_migrations,
 )
@@ -263,8 +263,16 @@ def _migration_scripts(scope: Literal["cluster", "database"]) -> tuple[Migration
 
 
 def provision_database_roles(admin_dsn: str) -> None:
-    """Use server administration only to provision the global login/role boundary."""
+    """Serialize and reconcile the cluster-global login/role boundary."""
+    with _migration_control_sql.migration_control(admin_dsn):
+        _reconcile_database_roles_locked(admin_dsn)
 
+
+def _reconcile_database_roles_locked(admin_dsn: str) -> None:
+    _migration_control_sql.reconcile_database_roles(admin_dsn, _provision_database_roles_once)
+
+
+def _provision_database_roles_once(admin_dsn: str) -> None:
     with psycopg.connect(admin_dsn, row_factory=dict_row) as connection:
         validate_recovery_role_shapes(connection)
     probe_preexisting = quarantine_durability_probe(admin_dsn)
@@ -316,6 +324,8 @@ def _execute_cluster_migration(
             raise RecoveryRoleConfigurationError from None
         raise _migration_execution_error(migration.migration_id, error) from None
     except psycopg.Error as error:
+        if _migration_control_sql.retryable_database_failure(error):
+            raise
         raise _migration_execution_error(migration.migration_id, error) from None
 
 
@@ -464,15 +474,11 @@ def _projection_membership_rejections(
 
 
 def apply_migrations(migrator_dsn: str, *, role_admin_dsn: str) -> None:
-    """Reconcile roles, then serialize, apply, attest, and record migrations."""
-
+    """Serialize role reconciliation, application, attestation, and recording."""
     loaded = _load_migrations()
-    database_migrations = tuple(
-        migration for migration in loaded.scripts if migration.scope == "database"
-    )
-    provision_database_roles(role_admin_dsn)
-    with psycopg.connect(role_admin_dsn) as control:
-        acquire_migration_control_lock(control)
+    database_migrations = tuple(m for m in loaded.scripts if m.scope == "database")
+    with _migration_control_sql.migration_control(role_admin_dsn) as control:
+        _reconcile_database_roles_locked(role_admin_dsn)
         with psycopg.connect(migrator_dsn) as connection:
             connection.execute("SET ROLE ctower_admin")
             pending = apply_database_migrations(
@@ -480,10 +486,9 @@ def apply_migrations(migrator_dsn: str, *, role_admin_dsn: str) -> None:
                 database_migrations,
                 loaded.baseline,
             )
-        # Database migrations can create functions and grants governed by the
-        # cluster-role boundary. Close that boundary before attesting completion.
-        # A failure here leaves no ledger, which is the explicit resumable marker.
-        provision_database_roles(role_admin_dsn)
+        # Database migrations can create role-governed functions and grants.
+        # Close that boundary before attesting; failure leaves no ledger.
+        _reconcile_database_roles_locked(role_admin_dsn)
         record_database_migrations(control, pending, loaded.baseline)
 
 
