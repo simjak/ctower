@@ -12,6 +12,7 @@ from uuid import UUID, uuid4
 import psycopg
 import pytest
 
+from ctower_kernel.record import _setup_sql
 from ctower_kernel.record.postgres import (
     MigrationAdoptionError,
     MigrationBaseline,
@@ -117,7 +118,7 @@ def test_role_reconciliation_failure_cannot_commit_adoption(
         raise psycopg.OperationalError("forced role reconciliation failure")
 
     monkeypatch.setattr(
-        "ctower_kernel.record._setup_sql.provision_database_roles",
+        "ctower_kernel.record._setup_sql._reconcile_database_roles_locked",
         refuse_role_reconciliation,
     )
     with pytest.raises(psycopg.OperationalError, match="forced role reconciliation failure"):
@@ -135,7 +136,7 @@ def test_post_schema_role_closure_failure_leaves_explicit_resumable_state(
 ) -> None:
     with psycopg.connect(migration_database.admin_dsn) as connection:
         connection.execute("DROP TABLE ctower_schema_migrations")
-    actual = provision_database_roles
+    actual = _setup_sql._reconcile_database_roles_locked
     calls = 0
 
     def fail_second_reconciliation(dsn: str) -> None:
@@ -147,7 +148,7 @@ def test_post_schema_role_closure_failure_leaves_explicit_resumable_state(
         raise psycopg.OperationalError("forced post-schema role closure failure")
 
     monkeypatch.setattr(
-        "ctower_kernel.record._setup_sql.provision_database_roles",
+        "ctower_kernel.record._setup_sql._reconcile_database_roles_locked",
         fail_second_reconciliation,
     )
     with pytest.raises(psycopg.OperationalError, match="post-schema role closure failure"):
