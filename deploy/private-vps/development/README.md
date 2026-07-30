@@ -24,16 +24,52 @@ referenced administrator secret through stdin, leaves only the initialized volum
 steady-state published container with no password environment entry; standby cloning is likewise
 stdin-only.
 
-From a clean source tree, build the wheel with the approved standard-GIL interpreter, bind it, and install
-the fixed runtime:
+The old order below was not executable from a clean checkout: its unqualified
+`ctower-runtime-manifest` and `ctower-private-vps` commands silently selected whichever environment happened
+to be on `PATH`. On the development host that was `/srv/projects/ctower/.venv`, which can be older than the
+checkout. Do not use that repository verification environment for an install.
+
+Prepare a disposable bootstrap environment outside the checkout with the approved standard-GIL
+interpreter. Replace `UNIQUE` with a new owner-only temporary directory for this attempt. Building this
+environment does not alter or remove an installed runtime:
 
 ```text
-uv build --wheel --python /path/to/python3.13
-ctower-runtime-manifest build --source-root . --wheel dist/ctower_workspace-0.0.0-py3-none-any.whl \
-  --output dist/development-manifest.json --python /path/to/python3.13
-ctower-private-vps install-runtime --wheel dist/ctower_workspace-0.0.0-py3-none-any.whl \
-  --manifest dist/development-manifest.json --packs packs --python /path/to/python3.13 \
-  --source-root .
+uv build --wheel --python /path/to/python3.13 \
+  --out-dir /tmp/ctower-bootstrap-UNIQUE/dist
+/path/to/python3.13 -m venv /tmp/ctower-bootstrap-UNIQUE/venv
+uv pip install --python /tmp/ctower-bootstrap-UNIQUE/venv/bin/python \
+  /tmp/ctower-bootstrap-UNIQUE/dist/ctower_workspace-*.whl
+```
+
+Before any persistent-runtime command, run the read-only preflight from the checkout with the approved
+interpreter. It reads every entry from this checkout's `[project.scripts]`, then asks the isolated
+bootstrap-venv interpreter to load the matching installed entry point and inspect the exact script pathname
+the commands below will use. A missing, mismatched, unimportable, or non-callable entry point refuses the
+install. The installed script must also be a current-user-executable regular file with a nonempty,
+syntactically valid Python shim whose shebang resolves to that bootstrap interpreter. The preflight does not
+execute scripts because some entries start services or unlock the development keyring.
+
+```text
+/path/to/python3.13 -m tools.runtime_preflight --pyproject pyproject.toml \
+  --python /tmp/ctower-bootstrap-UNIQUE/venv/bin/python
+```
+
+Only a passing preflight starts the persistent-runtime install sequence; it is the first command after
+disposable preparation and precedes every mutation of installed runtime state. The first two commands below
+use console scripts from `/tmp/ctower-bootstrap-UNIQUE/venv`, which was built from the wheel above.
+`install-runtime` creates and verifies the separate permanent venv at
+`~/.local/share/ctower-development/runtime/venv`; later systemd and public-CLI commands use only that
+permanent venv.
+
+```text
+/tmp/ctower-bootstrap-UNIQUE/venv/bin/ctower-runtime-manifest build \
+  --source-root . --wheel /tmp/ctower-bootstrap-UNIQUE/dist/ctower_workspace-*.whl \
+  --output /tmp/ctower-bootstrap-UNIQUE/development-manifest.json \
+  --python /path/to/python3.13
+/tmp/ctower-bootstrap-UNIQUE/venv/bin/ctower-private-vps install-runtime \
+  --wheel /tmp/ctower-bootstrap-UNIQUE/dist/ctower_workspace-*.whl \
+  --manifest /tmp/ctower-bootstrap-UNIQUE/development-manifest.json \
+  --packs packs --python /path/to/python3.13 --source-root .
 ```
 
 `install-runtime` is deliberately first-install-only and refuses an existing runtime path. Automated
@@ -43,10 +79,11 @@ the separately reviewed release-lifecycle follow-up.
 First install:
 
 ```text
-ctower-private-vps database-up
-ctower-private-vps install-units --unit-root deploy/private-vps/development/systemd
-ctower-private-vps bootstrap
-ctower-private-vps observe
+~/.local/share/ctower-development/runtime/venv/bin/ctower-private-vps database-up
+~/.local/share/ctower-development/runtime/venv/bin/ctower-private-vps install-units \
+  --unit-root deploy/private-vps/development/systemd
+~/.local/share/ctower-development/runtime/venv/bin/ctower-private-vps bootstrap
+~/.local/share/ctower-development/runtime/venv/bin/ctower-private-vps observe
 ```
 
 Bootstrap persists only a command ID and Secret Service reference until the first-tenant operation,
@@ -61,9 +98,10 @@ clock data, or progress older than ten seconds is typed `DEGRADED`; unknown is n
 Drive the instance only through the protected public CLI wrapper:
 
 ```text
-ctower-shadow-ctl ticket create ...
-ctower-shadow-ctl ticket query TICKET_ID
-ctower-shadow-ctl synthetic run --workflow ctower.trust-spine-four-stage@1 \
+~/.local/share/ctower-development/runtime/venv/bin/ctower-shadow-ctl ticket create ...
+~/.local/share/ctower-development/runtime/venv/bin/ctower-shadow-ctl ticket query TICKET_ID
+~/.local/share/ctower-development/runtime/venv/bin/ctower-shadow-ctl synthetic run \
+  --workflow ctower.trust-spine-four-stage@1 \
   --wait --assert resolved,closed
 ```
 
