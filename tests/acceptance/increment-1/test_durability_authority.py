@@ -225,6 +225,8 @@ def test_named_standby_authority_is_replay_safe_and_fail_closed(
         ),
         telemetry=recorder,
     )
+    # Prior module tests intentionally commit fixture changes locally.
+    wait_for_durability_replay_current(authority.pair)
     assert_live_health_faults(record, authority.pair, authority.database)
 
     with (
