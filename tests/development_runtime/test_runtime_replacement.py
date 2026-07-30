@@ -5,9 +5,10 @@ from __future__ import annotations
 import json
 import subprocess
 import sys
+import time
 from dataclasses import dataclass
 from pathlib import Path
-from typing import cast
+from typing import Literal, cast
 
 import pytest
 
@@ -17,6 +18,63 @@ import tools.development_runtime.interface as runtime_interface
 __all__: tuple[str, ...] = ()
 
 _RETAINED_RUNTIME_COUNT = 2
+_LOCK_BLOCK_SECONDS = 0.2
+_PROCESS_TIMEOUT_SECONDS = 10.0
+
+_RUNTIME_OPERATION = """
+from pathlib import Path
+import sys
+import time
+
+import tools.development_runtime.installation as installation
+
+(
+    operation,
+    data_home_value,
+    uv_value,
+    wheel_value,
+    manifest_value,
+    packs_value,
+    python_value,
+    source_root_value,
+    block_at,
+    ready_value,
+    release_value,
+) = sys.argv[1:]
+data_home = Path(data_home_value)
+installation._data_home = lambda: data_home
+installation._uv_path = lambda: uv_value
+
+def wait_at_boundary() -> None:
+    Path(ready_value).write_text("ready", encoding="utf-8")
+    release = Path(release_value)
+    while not release.exists():
+        time.sleep(0.01)
+
+if block_at == "verify":
+    installation.verify_manifest = lambda *_args, **_kwargs: wait_at_boundary()
+else:
+    installation.verify_manifest = lambda *_args, **_kwargs: None
+
+if block_at == "exchange":
+    exchange = installation._exchange_paths
+    def blocked_exchange(current: Path, previous: Path) -> None:
+        wait_at_boundary()
+        exchange(current, previous)
+    installation._exchange_paths = blocked_exchange
+
+if operation == "replace":
+    installation.install_runtime(
+        Path(wheel_value),
+        Path(manifest_value),
+        Path(packs_value),
+        Path(python_value),
+        Path(source_root_value),
+        replace=True,
+    )
+else:
+    installation.rollback_runtime()
+"""
 
 
 @dataclass(frozen=True, slots=True)
@@ -203,6 +261,117 @@ def test_runtime_cli_wires_replace_and_rollback(
     assert calls == [("install", True), ("rollback", False)]
 
 
+def test_predecessor_discard_requires_the_matching_runtime_lock(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    _runtime_fixture(monkeypatch, tmp_path)
+    previous = installation.runtime_previous()
+    current = installation.runtime_home()
+
+    with pytest.raises(RuntimeError, match="requires the runtime change lock"):
+        installation._discard_previous(previous, current=current)
+    with pytest.raises(RuntimeError, match="requires the runtime change lock"):
+        installation._discard_previous(
+            previous,
+            current=current,
+            lock=installation._RuntimeChangeLock(parent=tmp_path),
+        )
+
+    _assert_old_serving()
+
+
+def test_rollback_waits_for_replace_and_remains_reversible(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    inputs = _runtime_fixture(monkeypatch, tmp_path)
+    ready = tmp_path / "replace-ready"
+    release = tmp_path / "replace-release"
+    replacing = _start_runtime_operation(
+        inputs,
+        data_home=tmp_path / "data",
+        block_at="verify",
+        ready=ready,
+        release=release,
+    )
+    _wait_for_path(ready)
+
+    started = time.monotonic()
+    rolling_back = _start_runtime_operation(
+        inputs,
+        data_home=tmp_path / "data",
+        operation="rollback",
+    )
+    time.sleep(_LOCK_BLOCK_SECONDS)
+    assert rolling_back.poll() is None
+    release.touch()
+    _assert_process_succeeded(replacing)
+    _assert_process_succeeded(rolling_back)
+    assert time.monotonic() - started >= _LOCK_BLOCK_SECONDS
+
+    _assert_runtime_version(current="old", previous="new")
+    installation.rollback_runtime()
+    _assert_runtime_version(current="new", previous="old")
+
+
+def test_replace_waits_for_rollback_and_remains_reversible(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    inputs = _runtime_fixture(monkeypatch, tmp_path)
+    _replace(inputs)
+    inputs.manifest.write_text('{"version": "new-2"}\n', encoding="utf-8")
+    _write_toolchain(inputs.python, tmp_path / "uv", entrypoint_exit=0, version="new-2")
+    ready = tmp_path / "rollback-ready"
+    release = tmp_path / "rollback-release"
+    rolling_back = _start_runtime_operation(
+        inputs,
+        data_home=tmp_path / "data",
+        operation="rollback",
+        block_at="exchange",
+        ready=ready,
+        release=release,
+    )
+    _wait_for_path(ready)
+
+    started = time.monotonic()
+    replacing = _start_runtime_operation(inputs, data_home=tmp_path / "data")
+    time.sleep(_LOCK_BLOCK_SECONDS)
+    assert replacing.poll() is None
+    release.touch()
+    _assert_process_succeeded(rolling_back)
+    _assert_process_succeeded(replacing)
+    assert time.monotonic() - started >= _LOCK_BLOCK_SECONDS
+
+    _assert_runtime_version(current="new-2", previous="old")
+    installation.rollback_runtime()
+    _assert_runtime_version(current="old", previous="new-2")
+
+
+def test_runtime_change_lock_is_released_when_holder_is_killed(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    inputs = _runtime_fixture(monkeypatch, tmp_path)
+    ready = tmp_path / "replace-ready"
+    release = tmp_path / "replace-release"
+    holder = _start_runtime_operation(
+        inputs,
+        data_home=tmp_path / "data",
+        block_at="verify",
+        ready=ready,
+        release=release,
+    )
+    _wait_for_path(ready)
+
+    holder.kill()
+    holder.communicate(timeout=_PROCESS_TIMEOUT_SECONDS)
+    assert holder.returncode is not None and holder.returncode < 0
+    replacement = _start_runtime_operation(inputs, data_home=tmp_path / "data")
+    _assert_process_succeeded(replacement)
+
+    _assert_runtime_version(current="new", previous="old")
+    installation.rollback_runtime()
+    _assert_runtime_version(current="old", previous="new")
+
+
 def _runtime_fixture(
     monkeypatch: pytest.MonkeyPatch,
     tmp_path: Path,
@@ -232,7 +401,13 @@ def _inputs(tmp_path: Path) -> _InstallInputs:
     )
 
 
-def _write_toolchain(python: Path, uv: Path, *, entrypoint_exit: int) -> None:
+def _write_toolchain(
+    python: Path,
+    uv: Path,
+    *,
+    entrypoint_exit: int,
+    version: str = "new",
+) -> None:
     python.write_text(
         '#!/bin/sh\nset -eu\nmkdir -p "$3/bin"\nln -s /bin/sh "$3/bin/python"\n',
         encoding="utf-8",
@@ -252,7 +427,7 @@ case "$2" in
         entrypoint="$(dirname "$python_path")/ctower-private-vps"
         printf '#!%s\\n' "$python_path" > "$entrypoint"
         printf 'test "$1" = "--help"\\n' >> "$entrypoint"
-        printf 'echo new\\n' >> "$entrypoint"
+        printf 'echo {version}\\n' >> "$entrypoint"
         printf 'printf executed > "$(dirname "$0")/entrypoint-executed"\\n' >> "$entrypoint"
         printf 'exit {entrypoint_exit}\\n' >> "$entrypoint"
         chmod 700 "$entrypoint"
@@ -286,6 +461,64 @@ def _replace(inputs: _InstallInputs) -> None:
         inputs.source_root,
         replace=True,
     )
+
+
+def _start_runtime_operation(
+    inputs: _InstallInputs,
+    *,
+    data_home: Path,
+    operation: Literal["replace", "rollback"] = "replace",
+    block_at: Literal["none", "verify", "exchange"] = "none",
+    ready: Path | None = None,
+    release: Path | None = None,
+) -> subprocess.Popen[str]:
+    return subprocess.Popen(  # noqa: S603 - fixture-owned interpreter and paths
+        [
+            sys.executable,
+            "-c",
+            _RUNTIME_OPERATION,
+            operation,
+            str(data_home),
+            str(inputs.python.parent / "uv"),
+            str(inputs.wheel),
+            str(inputs.manifest),
+            str(inputs.packs),
+            str(inputs.python),
+            str(inputs.source_root),
+            block_at,
+            str(ready or ""),
+            str(release or ""),
+        ],
+        cwd=Path.cwd(),
+        stdout=subprocess.PIPE,
+        stderr=subprocess.PIPE,
+        text=True,
+    )
+
+
+def _wait_for_path(path: Path) -> None:
+    deadline = time.monotonic() + _PROCESS_TIMEOUT_SECONDS
+    while time.monotonic() < deadline:
+        if path.exists():
+            return
+        time.sleep(0.01)
+    raise AssertionError(f"timed out waiting for subprocess boundary: {path.name}")
+
+
+def _assert_process_succeeded(process: subprocess.Popen[str]) -> None:
+    stdout, stderr = process.communicate(timeout=_PROCESS_TIMEOUT_SECONDS)
+    assert process.returncode == 0, (
+        f"runtime subprocess failed with {process.returncode}: stdout={stdout!r}, stderr={stderr!r}"
+    )
+
+
+def _assert_runtime_version(*, current: str, previous: str) -> None:
+    home = installation.runtime_home()
+    retained = installation.runtime_previous()
+    assert _manifest_version(home) == current
+    assert _entrypoint_version(home) == current
+    assert _manifest_version(retained) == previous
+    assert _entrypoint_version(retained) == previous
 
 
 def _assert_old_serving() -> None:

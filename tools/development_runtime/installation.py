@@ -4,8 +4,12 @@ from __future__ import annotations
 
 import ctypes
 import errno
+import fcntl
 import os
 import shutil
+from collections.abc import Iterator
+from contextlib import contextmanager
+from dataclasses import dataclass
 from pathlib import Path
 from typing import Protocol, cast
 from uuid import uuid4
@@ -34,6 +38,11 @@ class _RenameAt2(Protocol):
         new_path: bytes,
         flags: int,
     ) -> int: ...
+
+
+@dataclass(frozen=True, slots=True)
+class _RuntimeChangeLock:
+    parent: Path
 
 
 def install_runtime(
@@ -69,9 +78,10 @@ def rollback_runtime() -> None:
 
     current = runtime_home()
     previous = runtime_previous()
-    _require_installed_runtime(current, label="current")
-    _require_installed_runtime(previous, label="previous")
-    _exchange_paths(current, previous)
+    with _serialize_runtime_changes(current):
+        _require_installed_runtime(current, label="current")
+        _require_installed_runtime(previous, label="previous")
+        _exchange_paths(current, previous)
 
 
 def runtime_previous() -> Path:
@@ -88,27 +98,43 @@ def _replace_runtime(
     python: Path,
     source_root: Path,
 ) -> None:
-    _require_installed_runtime(home, label="current")
-    verify_manifest(
-        manifest_path,
-        wheel,
-        packs,
-        source_root=source_root,
-        python_executable=python,
-    )
-    replacement = home.with_name(f"runtime-replacement-{uuid4().hex}")
-    _create_runtime(replacement, wheel, manifest_path, packs, python)
-    previous = runtime_previous()
+    with _serialize_runtime_changes(home) as lock:
+        _require_installed_runtime(home, label="current")
+        verify_manifest(
+            manifest_path,
+            wheel,
+            packs,
+            source_root=source_root,
+            python_executable=python,
+        )
+        replacement = home.with_name(f"runtime-replacement-{uuid4().hex}")
+        _create_runtime(replacement, wheel, manifest_path, packs, python)
+        previous = runtime_previous()
+        try:
+            _discard_previous(previous, current=home, lock=lock)
+            previous.symlink_to(replacement.name, target_is_directory=True)
+            _exchange_paths(home, previous)
+        except Exception:
+            if previous.is_symlink() and previous.readlink() == Path(replacement.name):
+                previous.unlink()
+            if replacement.exists():
+                shutil.rmtree(replacement)
+            raise
+
+
+@contextmanager
+def _serialize_runtime_changes(home: Path) -> Iterator[_RuntimeChangeLock]:
+    """Block concurrent runtime-changing verbs until this operation exits."""
+
     try:
-        _discard_previous(previous, current=home)
-        previous.symlink_to(replacement.name, target_is_directory=True)
-        _exchange_paths(home, previous)
-    except Exception:
-        if previous.is_symlink() and previous.readlink() == Path(replacement.name):
-            previous.unlink()
-        if replacement.exists():
-            shutil.rmtree(replacement)
-        raise
+        directory = os.open(home.parent, os.O_RDONLY | os.O_DIRECTORY | os.O_CLOEXEC)
+    except (FileNotFoundError, NotADirectoryError) as error:
+        raise FileNotFoundError("the current persistent runtime is not installed") from error
+    try:
+        fcntl.flock(directory, fcntl.LOCK_EX)
+        yield _RuntimeChangeLock(parent=home.parent)
+    finally:
+        os.close(directory)
 
 
 def _create_runtime(
@@ -141,7 +167,14 @@ def _require_installed_runtime(path: Path, *, label: str) -> None:
         raise RuntimeError(f"the {label} persistent runtime entry point is not executable")
 
 
-def _discard_previous(previous: Path, *, current: Path) -> None:
+def _discard_previous(
+    previous: Path,
+    *,
+    current: Path,
+    lock: _RuntimeChangeLock | None = None,
+) -> None:
+    if lock is None or lock.parent != previous.parent:
+        raise RuntimeError("runtime predecessor discard requires the runtime change lock")
     if previous.is_symlink():
         target = previous.readlink()
         if (
