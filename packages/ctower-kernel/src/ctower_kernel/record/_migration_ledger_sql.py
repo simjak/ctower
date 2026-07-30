@@ -17,14 +17,12 @@ __all__ = [
     "MigrationExecutionError",
     "MigrationScript",
     "MigrationStateError",
-    "acquire_migration_control_lock",
     "apply_database_migrations",
     "record_database_migrations",
 ]
 
 _LEDGER = "ctower_schema_migrations"
 _LEDGER_ROLE = "ctower_migration_ledger"
-_LEDGER_LOCK = 712040119
 _SEMANTIC_CHECKS = "ctower.pre-ledger/v1"
 type _SchemaRecord = tuple[str, str, str]
 type _SchemaRecords = tuple[_SchemaRecord, ...]
@@ -72,14 +70,6 @@ class MigrationAdoptionError(MigrationStateError):
 
 class MigrationExecutionError(MigrationStateError):
     """Authored migration SQL failed behind a bounded data-safe error."""
-
-
-def acquire_migration_control_lock(
-    connection: psycopg.Connection[tuple[object, ...]],
-) -> None:
-    """Serialize the complete cross-connection migration operation."""
-
-    connection.execute("SELECT pg_advisory_lock(%s)", (_LEDGER_LOCK,))
 
 
 def apply_database_migrations(
