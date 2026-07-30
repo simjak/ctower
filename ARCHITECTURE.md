@@ -3,9 +3,9 @@
 | Field | Value |
 |---|---|
 | Status | Compact derived operator and implementer map |
-| Normative authority | [`SPEC.md`](SPEC.md), version 1.10 |
+| Normative authority | [`SPEC.md`](SPEC.md), version 1.11 |
 | Decision history | [`DECISIONS.md`](DECISIONS.md) |
-| Last reviewed | 2026-07-28 |
+| Last reviewed | 2026-07-29 |
 
 This is the sole terminal-safe derived architecture atlas. It explains the canonical specification; it
 does not add requirements, authorize work, or define exact schemas, operations, DDL, package values, or
@@ -19,6 +19,14 @@ Implementation labels are strict:
 - **I1** and **I2** otherwise remain committed target increments, not claims that the full behavior exists.
 - **Deferred** means invariants may be recorded, but the runtime, product surface, and public Seam do not
   exist in I1/I2.
+
+Authority milestones are deliberately separate. The fresh-database Company / Project / checkpoint
+hierarchy and Project Delivery projection form the development pilot. The complete legacy corpus remains a
+signed read-only provenance archive; only an exact reviewed still-actionable set is recreated through
+ordinary generated API/CLI commands with stable aliases. Bulk import is dormant. CT-I1-008 may issue
+development `GO_WITH_LIMITS` while CP3-D is red, but full normative I1 exit remains `NO-GO` and CT-I2-001
+remains unauthorized until external-failure-domain acknowledgement, key recovery, isolated destructive
+restore, and measured RPO/RTO pass.
 
 ## Authority and system context
 
@@ -416,6 +424,10 @@ at one watermark must reproduce the same rows. I1.7 exposes only the hierarchy a
 projection, with optional deterministic JSON, for ctower dogfood; I2.4 adds browser drill-through,
 interactive detail, broader visualization, trends, cost/time analytics, and the reusable cross-domain view.
 
+The development-pilot row and the full-I1 row are not interchangeable. The pilot may become `done` on a
+CT-I1-008 `GO_WITH_LIMITS` while still exposing `CP3_D_NOT_PROVEN`. The full-I1 row remains `blocked` while
+CP3-D is red. A development headline never unlocks CT-I2-001.
+
 ## Durable wake, Routine, and run flow
 
 ```text
@@ -499,7 +511,7 @@ containment boundaries for malicious arbitrary code. Exact policy/schema/signatu
 for the first real Harness consumer in CT-I2-004; [issue #17](https://github.com/simjak/ctower/issues/17)
 tracks that implementation.
 
-## Disaster-safe acceptance, restore, and cutover
+## Disaster-safe acceptance, restore, and authority gates
 
 ```text
  command transaction commits
@@ -535,20 +547,21 @@ tracks that implementation.
                                  record measured RPO/RTO
 ```
 
-At the ctower-project source-of-truth barrier, accepted record truth has RPO 0 because an off-host durable
-ACK precedes acceptance. A monthly restore is unusable until key recovery, object/tombstone verification,
-and validation of every signed expected-source inventory entry finish. I1 inventories root/effect/provider
-sources explicitly as `not_exercised` with zero-source declarations; their absence is never success. Any
-missing, unreadable, or gapped activated source fails closed. I2 commits a signed inventory revision marking
-a source active before the first associated grant/effect. Ordinary reads and all effects remain disabled
-while any activated source is absent or unreconciled; quarantine remains degraded evidence and never turns
-absence into restore success.
+Full normative I1 requires accepted record truth with RPO 0 because an external-failure-domain durable ACK
+precedes acceptance. Its destructive isolated restore is unusable until key recovery,
+object/tombstone verification, validation of every signed expected-source inventory entry, and measured
+RPO/RTO finish. I1 inventories root/effect/provider sources explicitly as `not_exercised` with zero-source
+declarations; their absence is never success. Any missing, unreadable, or gapped activated source fails
+closed. I2 commits a signed inventory revision marking a source active before the first associated
+grant/effect. Ordinary reads and all effects remain disabled while any activated source is absent or
+unreconciled; quarantine remains degraded evidence and never turns absence into restore success.
 
-D24 permits an earlier, narrower `development_single_writer` milestone for reviewed reconstructible ctower
-engineering data only. It is always labeled `CP3_D_NOT_PROVEN`; unknown fence, integrity, source, or
-projection state disables writes. It excludes credentials, accounting, production authority/effects,
-incidents, client data, and irreplaceable artifacts. The disaster-safe milestone and I1.7 completion still
-require the full acknowledgement and restore evidence above.
+D27 permits an earlier, narrower fresh-database development authority milestone for reviewed
+reconstructible ctower engineering data only. It is always labeled `CP3_D_NOT_PROVEN`; unknown archive,
+integrity, source, alias, or projection state disables writes. It excludes credentials, accounting,
+production authority/effects, incidents, client data, and irreplaceable artifacts. CT-I1-008 may call that
+development pilot `GO_WITH_LIMITS` and complete its I1.7 row. The separate full-I1 milestone remains
+`NO-GO` while any CP3-D evidence above is missing.
 
 D25 places a smaller persistent shadow runtime before that authority milestone:
 
@@ -583,30 +596,28 @@ and interpreter helper processes share one deadline-requiring execution Seam tha
 process group on timeout. Staging, pointer exchange, release-triggered service restart, and rollback remain
 in the separately reviewed release-lifecycle follow-up.
 
-The cutover is therefore ordered:
+The development authority path is therefore ordered:
 
 ```text
-prove acceptance + backup + isolated restore
-  -> prove API/protected-CLI four-stage generic evaluator
-  -> inventory and freeze ctower-project legacy writers
-  -> hash/export + reviewed alias map
-  -> idempotent restricted import + reconciliation
-  -> atomic client rewire
-  -> seal legacy inputs read-only; any later write is an incident
+create fresh Company / Project / checkpoints + Project Delivery projection
+  -> inventory the legacy corpus + exact carry-forward allowlist
+  -> hash/sign/seal the complete corpus as read-only provenance
+  -> recreate each approved item through ordinary generated API/CLI commands
+  -> attach and reconcile stable legacy aliases + source digests
+  -> CT-I1-008 development verdict and writer epoch
+  -> reject every later legacy write as an incident
 ```
 
-There is no dual-write period. After rewire, rollback means a compatible ctower build/restore or explicit
-read-only/spool mode, never restarting legacy mutation.
+There is no dual-write period, corpus importer, fuzzy dedupe, or automatic backfill. The ordinary command
+path cannot forge proof, gates, effects, delivery, resolution, closure, or arbitrary status. Before the
+epoch, the incomplete fresh database may be discarded while Mission Control remains authoritative. After
+the epoch, rollback means a compatible ctower build/restore or explicit read-only/spool mode, never
+restarting legacy mutation. A separate future decision is required before any bulk import may activate.
 
-The reviewed import plan pins each checkpoint key, Catalog revision, definition/content digest, and
-ordered-criteria digest. Pass two and final reconciliation derive the latest Catalog identity independently
-and require exact equality. Final reconciliation acquires the scoped Project Delivery writer fence before
-its serializable snapshot, then locks every run-bound ticket in deterministic order through the
-reconciliation commit; Catalog activation and projection rebuild/reconcile share that fence.
-
-I1.7A installs only the contracts, append-only storage shape, read-only projection fold, generated query
-path, and refusing online migration stubs. I1.7B owns import and the legacy fence; I1.7C owns the epoch and
-dogfood proof. No I1.7A process rewires a writer.
+I1.7A installs only contracts, append-only storage shape, the read-only projection fold, generated query
+path, and refusing online migration stubs. Those artifacts establish neither fresh authority nor
+carry-forward completion. CT-I1-008 owns the development verdict. Passing it does not satisfy its
+CT-I2-001 dependency: that edge means full normative I1 exit, including CP3-D.
 
 ## Build sequence and earned Seams
 
@@ -617,9 +628,12 @@ I1: L0 contracts/repository gates
      -> spool-backed CLI
      -> API + protected-CLI trust-spine operation
      -> capture -> frame -> verify -> close on final generic evaluator
-     -> ctower-project cutover + compact Project Delivery CLI text projection dogfood
+     -> fresh Project Delivery pilot + minimal carry-forward
+     -> CT-I1-008 development GO/GO_WITH_LIMITS
+     -> CP3-D external-failure-domain/key/destructive-restore/RPO-RTO proof
+     -> full normative I1 exit
 
-I2: deepen generic Workflow + Proof
+I2 (only after full I1 exit): deepen generic Workflow + Proof
      -> durable Runtime + CommandGuard and local process/tmux recovery
      -> activate unattended Commander on the proven always-on substrate
      -> D22 browser realization + deepen five surfaces + Project Delivery projection detail/analytics + Effects/release
