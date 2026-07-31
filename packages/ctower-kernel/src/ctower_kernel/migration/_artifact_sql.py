@@ -342,10 +342,7 @@ def _stable_alias_operations_match(
     return _exact_unique_values(expected, actual)
 
 
-def _exact_unique_values(
-    expected: Iterable[object],
-    actual: Iterable[object],
-) -> bool:
+def _exact_unique_values(expected: Iterable[object], actual: Iterable[object]) -> bool:
     expected_values = tuple(str(value) for value in expected)
     actual_values = tuple(str(value) for value in actual)
     return (
