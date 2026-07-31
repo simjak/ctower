@@ -162,8 +162,13 @@ def test_fuzzy_alias_merge_refuses(tmp_path: Path) -> None:
 # ---------------------------------------------------------------------------
 
 
-def test_missing_disposition_refuses(tmp_path: Path) -> None:
-    """An alias-map entry with an unknown/missing disposition must refuse."""
+def test_unknown_disposition_refuses(tmp_path: Path) -> None:
+    """An alias-map entry with an unknown disposition must refuse.
+
+    The disposition 'proof_import' is not in the schema enum, so
+    validate_contract refuses with CONTRACT_INVALID at the alias-map
+    schema gate.
+    """
     fixture = make_fixture(tmp_path)
     first = _freeze(fixture)
     second = freeze_export(
@@ -191,10 +196,7 @@ def test_missing_disposition_refuses(tmp_path: Path) -> None:
             commander_custodian_id=COMMANDER_ID,
             verifier=fixture.verifier,
         )
-    # Unknown disposition must refuse — either at contract validation
-    # (CONTRACT_INVALID, naming the schema field) or at the operation
-    # dispatch (ALIAS_ATTENTION_REQUIRED). Both are loud, by-name refusals.
-    assert caught.value.code in {RefusalCode.CONTRACT_INVALID, RefusalCode.ALIAS_ATTENTION_REQUIRED}
+    assert caught.value.code == RefusalCode.CONTRACT_INVALID
 
 
 # ---------------------------------------------------------------------------
@@ -203,7 +205,11 @@ def test_missing_disposition_refuses(tmp_path: Path) -> None:
 
 
 def test_attempted_proof_import_disposition_refuses(tmp_path: Path) -> None:
-    """A disposition named 'resolution_import' must refuse — no proof/resolution import allowed."""
+    """A disposition named 'resolution_import' must refuse — no proof/resolution import allowed.
+
+    'resolution_import' is not in the schema enum, so validate_contract
+    refuses with CONTRACT_INVALID at the alias-map schema gate.
+    """
     fixture = make_fixture(tmp_path)
     first = _freeze(fixture)
     second = freeze_export(
@@ -231,7 +237,7 @@ def test_attempted_proof_import_disposition_refuses(tmp_path: Path) -> None:
             commander_custodian_id=COMMANDER_ID,
             verifier=fixture.verifier,
         )
-    assert caught.value.code in {RefusalCode.CONTRACT_INVALID, RefusalCode.ALIAS_ATTENTION_REQUIRED}
+    assert caught.value.code == RefusalCode.CONTRACT_INVALID
 
 
 # ---------------------------------------------------------------------------
@@ -351,30 +357,46 @@ def test_signature_invalid_refuses_for_bad_signature(tmp_path: Path) -> None:
     )
     with pytest.raises(MigrationRefusal) as caught:
         _freeze(fixture)
-    assert caught.value.code in {RefusalCode.SIGNATURE_INVALID, RefusalCode.SIGNATURE_REBOUND}
+    assert caught.value.code == RefusalCode.SIGNATURE_INVALID
 
 
-def test_source_selection_drift_refuses_for_wrong_inventory_keys(
+def test_source_selection_drift_refuses_for_wrong_inventory_counts(
     tmp_path: Path,
 ) -> None:
-    """SOURCE_SELECTION_DRIFT: wrong set of inventory keys refuses."""
+    """SOURCE_SELECTION_DRIFT: wrong selected_logical_items count refuses.
+
+    The inventory declares a selected_logical_items count that does not
+    match the actual source records grouped by identity. The freeze must
+    refuse with SOURCE_SELECTION_DRIFT, not CONTRACT_INVALID.
+    """
     fixture = make_fixture(tmp_path)
-    # Duplicate an existing inventory entry to break the exact key set.
-    # The schema requires unique source_keys, so a duplicate makes the
-    # set != _SOURCE_KEYS without being a schema-invalid key value.
-    dup = dict(fixture.selection["source_inventories"][0])
-    fixture.selection["source_inventories"].append(dup)
-    # Remove a different one to keep the count the same but the set wrong.
-    fixture.selection["source_inventories"].pop(1)  # remove tasks entry
+    # Mutate the requests inventory's selected_logical_items to be wrong.
+    # This bypasses schema validation (any non-negative integer is valid)
+    # but triggers the selection-drift check in _freeze_source.
+    inventory = fixture.selection["source_inventories"][0]
+    inventory["selected_logical_items"] = inventory["selected_logical_items"] + 1
     _reseat_selection(fixture)
     with pytest.raises(MigrationRefusal) as caught:
         _freeze(fixture)
-    # Duplicated keys cause either CONTRACT_INVALID (schema uniqueness)
-    # or SOURCE_SELECTION_DRIFT (set mismatch). Both are valid refusals.
-    assert caught.value.code in {
-        RefusalCode.SOURCE_SELECTION_DRIFT,
-        RefusalCode.CONTRACT_INVALID,
-    }
+    assert caught.value.code == RefusalCode.SOURCE_SELECTION_DRIFT
+
+
+def test_source_drift_refuses_for_wrong_digest(tmp_path: Path) -> None:
+    """SOURCE_DRIFT: a source file whose digest does not match the inventory refuses.
+
+    The inventory declares whole_source_digest/whole_source_bytes/whole_source_rows
+    that must match the actual file. We corrupt the inventory's whole_source_bytes
+    to not match the file, so the freeze must refuse with SOURCE_DRIFT.
+    """
+    fixture = make_fixture(tmp_path)
+    # Corrupt the requests inventory's whole_source_bytes — the actual file
+    # is unchanged, but the inventory now claims a different byte count.
+    inventory = fixture.selection["source_inventories"][0]
+    inventory["whole_source_bytes"] = inventory["whole_source_bytes"] + 1
+    _reseat_selection(fixture)
+    with pytest.raises(MigrationRefusal) as caught:
+        _freeze(fixture)
+    assert caught.value.code == RefusalCode.SOURCE_DRIFT
 
 
 def test_source_too_large_refuses(tmp_path: Path) -> None:
