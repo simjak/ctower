@@ -29,7 +29,7 @@ __all__: tuple[str, ...] = ()
 _FORBIDDEN_CARDINALITIES = {86, 243, 27, 14}
 
 # The product tree to scan.
-_PRODUCT_ROOT = Path(__file__).resolve().parents[3] / "tools" / "migration"
+_PRODUCT_ROOT = Path(__file__).resolve().parents[4] / "tools" / "migration"
 
 # Number of forbidden-cardinality hits the renamed-literal test expects.
 _EXPECTED_HIT_COUNT = 2
@@ -101,6 +101,11 @@ def test_no_fixture_cardinality_literals_in_product_code() -> None:
     will fail this guard. The four values are permitted only in
     contracts/domain/migration/ schemas and migration-vectors.json.
     """
+    scanned = list(_PRODUCT_ROOT.rglob("*.py"))
+    assert scanned, (
+        f"guard scanned zero Python files under {_PRODUCT_ROOT} "
+        "(root missing or path broke) — a guard that scans nothing cannot fail"
+    )
     hits = _scan_product_tree(_PRODUCT_ROOT)
     assert not hits, "fixture cardinality literals found in product code:\n" + "\n".join(
         f"  {hit.file}:{hit.line}  {hit.target} = {hit.value}" for hit in hits
