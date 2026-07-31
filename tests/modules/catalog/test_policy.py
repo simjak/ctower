@@ -21,6 +21,7 @@ from ctower_kernel.catalog.interface import (
 )
 from modules.catalog.support import FileSchemas, minimal_bundle
 
+__all__: tuple[str, ...] = ()
 _COMMAND_ID = UUID("00000000-0000-4000-8000-000000000001")
 _ACTOR_ID = UUID("00000000-0000-4000-8000-000000000002")
 
