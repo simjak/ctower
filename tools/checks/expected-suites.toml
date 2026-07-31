@@ -478,6 +478,10 @@ patterns = ["test_*.py"]
 command = ["{python}", "-m", "pytest", "tests/contracts/project_delivery", "-q"]
 timeout_seconds = 300
 
+# Deferred: full I1 acceptance is gated on the CP3-D host-loss acknowledgement
+# (S11). The suite must remain NOT_YET_REQUIRED — never required, never silently
+# skipped, and never an empty placeholder that passes vacuously. The deferral is
+# lifted only when active_phase advances past CT-I1-008.
 [[suite]]
 id = "increment-1-acceptance"
 owner = "CT-I1-008"

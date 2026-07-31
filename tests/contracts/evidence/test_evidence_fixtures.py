@@ -121,9 +121,7 @@ class TestPositiveFixture:
                 "verifier",
                 "applicability_reason",
             ):
-                assert field in criterion, (
-                    f"criterion {criterion['criterion_key']} missing {field}"
-                )
+                assert field in criterion, f"criterion {criterion['criterion_key']} missing {field}"
 
     def test_positive_fixture_check_does_not_raise(self) -> None:
         check_evidence_manifest(ROOT, _POSITIVE_FIXTURE)
@@ -132,9 +130,7 @@ class TestPositiveFixture:
         self,
     ) -> None:
         manifest = _load(_POSITIVE_FIXTURE)
-        manifest_keys = {
-            row["capability_key"] for row in manifest["deferred_capabilities"]
-        }
+        manifest_keys = {row["capability_key"] for row in manifest["deferred_capabilities"]}
         registry_keys = derive_denominator_keys(ROOT)
         assert manifest_keys == registry_keys
 
@@ -170,9 +166,7 @@ class TestNegativeMissingRegistry:
 
     def test_missing_registry_error_is_an_omission(self) -> None:
         errors = verify_evidence_manifest(ROOT, self._fixture)
-        assert any("omits" in e.lower() for e in errors), (
-            f"error must be an omission: {errors}"
-        )
+        assert any("omits" in e.lower() for e in errors), f"error must be an omission: {errors}"
 
 
 class TestNegativeExtraRegistry:
@@ -232,9 +226,7 @@ class TestNegativeDeferredRegistry:
 
     def test_deferred_registry_error_is_an_omission(self) -> None:
         errors = verify_evidence_manifest(ROOT, self._fixture)
-        assert any("omits" in e.lower() for e in errors), (
-            f"error must be an omission: {errors}"
-        )
+        assert any("omits" in e.lower() for e in errors), f"error must be an omission: {errors}"
 
 
 # ---------------------------------------------------------------------------
@@ -304,16 +296,12 @@ class TestMutationProof:
         # 3. The committed positive fixture does NOT carry the scratch
         #    capability -> the denominator check goes RED by naming it.
         errors = verify_evidence_manifest(scratch_root, _POSITIVE_FIXTURE)
-        assert errors, (
-            "adding a scratch capability must produce denominator errors"
-        )
+        assert errors, "adding a scratch capability must produce denominator errors"
         assert any(self._phantom_key in e for e in errors), (
             f"error must name '{self._phantom_key}': {errors}"
         )
         # Confirm the error is an omission (registry entry lacks disposition).
-        assert any("omits" in e.lower() for e in errors), (
-            f"error must be an omission: {errors}"
-        )
+        assert any("omits" in e.lower() for e in errors), f"error must be an omission: {errors}"
 
         # 4. Restore: add the disposition to a scratch copy of the manifest.
         manifest = _load(_POSITIVE_FIXTURE)
@@ -326,9 +314,7 @@ class TestMutationProof:
             }
         )
         scratch_manifest = scratch_root / "restored-manifest.json"
-        scratch_manifest.write_text(
-            json.dumps(manifest, indent=2), encoding="utf-8"
-        )
+        scratch_manifest.write_text(json.dumps(manifest, indent=2), encoding="utf-8")
 
         # 5. After restore, the denominator check goes GREEN.
         errors_after = verify_evidence_manifest(scratch_root, scratch_manifest)
@@ -362,9 +348,7 @@ class TestMutationProof:
             }
         )
         scratch_manifest = scratch_root / "restored-manifest.json"
-        scratch_manifest.write_text(
-            json.dumps(manifest, indent=2), encoding="utf-8"
-        )
+        scratch_manifest.write_text(json.dumps(manifest, indent=2), encoding="utf-8")
 
         # GREEN — check does not raise after restore.
         check_evidence_manifest(scratch_root, scratch_manifest)

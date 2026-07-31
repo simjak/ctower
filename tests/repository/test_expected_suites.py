@@ -8,6 +8,7 @@ import sys
 import tempfile
 import textwrap
 import time
+import tomllib
 import unittest
 from collections.abc import Iterator
 from contextlib import contextmanager
@@ -15,6 +16,10 @@ from pathlib import Path
 from unittest import mock
 
 from tools.checks import SuiteDisposition, verify_expected_suites
+from tools.checks._impl.evidence_manifest import (
+    derive_denominator_keys,
+    verify_evidence_manifest,
+)
 from tools.checks.owned_processes import (
     TerminationOutcome,
     TerminationResult,
@@ -446,6 +451,136 @@ class PortableCommandValidationTests(unittest.TestCase):
             self.assertFalse(report.ok)
             self.assertTrue(report.manifest_errors)
             self.assertIn("token", report.manifest_errors[0])
+
+
+class CommittedManifestGuardTests(unittest.TestCase):
+    """Validate the REAL committed expected-suites.toml — not a synthetic fixture.
+
+    These tests ensure the I1 acceptance suite remains deferred (NOT_YET_REQUIRED)
+    until S11, that no empty placeholder passes vacuously, and that the
+    evidence-manifest generator output has zero drift with the expected-suite
+    config.
+    """
+
+    _ROOT = Path(__file__).parents[2]
+    _MANIFEST_PATH = _ROOT / "tools/checks/expected-suites.toml"
+    _FIXTURE_PATH = _ROOT / "tests/contracts/evidence/fixtures/i1-complete-manifest.json"
+
+    def test_committed_manifest_loads_without_configuration_errors(self) -> None:
+        report = verify_expected_suites(self._ROOT)
+        self.assertFalse(report.manifest_errors, report.manifest_errors)
+
+    def test_increment_1_acceptance_suite_is_deferred_not_required(self) -> None:
+        """The final I1 acceptance suite must be NOT_YET_REQUIRED — never
+        required, never silently skipped, and never an empty placeholder that
+        passes vacuously."""
+
+        report = verify_expected_suites(self._ROOT)
+        suite = self._find_suite(report, "increment-1-acceptance")
+        self.assertIsNotNone(
+            suite,
+            "increment-1-acceptance suite must exist in the committed manifest",
+        )
+        assert suite is not None  # for type-checkers
+        self.assertEqual(
+            suite.disposition,
+            SuiteDisposition.NOT_YET_REQUIRED,
+            f"increment-1-acceptance must be deferred, got {suite.disposition}",
+        )
+        self.assertIn("not counted as passing", suite.message)
+
+    def test_increment_1_acceptance_is_not_counted_as_passing(self) -> None:
+        """A deferred suite must never have disposition PASSED — that would
+        mean an empty placeholder slipped through."""
+
+        report = verify_expected_suites(self._ROOT)
+        suite = self._find_suite(report, "increment-1-acceptance")
+        self.assertIsNotNone(
+            suite,
+            "increment-1-acceptance suite must exist in the committed manifest",
+        )
+        assert suite is not None  # for type-checkers
+        self.assertNotEqual(
+            suite.disposition,
+            SuiteDisposition.PASSED,
+            "deferred suite must never be counted as passing",
+        )
+
+    def test_deferred_suite_has_real_test_files_not_empty(self) -> None:
+        """The deferred suite's path must contain real test files — an empty
+        directory would let the suite pass vacuously when eventually required."""
+
+        data = tomllib.loads(self._MANIFEST_PATH.read_text(encoding="utf-8"))
+        suite_entry = next(s for s in data["suite"] if s["id"] == "increment-1-acceptance")
+        suite_path = self._ROOT / suite_entry["path"]
+        self.assertTrue(
+            suite_path.is_dir(),
+            f"deferred suite path {suite_entry['path']} must exist",
+        )
+        test_files = [
+            p
+            for pattern in suite_entry["patterns"]
+            for p in suite_path.rglob(pattern)
+            if p.is_file()
+        ]
+        self.assertTrue(
+            test_files,
+            "deferred suite must reference real test files, not an empty placeholder",
+        )
+
+    def test_deferred_suite_phase_is_after_active_phase(self) -> None:
+        """The I1 acceptance suite's phase must be after the active phase in
+        phase_order — that is what makes it deferred (NOT_YET_REQUIRED)."""
+
+        data = tomllib.loads(self._MANIFEST_PATH.read_text(encoding="utf-8"))
+        active_phase = data["active_phase"]
+        phase_order = data["phase_order"]
+        suite_entry = next(s for s in data["suite"] if s["id"] == "increment-1-acceptance")
+        suite_phase = suite_entry["phase"]
+        active_index = phase_order.index(active_phase)
+        suite_index = phase_order.index(suite_phase)
+        self.assertGreater(
+            suite_index,
+            active_index,
+            f"increment-1-acceptance phase {suite_phase} must be after active phase {active_phase}",
+        )
+        self.assertEqual(
+            suite_entry["status"],
+            "deferred",
+            "increment-1-acceptance status must be 'deferred'",
+        )
+
+    def test_evidence_manifest_has_zero_drift_with_expected_suites(self) -> None:
+        """The committed evidence manifest fixture's deferred_capabilities must
+        exactly match the denominator derived from the capability registry and
+        the deferred expected-suite IDs — zero drift."""
+
+        errors = verify_evidence_manifest(self._ROOT, self._FIXTURE_PATH)
+        self.assertEqual(
+            errors,
+            (),
+            f"evidence manifest has drift from expected-suite config: {errors}",
+        )
+
+    def test_deferred_suite_ids_match_expected_suites_toml(self) -> None:
+        """The denominator's deferred-suite set must exactly match the suites
+        with status='deferred' in the committed expected-suites.toml."""
+
+        registry_keys = derive_denominator_keys(self._ROOT)
+        data = tomllib.loads(self._MANIFEST_PATH.read_text(encoding="utf-8"))
+        toml_deferred = frozenset(s["id"] for s in data["suite"] if s.get("status") == "deferred")
+        # Every deferred suite in the TOML must appear in the denominator
+        toml_only = toml_deferred - registry_keys
+        self.assertFalse(
+            toml_only,
+            f"deferred suites in TOML but not in denominator: {sorted(toml_only)}",
+        )
+
+    def _find_suite(self, report, suite_id: str):
+        for suite in report.suites:
+            if suite.suite_id == suite_id:
+                return suite
+        return None
 
 
 if __name__ == "__main__":

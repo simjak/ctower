@@ -263,9 +263,7 @@ class TestMutationProofViaGenerator:
             f"phantom.capability must be surfaced as missing: {errors}"
         )
 
-    def test_adding_deferred_suite_surfaces_missing_in_fixture(
-        self, tmp_path: Path
-    ) -> None:
+    def test_adding_deferred_suite_surfaces_missing_in_fixture(self, tmp_path: Path) -> None:
         """Add a deferred suite in a scratch expected-suites.toml -> verify
         against the committed fixture surfaces the missing entry by name."""
 

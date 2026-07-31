@@ -381,9 +381,7 @@ class TestMutationProof:
         scratch_manifest = scratch_root / "manifest.json"
         scratch_manifest.write_text(json.dumps(manifest, indent=2), encoding="utf-8")
         errors_after = verify_evidence_manifest(scratch_root, scratch_manifest)
-        assert not errors_after, (
-            "after adding the disposition the manifest must match the registry"
-        )
+        assert not errors_after, "after adding the disposition the manifest must match the registry"
 
     def test_adding_a_deferred_suite_without_manifest_disposition_fails(
         self, tmp_path: Path
@@ -436,6 +434,4 @@ class TestMutationProof:
         scratch_manifest = scratch_root / "manifest.json"
         scratch_manifest.write_text(json.dumps(manifest, indent=2), encoding="utf-8")
         errors_after = verify_evidence_manifest(scratch_root, scratch_manifest)
-        assert not errors_after, (
-            "after adding the disposition the manifest must match the registry"
-        )
+        assert not errors_after, "after adding the disposition the manifest must match the registry"

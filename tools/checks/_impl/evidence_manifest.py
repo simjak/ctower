@@ -52,9 +52,7 @@ def capability_registry_keys(root: Path) -> frozenset[str]:
 
     capabilities_dir = root / _CAPABILITIES_DIR
     if not capabilities_dir.is_dir():
-        raise EvidenceManifestError(
-            f"capability registry directory not found: {_CAPABILITIES_DIR}"
-        )
+        raise EvidenceManifestError(f"capability registry directory not found: {_CAPABILITIES_DIR}")
     keys: set[str] = set()
     for path in sorted(capabilities_dir.rglob("*.yaml")):
         try:
@@ -64,18 +62,12 @@ def capability_registry_keys(root: Path) -> frozenset[str]:
                 f"cannot parse capability registry entry {path}: {error}"
             ) from error
         if not isinstance(data, dict) or "key" not in data:
-            raise EvidenceManifestError(
-                f"capability registry entry {path} has no 'key' field"
-            )
+            raise EvidenceManifestError(f"capability registry entry {path} has no 'key' field")
         key = data["key"]
         if not isinstance(key, str) or not key:
-            raise EvidenceManifestError(
-                f"capability registry entry {path} has an invalid key"
-            )
+            raise EvidenceManifestError(f"capability registry entry {path} has an invalid key")
         if key in keys:
-            raise EvidenceManifestError(
-                f"duplicate capability key in registry: {key}"
-            )
+            raise EvidenceManifestError(f"duplicate capability key in registry: {key}")
         keys.add(key)
     return frozenset(keys)
 
@@ -85,20 +77,17 @@ def deferred_suite_ids(root: Path) -> frozenset[str]:
 
     manifest_path = root / _EXPECTED_SUITES_PATH
     if not manifest_path.is_file():
-        raise EvidenceManifestError(
-            f"expected-suite registry not found: {_EXPECTED_SUITES_PATH}"
-        )
+        raise EvidenceManifestError(f"expected-suite registry not found: {_EXPECTED_SUITES_PATH}")
     try:
         data = tomllib.loads(manifest_path.read_text(encoding="utf-8"))
     except (OSError, tomllib.TOMLDecodeError) as error:
-        raise EvidenceManifestError(
-            f"cannot parse expected-suite registry: {error}"
-        ) from error
+        raise EvidenceManifestError(f"cannot parse expected-suite registry: {error}") from error
     suites = data.get("suite", [])
     if not isinstance(suites, list):
         raise EvidenceManifestError("expected-suite registry has no [[suite]] entries")
     return frozenset(
-        suite["id"] for suite in suites
+        suite["id"]
+        for suite in suites
         if isinstance(suite, dict) and suite.get("status") == "deferred"
     )
 
@@ -156,22 +145,16 @@ def verify_evidence_manifest(root: Path, manifest_path: Path) -> tuple[str, ...]
     manifest_keys: set[str] = set()
     for index, row in enumerate(deferred):
         if not isinstance(row, dict) or "capability_key" not in row:
-            return (
-                f"evidence manifest deferred_capabilities[{index}] has no capability_key",
-            )
+            return (f"evidence manifest deferred_capabilities[{index}] has no capability_key",)
         manifest_keys.add(row["capability_key"])
 
     errors: list[str] = []
     missing = registry_keys - manifest_keys
     extra = manifest_keys - registry_keys
     for key in sorted(missing):
-        errors.append(
-            f"manifest omits registry entry: {key}"
-        )
+        errors.append(f"manifest omits registry entry: {key}")
     for key in sorted(extra):
-        errors.append(
-            f"manifest declares unknown entry: {key}"
-        )
+        errors.append(f"manifest declares unknown entry: {key}")
     return tuple(errors)
 
 
