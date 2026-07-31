@@ -25,8 +25,6 @@ __all__ = [
     "ready_for_pass_two",
     "zero_delta",
 ]
-_CHECKPOINT_COUNT = 14
-_STABLE_ALIAS_COUNT = 27
 _PROJECT_DELIVERY_VOLATILE = frozenset(
     {
         "freshness_due_at",
@@ -360,13 +358,19 @@ def _project_delivery_current(
     definitions = cast(list[dict[str, object]], graph["checkpoint_definitions"])
     criteria = cast(list[dict[str, object]], graph["checkpoint_criteria"])
     delivery_rows = cast(list[dict[str, object]], graph["project_delivery_rows"])
-    definition_ids = {str(row["checkpoint_definition_id"]) for row in definitions}
+    stable_alias_ids = [
+        str(row["stable_item_id"])
+        for row in cast(list[dict[str, object]], graph["stable_aliases"])
+    ]
+    definition_keys = [str(row["checkpoint_key"]) for row in definitions]
+    delivery_keys = [str(row["checkpoint_key"]) for row in delivery_rows]
+    definition_ids = [str(row["checkpoint_definition_id"]) for row in definitions]
     criteria_definition_ids = {str(row["checkpoint_definition_id"]) for row in criteria}
     return (
-        len(cast(list[object], graph["stable_aliases"])) == _STABLE_ALIAS_COUNT
-        and len(definitions) == _CHECKPOINT_COUNT
-        and len(delivery_rows) == _CHECKPOINT_COUNT
-        and criteria_definition_ids == definition_ids
+        _unique_identities(stable_alias_ids)
+        and _same_identity_set(definition_keys, delivery_keys)
+        and _unique_identities(definition_ids)
+        and criteria_definition_ids == set(definition_ids)
         and all(str(row["accountable_owner"]).strip() for row in definitions)
         and all(
             int(cast(int, row["source_watermark"])) >= max(positions, default=0)
@@ -374,6 +378,21 @@ def _project_delivery_current(
             for row in delivery_rows
         )
     )
+
+
+def _same_identity_set(expected: Iterable[str], actual: Iterable[str]) -> bool:
+    expected_values = tuple(expected)
+    actual_values = tuple(actual)
+    return (
+        _unique_identities(expected_values)
+        and _unique_identities(actual_values)
+        and set(actual_values) == set(expected_values)
+    )
+
+
+def _unique_identities(values: Iterable[str]) -> bool:
+    identities = tuple(values)
+    return len(identities) == len(set(identities))
 
 
 def persist(

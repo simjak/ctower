@@ -13,8 +13,6 @@ import rfc8785
 
 __all__: tuple[str, ...] = ()
 
-_CHECKPOINT_COUNT = 14
-
 
 @dataclass(frozen=True, slots=True, order=True)
 class _Expectation:
@@ -35,12 +33,17 @@ def matches(
     definitions = cast(list[dict[str, object]], snapshot_body["checkpoint_definitions"])
     actual = _current(snapshot_body)
     return (
-        len(expected) == _CHECKPOINT_COUNT
-        and len(actual) == _CHECKPOINT_COUNT
-        and len({item.checkpoint_key for item in actual}) == _CHECKPOINT_COUNT
+        bool(expected)
+        and _unique_checkpoint_keys(expected)
+        and _unique_checkpoint_keys(actual)
         and all(str(row["accountable_owner"]).strip() for row in definitions)
         and expected == actual
     )
+
+
+def _unique_checkpoint_keys(expectations: Iterable[_Expectation]) -> bool:
+    keys = [item.checkpoint_key for item in expectations]
+    return len(keys) == len(set(keys))
 
 
 def graph_sets(snapshot_body: dict[str, object]) -> tuple[list[str], list[str]]:

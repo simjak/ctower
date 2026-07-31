@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import hashlib
 import secrets
+from collections.abc import Iterable
 from datetime import datetime
 from typing import Any, cast
 from uuid import UUID, uuid5
@@ -35,8 +36,6 @@ __all__ = [
 ]
 
 _COMMAND_NAMESPACE = UUID("7c4ef338-17fd-5be3-a6b7-c89205ecb574")
-_STABLE_ALIAS_COUNT = 27
-_CHECKPOINT_COUNT = 14
 
 
 def persist_source_selection(
@@ -285,8 +284,10 @@ def _alias_graph_valid(
         and alias.get("cutover_id") == str(run.cutover_id)
         and alias.get("selection_digest") == run.pinned_digests.source_selection
         and alias.get("export_equality_digest") == run.pinned_digests.export_equality
-        and len(stable_aliases) == _STABLE_ALIAS_COUNT
-        and {item.get("stable_item_id") for item in stable_aliases} == set(stable_ids)
+        and _exact_unique_values(
+            stable_ids,
+            (item.get("stable_item_id") for item in stable_aliases),
+        )
     )
 
 
@@ -304,8 +305,10 @@ def _plan_binding_valid(
         and plan.get("selection_digest") == run.pinned_digests.source_selection
         and plan.get("export_equality_digest") == run.pinned_digests.export_equality
         and plan.get("alias_map_digest") == alias_digest
-        and len(definitions) == _CHECKPOINT_COUNT
-        and {item.get("checkpoint_key") for item in definitions} == set(checkpoint_keys)
+        and _exact_unique_values(
+            checkpoint_keys,
+            (item.get("checkpoint_key") for item in definitions),
+        )
         and _stable_alias_operations_match(plan, alias)
     )
 
@@ -321,7 +324,7 @@ def _stable_alias_operations_match(
         )
         for item in cast(list[dict[str, object]], alias["stable_aliases"])
     }
-    actual: set[tuple[str, str]] = set()
+    actual: list[tuple[str, str]] = []
     for batch in cast(list[dict[str, Any]], plan["batches"]):
         for operation in cast(list[dict[str, Any]], batch["operations"]):
             identity = cast(dict[str, object], operation["identity"])
@@ -330,13 +333,26 @@ def _stable_alias_operations_match(
                 continue
             if operation.get("operation") != "exact_alias":
                 return False
-            actual.add(
+            actual.append(
                 (
                     str(source.get("immutable_source_id")),
                     str(operation.get("target_ticket_id")),
                 )
             )
-    return actual == expected
+    return _exact_unique_values(expected, actual)
+
+
+def _exact_unique_values(
+    expected: Iterable[object],
+    actual: Iterable[object],
+) -> bool:
+    expected_values = tuple(str(value) for value in expected)
+    actual_values = tuple(str(value) for value in actual)
+    return (
+        len(expected_values) == len(set(expected_values))
+        and len(actual_values) == len(set(actual_values))
+        and set(actual_values) == set(expected_values)
+    )
 
 
 def _registry_binding_valid(
@@ -363,7 +379,10 @@ def _registry_scope_valid(
         and registry.get("tenant_key") == "ctower"
         and registry.get("project_key") == "ctower"
         and registry.get("operation_registry_digest") == run.pinned_digests.operation_registry
-        and registry.get("selected_request_ids") == request_ids
+        and _exact_unique_values(
+            request_ids,
+            cast(list[object], registry.get("selected_request_ids", [])),
+        )
         and registry.get("selected_task_ids") == []
         and registry.get("source_pointer_digest") == pointer_digest
     )
