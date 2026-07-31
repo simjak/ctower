@@ -392,10 +392,15 @@ staging verification, production verification, rollback, and incident remain sep
 The Project Delivery projection is a contextual Board/project read model over the hierarchy
 `Company -> Project -> Increment/Milestone checkpoint`. It reads accepted checkpoint definitions, tickets,
 Workflow runs, Proof/gates, blockers, evidence/artifacts, decisions, costs, and applicable release/outcome
-facts. It cannot mutate any of them or accept manual status.
+facts. It also reads the versioned **Seat catalog** (a configuration aggregate enumerating stable seat
+keys and labels) and per-slot **seat-assignment** and signing-seat facts, so each qualifying-stage evidence
+slot carries an assigned seat or explicit unassigned state, and a signing seat on completed evidence. Seat
+facts pin the catalog revision that was active at seat-assignment time (or current at evidence time), so
+rebuild at one watermark reproduces the same seat facts even if the catalog has since advanced. The
+projection cannot mutate any of these or accept manual status.
 
 ```text
- authoritative ticket / Workflow / gate / outcome fact
+ authoritative ticket / Workflow / gate / outcome / seat-assignment fact
                          |
                          v
                 transactional outbox
@@ -406,6 +411,7 @@ facts. It cannot mutate any of them or accept manual status.
  | checkpoint row + proof coverage + derivation reasons         |
  | done > blocked > released > verified > merged                |
  |      > ready_to_land > in_progress > planned                 |
+ | per-slot assigned/signing seat (or unassigned)               |
  | source watermark + last reconciled + confidence/freshness    |
  +--------------------------+-----------------------------------+
                             ^
