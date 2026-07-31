@@ -59,14 +59,14 @@ def test_qualifying_stage_slots_preserve_filled_unfilled_and_unknown_facts() -> 
             "source_ids": [],
         }
     )
-    # The query returns exactly one row per configured link; an unresolved link keeps its
-    # requested key and a NULL `filled`. Behaviour against a real database is proven by
-    # tests/acceptance/increment-1/test_project_delivery_evidence.py.
+    # One row per configured link, carrying the two facts that may make a slot genuinely
+    # unestablishable beside the shared two-valued predicate. Behaviour against a real
+    # database is proven by tests/acceptance/increment-1/test_project_delivery_evidence.py.
     slot_rows: list[dict[str, object]] = [
-        {"ticket_id": ticket_ids[0], "proof_key": "alpha", "filled": True},
-        {"ticket_id": ticket_ids[1], "proof_key": "beta", "filled": False},
-        {"ticket_id": ticket_ids[2], "proof_key": "delta", "filled": None},
-        {"ticket_id": ticket_ids[3], "proof_key": "epsilon", "filled": None},
+        _link_row(ticket_ids[0], "alpha", proven=True),
+        _link_row(ticket_ids[1], "beta", proven=False),
+        _link_row(ticket_ids[2], "delta", stage_present=False),
+        _link_row(ticket_ids[3], "epsilon", criterion_present=False),
     ]
     connection, connect_context = _reconcile_connection(criteria, slot_rows)
     with patch.object(psycopg, "connect", return_value=connect_context):
@@ -99,6 +99,23 @@ def test_qualifying_stage_slots_preserve_filled_unfilled_and_unknown_facts() -> 
         (ticket_ids[2], "delta"),
         (ticket_ids[3], "epsilon"),
     ]
+
+
+def _link_row(
+    ticket_id: UUID,
+    proof_key: str,
+    *,
+    criterion_present: bool = True,
+    stage_present: bool = True,
+    proven: bool = False,
+) -> dict[str, object]:
+    return {
+        "ticket_id": ticket_id,
+        "proof_key": proof_key,
+        "criterion_present": criterion_present,
+        "stage_present": stage_present,
+        "proven": proven,
+    }
 
 
 def _reconcile_connection(
@@ -138,13 +155,9 @@ def _reconcile_connection(
         _result(row=None),
         _result(row={"due": None}),
         _result(rows=criteria),
-        *(
-            _result(row={"has_evidence": True, "requires_verdict": False, "verdict": None})
-            for _ in range(4)
-        ),
+        _result(rows=slot_rows),
         _result(rows=[{"lane": "complete", "delivery_facts": ["staging_verified"]}]),
         _result(rows=[]),
-        _result(rows=slot_rows),
         _result(rowcount=1),
         _result(),
     ]

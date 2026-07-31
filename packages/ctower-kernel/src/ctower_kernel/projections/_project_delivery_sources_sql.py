@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+from collections.abc import Mapping
+from dataclasses import dataclass
 from typing import cast
 from uuid import UUID
 
@@ -21,147 +23,101 @@ _SLOT_STATE_RANK = {
     EvidenceSlotState.UNKNOWN: 2,
 }
 
-
-def criterion_proven(
-    connection: psycopg.Connection[dict[str, object]],
-    tenant_id: UUID,
-    criterion: dict[str, object],
-) -> bool:
-    ticket_id = criterion["proof_ticket_id"]
-    proof_key = criterion["proof_criterion_key"]
-    if not isinstance(ticket_id, UUID) or not isinstance(proof_key, str):
-        return False
-    row = connection.execute(
-        """
-        SELECT criterion.requires_verdict,
-          EXISTS (
-            SELECT 1
-            FROM proof_evidence AS evidence
-            WHERE evidence.proof_id = criterion.proof_id
-              AND evidence.tenant_id = criterion.tenant_id
-              AND evidence.criterion_key = criterion.criterion_key
-              AND (
-                NOT criterion.candidate_dependent
-                OR evidence.candidate_digest = bundle.candidate_digest
-              )
-              AND NOT EXISTS (
-                SELECT 1 FROM proof_invalidations AS invalidation
-                WHERE invalidation.proof_id = evidence.proof_id
-                  AND invalidation.tenant_id = evidence.tenant_id
-                  AND invalidation.target_kind = 'evidence'
-                  AND invalidation.target_id = evidence.evidence_id
-              )
-          ) AS has_evidence,
-          (
-            SELECT verdict.decision
-            FROM proof_verdicts AS verdict
-            WHERE verdict.proof_id = criterion.proof_id
-              AND verdict.tenant_id = criterion.tenant_id
-              AND verdict.criterion_key = criterion.criterion_key
-              AND (
-                NOT criterion.candidate_dependent
-                OR verdict.candidate_digest = bundle.candidate_digest
-              )
-              AND NOT EXISTS (
-                SELECT 1 FROM proof_invalidations AS invalidation
-                WHERE invalidation.proof_id = verdict.proof_id
-                  AND invalidation.tenant_id = verdict.tenant_id
-                  AND invalidation.target_kind = 'verdict'
-                  AND invalidation.target_id = verdict.verdict_id
-              )
-            ORDER BY verdict.proof_sequence DESC
-            LIMIT 1
-          ) AS verdict
-        FROM proof_bundles AS bundle
-        JOIN proof_criteria AS criterion
-          ON criterion.proof_id = bundle.proof_id
-         AND criterion.tenant_id = bundle.tenant_id
-        WHERE bundle.tenant_id = %s AND bundle.ticket_id = %s
-          AND criterion.criterion_key = %s
-        """,
-        (tenant_id, ticket_id, proof_key),
-    ).fetchone()
-    return bool(
-        row is not None
-        and row["has_evidence"]
-        and (not row["requires_verdict"] or row["verdict"] == "pass")
+# One evidence-and-verdict predicate, resolved once per configured link and composed by
+# both criterion proof coverage and qualifying-stage slot coverage. It is two-valued by
+# construction: `IS NOT DISTINCT FROM` keeps a missing, pending or invalidated verdict
+# FALSE instead of NULL, so a slot the sources fully establish is never published as
+# UNKNOWN. Whether the link resolves at all, and whether the ticket has a current stage,
+# are reported separately, because only those can make a slot genuinely unestablishable.
+_LINK_STATE_QUERY = """
+SELECT requested.ticket_id, requested.proof_key,
+  criterion.criterion_key IS NOT NULL AS criterion_present,
+  run.current_stage IS NOT NULL AS stage_present,
+  (
+    EXISTS (
+      SELECT 1
+      FROM proof_evidence AS evidence
+      WHERE evidence.proof_id = criterion.proof_id
+        AND evidence.tenant_id = criterion.tenant_id
+        AND evidence.criterion_key = criterion.criterion_key
+        AND (
+          NOT criterion.candidate_dependent
+          OR evidence.candidate_digest = bundle.candidate_digest
+        )
+        AND NOT EXISTS (
+          SELECT 1 FROM proof_invalidations AS invalidation
+          WHERE invalidation.proof_id = evidence.proof_id
+            AND invalidation.tenant_id = evidence.tenant_id
+            AND invalidation.target_kind = 'evidence'
+            AND invalidation.target_id = evidence.evidence_id
+        )
     )
+    AND (
+      NOT criterion.requires_verdict
+      OR (
+        SELECT verdict.decision
+        FROM proof_verdicts AS verdict
+        WHERE verdict.proof_id = criterion.proof_id
+          AND verdict.tenant_id = criterion.tenant_id
+          AND verdict.criterion_key = criterion.criterion_key
+          AND (
+            NOT criterion.candidate_dependent
+            OR verdict.candidate_digest = bundle.candidate_digest
+          )
+          AND NOT EXISTS (
+            SELECT 1 FROM proof_invalidations AS invalidation
+            WHERE invalidation.proof_id = verdict.proof_id
+              AND invalidation.tenant_id = verdict.tenant_id
+              AND invalidation.target_kind = 'verdict'
+              AND invalidation.target_id = verdict.verdict_id
+          )
+        ORDER BY verdict.proof_sequence DESC
+        LIMIT 1
+      ) IS NOT DISTINCT FROM 'pass'
+    )
+  ) AS proven
+FROM unnest(%s::uuid[], %s::text[]) AS requested(ticket_id, proof_key)
+LEFT JOIN workflow_runs AS run
+  ON run.tenant_id = %s AND run.ticket_id = requested.ticket_id
+LEFT JOIN proof_bundles AS bundle
+  ON bundle.tenant_id = %s AND bundle.ticket_id = requested.ticket_id
+LEFT JOIN proof_criteria AS criterion
+  ON criterion.proof_id = bundle.proof_id
+ AND criterion.tenant_id = bundle.tenant_id
+ AND criterion.criterion_key = requested.proof_key
+ORDER BY requested.ticket_id, requested.proof_key
+"""
 
 
-def qualifying_stage_slots(
+@dataclass(frozen=True, slots=True)
+class ProofLinkState:
+    """One configured proof link, resolved once for every derivation that needs it."""
+
+    criterion_present: bool
+    stage_present: bool
+    proven: bool
+
+
+type _LinkStates = Mapping[tuple[UUID, str], ProofLinkState]
+
+
+def proof_link_states(
     connection: psycopg.Connection[dict[str, object]],
     tenant_id: UUID,
     criteria: list[dict[str, object]],
-) -> tuple[EvidenceSlotFact, ...]:
-    """Derive required slot states without interpreting any stage key."""
+) -> _LinkStates:
+    """Resolve every proof link these exit criteria configure, in one read.
 
-    requested, states = _configured_slot_requests(criteria)
+    The configured links drive the row set, so no criterion the checkpoint never
+    configured can reach either derivation, and an unresolved link still returns its own
+    row.
+    """
+
+    requested = _configured_links(criteria)
     if not requested:
-        return _slot_facts(states)
-    # The configured links drive the row set, so the denominator is exactly what this
-    # checkpoint asked for. A link that resolves to no frozen criterion still returns its
-    # row, with a NULL criterion_key the CASE below maps to an honest UNKNOWN.
+        return {}
     rows = connection.execute(
-        """
-        SELECT requested.ticket_id, requested.proof_key, criterion.criterion_key,
-          CASE
-            WHEN run.current_stage IS NULL OR criterion.criterion_key IS NULL
-              THEN NULL
-            ELSE (
-              EXISTS (
-                SELECT 1
-                FROM proof_evidence AS evidence
-                WHERE evidence.proof_id = criterion.proof_id
-                  AND evidence.tenant_id = criterion.tenant_id
-                  AND evidence.criterion_key = criterion.criterion_key
-                  AND (
-                    NOT criterion.candidate_dependent
-                    OR evidence.candidate_digest = bundle.candidate_digest
-                  )
-                  AND NOT EXISTS (
-                    SELECT 1 FROM proof_invalidations AS invalidation
-                    WHERE invalidation.proof_id = evidence.proof_id
-                      AND invalidation.tenant_id = evidence.tenant_id
-                      AND invalidation.target_kind = 'evidence'
-                      AND invalidation.target_id = evidence.evidence_id
-                  )
-              )
-              AND (
-                NOT criterion.requires_verdict
-                OR (
-                  SELECT verdict.decision
-                  FROM proof_verdicts AS verdict
-                  WHERE verdict.proof_id = criterion.proof_id
-                    AND verdict.tenant_id = criterion.tenant_id
-                    AND verdict.criterion_key = criterion.criterion_key
-                    AND (
-                      NOT criterion.candidate_dependent
-                      OR verdict.candidate_digest = bundle.candidate_digest
-                    )
-                    AND NOT EXISTS (
-                      SELECT 1 FROM proof_invalidations AS invalidation
-                      WHERE invalidation.proof_id = verdict.proof_id
-                        AND invalidation.tenant_id = verdict.tenant_id
-                        AND invalidation.target_kind = 'verdict'
-                        AND invalidation.target_id = verdict.verdict_id
-                    )
-                  ORDER BY verdict.proof_sequence DESC
-                  LIMIT 1
-                ) = 'pass'
-              )
-            )
-          END AS filled
-        FROM unnest(%s::uuid[], %s::text[]) AS requested(ticket_id, proof_key)
-        LEFT JOIN workflow_runs AS run
-          ON run.tenant_id = %s AND run.ticket_id = requested.ticket_id
-        LEFT JOIN proof_bundles AS bundle
-          ON bundle.tenant_id = %s AND bundle.ticket_id = requested.ticket_id
-        LEFT JOIN proof_criteria AS criterion
-          ON criterion.proof_id = bundle.proof_id
-         AND criterion.tenant_id = bundle.tenant_id
-         AND criterion.criterion_key = requested.proof_key
-        ORDER BY requested.ticket_id, requested.proof_key
-        """,
+        _LINK_STATE_QUERY,
         (
             [ticket_id for ticket_id, _ in requested],
             [proof_key for _, proof_key in requested],
@@ -169,9 +125,44 @@ def qualifying_stage_slots(
             tenant_id,
         ),
     ).fetchall()
-    for row in rows:
-        _merge_slot_state(states, str(row["proof_key"]), _slot_state(row["filled"]))
-    return _slot_facts(states)
+    return {
+        (cast(UUID, row["ticket_id"]), str(row["proof_key"])): ProofLinkState(
+            criterion_present=bool(row["criterion_present"]),
+            stage_present=bool(row["stage_present"]),
+            proven=bool(row["criterion_present"]) and bool(row["proven"]),
+        )
+        for row in rows
+    }
+
+
+def criterion_proven(criterion: dict[str, object], states: _LinkStates) -> bool:
+    """Answer criterion proof coverage from the shared predicate."""
+
+    link = _configured_link(criterion)
+    if link is None:
+        return False
+    state = states.get(link)
+    return state is not None and state.proven
+
+
+def qualifying_stage_slots(
+    criteria: list[dict[str, object]],
+    states: _LinkStates,
+) -> tuple[EvidenceSlotFact, ...]:
+    """Derive required slot states without interpreting any stage key."""
+
+    slots: dict[str, EvidenceSlotState] = {}
+    for criterion in criteria:
+        link = _configured_link(criterion)
+        if link is None:
+            _merge_slot_state(
+                slots,
+                str(criterion["criterion_key"]),
+                EvidenceSlotState.UNKNOWN,
+            )
+            continue
+        _merge_slot_state(slots, link[1], _slot_state(states.get(link)))
+    return _slot_facts(slots)
 
 
 def ticket_facts(
@@ -372,31 +363,31 @@ def _merge_slot_state(
         states[key] = state
 
 
-def _configured_slot_requests(
-    criteria: list[dict[str, object]],
-) -> tuple[tuple[tuple[UUID, str], ...], dict[str, EvidenceSlotState]]:
-    """Split the exit criteria into the links they configure and the ones they cannot."""
+def _configured_links(criteria: list[dict[str, object]]) -> tuple[tuple[UUID, str], ...]:
+    """The distinct proof links these exit criteria configure, in configured order."""
 
-    requested: dict[tuple[UUID, str], None] = {}
-    states: dict[str, EvidenceSlotState] = {}
+    links: dict[tuple[UUID, str], None] = {}
     for criterion in criteria:
-        ticket_id = criterion["proof_ticket_id"]
-        proof_key = criterion["proof_criterion_key"]
-        if isinstance(ticket_id, UUID) and isinstance(proof_key, str):
-            requested[(ticket_id, proof_key)] = None
-        else:
-            _merge_slot_state(
-                states,
-                str(criterion["criterion_key"]),
-                EvidenceSlotState.UNKNOWN,
-            )
-    return tuple(requested), states
+        link = _configured_link(criterion)
+        if link is not None:
+            links[link] = None
+    return tuple(links)
 
 
-def _slot_state(value: object) -> EvidenceSlotState:
-    if value is None:
+def _configured_link(criterion: dict[str, object]) -> tuple[UUID, str] | None:
+    ticket_id = criterion["proof_ticket_id"]
+    proof_key = criterion["proof_criterion_key"]
+    if isinstance(ticket_id, UUID) and isinstance(proof_key, str):
+        return ticket_id, proof_key
+    return None
+
+
+def _slot_state(state: ProofLinkState | None) -> EvidenceSlotState:
+    """Only an unresolvable link or a stageless ticket may publish UNKNOWN."""
+
+    if state is None or not state.criterion_present or not state.stage_present:
         return EvidenceSlotState.UNKNOWN
-    return EvidenceSlotState.FILLED if value else EvidenceSlotState.UNFILLED
+    return EvidenceSlotState.FILLED if state.proven else EvidenceSlotState.UNFILLED
 
 
 def _slot_facts(states: dict[str, EvidenceSlotState]) -> tuple[EvidenceSlotFact, ...]:

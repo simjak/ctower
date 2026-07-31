@@ -20,6 +20,9 @@ from ctower_kernel.projections._project_delivery_sources_sql import (
     cutover_claims as _cutover_claims,
 )
 from ctower_kernel.projections._project_delivery_sources_sql import (
+    proof_link_states as _proof_link_states,
+)
+from ctower_kernel.projections._project_delivery_sources_sql import (
     qualifying_stage_slots as _qualifying_stage_slots,
 )
 from ctower_kernel.projections._project_delivery_sources_sql import (
@@ -171,10 +174,11 @@ def _facts(
         (tenant_id, row["checkpoint_definition_id"]),
     ).fetchall()
     criteria = tuple(str(item["criterion_key"]) for item in criteria_rows)
+    # One shared read of every configured proof link; criterion coverage and slot
+    # coverage are two compositions of the same resolved facts, never two predicates.
+    link_states = _proof_link_states(connection, tenant_id, criteria_rows)
     proven = frozenset(
-        str(item["criterion_key"])
-        for item in criteria_rows
-        if _criterion_proven(connection, tenant_id, item)
+        str(item["criterion_key"]) for item in criteria_rows if _criterion_proven(item, link_states)
     )
     ticket_ids = tuple(
         item["proof_ticket_id"]
@@ -182,7 +186,7 @@ def _facts(
         if isinstance(item["proof_ticket_id"], UUID)
     )
     maturity, blockers = _ticket_facts(connection, tenant_id, ticket_ids)
-    slots = _qualifying_stage_slots(connection, tenant_id, criteria_rows)
+    slots = _qualifying_stage_slots(criteria_rows, link_states)
     source_ids = _source_ids(row, criteria_rows, ticket_ids)
     states = frozenset(
         DeliveryState(str(value)) for value in cast(list[object], row["applicable_states"])

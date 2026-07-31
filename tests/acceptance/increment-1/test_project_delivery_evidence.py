@@ -135,6 +135,33 @@ def test_slot_denominator_is_exactly_the_configured_links(tenant: TenantFixture)
     assert row.qualifying_stage_unfilled_or_unknown_slot_keys == (_DECLARATION,)
 
 
+def test_evidence_recorded_with_review_pending_is_unfilled_not_unknown(
+    tenant: TenantFixture,
+) -> None:
+    """B3: sources that fully establish a slot never publish UNKNOWN."""
+
+    rows = _reconciled_rows(tenant)
+    pending = rows["evidence.pending"]
+    refused = rows["evidence.refused"]
+    superseded = rows["evidence.superseded"]
+
+    assert _slot_reasons(pending) == (
+        "slot_unfilled:awaits-review",
+        f"slot_unknown:{_DECLARATION}",
+    )
+    assert pending.qualifying_stage_unfilled_or_unknown_slot_keys == (
+        "awaits-review",
+        _DECLARATION,
+    )
+    assert _slot_reasons(refused) == ("slot_unfilled:rejected", f"slot_unknown:{_DECLARATION}")
+    assert _slot_reasons(superseded) == (
+        "slot_unfilled:superseded",
+        f"slot_unknown:{_DECLARATION}",
+    )
+    for row in (pending, refused, superseded):
+        assert (row.qualifying_stage_slots_filled, row.qualifying_stage_slots_required) == (0, 2)
+
+
 def test_unestablishable_slots_stay_unknown(tenant: TenantFixture) -> None:
     """The honest UNKNOWN survives: no frozen criterion, and no workflow stage."""
 
