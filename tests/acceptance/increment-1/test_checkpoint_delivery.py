@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import hashlib
 import json
+import re
 from datetime import UTC, datetime, timedelta
 from pathlib import Path
 from typing import cast
@@ -29,6 +30,16 @@ from ctower_kernel.record import Actor, PrincipalKind
 __all__: tuple[str, ...] = ()
 
 _ROOT = Path(__file__).parents[3]
+# The domain migration 0027 wrote into both checkpoint_key CHECK constraints, and the
+# only domain either constraint accepted before 0037 relaxed them to the authored
+# contract pattern read from checkpoint.schema.json below.
+_SUPERSEDED_INCREMENT_KEY = re.compile(r"^I[12]\.[0-9]+$")
+_CROSS_DOMAIN_CHECKPOINT_KEYS = (
+    "Q3-close.1",
+    "accounting_2026.q3",
+    "compliance.2026-h2",
+    "4-hiring.close",
+)
 
 
 def test_checkpoint_bundle_materializes_all_14_definitions_atomically_and_replays(
@@ -138,6 +149,56 @@ def test_project_delivery_missing_lagging_poison_and_rebuild_are_deterministic(
     assert rebuilt.rebuild_generation == 1
 
 
+def test_non_increment_checkpoint_key_materializes_and_projects_end_to_end(
+    tenant: TenantFixture,
+) -> None:
+    """Storage accepts every checkpoint key the authored contract authorizes."""
+
+    contract_pattern = re.compile(_authored_checkpoint_key_pattern())
+    assert all(contract_pattern.fullmatch(key) for key in _CROSS_DOMAIN_CHECKPOINT_KEYS)
+    assert not any(
+        _SUPERSEDED_INCREMENT_KEY.fullmatch(key) for key in _CROSS_DOMAIN_CHECKPOINT_KEYS
+    )
+    bundle = _cross_domain_checkpoint_bundle()
+    projections = Projections(PostgresProjections(tenant.database.projection_dsn))
+    actor = Actor(tenant.operator_id, tenant.tenant_id, PrincipalKind.OPERATOR)
+
+    _apply_checkpoint_bundle(tenant, bundle=bundle)
+    _set_project_delivery_source(tenant, acceptance_position=_record_watermark(tenant))
+    affected = projections.reconcile_project_delivery(tenant.tenant_id, now=datetime.now(UTC))
+    view = projections.project_delivery(actor, "ctower")
+
+    assert affected == len(_CROSS_DOMAIN_CHECKPOINT_KEYS)
+    assert view is not None
+    assert {row.checkpoint_key for row in view.rows} == set(_CROSS_DOMAIN_CHECKPOINT_KEYS)
+    definitions, rows = _stored_checkpoint_keys(tenant)
+    assert definitions == set(_CROSS_DOMAIN_CHECKPOINT_KEYS)
+    assert rows == set(_CROSS_DOMAIN_CHECKPOINT_KEYS)
+
+
+def _authored_checkpoint_key_pattern() -> str:
+    contract = cast(
+        dict[str, object],
+        json.loads(
+            (_ROOT / "contracts/components/checkpoint.schema.json").read_text(encoding="utf-8")
+        ),
+    )
+    properties = cast(dict[str, dict[str, str]], contract["properties"])
+    return properties["checkpoint_key"]["pattern"]
+
+
+def _cross_domain_checkpoint_bundle() -> CompanyBundle:
+    return _bundle_of(
+        {
+            "checkpoint_keys": list(_CROSS_DOMAIN_CHECKPOINT_KEYS),
+            "configured_checkpoint_criteria": {
+                checkpoint_key: ["declared-outcome"]
+                for checkpoint_key in _CROSS_DOMAIN_CHECKPOINT_KEYS
+            },
+        }
+    )
+
+
 def _checkpoint_bundle(
     *,
     mutated: bool = False,
@@ -170,21 +231,7 @@ def _checkpoint_bundle(
             },
             "checkpoint_labels": ({"I1.9": "Renamed fixture checkpoint"} if mutated else {}),
         }
-    resources = [
-        _checkpoint_resource(checkpoint_key, vectors)
-        for checkpoint_key in cast(list[str], vectors["checkpoint_keys"])
-    ]
-    bundle = CompanyBundle.model_validate_json(
-        json.dumps(
-            {
-                "schema": "ctower.company-bundle/v1",
-                "company": {"key": "ctower", "display_name": "ctower"},
-                "resources": resources,
-                "assignments": [],
-                "secret_binding_refs": [],
-            }
-        )
-    )
+    bundle = _bundle_of(vectors)
     if not mutated:
         return bundle
     previous = next(
@@ -207,12 +254,32 @@ def _checkpoint_bundle(
     return bundle.model_copy(update={"resources": superseding_resources})
 
 
+def _bundle_of(vectors: dict[str, object]) -> CompanyBundle:
+    resources = [
+        _checkpoint_resource(checkpoint_key, vectors)
+        for checkpoint_key in cast(list[str], vectors["checkpoint_keys"])
+    ]
+    return CompanyBundle.model_validate_json(
+        json.dumps(
+            {
+                "schema": "ctower.company-bundle/v1",
+                "company": {"key": "ctower", "display_name": "ctower"},
+                "resources": resources,
+                "assignments": [],
+                "secret_binding_refs": [],
+            }
+        )
+    )
+
+
 def _checkpoint_resource(checkpoint_key: str, vectors: object) -> JsonValue:
     typed_vectors = cast(dict[str, object], vectors)
     configured = cast(dict[str, object], typed_vectors["configured_checkpoint_criteria"])
     criterion_keys = cast(list[str], configured[checkpoint_key])
     labels = cast(dict[str, str], typed_vectors.get("checkpoint_labels", {}))
-    key = checkpoint_key.casefold().replace(".", "-")
+    # The component key domain is narrower than the checkpoint key domain, so fold
+    # every authored checkpoint-key separator onto the one the component key allows.
+    key = checkpoint_key.casefold().replace(".", "-").replace("_", "-")
     payload: JsonValue = {
         "schema": "ctower.checkpoint/v1",
         "key": f"ctower.{key}",
@@ -350,6 +417,24 @@ def _record_watermark(tenant: TenantFixture) -> int:
         ).fetchone()
     assert row is not None and int(row[0]) > 0
     return int(row[0])
+
+
+def _stored_checkpoint_keys(tenant: TenantFixture) -> tuple[set[str], set[str]]:
+    """Read the two columns migration 0027 constrained, straight from storage."""
+
+    with psycopg.connect(tenant.database.admin_dsn) as connection:
+        definitions = connection.execute(
+            """
+            SELECT checkpoint_key FROM project_delivery_checkpoint_definitions
+            WHERE tenant_id = %s
+            """,
+            (tenant.tenant_id,),
+        ).fetchall()
+        rows = connection.execute(
+            "SELECT checkpoint_key FROM project_delivery_projection_rows WHERE tenant_id = %s",
+            (tenant.tenant_id,),
+        ).fetchall()
+    return {str(row[0]) for row in definitions}, {str(row[0]) for row in rows}
 
 
 def _checkpoint_counts(dsn: str) -> tuple[int, int, int]:
