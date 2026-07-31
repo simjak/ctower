@@ -2,7 +2,7 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://ctower.invalid/contracts/evidence/evidence-manifest.schema.json",
   "title": "EvidenceManifestConsumerSubset",
-  "description": "Development-only CP-1 typed evidence denominator. The criterion denominator is derived from two registries of record — the frozen gate-policy criteria and the acceptance-criterion codes the traceability generator reads — and every derived criterion carries exactly one typed disposition. The deferred denominator is derived from the deferred suites of the expected-suite registry; capability components are not a denominator source, so an exercised capability is never forced to declare itself unexercised. Criterion keys, acceptance-criterion codes and suite ids each keep their own namespace.",
+  "description": "Development-only CP-1 typed evidence denominator. The criterion denominator is what this increment owes: the criteria frozen by the authored gate policies plus every acceptance criterion SPEC.md declares, and each one carries exactly one typed disposition. The generated traceability index is a coverage map, not a source of obligations, and is not read. The deferred denominator is the deferred suites of the expected-suite registry; capability components are not a denominator source, so an exercised capability is never forced to declare itself unexercised. Gate-policy criterion keys, acceptance-criterion codes and suite ids each keep their own namespace.",
   "type": "object",
   "additionalProperties": false,
   "required": [
@@ -49,7 +49,7 @@
     "suiteId": {"type": "string", "pattern": "^[a-z][a-z0-9-]{2,63}$"},
     "ownerTicket": {"type": "string", "pattern": "^ct-(?:l0|i[1-9][0-9]*)-[0-9]{3}$"},
     "gatePolicyCriterionKey": {"type": "string", "pattern": "^[a-z][a-z0-9.-]{2,127}$"},
-    "acceptanceCriterionCode": {"type": "string", "pattern": "^AC-[A-Z]{2,8}-[0-9]{2}$"},
+    "acceptanceCriterionCode": {"type": "string", "pattern": "^AC-[A-Z0-9]+-[0-9]{2}$"},
     "criterionSource": {
       "type": "string",
       "enum": ["gate-policy", "acceptance-criterion"]

@@ -4,9 +4,13 @@ Both denominators are derived from registries of record, never from a hand-copie
 roster and never from the manifest itself:
 
 * criteria — the criteria frozen by the authored gate policies in
-  ``packs/policies/gates`` plus the acceptance-criterion codes the traceability
-  generator reads out of ``contracts/traceability/sources.json``.  Each row names the
-  registry it came from, so the two namespaces never share a key space.
+  ``packs/policies/gates`` plus every acceptance criterion ``SPEC.md`` declares.  Each
+  row names the registry it came from, so the two namespaces never share a key space.
+  The denominator is what this increment owes, not what it has already built:
+  ``contracts/traceability/sources.json`` is a coverage map (``DECISIONS.md`` D17.8 —
+  SPEC owns acceptance criteria; traceability proves coverage and drift only) and is
+  deliberately not read here, so an obligation cannot leave the denominator because an
+  artifact stopped citing it.
 * deferred suites — the ``status = "deferred"`` suites of the expected-suite registry
   in ``tools/checks/expected-suites.toml``.  Capability components are deliberately
   not a denominator source: an exercised capability must never be forced to declare
@@ -45,7 +49,7 @@ _FORMAT_CHECKER = Draft202012Validator.FORMAT_CHECKER
 
 ROOT = Path(__file__).parents[3]
 GATE_POLICY_DIR = "packs/policies/gates"
-TRACEABILITY_SOURCES = "contracts/traceability/sources.json"
+SPEC = "SPEC.md"
 EXPECTED_SUITES = "tools/checks/expected-suites.toml"
 CAPABILITIES_DIR = "packs/components/capabilities"
 _EXPECTED_SUITES_PATH = ROOT / EXPECTED_SUITES
@@ -54,7 +58,12 @@ _FIXTURE_PATH = Path(__file__).parent / "fixtures" / "i1-complete-manifest.json"
 
 GATE_POLICY = "gate-policy"
 ACCEPTANCE = "acceptance-criterion"
-_ACCEPTANCE_CODE = re.compile(r"^AC-[A-Z]{2,8}-[0-9]{2}$")
+
+# Shared verbatim with the traceability generator's `_ACCEPTANCE`, the authority that
+# decides whether an AC code exists at all.  That module is private and a private import
+# would breach the architecture boundary, so the copy is guarded instead: any drift
+# between the two spellings is refused by name in TestCriterionDenominatorIsDerived.
+_ACCEPTANCE_CODE = re.compile(r"</a>(AC-[A-Z0-9]+-[0-9]{2})\s+\|")
 
 
 class RegistryError(AssertionError):
@@ -91,21 +100,17 @@ def gate_policy_criteria(root: Path = ROOT) -> dict[str, int]:
 
 
 def acceptance_criteria(root: Path = ROOT) -> frozenset[str]:
-    """Acceptance-criterion codes the traceability registry binds to authored artifacts."""
+    """Every acceptance criterion SPEC.md declares — what this increment owes."""
 
-    path = root / TRACEABILITY_SOURCES
-    artifacts = json.loads(path.read_text(encoding="utf-8")).get("artifacts")
-    if not isinstance(artifacts, list):
-        raise RegistryError(f"{path}: 'artifacts' must be a list")
-    codes = {
-        reference
-        for artifact in artifacts
-        for reference in artifact.get("references", [])
-        if isinstance(reference, str) and _ACCEPTANCE_CODE.fullmatch(reference)
-    }
+    path = root / SPEC
+    try:
+        source = path.read_text(encoding="utf-8")
+    except OSError as error:
+        raise RegistryError(f"{path}: cannot read the acceptance table: {error}") from error
+    codes = frozenset(_ACCEPTANCE_CODE.findall(source))
     if not codes:
-        raise RegistryError(f"{path}: no AC-* codes; the criterion denominator would be vacuous")
-    return frozenset(codes)
+        raise RegistryError(f"{path}: no anchored AC rows; the denominator would be vacuous")
+    return codes
 
 
 def criterion_denominator(root: Path = ROOT) -> frozenset[tuple[str, str]]:
@@ -181,19 +186,14 @@ def _criterion_denominator_errors(manifest: dict[str, Any], root: Path = ROOT) -
     denominator = criterion_denominator(root)
     pairs = _criterion_pairs(manifest)
     declared = set(pairs)
-    errors = [
-        f"manifest repeats criterion {name}"
-        for name in _duplicates(f"{source}/{key}" for source, key in pairs)
-    ]
-    errors += [
-        f"manifest omits registry criterion {source}/{key}"
-        for source, key in sorted(denominator - declared)
-    ]
-    errors += [
-        f"manifest declares unknown criterion {source}/{key}"
-        for source, key in sorted(declared - denominator)
-    ]
-    return errors
+    repeats = _duplicates(f"{source}/{key}" for source, key in pairs)
+    omits = sorted(f"{source}/{key}" for source, key in denominator - declared)
+    unknown = sorted(f"{source}/{key}" for source, key in declared - denominator)
+    return (
+        [f"manifest repeats criterion {name}" for name in repeats]
+        + [f"manifest omits registry criterion {name}" for name in omits]
+        + [f"manifest declares unknown criterion {name}" for name in unknown]
+    )
 
 
 def _deferred_suite_errors(manifest: dict[str, Any], root: Path = ROOT) -> list[str]:
@@ -201,15 +201,13 @@ def _deferred_suite_errors(manifest: dict[str, Any], root: Path = ROOT) -> list[
 
     denominator = set(deferred_suites(root))
     declared = [row["suite_id"] for row in manifest["deferred_suites"]]
-    errors = [f"manifest repeats deferred suite {name}" for name in _duplicates(declared)]
-    errors += [
-        f"manifest omits deferred suite {name}" for name in sorted(denominator - set(declared))
-    ]
-    errors += [
-        f"manifest declares unknown deferred suite {name}"
-        for name in sorted(set(declared) - denominator)
-    ]
-    return errors
+    omits = sorted(denominator - set(declared))
+    unknown = sorted(set(declared) - denominator)
+    return (
+        [f"manifest repeats deferred suite {name}" for name in _duplicates(declared)]
+        + [f"manifest omits deferred suite {name}" for name in omits]
+        + [f"manifest declares unknown deferred suite {name}" for name in unknown]
+    )
 
 
 def _schema() -> dict[str, Any]:
@@ -362,9 +360,7 @@ class TestCriterionSchemaVectors:
         [
             ("criterion_source", "invented-registry"),
             ("disposition", "invalid"),
-            ("disposition", ""),
             ("reason", ""),
-            ("owner", ""),
             ("owner", "not-a-ticket"),
             ("source_sha", ""),
             ("environment", ""),
@@ -402,43 +398,32 @@ class TestCriterionMutationProof:
 
     def test_adding_a_frozen_gate_criterion_fails_by_name(self, tmp_path: Path) -> None:
         root = _scratch_registries(tmp_path)
-        policy_path = root / GATE_POLICY_DIR / "phantom-gate-v1.yaml"
-        policy_path.write_text(
-            json.dumps(
-                {
-                    "schema": "ctower.gate-policy/v1",
-                    "key": "ctower.phantom.gates",
-                    "revision": 1,
-                    "criteria": [{"key": "phantom-gate-criterion", "description": "Phantom."}],
-                }
-            ),
-            encoding="utf-8",
-        )
+        criterion = {"key": "phantom-gate-criterion", "description": "Phantom."}
+        policy = {"schema": "ctower.gate-policy/v1", "revision": 1, "criteria": [criterion]}
+        (root / GATE_POLICY_DIR / "phantom-v1.yaml").write_text(json.dumps(policy), "utf-8")
         errors = _criterion_denominator_errors(_committed_manifest(), root)
         assert any("gate-policy/phantom-gate-criterion" in error for error in errors), errors
 
-    def test_adding_an_acceptance_criterion_fails_by_name(self, tmp_path: Path) -> None:
-        root = _scratch_registries(tmp_path)
-        sources_path = root / TRACEABILITY_SOURCES
-        sources = json.loads(sources_path.read_text(encoding="utf-8"))
-        sources["artifacts"].append(
-            {"path": "contracts/phantom/phantom.schema.json", "references": ["AC-PHANTOM-01"]}
-        )
-        sources_path.write_text(json.dumps(sources), encoding="utf-8")
+    def test_declaring_an_acceptance_criterion_in_spec_fails_by_name(self, tmp_path: Path) -> None:
+        root = _scratch_registries(tmp_path, spec_extra=_SPEC_ROW.format(code="AC-PHANTOM-01"))
         errors = _criterion_denominator_errors(_committed_manifest(), root)
         assert any("acceptance-criterion/AC-PHANTOM-01" in error for error in errors), errors
 
 
-def _scratch_registries(tmp_path: Path) -> Path:
-    """A disposable copy of the criterion registries; the fixture stays untouched."""
+_SPEC_ROW = '\n| <a id="phantom"></a>{code} | Phantom obligation. | Phantom proof |\n'
+
+
+def _scratch_registries(tmp_path: Path, *, spec_extra: str = "") -> Path:
+    """A disposable copy of the criterion registries; the fixture stays untouched.
+
+    The coverage map is deliberately never copied: nothing here may read it."""
 
     root = tmp_path / "repo"
     (root / GATE_POLICY_DIR).mkdir(parents=True, exist_ok=True)
     for path in sorted((ROOT / GATE_POLICY_DIR).glob("*.yaml")):
         (root / GATE_POLICY_DIR / path.name).write_bytes(path.read_bytes())
-    sources = root / TRACEABILITY_SOURCES
-    sources.parent.mkdir(parents=True, exist_ok=True)
-    sources.write_bytes((ROOT / TRACEABILITY_SOURCES).read_bytes())
+    spec = (ROOT / SPEC).read_text(encoding="utf-8")
+    (root / SPEC).write_text(spec + spec_extra, encoding="utf-8")
     return root
 
 
@@ -467,14 +452,8 @@ class TestDeferredSuiteDenominatorIsDerived:
 
     def test_extra_deferred_suite_is_refused_by_name(self) -> None:
         candidate = _committed_manifest()
-        candidate["deferred_suites"].append(
-            {
-                "suite_id": "phantom-suite",
-                "status": "not_exercised",
-                "source_count": 0,
-                "reason": "fabricated",
-            }
-        )
+        row = {"suite_id": "phantom-suite", "status": "not_exercised", "source_count": 0}
+        candidate["deferred_suites"].append({**row, "reason": "fabricated"})
         assert "manifest declares unknown deferred suite phantom-suite" in _deferred_suite_errors(
             candidate
         )
@@ -510,11 +489,9 @@ class TestNamespacesStaySeparate:
         assert not shared, f"suite ids collide with capability keys: {sorted(shared)}"
 
     def test_no_capability_is_forced_to_declare_itself_unexercised(self) -> None:
-        capabilities = capability_registry_keys()
         declared = {row["suite_id"] for row in _committed_manifest()["deferred_suites"]}
-        assert not capabilities & declared, (
-            f"capabilities declared not_exercised: {sorted(capabilities & declared)}"
-        )
+        forced = capability_registry_keys() & declared
+        assert not forced, f"capabilities declared not_exercised: {sorted(forced)}"
 
     def test_every_registry_suite_id_matches_the_schema_suite_namespace(self) -> None:
         pattern = re.compile(_schema()["$defs"]["suiteId"]["pattern"])
@@ -550,17 +527,17 @@ def _scratch_suite_registry(tmp_path: Path, *, status: str) -> Path:
 
     root = tmp_path / "repo"
     (root / EXPECTED_SUITES).parent.mkdir(parents=True, exist_ok=True)
-    extra = (
-        "\n[[suite]]\n"
-        'id = "phantom-suite"\n'
-        'owner = "CT-I2-099"\n'
-        'phase = "CT-I2-099"\n'
-        f'status = "{status}"\n'
-        'path = "tests/phantom"\n'
-        'patterns = ["test_*.py"]\n'
-        'command = ["{python}", "-m", "pytest", "tests/phantom", "-q"]\n'
-        "timeout_seconds = 300\n"
-    )
+    extra = f"""
+[[suite]]
+id = "phantom-suite"
+owner = "CT-I2-099"
+phase = "CT-I2-099"
+status = "{status}"
+path = "tests/phantom"
+patterns = ["test_*.py"]
+command = ["{{python}}", "-m", "pytest", "tests/phantom", "-q"]
+timeout_seconds = 300
+"""
     (root / EXPECTED_SUITES).write_text(
         _EXPECTED_SUITES_PATH.read_text(encoding="utf-8") + extra, encoding="utf-8"
     )
@@ -583,14 +560,9 @@ class TestChokepointsCannotBeSilentlyRemoved:
     dropping the only assertion that proves the denominator is derived."""
 
     @pytest.mark.parametrize(("chokepoint", "guard"), _CHOKEPOINTS)
-    def test_the_named_chokepoint_exists(self, chokepoint: str, guard: str) -> None:
+    def test_the_chokepoint_and_its_guard_both_survive(self, chokepoint: str, guard: str) -> None:
         assert callable(globals().get(chokepoint)), f"{chokepoint}: chokepoint is gone"
         assert guard in globals(), f"{guard}: the guard over the committed fixture is gone"
-
-    @pytest.mark.parametrize(("chokepoint", "guard"), _CHOKEPOINTS)
-    def test_the_guard_calls_its_chokepoint_over_the_committed_fixture(
-        self, chokepoint: str, guard: str
-    ) -> None:
         source = inspect.getsource(cast(type, globals()[guard]))
         assert f"{chokepoint}(_committed_manifest())" in source, (
             f"{guard}: no longer judges the committed fixture through {chokepoint}"

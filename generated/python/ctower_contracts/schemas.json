@@ -9444,7 +9444,7 @@
     "contracts/evidence/evidence-manifest.schema.json": {
       "$defs": {
         "acceptanceCriterionCode": {
-          "pattern": "^AC-[A-Z]{2,8}-[0-9]{2}$",
+          "pattern": "^AC-[A-Z0-9]+-[0-9]{2}$",
           "type": "string"
         },
         "criterionDisposition": {
@@ -9597,7 +9597,7 @@
       "$id": "https://ctower.invalid/contracts/evidence/evidence-manifest.schema.json",
       "$schema": "https://json-schema.org/draft/2020-12/schema",
       "additionalProperties": false,
-      "description": "Development-only CP-1 typed evidence denominator. The criterion denominator is derived from two registries of record \u2014 the frozen gate-policy criteria and the acceptance-criterion codes the traceability generator reads \u2014 and every derived criterion carries exactly one typed disposition. The deferred denominator is derived from the deferred suites of the expected-suite registry; capability components are not a denominator source, so an exercised capability is never forced to declare itself unexercised. Criterion keys, acceptance-criterion codes and suite ids each keep their own namespace.",
+      "description": "Development-only CP-1 typed evidence denominator. The criterion denominator is what this increment owes: the criteria frozen by the authored gate policies plus every acceptance criterion SPEC.md declares, and each one carries exactly one typed disposition. The generated traceability index is a coverage map, not a source of obligations, and is not read. The deferred denominator is the deferred suites of the expected-suite registry; capability components are not a denominator source, so an exercised capability is never forced to declare itself unexercised. Gate-policy criterion keys, acceptance-criterion codes and suite ids each keep their own namespace.",
       "properties": {
         "candidate_digest": {
           "$ref": "#/$defs/sha256"
@@ -12057,7 +12057,7 @@
     {
       "id": "https://ctower.invalid/contracts/evidence/evidence-manifest.schema.json",
       "path": "contracts/evidence/evidence-manifest.schema.json",
-      "sha256": "sha256:8dd03e37cf0617253043091648b2186e6008d50986bdcd270d3f607a717d5bef"
+      "sha256": "sha256:0bb3833ebb26fd1d8cb40c2d0dab7d5bc5e0cc17be15fb3a1825cab4e0b89ca2"
     },
     {
       "id": "https://ctower.dev/contracts/evidence/object-manifest.schema.json",
