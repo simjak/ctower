@@ -116,6 +116,39 @@ def test_forbidden_data_class_refuses_loudly_by_name(tmp_path: Path, forbidden_c
     assert forbidden_class in caught.value.context
 
 
+def test_forbidden_data_class_two_classes_reports_deterministically(
+    tmp_path: Path,
+) -> None:
+    """When a row carries two forbidden classes, the reported class is deterministic.
+
+    sorted(intersection)[0] ensures the same class name is reported regardless
+    of PYTHONHASHSEED, instead of set.pop() which is hash-order dependent.
+    """
+    fixture = make_fixture(tmp_path)
+    # Set two forbidden classes on the first request row.
+    two_classes = [
+        "irreplaceable_or_expensive_sole_copy",
+        "secret_or_authentication_value",
+    ]
+    path = fixture.root / "requests.jsonl"
+    rows = path.read_bytes().splitlines()
+    first = json.loads(rows[0])
+    first["data_classes"] = two_classes
+    rows[0] = canonical_bytes(first)
+    path.write_bytes(b"\n".join(rows) + b"\n")
+    inventory = fixture.selection["source_inventories"][0]
+    data = path.read_bytes()
+    inventory["whole_source_digest"] = sha256_digest(data)
+    inventory["whole_source_bytes"] = len(data)
+    _reseat_selection(fixture)
+    with pytest.raises(MigrationRefusal) as caught:
+        _freeze(fixture)
+    assert caught.value.code == RefusalCode.FORBIDDEN_DATA_CLASS
+    # sorted() guarantees deterministic reporting: the alphabetically-first
+    # class must be reported, not whichever set.pop() happens to return.
+    assert caught.value.context == "irreplaceable_or_expensive_sole_copy"
+
+
 # ---------------------------------------------------------------------------
 # AC3: Fuzzy merge refuses
 # ---------------------------------------------------------------------------

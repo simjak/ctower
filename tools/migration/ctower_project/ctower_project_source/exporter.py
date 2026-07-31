@@ -249,9 +249,12 @@ def _reviewed_records(
     }
     for positioned in records:
         record = positioned.record
-        if forbidden.intersection(record.data_classes):
-            hit = forbidden.intersection(record.data_classes).pop()
-            raise MigrationRefusal(RefusalCode.FORBIDDEN_DATA_CLASS, hit)
+        hit = forbidden.intersection(record.data_classes)
+        if hit:
+            raise MigrationRefusal(
+                RefusalCode.FORBIDDEN_DATA_CLASS,
+                sorted(hit)[0],
+            )
         if record.candidate and record.review_decision is None:
             raise MigrationRefusal(RefusalCode.UNREVIEWED_CANDIDATE, "candidate row")
         if record.review_decision == "excluded":

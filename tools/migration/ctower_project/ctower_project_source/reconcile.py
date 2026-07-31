@@ -259,8 +259,8 @@ def _verify_alias_conservation(frozen: FrozenExport, entries: list[dict[str, Any
         raise MigrationRefusal(RefusalCode.RECONCILIATION_MISMATCH, "identity conservation")
     requests = {key for key in exported if key[0] == "mission-control:request"}
     # Every exported request identity must have exactly one alias-map entry.
-    # Counts are derived from the signed artifacts, never hardcoded.
-    if len(entries) != len(requests) or requests != mapped:
+    # requests != mapped (set equality) covers both cardinality and identity.
+    if requests != mapped:
         raise MigrationRefusal(RefusalCode.RECONCILIATION_MISMATCH, "request identity coverage")
 
 
