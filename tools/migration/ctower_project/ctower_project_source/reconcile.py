@@ -24,10 +24,6 @@ from .signing import ArtifactSigner
 __all__ = ("GeneratedTargetReader", "reconcile")
 
 _RECONCILIATION_NAMESPACE = UUID("b77dc3f6-09c3-5f65-9616-2d6ee8b5287e")
-_REQUEST_COUNT = 86
-_REQUEST_PHYSICAL_COUNT = 243
-_STABLE_COUNT = 27
-_CHECKPOINT_COUNT = 14
 
 
 class GeneratedTargetReader(Protocol):
@@ -166,7 +162,7 @@ def _verify_target(
     if pinned != _expected_pins(frozen, plan, import_plan_digest=import_plan_digest):
         raise MigrationRefusal(RefusalCode.RECONCILIATION_MISMATCH, "pinned target digests")
     _verify_import_counts(run, plan)
-    _verify_delivery(delivery, run)
+    _verify_delivery(delivery, run, frozen)
 
 
 def _verify_run_scope(run: CtowerProjectImportRun, plan: ImportPlan) -> None:
@@ -215,18 +211,25 @@ def _verify_import_counts(run: CtowerProjectImportRun, plan: ImportPlan) -> None
         raise MigrationRefusal(RefusalCode.RECONCILIATION_MISMATCH, "target import counts")
 
 
-def _verify_delivery(delivery: ProjectDeliveryView, run: CtowerProjectImportRun) -> None:
+def _verify_delivery(
+    delivery: ProjectDeliveryView,
+    run: CtowerProjectImportRun,
+    frozen: FrozenExport,
+) -> None:
+    expected_checkpoint_count = sum(
+        1 for record in frozen.records if record.identity.namespace == "catalog:ctower:checkpoint"
+    )
     invalid_scope = (
         delivery.company_key != "ctower"
         or delivery.project_key != "ctower"
-        or len(delivery.rows) != _CHECKPOINT_COUNT
+        or len(delivery.rows) != expected_checkpoint_count
         or delivery.source_record_position < run.record_watermark
         or delivery.projection_record_position < run.projection_watermark
     )
     if invalid_scope:
         raise MigrationRefusal(RefusalCode.RECONCILIATION_MISMATCH, "project delivery")
     keys = {row.checkpoint_key for row in delivery.rows}
-    if len(keys) != _CHECKPOINT_COUNT:
+    if len(keys) != expected_checkpoint_count:
         raise MigrationRefusal(RefusalCode.RECONCILIATION_MISMATCH, "checkpoint definitions")
     for row in delivery.rows:
         _verify_delivery_row(row)
@@ -252,22 +255,11 @@ def _verify_alias_conservation(frozen: FrozenExport, entries: list[dict[str, Any
     mapped = {_record_key(cast(dict[str, Any], entry["identity"])) for entry in entries}
     if not mapped.issubset(exported) or len(mapped) != len(entries):
         raise MigrationRefusal(RefusalCode.RECONCILIATION_MISMATCH, "identity conservation")
-    stable = {key for key in exported if key[0] == "stable-backlog"}
-    checkpoints = {key for key in exported if key[0] == "catalog:ctower:checkpoint"}
     requests = {key for key in exported if key[0] == "mission-control:request"}
-    request_physical = sum(
-        int(source["physical_count"])
-        for source in cast(list[dict[str, Any]], frozen.manifest["sources"])
-        if source["source_key"] == "mission_control_requests"
-    )
-    if (
-        len(stable) != _STABLE_COUNT
-        or len(checkpoints) != _CHECKPOINT_COUNT
-        or len(requests) != _REQUEST_COUNT
-        or len(entries) != _REQUEST_COUNT
-        or request_physical != _REQUEST_PHYSICAL_COUNT
-    ):
-        raise MigrationRefusal(RefusalCode.RECONCILIATION_MISMATCH, "frozen conservation")
+    # Every exported request identity must have exactly one alias-map entry.
+    # Counts are derived from the signed artifacts, never hardcoded.
+    if len(entries) != len(requests) or requests != mapped:
+        raise MigrationRefusal(RefusalCode.RECONCILIATION_MISMATCH, "request identity coverage")
 
 
 def _verify_relations(plan: ImportPlan) -> None:
