@@ -1,0 +1,90 @@
+{
+  "schema": "ctower.evidence-manifest/v1",
+  "status": "development_only",
+  "tenant_id": "00000000-0000-4000-8000-000000000001",
+  "ticket_id": "00000000-0000-4000-8000-000000000002",
+  "candidate_digest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+  "criteria_revision": 1,
+  "criteria": [
+    {
+      "criterion_key": "repository-policy",
+      "disposition": "applicable",
+      "reason": "repository gates pass at exact head",
+      "owner": "ct-l0-007",
+      "source_sha": "sha256:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+      "environment": "disposable-development",
+      "proof_digest": "sha256:cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+      "verifier": "00000000-0000-4000-8000-000000000003",
+      "applicability_reason": "repository gates are in scope for the current I1 increment"
+    },
+    {
+      "criterion_key": "cp3-d-host-loss",
+      "disposition": "deferred",
+      "reason": "CP3-D external failure domain acknowledgement not yet proven",
+      "owner": "ct-i1-008",
+      "source_sha": "sha256:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+      "environment": "disposable-development",
+      "proof_digest": "sha256:cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+      "verifier": "00000000-0000-4000-8000-000000000004",
+      "applicability_reason": "CP3-D host-loss acknowledgement deferred until S11"
+    },
+    {
+      "criterion_key": "browser-ui",
+      "disposition": "deferred",
+      "reason": "browser implementation deferred to CT-I2-005",
+      "owner": "ct-i1-005",
+      "source_sha": "sha256:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+      "environment": "disposable-development",
+      "proof_digest": "sha256:cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+      "verifier": "00000000-0000-4000-8000-000000000005",
+      "applicability_reason": "browser UI not in scope for I1; deferred to I2"
+    }
+  ],
+  "verdict_ids": [
+    "00000000-0000-4000-8000-000000000003"
+  ],
+  "deferred_capabilities": [
+    {
+      "capability_key": "browser-e2e",
+      "status": "not_exercised",
+      "source_count": 0,
+      "reason": "deferred expected-suite; browser E2E deferred to CT-I2-005"
+    },
+    {
+      "capability_key": "effect.runtime",
+      "status": "not_exercised",
+      "source_count": 0,
+      "reason": "deferred for I1/I2; no generalized effect-provider Seam exists"
+    },
+    {
+      "capability_key": "executable.extension",
+      "status": "not_exercised",
+      "source_count": 0,
+      "reason": "deferred for I1/I2; no executable-extension runtime exposed"
+    },
+    {
+      "capability_key": "increment-1-acceptance",
+      "status": "not_exercised",
+      "source_count": 0,
+      "reason": "deferred expected-suite; full I1 acceptance deferred until S11/CP3-D"
+    },
+    {
+      "capability_key": "increment-2-golden-path",
+      "status": "not_exercised",
+      "source_count": 0,
+      "reason": "deferred expected-suite; I2 golden path not yet required"
+    },
+    {
+      "capability_key": "remote.execution",
+      "status": "not_exercised",
+      "source_count": 0,
+      "reason": "deferred for I1/I2; no remote-execution provider Seam exists"
+    },
+    {
+      "capability_key": "reusable.image",
+      "status": "not_exercised",
+      "source_count": 0,
+      "reason": "deferred for I1/I2; no custom-image runtime exists"
+    }
+  ]
+}
