@@ -6,7 +6,7 @@ from typing import Annotated, Literal
 
 from pydantic import BaseModel, ConfigDict, Field, model_validator
 
-from ctowerctl.spool._redaction import JsonObject
+from ctowerctl.spool._redaction import JsonObject, ServerRefusal
 
 __all__ = [
     "AcceptedReceipt",
@@ -17,6 +17,7 @@ __all__ = [
     "Head",
     "Metadata",
     "QuarantineReceipt",
+    "ServerRefusal",
 ]
 
 _BOUND_PAYLOAD_VERSION = 2
@@ -73,12 +74,19 @@ class AcceptedReceipt(_DiskPayload):
 
 
 class QuarantineReceipt(_DiskPayload):
-    schema_version: Literal[1]
+    schema_version: Literal[1, 2]
     command_sequence: Annotated[int, Field(ge=1)]
     command_hash: Annotated[str, Field(pattern=r"^[0-9a-f]{64}$")]
     reason_code: Annotated[str, Field(pattern=r"^[a-z][a-z0-9_]{0,63}$")]
     response_digest: Annotated[str, Field(pattern=r"^[0-9a-f]{64}$")] | None
     quarantined_at: str
+    refusal: ServerRefusal | None = None
+
+    @model_validator(mode="after")
+    def _validate_versioned_refusal(self) -> QuarantineReceipt:
+        if self.schema_version != _BOUND_PAYLOAD_VERSION and self.refusal is not None:
+            raise ValueError("a named server refusal requires the current receipt schema")
+        return self
 
 
 class Disposition(_DiskPayload):

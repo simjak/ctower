@@ -43,7 +43,17 @@ __all__: tuple[str, ...] = ()
 
 EXIT_TEMPORARY = 75
 EXIT_LOCAL_FAILURE = 74
+EXIT_PERMANENT = 69
 HTTP_PENDING = 202
+INITIAL_CUSTODY_REFUSAL = {
+    "status": 403,
+    "problem_code": "unauthorized",
+    "title": "Initial custody refused",
+    "detail": (
+        "Initial custody requires Commander self-custody or an operator placing "
+        "custody with an eligible Commander."
+    ),
+}
 
 
 class _MemoryBackend:
@@ -141,6 +151,36 @@ def test_ticket_create_without_hand_minted_identifiers_uses_authenticated_princi
         "kind": "mission-control",
         "ref": "R2257-defaults",
     }
+
+
+def test_server_rejected_capture_carries_its_named_refusal_to_the_spool_listing(
+    tenant: TenantFixture,
+    cli_state: _MemoryBackend,
+) -> None:
+    """A refused intake must stay named after the refusing invocation has exited."""
+
+    del cli_state
+    with _server(tenant.database.runtime_dsn) as base_url:
+        status, captured_text, error = _run(
+            _first_day_create_arguments(base_url, source_ref="R2597"),
+            authority=tenant.operator_credential,
+        )
+        listing_status, listing_text, listing_error = _run(
+            ["--base-url", base_url, "spool", "quarantine", "list"],
+            authority=tenant.operator_credential,
+        )
+
+    captured = json.loads(captured_text)
+    entries = json.loads(listing_text)["entries"]
+    assert (status, listing_status) == (EXIT_PERMANENT, 0)
+    assert error == listing_error == ""
+    assert captured["state"] == "quarantined"
+    assert captured["reason_code"] == "permanent_server_rejection"
+    assert captured["server_refusal"] == INITIAL_CUSTODY_REFUSAL
+    assert [entry["command_id"] for entry in entries] == [captured["command_id"]]
+    assert entries[0]["reason_code"] == "permanent_server_rejection"
+    assert entries[0]["server_refusal"] == INITIAL_CUSTODY_REFUSAL
+    assert tenant.operator_credential not in captured_text + listing_text
 
 
 def test_explicit_ticket_command_id_replay_still_deduplicates_with_default_custodian(

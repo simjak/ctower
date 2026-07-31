@@ -38,6 +38,7 @@ from ctowerctl.spool._recovery import (
 from ctowerctl.spool._redaction import (
     JsonObject,
     SecretMaterialError,
+    ServerRefusal,
     SpoolDoctorReport,
     SpoolEntry,
     SpoolState,
@@ -68,6 +69,7 @@ __all__ = [
     "DrainReport",
     "ReplayExecutor",
     "ReplayResponse",
+    "ServerRefusal",
     "Spool",
     "SpoolCommand",
     "SpoolConfig",

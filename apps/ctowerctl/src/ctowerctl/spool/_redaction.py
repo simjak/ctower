@@ -19,6 +19,7 @@ if TYPE_CHECKING:
 __all__ = [
     "JsonObject",
     "SecretMaterialError",
+    "ServerRefusal",
     "SpoolDoctorReport",
     "SpoolEntry",
     "SpoolState",
@@ -62,6 +63,8 @@ _FORBIDDEN_FIELDS = frozenset(
     }
 )
 _FIELD_NORMALIZER = re.compile(r"[^a-z0-9]+")
+_MAX_REFUSAL_TITLE = 200
+_MAX_REFUSAL_DETAIL = 1000
 
 
 class _BoundaryModel(BaseModel):
@@ -76,6 +79,15 @@ class SpoolState(StrEnum):
     QUARANTINE = "quarantine"
 
 
+class ServerRefusal(_BoundaryModel):
+    """The refusal the server named for one rejected command."""
+
+    status: Annotated[int, Field(ge=400, le=599)]
+    problem_code: Annotated[str, Field(pattern=r"^[a-z][a-z0-9_]{0,63}$")]
+    title: Annotated[str, Field(min_length=1, max_length=_MAX_REFUSAL_TITLE)]
+    detail: Annotated[str, Field(min_length=1, max_length=_MAX_REFUSAL_DETAIL)]
+
+
 class SpoolEntry(_BoundaryModel):
     """Redacted command inventory row."""
 
@@ -88,6 +100,7 @@ class SpoolEntry(_BoundaryModel):
     bytes: Annotated[int, Field(ge=0)]
     reason_code: str | None = None
     artifact_digest: Annotated[str, Field(pattern=r"^[0-9a-f]{64}$")] | None = None
+    server_refusal: ServerRefusal | None = None
 
 
 class SpoolStatus(_BoundaryModel):
@@ -198,6 +211,7 @@ def spool_entry(record: RecoveredRecord, session: Session) -> SpoolEntry:
         "accepted": SpoolState.ACCEPTED_ARCHIVE,
         "quarantine": SpoolState.QUARANTINE,
     }[record.stored.directory]
+    reason_code, server_refusal = _quarantine_outcome(session, record)
     return SpoolEntry(
         sequence=record.stored.sequence,
         command_id=UUID(_string_field(payload, "command_id")),
@@ -206,7 +220,8 @@ def spool_entry(record: RecoveredRecord, session: Session) -> SpoolEntry:
         enqueued_at=_parse_utc(_string_field(payload, "enqueued_at")),
         expires_at=_parse_utc(_string_field(payload, "expires_at")),
         bytes=record.stored.size,
-        reason_code=_quarantine_reason(session, record),
+        reason_code=reason_code,
+        server_refusal=server_refusal,
     )
 
 
@@ -313,15 +328,24 @@ def _inspect(value: JsonValue, path: tuple[str, ...]) -> None:
             _inspect(child, path)
 
 
-def _quarantine_reason(session: Session, command: RecoveredRecord) -> str | None:
-    reasons: list[str] = []
+def _quarantine_outcome(
+    session: Session,
+    command: RecoveredRecord,
+) -> tuple[str | None, ServerRefusal | None]:
+    outcomes: list[tuple[str, ServerRefusal | None]] = []
     for record in session.records:
         if record.opened.header.record_type != "quarantine_receipt":
             continue
         payload = record.opened.payload
         if payload.get("command_sequence") == command.stored.sequence:
-            reasons.append(_string_field(payload, "reason_code"))
-    return reasons[-1] if reasons else None
+            outcomes.append(
+                (_string_field(payload, "reason_code"), _server_refusal(payload.get("refusal")))
+            )
+    return outcomes[-1] if outcomes else (None, None)
+
+
+def _server_refusal(value: JsonValue) -> ServerRefusal | None:
+    return ServerRefusal.model_validate(value) if isinstance(value, Mapping) else None
 
 
 def _oldest_age(entries: tuple[SpoolEntry, ...]) -> float | None:

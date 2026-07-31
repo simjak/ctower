@@ -273,6 +273,10 @@ Seven commands that never leave the machine except where noted. See the
 `spool drain` exits `69` at a quarantine barrier, `75` while entries remain pending, `0` when the spool is
 empty.
 
+A listed entry quarantined by the server also carries `server_refusal` (`status`, `problem_code`, `title`,
+`detail`); an entry quarantined locally — `credential_identity_mismatch`, `expired`, `corrupt_record` —
+carries its `reason_code` and no `server_refusal`.
+
 ## Output
 
 Machine output is one JSON object per invocation: deterministic key order, no ASCII escaping, compact

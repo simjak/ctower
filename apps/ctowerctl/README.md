@@ -39,6 +39,11 @@ compares the current stdin credential before every send. Rotation or a different
 old command with zero network sends; restore the original identity and explicitly retry, or discard and
 re-enqueue under the new identity.
 
+A server that permanently rejects a command has named its refusal, so the quarantine receipt keeps that
+name: the mutation output and every later `spool list` / `spool quarantine list` row carry `server_refusal`
+with the server's `status`, `problem_code`, `title`, and `detail`. A locally quarantined command carries its
+`reason_code` and no `server_refusal`, because no server named anything.
+
 Corrupt command ciphertext remains visible as a bounded quarantine row with its sequence, byte count, and
 artifact digest. It blocks replay until an operator discards that exact sequence and digest. The disposition
 is authenticated and append-only; the corrupt ciphertext remains as local audit evidence.

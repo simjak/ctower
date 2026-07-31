@@ -20,7 +20,7 @@ from ctower_client.models import (
     TicketResource,
 )
 from ctowerctl._generated_replay import GeneratedReplayExecutor
-from ctowerctl.spool import SpoolCommand
+from ctowerctl.spool import ServerRefusal, SpoolCommand
 
 __all__: tuple[str, ...] = ()
 
@@ -35,6 +35,7 @@ class _ProblemStub:
     command_id: UUID | None
     detail: str
     status: int
+    title: str
 
 
 class _TicketClient:
@@ -75,13 +76,14 @@ def test_generated_registry_reconstructs_exact_request_and_stable_command_id() -
     assert response.response is not None
 
 
-def test_generated_problem_is_permanent_without_persisting_problem_detail() -> None:
+def test_generated_problem_is_permanent_and_keeps_the_refusal_the_server_named() -> None:
     command_id = uuid4()
     problem = _ProblemStub(
         code="tenant-scope-denied",
         command_id=command_id,
         detail="Authored safe detail.",
         status=403,
+        title="Tenant scope denied",
     )
     executor = GeneratedReplayExecutor(cast(CtowerClient, _TicketClient(problem)))
 
@@ -96,6 +98,12 @@ def test_generated_problem_is_permanent_without_persisting_problem_detail() -> N
     assert response.status_code == HTTP_FORBIDDEN
     assert response.problem_code == "tenant_scope_denied"
     assert response.response == {"code": "tenant-scope-denied", "status": 403}
+    assert response.refusal == ServerRefusal(
+        status=403,
+        problem_code="tenant_scope_denied",
+        title="Tenant scope denied",
+        detail="Authored safe detail.",
+    )
     assert cast(object, executor.observations[command_id].problem) is problem
 
 

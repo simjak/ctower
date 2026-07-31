@@ -17,6 +17,7 @@ from pydantic import ValidationError
 
 from ctowerctl.spool import (
     ReplayResponse,
+    ServerRefusal,
     Spool,
     SpoolCommand,
     SpoolConfig,
@@ -232,6 +233,45 @@ def test_permanent_rejection_is_ordering_barrier_with_retry_and_discard(
     assert tuple(
         _origin_root(tmp_path / "discard").joinpath("quarantine").glob("*.disposition.rec")
     )
+
+
+def test_server_refusal_is_named_in_the_listing_while_local_refusal_names_no_server(
+    tmp_path: Path,
+    secure_keyring: _MemoryBackend,
+) -> None:
+    del secure_keyring
+    refusal = ServerRefusal(
+        status=403,
+        problem_code="unauthorized",
+        title="Initial custody refused",
+        detail="Initial custody requires Commander self-custody.",
+    )
+    rejected = _spool(tmp_path / "rejected")
+    rejected.enqueue(_command(uuid4(), {"title": "refused"}))
+
+    report = rejected.drain(
+        _Executor(
+            ReplayResponse(
+                status_code=403,
+                problem_code="unauthorized",
+                response={"code": "unauthorized", "status": 403},
+                refusal=refusal,
+            )
+        )
+    )
+
+    assert report.quarantined == 1
+    named = _unbound_spool(tmp_path / "rejected").list_entries(SpoolState.QUARANTINE)[0]
+    assert named.reason_code == "permanent_server_rejection"
+    assert named.server_refusal == refusal
+    local = _spool(tmp_path / "local")
+    local.enqueue(_command(uuid4(), {"title": "identity-bound"}))
+    rotated = _unbound_spool(tmp_path / "local").bind_credential("synthetic-rotated-identity")
+
+    assert rotated.drain(_Accepting()).reason_code == "credential_identity_mismatch"
+    unnamed = _unbound_spool(tmp_path / "local").list_entries(SpoolState.QUARANTINE)[0]
+    assert unnamed.reason_code == "credential_identity_mismatch"
+    assert unnamed.server_refusal is None
 
 
 def test_consecutive_discard_tombstones_bridge_chain_and_missing_or_forged_refuse(
