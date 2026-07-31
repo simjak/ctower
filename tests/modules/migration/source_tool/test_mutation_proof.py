@@ -115,12 +115,13 @@ def _full_reconcile(
     )
 
 
-def test_reconcile_accepts_corpus_with_different_checkpoint_count(tmp_path: Path) -> None:
-    """Changing the checkpoint count in the fixture must not break reconcile.
+def test_reconcile_accepts_standard_fixture_checkpoint_set(tmp_path: Path) -> None:
+    """Reconcile accepts the standard fixture's checkpoint set.
 
-    This proves no checkpoint-count literal is hardcoded in product code.
-    We use the standard fixture but build a run/delivery with a different
-    checkpoint count derived from the frozen export itself.
+    The run and delivery are built from the fixture's own checkpoint keys
+    (derived from the frozen export), so reconcile must accept. This is the
+    happy path — it does not change the checkpoint count (that is impossible
+    within schema bounds until S5).
     """
     fixture = make_fixture(tmp_path)
     frozen, equality, alias_map, plan = _frozen_pair(fixture)
