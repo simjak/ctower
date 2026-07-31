@@ -170,16 +170,6 @@ class ProjectDeliveryRow:
         keys = self.qualifying_stage_unfilled_or_unknown_slot_keys
         if len(keys) != len(set(keys)):
             raise ValueError("unfilled or unknown slot keys must be unique")
-        if self.qualifying_stage_slots_required == 0:
-            filled, required, unresolved = _slot_coverage_from_reasons(self.derivation_reasons)
-            object.__setattr__(self, "qualifying_stage_slots_filled", filled)
-            object.__setattr__(self, "qualifying_stage_slots_required", required)
-            object.__setattr__(
-                self,
-                "qualifying_stage_unfilled_or_unknown_slot_keys",
-                unresolved,
-            )
-            keys = unresolved
         if self.qualifying_stage_slots_filled + len(keys) != self.qualifying_stage_slots_required:
             raise ValueError("qualifying-stage slot counts must account for every key")
 
@@ -455,33 +445,3 @@ def _semantic_digest(
     }
     content = json.dumps(payload, separators=(",", ":"), sort_keys=True).encode()
     return f"sha256:{hashlib.sha256(content).hexdigest()}"
-
-
-def _slot_coverage_from_reasons(
-    reasons: tuple[str, ...],
-) -> tuple[int, int, tuple[str, ...]]:
-    states = {
-        state
-        for reason in reasons
-        for state in (
-            _slot_reason(reason, EvidenceSlotState.FILLED),
-            _slot_reason(reason, EvidenceSlotState.UNFILLED),
-            _slot_reason(reason, EvidenceSlotState.UNKNOWN),
-        )
-        if state is not None
-    }
-    filled = sum(state[1] is EvidenceSlotState.FILLED for state in states)
-    unresolved = tuple(
-        sorted(key for key, state in states if state is not EvidenceSlotState.FILLED)
-    )
-    return filled, len(states), unresolved
-
-
-def _slot_reason(
-    reason: str,
-    state: EvidenceSlotState,
-) -> tuple[str, EvidenceSlotState] | None:
-    prefix = f"slot_{state.value}:"
-    if not reason.startswith(prefix):
-        return None
-    return reason.removeprefix(prefix), state

@@ -226,6 +226,33 @@ def test_explicit_criteria_and_blockers_drive_done_without_checkpoint_special_ca
     assert complete.qualifying_stage_unfilled_or_unknown_slot_keys == ()
 
 
+def test_row_slot_coverage_never_comes_back_from_rendered_reasons() -> None:
+    rendered = derive_project_delivery_row(_definition(), _facts())
+    assert {"slot_unfilled:approval-receipt", "slot_unknown:archive-proof"} <= set(
+        rendered.derivation_reasons
+    )
+
+    # A checkpoint that configures no qualifying-stage slot keeps its reasons; the
+    # read path must publish the coverage it was given, never one recovered by
+    # matching a slot name inside those rendered strings.
+    unconfigured = replace(
+        rendered,
+        qualifying_stage_slots_filled=0,
+        qualifying_stage_slots_required=0,
+        qualifying_stage_unfilled_or_unknown_slot_keys=(),
+    )
+
+    assert (
+        unconfigured.qualifying_stage_slots_filled,
+        unconfigured.qualifying_stage_slots_required,
+        unconfigured.qualifying_stage_unfilled_or_unknown_slot_keys,
+    ) == (0, 0, ())
+    payload = unconfigured.response_payload()
+    assert payload["qualifying_stage_slots_filled"] == 0
+    assert payload["qualifying_stage_slots_required"] == 0
+    assert payload["qualifying_stage_unfilled_or_unknown_slot_keys"] == []
+
+
 def test_health_faults_are_loud_without_moving_lifecycle_or_proof() -> None:
     facts = _facts()
     current = derive_project_delivery_row(_definition(), facts)
