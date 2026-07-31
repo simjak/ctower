@@ -91,7 +91,7 @@ def test_signed_set_same_count_wrong_member_fails_closed_by_name() -> None:
 
 def test_signed_source_set_accepts_authored_expansion_without_product_edit() -> None:
     run, request = _run_and_request()
-    stable_ids = [f"stable-{index}" for index in range(28)]
+    stable_ids = cast(list[object], [f"stable-{index}" for index in range(28)])
     alias = {
         "attention_required": 0,
         "cutover_id": str(run.cutover_id),
@@ -109,7 +109,7 @@ def test_signed_source_set_accepts_authored_expansion_without_product_edit() -> 
 
 def test_signed_checkpoint_plan_accepts_authored_expansion_without_product_edit() -> None:
     run, _ = _run_and_request()
-    checkpoint_keys = [f"I1.{index}" for index in range(15)]
+    checkpoint_keys = cast(list[object], [f"I1.{index}" for index in range(15)])
     alias: dict[str, object] = {"stable_aliases": []}
     plan = {
         "run_id": str(run.run_id),
@@ -148,7 +148,7 @@ def test_duplicate_signed_source_operation_fails_closed_by_name() -> None:
 def test_duplicate_signed_request_identity_fails_closed_by_name() -> None:
     run, _ = _run_and_request()
     pointer_digest = "sha256:pointer"
-    request_ids = ["request-1", "request-1"]
+    request_ids = cast(list[object], ["request-1", "request-1"])
     registry = {
         "cutover_id": str(run.cutover_id),
         "source_selection_digest": run.pinned_digests.source_selection,
@@ -199,10 +199,13 @@ def test_reconciliation_graph_projects_only_signed_checkpoint_source_set() -> No
     }
 
     signed = _pass_two_sql._signed_checkpoint_snapshot(snapshot)
+    definitions = cast(list[dict[str, object]], signed["checkpoint_definitions"])
+    criteria = cast(list[dict[str, object]], signed["checkpoint_criteria"])
+    delivery_rows = cast(list[dict[str, object]], signed["project_delivery_rows"])
 
-    assert [row["checkpoint_key"] for row in signed["checkpoint_definitions"]] == ["I1.0"]
-    assert [row["criterion_key"] for row in signed["checkpoint_criteria"]] == ["criterion-0"]
-    assert [row["checkpoint_key"] for row in signed["project_delivery_rows"]] == ["I1.0"]
+    assert [row["checkpoint_key"] for row in definitions] == ["I1.0"]
+    assert [row["criterion_key"] for row in criteria] == ["criterion-0"]
+    assert [row["checkpoint_key"] for row in delivery_rows] == ["I1.0"]
 
 
 def test_finalization_rechecks_signed_set_currentness(
