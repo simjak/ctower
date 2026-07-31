@@ -22,8 +22,6 @@ import ast
 from pathlib import Path
 from typing import NamedTuple
 
-import pytest
-
 __all__: tuple[str, ...] = ()
 
 # The four fixture-corpus cardinality values that must not appear as
@@ -33,12 +31,36 @@ _FORBIDDEN_CARDINALITIES = {86, 243, 27, 14}
 # The product tree to scan.
 _PRODUCT_ROOT = Path(__file__).resolve().parents[3] / "tools" / "migration"
 
+# Number of forbidden-cardinality hits the renamed-literal test expects.
+_EXPECTED_HIT_COUNT = 2
+
 
 class _ForbiddenHit(NamedTuple):
     file: Path
     line: int
     target: str
     value: int
+
+
+def _check_assign(
+    node: ast.Assign | ast.AnnAssign,
+    py_file: Path,
+) -> list[_ForbiddenHit]:
+    """Check a single module-level assignment node for forbidden cardinality values."""
+    value = _eval_literal(node.value)  # type: ignore[arg-type]
+    if value not in _FORBIDDEN_CARDINALITIES:
+        return []
+    hits: list[_ForbiddenHit] = []
+    if isinstance(node, ast.Assign):
+        for target in node.targets:
+            name = _target_name(target)
+            if name is not None:
+                hits.append(_ForbiddenHit(py_file, node.lineno, name, value))
+    else:  # ast.AnnAssign
+        name = _target_name(node.target)
+        if name is not None:
+            hits.append(_ForbiddenHit(py_file, node.lineno, name, value))
+    return hits
 
 
 def _scan_product_tree(root: Path) -> list[_ForbiddenHit]:
@@ -50,19 +72,10 @@ def _scan_product_tree(root: Path) -> list[_ForbiddenHit]:
         except SyntaxError:
             continue
         for node in ast.iter_child_nodes(tree):
-            if isinstance(node, ast.Assign):
-                value = _eval_literal(node.value)
-                if value in _FORBIDDEN_CARDINALITIES:
-                    for target in node.targets:
-                        name = _target_name(target)
-                        if name is not None:
-                            hits.append(_ForbiddenHit(py_file, node.lineno, name, value))
-            elif isinstance(node, ast.AnnAssign) and node.value is not None:
-                value = _eval_literal(node.value)
-                if value in _FORBIDDEN_CARDINALITIES:
-                    name = _target_name(node.target)
-                    if name is not None:
-                        hits.append(_ForbiddenHit(py_file, node.lineno, name, value))
+            if isinstance(node, ast.Assign) or (
+                isinstance(node, ast.AnnAssign) and node.value is not None
+            ):
+                hits.extend(_check_assign(node, py_file))
     return hits
 
 
@@ -109,6 +122,6 @@ def test_guard_detects_renamed_literal_gating_delivery(tmp_path: Path) -> None:
         encoding="utf-8",
     )
     hits = _scan_product_tree(tmp_path)
-    assert len(hits) == 2
+    assert len(hits) == _EXPECTED_HIT_COUNT
     assert {hit.value for hit in hits} == {14, 86}
     assert {hit.target for hit in hits} == {"_EXPECTED_CHECKPOINTS", "_REQUEST_COUNT"}
