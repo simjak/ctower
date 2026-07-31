@@ -363,8 +363,7 @@ def _project_delivery_current(
     criteria = cast(list[dict[str, object]], graph["checkpoint_criteria"])
     delivery_rows = cast(list[dict[str, object]], graph["project_delivery_rows"])
     stable_alias_ids = [
-        str(row["stable_item_id"])
-        for row in cast(list[dict[str, object]], graph["stable_aliases"])
+        str(row["stable_item_id"]) for row in cast(list[dict[str, object]], graph["stable_aliases"])
     ]
     definition_keys = [str(row["checkpoint_key"]) for row in definitions]
     delivery_keys = [str(row["checkpoint_key"]) for row in delivery_rows]
@@ -504,8 +503,7 @@ def evidence(
 
 def _signed_checkpoint_snapshot(snapshot_body: dict[str, object]) -> dict[str, object]:
     signed_keys = {
-        str(value)
-        for value in cast(list[object], snapshot_body.get("signed_checkpoint_keys", []))
+        str(value) for value in cast(list[object], snapshot_body.get("signed_checkpoint_keys", []))
     }
     if not signed_keys:
         return snapshot_body

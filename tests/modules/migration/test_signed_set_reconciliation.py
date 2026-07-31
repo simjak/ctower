@@ -47,7 +47,9 @@ def test_signed_set_missing_member_fails_closed_by_name() -> None:
     missing = definitions.pop()
     criteria = cast(list[dict[str, object]], snapshot["checkpoint_criteria"])
     criteria[:] = [
-        row for row in criteria if row["checkpoint_definition_id"] != missing["checkpoint_definition_id"]
+        row
+        for row in criteria
+        if row["checkpoint_definition_id"] != missing["checkpoint_definition_id"]
     ]
 
     assert not _matches(expected, snapshot)
@@ -80,9 +82,7 @@ def test_signed_set_same_count_wrong_member_fails_closed_by_name() -> None:
     definitions = cast(list[dict[str, object]], snapshot["checkpoint_definitions"])
     criteria = cast(list[dict[str, object]], snapshot["checkpoint_criteria"])
     replaced_id = definitions[-1]["checkpoint_definition_id"]
-    definitions[-1] = cast(
-        list[dict[str, object]], replacement["checkpoint_definitions"]
-    )[0]
+    definitions[-1] = cast(list[dict[str, object]], replacement["checkpoint_definitions"])[0]
     criteria[-1] = cast(list[dict[str, object]], replacement["checkpoint_criteria"])[0]
     assert criteria[-1]["checkpoint_definition_id"] != replaced_id
 
@@ -133,11 +133,7 @@ def test_signed_checkpoint_plan_accepts_authored_expansion_without_product_edit(
 
 
 def test_duplicate_signed_source_operation_fails_closed_by_name() -> None:
-    alias = {
-        "stable_aliases": [
-            {"stable_item_id": "stable-1", "target_ticket_id": "ticket-1"}
-        ]
-    }
+    alias = {"stable_aliases": [{"stable_item_id": "stable-1", "target_ticket_id": "ticket-1"}]}
     operation = {
         "operation": "exact_alias",
         "identity": {"namespace": "stable-backlog"},
@@ -205,9 +201,7 @@ def test_reconciliation_graph_projects_only_signed_checkpoint_source_set() -> No
     signed = _pass_two_sql._signed_checkpoint_snapshot(snapshot)
 
     assert [row["checkpoint_key"] for row in signed["checkpoint_definitions"]] == ["I1.0"]
-    assert [row["criterion_key"] for row in signed["checkpoint_criteria"]] == [
-        "criterion-0"
-    ]
+    assert [row["criterion_key"] for row in signed["checkpoint_criteria"]] == ["criterion-0"]
     assert [row["checkpoint_key"] for row in signed["project_delivery_rows"]] == ["I1.0"]
 
 
@@ -280,9 +274,7 @@ def _exact_graph() -> tuple[list[dict[str, object]], dict[str, object]]:
     for index in range(15):
         item_expected, item_snapshot = _checkpoint(f"I1.{index}", index)
         expected.extend(item_expected)
-        definitions.extend(
-            cast(list[dict[str, object]], item_snapshot["checkpoint_definitions"])
-        )
+        definitions.extend(cast(list[dict[str, object]], item_snapshot["checkpoint_definitions"]))
         criteria.extend(cast(list[dict[str, object]], item_snapshot["checkpoint_criteria"]))
     return expected, {
         "checkpoint_definitions": definitions,
