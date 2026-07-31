@@ -22,11 +22,11 @@ from tools.migration.ctower_project.ctower_project_source.executor import (
 )
 
 from . import test_postgres as spine
+from ._checkpoint_fixture import checkpoint_keys
 from ._checkpoint_truth import refresh_checkpoint_truth
 from ._postgres import Database
 
 _BARRIER_KEY = 8_174_004_002
-_CHECKPOINT_COUNT = 14
 __all__: tuple[str, ...] = ()
 
 
@@ -52,7 +52,7 @@ def test_finalize_holds_target_heads_until_reconciliation_commit(
     assert mutation_waited
     assert projection_waited
     assert isinstance(changed, WorkReceipt)
-    assert rebuilt == _CHECKPOINT_COUNT
+    assert rebuilt == len(checkpoint_keys())
     positions = _event_positions(
         migration_database,
         finalize_command,

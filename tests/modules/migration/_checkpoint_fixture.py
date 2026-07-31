@@ -12,12 +12,14 @@ import rfc8785
 _ROOT = Path(__file__).parents[3]
 
 
-def checkpoint_resource(
-    checkpoint_key: str,
-    *,
-    outcome: str | None = None,
-) -> dict[str, Any]:
-    vectors = cast(
+def checkpoint_keys() -> tuple[str, ...]:
+    """Read the authored checkpoint set; never restate its size as a literal."""
+
+    return tuple(cast(list[str], _vectors()["checkpoint_keys"]))
+
+
+def _vectors() -> dict[str, object]:
+    return cast(
         dict[str, object],
         json.loads(
             (_ROOT / "contracts/domain/project-delivery/project-delivery-vectors.json").read_text(
@@ -25,6 +27,14 @@ def checkpoint_resource(
             )
         ),
     )
+
+
+def checkpoint_resource(
+    checkpoint_key: str,
+    *,
+    outcome: str | None = None,
+) -> dict[str, Any]:
+    vectors = _vectors()
     configured_criteria = cast(
         dict[str, list[str]],
         vectors["configured_checkpoint_criteria"],

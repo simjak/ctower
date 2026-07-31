@@ -133,16 +133,19 @@ def test_project_delivery_missing_lagging_poison_and_rebuild_are_deterministic(
 
     assert missing is not None and recovered is not None
     assert lagging is not None and poisoned is not None and rebuilt is not None
+    configured = len(_checkpoint_bundle().resources)
+    # A poisoned source reconciles no row; every other pass touches the whole
+    # authored checkpoint set, whatever size the vectors declare it to be.
     assert (
         missing_count,
         recovery_count,
         lagging_count,
         poison_count,
         rebuild_count,
-    ) == (14, 14, 14, 0, 14)
+    ) == (configured, configured, configured, 0, configured)
     assert {row.health for row in missing.rows} == {"STATE_UNKNOWN"}
     recovered_semantics = tuple(row.semantic_digest for row in recovered.rows)
-    assert len(recovered_semantics) == len(_checkpoint_bundle().resources)
+    assert len(recovered_semantics) == configured
     assert {row.health for row in lagging.rows} == {"STATE_UNKNOWN"}
     assert {row.health for row in poisoned.rows} == {"STATE_UNKNOWN"}
     assert tuple(row.semantic_digest for row in rebuilt.rows) == recovered_semantics

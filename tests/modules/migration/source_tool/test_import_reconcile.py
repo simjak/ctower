@@ -66,7 +66,6 @@ from .fixtures import (
 )
 
 __all__: tuple[str, ...] = ()
-_CHECKPOINT_COUNT = 14
 _STABLE_COUNT = 27
 
 NOW = datetime(2026, 7, 25, 15, 45, tzinfo=UTC)
@@ -246,7 +245,7 @@ def test_reconciliation_proves_frozen_equations_from_generated_reads(
     )
     assert report["expected_graph"] == report["actual_graph"]
     assert len(report["actual_graph"]["stable_aliases"]) == _STABLE_COUNT
-    assert len(report["actual_graph"]["checkpoint_definitions"]) == _CHECKPOINT_COUNT
+    assert len(report["actual_graph"]["checkpoint_definitions"]) == len(fixture.checkpoint_keys)
     assert report["pass_two_measurement"]["new_domain_facts"] == 0
     assert report["pass_two_measurement"]["new_events"] == 0
     assert fixture.verifier.verify(report, "report_digest") == report["report_digest"]
