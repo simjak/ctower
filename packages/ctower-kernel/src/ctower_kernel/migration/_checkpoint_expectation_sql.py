@@ -32,18 +32,36 @@ def matches(
     expected = _stored(connection, run_id)
     definitions = cast(list[dict[str, object]], snapshot_body["checkpoint_definitions"])
     actual = _current(snapshot_body)
+    signed_actual = _signed_current(expected, actual)
     return (
         bool(expected)
         and _unique_checkpoint_keys(expected)
         and _unique_checkpoint_keys(actual)
         and all(str(row["accountable_owner"]).strip() for row in definitions)
-        and expected == actual
+        and expected == signed_actual
     )
+
+
+def _signed_current(
+    expected: Iterable[_Expectation],
+    actual: Iterable[_Expectation],
+) -> tuple[_Expectation, ...]:
+    expected_keys = {item.checkpoint_key for item in expected}
+    return tuple(sorted(item for item in actual if item.checkpoint_key in expected_keys))
 
 
 def _unique_checkpoint_keys(expectations: Iterable[_Expectation]) -> bool:
     keys = [item.checkpoint_key for item in expectations]
     return len(keys) == len(set(keys))
+
+
+def signed_keys(
+    connection: psycopg.Connection[dict[str, object]],
+    run_id: UUID,
+) -> list[str]:
+    """Return the exact checkpoint identity set signed into the verified plan."""
+
+    return [item.checkpoint_key for item in _stored(connection, run_id)]
 
 
 def graph_sets(snapshot_body: dict[str, object]) -> tuple[list[str], list[str]]:

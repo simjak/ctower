@@ -25,6 +25,12 @@ def test_exact_signed_set_accepts_authored_expansion_without_product_edit() -> N
     assert _matches(expected, snapshot)
 
 
+def test_authored_target_extension_outside_signed_source_set_is_current() -> None:
+    expected, snapshot = _exact_graph()
+
+    assert _matches(expected[:-1], snapshot)
+
+
 def test_signed_set_substitution_fails_closed_by_name() -> None:
     expected, snapshot = _exact_graph()
     assert _matches(expected, snapshot)
@@ -50,14 +56,8 @@ def test_signed_set_missing_member_fails_closed_by_name() -> None:
 def test_signed_set_extra_member_fails_closed_by_name() -> None:
     expected, snapshot = _exact_graph()
     assert _matches(expected, snapshot)
-    extra_expected, extra_snapshot = _checkpoint("I1.extra", 99)
-    cast(list[dict[str, object]], snapshot["checkpoint_definitions"]).extend(
-        cast(list[dict[str, object]], extra_snapshot["checkpoint_definitions"])
-    )
-    cast(list[dict[str, object]], snapshot["checkpoint_criteria"]).extend(
-        cast(list[dict[str, object]], extra_snapshot["checkpoint_criteria"])
-    )
-    assert extra_expected
+    extra_expected, _ = _checkpoint("I1.extra", 99)
+    expected.extend(extra_expected)
 
     assert not _matches(expected, snapshot)
 
@@ -183,6 +183,32 @@ def test_project_delivery_current_derives_exact_checkpoint_and_alias_identities(
     definitions.append(deepcopy(definitions[0]))
     delivery_rows.append(deepcopy(delivery_rows[0]))
     assert not _pass_two_sql._project_delivery_current(duplicate, [1])
+
+
+def test_reconciliation_graph_projects_only_signed_checkpoint_source_set() -> None:
+    snapshot = {
+        "signed_checkpoint_keys": ["I1.0"],
+        "checkpoint_definitions": [
+            {"checkpoint_definition_id": "definition-0", "checkpoint_key": "I1.0"},
+            {"checkpoint_definition_id": "definition-1", "checkpoint_key": "I1.1"},
+        ],
+        "checkpoint_criteria": [
+            {"checkpoint_definition_id": "definition-0", "criterion_key": "criterion-0"},
+            {"checkpoint_definition_id": "definition-1", "criterion_key": "criterion-1"},
+        ],
+        "project_delivery_rows": [
+            {"checkpoint_key": "I1.0"},
+            {"checkpoint_key": "I1.1"},
+        ],
+    }
+
+    signed = _pass_two_sql._signed_checkpoint_snapshot(snapshot)
+
+    assert [row["checkpoint_key"] for row in signed["checkpoint_definitions"]] == ["I1.0"]
+    assert [row["criterion_key"] for row in signed["checkpoint_criteria"]] == [
+        "criterion-0"
+    ]
+    assert [row["checkpoint_key"] for row in signed["project_delivery_rows"]] == ["I1.0"]
 
 
 def test_finalization_rechecks_signed_set_currentness(
