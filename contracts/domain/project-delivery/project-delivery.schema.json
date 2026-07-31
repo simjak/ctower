@@ -22,7 +22,7 @@
       "additionalProperties": false,
       "properties": {
         "checkpoint_key": {
-          "pattern": "^I[12]\\.[0-9]+$",
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]{0,127}$",
           "type": "string"
         },
         "checkpoint_label": {
@@ -63,6 +63,22 @@
         },
         "criteria": {
           "$ref": "#/$defs/criteriaCoverage"
+        },
+        "qualifying_stage_slots_filled": {
+          "minimum": 0,
+          "type": "integer"
+        },
+        "qualifying_stage_slots_required": {
+          "minimum": 0,
+          "type": "integer"
+        },
+        "qualifying_stage_unfilled_or_unknown_slot_keys": {
+          "items": {
+            "pattern": "^[a-z][a-z0-9._-]*$",
+            "type": "string"
+          },
+          "type": "array",
+          "uniqueItems": true
         },
         "source_watermark": {
           "minimum": 0,
@@ -162,6 +178,9 @@
         "outcome",
         "accountable_owner",
         "criteria",
+        "qualifying_stage_slots_filled",
+        "qualifying_stage_slots_required",
+        "qualifying_stage_unfilled_or_unknown_slot_keys",
         "source_watermark",
         "projection_watermark",
         "freshness",
@@ -179,45 +198,6 @@
       ],
       "type": "object",
       "allOf": [
-        {
-          "$comment": "I1.7 remains visibly blocked/degraded until disaster-safe authority is separately proven.",
-          "if": {
-            "properties": {
-              "checkpoint_key": {
-                "const": "I1.7"
-              },
-              "freshness": {
-                "const": "fresh"
-              }
-            },
-            "required": [
-              "checkpoint_key",
-              "freshness"
-            ]
-          },
-          "then": {
-            "properties": {
-              "headline_state": {
-                "const": "blocked"
-              },
-              "confidence": {
-                "const": "development_degraded"
-              },
-              "health": {
-                "const": "CP3_D_NOT_PROVEN"
-              },
-              "durability": {
-                "const": "CP3_D_NOT_PROVEN"
-              },
-              "recovery": {
-                "const": "EXTERNAL_FAILURE_DOMAIN_UNPROVEN"
-              },
-              "data_class": {
-                "const": "RECONSTRUCTIBLE_ONLY"
-              }
-            }
-          }
-        },
         {
           "$comment": "A stale or unknown projection cannot advertise current health.",
           "if": {

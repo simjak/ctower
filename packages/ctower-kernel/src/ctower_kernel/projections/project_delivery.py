@@ -1,9 +1,10 @@
-"""Pure, read-only Project Delivery fold and I1.7 authority-health models."""
+"""Pure, read-only Project Delivery fold and cutover-health models."""
 
 from __future__ import annotations
 
 import hashlib
 import json
+import re
 from dataclasses import dataclass
 from datetime import UTC, datetime, timedelta
 from enum import StrEnum
@@ -14,6 +15,8 @@ __all__ = [
     "CtowerProjectCutoverHealth",
     "DeliveryFacts",
     "DeliveryState",
+    "EvidenceSlotFact",
+    "EvidenceSlotState",
     "MigrationHealthDigests",
     "ProjectDeliveryRow",
     "ProjectDeliveryView",
@@ -22,6 +25,7 @@ __all__ = [
 
 _FRESHNESS_LIMIT = timedelta(hours=1)
 _EPOCH = datetime.fromtimestamp(0, UTC)
+_SLOT_KEY = re.compile(r"^[a-z][a-z0-9._-]*$")
 
 
 class DeliveryState(StrEnum):
@@ -35,6 +39,28 @@ class DeliveryState(StrEnum):
     RELEASED = "released"
     BLOCKED = "blocked"
     DONE = "done"
+
+
+class EvidenceSlotState(StrEnum):
+    """Current status of one required slot from accepted source facts."""
+
+    FILLED = "filled"
+    UNFILLED = "unfilled"
+    UNKNOWN = "unknown"
+
+
+@dataclass(frozen=True, slots=True)
+class EvidenceSlotFact:
+    """One stable qualifying-stage slot and its current evidence status."""
+
+    key: str
+    state: EvidenceSlotState
+
+    def __post_init__(self) -> None:
+        if _SLOT_KEY.fullmatch(self.key) is None:
+            raise ValueError("evidence slot key must be stable")
+        if not isinstance(self.state, EvidenceSlotState):
+            raise TypeError("evidence slot state must be explicit")
 
 
 _MATURITY_STATES = frozenset(
@@ -83,6 +109,7 @@ class DeliveryFacts:
     observed_at: datetime
     source_complete: bool
     cp3_d_proven: bool
+    qualifying_stage_slots: tuple[EvidenceSlotFact, ...]
     durability: str = "CP3_D_NOT_PROVEN"
     recovery: str = "EXTERNAL_FAILURE_DOMAIN_UNPROVEN"
     data_class: str = "RECONSTRUCTIBLE_ONLY"
@@ -99,6 +126,9 @@ class DeliveryFacts:
             raise ValueError("projection times must be timezone-aware")
         if self.observed_at < self.last_reconciled_at:
             raise ValueError("observation cannot precede reconciliation")
+        slot_keys = tuple(slot.key for slot in self.qualifying_stage_slots)
+        if len(slot_keys) != len(set(slot_keys)):
+            raise ValueError("qualifying-stage evidence slot keys must be unique")
 
 
 @dataclass(frozen=True, slots=True)
@@ -127,6 +157,21 @@ class ProjectDeliveryRow:
     rebuild_generation: int
     source_ids: tuple[str, ...]
     derivation_reasons: tuple[str, ...]
+    qualifying_stage_slots_filled: int = 0
+    qualifying_stage_slots_required: int = 0
+    qualifying_stage_unfilled_or_unknown_slot_keys: tuple[str, ...] = ()
+
+    def __post_init__(self) -> None:
+        if (
+            self.qualifying_stage_slots_filled < 0
+            or self.qualifying_stage_slots_required < self.qualifying_stage_slots_filled
+        ):
+            raise ValueError("qualifying-stage slot coverage is inconsistent")
+        keys = self.qualifying_stage_unfilled_or_unknown_slot_keys
+        if len(keys) != len(set(keys)):
+            raise ValueError("unfilled or unknown slot keys must be unique")
+        if self.qualifying_stage_slots_filled + len(keys) != self.qualifying_stage_slots_required:
+            raise ValueError("qualifying-stage slot counts must account for every key")
 
     def response_payload(self) -> dict[str, object]:
         return {
@@ -146,6 +191,11 @@ class ProjectDeliveryRow:
             "data_class": self.data_class,
             "outcome": self.outcome,
             "projection_watermark": self.projection_watermark,
+            "qualifying_stage_slots_filled": self.qualifying_stage_slots_filled,
+            "qualifying_stage_slots_required": self.qualifying_stage_slots_required,
+            "qualifying_stage_unfilled_or_unknown_slot_keys": list(
+                self.qualifying_stage_unfilled_or_unknown_slot_keys
+            ),
             "rebuild_generation": self.rebuild_generation,
             "reconciled_at": self.reconciled_at.isoformat(),
             "recovery": self.recovery,
@@ -264,12 +314,17 @@ def derive_project_delivery_row(
     proven = tuple(sorted(facts.proven_criteria))
     missing = tuple(sorted(set(definition.criteria).difference(proven)))
     blockers = tuple(sorted(set(facts.effective_blockers)))
+    slots = tuple(sorted(facts.qualifying_stage_slots, key=lambda slot: slot.key))
+    slots_filled = sum(slot.state is EvidenceSlotState.FILLED for slot in slots)
+    unresolved_slots = tuple(
+        slot.key for slot in slots if slot.state is not EvidenceSlotState.FILLED
+    )
     headline = _headline(missing, facts, blockers)
     if headline not in definition.applicable_states and headline is not DeliveryState.BLOCKED:
         raise ValueError("facts name a lifecycle state absent from the checkpoint")
     freshness, confidence, health = _health(facts)
     durability, recovery, data_class = _claims(facts)
-    reasons = _derivation_reasons(proven, missing, blockers, facts)
+    reasons = _derivation_reasons(proven, missing, blockers, slots, facts)
     semantic = _semantic_digest(
         definition,
         facts,
@@ -303,6 +358,9 @@ def derive_project_delivery_row(
         rebuild_generation=facts.rebuild_generation,
         source_ids=tuple(sorted(set(facts.source_ids))),
         derivation_reasons=reasons,
+        qualifying_stage_slots_filled=slots_filled,
+        qualifying_stage_slots_required=len(slots),
+        qualifying_stage_unfilled_or_unknown_slot_keys=unresolved_slots,
     )
 
 
@@ -311,21 +369,12 @@ def _headline(
     facts: DeliveryFacts,
     blockers: tuple[str, ...],
 ) -> DeliveryState:
-    """Resolve the visible headline, failing closed away from `done`.
-
-    `done` requires every declared criterion proven AND a complete source AND
-    no open effective blocker AND (for the development dogfood checkpoint) a
-    proven CP3-D. An unproven CP3-D is itself an effective blocker
-    (SPEC "Project Delivery projection"), so it forces `blocked` even when a
-    caller forgets to declare it. A gapped source likewise cannot host `done`;
-    the visible headline fails closed to `blocked` while the underlying maturity
-    is retained in `derivation_reasons`.
-    """
+    """Resolve headline precedence from configured proof and explicit blockers."""
 
     complete = not missing
-    if complete and facts.source_complete and not blockers and facts.cp3_d_proven:
+    if complete and facts.source_complete and not blockers:
         return DeliveryState.DONE
-    if blockers or not facts.source_complete or not facts.cp3_d_proven:
+    if blockers or not facts.source_complete:
         return DeliveryState.BLOCKED
     return facts.maturity
 
@@ -334,15 +383,15 @@ def _derivation_reasons(
     proven: tuple[str, ...],
     missing: tuple[str, ...],
     blockers: tuple[str, ...],
+    slots: tuple[EvidenceSlotFact, ...],
     facts: DeliveryFacts,
 ) -> tuple[str, ...]:
     reasons: list[str] = [
         *(f"criterion_current:{item}" for item in proven),
         *(f"criterion_missing:{item}" for item in missing),
         *(f"effective_blocker:{item}" for item in blockers),
+        *(f"slot_{slot.state.value}:{slot.key}" for slot in slots),
     ]
-    if not facts.cp3_d_proven:
-        reasons.append("cp3_d_unproven")
     if not facts.source_complete:
         reasons.append("source_incomplete")
     reasons.append(f"underlying_maturity:{facts.maturity.value}")
@@ -385,6 +434,10 @@ def _semantic_digest(
         "durability": durability,
         "headline_state": headline.value,
         "projection_watermark": facts.projection_watermark,
+        "qualifying_stage_slots": tuple(
+            (slot.key, slot.state.value)
+            for slot in sorted(facts.qualifying_stage_slots, key=lambda item: item.key)
+        ),
         "recovery": recovery,
         "source_ids": tuple(sorted(set(facts.source_ids))),
         "source_watermark": facts.source_watermark,

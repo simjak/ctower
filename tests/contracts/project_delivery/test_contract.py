@@ -1,8 +1,9 @@
-"""Project Delivery is strict, proof-aware, freshness-honest, and rebuildable."""
+"""Project Delivery is generic, proof-aware, freshness-honest, and rebuildable."""
 
 from __future__ import annotations
 
 import json
+from collections.abc import Iterator
 from pathlib import Path
 from typing import Any, cast
 
@@ -11,101 +12,79 @@ import rfc8785
 from jsonschema import Draft202012Validator, FormatChecker
 from jsonschema.exceptions import ValidationError
 
+from ._fixture import project_delivery_row, project_delivery_view
+
 __all__: tuple[str, ...] = ()
 
 ROOT = Path(__file__).parents[3]
 SCHEMA_PATH = ROOT / "contracts/domain/project-delivery/project-delivery.schema.json"
 VECTOR_PATH = ROOT / "contracts/domain/project-delivery/project-delivery-vectors.json"
-DIGEST = "sha256:" + ("0" * 64)
-CHECKPOINT_COUNT = 14
-I1_7_CRITERION_COUNT = 6
+CHECKPOINT_SCHEMA_PATH = ROOT / "contracts/components/checkpoint.schema.json"
+OPENAPI_PATH = ROOT / "contracts/http/openapi.yaml"
+CHECKPOINT_KEY_PATTERN = r"^[A-Za-z0-9][A-Za-z0-9._-]{0,127}$"
 FRESHNESS_SECONDS = 3600
 
 
-def _row() -> dict[str, object]:
-    return {
-        "checkpoint_key": "I1.7",
-        "checkpoint_label": "Development dogfood cutover",
-        "headline_state": "blocked",
-        "underlying_maturity": "verified",
-        "outcome": "ctower owns reconstructible engineering work",
-        "accountable_owner": "operator",
-        "criteria": {"proven": 5, "declared": 6},
-        "source_watermark": 27,
-        "projection_watermark": 27,
-        "freshness": "fresh",
-        "confidence": "development_degraded",
-        "health": "CP3_D_NOT_PROVEN",
-        "durability": "CP3_D_NOT_PROVEN",
-        "recovery": "EXTERNAL_FAILURE_DOMAIN_UNPROVEN",
-        "data_class": "RECONSTRUCTIBLE_ONLY",
-        "semantic_digest": DIGEST,
-        "reconciled_at": "2026-07-25T12:00:00Z",
-        "freshness_due_at": "2026-07-25T13:00:00Z",
-        "rebuild_generation": 1,
-        "source_ids": ["ctower:CT-I1-007", "mission-control:i1.7"],
-        "derivation_reasons": [
-            "criterion_missing:disaster-safe-authority",
-            "effective_blocker:disaster-safe-authority",
-            "underlying_maturity:verified",
-        ],
-    }
-
-
-def _view(row: dict[str, object] | None = None) -> dict[str, object]:
-    return {
-        "schema": "ctower.project-delivery/v1",
-        "company_key": "ctower",
-        "project_key": "ctower",
-        "source_record_position": 27,
-        "projection_record_position": 27,
-        "reconciled_at": "2026-07-25T12:00:00Z",
-        "freshness_due_at": "2026-07-25T13:00:00Z",
-        "projection_semantic_digest": DIGEST,
-        "rebuild_generation": 1,
-        "rows": [row or _row()],
-    }
-
-
-def test_i1_7_row_exposes_degraded_proof_coverage_without_writable_status() -> None:
+def test_cross_domain_row_reports_exact_qualifying_stage_slot_coverage() -> None:
     validator = _validator()
-    payload = _view()
+    payload = project_delivery_view()
+
     validator.validate(payload)
+    row = cast(list[dict[str, object]], payload["rows"])[0]
+    assert (
+        row["qualifying_stage_slots_filled"],
+        row["qualifying_stage_slots_required"],
+    ) == (1, 3)
+    assert row["qualifying_stage_unfilled_or_unknown_slot_keys"] == [
+        "approval-receipt",
+        "archive-proof",
+    ]
+    missing_keys = project_delivery_row()
+    del missing_keys["qualifying_stage_unfilled_or_unknown_slot_keys"]
+    with pytest.raises(ValidationError):
+        validator.validate(project_delivery_view(missing_keys))
+    with pytest.raises(ValidationError):
+        validator.validate(
+            project_delivery_view(
+                {
+                    **project_delivery_row(),
+                    "qualifying_stage_unfilled_or_unknown_slot_keys": [
+                        "approval-receipt",
+                        "approval-receipt",
+                    ],
+                }
+            )
+        )
+
+
+def test_projection_remains_read_only_and_freshness_honest() -> None:
+    validator = _validator()
+    payload = project_delivery_view()
     with pytest.raises(ValidationError):
         validator.validate({**payload, "status": "blocked"})
     with pytest.raises(ValidationError):
         validator.validate(
-            {
-                **payload,
-                "rows": [{**_row(), "completion_percentage": 83}],
-            }
-        )
-    with pytest.raises(ValidationError):
-        validator.validate(
-            {
-                **payload,
-                "rows": [{**_row(), "headline_state": "done"}],
-            }
-        )
-
-
-def test_stale_unknown_and_zero_criteria_cannot_advertise_current_delivery() -> None:
-    validator = _validator()
-    with pytest.raises(ValidationError):
-        validator.validate(
-            _view(
+            project_delivery_view(
                 {
-                    **_row(),
-                    "criteria": {"proven": 0, "declared": 0},
+                    **project_delivery_row(),
+                    "completion_percentage": 67,
+                }
+            )
+        )
+    with pytest.raises(ValidationError):
+        validator.validate(
+            project_delivery_view(
+                {
+                    **project_delivery_row(),
                     "freshness": "STATE_UNKNOWN",
                     "health": "CURRENT",
                 }
             )
         )
     validator.validate(
-        _view(
+        project_delivery_view(
             {
-                **_row(),
+                **project_delivery_row(),
                 "freshness": "STATE_UNKNOWN",
                 "health": "STATE_UNKNOWN",
             }
@@ -113,14 +92,48 @@ def test_stale_unknown_and_zero_criteria_cannot_advertise_current_delivery() -> 
     )
 
 
-def test_frozen_vectors_define_headline_order_freshness_and_rebuild_semantics() -> None:
-    vectors = json.loads(VECTOR_PATH.read_text(encoding="utf-8"))
-    development = vectors["development_truth"]
-    freshness = vectors["freshness"]
+def test_development_verdict_can_complete_only_its_configured_checkpoint() -> None:
+    validator = _validator()
+    limited = {
+        **project_delivery_row(),
+        "headline_state": "done",
+        "criteria": {"proven": 3, "declared": 3},
+        "qualifying_stage_slots_filled": 3,
+        "qualifying_stage_slots_required": 3,
+        "qualifying_stage_unfilled_or_unknown_slot_keys": [],
+        "confidence": "development_degraded",
+        "health": "CP3_D_NOT_PROVEN",
+        "durability": "CP3_D_NOT_PROVEN",
+        "recovery": "EXTERNAL_FAILURE_DOMAIN_UNPROVEN",
+        "data_class": "RECONSTRUCTIBLE_ONLY",
+        "derivation_reasons": ["claim_scope:configured_checkpoint_only"],
+    }
+    validator.validate(project_delivery_view(limited))
 
-    assert len(vectors["checkpoint_keys"]) == CHECKPOINT_COUNT
-    assert len(set(vectors["checkpoint_keys"])) == CHECKPOINT_COUNT
-    assert len(vectors["i1_7_criteria"]) == I1_7_CRITERION_COUNT
+    verdict_scope = json.loads(VECTOR_PATH.read_text(encoding="utf-8"))["verdict_scope"]
+    assert verdict_scope["may_complete_configured_checkpoint"] is True
+    assert verdict_scope["may_claim_full_increment"] is False
+    assert verdict_scope["may_activate_successor_increment"] is False
+
+
+def test_project_delivery_contracts_forbid_checkpoint_literal_branches() -> None:
+    documents = _checkpoint_contract_documents()
+    checkpoint_schemas = [
+        schema for document in documents for schema in _checkpoint_key_schemas(document)
+    ]
+
+    assert len(checkpoint_schemas) == len(documents)
+    for schema in checkpoint_schemas:
+        assert "const" not in schema, "checkpoint_key must not select a literal"
+        assert "enum" not in schema, "checkpoint_key must not enumerate configured values"
+        assert schema.get("pattern") == CHECKPOINT_KEY_PATTERN
+
+
+def test_frozen_vectors_define_generic_fold_freshness_and_carry_forward() -> None:
+    vectors = json.loads(VECTOR_PATH.read_text(encoding="utf-8"))
+    freshness = vectors["freshness"]
+    carry_forward = vectors["carry_forward"]
+
     assert vectors["headline_precedence"] == [
         "done",
         "blocked",
@@ -131,17 +144,16 @@ def test_frozen_vectors_define_headline_order_freshness_and_rebuild_semantics() 
         "in_progress",
         "planned",
     ]
-    assert development["durability"] == "CP3_D_NOT_PROVEN"
-    assert development["recovery"] == "EXTERNAL_FAILURE_DOMAIN_UNPROVEN"
-    assert development["data_class"] == "RECONSTRUCTIBLE_ONLY"
     assert freshness["recompute_after_seconds"] == FRESHNESS_SECONDS
     assert freshness["request_time_mutation"] is False
     assert freshness["accepted_position"] is None
     assert freshness["durability_state"] == "durability_pending"
+    assert carry_forward["ordinary_generated_api_cli_only"] is True
+    assert carry_forward["bulk_import_authority"] is False
 
 
 def test_delete_then_rebuild_at_one_watermark_has_identical_semantic_bytes() -> None:
-    first = _row()
+    first = project_delivery_row()
     rebuilt = {
         **first,
         "reconciled_at": "2026-07-25T12:30:00Z",
@@ -157,6 +169,40 @@ def test_delete_then_rebuild_at_one_watermark_has_identical_semantic_bytes() -> 
     assert semantic(first) == semantic(rebuilt)
     assert first["source_ids"] == rebuilt["source_ids"]
     assert first["derivation_reasons"] == rebuilt["derivation_reasons"]
+
+
+def _checkpoint_contract_documents() -> list[dict[str, object]]:
+    openapi = cast(
+        dict[str, object],
+        json.loads(OPENAPI_PATH.read_text(encoding="utf-8")),
+    )
+    components = cast(dict[str, object], openapi["components"])
+    schemas = cast(dict[str, object], components["schemas"])
+    return [
+        cast(
+            dict[str, object],
+            json.loads(CHECKPOINT_SCHEMA_PATH.read_text(encoding="utf-8")),
+        ),
+        cast(
+            dict[str, object],
+            json.loads(SCHEMA_PATH.read_text(encoding="utf-8")),
+        ),
+        cast(dict[str, object], schemas["ProjectDeliveryRow"]),
+    ]
+
+
+def _checkpoint_key_schemas(node: object) -> Iterator[dict[str, object]]:
+    if isinstance(node, dict):
+        properties = node.get("properties")
+        if isinstance(properties, dict):
+            checkpoint = properties.get("checkpoint_key")
+            if isinstance(checkpoint, dict):
+                yield cast(dict[str, object], checkpoint)
+        for value in node.values():
+            yield from _checkpoint_key_schemas(value)
+    elif isinstance(node, list):
+        for value in node:
+            yield from _checkpoint_key_schemas(value)
 
 
 def _validator() -> Draft202012Validator:

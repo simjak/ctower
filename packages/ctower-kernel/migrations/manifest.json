@@ -1,8 +1,8 @@
 {
   "schema": "ctower.migrations/v3",
   "adoption_baseline": {
-    "through": "0035_board_source_lookup.sql",
-    "schema_sha256": "sha256:e36519153ff3d6ce5cbe9c690b8975dae74f1107a700df657a9c55dfd10c286c",
+    "through": "0037_relax_checkpoint_key_domain.sql",
+    "schema_sha256": "sha256:b886edd9977b14e32ba17061120ad1065453bba7c4cd2b26570675cd68085d9d",
     "semantic_checks": "ctower.pre-ledger/v1",
     "schema_object_sum256": "sum256:00235ba6a1b0a153e4655d2214c13ebda142d82e395fc7e250b97902e629ef6e"
   },
@@ -283,7 +283,7 @@
       "sha256": "sha256:f7179ab7ceb166f8395a81dcc49f99aa38b299513b998238e2ec967d66f66d27",
       "minimum_service_version": "0.0.0",
       "maximum_service_version": "0.0.0",
-      "forward_test": "pytest:tests/acceptance/increment-1/test_checkpoint_delivery.py::test_checkpoint_bundle_materializes_all_14_definitions_atomically_and_replays",
+      "forward_test": "pytest:tests/acceptance/increment-1/test_checkpoint_delivery.py::test_checkpoint_bundle_materializes_every_definition_and_replays_without_residue",
       "rollback_or_forward_compensation": "Keep checkpoint component revisions readable by a checkpoint-aware build or append a reviewed forward constraint supersession; never delete Catalog or Project Delivery authority facts.",
       "backup_checkpoint": "Before applying to a nonempty installation, capture and verify the catalog_components constraint definition plus component, revision, definition, and criterion counts."
     },
@@ -350,6 +350,15 @@
       "forward_test": "pytest:tests/modules/migration/test_schema_migration_ledger.py::test_valid_looking_ledger_without_migrations_is_refused",
       "rollback_or_forward_compensation": "Keep the NOLOGIN ledger authority isolated from migration and runtime roles; append reviewed forward compensation before changing ownership or write authority.",
       "backup_checkpoint": "Before reconciling a nonempty installation, capture the exact ledger role attributes, memberships, settings, and owned ledger objects plus a verified database backup."
+    },
+    {
+      "path": "0037_relax_checkpoint_key_domain.sql",
+      "sha256": "sha256:2908edc9baffcd802a74c7957090d1e84de6538d426ab8054d5ccb70c7f97355",
+      "minimum_service_version": "0.0.0",
+      "maximum_service_version": "0.0.0",
+      "forward_test": "pytest:tests/acceptance/increment-1/test_checkpoint_delivery.py::test_non_increment_checkpoint_key_materializes_and_projects_end_to_end",
+      "rollback_or_forward_compensation": "Keep checkpoint_key values readable by the authored contract pattern; append reviewed forward compensation before narrowing the domain, never restore an increment-only literal.",
+      "backup_checkpoint": "Before applying to a nonempty installation, capture the existing checkpoint_key CHECK constraint definitions and all stored checkpoint_key values plus a verified database backup."
     }
   ]
 }

@@ -11,10 +11,19 @@ from psycopg.rows import dict_row
 from psycopg.types.json import Jsonb
 
 from ctower_kernel.projections._project_delivery_sources_sql import (
+    active_checkpoint_event_ids as _active_checkpoint_event_ids,
+)
+from ctower_kernel.projections._project_delivery_sources_sql import (
     criterion_proven as _criterion_proven,
 )
 from ctower_kernel.projections._project_delivery_sources_sql import (
     cutover_claims as _cutover_claims,
+)
+from ctower_kernel.projections._project_delivery_sources_sql import (
+    proof_link_states as _proof_link_states,
+)
+from ctower_kernel.projections._project_delivery_sources_sql import (
+    qualifying_stage_slots as _qualifying_stage_slots,
 )
 from ctower_kernel.projections._project_delivery_sources_sql import (
     source_complete as _source_complete,
@@ -77,8 +86,9 @@ def _reconcile(
     rebuild_generation: int | None,
 ) -> int:
     definitions = _definitions(connection, tenant_id)
+    removed = _delete_inactive_rows(connection, tenant_id, definitions)
     if not definitions:
-        return 0
+        return removed
     source = _source_position(connection, tenant_id)
     complete = _source_complete(connection, tenant_id, definitions, source)
     projection = source if complete else _prior_projection(connection, tenant_id)
@@ -97,8 +107,8 @@ def _reconcile(
         complete=complete,
         now=now,
     ):
-        return 0
-    affected = 0
+        return removed
+    affected = removed
     for definition_row in definitions:
         definition, facts = _facts(
             connection,
@@ -128,14 +138,17 @@ def _definitions(
     connection: psycopg.Connection[dict[str, object]],
     tenant_id: UUID,
 ) -> list[dict[str, object]]:
+    event_ids = _active_checkpoint_event_ids(connection, tenant_id)
+    if not event_ids:
+        return []
     return connection.execute(
         """
-        SELECT DISTINCT ON (project_key, checkpoint_key) *
+        SELECT *
         FROM project_delivery_checkpoint_definitions
-        WHERE tenant_id = %s
-        ORDER BY project_key, checkpoint_key, definition_revision DESC
+        WHERE tenant_id = %s AND event_id = ANY(%s)
+        ORDER BY project_key, ordered_position
         """,
-        (tenant_id,),
+        (tenant_id, list(event_ids)),
     ).fetchall()
 
 
@@ -161,10 +174,11 @@ def _facts(
         (tenant_id, row["checkpoint_definition_id"]),
     ).fetchall()
     criteria = tuple(str(item["criterion_key"]) for item in criteria_rows)
+    # One shared read of every configured proof link; criterion coverage and slot
+    # coverage are two compositions of the same resolved facts, never two predicates.
+    link_states = _proof_link_states(connection, tenant_id, criteria_rows)
     proven = frozenset(
-        str(item["criterion_key"])
-        for item in criteria_rows
-        if _criterion_proven(connection, tenant_id, item)
+        str(item["criterion_key"]) for item in criteria_rows if _criterion_proven(item, link_states)
     )
     ticket_ids = tuple(
         item["proof_ticket_id"]
@@ -172,6 +186,7 @@ def _facts(
         if isinstance(item["proof_ticket_id"], UUID)
     )
     maturity, blockers = _ticket_facts(connection, tenant_id, ticket_ids)
+    slots = _qualifying_stage_slots(criteria_rows, link_states)
     source_ids = _source_ids(row, criteria_rows, ticket_ids)
     states = frozenset(
         DeliveryState(str(value)) for value in cast(list[object], row["applicable_states"])
@@ -195,12 +210,41 @@ def _facts(
         observed_at=now,
         source_complete=complete,
         cp3_d_proven=cutover["durability"] == "CP3_D_PROVEN",
+        qualifying_stage_slots=slots,
         durability=cutover["durability"],
         recovery=cutover["recovery"],
         data_class=cutover["data_class"],
         rebuild_generation=generation,
     )
     return definition, facts
+
+
+def _delete_inactive_rows(
+    connection: psycopg.Connection[dict[str, object]],
+    tenant_id: UUID,
+    definitions: list[dict[str, object]],
+) -> int:
+    projects = [str(row["project_key"]) for row in definitions]
+    checkpoints = [str(row["checkpoint_key"]) for row in definitions]
+    if not definitions:
+        return connection.execute(
+            "DELETE FROM project_delivery_projection_rows WHERE tenant_id = %s",
+            (tenant_id,),
+        ).rowcount
+    return connection.execute(
+        """
+        DELETE FROM project_delivery_projection_rows AS projection
+        WHERE projection.tenant_id = %s
+          AND NOT EXISTS (
+            SELECT 1
+            FROM unnest(%s::text[], %s::text[])
+              AS active(project_key, checkpoint_key)
+            WHERE active.project_key = projection.project_key
+              AND active.checkpoint_key = projection.checkpoint_key
+          )
+        """,
+        (tenant_id, projects, checkpoints),
+    ).rowcount
 
 
 def _up_to_date(
@@ -219,7 +263,9 @@ def _up_to_date(
             COALESCE(MIN(source_watermark), 0) AS source,
             COALESCE(MIN(projection_watermark), 0) AS projection,
             MIN((row_payload ->> 'freshness_due_at')::timestamptz) AS due,
-            bool_and((row_payload ->> 'health') <> 'STATE_UNKNOWN') AS known
+            bool_and(
+              NOT (row_payload -> 'derivation_reasons' ? 'source_incomplete')
+            ) AS source_complete
         FROM project_delivery_projection_rows WHERE tenant_id = %s
         """,
         (tenant_id,),
@@ -230,7 +276,7 @@ def _up_to_date(
         int(cast(int, row["count"])) == row_count
         and int(cast(int, row["source"])) == source
         and int(cast(int, row["projection"])) == projection
-        and bool(row["known"]) is complete
+        and bool(row["source_complete"]) is complete
         and cast(datetime, row["due"]) > now
     )
 

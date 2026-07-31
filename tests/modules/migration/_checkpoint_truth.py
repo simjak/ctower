@@ -5,7 +5,6 @@ from __future__ import annotations
 import json
 from collections.abc import Mapping
 from datetime import datetime
-from pathlib import Path
 from uuid import UUID, uuid4
 
 import psycopg
@@ -24,11 +23,10 @@ from ctower_kernel.record import Actor, PrincipalKind
 from ctower_kernel.telemetry import TelemetryContext
 from modules.catalog.support import FileSchemas
 
-from ._checkpoint_fixture import checkpoint_resource
+from ._checkpoint_fixture import checkpoint_keys, checkpoint_resource
 from ._postgres import Database
 
 __all__ = ["materialize_checkpoint_truth", "refresh_checkpoint_truth"]
-_CHECKPOINT_COUNT = 14
 
 
 class _MemoryObjectStore:
@@ -134,21 +132,16 @@ def refresh_checkpoint_truth(database: Database, *, now: datetime) -> None:
     affected = Projections(PostgresProjections(database.projection_dsn)).reconcile_project_delivery(
         database.tenant_id, now=now
     )
-    assert affected in {0, _CHECKPOINT_COUNT}
+    assert affected in {0, len(checkpoint_keys())}
 
 
 def _checkpoint_bundle(outcome_overrides: Mapping[str, str]) -> CompanyBundle:
-    vectors_path = (
-        Path(__file__).parents[3]
-        / "contracts/domain/project-delivery/project-delivery-vectors.json"
-    )
-    vectors = json.loads(vectors_path.read_text(encoding="utf-8"))
     resources = [
         checkpoint_resource(
             checkpoint_key,
             outcome=outcome_overrides.get(checkpoint_key),
         )
-        for checkpoint_key in vectors["checkpoint_keys"]
+        for checkpoint_key in checkpoint_keys()
     ]
     return CompanyBundle.model_validate_json(
         json.dumps(
