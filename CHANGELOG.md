@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.3.1](https://github.com/simjak/ctower/compare/v0.3.0...v0.3.1) (2026-07-30)
+
+
+### Bug Fixes
+
+* make standby health baseline deterministic ([#154](https://github.com/simjak/ctower/issues/154)) ([423212c](https://github.com/simjak/ctower/commit/423212c18b6b2a6d0ab5326d3f92502583572f3a))
+
 ## [0.3.0](https://github.com/simjak/ctower/compare/v0.2.2...v0.3.0) (2026-07-30)
 
 
