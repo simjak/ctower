@@ -7,7 +7,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "ctower-workspace"
-version = "0.2.2"
+version = "0.3.1"
 description = "Ctower durable-work control plane"
 requires-python = ">=3.12,<3.15"
 dependencies = [

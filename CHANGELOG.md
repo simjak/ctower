@@ -1,5 +1,25 @@
 # Changelog
 
+## [0.3.1](https://github.com/simjak/ctower/compare/v0.3.0...v0.3.1) (2026-07-30)
+
+
+### Bug Fixes
+
+* make standby health baseline deterministic ([#154](https://github.com/simjak/ctower/issues/154)) ([423212c](https://github.com/simjak/ctower/commit/423212c18b6b2a6d0ab5326d3f92502583572f3a))
+
+## [0.3.0](https://github.com/simjak/ctower/compare/v0.2.2...v0.3.0) (2026-07-30)
+
+
+### Features
+
+* **runtime:** add atomic replacement and rollback ([#91](https://github.com/simjak/ctower/issues/91)) ([cabbf68](https://github.com/simjak/ctower/commit/cabbf6871eb9c8518ca48a63fbc750097dd7a2f1))
+
+
+### Bug Fixes
+
+* **migrations:** serialize role reconciliation ([#87](https://github.com/simjak/ctower/issues/87)) ([b002618](https://github.com/simjak/ctower/commit/b00261866f0965ae3ff70142adfd7d46a60ed3b7))
+* **runtime:** preflight checkout entry points ([#107](https://github.com/simjak/ctower/issues/107)) ([24e23e6](https://github.com/simjak/ctower/commit/24e23e667999c86cd397f4929a907fc0c245258b))
+
 ## [0.2.2](https://github.com/simjak/ctower/compare/v0.2.1...v0.2.2) (2026-07-30)
 
 
