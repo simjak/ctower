@@ -98,9 +98,12 @@ def qualifying_stage_slots(
     requested, states = _configured_slot_requests(criteria)
     if not requested:
         return _slot_facts(states)
+    # The configured links drive the row set, so the denominator is exactly what this
+    # checkpoint asked for. A link that resolves to no frozen criterion still returns its
+    # row, with a NULL criterion_key the CASE below maps to an honest UNKNOWN.
     rows = connection.execute(
         """
-        SELECT requested.ticket_id, run.current_stage, criterion.criterion_key,
+        SELECT requested.ticket_id, requested.proof_key, criterion.criterion_key,
           CASE
             WHEN run.current_stage IS NULL OR criterion.criterion_key IS NULL
               THEN NULL
@@ -148,7 +151,7 @@ def qualifying_stage_slots(
               )
             )
           END AS filled
-        FROM unnest(%s::uuid[]) AS requested(ticket_id)
+        FROM unnest(%s::uuid[], %s::text[]) AS requested(ticket_id, proof_key)
         LEFT JOIN workflow_runs AS run
           ON run.tenant_id = %s AND run.ticket_id = requested.ticket_id
         LEFT JOIN proof_bundles AS bundle
@@ -156,21 +159,18 @@ def qualifying_stage_slots(
         LEFT JOIN proof_criteria AS criterion
           ON criterion.proof_id = bundle.proof_id
          AND criterion.tenant_id = bundle.tenant_id
-        ORDER BY requested.ticket_id, criterion.criterion_key
+         AND criterion.criterion_key = requested.proof_key
+        ORDER BY requested.ticket_id, requested.proof_key
         """,
-        (list(requested), tenant_id, tenant_id),
+        (
+            [ticket_id for ticket_id, _ in requested],
+            [proof_key for _, proof_key in requested],
+            tenant_id,
+            tenant_id,
+        ),
     ).fetchall()
-    discovered: dict[UUID, set[str]] = {ticket_id: set() for ticket_id in requested}
     for row in rows:
-        ticket_id = cast(UUID, row["ticket_id"])
-        criterion_key = row["criterion_key"]
-        if not isinstance(criterion_key, str):
-            continue
-        discovered[ticket_id].add(criterion_key)
-        _merge_slot_state(states, criterion_key, _slot_state(row["filled"]))
-    for ticket_id, proof_keys in requested.items():
-        for proof_key in proof_keys.difference(discovered[ticket_id]):
-            _merge_slot_state(states, proof_key, EvidenceSlotState.UNKNOWN)
+        _merge_slot_state(states, str(row["proof_key"]), _slot_state(row["filled"]))
     return _slot_facts(states)
 
 
@@ -374,21 +374,23 @@ def _merge_slot_state(
 
 def _configured_slot_requests(
     criteria: list[dict[str, object]],
-) -> tuple[dict[UUID, set[str]], dict[str, EvidenceSlotState]]:
-    requested: dict[UUID, set[str]] = {}
+) -> tuple[tuple[tuple[UUID, str], ...], dict[str, EvidenceSlotState]]:
+    """Split the exit criteria into the links they configure and the ones they cannot."""
+
+    requested: dict[tuple[UUID, str], None] = {}
     states: dict[str, EvidenceSlotState] = {}
     for criterion in criteria:
         ticket_id = criterion["proof_ticket_id"]
         proof_key = criterion["proof_criterion_key"]
         if isinstance(ticket_id, UUID) and isinstance(proof_key, str):
-            requested.setdefault(ticket_id, set()).add(proof_key)
+            requested[(ticket_id, proof_key)] = None
         else:
             _merge_slot_state(
                 states,
                 str(criterion["criterion_key"]),
                 EvidenceSlotState.UNKNOWN,
             )
-    return requested, states
+    return tuple(requested), states
 
 
 def _slot_state(value: object) -> EvidenceSlotState:

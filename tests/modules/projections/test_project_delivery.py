@@ -59,12 +59,14 @@ def test_qualifying_stage_slots_preserve_filled_unfilled_and_unknown_facts() -> 
             "source_ids": [],
         }
     )
+    # The query returns exactly one row per configured link; an unresolved link keeps its
+    # requested key and a NULL `filled`. Behaviour against a real database is proven by
+    # tests/acceptance/increment-1/test_project_delivery_evidence.py.
     slot_rows: list[dict[str, object]] = [
-        {"ticket_id": ticket_ids[0], "criterion_key": "alpha", "filled": True},
-        {"ticket_id": ticket_ids[0], "criterion_key": "alpha", "filled": False},
-        {"ticket_id": ticket_ids[1], "criterion_key": "beta", "filled": True},
-        {"ticket_id": ticket_ids[2], "criterion_key": "delta", "filled": None},
-        {"ticket_id": ticket_ids[3], "criterion_key": None, "filled": None},
+        {"ticket_id": ticket_ids[0], "proof_key": "alpha", "filled": True},
+        {"ticket_id": ticket_ids[1], "proof_key": "beta", "filled": False},
+        {"ticket_id": ticket_ids[2], "proof_key": "delta", "filled": None},
+        {"ticket_id": ticket_ids[3], "proof_key": "epsilon", "filled": None},
     ]
     connection, connect_context = _reconcile_connection(criteria, slot_rows)
     with patch.object(psycopg, "connect", return_value=connect_context):
@@ -78,20 +80,25 @@ def test_qualifying_stage_slots_preserve_filled_unfilled_and_unknown_facts() -> 
     assert payload["qualifying_stage_slots_filled"] == 1
     assert payload["qualifying_stage_slots_required"] == len(criteria)
     assert payload["qualifying_stage_unfilled_or_unknown_slot_keys"] == [
-        "alpha",
+        "beta",
         "delta",
         "epsilon",
         "unlinked-checkpoint-proof",
     ]
     assert {
-        "slot_unfilled:alpha",
-        "slot_filled:beta",
+        "slot_filled:alpha",
+        "slot_unfilled:beta",
         "slot_unknown:delta",
         "slot_unknown:epsilon",
         "slot_unknown:unlinked-checkpoint-proof",
     } <= set(cast(list[str], payload["derivation_reasons"]))
-    requested = _slot_request(connection)
-    assert set(requested[0]) == set(ticket_ids)
+    tickets, proof_keys = _slot_request(connection)
+    assert list(zip(tickets, proof_keys, strict=True)) == [
+        (ticket_ids[0], "alpha"),
+        (ticket_ids[1], "beta"),
+        (ticket_ids[2], "delta"),
+        (ticket_ids[3], "epsilon"),
+    ]
 
 
 def _reconcile_connection(
@@ -174,16 +181,19 @@ def _stored_payload(connection: MagicMock) -> dict[str, object]:
     return cast(dict[str, object], cast(Jsonb, params[3]).obj)
 
 
-def _slot_request(connection: MagicMock) -> tuple[list[UUID], UUID, UUID]:
+def _slot_request(connection: MagicMock) -> tuple[list[UUID], list[str]]:
+    """Recover the configured (ticket, proof key) links the slot query asked for."""
+
     call = next(
         item
         for item in connection.execute.call_args_list
-        if "FROM unnest(%s::uuid[])" in item.args[0]
+        if "FROM unnest(%s::uuid[], %s::text[])" in item.args[0]
     )
-    return cast(
-        tuple[list[UUID], UUID, UUID],
+    tickets, proof_keys, _, _ = cast(
+        tuple[list[UUID], list[str], UUID, UUID],
         call.args[1],
     )
+    return tickets, proof_keys
 
 
 def test_explicit_criteria_and_blockers_drive_done_without_checkpoint_special_cases() -> None:

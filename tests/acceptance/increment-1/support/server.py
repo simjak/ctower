@@ -100,7 +100,7 @@ def proof_policy() -> ProofPolicy:
     return ProofPolicy.from_bytes(gate_bytes, evidence_bytes)
 
 
-def fixture_proof_policy(workflow_ref: str, criterion: Criterion) -> ProofPolicy:
+def fixture_proof_policy(workflow_ref: str, *criteria: Criterion) -> ProofPolicy:
     """Build the exact synthetic pin used by direct persistence acceptance fixtures."""
 
     gate_bytes = json.dumps(
@@ -117,6 +117,7 @@ def fixture_proof_policy(workflow_ref: str, criterion: Criterion) -> ProofPolicy
                     "candidate_dependent": criterion.candidate_dependent,
                     "requires_verdict": criterion.requires_verdict,
                 }
+                for criterion in criteria
             ],
             "protected_verdict": {
                 "reviewer_kind": "operator",
