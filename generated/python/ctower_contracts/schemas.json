@@ -9423,90 +9423,186 @@
     },
     "contracts/evidence/evidence-manifest.schema.json": {
       "$defs": {
-        "notExercised": {
+        "acceptanceCriterionCode": {
+          "pattern": "^AC-[A-Z0-9]+-[0-9]{2}$",
+          "type": "string"
+        },
+        "criterionDisposition": {
+          "additionalProperties": false,
+          "allOf": [
+            {
+              "if": {
+                "properties": {
+                  "criterion_source": {
+                    "const": "gate-policy"
+                  }
+                },
+                "required": [
+                  "criterion_source"
+                ]
+              },
+              "then": {
+                "properties": {
+                  "criterion_key": {
+                    "$ref": "#/$defs/gatePolicyCriterionKey"
+                  }
+                }
+              }
+            },
+            {
+              "if": {
+                "properties": {
+                  "criterion_source": {
+                    "const": "acceptance-criterion"
+                  }
+                },
+                "required": [
+                  "criterion_source"
+                ]
+              },
+              "then": {
+                "properties": {
+                  "criterion_key": {
+                    "$ref": "#/$defs/acceptanceCriterionCode"
+                  }
+                }
+              }
+            }
+          ],
+          "properties": {
+            "criterion_key": {
+              "minLength": 1,
+              "type": "string"
+            },
+            "criterion_source": {
+              "$ref": "#/$defs/criterionSource"
+            },
+            "disposition": {
+              "$ref": "#/$defs/disposition"
+            },
+            "environment": {
+              "minLength": 1,
+              "type": "string"
+            },
+            "owner": {
+              "$ref": "#/$defs/ownerTicket"
+            },
+            "proof_digest": {
+              "$ref": "#/$defs/sha256"
+            },
+            "reason": {
+              "minLength": 1,
+              "type": "string"
+            },
+            "source_sha": {
+              "minLength": 1,
+              "type": "string"
+            },
+            "verifier": {
+              "format": "uuid",
+              "type": "string"
+            }
+          },
+          "required": [
+            "criterion_source",
+            "criterion_key",
+            "disposition",
+            "reason",
+            "owner",
+            "source_sha",
+            "environment",
+            "proof_digest",
+            "verifier"
+          ],
+          "type": "object"
+        },
+        "criterionSource": {
+          "enum": [
+            "gate-policy",
+            "acceptance-criterion"
+          ],
+          "type": "string"
+        },
+        "deferredSuite": {
           "additionalProperties": false,
           "properties": {
+            "reason": {
+              "minLength": 1,
+              "type": "string"
+            },
             "source_count": {
               "const": 0
             },
             "status": {
               "const": "not_exercised"
+            },
+            "suite_id": {
+              "$ref": "#/$defs/suiteId"
             }
           },
           "required": [
+            "suite_id",
             "status",
-            "source_count"
+            "source_count",
+            "reason"
           ],
           "type": "object"
+        },
+        "disposition": {
+          "enum": [
+            "applicable",
+            "satisfied_by_superseding_evidence",
+            "deferred",
+            "failed"
+          ],
+          "type": "string"
+        },
+        "gatePolicyCriterionKey": {
+          "pattern": "^[a-z][a-z0-9.-]{2,127}$",
+          "type": "string"
+        },
+        "ownerTicket": {
+          "pattern": "^ct-(?:l0|i[1-9][0-9]*)-[0-9]{3}$",
+          "type": "string"
         },
         "sha256": {
           "pattern": "^sha256:[0-9a-f]{64}$",
           "type": "string"
         },
-        "stableKey": {
-          "pattern": "^[a-z][a-z0-9._-]*$",
+        "suiteId": {
+          "pattern": "^[a-z][a-z0-9-]{2,63}$",
           "type": "string"
         }
       },
       "$id": "https://ctower.invalid/contracts/evidence/evidence-manifest.schema.json",
       "$schema": "https://json-schema.org/draft/2020-12/schema",
       "additionalProperties": false,
-      "description": "Development-only CP-1 manifest of current proof and explicitly unexercised sources.",
+      "description": "Development-only CP-1 typed evidence denominator. The criterion denominator is what this increment owes: the criteria frozen by the authored gate policies plus every acceptance criterion SPEC.md declares, and each one carries exactly one typed disposition. The generated traceability index is a coverage map, not a source of obligations, and is not read. The deferred denominator is the deferred suites of the expected-suite registry; capability components are not a denominator source, so an exercised capability is never forced to declare itself unexercised. Gate-policy criterion keys, acceptance-criterion codes and suite ids each keep their own namespace.",
       "properties": {
-        "artifacts": {
-          "items": {
-            "additionalProperties": false,
-            "properties": {
-              "artifact_digest": {
-                "$ref": "#/$defs/sha256"
-              },
-              "candidate_digest": {
-                "$ref": "#/$defs/sha256"
-              },
-              "criterion_key": {
-                "$ref": "#/$defs/stableKey"
-              }
-            },
-            "required": [
-              "criterion_key",
-              "artifact_digest",
-              "candidate_digest"
-            ],
-            "type": "object"
-          },
-          "minItems": 1,
-          "type": "array"
-        },
         "candidate_digest": {
           "$ref": "#/$defs/sha256"
+        },
+        "criteria": {
+          "$comment": "uniqueItems refuses an identical repeated row. JSON Schema 2020-12 cannot express uniqueness by key, so a repeated criterion carrying a different payload is refused by name at the criterion chokepoint in tests/contracts/evidence.",
+          "items": {
+            "$ref": "#/$defs/criterionDisposition"
+          },
+          "minItems": 1,
+          "type": "array",
+          "uniqueItems": true
         },
         "criteria_revision": {
           "minimum": 1,
           "type": "integer"
         },
-        "deferred_sources": {
-          "additionalProperties": false,
-          "properties": {
-            "effects": {
-              "$ref": "#/$defs/notExercised"
-            },
-            "extensions": {
-              "$ref": "#/$defs/notExercised"
-            },
-            "images": {
-              "$ref": "#/$defs/notExercised"
-            },
-            "remote": {
-              "$ref": "#/$defs/notExercised"
-            }
+        "deferred_suites": {
+          "$comment": "minItems refuses an empty deferred roster while the expected-suite registry still defers a suite; uniqueItems refuses an identical repeated row. A repeated suite id carrying a different payload is refused by name at the deferred-suite chokepoint in tests/contracts/evidence.",
+          "items": {
+            "$ref": "#/$defs/deferredSuite"
           },
-          "required": [
-            "remote",
-            "images",
-            "effects",
-            "extensions"
-          ],
-          "type": "object"
+          "minItems": 1,
+          "type": "array",
+          "uniqueItems": true
         },
         "schema": {
           "const": "ctower.evidence-manifest/v1"
@@ -9528,7 +9624,8 @@
             "type": "string"
           },
           "minItems": 1,
-          "type": "array"
+          "type": "array",
+          "uniqueItems": true
         }
       },
       "required": [
@@ -9538,9 +9635,9 @@
         "ticket_id",
         "candidate_digest",
         "criteria_revision",
-        "artifacts",
+        "criteria",
         "verdict_ids",
-        "deferred_sources"
+        "deferred_suites"
       ],
       "title": "EvidenceManifestConsumerSubset",
       "type": "object"
@@ -11940,7 +12037,7 @@
     {
       "id": "https://ctower.invalid/contracts/evidence/evidence-manifest.schema.json",
       "path": "contracts/evidence/evidence-manifest.schema.json",
-      "sha256": "sha256:d57d312de09244e0767e09a084613d9fd38f204f74b3e8f2b63412bcacc3f956"
+      "sha256": "sha256:0bb3833ebb26fd1d8cb40c2d0dab7d5bc5e0cc17be15fb3a1825cab4e0b89ca2"
     },
     {
       "id": "https://ctower.dev/contracts/evidence/object-manifest.schema.json",
