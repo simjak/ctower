@@ -22,7 +22,7 @@ from ctower_kernel.catalog import (
     CompanyBundleCommandResult,
     PostgresCatalog,
 )
-from ctower_kernel.catalog.interface import JsonValue
+from ctower_kernel.catalog.interface import CompanyBundleResource, JsonValue
 from ctower_kernel.projections import Projections
 from ctower_kernel.projections.postgres import PostgresProjections
 from ctower_kernel.record import Actor, PrincipalKind
@@ -42,7 +42,7 @@ _CROSS_DOMAIN_CHECKPOINT_KEYS = (
 )
 
 
-def test_checkpoint_bundle_materializes_all_14_definitions_atomically_and_replays(
+def test_checkpoint_bundle_materializes_every_definition_and_replays_without_residue(
     tenant: TenantFixture,
 ) -> None:
     actor = actor_for(tenant.tenant_id, tenant.operator_id)
@@ -74,11 +74,18 @@ def test_checkpoint_bundle_materializes_all_14_definitions_atomically_and_replay
     )
 
     applied = catalog.apply(actor, command, telemetry=telemetry_for(actor, command_id))
+    applied_residue = _checkpoint_counts(tenant.database.admin_dsn)
     replayed = catalog.apply(actor, command, telemetry=telemetry_for(actor, command_id))
+    replayed_residue = _checkpoint_counts(tenant.database.admin_dsn)
     configured_count = len(bundle.resources)
 
     assert isinstance(applied, CompanyBundleCommandResult)
     assert replayed == applied
+    # Residue, not a return value: the apply left exactly the definitions and criteria
+    # the two bundles publish between them, each on its own publication event, and the
+    # replay added none of them a second time.
+    assert applied_residue == _expected_residue(prior_bundle, bundle)
+    assert replayed_residue == applied_residue
     source = _record_watermark(tenant)
     _set_project_delivery_source(tenant, acceptance_position=source)
     affected = projections.reconcile_project_delivery(tenant.tenant_id, now=datetime.now(UTC))
@@ -438,6 +445,30 @@ def _stored_checkpoint_keys(tenant: TenantFixture) -> tuple[set[str], set[str]]:
             (tenant.tenant_id,),
         ).fetchall()
     return {str(row[0]) for row in definitions}, {str(row[0]) for row in rows}
+
+
+def _expected_residue(
+    prior_bundle: CompanyBundle,
+    bundle: CompanyBundle,
+) -> tuple[int, int, int]:
+    """Derive the storage residue both applies must leave, from the bundles themselves.
+
+    A carried-forward component keeps its original publication event, so the second apply
+    materializes exactly the resources whose reference the first one never published.
+    """
+
+    published = tuple(item.component.reference() for item in prior_bundle.resources)
+    added = tuple(item for item in bundle.resources if item.component.reference() not in published)
+    definitions = len(prior_bundle.resources) + len(added)
+    criteria = _criteria_count(prior_bundle.resources) + _criteria_count(added)
+    return definitions, criteria, definitions
+
+
+def _criteria_count(resources: tuple[CompanyBundleResource, ...]) -> int:
+    return sum(
+        len(cast(list[object], cast(dict[str, object], item.payload)["criteria"]))
+        for item in resources
+    )
 
 
 def _checkpoint_counts(dsn: str) -> tuple[int, int, int]:
