@@ -1,12 +1,10 @@
-"""Mutation-proof conservation: no fixture-corpus literals in product code.
+"""Conservation derivation tests.
 
-AC4 requires that changing the fixture corpus (IDs, count, aliases) makes the
-tool follow with zero product-code edits.  The reconciliation conservation
-check must derive every count from the signed artifacts it receives, not from
-hardcoded module-level constants.  These tests prove that property by mutating
-the fixture and asserting the reconciliation either accepts the new corpus
-(when conservation holds) or refuses with a named code (when it does not) —
-all without touching product code.
+AC4 (narrowed): reconcile.py derives its conservation counts from the signed
+frozen export; corpus cardinality remains schema-pinned until S5 (the exit
+plan's S5 compares the exact signed set, not the number 14). The structural
+guard in test_structural_guard.py proves no fixture-corpus cardinality
+literals (86, 243, 27, 14) exist as module-level constants in product code.
 """
 
 from __future__ import annotations
@@ -159,24 +157,3 @@ def test_reconcile_refuses_when_target_checkpoint_count_mismatches(
             delivery=trimmed_delivery,
         )
     assert caught.value.code == RefusalCode.RECONCILIATION_MISMATCH
-
-
-def test_no_fixture_count_literals_in_product_code() -> None:
-    """No hardcoded fixture-corpus counts (86, 243, 27, 14) in reconcile.py.
-
-    AC4: no disposition-set or alias literal in product code.
-    """
-    import tools.migration.ctower_project.ctower_project_source.reconcile as reconcile_mod  # noqa: PLC0415
-
-    source = Path(reconcile_mod.__file__).read_text(encoding="utf-8")
-    # These are the fixture-specific constants that must not appear as
-    # module-level literals in product code. They may appear in comments
-    # or test fixtures, but not as hardcoded conservation thresholds.
-    forbidden_literals = [
-        "_REQUEST_COUNT = 86",
-        "_REQUEST_PHYSICAL_COUNT = 243",
-        "_STABLE_COUNT = 27",
-        "_CHECKPOINT_COUNT = 14",
-    ]
-    for literal in forbidden_literals:
-        assert literal not in source, f"fixture literal found in product code: {literal}"
