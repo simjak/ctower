@@ -9603,21 +9603,26 @@
           "$ref": "#/$defs/sha256"
         },
         "criteria": {
+          "$comment": "uniqueItems refuses an identical repeated row. JSON Schema 2020-12 cannot express uniqueness by key, so a repeated criterion carrying a different payload is refused by name at the criterion chokepoint in tests/contracts/evidence.",
           "items": {
             "$ref": "#/$defs/criterionDisposition"
           },
           "minItems": 1,
-          "type": "array"
+          "type": "array",
+          "uniqueItems": true
         },
         "criteria_revision": {
           "minimum": 1,
           "type": "integer"
         },
         "deferred_suites": {
+          "$comment": "minItems refuses an empty deferred roster while the expected-suite registry still defers a suite; uniqueItems refuses an identical repeated row. A repeated suite id carrying a different payload is refused by name at the deferred-suite chokepoint in tests/contracts/evidence.",
           "items": {
             "$ref": "#/$defs/deferredSuite"
           },
-          "type": "array"
+          "minItems": 1,
+          "type": "array",
+          "uniqueItems": true
         },
         "schema": {
           "const": "ctower.evidence-manifest/v1"
@@ -9639,7 +9644,8 @@
             "type": "string"
           },
           "minItems": 1,
-          "type": "array"
+          "type": "array",
+          "uniqueItems": true
         }
       },
       "required": [
@@ -12051,7 +12057,7 @@
     {
       "id": "https://ctower.invalid/contracts/evidence/evidence-manifest.schema.json",
       "path": "contracts/evidence/evidence-manifest.schema.json",
-      "sha256": "sha256:e28fbf5c46feebcab986510e78c34fdd42081599ecdc031b04102c1d3be0eaae"
+      "sha256": "sha256:8dd03e37cf0617253043091648b2186e6008d50986bdcd270d3f607a717d5bef"
     },
     {
       "id": "https://ctower.dev/contracts/evidence/object-manifest.schema.json",

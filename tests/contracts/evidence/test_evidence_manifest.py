@@ -284,6 +284,57 @@ class TestCriterionDenominatorIsDerived:
         assert not shared, f"criterion registries share keys: {sorted(shared)}"
 
 
+class TestSchemaEnforcesTheDenominatorContract:
+    """Emptiness and repetition are illegal in the contract, not only in one test."""
+
+    @pytest.mark.parametrize("array", ["criteria", "verdict_ids", "deferred_suites"])
+    def test_empty_array_is_refused_by_the_schema(self, array: str) -> None:
+        candidate = _committed_manifest()
+        candidate[array] = []
+        with pytest.raises(ValidationError):
+            _validator().validate(candidate)
+
+    @pytest.mark.parametrize("array", ["criteria", "deferred_suites"])
+    def test_identical_repeated_row_is_refused_by_the_schema(self, array: str) -> None:
+        candidate = _committed_manifest()
+        candidate[array].append(copy.deepcopy(candidate[array][0]))
+        with pytest.raises(ValidationError):
+            _validator().validate(candidate)
+
+    def test_repeated_verdict_id_is_refused_by_the_schema(self) -> None:
+        candidate = _committed_manifest()
+        candidate["verdict_ids"].append(candidate["verdict_ids"][0])
+        with pytest.raises(ValidationError):
+            _validator().validate(candidate)
+
+    @pytest.mark.parametrize("array", ["criteria", "deferred_suites"])
+    def test_both_arrays_declare_the_schema_level_constraints(self, array: str) -> None:
+        declared = _schema()["properties"][array]
+        assert declared["minItems"] == 1, f"{array}: emptiness is legal"
+        assert declared["uniqueItems"] is True, f"{array}: an identical row may repeat"
+
+    def test_a_repeated_key_with_a_different_payload_is_refused_by_the_chokepoints(self) -> None:
+        """JSON Schema 2020-12 cannot express uniqueness by key; the chokepoints do,
+        and this vector proves the seam is covered rather than assumed."""
+
+        candidate = _committed_manifest()
+        criterion = copy.deepcopy(candidate["criteria"][0])
+        criterion["reason"] = "a second disposition for the same criterion"
+        candidate["criteria"].append(criterion)
+        suite = copy.deepcopy(candidate["deferred_suites"][0])
+        suite["reason"] = "a second row for the same suite"
+        candidate["deferred_suites"].append(suite)
+
+        _validator().validate(candidate)
+        assert _criterion_denominator_errors(candidate) == [
+            f"manifest repeats criterion {criterion['criterion_source']}/"
+            f"{criterion['criterion_key']}"
+        ]
+        assert _deferred_suite_errors(candidate) == [
+            f"manifest repeats deferred suite {suite['suite_id']}"
+        ]
+
+
 class TestCriterionSchemaVectors:
     @pytest.mark.parametrize(
         ("field", "bad_value"),
