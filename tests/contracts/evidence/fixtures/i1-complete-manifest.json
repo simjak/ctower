@@ -668,6 +668,39 @@
     },
     {
       "criterion_source": "acceptance-criterion",
+      "criterion_key": "AC-PD-07",
+      "disposition": "applicable",
+      "reason": "SPEC#ac-pd-07 declares this criterion; in force at the active phase",
+      "owner": "ct-i1-007",
+      "source_sha": "sha256:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+      "environment": "disposable-development",
+      "proof_digest": "sha256:cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+      "verifier": "00000000-0000-4000-8000-000000000003"
+    },
+    {
+      "criterion_source": "acceptance-criterion",
+      "criterion_key": "AC-PD-08",
+      "disposition": "applicable",
+      "reason": "SPEC#ac-pd-08 requires the contract path, generated-client round-trip and CLI parity now; only the I2.4 interactive detail is later",
+      "owner": "ct-i1-007",
+      "source_sha": "sha256:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+      "environment": "disposable-development",
+      "proof_digest": "sha256:cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+      "verifier": "00000000-0000-4000-8000-000000000003"
+    },
+    {
+      "criterion_source": "acceptance-criterion",
+      "criterion_key": "AC-PD-09",
+      "disposition": "applicable",
+      "reason": "SPEC#ac-pd-09 declares this criterion; in force at the active phase",
+      "owner": "ct-i1-007",
+      "source_sha": "sha256:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+      "environment": "disposable-development",
+      "proof_digest": "sha256:cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+      "verifier": "00000000-0000-4000-8000-000000000003"
+    },
+    {
+      "criterion_source": "acceptance-criterion",
       "criterion_key": "AC-PROD-01",
       "disposition": "applicable",
       "reason": "SPEC#ac-prod-01 declares this criterion; in force at the active phase",
