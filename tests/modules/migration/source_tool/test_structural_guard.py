@@ -1,9 +1,6 @@
 """Structural guard: no fixture-corpus cardinality literals in product code.
 
-AC4 (narrowed): reconcile.py derives its conservation counts from the signed
-frozen export; corpus cardinality remains schema-pinned until S5.
-
-This guard walks the entire authored product tree (tools/migration/**) and
+This guard walks both authored migration product trees and
 asserts that the four fixture-corpus cardinality values (86, 243, 27, 14)
 do not appear as module-level assignment literals in any product .py file.
 They are permitted only in contracts/domain/migration/ (the JSON schemas)
@@ -25,11 +22,16 @@ from typing import NamedTuple
 __all__: tuple[str, ...] = ()
 
 # The four fixture-corpus cardinality values that must not appear as
-# module-level assignment literals in product code under tools/migration/.
+# module-level assignment literals in migration product code.
 _FORBIDDEN_CARDINALITIES = {86, 243, 27, 14}
 
-# The product tree to scan.
-_PRODUCT_ROOT = Path(__file__).resolve().parents[4] / "tools" / "migration"
+# The product trees to scan. Both the source tool and server reconciliation
+# consume the same signed corpus and neither may restate its cardinality.
+_REPOSITORY_ROOT = Path(__file__).resolve().parents[4]
+_PRODUCT_ROOTS = (
+    _REPOSITORY_ROOT / "tools" / "migration",
+    _REPOSITORY_ROOT / "packages" / "ctower-kernel" / "src" / "ctower_kernel" / "migration",
+)
 
 # Number of forbidden-cardinality hits the renamed-literal test expects.
 _EXPECTED_HIT_COUNT = 2
@@ -48,7 +50,7 @@ def _check_assign(
 ) -> list[_ForbiddenHit]:
     """Check a single module-level assignment node for forbidden cardinality values."""
     value = _eval_literal(node.value)  # type: ignore[arg-type]
-    if value not in _FORBIDDEN_CARDINALITIES:
+    if not isinstance(value, int) or value not in _FORBIDDEN_CARDINALITIES:
         return []
     hits: list[_ForbiddenHit] = []
     if isinstance(node, ast.Assign):
@@ -93,7 +95,7 @@ def _target_name(node: ast.expr) -> str | None:
 
 
 def test_no_fixture_cardinality_literals_in_product_code() -> None:
-    """No module-level assignment of 86, 243, 27, or 14 in tools/migration/**.
+    """No module-level assignment of 86, 243, 27, or 14 in migration products.
 
     This is a structural AST-based guard, not a string grep. It discovers
     assignments by value regardless of the variable name, so a renamed
@@ -101,15 +103,16 @@ def test_no_fixture_cardinality_literals_in_product_code() -> None:
     will fail this guard. The four values are permitted only in
     contracts/domain/migration/ schemas and migration-vectors.json.
     """
-    scanned = list(_PRODUCT_ROOT.rglob("*.py"))
-    assert scanned, (
-        f"guard scanned zero Python files under {_PRODUCT_ROOT} "
+    scanned = [candidate for root in _PRODUCT_ROOTS for candidate in root.rglob("*.py")]
+    assert all(any(root.rglob("*.py")) for root in _PRODUCT_ROOTS), (
+        "guard scanned zero Python files under a configured product root "
         "(root missing or path broke) — a guard that scans nothing cannot fail"
     )
-    hits = _scan_product_tree(_PRODUCT_ROOT)
+    hits = [hit for root in _PRODUCT_ROOTS for hit in _scan_product_tree(root)]
     assert not hits, "fixture cardinality literals found in product code:\n" + "\n".join(
         f"  {hit.file}:{hit.line}  {hit.target} = {hit.value}" for hit in hits
     )
+    assert any(path.name == "_pass_two_sql.py" for path in scanned)
 
 
 def test_guard_detects_renamed_literal_gating_delivery(tmp_path: Path) -> None:
