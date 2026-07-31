@@ -1,44 +1,117 @@
 """Evidence-manifest typed denominator contract vectors.
 
-The denominator is derived from the capability registry (packs/components/capabilities/)
-and the expected-suite registry (tools/checks/expected-suites.toml deferred suites),
-never a hand-copied roster.  Adding a registry entry WITHOUT a manifest disposition
-fails by name.
+Both denominators are derived from registries of record, never from a hand-copied
+roster and never from the manifest itself:
+
+* criteria — the criteria frozen by the authored gate policies in
+  ``packs/policies/gates`` plus the acceptance-criterion codes the traceability
+  generator reads out of ``contracts/traceability/sources.json``.  Each row names the
+  registry it came from, so the two namespaces never share a key space.
+* deferred capabilities — the capability registry plus the deferred expected suites.
+
+``_criterion_denominator_errors`` is the criterion chokepoint: it is the only place
+that decides whether the committed manifest agrees with the registries, and it names
+every missing, unknown, and duplicated criterion.
 """
 
 from __future__ import annotations
 
 import copy
 import json
+import re
 import tomllib
+from collections import Counter
+from collections.abc import Iterable
 from pathlib import Path
 from typing import Any, cast
 
 import pytest
 from jsonschema import Draft202012Validator
 from jsonschema.exceptions import ValidationError
+from ruamel.yaml import YAML
+from ruamel.yaml.error import YAMLError
+
+__all__: tuple[str, ...] = ()
 
 _FORMAT_CHECKER = Draft202012Validator.FORMAT_CHECKER
 
 ROOT = Path(__file__).parents[3]
+_GATE_POLICY_DIR = "packs/policies/gates"
+_TRACEABILITY_SOURCES = "contracts/traceability/sources.json"
+_EXPECTED_SUITES = "tools/checks/expected-suites.toml"
 _CAPABILITIES_DIR = ROOT / "packs/components/capabilities"
-_EXPECTED_SUITES_PATH = ROOT / "tools/checks/expected-suites.toml"
+_EXPECTED_SUITES_PATH = ROOT / _EXPECTED_SUITES
 _SCHEMA_PATH = ROOT / "contracts/evidence/evidence-manifest.schema.json"
 _FIXTURE_PATH = Path(__file__).parent / "fixtures" / "i1-complete-manifest.json"
 
-_SHA_A = "sha256:" + "a" * 64
-_SHA_B = "sha256:" + "b" * 64
-_SHA_C = "sha256:" + "c" * 64
-_UUID_1 = "00000000-0000-4000-8000-000000000001"
-_UUID_2 = "00000000-0000-4000-8000-000000000002"
-_UUID_3 = "00000000-0000-4000-8000-000000000003"
-_UUID_4 = "00000000-0000-4000-8000-000000000004"
-_UUID_5 = "00000000-0000-4000-8000-000000000005"
+GATE_POLICY = "gate-policy"
+ACCEPTANCE = "acceptance-criterion"
+_ACCEPTANCE_CODE = re.compile(r"^AC-[A-Z]{2,8}-[0-9]{2}$")
+
+
+class RegistryError(AssertionError):
+    """A registry of record cannot be read as a denominator source."""
 
 
 # ---------------------------------------------------------------------------
-# Registry helpers
+# Registries of record
 # ---------------------------------------------------------------------------
+
+
+def _load_yaml(path: Path) -> dict[str, Any]:
+    try:
+        data = YAML(typ="safe", pure=True).load(path.read_text(encoding="utf-8"))
+    except (OSError, YAMLError) as error:
+        raise RegistryError(f"{path}: unreadable registry entry: {error}") from error
+    if not isinstance(data, dict):
+        raise RegistryError(f"{path}: registry entry must be a mapping")
+    return cast(dict[str, Any], data)
+
+
+def _gate_policy_criteria(root: Path = ROOT) -> dict[str, int]:
+    """Frozen gate-policy criterion key -> the policy revision that freezes it."""
+
+    frozen: dict[str, int] = {}
+    for path in sorted((root / _GATE_POLICY_DIR).glob("*.yaml")):
+        policy = _load_yaml(path)
+        revision = policy.get("revision")
+        if not isinstance(revision, int):
+            raise RegistryError(f"{path}: gate policy has no integer revision")
+        for entry in policy.get("criteria", []):
+            key = entry.get("key") if isinstance(entry, dict) else None
+            if not isinstance(key, str):
+                raise RegistryError(f"{path}: gate-policy criterion has no string key")
+            if key in frozen:
+                raise RegistryError(f"{path}: duplicate frozen criterion key {key!r}")
+            frozen[key] = revision
+    return frozen
+
+
+def _acceptance_criteria(root: Path = ROOT) -> frozenset[str]:
+    """Acceptance-criterion codes the traceability registry binds to authored artifacts."""
+
+    path = root / _TRACEABILITY_SOURCES
+    artifacts = json.loads(path.read_text(encoding="utf-8")).get("artifacts")
+    if not isinstance(artifacts, list):
+        raise RegistryError(f"{path}: 'artifacts' must be a list")
+    codes = {
+        reference
+        for artifact in artifacts
+        for reference in artifact.get("references", [])
+        if isinstance(reference, str) and _ACCEPTANCE_CODE.fullmatch(reference)
+    }
+    if not codes:
+        raise RegistryError(f"{path}: no AC-* codes; the criterion denominator would be vacuous")
+    return frozenset(codes)
+
+
+def _criterion_denominator(root: Path = ROOT) -> frozenset[tuple[str, str]]:
+    """The complete criterion denominator as (registry, key) pairs."""
+
+    frozen = {(GATE_POLICY, key) for key in _gate_policy_criteria(root)}
+    if not frozen:
+        raise RegistryError(f"{root / _GATE_POLICY_DIR}: no gate policy freezes any criterion")
+    return frozenset(frozen | {(ACCEPTANCE, code) for code in _acceptance_criteria(root)})
 
 
 def _capability_registry_keys() -> frozenset[str]:
@@ -57,7 +130,7 @@ def _capability_registry_keys() -> frozenset[str]:
 def _deferred_suite_ids(root: Path | None = None) -> frozenset[str]:
     """Derive the set of deferred suite IDs from the expected-suite registry."""
 
-    manifest_path = (root or ROOT) / "tools/checks/expected-suites.toml"
+    manifest_path = (root or ROOT) / _EXPECTED_SUITES
     data = tomllib.loads(manifest_path.read_text(encoding="utf-8"))
     return frozenset(suite["id"] for suite in data["suite"] if suite["status"] == "deferred")
 
@@ -66,6 +139,15 @@ def _all_deferred_keys() -> frozenset[str]:
     """Union of capability registry keys and deferred expected-suite IDs."""
 
     return _capability_registry_keys() | _deferred_suite_ids()
+
+
+# ---------------------------------------------------------------------------
+# The committed manifest and the chokepoint that judges it
+# ---------------------------------------------------------------------------
+
+
+def _committed_manifest() -> dict[str, Any]:
+    return cast(dict[str, Any], json.loads(_FIXTURE_PATH.read_text(encoding="utf-8")))
 
 
 def _deferred_capability_rows(keys: frozenset[str]) -> list[dict[str, Any]]:
@@ -80,6 +162,44 @@ def _deferred_capability_rows(keys: frozenset[str]) -> list[dict[str, Any]]:
     ]
 
 
+def _manifest(*, deferred_keys: frozenset[str] | None = None) -> dict[str, Any]:
+    """A candidate manifest: the committed fixture, optionally with a swapped roster."""
+
+    candidate = _committed_manifest()
+    if deferred_keys is not None:
+        candidate["deferred_capabilities"] = _deferred_capability_rows(deferred_keys)
+    return candidate
+
+
+def _criterion_pairs(manifest: dict[str, Any]) -> list[tuple[str, str]]:
+    return [(row["criterion_source"], row["criterion_key"]) for row in manifest["criteria"]]
+
+
+def _duplicates(values: Iterable[str]) -> list[str]:
+    return sorted(value for value, count in Counter(values).items() if count > 1)
+
+
+def _criterion_denominator_errors(manifest: dict[str, Any], root: Path = ROOT) -> list[str]:
+    """CHOKEPOINT: every disagreement between a manifest and the criterion registries."""
+
+    denominator = _criterion_denominator(root)
+    pairs = _criterion_pairs(manifest)
+    declared = set(pairs)
+    errors = [
+        f"manifest repeats criterion {name}"
+        for name in _duplicates(f"{source}/{key}" for source, key in pairs)
+    ]
+    errors += [
+        f"manifest omits registry criterion {source}/{key}"
+        for source, key in sorted(denominator - declared)
+    ]
+    errors += [
+        f"manifest declares unknown criterion {source}/{key}"
+        for source, key in sorted(declared - denominator)
+    ]
+    return errors
+
+
 def _schema() -> dict[str, Any]:
     return cast(dict[str, Any], json.loads(_SCHEMA_PATH.read_text(encoding="utf-8")))
 
@@ -88,108 +208,153 @@ def _validator() -> Draft202012Validator:
     return Draft202012Validator(_schema(), format_checker=_FORMAT_CHECKER)
 
 
-def _manifest(
-    *,
-    deferred_keys: frozenset[str] | None = None,
-) -> dict[str, Any]:
-    if deferred_keys is None:
-        deferred_keys = _all_deferred_keys()
-
-    return {
-        "schema": "ctower.evidence-manifest/v1",
-        "status": "development_only",
-        "tenant_id": _UUID_1,
-        "ticket_id": _UUID_2,
-        "candidate_digest": _SHA_A,
-        "criteria_revision": 1,
-        "criteria": [
-            {
-                "criterion_key": "repository-policy",
-                "disposition": "applicable",
-                "reason": "repository gates pass at exact head",
-                "owner": "ct-l0-007",
-                "source_sha": _SHA_B,
-                "environment": "disposable-development",
-                "proof_digest": _SHA_C,
-                "verifier": _UUID_3,
-            },
-            {
-                "criterion_key": "cp3-d-host-loss",
-                "disposition": "deferred",
-                "reason": "CP3-D external failure domain acknowledgement not yet proven",
-                "owner": "ct-i1-008",
-                "source_sha": _SHA_B,
-                "environment": "disposable-development",
-                "proof_digest": _SHA_C,
-                "verifier": _UUID_4,
-            },
-            {
-                "criterion_key": "browser-ui",
-                "disposition": "deferred",
-                "reason": "browser implementation deferred to CT-I2-005",
-                "owner": "ct-i1-005",
-                "source_sha": _SHA_B,
-                "environment": "disposable-development",
-                "proof_digest": _SHA_C,
-                "verifier": _UUID_5,
-            },
-        ],
-        "verdict_ids": [_UUID_3],
-        "deferred_capabilities": _deferred_capability_rows(deferred_keys),
-    }
+def _criterion_row(manifest: dict[str, Any], source: str) -> dict[str, Any]:
+    return next(row for row in manifest["criteria"] if row["criterion_source"] == source)
 
 
 # ---------------------------------------------------------------------------
-# Acceptance 1 — every I1 criterion has exactly one typed disposition
+# Acceptance 1 — every derived criterion has exactly one typed disposition
 # ---------------------------------------------------------------------------
 
 
-class TestCriterionDispositions:
-    def test_complete_manifest_validates(self) -> None:
-        _validator().validate(_manifest())
+class TestCriterionDenominatorIsDerived:
+    """The committed fixture carries the real derived criterion set, not a sample."""
 
-    def test_every_criterion_has_exactly_one_disposition(self) -> None:
-        manifest = _manifest()
-        keys = [c["criterion_key"] for c in manifest["criteria"]]
-        assert len(keys) == len(set(keys)), "criterion keys must be unique"
+    def test_committed_manifest_criteria_match_the_registries_exactly(self) -> None:
+        assert _criterion_denominator_errors(_committed_manifest()) == []
 
+    def test_committed_manifest_validates_against_schema(self) -> None:
+        _validator().validate(_committed_manifest())
+
+    def test_criteria_revision_matches_the_frozen_gate_policy_revision(self) -> None:
+        revisions = set(_gate_policy_criteria().values())
+        assert len(revisions) == 1, f"gate policies disagree on revision: {sorted(revisions)}"
+        assert _committed_manifest()["criteria_revision"] == revisions.pop()
+
+    def test_every_criterion_carries_exactly_one_typed_disposition(self) -> None:
+        allowed = set(_schema()["$defs"]["disposition"]["enum"])
+        for row in _committed_manifest()["criteria"]:
+            assert row["disposition"] in allowed, f"{row['criterion_key']}: untyped disposition"
+
+    def test_missing_criterion_is_refused_by_name(self) -> None:
+        candidate = _committed_manifest()
+        dropped = candidate["criteria"].pop()
+        expected = (
+            f"manifest omits registry criterion "
+            f"{dropped['criterion_source']}/{dropped['criterion_key']}"
+        )
+        assert expected in _criterion_denominator_errors(candidate)
+
+    def test_extra_criterion_is_refused_by_name(self) -> None:
+        candidate = _committed_manifest()
+        invented = copy.deepcopy(candidate["criteria"][0])
+        invented["criterion_key"] = "AC-PHANTOM-99"
+        invented["criterion_source"] = ACCEPTANCE
+        candidate["criteria"].append(invented)
+        assert (
+            "manifest declares unknown criterion acceptance-criterion/AC-PHANTOM-99"
+            in _criterion_denominator_errors(candidate)
+        )
+
+    def test_duplicate_criterion_is_refused_by_name(self) -> None:
+        candidate = _committed_manifest()
+        repeated = copy.deepcopy(candidate["criteria"][0])
+        repeated["reason"] = "a second disposition for the same criterion"
+        candidate["criteria"].append(repeated)
+        expected = (
+            f"manifest repeats criterion {repeated['criterion_source']}/{repeated['criterion_key']}"
+        )
+        assert expected in _criterion_denominator_errors(candidate)
+
+    def test_the_two_criterion_registries_never_share_a_key(self) -> None:
+        shared = set(_gate_policy_criteria()) & set(_acceptance_criteria())
+        assert not shared, f"criterion registries share keys: {sorted(shared)}"
+
+
+class TestCriterionSchemaVectors:
     @pytest.mark.parametrize(
         ("field", "bad_value"),
         [
+            ("criterion_source", "invented-registry"),
             ("disposition", "invalid"),
             ("disposition", ""),
             ("reason", ""),
             ("owner", ""),
+            ("owner", "not-a-ticket"),
             ("source_sha", ""),
             ("environment", ""),
             ("proof_digest", "not-a-digest"),
             ("verifier", "not-a-uuid"),
         ],
     )
-    def test_criterion_missing_or_invalid_field_fails(self, field: str, bad_value: object) -> None:
-        candidate = _manifest()
+    def test_criterion_invalid_field_fails(self, field: str, bad_value: object) -> None:
+        candidate = _committed_manifest()
         candidate["criteria"][0][field] = bad_value
         with pytest.raises(ValidationError):
             _validator().validate(candidate)
 
     def test_criterion_missing_required_field_fails(self) -> None:
-        candidate = _manifest()
+        candidate = _committed_manifest()
         del candidate["criteria"][0]["verifier"]
         with pytest.raises(ValidationError):
             _validator().validate(candidate)
 
-    def test_duplicate_criterion_key_validates_schema_but_tests_catch_it(self) -> None:
-        """The schema allows duplicate keys (it validates structure), but the
-        denominator contract requires unique criterion keys — the test layer
-        enforces that invariant separately."""
+    def test_acceptance_code_under_the_gate_policy_source_fails(self) -> None:
+        candidate = _committed_manifest()
+        _criterion_row(candidate, GATE_POLICY)["criterion_key"] = "AC-ADM-01"
+        with pytest.raises(ValidationError):
+            _validator().validate(candidate)
 
-        candidate = _manifest()
-        candidate["criteria"].append(copy.deepcopy(candidate["criteria"][0]))
-        # Schema validation passes (no uniqueness constraint at schema level)
-        _validator().validate(candidate)
-        # But our denominator check catches the duplicate
-        keys = [c["criterion_key"] for c in candidate["criteria"]]
-        assert len(keys) != len(set(keys))
+    def test_gate_policy_key_under_the_acceptance_source_fails(self) -> None:
+        candidate = _committed_manifest()
+        _criterion_row(candidate, ACCEPTANCE)["criterion_key"] = "artifact-current"
+        with pytest.raises(ValidationError):
+            _validator().validate(candidate)
+
+
+class TestCriterionMutationProof:
+    """A criterion added to either registry makes the committed fixture RED by name."""
+
+    def test_adding_a_frozen_gate_criterion_fails_by_name(self, tmp_path: Path) -> None:
+        root = _scratch_registries(tmp_path)
+        policy_path = root / _GATE_POLICY_DIR / "phantom-gate-v1.yaml"
+        policy_path.write_text(
+            json.dumps(
+                {
+                    "schema": "ctower.gate-policy/v1",
+                    "key": "ctower.phantom.gates",
+                    "revision": 1,
+                    "criteria": [{"key": "phantom-gate-criterion", "description": "Phantom."}],
+                }
+            ),
+            encoding="utf-8",
+        )
+        errors = _criterion_denominator_errors(_committed_manifest(), root)
+        assert any("gate-policy/phantom-gate-criterion" in error for error in errors), errors
+
+    def test_adding_an_acceptance_criterion_fails_by_name(self, tmp_path: Path) -> None:
+        root = _scratch_registries(tmp_path)
+        sources_path = root / _TRACEABILITY_SOURCES
+        sources = json.loads(sources_path.read_text(encoding="utf-8"))
+        sources["artifacts"].append(
+            {"path": "contracts/phantom/phantom.schema.json", "references": ["AC-PHANTOM-01"]}
+        )
+        sources_path.write_text(json.dumps(sources), encoding="utf-8")
+        errors = _criterion_denominator_errors(_committed_manifest(), root)
+        assert any("acceptance-criterion/AC-PHANTOM-01" in error for error in errors), errors
+
+
+def _scratch_registries(tmp_path: Path) -> Path:
+    """A disposable copy of the criterion registries; the fixture stays untouched."""
+
+    root = tmp_path / "repo"
+    (root / _GATE_POLICY_DIR).mkdir(parents=True, exist_ok=True)
+    for path in sorted((ROOT / _GATE_POLICY_DIR).glob("*.yaml")):
+        (root / _GATE_POLICY_DIR / path.name).write_bytes(path.read_bytes())
+    sources = root / _TRACEABILITY_SOURCES
+    sources.parent.mkdir(parents=True, exist_ok=True)
+    sources.write_bytes((ROOT / _TRACEABILITY_SOURCES).read_bytes())
+    return root
 
 
 # ---------------------------------------------------------------------------
@@ -216,13 +381,11 @@ class TestDeferredCapabilitiesDerivedFromRegistry:
         the denominator check fails by naming the missing capability."""
 
         registry_keys = _all_deferred_keys()
-        # Remove one capability from the manifest
         first_key = min(registry_keys)
         manifest = _manifest(deferred_keys=registry_keys - {first_key})
         manifest_keys = {row["capability_key"] for row in manifest["deferred_capabilities"]}
         missing = registry_keys - manifest_keys
         assert missing, "removing one capability must produce a missing set"
-        # The missing set names the exact capability that was omitted
         assert sorted(missing) == [first_key]
 
     def test_extra_manifest_capability_fails_by_name(self) -> None:
@@ -256,27 +419,18 @@ class TestDeferredCapabilitiesDerivedFromRegistry:
             _validator().validate(candidate)
 
     def test_capability_registry_has_at_least_one_deferred_capability(self) -> None:
-        """The capability registry must contain deferred entries; an empty
-        registry would make the denominator vacuous."""
-
         assert _capability_registry_keys(), "capability registry is empty"
 
     def test_expected_suite_registry_has_at_least_one_deferred_suite(self) -> None:
-        """The expected-suite registry must contain deferred suites; an empty
-        deferred set would make the denominator vacuous."""
-
         assert _deferred_suite_ids(), "expected-suite registry has no deferred suites"
 
     def test_no_fixed_four_name_roster_in_schema(self) -> None:
-        """The schema must NOT hard-code a fixed four-name deferred list.
-        The old schema required 'remote', 'images', 'effects', 'extensions'
-        as fixed property names — the new schema uses a dynamic array."""
+        """The schema must NOT hard-code a fixed four-name deferred list."""
 
         schema_text = _SCHEMA_PATH.read_text(encoding="utf-8")
         assert '"deferred_sources"' not in schema_text, (
             "schema must not contain the old fixed deferred_sources object"
         )
-        # The new schema uses a dynamic array, not fixed property names
         assert '"remote"' not in schema_text
         assert '"images"' not in schema_text
         assert '"effects"' not in schema_text
@@ -284,19 +438,12 @@ class TestDeferredCapabilitiesDerivedFromRegistry:
 
 
 class TestCommittedFixtureDenominator:
-    """The committed I1 manifest fixture must carry a deferred disposition for
-    every capability in the on-disk capability registry AND every deferred suite
-    in the expected-suite registry.  This is the real mutation guard: adding a
-    capability YAML to the registry or a deferred suite to expected-suites.toml
-    WITHOUT updating the fixture makes this test RED by naming the missing entry."""
-
-    def test_committed_manifest_validates_against_schema(self) -> None:
-        manifest = json.loads(_FIXTURE_PATH.read_text(encoding="utf-8"))
-        _validator().validate(manifest)
+    """Adding a capability YAML or a deferred suite WITHOUT updating the fixture makes
+    this test RED by naming the missing entry."""
 
     def test_committed_manifest_deferred_capabilities_match_registry(self) -> None:
         registry_keys = _all_deferred_keys()
-        manifest = json.loads(_FIXTURE_PATH.read_text(encoding="utf-8"))
+        manifest = _committed_manifest()
         manifest_keys = {row["capability_key"] for row in manifest["deferred_capabilities"]}
 
         missing = registry_keys - manifest_keys
@@ -304,100 +451,35 @@ class TestCommittedFixtureDenominator:
         assert not missing, f"fixture omits registry entries: {sorted(missing)}"
         assert not extra, f"fixture declares unknown entries: {sorted(extra)}"
 
-    def test_committed_manifest_has_unique_criterion_keys(self) -> None:
-        manifest = json.loads(_FIXTURE_PATH.read_text(encoding="utf-8"))
-        keys = [c["criterion_key"] for c in manifest["criteria"]]
-        assert len(keys) == len(set(keys)), "fixture has duplicate criterion keys"
 
-    def test_committed_manifest_every_criterion_has_typed_disposition(self) -> None:
-        manifest = json.loads(_FIXTURE_PATH.read_text(encoding="utf-8"))
-        for criterion in manifest["criteria"]:
-            assert criterion["disposition"] in (
-                "applicable",
-                "satisfied_by_superseding_evidence",
-                "deferred",
-                "failed",
-            )
-            for field in (
-                "reason",
-                "owner",
-                "source_sha",
-                "environment",
-                "proof_digest",
-                "verifier",
-            ):
-                assert field in criterion, f"criterion {criterion['criterion_key']} missing {field}"
-
-
-# ---------------------------------------------------------------------------
-# Acceptance 4 — mutation proof: add a registry capability -> test goes RED
-# ---------------------------------------------------------------------------
-
-
-class TestMutationProof:
+class TestDeferredMutationProof:
     def test_adding_a_registry_capability_without_manifest_disposition_fails(
         self, tmp_path: Path
     ) -> None:
         """Add a capability in a scratch copy of the registry -> the denominator
         check goes RED until the manifest carries its disposition."""
 
-        # 1. Build a scratch registry with one extra capability
         scratch_registry = tmp_path / "capabilities"
-        scratch_registry.mkdir()
+        scratch_registry.mkdir(exist_ok=True)
         for path in sorted(_CAPABILITIES_DIR.rglob("*.yaml")):
-            rel = path.relative_to(_CAPABILITIES_DIR)
-            target = scratch_registry / rel
+            target = scratch_registry / path.relative_to(_CAPABILITIES_DIR)
             target.parent.mkdir(parents=True, exist_ok=True)
             target.write_bytes(path.read_bytes())
-
-        # Add a phantom capability
         phantom_dir = scratch_registry / "phantom.capability"
-        phantom_dir.mkdir()
+        phantom_dir.mkdir(exist_ok=True)
         (phantom_dir / "v1.yaml").write_text(
-            json.dumps(
-                {
-                    "schema": "ctower.capability/v1",
-                    "key": "phantom.capability",
-                    "display_name": "Phantom capability for mutation test",
-                    "operation": "ctower.phantom",
-                    "authority": "requested_not_granted",
-                }
-            ),
+            json.dumps({"schema": "ctower.capability/v1", "key": "phantom.capability"}),
             encoding="utf-8",
         )
 
-        # 2. Derive the scratch registry keys
-        scratch_keys: set[str] = set()
-        for path in sorted(scratch_registry.rglob("*.yaml")):
-            data = json.loads(path.read_text(encoding="utf-8"))
-            scratch_keys.add(data["key"])
-        # Also include the expected-suite deferred IDs (unchanged)
-        scratch_keys |= set(_deferred_suite_ids())
-
-        # 3. The manifest (using the real registry) does NOT carry phantom.capability
-        manifest = _manifest()
-        manifest_keys = {row["capability_key"] for row in manifest["deferred_capabilities"]}
-
-        # 4. Against the scratch registry, the manifest is missing phantom.capability
-        missing = scratch_keys - manifest_keys
-        assert "phantom.capability" in missing, (
-            "adding a registry capability must make the manifest missing that capability"
-        )
-
-        # 5. Add the disposition to the manifest -> GREEN
-        manifest["deferred_capabilities"].append(
-            {
-                "capability_key": "phantom.capability",
-                "status": "not_exercised",
-                "source_count": 0,
-                "reason": "phantom capability disposition added",
-            }
-        )
-        manifest_keys = {row["capability_key"] for row in manifest["deferred_capabilities"]}
-        missing_after = scratch_keys - manifest_keys
-        assert not missing_after, (
-            "after adding the disposition the manifest must match the registry"
-        )
+        scratch_keys = {
+            json.loads(path.read_text(encoding="utf-8"))["key"]
+            for path in sorted(scratch_registry.rglob("*.yaml"))
+        } | set(_deferred_suite_ids())
+        manifest_keys = {
+            row["capability_key"] for row in _committed_manifest()["deferred_capabilities"]
+        }
+        assert sorted(scratch_keys - manifest_keys) == ["phantom.capability"]
 
     def test_adding_a_deferred_suite_without_manifest_disposition_fails(
         self, tmp_path: Path
@@ -405,11 +487,8 @@ class TestMutationProof:
         """Add a deferred suite in a scratch copy of expected-suites.toml -> the
         denominator check goes RED until the manifest carries its disposition."""
 
-        # 1. Build a scratch expected-suites.toml with one extra deferred suite
         scratch_root = tmp_path / "repo"
-        (scratch_root / "tools/checks").mkdir(parents=True)
-        original = _EXPECTED_SUITES_PATH.read_text(encoding="utf-8")
-        # Append a new deferred suite before writing
+        (scratch_root / "tools/checks").mkdir(parents=True, exist_ok=True)
         extra_suite = (
             "\n[[suite]]\n"
             'id = "phantom-suite"\n'
@@ -421,40 +500,12 @@ class TestMutationProof:
             'command = ["{python}", "-m", "pytest", "tests/phantom", "-q"]\n'
             "timeout_seconds = 300\n"
         )
-        (scratch_root / "tools/checks/expected-suites.toml").write_text(
-            original + extra_suite, encoding="utf-8"
+        (scratch_root / _EXPECTED_SUITES).write_text(
+            _EXPECTED_SUITES_PATH.read_text(encoding="utf-8") + extra_suite, encoding="utf-8"
         )
 
-        # 2. Derive the scratch deferred suite IDs
-        scratch_suite_ids = _deferred_suite_ids(scratch_root)
-        assert "phantom-suite" in scratch_suite_ids, (
-            "scratch expected-suites must contain the phantom suite"
-        )
-
-        # 3. Also include the capability registry keys (unchanged)
-        scratch_keys = set(_capability_registry_keys()) | set(scratch_suite_ids)
-
-        # 4. The manifest (using the real registry) does NOT carry phantom-suite
-        manifest = _manifest()
-        manifest_keys = {row["capability_key"] for row in manifest["deferred_capabilities"]}
-
-        # 5. Against the scratch registry, the manifest is missing phantom-suite
-        missing = scratch_keys - manifest_keys
-        assert "phantom-suite" in missing, (
-            "adding a deferred suite must make the manifest missing that suite"
-        )
-
-        # 6. Add the disposition to the manifest -> GREEN
-        manifest["deferred_capabilities"].append(
-            {
-                "capability_key": "phantom-suite",
-                "status": "not_exercised",
-                "source_count": 0,
-                "reason": "phantom suite disposition added",
-            }
-        )
-        manifest_keys = {row["capability_key"] for row in manifest["deferred_capabilities"]}
-        missing_after = scratch_keys - manifest_keys
-        assert not missing_after, (
-            "after adding the disposition the manifest must match the registry"
-        )
+        scratch_keys = set(_capability_registry_keys()) | set(_deferred_suite_ids(scratch_root))
+        manifest_keys = {
+            row["capability_key"] for row in _committed_manifest()["deferred_capabilities"]
+        }
+        assert sorted(scratch_keys - manifest_keys) == ["phantom-suite"]
