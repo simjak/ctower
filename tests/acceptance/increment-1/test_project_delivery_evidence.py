@@ -224,6 +224,11 @@ def _reconciled_rows(tenant: TenantFixture) -> dict[str, ProjectDeliveryRow]:
 
     assert affected == len(_CHECKPOINT_LINKS)
     assert view is not None
+    # A row whose sources are incomplete cannot speak for its slots at all. This
+    # landscape is complete by construction, so any source_incomplete reason means the
+    # source-integrity derivation itself regressed, and every slot assertion below would
+    # otherwise be reading a row that had already given up.
+    assert all("source_incomplete" not in row.derivation_reasons for row in view.rows)
     return {row.checkpoint_key: row for row in view.rows}
 
 
