@@ -7,11 +7,16 @@ roster and never from the manifest itself:
   ``packs/policies/gates`` plus the acceptance-criterion codes the traceability
   generator reads out of ``contracts/traceability/sources.json``.  Each row names the
   registry it came from, so the two namespaces never share a key space.
-* deferred capabilities — the capability registry plus the deferred expected suites.
+* deferred suites — the ``status = "deferred"`` suites of the expected-suite registry
+  in ``tools/checks/expected-suites.toml``.  Capability components are deliberately
+  not a denominator source: an exercised capability must never be forced to declare
+  itself unexercised, and suite ids never share the capability key space.
 
-``_criterion_denominator_errors`` is the criterion chokepoint: it is the only place
-that decides whether the committed manifest agrees with the registries, and it names
-every missing, unknown, and duplicated criterion.
+``_criterion_denominator_errors`` and ``_deferred_suite_errors`` are the two
+chokepoints: they are the only places that decide whether the committed manifest
+agrees with its registries, and each names every missing, unknown, and duplicated
+entry.  Neither reads the manifest to build the denominator, so a manifest can never
+widen its own denominator.
 """
 
 from __future__ import annotations
@@ -127,18 +132,31 @@ def _capability_registry_keys() -> frozenset[str]:
     return frozenset(keys)
 
 
-def _deferred_suite_ids(root: Path | None = None) -> frozenset[str]:
-    """Derive the set of deferred suite IDs from the expected-suite registry."""
+def _suites(root: Path = ROOT) -> list[dict[str, Any]]:
+    path = root / _EXPECTED_SUITES
+    suites = tomllib.loads(path.read_text(encoding="utf-8")).get("suite")
+    if not isinstance(suites, list):
+        raise RegistryError(f"{path}: 'suite' must be a list")
+    return cast(list[dict[str, Any]], suites)
 
-    manifest_path = (root or ROOT) / _EXPECTED_SUITES
-    data = tomllib.loads(manifest_path.read_text(encoding="utf-8"))
-    return frozenset(suite["id"] for suite in data["suite"] if suite["status"] == "deferred")
+
+def _suite_registry_ids(root: Path = ROOT) -> frozenset[str]:
+    """Every suite id the expected-suite registry declares, deferred or not."""
+
+    return frozenset(suite["id"] for suite in _suites(root))
 
 
-def _all_deferred_keys() -> frozenset[str]:
-    """Union of capability registry keys and deferred expected-suite IDs."""
+def _deferred_suites(root: Path = ROOT) -> dict[str, str]:
+    """Deferred suite id -> the phase the expected-suite registry defers it to."""
 
-    return _capability_registry_keys() | _deferred_suite_ids()
+    deferred = {
+        suite["id"]: suite["phase"] for suite in _suites(root) if suite["status"] == "deferred"
+    }
+    if not deferred:
+        raise RegistryError(
+            f"{root / _EXPECTED_SUITES}: no deferred suite; the denominator would be vacuous"
+        )
+    return deferred
 
 
 # ---------------------------------------------------------------------------
@@ -148,27 +166,6 @@ def _all_deferred_keys() -> frozenset[str]:
 
 def _committed_manifest() -> dict[str, Any]:
     return cast(dict[str, Any], json.loads(_FIXTURE_PATH.read_text(encoding="utf-8")))
-
-
-def _deferred_capability_rows(keys: frozenset[str]) -> list[dict[str, Any]]:
-    return [
-        {
-            "capability_key": key,
-            "status": "not_exercised",
-            "source_count": 0,
-            "reason": "deferred for I1/I2; no runtime exists",
-        }
-        for key in sorted(keys)
-    ]
-
-
-def _manifest(*, deferred_keys: frozenset[str] | None = None) -> dict[str, Any]:
-    """A candidate manifest: the committed fixture, optionally with a swapped roster."""
-
-    candidate = _committed_manifest()
-    if deferred_keys is not None:
-        candidate["deferred_capabilities"] = _deferred_capability_rows(deferred_keys)
-    return candidate
 
 
 def _criterion_pairs(manifest: dict[str, Any]) -> list[tuple[str, str]]:
@@ -196,6 +193,22 @@ def _criterion_denominator_errors(manifest: dict[str, Any], root: Path = ROOT) -
     errors += [
         f"manifest declares unknown criterion {source}/{key}"
         for source, key in sorted(declared - denominator)
+    ]
+    return errors
+
+
+def _deferred_suite_errors(manifest: dict[str, Any], root: Path = ROOT) -> list[str]:
+    """CHOKEPOINT: every disagreement between a manifest and the deferred-suite registry."""
+
+    denominator = set(_deferred_suites(root))
+    declared = [row["suite_id"] for row in manifest["deferred_suites"]]
+    errors = [f"manifest repeats deferred suite {name}" for name in _duplicates(declared)]
+    errors += [
+        f"manifest omits deferred suite {name}" for name in sorted(denominator - set(declared))
+    ]
+    errors += [
+        f"manifest declares unknown deferred suite {name}"
+        for name in sorted(set(declared) - denominator)
     ]
     return errors
 
@@ -358,154 +371,128 @@ def _scratch_registries(tmp_path: Path) -> Path:
 
 
 # ---------------------------------------------------------------------------
-# Acceptance 2 — deferred capabilities are keyed rows derived from the registry
+# Acceptance 2 — deferred suites are keyed rows derived from the suite registry
 # ---------------------------------------------------------------------------
 
 
-class TestDeferredCapabilitiesDerivedFromRegistry:
-    def test_manifest_deferred_capabilities_match_registry_exactly(self) -> None:
-        """The manifest's deferred_capability keys must be exactly the union of
-        capability registry keys and deferred expected-suite IDs — no more, no less."""
+class TestDeferredSuiteDenominatorIsDerived:
+    """The deferred denominator is the deferred suites of the expected-suite registry."""
 
-        registry_keys = _all_deferred_keys()
-        manifest = _manifest()
-        manifest_keys = {row["capability_key"] for row in manifest["deferred_capabilities"]}
+    def test_committed_manifest_deferred_suites_match_the_registry_exactly(self) -> None:
+        assert _deferred_suite_errors(_committed_manifest()) == []
 
-        missing = registry_keys - manifest_keys
-        extra = manifest_keys - registry_keys
-        assert not missing, f"manifest omits registry entries: {sorted(missing)}"
-        assert not extra, f"manifest declares unknown entries: {sorted(extra)}"
+    def test_every_row_names_the_phase_the_registry_defers_it_to(self) -> None:
+        deferred = _deferred_suites()
+        for row in _committed_manifest()["deferred_suites"]:
+            phase = deferred[row["suite_id"]]
+            assert phase in row["reason"], f"{row['suite_id']}: reason omits phase {phase}"
 
-    def test_missing_registry_capability_fails_by_name(self) -> None:
-        """If a capability exists in the registry but is absent from the manifest,
-        the denominator check fails by naming the missing capability."""
+    def test_missing_deferred_suite_is_refused_by_name(self) -> None:
+        candidate = _committed_manifest()
+        dropped = candidate["deferred_suites"].pop()
+        expected = f"manifest omits deferred suite {dropped['suite_id']}"
+        assert expected in _deferred_suite_errors(candidate)
 
-        registry_keys = _all_deferred_keys()
-        first_key = min(registry_keys)
-        manifest = _manifest(deferred_keys=registry_keys - {first_key})
-        manifest_keys = {row["capability_key"] for row in manifest["deferred_capabilities"]}
-        missing = registry_keys - manifest_keys
-        assert missing, "removing one capability must produce a missing set"
-        assert sorted(missing) == [first_key]
-
-    def test_extra_manifest_capability_fails_by_name(self) -> None:
-        """If the manifest declares a capability not in the registry, the
-        denominator check fails by naming the extra capability."""
-
-        manifest = _manifest()
-        manifest["deferred_capabilities"].append(
+    def test_extra_deferred_suite_is_refused_by_name(self) -> None:
+        candidate = _committed_manifest()
+        candidate["deferred_suites"].append(
             {
-                "capability_key": "nonexistent.capability",
+                "suite_id": "phantom-suite",
                 "status": "not_exercised",
                 "source_count": 0,
                 "reason": "fabricated",
             }
         )
-        registry_keys = _all_deferred_keys()
-        manifest_keys = {row["capability_key"] for row in manifest["deferred_capabilities"]}
-        extra = manifest_keys - registry_keys
-        assert extra == {"nonexistent.capability"}
+        assert "manifest declares unknown deferred suite phantom-suite" in _deferred_suite_errors(
+            candidate
+        )
 
-    def test_deferred_capability_must_be_not_exercised_with_zero_sources(self) -> None:
-        candidate = _manifest()
-        candidate["deferred_capabilities"][0]["status"] = "exercised"
+    def test_duplicate_deferred_suite_is_refused_by_name(self) -> None:
+        candidate = _committed_manifest()
+        repeated = copy.deepcopy(candidate["deferred_suites"][0])
+        repeated["reason"] = "a second row for the same suite"
+        candidate["deferred_suites"].append(repeated)
+        expected = f"manifest repeats deferred suite {repeated['suite_id']}"
+        assert expected in _deferred_suite_errors(candidate)
+
+    def test_registry_is_not_vacuous(self) -> None:
+        assert _deferred_suites(), "expected-suite registry declares no deferred suite"
+
+    def test_deferred_suite_must_be_not_exercised_with_zero_sources(self) -> None:
+        candidate = _committed_manifest()
+        candidate["deferred_suites"][0]["status"] = "exercised"
         with pytest.raises(ValidationError):
             _validator().validate(candidate)
 
-    def test_deferred_capability_source_count_must_be_zero(self) -> None:
-        candidate = _manifest()
-        candidate["deferred_capabilities"][0]["source_count"] = 1
+    def test_deferred_suite_source_count_must_be_zero(self) -> None:
+        candidate = _committed_manifest()
+        candidate["deferred_suites"][0]["source_count"] = 1
         with pytest.raises(ValidationError):
             _validator().validate(candidate)
 
-    def test_capability_registry_has_at_least_one_deferred_capability(self) -> None:
-        assert _capability_registry_keys(), "capability registry is empty"
 
-    def test_expected_suite_registry_has_at_least_one_deferred_suite(self) -> None:
-        assert _deferred_suite_ids(), "expected-suite registry has no deferred suites"
+class TestNamespacesStaySeparate:
+    """Suite ids, capability keys and criterion keys are three registries, never one
+    key space: a capability that is exercised must never be forced to declare itself
+    unexercised because something else reused its name."""
 
-    def test_no_fixed_four_name_roster_in_schema(self) -> None:
-        """The schema must NOT hard-code a fixed four-name deferred list."""
+    def test_no_capability_key_is_a_deferred_suite_id(self) -> None:
+        shared = _capability_registry_keys() & set(_deferred_suites())
+        assert not shared, f"suite ids collide with capability keys: {sorted(shared)}"
 
-        schema_text = _SCHEMA_PATH.read_text(encoding="utf-8")
-        assert '"deferred_sources"' not in schema_text, (
-            "schema must not contain the old fixed deferred_sources object"
+    def test_no_capability_is_forced_to_declare_itself_unexercised(self) -> None:
+        capabilities = _capability_registry_keys()
+        declared = {row["suite_id"] for row in _committed_manifest()["deferred_suites"]}
+        assert not capabilities & declared, (
+            f"capabilities declared not_exercised: {sorted(capabilities & declared)}"
         )
-        assert '"remote"' not in schema_text
-        assert '"images"' not in schema_text
-        assert '"effects"' not in schema_text
-        assert '"extensions"' not in schema_text
+
+    def test_every_registry_suite_id_matches_the_schema_suite_namespace(self) -> None:
+        pattern = re.compile(_schema()["$defs"]["suiteId"]["pattern"])
+        for suite_id in _suite_registry_ids():
+            assert pattern.fullmatch(suite_id), f"{suite_id}: outside the suite-id namespace"
+
+    def test_a_capability_key_is_refused_in_the_suite_namespace(self) -> None:
+        candidate = _committed_manifest()
+        candidate["deferred_suites"][0]["suite_id"] = min(_capability_registry_keys())
+        with pytest.raises(ValidationError):
+            _validator().validate(candidate)
 
 
-class TestCommittedFixtureDenominator:
-    """Adding a capability YAML or a deferred suite WITHOUT updating the fixture makes
-    this test RED by naming the missing entry."""
+class TestDeferredSuiteMutationProof:
+    """A suite deferred in the registry makes the committed fixture RED by name."""
 
-    def test_committed_manifest_deferred_capabilities_match_registry(self) -> None:
-        registry_keys = _all_deferred_keys()
-        manifest = _committed_manifest()
-        manifest_keys = {row["capability_key"] for row in manifest["deferred_capabilities"]}
-
-        missing = registry_keys - manifest_keys
-        extra = manifest_keys - registry_keys
-        assert not missing, f"fixture omits registry entries: {sorted(missing)}"
-        assert not extra, f"fixture declares unknown entries: {sorted(extra)}"
-
-
-class TestDeferredMutationProof:
-    def test_adding_a_registry_capability_without_manifest_disposition_fails(
+    def test_adding_a_deferred_suite_without_a_disposition_fails_by_name(
         self, tmp_path: Path
     ) -> None:
-        """Add a capability in a scratch copy of the registry -> the denominator
-        check goes RED until the manifest carries its disposition."""
+        root = _scratch_suite_registry(tmp_path, status="deferred")
+        errors = _deferred_suite_errors(_committed_manifest(), root)
+        assert any("phantom-suite" in error for error in errors), errors
 
-        scratch_registry = tmp_path / "capabilities"
-        scratch_registry.mkdir(exist_ok=True)
-        for path in sorted(_CAPABILITIES_DIR.rglob("*.yaml")):
-            target = scratch_registry / path.relative_to(_CAPABILITIES_DIR)
-            target.parent.mkdir(parents=True, exist_ok=True)
-            target.write_bytes(path.read_bytes())
-        phantom_dir = scratch_registry / "phantom.capability"
-        phantom_dir.mkdir(exist_ok=True)
-        (phantom_dir / "v1.yaml").write_text(
-            json.dumps({"schema": "ctower.capability/v1", "key": "phantom.capability"}),
-            encoding="utf-8",
-        )
-
-        scratch_keys = {
-            json.loads(path.read_text(encoding="utf-8"))["key"]
-            for path in sorted(scratch_registry.rglob("*.yaml"))
-        } | set(_deferred_suite_ids())
-        manifest_keys = {
-            row["capability_key"] for row in _committed_manifest()["deferred_capabilities"]
-        }
-        assert sorted(scratch_keys - manifest_keys) == ["phantom.capability"]
-
-    def test_adding_a_deferred_suite_without_manifest_disposition_fails(
+    def test_a_suite_that_is_not_deferred_stays_out_of_the_denominator(
         self, tmp_path: Path
     ) -> None:
-        """Add a deferred suite in a scratch copy of expected-suites.toml -> the
-        denominator check goes RED until the manifest carries its disposition."""
+        root = _scratch_suite_registry(tmp_path, status="required")
+        assert _deferred_suite_errors(_committed_manifest(), root) == []
 
-        scratch_root = tmp_path / "repo"
-        (scratch_root / "tools/checks").mkdir(parents=True, exist_ok=True)
-        extra_suite = (
-            "\n[[suite]]\n"
-            'id = "phantom-suite"\n'
-            'owner = "CT-I2-099"\n'
-            'phase = "CT-I2-099"\n'
-            'status = "deferred"\n'
-            'path = "tests/phantom"\n'
-            'patterns = ["test_*.py"]\n'
-            'command = ["{python}", "-m", "pytest", "tests/phantom", "-q"]\n'
-            "timeout_seconds = 300\n"
-        )
-        (scratch_root / _EXPECTED_SUITES).write_text(
-            _EXPECTED_SUITES_PATH.read_text(encoding="utf-8") + extra_suite, encoding="utf-8"
-        )
 
-        scratch_keys = set(_capability_registry_keys()) | set(_deferred_suite_ids(scratch_root))
-        manifest_keys = {
-            row["capability_key"] for row in _committed_manifest()["deferred_capabilities"]
-        }
-        assert sorted(scratch_keys - manifest_keys) == ["phantom-suite"]
+def _scratch_suite_registry(tmp_path: Path, *, status: str) -> Path:
+    """A disposable copy of the suite registry carrying one extra suite."""
+
+    root = tmp_path / "repo"
+    (root / _EXPECTED_SUITES).parent.mkdir(parents=True, exist_ok=True)
+    extra = (
+        "\n[[suite]]\n"
+        'id = "phantom-suite"\n'
+        'owner = "CT-I2-099"\n'
+        'phase = "CT-I2-099"\n'
+        f'status = "{status}"\n'
+        'path = "tests/phantom"\n'
+        'patterns = ["test_*.py"]\n'
+        'command = ["{python}", "-m", "pytest", "tests/phantom", "-q"]\n'
+        "timeout_seconds = 300\n"
+    )
+    (root / _EXPECTED_SUITES).write_text(
+        _EXPECTED_SUITES_PATH.read_text(encoding="utf-8") + extra, encoding="utf-8"
+    )
+    return root

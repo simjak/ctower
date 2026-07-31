@@ -755,38 +755,6 @@
       ]
     },
     {
-      "path": "packs/components/capabilities/effect.runtime/v1.yaml",
-      "references": [
-        "SPEC#deferred-extension-host-boundary",
-        "AC-EXT-06",
-        "AC-EVD-06"
-      ]
-    },
-    {
-      "path": "packs/components/capabilities/executable.extension/v1.yaml",
-      "references": [
-        "SPEC#extension-contract-design-now-general-runtime-deferred",
-        "AC-EXT-02",
-        "AC-EXT-04"
-      ]
-    },
-    {
-      "path": "packs/components/capabilities/remote.execution/v1.yaml",
-      "references": [
-        "SPEC#deferred-remote-execution-and-reusable-image-boundary",
-        "AC-RUN-11",
-        "AC-EXT-06"
-      ]
-    },
-    {
-      "path": "packs/components/capabilities/reusable.image/v1.yaml",
-      "references": [
-        "SPEC#deferred-remote-execution-and-reusable-image-boundary",
-        "AC-RUN-12",
-        "AC-SEC-09"
-      ]
-    },
-    {
       "path": "packs/manifests/core-v1.yaml",
       "references": [
         "SPEC#universal-versionedcomponent-catalog-and-company-desired-state",

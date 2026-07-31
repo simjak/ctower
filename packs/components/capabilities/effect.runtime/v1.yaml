@@ -1,7 +1,0 @@
-{
-  "schema": "ctower.capability/v1",
-  "key": "effect.runtime",
-  "display_name": "Generalized effect-provider Seam",
-  "operation": "ctower.effect_provider",
-  "authority": "requested_not_granted"
-}

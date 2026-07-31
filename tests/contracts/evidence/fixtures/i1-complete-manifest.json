@@ -173,39 +173,6 @@
     },
     {
       "criterion_source": "acceptance-criterion",
-      "criterion_key": "AC-EXT-02",
-      "disposition": "deferred",
-      "reason": "SPEC exposes no general executable-extension token or runtime in I1/I2",
-      "owner": "ct-i2-010",
-      "source_sha": "sha256:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
-      "environment": "disposable-development",
-      "proof_digest": "sha256:cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
-      "verifier": "00000000-0000-4000-8000-000000000003"
-    },
-    {
-      "criterion_source": "acceptance-criterion",
-      "criterion_key": "AC-EXT-04",
-      "disposition": "deferred",
-      "reason": "SPEC defers general executable-extension lifecycle in I1/I2",
-      "owner": "ct-i2-010",
-      "source_sha": "sha256:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
-      "environment": "disposable-development",
-      "proof_digest": "sha256:cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
-      "verifier": "00000000-0000-4000-8000-000000000003"
-    },
-    {
-      "criterion_source": "acceptance-criterion",
-      "criterion_key": "AC-EXT-06",
-      "disposition": "deferred",
-      "reason": "SPEC keeps remote-execution, custom-image, and executable-extension variation deferred",
-      "owner": "ct-i2-010",
-      "source_sha": "sha256:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
-      "environment": "disposable-development",
-      "proof_digest": "sha256:cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
-      "verifier": "00000000-0000-4000-8000-000000000003"
-    },
-    {
-      "criterion_source": "acceptance-criterion",
       "criterion_key": "AC-MIG-01",
       "disposition": "applicable",
       "reason": "traceability registry binds this acceptance criterion to authored artifacts; in force at the active phase",
@@ -426,28 +393,6 @@
     },
     {
       "criterion_source": "acceptance-criterion",
-      "criterion_key": "AC-RUN-11",
-      "disposition": "deferred",
-      "reason": "SPEC publishes no general remote-execution-provider Seam in I1/I2",
-      "owner": "ct-i2-010",
-      "source_sha": "sha256:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
-      "environment": "disposable-development",
-      "proof_digest": "sha256:cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
-      "verifier": "00000000-0000-4000-8000-000000000003"
-    },
-    {
-      "criterion_source": "acceptance-criterion",
-      "criterion_key": "AC-RUN-12",
-      "disposition": "deferred",
-      "reason": "SPEC exercises only pinned control and local-runner build digests in I1/I2",
-      "owner": "ct-i2-010",
-      "source_sha": "sha256:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
-      "environment": "disposable-development",
-      "proof_digest": "sha256:cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
-      "verifier": "00000000-0000-4000-8000-000000000003"
-    },
-    {
-      "criterion_source": "acceptance-criterion",
       "criterion_key": "AC-SEC-01",
       "disposition": "applicable",
       "reason": "traceability registry binds this acceptance criterion to authored artifacts; in force at the active phase",
@@ -496,17 +441,6 @@
       "disposition": "applicable",
       "reason": "traceability registry binds this acceptance criterion to authored artifacts; in force at the active phase",
       "owner": "ct-i1-007",
-      "source_sha": "sha256:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
-      "environment": "disposable-development",
-      "proof_digest": "sha256:cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
-      "verifier": "00000000-0000-4000-8000-000000000003"
-    },
-    {
-      "criterion_source": "acceptance-criterion",
-      "criterion_key": "AC-SEC-09",
-      "disposition": "deferred",
-      "reason": "SPEC makes no custom-image-runtime claim in I1/I2",
-      "owner": "ct-i2-010",
       "source_sha": "sha256:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
       "environment": "disposable-development",
       "proof_digest": "sha256:cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
@@ -670,54 +604,24 @@
   "verdict_ids": [
     "00000000-0000-4000-8000-000000000003"
   ],
-  "deferred_capabilities": [
+  "deferred_suites": [
     {
-      "capability_key": "browser-e2e",
+      "suite_id": "browser-e2e",
       "status": "not_exercised",
       "source_count": 0,
-      "reason": "deferred expected-suite; browser E2E deferred to CT-I2-005"
+      "reason": "expected-suite registry defers this suite to phase CT-I2-005; not required and not counted as passing"
     },
     {
-      "capability_key": "control.api",
+      "suite_id": "increment-1-acceptance",
       "status": "not_exercised",
       "source_count": 0,
-      "reason": "exercised through generated clients; deferred runtime not activated"
+      "reason": "expected-suite registry defers this suite to phase CT-I1-008; not required and not counted as passing"
     },
     {
-      "capability_key": "effect.runtime",
+      "suite_id": "increment-2-golden-path",
       "status": "not_exercised",
       "source_count": 0,
-      "reason": "deferred for I1/I2; no generalized effect-provider Seam exists"
-    },
-    {
-      "capability_key": "executable.extension",
-      "status": "not_exercised",
-      "source_count": 0,
-      "reason": "deferred for I1/I2; no executable-extension runtime exposed"
-    },
-    {
-      "capability_key": "increment-1-acceptance",
-      "status": "not_exercised",
-      "source_count": 0,
-      "reason": "deferred expected-suite; full I1 acceptance deferred until S11/CP3-D"
-    },
-    {
-      "capability_key": "increment-2-golden-path",
-      "status": "not_exercised",
-      "source_count": 0,
-      "reason": "deferred expected-suite; I2 golden path not yet required"
-    },
-    {
-      "capability_key": "remote.execution",
-      "status": "not_exercised",
-      "source_count": 0,
-      "reason": "deferred for I1/I2; no remote-execution provider Seam exists"
-    },
-    {
-      "capability_key": "reusable.image",
-      "status": "not_exercised",
-      "source_count": 0,
-      "reason": "deferred for I1/I2; no custom-image runtime exists"
+      "reason": "expected-suite registry defers this suite to phase CT-I2-010; not required and not counted as passing"
     }
   ]
 }
