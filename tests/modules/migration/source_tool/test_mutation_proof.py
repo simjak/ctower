@@ -157,3 +157,39 @@ def test_reconcile_refuses_when_target_checkpoint_count_mismatches(
             delivery=trimmed_delivery,
         )
     assert caught.value.code == RefusalCode.RECONCILIATION_MISMATCH
+
+
+def test_dropping_one_alias_entry_refuses_request_identity_coverage(
+    tmp_path: Path,
+) -> None:
+    """Dropping one alias_map entry must refuse with RECONCILIATION_MISMATCH.
+
+    The alias conservation predicate (reconcile._verify_alias_conservation)
+    derives the expected request-identity set from the signed frozen export
+    and asserts every exported request identity has exactly one alias-map
+    entry. Dropping one entry breaks request identity coverage.
+    """
+    fixture = make_fixture(tmp_path)
+    frozen, equality, alias_map, _plan = _frozen_pair(fixture)
+
+    # Drop one alias-map entry and re-seal.
+    trimmed_map = {**alias_map, "entries": alias_map["entries"][:-1]}
+    trimmed_map = fixture.signer.seal(trimmed_map, "map_digest")
+
+    # Rebuild the plan so its alias_map_digest matches the trimmed map,
+    # otherwise reconcile refuses on "artifact binding" before reaching
+    # the identity-coverage predicate we are testing.
+    trimmed_plan = build_import_plan(
+        frozen,
+        equality,
+        trimmed_map,
+        run_id=RUN_ID,
+        cutover_id=CUTOVER_ID,
+        commander_custodian_id=COMMANDER_ID,
+        verifier=fixture.verifier,
+    )
+
+    with pytest.raises(MigrationRefusal) as caught:
+        _full_reconcile(fixture, frozen, equality, trimmed_map, trimmed_plan)
+    assert caught.value.code == RefusalCode.RECONCILIATION_MISMATCH
+    assert "request identity coverage" in caught.value.context
