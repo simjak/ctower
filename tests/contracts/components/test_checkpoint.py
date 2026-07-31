@@ -1,4 +1,4 @@
-"""Generic checkpoint components publish the frozen ctower hierarchy atomically."""
+"""Generic checkpoint components accept configured cross-domain hierarchies."""
 
 from __future__ import annotations
 
@@ -18,39 +18,28 @@ __all__: tuple[str, ...] = ()
 ROOT = Path(__file__).parents[3]
 COMPONENTS = ROOT / "contracts/components"
 COMPANY_SCHEMA = ROOT / "contracts/company/company-bundle.schema.json"
-VECTOR_PATH = ROOT / "contracts/domain/project-delivery/project-delivery-vectors.json"
-EXPECTED_CHECKPOINT_COUNT = 14
 
 
-def _checkpoint(checkpoint_key: str) -> dict[str, object]:
-    key = checkpoint_key.casefold().replace(".", "-")
-    criteria = [
-        {
-            "key": "declared-outcome",
-            "description": f"Current proof establishes {checkpoint_key} outcome",
-            "required": True,
-            "evidence_policy_refs": [],
-        }
-    ]
-    if checkpoint_key == "I1.7":
-        vectors = json.loads(VECTOR_PATH.read_text(encoding="utf-8"))
-        criteria = [
+def _checkpoint(
+    checkpoint_key: str,
+    *,
+    reference: str,
+) -> dict[str, object]:
+    return {
+        "schema": "ctower.checkpoint/v1",
+        "key": reference,
+        "checkpoint_key": checkpoint_key,
+        "display_name": f"Configured checkpoint {checkpoint_key}",
+        "outcome": f"The declared {checkpoint_key} outcome is established",
+        "accountable_owner": "controller",
+        "criteria": [
             {
-                "key": criterion,
-                "description": f"Current proof for {criterion}",
+                "key": "declared-outcome",
+                "description": f"Current proof establishes {checkpoint_key} outcome",
                 "required": True,
                 "evidence_policy_refs": [],
             }
-            for criterion in vectors["i1_7_criteria"]
-        ]
-    return {
-        "schema": "ctower.checkpoint/v1",
-        "key": f"ctower.{key}",
-        "checkpoint_key": checkpoint_key,
-        "display_name": f"ctower checkpoint {checkpoint_key}",
-        "outcome": f"ctower establishes the declared {checkpoint_key} outcome",
-        "accountable_owner": "ctower-operator",
-        "criteria": criteria,
+        ],
         "dependency_refs": [],
     }
 
@@ -62,7 +51,7 @@ def _resource(payload: dict[str, object]) -> dict[str, object]:
             "schema": "ctower.versioned-component/v1",
             "kind": "checkpoint",
             "key": payload["key"],
-            "scope": {"tenant": "ctower", "project": "ctower"},
+            "scope": {"tenant": "ledger-co", "project": "quarterly-close"},
             "revision": 1,
             "content_digest": digest,
             "schema_ref": "ctower.checkpoint/v1",
@@ -81,32 +70,27 @@ def _resource(payload: dict[str, object]) -> dict[str, object]:
     }
 
 
-def test_generic_checkpoint_schema_is_strict_and_has_no_status_field() -> None:
+def test_generic_checkpoint_schema_accepts_configured_keys_without_status() -> None:
     validator = _checkpoint_validator()
-    payload = _checkpoint("I1.7")
+    payload = _checkpoint("Q3-close.2", reference="ledger.q3-close.2")
 
     validator.validate(payload)
-    criteria = cast(list[dict[str, object]], payload["criteria"])
-    assert [item["key"] for item in criteria] == [
-        "source-conservation",
-        "development-single-writer",
-        "api-cli-dogfood",
-        "project-delivery-rebuild",
-        "i1-evidence-archive",
-        "disaster-safe-authority",
-    ]
+    validator.validate(_checkpoint("audit-ready", reference="ledger.audit-ready"))
     with pytest.raises(ValidationError):
         validator.validate({**payload, "status": "done"})
-    with pytest.raises(ValidationError):
-        validator.validate({**payload, "checkpoint_key": "ctower-I1.7"})
+    for invalid in ("", "quarter close", "quarter/close", "-quarter-close"):
+        with pytest.raises(ValidationError):
+            validator.validate({**payload, "checkpoint_key": invalid})
 
 
-def test_one_company_bundle_can_publish_all_14_checkpoint_components() -> None:
-    vectors = json.loads(VECTOR_PATH.read_text(encoding="utf-8"))
-    resources = [_resource(_checkpoint(key)) for key in vectors["checkpoint_keys"]]
+def test_non_ctower_company_bundle_publishes_configured_checkpoints() -> None:
+    resources = [
+        _resource(_checkpoint("Q3-close.2", reference="ledger.q3-close.2")),
+        _resource(_checkpoint("audit-ready", reference="ledger.audit-ready")),
+    ]
     bundle = {
         "schema": "ctower.company-bundle/v1",
-        "company": {"key": "ctower", "display_name": "ctower"},
+        "company": {"key": "ledger-co", "display_name": "Ledger Company"},
         "resources": resources,
         "assignments": [],
         "secret_binding_refs": [],
@@ -119,23 +103,15 @@ def test_one_company_bundle_can_publish_all_14_checkpoint_components() -> None:
         list[dict[str, object]],
         [resource["component"] for resource in resources],
     )
-    assert len(components) == EXPECTED_CHECKPOINT_COUNT
-    assert len({item["key"] for item in components}) == EXPECTED_CHECKPOINT_COUNT
+    assert {item["key"] for item in components} == {
+        "ledger.q3-close.2",
+        "ledger.audit-ready",
+    }
     assert {item["kind"] for item in components} == {"checkpoint"}
-    assert all(item["scope"] == {"tenant": "ctower", "project": "ctower"} for item in components)
-
-
-def test_checkpoint_publication_vector_rejects_partial_or_duplicate_sets() -> None:
-    expected = json.loads(VECTOR_PATH.read_text(encoding="utf-8"))["checkpoint_keys"]
-
-    assert _is_atomic_checkpoint_set(expected)
-    assert not _is_atomic_checkpoint_set(expected[:-1])
-    assert not _is_atomic_checkpoint_set([*expected[:-1], expected[0]])
-
-
-def _is_atomic_checkpoint_set(keys: list[str]) -> bool:
-    expected = json.loads(VECTOR_PATH.read_text(encoding="utf-8"))["checkpoint_keys"]
-    return keys == expected and len(keys) == len(set(keys))
+    assert all(
+        item["scope"] == {"tenant": "ledger-co", "project": "quarterly-close"}
+        for item in components
+    )
 
 
 def _checkpoint_validator() -> Draft202012Validator:

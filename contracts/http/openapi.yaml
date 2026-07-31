@@ -1792,15 +1792,22 @@
       "ProjectDeliveryRow": {
         "type": "object",
         "additionalProperties": false,
-        "required": ["checkpoint_key", "checkpoint_label", "headline_state", "underlying_maturity", "outcome", "accountable_owner", "criteria", "source_watermark", "projection_watermark", "freshness", "confidence", "health", "durability", "recovery", "data_class", "semantic_digest", "reconciled_at", "freshness_due_at", "rebuild_generation", "source_ids", "derivation_reasons"],
+        "required": ["checkpoint_key", "checkpoint_label", "headline_state", "underlying_maturity", "outcome", "accountable_owner", "criteria", "qualifying_stage_slots_filled", "qualifying_stage_slots_required", "qualifying_stage_unfilled_or_unknown_slot_keys", "source_watermark", "projection_watermark", "freshness", "confidence", "health", "durability", "recovery", "data_class", "semantic_digest", "reconciled_at", "freshness_due_at", "rebuild_generation", "source_ids", "derivation_reasons"],
         "properties": {
-          "checkpoint_key": {"type": "string", "pattern": "^I[12]\\.[0-9]+$"},
+          "checkpoint_key": {"type": "string", "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]{0,127}$"},
           "checkpoint_label": {"type": "string", "minLength": 1},
           "headline_state": {"type": "string", "enum": ["planned", "in_progress", "ready_to_land", "merged", "verified", "released", "blocked", "done"]},
           "underlying_maturity": {"type": "string", "enum": ["planned", "in_progress", "ready_to_land", "merged", "verified", "released"]},
           "outcome": {"type": "string", "minLength": 1},
           "accountable_owner": {"type": "string", "minLength": 1},
           "criteria": {"$ref": "#/components/schemas/ProjectDeliveryCriteria"},
+          "qualifying_stage_slots_filled": {"type": "integer", "minimum": 0},
+          "qualifying_stage_slots_required": {"type": "integer", "minimum": 0},
+          "qualifying_stage_unfilled_or_unknown_slot_keys": {
+            "type": "array",
+            "uniqueItems": true,
+            "items": {"type": "string", "pattern": "^[a-z][a-z0-9._-]*$"}
+          },
           "source_watermark": {"type": "integer", "minimum": 0},
           "projection_watermark": {"type": "integer", "minimum": 0},
           "freshness": {"type": "string", "enum": ["fresh", "stale", "STATE_UNKNOWN"]},

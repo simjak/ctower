@@ -16,14 +16,29 @@
     "I2.5",
     "I2.6"
   ],
-  "i1_7_criteria": [
-    "source-conservation",
-    "development-single-writer",
-    "api-cli-dogfood",
-    "project-delivery-rebuild",
-    "i1-evidence-archive",
-    "disaster-safe-authority"
-  ],
+  "configured_checkpoint_criteria": {
+    "I1.0": ["declared-outcome"],
+    "I1.1": ["declared-outcome"],
+    "I1.2": ["declared-outcome"],
+    "I1.3": ["declared-outcome"],
+    "I1.4": ["declared-outcome"],
+    "I1.5": ["declared-outcome"],
+    "I1.6": ["declared-outcome"],
+    "I1.7": [
+      "source-conservation",
+      "development-single-writer",
+      "api-cli-dogfood",
+      "project-delivery-rebuild",
+      "i1-evidence-archive",
+      "disaster-safe-authority"
+    ],
+    "I2.1": ["declared-outcome"],
+    "I2.2": ["declared-outcome"],
+    "I2.3": ["declared-outcome"],
+    "I2.4": ["declared-outcome"],
+    "I2.5": ["declared-outcome"],
+    "I2.6": ["declared-outcome"]
+  },
   "headline_precedence": [
     "done",
     "blocked",
@@ -34,14 +49,14 @@
     "in_progress",
     "planned"
   ],
-  "development_truth": {
-    "checkpoint_key": "I1.7",
-    "headline_state": "blocked",
-    "confidence": "development_degraded",
-    "health": "CP3_D_NOT_PROVEN",
-    "durability": "CP3_D_NOT_PROVEN",
-    "recovery": "EXTERNAL_FAILURE_DOMAIN_UNPROVEN",
-    "data_class": "RECONSTRUCTIBLE_ONLY"
+  "verdict_scope": {
+    "may_complete_configured_checkpoint": true,
+    "may_claim_full_increment": false,
+    "may_activate_successor_increment": false
+  },
+  "carry_forward": {
+    "ordinary_generated_api_cli_only": true,
+    "bulk_import_authority": false
   },
   "freshness": {
     "recompute_after_seconds": 3600,

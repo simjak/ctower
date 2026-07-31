@@ -1411,6 +1411,14 @@
       ]
     },
     {
+      "path": "packages/ctower-kernel/migrations/0037_relax_checkpoint_key_domain.sql",
+      "references": [
+        "SPEC#project-delivery-projection",
+        "AC-PD-01",
+        "AC-PD-06"
+      ]
+    },
+    {
       "path": "packages/ctower-kernel/migrations/manifest.json",
       "references": [
         "SPEC#executable-authority-and-requirement-traceability",

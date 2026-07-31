@@ -429,6 +429,14 @@ def _row(payload: dict[str, object], *, observed_at: datetime) -> ProjectDeliver
         derivation_reasons=tuple(
             str(item) for item in cast(list[object], payload["derivation_reasons"])
         ),
+        qualifying_stage_slots_filled=int(cast(int, payload["qualifying_stage_slots_filled"])),
+        qualifying_stage_slots_required=int(cast(int, payload["qualifying_stage_slots_required"])),
+        qualifying_stage_unfilled_or_unknown_slot_keys=tuple(
+            str(item)
+            for item in cast(
+                list[object], payload["qualifying_stage_unfilled_or_unknown_slot_keys"]
+            )
+        ),
     )
     if row.freshness == "fresh" and observed_at > row.freshness_due_at:
         return replace(row, freshness="stale")

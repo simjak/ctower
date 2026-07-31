@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import hashlib
 import json
+import re
 from datetime import UTC, datetime, timedelta
 from pathlib import Path
 from typing import cast
@@ -21,7 +22,7 @@ from ctower_kernel.catalog import (
     CompanyBundleCommandResult,
     PostgresCatalog,
 )
-from ctower_kernel.catalog.interface import JsonValue
+from ctower_kernel.catalog.interface import CompanyBundleResource, JsonValue
 from ctower_kernel.projections import Projections
 from ctower_kernel.projections.postgres import PostgresProjections
 from ctower_kernel.record import Actor, PrincipalKind
@@ -29,39 +30,80 @@ from ctower_kernel.record import Actor, PrincipalKind
 __all__: tuple[str, ...] = ()
 
 _ROOT = Path(__file__).parents[3]
-_CHECKPOINT_COUNT = 14
+# The domain migration 0027 wrote into both checkpoint_key CHECK constraints, and the
+# only domain either constraint accepted before 0037 relaxed them to the authored
+# contract pattern read from checkpoint.schema.json below.
+_SUPERSEDED_INCREMENT_KEY = re.compile(r"^I[12]\.[0-9]+$")
+_CROSS_DOMAIN_CHECKPOINT_KEYS = (
+    "Q3-close.1",
+    "accounting_2026.q3",
+    "compliance.2026-h2",
+    "4-hiring.close",
+)
 
 
-def test_checkpoint_bundle_materializes_all_14_definitions_atomically_and_replays(
+def test_checkpoint_bundle_materializes_every_definition_and_replays_without_residue(
     tenant: TenantFixture,
 ) -> None:
     actor = actor_for(tenant.tenant_id, tenant.operator_id)
     catalog = _catalog(tenant)
-    bundle = _checkpoint_bundle()
+    prior_bundle = _checkpoint_bundle(prior=True)
+    _apply_checkpoint_bundle(tenant, catalog=catalog, bundle=prior_bundle)
+    projections = Projections(PostgresProjections(tenant.database.projection_dsn))
+    initial_source = _record_watermark(tenant)
+    _set_project_delivery_source(tenant, acceptance_position=initial_source)
+    assert projections.reconcile_project_delivery(tenant.tenant_id, now=datetime.now(UTC)) == len(
+        prior_bundle.resources
+    )
+    prior_view = projections.project_delivery(
+        Actor(tenant.operator_id, tenant.tenant_id, PrincipalKind.OPERATOR),
+        "ctower",
+    )
+    assert prior_view is not None
+    assert len(prior_view.rows) == len(prior_bundle.resources)
+
+    bundle = _checkpoint_bundle(mutated=True)
     plan = catalog.plan(actor, bundle)
     assert not isinstance(plan, CatalogProblem)
     command_id = uuid4()
     command = CompanyBundleApply(
         client_command_id=command_id,
         bundle=bundle,
-        expected_active_version=0,
+        expected_active_version=1,
         plan_digest=plan.plan_digest,
     )
 
     applied = catalog.apply(actor, command, telemetry=telemetry_for(actor, command_id))
-    counts = _checkpoint_counts(tenant.database.admin_dsn)
+    applied_residue = _checkpoint_counts(tenant.database.admin_dsn)
     replayed = catalog.apply(actor, command, telemetry=telemetry_for(actor, command_id))
-    partial = catalog.validate(
-        actor,
-        bundle.model_copy(update={"resources": bundle.resources[:-1]}),
-    )
+    replayed_residue = _checkpoint_counts(tenant.database.admin_dsn)
+    configured_count = len(bundle.resources)
 
     assert isinstance(applied, CompanyBundleCommandResult)
     assert replayed == applied
-    assert counts == (14, 19, 14)
-    assert _checkpoint_counts(tenant.database.admin_dsn) == counts
-    assert isinstance(partial, CatalogProblem)
-    assert partial.code == "bundle-reference-invalid"
+    # Residue, not a return value: the apply left exactly the definitions and criteria
+    # the two bundles publish between them, each on its own publication event, and the
+    # replay added none of them a second time.
+    assert applied_residue == _expected_residue(prior_bundle, bundle)
+    assert replayed_residue == applied_residue
+    source = _record_watermark(tenant)
+    _set_project_delivery_source(tenant, acceptance_position=source)
+    affected = projections.reconcile_project_delivery(tenant.tenant_id, now=datetime.now(UTC))
+    view = projections.project_delivery(
+        Actor(tenant.operator_id, tenant.tenant_id, PrincipalKind.OPERATOR),
+        "ctower",
+    )
+    assert view is not None
+    configured_keys = {str(resource.payload["checkpoint_key"]) for resource in bundle.resources}
+    assert {row.checkpoint_key for row in view.rows} == configured_keys
+    assert len(view.rows) == configured_count
+    assert affected == configured_count
+    assert configured_count == len(prior_view.rows) + 1
+    renamed = next(row for row in view.rows if row.checkpoint_key == "I1.9")
+    prior = next(row for row in prior_view.rows if row.checkpoint_key == "I1.9")
+    assert prior.checkpoint_label == "ctower checkpoint I1.9"
+    assert renamed.checkpoint_label == "Renamed fixture checkpoint"
+    assert renamed.qualifying_stage_unfilled_or_unknown_slot_keys == ("declared-outcome",)
 
 
 def test_project_delivery_missing_lagging_poison_and_rebuild_are_deterministic(
@@ -98,28 +140,131 @@ def test_project_delivery_missing_lagging_poison_and_rebuild_are_deterministic(
 
     assert missing is not None and recovered is not None
     assert lagging is not None and poisoned is not None and rebuilt is not None
+    configured = len(_checkpoint_bundle().resources)
+    # A poisoned source reconciles no row; every other pass touches the whole
+    # authored checkpoint set, whatever size the vectors declare it to be.
     assert (
         missing_count,
         recovery_count,
         lagging_count,
         poison_count,
         rebuild_count,
-    ) == (14, 14, 14, 0, 14)
+    ) == (configured, configured, configured, 0, configured)
     assert {row.health for row in missing.rows} == {"STATE_UNKNOWN"}
     recovered_semantics = tuple(row.semantic_digest for row in recovered.rows)
-    assert len(recovered_semantics) == _CHECKPOINT_COUNT
+    assert len(recovered_semantics) == configured
     assert {row.health for row in lagging.rows} == {"STATE_UNKNOWN"}
     assert {row.health for row in poisoned.rows} == {"STATE_UNKNOWN"}
     assert tuple(row.semantic_digest for row in rebuilt.rows) == recovered_semantics
     assert rebuilt.rebuild_generation == 1
 
 
-def _checkpoint_bundle() -> CompanyBundle:
-    vectors = json.loads(
-        (_ROOT / "contracts/domain/project-delivery/project-delivery-vectors.json").read_text(
-            encoding="utf-8"
-        )
+def test_non_increment_checkpoint_key_materializes_and_projects_end_to_end(
+    tenant: TenantFixture,
+) -> None:
+    """Storage accepts every checkpoint key the authored contract authorizes."""
+
+    contract_pattern = re.compile(_authored_checkpoint_key_pattern())
+    assert all(contract_pattern.fullmatch(key) for key in _CROSS_DOMAIN_CHECKPOINT_KEYS)
+    assert not any(
+        _SUPERSEDED_INCREMENT_KEY.fullmatch(key) for key in _CROSS_DOMAIN_CHECKPOINT_KEYS
     )
+    bundle = _cross_domain_checkpoint_bundle()
+    projections = Projections(PostgresProjections(tenant.database.projection_dsn))
+    actor = Actor(tenant.operator_id, tenant.tenant_id, PrincipalKind.OPERATOR)
+
+    _apply_checkpoint_bundle(tenant, bundle=bundle)
+    _set_project_delivery_source(tenant, acceptance_position=_record_watermark(tenant))
+    affected = projections.reconcile_project_delivery(tenant.tenant_id, now=datetime.now(UTC))
+    view = projections.project_delivery(actor, "ctower")
+
+    assert affected == len(_CROSS_DOMAIN_CHECKPOINT_KEYS)
+    assert view is not None
+    assert {row.checkpoint_key for row in view.rows} == set(_CROSS_DOMAIN_CHECKPOINT_KEYS)
+    definitions, rows = _stored_checkpoint_keys(tenant)
+    assert definitions == set(_CROSS_DOMAIN_CHECKPOINT_KEYS)
+    assert rows == set(_CROSS_DOMAIN_CHECKPOINT_KEYS)
+
+
+def _authored_checkpoint_key_pattern() -> str:
+    contract = cast(
+        dict[str, object],
+        json.loads(
+            (_ROOT / "contracts/components/checkpoint.schema.json").read_text(encoding="utf-8")
+        ),
+    )
+    properties = cast(dict[str, dict[str, str]], contract["properties"])
+    return properties["checkpoint_key"]["pattern"]
+
+
+def _cross_domain_checkpoint_bundle() -> CompanyBundle:
+    return _bundle_of(
+        {
+            "checkpoint_keys": list(_CROSS_DOMAIN_CHECKPOINT_KEYS),
+            "configured_checkpoint_criteria": {
+                checkpoint_key: ["declared-outcome"]
+                for checkpoint_key in _CROSS_DOMAIN_CHECKPOINT_KEYS
+            },
+        }
+    )
+
+
+def _checkpoint_bundle(
+    *,
+    mutated: bool = False,
+    prior: bool = False,
+) -> CompanyBundle:
+    vectors = cast(
+        dict[str, object],
+        json.loads(
+            (_ROOT / "contracts/domain/project-delivery/project-delivery-vectors.json").read_text(
+                encoding="utf-8"
+            )
+        ),
+    )
+    if mutated or prior:
+        keys = cast(list[str], vectors["checkpoint_keys"])
+        configured = cast(
+            dict[str, list[str]],
+            vectors["configured_checkpoint_criteria"],
+        )
+        checkpoint_keys = ["I1.9", *keys[1:-1]]
+        if mutated:
+            checkpoint_keys.append("I2.9")
+        vectors = {
+            **vectors,
+            "checkpoint_keys": checkpoint_keys,
+            "configured_checkpoint_criteria": {
+                "I1.9": configured[keys[0]],
+                **{key: configured[key] for key in keys[1:-1]},
+                **({"I2.9": configured[keys[-1]]} if mutated else {}),
+            },
+            "checkpoint_labels": ({"I1.9": "Renamed fixture checkpoint"} if mutated else {}),
+        }
+    bundle = _bundle_of(vectors)
+    if not mutated:
+        return bundle
+    previous = next(
+        item.component.reference()
+        for item in _checkpoint_bundle(prior=True).resources
+        if item.component.key == "ctower.i1-9"
+    )
+    superseding_resources = tuple(
+        item.model_copy(
+            update={
+                "component": item.component.model_copy(
+                    update={"revision": 2, "supersedes": previous}
+                )
+            }
+        )
+        if item.component.key == "ctower.i1-9"
+        else item
+        for item in bundle.resources
+    )
+    return bundle.model_copy(update={"resources": superseding_resources})
+
+
+def _bundle_of(vectors: dict[str, object]) -> CompanyBundle:
     resources = [
         _checkpoint_resource(checkpoint_key, vectors)
         for checkpoint_key in cast(list[str], vectors["checkpoint_keys"])
@@ -139,17 +284,20 @@ def _checkpoint_bundle() -> CompanyBundle:
 
 def _checkpoint_resource(checkpoint_key: str, vectors: object) -> JsonValue:
     typed_vectors = cast(dict[str, object], vectors)
-    criterion_keys = (
-        cast(list[str], typed_vectors["i1_7_criteria"])
-        if checkpoint_key == "I1.7"
-        else ["declared-outcome"]
-    )
-    key = checkpoint_key.casefold().replace(".", "-")
+    configured = cast(dict[str, object], typed_vectors["configured_checkpoint_criteria"])
+    criterion_keys = cast(list[str], configured[checkpoint_key])
+    labels = cast(dict[str, str], typed_vectors.get("checkpoint_labels", {}))
+    # The component key domain is narrower than the checkpoint key domain, so fold
+    # every authored checkpoint-key separator onto the one the component key allows.
+    key = checkpoint_key.casefold().replace(".", "-").replace("_", "-")
     payload: JsonValue = {
         "schema": "ctower.checkpoint/v1",
         "key": f"ctower.{key}",
         "checkpoint_key": checkpoint_key,
-        "display_name": f"ctower checkpoint {checkpoint_key}",
+        "display_name": labels.get(
+            checkpoint_key,
+            f"ctower checkpoint {checkpoint_key}",
+        ),
         "outcome": f"ctower establishes the declared {checkpoint_key} outcome",
         "accountable_owner": "ctower-operator",
         "criteria": [
@@ -202,18 +350,23 @@ def _catalog(tenant: TenantFixture) -> PostgresCatalog:
     )
 
 
-def _apply_checkpoint_bundle(tenant: TenantFixture) -> None:
+def _apply_checkpoint_bundle(
+    tenant: TenantFixture,
+    *,
+    catalog: PostgresCatalog | None = None,
+    bundle: CompanyBundle | None = None,
+) -> None:
     actor = actor_for(tenant.tenant_id, tenant.operator_id)
-    catalog = _catalog(tenant)
-    bundle = _checkpoint_bundle()
-    plan = catalog.plan(actor, bundle)
+    selected_catalog = catalog or _catalog(tenant)
+    selected_bundle = bundle or _checkpoint_bundle()
+    plan = selected_catalog.plan(actor, selected_bundle)
     assert not isinstance(plan, CatalogProblem)
     command_id = uuid4()
-    result = catalog.apply(
+    result = selected_catalog.apply(
         actor,
         CompanyBundleApply(
             client_command_id=command_id,
-            bundle=bundle,
+            bundle=selected_bundle,
             expected_active_version=0,
             plan_digest=plan.plan_digest,
         ),
@@ -274,6 +427,48 @@ def _record_watermark(tenant: TenantFixture) -> int:
         ).fetchone()
     assert row is not None and int(row[0]) > 0
     return int(row[0])
+
+
+def _stored_checkpoint_keys(tenant: TenantFixture) -> tuple[set[str], set[str]]:
+    """Read the two columns migration 0027 constrained, straight from storage."""
+
+    with psycopg.connect(tenant.database.admin_dsn) as connection:
+        definitions = connection.execute(
+            """
+            SELECT checkpoint_key FROM project_delivery_checkpoint_definitions
+            WHERE tenant_id = %s
+            """,
+            (tenant.tenant_id,),
+        ).fetchall()
+        rows = connection.execute(
+            "SELECT checkpoint_key FROM project_delivery_projection_rows WHERE tenant_id = %s",
+            (tenant.tenant_id,),
+        ).fetchall()
+    return {str(row[0]) for row in definitions}, {str(row[0]) for row in rows}
+
+
+def _expected_residue(
+    prior_bundle: CompanyBundle,
+    bundle: CompanyBundle,
+) -> tuple[int, int, int]:
+    """Derive the storage residue both applies must leave, from the bundles themselves.
+
+    A carried-forward component keeps its original publication event, so the second apply
+    materializes exactly the resources whose reference the first one never published.
+    """
+
+    published = tuple(item.component.reference() for item in prior_bundle.resources)
+    added = tuple(item for item in bundle.resources if item.component.reference() not in published)
+    definitions = len(prior_bundle.resources) + len(added)
+    criteria = _criteria_count(prior_bundle.resources) + _criteria_count(added)
+    return definitions, criteria, definitions
+
+
+def _criteria_count(resources: tuple[CompanyBundleResource, ...]) -> int:
+    return sum(
+        len(cast(list[object], cast(dict[str, object], item.payload)["criteria"]))
+        for item in resources
+    )
 
 
 def _checkpoint_counts(dsn: str) -> tuple[int, int, int]:

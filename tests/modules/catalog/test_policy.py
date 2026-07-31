@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import hashlib
+import json
 from datetime import UTC, datetime
 from uuid import UUID
 
@@ -20,6 +21,7 @@ from ctower_kernel.catalog.interface import (
 )
 from modules.catalog.support import FileSchemas, minimal_bundle
 
+__all__: tuple[str, ...] = ()
 _COMMAND_ID = UUID("00000000-0000-4000-8000-000000000001")
 _ACTOR_ID = UUID("00000000-0000-4000-8000-000000000002")
 
@@ -339,6 +341,95 @@ def test_revoked_components_and_ambiguous_assignment_slots_are_refused() -> None
     assert revoked_problem.code == "bundle-reference-invalid"
     assert isinstance(ambiguous_problem, CatalogProblem)
     assert ambiguous_problem.code == "bundle-reference-invalid"
+
+
+def test_checkpoint_set_refuses_a_duplicate_project_key_and_an_unscoped_checkpoint() -> None:
+    """D3: both branches of the checkpoint-set rule refuse, and a clean set validates."""
+
+    policy = CatalogPolicy(FileSchemas())
+    clean = _with_checkpoints(
+        minimal_bundle(),
+        _checkpoint_resource("first", "I1.1"),
+        _checkpoint_resource("second", "I1.2"),
+    )
+    duplicated = _with_checkpoints(
+        minimal_bundle(),
+        _checkpoint_resource("first", "I1.1"),
+        _checkpoint_resource("second", "I1.1"),
+    )
+    unscoped = _with_checkpoints(
+        minimal_bundle(),
+        _checkpoint_resource("first", "I1.1", project=None),
+    )
+
+    assert not isinstance(policy.validate("example-company", clean), CatalogProblem)
+    duplicate_problem = policy.validate("example-company", duplicated)
+    unscoped_problem = policy.validate("example-company", unscoped)
+
+    assert isinstance(duplicate_problem, CatalogProblem)
+    assert duplicate_problem.code == "bundle-reference-invalid"
+    assert "may occur only once" in duplicate_problem.detail
+    assert isinstance(unscoped_problem, CatalogProblem)
+    assert unscoped_problem.code == "bundle-grant-refused"
+
+
+def _with_checkpoints(
+    bundle: CompanyBundle,
+    *checkpoints: CompanyBundleResource,
+) -> CompanyBundle:
+    return bundle.model_copy(update={"resources": (*bundle.resources, *checkpoints)})
+
+
+def _checkpoint_resource(
+    component_key: str,
+    checkpoint_key: str,
+    *,
+    project: str | None = "ctower",
+) -> CompanyBundleResource:
+    payload: dict[str, JsonValue] = {
+        "schema": "ctower.checkpoint/v1",
+        "key": f"ctower.{component_key}",
+        "checkpoint_key": checkpoint_key,
+        "display_name": f"Checkpoint {checkpoint_key}",
+        "outcome": f"The declared {checkpoint_key} outcome is established",
+        "accountable_owner": "ctower-operator",
+        "criteria": [
+            {
+                "key": "declared-outcome",
+                "description": f"Current proof for {checkpoint_key}",
+                "required": True,
+                "evidence_policy_refs": [],
+            }
+        ],
+        "dependency_refs": [],
+    }
+    digest = "sha256:" + hashlib.sha256(rfc8785.dumps(payload)).hexdigest()
+    return CompanyBundleResource.model_validate_json(
+        json.dumps(
+            {
+                "component": {
+                    "schema": "ctower.versioned-component/v1",
+                    "kind": "checkpoint",
+                    "key": f"ctower.{component_key}",
+                    "scope": {"tenant": "example-company", "project": project},
+                    "revision": 1,
+                    "content_digest": digest,
+                    "schema_ref": "ctower.checkpoint/v1",
+                    "lifecycle": "published",
+                    "compatibility": {"ctower": ">=0.0.0,<1.0.0", "requires": []},
+                    "provenance": [
+                        {
+                            "kind": "reviewed-contract",
+                            "source": "SPEC#project-delivery-projection",
+                            "digest": digest,
+                        }
+                    ],
+                    "payload_ref": "object:" + digest,
+                },
+                "payload": payload,
+            }
+        )
+    )
 
 
 def _replace_payload(

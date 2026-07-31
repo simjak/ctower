@@ -1689,7 +1689,7 @@
           "type": "string"
         },
         "checkpoint_key": {
-          "pattern": "^I[1-9][0-9]*\\.[0-9]+$",
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]{0,127}$",
           "type": "string"
         },
         "criteria": {
@@ -8314,45 +8314,6 @@
           "additionalProperties": false,
           "allOf": [
             {
-              "$comment": "I1.7 remains visibly blocked/degraded until disaster-safe authority is separately proven.",
-              "if": {
-                "properties": {
-                  "checkpoint_key": {
-                    "const": "I1.7"
-                  },
-                  "freshness": {
-                    "const": "fresh"
-                  }
-                },
-                "required": [
-                  "checkpoint_key",
-                  "freshness"
-                ]
-              },
-              "then": {
-                "properties": {
-                  "confidence": {
-                    "const": "development_degraded"
-                  },
-                  "data_class": {
-                    "const": "RECONSTRUCTIBLE_ONLY"
-                  },
-                  "durability": {
-                    "const": "CP3_D_NOT_PROVEN"
-                  },
-                  "headline_state": {
-                    "const": "blocked"
-                  },
-                  "health": {
-                    "const": "CP3_D_NOT_PROVEN"
-                  },
-                  "recovery": {
-                    "const": "EXTERNAL_FAILURE_DOMAIN_UNPROVEN"
-                  }
-                }
-              }
-            },
-            {
               "$comment": "A stale or unknown projection cannot advertise current health.",
               "if": {
                 "properties": {
@@ -8385,7 +8346,7 @@
               "type": "string"
             },
             "checkpoint_key": {
-              "pattern": "^I[12]\\.[0-9]+$",
+              "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]{0,127}$",
               "type": "string"
             },
             "checkpoint_label": {
@@ -8469,6 +8430,22 @@
               "minimum": 0,
               "type": "integer"
             },
+            "qualifying_stage_slots_filled": {
+              "minimum": 0,
+              "type": "integer"
+            },
+            "qualifying_stage_slots_required": {
+              "minimum": 0,
+              "type": "integer"
+            },
+            "qualifying_stage_unfilled_or_unknown_slot_keys": {
+              "items": {
+                "pattern": "^[a-z][a-z0-9._-]*$",
+                "type": "string"
+              },
+              "type": "array",
+              "uniqueItems": true
+            },
             "rebuild_generation": {
               "minimum": 0,
               "type": "integer"
@@ -8521,6 +8498,9 @@
             "outcome",
             "accountable_owner",
             "criteria",
+            "qualifying_stage_slots_filled",
+            "qualifying_stage_slots_required",
+            "qualifying_stage_unfilled_or_unknown_slot_keys",
             "source_watermark",
             "projection_watermark",
             "freshness",
@@ -11837,7 +11817,7 @@
     {
       "id": "https://ctower.local/contracts/components/checkpoint.schema.json",
       "path": "contracts/components/checkpoint.schema.json",
-      "sha256": "sha256:c6e3a926fc50665a46c74791066d49f1c526f370506f926673a384bb5dae991e"
+      "sha256": "sha256:f95ebbab6e9d21369bd6346ea62949184c6bdabcd896ad8f9f9107222eeee44e"
     },
     {
       "id": "https://ctower.local/contracts/components/environment.schema.json",
@@ -12032,7 +12012,7 @@
     {
       "id": "https://ctower.dev/contracts/domain/project-delivery/project-delivery.schema.json",
       "path": "contracts/domain/project-delivery/project-delivery.schema.json",
-      "sha256": "sha256:f6c9f4fe54a9f8da5663cc6ad62010ce3dc03c71831eb7701de35103f16c50d6"
+      "sha256": "sha256:4f1864da21dd74dde8af0a8708b9a20074179f17a38a2068ef2dbb07627207a2"
     },
     {
       "id": "https://ctower.dev/contracts/domain/task-management/board-view.schema.json",

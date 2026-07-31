@@ -26,11 +26,10 @@ from ctower_kernel.projections import Projections
 from ctower_kernel.projections.postgres import PostgresProjections
 
 _ROOT = Path(__file__).parents[4]
-_CHECKPOINT_COUNT = 14
 
 
 def materialize_checkpoint_truth(tenant: TenantFixture, *, now: datetime) -> None:
-    """Apply the reviewed 14-checkpoint bundle and make its projection current."""
+    """Apply the reviewed checkpoint bundle and make its projection current."""
 
     actor = actor_for(tenant.tenant_id, tenant.operator_id)
     catalog = PostgresCatalog(
@@ -59,7 +58,7 @@ def materialize_checkpoint_truth(tenant: TenantFixture, *, now: datetime) -> Non
 
 
 def refresh_project_delivery(tenant: TenantFixture, *, now: datetime) -> None:
-    """Advance the reviewed source cursor and reconcile all 14 disposable rows."""
+    """Advance the reviewed source cursor and reconcile all disposable rows."""
 
     with psycopg.connect(tenant.database.admin_dsn) as connection:
         row = connection.execute(
@@ -86,7 +85,7 @@ def refresh_project_delivery(tenant: TenantFixture, *, now: datetime) -> None:
     affected = Projections(
         PostgresProjections(tenant.database.projection_dsn)
     ).reconcile_project_delivery(tenant.tenant_id, now=now)
-    assert affected in {0, _CHECKPOINT_COUNT}
+    assert affected in {0, len(_checkpoint_bundle().resources)}
 
 
 def _checkpoint_bundle() -> CompanyBundle:
@@ -116,11 +115,8 @@ def _checkpoint_bundle() -> CompanyBundle:
 
 
 def _checkpoint_resource(checkpoint_key: str, vectors: dict[str, object]) -> JsonValue:
-    criterion_keys = (
-        cast(list[str], vectors["i1_7_criteria"])
-        if checkpoint_key == "I1.7"
-        else ["declared-outcome"]
-    )
+    configured = cast(dict[str, object], vectors["configured_checkpoint_criteria"])
+    criterion_keys = cast(list[str], configured[checkpoint_key])
     key = checkpoint_key.casefold().replace(".", "-")
     payload: JsonValue = {
         "schema": "ctower.checkpoint/v1",
