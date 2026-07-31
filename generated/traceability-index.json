@@ -167,7 +167,18 @@
       "contracts/evidence/object-manifest.schema.json",
       "contracts/execution/evidence-policy.schema.json",
       "packages/ctower-kernel/migrations/0021_object_backup_anchor.sql",
+      "packs/components/capabilities/effect.runtime/v1.yaml",
       "packs/policies/evidence/trust-spine-four-stage-v1.yaml"
+    ],
+    "AC-EXT-02": [
+      "packs/components/capabilities/executable.extension/v1.yaml"
+    ],
+    "AC-EXT-04": [
+      "packs/components/capabilities/executable.extension/v1.yaml"
+    ],
+    "AC-EXT-06": [
+      "packs/components/capabilities/effect.runtime/v1.yaml",
+      "packs/components/capabilities/remote.execution/v1.yaml"
     ],
     "AC-MIG-01": [
       "contracts/domain/migration/ctower-project-export-equality.schema.json",
@@ -307,6 +318,12 @@
       "contracts/domain/migration/migration-vectors.json",
       "contracts/http/openapi.yaml"
     ],
+    "AC-RUN-11": [
+      "packs/components/capabilities/remote.execution/v1.yaml"
+    ],
+    "AC-RUN-12": [
+      "packs/components/capabilities/reusable.image/v1.yaml"
+    ],
     "AC-SEC-01": [
       "contracts/domain/migration/ctower-project-export-equality.schema.json",
       "contracts/domain/migration/ctower-project-fence-registry-v2.schema.json",
@@ -361,6 +378,9 @@
       "contracts/operations/restore-report.schema.json",
       "packages/ctower-kernel/migrations/0021_object_backup_anchor.sql",
       "packages/ctower-kernel/migrations/0022_restore_inventory.sql"
+    ],
+    "AC-SEC-09": [
+      "packs/components/capabilities/reusable.image/v1.yaml"
     ],
     "AC-SEC-12": [
       "contracts/http/openapi.yaml"
@@ -764,6 +784,13 @@
       "packages/ctower-kernel/migrations/0009_transactional_record_positions.sql",
       "packages/ctower-kernel/migrations/0011_persisted_command_refusals.sql"
     ],
+    "SPEC#deferred-extension-host-boundary": [
+      "packs/components/capabilities/effect.runtime/v1.yaml"
+    ],
+    "SPEC#deferred-remote-execution-and-reusable-image-boundary": [
+      "packs/components/capabilities/remote.execution/v1.yaml",
+      "packs/components/capabilities/reusable.image/v1.yaml"
+    ],
     "SPEC#durable-job-run-evidence-gate-and-effect-sequence": [
       "contracts/evidence/evidence-manifest.schema.json"
     ],
@@ -785,6 +812,9 @@
       "packages/ctower-kernel/migrations/0017_durability_probe_schema_boundary.sql",
       "packages/ctower-kernel/migrations/0018_durability_probe_search_path.sql",
       "packages/ctower-kernel/migrations/manifest.json"
+    ],
+    "SPEC#extension-contract-design-now-general-runtime-deferred": [
+      "packs/components/capabilities/executable.extension/v1.yaml"
     ],
     "SPEC#first-tenant-trust-root-ceremony": [
       "contracts/bootstrap/first-tenant-request.schema.json",

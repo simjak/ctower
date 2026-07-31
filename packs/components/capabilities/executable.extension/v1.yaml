@@ -1,0 +1,7 @@
+{
+  "schema": "ctower.capability/v1",
+  "key": "executable.extension",
+  "display_name": "Executable-extension token runtime",
+  "operation": "ctower.executable_extension",
+  "authority": "requested_not_granted"
+}

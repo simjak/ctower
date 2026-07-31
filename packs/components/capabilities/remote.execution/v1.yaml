@@ -1,0 +1,7 @@
+{
+  "schema": "ctower.capability/v1",
+  "key": "remote.execution",
+  "display_name": "Remote execution provider Seam",
+  "operation": "ctower.remote_placement",
+  "authority": "requested_not_granted"
+}

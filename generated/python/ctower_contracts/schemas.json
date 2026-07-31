@@ -9443,9 +9443,60 @@
     },
     "contracts/evidence/evidence-manifest.schema.json": {
       "$defs": {
-        "notExercised": {
+        "criterionDisposition": {
           "additionalProperties": false,
           "properties": {
+            "criterion_key": {
+              "$ref": "#/$defs/stableKey"
+            },
+            "disposition": {
+              "$ref": "#/$defs/disposition"
+            },
+            "environment": {
+              "minLength": 1,
+              "type": "string"
+            },
+            "owner": {
+              "$ref": "#/$defs/stableKey"
+            },
+            "proof_digest": {
+              "$ref": "#/$defs/sha256"
+            },
+            "reason": {
+              "minLength": 1,
+              "type": "string"
+            },
+            "source_sha": {
+              "minLength": 1,
+              "type": "string"
+            },
+            "verifier": {
+              "format": "uuid",
+              "type": "string"
+            }
+          },
+          "required": [
+            "criterion_key",
+            "disposition",
+            "reason",
+            "owner",
+            "source_sha",
+            "environment",
+            "proof_digest",
+            "verifier"
+          ],
+          "type": "object"
+        },
+        "deferredCapability": {
+          "additionalProperties": false,
+          "properties": {
+            "capability_key": {
+              "$ref": "#/$defs/stableKey"
+            },
+            "reason": {
+              "minLength": 1,
+              "type": "string"
+            },
             "source_count": {
               "const": 0
             },
@@ -9454,10 +9505,21 @@
             }
           },
           "required": [
+            "capability_key",
             "status",
-            "source_count"
+            "source_count",
+            "reason"
           ],
           "type": "object"
+        },
+        "disposition": {
+          "enum": [
+            "applicable",
+            "satisfied_by_superseding_evidence",
+            "deferred",
+            "failed"
+          ],
+          "type": "string"
         },
         "sha256": {
           "pattern": "^sha256:[0-9a-f]{64}$",
@@ -9471,62 +9533,27 @@
       "$id": "https://ctower.invalid/contracts/evidence/evidence-manifest.schema.json",
       "$schema": "https://json-schema.org/draft/2020-12/schema",
       "additionalProperties": false,
-      "description": "Development-only CP-1 manifest of current proof and explicitly unexercised sources.",
+      "description": "Development-only CP-1 typed evidence denominator: every applicable I1 criterion has exactly one disposition and every deferred capability is a keyed row derived from the capability/expected-suite registries.",
       "properties": {
-        "artifacts": {
+        "candidate_digest": {
+          "$ref": "#/$defs/sha256"
+        },
+        "criteria": {
           "items": {
-            "additionalProperties": false,
-            "properties": {
-              "artifact_digest": {
-                "$ref": "#/$defs/sha256"
-              },
-              "candidate_digest": {
-                "$ref": "#/$defs/sha256"
-              },
-              "criterion_key": {
-                "$ref": "#/$defs/stableKey"
-              }
-            },
-            "required": [
-              "criterion_key",
-              "artifact_digest",
-              "candidate_digest"
-            ],
-            "type": "object"
+            "$ref": "#/$defs/criterionDisposition"
           },
           "minItems": 1,
           "type": "array"
-        },
-        "candidate_digest": {
-          "$ref": "#/$defs/sha256"
         },
         "criteria_revision": {
           "minimum": 1,
           "type": "integer"
         },
-        "deferred_sources": {
-          "additionalProperties": false,
-          "properties": {
-            "effects": {
-              "$ref": "#/$defs/notExercised"
-            },
-            "extensions": {
-              "$ref": "#/$defs/notExercised"
-            },
-            "images": {
-              "$ref": "#/$defs/notExercised"
-            },
-            "remote": {
-              "$ref": "#/$defs/notExercised"
-            }
+        "deferred_capabilities": {
+          "items": {
+            "$ref": "#/$defs/deferredCapability"
           },
-          "required": [
-            "remote",
-            "images",
-            "effects",
-            "extensions"
-          ],
-          "type": "object"
+          "type": "array"
         },
         "schema": {
           "const": "ctower.evidence-manifest/v1"
@@ -9558,9 +9585,9 @@
         "ticket_id",
         "candidate_digest",
         "criteria_revision",
-        "artifacts",
+        "criteria",
         "verdict_ids",
-        "deferred_sources"
+        "deferred_capabilities"
       ],
       "title": "EvidenceManifestConsumerSubset",
       "type": "object"
@@ -11960,7 +11987,7 @@
     {
       "id": "https://ctower.invalid/contracts/evidence/evidence-manifest.schema.json",
       "path": "contracts/evidence/evidence-manifest.schema.json",
-      "sha256": "sha256:d57d312de09244e0767e09a084613d9fd38f204f74b3e8f2b63412bcacc3f956"
+      "sha256": "sha256:1e40809b321cc9f6ef7885a1dfc76f119858595ac6fc3b717f0f4e07d252cd7b"
     },
     {
       "id": "https://ctower.dev/contracts/evidence/object-manifest.schema.json",
