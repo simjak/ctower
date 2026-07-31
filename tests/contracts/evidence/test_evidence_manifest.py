@@ -25,6 +25,7 @@ widen its own denominator.
 
 from __future__ import annotations
 
+import ast
 import copy
 import inspect
 import json
@@ -52,6 +53,7 @@ GATE_POLICY_DIR = "packs/policies/gates"
 SPEC = "SPEC.md"
 EXPECTED_SUITES = "tools/checks/expected-suites.toml"
 CAPABILITIES_DIR = "packs/components/capabilities"
+TRACEABILITY_AUTHORITY = "tools/checks/_impl/traceability.py"
 _EXPECTED_SUITES_PATH = ROOT / EXPECTED_SUITES
 _SCHEMA_PATH = ROOT / "contracts/evidence/evidence-manifest.schema.json"
 _FIXTURE_PATH = Path(__file__).parent / "fixtures" / "i1-complete-manifest.json"
@@ -111,6 +113,20 @@ def acceptance_criteria(root: Path = ROOT) -> frozenset[str]:
     if not codes:
         raise RegistryError(f"{path}: no anchored AC rows; the denominator would be vacuous")
     return codes
+
+
+def authority_acceptance_pattern(root: Path = ROOT) -> str:
+    """The `_ACCEPTANCE` regex literal the traceability generator extracts SPEC.md with."""
+
+    path = root / TRACEABILITY_AUTHORITY
+    for node in ast.walk(ast.parse(path.read_text(encoding="utf-8"))):
+        if not isinstance(node, ast.Assign) or not isinstance(node.value, ast.Call):
+            continue
+        names = [target.id for target in node.targets if isinstance(target, ast.Name)]
+        literals = [arg.value for arg in node.value.args if isinstance(arg, ast.Constant)]
+        if names[:1] == ["_ACCEPTANCE"] and literals[:1] and isinstance(literals[0], str):
+            return literals[0]
+    raise RegistryError(f"{path}: no _ACCEPTANCE regex literal to share")
 
 
 def criterion_denominator(root: Path = ROOT) -> frozenset[tuple[str, str]]:
@@ -308,6 +324,22 @@ class TestCriterionDenominatorIsDerived:
         shared = set(gate_policy_criteria()) & set(acceptance_criteria())
         assert not shared, f"criterion registries share keys: {sorted(shared)}"
 
+    def test_the_acceptance_extraction_is_the_repository_authority(self) -> None:
+        """The shared regex is the traceability generator's own; drift is refused here
+        because the boundary forbids importing that private module."""
+
+        authority = authority_acceptance_pattern()
+        assert _ACCEPTANCE_CODE.pattern == authority, (
+            f"{TRACEABILITY_AUTHORITY}: _ACCEPTANCE is now {authority!r}; the copy has drifted"
+        )
+
+    def test_every_acceptance_reason_names_its_own_spec_anchor(self) -> None:
+        for row in _committed_manifest()["criteria"]:
+            if row["criterion_source"] != ACCEPTANCE:
+                continue
+            anchor = f"SPEC#{row['criterion_key'].lower()}"
+            assert anchor in row["reason"], f"{row['criterion_key']}: reason omits {anchor}"
+
 
 class TestSchemaEnforcesTheDenominatorContract:
     """Emptiness and repetition are illegal in the contract, not only in one test."""
@@ -409,11 +441,28 @@ class TestCriterionMutationProof:
         errors = _criterion_denominator_errors(_committed_manifest(), root)
         assert any("acceptance-criterion/AC-PHANTOM-01" in error for error in errors), errors
 
+    def test_withdrawing_an_acceptance_criterion_from_spec_fails_by_name(
+        self, tmp_path: Path
+    ) -> None:
+        """The obligation set follows SPEC, so withdrawing a criterion must be noticed."""
+
+        root = _scratch_registries(tmp_path, drop="AC-SEC-12")
+        errors = _criterion_denominator_errors(_committed_manifest(), root)
+        assert errors == ["manifest declares unknown criterion acceptance-criterion/AC-SEC-12"]
+
+    def test_the_coverage_map_cannot_move_the_obligation_set(self, tmp_path: Path) -> None:
+        """An artifact that stops citing an acceptance criterion — or the whole coverage
+        map going missing — leaves the denominator exactly where SPEC put it."""
+
+        root = _scratch_registries(tmp_path)
+        assert not (root / "contracts/traceability").exists()
+        assert criterion_denominator(root) == criterion_denominator()
+
 
 _SPEC_ROW = '\n| <a id="phantom"></a>{code} | Phantom obligation. | Phantom proof |\n'
 
 
-def _scratch_registries(tmp_path: Path, *, spec_extra: str = "") -> Path:
+def _scratch_registries(tmp_path: Path, *, spec_extra: str = "", drop: str = "") -> Path:
     """A disposable copy of the criterion registries; the fixture stays untouched.
 
     The coverage map is deliberately never copied: nothing here may read it."""
@@ -423,6 +472,8 @@ def _scratch_registries(tmp_path: Path, *, spec_extra: str = "") -> Path:
     for path in sorted((ROOT / GATE_POLICY_DIR).glob("*.yaml")):
         (root / GATE_POLICY_DIR / path.name).write_bytes(path.read_bytes())
     spec = (ROOT / SPEC).read_text(encoding="utf-8")
+    if drop:
+        spec = spec.replace(f"</a>{drop} |", "</a>WITHDRAWN |")
     (root / SPEC).write_text(spec + spec_extra, encoding="utf-8")
     return root
 
@@ -497,6 +548,11 @@ class TestNamespacesStaySeparate:
         pattern = re.compile(_schema()["$defs"]["suiteId"]["pattern"])
         for suite_id in suite_registry_ids():
             assert pattern.fullmatch(suite_id), f"{suite_id}: outside the suite-id namespace"
+
+    def test_every_declared_acceptance_criterion_matches_the_schema_namespace(self) -> None:
+        pattern = re.compile(_schema()["$defs"]["acceptanceCriterionCode"]["pattern"])
+        for code in sorted(acceptance_criteria()):
+            assert pattern.fullmatch(code), f"{code}: outside the acceptance-criterion namespace"
 
     def test_a_capability_key_is_refused_in_the_suite_namespace(self) -> None:
         candidate = _committed_manifest()
