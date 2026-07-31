@@ -160,6 +160,41 @@ def test_reconcile_refuses_when_target_checkpoint_count_mismatches(
     assert caught.value.code == RefusalCode.RECONCILIATION_MISMATCH
 
 
+def test_reconcile_refuses_bogus_checkpoint_keys_same_count(
+    tmp_path: Path,
+) -> None:
+    """Delivery with 14 bogus checkpoint keys (same count) must refuse.
+
+    _verify_delivery now compares the checkpoint KEY SET, not just its length.
+    A delivery with fourteen BOGUS-CHECKPOINT keys — the same cardinality as
+    the frozen corpus — must refuse because none of the keys match the signed
+    frozen export. (Reviewer's BOGUS-CHECKPOINT probe, now a named RED test.)
+    """
+    fixture = make_fixture(tmp_path)
+    frozen, equality, alias_map, plan = _frozen_pair(fixture)
+
+    run = _run(fixture, frozen, plan)
+    full_delivery = _delivery(fixture, run)
+    # Replace every checkpoint_key with a bogus one, keeping the same count.
+    bogus_rows = tuple(
+        row.model_copy(update={"checkpoint_key": f"BOGUS-CHECKPOINT-{i}"})
+        for i, row in enumerate(full_delivery.rows)
+    )
+    bogus_delivery = full_delivery.model_copy(update={"rows": bogus_rows})
+    with pytest.raises(MigrationRefusal) as caught:
+        _full_reconcile(
+            fixture,
+            frozen,
+            equality,
+            alias_map,
+            plan,
+            run=run,
+            delivery=bogus_delivery,
+        )
+    assert caught.value.code == RefusalCode.RECONCILIATION_MISMATCH
+    assert "checkpoint definitions" in caught.value.context
+
+
 def test_dropping_one_alias_entry_refuses_request_identity_coverage(
     tmp_path: Path,
 ) -> None:

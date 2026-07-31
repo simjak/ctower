@@ -216,20 +216,22 @@ def _verify_delivery(
     run: CtowerProjectImportRun,
     frozen: FrozenExport,
 ) -> None:
-    expected_checkpoint_count = sum(
-        1 for record in frozen.records if record.identity.namespace == "catalog:ctower:checkpoint"
-    )
+    expected_checkpoint_keys = {
+        record.identity.immutable_source_id
+        for record in frozen.records
+        if record.identity.namespace == "catalog:ctower:checkpoint"
+    }
     invalid_scope = (
         delivery.company_key != "ctower"
         or delivery.project_key != "ctower"
-        or len(delivery.rows) != expected_checkpoint_count
+        or len(delivery.rows) != len(expected_checkpoint_keys)
         or delivery.source_record_position < run.record_watermark
         or delivery.projection_record_position < run.projection_watermark
     )
     if invalid_scope:
         raise MigrationRefusal(RefusalCode.RECONCILIATION_MISMATCH, "project delivery")
     keys = {row.checkpoint_key for row in delivery.rows}
-    if len(keys) != expected_checkpoint_count:
+    if keys != expected_checkpoint_keys:
         raise MigrationRefusal(RefusalCode.RECONCILIATION_MISMATCH, "checkpoint definitions")
     for row in delivery.rows:
         _verify_delivery_row(row)
