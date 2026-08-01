@@ -1,5 +1,14 @@
 # Changelog
 
+## [0.4.0](https://github.com/simjak/ctower/compare/v0.3.1...v0.4.0) (2026-07-31)
+
+
+### Features
+
+* derive project delivery from active facts ([#160](https://github.com/simjak/ctower/issues/160)) ([4d6149b](https://github.com/simjak/ctower/commit/4d6149b5c4a5fc944ba8e83011750882603e4022))
+* **migration:** S4 source-conservation artifacts — exhaustive dispositions, named refusals, mutation-proof conservation ([#172](https://github.com/simjak/ctower/issues/172)) ([26dddbc](https://github.com/simjak/ctower/commit/26dddbc87e337cf35a739b5408ed52ea3ce802c4))
+* type the I1 evidence denominator ([#171](https://github.com/simjak/ctower/issues/171)) ([25f07b3](https://github.com/simjak/ctower/commit/25f07b3ecb555bc9f22b944eec6851b1c9c12e38))
+
 ## [0.3.1](https://github.com/simjak/ctower/compare/v0.3.0...v0.3.1) (2026-07-30)
 
 
