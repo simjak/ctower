@@ -44,13 +44,14 @@ staging immutable payloads; an exact replay returns its stored result without co
 I1 additive and successor activation remains supported, but lifecycle removal/deprecation is a typed refusal
 that leaves the prior active Catalog authoritative.
 
-Thread-first intake is bounded to the already-declared `ctower` project in the tenant's Project Delivery
-hierarchy because I1 has no separate actor-to-project grant authority. Ticket creation and link validation
-use the existing immutable `ticket_project_bindings` authority for both migration and intake provenance;
-there is no intake-only project ledger. Complete sorted durability-subject locks precede thread/ticket
-locks, and only authenticated, unquarantined discussion events may be promoted. The Record package facade
-keeps core authority types at `ctower_kernel.record` and groups inbound-thread command, result, and policy
-types under the exported `ctower_kernel.record.intake` namespace instead of flattening those leaf symbols.
+Thread-first intake accepts any project already declared in the tenant's Project Delivery hierarchy; the
+separate actor-to-project grant authority remains owned by #192. Ticket creation and link validation use the
+immutable Ticket project plus `ticket_project_bindings` provenance, and source aliases include project in
+their canonical identity; there is no intake-only project ledger. Complete sorted durability-subject locks
+precede thread/ticket locks, and only authenticated, unquarantined discussion events may be promoted. The
+Record package facade keeps core authority types at `ctower_kernel.record` and groups inbound-thread command,
+result, and policy types under the exported `ctower_kernel.record.intake` namespace instead of flattening
+those leaf symbols.
 
 There is no executable Extension Host in I1 or I2; that runtime remains deferred until a real use case and
 two real Adapters earn its Seam. The kernel may depend on authored/generated contracts and allowlisted public

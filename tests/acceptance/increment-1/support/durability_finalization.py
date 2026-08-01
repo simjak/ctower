@@ -100,6 +100,7 @@ def create_ambiguous_finalization(
     assert replay.content == response.content
     ticket = client.get(
         f"/v1/tickets/{response.json()['ticket']['ticket_id']}",
+        params={"project_key": "ctower"},
         headers={
             **telemetry_headers(),
             "Authorization": f"Bearer {authority.tenant.operator_credential}",

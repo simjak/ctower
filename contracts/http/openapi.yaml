@@ -267,7 +267,10 @@
         "x-ctower-mutation": false,
         "x-ctower-spool": "forbidden",
         "security": [{"bearerAuth": []}],
-        "parameters": [{"$ref": "#/components/parameters/TicketId"}],
+        "parameters": [
+          {"$ref": "#/components/parameters/TicketId"},
+          {"$ref": "#/components/parameters/ProjectQuery"}
+        ],
         "responses": {
           "200": {
             "description": "Tenant-scoped ticket",
@@ -288,7 +291,10 @@
         "x-ctower-mutation": false,
         "x-ctower-spool": "forbidden",
         "security": [{"bearerAuth": []}],
-        "parameters": [{"$ref": "#/components/parameters/TicketId"}],
+        "parameters": [
+          {"$ref": "#/components/parameters/TicketId"},
+          {"$ref": "#/components/parameters/ProjectQuery"}
+        ],
         "responses": {
           "200": {
             "description": "Ordered tenant-scoped timeline",
@@ -391,7 +397,10 @@
         "x-ctower-mutation": false,
         "x-ctower-spool": "forbidden",
         "security": [{"bearerAuth": []}],
-        "parameters": [{"$ref": "#/components/parameters/TicketId"}],
+        "parameters": [
+          {"$ref": "#/components/parameters/TicketId"},
+          {"$ref": "#/components/parameters/ProjectQuery"}
+        ],
         "responses": {
           "200": {"description": "Assignment interval history", "content": {"application/json": {"schema": {"$ref": "#/components/schemas/AssignmentList"}}}},
           "401": {"$ref": "#/components/responses/ProblemResponse"},
@@ -479,6 +488,7 @@
         "security": [{"bearerAuth": []}],
         "parameters": [
           {"$ref": "#/components/parameters/TicketId"},
+          {"$ref": "#/components/parameters/ProjectQuery"},
           {"$ref": "#/components/parameters/AuditCursor"},
           {"$ref": "#/components/parameters/AuditLimit"}
         ],
@@ -498,6 +508,7 @@
         "x-ctower-spool": "forbidden",
         "security": [{"bearerAuth": []}],
         "parameters": [
+          {"$ref": "#/components/parameters/ProjectQuery"},
           {"$ref": "#/components/parameters/BoardLaneFilter"},
           {"$ref": "#/components/parameters/PriorityFilter"},
           {"$ref": "#/components/parameters/StageFilter"},
@@ -1192,6 +1203,12 @@
       "ProjectKey": {
         "name": "project_key",
         "in": "path",
+        "required": true,
+        "schema": {"type": "string", "pattern": "^[a-z][a-z0-9-]{2,63}$"}
+      },
+      "ProjectQuery": {
+        "name": "project_key",
+        "in": "query",
         "required": true,
         "schema": {"type": "string", "pattern": "^[a-z][a-z0-9-]{2,63}$"}
       },
@@ -2517,6 +2534,7 @@
               "idempotency-conflict",
               "intake-already-promoted",
               "intake-promotion-ineligible",
+              "intake-source-project-mismatch",
               "intake-source-conflict",
               "migration-alias-conflict",
               "migration-capability-denied",
@@ -2704,10 +2722,11 @@
       "TicketCreateRequest": {
         "type": "object",
         "additionalProperties": false,
-        "required": ["priority", "source", "title"],
+        "required": ["priority", "project_key", "source", "title"],
         "properties": {
           "initial_custodian_id": {"type": ["string", "null"], "format": "uuid"},
           "priority": {"$ref": "#/components/schemas/Priority"},
+          "project_key": {"type": "string", "pattern": "^[a-z][a-z0-9-]{2,63}$"},
           "source": {"$ref": "#/components/schemas/SourceReference"},
           "title": {"type": "string", "minLength": 1, "maxLength": 200}
         }
@@ -2754,6 +2773,7 @@
         "properties": {
           "custodian_id": {"type": "string", "format": "uuid"},
           "priority": {"$ref": "#/components/schemas/Priority"},
+          "project_key": {"type": "string", "pattern": "^[a-z][a-z0-9-]{2,63}$"},
           "source_kind": {"type": "string", "minLength": 1, "maxLength": 64},
           "source_ref": {"type": "string", "minLength": 1, "maxLength": 256},
           "title": {"type": "string"}
@@ -3118,7 +3138,7 @@
       "ProjectionHealth": {"type": "string", "enum": ["CURRENT", "STATE_UNKNOWN"]},
       "BoardCard": {
         "type": "object", "additionalProperties": false,
-        "required": ["activity_class", "assignee_id", "blocker_opened_at", "blocker_reason", "custodian_id", "delivery_facts", "lane", "priority", "risk", "stage_key", "stage_label", "ticket_id", "title", "underlying_lane", "version"],
+        "required": ["activity_class", "assignee_id", "blocker_opened_at", "blocker_reason", "custodian_id", "delivery_facts", "lane", "priority", "project_key", "risk", "stage_key", "stage_label", "ticket_id", "title", "underlying_lane", "version"],
         "properties": {
           "activity_class": {"type": ["string", "null"], "enum": ["work", "verification", null]},
           "assignee_id": {"type": ["string", "null"], "format": "uuid"},
@@ -3128,6 +3148,7 @@
           "delivery_facts": {"type": "array", "items": {"type": "string"}},
           "lane": {"$ref": "#/components/schemas/BoardLane"},
           "priority": {"$ref": "#/components/schemas/Priority"},
+          "project_key": {"type": "string", "pattern": "^[a-z][a-z0-9-]{2,63}$"},
           "risk": {"type": ["string", "null"]},
           "stage_key": {"type": ["string", "null"], "pattern": "^[a-z][a-z0-9._-]*$"},
           "stage_label": {"type": ["string", "null"]},

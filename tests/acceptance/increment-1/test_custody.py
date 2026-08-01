@@ -52,6 +52,7 @@ def test_create_requires_authority_to_place_initial_custody(
             "/v1/tickets",
             json={
                 "priority": "P2",
+                "project_key": "ctower",
                 "source": {"kind": "mission-control", "ref": occupied_ref},
                 "title": "Existing source owner",
             },
@@ -65,6 +66,7 @@ def test_create_requires_authority_to_place_initial_custody(
             json={
                 "initial_custodian_id": str(tenant.operator_id),
                 "priority": "P2",
+                "project_key": "ctower",
                 "source": {"kind": "mission-control", "ref": occupied_ref},
                 "title": "Unauthorized delegated custody",
             },
@@ -77,6 +79,7 @@ def test_create_requires_authority_to_place_initial_custody(
             "/v1/tickets",
             json={
                 "priority": "P2",
+                "project_key": "ctower",
                 "source": {
                     "kind": "mission-control",
                     "ref": f"operator-default:{uuid4()}",
@@ -370,6 +373,7 @@ def _terminal_public_ticket(base_url: str, tenant: TenantFixture) -> UUID:
             TicketCreateRequest(
                 initial_custodian_id=tenant.commander_id,
                 priority=Priority.P1,
+                project_key="ctower",
                 source=SourceReference(kind="test", ref=f"test:close-race:{uuid4()}"),
                 title="Close custody race",
             ),
@@ -489,6 +493,7 @@ def test_one_principal_command_key_is_reserved_before_different_aggregate_work(
                     json={
                         "initial_custodian_id": str(tenant.commander_id),
                         "priority": "P1",
+                        "project_key": "ctower",
                         "source": {"kind": "mission-control", "ref": "idempotency:create"},
                         "title": "Competing command",
                     },
@@ -582,6 +587,7 @@ def _create_ticket(tenant: TenantFixture, *, custodian_id: UUID | None = None) -
             json={
                 "initial_custodian_id": str(custodian_id or tenant.commander_id),
                 "priority": "P1",
+                "project_key": "ctower",
                 "source": {"kind": "mission-control", "ref": "mission-control:custody"},
                 "title": "Custody acceptance ticket",
             },
@@ -625,14 +631,22 @@ def _transfer(
 def _show(client: TestClient, credential: str, ticket_id: UUID) -> Response:
     return cast(
         Response,
-        client.get(f"/v1/tickets/{ticket_id}", headers=_auth(credential)),
+        client.get(
+            f"/v1/tickets/{ticket_id}",
+            params={"project_key": "ctower"},
+            headers=_auth(credential),
+        ),
     )
 
 
 def _timeline(client: TestClient, credential: str, ticket_id: UUID) -> Response:
     return cast(
         Response,
-        client.get(f"/v1/tickets/{ticket_id}/timeline", headers=_auth(credential)),
+        client.get(
+            f"/v1/tickets/{ticket_id}/timeline",
+            params={"project_key": "ctower"},
+            headers=_auth(credential),
+        ),
     )
 
 

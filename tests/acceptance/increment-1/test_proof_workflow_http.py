@@ -484,6 +484,7 @@ def _create_ticket(client: TestClient, tenant: TenantFixture) -> UUID:
         json={
             "initial_custodian_id": str(tenant.commander_id),
             "priority": "P1",
+            "project_key": "ctower",
             "source": {"kind": "test", "ref": "test:proof-workflow-http"},
             "title": "Proof workflow HTTP behavior",
         },

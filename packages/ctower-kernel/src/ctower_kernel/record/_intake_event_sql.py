@@ -161,6 +161,7 @@ def _ticket_commit(
         payload=TicketCreatedPayload(
             custodian_id=command.initial_custodian_id,
             priority=command.priority,
+            project_key=command.project_key,
             source_kind=command.source.kind,
             source_ref=command.source.ref,
             title=command.title,

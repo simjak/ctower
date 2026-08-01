@@ -132,6 +132,7 @@ def _request() -> TicketCreateRequest:
     return TicketCreateRequest(
         initial_custodian_id=uuid4(),
         priority=Priority.P1,
+        project_key="ctower",
         source=SourceReference(kind="test", ref="test:generated-replay"),
         title="Generated replay",
     )

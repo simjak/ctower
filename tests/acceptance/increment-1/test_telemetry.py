@@ -179,6 +179,7 @@ def _create_ticket(
             json={
                 "initial_custodian_id": str(tenant.commander_id),
                 "priority": "P1",
+                "project_key": "ctower",
                 "source": {
                     "kind": "mission-control",
                     "ref": "mission-control:telemetry",

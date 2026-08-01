@@ -278,6 +278,7 @@ def test_board_fold_excludes_pending_commands_and_rebuilds_accepted_facts_only(
             client_command_id=_command_id(),
             initial_custodian_id=tenant.commander_id,
             priority="P1",
+            project_key="ctower",
             source=SourceReference("test", "test:accepted-board"),
             title="Accepted Board fact",
         ),
@@ -355,6 +356,7 @@ def test_board_get_is_a_nonmutating_stored_projection_read(tenant: TenantFixture
     with TestClient(app) as client:
         response = client.get(
             "/v1/board",
+            params={"project_key": "ctower"},
             headers={
                 "Authorization": f"Bearer {tenant.commander_credential}",
                 **telemetry_headers(command_id),
@@ -377,6 +379,7 @@ def test_accepted_tombstone_survives_projection_generation_rebuild(
             client_command_id=uuid4(),
             initial_custodian_id=tenant.commander_id,
             priority="P1",
+            project_key="ctower",
             source=SourceReference("test", "test:tombstone-rebuild"),
             title="Tombstone rebuild",
         ),
@@ -449,6 +452,7 @@ def test_fold_crash_replays_and_terminal_retry_requires_recovery(
             client_command_id=uuid4(),
             initial_custodian_id=tenant.commander_id,
             priority="P1",
+            project_key="ctower",
             source=SourceReference("test", "test:fold-crash"),
             title="Fold crash replay",
         ),
@@ -549,9 +553,7 @@ def test_health_keeps_future_contributors_explicitly_unknown(tenant: TenantFixtu
     assert response.json()["schema_id"] == "ctower.health/v1"
 
 
-def _prepare_poisoned_ticket(
-    tenant: TenantFixture,
-) -> tuple[UUID, UUID, dict[str, object]]:
+def _prepare_poisoned_ticket(tenant: TenantFixture) -> tuple[UUID, UUID, dict[str, object]]:
     actor = Actor(tenant.commander_id, tenant.tenant_id, PrincipalKind.COMMANDER)
     outcome = Work(PostgresRecord(tenant.database.runtime_dsn)).create_ticket(
         actor,
@@ -559,6 +561,7 @@ def _prepare_poisoned_ticket(
             client_command_id=uuid4(),
             initial_custodian_id=tenant.commander_id,
             priority="P2",
+            project_key="ctower",
             source=SourceReference("test", "test:poison-recovery"),
             title="Poison recovery",
         ),

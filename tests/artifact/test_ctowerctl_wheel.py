@@ -393,6 +393,8 @@ def _ticket_create_command(
         str(uuid4()),
         "--priority",
         "P1",
+        "--project-key",
+        "ctower",
         "--source-kind",
         "packaging-test",
         "--source-ref",

@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import hashlib
 import json
+import re
 from collections.abc import Callable
 from dataclasses import asdict, dataclass
 from datetime import UTC, datetime
@@ -47,6 +48,7 @@ __all__ = [
 ]
 
 PRIORITIES = frozenset({"P0", "P1", "P2"})
+_PROJECT_KEY = re.compile(r"^[a-z][a-z0-9-]{2,63}$")
 MAX_REASON_LENGTH = 500
 
 
@@ -278,7 +280,7 @@ class _WorkWriter(Protocol):
     ) -> WorkReceipt | RecordProblem: ...
 
     def assignments(
-        self, actor: Actor, ticket_id: UUID
+        self, actor: Actor, ticket_id: UUID, project_key: str
     ) -> tuple[AssignmentInterval, ...] | RecordProblem: ...
 
     def readiness(self, actor: Actor, ticket_id: UUID) -> WorkReadiness | RecordProblem: ...
@@ -333,6 +335,8 @@ class Work:
             return outcome
         if command.priority not in PRIORITIES:
             return _refusal(command, "Ticket priority is outside P0/P1/P2.")
+        if _PROJECT_KEY.fullmatch(command.project_key) is None:
+            return _validation_refusal(command, "Ticket project key is invalid.")
         if command.priority == "P0" and actor.kind is not PrincipalKind.OPERATOR:
             return _refusal(command, "Only an operator may create a P0 ticket.")
         request_digest = hashlib.sha256(_canonical_json(command.request_payload())).digest()
@@ -411,15 +415,15 @@ class Work:
         return outcome
 
     def assignments(
-        self, actor: Actor, ticket_id: UUID
+        self, actor: Actor, ticket_id: UUID, project_key: str
     ) -> tuple[AssignmentInterval, ...] | RecordProblem:
-        """Return tenant-scoped assignment interval history."""
+        """Return tenant/project-scoped assignment interval history."""
 
         if actor.kind is PrincipalKind.MIGRATION_IMPORTER:
             return _importer_refusal()
         if self._writer is None:
             raise RuntimeError("Work persistence is not configured")
-        return self._writer.assignments(actor, ticket_id)
+        return self._writer.assignments(actor, ticket_id, project_key)
 
     def readiness(self, actor: Actor, ticket_id: UUID) -> WorkReadiness | RecordProblem:
         """Return the immutable admission/blocker observation consumed by Workflow."""
@@ -458,6 +462,16 @@ def _refusal(command: TicketCommand, detail: str) -> RecordProblem:
         detail=detail,
         status=403,
         title="Ticket command refused",
+        command_id=command.client_command_id,
+    )
+
+
+def _validation_refusal(command: TicketCommand, detail: str) -> RecordProblem:
+    return RecordProblem(
+        code="validation-error",
+        detail=detail,
+        status=422,
+        title="Invalid ticket command",
         command_id=command.client_command_id,
     )
 

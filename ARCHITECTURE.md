@@ -505,8 +505,10 @@ pinned declaration; none of them substitutes a stage name or silence for it.
 An overdue heartbeat is stale. A missing/gapped watermark, unknown integrity or proof validity, or unsafe
 authorization coverage is `STATE UNKNOWN`, not a ninth delivery state. Deleting/rebuilding the projection
 at one watermark must reproduce the same rows. I1.7 exposes only the three Project hierarchies and compact
-disjoint read-only CLI text projections, with optional deterministic JSON, for portfolio dogfood; I2.4 adds browser drill-through,
-interactive detail, broader visualization, trends, cost/time analytics, and the reusable cross-domain view.
+disjoint read-only CLI text projections, with optional deterministic JSON, for portfolio dogfood. Each
+compact projection is generically project-scoped and filters its authorized source links before
+materialization. I2.4 adds browser drill-through, interactive detail, broader visualization, trends,
+cost/time analytics, and the reusable cross-domain view.
 
 The development-pilot row and the full-I1 row are not interchangeable. The pilot may become `done` on a
 CT-I1-008 `GO_WITH_LIMITS` while every portfolio row still exposes health `CP3_D_NOT_PROVEN` and portfolio

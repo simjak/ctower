@@ -1,0 +1,10 @@
+{
+  "schema": "ctower.checkpoint/v1",
+  "key": "bhloop.biomarker-rail",
+  "checkpoint_key": "bhloop.biomarker-rail",
+  "display_name": "Open the biomarker rail",
+  "outcome": "Counsel and Medical Director gates precede marker import, report release, and Layer 4 exit evidence.",
+  "accountable_owner": "bhloop-commander-seat",
+  "criteria": [{"key": "biomarker-rail-open", "description": "Current gate and outcome evidence proves the biomarker rail is safe to open.", "required": true, "evidence_policy_refs": []}],
+  "dependency_refs": ["bhloop.d11-org@1"]
+}

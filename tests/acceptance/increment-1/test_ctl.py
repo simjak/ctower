@@ -106,7 +106,15 @@ def test_ticket_capture_and_query_use_stable_queued_command(
         created = json.loads(created_text)
         ticket_id = UUID(created["result"]["ticket"]["ticket_id"])
         show_status, shown_text, show_error = _run(
-            ["--base-url", base_url, "ticket", "query", str(ticket_id)],
+            [
+                "--base-url",
+                base_url,
+                "ticket",
+                "query",
+                str(ticket_id),
+                "--project-key",
+                "ctower",
+            ],
             authority=tenant.operator_credential,
         )
 
@@ -278,7 +286,15 @@ def test_missing_keyring_blocks_mutation_before_send_but_reads_continue(
             authority=tenant.operator_credential,
         )
         readable = _run(
-            ["--base-url", base_url, "ticket", "query", str(ticket_id)],
+            [
+                "--base-url",
+                base_url,
+                "ticket",
+                "query",
+                str(ticket_id),
+                "--project-key",
+                "ctower",
+            ],
             authority=tenant.operator_credential,
         )
 
@@ -306,6 +322,8 @@ def _create_arguments(base_url: str, tenant: TenantFixture, command_id: UUID) ->
         str(tenant.commander_id),
         "--priority",
         "P1",
+        "--project-key",
+        "ctower",
         "--source-kind",
         "mission-control",
         "--source-ref",
@@ -328,6 +346,8 @@ def _first_day_create_arguments(
         "create",
         "--priority",
         "P2",
+        "--project-key",
+        "ctower",
         "--source-kind",
         "mission-control",
         "--source-ref",
@@ -418,6 +438,7 @@ def _seed_ticket(tenant: TenantFixture, title: str) -> UUID:
             json={
                 "initial_custodian_id": str(tenant.commander_id),
                 "priority": "P1",
+                "project_key": "ctower",
                 "source": {"kind": "test", "ref": "test:ctl-seed"},
                 "title": title,
             },

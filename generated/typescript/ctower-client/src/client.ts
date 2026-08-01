@@ -1,5 +1,5 @@
 // DO NOT EDIT: generated file; regenerate from declared inputs.
-// Authored contract digest: sha256:29a4dc94972b9c27752779112fa40d489166fe5bd05c41ca75b96eea22cb3674
+// Authored contract digest: sha256:6336389865410020b7eb772f268feb2fa8668d557c6c7022bad7d73ca33fae95
 
 import type * as Models from "./models.js";
 import { OPERATIONS, type OperationId } from "./operations.js";
@@ -105,6 +105,7 @@ export type FreezeProofCriteriaInput = Readonly<{
 }>;
 
 export type GetBoardInput = Readonly<{
+  readonly "projectKey": string;
   readonly "lane"?: "backlog" | "ready" | "in_progress" | "in_review" | "blocked" | "complete";
   readonly "priority"?: "P0" | "P1" | "P2";
   readonly "stageKey"?: string;
@@ -136,10 +137,12 @@ export type GetSyntheticWorkflowRunInput = Readonly<{
 
 export type GetTicketInput = Readonly<{
   readonly "ticketId": string;
+  readonly "projectKey": string;
 }>;
 
 export type GetTicketTimelineInput = Readonly<{
   readonly "ticketId": string;
+  readonly "projectKey": string;
 }>;
 
 export type IssueSeatCredentialInput = Readonly<{
@@ -149,10 +152,12 @@ export type IssueSeatCredentialInput = Readonly<{
 
 export type ListTicketAssignmentsInput = Readonly<{
   readonly "ticketId": string;
+  readonly "projectKey": string;
 }>;
 
 export type ListTicketAuditEventsInput = Readonly<{
   readonly "ticketId": string;
+  readonly "projectKey": string;
   readonly "cursor"?: number;
   readonly "limit"?: number;
 }>;

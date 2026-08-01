@@ -1,8 +1,8 @@
 {
   "schema": "ctower.migrations/v3",
   "adoption_baseline": {
-    "through": "0039_project_seat_credentials.sql",
-    "schema_sha256": "sha256:14badc991e6f7c1091450696bc2f1abb5590e3fa4e37f4d7e94f9b782aec9bee",
+    "through": "0040_project_scoped_reads.sql",
+    "schema_sha256": "sha256:d557c028d86bc560cfd48257a546645d663ed322270cbdf473acc1d14f4f10da",
     "semantic_checks": "ctower.pre-ledger/v1",
     "schema_object_sum256": "sum256:6b5bc3a315f00c4abb8643e088ab135998b09891e3e77c9d770eb738dc640ead"
   },
@@ -377,6 +377,15 @@
       "forward_test": "pytest:tests/acceptance/increment-1/test_seat_credentials.py::test_revocation_appends_and_the_next_call_refuses_by_name",
       "rollback_or_forward_compensation": "Preserve immutable project-seat grants, issuance/revocation facts, canonical Access events, command results, and outbox rows; append reviewed forward compensation and never reactivate or rewrite a revoked credential.",
       "backup_checkpoint": "Before applying to a nonempty installation, capture principal, credential, project-seat, ticket-project, command, event, outbox, and durability-head counts plus a verified database backup."
+    },
+    {
+      "path": "0040_project_scoped_reads.sql",
+      "sha256": "sha256:cbb0f25fd63b50fa300d2e9a59f0a69bdadc85a71d71222f0db7400543d6a8f4",
+      "minimum_service_version": "0.0.0",
+      "maximum_service_version": "0.0.0",
+      "forward_test": "pytest:tests/acceptance/increment-1/test_project_scoping.py::test_manibo_and_ctower_boards_are_disjoint",
+      "rollback_or_forward_compensation": "Keep immutable ticket project ownership and project-scoped source aliases readable; rebuild disposable Board and Project Delivery rows after reviewed forward compensation, never erase or relink ticket or intake authority.",
+      "backup_checkpoint": "Before applying to a nonempty installation, capture ticket, ticket-project binding, inbound source alias, and Board projection counts grouped by tenant and project plus a verified database backup."
     }
   ]
 }

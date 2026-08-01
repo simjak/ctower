@@ -25,6 +25,7 @@ def test_projection_restart_replays_retryable_fold_without_partial_cursor(
             client_command_id=uuid4(),
             initial_custodian_id=tenant.commander_id,
             priority="P1",
+            project_key="ctower",
             source=SourceReference("test", "test:projection-restart"),
             title="Projection restart recovery",
         ),

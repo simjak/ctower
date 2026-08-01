@@ -430,6 +430,32 @@ def test_seat_catalog_is_generic_unique_data_and_assignments_pin_exact_revision(
     assert duplicate_problem.code == "bundle-reference-invalid"
 
 
+def test_checkpoint_dependencies_are_exact_project_local_acyclic_pins() -> None:
+    policy = CatalogPolicy(FileSchemas())
+    first = _checkpoint_resource("component-first", "display-first")
+    second = _checkpoint_resource(
+        "component-second", "display-second", dependencies=("ctower.component-first@1",)
+    )
+    clean = _with_checkpoints(minimal_bundle(), first, second)
+    missing = _with_checkpoints(
+        minimal_bundle(),
+        _checkpoint_resource("missing", "display-missing", dependencies=("other@1",)),
+    )
+    cycle = _with_checkpoints(
+        minimal_bundle(),
+        _checkpoint_resource("cycle-a", "display-a", dependencies=("ctower.cycle-b@1",)),
+        _checkpoint_resource("cycle-b", "display-b", dependencies=("ctower.cycle-a@1",)),
+    )
+
+    assert not isinstance(policy.validate("example-company", clean), CatalogProblem)
+    missing_problem = policy.validate("example-company", missing)
+    cycle_problem = policy.validate("example-company", cycle)
+    assert isinstance(missing_problem, CatalogProblem)
+    assert "resolve within" in missing_problem.detail
+    assert isinstance(cycle_problem, CatalogProblem)
+    assert "acyclic" in cycle_problem.detail
+
+
 def _with_checkpoints(
     bundle: CompanyBundle,
     *checkpoints: CompanyBundleResource,
@@ -443,6 +469,7 @@ def _checkpoint_resource(
     checkpoint_key: str,
     *,
     project: str | None = "ctower",
+    dependencies: tuple[str, ...] = (),
 ) -> CompanyBundleResource:
     payload = _checkpoint_payload(component_key, checkpoint_key)
     digest = "sha256:" + hashlib.sha256(rfc8785.dumps(payload)).hexdigest()
@@ -484,7 +511,7 @@ def _checkpoint_payload(component_key: str, checkpoint_key: str) -> dict[str, Js
                 "evidence_policy_refs": [],
             }
         ],
-        "dependency_refs": [],
+        "dependency_refs": list(dependencies),
     }
 
 

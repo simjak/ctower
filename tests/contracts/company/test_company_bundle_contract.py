@@ -14,7 +14,7 @@ __all__: tuple[str, ...] = ()
 
 ROOT = Path(__file__).parents[3]
 COMPONENTS = ROOT / "contracts/components"
-_MINIMAL_RESOURCE_COUNT = 32
+_MINIMAL_RESOURCE_COUNT = 48
 _CTOWER_CHECKPOINT_KEYS = (
     "I1.0",
     "I1.1",

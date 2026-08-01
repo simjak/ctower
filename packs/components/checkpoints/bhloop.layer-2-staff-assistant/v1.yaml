@@ -1,0 +1,10 @@
+{
+  "schema": "ctower.checkpoint/v1",
+  "key": "bhloop.layer-2-staff-assistant",
+  "checkpoint_key": "bhloop.layer-2-staff-assistant",
+  "display_name": "Complete Layer 2 staff assistant",
+  "outcome": "Staff-assistant safety outcomes and the reconcilable adoption denominator pass on the proven foundation.",
+  "accountable_owner": "bhloop-commander-seat",
+  "criteria": [{"key": "layer-2-proven", "description": "Current safety and adoption-denominator evidence proves Layer 2.", "required": true, "evidence_policy_refs": []}],
+  "dependency_refs": ["bhloop.layer-1-foundation@1"]
+}

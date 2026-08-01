@@ -40,14 +40,12 @@ def project_available(
     actor: Actor,
     project_key: str,
 ) -> bool:
-    """Recognize only the declared I1 ctower project hierarchy."""
+    """Recognize any project declared by the active tenant hierarchy."""
 
-    if project_key != "ctower":
-        return False
     row = connection.execute(
         """
         SELECT 1 FROM project_delivery_checkpoint_definitions
-        WHERE tenant_id = %s AND company_key = 'ctower' AND project_key = %s
+        WHERE tenant_id = %s AND project_key = %s
         LIMIT 1
         """,
         (actor.tenant_id, project_key),
@@ -132,14 +130,19 @@ def reserve_source_alias(
 ) -> RecordProblem | None:
     connection.execute(
         "SELECT pg_advisory_xact_lock(hashtextextended(%s, 0))",
-        (f"intake-source:{actor.tenant_id}:{command.source.kind}:{command.source.ref}",),
+        (
+            "intake-source:"
+            f"{actor.tenant_id}:{command.project_key}:"
+            f"{command.source.kind}:{command.source.ref}",
+        ),
     )
     row = connection.execute(
         """
         SELECT inbound_event_id FROM inbound_source_aliases
-        WHERE tenant_id = %s AND source_kind = %s AND source_ref = %s
+        WHERE tenant_id = %s AND project_key = %s
+          AND source_kind = %s AND source_ref = %s
         """,
-        (actor.tenant_id, command.source.kind, command.source.ref),
+        (actor.tenant_id, command.project_key, command.source.kind, command.source.ref),
     ).fetchone()
     if row is None:
         return None
@@ -199,6 +202,7 @@ def prepare_action(
         connection,
         actor,
         command,
+        project_key=project_key,
         source=source,
         ticket_ids=ticket_ids,
     )
@@ -209,12 +213,18 @@ def _prepare_create_action(
     actor: Actor,
     command: IntakeSubmitCommand | IntakePromotionCommand,
     *,
+    project_key: str | None,
     source: InboundSource | None,
     ticket_ids: _TicketIds | None,
 ) -> IntakeAction | RecordProblem:
     if command.initial_custodian_id is None or command.priority is None or command.title is None:
         raise RuntimeError("Work admitted incomplete create-ticket intake")
     source_reference = _ticket_source(command, source)
+    resolved_project = (
+        command.project_key if isinstance(command, IntakeSubmitCommand) else project_key
+    )
+    if resolved_project is None:
+        raise RuntimeError("create-ticket intake project scope is unavailable")
     custody_problem = initial_custody_problem(connection, actor, command)
     if custody_problem is not None:
         return custody_problem
@@ -224,6 +234,7 @@ def _prepare_create_action(
         client_command_id=command.client_command_id,
         initial_custodian_id=command.initial_custodian_id,
         priority=command.priority,
+        project_key=resolved_project,
         source=source_reference,
         title=command.title,
     )

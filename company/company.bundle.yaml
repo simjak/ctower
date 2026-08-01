@@ -667,6 +667,352 @@ resources:
       corruption_policy: reject
       missing_policy: reject
       note: CP-1 persists verified bytes locally; external object durability remains future scope.
+  - component:
+      schema: ctower.versioned-component/v1
+      kind: project
+      key: manibo.delivery
+      scope: {tenant: example-company, project: null}
+      revision: 1
+      content_digest: sha256:e0e7d00eb3be2db075ce79fe521060001e830f7ff14c4b057cc2c5dd2d5d10ba
+      schema_ref: ctower.project/v1
+      lifecycle: published
+      compatibility: {ctower: ">=0.0.0,<1.0.0", requires: []}
+      provenance:
+        - {kind: authored, source: packs/components/projects/manibo.delivery/v1.yaml, digest: sha256:e0e7d00eb3be2db075ce79fe521060001e830f7ff14c4b057cc2c5dd2d5d10ba}
+      payload_ref: object:sha256:e0e7d00eb3be2db075ce79fe521060001e830f7ff14c4b057cc2c5dd2d5d10ba
+    payload:
+      schema: ctower.project/v1
+      key: manibo.delivery
+      display_name: Manibo delivery
+      repository_ref: repository:gitlab/lastmachines/manibo/7653119987f124348de68b597ed4485029661ce1
+      goal_refs: [company.trusted-delivery@1]
+  - component:
+      schema: ctower.versioned-component/v1
+      kind: project
+      key: bh-loop.delivery
+      scope: {tenant: example-company, project: null}
+      revision: 1
+      content_digest: sha256:c46a54c1a9d00b1ad05f30afc5eccf502dde2d9665f1ca54f4d800d728136a2f
+      schema_ref: ctower.project/v1
+      lifecycle: published
+      compatibility: {ctower: ">=0.0.0,<1.0.0", requires: []}
+      provenance:
+        - {kind: authored, source: packs/components/projects/bh-loop.delivery/v1.yaml, digest: sha256:c46a54c1a9d00b1ad05f30afc5eccf502dde2d9665f1ca54f4d800d728136a2f}
+      payload_ref: object:sha256:c46a54c1a9d00b1ad05f30afc5eccf502dde2d9665f1ca54f4d800d728136a2f
+    payload:
+      schema: ctower.project/v1
+      key: bh-loop.delivery
+      display_name: BH.Loop delivery
+      repository_ref: repository:github/simjak/bh-loop/f0c5ed64eee237ff0d0eb4def801081397416857
+      goal_refs: [company.trusted-delivery@1]
+  - component:
+      schema: ctower.versioned-component/v1
+      kind: checkpoint
+      key: manibo.verify
+      scope: {tenant: example-company, project: manibo}
+      revision: 1
+      content_digest: sha256:bd51bf7efede29f73eb8e219b816f9bb72074e0b3e3dfac866c282f0db423fca
+      schema_ref: ctower.checkpoint/v1
+      lifecycle: published
+      compatibility: {ctower: ">=0.0.0,<1.0.0", requires: []}
+      provenance:
+        - {kind: authored, source: packs/components/checkpoints/manibo.verify/v1.yaml, digest: sha256:bd51bf7efede29f73eb8e219b816f9bb72074e0b3e3dfac866c282f0db423fca}
+      payload_ref: object:sha256:bd51bf7efede29f73eb8e219b816f9bb72074e0b3e3dfac866c282f0db423fca
+    payload:
+      schema: ctower.checkpoint/v1
+      key: manibo.verify
+      checkpoint_key: manibo.verify
+      display_name: Verify candidate
+      outcome: Python, frontend, and Terraform static gates pass on the candidate.
+      accountable_owner: manibo-commander-seat
+      criteria: [{key: candidate-verified, description: Current static-gate evidence covers the release candidate., required: true, evidence_policy_refs: []}]
+      dependency_refs: []
+  - component:
+      schema: ctower.versioned-component/v1
+      kind: checkpoint
+      key: manibo.staging-infra
+      scope: {tenant: example-company, project: manibo}
+      revision: 1
+      content_digest: sha256:e0eb0249e1459355d328c558188b6c3d5ba14e426fe8a57348deb558b7ae7772
+      schema_ref: ctower.checkpoint/v1
+      lifecycle: published
+      compatibility: {ctower: ">=0.0.0,<1.0.0", requires: []}
+      provenance:
+        - {kind: authored, source: packs/components/checkpoints/manibo.staging-infra/v1.yaml, digest: sha256:e0eb0249e1459355d328c558188b6c3d5ba14e426fe8a57348deb558b7ae7772}
+      payload_ref: object:sha256:e0eb0249e1459355d328c558188b6c3d5ba14e426fe8a57348deb558b7ae7772
+    payload:
+      schema: ctower.checkpoint/v1
+      key: manibo.staging-infra
+      checkpoint_key: manibo.staging-infra
+      display_name: Apply staging infrastructure
+      outcome: The reviewed staging plan is applied and its plan and apply artifacts are retained.
+      accountable_owner: manibo-commander-seat
+      criteria: [{key: staging-infra-applied, description: Current plan and apply artifacts prove staging infrastructure convergence., required: true, evidence_policy_refs: []}]
+      dependency_refs: [manibo.verify@1]
+  - component:
+      schema: ctower.versioned-component/v1
+      kind: checkpoint
+      key: manibo.images-published
+      scope: {tenant: example-company, project: manibo}
+      revision: 1
+      content_digest: sha256:c63af0c8c7b8b5fdfcc679266143d7233e4e800e43f2d5f69c6515df8e74d9cd
+      schema_ref: ctower.checkpoint/v1
+      lifecycle: published
+      compatibility: {ctower: ">=0.0.0,<1.0.0", requires: []}
+      provenance:
+        - {kind: authored, source: packs/components/checkpoints/manibo.images-published/v1.yaml, digest: sha256:c63af0c8c7b8b5fdfcc679266143d7233e4e800e43f2d5f69c6515df8e74d9cd}
+      payload_ref: object:sha256:c63af0c8c7b8b5fdfcc679266143d7233e4e800e43f2d5f69c6515df8e74d9cd
+    payload:
+      schema: ctower.checkpoint/v1
+      key: manibo.images-published
+      checkpoint_key: manibo.images-published
+      display_name: Publish release images
+      outcome: All release images are published by immutable commit SHA with retained digest artifacts.
+      accountable_owner: manibo-commander-seat
+      criteria: [{key: images-published, description: Current digest artifacts identify every published release image., required: true, evidence_policy_refs: []}]
+      dependency_refs: [manibo.staging-infra@1]
+  - component:
+      schema: ctower.versioned-component/v1
+      kind: checkpoint
+      key: manibo.staging-deployed
+      scope: {tenant: example-company, project: manibo}
+      revision: 1
+      content_digest: sha256:c530d8e47d33912bfb8b60a444d1082fd3a25122f5711829b45b136a11620fc4
+      schema_ref: ctower.checkpoint/v1
+      lifecycle: published
+      compatibility: {ctower: ">=0.0.0,<1.0.0", requires: []}
+      provenance:
+        - {kind: authored, source: packs/components/checkpoints/manibo.staging-deployed/v1.yaml, digest: sha256:c530d8e47d33912bfb8b60a444d1082fd3a25122f5711829b45b136a11620fc4}
+      payload_ref: object:sha256:c530d8e47d33912bfb8b60a444d1082fd3a25122f5711829b45b136a11620fc4
+    payload:
+      schema: ctower.checkpoint/v1
+      key: manibo.staging-deployed
+      checkpoint_key: manibo.staging-deployed
+      display_name: Deploy staging
+      outcome: GitOps staging promotion reaches the declared cluster and the runtime wait succeeds.
+      accountable_owner: manibo-commander-seat
+      criteria: [{key: staging-deployed, description: Current GitOps and runtime-wait evidence proves the staging deployment., required: true, evidence_policy_refs: []}]
+      dependency_refs: [manibo.images-published@1]
+  - component:
+      schema: ctower.versioned-component/v1
+      kind: checkpoint
+      key: manibo.staging-nfq-e2e
+      scope: {tenant: example-company, project: manibo}
+      revision: 1
+      content_digest: sha256:93b682af4d859a812c186a029fcb017ffe03e312e9f3f86954fe195d39892870
+      schema_ref: ctower.checkpoint/v1
+      lifecycle: published
+      compatibility: {ctower: ">=0.0.0,<1.0.0", requires: []}
+      provenance:
+        - {kind: authored, source: packs/components/checkpoints/manibo.staging-nfq-e2e/v1.yaml, digest: sha256:93b682af4d859a812c186a029fcb017ffe03e312e9f3f86954fe195d39892870}
+      payload_ref: object:sha256:93b682af4d859a812c186a029fcb017ffe03e312e9f3f86954fe195d39892870
+    payload:
+      schema: ctower.checkpoint/v1
+      key: manibo.staging-nfq-e2e
+      checkpoint_key: manibo.staging-nfq-e2e
+      display_name: Verify staging NFQ
+      outcome: The NFQ staging end-to-end suite passes and retains its artifacts.
+      accountable_owner: manibo-commander-seat
+      criteria: [{key: staging-nfq-passed, description: Current staging NFQ results and artifacts prove the end-to-end outcome., required: true, evidence_policy_refs: []}]
+      dependency_refs: [manibo.staging-deployed@1]
+  - component:
+      schema: ctower.versioned-component/v1
+      kind: checkpoint
+      key: manibo.production-released
+      scope: {tenant: example-company, project: manibo}
+      revision: 1
+      content_digest: sha256:1e454294f05e673d84be4b94477021845d64c166a9ca7eafc76964c17081ba41
+      schema_ref: ctower.checkpoint/v1
+      lifecycle: published
+      compatibility: {ctower: ">=0.0.0,<1.0.0", requires: []}
+      provenance:
+        - {kind: authored, source: packs/components/checkpoints/manibo.production-released/v1.yaml, digest: sha256:1e454294f05e673d84be4b94477021845d64c166a9ca7eafc76964c17081ba41}
+      payload_ref: object:sha256:1e454294f05e673d84be4b94477021845d64c166a9ca7eafc76964c17081ba41
+    payload:
+      schema: ctower.checkpoint/v1
+      key: manibo.production-released
+      checkpoint_key: manibo.production-released
+      display_name: Release production
+      outcome: Production infrastructure and the manually gated production deployment complete after staging NFQ.
+      accountable_owner: manibo-commander-seat
+      criteria: [{key: production-released, description: Current infrastructure and deployment evidence proves the production release., required: true, evidence_policy_refs: []}]
+      dependency_refs: [manibo.staging-nfq-e2e@1]
+  - component:
+      schema: ctower.versioned-component/v1
+      kind: checkpoint
+      key: manibo.production-nfq-e2e
+      scope: {tenant: example-company, project: manibo}
+      revision: 1
+      content_digest: sha256:60cc61507f4eef88ef879ec03c44f88167ed003f5a28e939042a0e6f4206fe26
+      schema_ref: ctower.checkpoint/v1
+      lifecycle: published
+      compatibility: {ctower: ">=0.0.0,<1.0.0", requires: []}
+      provenance:
+        - {kind: authored, source: packs/components/checkpoints/manibo.production-nfq-e2e/v1.yaml, digest: sha256:60cc61507f4eef88ef879ec03c44f88167ed003f5a28e939042a0e6f4206fe26}
+      payload_ref: object:sha256:60cc61507f4eef88ef879ec03c44f88167ed003f5a28e939042a0e6f4206fe26
+    payload:
+      schema: ctower.checkpoint/v1
+      key: manibo.production-nfq-e2e
+      checkpoint_key: manibo.production-nfq-e2e
+      display_name: Verify production NFQ
+      outcome: The NFQ production end-to-end suite passes and retains its artifacts.
+      accountable_owner: manibo-commander-seat
+      criteria: [{key: production-nfq-passed, description: Current production NFQ results and artifacts prove the end-to-end outcome., required: true, evidence_policy_refs: []}]
+      dependency_refs: [manibo.production-released@1]
+  - component:
+      schema: ctower.versioned-component/v1
+      kind: checkpoint
+      key: bhloop.contract-admission
+      scope: {tenant: example-company, project: bh-loop}
+      revision: 1
+      content_digest: sha256:c6dd3ab1070166fc770c9aad668a35b0b425ca89ce7f9b259ac7756c1dace7f2
+      schema_ref: ctower.checkpoint/v1
+      lifecycle: published
+      compatibility: {ctower: ">=0.0.0,<1.0.0", requires: []}
+      provenance:
+        - {kind: authored, source: packs/components/checkpoints/bhloop.contract-admission/v1.yaml, digest: sha256:c6dd3ab1070166fc770c9aad668a35b0b425ca89ce7f9b259ac7756c1dace7f2}
+      payload_ref: object:sha256:c6dd3ab1070166fc770c9aad668a35b0b425ca89ce7f9b259ac7756c1dace7f2
+    payload:
+      schema: ctower.checkpoint/v1
+      key: bhloop.contract-admission
+      checkpoint_key: bhloop.contract-admission
+      display_name: Admit the delivery contract
+      outcome: Canonical spec and decision review plus the IP-assignment prerequisite resolve before implementation.
+      accountable_owner: bhloop-commander-seat
+      criteria: [{key: contract-admitted, description: Current review and IP-assignment evidence admits implementation., required: true, evidence_policy_refs: []}]
+      dependency_refs: []
+  - component:
+      schema: ctower.versioned-component/v1
+      kind: checkpoint
+      key: bhloop.d11-technical
+      scope: {tenant: example-company, project: bh-loop}
+      revision: 1
+      content_digest: sha256:4fffb8e09af4156827cffdb3c96450ba83ec663d4e29b0c8dd6a5c07d6ef5724
+      schema_ref: ctower.checkpoint/v1
+      lifecycle: published
+      compatibility: {ctower: ">=0.0.0,<1.0.0", requires: []}
+      provenance:
+        - {kind: authored, source: packs/components/checkpoints/bhloop.d11-technical/v1.yaml, digest: sha256:4fffb8e09af4156827cffdb3c96450ba83ec663d4e29b0c8dd6a5c07d6ef5724}
+      payload_ref: object:sha256:4fffb8e09af4156827cffdb3c96450ba83ec663d4e29b0c8dd6a5c07d6ef5724
+    payload:
+      schema: ctower.checkpoint/v1
+      key: bhloop.d11-technical
+      checkpoint_key: bhloop.d11-technical
+      display_name: Prove D11 technical controls
+      outcome: D11 identity, data, audit, recovery, secret, and synthetic non-production controls are green.
+      accountable_owner: bhloop-commander-seat
+      criteria: [{key: d11-technical-proven, description: Current evidence proves every declared D11 technical control., required: true, evidence_policy_refs: []}]
+      dependency_refs: [bhloop.contract-admission@1]
+  - component:
+      schema: ctower.versioned-component/v1
+      kind: checkpoint
+      key: bhloop.production-foundation
+      scope: {tenant: example-company, project: bh-loop}
+      revision: 1
+      content_digest: sha256:55b816de0c00cd9d51453f7a31f8f89cbf27781c65a527091944e957b4663d44
+      schema_ref: ctower.checkpoint/v1
+      lifecycle: published
+      compatibility: {ctower: ">=0.0.0,<1.0.0", requires: []}
+      provenance:
+        - {kind: authored, source: packs/components/checkpoints/bhloop.production-foundation/v1.yaml, digest: sha256:55b816de0c00cd9d51453f7a31f8f89cbf27781c65a527091944e957b4663d44}
+      payload_ref: object:sha256:55b816de0c00cd9d51453f7a31f8f89cbf27781c65a527091944e957b4663d44
+    payload:
+      schema: ctower.checkpoint/v1
+      key: bhloop.production-foundation
+      checkpoint_key: bhloop.production-foundation
+      display_name: Accept production foundation
+      outcome: The Google BAA, covered-services, and threat-model gates are accepted before any production PHI path.
+      accountable_owner: bhloop-commander-seat
+      criteria: [{key: production-foundation-accepted, description: "Current BAA, covered-services, and threat-model evidence accepts the foundation.", required: true, evidence_policy_refs: []}]
+      dependency_refs: [bhloop.d11-technical@1]
+  - component:
+      schema: ctower.versioned-component/v1
+      kind: checkpoint
+      key: bhloop.layer-1-foundation
+      scope: {tenant: example-company, project: bh-loop}
+      revision: 1
+      content_digest: sha256:70b44a96ef28fba94bf37cd73c5b283344ec7f056fb26257d722421f2896e92b
+      schema_ref: ctower.checkpoint/v1
+      lifecycle: published
+      compatibility: {ctower: ">=0.0.0,<1.0.0", requires: []}
+      provenance:
+        - {kind: authored, source: packs/components/checkpoints/bhloop.layer-1-foundation/v1.yaml, digest: sha256:70b44a96ef28fba94bf37cd73c5b283344ec7f056fb26257d722421f2896e92b}
+      payload_ref: object:sha256:70b44a96ef28fba94bf37cd73c5b283344ec7f056fb26257d722421f2896e92b
+    payload:
+      schema: ctower.checkpoint/v1
+      key: bhloop.layer-1-foundation
+      checkpoint_key: bhloop.layer-1-foundation
+      display_name: Complete Layer 1 foundation
+      outcome: The Layer 1 foundation acceptance set and synthetic PHI mechanism proofs pass.
+      accountable_owner: bhloop-commander-seat
+      criteria: [{key: layer-1-proven, description: Current acceptance and synthetic-PHI evidence proves Layer 1., required: true, evidence_policy_refs: []}]
+      dependency_refs: [bhloop.production-foundation@1]
+  - component:
+      schema: ctower.versioned-component/v1
+      kind: checkpoint
+      key: bhloop.layer-2-staff-assistant
+      scope: {tenant: example-company, project: bh-loop}
+      revision: 1
+      content_digest: sha256:1c342e2563ea1376b079dbc233080f159034cac05762435f93ac2c21f3893f65
+      schema_ref: ctower.checkpoint/v1
+      lifecycle: published
+      compatibility: {ctower: ">=0.0.0,<1.0.0", requires: []}
+      provenance:
+        - {kind: authored, source: packs/components/checkpoints/bhloop.layer-2-staff-assistant/v1.yaml, digest: sha256:1c342e2563ea1376b079dbc233080f159034cac05762435f93ac2c21f3893f65}
+      payload_ref: object:sha256:1c342e2563ea1376b079dbc233080f159034cac05762435f93ac2c21f3893f65
+    payload:
+      schema: ctower.checkpoint/v1
+      key: bhloop.layer-2-staff-assistant
+      checkpoint_key: bhloop.layer-2-staff-assistant
+      display_name: Complete Layer 2 staff assistant
+      outcome: Staff-assistant safety outcomes and the reconcilable adoption denominator pass on the proven foundation.
+      accountable_owner: bhloop-commander-seat
+      criteria: [{key: layer-2-proven, description: Current safety and adoption-denominator evidence proves Layer 2., required: true, evidence_policy_refs: []}]
+      dependency_refs: [bhloop.layer-1-foundation@1]
+  - component:
+      schema: ctower.versioned-component/v1
+      kind: checkpoint
+      key: bhloop.d11-org
+      scope: {tenant: example-company, project: bh-loop}
+      revision: 1
+      content_digest: sha256:cec8198b5901bb6da25e8be79c15cfd83bb1fb5d292058171953625097bfe78a
+      schema_ref: ctower.checkpoint/v1
+      lifecycle: published
+      compatibility: {ctower: ">=0.0.0,<1.0.0", requires: []}
+      provenance:
+        - {kind: authored, source: packs/components/checkpoints/bhloop.d11-org/v1.yaml, digest: sha256:cec8198b5901bb6da25e8be79c15cfd83bb1fb5d292058171953625097bfe78a}
+      payload_ref: object:sha256:cec8198b5901bb6da25e8be79c15cfd83bb1fb5d292058171953625097bfe78a
+    payload:
+      schema: ctower.checkpoint/v1
+      key: bhloop.d11-org
+      checkpoint_key: bhloop.d11-org
+      display_name: Prove D11 organizational controls
+      outcome: The executed BAA, reviews, assessments, policies, officers, training, plans, and legal posture are linked.
+      accountable_owner: bhloop-commander-seat
+      criteria: [{key: d11-org-proven, description: Current linked evidence proves every declared D11 organizational control., required: true, evidence_policy_refs: []}]
+      dependency_refs: [bhloop.layer-2-staff-assistant@1]
+  - component:
+      schema: ctower.versioned-component/v1
+      kind: checkpoint
+      key: bhloop.biomarker-rail
+      scope: {tenant: example-company, project: bh-loop}
+      revision: 1
+      content_digest: sha256:06489398a99a2b3e40ee9fee52da760758166330b09ca117c9c0b73267aa26bb
+      schema_ref: ctower.checkpoint/v1
+      lifecycle: published
+      compatibility: {ctower: ">=0.0.0,<1.0.0", requires: []}
+      provenance:
+        - {kind: authored, source: packs/components/checkpoints/bhloop.biomarker-rail/v1.yaml, digest: sha256:06489398a99a2b3e40ee9fee52da760758166330b09ca117c9c0b73267aa26bb}
+      payload_ref: object:sha256:06489398a99a2b3e40ee9fee52da760758166330b09ca117c9c0b73267aa26bb
+    payload:
+      schema: ctower.checkpoint/v1
+      key: bhloop.biomarker-rail
+      checkpoint_key: bhloop.biomarker-rail
+      display_name: Open the biomarker rail
+      outcome: Counsel and Medical Director gates precede marker import, report release, and Layer 4 exit evidence.
+      accountable_owner: bhloop-commander-seat
+      criteria: [{key: biomarker-rail-open, description: Current gate and outcome evidence proves the biomarker rail is safe to open., required: true, evidence_policy_refs: []}]
+      dependency_refs: [bhloop.d11-org@1]
 assignments:
   - subject: project:ctower
     slot: workflow
@@ -682,6 +1028,20 @@ assignments:
       key: commander.protected-cli
       revision: 1
       content_digest: sha256:17288c4fa0fcdc766311744cd91002c4a9eab2c2fbbb021593043b4c00eb90d9
+  - subject: project:manibo
+    slot: workflow
+    component:
+      kind: workflow
+      key: ctower.trust-spine-four-stage
+      revision: 1
+      content_digest: sha256:83fb59cef7c47d2c39a075322279b4ae893b91e5f538f7517d8e31dd60bdc17c
+  - subject: project:bh-loop
+    slot: workflow
+    component:
+      kind: workflow
+      key: ctower.trust-spine-four-stage
+      revision: 1
+      content_digest: sha256:83fb59cef7c47d2c39a075322279b4ae893b91e5f538f7517d8e31dd60bdc17c
 secret_binding_refs:
   - name: SOURCE_CONTROL_TOKEN
     reference_class: runtime-binding

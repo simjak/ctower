@@ -247,7 +247,13 @@ def _prepare_submit_after_durability(
     state = _lock_thread(connection, actor, command, identifiers.thread)
     if isinstance(state, RecordProblem):
         return _refuse(transaction, actor, command.client_command_id, request_digest, state, now)
-    action = _prepare_action(connection, actor, command, ticket_ids=identifiers.ticket)
+    action = _prepare_action(
+        connection,
+        actor,
+        command,
+        project_key=command.project_key,
+        ticket_ids=identifiers.ticket,
+    )
     if not isinstance(action, RecordProblem):
         return identifiers, state, action
     return _refuse(

@@ -53,6 +53,7 @@ def seed_ticket(
     payload = TicketCreatedPayload(
         custodian_id=operation.initial_commander_custodian_id,
         priority="P2",
+        project_key="ctower",
         source_kind="ctower-project-import",
         source_ref=operation.source.source_digest,
         title=operation.title,

@@ -320,6 +320,7 @@ class TicketCommand:
     client_command_id: UUID
     initial_custodian_id: UUID
     priority: str
+    project_key: str
     source: SourceReference
     title: str
 
@@ -329,6 +330,7 @@ class TicketCommand:
         return {
             "initial_custodian_id": str(self.initial_custodian_id),
             "priority": self.priority,
+            "project_key": self.project_key,
             "source": asdict(self.source),
             "title": self.title,
         }
@@ -584,14 +586,14 @@ class Record(Protocol):
         ...
 
     def get_ticket(
-        self, actor: Actor, ticket_id: UUID, *, telemetry: TelemetryContext
+        self, actor: Actor, ticket_id: UUID, project_key: str, *, telemetry: TelemetryContext
     ) -> Ticket | RecordProblem:
         """Read one tenant-scoped ticket without cross-tenant disclosure."""
 
         ...
 
     def ticket_timeline(
-        self, actor: Actor, ticket_id: UUID, *, telemetry: TelemetryContext
+        self, actor: Actor, ticket_id: UUID, project_key: str, *, telemetry: TelemetryContext
     ) -> TicketTimeline | RecordProblem:
         """Read the ordered tenant-scoped event timeline."""
 
@@ -601,6 +603,7 @@ class Record(Protocol):
         self,
         actor: Actor,
         ticket_id: UUID,
+        project_key: str,
         *,
         cursor: int,
         limit: int,

@@ -80,11 +80,11 @@ def test_board_watermarks_staleness_and_rebuild_equality(tenant: TenantFixture) 
         telemetry=_telemetry(),
     )
     accept_pending_commands(tenant.database.admin_dsn, tenant.tenant_id)
-    stale = projections.board(actor, BoardQuery())
+    stale = projections.board(actor, BoardQuery(project_key="ctower"))
     ready = projections.catch_up(tenant.tenant_id)
     rebuilt = projections.rebuild(tenant.tenant_id)
     ProjectionFaults(tenant.database.admin_dsn).remove_projected_card(tenant.tenant_id, ticket_id)
-    missing = projections.board(actor, BoardQuery())
+    missing = projections.board(actor, BoardQuery(project_key="ctower"))
 
     assert isinstance(admitted, WorkReceipt)
     assert backlog.health is ProjectionHealth.CURRENT
@@ -159,6 +159,7 @@ def _ticket(tenant: TenantFixture) -> UUID:
             client_command_id=uuid4(),
             initial_custodian_id=tenant.commander_id,
             priority="P2",
+            project_key="ctower",
             source=SourceReference("test", f"test:board-projection:{uuid4()}"),
             title="Board projection health",
         ),

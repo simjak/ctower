@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import re
 from collections.abc import Mapping
 from dataclasses import dataclass
 from uuid import UUID
@@ -13,12 +14,14 @@ __all__ = [
     "TicketEventPayload",
     "ticket_payload_from_mapping",
 ]
+_PROJECT_KEY = re.compile(r"^[a-z][a-z0-9-]{2,63}$")
 
 
 @dataclass(frozen=True, slots=True)
 class TicketCreatedPayload:
     custodian_id: UUID
     priority: str
+    project_key: str
     source_kind: str
     source_ref: str
     title: str
@@ -27,6 +30,8 @@ class TicketCreatedPayload:
         _uuid("custodian_id", self.custodian_id)
         if self.priority not in {"P0", "P1", "P2"}:
             raise ValueError("priority is outside the authored event contract")
+        if _PROJECT_KEY.fullmatch(self.project_key) is None:
+            raise ValueError("project_key is outside the authored event contract")
         _bounded("source_kind", self.source_kind, minimum=1, maximum=64)
         _bounded("source_ref", self.source_ref, minimum=1, maximum=256)
         _bounded("title", self.title, minimum=1, maximum=200)
@@ -35,6 +40,7 @@ class TicketCreatedPayload:
         return {
             "custodian_id": str(self.custodian_id),
             "priority": self.priority,
+            "project_key": self.project_key,
             "source_kind": self.source_kind,
             "source_ref": self.source_ref,
             "title": self.title,
@@ -88,13 +94,14 @@ type TicketEventPayload = (
 
 def ticket_payload_from_mapping(kind: str, payload: Mapping[str, object]) -> TicketEventPayload:
     if kind == "ticket.created":
-        _require_keys(
-            payload,
-            {"custodian_id", "priority", "source_kind", "source_ref", "title"},
-        )
+        current = {"custodian_id", "priority", "project_key", "source_kind", "source_ref", "title"}
+        legacy = current - {"project_key"}
+        if frozenset(payload) not in {frozenset(current), frozenset(legacy)}:
+            raise ValueError("event payload fields do not match the authored variant")
         return TicketCreatedPayload(
             custodian_id=_uuid_value(payload["custodian_id"], "custodian_id"),
             priority=_string(payload["priority"], "priority"),
+            project_key=_string(payload.get("project_key", "ctower"), "project_key"),
             source_kind=_string(payload["source_kind"], "source_kind"),
             source_ref=_string(payload["source_ref"], "source_ref"),
             title=_string(payload["title"], "title"),

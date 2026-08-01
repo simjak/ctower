@@ -280,6 +280,7 @@ def test_ticket_comment_is_canonical_replay_safe_and_table_free(
             title="Comment authority",
             source=SourceReference("acceptance", "company-bundle"),
             priority="P1",
+            project_key="ctower",
             initial_custodian_id=tenant.commander_id,
         ),
         request_digest=hashlib.sha256(b"create-comment-ticket").digest(),
@@ -315,6 +316,7 @@ def test_ticket_comment_is_canonical_replay_safe_and_table_free(
     timeline = record.ticket_timeline(
         actor,
         created.ticket.ticket_id,
+        "ctower",
         telemetry=telemetry_for(actor, command_id),
     )
     assert not isinstance(timeline, RecordProblem)
@@ -530,6 +532,7 @@ def _create_comment_ticket(
             title=title,
             source=SourceReference("acceptance", "company-bundle"),
             priority="P1",
+            project_key="ctower",
             initial_custodian_id=tenant.commander_id,
         ),
         request_digest=hashlib.sha256(title.encode()).digest(),

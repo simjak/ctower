@@ -203,11 +203,11 @@ def _lock_ticket(
 
 
 def assignments(
-    dsn: str, actor: Actor, ticket_id: UUID
+    dsn: str, actor: Actor, ticket_id: UUID, project_key: str
 ) -> tuple[AssignmentInterval, ...] | RecordProblem:
     with psycopg.connect(dsn, row_factory=dict_row) as connection:
         connection.execute("SET ROLE ctower_svc")
-        return list_assignments(connection, actor, ticket_id)
+        return list_assignments(connection, actor, ticket_id, project_key)
 
 
 def readiness(dsn: str, actor: Actor, ticket_id: UUID) -> WorkReadiness | RecordProblem:

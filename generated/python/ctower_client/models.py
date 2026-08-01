@@ -1,6 +1,6 @@
 """DO NOT EDIT: generated file; regenerate from declared inputs.
 
-Authored contract digest: sha256:29a4dc94972b9c27752779112fa40d489166fe5bd05c41ca75b96eea22cb3674
+Authored contract digest: sha256:6336389865410020b7eb772f268feb2fa8668d557c6c7022bad7d73ca33fae95
 """
 
 from __future__ import annotations
@@ -1031,6 +1031,7 @@ class Problem(_BoundaryModel):
         "idempotency-conflict",
         "intake-already-promoted",
         "intake-promotion-ineligible",
+        "intake-source-project-mismatch",
         "intake-source-conflict",
         "migration-alias-conflict",
         "migration-capability-denied",
@@ -1300,6 +1301,7 @@ class BoardCard(_BoundaryModel):
     delivery_facts: tuple[str, ...]
     lane: BoardLane
     priority: Priority
+    project_key: Annotated[str, Field(pattern="^[a-z][a-z0-9-]{2,63}$")]
     risk: str | None
     stage_key: Annotated[str, Field(pattern="^[a-z][a-z0-9._-]*$")] | None
     stage_label: str | None
@@ -1766,6 +1768,7 @@ class TicketCommentResult(_BoundaryModel):
 class TicketCreateRequest(_BoundaryModel):
     initial_custodian_id: UUID | None = None
     priority: Priority
+    project_key: Annotated[str, Field(pattern="^[a-z][a-z0-9-]{2,63}$")]
     source: SourceReference
     title: Annotated[str, Field(min_length=1, max_length=200)]
 
@@ -1773,6 +1776,7 @@ class TicketCreateRequest(_BoundaryModel):
 class TicketCreatedPayload(_BoundaryModel):
     custodian_id: UUID
     priority: Priority
+    project_key: Annotated[str, Field(pattern="^[a-z][a-z0-9-]{2,63}$")] | None = None
     source_kind: Annotated[str, Field(min_length=1, max_length=64)]
     source_ref: Annotated[str, Field(min_length=1, max_length=256)]
     title: str

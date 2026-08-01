@@ -23,11 +23,11 @@ def catch_up(dsn: str, tenant_id: UUID, through_watermark: int | None) -> BoardV
     source = read_source(dsn, tenant_id)
     if through_watermark is not None and through_watermark != source:
         mark_requested_unknown(dsn, tenant_id, through_watermark, source)
-        return read_view(dsn, tenant_id, BoardQuery(), source=source)
+        return read_view(dsn, tenant_id, None, source=source)
     while consume_one(dsn, tenant_id):
         pass
     source = read_source(dsn, tenant_id)
-    return read_view(dsn, tenant_id, BoardQuery(), source=source)
+    return read_view(dsn, tenant_id, None, source=source)
 
 
 def board(dsn: str, actor: Actor, query: BoardQuery) -> BoardView:

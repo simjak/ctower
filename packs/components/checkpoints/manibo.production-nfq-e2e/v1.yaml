@@ -1,0 +1,10 @@
+{
+  "schema": "ctower.checkpoint/v1",
+  "key": "manibo.production-nfq-e2e",
+  "checkpoint_key": "manibo.production-nfq-e2e",
+  "display_name": "Verify production NFQ",
+  "outcome": "The NFQ production end-to-end suite passes and retains its artifacts.",
+  "accountable_owner": "manibo-commander-seat",
+  "criteria": [{"key": "production-nfq-passed", "description": "Current production NFQ results and artifacts prove the end-to-end outcome.", "required": true, "evidence_policy_refs": []}],
+  "dependency_refs": ["manibo.production-released@1"]
+}
