@@ -35,6 +35,7 @@ from ctower_client.models import WorkReceipt as HttpWorkReceipt
 from ctower_kernel.access import Access
 from ctower_kernel.record import Actor, Record, RecordProblem
 from ctower_kernel.record import AuditPage as KernelAuditPage
+from ctower_kernel.record.credentials import CredentialScope
 from ctower_kernel.telemetry import TelemetryContext
 from ctower_kernel.work import (
     AddRelation,
@@ -292,7 +293,12 @@ async def _parse[Payload: BaseModel](
     ticket_id: str,
     model: type[Payload],
 ) -> tuple[Actor, UUID, UUID, Payload, TelemetryContext] | JSONResponse:
-    actor = _authenticate(access, recorder, request)
+    actor = _authenticate(
+        access,
+        recorder,
+        request,
+        required_scope=CredentialScope.TRANSITION,
+    )
     if isinstance(actor, RecordProblem):
         return _problem_response(actor)
     try:

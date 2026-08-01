@@ -10,6 +10,12 @@ from typing import Literal, Protocol
 from uuid import UUID
 
 from ctower_kernel.record.comments import TicketCommentCommand, TicketCommentResult
+from ctower_kernel.record.credentials import (
+    CredentialScope,
+    SeatCredentialIssue,
+    SeatCredentialReceipt,
+    SeatCredentialRevocation,
+)
 from ctower_kernel.record.events import (
     CustodyTransferredPayload,
     EventKind,
@@ -172,6 +178,33 @@ class Actor:
     principal_id: UUID
     tenant_id: UUID
     kind: PrincipalKind
+    project_grants: frozenset[str] = frozenset()
+    credential_scopes: frozenset[CredentialScope] = frozenset()
+    seat_credential_id: UUID | None = None
+
+
+class SeatCredentialStore(Protocol):
+    """Cohesive persistence boundary for project-seat credentials."""
+
+    def issue(
+        self,
+        actor: Actor,
+        command: SeatCredentialIssue,
+        *,
+        request_digest: bytes,
+        now: datetime,
+        telemetry: TelemetryContext,
+    ) -> SeatCredentialReceipt | RecordProblem: ...
+
+    def revoke(
+        self,
+        actor: Actor,
+        command: SeatCredentialRevocation,
+        *,
+        request_digest: bytes,
+        now: datetime,
+        telemetry: TelemetryContext,
+    ) -> SeatCredentialReceipt | RecordProblem: ...
 
 
 @dataclass(frozen=True, slots=True)
@@ -456,6 +489,12 @@ class AuditPage:
 class Record(Protocol):
     """Small atomic persistence authority consumed by Access and Work."""
 
+    @property
+    def seat_credentials(self) -> SeatCredentialStore:
+        """Return the cohesive project-seat credential persistence boundary."""
+
+        ...
+
     def authorize_bootstrap(
         self, capability_digest: bytes, *, origin: str, now: datetime
     ) -> RecordProblem | None:
@@ -477,7 +516,7 @@ class Record(Protocol):
 
         ...
 
-    def actor_for_credential(self, credential_digest: bytes) -> Actor | None:
+    def actor_for_credential(self, credential_digest: bytes) -> Actor | RecordProblem | None:
         """Resolve one active principal without exposing credential material."""
 
         ...

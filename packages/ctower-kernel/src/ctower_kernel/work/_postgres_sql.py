@@ -32,6 +32,7 @@ from ctower_kernel.work._blockers import open_blocker, resolve_blocker
 from ctower_kernel.work._event_sql import append_change
 from ctower_kernel.work._intents import admit, defer, reopen
 from ctower_kernel.work._priority import change_priority
+from ctower_kernel.work._project_policy import project_mutation_refusal
 from ctower_kernel.work._relations import add_relation
 
 __all__: tuple[str, ...] = ()
@@ -60,16 +61,16 @@ def execute_work(
         )
         if reserved is not None:
             return reserved
-        ticket = _lock_ticket(connection, actor, command)
-        if ticket is None:
-            return _refuse(
-                transaction,
-                actor,
-                command,
-                request_digest,
-                _problem(command, "tenant-scope-denied", 404, "Ticket unavailable"),
-                now,
-            )
+        ticket = _work_ticket(
+            connection,
+            transaction,
+            actor,
+            command,
+            request_digest=request_digest,
+            now=now,
+        )
+        if isinstance(ticket, RecordProblem):
+            return ticket
         version = int(cast(int, ticket["version"]))
         if command.expected_version != version:
             return _refuse(
@@ -105,6 +106,30 @@ def execute_work(
         )
 
 
+def _work_ticket(
+    connection: psycopg.Connection[dict[str, object]],
+    transaction: RecordTransaction,
+    actor: Actor,
+    command: WorkCommand,
+    *,
+    request_digest: bytes,
+    now: datetime,
+) -> dict[str, object] | RecordProblem:
+    ticket = _lock_ticket(connection, actor, command)
+    if ticket is None:
+        refusal = _problem(command, "tenant-scope-denied", 404, "Ticket unavailable")
+        return _refuse(transaction, actor, command, request_digest, refusal, now)
+    project_refusal = project_mutation_refusal(
+        connection,
+        actor,
+        _command_ticket_ids(command),
+        command.client_command_id,
+    )
+    if project_refusal is not None:
+        return _refuse(transaction, actor, command, request_digest, project_refusal, now)
+    return ticket
+
+
 def _reserve_work_outcome(
     transaction: RecordTransaction,
     actor: Actor,
@@ -129,13 +154,16 @@ def _reserve_work_outcome(
 
 
 def _prerequisite_subjects(command: WorkCommand) -> tuple[tuple[str, UUID], ...]:
+    return tuple(("ticket", ticket_id) for ticket_id in _command_ticket_ids(command))
+
+
+def _command_ticket_ids(command: WorkCommand) -> tuple[UUID, ...]:
     ticket_ids = (
         {command.ticket_id, command.target_ticket_id}
         if isinstance(command, AddRelation)
         else {command.ticket_id}
     )
-    ordered_ids = sorted(ticket_ids, key=lambda item: item.int)
-    return tuple(("ticket", ticket_id) for ticket_id in ordered_ids)
+    return tuple(sorted(ticket_ids, key=lambda item: item.int))
 
 
 def _touched_subjects(command: WorkCommand) -> tuple[tuple[str, UUID], ...]:

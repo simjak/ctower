@@ -1,10 +1,10 @@
 {
   "schema": "ctower.migrations/v3",
   "adoption_baseline": {
-    "through": "0038_project_delivery_seat_carriage.sql",
-    "schema_sha256": "sha256:e772eadced91580831217acad9e99fad62d8790b6810ef099afc36d97e59e0f8",
+    "through": "0039_project_seat_credentials.sql",
+    "schema_sha256": "sha256:4da4ae45b8d00732acf84b7e1e755807d9cb12fb2d18072469ffd6ed7a196a69",
     "semantic_checks": "ctower.pre-ledger/v1",
-    "schema_object_sum256": "sum256:55d93c310611c07a49168eafb0db9680acc7d4a4ccfbc975e441283414db45f5"
+    "schema_object_sum256": "sum256:6b5bc3a315f00c4abb8643e088ab135998b09891e3e77c9d770eb738dc640ead"
   },
   "migrations": [
     {
@@ -368,6 +368,15 @@
       "forward_test": "pytest:tests/acceptance/increment-1/test_project_delivery_evidence.py::test_assigned_unassigned_and_signing_seats_project_from_explicit_facts",
       "rollback_or_forward_compensation": "Preserve immutable catalog revisions, member labels, assignment-seat facts, Evidence assignment references, and checkpoint pins; rebuild only disposable Project Delivery rows or append reviewed forward compensation.",
       "backup_checkpoint": "Before applying to a nonempty installation, capture catalog, assignment-interval, Evidence, checkpoint-definition, criterion, and projection counts plus a verified database backup."
+    },
+    {
+      "path": "0039_project_seat_credentials.sql",
+      "sha256": "sha256:9e38e6f791fe8f244ad9e2b28a6f191454da98e87635a78388ffd80aecd6e3d3",
+      "minimum_service_version": "0.0.0",
+      "maximum_service_version": "0.0.0",
+      "forward_test": "pytest:tests/acceptance/increment-1/test_seat_credentials.py::test_revocation_appends_and_the_next_call_refuses_by_name",
+      "rollback_or_forward_compensation": "Preserve immutable project-seat grants, issuance/revocation facts, canonical Access events, command results, and outbox rows; append reviewed forward compensation and never reactivate or rewrite a revoked credential.",
+      "backup_checkpoint": "Before applying to a nonempty installation, capture principal, credential, project-seat, ticket-project, command, event, outbox, and durability-head counts plus a verified database backup."
     }
   ]
 }

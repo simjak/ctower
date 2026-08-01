@@ -20,9 +20,11 @@ from ctower_kernel.record import (
     TicketCommand,
     TicketCommandResult,
 )
+from ctower_kernel.record.credentials import CredentialScope
 from ctower_kernel.telemetry import NoopTelemetry, Telemetry, TelemetryContext
 from ctower_kernel.work._custody_policy import initial_custody_refusal
 from ctower_kernel.work._scheduling import schedule
+from ctower_kernel.work._scope_policy import credential_scope_refusal
 
 __all__ = [
     "AddRelation",
@@ -305,6 +307,13 @@ class Work:
 
         if actor.kind is PrincipalKind.MIGRATION_IMPORTER:
             return _importer_refusal(command.client_command_id)
+        scope_refusal = credential_scope_refusal(
+            actor,
+            CredentialScope.CAPTURE,
+            command_id=command.client_command_id,
+        )
+        if scope_refusal is not None:
+            return scope_refusal
         custody_refusal = initial_custody_refusal(
             actor,
             command.client_command_id,
@@ -344,6 +353,13 @@ class Work:
 
         if actor.kind is PrincipalKind.MIGRATION_IMPORTER:
             return _importer_refusal(command.client_command_id)
+        scope_refusal = credential_scope_refusal(
+            actor,
+            CredentialScope.TRANSITION,
+            command_id=command.client_command_id,
+        )
+        if scope_refusal is not None:
+            return scope_refusal
         if actor.kind is not PrincipalKind.OPERATOR or not command.protected_transfer:
             return RecordProblem(
                 code="unauthorized",
@@ -442,8 +458,9 @@ def _refusal(command: TicketCommand, detail: str) -> RecordProblem:
 
 
 def _work_refusal(actor: Actor, command: WorkCommand) -> RecordProblem | None:
-    if actor.kind is PrincipalKind.MIGRATION_IMPORTER:
-        return _importer_refusal(command.client_command_id)
+    authority_refusal = _work_authority_refusal(actor, command.client_command_id)
+    if authority_refusal is not None:
+        return authority_refusal
     if (
         command.expected_version < 1
         or not command.reason
@@ -459,6 +476,16 @@ def _work_refusal(actor: Actor, command: WorkCommand) -> RecordProblem | None:
     if isinstance(command, Reopen) and command.priority_policy != "carry_forward":
         return _work_problem(command, "validation-error", 422, "Unsupported priority policy")
     return None
+
+
+def _work_authority_refusal(actor: Actor, command_id: UUID) -> RecordProblem | None:
+    if actor.kind is PrincipalKind.MIGRATION_IMPORTER:
+        return _importer_refusal(command_id)
+    return credential_scope_refusal(
+        actor,
+        CredentialScope.TRANSITION,
+        command_id=command_id,
+    )
 
 
 def _importer_refusal(command_id: UUID | None = None) -> RecordProblem:

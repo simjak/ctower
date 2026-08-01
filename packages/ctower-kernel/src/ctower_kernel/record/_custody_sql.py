@@ -123,7 +123,8 @@ def _locked_ticket(
     ticket = connection.execute(
         """
         SELECT ticket_id, title, source_kind, source_ref, priority,
-            custodian_principal_id, version, durability_state, created_at, current_episode
+            custodian_principal_id, version, durability_state, created_at, current_episode,
+            project_key
         FROM tickets WHERE tenant_id = %s AND ticket_id = %s
         FOR UPDATE
         """,
@@ -162,7 +163,12 @@ def _transfer_refusal(
         return _version_problem(
             command, current_version, "The declared current custodian is stale."
         )
-    if not _eligible_target(connection, actor, command.to_custodian_id):
+    if not _eligible_target(
+        connection,
+        actor,
+        command.to_custodian_id,
+        project_key=str(ticket_row["project_key"]),
+    ):
         return _scope_problem(command.client_command_id)
     if command.to_custodian_id == current_custodian:
         return _version_problem(
@@ -172,16 +178,26 @@ def _transfer_refusal(
 
 
 def _eligible_target(
-    connection: psycopg.Connection[dict[str, object]], actor: Actor, principal_id: UUID
+    connection: psycopg.Connection[dict[str, object]],
+    actor: Actor,
+    principal_id: UUID,
+    *,
+    project_key: str,
 ) -> bool:
     row = connection.execute(
         """
         SELECT 1
-        FROM principals
-        WHERE tenant_id = %s AND principal_id = %s AND NOT disabled
-          AND kind IN ('commander', 'operator')
+        FROM principals AS principal
+        LEFT JOIN project_seats AS seat
+          ON seat.principal_id = principal.principal_id
+         AND seat.tenant_id = principal.tenant_id
+         AND seat.project_key = %s
+        WHERE principal.tenant_id = %s AND principal.principal_id = %s
+          AND NOT principal.disabled
+          AND (principal.kind = 'operator'
+               OR (principal.kind = 'commander' AND seat.principal_id IS NOT NULL))
         """,
-        (actor.tenant_id, principal_id),
+        (project_key, actor.tenant_id, principal_id),
     ).fetchone()
     return row is not None
 

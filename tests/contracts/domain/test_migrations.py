@@ -36,13 +36,13 @@ def test_migration_manifest_is_ordered_and_checksum_exact() -> None:
     assert set(manifest) == {"adoption_baseline", "migrations", "schema"}
     assert manifest["schema"] == "ctower.migrations/v3"
     assert manifest["adoption_baseline"] == {
-        "through": "0038_project_delivery_seat_carriage.sql",
+        "through": "0039_project_seat_credentials.sql",
         "schema_sha256": (
-            "sha256:e772eadced91580831217acad9e99fad62d8790b6810ef099afc36d97e59e0f8"
+            "sha256:4da4ae45b8d00732acf84b7e1e755807d9cb12fb2d18072469ffd6ed7a196a69"
         ),
         "semantic_checks": "ctower.pre-ledger/v1",
         "schema_object_sum256": (
-            "sum256:55d93c310611c07a49168eafb0db9680acc7d4a4ccfbc975e441283414db45f5"
+            "sum256:6b5bc3a315f00c4abb8643e088ab135998b09891e3e77c9d770eb738dc640ead"
         ),
     }
     assert names == sorted(names)
@@ -85,6 +85,7 @@ def test_migration_manifest_is_ordered_and_checksum_exact() -> None:
         "0036_migration_ledger_role.sql",
         "0037_relax_checkpoint_key_domain.sql",
         "0038_project_delivery_seat_carriage.sql",
+        "0039_project_seat_credentials.sql",
     ]
     for entry in entries:
         digest = hashlib.sha256((MIGRATIONS / entry["path"]).read_bytes()).hexdigest()
