@@ -91,6 +91,7 @@ CP2_HEAD_UPDATE_COLUMNS = {
         "created_by": False,
         "created_at": False,
         "current_episode": True,
+        "project_key": False,
     },
     "lifecycle_episodes": {
         "ticket_id": False,
@@ -265,6 +266,7 @@ def test_upgrade_database_corrects_existing_head_privileges(
             "0017_durability_probe_schema_boundary.sql",
             "0018_durability_probe_search_path.sql",
             "0019_outbox_routine_health.sql",
+            "0039_project_seat_credentials.sql",
         ):
             connection.execute((MIGRATIONS / name).read_text(encoding="utf-8"))
     provision_database_roles(database.admin_dsn)
