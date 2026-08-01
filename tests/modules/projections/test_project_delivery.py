@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import json
 from collections.abc import Callable
 from dataclasses import replace
 from datetime import UTC, datetime, timedelta
@@ -17,6 +18,10 @@ from ctower_kernel.projections import (
     CheckpointDefinition,
     DeliveryFacts,
     DeliveryState,
+    ProjectDeliveryRow,
+    SeatCatalogMember,
+    SeatCatalogReference,
+    SeatCatalogRevision,
     derive_project_delivery_row,
 )
 from ctower_kernel.projections.postgres import PostgresProjections
@@ -33,6 +38,96 @@ _CRITERIA = (
     "cp3_d",
 )
 _REBUILD_GENERATION = 7
+
+
+def test_pinned_seat_rebuild_is_byte_identical_after_member_removal() -> None:
+    first_catalog = _seat_catalog(
+        revision=1,
+        digest_character="1",
+        members=(("maker", "Maker"), ("reviewer", "Reviewer")),
+    )
+    later_catalog = _seat_catalog(
+        revision=2,
+        digest_character="2",
+        members=(("reviewer", "Review lead"), ("observer", "Observer")),
+    )
+    pinned_assignment = first_catalog.resolve("maker")
+    pinned_signer = first_catalog.resolve("reviewer")
+    facts = replace(
+        _facts(),
+        qualifying_stage_slots=(
+            EvidenceSlotFact(
+                "ledger-posted",
+                EvidenceSlotState.FILLED,
+                assigned_seat=pinned_assignment,
+                signing_seat=pinned_signer,
+            ),
+        ),
+    )
+
+    before = derive_project_delivery_row(_definition(), facts)
+    assert later_catalog.resolve("reviewer").label == "Review lead"
+    with pytest.raises(ValueError, match="absent"):
+        later_catalog.resolve("maker")
+    rebuilt = derive_project_delivery_row(_definition(), facts)
+
+    assert _row_bytes(rebuilt) == _row_bytes(before)
+    assert rebuilt.semantic_digest == before.semantic_digest
+    slot = cast(list[dict[str, object]], rebuilt.response_payload()["qualifying_stage_slots"])[0]
+    assert (
+        cast(dict[str, object], cast(dict[str, object], slot["assigned_seat"])["seat"])[
+            "seat_label"
+        ]
+        == "Maker"
+    )
+    assert cast(dict[str, object], slot["signing_seat"])["seat_label"] == "Reviewer"
+
+
+def test_seat_fact_changes_surface_and_digest_without_changing_headline() -> None:
+    catalog = _seat_catalog(
+        revision=1,
+        digest_character="3",
+        members=(("maker", "Maker"), ("reviewer", "Reviewer")),
+    )
+    unassigned = derive_project_delivery_row(_definition(), _facts())
+    assigned = derive_project_delivery_row(
+        _definition(),
+        replace(
+            _facts(),
+            qualifying_stage_slots=tuple(
+                replace(slot, assigned_seat=catalog.resolve("maker"))
+                for slot in _facts().qualifying_stage_slots
+            ),
+        ),
+    )
+
+    assert assigned.headline_state is unassigned.headline_state
+    assert assigned.semantic_digest != unassigned.semantic_digest
+    assert (
+        assigned.response_payload()["qualifying_stage_slots"]
+        != unassigned.response_payload()["qualifying_stage_slots"]
+    )
+
+
+def _seat_catalog(
+    *,
+    revision: int,
+    digest_character: str,
+    members: tuple[tuple[str, str], ...],
+) -> SeatCatalogRevision:
+    return SeatCatalogRevision(
+        reference=SeatCatalogReference(
+            catalog_key="fixture.delivery-seats",
+            revision=revision,
+            content_digest="sha256:" + digest_character * 64,
+        ),
+        members=tuple(SeatCatalogMember(key, label) for key, label in members),
+    )
+
+
+def _row_bytes(row: ProjectDeliveryRow) -> bytes:
+    payload = row.response_payload()
+    return json.dumps(payload, separators=(",", ":"), sort_keys=True).encode()
 
 
 def test_qualifying_stage_slots_preserve_filled_unfilled_and_unknown_facts() -> None:
@@ -263,6 +358,7 @@ def test_row_slot_coverage_never_comes_back_from_rendered_reasons() -> None:
         qualifying_stage_slots_filled=0,
         qualifying_stage_slots_required=0,
         qualifying_stage_unfilled_or_unknown_slot_keys=(),
+        qualifying_stage_slots=(),
     )
 
     assert (
