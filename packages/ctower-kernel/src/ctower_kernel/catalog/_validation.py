@@ -244,6 +244,7 @@ def _validate_checkpoint_seat_assignments(
                 proposed=proposed,
                 existing=existing,
                 by_identity=by_identity,
+                historical_checkpoint=resource.component.reference() in existing,
             )
             if problem is not None:
                 return problem
@@ -256,6 +257,7 @@ def _validate_seat_assignment(
     proposed: set[ComponentReference],
     existing: set[ComponentReference],
     by_identity: dict[tuple[str, int], CompanyBundleResource],
+    historical_checkpoint: bool,
 ) -> CatalogProblem | None:
     reference = ComponentReference(
         kind=ComponentKind.SEAT_CATALOG,
@@ -263,10 +265,11 @@ def _validate_seat_assignment(
         revision=int(cast(int, assignment["catalog_revision"])),
         content_digest=str(assignment["catalog_digest"]),
     )
-    if reference not in proposed and reference not in existing:
+    historical_pin = historical_checkpoint and reference in existing
+    if reference not in proposed and not historical_pin:
         return _problem(
             "bundle-reference-invalid",
-            "A seat assignment must pin a published seat-catalog revision.",
+            "A new seat assignment must pin the active seat-catalog revision.",
         )
     catalog = by_identity.get((reference.key, reference.revision))
     if catalog is None:

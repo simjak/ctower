@@ -26,8 +26,10 @@ from ctower_client.models import (
     MigrationRelationCorrection,
     ProjectDeliveryCriteria,
     ProjectDeliveryRow,
+    ProjectDeliverySeat,
     ProjectDeliverySlot,
     ProjectDeliveryView,
+    SeatCatalogRevision,
 )
 from ctowerctl import _migration_commands, interface
 from ctowerctl._output import ExitCode
@@ -257,6 +259,10 @@ def test_query_dispatch_and_project_delivery_text_expose_frozen_metadata() -> No
     assert "5/6" in output
     assert "sources=ctower:CT-I1-007,mission-control:i1.7" in output
     assert "watermark=27/27" in output
+    assert "slot=dogfood-proof state=filled" in output
+    assert "assigned=Maker[maker]@fixture.delivery-seats@1" in output
+    assert "signed=Reviewer[reviewer]@fixture.delivery-seats@1" in output
+    assert "slot=cp3-d-proof state=unfilled assigned=unassigned signed=-" in output
 
 
 def test_unknown_internal_migration_spelling_is_closed(tmp_path: Path) -> None:
@@ -388,8 +394,11 @@ class _MigrationClient:
                         ProjectDeliverySlot(
                             slot_key="dogfood-proof",
                             state="filled",
-                            assigned_seat={"state": "unassigned"},
-                            signing_seat=None,
+                            assigned_seat={
+                                "state": "assigned",
+                                "seat": _delivery_seat("maker", "Maker"),
+                            },
+                            signing_seat=_delivery_seat("reviewer", "Reviewer"),
                         ),
                         ProjectDeliverySlot(
                             slot_key="cp3-d-proof",
@@ -415,3 +424,15 @@ class _MigrationClient:
                 ),
             ),
         )
+
+
+def _delivery_seat(key: str, label: str) -> ProjectDeliverySeat:
+    return ProjectDeliverySeat(
+        seat_key=key,
+        seat_label=label,
+        catalog_revision=SeatCatalogRevision(
+            catalog_key="fixture.delivery-seats",
+            revision=1,
+            content_digest=ZERO_DIGEST,
+        ),
+    )

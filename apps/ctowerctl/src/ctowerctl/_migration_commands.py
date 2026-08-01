@@ -19,6 +19,8 @@ from ctower_client.models import (
     CtowerProjectImportCorrectionRequest,
     CtowerProjectImportFinalizeRequest,
     CtowerProjectImportRunCreateRequest,
+    ProjectDeliverySeat,
+    ProjectDeliverySlot,
     ProjectDeliveryView,
 )
 
@@ -150,7 +152,31 @@ def delivery_text(view: ProjectDeliveryView) -> str:
             + ",".join(row.source_ids)
             + f" watermark={row.projection_watermark}/{row.source_watermark}"
         )
+        lines.extend(_slot_text(slot) for slot in row.qualifying_stage_slots)
     return "\n".join(lines) + "\n"
+
+
+def _slot_text(slot: ProjectDeliverySlot) -> str:
+    assignment = slot.assigned_seat
+    assigned_payload = assignment.get("seat")
+    assigned_seat = (
+        assigned_payload
+        if isinstance(assigned_payload, ProjectDeliverySeat)
+        else (
+            ProjectDeliverySeat.model_validate(assigned_payload)
+            if isinstance(assigned_payload, dict)
+            else None
+        )
+    )
+    assigned = _seat_text(assigned_seat) if assigned_seat is not None else "unassigned"
+    signing = slot.signing_seat
+    signed = _seat_text(signing) if signing is not None else "-"
+    return f"  slot={slot.slot_key} state={slot.state} assigned={assigned} signed={signed}"
+
+
+def _seat_text(seat: ProjectDeliverySeat) -> str:
+    revision = seat.catalog_revision
+    return f"{seat.seat_label}[{seat.seat_key}]@{revision.catalog_key}@{revision.revision}"
 
 
 def mutation_command_names() -> frozenset[str]:

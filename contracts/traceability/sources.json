@@ -1450,6 +1450,19 @@
       ]
     },
     {
+      "path": "packages/ctower-kernel/migrations/0038_project_delivery_seat_carriage.sql",
+      "references": [
+        "SPEC#persistence-authority",
+        "SPEC#project-delivery-projection",
+        "INV-59",
+        "INV-62",
+        "INV-64",
+        "AC-PD-07",
+        "AC-PD-08",
+        "AC-PD-09"
+      ]
+    },
+    {
       "path": "packages/ctower-kernel/migrations/manifest.json",
       "references": [
         "SPEC#executable-authority-and-requirement-traceability",
