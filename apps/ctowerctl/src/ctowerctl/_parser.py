@@ -28,6 +28,7 @@ __all__: tuple[str, ...] = ()
 _ASSIGNMENT_KINDS = ("current_assignee", "stage_owner", "reviewer")
 _BLOCKER_KINDS = ("dependency", "operator_action", "policy", "resource", "technical")
 _SPOOL_STATES = ("pending", "accepted_archive", "quarantine")
+_PROJECT_KEY = re.compile(r"^[a-z][a-z0-9.-]{2,127}$")
 _SHA256_DIGEST = re.compile(r"^sha256:[0-9a-f]{64}$")
 _AUTHORED_COMMAND_NAMES = frozenset(
     {
@@ -509,7 +510,7 @@ def _project_parser(parser: argparse.ArgumentParser) -> None:
     )
     query = actions.add_parser("query")
     query.set_defaults(cli_name="project delivery query")
-    query.add_argument("project_key", choices=("ctower",))
+    query.add_argument("project_key", type=_project_key)
     query.add_argument("--output", choices=("text", "json"), default="text")
 
 
@@ -566,6 +567,15 @@ def _nonnegative_int(value: str) -> int:
     if parsed < 0:
         raise argparse.ArgumentTypeError("value must not be negative")
     return parsed
+
+
+def _project_key(value: str) -> str:
+    if _PROJECT_KEY.fullmatch(value) is None:
+        raise argparse.ArgumentTypeError(
+            "project_key must start with a lowercase letter and contain only lowercase "
+            "letters, digits, dots, or hyphens"
+        )
+    return value
 
 
 def _assertions(value: str) -> tuple[str, ...]:

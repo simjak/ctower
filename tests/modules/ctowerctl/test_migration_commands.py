@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import argparse
+import inspect
 import io
 import json
 from datetime import UTC, datetime, timedelta
@@ -28,7 +29,7 @@ from ctower_client.models import (
     ProjectDeliveryRow,
     ProjectDeliveryView,
 )
-from ctowerctl import _migration_commands, interface
+from ctowerctl import _migration_commands, _parser, interface
 from ctowerctl._output import ExitCode
 from ctowerctl._parser import parse_arguments
 from ctowerctl.spool import Spool
@@ -258,6 +259,63 @@ def test_query_dispatch_and_project_delivery_text_expose_frozen_metadata() -> No
     assert "watermark=27/27" in output
 
 
+def test_project_delivery_parser_and_renderer_accept_a_second_project_fixture() -> None:
+    arguments = parse_arguments(
+        [
+            "--base-url",
+            "https://ctower.example",
+            "project",
+            "delivery",
+            "query",
+            "quarterly-close",
+        ]
+    )
+    ledger_view = _ledger_delivery_view()
+
+    assert arguments.project_key == "quarterly-close"
+    with pytest.raises(ValueError, match="project_key"):
+        parse_arguments(
+            [
+                "--base-url",
+                "https://ctower.example",
+                "project",
+                "delivery",
+                "query",
+                "Q3/close",
+            ]
+        )
+    rendered = _migration_commands.delivery_text(ledger_view)
+    assert "company=ledger-co project=quarterly-close" in rendered
+    assert "CHECKPOINT" in rendered
+    assert "CRITERIA" in rendered
+    assert "SLOTS" in rendered
+    assert "UNRESOLVED" in rendered
+    assert "Q3-close.2" in rendered
+    assert "2/3" in rendered
+    assert "1/3" in rendered
+    assert "approval-receipt,archive-proof" in rendered
+    assert "ledger:close-run-27,archive:quarter-2026-q3" in rendered
+    assert "slot_unfilled:approval-receipt" in rendered
+    parser_source = inspect.getsource(_parser._project_parser)
+    renderer_source = inspect.getsource(_migration_commands.delivery_text)
+    assert 'choices=("ctower",)' not in parser_source
+    assert "type=_project_key" in parser_source
+    assert not {"ctower", "I1.7", "quarterly-close", "Q3-close.2"}.intersection(renderer_source)
+
+    json_arguments = argparse.Namespace(
+        cli_name="project delivery query",
+        project_key="quarterly-close",
+        output="json",
+    )
+    json_stream = io.StringIO()
+    interface._write_result(json_arguments, ledger_view, json_stream)
+    payload = json.loads(json_stream.getvalue())
+    assert payload["company_key"] == "ledger-co"
+    assert payload["project_key"] == "quarterly-close"
+    assert payload["rows"][0]["checkpoint_key"] == "Q3-close.2"
+    assert payload["rows"][0]["qualifying_stage_slots_filled"] == 1
+
+
 def test_unknown_internal_migration_spelling_is_closed(tmp_path: Path) -> None:
     request_file = tmp_path / "request.json"
     request_file.write_text("{}", encoding="utf-8")
@@ -400,3 +458,52 @@ class _MigrationClient:
                 ),
             ),
         )
+
+
+def _ledger_delivery_view() -> ProjectDeliveryView:
+    return ProjectDeliveryView(
+        schema_id="ctower.project-delivery/v1",
+        company_key="ledger-co",
+        project_key="quarterly-close",
+        source_record_position=27,
+        projection_record_position=27,
+        reconciled_at=_NOW,
+        freshness_due_at=_NOW + timedelta(hours=1),
+        projection_semantic_digest=ZERO_DIGEST,
+        rebuild_generation=1,
+        rows=(
+            ProjectDeliveryRow(
+                checkpoint_key="Q3-close.2",
+                checkpoint_label="Quarter close approval",
+                headline_state="blocked",
+                underlying_maturity="verified",
+                outcome="The quarter close is approved and archived",
+                accountable_owner="controller",
+                criteria=ProjectDeliveryCriteria(proven=2, declared=3),
+                qualifying_stage_slots_filled=1,
+                qualifying_stage_slots_required=3,
+                qualifying_stage_unfilled_or_unknown_slot_keys=(
+                    "approval-receipt",
+                    "archive-proof",
+                ),
+                source_watermark=27,
+                projection_watermark=27,
+                freshness="fresh",
+                confidence="STATE_UNKNOWN",
+                health="STATE_UNKNOWN",
+                durability="STATE_UNKNOWN",
+                recovery="STATE_UNKNOWN",
+                data_class="STATE_UNKNOWN",
+                semantic_digest=ZERO_DIGEST,
+                reconciled_at=_NOW,
+                freshness_due_at=_NOW + timedelta(hours=1),
+                rebuild_generation=1,
+                source_ids=("ledger:close-run-27", "archive:quarter-2026-q3"),
+                derivation_reasons=(
+                    "slot_unfilled:approval-receipt",
+                    "slot_unknown:archive-proof",
+                    "underlying_maturity:verified",
+                ),
+            ),
+        ),
+    )
