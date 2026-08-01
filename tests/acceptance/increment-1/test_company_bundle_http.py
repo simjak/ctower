@@ -136,9 +136,31 @@ def _bundle_read_requests(
     tenant: TenantFixture,
     request: dict[str, object],
 ) -> tuple[Response, Response, Response, Response]:
+    foreign = minimal_bundle()
+    foreign = foreign.model_copy(
+        update={
+            "company": foreign.company.model_copy(
+                update={"key": "foreign-company", "display_name": "Foreign Company"}
+            ),
+            "resources": tuple(
+                resource.model_copy(
+                    update={
+                        "component": resource.component.model_copy(
+                            update={
+                                "scope": resource.component.scope.model_copy(
+                                    update={"tenant": "foreign-company"}
+                                )
+                            }
+                        )
+                    }
+                )
+                for resource in foreign.resources
+            ),
+        }
+    )
     refused = client.post(
         "/v1/company/bundle/validate",
-        json={"bundle": minimal_bundle().model_dump(mode="json", by_alias=True)},
+        json={"bundle": foreign.model_dump(mode="json", by_alias=True)},
         headers=_headers(tenant),
     )
     validated = client.post(

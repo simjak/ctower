@@ -12,7 +12,7 @@ from uuid import uuid4
 
 import psycopg
 import rfc8785
-from support.catalog import FileSchemas, MemoryObjectStore, actor_for, telemetry_for
+from support.catalog import FileSchemas, MemoryObjectStore, actor_for, minimal_bundle, telemetry_for
 from support.tenant_fixture import TenantFixture
 
 from ctower_kernel.catalog import (
@@ -40,6 +40,67 @@ _CROSS_DOMAIN_CHECKPOINT_KEYS = (
     "compliance.2026-h2",
     "4-hiring.close",
 )
+_CTOWER_CHECKPOINT_CRITERIA = {
+    "I1.0": 3,
+    "I1.1": 3,
+    "I1.2": 3,
+    "I1.3": 4,
+    "I1.4": 3,
+    "I1.5": 2,
+    "I1.6": 3,
+    "I1.7": 5,
+    "I2.1": 3,
+    "I2.2": 2,
+    "I2.3": 2,
+    "I2.4": 2,
+    "I2.5": 2,
+    "I2.6": 3,
+}
+
+
+def test_reviewed_company_bundle_materializes_ordered_meaningful_delivery_rows(
+    tenant: TenantFixture,
+) -> None:
+    actor = actor_for(tenant.tenant_id, tenant.operator_id)
+    catalog = _catalog(tenant)
+    bundle = minimal_bundle()
+
+    _apply_checkpoint_bundle(tenant, catalog=catalog, bundle=bundle)
+    exported = catalog.export(actor)
+    assert not isinstance(exported, CatalogProblem)
+    replanned = catalog.plan(actor, exported.bundle)
+    assert not isinstance(replanned, CatalogProblem)
+    assert replanned.actions == ()
+
+    source = _record_watermark(tenant)
+    _set_project_delivery_source(tenant, acceptance_position=source)
+    projections = Projections(PostgresProjections(tenant.database.projection_dsn))
+    affected = projections.reconcile_project_delivery(tenant.tenant_id, now=datetime.now(UTC))
+    view = projections.project_delivery(
+        Actor(tenant.operator_id, tenant.tenant_id, PrincipalKind.OPERATOR),
+        "ctower",
+    )
+
+    assert view is not None
+    assert affected == len(_CTOWER_CHECKPOINT_CRITERIA)
+    assert tuple(row.checkpoint_key for row in view.rows) == tuple(_CTOWER_CHECKPOINT_CRITERIA)
+    assert all("ctower checkpoint" not in row.checkpoint_label.casefold() for row in view.rows)
+    assert all("establishes the declared" not in row.outcome.casefold() for row in view.rows)
+    for row in view.rows:
+        expected = _CTOWER_CHECKPOINT_CRITERIA[row.checkpoint_key]
+        assert (row.proven_criteria, row.declared_criteria) == (0, expected)
+        assert (
+            row.qualifying_stage_slots_filled,
+            row.qualifying_stage_slots_required,
+        ) == (0, expected)
+        assert len(row.qualifying_stage_unfilled_or_unknown_slot_keys) == expected
+        assert row.source_ids == (
+            f"catalog:ctower.{row.checkpoint_key.casefold().replace('.', '-')}@1",
+            "ctower.trust-spine-four-stage.evidence@1",
+        )
+        assert row.source_watermark == source
+        assert row.projection_watermark == source
+        assert row.derivation_reasons[-1] == "underlying_maturity:planned"
 
 
 def test_checkpoint_bundle_materializes_every_definition_and_replays_without_residue(
