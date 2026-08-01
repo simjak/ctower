@@ -509,3 +509,221 @@ it is not a multi-generation history, does not reverse database migrations or un
 restart services. If either slot is incomplete or the predecessor manifest is not the expected secured
 generation, do not run it. Preserve the state and use a separately reviewed recovery decision; the archive
 is rollback material, not authority to improvise an in-place restore.
+
+## Upgrade with a migration delta
+
+This path is the narrow migration-inclusive counterpart to [Upgrade an existing
+installation](#upgrade-an-existing-installation). It covers only a reviewed, backward-compatible database
+migration in the same class as `0037_relax_checkpoint_key_domain.sql`: the migration broadens an existing
+`CHECK` constraint to the already-authored contract domain, rewrites no rows, drops no data, and declares an
+exact forward test, backup checkpoint, and forward-compensation rule in the checksum-locked migration
+manifest. A destructive schema change, data migration, constraint narrowing, unit delta, or any migration
+whose predecessor runtime cannot safely use the resulting schema is a stop for an operator-owned
+expand/migrate/contract decision. This section does not authorize it.
+
+The persistent mutation order is fixed: verified backup, migration apply, runtime replace, service restart,
+live verification, then rollback-readiness proof. Candidate preparation and preflight are read-only with
+respect to the installed runtime and happen before the migration apply. Run the complete procedure from the
+clean candidate checkout as the dedicated development account, with no secret values in the shell
+environment.
+
+### Confirm the narrow migration class and capture its checkpoint
+
+First complete [Secure rollback material and pre-state](#secure-rollback-material-and-pre-state) through the
+encrypted backup integrity check and retain its printed `archive_root`. Do not run that section's combined
+migration/unit refusal command: this path intentionally admits the one exact migration delta below. It still
+refuses every systemd-unit delta and every unexpected migration file:
+
+```bash
+set -euo pipefail
+
+runtime_root="$HOME/.local/share/ctower-development/runtime"
+old_source_commit="$(
+  "$runtime_root/venv/bin/python" - "$runtime_root/manifest.json" <<'PY'
+import json
+import pathlib
+import sys
+
+print(json.loads(pathlib.Path(sys.argv[1]).read_text(encoding="utf-8"))["source_commit"])
+PY
+)"
+git cat-file -e "$old_source_commit^{commit}"
+git diff --exit-code "$old_source_commit"..HEAD -- \
+  deploy/private-vps/development/systemd
+
+expected_migration_delta=$'A\tpackages/ctower-kernel/migrations/0037_relax_checkpoint_key_domain.sql\nM\tpackages/ctower-kernel/migrations/manifest.json'
+actual_migration_delta="$(
+  git diff --name-status "$old_source_commit"..HEAD -- \
+    packages/ctower-kernel/migrations
+)"
+printf '%s\n' "$actual_migration_delta"
+test "$actual_migration_delta" = "$expected_migration_delta"
+
+git diff "$old_source_commit"..HEAD -- \
+  packages/ctower-kernel/migrations/0037_relax_checkpoint_key_domain.sql \
+  packages/ctower-kernel/migrations/manifest.json
+```
+
+Review the printed SQL and declaration before continuing. For 0037, both replaced constraints must move
+from the narrower increment-only pattern to
+`^[A-Za-z0-9][A-Za-z0-9._-]{0,127}$`; the manifest must name the exact forward test, require a verified
+database backup plus the existing constraint definitions and stored keys, and require reviewed forward
+compensation before any later narrowing. A different diff or declaration stops here.
+
+The encrypted cluster backup above satisfies the database-backup part of 0037's checkpoint. Capture the
+other declared facts from the primary without putting the administrator secret in an argument or
+environment variable. Replace `PRINTED_ARCHIVE_ROOT` with the path printed by the archive block:
+
+```bash
+set -euo pipefail
+umask 077
+
+archive_root=PRINTED_ARCHIVE_ROOT
+migration_evidence="$archive_root/migration-0037"
+test -d "$archive_root/runtime"
+test -f "$archive_root/database/ctower-development-pg17-all.sql.gz.gpg"
+mkdir -m 0700 "$migration_evidence"
+
+docker exec --user postgres ctower-development-primary \
+  psql --dbname=ctower --no-psqlrc --set=ON_ERROR_STOP=1 --csv --command "
+    SELECT constraint_row.conrelid::regclass::text AS relation,
+           constraint_row.conname AS constraint_name,
+           pg_get_constraintdef(constraint_row.oid, true) AS definition
+    FROM pg_constraint AS constraint_row
+    WHERE constraint_row.conname IN (
+      'project_delivery_checkpoint_definitions_checkpoint_key_check',
+      'project_delivery_projection_rows_checkpoint_key_check'
+    )
+    ORDER BY relation, constraint_name
+  " > "$migration_evidence/pre-constraints.csv"
+
+docker exec --user postgres ctower-development-primary \
+  psql --dbname=ctower --no-psqlrc --set=ON_ERROR_STOP=1 --csv --command "
+    SELECT 'project_delivery_checkpoint_definitions' AS relation, checkpoint_key
+    FROM project_delivery_checkpoint_definitions
+    UNION ALL
+    SELECT 'project_delivery_projection_rows' AS relation, checkpoint_key
+    FROM project_delivery_projection_rows
+    ORDER BY relation, checkpoint_key
+  " > "$migration_evidence/pre-checkpoint-keys.csv"
+
+sync -f "$migration_evidence/pre-constraints.csv"
+sync -f "$migration_evidence/pre-checkpoint-keys.csv"
+sha256sum \
+  "$migration_evidence/pre-constraints.csv" \
+  "$migration_evidence/pre-checkpoint-keys.csv" \
+  > "$migration_evidence/pre-state.sha256"
+sha256sum -c "$migration_evidence/pre-state.sha256"
+sync -f "$migration_evidence/pre-state.sha256"
+```
+
+Now run the three installed protected baseline commands already shown below the delta check in [Secure
+rollback material and pre-state](#secure-rollback-material-and-pre-state), producing `pre-observe.json`,
+`pre-health.json`, and `pre-board.json`. Do not substitute direct database reads for those product proofs.
+
+### Prepare and preflight before applying
+
+Complete [Prepare and preflight the candidate](#prepare-and-preflight-the-candidate), including the shared
+wheel build and `development-manifest.json` build. A preflight refusal still ends the attempt before any
+migration. The migration command below must come from that verified candidate bootstrap, because the
+currently installed predecessor does not contain the candidate migration.
+
+### Apply the migration once
+
+Run the candidate's `database-up` exactly once and retain the complete output. The verb starts the existing
+primary/standby pair if necessary, serializes role reconciliation and migration work with the migration
+advisory lock, loads the strict manifest, verifies its ordered resource inventory and checksums, applies the
+pending database SQL transactionally, closes role authority, records the attested migration ledger, restores
+the development durability configuration, and waits for synchronous replication.
+
+```bash
+set -euo pipefail
+
+migration_log="$archive_root/migration-0037/database-up.log"
+set +e
+"$bootstrap_root/venv/bin/ctower-private-vps" database-up 2>&1 |
+  tee "$migration_log"
+migration_status="${PIPESTATUS[0]}"
+set -e
+sync -f "$migration_log"
+if [ "$migration_status" -ne 0 ]; then
+  printf 'database-up failed with status %s; STOP without retry\n' "$migration_status" >&2
+  exit "$migration_status"
+fi
+```
+
+Each bounded coordination operation already performs its only retries: at most three attempts within twenty
+seconds for migration-lock acquisition and for each role-reconciliation operation, and only for classified
+connection, capacity, lock, cancellation, or shutdown failures. A nonzero exit means that one of those
+policies has either been exhausted or the failure was not retryable.
+
+If migration SQL itself fails, the candidate's database transaction rolls back its schema changes and writes
+no migration-ledger row. That is not the only possible failed state. Role reconciliation occurs on separate
+connections, and the schema transaction commits before the post-schema role closure and ledger attestation.
+A later failure can therefore leave committed candidate schema or role changes with no new ledger row. The
+database pair may also have been started while the predecessor runtime remains selected. Capture the log,
+current installed manifest, unit/container state, current ledger/schema, and protected-read result, then
+stop for an operator decision. Do not retry `database-up`, replace the runtime, restart services, clean up,
+or restore the archive in the same attempt.
+
+On success, capture the ledger row and resulting constraints before replacing the runtime:
+
+```bash
+set -euo pipefail
+
+docker exec --user postgres ctower-development-primary \
+  psql --dbname=ctower --no-psqlrc --set=ON_ERROR_STOP=1 --csv --command "
+    SELECT migration_id, sha256, application_kind, result_schema_sha256, applied_at
+    FROM ctower_schema_migrations
+    WHERE migration_id = '0037_relax_checkpoint_key_domain.sql'
+  " > "$migration_evidence/post-ledger.csv"
+
+docker exec --user postgres ctower-development-primary \
+  psql --dbname=ctower --no-psqlrc --set=ON_ERROR_STOP=1 --csv --command "
+    SELECT constraint_row.conrelid::regclass::text AS relation,
+           constraint_row.conname AS constraint_name,
+           pg_get_constraintdef(constraint_row.oid, true) AS definition
+    FROM pg_constraint AS constraint_row
+    WHERE constraint_row.conname IN (
+      'project_delivery_checkpoint_definitions_checkpoint_key_check',
+      'project_delivery_projection_rows_checkpoint_key_check'
+    )
+    ORDER BY relation, constraint_name
+  " > "$migration_evidence/post-constraints.csv"
+
+ledger_rows="$(
+  docker exec --user postgres ctower-development-primary \
+    psql --dbname=ctower --no-psqlrc --set=ON_ERROR_STOP=1 \
+      --tuples-only --no-align --command "
+        SELECT count(*) FROM ctower_schema_migrations
+        WHERE migration_id = '0037_relax_checkpoint_key_domain.sql'
+      "
+)"
+test "$ledger_rows" = 1
+sync -f "$migration_evidence/post-ledger.csv"
+sync -f "$migration_evidence/post-constraints.csv"
+sha256sum \
+  "$migration_evidence/post-ledger.csv" \
+  "$migration_evidence/post-constraints.csv" \
+  > "$migration_evidence/post-state.sha256"
+sha256sum -c "$migration_evidence/post-state.sha256"
+sync -f "$migration_evidence/post-state.sha256"
+```
+
+### Replace, restart, verify, and prove rollback readiness
+
+After the successful ledger proof, run [Replace once](#replace-once) exactly once. The database is already at
+0037 at this point. If replacement fails before exchange, preserve that compatible relaxed schema and follow
+the existing old-runtime serving proof; do not treat the encrypted backup as permission to narrow the
+constraint or discard later accepted facts.
+
+On replacement success, complete [Restart and verify](#restart-and-verify), including manifest identity,
+unit state, bounded readiness, replication, finalizer health, ticket-count/Board comparisons, and one
+record-specific protected read. Then complete the non-mutating readiness proof in [Rollback readiness and
+rollback](#rollback-readiness-and-rollback).
+
+`rollback-runtime` still swaps only runtime files. It never reverses migration 0037. That is safe for this
+narrow class because the predecessor can continue using its former subset of a now-broader accepted key
+domain. Exercise the runtime rollback only after a separate authorization, restart both processes, and
+repeat every post-verification read as the existing section requires. Restoring the encrypted database or
+adding a compensating migration is a separate operator decision, never automatic rollback or cleanup.
