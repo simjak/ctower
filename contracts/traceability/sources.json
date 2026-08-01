@@ -781,6 +781,160 @@
       ]
     },
     {
+      "path": "packs/components/checkpoints/ctower.i1-0/v1.yaml",
+      "references": [
+        "SPEC#universal-versionedcomponent-catalog-and-company-desired-state",
+        "SPEC#project-delivery-projection",
+        "INV-45",
+        "INV-59",
+        "AC-COMP-01",
+        "AC-PD-01"
+      ]
+    },
+    {
+      "path": "packs/components/checkpoints/ctower.i1-1/v1.yaml",
+      "references": [
+        "SPEC#universal-versionedcomponent-catalog-and-company-desired-state",
+        "SPEC#project-delivery-projection",
+        "INV-45",
+        "INV-59",
+        "AC-COMP-01",
+        "AC-PD-01"
+      ]
+    },
+    {
+      "path": "packs/components/checkpoints/ctower.i1-2/v1.yaml",
+      "references": [
+        "SPEC#universal-versionedcomponent-catalog-and-company-desired-state",
+        "SPEC#project-delivery-projection",
+        "INV-45",
+        "INV-59",
+        "AC-COMP-01",
+        "AC-PD-01"
+      ]
+    },
+    {
+      "path": "packs/components/checkpoints/ctower.i1-3/v1.yaml",
+      "references": [
+        "SPEC#universal-versionedcomponent-catalog-and-company-desired-state",
+        "SPEC#project-delivery-projection",
+        "INV-45",
+        "INV-59",
+        "AC-COMP-01",
+        "AC-PD-01"
+      ]
+    },
+    {
+      "path": "packs/components/checkpoints/ctower.i1-4/v1.yaml",
+      "references": [
+        "SPEC#universal-versionedcomponent-catalog-and-company-desired-state",
+        "SPEC#project-delivery-projection",
+        "INV-45",
+        "INV-59",
+        "AC-COMP-01",
+        "AC-PD-01"
+      ]
+    },
+    {
+      "path": "packs/components/checkpoints/ctower.i1-5/v1.yaml",
+      "references": [
+        "SPEC#universal-versionedcomponent-catalog-and-company-desired-state",
+        "SPEC#project-delivery-projection",
+        "INV-45",
+        "INV-59",
+        "AC-COMP-01",
+        "AC-PD-01"
+      ]
+    },
+    {
+      "path": "packs/components/checkpoints/ctower.i1-6/v1.yaml",
+      "references": [
+        "SPEC#universal-versionedcomponent-catalog-and-company-desired-state",
+        "SPEC#project-delivery-projection",
+        "INV-45",
+        "INV-59",
+        "AC-COMP-01",
+        "AC-PD-01"
+      ]
+    },
+    {
+      "path": "packs/components/checkpoints/ctower.i1-7/v1.yaml",
+      "references": [
+        "SPEC#universal-versionedcomponent-catalog-and-company-desired-state",
+        "SPEC#project-delivery-projection",
+        "INV-45",
+        "INV-59",
+        "AC-COMP-01",
+        "AC-PD-01"
+      ]
+    },
+    {
+      "path": "packs/components/checkpoints/ctower.i2-1/v1.yaml",
+      "references": [
+        "SPEC#universal-versionedcomponent-catalog-and-company-desired-state",
+        "SPEC#project-delivery-projection",
+        "INV-45",
+        "INV-59",
+        "AC-COMP-01",
+        "AC-PD-01"
+      ]
+    },
+    {
+      "path": "packs/components/checkpoints/ctower.i2-2/v1.yaml",
+      "references": [
+        "SPEC#universal-versionedcomponent-catalog-and-company-desired-state",
+        "SPEC#project-delivery-projection",
+        "INV-45",
+        "INV-59",
+        "AC-COMP-01",
+        "AC-PD-01"
+      ]
+    },
+    {
+      "path": "packs/components/checkpoints/ctower.i2-3/v1.yaml",
+      "references": [
+        "SPEC#universal-versionedcomponent-catalog-and-company-desired-state",
+        "SPEC#project-delivery-projection",
+        "INV-45",
+        "INV-59",
+        "AC-COMP-01",
+        "AC-PD-01"
+      ]
+    },
+    {
+      "path": "packs/components/checkpoints/ctower.i2-4/v1.yaml",
+      "references": [
+        "SPEC#universal-versionedcomponent-catalog-and-company-desired-state",
+        "SPEC#project-delivery-projection",
+        "INV-45",
+        "INV-59",
+        "AC-COMP-01",
+        "AC-PD-01"
+      ]
+    },
+    {
+      "path": "packs/components/checkpoints/ctower.i2-5/v1.yaml",
+      "references": [
+        "SPEC#universal-versionedcomponent-catalog-and-company-desired-state",
+        "SPEC#project-delivery-projection",
+        "INV-45",
+        "INV-59",
+        "AC-COMP-01",
+        "AC-PD-01"
+      ]
+    },
+    {
+      "path": "packs/components/checkpoints/ctower.i2-6/v1.yaml",
+      "references": [
+        "SPEC#universal-versionedcomponent-catalog-and-company-desired-state",
+        "SPEC#project-delivery-projection",
+        "INV-45",
+        "INV-59",
+        "AC-COMP-01",
+        "AC-PD-01"
+      ]
+    },
+    {
       "path": "packs/components/environments/local.linux/v1.yaml",
       "references": [
         "SPEC#universal-versionedcomponent-catalog-and-company-desired-state",
