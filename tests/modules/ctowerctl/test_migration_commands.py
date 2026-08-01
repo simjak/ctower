@@ -26,6 +26,7 @@ from ctower_client.models import (
     MigrationRelationCorrection,
     ProjectDeliveryCriteria,
     ProjectDeliveryRow,
+    ProjectDeliverySlot,
     ProjectDeliveryView,
 )
 from ctowerctl import _migration_commands, interface
@@ -383,6 +384,20 @@ class _MigrationClient:
                     qualifying_stage_slots_filled=1,
                     qualifying_stage_slots_required=2,
                     qualifying_stage_unfilled_or_unknown_slot_keys=("cp3-d-proof",),
+                    qualifying_stage_slots=(
+                        ProjectDeliverySlot(
+                            slot_key="dogfood-proof",
+                            state="filled",
+                            assigned_seat={"state": "unassigned"},
+                            signing_seat=None,
+                        ),
+                        ProjectDeliverySlot(
+                            slot_key="cp3-d-proof",
+                            state="unfilled",
+                            assigned_seat={"state": "unassigned"},
+                            signing_seat=None,
+                        ),
+                    ),
                     source_watermark=27,
                     projection_watermark=27,
                     freshness="fresh",

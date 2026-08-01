@@ -24,6 +24,7 @@ from ctower_client.models import (
     MigrationReviewerKey,
     ProjectDeliveryCriteria,
     ProjectDeliveryRow,
+    ProjectDeliverySlot,
     ProjectDeliveryView,
 )
 from tools.migration.ctower_project.ctower_project_source.canonical import (
@@ -464,6 +465,14 @@ def _delivery(fixture: SyntheticFixture, run: CtowerProjectImportRun) -> Project
             qualifying_stage_slots_filled=0,
             qualifying_stage_slots_required=1,
             qualifying_stage_unfilled_or_unknown_slot_keys=("declared-outcome",),
+            qualifying_stage_slots=(
+                ProjectDeliverySlot(
+                    slot_key="declared-outcome",
+                    state="unknown",
+                    assigned_seat={"state": "unassigned"},
+                    signing_seat=None,
+                ),
+            ),
             source_watermark=run.record_watermark,
             projection_watermark=run.projection_watermark,
             freshness="fresh",

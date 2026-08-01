@@ -1,6 +1,6 @@
 """DO NOT EDIT: generated file; regenerate from declared inputs.
 
-Authored contract digest: sha256:1ca4a6823b673e720c5e1fd0e39445905a701d279b773eb99689536a8de41c62
+Authored contract digest: sha256:19abd7a3003df793c986fda7420df89ccac2127cab34e9cf3344279da01db82e
 """
 
 from ctower_client.client import CtowerClient, CtowerProblemError
@@ -112,6 +112,9 @@ from ctower_client.models import (
     Problem,
     ProjectDeliveryCriteria,
     ProjectDeliveryRow,
+    ProjectDeliverySeat,
+    ProjectDeliverySeatAssignment,
+    ProjectDeliverySlot,
     ProjectDeliveryView,
     ProjectionHealth,
     ProofChangedAuditEvent,
@@ -124,6 +127,7 @@ from ctower_client.models import (
     ReopenedAuditData,
     ReopenIntent,
     ResolveCloseRequest,
+    SeatCatalogRevision,
     SecretBindingReference,
     SourceReference,
     SyntheticRunReceipt,
@@ -275,6 +279,9 @@ __all__ = [
     "Problem",
     "ProjectDeliveryCriteria",
     "ProjectDeliveryRow",
+    "ProjectDeliverySeat",
+    "ProjectDeliverySeatAssignment",
+    "ProjectDeliverySlot",
     "ProjectDeliveryView",
     "ProjectionHealth",
     "ProofChangedAuditEvent",
@@ -287,6 +294,7 @@ __all__ = [
     "ReopenIntent",
     "ReopenedAuditData",
     "ResolveCloseRequest",
+    "SeatCatalogRevision",
     "SecretBindingReference",
     "SourceReference",
     "SyntheticRunReceipt",

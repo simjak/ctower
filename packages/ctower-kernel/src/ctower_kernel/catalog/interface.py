@@ -80,6 +80,7 @@ class ComponentKind(StrEnum):
     NOTIFICATION = "notification"
     INTEGRATION = "integration"
     ADAPTER = "adapter"
+    SEAT_CATALOG = "seat_catalog"
     CHECKPOINT = "checkpoint"
 
 

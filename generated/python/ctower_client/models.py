@@ -1,6 +1,6 @@
 """DO NOT EDIT: generated file; regenerate from declared inputs.
 
-Authored contract digest: sha256:1ca4a6823b673e720c5e1fd0e39445905a701d279b773eb99689536a8de41c62
+Authored contract digest: sha256:19abd7a3003df793c986fda7420df89ccac2127cab34e9cf3344279da01db82e
 """
 
 from __future__ import annotations
@@ -122,6 +122,9 @@ __all__ = [
     "Problem",
     "ProjectDeliveryCriteria",
     "ProjectDeliveryRow",
+    "ProjectDeliverySeat",
+    "ProjectDeliverySeatAssignment",
+    "ProjectDeliverySlot",
     "ProjectDeliveryView",
     "ProjectionHealth",
     "ProofChangedAuditEvent",
@@ -134,6 +137,7 @@ __all__ = [
     "ReopenIntent",
     "ReopenedAuditData",
     "ResolveCloseRequest",
+    "SeatCatalogRevision",
     "SecretBindingReference",
     "SourceReference",
     "SyntheticRunReceipt",
@@ -1134,6 +1138,12 @@ class ResolveCloseRequest(_BoundaryModel):
     workflow_ref: Annotated[str, Field(pattern="^[a-z][a-z0-9._-]*@[1-9][0-9]*$")] | None = None
 
 
+class SeatCatalogRevision(_BoundaryModel):
+    catalog_key: Annotated[str, Field(pattern="^[a-z][a-z0-9.-]{2,127}$")]
+    revision: Annotated[int, Field(ge=1, le=9007199254740991)]
+    content_digest: Annotated[str, Field(pattern="^sha256:[0-9a-f]{64}$")]
+
+
 class SecretBindingReference(_BoundaryModel):
     name: Annotated[str, Field(pattern="^[A-Z][A-Z0-9_]{2,127}$")]
     reference_class: Literal["os-credential", "vault-path", "runtime-binding"]
@@ -1611,44 +1621,10 @@ class PriorityChangedAuditData(_BoundaryModel):
     urgent_evidence_ref: Annotated[str, Field(min_length=1, max_length=256)] | None
 
 
-class ProjectDeliveryRow(_BoundaryModel):
-    checkpoint_key: Annotated[str, Field(pattern="^[A-Za-z0-9][A-Za-z0-9._-]{0,127}$")]
-    checkpoint_label: Annotated[str, Field(min_length=1)]
-    headline_state: Literal[
-        "planned",
-        "in_progress",
-        "ready_to_land",
-        "merged",
-        "verified",
-        "released",
-        "blocked",
-        "done",
-    ]
-    underlying_maturity: Literal["planned", "in_progress", "ready_to_land", "merged", "verified", "released"]
-    outcome: Annotated[str, Field(min_length=1)]
-    accountable_owner: Annotated[str, Field(min_length=1)]
-    criteria: ProjectDeliveryCriteria
-    qualifying_stage_slots_filled: Annotated[int, Field(ge=0, le=9007199254740991)]
-    qualifying_stage_slots_required: Annotated[int, Field(ge=0, le=9007199254740991)]
-    qualifying_stage_unfilled_or_unknown_slot_keys: tuple[Annotated[str, Field(pattern="^[a-z][a-z0-9._-]*$")], ...]
-    source_watermark: Annotated[int, Field(ge=0, le=9007199254740991)]
-    projection_watermark: Annotated[int, Field(ge=0, le=9007199254740991)]
-    freshness: Literal["fresh", "stale", "STATE_UNKNOWN"]
-    confidence: Literal["development_degraded", "disaster_safe", "STATE_UNKNOWN"]
-    health: Literal["CP3_D_NOT_PROVEN", "CURRENT", "STATE_UNKNOWN"]
-    durability: Literal["CP3_D_NOT_PROVEN", "CP3_D_PROVEN", "STATE_UNKNOWN"]
-    recovery: Literal[
-        "EXTERNAL_FAILURE_DOMAIN_UNPROVEN",
-        "EXTERNAL_FAILURE_DOMAIN_PROVEN",
-        "STATE_UNKNOWN",
-    ]
-    data_class: Literal["RECONSTRUCTIBLE_ONLY", "DISASTER_SAFE_CTOWER_ENGINEERING", "STATE_UNKNOWN"]
-    semantic_digest: Annotated[str, Field(pattern="^sha256:[0-9a-f]{64}$")]
-    reconciled_at: _Rfc3339DateTime
-    freshness_due_at: _Rfc3339DateTime
-    rebuild_generation: Annotated[int, Field(ge=0, le=9007199254740991)]
-    source_ids: tuple[Annotated[str, Field(min_length=1)], ...]
-    derivation_reasons: Annotated[tuple[Annotated[str, Field(min_length=1)], ...], Field(min_length=1)]
+class ProjectDeliverySeat(_BoundaryModel):
+    seat_key: Annotated[str, Field(pattern="^[a-z][a-z0-9._-]{1,95}$")]
+    seat_label: Annotated[str, Field(min_length=1)]
+    catalog_revision: SeatCatalogRevision
 
 
 class ProofChangedAuditEvent(_BoundaryModel):
@@ -1911,19 +1887,7 @@ class HealthDimension(_BoundaryModel):
     contributors: Annotated[tuple[HealthContributor, ...], Field(min_length=1)]
 
 
-class ProjectDeliveryView(_BoundaryModel):
-    schema_id: Literal["ctower.project-delivery/v1"] = Field(
-        alias="schema", serialization_alias="schema"
-    )
-    company_key: Annotated[str, Field(pattern="^[a-z][a-z0-9-]{2,63}$")]
-    project_key: Annotated[str, Field(pattern="^[a-z][a-z0-9-]{2,63}$")]
-    source_record_position: Annotated[int, Field(ge=0, le=9007199254740991)]
-    projection_record_position: Annotated[int, Field(ge=0, le=9007199254740991)]
-    reconciled_at: _Rfc3339DateTime
-    freshness_due_at: _Rfc3339DateTime
-    projection_semantic_digest: Annotated[str, Field(pattern="^sha256:[0-9a-f]{64}$")]
-    rebuild_generation: Annotated[int, Field(ge=0, le=9007199254740991)]
-    rows: tuple[ProjectDeliveryRow, ...]
+type ProjectDeliverySeatAssignment = dict[str, object] | dict[str, object]
 
 
 class TicketCommandResult(_BoundaryModel):
@@ -2000,6 +1964,13 @@ class CtowerProjectImportBatchRequest(_BoundaryModel):
     operations: Annotated[tuple[CtowerProjectImportOperation, ...], Field(min_length=1, max_length=64)]
 
 
+class ProjectDeliverySlot(_BoundaryModel):
+    slot_key: Annotated[str, Field(pattern="^[a-z][a-z0-9._-]*$")]
+    state: Literal["filled", "unfilled", "unknown"]
+    assigned_seat: ProjectDeliverySeatAssignment
+    signing_seat: ProjectDeliverySeat | None
+
+
 class TimelineResponse(_BoundaryModel):
     durability_state: DurabilityState
     events: tuple[TimelineEvent, ...]
@@ -2031,6 +2002,47 @@ class CompanyBundleResource(_BoundaryModel):
     payload: _FreeFormJsonObject
 
 
+class ProjectDeliveryRow(_BoundaryModel):
+    checkpoint_key: Annotated[str, Field(pattern="^[A-Za-z0-9][A-Za-z0-9._-]{0,127}$")]
+    checkpoint_label: Annotated[str, Field(min_length=1)]
+    headline_state: Literal[
+        "planned",
+        "in_progress",
+        "ready_to_land",
+        "merged",
+        "verified",
+        "released",
+        "blocked",
+        "done",
+    ]
+    underlying_maturity: Literal["planned", "in_progress", "ready_to_land", "merged", "verified", "released"]
+    outcome: Annotated[str, Field(min_length=1)]
+    accountable_owner: Annotated[str, Field(min_length=1)]
+    criteria: ProjectDeliveryCriteria
+    qualifying_stage_slots_filled: Annotated[int, Field(ge=0, le=9007199254740991)]
+    qualifying_stage_slots_required: Annotated[int, Field(ge=0, le=9007199254740991)]
+    qualifying_stage_unfilled_or_unknown_slot_keys: tuple[Annotated[str, Field(pattern="^[a-z][a-z0-9._-]*$")], ...]
+    qualifying_stage_slots: tuple[ProjectDeliverySlot, ...]
+    source_watermark: Annotated[int, Field(ge=0, le=9007199254740991)]
+    projection_watermark: Annotated[int, Field(ge=0, le=9007199254740991)]
+    freshness: Literal["fresh", "stale", "STATE_UNKNOWN"]
+    confidence: Literal["development_degraded", "disaster_safe", "STATE_UNKNOWN"]
+    health: Literal["CP3_D_NOT_PROVEN", "CURRENT", "STATE_UNKNOWN"]
+    durability: Literal["CP3_D_NOT_PROVEN", "CP3_D_PROVEN", "STATE_UNKNOWN"]
+    recovery: Literal[
+        "EXTERNAL_FAILURE_DOMAIN_UNPROVEN",
+        "EXTERNAL_FAILURE_DOMAIN_PROVEN",
+        "STATE_UNKNOWN",
+    ]
+    data_class: Literal["RECONSTRUCTIBLE_ONLY", "DISASTER_SAFE_CTOWER_ENGINEERING", "STATE_UNKNOWN"]
+    semantic_digest: Annotated[str, Field(pattern="^sha256:[0-9a-f]{64}$")]
+    reconciled_at: _Rfc3339DateTime
+    freshness_due_at: _Rfc3339DateTime
+    rebuild_generation: Annotated[int, Field(ge=0, le=9007199254740991)]
+    source_ids: tuple[Annotated[str, Field(min_length=1)], ...]
+    derivation_reasons: Annotated[tuple[Annotated[str, Field(min_length=1)], ...], Field(min_length=1)]
+
+
 class WorkChangedAuditEvent(_BoundaryModel):
     actor_principal_id: UUID
     command_id: UUID
@@ -2055,6 +2067,21 @@ class CompanyBundleDocument(_BoundaryModel):
         alias="schema", serialization_alias="schema"
     )
     secret_binding_refs: Annotated[tuple[SecretBindingReference, ...], Field(max_length=128)]
+
+
+class ProjectDeliveryView(_BoundaryModel):
+    schema_id: Literal["ctower.project-delivery/v1"] = Field(
+        alias="schema", serialization_alias="schema"
+    )
+    company_key: Annotated[str, Field(pattern="^[a-z][a-z0-9-]{2,63}$")]
+    project_key: Annotated[str, Field(pattern="^[a-z][a-z0-9-]{2,63}$")]
+    source_record_position: Annotated[int, Field(ge=0, le=9007199254740991)]
+    projection_record_position: Annotated[int, Field(ge=0, le=9007199254740991)]
+    reconciled_at: _Rfc3339DateTime
+    freshness_due_at: _Rfc3339DateTime
+    projection_semantic_digest: Annotated[str, Field(pattern="^sha256:[0-9a-f]{64}$")]
+    rebuild_generation: Annotated[int, Field(ge=0, le=9007199254740991)]
+    rows: tuple[ProjectDeliveryRow, ...]
 
 
 class AuditPage(_BoundaryModel):

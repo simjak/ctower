@@ -50,6 +50,7 @@ _EXPECTED_SCHEMAS: dict[ComponentKind, str] = {
     ComponentKind.CADENCE_POLICY: "ctower.scheduling-policy/v1",
     ComponentKind.NOTIFICATION: "ctower.notification/v1",
     ComponentKind.INTEGRATION: "ctower.integration/v1",
+    ComponentKind.SEAT_CATALOG: "ctower.seat-catalog/v1",
     ComponentKind.CHECKPOINT: "ctower.checkpoint/v1",
 }
 _FORBIDDEN_KEYS = frozenset(
@@ -90,6 +91,8 @@ def validate_bundle(
         failure = _validate_resources(bundle, schemas)
     if failure is None:
         failure = _validate_checkpoint_set(bundle)
+    if failure is None:
+        failure = _validate_seat_catalog_set(bundle, existing_refs)
     if failure is None:
         failure = _validate_references(bundle, existing_refs)
     if failure is None:
@@ -174,6 +177,112 @@ def _validate_checkpoint_set(bundle: CompanyBundle) -> CatalogProblem | None:
         return _problem(
             "bundle-reference-invalid",
             "A project checkpoint key may occur only once in an active bundle.",
+        )
+    return None
+
+
+def _validate_seat_catalog_set(
+    bundle: CompanyBundle,
+    existing_refs: Iterable[ComponentReference] | None,
+) -> CatalogProblem | None:
+    catalogs = tuple(
+        resource
+        for resource in bundle.resources
+        if resource.component.kind is ComponentKind.SEAT_CATALOG
+    )
+    catalog_problem = _validate_seat_catalogs(catalogs)
+    if catalog_problem is not None:
+        return catalog_problem
+    return _validate_checkpoint_seat_assignments(bundle, catalogs, existing_refs)
+
+
+def _validate_seat_catalogs(
+    catalogs: tuple[CompanyBundleResource, ...],
+) -> CatalogProblem | None:
+    if len(catalogs) > 1:
+        return _problem(
+            "bundle-reference-invalid",
+            "An active bundle may name only one seat catalog.",
+        )
+    if catalogs and catalogs[0].component.scope.project is not None:
+        return _problem(
+            "bundle-grant-refused",
+            "The tenant seat catalog must not be scoped to one project.",
+        )
+    for catalog in catalogs:
+        members = cast(list[dict[str, object]], catalog.payload["members"])
+        keys = tuple(str(member["key"]) for member in members)
+        if len(keys) != len(set(keys)):
+            return _problem(
+                "bundle-reference-invalid",
+                "A seat key may occur only once in one catalog revision.",
+            )
+    return None
+
+
+def _validate_checkpoint_seat_assignments(
+    bundle: CompanyBundle,
+    catalogs: tuple[CompanyBundleResource, ...],
+    existing_refs: Iterable[ComponentReference] | None,
+) -> CatalogProblem | None:
+
+    existing = set(existing_refs or ())
+    proposed = {resource.component.reference() for resource in catalogs}
+    by_identity = {
+        (resource.component.key, resource.component.revision): resource for resource in catalogs
+    }
+    for resource in bundle.resources:
+        if resource.component.kind is not ComponentKind.CHECKPOINT:
+            continue
+        criteria = cast(list[dict[str, object]], resource.payload["criteria"])
+        for criterion in criteria:
+            assignment = criterion.get("assigned_seat")
+            if not isinstance(assignment, dict):
+                continue
+            problem = _validate_seat_assignment(
+                assignment,
+                proposed=proposed,
+                existing=existing,
+                by_identity=by_identity,
+            )
+            if problem is not None:
+                return problem
+    return None
+
+
+def _validate_seat_assignment(
+    assignment: dict[str, object],
+    *,
+    proposed: set[ComponentReference],
+    existing: set[ComponentReference],
+    by_identity: dict[tuple[str, int], CompanyBundleResource],
+) -> CatalogProblem | None:
+    reference = ComponentReference(
+        kind=ComponentKind.SEAT_CATALOG,
+        key=str(assignment["catalog_key"]),
+        revision=int(cast(int, assignment["catalog_revision"])),
+        content_digest=str(assignment["catalog_digest"]),
+    )
+    if reference not in proposed and reference not in existing:
+        return _problem(
+            "bundle-reference-invalid",
+            "A seat assignment must pin a published seat-catalog revision.",
+        )
+    catalog = by_identity.get((reference.key, reference.revision))
+    if catalog is None:
+        return None
+    if catalog.component.content_digest != reference.content_digest:
+        return _problem(
+            "bundle-reference-invalid",
+            "A seat assignment catalog digest does not match its revision.",
+        )
+    member_keys = {
+        str(member["key"]) for member in cast(list[dict[str, object]], catalog.payload["members"])
+    }
+    if str(assignment["seat_key"]) not in member_keys:
+        return _problem(
+            "bundle-reference-invalid",
+            "A seat assignment key is absent from its pinned catalog revision.",
         )
     return None
 
