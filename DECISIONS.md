@@ -1053,3 +1053,76 @@ Rejected alternatives:
 - Reading an undeclared delivery-surface field as an absence, or inferring the surface from stage names,
   lanes, or delivery facts.
 - Moving AC-PD-03's I2.4 change/PR row placement onto the I1 Board card.
+
+## D30 — The portfolio joins ctower: three projects, one record (locked 2026-08-01, operator)
+
+The operator approved all seven clauses below on 2026-08-01 through the director, adopting the Commander
+draft prepared for issue #185 and PR #189. This entry preserves D21's derived Project Delivery model,
+D28's configured-seat and revision-pinning discipline, and D27's dormant bulk-import boundary. It supersedes
+D24 and D27 only to the extent that either permitted a pre-CP3-D development writer/authority epoch or
+treated the legacy corpus as frozen during shadow operation: CT-I1-008 may still record its narrow
+development `GO_WITH_LIMITS`, but that verdict stops no legacy writer and makes ctower sole authority for
+nothing. D24/D27's CP3-D protection and fail-closed CT-I2-001 dependency remain. Issue #152 remains a hard
+gate only for a future multi-database topology, not for the approved single-database portfolio.
+
+1. **Topology — one database, one tenant, three projects.** `manibo` and `bh-loop` join `ctower` as
+   Project keys inside the existing tenant and database, using the project-scoped checkpoint and delivery
+   model. No Project receives its own database or tenant. Project membership, labels, owners, and starter
+   checkpoints are versioned configured data; product code contains no three-project branch or roster
+   literal.
+2. **Shadow/cutover boundary — coordination record, not sole authority.** The instance keeps the exact
+   `SHADOW_ONLY_CP3_D_NOT_PROVEN` label. All three Projects may hold reconstructible tickets, custody,
+   Evidence, and disjoint delivery boards. Ctower becomes sole authority for nothing until CP3-D closes and
+   the operator separately accepts a portfolio authority epoch. Mission Control ledgers and applicable
+   GitHub/GitLab records remain co-sources during shadow operation; no legacy writer is frozen. Bulk import
+   stays dormant. The 115-item `manibo` backlog enters item by item through ordinary signed intake.
+3. **Prohibited data classes — loud named refusal.** Intake and Evidence refuse credentials, tokens, or
+   keys in any form; production customer data; PHI or any HIPAA-covered content; PII beyond staff names and
+   work handles; and live incident indicators. Each refusal names its stable class and produces no mutation.
+   The BH.Loop boundary permits references to D11 controls, GitHub/GitLab artifacts, and deidentified control
+   IDs, but never patient or clinical content. The forbidden-data-class exporter model therefore extends to
+   ticket intake and Evidence recording.
+4. **Per-project grants — identity is the boundary.** Each Project has a configured Commander principal and
+   project-seat credentials scoped to `(project, seat)` with an exact named subset of
+   `capture|transition|evidence`. The operator issues and revokes credentials and append-only
+   Project grants. Each grant pins the Project, seat-catalog, access-policy, and credential revisions and
+   digests; access resolves those pins server-side on every call, and revocation refuses the next call by
+   name. Custody gains a target-Project-grant input. A principal from one Project cannot mutate another
+   Project's tickets, checkpoints, or Evidence; the refusal is named and changes no state.
+
+   Authorization is exhaustive: only the operator may issue or revoke a project-seat credential or
+   grant, or apply a portfolio CompanyBundle; any active matching grant may read its Project according to
+   existing visibility rules; `capture` admits or links work and requests initial custody by an eligible
+   configured Commander; `transition` performs ordinary typed Work mutations; `evidence` records ordinary
+   allowed Evidence; and protected commands, owner surfaces, gates, effects, production, incidents, and
+   authority epochs retain their stricter existing authorization and are never implied by these three
+   scopes. Unknown, mismatched, foreign-Project, stale-version, and revoked credentials fail closed.
+
+   The initial configured owners are `ctower` → `ctower-commander`, `manibo` → `manibo-commander`, and
+   `bh-loop` → `bhloop-commander`; these are configuration values, not product vocabulary. Grant issuance
+   and revocation remain operator-only.
+5. **Stable work identity.** Source identity is project-scoped as
+   `(tenant, project, source kind, source ref)`. The shared R-counter renders stable `<project>-R<nnn>`
+   references. Ticket IDs remain instance-global ULIDs. Cross-project reuse and renumbering are forbidden.
+6. **Verification — every clause has named proof.** Setup proves one tenant with N Projects. Isolation
+   tests all six directed pairs—`manibo`↔`ctower`, `bh-loop`↔`ctower`, and
+   `manibo`↔`bh-loop`—and each foreign mutation refuses by name with zero state change. Intake and Evidence
+   test every prohibited class, including a PHI-shaped fixture refused by its exact class name. Grant tests
+   cover issuance, exact scope subsets, revocation, and the revoked credential's named next-call
+   refusal. QA proves three Project-filtered Board views render mutually disjoint rows.
+7. **Sequencing is bound.** Stable work proceeds as identities and grant-aware custody (issue #192,
+   CT-I1-009) → scopes, isolation, and each Project Commander's starter-checkpoint onboarding configuration
+   (CT-I1-010) → ordinary item-by-item intake of `manibo`'s 115 items (CT-I1-011) → the project-scoped feed
+   for issue #186 (CT-I1-012). This SPEC revision accompanies the decision. Implementation changes follow
+   the normal two-round cross-model gates; no later step may be inferred complete from an earlier step's
+   evidence.
+
+Rejected alternatives, as settled by the approved clauses:
+
+- Per-Project databases or tenants for this portfolio.
+- Any pre-CP3-D writer freeze, sole-authority claim, or migration cutover.
+- Bulk import of the `manibo` backlog or authority-bearing historical state.
+- A hard-coded Project/seat roster, unpinned grant, implicit cross-Project access, or grant-derived owner,
+  protected-command, effect, incident, or production authority.
+- Accepting a prohibited class silently, under a generic error, or as Evidence bytes/metadata rather than
+  refusing it by name.
