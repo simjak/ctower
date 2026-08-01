@@ -11,12 +11,12 @@ from ..http._generated_client_runtime import (
     python_client,
     run_command,
 )
-from ._fixture import project_delivery_view
+from ._fixture import DIGEST, project_delivery_view
 
 __all__: tuple[str, ...] = ()
 
 
-def test_generated_python_client_round_trips_non_ctower_project_unchanged() -> None:
+def test_generated_python_client_round_trips_assigned_and_signing_seats() -> None:
     payload = project_delivery_view()
     client = python_client(json.dumps(payload), status=200)
 
@@ -25,9 +25,31 @@ def test_generated_python_client_round_trips_non_ctower_project_unchanged() -> N
     client.close()
 
     assert round_trip == payload
+    slot = round_trip["rows"][0]["qualifying_stage_slots"][0]
+    assert slot["assigned_seat"] == {
+        "state": "assigned",
+        "seat": {
+            "seat_key": "preparer",
+            "seat_label": "Preparer",
+            "catalog_revision": {
+                "catalog_key": "ledger.delivery-seats",
+                "revision": 1,
+                "content_digest": DIGEST,
+            },
+        },
+    }
+    assert slot["signing_seat"] == {
+        "seat_key": "approver",
+        "seat_label": "Approver",
+        "catalog_revision": {
+            "catalog_key": "ledger.delivery-seats",
+            "revision": 1,
+            "content_digest": DIGEST,
+        },
+    }
 
 
-def test_generated_typescript_client_round_trips_non_ctower_project_unchanged(
+def test_generated_typescript_client_round_trips_assigned_and_signing_seats(
     tmp_path: Path,
 ) -> None:
     payload = project_delivery_view()
@@ -70,6 +92,14 @@ const client = new CtowerClient({{
   }},
 }});
 const roundTrip = await client.getProjectDelivery({{projectKey: "quarterly-close"}});
+const slot = roundTrip.rows[0]?.qualifying_stage_slots[0];
+if (slot?.assigned_seat.state !== "assigned") {{
+  throw new Error("generated TypeScript client lost the assigned seat");
+}}
+if (
+  slot.assigned_seat.seat.seat_key !== "preparer" ||
+  slot.signing_seat?.seat_key !== "approver"
+) throw new Error("generated TypeScript client changed carried seat identities");
 if (
   JSON.stringify(canonical(roundTrip)) !==
   JSON.stringify(canonical(payload))
