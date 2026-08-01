@@ -316,6 +316,8 @@ def _admitted_ticket(
             "create",
             "--priority",
             "P2",
+            "--project-key",
+            "ctower",
             "--source-kind",
             "acceptance",
             "--source-ref",

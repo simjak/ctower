@@ -158,6 +158,7 @@ _EXPECTED_PROBLEM_CODES = {
     "idempotency-conflict",
     "intake-already-promoted",
     "intake-promotion-ineligible",
+    "intake-source-project-mismatch",
     "intake-source-conflict",
     "migration-alias-conflict",
     "migration-capability-denied",

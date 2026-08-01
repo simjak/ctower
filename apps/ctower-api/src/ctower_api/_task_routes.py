@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import re
 from uuid import UUID
 
 from fastapi import FastAPI, Request
@@ -54,6 +55,7 @@ from ctower_kernel.work import (
 from ctower_kernel.workflow import Workflow, WorkflowActor, WorkflowReceipt, WorkflowStart
 
 __all__: tuple[str, ...] = ()
+_PROJECT_KEY = re.compile(r"^[a-z][a-z0-9-]{2,63}$")
 
 
 def install_task_routes(
@@ -171,12 +173,18 @@ def _install_assignment_list(
     app: FastAPI, access: Access, work: Work, recorder: TelemetryRecorder
 ) -> None:
     @app.get("/v1/tickets/{ticket_id}/assignments")
-    def assignment_list(ticket_id: str, request: Request) -> JSONResponse:
+    def assignment_list(
+        ticket_id: str, request: Request, project_key: str | None = None
+    ) -> JSONResponse:
         parsed = _read_actor(access, recorder, request, ticket_id)
         if isinstance(parsed, JSONResponse):
             return parsed
         actor, ticket, _ = parsed
-        outcome = work.assignments(actor, ticket)
+        try:
+            project = _project_key(project_key)
+        except ValueError:
+            return _problem_response(_validation_problem())
+        outcome = work.assignments(actor, ticket, project)
         if isinstance(outcome, RecordProblem):
             return _problem_response(outcome)
         boundary = AssignmentList.model_validate_json(
@@ -274,15 +282,31 @@ def _install_audit(
     app: FastAPI, access: Access, record: Record, recorder: TelemetryRecorder
 ) -> None:
     @app.get("/v1/tickets/{ticket_id}/audit")
-    def audit(ticket_id: str, request: Request, cursor: int = 0, limit: int = 50) -> JSONResponse:
+    def audit(
+        ticket_id: str,
+        request: Request,
+        project_key: str | None = None,
+        cursor: int = 0,
+        limit: int = 50,
+    ) -> JSONResponse:
         parsed = _read_actor(access, recorder, request, ticket_id)
         if isinstance(parsed, JSONResponse):
             return parsed
         actor, ticket, telemetry = parsed
+        try:
+            project = _project_key(project_key)
+        except ValueError:
+            return _problem_response(_validation_problem())
         outcome = record.ticket_audit(
-            actor, ticket, cursor=cursor, limit=limit, telemetry=telemetry
+            actor, ticket, project, cursor=cursor, limit=limit, telemetry=telemetry
         )
         return _audit_response(outcome)
+
+
+def _project_key(value: str | None) -> str:
+    if value is None or _PROJECT_KEY.fullmatch(value) is None:
+        raise ValueError("invalid project key")
+    return value
 
 
 async def _parse[Payload: BaseModel](

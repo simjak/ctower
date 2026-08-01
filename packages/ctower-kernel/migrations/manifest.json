@@ -1,8 +1,8 @@
 {
   "schema": "ctower.migrations/v3",
   "adoption_baseline": {
-    "through": "0037_relax_checkpoint_key_domain.sql",
-    "schema_sha256": "sha256:b886edd9977b14e32ba17061120ad1065453bba7c4cd2b26570675cd68085d9d",
+    "through": "0038_project_scoped_reads.sql",
+    "schema_sha256": "sha256:c0a07a8cd787c11ff73acea6e3239919bcb6bc1715b46e40f81ff9821a9d91af",
     "semantic_checks": "ctower.pre-ledger/v1",
     "schema_object_sum256": "sum256:00235ba6a1b0a153e4655d2214c13ebda142d82e395fc7e250b97902e629ef6e"
   },
@@ -359,6 +359,15 @@
       "forward_test": "pytest:tests/acceptance/increment-1/test_checkpoint_delivery.py::test_non_increment_checkpoint_key_materializes_and_projects_end_to_end",
       "rollback_or_forward_compensation": "Keep checkpoint_key values readable by the authored contract pattern; append reviewed forward compensation before narrowing the domain, never restore an increment-only literal.",
       "backup_checkpoint": "Before applying to a nonempty installation, capture the existing checkpoint_key CHECK constraint definitions and all stored checkpoint_key values plus a verified database backup."
+    },
+    {
+      "path": "0038_project_scoped_reads.sql",
+      "sha256": "sha256:883d2877964116949c251adfb375e5950c9c5071dcb2659ed4343afef2775566",
+      "minimum_service_version": "0.0.0",
+      "maximum_service_version": "0.0.0",
+      "forward_test": "pytest:tests/acceptance/increment-1/test_project_scoping.py::test_manibo_and_ctower_boards_are_disjoint",
+      "rollback_or_forward_compensation": "Keep immutable ticket project ownership and project-scoped source aliases readable; rebuild disposable Board and Project Delivery rows after reviewed forward compensation, never erase or relink ticket or intake authority.",
+      "backup_checkpoint": "Before applying to a nonempty installation, capture ticket, ticket-project binding, inbound source alias, and Board projection counts grouped by tenant and project plus a verified database backup."
     }
   ]
 }

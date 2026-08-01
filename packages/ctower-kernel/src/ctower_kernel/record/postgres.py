@@ -299,20 +299,30 @@ class PostgresRecord:
         return outcome
 
     def get_ticket(
-        self, actor: Actor, ticket_id: UUID, *, telemetry: TelemetryContext
+        self,
+        actor: Actor,
+        ticket_id: UUID,
+        project_key: str,
+        *,
+        telemetry: TelemetryContext,
     ) -> Ticket | RecordProblem:
-        """Read one tenant-scoped ticket."""
+        """Read one tenant/project-scoped ticket."""
 
-        outcome = _get_ticket(self._dsn, actor, ticket_id, telemetry=telemetry)
+        outcome = _get_ticket(self._dsn, actor, ticket_id, project_key, telemetry=telemetry)
         self._emit("record.get_ticket", telemetry, outcome)
         return outcome
 
     def ticket_timeline(
-        self, actor: Actor, ticket_id: UUID, *, telemetry: TelemetryContext
+        self,
+        actor: Actor,
+        ticket_id: UUID,
+        project_key: str,
+        *,
+        telemetry: TelemetryContext,
     ) -> TicketTimeline | RecordProblem:
-        """Read one tenant-scoped event timeline."""
+        """Read one tenant/project-scoped event timeline."""
 
-        outcome = _ticket_timeline(self._dsn, actor, ticket_id, telemetry=telemetry)
+        outcome = _ticket_timeline(self._dsn, actor, ticket_id, project_key, telemetry=telemetry)
         self._emit("record.ticket_timeline", telemetry, outcome)
         return outcome
 
@@ -320,6 +330,7 @@ class PostgresRecord:
         self,
         actor: Actor,
         ticket_id: UUID,
+        project_key: str,
         *,
         cursor: int,
         limit: int,
@@ -327,7 +338,9 @@ class PostgresRecord:
     ) -> AuditPage | RecordProblem:
         """Read explicitly linked cross-aggregate events by global position."""
 
-        outcome = _ticket_audit(self._dsn, actor, ticket_id, cursor=cursor, limit=limit)
+        outcome = _ticket_audit(
+            self._dsn, actor, ticket_id, project_key, cursor=cursor, limit=limit
+        )
         self._emit("record.ticket_audit", telemetry, outcome)
         return outcome
 

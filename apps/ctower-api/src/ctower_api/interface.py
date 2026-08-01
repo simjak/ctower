@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import re
 from collections.abc import Awaitable, Callable
 from datetime import datetime
 from typing import cast
@@ -78,6 +79,13 @@ from ctower_kernel.workflow import Workflow
 __all__ = ["create_app"]
 
 type _MigrationImporterResolver = Callable[[bytes, UUID, UUID, str, datetime], Actor | None]
+_PROJECT_KEY = re.compile(r"^[a-z][a-z0-9-]{2,63}$")
+
+
+def _project_key(value: str | None) -> str:
+    if value is None or _PROJECT_KEY.fullmatch(value) is None:
+        raise ValueError("invalid project key")
+    return value
 
 
 def create_app(
@@ -266,6 +274,7 @@ def _install_ticket_create_route(
                     else actor.principal_id
                 ),
                 priority=payload.priority.value,
+                project_key=payload.project_key,
                 source=SourceReference(payload.source.kind, payload.source.ref),
                 title=payload.title,
             ),
@@ -285,13 +294,16 @@ def _install_ticket_read_routes(
     """Bind tenant-scoped ticket and timeline queries."""
 
     @app.get("/v1/tickets/{ticket_id}")
-    def get_ticket(ticket_id: str, request: Request) -> JSONResponse:
+    def get_ticket(
+        ticket_id: str, request: Request, project_key: str | None = None
+    ) -> JSONResponse:
         actor = _authenticate(access, telemetry_recorder, request)
         if isinstance(actor, RecordProblem):
             return _problem_response(actor)
         try:
             telemetry = _telemetry(request)
             parsed_ticket_id = _uuid(ticket_id)
+            parsed_project_key = _project_key(project_key)
         except ValueError:
             return _problem_response(_validation_problem())
         telemetry = telemetry.bind(
@@ -300,16 +312,21 @@ def _install_ticket_read_routes(
             ticket_id=str(parsed_ticket_id),
         )
         telemetry_recorder.emit("access.authenticate", telemetry, outcome="ok", reason="authorized")
-        return _ticket_response(record.get_ticket(actor, parsed_ticket_id, telemetry=telemetry))
+        return _ticket_response(
+            record.get_ticket(actor, parsed_ticket_id, parsed_project_key, telemetry=telemetry)
+        )
 
     @app.get("/v1/tickets/{ticket_id}/timeline")
-    def get_ticket_timeline(ticket_id: str, request: Request) -> JSONResponse:
+    def get_ticket_timeline(
+        ticket_id: str, request: Request, project_key: str | None = None
+    ) -> JSONResponse:
         actor = _authenticate(access, telemetry_recorder, request)
         if isinstance(actor, RecordProblem):
             return _problem_response(actor)
         try:
             telemetry = _telemetry(request)
             parsed_ticket_id = _uuid(ticket_id)
+            parsed_project_key = _project_key(project_key)
         except ValueError:
             return _problem_response(_validation_problem())
         telemetry = telemetry.bind(
@@ -319,7 +336,7 @@ def _install_ticket_read_routes(
         )
         telemetry_recorder.emit("access.authenticate", telemetry, outcome="ok", reason="authorized")
         return _timeline_response(
-            record.ticket_timeline(actor, parsed_ticket_id, telemetry=telemetry)
+            record.ticket_timeline(actor, parsed_ticket_id, parsed_project_key, telemetry=telemetry)
         )
 
 

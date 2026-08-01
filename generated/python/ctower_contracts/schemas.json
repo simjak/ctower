@@ -3176,6 +3176,10 @@
               ],
               "type": "string"
             },
+            "project_key": {
+              "pattern": "^[a-z][a-z0-9-]{2,63}$",
+              "type": "string"
+            },
             "source_kind": {
               "maxLength": 64,
               "minLength": 1,
@@ -8645,6 +8649,10 @@
               ],
               "type": "string"
             },
+            "project_key": {
+              "pattern": "^[a-z][a-z0-9-]{2,63}$",
+              "type": "string"
+            },
             "risk": {
               "maxLength": 64,
               "type": [
@@ -8699,6 +8707,7 @@
             "delivery_facts",
             "lane",
             "priority",
+            "project_key",
             "risk",
             "stage_key",
             "stage_label",
@@ -8749,6 +8758,10 @@
               ],
               "type": "string"
             },
+            "project_key": {
+              "pattern": "^[a-z][a-z0-9-]{2,63}$",
+              "type": "string"
+            },
             "risk": {
               "maxLength": 64,
               "type": "string"
@@ -8758,6 +8771,9 @@
               "type": "string"
             }
           },
+          "required": [
+            "project_key"
+          ],
           "type": "object"
         }
       },
@@ -11897,7 +11913,7 @@
     {
       "id": "https://ctower.dev/contracts/domain/events/event-envelope.schema.json",
       "path": "contracts/domain/events/event-envelope.schema.json",
-      "sha256": "sha256:004080b1af7a1c83345790581492d72c9c9cbe9aa9f72d8ad8a8448abc176a87"
+      "sha256": "sha256:a87b23a727e77348c4c4eb3b62ce2d66738b5f31e8336c18b114039fce6d0f06"
     },
     {
       "id": "https://ctower.local/contracts/domain/intake/thread-intake.schema.json",
@@ -12017,7 +12033,7 @@
     {
       "id": "https://ctower.dev/contracts/domain/task-management/board-view.schema.json",
       "path": "contracts/domain/task-management/board-view.schema.json",
-      "sha256": "sha256:c8bcb47434fb331fbd6aaa4e3192a083ebd2e6a8a0cfca3e00e28053a200b6ad"
+      "sha256": "sha256:788621d304f3865aaf108deb7d9f91537004c7f8cb6a252d3a53d4e0b390c6f9"
     },
     {
       "id": "https://ctower.dev/contracts/domain/task-management/scheduling-policy.schema.json",

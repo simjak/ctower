@@ -60,6 +60,7 @@ def test_operations_handlers_build_and_route_only_authored_commands() -> None:
     board = _ops_commands.execute_query(
         argparse.Namespace(
             cli_name="board query",
+            project_key="manibo",
             lane="in_review",
             priority="P1",
             stage_key="verification",
@@ -75,6 +76,7 @@ def test_operations_handlers_build_and_route_only_authored_commands() -> None:
     assert cast(_Result, board).marker == "board"
     assert client.calls == ["health", "board"]
     assert client.board_filters == (
+        "manibo",
         "in_review",
         "P1",
         "verification",
@@ -217,6 +219,7 @@ def test_interface_dispatch_fails_closed(
         argparse.Namespace(
             area="board",
             cli_name="board query",
+            project_key="ctower",
             lane=None,
             priority=None,
             stage_key=None,
@@ -382,6 +385,7 @@ class _OperationsClient:
     def __init__(self) -> None:
         self.calls: list[str] = []
         self.board_filters: tuple[
+            str,
             str | None,
             str | None,
             str | None,
@@ -389,7 +393,7 @@ class _OperationsClient:
             UUID | None,
             str | None,
             str | None,
-        ] = (None, None, None, None, None, None, None)
+        ] = ("", None, None, None, None, None, None, None)
 
     def get_control_health(self) -> _Result:
         self.calls.append("health")
@@ -398,6 +402,7 @@ class _OperationsClient:
     def get_board(
         self,
         *,
+        project_key: str,
         lane: str | None,
         priority: str | None,
         stage_key: str | None,
@@ -408,6 +413,7 @@ class _OperationsClient:
     ) -> _Result:
         self.calls.append("board")
         self.board_filters = (
+            project_key,
             lane,
             priority,
             stage_key,

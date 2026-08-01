@@ -175,6 +175,40 @@ def _validate_checkpoint_set(bundle: CompanyBundle) -> CatalogProblem | None:
             "bundle-reference-invalid",
             "A project checkpoint key may occur only once in an active bundle.",
         )
+    return _validate_checkpoint_graph(checkpoints)
+
+
+def _validate_checkpoint_graph(
+    checkpoints: tuple[CompanyBundleResource, ...],
+) -> CatalogProblem | None:
+    by_project: dict[str, dict[str, CompanyBundleResource]] = {}
+    for resource in checkpoints:
+        project = cast(str, resource.component.scope.project)
+        reference = f"{resource.component.key}@{resource.component.revision}"
+        by_project.setdefault(project, {})[reference] = resource
+    for resources in by_project.values():
+        remaining: dict[str, set[str]] = {}
+        for reference, resource in resources.items():
+            dependencies = {
+                str(value) for value in cast(list[object], resource.payload["dependency_refs"])
+            }
+            if not dependencies <= resources.keys():
+                return _problem(
+                    "bundle-reference-invalid",
+                    "A checkpoint dependency must resolve within its scoped project.",
+                )
+            remaining[reference] = dependencies
+        while remaining:
+            ready = {reference for reference, dependencies in remaining.items() if not dependencies}
+            if not ready:
+                return _problem(
+                    "bundle-reference-invalid",
+                    "Checkpoint dependencies must be acyclic.",
+                )
+            for reference in ready:
+                del remaining[reference]
+            for dependencies in remaining.values():
+                dependencies.difference_update(ready)
     return None
 
 

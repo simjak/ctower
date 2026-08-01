@@ -373,6 +373,32 @@ def test_checkpoint_set_refuses_a_duplicate_project_key_and_an_unscoped_checkpoi
     assert unscoped_problem.code == "bundle-grant-refused"
 
 
+def test_checkpoint_dependencies_are_exact_project_local_acyclic_pins() -> None:
+    policy = CatalogPolicy(FileSchemas())
+    first = _checkpoint_resource("component-first", "display-first")
+    second = _checkpoint_resource(
+        "component-second", "display-second", dependencies=("ctower.component-first@1",)
+    )
+    clean = _with_checkpoints(minimal_bundle(), first, second)
+    missing = _with_checkpoints(
+        minimal_bundle(),
+        _checkpoint_resource("missing", "display-missing", dependencies=("other@1",)),
+    )
+    cycle = _with_checkpoints(
+        minimal_bundle(),
+        _checkpoint_resource("cycle-a", "display-a", dependencies=("ctower.cycle-b@1",)),
+        _checkpoint_resource("cycle-b", "display-b", dependencies=("ctower.cycle-a@1",)),
+    )
+
+    assert not isinstance(policy.validate("example-company", clean), CatalogProblem)
+    missing_problem = policy.validate("example-company", missing)
+    cycle_problem = policy.validate("example-company", cycle)
+    assert isinstance(missing_problem, CatalogProblem)
+    assert "resolve within" in missing_problem.detail
+    assert isinstance(cycle_problem, CatalogProblem)
+    assert "acyclic" in cycle_problem.detail
+
+
 def _with_checkpoints(
     bundle: CompanyBundle,
     *checkpoints: CompanyBundleResource,
@@ -385,6 +411,7 @@ def _checkpoint_resource(
     checkpoint_key: str,
     *,
     project: str | None = "ctower",
+    dependencies: tuple[str, ...] = (),
 ) -> CompanyBundleResource:
     payload: dict[str, JsonValue] = {
         "schema": "ctower.checkpoint/v1",
@@ -401,7 +428,7 @@ def _checkpoint_resource(
                 "evidence_policy_refs": [],
             }
         ],
-        "dependency_refs": [],
+        "dependency_refs": list(dependencies),
     }
     digest = "sha256:" + hashlib.sha256(rfc8785.dumps(payload)).hexdigest()
     return CompanyBundleResource.model_validate_json(

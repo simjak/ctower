@@ -23,7 +23,9 @@
       "packs/components/harnesses/local.generated-client/v1.yaml",
       "packs/components/images/local.control/v1.yaml",
       "packs/components/personas/operator.commander/v1.yaml",
+      "packs/components/projects/bh-loop.delivery/v1.yaml",
       "packs/components/projects/ctower.control-plane/v1.yaml",
+      "packs/components/projects/manibo.delivery/v1.yaml",
       "packs/components/skills/protected.cli/v1.yaml",
       "packs/components/supervisors/local.process/v1.yaml",
       "packs/components/targets/local.control/v1.yaml",
@@ -62,7 +64,9 @@
       "packs/components/harnesses/local.generated-client/v1.yaml",
       "packs/components/images/local.control/v1.yaml",
       "packs/components/personas/operator.commander/v1.yaml",
+      "packs/components/projects/bh-loop.delivery/v1.yaml",
       "packs/components/projects/ctower.control-plane/v1.yaml",
+      "packs/components/projects/manibo.delivery/v1.yaml",
       "packs/components/skills/protected.cli/v1.yaml",
       "packs/components/supervisors/local.process/v1.yaml",
       "packs/components/targets/local.control/v1.yaml",
@@ -270,7 +274,22 @@
       "contracts/domain/project-delivery/project-delivery.schema.json",
       "packages/ctower-kernel/migrations/0027_i17a_cutover_delivery.sql",
       "packages/ctower-kernel/migrations/0029_i17b_checkpoint_catalog_kind.sql",
-      "packages/ctower-kernel/migrations/0037_relax_checkpoint_key_domain.sql"
+      "packages/ctower-kernel/migrations/0037_relax_checkpoint_key_domain.sql",
+      "packages/ctower-kernel/migrations/0038_project_scoped_reads.sql",
+      "packs/components/checkpoints/bhloop.biomarker-rail/v1.yaml",
+      "packs/components/checkpoints/bhloop.contract-admission/v1.yaml",
+      "packs/components/checkpoints/bhloop.d11-org/v1.yaml",
+      "packs/components/checkpoints/bhloop.d11-technical/v1.yaml",
+      "packs/components/checkpoints/bhloop.layer-1-foundation/v1.yaml",
+      "packs/components/checkpoints/bhloop.layer-2-staff-assistant/v1.yaml",
+      "packs/components/checkpoints/bhloop.production-foundation/v1.yaml",
+      "packs/components/checkpoints/manibo.images-published/v1.yaml",
+      "packs/components/checkpoints/manibo.production-nfq-e2e/v1.yaml",
+      "packs/components/checkpoints/manibo.production-released/v1.yaml",
+      "packs/components/checkpoints/manibo.staging-deployed/v1.yaml",
+      "packs/components/checkpoints/manibo.staging-infra/v1.yaml",
+      "packs/components/checkpoints/manibo.staging-nfq-e2e/v1.yaml",
+      "packs/components/checkpoints/manibo.verify/v1.yaml"
     ],
     "AC-PD-02": [
       "contracts/domain/project-delivery/project-delivery-vectors.json",
@@ -291,11 +310,27 @@
       "contracts/domain/project-delivery/project-delivery-vectors.json"
     ],
     "AC-PD-06": [
-      "packages/ctower-kernel/migrations/0037_relax_checkpoint_key_domain.sql"
+      "packages/ctower-kernel/migrations/0037_relax_checkpoint_key_domain.sql",
+      "packages/ctower-kernel/migrations/0038_project_scoped_reads.sql",
+      "packs/components/checkpoints/bhloop.biomarker-rail/v1.yaml",
+      "packs/components/checkpoints/bhloop.contract-admission/v1.yaml",
+      "packs/components/checkpoints/bhloop.d11-org/v1.yaml",
+      "packs/components/checkpoints/bhloop.d11-technical/v1.yaml",
+      "packs/components/checkpoints/bhloop.layer-1-foundation/v1.yaml",
+      "packs/components/checkpoints/bhloop.layer-2-staff-assistant/v1.yaml",
+      "packs/components/checkpoints/bhloop.production-foundation/v1.yaml",
+      "packs/components/checkpoints/manibo.images-published/v1.yaml",
+      "packs/components/checkpoints/manibo.production-nfq-e2e/v1.yaml",
+      "packs/components/checkpoints/manibo.production-released/v1.yaml",
+      "packs/components/checkpoints/manibo.staging-deployed/v1.yaml",
+      "packs/components/checkpoints/manibo.staging-infra/v1.yaml",
+      "packs/components/checkpoints/manibo.staging-nfq-e2e/v1.yaml",
+      "packs/components/checkpoints/manibo.verify/v1.yaml"
     ],
     "AC-PROD-01": [
       "contracts/domain/intake/thread-intake.schema.json",
-      "packages/ctower-kernel/migrations/0035_board_source_lookup.sql"
+      "packages/ctower-kernel/migrations/0035_board_source_lookup.sql",
+      "packages/ctower-kernel/migrations/0038_project_scoped_reads.sql"
     ],
     "AC-PROD-04": [
       "contracts/domain/tickets/ticket-event.schema.json",
@@ -465,7 +500,8 @@
       "contracts/http/openapi.yaml",
       "packages/ctower-kernel/migrations/0002_ticket_slice.sql",
       "packages/ctower-kernel/migrations/0032_thread_first_intake.sql",
-      "packages/ctower-kernel/migrations/0035_board_source_lookup.sql"
+      "packages/ctower-kernel/migrations/0035_board_source_lookup.sql",
+      "packages/ctower-kernel/migrations/0038_project_scoped_reads.sql"
     ],
     "INV-04": [
       "contracts/domain/events/event-envelope.schema.json",
@@ -573,7 +609,8 @@
       "packages/ctower-kernel/migrations/0008_board_projection.sql",
       "packages/ctower-kernel/migrations/0009_transactional_record_positions.sql",
       "packages/ctower-kernel/migrations/0019_outbox_routine_health.sql",
-      "packages/ctower-kernel/migrations/0035_board_source_lookup.sql"
+      "packages/ctower-kernel/migrations/0035_board_source_lookup.sql",
+      "packages/ctower-kernel/migrations/0038_project_scoped_reads.sql"
     ],
     "INV-35": [
       "contracts/domain/migration/ctower-project-cutover-health.schema.json",
@@ -658,7 +695,9 @@
       "packs/components/harnesses/local.generated-client/v1.yaml",
       "packs/components/images/local.control/v1.yaml",
       "packs/components/personas/operator.commander/v1.yaml",
+      "packs/components/projects/bh-loop.delivery/v1.yaml",
       "packs/components/projects/ctower.control-plane/v1.yaml",
+      "packs/components/projects/manibo.delivery/v1.yaml",
       "packs/components/skills/protected.cli/v1.yaml",
       "packs/components/supervisors/local.process/v1.yaml",
       "packs/components/targets/local.control/v1.yaml",
@@ -721,7 +760,8 @@
     "SPEC#aggregate-boundaries-and-relationships": [
       "contracts/domain/intake/thread-intake.schema.json",
       "packages/ctower-kernel/migrations/0032_thread_first_intake.sql",
-      "packages/ctower-kernel/migrations/0035_board_source_lookup.sql"
+      "packages/ctower-kernel/migrations/0035_board_source_lookup.sql",
+      "packages/ctower-kernel/migrations/0038_project_scoped_reads.sql"
     ],
     "SPEC#backup-restore-and-reboot-drills": [
       "contracts/operations/backup-manifest.schema.json",
@@ -866,7 +906,8 @@
       "packages/ctower-kernel/migrations/0033_development_offhost_ack.sql",
       "packages/ctower-kernel/migrations/0034_durability_finalizer_quarantine.sql",
       "packages/ctower-kernel/migrations/0035_board_source_lookup.sql",
-      "packages/ctower-kernel/migrations/0036_migration_ledger_role.sql"
+      "packages/ctower-kernel/migrations/0036_migration_ledger_role.sql",
+      "packages/ctower-kernel/migrations/0038_project_scoped_reads.sql"
     ],
     "SPEC#project-delivery-projection": [
       "contracts/components/checkpoint.schema.json",
@@ -874,7 +915,22 @@
       "contracts/domain/project-delivery/project-delivery.schema.json",
       "packages/ctower-kernel/migrations/0027_i17a_cutover_delivery.sql",
       "packages/ctower-kernel/migrations/0029_i17b_checkpoint_catalog_kind.sql",
-      "packages/ctower-kernel/migrations/0037_relax_checkpoint_key_domain.sql"
+      "packages/ctower-kernel/migrations/0037_relax_checkpoint_key_domain.sql",
+      "packages/ctower-kernel/migrations/0038_project_scoped_reads.sql",
+      "packs/components/checkpoints/bhloop.biomarker-rail/v1.yaml",
+      "packs/components/checkpoints/bhloop.contract-admission/v1.yaml",
+      "packs/components/checkpoints/bhloop.d11-org/v1.yaml",
+      "packs/components/checkpoints/bhloop.d11-technical/v1.yaml",
+      "packs/components/checkpoints/bhloop.layer-1-foundation/v1.yaml",
+      "packs/components/checkpoints/bhloop.layer-2-staff-assistant/v1.yaml",
+      "packs/components/checkpoints/bhloop.production-foundation/v1.yaml",
+      "packs/components/checkpoints/manibo.images-published/v1.yaml",
+      "packs/components/checkpoints/manibo.production-nfq-e2e/v1.yaml",
+      "packs/components/checkpoints/manibo.production-released/v1.yaml",
+      "packs/components/checkpoints/manibo.staging-deployed/v1.yaml",
+      "packs/components/checkpoints/manibo.staging-infra/v1.yaml",
+      "packs/components/checkpoints/manibo.staging-nfq-e2e/v1.yaml",
+      "packs/components/checkpoints/manibo.verify/v1.yaml"
     ],
     "SPEC#retention-erasure-backup-and-restore": [
       "contracts/evidence/object-manifest.schema.json",
@@ -940,12 +996,28 @@
       "contracts/components/workspace.schema.json",
       "packs/components/agent-profiles/commander.protected-cli/v1.yaml",
       "packs/components/capabilities/control.api/v1.yaml",
+      "packs/components/checkpoints/bhloop.biomarker-rail/v1.yaml",
+      "packs/components/checkpoints/bhloop.contract-admission/v1.yaml",
+      "packs/components/checkpoints/bhloop.d11-org/v1.yaml",
+      "packs/components/checkpoints/bhloop.d11-technical/v1.yaml",
+      "packs/components/checkpoints/bhloop.layer-1-foundation/v1.yaml",
+      "packs/components/checkpoints/bhloop.layer-2-staff-assistant/v1.yaml",
+      "packs/components/checkpoints/bhloop.production-foundation/v1.yaml",
+      "packs/components/checkpoints/manibo.images-published/v1.yaml",
+      "packs/components/checkpoints/manibo.production-nfq-e2e/v1.yaml",
+      "packs/components/checkpoints/manibo.production-released/v1.yaml",
+      "packs/components/checkpoints/manibo.staging-deployed/v1.yaml",
+      "packs/components/checkpoints/manibo.staging-infra/v1.yaml",
+      "packs/components/checkpoints/manibo.staging-nfq-e2e/v1.yaml",
+      "packs/components/checkpoints/manibo.verify/v1.yaml",
       "packs/components/environments/local.linux/v1.yaml",
       "packs/components/goals/company.trusted-delivery/v1.yaml",
       "packs/components/harnesses/local.generated-client/v1.yaml",
       "packs/components/images/local.control/v1.yaml",
       "packs/components/personas/operator.commander/v1.yaml",
+      "packs/components/projects/bh-loop.delivery/v1.yaml",
       "packs/components/projects/ctower.control-plane/v1.yaml",
+      "packs/components/projects/manibo.delivery/v1.yaml",
       "packs/components/skills/protected.cli/v1.yaml",
       "packs/components/supervisors/local.process/v1.yaml",
       "packs/components/targets/local.control/v1.yaml",

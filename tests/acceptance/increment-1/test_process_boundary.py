@@ -97,8 +97,8 @@ def test_generated_client_crosses_real_process_for_complete_ticket_slice(
     tenant = process_tenant
     created = _create(tenant, uuid4(), title="Separate-process ticket")
     with _client(tenant) as client:
-        shown = client.get_ticket(created.ticket.ticket_id)
-        timeline = client.get_ticket_timeline(created.ticket.ticket_id)
+        shown = client.get_ticket(created.ticket.ticket_id, project_key="ctower")
+        timeline = client.get_ticket_timeline(created.ticket.ticket_id, project_key="ctower")
         transferred = client.transfer_ticket_custody(
             created.ticket.ticket_id,
             _custody_request(tenant, reason="Generated-client acceptance"),
@@ -136,7 +136,7 @@ def test_process_auth_precedes_validation_and_decodes_typed_problems(
         CtowerClient(tenant.base_url, credential="invalid-credential") as denied,
         pytest.raises(CtowerProblemError) as raised,
     ):
-        denied.get_ticket(uuid4())
+        denied.get_ticket(uuid4(), project_key="ctower")
     assert cast(Problem, raised.value.problem).code == "unauthorized"
 
 
@@ -167,6 +167,7 @@ def test_process_same_source_commands_create_distinct_tickets(
     request = TicketCreateRequest(
         initial_custodian_id=tenant.commander_id,
         priority=Priority.P2,
+        project_key="ctower",
         source=source,
         title="Source lookup is not identity authority",
     )
@@ -228,8 +229,8 @@ def test_process_custody_authority_denials_are_typed_and_do_not_mutate(
                 command_id=insufficient_id,
             )
         )
-        shown = operator.get_ticket(created.ticket.ticket_id)
-        timeline = operator.get_ticket_timeline(created.ticket.ticket_id)
+        shown = operator.get_ticket(created.ticket.ticket_id, project_key="ctower")
+        timeline = operator.get_ticket_timeline(created.ticket.ticket_id, project_key="ctower")
 
     assert isinstance(unprotected, Problem) and unprotected.code == "unauthorized"
     assert isinstance(insufficient, Problem) and insufficient.code == "unauthorized"
@@ -368,7 +369,7 @@ def test_process_auth_denial_telemetry_ignores_all_claimed_identity(
             CtowerClient(base_url, credential=rejected_credential, telemetry=context) as denied,
             pytest.raises(CtowerProblemError),
         ):
-            denied.get_ticket(uuid4())
+            denied.get_ticket(uuid4(), project_key="ctower")
         records = [json.loads(line) for line in capture.read_text(encoding="utf-8").splitlines()]
 
     assert len(records) == TELEMETRY_SIGNAL_COUNT
@@ -419,6 +420,7 @@ def test_process_exporter_failure_preserves_generated_commit_and_health_truth(
         with httpx.Client(base_url=base_url) as raw:
             health = raw.get(
                 f"/v1/tickets/{created.ticket.ticket_id}",
+                params={"project_key": "ctower"},
                 headers={
                     "Authorization": f"Bearer {tenant.credential}",
                     **telemetry_headers(ticket_id=created.ticket.ticket_id),
@@ -429,7 +431,7 @@ def test_process_exporter_failure_preserves_generated_commit_and_health_truth(
     assert health.headers["X-Ctower-Telemetry-Health"] == "degraded"
     assert _command_counts(tenant.database.admin_dsn, command_id) == (1, 1, 1)
     with _client(tenant) as fresh:
-        assert fresh.get_ticket(created.ticket.ticket_id) == created.ticket
+        assert fresh.get_ticket(created.ticket.ticket_id, project_key="ctower") == created.ticket
 
 
 def _bootstrap_request() -> BootstrapRequest:
@@ -470,6 +472,7 @@ def _ticket_request(
     return TicketCreateRequest(
         initial_custodian_id=tenant.commander_id,
         priority=priority,
+        project_key="ctower",
         source=SourceReference(kind="process", ref="generated-client"),
         title=title,
     )

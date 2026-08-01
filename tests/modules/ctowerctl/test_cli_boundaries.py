@@ -152,6 +152,8 @@ def test_ticket_create_defaults_only_derivable_identifiers() -> None:
         "create",
         "--priority",
         "P2",
+        "--project-key",
+        "ctower",
         "--source-kind",
         "mission-control",
         "--source-ref",

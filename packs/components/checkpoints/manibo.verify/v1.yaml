@@ -1,0 +1,10 @@
+{
+  "schema": "ctower.checkpoint/v1",
+  "key": "manibo.verify",
+  "checkpoint_key": "manibo.verify",
+  "display_name": "Verify candidate",
+  "outcome": "Python, frontend, and Terraform static gates pass on the candidate.",
+  "accountable_owner": "manibo-commander-seat",
+  "criteria": [{"key": "candidate-verified", "description": "Current static-gate evidence covers the release candidate.", "required": true, "evidence_policy_refs": []}],
+  "dependency_refs": []
+}

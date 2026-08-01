@@ -22,7 +22,7 @@
       "additionalProperties": false,
       "required": [
         "activity_class", "assignee_id", "blocker_opened_at", "blocker_reason",
-        "custodian_id", "delivery_facts", "lane", "priority", "risk", "stage_key",
+        "custodian_id", "delivery_facts", "lane", "priority", "project_key", "risk", "stage_key",
         "stage_label", "ticket_id", "title", "underlying_lane", "version"
       ],
       "properties": {
@@ -41,6 +41,7 @@
         },
         "lane": {"$ref": "#/$defs/lane"},
         "priority": {"type": "string", "enum": ["P0", "P1", "P2"]},
+        "project_key": {"type": "string", "pattern": "^[a-z][a-z0-9-]{2,63}$"},
         "risk": {"type": ["string", "null"], "maxLength": 64},
         "stage_key": {"type": ["string", "null"], "pattern": "^[a-z][a-z0-9._-]*$"},
         "stage_label": {"type": ["string", "null"], "maxLength": 120},
@@ -53,11 +54,13 @@
     "query": {
       "type": "object",
       "additionalProperties": false,
+      "required": ["project_key"],
       "properties": {
         "assignee_id": {"type": "string", "format": "uuid"},
         "custodian_id": {"type": "string", "format": "uuid"},
         "lane": {"$ref": "#/$defs/lane"},
         "priority": {"type": "string", "enum": ["P0", "P1", "P2"]},
+        "project_key": {"type": "string", "pattern": "^[a-z][a-z0-9-]{2,63}$"},
         "risk": {"type": "string", "maxLength": 64},
         "stage_key": {"type": "string", "pattern": "^[a-z][a-z0-9._-]*$"}
       }

@@ -110,9 +110,9 @@ def test_bootstrap_provision_rejects_capability_above_authored_maximum(
 
 def test_event_payloads_reject_authored_enum_and_length_violations() -> None:
     with pytest.raises(ValueError, match="priority"):
-        TicketCreatedPayload(uuid4(), "P3", "source", "ref", "title")
+        TicketCreatedPayload(uuid4(), "P3", "ctower", "source", "ref", "title")
     with pytest.raises(ValueError, match="title"):
-        TicketCreatedPayload(uuid4(), "P1", "source", "ref", "x" * 201)
+        TicketCreatedPayload(uuid4(), "P1", "ctower", "source", "ref", "x" * 201)
     with pytest.raises(ValueError, match="reason"):
         CustodyTransferredPayload(uuid4(), "", uuid4())
     with pytest.raises(ValueError, match="tenant_slug"):
@@ -121,7 +121,7 @@ def test_event_payloads_reject_authored_enum_and_length_violations() -> None:
 
 def test_event_envelope_rejects_origin_and_stream_identity_mismatch() -> None:
     aggregate_id = uuid4()
-    payload = TicketCreatedPayload(uuid4(), "P1", "source", "ref", "title")
+    payload = TicketCreatedPayload(uuid4(), "P1", "ctower", "source", "ref", "title")
 
     with pytest.raises(ValueError, match="origin"):
         _ticket_event(aggregate_id, payload, origin=EventOrigin.BOOTSTRAP)
@@ -138,7 +138,7 @@ def test_event_envelope_rejects_origin_and_stream_identity_mismatch() -> None:
 
 
 def test_timeline_event_keeps_typed_kind_matched_payload() -> None:
-    payload = TicketCreatedPayload(uuid4(), "P1", "source", "ref", "title")
+    payload = TicketCreatedPayload(uuid4(), "P1", "ctower", "source", "ref", "title")
     rebuilt = ticket_payload_from_mapping(EventKind.TICKET_CREATED, payload.to_mapping())
     event = TimelineEvent(
         actor_principal_id=uuid4(),

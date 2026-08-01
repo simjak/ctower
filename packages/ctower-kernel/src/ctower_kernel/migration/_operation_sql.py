@@ -143,7 +143,7 @@ def _guard_batch(
     now: datetime,
     telemetry: TelemetryContext,
 ) -> CtowerProjectImportRun | CtowerProjectImportBatchResult | RecordProblem:
-    lock_project_delivery_scope(connection, actor.tenant_id, "ctower")
+    lock_project_delivery_scope(connection, actor.tenant_id, "all-projects")
     run = load_run(connection, actor, request.run_id, lock=True)
     if isinstance(run, RecordProblem) or not _batch_scope(connection, actor, request, run, now):
         return _problem(None, "migration-capability-denied", "Import binding unavailable", 403)

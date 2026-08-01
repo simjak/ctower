@@ -57,10 +57,12 @@ def test_p0_p1_p2_source_initial_custodian_reads_and_timeline(tenant: TenantFixt
             }
             shown = client.get(
                 f"/v1/tickets/{ticket['ticket_id']}",
+                params={"project_key": "ctower"},
                 headers=_auth(tenant.operator_credential),
             )
             timeline = client.get(
                 f"/v1/tickets/{ticket['ticket_id']}/timeline",
+                params={"project_key": "ctower"},
                 headers=_auth(tenant.operator_credential),
             )
             assert shown.status_code == HTTP_OK
@@ -156,6 +158,7 @@ def test_runtime_event_schema_hash_outbox_and_public_timeline_are_one_shape(
         ticket_id = UUID(created.json()["ticket"]["ticket_id"])
         timeline = client.get(
             f"/v1/tickets/{ticket_id}/timeline",
+            params={"project_key": "ctower"},
             headers=_auth(tenant.operator_credential),
         )
 
@@ -228,6 +231,7 @@ def _create_ticket(
         json={
             "initial_custodian_id": str(custodian_id),
             "priority": priority,
+            "project_key": "ctower",
             "source": {"kind": "mission-control", "ref": source_ref},
             "title": title,
         },

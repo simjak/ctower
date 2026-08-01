@@ -571,6 +571,7 @@ def _unbound_ticket(tenant: TenantFixture, title: str) -> UUID:
             json={
                 "initial_custodian_id": str(tenant.commander_id),
                 "priority": "P2",
+                "project_key": "ctower",
                 "source": {"kind": "fixture", "ref": f"unbound:{command_id}"},
                 "title": title,
             },
@@ -587,6 +588,7 @@ def _direct_ticket_for_source(tenant: TenantFixture, kind: str, ref: str) -> UUI
             "/v1/tickets",
             json={
                 "priority": "P2",
+                "project_key": "ctower",
                 "source": {"kind": kind, "ref": ref},
                 "title": "Existing source",
             },

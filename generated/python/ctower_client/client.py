@@ -1,6 +1,6 @@
 """DO NOT EDIT: generated file; regenerate from declared inputs.
 
-Authored contract digest: sha256:1ca4a6823b673e720c5e1fd0e39445905a701d279b773eb99689536a8de41c62
+Authored contract digest: sha256:589aec80212de067d4f7e0c10244bd8bf7e0cd6ad02beac7ee076a4a21734038
 """
 
 from __future__ import annotations
@@ -486,6 +486,7 @@ class CtowerClient:
     def get_board(
         self,
         *,
+        project_key: str,
         lane: str | None = None,
         priority: str | None = None,
         stage_key: str | None = None,
@@ -496,7 +497,7 @@ class CtowerClient:
     ) -> BoardView:
         response = self._http.get(
             "/v1/board",
-            params={**({"lane": lane} if lane is not None else {}), **({"priority": priority} if priority is not None else {}), **({"stage_key": stage_key} if stage_key is not None else {}), **({"custodian_id": str(custodian_id)} if custodian_id is not None else {}), **({"assignee_id": str(assignee_id)} if assignee_id is not None else {}), **({"source_kind": source_kind} if source_kind is not None else {}), **({"source_ref": source_ref} if source_ref is not None else {})},
+            params={"project_key": project_key, **({"lane": lane} if lane is not None else {}), **({"priority": priority} if priority is not None else {}), **({"stage_key": stage_key} if stage_key is not None else {}), **({"custodian_id": str(custodian_id)} if custodian_id is not None else {}), **({"assignee_id": str(assignee_id)} if assignee_id is not None else {}), **({"source_kind": source_kind} if source_kind is not None else {}), **({"source_ref": source_ref} if source_ref is not None else {})},
             headers=self._telemetry_headers(
                 self._context(uuid4()),
                 {
@@ -588,9 +589,12 @@ class CtowerClient:
     def get_ticket(
         self,
         ticket_id: UUID,
+        *,
+        project_key: str,
     ) -> TicketResource:
         response = self._http.get(
             f"/v1/tickets/{quote(str(ticket_id), safe='')}",
+            params={"project_key": project_key},
             headers=self._telemetry_headers(
                 self._context(uuid4(), ticket_id=ticket_id),
                 {
@@ -604,9 +608,12 @@ class CtowerClient:
     def get_ticket_timeline(
         self,
         ticket_id: UUID,
+        *,
+        project_key: str,
     ) -> TimelineResponse:
         response = self._http.get(
             f"/v1/tickets/{quote(str(ticket_id), safe='')}/timeline",
+            params={"project_key": project_key},
             headers=self._telemetry_headers(
                 self._context(uuid4(), ticket_id=ticket_id),
                 {
@@ -620,9 +627,12 @@ class CtowerClient:
     def list_ticket_assignments(
         self,
         ticket_id: UUID,
+        *,
+        project_key: str,
     ) -> AssignmentList:
         response = self._http.get(
             f"/v1/tickets/{quote(str(ticket_id), safe='')}/assignments",
+            params={"project_key": project_key},
             headers=self._telemetry_headers(
                 self._context(uuid4(), ticket_id=ticket_id),
                 {
@@ -637,12 +647,13 @@ class CtowerClient:
         self,
         ticket_id: UUID,
         *,
+        project_key: str,
         cursor: Annotated[int, Field(ge=0)] | None = None,
         limit: Annotated[int, Field(ge=1, le=100)] | None = None,
     ) -> AuditPage:
         response = self._http.get(
             f"/v1/tickets/{quote(str(ticket_id), safe='')}/audit",
-            params={**({"cursor": cursor} if cursor is not None else {}), **({"limit": limit} if limit is not None else {})},
+            params={"project_key": project_key, **({"cursor": cursor} if cursor is not None else {}), **({"limit": limit} if limit is not None else {})},
             headers=self._telemetry_headers(
                 self._context(uuid4(), ticket_id=ticket_id),
                 {

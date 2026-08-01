@@ -31,6 +31,7 @@ _SLOT_STATE_RANK = {
 # are reported separately, because only those can make a slot genuinely unestablishable.
 _LINK_STATE_QUERY = """
 SELECT requested.ticket_id, requested.proof_key,
+  scoped_ticket.ticket_id IS NOT NULL AS project_present,
   criterion.criterion_key IS NOT NULL AS criterion_present,
   run.current_stage IS NOT NULL AS stage_present,
   (
@@ -77,10 +78,14 @@ SELECT requested.ticket_id, requested.proof_key,
     )
   ) AS proven
 FROM unnest(%s::uuid[], %s::text[]) AS requested(ticket_id, proof_key)
+LEFT JOIN tickets AS scoped_ticket
+  ON scoped_ticket.tenant_id = %s
+ AND scoped_ticket.project_key = %s
+ AND scoped_ticket.ticket_id = requested.ticket_id
 LEFT JOIN workflow_runs AS run
-  ON run.tenant_id = %s AND run.ticket_id = requested.ticket_id
+  ON run.tenant_id = %s AND run.ticket_id = scoped_ticket.ticket_id
 LEFT JOIN proof_bundles AS bundle
-  ON bundle.tenant_id = %s AND bundle.ticket_id = requested.ticket_id
+  ON bundle.tenant_id = %s AND bundle.ticket_id = scoped_ticket.ticket_id
 LEFT JOIN proof_criteria AS criterion
   ON criterion.proof_id = bundle.proof_id
  AND criterion.tenant_id = bundle.tenant_id
@@ -93,6 +98,7 @@ ORDER BY requested.ticket_id, requested.proof_key
 class ProofLinkState:
     """One configured proof link, resolved once for every derivation that needs it."""
 
+    project_present: bool
     criterion_present: bool
     stage_present: bool
     proven: bool
@@ -104,6 +110,7 @@ type _LinkStates = Mapping[tuple[UUID, str], ProofLinkState]
 def proof_link_states(
     connection: psycopg.Connection[dict[str, object]],
     tenant_id: UUID,
+    project_key: str,
     criteria: list[dict[str, object]],
 ) -> _LinkStates:
     """Resolve every proof link these exit criteria configure, in one read.
@@ -122,11 +129,14 @@ def proof_link_states(
             [ticket_id for ticket_id, _ in requested],
             [proof_key for _, proof_key in requested],
             tenant_id,
+            project_key,
+            tenant_id,
             tenant_id,
         ),
     ).fetchall()
     return {
         (cast(UUID, row["ticket_id"]), str(row["proof_key"])): ProofLinkState(
+            project_present=bool(row["project_present"]),
             criterion_present=bool(row["criterion_present"]),
             stage_present=bool(row["stage_present"]),
             proven=bool(row["criterion_present"]) and bool(row["proven"]),
@@ -168,32 +178,42 @@ def qualifying_stage_slots(
 def ticket_facts(
     connection: psycopg.Connection[dict[str, object]],
     tenant_id: UUID,
+    project_key: str,
     ticket_ids: tuple[UUID, ...],
-) -> tuple[DeliveryState, tuple[str, ...]]:
+) -> tuple[DeliveryState, tuple[str, ...], tuple[UUID, ...]]:
     if not ticket_ids:
-        return DeliveryState.PLANNED, ()
+        return DeliveryState.PLANNED, (), ()
     rows = connection.execute(
         """
         SELECT ticket_id, lane, delivery_facts
         FROM board_projection_rows
-        WHERE tenant_id = %s AND ticket_id = ANY(%s)
+        WHERE tenant_id = %s AND project_key = %s AND ticket_id = ANY(%s)
         """,
-        (tenant_id, list(ticket_ids)),
+        (tenant_id, project_key, list(ticket_ids)),
     ).fetchall()
     blockers = connection.execute(
         """
-        SELECT blocker_id FROM blocker_heads
-        WHERE tenant_id = %s AND ticket_id = ANY(%s) AND resolved_at IS NULL
-        ORDER BY blocker_id
+        SELECT blocker.blocker_id
+        FROM blocker_heads AS blocker
+        JOIN tickets AS ticket
+          ON ticket.tenant_id = blocker.tenant_id
+         AND ticket.ticket_id = blocker.ticket_id
+        WHERE blocker.tenant_id = %s AND ticket.project_key = %s
+          AND blocker.ticket_id = ANY(%s) AND blocker.resolved_at IS NULL
+        ORDER BY blocker.blocker_id
         """,
-        (tenant_id, list(ticket_ids)),
+        (tenant_id, project_key, list(ticket_ids)),
     ).fetchall()
     maturity = max(
         (_maturity(row) for row in rows),
         key=_maturity_rank,
         default=DeliveryState.PLANNED,
     )
-    return maturity, tuple(f"blocker:{row['blocker_id']}" for row in blockers)
+    return (
+        maturity,
+        tuple(f"blocker:{row['blocker_id']}" for row in blockers),
+        tuple(cast(UUID, row["ticket_id"]) for row in rows),
+    )
 
 
 def source_ids(
@@ -220,10 +240,32 @@ def source_ids(
 def source_position(
     connection: psycopg.Connection[dict[str, object]],
     tenant_id: UUID,
+    project_key: str,
+    definition_event_ids: tuple[UUID, ...],
 ) -> int:
     row = connection.execute(
-        "SELECT COALESCE(MAX(record_position), 0) AS value FROM events WHERE tenant_id = %s",
-        (tenant_id,),
+        """
+        SELECT COALESCE(MAX(event.record_position), 0) AS value
+        FROM events AS event
+        WHERE event.tenant_id = %s
+          AND (
+            event.kind = 'catalog.bundle_activated'
+            OR event.event_id = ANY(%s)
+            OR event.payload ->> 'project_key' = %s
+            OR EXISTS (
+              SELECT 1
+              FROM event_links AS link
+              JOIN tickets AS ticket
+                ON ticket.tenant_id = link.tenant_id
+               AND ticket.ticket_id = link.subject_id
+              WHERE link.tenant_id = event.tenant_id
+                AND link.event_id = event.event_id
+                AND link.subject_kind = 'ticket'
+                AND ticket.project_key = %s
+            )
+          )
+        """,
+        (tenant_id, list(definition_event_ids), project_key, project_key),
     ).fetchone()
     return int(cast(int, row["value"])) if row is not None else 0
 

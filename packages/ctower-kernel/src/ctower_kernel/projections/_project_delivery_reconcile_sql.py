@@ -46,6 +46,7 @@ from ctower_kernel.projections.project_delivery import (
 from ctower_kernel.record.transaction import project_delivery_scope_transaction
 
 __all__: tuple[str, ...] = ()
+_PORTFOLIO_SCOPE = "all-projects"
 
 
 def reconcile(dsn: str, tenant_id: UUID, *, now: datetime) -> int:
@@ -53,7 +54,7 @@ def reconcile(dsn: str, tenant_id: UUID, *, now: datetime) -> int:
 
     with psycopg.connect(dsn, row_factory=dict_row, autocommit=True) as connection:
         connection.execute("SET ROLE ctower_projection")
-        with project_delivery_scope_transaction(connection, tenant_id, "ctower"):
+        with project_delivery_scope_transaction(connection, tenant_id, _PORTFOLIO_SCOPE):
             connection.execute("SET TRANSACTION ISOLATION LEVEL REPEATABLE READ")
             return _reconcile(connection, tenant_id, now=now, rebuild_generation=None)
 
@@ -63,7 +64,7 @@ def rebuild(dsn: str, tenant_id: UUID, *, now: datetime) -> int:
 
     with psycopg.connect(dsn, row_factory=dict_row, autocommit=True) as connection:
         connection.execute("SET ROLE ctower_projection")
-        with project_delivery_scope_transaction(connection, tenant_id, "ctower"):
+        with project_delivery_scope_transaction(connection, tenant_id, _PORTFOLIO_SCOPE):
             connection.execute("SET TRANSACTION ISOLATION LEVEL REPEATABLE READ")
             generation = _next_generation(connection, tenant_id)
             connection.execute(
@@ -89,48 +90,56 @@ def _reconcile(
     removed = _delete_inactive_rows(connection, tenant_id, definitions)
     if not definitions:
         return removed
-    source = _source_position(connection, tenant_id)
-    complete = _source_complete(connection, tenant_id, definitions, source)
-    projection = source if complete else _prior_projection(connection, tenant_id)
+    project_keys = tuple(dict.fromkeys(str(row["project_key"]) for row in definitions))
+    project_states: list[tuple[str, list[dict[str, object]], int, bool, int]] = []
+    for project_key in project_keys:
+        project_definitions = [row for row in definitions if str(row["project_key"]) == project_key]
+        event_ids = tuple(cast(UUID, row["event_id"]) for row in project_definitions)
+        source = _source_position(connection, tenant_id, project_key, event_ids)
+        complete = _source_complete(connection, tenant_id, definitions, source)
+        projection = source if complete else _prior_projection(connection, tenant_id, project_key)
+        project_states.append((project_key, project_definitions, source, complete, projection))
     generation = (
         rebuild_generation
         if rebuild_generation is not None
         else _current_generation(connection, tenant_id)
     )
     cutover = _cutover_claims(connection, tenant_id)
-    if rebuild_generation is None and _up_to_date(
-        connection,
-        tenant_id,
-        row_count=len(definitions),
-        source=source,
-        projection=projection,
-        complete=complete,
-        now=now,
-    ):
-        return removed
     affected = removed
-    for definition_row in definitions:
-        definition, facts = _facts(
+    for project_key, project_definitions, source, complete, projection in project_states:
+        if rebuild_generation is None and _up_to_date(
             connection,
             tenant_id,
-            definition_row,
+            project_key,
+            row_count=len(project_definitions),
             source=source,
             projection=projection,
             complete=complete,
-            generation=generation,
-            cutover=cutover,
             now=now,
-        )
-        row = derive_project_delivery_row(definition, facts)
-        affected += _store_row(
-            connection,
-            tenant_id,
-            str(definition_row["project_key"]),
-            row.response_payload(),
-            source=source,
-            projection=projection,
-            now=now,
-        )
+        ):
+            continue
+        for definition_row in project_definitions:
+            definition, facts = _facts(
+                connection,
+                tenant_id,
+                definition_row,
+                source=source,
+                projection=projection,
+                complete=complete,
+                generation=generation,
+                cutover=cutover,
+                now=now,
+            )
+            row = derive_project_delivery_row(definition, facts)
+            affected += _store_row(
+                connection,
+                tenant_id,
+                project_key,
+                row.response_payload(),
+                source=source,
+                projection=projection,
+                now=now,
+            )
     return affected
 
 
@@ -176,7 +185,8 @@ def _facts(
     criteria = tuple(str(item["criterion_key"]) for item in criteria_rows)
     # One shared read of every configured proof link; criterion coverage and slot
     # coverage are two compositions of the same resolved facts, never two predicates.
-    link_states = _proof_link_states(connection, tenant_id, criteria_rows)
+    project_key = str(row["project_key"])
+    link_states = _proof_link_states(connection, tenant_id, project_key, criteria_rows)
     proven = frozenset(
         str(item["criterion_key"]) for item in criteria_rows if _criterion_proven(item, link_states)
     )
@@ -185,9 +195,12 @@ def _facts(
         for item in criteria_rows
         if isinstance(item["proof_ticket_id"], UUID)
     )
-    maturity, blockers = _ticket_facts(connection, tenant_id, ticket_ids)
+    maturity, blockers, authorized_ticket_ids = _ticket_facts(
+        connection, tenant_id, project_key, ticket_ids
+    )
     slots = _qualifying_stage_slots(criteria_rows, link_states)
-    source_ids = _source_ids(row, criteria_rows, ticket_ids)
+    source_ids = _source_ids(row, criteria_rows, authorized_ticket_ids)
+    links_complete = all(state.project_present for state in link_states.values())
     states = frozenset(
         DeliveryState(str(value)) for value in cast(list[object], row["applicable_states"])
     )
@@ -208,7 +221,7 @@ def _facts(
         projection_watermark=projection,
         last_reconciled_at=now,
         observed_at=now,
-        source_complete=complete,
+        source_complete=complete and links_complete,
         cp3_d_proven=cutover["durability"] == "CP3_D_PROVEN",
         qualifying_stage_slots=slots,
         durability=cutover["durability"],
@@ -250,6 +263,7 @@ def _delete_inactive_rows(
 def _up_to_date(
     connection: psycopg.Connection[dict[str, object]],
     tenant_id: UUID,
+    project_key: str,
     *,
     row_count: int,
     source: int,
@@ -266,9 +280,9 @@ def _up_to_date(
             bool_and(
               NOT (row_payload -> 'derivation_reasons' ? 'source_incomplete')
             ) AS source_complete
-        FROM project_delivery_projection_rows WHERE tenant_id = %s
+        FROM project_delivery_projection_rows WHERE tenant_id = %s AND project_key = %s
         """,
-        (tenant_id,),
+        (tenant_id, project_key),
     ).fetchone()
     if row is None or row["due"] is None:
         return False
@@ -319,13 +333,14 @@ def _store_row(
 def _prior_projection(
     connection: psycopg.Connection[dict[str, object]],
     tenant_id: UUID,
+    project_key: str,
 ) -> int:
     row = connection.execute(
         """
         SELECT COALESCE(MIN(projection_watermark), 0) AS value
-        FROM project_delivery_projection_rows WHERE tenant_id = %s
+        FROM project_delivery_projection_rows WHERE tenant_id = %s AND project_key = %s
         """,
-        (tenant_id,),
+        (tenant_id, project_key),
     ).fetchone()
     return int(cast(int, row["value"])) if row is not None else 0
 

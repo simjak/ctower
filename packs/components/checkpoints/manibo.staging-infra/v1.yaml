@@ -1,0 +1,10 @@
+{
+  "schema": "ctower.checkpoint/v1",
+  "key": "manibo.staging-infra",
+  "checkpoint_key": "manibo.staging-infra",
+  "display_name": "Apply staging infrastructure",
+  "outcome": "The reviewed staging plan is applied and its plan and apply artifacts are retained.",
+  "accountable_owner": "manibo-commander-seat",
+  "criteria": [{"key": "staging-infra-applied", "description": "Current plan and apply artifacts prove staging infrastructure convergence.", "required": true, "evidence_policy_refs": []}],
+  "dependency_refs": ["manibo.verify@1"]
+}

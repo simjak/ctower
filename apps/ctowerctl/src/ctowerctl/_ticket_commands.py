@@ -83,6 +83,7 @@ def _capture(arguments: argparse.Namespace) -> MutationPayload:
     request = TicketCreateRequest(
         initial_custodian_id=cast(UUID | None, arguments.initial_custodian_id),
         priority=Priority(cast(str, arguments.priority)),
+        project_key=cast(str, arguments.project_key),
         source=SourceReference(
             kind=cast(str, arguments.source_kind),
             ref=cast(str, arguments.source_ref),
@@ -323,20 +324,27 @@ def _text_digest(content: str) -> str:
 
 
 def _ticket_query(client: CtowerClient, arguments: argparse.Namespace) -> BaseModel:
-    return client.get_ticket(cast(UUID, arguments.ticket_id))
+    return client.get_ticket(
+        cast(UUID, arguments.ticket_id), project_key=cast(str, arguments.project_key)
+    )
 
 
 def _timeline(client: CtowerClient, arguments: argparse.Namespace) -> BaseModel:
-    return client.get_ticket_timeline(cast(UUID, arguments.ticket_id))
+    return client.get_ticket_timeline(
+        cast(UUID, arguments.ticket_id), project_key=cast(str, arguments.project_key)
+    )
 
 
 def _assignments(client: CtowerClient, arguments: argparse.Namespace) -> BaseModel:
-    return client.list_ticket_assignments(cast(UUID, arguments.ticket_id))
+    return client.list_ticket_assignments(
+        cast(UUID, arguments.ticket_id), project_key=cast(str, arguments.project_key)
+    )
 
 
 def _audit(client: CtowerClient, arguments: argparse.Namespace) -> BaseModel:
     return client.list_ticket_audit_events(
         cast(UUID, arguments.ticket_id),
+        project_key=cast(str, arguments.project_key),
         cursor=cast(int | None, arguments.cursor),
         limit=cast(int | None, arguments.limit),
     )

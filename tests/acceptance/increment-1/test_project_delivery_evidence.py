@@ -239,6 +239,7 @@ def _ticket(tenant: TenantFixture, title: str) -> UUID:
             uuid4(),
             tenant.commander_id,
             "P1",
+            "ctower",
             RecordSourceReference("test", f"test:project-delivery-evidence:{uuid4()}"),
             title,
         ),

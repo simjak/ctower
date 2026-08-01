@@ -791,6 +791,132 @@
       ]
     },
     {
+      "path": "packs/components/checkpoints/bhloop.biomarker-rail/v1.yaml",
+      "references": [
+        "SPEC#project-delivery-projection",
+        "SPEC#universal-versionedcomponent-catalog-and-company-desired-state",
+        "AC-PD-01",
+        "AC-PD-06"
+      ]
+    },
+    {
+      "path": "packs/components/checkpoints/bhloop.contract-admission/v1.yaml",
+      "references": [
+        "SPEC#project-delivery-projection",
+        "SPEC#universal-versionedcomponent-catalog-and-company-desired-state",
+        "AC-PD-01",
+        "AC-PD-06"
+      ]
+    },
+    {
+      "path": "packs/components/checkpoints/bhloop.d11-org/v1.yaml",
+      "references": [
+        "SPEC#project-delivery-projection",
+        "SPEC#universal-versionedcomponent-catalog-and-company-desired-state",
+        "AC-PD-01",
+        "AC-PD-06"
+      ]
+    },
+    {
+      "path": "packs/components/checkpoints/bhloop.d11-technical/v1.yaml",
+      "references": [
+        "SPEC#project-delivery-projection",
+        "SPEC#universal-versionedcomponent-catalog-and-company-desired-state",
+        "AC-PD-01",
+        "AC-PD-06"
+      ]
+    },
+    {
+      "path": "packs/components/checkpoints/bhloop.layer-1-foundation/v1.yaml",
+      "references": [
+        "SPEC#project-delivery-projection",
+        "SPEC#universal-versionedcomponent-catalog-and-company-desired-state",
+        "AC-PD-01",
+        "AC-PD-06"
+      ]
+    },
+    {
+      "path": "packs/components/checkpoints/bhloop.layer-2-staff-assistant/v1.yaml",
+      "references": [
+        "SPEC#project-delivery-projection",
+        "SPEC#universal-versionedcomponent-catalog-and-company-desired-state",
+        "AC-PD-01",
+        "AC-PD-06"
+      ]
+    },
+    {
+      "path": "packs/components/checkpoints/bhloop.production-foundation/v1.yaml",
+      "references": [
+        "SPEC#project-delivery-projection",
+        "SPEC#universal-versionedcomponent-catalog-and-company-desired-state",
+        "AC-PD-01",
+        "AC-PD-06"
+      ]
+    },
+    {
+      "path": "packs/components/checkpoints/manibo.images-published/v1.yaml",
+      "references": [
+        "SPEC#project-delivery-projection",
+        "SPEC#universal-versionedcomponent-catalog-and-company-desired-state",
+        "AC-PD-01",
+        "AC-PD-06"
+      ]
+    },
+    {
+      "path": "packs/components/checkpoints/manibo.production-nfq-e2e/v1.yaml",
+      "references": [
+        "SPEC#project-delivery-projection",
+        "SPEC#universal-versionedcomponent-catalog-and-company-desired-state",
+        "AC-PD-01",
+        "AC-PD-06"
+      ]
+    },
+    {
+      "path": "packs/components/checkpoints/manibo.production-released/v1.yaml",
+      "references": [
+        "SPEC#project-delivery-projection",
+        "SPEC#universal-versionedcomponent-catalog-and-company-desired-state",
+        "AC-PD-01",
+        "AC-PD-06"
+      ]
+    },
+    {
+      "path": "packs/components/checkpoints/manibo.staging-deployed/v1.yaml",
+      "references": [
+        "SPEC#project-delivery-projection",
+        "SPEC#universal-versionedcomponent-catalog-and-company-desired-state",
+        "AC-PD-01",
+        "AC-PD-06"
+      ]
+    },
+    {
+      "path": "packs/components/checkpoints/manibo.staging-infra/v1.yaml",
+      "references": [
+        "SPEC#project-delivery-projection",
+        "SPEC#universal-versionedcomponent-catalog-and-company-desired-state",
+        "AC-PD-01",
+        "AC-PD-06"
+      ]
+    },
+    {
+      "path": "packs/components/checkpoints/manibo.staging-nfq-e2e/v1.yaml",
+      "references": [
+        "SPEC#project-delivery-projection",
+        "SPEC#universal-versionedcomponent-catalog-and-company-desired-state",
+        "AC-PD-01",
+        "AC-PD-06"
+      ]
+    },
+    {
+      "path": "packs/components/checkpoints/manibo.verify/v1.yaml",
+      "references": [
+        "SPEC#project-delivery-projection",
+        "SPEC#universal-versionedcomponent-catalog-and-company-desired-state",
+        "AC-PD-01",
+        "AC-PD-06"
+      ]
+    },
+    {
       "path": "packs/components/goals/company.trusted-delivery/v1.yaml",
       "references": [
         "SPEC#universal-versionedcomponent-catalog-and-company-desired-state",
@@ -829,7 +955,25 @@
       ]
     },
     {
+      "path": "packs/components/projects/bh-loop.delivery/v1.yaml",
+      "references": [
+        "SPEC#universal-versionedcomponent-catalog-and-company-desired-state",
+        "INV-45",
+        "AC-ADM-01",
+        "AC-COMP-01"
+      ]
+    },
+    {
       "path": "packs/components/projects/ctower.control-plane/v1.yaml",
+      "references": [
+        "SPEC#universal-versionedcomponent-catalog-and-company-desired-state",
+        "INV-45",
+        "AC-ADM-01",
+        "AC-COMP-01"
+      ]
+    },
+    {
+      "path": "packs/components/projects/manibo.delivery/v1.yaml",
       "references": [
         "SPEC#universal-versionedcomponent-catalog-and-company-desired-state",
         "INV-45",
@@ -1416,6 +1560,19 @@
         "SPEC#project-delivery-projection",
         "AC-PD-01",
         "AC-PD-06"
+      ]
+    },
+    {
+      "path": "packages/ctower-kernel/migrations/0038_project_scoped_reads.sql",
+      "references": [
+        "SPEC#aggregate-boundaries-and-relationships",
+        "SPEC#persistence-authority",
+        "SPEC#project-delivery-projection",
+        "INV-03",
+        "INV-34",
+        "AC-PD-01",
+        "AC-PD-06",
+        "AC-PROD-01"
       ]
     },
     {

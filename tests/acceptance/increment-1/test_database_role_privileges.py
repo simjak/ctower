@@ -81,6 +81,7 @@ CP2_HEAD_UPDATE_COLUMNS = {
     "tickets": {
         "ticket_id": False,
         "tenant_id": False,
+        "project_key": False,
         "title": False,
         "source_kind": False,
         "source_ref": False,
@@ -265,6 +266,23 @@ def test_upgrade_database_corrects_existing_head_privileges(
             "0017_durability_probe_schema_boundary.sql",
             "0018_durability_probe_search_path.sql",
             "0019_outbox_routine_health.sql",
+            "0021_object_backup_anchor.sql",
+            "0022_restore_inventory.sql",
+            "0023_cp3c_privileges.sql",
+            "0024_catalog_authority.sql",
+            "0025_ticket_comment_event.sql",
+            "0026_fixed_operation_attempt_receipts.sql",
+            "0027_i17a_cutover_delivery.sql",
+            "0028_i17b_importer_isolation.sql",
+            "0029_i17b_checkpoint_catalog_kind.sql",
+            "0030_i17b_migration_truth_spine.sql",
+            "0031_i17b_bounded_truth_spine.sql",
+            "0032_thread_first_intake.sql",
+            "0033_development_offhost_ack.sql",
+            "0034_durability_finalizer_quarantine.sql",
+            "0035_board_source_lookup.sql",
+            "0037_relax_checkpoint_key_domain.sql",
+            "0038_project_scoped_reads.sql",
         ):
             connection.execute((MIGRATIONS / name).read_text(encoding="utf-8"))
     provision_database_roles(database.admin_dsn)
@@ -314,6 +332,7 @@ def _prepare_public_trace(
         TicketCreateRequest(
             initial_custodian_id=tenant.commander_id,
             priority=Priority.P1,
+            project_key="ctower",
             source=SourceReference(kind="test", ref=f"test:role-privileges:{uuid4()}"),
             title="Proof and Workflow least privilege",
         ),

@@ -185,7 +185,7 @@ def _finalization_connection(
     with authority_connection(dsn) as connection:
         connection.autocommit = True
         connection.execute("SET ROLE ctower_svc")
-        with project_delivery_scope_transaction(connection, actor.tenant_id, "ctower"):
+        with project_delivery_scope_transaction(connection, actor.tenant_id, "all-projects"):
             connection.execute("SET TRANSACTION ISOLATION LEVEL SERIALIZABLE")
             yield connection
 

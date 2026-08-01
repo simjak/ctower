@@ -12,7 +12,7 @@ from ruamel.yaml import YAML
 
 ROOT = Path(__file__).parents[3]
 COMPONENTS = ROOT / "contracts/components"
-_MINIMAL_RESOURCE_COUNT = 18
+_MINIMAL_RESOURCE_COUNT = 34
 _PAYLOAD_FILES = {
     "ctower.agent-profile/v1": "agent-profile.schema.json",
     "ctower.capability/v1": "capability.schema.json",

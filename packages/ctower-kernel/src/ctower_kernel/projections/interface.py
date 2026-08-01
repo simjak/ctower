@@ -149,6 +149,7 @@ class BoardFacts:
     """Minimal authoritative facts consumed by the versioned fold."""
 
     ticket_id: UUID
+    project_key: str
     title: str
     priority: str
     lifecycle_state: str
@@ -168,6 +169,7 @@ class BoardFacts:
 @dataclass(frozen=True, slots=True)
 class BoardCard:
     ticket_id: UUID
+    project_key: str
     title: str
     lane: BoardLane
     underlying_lane: BoardLane | None
@@ -194,6 +196,7 @@ class BoardCard:
             "delivery_facts": list(self.delivery_facts),
             "lane": self.lane.value,
             "priority": self.priority,
+            "project_key": self.project_key,
             "risk": self.risk,
             "stage_key": self.stage_key,
             "stage_label": self.stage_key,
@@ -206,6 +209,7 @@ class BoardCard:
 
 @dataclass(frozen=True, slots=True)
 class BoardQuery:
+    project_key: str
     lane: BoardLane | None = None
     priority: str | None = None
     stage_key: str | None = None
@@ -303,6 +307,7 @@ def derive_board_card(facts: BoardFacts) -> BoardCard:
         lane = BoardLane.BLOCKED
     return BoardCard(
         ticket_id=facts.ticket_id,
+        project_key=facts.project_key,
         title=facts.title,
         lane=lane,
         underlying_lane=underlying,

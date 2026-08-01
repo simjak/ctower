@@ -160,16 +160,22 @@ def _reserve_ticket_outcome(
 
 
 def get_ticket(
-    dsn: str, actor: Actor, ticket_id: UUID, *, telemetry: TelemetryContext
+    dsn: str,
+    actor: Actor,
+    ticket_id: UUID,
+    project_key: str,
+    *,
+    telemetry: TelemetryContext,
 ) -> Ticket | RecordProblem:
-    """Read one ticket using a tenant predicate that reveals no foreign existence."""
+    """Read one ticket using tenant/project predicates that reveal no foreign existence."""
 
     del telemetry
     with psycopg.connect(dsn, row_factory=dict_row) as connection:
         connection.execute("SET ROLE ctower_svc")
         row = connection.execute(
             """
-            SELECT ticket.ticket_id, ticket.title, ticket.source_kind, ticket.source_ref,
+            SELECT ticket.ticket_id, ticket.title, ticket.project_key,
+                ticket.source_kind, ticket.source_ref,
                 ticket.priority, ticket.custodian_principal_id, ticket.version,
                 ticket.created_at,
                 CASE WHEN confirmation.client_command_id IS NULL
@@ -184,27 +190,37 @@ def get_ticket(
               ON confirmation.tenant_id = head.tenant_id
              AND confirmation.principal_id = head.principal_id
              AND confirmation.client_command_id = head.client_command_id
-            WHERE ticket.tenant_id = %s AND ticket.ticket_id = %s
+            WHERE ticket.tenant_id = %s AND ticket.project_key = %s
+              AND ticket.ticket_id = %s
             """,
-            (actor.tenant_id, ticket_id),
+            (actor.tenant_id, project_key, ticket_id),
         ).fetchone()
     return _ticket_from_row(row) if row is not None else _scope_problem()
 
 
 def ticket_timeline(
-    dsn: str, actor: Actor, ticket_id: UUID, *, telemetry: TelemetryContext
+    dsn: str,
+    actor: Actor,
+    ticket_id: UUID,
+    project_key: str,
+    *,
+    telemetry: TelemetryContext,
 ) -> TicketTimeline | RecordProblem:
-    """Read an ordered event stream using the same no-disclosure tenant predicate."""
+    """Read an ordered event stream using the same no-disclosure project predicate."""
 
     del telemetry
     with psycopg.connect(dsn, row_factory=dict_row) as connection:
         connection.execute("SET ROLE ctower_svc")
         rows = connection.execute(
             """
-            SELECT event_id, sequence, kind, actor_principal_id, client_command_id,
-                server_time, payload
-            FROM events
-            WHERE tenant_id = %s AND aggregate_id = %s
+            SELECT event.event_id, event.sequence, event.kind, event.actor_principal_id,
+                event.client_command_id, event.server_time, event.payload
+            FROM events AS event
+            JOIN tickets AS ticket
+              ON ticket.tenant_id = event.tenant_id
+             AND ticket.ticket_id = event.aggregate_id
+            WHERE event.tenant_id = %s AND ticket.project_key = %s
+              AND event.aggregate_id = %s
               AND kind IN (
                 'ticket.created',
                 'ticket.custody_transferred',
@@ -212,7 +228,7 @@ def ticket_timeline(
               )
             ORDER BY sequence
             """,
-            (actor.tenant_id, ticket_id),
+            (actor.tenant_id, project_key, ticket_id),
         ).fetchall()
     if not rows:
         return _scope_problem()
@@ -283,13 +299,14 @@ def _insert_ticket_state(
     connection.execute(
         """
         INSERT INTO tickets (
-            ticket_id, tenant_id, title, source_kind, source_ref, priority,
+            ticket_id, tenant_id, project_key, title, source_kind, source_ref, priority,
             custodian_principal_id, version, durability_state, created_by, created_at
-        ) VALUES (%s, %s, %s, %s, %s, %s, %s, 1, 'durability_pending', %s, %s)
+        ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, 1, 'durability_pending', %s, %s)
         """,
         (
             identifiers.ticket,
             actor.tenant_id,
+            command.project_key,
             command.title,
             command.source.kind,
             command.source.ref,
@@ -387,6 +404,7 @@ def _append_ticket_created(
         payload=TicketCreatedPayload(
             custodian_id=command.initial_custodian_id,
             priority=command.priority,
+            project_key=command.project_key,
             source_kind=command.source.kind,
             source_ref=command.source.ref,
             title=command.title,

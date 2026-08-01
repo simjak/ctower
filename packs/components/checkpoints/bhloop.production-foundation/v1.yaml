@@ -1,0 +1,10 @@
+{
+  "schema": "ctower.checkpoint/v1",
+  "key": "bhloop.production-foundation",
+  "checkpoint_key": "bhloop.production-foundation",
+  "display_name": "Accept production foundation",
+  "outcome": "The Google BAA, covered-services, and threat-model gates are accepted before any production PHI path.",
+  "accountable_owner": "bhloop-commander-seat",
+  "criteria": [{"key": "production-foundation-accepted", "description": "Current BAA, covered-services, and threat-model evidence accepts the foundation.", "required": true, "evidence_policy_refs": []}],
+  "dependency_refs": ["bhloop.d11-technical@1"]
+}

@@ -426,9 +426,10 @@ the same fold. Ticket counts never become a completion percentage.
 
 An overdue heartbeat is stale. A missing/gapped watermark, unknown integrity or proof validity, or unsafe
 authorization coverage is `STATE UNKNOWN`, not a ninth delivery state. Deleting/rebuilding the projection
-at one watermark must reproduce the same rows. I1.7 exposes only the hierarchy and compact read-only CLI text
-projection, with optional deterministic JSON, for ctower dogfood; I2.4 adds browser drill-through,
-interactive detail, broader visualization, trends, cost/time analytics, and the reusable cross-domain view.
+at one watermark must reproduce the same rows. The compact projection is generically project-scoped and
+filters its authorized source links before materialization; current I1.7 authority still limits operational
+use to ctower dogfood. I2.4 adds browser drill-through, interactive detail, broader visualization, trends,
+cost/time analytics, and the reusable cross-domain view.
 
 The development-pilot row and the full-I1 row are not interchangeable. The pilot may become `done` on a
 CT-I1-008 `GO_WITH_LIMITS` while still exposing `CP3_D_NOT_PROVEN`. The full-I1 row remains `blocked` while

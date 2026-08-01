@@ -83,9 +83,9 @@ class _WorkWriter:
         )
 
     def assignments(
-        self, actor: Actor, ticket_id: UUID
+        self, actor: Actor, ticket_id: UUID, project_key: str
     ) -> tuple[AssignmentInterval, ...] | RecordProblem:
-        del actor, ticket_id
+        del actor, ticket_id, project_key
         return ()
 
     def readiness(self, actor: Actor, ticket_id: UUID) -> WorkReadiness | RecordProblem:
@@ -209,6 +209,7 @@ def _ticket_command(actor: Actor, *, priority: str) -> TicketCommand:
         client_command_id=uuid4(),
         initial_custodian_id=actor.principal_id,
         priority=priority,
+        project_key="ctower",
         source=SourceReference("test", "test:work"),
         title="Work policy",
     )
