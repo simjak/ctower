@@ -142,7 +142,8 @@ def _current_target_matches(
     current = _pass_two_sql.capture(connection, run_id)
     actual_graph = _pass_two_sql.graph(current.body)
     return (
-        _checkpoint_expectation_sql.matches(connection, run_id, current.body)
+        current.project_delivery_current
+        and _checkpoint_expectation_sql.matches(connection, run_id, current.body)
         and actual_graph == expected_graph
     )
 
