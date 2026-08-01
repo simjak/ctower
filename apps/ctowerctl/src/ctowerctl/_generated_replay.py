@@ -15,7 +15,7 @@ from pydantic import BaseModel, ValidationError
 from ctower_client import CtowerClient, CtowerProblemError
 from ctower_client.models import Problem
 from ctower_client.operations import OPERATIONS, SpoolPolicy
-from ctowerctl.spool import ReplayResponse, ServerRefusal, SpoolCommand
+from ctowerctl.spool import ReplayResponse, SpoolCommand, server_refusal
 
 __all__: tuple[str, ...] = ()
 
@@ -23,8 +23,6 @@ type JsonValue = str | int | float | bool | list[JsonValue] | dict[str, JsonValu
 type JsonObject = dict[str, JsonValue]
 
 _PATH_PARAMETER = re.compile(r"\{([a-z][a-z0-9_]*)\}")
-_MAX_REFUSAL_TITLE = 200
-_MAX_REFUSAL_DETAIL = 1000
 
 
 @dataclass(frozen=True, slots=True)
@@ -132,12 +130,7 @@ def _problem_response(problem: Problem) -> ReplayResponse:
         command_id=problem.command_id,
         problem_code=code,
         response={"code": problem.code, "status": problem.status},
-        refusal=ServerRefusal(
-            status=problem.status,
-            problem_code=code,
-            title=_bounded(problem.title, _MAX_REFUSAL_TITLE),
-            detail=_bounded(problem.detail, _MAX_REFUSAL_DETAIL),
-        ),
+        refusal=server_refusal(problem.status, problem.code),
     )
 
 
@@ -147,9 +140,3 @@ def _local_refusal(code: str) -> ReplayResponse:
 
 def _reason_code(value: str) -> str:
     return value.replace("-", "_")[:64]
-
-
-def _bounded(value: str, maximum: int) -> str:
-    """Keep the server's own wording inside the durable receipt's declared bound."""
-
-    return value[:maximum] if value else "unnamed"

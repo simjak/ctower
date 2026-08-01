@@ -13,6 +13,7 @@ from ctowerctl.spool.interface import (
     SpoolError,
     SpoolState,
     SpoolStatus,
+    server_refusal,
 )
 
 __all__ = [
@@ -28,4 +29,5 @@ __all__ = [
     "SpoolError",
     "SpoolState",
     "SpoolStatus",
+    "server_refusal",
 ]

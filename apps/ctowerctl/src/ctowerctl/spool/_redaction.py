@@ -13,6 +13,8 @@ from uuid import UUID
 
 from pydantic import BaseModel, ConfigDict, Field
 
+from ctowerctl.spool._refusals import REFUSAL_NAME_PATTERN, refusal_name
+
 if TYPE_CHECKING:
     from ctowerctl.spool._recovery import CorruptRecord, RecoveredRecord, Session
 
@@ -32,6 +34,7 @@ __all__ = [
     "entry_order",
     "reason_digest",
     "reject_secret_material",
+    "server_refusal",
     "spool_entry",
     "spool_status",
     "torn_entry",
@@ -63,8 +66,6 @@ _FORBIDDEN_FIELDS = frozenset(
     }
 )
 _FIELD_NORMALIZER = re.compile(r"[^a-z0-9]+")
-_MAX_REFUSAL_TITLE = 200
-_MAX_REFUSAL_DETAIL = 1000
 
 
 class _BoundaryModel(BaseModel):
@@ -80,12 +81,10 @@ class SpoolState(StrEnum):
 
 
 class ServerRefusal(_BoundaryModel):
-    """The refusal the server named for one rejected command."""
+    """The allowlisted name a server gave one refusal, never its response body."""
 
     status: Annotated[int, Field(ge=400, le=599)]
-    problem_code: Annotated[str, Field(pattern=r"^[a-z][a-z0-9_]{0,63}$")]
-    title: Annotated[str, Field(min_length=1, max_length=_MAX_REFUSAL_TITLE)]
-    detail: Annotated[str, Field(min_length=1, max_length=_MAX_REFUSAL_DETAIL)]
+    name: Annotated[str, Field(pattern=REFUSAL_NAME_PATTERN)]
 
 
 class SpoolEntry(_BoundaryModel):
@@ -161,6 +160,12 @@ def reject_secret_material(value: JsonValue) -> None:
     _inspect(value, ())
 
 
+def server_refusal(status: int, code: str) -> ServerRefusal:
+    """Name one server refusal from the allowlist, discarding its response body."""
+
+    return ServerRefusal(status=status, name=refusal_name(code))
+
+
 def reason_digest(reason: str) -> str:
     """Return a stable non-content diagnostic for an operator reason."""
 
@@ -211,7 +216,7 @@ def spool_entry(record: RecoveredRecord, session: Session) -> SpoolEntry:
         "accepted": SpoolState.ACCEPTED_ARCHIVE,
         "quarantine": SpoolState.QUARANTINE,
     }[record.stored.directory]
-    reason_code, server_refusal = _quarantine_outcome(session, record)
+    reason_code, refusal = _quarantine_outcome(session, record)
     return SpoolEntry(
         sequence=record.stored.sequence,
         command_id=UUID(_string_field(payload, "command_id")),
@@ -221,7 +226,7 @@ def spool_entry(record: RecoveredRecord, session: Session) -> SpoolEntry:
         expires_at=_parse_utc(_string_field(payload, "expires_at")),
         bytes=record.stored.size,
         reason_code=reason_code,
-        server_refusal=server_refusal,
+        server_refusal=refusal,
     )
 
 
@@ -345,7 +350,12 @@ def _quarantine_outcome(
 
 
 def _server_refusal(value: JsonValue) -> ServerRefusal | None:
-    return ServerRefusal.model_validate(value) if isinstance(value, Mapping) else None
+    """Render a persisted refusal through the allowlist that admitted it."""
+
+    if not isinstance(value, Mapping):
+        return None
+    persisted = ServerRefusal.model_validate(value)
+    return server_refusal(persisted.status, persisted.name)
 
 
 def _oldest_age(entries: tuple[SpoolEntry, ...]) -> float | None:

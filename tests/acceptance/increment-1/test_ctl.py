@@ -19,6 +19,7 @@ import psycopg
 import pytest
 import uvicorn
 from ctower_contracts import CATALOG
+from fastapi import FastAPI, Response
 from fastapi.testclient import TestClient
 from support.acceptance import accept_pending_commands
 from support.catalog import MemoryObjectStore, minimal_bundle
@@ -45,14 +46,15 @@ EXIT_TEMPORARY = 75
 EXIT_LOCAL_FAILURE = 74
 EXIT_PERMANENT = 69
 HTTP_PENDING = 202
-INITIAL_CUSTODY_REFUSAL = {
+INITIAL_CUSTODY_REFUSAL = {"status": 403, "name": "unauthorized"}
+PII_MARKER = "jane.doe+ct180@example.invalid"
+BEARER_MARKER = "Bearer synthetic-refusal-probe-not-a-credential"
+MARKED_REFUSAL: dict[str, object] = {
+    "code": "unauthorized",
+    "detail": f"Initial custody refused for {PII_MARKER} presenting {BEARER_MARKER}.",
     "status": 403,
-    "problem_code": "unauthorized",
-    "title": "Initial custody refused",
-    "detail": (
-        "Initial custody requires Commander self-custody or an operator placing "
-        "custody with an eligible Commander."
-    ),
+    "title": f"Refused for {PII_MARKER}",
+    "type": "https://ctower.example/problems/unauthorized",
 }
 
 
@@ -181,6 +183,43 @@ def test_server_rejected_capture_carries_its_named_refusal_to_the_spool_listing(
     assert entries[0]["reason_code"] == "permanent_server_rejection"
     assert entries[0]["server_refusal"] == INITIAL_CUSTODY_REFUSAL
     assert tenant.operator_credential not in captured_text + listing_text
+
+
+def test_refusal_body_text_never_reaches_the_quarantine_receipt_or_its_listing(
+    tmp_path: Path,
+    cli_state: _MemoryBackend,
+) -> None:
+    """A schema-valid refusal may carry anything; only its allowlisted name survives.
+
+    The refusing invocation still prints the response it just received as its own live
+    `result`; nothing of that body reaches the durable receipt or any later listing.
+    """
+
+    del cli_state
+    with _refusing_server(MARKED_REFUSAL) as base_url:
+        status, captured_text, error = _run(
+            _first_day_create_arguments(base_url, source_ref="R2597-marked"),
+            authority="synthetic-marked-refusal-identity",
+        )
+        listing_status, listing_text, listing_error = _run(
+            ["--base-url", base_url, "spool", "quarantine", "list"],
+            authority="synthetic-marked-refusal-identity",
+        )
+
+    captured = json.loads(captured_text)
+    entries = json.loads(listing_text)["entries"]
+    receipts = _state_bytes(tmp_path)
+    durable = json.dumps({key: captured[key] for key in captured if key != "result"})
+    assert (status, listing_status) == (EXIT_PERMANENT, 0)
+    assert error == listing_error == ""
+    assert captured["reason_code"] == "permanent_server_rejection"
+    assert captured["server_refusal"] == INITIAL_CUSTODY_REFUSAL
+    assert entries[0]["server_refusal"] == INITIAL_CUSTODY_REFUSAL
+    for marker in (PII_MARKER, BEARER_MARKER):
+        assert marker not in durable
+        assert marker not in listing_text
+        assert marker.encode() not in receipts
+        assert marker in captured["result"]["detail"] + captured["result"]["title"]
 
 
 def test_explicit_ticket_command_id_replay_still_deduplicates_with_default_custodian(
@@ -568,14 +607,36 @@ def _server(
     *,
     catalog: PostgresCatalog | None = None,
 ) -> Iterator[str]:
-    port = _unused_port()
     record = PostgresRecord(dsn)
+    application = create_app(
+        record,
+        work=Work(record, writer=PostgresWork(dsn)),
+        catalog=catalog,
+    )
+    with _serve(application) as base_url:
+        yield base_url
+
+
+@contextmanager
+def _refusing_server(problem: dict[str, object]) -> Iterator[str]:
+    """Serve one schema-valid refusal whose body is whatever the origin chose to send."""
+
+    application = FastAPI()
+    body = json.dumps(problem)
+
+    @application.post("/v1/tickets")
+    def _refuse() -> Response:
+        return Response(content=body, status_code=403, media_type="application/problem+json")
+
+    with _serve(application) as base_url:
+        yield base_url
+
+
+@contextmanager
+def _serve(application: FastAPI) -> Iterator[str]:
+    port = _unused_port()
     config = uvicorn.Config(
-        create_app(
-            record,
-            work=Work(record, writer=PostgresWork(dsn)),
-            catalog=catalog,
-        ),
+        application,
         host="127.0.0.1",
         port=port,
         access_log=False,
@@ -601,6 +662,10 @@ def _wait_until_started(server: uvicorn.Server, thread: threading.Thread) -> Non
         time.sleep(0.01)
     if not server.started:
         raise RuntimeError("acceptance API server did not start")
+
+
+def _state_bytes(state: Path) -> bytes:
+    return b"".join(path.read_bytes() for path in state.rglob("*") if path.is_file())
 
 
 def _unused_base_url() -> str:

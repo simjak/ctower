@@ -27,6 +27,8 @@ __all__: tuple[str, ...] = ()
 HTTP_OK = 200
 HTTP_FORBIDDEN = 403
 HTTP_UNPROCESSABLE_ENTITY = 422
+PII_MARKER = "jane.doe+ct180@example.invalid"
+BEARER_MARKER = "Bearer synthetic-refusal-probe-not-a-credential"
 
 
 @dataclass(slots=True)
@@ -98,13 +100,64 @@ def test_generated_problem_is_permanent_and_keeps_the_refusal_the_server_named()
     assert response.status_code == HTTP_FORBIDDEN
     assert response.problem_code == "tenant_scope_denied"
     assert response.response == {"code": "tenant-scope-denied", "status": 403}
+    assert response.refusal == ServerRefusal(status=403, name="tenant_scope_denied")
+    assert cast(object, executor.observations[command_id].problem) is problem
+
+
+def test_schema_valid_refusal_body_never_becomes_a_persistable_refusal() -> None:
+    """A reachable origin may say anything; only the allowlisted name may be kept."""
+
+    command_id = uuid4()
+    problem = _ProblemStub(
+        code="unauthorized",
+        command_id=command_id,
+        detail=f"Custody refused for {PII_MARKER} presenting {BEARER_MARKER}.",
+        status=403,
+        title=f"Initial custody refused for {PII_MARKER}",
+    )
+    executor = GeneratedReplayExecutor(cast(CtowerClient, _TicketClient(problem)))
+
+    response = executor.execute(
+        SpoolCommand(
+            operation_id="createTicket",
+            request_body=_request().model_dump(mode="json"),
+            command_id=command_id,
+        )
+    )
+
+    persistable = response.model_dump_json()
+    assert response.refusal == ServerRefusal(status=403, name="unauthorized")
+    assert PII_MARKER not in persistable
+    assert BEARER_MARKER not in persistable
+    assert sorted(ServerRefusal.model_fields) == ["name", "status"]
+
+
+def test_refusal_code_outside_the_authored_allowlist_keeps_only_a_slug() -> None:
+    """A server ahead of this CLI's contract is named as unrecognized, not quoted."""
+
+    command_id = uuid4()
+    problem = _ProblemStub(
+        code="future-refusal-code",
+        command_id=command_id,
+        detail=f"Authored safe detail naming {PII_MARKER}.",
+        status=403,
+        title="Future refusal",
+    )
+    executor = GeneratedReplayExecutor(cast(CtowerClient, _TicketClient(problem)))
+
+    response = executor.execute(
+        SpoolCommand(
+            operation_id="createTicket",
+            request_body=_request().model_dump(mode="json"),
+            command_id=command_id,
+        )
+    )
+
     assert response.refusal == ServerRefusal(
         status=403,
-        problem_code="tenant_scope_denied",
-        title="Tenant scope denied",
-        detail="Authored safe detail.",
+        name="unrecognized_refusal:future_refusal_code",
     )
-    assert cast(object, executor.observations[command_id].problem) is problem
+    assert PII_MARKER not in response.model_dump_json()
 
 
 def test_forbidden_or_unknown_registry_operation_never_enters_spool() -> None:

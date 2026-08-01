@@ -23,6 +23,7 @@ from ctowerctl.spool import (
     SpoolConfig,
     SpoolError,
     SpoolState,
+    server_refusal,
 )
 
 __all__: tuple[str, ...] = ()
@@ -33,6 +34,8 @@ type _JsonObject = dict[str, _JsonValue]
 
 _TWO_COMMANDS = 2
 _CREDENTIAL = "synthetic-foundation-identity"
+_PII_MARKER = "jane.doe+ct180@example.invalid"
+_BEARER_MARKER = "Bearer synthetic-refusal-probe-not-a-credential"
 
 
 class _MemoryBackend:
@@ -240,30 +243,16 @@ def test_server_refusal_is_named_in_the_listing_while_local_refusal_names_no_ser
     secure_keyring: _MemoryBackend,
 ) -> None:
     del secure_keyring
-    refusal = ServerRefusal(
-        status=403,
-        problem_code="unauthorized",
-        title="Initial custody refused",
-        detail="Initial custody requires Commander self-custody.",
-    )
+    refusal = server_refusal(403, "unauthorized")
     rejected = _spool(tmp_path / "rejected")
     rejected.enqueue(_command(uuid4(), {"title": "refused"}))
 
-    report = rejected.drain(
-        _Executor(
-            ReplayResponse(
-                status_code=403,
-                problem_code="unauthorized",
-                response={"code": "unauthorized", "status": 403},
-                refusal=refusal,
-            )
-        )
-    )
+    report = rejected.drain(_Executor(_refused(refusal)))
 
     assert report.quarantined == 1
     named = _unbound_spool(tmp_path / "rejected").list_entries(SpoolState.QUARANTINE)[0]
     assert named.reason_code == "permanent_server_rejection"
-    assert named.server_refusal == refusal
+    assert named.server_refusal == ServerRefusal(status=403, name="unauthorized")
     local = _spool(tmp_path / "local")
     local.enqueue(_command(uuid4(), {"title": "identity-bound"}))
     rotated = _unbound_spool(tmp_path / "local").bind_credential("synthetic-rotated-identity")
@@ -272,6 +261,62 @@ def test_server_refusal_is_named_in_the_listing_while_local_refusal_names_no_ser
     unnamed = _unbound_spool(tmp_path / "local").list_entries(SpoolState.QUARANTINE)[0]
     assert unnamed.reason_code == "credential_identity_mismatch"
     assert unnamed.server_refusal is None
+
+
+def test_only_an_allowlisted_name_can_be_built_or_persisted_for_a_refusal(
+    tmp_path: Path,
+    secure_keyring: _MemoryBackend,
+) -> None:
+    """Response prose has no durable field to live in, named or unnamed."""
+
+    del secure_keyring
+    assert server_refusal(403, "tenant-scope-denied").name == "tenant_scope_denied"
+    assert server_refusal(403, f"Refused for {_PII_MARKER}").name == (
+        "unrecognized_refusal:refused_for_jane_doe_ct180_example_invalid"
+    )
+    assert server_refusal(500, "!!").name == "unrecognized_refusal:unnamed"
+    with pytest.raises(ValidationError):
+        ServerRefusal(status=403, name=f"unauthorized: {_BEARER_MARKER}")
+
+    spool = _spool(tmp_path / "state")
+    spool.enqueue(_command(uuid4(), {"title": "refused"}))
+    spool.drain(_Executor(_refused(server_refusal(403, "unauthorized"))))
+
+    listed = spool.list_entries(SpoolState.QUARANTINE)[0]
+    corpus = _all_spool_bytes(tmp_path / "state")
+    assert listed.server_refusal == ServerRefusal(status=403, name="unauthorized")
+    assert _PII_MARKER.encode() not in corpus
+    assert _BEARER_MARKER.encode() not in corpus
+
+
+def test_command_held_behind_a_quarantined_head_later_gets_its_own_refusal_name(
+    tmp_path: Path,
+    secure_keyring: _MemoryBackend,
+) -> None:
+    """The barrier must not blur two refusals into the head command's name."""
+
+    del secure_keyring
+    spool = _spool(tmp_path / "state")
+    first = spool.enqueue(_command(uuid4(), {"title": "first"}))
+    second = spool.enqueue(_command(uuid4(), {"title": "second"}))
+    head_refusal = _Executor(_refused(server_refusal(403, "unauthorized")))
+
+    assert spool.drain(head_refusal).barrier_sequence == first.sequence
+    assert [item.command_id for item in head_refusal.calls] == [first.command_id]
+    held = spool.list_entries()
+    assert [item.server_refusal for item in held] == [
+        ServerRefusal(status=403, name="unauthorized"),
+        None,
+    ]
+
+    spool.discard(first.sequence or 0, "operator replaced the refused command")
+    own_refusal = _Executor(_refused(server_refusal(409, "version-conflict")))
+
+    assert spool.drain(own_refusal).quarantined == 1
+    assert [item.command_id for item in own_refusal.calls] == [second.command_id]
+    listed = spool.list_entries(SpoolState.QUARANTINE)
+    assert [item.command_id for item in listed] == [second.command_id]
+    assert listed[0].server_refusal == ServerRefusal(status=409, name="version_conflict")
 
 
 def test_consecutive_discard_tombstones_bridge_chain_and_missing_or_forged_refuse(
@@ -418,6 +463,15 @@ def _unbound_spool(state: Path) -> Spool:
     return Spool.for_origin(
         "https://example.test/api",
         SpoolConfig(state_path=state),
+    )
+
+
+def _refused(refusal: ServerRefusal) -> ReplayResponse:
+    return ReplayResponse(
+        status_code=refusal.status,
+        problem_code=refusal.name,
+        response={"code": refusal.name, "status": refusal.status},
+        refusal=refusal,
     )
 
 
