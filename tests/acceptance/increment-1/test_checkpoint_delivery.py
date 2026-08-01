@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 import hashlib
-import io
 import json
 import re
 from datetime import UTC, datetime, timedelta
@@ -29,7 +28,6 @@ from ctower_kernel.projections import Projections
 from ctower_kernel.projections.postgres import PostgresProjections
 from ctower_kernel.record import Actor, PrincipalKind
 from ctowerctl import _migration_commands
-from ctowerctl._output import write_json
 
 __all__: tuple[str, ...] = ()
 
@@ -420,9 +418,15 @@ def _digest(payload: JsonValue) -> str:
 
 
 def _delivery_json(view: ClientProjectDeliveryView) -> str:
-    stream = io.StringIO()
-    write_json(stream, view)
-    return stream.getvalue()
+    return (
+        json.dumps(
+            view.model_dump(mode="json", by_alias=True, exclude_none=True),
+            ensure_ascii=False,
+            separators=(",", ":"),
+            sort_keys=True,
+        )
+        + "\n"
+    )
 
 
 def _catalog(tenant: TenantFixture) -> PostgresCatalog:
