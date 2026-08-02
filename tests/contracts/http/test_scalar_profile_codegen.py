@@ -60,6 +60,24 @@ def test_codegen_refuses_authored_scalar_profile_drift(
         write(fixture)
 
 
+def test_project_key_parameter_generates_the_python_validator(tmp_path: Path) -> None:
+    fixture = tmp_path / "fixture"
+    shutil.copytree(
+        ROOT,
+        fixture,
+        ignore=shutil.ignore_patterns(".git", "node_modules", "__pycache__"),
+    )
+    path = fixture / "contracts/http/openapi.yaml"
+    document = json.loads(path.read_text(encoding="utf-8"))
+    document["components"]["parameters"]["ProjectKey"]["schema"]["pattern"] = "^[a-z]{4,8}$"
+    path.write_text(json.dumps(document, indent=2) + "\n", encoding="utf-8")
+
+    write(fixture)
+    client = (fixture / "generated/python/ctower_client/client.py").read_text(encoding="utf-8")
+    assert 'type ProjectKey = Annotated[str, Field(pattern="^[a-z]{4,8}$")]' in client
+    assert "project_key: ProjectKey" in client
+
+
 def test_response_integer_graph_is_complete_and_uses_one_recursive_branch() -> None:
     document = _authored_document()
     operations = tuple(_operations(document))

@@ -253,7 +253,7 @@ def test_query_dispatch_and_project_delivery_text_expose_frozen_metadata() -> No
         _migration_commands.execute_query(delivery, cast(CtowerClient, client)),
     )
     stream = io.StringIO()
-    interface._write_result(delivery, view, stream)
+    interface.write_result(delivery, view, stream)
 
     output = stream.getvalue()
     assert "I1.7" in output

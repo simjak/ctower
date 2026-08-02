@@ -17,6 +17,7 @@ class _Parameter:
     location: str
     python_name: str
     python_type: str
+    alias: str | None
     required: bool
 
 
@@ -36,6 +37,7 @@ class _Operation:
 
 def render_client(document: dict[str, object], contract_digest: str) -> str:
     operations = _operations(document)
+    parameter_aliases = _parameter_aliases(operations)
     model_names = sorted(
         {
             "TelemetryContext",
@@ -45,6 +47,11 @@ def render_client(document: dict[str, object], contract_digest: str) -> str:
         }
     )
     imports = "\n".join(f"    {name}," for name in model_names)
+    aliases = "\n".join(f"type {name} = {python_type}" for name, python_type in parameter_aliases)
+    exports = ", ".join(
+        json.dumps(name)
+        for name in ("CtowerClient", "CtowerProblemError", *(name for name, _ in parameter_aliases))
+    )
     methods = "\n\n".join(_render_method(operation) for operation in operations)
     return f'''"""DO NOT EDIT: generated file; regenerate from declared inputs.
 
@@ -67,7 +74,10 @@ from ctower_client.models import (
 {imports}
 )
 
-__all__ = ["CtowerClient", "CtowerProblemError"]
+__all__ = [{exports}]
+
+
+{aliases}
 
 
 class _ProblemModel(Protocol):
@@ -256,9 +266,11 @@ def _parameters(
     for item in value:
         parameter = _mapping(item, "operation parameter")
         reference = parameter.get("$ref")
+        component_name = None
         if isinstance(reference, str):
             name = reference.removeprefix("#/components/parameters/")
             parameter = _mapping(definitions.get(name), f"parameter {name}")
+            component_name = name
         wire_name = str(parameter["name"])
         location = str(parameter["in"])
         if location not in {"path", "header", "query"}:
@@ -269,12 +281,14 @@ def _parameters(
         if location == "path" and not required:
             raise ValueError(f"path parameter {wire_name} must be required")
         schema = _mapping(parameter.get("schema"), f"parameter {wire_name}.schema")
+        alias = _parameter_alias(component_name, location, schema)
         parameters.append(
             _Parameter(
                 name=wire_name,
                 location=location,
                 python_name=_parameter_name(wire_name),
-                python_type=_parameter_type(schema),
+                python_type=_parameter_type(schema, include_pattern=alias is not None),
+                alias=alias,
                 required=required,
             )
         )
@@ -361,14 +375,15 @@ def _render_method(operation: _Operation) -> str:
     path_parameters = [item for item in operation.parameters if item.location == "path"]
     header_parameters = [item for item in operation.parameters if item.location == "header"]
     query_parameters = [item for item in operation.parameters if item.location == "query"]
-    positional = [f"{item.python_name}: {item.python_type}" for item in path_parameters]
+    positional = [f"{item.python_name}: {_parameter_annotation(item)}" for item in path_parameters]
     if operation.request_model is not None:
         positional.append(f"request: {operation.request_model}")
     keyword_parameters = sorted(
         [*header_parameters, *query_parameters], key=lambda item: not item.required
     )
     keyword = [
-        f"{item.python_name}: {item.python_type}" + ("" if item.required else " | None = None")
+        f"{item.python_name}: {_parameter_annotation(item)}"
+        + ("" if item.required else " | None = None")
         for item in keyword_parameters
     ]
     signature = ["        self,", *(f"        {item}," for item in positional)]
@@ -468,11 +483,14 @@ def _schema_reference(schema: Mapping[str, object]) -> str:
     return reference.removeprefix("#/components/schemas/")
 
 
-def _parameter_type(schema: Mapping[str, object]) -> str:
+def _parameter_type(schema: Mapping[str, object], *, include_pattern: bool = False) -> str:
     schema_type = schema.get("type")
     if schema_type == "string":
         base = "UUID" if schema.get("format") == "uuid" else "str"
-        constraints = _bounds(schema, (("minLength", "min_length"), ("maxLength", "max_length")))
+        constraint_names = [("minLength", "min_length"), ("maxLength", "max_length")]
+        if include_pattern:
+            constraint_names.append(("pattern", "pattern"))
+        constraints = _bounds(schema, tuple(constraint_names))
         return _annotated(base, constraints)
     if schema_type == "array":
         items = _mapping(schema.get("items"), "parameter array items")
@@ -497,6 +515,31 @@ def _annotated(base: str, constraints: list[tuple[str, object]]) -> str:
         return base
     arguments = ", ".join(f"{name}={json.dumps(value)}" for name, value in constraints)
     return f"Annotated[{base}, Field({arguments})]"
+
+
+def _parameter_aliases(operations: tuple[_Operation, ...]) -> tuple[tuple[str, str], ...]:
+    aliases: dict[str, str] = {}
+    for parameter in (item for operation in operations for item in operation.parameters):
+        if parameter.alias is None:
+            continue
+        prior = aliases.setdefault(parameter.alias, parameter.python_type)
+        if prior != parameter.python_type:
+            raise ValueError(f"parameter {parameter.alias} has conflicting schemas")
+    return tuple(sorted(aliases.items()))
+
+
+def _parameter_annotation(parameter: _Parameter) -> str:
+    return parameter.alias if parameter.alias is not None else parameter.python_type
+
+
+def _parameter_alias(
+    component_name: str | None,
+    location: str,
+    schema: Mapping[str, object],
+) -> str | None:
+    if component_name is None or location != "path":
+        return None
+    return component_name if "pattern" in schema else None
 
 
 def _parameter_name(name: str) -> str:

@@ -12,6 +12,9 @@ from typing import Never
 from urllib.parse import SplitResult, urlsplit
 from uuid import UUID, uuid4
 
+from pydantic import TypeAdapter
+
+from ctower_client.client import ProjectKey
 from ctower_client.models import (
     BoardLane,
     IntakeIntent,
@@ -28,6 +31,7 @@ __all__: tuple[str, ...] = ()
 _ASSIGNMENT_KINDS = ("current_assignee", "stage_owner", "reviewer")
 _BLOCKER_KINDS = ("dependency", "operator_action", "policy", "resource", "technical")
 _SPOOL_STATES = ("pending", "accepted_archive", "quarantine")
+_PROJECT_KEY: TypeAdapter[str] = TypeAdapter(ProjectKey)
 _SHA256_DIGEST = re.compile(r"^sha256:[0-9a-f]{64}$")
 _AUTHORED_COMMAND_NAMES = frozenset(
     {
@@ -539,7 +543,7 @@ def _project_parser(parser: argparse.ArgumentParser) -> None:
     )
     query = actions.add_parser("query")
     query.set_defaults(cli_name="project delivery query")
-    query.add_argument("project_key", choices=("ctower",))
+    query.add_argument("project_key", type=_PROJECT_KEY.validate_python)
     query.add_argument("--output", choices=("text", "json"), default="text")
 
 

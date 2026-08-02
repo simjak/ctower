@@ -77,7 +77,10 @@ from ctower_client.models import (
     WorkflowTransitionRequest,
 )
 
-__all__ = ["CtowerClient", "CtowerProblemError"]
+__all__ = ["CtowerClient", "CtowerProblemError", "ProjectKey"]
+
+
+type ProjectKey = Annotated[str, Field(pattern="^[a-z][a-z0-9-]{2,63}$")]
 
 
 class _ProblemModel(Protocol):
@@ -558,7 +561,7 @@ class CtowerClient:
     @validate_call(config=ConfigDict(strict=True, arbitrary_types_allowed=True))
     def get_project_delivery(
         self,
-        project_key: str,
+        project_key: ProjectKey,
     ) -> ProjectDeliveryView:
         response = self._http.get(
             f"/v1/projects/{quote(str(project_key), safe='')}/delivery",
