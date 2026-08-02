@@ -11,7 +11,7 @@ from enum import StrEnum
 from typing import TYPE_CHECKING, Annotated, Literal
 from uuid import UUID
 
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, BeforeValidator, ConfigDict, Field
 
 from ctowerctl.spool._refusals import RefusalName, refusal_name
 
@@ -19,6 +19,7 @@ if TYPE_CHECKING:
     from ctowerctl.spool._recovery import CorruptRecord, RecoveredRecord, Session
 
 __all__ = [
+    "CanonicalRefusal",
     "JsonObject",
     "SecretMaterialError",
     "ServerRefusal",
@@ -164,6 +165,25 @@ def server_refusal(status: int, code: str) -> ServerRefusal:
     """Name one server refusal from the allowlist, discarding its response body."""
 
     return ServerRefusal(status=status, name=refusal_name(code))
+
+
+def _canonical_refusal(value: object) -> ServerRefusal | None:
+    """Rebuild any refusal through the allowlist, whatever shape or class carried it."""
+
+    if value is None:
+        return None
+    if isinstance(value, ServerRefusal):
+        return server_refusal(value.status, value.name)
+    if isinstance(value, Mapping):
+        status, name = value.get("status"), value.get("name")
+        if isinstance(status, bool) or not isinstance(status, int) or not isinstance(name, str):
+            raise TypeError("a refusal is not one integer status and one name")
+        return server_refusal(status, name)
+    raise TypeError("a refusal is neither a mapping nor a named refusal")
+
+
+CanonicalRefusal = Annotated[ServerRefusal | None, BeforeValidator(_canonical_refusal)]
+"""A refusal field that re-derives its name, so no relaxed subclass survives the boundary."""
 
 
 def reason_digest(reason: str) -> str:
@@ -344,18 +364,9 @@ def _quarantine_outcome(
         payload = record.opened.payload
         if payload.get("command_sequence") == command.stored.sequence:
             outcomes.append(
-                (_string_field(payload, "reason_code"), _server_refusal(payload.get("refusal")))
+                (_string_field(payload, "reason_code"), _canonical_refusal(payload.get("refusal")))
             )
     return outcomes[-1] if outcomes else (None, None)
-
-
-def _server_refusal(value: JsonValue) -> ServerRefusal | None:
-    """Render a persisted refusal through the allowlist, never from the bytes on disk."""
-
-    if not isinstance(value, Mapping):
-        return None
-    payload = dict(value)
-    return server_refusal(_int_field(payload, "status"), _string_field(payload, "name"))
 
 
 def _oldest_age(entries: tuple[SpoolEntry, ...]) -> float | None:
@@ -369,13 +380,6 @@ def _string_field(payload: JsonObject, field: str) -> str:
     value = payload.get(field)
     if not isinstance(value, str):
         raise TypeError("verified spool identity field is not a string")
-    return value
-
-
-def _int_field(payload: JsonObject, field: str) -> int:
-    value = payload.get(field)
-    if not isinstance(value, int) or isinstance(value, bool):
-        raise TypeError("verified spool identity field is not an integer")
     return value
 
 

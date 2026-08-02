@@ -6,7 +6,7 @@ from typing import Annotated, Literal
 
 from pydantic import BaseModel, ConfigDict, Field, model_validator
 
-from ctowerctl.spool._redaction import JsonObject, ServerRefusal
+from ctowerctl.spool._redaction import CanonicalRefusal, JsonObject, ServerRefusal
 
 __all__ = [
     "AcceptedReceipt",
@@ -80,7 +80,7 @@ class QuarantineReceipt(_DiskPayload):
     reason_code: Annotated[str, Field(pattern=r"^[a-z][a-z0-9_]{0,63}$")]
     response_digest: Annotated[str, Field(pattern=r"^[0-9a-f]{64}$")] | None
     quarantined_at: str
-    refusal: ServerRefusal | None = None
+    refusal: CanonicalRefusal = None
 
     @model_validator(mode="after")
     def _validate_versioned_refusal(self) -> QuarantineReceipt:

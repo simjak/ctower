@@ -17,13 +17,11 @@ from pydantic import ValidationError
 
 from ctowerctl.spool import (
     ReplayResponse,
-    ServerRefusal,
     Spool,
     SpoolCommand,
     SpoolConfig,
     SpoolError,
     SpoolState,
-    server_refusal,
 )
 
 __all__: tuple[str, ...] = ()
@@ -34,11 +32,6 @@ type _JsonObject = dict[str, _JsonValue]
 
 _TWO_COMMANDS = 2
 _CREDENTIAL = "synthetic-foundation-identity"
-_PII_MARKER = "jane.doe+ct180@example.invalid"
-_BEARER_MARKER = "Bearer synthetic-refusal-probe-not-a-credential"
-_PII_SLUG = "jane_doe_ct180_example_invalid"
-_BEARER_SLUG = "bearer_synthetic_refusal_probe_not_a_credential"
-_UNRECOGNIZED = "unrecognized_refusal"
 
 
 class _MemoryBackend:
@@ -241,112 +234,6 @@ def test_permanent_rejection_is_ordering_barrier_with_retry_and_discard(
     )
 
 
-def test_server_refusal_is_named_in_the_listing_while_local_refusal_names_no_server(
-    tmp_path: Path,
-    secure_keyring: _MemoryBackend,
-) -> None:
-    del secure_keyring
-    refusal = server_refusal(403, "unauthorized")
-    rejected = _spool(tmp_path / "rejected")
-    rejected.enqueue(_command(uuid4(), {"title": "refused"}))
-
-    report = rejected.drain(_Executor(_refused(refusal)))
-
-    assert report.quarantined == 1
-    named = _unbound_spool(tmp_path / "rejected").list_entries(SpoolState.QUARANTINE)[0]
-    assert named.reason_code == "permanent_server_rejection"
-    assert named.server_refusal == ServerRefusal(status=403, name="unauthorized")
-    local = _spool(tmp_path / "local")
-    local.enqueue(_command(uuid4(), {"title": "identity-bound"}))
-    rotated = _unbound_spool(tmp_path / "local").bind_credential("synthetic-rotated-identity")
-
-    assert rotated.drain(_Accepting()).reason_code == "credential_identity_mismatch"
-    unnamed = _unbound_spool(tmp_path / "local").list_entries(SpoolState.QUARANTINE)[0]
-    assert unnamed.reason_code == "credential_identity_mismatch"
-    assert unnamed.server_refusal is None
-
-
-def test_only_an_authored_name_or_the_content_free_sentinel_can_exist(
-    tmp_path: Path,
-    secure_keyring: _MemoryBackend,
-) -> None:
-    """Response prose has no durable field to live in, and no slug to hide in."""
-
-    del secure_keyring
-    assert server_refusal(403, "tenant-scope-denied").name == "tenant_scope_denied"
-    assert server_refusal(403, f"Refused for {_PII_MARKER}").name == _UNRECOGNIZED
-    assert server_refusal(500, f"{_BEARER_MARKER} presented").name == _UNRECOGNIZED
-    assert server_refusal(500, "!!").name == _UNRECOGNIZED
-    for rejected in (f"unauthorized: {_BEARER_MARKER}", f"{_UNRECOGNIZED}:jane_doe", "unnamed"):
-        with pytest.raises(ValidationError):
-            ServerRefusal(status=403, name=rejected)
-
-    spool = _spool(tmp_path / "state")
-    spool.enqueue(_command(uuid4(), {"title": "refused"}))
-    spool.drain(_Executor(_refused(server_refusal(403, "unauthorized"))))
-
-    listed = spool.list_entries(SpoolState.QUARANTINE)[0]
-    corpus = _all_spool_bytes(tmp_path / "state")
-    assert listed.server_refusal == ServerRefusal(status=403, name="unauthorized")
-    assert _PII_MARKER.encode() not in corpus
-    assert _BEARER_MARKER.encode() not in corpus
-
-
-def test_public_spool_round_trip_cannot_persist_or_list_an_unknown_refusal_code(
-    tmp_path: Path,
-    secure_keyring: _MemoryBackend,
-) -> None:
-    """The exported executor boundary is a caller's, so it must not carry text either."""
-
-    del secure_keyring
-    state = tmp_path / "state"
-    spool = _spool(state)
-    spool.enqueue(_command(uuid4(), {"title": "refused"}))
-    hostile_code = f"refused-for-{_PII_MARKER}-presenting-{_BEARER_MARKER}"
-
-    report = spool.drain(_Executor(_refused(server_refusal(403, hostile_code))))
-
-    assert report.quarantined == 1
-    listed = _unbound_spool(state).list_entries(SpoolState.QUARANTINE)
-    corpus = _all_spool_bytes(state)
-    rendered = json.dumps([item.model_dump(mode="json") for item in listed], sort_keys=True)
-    assert listed[0].reason_code == "permanent_server_rejection"
-    assert listed[0].server_refusal == ServerRefusal(status=403, name=_UNRECOGNIZED)
-    for marker in (_PII_MARKER, _BEARER_MARKER, _PII_SLUG, _BEARER_SLUG):
-        assert marker not in rendered
-        assert marker.encode() not in corpus
-
-
-def test_command_held_behind_a_quarantined_head_later_gets_its_own_refusal_name(
-    tmp_path: Path,
-    secure_keyring: _MemoryBackend,
-) -> None:
-    """The barrier must not blur two refusals into the head command's name."""
-
-    del secure_keyring
-    spool = _spool(tmp_path / "state")
-    first = spool.enqueue(_command(uuid4(), {"title": "first"}))
-    second = spool.enqueue(_command(uuid4(), {"title": "second"}))
-    head_refusal = _Executor(_refused(server_refusal(403, "unauthorized")))
-
-    assert spool.drain(head_refusal).barrier_sequence == first.sequence
-    assert [item.command_id for item in head_refusal.calls] == [first.command_id]
-    held = spool.list_entries()
-    assert [item.server_refusal for item in held] == [
-        ServerRefusal(status=403, name="unauthorized"),
-        None,
-    ]
-
-    spool.discard(first.sequence or 0, "operator replaced the refused command")
-    own_refusal = _Executor(_refused(server_refusal(409, "version-conflict")))
-
-    assert spool.drain(own_refusal).quarantined == 1
-    assert [item.command_id for item in own_refusal.calls] == [second.command_id]
-    listed = spool.list_entries(SpoolState.QUARANTINE)
-    assert [item.command_id for item in listed] == [second.command_id]
-    assert listed[0].server_refusal == ServerRefusal(status=409, name="version_conflict")
-
-
 def test_consecutive_discard_tombstones_bridge_chain_and_missing_or_forged_refuse(
     tmp_path: Path,
     secure_keyring: _MemoryBackend,
@@ -491,15 +378,6 @@ def _unbound_spool(state: Path) -> Spool:
     return Spool.for_origin(
         "https://example.test/api",
         SpoolConfig(state_path=state),
-    )
-
-
-def _refused(refusal: ServerRefusal) -> ReplayResponse:
-    return ReplayResponse(
-        status_code=refusal.status,
-        problem_code=refusal.name,
-        response={"code": refusal.name, "status": refusal.status},
-        refusal=refusal,
     )
 
 

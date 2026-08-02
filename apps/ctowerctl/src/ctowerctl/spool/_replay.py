@@ -24,6 +24,7 @@ from ctowerctl.spool._recovery import (
     utc_text,
 )
 from ctowerctl.spool._redaction import (
+    CanonicalRefusal,
     JsonObject,
     ServerRefusal,
     digest_json,
@@ -88,7 +89,7 @@ class ReplayResponse(_BoundaryModel):
     event_ids: tuple[str, ...] = ()
     acceptance_position: str | None = None
     problem_code: Annotated[str, Field(pattern=r"^[a-z][a-z0-9_]{0,63}$")] | None = None
-    refusal: ServerRefusal | None = None
+    refusal: CanonicalRefusal = None
 
 
 class ReplayExecutor(Protocol):
