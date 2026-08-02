@@ -202,7 +202,7 @@ ports.
 | Catalog | One `VersionedComponent` lifecycle, compatibility, provenance, exact pins, future-only active pointers |
 | Work | Permanent tickets, lifecycle episodes, custody, relations, priorities, blockers, typed Board intents |
 | Proof | Criteria, artifacts, evidence DAG, independence, gate instances/verdicts, invalidation |
-| Attention | Exact policy-qualified human actions and Needs You projection inputs |
+| Attention | Exact policy-qualified human actions, the typed append-only findings feed and its configured kind catalog, and Needs You projection inputs |
 | Workflow | Arbitrary pinned graph readiness, legal edges, policy selection, routes, bounds, terminal decisions |
 | Runtime | Accepted jobs, leases, fencing, cursors, ACKs, checkpoints, versioned CommandGuard decisions, local execution composition |
 | Effects | Grants, releases, provider observations, receipts, incidents, rollback, reconciliation |
@@ -387,6 +387,31 @@ Canonical Board lanes are `backlog`, `ready`, `in_progress`, `in_review`, `block
 Priority is `P0|P1|P2`. The Board derives verification from stage `activity_class`, not stage names. Merge,
 staging verification, production verification, rollback, and incident remain separate typed delivery facts.
 
+Each card also carries a five-member **context set** — tenant display identity, recorded change references,
+applied labels, human-waiting, and delivery-surface availability. Every member reads one explicit fact
+class and nothing else:
+
+```text
+ tenant display fact ------------> tenant display identity
+ linked Change facts ------------> change / PR references
+ applied-label facts ------------> labels        (label vocabulary revision pinned at application)
+ qualifying Attention finding ---> human-waiting (Needs You qualification, never a blocker)
+ pinned checkpoint declaration --> delivery-surface availability
+                                   present | absent | undeclared (STATE_UNKNOWN)
+```
+
+An unavailable member is stated — empty set, declared absence, no qualifying checkpoint, or
+`STATE_UNKNOWN` with its missing source — never omitted, and never inferred from a name, lane, stage key,
+blocker age, or silence. At I1 the context set is carried by the generated API and protected CLI; browser
+rendering of every card fact remains I2.4.
+
+Human-waiting has exactly one source: the **Attention findings feed**, the typed append-only record under
+Needs You. A finding names one kind drawn from a versioned configured **attention-kind catalog** and pins
+the revision active when it was appended, so kinds are configuration rather than a product enum and
+outbox-poison is one member of that catalog rather than the shape of the feed. Resolution, snooze, expiry,
+and cancellation are appended facts; a need never ends by a row disappearing. Needs You and the Board card
+read the same feed under the same policy qualification, so they cannot disagree.
+
 ## Project Delivery projection reads facts; it never commands work
 
 The Project Delivery projection is a contextual Board/project read model over the hierarchy
@@ -423,6 +448,13 @@ projection cannot mutate any of these or accept manual status.
 the headline while preserving the highest underlying lifecycle maturity for drill-down. Checkpoints skip
 merge/staging/release states they do not declare, so accounting, compliance, hiring, and software all use
 the same fold. Ticket counts never become a completion percentage.
+
+A checkpoint definition MAY declare its **delivery surface** — landing boundary, non-production
+environments, externally effective outcome — each with identity or as an explicit absence. Consumers read
+three states per field: declared-present, declared-absent, and explicitly undeclared (`STATE_UNKNOWN`),
+which is neither presence nor absence and satisfies no skip predicate, entry item, or availability claim.
+The skip/entry rules, the projection, and the Board card's delivery-surface availability all read that one
+pinned declaration; none of them substitutes a stage name or silence for it.
 
 An overdue heartbeat is stale. A missing/gapped watermark, unknown integrity or proof validity, or unsafe
 authorization coverage is `STATE UNKNOWN`, not a ninth delivery state. Deleting/rebuilding the projection
