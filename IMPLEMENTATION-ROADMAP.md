@@ -334,11 +334,15 @@ run on the same evaluator with different stages, participants, perspectives, gat
 
 Contract work precedes that implementation: freeze the strict S7/S8 Workflow Definition source schema,
 the five-layer Company -> Project -> Team/profile -> Ticket-schema -> Workflow resolution manifest, and the
-deterministic source-to-`ctower.workflow/v1` normalization contract. The approved S8 mock is the source
-positive fixture. Source validation does not authorize publication; resolution and publication fail closed
-on missing graph/layer references or any project overlay that removes/relaxes base evidence, changes the
-graph/owner/policy, or implies a D28 seat. No kernel parser/evaluator or UI editor lands ahead of that
-contract suite.
+deterministic source-to-`ctower.workflow/v1` normalization contract. The same change adds the
+`ticket_schema` component kind to the authored component-kind enumeration and the Catalog kind constraint,
+because layer 4 has no publishable kind before it; until it lands, a bundle carrying a ticket schema is
+refused as an unknown kind and AC-ADM-01 keeps its existing publication set. The approved S8 mock is the
+source positive fixture, and its omitted group, signing-slot, gate, skip, and route members are gate
+diagnostics rather than defaults. Source validation does not authorize publication; resolution and
+publication fail closed on missing graph/layer references, on any Workflow-owned fact a complete revision
+must carry, or on any project overlay that removes/relaxes base evidence, changes the graph/owner/policy,
+or implies a D28 seat. No kernel parser/evaluator or UI editor lands ahead of that contract suite.
 
 The software-factory publication materializes the SPEC's complete `sf.e00..e15` edge table, including each
 predicate revision and accepted-input contract, and its complete stage-by-reason retry/return/wait/incident
