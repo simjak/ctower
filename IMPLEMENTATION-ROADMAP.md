@@ -332,6 +332,18 @@ candidate/nonpassing/repair/execution facts, typed failure routes, selective Pro
 review, readiness explanations, and protected waivers. A different four-stage non-engineering package must
 run on the same evaluator with different stages, participants, perspectives, gates, and bounds.
 
+Contract work precedes that implementation: freeze the strict S7/S8 Workflow Definition source schema,
+the five-layer Company -> Project -> Team/profile -> Ticket-schema -> Workflow resolution manifest, and the
+deterministic source-to-`ctower.workflow/v1` normalization contract. The same change adds the
+`ticket_schema` component kind to the authored component-kind enumeration and the Catalog kind constraint,
+because layer 4 has no publishable kind before it; until it lands, a bundle carrying a ticket schema is
+refused as an unknown kind and AC-ADM-01 keeps its existing publication set. The approved S8 mock is the
+source positive fixture, and its omitted group, signing-slot, gate, skip, and route members are gate
+diagnostics rather than defaults. Source validation does not authorize publication; resolution and
+publication fail closed on missing graph/layer references, on any Workflow-owned fact a complete revision
+must carry, or on any project overlay that removes/relaxes base evidence, changes the graph/owner/policy,
+or implies a D28 seat. No kernel parser/evaluator or UI editor lands ahead of that contract suite.
+
 The software-factory publication materializes the SPEC's complete `sf.e00..e15` edge table, including each
 predicate revision and accepted-input contract, and its complete stage-by-reason retry/return/wait/incident
 table. Documentation has exactly one incoming edge after current-digest review. Unknown predicate input
@@ -418,6 +430,12 @@ structured run/steering/ACK/gap, manifest, current proof, readiness refusals, de
 retro. Fleet shows profiles, runners, jobs, workspaces, routines, capacity, budgets, and health without
 treating terminals as truth. Analytics versions attention, flow, quality, recovery, cost, release, and
 improvement queries with watermarks and anti-gaming guardrails.
+
+After CT-I2-001 publishes the Workflow Definition source/normalization contract, issue #205's approved S7
+visual stage editor and S8 YAML view may project the same resource. Visual/YAML round trips preserve the
+normalized digest; save remains a gated Git commit followed by the authenticated CompanyBundle command,
+never a browser write to Workflow state. Until that dependency passes, S7/S8 may render only an honest
+read-only source preview and validation diagnostics.
 
 Build the richer Project Delivery projection surface on the hierarchy and deterministic compact fold already
 proven at I1.7. Authorized interactive rows expose accountable owner; Workflow stage and independent Kanban/
@@ -528,8 +546,9 @@ I1/I2 expose only what real variation justifies:
 - **Internal integration:** `systemd-vps/v1` plus a fault-injection implementation inside Effects; one live
   integration and one fake do not earn a generalized provider Seam.
 - **Deferred:** Crabbox/remote runners, reusable custom images/setup terminal, warm pools/shared caches,
-  generalized effect providers, executable Extension Host/workers, plugin marketplace, visual workflow
-  editor, second production workflow, broad connectors, public SaaS, and HA control plane.
+  generalized effect providers, executable Extension Host/workers, plugin marketplace, any visual workflow
+  editor beyond issue #205's contract-gated S7/S8 pair, second production workflow, broad connectors,
+  public SaaS, and HA control plane.
 
 Deferred contracts preserve immutable pins, exact-identity cleanup, secret-free reusable state, fencing,
 reconciliation, and fail-closed observations. They must be reported `not exercised`. A future public Seam

@@ -1100,6 +1100,7 @@ and cannot rewrite consumed work, evidence, verdicts, or already-resolved placem
 |---|---|---|
 | Company Bundle | Declarative authoring/export container | Desired references and assignments only; not runtime truth, a job, or a second Catalog |
 | Project | Declarative scoped configuration | Repository/outcome/config references; not ticket lifecycle |
+| Ticket Schema | Declarative kernel-validated vocabulary | Stable ticket-field, source-reference, criterion, and reusable evidence-definition keys/types/contracts; never live ticket values, status, a Workflow graph, Evidence, or a seat assignment |
 | Workflow and Stage | Executable kernel interpretation | Declared graph, legal transitions/failure routes, gate locations, terminal conditions; Stage is a payload child/revision reference, not a second engine |
 | Execution Policy | Executable kernel interpretation | Participant/capability selection, optional gates, domain-specific perspectives and finite anti-spin bounds, timeouts, placement, budgets, escalation/waiver constraints; cannot invent Workflow nodes or edges |
 | Gate/Evidence Policy | Executable kernel interpretation | Evidence contracts, verifier independence, invalidation, gate topology; never a verdict |
@@ -1154,6 +1155,132 @@ wording are deliberately not imported: the package's versioned Execution Policy,
 lineage/generation/round facts, and typed `change_merged`/`staging_verified`/`production_verified` delivery
 facts govern. A generated SKILL may explain a pinned Workflow, but prose is never Workflow authority.
 
+#### Workflow Definition YAML — the five-layer S7/S8 authoring contract
+
+R2707's configuration order is exact: **Company -> Projects -> Team/agent profiles -> Ticket schema ->
+Workflow definitions**. A Workflow may reference stable keys from an earlier layer; an earlier layer may
+not reference or derive truth from a later one. Layer 4 is one Catalog component class like every other,
+of kind `ticket_schema`. That kind is not in today's authored component-kind enumeration, and it joins
+`contracts/components/versioned-component.schema.json` and the Catalog kind constraint through the same
+authored contract change that freezes `ctower.workflow-definition/v1` under CT-I2-001. Until that change is
+published, a bundle carrying a ticket schema is refused as an unknown component kind rather than admitted
+by an implicit exception, [AC-ADM-01](#ac-adm-01) keeps exactly its existing empty-tenant publication set,
+and [AC-WF-28](#ac-wf-28) is where the five-layer resolution is proven. The fifth-layer source is one
+strict `workflows/<workflow-name>.yaml` resource inside a CompanyBundle. S7's visual stage editor and S8's
+YAML view are two projections of that same resource. Neither owns a second DTO, parser, save path, or
+runtime state. A save is a Git change followed by the ordinary authenticated CompanyBundle
+validate/plan/apply path; the kernel never watches Git or YAML for liveness.
+
+The source contract is `ctower.workflow-definition/v1`; its YAML spelling is deliberately the approved
+S8 spelling `apiVersion: ctower/v1`, `kind: Workflow`. YAML decoding rejects duplicate keys, aliases,
+anchors, merge keys, custom tags, non-string mapping keys, and unknown fields before semantic planning.
+Comments and presentation whitespace are non-authoritative. Canonical export preserves meaning and field
+order, not comments or byte layout.
+
+The document has exactly required `apiVersion`, `kind`, `metadata`, and `spec` maps plus optional
+`overlays`. `metadata` has exactly the four fields below; `spec` has exactly nonempty `stages` and
+`transitions` arrays plus the optional `stage_groups` list below.
+
+Key-like scalars are two separate classes and are never typed by one pattern. A **published-key scalar**
+carries the authored key contract of the layer it names, by reference rather than as a second pattern
+restated here: `metadata.name` and every `overlays.<project>` key carry the Catalog component key contract
+in `contracts/components/versioned-component.schema.json`, and `metadata.company` carries the company key
+contract in `contracts/company/company-bundle.schema.json`. A name either authored contract refuses is
+refused at source-schema time, so no document source-validates on a key that could never be published. A
+**source-local scalar** — `stage.name`, `stage.owner`, `stage.group` and each `spec.stage_groups[]` entry,
+every evidence `key`, each skip-predicate and gate key, and the `from`/`to`/`requires`/`failure_routes`
+entries that name them — uses `^[a-z][a-z0-9._-]{0,127}$`. That class is deliberately looser and
+deliberately not a Catalog key: a stage key as short as `qa` is legal here and never becomes a component
+key. Where a source-local key resolves to an earlier-layer component, gate 2 checks it against that layer's
+own authored key contract; this contract never restates that contract either.
+
+Assertion strings are nonempty and at most 512 Unicode scalar values; `widths` is a unique nonempty list of
+integers from 240 through 7680. All arrays preserve authored order and reject exact duplicate items.
+
+| Source field | Strict v1 meaning |
+|---|---|
+| `apiVersion` / `kind` | Exact literals `ctower/v1` and `Workflow`. |
+| `metadata.name` | Stable Workflow key. It becomes the Catalog component key and carries that authored key contract by reference; it is not a mutable display name. |
+| `metadata.company` | Company key from layer 1, carrying the authored company key contract by reference. The containing bundle company must match it exactly. |
+| `metadata.revision` | Positive immutable authored revision. A changed definition uses a new revision and digest. |
+| `metadata.signed_by` | Required source-attribution label for review display. It is never authentication, a signature, a principal, a seat assignment, or publication authority; authenticated apply facts supply those. |
+| `spec.stage_groups[]` | Optional ordered list of unique stable group keys, authoring the stage-group vocabulary [INV-63](#non-negotiable-invariants) and [AC-WF-25](#ac-wf-25) require of the normalized revision. The declared list order is the group order. A group labels the pinned graph and declares no edge, gate, terminal condition, parallelism, or ordering authority of its own. |
+| `spec.stages[]` | Ordered authored stage entries. Each has unique `name`, one `owner`, and a nonempty ordered `evidence` list, plus the optional `group`, `signs`, `gate`, `skip`, and `failure_routes` members below. Order is display order only; transitions own graph order. |
+| `stage.owner` | Stable eligible responsibility/capability key resolved through layers 3/4. Execution Policy selects a concrete principal. This field grants no authority and supplies no D28 assigned or signing seat. |
+| `stage.group` | Required exactly when `spec.stage_groups` is declared and forbidden otherwise; names one declared group. Every declared group owns at least one stage, so the mapping is total in both directions ([INV-63](#non-negotiable-invariants)). |
+| `stage.evidence[]` | One required exit-evidence assertion per unique stage-local `key`; v1 requires `required: true`. The key resolves a layer-4 ticket-schema evidence definition containing its recognized kind, frozen criterion, full evidence contract, signing contract, and assignment capability. The optional closed assertion vocabulary is `shape`, `refuses_by_name`, `command`, `reviewer_family_differs_from_author`, `digest_must_match_head`, and `widths`; an assertion may only narrow or exactly restate the resolved definition, never replace omitted authority with prose. This list plus the applicable project overlay is the whole authority for the stage's one normalized ordinary `required_evidence_slots` set. |
+| `stage.signs` | Optional; names one `key` of this stage's own ordinary `evidence` list as that set's signing slot ([INV-62](#non-negotiable-invariants)). It is declared per stage because the same evidence key is the signing slot in one stage and an ordinary slot in another, which a layer-4 definition keyed by evidence key alone cannot express. Omitted, the normalized signing slot is whatever the resolved layer-4 definitions supply; a resolved set with no signing slot fails gate 3 with the stage named rather than defaulting to one. |
+| `stage.gate` | Optional; the stable key of the mandatory stage gate this stage's position carries. Workflow owns gate *location* under [INV-46](#non-negotiable-invariants); this field never activates a gate, names a perspective, selects a verifier, or records a verdict, which remain with the pinned Gate and Execution policies. |
+| `stage.skip` | Optional; a declared skip-predicate key plus its own nonempty ordered `evidence` list and optional `signs`, authoring the alternative skip slot set and signing slot [INV-61](#non-negotiable-invariants) and [AC-WF-27](#ac-wf-27) require. The two sets are alternatives, never a union, and overlays never touch the skip set. A stage that omits `skip` cannot be skipped at any risk tier. |
+| `stage.failure_routes` | Optional map from a typed failure-reason key to the declared stage `name` that reason routes to. Workflow owns routes under [INV-46](#non-negotiable-invariants); a route names an edge target only, never a retry count, a policy bound, or an escalation. |
+| `spec.transitions[]` | Unique directed edge with declared `from`, `to`, complete ordered `requires`, and literal `on_missing: refuse`. `requires` **restates** the normalized ordinary slot set of `from` and never defines it: source planning normalizes `from`'s own `evidence` list plus the applicable project overlay into that stage's one `required_evidence_slots` set, and every outgoing edge from a stage must name exactly that set in exactly that order, so a divergent edge is a refusal rather than a second checklist. |
+| `overlays.<project>.<stage>[]` | Project key from layer 2, then stage key, then nonempty ordered additional evidence assertions using the same evidence-item contract. Exactly the matching project overlay is applied after the base. |
+
+Because the stage owns its normalized slot set, a stage needs no outgoing edge to have one. The graph's
+endpoints are derived from the declared edges rather than named a second time: exactly one stage has no
+incoming edge and is the initial stage, and a stage with no outgoing edge is terminal and satisfies the
+normalized terminal contract by reaching a success-equivalent disposition on its own resolved set. A
+terminal stage such as `resolve-close` therefore carries its complete required set from its own `evidence`
+list and overlay. A document with no terminal stage, with more than one entry stage, or with a stage
+unreachable from the entry stage is refused. These are gate-2 completeness rules and deliberately not
+source-schema rules: the approved excerpt declares four stages and one edge, so it parses at gate 1 and its
+missing edges are reported exactly at gate 2.
+
+Two neighbouring vocabularies stay out of this source on purpose. `required_perspectives`, activated
+optional gates, participant selection, finite bounds, timeouts, budgets, placement, escalation, and waiver
+constraints belong to the bundle's separately pinned Execution Policy resource, which
+[INV-46](#non-negotiable-invariants) already separates from Workflow; a Workflow Definition that authored
+them would be a second policy engine. Ticket fields, criteria, and the evidence definitions this source
+references belong to the layer-4 ticket schema. What remains — the graph, its endpoints, stages and their
+responsibilities, ordinary and skip slot sets with their signing slots, gate locations, typed routes, and
+the group vocabulary — is exactly the Workflow-owned half, and this source authors all of it, so a complete
+revision compiles to a gate-3-publishable payload without a second authoring path. Both projections carry
+every field this contract declares: S8's YAML view shows the whole document by construction, and an S7
+affordance for a field beyond issue #205's approved mockup passes the ordinary design gate before it ships.
+
+Project overlays are monotonic. They may add ordinary required evidence slots or narrow their contracts;
+they may not remove, relax, replace, or reorder a base slot, change `owner`, add/remove/reorder a stage or
+edge, alter a terminal/skip/failure route, activate a gate/perspective, or assign a seat. Duplicate overlay
+keys and base/overlay key collisions are refused. The resolved slot order is base order followed by overlay
+order. A project with no matching overlay receives exactly the base definition. A project or stage target
+that does not resolve in the same bundle plan prevents publication and leaves the previous active pointer
+unchanged.
+
+Validation has three named gates; calling all three merely "valid" is forbidden:
+
+1. **Source-schema valid** means the strict YAML shape and closed vocabulary parse. The approved S8 mockup
+   is the byte-independent positive fixture for this gate, including its four shown stage entries,
+   `build -> review` refusal, and `lastmachines`/`bh-loop` overlay spelling. It declares no group, signing
+   slot, gate, skip, or route member, and every one of those stays absent rather than defaulted.
+2. **Resolved-plan valid** means every Company, Project, responsibility, stage, evidence-definition,
+   criterion, policy, and signing-contract reference resolves to exact immutable revisions/digests; the
+   transition requirement set equals the normalized source-stage slot set; and every overlay is monotonic.
+   The mockup's intentionally compact excerpt may therefore source-validate while plan reports its exact
+   missing graph or layer references. The UI must render those diagnostics and must not invent defaults.
+3. **Publishable/activatable** means the normalized payload also satisfies the full
+   `ctower.workflow/v1` graph, stage, typed-slot/signing, skip, route, terminal, compatibility,
+   conformance, digest, authorization, and activation contract already specified here. A payload missing a
+   Workflow-owned fact is refused with that fact and its stage named, never completed by a default. Only
+   this normalized immutable Catalog revision is executable, and every run pins it by revision and digest.
+
+This split makes the approved YAML a real kernel input without pretending that a screen excerpt is an
+active Workflow. There is one compile boundary, owned privately by Catalog/Workflow:
+
+```text
+Workflow Definition YAML -> strict source validation -> bundle/layer resolution
+                         -> normalized ctower.workflow/v1 payload -> Catalog publication
+                         -> exact revision/digest pin -> generic Workflow evaluator
+```
+
+D28 remains unchanged through that boundary. A qualifying normalized slot has zero or one explicit
+assigned-seat fact at runtime; absence is explicit unassigned. The signing seat still derives only from
+the satisfying Evidence verifier assignment interval. [D28](DECISIONS.md) clause 5's list of forbidden
+seat-inference inputs applies here by reference and is deliberately not restated as a second list that
+could drift from it; this source **adds** exactly the two surfaces it introduces, `stage.owner` and any
+project overlay, to that list. No source field is a seat, and assigned and signing seats remain separately
+visible when they differ. Workflow Definition files contain no ticket, run,
+assignment, Evidence, verdict, counter, credential, login-session, or secret value.
+
 #### First-tenant trust-root ceremony
 
 An empty installation has one deliberately narrower trust-root ceremony before any tenant-scoped
@@ -1178,8 +1305,9 @@ credential value, session, ticket, verdict, or runtime fact.
 #### CompanyBundle validate, plan, apply, and export
 
 A `CompanyBundle` is a portable set of small YAML resources referencing stable component keys/revisions for
-company identity, goals, projects, workflows, execution/gate/evidence policies, profiles, personas, skills,
-tools/capabilities, environments/images, placement, extensions, cadence, notifications, and integrations.
+company identity, goals, projects, ticket schemas, workflows, execution/gate/evidence policies, profiles,
+personas, skills, tools/capabilities, environments/images, placement, extensions, cadence, notifications,
+and integrations.
 It follows one path:
 
 ```text
@@ -2973,7 +3101,7 @@ This specification owns semantics; executable artifacts own exact representation
 |---|---|---|
 | Tables, columns, constraints, privileges, indexes | packages/ctower-kernel/migrations/ | Record/owning Module + independent database/security review |
 | Domain/event/object schemas and canonical vectors | contracts/domain/ and contracts/evidence/ | Record/Work/Proof |
-| Workflow, stage, plan, counter, lineage schemas | contracts/workflow/ | Workflow |
+| Workflow Definition source, normalized stage/plan/counter/lineage schemas | contracts/workflow/ | Workflow |
 | Concrete Workflow and policy values | packs/workflows/ and packs/policies/ | Package owner + Workflow/Proof review |
 | HTTP operations, problem types, pagination | contracts/http/openapi.yaml | API composition + owning Module |
 | Runner frames and earned component contracts | contracts/runner/ | Runtime |
@@ -3876,6 +4004,7 @@ Each criterion is pass/fail. Evidence must be attached to the ctower build ticke
 | <a id="ac-wf-25"></a>AC-WF-25 | A Workflow that declares stage groups publishes only when group keys are unique, every stage names exactly one declared group, and every declared group owns at least one stage; duplicate-key, undeclared-group, no-group, and empty-group fixtures are each refused with the offending key named. The declared list order is the group order. API/CLI Board, Ticket, and Project Delivery reads expose per-group `filled / required` slot coverage derived only from that declaration, and an ungrouped Workflow renders no rollup. The no-name proof must generatively discover its denominator: recursively parse every schema-valid Workflow document under the sole authored `packs/workflows/` root and enumerate every `stages[*].key` and `stage_groups[*].key` from the parsed payload, with no curated key or package list; independently enumerate every published Catalog revision of `kind=workflow` and do the same. For each discovered revision, generate injective valid arbitrary renamings of the complete stage-key and group-key sets, rewrite references by parsed identity rather than text substitution, and prove graph decisions, policy applicability, readiness/refusal explanations, and Board/Ticket/Project Delivery folds are behaviorally identical after inverse renaming. The test must assert exact identity-set equality between discovered and exercised revisions and keys, and an omission sentinel that adds an otherwise unlisted valid stage/group to a temporary authored payload must increase the discovered set and receive a rename case automatically. Any omitted document, stage, or group therefore appears in the set difference or leaves the sentinel unexercised and fails the gate. This is complete for the claimed key space because the authored side has one recursively walked schema-selected root, the runtime side uses an unfiltered Catalog kind enumeration, and both walkers traverse every key-bearing field covered by the claim. | Publication negative fixture per rule with the named key in each refusal; grouped and ungrouped package snapshots; per-group coverage API/CLI transcripts; authored source-set and Catalog-revision manifests with exact discovered=exercised identity equality; per-revision arbitrary-rename metamorphic traces; omission-sentinel failure proof; static branch scan only as supplemental evidence, never as the denominator |
 | <a id="ac-wf-26"></a>AC-WF-26 | Each delivery-sprint refusal produces zero authoritative transition mutation — no stage instance, gate instance, Evidence, candidate, or typed delivery fact changes state — plus an exact unmet checklist and one recorded transition evaluation: a slot of the resolved required slot set unfilled; a terminal review round whose manifest omits an applicable required perspective or cites a superseded-digest verdict; a verdict holder or stage signer sharing an effective identity with a producer of its input; a placement violating a declared family-diversity placement rule; candidate-dependent proof after a candidate digest change; a `skipped` disposition whose predicate does not hold or cannot be evaluated, or which leaves a skip-set slot unfilled or unsigned; and a transition or automatic dispatch requested while any nonpassing-round, per-lineage repair, candidate-generation, nonprogressing-candidate-mutation, deadline, quota, or hard-safety bound is exhausted. The server-owned audit and consumption facts a refusal itself appends — the transition evaluation, a nonpassing-round consumption fact, the escalation — are required and are not transition mutations; the no-progress count is appended at the candidate's verification disposition instead, never by a refusal. Consuming a bound up to its maximum is not exhaustion — a run at full generation capacity still completes the QA and review its current candidate already requires — and exhaustion is a request beyond the maximum, except for the no-progress bound, which stops the run on reaching its maximum. Each bound's escalation is created where that bound is decided: at the refused transition for every bound except no-progress, and at the deciding verification disposition for no-progress. Exhaustion creates exactly one deduplicated escalation keyed to the run and that bound or lineage, which for the no-progress bound is exactly one per run, blocks further automatic dispatch, and attaches later duplicate evidence to it. Restart, reassignment, model or harness replacement, changed prose, and a new digest reset no consumed count. When no family-compliant eligible identity is healthy, the run waits with an unmet placement item and never falls back to a same-family reviewer; a protected waiver is available only where the pinned tier declares that rule waivable, is single-use and run-scoped, and never reaches `independent_of` or self-review denial. Every governed mutation including a run's first is progress-tested at the verification disposition of the candidate it produced; only a progressing mutation clears the run's no-progress count and it clears it completely; an exchanged outstanding set that resolves one lineage while opening another does not clear it. | Refusal payload and state-diff snapshot per row, family-diversity placement denial, no-healthy-family wait trace and waiver-scope negative, `d1 -> QA -> review fail -> d2` invalidation trace, no-progress counter properties including same-lineage-different-digest and A-to-B-to-A exchange fixtures, simultaneous-exhaustion single-escalation case, escalation dedupe query, and a restart/reassignment no-reset matrix |
 | <a id="ac-wf-27"></a>AC-WF-27 | A run whose checkpoint declares no landing boundary, no non-production environment, or no externally effective outcome completes through evidence-backed skips: each skipped stage resolves its skip slot set **in place of** its ordinary slots, reaches `skipped` with that set filled and signed and with none of its ordinary slots filled, and is never refused for owing a `receipt`, `deployed`, `fact`, `verification`, `smoke`, `use-proof`, `live-use-proof`, or `contract` it could not have produced. Its mandatory stage gate is never activated on that path and no gate instance is created, so a skipped `staging-qa` and `production-smoke-live-qa` complete with no staging-QA or production-smoke gate verdict and add no gate state to the model; a stage already at `waiting_gate` cannot be skipped and completes or fails on its ordinary path. Its Board lane folds skipped exactly as `succeeded`, its per-group coverage reports the skip set as the denominator with the ordinary slots marked `not applicable (skipped)`, and its Project Delivery row reaches `done` from `in_progress` without merge, staging, or release facts while still requiring current proof for every declared exit criterion. The one non-skippable stage whose entry names a delivery target, `release-preflight`, is entered on the checkpoint's declared absence of that target, still fills its `manifest` slot, and still passes its gate. A skipped stage's ordinary entry contract does not gate its readiness — `staging-qa` becomes ready behind a skipped `staging-deploy` with no staging report in existence, and `production-smoke-live-qa` behind a skipped `production-deploy` with no production receipt — while every pinned graph dependency still holds, `skipped` counting as the predecessor's success-equivalent disposition. A stage that declares no skip predicate cannot be skipped at any risk tier; an unsatisfied predicate refuses the `skipped` request outright rather than converting or defaulting it, leaving the ordinary set as the stage's only path; a checkpoint whose delivery-surface field is undeclared rather than declared-absent is `STATE_UNKNOWN`, refuses the skip, and is not treated as absence; and a zero-exit-criterion checkpoint remains visibly unconfigured rather than `done`. | Non-software run trace with filled skip sets and an assertion that no ordinary slot and no stage gate of a skipped stage is filled, demanded, or passed, plus a `waiting_gate`-cannot-be-skipped negative, per-stage skippability matrix, a readiness trace showing no stage waits on an entry artifact its skipped predecessor never produced, unsatisfied-predicate and undeclared-surface denials, per-group coverage snapshot, Board fold and Project Delivery row snapshots, and a zero-criterion anti-fixture |
+| <a id="ac-wf-28"></a>AC-WF-28 | One strict `ctower.workflow-definition/v1` source schema accepts the approved S8 Workflow YAML as source-schema valid and rejects duplicate/unknown YAML structure; a published-key scalar that the authored Catalog component-key or company-key contract refuses is refused at source-schema time rather than at publication, while a source-local key shorter than a Catalog key is accepted. Semantic plan resolves the five configuration layers — including the layer-4 ticket schema published under its authored `ticket_schema` component kind — into one normalized `ctower.workflow/v1` payload or reports every unresolved/nonnarrowing reference without mutation. A revision that authors every Workflow-owned fact — group vocabulary and total stage mapping, ordinary and skip slot sets with their signing slots, gate locations, typed failure routes, and the derived single-entry/terminal endpoints — publishes; a payload missing any one of them is refused with that fact and its stage named, and no default is supplied. S7 visual -> canonical YAML -> visual and S8 YAML -> visual -> canonical YAML preserve the same normalized digest. Project overlays add only required slot contracts in deterministic base-then-overlay order; removal/relaxation, owner/graph/policy/seat mutation, unknown project/stage/evidence keys, divergent outgoing-edge `requires` sets, and base/overlay collisions each prevent publication. Source validation alone never marks a revision active. | Exact approved-mock source-positive fixture; duplicate/alias/tag/unknown-field negatives; published-key vs source-local key-class matrix against both authored key contracts; `ticket_schema` component-kind enumeration and Catalog constraint proof; five-layer resolution manifest; complete-revision publication with one gate-3 completeness negative per Workflow-owned fact; terminal-stage required-set proof with no outgoing edge; monotonic-overlay mutation matrix for two projects plus no-overlay base; visual/YAML semantic round-trip digest; unresolved compact-mock plan diagnostics; prior-pointer-unchanged activation proof; assigned/signing/unassigned D28 anti-inference fixtures |
 
 ### Evidence
 
@@ -4396,7 +4525,7 @@ Each validation command below is designated as part of the item’s deliverable.
 
 | Stable ID | Goal | Dependencies | Owning capability/persona | Files/components | Exit evidence | Designated validation command |
 |---|---|---|---|---|---|---|
-| CT-I2-001 | Deepen the generic Workflow Module and publish `engineering.software-factory@1` Workflow/Execution/Gate/Evidence revisions: arbitrary stages, the seven declared delivery-sprint stage groups and their derived coverage rollup, per-stage required evidence slots and signing slots, package classification, `required_perspectives`, configurable finite bounds including `max_nonprogressing_candidate_mutations`, declared skip predicates with their replacing skip slot sets, append-only facts, stable lineages, typed routes, and readiness evaluations. | CT-I1-008 **full normative I1 exit** (development `GO`/`GO_WITH_LIMITS` does not satisfy this dependency), CT-L0-004, CT-L0-006..007 | Engineer + Engineering Manager | Kernel `workflow/`; `packs/workflows/`; `packs/policies/execution/` | Cross-package graph/group/lineage/no-reset/refusal/single-escalation proofs; AC-WF-25 publication negatives; AC-WF-27 non-software skip run | `uv run pytest tests/modules/workflow tests/acceptance/increment-2/test_workflow.py -q` |
+| CT-I2-001 | Deepen the generic Workflow Module and publish `engineering.software-factory@1` Workflow/Execution/Gate/Evidence revisions: first freeze the S7/S8 `ctower.workflow-definition/v1` source schema and five-layer source-to-normalized compilation contract, adding the `ticket_schema` component kind to the authored component-kind enumeration and the Catalog kind constraint in that same change; then support arbitrary stages, the seven declared delivery-sprint stage groups and their derived coverage rollup, per-stage required evidence slots and signing slots, monotonic per-project evidence overlays, package classification, `required_perspectives`, configurable finite bounds including `max_nonprogressing_candidate_mutations`, declared skip predicates with their replacing skip slot sets, append-only facts, stable lineages, typed routes, and readiness evaluations. | CT-I1-008 **full normative I1 exit** (development `GO`/`GO_WITH_LIMITS` does not satisfy this dependency), CT-L0-004, CT-L0-006..007 | Engineer + Engineering Manager | `contracts/workflow/`; `contracts/components/`; `packages/ctower-kernel/migrations/`; Kernel `workflow/`; `packs/workflows/`; `packs/policies/execution/` | AC-WF-28 approved-source/round-trip/overlay suite; cross-package graph/group/lineage/no-reset/refusal/single-escalation proofs; AC-WF-25 publication negatives; AC-WF-27 non-software skip run | `uv run pytest tests/contracts/workflow tests/modules/workflow tests/acceptance/increment-2/test_workflow.py -q` |
 | CT-I2-002 | Implement keyed documents/artifacts, full typed stage-slot Evidence/attestations/signing assignments/dependencies/invalidation, gate instances and sealed verdict attempts. | CT-I2-001, CT-I1-003 | Engineer + Review + CSO | Kernel `proof/`; `contracts/evidence/` | Self-review and signer mismatch denial, sealed reveal, selective slot/gate invalidation, quarantine promotion | `uv run pytest tests/modules/proof tests/acceptance/increment-2/test_gates.py -q` |
 | CT-I2-003 | Implement strongest-healthy Commander profile resolution and effective manifests pinning the local harness/supervisor/target/workspace/telemetry revisions, secret refs, egress/resources, and provenance. | CT-I2-001, CT-L0-007 | Engineer + CSO | Kernel `catalog/`, `runtime/`; `packs/personas/`; `apps/ctower-runner/compose.py` | Selection/failover, support-only denial, immutable local pins, and no-plaintext scans | `uv run pytest tests/modules/catalog tests/modules/runtime/test_profiles.py -q` |
 | CT-I2-004 | Implement Runtime jobs/leases/fencing/cursors/ACKs/log chunks/gaps/checkpoints/reconciler; the versioned CommandGuard required by [issue #17](https://github.com/simjak/ctower/issues/17) at every final local Harness and Supervisor command-dispatch boundary; and the justified local process/tmux plus Codex/Claude compositions. Freeze exact guard mechanics with these first real consumers, not before, and publish no general remote/image Seam. | CT-I2-001, CT-I2-003 | Engineer + DevOps + QA + CSO | Kernel `runtime/`; `packages/ctower-runner-sdk/`; `apps/ctower-runner/`; conformance tests | Forced loss/resume, stale denial, zero orphans, local composition; every registered command-dispatch Adapter's guard invocation, target resolution, zero block execution, one-use override/replay/expiry, redacted receipts, and bypass rejection; remote/image absent and not exercised | `uv run pytest tests/conformance/runner tests/chaos -q` |
