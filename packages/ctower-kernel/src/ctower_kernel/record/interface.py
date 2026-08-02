@@ -320,20 +320,22 @@ class TicketCommand:
     client_command_id: UUID
     initial_custodian_id: UUID
     priority: str
-    project_key: str
+    project_key: str | None
     source: SourceReference
     title: str
 
     def request_payload(self) -> dict[str, object]:
         """Return the request body without transport authority."""
 
-        return {
+        payload: dict[str, object] = {
             "initial_custodian_id": str(self.initial_custodian_id),
             "priority": self.priority,
-            "project_key": self.project_key,
             "source": asdict(self.source),
             "title": self.title,
         }
+        if self.project_key is not None:
+            payload["project_key"] = self.project_key
+        return payload
 
 
 @dataclass(frozen=True, slots=True)

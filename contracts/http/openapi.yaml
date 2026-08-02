@@ -2722,7 +2722,7 @@
       "TicketCreateRequest": {
         "type": "object",
         "additionalProperties": false,
-        "required": ["priority", "project_key", "source", "title"],
+        "required": ["priority", "source", "title"],
         "properties": {
           "initial_custodian_id": {"type": ["string", "null"], "format": "uuid"},
           "priority": {"$ref": "#/components/schemas/Priority"},

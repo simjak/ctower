@@ -1,6 +1,6 @@
 """DO NOT EDIT: generated file; regenerate from declared inputs.
 
-Authored contract digest: sha256:6336389865410020b7eb772f268feb2fa8668d557c6c7022bad7d73ca33fae95
+Authored contract digest: sha256:f60c60abf7b56369685daa3af01218710c7d02d68be196a7d1f0ebce74b0c771
 """
 
 from __future__ import annotations
@@ -1768,7 +1768,7 @@ class TicketCommentResult(_BoundaryModel):
 class TicketCreateRequest(_BoundaryModel):
     initial_custodian_id: UUID | None = None
     priority: Priority
-    project_key: Annotated[str, Field(pattern="^[a-z][a-z0-9-]{2,63}$")]
+    project_key: Annotated[str, Field(pattern="^[a-z][a-z0-9-]{2,63}$")] | None = None
     source: SourceReference
     title: Annotated[str, Field(min_length=1, max_length=200)]
 

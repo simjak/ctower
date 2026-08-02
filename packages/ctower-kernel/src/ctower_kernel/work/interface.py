@@ -478,7 +478,7 @@ def _validation_refusal(command: TicketCommand, detail: str) -> RecordProblem:
 def _ticket_validation_refusal(command: TicketCommand) -> RecordProblem | None:
     if command.priority not in PRIORITIES:
         return _refusal(command, "Ticket priority is outside P0/P1/P2.")
-    if _PROJECT_KEY.fullmatch(command.project_key) is None:
+    if command.project_key is not None and _PROJECT_KEY.fullmatch(command.project_key) is None:
         return _validation_refusal(command, "Ticket project key is invalid.")
     return None
 

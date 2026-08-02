@@ -96,6 +96,7 @@ def create_ticket(
             actor,
             command,
             result,
+            project_key=project,
             identifiers=identifiers,
             request_digest=request_digest,
             now=now,
@@ -130,6 +131,15 @@ def _prepare_ticket(
     )
     if isinstance(project, RecordProblem):
         return _refuse(transaction, actor, command, request_digest, project, now)
+    if command.project_key is not None and command.project_key != project:
+        return _refuse(
+            transaction,
+            actor,
+            command,
+            request_digest,
+            _scope_problem(command.client_command_id),
+            now,
+        )
     project_refusal = transaction.require_project_mutation(
         actor.tenant_id,
         actor.principal_id,
@@ -426,6 +436,7 @@ def _append_ticket_created(
     command: TicketCommand,
     result: TicketCommandResult,
     *,
+    project_key: str,
     identifiers: _TicketIds,
     request_digest: bytes,
     now: datetime,
@@ -443,7 +454,7 @@ def _append_ticket_created(
         payload=TicketCreatedPayload(
             custodian_id=command.initial_custodian_id,
             priority=command.priority,
-            project_key=command.project_key,
+            project_key=project_key,
             source_kind=command.source.kind,
             source_ref=command.source.ref,
             title=command.title,

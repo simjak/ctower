@@ -149,6 +149,8 @@ def _ticket_commit(
     if action.ticket_command is None or action.ticket_ids is None:
         return None
     command = action.ticket_command
+    if command.project_key is None:
+        raise RuntimeError("create-ticket intake project scope is unavailable")
     event = EventEnvelope(
         actor_principal_id=actor.principal_id,
         aggregate_id=action.ticket_ids.ticket,
