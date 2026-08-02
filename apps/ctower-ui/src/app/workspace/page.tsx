@@ -1,6 +1,6 @@
 import type { ReactElement, ReactNode } from "react";
 import { Chrome } from "@/frame/Chrome";
-import { NoSourceYet, Resolved } from "@/frame/Declared";
+import { KnownValue, NoSourceYet, Resolved } from "@/frame/Declared";
 import { RecordFoot } from "@/frame/RecordFoot";
 import { recordAdapter, SOURCE_LABELS } from "@/read/adapter";
 import type { SessionWorkspace } from "@/read/interface";
@@ -21,32 +21,16 @@ function Lede(): ReactElement {
   );
 }
 
-function Row({
-  label,
-  value,
-  sub,
-}: {
-  readonly label: string;
-  readonly value: string;
-  readonly sub?: string;
-}): ReactElement {
-  return (
-    <li>
-      <span className="k">{label}</span>
-      <span className="v">
-        {value}
-        {sub === undefined ? null : <span className="sub">{sub}</span>}
-      </span>
-    </li>
-  );
-}
-
+/**
+ * The screen renders whatever facts the source names.
+ *
+ * Round-1 review of PR #215 found this page hardcoding the interim source's
+ * vocabulary — `bin/mux spawn`, "tmux session" — which made the adapter-only
+ * swap claim untrue. It now knows only that a workspace is a list of labelled
+ * facts and an optional start command, so a native G5 source can replace the
+ * interim one without a screen edit and without a false label.
+ */
 function WorkspaceBody({ workspace }: { readonly workspace: SessionWorkspace }): ReactElement {
-  const spawn = [
-    `bin/mux spawn ${workspace.crew} \\`,
-    `  --cwd ${workspace.cwd} \\`,
-    `  -- ${workspace.harness} ...`,
-  ].join("\n");
   return (
     <>
       <Chrome section="Workspace" />
@@ -55,44 +39,39 @@ function WorkspaceBody({ workspace }: { readonly workspace: SessionWorkspace }):
           <Lede />
 
           <ChoiceTabs
-            label="Choose a crew"
+            label="Choose a session"
             route="/workspace"
-            selected={workspace.crew}
-            choices={workspace.crews.map((crew) => ({ key: crew, label: crew }))}
+            selected={workspace.chosen}
+            choices={workspace.choices.map((choice) => ({ key: choice, label: choice }))}
           />
 
           <section className="panel" style={{ marginTop: "16px" }}>
             <header>
               <h2>Session start</h2>
-              <span className="sub">{workspace.crew}</span>
+              <span className="sub">{workspace.sourceNote}</span>
             </header>
             <ul className="kv">
-              <Row label="Crew" value={workspace.crew} sub={`tmux session ${workspace.session}`} />
-              <Row
-                label="Worktree"
-                value={workspace.cwd}
-                sub={
-                  workspace.project === null
-                    ? "not a git checkout"
-                    : `repository ${workspace.project}`
-                }
-              />
-              <Row
-                label="Branch"
-                value={
-                  workspace.branch === null
-                    ? "no branch recorded"
-                    : `${workspace.branch}${workspace.head === null ? "" : ` @ ${workspace.head}`}`
-                }
-                {...(workspace.headSubject === null ? {} : { sub: workspace.headSubject })}
-              />
-              <Row
-                label="Harness"
-                value={workspace.harness}
-                sub="from the capture bridge's crew list"
-              />
+              {workspace.facts.map((entry) => (
+                <li key={entry.label}>
+                  <span className="k">{entry.label}</span>
+                  <span className="v">
+                    <KnownValue value={entry.value} />
+                    {entry.detail === null ? null : <span className="sub">{entry.detail}</span>}
+                  </span>
+                </li>
+              ))}
             </ul>
-            <pre className="cmdblock">{spawn}</pre>
+            <div className="kv">
+              <li>
+                <span className="k">Start command</span>
+                <span className="v">
+                  <KnownValue
+                    value={workspace.startCommand}
+                    render={(text) => <pre className="cmdblock">{text}</pre>}
+                  />
+                </span>
+              </li>
+            </div>
           </section>
 
           <section className="panel" style={{ marginTop: "16px" }}>
@@ -111,7 +90,7 @@ function WorkspaceBody({ workspace }: { readonly workspace: SessionWorkspace }):
 
           <RecordFoot
             readPath={SOURCE_LABELS.workspace}
-            watermark={`${workspace.crews.length.toString()} live crews on the bridge`}
+            watermark={`${workspace.choices.length.toString()} sessions offered by this source`}
           />
         </div>
       </main>

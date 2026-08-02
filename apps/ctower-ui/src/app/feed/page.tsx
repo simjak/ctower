@@ -1,14 +1,14 @@
 import type { ReactElement, ReactNode } from "react";
 import { Chrome } from "@/frame/Chrome";
-import { Resolved } from "@/frame/Declared";
+import { KnownValue, Resolved } from "@/frame/Declared";
 import { RecordFoot } from "@/frame/RecordFoot";
 import { recordAdapter, SOURCE_LABELS } from "@/read/adapter";
 import { clockText } from "@/read/elapsed";
-import type { PaneCapture } from "@/read/interface";
+import type { SessionStream } from "@/read/interface";
+import { ChoiceTabs } from "@/surfaces/ChoiceTabs";
 import { Composer } from "@/surfaces/feed/Composer";
 import { FeedViews } from "@/surfaces/feed/FeedViews";
-import { PaneRaw, PaneThread } from "@/surfaces/feed/PaneThread";
-import { ChoiceTabs } from "@/surfaces/ChoiceTabs";
+import { StreamRaw, StreamThread } from "@/surfaces/feed/StreamThread";
 import { readParam } from "@/surfaces/screenParams";
 
 export const dynamic = "force-dynamic";
@@ -20,35 +20,43 @@ function Lede(): ReactElement {
       <p>
         The session as a conversation: what it decided, what it ran, and every turn an operator or
         commander put into it. Tool calls collapse into the flow so the reasoning stays readable,
-        and the raw terminal is one switch away when something needs debugging.
+        and the raw view is one switch away when something needs debugging.
       </p>
     </div>
   );
 }
 
-function SessionMeta({ capture }: { readonly capture: PaneCapture }): ReactElement {
+/**
+ * The session header renders the facts the source names and the fidelity it
+ * claims for itself. The screen makes no claim of its own about what kind of
+ * stream this is — round-1 review's F4.
+ */
+function StreamMeta({ stream }: { readonly stream: SessionStream }): ReactElement {
   return (
     <>
       <span className="av" style={{ width: "27px", height: "27px", fontSize: "10.5px" }}>
-        {capture.harness.slice(0, 2).toUpperCase()}
+        SS
       </span>
       <span>
-        <span className="who">{capture.crew}</span> <span className="crew">{capture.session}</span>
+        <span className="who">{stream.chosen}</span>
       </span>
-      <span className="chip">{capture.harness}</span>
+      {stream.header.map((entry) => (
+        <span className="chip" key={entry.label}>
+          {entry.label} <KnownValue value={entry.value} />
+        </span>
+      ))}
       <span className="live">
         <span className="pulse" />
-        captured {clockText(capture.capturedAt)}
+        observed {clockText(stream.observedAt)}
       </span>
-      {capture.wasRedacted ? (
+      {stream.wasRedacted ? (
         <span className="verdict v-changes">redacted before render</span>
       ) : null}
-      <span className="verdict v-held">capture, not a recorded session</span>
     </>
   );
 }
 
-function FeedBody({ capture }: { readonly capture: PaneCapture }): ReactElement {
+function FeedBody({ stream }: { readonly stream: SessionStream }): ReactElement {
   return (
     <>
       <Chrome section="Feed" />
@@ -57,24 +65,24 @@ function FeedBody({ capture }: { readonly capture: PaneCapture }): ReactElement 
           <Lede />
 
           <ChoiceTabs
-            label="Choose a crew"
+            label="Choose a session"
             route="/feed"
-            selected={capture.crew}
-            choices={capture.crews.map((crew) => ({ key: crew, label: crew }))}
+            selected={stream.chosen}
+            choices={stream.choices.map((choice) => ({ key: choice, label: choice }))}
           />
 
           <section className="panel" style={{ marginTop: "16px" }}>
             <FeedViews
-              sessionMeta={<SessionMeta capture={capture} />}
-              chat={<PaneThread capture={capture} />}
-              raw={<PaneRaw capture={capture} />}
+              sessionMeta={<StreamMeta stream={stream} />}
+              chat={<StreamThread stream={stream} />}
+              raw={<StreamRaw stream={stream} />}
             />
             <Composer />
           </section>
 
           <RecordFoot
             readPath={SOURCE_LABELS.feed}
-            watermark={`${capture.lines.length.toString()} captured lines from ${capture.cwd} · a terminal capture, not a typed turn stream`}
+            watermark={`${stream.turns.length.toString()} turns over ${stream.rawLines.length.toString()} lines · ${stream.fidelityNote}`}
           />
         </div>
       </main>
@@ -87,10 +95,10 @@ export default async function FeedPage({
 }: {
   readonly searchParams: Promise<Record<string, string | string[] | undefined>>;
 }): Promise<ReactNode> {
-  const capture = await recordAdapter.sessionPane(readParam(await searchParams, "seat"));
+  const stream = await recordAdapter.sessionStream(readParam(await searchParams, "seat"));
   return (
     <Resolved
-      reading={capture}
+      reading={stream}
       frame={(declared) => (
         <>
           <Chrome section="Feed" />
@@ -110,7 +118,7 @@ export default async function FeedPage({
         </>
       )}
     >
-      {(value) => <FeedBody capture={value} />}
+      {(value) => <FeedBody stream={value} />}
     </Resolved>
   );
 }

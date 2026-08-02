@@ -23,12 +23,14 @@
  *    exhaustion is counted and written once to stderr.
  * 5. Idempotency before retrying a mutation — satisfied by construction. HTTP
  *    here is `GET` with no body or method parameter, and the process reader
- *    accepts only argv from `READ_ONLY_COMMANDS`, so no mutation call site
- *    exists in this app to need a coordination key.
+ *    takes a named inspection from the closed grammar in `read/commands.ts`
+ *    rather than caller argv, so no mutation call site is expressible in this
+ *    app and none needs a coordination key.
  */
 
 import { execFile } from "node:child_process";
-import { basename } from "node:path";
+import { invocationFor } from "./commands";
+import type { Inspection } from "./commands";
 
 export type FailureClass = "transient" | "permanent";
 
@@ -231,13 +233,6 @@ export async function boundedRead(
   throw new ReadExhausted(spent);
 }
 
-/**
- * The exact argv heads this app may execute. A command outside this set is
- * refused before a process is created, so the process reader cannot become a
- * general shell: it is a read port over four inspection tools.
- */
-const READ_ONLY_COMMANDS = new Set(["git", "crontab", "systemctl", "mux"]);
-
 /** Child-process reads: a tighter attempt bound than HTTP, same policy shape. */
 export const PROCESS_READ_BOUNDS: ReadBounds = {
   attemptTimeoutMs: 6_000,
@@ -246,15 +241,6 @@ export const PROCESS_READ_BOUNDS: ReadBounds = {
   baseDelayMs: 100,
   maxDelayMs: 1_500,
 };
-
-export interface ProcessRead {
-  /** argv[0]; must be a member of the read-only command set. */
-  readonly command: string;
-  readonly args: readonly string[];
-  readonly cwd?: string;
-  /** Bytes of stdout to accept before the read is refused as oversized. */
-  readonly maxBytes?: number;
-}
 
 interface ChildOutcome {
   readonly stdout: string;
@@ -277,16 +263,20 @@ function classifyChild(error: Error): ClassifiedFailure {
   return { failureClass: "permanent", detail: error.message };
 }
 
-function runChild(request: ProcessRead, timeoutMs: number): Promise<ChildOutcome> {
+function runChild(
+  executable: string,
+  args: readonly string[],
+  maxBytes: number,
+  timeoutMs: number
+): Promise<ChildOutcome> {
   return new Promise((resolve) => {
     execFile(
-      request.command,
-      [...request.args],
+      executable,
+      [...args],
       {
-        cwd: request.cwd,
         timeout: timeoutMs,
         killSignal: "SIGKILL",
-        maxBuffer: request.maxBytes ?? 4_000_000,
+        maxBuffer: maxBytes,
         windowsHide: true,
         shell: false,
       },
@@ -300,33 +290,29 @@ function runChild(request: ProcessRead, timeoutMs: number): Promise<ChildOutcome
 }
 
 /**
- * Read one child process's stdout under the same bounded policy as HTTP.
+ * Read one inspection's stdout under the same bounded policy as HTTP.
  *
- * The command is checked against `READ_ONLY_COMMANDS` first and the child is
- * started with an argv array and `shell: false`, so no caller can turn this
- * into a shell. A non-zero exit is classified permanent — an inspection tool
- * that refuses is answering, not failing — while a timeout or kill is transient
- * and retried under the deadline.
+ * The caller names an inspection; `read/commands.ts` builds the argv from a
+ * closed grammar and resolves the tool to an absolute path. No caller supplies
+ * argv, so a mutating subcommand is not expressible here — the read-only
+ * guarantee is structural rather than a convention every call site must keep.
+ *
+ * A non-zero exit is classified permanent — an inspection tool that refuses is
+ * answering, not failing — while a timeout or kill is transient and retried
+ * under the deadline.
  */
 export async function boundedProcess(
-  request: ProcessRead,
+  inspection: Inspection,
   bounds: ReadBounds = PROCESS_READ_BOUNDS
 ): Promise<string> {
-  if (!READ_ONLY_COMMANDS.has(basename(request.command))) {
-    throw new ReadRefused({
-      reason: `${request.command} is not one of this surface's read-only commands`,
-      failureClass: "permanent",
-      attempts: 0,
-      elapsedMs: 0,
-    });
-  }
+  const invocation = invocationFor(inspection);
   const startedAt = Date.now();
   let attempts = 0;
   let last: ClassifiedFailure = {
     failureClass: "transient",
     detail: "the process read made no attempt",
   };
-  const label = `${request.command} ${request.args.join(" ")}`;
+  const label = `${invocation.label} (${invocation.tool})`;
 
   while (attempts < bounds.maxAttempts) {
     const remainingBefore = bounds.maxElapsedMs - (Date.now() - startedAt);
@@ -334,7 +320,12 @@ export async function boundedProcess(
       break;
     }
     attempts += 1;
-    const outcome = await runChild(request, Math.min(bounds.attemptTimeoutMs, remainingBefore));
+    const outcome = await runChild(
+      invocation.executable,
+      invocation.args,
+      invocation.maxBytes,
+      Math.min(bounds.attemptTimeoutMs, remainingBefore)
+    );
     if (outcome.failure === null) {
       return outcome.stdout;
     }

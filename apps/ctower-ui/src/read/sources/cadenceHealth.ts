@@ -30,12 +30,14 @@ export function healthOf(
 export function registryOf(
   beats: readonly Beat[],
   sourceLabel: string,
-  sweptAt: string
+  sweptAt: string,
+  healthRule: string
 ): CadenceRegistry {
   const count = (health: BeatHealth): number =>
     beats.filter((beat) => beat.health === health).length;
   return {
     beats,
+    healthRule,
     registered: beats.length,
     arriving: count("alive"),
     late: count("late"),

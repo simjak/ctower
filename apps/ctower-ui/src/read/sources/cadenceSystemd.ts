@@ -1,6 +1,6 @@
 import { boundedProcess } from "../bounded";
 import { asRecord } from "../json";
-import { healthOf, registryOf } from "./cadenceHealth";
+import { healthOf, HEALTH_RULE, registryOf } from "./cadenceHealth";
 import { redacted } from "./redact";
 import type { Beat, CadenceRegistry } from "../interface";
 
@@ -36,12 +36,13 @@ function seatOf(unit: string): string {
 
 export async function readSystemdCadence(): Promise<CadenceRegistry> {
   const now = Date.now();
-  const text = await boundedProcess({
-    command: "systemctl",
-    args: ["--user", "list-timers", "--all", "--output=json"],
-  });
+  const text = await boundedProcess({ op: "systemd.timers" });
   const parsed: unknown = JSON.parse(text);
-  const rows = Array.isArray(parsed) ? parsed : [];
+  if (!Array.isArray(parsed)) {
+    // a wrong-shaped payload is a failed read, not an empty registry
+    throw new Error("systemctl did not return a timer list; the payload shape is not an array");
+  }
+  const rows: readonly unknown[] = parsed;
   const beats: Beat[] = rows.map((row): Beat => {
     const timer = asRecord(row, "systemd.timer");
     const unit = typeof timer.unit === "string" ? timer.unit : "unnamed.timer";
@@ -62,5 +63,10 @@ export async function readSystemdCadence(): Promise<CadenceRegistry> {
       why,
     };
   });
-  return registryOf(beats, "systemctl --user list-timers", new Date(now).toISOString());
+  return registryOf(
+    beats,
+    "systemctl --user list-timers",
+    new Date(now).toISOString(),
+    HEALTH_RULE
+  );
 }

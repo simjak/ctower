@@ -2,6 +2,7 @@ import { randomBytes, randomUUID } from "node:crypto";
 import type { DurabilityState, Priority, ProjectionHealth, TelemetryContext } from "@ctower/client";
 import { boundedRead, ReadRefused } from "./bounded";
 import { reading } from "./outcome";
+import { seatNameOf, seatNames } from "./sources/seatNames";
 import {
   asArray,
   asInteger,
@@ -101,7 +102,7 @@ function optionalText(value: unknown, field: string): string | null {
   return text === null || text === "None" ? null : text;
 }
 
-function toCard(value: unknown): BoardCard {
+function toCard(value: unknown, names: Readonly<Record<string, string>>): BoardCard {
   const row = asRecord(value, "board.card");
   return {
     ticketId: asString(row.ticket_id, "board.card.ticket_id"),
@@ -112,7 +113,12 @@ function toCard(value: unknown): BoardCard {
     stageLabel: optionalText(row.stage_label, "board.card.stage_label"),
     activityClass: optionalText(row.activity_class, "board.card.activity_class"),
     custodianId: asString(row.custodian_id, "board.card.custodian_id"),
+    custodianName: seatNameOf(names, asString(row.custodian_id, "board.card.custodian_id")),
     assigneeId: asStringOrNull(row.assignee_id, "board.card.assignee_id"),
+    assigneeName: seatNameOf(
+      names,
+      asStringOrNull(row.assignee_id, "board.card.assignee_id") ?? ""
+    ),
     blockerReason: asStringOrNull(row.blocker_reason, "board.card.blocker_reason"),
     blockerOpenedAt: asStringOrNull(row.blocker_opened_at, "board.card.blocker_opened_at"),
     risk: optionalText(row.risk, "board.card.risk"),
@@ -121,7 +127,7 @@ function toCard(value: unknown): BoardCard {
   };
 }
 
-function toTicket(value: unknown): TicketRecord {
+function toTicket(value: unknown, names: Readonly<Record<string, string>>): TicketRecord {
   const row = asRecord(value, "ticket");
   const source = asRecord(row.source, "ticket.source");
   return {
@@ -129,6 +135,7 @@ function toTicket(value: unknown): TicketRecord {
     title: asString(row.title, "ticket.title"),
     priority: asMember(row.priority, "ticket.priority", PRIORITIES),
     custodianId: asString(row.custodian_id, "ticket.custodian_id"),
+    custodianName: seatNameOf(names, asString(row.custodian_id, "ticket.custodian_id")),
     createdAt: asString(row.created_at, "ticket.created_at"),
     durabilityState: asMember(row.durability_state, "ticket.durability_state", DURABILITY),
     version: asInteger(row.version, "ticket.version"),
@@ -156,12 +163,14 @@ function toEvent(value: unknown): RecordEvent {
 }
 
 async function loadTicket(ticketId: string): Promise<TicketRecord> {
-  return toTicket(await read(`/v1/tickets/${encodeURIComponent(ticketId)}`));
+  const names = await seatNames();
+  return toTicket(await read(`/v1/tickets/${encodeURIComponent(ticketId)}`), names);
 }
 
 async function loadBoard(): Promise<BoardSnapshot> {
   const view = asRecord(await read("/v1/board"), "board");
-  const cards = asArray(view.cards, "board.cards").map(toCard);
+  const names = await seatNames();
+  const cards = asArray(view.cards, "board.cards").map((card) => toCard(card, names));
   const entries: readonly BoardEntry[] = await Promise.all(
     cards.map(async (card): Promise<BoardEntry> => ({
       card,

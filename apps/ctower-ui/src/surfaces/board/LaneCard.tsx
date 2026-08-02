@@ -29,9 +29,12 @@ export function LaneCard({
 }): ReactElement {
   const { card, ticket } = entry;
   const change = card.deliveryFacts[0];
+  // F-001a: the seat name when the record resolves one, and an honest
+  // "seat unnamed" otherwise — never a ULID truncated to a single character by
+  // the column, which is what the audit found
   const custodian = (
-    <span className="seat">
-      <span className="nm">custodian {shortId(card.custodianId)}</span>
+    <span className="seat" title={`custodian principal ${card.custodianId}`}>
+      <span className="nm">{card.custodianName ?? "seat unnamed"}</span>
     </span>
   );
 
@@ -40,9 +43,13 @@ export function LaneCard({
       <div className="card-top">
         <span className="tid">{shortId(card.ticketId)}</span>
         <span className={priorityClass(card.priority)}>{card.priority}</span>
-        <span className="right">
-          <span className={change === undefined ? "pr" : "pr live"}>{change ?? "PR —"}</span>
-        </span>
+        {/* the audit found a dash chip on all thirteen cards: a change
+            reference the record does not carry is simply not shown */}
+        {change === undefined ? null : (
+          <span className="right">
+            <span className="pr live">{change}</span>
+          </span>
+        )}
       </div>
       <h3 className="card-title">
         <StateGlyph name={laneGlyph(card.lane, card.blockerReason !== null)} />

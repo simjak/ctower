@@ -1,5 +1,6 @@
 import type { BoardLane, DurabilityState, Priority, ProjectionHealth } from "@ctower/client";
 import type { ReadFailure } from "./bounded";
+import type { Known } from "./sources/maybe";
 
 /**
  * The record-read contract this surface renders.
@@ -66,7 +67,10 @@ export interface BoardCard {
   readonly stageLabel: string | null;
   readonly activityClass: string | null;
   readonly custodianId: string;
+  /** The seat behind the custodian principal, when the record names one. */
+  readonly custodianName: string | null;
   readonly assigneeId: string | null;
+  readonly assigneeName: string | null;
   readonly blockerReason: string | null;
   readonly blockerOpenedAt: string | null;
   readonly risk: string | null;
@@ -79,6 +83,7 @@ export interface TicketRecord {
   readonly title: string;
   readonly priority: Priority;
   readonly custodianId: string;
+  readonly custodianName: string | null;
   readonly createdAt: string;
   readonly durabilityState: DurabilityState;
   readonly version: number;
@@ -171,6 +176,8 @@ export interface Beat {
 
 export interface CadenceRegistry {
   readonly beats: readonly Beat[];
+  /** The derivation the source used, so the screen states it without knowing it. */
+  readonly healthRule: string;
   readonly registered: number;
   readonly arriving: number;
   readonly late: number;
@@ -197,21 +204,39 @@ export interface AuthoredFiles {
   readonly root: string;
   readonly revision: string;
   readonly entries: readonly TreeEntry[];
+  /** Files the revision holds, and how many of them this page is showing. */
+  readonly sourceTotal: number;
+  readonly shownTotal: number;
+  readonly truncated: boolean;
   readonly openPath: string | null;
   readonly openLines: readonly string[];
   readonly commits: readonly CommitLine[];
 }
 
+/**
+ * One labelled fact a screen renders without knowing where it came from.
+ *
+ * Round-1 review found the screens hardcoding interim-source vocabulary —
+ * `bin/mux spawn`, "tmux session", "capture bridge" — which made the
+ * adapter-only swap claim untrue. A source now *names* its own facts, and the
+ * screen renders whatever it is handed, so a native source can replace an
+ * interim one without a screen edit or a false label.
+ */
+export interface LabelledFact {
+  readonly label: string;
+  readonly value: Known<string>;
+  readonly detail: string | null;
+}
+
 export interface SessionWorkspace {
-  readonly crew: string;
-  readonly session: string;
-  readonly harness: string;
-  readonly cwd: string;
-  readonly branch: string | null;
-  readonly head: string | null;
-  readonly headSubject: string | null;
-  readonly project: string | null;
-  readonly crews: readonly string[];
+  /** The selected subject, and the choices the source offers for it. */
+  readonly chosen: string;
+  readonly choices: readonly string[];
+  readonly facts: readonly LabelledFact[];
+  /** How this session was started, when the source records it. */
+  readonly startCommand: Known<string>;
+  /** What the source calls itself, for the panel subtitle. */
+  readonly sourceNote: string;
 }
 
 export interface WorktreeFile {
@@ -228,24 +253,49 @@ export interface DiffLine {
 
 export interface SessionWorktree {
   readonly root: string;
-  readonly branch: string | null;
-  readonly head: string | null;
+  /** Worktrees git still lists whose directory is gone; reaped, not shown. */
+  readonly reaped: number;
+  readonly openPath: string | null;
+  readonly openDiff: readonly DiffLine[];
+  readonly openDiffRead: Known<string>;
+  readonly branch: Known<string>;
+  readonly head: Known<string>;
   readonly base: string;
   readonly files: readonly WorktreeFile[];
+  /** Whether the file stat answered — an unread stat is not a clean tree. */
+  readonly filesRead: Known<string>;
   readonly diff: readonly DiffLine[];
+  readonly diffRead: Known<string>;
   readonly worktrees: readonly string[];
   readonly truncated: boolean;
 }
 
-export interface PaneCapture {
-  readonly crew: string;
-  readonly session: string;
-  readonly harness: string;
-  readonly cwd: string;
-  readonly lines: readonly string[];
-  readonly capturedAt: string;
+/** One turn of a session stream, whatever produced it. */
+export interface StreamTurn {
+  readonly body: readonly string[];
+  readonly tools: readonly StreamTool[];
+}
+
+export interface StreamTool {
+  readonly summary: string;
+  readonly output: readonly string[];
+}
+
+/**
+ * A session as a stream of turns. Source-neutral: a terminal capture and a
+ * typed G5 turn stream both satisfy it, and the screen renders `header`,
+ * `turns` and `rawLines` without knowing which answered.
+ */
+export interface SessionStream {
+  readonly chosen: string;
+  readonly choices: readonly string[];
+  readonly header: readonly LabelledFact[];
+  readonly turns: readonly StreamTurn[];
+  readonly rawLines: readonly string[];
+  readonly observedAt: string;
   readonly wasRedacted: boolean;
-  readonly crews: readonly string[];
+  /** What this stream is, said by the source: honest about its own fidelity. */
+  readonly fidelityNote: string;
 }
 
 /* ── S9 metrics ────────────────────────────────────────────────────────── */
@@ -326,11 +376,14 @@ export interface RecordAdapter {
   /** What a session was handed at start. */
   sessionWorkspace: (crew: string | null) => Promise<Reading<SessionWorkspace>>;
   /** A session worktree's files and its diff against its base. */
-  sessionWorktree: (worktree: string | null) => Promise<Reading<SessionWorktree>>;
+  sessionWorktree: (
+    worktree: string | null,
+    path: string | null
+  ) => Promise<Reading<SessionWorktree>>;
   /** The authored file tree this surface browses. */
   authoredFiles: (path: string | null) => Promise<Reading<AuthoredFiles>>;
   /** One live session pane, read-only, through the tmux capture bridge. */
-  sessionPane: (crew: string | null) => Promise<Reading<PaneCapture>>;
+  sessionStream: (subject: string | null) => Promise<Reading<SessionStream>>;
   /** Delivery measured per project: what the record supports, and what it does not. */
   deliveryMetrics: () => Promise<Reading<DeliveryMetrics>>;
 }

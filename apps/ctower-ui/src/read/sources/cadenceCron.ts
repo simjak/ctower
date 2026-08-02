@@ -1,7 +1,9 @@
 import { stat } from "node:fs/promises";
 import { basename } from "node:path";
 import { boundedProcess } from "../bounded";
-import { healthOf, registryOf } from "./cadenceHealth";
+import { healthOf, HEALTH_RULE, registryOf } from "./cadenceHealth";
+import { noneOf, unreadOf, valueOf } from "./maybe";
+import type { Known } from "./maybe";
 import { missionControlRoot } from "./paths";
 import { redacted } from "./redact";
 import type { Beat, CadenceRegistry } from "../interface";
@@ -87,15 +89,29 @@ function nextFireAt(schedule: string, now: number): string | null {
   return null;
 }
 
-async function lastFireAt(name: string): Promise<number | null> {
+/**
+ * The last fire, or why it is unknown.
+ *
+ * A marker that does not exist means the beat has not fired since the markers
+ * were introduced. A marker that exists and cannot be read means this surface
+ * does not know — round-1 review found both collapsed into "no last fire",
+ * which turns an I/O failure into a claim about the beat.
+ */
+async function lastFireAt(name: string): Promise<Known<number>> {
   for (const candidate of MARKER_CANDIDATES(name)) {
     try {
-      return (await stat(candidate)).mtimeMs;
-    } catch {
-      continue;
+      return valueOf((await stat(candidate)).mtimeMs);
+    } catch (error: unknown) {
+      const code = (error as { readonly code?: unknown }).code;
+      if (code === "ENOENT") {
+        continue;
+      }
+      return unreadOf(
+        `${candidate} exists but could not be read: ${error instanceof Error ? error.message : "unknown error"}`
+      );
     }
   }
-  return null;
+  return noneOf("no fire marker exists for this beat yet");
 }
 
 function beatName(command: string): string {
@@ -104,13 +120,17 @@ function beatName(command: string): string {
 
 export async function readCronCadence(): Promise<CadenceRegistry> {
   const now = Date.now();
-  const text = await boundedProcess({ command: "crontab", args: ["-l"] });
+  const text = await boundedProcess({ op: "crontab.list" });
   const owner = process.env.USER ?? "the crontab owner";
   const beats: Beat[] = await Promise.all(
     parseCrontab(text).map(async (entry): Promise<Beat> => {
       const name = beatName(entry.command);
-      const lastMs = await lastFireAt(name);
-      const { health, why } = healthOf(lastMs, intervalMs(entry.schedule), now);
+      const last = await lastFireAt(name);
+      const lastMs = last.known === "value" ? last.value : null;
+      const { health, why } =
+        last.known === "unread"
+          ? ({ health: "unknown", why: last.reason } as const)
+          : healthOf(lastMs, intervalMs(entry.schedule), now);
       return {
         seat: redacted(owner),
         beat: redacted(name),
@@ -125,6 +145,7 @@ export async function readCronCadence(): Promise<CadenceRegistry> {
   return registryOf(
     beats,
     `crontab -l · fires from ${missionControlRoot()}/state`,
-    new Date(now).toISOString()
+    new Date(now).toISOString(),
+    HEALTH_RULE
   );
 }

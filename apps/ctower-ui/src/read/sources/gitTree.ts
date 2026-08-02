@@ -48,24 +48,14 @@ function commitsOf(text: string): readonly CommitLine[] {
 }
 
 async function openFile(root: string, revision: string, path: string): Promise<readonly string[]> {
-  const text = await boundedProcess({
-    command: "git",
-    args: ["-C", root, "show", `${revision}:${path}`],
-    maxBytes: 400_000,
-  });
+  const text = await boundedProcess({ op: "git.show", root, revision, path });
   return redacted(text).split("\n").slice(0, LINE_CAP);
 }
 
 export async function readAuthoredFiles(requested: string | null): Promise<AuthoredFiles> {
   const root = filesRoot();
-  const revision = (
-    await boundedProcess({ command: "git", args: ["-C", root, "rev-parse", "--short=8", "HEAD"] })
-  ).trim();
-  const listing = await boundedProcess({
-    command: "git",
-    args: ["-C", root, "ls-tree", "-r", "--name-only", revision],
-    maxBytes: 2_000_000,
-  });
+  const revision = (await boundedProcess({ op: "git.revision", root })).trim();
+  const listing = await boundedProcess({ op: "git.tree", root, revision });
   const files = listing
     .split("\n")
     .map((line) => line.trim())
@@ -77,17 +67,18 @@ export async function readAuthoredFiles(requested: string | null): Promise<Autho
   const commits =
     openPath === null
       ? []
-      : commitsOf(
-          await boundedProcess({
-            command: "git",
-            args: ["-C", root, "log", "-n", "5", "--format=%h%x1f%s%x1f%an%x1f%aI", "--", openPath],
-          })
-        );
+      : commitsOf(await boundedProcess({ op: "git.pathLog", root, path: openPath }));
 
+  const shown = files.slice(0, TREE_CAP);
   return {
     root,
     revision,
-    entries: treeOf(files.slice(0, TREE_CAP)),
+    entries: treeOf(shown),
+    // the tree is capped for the browser, so the cap is a stated fact rather
+    // than a silently shorter list that reads as the whole repository
+    sourceTotal: files.length,
+    shownTotal: shown.length,
+    truncated: files.length > shown.length,
     openPath,
     openLines,
     commits,

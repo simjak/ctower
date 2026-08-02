@@ -6,7 +6,7 @@ import { RecordFoot } from "@/frame/RecordFoot";
 import { recordAdapter, SOURCE_LABELS } from "@/read/adapter";
 import { clockText, dayText } from "@/read/elapsed";
 import type { AuthoredFiles } from "@/read/interface";
-import { FileTree } from "@/surfaces/files/FileTree";
+import { TreePane } from "@/surfaces/tree/TreePane";
 import { readParam } from "@/surfaces/screenParams";
 
 export const dynamic = "force-dynamic";
@@ -49,6 +49,14 @@ function EditorFoot(): ReactElement {
 }
 
 function FilesBody({ files }: { readonly files: AuthoredFiles }): ReactElement {
+  // only the ancestors of the open file start expanded; the rest stay closed
+  const expanded =
+    files.openPath === null
+      ? []
+      : files.openPath
+          .split("/")
+          .slice(0, -1)
+          .map((_, index, parts) => parts.slice(0, index + 1).join("/"));
   return (
     <>
       <Chrome section="Files" />
@@ -58,7 +66,16 @@ function FilesBody({ files }: { readonly files: AuthoredFiles }): ReactElement {
 
           <section className="panel" style={{ marginTop: "16px" }}>
             <div className="ed">
-              <FileTree entries={files.entries} openPath={files.openPath} route="/files" />
+              <TreePane
+                rows={files.entries.map((entry) => ({
+                  path: entry.path,
+                  depth: entry.depth,
+                  isDirectory: entry.isDirectory,
+                }))}
+                openPath={files.openPath}
+                expanded={expanded}
+                route="/files"
+              />
               <div className="pane">
                 <div className="pane-head">
                   <span className="path">{files.openPath ?? "—"}</span>
@@ -67,7 +84,7 @@ function FilesBody({ files }: { readonly files: AuthoredFiles }): ReactElement {
                     {files.root} @ {files.revision}
                   </span>
                 </div>
-                <pre className="code">
+                <pre className="code" style={{ fontSize: "12px" }}>
                   {files.openLines.map((line, index) => (
                     <span className="l" key={`${index.toString()}:${line}`}>
                       {line}
@@ -99,7 +116,11 @@ function FilesBody({ files }: { readonly files: AuthoredFiles }): ReactElement {
 
           <RecordFoot
             readPath={SOURCE_LABELS.files}
-            watermark={`${files.entries.length.toString()} tree rows at ${files.revision} · browse only`}
+            watermark={
+              files.truncated
+                ? `showing ${files.shownTotal.toString()} of ${files.sourceTotal.toString()} files at ${files.revision} — this tree is capped for the browser and is not the whole repository`
+                : `all ${files.sourceTotal.toString()} files at ${files.revision} · browse only`
+            }
           />
         </div>
       </main>

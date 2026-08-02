@@ -5,13 +5,13 @@ import { readSystemdCadence } from "./sources/cadenceSystemd";
 import { readAuthoredFiles } from "./sources/gitTree";
 import { readSeatInbox } from "./sources/inboxFile";
 import { cadenceSourceName } from "./sources/paths";
-import { readSessionPane, readSessionWorkspace } from "./sources/tmuxBridge";
+import { readSessionStream, readSessionWorkspace } from "./sources/tmuxBridge";
 import { readSessionWorktree } from "./sources/worktrees";
 import { reading } from "./outcome";
 import type {
   AuthoredFiles,
   CadenceRegistry,
-  PaneCapture,
+  SessionStream,
   RecordAdapter,
   Reading,
   SeatInbox,
@@ -53,9 +53,9 @@ export const SOURCE_LABELS: Readonly<Record<ScreenKey, string>> = {
   heartbeats:
     cadenceSourceName() === "systemd" ? "systemd user timers" : "host crontab + state markers",
   files: "git tree",
-  workspace: "tmux capture bridge · mux list + git",
+  workspace: "live tmux sessions + git",
   explorer: "git worktree list + diff",
-  feed: "tmux capture bridge · mux read",
+  feed: "live tmux sessions · capture-pane",
   metrics: "git first-parent trunk history per project",
 };
 
@@ -77,10 +77,13 @@ export const recordAdapter: RecordAdapter = {
     await reading(async () => await readAuthoredFiles(path)),
   sessionWorkspace: async (crew: string | null): Promise<Reading<SessionWorkspace>> =>
     await reading(async () => await readSessionWorkspace(crew)),
-  sessionWorktree: async (worktree: string | null): Promise<Reading<SessionWorktree>> =>
-    await reading(async () => await readSessionWorktree(worktree)),
-  sessionPane: async (crew: string | null): Promise<Reading<PaneCapture>> =>
-    await reading(async () => await readSessionPane(crew)),
+  sessionWorktree: async (
+    worktree: string | null,
+    path: string | null
+  ): Promise<Reading<SessionWorktree>> =>
+    await reading(async () => await readSessionWorktree(worktree, path)),
+  sessionStream: async (subject: string | null): Promise<Reading<SessionStream>> =>
+    await reading(async () => await readSessionStream(subject)),
   // the delivery source returns its own Reading: the fan-out across projects can
   // be partly unreadable, and that has to reach the screen, not be flattened
   deliveryMetrics: readDeliveryMetrics,

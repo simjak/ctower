@@ -1,4 +1,8 @@
+import { stat } from "node:fs/promises";
 import { boundedProcess } from "../bounded";
+import type { Inspection } from "../commands";
+import { attempted, noneOf } from "./maybe";
+import type { Known } from "./maybe";
 import { repositoryRoot } from "./paths";
 import { redacted } from "./redact";
 import type { DiffLine, SessionWorktree, WorktreeFile } from "../interface";
@@ -55,22 +59,42 @@ function classify(line: string): DiffLine["kind"] {
   return "context";
 }
 
-async function tryText(command: string, args: readonly string[]): Promise<string> {
-  try {
-    return await boundedProcess({ command, args, maxBytes: 2_000_000 });
-  } catch {
-    // a worktree with no base to compare against is a real answer, not a failure
-    return "";
-  }
+/**
+ * A sub-read that keeps its own availability. Round-1 review found this
+ * swallowing every git failure into an empty string, which the screen then
+ * rendered as "no file differs" — a failed read painted as a clean tree.
+ */
+async function sub(inspection: Inspection, why: string): Promise<Known<string>> {
+  return await attempted(
+    async () => await boundedProcess(inspection),
+    (text) => text.trim().length === 0,
+    why
+  );
 }
 
-export async function readSessionWorktree(requested: string | null): Promise<SessionWorktree> {
+/** A worktree whose directory is gone was reaped; git still lists it. */
+async function onDisk(paths: readonly string[]): Promise<readonly string[]> {
+  const checked = await Promise.all(
+    paths.map(async (path) => {
+      try {
+        return (await stat(path)).isDirectory() ? path : null;
+      } catch {
+        return null;
+      }
+    })
+  );
+  return checked.filter((path): path is string => path !== null);
+}
+
+export async function readSessionWorktree(
+  requested: string | null,
+  requestedPath: string | null = null
+): Promise<SessionWorktree> {
   const root = repositoryRoot();
-  const listing = await boundedProcess({
-    command: "git",
-    args: ["-C", root, "worktree", "list", "--porcelain"],
-  });
-  const worktrees = porcelainWorktrees(listing);
+  const listing = await boundedProcess({ op: "git.worktrees", root });
+  const listed = porcelainWorktrees(listing);
+  const worktrees = await onDisk(listed);
+  const reaped = listed.length - worktrees.length;
   // this screen is the *session's* worktree, so the default is the one this app
   // is served from when git lists it; otherwise the repository's first entry
   const served = worktrees.find((path) => path === root);
@@ -79,24 +103,51 @@ export async function readSessionWorktree(requested: string | null): Promise<Ses
       ? requested
       : (served ?? worktrees[0] ?? root);
 
-  const branch = (
-    await tryText("git", ["-C", selected, "rev-parse", "--abbrev-ref", "HEAD"])
-  ).trim();
-  const head = (await tryText("git", ["-C", selected, "rev-parse", "--short=8", "HEAD"])).trim();
-  const files = numstat(
-    await tryText("git", ["-C", selected, "diff", "--numstat", `${BASE}...HEAD`])
+  const branch = await sub({ op: "git.branch", root: selected }, "no branch is checked out here");
+  const head = await sub({ op: "git.revision", root: selected }, "no commit is checked out here");
+  const stat = await sub(
+    { op: "git.diffStat", root: selected, base: BASE },
+    `nothing differs from ${BASE}`
   );
-  const rawDiff = await tryText("git", ["-C", selected, "diff", `${BASE}...HEAD`]);
-  const lines = rawDiff.split("\n").filter((line) => line.length > 0);
+  const rawDiff = await sub(
+    { op: "git.diff", root: selected, base: BASE },
+    `nothing differs from ${BASE}`
+  );
+  const lines =
+    rawDiff.known === "value" ? rawDiff.value.split("\n").filter((line) => line.length > 0) : [];
   const shown = lines.slice(0, DIFF_LINE_CAP);
+  const changed = stat.known === "value" ? numstat(stat.value) : [];
+
+  const openPath =
+    requestedPath !== null && changed.some((file) => file.path === requestedPath)
+      ? requestedPath
+      : (changed[0]?.path ?? null);
+  const pathDiff: Known<string> =
+    openPath === null
+      ? noneOf<string>(`nothing differs from ${BASE}`)
+      : await sub(
+          { op: "git.diffPath", root: selected, base: BASE, path: openPath },
+          `${openPath} does not differ from ${BASE}`
+        );
+  const pathLines =
+    pathDiff.known === "value" ? pathDiff.value.split("\n").filter((line) => line.length > 0) : [];
 
   return {
     root: selected,
-    branch: branch.length === 0 ? null : branch,
-    head: head.length === 0 ? null : head,
+    reaped,
+    openPath,
+    openDiff: pathLines.slice(0, DIFF_LINE_CAP).map((line) => ({
+      text: redacted(line),
+      kind: classify(line),
+    })),
+    openDiffRead: pathDiff,
+    branch: { ...branch, ...(branch.known === "value" ? { value: branch.value.trim() } : {}) },
+    head: { ...head, ...(head.known === "value" ? { value: head.value.trim() } : {}) },
     base: BASE,
-    files,
+    files: changed,
+    filesRead: stat,
     diff: shown.map((line) => ({ text: redacted(line), kind: classify(line) })),
+    diffRead: rawDiff,
     worktrees,
     truncated: lines.length > shown.length,
   };

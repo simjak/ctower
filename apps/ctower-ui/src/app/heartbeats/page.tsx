@@ -5,7 +5,6 @@ import { RecordFoot } from "@/frame/RecordFoot";
 import { recordAdapter, SOURCE_LABELS } from "@/read/adapter";
 import { clockText, dayText } from "@/read/elapsed";
 import type { Beat, BeatHealth, CadenceRegistry } from "@/read/interface";
-import { HEALTH_RULE } from "@/read/sources/cadenceHealth";
 
 export const dynamic = "force-dynamic";
 
@@ -81,9 +80,10 @@ function Lede(): ReactElement {
     <div className="lede">
       <h1>Heartbeats</h1>
       <p>
-        Every scheduled wake in the portfolio: which seat owns it, the schedule it is registered
+        Every scheduled wake this source registers: who owns it, the schedule it is registered
         under, when it last fired, when it fires next, and whether it is still arriving. A beat that
-        stops arriving is how a seat goes quiet without anyone noticing.
+        stops arriving is how a seat goes quiet without anyone noticing. The source is named under
+        the registry — it is one host&rsquo;s schedule, not yet the whole portfolio&rsquo;s.
       </p>
     </div>
   );
@@ -115,7 +115,7 @@ function Registry({ registry }: { readonly registry: CadenceRegistry }): ReactEl
               ))}
             </div>
           </section>
-          <RecordFoot readPath={SOURCE_LABELS.heartbeats} watermark={HEALTH_RULE} />
+          <RecordFoot readPath={SOURCE_LABELS.heartbeats} watermark={registry.healthRule} />
         </div>
       </main>
     </>

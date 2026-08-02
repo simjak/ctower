@@ -73,6 +73,7 @@ _SOURCE_HELPERS = frozenset(
         f"{_SOURCE_DIRECTORY}paths.ts",
         f"{_SOURCE_DIRECTORY}jsonl.ts",
         f"{_SOURCE_DIRECTORY}cadenceHealth.ts",
+        f"{_SOURCE_DIRECTORY}maybe.ts",
     }
 )
 

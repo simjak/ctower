@@ -63,7 +63,11 @@ function TicketHead({
       </div>
       <div className="custody">
         <span className="k">custodian</span>
-        <span className="mono">{ticket.custodianId}</span>
+        <span className="mono" title={`principal ${ticket.custodianId}`}>
+          {ticket.custodianName ?? "seat unnamed"}
+        </span>
+        <span className="k">principal</span>
+        <span className="mono">{shortId(ticket.custodianId)}</span>
         {/* a recorded assignee is a present fact and is rendered when the board
             row carries one; round-2 review caught a refactor dropping it */}
         <InlineReading
@@ -73,7 +77,9 @@ function TicketHead({
               <>
                 <span className="arrow">→</span>
                 <span className="k">assignee</span>
-                <span className="mono">{row.assigneeId}</span>
+                <span className="mono" title={`principal ${row.assigneeId}`}>
+                  {row.assigneeName ?? shortId(row.assigneeId)}
+                </span>
               </>
             )
           }
@@ -296,6 +302,7 @@ function TicketBody({
                   <h2>Brief</h2>
                 </header>
                 <NoSourceYet
+                  brief
                   source={{
                     lands: "#186",
                     what: "a ticket brief beyond the recorded title, priority and source",
@@ -308,6 +315,7 @@ function TicketBody({
                   <h2>Acceptance criteria</h2>
                 </header>
                 <NoSourceYet
+                  brief
                   source={{
                     lands: "#186",
                     what: "criterion text and per-criterion verdicts on a read path",

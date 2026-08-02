@@ -68,10 +68,7 @@ export function windowDays(now: number): readonly string[] {
 
 async function trunkOf(root: string): Promise<string> {
   try {
-    const head = await boundedProcess({
-      command: "git",
-      args: ["-C", root, "symbolic-ref", "--short", "refs/remotes/origin/HEAD"],
-    });
+    const head = await boundedProcess({ op: "git.trunkRef", root });
     return head.trim();
   } catch {
     // a checkout with no remote HEAD still has a trunk; name it explicitly
@@ -82,17 +79,10 @@ async function trunkOf(root: string): Promise<string> {
 async function readProject(source: ProjectSource, now: number): Promise<ProjectMerges> {
   const trunk = await trunkOf(source.root);
   const log = await boundedProcess({
-    command: "git",
-    args: [
-      "-C",
-      source.root,
-      "log",
-      "--first-parent",
-      trunk,
-      `--since=${WINDOW_DAYS.toString()} days ago`,
-      "--format=%aI%x1f%s",
-    ],
-    maxBytes: 2_000_000,
+    op: "git.trunkLog",
+    root: source.root,
+    ref: trunk,
+    days: WINDOW_DAYS,
   });
   const entries = log
     .split("\n")

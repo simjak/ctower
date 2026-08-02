@@ -1,12 +1,14 @@
 import type { ReactElement, ReactNode } from "react";
 import { Chrome } from "@/frame/Chrome";
-import { Resolved } from "@/frame/Declared";
+import { KnownValue, Resolved } from "@/frame/Declared";
 import { RecordFoot } from "@/frame/RecordFoot";
 import { recordAdapter, SOURCE_LABELS } from "@/read/adapter";
 import type { SessionWorktree } from "@/read/interface";
-import { FileDiffSwitch } from "@/surfaces/explorer/FileDiffSwitch";
 import { ChoiceTabs } from "@/surfaces/ChoiceTabs";
+import { FileDiffSwitch } from "@/surfaces/explorer/FileDiffSwitch";
 import { readParam } from "@/surfaces/screenParams";
+import { TreePane } from "@/surfaces/tree/TreePane";
+import type { TreeRow } from "@/surfaces/tree/TreePane";
 
 export const dynamic = "force-dynamic";
 
@@ -22,25 +24,42 @@ function Lede(): ReactElement {
   );
 }
 
-function Changed({ worktree }: { readonly worktree: SessionWorktree }): ReactElement {
+/** Changed files as a collapsed tree, changed directories opened to the selection. */
+function changedRows(worktree: SessionWorktree): readonly TreeRow[] {
+  const rows = new Map<string, TreeRow>();
+  for (const file of worktree.files) {
+    const parts = file.path.split("/");
+    for (let index = 1; index < parts.length; index += 1) {
+      const directory = parts.slice(0, index).join("/");
+      rows.set(directory, { path: directory, depth: index - 1, isDirectory: true });
+    }
+    rows.set(file.path, {
+      path: file.path,
+      depth: parts.length - 1,
+      isDirectory: false,
+      badge: file.added === null ? "bin" : `+${file.added.toString()}`,
+      badgeTone: "added",
+    });
+  }
+  return [...rows.values()].sort((left, right) => left.path.localeCompare(right.path));
+}
+
+function DiffLines({ worktree }: { readonly worktree: SessionWorktree }): ReactElement {
   return (
-    <div className="tree">
-      <div className="dir">
-        <span className="cw">⌄</span>
-        {worktree.branch ?? "detached"} vs {worktree.base}
-      </div>
-      {worktree.files.length === 0 ? (
-        <div className="leaf">no file differs from {worktree.base}</div>
-      ) : (
-        worktree.files.map((file) => (
-          <div className="leaf" key={file.path} style={{ paddingLeft: "24px" }}>
-            {file.path}
-            <span className="fstat m">
-              {file.added === null ? "bin" : `+${file.added.toString()}`}
-            </span>
-          </div>
-        ))
-      )}
+    <div className="diff" style={{ fontSize: "12px" }}>
+      {worktree.openDiff.map((line, index) => (
+        <span
+          className={line.kind === "context" ? "dl" : `dl ${line.kind}`}
+          key={`${index.toString()}:${line.text}`}
+        >
+          {line.text}
+        </span>
+      ))}
+      {worktree.openDiff.length === 0 ? (
+        <span className="dl hunk">
+          <KnownValue value={worktree.openDiffRead} />
+        </span>
+      ) : null}
     </div>
   );
 }
@@ -48,6 +67,15 @@ function Changed({ worktree }: { readonly worktree: SessionWorktree }): ReactEle
 function ExplorerBody({ worktree }: { readonly worktree: SessionWorktree }): ReactElement {
   const added = worktree.files.reduce((total, file) => total + (file.added ?? 0), 0);
   const removed = worktree.files.reduce((total, file) => total + (file.removed ?? 0), 0);
+  // the ancestors of the open file start expanded; every other directory is closed
+  const expanded =
+    worktree.openPath === null
+      ? []
+      : worktree.openPath
+          .split("/")
+          .slice(0, -1)
+          .map((_, index, parts) => parts.slice(0, index + 1).join("/"));
+
   return (
     <>
       <Chrome section="Explorer" />
@@ -68,42 +96,56 @@ function ExplorerBody({ worktree }: { readonly worktree: SessionWorktree }): Rea
 
           <section className="panel" style={{ marginTop: "16px" }}>
             <div className="ed">
-              <Changed worktree={worktree} />
+              <TreePane
+                rows={changedRows(worktree)}
+                openPath={worktree.openPath}
+                expanded={expanded}
+                route="/explorer"
+                keepParams={{ seat: worktree.root }}
+              />
               <div className="pane">
                 <FileDiffSwitch
-                  path={worktree.root}
+                  path={worktree.openPath ?? worktree.root}
                   file={
-                    <div className="pane-head" style={{ borderTop: 0 }}>
-                      <span className="meta">{worktree.files.length.toString()} files changed</span>
-                      <span className="meta" style={{ color: "var(--proven-deep)" }}>
-                        +{added.toString()}
-                      </span>
-                      <span className="meta" style={{ color: "var(--refuse-deep)" }}>
-                        −{removed.toString()}
-                      </span>
-                      <span className="spacer" />
-                      <span className="meta">
-                        {worktree.branch ?? "detached"} @ {worktree.head ?? "—"} vs {worktree.base}
-                      </span>
-                    </div>
-                  }
-                  diff={
-                    <div className="diff">
-                      {worktree.diff.map((line, index) => (
-                        <span
-                          className={line.kind === "context" ? "dl" : `dl ${line.kind}`}
-                          key={`${index.toString()}:${line.text}`}
-                        >
-                          {line.text}
+                    <>
+                      <div className="pane-head" style={{ borderTop: 0 }}>
+                        <span className="meta">
+                          {worktree.files.length.toString()} files changed
                         </span>
-                      ))}
-                      {worktree.truncated ? (
-                        <span className="dl hunk">
-                          … diff truncated at this surface&rsquo;s line cap; the branch carries more
+                        <span className="meta" style={{ color: "var(--proven-deep)" }}>
+                          +{added.toString()}
                         </span>
-                      ) : null}
-                    </div>
+                        <span className="meta" style={{ color: "var(--refuse-deep)" }}>
+                          −{removed.toString()}
+                        </span>
+                        <span className="spacer" />
+                        <span className="meta">
+                          <KnownValue value={worktree.branch} /> @{" "}
+                          <KnownValue value={worktree.head} /> vs {worktree.base}
+                        </span>
+                      </div>
+                      {/* the tree beside this already lists every changed file; the
+                          pane states the selected one, so the page stays a tool
+                          rather than becoming the flat dump the audit rejected */}
+                      <ul className="commits" style={{ fontSize: "12px" }}>
+                        {worktree.files
+                          .filter((file) => file.path === worktree.openPath)
+                          .map((file) => (
+                            <li key={file.path}>
+                              <span className="sha" style={{ color: "var(--proven-deep)" }}>
+                                +{file.added?.toString() ?? "bin"}
+                              </span>
+                              <span className="sha" style={{ color: "var(--refuse-deep)" }}>
+                                −{file.removed?.toString() ?? "bin"}
+                              </span>
+                              <span className="msg-t">{file.path}</span>
+                              <span className="by">select Diff for its hunks</span>
+                            </li>
+                          ))}
+                      </ul>
+                    </>
                   }
+                  diff={<DiffLines worktree={worktree} />}
                 />
               </div>
             </div>
@@ -111,7 +153,7 @@ function ExplorerBody({ worktree }: { readonly worktree: SessionWorktree }): Rea
 
           <RecordFoot
             readPath={SOURCE_LABELS.explorer}
-            watermark={`${worktree.worktrees.length.toString()} worktrees · diff vs ${worktree.base}${worktree.truncated ? " · truncated" : ""}`}
+            watermark={`${worktree.worktrees.length.toString()} worktrees on disk${worktree.reaped > 0 ? `, ${worktree.reaped.toString()} reaped and not shown` : ""} · diff vs ${worktree.base}${worktree.truncated ? " · truncated" : ""}`}
           />
         </div>
       </main>
@@ -124,7 +166,11 @@ export default async function ExplorerPage({
 }: {
   readonly searchParams: Promise<Record<string, string | string[] | undefined>>;
 }): Promise<ReactNode> {
-  const worktree = await recordAdapter.sessionWorktree(readParam(await searchParams, "seat"));
+  const params = await searchParams;
+  const worktree = await recordAdapter.sessionWorktree(
+    readParam(params, "seat"),
+    readParam(params, "path")
+  );
   return (
     <Resolved
       reading={worktree}
