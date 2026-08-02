@@ -160,6 +160,7 @@ EXPECTED_SCHEMAS = frozenset(
         "PriorityChangeRequest",
         "PriorityChangedAuditData",
         "Problem",
+        "ProhibitedDataClass",
         "ProjectionHealth",
         "ProjectDeliveryCriteria",
         "ProjectDeliveryAssignedSeatAssignment",

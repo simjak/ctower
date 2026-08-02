@@ -1,6 +1,6 @@
 """DO NOT EDIT: generated file; regenerate from declared inputs.
 
-Authored contract digest: sha256:f60c60abf7b56369685daa3af01218710c7d02d68be196a7d1f0ebce74b0c771
+Authored contract digest: sha256:897d0904c0761ce19e89e96d0b2d2b85485582770b37abdcc9765cbdf924e5fb
 """
 
 from ctower_client.client import CtowerClient, CtowerProblemError
@@ -111,6 +111,7 @@ from ctower_client.models import (
     PriorityChangedAuditData,
     PriorityChangeRequest,
     Problem,
+    ProhibitedDataClass,
     ProjectDeliveryAssignedSeatAssignment,
     ProjectDeliveryCriteria,
     ProjectDeliveryRow,
@@ -284,6 +285,7 @@ __all__ = [
     "PriorityChangeRequest",
     "PriorityChangedAuditData",
     "Problem",
+    "ProhibitedDataClass",
     "ProjectDeliveryAssignedSeatAssignment",
     "ProjectDeliveryCriteria",
     "ProjectDeliveryRow",
