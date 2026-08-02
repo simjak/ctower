@@ -1531,3 +1531,377 @@ body:has(#s-bhloop:checked) .mtscope[data-scope="bhloop"] { display: block; }
   .mtdefs  { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .mtform  { grid-template-columns: minmax(0, 340px) minmax(0, 1fr); }
 }
+
+/* ═══ round 5: the who-layer ═══════════════════════════════════════════════
+   A persistent left sidebar becomes the frame, and three surfaces hang off it:
+   the roster (team), one seat, one crew. Same tokens, same glyph vocabulary,
+   same density as the ten screens above — a new screen must look like it was
+   always part of the product. The sidebar replaces the horizontal section nav
+   outright rather than sitting beside it: two navigations for one set of pages
+   is the duplication this frame exists to remove. */
+
+/* ── sidebar: a drawer on the phone, a fixed rail on the desk ───────────── */
+.drawer-toggle { position: absolute; opacity: 0; width: 0; height: 0; pointer-events: none; }
+
+.scrim {
+  position: fixed; inset: 0; z-index: 50;
+  background: rgba(23, 23, 23, .42);
+  display: none;
+}
+:root.theme-dark .scrim { background: rgba(5, 7, 11, .62); }
+body:has(#drawer:checked) .scrim { display: block; }
+
+.side {
+  position: fixed; top: 0; bottom: 0; left: 0; z-index: 60;
+  width: 274px; max-width: 86vw;
+  display: flex; flex-direction: column;
+  background: var(--bg);
+  border-right: 1px solid var(--line);
+  overflow-y: auto; overscroll-behavior: contain;
+  scrollbar-width: thin;
+  transform: translateX(-100%);
+  transition: transform .16s ease;
+}
+body:has(#drawer:checked) .side { transform: none; }
+
+.side-head {
+  display: flex; align-items: center; gap: 10px;
+  padding: 12px 14px;
+  border-bottom: 1px solid var(--line);
+  position: sticky; top: 0; z-index: 1;
+  background: var(--bg);
+}
+.side-head .mark { flex: 1 1 auto; min-width: 0; }
+.side-x {
+  display: inline-flex; align-items: center; justify-content: center;
+  width: 30px; height: 30px; flex: none;
+  border: 1px solid var(--line); border-radius: var(--r-md);
+  color: var(--ink-3); cursor: pointer;
+}
+.side-x:hover { border-color: var(--line-2); color: var(--ink); }
+
+.burger {
+  display: inline-flex; align-items: center; justify-content: center;
+  width: 32px; height: 32px; flex: none; order: 0;
+  border: 1px solid var(--line); border-radius: var(--r-md);
+  background: var(--bg); color: var(--ink-2);
+  cursor: pointer;
+}
+.burger:hover { border-color: var(--line-2); color: var(--ink); }
+
+/* the one action that starts work — inert in a read-only phase, and it says so
+   in a tooltip rather than a banner, exactly as the workflow page's grips do */
+.side-act { padding: 12px 12px 4px; }
+.sact {
+  display: flex; align-items: center; justify-content: center; gap: 8px;
+  height: 34px; padding: 0 12px;
+  border: 1px solid var(--line-2); border-radius: var(--r-md);
+  background: var(--surface);
+  font-size: 13px; font-weight: 500; color: var(--ink-2);
+  cursor: default;
+}
+.sact .plus {
+  position: relative; width: 11px; height: 11px; flex: none;
+}
+.sact .plus::before, .sact .plus::after {
+  content: ""; position: absolute; background: var(--ink-3);
+  left: 50%; top: 50%;
+}
+.sact .plus::before { width: 11px; height: 1.5px; transform: translate(-50%, -50%); }
+.sact .plus::after  { width: 1.5px; height: 11px; transform: translate(-50%, -50%); }
+
+.side-nav { padding: 8px 12px 24px; display: flex; flex-direction: column; gap: 1px; }
+.sgrp {
+  padding: 16px 8px 6px;
+  font-size: 10px; font-weight: 600; letter-spacing: .08em; text-transform: uppercase;
+  color: var(--ink-4);
+}
+.sn {
+  display: flex; align-items: center; gap: 9px;
+  min-height: 32px; padding: 5px 8px;
+  border-radius: var(--r-md);
+  font-size: 13px; color: var(--ink-2);
+  min-width: 0;
+}
+.sn:hover { background: var(--surface); color: var(--ink); }
+.sn.on { background: var(--accent-bg); color: var(--accent-deep); font-weight: 600; }
+.sn .lbl { flex: 1 1 auto; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.sn .av { width: 19px; height: 19px; font-size: 9px; }
+.sn.on .av { border-color: var(--accent); color: var(--accent-deep); background: var(--bg); }
+.sn .pdot { width: 7px; height: 7px; border-radius: 2px; flex: none; margin: 0 6px; }
+.sn .pdot.ctower { background: var(--p-ctower); }
+.sn .pdot.manibo { background: var(--p-manibo); }
+.sn .pdot.bhloop { background: var(--p-bhloop); }
+.sn .ic { width: 19px; height: 19px; flex: none; display: block; color: var(--ink-3); }
+.sn.on .ic { color: var(--accent-deep); }
+.sn .ic svg { display: block; }
+
+/* live badge: the count and the state mark the rest of the product already
+   uses — no status word, so it cannot drift from the glyph vocabulary */
+.bdg {
+  display: inline-flex; align-items: center; gap: 5px; flex: none;
+  font-family: var(--mono); font-size: 11px; color: var(--ink-3);
+}
+.bdg.zero { color: var(--ink-4); }
+.bdg.unread { color: var(--accent-deep); }
+
+@media (min-width: 900px) {
+  body { padding-left: 244px; }
+  .side { transform: none; width: 244px; max-width: none; }
+  .scrim, .burger, .side-x { display: none; }
+}
+
+/* ── roster: summary strip, project groups, one row per crew ────────────── */
+.pgroup { margin-top: 16px; }
+.pg-head {
+  display: flex; align-items: center; gap: 9px;
+  padding: 0 2px 9px;
+}
+.pg-head .swatch { width: 7px; height: 7px; border-radius: 2px; flex: none; }
+.pg-head.g-ctower .swatch { background: var(--p-ctower); }
+.pg-head.g-manibo .swatch { background: var(--p-manibo); }
+.pg-head.g-bhloop .swatch { background: var(--p-bhloop); }
+.pg-head h2 {
+  font-size: 12px; font-weight: 600; letter-spacing: .06em; text-transform: uppercase;
+  color: var(--ink-2);
+}
+.pg-head .count {
+  margin-left: auto;
+  font-family: var(--mono); font-size: 11.5px; color: var(--ink-3);
+}
+
+.crow {
+  display: grid; grid-template-columns: auto 1fr auto; gap: 4px 11px;
+  padding: 13px 16px;
+  border-bottom: 1px solid var(--line);
+  align-items: start;
+}
+.crow:last-child { border-bottom: 0; }
+.crow:hover { background: var(--surface); }
+.crow > .av { grid-row: 1; grid-column: 1; margin-top: 1px; }
+.c-crew { grid-row: 1; grid-column: 2; min-width: 0; }
+.c-crew b {
+  display: block; font-family: var(--mono); font-size: 12.5px; font-weight: 600; color: var(--ink);
+  overflow-wrap: anywhere;
+}
+.c-crew .parse {
+  display: flex; flex-wrap: wrap; gap: 2px 7px;
+  margin-top: 3px; font-size: 11px; color: var(--ink-3);
+}
+.c-crew .parse i { font-style: normal; color: var(--ink-4); }
+.c-stat {
+  grid-row: 1; grid-column: 3; justify-self: end;
+  display: inline-flex; align-items: center; gap: 7px;
+  font-size: 12px; color: var(--ink-2); white-space: nowrap;
+}
+.c-stat.blocked { color: var(--refuse-deep); }
+.c-stat.idle { color: var(--ink-3); }
+.c-proj, .c-model, .c-task, .c-live { grid-column: 2 / -1; min-width: 0; }
+.c-proj { display: flex; flex-wrap: wrap; align-items: center; gap: 7px; margin-top: 5px; }
+.c-model {
+  display: flex; flex-wrap: wrap; align-items: center; gap: 3px 8px;
+  font-family: var(--mono); font-size: 11px; color: var(--ink-2);
+}
+.c-model .harness { color: var(--ink-4); }
+.c-task { font-size: 12.5px; color: var(--ink-2); line-height: 1.45; margin-top: 3px; }
+.c-live {
+  display: flex; flex-wrap: wrap; gap: 3px 12px;
+  margin-top: 4px; font-family: var(--mono); font-size: 10.5px; color: var(--ink-4);
+}
+
+/* the roster head repeats the column names once, and only where the columns
+   exist, because a seven-column grid with no header is a puzzle */
+.crow-head { display: none; }
+
+/* The row goes to columns when ITS OWN PANEL is wide enough — not when the
+   window is. The seat page puts a roster inside a 768px column; a viewport
+   media query would have given it seven columns and ~50px for the task, which
+   is how a "responsive" table ends up one character wide. */
+.panel:has(.crow) { container-type: inline-size; container-name: roster; }
+
+@container roster (min-width: 840px) {
+  .crow, .crow-head {
+    grid-template-columns: 22px minmax(168px, 1.05fr) 92px 132px minmax(0, 1.8fr) 92px 126px;
+    gap: 0 14px;
+    align-items: center;
+  }
+  .crow-head {
+    display: grid;
+    padding: 9px 16px;
+    border-bottom: 1px solid var(--line);
+    background: var(--surface);
+    font-size: 10px; letter-spacing: .06em; text-transform: uppercase; color: var(--ink-4);
+  }
+  .crow > .av { margin-top: 0; }
+  .c-proj, .c-model, .c-task, .c-live { grid-row: 1; margin-top: 0; }
+  .c-proj  { grid-column: 3; }
+  .c-model { grid-column: 4; flex-direction: column; align-items: flex-start; gap: 2px; }
+  .c-task  { grid-column: 5; line-height: 1.4; }
+  .c-stat  { grid-column: 6; justify-self: start; }
+  .c-live  { grid-column: 7; flex-direction: column; gap: 2px; justify-self: end; text-align: right; }
+}
+
+/* ── org matrix: seats down, projects across, who is live where ─────────── */
+.org { display: flex; flex-direction: column; }
+.org-head, .org-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) repeat(4, 46px);
+  gap: 0 6px;
+  align-items: center;
+  padding: 9px 16px;
+  border-bottom: 1px solid var(--line);
+}
+.org-row:last-child { border-bottom: 0; }
+.org-row:hover { background: var(--surface); }
+.org-head {
+  background: var(--surface);
+  font-size: 10px; letter-spacing: .06em; text-transform: uppercase; color: var(--ink-4);
+}
+.org-head span:not(:first-child) { text-align: center; }
+.org-row .s {
+  display: flex; align-items: center; gap: 9px; min-width: 0;
+  font-size: 13px; color: var(--ink);
+}
+.org-row .s .av { width: 19px; height: 19px; font-size: 9px; }
+.org-row .s .nm { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.org-row .c {
+  text-align: center;
+  font-family: var(--mono); font-size: 12.5px; color: var(--ink-4);
+}
+.org-row .c.on { color: var(--ink); }
+.org-row .c.t { color: var(--ink-2); border-left: 1px solid var(--line); }
+.org-head span.t { border-left: 1px solid var(--line); }
+
+/* ── seat page ──────────────────────────────────────────────────────────── */
+.seat-id {
+  display: flex; align-items: center; gap: 13px;
+  padding: 20px 0 0;
+}
+.seat-id .av { width: 40px; height: 40px; font-size: 14px; border-radius: var(--r-md); }
+.seat-id h1 { font-size: 22px; letter-spacing: -.019em; }
+.seat-id .role { margin-top: 3px; font-size: 12.5px; color: var(--ink-2); }
+.seat-id .live { margin-left: auto; text-align: right; }
+
+.rule {
+  display: flex; gap: 11px;
+  padding: 12px 16px;
+  border-bottom: 1px solid var(--line);
+  font-size: 13px; color: var(--ink-2); line-height: 1.55;
+}
+.rule:last-child { border-bottom: 0; }
+.rule .n {
+  flex: none; font-family: var(--mono); font-size: 11px; color: var(--ink-4);
+  width: 16px; padding-top: 2px;
+}
+.rule b { color: var(--ink); font-weight: 600; }
+
+/* ── accountability: the ladder, drawn as three positions ───────────────── */
+.ladder { display: flex; flex-direction: column; gap: 0; padding: 4px 0; }
+.lstep {
+  display: flex; align-items: flex-start; gap: 11px;
+  padding: 11px 16px;
+  border-bottom: 1px solid var(--line);
+}
+.lstep:last-child { border-bottom: 0; }
+.lstep .pip {
+  width: 9px; height: 9px; border-radius: 50%; flex: none; margin-top: 4px;
+  border: 1.5px solid var(--line-2); background: var(--bg);
+}
+.lstep.at .pip { background: var(--proven); border-color: var(--proven); }
+.lstep .t { min-width: 0; }
+.lstep .k {
+  display: block;
+  font-family: var(--mono); font-size: 11.5px; font-weight: 600; letter-spacing: .04em;
+  color: var(--ink-3); text-transform: uppercase;
+}
+.lstep.at .k { color: var(--proven-deep); }
+.lstep .d { margin-top: 3px; font-size: 12.5px; color: var(--ink-2); line-height: 1.5; }
+.lstep .d .now { color: var(--ink); font-weight: 600; }
+
+/* ── crew profile: quoted signatures + an honest missing-record slot ────── */
+.sig {
+  margin: 0; padding: 13px 15px;
+  border: 1px solid var(--line); border-radius: var(--r-md);
+  background: var(--surface);
+  font-family: var(--mono); font-size: 11px; line-height: 1.7; color: var(--ink-2);
+  white-space: pre-wrap; overflow-wrap: anywhere;
+}
+.sig b { color: var(--ink); font-weight: 600; }
+.sig .k { color: var(--ink-4); }
+
+.gap {
+  display: flex; flex-direction: column; gap: 9px;
+  padding: 16px;
+}
+.gap .big {
+  font-family: var(--mono); font-size: 20px; color: var(--ink-4);
+}
+.gap .why { font-size: 12.5px; color: var(--ink-2); line-height: 1.55; }
+.gap .why b { color: var(--ink); font-weight: 600; }
+.gap .src {
+  font-family: var(--mono); font-size: 10.5px; color: var(--ink-4);
+  display: flex; flex-wrap: wrap; gap: 3px 12px;
+}
+
+/* provenance line — every panel that carries a fact names the record it read */
+.src-line {
+  padding: 10px 16px;
+  border-top: 1px solid var(--line);
+  background: var(--surface);
+  font-family: var(--mono); font-size: 10.5px; color: var(--ink-4);
+  display: flex; flex-wrap: wrap; gap: 3px 14px;
+}
+
+/* roster filter: same CSS-only radios as the board, applied to rows + groups */
+body:has(#f-ctower:checked) .crow:not(.p-ctower),
+body:has(#f-manibo:checked) .crow:not(.p-manibo),
+body:has(#f-bhloop:checked) .crow:not(.p-bhloop) { display: none; }
+body:has(#f-ctower:checked) .pgroup:not(.gr-ctower),
+body:has(#f-manibo:checked) .pgroup:not(.gr-manibo),
+body:has(#f-bhloop:checked) .pgroup:not(.gr-bhloop) { display: none; }
+
+/* On the desk the sidebar carries the product mark, so the top bar drops it and
+   keeps only the page name; a page with no breadcrumb drops the block entirely
+   rather than leaving an empty gap where a logo used to be. */
+@media (min-width: 900px) {
+  .top-row .mark > svg,
+  .top-row .mark > b,
+  .top-row .mark .sep { display: none; }
+  .top-row .mark:not(:has(.where)) { display: none; }
+  .top-row .mark .where { font-size: 15px; font-weight: 600; color: var(--ink); }
+}
+
+/* model bands — the same three chart tokens the metrics page uses, and the
+   legend repeats every number so no two bands are told apart by hue alone */
+.m-opus  { background: var(--chart-1); }
+.m-fable { background: var(--chart-3); }
+.m-sol   { background: var(--chart-2); }
+.legend i.m-opus, .legend i.m-fable, .legend i.m-sol { width: 8px; height: 8px; border-radius: 2px; display: block; }
+
+/* a crew name that carries no request id is unroutable — flagged on the row
+   rather than quietly normalised away */
+.c-crew .parse .miss { color: var(--warn); }
+
+/* a row whose record contradicts a standing rule says so on the row itself */
+.crow .flag {
+  grid-column: 2 / -1;
+  margin-top: 6px; padding: 6px 9px;
+  border-left: 2px solid var(--warn); background: var(--warn-bg);
+  border-radius: 0 var(--r-sm) var(--r-sm) 0;
+  font-size: 11.5px; color: var(--warn); line-height: 1.45;
+}
+@container roster (min-width: 840px) {
+  .crow:has(.flag) { align-items: start; }
+  .crow .flag { grid-row: 2; grid-column: 5 / -1; }
+}
+
+.seat-id .live .num { display: block; font-family: var(--mono); font-size: 20px; color: var(--ink); }
+.seat-id .live .k { font-size: 10.5px; letter-spacing: .06em; text-transform: uppercase; color: var(--ink-3); }
+
+/* delivered pull requests: title, then the verdict and the diff size beneath it */
+.links li.pr { flex-direction: column; align-items: flex-start; gap: 6px; }
+.links li.pr .k { width: auto; }
+.links li.pr .meta {
+  display: flex; flex-wrap: wrap; align-items: center; gap: 8px;
+  font-family: var(--mono); font-size: 11px; color: var(--ink-3);
+}

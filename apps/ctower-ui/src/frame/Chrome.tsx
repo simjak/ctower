@@ -1,21 +1,28 @@
 import Link from "next/link";
 import type { ReactElement, ReactNode } from "react";
+import { Sidebar } from "./Sidebar";
 import { ThemeToggle } from "./ThemeToggle";
 import { recordAdapter } from "@/read/adapter";
 
-export const SECTIONS = [
-  { href: "/board", label: "Board" },
-  { href: "/ticket", label: "Ticket" },
-  { href: "/heartbeats", label: "Heartbeats" },
-  { href: "/inbox", label: "Inbox" },
-  { href: "/feed", label: "Feed" },
-  { href: "/files", label: "Files" },
-  { href: "/workspace", label: "Workspace" },
-  { href: "/explorer", label: "Explorer" },
-  { href: "/metrics", label: "Metrics" },
-] as const;
+/**
+ * The page name a screen shows in the breadcrumb, and the rail item that name
+ * lights. They differ where the approved IA renames a surface: the board is the
+ * fleet dashboard, and one ticket belongs under Tickets.
+ */
+const RAIL_OF = {
+  Board: "Dashboard",
+  Ticket: "Tickets",
+  Heartbeats: "Heartbeats",
+  Inbox: "Inbox",
+  Feed: "Feed",
+  Files: "Files",
+  Workspace: "Workspace",
+  Explorer: "Explorer",
+  Metrics: "Metrics",
+  Org: "Org",
+} as const;
 
-export type SectionLabel = (typeof SECTIONS)[number]["label"];
+export type SectionLabel = keyof typeof RAIL_OF;
 
 function Mark({ where }: { readonly where: string | null }): ReactElement {
   return (
@@ -60,10 +67,15 @@ function Instance(): ReactElement {
 }
 
 /**
- * The frame every screen shares: one identity, one nav, one theme switch.
- * `Workflow` is deliberately absent from the section list — it is the R2707
- * surface and is not built here, and a nav entry that leads nowhere would be a
- * dead control. `Metrics` is the operator-approved round-4 S9 screen.
+ * The frame every screen shares: one identity, one navigation, one theme
+ * switch. The navigation is the R2736 sidebar — a rail on the desk, a drawer on
+ * the phone — and the horizontal section nav it replaced is gone, not kept
+ * beside it.
+ *
+ * `Workflow` is deliberately absent from the rail: it is the R2707 surface and
+ * is not built here, and a nav entry that leads nowhere is a dead control. The
+ * rail's per-seat and per-project entries are absent for the same reason until
+ * the seat and crew profiles exist; Org carries both as filters that work.
  */
 export function Chrome({
   section,
@@ -77,32 +89,33 @@ export function Chrome({
   readonly headerExtra?: ReactNode;
 }): ReactElement {
   return (
-    <header className="top">
-      <div className="top-row">
-        <Mark where={back ? null : section} />
-        {back ? (
-          <Link className="back" href="/board">
-            ← Board
-          </Link>
-        ) : null}
-        <span className="grow" />
-        {counters}
-        <Instance />
-        <ThemeToggle />
-      </div>
-      <nav className="nav" aria-label="Sections">
-        {SECTIONS.map((item) => (
-          <Link
-            key={item.href}
-            href={item.href}
-            className={item.label === section ? "on" : undefined}
-            aria-current={item.label === section ? "page" : undefined}
-          >
-            {item.label}
-          </Link>
-        ))}
-      </nav>
-      {headerExtra}
-    </header>
+    <>
+      <Sidebar here={RAIL_OF[section]} />
+      <header className="top">
+        <div className="top-row">
+          <label className="burger" htmlFor="drawer" aria-label="Open the menu">
+            <svg width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden>
+              <path
+                d="M2 4h12M2 8h12M2 12h12"
+                stroke="currentColor"
+                strokeWidth="1.4"
+                strokeLinecap="round"
+              />
+            </svg>
+          </label>
+          <Mark where={back ? null : section} />
+          {back ? (
+            <Link className="back" href="/board">
+              ← Board
+            </Link>
+          ) : null}
+          <span className="grow" />
+          {counters}
+          <Instance />
+          <ThemeToggle />
+        </div>
+        {headerExtra}
+      </header>
+    </>
   );
 }

@@ -70,6 +70,7 @@ export type Inspection =
   | { readonly op: "crontab.list" }
   | { readonly op: "systemd.timers" }
   | { readonly op: "tmux.sessions" }
+  | { readonly op: "tmux.crews" }
   | { readonly op: "tmux.panes" }
   | { readonly op: "tmux.capture"; readonly session: string; readonly lines: number };
 
@@ -243,6 +244,20 @@ export function invocationFor(inspection: Inspection): Invocation {
         tool: "tmux",
         executable: executableFor("tmux"),
         args: ["list-sessions", "-F", "#{session_name}"],
+        maxBytes: 200_000,
+        label: inspection.op,
+      };
+    case "tmux.crews":
+      // the same listing as `tmux.sessions` plus the two liveness facts the
+      // roster needs; kept separate so the feed's parser is not widened
+      return {
+        tool: "tmux",
+        executable: executableFor("tmux"),
+        args: [
+          "list-sessions",
+          "-F",
+          "#{session_name}\t#{session_created}\t#{session_activity}\t#{session_attached}",
+        ],
         maxBytes: 200_000,
         label: inspection.op,
       };

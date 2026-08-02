@@ -82,11 +82,12 @@ client, and no screen knows a URL.
 | Workspace · Feed | the tmux capture bridge (`mux list`, `mux read`) | G5 session facts |
 | Explorer | `git worktree list` + `git diff <base>...HEAD` | G5 worktree facts |
 | Metrics (S9) | `git log --first-parent` per project trunk | a recorded deploy event, incident pair and metric-definition file (G5) |
+| Org (the who layer) | live `tmux list-sessions` + Mission Control `state/crew-log.jsonl` + `personas/` | G5 session facts and a recorded seat registry |
 
 These are **interim, director-sanctioned** adapters, and they name a third boundary this repository
 does not otherwise cross: `SPEC.md` line 67 calls Mission Control *migration or research provenance
-only, not a runtime dependency*. Wiring the Inbox, Heartbeats, Workspace and Feed to its live state
-makes it one for those four screens. It exists because the operator escalated (R2710 wave 2), every
+only, not a runtime dependency*. Wiring the Inbox, Heartbeats, Workspace, Feed and Org to its live
+state makes it one for those five screens. It exists because the operator escalated (R2710 wave 2), every
 path is overridable, and nothing outside `src/read/sources/` knows any of them — but it belongs in
 the operator's decision entry beside the two boundaries above.
 
@@ -100,6 +101,36 @@ Three hard lines hold across all of them, and each is enforced structurally rath
 - **Redaction before render.** Every interim source must import `./redact`; the check fails closed
   on one that does not. Coordination text and terminal panes are the most exposed strings on this
   surface, and nothing guarantees a seat never pasted a credential into one.
+
+### The frame, and the who layer
+
+The navigation is the operator-approved R2736 sidebar: a 244px rail on the desk, a drawer behind the
+menu button on the phone, both CSS-only so they work with scripting off. It **replaced** the
+horizontal section nav rather than joining it — two navigations for one set of pages is the
+duplication a frame exists to remove. `design-reference/app.css` is re-vendored from the approved
+mockup set byte-for-byte, so the rendered app and the design reference still read the same file.
+
+The rail carries no live badge. The mockup's counts came from one read of the whole fleet; putting
+that read behind every page would make ten screens depend on a source none of them needs, and a
+badge whose read failed would have to either lie or shout on a page about something else. The counts
+live on Org, where they are measured and sourced. **A missing badge claims nothing; a wrong one
+claims a number.**
+
+Org joins three sources and keeps their failures apart. `tmux` says who is alive — if it does not
+answer there is no roster at all, because an empty roster reads as "nobody is working", which is the
+opposite claim. The crew log says what each crew is doing; a crew it has never mentioned is `none`,
+and a log that could not be read makes those fields `unread`. The personas directory declares the
+seats; a crew whose name matches no declared seat is counted and still shown, never filed under a
+seat this surface invented. The grid sums to the rows beneath it, the summary strip counts those
+same rows, and the crew log's status vocabulary is someone else's, so the classification into the
+three marks is stated on the page rather than hidden in a component. Model strings stay
+unnormalised: two spellings of one family stay two rows rather than merging into a count nobody
+recorded.
+
+The seat and crew profile pages (`seat.html`, `crew.html`) are not built here, so the rail offers no
+per-seat entry — a nav item that leads nowhere is a dead control. Org carries both dimensions as
+filters that work instead, and each filter chip counts what clicking it would reveal *under the
+other filter*, not the fleet-wide number.
 
 ### Metrics, and the rule about numbers
 

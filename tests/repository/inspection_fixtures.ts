@@ -40,6 +40,7 @@ const ACCEPTED: readonly Inspection[] = [
   { op: "crontab.list" },
   { op: "systemd.timers" },
   { op: "tmux.sessions" },
+  { op: "tmux.crews" },
   { op: "tmux.panes" },
   { op: "tmux.capture", session: "designer-r2710-ui-build", lines: 120 },
 ];

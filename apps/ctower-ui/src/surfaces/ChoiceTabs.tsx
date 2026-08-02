@@ -29,19 +29,32 @@ export function ChoiceTabs({
   route,
   parameter = "seat",
   label,
+  keeping = {},
 }: {
   readonly choices: readonly Choice[];
   readonly selected: string;
   readonly route: string;
   readonly parameter?: string;
   readonly label: string;
+  /**
+   * Other selections this screen holds, carried through unchanged. A screen
+   * with two filters must not silently drop one when the other is used.
+   */
+  readonly keeping?: Readonly<Record<string, string>>;
 }): ReactElement {
   const router = useRouter();
   const choose = useCallback(
     (key: string): void => {
-      router.push(`${route}?${parameter}=${encodeURIComponent(key)}`);
+      const query = new URLSearchParams(keeping);
+      if (key === "") {
+        query.delete(parameter);
+      } else {
+        query.set(parameter, key);
+      }
+      const search = query.toString();
+      router.push(search === "" ? route : `${route}?${search}`);
     },
-    [parameter, route, router]
+    [keeping, parameter, route, router]
   );
 
   return (

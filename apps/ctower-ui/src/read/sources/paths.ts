@@ -40,6 +40,15 @@ export function watchdogLogPath(): string {
   );
 }
 
+export function crewLogPath(): string {
+  return environment("CTOWER_UI_CREW_LOG_PATH", `${missionControlRoot()}/state/crew-log.jsonl`);
+}
+
+/** The directory whose files declare the seats the fleet can dispatch. */
+export function personasRoot(): string {
+  return environment("CTOWER_UI_PERSONAS_ROOT", `${missionControlRoot()}/personas`);
+}
+
 export function muxBridgePath(): string {
   return environment("CTOWER_UI_MUX_PATH", `${missionControlRoot()}/bin/mux`);
 }

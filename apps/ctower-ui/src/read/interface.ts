@@ -298,6 +298,107 @@ export interface SessionStream {
   readonly fidelityNote: string;
 }
 
+/* ── the who layer ─────────────────────────────────────────────────────────
+   A **seat** is durable: one accountable persona that outlives every job it
+   does. A **crew** is one engagement of that seat — a live session with a
+   model, a project and one task. The roster counts crews; it never invents a
+   seat that no source declares, and it never fills a field the record is
+   silent about. */
+
+/**
+ * How a crew's recorded status word classifies to the product's three marks.
+ * `unrecorded` is its own case: a crew with no status is not a parked crew.
+ */
+export type CrewActivity = "in-flight" | "parked" | "held" | "unrecorded";
+
+/** One live crew, as the fleet holds it. */
+export interface CrewRow {
+  /** The session name, verbatim. */
+  readonly name: string;
+  /** What the name parses to. A name that does not parse says so, per part. */
+  readonly seat: Known<string>;
+  readonly seatLabel: Known<string>;
+  /** The seat's two-letter mark, so two seats never share one avatar. */
+  readonly seatInitials: Known<string>;
+  readonly request: Known<string>;
+  readonly slug: Known<string>;
+  readonly project: Known<string>;
+  readonly model: Known<string>;
+  readonly harness: Known<string>;
+  readonly task: Known<string>;
+  /** The status word the log recorded, not a word this surface chose. */
+  readonly status: Known<string>;
+  readonly activity: CrewActivity;
+  readonly upFor: Known<string>;
+  readonly loggedAgo: Known<string>;
+  /** A standing rule this row's own record contradicts, stated on the row. */
+  readonly flag: string | null;
+}
+
+/** One project's crews, grouped as the roster shows them. */
+export interface ProjectRoster {
+  readonly key: string;
+  readonly label: string;
+  readonly crews: readonly CrewRow[];
+  readonly inFlight: number;
+  readonly parked: number;
+  readonly held: number;
+}
+
+/** One row of the seats × projects grid. */
+export interface SeatRow {
+  readonly seat: string;
+  readonly label: string;
+  readonly initials: string;
+  /** Aligned with `CrewRoster.columns`. */
+  readonly perProject: readonly number[];
+  readonly total: number;
+}
+
+/** One model's share of the live crews, with the harness that runs it. */
+export interface ModelShare {
+  readonly label: string;
+  readonly harness: Known<string>;
+  readonly count: number;
+}
+
+/** A filter the roster offers, with the count it would reveal. */
+export interface RosterFilter {
+  readonly key: string;
+  readonly label: string;
+  readonly count: number;
+}
+
+export interface CrewRoster {
+  /** Project labels, in grid-column order. */
+  readonly columns: readonly string[];
+  readonly seats: readonly SeatRow[];
+  readonly columnTotals: readonly number[];
+  readonly total: number;
+  readonly groups: readonly ProjectRoster[];
+  readonly projectFilters: readonly RosterFilter[];
+  readonly seatFilters: readonly RosterFilter[];
+  /** What clearing one filter would reveal, with the other one left alone. */
+  readonly allProjectsCount: number;
+  readonly allSeatsCount: number;
+  readonly selectedProject: string | null;
+  readonly selectedSeat: string | null;
+  readonly inFlight: number;
+  readonly parked: number;
+  readonly held: number;
+  readonly unrecorded: number;
+  readonly models: readonly ModelShare[];
+  /** Crews the seat list could not account for, so a total can be sized. */
+  readonly unseated: number;
+  readonly observedAt: string;
+  /** Where the seat list came from, said by the source. */
+  readonly seatSource: string;
+  /** The status→mark classification, stated so the screen need not know it. */
+  readonly activityRule: string;
+  readonly sourceNote: string;
+  readonly tail: TailNote;
+}
+
 /* ── S9 metrics ────────────────────────────────────────────────────────── */
 
 export interface MergeDay {
@@ -386,6 +487,8 @@ export interface RecordAdapter {
   sessionStream: (subject: string | null) => Promise<Reading<SessionStream>>;
   /** Delivery measured per project: what the record supports, and what it does not. */
   deliveryMetrics: () => Promise<Reading<DeliveryMetrics>>;
+  /** Who is working, on what: seats down, projects across, then every live crew. */
+  crewRoster: (project: string | null, seat: string | null) => Promise<Reading<CrewRoster>>;
 }
 
 /** The subset of reads the ctower read API answers today. */
