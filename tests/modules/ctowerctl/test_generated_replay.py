@@ -132,8 +132,8 @@ def test_schema_valid_refusal_body_never_becomes_a_persistable_refusal() -> None
     assert sorted(ServerRefusal.model_fields) == ["name", "status"]
 
 
-def test_refusal_code_outside_the_authored_allowlist_keeps_only_a_slug() -> None:
-    """A server ahead of this CLI's contract is named as unrecognized, not quoted."""
+def test_refusal_code_outside_the_authored_allowlist_keeps_no_content_at_all() -> None:
+    """A server ahead of this CLI's contract is named unrecognized, never echoed."""
 
     command_id = uuid4()
     problem = _ProblemStub(
@@ -153,10 +153,8 @@ def test_refusal_code_outside_the_authored_allowlist_keeps_only_a_slug() -> None
         )
     )
 
-    assert response.refusal == ServerRefusal(
-        status=403,
-        name="unrecognized_refusal:future_refusal_code",
-    )
+    assert response.refusal == ServerRefusal(status=403, name="unrecognized_refusal")
+    assert "future" not in response.model_dump_json(include={"refusal"})
     assert PII_MARKER not in response.model_dump_json()
 
 

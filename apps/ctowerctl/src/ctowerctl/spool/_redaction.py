@@ -13,7 +13,7 @@ from uuid import UUID
 
 from pydantic import BaseModel, ConfigDict, Field
 
-from ctowerctl.spool._refusals import REFUSAL_NAME_PATTERN, refusal_name
+from ctowerctl.spool._refusals import RefusalName, refusal_name
 
 if TYPE_CHECKING:
     from ctowerctl.spool._recovery import CorruptRecord, RecoveredRecord, Session
@@ -81,10 +81,10 @@ class SpoolState(StrEnum):
 
 
 class ServerRefusal(_BoundaryModel):
-    """The allowlisted name a server gave one refusal, never its response body."""
+    """One authored refusal name, or the content-free sentinel; never response text."""
 
     status: Annotated[int, Field(ge=400, le=599)]
-    name: Annotated[str, Field(pattern=REFUSAL_NAME_PATTERN)]
+    name: RefusalName
 
 
 class SpoolEntry(_BoundaryModel):
@@ -350,12 +350,12 @@ def _quarantine_outcome(
 
 
 def _server_refusal(value: JsonValue) -> ServerRefusal | None:
-    """Render a persisted refusal through the allowlist that admitted it."""
+    """Render a persisted refusal through the allowlist, never from the bytes on disk."""
 
     if not isinstance(value, Mapping):
         return None
-    persisted = ServerRefusal.model_validate(value)
-    return server_refusal(persisted.status, persisted.name)
+    payload = dict(value)
+    return server_refusal(_int_field(payload, "status"), _string_field(payload, "name"))
 
 
 def _oldest_age(entries: tuple[SpoolEntry, ...]) -> float | None:
@@ -369,6 +369,13 @@ def _string_field(payload: JsonObject, field: str) -> str:
     value = payload.get(field)
     if not isinstance(value, str):
         raise TypeError("verified spool identity field is not a string")
+    return value
+
+
+def _int_field(payload: JsonObject, field: str) -> int:
+    value = payload.get(field)
+    if not isinstance(value, int) or isinstance(value, bool):
+        raise TypeError("verified spool identity field is not an integer")
     return value
 
 

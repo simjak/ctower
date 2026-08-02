@@ -36,6 +36,9 @@ _TWO_COMMANDS = 2
 _CREDENTIAL = "synthetic-foundation-identity"
 _PII_MARKER = "jane.doe+ct180@example.invalid"
 _BEARER_MARKER = "Bearer synthetic-refusal-probe-not-a-credential"
+_PII_SLUG = "jane_doe_ct180_example_invalid"
+_BEARER_SLUG = "bearer_synthetic_refusal_probe_not_a_credential"
+_UNRECOGNIZED = "unrecognized_refusal"
 
 
 class _MemoryBackend:
@@ -263,20 +266,20 @@ def test_server_refusal_is_named_in_the_listing_while_local_refusal_names_no_ser
     assert unnamed.server_refusal is None
 
 
-def test_only_an_allowlisted_name_can_be_built_or_persisted_for_a_refusal(
+def test_only_an_authored_name_or_the_content_free_sentinel_can_exist(
     tmp_path: Path,
     secure_keyring: _MemoryBackend,
 ) -> None:
-    """Response prose has no durable field to live in, named or unnamed."""
+    """Response prose has no durable field to live in, and no slug to hide in."""
 
     del secure_keyring
     assert server_refusal(403, "tenant-scope-denied").name == "tenant_scope_denied"
-    assert server_refusal(403, f"Refused for {_PII_MARKER}").name == (
-        "unrecognized_refusal:refused_for_jane_doe_ct180_example_invalid"
-    )
-    assert server_refusal(500, "!!").name == "unrecognized_refusal:unnamed"
-    with pytest.raises(ValidationError):
-        ServerRefusal(status=403, name=f"unauthorized: {_BEARER_MARKER}")
+    assert server_refusal(403, f"Refused for {_PII_MARKER}").name == _UNRECOGNIZED
+    assert server_refusal(500, f"{_BEARER_MARKER} presented").name == _UNRECOGNIZED
+    assert server_refusal(500, "!!").name == _UNRECOGNIZED
+    for rejected in (f"unauthorized: {_BEARER_MARKER}", f"{_UNRECOGNIZED}:jane_doe", "unnamed"):
+        with pytest.raises(ValidationError):
+            ServerRefusal(status=403, name=rejected)
 
     spool = _spool(tmp_path / "state")
     spool.enqueue(_command(uuid4(), {"title": "refused"}))
@@ -287,6 +290,31 @@ def test_only_an_allowlisted_name_can_be_built_or_persisted_for_a_refusal(
     assert listed.server_refusal == ServerRefusal(status=403, name="unauthorized")
     assert _PII_MARKER.encode() not in corpus
     assert _BEARER_MARKER.encode() not in corpus
+
+
+def test_public_spool_round_trip_cannot_persist_or_list_an_unknown_refusal_code(
+    tmp_path: Path,
+    secure_keyring: _MemoryBackend,
+) -> None:
+    """The exported executor boundary is a caller's, so it must not carry text either."""
+
+    del secure_keyring
+    state = tmp_path / "state"
+    spool = _spool(state)
+    spool.enqueue(_command(uuid4(), {"title": "refused"}))
+    hostile_code = f"refused-for-{_PII_MARKER}-presenting-{_BEARER_MARKER}"
+
+    report = spool.drain(_Executor(_refused(server_refusal(403, hostile_code))))
+
+    assert report.quarantined == 1
+    listed = _unbound_spool(state).list_entries(SpoolState.QUARANTINE)
+    corpus = _all_spool_bytes(state)
+    rendered = json.dumps([item.model_dump(mode="json") for item in listed], sort_keys=True)
+    assert listed[0].reason_code == "permanent_server_rejection"
+    assert listed[0].server_refusal == ServerRefusal(status=403, name=_UNRECOGNIZED)
+    for marker in (_PII_MARKER, _BEARER_MARKER, _PII_SLUG, _BEARER_SLUG):
+        assert marker not in rendered
+        assert marker.encode() not in corpus
 
 
 def test_command_held_behind_a_quarantined_head_later_gets_its_own_refusal_name(
