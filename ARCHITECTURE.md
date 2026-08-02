@@ -332,6 +332,18 @@ executes and reviews, which declared gates activate, and which finite bounds app
 narrow declared behavior; it cannot invent a missing stage or edge. `engineering.software-factory` is the
 first package, not the engine's built-in process.
 
+R2707 adds one authoring path in front of that composition, not another engine. The CompanyBundle resolves
+Company, Project, Team/profile, and Ticket-schema keys before privately normalizing the strict S7/S8
+Workflow Definition YAML into the same immutable Workflow payload shown above. That source authors the
+Workflow-owned half only — graph and derived endpoints, stages and responsibilities, ordinary and skip slot
+sets with their signing slots, gate locations, typed routes, and the group vocabulary — while perspectives,
+gate activation, and finite bounds stay with the separately pinned Execution Policy. Source-schema
+validity, resolved-plan validity, and Catalog publication are separate gates, and a payload missing a
+Workflow-owned fact is refused with that fact named rather than defaulted. S7 and S8 edit/project the same
+source; only a published normalized revision/digest can run. Per-project overlays are additive evidence
+requirements only. Stage `owner` selects an eligible responsibility/capability and never supplies D28 seat
+truth; assigned seats remain explicit facts and signing seats still derive from Evidence assignment.
+
 A Workflow may also declare an ordered stage-group vocabulary. Groups label the pinned graph so a rollup
 can say "review" or "ship" without any engine, policy, projection, or test branching on a stage key; they
 declare no edge, gate, terminal condition, or ordering authority. The delivery sprint — think, plan, build,
@@ -345,6 +357,23 @@ ordinary set, evidence-backed `skipped` resolves the skip set in its place and i
 the pinned predicate holds on accepted durable facts. A skipped stage therefore owes its skip proof
 instead of the work it did not do, and a `skipped` request with an unsatisfied predicate is refused rather
 than converted or assumed. `SPEC.md` INV-61, INV-62, and INV-63 are authority for all of this.
+
+Six slot contracts in the software-factory package carry extra bound requirements because prose replaces
+them most often: `plan.criteria`, `implement.warm-gate`, every `use-proof`/`live-use-proof`/`verification`
+transcript, `risk-derived-review.round-manifest`, `documentation.revision`, and
+`release-preflight.release-notes`. The last two are why documentation cannot be asserted: the docs revision
+binds the current candidate digest, the generating command run, and every documented surface that candidate
+adds or changes, and the release-scoped artifact binds the release manifest plus each included change's
+current documentation completion. Neither adds an evidence kind — both are `artifact-digest`.
+
+`documentation` and `release-preflight` declare no skip predicate, so neither can be omitted at any risk
+tier, and the record binds the real landing the only way it can: one required status check on the change
+resolves the ticket's **landing-boundary predecessor set** — every stage the pinned graph places before the
+stage carrying the landing boundary — and reports each stage's fact separately as `pass`, `fail`, or
+`STATE_UNKNOWN` on the head revision's candidate digest. Green requires every fact; unknown is a failure.
+The set derives from the pinned graph, never from stage-key strings, so the check carries no branch
+AC-WF-25 forbids. The check is a pure reader — no authoritative write, no Evidence, no slot, no gate — and
+is never itself proof. `SPEC.md` INV-74 and AC-REL-09 are authority for this.
 
 At I2.1, the publishable software-factory revision must materialize one complete authored activation/edge
 sequence, `sf.e00..e15`. It is linear from activation through `intake -> think -> plan -> design ->
