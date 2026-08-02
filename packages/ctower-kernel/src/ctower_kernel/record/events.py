@@ -9,6 +9,7 @@ from collections.abc import Mapping, Sequence
 from dataclasses import dataclass
 from datetime import UTC, datetime
 from enum import StrEnum
+from typing import Literal
 from uuid import UUID
 
 from ctower_kernel.record.catalog_events import (
@@ -58,6 +59,7 @@ __all__ = [
     "WorkflowChangedPayload",
     "canonical_event_bytes",
     "event_digest",
+    "project_event_kinds",
     "ticket_payload_from_mapping",
 ]
 
@@ -310,6 +312,10 @@ type EventPayload = (
     | IntakeEventPayload
 )
 
+type ProjectEventPayload = (
+    TicketEventPayload | ProofChangedPayload | WorkflowChangedPayload | WorkChangedPayload
+)
+
 
 @dataclass(frozen=True, slots=True)
 class EventEnvelope:
@@ -383,58 +389,112 @@ def ticket_payload_from_mapping(
     )
 
 
-_EVENT_VARIANTS: dict[EventKind, tuple[type[object], frozenset[EventOrigin]]] = {
-    EventKind.BOOTSTRAP_CREATED: (BootstrapCreatedPayload, frozenset({EventOrigin.BOOTSTRAP})),
-    EventKind.TICKET_CREATED: (
+@dataclass(frozen=True, slots=True)
+class _EventCatalogEntry:
+    payload_type: type[object]
+    origins: frozenset[EventOrigin]
+    project_scope: Literal["aggregate-ticket", "linked-ticket"] | None = None
+
+
+_EVENT_CATALOG: dict[EventKind, _EventCatalogEntry] = {
+    EventKind.BOOTSTRAP_CREATED: _EventCatalogEntry(
+        BootstrapCreatedPayload, frozenset({EventOrigin.BOOTSTRAP})
+    ),
+    EventKind.TICKET_CREATED: _EventCatalogEntry(
         TicketCreatedPayload,
         frozenset({EventOrigin.API, EventOrigin.MIGRATION_IMPORTER}),
+        "aggregate-ticket",
     ),
-    EventKind.CUSTODY_TRANSFERRED: (CustodyTransferredPayload, frozenset({EventOrigin.API})),
-    EventKind.TICKET_COMMENT_ADDED: (TicketCommentAddedPayload, frozenset({EventOrigin.API})),
-    EventKind.CATALOG_COMPONENT_PUBLISHED: (
+    EventKind.CUSTODY_TRANSFERRED: _EventCatalogEntry(
+        CustodyTransferredPayload,
+        frozenset({EventOrigin.API}),
+        "aggregate-ticket",
+    ),
+    EventKind.TICKET_COMMENT_ADDED: _EventCatalogEntry(
+        TicketCommentAddedPayload,
+        frozenset({EventOrigin.API}),
+        "aggregate-ticket",
+    ),
+    EventKind.CATALOG_COMPONENT_PUBLISHED: _EventCatalogEntry(
         CatalogComponentPublishedPayload,
         frozenset({EventOrigin.API}),
     ),
-    EventKind.CATALOG_BUNDLE_ACTIVATED: (
+    EventKind.CATALOG_BUNDLE_ACTIVATED: _EventCatalogEntry(
         CatalogBundleActivatedPayload,
         frozenset({EventOrigin.API}),
     ),
-    EventKind.PROOF_CHANGED: (ProofChangedPayload, frozenset({EventOrigin.API})),
-    EventKind.WORKFLOW_CHANGED: (WorkflowChangedPayload, frozenset({EventOrigin.API})),
-    EventKind.WORK_CHANGED: (
+    EventKind.PROOF_CHANGED: _EventCatalogEntry(
+        ProofChangedPayload,
+        frozenset({EventOrigin.API}),
+        "linked-ticket",
+    ),
+    EventKind.WORKFLOW_CHANGED: _EventCatalogEntry(
+        WorkflowChangedPayload,
+        frozenset({EventOrigin.API}),
+        "linked-ticket",
+    ),
+    EventKind.WORK_CHANGED: _EventCatalogEntry(
         WorkChangedPayload,
         frozenset({EventOrigin.API, EventOrigin.MIGRATION_IMPORTER}),
+        "aggregate-ticket",
     ),
-    EventKind.ROUTINE_OCCURRENCE_RECORDED: (
+    EventKind.ROUTINE_OCCURRENCE_RECORDED: _EventCatalogEntry(
         RoutineOccurrenceRecordedPayload,
         frozenset({EventOrigin.CONTROL_WORKER}),
     ),
-    EventKind.POISON_DISPOSITION_RECORDED: (
+    EventKind.POISON_DISPOSITION_RECORDED: _EventCatalogEntry(
         PoisonDispositionRecordedPayload,
         frozenset({EventOrigin.API}),
     ),
-    EventKind.MIGRATION_CHANGED: (
+    EventKind.MIGRATION_CHANGED: _EventCatalogEntry(
         MigrationChangedPayload,
         frozenset({EventOrigin.API, EventOrigin.MIGRATION_IMPORTER}),
     ),
-    EventKind.INBOUND_EVENT_RECORDED: (
+    EventKind.INBOUND_EVENT_RECORDED: _EventCatalogEntry(
         InboundEventRecordedPayload,
         frozenset({EventOrigin.API}),
     ),
-    EventKind.INBOUND_EVENT_PROMOTED: (
+    EventKind.INBOUND_EVENT_PROMOTED: _EventCatalogEntry(
         InboundEventPromotedPayload,
         frozenset({EventOrigin.API}),
     ),
 }
 
+if frozenset(_EVENT_CATALOG) != frozenset(EventKind):
+    raise RuntimeError("the authoritative event catalog must cover every event kind exactly once")
+
+
+def project_event_kinds() -> tuple[EventKind, ...]:
+    """Derive the project-feed kind set from the authoritative event catalog."""
+
+    return tuple(kind for kind, entry in _EVENT_CATALOG.items() if entry.project_scope is not None)
+
+
+def project_event_kinds_by_scope(
+    scope: Literal["aggregate-ticket", "linked-ticket"],
+) -> tuple[EventKind, ...]:
+    """Derive the feed kinds that share one authoritative ticket-link strategy."""
+
+    return tuple(kind for kind, entry in _EVENT_CATALOG.items() if entry.project_scope == scope)
+
+
+def validate_project_event_payload(kind: EventKind, payload: ProjectEventPayload) -> None:
+    """Reject a project-feed kind/payload pair that disagrees with the catalog."""
+
+    entry = _EVENT_CATALOG[kind]
+    if entry.project_scope is None:
+        raise ValueError(f"{kind.value} is not project-feed scoped by the event catalog")
+    if not isinstance(payload, entry.payload_type):
+        raise TypeError(f"{kind.value} requires {entry.payload_type.__name__}")
+
 
 def _validate_variant(event: EventEnvelope) -> None:
     if not isinstance(event.kind, EventKind) or not isinstance(event.origin, EventOrigin):
         raise TypeError("event kind and origin must use authored enums")
-    expected_payload, expected_origins = _EVENT_VARIANTS[event.kind]
-    if not isinstance(event.payload, expected_payload):
-        raise TypeError(f"{event.kind} requires {expected_payload.__name__}")
-    if event.origin not in expected_origins:
+    entry = _EVENT_CATALOG[event.kind]
+    if not isinstance(event.payload, entry.payload_type):
+        raise TypeError(f"{event.kind} requires {entry.payload_type.__name__}")
+    if event.origin not in entry.origins:
         raise ValueError(f"{event.kind} has an unauthorized origin")
 
 

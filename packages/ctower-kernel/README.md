@@ -54,6 +54,13 @@ Record package facade keeps core authority types at `ctower_kernel.record` and g
 result, and policy types under the exported `ctower_kernel.record.intake` namespace instead of flattening
 those leaf symbols.
 
+Record also owns the accepted project-event read Interface. Its SQL joins immutable ticket project scope
+and durability confirmation before materialization, and its opaque cursor is bound to one project. Feed
+membership and aggregate-ticket versus linked-ticket scope strategy come from the canonical Record event
+catalog's metadata; no API, CLI, or consumer owns a parallel kind list. The current six
+ticket/Work/Workflow/Proof variants support Board and ticket replay.
+Session and heartbeat variants remain absent pending #200 and are never synthesized.
+
 There is no executable Extension Host in I1 or I2; that runtime remains deferred until a real use case and
 two real Adapters earn its Seam. The kernel may depend on authored/generated contracts and allowlisted public
 Module Interfaces, never on apps, runner/provider implementations, web, CLI, or mutable YAML state.

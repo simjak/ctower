@@ -3,7 +3,8 @@
 from __future__ import annotations
 
 import json
-from dataclasses import FrozenInstanceError
+from copy import deepcopy
+from dataclasses import FrozenInstanceError, replace
 from datetime import UTC, datetime
 from io import StringIO
 from pathlib import Path
@@ -12,7 +13,13 @@ from uuid import UUID, uuid4
 
 import pytest
 
-from ctower_kernel.record import CustodyCommand, RecordProblem, TimelineEvent
+from ctower_kernel.record import (
+    CustodyCommand,
+    ProjectEventCursor,
+    ProjectEventPage,
+    RecordProblem,
+    TimelineEvent,
+)
 from ctower_kernel.record.events import (
     BootstrapCreatedPayload,
     CustodyTransferredPayload,
@@ -26,8 +33,11 @@ from ctower_kernel.record.events import (
     WorkChangedPayload,
     canonical_event_bytes,
     event_digest,
+    project_event_kinds,
     ticket_payload_from_mapping,
+    validate_project_event_payload,
 )
+from ctower_kernel.record.interface import ProjectEvent
 from ctower_kernel.record.postgres import PostgresRecord, provision_bootstrap
 
 ROOT = Path(__file__).parents[3]
@@ -174,6 +184,165 @@ def test_timeline_event_keeps_typed_kind_matched_payload() -> None:
             payload=payload,
             sequence=1,
         )
+
+
+def test_project_event_cursor_round_trips_and_rejects_unbound_values() -> None:
+    cursor = ProjectEventCursor("bh-loop", 12, 42)
+
+    assert cursor.encode() == "v1:bh-loop:12:42"
+    assert ProjectEventCursor.decode(cursor.encode()) == cursor
+    for value in (
+        "",
+        "v2:bh-loop:12:42",
+        "v1:BH-loop:12:42",
+        "v1:bh-loop:-1:42",
+    ):
+        with pytest.raises(ValueError, match="malformed"):
+            ProjectEventCursor.decode(value)
+    with pytest.raises(ValueError, match="record domain"):
+        ProjectEventCursor("ctower", 1, 9_223_372_036_854_775_808)
+    with pytest.raises(ValueError, match="both be zero or positive"):
+        ProjectEventCursor("ctower", 0, 1)
+
+
+def test_project_event_payload_pairing_is_validated_by_the_catalog() -> None:
+    payload = TicketCreatedPayload(uuid4(), "P1", "ctower", "source", "ref", "title")
+
+    validate_project_event_payload(EventKind.TICKET_CREATED, payload)
+    with pytest.raises(TypeError, match=r"work\.changed requires WorkChangedPayload"):
+        validate_project_event_payload(EventKind.WORK_CHANGED, payload)
+    with pytest.raises(ValueError, match="not project-feed scoped"):
+        validate_project_event_payload(EventKind.BOOTSTRAP_CREATED, payload)
+
+
+def test_project_event_and_page_emit_one_strict_cursor_ordered_value() -> None:
+    event = _project_event(acceptance_position=2, record_position=7)
+    page = ProjectEventPage(
+        project_key="ctower",
+        events=(event,),
+        next_cursor=ProjectEventCursor("ctower", 2, 7),
+        has_more=False,
+        source_watermark=2,
+    )
+
+    assert page.response_payload() == {
+        "events": [event.response_payload()],
+        "has_more": False,
+        "next_cursor": "v1:ctower:2:7",
+        "project_key": "ctower",
+        "source_watermark": 2,
+    }
+    with pytest.raises(ValueError, match="not project-feed scoped"):
+        replace(event, kind=EventKind.BOOTSTRAP_CREATED)
+    with pytest.raises(TypeError, match="requires WorkChangedPayload"):
+        replace(event, kind=EventKind.WORK_CHANGED)
+    with pytest.raises(ValueError, match="positions and sequence"):
+        replace(event, acceptance_position=0)
+
+
+def test_project_event_page_rejects_invalid_scope_watermark_order_and_cursor() -> None:
+    first = _project_event(acceptance_position=1, record_position=7)
+    second = _project_event(acceptance_position=2, record_position=9)
+
+    with pytest.raises(ValueError, match="invalid project key"):
+        _project_page(first, second, project_key="CTOWER")
+    with pytest.raises(ValueError, match="bind the page project"):
+        _project_page(first, second, next_cursor=ProjectEventCursor("manibo", 2, 9))
+    with pytest.raises(ValueError, match="nonnegative integer"):
+        _project_page(first, second, source_watermark=-1)
+    with pytest.raises(ValueError, match="strictly cursor ordered"):
+        _project_page(first, second, events=(second, first))
+    with pytest.raises(ValueError, match="strictly cursor ordered"):
+        _project_page(first, second, events=(first, replace(first, event_id=uuid4())))
+    with pytest.raises(ValueError, match="cannot precede"):
+        _project_page(first, second, source_watermark=1)
+    with pytest.raises(ValueError, match="follow the final event"):
+        _project_page(first, second, next_cursor=ProjectEventCursor("ctower", 2, 8))
+
+
+def test_project_event_contract_derives_exact_kind_set_from_authoritative_catalog() -> None:
+    document = json.loads((ROOT / "contracts/http/openapi.yaml").read_text(encoding="utf-8"))
+
+    _assert_project_event_kind_parity(document)
+
+
+@pytest.mark.parametrize("mutation", ("catalog-added", "feed-added"))
+def test_project_event_catalog_drift_guard_rejects_mutated_contract_copy(
+    mutation: str,
+) -> None:
+    document = json.loads((ROOT / "contracts/http/openapi.yaml").read_text(encoding="utf-8"))
+    mutated = deepcopy(document)
+    components = cast(dict[str, object], mutated["components"])
+    schemas = cast(dict[str, object], components["schemas"])
+    event_schema = cast(dict[str, object], schemas["ProjectEvent"])
+    union = cast(list[dict[str, str]], event_schema["oneOf"])
+    if mutation == "catalog-added":
+        union.pop()
+    else:
+        extra = deepcopy(cast(dict[str, object], schemas["ProjectTicketCreatedEvent"]))
+        properties = cast(dict[str, object], extra["properties"])
+        properties["kind"] = {"const": "session.recorded"}
+        schemas["ProjectSessionRecordedEvent"] = extra
+        union.append({"$ref": "#/components/schemas/ProjectSessionRecordedEvent"})
+
+    with pytest.raises(AssertionError, match="project event catalog/contract drift"):
+        _assert_project_event_kind_parity(mutated)
+
+
+def _assert_project_event_kind_parity(document: dict[str, object]) -> None:
+    components = cast(dict[str, dict[str, object]], document["components"])
+    schemas = cast(dict[str, dict[str, object]], components["schemas"])
+    branches = cast(list[dict[str, str]], schemas["ProjectEvent"]["oneOf"])
+    contract_kinds = {
+        cast(
+            str,
+            cast(
+                dict[str, dict[str, object]],
+                schemas[branch["$ref"].removeprefix("#/components/schemas/")]["properties"],
+            )["kind"]["const"],
+        )
+        for branch in branches
+    }
+    catalog_kinds = {kind.value for kind in project_event_kinds()}
+    assert contract_kinds == catalog_kinds, (
+        "project event catalog/contract drift: "
+        f"catalog={sorted(catalog_kinds)} contract={sorted(contract_kinds)}"
+    )
+
+
+def _project_event(*, acceptance_position: int, record_position: int) -> ProjectEvent:
+    ticket_id = uuid4()
+    return ProjectEvent(
+        acceptance_position=acceptance_position,
+        actor_principal_id=uuid4(),
+        aggregate_id=ticket_id,
+        client_command_id=uuid4(),
+        event_id=uuid4(),
+        kind=EventKind.TICKET_CREATED,
+        occurred_at=datetime.now(UTC),
+        payload=TicketCreatedPayload(uuid4(), "P2", "ctower", "test", "ref", "title"),
+        record_position=record_position,
+        sequence=1,
+        stream_id=f"ticket:{ticket_id}",
+    )
+
+
+def _project_page(
+    first: ProjectEvent,
+    second: ProjectEvent,
+    *,
+    project_key: str = "ctower",
+    events: tuple[ProjectEvent, ...] | None = None,
+    next_cursor: ProjectEventCursor | None = None,
+    source_watermark: int = 2,
+) -> ProjectEventPage:
+    return ProjectEventPage(
+        project_key=project_key,
+        events=events if events is not None else (first, second),
+        next_cursor=next_cursor or ProjectEventCursor("ctower", 2, 9),
+        has_more=False,
+        source_watermark=source_watermark,
+    )
 
 
 def _ticket_event(

@@ -1,5 +1,5 @@
 // DO NOT EDIT: generated file; regenerate from declared inputs.
-// Authored contract digest: sha256:589aec80212de067d4f7e0c10244bd8bf7e0cd6ad02beac7ee076a4a21734038
+// Authored contract digest: sha256:3294b213de71af8ec8857df7f43c9b5927f8d71b952b47a2c9b59f9b385f3cbe
 
 import type * as Models from "./models.js";
 import { OPERATIONS, type OperationId } from "./operations.js";
@@ -145,6 +145,12 @@ export type GetTicketTimelineInput = Readonly<{
   readonly "projectKey": string;
 }>;
 
+export type ListProjectEventsInput = Readonly<{
+  readonly "projectKey": string;
+  readonly "cursor"?: string;
+  readonly "limit"?: number;
+}>;
+
 export type ListTicketAssignmentsInput = Readonly<{
   readonly "ticketId": string;
   readonly "projectKey": string;
@@ -259,6 +265,7 @@ export type OperationInputs = Readonly<{
   readonly "getSyntheticWorkflowRun": GetSyntheticWorkflowRunInput;
   readonly "getTicket": GetTicketInput;
   readonly "getTicketTimeline": GetTicketTimelineInput;
+  readonly "listProjectEvents": ListProjectEventsInput;
   readonly "listTicketAssignments": ListTicketAssignmentsInput;
   readonly "listTicketAuditEvents": ListTicketAuditEventsInput;
   readonly "planCompanyBundle": PlanCompanyBundleInput;
@@ -303,6 +310,7 @@ export type OperationResults = Readonly<{
   readonly "getSyntheticWorkflowRun": Models.SyntheticRunResource;
   readonly "getTicket": Models.TicketResource;
   readonly "getTicketTimeline": Models.TimelineResponse;
+  readonly "listProjectEvents": Models.ProjectEventPage;
   readonly "listTicketAssignments": Models.AssignmentList;
   readonly "listTicketAuditEvents": Models.AuditPage;
   readonly "planCompanyBundle": Models.CompanyBundlePlan;
@@ -488,6 +496,12 @@ export class CtowerClient {
     input: GetTicketTimelineInput,
   ): Promise<Models.TimelineResponse> {
     return this.execute("getTicketTimeline", input);
+  }
+
+  public async listProjectEvents(
+    input: ListProjectEventsInput,
+  ): Promise<Models.ProjectEventPage> {
+    return this.execute("listProjectEvents", input);
   }
 
   public async listTicketAssignments(

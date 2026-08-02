@@ -173,6 +173,18 @@
       "packages/ctower-kernel/migrations/0021_object_backup_anchor.sql",
       "packs/policies/evidence/trust-spine-four-stage-v1.yaml"
     ],
+    "AC-EVT-01": [
+      "contracts/http/openapi.yaml"
+    ],
+    "AC-EVT-02": [
+      "contracts/http/openapi.yaml"
+    ],
+    "AC-EVT-03": [
+      "contracts/http/openapi.yaml"
+    ],
+    "AC-EVT-04": [
+      "contracts/http/openapi.yaml"
+    ],
     "AC-MIG-01": [
       "contracts/domain/migration/ctower-project-export-equality.schema.json",
       "contracts/domain/migration/ctower-project-export-manifest.schema.json",
@@ -757,6 +769,9 @@
       "packages/ctower-kernel/migrations/0030_i17b_migration_truth_spine.sql",
       "packages/ctower-kernel/migrations/0031_i17b_bounded_truth_spine.sql"
     ],
+    "INV-68": [
+      "contracts/http/openapi.yaml"
+    ],
     "SPEC#aggregate-boundaries-and-relationships": [
       "contracts/domain/intake/thread-intake.schema.json",
       "packages/ctower-kernel/migrations/0032_thread_first_intake.sql",
@@ -931,6 +946,9 @@
       "packs/components/checkpoints/manibo.staging-infra/v1.yaml",
       "packs/components/checkpoints/manibo.staging-nfq-e2e/v1.yaml",
       "packs/components/checkpoints/manibo.verify/v1.yaml"
+    ],
+    "SPEC#project-event-feed": [
+      "contracts/http/openapi.yaml"
     ],
     "SPEC#retention-erasure-backup-and-restore": [
       "contracts/evidence/object-manifest.schema.json",

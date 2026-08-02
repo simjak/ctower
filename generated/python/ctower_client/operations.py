@@ -1,6 +1,6 @@
 """DO NOT EDIT: generated file; regenerate from declared inputs.
 
-Authored contract digest: sha256:589aec80212de067d4f7e0c10244bd8bf7e0cd6ad02beac7ee076a4a21734038
+Authored contract digest: sha256:3294b213de71af8ec8857df7f43c9b5927f8d71b952b47a2c9b59f9b385f3cbe
 """
 
 from __future__ import annotations
@@ -370,6 +370,19 @@ OPERATIONS = MappingProxyType(
             principal=None,
             refusal_only=False,
         ),
+        "listProjectEvents": OperationSpec(
+            operation_id="listProjectEvents",
+            client_method="list_project_events",
+            method="GET",
+            path="/v1/projects/{project_key}/events",
+            request_model=None,
+            response_model=_models.ProjectEventPage,
+            cli_names=('project events',),
+            mutation=False,
+            spool_policy=SpoolPolicy.FORBIDDEN,
+            principal=None,
+            refusal_only=False,
+        ),
         "listTicketAssignments": OperationSpec(
             operation_id="listTicketAssignments",
             client_method="list_ticket_assignments",
@@ -614,6 +627,7 @@ CLI_OPERATIONS = MappingProxyType(
         "ticket query": OPERATIONS["getTicket"],
         "ticket show": OPERATIONS["getTicket"],
         "ticket timeline": OPERATIONS["getTicketTimeline"],
+        "project events": OPERATIONS["listProjectEvents"],
         "ticket assignments": OPERATIONS["listTicketAssignments"],
         "ticket audit": OPERATIONS["listTicketAuditEvents"],
         "company bundle plan": OPERATIONS["planCompanyBundle"],

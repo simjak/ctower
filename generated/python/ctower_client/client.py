@@ -1,6 +1,6 @@
 """DO NOT EDIT: generated file; regenerate from declared inputs.
 
-Authored contract digest: sha256:589aec80212de067d4f7e0c10244bd8bf7e0cd6ad02beac7ee076a4a21734038
+Authored contract digest: sha256:3294b213de71af8ec8857df7f43c9b5927f8d71b952b47a2c9b59f9b385f3cbe
 """
 
 from __future__ import annotations
@@ -53,6 +53,7 @@ from ctower_client.models import (
     PriorityChangeRequest,
     Problem,
     ProjectDeliveryView,
+    ProjectEventPage,
     ProofReceipt,
     RelationRequest,
     ResolveCloseRequest,
@@ -622,6 +623,26 @@ class CtowerClient:
             ),
         )
         return _response(response, {200: TimelineResponse}, {401: Problem, 404: Problem, 422: Problem})
+
+    @validate_call(config=ConfigDict(strict=True, arbitrary_types_allowed=True))
+    def list_project_events(
+        self,
+        project_key: str,
+        *,
+        cursor: str | None = None,
+        limit: Annotated[int, Field(ge=1, le=100)] | None = None,
+    ) -> ProjectEventPage:
+        response = self._http.get(
+            f"/v1/projects/{quote(str(project_key), safe='')}/events",
+            params={**({"cursor": cursor} if cursor is not None else {}), **({"limit": limit} if limit is not None else {})},
+            headers=self._telemetry_headers(
+                self._context(uuid4()),
+                {
+                    **self._auth_headers(),
+                },
+            ),
+        )
+        return _response(response, {200: ProjectEventPage}, {401: Problem, 404: Problem, 422: Problem})
 
     @validate_call(config=ConfigDict(strict=True, arbitrary_types_allowed=True))
     def list_ticket_assignments(

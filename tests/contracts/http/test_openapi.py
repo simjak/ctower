@@ -103,6 +103,7 @@ _EXPECTED_OPERATION_METADATA: dict[str, tuple[object, bool, str, object, bool]] 
     "getTicketTimeline": ("ticket timeline", False, "forbidden", None, False),
     "listTicketAssignments": ("ticket assignments", False, "forbidden", None, False),
     "listTicketAuditEvents": ("ticket audit", False, "forbidden", None, False),
+    "listProjectEvents": ("project events", False, "forbidden", None, False),
     "planCompanyBundle": ("company bundle plan", False, "forbidden", None, False),
     "prepareCtowerProjectCutover": (
         "migration ctower-project prepare",
@@ -174,6 +175,7 @@ _EXPECTED_PROBLEM_CODES = {
     "migration-source-selection-drift",
     "migration-source-tainted",
     "poison-not-found",
+    "project-scope-denied",
     "project-delivery-unavailable",
     "request-body-too-large",
     "proof-candidate-author-mismatch",
@@ -259,6 +261,28 @@ def test_openapi_exposes_exact_i1_operations_and_generated_routing_metadata() ->
         "finalizeCtowerProjectImportRun",
         "reportCtowerProjectFenceObservation",
     }
+
+
+def test_project_event_contract_uses_only_named_event_and_payload_components() -> None:
+    document = json.loads((ROOT / "contracts/http/openapi.yaml").read_text(encoding="utf-8"))
+    components = cast(dict[str, dict[str, object]], document["components"])
+    schemas = cast(dict[str, dict[str, object]], components["schemas"])
+    branches = cast(list[dict[str, str]], schemas["ProjectEvent"]["oneOf"])
+
+    assert all(set(branch) == {"$ref"} for branch in branches)
+    event_schemas = (
+        schemas[branch["$ref"].removeprefix("#/components/schemas/")] for branch in branches
+    )
+    assert all(
+        set(
+            cast(
+                dict[str, object],
+                cast(dict[str, object], schema["properties"])["payload"],
+            )
+        )
+        == {"$ref"}
+        for schema in event_schemas
+    )
 
 
 def test_problem_vocabulary_and_boundary_objects_are_strict() -> None:

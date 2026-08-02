@@ -2,11 +2,11 @@
 
 | Field | Value |
 |---|---|
-| Status | Non-normative execution sequence derived from `SPEC.md` 1.11 |
+| Status | Non-normative execution sequence derived from `SPEC.md` 1.12 |
 | Product increments | Exactly two: Increment 1 and Increment 2 |
 | Work authority before development epoch | SPEC temporary bootstrap backlog / Mission Control |
 | Work authority after development epoch | ctower tickets for the reviewed cohort only |
-| Last reviewed | 2026-07-29 |
+| Last reviewed | 2026-08-02 |
 
 This roadmap makes the normative build order easier to execute. It does not create a third scope model,
 approve work, mirror ticket status, or override the stable IDs, acceptance criteria, validation commands,
@@ -138,7 +138,8 @@ duplicate or partial authority; the token appears in no argv, URL, environment, 
 
 Implement the first deep Modules behind small Interfaces:
 
-- Access/Record: authenticated append, idempotency before CAS, hash chain, outbox, cursors, replay tombstones;
+- Access/Record: authenticated append, idempotency before CAS, hash chain, outbox, replay tombstones, and
+  accepted project-scoped typed event pages with project-bound cursors and catalog-derived membership;
 - Catalog/Work: exact component pins, permanent ticket identity, lifecycle episodes, custody, assignment
   intervals, relations, P0/P1/P2, blockers, typed Board intents, resolution/close;
 - Proof/Attention: criteria freeze/revision, content-addressed artifacts, evidence, protected verdicts,
@@ -148,6 +149,8 @@ Implement the first deep Modules behind small Interfaces:
 
 **Exit:** no-proof/no-close, self-verdict denial, corrupt-object, selective invalidation, exact replay,
 cross-tenant, concurrency, projection rebuild, and accepted/refused transition tests pass through Interfaces.
+Generated-client event pagination replays to the same Board facts, all three project cursor pairs refuse by
+name, and mutation tests prove exact event-catalog/OpenAPI parity with only named union branches.
 
 ### I1.3 — Acknowledged durability and disaster-safe operations
 
@@ -196,7 +199,9 @@ I2.4. This stable alias preserves audit history; it is not an I1 predecessor or 
 
 I1 retains the API/CLI semantics D22 selected: durable-thread-first explicit
 `discussion|create_ticket|link_ticket` intent/provenance; Workflow-owned append-only risk; six-lane fold;
-typed intents; health/Attention; and pending/refusal/quarantine/degraded/`STATE UNKNOWN` reporting.
+typed intents; health/Attention; accepted project-scoped typed event pages for later Board/Ticket browser
+consumers; and pending/refusal/quarantine/degraded/`STATE UNKNOWN` reporting. Session and heartbeat feed
+events remain absent pending [#200](https://github.com/simjak/ctower/issues/200).
 
 ### I1.6 — Four-stage trust-spine fixture on the final evaluator
 

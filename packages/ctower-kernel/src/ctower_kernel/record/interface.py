@@ -13,9 +13,12 @@ from ctower_kernel.record.comments import TicketCommentCommand, TicketCommentRes
 from ctower_kernel.record.events import (
     CustodyTransferredPayload,
     EventKind,
+    ProjectEventPayload,
     TicketCommentAddedPayload,
     TicketCreatedPayload,
     TicketEventPayload,
+    project_event_kinds,
+    validate_project_event_payload,
 )
 from ctower_kernel.record.intake import (
     IntakeCommandResult,
@@ -25,7 +28,13 @@ from ctower_kernel.record.intake import (
 from ctower_kernel.telemetry import TelemetryContext
 
 _SHA256_PATTERN = re.compile(r"sha256:[0-9a-f]{64}")
+_PROJECT_KEY_PATTERN = re.compile(r"^[a-z][a-z0-9-]{2,63}$")
+_PROJECT_EVENT_CURSOR_PATTERN = re.compile(
+    r"^v1:(?P<project>[a-z][a-z0-9-]{2,63}):"
+    r"(?P<acceptance>[0-9]{1,19}):(?P<record>[0-9]{1,19})$"
+)
 _MAX_RETRY_SECONDS = 60
+_MAX_RECORD_POSITION = 9_223_372_036_854_775_807
 
 __all__ = [
     "Actor",
@@ -42,6 +51,9 @@ __all__ = [
     "DurabilityReason",
     "DurabilityState",
     "PrincipalKind",
+    "ProjectEvent",
+    "ProjectEventCursor",
+    "ProjectEventPage",
     "Record",
     "RecordProblem",
     "SourceReference",
@@ -455,6 +467,122 @@ class AuditPage:
         }
 
 
+@dataclass(frozen=True, slots=True)
+class ProjectEventCursor:
+    """Opaque-on-wire cursor bound to one immutable project scope."""
+
+    project_key: str
+    acceptance_position: int
+    record_position: int
+
+    def __post_init__(self) -> None:
+        if _PROJECT_KEY_PATTERN.fullmatch(self.project_key) is None:
+            raise ValueError("project event cursor has an invalid project key")
+        if type(self.acceptance_position) is not int or type(self.record_position) is not int:
+            raise TypeError("project event cursor positions must be integers")
+        if not 0 <= self.acceptance_position <= _MAX_RECORD_POSITION:
+            raise ValueError("project event cursor position is outside the acceptance domain")
+        if not 0 <= self.record_position <= _MAX_RECORD_POSITION:
+            raise ValueError("project event cursor position is outside the record domain")
+        if (self.acceptance_position == 0) is not (self.record_position == 0):
+            raise ValueError("project event cursor positions must both be zero or positive")
+
+    @classmethod
+    def decode(cls, value: str) -> ProjectEventCursor:
+        match = _PROJECT_EVENT_CURSOR_PATTERN.fullmatch(value)
+        if match is None:
+            raise ValueError("project event cursor is malformed")
+        return cls(
+            match.group("project"),
+            int(match.group("acceptance")),
+            int(match.group("record")),
+        )
+
+    def encode(self) -> str:
+        return f"v1:{self.project_key}:{self.acceptance_position}:{self.record_position}"
+
+
+@dataclass(frozen=True, slots=True)
+class ProjectEvent:
+    """One accepted, typed ticket-scoped event from the canonical Record log."""
+
+    acceptance_position: int
+    actor_principal_id: UUID
+    aggregate_id: UUID
+    client_command_id: UUID
+    event_id: UUID
+    kind: EventKind
+    occurred_at: datetime
+    payload: ProjectEventPayload
+    record_position: int
+    sequence: int
+    stream_id: str
+
+    def __post_init__(self) -> None:
+        if self.kind not in project_event_kinds():
+            raise ValueError("event kind is not project-feed scoped by the catalog")
+        validate_project_event_payload(self.kind, self.payload)
+        if self.acceptance_position < 1 or self.record_position < 1 or self.sequence < 1:
+            raise ValueError("project event positions and sequence must be positive")
+
+    def response_payload(self) -> dict[str, object]:
+        return {
+            "acceptance_position": self.acceptance_position,
+            "actor_principal_id": str(self.actor_principal_id),
+            "aggregate_id": str(self.aggregate_id),
+            "client_command_id": str(self.client_command_id),
+            "event_id": str(self.event_id),
+            "kind": self.kind.value,
+            "occurred_at": self.occurred_at.isoformat(),
+            "payload": self.payload.to_mapping(),
+            "record_position": self.record_position,
+            "sequence": self.sequence,
+            "stream_id": self.stream_id,
+        }
+
+
+@dataclass(frozen=True, slots=True)
+class ProjectEventPage:
+    """One bounded page plus a project-bound continuation cursor."""
+
+    project_key: str
+    events: tuple[ProjectEvent, ...]
+    next_cursor: ProjectEventCursor
+    has_more: bool
+    source_watermark: int
+
+    def __post_init__(self) -> None:
+        if _PROJECT_KEY_PATTERN.fullmatch(self.project_key) is None:
+            raise ValueError("project event page has an invalid project key")
+        if self.next_cursor.project_key != self.project_key:
+            raise ValueError("project event page cursor must bind the page project")
+        if type(self.source_watermark) is not int or self.source_watermark < 0:
+            raise ValueError("project event page watermark must be a nonnegative integer")
+        _validate_project_event_page_positions(self)
+
+    def response_payload(self) -> dict[str, object]:
+        return {
+            "events": [event.response_payload() for event in self.events],
+            "has_more": self.has_more,
+            "next_cursor": self.next_cursor.encode(),
+            "project_key": self.project_key,
+            "source_watermark": self.source_watermark,
+        }
+
+
+def _validate_project_event_page_positions(page: ProjectEventPage) -> None:
+    positions = tuple((event.acceptance_position, event.record_position) for event in page.events)
+    if positions != tuple(sorted(positions)) or len(positions) != len(set(positions)):
+        raise ValueError("project event page events must be strictly cursor ordered")
+    if page.events and page.source_watermark < page.events[-1].acceptance_position:
+        raise ValueError("project event page watermark cannot precede its events")
+    if page.events and positions[-1] != (
+        page.next_cursor.acceptance_position,
+        page.next_cursor.record_position,
+    ):
+        raise ValueError("project event page cursor must follow the final event")
+
+
 class Record(Protocol):
     """Small atomic persistence authority consumed by Access and Work."""
 
@@ -551,6 +679,19 @@ class Record(Protocol):
         telemetry: TelemetryContext,
     ) -> AuditPage | RecordProblem:
         """Read one cursor page from explicitly linked canonical events."""
+
+        ...
+
+    def project_events(
+        self,
+        actor: Actor,
+        project_key: str,
+        cursor: ProjectEventCursor,
+        *,
+        limit: int,
+        telemetry: TelemetryContext,
+    ) -> ProjectEventPage | RecordProblem:
+        """Read accepted project events with SQL-first scope and a bound cursor."""
 
         ...
 

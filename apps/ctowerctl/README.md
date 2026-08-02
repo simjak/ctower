@@ -7,6 +7,8 @@ spool inspection/recovery. Thread-first intake uses only the authored
 `discussion|create_ticket|link_ticket` commands and one-time discussion promotion through that same
 generated-client and encrypted-spool path. There is no arbitrary operation dispatcher or client-side
 authorization engine.
+`project events PROJECT_KEY` is a generated-client read with optional project-bound cursor and page limit;
+it is online-only, never spooled, and preserves the server's named cross-project refusal.
 
 `ticket workflow list` is the one local Workflow read: it enumerates coherent active revisions from the
 installed pack tree without a network request. With exactly one revision, omitted start pins expand to that

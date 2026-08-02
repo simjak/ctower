@@ -3,9 +3,9 @@
 | Field | Value |
 |---|---|
 | Status | Compact derived operator and implementer map |
-| Normative authority | [`SPEC.md`](SPEC.md), version 1.11 |
+| Normative authority | [`SPEC.md`](SPEC.md), version 1.12 |
 | Decision history | [`DECISIONS.md`](DECISIONS.md) |
-| Last reviewed | 2026-07-29 |
+| Last reviewed | 2026-08-02 |
 
 This is the sole terminal-safe derived architecture atlas. It explains the canonical specification; it
 does not add requirements, authorize work, or define exact schemas, operations, DDL, package values, or
@@ -14,8 +14,9 @@ deployment manifests. If this file and `SPEC.md` disagree, `SPEC.md` wins and th
 Implementation labels are strict:
 
 - **Current walking slice** means the development-only bootstrap, CP2 task/Board, CP-1 Proof/Workflow,
-  CP3-A durability-authority fixture, and CP3-B deterministic scheduler/accepted-outbox/health paths
-  implemented in this repository. They are synthetic local evidence, not a deployed product.
+  CP3-A durability-authority fixture, CP3-B deterministic scheduler/accepted-outbox/health paths, and
+  accepted project-scoped typed event feed implemented in this repository. They are synthetic local
+  evidence, not a deployed product.
 - **I1** and **I2** otherwise remain committed target increments, not claims that the full behavior exists.
 - **Deferred** means invariants may be recorded, but the runtime, product surface, and public Seam do not
   exist in I1/I2.
@@ -198,7 +199,7 @@ ports.
 
 | Deep Module | Authority hidden behind its Interface |
 |---|---|
-| Access / Record | Authentication, authorization, idempotency-before-CAS, streams, hash chain, outbox, durability result |
+| Access / Record | Authentication, authorization, idempotency-before-CAS, streams, hash chain, outbox, durability result, accepted project-scoped event pages |
 | Catalog | One `VersionedComponent` lifecycle, compatibility, provenance, exact pins, future-only active pointers |
 | Work | Permanent tickets, lifecycle episodes, custody, relations, priorities, blockers, typed Board intents |
 | Proof | Criteria, artifacts, evidence DAG, independence, gate instances/verdicts, invalidation |
@@ -211,6 +212,15 @@ ports.
 There is no `Factory`, `TaskManager`, status service, generic provider manager, or microservice per table.
 The software factory is data interpreted by Workflow. Public Interfaces stay small; private validators,
 folds, SQL, and Adapter mechanics remain local to the owning Module.
+
+The project event read path remains inside Record. It joins accepted-command confirmation and the
+authoritative ticket project before materializing an event, orders by accepted position then canonical
+record-position tie-breaker, and emits a cursor bound to that composite point and one project. The strict
+union is generated from named OpenAPI branches, while membership and aggregate-ticket versus linked-ticket
+scope strategy come from project-scope metadata on the canonical Record event catalog. Today that catalog contributes
+the six ticket, Work, Workflow, and Proof kinds needed to replay Board/ticket facts. Session and heartbeat
+events are absent pending [#200](https://github.com/simjak/ctower/issues/200); neither API nor a consumer may
+synthesize them. Browser consumption remains in I2.4 and does not change the Record boundary.
 
 ## Workflow and Execution Policy compose at runtime
 

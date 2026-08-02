@@ -78,6 +78,7 @@ _AUTHORED_COMMAND_NAMES = frozenset(
         "migration ctower-project commit-development-epoch",
         "migration ctower-project verify",
         "project delivery query",
+        "project events",
     }
 )
 
@@ -509,6 +510,11 @@ def _migration_parser(parser: argparse.ArgumentParser) -> None:
 
 def _project_parser(parser: argparse.ArgumentParser) -> None:
     subjects = parser.add_subparsers(dest="subject", required=True, parser_class=_Parser)
+    events = subjects.add_parser("events")
+    events.set_defaults(cli_name="project events")
+    events.add_argument("project_key")
+    events.add_argument("--cursor")
+    events.add_argument("--limit", type=_positive_int)
     actions = subjects.add_parser("delivery").add_subparsers(
         dest="delivery_action", required=True, parser_class=_Parser
     )

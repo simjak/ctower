@@ -129,6 +129,12 @@ def execute_query(arguments: argparse.Namespace, client: CtowerClient) -> BaseMo
         return client.get_ctower_project_import_run(arguments.run_id)
     if cli_name == "project delivery query":
         return client.get_project_delivery(cast(str, arguments.project_key))
+    if cli_name == "project events":
+        return client.list_project_events(
+            cast(str, arguments.project_key),
+            cursor=cast(str | None, arguments.cursor),
+            limit=cast(int | None, arguments.limit),
+        )
     raise ValueError("usage: unsupported ctower-project query")
 
 
@@ -173,5 +179,6 @@ def query_command_names() -> frozenset[str]:
             "migration ctower-project verify",
             "migration ctower-project run get",
             "project delivery query",
+            "project events",
         }
     )

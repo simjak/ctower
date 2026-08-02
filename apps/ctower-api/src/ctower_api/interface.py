@@ -42,6 +42,7 @@ from ctower_api._http_support import (
 from ctower_api._intake_routes import install_intake_routes
 from ctower_api._migration_port import MigrationPort
 from ctower_api._mutation_response import mutation_response as _mutation_response
+from ctower_api._project_event_routes import install_project_event_routes
 from ctower_api._proof_workflow_routes import install_proof_workflow_routes
 from ctower_api._synthetic_routes import SyntheticRuntime, install_synthetic_routes
 from ctower_api._task_routes import install_task_routes
@@ -130,7 +131,7 @@ def create_app(
     _install_bootstrap_route(app, access, record, recorder)
     _install_ticket_create_route(app, access, record, work_module, recorder)
     _install_custody_route(app, access, record, work_module, recorder)
-    _install_ticket_read_routes(app, access, record, recorder)
+    _install_record_read_routes(app, access, record, recorder)
     install_intake_routes(app, access, record, Intake(record, telemetry=recorder), recorder)
     install_comment_routes(app, access, record, recorder)
     install_task_routes(app, access, record, work_module, workflow, recorder)
@@ -285,13 +286,13 @@ def _install_ticket_create_route(
         )
 
 
-def _install_ticket_read_routes(
+def _install_record_read_routes(
     app: FastAPI,
     access: Access,
     record: Record,
     telemetry_recorder: TelemetryRecorder,
 ) -> None:
-    """Bind tenant-scoped ticket and timeline queries."""
+    """Bind tenant/project-scoped Record queries."""
 
     @app.get("/v1/tickets/{ticket_id}")
     def get_ticket(
@@ -338,6 +339,8 @@ def _install_ticket_read_routes(
         return _timeline_response(
             record.ticket_timeline(actor, parsed_ticket_id, parsed_project_key, telemetry=telemetry)
         )
+
+    install_project_event_routes(app, access, record, telemetry_recorder)
 
 
 def _install_custody_route(

@@ -1,6 +1,6 @@
 """DO NOT EDIT: generated file; regenerate from declared inputs.
 
-Authored contract digest: sha256:589aec80212de067d4f7e0c10244bd8bf7e0cd6ad02beac7ee076a4a21734038
+Authored contract digest: sha256:3294b213de71af8ec8857df7f43c9b5927f8d71b952b47a2c9b59f9b385f3cbe
 """
 
 from __future__ import annotations
@@ -120,9 +120,17 @@ __all__ = [
     "PriorityChangeRequest",
     "PriorityChangedAuditData",
     "Problem",
+    "ProjectCustodyTransferredEvent",
     "ProjectDeliveryCriteria",
     "ProjectDeliveryRow",
     "ProjectDeliveryView",
+    "ProjectEvent",
+    "ProjectEventPage",
+    "ProjectProofChangedEvent",
+    "ProjectTicketCommentAddedEvent",
+    "ProjectTicketCreatedEvent",
+    "ProjectWorkChangedEvent",
+    "ProjectWorkflowChangedEvent",
     "ProjectionHealth",
     "ProofChangedAuditEvent",
     "ProofChangedAuditPayload",
@@ -1025,6 +1033,7 @@ class Problem(_BoundaryModel):
         "migration-source-selection-drift",
         "migration-source-tainted",
         "poison-not-found",
+        "project-scope-denied",
         "project-delivery-unavailable",
         "request-body-too-large",
         "proof-candidate-author-mismatch",
@@ -1613,6 +1622,20 @@ class PriorityChangedAuditData(_BoundaryModel):
     urgent_evidence_ref: Annotated[str, Field(min_length=1, max_length=256)] | None
 
 
+class ProjectCustodyTransferredEvent(_BoundaryModel):
+    acceptance_position: Annotated[int, Field(ge=1, le=9007199254740991)]
+    actor_principal_id: UUID
+    aggregate_id: UUID
+    client_command_id: UUID
+    event_id: UUID
+    kind: Literal["ticket.custody_transferred"]
+    occurred_at: _Rfc3339DateTime
+    payload: CustodyTransferredPayload
+    record_position: Annotated[int, Field(ge=1, le=9007199254740991)]
+    sequence: Annotated[int, Field(ge=1, le=9007199254740991)]
+    stream_id: Annotated[str, Field(pattern="^ticket:[0-9a-f-]{36}$")]
+
+
 class ProjectDeliveryRow(_BoundaryModel):
     checkpoint_key: Annotated[str, Field(pattern="^[A-Za-z0-9][A-Za-z0-9._-]{0,127}$")]
     checkpoint_label: Annotated[str, Field(min_length=1)]
@@ -1651,6 +1674,48 @@ class ProjectDeliveryRow(_BoundaryModel):
     rebuild_generation: Annotated[int, Field(ge=0, le=9007199254740991)]
     source_ids: tuple[Annotated[str, Field(min_length=1)], ...]
     derivation_reasons: Annotated[tuple[Annotated[str, Field(min_length=1)], ...], Field(min_length=1)]
+
+
+class ProjectProofChangedEvent(_BoundaryModel):
+    acceptance_position: Annotated[int, Field(ge=1, le=9007199254740991)]
+    actor_principal_id: UUID
+    aggregate_id: UUID
+    client_command_id: UUID
+    event_id: UUID
+    kind: Literal["proof.changed"]
+    occurred_at: _Rfc3339DateTime
+    payload: ProofChangedAuditPayload
+    record_position: Annotated[int, Field(ge=1, le=9007199254740991)]
+    sequence: Annotated[int, Field(ge=1, le=9007199254740991)]
+    stream_id: Annotated[str, Field(pattern="^proof:[0-9a-f-]{36}$")]
+
+
+class ProjectTicketCommentAddedEvent(_BoundaryModel):
+    acceptance_position: Annotated[int, Field(ge=1, le=9007199254740991)]
+    actor_principal_id: UUID
+    aggregate_id: UUID
+    client_command_id: UUID
+    event_id: UUID
+    kind: Literal["ticket.comment_added"]
+    occurred_at: _Rfc3339DateTime
+    payload: TicketCommentAddedPayload
+    record_position: Annotated[int, Field(ge=1, le=9007199254740991)]
+    sequence: Annotated[int, Field(ge=1, le=9007199254740991)]
+    stream_id: Annotated[str, Field(pattern="^ticket:[0-9a-f-]{36}$")]
+
+
+class ProjectWorkflowChangedEvent(_BoundaryModel):
+    acceptance_position: Annotated[int, Field(ge=1, le=9007199254740991)]
+    actor_principal_id: UUID
+    aggregate_id: UUID
+    client_command_id: UUID
+    event_id: UUID
+    kind: Literal["workflow.changed"]
+    occurred_at: _Rfc3339DateTime
+    payload: WorkflowChangedAuditPayload
+    record_position: Annotated[int, Field(ge=1, le=9007199254740991)]
+    sequence: Annotated[int, Field(ge=1, le=9007199254740991)]
+    stream_id: Annotated[str, Field(pattern="^workflow:[0-9a-f-]{36}$")]
 
 
 class ProofChangedAuditEvent(_BoundaryModel):
@@ -1930,6 +1995,20 @@ class ProjectDeliveryView(_BoundaryModel):
     rows: tuple[ProjectDeliveryRow, ...]
 
 
+class ProjectTicketCreatedEvent(_BoundaryModel):
+    acceptance_position: Annotated[int, Field(ge=1, le=9007199254740991)]
+    actor_principal_id: UUID
+    aggregate_id: UUID
+    client_command_id: UUID
+    event_id: UUID
+    kind: Literal["ticket.created"]
+    occurred_at: _Rfc3339DateTime
+    payload: TicketCreatedPayload
+    record_position: Annotated[int, Field(ge=1, le=9007199254740991)]
+    sequence: Annotated[int, Field(ge=1, le=9007199254740991)]
+    stream_id: Annotated[str, Field(pattern="^ticket:[0-9a-f-]{36}$")]
+
+
 class TicketCommandResult(_BoundaryModel):
     command_id: UUID
     durability_state: DurabilityState
@@ -2035,6 +2114,20 @@ class CompanyBundleResource(_BoundaryModel):
     payload: _FreeFormJsonObject
 
 
+class ProjectWorkChangedEvent(_BoundaryModel):
+    acceptance_position: Annotated[int, Field(ge=1, le=9007199254740991)]
+    actor_principal_id: UUID
+    aggregate_id: UUID
+    client_command_id: UUID
+    event_id: UUID
+    kind: Literal["work.changed"]
+    occurred_at: _Rfc3339DateTime
+    payload: WorkChangedAuditPayload
+    record_position: Annotated[int, Field(ge=1, le=9007199254740991)]
+    sequence: Annotated[int, Field(ge=1, le=9007199254740991)]
+    stream_id: Annotated[str, Field(pattern="^ticket:[0-9a-f-]{36}$")]
+
+
 class WorkChangedAuditEvent(_BoundaryModel):
     actor_principal_id: UUID
     command_id: UUID
@@ -2061,6 +2154,9 @@ class CompanyBundleDocument(_BoundaryModel):
     secret_binding_refs: Annotated[tuple[SecretBindingReference, ...], Field(max_length=128)]
 
 
+type ProjectEvent = ProjectTicketCreatedEvent | ProjectCustodyTransferredEvent | ProjectTicketCommentAddedEvent | ProjectWorkChangedEvent | ProjectWorkflowChangedEvent | ProjectProofChangedEvent
+
+
 class AuditPage(_BoundaryModel):
     events: tuple[AuditEvent, ...]
     next_cursor: Annotated[int, Field(ge=1, le=9007199254740991)] | None
@@ -2082,3 +2178,11 @@ class CompanyBundleExportResult(_BoundaryModel):
 
 class CompanyBundleRequest(_BoundaryModel):
     bundle: CompanyBundleDocument
+
+
+class ProjectEventPage(_BoundaryModel):
+    events: tuple[ProjectEvent, ...]
+    has_more: bool
+    next_cursor: Annotated[str, Field(pattern="^v1:[a-z][a-z0-9-]{2,63}:[0-9]{1,19}:[0-9]{1,19}$")]
+    project_key: Annotated[str, Field(pattern="^[a-z][a-z0-9-]{2,63}$")]
+    source_watermark: Annotated[int, Field(ge=0, le=9007199254740991)]

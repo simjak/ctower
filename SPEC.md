@@ -3,8 +3,8 @@
 | Field | Value |
 |---|---|
 | Status | Canonical target-system truth |
-| Version | 1.11 |
-| Date | 2026-07-29 |
+| Version | 1.12 |
+| Date | 2026-08-02 |
 | Owners | Operator/CEO (product and human gates), Commander (orchestration contract), Engineering Manager (architecture and risk contract) |
 | Decision authority | [`DECISIONS.md`](DECISIONS.md) |
 
@@ -1218,6 +1218,7 @@ The ticket is the human join point, not the transaction boundary for the entire 
 65. **INV-65 — Bounded no-progress.** Every Execution Policy declares one finite `max_nonprogressing_candidate_mutations`, at least `1` and never more than the number of governed candidate mutations `max_candidate_generations` permits, so the bound is always reachable; publication fails on a policy that declares it absent, zero, or above that ceiling. A candidate reaches its **verification disposition** at the first of these its pinned package records against that candidate's digest: the outcome of a terminal review round, or the failure of a mandatory stage gate that routes the candidate to repair. A candidate's **outstanding set** is the run's open server-owned failure lineages plus the required evidence slots unfilled on that candidate's digest, observed at that disposition. A governed candidate mutation is **progressing** only when the outstanding set of the candidate it produced is a strict subset of the outstanding set of the candidate it replaced; every mutation has such a predecessor, because the initial candidate is a generation and never a mutation, so no mutation is exempt from the test. An identical set, a larger set, and an exchanged set that resolves one lineage while opening another are each non-progressing and increment one append-only server-owned count keyed to the workflow run. The count moves at most once per mutation, in the transaction recording that candidate's verification disposition; a candidate superseded or cancelled before it reaches one moves no count, and repeated or later-invalidated verification of the same candidate neither re-tests nor un-counts it. Only a progressing mutation clears that count, and it clears it completely. Reaching the declared maximum creates exactly one deduplicated escalation and blocks further automatic dispatch even while repair, nonpassing-round, and candidate-generation capacity remain. This bound alone stops the run on *reaching* its maximum rather than on the next request beyond it; that is what a no-progress rule is for. Changed prose, a new candidate digest, reassignment, model or harness replacement, and restart reset nothing; a reopen starts a new lifecycle episode and therefore a new workflow run with its own count under [INV-11](#non-negotiable-invariants), which is an authenticated audited event rather than a reset path an executor can take.
 66. **INV-66 — Board card context is derived, explicit, and never inferred.** Every member of the Board card's context set — tenant display identity, change references, applied labels, human-waiting, and delivery-surface availability — derives only from explicit accepted facts at the source watermark: the tenant's recorded display identity, linked Change facts, applied-label facts pinned to the label-vocabulary revision active at application time, qualifying Attention findings, and the qualifying checkpoint definition's pinned delivery-surface declaration. No member may be inferred from an identifier's spelling, a title, a branch or repository name, a lane, a stage or group key, a blocker type or age, a delivery fact, a principal display name, or silence. An unavailable member is stated — explicit empty set, explicit declared absence, explicit no-qualifying-checkpoint, or `STATE_UNKNOWN` with its missing source — and is never omitted so a client invents a default. Product code, schemas, projections, packs, and tests must not branch on particular label keys; changing the label vocabulary or the explicit facts alone must change the exact derived context set with no product-code edit. A member removed in a later label-vocabulary revision leaves historical pinned applied-label facts intact and visible. Cards remain a disposable projection under [INV-34](#non-negotiable-invariants), and the context set adds no writable field and no new authority.
 67. **INV-67 — Human need is a typed appended finding.** Every statement that work needs a human is an appended Attention finding naming exactly one kind present in the attention-kind catalog revision that was active at append time, with that revision pinned to the finding; kinds are configured data and no product enum, engine branch, projection, pack, or test may hard-code a fixed kind roster or branch on a kind key. Resolution, snooze, expiry, and cancellation are further appended facts with actor, time, and reason; a need is never ended by deleting or omitting its row, and a member removed in a later catalog revision leaves historical findings intact and visible. Needs You and Board human-waiting derive from this feed alone under the same policy qualification, so neither surface invents, coerces, or suppresses a human need from a blocker, lane, stage, age, or silence, and derivation at one source watermark reproduces the same findings on rebuild.
+68. **INV-68 — Project event feeds are accepted, catalog-derived, and scope-bound.** A project event feed contains only canonical events whose command has an accepted durability confirmation and whose authoritative linked ticket belongs to the requested tenant and project. Project scope is applied in the Record query before event materialization; every continuation cursor is bound to exactly one project, accepted position, and record-position tie-breaker, and reuse under another project returns the named `project-scope-denied` refusal. Feed membership and whether the authoritative ticket is the aggregate or a typed ticket subject link are derived from the canonical Record event catalog's project-scope metadata, never copied into a second enum or inferred from payload shape. Every wire variant and payload is a strict named schema, and replay in accepted-position then record-position order at one accepted source watermark reproduces the same Board/ticket projection facts without making the feed or projection writable authority.
 
 ## Workflow and verification architecture
 
@@ -3144,6 +3145,20 @@ The service role has no `UPDATE`/`DELETE` grant on event, verdict, receipt, atte
 
 Structured execution events are the control protocol. A terminal transcript may help a human understand a run but cannot establish assignment, success, or completion on its own.
 
+#### Project event feed
+
+The I1 Record read Interface exposes a strict project-scoped page of accepted canonical events for generated
+API/CLI clients and later browser consumers. The opaque wire cursor binds its version, project key, accepted
+position, and record-position tie-breaker; it cannot be replayed under a different project. Record joins the authoritative ticket
+scope and durability confirmation in SQL before materializing a typed event. The current catalog-derived
+feed set is `ticket.created`, `ticket.custody_transferred`, `ticket.comment_added`, `work.changed`,
+`workflow.changed`, and `proof.changed`; those are the accepted facts needed to prove deterministic Board
+and ticket replay. Session and heartbeat variants and records are explicitly absent until canonical
+producers are implemented under [#200](https://github.com/simjak/ctower/issues/200); adapters must not
+invent either kind, infer one from transport activity, or emit placeholder facts. Adding a project-feed
+kind requires one change to the authoritative event catalog plus a named strict contract branch, with a
+mutation test proving catalog/contract equality.
+
 ### Failure recovery
 
 | Failure | Detection | Automatic recovery | Escalation boundary |
@@ -3510,6 +3525,15 @@ Each criterion is pass/fail. Evidence must be attached to the ctower build ticke
 | <a id="ac-pd-09"></a>AC-PD-09 | Unassigned is data: a slot with no assigned seat is rendered and serialized as unassigned, never guessed from stage key, group key, evidence kind, principal display name, ticket custodian, or silence, and never omitted so a client invents a default. Seat surfaces derive only from the configured catalog plus explicit seat-assignment and Evidence facts at the source watermark, reproducing pinned facts byte-identically on rebuild ([INV-59](#non-negotiable-invariants), [INV-64](#non-negotiable-invariants)). A member removed in a later catalog revision leaves historical pinned seat-assignment facts intact and visible. Restore/rebuild at one watermark reproduces the same seat facts. D27 fresh-start and CT-I2-001 fail-closed rules remain unchanged. | Unassigned/half-assigned/complete matrices; member-removal leaves-historical-fact-intact fixture; name-inference anti-fixtures; omission anti-fixture; watermark rebuild comparison; mutation proof that fact changes alone alter the surface |
 | <a id="ac-pd-10"></a>AC-PD-10 | A checkpoint definition MAY declare its delivery surface — landing boundary, non-production environments, and externally effective outcome — each declared with identity or declared explicitly absent. Every consumer reads exactly three states per field: declared-present, declared-absent, and explicitly undeclared (`STATE_UNKNOWN`), which is neither presence nor absence and satisfies no skip predicate, no entry item, and no availability claim. Board card delivery-surface availability, the Project Delivery projection, and the skip and entry rules of [AC-WF-27](#ac-wf-27) read the same pinned declaration and never substitute a stage name, lane, Workflow key, delivery fact, or silence for it; a ticket with no qualifying checkpoint reads as an explicit no-qualifying-checkpoint state. AC-WF-27's skip semantics and [AC-PD-03](#ac-pd-03)'s I2.4 row-level placement are unchanged. | Per-field declared-present/declared-absent/undeclared matrices; undeclared-refuses-skip and undeclared-satisfies-no-entry negatives; name-inference anti-fixtures; no-qualifying-checkpoint fixture; Board card and Project Delivery cross-surface equality snapshot |
 
+### Project event feed
+
+| ID | Pass condition | Evidence capture |
+|---|---|---|
+| <a id="ac-evt-01"></a>AC-EVT-01 | A generated client pages the accepted event feed for exactly one project with a project-bound cursor, replays the typed events in accepted-position then record-position order, and derives a Board card byte-equivalent to the Board projection after both consumers reach the same accepted facts. Pending commands and another project's events are absent. | Disposable-Postgres generated-client trace with one-item pages, pending-before-acceptance assertion, replay fold, and Board equality |
+| <a id="ac-evt-02"></a>AC-EVT-02 | Reusing a feed cursor under another project returns HTTP 404 with code `project-scope-denied`; the `ctower`/`manibo`, `ctower`/`bh-loop`, and `manibo`/`bh-loop` pairs each prove the refusal and expose no foreign event. | Three named generated-client project-pair refusal tests |
+| <a id="ac-evt-03"></a>AC-EVT-03 | The feed's exact event-kind set is derived from canonical Record event-catalog scope metadata. Removing a catalog-backed contract branch or adding a feed-only branch fails the catalog/contract parity guard without product-code changes. Session and heartbeat remain absent until their canonical [#200](https://github.com/simjak/ctower/issues/200) producers exist. | Exact kind-set assertion plus both-direction mutated-contract proof and session/heartbeat absence review |
+| <a id="ac-evt-04"></a>AC-EVT-04 | Every feed event and payload alternative is a strict named OpenAPI component reached only through `$ref`; deterministic code generation produces matching Python and TypeScript clients, and no anonymous `oneOf` branch or handwritten browser wire type exists. | OpenAPI reference inventory, clean generated manifest, Python/TypeScript parity checks, and anonymous-branch negative assertion |
+
 ### Product
 
 | ID | Pass condition | Evidence capture |
@@ -3822,7 +3846,8 @@ The fixture is interpreted by the final generic Workflow Module interface—not 
 intent/provenance; ticket query/detail, priority/assignment/blocker typed intents, criteria/evidence/gate,
 required evidence-slot coverage and unfilled/unknown reasons, stage signing seat, transition, resolve/close,
 six-lane/task-axis state, the Board card context set, Workflow-owned risk, health and the typed Attention
-findings feed, and pending, refusal, quarantine, degraded,
+findings feed, the accepted project-scoped typed event feed with project-bound cursors, and pending,
+refusal, quarantine, degraded,
 and `STATE UNKNOWN` reporting. Browser realization of Home, Board,
 contextual/direct-ID Ticket, Fleet, and Analytics is deferred to I2.4; I1 introduces no browser route,
 session, placeholder, or UI evidence.
@@ -3875,6 +3900,14 @@ fact stays I2.4 under the existing UX criteria, and change/PR references on the 
 Delivery row stay where [AC-PD-03](#ac-pd-03) puts them, at I2.4. No I1 checkpoint, projection contract,
 or exit criterion moves increment as a result.
 
+**Project-event-feed increment placement.** I1 owns the accepted, cursorable, project-scoped Record read
+Interface and its generated API/protected-CLI clients because Board, ticket audit, and immutable canonical
+events are already I1 authority. The first proof set contains only the six ticket-scoped kinds declared by
+the authoritative event catalog; it adds no parallel event enum, projection write, browser route, provider,
+or execution runtime. I2.4 owns browser consumption for Board and Ticket, while session and heartbeat
+producers remain absent pending [#200](https://github.com/simjak/ctower/issues/200). Thus #186 closes the
+typed backend feed contract for #200 without fabricating future events or moving an I1 checkpoint.
+
 #### I1 exit evidence
 
 - A CT-I1-008 development `GO_WITH_LIMITS` proves only the fresh-database Project Delivery pilot,
@@ -3884,6 +3917,10 @@ or exit criterion moves increment as a result.
 - A host-loss test proves an accepted authoritative write survives because off-host acknowledgement preceded acceptance; injected acknowledgement loss returns only replayable `durability_pending`.
 - An isolated restore meets RPO 0 for accepted records, recovers vault/KMS access, verifies objects/chains/tombstones and the signed expected-source inventory, proves every inactive I1 root/effect/provider source through an explicit `not_exercised`/zero-source entry, and refuses normal reads/effects if any activated source is missing, incomplete, or unreconciled.
 - API and protected-CLI chaos prove stable command IDs, no false acceptance, no silent spool/outbox loss, and visible pending, refusal, quarantine, and degradation.
+- The generated project-event client pages accepted events for one project, refuses all three foreign-project
+  cursor pairings by name, derives its exact kind set from the Record catalog, exposes only named OpenAPI
+  branches, and replays to the same Board projection facts at the accepted source watermark
+  ([AC-EVT-01](#ac-evt-01) through [AC-EVT-04](#ac-evt-04)).
 - The final generic evaluator runs the four-stage fixture end to end; each stage refuses success with an
   exact unmet list until every typed required slot is filled and the signing Evidence matches its assignment,
   the API/CLI six-lane and Project Delivery projections render unfilled/unknown slots honestly, and forbidden

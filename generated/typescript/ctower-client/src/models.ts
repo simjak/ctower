@@ -1,5 +1,5 @@
 // DO NOT EDIT: generated file; regenerate from declared inputs.
-// Authored contract digest: sha256:589aec80212de067d4f7e0c10244bd8bf7e0cd6ad02beac7ee076a4a21734038
+// Authored contract digest: sha256:3294b213de71af8ec8857df7f43c9b5927f8d71b952b47a2c9b59f9b385f3cbe
 
 export type ActivityClass = "work" | "verification";
 
@@ -863,7 +863,7 @@ export type PriorityChangedAuditData = Readonly<{
 }>;
 
 export type Problem = Readonly<{
-  readonly "code": "bootstrap-consumed" | "bootstrap-expired" | "bootstrap-nonempty" | "bootstrap-origin" | "bundle-base-conflict" | "bundle-compatibility-refused" | "bundle-digest-mismatch" | "bundle-grant-refused" | "bundle-independence-refused" | "bundle-no-effect-refused" | "bundle-not-active" | "bundle-plan-mismatch" | "bundle-recovery-unavailable" | "bundle-reference-invalid" | "bundle-schema-invalid" | "bundle-security-refused" | "durability_pending" | "i1-7c-required" | "idempotency-conflict" | "intake-already-promoted" | "intake-promotion-ineligible" | "intake-source-project-mismatch" | "intake-source-conflict" | "migration-alias-conflict" | "migration-capability-denied" | "migration-correction-conflict" | "migration-digest-mismatch" | "migration-export-nondeterminism" | "migration-fence-detected" | "migration-import-finalization-refused" | "migration-operation-drift" | "migration-relation-invalid" | "migration-run-conflict" | "migration-signature-invalid" | "migration-source-selection-drift" | "migration-source-tainted" | "poison-not-found" | "project-delivery-unavailable" | "request-body-too-large" | "proof-candidate-author-mismatch" | "proof-candidate-digest-invalid" | "proof-candidate-digest-not-current" | "proof-candidate-unchanged" | "proof-criteria-already-frozen" | "proof-criteria-invalid" | "proof-criteria-policy-mismatch" | "proof-criterion-unknown" | "proof-current-evidence-missing" | "proof-evidence-digest-mismatch" | "proof-evidence-id-conflict" | "proof-protected-authority-required" | "proof-policy-mismatch" | "proof-policy-pin-mismatch" | "proof-self-review-refused" | "proof-verdict-id-conflict" | "tenant-scope-denied" | "ticket-comment-ineligible" | "ticket-comment-invalid" | "unauthorized" | "validation-error" | "version-conflict" | "work-assignment-kind-refused" | "work-assignment-target-ineligible" | "work-assignment-unchanged" | "work-priority-unchanged" | "work-blocker-already-resolved" | "work-blocker-id-conflict" | "work-blocker-owner-ineligible" | "work-blocker-unknown" | "work-intent-unmet" | "work-relation-cycle" | "work-relation-exists" | "work-reopen-unmet" | "work-ticket-terminal" | "workflow-already-started" | "workflow-pin-mismatch" | "workflow-predicate-unsatisfied" | "workflow-run-not-started" | "proof-incomplete" | "workflow-state-conflict" | "workflow-terminal" | "workflow-transition-not-declared" | "workflow-version-unknown" | "workflow-not-terminal";
+  readonly "code": "bootstrap-consumed" | "bootstrap-expired" | "bootstrap-nonempty" | "bootstrap-origin" | "bundle-base-conflict" | "bundle-compatibility-refused" | "bundle-digest-mismatch" | "bundle-grant-refused" | "bundle-independence-refused" | "bundle-no-effect-refused" | "bundle-not-active" | "bundle-plan-mismatch" | "bundle-recovery-unavailable" | "bundle-reference-invalid" | "bundle-schema-invalid" | "bundle-security-refused" | "durability_pending" | "i1-7c-required" | "idempotency-conflict" | "intake-already-promoted" | "intake-promotion-ineligible" | "intake-source-project-mismatch" | "intake-source-conflict" | "migration-alias-conflict" | "migration-capability-denied" | "migration-correction-conflict" | "migration-digest-mismatch" | "migration-export-nondeterminism" | "migration-fence-detected" | "migration-import-finalization-refused" | "migration-operation-drift" | "migration-relation-invalid" | "migration-run-conflict" | "migration-signature-invalid" | "migration-source-selection-drift" | "migration-source-tainted" | "poison-not-found" | "project-scope-denied" | "project-delivery-unavailable" | "request-body-too-large" | "proof-candidate-author-mismatch" | "proof-candidate-digest-invalid" | "proof-candidate-digest-not-current" | "proof-candidate-unchanged" | "proof-criteria-already-frozen" | "proof-criteria-invalid" | "proof-criteria-policy-mismatch" | "proof-criterion-unknown" | "proof-current-evidence-missing" | "proof-evidence-digest-mismatch" | "proof-evidence-id-conflict" | "proof-protected-authority-required" | "proof-policy-mismatch" | "proof-policy-pin-mismatch" | "proof-self-review-refused" | "proof-verdict-id-conflict" | "tenant-scope-denied" | "ticket-comment-ineligible" | "ticket-comment-invalid" | "unauthorized" | "validation-error" | "version-conflict" | "work-assignment-kind-refused" | "work-assignment-target-ineligible" | "work-assignment-unchanged" | "work-priority-unchanged" | "work-blocker-already-resolved" | "work-blocker-id-conflict" | "work-blocker-owner-ineligible" | "work-blocker-unknown" | "work-intent-unmet" | "work-relation-cycle" | "work-relation-exists" | "work-reopen-unmet" | "work-ticket-terminal" | "workflow-already-started" | "workflow-pin-mismatch" | "workflow-predicate-unsatisfied" | "workflow-run-not-started" | "proof-incomplete" | "workflow-state-conflict" | "workflow-terminal" | "workflow-transition-not-declared" | "workflow-version-unknown" | "workflow-not-terminal";
   readonly "command_id"?: string | null;
   readonly "current_version"?: number | null;
   readonly "detail": string;
@@ -871,6 +871,20 @@ export type Problem = Readonly<{
   readonly "title": string;
   readonly "type": string;
   readonly "unmet_facts"?: ReadonlyArray<string>;
+}>;
+
+export type ProjectCustodyTransferredEvent = Readonly<{
+  readonly "acceptance_position": number;
+  readonly "actor_principal_id": string;
+  readonly "aggregate_id": string;
+  readonly "client_command_id": string;
+  readonly "event_id": string;
+  readonly "kind": "ticket.custody_transferred";
+  readonly "occurred_at": string;
+  readonly "payload": CustodyTransferredPayload;
+  readonly "record_position": number;
+  readonly "sequence": number;
+  readonly "stream_id": string;
 }>;
 
 export type ProjectDeliveryCriteria = Readonly<{
@@ -916,6 +930,86 @@ export type ProjectDeliveryView = Readonly<{
   readonly "rows": ReadonlyArray<ProjectDeliveryRow>;
   readonly "schema": "ctower.project-delivery/v1";
   readonly "source_record_position": number;
+}>;
+
+export type ProjectEvent = ProjectTicketCreatedEvent | ProjectCustodyTransferredEvent | ProjectTicketCommentAddedEvent | ProjectWorkChangedEvent | ProjectWorkflowChangedEvent | ProjectProofChangedEvent;
+
+export type ProjectEventPage = Readonly<{
+  readonly "events": ReadonlyArray<ProjectEvent>;
+  readonly "has_more": boolean;
+  readonly "next_cursor": string;
+  readonly "project_key": string;
+  readonly "source_watermark": number;
+}>;
+
+export type ProjectProofChangedEvent = Readonly<{
+  readonly "acceptance_position": number;
+  readonly "actor_principal_id": string;
+  readonly "aggregate_id": string;
+  readonly "client_command_id": string;
+  readonly "event_id": string;
+  readonly "kind": "proof.changed";
+  readonly "occurred_at": string;
+  readonly "payload": ProofChangedAuditPayload;
+  readonly "record_position": number;
+  readonly "sequence": number;
+  readonly "stream_id": string;
+}>;
+
+export type ProjectTicketCommentAddedEvent = Readonly<{
+  readonly "acceptance_position": number;
+  readonly "actor_principal_id": string;
+  readonly "aggregate_id": string;
+  readonly "client_command_id": string;
+  readonly "event_id": string;
+  readonly "kind": "ticket.comment_added";
+  readonly "occurred_at": string;
+  readonly "payload": TicketCommentAddedPayload;
+  readonly "record_position": number;
+  readonly "sequence": number;
+  readonly "stream_id": string;
+}>;
+
+export type ProjectTicketCreatedEvent = Readonly<{
+  readonly "acceptance_position": number;
+  readonly "actor_principal_id": string;
+  readonly "aggregate_id": string;
+  readonly "client_command_id": string;
+  readonly "event_id": string;
+  readonly "kind": "ticket.created";
+  readonly "occurred_at": string;
+  readonly "payload": TicketCreatedPayload;
+  readonly "record_position": number;
+  readonly "sequence": number;
+  readonly "stream_id": string;
+}>;
+
+export type ProjectWorkChangedEvent = Readonly<{
+  readonly "acceptance_position": number;
+  readonly "actor_principal_id": string;
+  readonly "aggregate_id": string;
+  readonly "client_command_id": string;
+  readonly "event_id": string;
+  readonly "kind": "work.changed";
+  readonly "occurred_at": string;
+  readonly "payload": WorkChangedAuditPayload;
+  readonly "record_position": number;
+  readonly "sequence": number;
+  readonly "stream_id": string;
+}>;
+
+export type ProjectWorkflowChangedEvent = Readonly<{
+  readonly "acceptance_position": number;
+  readonly "actor_principal_id": string;
+  readonly "aggregate_id": string;
+  readonly "client_command_id": string;
+  readonly "event_id": string;
+  readonly "kind": "workflow.changed";
+  readonly "occurred_at": string;
+  readonly "payload": WorkflowChangedAuditPayload;
+  readonly "record_position": number;
+  readonly "sequence": number;
+  readonly "stream_id": string;
 }>;
 
 export type ProjectionHealth = "CURRENT" | "STATE_UNKNOWN";

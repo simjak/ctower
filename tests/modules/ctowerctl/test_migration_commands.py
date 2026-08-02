@@ -27,6 +27,7 @@ from ctower_client.models import (
     ProjectDeliveryCriteria,
     ProjectDeliveryRow,
     ProjectDeliveryView,
+    ProjectEventPage,
 )
 from ctowerctl import _migration_commands, interface
 from ctowerctl._output import ExitCode
@@ -237,6 +238,19 @@ def test_query_dispatch_and_project_delivery_text_expose_frozen_metadata() -> No
     delivery = argparse.Namespace(
         cli_name="project delivery query", project_key="ctower", output="text"
     )
+    events = parse_arguments(
+        [
+            "--base-url",
+            "https://ctower.example",
+            "project",
+            "events",
+            "ctower",
+            "--cursor",
+            "v1:ctower:7:27",
+            "--limit",
+            "2",
+        ]
+    )
 
     assert isinstance(
         _migration_commands.execute_query(verify, cast(CtowerClient, client)),
@@ -247,6 +261,7 @@ def test_query_dispatch_and_project_delivery_text_expose_frozen_metadata() -> No
         ProjectDeliveryView,
         _migration_commands.execute_query(delivery, cast(CtowerClient, client)),
     )
+    page = _migration_commands.execute_query(events, cast(CtowerClient, client))
     stream = io.StringIO()
     interface._write_result(delivery, view, stream)
 
@@ -256,6 +271,8 @@ def test_query_dispatch_and_project_delivery_text_expose_frozen_metadata() -> No
     assert "5/6" in output
     assert "sources=ctower:CT-I1-007,mission-control:i1.7" in output
     assert "watermark=27/27" in output
+    assert page == client.event_result
+    assert client.event_calls == [("ctower", "v1:ctower:7:27", 2)]
 
 
 def test_unknown_internal_migration_spelling_is_closed(tmp_path: Path) -> None:
@@ -275,6 +292,14 @@ def test_unknown_internal_migration_spelling_is_closed(tmp_path: Path) -> None:
 class _MigrationClient:
     def __init__(self) -> None:
         self.calls: list[tuple[str, BaseModel, UUID]] = []
+        self.event_calls: list[tuple[str, str | None, int | None]] = []
+        self.event_result = ProjectEventPage(
+            events=(),
+            has_more=False,
+            next_cursor="v1:ctower:7:27",
+            project_key="ctower",
+            source_watermark=27,
+        )
         self.run_result = run_request("read", _NOW)
 
     def __enter__(self) -> Self:
@@ -400,3 +425,13 @@ class _MigrationClient:
                 ),
             ),
         )
+
+    def list_project_events(
+        self,
+        project_key: str,
+        *,
+        cursor: str | None = None,
+        limit: int | None = None,
+    ) -> ProjectEventPage:
+        self.event_calls.append((project_key, cursor, limit))
+        return self.event_result

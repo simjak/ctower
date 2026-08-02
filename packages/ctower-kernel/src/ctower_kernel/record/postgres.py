@@ -19,6 +19,8 @@ from ctower_kernel.record import (
     DurabilityDecision,
     DurabilityFinalizationBatch,
     DurabilityHealth,
+    ProjectEventCursor,
+    ProjectEventPage,
     RecordProblem,
     Ticket,
     TicketCommand,
@@ -51,6 +53,7 @@ from ctower_kernel.record._migration_ledger_sql import (
     MigrationStateError,
     apply_database_migrations,
 )
+from ctower_kernel.record._project_feed_sql import project_events as _project_events
 from ctower_kernel.record._setup_sql import (
     RecoveryRoleConfigurationError,
     apply_migrations,
@@ -342,6 +345,21 @@ class PostgresRecord:
             self._dsn, actor, ticket_id, project_key, cursor=cursor, limit=limit
         )
         self._emit("record.ticket_audit", telemetry, outcome)
+        return outcome
+
+    def project_events(
+        self,
+        actor: Actor,
+        project_key: str,
+        cursor: ProjectEventCursor,
+        *,
+        limit: int,
+        telemetry: TelemetryContext,
+    ) -> ProjectEventPage | RecordProblem:
+        """Read accepted project events without presentation-layer filtering."""
+
+        outcome = _project_events(self._dsn, actor, project_key, cursor, limit=limit)
+        self._emit("record.project_events", telemetry, outcome)
         return outcome
 
     def transfer_custody(

@@ -10,6 +10,10 @@ runtime behavior. The one-use first-tenant body contract lives under `bootstrap/
 contract is authored in OpenAPI and implemented by the current setup helper, API, Access, and Record
 composition.
 
+OpenAPI also owns the accepted project-event page and its project-bound cursor. Each event and payload
+alternative is a named strict component referenced from the union; catalog/contract parity tests refuse a
+missing canonical kind, a feed-only invented kind, or an anonymous branch.
+
 The development-only CP-1 consumer subset keeps graph and transition authority under `workflow/`, owns its
 execution, gate, and evidence policy schemas under the single `execution/` home, and owns the strict
 current-proof/deferred-source manifest under `evidence/`. These schemas exercise only the four-stage local

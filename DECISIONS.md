@@ -1053,3 +1053,48 @@ Rejected alternatives:
 - Reading an undeclared delivery-surface field as an absence, or inferring the surface from stage names,
   lanes, or delivery facts.
 - Moving AC-PD-03's I2.4 change/PR row placement onto the I1 Board card.
+
+## D30 — Accepted typed project event feed (locked 2026-08-02, operator)
+
+The operator authorized #186 as the backend contract needed by the R2710 browser phase and the #200
+unified activity timeline. This decision preserves D29's Board/Attention/delivery declarations, D27's
+fresh-start authority, INV-34's disposable projections, INV-37's tenant/project boundary, and the existing
+canonical Record event log. It creates no second event authority, writable projection, browser route,
+provider/runtime event, feature flag, or environment variable.
+
+1. **Accepted canonical facts only.** The feed reads immutable Record events only after the producing
+   command has a durability acceptance confirmation. Pending commands, projection rows, transport
+   activity, session state, and inferred heartbeats are not feed events.
+2. **Project scope precedes materialization.** Record joins the authoritative ticket project and tenant in
+   SQL before constructing an event. A versioned opaque cursor binds the requested project, accepted
+   position, and record-position tie-breaker; reuse under another project returns the named
+   `project-scope-denied` 404 refusal. Cross-project
+   aggregation requires a future explicitly authorized Interface and is not inferred from this one.
+3. **One authoritative type catalog.** Project-feed membership and the aggregate-ticket versus linked-ticket
+   scope strategy are metadata on the canonical Record event catalog, never a copied enum in API, CLI,
+   browser, query code, or tests. The initial set is exactly
+   `ticket.created`, `ticket.custody_transferred`, `ticket.comment_added`, `work.changed`,
+   `workflow.changed`, and `proof.changed`, covering the Board/ticket proof target. Session and heartbeat
+   variants and records are explicitly absent until canonical producers land under
+   [#200](https://github.com/simjak/ctower/issues/200); no adapter may fake them.
+4. **Strict named wire union.** Every event envelope and payload alternative is a named strict OpenAPI
+   component referenced from the project-event union. Deterministic generation produces the Python and
+   TypeScript clients; anonymous `oneOf` branches and hand-maintained browser wire types are refused.
+5. **Replay is evidence, not authority.** Ordering is accepted position then canonical record-position
+   tie-breaker, matching the accepted projection consumer; the page reports the
+   accepted project source watermark, and a deterministic consumer fold must equal the Board/ticket
+   projection facts after both observe the same accepted set. The feed cannot mutate or bless a projection.
+6. **Sequencing and bounds.** This decision authorizes only the SPEC 1.12 amendments at INV-68, the Project
+   event feed architecture narrative, AC-EVT-01..04, I1 included-scope item 6, the project-event-feed
+   increment-placement paragraph, and the I1 exit-evidence bullet. `ARCHITECTURE.md` and
+   `IMPLEMENTATION-ROADMAP.md` are repaired as derived explanations. Backend Record/API/contracts/generated
+   clients belong to #186; browser rendering remains on `feat/r2710-ui-phase1` under I2.4. No new
+   environment variable or feature flag is authorized.
+
+Rejected alternatives:
+
+- A feed-specific event-kind enum that can drift from the canonical event catalog.
+- Filtering a tenant-wide event page in an API, CLI, notifier, or browser after materialization.
+- A cursor that can silently resume under another project.
+- Anonymous or free-form payload unions whose runtime kind/payload pairing is not generated and validated.
+- Placeholder session or heartbeat facts emitted before the #200 producer authority exists.

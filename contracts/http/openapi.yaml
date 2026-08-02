@@ -429,6 +429,26 @@
         }
       }
     },
+    "/v1/projects/{project_key}/events": {
+      "get": {
+        "operationId": "listProjectEvents",
+        "x-ctower-cli": "project events",
+        "x-ctower-mutation": false,
+        "x-ctower-spool": "forbidden",
+        "security": [{"bearerAuth": []}],
+        "parameters": [
+          {"$ref": "#/components/parameters/ProjectKey"},
+          {"$ref": "#/components/parameters/ProjectEventCursor"},
+          {"$ref": "#/components/parameters/ProjectEventLimit"}
+        ],
+        "responses": {
+          "200": {"description": "Accepted typed events for exactly one project", "content": {"application/json": {"schema": {"$ref": "#/components/schemas/ProjectEventPage"}}}},
+          "401": {"$ref": "#/components/responses/ProblemResponse"},
+          "404": {"$ref": "#/components/responses/ProblemResponse"},
+          "422": {"$ref": "#/components/responses/ProblemResponse"}
+        }
+      }
+    },
     "/v1/board": {
       "get": {
         "operationId": "getBoard",
@@ -1146,6 +1166,14 @@
         "schema": {"type": "integer", "minimum": 0, "default": 0}
       },
       "AuditLimit": {
+        "name": "limit", "in": "query", "required": false,
+        "schema": {"type": "integer", "minimum": 1, "maximum": 100, "default": 50}
+      },
+      "ProjectEventCursor": {
+        "name": "cursor", "in": "query", "required": false,
+        "schema": {"type": "string", "pattern": "^v1:[a-z][a-z0-9-]{2,63}:[0-9]{1,19}:[0-9]{1,19}$"}
+      },
+      "ProjectEventLimit": {
         "name": "limit", "in": "query", "required": false,
         "schema": {"type": "integer", "minimum": 1, "maximum": 100, "default": 50}
       },
@@ -2332,6 +2360,7 @@
               "migration-source-selection-drift",
               "migration-source-tainted",
               "poison-not-found",
+              "project-scope-denied",
               "project-delivery-unavailable",
               "request-body-too-large",
               "proof-candidate-author-mismatch",
@@ -3294,6 +3323,129 @@
           "events": {"type": "array", "items": {"$ref": "#/components/schemas/AuditEvent"}},
           "next_cursor": {"type": ["integer", "null"], "minimum": 1},
           "ticket_id": {"type": "string", "format": "uuid"}
+        }
+      },
+      "ProjectTicketCreatedEvent": {
+        "type": "object", "additionalProperties": false,
+        "required": ["acceptance_position", "actor_principal_id", "aggregate_id", "client_command_id", "event_id", "kind", "occurred_at", "payload", "record_position", "sequence", "stream_id"],
+        "properties": {
+          "acceptance_position": {"type": "integer", "minimum": 1},
+          "actor_principal_id": {"type": "string", "format": "uuid"},
+          "aggregate_id": {"type": "string", "format": "uuid"},
+          "client_command_id": {"type": "string", "format": "uuid"},
+          "event_id": {"type": "string", "format": "uuid"},
+          "kind": {"const": "ticket.created"},
+          "occurred_at": {"type": "string", "format": "date-time"},
+          "payload": {"$ref": "#/components/schemas/TicketCreatedPayload"},
+          "record_position": {"type": "integer", "minimum": 1},
+          "sequence": {"type": "integer", "minimum": 1},
+          "stream_id": {"type": "string", "pattern": "^ticket:[0-9a-f-]{36}$"}
+        }
+      },
+      "ProjectCustodyTransferredEvent": {
+        "type": "object", "additionalProperties": false,
+        "required": ["acceptance_position", "actor_principal_id", "aggregate_id", "client_command_id", "event_id", "kind", "occurred_at", "payload", "record_position", "sequence", "stream_id"],
+        "properties": {
+          "acceptance_position": {"type": "integer", "minimum": 1},
+          "actor_principal_id": {"type": "string", "format": "uuid"},
+          "aggregate_id": {"type": "string", "format": "uuid"},
+          "client_command_id": {"type": "string", "format": "uuid"},
+          "event_id": {"type": "string", "format": "uuid"},
+          "kind": {"const": "ticket.custody_transferred"},
+          "occurred_at": {"type": "string", "format": "date-time"},
+          "payload": {"$ref": "#/components/schemas/CustodyTransferredPayload"},
+          "record_position": {"type": "integer", "minimum": 1},
+          "sequence": {"type": "integer", "minimum": 1},
+          "stream_id": {"type": "string", "pattern": "^ticket:[0-9a-f-]{36}$"}
+        }
+      },
+      "ProjectTicketCommentAddedEvent": {
+        "type": "object", "additionalProperties": false,
+        "required": ["acceptance_position", "actor_principal_id", "aggregate_id", "client_command_id", "event_id", "kind", "occurred_at", "payload", "record_position", "sequence", "stream_id"],
+        "properties": {
+          "acceptance_position": {"type": "integer", "minimum": 1},
+          "actor_principal_id": {"type": "string", "format": "uuid"},
+          "aggregate_id": {"type": "string", "format": "uuid"},
+          "client_command_id": {"type": "string", "format": "uuid"},
+          "event_id": {"type": "string", "format": "uuid"},
+          "kind": {"const": "ticket.comment_added"},
+          "occurred_at": {"type": "string", "format": "date-time"},
+          "payload": {"$ref": "#/components/schemas/TicketCommentAddedPayload"},
+          "record_position": {"type": "integer", "minimum": 1},
+          "sequence": {"type": "integer", "minimum": 1},
+          "stream_id": {"type": "string", "pattern": "^ticket:[0-9a-f-]{36}$"}
+        }
+      },
+      "ProjectWorkChangedEvent": {
+        "type": "object", "additionalProperties": false,
+        "required": ["acceptance_position", "actor_principal_id", "aggregate_id", "client_command_id", "event_id", "kind", "occurred_at", "payload", "record_position", "sequence", "stream_id"],
+        "properties": {
+          "acceptance_position": {"type": "integer", "minimum": 1},
+          "actor_principal_id": {"type": "string", "format": "uuid"},
+          "aggregate_id": {"type": "string", "format": "uuid"},
+          "client_command_id": {"type": "string", "format": "uuid"},
+          "event_id": {"type": "string", "format": "uuid"},
+          "kind": {"const": "work.changed"},
+          "occurred_at": {"type": "string", "format": "date-time"},
+          "payload": {"$ref": "#/components/schemas/WorkChangedAuditPayload"},
+          "record_position": {"type": "integer", "minimum": 1},
+          "sequence": {"type": "integer", "minimum": 1},
+          "stream_id": {"type": "string", "pattern": "^ticket:[0-9a-f-]{36}$"}
+        }
+      },
+      "ProjectWorkflowChangedEvent": {
+        "type": "object", "additionalProperties": false,
+        "required": ["acceptance_position", "actor_principal_id", "aggregate_id", "client_command_id", "event_id", "kind", "occurred_at", "payload", "record_position", "sequence", "stream_id"],
+        "properties": {
+          "acceptance_position": {"type": "integer", "minimum": 1},
+          "actor_principal_id": {"type": "string", "format": "uuid"},
+          "aggregate_id": {"type": "string", "format": "uuid"},
+          "client_command_id": {"type": "string", "format": "uuid"},
+          "event_id": {"type": "string", "format": "uuid"},
+          "kind": {"const": "workflow.changed"},
+          "occurred_at": {"type": "string", "format": "date-time"},
+          "payload": {"$ref": "#/components/schemas/WorkflowChangedAuditPayload"},
+          "record_position": {"type": "integer", "minimum": 1},
+          "sequence": {"type": "integer", "minimum": 1},
+          "stream_id": {"type": "string", "pattern": "^workflow:[0-9a-f-]{36}$"}
+        }
+      },
+      "ProjectProofChangedEvent": {
+        "type": "object", "additionalProperties": false,
+        "required": ["acceptance_position", "actor_principal_id", "aggregate_id", "client_command_id", "event_id", "kind", "occurred_at", "payload", "record_position", "sequence", "stream_id"],
+        "properties": {
+          "acceptance_position": {"type": "integer", "minimum": 1},
+          "actor_principal_id": {"type": "string", "format": "uuid"},
+          "aggregate_id": {"type": "string", "format": "uuid"},
+          "client_command_id": {"type": "string", "format": "uuid"},
+          "event_id": {"type": "string", "format": "uuid"},
+          "kind": {"const": "proof.changed"},
+          "occurred_at": {"type": "string", "format": "date-time"},
+          "payload": {"$ref": "#/components/schemas/ProofChangedAuditPayload"},
+          "record_position": {"type": "integer", "minimum": 1},
+          "sequence": {"type": "integer", "minimum": 1},
+          "stream_id": {"type": "string", "pattern": "^proof:[0-9a-f-]{36}$"}
+        }
+      },
+      "ProjectEvent": {
+        "oneOf": [
+          {"$ref": "#/components/schemas/ProjectTicketCreatedEvent"},
+          {"$ref": "#/components/schemas/ProjectCustodyTransferredEvent"},
+          {"$ref": "#/components/schemas/ProjectTicketCommentAddedEvent"},
+          {"$ref": "#/components/schemas/ProjectWorkChangedEvent"},
+          {"$ref": "#/components/schemas/ProjectWorkflowChangedEvent"},
+          {"$ref": "#/components/schemas/ProjectProofChangedEvent"}
+        ]
+      },
+      "ProjectEventPage": {
+        "type": "object", "additionalProperties": false,
+        "required": ["events", "has_more", "next_cursor", "project_key", "source_watermark"],
+        "properties": {
+          "events": {"type": "array", "items": {"$ref": "#/components/schemas/ProjectEvent"}},
+          "has_more": {"type": "boolean"},
+          "next_cursor": {"type": "string", "pattern": "^v1:[a-z][a-z0-9-]{2,63}:[0-9]{1,19}:[0-9]{1,19}$"},
+          "project_key": {"type": "string", "pattern": "^[a-z][a-z0-9-]{2,63}$"},
+          "source_watermark": {"type": "integer", "minimum": 0}
         }
       },
       "TimelineEvent": {
