@@ -333,10 +333,9 @@ class Work:
             )
             self._emit("work.create_ticket", telemetry, outcome)
             return outcome
-        if command.priority not in PRIORITIES:
-            return _refusal(command, "Ticket priority is outside P0/P1/P2.")
-        if _PROJECT_KEY.fullmatch(command.project_key) is None:
-            return _validation_refusal(command, "Ticket project key is invalid.")
+        validation_refusal = _ticket_validation_refusal(command)
+        if validation_refusal is not None:
+            return validation_refusal
         if command.priority == "P0" and actor.kind is not PrincipalKind.OPERATOR:
             return _refusal(command, "Only an operator may create a P0 ticket.")
         request_digest = hashlib.sha256(_canonical_json(command.request_payload())).digest()
@@ -474,6 +473,14 @@ def _validation_refusal(command: TicketCommand, detail: str) -> RecordProblem:
         title="Invalid ticket command",
         command_id=command.client_command_id,
     )
+
+
+def _ticket_validation_refusal(command: TicketCommand) -> RecordProblem | None:
+    if command.priority not in PRIORITIES:
+        return _refusal(command, "Ticket priority is outside P0/P1/P2.")
+    if _PROJECT_KEY.fullmatch(command.project_key) is None:
+        return _validation_refusal(command, "Ticket project key is invalid.")
+    return None
 
 
 def _work_refusal(actor: Actor, command: WorkCommand) -> RecordProblem | None:

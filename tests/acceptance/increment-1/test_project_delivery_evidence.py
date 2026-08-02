@@ -42,12 +42,7 @@ from ctower_kernel.proof import (
     RecordVerdict,
     VerdictDecision,
 )
-from ctower_kernel.record import (
-    Actor,
-    PrincipalKind,
-    RecordProblem,
-    TicketCommand,
-)
+from ctower_kernel.record import Actor, PrincipalKind, RecordProblem, TicketCommand
 from ctower_kernel.record import SourceReference as RecordSourceReference
 from ctower_kernel.record.postgres import PostgresRecord
 from ctower_kernel.telemetry import TelemetryContext
