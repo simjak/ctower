@@ -1,10 +1,10 @@
 # Delivery state
 
 !!! note "Internal engineering record"
-    This page is part of the [internal engineering record](internals.md). It uses internal checkpoint
+    This page is part of the [internal engineering record](index.md). It uses internal checkpoint
     labels (`CP3-C`, `I1.7A`, `CT-I2-005`) that are sequencing identifiers from
     `IMPLEMENTATION-ROADMAP.md`, not product versions. For what ctower is and how to use it, start at the
-    [Overview](index.md) and the [Quickstart](quickstart.md).
+    [Overview](../index.md) and [Getting started](../getting-started.md).
 
 ctower is a public pre-alpha project. The codebase contains a tested development slice, not a supported
 control-plane product. This page distinguishes executable development evidence from verifier-only proof and
@@ -51,15 +51,15 @@ target. CP3-D and disaster-safe promotion remain later blocking evidence.
 
 ## What to do next
 
-- For a checkout and verification prerequisites, use [Repository setup](start-here/repository-setup.md).
+- For a checkout and verification prerequisites, use [Repository setup](../start-here/repository-setup.md).
 - To understand what the full test gate does—and does not do—read
-  [Exercise the development walking slice](getting-started.md).
-- Before operational or integration work, read [What is deliberately unavailable](start-here/availability.md) and
+  [Getting started](../getting-started.md).
+- Before operational or integration work, read [What is deliberately unavailable](../start-here/availability.md) and
   [Current operational boundary](operations/current-boundary.md).
 - For the bounded local CP3-C checkpoint, read [Backup and anchors](operations/backup-and-anchors.md),
   [Key recovery](operations/key-recovery.md), [Isolated restore](operations/isolated-restore.md),
   [Rollback](operations/rollback.md), and [Recovery evidence](operations/recovery-evidence.md).
 
-For binding requirements, use the [system specification](https://github.com/simjak/ctower/blob/main/SPEC.md).
+For binding requirements, use the [system specification](SPEC.md).
 For derived topology, use the [architecture atlas](https://github.com/simjak/ctower/blob/main/ARCHITECTURE.md).
-For sequencing, use the [implementation roadmap](https://github.com/simjak/ctower/blob/main/IMPLEMENTATION-ROADMAP.md).
+For sequencing, use the [implementation roadmap](IMPLEMENTATION-ROADMAP.md).

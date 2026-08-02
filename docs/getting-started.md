@@ -1,46 +1,66 @@
-# Exercise the development walking slice
+# Getting started
 
-This is not a product quickstart. ctower has no published/supported service installation or deployment
-path. The current walking slice is exercised by repository verification against disposable fixtures,
-including an externally installed development wheel.
+## Agent path
 
-## Before you run it
-
-Complete [Repository setup](start-here/repository-setup.md). The full gate requires Docker Compose because
-the Increment-1 acceptance tests start a disposable PostgreSQL 17 fixture. The fixture is loopback-only,
-uses temporary storage, and is torn down by the tests; it is not a ctower Compose deployment.
-
-Run the complete gate only from a clean committed candidate:
+If you are an agent reading this, run THIS command and the project stands up.
 
 ```bash
-just verify
+just quickstart
 ```
 
-`just verify` runs the warm checks, required suites, branch coverage, generated-drift checks, history secret
-scan, and clean-tree proof. It validates the repository and its current development evidence. It does not
-install ctower, make the local database durable, create a supported tenant, or prove production recovery.
+Do not add flags, invent credentials, or leave a service behind. The recipe creates an external temporary
+Python environment from the hash-locked verifier set, starts an isolated PostgreSQL 17 fixture and
+loopback API, installs the actual `ctowerctl` wheel, checks API health, takes a ticket through the complete
+four-stage workflow, and tears the fixture and environment down.
 
-## What the development slice proves
+A passing run ends with `4 passed`. It proves this checkout's development walking slice; it does not install
+a persistent or production ctower service.
 
-The tests cover a one-use first-tenant ceremony; durable ticket/comment/Work facts and custody; the
-protected Proof and four-stage Workflow fixture; a read-only Board projection; CompanyBundle
-validate/plan/apply/export; the generated-operation-backed CLI; the encrypted spool and real Linux Secret
-Service boundary; and selected idempotency, authorization, projection, health, and acknowledgement
-behaviours. See [Project status](project-status.md) for the precise boundary.
+## Human path
 
-The normal development configuration reports `pending_only`. A separate verifier-owned primary/standby
-PostgreSQL topology exercises acknowledged durability. Neither topology is a supported operational setup.
+You need:
 
-## Where to inspect the exact surface
+- Python `>=3.12,<3.15`;
+- Docker with Compose;
+- `just` and `uv` on `PATH`;
+- enough local capacity to pull PostgreSQL 17 and build a wheel.
 
-- [OpenAPI](https://github.com/simjak/ctower/blob/main/contracts/http/openapi.yaml) is the authored HTTP
-  contract for the development slice.
-- [Protected CLI and spool](guides/protected-cli.md) defines the installed-artifact, keyring, output, and
-  recovery boundary.
-- [CompanyBundle](guides/company-bundle.md) defines the strict desired-state round trip and its exclusions.
-- [Contracts](https://github.com/simjak/ctower/tree/main/contracts) and
-  [packs](https://github.com/simjak/ctower/tree/main/packs) distinguish authored inputs from activated
-  behaviour.
+From the repository root, run the same one-command tour shown above. It exercises these real CLI calls in
+order:
 
-Do not turn test fixtures into a real-work environment. Read
-[What is deliberately unavailable](start-here/availability.md) before proposing an integration.
+1. `control health` against the running loopback API;
+2. `ticket workflow list` from the installed pack tree;
+3. `ticket create`, then `ticket admit`;
+4. `ticket workflow start`;
+5. `ticket transition` from `capture` to `frame`;
+6. `ticket criteria freeze` against an exact candidate;
+7. `ticket transition` from `frame` to `verify`;
+8. `ticket evidence add` and a separate protected `ticket gate verdict`;
+9. `ticket transition` from `verify` to `close`;
+10. `ticket resolve`, asserting the durable lifecycle facts `resolved` and `closed`.
+
+Mutations normally report `durability_pending` first. The fixture deliberately acknowledges those commands
+and drains the encrypted spool before continuing, reusing each command ID rather than creating duplicate
+intent.
+
+## What you have after the run
+
+You have evidence that the repository can build its protected CLI and execute one complete workflow against
+real PostgreSQL. You do not have a running app: the tour cleans up by design.
+
+For the exact command families and current gaps, read the [CLI reference](reference/cli.md). For day-to-day
+repository work, install the complete verification toolchain described in
+[Repository setup](start-here/repository-setup.md) and use `just check` while developing.
+
+## Common failures
+
+| Symptom | Meaning |
+|---|---|
+| `docker is required for Postgres acceptance tests` | Docker is absent or its daemon is unreachable. |
+| `uv: command not found` | Install `uv`; the quickstart will not fall back to an unpinned Python environment. |
+| PostgreSQL never becomes healthy | Keep the complete Compose output. The fixture fails closed and attempts its project-scoped cleanup. |
+| CLI exit `69` | A typed refusal is permanent until its named condition changes. Do not retry unchanged. |
+| CLI exit `75` | The command is queued or waiting for durability acknowledgement. Reuse the same command ID. |
+
+The checked-in Compose file is not an application stack. See [Local development](local-development.md) for
+the tested topology and the missing API/UI services.

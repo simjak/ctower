@@ -23,11 +23,11 @@ installations remain quarantined until the exact report/installation enablement 
 
 Runbooks:
 
-- [backup and anchors](../../docs/operations/backup-and-anchors.md)
-- [key recovery](../../docs/operations/key-recovery.md)
-- [isolated restore](../../docs/operations/isolated-restore.md)
-- [rollback](../../docs/operations/rollback.md)
-- [evidence capture](../../docs/operations/recovery-evidence.md)
+- [backup and anchors](../../docs/internal/operations/backup-and-anchors.md)
+- [key recovery](../../docs/internal/operations/key-recovery.md)
+- [isolated restore](../../docs/internal/operations/isolated-restore.md)
+- [rollback](../../docs/internal/operations/rollback.md)
+- [evidence capture](../../docs/internal/operations/recovery-evidence.md)
 
 The separately authorized, shadow-only E2 walking slice is documented under
 [`development/`](development/README.md). Its same-VPS ACK copy is deliberately labeled

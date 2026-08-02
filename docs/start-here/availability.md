@@ -14,7 +14,7 @@ roadmap item.
 - Depending on a published package, stable Python runtime, compatibility promise, or production release.
 
 The checked-in Compose file supports disposable PostgreSQL acceptance tests only. Read
-[Current operational boundary](../operations/current-boundary.md) before treating it as infrastructure.
+[Local development](../local-development.md) before treating it as infrastructure.
 
 ## What is safe to do
 
@@ -24,6 +24,5 @@ The checked-in Compose file supports disposable PostgreSQL acceptance tests only
 - Improve documentation, contracts, tests, or one complete development vertical through the contribution
   process.
 
-For precise current evidence, use [Project status](../project-status.md). For planned sequence and exit
-criteria, use the [implementation roadmap](https://github.com/simjak/ctower/blob/main/IMPLEMENTATION-ROADMAP.md)
-and [system specification](https://github.com/simjak/ctower/blob/main/SPEC.md).
+For the working path, use [Getting started](../getting-started.md). For the current product boundary, use
+the [Overview](../index.md) and [Self-hosting](../self-hosting.md).

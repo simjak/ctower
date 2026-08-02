@@ -103,4 +103,4 @@ stage the roadmap calls `CT-I2-005` / I2.4.
 
 - [Board lanes](board.md) — the ticket-granularity projection.
 - [Proof](proof.md) — where `criteria.proven` comes from.
-- [Delivery state](../project-status.md) — the current capability matrix in the engineering record.
+- [What is deliberately unavailable](../start-here/availability.md) — the current public capability boundary.

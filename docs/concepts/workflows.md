@@ -183,4 +183,4 @@ or be rejected. Nothing reads a bound, a perspective set, a repair route, or an 
 
 - [Proof](proof.md) — what the `criteria.frozen@1` and `proof.current@1` predicates are checking.
 - [Ticket and lifecycle episode](tickets.md) — what the workflow is moving.
-- [CLI reference](../reference/cli.md#workflow) — the exact workflow commands.
+- [CLI reference](../reference/cli.md#workflow-and-proof) — the exact workflow commands.

@@ -7,8 +7,8 @@
       "id": "contract-traceability-index",
       "inputs": [
         {
-          "path": "SPEC.md",
-          "sha256": "sha256:ce75f998ad898fc3b2e1a450bba8df911154107aa061f661b133c251caeae3e3"
+          "path": "docs/internal/SPEC.md",
+          "sha256": "sha256:43ea808d7db038e4ab1f540134a98ca857876d805de7c985fbb2aba561c5f078"
         },
         {
           "path": "contracts/traceability/sources.json",
@@ -28,7 +28,7 @@
         },
         {
           "path": "tools/checks/_impl/traceability.py",
-          "sha256": "sha256:4d63dfa7a5655d25653671c7ca78882d99137714b803c9d5f91402e997a1d0c3"
+          "sha256": "sha256:806e0699d3c1f00926cc3eda0eebfd849887f280808da4f1e931313f6a5973da"
         },
         {
           "path": "tools/checks/traceability.py",

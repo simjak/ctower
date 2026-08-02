@@ -7,8 +7,9 @@ outputs.
 ## Before changing code or contracts
 
 1. Read the relevant section of the canonical
-   [system specification](https://github.com/simjak/ctower/blob/main/SPEC.md).
-2. Check the append-only [decision log](https://github.com/simjak/ctower/blob/main/DECISIONS.md).
+   [system specification](https://github.com/simjak/ctower/blob/main/docs/internal/SPEC.md).
+2. Check the append-only
+   [decision log](https://github.com/simjak/ctower/blob/main/docs/internal/DECISIONS.md).
 3. Identify the owning Module and its permitted dependency edges in `tools/checks/policy.toml`.
 4. Confirm that the change belongs to the current implementation increment.
 5. Define failure, restart, authorization, idempotency, and evidence behavior before adding a happy path.
@@ -20,10 +21,10 @@ two real, independently useful adapters need the same contract.
 
 | Content | Authoritative home |
 |---|---|
-| Human-visible system semantics and acceptance criteria | `SPEC.md` |
-| Historical decisions and supersessions | `DECISIONS.md` |
+| Human-visible system semantics and acceptance criteria | `docs/internal/SPEC.md` |
+| Historical decisions and supersessions | `docs/internal/DECISIONS.md` |
 | Compact derived architecture views | `ARCHITECTURE.md` |
-| Checkpoint and dogfooding sequence | `IMPLEMENTATION-ROADMAP.md` |
+| Checkpoint and dogfooding sequence | `docs/internal/IMPLEMENTATION-ROADMAP.md` |
 | Cross-process schemas | `contracts/` |
 | Concrete workflow and policy versions | `packs/` |
 | Generated clients, models, and indexes | `generated/` |
@@ -75,8 +76,8 @@ Read the complete [coding standards](CODING_STANDARDS.md).
 
 ## Documentation changes
 
-Public guides live under `docs/` and are rendered with MkDocs Material. Canonical design documents remain in
-the repository root and are linked rather than copied. Keep statements in current tense, distinguish proven
+Public guides live under `docs/` and are rendered with MkDocs Material. Canonical internal sources live under
+`docs/internal/` and are excluded from the public site. Keep statements in current tense, distinguish proven
 behavior from intent, and never include secrets, PII, private infrastructure, or machine-local paths.
 
 Preview and validate documentation with:

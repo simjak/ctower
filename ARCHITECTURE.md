@@ -3,13 +3,14 @@
 | Field | Value |
 |---|---|
 | Status | Compact derived operator and implementer map |
-| Normative authority | [`SPEC.md`](SPEC.md), version 1.15 |
-| Decision history | [`DECISIONS.md`](DECISIONS.md) |
+| Normative authority | [`docs/internal/SPEC.md`](docs/internal/SPEC.md), version 1.15 |
+| Decision history | [`docs/internal/DECISIONS.md`](docs/internal/DECISIONS.md) |
 | Last reviewed | 2026-08-05 |
 
 This is the sole terminal-safe derived architecture atlas. It explains the canonical specification; it
 does not add requirements, authorize work, or define exact schemas, operations, DDL, package values, or
-deployment manifests. If this file and `SPEC.md` disagree, `SPEC.md` wins and this file is stale.
+deployment manifests. If this file and `docs/internal/SPEC.md` disagree,
+`docs/internal/SPEC.md` wins and this file is stale.
 
 Implementation labels are strict:
 

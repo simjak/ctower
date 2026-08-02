@@ -25,6 +25,29 @@ _SECRET_SERVICE_LAUNCHER = _ROOT / "tests/integration/keyring/secret_service_lau
 _CLI_BROKER = Path(__file__).with_name("support") / "cli_broker.py"
 
 
+def test_cli_reports_running_api_health(
+    tenant: TenantFixture,
+    tmp_path: Path,
+    installed_ctowerctl: Path,
+) -> None:
+    with (
+        _InstalledCli(tmp_path, installed_ctowerctl) as cli,
+        running_api(
+            tenant.database.runtime_dsn,
+            projection_dsn=tenant.database.projection_dsn,
+        ) as base_url,
+    ):
+        status, health = _run(
+            cli,
+            base_url,
+            tenant.commander_credential,
+            ["control", "health"],
+        )
+
+    assert status == 0
+    assert health["schema_id"] == "ctower.health/v1"
+
+
 def test_cli_reaches_resolved_closed_with_installed_defaults(
     tenant: TenantFixture,
     tmp_path: Path,

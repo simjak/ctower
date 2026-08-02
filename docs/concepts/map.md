@@ -207,4 +207,4 @@ drift apart.
 
 - [Tickets](tickets.md), [Workflows](workflows.md), [Proof](proof.md) and [the Board](board.md) explain
   boxes 3 through 12 properly.
-- [Delivery state](../project-status.md) is the exact, unsoftened list of what is and is not built.
+- [What is deliberately unavailable](../start-here/availability.md) is the exact, unsoftened boundary.
