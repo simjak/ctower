@@ -8,6 +8,7 @@ from uuid import UUID, uuid4
 
 import psycopg
 import pytest
+from fastapi.routing import APIRoute
 from fastapi.testclient import TestClient
 from httpx import Response
 from support.acceptance import accept_pending_commands
@@ -26,16 +27,18 @@ from ctower_api.interface import create_app
 from ctower_kernel.catalog import CatalogProblem, CompanyBundle, PostgresCatalog
 from ctower_kernel.projections import BoardQuery, Projections
 from ctower_kernel.projections.postgres import PostgresProjections
-from ctower_kernel.record import Actor, PrincipalKind
+from ctower_kernel.record import Actor, PrincipalKind, Record
 from ctower_kernel.record.postgres import PostgresRecord
 from ctower_kernel.telemetry import TelemetryContext
 from ctower_kernel.work import Block, Work, WorkReceipt
 from ctower_kernel.work.postgres import PostgresWork
+from ctower_kernel.workflow import Workflow
 
 __all__: tuple[str, ...] = ()
 HTTP_ACCEPTED = 202
 HTTP_NOT_FOUND = 404
 HTTP_UNPROCESSABLE = 422
+DEFERRED_MUTATION_ROUTE_COUNT = 6
 
 _MANIBO_CHECKPOINTS = (
     "manibo.verify",
@@ -54,6 +57,15 @@ _BHLOOP_CHECKPOINTS = (
     "bhloop.layer-2-staff-assistant",
     "bhloop.d11-org",
     "bhloop.biomarker-rail",
+)
+_DEFERRED_MUTATION_ROUTES = tuple(
+    route
+    for route in create_app(cast(Record, object()), workflow=cast(Workflow, object())).routes
+    if isinstance(route, APIRoute)
+    and route.path.startswith("/v1/tickets/{ticket_id}/")
+    and route.endpoint.__module__ in {"ctower_api.interface", "ctower_api._task_routes"}
+    and route.methods is not None
+    and "POST" in route.methods
 )
 
 
@@ -173,9 +185,55 @@ def test_intake_accepts_scoped_ref_and_refuses_mismatched_project_ref(
     assert refused.json()["code"] == "intake-source-project-mismatch"
 
 
+def test_link_intake_uses_ticket_scope_without_import_provenance_binding(
+    tenant: TenantFixture,
+) -> None:
+    _apply_portfolio_bundle(tenant)
+    with _client(tenant) as client:
+        created = _submit_direct_ticket(client, tenant, "manibo")
+        ticket_id = UUID(str(created.json()["ticket"]["ticket_id"]))
+        with psycopg.connect(tenant.database.admin_dsn) as connection:
+            binding = connection.execute(
+                """
+                SELECT 1 FROM ticket_project_bindings
+                WHERE tenant_id = %s AND ticket_id = %s
+                """,
+                (tenant.tenant_id, ticket_id),
+            ).fetchone()
+        linked = _submit_link_intake(client, tenant, "manibo", ticket_id)
+
+    assert created.status_code == HTTP_ACCEPTED
+    assert binding is None
+    assert linked.status_code == HTTP_ACCEPTED
+    assert UUID(str(linked.json()["ticket_id"])) == ticket_id
+
+
 @pytest.mark.skip(reason="#192 must land project grants before caller-grant mismatch is executable")
 def test_intake_refuses_scoped_ref_when_project_does_not_match_callers_grant() -> None:
     """#192 will replace the skip with a manibo-only credential calling bh-loop intake."""
+
+
+def test_deferred_mutation_scope_inventory_has_six_unscoped_routes() -> None:
+    assert len(_DEFERRED_MUTATION_ROUTES) == DEFERRED_MUTATION_ROUTE_COUNT
+    for route in _DEFERRED_MUTATION_ROUTES:
+        assert all(parameter.name != "project_key" for parameter in route.dependant.query_params)
+
+
+@pytest.mark.parametrize(
+    "route",
+    tuple(
+        pytest.param(
+            route,
+            id=f"POST-{route.path}",
+            marks=pytest.mark.skip(
+                reason="#192/#198 must enforce project grants before this mutation route can refuse"
+            ),
+        )
+        for route in _DEFERRED_MUTATION_ROUTES
+    ),
+)
+def test_ticket_mutation_refuses_foreign_project_after_grant_authority(route: APIRoute) -> None:
+    """#192/#198 replaces each inventory-derived skip with an ordered-project-pair probe."""
 
 
 def _assert_pair_disjoint(tenant: TenantFixture, left: str, right: str) -> None:
@@ -324,6 +382,63 @@ def _submit_intake(
                 "project_key": project_key,
                 "source": {"kind": "mission-control-request", "ref": source_ref},
                 "title": f"{project_key} scoped ticket",
+            },
+            headers={
+                "Authorization": f"Bearer {tenant.commander_credential}",
+                "Idempotency-Key": str(command_id),
+                **telemetry_headers(command_id),
+            },
+        ),
+    )
+
+
+def _submit_direct_ticket(
+    client: TestClient,
+    tenant: TenantFixture,
+    project_key: str,
+) -> Response:
+    command_id = uuid4()
+    return cast(
+        Response,
+        client.post(
+            "/v1/tickets",
+            json={
+                "initial_custodian_id": str(tenant.commander_id),
+                "priority": "P2",
+                "project_key": project_key,
+                "source": {"kind": "github-issue", "ref": f"{project_key}-direct-1"},
+                "title": f"{project_key} direct ticket",
+            },
+            headers={
+                "Authorization": f"Bearer {tenant.commander_credential}",
+                "Idempotency-Key": str(command_id),
+                **telemetry_headers(command_id),
+            },
+        ),
+    )
+
+
+def _submit_link_intake(
+    client: TestClient,
+    tenant: TenantFixture,
+    project_key: str,
+    ticket_id: UUID,
+) -> Response:
+    command_id = uuid4()
+    return cast(
+        Response,
+        client.post(
+            "/v1/intake",
+            json={
+                "content": f"Link scoped intake to {ticket_id}",
+                "expected_ticket_version": 1,
+                "intent": "link_ticket",
+                "project_key": project_key,
+                "source": {
+                    "kind": "mission-control-request",
+                    "ref": f"{project_key}-R003",
+                },
+                "target_ticket_id": str(ticket_id),
             },
             headers={
                 "Authorization": f"Bearer {tenant.commander_credential}",

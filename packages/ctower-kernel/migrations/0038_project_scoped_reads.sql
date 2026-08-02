@@ -1,15 +1,46 @@
 ALTER TABLE tickets ADD COLUMN project_key text;
 
-UPDATE tickets AS ticket
-SET project_key = COALESCE(
-    (
-        SELECT binding.project_key
-        FROM ticket_project_bindings AS binding
-        WHERE binding.tenant_id = ticket.tenant_id
-          AND binding.ticket_id = ticket.ticket_id
-    ),
-    'ctower'
-);
+DO $migration$
+DECLARE
+    authoritative_project_key text;
+    defaulted_ticket_count bigint;
+BEGIN
+    SELECT domain_match[1]
+    INTO authoritative_project_key
+    FROM pg_constraint AS constraint_row
+    CROSS JOIN LATERAL regexp_match(
+        pg_get_expr(constraint_row.conbin, constraint_row.conrelid, false),
+        $constraint$^\(?project_key = '([a-z][a-z0-9-]{2,63})'::text\)?$$constraint$
+    ) AS domain_match
+    WHERE constraint_row.conrelid = 'ticket_project_bindings'::regclass
+      AND constraint_row.conname = 'ticket_project_bindings_project_key_check';
+
+    IF authoritative_project_key IS NULL THEN
+        RAISE EXCEPTION
+            '0038_project_scoped_reads: pre-migration binding domain does not pin one project';
+    END IF;
+
+    UPDATE tickets AS ticket
+    SET project_key = binding.project_key
+    FROM ticket_project_bindings AS binding
+    WHERE binding.tenant_id = ticket.tenant_id
+      AND binding.ticket_id = ticket.ticket_id;
+
+    SELECT count(*)
+    INTO defaulted_ticket_count
+    FROM tickets
+    WHERE project_key IS NULL;
+
+    UPDATE tickets
+    SET project_key = authoritative_project_key
+    WHERE project_key IS NULL;
+
+    RAISE NOTICE
+        '0038_project_scoped_reads: defaulted_ticket_count=% authoritative_project_key=%',
+        defaulted_ticket_count,
+        authoritative_project_key;
+END
+$migration$;
 
 ALTER TABLE tickets
     ALTER COLUMN project_key SET NOT NULL,

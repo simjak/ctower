@@ -214,7 +214,8 @@ def ticket_timeline(
         rows = connection.execute(
             """
             SELECT event.event_id, event.sequence, event.kind, event.actor_principal_id,
-                event.client_command_id, event.server_time, event.payload
+                event.client_command_id, event.server_time, event.payload,
+                ticket.project_key AS authoritative_project_key
             FROM events AS event
             JOIN tickets AS ticket
               ON ticket.tenant_id = event.tenant_id
@@ -474,7 +475,11 @@ def _timeline_event(row: dict[str, object]) -> TimelineEvent:
         event_id=cast(UUID, row["event_id"]),
         kind=kind,
         occurred_at=cast(datetime, row["server_time"]),
-        payload=ticket_payload_from_mapping(kind, payload),
+        payload=ticket_payload_from_mapping(
+            kind,
+            payload,
+            legacy_project_key=str(row["authoritative_project_key"]),
+        ),
         sequence=int(cast(int, row["sequence"])),
     )
 

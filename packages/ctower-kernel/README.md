@@ -46,8 +46,9 @@ that leaves the prior active Catalog authoritative.
 
 Thread-first intake accepts any project already declared in the tenant's Project Delivery hierarchy; the
 separate actor-to-project grant authority remains owned by #192. Ticket creation and link validation use the
-immutable Ticket project plus `ticket_project_bindings` provenance, and source aliases include project in
-their canonical identity; there is no intake-only project ledger. Complete sorted durability-subject locks
+immutable `tickets.project_key` authority; `ticket_project_bindings` records import/intake provenance and is
+never a fallback authority. Source aliases include project in their canonical identity; there is no
+intake-only project ledger. Complete sorted durability-subject locks
 precede thread/ticket locks, and only authenticated, unquarantined discussion events may be promoted. The
 Record package facade keeps core authority types at `ctower_kernel.record` and groups inbound-thread command,
 result, and policy types under the exported `ctower_kernel.record.intake` namespace instead of flattening

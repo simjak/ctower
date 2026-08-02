@@ -362,10 +362,10 @@
     },
     {
       "path": "0038_project_scoped_reads.sql",
-      "sha256": "sha256:883d2877964116949c251adfb375e5950c9c5071dcb2659ed4343afef2775566",
+      "sha256": "sha256:f4db78431ee5d73857c6d25d55afd716bbc448ce9cf06a56678e414d5eb35966",
       "minimum_service_version": "0.0.0",
       "maximum_service_version": "0.0.0",
-      "forward_test": "pytest:tests/acceptance/increment-1/test_project_scoping.py::test_manibo_and_ctower_boards_are_disjoint",
+      "forward_test": "pytest:tests/acceptance/increment-1/test_project_scope_migration.py::test_0038_reports_two_unbound_tickets_derived_from_the_binding_domain",
       "rollback_or_forward_compensation": "Keep immutable ticket project ownership and project-scoped source aliases readable; rebuild disposable Board and Project Delivery rows after reviewed forward compensation, never erase or relink ticket or intake authority.",
       "backup_checkpoint": "Before applying to a nonempty installation, capture ticket, ticket-project binding, inbound source alias, and Board projection counts grouped by tenant and project plus a verified database backup."
     }

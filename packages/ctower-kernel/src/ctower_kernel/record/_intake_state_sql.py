@@ -270,10 +270,8 @@ def _prepare_link_action(
         raise RuntimeError("Work admitted incomplete link-ticket intake")
     row = connection.execute(
         """
-        SELECT ticket.version, project.project_key
+        SELECT ticket.version, ticket.project_key
         FROM tickets AS ticket
-        JOIN ticket_project_bindings AS project
-          ON project.ticket_id = ticket.ticket_id AND project.tenant_id = ticket.tenant_id
         WHERE ticket.tenant_id = %s AND ticket.ticket_id = %s
         FOR UPDATE OF ticket
         """,

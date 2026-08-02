@@ -91,6 +91,15 @@ def test_migration_manifest_is_ordered_and_checksum_exact() -> None:
         assert entry["sha256"] == f"sha256:{digest}"
 
 
+def test_project_scope_backfill_derives_and_reports_its_unbound_scope() -> None:
+    migration = (MIGRATIONS / "0038_project_scoped_reads.sql").read_text(encoding="utf-8")
+
+    assert "'ctower'" not in migration
+    assert "pg_get_expr" in migration
+    assert "defaulted_ticket_count" in migration
+    assert "RAISE NOTICE" in migration
+
+
 def test_every_migration_declares_compatibility_forward_compensation_and_backup() -> None:
     manifest = json.loads((MIGRATIONS / "manifest.json").read_text(encoding="utf-8"))
     entries = cast(list[dict[str, object]], manifest["migrations"])

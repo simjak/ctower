@@ -92,16 +92,24 @@ type TicketEventPayload = (
 )
 
 
-def ticket_payload_from_mapping(kind: str, payload: Mapping[str, object]) -> TicketEventPayload:
+def ticket_payload_from_mapping(
+    kind: str,
+    payload: Mapping[str, object],
+    *,
+    legacy_project_key: str | None = None,
+) -> TicketEventPayload:
     if kind == "ticket.created":
         current = {"custodian_id", "priority", "project_key", "source_kind", "source_ref", "title"}
         legacy = current - {"project_key"}
         if frozenset(payload) not in {frozenset(current), frozenset(legacy)}:
             raise ValueError("event payload fields do not match the authored variant")
+        project_key = payload.get("project_key", legacy_project_key)
+        if project_key is None:
+            raise ValueError("legacy ticket.created requires the authoritative ticket project")
         return TicketCreatedPayload(
             custodian_id=_uuid_value(payload["custodian_id"], "custodian_id"),
             priority=_string(payload["priority"], "priority"),
-            project_key=_string(payload.get("project_key", "ctower"), "project_key"),
+            project_key=_string(project_key, "project_key"),
             source_kind=_string(payload["source_kind"], "source_kind"),
             source_ref=_string(payload["source_ref"], "source_ref"),
             title=_string(payload["title"], "title"),

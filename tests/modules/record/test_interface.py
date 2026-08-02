@@ -151,6 +151,15 @@ def test_timeline_event_keeps_typed_kind_matched_payload() -> None:
     )
 
     assert event.response_payload()["payload"] == payload.to_mapping()
+    legacy = payload.to_mapping()
+    del legacy["project_key"]
+    derived = ticket_payload_from_mapping(
+        EventKind.TICKET_CREATED,
+        legacy,
+        legacy_project_key="manibo",
+    )
+    assert isinstance(derived, TicketCreatedPayload)
+    assert derived.project_key == "manibo"
     with pytest.raises(ValueError, match="fields"):
         ticket_payload_from_mapping(
             EventKind.TICKET_CREATED, {**payload.to_mapping(), "extra": "rejected"}
