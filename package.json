@@ -7,9 +7,9 @@
     "node": ">=24 <25"
   },
   "scripts": {
-    "format:check": "prettier --check apps/ctower-web/src apps/ctower-web/package.json apps/ctower-web/tsconfig.json tsconfig.base.json eslint.config.mjs prettier.config.mjs playwright.config.ts",
-    "lint": "eslint apps/ctower-web/src playwright.config.ts",
-    "typecheck": "pnpm --filter @ctower/web typecheck && pnpm --filter @ctower/client typecheck",
+    "format:check": "prettier --check apps/ctower-ui/src apps/ctower-ui/next.config.ts apps/ctower-ui/package.json apps/ctower-ui/tsconfig.json apps/ctower-web/src apps/ctower-web/package.json apps/ctower-web/tsconfig.json tsconfig.base.json eslint.config.mjs prettier.config.mjs playwright.config.ts",
+    "lint": "eslint apps/ctower-ui/src apps/ctower-ui/next.config.ts apps/ctower-web/src playwright.config.ts",
+    "typecheck": "pnpm --filter @ctower/ui typecheck && pnpm --filter @ctower/web typecheck && pnpm --filter @ctower/client typecheck",
     "test:e2e": "python3 -B -m tools.checks.playwright"
   },
   "devDependencies": {

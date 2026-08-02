@@ -1,0 +1,188 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="color-scheme" content="light dark">
+<meta name="theme-color" content="#ffffff">
+<title>Workspace · ctower</title>
+<link rel="stylesheet" href="app.css">
+<script>
+  /* before first paint, so a dark-theme reader never sees a white flash */
+  try {
+    if (localStorage.getItem('ctower-theme') === 'dark') {
+      document.documentElement.classList.add('theme-dark');
+    }
+  } catch (e) {}
+</script>
+</head>
+<body>
+
+<header class="top">
+  <div class="top-row">
+    <span class="mark">
+      <svg width="20" height="20" viewBox="0 0 20 20" fill="none" aria-hidden="true">
+        <rect x=".75" y=".75" width="18.5" height="18.5" rx="5.25" stroke="var(--line-2)"/>
+        <circle cx="10" cy="5.4" r="1.7" fill="var(--accent)"/>
+        <path d="M10 7.8v6.4" stroke="var(--ink)" stroke-width="1.6" stroke-linecap="round"/>
+        <path d="M6.5 8.6a4.4 4.4 0 0 0 0 3.6" stroke="var(--ink-3)" stroke-width="1.3" stroke-linecap="round"/>
+        <path d="M13.5 8.6a4.4 4.4 0 0 1 0 3.6" stroke="var(--ink-3)" stroke-width="1.3" stroke-linecap="round"/>
+      </svg>
+      <b>ctower</b><span class="sep">/</span><span class="where">Workspace</span>
+    </span>
+    <span class="grow"></span>
+    <span class="instance"><span class="dot"></span>shadow<span class="mono">091c4b44</span></span>
+    <button class="tt" type="button" data-theme-toggle aria-label="Switch between light and dark theme">
+      <svg class="i-moon" width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden="true">
+        <path d="M14 9.3A6 6 0 0 1 6.7 2 6 6 0 1 0 14 9.3Z" stroke="currentColor" stroke-width="1.3" stroke-linejoin="round"/>
+      </svg>
+      <svg class="i-sun" width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden="true">
+        <circle cx="8" cy="8" r="3.1" stroke="currentColor" stroke-width="1.3"/>
+        <path d="M8 1v1.6M8 13.4V15M15 8h-1.6M2.6 8H1M12.95 3.05l-1.13 1.13M4.18 11.82l-1.13 1.13M12.95 12.95l-1.13-1.13M4.18 4.18L3.05 3.05"
+              stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/>
+      </svg>
+    </button>
+  </div>
+<nav class="nav" aria-label="Sections">
+  <a href="board.html">Board</a>
+  <a href="ticket.html">Ticket</a>
+  <a href="workflow.html">Workflow</a>
+  <a href="heartbeats.html">Heartbeats</a>
+  <a href="inbox.html">Inbox</a>
+  <a href="feed.html">Feed</a>
+  <a href="files.html">Files</a>
+  <a href="workspace.html" class="on" aria-current="page">Workspace</a>
+  <a href="explorer.html">Explorer</a>
+</nav>
+</header>
+
+<main class="page"><div class="wrap">
+  <div class="lede">
+    <h1>Workspace</h1>
+    <p>Everything a session is handed at the moment it starts, in one card. If a seat cannot say
+       which ticket it is bound to and which worktree it is standing in, it should not be writing.</p>
+  </div>
+
+  <section class="panel" style="margin-top:16px">
+    <header>
+      <h2>Session start</h2>
+      <span class="sub">engineer-192-identities · started 08:12:31</span>
+    </header>
+    <ul class="kv">
+      <li><span class="k">Bound ticket</span><span class="v">gh#192 · 019fbdc3-8e21-7a4c-b3d2-9c41ef0a77b5
+        <span class="sub">A project seat can obtain its own scoped, revocable credential</span></span></li>
+      <li><span class="k">Task file</span><span class="v">coordination/2026-08-02_0812--engineer-192-identities--restack.task.md
+        <span class="sub">acceptance + verification criteria present — the seat refuses to start without both</span></span></li>
+      <li><span class="k">Worktree</span><span class="v">/srv/projects/.worktrees/feat-192-identities
+        <span class="sub">reaped the moment its PR merges</span></span></li>
+      <li><span class="k">Branch</span><span class="v">feat/192-identities @ 6b1f0ac
+        <span class="sub">rebased onto feat/157-seat-carriage (#191) at 08:32:09</span></span></li>
+      <li><span class="k">Project</span><span class="v">ctower
+        <span class="sub">stamped by bin/mux as MC_PROJECT and as the tmux @project option</span></span></li>
+      <li><span class="k">Harness · model</span><span class="v">Codex · gpt-5.6-sol-xhigh
+        <span class="sub">backend lane per board/model-routing-policy.md; reviewer must be another family</span></span></li>
+      <li><span class="k">Persona</span><span class="v">crew/roles/engineer/soul.md
+        <span class="sub">read first, line 1 — the crew carries its own soul, never a paraphrase</span></span></li>
+      <li><span class="k">Access</span><span class="v">full · post-hoc verification
+        <span class="sub">unattended: the gate is status file + scoped tests + git state + adversarial review</span></span></li>
+    </ul>
+    <pre class="cmdblock">bin/mux spawn engineer-192-identities \
+  --cwd /srv/projects/.worktrees/feat-192-identities \
+  --project ctower \
+  -- codex --dangerously-bypass-approvals-and-sandbox</pre>
+  </section>
+
+  <section class="panel" style="margin-top:16px">
+    <header><h2>Session states</h2><span class="sub">5 transitions · 45m elapsed</span></header>
+    <ul class="tl">
+      <li>
+        <span class="who"><i class="av av-x">CM</i></span>
+        <div class="e">
+          <div class="hdr">
+            <span class="seat">dispatched</span>
+            <span class="crew">commander</span>
+            <span class="when">08:12:04</span>
+          </div>
+          <div class="did">Wrote the restack brief and spawned the seat against the ctower project.</div>
+          <div class="row"><span class="verdict v-filed">dispatched</span></div>
+          <div class="arts"><span class="art">coordination/2026-08-02_0812--engineer-192-identities--restack.task.md</span></div>
+        </div>
+      </li>
+      <li>
+        <span class="who"><i class="av av-x">EN</i></span>
+        <div class="e">
+          <div class="hdr">
+            <span class="seat">briefed</span>
+            <span class="crew">engineer</span>
+            <span class="when">08:12:31 · 27s</span>
+          </div>
+          <div class="did">Read its soul, then the task file, then #191's head. Refused nothing.</div>
+          <div class="row"><span class="verdict v-filed">briefed</span></div>
+          <div class="arts"><span class="art">crew/roles/engineer/soul.md</span></div>
+        </div>
+      </li>
+      <li>
+        <span class="who"><i class="av av-x">EN</i></span>
+        <div class="e">
+          <div class="hdr">
+            <span class="seat">working</span>
+            <span class="crew">engineer</span>
+            <span class="when">08:13:02 · 18m</span>
+          </div>
+          <div class="did">Rebased onto feat/157-seat-carriage; 14 refusal tests green.</div>
+          <div class="row"><span class="verdict v-flight">working</span></div>
+          <div class="arts"><span class="art">branch feat/192-identities @ 6b1f0ac</span></div>
+        </div>
+      </li>
+      <li>
+        <span class="who"><i class="av av-x">EN</i></span>
+        <div class="e">
+          <div class="hdr">
+            <span class="seat">gated</span>
+            <span class="crew">engineer</span>
+            <span class="when">08:31:44</span>
+          </div>
+          <div class="did">file-disjointness fired on custody.py — a contested file, refused by name.</div>
+          <div class="row"><span class="verdict v-changes">gated</span></div>
+          <div class="arts"><span class="art">gate event · gh#192</span></div>
+        </div>
+      </li>
+      <li>
+        <span class="who"><i class="av av-x">EN</i></span>
+        <div class="e">
+          <div class="hdr">
+            <span class="seat">restacking</span>
+            <span class="crew">engineer</span>
+            <span class="when">08:32:09 · 26m</span>
+          </div>
+          <div class="did">Rebase clean. Revocation refusal test still absent per the CSO verdict.</div>
+          <div class="row"><span class="verdict v-flight">restacking</span></div>
+          <div class="arts"><span class="art">14 passed · 1 required test absent</span></div>
+        </div>
+      </li>
+    </ul>
+  </section>
+
+  <div class="foot">
+    <span>ctower · shadow instance 091c4b44</span>
+    <span>SHADOW_ONLY_CP3_D_NOT_PROVEN</span>
+    <span>2026-08-02 08:34 Europe/Vilnius</span>
+  </div>
+</div></main>
+
+<script>
+  (function () {
+    var btn = document.querySelector('[data-theme-toggle]');
+    var root = document.documentElement;
+    var sync = function () { btn.setAttribute('aria-pressed', String(root.classList.contains('theme-dark'))); };
+    btn.addEventListener('click', function () {
+      var dark = root.classList.toggle('theme-dark');
+      try { localStorage.setItem('ctower-theme', dark ? 'dark' : 'light'); } catch (e) {}
+      sync();
+    });
+    sync();
+  })();
+</script>
+
+</body>
+</html>

@@ -1,4 +1,5 @@
 packages:
+  - apps/ctower-ui
   - apps/ctower-web
   - generated/typescript/*
 

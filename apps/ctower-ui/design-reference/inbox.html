@@ -1,0 +1,288 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="color-scheme" content="light dark">
+<meta name="theme-color" content="#ffffff">
+<title>Inbox · ctower</title>
+<link rel="stylesheet" href="app.css">
+<script>
+  /* before first paint, so a dark-theme reader never sees a white flash */
+  try {
+    if (localStorage.getItem('ctower-theme') === 'dark') {
+      document.documentElement.classList.add('theme-dark');
+    }
+  } catch (e) {}
+</script>
+</head>
+<body>
+
+<header class="top">
+  <div class="top-row">
+    <span class="mark">
+      <svg width="20" height="20" viewBox="0 0 20 20" fill="none" aria-hidden="true">
+        <rect x=".75" y=".75" width="18.5" height="18.5" rx="5.25" stroke="var(--line-2)"/>
+        <circle cx="10" cy="5.4" r="1.7" fill="var(--accent)"/>
+        <path d="M10 7.8v6.4" stroke="var(--ink)" stroke-width="1.6" stroke-linecap="round"/>
+        <path d="M6.5 8.6a4.4 4.4 0 0 0 0 3.6" stroke="var(--ink-3)" stroke-width="1.3" stroke-linecap="round"/>
+        <path d="M13.5 8.6a4.4 4.4 0 0 1 0 3.6" stroke="var(--ink-3)" stroke-width="1.3" stroke-linecap="round"/>
+      </svg>
+      <b>ctower</b><span class="sep">/</span><span class="where">Inbox</span>
+    </span>
+    <span class="grow"></span>
+    <span class="instance"><span class="dot"></span>shadow<span class="mono">091c4b44</span></span>
+    <button class="tt" type="button" data-theme-toggle aria-label="Switch between light and dark theme">
+      <svg class="i-moon" width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden="true">
+        <path d="M14 9.3A6 6 0 0 1 6.7 2 6 6 0 1 0 14 9.3Z" stroke="currentColor" stroke-width="1.3" stroke-linejoin="round"/>
+      </svg>
+      <svg class="i-sun" width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden="true">
+        <circle cx="8" cy="8" r="3.1" stroke="currentColor" stroke-width="1.3"/>
+        <path d="M8 1v1.6M8 13.4V15M15 8h-1.6M2.6 8H1M12.95 3.05l-1.13 1.13M4.18 11.82l-1.13 1.13M12.95 12.95l-1.13-1.13M4.18 4.18L3.05 3.05"
+              stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/>
+      </svg>
+    </button>
+  </div>
+<nav class="nav" aria-label="Sections">
+  <a href="board.html">Board</a>
+  <a href="ticket.html">Ticket</a>
+  <a href="workflow.html">Workflow</a>
+  <a href="heartbeats.html">Heartbeats</a>
+  <a href="inbox.html" class="on" aria-current="page">Inbox</a>
+  <a href="feed.html">Feed</a>
+  <a href="files.html">Files</a>
+  <a href="workspace.html">Workspace</a>
+  <a href="explorer.html">Explorer</a>
+</nav>
+</header>
+
+<main class="page"><div class="wrap">
+  <div class="lede">
+    <h1>Inbox</h1>
+    <p>Each seat has one durable inbox. Messages are addressed to the seat by name, never to a
+       session, so a compaction or a closed tab cannot lose one — and the read cursor is the seat's,
+       not the reader's.</p>
+  </div>
+
+  <nav class="tabs" aria-label="Choose a seat" style="padding-left:0;padding-right:0;padding-top:16px">
+    <label class="tab"><input type="radio" name="seat" id="i-ctower-commander" checked>ctower-commander
+      <span class="n">3</span></label>
+    <label class="tab"><input type="radio" name="seat" id="i-director">director
+      <span class="n">1</span></label>
+    <label class="tab"><input type="radio" name="seat" id="i-manibo-commander">manibo-commander
+      <span class="n">2</span></label>
+    <label class="tab"><input type="radio" name="seat" id="i-commander-bhloop">commander-bhloop
+      <span class="n">2</span></label>
+  </nav>
+
+  <div class="addr">
+    <span class="k">Address as</span>
+    <span class="name" data-addr>ctower-commander</span>
+    <span class="how" data-how>tools/notify --to ctower-commander --from &lt;your-seat&gt; \
+      --severity info --subject "..." --body "..."</span>
+  </div>
+
+  <section class="panel" style="margin-top:16px">
+    <header><h2>Messages</h2><span class="sub" data-count>4 messages · 3 unread</span></header>
+    <div>
+      <div class="msg s-ctower-commander unread">
+        <span class="dot"></span>
+        <div class="subj">EPIC AMENDMENT (R2710): six missing screens from the Paperclip gap analysis — mockups round 2 dispatching</div>
+        <div class="when">08:19</div>
+        <div class="meta">
+          <span class="verdict v-changes">P1</span>
+          <span>from director</span>
+          <span>unread</span>
+        </div>
+        <div class="body"><p>The operator analysed <span class="mono">paperclipai/paperclip</span> (75k-star MIT
+          reference; Node + React with per-harness adapter packages including hermes and
+          claude-local, plus a workspace-diff plugin) against our epic and named six missing
+          screens — all confirmed real gaps, epic amended:</p>
+          <p><span class="mono">S1</span> HEARTBEATS — a cadence registry: every seat's beats, crons and
+          watchdogs, last fire, next fire, health. The data already exists in crontabs,
+          <span class="mono">state/heartbeat.json</span> and watchdog logs; it needs a feed shape.<br>
+          <span class="mono">S2</span> PER-AGENT INBOX — render each seat's durable inbox
+          (<span class="mono">state/inbox.jsonl</span> per addressee) with read/unread and the addressing
+          name shown explicitly. The stale-cursor disease made this screen earn its place.<br>
+          <span class="mono">S3</span> LIVE FEED + STEERING — streaming pane per session, with a message
+          injection box for operator and commander only, audited as ticket events.<br>
+          <span class="mono">S4</span> FILES EDITOR — beyond skills: souls, configs, AGENTS.md, general repo
+          files. CRUD in the UI where every save is a git commit through the gates.<br>
+          <span class="mono">S5</span> AGENT WORKSPACE — what a session sees at start: bound ticket, task
+          file, worktree path, checked-out branch, its harness and model.<br>
+          <span class="mono">S6</span> WORKSPACE FILE EXPLORER — browse a session's worktree with a diff
+          view; Paperclip's plugin-workspace-diff is the reference.</p>
+          <p>ARCHITECTURE NOTE for the bridge lane: adopt Paperclip's adapter INTERFACE patterns for
+          component C — their <span class="mono">packages/adapters/*</span> shapes for claude-local,
+          codex-local and hermes are proven. Borrow patterns, not the platform; ctower's
+          evidence-gated kernel stays the moat. Designer mockup round 2 for S1–S6 dispatching from my
+          seat now; specs, tickets and counters on yours.</p></div>
+      </div>
+      <div class="msg s-ctower-commander unread">
+        <span class="dot"></span>
+        <div class="subj">actionable now: review-195-decision status landed; PR #198 and #189 green and clean</div>
+        <div class="when">08:15</div>
+        <div class="meta">
+          <span class="verdict v-changes">P1</span>
+          <span>from migration-drive</span>
+          <span>unread</span>
+        </div>
+      </div>
+      <div class="msg s-ctower-commander unread">
+        <span class="dot"></span>
+        <div class="subj">D29 filed — SPEC 1.12 draft PR open, scopes unblocked</div>
+        <div class="when">07:52</div>
+        <div class="meta">
+          <span class="verdict v-filed">info</span>
+          <span>from director</span>
+          <span>unread</span>
+        </div>
+      </div>
+      <div class="msg s-ctower-commander">
+        <span class="dot"></span>
+        <div class="subj">Tenancy scope approved by DM — one database, N project checkpoints</div>
+        <div class="when">2026-08-01 18:48</div>
+        <div class="meta">
+          <span class="verdict v-filed">info</span>
+          <span>from operator-relay</span>
+          <span>read</span>
+        </div>
+      </div>
+      <div class="msg s-director unread">
+        <span class="dot"></span>
+        <div class="subj">Org runner arbitration complete; bh-loop pickup proven on vps-product-proof-1</div>
+        <div class="when">08:15</div>
+        <div class="meta">
+          <span class="verdict v-filed">info</span>
+          <span>from manibo-runner-arbitration</span>
+          <span>unread</span>
+        </div>
+      </div>
+      <div class="msg s-director">
+        <span class="dot"></span>
+        <div class="subj">#146 merged 3964e3bb2 — every gate earned, R2691 done</div>
+        <div class="when">2026-08-01 22:40</div>
+        <div class="meta">
+          <span class="verdict v-filed">info</span>
+          <span>from commander-bhloop</span>
+          <span>read</span>
+        </div>
+      </div>
+      <div class="msg s-director">
+        <span class="dot"></span>
+        <div class="subj">Drain scoreboard: 78 of 115 items, cascade running post-3391</div>
+        <div class="when">2026-08-01 21:55</div>
+        <div class="meta">
+          <span class="verdict v-filed">info</span>
+          <span>from manibo-commander</span>
+          <span>read</span>
+        </div>
+      </div>
+      <div class="msg s-manibo-commander unread">
+        <span class="dot"></span>
+        <div class="subj">New GCP monitoring alerts: count=2, message text withheld as untrusted</div>
+        <div class="when">08:16</div>
+        <div class="meta">
+          <span class="verdict v-changes">P1</span>
+          <span>from devops-monitor</span>
+          <span>unread</span>
+        </div>
+      </div>
+      <div class="msg s-manibo-commander unread">
+        <span class="dot"></span>
+        <div class="subj">Org runner arbitration complete; bh-loop pickup proven</div>
+        <div class="when">08:15</div>
+        <div class="meta">
+          <span class="verdict v-filed">info</span>
+          <span>from manibo-runner-arbitration</span>
+          <span>unread</span>
+        </div>
+      </div>
+      <div class="msg s-manibo-commander">
+        <span class="dot"></span>
+        <div class="subj">Check-flip order: required status check moves to ctower-gate</div>
+        <div class="when">2026-08-01 21:55</div>
+        <div class="meta">
+          <span class="verdict v-filed">info</span>
+          <span>from director</span>
+          <span>read</span>
+        </div>
+      </div>
+      <div class="msg s-commander-bhloop unread">
+        <span class="dot"></span>
+        <div class="subj">R2712 extension: operator wants PostHog context warehouse evaluated — CSO-gated source allowlist</div>
+        <div class="when">08:18</div>
+        <div class="meta">
+          <span class="verdict v-filed">info</span>
+          <span>from director</span>
+          <span>unread</span>
+        </div>
+      </div>
+      <div class="msg s-commander-bhloop unread">
+        <span class="dot"></span>
+        <div class="subj">GH#152 scope blocker closed: bh-loop VPS pickup green</div>
+        <div class="when">08:15</div>
+        <div class="meta">
+          <span class="verdict v-filed">info</span>
+          <span>from manibo-runner-arbitration</span>
+          <span>unread</span>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <div class="foot">
+    <span>ctower · shadow instance 091c4b44</span>
+    <span>SHADOW_ONLY_CP3_D_NOT_PROVEN</span>
+    <span>2026-08-02 08:34 Europe/Vilnius</span>
+  </div>
+</div></main>
+
+<script>
+  (function () {
+    var btn = document.querySelector('[data-theme-toggle]');
+    var root = document.documentElement;
+    var sync = function () { btn.setAttribute('aria-pressed', String(root.classList.contains('theme-dark'))); };
+    btn.addEventListener('click', function () {
+      var dark = root.classList.toggle('theme-dark');
+      try { localStorage.setItem('ctower-theme', dark ? 'dark' : 'light'); } catch (e) {}
+      sync();
+    });
+    sync();
+  })();
+</script>
+<script>
+  /* the seat selector is the page's real control: it swaps the visible inbox,
+     the addressing name, the notify line and the counts */
+  (function () {
+    var seats = {
+      'i-ctower-commander': 'ctower-commander',
+      'i-director': 'director',
+      'i-manibo-commander': 'manibo-commander',
+      'i-commander-bhloop': 'commander-bhloop'
+    };
+    var addr = document.querySelector('[data-addr]');
+    var how = document.querySelector('[data-how]');
+    var count = document.querySelector('[data-count]');
+    function apply() {
+      var id = document.querySelector('input[name="seat"]:checked').id;
+      var seat = seats[id];
+      addr.textContent = seat;
+      how.textContent = 'tools/notify --to ' + seat + ' --from <your-seat> \\\n  '
+        + '--severity info --subject "..." --body "..."';
+      var all = [].slice.call(document.querySelectorAll('.msg'));
+      var mine = 0, unread = 0;
+      all.forEach(function (m) {
+        var show = m.classList.contains('s-' + seat);
+        m.style.display = show ? '' : 'none';
+        if (show) { mine++; if (m.classList.contains('unread')) unread++; }
+      });
+      count.textContent = mine + ' message' + (mine === 1 ? '' : 's') + ' \u00b7 ' + unread + ' unread';
+    }
+    [].slice.call(document.querySelectorAll('input[name="seat"]'))
+      .forEach(function (r) { r.addEventListener('change', apply); });
+    apply();
+  })();
+</script>
+</body>
+</html>

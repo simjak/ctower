@@ -1,0 +1,100 @@
+# ctower-ui boundary — phase-1 read-only operator surface
+
+This is **not** `apps/ctower-web`. It is a separate, explicitly non-product boundary: a
+read-only operator dogfood surface over the running shadow instance, ordered by the operator
+(R2710) and built against the approved mockup set vendored under `design-reference/`.
+
+## What it is, and what it is not
+
+| | |
+|---|---|
+| Is | A Next.js server that reads the shadow instance's existing read API and renders eight approved screens. |
+| Is | Read-only. Every path it calls is a `GET`. There is no mutation function in this boundary to call by accident. |
+| Is not | The I2.4 browser product. `apps/ctower-web` remains untouched, and D22 §1 (React 19 / React Router 7 / Vite static, no SSR) still governs it. |
+| Is not | An authority. The browser receives no API bearer, no base URL, and no session. |
+
+Two repository facts this boundary deliberately does **not** decide, and which need an operator
+decision entry before it merges as anything other than a dogfood surface:
+
+- `SPEC.md` `CT-I1-005` reads *"No I1 browser implementation, route, placeholder, or browser
+  evidence is authorized."* This boundary is a browser implementation. It exists because the
+  operator dispatched it; it does not consume `CT-I1-005`/`CT-I2-005`, and it claims none of
+  their evidence.
+- `DECISIONS.md` D22 §1 selected React Router 7 + Vite for `ctower-web`. Next.js here is a
+  second frontend stack in the repository. D22 is not rewritten by this boundary — it is not
+  `ctower-web` — but a second stack is a real fact that belongs in an append-only entry the
+  operator locks.
+
+## Layout
+
+```
+design-reference/   the approved mockups, vendored verbatim; app.css is imported by the app,
+                    so the rendered screens and the design reference read the same bytes
+src/read/           the record-read contract and its one implementation
+src/frame/          the chrome every screen shares: mark, nav, theme, provenance foot
+src/surfaces/       one directory per screen family
+src/app/            the eight routes
+```
+
+### The data adapter
+
+`src/read/interface.ts` declares every read this surface makes as a typed function returning
+`Reading<T>` — `present`, `absent` (with the work item that will land the source), or
+`unavailable`. `src/read/httpRecordAdapter.ts` implements it against `/v1/board`,
+`/v1/tickets/{id}` and `/v1/tickets/{id}/audit`. `src/read/adapter.ts` binds the one that is
+active.
+
+Landing the #186 typed feed changes `adapter.ts` and nothing else: no screen constructs a
+client, and no screen knows a URL.
+
+### Honest empty states
+
+Board and Ticket render live record facts. Heartbeats, Inbox, Feed session facts, Files,
+Workspace and Explorer have no source in ctower today, so each renders its approved layout and
+an explicit block naming the work that lands its source (`#186` / `G5`). No screen invents a
+number, a name, a duration or a token count. The ticket work timeline in particular reads
+`no session data yet` and totals `—` until G5 session events exist.
+
+### Read-only v1
+
+The steering composer (Feed) and the Save/Revert controls (Files) render as visibly disabled
+affordances with the reason on the control itself, never as a page banner and never as a
+dead-looking control. View switches — Chat/Raw, File/Diff, the board source filter — choose a
+reading rather than issue a command, so they stay live.
+
+## Running it
+
+```text
+apps/ctower-ui/serve-development.sh          # builds nothing; serves the built output on :3117
+```
+
+The script resolves the operator credential from the Secret Service reference the instance
+already uses and exports it for the life of the Node process. It is never written to a file,
+never passed as an argument, and never reaches the browser.
+
+| Variable | Default | Meaning |
+|---|---|---|
+| `CTOWER_UI_API_BASE_URL` | `http://127.0.0.1:8091` | The loopback read API. |
+| `CTOWER_UI_API_TOKEN` | — | Bearer for the read path. Required; there is no anonymous read. |
+| `CTOWER_UI_INSTANCE_LABEL` | `shadow` | Shown in the header chip. |
+| `CTOWER_UI_INSTANCE_POSTURE` | `SHADOW_ONLY_CP3_D_NOT_PROVEN` | Shown in the provenance foot. |
+| `CTOWER_UI_INSTANCE_REVISION` | served commit | Shown beside the instance label. |
+| `CTOWER_UI_PORT` | `3117` | Listen port. |
+
+Build first with `pnpm --filter @ctower/ui build`. The repository gates
+(`pnpm run format:check`, `pnpm run lint`, `pnpm run typecheck`) cover this boundary and are
+run by `just check`.
+
+## Deviations from the approved mockups
+
+Each is a fact the record does not carry, not a design preference. They are listed in full in
+the phase-1 status note; the two structural ones are:
+
+1. **Board columns are the record's lanes**, not the mockup's seven pipeline stage names. The
+   shadow instance runs `ctower.trust-spine-four-stage@1` and every card carries `lane`;
+   painting stage names over lane data would have been an invented mapping.
+2. **The filter dimension is `source.kind`**, not project. The record carries no project fact
+   yet (#185 / D29); `source.kind` is recorded and is a first-class `/v1/board` query filter.
+
+The section nav carries the eight screens in this phase. `Workflow` (R2707) is not built here,
+and a nav entry that leads nowhere would be a dead control.
