@@ -1042,6 +1042,17 @@
     },
     {
       "criterion_source": "acceptance-criterion",
+      "criterion_key": "AC-REL-09",
+      "disposition": "deferred",
+      "reason": "SPEC#ac-rel-09 proves the record-backed landing boundary over the published engineering.software-factory@1 predecessor set; deferred beyond the active phase",
+      "owner": "ct-i2-001",
+      "source_sha": "sha256:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+      "environment": "disposable-development",
+      "proof_digest": "sha256:cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+      "verifier": "00000000-0000-4000-8000-000000000003"
+    },
+    {
+      "criterion_source": "acceptance-criterion",
       "criterion_key": "AC-RUN-01",
       "disposition": "applicable",
       "reason": "SPEC#ac-run-01 declares this criterion; in force at the active phase",
