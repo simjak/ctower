@@ -350,7 +350,7 @@
         },
         {
           "path": "tools/codegen/_client_codegen.py",
-          "sha256": "sha256:919cf2907607754c371b3e06954f241d3f410335ea35fdb01de4cf5562532afc"
+          "sha256": "sha256:76a147c3d73616f1c259dc117d0f58f01abeed6e921da66e3a151601110b1383"
         },
         {
           "path": "tools/codegen/_free_form_json_codegen.py",
@@ -408,7 +408,7 @@
         },
         {
           "path": "generated/python/ctower_client/client.py",
-          "sha256": "sha256:495aac3dda0834b1104bb307a8a1882aab4c9a4631e64bbe138588fc8aa0f8dc"
+          "sha256": "sha256:9a3b7f68b53020c140390624e52b4dfbbce37adb64d55f2c31c3c05ecb803a98"
         },
         {
           "path": "generated/python/ctower_client/models.py",

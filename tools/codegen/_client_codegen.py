@@ -281,13 +281,14 @@ def _parameters(
         if location == "path" and not required:
             raise ValueError(f"path parameter {wire_name} must be required")
         schema = _mapping(parameter.get("schema"), f"parameter {wire_name}.schema")
+        alias = _parameter_alias(component_name, location, schema)
         parameters.append(
             _Parameter(
                 name=wire_name,
                 location=location,
                 python_name=_parameter_name(wire_name),
-                python_type=_parameter_type(schema),
-                alias=_parameter_alias(component_name, location, schema),
+                python_type=_parameter_type(schema, include_pattern=alias is not None),
+                alias=alias,
                 required=required,
             )
         )
@@ -482,14 +483,14 @@ def _schema_reference(schema: Mapping[str, object]) -> str:
     return reference.removeprefix("#/components/schemas/")
 
 
-def _parameter_type(schema: Mapping[str, object]) -> str:
+def _parameter_type(schema: Mapping[str, object], *, include_pattern: bool = False) -> str:
     schema_type = schema.get("type")
     if schema_type == "string":
         base = "UUID" if schema.get("format") == "uuid" else "str"
-        constraints = _bounds(
-            schema,
-            (("minLength", "min_length"), ("maxLength", "max_length"), ("pattern", "pattern")),
-        )
+        constraint_names = [("minLength", "min_length"), ("maxLength", "max_length")]
+        if include_pattern:
+            constraint_names.append(("pattern", "pattern"))
+        constraints = _bounds(schema, tuple(constraint_names))
         return _annotated(base, constraints)
     if schema_type == "array":
         items = _mapping(schema.get("items"), "parameter array items")

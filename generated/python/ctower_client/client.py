@@ -491,7 +491,7 @@ class CtowerClient:
         *,
         lane: str | None = None,
         priority: str | None = None,
-        stage_key: Annotated[str, Field(pattern="^[a-z][a-z0-9._-]*$")] | None = None,
+        stage_key: str | None = None,
         custodian_id: UUID | None = None,
         assignee_id: UUID | None = None,
         source_kind: Annotated[str, Field(min_length=1, max_length=64)] | None = None,
