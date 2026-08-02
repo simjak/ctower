@@ -361,7 +361,7 @@ stage carrying the landing boundary — and reports each stage's fact separately
 `STATE_UNKNOWN` on the head revision's candidate digest. Green requires every fact; unknown is a failure.
 The set derives from the pinned graph, never from stage-key strings, so the check carries no branch
 AC-WF-25 forbids. The check is a pure reader — no authoritative write, no Evidence, no slot, no gate — and
-is never itself proof. `SPEC.md` INV-73 and AC-REL-09 are authority for this.
+is never itself proof. `SPEC.md` INV-74 and AC-REL-09 are authority for this.
 
 At I2.1, the publishable software-factory revision must materialize one complete authored activation/edge
 sequence, `sf.e00..e15`. It is linear from activation through `intake -> think -> plan -> design ->

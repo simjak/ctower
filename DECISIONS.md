@@ -1194,7 +1194,7 @@ redirect URI matched by anything looser than exact string equality, retention of
 an `offline_access` scope, unbounded or fail-open discovery/JWKS verification, and generic unnamed 401/403
 authentication denials.
 
-## D31 — The documentation gate is unskippable, and the landing boundary reads it (locked 2026-08-03, operator)
+## D32 — The documentation gate is unskippable, and the landing boundary reads it (locked 2026-08-03, operator)
 
 The operator observed on 2026-08-02 that `manibo` pull requests were merging with no documentation
 artifact, and ordered through R2738 (P1) that ctower make the documentation gate mechanically
@@ -1236,10 +1236,12 @@ feature flag.
    **landing-boundary predecessor set** separately: every stage the ticket's own pinned Workflow graph
    places before the stage carrying the landing boundary, with every required slot of each resolved and
    current on the candidate digest the pull-request head resolves to. The set is derived from the pinned
-   graph, never from stage-key strings, so the check adds no branch AC-WF-25 forbids; in
-   `engineering.software-factory@1` it resolves to review evidence and documentation evidence over
-   preflight, which is the operator's "one gate, two facts." The check is a pure reader: it writes no
-   record state, mints no Evidence, and is not a second writer.
+   graph, never from stage-key strings, so the check adds no branch AC-WF-25 forbids; naming any package's
+   members illustrates that derivation and never replaces it. In `engineering.software-factory@1`, linear
+   into `merge`, the set runs from `intake` through `release-preflight`, and the two facts it carries at
+   that boundary — review evidence and documentation evidence over preflight — are the operator's "one
+   gate, two facts." The check is a pure reader: it writes no record state, mints no Evidence, and is not a
+   second writer.
 4. **Absence is a named refusal that changes nothing.** A missing, invalidated, expired, revoked, or
    `STATE_UNKNOWN` docs fact is reported by its stable name, alongside every other unmet fact, and the
    check is red — never green with a caveat in its body, never amber, never silently absent. Unknown is a
@@ -1263,7 +1265,7 @@ feature flag.
    slot table; the bound-requirement list under that table, which grows from four contracts to six; the
    new `#### Record-backed landing boundary` narrative in the delivery-sprint section; the Documentation
    and Release-preflight rows of the stage-contract projection table; AC-EVD-08 (amended); AC-REL-09
-   (new); and INV-73 (appended, renumbering nothing). `ARCHITECTURE.md` is repaired in the same change as
+   (new); and INV-74 (appended, renumbering nothing). `ARCHITECTURE.md` is repaired in the same change as
    the derived atlas `CLAUDE.md` requires; it needs no grant because it may explain but never extend SPEC.
    No bootstrap backlog row is amended. Contract, pack, and check implementation is a separate lane
    stacked on the R2738 ticket and issue #199. D27, D30, and CT-I2-001 remain fail-closed.
