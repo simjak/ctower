@@ -123,7 +123,8 @@
     "https://ctower.local/contracts/components/versioned-component.schema.json": "contracts/components/versioned-component.schema.json",
     "https://ctower.local/contracts/components/workspace.schema.json": "contracts/components/workspace.schema.json",
     "https://ctower.local/contracts/domain/intake/thread-intake.schema.json": "contracts/domain/intake/thread-intake.schema.json",
-    "https://ctower.local/contracts/observability/telemetry-context.schema.json": "contracts/observability/telemetry-context.schema.json"
+    "https://ctower.local/contracts/observability/telemetry-context.schema.json": "contracts/observability/telemetry-context.schema.json",
+    "https://ctower.local/contracts/workflow/workflow-definition.schema.json": "contracts/workflow/workflow-definition.schema.json"
   },
   "resources": {
     "contracts/bootstrap/first-tenant-request.schema.json": {
@@ -11961,6 +11962,284 @@
       "title": "ReviewPlan",
       "type": "object"
     },
+    "contracts/workflow/workflow-definition.schema.json": {
+      "$defs": {
+        "assertion": {
+          "maxLength": 512,
+          "minLength": 1,
+          "type": "string"
+        },
+        "evidenceItem": {
+          "additionalProperties": false,
+          "properties": {
+            "command": {
+              "$ref": "#/$defs/assertion"
+            },
+            "digest_must_match_head": {
+              "$ref": "#/$defs/narrowing"
+            },
+            "key": {
+              "$ref": "#/$defs/sourceKey"
+            },
+            "refuses_by_name": {
+              "$ref": "#/$defs/narrowing"
+            },
+            "required": {
+              "$ref": "#/$defs/narrowing"
+            },
+            "reviewer_family_differs_from_author": {
+              "$ref": "#/$defs/narrowing"
+            },
+            "shape": {
+              "$ref": "#/$defs/assertion"
+            },
+            "widths": {
+              "items": {
+                "maximum": 7680,
+                "minimum": 240,
+                "type": "integer"
+              },
+              "minItems": 1,
+              "type": "array",
+              "uniqueItems": true
+            }
+          },
+          "required": [
+            "key",
+            "required"
+          ],
+          "type": "object"
+        },
+        "evidenceList": {
+          "items": {
+            "$ref": "#/$defs/evidenceItem"
+          },
+          "minItems": 1,
+          "type": "array",
+          "uniqueItems": true
+        },
+        "metadata": {
+          "additionalProperties": false,
+          "properties": {
+            "company": {
+              "$ref": "#/$defs/publishedCompanyKey"
+            },
+            "name": {
+              "$ref": "#/$defs/publishedComponentKey"
+            },
+            "revision": {
+              "minimum": 1,
+              "type": "integer"
+            },
+            "signed_by": {
+              "$ref": "#/$defs/assertion",
+              "description": "Source-attribution label for review display only; never authentication, a principal, a seat, or publication authority."
+            }
+          },
+          "required": [
+            "name",
+            "company",
+            "revision",
+            "signed_by"
+          ],
+          "type": "object"
+        },
+        "narrowing": {
+          "const": true,
+          "description": "A v1 assertion may only narrow or exactly restate the resolved layer-4 definition, so the negative form is not authorable."
+        },
+        "projectOverlay": {
+          "additionalProperties": {
+            "$ref": "#/$defs/evidenceList"
+          },
+          "minProperties": 1,
+          "propertyNames": {
+            "$ref": "#/$defs/sourceKey"
+          },
+          "type": "object"
+        },
+        "publishedCompanyKey": {
+          "$ref": "https://ctower.local/contracts/company/company-bundle.schema.json#/properties/company/properties/key",
+          "description": "A layer-1 company key decided by the authored company contract by reference."
+        },
+        "publishedComponentKey": {
+          "$ref": "https://ctower.local/contracts/components/versioned-component.schema.json#/properties/key",
+          "description": "A key that becomes a Catalog component key. The authored component contract decides it by reference; this source never restates that pattern."
+        },
+        "skip": {
+          "additionalProperties": false,
+          "description": "The alternative slot set that replaces the ordinary set on a skipped disposition; the two are never a union.",
+          "properties": {
+            "evidence": {
+              "$ref": "#/$defs/evidenceList"
+            },
+            "predicate": {
+              "$ref": "#/$defs/sourceKey"
+            },
+            "signs": {
+              "$ref": "#/$defs/sourceKey"
+            }
+          },
+          "required": [
+            "predicate",
+            "evidence"
+          ],
+          "type": "object"
+        },
+        "sourceKey": {
+          "description": "A source-local key that never becomes a Catalog component key, so a stage key as short as qa is legal.",
+          "pattern": "^[a-z][a-z0-9._-]{0,127}$",
+          "type": "string"
+        },
+        "spec": {
+          "additionalProperties": false,
+          "properties": {
+            "stage_groups": {
+              "items": {
+                "$ref": "#/$defs/sourceKey"
+              },
+              "minItems": 1,
+              "type": "array",
+              "uniqueItems": true
+            },
+            "stages": {
+              "items": {
+                "$ref": "#/$defs/stage"
+              },
+              "minItems": 1,
+              "type": "array",
+              "uniqueItems": true
+            },
+            "transitions": {
+              "items": {
+                "$ref": "#/$defs/transition"
+              },
+              "minItems": 1,
+              "type": "array",
+              "uniqueItems": true
+            }
+          },
+          "required": [
+            "stages",
+            "transitions"
+          ],
+          "type": "object"
+        },
+        "stage": {
+          "additionalProperties": false,
+          "properties": {
+            "evidence": {
+              "$ref": "#/$defs/evidenceList"
+            },
+            "failure_routes": {
+              "additionalProperties": {
+                "$ref": "#/$defs/sourceKey"
+              },
+              "description": "Typed failure reason to the declared stage name that reason routes to.",
+              "minProperties": 1,
+              "propertyNames": {
+                "$ref": "#/$defs/sourceKey"
+              },
+              "type": "object"
+            },
+            "gate": {
+              "$ref": "#/$defs/sourceKey",
+              "description": "Gate location only. It never activates a gate, names a perspective, selects a verifier, or records a verdict."
+            },
+            "group": {
+              "$ref": "#/$defs/sourceKey"
+            },
+            "name": {
+              "$ref": "#/$defs/sourceKey"
+            },
+            "owner": {
+              "$ref": "#/$defs/sourceKey",
+              "description": "Eligible responsibility/capability key. It grants no authority and is never an assigned or signing seat."
+            },
+            "signs": {
+              "$ref": "#/$defs/sourceKey",
+              "description": "The one key of this stage's own ordinary evidence list that carries the signing slot."
+            },
+            "skip": {
+              "$ref": "#/$defs/skip"
+            }
+          },
+          "required": [
+            "name",
+            "owner",
+            "evidence"
+          ],
+          "type": "object"
+        },
+        "transition": {
+          "additionalProperties": false,
+          "properties": {
+            "from": {
+              "$ref": "#/$defs/sourceKey"
+            },
+            "on_missing": {
+              "const": "refuse"
+            },
+            "requires": {
+              "description": "A restatement of the normalized ordinary slot set of `from`, in that exact order; it never defines that set.",
+              "items": {
+                "$ref": "#/$defs/sourceKey"
+              },
+              "minItems": 1,
+              "type": "array",
+              "uniqueItems": true
+            },
+            "to": {
+              "$ref": "#/$defs/sourceKey"
+            }
+          },
+          "required": [
+            "from",
+            "to",
+            "requires",
+            "on_missing"
+          ],
+          "type": "object"
+        }
+      },
+      "$id": "https://ctower.local/contracts/workflow/workflow-definition.schema.json",
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "additionalProperties": false,
+      "description": "Strict S7/S8 authored Workflow configuration source. This is gate 1 of the three named gates: it decides source-schema validity only. Bundle/layer resolution (gate 2) and the publishable normalized ctower.workflow/v1 payload (gate 3) are separate and are never called merely valid.",
+      "properties": {
+        "apiVersion": {
+          "const": "ctower/v1"
+        },
+        "kind": {
+          "const": "Workflow"
+        },
+        "metadata": {
+          "$ref": "#/$defs/metadata"
+        },
+        "overlays": {
+          "additionalProperties": {
+            "$ref": "#/$defs/projectOverlay"
+          },
+          "description": "Monotonic per-project additions keyed by the layer-2 project key.",
+          "minProperties": 1,
+          "propertyNames": {
+            "$ref": "#/$defs/publishedComponentKey"
+          },
+          "type": "object"
+        },
+        "spec": {
+          "$ref": "#/$defs/spec"
+        }
+      },
+      "required": [
+        "apiVersion",
+        "kind",
+        "metadata",
+        "spec"
+      ],
+      "title": "WorkflowDefinition",
+      "type": "object"
+    },
     "contracts/workflow/workflow.schema.json": {
       "$defs": {
         "activityClass": {
@@ -12472,6 +12751,11 @@
       "id": "https://ctower.invalid/contracts/workflow/review-plan.schema.json",
       "path": "contracts/workflow/review-plan.schema.json",
       "sha256": "sha256:2cd3a99e04c6bbae56579b841cd73479aed54dd1f899dcfd2cb71210eb7f0e7c"
+    },
+    {
+      "id": "https://ctower.local/contracts/workflow/workflow-definition.schema.json",
+      "path": "contracts/workflow/workflow-definition.schema.json",
+      "sha256": "sha256:c0a118fa1471f134b5bd36ff7bbbbf884fc8e9f4d30dbe69d11e081562e4180b"
     },
     {
       "id": "https://ctower.invalid/contracts/workflow/workflow.schema.json",
