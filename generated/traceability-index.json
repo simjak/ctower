@@ -373,7 +373,11 @@
       "contracts/domain/migration/ctower-project-import-run.schema.json",
       "contracts/domain/migration/ctower-project-source-selection.schema.json",
       "contracts/domain/migration/migration-boundary.schema.json",
-      "contracts/domain/migration/migration-vectors.json"
+      "contracts/domain/migration/migration-vectors.json",
+      "packages/ctower-kernel/migrations/0039_project_seat_credentials.sql"
+    ],
+    "AC-SEC-02": [
+      "packages/ctower-kernel/migrations/0039_project_seat_credentials.sql"
     ],
     "AC-SEC-03": [
       "contracts/domain/migration/ctower-project-alias-map-v2.schema.json",
@@ -511,7 +515,8 @@
       "contracts/bootstrap/first-tenant-request.schema.json",
       "contracts/domain/intake/thread-intake.schema.json",
       "packages/ctower-kernel/migrations/0002_ticket_slice.sql",
-      "packages/ctower-kernel/migrations/0003_privileges.sql"
+      "packages/ctower-kernel/migrations/0003_privileges.sql",
+      "packages/ctower-kernel/migrations/0039_project_seat_credentials.sql"
     ],
     "INV-03": [
       "contracts/domain/events/event-envelope.schema.json",
@@ -619,7 +624,8 @@
       "contracts/domain/migration/ctower-project-import-run.schema.json",
       "contracts/domain/migration/ctower-project-source-selection.schema.json",
       "contracts/domain/migration/migration-boundary.schema.json",
-      "contracts/domain/migration/migration-vectors.json"
+      "contracts/domain/migration/migration-vectors.json",
+      "packages/ctower-kernel/migrations/0039_project_seat_credentials.sql"
     ],
     "INV-34": [
       "contracts/domain/outbox-delivery.schema.json",
@@ -963,7 +969,8 @@
       "packages/ctower-kernel/migrations/0034_durability_finalizer_quarantine.sql",
       "packages/ctower-kernel/migrations/0035_board_source_lookup.sql",
       "packages/ctower-kernel/migrations/0036_migration_ledger_role.sql",
-      "packages/ctower-kernel/migrations/0038_project_delivery_seat_carriage.sql"
+      "packages/ctower-kernel/migrations/0038_project_delivery_seat_carriage.sql",
+      "packages/ctower-kernel/migrations/0039_project_seat_credentials.sql"
     ],
     "SPEC#project-delivery-projection": [
       "contracts/components/checkpoint.schema.json",
@@ -1002,6 +1009,9 @@
       "contracts/workflow/review-plan.schema.json",
       "packs/policies/execution/software-factory-v1.yaml",
       "packs/policies/gates/software-factory-v1.yaml"
+    ],
+    "SPEC#scoped-credentials-and-secret-injection": [
+      "packages/ctower-kernel/migrations/0039_project_seat_credentials.sql"
     ],
     "SPEC#security-objectives": [
       "packages/ctower-kernel/migrations/0006_narrow_head_update_privileges.sql",

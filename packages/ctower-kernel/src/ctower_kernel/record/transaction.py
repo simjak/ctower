@@ -27,10 +27,61 @@ __all__ = [
     "authority_connection",
     "lock_project_delivery_scope",
     "project_delivery_scope_transaction",
+    "project_mutation_refusal",
     "recover_ambiguous_commit",
 ]
 
 _CONNECT_TIMEOUT_SECONDS = 2
+
+
+def project_mutation_refusal(
+    connection: psycopg.Connection[dict[str, object]],
+    *,
+    tenant_id: UUID,
+    principal_id: UUID,
+    command_id: UUID,
+    ticket_ids: tuple[UUID, ...] = (),
+    project_keys: tuple[str, ...] = (),
+) -> RecordProblem | None:
+    """Refuse a non-operator mutation outside its persisted project-seat grant."""
+
+    principal = connection.execute(
+        "SELECT kind FROM principals WHERE tenant_id = %s AND principal_id = %s",
+        (tenant_id, principal_id),
+    ).fetchone()
+    if principal is not None and principal["kind"] == "operator":
+        return None
+    rows = connection.execute(
+        """
+        SELECT DISTINCT project_key
+        FROM tickets
+        WHERE tenant_id = %s AND ticket_id = ANY(%s)
+        """,
+        (tenant_id, list(ticket_ids)),
+    ).fetchall()
+    requested = {str(row["project_key"]) for row in rows} | set(project_keys)
+    if not requested:
+        return None
+    grants = {
+        str(row["project_key"])
+        for row in connection.execute(
+            """
+            SELECT project_key
+            FROM project_seats
+            WHERE tenant_id = %s AND principal_id = %s
+            """,
+            (tenant_id, principal_id),
+        ).fetchall()
+    }
+    if requested <= grants:
+        return None
+    return RecordProblem(
+        code="project-scope-denied",
+        detail="The authenticated project seat cannot mutate a ticket from another project.",
+        status=403,
+        title="Project scope denied",
+        command_id=command_id,
+    )
 
 
 @dataclass(frozen=True, slots=True)
@@ -172,6 +223,65 @@ class RecordTransaction:
 
         self._configure_authority_commit()
         return reserve_command(self._connection, principal_id, command_id, request_digest)
+
+    def reserve_ticket_mutation(
+        self,
+        tenant_id: UUID,
+        principal_id: UUID,
+        command_id: UUID,
+        request_digest: bytes,
+        ticket_ids: tuple[UUID, ...] = (),
+        *,
+        project_keys: tuple[str, ...] = (),
+        now: datetime,
+    ) -> dict[str, object] | RecordProblem | None:
+        """Reserve, replay, then enforce the one authoritative ticket-project predicate."""
+
+        existing = self.reserve(principal_id, command_id, request_digest)
+        if existing is not None:
+            return existing
+        return self.require_project_mutation(
+            tenant_id,
+            principal_id,
+            command_id,
+            request_digest,
+            ticket_ids=ticket_ids,
+            project_keys=project_keys,
+            now=now,
+        )
+
+    def require_project_mutation(
+        self,
+        tenant_id: UUID,
+        principal_id: UUID,
+        command_id: UUID,
+        request_digest: bytes,
+        *,
+        ticket_ids: tuple[UUID, ...] = (),
+        project_keys: tuple[str, ...] = (),
+        now: datetime,
+    ) -> RecordProblem | None:
+        """Persist the transaction-seam project refusal before any authority write."""
+
+        problem = project_mutation_refusal(
+            self._connection,
+            tenant_id=tenant_id,
+            principal_id=principal_id,
+            command_id=command_id,
+            ticket_ids=ticket_ids,
+            project_keys=project_keys,
+        )
+        if problem is None:
+            return None
+        self.refuse(
+            tenant_id,
+            principal_id,
+            command_id,
+            request_digest,
+            problem,
+            now=now,
+        )
+        return problem
 
     def require_durable_subjects(
         self,

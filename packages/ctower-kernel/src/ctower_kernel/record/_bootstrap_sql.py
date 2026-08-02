@@ -304,6 +304,14 @@ def _insert_authority(
             """,
             principal,
         )
+    connection.execute(
+        """
+        INSERT INTO project_seats (
+            principal_id, tenant_id, project_key, seat_key, granted_by, granted_at
+        ) VALUES (%s, %s, 'ctower', 'ctower-commander', %s, %s)
+        """,
+        (identifiers.commander, identifiers.tenant, identifiers.operator, now),
+    )
 
 
 def _insert_event_and_receipt(

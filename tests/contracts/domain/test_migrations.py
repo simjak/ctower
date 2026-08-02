@@ -36,13 +36,13 @@ def test_migration_manifest_is_ordered_and_checksum_exact() -> None:
     assert set(manifest) == {"adoption_baseline", "migrations", "schema"}
     assert manifest["schema"] == "ctower.migrations/v3"
     assert manifest["adoption_baseline"] == {
-        "through": "0038_project_delivery_seat_carriage.sql",
+        "through": "0039_project_seat_credentials.sql",
         "schema_sha256": (
-            "sha256:e772eadced91580831217acad9e99fad62d8790b6810ef099afc36d97e59e0f8"
+            "sha256:14badc991e6f7c1091450696bc2f1abb5590e3fa4e37f4d7e94f9b782aec9bee"
         ),
         "semantic_checks": "ctower.pre-ledger/v1",
         "schema_object_sum256": (
-            "sum256:55d93c310611c07a49168eafb0db9680acc7d4a4ccfbc975e441283414db45f5"
+            "sum256:6b5bc3a315f00c4abb8643e088ab135998b09891e3e77c9d770eb738dc640ead"
         ),
     }
     assert names == sorted(names)
@@ -85,10 +85,19 @@ def test_migration_manifest_is_ordered_and_checksum_exact() -> None:
         "0036_migration_ledger_role.sql",
         "0037_relax_checkpoint_key_domain.sql",
         "0038_project_delivery_seat_carriage.sql",
+        "0039_project_seat_credentials.sql",
     ]
     for entry in entries:
         digest = hashlib.sha256((MIGRATIONS / entry["path"]).read_bytes()).hexdigest()
         assert entry["sha256"] == f"sha256:{digest}"
+
+
+def test_project_key_migration_backfills_then_removes_its_default() -> None:
+    migration = (MIGRATIONS / "0039_project_seat_credentials.sql").read_text(encoding="utf-8")
+    add_with_backfill_default = "ADD COLUMN project_key text NOT NULL DEFAULT 'ctower'"
+    remove_default = "ALTER COLUMN project_key DROP DEFAULT"
+
+    assert migration.index(add_with_backfill_default) < migration.index(remove_default)
 
 
 def test_every_migration_declares_compatibility_forward_compensation_and_backup() -> None:

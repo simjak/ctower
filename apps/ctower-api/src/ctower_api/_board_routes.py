@@ -7,6 +7,7 @@ import re
 from fastapi import FastAPI, Request
 from fastapi.responses import JSONResponse
 
+from ctower_api._http_support import UnscopedAuthentication as _UnscopedAuthentication
 from ctower_api._http_support import authenticate as _authenticate
 from ctower_api._http_support import encoded as _encoded
 from ctower_api._http_support import problem_response as _problem_response
@@ -42,7 +43,12 @@ def install_board_routes(
         source_kind: str | None = None,
         source_ref: str | None = None,
     ) -> JSONResponse:
-        actor = _authenticate(access, recorder, request)
+        actor = _authenticate(
+            access,
+            recorder,
+            request,
+            required_scope=_UnscopedAuthentication.ALLOWED,
+        )
         if isinstance(actor, RecordProblem):
             return _problem_response(actor)
         try:

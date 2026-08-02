@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import argparse
 import ipaddress
+import re
 from collections.abc import Sequence
 from datetime import datetime
 from pathlib import Path
@@ -31,9 +32,12 @@ _ASSIGNMENT_KINDS = ("current_assignee", "stage_owner", "reviewer")
 _BLOCKER_KINDS = ("dependency", "operator_action", "policy", "resource", "technical")
 _SPOOL_STATES = ("pending", "accepted_archive", "quarantine")
 _PROJECT_KEY: TypeAdapter[str] = TypeAdapter(ProjectKey)
+_SHA256_DIGEST = re.compile(r"^sha256:[0-9a-f]{64}$")
 _AUTHORED_COMMAND_NAMES = frozenset(
     {
         "bootstrap first-tenant",
+        "credential seat issue",
+        "credential seat revoke",
         "intake promote",
         "intake submit",
         "ticket capture",
@@ -117,6 +121,7 @@ def _parser() -> argparse.ArgumentParser:
     parser.add_argument("--base-url", required=True, type=_safe_base_url)
     areas = parser.add_subparsers(dest="area", required=True, parser_class=_Parser)
     _bootstrap_parser(areas.add_parser("bootstrap"))
+    _credential_parser(areas.add_parser("credential"))
     _intake_parser(areas.add_parser("intake"))
     _ticket_parser(areas.add_parser("ticket"))
     _board_parser(areas.add_parser("board"))
@@ -142,6 +147,33 @@ def _bootstrap_parser(parser: argparse.ArgumentParser) -> None:
     first.add_argument("--operator-vault-ref", required=True)
     first.add_argument("--commander-name", required=True)
     first.add_argument("--commander-vault-ref", required=True)
+
+
+def _credential_parser(parser: argparse.ArgumentParser) -> None:
+    subjects = parser.add_subparsers(dest="subject", required=True, parser_class=_Parser)
+    actions = subjects.add_parser("seat").add_subparsers(
+        dest="credential_action", required=True, parser_class=_Parser
+    )
+    issue = actions.add_parser("issue")
+    issue.set_defaults(cli_name="credential seat issue")
+    _command_id(issue)
+    issue.add_argument("--credential-digest", required=True, type=_sha256_digest)
+    issue.add_argument("--credential-ref", required=True)
+    issue.add_argument("--display-name", required=True)
+    issue.add_argument("--project-key", required=True)
+    issue.add_argument(
+        "--scope",
+        dest="scopes",
+        required=True,
+        action="append",
+        choices=("capture", "transition", "evidence"),
+    )
+    issue.add_argument("--seat-key", required=True)
+    revoke = actions.add_parser("revoke")
+    revoke.set_defaults(cli_name="credential seat revoke")
+    revoke.add_argument("credential_id", type=UUID)
+    _command_id(revoke)
+    revoke.add_argument("--reason", required=True)
 
 
 def _ticket_parser(parser: argparse.ArgumentParser) -> None:
@@ -582,6 +614,14 @@ def _aware_datetime(value: str) -> datetime:
     if parsed.tzinfo is None:
         raise argparse.ArgumentTypeError("timestamp must include a UTC offset")
     return parsed
+
+
+def _sha256_digest(value: str) -> str:
+    if _SHA256_DIGEST.fullmatch(value) is None:
+        raise argparse.ArgumentTypeError(
+            "digest must be 'sha256:' followed by exactly 64 lowercase hex digits"
+        )
+    return value
 
 
 def _safe_base_url(value: str) -> str:

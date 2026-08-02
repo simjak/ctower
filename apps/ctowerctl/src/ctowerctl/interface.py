@@ -19,6 +19,7 @@ from ctower_client.operations import OperationSpec, SpoolPolicy, operation_for_c
 from ctowerctl import (
     _bootstrap_commands,
     _company_commands,
+    _credential_commands,
     _intake_commands,
     _migration_commands,
     _ops_commands,
@@ -117,6 +118,8 @@ def _execute(
     if operation is None:
         raise ValueError("usage: command is absent from generated registry")
     credential = read_authority(authority_stream)
+    if namespace.area == "credential":
+        return _execute_online_credential(base_url, credential, namespace, operation)
     if namespace.area == "migration" and (operation.mutation or operation.refusal_only):
         return _execute_online_migration(base_url, credential, namespace, operation)
     if operation.mutation:
@@ -200,6 +203,22 @@ def _execute_online_migration(
     with CtowerClient(base_url, credential=credential) as client:
         result = _migration_commands.execute_online(arguments, client)
     return result, ExitCode.SUCCESS
+
+
+def _execute_online_credential(
+    base_url: str,
+    credential: str,
+    arguments: argparse.Namespace,
+    operation: OperationSpec,
+) -> tuple[BaseModel, ExitCode]:
+    """Execute one operator-only credential write without replay spooling."""
+
+    if operation.spool_policy is not SpoolPolicy.FORBIDDEN:
+        raise ValueError("usage: credential operations require forbidden spool metadata")
+    with CtowerClient(base_url, credential=credential) as client:
+        result = _credential_commands.execute_online(arguments, client)
+    code = ExitCode.SUCCESS if result.durability_state == "accepted" else ExitCode.TEMPORARY
+    return result, code
 
 
 def _execute_query(arguments: object, client: CtowerClient) -> BaseModel:

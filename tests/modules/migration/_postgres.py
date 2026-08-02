@@ -191,6 +191,14 @@ def _setup_database(
                 (commander_id, tenant_id, "commander", "Ctower Commander", now),
             ),
         )
+        connection.execute(
+            """
+            INSERT INTO project_seats (
+                tenant_id, project_key, seat_key, principal_id, granted_by, granted_at
+            ) VALUES (%s, 'ctower', 'commander', %s, %s, %s)
+            """,
+            (tenant_id, commander_id, operator_id, now),
+        )
     return Database(
         admin_dsn,
         migrator_dsn,

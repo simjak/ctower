@@ -8,6 +8,7 @@ from fastapi import FastAPI, Request
 from fastapi.responses import JSONResponse
 from pydantic import BaseModel, ValidationError
 
+from ctower_api._http_support import UnscopedAuthentication as _UnscopedAuthentication
 from ctower_api._http_support import authenticate as _authenticate
 from ctower_api._http_support import encoded as _encoded
 from ctower_api._http_support import problem_response as _problem_response
@@ -35,6 +36,7 @@ from ctower_client.models import WorkReceipt as HttpWorkReceipt
 from ctower_kernel.access import Access
 from ctower_kernel.record import Actor, Record, RecordProblem
 from ctower_kernel.record import AuditPage as KernelAuditPage
+from ctower_kernel.record.credentials import CredentialScope
 from ctower_kernel.telemetry import TelemetryContext
 from ctower_kernel.work import (
     AddRelation,
@@ -292,7 +294,12 @@ async def _parse[Payload: BaseModel](
     ticket_id: str,
     model: type[Payload],
 ) -> tuple[Actor, UUID, UUID, Payload, TelemetryContext] | JSONResponse:
-    actor = _authenticate(access, recorder, request)
+    actor = _authenticate(
+        access,
+        recorder,
+        request,
+        required_scope=CredentialScope.TRANSITION,
+    )
     if isinstance(actor, RecordProblem):
         return _problem_response(actor)
     try:
@@ -313,7 +320,12 @@ async def _parse[Payload: BaseModel](
 def _read_actor(
     access: Access, recorder: TelemetryRecorder, request: Request, ticket_id: str
 ) -> tuple[Actor, UUID, TelemetryContext] | JSONResponse:
-    actor = _authenticate(access, recorder, request)
+    actor = _authenticate(
+        access,
+        recorder,
+        request,
+        required_scope=_UnscopedAuthentication.ALLOWED,
+    )
     if isinstance(actor, RecordProblem):
         return _problem_response(actor)
     try:
