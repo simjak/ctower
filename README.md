@@ -84,8 +84,9 @@ the kernel to write record-tier persistence.
 - a loopback-only, shadow development runtime for low-value reconstructible dogfood.
 
 Not available today: creating arbitrary projects or teams through the CLI, a composed API + PostgreSQL + UI
-developer stack, remote agents, effects, production backup/recovery, or production self-hosting. The docs
-name those gaps directly so a visible schema or directory is never mistaken for a product promise.
+developer stack, remote agents, effects, production backup/recovery, or an internet-facing deployment.
+Self-hosting today means one loopback-only instance on a host you control. The docs name those gaps
+directly so a visible schema or directory is never mistaken for a product promise.
 
 ## Requirements
 
@@ -104,8 +105,8 @@ not yet pin a product Python runtime; the verification locks do not make that un
 - [Agent-first getting started](docs/getting-started.md) — prerequisites, the one command, and what it proves.
 - [CLI reference](docs/reference/cli.md) — the supported journey and the missing project/team commands.
 - [Core concepts](docs/concepts/index.md) — tickets, custody, workflows, proof, and durability.
-- [Local development](docs/local-development.md) — the tested Compose finding and safe developer path.
-- [Self-hosting](docs/self-hosting.md) — why production setup is not yet available and what evidence blocks it.
+- [Local development](docs/local-development.md) — the gate loop, the disposable database, and what Compose does not give you.
+- [Self-hosting](docs/self-hosting.md) — running your own single-host instance, and what still blocks production.
 - [Contributing](CONTRIBUTING.md) — repository workflow and gates.
 
 The [architecture atlas](ARCHITECTURE.md) is the compact engineering map. Dense specifications, decision

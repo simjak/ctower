@@ -13,13 +13,15 @@ dispatcher.
 | Journey | Status | Current surface |
 |---|---|---|
 | Check the app is running | **Available** | `control health`; executed against the disposable loopback API by `just quickstart` |
-| Create a project | **Unavailable** | No create-project operation or parser command exists. `project delivery query` is a read and currently accepts only `ctower` |
+| Create a project | **Unavailable** | No create-project operation or parser command exists. `project delivery query` is a read; it accepts any project key but cannot bring one into being |
 | Create a team or onboard another member | **Partially available** | There is no team or general member-management command. An Operator can issue or revoke one credential for an already configured project-seat identity with `credential seat issue/revoke` |
 | Create a ticket | **Available** | `ticket create` or its alias `ticket capture` |
 | Run the full workflow | **Available as a development fixture** | The tested path below reaches durable `resolved` and `closed` facts |
 
 The unavailable rows are API and domain gaps, not undocumented flags. Adding examples for them would be
-fiction.
+fiction. Self-served project onboarding is tracked as
+[issue #212](https://github.com/simjak/ctower/issues/212); projects enter today only through migration and
+configuration paths.
 
 ## Run the executable reference
 
@@ -191,10 +193,29 @@ explicit complete selection.
 | Command | Flags |
 |---|---|
 | `board query` | optional lane, priority, stage, custodian, assignee, source kind/ref |
-| `project delivery query ctower` | optional `--output {text,json}` |
+| `project delivery query <project_key>` | optional `--output {text,json}` |
 | `control health` | none |
 
 All are online reads and never spooled. `project delivery query` does not create or configure a project.
+
+`<project_key>` is validated against the generated contract pattern `^[a-z][a-z0-9-]{2,63}$` before the
+request leaves your machine; a key outside it exits `64`. A well-formed key with no authorized rows is
+refused with `project-delivery-unavailable`, never answered with an empty view.
+
+`--output text` prints one header line carrying company, project, projection/source watermarks,
+`reconciled_at`, `freshness_due_at`, `rebuild_generation`, and the projection's semantic digest, then a
+`CHECKPOINT STATE CRITERIA SLOTS UNRESOLVED` table. Each row is followed by its
+`label`/`owner`/`outcome` line, a `freshness`/`confidence`/`health`/`sources`/`reasons`/`watermark`/
+`row_digest` line, and one line per qualifying-stage slot:
+
+```text
+  slot=<slot_key> state=<state> assigned=<seat>|unassigned signed=<seat>|-
+```
+
+A rendered seat is `<label>[<seat_key>]@<catalog_key>@<revision>`. Assignment follows the explicit
+`assigned` or `unassigned` state in the response and is never inferred from the presence of a seat; a
+missing signing seat renders as `-`. `--output json` emits the same view as the deterministic structured
+document.
 
 ## Company bundle
 
@@ -226,11 +247,6 @@ The `migration ctower-project` family contains `inventory`, `export`, `plan`, `i
 `run get`, `correction append`, `fence observe`, `prepare`, `commit-development-epoch`, and `verify`. These
 commands are online-only. `prepare` and `commit-development-epoch` are intentional refusal-only surfaces;
 they do not activate cutover.
-
-Text output prints checkpoint summary and source/reason lines, followed by one line per qualifying slot:
-`slot=<key> state=<state> assigned=<seat>|unassigned signed=<seat>|-`. A rendered seat is
-`<label>[<seat_key>]@<catalog_key>@<revision>`. Assignment is selected by the explicit `assigned` or
-`unassigned` state in the HTTP response, and a missing signing seat renders as `-`.
 
 ## Local spool
 

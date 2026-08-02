@@ -62,5 +62,6 @@ repository work, install the complete verification toolchain described in
 | CLI exit `69` | A typed refusal is permanent until its named condition changes. Do not retry unchanged. |
 | CLI exit `75` | The command is queued or waiting for durability acknowledgement. Reuse the same command ID. |
 
-The checked-in Compose file is not an application stack. See [Local development](local-development.md) for
-the tested topology and the missing API/UI services.
+The checked-in Compose file publishes a database, not an application stack. See
+[Local development](local-development.md) for the developer loop and the missing API/UI services, and
+[Self-hosting](self-hosting.md) if you want an instance that keeps running.

@@ -72,7 +72,9 @@ ctl --base-url http://127.0.0.1:8080 project delivery query ctower --output json
 
 `--output text` (the default) renders a compact CLI projection; `--output json` emits the deterministic
 structured view. The operation is `GET /v1/projects/{project_key}/delivery`, requires an authenticated
-principal, and `project_key` currently accepts only `ctower`.
+principal, and accepts any `project_key` matching `^[a-z][a-z0-9-]{2,63}$`. The rendering carries no
+project-specific logic. A key with no authorized rows is refused with `project-delivery-unavailable` and
+`404`, never answered with an empty view.
 
 Each HTTP row carries `qualifying_stage_slots`. A slot has `slot_key`, `state`, `assigned_seat`, and
 `signing_seat`. `assigned_seat` is a closed tagged union: an assigned value is exactly

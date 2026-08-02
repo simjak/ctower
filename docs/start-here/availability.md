@@ -6,14 +6,16 @@ roadmap item.
 
 ## Do not attempt these yet
 
-- Installing or deploying ctower as a service, with Docker Compose or otherwise.
-- Running a supported backup, restore, migration, recovery, monitoring, or incident procedure.
+- Deploying ctower as a networked or internet-facing service. The one supported self-hosted shape is a
+  single-host, loopback-only instance for reconstructible work; see [Self-hosting](../self-hosting.md).
+- Composing an application stack from `deploy/development/compose.yaml`; it publishes a database only.
+- Running a supported backup, restore, recovery, monitoring, or incident procedure.
 - Managing real tenants, tickets, credentials, or production work.
 - Treating the development CompanyBundle pointer as runtime/effect activation or a production rollout.
 - Using a browser UI, runner, local/remote agent adapter, or external effect provider.
 - Depending on a published package, stable Python runtime, compatibility promise, or production release.
 
-The checked-in Compose file supports disposable PostgreSQL acceptance tests only. Read
+The checked-in Compose file supports disposable PostgreSQL fixtures only. Read
 [Local development](../local-development.md) before treating it as infrastructure.
 
 ## What is safe to do

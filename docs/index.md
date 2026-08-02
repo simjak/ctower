@@ -26,8 +26,9 @@ Use synthetic data only.
 ## What it does not do yet
 
 There is no browser UI, remote runner, external effect provider, general project/team administration,
-production Compose stack, supported backup/recovery path, or production self-hosting guide. Declared packs
-and generated clients are development artifacts, not proof that those surfaces are available.
+composed application stack, supported backup/recovery path, or internet-facing deployment. Self-hosting
+means one loopback-only instance on a host you control. Declared packs and generated clients are
+development artifacts, not proof that those surfaces are available.
 
 ## Read by task
 
@@ -36,8 +37,8 @@ and generated clients are development artifacts, not proof that those surfaces a
 | See the working slice | [Getting started](getting-started.md) |
 | Operate the implemented CLI | [CLI reference](reference/cli.md) |
 | Understand tickets, custody, stages, and proof | [Concepts](concepts/index.md) |
-| Understand the Compose boundary | [Local development](local-development.md) |
-| Evaluate production hosting | [Self-hosting](self-hosting.md) |
+| Work on ctower locally | [Local development](local-development.md) |
+| Run your own instance | [Self-hosting](self-hosting.md) |
 | Build against the typed HTTP contract | [HTTP API reference](reference/http-api.md) |
 | Contribute | [Development guide](contributing/development.md) |
 
