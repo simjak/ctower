@@ -269,7 +269,8 @@ def provision_database_roles(admin_dsn: str) -> None:
 
 
 def _reconcile_database_roles_locked(admin_dsn: str) -> None:
-    _migration_control_sql.reconcile_database_roles(admin_dsn, _provision_database_roles_once)
+    with _migration_control_sql.role_provisioning_control(admin_dsn):
+        _migration_control_sql.reconcile_database_roles(admin_dsn, _provision_database_roles_once)
 
 
 def _provision_database_roles_once(admin_dsn: str) -> None:
