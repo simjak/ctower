@@ -20,9 +20,7 @@ __all__ = [
     "MigrationHealthDigests",
     "ProjectDeliveryRow",
     "ProjectDeliveryView",
-    "SeatCatalogMember",
     "SeatCatalogReference",
-    "SeatCatalogRevision",
     "SeatIdentity",
     "derive_project_delivery_row",
 ]
@@ -54,18 +52,6 @@ class EvidenceSlotState(StrEnum):
     FILLED = "filled"
     UNFILLED = "unfilled"
     UNKNOWN = "unknown"
-
-
-@dataclass(frozen=True, slots=True)
-class SeatCatalogMember:
-    """One configured member of a seat catalog revision."""
-
-    key: str
-    label: str
-
-    def __post_init__(self) -> None:
-        if _SEAT_KEY.fullmatch(self.key) is None or not self.label:
-            raise ValueError("seat catalog member must have a stable key and label")
 
 
 @dataclass(frozen=True, slots=True)
@@ -108,27 +94,6 @@ class SeatIdentity:
             "seat_label": self.label,
             "catalog_revision": self.catalog_revision.response_payload(),
         }
-
-
-@dataclass(frozen=True, slots=True)
-class SeatCatalogRevision:
-    """Configured seat data used to resolve a fact once, at fact time."""
-
-    reference: SeatCatalogReference
-    members: tuple[SeatCatalogMember, ...]
-
-    def __post_init__(self) -> None:
-        keys = tuple(member.key for member in self.members)
-        if not keys or len(keys) != len(set(keys)):
-            raise ValueError("seat catalog members must be nonempty and unique")
-
-    def resolve(self, seat_key: str) -> SeatIdentity:
-        """Resolve from this pinned revision, never from a later active revision."""
-
-        member = next((member for member in self.members if member.key == seat_key), None)
-        if member is None:
-            raise ValueError("seat key is absent from the pinned catalog revision")
-        return SeatIdentity(member.key, member.label, self.reference)
 
 
 @dataclass(frozen=True, slots=True)

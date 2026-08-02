@@ -254,7 +254,7 @@ def signing_seat_facts(
     ).fetchall()
     return {
         (cast(UUID, row["ticket_id"]), str(row["proof_key"])): SigningSeatFact(
-            seat=_seat(row),
+            seat=_signing_seat(row),
             evidence_id=cast(UUID, row["evidence_id"]),
             assignment_source_id=(
                 f"assignment:{row['assignment_ticket_id']}:"
@@ -491,32 +491,24 @@ def _slot_state(state: ProofLinkState | None) -> EvidenceSlotState:
 def _assigned_seat(criterion: dict[str, object]) -> SeatIdentity | None:
     if criterion.get("assigned_seat_key") is None:
         return None
-    return _seat(criterion)
-
-
-def _seat(row: Mapping[str, object]) -> SeatIdentity:
     return SeatIdentity(
-        key=str(row["seat_key"] if "seat_key" in row else row["assigned_seat_key"]),
-        label=str(row["seat_label"] if "seat_label" in row else row["assigned_seat_label"]),
+        key=str(criterion["assigned_seat_key"]),
+        label=str(criterion["assigned_seat_label"]),
         catalog_revision=SeatCatalogReference(
-            catalog_key=str(
-                row["catalog_key"] if "catalog_key" in row else row["assigned_catalog_key"]
-            ),
-            revision=int(
-                cast(
-                    int,
-                    row["catalog_revision"]
-                    if "catalog_revision" in row
-                    else row["assigned_catalog_revision"],
-                )
-            ),
-            content_digest=(
-                "sha256:"
-                + str(
-                    row["catalog_digest"]
-                    if "catalog_digest" in row
-                    else row["assigned_catalog_digest"]
-                )
-            ),
+            catalog_key=str(criterion["assigned_catalog_key"]),
+            revision=int(cast(int, criterion["assigned_catalog_revision"])),
+            content_digest="sha256:" + str(criterion["assigned_catalog_digest"]),
+        ),
+    )
+
+
+def _signing_seat(row: Mapping[str, object]) -> SeatIdentity:
+    return SeatIdentity(
+        key=str(row["seat_key"]),
+        label=str(row["seat_label"]),
+        catalog_revision=SeatCatalogReference(
+            catalog_key=str(row["catalog_key"]),
+            revision=int(cast(int, row["catalog_revision"])),
+            content_digest="sha256:" + str(row["catalog_digest"]),
         ),
     )

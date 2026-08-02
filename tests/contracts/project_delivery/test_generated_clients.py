@@ -4,6 +4,10 @@ from __future__ import annotations
 
 import json
 from pathlib import Path
+from typing import cast
+
+import pytest
+from pydantic import ValidationError
 
 from ..http._generated_client_runtime import (
     compile_typescript_client,
@@ -11,9 +15,35 @@ from ..http._generated_client_runtime import (
     python_client,
     run_command,
 )
-from ._fixture import DIGEST, project_delivery_view
+from ._fixture import DIGEST, project_delivery_row, project_delivery_view
 
 __all__: tuple[str, ...] = ()
+
+_MALFORMED_ASSIGNMENTS: tuple[tuple[str, dict[str, object]], ...] = (
+    ("assigned-with-no-seat", {"state": "assigned"}),
+    (
+        "unassigned-carrying-a-seat",
+        {"state": "unassigned", "seat": {"seat_key": "preparer"}},
+    ),
+    ("unknown-state-word", {"state": "banana"}),
+    ("no-state-at-all", {"seat": {"seat_key": "preparer", "seat_label": "P"}}),
+    ("empty-object", {}),
+    (
+        "bad-seat-key-pattern",
+        {
+            "state": "assigned",
+            "seat": {
+                "seat_key": "NOT A SEAT KEY",
+                "seat_label": "x",
+                "catalog_revision": {
+                    "catalog_key": "k",
+                    "revision": 0,
+                    "content_digest": "not-a-digest",
+                },
+            },
+        },
+    ),
+)
 
 
 def test_generated_python_client_round_trips_assigned_and_signing_seats() -> None:
@@ -47,6 +77,27 @@ def test_generated_python_client_round_trips_assigned_and_signing_seats() -> Non
             "content_digest": DIGEST,
         },
     }
+
+
+@pytest.mark.parametrize(
+    "assignment",
+    [assignment for _, assignment in _MALFORMED_ASSIGNMENTS],
+    ids=[case for case, _ in _MALFORMED_ASSIGNMENTS],
+)
+def test_generated_python_client_refuses_malformed_seat_assignments(
+    assignment: dict[str, object],
+) -> None:
+    row = project_delivery_row()
+    slots = cast(list[dict[str, object]], row["qualifying_stage_slots"])
+    slots[0] = {**slots[0], "assigned_seat": assignment}
+    payload = project_delivery_view(row)
+    client = python_client(json.dumps(payload), status=200)
+
+    try:
+        with pytest.raises(ValidationError):
+            client.get_project_delivery("quarterly-close")
+    finally:
+        client.close()
 
 
 def test_generated_typescript_client_round_trips_assigned_and_signing_seats(

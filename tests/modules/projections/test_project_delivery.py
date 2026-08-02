@@ -19,9 +19,8 @@ from ctower_kernel.projections import (
     DeliveryFacts,
     DeliveryState,
     ProjectDeliveryRow,
-    SeatCatalogMember,
     SeatCatalogReference,
-    SeatCatalogRevision,
+    SeatIdentity,
     derive_project_delivery_row,
 )
 from ctower_kernel.projections.postgres import PostgresProjections
@@ -42,18 +41,19 @@ _COLLISION_SLOT_COUNT = 2
 
 
 def test_pinned_seat_rebuild_is_byte_identical_after_member_removal() -> None:
-    first_catalog = _seat_catalog(
+    pinned_assignment = _seat_identity(
         revision=1,
         digest_character="1",
-        members=(("maker", "Maker"), ("reviewer", "Reviewer")),
+        key="maker",
+        label="Maker",
     )
-    later_catalog = _seat_catalog(
-        revision=2,
-        digest_character="2",
-        members=(("reviewer", "Review lead"), ("observer", "Observer")),
+    pinned_signer = _seat_identity(
+        revision=1,
+        digest_character="1",
+        key="reviewer",
+        label="Reviewer",
     )
-    pinned_assignment = first_catalog.resolve("maker")
-    pinned_signer = first_catalog.resolve("reviewer")
+    later_catalog = {"reviewer": "Review lead", "observer": "Observer"}
     facts = replace(
         _facts(),
         qualifying_stage_slots=(
@@ -67,9 +67,8 @@ def test_pinned_seat_rebuild_is_byte_identical_after_member_removal() -> None:
     )
 
     before = derive_project_delivery_row(_definition(), facts)
-    assert later_catalog.resolve("reviewer").label == "Review lead"
-    with pytest.raises(ValueError, match="absent"):
-        later_catalog.resolve("maker")
+    assert later_catalog["reviewer"] == "Review lead"
+    assert "maker" not in later_catalog
     rebuilt = derive_project_delivery_row(_definition(), facts)
 
     assert _row_bytes(rebuilt) == _row_bytes(before)
@@ -85,10 +84,11 @@ def test_pinned_seat_rebuild_is_byte_identical_after_member_removal() -> None:
 
 
 def test_seat_fact_changes_surface_and_digest_without_changing_headline() -> None:
-    catalog = _seat_catalog(
+    assigned_seat = _seat_identity(
         revision=1,
         digest_character="3",
-        members=(("maker", "Maker"), ("reviewer", "Reviewer")),
+        key="maker",
+        label="Maker",
     )
     unassigned = derive_project_delivery_row(_definition(), _facts())
     assigned = derive_project_delivery_row(
@@ -96,7 +96,7 @@ def test_seat_fact_changes_surface_and_digest_without_changing_headline() -> Non
         replace(
             _facts(),
             qualifying_stage_slots=tuple(
-                replace(slot, assigned_seat=catalog.resolve("maker"))
+                replace(slot, assigned_seat=assigned_seat)
                 for slot in _facts().qualifying_stage_slots
             ),
         ),
@@ -110,19 +110,21 @@ def test_seat_fact_changes_surface_and_digest_without_changing_headline() -> Non
     )
 
 
-def _seat_catalog(
+def _seat_identity(
     *,
     revision: int,
     digest_character: str,
-    members: tuple[tuple[str, str], ...],
-) -> SeatCatalogRevision:
-    return SeatCatalogRevision(
-        reference=SeatCatalogReference(
+    key: str,
+    label: str,
+) -> SeatIdentity:
+    return SeatIdentity(
+        key=key,
+        label=label,
+        catalog_revision=SeatCatalogReference(
             catalog_key="fixture.delivery-seats",
             revision=revision,
             content_digest="sha256:" + digest_character * 64,
         ),
-        members=tuple(SeatCatalogMember(key, label) for key, label in members),
     )
 
 

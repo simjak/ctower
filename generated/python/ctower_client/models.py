@@ -1,6 +1,6 @@
 """DO NOT EDIT: generated file; regenerate from declared inputs.
 
-Authored contract digest: sha256:19abd7a3003df793c986fda7420df89ccac2127cab34e9cf3344279da01db82e
+Authored contract digest: sha256:6aa266a7567ca03b2b3e486df91fcf19ca9b5570cf0a51b4fcf504b6bef4b044
 """
 
 from __future__ import annotations
@@ -120,11 +120,13 @@ __all__ = [
     "PriorityChangeRequest",
     "PriorityChangedAuditData",
     "Problem",
+    "ProjectDeliveryAssignedSeatAssignment",
     "ProjectDeliveryCriteria",
     "ProjectDeliveryRow",
     "ProjectDeliverySeat",
     "ProjectDeliverySeatAssignment",
     "ProjectDeliverySlot",
+    "ProjectDeliveryUnassignedSeatAssignment",
     "ProjectDeliveryView",
     "ProjectionHealth",
     "ProofChangedAuditEvent",
@@ -1090,6 +1092,10 @@ class ProjectDeliveryCriteria(_BoundaryModel):
     declared: Annotated[int, Field(ge=1, le=9007199254740991)]
 
 
+class ProjectDeliveryUnassignedSeatAssignment(_BoundaryModel):
+    state: Literal["unassigned"]
+
+
 class ProjectionHealth(StrEnum):
     CURRENT = "CURRENT"
     STATE_UNKNOWN = "STATE_UNKNOWN"
@@ -1887,7 +1893,9 @@ class HealthDimension(_BoundaryModel):
     contributors: Annotated[tuple[HealthContributor, ...], Field(min_length=1)]
 
 
-type ProjectDeliverySeatAssignment = dict[str, object] | dict[str, object]
+class ProjectDeliveryAssignedSeatAssignment(_BoundaryModel):
+    state: Literal["assigned"]
+    seat: ProjectDeliverySeat
 
 
 class TicketCommandResult(_BoundaryModel):
@@ -1964,11 +1972,7 @@ class CtowerProjectImportBatchRequest(_BoundaryModel):
     operations: Annotated[tuple[CtowerProjectImportOperation, ...], Field(min_length=1, max_length=64)]
 
 
-class ProjectDeliverySlot(_BoundaryModel):
-    slot_key: Annotated[str, Field(pattern="^[a-z][a-z0-9._-]*$")]
-    state: Literal["filled", "unfilled", "unknown"]
-    assigned_seat: ProjectDeliverySeatAssignment
-    signing_seat: ProjectDeliverySeat | None
+type ProjectDeliverySeatAssignment = ProjectDeliveryAssignedSeatAssignment | ProjectDeliveryUnassignedSeatAssignment
 
 
 class TimelineResponse(_BoundaryModel):
@@ -2000,6 +2004,39 @@ type WorkChangedAuditPayload = WorkPriorityChangedAuditPayload | WorkAssignmentC
 class CompanyBundleResource(_BoundaryModel):
     component: VersionedComponent
     payload: _FreeFormJsonObject
+
+
+class ProjectDeliverySlot(_BoundaryModel):
+    slot_key: Annotated[str, Field(pattern="^[a-z][a-z0-9._-]*$")]
+    state: Literal["filled", "unfilled", "unknown"]
+    assigned_seat: ProjectDeliverySeatAssignment
+    signing_seat: ProjectDeliverySeat | None
+
+
+class WorkChangedAuditEvent(_BoundaryModel):
+    actor_principal_id: UUID
+    command_id: UUID
+    event_hash: Annotated[str, Field(pattern="^sha256:[0-9a-f]{64}$")]
+    event_id: UUID
+    kind: Literal["work.changed"]
+    occurred_at: _Rfc3339DateTime
+    payload: WorkChangedAuditPayload
+    record_position: Annotated[int, Field(ge=1, le=9007199254740991)]
+    sequence: Annotated[int, Field(ge=1, le=9007199254740991)]
+    stream_id: Annotated[str, Field(pattern="^ticket:[0-9a-f-]{36}$")]
+
+
+type AuditEvent = TicketCreatedAuditEvent | CustodyTransferredAuditEvent | TicketCommentAddedAuditEvent | WorkChangedAuditEvent | WorkflowChangedAuditEvent | ProofChangedAuditEvent
+
+
+class CompanyBundleDocument(_BoundaryModel):
+    assignments: Annotated[tuple[CompanyBundleAssignment, ...], Field(max_length=512)]
+    company: CompanyIdentity
+    resources: Annotated[tuple[CompanyBundleResource, ...], Field(min_length=1, max_length=512)]
+    schema_id: Literal["ctower.company-bundle/v1"] = Field(
+        alias="schema", serialization_alias="schema"
+    )
+    secret_binding_refs: Annotated[tuple[SecretBindingReference, ...], Field(max_length=128)]
 
 
 class ProjectDeliveryRow(_BoundaryModel):
@@ -2043,47 +2080,6 @@ class ProjectDeliveryRow(_BoundaryModel):
     derivation_reasons: Annotated[tuple[Annotated[str, Field(min_length=1)], ...], Field(min_length=1)]
 
 
-class WorkChangedAuditEvent(_BoundaryModel):
-    actor_principal_id: UUID
-    command_id: UUID
-    event_hash: Annotated[str, Field(pattern="^sha256:[0-9a-f]{64}$")]
-    event_id: UUID
-    kind: Literal["work.changed"]
-    occurred_at: _Rfc3339DateTime
-    payload: WorkChangedAuditPayload
-    record_position: Annotated[int, Field(ge=1, le=9007199254740991)]
-    sequence: Annotated[int, Field(ge=1, le=9007199254740991)]
-    stream_id: Annotated[str, Field(pattern="^ticket:[0-9a-f-]{36}$")]
-
-
-type AuditEvent = TicketCreatedAuditEvent | CustodyTransferredAuditEvent | TicketCommentAddedAuditEvent | WorkChangedAuditEvent | WorkflowChangedAuditEvent | ProofChangedAuditEvent
-
-
-class CompanyBundleDocument(_BoundaryModel):
-    assignments: Annotated[tuple[CompanyBundleAssignment, ...], Field(max_length=512)]
-    company: CompanyIdentity
-    resources: Annotated[tuple[CompanyBundleResource, ...], Field(min_length=1, max_length=512)]
-    schema_id: Literal["ctower.company-bundle/v1"] = Field(
-        alias="schema", serialization_alias="schema"
-    )
-    secret_binding_refs: Annotated[tuple[SecretBindingReference, ...], Field(max_length=128)]
-
-
-class ProjectDeliveryView(_BoundaryModel):
-    schema_id: Literal["ctower.project-delivery/v1"] = Field(
-        alias="schema", serialization_alias="schema"
-    )
-    company_key: Annotated[str, Field(pattern="^[a-z][a-z0-9-]{2,63}$")]
-    project_key: Annotated[str, Field(pattern="^[a-z][a-z0-9-]{2,63}$")]
-    source_record_position: Annotated[int, Field(ge=0, le=9007199254740991)]
-    projection_record_position: Annotated[int, Field(ge=0, le=9007199254740991)]
-    reconciled_at: _Rfc3339DateTime
-    freshness_due_at: _Rfc3339DateTime
-    projection_semantic_digest: Annotated[str, Field(pattern="^sha256:[0-9a-f]{64}$")]
-    rebuild_generation: Annotated[int, Field(ge=0, le=9007199254740991)]
-    rows: tuple[ProjectDeliveryRow, ...]
-
-
 class AuditPage(_BoundaryModel):
     events: tuple[AuditEvent, ...]
     next_cursor: Annotated[int, Field(ge=1, le=9007199254740991)] | None
@@ -2105,3 +2101,18 @@ class CompanyBundleExportResult(_BoundaryModel):
 
 class CompanyBundleRequest(_BoundaryModel):
     bundle: CompanyBundleDocument
+
+
+class ProjectDeliveryView(_BoundaryModel):
+    schema_id: Literal["ctower.project-delivery/v1"] = Field(
+        alias="schema", serialization_alias="schema"
+    )
+    company_key: Annotated[str, Field(pattern="^[a-z][a-z0-9-]{2,63}$")]
+    project_key: Annotated[str, Field(pattern="^[a-z][a-z0-9-]{2,63}$")]
+    source_record_position: Annotated[int, Field(ge=0, le=9007199254740991)]
+    projection_record_position: Annotated[int, Field(ge=0, le=9007199254740991)]
+    reconciled_at: _Rfc3339DateTime
+    freshness_due_at: _Rfc3339DateTime
+    projection_semantic_digest: Annotated[str, Field(pattern="^sha256:[0-9a-f]{64}$")]
+    rebuild_generation: Annotated[int, Field(ge=0, le=9007199254740991)]
+    rows: tuple[ProjectDeliveryRow, ...]

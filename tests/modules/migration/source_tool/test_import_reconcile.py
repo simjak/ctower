@@ -25,6 +25,7 @@ from ctower_client.models import (
     ProjectDeliveryCriteria,
     ProjectDeliveryRow,
     ProjectDeliverySlot,
+    ProjectDeliveryUnassignedSeatAssignment,
     ProjectDeliveryView,
 )
 from tools.migration.ctower_project.ctower_project_source.canonical import (
@@ -469,7 +470,7 @@ def _delivery(fixture: SyntheticFixture, run: CtowerProjectImportRun) -> Project
                 ProjectDeliverySlot(
                     slot_key="declared-outcome",
                     state="unknown",
-                    assigned_seat={"state": "unassigned"},
+                    assigned_seat=ProjectDeliveryUnassignedSeatAssignment(state="unassigned"),
                     signing_seat=None,
                 ),
             ),

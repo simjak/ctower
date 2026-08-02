@@ -7,7 +7,7 @@ import io
 import json
 from datetime import UTC, datetime, timedelta
 from pathlib import Path
-from typing import Self, cast
+from typing import Literal, Self, cast
 from uuid import UUID, uuid4
 
 import pytest
@@ -24,10 +24,12 @@ from ctower_client.models import (
     MigrationCorrectionRevision,
     MigrationHealthDigests,
     MigrationRelationCorrection,
+    ProjectDeliveryAssignedSeatAssignment,
     ProjectDeliveryCriteria,
     ProjectDeliveryRow,
     ProjectDeliverySeat,
     ProjectDeliverySlot,
+    ProjectDeliveryUnassignedSeatAssignment,
     ProjectDeliveryView,
     SeatCatalogRevision,
 )
@@ -394,16 +396,18 @@ class _MigrationClient:
                         ProjectDeliverySlot(
                             slot_key="dogfood-proof",
                             state="filled",
-                            assigned_seat={
-                                "state": "assigned",
-                                "seat": _delivery_seat("maker", "Maker"),
-                            },
+                            assigned_seat=ProjectDeliveryAssignedSeatAssignment(
+                                state="assigned",
+                                seat=_delivery_seat("maker", "Maker"),
+                            ),
                             signing_seat=_delivery_seat("reviewer", "Reviewer"),
                         ),
                         ProjectDeliverySlot(
                             slot_key="cp3-d-proof",
                             state="unfilled",
-                            assigned_seat={"state": "unassigned"},
+                            assigned_seat=ProjectDeliveryUnassignedSeatAssignment(
+                                state="unassigned"
+                            ),
                             signing_seat=None,
                         ),
                     ),
@@ -436,3 +440,29 @@ def _delivery_seat(key: str, label: str) -> ProjectDeliverySeat:
             content_digest=ZERO_DIGEST,
         ),
     )
+
+
+@pytest.mark.parametrize(
+    "assignment",
+    (
+        ProjectDeliveryAssignedSeatAssignment.model_construct(
+            state=cast(Literal["assigned"], "unassigned"),
+            seat=_delivery_seat("maker", "Maker"),
+        ),
+        ProjectDeliveryUnassignedSeatAssignment.model_construct(
+            state=cast(Literal["unassigned"], "assigned")
+        ),
+    ),
+)
+def test_delivery_text_refuses_assignment_state_shape_disagreement(
+    assignment: ProjectDeliveryAssignedSeatAssignment | ProjectDeliveryUnassignedSeatAssignment,
+) -> None:
+    slot = ProjectDeliverySlot.model_construct(
+        slot_key="proof",
+        state="filled",
+        assigned_seat=assignment,
+        signing_seat=None,
+    )
+
+    with pytest.raises(TypeError, match="seat state does not match its payload shape"):
+        _migration_commands._slot_text(slot)

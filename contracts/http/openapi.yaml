@@ -1809,23 +1809,25 @@
           "catalog_revision": {"$ref": "#/components/schemas/SeatCatalogRevision"}
         }
       },
+      "ProjectDeliveryAssignedSeatAssignment": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["state", "seat"],
+        "properties": {
+          "state": {"const": "assigned"},
+          "seat": {"$ref": "#/components/schemas/ProjectDeliverySeat"}
+        }
+      },
+      "ProjectDeliveryUnassignedSeatAssignment": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["state"],
+        "properties": {"state": {"const": "unassigned"}}
+      },
       "ProjectDeliverySeatAssignment": {
         "oneOf": [
-          {
-            "type": "object",
-            "additionalProperties": false,
-            "required": ["state", "seat"],
-            "properties": {
-              "state": {"const": "assigned"},
-              "seat": {"$ref": "#/components/schemas/ProjectDeliverySeat"}
-            }
-          },
-          {
-            "type": "object",
-            "additionalProperties": false,
-            "required": ["state"],
-            "properties": {"state": {"const": "unassigned"}}
-          }
+          {"$ref": "#/components/schemas/ProjectDeliveryAssignedSeatAssignment"},
+          {"$ref": "#/components/schemas/ProjectDeliveryUnassignedSeatAssignment"}
         ]
       },
       "ProjectDeliverySlot": {

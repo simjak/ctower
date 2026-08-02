@@ -74,6 +74,22 @@ ctl --base-url http://127.0.0.1:8080 project delivery query ctower --output json
 structured view. The operation is `GET /v1/projects/{project_key}/delivery`, requires an authenticated
 principal, and `project_key` currently accepts only `ctower`.
 
+Each HTTP row carries `qualifying_stage_slots`. A slot has `slot_key`, `state`, `assigned_seat`, and
+`signing_seat`. `assigned_seat` is a closed tagged union: an assigned value is exactly
+`{"state":"assigned","seat":{...}}`, while an unassigned value is exactly
+`{"state":"unassigned"}` and cannot carry `seat`. The nested seat has `seat_key`, `seat_label`, and the
+pinned `catalog_revision` (`catalog_key`, positive `revision`, and `content_digest`). `signing_seat` has the
+same seat shape or is `null`.
+
+Compact output follows every checkpoint with one line per qualifying slot:
+
+```text
+slot=<slot-key> state=<filled|unfilled|unknown> assigned=<label>[<seat-key>]@<catalog-key>@<revision>|unassigned signed=<label>[<seat-key>]@<catalog-key>@<revision>|-
+```
+
+The `assigned` text follows `assigned_seat.state`; it never infers assignment from the presence of a seat.
+The `signed` dash represents a `null` signing seat.
+
 If the projection cannot serve a trustworthy answer it refuses with `project-delivery-unavailable` rather
 than returning a stale row.
 

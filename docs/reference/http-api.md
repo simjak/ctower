@@ -113,6 +113,11 @@ eligible is refused as `intake-promotion-ineligible` without changing anything.
 | `GET` | `/v1/board` | `getBoard` | `board query` | query | forbidden | `200`, `401`, `422` |
 | `GET` | `/v1/projects/{project_key}/delivery` | `getProjectDelivery` | `project delivery query` | query | forbidden | `200`, `401`, `404`, `422` |
 
+Project Delivery rows expose `qualifying_stage_slots[]`. Each item has `slot_key`, `state`, a strict
+`assigned_seat` union (`{"state":"assigned","seat":ProjectDeliverySeat}` or exactly
+`{"state":"unassigned"}`), and nullable `signing_seat`. `ProjectDeliverySeat` contains `seat_key`,
+`seat_label`, and its pinned `catalog_revision` (`catalog_key`, `revision`, `content_digest`).
+
 ### Operations
 
 | Method | Path | Operation | CLI | Kind | Spool | Responses |
