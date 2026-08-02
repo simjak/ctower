@@ -39,6 +39,12 @@ def test_cross_domain_row_reports_exact_qualifying_stage_slot_coverage() -> None
         "approval-receipt",
         "archive-proof",
     ]
+    slots = cast(list[dict[str, object]], row["qualifying_stage_slots"])
+    assert len(slots) == row["qualifying_stage_slots_required"]
+    assert slots[0]["assigned_seat"] != {"state": "unassigned"}
+    assert slots[0]["signing_seat"] is not None
+    assert slots[0]["assigned_seat"] != slots[0]["signing_seat"]
+    assert slots[-1]["assigned_seat"] == {"state": "unassigned"}
     missing_keys = project_delivery_row()
     del missing_keys["qualifying_stage_unfilled_or_unknown_slot_keys"]
     with pytest.raises(ValidationError):

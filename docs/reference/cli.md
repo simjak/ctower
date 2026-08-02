@@ -254,6 +254,11 @@ spelling is stable and authenticated, and they always refuse. They do not import
 
 A read-only projection. See [Project Delivery](../concepts/project-delivery.md).
 
+Text output prints checkpoint summary and source/reason lines, followed by one line per qualifying slot:
+`slot=<key> state=<state> assigned=<seat>|unassigned signed=<seat>|-`. A rendered seat is
+`<label>[<seat_key>]@<catalog_key>@<revision>`. Assignment is selected by the explicit `assigned` or
+`unassigned` state in the HTTP response, and a missing signing seat renders as `-`.
+
 ## Local spool
 
 Seven commands that never leave the machine except where noted. See the

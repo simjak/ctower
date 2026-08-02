@@ -26,6 +26,7 @@ def project_delivery_row() -> dict[str, object]:
             "approval-receipt",
             "archive-proof",
         ],
+        "qualifying_stage_slots": _seat_slots(),
         "source_watermark": 27,
         "projection_watermark": 27,
         "freshness": "fresh",
@@ -45,6 +46,59 @@ def project_delivery_row() -> dict[str, object]:
             "underlying_maturity:verified",
         ],
     }
+
+
+def _seat_slots() -> list[dict[str, object]]:
+    return [
+        {
+            "slot_key": "ledger-posted",
+            "state": "filled",
+            "assigned_seat": {
+                "state": "assigned",
+                "seat": {
+                    "seat_key": "preparer",
+                    "seat_label": "Preparer",
+                    "catalog_revision": {
+                        "catalog_key": "ledger.delivery-seats",
+                        "revision": 1,
+                        "content_digest": DIGEST,
+                    },
+                },
+            },
+            "signing_seat": {
+                "seat_key": "approver",
+                "seat_label": "Approver",
+                "catalog_revision": {
+                    "catalog_key": "ledger.delivery-seats",
+                    "revision": 1,
+                    "content_digest": DIGEST,
+                },
+            },
+        },
+        {
+            "slot_key": "approval-receipt",
+            "state": "unfilled",
+            "assigned_seat": {
+                "state": "assigned",
+                "seat": {
+                    "seat_key": "approver",
+                    "seat_label": "Approver",
+                    "catalog_revision": {
+                        "catalog_key": "ledger.delivery-seats",
+                        "revision": 1,
+                        "content_digest": DIGEST,
+                    },
+                },
+            },
+            "signing_seat": None,
+        },
+        {
+            "slot_key": "archive-proof",
+            "state": "unknown",
+            "assigned_seat": {"state": "unassigned"},
+            "signing_seat": None,
+        },
+    ]
 
 
 def project_delivery_view(

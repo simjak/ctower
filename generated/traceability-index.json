@@ -48,6 +48,7 @@
       "contracts/components/notification.schema.json",
       "contracts/components/persona.schema.json",
       "contracts/components/project.schema.json",
+      "contracts/components/seat-catalog.schema.json",
       "contracts/components/skill.schema.json",
       "contracts/components/supervisor.schema.json",
       "contracts/components/target.schema.json",
@@ -292,6 +293,31 @@
     ],
     "AC-PD-06": [
       "packages/ctower-kernel/migrations/0037_relax_checkpoint_key_domain.sql"
+    ],
+    "AC-PD-07": [
+      "contracts/components/checkpoint.schema.json",
+      "contracts/components/seat-catalog.schema.json",
+      "contracts/components/versioned-component.schema.json",
+      "contracts/domain/project-delivery/project-delivery-vectors.json",
+      "contracts/domain/project-delivery/project-delivery.schema.json",
+      "contracts/http/openapi.yaml",
+      "packages/ctower-kernel/migrations/0038_project_delivery_seat_carriage.sql"
+    ],
+    "AC-PD-08": [
+      "contracts/components/checkpoint.schema.json",
+      "contracts/components/seat-catalog.schema.json",
+      "contracts/domain/project-delivery/project-delivery-vectors.json",
+      "contracts/domain/project-delivery/project-delivery.schema.json",
+      "contracts/http/openapi.yaml",
+      "packages/ctower-kernel/migrations/0038_project_delivery_seat_carriage.sql"
+    ],
+    "AC-PD-09": [
+      "contracts/components/checkpoint.schema.json",
+      "contracts/components/seat-catalog.schema.json",
+      "contracts/domain/project-delivery/project-delivery-vectors.json",
+      "contracts/domain/project-delivery/project-delivery.schema.json",
+      "contracts/http/openapi.yaml",
+      "packages/ctower-kernel/migrations/0038_project_delivery_seat_carriage.sql"
     ],
     "AC-PROD-01": [
       "contracts/domain/intake/thread-intake.schema.json",
@@ -644,6 +670,7 @@
       "contracts/components/notification.schema.json",
       "contracts/components/persona.schema.json",
       "contracts/components/project.schema.json",
+      "contracts/components/seat-catalog.schema.json",
       "contracts/components/skill.schema.json",
       "contracts/components/supervisor.schema.json",
       "contracts/components/target.schema.json",
@@ -707,7 +734,8 @@
       "contracts/components/checkpoint.schema.json",
       "contracts/domain/project-delivery/project-delivery-vectors.json",
       "contracts/domain/project-delivery/project-delivery.schema.json",
-      "packages/ctower-kernel/migrations/0027_i17a_cutover_delivery.sql"
+      "packages/ctower-kernel/migrations/0027_i17a_cutover_delivery.sql",
+      "packages/ctower-kernel/migrations/0038_project_delivery_seat_carriage.sql"
     ],
     "INV-60": [
       "contracts/domain/migration/ctower-project-cutover-health.schema.json",
@@ -717,6 +745,18 @@
       "packages/ctower-kernel/migrations/0029_i17b_checkpoint_catalog_kind.sql",
       "packages/ctower-kernel/migrations/0030_i17b_migration_truth_spine.sql",
       "packages/ctower-kernel/migrations/0031_i17b_bounded_truth_spine.sql"
+    ],
+    "INV-62": [
+      "packages/ctower-kernel/migrations/0038_project_delivery_seat_carriage.sql"
+    ],
+    "INV-64": [
+      "contracts/components/checkpoint.schema.json",
+      "contracts/components/seat-catalog.schema.json",
+      "contracts/components/versioned-component.schema.json",
+      "contracts/domain/project-delivery/project-delivery-vectors.json",
+      "contracts/domain/project-delivery/project-delivery.schema.json",
+      "contracts/http/openapi.yaml",
+      "packages/ctower-kernel/migrations/0038_project_delivery_seat_carriage.sql"
     ],
     "SPEC#aggregate-boundaries-and-relationships": [
       "contracts/domain/intake/thread-intake.schema.json",
@@ -866,15 +906,18 @@
       "packages/ctower-kernel/migrations/0033_development_offhost_ack.sql",
       "packages/ctower-kernel/migrations/0034_durability_finalizer_quarantine.sql",
       "packages/ctower-kernel/migrations/0035_board_source_lookup.sql",
-      "packages/ctower-kernel/migrations/0036_migration_ledger_role.sql"
+      "packages/ctower-kernel/migrations/0036_migration_ledger_role.sql",
+      "packages/ctower-kernel/migrations/0038_project_delivery_seat_carriage.sql"
     ],
     "SPEC#project-delivery-projection": [
       "contracts/components/checkpoint.schema.json",
+      "contracts/components/seat-catalog.schema.json",
       "contracts/domain/project-delivery/project-delivery-vectors.json",
       "contracts/domain/project-delivery/project-delivery.schema.json",
       "packages/ctower-kernel/migrations/0027_i17a_cutover_delivery.sql",
       "packages/ctower-kernel/migrations/0029_i17b_checkpoint_catalog_kind.sql",
-      "packages/ctower-kernel/migrations/0037_relax_checkpoint_key_domain.sql"
+      "packages/ctower-kernel/migrations/0037_relax_checkpoint_key_domain.sql",
+      "packages/ctower-kernel/migrations/0038_project_delivery_seat_carriage.sql"
     ],
     "SPEC#retention-erasure-backup-and-restore": [
       "contracts/evidence/object-manifest.schema.json",
@@ -931,6 +974,7 @@
       "contracts/components/notification.schema.json",
       "contracts/components/persona.schema.json",
       "contracts/components/project.schema.json",
+      "contracts/components/seat-catalog.schema.json",
       "contracts/components/skill.schema.json",
       "contracts/components/supervisor.schema.json",
       "contracts/components/target.schema.json",

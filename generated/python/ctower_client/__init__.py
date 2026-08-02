@@ -1,6 +1,6 @@
 """DO NOT EDIT: generated file; regenerate from declared inputs.
 
-Authored contract digest: sha256:1ca4a6823b673e720c5e1fd0e39445905a701d279b773eb99689536a8de41c62
+Authored contract digest: sha256:6aa266a7567ca03b2b3e486df91fcf19ca9b5570cf0a51b4fcf504b6bef4b044
 """
 
 from ctower_client.client import CtowerClient, CtowerProblemError
@@ -110,8 +110,13 @@ from ctower_client.models import (
     PriorityChangedAuditData,
     PriorityChangeRequest,
     Problem,
+    ProjectDeliveryAssignedSeatAssignment,
     ProjectDeliveryCriteria,
     ProjectDeliveryRow,
+    ProjectDeliverySeat,
+    ProjectDeliverySeatAssignment,
+    ProjectDeliverySlot,
+    ProjectDeliveryUnassignedSeatAssignment,
     ProjectDeliveryView,
     ProjectionHealth,
     ProofChangedAuditEvent,
@@ -124,6 +129,7 @@ from ctower_client.models import (
     ReopenedAuditData,
     ReopenIntent,
     ResolveCloseRequest,
+    SeatCatalogRevision,
     SecretBindingReference,
     SourceReference,
     SyntheticRunReceipt,
@@ -273,8 +279,13 @@ __all__ = [
     "PriorityChangeRequest",
     "PriorityChangedAuditData",
     "Problem",
+    "ProjectDeliveryAssignedSeatAssignment",
     "ProjectDeliveryCriteria",
     "ProjectDeliveryRow",
+    "ProjectDeliverySeat",
+    "ProjectDeliverySeatAssignment",
+    "ProjectDeliverySlot",
+    "ProjectDeliveryUnassignedSeatAssignment",
     "ProjectDeliveryView",
     "ProjectionHealth",
     "ProofChangedAuditEvent",
@@ -287,6 +298,7 @@ __all__ = [
     "ReopenIntent",
     "ReopenedAuditData",
     "ResolveCloseRequest",
+    "SeatCatalogRevision",
     "SecretBindingReference",
     "SourceReference",
     "SyntheticRunReceipt",

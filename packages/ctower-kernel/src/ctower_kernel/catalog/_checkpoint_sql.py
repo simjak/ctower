@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from datetime import datetime
 from typing import cast
+from uuid import UUID
 
 import psycopg
 
@@ -102,22 +103,69 @@ def _insert_definition(
         ),
     )
     criteria = cast(list[dict[str, object]], payload["criteria"])
+    criterion_rows = tuple(
+        _criterion_row(connection, actor, state, criterion, ordinal)
+        for ordinal, criterion in enumerate(criteria, start=1)
+    )
     connection.cursor().executemany(
         """
         INSERT INTO project_delivery_exit_criteria (
             checkpoint_definition_id, tenant_id, criterion_key, ordinal,
-            description, proof_ticket_id, proof_criterion_key, source_ids
-        ) VALUES (%s, %s, %s, %s, %s, NULL, NULL, %s)
+            description, proof_ticket_id, proof_criterion_key, source_ids,
+            assigned_seat_catalog_revision_id, assigned_seat_key
+        ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
         """,
-        tuple(
-            (
-                state.revision_id,
-                actor.tenant_id,
-                str(criterion["key"]),
-                ordinal,
-                str(criterion["description"]),
-                list(cast(list[str], criterion["evidence_policy_refs"])),
-            )
-            for ordinal, criterion in enumerate(criteria, start=1)
-        ),
+        criterion_rows,
     )
+
+
+def _criterion_row(
+    connection: psycopg.Connection[dict[str, object]],
+    actor: Actor,
+    state: RevisionState,
+    criterion: dict[str, object],
+    ordinal: int,
+) -> tuple[object, ...]:
+    proof_link = cast(dict[str, object] | None, criterion.get("proof_link"))
+    assigned_seat = cast(dict[str, object] | None, criterion.get("assigned_seat"))
+    proof_ticket_id = UUID(str(proof_link["ticket_id"])) if proof_link is not None else None
+    proof_criterion_key = str(proof_link["criterion_key"]) if proof_link is not None else None
+    seat_revision_id, seat_key = _seat_pin(connection, actor, assigned_seat)
+    return (
+        state.revision_id,
+        actor.tenant_id,
+        str(criterion["key"]),
+        ordinal,
+        str(criterion["description"]),
+        proof_ticket_id,
+        proof_criterion_key,
+        list(cast(list[str], criterion["evidence_policy_refs"])),
+        seat_revision_id,
+        seat_key,
+    )
+
+
+def _seat_pin(
+    connection: psycopg.Connection[dict[str, object]],
+    actor: Actor,
+    assigned_seat: dict[str, object] | None,
+) -> tuple[UUID | None, str | None]:
+    if assigned_seat is None:
+        return None, None
+    row = connection.execute(
+        """
+        SELECT seat_catalog_revision_id
+        FROM project_delivery_seat_catalog_revisions
+        WHERE tenant_id = %s AND catalog_key = %s AND catalog_revision = %s
+          AND catalog_digest = %s
+        """,
+        (
+            actor.tenant_id,
+            assigned_seat["catalog_key"],
+            assigned_seat["catalog_revision"],
+            bytes.fromhex(str(assigned_seat["catalog_digest"]).removeprefix("sha256:")),
+        ),
+    ).fetchone()
+    if row is None:
+        raise RuntimeError("assigned seat catalog revision was not materialized")
+    return cast(UUID, row["seat_catalog_revision_id"]), str(assigned_seat["seat_key"])
