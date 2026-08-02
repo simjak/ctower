@@ -1126,3 +1126,70 @@ Rejected alternatives, as settled by the approved clauses:
   protected-command, effect, incident, or production authority.
 - Accepting a prohibited class silently, under a generic error, or as Evidence bytes/metadata rather than
   refusing it by name.
+
+## D31 — Two identity planes, one attributable Actor (locked 2026-08-02, operator R2728)
+
+The operator ordered proper ctower authentication after the portfolio import chain. This decision preserves
+D30's project-seat credential plane and D22's private same-origin session protections. It supersedes D23
+only to move the authentication-only login/callback/session/logout/error routes and evidence into
+`CT-I1-013`; all five browser product surfaces and their interaction evidence remain at I2.4.
+
+1. Humans authenticate through discovery-driven OIDC modeled on Manibo's provider-agnostic auth modules and
+   `wiki/systems/auth.md`; machines keep D30/#198's scoped project-seat credentials. The Manibo Commander
+   recommends contract reuse without package extraction while both consumers are changing, so ctower
+   preserves the pinned Manibo modules/behavior behind its Access Interface and shared conformance vectors.
+   Extraction may be reconsidered for a third consumer or after measured non-drift; a new OIDC flow or
+   provider fork is forbidden.
+2. Provider bindings are versioned configuration authored in the secret-free `CompanyBundle`, including exact
+   issuer/discovery/JWKS/audience/client and SecretRef inputs, the exact registered redirect URI, verified
+   discovery domains, enabled state, and optional claim-selection metadata. The registry is a trust root with
+   one owner: creating, enabling, disabling, or rotating an entry is an operator-only command, and a platform
+   administrator holds no such authority unless also authenticated as operator. The redirect URI is pinned to
+   the configured private HTTPS origin plus one fixed callback path and matched by exact string equality, so
+   no configuration change alone can deliver an authorization code outside the private boundary. Adding,
+   disabling, or rotating a provider requires no Python or TypeScript branch.
+3. Browser OIDC uses Authorization Code plus PKCE S256, state, nonce, the pinned exact redirect,
+   registered-endpoint SSRF confinement, and RS256 verification. Durable human identity is
+   `(oidc, issuer, subject)`; email and token roles/groups/tenant/project/seat claims confer no local
+   authority. Provider ID and access tokens are verified and then discarded; v1 requests no `offline_access`
+   and stores no refresh token, and an entry naming either is refused at apply time. Exactly three provider
+   egress call sites exist — discovery, token exchange, and JWKS fetch/rotation — and each declares its
+   attempt count, wall-time bound, backoff, and typed terminal outcome. Unverifiable or expired key material
+   grants no authority and performs zero mutation; cached keys are never accepted indefinitely and an unknown
+   `kid` triggers at most one bounded refetch per cooldown window.
+4. Human role vocabulary v1 is exactly `operator`, `commander`, and `viewer`, and all three are enumerated in
+   the authorization matrix. Human project authority resolves from an operator-issued, append-only, revocable
+   **human role binding** pinned to one principal, one role, its exact project keys, and the access-policy
+   revision that interprets it. It is not a project-seat grant and confers no `capture|transition|evidence`
+   scope; the two records are disjoint and neither confers the other's authority. Operator retains existing
+   protected authority, Commander remains project/custody/policy bound, and viewer is read-only within the
+   project keys its binding names and never aggregates the portfolio. Ambiguous, unprovisioned, disabled,
+   expired, revoked, replayed, or foreign scope fails closed with no mutation.
+5. UI uses the record-backed opaque Secure/HttpOnly/SameSite=Strict ctower session; direct human APIs use
+   registered-provider Bearer JWTs; machine APIs use the unchanged project-seat Bearer credential. All three
+   transports resolve the same typed Actor and durable principal used by commands, idempotency, custody,
+   assignment, Evidence, verdict, effect, and audit attribution, and `INV-73` makes that a chokepoint rather
+   than a description: a transport that introduces its own principal, custody, or attribution record is
+   forbidden.
+6. Tailnet/private HTTPS remains the network boundary. OIDC adds only exact provider-registry egress; it
+   creates no public ctower ingress. Browser bearer secrecy, CSRF, expiry, reauthentication, revocation,
+   redaction, and safe low-cardinality audit/metrics remain mandatory.
+7. `CT-I1-013` depends on `CT-I1-012` and cannot pass without an independent CSO verdict on the exact digest.
+   Exit reports fixed counters for reuse, both identity planes, the single Actor/custody model, all three
+   roles, all three UI/API auth transports, all eight named auth refusal codes, all three bounded provider
+   egress call sites, all eleven security proof groups, zero provider-specific product branches,
+   discovered-versus-exercised registry entries, and the CSO verdict.
+8. Every authentication denial refuses by a stable named problem code, never a bare 401/403:
+   `auth-provider-unavailable`, `auth-exchange-invalid`, `auth-provider-unverifiable`,
+   `auth-identity-unresolved`, `auth-session-invalid`, `reauthentication-required`, `auth-role-denied`, and
+   the existing `project-scope-denied`. `reauthentication-required` is retained from D22 with its
+   zero-reservation, zero-mutation property intact. Codes are deliberately coarse where a finer one would
+   enumerate people or configuration, and each requires its own negative fixture and exact RFC 9457 snapshot.
+
+Rejected alternatives are an OIDC implementation invented inside ctower, provider lists or role authority
+hard-coded in product code, OIDC claims treated as custody/authorization, a browser-held API bearer, a
+second human audit model, replacement of machine seat credentials, any auth-driven public exposure, a
+provider registry or human role binding that anyone but the operator may create, enable, or rotate, a
+redirect URI matched by anything looser than exact string equality, retention of provider refresh tokens or
+an `offline_access` scope, unbounded or fail-open discovery/JWKS verification, and generic unnamed 401/403
+authentication denials.
