@@ -4,6 +4,7 @@ from ctowerctl.spool.interface import (
     DrainReport,
     ReplayExecutor,
     ReplayResponse,
+    ServerRefusal,
     Spool,
     SpoolCommand,
     SpoolConfig,
@@ -12,12 +13,14 @@ from ctowerctl.spool.interface import (
     SpoolError,
     SpoolState,
     SpoolStatus,
+    server_refusal,
 )
 
 __all__ = [
     "DrainReport",
     "ReplayExecutor",
     "ReplayResponse",
+    "ServerRefusal",
     "Spool",
     "SpoolCommand",
     "SpoolConfig",
@@ -26,4 +29,5 @@ __all__ = [
     "SpoolError",
     "SpoolState",
     "SpoolStatus",
+    "server_refusal",
 ]

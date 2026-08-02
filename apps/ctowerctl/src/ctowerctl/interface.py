@@ -170,6 +170,7 @@ def _execute_mutation(
         reason_code=_outcome_reason(current, report.reason_code),
         sequence=current.sequence,
         result=result,
+        server_refusal=current.server_refusal,
     )
     return outcome, _outcome_code(current.state, report.barrier_sequence)
 
