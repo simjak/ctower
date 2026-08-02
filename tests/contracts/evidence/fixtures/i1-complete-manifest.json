@@ -1842,6 +1842,17 @@
       "environment": "disposable-development",
       "proof_digest": "sha256:cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
       "verifier": "00000000-0000-4000-8000-000000000003"
+    },
+    {
+      "criterion_source": "acceptance-criterion",
+      "criterion_key": "AC-WF-28",
+      "disposition": "applicable",
+      "reason": "SPEC#ac-wf-28 declares this criterion; in force at the active phase",
+      "owner": "ct-i1-007",
+      "source_sha": "sha256:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+      "environment": "disposable-development",
+      "proof_digest": "sha256:cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+      "verifier": "00000000-0000-4000-8000-000000000003"
     }
   ],
   "verdict_ids": [

@@ -332,6 +332,14 @@ executes and reviews, which declared gates activate, and which finite bounds app
 narrow declared behavior; it cannot invent a missing stage or edge. `engineering.software-factory` is the
 first package, not the engine's built-in process.
 
+R2707 adds one authoring path in front of that composition, not another engine. The CompanyBundle resolves
+Company, Project, Team/profile, and Ticket-schema keys before privately normalizing the strict S7/S8
+Workflow Definition YAML into the same immutable Workflow payload shown above. Source-schema validity,
+resolved-plan validity, and Catalog publication are separate gates. S7 and S8 edit/project the same source;
+only a published normalized revision/digest can run. Per-project overlays are additive evidence
+requirements only. Stage `owner` selects an eligible responsibility/capability and never supplies D28 seat
+truth; assigned seats remain explicit facts and signing seats still derive from Evidence assignment.
+
 A Workflow may also declare an ordered stage-group vocabulary. Groups label the pinned graph so a rollup
 can say "review" or "ship" without any engine, policy, projection, or test branching on a stage key; they
 declare no edge, gate, terminal condition, or ordering authority. The delivery sprint — think, plan, build,
