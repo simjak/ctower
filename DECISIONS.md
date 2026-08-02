@@ -1193,3 +1193,94 @@ provider registry or human role binding that anyone but the operator may create,
 redirect URI matched by anything looser than exact string equality, retention of provider refresh tokens or
 an `offline_access` scope, unbounded or fail-open discovery/JWKS verification, and generic unnamed 401/403
 authentication denials.
+
+## D31 — The documentation gate is unskippable, and the landing boundary reads it (locked 2026-08-03, operator)
+
+The operator observed on 2026-08-02 that `manibo` pull requests were merging with no documentation
+artifact, and ordered through R2738 (P1) that ctower make the documentation gate mechanically
+unskippable rather than a remembered process step — "that is the point of the migration." This entry
+writes that grant down and decides nothing further. It preserves D21's derived Project Delivery model,
+D28's revision-pinning discipline, D29's declared-surface and explicit-absence rules, and D30's portfolio
+boundary. It does not weaken CP3-D, the dual-write prohibition, minimal carry-forward, or the
+INV-19/INV-44 independence and waiver rules, and it authorizes no implementation by itself.
+
+**What is already true, and what is not.** `engineering.software-factory@1` already declares
+`documentation` as a `ship` stage that declares no skip predicate and therefore cannot be omitted at any
+risk tier, with required slots `revision`/`truth-check`, a mandatory documentation-truth gate,
+`sf.e07.review-documentation@1` as its only entry, and `sf.e08.documentation-preflight@1` requiring its
+completion before `release-preflight` and `merge`. That package is I2 work behind full normative I1 exit,
+so it governs no merge today. Three gaps let a documented-looking change through anyway, and this decision
+closes exactly those three. It adds no stage, edge, group, gate, evidence kind, environment variable, or
+feature flag.
+
+1. **A docs revision must answer for the change that produced it.** The `documentation.revision` slot
+   contract gains bound requirements, in the same class as `plan.criteria` and `implement.warm-gate`: the
+   current candidate digest; the identity and revision of the documentation-generating command run that
+   produced the artifact from that candidate; and the complete set of change-carried documented surfaces —
+   each operator-visible behavior, API operation, CLI command, configuration key, and runbook step the
+   candidate adds or changes — each with the documentation location that now describes it. A surface the
+   candidate carries and the revision does not answer for fails the slot contract, and `documentation`
+   does not complete. This is the machine form of "generated documentation for new functionality at PR
+   time."
+2. **A release carries its own docs fact.** `release-preflight` gains a second ordinary required slot,
+   `release-notes`: `artifact-digest`, binding the release manifest digest, the complete included-change
+   set, each included change's ticket identity and its current `documentation` completion reference, and
+   the identity and revision of the release-documentation command run that produced the artifact. An
+   included change whose documentation completion is missing, invalidated, expired, revoked, or
+   `STATE_UNKNOWN` fails the slot contract, and `release-preflight` does not complete. The stage's signing
+   slot stays `manifest` under `stage_owner`. `release-preflight` declares no skip predicate, so this fact
+   is owed on every run; binding it at preflight is deliberately earlier than "before a release closes,"
+   because a release is preflighted before it can be promoted at all.
+3. **The landing boundary reads the record: one gate, two facts.** The required status check of issue #199
+   is one check that resolves the ticket bound to the pull request and reports each fact of the
+   **landing-boundary predecessor set** separately: every stage the ticket's own pinned Workflow graph
+   places before the stage carrying the landing boundary, with every required slot of each resolved and
+   current on the candidate digest the pull-request head resolves to. The set is derived from the pinned
+   graph, never from stage-key strings, so the check adds no branch AC-WF-25 forbids; in
+   `engineering.software-factory@1` it resolves to review evidence and documentation evidence over
+   preflight, which is the operator's "one gate, two facts." The check is a pure reader: it writes no
+   record state, mints no Evidence, and is not a second writer.
+4. **Absence is a named refusal that changes nothing.** A missing, invalidated, expired, revoked, or
+   `STATE_UNKNOWN` docs fact is reported by its stable name, alongside every other unmet fact, and the
+   check is red — never green with a caveat in its body, never amber, never silently absent. Unknown is a
+   failure, not calm. Inside the record the existing unfilled-required-slot refusal already covers both
+   slots above with zero authoritative transition mutation and an exact unmet checklist; this decision
+   adds no refusal row and no new reason code.
+5. **Unskippable means no bypass exists.** The documentation fact is declared waivable at no risk tier.
+   No label, comment, administrator merge, re-run, follow-up ticket, green CI run, or reviewer assertion
+   that documentation exists satisfies it, and no protected operator waiver reaches it — the waivable
+   scope INV-44 permits is the family-diversity placement rule, not this fact. The only path through the
+   landing boundary is the recorded artifact.
+6. **Increment binding and reality.** The two slot contracts are I2 carriage inside already-scoped work:
+   CT-L0-004 already freezes the typed slot vocabulary and contracts generically, CT-I2-001 publishes the
+   package, and CT-I2-006 evaluates its policy. The record-backed check is repository infrastructure for
+   ctower's own repository, tracked by issue #199 and the R2738 ticket; it reads the record through the
+   existing generated API/CLI and therefore does not wait on the package. No increment moves, no exit bar
+   is satisfied by evidence gathered against pre-amendment text, and nothing here is described as live
+   until its own acceptance evidence exists.
+7. **Sequencing and bounds.** This decision authorizes the SPEC text it requires and no more. The complete
+   list of amended sites is: US-OP-12 (new); the `release-preflight` row of the required-typed-evidence-
+   slot table; the bound-requirement list under that table, which grows from four contracts to six; the
+   new `#### Record-backed landing boundary` narrative in the delivery-sprint section; the Documentation
+   and Release-preflight rows of the stage-contract projection table; AC-EVD-08 (amended); AC-REL-09
+   (new); and INV-73 (appended, renumbering nothing). `ARCHITECTURE.md` is repaired in the same change as
+   the derived atlas `CLAUDE.md` requires; it needs no grant because it may explain but never extend SPEC.
+   No bootstrap backlog row is amended. Contract, pack, and check implementation is a separate lane
+   stacked on the R2738 ticket and issue #199. D27, D30, and CT-I2-001 remain fail-closed.
+
+Rejected alternatives:
+
+- A second documentation stage or gate beside the one `engineering.software-factory@1` already declares —
+  the repository forbids a second architecture truth, and the gate was never the missing part.
+- Leaving `documentation.revision` free to be filled by a real but unrelated or superseded docs artifact,
+  which is exactly the failure the operator observed.
+- Recording the release documentation fact as a line item inside the release manifest instead of its own
+  required slot, where no slot-completeness rule quantifies over it.
+- Reporting the docs fact only in the check's body, as an advisory annotation, or as a separate optional
+  check, so a green required check can mean "review passed, documentation unknown."
+- A waiver, label, administrator override, or documentation follow-up ticket as a path through the
+  landing boundary.
+- Deriving the check's fact set by naming `documentation` and `risk-derived-review` stage keys instead of
+  the pinned graph's landing-boundary predecessors.
+- Accepting a green CI run, a reviewer's assertion, or the presence of changed files under `docs/` as the
+  documentation fact.

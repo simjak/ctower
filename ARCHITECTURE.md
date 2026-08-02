@@ -346,6 +346,23 @@ the pinned predicate holds on accepted durable facts. A skipped stage therefore 
 instead of the work it did not do, and a `skipped` request with an unsatisfied predicate is refused rather
 than converted or assumed. `SPEC.md` INV-61, INV-62, and INV-63 are authority for all of this.
 
+Six slot contracts in the software-factory package carry extra bound requirements because prose replaces
+them most often: `plan.criteria`, `implement.warm-gate`, every `use-proof`/`live-use-proof`/`verification`
+transcript, `risk-derived-review.round-manifest`, `documentation.revision`, and
+`release-preflight.release-notes`. The last two are why documentation cannot be asserted: the docs revision
+binds the current candidate digest, the generating command run, and every documented surface that candidate
+adds or changes, and the release-scoped artifact binds the release manifest plus each included change's
+current documentation completion. Neither adds an evidence kind — both are `artifact-digest`.
+
+`documentation` and `release-preflight` declare no skip predicate, so neither can be omitted at any risk
+tier, and the record binds the real landing the only way it can: one required status check on the change
+resolves the ticket's **landing-boundary predecessor set** — every stage the pinned graph places before the
+stage carrying the landing boundary — and reports each stage's fact separately as `pass`, `fail`, or
+`STATE_UNKNOWN` on the head revision's candidate digest. Green requires every fact; unknown is a failure.
+The set derives from the pinned graph, never from stage-key strings, so the check carries no branch
+AC-WF-25 forbids. The check is a pure reader — no authoritative write, no Evidence, no slot, no gate — and
+is never itself proof. `SPEC.md` INV-73 and AC-REL-09 are authority for this.
+
 At I2.1, the publishable software-factory revision must materialize one complete authored activation/edge
 sequence, `sf.e00..e15`. It is linear from activation through `intake -> think -> plan -> design ->
 implement -> local-verification-qa -> risk-derived-review -> documentation -> release-preflight -> merge
