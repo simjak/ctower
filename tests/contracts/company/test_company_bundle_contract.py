@@ -14,7 +14,7 @@ __all__: tuple[str, ...] = ()
 
 ROOT = Path(__file__).parents[3]
 COMPONENTS = ROOT / "contracts/components"
-_MINIMAL_RESOURCE_COUNT = 32
+_MINIMAL_RESOURCE_COUNT = 48
 _CTOWER_CHECKPOINT_KEYS = (
     "I1.0",
     "I1.1",
@@ -247,11 +247,25 @@ def _reviewed_bundle_hierarchy() -> tuple[
         ),
     )
     company = cast(dict[str, object], bundle["company"])
-    resources = cast(list[dict[str, object]], bundle["resources"])
+    bundled_resources = cast(list[dict[str, object]], bundle["resources"])
+    resources = [
+        resource
+        for resource in bundled_resources
+        if cast(
+            dict[str, object],
+            cast(dict[str, object], resource["component"])["scope"],
+        )["tenant"]
+        == "ctower"
+    ]
     checkpoints = [
         resource
         for resource in resources
         if cast(dict[str, object], resource["component"])["kind"] == "checkpoint"
+        and cast(
+            dict[str, object],
+            cast(dict[str, object], resource["component"])["scope"],
+        )["project"]
+        == "ctower"
     ]
     payloads = [cast(dict[str, object], resource["payload"]) for resource in checkpoints]
     assignments = cast(list[dict[str, object]], bundle["assignments"])

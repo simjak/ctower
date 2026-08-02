@@ -42,7 +42,11 @@ _ENVELOPE_FIELDS = frozenset(
 )
 
 
-def validate_message(message: dict[str, object]) -> None:
+def validate_message(
+    message: dict[str, object],
+    *,
+    legacy_project_key: str | None = None,
+) -> None:
     payload = message["outbox_payload"]
     if not isinstance(payload, Mapping) or set(payload) != _ENVELOPE_FIELDS:
         raise ValueError("schema-unknown: envelope fields")
@@ -59,7 +63,11 @@ def validate_message(message: dict[str, object]) -> None:
     digest = hashlib.sha256(_canonical(payload).encode()).digest()
     if digest != bytes(cast(bytes, message["event_hash"])):
         raise ValueError("digest-mismatch: event hash")
-    _validate_payload(kind, cast(Mapping[str, object], payload["payload"]))
+    _validate_payload(
+        kind,
+        cast(Mapping[str, object], payload["payload"]),
+        legacy_project_key=legacy_project_key,
+    )
 
 
 def safe_payload_bytes(value: object) -> bytes:
@@ -69,9 +77,18 @@ def safe_payload_bytes(value: object) -> bytes:
         return json.dumps(value, sort_keys=True, default=str, separators=(",", ":")).encode()
 
 
-def _validate_payload(kind: EventKind, payload: Mapping[str, object]) -> None:
+def _validate_payload(
+    kind: EventKind,
+    payload: Mapping[str, object],
+    *,
+    legacy_project_key: str | None,
+) -> None:
     if kind in {EventKind.TICKET_CREATED, EventKind.CUSTODY_TRANSFERRED}:
-        ticket_payload_from_mapping(kind, payload)
+        ticket_payload_from_mapping(
+            kind,
+            payload,
+            legacy_project_key=legacy_project_key,
+        )
         return
     if kind is EventKind.WORK_CHANGED:
         WorkChangedPayload(

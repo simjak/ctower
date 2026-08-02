@@ -105,11 +105,17 @@ def change_assignment(
 
 
 def list_assignments(
-    connection: psycopg.Connection[dict[str, object]], actor: Actor, ticket_id: UUID
+    connection: psycopg.Connection[dict[str, object]],
+    actor: Actor,
+    ticket_id: UUID,
+    project_key: str,
 ) -> tuple[AssignmentInterval, ...] | RecordProblem:
     exists = connection.execute(
-        "SELECT 1 FROM tickets WHERE tenant_id = %s AND ticket_id = %s",
-        (actor.tenant_id, ticket_id),
+        """
+        SELECT 1 FROM tickets
+        WHERE tenant_id = %s AND ticket_id = %s AND project_key = %s
+        """,
+        (actor.tenant_id, ticket_id, project_key),
     ).fetchone()
     if exists is None:
         return RecordProblem("tenant-scope-denied", "Ticket unavailable", 404, "Ticket unavailable")

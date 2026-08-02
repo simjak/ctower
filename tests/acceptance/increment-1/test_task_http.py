@@ -112,7 +112,9 @@ def _exercise_task_routes(client: TestClient, tenant: TenantFixture, ticket_id: 
     )
     assigned = _post(client, tenant, ticket_id, "assignments", _assignment(tenant))
     assignments = client.get(
-        f"/v1/tickets/{ticket_id}/assignments", headers=_headers(tenant, ticket_id)
+        f"/v1/tickets/{ticket_id}/assignments",
+        params={"project_key": "ctower"},
+        headers=_headers(tenant, ticket_id),
     )
     deferred = _post(client, tenant, ticket_id, "intents", _defer())
     admitted = _post(client, tenant, ticket_id, "intents", _admit())
@@ -126,7 +128,7 @@ def _exercise_task_routes(client: TestClient, tenant: TenantFixture, ticket_id: 
     refused_reopen = _post(client, tenant, ticket_id, "intents", _reopen())
     audit = client.get(
         f"/v1/tickets/{ticket_id}/audit",
-        params={"cursor": 0, "limit": 100},
+        params={"project_key": "ctower", "cursor": 0, "limit": 100},
         headers=_headers(tenant, ticket_id),
     )
     invalid_board = client.get("/v1/board", params={"priority": "P9"}, headers=_headers(tenant))
@@ -152,6 +154,7 @@ def _read_blocked_board(client: TestClient, tenant: TenantFixture) -> Response:
         client.get(
             "/v1/board",
             params={
+                "project_key": "ctower",
                 "lane": "blocked",
                 "priority": "P2",
                 "stage_key": "capture",
@@ -245,6 +248,7 @@ def _create_ticket(client: TestClient, tenant: TenantFixture) -> UUID:
         json={
             "initial_custodian_id": str(tenant.commander_id),
             "priority": "P1",
+            "project_key": "ctower",
             "source": {"kind": "test", "ref": f"test:task-http:{uuid4()}"},
             "title": "Task HTTP behavior",
         },

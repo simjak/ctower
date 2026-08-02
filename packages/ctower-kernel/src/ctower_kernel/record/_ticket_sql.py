@@ -96,6 +96,7 @@ def create_ticket(
             actor,
             command,
             result,
+            project_key=project,
             identifiers=identifiers,
             request_digest=request_digest,
             now=now,
@@ -130,6 +131,15 @@ def _prepare_ticket(
     )
     if isinstance(project, RecordProblem):
         return _refuse(transaction, actor, command, request_digest, project, now)
+    if command.project_key is not None and command.project_key != project:
+        return _refuse(
+            transaction,
+            actor,
+            command,
+            request_digest,
+            _scope_problem(command.client_command_id),
+            now,
+        )
     project_refusal = transaction.require_project_mutation(
         actor.tenant_id,
         actor.principal_id,
@@ -171,16 +181,22 @@ def _reserve_ticket_outcome(
 
 
 def get_ticket(
-    dsn: str, actor: Actor, ticket_id: UUID, *, telemetry: TelemetryContext
+    dsn: str,
+    actor: Actor,
+    ticket_id: UUID,
+    project_key: str,
+    *,
+    telemetry: TelemetryContext,
 ) -> Ticket | RecordProblem:
-    """Read one ticket using a tenant predicate that reveals no foreign existence."""
+    """Read one ticket using tenant/project predicates that reveal no foreign existence."""
 
     del telemetry
     with psycopg.connect(dsn, row_factory=dict_row) as connection:
         connection.execute("SET ROLE ctower_svc")
         row = connection.execute(
             """
-            SELECT ticket.ticket_id, ticket.title, ticket.source_kind, ticket.source_ref,
+            SELECT ticket.ticket_id, ticket.title, ticket.project_key,
+                ticket.source_kind, ticket.source_ref,
                 ticket.priority, ticket.custodian_principal_id, ticket.version,
                 ticket.created_at,
                 CASE WHEN confirmation.client_command_id IS NULL
@@ -195,27 +211,38 @@ def get_ticket(
               ON confirmation.tenant_id = head.tenant_id
              AND confirmation.principal_id = head.principal_id
              AND confirmation.client_command_id = head.client_command_id
-            WHERE ticket.tenant_id = %s AND ticket.ticket_id = %s
+            WHERE ticket.tenant_id = %s AND ticket.project_key = %s
+              AND ticket.ticket_id = %s
             """,
-            (actor.tenant_id, ticket_id),
+            (actor.tenant_id, project_key, ticket_id),
         ).fetchone()
     return _ticket_from_row(row) if row is not None else _scope_problem()
 
 
 def ticket_timeline(
-    dsn: str, actor: Actor, ticket_id: UUID, *, telemetry: TelemetryContext
+    dsn: str,
+    actor: Actor,
+    ticket_id: UUID,
+    project_key: str,
+    *,
+    telemetry: TelemetryContext,
 ) -> TicketTimeline | RecordProblem:
-    """Read an ordered event stream using the same no-disclosure tenant predicate."""
+    """Read an ordered event stream using the same no-disclosure project predicate."""
 
     del telemetry
     with psycopg.connect(dsn, row_factory=dict_row) as connection:
         connection.execute("SET ROLE ctower_svc")
         rows = connection.execute(
             """
-            SELECT event_id, sequence, kind, actor_principal_id, client_command_id,
-                server_time, payload
-            FROM events
-            WHERE tenant_id = %s AND aggregate_id = %s
+            SELECT event.event_id, event.sequence, event.kind, event.actor_principal_id,
+                event.client_command_id, event.server_time, event.payload,
+                ticket.project_key AS authoritative_project_key
+            FROM events AS event
+            JOIN tickets AS ticket
+              ON ticket.tenant_id = event.tenant_id
+             AND ticket.ticket_id = event.aggregate_id
+            WHERE event.tenant_id = %s AND ticket.project_key = %s
+              AND event.aggregate_id = %s
               AND kind IN (
                 'ticket.created',
                 'ticket.custody_transferred',
@@ -223,7 +250,7 @@ def ticket_timeline(
               )
             ORDER BY sequence
             """,
-            (actor.tenant_id, ticket_id),
+            (actor.tenant_id, project_key, ticket_id),
         ).fetchall()
     if not rows:
         return _scope_problem()
@@ -409,6 +436,7 @@ def _append_ticket_created(
     command: TicketCommand,
     result: TicketCommandResult,
     *,
+    project_key: str,
     identifiers: _TicketIds,
     request_digest: bytes,
     now: datetime,
@@ -426,6 +454,7 @@ def _append_ticket_created(
         payload=TicketCreatedPayload(
             custodian_id=command.initial_custodian_id,
             priority=command.priority,
+            project_key=project_key,
             source_kind=command.source.kind,
             source_ref=command.source.ref,
             title=command.title,
@@ -495,7 +524,11 @@ def _timeline_event(row: dict[str, object]) -> TimelineEvent:
         event_id=cast(UUID, row["event_id"]),
         kind=kind,
         occurred_at=cast(datetime, row["server_time"]),
-        payload=ticket_payload_from_mapping(kind, payload),
+        payload=ticket_payload_from_mapping(
+            kind,
+            payload,
+            legacy_project_key=str(row["authoritative_project_key"]),
+        ),
         sequence=int(cast(int, row["sequence"])),
     )
 

@@ -513,6 +513,7 @@ def _ticket(tenant: TenantFixture) -> UUID:
             client_command_id=uuid4(),
             initial_custodian_id=tenant.commander_id,
             priority="P1",
+            project_key="ctower",
             source=SourceReference("test", f"test:cp3c:{uuid4()}"),
             title="CP3-C encrypted object",
         ),

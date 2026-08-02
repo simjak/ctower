@@ -59,6 +59,7 @@ class SyntheticFourStageHandler:
             TicketCreateRequest(
                 initial_custodian_id=self.author_id,
                 priority=Priority.P1,
+                project_key="ctower",
                 source=SourceReference(
                     kind="fixture",
                     ref="ctower:i1.6:api-cli-trust-spine",

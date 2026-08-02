@@ -41,7 +41,8 @@ def apply_message(
         _apply_workflow(connection, tenant_id, message, payload, position)
 
 
-def read_view(dsn: str, tenant_id: UUID, query: BoardQuery, *, source: int) -> BoardView:
+def read_view(dsn: str, tenant_id: UUID, query: BoardQuery | None, *, source: int) -> BoardView:
+    project_key = query.project_key if query is not None else None
     with psycopg.connect(dsn, row_factory=dict_row) as connection:
         connection.execute("SET ROLE ctower_projection")
         cursor = connection.execute(
@@ -54,8 +55,13 @@ def read_view(dsn: str, tenant_id: UUID, query: BoardQuery, *, source: int) -> B
             (tenant_id,),
         ).fetchone()
         rows = connection.execute(
-            "SELECT * FROM board_projection_rows WHERE tenant_id = %s ORDER BY ticket_id",
-            (tenant_id,),
+            """
+            SELECT * FROM board_projection_rows
+            WHERE tenant_id = %s
+              AND (%s::text IS NULL OR project_key = %s)
+            ORDER BY ticket_id
+            """,
+            (tenant_id, project_key, project_key),
         ).fetchall()
         expected_row = connection.execute(
             """
@@ -65,26 +71,129 @@ def read_view(dsn: str, tenant_id: UUID, query: BoardQuery, *, source: int) -> B
               ON event.tenant_id = confirmation.tenant_id
              AND event.actor_principal_id = confirmation.principal_id
              AND event.client_command_id = confirmation.client_command_id
+            JOIN tickets AS ticket
+              ON ticket.tenant_id = event.tenant_id
+             AND ticket.ticket_id = event.aggregate_id
             WHERE confirmation.tenant_id = %s AND event.kind = 'ticket.created'
+              AND (%s::text IS NULL OR ticket.project_key = %s)
             """,
-            (tenant_id,),
+            (tenant_id, project_key, project_key),
         ).fetchone()
-    projection = int(cast(int, cursor["acceptance_position"])) if cursor else 0
+        scoped_source = _project_source(connection, tenant_id, project_key)
+        scoped_projection = connection.execute(
+            """
+            SELECT COALESCE(MAX(source_position), 0) AS value
+            FROM board_projection_rows
+            WHERE tenant_id = %s AND (%s::text IS NULL OR project_key = %s)
+            """,
+            (tenant_id, project_key, project_key),
+        ).fetchone()
+    global_projection = _cursor_position(cursor)
+    view_source, projection = _scoped_watermarks(
+        project_key,
+        source=source,
+        scoped_source=scoped_source,
+        global_projection=global_projection,
+        scoped_projection=scoped_projection,
+    )
     expected_cards = int(cast(int, expected_row["value"])) if expected_row else 0
-    current = bool(
+    current = _is_current(
+        cursor,
+        global_projection=global_projection,
+        source=source,
+        projection=projection,
+        view_source=view_source,
+        actual_cards=len(rows),
+        expected_cards=expected_cards,
+    )
+    return BoardView(
+        cards=_matching_cards(rows, query),
+        health=ProjectionHealth.CURRENT if current else ProjectionHealth.STATE_UNKNOWN,
+        source_watermark=view_source,
+        projection_watermark=projection,
+    )
+
+
+def _cursor_position(cursor: dict[str, object] | None) -> int:
+    return int(cast(int, cursor["acceptance_position"])) if cursor else 0
+
+
+def _scoped_watermarks(
+    project_key: str | None,
+    *,
+    source: int,
+    scoped_source: int,
+    global_projection: int,
+    scoped_projection: dict[str, object] | None,
+) -> tuple[int, int]:
+    if project_key is None:
+        return source, global_projection
+    projection = int(cast(int, scoped_projection["value"])) if scoped_projection else 0
+    return scoped_source, projection
+
+
+def _is_current(
+    cursor: dict[str, object] | None,
+    *,
+    global_projection: int,
+    source: int,
+    projection: int,
+    view_source: int,
+    actual_cards: int,
+    expected_cards: int,
+) -> bool:
+    return bool(
         cursor
         and cursor["health"] == "CURRENT"
         and cursor["blocked_outbox_id"] is None
-        and projection == source
-        and len(rows) == expected_cards
+        and global_projection == source
+        and projection == view_source
+        and actual_cards == expected_cards
     )
-    cards = tuple(_card(row) for row in rows if _matches_source(row, query))
-    return BoardView(
-        cards=tuple(card for card in cards if _matches(card, query)),
-        health=ProjectionHealth.CURRENT if current else ProjectionHealth.STATE_UNKNOWN,
-        source_watermark=source,
-        projection_watermark=projection,
-    )
+
+
+def _matching_cards(
+    rows: list[dict[str, object]], query: BoardQuery | None
+) -> tuple[BoardCard, ...]:
+    cards = tuple(_card(row) for row in rows if query is None or _matches_source(row, query))
+    return tuple(card for card in cards if query is None or _matches(card, query))
+
+
+def _project_source(
+    connection: psycopg.Connection[dict[str, object]],
+    tenant_id: UUID,
+    project_key: str | None,
+) -> int:
+    if project_key is None:
+        return 0
+    row = connection.execute(
+        """
+        SELECT COALESCE(MAX(confirmation.acceptance_position), 0) AS value
+        FROM durability_acceptance_confirmations AS confirmation
+        JOIN events AS event
+          ON event.tenant_id = confirmation.tenant_id
+         AND event.actor_principal_id = confirmation.principal_id
+         AND event.client_command_id = confirmation.client_command_id
+        JOIN event_links AS link
+          ON link.tenant_id = event.tenant_id AND link.event_id = event.event_id
+         AND link.subject_kind = 'ticket'
+        JOIN tickets AS ticket
+          ON ticket.tenant_id = link.tenant_id AND ticket.ticket_id = link.subject_id
+        WHERE confirmation.tenant_id = %s AND ticket.project_key = %s
+          AND event.kind = ANY(%s)
+        """,
+        (
+            tenant_id,
+            project_key,
+            [
+                EventKind.TICKET_CREATED.value,
+                EventKind.CUSTODY_TRANSFERRED.value,
+                EventKind.WORK_CHANGED.value,
+                EventKind.WORKFLOW_CHANGED.value,
+            ],
+        ),
+    ).fetchone()
+    return int(cast(int, row["value"])) if row is not None else 0
 
 
 def _create_card(
@@ -94,19 +203,22 @@ def _create_card(
     payload: dict[str, object],
     position: int,
 ) -> None:
+    project_key = _created_project(connection, tenant_id, message, payload)
     connection.execute(
         """
         INSERT INTO board_projection_rows (
-            tenant_id, ticket_id, title, source_kind, source_ref, lane, underlying_lane, priority,
+            tenant_id, ticket_id, project_key, title, source_kind, source_ref,
+            lane, underlying_lane, priority,
             stage_key, activity_class, custodian_id, assignee_id, blocker_reason,
             blocker_opened_at, risk, delivery_facts, ticket_version, source_position
-        ) VALUES (%s, %s, %s, %s, %s, 'backlog', NULL, %s, NULL, NULL, %s, NULL, NULL,
-            NULL, NULL, '[]'::jsonb, 1, %s)
+        ) VALUES (%s, %s, %s, %s, %s, %s, 'backlog', NULL, %s,
+            NULL, NULL, %s, NULL, NULL, NULL, NULL, '[]'::jsonb, 1, %s)
         ON CONFLICT (tenant_id, ticket_id) DO NOTHING
         """,
         (
             tenant_id,
             message["aggregate_id"],
+            project_key,
             payload["title"],
             payload["source_kind"],
             payload["source_ref"],
@@ -115,6 +227,23 @@ def _create_card(
             position,
         ),
     )
+
+
+def _created_project(
+    connection: psycopg.Connection[dict[str, object]],
+    tenant_id: UUID,
+    message: dict[str, object],
+    payload: dict[str, object],
+) -> str:
+    if "project_key" in payload:
+        return str(payload["project_key"])
+    row = connection.execute(
+        "SELECT project_key FROM tickets WHERE tenant_id = %s AND ticket_id = %s",
+        (tenant_id, message["aggregate_id"]),
+    ).fetchone()
+    if row is None:
+        raise ValueError("legacy ticket event has no authoritative project binding")
+    return str(row["project_key"])
 
 
 def _apply_work(
@@ -303,6 +432,7 @@ def _card(row: dict[str, object]) -> BoardCard:
     delivery = cast(list[object], row["delivery_facts"])
     return BoardCard(
         ticket_id=cast(UUID, row["ticket_id"]),
+        project_key=str(row["project_key"]),
         title=str(row["title"]),
         lane=BoardLane(str(row["lane"])),
         underlying_lane=(

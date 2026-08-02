@@ -387,6 +387,7 @@ def _create_target(tenant: TenantFixture) -> UUID:
             client_command_id=uuid4(),
             initial_custodian_id=tenant.commander_id,
             priority="P2",
+            project_key="ctower",
             source=SourceReference("synthetic", "synthetic:http-alias-target"),
             title="Generated-client alias target",
         ),

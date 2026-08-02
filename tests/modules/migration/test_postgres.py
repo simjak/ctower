@@ -604,6 +604,7 @@ def _create_target(database: Database, operator: Actor) -> UUID:
             client_command_id=uuid4(),
             initial_custodian_id=database.commander_id,
             priority="P2",
+            project_key="ctower",
             source=SourceReference("synthetic", "synthetic:alias-target"),
             title="Existing exact alias target",
         ),

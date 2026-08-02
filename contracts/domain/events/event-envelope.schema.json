@@ -219,6 +219,7 @@
       "properties": {
         "custodian_id": {"type": "string", "format": "uuid"},
         "priority": {"type": "string", "enum": ["P0", "P1", "P2"]},
+        "project_key": {"type": "string", "pattern": "^[a-z][a-z0-9-]{2,63}$"},
         "source_kind": {"type": "string", "minLength": 1, "maxLength": 64},
         "source_ref": {"type": "string", "minLength": 1, "maxLength": 256},
         "title": {"type": "string", "minLength": 1, "maxLength": 200}

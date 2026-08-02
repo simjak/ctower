@@ -36,9 +36,9 @@ def test_migration_manifest_is_ordered_and_checksum_exact() -> None:
     assert set(manifest) == {"adoption_baseline", "migrations", "schema"}
     assert manifest["schema"] == "ctower.migrations/v3"
     assert manifest["adoption_baseline"] == {
-        "through": "0039_project_seat_credentials.sql",
+        "through": "0040_project_scoped_reads.sql",
         "schema_sha256": (
-            "sha256:14badc991e6f7c1091450696bc2f1abb5590e3fa4e37f4d7e94f9b782aec9bee"
+            "sha256:d557c028d86bc560cfd48257a546645d663ed322270cbdf473acc1d14f4f10da"
         ),
         "semantic_checks": "ctower.pre-ledger/v1",
         "schema_object_sum256": (
@@ -86,6 +86,7 @@ def test_migration_manifest_is_ordered_and_checksum_exact() -> None:
         "0037_relax_checkpoint_key_domain.sql",
         "0038_project_delivery_seat_carriage.sql",
         "0039_project_seat_credentials.sql",
+        "0040_project_scoped_reads.sql",
     ]
     for entry in entries:
         digest = hashlib.sha256((MIGRATIONS / entry["path"]).read_bytes()).hexdigest()

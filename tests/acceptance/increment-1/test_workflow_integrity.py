@@ -312,6 +312,7 @@ def _create_ticket(client: CtowerClient, tenant: TenantFixture) -> UUID:
         TicketCreateRequest(
             initial_custodian_id=tenant.commander_id,
             priority=Priority.P1,
+            project_key="ctower",
             source=SourceReference(kind="test", ref=f"test:workflow-integrity:{uuid4()}"),
             title="Workflow integrity",
         ),
@@ -375,6 +376,7 @@ def _prepare_verification_stage(
             uuid4(),
             tenant.commander_id,
             "P1",
+            "ctower",
             RecordSourceReference("test", f"test:verdict-order:{uuid4()}"),
             "Verdict order integrity",
         ),

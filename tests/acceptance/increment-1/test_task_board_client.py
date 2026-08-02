@@ -70,7 +70,7 @@ def test_generated_client_drives_complete_task_board_and_audit_flow(
         ticket_id = _new_ticket(commander, tenant.commander_id, "cp2-client")
         assert _refresh_board(tenant, commander).cards[0].lane is BoardLane.BACKLOG
         with pytest.raises(CtowerProblemError) as invalid_filter:
-            commander.get_board(stage_key="NOT A STAGE")
+            commander.get_board(project_key="ctower", stage_key="NOT A STAGE")
         assert invalid_filter.value.problem.code == "validation-error"
         _start_and_admit(commander, ticket_id, graph, tenant)
         _prioritize_assign_and_begin(commander, ticket_id, tenant, graph)
@@ -99,7 +99,7 @@ def _assert_close_reopen_custody(
     complete = _refresh_board(tenant, client)
     closed = tuple(
         interval
-        for interval in client.list_ticket_assignments(ticket_id).assignments
+        for interval in client.list_ticket_assignments(ticket_id, project_key="ctower").assignments
         if interval.assignment_kind.value == "ticket_custodian"
     )
     reopened_receipt = client.apply_ticket_intent(
@@ -117,7 +117,7 @@ def _assert_close_reopen_custody(
     reopened = _refresh_board(tenant, client)
     history = tuple(
         interval
-        for interval in client.list_ticket_assignments(ticket_id).assignments
+        for interval in client.list_ticket_assignments(ticket_id, project_key="ctower").assignments
         if interval.assignment_kind.value == "ticket_custodian"
     )
     assert complete.cards[0].lane is BoardLane.COMPLETE
@@ -173,7 +173,7 @@ def _prioritize_assign_and_begin(
             ),
             command_id=uuid4(),
         )
-    assignments = client.list_ticket_assignments(ticket_id).assignments
+    assignments = client.list_ticket_assignments(ticket_id, project_key="ctower").assignments
     assert assignments[0].assignment_kind.value == "current_assignee"
     assert assignments[0].released_at == assignments[1].assigned_at
     assert assignments[1].released_at is None
@@ -298,14 +298,17 @@ def test_generated_board_source_lookup_returns_hit_and_empty_miss(
             TicketCreateRequest(
                 initial_custodian_id=tenant.commander_id,
                 priority=Priority.P2,
+                project_key="ctower",
                 source=SourceReference(kind="mission-control", ref=source_ref),
                 title="Source lookup acceptance",
             ),
             command_id=uuid4(),
         )
         _refresh_board(tenant, client)
-        hit = client.get_board(source_kind="mission-control", source_ref=source_ref)
-        miss = client.get_board(source_ref="R-does-not-exist")
+        hit = client.get_board(
+            project_key="ctower", source_kind="mission-control", source_ref=source_ref
+        )
+        miss = client.get_board(project_key="ctower", source_ref="R-does-not-exist")
         client.close()
 
     assert [card.ticket_id for card in hit.cards] == [created.ticket.ticket_id]
@@ -317,6 +320,7 @@ def _new_ticket(client: CtowerClient, custodian_id: UUID, suffix: str) -> UUID:
         TicketCreateRequest(
             initial_custodian_id=custodian_id,
             priority=Priority.P2,
+            project_key="ctower",
             source=SourceReference(kind="test", ref=f"test:{suffix}:{uuid4()}"),
             title=suffix,
         ),
@@ -409,7 +413,9 @@ def _audit_pages(client: CtowerClient, ticket_id: UUID) -> list[AuditEvent]:
     events: list[AuditEvent] = []
     cursor = 0
     while True:
-        page = client.list_ticket_audit_events(ticket_id, cursor=cursor, limit=2)
+        page = client.list_ticket_audit_events(
+            ticket_id, project_key="ctower", cursor=cursor, limit=2
+        )
         events.extend(page.events)
         if page.next_cursor is None:
             return events
@@ -443,4 +449,4 @@ def _digest(relative: str) -> str:
 def _refresh_board(tenant: TenantFixture, client: CtowerClient) -> BoardView:
     accept_pending_commands(tenant.database.admin_dsn, tenant.tenant_id)
     Projections(PostgresProjections(tenant.database.projection_dsn)).catch_up(tenant.tenant_id)
-    return client.get_board()
+    return client.get_board(project_key="ctower")
