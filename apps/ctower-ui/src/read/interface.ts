@@ -1,4 +1,5 @@
 import type { BoardLane, DurabilityState, Priority, ProjectionHealth } from "@ctower/client";
+import type { ReadFailure } from "./bounded";
 
 /**
  * The record-read contract this surface renders.
@@ -37,12 +38,19 @@ export interface FutureSource {
  *
  * `present`     — the record answered and the value is what it recorded.
  * `absent`      — ctower records no such fact yet; `source` names what will.
- * `unavailable` — a source exists but this read did not succeed; never blank.
+ * `unavailable` — a source exists and this read did not reach it. This is never
+ *                 collapsed into `absent`: an unreachable source must render as
+ *                 unreachable, because "we could not read it" and "the record
+ *                 does not hold it" are opposite claims to an operator.
+ *
+ * There is no fourth state and no default value. A screen unwraps a reading
+ * only through `frame/Declared.tsx`, which renders the two non-present states
+ * itself, so no surface can turn a failed read into an empty one.
  */
 export type Reading<T> =
   | { readonly state: "present"; readonly value: T }
   | { readonly state: "absent"; readonly source: FutureSource }
-  | { readonly state: "unavailable"; readonly reason: string };
+  | { readonly state: "unavailable"; readonly failure: ReadFailure };
 
 export interface RecordSource {
   readonly kind: string;
@@ -77,10 +85,16 @@ export interface TicketRecord {
   readonly source: RecordSource;
 }
 
-/** One board card joined to the ticket read that carries its source and age. */
+/**
+ * One board card joined to the ticket read that carries its source and age.
+ *
+ * The join is a second read and can fail on its own, so it is kept as a
+ * `Reading` rather than flattened to a nullable: a card whose ticket read did
+ * not answer says so, instead of quietly showing no source and no age.
+ */
 export interface BoardEntry {
   readonly card: BoardCard;
-  readonly ticket: TicketRecord | null;
+  readonly ticket: Reading<TicketRecord>;
 }
 
 export interface BoardSnapshot {

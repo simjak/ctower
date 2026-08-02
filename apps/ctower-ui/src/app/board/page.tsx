@@ -1,12 +1,14 @@
-import type { ReactElement } from "react";
+import type { ReactElement, ReactNode } from "react";
 import { Chrome } from "@/frame/Chrome";
-import { DeclaredState } from "@/frame/Declared";
+import { Resolved } from "@/frame/Declared";
 import { RecordFoot } from "@/frame/RecordFoot";
 import { StateGlyph } from "@/frame/StateGlyph";
 import { recordAdapter } from "@/read/adapter";
+import { sourceKindOf, unresolvedSources } from "@/read/boardProjection";
 import type { BoardEntry, BoardSnapshot } from "@/read/interface";
 import { LaneCard } from "@/surfaces/board/LaneCard";
 import { SourceTabs } from "@/surfaces/board/SourceTabs";
+import { UnreadSources } from "@/surfaces/board/UnreadSources";
 import type { SourceTab } from "@/surfaces/board/SourceTabs";
 import {
   ALL_SOURCES,
@@ -15,7 +17,6 @@ import {
   inLane,
   LANE_COLUMNS,
   selectEntries,
-  sourceKindOf,
   sourceKinds,
 } from "@/surfaces/board/lanes";
 
@@ -122,6 +123,7 @@ function BoardBody({
         headerExtra={<SourceTabs tabs={tabsFor(snapshot.entries, kinds)} selected={selected} />}
       />
       <StageJump entries={shown} />
+      <UnreadSources unresolved={unresolvedSources(snapshot.entries)} />
       <Rail entries={shown} now={now} />
       <div className="page">
         <div className="wrap">
@@ -135,16 +137,7 @@ function BoardBody({
   );
 }
 
-export default async function BoardPage({
-  searchParams,
-}: {
-  readonly searchParams: Promise<Record<string, string | string[] | undefined>>;
-}): Promise<ReactElement> {
-  const board = await recordAdapter.board();
-  const source = readSource((await searchParams).source);
-  if (board.state === "present") {
-    return <BoardBody snapshot={board.value} source={source} />;
-  }
+function BoardFrame({ declared }: { readonly declared: ReactElement }): ReactElement {
   return (
     <>
       <Chrome section="Board" />
@@ -158,11 +151,25 @@ export default async function BoardPage({
             <header>
               <h2>Lanes</h2>
             </header>
-            <DeclaredState reading={board} />
+            {declared}
           </section>
           <RecordFoot readPath="/v1/board" />
         </div>
       </main>
     </>
+  );
+}
+
+export default async function BoardPage({
+  searchParams,
+}: {
+  readonly searchParams: Promise<Record<string, string | string[] | undefined>>;
+}): Promise<ReactNode> {
+  const board = await recordAdapter.board();
+  const source = readSource((await searchParams).source);
+  return (
+    <Resolved reading={board} frame={(declared) => <BoardFrame declared={declared} />}>
+      {(snapshot) => <BoardBody snapshot={snapshot} source={source} />}
+    </Resolved>
   );
 }

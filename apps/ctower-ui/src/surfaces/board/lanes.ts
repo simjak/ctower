@@ -1,3 +1,4 @@
+import { sourceKindOf } from "@/read/boardProjection";
 import type { BoardEntry, BoardLane } from "@/read/interface";
 
 /**
@@ -64,10 +65,6 @@ export const LANE_COLUMNS: readonly LaneColumn[] = [
 ];
 
 export const ALL_SOURCES = "all";
-
-export function sourceKindOf(entry: BoardEntry): string | null {
-  return entry.ticket?.source.kind ?? null;
-}
 
 export function sourceKinds(entries: readonly BoardEntry[]): readonly string[] {
   const kinds = new Set<string>();

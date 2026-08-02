@@ -11,7 +11,7 @@ read-only operator dogfood surface over the running shadow instance, ordered by 
 | Is | A Next.js server that reads the shadow instance's existing read API and renders eight approved screens. |
 | Is | Read-only. Every path it calls is a `GET`. There is no mutation function in this boundary to call by accident. |
 | Is not | The I2.4 browser product. `apps/ctower-web` remains untouched, and D22 §1 (React 19 / React Router 7 / Vite static, no SSR) still governs it. |
-| Is not | An authority. The browser receives no API bearer, no base URL, and no session. |
+| Is not | An authority. The browser receives no API bearer, no session and no credential of any kind; every read happens server-side. The instance's API origin *is* printed, deliberately, in the provenance foot of every screen — see below. |
 
 Two repository facts this boundary deliberately does **not** decide, and which need an operator
 decision entry before it merges as anything other than a dogfood surface:
@@ -36,6 +36,30 @@ src/surfaces/       one directory per screen family
 src/app/            the eight routes
 ```
 
+### What the browser is and is not given
+
+No bearer, no session cookie, no CSRF token and no credential reaches the page: `src/read/` runs
+only on the server. What the page *does* carry is the instance's API origin, printed in the
+provenance foot next to the posture and the render time. That is deliberate — a capture from one
+instance would otherwise be indistinguishable from a capture from another, which is the failure
+mode the foot exists to prevent. The origin is not a credential and grants a reader nothing; if a
+future deployment wants it hidden, `frame/RecordFoot.tsx` is the one place to change.
+
+### Bounded reads (O10)
+
+`src/read/bounded.ts` is the only module in `apps/` that names `fetch`. Every record read goes
+through it under a bounded policy: a per-attempt timeout, a finite attempt count *and* a finite
+elapsed deadline, full-jittered exponential backoff capped and clamped to the remaining deadline, a
+typed transient/permanent predicate with no catch-all branch, and a typed `ReadExhausted` outcome
+that preserves the attempt count, elapsed time and last classified failure and is counted and
+written once to stderr. Idempotency is satisfied by construction: the chokepoint issues `GET` and
+accepts no method or body, so no mutation call site exists here.
+
+`tests/repository/test_browser_network_chokepoint.py` derives the call-site denominator from the
+repository tree — not from a hand-kept endpoint list — and fails closed when a network-capable
+construct appears outside an approved policy holder, when the chokepoint loses one of its required
+bounds, or when an application value-imports the generated client's single-shot runtime.
+
 ### The data adapter
 
 `src/read/interface.ts` declares every read this surface makes as a typed function returning
@@ -47,13 +71,21 @@ active.
 Landing the #186 typed feed changes `adapter.ts` and nothing else: no screen constructs a
 client, and no screen knows a URL.
 
-### Honest empty states
+### Honest empty states — and the difference between empty and unreachable
 
 Board and Ticket render live record facts. Heartbeats, Inbox, Feed session facts, Files,
 Workspace and Explorer have no source in ctower today, so each renders its approved layout and
 an explicit block naming the work that lands its source (`#186` / `G5`). No screen invents a
 number, a name, a duration or a token count. The ticket work timeline in particular reads
 `no session data yet` and totals `—` until G5 session events exist.
+
+**A source that exists and did not answer is never rendered as one that does not exist.** These are
+opposite claims to an operator, so they are different states, different blocks and different words:
+`no data source yet` versus `the record was not reached`, the latter carrying the classified
+failure and the bounded attempts that were spent. A `Reading` is unwrapped only in
+`frame/Declared.tsx` — `Resolved` for a panel, `InlineReading` for a row — so no surface can
+flatten a failed read into an empty one, and the structural test above fails closed if one tries.
+Inline, the two read `not recorded` and `not reached` rather than a bare dash.
 
 ### Read-only v1
 

@@ -1,14 +1,17 @@
 import Link from "next/link";
-import type { ReactElement } from "react";
+import type { ReactElement, ReactNode } from "react";
 import { Chrome } from "@/frame/Chrome";
-import { DeclaredState, NoSourceYet } from "@/frame/Declared";
+import { InlineReading, NoSourceYet, Resolved } from "@/frame/Declared";
 import { RecordFoot } from "@/frame/RecordFoot";
 import { laneGlyph, StateGlyph } from "@/frame/StateGlyph";
 import { recordAdapter } from "@/read/adapter";
-import { clockText, shortId, stampText } from "@/read/elapsed";
-import type { BoardCard, RecordEvent, TicketRecord } from "@/read/interface";
+import { cardFor } from "@/read/boardProjection";
+import { shortId, stampText } from "@/read/elapsed";
+import type { BoardCard, Reading, RecordEvent, TicketRecord } from "@/read/interface";
+import { mapReading } from "@/read/reading";
 import { isComment, isRelation, stagesFrom, workflowRefOf } from "@/surfaces/record/events";
-import { EvidencePanel, RecordStreamPanel } from "@/surfaces/ticket/RecordPanels";
+import { CommentsPanel, EvidencePanel, RecordStreamPanel } from "@/surfaces/ticket/RecordPanels";
+import type { EventsReading } from "@/surfaces/ticket/RecordPanels";
 import { StageStrip } from "@/surfaces/ticket/StageStrip";
 import { WorkTimeline } from "@/surfaces/ticket/WorkTimeline";
 
@@ -19,7 +22,7 @@ function TicketHead({
   card,
 }: {
   readonly ticket: TicketRecord;
-  readonly card: BoardCard | null;
+  readonly card: Reading<BoardCard>;
 }): ReactElement {
   return (
     <div className="thead">
@@ -30,17 +33,31 @@ function TicketHead({
         <span className="id">{ticket.ticketId}</span>
       </div>
       <h1>
-        <StateGlyph
-          name={card === null ? "open" : laneGlyph(card.lane, card.blockerReason !== null)}
+        <InlineReading
+          reading={card}
+          present={(row) => <StateGlyph name={laneGlyph(row.lane, row.blockerReason !== null)} />}
+          missing={() => <StateGlyph name="open" />}
         />
         {ticket.title}
       </h1>
       <div className="tmeta">
         <span className={`pri ${ticket.priority.toLowerCase()}`}>{ticket.priority}</span>
-        {card === null ? null : <span className="chip">lane {card.lane}</span>}
-        {card?.stageLabel === undefined || card.stageLabel === null ? null : (
-          <span className="chip">stage {card.stageLabel}</span>
-        )}
+        <InlineReading
+          reading={card}
+          present={(row) => (
+            <>
+              <span className="chip">lane {row.lane}</span>
+              {row.stageLabel === null ? null : (
+                <span className="chip">stage {row.stageLabel}</span>
+              )}
+            </>
+          )}
+          missing={(label, detail, tone) => (
+            <span className="chip" style={tone} title={detail}>
+              board context {label}
+            </span>
+          )}
+        />
         <span className="chip">durability {ticket.durabilityState}</span>
         <span className="chip">version {ticket.version.toString()}</span>
       </div>
@@ -49,12 +66,6 @@ function TicketHead({
         <span className="mono">{ticket.custodianId}</span>
         <span className="k">created</span>
         <span className="mono">{stampText(ticket.createdAt)}</span>
-        {card?.assigneeId === undefined || card.assigneeId === null ? null : (
-          <>
-            <span className="k">assignee</span>
-            <span className="mono">{card.assigneeId}</span>
-          </>
-        )}
       </div>
     </div>
   );
@@ -85,17 +96,70 @@ function HeldBanner({ card }: { readonly card: BoardCard }): ReactElement | null
   );
 }
 
+function StagesSection({ audit }: { readonly audit: EventsReading }): ReactNode {
+  const stages = mapReading(audit, (events) => {
+    const entries = stagesFrom(events);
+    return entries.length === 0
+      ? ({
+          state: "absent",
+          source: { lands: "#186", what: "a workflow run for this ticket" },
+        } as const)
+      : ({ state: "present", value: entries } as const);
+  });
+  return (
+    <Resolved
+      reading={stages}
+      frame={(declared) => (
+        <section className="panel" style={{ marginTop: "18px" }}>
+          <header>
+            <h2>Stages</h2>
+          </header>
+          {declared}
+        </section>
+      )}
+    >
+      {(entries) => <StageStrip stages={entries} />}
+    </Resolved>
+  );
+}
+
+function AuditNote({ audit }: { readonly audit: EventsReading }): ReactNode {
+  return (
+    <InlineReading
+      reading={audit}
+      present={(events: readonly RecordEvent[]) => `${events.length.toString()} appended events`}
+      missing={(label, detail) => <span title={detail}>audit {label}</span>}
+    />
+  );
+}
+
 function RightRail({
   ticket,
   card,
-  events,
+  audit,
 }: {
   readonly ticket: TicketRecord;
-  readonly card: BoardCard | null;
-  readonly events: readonly RecordEvent[];
+  readonly card: Reading<BoardCard>;
+  readonly audit: EventsReading;
 }): ReactElement {
-  const relations = events.filter(isRelation);
-  const workflow = workflowRefOf(events);
+  const workflow = mapReading(audit, (events) => {
+    const ref = workflowRefOf(events);
+    return ref === null
+      ? ({
+          state: "absent",
+          source: { lands: "#186", what: "a workflow run for this ticket" },
+        } as const)
+      : ({ state: "present", value: ref } as const);
+  });
+  const relations = mapReading(audit, (events) => {
+    const found = events.filter(isRelation);
+    return found.length === 0
+      ? ({
+          state: "absent",
+          source: { lands: "#186", what: "ticket relations on a read path" },
+        } as const)
+      : ({ state: "present", value: found } as const);
+  });
   return (
     <aside className="rail-r">
       <section className="panel">
@@ -113,11 +177,31 @@ function RightRail({
           </li>
           <li>
             <span className="k">workflow</span>
-            <span className="v">{workflow ?? "none recorded"}</span>
+            <span className="v">
+              <InlineReading
+                reading={workflow}
+                present={(ref) => ref}
+                missing={(label, detail) => <span title={detail}>workflow {label}</span>}
+              />
+            </span>
           </li>
           <li>
             <span className="k">durability</span>
             <span className="v">{ticket.durabilityState}</span>
+          </li>
+          <li>
+            <span className="k">delivery</span>
+            <span className="v">
+              <InlineReading
+                reading={card}
+                present={(row) =>
+                  row.deliveryFacts.length === 0
+                    ? "no change reference recorded"
+                    : row.deliveryFacts.join(" · ")
+                }
+                missing={(label, detail) => <span title={detail}>board context {label}</span>}
+              />
+            </span>
           </li>
           <li>
             <span className="k">board</span>
@@ -125,16 +209,6 @@ function RightRail({
               back to the lanes
             </Link>
           </li>
-          {card === null ? null : (
-            <li>
-              <span className="k">delivery</span>
-              <span className="v">
-                {card.deliveryFacts.length === 0
-                  ? "no change reference recorded"
-                  : card.deliveryFacts.join(" · ")}
-              </span>
-            </li>
-          )}
         </ul>
       </section>
 
@@ -154,86 +228,44 @@ function RightRail({
         <header>
           <h2>Depends on</h2>
         </header>
-        {relations.length === 0 ? (
-          <NoSourceYet source={{ lands: "#186", what: "ticket relations on a read path" }} />
-        ) : (
-          <ul className="links">
-            {relations.map((event) => (
-              <li key={event.eventId}>
-                <span className="k">{clockText(event.occurredAt)}</span>
-                <span className="v">{event.kind}</span>
-              </li>
-            ))}
-          </ul>
-        )}
+        <Resolved reading={relations}>
+          {(events) => (
+            <ul className="links">
+              {events.map((event) => (
+                <li key={event.eventId}>
+                  <span className="k">{event.kind}</span>
+                  <span className="v">{shortId(event.eventId)}</span>
+                </li>
+              ))}
+            </ul>
+          )}
+        </Resolved>
       </section>
     </aside>
   );
 }
 
-export default async function TicketPage({
-  params,
+function TicketBody({
+  ticket,
+  card,
+  audit,
 }: {
-  readonly params: Promise<{ readonly ticketId: string }>;
-}): Promise<ReactElement> {
-  const { ticketId } = await params;
-  const [ticket, audit, board] = await Promise.all([
-    recordAdapter.ticket(ticketId),
-    recordAdapter.ticketAudit(ticketId),
-    recordAdapter.board(),
-  ]);
-
-  if (ticket.state !== "present") {
-    return (
-      <>
-        <Chrome section="Ticket" back />
-        <main className="page">
-          <div className="wrap">
-            <div className="lede">
-              <h1>Ticket</h1>
-              <p>One ticket in full, read from the instance record.</p>
-            </div>
-            <section className="panel" style={{ marginTop: "16px" }}>
-              <header>
-                <h2>{shortId(ticketId)}</h2>
-              </header>
-              <DeclaredState reading={ticket} />
-            </section>
-            <RecordFoot readPath={`/v1/tickets/${ticketId}`} />
-          </div>
-        </main>
-      </>
-    );
-  }
-
-  const events = audit.state === "present" ? audit.value : [];
-  const card =
-    board.state === "present"
-      ? (board.value.entries.find((entry) => entry.card.ticketId === ticketId)?.card ?? null)
-      : null;
-  const stages = stagesFrom(events);
-  const comments = events.filter(isComment);
-
+  readonly ticket: TicketRecord;
+  readonly card: Reading<BoardCard>;
+  readonly audit: EventsReading;
+}): ReactElement {
   return (
     <>
       <Chrome section="Ticket" back />
       <main className="page">
         <div className="wrap">
-          <TicketHead ticket={ticket.value} card={card} />
-          {stages.length === 0 ? (
-            <section className="panel" style={{ marginTop: "18px" }}>
-              <header>
-                <h2>Stages</h2>
-              </header>
-              <NoSourceYet
-                source={{ lands: "#186", what: "a workflow run for this ticket" }}
-                title="no workflow started"
-              />
-            </section>
-          ) : (
-            <StageStrip stages={stages} />
-          )}
-          {card === null ? null : <HeldBanner card={card} />}
+          <TicketHead ticket={ticket} card={card} />
+          <StagesSection audit={audit} />
+          <InlineReading
+            reading={card}
+            present={(row) => <HeldBanner card={row} />}
+            missing={() => null}
+          />
 
           <div className="cols">
             <div className="main">
@@ -262,52 +294,72 @@ export default async function TicketPage({
               </section>
 
               <WorkTimeline />
-              <EvidencePanel events={events} />
-              <RecordStreamPanel events={events} />
-
-              <section className="panel">
-                <header>
-                  <h2>Comments</h2>
-                  <span className="sub">append-only</span>
-                </header>
-                {comments.length === 0 ? (
-                  <NoSourceYet source={{ lands: "#186", what: "ticket comments on a read path" }} />
-                ) : (
-                  <ul className="cmt">
-                    {comments.map((event) => (
-                      <li key={event.eventId}>
-                        <i className="av">RC</i>
-                        <div className="e">
-                          <div className="hdr">
-                            <span className="seat">{shortId(event.actorPrincipalId)}</span>
-                            <span className="when">{clockText(event.occurredAt)}</span>
-                          </div>
-                          <p>{event.kind}</p>
-                          <div className="sig">
-                            <span>event {shortId(event.eventId)}</span>
-                            {event.eventHash === null ? null : <span>{event.eventHash}</span>}
-                          </div>
-                        </div>
-                      </li>
-                    ))}
-                  </ul>
-                )}
-              </section>
+              <EvidencePanel audit={audit} />
+              <RecordStreamPanel audit={audit} />
+              <CommentsPanel audit={audit} select={(events) => events.filter(isComment)} />
             </div>
 
-            <RightRail ticket={ticket.value} card={card} events={events} />
+            <RightRail ticket={ticket} card={card} audit={audit} />
           </div>
 
           <RecordFoot
-            readPath={`/v1/tickets/${shortId(ticketId)} + /audit + /v1/board`}
-            watermark={
-              audit.state === "present"
-                ? `${events.length.toString()} appended events`
-                : "audit read unavailable"
-            }
+            readPath={`/v1/tickets/${shortId(ticket.ticketId)} + /audit + /v1/board`}
+            watermark={<AuditNote audit={audit} />}
           />
         </div>
       </main>
     </>
+  );
+}
+
+function TicketFrame({
+  ticketId,
+  declared,
+}: {
+  readonly ticketId: string;
+  readonly declared: ReactElement;
+}): ReactElement {
+  return (
+    <>
+      <Chrome section="Ticket" back />
+      <main className="page">
+        <div className="wrap">
+          <div className="lede">
+            <h1>Ticket</h1>
+            <p>One ticket in full, read from the instance record.</p>
+          </div>
+          <section className="panel" style={{ marginTop: "16px" }}>
+            <header>
+              <h2>{shortId(ticketId)}</h2>
+            </header>
+            {declared}
+          </section>
+          <RecordFoot readPath={`/v1/tickets/${shortId(ticketId)}`} />
+        </div>
+      </main>
+    </>
+  );
+}
+
+export default async function TicketPage({
+  params,
+}: {
+  readonly params: Promise<{ readonly ticketId: string }>;
+}): Promise<ReactNode> {
+  const { ticketId } = await params;
+  const [ticket, audit, board] = await Promise.all([
+    recordAdapter.ticket(ticketId),
+    recordAdapter.ticketAudit(ticketId),
+    recordAdapter.board(),
+  ]);
+  const card = cardFor(board, ticketId);
+
+  return (
+    <Resolved
+      reading={ticket}
+      frame={(declared) => <TicketFrame ticketId={ticketId} declared={declared} />}
+    >
+      {(value) => <TicketBody ticket={value} card={card} audit={audit} />}
+    </Resolved>
   );
 }

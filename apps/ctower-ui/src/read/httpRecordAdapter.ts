@@ -1,5 +1,7 @@
 import { randomBytes, randomUUID } from "node:crypto";
 import type { DurabilityState, Priority, ProjectionHealth, TelemetryContext } from "@ctower/client";
+import { boundedRead, ReadExhausted, ReadRefused } from "./bounded";
+import type { ReadFailure } from "./bounded";
 import {
   asArray,
   asInteger,
@@ -25,17 +27,19 @@ import type {
 /**
  * The phase-1 implementation: the shadow instance's existing read API.
  *
- * Only GET paths appear here. There is no mutation method in this module to
- * call by accident, and the bearer never leaves it — the credential is read
- * from the server process environment and attached to a server-side request,
- * so no browser payload, script, or URL on this surface can carry it.
+ * Only GET paths appear here, and every one of them goes through `boundedRead`
+ * — this module never calls `fetch` itself. There is no mutation method to call
+ * by accident, and the bearer never leaves it: the credential is read from the
+ * server process environment and attached to a server-side request, so no
+ * browser payload or script on this surface can carry it.
  *
  * The literal unions below are imported as types from the generated client, so
  * a lane, priority, durability or projection-health value this surface accepts
  * cannot drift from the authored contract without a compile failure. The
- * request itself is a plain `fetch` rather than the generated client's runtime,
+ * transport is `read/bounded.ts` rather than the generated client's runtime,
  * because that package publishes `./module.js` specifiers over TypeScript
- * sources, which the app bundler does not resolve.
+ * sources, which the app bundler does not resolve — and because the generated
+ * client issues single-shot requests, which O10 forbids.
  */
 
 const PRIORITIES: readonly Priority[] = ["P0", "P1", "P2"];
@@ -78,34 +82,38 @@ function telemetry(): TelemetryContext {
 async function read(path: string): Promise<unknown> {
   const credential = process.env.CTOWER_UI_API_TOKEN;
   if (credential === undefined || credential === "") {
-    throw new Error(
-      "no read credential is configured; set CTOWER_UI_API_TOKEN from the instance keyring"
-    );
+    throw new ReadRefused({
+      reason: "no read credential is configured; set CTOWER_UI_API_TOKEN from the instance keyring",
+      failureClass: "permanent",
+      attempts: 0,
+      elapsedMs: 0,
+    });
   }
-  const response = await fetch(`${instanceIdentity().baseUrl}${path}`, {
-    method: "GET",
-    headers: {
-      Accept: "application/json",
-      Authorization: `Bearer ${credential}`,
-      "X-Ctower-Telemetry-Context": JSON.stringify(telemetry()),
-    },
-    cache: "no-store",
+  return await boundedRead(`${instanceIdentity().baseUrl}${path}`, {
+    Accept: "application/json",
+    Authorization: `Bearer ${credential}`,
+    "X-Ctower-Telemetry-Context": JSON.stringify(telemetry()),
   });
-  if (!response.ok) {
-    throw new Error(`the read API answered ${response.status.toString()} for ${path}`);
-  }
-  return await response.json();
 }
 
-function refusalText(error: unknown): string {
-  return error instanceof Error ? error.message : "the read did not complete";
+/** Every failure reaches a screen as a typed `ReadFailure`, never as a blank. */
+function readFailure(error: unknown): ReadFailure {
+  if (error instanceof ReadExhausted || error instanceof ReadRefused) {
+    return error.failure;
+  }
+  return {
+    reason: error instanceof Error ? error.message : "the read did not complete",
+    failureClass: "permanent",
+    attempts: 1,
+    elapsedMs: 0,
+  };
 }
 
 async function reading<T>(load: () => Promise<T>): Promise<Reading<T>> {
   try {
     return { state: "present", value: await load() };
   } catch (error: unknown) {
-    return { state: "unavailable", reason: refusalText(error) };
+    return { state: "unavailable", failure: readFailure(error) };
   }
 }
 
@@ -176,13 +184,12 @@ async function loadBoard(): Promise<BoardSnapshot> {
   const view = asRecord(await read("/v1/board"), "board");
   const cards = asArray(view.cards, "board.cards").map(toCard);
   const entries: readonly BoardEntry[] = await Promise.all(
-    cards.map(async (card): Promise<BoardEntry> => {
-      try {
-        return { card, ticket: await loadTicket(card.ticketId) };
-      } catch {
-        return { card, ticket: null };
-      }
-    })
+    cards.map(async (card): Promise<BoardEntry> => ({
+      card,
+      // the per-card join keeps its own reading: a card whose ticket read failed
+      // must say so, not silently lose its source and its age
+      ticket: await reading(async () => await loadTicket(card.ticketId)),
+    }))
   );
   return {
     entries,

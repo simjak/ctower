@@ -1,12 +1,13 @@
-import type { ReactElement } from "react";
+import type { ReactElement, ReactNode } from "react";
 import { Chrome } from "@/frame/Chrome";
-import { DeclaredState, NoSourceYet } from "@/frame/Declared";
+import { InlineReading, NoSourceYet, Resolved } from "@/frame/Declared";
 import { RecordFoot } from "@/frame/RecordFoot";
 import { recordAdapter } from "@/read/adapter";
 import { shortId } from "@/read/elapsed";
-import type { RecordEvent, Reading, TicketRecord } from "@/read/interface";
+import { feedFocus } from "@/read/feedFocus";
+import type { FeedFocus } from "@/read/feedFocus";
+import type { Reading, RecordEvent, TicketRecord } from "@/read/interface";
 import { Composer } from "@/surfaces/feed/Composer";
-import { focusTicket } from "@/surfaces/feed/focus";
 import { FeedViews } from "@/surfaces/feed/FeedViews";
 import { ChatThread, RawStream } from "@/surfaces/feed/Thread";
 import { workflowRefOf } from "@/surfaces/record/events";
@@ -31,7 +32,7 @@ function Lede(): ReactElement {
   );
 }
 
-function FeedFallback<T>({ reading }: { readonly reading: Reading<T> }): ReactElement {
+function FeedFrame({ declared }: { readonly declared: ReactElement }): ReactElement {
   return (
     <>
       <Chrome section="Feed" />
@@ -42,7 +43,7 @@ function FeedFallback<T>({ reading }: { readonly reading: Reading<T> }): ReactEl
             <header>
               <h2>Stream</h2>
             </header>
-            <DeclaredState reading={reading} />
+            {declared}
             <Composer />
           </section>
           <RecordFoot />
@@ -56,7 +57,7 @@ function SessionMeta({
   ticket,
   events,
 }: {
-  readonly ticket: TicketRecord;
+  readonly ticket: Reading<TicketRecord>;
   readonly events: readonly RecordEvent[];
 }): ReactElement {
   const workflow = workflowRefOf(events);
@@ -67,36 +68,38 @@ function SessionMeta({
       </span>
       <span>
         <span className="who">record stream</span>{" "}
-        <span className="crew">ticket {shortId(ticket.ticketId)}</span>
+        <InlineReading
+          reading={ticket}
+          present={(value) => <span className="crew">ticket {shortId(value.ticketId)}</span>}
+          missing={(label, detail, tone) => (
+            <span className="crew" style={tone} title={detail}>
+              ticket {label}
+            </span>
+          )}
+        />
       </span>
-      <span className="chip">{ticket.source.kind}</span>
+      <InlineReading
+        reading={ticket}
+        present={(value) => <span className="chip">{value.source.kind}</span>}
+        missing={(label, detail, tone) => (
+          <span className="chip" style={tone} title={detail}>
+            source {label}
+          </span>
+        )}
+      />
       {workflow === null ? null : <span className="chip">{workflow}</span>}
       <span className="verdict v-held">no session recorded</span>
     </>
   );
 }
 
-export default async function FeedPage(): Promise<ReactElement> {
-  const board = await recordAdapter.board();
-  if (board.state !== "present") {
-    return <FeedFallback reading={board} />;
-  }
-  const focus = await focusTicket(board.value);
-  if (focus === null) {
-    return (
-      <FeedFallback
-        reading={{
-          state: "absent",
-          source: { lands: "G5", what: "any recorded activity to render as a thread" },
-        }}
-      />
-    );
-  }
-  const ticket = await recordAdapter.ticket(focus.ticketId);
-  if (ticket.state !== "present") {
-    return <FeedFallback reading={ticket} />;
-  }
-
+function FeedBody({
+  focus,
+  ticket,
+}: {
+  readonly focus: FeedFocus;
+  readonly ticket: Reading<TicketRecord>;
+}): ReactElement {
   const events = focus.events;
   return (
     <>
@@ -106,7 +109,7 @@ export default async function FeedPage(): Promise<ReactElement> {
           <Lede />
           <section className="panel" style={{ marginTop: "16px" }}>
             <FeedViews
-              sessionMeta={<SessionMeta ticket={ticket.value} events={events} />}
+              sessionMeta={<SessionMeta ticket={ticket} events={events} />}
               chat={
                 <>
                   <NoSourceYet title="no session data yet" source={SESSION_FACTS} />
@@ -123,11 +126,24 @@ export default async function FeedPage(): Promise<ReactElement> {
             <Composer />
           </section>
           <RecordFoot
-            readPath={`/v1/tickets/${shortId(ticket.value.ticketId)}/audit`}
+            readPath={`/v1/tickets/${shortId(focus.ticketId)}/audit`}
             watermark={`${events.length.toString()} appended events · the thread is the record, not a session`}
           />
         </div>
       </main>
     </>
+  );
+}
+
+async function FocusedFeed({ focus }: { readonly focus: FeedFocus }): Promise<ReactElement> {
+  return <FeedBody focus={focus} ticket={await recordAdapter.ticket(focus.ticketId)} />;
+}
+
+export default async function FeedPage(): Promise<ReactNode> {
+  const focus = await feedFocus();
+  return (
+    <Resolved reading={focus} frame={(declared) => <FeedFrame declared={declared} />}>
+      {(value) => <FocusedFeed focus={value} />}
+    </Resolved>
   );
 }

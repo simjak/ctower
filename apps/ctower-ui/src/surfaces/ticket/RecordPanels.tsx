@@ -1,112 +1,177 @@
-import type { ReactElement } from "react";
-import { NoSourceYet } from "@/frame/Declared";
+import type { ReactElement, ReactNode } from "react";
+import { Resolved } from "@/frame/Declared";
 import { StateGlyph } from "@/frame/StateGlyph";
 import { clockText, shortId, stampText } from "@/read/elapsed";
-import type { RecordEvent } from "@/read/interface";
+import type { Reading, RecordEvent } from "@/read/interface";
+import { mapReading } from "@/read/reading";
 import { EventChip } from "@/surfaces/record/EventChip";
 import { byTime, digestOf, eventHeadline, isProof, operationOf } from "@/surfaces/record/events";
 
-/**
- * Evidence, exactly as the record holds it: one slot per recorded proof
- * operation, carrying its candidate digest and its event hash. A criterion the
- * record does not carry does not get a slot invented for it.
- */
-export function EvidencePanel({
-  events,
+export type EventsReading = Reading<readonly RecordEvent[]>;
+
+/** Narrow an audit reading to a non-empty selection, keeping both failure kinds. */
+function selection(
+  reading: EventsReading,
+  choose: (events: readonly RecordEvent[]) => readonly RecordEvent[],
+  lands: string,
+  what: string
+): EventsReading {
+  return mapReading(reading, (events): EventsReading => {
+    const chosen = byTime(choose(events));
+    return chosen.length === 0
+      ? { state: "absent", source: { lands, what } }
+      : { state: "present", value: chosen };
+  });
+}
+
+function Panel({
+  title,
+  sub,
+  children,
 }: {
-  readonly events: readonly RecordEvent[];
+  readonly title: string;
+  readonly sub?: string;
+  readonly children: ReactNode;
 }): ReactElement {
-  const proof = byTime(events.filter(isProof));
   return (
     <section className="panel">
       <header>
-        <h2>Evidence</h2>
-        <span className="sub">
-          {proof.length.toString()} recorded proof {proof.length === 1 ? "operation" : "operations"}
-        </span>
+        <h2>{title}</h2>
+        {sub === undefined ? null : <span className="sub">{sub}</span>}
       </header>
-      {proof.length === 0 ? (
-        <NoSourceYet
-          source={{
-            lands: "#186",
-            what: "typed evidence slots and their filled / required coverage on a read path",
-          }}
-        />
-      ) : (
-        <div className="slots">
-          {proof.map((event) => {
-            const digest = digestOf(event);
-            return (
-              <div className="slot" key={event.eventId}>
-                <StateGlyph name="done" />
-                <div className="e">
-                  <div className="k">{operationOf(event) ?? event.kind}</div>
-                  <div className="d">
-                    Recorded at {stampText(event.occurredAt)} by principal{" "}
-                    {shortId(event.actorPrincipalId)}.
-                  </div>
-                  <div className="f" style={{ overflowWrap: "anywhere" }}>
-                    {digest === null ? null : <span>{digest}</span>}
-                    {event.eventHash === null ? null : <span>{event.eventHash}</span>}
-                    {event.recordPosition === null ? null : (
-                      <span>record position {event.recordPosition.toString()}</span>
-                    )}
-                  </div>
-                </div>
-              </div>
-            );
-          })}
-        </div>
-      )}
+      {children}
     </section>
   );
 }
 
 /**
- * The ticket's own append-only event stream. This is what ctower records
- * today: who acted, under which command, at which position in the hash chain,
- * and the exact payload behind each line.
+ * Evidence, exactly as the record holds it: one slot per recorded proof
+ * operation, carrying its candidate digest and its event hash. A criterion the
+ * record does not carry does not get a slot invented for it, and an audit read
+ * that did not answer says so rather than showing an empty evidence set.
  */
-export function RecordStreamPanel({
-  events,
-}: {
-  readonly events: readonly RecordEvent[];
-}): ReactElement {
-  const ordered = byTime(events);
+export function EvidencePanel({ audit }: { readonly audit: EventsReading }): ReactElement {
+  const proof = selection(
+    audit,
+    (events) => events.filter(isProof),
+    "#186",
+    "typed evidence slots and their filled / required coverage on a read path"
+  );
   return (
-    <section className="panel">
-      <header>
-        <h2>Record stream</h2>
-        <span className="sub">
-          {ordered.length.toString()} appended {ordered.length === 1 ? "event" : "events"} ·
-          append-only
-        </span>
-      </header>
-      <ul className="tl">
-        {ordered.map((event) => (
-          <li key={event.eventId}>
-            <span className="who">
-              <i className="av">RC</i>
-            </span>
-            <div className="e">
-              <div className="hdr">
-                <span className="seat">{event.kind}</span>
-                <span className="crew">principal {shortId(event.actorPrincipalId)}</span>
-                <span className="when">{clockText(event.occurredAt)}</span>
-              </div>
-              <div className="did">{eventHeadline(event)}</div>
-              <div className="tools">
-                <EventChip event={event} />
-              </div>
-              <div className="arts" style={{ overflowWrap: "anywhere" }}>
-                <span className="art">event {shortId(event.eventId)}</span>
-                {event.streamId === null ? null : <span className="art">{event.streamId}</span>}
-                {event.eventHash === null ? null : <span className="art">{event.eventHash}</span>}
-              </div>
-            </div>
-          </li>
-        ))}
-      </ul>
-    </section>
+    <Panel title="Evidence">
+      <Resolved reading={proof}>
+        {(events) => (
+          <div className="slots">
+            {events.map((event) => {
+              const digest = digestOf(event);
+              return (
+                <div className="slot" key={event.eventId}>
+                  <StateGlyph name="done" />
+                  <div className="e">
+                    <div className="k">{operationOf(event) ?? event.kind}</div>
+                    <div className="d">
+                      Recorded at {stampText(event.occurredAt)} by principal{" "}
+                      {shortId(event.actorPrincipalId)}.
+                    </div>
+                    <div className="f" style={{ overflowWrap: "anywhere" }}>
+                      {digest === null ? null : <span>{digest}</span>}
+                      {event.eventHash === null ? null : <span>{event.eventHash}</span>}
+                      {event.recordPosition === null ? null : (
+                        <span>record position {event.recordPosition.toString()}</span>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        )}
+      </Resolved>
+    </Panel>
+  );
+}
+
+/**
+ * The ticket's own append-only event stream: who acted, under which command, at
+ * which position in the hash chain, and the exact payload behind each line.
+ */
+export function RecordStreamPanel({ audit }: { readonly audit: EventsReading }): ReactElement {
+  const stream = selection(
+    audit,
+    (events) => events,
+    "#186",
+    "an appended event stream for this ticket"
+  );
+  return (
+    <Panel title="Record stream" sub="append-only">
+      <Resolved reading={stream}>
+        {(events) => (
+          <ul className="tl">
+            {events.map((event) => (
+              <li key={event.eventId}>
+                <span className="who">
+                  <i className="av">RC</i>
+                </span>
+                <div className="e">
+                  <div className="hdr">
+                    <span className="seat">{event.kind}</span>
+                    <span className="crew">principal {shortId(event.actorPrincipalId)}</span>
+                    <span className="when">{clockText(event.occurredAt)}</span>
+                  </div>
+                  <div className="did">{eventHeadline(event)}</div>
+                  <div className="tools">
+                    <EventChip event={event} />
+                  </div>
+                  <div className="arts" style={{ overflowWrap: "anywhere" }}>
+                    <span className="art">event {shortId(event.eventId)}</span>
+                    {event.streamId === null ? null : <span className="art">{event.streamId}</span>}
+                    {event.eventHash === null ? null : (
+                      <span className="art">{event.eventHash}</span>
+                    )}
+                  </div>
+                </div>
+              </li>
+            ))}
+          </ul>
+        )}
+      </Resolved>
+    </Panel>
+  );
+}
+
+/** Append-only comments, when the record carries any and the read reached them. */
+export function CommentsPanel({
+  audit,
+  select,
+}: {
+  readonly audit: EventsReading;
+  readonly select: (events: readonly RecordEvent[]) => readonly RecordEvent[];
+}): ReactElement {
+  const comments = selection(audit, select, "#186", "ticket comments on a read path");
+  return (
+    <Panel title="Comments" sub="append-only">
+      <Resolved reading={comments}>
+        {(events) => (
+          <ul className="cmt">
+            {events.map((event) => (
+              <li key={event.eventId}>
+                <i className="av">RC</i>
+                <div className="e">
+                  <div className="hdr">
+                    <span className="seat">{shortId(event.actorPrincipalId)}</span>
+                    <span className="when">{clockText(event.occurredAt)}</span>
+                  </div>
+                  <p>{event.kind}</p>
+                  <div className="sig" style={{ overflowWrap: "anywhere" }}>
+                    <span>event {shortId(event.eventId)}</span>
+                    {event.eventHash === null ? null : <span>{event.eventHash}</span>}
+                  </div>
+                </div>
+              </li>
+            ))}
+          </ul>
+        )}
+      </Resolved>
+    </Panel>
   );
 }

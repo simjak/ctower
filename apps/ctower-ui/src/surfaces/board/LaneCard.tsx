@@ -1,5 +1,6 @@
 import Link from "next/link";
 import type { ReactElement } from "react";
+import { InlineReading } from "@/frame/Declared";
 import { laneGlyph, StateGlyph } from "@/frame/StateGlyph";
 import { elapsedSince, shortId } from "@/read/elapsed";
 import type { BoardEntry } from "@/read/interface";
@@ -11,8 +12,13 @@ function priorityClass(priority: string): string {
 /**
  * One board card. Every line is a fact `/v1/board` or `/v1/tickets/{id}`
  * returned; the change reference reads `PR —` when `delivery_facts` is the
- * empty set the record actually holds, exactly as the mockup renders an
- * absent change reference.
+ * empty set the record actually holds, exactly as the mockup renders an absent
+ * change reference.
+ *
+ * The source and the age come from a second read that can fail on its own. When
+ * it does the card says `source not reached` and `age not reached` in the warn
+ * treatment rather than dropping to a dash — a dash there would claim the
+ * record holds no source.
  */
 export function LaneCard({
   entry,
@@ -23,7 +29,11 @@ export function LaneCard({
 }): ReactElement {
   const { card, ticket } = entry;
   const change = card.deliveryFacts[0];
-  const age = ticket === null ? null : elapsedSince(ticket.createdAt, now);
+  const custodian = (
+    <span className="seat">
+      <span className="nm">custodian {shortId(card.custodianId)}</span>
+    </span>
+  );
 
   return (
     <Link className="card" href={`/ticket/${encodeURIComponent(card.ticketId)}`}>
@@ -49,11 +59,27 @@ export function LaneCard({
         </div>
       )}
       <div className="card-foot">
-        {ticket === null ? null : <span className="chip">{ticket.source.kind}</span>}
-        <span className="seat">
-          <span className="nm">custodian {shortId(card.custodianId)}</span>
-        </span>
-        <span className="dur">{age === null ? "age —" : `age ${age}`}</span>
+        <InlineReading
+          reading={ticket}
+          present={(value) => (
+            <>
+              <span className="chip">{value.source.kind}</span>
+              {custodian}
+              <span className="dur">age {elapsedSince(value.createdAt, now) ?? "unparsable"}</span>
+            </>
+          )}
+          missing={(label, detail, tone) => (
+            <>
+              <span className="chip" style={tone} title={detail}>
+                source {label}
+              </span>
+              {custodian}
+              <span className="dur" style={tone} title={detail}>
+                age {label}
+              </span>
+            </>
+          )}
+        />
       </div>
     </Link>
   );
