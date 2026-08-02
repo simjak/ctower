@@ -18,7 +18,8 @@
  *
  * This module is pure and dependency-free at runtime, so
  * `tests/repository/test_inspection_grammar.py` executes it directly and drives
- * both the accepted and the rejected argv.
+ * the accepted argv for every operation the union declares, the refusal owed by
+ * every value slot, and the absolute-path resolution above.
  */
 
 export type Tool = "git" | "crontab" | "systemctl" | "tmux";

@@ -43,7 +43,7 @@ function commitsOf(text: string): readonly CommitLine[] {
       const [sha, subject, author, at] = line.split(UNIT_SEPARATOR);
       return sha === undefined || subject === undefined || author === undefined || at === undefined
         ? []
-        : [{ sha, subject: redacted(subject), author, at }];
+        : [{ sha, subject: redacted(subject), author: redacted(author), at }];
     });
 }
 
