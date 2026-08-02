@@ -97,7 +97,9 @@ def _manifest(
                 "environment": "disposable-development",
                 "proof_digest": _SHA_C,
                 "verifier": _UUID_3,
-                "applicability_reason": "repository gates are in scope for the current I1 increment",
+                "applicability_reason": (
+                    "repository gates are in scope for the current I1 increment"
+                ),
             },
             {
                 "criterion_key": "cp3-d-host-loss",

@@ -42,10 +42,10 @@ import pytest
 from jsonschema import Draft202012Validator
 
 from tools.checks._impl.evidence_manifest import (
+    EvidenceManifestError,
     check_evidence_manifest,
     derive_denominator_keys,
     verify_evidence_manifest,
-    EvidenceManifestError,
 )
 
 ROOT = Path(__file__).parents[3]

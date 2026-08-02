@@ -18,9 +18,9 @@ import pytest
 from tools.checks._impl.evidence_manifest import (
     EvidenceManifestError,
     build_deferred_capabilities,
+    capability_registry_keys,
     check_evidence_manifest,
     deferred_suite_ids,
-    capability_registry_keys,
     derive_denominator_keys,
     verify_evidence_manifest,
 )

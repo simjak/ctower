@@ -148,13 +148,10 @@ def verify_evidence_manifest(root: Path, manifest_path: Path) -> tuple[str, ...]
             return (f"evidence manifest deferred_capabilities[{index}] has no capability_key",)
         manifest_keys.add(row["capability_key"])
 
-    errors: list[str] = []
     missing = registry_keys - manifest_keys
     extra = manifest_keys - registry_keys
-    for key in sorted(missing):
-        errors.append(f"manifest omits registry entry: {key}")
-    for key in sorted(extra):
-        errors.append(f"manifest declares unknown entry: {key}")
+    errors = [f"manifest omits registry entry: {key}" for key in sorted(missing)]
+    errors.extend(f"manifest declares unknown entry: {key}" for key in sorted(extra))
     return tuple(errors)
 
 

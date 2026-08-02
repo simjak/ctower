@@ -15,7 +15,12 @@ from contextlib import contextmanager
 from pathlib import Path
 from unittest import mock
 
-from tools.checks import SuiteDisposition, verify_expected_suites
+from tools.checks import (
+    ExpectedSuitesReport,
+    SuiteDisposition,
+    SuiteResult,
+    verify_expected_suites,
+)
 from tools.checks._impl.evidence_manifest import (
     derive_denominator_keys,
     verify_evidence_manifest,
@@ -576,7 +581,7 @@ class CommittedManifestGuardTests(unittest.TestCase):
             f"deferred suites in TOML but not in denominator: {sorted(toml_only)}",
         )
 
-    def _find_suite(self, report, suite_id: str):
+    def _find_suite(self, report: ExpectedSuitesReport, suite_id: str) -> SuiteResult | None:
         for suite in report.suites:
             if suite.suite_id == suite_id:
                 return suite
