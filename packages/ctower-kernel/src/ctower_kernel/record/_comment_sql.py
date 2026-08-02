@@ -41,10 +41,13 @@ def add_comment(
     with authority_connection(dsn) as connection:
         connection.execute("SET ROLE ctower_svc")
         transaction = RecordTransaction(connection)
-        existing = transaction.reserve(
+        existing = transaction.reserve_ticket_mutation(
+            actor.tenant_id,
             actor.principal_id,
             command.client_command_id,
             request_digest,
+            (command.ticket_id,),
+            now=now,
         )
         if isinstance(existing, RecordProblem):
             return existing

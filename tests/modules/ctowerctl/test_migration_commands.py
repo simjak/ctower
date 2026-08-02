@@ -7,7 +7,7 @@ import io
 import json
 from datetime import UTC, datetime, timedelta
 from pathlib import Path
-from typing import Self, cast
+from typing import Literal, Self, cast
 from uuid import UUID, uuid4
 
 import pytest
@@ -24,9 +24,14 @@ from ctower_client.models import (
     MigrationCorrectionRevision,
     MigrationHealthDigests,
     MigrationRelationCorrection,
+    ProjectDeliveryAssignedSeatAssignment,
     ProjectDeliveryCriteria,
     ProjectDeliveryRow,
+    ProjectDeliverySeat,
+    ProjectDeliverySlot,
+    ProjectDeliveryUnassignedSeatAssignment,
     ProjectDeliveryView,
+    SeatCatalogRevision,
 )
 from ctowerctl import _migration_commands, interface
 from ctowerctl._output import ExitCode
@@ -256,6 +261,10 @@ def test_query_dispatch_and_project_delivery_text_expose_frozen_metadata() -> No
     assert "5/6" in output
     assert "sources=ctower:CT-I1-007,mission-control:i1.7" in output
     assert "watermark=27/27" in output
+    assert "slot=dogfood-proof state=filled" in output
+    assert "assigned=Maker[maker]@fixture.delivery-seats@1" in output
+    assert "signed=Reviewer[reviewer]@fixture.delivery-seats@1" in output
+    assert "slot=cp3-d-proof state=unfilled assigned=unassigned signed=-" in output
 
 
 def test_unknown_internal_migration_spelling_is_closed(tmp_path: Path) -> None:
@@ -383,6 +392,25 @@ class _MigrationClient:
                     qualifying_stage_slots_filled=1,
                     qualifying_stage_slots_required=2,
                     qualifying_stage_unfilled_or_unknown_slot_keys=("cp3-d-proof",),
+                    qualifying_stage_slots=(
+                        ProjectDeliverySlot(
+                            slot_key="dogfood-proof",
+                            state="filled",
+                            assigned_seat=ProjectDeliveryAssignedSeatAssignment(
+                                state="assigned",
+                                seat=_delivery_seat("maker", "Maker"),
+                            ),
+                            signing_seat=_delivery_seat("reviewer", "Reviewer"),
+                        ),
+                        ProjectDeliverySlot(
+                            slot_key="cp3-d-proof",
+                            state="unfilled",
+                            assigned_seat=ProjectDeliveryUnassignedSeatAssignment(
+                                state="unassigned"
+                            ),
+                            signing_seat=None,
+                        ),
+                    ),
                     source_watermark=27,
                     projection_watermark=27,
                     freshness="fresh",
@@ -400,3 +428,41 @@ class _MigrationClient:
                 ),
             ),
         )
+
+
+def _delivery_seat(key: str, label: str) -> ProjectDeliverySeat:
+    return ProjectDeliverySeat(
+        seat_key=key,
+        seat_label=label,
+        catalog_revision=SeatCatalogRevision(
+            catalog_key="fixture.delivery-seats",
+            revision=1,
+            content_digest=ZERO_DIGEST,
+        ),
+    )
+
+
+@pytest.mark.parametrize(
+    "assignment",
+    (
+        ProjectDeliveryAssignedSeatAssignment.model_construct(
+            state=cast(Literal["assigned"], "unassigned"),
+            seat=_delivery_seat("maker", "Maker"),
+        ),
+        ProjectDeliveryUnassignedSeatAssignment.model_construct(
+            state=cast(Literal["unassigned"], "assigned")
+        ),
+    ),
+)
+def test_delivery_text_refuses_assignment_state_shape_disagreement(
+    assignment: ProjectDeliveryAssignedSeatAssignment | ProjectDeliveryUnassignedSeatAssignment,
+) -> None:
+    slot = ProjectDeliverySlot.model_construct(
+        slot_key="proof",
+        state="filled",
+        assigned_seat=assignment,
+        signing_seat=None,
+    )
+
+    with pytest.raises(TypeError, match="seat state does not match its payload shape"):
+        _migration_commands._slot_text(slot)

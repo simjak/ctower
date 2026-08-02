@@ -2,6 +2,8 @@
 
 Describe the user-visible or system outcome and why it is needed.
 
+Author-model: <family/model>
+
 ## Delivery item
 
 `Refs #<issue>`

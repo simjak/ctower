@@ -25,8 +25,6 @@ __all__ = [
     "ready_for_pass_two",
     "zero_delta",
 ]
-_CHECKPOINT_COUNT = 14
-_STABLE_ALIAS_COUNT = 27
 _PROJECT_DELIVERY_VOLATILE = frozenset(
     {
         "freshness_due_at",
@@ -81,6 +79,10 @@ def capture(
     )
     graph.update(_ticket_fact_rows(connection, run_id, tenant_id, ticket_ids))
     graph.update(_checkpoint_rows(connection, tenant_id))
+    graph["signed_checkpoint_keys"] = _checkpoint_expectation_sql.signed_keys(
+        connection,
+        run_id,
+    )
     event_ids = _event_ids(connection, run_id, operation_results)
     events = _scoped_events(connection, tenant_id, event_ids)
     outbox = _scoped_outbox(connection, tenant_id, event_ids)
@@ -360,13 +362,18 @@ def _project_delivery_current(
     definitions = cast(list[dict[str, object]], graph["checkpoint_definitions"])
     criteria = cast(list[dict[str, object]], graph["checkpoint_criteria"])
     delivery_rows = cast(list[dict[str, object]], graph["project_delivery_rows"])
-    definition_ids = {str(row["checkpoint_definition_id"]) for row in definitions}
+    stable_alias_ids = [
+        str(row["stable_item_id"]) for row in cast(list[dict[str, object]], graph["stable_aliases"])
+    ]
+    definition_keys = [str(row["checkpoint_key"]) for row in definitions]
+    delivery_keys = [str(row["checkpoint_key"]) for row in delivery_rows]
+    definition_ids = [str(row["checkpoint_definition_id"]) for row in definitions]
     criteria_definition_ids = {str(row["checkpoint_definition_id"]) for row in criteria}
     return (
-        len(cast(list[object], graph["stable_aliases"])) == _STABLE_ALIAS_COUNT
-        and len(definitions) == _CHECKPOINT_COUNT
-        and len(delivery_rows) == _CHECKPOINT_COUNT
-        and criteria_definition_ids == definition_ids
+        _unique_identities(stable_alias_ids)
+        and _same_identity_set(definition_keys, delivery_keys)
+        and _unique_identities(definition_ids)
+        and criteria_definition_ids == set(definition_ids)
         and all(str(row["accountable_owner"]).strip() for row in definitions)
         and all(
             int(cast(int, row["source_watermark"])) >= max(positions, default=0)
@@ -374,6 +381,21 @@ def _project_delivery_current(
             for row in delivery_rows
         )
     )
+
+
+def _same_identity_set(expected: Iterable[str], actual: Iterable[str]) -> bool:
+    expected_values = tuple(expected)
+    actual_values = tuple(actual)
+    return (
+        _unique_identities(expected_values)
+        and _unique_identities(actual_values)
+        and set(actual_values) == set(expected_values)
+    )
+
+
+def _unique_identities(values: Iterable[str]) -> bool:
+    identities = tuple(values)
+    return len(identities) == len(set(identities))
 
 
 def persist(
@@ -479,14 +501,43 @@ def evidence(
     return graph(end_body), measurement
 
 
+def _signed_checkpoint_snapshot(snapshot_body: dict[str, object]) -> dict[str, object]:
+    signed_keys = {
+        str(value) for value in cast(list[object], snapshot_body.get("signed_checkpoint_keys", []))
+    }
+    if not signed_keys:
+        return snapshot_body
+    definitions = [
+        row
+        for row in cast(list[dict[str, object]], snapshot_body["checkpoint_definitions"])
+        if str(row["checkpoint_key"]) in signed_keys
+    ]
+    definition_ids = {str(row["checkpoint_definition_id"]) for row in definitions}
+    return {
+        **snapshot_body,
+        "checkpoint_definitions": definitions,
+        "checkpoint_criteria": [
+            row
+            for row in cast(list[dict[str, object]], snapshot_body["checkpoint_criteria"])
+            if str(row["checkpoint_definition_id"]) in definition_ids
+        ],
+        "project_delivery_rows": [
+            row
+            for row in cast(list[dict[str, object]], snapshot_body["project_delivery_rows"])
+            if str(row["checkpoint_key"]) in signed_keys
+        ],
+    }
+
+
 def graph(snapshot_body: dict[str, object]) -> dict[str, object]:
     """Project the exhaustive snapshot into stable, sorted reconciliation sets."""
 
     relations = _set(snapshot_body, "relations")
     custody = cast(list[dict[str, object]], snapshot_body["custody_intervals"])
     unexpected, forbidden, unresolved, cycles = _target_anomaly.sets(snapshot_body)
+    signed_snapshot = _signed_checkpoint_snapshot(snapshot_body)
     checkpoint_definitions, checkpoint_criteria = _checkpoint_expectation_sql.graph_sets(
-        snapshot_body
+        signed_snapshot
     )
     value: dict[str, object] = {
         "stable_aliases": _set(snapshot_body, "stable_aliases"),
@@ -508,7 +559,7 @@ def graph(snapshot_body: dict[str, object]) -> dict[str, object]:
         "source_links": _set(snapshot_body, "source_link_revisions"),
         "checkpoint_definitions": checkpoint_definitions,
         "checkpoint_criteria": checkpoint_criteria,
-        "project_delivery_rows": _canonical_set(_project_delivery_values(snapshot_body)),
+        "project_delivery_rows": _canonical_set(_project_delivery_values(signed_snapshot)),
         "events": _set(snapshot_body, "event_ids"),
         "outbox_rows": _set(snapshot_body, "outbox_rows"),
         "unexpected": unexpected,

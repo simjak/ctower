@@ -132,6 +132,14 @@ def create_second_tenant(database: DatabaseFixture) -> TenantFixture:
                 ),
             ),
         )
+        connection.execute(
+            """
+            INSERT INTO project_seats (
+                principal_id, tenant_id, project_key, seat_key, granted_by, granted_at
+            ) VALUES (%s, %s, 'ctower', 'ctower-commander', %s, %s)
+            """,
+            (commander_id, tenant_id, operator_id, now),
+        )
     provision_credential(database.admin_dsn, tenant_id, operator_id, operator_credential)
     provision_credential(database.admin_dsn, tenant_id, commander_id, commander_credential)
     return TenantFixture(

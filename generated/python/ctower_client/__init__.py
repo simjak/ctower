@@ -1,6 +1,6 @@
 """DO NOT EDIT: generated file; regenerate from declared inputs.
 
-Authored contract digest: sha256:1ca4a6823b673e720c5e1fd0e39445905a701d279b773eb99689536a8de41c62
+Authored contract digest: sha256:29a4dc94972b9c27752779112fa40d489166fe5bd05c41ca75b96eea22cb3674
 """
 
 from ctower_client.client import CtowerClient, CtowerProblemError
@@ -43,6 +43,7 @@ from ctower_client.models import (
     ComponentReference,
     ComponentScope,
     ControlHealth,
+    CredentialScope,
     CtowerProjectAliasPlanBindRequest,
     CtowerProjectCutoverHealth,
     CtowerProjectEpochRefusalRequest,
@@ -110,8 +111,13 @@ from ctower_client.models import (
     PriorityChangedAuditData,
     PriorityChangeRequest,
     Problem,
+    ProjectDeliveryAssignedSeatAssignment,
     ProjectDeliveryCriteria,
     ProjectDeliveryRow,
+    ProjectDeliverySeat,
+    ProjectDeliverySeatAssignment,
+    ProjectDeliverySlot,
+    ProjectDeliveryUnassignedSeatAssignment,
     ProjectDeliveryView,
     ProjectionHealth,
     ProofChangedAuditEvent,
@@ -124,6 +130,10 @@ from ctower_client.models import (
     ReopenedAuditData,
     ReopenIntent,
     ResolveCloseRequest,
+    SeatCatalogRevision,
+    SeatCredentialIssueRequest,
+    SeatCredentialReceipt,
+    SeatCredentialRevocationRequest,
     SecretBindingReference,
     SourceReference,
     SyntheticRunReceipt,
@@ -204,6 +214,7 @@ __all__ = [
     "ComponentReference",
     "ComponentScope",
     "ControlHealth",
+    "CredentialScope",
     "CtowerClient",
     "CtowerProblemError",
     "CtowerProjectAliasPlanBindRequest",
@@ -273,8 +284,13 @@ __all__ = [
     "PriorityChangeRequest",
     "PriorityChangedAuditData",
     "Problem",
+    "ProjectDeliveryAssignedSeatAssignment",
     "ProjectDeliveryCriteria",
     "ProjectDeliveryRow",
+    "ProjectDeliverySeat",
+    "ProjectDeliverySeatAssignment",
+    "ProjectDeliverySlot",
+    "ProjectDeliveryUnassignedSeatAssignment",
     "ProjectDeliveryView",
     "ProjectionHealth",
     "ProofChangedAuditEvent",
@@ -287,6 +303,10 @@ __all__ = [
     "ReopenIntent",
     "ReopenedAuditData",
     "ResolveCloseRequest",
+    "SeatCatalogRevision",
+    "SeatCredentialIssueRequest",
+    "SeatCredentialReceipt",
+    "SeatCredentialRevocationRequest",
     "SecretBindingReference",
     "SourceReference",
     "SyntheticRunReceipt",

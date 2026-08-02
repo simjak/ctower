@@ -1,5 +1,5 @@
 // DO NOT EDIT: generated file; regenerate from declared inputs.
-// Authored contract digest: sha256:1ca4a6823b673e720c5e1fd0e39445905a701d279b773eb99689536a8de41c62
+// Authored contract digest: sha256:29a4dc94972b9c27752779112fa40d489166fe5bd05c41ca75b96eea22cb3674
 
 export type ActivityClass = "work" | "verification";
 
@@ -251,6 +251,8 @@ export type ControlHealth = Readonly<{
   readonly "schema_id": "ctower.health/v1";
   readonly "status": HealthStatus;
 }>;
+
+export type CredentialScope = "capture" | "transition" | "evidence";
 
 export type CtowerProjectAliasPlanBindRequest = Readonly<{
   readonly "alias_map_artifact": string;
@@ -862,7 +864,7 @@ export type PriorityChangedAuditData = Readonly<{
 }>;
 
 export type Problem = Readonly<{
-  readonly "code": "bootstrap-consumed" | "bootstrap-expired" | "bootstrap-nonempty" | "bootstrap-origin" | "bundle-base-conflict" | "bundle-compatibility-refused" | "bundle-digest-mismatch" | "bundle-grant-refused" | "bundle-independence-refused" | "bundle-no-effect-refused" | "bundle-not-active" | "bundle-plan-mismatch" | "bundle-recovery-unavailable" | "bundle-reference-invalid" | "bundle-schema-invalid" | "bundle-security-refused" | "durability_pending" | "i1-7c-required" | "idempotency-conflict" | "intake-already-promoted" | "intake-promotion-ineligible" | "intake-source-conflict" | "migration-alias-conflict" | "migration-capability-denied" | "migration-correction-conflict" | "migration-digest-mismatch" | "migration-export-nondeterminism" | "migration-fence-detected" | "migration-import-finalization-refused" | "migration-operation-drift" | "migration-relation-invalid" | "migration-run-conflict" | "migration-signature-invalid" | "migration-source-selection-drift" | "migration-source-tainted" | "poison-not-found" | "project-delivery-unavailable" | "request-body-too-large" | "proof-candidate-author-mismatch" | "proof-candidate-digest-invalid" | "proof-candidate-digest-not-current" | "proof-candidate-unchanged" | "proof-criteria-already-frozen" | "proof-criteria-invalid" | "proof-criteria-policy-mismatch" | "proof-criterion-unknown" | "proof-current-evidence-missing" | "proof-evidence-digest-mismatch" | "proof-evidence-id-conflict" | "proof-protected-authority-required" | "proof-policy-mismatch" | "proof-policy-pin-mismatch" | "proof-self-review-refused" | "proof-verdict-id-conflict" | "tenant-scope-denied" | "ticket-comment-ineligible" | "ticket-comment-invalid" | "unauthorized" | "validation-error" | "version-conflict" | "work-assignment-kind-refused" | "work-assignment-target-ineligible" | "work-assignment-unchanged" | "work-priority-unchanged" | "work-blocker-already-resolved" | "work-blocker-id-conflict" | "work-blocker-owner-ineligible" | "work-blocker-unknown" | "work-intent-unmet" | "work-relation-cycle" | "work-relation-exists" | "work-reopen-unmet" | "work-ticket-terminal" | "workflow-already-started" | "workflow-pin-mismatch" | "workflow-predicate-unsatisfied" | "workflow-run-not-started" | "proof-incomplete" | "workflow-state-conflict" | "workflow-terminal" | "workflow-transition-not-declared" | "workflow-version-unknown" | "workflow-not-terminal";
+  readonly "code": "bootstrap-consumed" | "bootstrap-expired" | "bootstrap-nonempty" | "bootstrap-origin" | "bundle-base-conflict" | "bundle-compatibility-refused" | "bundle-digest-mismatch" | "bundle-grant-refused" | "bundle-independence-refused" | "bundle-no-effect-refused" | "bundle-not-active" | "bundle-plan-mismatch" | "bundle-recovery-unavailable" | "bundle-reference-invalid" | "bundle-schema-invalid" | "bundle-security-refused" | "credential-already-revoked" | "credential-digest-conflict" | "credential-issuance-refused" | "credential-revocation-refused" | "credential-revoked" | "credential-scope-denied" | "durability_pending" | "i1-7c-required" | "idempotency-conflict" | "intake-already-promoted" | "intake-promotion-ineligible" | "intake-source-conflict" | "migration-alias-conflict" | "migration-capability-denied" | "migration-correction-conflict" | "migration-digest-mismatch" | "migration-export-nondeterminism" | "migration-fence-detected" | "migration-import-finalization-refused" | "migration-operation-drift" | "migration-relation-invalid" | "migration-run-conflict" | "migration-signature-invalid" | "migration-source-selection-drift" | "migration-source-tainted" | "poison-not-found" | "project-delivery-unavailable" | "project-grant-required" | "project-scope-denied" | "request-body-too-large" | "proof-candidate-author-mismatch" | "proof-candidate-digest-invalid" | "proof-candidate-digest-not-current" | "proof-candidate-unchanged" | "proof-criteria-already-frozen" | "proof-criteria-invalid" | "proof-criteria-policy-mismatch" | "proof-criterion-unknown" | "proof-current-evidence-missing" | "proof-evidence-digest-mismatch" | "proof-evidence-id-conflict" | "proof-protected-authority-required" | "proof-policy-mismatch" | "proof-policy-pin-mismatch" | "proof-self-review-refused" | "proof-verdict-id-conflict" | "seat-binding-conflict" | "seat-credential-active" | "seat-credential-unavailable" | "seat-display-name-conflict" | "tenant-scope-denied" | "ticket-comment-ineligible" | "ticket-comment-invalid" | "unauthorized" | "validation-error" | "version-conflict" | "work-assignment-kind-refused" | "work-assignment-target-ineligible" | "work-assignment-unchanged" | "work-priority-unchanged" | "work-blocker-already-resolved" | "work-blocker-id-conflict" | "work-blocker-owner-ineligible" | "work-blocker-unknown" | "work-intent-unmet" | "work-relation-cycle" | "work-relation-exists" | "work-reopen-unmet" | "work-ticket-terminal" | "workflow-already-started" | "workflow-pin-mismatch" | "workflow-predicate-unsatisfied" | "workflow-run-not-started" | "proof-incomplete" | "workflow-state-conflict" | "workflow-terminal" | "workflow-transition-not-declared" | "workflow-version-unknown" | "workflow-not-terminal";
   readonly "command_id"?: string | null;
   readonly "current_version"?: number | null;
   readonly "detail": string;
@@ -870,6 +872,11 @@ export type Problem = Readonly<{
   readonly "title": string;
   readonly "type": string;
   readonly "unmet_facts"?: ReadonlyArray<string>;
+}>;
+
+export type ProjectDeliveryAssignedSeatAssignment = Readonly<{
+  readonly "seat": ProjectDeliverySeat;
+  readonly "state": "assigned";
 }>;
 
 export type ProjectDeliveryCriteria = Readonly<{
@@ -892,6 +899,7 @@ export type ProjectDeliveryRow = Readonly<{
   readonly "health": "CP3_D_NOT_PROVEN" | "CURRENT" | "STATE_UNKNOWN";
   readonly "outcome": string;
   readonly "projection_watermark": number;
+  readonly "qualifying_stage_slots": ReadonlyArray<ProjectDeliverySlot>;
   readonly "qualifying_stage_slots_filled": number;
   readonly "qualifying_stage_slots_required": number;
   readonly "qualifying_stage_unfilled_or_unknown_slot_keys": ReadonlyArray<string>;
@@ -902,6 +910,25 @@ export type ProjectDeliveryRow = Readonly<{
   readonly "source_ids": ReadonlyArray<string>;
   readonly "source_watermark": number;
   readonly "underlying_maturity": "planned" | "in_progress" | "ready_to_land" | "merged" | "verified" | "released";
+}>;
+
+export type ProjectDeliverySeat = Readonly<{
+  readonly "catalog_revision": SeatCatalogRevision;
+  readonly "seat_key": string;
+  readonly "seat_label": string;
+}>;
+
+export type ProjectDeliverySeatAssignment = ProjectDeliveryAssignedSeatAssignment | ProjectDeliveryUnassignedSeatAssignment;
+
+export type ProjectDeliverySlot = Readonly<{
+  readonly "assigned_seat": ProjectDeliverySeatAssignment;
+  readonly "signing_seat": ProjectDeliverySeat | null;
+  readonly "slot_key": string;
+  readonly "state": "filled" | "unfilled" | "unknown";
+}>;
+
+export type ProjectDeliveryUnassignedSeatAssignment = Readonly<{
+  readonly "state": "unassigned";
 }>;
 
 export type ProjectDeliveryView = Readonly<{
@@ -993,6 +1020,37 @@ export type ReopenedAuditData = Readonly<{
 export type ResolveCloseRequest = Readonly<{
   readonly "expected_version": number;
   readonly "workflow_ref"?: string | null;
+}>;
+
+export type SeatCatalogRevision = Readonly<{
+  readonly "catalog_key": string;
+  readonly "content_digest": string;
+  readonly "revision": number;
+}>;
+
+export type SeatCredentialIssueRequest = Readonly<{
+  readonly "credential_digest": string;
+  readonly "credential_ref": string;
+  readonly "display_name": string;
+  readonly "project_key": string;
+  readonly "scopes": ReadonlyArray<CredentialScope>;
+  readonly "seat_key": string;
+}>;
+
+export type SeatCredentialReceipt = Readonly<{
+  readonly "command_id": string;
+  readonly "credential_id": string;
+  readonly "durability_state": DurabilityState;
+  readonly "event_ids": ReadonlyArray<string>;
+  readonly "principal_id": string;
+  readonly "project_key": string;
+  readonly "scopes": ReadonlyArray<CredentialScope>;
+  readonly "seat_key": string;
+  readonly "state": "active" | "revoked";
+}>;
+
+export type SeatCredentialRevocationRequest = Readonly<{
+  readonly "reason": string;
 }>;
 
 export type SecretBindingReference = Readonly<{

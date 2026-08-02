@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import json
 import secrets
+from enum import StrEnum
 from uuid import UUID, uuid4
 
 from fastapi import Request
@@ -15,19 +16,37 @@ from ctower_client.models import TelemetryContext as HttpTelemetryContext
 from ctower_kernel.access import Access
 from ctower_kernel.catalog import CatalogProblem
 from ctower_kernel.record import Actor, RecordProblem
+from ctower_kernel.record.credentials import CredentialScope
 from ctower_kernel.telemetry import TelemetryContext
 
 __all__: tuple[str, ...] = ()
 
 
+class UnscopedAuthentication(StrEnum):
+    """One explicit opt-out for authenticated routes without a credential capability."""
+
+    ALLOWED = "allowed"
+
+
 def authenticate(
-    access: Access, recorder: TelemetryRecorder, request: Request
+    access: Access,
+    recorder: TelemetryRecorder,
+    request: Request,
+    *,
+    required_scope: CredentialScope | UnscopedAuthentication,
 ) -> Actor | RecordProblem:
     """Resolve one credential and emit a denial without trusting request context."""
 
     outcome = access.authenticate(request.headers.get("Authorization"))
     if isinstance(outcome, RecordProblem):
         emit_auth_denial(recorder, "access.authenticate", outcome)
+        return outcome
+    if required_scope is UnscopedAuthentication.ALLOWED:
+        return outcome
+    refusal = access.authorize_scope(outcome, required_scope)
+    if refusal is not None:
+        emit_auth_denial(recorder, "access.authorize_scope", refusal)
+        return refusal
     return outcome
 
 

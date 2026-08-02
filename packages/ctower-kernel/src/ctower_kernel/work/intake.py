@@ -10,7 +10,13 @@ from datetime import UTC, datetime
 from typing import Protocol
 from uuid import UUID
 
-from ctower_kernel.record import Actor, PrincipalKind, RecordProblem
+from ctower_kernel.record import (
+    Actor,
+    PrincipalKind,
+    RecordProblem,
+    credential_scope_refusal,
+)
+from ctower_kernel.record.credentials import CredentialScope
 from ctower_kernel.record.intake import (
     IntakeCommandResult,
     IntakeIntent,
@@ -273,7 +279,11 @@ def _capability_refusal(actor: Actor, command_id: UUID) -> RecordProblem | None:
         )
     if actor.kind not in {PrincipalKind.OPERATOR, PrincipalKind.COMMANDER}:
         return _unauthorized(command_id, "Inbound intake requires task authority")
-    return None
+    return credential_scope_refusal(
+        actor,
+        CredentialScope.CAPTURE,
+        command_id=command_id,
+    )
 
 
 def _invalid(command_id: UUID, detail: str) -> RecordProblem:

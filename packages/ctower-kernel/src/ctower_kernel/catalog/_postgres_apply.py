@@ -19,6 +19,7 @@ from ctower_kernel.catalog._postgres_revisions import (
     insert_revisions,
     prepare_revisions,
 )
+from ctower_kernel.catalog._seat_catalog_sql import materialize_seat_catalogs
 from ctower_kernel.catalog.interface import (
     CatalogProblem,
     CompanyBundle,
@@ -201,6 +202,7 @@ def _commit_bundle(
         result=result,
         now=now,
     )
+    materialize_seat_catalogs(connection, actor, prepared, now=now)
     materialize_checkpoints(connection, actor, bundle, prepared, now=now)
     return result
 
