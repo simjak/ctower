@@ -3,26 +3,27 @@
 | Field | Value |
 |---|---|
 | Status | Canonical target-system truth |
-| Version | 1.11 |
-| Date | 2026-07-29 |
+| Version | 1.12 |
+| Date | 2026-08-01 |
 | Owners | Operator/CEO (product and human gates), Commander (orchestration contract), Engineering Manager (architecture and risk contract) |
 | Decision authority | [`DECISIONS.md`](DECISIONS.md) |
 
 **Implementation reality:** The repository now contains a tested, pre-alpha development walking slice for
 the API, protected CLI, Record/Work/Proof/Workflow/Catalog responsibilities, deterministic control loops,
 and verifier-only recovery evidence. It is not a supported installation or deployment. Mission
-Control/Control Tower remains the writable ctower-project source until the CT-I1-008 development dogfood
-gate establishes the fresh-database authority described below. Existing I1.7A contracts, read-only
-visibility, and refusing migration stubs are not authority or completion evidence.
+Control/Control Tower and the applicable GitHub/GitLab records remain writable co-sources for all three
+projects during the approved shadow dual-run. Existing I1.7A contracts, read-only visibility, and refusing
+migration stubs are not authority or completion evidence.
 
-**Authority and increment gates:** The approved I1.7 development path starts the ctower Company / Project /
-checkpoint hierarchy and Project Delivery projection on a fresh database. The archived legacy corpus is
-signed read-only provenance. Only an exact reviewed still-actionable set may be carried forward through
-ordinary generated API/CLI commands with stable legacy aliases; bulk legacy import is dormant pending a
-separate future decision. CT-I1-008 is the development dogfood go/no-go and may be `GO_WITH_LIMITS` while
-CP3-D is red. That verdict may complete only the development Project Delivery pilot/I1.7 checkpoint. Full
-normative I1 exit remains `NO-GO`, and CT-I2-001 remains unauthorized, until CP3-D proves
+**Authority and increment gates:** The approved portfolio path uses one existing tenant and database with
+the configured project keys `ctower`, `manibo`, and `bh-loop`. All three may hold reconstructible tickets,
+custody, evidence, and disjoint delivery views in the persistent shadow runtime, which keeps the exact
+`SHADOW_ONLY_CP3_D_NOT_PROVEN` label. Ctower is sole authority for nothing until CP3-D proves
 external-failure-domain acknowledgement, key recovery, isolated destructive restore, and measured RPO/RTO.
+The applicable Mission Control and GitHub/GitLab records therefore remain co-sources during dual-run.
+Bulk legacy import remains dormant; reviewed work enters through ordinary signed intake, item by item.
+CT-I1-008 may still record the narrow development pilot's `GO_WITH_LIMITS` evidence while CP3-D is red,
+but that verdict commits no writer epoch, stops no legacy writer, and does not authorize CT-I2-001.
 
 ## Executive summary
 
@@ -64,7 +65,7 @@ The trusted control plane runs on an authenticated private VPS. Python is the so
 
 The worker plane is replaceable. I2 wraps local `bin/mux`/tmux behind a durable runner protocol and pins each attempt's harness, supervisor, target, workspace, telemetry, and build digest. Tmux is optional same-host continuity, never ticket identity or proof. Jobs, fenced leases, structured cursors, replay, steer, cancel, and checkpoint are durable; vendor sessions are hints. Remote/image placement remains deferred until real Adapters earn its Seam.
 
-Ctower begins in a brand-new `ctower` monorepo. Mission Control and the inspected Paperclip/Crabbox sources are migration or research provenance only, not runtime dependencies. The trusted control plane is a Python modular monolith: `ctower-api` and its control worker share one kernel artifact; `ctower-runner`, `ctower-web`, and `ctowerctl` are separately deployable clients of authored contracts. One deep Catalog Module applies a universal `VersionedComponent` envelope to workflows, policies, profiles, skills, tools, environments, images, placement, extensions, cadence, and integrations. A secret-free `CompanyBundle` is portable desired-state authoring over the same authenticated command API as the UI, never a file-watched control plane.
+Ctower begins in a brand-new `ctower` monorepo. Mission Control remains an operational co-source during portfolio shadow operation; the inspected Paperclip/Crabbox sources are migration or research provenance only. None is a runtime dependency. The trusted control plane is a Python modular monolith: `ctower-api` and its control worker share one kernel artifact; `ctower-runner`, `ctower-web`, and `ctowerctl` are separately deployable clients of authored contracts. One deep Catalog Module applies a universal `VersionedComponent` envelope to workflows, policies, profiles, skills, tools, environments, images, placement, extensions, cadence, and integrations. A secret-free `CompanyBundle` is portable desired-state authoring over the same authenticated command API as the UI, never a file-watched control plane.
 
 Ctower is extension-ready, not extension-led. The trusted kernel alone owns ticket, workflow, policy, proof, Attention, job, effect, and secret truth. I1/I2 allow host-rendered revision-pinned declarative slots and denial contracts only; executable workers, third-party UI, connectors, and a marketplace are deferred until real Adapters earn an Extension Host Seam.
 
@@ -72,17 +73,24 @@ Trust is earned, not inferred. Evidence binds criterion, artifact digest, source
 
 Rollout is intentionally narrow. **Increment 1** dogfoods the trust spine: authenticated durable tickets,
 P0/P1/P2 and orthogonal Board/task facts, criteria/evidence/gates, protected spool-backed CLI, off-host-
-acknowledged durability, isolated restore, and a fresh-database Project Delivery pilot. An exact reviewed
-set of still-actionable work is recreated through ordinary generated API/CLI commands with stable legacy
-aliases; the signed legacy archive remains read-only provenance and bulk import stays dormant. A
-four-stage workflow fixture proves the same generic engine contract that Increment 2 completes; it is not
-a temporary special-case engine. I1 provides its Project Delivery evidence through a read-only CLI text
-projection with optional deterministic JSON; browser implementation and evidence begin at I2.4.
+acknowledged durability, isolated restore, and fresh-database Project Delivery shadow views for the
+configured `ctower`, `manibo`, and `bh-loop` Projects. Reviewed reconstructible coordination work enters
+through ordinary signed API/CLI intake with project-scoped source identities; Mission Control and applicable
+GitHub/GitLab records remain co-sources and bulk import stays dormant. Version-pinned Project grants enforce
+disjoint access and prohibited-class refusal. A four-stage workflow fixture proves the same generic engine
+contract that Increment 2 completes; it is not a temporary special-case engine. I1 provides its Project
+Delivery evidence through read-only CLI text projections with optional deterministic JSON; browser
+implementation and evidence begin at I2.4.
 **Increment 2** adds the production generic Workflow/Runtime/Commander/release path and executes one real
 software-factory ticket end to end on `bin/mux`, including independent gates, effect-brokered staging and
 production, live verification, runner-loss recovery, retro, and closure. General-purpose Catalog editors,
 a marketplace, remote runner pools, sandbox fleets, visual workflow editors, broad analytics, and
 multi-tenant commercialization wait.
+
+The first portfolio expansion is deliberately easy to explain: three projects share one private control
+plane so the operator can see one evidence-backed portfolio, but the shadow copy does not replace any
+project's existing record until disaster recovery is proven. This gains coordination value now without
+pretending the data is safe enough for a source-of-truth cutover.
 
 The north star is **operator attention minutes per verified resolved ticket**, always paired with throughput, escaped defects, and time-to-detection so silence cannot game the result. ctower succeeds when the operator can trust Home in under ten seconds, ordinary transitions proceed autonomously, every side effect reconciles to authority, and process improvements measurably reduce future attention or defects.
 
@@ -124,10 +132,10 @@ No historical document is an alternate implementation spec. If executable code a
 
 | Home | Content | Mutation rule |
 |---|---|---|
-| `SPEC.md` | Current product and system truth; stable increment definitions; temporary bootstrap backlog until fresh-database authority and minimal carry-forward | Reviewed revision; contradictions removed rather than accumulated |
+| `SPEC.md` | Current product and system truth; stable increment definitions; temporary bootstrap backlog through shadow onboarding and the eventual accepted portfolio authority epoch | Reviewed revision; contradictions removed rather than accumulated |
 | `DECISIONS.md` | Append-only operator decisions and rationale, including superseded reasoning | Append only; prior entries are never rewritten |
 | `ARCHITECTURE.md` | One compact, terminal-safe ASCII atlas derived from this specification | Updated with `SPEC.md`; never creates requirements, execution authority, or a second architecture truth |
-| Temporary bootstrap backlog in this file | Stable work IDs, dependency order, ownership, exit evidence, and designated validation commands before ctower has authority for its own work | Exact reviewed actionable items are recreated through ordinary generated commands with aliases; after authority, ticket state lives only in ctower and this section retains definitions, not live status |
+| Temporary bootstrap backlog in this file | Stable work IDs, dependency order, ownership, exit evidence, and designated validation commands before ctower has authority for its own work | Reviewed reconstructible items enter through ordinary signed commands with project-scoped source identities; only after CP3-D and a separately accepted authority epoch does ticket state live solely in ctower while this section retains definitions, not live status |
 | Executable contracts and traceability index | Exact DDL, OpenAPI, schemas, packs, policy fixtures, protocol conformance tests, and generated SPEC/AC/INV links | Authored in their one declared home; reviewed against stable IDs; the sole generated index is never hand-edited |
 | Historical documents | Provenance, discarded alternatives, research evidence, and review history | Read-only except for the standardized historical banner |
 
@@ -179,7 +187,9 @@ Durable and trackable completion of work, with feedback and an improvement loop,
 7. **Default autonomous, policy-gated:** routine recovery and transitions require no human; taste, new architecture/security boundaries, destructive/irreversible choices, business decisions, and incidents do.
 8. **Effects are brokered:** a gate that does not constrain the real side effect is theater.
 9. **Fewer complete paths:** one fully verified golden path is more valuable than a broad incomplete platform.
-10. **No split brain:** one writable source of truth after the development authority epoch; adapters and projections never dual write.
+10. **No premature cutover:** the approved three-project shadow dual-run names its co-sources explicitly;
+    only the post-CP3-D portfolio authority epoch may make ctower the sole writer, after which adapters and
+    projections never dual write.
 11. **Placement before provision:** hard constraints, candidate exclusions, target/environment/image revisions, and fencing are committed before any provider mutation; mutable active pointers affect future attempts only.
 12. **Extension requests are not grants:** extensions propose scoped inputs or effects through the kernel Interface and never acquire canonical mutation, standing-secret, or primary-navigation authority.
 
@@ -209,6 +219,9 @@ Each story names observable user value and links to pass/fail acceptance criteri
 | US-PD-03 | Operator and cross-domain owner | I use the same Project Delivery projection for software, accounting, compliance, hiring, and other configured Workflows; restore/rebuild reproduces the same rows, while stale or incomplete source truth is visibly unknown instead of guessed. | [AC-PD-04](#ac-pd-04), [AC-PD-05](#ac-pd-05), [AC-PD-06](#ac-pd-06) |
 | US-PD-04 | Operator/CEO | Every qualifying stage of a delivery — across the declared stage groups of its own pinned Workflow, for engineering work the one `engineering.software-factory` delivery sprint — names the crew seat accountable for it so I can see who owns each open slot now and who signed each completed slot after the fact; unassigned slots and assigned-versus-signed differences stay queryable data rather than guesses or silent rewrites. | [AC-PD-07](#ac-pd-07), [AC-PD-08](#ac-pd-08), [AC-PD-09](#ac-pd-09) |
 | US-PD-05 | Operator/CEO | I can tell whether a milestone is even meant to land a change, reach a non-production environment, and produce a real external outcome, because its own definition says so; a milestone whose definition has never said is shown as undeclared rather than assumed to need nothing. | [AC-PD-10](#ac-pd-10), [AC-TM-07](#ac-tm-07), [AC-WF-27](#ac-wf-27) |
+| US-PORT-01 | Portfolio operator | I see `ctower`, `manibo`, and `bh-loop` as three configured projects in one tenant/database, with disjoint Board and Project Delivery rows, while every surface still says shadow-only until CP3-D closes. | [AC-PORT-01](#ac-port-01), [AC-PORT-02](#ac-port-02), [AC-PORT-06](#ac-port-06) |
+| US-PORT-02 | Project Commander or assigned seat | I use an operator-issued credential pinned to one project, one configured seat, and explicit `capture`, `transition`, or `evidence` scopes; any foreign-project or revoked call refuses by name with no mutation. | [AC-PORT-03](#ac-port-03), [AC-PORT-04](#ac-port-04) |
+| US-PORT-03 | Operator and security reviewer | Intake and evidence reject each prohibited portfolio data class by its stable name, including BH.Loop PHI-shaped content, while allowing references to de-identified controls and source-host artifacts. | [AC-PORT-05](#ac-port-05) |
 | US-CMD-01 | Commander | Every accepted command is deduplicated, durably classified, and routed to a pinned workflow before I dispatch work, so process death cannot drop intent. | [AC-DUR-01](#ac-dur-01), [AC-WF-01](#ac-wf-01), [AC-RUN-01](#ac-run-01) |
 | US-CMD-02 | Commander | I plan and decompose an outcome using relations; I create child tickets only for independently valuable work and preserve blocker and provenance graphs. | [AC-PROD-02](#ac-prod-02), [AC-WF-02](#ac-wf-02) |
 | US-CMD-03 | Commander | I resolve the strongest healthy permitted reasoning profile, select and explain a pinned Workflow and versioned `orchestration_plan`, and choose a policy-permitted perspective/anti-spin plan while the server enforces its declared bounds. | [AC-WF-03](#ac-wf-03), [AC-WF-11](#ac-wf-11), [AC-WF-12](#ac-wf-12), [AC-WF-19](#ac-wf-19), [AC-WF-21](#ac-wf-21), [AC-WF-22](#ac-wf-22), [AC-WF-24](#ac-wf-24), [AC-SEC-03](#ac-sec-03), [AC-RUN-02](#ac-run-02) |
@@ -380,6 +393,95 @@ default, and no member becomes a writable field: cards remain a derived projecti
   no-qualifying-checkpoint state. No surface substitutes a stage name, a lane, a Workflow key, a delivery
   fact, or silence for a declaration.
 
+#### Portfolio topology, shadow boundary, and project grants
+
+The approved first portfolio is one existing tenant/company in one Postgres database with exactly three
+configured project keys: `ctower`, `manibo`, and `bh-loop`. They are ordinary Project component data under
+one CompanyBundle, not product-code branches, separate tenants, or separate databases. Issue #152's
+cluster-global role race remains relevant only before a future topology provisions more than one database;
+it is not a gate for adding project rows inside this one-database topology.
+
+The portfolio remains a **coordination shadow**, not a source-of-truth cutover. The runtime and every
+portfolio read expose `SHADOW_ONLY_CP3_D_NOT_PROVEN`. All three projects may store reconstructible tickets,
+custody intervals, current evidence metadata, and Board/Project Delivery rows, but ctower is sole authority
+for none of them until CP3-D closes. Mission Control ledgers and the applicable GitHub/GitLab records remain
+co-sources during the dual-run. No shadow result may freeze a legacy writer, authorize a production effect,
+or satisfy full-I1/CT-I2-001 authority. Bulk import stays dormant. Manibo's reviewed 115-item set enters
+only through the ordinary signed intake command, one item per command, with ordinary refusal, replay, and
+quarantine behavior.
+
+Portfolio intake and Evidence recording reject the following stable prohibited-data classes before bytes,
+events, object metadata, evidence, or outbox rows commit:
+
+| Stable refusal class | Refused content | Narrow allowed reference |
+|---|---|---|
+| `credential_material` | Credentials, bearer/session tokens, private or public access keys, signing keys, recovery material, and secret values in any form | A typed vault/credential reference with no value |
+| `production_customer_data` | Production customer records, payloads, exports, or copied customer artifacts | A source-host artifact ID/digest that reveals no customer content |
+| `phi_hipaa_covered` | PHI, patient data, clinical content, or any other HIPAA-covered content | For `bh-loop`, D11 control references, GitHub/GitLab artifact IDs, and de-identified control IDs only |
+| `pii_beyond_staff_identity` | PII beyond staff names and work handles | A staff name or work handle needed for accountable assignment |
+| `live_incident_indicator` | Live incident indicators, production incident payloads, or operational data that could expose an active incident | A non-sensitive retrospective control/outcome reference after it is no longer live |
+
+The command refuses with stable problem code `prohibited-data-class`, names exactly one or more detected
+classes, and makes zero mutation. Uncertain classification is refused rather than accepted. The refusal
+model applies equally to intake content, attachments, artifact metadata, Evidence fields, and referenced
+bytes before promotion; storing a digest does not sanitize prohibited bytes.
+
+Each project has one configured Commander principal and may have any number of configured seat principals.
+Seat keys come only from the versioned seat catalog; product behavior never embeds a roster or derives
+authority from a seat-key string. An operator-issued append-only **project grant** binds:
+
+- tenant and one project key plus the exact Project component revision/digest;
+- principal and one seat key plus the seat-catalog revision/digest active at issuance;
+- an exact subset of the versioned access-policy scopes `capture`, `transition`, and `evidence`;
+- credential reference and credential version, never credential value;
+- issuer, issue command, issue time, expiry when present, and current revocation fact; and
+- the access-policy revision/digest used to interpret every scope.
+
+Project and seat labels may later change without rewriting a grant. A new grant must resolve against the
+then-active revisions. Revocation is an immediate append-only fact; the revoked credential's next call
+returns `project-credential-revoked` by name with zero mutation. Authentication resolves the grant
+server-side. Payload project, seat, scope, or credential claims never create authority.
+
+The three scope names are exhaustive for project-seat credentials:
+
+| Scope | Exact project-local authority | Explicitly not granted |
+|---|---|---|
+| `capture` | Read the target project needed for intake; submit ordinary durable intake; create/link one ticket; attach the project-scoped source reference; request initial custody by the configured eligible Commander for that same project | Grant management, Catalog/CompanyBundle apply, foreign-project capture, imported proof/status, protected verdicts, effects |
+| `transition` | Read that project's tickets/Board/Delivery; issue ordinary typed comment, priority, admit/defer, block/unblock, assignment/handback, and Workflow transition or resolve requests when all existing state, assignment, evidence, and policy rules also permit them | Custody in another project, criteria/gate bypass, owner/Catalog surface, protected operator gates, effects |
+| `evidence` | Read that project's ticket/proof context; record project-local artifact metadata and Evidence only under the existing assignment, kind, independence, signer, taint, and prohibited-data contracts | Protected verdict or criteria-freeze authority by possession alone, foreign-project Evidence, owner/Catalog surface, effects |
+
+Authorization is the intersection of principal kind, active grant, exact project, named scope, assignment,
+aggregate state, and existing policy. The full portfolio enumeration is:
+
+| Operation | Portfolio operator | Matching project Commander credential | Matching non-Commander seat credential | Gateway/bridge or internal service |
+|---|---|---|---|---|
+| Issue or revoke a project/seat credential | Operator only | No | No | No |
+| Apply Project/checkpoint/seat configuration | Operator-only CompanyBundle command; may review Commander-authored configuration | May author/propose a revision but cannot apply it | May author/propose only if separately assigned; cannot apply | Catalog service executes only the accepted operator command |
+| Read Ticket, Board, or Project Delivery | All three projects, with source-level authorization still enforced | Own project with any active named scope | Own project with any active named scope | Projection service only for its authenticated fold; gateway has no read authority |
+| Submit intake and create/link a ticket | Any project through the ordinary command path | Own project with `capture`; initial custodian must be that project's eligible Commander | Own project with `capture`; cannot make itself custodian unless it is the configured eligible Commander | Exact source/project grant only; no inferred or foreign project |
+| Hold or transfer accountable custody | Protected operator placement to the eligible Commander granted to that ticket's project | Own-project self-placement/handback only where the custody policy permits | No | No |
+| Mutate ticket, assignment, Workflow, relation, or checkpoint-linked work | Existing operator command authority, still state/policy bound | Own project with `transition` | Own project with `transition` and the required assignment | Current fenced job may return observations only; it receives no standing mutation authority |
+| Record artifact metadata or Evidence | Existing operator authority, still Evidence-policy bound | Own project with `evidence` and required assignment | Own project with `evidence` and required assignment | Current fenced job may upload/declare observations; Proof decides whether they may be recorded or satisfy anything |
+| Freeze/revise criteria, issue a protected verdict, decide an operator gate, or execute an effect | Existing authorization matrix only; shadow-mode effect prohibitions still apply | No additional authority from a project grant | No additional authority from a project grant | Existing protected service boundary only; no shadow production effect |
+
+Every ticket, ticket event, Workflow run, stage/assignment/custody interval, relation, criterion, artifact,
+Evidence item, gate, Board card, and Project Delivery source link carries or resolves one immutable project
+key. A missing, ambiguous, revoked, or foreign grant returns `project-scope-denied` with the requested and
+credential project keys, performs zero mutation, and never lets the first writer adopt unknown ownership.
+Operator portfolio reads may aggregate the three projects, but every source fact remains subject to its
+own authorization and derivation rules.
+
+External work identity and ticket identity stay separate. Ordinary intake records a project-scoped source
+reference `<project>-R<nnn>` for the shared Mission Control R-counter, and source dedupe is keyed by tenant,
+project, source kind, and source reference. These references are never reused across projects or renumbered.
+The canonical ticket ID remains an instance-global UUIDv7, so a ticket keeps one permanent identity even if a
+source system or display label changes.
+
+The configured accountable owners for this portfolio revision are `ctower` -> `ctower-commander`,
+`manibo` -> `manibo-commander`, and `bh-loop` -> `bhloop-commander`. Those are deployment configuration
+principals under the configured Commander seat, not a product-code seat roster. Project-grant issuance and
+revocation are owned by the operator only.
+
 #### Project Delivery projection
 
 Tickets answer whether individual work moved. The **Project Delivery projection** answers whether a
@@ -497,8 +599,9 @@ criteria is visibly unconfigured, not 0% and not `done`. I2.4 adds the authorize
 
 The development pilot and full normative I1 exit are separate checkpoints. CT-I1-008 may record
 `GO_WITH_LIMITS` and the development Project Delivery pilot/I1.7 row may become `done` when every criterion
-declared for that narrow reconstructible-data checkpoint has current proof. That row must still show
-`CP3_D_NOT_PROVEN` and must not be presented as full I1 completion. The full-I1 row remains `blocked` with
+declared for that narrow reconstructible-data checkpoint has current proof. That row must still show health
+`CP3_D_NOT_PROVEN` and separately expose runtime authority label `SHADOW_ONLY_CP3_D_NOT_PROVEN`; it must not
+be presented as full I1 completion. The full-I1 row remains `blocked` with
 degraded confidence while CP3-D is red; no development API/CLI dogfood proof can satisfy its required
 external-failure-domain acknowledgement, key recovery, isolated destructive restore, or measured RPO/RTO
 criteria.
@@ -808,11 +911,12 @@ An aggregate owns only the invariants that must be transactional together. Cross
 |---|---|---|
 | **Inbound thread / conversation** | Durable channel-neutral thread, participants, source scope, ordered inbound/outbound command events, classification, and promotion provenance | May link zero or more tickets; source event IDs are immutable aliases |
 | **Inbound conversation/command event** | Original payload reference, authenticated or source-verified actor, taint level, idempotency key, classification result, and append position | Belongs to one thread; may promote/link a ticket or attach to another aggregate |
-| **Ticket** | Permanent ID, tenant/project scope, promised outcome, lifecycle episode pointer, accountable owner, aggregate version, and ticket-event hash-chain head | Links relations, workflow runs, criteria, attention, changes, costs, and retros; does not own their internal state |
+| **Ticket** | Instance-global permanent UUIDv7, immutable tenant/project scope, promised outcome, lifecycle episode pointer, accountable owner, aggregate version, and ticket-event hash-chain head | Links project-scoped source references, relations, workflow runs, criteria, attention, changes, costs, and retros; does not own their internal state |
 | **Project / delivery checkpoint definition** | Versioned Company -> Project -> Increment/Milestone hierarchy, checkpoint outcome/order, accountable owner, declared exit criteria, explicit qualifying-work links or rules, and the delivery surface it MAY declare — its landing boundary, its non-production environments, and its externally effective outcome, each either declared with identity or declared explicitly absent | References tickets, Workflow runs, Proof, decisions, costs, and applicable release/outcome facts; it never owns their lifecycle or verdicts. A delivery-surface field that is neither declared present nor declared absent is explicitly undeclared — `STATE_UNKNOWN` on every surface that exposes it, never an absence a skip predicate may rely on and never inferred from a stage name, lane, Workflow key, or silence |
 | **Ticket label vocabulary** | Versioned configuration enumerating the stable label keys and display labels a tenant or company may apply to tickets | Referenced by applied-label facts and card surfaces; membership is data, never a product-code roster, and a label implies no priority, lane, risk, stage, delivery, or human need. The applied-label fact is owned by the Ticket aggregate and pins the vocabulary revision active at application time |
 | **Attention-kind catalog** | Versioned configuration enumerating the stable kinds of human need a finding may name, with their keys, display labels, and ranking inputs | Referenced by Attention findings and the surfaces that consume them; membership is data, never a product enum; it owns no finding, no qualification policy, and no resolution |
 | **Seat catalog** | Versioned configuration enumerating the stable seat keys and labels a tenant or company may assign to qualifying-stage evidence slots | Referenced by seat-assignment and projection surfaces; membership is data, never a product-code roster; does not own principals, seat-assignments, or Evidence |
+| **Project grant / seat credential** | Append-only issue/revoke facts binding one principal and configured seat to one tenant/project, exact Project/seat-catalog/access-policy revisions, explicit `capture|transition|evidence` scopes, and a credential reference/version | Operator-issued only; authentication resolves it server-side; grants no owner/Catalog, protected-verdict, effect, or foreign-project authority |
 | **Project Delivery projection row** | Disposable checkpoint summary, derivation reasons, source watermark, proof coverage, per-slot assigned and signing seat facts (or explicit unassigned), confidence/freshness, and health | Rebuilds from authorized project/checkpoint definitions, the active seat catalog, and durable Work, Workflow, Proof, seat-assignment, gate, cost, and outcome facts; accepts no mutation. The seat-assignment fact is owned by the Stage instance aggregate alongside its evidence-slot state |
 | **Priority fact / blocker** | Append-only P0/P1/P2 changes and durable typed unmet conditions with owner, source, affected stage, resolution contract, next check/SLA, and evidence | Work truth is orthogonal to risk, stage, Board lane, delivery, and Attention; multiple effective blockers coexist |
 | **Ticket relation** | Typed edge with source, target, actor, rationale, and validity; `parent_of`, `depends_on`, `blocks`, `duplicates`, `relates_to`, `caused_by` | Parent graph and blocker graph are separately cycle-checked; child tickets require independent value |
@@ -1156,7 +1260,7 @@ The ticket is the human join point, not the transaction boundary for the entire 
 3. **INV-03 — Idempotency before CAS.** The append transaction checks `(principal_id, client_command_id)` and request hash before aggregate-version comparison, so an exact retry returns its original result even after the version advances.
 4. **INV-04 — Serialized sequence.** Each aggregate stream has a server-assigned monotonic sequence and version updated under row lock or equivalent serializable claim.
 5. **INV-05 — Hash chain.** Each event commits `prev_hash` and canonical `hash`; independently stored anchors make unauthorized history rewriting detectable.
-6. **INV-06 — Permanent ticket identity.** Ticket IDs never mutate when type, department, owner, workflow, or lifecycle episode changes.
+6. **INV-06 — Permanent ticket identity.** Ticket IDs are instance-global UUIDv7 values and never mutate when project display/source reference, type, department, owner, workflow, or lifecycle episode changes.
 7. **INV-07 — Durable ingress first.** Reasoning begins only after the inbound event is committed or visibly quarantined; accepted input is never held only in model context.
 8. **INV-08 — Discussion is not Board work.** A discussion thread remains durable without a ticket; promotion atomically records source event provenance.
 9. **INV-09 — Continuous accountable custody.** Every actionable lifecycle episode that is not `closed` or `cancelled` has exactly one current `ticket_custodian` interval with no gap or overlap. It is normally a durable Commander principal; an operator may take custody only through an explicit protected suspension/transfer. A stage executor, collaborator, reviewer, runner, model session, or provider handle is never an eligible custodian. Transfer atomically closes and opens intervals, fences the old Commander reasoning lease, records context/checkpoint handoff, and starts no new work until the new custodian can rehydrate it. `resolved` retains custody through administrative close; only close/cancellation ends the interval.
@@ -1185,9 +1289,12 @@ The ticket is the human join point, not the transaction boundary for the entire 
 32. **INV-32 — No plaintext credentials.** Records, event payloads, logs, artifacts, and runner commands contain vault references or short-lived opaque handles, never long-lived plaintext secrets.
 33. **INV-33 — Explicit cost allocation.** Each shared usage/cost record is fractionally allocated exactly once; ticket totals cannot double count a run spanning multiple tickets.
 34. **INV-34 — Projections are disposable.** Board, Home, Fleet, Analytics, search, and activity views are rebuildable and never accepted as authoritative write targets.
-35. **INV-35 — No dual write after the development authority epoch.** Mission Control JSONL, Paperclip, status files, and ctower cannot all accept ticket mutations; after the epoch every mutation for the reviewed cohort goes through ctower.
+35. **INV-35 — No premature or post-cutover split brain.** Before CP3-D, the approved portfolio shadow may
+    dual-run only as reconstructible coordination data with Mission Control and applicable GitHub/GitLab
+    records named as co-sources; it freezes no writer. After the CP3-D-authorized portfolio authority epoch,
+    every mutation for the reviewed cohort goes through ctower and no legacy writer resumes.
 36. **INV-36 — Full-I1 acceptance includes disaster durability.** A command is authoritative/accepted only after its record transaction and required durable acknowledgement satisfy the active durability policy. Development dogfood may use only the explicitly limited degraded policy. Full normative I1 exit requires external-failure-domain acknowledgement and RPO 0 for record truth. Before the applicable acknowledgement the API returns an explicit `durability_pending` non-accepted result that is safe to replay; an offline client record is acknowledged later or visibly quarantined, never silently dropped.
-37. **INV-37 — Tenant/project scope.** Every scoped aggregate and object carries tenant identity; project scope is explicit where applicable; cross-scope access is server-authorized and audited.
+37. **INV-37 — Tenant/project scope.** Every scoped aggregate and object carries tenant identity; every portfolio ticket-linked fact carries or resolves one immutable project key; cross-scope access is server-authorized through an active version-pinned project grant and audited.
 38. **INV-38 — Retention separates bytes from audit.** Sensitive bytes can expire or be crypto-erased while non-sensitive digest/provenance/tombstone metadata remains auditable according to policy.
 39. **INV-39 — Delivery is not inferred.** Merge, staging deployment, staging QA, production deployment, production verification, rollback, and incident are separate facts.
 40. **INV-40 — Retro closes the loop.** A released feature or incident produces a retro; a process defect yields either a linked improvement with an evaluation window or an evidence-backed no-change decision.
@@ -1218,6 +1325,11 @@ The ticket is the human join point, not the transaction boundary for the entire 
 65. **INV-65 — Bounded no-progress.** Every Execution Policy declares one finite `max_nonprogressing_candidate_mutations`, at least `1` and never more than the number of governed candidate mutations `max_candidate_generations` permits, so the bound is always reachable; publication fails on a policy that declares it absent, zero, or above that ceiling. A candidate reaches its **verification disposition** at the first of these its pinned package records against that candidate's digest: the outcome of a terminal review round, or the failure of a mandatory stage gate that routes the candidate to repair. A candidate's **outstanding set** is the run's open server-owned failure lineages plus the required evidence slots unfilled on that candidate's digest, observed at that disposition. A governed candidate mutation is **progressing** only when the outstanding set of the candidate it produced is a strict subset of the outstanding set of the candidate it replaced; every mutation has such a predecessor, because the initial candidate is a generation and never a mutation, so no mutation is exempt from the test. An identical set, a larger set, and an exchanged set that resolves one lineage while opening another are each non-progressing and increment one append-only server-owned count keyed to the workflow run. The count moves at most once per mutation, in the transaction recording that candidate's verification disposition; a candidate superseded or cancelled before it reaches one moves no count, and repeated or later-invalidated verification of the same candidate neither re-tests nor un-counts it. Only a progressing mutation clears that count, and it clears it completely. Reaching the declared maximum creates exactly one deduplicated escalation and blocks further automatic dispatch even while repair, nonpassing-round, and candidate-generation capacity remain. This bound alone stops the run on *reaching* its maximum rather than on the next request beyond it; that is what a no-progress rule is for. Changed prose, a new candidate digest, reassignment, model or harness replacement, and restart reset nothing; a reopen starts a new lifecycle episode and therefore a new workflow run with its own count under [INV-11](#non-negotiable-invariants), which is an authenticated audited event rather than a reset path an executor can take.
 66. **INV-66 — Board card context is derived, explicit, and never inferred.** Every member of the Board card's context set — tenant display identity, change references, applied labels, human-waiting, and delivery-surface availability — derives only from explicit accepted facts at the source watermark: the tenant's recorded display identity, linked Change facts, applied-label facts pinned to the label-vocabulary revision active at application time, qualifying Attention findings, and the qualifying checkpoint definition's pinned delivery-surface declaration. No member may be inferred from an identifier's spelling, a title, a branch or repository name, a lane, a stage or group key, a blocker type or age, a delivery fact, a principal display name, or silence. An unavailable member is stated — explicit empty set, explicit declared absence, explicit no-qualifying-checkpoint, or `STATE_UNKNOWN` with its missing source — and is never omitted so a client invents a default. Product code, schemas, projections, packs, and tests must not branch on particular label keys; changing the label vocabulary or the explicit facts alone must change the exact derived context set with no product-code edit. A member removed in a later label-vocabulary revision leaves historical pinned applied-label facts intact and visible. Cards remain a disposable projection under [INV-34](#non-negotiable-invariants), and the context set adds no writable field and no new authority.
 67. **INV-67 — Human need is a typed appended finding.** Every statement that work needs a human is an appended Attention finding naming exactly one kind present in the attention-kind catalog revision that was active at append time, with that revision pinned to the finding; kinds are configured data and no product enum, engine branch, projection, pack, or test may hard-code a fixed kind roster or branch on a kind key. Resolution, snooze, expiry, and cancellation are further appended facts with actor, time, and reason; a need is never ended by deleting or omitting its row, and a member removed in a later catalog revision leaves historical findings intact and visible. Needs You and Board human-waiting derive from this feed alone under the same policy qualification, so neither surface invents, coerces, or suppresses a human need from a blocker, lane, stage, age, or silence, and derivation at one source watermark reproduces the same findings on rebuild.
+68. <a id="inv-68"></a>**INV-68 — One configured portfolio topology.** The approved portfolio is one existing tenant and database with Project component keys `ctower`, `manibo`, and `bh-loop`. The exact set is configured data; product code, schemas, projections, and reusable conformance tests do not branch on those keys. A per-project database or tenant requires a later topology decision and, where one cluster hosts multiple databases, the separately proven cluster-role coordination boundary.
+69. <a id="inv-69"></a>**INV-69 — Project grants bound every project action.** Every project-seat credential is operator-issued, append-only, revocable, and pinned to one principal, one project, one configured seat, exact Project/seat-catalog/access-policy revisions, and an explicit subset of `capture|transition|evidence`. Every project-scoped read or mutation evaluates that active grant server-side in addition to existing state, assignment, independence, and policy rules. Missing, ambiguous, revoked, or foreign scope refuses by name with zero mutation; payload claims and the first writer cannot establish ownership.
+70. <a id="inv-70"></a>**INV-70 — Prohibited portfolio data never enters Record or Proof.** Intake, attachments, artifact metadata, referenced bytes, and Evidence refuse `credential_material`, `production_customer_data`, `phi_hipaa_covered`, `pii_beyond_staff_identity`, and `live_incident_indicator` before any authoritative or object mutation. The refusal names every detected class. For `bh-loop`, only D11/control references, source-host artifact identities, and de-identified control IDs are permitted; patient or clinical content never is.
+71. <a id="inv-71"></a>**INV-71 — Work references are project-scoped; tickets are global.** The shared R-counter maps to immutable `<project>-R<nnn>` intake source references whose dedupe identity includes tenant, project, source kind, and source reference. A reference is never reused across projects or renumbered. Ticket IDs retain the authored instance-global UUIDv7 contract and never derive authority from a display/source reference.
+72. <a id="inv-72"></a>**INV-72 — Shadow coordination is not cutover.** While `SHADOW_ONLY_CP3_D_NOT_PROVEN` applies, all three projects may hold only reconstructible coordination records and disjoint views; Mission Control and the applicable GitHub/GitLab records remain co-sources, no writer is frozen, and no production, incident, credential-value, customer/PHI, irreplaceable, or sole-copy authority moves to ctower. Only accepted CP3-D evidence may authorize the portfolio authority epoch. Bulk import remains dormant; ordinary signed item-by-item intake is the only onboarding path.
 
 ## Workflow and verification architecture
 
@@ -2362,7 +2474,12 @@ flowchart LR
     C -->|Transactions, blobs, references, backups| B
 ```
 
-ctower is the sole writable orchestration source of truth. Humans and gateways submit commands; workers execute leased jobs; external systems remain authoritative for their own effects but must return audit identifiers. The record tier is inside the trusted boundary and is reconstructable without any worker.
+After the CP3-D-authorized portfolio authority epoch, ctower is the sole writable orchestration source of
+truth for the reviewed cohort. Before that epoch, the approved three-project runtime is a labeled shadow
+coordination record and Mission Control plus the applicable GitHub/GitLab records remain co-sources.
+Humans and gateways submit commands; workers execute leased jobs; external systems remain authoritative for
+their own effects and must return audit identifiers. The record tier is inside the trusted boundary and is
+reconstructable without any worker.
 
 ### Logical containers and modules
 
@@ -3083,6 +3200,8 @@ Authorization is default deny and evaluates principal, tenant/project, command, 
 | Operation | Operator | Commander | Assignee agent | Reviewer/QA/CSO/EM | Runner | DevOps release runner | Gateway | Platform admin | Effect broker service |
 |---|---:|---:|---:|---:|---:|---:|---:|---:|---:|
 | Bootstrap first tenant | One-use local capability establishes initial operator | No | No | No | No | No | No | Capability establishes initial admin | No |
+| Issue or revoke project/seat credential | Yes; operator only | No | No | No | No | No | No | No unless also authenticated as operator | No |
+| Read project Ticket/Board/Delivery | All three configured projects; source authorization still applies | Active matching project grant | Active matching project grant | Active matching project grant and assignment where required | Current job context only | Active matching project grant and assignment | No | No unless also operator or separately granted | No |
 | Append inbound event | Yes | Yes | No | No | No | No | Scoped source | Admin import only | No |
 | Create/link ticket | Yes | Yes | Scoped proposal | No | No | No | Via ingest policy | Yes | No |
 | Transfer accountable custody | Protected operator transfer/suspension | Handoff request only; target must be eligible Commander | No | No | No | No | No | Break-glass with same protected transfer | No |
@@ -3280,7 +3399,14 @@ Low-trust runner output uploads into quarantine. It may be inspected by a truste
 ### Tenant, project, and runner scope
 
 - Except for the one-use first-tenant bootstrap envelope, tenant ID is mandatory on every command, aggregate, credential, runner, object prefix, audit query, and metric. Bootstrap derives the newly created tenant inside its serializable transaction and then emits ordinary tenant-scoped facts under disabled B0. Every later server path obtains tenant from the principal/session and rejects payload attempts to override it.
-- Project scope is optional at intake but mandatory before repository, environment, secret, or effect access. Cross-project work uses explicit grants and auditable relations.
+- The approved first portfolio uses one existing tenant/database and configured Project component keys
+  `ctower`, `manibo`, and `bh-loop`. Project scope is mandatory on every portfolio intake and ticket-linked
+  fact. Product code is generic over configured keys and neither creates a per-project tenant/database nor
+  branches on these three literals.
+- Cross-project work uses the operator-issued, version-pinned project grant defined in
+  [Portfolio topology, shadow boundary, and project grants](#portfolio-topology-shadow-boundary-and-project-grants).
+  The server intersects `capture|transition|evidence` with project, seat, assignment, state, and policy;
+  absent, unknown, revoked, ambiguous, or foreign grants refuse by stable name with zero mutation.
 - SQL policies/queries include tenant predicates, and tests fuzz every read/write endpoint for cross-tenant leakage. Object presigned URLs are tenant/key scoped and short-lived.
 - Runner registration declares allowed tenants/projects, capability classes, resource limits, protocol version, trust class, and image/build attestation. Registration requires a one-time bootstrap approved by an administrator.
 - A runner with changed identity, image, protocol, unexpected clock skew, failed attestation, or anomalous behavior is quarantined and receives no new lease. Existing leases are fenced or drained according to incident policy.
@@ -3366,34 +3492,40 @@ Paperclip and Crabbox are pinned research provenance, not dependencies or altern
 | **Study after I2** | Paperclip extension/image ideas and Crabbox remote execution inform deferred invariants only. A real use case plus two justified real Adapters must earn each public Seam. |
 | **Reject** | Legacy ticket SSOT or dual write; generic issue status as Workflow; process-local authority; executable manifest import; ambient extension authority; plaintext/standing secrets; unpinned revisions; provider capture-to-active; session/comment/process disappearance as completion; any hidden legacy fallback. |
 
-For I1 ctower-project authority, relevant Mission Control JSONL/boards, Paperclip IDs, task/status files,
-terminal logs, tmux/cmux names, and vendor session IDs form one hashed and signed read-only provenance
-archive. Only an exact human-reviewed set of still-actionable items is carried forward, through ordinary
-generated API/CLI commands with stable legacy aliases and source digests. The archive is not an import
-queue: task/status files and terminal logs cannot establish current assignment, command ordering, proof,
-or completion. Bulk legacy import is dormant and requires a separate future operator decision.
+During I1 portfolio shadow onboarding, relevant Mission Control JSONL/boards, Paperclip IDs,
+task/status files, GitHub/GitLab artifacts, terminal logs, tmux/cmux names, and vendor session IDs remain
+live co-sources or research provenance according to their existing roles. Signed snapshots may preserve
+provenance, but they do not freeze or replace those sources. Only exact human-reviewed items enter ctower,
+through ordinary signed API/CLI intake with project-scoped source identities. Task/status files and terminal
+logs cannot by themselves establish command ordering, proof, or completion in ctower. Bulk legacy import is
+dormant and requires a separate future operator decision.
 
 ### One ctower-project source-of-truth barrier
 
-The barrier has two explicit authority milestones. CT-I1-008 is the development dogfood go/no-go and may
-return `GO_WITH_LIMITS` for only reviewed public, low-value, reconstructible ctower engineering work. It
-establishes the Company / Project / checkpoint hierarchy and Project Delivery projection on the fresh
-database, commits the development writer epoch, and may complete only the development Project Delivery
-pilot/I1.7 checkpoint. It must remain visibly `CP3_D_NOT_PROVEN`. Credentials, accounting, production
-approvals/effects, incidents, client data, and irreplaceable artifacts are excluded from that cohort.
+D30 retains this historical traceability anchor but makes the barrier portfolio-wide for all three
+configured Projects.
+
+The barrier has two explicit milestones. CT-I1-008 is the development dogfood go/no-go and may return
+`GO_WITH_LIMITS` for only reviewed public, low-value, reconstructible coordination work. It establishes the
+Company / three-Project / checkpoint hierarchy and disjoint Project Delivery projections on the fresh
+database, but it commits no writer or authority epoch and stops no legacy writer. Every portfolio response
+must remain visibly `SHADOW_ONLY_CP3_D_NOT_PROVEN`. Credentials, accounting, production approvals/effects,
+incidents, customer or PHI data, and irreplaceable artifacts are excluded from that cohort.
 
 Full normative I1 exit is a separate `NO-GO` gate while CP3-D is red. It requires
 external-failure-domain acknowledgement, key recovery, isolated destructive restore, and measured RPO/RTO.
-The CT-I2-001 dependency on CT-I1-008 means this full normative I1 exit, not the development
-`GO_WITH_LIMITS`; no I2 implementation is authorized while CP3-D is red.
+Only a separate, explicitly accepted post-CP3-D portfolio authority epoch may freeze legacy writers and make
+ctower sole authority. The CT-I2-001 dependency on CT-I1-008 means the full normative I1 exit, not the
+development `GO_WITH_LIMITS`; no I2 implementation is authorized while CP3-D is red.
 
-Before that epoch, the E2 persistent shadow runtime may use
+Before that portfolio authority epoch, the E2 persistent shadow runtime may use
 `durability_policy=development_offhost_ack` for dogfood mechanics on one private VPS. It consists of one
 persistent PostgreSQL 17 primary, one named physical ACK standby, a loopback-only API, and the same-artifact
-ordinary control worker/finalizer. Acceptance may be reported for this shadow runtime only; health is always
-degraded with `development_offhost_ack_cp3_d_not_proven`. Its ACK copy is not an independent failure domain,
-does not satisfy CP3-D, and authorizes neither the `development_single_writer` epoch nor any production,
-effect, incident, credential, client-data, irreplaceable, or sole-copy record.
+ordinary control worker/finalizer. Acceptance may be reported for this shadow runtime only; health remains
+degraded with technical reason `development_offhost_ack_cp3_d_not_proven`, and every portfolio response
+also exposes authority label `SHADOW_ONLY_CP3_D_NOT_PROVEN`. Its ACK copy is not an independent failure
+domain, does not satisfy CP3-D, and authorizes neither a writer epoch nor any production, effect, incident,
+credential, customer-data, PHI, irreplaceable, or sole-copy record.
 
 The E2 installation is unprivileged and reboot-persistent through user systemd plus persistent container
 volumes. Secret values reside only in an allowlisted operating-system keyring; files and unit definitions
@@ -3422,27 +3554,27 @@ service cutover/restart, and rollback are deferred to the separately reviewed re
 TLS/external exposure, full telemetry, backup/restore drills, and production claims remain deferred.
 
 ```text
-create fresh Company / Project / checkpoints + Project Delivery projection
-  -> inventory legacy corpus and exact carry-forward allowlist
-  -> hash/sign/seal the complete legacy corpus as read-only provenance
-  -> recreate each approved actionable item through ordinary generated API/CLI commands
-  -> attach one stable legacy alias + source digest per carried-forward item
-  -> reconcile the exact reviewed set through public reads
-  -> commit the CT-I1-008 development writer epoch; any later legacy write is an incident
+configure one Company / three Projects / commander-authored starter checkpoints
+  -> issue version-pinned project-seat credentials and project grants
+  -> admit exact reviewed items through ordinary signed project-scoped API/CLI commands
+  -> reconcile project-scoped source identities and three disjoint Board projections
+  -> prove named cross-project, revoked-grant, and prohibited-data refusals
+  -> record the CT-I1-008 shadow-only development verdict
+  -> prove CP3-D
+  -> separately accept a portfolio authority epoch; only then freeze legacy writers
 ```
 
-There is no tailer, dual-write interval, corpus importer, fuzzy dedupe, or automatic backfill. The ordinary
-command path may create only state that its authenticated caller could create for new work; a legacy alias
-cannot forge proof, gates, effects, delivery, resolution, closure, or arbitrary status. Before the
-development epoch, the incomplete fresh database and recreated items may be discarded while Mission
-Control stays authoritative. After the epoch, rollback means a compatible ctower build/restore or explicit
-read-only/spool mode; legacy mutation never resumes. An omission is corrected by another authenticated
-provenance-bearing ordinary command.
+There is no tailer, dual write, corpus importer, fuzzy dedupe, or automatic backfill. Mission Control and
+the applicable GitHub/GitLab records remain co-sources throughout shadow operation. The ordinary command
+path may create only state that its authenticated caller could create for new work; a source identity cannot
+forge proof, gates, effects, delivery, resolution, closure, or arbitrary status. The incomplete fresh
+database and its reconstructible shadow records may be discarded while those sources stay authoritative.
+An omission is corrected by another authenticated, provenance-bearing ordinary command.
 
 Current I1.7A authority/health/read contracts, append-only storage shape, read-only Project Delivery fold,
-generated query path, and refusing online migration stubs establish no writer epoch and complete no
-carry-forward. CT-I1-008 owns the later development verdict. Bulk import remains dormant behind a separate
-future decision.
+generated query path, and refusing online migration stubs establish no writer epoch. CT-I1-008 owns only the
+later shadow verdict. Bulk import remains dormant behind a separate future decision; the 115-item `manibo`
+backlog may enter only item by item through ordinary signed intake.
 
 ## Acceptance criteria
 
@@ -3494,6 +3626,17 @@ Each criterion is pass/fail. Evidence must be attached to the ctower build ticke
 |---|---|---|
 | <a id="ac-att-01"></a>AC-ATT-01 | Every statement that work needs a human is one appended typed Attention finding naming exactly one kind drawn from the versioned configured attention-kind catalog, with the catalog revision active at append time pinned to the finding, plus subject reference, reason code, effective owner, recommendation, alternatives, consequence/default, deadline, dedupe key, and source facts. The catalog is configured data: adding, removing, renaming, or reordering members requires no product-code change and is proven by a mutation suite of the same class as the seat-catalog proof; a member removed in a later revision leaves historical findings intact and visible; and normative product code, schemas, projections, packs, and tests hard-code no fixed kind roster and branch on no kind key. The outbox-poison disposition of [AC-OPS-16](#ac-ops-16) is published as one catalog member with its own pass condition unchanged. No new environment variable or feature flag is introduced. | Catalog publication vectors; add/remove/rename/reorder mutation suite that fails if product code must change; member-removal leaves-historical-finding-intact fixture; fixed-roster and kind-key branch scan; poison-kind fixture asserting AC-OPS-16 still passes unchanged; generated-client field inventory |
 | <a id="ac-att-02"></a>AC-ATT-02 | Resolution is data: `resolved`, `snoozed`, `expired`, superseded, and `cancelled` are appended facts carrying actor, time, and reason, and a need is never ended by deleting or omitting a row. Needs You and Board human-waiting derive from this one feed under the same policy qualification at the source watermark, and rebuild or restore at one watermark reproduces the same findings and the same qualification outcomes. Existing Needs You precision and exclusion rules are unchanged: informational, Commander-owned, service-recovery, resolved, expired, and superseded findings never appear, and stale rows are removed or coalesced within 60 s. | Append-only history query and row-deletion anti-fixture; watermark rebuild comparison; Needs You positive/negative class fixtures re-run over the feed; dedupe/coalescing and 60-second freshness clock test; cross-surface equality snapshot |
+
+### Portfolio shadow onboarding
+
+| ID | Pass condition | Evidence capture |
+|---|---|---|
+| <a id="ac-port-01"></a>AC-PORT-01 | One tenant and one database contain exactly the configured `ctower`, `manibo`, and `bh-loop` Project keys, with no project-specific database or tenant. Changing the configured Project set requires no product-code branch or database topology change. Issue #152 remains only the future multi-database gate. | Fresh-tenant CompanyBundle snapshot, database/tenant inventory, Project-set add/remove mutation test, and project-key branch scan |
+| <a id="ac-port-02"></a>AC-PORT-02 | Every response for all three projects exposes `SHADOW_ONLY_CP3_D_NOT_PROVEN`; Mission Control and applicable GitHub/GitLab records remain co-sources; no writer is frozen and no sole-copy, production, effect, incident, credential-value, customer, PHI, or irreplaceable authority moves before CP3-D and a separately accepted portfolio authority epoch. Bulk import is absent/refusing, and the 115-item `manibo` backlog can enter only one reviewed item at a time through ordinary signed intake. | Three-project shadow snapshots, source-authority checklist, legacy-writer continuity proof, absent/refusing bulk-import inventory, and item-by-item `manibo` intake trace |
+| <a id="ac-port-03"></a>AC-PORT-03 | The operator can issue and revoke a version-pinned project-seat credential and active Project grant for the configured Commander of each Project; each grant pins Project, seat-catalog, access-policy, and credential revisions/digests and carries an exact subset of `capture|transition|evidence`. Initial custody accepts only an eligible configured Commander backed by an active target-Project grant. The owner keys are configured data rather than a roster literal, and no non-operator owner-surface mutation exists. | Grant/credential contract vectors, three configured-owner fixtures, version-mismatch and owner-surface denials, custody trace, and fixed-roster/seat-key branch scan |
+| <a id="ac-port-04"></a>AC-PORT-04 | For all six ordered source-target Project pairs, ticket/checkpoint/evidence mutation with the source Project credential refuses as `project-scope-denied` and produces no authoritative or projected state change. Revocation takes effect on the next call and refuses as `project-credential-revoked`; issuance, scope subsets, and revocation are independently proven. | Six-pair authorization matrix, before/after state digests, scope-subset vectors, and issue/revoke/next-call transcript |
+| <a id="ac-port-05"></a>AC-PORT-05 | Intake and Evidence refuse each prohibited class by its exact stable class name under `prohibited-data-class`: `credential_material`, `production_customer_data`, `phi_hipaa_covered`, `pii_beyond_staff_identity`, and `live_incident_indicator`. The PHI fixture refuses by name; BH.Loop may carry only D11 control references, GitHub/GitLab artifact references, and deidentified control IDs, never patient or clinical content. | Per-class API/CLI and Evidence negative fixtures, exact RFC 9457 problem snapshots, zero-state-diff proof, and allowed-reference counter-fixtures |
+| <a id="ac-port-06"></a>AC-PORT-06 | Ticket IDs retain their authored instance-global UUIDv7 contract; each source identity is `(tenant, project, source kind, source ref)` and renders as `<project>-R<nnn>` from the shared R-counter without reuse or renumbering across projects. QA creates one ticket per Project and proves three mutually disjoint filtered Board rows whose reads, custody, checkpoint links, and evidence stay inside the matching grant. | UUIDv7/source-identity property tests, shared-counter transcript, dedupe/reuse/renumber denials, and three-project Board/API/CLI snapshots |
 
 ### Project Delivery projection
 
@@ -3660,11 +3803,11 @@ Each criterion is pass/fail. Evidence must be attached to the ctower build ticke
 
 | ID | Pass condition | Evidence capture |
 |---|---|---|
-| <a id="ac-mig-01"></a>AC-MIG-01 | At the development authority epoch, every legacy path able to mutate ctower-project work is frozen and the complete legacy corpus is hashed, signed, and retained read-only. | Signed archive manifest plus attempted-write denial |
-| <a id="ac-mig-02"></a>AC-MIG-02 | The exact still-actionable carry-forward allowlist and each stable legacy alias/source digest receive human review; no fuzzy auto-merge or implicit candidate exists. | Carry-forward allowlist and reviewer sign-off |
-| <a id="ac-mig-03"></a>AC-MIG-03 | Every allowlisted item is created exactly once through ordinary generated API/CLI commands and receives its reviewed legacy alias without forged proof, gate, effect, delivery, resolution, closure, or arbitrary state. No bulk importer is active. | Public command/event trace, exact-alias reconciliation, forbidden-authority negatives, and absent/refusing bulk-import inventory |
-| <a id="ac-mig-04"></a>AC-MIG-04 | All ctower-project API, CLI, Commander, and runner-facing clients in scope use ctower after one development authority epoch; legacy writes are rejected and ctower is the sole writer for the reviewed cohort. | Authority-epoch checklist, endpoint logs, and split-brain monitor |
-| <a id="ac-mig-05"></a>AC-MIG-05 | Fresh-database items and aliases match the reviewed allowlist exactly; omitted legacy records remain only in the readable signed archive. | Human-readable carry-forward reconciliation and archive-read proof |
+| <a id="ac-mig-01"></a>AC-MIG-01 | During `SHADOW_ONLY_CP3_D_NOT_PROVEN`, Mission Control and applicable GitHub/GitLab records remain writable co-sources and signed snapshots remain provenance rather than a cutover mechanism. No legacy writer is frozen until CP3-D passes and the operator separately accepts the portfolio authority epoch. | Shadow authority inventory, co-source write/read trace, signed provenance snapshot, and pre-CP3-D no-freeze assertion |
+| <a id="ac-mig-02"></a>AC-MIG-02 | Every reviewed shadow item and project-scoped source identity receives human review; no fuzzy auto-merge or implicit intake candidate exists. | Item-by-item review record, source-identity reconciliation, and reviewer sign-off |
+| <a id="ac-mig-03"></a>AC-MIG-03 | Every admitted item is created exactly once through ordinary signed generated API/CLI commands and receives its reviewed project-scoped source identity without forged proof, gate, effect, delivery, resolution, closure, or arbitrary state. No bulk importer is active. | Public command/event trace, exact source-identity reconciliation, forbidden-authority negatives, and absent/refusing bulk-import inventory |
+| <a id="ac-mig-04"></a>AC-MIG-04 | Only after accepted CP3-D evidence and a separately accepted portfolio authority epoch do all in-scope API, CLI, Commander, and runner-facing clients use ctower as sole writer and reject legacy mutation. A CT-I1-008 `GO_WITH_LIMITS` cannot satisfy this condition. | CP3-D evidence, signed authority-epoch decision, endpoint logs, attempted-write denial, and split-brain monitor |
+| <a id="ac-mig-05"></a>AC-MIG-05 | Shadow items and source identities match the reviewed item-by-item intake exactly; omitted source records stay in their existing co-sources during shadow and may move to readable signed archival provenance only after the accepted authority epoch. | Human-readable intake reconciliation, co-source read proof, and post-epoch archive plan |
 
 ### Operations
 
@@ -3757,17 +3900,21 @@ flowchart LR
     C[I1: spool-backed CLI]
     U[I1: API + protected CLI trust-spine operation]
     F[I1: four-stage trust-spine fixture on the final generic evaluator]
-    X[I1: fresh Project Delivery pilot + CT-I1-008 development verdict]
+    X[I1: fresh three-project Project Delivery shadow + CT-I1-008 verdict]
+    P[I1: project grants, isolation, ordinary intake, scoped feed]
     G[I1: CP3-D + full normative I1 exit]
     W[I2: complete generic Workflow + Commander + Runtime]
     A[I2: local harness/supervisor and root-owned release Adapter]
     S[I2: software-factory package + verified production golden path]
 
-    L0 --> R --> D --> C --> U --> F --> X --> G --> W --> A --> S
+    L0 --> R --> D --> C --> U --> F --> X --> P --> G --> W --> A --> S
 ```
 
-The order is normative. The fresh-database development pilot may receive CT-I1-008
-`GO_WITH_LIMITS` while CP3-D is red, but this authorizes only the reviewed reconstructible cohort. Full
+The order is normative. The fresh-database three-project shadow may receive CT-I1-008
+`GO_WITH_LIMITS` while CP3-D is red, but this authorizes only reviewed reconstructible coordination records
+and no source-of-truth change. Project identities and grant-aware custody precede scope isolation and the
+three commander-authored onboarding configurations; ordinary item-by-item `manibo` intake precedes the
+project-scoped feed. Full
 normative I1 exit remains `NO-GO` until the CP3-D gate passes. The CT-I2-001 dependency on CT-I1-008 means
 that full exit, so Increment 2 cannot start from a development verdict. A production remote provider,
 custom-image runtime, warm pool, or executable-extension host waits until a real use case and a second real
@@ -3777,13 +3924,14 @@ Adapter earn its Seam.
 
 #### I1 outcome
 
-The operator can create, prioritize, assign, block, inspect, prove, and close ctower-project tickets through
-an authenticated private service and protected spool-backed CLI. The development path establishes the
-smallest Company -> Project -> Increment/Milestone hierarchy and compact read-only Project Delivery CLI
-text projection, with optional deterministic JSON, on a fresh database. A reviewed actionable set is
-recreated through ordinary generated API/CLI commands with stable legacy aliases while the complete signed
-legacy corpus remains read-only provenance. Bulk legacy import is not active. CT-I1-008 may approve this
-pilot as `GO_WITH_LIMITS`; the full I1 outcome additionally requires CP3-D's external-failure-domain
+The operator can create, prioritize, assign, block, inspect, prove, and close project-scoped tickets through
+an authenticated private service and protected spool-backed CLI. The development path establishes one
+Company with the configured `ctower`, `manibo`, and `bh-loop` Projects, their commander-authored
+Increment/Milestone hierarchies, and compact disjoint read-only Project Delivery CLI projections, with
+optional deterministic JSON, on one fresh database. Reviewed reconstructible coordination records enter
+through ordinary signed generated API/CLI intake with project-scoped source identities while Mission
+Control and applicable GitHub/GitLab records remain co-sources. Bulk legacy import is not active. CT-I1-008
+may approve this shadow as `GO_WITH_LIMITS`; the full I1 outcome additionally requires CP3-D's external-failure-domain
 acknowledgement, key recovery, isolated destructive restore, and measured RPO/RTO. Browser implementation
 and browser evidence begin in I2.4.
 
@@ -3827,17 +3975,23 @@ and `STATE UNKNOWN` reporting. Browser realization of Home, Board,
 contextual/direct-ID Ticket, Fleet, and Analytics is deferred to I2.4; I1 introduces no browser route,
 session, placeholder, or UI evidence.
 7. The four-stage fixture above, a daily synthetic run, health/watchdog, backup/restore evidence, and operator-attention baseline instrumentation.
-8. At I1.7, the smallest ctower Company -> Project -> Increment/Milestone hierarchy, checkpoint
-   outcomes/owners/exit criteria and qualifying-work links, plus compact read-only Project Delivery CLI text
-   projection rows with optional deterministic JSON, deterministic state, proof and qualifying-stage
-   evidence-slot coverage including unfilled/unknown slot keys, watermark, freshness, authorized source IDs,
-   and derivation reasons. There is no browser drill-through, interactive row-detail product, broader
-   visualization, trend/cost/time analytics, manual status, or ticket-count percentage in I1.
-9. A fresh-database development authority epoch for **ctower-project records only**. The complete legacy
-   corpus is hashed, signed, and sealed read-only. An exact reviewed set of still-actionable items is
-   recreated through ordinary generated API/CLI commands with stable aliases and source digests; those
-   commands cannot forge proof, gates, effects, delivery, resolution, closure, or arbitrary state.
-   Post-epoch legacy mutation is rejected. There is no dual write, tailer, or active bulk importer.
+8. At I1.7, one ctower Company with configured `ctower`, `manibo`, and `bh-loop` Project keys, each Project's
+   commander-authored Increment/Milestone hierarchy, checkpoint outcomes/owners/exit criteria and
+   qualifying-work links, plus compact disjoint read-only Project Delivery CLI text projection rows with
+   optional deterministic JSON, deterministic state, proof and qualifying-stage evidence-slot coverage
+   including unfilled/unknown slot keys, watermark, freshness, authorized source IDs, and derivation reasons.
+   There is no browser drill-through, interactive row-detail product, broader visualization, trend/cost/time
+   analytics, manual status, or ticket-count percentage in I1.
+9. Version-pinned Project grants and project-seat credentials, operator-only issue/revoke, configured
+   Commander owners, grant-aware initial custody, exact `capture|transition|evidence` scope subsets, and one
+   shared authorization guard for Work and Record. Every foreign-project or next-call revoked credential
+   attempt refuses by its stable name with zero mutation; no owner surface or fixed seat roster is added.
+10. Shadow-only portfolio intake and evidence under `SHADOW_ONLY_CP3_D_NOT_PROVEN`: prohibited data classes
+    refuse by name, source identities are project-scoped and stable, ticket IDs retain their instance-global UUIDv7 contract,
+    the 115-item `manibo` backlog enters only item by item through ordinary signed commands, and the scoped
+    event feed follows only after identities, grants, isolation, and onboarding configuration. Mission Control
+    and applicable GitHub/GitLab records remain co-sources; there is no writer epoch, tailer, dual write, or
+    active bulk importer.
 
 Increment 1 has no agent stage dispatch or harness command execution and therefore neither activates nor
 claims CommandGuard implementation. It also has no autonomous Commander loop, production effect grant,
@@ -3877,9 +4031,9 @@ or exit criterion moves increment as a result.
 
 #### I1 exit evidence
 
-- A CT-I1-008 development `GO_WITH_LIMITS` proves only the fresh-database Project Delivery pilot,
-  exact minimal carry-forward, and narrow reconstructible-data writer epoch. It is not full I1 exit and
-  does not authorize CT-I2-001.
+- A CT-I1-008 development `GO_WITH_LIMITS` proves only the fresh-database three-project Project Delivery
+  shadow and reviewed reconstructible coordination intake. It commits no writer or authority epoch, is not
+  full I1 exit, and does not authorize CT-I2-001.
 - Repository, product, task-management, attention, durability, evidence, security, UX, migration, and operations criteria applicable to I1 pass; every deferred capability is explicitly `not exercised`.
 - A host-loss test proves an accepted authoritative write survives because off-host acknowledgement preceded acceptance; injected acknowledgement loss returns only replayable `durability_pending`.
 - An isolated restore meets RPO 0 for accepted records, recovers vault/KMS access, verifies objects/chains/tombstones and the signed expected-source inventory, proves every inactive I1 root/effect/provider source through an explicit `not_exercised`/zero-source entry, and refuses normal reads/effects if any activated source is missing, incomplete, or unreconciled.
@@ -3890,10 +4044,10 @@ or exit criterion moves increment as a result.
   stage-name branching fails.
 - Timed API/CLI evidence proves the operator can find, reprioritize, reassign, block/unblock, inspect proof, and close a ticket without another ledger.
 - The frozen baseline artifact contains at least five legacy working days. The clean-install first-success trial meets [AC-ADM-03](#ac-adm-03).
-- Carry-forward reconciliation accounts for every approved ctower-project item, creates each stable alias
-  once through ordinary generated commands, proves the signed legacy archive remains read-only, and
-  records zero legacy writes after the authority epoch. Bulk import remains absent/refusing.
-- The ctower project hierarchy and compact Project Delivery projection satisfy the pre-seat portion of [AC-PD-01](#ac-pd-01) (hierarchy, exit-criterion coverage, slot `filled / required` coverage, source watermark, freshness, derivation reasons; the per-slot seat fields are I2-bound), the eight-state/blocked-proof truth table satisfies [AC-PD-02](#ac-pd-02), and event reconciliation plus the hourly no-change heartbeat satisfy the I1 portion of [AC-PD-04](#ac-pd-04).
+- Item-by-item reconciliation accounts for every admitted shadow item, creates each project-scoped source
+  identity once through ordinary signed generated commands, and proves Mission Control and applicable
+  GitHub/GitLab records remain co-sources. Bulk import remains absent/refusing.
+- The three Project hierarchies and disjoint compact Project Delivery projections satisfy the pre-seat portion of [AC-PD-01](#ac-pd-01) (hierarchy, exit-criterion coverage, slot `filled / required` coverage, source watermark, freshness, derivation reasons; the per-slot seat fields are I2-bound), the eight-state/blocked-proof truth table satisfies [AC-PD-02](#ac-pd-02), and event reconciliation plus the hourly no-change heartbeat satisfy the I1 portion of [AC-PD-04](#ac-pd-04). [AC-PORT-01](#ac-port-01) through [AC-PORT-06](#ac-port-06) prove the one-database topology, version-pinned grants, all six cross-project refusal directions, prohibited-class refusals including PHI by name, stable identities, and three disjoint Board rows.
 - Full normative I1 exit remains `NO-GO` until accepted evidence proves CP3-D
   external-failure-domain acknowledgement, key recovery, isolated destructive restore, and measured
   RPO/RTO. Only that full exit satisfies CT-I2-001's CT-I1-008 dependency.
@@ -3911,12 +4065,13 @@ ctowerctl ops restore-drill verify --latest --require accepted-rpo=0,keys-recove
 
 #### I1 rollback
 
-Before the development authority epoch, discard the incomplete fresh database if necessary while Mission
-Control remains authoritative; preserve the signed legacy archive and carry-forward review evidence. After
-the epoch, never resume legacy mutation. Roll back to the last compatible ctower build, keep clients in
-explicit spool/read-only mode, restore accepted records if required, reconcile journals, and re-enable
-writes only after integrity is known. A carry-forward omission is repaired through an authenticated
-provenance-bearing ordinary command, never by editing or importing from the legacy source.
+During shadow operation, discard the incomplete fresh database if necessary while Mission Control and
+applicable GitHub/GitLab records remain authoritative co-sources; preserve signed provenance and item-review
+evidence. Roll back to the last compatible ctower build, keep clients in explicit spool/read-only mode,
+restore accepted records if required, reconcile journals, and re-enable shadow writes only after integrity
+is known. An intake omission is repaired through an authenticated provenance-bearing ordinary command,
+never by bulk editing or importing from a legacy source. Only a separately accepted post-CP3-D authority
+epoch may define the later source-of-truth rollback procedure.
 
 ### Increment 2 — autonomous generic workflow and one software-factory golden path
 
@@ -4014,14 +4169,14 @@ an operator-only gate.
 
 ### Contract and authority rule
 
-ctower has no ticket API yet. The 27 stable IDs below—9 L0 preconditions, 8 I1 items, and 10 I2
+ctower has no ticket API yet. The 31 stable IDs below—9 L0 preconditions, 12 I1 items, and 10 I2
 items—are therefore the temporary source of implementation work; they are not claims that tickets already
-exist. Each is captured in the current durable request process. At development authority, only the exact
-reviewed still-actionable set is recreated through ordinary generated API/CLI commands with one stable
-external alias and source digest; historical status, comments, assignments, and evidence remain in the
-signed read-only legacy archive rather than being bulk imported. After the ctower-project authority epoch,
-this section retains dependency and increment definitions only and is never updated as a competing board.
-The task-management model in CT-L0-008 is operator-approved.
+exist. Each is captured in the current durable request process. During portfolio shadow operation, only
+reviewed reconstructible items enter through ordinary signed generated API/CLI commands with one stable
+project-scoped source identity; Mission Control and applicable GitHub/GitLab records remain co-sources and
+no history is bulk imported. Only after CP3-D and a separately accepted portfolio authority epoch may this
+section retain dependency and increment definitions without continuing as an active source. The
+task-management model in CT-L0-008 is operator-approved.
 
 Each validation command below is designated as part of the item’s deliverable. A missing test/module is a failing item, not a reason to substitute an ad hoc command.
 
@@ -4049,8 +4204,12 @@ Each validation command below is designated as part of the item’s deliverable.
 | CT-I1-004 | Implement `ctowerctl`/`ctl`, generated API client, ordered spool/ACK/quarantine, CompanyBundle validate/plan/apply/export, and API/CLI parity. | CT-L0-003, CT-L0-007, CT-I1-002 | Engineer + QA | `apps/ctowerctl/`; `generated/python/ctower-client/`; `contracts/company/` | Kill/replay/two-writer/disk/poison chaos plus AC-COMP-03 | `uv run pytest tests/acceptance/increment-1/test_ctl.py tests/contracts/company -q` |
 | CT-I1-005 | Stable deferred alias to the `CT-I2-005` I2.4 browser sub-checkpoint: realize D22's Home, Board, contextual/direct Ticket, narrow Fleet/Analytics, browser session, routes, and Playwright evidence only after I1 API/CLI authority is proven. No I1 browser implementation, route, placeholder, or browser evidence is authorized. | Deferred to CT-I2-005; no I1 critical dependency | Designer + UI QA; operator taste gate when material | `apps/ctower-web/src/surfaces/`; `routes.ts`; browser Access boundary; kernel `attention/`, `projections/` | I2.4 every-control UI QA, tenant isolation, route inventory, reconnect, <10 s Home, and unknown screenshots | `pnpm run test:e2e` at CT-I2-005 |
 | CT-I1-006 | Implement off-host-ack acceptance, Routine occurrence/scheduler, outbox/projection/health loops, backups/anchors, encrypted artifacts, vault/KMS recovery, poison handling, synthetic API/CLI four-stage lifecycle, signed restore expected-source inventory, fail-closed isolated journal reconciliation, and real reboot drills. | CT-I1-001..004 | DevOps + Engineer + independent QA | Control worker; kernel record/runtime/projections/attention; `packs/routines/`; `deploy/`; runbooks | Host-loss RPO0, `durability_pending`, duplicate/DST/restart and poison visibility through API/CLI, five synthetic runs, key restore, explicit I1 root/effect/provider `not_exercised`/zero-source entries, activated-source absence denial, reboot targets | `uv run pytest tests/acceptance/increment-1/test_operations.py -q` |
-| CT-I1-007 | Establish the smallest fresh-database Company -> Project -> Increment/Milestone definitions and compact read-only Project Delivery CLI text projection with optional deterministic JSON; hash/sign/seal the complete legacy corpus; recreate only the exact reviewed still-actionable set through ordinary generated API/CLI commands with stable aliases/source digests; commit one development authority epoch and reject legacy/manual-status writes. Bulk import remains dormant. | CT-I1-004, CT-I1-006 | Engineer + Commander verification + Review | Generated client; kernel Catalog/Work/Projections; operations evidence | Signed read-only archive, reviewed carry-forward allowlist, public-command traces, exact aliases, absent/refusing bulk importer, zero post-epoch legacy writes, deterministic compact checkpoint text/JSON rows with source IDs/derivation reasons/proof plus qualifying-stage slot coverage, immediate reconcile, hourly freshness, and stale/unknown faults | `uv run pytest tests/acceptance/increment-1/test_cutover.py -q` |
-| CT-I1-008 | Archive complete I1 API/CLI contracts, security, deferred-browser/deferred-capability, chaos, first-success, restore, carry-forward, baseline, and operations evidence; issue the ctower-project **development dogfood** go/no-go, which may be `GO_WITH_LIMITS` while CP3-D is red. Track full normative I1 exit as a separate `NO-GO` until CP3-D passes. | CT-L0-001..009, CT-I1-001..004, CT-I1-006..007 | Independent QA + Review + CSO | `tests/acceptance/increment-1/`; evidence objects | Development cohort applicable ACs pass with limits explicit; browser, remote/image/executable-extension runtime not exercised; full-I1 CP3-D external acknowledgement, key recovery, isolated destructive restore, and measured RPO/RTO independently evidenced before full exit | `uv run pytest tests/acceptance/increment-1 tests/contracts -q` |
+| CT-I1-007 | Establish the smallest fresh-database Company -> Project -> Increment/Milestone definitions and compact read-only Project Delivery CLI text projection with optional deterministic JSON; admit only exact reviewed reconstructible shadow items through ordinary signed generated API/CLI commands with project-scoped source identities. Mission Control and applicable GitHub/GitLab records remain co-sources; no writer epoch occurs and bulk import remains dormant. | CT-I1-004, CT-I1-006 | Engineer + Commander verification + Review | Generated client; kernel Catalog/Work/Projections; operations evidence | Item-review records, signed public-command traces, exact project-scoped source identities, co-source continuity, absent/refusing bulk importer, deterministic compact checkpoint text/JSON rows with source IDs/derivation reasons/proof plus qualifying-stage slot coverage, immediate reconcile, hourly freshness, and stale/unknown faults | `uv run pytest tests/acceptance/increment-1/test_cutover.py -q` |
+| CT-I1-008 | Archive complete I1 API/CLI contracts, security, deferred-browser/deferred-capability, chaos, first-success, restore, shadow-intake, baseline, and operations evidence; issue the ctower-project **development dogfood** go/no-go, which may be `GO_WITH_LIMITS` while CP3-D is red and commits no writer epoch. Track full normative I1 exit as a separate `NO-GO` until CP3-D passes and CT-I1-009..012 complete. | CT-L0-001..009, CT-I1-001..004, CT-I1-006..007 | Independent QA + Review + CSO | `tests/acceptance/increment-1/`; evidence objects | Development cohort applicable ACs pass under `SHADOW_ONLY_CP3_D_NOT_PROVEN`; browser, remote/image/executable-extension runtime not exercised; full-I1 additionally requires CT-I1-009..012, CP3-D external acknowledgement, key recovery, isolated destructive restore, and measured RPO/RTO independently evidenced | `uv run pytest tests/acceptance/increment-1 tests/contracts -q` |
+| CT-I1-009 | Implement immutable Ticket Project identity while retaining instance-global UUIDv7 Ticket IDs, append-only version-pinned Project grants and project-seat credentials, operator-only issue/revoke, server-side grant resolution, and grant-aware initial Commander custody. | CT-I1-002..004, CT-I1-008 development verdict | Engineer + Engineering Manager + CSO | Kernel `access/`, `work/`, `catalog/`; authored access/work contracts; generated clients | Grant issue/scope/revocation vectors, configured Commander eligibility, Project/seat-catalog/policy/credential revision pins, next-call `project-credential-revoked`, custody positives/negatives, and no owner-surface proof | `uv run pytest tests/contracts/access/test_project_grants.py tests/modules/work/test_project_custody.py -q` |
+| CT-I1-010 | Configure one tenant/database with the `ctower`, `manibo`, and `bh-loop` Projects and commander-authored starter checkpoints; enforce one Work/Record authorization guard for exact `capture|transition|evidence` scope subsets; refuse all cross-project mutation and all five prohibited data classes by stable name. | CT-I1-009 | Engineer + CSO + three configured Commander owners + QA | CompanyBundle; kernel `access/`, `work/`, `record/`, `proof/`; refusal contracts | One-tenant/three-Project setup, owner-key configuration without roster literals, all six ordered cross-project zero-diff refusals, per-scope tests, and per-class refusal including `phi_hipaa_covered` by name | `uv run pytest tests/acceptance/increment-1/test_portfolio_isolation.py tests/contracts/security/test_prohibited_data.py -q` |
+| CT-I1-011 | Admit the reviewed 115-item `manibo` backlog one item at a time through ordinary signed intake, assigning each `(tenant, project, source kind, source ref)` identity a stable `<project>-R<nnn>` reference from the shared counter; keep bulk import absent/refusing and all legacy sources live as co-sources. | CT-I1-010 | Manibo Commander + Engineer + independent QA/Review | Generated client; kernel Work/Record; intake evidence | 115 individual command/review receipts, exact identity/dedupe reconciliation, no reuse/renumbering, no forged authority, co-source continuity, and absent/refusing bulk importer | `uv run pytest tests/acceptance/increment-1/test_manibo_ordinary_intake.py -q` |
+| CT-I1-012 | Publish the project-scoped typed event feed for issue #186 only after identities, grants, isolation, onboarding configuration, and ordinary intake are proven; expose three mutually disjoint Board rows and preserve the prohibited-data boundary in emitted payloads. | CT-I1-011 | Engineer + CSO + QA + Commander/Tech-writer review | Authored event-feed contracts; kernel Record/Projections; generated clients | Three-project feed and Board snapshots, reconnect/replay/gap proofs, project-separation negatives, prohibited-field scan, and AC-PORT-01..06 evidence bundle | `uv run pytest tests/contracts/event-feed tests/acceptance/increment-1/test_portfolio_board.py -q` |
 
 ### I2 implementation backlog
 
@@ -4069,11 +4228,11 @@ Each validation command below is designated as part of the item’s deliverable.
 
 ### Bootstrap backlog authority completion
 
-Development authority is complete only when every reviewed still-actionable stable ID has exactly one
-freshly created ctower ticket and stable legacy alias, the signed archive/source digest is recorded, the
-carry-forward report proves no duplicate or unreviewed ticket was created, and the CT-I1-008 development
-verdict is accepted. Non-actionable and historical records remain only in the signed read-only archive;
-there is no bulk import. From that moment, updates for the reviewed cohort happen in ctower only. This
-specification may later revise increment definitions through reviewed versions, but it never mirrors
-current ticket status. Full normative I1 exit and authorization for CT-I2-001 remain separately blocked
-until CP3-D passes.
+Shadow onboarding is complete only when CT-I1-009..012 have satisfied their dependencies; every admitted
+item has exactly one project-scoped source identity and instance-global UUIDv7 Ticket ID; the item-by-item report
+proves that no duplicate, unreviewed, foreign-project, revoked-grant, or prohibited-class record was
+accepted; and the three Board views are disjoint. Mission Control and applicable GitHub/GitLab records remain
+co-sources, and there is no bulk import or source-of-truth change. This specification may later revise
+increment definitions through reviewed versions, but it never mirrors current ticket status. Full normative
+I1 exit and authorization for CT-I2-001 remain blocked until CT-I1-009..012 complete, CP3-D passes, and the
+operator separately accepts a portfolio authority epoch.
