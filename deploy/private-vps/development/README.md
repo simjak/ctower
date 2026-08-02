@@ -109,8 +109,75 @@ The Docker containers use `--restart unless-stopped`, the user units are enabled
 `default.target`, and user lingering is a host prerequisite. A service restart is proven in this slice;
 an actual host reboot remains deferred operational evidence unless the operator schedules it.
 
-Explicit debt: TLS and any external endpoint, complete telemetry/export, backup/key-recovery/restore
-drills, independent failure-domain ACK, CP3-D, production claims, and authoritative-writer promotion.
+Explicit debt: TLS and any external endpoint, complete telemetry/export, key-recovery drills,
+independent failure-domain ACK, CP3-D, production claims, and authoritative-writer promotion.
+
+## Checkpoint and restore the development database
+
+`checkpoint`, `checkpoint list`, and `restore` give this instance a named, executable undo for its
+database. They exist because the migration runbook's abort path previously named no operation an
+operator could run, and because the requested "pre-migration checkpoint id" had no referent.
+
+A checkpoint here is an operations fact about the development cluster. It is unrelated to the
+product-domain delivery checkpoint the Catalog defines, and it is not CP3-C backup evidence or a
+CP3-D durability claim. It also does not replace the archive block below: the archive captures
+runtime files and a whole-cluster `pg_dumpall`, while a checkpoint captures exactly the one
+application database and is addressable by id.
+
+```text
+~/.local/share/ctower-development/runtime/venv/bin/ctower-private-vps checkpoint
+~/.local/share/ctower-development/runtime/venv/bin/ctower-private-vps checkpoint list
+~/.local/share/ctower-development/runtime/venv/bin/ctower-private-vps restore \
+  --checkpoint-id 20260803T133012Z-<sha256 of the artifact>
+```
+
+`checkpoint` streams `pg_dump --create --clean --if-exists` from the primary container straight into
+`gpg --symmetric --cipher-algo AES256`; no plaintext dump is ever written to disk. The artifact
+passphrase is the existing `secret-service:ctower-development/postgres-admin` value, read from the
+keyring and handed to `gpg` on an inherited anonymous descriptor, exactly as the archive block does.
+It never appears in an argument vector, an environment variable, a file, or a log. Reusing the
+administrator secret keeps one key custody for every retained dump on this instance; the ledger
+records the reference, never the value.
+
+Each capture prints and records one **CHECKPOINT ID**: the UTC capture timestamp joined to the
+SHA-256 of the encrypted artifact. The id is therefore content-addressed and verifiable at rest
+without the passphrase. Artifacts and their ledger live under
+`~/.local/state/ctower/development-checkpoints/`; each artifact is retained read-only at mode `0400`.
+
+`ledger.jsonl` is append-only and hash-chained: every record carries the digest of all ledger bytes
+preceding it, so `checkpoint list` refuses a ledger whose earlier entry was rewritten or truncated
+instead of reporting it as history. Each record also pins the **serving generation** — the terminal
+`result_schema_sha256` in `ctower_schema_migrations` at capture time — so a checkpoint knows which
+schema it belongs to.
+
+`restore` replaces the application database with the recorded checkpoint and refuses by name before
+touching anything when:
+
+- the checkpoint id is unknown to the ledger;
+- the instance is not stopped, meaning `ctower-development-api.service` or
+  `ctower-development-worker.service` is still active;
+- the serving generation differs from the checkpoint's recorded generation, unless
+  `--allow-generation-change` is passed deliberately;
+- the artifact is missing, or its bytes no longer match the digest the ledger recorded.
+
+Only after all four pass does `restore` prove the artifact decrypts end to end, and only then does it
+apply. Restoring across a generation change is an operator decision that puts an older schema under a
+newer runtime; take it only with a plan for the runtime side as well.
+
+Stop the serving units first and start them again afterwards:
+
+```text
+systemctl --user stop ctower-development-api.service ctower-development-worker.service
+~/.local/share/ctower-development/runtime/venv/bin/ctower-private-vps restore \
+  --checkpoint-id CHECKPOINT_ID
+systemctl --user start ctower-development-api.service ctower-development-worker.service
+~/.local/share/ctower-development/runtime/venv/bin/ctower-private-vps observe
+```
+
+Restore is exact, not additive: the database is dropped and recreated from the artifact, so a table
+created after the checkpoint is gone afterwards. PostgreSQL re-parses `CHECK` expressions when it
+recreates them, so a schema dump taken after a restore can differ from one taken before it by
+parenthesisation alone; the stored data bytes are identical.
 
 ## Upgrade an existing installation
 
@@ -895,5 +962,9 @@ readiness and rollback](#rollback-readiness-and-rollback).
 `rollback-runtime` still swaps only runtime files. It never reverses migration 0037. That is safe for this
 narrow class because the predecessor can continue using its former subset of a now-broader accepted key
 domain. Exercise the runtime rollback only after a separate authorization, restart both processes, and
-repeat every post-verification read as the existing section requires. Restoring the encrypted database or
-adding a compensating migration is a separate operator decision, never automatic rollback or cleanup.
+repeat every post-verification read as the existing section requires. Reversing the database is a separate
+operator decision, never automatic rollback or cleanup: take a checkpoint before the apply (see [Checkpoint
+and restore the development database](#checkpoint-and-restore-the-development-database)) and record its
+CHECKPOINT ID with the other pre-state evidence, so the abort path names an operation that exists. Because
+the migration advances the serving generation, restoring a pre-migration checkpoint afterwards is a
+deliberate `--allow-generation-change` decision paired with a runtime rollback, not a routine undo.
