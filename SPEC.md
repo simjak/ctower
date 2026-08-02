@@ -3,8 +3,8 @@
 | Field | Value |
 |---|---|
 | Status | Canonical target-system truth |
-| Version | 1.12 |
-| Date | 2026-08-01 |
+| Version | 1.13 |
+| Date | 2026-08-02 |
 | Owners | Operator/CEO (product and human gates), Commander (orchestration contract), Engineering Manager (architecture and risk contract) |
 | Decision authority | [`DECISIONS.md`](DECISIONS.md) |
 
@@ -3367,22 +3367,66 @@ These constraints reserve a safe future boundary without pretending an extension
 
 - Before the first tenant only, the instance bootstrap capability is the authenticated trust root described above. It materializes disabled historical principal B0 inside the same transaction solely so the canonical command/events have an actor. It cannot authenticate again, create a second tenant, or invoke any ordinary command.
 - Stable principal kinds are operator, platform administrator, Commander, agent/assignee, reviewer specialties, runner, gateway, effect broker, scheduler/reconciler, projection consumer, synthetic monitor, and migration importer.
-- Humans use strong interactive authentication. Machine principals use workload identity, mTLS certificates, or scoped OAuth client credentials with rotation and expiry.
+- Humans use the discovery-driven OIDC plane below. Project-seat machines keep the scoped, revision-pinned
+  credentials and `capture|transition|evidence` grants defined above; other machine principals retain the
+  narrower workload identity, mTLS, or scoped OAuth credentials their boundary requires.
 - One person or model may hold several roles, but authorization evaluates the **effective identity** and separation rules. Switching a model or harness under the same author assignment does not create reviewer independence.
 - Disabled/tombstoned principals retain historical attribution. Deleting an agent or runner never cascades to runs, costs, evidence, verdicts, or events.
 - Tokens/certificates are hashed or referenced, versioned, rotated, and revocable. Authentication material is not accepted in ordinary JSON payloads, task files, logs, or artifact metadata.
 - Every security-sensitive response records the authenticated principal, effective role, scopes, source network/device/workload identity, policy version, and correlation ID.
 
-For the I2.4 browser realization, Access owns this session boundary:
+`CT-I1-013`, after the `CT-I1-009..012` portfolio import chain, establishes the shared authentication
+foundation. It is the only browser exception to D23 before I2.4; it authorizes login, callback, session,
+logout, and auth-error routes, not the five product surfaces or any other browser claim.
 
-1. `GET /login` renders a no-script same-origin login and sets a short-lived one-use pre-auth nonce; `POST /login` accepts the existing opaque operator credential only as a form exchange, validates exact configured HTTPS Origin and nonce, authenticates, discards the raw credential, rotates identifiers, and returns a 303 without user enumeration.
-2. The server generates a 256-bit session secret and stores only its keyed digest with session, tenant, principal, source-credential, CSRF, expiry, revocation, reauthentication, and safe audit facts. It sets only `__Host-ctower_session=<secret>; Secure; HttpOnly; SameSite=Strict; Path=/`, with no `Domain`.
-3. `GET /v1/browser-session` returns the effective principal/tenant/roles, idle and absolute expiry, reauthentication freshness, and a random session-bound synchronizer CSRF token. The token may live only in JS memory and is not browser delivery-ledger authority.
-4. Browser requests use cookie authentication while CLI/automation retain bearer authentication; both resolve the same Actor. Every unsafe cookie-auth request needs an allowlisted exact `Origin`, `Sec-Fetch-Site: same-origin`, and constant-time matching `X-Ctower-CSRF`; credentialed CORS is disabled.
-5. Idle expiry is 30 minutes and absolute expiry is 12 hours. On every authenticated request the server evaluates expiry, disabled principal, credential revocation/version, and explicit session revocation.
-6. CSRF-protected `DELETE /v1/browser-session` revokes the row, appends a safe audit fact, expires the cookie, and invalidates CSRF. Credential rotation/revocation, principal disable, suspicious-session action, and administrator revoke invalidate sessions on the next request.
-7. Access policy marks protected commands, including P0 elevation and protected proof verdicts. They require `reauthenticated_at` within 10 minutes; stale freshness returns typed `reauthentication-required` with zero reservation or mutation, and reauthentication rotates the no-script session before explicit reconfirmation of the immutable envelope.
-8. Expiry or revocation pauses and quarantines unsent/pending envelopes. Only a new session for the same tenant and principal may release one after explicit confirmation; another principal or tenant cannot inherit or rebind it.
+1. **Reuse, do not reinvent.** The implementation starts from Manibo's verified auth module and guide:
+   `platform_core/auth/{provider,jwks,oidc_store,provider_bindings}.py`, the API auth router, the web
+   login/start/callback routes, and `wiki/systems/auth.md`. The Manibo Commander disposition for R2728 is to
+   reuse this contract now, not extract a shared package while both products are changing: ctower preserves
+   the provider-agnostic modules and behavior at a pinned upstream revision behind its Access Interface and
+   shared conformance vectors. Package extraction may be reconsidered for a third consumer or after measured
+   non-drift; a clean-room OIDC flow or provider-specific fork is refused.
+2. **Providers are registered configuration.** One versioned registry entry owns the provider key/display
+   label, exact HTTPS issuer and discovery/JWKS endpoints, audiences, client ID, client-secret reference,
+   scopes, enabled state, verified discovery domains, and optional claim-selection metadata. Adding,
+   disabling, or rotating a provider changes configuration and audit facts, not Python/TypeScript branches.
+   Email/domain starts login only; durable identity is `(oidc, issuer, subject)`. No match, a disabled entry,
+   or more than one match fails closed without revealing whether a person is provisioned.
+3. **One discovery-driven OIDC flow.** Browser login uses Authorization Code with PKCE S256, 256-bit state,
+   an OIDC nonce, exact registered redirect URI, and short-lived Secure/HttpOnly/SameSite=Strict pre-auth
+   cookies. Discovery, token, and JWKS requests may reach only the enabled registry entry's exact HTTPS
+   endpoints. Access accepts RS256 in v1 and verifies signature, issuer, audience, expiry, nonce when an ID
+   token is used, subject, and key rotation before resolving any local authority.
+4. **Identity is external; authority is local.** A verified `(issuer, subject)` must resolve server-side to
+   one enabled human principal and current local role/project bindings. Token email, group, role, tenant,
+   project, or seat claims never grant authority or custody. Human role vocabulary v1 is exactly
+   `operator`, `commander`, and `viewer`: operator retains existing protected authority; commander is limited
+   to configured projects and existing custody/policy rules; viewer is read-only. Unknown or ambiguous
+   identity/role resolution refuses with zero mutation.
+5. **Two identity planes, one Actor and audit model.** Human OIDC and machine project-seat credentials both
+   resolve the same typed Actor context: durable principal, actor kind and auth plane, credential/session or
+   provider-binding version, tenant/project, effective roles/scopes, source identity, policy version, and
+   correlation ID. Commands, idempotency, custody intervals, assignments, Evidence, verdicts, effects, and
+   audit facts reference that durable principal/Actor context; no browser session, OIDC subject, seat key,
+   model, or process creates a second custody or attribution model.
+6. **UI session, API bearer.** The browser receives no API bearer. The callback validates OIDC server-side,
+   rotates identifiers, then issues only `__Host-ctower_session=<256-bit opaque secret>; Secure; HttpOnly;
+   SameSite=Strict; Path=/`; Access stores its keyed digest with provider binding, principal, role-binding,
+   CSRF, expiry, revocation, and reauthentication facts. Browser requests use that cookie; direct human API
+   clients use registered-provider Bearer JWTs; machine API clients keep their project-seat Bearer
+   credential. All three transports resolve the same Actor. Unsafe cookie requests require exact allowlisted
+   Origin, `Sec-Fetch-Site: same-origin`, and a constant-time session CSRF match; credentialed CORS is off.
+7. **Expiry and network boundary stay narrow.** Browser idle expiry is 30 minutes, absolute expiry 12 hours,
+   and protected-command reauthentication freshness 10 minutes. Logout, principal/role/provider/credential
+   disable or revocation invalidates authority on the next request and cannot transfer queued envelopes.
+   Login, callback, session, and API routes remain private HTTPS services reachable only across the tailnet;
+   OIDC adds the registry-bounded egress above and no public ctower ingress.
+8. **Mandatory security gate and measured proof.** The exact candidate digest cannot pass until an
+   independent CSO verdict covers discovery/JWKS SSRF and redirects, PKCE/state/nonce/replay, cookie/CSRF,
+   bearer separation, secret/redaction, revocation, role/project isolation, audit attribution, and tailnet
+   exposure. Exit reports the ticket's fixed counters: reuse disposition `1/1`, identity planes `2/2`, Actor
+   and custody models `1/1`, human roles `3/3`, transports `2/2`, provider-specific product branches `0`,
+   configured providers `discovered = exercised`, and CSO verdict `1/1`.
 
 ### Scoped credentials and secret injection
 
@@ -3770,7 +3814,7 @@ Each criterion is pass/fail. Evidence must be attached to the ctower build ticke
 | <a id="ac-sec-09"></a>AC-SEC-09 | Any future reusable-image revision must bind observed/base digests, scrub report, SBOM, vulnerability policy, conformance, provenance, builder/verifier identities, and signature. Seeded tokens, CLI/browser login state, keys, `.env`, cookies, PII, or credential fixtures block promotion and trigger containment/rotation policy. I1/I2 make no custom-image-runtime claim. | Deferred seeded-secret corpus, attestation verification, promotion-denial contract, and explicit not-exercised manifest |
 | <a id="ac-sec-10"></a>AC-SEC-10 | A future browser image-setup terminal must use one-use <=5-minute scoped tokens; replay/wrong-scope/origin fails, session end revokes handles, egress blocks metadata/production/auth targets, and no credential enters URL, argv, ordinary event/log, image, or checkpoint. No such terminal is exposed in I1/I2. | Deferred terminal adversarial/egress contract and current route-absence assertion |
 | <a id="ac-sec-11"></a>AC-SEC-11 | Every exercised scheduler rejects author/reviewer and protected-effect/general no-colocation conflicts. Any future multi-tenant or remote placement package must also reject prohibited tenant/trust/provider-host pairings, treat unprovable separation as ineligible, and require exact identity before destruction. | Local independence matrix plus deferred isolation/deletion negatives |
-| <a id="ac-sec-12"></a>AC-SEC-12 | At I2.4, browser login/session/logout, CSRF, expiry, revocation, and protected-command reauthentication derive tenant/principal server-side; missing/wrong/replayed origin, CSRF, session, credential, freshness, or scope performs zero mutation; no API bearer/session value enters browser JavaScript, DOM, URL, storage, trace, screenshot, log, or telemetry. | I2.4 Access/HTTP fake-clock matrix, cross-tenant Playwright contexts, secret/redaction scan, CSO verdict |
+| <a id="ac-sec-12"></a>AC-SEC-12 | At CT-I1-013, discovery-driven human OIDC and machine project-seat credentials resolve one server-side Actor/custody/audit model. Provider addition is configuration-only; `(oidc, issuer, subject)` maps to local authority; the three human roles and two auth planes fail closed; UI uses only an opaque session cookie while direct APIs use Bearer credentials; tailnet exposure is unchanged. Missing, ambiguous, wrong, disabled, expired, revoked, replayed, or foreign provider/identity/role/project/origin/state/nonce/PKCE/CSRF/session/credential/freshness/scope performs zero mutation, and no API bearer/session value enters browser JavaScript, DOM, URL, storage, trace, screenshot, log, or telemetry. | Manibo reuse disposition; provider-discovery/SSRF and configured-provider mutation suite; two-plane Actor/custody attribution matrix; three-role authorization matrix; auth-only cross-project Playwright contexts; fake clock/revocation/replay suite; secret/redaction and tailnet exposure scans; independent CSO verdict |
 
 ### Extension contract (design now; general runtime deferred)
 
@@ -3932,8 +3976,9 @@ optional deterministic JSON, on one fresh database. Reviewed reconstructible coo
 through ordinary signed generated API/CLI intake with project-scoped source identities while Mission
 Control and applicable GitHub/GitLab records remain co-sources. Bulk legacy import is not active. CT-I1-008
 may approve this shadow as `GO_WITH_LIMITS`; the full I1 outcome additionally requires CP3-D's external-failure-domain
-acknowledgement, key recovery, isolated destructive restore, and measured RPO/RTO. Browser implementation
-and browser evidence begin in I2.4.
+acknowledgement, key recovery, isolated destructive restore, and measured RPO/RTO. CT-I1-013 adds only the
+post-import authentication routes and auth evidence; browser product implementation and product evidence
+begin in I2.4.
 
 #### I1 four-stage fixture
 
@@ -3972,8 +4017,9 @@ required evidence-slot coverage and unfilled/unknown reasons, stage signing seat
 six-lane/task-axis state, the Board card context set, Workflow-owned risk, health and the typed Attention
 findings feed, and pending, refusal, quarantine, degraded,
 and `STATE UNKNOWN` reporting. Browser realization of Home, Board,
-contextual/direct-ID Ticket, Fleet, and Analytics is deferred to I2.4; I1 introduces no browser route,
-session, placeholder, or UI evidence.
+contextual/direct-ID Ticket, Fleet, and Analytics is deferred to I2.4; I1 introduces no browser product
+route, placeholder, or UI evidence. CT-I1-013 separately owns only login/callback/session/logout/auth-error
+routes and their auth evidence.
 7. The four-stage fixture above, a daily synthetic run, health/watchdog, backup/restore evidence, and operator-attention baseline instrumentation.
 8. At I1.7, one ctower Company with configured `ctower`, `manibo`, and `bh-loop` Project keys, each Project's
    commander-authored Increment/Milestone hierarchy, checkpoint outcomes/owners/exit criteria and
@@ -3992,6 +4038,10 @@ session, placeholder, or UI evidence.
     event feed follows only after identities, grants, isolation, and onboarding configuration. Mission Control
     and applicable GitHub/GitLab records remain co-sources; there is no writer epoch, tailer, dual write, or
     active bulk importer.
+11. After that import chain, discovery-driven OIDC for human UI/session and direct API access alongside the
+    unchanged machine project-seat credential plane. Both resolve one Actor/custody/audit model; providers
+    and exact `operator|commander|viewer` human role bindings are versioned configuration; tailnet-only
+    ingress remains; and an independent CSO pass gates the exact candidate digest.
 
 Increment 1 has no agent stage dispatch or harness command execution and therefore neither activates nor
 claims CommandGuard implementation. It also has no autonomous Commander loop, production effect grant,
@@ -4047,10 +4097,14 @@ or exit criterion moves increment as a result.
 - Item-by-item reconciliation accounts for every admitted shadow item, creates each project-scoped source
   identity once through ordinary signed generated commands, and proves Mission Control and applicable
   GitHub/GitLab records remain co-sources. Bulk import remains absent/refusing.
+- The post-import auth proof reports reuse `1/1`, identity planes `2/2`, Actor/custody models `1/1`, human
+  roles `3/3`, transports `2/2`, provider-specific branches `0`, every configured provider discovered and
+  exercised, and an independent CSO verdict `1/1`; denial/replay/revocation and tailnet scans change no
+  authoritative state or exposure.
 - The three Project hierarchies and disjoint compact Project Delivery projections satisfy the pre-seat portion of [AC-PD-01](#ac-pd-01) (hierarchy, exit-criterion coverage, slot `filled / required` coverage, source watermark, freshness, derivation reasons; the per-slot seat fields are I2-bound), the eight-state/blocked-proof truth table satisfies [AC-PD-02](#ac-pd-02), and event reconciliation plus the hourly no-change heartbeat satisfy the I1 portion of [AC-PD-04](#ac-pd-04). [AC-PORT-01](#ac-port-01) through [AC-PORT-06](#ac-port-06) prove the one-database topology, version-pinned grants, all six cross-project refusal directions, prohibited-class refusals including PHI by name, stable identities, and three disjoint Board rows.
 - Full normative I1 exit remains `NO-GO` until accepted evidence proves CP3-D
   external-failure-domain acknowledgement, key recovery, isolated destructive restore, and measured
-  RPO/RTO. Only that full exit satisfies CT-I2-001's CT-I1-008 dependency.
+  RPO/RTO and CT-I1-013 has passed. Only that full exit satisfies CT-I2-001's CT-I1-008 dependency.
 
 #### I1 designated validation commands
 
@@ -4169,7 +4223,7 @@ an operator-only gate.
 
 ### Contract and authority rule
 
-ctower has no ticket API yet. The 31 stable IDs below—9 L0 preconditions, 12 I1 items, and 10 I2
+ctower has no ticket API yet. The 32 stable IDs below—9 L0 preconditions, 13 I1 items, and 10 I2
 items—are therefore the temporary source of implementation work; they are not claims that tickets already
 exist. Each is captured in the current durable request process. During portfolio shadow operation, only
 reviewed reconstructible items enter through ordinary signed generated API/CLI commands with one stable
@@ -4202,14 +4256,15 @@ Each validation command below is designated as part of the item’s deliverable.
 | CT-I1-002 | Implement Access/Record/Work append, dedupe/tombstones-before-CAS, hash/outbox/cursors, ticket/lifecycle/custody/relations, and Catalog pins needed by I1. | CT-I1-001, CT-L0-002, CT-L0-007 | Engineer + independent Review | Kernel `access/`, `record/`, `work/`, `catalog/` | Concurrency, exact replay, authz/hash, outbox gap/rebuild, component pin proofs | `uv run pytest tests/modules/record tests/modules/work tests/modules/catalog -q` |
 | CT-I1-003 | Implement Proof basics plus the final generic evaluator subset for `ctower.trust-spine-four-stage@1`: criteria/freeze, typed required evidence slots and contracts, artifacts/Evidence and signing-assignment binding, human gates, invalidation, legal edges, activity metadata, and server resolve/close. | CT-I1-002, CT-L0-004..005 | Engineer + QA + CSO | Kernel `proof/`, `workflow/`; `contracts/evidence/`; four-stage pack | No-slot/no-proof-no-stage-success/close, signer mismatch, unknown/unfilled projection, protected-event, corrupt-object, invalidation, graph interpretation, and forbidden-name-branch suite | `uv run pytest tests/modules/proof tests/modules/workflow tests/acceptance/increment-1/test_four_stage_workflow.py -q` |
 | CT-I1-004 | Implement `ctowerctl`/`ctl`, generated API client, ordered spool/ACK/quarantine, CompanyBundle validate/plan/apply/export, and API/CLI parity. | CT-L0-003, CT-L0-007, CT-I1-002 | Engineer + QA | `apps/ctowerctl/`; `generated/python/ctower-client/`; `contracts/company/` | Kill/replay/two-writer/disk/poison chaos plus AC-COMP-03 | `uv run pytest tests/acceptance/increment-1/test_ctl.py tests/contracts/company -q` |
-| CT-I1-005 | Stable deferred alias to the `CT-I2-005` I2.4 browser sub-checkpoint: realize D22's Home, Board, contextual/direct Ticket, narrow Fleet/Analytics, browser session, routes, and Playwright evidence only after I1 API/CLI authority is proven. No I1 browser implementation, route, placeholder, or browser evidence is authorized. | Deferred to CT-I2-005; no I1 critical dependency | Designer + UI QA; operator taste gate when material | `apps/ctower-web/src/surfaces/`; `routes.ts`; browser Access boundary; kernel `attention/`, `projections/` | I2.4 every-control UI QA, tenant isolation, route inventory, reconnect, <10 s Home, and unknown screenshots | `pnpm run test:e2e` at CT-I2-005 |
+| CT-I1-005 | Stable deferred alias to the `CT-I2-005` I2.4 browser product sub-checkpoint: realize D22's Home, Board, contextual/direct Ticket, narrow Fleet/Analytics, product routes, and product-surface Playwright evidence only after I1 API/CLI authority is proven. CT-I1-013 is the sole earlier exception and owns only login/callback/session/logout/auth-error routes plus auth-only evidence. | Deferred to CT-I2-005; no I1 critical dependency | Designer + UI QA; operator taste gate when material | `apps/ctower-web/src/surfaces/`; `routes.ts`; kernel `attention/`, `projections/` | I2.4 every-control UI QA, tenant isolation, product-route inventory, reconnect, <10 s Home, and unknown screenshots | `pnpm run test:e2e` at CT-I2-005 |
 | CT-I1-006 | Implement off-host-ack acceptance, Routine occurrence/scheduler, outbox/projection/health loops, backups/anchors, encrypted artifacts, vault/KMS recovery, poison handling, synthetic API/CLI four-stage lifecycle, signed restore expected-source inventory, fail-closed isolated journal reconciliation, and real reboot drills. | CT-I1-001..004 | DevOps + Engineer + independent QA | Control worker; kernel record/runtime/projections/attention; `packs/routines/`; `deploy/`; runbooks | Host-loss RPO0, `durability_pending`, duplicate/DST/restart and poison visibility through API/CLI, five synthetic runs, key restore, explicit I1 root/effect/provider `not_exercised`/zero-source entries, activated-source absence denial, reboot targets | `uv run pytest tests/acceptance/increment-1/test_operations.py -q` |
 | CT-I1-007 | Establish the smallest fresh-database Company -> Project -> Increment/Milestone definitions and compact read-only Project Delivery CLI text projection with optional deterministic JSON; admit only exact reviewed reconstructible shadow items through ordinary signed generated API/CLI commands with project-scoped source identities. Mission Control and applicable GitHub/GitLab records remain co-sources; no writer epoch occurs and bulk import remains dormant. | CT-I1-004, CT-I1-006 | Engineer + Commander verification + Review | Generated client; kernel Catalog/Work/Projections; operations evidence | Item-review records, signed public-command traces, exact project-scoped source identities, co-source continuity, absent/refusing bulk importer, deterministic compact checkpoint text/JSON rows with source IDs/derivation reasons/proof plus qualifying-stage slot coverage, immediate reconcile, hourly freshness, and stale/unknown faults | `uv run pytest tests/acceptance/increment-1/test_cutover.py -q` |
-| CT-I1-008 | Archive complete I1 API/CLI contracts, security, deferred-browser/deferred-capability, chaos, first-success, restore, shadow-intake, baseline, and operations evidence; issue the ctower-project **development dogfood** go/no-go, which may be `GO_WITH_LIMITS` while CP3-D is red and commits no writer epoch. Track full normative I1 exit as a separate `NO-GO` until CP3-D passes and CT-I1-009..012 complete. | CT-L0-001..009, CT-I1-001..004, CT-I1-006..007 | Independent QA + Review + CSO | `tests/acceptance/increment-1/`; evidence objects | Development cohort applicable ACs pass under `SHADOW_ONLY_CP3_D_NOT_PROVEN`; browser, remote/image/executable-extension runtime not exercised; full-I1 additionally requires CT-I1-009..012, CP3-D external acknowledgement, key recovery, isolated destructive restore, and measured RPO/RTO independently evidenced | `uv run pytest tests/acceptance/increment-1 tests/contracts -q` |
+| CT-I1-008 | Archive complete I1 API/CLI contracts, security, deferred-browser/deferred-capability, chaos, first-success, restore, shadow-intake, baseline, and operations evidence; issue the ctower-project **development dogfood** go/no-go, which may be `GO_WITH_LIMITS` while CP3-D is red and commits no writer epoch. Track full normative I1 exit as a separate `NO-GO` until CP3-D passes and CT-I1-009..013 complete. | CT-L0-001..009, CT-I1-001..004, CT-I1-006..007 | Independent QA + Review + CSO | `tests/acceptance/increment-1/`; evidence objects | Development cohort applicable ACs pass under `SHADOW_ONLY_CP3_D_NOT_PROVEN`; browser product, remote/image/executable-extension runtime not exercised; full-I1 additionally requires CT-I1-009..013, including the auth-only browser proof, plus CP3-D external acknowledgement, key recovery, isolated destructive restore, and measured RPO/RTO independently evidenced | `uv run pytest tests/acceptance/increment-1 tests/contracts -q` |
 | CT-I1-009 | Implement immutable Ticket Project identity while retaining instance-global UUIDv7 Ticket IDs, append-only version-pinned Project grants and project-seat credentials, operator-only issue/revoke, server-side grant resolution, and grant-aware initial Commander custody. | CT-I1-002..004, CT-I1-008 development verdict | Engineer + Engineering Manager + CSO | Kernel `access/`, `work/`, `catalog/`; authored access/work contracts; generated clients | Grant issue/scope/revocation vectors, configured Commander eligibility, Project/seat-catalog/policy/credential revision pins, next-call `project-credential-revoked`, custody positives/negatives, and no owner-surface proof | `uv run pytest tests/contracts/access/test_project_grants.py tests/modules/work/test_project_custody.py -q` |
 | CT-I1-010 | Configure one tenant/database with the `ctower`, `manibo`, and `bh-loop` Projects and commander-authored starter checkpoints; enforce one Work/Record authorization guard for exact `capture|transition|evidence` scope subsets; refuse all cross-project mutation and all five prohibited data classes by stable name. | CT-I1-009 | Engineer + CSO + three configured Commander owners + QA | CompanyBundle; kernel `access/`, `work/`, `record/`, `proof/`; refusal contracts | One-tenant/three-Project setup, owner-key configuration without roster literals, all six ordered cross-project zero-diff refusals, per-scope tests, and per-class refusal including `phi_hipaa_covered` by name | `uv run pytest tests/acceptance/increment-1/test_portfolio_isolation.py tests/contracts/security/test_prohibited_data.py -q` |
 | CT-I1-011 | Admit the reviewed 115-item `manibo` backlog one item at a time through ordinary signed intake, assigning each `(tenant, project, source kind, source ref)` identity a stable `<project>-R<nnn>` reference from the shared counter; keep bulk import absent/refusing and all legacy sources live as co-sources. | CT-I1-010 | Manibo Commander + Engineer + independent QA/Review | Generated client; kernel Work/Record; intake evidence | 115 individual command/review receipts, exact identity/dedupe reconciliation, no reuse/renumbering, no forged authority, co-source continuity, and absent/refusing bulk importer | `uv run pytest tests/acceptance/increment-1/test_manibo_ordinary_intake.py -q` |
 | CT-I1-012 | Publish the project-scoped typed event feed for issue #186 only after identities, grants, isolation, onboarding configuration, and ordinary intake are proven; expose three mutually disjoint Board rows and preserve the prohibited-data boundary in emitted payloads. | CT-I1-011 | Engineer + CSO + QA + Commander/Tech-writer review | Authored event-feed contracts; kernel Record/Projections; generated clients | Three-project feed and Board snapshots, reconnect/replay/gap proofs, project-separation negatives, prohibited-field scan, and AC-PORT-01..06 evidence bundle | `uv run pytest tests/contracts/event-feed tests/acceptance/increment-1/test_portfolio_board.py -q` |
+| CT-I1-013 | Reuse Manibo's provider-agnostic discovery/OIDC modules to add human OIDC alongside unchanged machine project-seat credentials; resolve UI session, human API bearer, and machine bearer authentication into one Actor/custody/audit model with config-driven providers, exact `operator|commander|viewer` human roles, and no new public ingress. | CT-I1-012 | Engineer + CSO + QA/UI QA + Manibo Commander reuse review | Authored auth/access/HTTP contracts; kernel Access; auth-only API/web composition roots and tests | Reuse disposition `1/1`; identity planes `2/2`; Actor/custody models `1/1`; roles `3/3`; transports `2/2`; provider-specific product branches `0`; configured providers `discovered = exercised`; PKCE/state/nonce/SSRF/cookie/CSRF/replay/revocation/project-isolation/redaction/tailnet negatives; independent CSO verdict `1/1` on the exact digest | `uv run pytest tests/contracts/auth tests/acceptance/increment-1/test_auth.py -q && pnpm run test:e2e -- tests/e2e/auth` |
 
 ### I2 implementation backlog
 
@@ -4219,7 +4274,7 @@ Each validation command below is designated as part of the item’s deliverable.
 | CT-I2-002 | Implement keyed documents/artifacts, full typed stage-slot Evidence/attestations/signing assignments/dependencies/invalidation, gate instances and sealed verdict attempts. | CT-I2-001, CT-I1-003 | Engineer + Review + CSO | Kernel `proof/`; `contracts/evidence/` | Self-review and signer mismatch denial, sealed reveal, selective slot/gate invalidation, quarantine promotion | `uv run pytest tests/modules/proof tests/acceptance/increment-2/test_gates.py -q` |
 | CT-I2-003 | Implement strongest-healthy Commander profile resolution and effective manifests pinning the local harness/supervisor/target/workspace/telemetry revisions, secret refs, egress/resources, and provenance. | CT-I2-001, CT-L0-007 | Engineer + CSO | Kernel `catalog/`, `runtime/`; `packs/personas/`; `apps/ctower-runner/compose.py` | Selection/failover, support-only denial, immutable local pins, and no-plaintext scans | `uv run pytest tests/modules/catalog tests/modules/runtime/test_profiles.py -q` |
 | CT-I2-004 | Implement Runtime jobs/leases/fencing/cursors/ACKs/log chunks/gaps/checkpoints/reconciler; the versioned CommandGuard required by [issue #17](https://github.com/simjak/ctower/issues/17) at every final local Harness and Supervisor command-dispatch boundary; and the justified local process/tmux plus Codex/Claude compositions. Freeze exact guard mechanics with these first real consumers, not before, and publish no general remote/image Seam. | CT-I2-001, CT-I2-003 | Engineer + DevOps + QA + CSO | Kernel `runtime/`; `packages/ctower-runner-sdk/`; `apps/ctower-runner/`; conformance tests | Forced loss/resume, stale denial, zero orphans, local composition; every registered command-dispatch Adapter's guard invocation, target resolution, zero block execution, one-use override/replay/expiry, redacted receipts, and bypass rejection; remote/image absent and not exercised | `uv run pytest tests/conformance/runner tests/chaos -q` |
-| CT-I2-005 | I2.4 browser sub-checkpoint: realize D22's React/Vite/browser-session/CSRF choices as Home, Board, contextual Ticket, narrow Fleet/Analytics, and the rich Ticket journey; deepen them with run manifest, local placement, ACK/gap, steering, readiness refusal, typed required evidence-slot/signing-seat state, CommandGuard Attention/grant/receipt state, source-linked project proof/gates/blockers/decisions, cost/time, incidents, retro, and interactive Project Delivery projection row detail. | CT-I2-002, CT-I2-004, CT-L0-009; deferred alias CT-I1-005 | Designer + UI QA | `contracts/http/`; generated Python/TS clients; `apps/ctower-api/`; `apps/ctowerctl/`; `apps/ctower-web/src/surfaces/` | Exactly-five routes, every-control trace, replay/gap/steer modes, browser-session/CSRF/tenant-isolation proof, filled/unfilled/invalidated/unknown slot and signer browser states, generated API snapshots and CLI transcript, authorized Project Delivery projection drill-down, exact-scope guard confirmation and linked receipt views, accepted/refused zero-diff screenshots | `uv run pytest tests/acceptance/increment-2/test_guard_attention.py -q && pnpm run test:e2e` |
+| CT-I2-005 | I2.4 browser product sub-checkpoint: consume CT-I1-013's proven session/CSRF boundary to realize D22's Home, Board, contextual Ticket, narrow Fleet/Analytics, and the rich Ticket journey; deepen them with run manifest, local placement, ACK/gap, steering, readiness refusal, typed required evidence-slot/signing-seat state, CommandGuard Attention/grant/receipt state, source-linked project proof/gates/blockers/decisions, cost/time, incidents, retro, and interactive Project Delivery projection row detail. | CT-I2-002, CT-I2-004, CT-L0-009, CT-I1-013; deferred alias CT-I1-005 | Designer + UI QA | `contracts/http/`; generated Python/TS clients; `apps/ctower-api/`; `apps/ctowerctl/`; `apps/ctower-web/src/surfaces/` | Exactly-five product routes, every-control trace, replay/gap/steer modes, reuse of the proven browser-session/CSRF/tenant-isolation contract, filled/unfilled/invalidated/unknown slot and signer browser states, generated API snapshots and CLI transcript, authorized Project Delivery projection drill-down, exact-scope guard confirmation and linked receipt views, accepted/refused zero-diff screenshots | `uv run pytest tests/acceptance/increment-2/test_guard_attention.py -q && pnpm run test:e2e` |
 | CT-I2-006 | Implement package-defined classification/overlays and Execution Policy evaluation, the delivery sprint's mandatory stage gates, required perspectives, configurable limits, non-waivable independence/conflict rules, the separate declared family-diversity placement rules and their per-tier waivability, the no-progress rule, protected waivers, and software/non-engineering fixtures. | CT-I2-002..003 | Engineering Manager + Engineer + CSO | Kernel `workflow/`, `access/`; policy packs | Missing/invalid-bound/removal/client-count/independence/family-collapse denials, no-progress escalation, and coherent current-digest traces | `uv run pytest tests/modules/workflow/test_execution_policy.py -q` |
 | CT-I2-007 | Implement Effects releases/environments, one live `systemd-vps/v1` integration plus its fault-injection test implementation, scoped grants/receipts, root-owned artifact trust verification, self-restart journal recovery, and effect reconciliation. Activation must commit the signed expected-source inventory revision before the first grant/effect. Keep the boundary internal until a second real provider Adapter earns a public Seam. | CT-I2-006, CT-I2-004 | DevOps + Engineer + CSO | Kernel `effects/`; `packages/ctower-systemd-vps/`; `deploy/systemd/`; effect conformance | Wrong-target/expired/direct/provenance denials, pre-activation inventory-update proof, missing-source restore denial, crash matrix, real staging/prod digest, self-upgrade recovery, and no generalized provider Seam | `uv run pytest tests/modules/effects tests/conformance/effect-provider -q` |
 | CT-I2-008 | Implement production smoke/live-QA incident -> grant revoke -> safe containment/rollback -> exact verification -> triage-before-repair and retro linkage. | CT-I2-007 | DevOps + CSO + QA | Kernel `effects/`, `attention/`, `workflow/`; runbooks | Injected smoke/live-QA failures, rollback receipt/verification, direct-repair denial | `uv run pytest tests/acceptance/increment-2/test_incident_rollback.py -q` |
@@ -4234,5 +4289,5 @@ proves that no duplicate, unreviewed, foreign-project, revoked-grant, or prohibi
 accepted; and the three Board views are disjoint. Mission Control and applicable GitHub/GitLab records remain
 co-sources, and there is no bulk import or source-of-truth change. This specification may later revise
 increment definitions through reviewed versions, but it never mirrors current ticket status. Full normative
-I1 exit and authorization for CT-I2-001 remain blocked until CT-I1-009..012 complete, CP3-D passes, and the
-operator separately accepts a portfolio authority epoch.
+I1 exit and authorization for CT-I2-001 remain blocked until the distinct post-import CT-I1-013 auth gate
+also completes, CP3-D passes, and the operator separately accepts a portfolio authority epoch.

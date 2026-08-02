@@ -1126,3 +1126,42 @@ Rejected alternatives, as settled by the approved clauses:
   protected-command, effect, incident, or production authority.
 - Accepting a prohibited class silently, under a generic error, or as Evidence bytes/metadata rather than
   refusing it by name.
+
+## D31 — Two identity planes, one attributable Actor (locked 2026-08-02, operator R2728)
+
+The operator ordered proper ctower authentication after the portfolio import chain. This decision preserves
+D30's project-seat credential plane and D22's private same-origin session protections. It supersedes D23
+only to move the authentication-only login/callback/session/logout/error routes and evidence into
+`CT-I1-013`; all five browser product surfaces and their interaction evidence remain at I2.4.
+
+1. Humans authenticate through discovery-driven OIDC modeled on Manibo's provider-agnostic auth modules and
+   `wiki/systems/auth.md`; machines keep D30/#198's scoped project-seat credentials. The Manibo Commander
+   recommends contract reuse without package extraction while both consumers are changing, so ctower
+   preserves the pinned Manibo modules/behavior behind its Access Interface and shared conformance vectors.
+   Extraction may be reconsidered for a third consumer or after measured non-drift; a new OIDC flow or
+   provider fork is forbidden.
+2. Provider bindings are versioned configuration, including exact issuer/discovery/JWKS/audience/client and
+   SecretRef inputs, verified discovery domains, enabled state, and optional claim-selection metadata.
+   Adding, disabling, or rotating a provider requires no Python or TypeScript branch.
+3. Browser OIDC uses Authorization Code plus PKCE S256, state, nonce, exact redirects, registered-endpoint
+   SSRF confinement, and RS256 verification. Durable human identity is `(oidc, issuer, subject)`; email and
+   token roles/groups/tenant/project/seat claims confer no local authority.
+4. Human role vocabulary v1 is exactly `operator`, `commander`, and `viewer`, resolved from current local
+   bindings. Operator retains existing protected authority, Commander remains project/custody/policy bound,
+   and viewer is read-only. Ambiguous, unprovisioned, disabled, expired, revoked, replayed, or foreign scope
+   fails closed with no mutation.
+5. UI uses the record-backed opaque Secure/HttpOnly/SameSite=Strict ctower session; direct human APIs use
+   registered-provider Bearer JWTs; machine APIs use the unchanged project-seat Bearer credential. Every
+   transport resolves the same typed Actor and durable principal used by commands, idempotency, custody,
+   assignment, Evidence, verdict, effect, and audit attribution.
+6. Tailnet/private HTTPS remains the network boundary. OIDC adds only exact provider-registry egress; it
+   creates no public ctower ingress. Browser bearer secrecy, CSRF, expiry, reauthentication, revocation,
+   redaction, and safe low-cardinality audit/metrics remain mandatory.
+7. `CT-I1-013` depends on `CT-I1-012` and cannot pass without an independent CSO verdict on the exact digest.
+   Exit reports fixed counters for reuse, both identity planes, the single Actor/custody model, all three
+   roles, both UI/API auth transports, zero provider-specific product branches, discovered-versus-exercised
+   registry entries, and the CSO verdict.
+
+Rejected alternatives are an OIDC implementation invented inside ctower, provider lists or role authority
+hard-coded in product code, OIDC claims treated as custody/authorization, a browser-held API bearer, a
+second human audit model, replacement of machine seat credentials, and any auth-driven public exposure.

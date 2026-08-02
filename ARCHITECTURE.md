@@ -3,9 +3,9 @@
 | Field | Value |
 |---|---|
 | Status | Compact derived operator and implementer map |
-| Normative authority | [`SPEC.md`](SPEC.md), version 1.12 |
+| Normative authority | [`SPEC.md`](SPEC.md), version 1.13 |
 | Decision history | [`DECISIONS.md`](DECISIONS.md) |
-| Last reviewed | 2026-08-01 |
+| Last reviewed | 2026-08-02 |
 
 This is the sole terminal-safe derived architecture atlas. It explains the canonical specification; it
 does not add requirements, authorize work, or define exact schemas, operations, DDL, package values, or
@@ -118,6 +118,22 @@ references, GitHub/GitLab artifact references, and deidentified control IDs—ne
 content. All six directed cross-Project mutation pairs and a revoked credential's next call have named,
 zero-diff proofs.
 
+Authentication has two entry planes and one authority result:
+
+```text
+human: configured OIDC discovery -> verified (issuer, subject) -> local role binding --+
+                                                                                      +-> typed Actor
+machine: project-seat Bearer -> revision-pinned Project grant + exact scopes ----------+   -> one custody/audit model
+```
+
+Manibo's provider-agnostic OIDC modules and conformance behavior are the source pattern. Per the Manibo
+Commander, ctower preserves that contract at a pinned revision instead of extracting a package while both
+consumers are changing; a third consumer or measured non-drift may reopen extraction. The provider registry,
+verified discovery domains, and `operator|commander|viewer` human role bindings are versioned configuration.
+UI uses only an opaque record-backed session; direct human and machine APIs use their respective Bearer
+credentials. All auth routes stay tailnet/private-HTTPS-only, provider egress is confined to exact registered
+endpoints, and CT-I1-013 cannot pass without an independent CSO verdict.
+
 ## Deployment topology by increment
 
 Logical Modules are not deployment units. Exact units live in `deploy/`; this atlas names only the
@@ -180,12 +196,13 @@ production deployment.
 ```
 
 I1 has no agent stage dispatch, autonomous Commander loop, runner daemon, production effect grant, or browser
-surface. Its public operation is the API plus protected `ctowerctl`/`ctl`; explicit durable-thread intent and
-Workflow-owned append-only current-episode risk are API/CLI facts. The API composition and one control worker
-share one kernel artifact; Access, Record, Catalog, Work, Proof, Attention, the limited generic Workflow
-evaluator, and Projections remain logical responsibilities behind Module Interfaces. React/Vite, browser
-session/CSRF, routes, Playwright, and all browser evidence begin at I2.4 under D22. Service-per-noun units
-such as a separate reconciler are not implied.
+product surface. Its public operation is the API plus protected `ctowerctl`/`ctl`; explicit durable-thread
+intent and Workflow-owned append-only current-episode risk are API/CLI facts. After the import chain,
+CT-I1-013 adds only login/callback/session/logout/auth-error routes and auth evidence. The API composition and
+one control worker share one kernel artifact; Access, Record, Catalog, Work, Proof, Attention, the limited
+generic Workflow evaluator, and Projections remain logical responsibilities behind Module Interfaces.
+React/Vite product routes, the five surfaces, and product Playwright evidence begin at I2.4 under D22/D31.
+Service-per-noun units such as a separate reconciler are not implied.
 
 ### I2/target: separately deployable contract clients
 
@@ -511,7 +528,7 @@ interactive detail, broader visualization, trends, cost/time analytics, and the 
 The development-pilot row and the full-I1 row are not interchangeable. The pilot may become `done` on a
 CT-I1-008 `GO_WITH_LIMITS` while every portfolio row still exposes health `CP3_D_NOT_PROVEN` and portfolio
 responses separately expose authority label `SHADOW_ONLY_CP3_D_NOT_PROVEN`. The
-full-I1 row remains `blocked` while CP3-D is red or CT-I1-009..012 are incomplete. A development headline
+full-I1 row remains `blocked` while CP3-D is red or CT-I1-009..013 are incomplete. A development headline
 never unlocks CT-I2-001 or freezes a co-source.
 
 ## Durable wake, Routine, and run flow
@@ -648,7 +665,7 @@ GitHub/GitLab records stay co-sources, and unknown integrity, source identity, P
 projection state fails closed. Credentials, accounting, production authority/effects, incidents, customer
 or PHI data, and irreplaceable artifacts remain excluded. CT-I1-008 may call the narrow development pilot
 `GO_WITH_LIMITS` and complete its I1.7 row, but it stops no writer. The separate full-I1 milestone remains
-`NO-GO` while CT-I1-009..012 or any CP3-D evidence above is missing.
+`NO-GO` while CT-I1-009..013 or any CP3-D evidence above is missing.
 
 D25 places a smaller persistent shadow runtime before that authority milestone:
 
@@ -693,6 +710,7 @@ create fresh Company / ctower + manibo + bh-loop Projects and disjoint projectio
   -> CT-I1-010 exact scopes + isolation + commander-authored onboarding configurations
   -> CT-I1-011 ordinary signed item-by-item intake of manibo's 115 items
   -> CT-I1-012 project-scoped typed feed + three disjoint Board proofs
+  -> CT-I1-013 two auth planes -> one Actor/custody/audit model + CSO gate
   -> prove CP3-D
   -> separately accept portfolio authority; only then freeze legacy writers
 ```
@@ -706,7 +724,7 @@ bulk import may activate; this decision does not pre-authorize the eventual sour
 I1.7A installs only contracts, append-only storage shape, the read-only projection fold, generated query
 path, and refusing online migration stubs. Those artifacts establish neither portfolio authority nor
 shadow onboarding completion. CT-I1-008 owns the narrow development verdict. Passing it does not satisfy
-its CT-I2-001 dependency: that edge means full normative I1 exit, including CT-I1-009..012 and CP3-D.
+its CT-I2-001 dependency: that edge means full normative I1 exit, including CT-I1-009..013 and CP3-D.
 
 ## Build sequence and earned Seams
 
@@ -723,13 +741,14 @@ I1: L0 contracts/repository gates
      -> CT-I1-010 scopes, isolation, prohibited-class refusal, onboarding configs
      -> CT-I1-011 manibo 115-item ordinary signed intake
      -> CT-I1-012 project-scoped feed + three disjoint Board proofs
+     -> CT-I1-013 config-driven human OIDC + unchanged machine credentials + one Actor/audit model
      -> CP3-D external-failure-domain/key/destructive-restore/RPO-RTO proof
      -> full normative I1 exit
 
 I2 (only after full I1 exit): deepen generic Workflow + Proof
      -> durable Runtime + CommandGuard and local process/tmux recovery
      -> activate unattended Commander on the proven always-on substrate
-     -> D22 browser realization + deepen five surfaces + Project Delivery projection detail/analytics + Effects/release
+     -> consume CT-I1-013 auth + deepen five surfaces + Project Delivery projection detail/analytics + Effects/release
      -> one software-factory production golden ticket
 ```
 
