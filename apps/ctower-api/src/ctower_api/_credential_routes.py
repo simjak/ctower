@@ -9,6 +9,7 @@ from fastapi.responses import JSONResponse
 from pydantic import ValidationError
 
 from ctower_api._http_support import (
+    UnscopedAuthentication,
     authenticate,
     problem_response,
     telemetry_context,
@@ -99,7 +100,12 @@ async def _issue_request(
     recorder: TelemetryRecorder,
     request: Request,
 ) -> tuple[Actor, SeatCredentialIssue, TelemetryContext] | JSONResponse:
-    actor = authenticate(access, recorder, request)
+    actor = authenticate(
+        access,
+        recorder,
+        request,
+        required_scope=UnscopedAuthentication.ALLOWED,
+    )
     if isinstance(actor, RecordProblem):
         return problem_response(actor)
     try:
@@ -131,7 +137,12 @@ async def _revocation_request(
     request: Request,
     credential_id: str,
 ) -> tuple[Actor, SeatCredentialRevocation, TelemetryContext] | JSONResponse:
-    actor = authenticate(access, recorder, request)
+    actor = authenticate(
+        access,
+        recorder,
+        request,
+        required_scope=UnscopedAuthentication.ALLOWED,
+    )
     if isinstance(actor, RecordProblem):
         return problem_response(actor)
     try:

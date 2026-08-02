@@ -19,12 +19,12 @@ from ctower_kernel.record import (
     RecordProblem,
     TicketCommand,
     TicketCommandResult,
+    credential_scope_refusal,
 )
 from ctower_kernel.record.credentials import CredentialScope
 from ctower_kernel.telemetry import NoopTelemetry, Telemetry, TelemetryContext
 from ctower_kernel.work._custody_policy import initial_custody_refusal
 from ctower_kernel.work._scheduling import schedule
-from ctower_kernel.work._scope_policy import credential_scope_refusal
 
 __all__ = [
     "AddRelation",
@@ -360,19 +360,24 @@ class Work:
         )
         if scope_refusal is not None:
             return scope_refusal
+        policy_refusal: RecordProblem | None = None
         if actor.kind is not PrincipalKind.OPERATOR or not command.protected_transfer:
-            return RecordProblem(
+            refusal = RecordProblem(
                 code="unauthorized",
                 detail="Custody transfer requires protected operator authority.",
                 status=403,
                 title="Custody transfer refused",
                 command_id=command.client_command_id,
             )
+            if actor.seat_credential_id is None:
+                return refusal
+            policy_refusal = refusal
         request_digest = hashlib.sha256(_canonical_json(command.request_payload())).digest()
         outcome = self._record.transfer_custody(
             actor,
             command,
             request_digest=request_digest,
+            policy_refusal=policy_refusal,
             now=self._clock(),
             telemetry=telemetry,
         )

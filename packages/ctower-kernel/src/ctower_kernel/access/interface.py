@@ -16,6 +16,7 @@ from ctower_kernel.record import (
     PrincipalKind,
     Record,
     RecordProblem,
+    credential_scope_refusal,
 )
 from ctower_kernel.record.credentials import (
     CredentialScope,
@@ -25,7 +26,7 @@ from ctower_kernel.record.credentials import (
 )
 from ctower_kernel.telemetry import NoopTelemetry, Telemetry, TelemetryContext
 
-__all__ = ["Access", "credential_scope_refusal", "digest_capability"]
+__all__ = ["Access", "digest_capability"]
 
 
 class Access:
@@ -266,25 +267,6 @@ def _canonical_json(payload: Mapping[str, object]) -> bytes:
         separators=(",", ":"),
         sort_keys=True,
     ).encode()
-
-
-def credential_scope_refusal(
-    actor: Actor,
-    scope: CredentialScope,
-    *,
-    command_id: UUID | None = None,
-) -> RecordProblem | None:
-    """Return the stable refusal for a seat bearer missing one named scope."""
-
-    if actor.seat_credential_id is None or scope in actor.credential_scopes:
-        return None
-    return RecordProblem(
-        code="credential-scope-denied",
-        detail=f"The project-seat credential does not grant the {scope.value} scope.",
-        status=403,
-        title="Credential scope denied",
-        command_id=command_id,
-    )
 
 
 def _unauthorized() -> RecordProblem:

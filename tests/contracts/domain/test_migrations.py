@@ -38,7 +38,7 @@ def test_migration_manifest_is_ordered_and_checksum_exact() -> None:
     assert manifest["adoption_baseline"] == {
         "through": "0039_project_seat_credentials.sql",
         "schema_sha256": (
-            "sha256:4da4ae45b8d00732acf84b7e1e755807d9cb12fb2d18072469ffd6ed7a196a69"
+            "sha256:14badc991e6f7c1091450696bc2f1abb5590e3fa4e37f4d7e94f9b782aec9bee"
         ),
         "semantic_checks": "ctower.pre-ledger/v1",
         "schema_object_sum256": (
@@ -90,6 +90,14 @@ def test_migration_manifest_is_ordered_and_checksum_exact() -> None:
     for entry in entries:
         digest = hashlib.sha256((MIGRATIONS / entry["path"]).read_bytes()).hexdigest()
         assert entry["sha256"] == f"sha256:{digest}"
+
+
+def test_project_key_migration_backfills_then_removes_its_default() -> None:
+    migration = (MIGRATIONS / "0039_project_seat_credentials.sql").read_text(encoding="utf-8")
+    add_with_backfill_default = "ADD COLUMN project_key text NOT NULL DEFAULT 'ctower'"
+    remove_default = "ALTER COLUMN project_key DROP DEFAULT"
+
+    assert migration.index(add_with_backfill_default) < migration.index(remove_default)
 
 
 def test_every_migration_declares_compatibility_forward_compensation_and_backup() -> None:

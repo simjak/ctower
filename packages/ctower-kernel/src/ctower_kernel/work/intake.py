@@ -10,7 +10,12 @@ from datetime import UTC, datetime
 from typing import Protocol
 from uuid import UUID
 
-from ctower_kernel.record import Actor, PrincipalKind, RecordProblem
+from ctower_kernel.record import (
+    Actor,
+    PrincipalKind,
+    RecordProblem,
+    credential_scope_refusal,
+)
 from ctower_kernel.record.credentials import CredentialScope
 from ctower_kernel.record.intake import (
     IntakeCommandResult,
@@ -21,7 +26,6 @@ from ctower_kernel.record.intake import (
 )
 from ctower_kernel.telemetry import NoopTelemetry, Telemetry, TelemetryContext
 from ctower_kernel.work._custody_policy import initial_custody_refusal
-from ctower_kernel.work._scope_policy import credential_scope_refusal
 
 __all__ = ["Intake"]
 

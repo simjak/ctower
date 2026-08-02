@@ -9,10 +9,7 @@ from uuid import UUID
 
 import psycopg
 
-from ctower_kernel.record import (
-    Actor,
-    RecordProblem,
-)
+from ctower_kernel.record import Actor, RecordProblem
 from ctower_kernel.record._intake_command_sql import (
     IntakeAction as _Action,
 )

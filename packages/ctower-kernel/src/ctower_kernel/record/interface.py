@@ -56,6 +56,7 @@ __all__ = [
     "TicketCommandResult",
     "TicketTimeline",
     "TimelineEvent",
+    "credential_scope_refusal",
 ]
 
 
@@ -283,6 +284,25 @@ class RecordProblem:
         if self.unmet_facts:
             payload["unmet_facts"] = list(self.unmet_facts)
         return payload
+
+
+def credential_scope_refusal(
+    actor: Actor,
+    scope: CredentialScope,
+    *,
+    command_id: UUID | None = None,
+) -> RecordProblem | None:
+    """Return the one stable refusal for a seat bearer missing a named scope."""
+
+    if actor.seat_credential_id is None or scope in actor.credential_scopes:
+        return None
+    return RecordProblem(
+        code="credential-scope-denied",
+        detail=f"The project-seat credential does not grant the {scope.value} scope.",
+        status=403,
+        title="Credential scope denied",
+        command_id=command_id,
+    )
 
 
 @dataclass(frozen=True, slots=True)
@@ -596,6 +616,7 @@ class Record(Protocol):
         command: CustodyCommand,
         *,
         request_digest: bytes,
+        policy_refusal: RecordProblem | None = None,
         now: datetime,
         telemetry: TelemetryContext,
     ) -> TicketCommandResult | RecordProblem:

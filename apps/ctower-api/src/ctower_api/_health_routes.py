@@ -8,6 +8,7 @@ from fastapi import FastAPI, Request
 from fastapi.responses import JSONResponse
 from pydantic import ValidationError
 
+from ctower_api._http_support import UnscopedAuthentication as _UnscopedAuthentication
 from ctower_api._http_support import authenticate as _authenticate
 from ctower_api._http_support import encoded as _encoded
 from ctower_api._http_support import problem_response as _problem_response
@@ -39,7 +40,12 @@ def install_health_routes(
 
     @app.get("/health")
     def get_control_health(request: Request) -> JSONResponse:
-        actor = _authenticate(access, recorder, request)
+        actor = _authenticate(
+            access,
+            recorder,
+            request,
+            required_scope=_UnscopedAuthentication.ALLOWED,
+        )
         if isinstance(actor, RecordProblem):
             return _problem_response(actor)
         now = datetime.now(UTC)
@@ -60,7 +66,12 @@ def _install_disposition_route(
 ) -> None:
     @app.post("/v1/outbox/{outbox_id}/dispositions", status_code=202)
     async def record_disposition(outbox_id: str, request: Request) -> JSONResponse:
-        actor = _authenticate(access, recorder, request)
+        actor = _authenticate(
+            access,
+            recorder,
+            request,
+            required_scope=_UnscopedAuthentication.ALLOWED,
+        )
         if isinstance(actor, RecordProblem):
             return _problem_response(actor)
         try:

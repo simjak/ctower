@@ -8,6 +8,7 @@ from fastapi import FastAPI, Request
 from fastapi.responses import JSONResponse
 from pydantic import BaseModel, ValidationError
 
+from ctower_api._http_support import UnscopedAuthentication as _UnscopedAuthentication
 from ctower_api._http_support import authenticate as _authenticate
 from ctower_api._http_support import encoded as _encoded
 from ctower_api._http_support import problem_response as _problem_response
@@ -319,7 +320,12 @@ async def _parse[Payload: BaseModel](
 def _read_actor(
     access: Access, recorder: TelemetryRecorder, request: Request, ticket_id: str
 ) -> tuple[Actor, UUID, TelemetryContext] | JSONResponse:
-    actor = _authenticate(access, recorder, request)
+    actor = _authenticate(
+        access,
+        recorder,
+        request,
+        required_scope=_UnscopedAuthentication.ALLOWED,
+    )
     if isinstance(actor, RecordProblem):
         return _problem_response(actor)
     try:

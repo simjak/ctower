@@ -65,9 +65,7 @@ def mutate_proof(
     with authority_connection(dsn) as connection:
         connection.execute("SET ROLE ctower_svc")
         transaction = RecordTransaction(connection)
-        reserved = _reserve_proof_outcome(
-            transaction, actor, mutation, request_digest=request_digest
-        )
+        reserved = _reserve_proof_outcome(transaction, actor, mutation, request_digest, now)
         if reserved is not None:
             return reserved
         pending = transaction.require_durable_subjects(
@@ -118,10 +116,17 @@ def _reserve_proof_outcome(
     transaction: RecordTransaction,
     actor: ProofActor,
     mutation: ProofMutation,
-    *,
     request_digest: bytes,
+    now: datetime,
 ) -> ProofReceipt | RecordProblem | None:
-    existing = transaction.reserve(actor.principal_id, mutation.client_command_id, request_digest)
+    existing = transaction.reserve_ticket_mutation(
+        actor.tenant_id,
+        actor.principal_id,
+        mutation.client_command_id,
+        request_digest,
+        (mutation.ticket_id,),
+        now=now,
+    )
     if isinstance(existing, RecordProblem):
         return existing
     return _receipt_from_payload(existing) if existing is not None else None

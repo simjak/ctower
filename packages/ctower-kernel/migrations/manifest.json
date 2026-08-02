@@ -2,7 +2,7 @@
   "schema": "ctower.migrations/v3",
   "adoption_baseline": {
     "through": "0039_project_seat_credentials.sql",
-    "schema_sha256": "sha256:4da4ae45b8d00732acf84b7e1e755807d9cb12fb2d18072469ffd6ed7a196a69",
+    "schema_sha256": "sha256:14badc991e6f7c1091450696bc2f1abb5590e3fa4e37f4d7e94f9b782aec9bee",
     "semantic_checks": "ctower.pre-ledger/v1",
     "schema_object_sum256": "sum256:6b5bc3a315f00c4abb8643e088ab135998b09891e3e77c9d770eb738dc640ead"
   },
@@ -371,7 +371,7 @@
     },
     {
       "path": "0039_project_seat_credentials.sql",
-      "sha256": "sha256:9e38e6f791fe8f244ad9e2b28a6f191454da98e87635a78388ffd80aecd6e3d3",
+      "sha256": "sha256:c9b6d37ce79237356c2c6a83c91f245c95c86f6e6e0f42305cb05655c259b8c4",
       "minimum_service_version": "0.0.0",
       "maximum_service_version": "0.0.0",
       "forward_test": "pytest:tests/acceptance/increment-1/test_seat_credentials.py::test_revocation_appends_and_the_next_call_refuses_by_name",

@@ -130,6 +130,16 @@ def _prepare_ticket(
     )
     if isinstance(project, RecordProblem):
         return _refuse(transaction, actor, command, request_digest, project, now)
+    project_refusal = transaction.require_project_mutation(
+        actor.tenant_id,
+        actor.principal_id,
+        command.client_command_id,
+        request_digest,
+        project_keys=(project,),
+        now=now,
+    )
+    if project_refusal is not None:
+        return project_refusal
     pending = transaction.require_durable_subjects(
         actor.tenant_id,
         actor.principal_id,

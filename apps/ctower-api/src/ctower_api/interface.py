@@ -19,6 +19,9 @@ from ctower_api._credential_routes import install_credential_routes
 from ctower_api._cutover_routes import install_cutover_routes
 from ctower_api._health_routes import install_health_routes
 from ctower_api._http_support import (
+    UnscopedAuthentication as _UnscopedAuthentication,
+)
+from ctower_api._http_support import (
     authenticate as _authenticate,
 )
 from ctower_api._http_support import (
@@ -303,7 +306,12 @@ def _install_ticket_read_routes(
 
     @app.get("/v1/tickets/{ticket_id}")
     def get_ticket(ticket_id: str, request: Request) -> JSONResponse:
-        actor = _authenticate(access, telemetry_recorder, request)
+        actor = _authenticate(
+            access,
+            telemetry_recorder,
+            request,
+            required_scope=_UnscopedAuthentication.ALLOWED,
+        )
         if isinstance(actor, RecordProblem):
             return _problem_response(actor)
         try:
@@ -321,7 +329,12 @@ def _install_ticket_read_routes(
 
     @app.get("/v1/tickets/{ticket_id}/timeline")
     def get_ticket_timeline(ticket_id: str, request: Request) -> JSONResponse:
-        actor = _authenticate(access, telemetry_recorder, request)
+        actor = _authenticate(
+            access,
+            telemetry_recorder,
+            request,
+            required_scope=_UnscopedAuthentication.ALLOWED,
+        )
         if isinstance(actor, RecordProblem):
             return _problem_response(actor)
         try:

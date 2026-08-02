@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import ast
 import json
 from pathlib import Path
 from typing import cast
@@ -237,6 +238,18 @@ _EXPECTED_PROBLEM_CODES = {
 }
 
 
+def _function_definitions(root: Path, name: str) -> set[str]:
+    definitions: set[str] = set()
+    for path in root.rglob("*.py"):
+        tree = ast.parse(path.read_text(encoding="utf-8"))
+        if any(
+            isinstance(node, ast.FunctionDef | ast.AsyncFunctionDef) and node.name == name
+            for node in ast.walk(tree)
+        ):
+            definitions.add(path.relative_to(root).as_posix())
+    return definitions
+
+
 def test_openapi_exposes_exact_i1_operations_and_generated_routing_metadata() -> None:
     document = json.loads((ROOT / "contracts/http/openapi.yaml").read_text(encoding="utf-8"))
     paths = cast(dict[str, dict[str, dict[str, object]]], document["paths"])
@@ -274,6 +287,50 @@ def test_openapi_exposes_exact_i1_operations_and_generated_routing_metadata() ->
         "reportCtowerProjectFenceObservation",
         "revokeSeatCredential",
     }
+
+
+def test_project_and_credential_refusals_have_one_definition_each() -> None:
+    kernel = ROOT / "packages/ctower-kernel/src/ctower_kernel"
+
+    assert _function_definitions(kernel, "project_mutation_refusal") == {"record/transaction.py"}
+    assert _function_definitions(kernel, "credential_scope_refusal") == {"record/interface.py"}
+
+
+def test_http_authentication_requires_scope_or_the_named_opt_out() -> None:
+    api = ROOT / "apps/ctower-api/src/ctower_api"
+    support = ast.parse((api / "_http_support.py").read_text(encoding="utf-8"))
+    authenticate = next(
+        node
+        for node in support.body
+        if isinstance(node, ast.FunctionDef) and node.name == "authenticate"
+    )
+    scope_index = next(
+        index
+        for index, argument in enumerate(authenticate.args.kwonlyargs)
+        if argument.arg == "required_scope"
+    )
+    assert authenticate.args.kw_defaults[scope_index] is None
+    assert any(
+        isinstance(node, ast.ClassDef) and node.name == "UnscopedAuthentication"
+        for node in support.body
+    )
+
+    calls: list[tuple[str, int]] = []
+    for path in sorted(api.glob("*.py")):
+        tree = ast.parse(path.read_text(encoding="utf-8"))
+        for node in ast.walk(tree):
+            if not (
+                isinstance(node, ast.Call)
+                and isinstance(node.func, ast.Name)
+                and node.func.id in {"authenticate", "_authenticate"}
+            ):
+                continue
+            calls.append((path.name, node.lineno))
+            assert any(keyword.arg == "required_scope" for keyword in node.keywords), (
+                path.name,
+                node.lineno,
+            )
+    assert calls
 
 
 def test_problem_vocabulary_and_boundary_objects_are_strict() -> None:

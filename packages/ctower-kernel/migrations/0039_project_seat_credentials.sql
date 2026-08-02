@@ -28,6 +28,7 @@ ALTER TABLE durability_subject_heads
 ALTER TABLE tickets
     ADD COLUMN project_key text NOT NULL DEFAULT 'ctower'
         CHECK (project_key ~ '^[a-z][a-z0-9-]{2,63}$');
+ALTER TABLE tickets ALTER COLUMN project_key DROP DEFAULT;
 
 CREATE TABLE project_seats (
     principal_id uuid PRIMARY KEY,

@@ -52,6 +52,7 @@ def transfer_custody(
     command: CustodyCommand,
     *,
     request_digest: bytes,
+    policy_refusal: RecordProblem | None = None,
     now: datetime,
     telemetry: TelemetryContext,
 ) -> TicketCommandResult | RecordProblem:
@@ -60,42 +61,71 @@ def transfer_custody(
     with authority_connection(dsn) as connection:
         connection.execute("SET ROLE ctower_svc")
         transaction = RecordTransaction(connection)
-        existing = transaction.reserve(
-            actor.principal_id, command.client_command_id, request_digest
-        )
-        if isinstance(existing, RecordProblem):
-            return existing
-        if existing is not None:
-            return _result_from_payload(existing)
-        pending = transaction.require_durable_subjects(
-            actor.tenant_id,
-            actor.principal_id,
-            command.client_command_id,
-            request_digest,
-            (("ticket", command.ticket_id),),
+        prepared = _prepare_transfer(
+            connection,
+            transaction,
+            actor,
+            command,
+            request_digest=request_digest,
+            policy_refusal=policy_refusal,
             now=now,
         )
-        if pending is not None:
-            return pending
-        ticket_row = _locked_ticket(connection, actor, command.ticket_id)
-        if ticket_row is None:
-            problem = _scope_problem(command.client_command_id)
-            return _refuse(transaction, actor, command, request_digest, problem, now)
-        refusal = _transfer_refusal(connection, actor, command, ticket_row)
-        if refusal is not None:
-            return _refuse(transaction, actor, command, request_digest, refusal, now)
+        if not isinstance(prepared, dict):
+            return prepared
         identifiers = _CustodyIds(_uuid7(now), _uuid7(now))
         result = _commit_transfer(
             connection,
             actor,
             command,
-            ticket_row,
+            prepared,
             identifiers=identifiers,
             request_digest=request_digest,
             now=now,
             telemetry=telemetry,
         )
     return result
+
+
+def _prepare_transfer(
+    connection: psycopg.Connection[dict[str, object]],
+    transaction: RecordTransaction,
+    actor: Actor,
+    command: CustodyCommand,
+    *,
+    request_digest: bytes,
+    policy_refusal: RecordProblem | None,
+    now: datetime,
+) -> dict[str, object] | TicketCommandResult | RecordProblem:
+    existing = transaction.reserve_ticket_mutation(
+        actor.tenant_id,
+        actor.principal_id,
+        command.client_command_id,
+        request_digest,
+        (command.ticket_id,),
+        now=now,
+    )
+    if existing is not None:
+        return existing if isinstance(existing, RecordProblem) else _result_from_payload(existing)
+    if policy_refusal is not None:
+        return policy_refusal
+    pending = transaction.require_durable_subjects(
+        actor.tenant_id,
+        actor.principal_id,
+        command.client_command_id,
+        request_digest,
+        (("ticket", command.ticket_id),),
+        now=now,
+    )
+    if pending is not None:
+        return pending
+    ticket_row = _locked_ticket(connection, actor, command.ticket_id)
+    if ticket_row is None:
+        problem = _scope_problem(command.client_command_id)
+        return _refuse(transaction, actor, command, request_digest, problem, now)
+    refusal = _transfer_refusal(connection, actor, command, ticket_row)
+    if refusal is not None:
+        return _refuse(transaction, actor, command, request_digest, refusal, now)
+    return ticket_row
 
 
 def _refuse(

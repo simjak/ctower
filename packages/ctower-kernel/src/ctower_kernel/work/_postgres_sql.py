@@ -32,7 +32,6 @@ from ctower_kernel.work._blockers import open_blocker, resolve_blocker
 from ctower_kernel.work._event_sql import append_change
 from ctower_kernel.work._intents import admit, defer, reopen
 from ctower_kernel.work._priority import change_priority
-from ctower_kernel.work._project_policy import project_mutation_refusal
 from ctower_kernel.work._relations import add_relation
 
 __all__: tuple[str, ...] = ()
@@ -119,14 +118,6 @@ def _work_ticket(
     if ticket is None:
         refusal = _problem(command, "tenant-scope-denied", 404, "Ticket unavailable")
         return _refuse(transaction, actor, command, request_digest, refusal, now)
-    project_refusal = project_mutation_refusal(
-        connection,
-        actor,
-        _command_ticket_ids(command),
-        command.client_command_id,
-    )
-    if project_refusal is not None:
-        return _refuse(transaction, actor, command, request_digest, project_refusal, now)
     return ticket
 
 
@@ -138,7 +129,14 @@ def _reserve_work_outcome(
     request_digest: bytes,
     now: datetime,
 ) -> WorkReceipt | RecordProblem | None:
-    existing = transaction.reserve(actor.principal_id, command.client_command_id, request_digest)
+    existing = transaction.reserve_ticket_mutation(
+        actor.tenant_id,
+        actor.principal_id,
+        command.client_command_id,
+        request_digest,
+        _command_ticket_ids(command),
+        now=now,
+    )
     if isinstance(existing, RecordProblem):
         return existing
     if existing is not None:
