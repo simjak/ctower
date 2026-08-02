@@ -1,13 +1,13 @@
 schema: ctower.company-bundle/v1
 company:
-  key: example-company
-  display_name: Example Company
+  key: ctower
+  display_name: Ctower
 resources:
   - component:
       schema: ctower.versioned-component/v1
       kind: goal
       key: company.trusted-delivery
-      scope: {tenant: example-company, project: null}
+      scope: {tenant: ctower, project: null}
       revision: 1
       content_digest: sha256:52e8483da484e9d27789621c173bc77f2b6511e91188caa98443f2da05cc5368
       schema_ref: ctower.goal/v1
@@ -28,7 +28,7 @@ resources:
       schema: ctower.versioned-component/v1
       kind: project
       key: ctower.control-plane
-      scope: {tenant: example-company, project: null}
+      scope: {tenant: ctower, project: null}
       revision: 1
       content_digest: sha256:a99c1695616e71bc638500024708d25e6199df247f250b2dbadf398136c84c3b
       schema_ref: ctower.project/v1
@@ -45,9 +45,260 @@ resources:
       goal_refs: [company.trusted-delivery@1]
   - component:
       schema: ctower.versioned-component/v1
+      kind: checkpoint
+      key: ctower.i1-0
+      scope: {tenant: ctower, project: ctower}
+      revision: 1
+      content_digest: sha256:67914f0fd3fa36805f841afb2cea3aa2b3136bf7462477f5f6763ae69d1edb5c
+      schema_ref: ctower.checkpoint/v1
+      lifecycle: published
+      compatibility:
+        ctower: ">=0.0.0,<1.0.0"
+        requires:
+          - {kind: evidence_policy, key: ctower.trust-spine-four-stage.evidence, revision: 1, content_digest: sha256:559bfb59c68ac1a6147021bfd56637692623c40c57387cc95bbbdb2e186e70f6}
+      provenance:
+        - {kind: reviewed-contract, source: packs/components/checkpoints/ctower.i1-0/v1.yaml, digest: sha256:67914f0fd3fa36805f841afb2cea3aa2b3136bf7462477f5f6763ae69d1edb5c}
+      payload_ref: object:sha256:67914f0fd3fa36805f841afb2cea3aa2b3136bf7462477f5f6763ae69d1edb5c
+    payload: {"accountable_owner":"engineering-manager","checkpoint_key":"I1.0","criteria":[{"description":"Authored authority, ownership, event, API, component, and repository contracts have one frozen home.","evidence_policy_refs":["ctower.trust-spine-four-stage.evidence@1"],"key":"authority-contracts-frozen","required":true},{"description":"The non-mutating check and release gates reject missing, drifted, unsafe, or unowned current-scope work.","evidence_policy_refs":["ctower.trust-spine-four-stage.evidence@1"],"key":"deterministic-quality-gates","required":true},{"description":"Every generated client and contract resource reproduces from authored inputs without drift.","evidence_policy_refs":["ctower.trust-spine-four-stage.evidence@1"],"key":"generated-contract-drift","required":true}],"dependency_refs":[],"display_name":"Contract Level 0","key":"ctower.i1-0","outcome":"Ctower's current interfaces and quality gates are deterministic, owned, and safe for independent work.","schema":"ctower.checkpoint/v1"}
+  - component:
+      schema: ctower.versioned-component/v1
+      kind: checkpoint
+      key: ctower.i1-1
+      scope: {tenant: ctower, project: ctower}
+      revision: 1
+      content_digest: sha256:9cbfcb282d909773c1470fed4598c09b17a6f1ca31bf36b9757e20fff0bf9356
+      schema_ref: ctower.checkpoint/v1
+      lifecycle: published
+      compatibility:
+        ctower: ">=0.0.0,<1.0.0"
+        requires:
+          - {kind: checkpoint, key: ctower.i1-0, revision: 1, content_digest: sha256:67914f0fd3fa36805f841afb2cea3aa2b3136bf7462477f5f6763ae69d1edb5c}
+          - {kind: evidence_policy, key: ctower.trust-spine-four-stage.evidence, revision: 1, content_digest: sha256:559bfb59c68ac1a6147021bfd56637692623c40c57387cc95bbbdb2e186e70f6}
+      provenance:
+        - {kind: reviewed-contract, source: packs/components/checkpoints/ctower.i1-1/v1.yaml, digest: sha256:9cbfcb282d909773c1470fed4598c09b17a6f1ca31bf36b9757e20fff0bf9356}
+      payload_ref: object:sha256:9cbfcb282d909773c1470fed4598c09b17a6f1ca31bf36b9757e20fff0bf9356
+    payload: {"accountable_owner":"engineer","checkpoint_key":"I1.1","criteria":[{"description":"One private-VPS control artifact serves the API composition and control worker behind trusted interfaces.","evidence_policy_refs":["ctower.trust-spine-four-stage.evidence@1"],"key":"trusted-control-artifact","required":true},{"description":"First-tenant bootstrap creates the complete authority root atomically under crash, replay, and concurrency.","evidence_policy_refs":["ctower.trust-spine-four-stage.evidence@1"],"key":"atomic-first-tenant","required":true},{"description":"The one-use bootstrap capability appears in no argument, URL, environment, log, event, or artifact.","evidence_policy_refs":["ctower.trust-spine-four-stage.evidence@1"],"key":"bootstrap-secret-confinement","required":true}],"dependency_refs":["ctower.i1-0@1"],"display_name":"Trusted control and bootstrap","key":"ctower.i1-1","outcome":"A private control plane can establish the first tenant once without duplicate authority or exposed bootstrap material.","schema":"ctower.checkpoint/v1"}
+  - component:
+      schema: ctower.versioned-component/v1
+      kind: checkpoint
+      key: ctower.i1-2
+      scope: {tenant: ctower, project: ctower}
+      revision: 1
+      content_digest: sha256:5d1f6363da9b3928065009611a0ecd542ad6ab34d5c703001d735b6d79e66f74
+      schema_ref: ctower.checkpoint/v1
+      lifecycle: published
+      compatibility:
+        ctower: ">=0.0.0,<1.0.0"
+        requires:
+          - {kind: checkpoint, key: ctower.i1-1, revision: 1, content_digest: sha256:9cbfcb282d909773c1470fed4598c09b17a6f1ca31bf36b9757e20fff0bf9356}
+          - {kind: evidence_policy, key: ctower.trust-spine-four-stage.evidence, revision: 1, content_digest: sha256:559bfb59c68ac1a6147021bfd56637692623c40c57387cc95bbbdb2e186e70f6}
+      provenance:
+        - {kind: reviewed-contract, source: packs/components/checkpoints/ctower.i1-2/v1.yaml, digest: sha256:5d1f6363da9b3928065009611a0ecd542ad6ab34d5c703001d735b6d79e66f74}
+      payload_ref: object:sha256:5d1f6363da9b3928065009611a0ecd542ad6ab34d5c703001d735b6d79e66f74
+    payload: {"accountable_owner":"engineer","checkpoint_key":"I1.2","criteria":[{"description":"Record and Work preserve authenticated append, idempotency-before-CAS, durable identity, custody, relations, blockers, and lifecycle history.","evidence_policy_refs":["ctower.trust-spine-four-stage.evidence@1"],"key":"append-only-record-work","required":true},{"description":"Proof prevents verdict, resolution, or closure without current criteria-bound evidence and independent review.","evidence_policy_refs":["ctower.trust-spine-four-stage.evidence@1"],"key":"proof-gated-lifecycle","required":true},{"description":"The workflow evaluator accepts arbitrary authored definitions and refuses branches based on fixture stage names.","evidence_policy_refs":["ctower.trust-spine-four-stage.evidence@1"],"key":"stage-name-independent-evaluator","required":true}],"dependency_refs":["ctower.i1-1@1"],"display_name":"Record, Work, Proof, and evaluator","key":"ctower.i1-2","outcome":"Durable work moves through a generic proof-aware lifecycle without writable status or fixture-name authority.","schema":"ctower.checkpoint/v1"}
+  - component:
+      schema: ctower.versioned-component/v1
+      kind: checkpoint
+      key: ctower.i1-3
+      scope: {tenant: ctower, project: ctower}
+      revision: 1
+      content_digest: sha256:4d7221f08f88c320f29db5ff1a878d964cd5954ca4cb685791c890f54ed9f84a
+      schema_ref: ctower.checkpoint/v1
+      lifecycle: published
+      compatibility:
+        ctower: ">=0.0.0,<1.0.0"
+        requires:
+          - {kind: checkpoint, key: ctower.i1-2, revision: 1, content_digest: sha256:5d1f6363da9b3928065009611a0ecd542ad6ab34d5c703001d735b6d79e66f74}
+          - {kind: evidence_policy, key: ctower.trust-spine-four-stage.evidence, revision: 1, content_digest: sha256:559bfb59c68ac1a6147021bfd56637692623c40c57387cc95bbbdb2e186e70f6}
+      provenance:
+        - {kind: reviewed-contract, source: packs/components/checkpoints/ctower.i1-3/v1.yaml, digest: sha256:4d7221f08f88c320f29db5ff1a878d964cd5954ca4cb685791c890f54ed9f84a}
+      payload_ref: object:sha256:4d7221f08f88c320f29db5ff1a878d964cd5954ca4cb685791c890f54ed9f84a
+    payload: {"accountable_owner":"devops-sre","checkpoint_key":"I1.3","criteria":[{"description":"Accepted records receive required acknowledgement from an external failure domain; unavailable acknowledgement remains replayable and unaccepted.","evidence_policy_refs":["ctower.trust-spine-four-stage.evidence@1"],"key":"disaster-safe-authority","required":true},{"description":"Reviewed recovery proves database, object, vault, and KMS keys can be restored without bypassing isolation.","evidence_policy_refs":["ctower.trust-spine-four-stage.evidence@1"],"key":"key-recovery","required":true},{"description":"An isolated destructive restore verifies chains, anchors, objects, tombstones, cursors, and the signed source inventory.","evidence_policy_refs":["ctower.trust-spine-four-stage.evidence@1"],"key":"isolated-destructive-restore","required":true},{"description":"Host-loss tests record accepted-record RPO zero and measured artifact RPO and recovery time against the declared targets.","evidence_policy_refs":["ctower.trust-spine-four-stage.evidence@1"],"key":"measured-rpo-rto","required":true}],"dependency_refs":["ctower.i1-2@1"],"display_name":"Disaster-safe operations","key":"ctower.i1-3","outcome":"Accepted authority survives host loss with acknowledged off-host durability and independently measured recovery.","schema":"ctower.checkpoint/v1"}
+  - component:
+      schema: ctower.versioned-component/v1
+      kind: checkpoint
+      key: ctower.i1-4
+      scope: {tenant: ctower, project: ctower}
+      revision: 1
+      content_digest: sha256:57c27e316e9955259c3a447c935f056dbb153b52c645cad7bbf028e9162f8883
+      schema_ref: ctower.checkpoint/v1
+      lifecycle: published
+      compatibility:
+        ctower: ">=0.0.0,<1.0.0"
+        requires:
+          - {kind: checkpoint, key: ctower.i1-3, revision: 1, content_digest: sha256:4d7221f08f88c320f29db5ff1a878d964cd5954ca4cb685791c890f54ed9f84a}
+          - {kind: evidence_policy, key: ctower.trust-spine-four-stage.evidence, revision: 1, content_digest: sha256:559bfb59c68ac1a6147021bfd56637692623c40c57387cc95bbbdb2e186e70f6}
+      provenance:
+        - {kind: reviewed-contract, source: packs/components/checkpoints/ctower.i1-4/v1.yaml, digest: sha256:57c27e316e9955259c3a447c935f056dbb153b52c645cad7bbf028e9162f8883}
+      payload_ref: object:sha256:57c27e316e9955259c3a447c935f056dbb153b52c645cad7bbf028e9162f8883
+    payload: {"accountable_owner":"engineer","checkpoint_key":"I1.4","criteria":[{"description":"The owner-only encrypted spool preserves one command identity across crash, contention, disk failure, timeout, replay, rejection, and quarantine.","evidence_policy_refs":["ctower.trust-spine-four-stage.evidence@1"],"key":"durable-command-spool","required":true},{"description":"Protected CLI behavior and payloads match the generated authenticated API client without direct authority access.","evidence_policy_refs":["ctower.trust-spine-four-stage.evidence@1"],"key":"generated-client-parity","required":true},{"description":"CompanyBundle validate, plan, apply, canonical export, and replan produce zero semantic drift.","evidence_policy_refs":["ctower.trust-spine-four-stage.evidence@1"],"key":"bundle-zero-diff-round-trip","required":true}],"dependency_refs":["ctower.i1-3@1"],"display_name":"Protected CLI and CompanyBundle","key":"ctower.i1-4","outcome":"Operators can apply reviewed configuration and issue replay-safe commands through one generated protected client path.","schema":"ctower.checkpoint/v1"}
+  - component:
+      schema: ctower.versioned-component/v1
+      kind: checkpoint
+      key: ctower.i1-5
+      scope: {tenant: ctower, project: ctower}
+      revision: 1
+      content_digest: sha256:26fc0ba838720e7b7d973aa6aa329a42f21bdc73aa9c6d486f8a2d715fd3807a
+      schema_ref: ctower.checkpoint/v1
+      lifecycle: published
+      compatibility:
+        ctower: ">=0.0.0,<1.0.0"
+        requires:
+          - {kind: checkpoint, key: ctower.i1-4, revision: 1, content_digest: sha256:57c27e316e9955259c3a447c935f056dbb153b52c645cad7bbf028e9162f8883}
+          - {kind: evidence_policy, key: ctower.trust-spine-four-stage.evidence, revision: 1, content_digest: sha256:559bfb59c68ac1a6147021bfd56637692623c40c57387cc95bbbdb2e186e70f6}
+      provenance:
+        - {kind: reviewed-contract, source: packs/components/checkpoints/ctower.i1-5/v1.yaml, digest: sha256:26fc0ba838720e7b7d973aa6aa329a42f21bdc73aa9c6d486f8a2d715fd3807a}
+      payload_ref: object:sha256:26fc0ba838720e7b7d973aa6aa329a42f21bdc73aa9c6d486f8a2d715fd3807a
+    payload: {"accountable_owner":"product-manager","checkpoint_key":"I1.5","criteria":[{"description":"Browser implementation, sessions, routes, screenshots, and interactive Project Delivery detail remain explicitly deferred to I2.4.","evidence_policy_refs":["ctower.trust-spine-four-stage.evidence@1"],"key":"browser-scope-deferred","required":true},{"description":"I1 retains durable-thread intent, workflow-owned risk, six-lane folding, attention, and loud degraded-state semantics through API and CLI.","evidence_policy_refs":["ctower.trust-spine-four-stage.evidence@1"],"key":"api-cli-semantics-retained","required":true}],"dependency_refs":["ctower.i1-4@1"],"display_name":"Browser realization deferred","key":"ctower.i1-5","outcome":"The browser product remains auditable future scope while I1 preserves its complete API and CLI semantics.","schema":"ctower.checkpoint/v1"}
+  - component:
+      schema: ctower.versioned-component/v1
+      kind: checkpoint
+      key: ctower.i1-6
+      scope: {tenant: ctower, project: ctower}
+      revision: 1
+      content_digest: sha256:2b2a508909023dd80ddcb07e303708e35a132f805d002e07c0a5c27ef19d7901
+      schema_ref: ctower.checkpoint/v1
+      lifecycle: published
+      compatibility:
+        ctower: ">=0.0.0,<1.0.0"
+        requires:
+          - {kind: checkpoint, key: ctower.i1-5, revision: 1, content_digest: sha256:26fc0ba838720e7b7d973aa6aa329a42f21bdc73aa9c6d486f8a2d715fd3807a}
+          - {kind: evidence_policy, key: ctower.trust-spine-four-stage.evidence, revision: 1, content_digest: sha256:559bfb59c68ac1a6147021bfd56637692623c40c57387cc95bbbdb2e186e70f6}
+      provenance:
+        - {kind: reviewed-contract, source: packs/components/checkpoints/ctower.i1-6/v1.yaml, digest: sha256:2b2a508909023dd80ddcb07e303708e35a132f805d002e07c0a5c27ef19d7901}
+      payload_ref: object:sha256:2b2a508909023dd80ddcb07e303708e35a132f805d002e07c0a5c27ef19d7901
+    payload: {"accountable_owner":"qa","checkpoint_key":"I1.6","criteria":[{"description":"Capture, frame, verify, and close execute through the public generic Workflow interface and protected CLI.","evidence_policy_refs":["ctower.trust-spine-four-stage.evidence@1"],"key":"four-stage-public-path","required":true},{"description":"Current-digest evidence and an independent protected verdict are required before resolution and administrative closure.","evidence_policy_refs":["ctower.trust-spine-four-stage.evidence@1"],"key":"proof-protected-close","required":true},{"description":"The Board derives review state from authored activity metadata and remains unchanged under behavior-preserving stage renames.","evidence_policy_refs":["ctower.trust-spine-four-stage.evidence@1"],"key":"stage-name-independent-board","required":true}],"dependency_refs":["ctower.i1-5@1"],"display_name":"Four-stage trust spine","key":"ctower.i1-6","outcome":"A daily synthetic ticket completes the generic capture-to-close trust spine with current proof and independent review.","schema":"ctower.checkpoint/v1"}
+  - component:
+      schema: ctower.versioned-component/v1
+      kind: checkpoint
+      key: ctower.i1-7
+      scope: {tenant: ctower, project: ctower}
+      revision: 1
+      content_digest: sha256:32c8704a2e9e6e805b2a48be619f940c1e379c19c88fd166ac20ababaf92b7f7
+      schema_ref: ctower.checkpoint/v1
+      lifecycle: published
+      compatibility:
+        ctower: ">=0.0.0,<1.0.0"
+        requires:
+          - {kind: checkpoint, key: ctower.i1-6, revision: 1, content_digest: sha256:2b2a508909023dd80ddcb07e303708e35a132f805d002e07c0a5c27ef19d7901}
+          - {kind: evidence_policy, key: ctower.trust-spine-four-stage.evidence, revision: 1, content_digest: sha256:559bfb59c68ac1a6147021bfd56637692623c40c57387cc95bbbdb2e186e70f6}
+      provenance:
+        - {kind: reviewed-contract, source: packs/components/checkpoints/ctower.i1-7/v1.yaml, digest: sha256:32c8704a2e9e6e805b2a48be619f940c1e379c19c88fd166ac20ababaf92b7f7}
+      payload_ref: object:sha256:32c8704a2e9e6e805b2a48be619f940c1e379c19c88fd166ac20ababaf92b7f7
+    payload: {"accountable_owner":"commander","checkpoint_key":"I1.7","criteria":[{"description":"The signed legacy corpus and reviewed carry-forward allowlist account for every source item exactly once.","evidence_policy_refs":["ctower.trust-spine-four-stage.evidence@1"],"key":"source-conservation","required":true},{"description":"The fresh ctower writer epoch rejects every later legacy mutation and never introduces a dual-write path.","evidence_policy_refs":["ctower.trust-spine-four-stage.evidence@1"],"key":"development-single-writer","required":true},{"description":"Reviewed work is recreated and reconciled through ordinary generated API and protected CLI commands.","evidence_policy_refs":["ctower.trust-spine-four-stage.evidence@1"],"key":"api-cli-dogfood","required":true},{"description":"Restart and rebuild reproduce the same ordered Project Delivery rows, reasons, watermarks, and semantic digests.","evidence_policy_refs":["ctower.trust-spine-four-stage.evidence@1"],"key":"project-delivery-rebuild","required":true},{"description":"The development verdict, attention baseline, stable aliases, and applicable evidence are archived with current source digests.","evidence_policy_refs":["ctower.trust-spine-four-stage.evidence@1"],"key":"i1-evidence-archive","required":true}],"dependency_refs":["ctower.i1-6@1"],"display_name":"Fresh authority and development dogfood","key":"ctower.i1-7","outcome":"Ctower owns its reviewed development work on one fresh writer with deterministic rebuildable delivery visibility.","schema":"ctower.checkpoint/v1"}
+  - component:
+      schema: ctower.versioned-component/v1
+      kind: checkpoint
+      key: ctower.i2-1
+      scope: {tenant: ctower, project: ctower}
+      revision: 1
+      content_digest: sha256:b51fc6da6491b92a0eb15dfb54b022f519ff515198161d24ca9cdd7246c52f90
+      schema_ref: ctower.checkpoint/v1
+      lifecycle: published
+      compatibility:
+        ctower: ">=0.0.0,<1.0.0"
+        requires:
+          - {kind: checkpoint, key: ctower.i1-7, revision: 1, content_digest: sha256:32c8704a2e9e6e805b2a48be619f940c1e379c19c88fd166ac20ababaf92b7f7}
+          - {kind: evidence_policy, key: ctower.trust-spine-four-stage.evidence, revision: 1, content_digest: sha256:559bfb59c68ac1a6147021bfd56637692623c40c57387cc95bbbdb2e186e70f6}
+      provenance:
+        - {kind: reviewed-contract, source: packs/components/checkpoints/ctower.i2-1/v1.yaml, digest: sha256:b51fc6da6491b92a0eb15dfb54b022f519ff515198161d24ca9cdd7246c52f90}
+      payload_ref: object:sha256:b51fc6da6491b92a0eb15dfb54b022f519ff515198161d24ca9cdd7246c52f90
+    payload: {"accountable_owner":"engineering-manager","checkpoint_key":"I2.1","criteria":[{"description":"Authorization records the full normative I1 exit, including the I1.3 disaster-safe proof, rather than a development-only verdict.","evidence_policy_refs":["ctower.trust-spine-four-stage.evidence@1"],"key":"full-i1-exit-authorized","required":true},{"description":"Arbitrary workflow stages, policies, gates, failure routes, perspectives, and finite bounds remain package data outside engine branching.","evidence_policy_refs":["ctower.trust-spine-four-stage.evidence@1"],"key":"generic-workflow-policy","required":true},{"description":"Ordinary and skip evidence slots, signing slots, and selective invalidation are typed, complete, and fail closed.","evidence_policy_refs":["ctower.trust-spine-four-stage.evidence@1"],"key":"typed-evidence-slots","required":true}],"dependency_refs":["ctower.i1-7@1"],"display_name":"Deep generic Workflow and Proof","key":"ctower.i2-1","outcome":"Published packages drive arbitrary bounded proof-aware workflows without software-factory vocabulary in the engine.","schema":"ctower.checkpoint/v1"}
+  - component:
+      schema: ctower.versioned-component/v1
+      kind: checkpoint
+      key: ctower.i2-2
+      scope: {tenant: ctower, project: ctower}
+      revision: 1
+      content_digest: sha256:52c7a14ec0e11244cd6a01d2469f909574983b13adb3c51f645d38088d04b075
+      schema_ref: ctower.checkpoint/v1
+      lifecycle: published
+      compatibility:
+        ctower: ">=0.0.0,<1.0.0"
+        requires:
+          - {kind: checkpoint, key: ctower.i2-1, revision: 1, content_digest: sha256:b51fc6da6491b92a0eb15dfb54b022f519ff515198161d24ca9cdd7246c52f90}
+          - {kind: evidence_policy, key: ctower.trust-spine-four-stage.evidence, revision: 1, content_digest: sha256:559bfb59c68ac1a6147021bfd56637692623c40c57387cc95bbbdb2e186e70f6}
+      provenance:
+        - {kind: reviewed-contract, source: packs/components/checkpoints/ctower.i2-2/v1.yaml, digest: sha256:52c7a14ec0e11244cd6a01d2469f909574983b13adb3c51f645d38088d04b075}
+      payload_ref: object:sha256:52c7a14ec0e11244cd6a01d2469f909574983b13adb3c51f645d38088d04b075
+    payload: {"accountable_owner":"engineer","checkpoint_key":"I2.2","criteria":[{"description":"Jobs, leases, fencing, cursors, checkpoints, cancellation, and reconciliation survive process, network, and host loss without orphaned authority.","evidence_policy_refs":["ctower.trust-spine-four-stage.evidence@1"],"key":"fenced-runtime-recovery","required":true},{"description":"Every final command-dispatch path enforces the versioned CommandGuard, exact one-use grants, and redacted immutable receipts before execution.","evidence_policy_refs":["ctower.trust-spine-four-stage.evidence@1"],"key":"command-guard-enforced","required":true}],"dependency_refs":["ctower.i2-1@1"],"display_name":"Durable Runtime","key":"ctower.i2-2","outcome":"The worker substrate resumes bounded execution after loss and dispatches no command outside a verified guard decision.","schema":"ctower.checkpoint/v1"}
+  - component:
+      schema: ctower.versioned-component/v1
+      kind: checkpoint
+      key: ctower.i2-3
+      scope: {tenant: ctower, project: ctower}
+      revision: 1
+      content_digest: sha256:2aa030dfc9969c8a509b7f0bd731a52d0edf0b0c369014d6dce26ba07204559c
+      schema_ref: ctower.checkpoint/v1
+      lifecycle: published
+      compatibility:
+        ctower: ">=0.0.0,<1.0.0"
+        requires:
+          - {kind: checkpoint, key: ctower.i2-2, revision: 1, content_digest: sha256:52c7a14ec0e11244cd6a01d2469f909574983b13adb3c51f645d38088d04b075}
+          - {kind: evidence_policy, key: ctower.trust-spine-four-stage.evidence, revision: 1, content_digest: sha256:559bfb59c68ac1a6147021bfd56637692623c40c57387cc95bbbdb2e186e70f6}
+      provenance:
+        - {kind: reviewed-contract, source: packs/components/checkpoints/ctower.i2-3/v1.yaml, digest: sha256:2aa030dfc9969c8a509b7f0bd731a52d0edf0b0c369014d6dce26ba07204559c}
+      payload_ref: object:sha256:2aa030dfc9969c8a509b7f0bd731a52d0edf0b0c369014d6dce26ba07204559c
+    payload: {"accountable_owner":"commander","checkpoint_key":"I2.3","criteria":[{"description":"Forced model, process, and context replacement preserve the same durable Commander principal, custody, plan history, and dispatch identity.","evidence_policy_refs":["ctower.trust-spine-four-stage.evidence@1"],"key":"commander-continuity","required":true},{"description":"The server owns attempt, repair, perspective, cost, and finite-bound accounting; the Commander never authors consumed counters.","evidence_policy_refs":["ctower.trust-spine-four-stage.evidence@1"],"key":"server-owned-accounting","required":true}],"dependency_refs":["ctower.i2-2@1"],"display_name":"Durable Commander","key":"ctower.i2-3","outcome":"One accountable Commander continuously orchestrates bounded work despite reasoning-agent and process replacement.","schema":"ctower.checkpoint/v1"}
+  - component:
+      schema: ctower.versioned-component/v1
+      kind: checkpoint
+      key: ctower.i2-4
+      scope: {tenant: ctower, project: ctower}
+      revision: 1
+      content_digest: sha256:81f916fcdbf355e0548b5810d77654841356cfd4a0e030e3e4c4bd38e0675173
+      schema_ref: ctower.checkpoint/v1
+      lifecycle: published
+      compatibility:
+        ctower: ">=0.0.0,<1.0.0"
+        requires:
+          - {kind: checkpoint, key: ctower.i2-3, revision: 1, content_digest: sha256:2aa030dfc9969c8a509b7f0bd731a52d0edf0b0c369014d6dce26ba07204559c}
+          - {kind: evidence_policy, key: ctower.trust-spine-four-stage.evidence, revision: 1, content_digest: sha256:559bfb59c68ac1a6147021bfd56637692623c40c57387cc95bbbdb2e186e70f6}
+      provenance:
+        - {kind: reviewed-contract, source: packs/components/checkpoints/ctower.i2-4/v1.yaml, digest: sha256:81f916fcdbf355e0548b5810d77654841356cfd4a0e030e3e4c4bd38e0675173}
+      payload_ref: object:sha256:81f916fcdbf355e0548b5810d77654841356cfd4a0e030e3e4c4bd38e0675173
+    payload: {"accountable_owner":"designer","checkpoint_key":"I2.4","criteria":[{"description":"Home, Board, Ticket, Fleet, and Analytics are the exact five primary browser surfaces over generated clients and rebuildable projections.","evidence_policy_refs":["ctower.trust-spine-four-stage.evidence@1"],"key":"five-surface-browser","required":true},{"description":"Authorized Project Delivery detail exposes proof, gates, blockers, provenance, cost, time, and freshness without creating writable status authority.","evidence_policy_refs":["ctower.trust-spine-four-stage.evidence@1"],"key":"authorized-delivery-detail","required":true}],"dependency_refs":["ctower.i2-3@1"],"display_name":"Five-surface browser realization","key":"ctower.i2-4","outcome":"Operators can inspect durable work, execution, attention, and delivery truth through five authorization-safe browser surfaces.","schema":"ctower.checkpoint/v1"}
+  - component:
+      schema: ctower.versioned-component/v1
+      kind: checkpoint
+      key: ctower.i2-5
+      scope: {tenant: ctower, project: ctower}
+      revision: 1
+      content_digest: sha256:eaa3e9d5161986b87923a57918a153515347974cc5698d9d20030e8e7fea3098
+      schema_ref: ctower.checkpoint/v1
+      lifecycle: published
+      compatibility:
+        ctower: ">=0.0.0,<1.0.0"
+        requires:
+          - {kind: checkpoint, key: ctower.i2-4, revision: 1, content_digest: sha256:81f916fcdbf355e0548b5810d77654841356cfd4a0e030e3e4c4bd38e0675173}
+          - {kind: evidence_policy, key: ctower.trust-spine-four-stage.evidence, revision: 1, content_digest: sha256:559bfb59c68ac1a6147021bfd56637692623c40c57387cc95bbbdb2e186e70f6}
+      provenance:
+        - {kind: reviewed-contract, source: packs/components/checkpoints/ctower.i2-5/v1.yaml, digest: sha256:eaa3e9d5161986b87923a57918a153515347974cc5698d9d20030e8e7fea3098}
+      payload_ref: object:sha256:eaa3e9d5161986b87923a57918a153515347974cc5698d9d20030e8e7fea3098
+    payload: {"accountable_owner":"devops-sre","checkpoint_key":"I2.5","criteria":[{"description":"A separately supervised root helper verifies artifact bytes, signatures, attestations, subjects, and trusted builder identity before installation.","evidence_policy_refs":["ctower.trust-spine-four-stage.evidence@1"],"key":"root-verified-effects","required":true},{"description":"An injected production failure creates an incident, revokes unused grants, verifies rollback and resulting state, and records triage before repair.","evidence_policy_refs":["ctower.trust-spine-four-stage.evidence@1"],"key":"incident-rollback","required":true}],"dependency_refs":["ctower.i2-4@1"],"display_name":"Verified effects and recovery","key":"ctower.i2-5","outcome":"Production effects require root-owned provenance checks and recover through an auditable verified incident path.","schema":"ctower.checkpoint/v1"}
+  - component:
+      schema: ctower.versioned-component/v1
+      kind: checkpoint
+      key: ctower.i2-6
+      scope: {tenant: ctower, project: ctower}
+      revision: 1
+      content_digest: sha256:02222298a3bbcc38bf2ce19685ea246c76465b7fd37785fce9790573b4a0d8be
+      schema_ref: ctower.checkpoint/v1
+      lifecycle: published
+      compatibility:
+        ctower: ">=0.0.0,<1.0.0"
+        requires:
+          - {kind: checkpoint, key: ctower.i2-5, revision: 1, content_digest: sha256:eaa3e9d5161986b87923a57918a153515347974cc5698d9d20030e8e7fea3098}
+          - {kind: evidence_policy, key: ctower.trust-spine-four-stage.evidence, revision: 1, content_digest: sha256:559bfb59c68ac1a6147021bfd56637692623c40c57387cc95bbbdb2e186e70f6}
+      provenance:
+        - {kind: reviewed-contract, source: packs/components/checkpoints/ctower.i2-6/v1.yaml, digest: sha256:02222298a3bbcc38bf2ce19685ea246c76465b7fd37785fce9790573b4a0d8be}
+      payload_ref: object:sha256:02222298a3bbcc38bf2ce19685ea246c76465b7fd37785fce9790573b4a0d8be
+    payload: {"accountable_owner":"commander","checkpoint_key":"I2.6","criteria":[{"description":"One permanent ticket traverses every declared software-factory sprint group with only its reviewed design skip.","evidence_policy_refs":["ctower.trust-spine-four-stage.evidence@1"],"key":"factory-golden-path","required":true},{"description":"The signed artifact reaches separate staging and production through verified effects, independent smoke checks, and a forced rollback rehearsal.","evidence_policy_refs":["ctower.trust-spine-four-stage.evidence@1"],"key":"production-proof","required":true},{"description":"The golden ticket records its retro and passes server validation for resolution and administrative closure.","evidence_policy_refs":["ctower.trust-spine-four-stage.evidence@1"],"key":"retro-resolve-close","required":true}],"dependency_refs":["ctower.i2-5@1"],"display_name":"Software-factory golden ticket","key":"ctower.i2-6","outcome":"One production change proves the complete bounded software-factory path from durable intent through verified release and retro.","schema":"ctower.checkpoint/v1"}
+  - component:
+      schema: ctower.versioned-component/v1
       kind: persona
       key: operator.commander
-      scope: {tenant: example-company, project: null}
+      scope: {tenant: ctower, project: null}
       revision: 1
       content_digest: sha256:c188b829bde39cf37e2765aa44d1cf10d256c3461d7097984693e299c8cb229d
       schema_ref: ctower.persona/v1
@@ -65,7 +316,7 @@ resources:
       schema: ctower.versioned-component/v1
       kind: capability
       key: control.api
-      scope: {tenant: example-company, project: null}
+      scope: {tenant: ctower, project: null}
       revision: 1
       content_digest: sha256:f36850d9b7ab10e4a1e65e4827a74e34de987e05603ce2ff644db4faeeb5945e
       schema_ref: ctower.capability/v1
@@ -84,7 +335,7 @@ resources:
       schema: ctower.versioned-component/v1
       kind: skill
       key: protected.cli
-      scope: {tenant: example-company, project: null}
+      scope: {tenant: ctower, project: null}
       revision: 1
       content_digest: sha256:3a53651d8858c87c698d9d0386535cc875816f4a1d0c8dfc54737c1509aaf632
       schema_ref: ctower.skill/v1
@@ -106,7 +357,7 @@ resources:
       schema: ctower.versioned-component/v1
       kind: tool
       key: ctowerctl.client
-      scope: {tenant: example-company, project: null}
+      scope: {tenant: ctower, project: null}
       revision: 1
       content_digest: sha256:8baab4c5906a2039c470a42ca86961d81ead9d1b610e4939abef11dba6466d92
       schema_ref: ctower.tool/v1
@@ -128,7 +379,7 @@ resources:
       schema: ctower.versioned-component/v1
       kind: environment
       key: local.linux
-      scope: {tenant: example-company, project: null}
+      scope: {tenant: ctower, project: null}
       revision: 1
       content_digest: sha256:4b5bc595819910eba77d86e606f8b8bc989a5e794b03ea2fb3a971ea52ab39db
       schema_ref: ctower.environment/v1
@@ -148,7 +399,7 @@ resources:
       schema: ctower.versioned-component/v1
       kind: image
       key: local.control
-      scope: {tenant: example-company, project: null}
+      scope: {tenant: ctower, project: null}
       revision: 1
       content_digest: sha256:314c24a09a252a2588c7bfcdd7a9c0875d055d46e017e11865c09f46fc47ac53
       schema_ref: ctower.image/v1
@@ -171,7 +422,7 @@ resources:
       schema: ctower.versioned-component/v1
       kind: harness
       key: local.generated-client
-      scope: {tenant: example-company, project: null}
+      scope: {tenant: ctower, project: null}
       revision: 1
       content_digest: sha256:3458a380b9f9fd4436761a38cb2b7755af8700813b694ce7d993ad7e42083d10
       schema_ref: ctower.harness/v1
@@ -190,7 +441,7 @@ resources:
       schema: ctower.versioned-component/v1
       kind: supervisor
       key: local.process
-      scope: {tenant: example-company, project: null}
+      scope: {tenant: ctower, project: null}
       revision: 1
       content_digest: sha256:3803991ba7d0b7e797edc60d7078e8334d7850d1b769b052dc4775cc315fbd82
       schema_ref: ctower.supervisor/v1
@@ -209,7 +460,7 @@ resources:
       schema: ctower.versioned-component/v1
       kind: target
       key: local.control
-      scope: {tenant: example-company, project: null}
+      scope: {tenant: ctower, project: null}
       revision: 1
       content_digest: sha256:48fee5c2e773f9632720d5fd3cd066927b7d9f82da8dfc185d3bd601c73ba7fd
       schema_ref: ctower.target/v1
@@ -233,7 +484,7 @@ resources:
       schema: ctower.versioned-component/v1
       kind: workspace
       key: local.checkout
-      scope: {tenant: example-company, project: null}
+      scope: {tenant: ctower, project: null}
       revision: 1
       content_digest: sha256:b395579f15d221ddc0c47921a4c4cbf7d8039fdeab49532b621d0f192040baad
       schema_ref: ctower.workspace/v1
@@ -252,7 +503,7 @@ resources:
       schema: ctower.versioned-component/v1
       kind: telemetry
       key: local.otlp
-      scope: {tenant: example-company, project: null}
+      scope: {tenant: ctower, project: null}
       revision: 1
       content_digest: sha256:338919da4a210a40c7bd68a51264e2e6cd49653b8b16a0b8c9aca16b21637f58
       schema_ref: ctower.telemetry/v1
@@ -271,7 +522,7 @@ resources:
       schema: ctower.versioned-component/v1
       kind: agent_profile
       key: commander.protected-cli
-      scope: {tenant: example-company, project: null}
+      scope: {tenant: ctower, project: null}
       revision: 1
       content_digest: sha256:17288c4fa0fcdc766311744cd91002c4a9eab2c2fbbb021593043b4c00eb90d9
       schema_ref: ctower.agent-profile/v1
@@ -298,7 +549,7 @@ resources:
       schema: ctower.versioned-component/v1
       kind: workflow
       key: ctower.trust-spine-four-stage
-      scope: {tenant: example-company, project: null}
+      scope: {tenant: ctower, project: null}
       revision: 1
       content_digest: sha256:83fb59cef7c47d2c39a075322279b4ae893b91e5f538f7517d8e31dd60bdc17c
       schema_ref: ctower.workflow/v1
@@ -337,7 +588,7 @@ resources:
       schema: ctower.versioned-component/v1
       kind: execution_policy
       key: ctower.trust-spine-four-stage.execution
-      scope: {tenant: example-company, project: null}
+      scope: {tenant: ctower, project: null}
       revision: 1
       content_digest: sha256:15f720af3958e10884ef06e39a5f937f0f5110a2f6fdaf08f9d2927119430d73
       schema_ref: ctower.execution-policy/v1
@@ -365,7 +616,7 @@ resources:
       schema: ctower.versioned-component/v1
       kind: gate_policy
       key: ctower.trust-spine-four-stage.gates
-      scope: {tenant: example-company, project: null}
+      scope: {tenant: ctower, project: null}
       revision: 1
       content_digest: sha256:1ea9adf4527c28f1debca1c8cbc556c73ff6b8eb19f06fbda81808e2ea59fd21
       schema_ref: ctower.gate-policy/v1
@@ -396,7 +647,7 @@ resources:
       schema: ctower.versioned-component/v1
       kind: evidence_policy
       key: ctower.trust-spine-four-stage.evidence
-      scope: {tenant: example-company, project: null}
+      scope: {tenant: ctower, project: null}
       revision: 1
       content_digest: sha256:559bfb59c68ac1a6147021bfd56637692623c40c57387cc95bbbdb2e186e70f6
       schema_ref: ctower.evidence-policy/v1

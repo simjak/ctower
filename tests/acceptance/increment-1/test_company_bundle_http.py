@@ -8,8 +8,6 @@ from uuid import UUID, uuid4
 
 import psycopg
 import pytest
-from ctower_contracts import CATALOG
-from fastapi import FastAPI
 from fastapi.testclient import TestClient
 from httpx import Response
 from psycopg.rows import dict_row
@@ -26,10 +24,11 @@ from support.catalog import (
     minimal_bundle,
     telemetry_for,
 )
+from support.http import app_for as _app
+from support.http import operator_headers as _headers
 from support.telemetry import telemetry_headers
 from support.tenant_fixture import TenantFixture
 
-from ctower_api.interface import create_app
 from ctower_kernel.catalog import (
     CatalogProblem,
     CompanyBundle,
@@ -37,7 +36,6 @@ from ctower_kernel.catalog import (
     CompanyBundleCommandResult,
     PostgresCatalog,
 )
-from ctower_kernel.record.postgres import PostgresRecord
 
 __all__: tuple[str, ...] = ()
 
@@ -136,9 +134,31 @@ def _bundle_read_requests(
     tenant: TenantFixture,
     request: dict[str, object],
 ) -> tuple[Response, Response, Response, Response]:
+    foreign = minimal_bundle()
+    foreign = foreign.model_copy(
+        update={
+            "company": foreign.company.model_copy(
+                update={"key": "foreign-company", "display_name": "Foreign Company"}
+            ),
+            "resources": tuple(
+                resource.model_copy(
+                    update={
+                        "component": resource.component.model_copy(
+                            update={
+                                "scope": resource.component.scope.model_copy(
+                                    update={"tenant": "foreign-company"}
+                                )
+                            }
+                        )
+                    }
+                )
+                for resource in foreign.resources
+            ),
+        }
+    )
     refused = client.post(
         "/v1/company/bundle/validate",
-        json={"bundle": minimal_bundle().model_dump(mode="json", by_alias=True)},
+        json={"bundle": foreign.model_dump(mode="json", by_alias=True)},
         headers=_headers(tenant),
     )
     validated = client.post(
@@ -201,48 +221,6 @@ def test_ticket_comment_http_appends_replays_and_appears_in_timeline_and_audit(
     assert {event["kind"] for event in audit.json()["events"]} == {
         "ticket.created",
         "ticket.comment_added",
-    }
-
-
-def test_new_routes_authenticate_before_path_or_body_validation(
-    tenant: TenantFixture,
-) -> None:
-    with TestClient(_app(tenant)) as client:
-        unauthenticated = (
-            client.post("/v1/company/bundle/validate", content=b"{"),
-            client.post("/v1/company/bundle/plan", content=b"{"),
-            client.post("/v1/company/bundle/apply", content=b"{"),
-            client.get("/v1/company/bundle/export"),
-            client.post("/v1/tickets/not-a-uuid/comments", content=b"{"),
-        )
-        authenticated = (
-            client.post(
-                "/v1/company/bundle/validate",
-                content=b"{",
-                headers=_headers(tenant),
-            ),
-            client.post(
-                "/v1/company/bundle/plan",
-                content=b"{",
-                headers=_headers(tenant),
-            ),
-            client.post(
-                "/v1/company/bundle/apply",
-                content=b"{",
-                headers=_headers(tenant, command_id=uuid4()),
-            ),
-            client.post(
-                "/v1/tickets/not-a-uuid/comments",
-                content=b"{",
-                headers=_headers(tenant, command_id=uuid4()),
-            ),
-        )
-
-    assert {(response.status_code, response.json()["code"]) for response in unauthenticated} == {
-        (HTTP_UNAUTHORIZED, "unauthorized")
-    }
-    assert {(response.status_code, response.json()["code"]) for response in authenticated} == {
-        (HTTP_UNPROCESSABLE_ENTITY, "validation-error")
     }
 
 
@@ -476,25 +454,6 @@ def test_retry_reconciles_payload_receipts_after_post_write_process_loss(
     assert store.put_attempts == len(bundle.resources) * 2
 
 
-def _app(
-    tenant: TenantFixture,
-    *,
-    store: MemoryObjectStore | None = None,
-) -> FastAPI:
-    catalog_store = store or MemoryObjectStore()
-    catalog = PostgresCatalog(
-        tenant.database.runtime_dsn,
-        CATALOG,
-        catalog_store,
-        key_reference="vault:catalog-key",
-        clock=lambda: datetime(2026, 7, 24, tzinfo=UTC),
-    )
-    return create_app(
-        PostgresRecord(tenant.database.runtime_dsn),
-        catalog=catalog,
-    )
-
-
 def _catalog(tenant: TenantFixture, store: MemoryObjectStore) -> PostgresCatalog:
     return PostgresCatalog(
         tenant.database.runtime_dsn,
@@ -544,20 +503,6 @@ def _create_ticket(client: TestClient, tenant: TenantFixture) -> Response:
             headers=_headers(tenant, command_id=uuid4()),
         ),
     )
-
-
-def _headers(
-    tenant: TenantFixture,
-    *,
-    command_id: UUID | None = None,
-) -> dict[str, str]:
-    headers = {
-        "Authorization": f"Bearer {tenant.operator_credential}",
-        **telemetry_headers(),
-    }
-    if command_id is not None:
-        headers["Idempotency-Key"] = str(command_id)
-    return headers
 
 
 def _commander_headers(

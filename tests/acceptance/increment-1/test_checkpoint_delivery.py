@@ -2,7 +2,9 @@
 
 from __future__ import annotations
 
+import argparse
 import hashlib
+import io
 import json
 import re
 from datetime import UTC, datetime, timedelta
@@ -12,9 +14,10 @@ from uuid import uuid4
 
 import psycopg
 import rfc8785
-from support.catalog import FileSchemas, MemoryObjectStore, actor_for, telemetry_for
+from support.catalog import FileSchemas, MemoryObjectStore, actor_for, minimal_bundle, telemetry_for
 from support.tenant_fixture import TenantFixture
 
+from ctower_client.models import ProjectDeliveryView as ClientProjectDeliveryView
 from ctower_kernel.catalog import (
     CatalogProblem,
     CompanyBundle,
@@ -26,10 +29,13 @@ from ctower_kernel.catalog.interface import CompanyBundleResource, JsonValue
 from ctower_kernel.projections import Projections
 from ctower_kernel.projections.postgres import PostgresProjections
 from ctower_kernel.record import Actor, PrincipalKind
+from ctowerctl import _migration_commands
+from ctowerctl.interface import write_result
 
 __all__: tuple[str, ...] = ()
 
 _ROOT = Path(__file__).parents[3]
+_SNAPSHOT_NOW = datetime(2026, 7, 25, 12, tzinfo=UTC)
 # The domain migration 0027 wrote into both checkpoint_key CHECK constraints, and the
 # only domain either constraint accepted before 0037 relaxed them to the authored
 # contract pattern read from checkpoint.schema.json below.
@@ -40,6 +46,85 @@ _CROSS_DOMAIN_CHECKPOINT_KEYS = (
     "compliance.2026-h2",
     "4-hiring.close",
 )
+_CTOWER_CHECKPOINT_CRITERIA = {
+    "I1.0": 3,
+    "I1.1": 3,
+    "I1.2": 3,
+    "I1.3": 4,
+    "I1.4": 3,
+    "I1.5": 2,
+    "I1.6": 3,
+    "I1.7": 5,
+    "I2.1": 3,
+    "I2.2": 2,
+    "I2.3": 2,
+    "I2.4": 2,
+    "I2.5": 2,
+    "I2.6": 3,
+}
+
+
+def test_reviewed_company_bundle_materializes_ordered_meaningful_delivery_rows(
+    tenant: TenantFixture,
+) -> None:
+    actor = actor_for(tenant.tenant_id, tenant.operator_id)
+    catalog = _catalog(tenant)
+    bundle = minimal_bundle()
+
+    _apply_checkpoint_bundle(tenant, catalog=catalog, bundle=bundle)
+    exported = catalog.export(actor)
+    assert not isinstance(exported, CatalogProblem)
+    replanned = catalog.plan(actor, exported.bundle)
+    assert not isinstance(replanned, CatalogProblem)
+    assert replanned.actions == ()
+
+    source = _record_watermark(tenant)
+    _set_project_delivery_source(tenant, acceptance_position=source)
+    projections = Projections(PostgresProjections(tenant.database.projection_dsn))
+    affected = projections.reconcile_project_delivery(tenant.tenant_id, now=_SNAPSHOT_NOW)
+    view = projections.project_delivery(
+        Actor(tenant.operator_id, tenant.tenant_id, PrincipalKind.OPERATOR),
+        "ctower",
+    )
+
+    assert view is not None
+    assert affected == len(_CTOWER_CHECKPOINT_CRITERIA)
+    client_view = ClientProjectDeliveryView.model_validate_json(json.dumps(view.response_payload()))
+    _assert_reviewed_delivery_rows(client_view, source)
+    _assert_delivery_snapshots(client_view)
+
+
+def _assert_reviewed_delivery_rows(view: ClientProjectDeliveryView, source: int) -> None:
+    assert tuple(row.checkpoint_key for row in view.rows) == tuple(_CTOWER_CHECKPOINT_CRITERIA)
+    assert all("ctower checkpoint" not in row.checkpoint_label.casefold() for row in view.rows)
+    assert all("establishes the declared" not in row.outcome.casefold() for row in view.rows)
+    for row in view.rows:
+        expected = _CTOWER_CHECKPOINT_CRITERIA[row.checkpoint_key]
+        assert (row.criteria.proven, row.criteria.declared) == (0, expected)
+        assert (
+            row.qualifying_stage_slots_filled,
+            row.qualifying_stage_slots_required,
+        ) == (0, expected)
+        assert len(row.qualifying_stage_unfilled_or_unknown_slot_keys) == expected
+        assert row.source_ids == (
+            f"catalog:ctower.{row.checkpoint_key.casefold().replace('.', '-')}@1",
+            "ctower.trust-spine-four-stage.evidence@1",
+        )
+        assert row.source_watermark == source
+        assert row.projection_watermark == source
+        assert row.derivation_reasons[-1] == "underlying_maturity:planned"
+
+
+def _assert_delivery_snapshots(view: ClientProjectDeliveryView) -> None:
+    text_runs = tuple(_migration_commands.delivery_text(view) for _ in range(2))
+    json_runs = tuple(_delivery_json(view) for _ in range(2))
+    assert text_runs[0] == text_runs[1]
+    assert json_runs[0] == json_runs[1]
+    snapshot_root = _ROOT / "tests/acceptance/increment-1/snapshots"
+    text_snapshot = snapshot_root / "ctower-project-delivery.txt"
+    json_snapshot = snapshot_root / "ctower-project-delivery.json"
+    assert text_runs[0] == text_snapshot.read_text(encoding="utf-8")
+    assert json_runs[0] == json_snapshot.read_text(encoding="utf-8")
 
 
 def test_checkpoint_bundle_materializes_every_definition_and_replays_without_residue(
@@ -338,6 +423,16 @@ def _checkpoint_resource(checkpoint_key: str, vectors: object) -> JsonValue:
 
 def _digest(payload: JsonValue) -> str:
     return f"sha256:{hashlib.sha256(rfc8785.dumps(payload)).hexdigest()}"
+
+
+def _delivery_json(view: ClientProjectDeliveryView) -> str:
+    stream = io.StringIO()
+    write_result(
+        argparse.Namespace(cli_name="project delivery query", output="json"),
+        view,
+        stream,
+    )
+    return stream.getvalue()
 
 
 def _catalog(tenant: TenantFixture) -> PostgresCatalog:
