@@ -1,5 +1,13 @@
 # Changelog
 
+## [0.5.0](https://github.com/simjak/ctower/compare/v0.4.1...v0.5.0) (2026-08-02)
+
+
+### Features
+
+* carry the seat facts ([#191](https://github.com/simjak/ctower/issues/191)) ([f41a0f2](https://github.com/simjak/ctower/commit/f41a0f228399345df1031e43fbb0a72e60dee988))
+* issue scoped project-seat credentials ([#198](https://github.com/simjak/ctower/issues/198)) ([1c6aba7](https://github.com/simjak/ctower/commit/1c6aba7863cecc80f2e9264e37fc0d1903452883))
+
 ## [0.4.1](https://github.com/simjak/ctower/compare/v0.4.0...v0.4.1) (2026-08-01)
 
 
