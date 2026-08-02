@@ -15,7 +15,7 @@ from pydantic import BaseModel, ValidationError
 from ctower_client import CtowerClient, CtowerProblemError
 from ctower_client.models import Problem
 from ctower_client.operations import OPERATIONS, SpoolPolicy
-from ctowerctl.spool import ReplayResponse, SpoolCommand
+from ctowerctl.spool import ReplayResponse, SpoolCommand, server_refusal
 
 __all__: tuple[str, ...] = ()
 
@@ -130,6 +130,7 @@ def _problem_response(problem: Problem) -> ReplayResponse:
         command_id=problem.command_id,
         problem_code=code,
         response={"code": problem.code, "status": problem.status},
+        refusal=server_refusal(problem.status, problem.code),
     )
 
 

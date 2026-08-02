@@ -9,6 +9,8 @@ from uuid import UUID
 
 from pydantic import BaseModel, ConfigDict, Field
 
+from ctowerctl.spool import ServerRefusal
+
 __all__: tuple[str, ...] = ()
 
 type JsonValue = str | int | float | bool | list[JsonValue] | dict[str, JsonValue] | None
@@ -37,6 +39,7 @@ class CommandOutcome(_OutputModel):
     reason_code: Annotated[str, Field(pattern=r"^[a-z][a-z0-9_]{0,63}$")]
     sequence: int | None
     result: JsonObject | None = None
+    server_refusal: ServerRefusal | None = None
 
 
 class LocalFailure(_OutputModel):
