@@ -384,9 +384,13 @@
         "SPEC#project-delivery-projection",
         "INV-59",
         "INV-60",
+        "INV-64",
         "AC-PD-01",
         "AC-PD-02",
-        "AC-PD-04"
+        "AC-PD-04",
+        "AC-PD-07",
+        "AC-PD-08",
+        "AC-PD-09"
       ]
     },
     {
@@ -395,10 +399,14 @@
         "SPEC#project-delivery-projection",
         "INV-59",
         "INV-60",
+        "INV-64",
         "AC-PD-01",
         "AC-PD-02",
         "AC-PD-04",
-        "AC-PD-05"
+        "AC-PD-05",
+        "AC-PD-07",
+        "AC-PD-08",
+        "AC-PD-09"
       ]
     },
     {
@@ -542,6 +550,7 @@
         "INV-19",
         "INV-28",
         "INV-57",
+        "INV-64",
         "AC-ADM-02",
         "AC-DUR-01",
         "AC-DUR-02",
@@ -550,6 +559,9 @@
         "AC-OPS-01",
         "AC-OPS-16",
         "AC-SEC-12",
+        "AC-PD-07",
+        "AC-PD-08",
+        "AC-PD-09",
         "AC-TM-01",
         "AC-TM-02",
         "AC-TM-03",
@@ -562,7 +574,22 @@
       "references": [
         "SPEC#universal-versionedcomponent-catalog-and-company-desired-state",
         "INV-45",
+        "INV-64",
+        "AC-PD-07",
         "AC-COMP-01"
+      ]
+    },
+    {
+      "path": "contracts/components/seat-catalog.schema.json",
+      "references": [
+        "SPEC#universal-versionedcomponent-catalog-and-company-desired-state",
+        "SPEC#project-delivery-projection",
+        "INV-45",
+        "INV-64",
+        "AC-COMP-01",
+        "AC-PD-07",
+        "AC-PD-08",
+        "AC-PD-09"
       ]
     },
     {
@@ -572,8 +599,12 @@
         "SPEC#project-delivery-projection",
         "INV-45",
         "INV-59",
+        "INV-64",
         "AC-COMP-01",
-        "AC-PD-01"
+        "AC-PD-01",
+        "AC-PD-07",
+        "AC-PD-08",
+        "AC-PD-09"
       ]
     },
     {
@@ -1416,6 +1447,19 @@
         "SPEC#project-delivery-projection",
         "AC-PD-01",
         "AC-PD-06"
+      ]
+    },
+    {
+      "path": "packages/ctower-kernel/migrations/0038_project_delivery_seat_carriage.sql",
+      "references": [
+        "SPEC#persistence-authority",
+        "SPEC#project-delivery-projection",
+        "INV-59",
+        "INV-62",
+        "INV-64",
+        "AC-PD-07",
+        "AC-PD-08",
+        "AC-PD-09"
       ]
     },
     {

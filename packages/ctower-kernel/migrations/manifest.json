@@ -1,10 +1,10 @@
 {
   "schema": "ctower.migrations/v3",
   "adoption_baseline": {
-    "through": "0037_relax_checkpoint_key_domain.sql",
-    "schema_sha256": "sha256:b886edd9977b14e32ba17061120ad1065453bba7c4cd2b26570675cd68085d9d",
+    "through": "0038_project_delivery_seat_carriage.sql",
+    "schema_sha256": "sha256:e772eadced91580831217acad9e99fad62d8790b6810ef099afc36d97e59e0f8",
     "semantic_checks": "ctower.pre-ledger/v1",
-    "schema_object_sum256": "sum256:00235ba6a1b0a153e4655d2214c13ebda142d82e395fc7e250b97902e629ef6e"
+    "schema_object_sum256": "sum256:55d93c310611c07a49168eafb0db9680acc7d4a4ccfbc975e441283414db45f5"
   },
   "migrations": [
     {
@@ -359,6 +359,15 @@
       "forward_test": "pytest:tests/acceptance/increment-1/test_checkpoint_delivery.py::test_non_increment_checkpoint_key_materializes_and_projects_end_to_end",
       "rollback_or_forward_compensation": "Keep checkpoint_key values readable by the authored contract pattern; append reviewed forward compensation before narrowing the domain, never restore an increment-only literal.",
       "backup_checkpoint": "Before applying to a nonempty installation, capture the existing checkpoint_key CHECK constraint definitions and all stored checkpoint_key values plus a verified database backup."
+    },
+    {
+      "path": "0038_project_delivery_seat_carriage.sql",
+      "sha256": "sha256:5c13c921c6d3057af64968ec59e64e0b639919399a6ae585da312000646d0eb0",
+      "minimum_service_version": "0.0.0",
+      "maximum_service_version": "0.0.0",
+      "forward_test": "pytest:tests/acceptance/increment-1/test_project_delivery_evidence.py::test_assigned_unassigned_and_signing_seats_project_from_explicit_facts",
+      "rollback_or_forward_compensation": "Preserve immutable catalog revisions, member labels, assignment-seat facts, Evidence assignment references, and checkpoint pins; rebuild only disposable Project Delivery rows or append reviewed forward compensation.",
+      "backup_checkpoint": "Before applying to a nonempty installation, capture catalog, assignment-interval, Evidence, checkpoint-definition, criterion, and projection counts plus a verified database backup."
     }
   ]
 }

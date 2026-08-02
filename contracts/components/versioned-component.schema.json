@@ -46,6 +46,7 @@
         "notification",
         "integration",
         "adapter",
+        "seat_catalog",
         "checkpoint"
       ]
     },
