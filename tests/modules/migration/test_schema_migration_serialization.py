@@ -4,8 +4,9 @@ from __future__ import annotations
 
 import time
 from concurrent.futures import ThreadPoolExecutor
+from contextlib import suppress
 from random import SystemRandom
-from threading import Event, Lock
+from threading import Barrier, BrokenBarrierError, Event, Lock
 
 import psycopg
 import pytest
@@ -13,7 +14,7 @@ import pytest
 from ctower_kernel.record import _setup_sql
 from ctower_kernel.record.postgres import apply_migrations, provision_database_roles
 
-from ._postgres import Database
+from ._postgres import Database, isolated_fresh_database_pair
 
 __all__: tuple[str, ...] = ()
 _MIGRATION_CONTROL = vars(_setup_sql)["_migration_control_sql"]
@@ -162,6 +163,42 @@ def test_direct_role_reconciliation_serializes_a_new_caller(
 
     assert call_count == _CONCURRENT_CALLERS
     assert maximum_active == 1
+
+
+def test_two_concurrent_first_time_database_setups_both_succeed(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    callers_ready = Barrier(_CONCURRENT_CALLERS)
+    actual = vars(_setup_sql)["_provision_database_roles_once"]
+
+    def synchronize_role_creation(admin_dsn: str) -> None:
+        with suppress(BrokenBarrierError):
+            callers_ready.wait(timeout=1)
+        actual(admin_dsn)
+
+    monkeypatch.setattr(
+        _setup_sql,
+        "_provision_database_roles_once",
+        synchronize_role_creation,
+    )
+    with isolated_fresh_database_pair() as admin_dsns:
+        with ThreadPoolExecutor(max_workers=_CONCURRENT_CALLERS) as workers:
+            outcomes = tuple(
+                workers.submit(provision_database_roles, admin_dsn) for admin_dsn in admin_dsns
+            )
+            for outcome in outcomes:
+                outcome.result(timeout=60)
+
+        with psycopg.connect(admin_dsns[0]) as connection:
+            roles = connection.execute(
+                """
+                SELECT rolname, rolcanlogin
+                FROM pg_roles
+                WHERE rolname IN ('ctower_admin', 'ctower_projection_runtime')
+                ORDER BY rolname
+                """
+            ).fetchall()
+    assert roles == [("ctower_admin", False), ("ctower_projection_runtime", True)]
 
 
 def test_migration_lock_precedes_cluster_role_reconciliation(
