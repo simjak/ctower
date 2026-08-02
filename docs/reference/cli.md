@@ -14,7 +14,7 @@ dispatcher.
 |---|---|---|
 | Check the app is running | **Available** | `control health`; executed against the disposable loopback API by `just quickstart` |
 | Create a project | **Unavailable** | No create-project operation or parser command exists. `project delivery query` is a read and currently accepts only `ctower` |
-| Create a team or onboard another member | **Unavailable** | `bootstrap first-tenant` creates the initial tenant, Operator, and Commander once. There is no later team/member/principal administration command |
+| Create a team or onboard another member | **Partially available** | There is no team or general member-management command. An Operator can issue or revoke one credential for an already configured project-seat identity with `credential seat issue/revoke` |
 | Create a ticket | **Available** | `ticket create` or its alias `ticket capture` |
 | Run the full workflow | **Available as a development fixture** | The tested path below reaches durable `resolved` and `closed` facts |
 
@@ -72,6 +72,19 @@ result when one exists. Exit `75` never means “try the same intent with a new 
 
 This online-only, one-use ceremony creates the initial tenant and two principals. Every `*-ref` value is a
 reference, never a secret value. It does not create a reusable onboarding flow.
+
+## Project-seat credentials
+
+| Command | Required input |
+|---|---|
+| `credential seat issue` | `--command-id`, `--credential-digest`, `--credential-ref`, `--display-name`, `--project-key`, one or more `--scope {capture,transition,evidence}`, and `--seat-key` |
+| `credential seat revoke <credential_id>` | `--command-id` and `--reason` |
+
+These are online-only Operator mutations and are never written to the replay spool. They bind or revoke a
+credential for one configured `(project_key, seat_key)` identity; they do not create a project or team.
+`--credential-ref` is an opaque secret-manager reference and `--credential-digest` is the lowercase
+`sha256:` digest of bearer bytes retained outside ctower. Never put the bearer itself in a command,
+environment variable, file, or documentation transcript.
 
 ## Ticket commands
 

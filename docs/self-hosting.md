@@ -2,10 +2,11 @@
 
 Production self-hosting is not available in this revision.
 
-ctower has no supported production image or package, internet-facing API topology, browser UI, backup and
-restore runbook, independent failure-domain acknowledgement, credential rotation procedure, monitoring and
-incident path, or compatibility promise. Publishing setup steps without those pieces would turn a
-development fixture into an unsupported source of truth.
+ctower has no supported production image or package, internet-facing API topology, browser UI,
+production-qualified backup and restore procedure, independent failure-domain acknowledgement,
+production credential-rotation procedure, monitoring and incident path, or compatibility promise.
+Publishing setup steps without those pieces would turn a development fixture into an unsupported source
+of truth.
 
 ## What exists
 

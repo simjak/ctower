@@ -79,6 +79,7 @@ the kernel to write record-tier persistence.
   and proof-gated closure;
 - a read-only six-lane Board and project-delivery projection;
 - a strict generated HTTP client and protected `ctowerctl`/`ctl` command surface;
+- operator-only issuance and revocation for credentials bound to configured project-seat identities;
 - an encrypted local mutation spool and typed refusal/exit semantics;
 - a loopback-only, shadow development runtime for low-value reconstructible dogfood.
 
