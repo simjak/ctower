@@ -379,11 +379,18 @@ def event_digest(event: EventEnvelope) -> bytes:
 
 
 def ticket_payload_from_mapping(
-    kind: EventKind, payload: Mapping[str, object]
+    kind: EventKind,
+    payload: Mapping[str, object],
+    *,
+    legacy_project_key: str | None = None,
 ) -> TicketEventPayload:
     """Rebuild one typed ticket payload at the persistence read boundary."""
 
-    return _ticket_payload_from_mapping(kind.value, payload)
+    return _ticket_payload_from_mapping(
+        kind.value,
+        payload,
+        legacy_project_key=legacy_project_key,
+    )
 
 
 _EVENT_VARIANTS: dict[EventKind, tuple[type[object], frozenset[EventOrigin]]] = {

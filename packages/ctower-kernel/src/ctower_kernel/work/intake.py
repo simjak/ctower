@@ -185,9 +185,9 @@ def _promotion_refusal(actor: Actor, command: IntakePromotionCommand) -> RecordP
 
 
 def _source_ref_refusal(command: IntakeSubmitCommand) -> RecordProblem | None:
-    matched = _SCOPED_SOURCE_REF.fullmatch(command.source.ref)
-    if command.source.kind != "mission-control-request" and matched is None:
+    if command.source.kind != "mission-control-request":
         return None
+    matched = _SCOPED_SOURCE_REF.fullmatch(command.source.ref)
     if matched is not None and matched.group("project") == command.project_key:
         return None
     return RecordProblem(
