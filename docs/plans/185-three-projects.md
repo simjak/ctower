@@ -344,6 +344,13 @@ projects with identical titles, stages, and source-ref suffixes never cross in B
 watermarks, or drill-down. Unknown scope is `STATE_UNKNOWN`/refused, never inferred. Cross-project mutation
 attempts leave event, outbox, assignment, proof, workflow, and projection fingerprints unchanged.
 
+PR #197 deliberately leaves six ticket mutation routes unscoped until the project-grant authority in #192
+and its route repair in #198 land: `POST /v1/tickets/{ticket_id}/custody`,
+`POST /v1/tickets/{ticket_id}/workflow/start`, `POST /v1/tickets/{ticket_id}/priority`,
+`POST /v1/tickets/{ticket_id}/assignments`, `POST /v1/tickets/{ticket_id}/intents`, and
+`POST /v1/tickets/{ticket_id}/relations`. Inventory-derived skipped tests name every route and point to
+#192/#198; they record the gap without duplicating #198's authorization predicate.
+
 **Verification:** new three-project contract vectors and an endpoint mutation/read matrix; existing
 `tests/contracts/project_delivery`, `tests/contracts/task-management`,
 `tests/acceptance/increment-1/test_intake.py`, `test_checkpoint_delivery.py`, and Board suites; codegen/traceability;
