@@ -671,7 +671,7 @@ resources:
       schema: ctower.versioned-component/v1
       kind: project
       key: manibo.delivery
-      scope: {tenant: example-company, project: null}
+      scope: {tenant: ctower, project: null}
       revision: 1
       content_digest: sha256:e0e7d00eb3be2db075ce79fe521060001e830f7ff14c4b057cc2c5dd2d5d10ba
       schema_ref: ctower.project/v1
@@ -690,7 +690,7 @@ resources:
       schema: ctower.versioned-component/v1
       kind: project
       key: bh-loop.delivery
-      scope: {tenant: example-company, project: null}
+      scope: {tenant: ctower, project: null}
       revision: 1
       content_digest: sha256:c46a54c1a9d00b1ad05f30afc5eccf502dde2d9665f1ca54f4d800d728136a2f
       schema_ref: ctower.project/v1
@@ -709,7 +709,7 @@ resources:
       schema: ctower.versioned-component/v1
       kind: checkpoint
       key: manibo.verify
-      scope: {tenant: example-company, project: manibo}
+      scope: {tenant: ctower, project: manibo}
       revision: 1
       content_digest: sha256:bd51bf7efede29f73eb8e219b816f9bb72074e0b3e3dfac866c282f0db423fca
       schema_ref: ctower.checkpoint/v1
@@ -731,7 +731,7 @@ resources:
       schema: ctower.versioned-component/v1
       kind: checkpoint
       key: manibo.staging-infra
-      scope: {tenant: example-company, project: manibo}
+      scope: {tenant: ctower, project: manibo}
       revision: 1
       content_digest: sha256:e0eb0249e1459355d328c558188b6c3d5ba14e426fe8a57348deb558b7ae7772
       schema_ref: ctower.checkpoint/v1
@@ -753,7 +753,7 @@ resources:
       schema: ctower.versioned-component/v1
       kind: checkpoint
       key: manibo.images-published
-      scope: {tenant: example-company, project: manibo}
+      scope: {tenant: ctower, project: manibo}
       revision: 1
       content_digest: sha256:c63af0c8c7b8b5fdfcc679266143d7233e4e800e43f2d5f69c6515df8e74d9cd
       schema_ref: ctower.checkpoint/v1
@@ -775,7 +775,7 @@ resources:
       schema: ctower.versioned-component/v1
       kind: checkpoint
       key: manibo.staging-deployed
-      scope: {tenant: example-company, project: manibo}
+      scope: {tenant: ctower, project: manibo}
       revision: 1
       content_digest: sha256:c530d8e47d33912bfb8b60a444d1082fd3a25122f5711829b45b136a11620fc4
       schema_ref: ctower.checkpoint/v1
@@ -797,7 +797,7 @@ resources:
       schema: ctower.versioned-component/v1
       kind: checkpoint
       key: manibo.staging-nfq-e2e
-      scope: {tenant: example-company, project: manibo}
+      scope: {tenant: ctower, project: manibo}
       revision: 1
       content_digest: sha256:93b682af4d859a812c186a029fcb017ffe03e312e9f3f86954fe195d39892870
       schema_ref: ctower.checkpoint/v1
@@ -819,7 +819,7 @@ resources:
       schema: ctower.versioned-component/v1
       kind: checkpoint
       key: manibo.production-released
-      scope: {tenant: example-company, project: manibo}
+      scope: {tenant: ctower, project: manibo}
       revision: 1
       content_digest: sha256:1e454294f05e673d84be4b94477021845d64c166a9ca7eafc76964c17081ba41
       schema_ref: ctower.checkpoint/v1
@@ -841,7 +841,7 @@ resources:
       schema: ctower.versioned-component/v1
       kind: checkpoint
       key: manibo.production-nfq-e2e
-      scope: {tenant: example-company, project: manibo}
+      scope: {tenant: ctower, project: manibo}
       revision: 1
       content_digest: sha256:60cc61507f4eef88ef879ec03c44f88167ed003f5a28e939042a0e6f4206fe26
       schema_ref: ctower.checkpoint/v1
@@ -863,7 +863,7 @@ resources:
       schema: ctower.versioned-component/v1
       kind: checkpoint
       key: bhloop.contract-admission
-      scope: {tenant: example-company, project: bh-loop}
+      scope: {tenant: ctower, project: bh-loop}
       revision: 1
       content_digest: sha256:c6dd3ab1070166fc770c9aad668a35b0b425ca89ce7f9b259ac7756c1dace7f2
       schema_ref: ctower.checkpoint/v1
@@ -885,7 +885,7 @@ resources:
       schema: ctower.versioned-component/v1
       kind: checkpoint
       key: bhloop.d11-technical
-      scope: {tenant: example-company, project: bh-loop}
+      scope: {tenant: ctower, project: bh-loop}
       revision: 1
       content_digest: sha256:4fffb8e09af4156827cffdb3c96450ba83ec663d4e29b0c8dd6a5c07d6ef5724
       schema_ref: ctower.checkpoint/v1
@@ -907,7 +907,7 @@ resources:
       schema: ctower.versioned-component/v1
       kind: checkpoint
       key: bhloop.production-foundation
-      scope: {tenant: example-company, project: bh-loop}
+      scope: {tenant: ctower, project: bh-loop}
       revision: 1
       content_digest: sha256:55b816de0c00cd9d51453f7a31f8f89cbf27781c65a527091944e957b4663d44
       schema_ref: ctower.checkpoint/v1
@@ -929,7 +929,7 @@ resources:
       schema: ctower.versioned-component/v1
       kind: checkpoint
       key: bhloop.layer-1-foundation
-      scope: {tenant: example-company, project: bh-loop}
+      scope: {tenant: ctower, project: bh-loop}
       revision: 1
       content_digest: sha256:70b44a96ef28fba94bf37cd73c5b283344ec7f056fb26257d722421f2896e92b
       schema_ref: ctower.checkpoint/v1
@@ -951,7 +951,7 @@ resources:
       schema: ctower.versioned-component/v1
       kind: checkpoint
       key: bhloop.layer-2-staff-assistant
-      scope: {tenant: example-company, project: bh-loop}
+      scope: {tenant: ctower, project: bh-loop}
       revision: 1
       content_digest: sha256:1c342e2563ea1376b079dbc233080f159034cac05762435f93ac2c21f3893f65
       schema_ref: ctower.checkpoint/v1
@@ -973,7 +973,7 @@ resources:
       schema: ctower.versioned-component/v1
       kind: checkpoint
       key: bhloop.d11-org
-      scope: {tenant: example-company, project: bh-loop}
+      scope: {tenant: ctower, project: bh-loop}
       revision: 1
       content_digest: sha256:cec8198b5901bb6da25e8be79c15cfd83bb1fb5d292058171953625097bfe78a
       schema_ref: ctower.checkpoint/v1
@@ -995,7 +995,7 @@ resources:
       schema: ctower.versioned-component/v1
       kind: checkpoint
       key: bhloop.biomarker-rail
-      scope: {tenant: example-company, project: bh-loop}
+      scope: {tenant: ctower, project: bh-loop}
       revision: 1
       content_digest: sha256:06489398a99a2b3e40ee9fee52da760758166330b09ca117c9c0b73267aa26bb
       schema_ref: ctower.checkpoint/v1

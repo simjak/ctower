@@ -88,7 +88,9 @@ def test_reviewed_company_bundle_materializes_ordered_meaningful_delivery_rows(
     )
 
     assert view is not None
-    assert affected == len(_CTOWER_CHECKPOINT_CRITERIA)
+    assert affected == sum(
+        resource.component.kind.value == "checkpoint" for resource in bundle.resources
+    )
     client_view = ClientProjectDeliveryView.model_validate_json(json.dumps(view.response_payload()))
     _assert_reviewed_delivery_rows(client_view, source)
     _assert_delivery_snapshots(client_view)

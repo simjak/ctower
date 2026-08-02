@@ -17,7 +17,6 @@ from support.catalog import (
     apply_initial_bundle,
     minimal_bundle,
 )
-from support.project_hierarchy import declare_ctower_project
 from support.telemetry import telemetry_headers
 from support.tenant_fixture import TenantFixture
 
@@ -54,6 +53,22 @@ _BHLOOP_CHECKPOINTS = (
     "bhloop.d11-org",
     "bhloop.biomarker-rail",
 )
+_CTOWER_CHECKPOINTS = (
+    "I1.0",
+    "I1.1",
+    "I1.2",
+    "I1.3",
+    "I1.4",
+    "I1.5",
+    "I1.6",
+    "I1.7",
+    "I2.1",
+    "I2.2",
+    "I2.3",
+    "I2.4",
+    "I2.5",
+    "I2.6",
+)
 
 
 def test_manibo_and_ctower_boards_are_disjoint(tenant: TenantFixture) -> None:
@@ -80,7 +95,10 @@ def test_starter_bundles_apply_and_render_ordered_project_delivery_rows(
     manibo = projections.project_delivery(actor, "manibo")
     bhloop = projections.project_delivery(actor, "bh-loop")
 
-    assert affected == len(_MANIBO_CHECKPOINTS) + len(_BHLOOP_CHECKPOINTS)
+    assert affected == (
+        len(_CTOWER_CHECKPOINTS) + len(_MANIBO_CHECKPOINTS) + len(_BHLOOP_CHECKPOINTS)
+    )
+    assert _definition_order(tenant, "ctower") == _CTOWER_CHECKPOINTS
     assert _definition_order(tenant, "manibo") == _MANIBO_CHECKPOINTS
     assert _definition_order(tenant, "bh-loop") == _BHLOOP_CHECKPOINTS
     assert manibo is not None and bhloop is not None
@@ -175,7 +193,6 @@ def test_intake_accepts_scoped_ref_and_refuses_mismatched_project_ref(
 def test_link_intake_uses_ticket_scope_without_import_provenance_binding(
     tenant: TenantFixture,
 ) -> None:
-    declare_ctower_project(tenant)
     _apply_portfolio_bundle(tenant)
     with _client(tenant) as client:
         created = _submit_direct_ticket(client, tenant, "ctower")
@@ -197,7 +214,6 @@ def test_link_intake_uses_ticket_scope_without_import_provenance_binding(
 
 
 def _assert_pair_disjoint(tenant: TenantFixture, left: str, right: str) -> None:
-    declare_ctower_project(tenant)
     _apply_portfolio_bundle(tenant)
     with _client(tenant) as client:
         left_ticket = _created_ticket_id(_submit_intake(client, tenant, left, f"{left}-R101"))

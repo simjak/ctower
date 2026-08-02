@@ -432,24 +432,39 @@ def test_seat_catalog_is_generic_unique_data_and_assignments_pin_exact_revision(
 
 def test_checkpoint_dependencies_are_exact_project_local_acyclic_pins() -> None:
     policy = CatalogPolicy(FileSchemas())
-    first = _checkpoint_resource("component-first", "display-first")
+    bundle = minimal_bundle()
+    tenant = bundle.company.key
+    first = _checkpoint_resource(tenant, "component-first", "display-first")
     second = _checkpoint_resource(
-        "component-second", "display-second", dependencies=("ctower.component-first@1",)
+        tenant,
+        "component-second",
+        "display-second",
+        dependencies=("ctower.component-first@1",),
     )
-    clean = _with_checkpoints(minimal_bundle(), first, second)
+    clean = _with_checkpoints(bundle, first, second)
     missing = _with_checkpoints(
-        minimal_bundle(),
-        _checkpoint_resource("missing", "display-missing", dependencies=("other@1",)),
+        bundle,
+        _checkpoint_resource(tenant, "missing", "display-missing", dependencies=("other@1",)),
     )
     cycle = _with_checkpoints(
-        minimal_bundle(),
-        _checkpoint_resource("cycle-a", "display-a", dependencies=("ctower.cycle-b@1",)),
-        _checkpoint_resource("cycle-b", "display-b", dependencies=("ctower.cycle-a@1",)),
+        bundle,
+        _checkpoint_resource(
+            tenant,
+            "cycle-a",
+            "display-a",
+            dependencies=("ctower.cycle-b@1",),
+        ),
+        _checkpoint_resource(
+            tenant,
+            "cycle-b",
+            "display-b",
+            dependencies=("ctower.cycle-a@1",),
+        ),
     )
 
-    assert not isinstance(policy.validate("example-company", clean), CatalogProblem)
-    missing_problem = policy.validate("example-company", missing)
-    cycle_problem = policy.validate("example-company", cycle)
+    assert not isinstance(policy.validate(tenant, clean), CatalogProblem)
+    missing_problem = policy.validate(tenant, missing)
+    cycle_problem = policy.validate(tenant, cycle)
     assert isinstance(missing_problem, CatalogProblem)
     assert "resolve within" in missing_problem.detail
     assert isinstance(cycle_problem, CatalogProblem)
@@ -471,7 +486,7 @@ def _checkpoint_resource(
     project: str | None = "ctower",
     dependencies: tuple[str, ...] = (),
 ) -> CompanyBundleResource:
-    payload = _checkpoint_payload(component_key, checkpoint_key)
+    payload = _checkpoint_payload(component_key, checkpoint_key, dependencies=dependencies)
     digest = "sha256:" + hashlib.sha256(rfc8785.dumps(payload)).hexdigest()
     return CompanyBundleResource.model_validate_json(
         json.dumps(
@@ -495,7 +510,12 @@ def _checkpoint_resource(
     )
 
 
-def _checkpoint_payload(component_key: str, checkpoint_key: str) -> dict[str, JsonValue]:
+def _checkpoint_payload(
+    component_key: str,
+    checkpoint_key: str,
+    *,
+    dependencies: tuple[str, ...] = (),
+) -> dict[str, JsonValue]:
     return {
         "schema": "ctower.checkpoint/v1",
         "key": f"ctower.{component_key}",
