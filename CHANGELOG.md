@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.4.1](https://github.com/simjak/ctower/compare/v0.4.0...v0.4.1) (2026-08-01)
+
+
+### Bug Fixes
+
+* **migration:** follow signed source sets ([#179](https://github.com/simjak/ctower/issues/179)) ([091c4b4](https://github.com/simjak/ctower/commit/091c4b444f48147f55cb2736df71e30328ae9e5a))
+
 ## [0.4.0](https://github.com/simjak/ctower/compare/v0.3.1...v0.4.0) (2026-07-31)
 
 
