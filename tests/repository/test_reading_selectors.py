@@ -29,7 +29,9 @@ _TIMEOUT_SECONDS = 120
 def _outcomes() -> dict[str, dict[str, object]]:
     node = shutil.which("node")
     if node is None:
-        raise unittest.SkipTest("node is not on PATH for the selector fixtures")
+        # not a skip: this is a required suite, and a verification host without
+        # the toolchain it declares is a failure, not a reason to pass quietly
+        raise RuntimeError("node is not on PATH; the selector fixtures cannot run")
     # the repository's single bounded process boundary, not a raw subprocess
     completed = process_execution.run(
         (node, "--no-warnings", str(_FIXTURES)),
