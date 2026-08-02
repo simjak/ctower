@@ -117,6 +117,137 @@ export interface RecordEvent {
   readonly payload: Record<string, unknown>;
 }
 
+/* ── wave 2: the interim-source models ──────────────────────────────────────
+   Each is what one screen needs and nothing more, so a native source can
+   satisfy the same shape without a screen changing. */
+
+/** What a mid-write tail did to a read of an append-only file. */
+export interface TailNote {
+  readonly totalLines: number;
+  readonly malformed: number;
+  readonly partialTail: boolean;
+  readonly sourcePath: string;
+}
+
+export interface InboxMessage {
+  readonly at: string;
+  readonly from: string;
+  readonly severity: string;
+  readonly project: string | null;
+  readonly subject: string;
+  readonly body: string | null;
+  readonly read: boolean;
+  readonly wasRedacted: boolean;
+}
+
+export interface SeatSummary {
+  readonly seat: string;
+  readonly total: number;
+  readonly unread: number;
+}
+
+export interface SeatInbox {
+  readonly seats: readonly SeatSummary[];
+  /** How many this seat holds in total, so a capped page never reads as all of them. */
+  readonly held: number;
+  readonly selected: string;
+  /** The exact line that reaches this seat, quoted from the notify tool. */
+  readonly addressing: string;
+  readonly messages: readonly InboxMessage[];
+  readonly tail: TailNote;
+}
+
+export type BeatHealth = "alive" | "late" | "dead" | "unknown";
+
+export interface Beat {
+  readonly seat: string;
+  readonly beat: string;
+  readonly schedule: string;
+  readonly lastFire: string | null;
+  readonly nextFire: string | null;
+  readonly health: BeatHealth;
+  readonly why: string | null;
+}
+
+export interface CadenceRegistry {
+  readonly beats: readonly Beat[];
+  readonly registered: number;
+  readonly arriving: number;
+  readonly late: number;
+  readonly notArriving: number;
+  /** Which source answered — `crontab` or `systemd user timers`. */
+  readonly sourceLabel: string;
+  readonly sweptAt: string;
+}
+
+export interface TreeEntry {
+  readonly path: string;
+  readonly depth: number;
+  readonly isDirectory: boolean;
+}
+
+export interface CommitLine {
+  readonly sha: string;
+  readonly subject: string;
+  readonly author: string;
+  readonly at: string;
+}
+
+export interface AuthoredFiles {
+  readonly root: string;
+  readonly revision: string;
+  readonly entries: readonly TreeEntry[];
+  readonly openPath: string | null;
+  readonly openLines: readonly string[];
+  readonly commits: readonly CommitLine[];
+}
+
+export interface SessionWorkspace {
+  readonly crew: string;
+  readonly session: string;
+  readonly harness: string;
+  readonly cwd: string;
+  readonly branch: string | null;
+  readonly head: string | null;
+  readonly headSubject: string | null;
+  readonly project: string | null;
+  readonly crews: readonly string[];
+}
+
+export interface WorktreeFile {
+  readonly path: string;
+  readonly status: string;
+  readonly added: number | null;
+  readonly removed: number | null;
+}
+
+export interface DiffLine {
+  readonly text: string;
+  readonly kind: "add" | "del" | "hunk" | "file" | "context";
+}
+
+export interface SessionWorktree {
+  readonly root: string;
+  readonly branch: string | null;
+  readonly head: string | null;
+  readonly base: string;
+  readonly files: readonly WorktreeFile[];
+  readonly diff: readonly DiffLine[];
+  readonly worktrees: readonly string[];
+  readonly truncated: boolean;
+}
+
+export interface PaneCapture {
+  readonly crew: string;
+  readonly session: string;
+  readonly harness: string;
+  readonly cwd: string;
+  readonly lines: readonly string[];
+  readonly capturedAt: string;
+  readonly wasRedacted: boolean;
+  readonly crews: readonly string[];
+}
+
 /** Which ctower instance this surface is reading, for the header and the foot. */
 export interface InstanceIdentity {
   readonly label: string;
@@ -136,13 +267,21 @@ export interface RecordAdapter {
   /** Per-session work facts: who, duration, tokens, outcome. */
   workSessions: (ticketId: string) => Promise<Reading<never>>;
   /** Registered scheduled wakes and their fire history. */
-  cadenceRegistry: () => Promise<Reading<never>>;
+  cadenceRegistry: () => Promise<Reading<CadenceRegistry>>;
   /** One seat's durable inbox and its addressing name. */
-  seatInbox: () => Promise<Reading<never>>;
-  /** What a session was handed at start, and its state transitions. */
-  sessionWorkspace: () => Promise<Reading<never>>;
-  /** A session worktree's files and its diff against main. */
-  sessionWorktree: () => Promise<Reading<never>>;
-  /** The authored file tree this surface would edit. */
-  authoredFiles: () => Promise<Reading<never>>;
+  seatInbox: (seat: string | null) => Promise<Reading<SeatInbox>>;
+  /** What a session was handed at start. */
+  sessionWorkspace: (crew: string | null) => Promise<Reading<SessionWorkspace>>;
+  /** A session worktree's files and its diff against its base. */
+  sessionWorktree: (worktree: string | null) => Promise<Reading<SessionWorktree>>;
+  /** The authored file tree this surface browses. */
+  authoredFiles: (path: string | null) => Promise<Reading<AuthoredFiles>>;
+  /** One live session pane, read-only, through the tmux capture bridge. */
+  sessionPane: (crew: string | null) => Promise<Reading<PaneCapture>>;
 }
+
+/** The subset of reads the ctower read API answers today. */
+export type RecordApiReads = Pick<
+  RecordAdapter,
+  "instance" | "board" | "ticket" | "ticketAudit" | "workSessions"
+>;

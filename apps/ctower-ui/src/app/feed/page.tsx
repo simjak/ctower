@@ -1,25 +1,17 @@
 import type { ReactElement, ReactNode } from "react";
 import { Chrome } from "@/frame/Chrome";
-import { InlineReading, NoSourceYet, Resolved } from "@/frame/Declared";
-import { Provisional } from "@/frame/Provisional";
+import { Resolved } from "@/frame/Declared";
 import { RecordFoot } from "@/frame/RecordFoot";
-import { recordAdapter } from "@/read/adapter";
-import { shortId } from "@/read/elapsed";
-import { feedFocus } from "@/read/feedFocus";
-import type { FeedFocus } from "@/read/feedFocus";
-import type { Ranked } from "@/read/selectors";
-import type { Reading, RecordEvent, TicketRecord } from "@/read/interface";
+import { recordAdapter, SOURCE_LABELS } from "@/read/adapter";
+import { clockText } from "@/read/elapsed";
+import type { PaneCapture } from "@/read/interface";
 import { Composer } from "@/surfaces/feed/Composer";
 import { FeedViews } from "@/surfaces/feed/FeedViews";
-import { ChatThread, RawStream } from "@/surfaces/feed/Thread";
-import { workflowRefOf } from "@/surfaces/record/events";
+import { PaneRaw, PaneThread } from "@/surfaces/feed/PaneThread";
+import { ChoiceTabs } from "@/surfaces/ChoiceTabs";
+import { readParam } from "@/surfaces/screenParams";
 
 export const dynamic = "force-dynamic";
-
-const SESSION_FACTS = {
-  lands: "G5",
-  what: "agent turns, their reasoning, their tool calls, and the seat, model, token cost and live duration of a session",
-} as const;
 
 function Lede(): ReactElement {
   return (
@@ -34,104 +26,55 @@ function Lede(): ReactElement {
   );
 }
 
-function FeedFrame({ declared }: { readonly declared: ReactElement }): ReactElement {
-  return (
-    <>
-      <Chrome section="Feed" />
-      <main className="page">
-        <div className="wrap">
-          <Lede />
-          <section className="panel" style={{ marginTop: "16px" }}>
-            <header>
-              <h2>Stream</h2>
-            </header>
-            {declared}
-            <Composer />
-          </section>
-          <RecordFoot />
-        </div>
-      </main>
-    </>
-  );
-}
-
-function SessionMeta({
-  ticket,
-  events,
-}: {
-  readonly ticket: Reading<TicketRecord>;
-  readonly events: readonly RecordEvent[];
-}): ReactElement {
-  const workflow = workflowRefOf(events);
+function SessionMeta({ capture }: { readonly capture: PaneCapture }): ReactElement {
   return (
     <>
       <span className="av" style={{ width: "27px", height: "27px", fontSize: "10.5px" }}>
-        RC
+        {capture.harness.slice(0, 2).toUpperCase()}
       </span>
       <span>
-        <span className="who">record stream</span>{" "}
-        <InlineReading
-          reading={ticket}
-          present={(value) => <span className="crew">ticket {shortId(value.ticketId)}</span>}
-          missing={(label, detail, tone) => (
-            <span className="crew" style={tone} title={detail}>
-              ticket {label}
-            </span>
-          )}
-        />
+        <span className="who">{capture.crew}</span> <span className="crew">{capture.session}</span>
       </span>
-      <InlineReading
-        reading={ticket}
-        present={(value) => <span className="chip">{value.source.kind}</span>}
-        missing={(label, detail, tone) => (
-          <span className="chip" style={tone} title={detail}>
-            source {label}
-          </span>
-        )}
-      />
-      {workflow === null ? null : <span className="chip">{workflow}</span>}
-      <span className="verdict v-held">no session recorded</span>
+      <span className="chip">{capture.harness}</span>
+      <span className="live">
+        <span className="pulse" />
+        captured {clockText(capture.capturedAt)}
+      </span>
+      {capture.wasRedacted ? (
+        <span className="verdict v-changes">redacted before render</span>
+      ) : null}
+      <span className="verdict v-held">capture, not a recorded session</span>
     </>
   );
 }
 
-function FeedBody({
-  ranked,
-  ticket,
-}: {
-  readonly ranked: Ranked<FeedFocus>;
-  readonly ticket: Reading<TicketRecord>;
-}): ReactElement {
-  const focus = ranked.chosen;
-  const events = focus.events;
+function FeedBody({ capture }: { readonly capture: PaneCapture }): ReactElement {
   return (
     <>
       <Chrome section="Feed" />
       <main className="page">
         <div className="wrap">
           <Lede />
-          <Provisional ranked={ranked} />
+
+          <ChoiceTabs
+            label="Choose a crew"
+            route="/feed"
+            selected={capture.crew}
+            choices={capture.crews.map((crew) => ({ key: crew, label: crew }))}
+          />
+
           <section className="panel" style={{ marginTop: "16px" }}>
             <FeedViews
-              sessionMeta={<SessionMeta ticket={ticket} events={events} />}
-              chat={
-                <>
-                  <NoSourceYet title="no session data yet" source={SESSION_FACTS} />
-                  <ChatThread events={events} />
-                </>
-              }
-              raw={
-                <>
-                  <NoSourceYet title="no session data yet" source={SESSION_FACTS} />
-                  <RawStream events={events} />
-                </>
-              }
+              sessionMeta={<SessionMeta capture={capture} />}
+              chat={<PaneThread capture={capture} />}
+              raw={<PaneRaw capture={capture} />}
             />
             <Composer />
           </section>
+
           <RecordFoot
-            readPath={`/v1/tickets/${shortId(focus.ticketId)}/audit`}
-            watermark={`${events.length.toString()} appended events · ranked over ${ranked.considered.toString()} candidates, ${ranked.unread.toString()} unread · the thread is the record, not a session`}
+            readPath={SOURCE_LABELS.feed}
+            watermark={`${capture.lines.length.toString()} captured lines from ${capture.cwd} · a terminal capture, not a typed turn stream`}
           />
         </div>
       </main>
@@ -139,19 +82,35 @@ function FeedBody({
   );
 }
 
-async function FocusedFeed({
-  ranked,
+export default async function FeedPage({
+  searchParams,
 }: {
-  readonly ranked: Ranked<FeedFocus>;
-}): Promise<ReactElement> {
-  return <FeedBody ranked={ranked} ticket={await recordAdapter.ticket(ranked.chosen.ticketId)} />;
-}
-
-export default async function FeedPage(): Promise<ReactNode> {
-  const focus = await feedFocus();
+  readonly searchParams: Promise<Record<string, string | string[] | undefined>>;
+}): Promise<ReactNode> {
+  const capture = await recordAdapter.sessionPane(readParam(await searchParams, "seat"));
   return (
-    <Resolved reading={focus} frame={(declared) => <FeedFrame declared={declared} />}>
-      {(value) => <FocusedFeed ranked={value} />}
+    <Resolved
+      reading={capture}
+      frame={(declared) => (
+        <>
+          <Chrome section="Feed" />
+          <main className="page">
+            <div className="wrap">
+              <Lede />
+              <section className="panel" style={{ marginTop: "16px" }}>
+                <header>
+                  <h2>Stream</h2>
+                </header>
+                {declared}
+                <Composer />
+              </section>
+              <RecordFoot readPath={SOURCE_LABELS.feed} />
+            </div>
+          </main>
+        </>
+      )}
+    >
+      {(value) => <FeedBody capture={value} />}
     </Resolved>
   );
 }

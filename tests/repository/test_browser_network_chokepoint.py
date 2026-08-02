@@ -1,4 +1,4 @@
-"""Fail-closed discovery of browser-boundary network calls and reading unwraps.
+"""Fail-closed discovery of the browser boundary's crossings and its honesty rules.
 
 `docs/CODING_STANDARDS.md` (O10) forbids single-shot network requests, loopback
 services included, and requires coverage to be derived from repository
@@ -7,10 +7,15 @@ the denominator by scanning every authored and generated TypeScript module for
 network-capable constructs, then require each discovered site to sit in an
 approved policy holder. An unclassifiable site fails the gate.
 
-The second discovery covers the honest-state rule the same way: an unreachable
-source must render as unreachable, never as empty, so a `Reading` may only be
-inspected inside the read layer and the one component that renders its
-non-present states.
+Three further discoveries run the same way, each fail-closed:
+
+* an unreachable source must render as unreachable, never as empty, so a
+  `Reading` may only be inspected inside the read layer and the one component
+  that renders its non-present states;
+* this surface reads other repositories' live files, so no module under `apps/`
+  may call a filesystem write, and
+* every interim source renders text authored elsewhere, so each one must pass it
+  through the redaction list before a screen can see it.
 """
 
 from __future__ import annotations
@@ -27,6 +32,17 @@ _SUFFIXES = (".ts", ".tsx")
 _NETWORK_PATTERN = re.compile(
     r"\bfetch\s*\(|\bXMLHttpRequest\b|\bWebSocket\b|\bEventSource\b|\bsendBeacon\b"
     r"|\bnavigator\.connection\b|\baxios\b|\bnode-fetch\b|\bundici\b|\bhttps?\.request\s*\("
+    # A child process is a boundary crossing too, and O10 names it. The module
+    # specifier is the anchor: Node cannot create a process without one of
+    # these, so the denominator cannot be dodged by aliasing a call.
+    r"|node:child_process|node:worker_threads|node:cluster"
+    r"|\bexecFileSync\b|\bexecSync\b|\bspawnSync\b|\bchild_process\b"
+)
+# Filesystem writes. This app reads another repository's live state; it may not
+# write, lock, truncate, rename or remove anything, anywhere.
+_WRITE_PATTERN = re.compile(
+    r"\bwriteFile\b|\bwriteFileSync\b|\bappendFile\b|\bappendFileSync\b|\bcreateWriteStream\b"
+    r"|\bunlinkSync?\b|\brmdir\b|\brmSync\b|\bmkdirSync?\b|\brenameSync?\b|\btruncate\b|\bchmodSync?\b"
 )
 _READING_PATTERN = re.compile(r"\.state\s*(?:===|!==)|\breading\.(?:value|failure|source)\b")
 _LINE_COMMENT = re.compile(r"//[^\n]*")
@@ -49,6 +65,16 @@ _READING_HOLDERS = (
     "apps/ctower-ui/src/frame/Declared.tsx",
 )
 _CHOKEPOINT = "apps/ctower-ui/src/read/bounded.ts"
+_SOURCE_DIRECTORY = "apps/ctower-ui/src/read/sources/"
+# Helpers in the source directory that carry no foreign text of their own.
+_SOURCE_HELPERS = frozenset(
+    {
+        f"{_SOURCE_DIRECTORY}redact.ts",
+        f"{_SOURCE_DIRECTORY}paths.ts",
+        f"{_SOURCE_DIRECTORY}jsonl.ts",
+        f"{_SOURCE_DIRECTORY}cadenceHealth.ts",
+    }
+)
 
 # Every O10 property must remain visible in the chokepoint, by name.
 _REQUIRED_BOUNDS = (
@@ -130,6 +156,33 @@ class BrowserNetworkChokepointTests(unittest.TestCase):
             [],
             "an application value-imports the generated client, whose requests are single-shot; "
             "either bring that client under a bounded policy or keep the import type-only",
+        )
+
+    def test_no_module_in_apps_writes_to_the_filesystem(self) -> None:
+        offenders = sorted(path for path in _matching(_WRITE_PATTERN) if path.startswith("apps/"))
+        self.assertEqual(
+            offenders,
+            [],
+            "a module under apps/ calls a filesystem write; this surface reads other "
+            "repositories' live state and may never write, lock, rename or remove",
+        )
+
+    def test_every_interim_source_redacts_before_a_screen_sees_its_text(self) -> None:
+        sources = sorted(
+            path
+            for path in (_relative(item) for item in _sources())
+            if path.startswith(_SOURCE_DIRECTORY) and path not in _SOURCE_HELPERS
+        )
+        self.assertGreater(len(sources), 3, "the interim source scan found almost nothing")
+        imports_redaction = re.compile(r"from\s+\"\./redact\"")
+        missing = [
+            path for path in sources if imports_redaction.search(_code(_ROOT / path)) is None
+        ]
+        self.assertEqual(
+            missing,
+            [],
+            "an interim source renders text authored elsewhere without passing it through "
+            "the redaction list; a credential pasted into that source would reach the screen",
         )
 
     def test_readings_are_only_unwrapped_inside_the_declared_boundary(self) -> None:

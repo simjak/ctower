@@ -16,6 +16,7 @@ runtime="${CTOWER_RUNTIME_ROOT:-${HOME}/.local/share/ctower-development/runtime}
 
 export CTOWER_UI_API_BASE_URL="${CTOWER_UI_API_BASE_URL:-http://127.0.0.1:8091}"
 export CTOWER_UI_INSTANCE_LABEL="${CTOWER_UI_INSTANCE_LABEL:-shadow}"
+export CTOWER_UI_REPO_ROOT="${CTOWER_UI_REPO_ROOT:-${repository}}"
 export CTOWER_UI_INSTANCE_REVISION="${CTOWER_UI_INSTANCE_REVISION:-$(git -C "${repository}" rev-parse --short=8 HEAD)}"
 export CTOWER_UI_API_TOKEN="$(
   "${runtime}/venv/bin/python" -c \

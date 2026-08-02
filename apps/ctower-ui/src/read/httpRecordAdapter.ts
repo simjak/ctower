@@ -1,7 +1,7 @@
 import { randomBytes, randomUUID } from "node:crypto";
 import type { DurabilityState, Priority, ProjectionHealth, TelemetryContext } from "@ctower/client";
-import { boundedRead, ReadExhausted, ReadRefused } from "./bounded";
-import type { ReadFailure } from "./bounded";
+import { boundedRead, ReadRefused } from "./bounded";
+import { reading } from "./outcome";
 import {
   asArray,
   asInteger,
@@ -18,8 +18,8 @@ import type {
   BoardEntry,
   BoardSnapshot,
   InstanceIdentity,
-  RecordAdapter,
   Reading,
+  RecordApiReads,
   RecordEvent,
   TicketRecord,
 } from "./interface";
@@ -94,27 +94,6 @@ async function read(path: string): Promise<unknown> {
     Authorization: `Bearer ${credential}`,
     "X-Ctower-Telemetry-Context": JSON.stringify(telemetry()),
   });
-}
-
-/** Every failure reaches a screen as a typed `ReadFailure`, never as a blank. */
-function readFailure(error: unknown): ReadFailure {
-  if (error instanceof ReadExhausted || error instanceof ReadRefused) {
-    return error.failure;
-  }
-  return {
-    reason: error instanceof Error ? error.message : "the read did not complete",
-    failureClass: "permanent",
-    attempts: 1,
-    elapsedMs: 0,
-  };
-}
-
-async function reading<T>(load: () => Promise<T>): Promise<Reading<T>> {
-  try {
-    return { state: "present", value: await load() };
-  } catch (error: unknown) {
-    return { state: "unavailable", failure: readFailure(error) };
-  }
 }
 
 function optionalText(value: unknown, field: string): string | null {
@@ -208,7 +187,7 @@ function absent(lands: string, what: string): Reading<never> {
   return { state: "absent", source: { lands, what } };
 }
 
-export const httpRecordAdapter: RecordAdapter = {
+export const httpRecordAdapter: RecordApiReads = {
   instance: instanceIdentity(),
   board: async (): Promise<Reading<BoardSnapshot>> => await reading(loadBoard),
   ticket: async (ticketId: string): Promise<Reading<TicketRecord>> =>
@@ -219,20 +198,4 @@ export const httpRecordAdapter: RecordAdapter = {
     Promise.resolve(
       absent("#186 / G5", "per-session work facts — seat, duration, tokens and outcome")
     ),
-  cadenceRegistry: (): Promise<Reading<never>> =>
-    Promise.resolve(
-      absent("#186 / G5", "registered scheduled wakes, their last fire, next fire and health")
-    ),
-  seatInbox: (): Promise<Reading<never>> =>
-    Promise.resolve(
-      absent("#186", "per-seat durable messages, their read cursor and the seat addressing name")
-    ),
-  sessionWorkspace: (): Promise<Reading<never>> =>
-    Promise.resolve(
-      absent("G5", "what a session is handed at start, and its recorded state transitions")
-    ),
-  sessionWorktree: (): Promise<Reading<never>> =>
-    Promise.resolve(absent("G5", "a session worktree's files and its diff against main")),
-  authoredFiles: (): Promise<Reading<never>> =>
-    Promise.resolve(absent("G5", "the authored soul, skill, guide and project file tree")),
 };

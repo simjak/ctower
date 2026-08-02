@@ -71,6 +71,35 @@ active.
 Landing the #186 typed feed changes `adapter.ts` and nothing else: no screen constructs a
 client, and no screen knows a URL.
 
+### Wave 2 — every screen on a live source
+
+| Screen | Source today | Swaps to |
+|---|---|---|
+| Board · Ticket | ctower read API (`/v1/board`, `/v1/tickets/{id}`, `/audit`) | #211's typed feed |
+| Inbox | Mission Control `state/inbox.jsonl`, read-only | #186 notification channel |
+| Heartbeats | host `crontab -l` + `state/` fire markers — or `systemctl --user list-timers` | a native cadence registry |
+| Files | this repository's git tree at a committed revision | — |
+| Workspace · Feed | the tmux capture bridge (`mux list`, `mux read`) | G5 session facts |
+| Explorer | `git worktree list` + `git diff <base>...HEAD` | G5 worktree facts |
+
+These are **interim, director-sanctioned** adapters, and they name a third boundary this repository
+does not otherwise cross: `SPEC.md` line 67 calls Mission Control *migration or research provenance
+only, not a runtime dependency*. Wiring the Inbox, Heartbeats, Workspace and Feed to its live state
+makes it one for those four screens. It exists because the operator escalated (R2710 wave 2), every
+path is overridable, and nothing outside `src/read/sources/` knows any of them — but it belongs in
+the operator's decision entry beside the two boundaries above.
+
+Three hard lines hold across all of them, and each is enforced structurally rather than promised:
+
+- **Read-only, including other repositories' files.** No module under `apps/` may call a filesystem
+  write; `test_browser_network_chokepoint.py` fails the gate if one appears.
+- **Concurrent appends.** `state/inbox.jsonl` is appended to while this surface reads it, so a
+  mid-write final line is skipped *and counted*, and the screen states the count. Reading N-1 lines
+  and calling that the inbox would be a lie of omission.
+- **Redaction before render.** Every interim source must import `./redact`; the check fails closed
+  on one that does not. Coordination text and terminal panes are the most exposed strings on this
+  surface, and nothing guarantees a seat never pasted a credential into one.
+
 ### Honest empty states — and the difference between empty and unreachable
 
 Board and Ticket render live record facts. Heartbeats, Inbox, Feed session facts, Files,
