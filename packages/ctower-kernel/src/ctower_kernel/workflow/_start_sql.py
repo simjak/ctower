@@ -39,9 +39,7 @@ def start_workflow(
     with authority_connection(dsn) as connection:
         connection.execute("SET ROLE ctower_svc")
         transaction = RecordTransaction(connection)
-        existing = transaction.reserve(
-            actor.principal_id, command.client_command_id, request_digest
-        )
+        existing = _reserve_start(transaction, actor, command, request_digest, now)
         if isinstance(existing, RecordProblem):
             return existing
         if existing is not None:
@@ -88,6 +86,23 @@ def start_workflow(
                 now=now,
             )
         return outcome
+
+
+def _reserve_start(
+    transaction: RecordTransaction,
+    actor: WorkflowActor,
+    command: WorkflowStart,
+    request_digest: bytes,
+    now: datetime,
+) -> dict[str, object] | RecordProblem | None:
+    return transaction.reserve_ticket_mutation(
+        actor.tenant_id,
+        actor.principal_id,
+        command.client_command_id,
+        request_digest,
+        (command.ticket_id,),
+        now=now,
+    )
 
 
 def _commit_start(

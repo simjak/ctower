@@ -105,6 +105,34 @@ def test_work_proof_and_workflow_event_variants_are_strict_and_typed() -> None:
         validator.validate(corrupt)
 
 
+def test_access_credential_event_variants_are_strict_and_secret_free() -> None:
+    schema = json.loads(
+        (ROOT / "contracts/domain/events/event-envelope.schema.json").read_text(encoding="utf-8")
+    )
+    validator = Draft202012Validator(schema)
+    issued = _aggregate_event("access.seat_credential_issued", "seat-credential")
+    issued["payload"] = {
+        "credential_id": "00000000-0000-4000-8000-000000000007",
+        "credential_ref": "vault://ctower/manibo/credential",
+        "principal_id": "00000000-0000-4000-8000-000000000009",
+        "project_key": "manibo",
+        "scopes": ["capture", "evidence"],
+        "seat_key": "engineer-192",
+    }
+    revoked = _aggregate_event("access.seat_credential_revoked", "seat-credential")
+    revoked["payload"] = {
+        "credential_id": "00000000-0000-4000-8000-000000000007",
+        "reason": "Rotation complete",
+    }
+
+    validator.validate(issued)
+    validator.validate(revoked)
+    corrupt = deepcopy(issued)
+    cast(dict[str, object], corrupt["payload"])["credential_digest"] = "sha256:" + "a" * 64
+    with pytest.raises(ValidationError):
+        validator.validate(corrupt)
+
+
 def _aggregate_event(kind: str, stream: str) -> dict[str, object]:
     aggregate_id = "00000000-0000-4000-8000-000000000007"
     return {

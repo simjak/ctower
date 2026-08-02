@@ -13,6 +13,9 @@ standing credential merely because it can request work.
 Secret references are metadata, not proof that the credential is valid or that an effect succeeded. External
 mutations still require idempotency, receipts, and reconciliation.
 
+For the development-shadow operator procedure that binds only a digest and reference to one project seat, see
+[Project-seat credential ceremony](../operations/seat-credential-issuance.md).
+
 ## Protected CLI boundary
 
 The CLI reads current bearer/bootstrap authority from one bounded stdin line and never persists it. Its

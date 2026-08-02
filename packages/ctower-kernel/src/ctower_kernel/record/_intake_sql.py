@@ -9,10 +9,7 @@ from uuid import UUID
 
 import psycopg
 
-from ctower_kernel.record import (
-    Actor,
-    RecordProblem,
-)
+from ctower_kernel.record import Actor, RecordProblem
 from ctower_kernel.record._intake_command_sql import (
     IntakeAction as _Action,
 )
@@ -83,9 +80,6 @@ from ctower_kernel.record.intake import (
 )
 from ctower_kernel.record.transaction import RecordTransaction, authority_connection
 from ctower_kernel.telemetry import TelemetryContext
-
-__all__ = ["promote_intake", "submit_intake"]
-
 
 type _SubmitPreparation = tuple[_SubmitIds, _ThreadState, _Action]
 type _PromotionPreparation = tuple[dict[str, object], UUID, _Action]
@@ -601,7 +595,12 @@ def _apply_action_state(
 ) -> None:
     if action.ticket_command is not None and action.ticket_ids is not None:
         _insert_ticket_state(
-            connection, actor, action.ticket_command, identifiers=action.ticket_ids, now=now
+            connection,
+            actor,
+            action.ticket_command,
+            project_key=result.project_key,
+            identifiers=action.ticket_ids,
+            now=now,
         )
         connection.execute(
             """

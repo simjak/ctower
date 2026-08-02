@@ -10,6 +10,7 @@ from fastapi.responses import JSONResponse
 from pydantic import ValidationError
 
 from ctower_api._http_support import (
+    UnscopedAuthentication,
     authenticate,
     encoded,
     problem_response,
@@ -74,7 +75,12 @@ def _install_run(
 ) -> None:
     @app.post("/v1/control/synthetic-runs")
     async def run_synthetic(request: Request) -> JSONResponse:
-        actor = authenticate(access, recorder, request)
+        actor = authenticate(
+            access,
+            recorder,
+            request,
+            required_scope=UnscopedAuthentication.ALLOWED,
+        )
         if isinstance(actor, RecordProblem):
             return problem_response(actor)
         try:
@@ -114,7 +120,12 @@ def _install_get(
 ) -> None:
     @app.get("/v1/control/synthetic-runs/{run_id}")
     def get_synthetic(run_id: str, request: Request) -> JSONResponse:
-        actor = authenticate(access, recorder, request)
+        actor = authenticate(
+            access,
+            recorder,
+            request,
+            required_scope=UnscopedAuthentication.ALLOWED,
+        )
         if isinstance(actor, RecordProblem):
             return problem_response(actor)
         try:

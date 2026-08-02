@@ -10,6 +10,7 @@ from fastapi import FastAPI, Request
 from fastapi.responses import JSONResponse
 from pydantic import BaseModel, ValidationError
 
+from ctower_api._http_support import UnscopedAuthentication as _UnscopedAuthentication
 from ctower_api._http_support import authenticate as _authenticate
 from ctower_api._http_support import emit_auth_denial as _emit_auth_denial
 from ctower_api._http_support import encoded as _encoded
@@ -284,7 +285,12 @@ def _install_run_read_route(
 ) -> None:
     @app.get("/v1/migrations/ctower-project/import-runs/{run_id}")
     def get_run(run_id: str, request: Request) -> JSONResponse:
-        actor = _authenticate(access, recorder, request)
+        actor = _authenticate(
+            access,
+            recorder,
+            request,
+            required_scope=_UnscopedAuthentication.ALLOWED,
+        )
         if isinstance(actor, RecordProblem):
             return _problem_response(actor)
         try:
@@ -416,7 +422,12 @@ async def _parse_operator(
     request: Request,
     model: type[BaseModel],
 ) -> tuple[Actor, BaseModel, UUID, TelemetryContext] | JSONResponse:
-    actor = _authenticate(access, recorder, request)
+    actor = _authenticate(
+        access,
+        recorder,
+        request,
+        required_scope=_UnscopedAuthentication.ALLOWED,
+    )
     if isinstance(actor, RecordProblem):
         return _problem_response(actor)
     try:
@@ -469,7 +480,12 @@ def _install_read_routes(
 ) -> None:
     @app.get("/v1/migrations/ctower-project/cutover-health")
     def get_cutover_health(request: Request) -> JSONResponse:
-        actor = _authenticate(access, recorder, request)
+        actor = _authenticate(
+            access,
+            recorder,
+            request,
+            required_scope=_UnscopedAuthentication.ALLOWED,
+        )
         if isinstance(actor, RecordProblem):
             return _problem_response(actor)
         boundary = HttpCutoverHealth.model_validate_json(
@@ -479,7 +495,12 @@ def _install_read_routes(
 
     @app.get("/v1/projects/{project_key}/delivery")
     def get_project_delivery(project_key: str, request: Request) -> JSONResponse:
-        actor = _authenticate(access, recorder, request)
+        actor = _authenticate(
+            access,
+            recorder,
+            request,
+            required_scope=_UnscopedAuthentication.ALLOWED,
+        )
         if isinstance(actor, RecordProblem):
             return _problem_response(actor)
         if _PROJECT_KEY.fullmatch(project_key) is None:

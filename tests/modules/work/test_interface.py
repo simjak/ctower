@@ -59,12 +59,13 @@ class _CommandRecord:
         command: CustodyCommand,
         *,
         request_digest: bytes,
+        policy_refusal: RecordProblem | None = None,
         now: datetime,
         telemetry: TelemetryContext,
-    ) -> TicketCommandResult:
+    ) -> TicketCommandResult | RecordProblem:
         del actor, command, now, telemetry
         self.custody_digest = request_digest
-        return self.result
+        return policy_refusal or self.result
 
 
 class _WorkWriter:

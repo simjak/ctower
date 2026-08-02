@@ -127,7 +127,14 @@ def _reserve_workflow_outcome(
     request_digest: bytes,
     now: datetime,
 ) -> WorkflowReceipt | RecordProblem | None:
-    existing = transaction.reserve(actor.principal_id, mutation.client_command_id, request_digest)
+    existing = transaction.reserve_ticket_mutation(
+        actor.tenant_id,
+        actor.principal_id,
+        mutation.client_command_id,
+        request_digest,
+        (mutation.ticket_id,),
+        now=now,
+    )
     if isinstance(existing, RecordProblem):
         return existing
     if existing is not None:
