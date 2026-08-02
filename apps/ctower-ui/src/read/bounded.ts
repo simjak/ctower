@@ -1,9 +1,11 @@
 /**
- * The one network chokepoint in this boundary (O10).
+ * The one boundary-crossing chokepoint in this app (O10).
  *
- * `docs/CODING_STANDARDS.md` forbids single-shot network calls, loopback
- * services included. Every record read goes through `boundedRead`, which is the
- * only place in `apps/` that names `fetch`; `tests/repository/
+ * `docs/CODING_STANDARDS.md` forbids single-shot calls across a process or
+ * network boundary, loopback services included. Both crossings this app makes
+ * live here — `boundedRead` for HTTP and `boundedProcess` for a child process —
+ * and they share one policy. This is the only place in `apps/` that names
+ * `fetch` or `node:child_process`; `tests/repository/
  * test_browser_network_chokepoint.py` derives the call-site denominator from
  * repository structure and fails closed when a new one appears.
  *
@@ -19,10 +21,16 @@
  * 4. A typed exhausted outcome — `ReadExhausted` names exhaustion and preserves
  *    the attempt count, elapsed time and last classified failure; every
  *    exhaustion is counted and written once to stderr.
- * 5. Idempotency before retrying a mutation — satisfied by construction. This
- *    function issues `GET` and takes no body or method, so no mutation call
- *    site exists here to need a coordination key.
+ * 5. Idempotency before retrying a mutation — satisfied by construction. HTTP
+ *    here is `GET` with no body or method parameter, and the process reader
+ *    takes a named inspection from the closed grammar in `read/commands.ts`
+ *    rather than caller argv, so no mutation call site is expressible in this
+ *    app and none needs a coordination key.
  */
+
+import { execFile } from "node:child_process";
+import { invocationFor } from "./commands";
+import type { Inspection } from "./commands";
 
 export type FailureClass = "transient" | "permanent";
 
@@ -222,5 +230,117 @@ export async function boundedRead(
 
   const spent = failure(last, attempts, Date.now() - startedAt, true);
   countExhaustion(url, spent);
+  throw new ReadExhausted(spent);
+}
+
+/** Child-process reads: a tighter attempt bound than HTTP, same policy shape. */
+export const PROCESS_READ_BOUNDS: ReadBounds = {
+  attemptTimeoutMs: 6_000,
+  maxAttempts: 3,
+  maxElapsedMs: 15_000,
+  baseDelayMs: 100,
+  maxDelayMs: 1_500,
+};
+
+interface ChildOutcome {
+  readonly stdout: string;
+  readonly failure: ClassifiedFailure | null;
+}
+
+function classifyChild(error: Error): ClassifiedFailure {
+  const detail = error as Error & {
+    readonly killed?: unknown;
+    readonly code?: unknown;
+    readonly path?: unknown;
+  };
+  if (detail.killed === true || detail.code === "ETIMEDOUT") {
+    return { failureClass: "transient", detail: "the process read timed out" };
+  }
+  if (detail.code === "ENOENT") {
+    const path = typeof detail.path === "string" ? detail.path : "the command";
+    return { failureClass: "permanent", detail: `${path} is not installed` };
+  }
+  return { failureClass: "permanent", detail: error.message };
+}
+
+function runChild(
+  executable: string,
+  args: readonly string[],
+  maxBytes: number,
+  timeoutMs: number
+): Promise<ChildOutcome> {
+  return new Promise((resolve) => {
+    execFile(
+      executable,
+      [...args],
+      {
+        timeout: timeoutMs,
+        killSignal: "SIGKILL",
+        maxBuffer: maxBytes,
+        windowsHide: true,
+        shell: false,
+      },
+      (error, stdout) => {
+        resolve(
+          error === null ? { stdout, failure: null } : { stdout, failure: classifyChild(error) }
+        );
+      }
+    );
+  });
+}
+
+/**
+ * Read one inspection's stdout under the same bounded policy as HTTP.
+ *
+ * The caller names an inspection; `read/commands.ts` builds the argv from a
+ * closed grammar and resolves the tool to an absolute path. No caller supplies
+ * argv, so a mutating subcommand is not expressible here — the read-only
+ * guarantee is structural rather than a convention every call site must keep.
+ *
+ * A non-zero exit is classified permanent — an inspection tool that refuses is
+ * answering, not failing — while a timeout or kill is transient and retried
+ * under the deadline.
+ */
+export async function boundedProcess(
+  inspection: Inspection,
+  bounds: ReadBounds = PROCESS_READ_BOUNDS
+): Promise<string> {
+  const invocation = invocationFor(inspection);
+  const startedAt = Date.now();
+  let attempts = 0;
+  let last: ClassifiedFailure = {
+    failureClass: "transient",
+    detail: "the process read made no attempt",
+  };
+  const label = `${invocation.label} (${invocation.tool})`;
+
+  while (attempts < bounds.maxAttempts) {
+    const remainingBefore = bounds.maxElapsedMs - (Date.now() - startedAt);
+    if (remainingBefore <= 0) {
+      break;
+    }
+    attempts += 1;
+    const outcome = await runChild(
+      invocation.executable,
+      invocation.args,
+      invocation.maxBytes,
+      Math.min(bounds.attemptTimeoutMs, remainingBefore)
+    );
+    if (outcome.failure === null) {
+      return outcome.stdout;
+    }
+    last = outcome.failure;
+    if (last.failureClass === "permanent") {
+      throw new ReadRefused(failure(last, attempts, Date.now() - startedAt, false));
+    }
+    const remainingAfter = bounds.maxElapsedMs - (Date.now() - startedAt);
+    if (attempts >= bounds.maxAttempts || remainingAfter <= 0) {
+      break;
+    }
+    await pause(backoffMs(attempts, bounds, remainingAfter));
+  }
+
+  const spent = failure(last, attempts, Date.now() - startedAt, true);
+  countExhaustion(label, spent);
   throw new ReadExhausted(spent);
 }

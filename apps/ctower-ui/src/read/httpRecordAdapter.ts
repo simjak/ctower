@@ -1,7 +1,8 @@
 import { randomBytes, randomUUID } from "node:crypto";
 import type { DurabilityState, Priority, ProjectionHealth, TelemetryContext } from "@ctower/client";
-import { boundedRead, ReadExhausted, ReadRefused } from "./bounded";
-import type { ReadFailure } from "./bounded";
+import { boundedRead, ReadRefused } from "./bounded";
+import { reading } from "./outcome";
+import { seatNameOf, seatNames } from "./sources/seatNames";
 import {
   asArray,
   asInteger,
@@ -18,8 +19,8 @@ import type {
   BoardEntry,
   BoardSnapshot,
   InstanceIdentity,
-  RecordAdapter,
   Reading,
+  RecordApiReads,
   RecordEvent,
   TicketRecord,
 } from "./interface";
@@ -96,33 +97,12 @@ async function read(path: string): Promise<unknown> {
   });
 }
 
-/** Every failure reaches a screen as a typed `ReadFailure`, never as a blank. */
-function readFailure(error: unknown): ReadFailure {
-  if (error instanceof ReadExhausted || error instanceof ReadRefused) {
-    return error.failure;
-  }
-  return {
-    reason: error instanceof Error ? error.message : "the read did not complete",
-    failureClass: "permanent",
-    attempts: 1,
-    elapsedMs: 0,
-  };
-}
-
-async function reading<T>(load: () => Promise<T>): Promise<Reading<T>> {
-  try {
-    return { state: "present", value: await load() };
-  } catch (error: unknown) {
-    return { state: "unavailable", failure: readFailure(error) };
-  }
-}
-
 function optionalText(value: unknown, field: string): string | null {
   const text = asStringOrNull(value, field);
   return text === null || text === "None" ? null : text;
 }
 
-function toCard(value: unknown): BoardCard {
+function toCard(value: unknown, names: Readonly<Record<string, string>>): BoardCard {
   const row = asRecord(value, "board.card");
   return {
     ticketId: asString(row.ticket_id, "board.card.ticket_id"),
@@ -133,7 +113,12 @@ function toCard(value: unknown): BoardCard {
     stageLabel: optionalText(row.stage_label, "board.card.stage_label"),
     activityClass: optionalText(row.activity_class, "board.card.activity_class"),
     custodianId: asString(row.custodian_id, "board.card.custodian_id"),
+    custodianName: seatNameOf(names, asString(row.custodian_id, "board.card.custodian_id")),
     assigneeId: asStringOrNull(row.assignee_id, "board.card.assignee_id"),
+    assigneeName: seatNameOf(
+      names,
+      asStringOrNull(row.assignee_id, "board.card.assignee_id") ?? ""
+    ),
     blockerReason: asStringOrNull(row.blocker_reason, "board.card.blocker_reason"),
     blockerOpenedAt: asStringOrNull(row.blocker_opened_at, "board.card.blocker_opened_at"),
     risk: optionalText(row.risk, "board.card.risk"),
@@ -142,7 +127,7 @@ function toCard(value: unknown): BoardCard {
   };
 }
 
-function toTicket(value: unknown): TicketRecord {
+function toTicket(value: unknown, names: Readonly<Record<string, string>>): TicketRecord {
   const row = asRecord(value, "ticket");
   const source = asRecord(row.source, "ticket.source");
   return {
@@ -150,6 +135,7 @@ function toTicket(value: unknown): TicketRecord {
     title: asString(row.title, "ticket.title"),
     priority: asMember(row.priority, "ticket.priority", PRIORITIES),
     custodianId: asString(row.custodian_id, "ticket.custodian_id"),
+    custodianName: seatNameOf(names, asString(row.custodian_id, "ticket.custodian_id")),
     createdAt: asString(row.created_at, "ticket.created_at"),
     durabilityState: asMember(row.durability_state, "ticket.durability_state", DURABILITY),
     version: asInteger(row.version, "ticket.version"),
@@ -177,12 +163,14 @@ function toEvent(value: unknown): RecordEvent {
 }
 
 async function loadTicket(ticketId: string): Promise<TicketRecord> {
-  return toTicket(await read(`/v1/tickets/${encodeURIComponent(ticketId)}`));
+  const names = await seatNames();
+  return toTicket(await read(`/v1/tickets/${encodeURIComponent(ticketId)}`), names);
 }
 
 async function loadBoard(): Promise<BoardSnapshot> {
   const view = asRecord(await read("/v1/board"), "board");
-  const cards = asArray(view.cards, "board.cards").map(toCard);
+  const names = await seatNames();
+  const cards = asArray(view.cards, "board.cards").map((card) => toCard(card, names));
   const entries: readonly BoardEntry[] = await Promise.all(
     cards.map(async (card): Promise<BoardEntry> => ({
       card,
@@ -208,7 +196,7 @@ function absent(lands: string, what: string): Reading<never> {
   return { state: "absent", source: { lands, what } };
 }
 
-export const httpRecordAdapter: RecordAdapter = {
+export const httpRecordAdapter: RecordApiReads = {
   instance: instanceIdentity(),
   board: async (): Promise<Reading<BoardSnapshot>> => await reading(loadBoard),
   ticket: async (ticketId: string): Promise<Reading<TicketRecord>> =>
@@ -219,20 +207,4 @@ export const httpRecordAdapter: RecordAdapter = {
     Promise.resolve(
       absent("#186 / G5", "per-session work facts — seat, duration, tokens and outcome")
     ),
-  cadenceRegistry: (): Promise<Reading<never>> =>
-    Promise.resolve(
-      absent("#186 / G5", "registered scheduled wakes, their last fire, next fire and health")
-    ),
-  seatInbox: (): Promise<Reading<never>> =>
-    Promise.resolve(
-      absent("#186", "per-seat durable messages, their read cursor and the seat addressing name")
-    ),
-  sessionWorkspace: (): Promise<Reading<never>> =>
-    Promise.resolve(
-      absent("G5", "what a session is handed at start, and its recorded state transitions")
-    ),
-  sessionWorktree: (): Promise<Reading<never>> =>
-    Promise.resolve(absent("G5", "a session worktree's files and its diff against main")),
-  authoredFiles: (): Promise<Reading<never>> =>
-    Promise.resolve(absent("G5", "the authored soul, skill, guide and project file tree")),
 };

@@ -10,15 +10,17 @@ import type { ReactElement, ReactNode } from "react";
 export function FileDiffSwitch({
   file,
   diff,
+  path = "—",
 }: {
   readonly file: ReactNode;
   readonly diff: ReactNode;
+  readonly path?: string;
 }): ReactElement {
   const [view, setView] = useState<"file" | "diff">("file");
   return (
     <>
       <div className="pane-head">
-        <span className="path">—</span>
+        <span className="path">{path}</span>
         <span className="spacer" />
         <span className="seg">
           <label>

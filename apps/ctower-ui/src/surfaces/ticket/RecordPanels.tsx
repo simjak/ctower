@@ -59,7 +59,7 @@ export function EvidencePanel({ audit }: { readonly audit: EventsReading }): Rea
   );
   return (
     <Panel title="Evidence">
-      <Resolved reading={proof}>
+      <Resolved reading={proof} brief>
         {(events) => (
           <div className="slots">
             {events.map((event) => {
