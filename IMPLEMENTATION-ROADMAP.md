@@ -304,13 +304,17 @@ and three disjoint Board proofs -> authentication. The last step preserves Manib
 contract at a pinned revision, following its Commander's recommendation not to extract a package while both
 consumers are changing. It adds discovery-driven human OIDC beside unchanged project-seat machine
 credentials and resolves UI session, human API bearer, and machine bearer requests into the same
-Actor/custody/audit model. Providers and exact `operator|commander|viewer` human role bindings are versioned
-configuration. Auth routes remain tailnet-only and do not realize the five product surfaces.
+Actor/custody/audit model under INV-73. Providers and exact `operator|commander|viewer` human role bindings
+are versioned configuration that only the operator may create, enable, or rotate. Auth routes remain
+tailnet-only and do not realize the five product surfaces.
 
 **Exit:** the ticket reports reuse `1/1`, identity planes `2/2`, Actor/custody models `1/1`, roles `3/3`,
-transports `2/2`, provider-specific product branches `0`, configured providers `discovered = exercised`,
+transports `3/3`, named auth refusal codes `8/8`, bounded provider egress call sites `3/3`,
+security proof groups `11/11`, provider-specific product branches `0`, configured providers
+`discovered = exercised`,
 and independent CSO verdict `1/1`; every ambiguity, replay, revocation, foreign-project attempt, secret scan,
-and exposure check fails closed. No auth evidence can infer that an earlier import-chain item passed.
+and exposure check fails closed by its exact stable code, never a bare 401/403. No auth evidence can infer
+that an earlier import-chain item passed.
 
 ## Increment 2 — autonomous generic workflow and one factory golden path
 

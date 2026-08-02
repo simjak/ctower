@@ -104,8 +104,10 @@ initial custody additionally requires an eligible configured Commander with an a
 | Operation | Required Project authority | Additional boundary |
 |---|---|---|
 | Issue or revoke credential/grant | Operator only | Append-only; revocation refuses the next call |
+| Issue or revoke a human role binding | Operator only | Append-only, revision-pinned; revocation refuses the next request |
+| Register/enable/rotate a provider registry entry | Operator only | Platform admin needs the operator role too |
 | Apply portfolio CompanyBundle | Operator only | Versioned configured Project/seat/checkpoint data |
-| Read Ticket/Board/Delivery | Active matching grant | Existing visibility rules still apply |
+| Read Ticket/Board/Delivery | Active matching grant or role binding | Existing visibility rules still apply; `viewer` is read-only inside its bound keys |
 | Intake/link/request initial custody | `capture` | Target Project and eligible Commander must match |
 | Ordinary typed Work mutation | `transition` | Foreign Project refuses `project-scope-denied` |
 | Record ordinary allowed Evidence | `evidence` | Foreign Project and prohibited classes refuse |
@@ -121,18 +123,35 @@ zero-diff proofs.
 Authentication has two entry planes and one authority result:
 
 ```text
-human: configured OIDC discovery -> verified (issuer, subject) -> local role binding --+
-                                                                                      +-> typed Actor
-machine: project-seat Bearer -> revision-pinned Project grant + exact scopes ----------+   -> one custody/audit model
+human: configured OIDC discovery -> verified (issuer, subject) -> pinned role binding --+
+                                                                                       +-> typed Actor
+machine: project-seat Bearer -> revision-pinned Project grant + exact scopes -----------+   -> one custody/audit model
 ```
+
+INV-73 makes that convergence a chokepoint: one Actor per authenticated request, one authority record per
+plane, and no transport that carries its own principal, custody, or attribution record.
 
 Manibo's provider-agnostic OIDC modules and conformance behavior are the source pattern. Per the Manibo
 Commander, ctower preserves that contract at a pinned revision instead of extracting a package while both
 consumers are changing; a third consumer or measured non-drift may reopen extraction. The provider registry,
-verified discovery domains, and `operator|commander|viewer` human role bindings are versioned configuration.
-UI uses only an opaque record-backed session; direct human and machine APIs use their respective Bearer
-credentials. All auth routes stay tailnet/private-HTTPS-only, provider egress is confined to exact registered
-endpoints, and CT-I1-013 cannot pass without an independent CSO verdict.
+verified discovery domains, and `operator|commander|viewer` human role bindings are versioned configuration
+that only the operator may create, enable, or rotate. The registry pins one exact redirect URI matched by
+string equality. UI uses only an opaque record-backed session; direct human and machine APIs use their
+respective Bearer credentials.
+
+Provider egress is exactly three bounded call sites, each fail-closed:
+
+| Call site | Bound | Terminal outcome |
+|---|---|---|
+| Discovery fetch | 1+2 attempts, 5 s each, 20 s ceiling, 24 h max cache age | `auth-provider-unverifiable` |
+| Token exchange | 1+1 attempts, 5 s each, 12 s ceiling | `auth-exchange-invalid` |
+| JWKS fetch/rotation | 1+2 attempts, 5 s each, one refetch per 5 min per entry | `auth-provider-unverifiable` |
+
+Provider tokens are verified then discarded; no refresh token and no `offline_access` are stored. Every auth
+denial carries a stable code — `auth-provider-unavailable`, `auth-exchange-invalid`,
+`auth-provider-unverifiable`, `auth-identity-unresolved`, `auth-session-invalid`, `reauthentication-required`,
+`auth-role-denied`, `project-scope-denied` — never a bare 401/403. All auth routes stay
+tailnet/private-HTTPS-only, and CT-I1-013 cannot pass without an independent CSO verdict.
 
 ## Deployment topology by increment
 

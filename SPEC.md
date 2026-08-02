@@ -450,26 +450,32 @@ The three scope names are exhaustive for project-seat credentials:
 | `transition` | Read that project's tickets/Board/Delivery; issue ordinary typed comment, priority, admit/defer, block/unblock, assignment/handback, and Workflow transition or resolve requests when all existing state, assignment, evidence, and policy rules also permit them | Custody in another project, criteria/gate bypass, owner/Catalog surface, protected operator gates, effects |
 | `evidence` | Read that project's ticket/proof context; record project-local artifact metadata and Evidence only under the existing assignment, kind, independence, signer, taint, and prohibited-data contracts | Protected verdict or criteria-freeze authority by possession alone, foreign-project Evidence, owner/Catalog surface, effects |
 
-Authorization is the intersection of principal kind, active grant, exact project, named scope, assignment,
-aggregate state, and existing policy. The full portfolio enumeration is:
+Authorization is the intersection of principal kind, the active authority record for that plane — a project
+grant for machines, a human role binding for OIDC-authenticated people — exact project, named scope where the
+record carries one, assignment, aggregate state, and existing policy. Neither record grants the other's
+authority, and a principal holding no record for the plane it authenticated on is denied by default. The full
+portfolio enumeration is:
 
-| Operation | Portfolio operator | Matching project Commander credential | Matching non-Commander seat credential | Gateway/bridge or internal service |
-|---|---|---|---|---|
-| Issue or revoke a project/seat credential | Operator only | No | No | No |
-| Apply Project/checkpoint/seat configuration | Operator-only CompanyBundle command; may review Commander-authored configuration | May author/propose a revision but cannot apply it | May author/propose only if separately assigned; cannot apply | Catalog service executes only the accepted operator command |
-| Read Ticket, Board, or Project Delivery | All three projects, with source-level authorization still enforced | Own project with any active named scope | Own project with any active named scope | Projection service only for its authenticated fold; gateway has no read authority |
-| Submit intake and create/link a ticket | Any project through the ordinary command path | Own project with `capture`; initial custodian must be that project's eligible Commander | Own project with `capture`; cannot make itself custodian unless it is the configured eligible Commander | Exact source/project grant only; no inferred or foreign project |
-| Hold or transfer accountable custody | Protected operator placement to the eligible Commander granted to that ticket's project | Own-project self-placement/handback only where the custody policy permits | No | No |
-| Mutate ticket, assignment, Workflow, relation, or checkpoint-linked work | Existing operator command authority, still state/policy bound | Own project with `transition` | Own project with `transition` and the required assignment | Current fenced job may return observations only; it receives no standing mutation authority |
-| Record artifact metadata or Evidence | Existing operator authority, still Evidence-policy bound | Own project with `evidence` and required assignment | Own project with `evidence` and required assignment | Current fenced job may upload/declare observations; Proof decides whether they may be recorded or satisfy anything |
-| Freeze/revise criteria, issue a protected verdict, decide an operator gate, or execute an effect | Existing authorization matrix only; shadow-mode effect prohibitions still apply | No additional authority from a project grant | No additional authority from a project grant | Existing protected service boundary only; no shadow production effect |
+| Operation | Portfolio operator | Matching project Commander credential | Matching non-Commander seat credential | OIDC human `commander`/`viewer` role binding | Gateway/bridge or internal service |
+|---|---|---|---|---|---|
+| Issue or revoke a project/seat credential | Operator only | No | No | No | No |
+| Issue or revoke a human role binding | Operator only | No | No | No | No |
+| Apply Project/checkpoint/seat configuration | Operator-only CompanyBundle command; may review Commander-authored configuration | May author/propose a revision but cannot apply it | May author/propose only if separately assigned; cannot apply | Commander may author/propose a revision but cannot apply it; viewer no | Catalog service executes only the accepted operator command |
+| Read Ticket, Board, or Project Delivery | All three projects, with source-level authorization still enforced | Own project with any active named scope | Own project with any active named scope | Only the project keys the binding names, read-only for viewer; never a portfolio aggregate | Projection service only for its authenticated fold; gateway has no read authority |
+| Submit intake and create/link a ticket | Any project through the ordinary command path | Own project with `capture`; initial custodian must be that project's eligible Commander | Own project with `capture`; cannot make itself custodian unless it is the configured eligible Commander | Commander in a bound project through the ordinary command path, still custody/policy bound; viewer no | Exact source/project grant only; no inferred or foreign project |
+| Hold or transfer accountable custody | Protected operator placement to the eligible Commander granted to that ticket's project | Own-project self-placement/handback only where the custody policy permits | No | Commander self-placement/handback in a bound project only where the custody policy permits; viewer no | No |
+| Mutate ticket, assignment, Workflow, relation, or checkpoint-linked work | Existing operator command authority, still state/policy bound | Own project with `transition` | Own project with `transition` and the required assignment | Commander in a bound project, still state/assignment/policy bound; viewer no | Current fenced job may return observations only; it receives no standing mutation authority |
+| Record artifact metadata or Evidence | Existing operator authority, still Evidence-policy bound | Own project with `evidence` and required assignment | Own project with `evidence` and required assignment | Commander in a bound project under the existing Evidence contracts; viewer no | Current fenced job may upload/declare observations; Proof decides whether they may be recorded or satisfy anything |
+| Freeze/revise criteria, issue a protected verdict, decide an operator gate, or execute an effect | Existing authorization matrix only; shadow-mode effect prohibitions still apply | No additional authority from a project grant | No additional authority from a project grant | No additional authority from a role binding | Existing protected service boundary only; no shadow production effect |
 
 Every ticket, ticket event, Workflow run, stage/assignment/custody interval, relation, criterion, artifact,
 Evidence item, gate, Board card, and Project Delivery source link carries or resolves one immutable project
 key. A missing, ambiguous, revoked, or foreign grant returns `project-scope-denied` with the requested and
-credential project keys, performs zero mutation, and never lets the first writer adopt unknown ownership.
-Operator portfolio reads may aggregate the three projects, but every source fact remains subject to its
-own authorization and derivation rules.
+credential project keys, performs zero mutation, and never lets the first writer adopt unknown ownership. A
+missing, ambiguous, revoked, or foreign **human role binding** returns the same code with the requested and
+bound project keys and the same zero-mutation property. Operator portfolio reads may aggregate the three
+projects, but every source fact remains subject to its own authorization and derivation rules; no `commander`
+or `viewer` binding aggregates the portfolio.
 
 External work identity and ticket identity stay separate. Ordinary intake records a project-scoped source
 reference `<project>-R<nnn>` for the shared Mission Control R-counter, and source dedupe is keyed by tenant,
@@ -1330,6 +1336,7 @@ The ticket is the human join point, not the transaction boundary for the entire 
 70. <a id="inv-70"></a>**INV-70 — Prohibited portfolio data never enters Record or Proof.** Intake, attachments, artifact metadata, referenced bytes, and Evidence refuse `credential_material`, `production_customer_data`, `phi_hipaa_covered`, `pii_beyond_staff_identity`, and `live_incident_indicator` before any authoritative or object mutation. The refusal names every detected class. For `bh-loop`, only D11/control references, source-host artifact identities, and de-identified control IDs are permitted; patient or clinical content never is.
 71. <a id="inv-71"></a>**INV-71 — Work references are project-scoped; tickets are global.** The shared R-counter maps to immutable `<project>-R<nnn>` intake source references whose dedupe identity includes tenant, project, source kind, and source reference. A reference is never reused across projects or renumbered. Ticket IDs retain the authored instance-global UUIDv7 contract and never derive authority from a display/source reference.
 72. <a id="inv-72"></a>**INV-72 — Shadow coordination is not cutover.** While `SHADOW_ONLY_CP3_D_NOT_PROVEN` applies, all three projects may hold only reconstructible coordination records and disjoint views; Mission Control and the applicable GitHub/GitLab records remain co-sources, no writer is frozen, and no production, incident, credential-value, customer/PHI, irreplaceable, or sole-copy authority moves to ctower. Only accepted CP3-D evidence may authorize the portfolio authority epoch. Bulk import remains dormant; ordinary signed item-by-item intake is the only onboarding path.
+73. <a id="inv-73"></a>**INV-73 — One authenticated request, one Actor, one authority record per plane.** Every authenticated request, on the human OIDC plane or the machine project-seat plane, resolves exactly one durable principal and one typed Actor context, and every command, idempotency key, custody interval, assignment, Evidence item, verdict, effect, and audit fact attributes to that one context. Authority is never claimed by the request: the machine plane resolves the version-pinned project grant of [INV-69](#inv-69), and the human plane resolves an operator-issued, append-only, revocable **human role binding** pinned to one principal, one `operator|commander|viewer` role, its exact project keys, and the access-policy revision that interprets it. The two records are disjoint — neither confers the other's authority — and a request resolving zero or more than one record for its plane refuses by name with zero mutation. No browser session, OIDC subject, provider claim, seat key, model, harness, or process creates a second custody or attribution model. A later authentication transport may be added only by resolving this same Actor context and one of these two records; a transport that introduces its own principal, custody, or attribution record violates this invariant.
 
 ## Workflow and verification architecture
 
@@ -3197,28 +3204,33 @@ pools, or browser terminal UX exists in either increment.
 
 Authorization is default deny and evaluates principal, tenant/project, command, aggregate state, relationship/assignment, risk/policy, capability, and effect target. “Allowed” below still requires all state and scope predicates.
 
-| Operation | Operator | Commander | Assignee agent | Reviewer/QA/CSO/EM | Runner | DevOps release runner | Gateway | Platform admin | Effect broker service |
-|---|---:|---:|---:|---:|---:|---:|---:|---:|---:|
-| Bootstrap first tenant | One-use local capability establishes initial operator | No | No | No | No | No | No | Capability establishes initial admin | No |
-| Issue or revoke project/seat credential | Yes; operator only | No | No | No | No | No | No | No unless also authenticated as operator | No |
-| Read project Ticket/Board/Delivery | All three configured projects; source authorization still applies | Active matching project grant | Active matching project grant | Active matching project grant and assignment where required | Current job context only | Active matching project grant and assignment | No | No unless also operator or separately granted | No |
-| Append inbound event | Yes | Yes | No | No | No | No | Scoped source | Admin import only | No |
-| Create/link ticket | Yes | Yes | Scoped proposal | No | No | No | Via ingest policy | Yes | No |
-| Transfer accountable custody | Protected operator transfer/suspension | Handoff request only; target must be eligible Commander | No | No | No | No | No | Break-glass with same protected transfer | No |
-| Assign stage executor/collaborator | Yes | Yes within plan/policy | Hand back only | Assigned-gate scope only | No | No | No | Yes | No |
-| Add criterion before freeze | Yes | Yes | Scoped | Reviewer comment only | No | No | No | Yes | No |
-| Freeze/revise criteria | Yes | Policy-authorized | No | Gate recommendation | No | No | No | Governance scope | No |
-| Publish/amend orchestration plan | Outside-bound decision/waiver only | Yes within pinned policy options/bounds | No | Evidence/recommendation only | No | No | No | Emergency governance | No |
-| Create stage attempt/job | No direct runner choice | Yes via workflow | No | No | No | No | No | Emergency admin command | No |
-| Submit execution events/result | No | No | Through runner | Through runner | Current leased job only | Through runner | No | No | No |
-| Attach artifact/evidence | Yes | Yes | Assigned scope | Assigned gate scope | Upload for current job | Assigned scope | Quarantine input only | Yes | Receipt evidence only |
-| Issue independent verdict | Human-gate types only | No self-review | No | Assigned gate only | No | Assigned gate if independent | No | Emergency invalidate, not pass | No |
-| Resolve ticket | Request server validation | Request server validation | Request if accountable | No | No | No | No | Yes | No |
-| Decide operator-only gate | Yes | No | No | No | No | No | No | Only if also operator role | No |
-| Request release promotion | Yes | Workflow | No | No | No | Assigned | No | Emergency | No |
-| Execute protected effect | No direct credential | No | No | No | No | Invoke broker only | No | Break-glass audited | Grant-scoped only |
-| Register/revoke runner/profile/policy | No unless admin | Proposal | No | Review only | Self health only | No | No | Yes | No |
-| View raw secrets | No | No | No | No | No | No | No | Vault policy only, not ctower | Short-lived resolution only |
+Human `operator`, `commander`, and `viewer` role bindings map onto the Operator, Commander, and Viewer
+columns; a viewer never mutates and never reads outside the project keys its binding names.
+
+| Operation | Operator | Commander | Viewer | Assignee agent | Reviewer/QA/CSO/EM | Runner | DevOps release runner | Gateway | Platform admin | Effect broker service |
+|---|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|
+| Bootstrap first tenant | One-use local capability establishes initial operator | No | No | No | No | No | No | No | Capability establishes initial admin | No |
+| Issue or revoke project/seat credential | Yes; operator only | No | No | No | No | No | No | No | No unless also authenticated as operator | No |
+| Register/enable/disable/rotate an identity-provider registry entry | Yes; operator only | No | No | No | No | No | No | No | No unless also authenticated as operator | No |
+| Issue or revoke a human role binding | Yes; operator only | No | No | No | No | No | No | No | No unless also authenticated as operator | No |
+| Read project Ticket/Board/Delivery | All three configured projects; source authorization still applies | Active matching project grant or role binding | Read-only, and only the project keys its binding names | Active matching project grant | Active matching project grant and assignment where required | Current job context only | Active matching project grant and assignment | No | No unless also operator or separately granted | No |
+| Append inbound event | Yes | Yes | No | No | No | No | No | Scoped source | Admin import only | No |
+| Create/link ticket | Yes | Yes | No | Scoped proposal | No | No | No | Via ingest policy | Yes | No |
+| Transfer accountable custody | Protected operator transfer/suspension | Handoff request only; target must be eligible Commander | No | No | No | No | No | No | Break-glass with same protected transfer | No |
+| Assign stage executor/collaborator | Yes | Yes within plan/policy | No | Hand back only | Assigned-gate scope only | No | No | No | Yes | No |
+| Add criterion before freeze | Yes | Yes | No | Scoped | Reviewer comment only | No | No | No | Yes | No |
+| Freeze/revise criteria | Yes | Policy-authorized | No | No | Gate recommendation | No | No | No | Governance scope | No |
+| Publish/amend orchestration plan | Outside-bound decision/waiver only | Yes within pinned policy options/bounds | No | No | Evidence/recommendation only | No | No | No | Emergency governance | No |
+| Create stage attempt/job | No direct runner choice | Yes via workflow | No | No | No | No | No | No | Emergency admin command | No |
+| Submit execution events/result | No | No | No | Through runner | Through runner | Current leased job only | Through runner | No | No | No |
+| Attach artifact/evidence | Yes | Yes | No | Assigned scope | Assigned gate scope | Upload for current job | Assigned scope | Quarantine input only | Yes | Receipt evidence only |
+| Issue independent verdict | Human-gate types only | No self-review | No | No | Assigned gate only | No | Assigned gate if independent | No | Emergency invalidate, not pass | No |
+| Resolve ticket | Request server validation | Request server validation | No | Request if accountable | No | No | No | No | Yes | No |
+| Decide operator-only gate | Yes | No | No | No | No | No | No | No | Only if also operator role | No |
+| Request release promotion | Yes | Workflow | No | No | No | No | Assigned | No | Emergency | No |
+| Execute protected effect | No direct credential | No | No | No | No | No | Invoke broker only | No | Break-glass audited | Grant-scoped only |
+| Register/revoke runner/profile/policy | No unless admin | Proposal | No | No | Review only | Self health only | No | No | Yes | No |
+| View raw secrets | No | No | No | No | No | No | No | No | Vault policy only, not ctower | Short-lived resolution only |
 
 Break-glass is a separate short-lived platform-admin action with strong authentication, reason, incident link, external notification, and automatic reconciliation. It never edits historical verdicts or receipts.
 
@@ -3386,29 +3398,50 @@ logout, and auth-error routes, not the five product surfaces or any other browse
    the provider-agnostic modules and behavior at a pinned upstream revision behind its Access Interface and
    shared conformance vectors. Package extraction may be reconsidered for a third consumer or after measured
    non-drift; a clean-room OIDC flow or provider-specific fork is refused.
-2. **Providers are registered configuration.** One versioned registry entry owns the provider key/display
-   label, exact HTTPS issuer and discovery/JWKS endpoints, audiences, client ID, client-secret reference,
-   scopes, enabled state, verified discovery domains, and optional claim-selection metadata. Adding,
-   disabling, or rotating a provider changes configuration and audit facts, not Python/TypeScript branches.
+2. **Providers are registered configuration with one owner.** One versioned registry entry owns the provider
+   key/display label, exact HTTPS issuer and discovery/JWKS endpoints, audiences, client ID, client-secret
+   reference, the exact registered redirect URI, scopes, enabled state, verified discovery domains, and
+   optional claim-selection metadata. The registry is a versioned Catalog component authored in the
+   secret-free `CompanyBundle`; creating, enabling, disabling, or rotating an entry is an operator-only
+   command in the authorization matrix below, exactly as project/seat credential issuance is, and a platform
+   administrator holds no such authority unless also authenticated as operator. The redirect URI is pinned to
+   the configured private HTTPS origin plus one fixed callback path and is compared by exact string equality:
+   no wildcard, prefix, port, path, query, or fragment flexibility, and no second origin. Adding, disabling,
+   or rotating a provider changes configuration and audit facts, not Python/TypeScript branches.
    Email/domain starts login only; durable identity is `(oidc, issuer, subject)`. No match, a disabled entry,
-   or more than one match fails closed without revealing whether a person is provisioned.
-3. **One discovery-driven OIDC flow.** Browser login uses Authorization Code with PKCE S256, 256-bit state,
-   an OIDC nonce, exact registered redirect URI, and short-lived Secure/HttpOnly/SameSite=Strict pre-auth
-   cookies. Discovery, token, and JWKS requests may reach only the enabled registry entry's exact HTTPS
-   endpoints. Access accepts RS256 in v1 and verifies signature, issuer, audience, expiry, nonce when an ID
-   token is used, subject, and key rotation before resolving any local authority.
+   or more than one match fails closed as `auth-provider-unavailable` without revealing whether a person is
+   provisioned.
+3. **One discovery-driven OIDC flow, and nothing kept from it.** Browser login uses Authorization Code with
+   PKCE S256, 256-bit state, an OIDC nonce, the pinned registered redirect URI, and short-lived
+   Secure/HttpOnly/SameSite=Strict pre-auth cookies. Discovery, token, and JWKS requests may reach only the
+   enabled registry entry's exact HTTPS endpoints, under the bounded call sites enumerated after clause 8.
+   Access accepts RS256 in v1 and verifies signature, issuer, audience, expiry, nonce when an ID token is
+   used, subject, and key rotation before resolving any local authority. Provider ID and access tokens are
+   verified and then discarded: they never enter the Access store, Record, Evidence, an object, a log, a
+   trace, or a browser. v1 requests no `offline_access` scope and stores no refresh token, and a registry
+   entry naming either is refused at apply time. Nothing derived from provider token material is retained
+   beyond the keyed digests clause 6 permits and the safe low-cardinality `(oidc, issuer, subject)` audit
+   facts.
 4. **Identity is external; authority is local.** A verified `(issuer, subject)` must resolve server-side to
-   one enabled human principal and current local role/project bindings. Token email, group, role, tenant,
+   exactly one enabled human principal and its active human role binding. Token email, group, role, tenant,
    project, or seat claims never grant authority or custody. Human role vocabulary v1 is exactly
-   `operator`, `commander`, and `viewer`: operator retains existing protected authority; commander is limited
-   to configured projects and existing custody/policy rules; viewer is read-only. Unknown or ambiguous
-   identity/role resolution refuses with zero mutation.
+   `operator`, `commander`, and `viewer`, and all three are enumerated in the authorization matrix below:
+   operator retains existing protected authority; commander is limited to the project keys named in its
+   binding and to existing custody/policy rules; viewer is read-only and equally project-bound, reading only
+   the project keys named in its binding and never aggregating the portfolio. A **human role binding** is the
+   human plane's authority record. It is not a project grant and confers no `capture|transition|evidence`
+   scope or seat credential, but it carries the same properties: operator-issued, append-only, revocable,
+   resolved server-side on every request, and pinned to one principal, one v1 role, the exact project keys it
+   covers, and the access-policy revision used to interpret it. Zero, multiple, or disabled principals and an
+   absent or revoked binding all refuse as `auth-identity-unresolved` with zero mutation; a bound human acting
+   outside its project keys refuses as `project-scope-denied`, and outside its role authority as
+   `auth-role-denied`.
 5. **Two identity planes, one Actor and audit model.** Human OIDC and machine project-seat credentials both
-   resolve the same typed Actor context: durable principal, actor kind and auth plane, credential/session or
-   provider-binding version, tenant/project, effective roles/scopes, source identity, policy version, and
-   correlation ID. Commands, idempotency, custody intervals, assignments, Evidence, verdicts, effects, and
-   audit facts reference that durable principal/Actor context; no browser session, OIDC subject, seat key,
-   model, or process creates a second custody or attribution model.
+   resolve the same typed Actor context under [INV-73](#inv-73): durable principal, actor kind and auth plane,
+   credential/session or provider-binding version, tenant/project, effective roles/scopes, source identity,
+   policy version, and correlation ID. Commands, idempotency, custody intervals, assignments, Evidence,
+   verdicts, effects, and audit facts reference that durable principal/Actor context; no browser session,
+   OIDC subject, seat key, model, or process creates a second custody or attribution model.
 6. **UI session, API bearer.** The browser receives no API bearer. The callback validates OIDC server-side,
    rotates identifiers, then issues only `__Host-ctower_session=<256-bit opaque secret>; Secure; HttpOnly;
    SameSite=Strict; Path=/`; Access stores its keyed digest with provider binding, principal, role-binding,
@@ -3417,16 +3450,57 @@ logout, and auth-error routes, not the five product surfaces or any other browse
    credential. All three transports resolve the same Actor. Unsafe cookie requests require exact allowlisted
    Origin, `Sec-Fetch-Site: same-origin`, and a constant-time session CSRF match; credentialed CORS is off.
 7. **Expiry and network boundary stay narrow.** Browser idle expiry is 30 minutes, absolute expiry 12 hours,
-   and protected-command reauthentication freshness 10 minutes. Logout, principal/role/provider/credential
-   disable or revocation invalidates authority on the next request and cannot transfer queued envelopes.
-   Login, callback, session, and API routes remain private HTTPS services reachable only across the tailnet;
-   OIDC adds the registry-bounded egress above and no public ctower ingress.
+   and protected-command reauthentication freshness 10 minutes. A protected command whose `reauthenticated_at`
+   is stale returns typed `reauthentication-required` with zero reservation or mutation, and reauthentication
+   rotates the session before the immutable envelope is explicitly reconfirmed. Logout, principal/role/
+   provider/credential/binding disable or revocation invalidates authority on the next request as
+   `auth-session-invalid` and cannot transfer queued envelopes. Login, callback, session, and API routes
+   remain private HTTPS services reachable only across the tailnet; OIDC adds the registry-bounded egress
+   above and no public ctower ingress.
 8. **Mandatory security gate and measured proof.** The exact candidate digest cannot pass until an
-   independent CSO verdict covers discovery/JWKS SSRF and redirects, PKCE/state/nonce/replay, cookie/CSRF,
-   bearer separation, secret/redaction, revocation, role/project isolation, audit attribution, and tailnet
-   exposure. Exit reports the ticket's fixed counters: reuse disposition `1/1`, identity planes `2/2`, Actor
-   and custody models `1/1`, human roles `3/3`, transports `2/2`, provider-specific product branches `0`,
-   configured providers `discovered = exercised`, and CSO verdict `1/1`.
+   independent CSO verdict covers all eleven proof groups: provider-registry and role-binding ownership;
+   discovery/JWKS SSRF and exact redirect pinning; provider-token disposition and bounded fail-closed egress;
+   PKCE/state/nonce/replay; cookie/CSRF; bearer separation; secret/redaction; revocation; role/project
+   isolation; audit attribution; and tailnet exposure. Exit reports the ticket's fixed counters: reuse
+   disposition `1/1`, identity planes `2/2`, security proof groups `11/11`, Actor
+   and custody models `1/1`, human roles `3/3`, transports `3/3`, named auth refusal codes `8/8`, bounded
+   provider egress call sites `3/3`, provider-specific product branches `0`, configured providers
+   `discovered = exercised`, and CSO verdict `1/1`.
+
+Exactly three provider egress call sites exist. Each is bounded, follows no redirect, resolves its host
+against the entry's verified discovery domains before connecting, refuses any response from a host, address,
+or scheme the entry did not register, and fails closed:
+
+| Provider egress call site | When it runs | Attempt and wall-time bound | Terminal outcome |
+|---|---|---|---|
+| Discovery document fetch | Registry apply and cache expiry | 1 attempt plus 2 retries, 2 s connect and 5 s total each, exponential backoff with jitter, 20 s ceiling for the site | `auth-provider-unverifiable`; the entry serves its last verified document until its 24-hour maximum age and then starts no login |
+| Token exchange | Once per callback | 1 attempt plus 1 retry, 2 s connect and 5 s total each, 12 s ceiling | `auth-exchange-invalid`; the authorization code is consumed and never retried |
+| JWKS fetch and rotation | Cache miss, cache expiry, or unknown `kid` | 1 attempt plus 2 retries, 2 s connect and 5 s total each, at most one refetch per 5-minute cooldown per entry, 20 s ceiling | `auth-provider-unverifiable`; cached keys expire at a 12-hour maximum age and verify nothing afterwards |
+
+Cached key material is never accepted indefinitely: past its stated maximum age it verifies nothing, and an
+unknown `kid` triggers at most one bounded refetch inside the cooldown window and never an unbounded refresh.
+Unverifiable, expired, or absent key material grants no authority, resolves no Actor, and performs zero
+mutation. A provider that cannot be reached fails logins closed; it never extends a session, skips a check,
+or accepts an unverified assertion.
+
+Every authentication denial refuses by one of these stable problem codes, with zero mutation and zero
+reservation. The codes are deliberately coarse where a finer one would enumerate people or configuration: one
+code and one response shape cover every cause listed beside it.
+
+| Stable problem code | Denial paths it covers |
+|---|---|
+| `auth-provider-unavailable` | Login start with no matching registry entry, a disabled entry, or more than one match |
+| `auth-exchange-invalid` | Redirect-URI, `state`, PKCE-verifier, or nonce mismatch; replayed, expired, or already-consumed authorization code; failed signature, issuer, audience, expiry, or subject verification |
+| `auth-provider-unverifiable` | Discovery, token, or JWKS bound exhausted; response from an unregistered host or scheme; unknown `kid` after the bounded refetch; key material past its maximum age |
+| `auth-identity-unresolved` | Verified `(issuer, subject)` resolving to zero, more than one, or a disabled human principal, or to no active human role binding |
+| `auth-session-invalid` | Absent, expired, revoked, superseded, or rotated-away session; failed exact `Origin`, `Sec-Fetch-Site`, or constant-time CSRF check |
+| `reauthentication-required` | Protected command whose `reauthenticated_at` is older than the 10-minute freshness window |
+| `auth-role-denied` | Authenticated human whose v1 role does not carry the requested authority, including every `viewer` mutation attempt |
+| `project-scope-denied` | Authenticated human acting outside the project keys named in its role binding; unchanged for the machine plane |
+
+A generic `401` or `403` with no stable code does not satisfy `CT-I1-013`. Each code above needs its own
+negative fixture and exact RFC 9457 problem snapshot, and no code may vary its shape by whether the subject
+exists.
 
 ### Scoped credentials and secret injection
 
@@ -3814,7 +3888,7 @@ Each criterion is pass/fail. Evidence must be attached to the ctower build ticke
 | <a id="ac-sec-09"></a>AC-SEC-09 | Any future reusable-image revision must bind observed/base digests, scrub report, SBOM, vulnerability policy, conformance, provenance, builder/verifier identities, and signature. Seeded tokens, CLI/browser login state, keys, `.env`, cookies, PII, or credential fixtures block promotion and trigger containment/rotation policy. I1/I2 make no custom-image-runtime claim. | Deferred seeded-secret corpus, attestation verification, promotion-denial contract, and explicit not-exercised manifest |
 | <a id="ac-sec-10"></a>AC-SEC-10 | A future browser image-setup terminal must use one-use <=5-minute scoped tokens; replay/wrong-scope/origin fails, session end revokes handles, egress blocks metadata/production/auth targets, and no credential enters URL, argv, ordinary event/log, image, or checkpoint. No such terminal is exposed in I1/I2. | Deferred terminal adversarial/egress contract and current route-absence assertion |
 | <a id="ac-sec-11"></a>AC-SEC-11 | Every exercised scheduler rejects author/reviewer and protected-effect/general no-colocation conflicts. Any future multi-tenant or remote placement package must also reject prohibited tenant/trust/provider-host pairings, treat unprovable separation as ineligible, and require exact identity before destruction. | Local independence matrix plus deferred isolation/deletion negatives |
-| <a id="ac-sec-12"></a>AC-SEC-12 | At CT-I1-013, discovery-driven human OIDC and machine project-seat credentials resolve one server-side Actor/custody/audit model. Provider addition is configuration-only; `(oidc, issuer, subject)` maps to local authority; the three human roles and two auth planes fail closed; UI uses only an opaque session cookie while direct APIs use Bearer credentials; tailnet exposure is unchanged. Missing, ambiguous, wrong, disabled, expired, revoked, replayed, or foreign provider/identity/role/project/origin/state/nonce/PKCE/CSRF/session/credential/freshness/scope performs zero mutation, and no API bearer/session value enters browser JavaScript, DOM, URL, storage, trace, screenshot, log, or telemetry. | Manibo reuse disposition; provider-discovery/SSRF and configured-provider mutation suite; two-plane Actor/custody attribution matrix; three-role authorization matrix; auth-only cross-project Playwright contexts; fake clock/revocation/replay suite; secret/redaction and tailnet exposure scans; independent CSO verdict |
+| <a id="ac-sec-12"></a>AC-SEC-12 | At CT-I1-013, discovery-driven human OIDC and machine project-seat credentials resolve one server-side Actor/custody/audit model under [INV-73](#inv-73). Provider registry create/enable/rotate is operator-only and configuration-only; the redirect URI matches the pinned private origin by exact string equality; provider tokens are discarded with no refresh token or `offline_access` stored; each of the three provider egress call sites exhausts its declared bound and fails closed; `(oidc, issuer, subject)` maps to local authority through a pinned revocable human role binding; the three human roles and two auth planes fail closed, with `viewer` reading only its bound project keys; UI uses only an opaque session cookie while direct APIs use Bearer credentials; tailnet exposure is unchanged. Missing, ambiguous, wrong, disabled, expired, revoked, replayed, or foreign provider/identity/role/binding/project/origin/state/nonce/PKCE/redirect/CSRF/session/credential/freshness/scope refuses by its exact stable code from the authentication refusal table with zero mutation, never a bare 401/403, and no API bearer/session/provider-token value enters browser JavaScript, DOM, URL, storage, trace, screenshot, log, or telemetry. | Manibo reuse disposition; operator-only registry/binding mutation negatives; exact-redirect-URI and wildcard/prefix/port/path rejection vectors; provider-token disposition and store scan; per-call-site bound-exhaustion, unknown-`kid`, stale-key and off-registry-host fixtures; provider-discovery/SSRF suite; two-plane Actor/custody attribution matrix; three-role authorization matrix including `viewer` cross-project read denial; one negative fixture and exact RFC 9457 snapshot per named refusal code; auth-only cross-project Playwright contexts; fake clock/revocation/replay suite; secret/redaction and tailnet exposure scans; independent CSO verdict |
 
 ### Extension contract (design now; general runtime deferred)
 
@@ -4098,7 +4172,8 @@ or exit criterion moves increment as a result.
   identity once through ordinary signed generated commands, and proves Mission Control and applicable
   GitHub/GitLab records remain co-sources. Bulk import remains absent/refusing.
 - The post-import auth proof reports reuse `1/1`, identity planes `2/2`, Actor/custody models `1/1`, human
-  roles `3/3`, transports `2/2`, provider-specific branches `0`, every configured provider discovered and
+  roles `3/3`, transports `3/3`, named auth refusal codes `8/8`, bounded provider egress call sites `3/3`,
+  security proof groups `11/11`, provider-specific branches `0`, every configured provider discovered and
   exercised, and an independent CSO verdict `1/1`; denial/replay/revocation and tailnet scans change no
   authoritative state or exposure.
 - The three Project hierarchies and disjoint compact Project Delivery projections satisfy the pre-seat portion of [AC-PD-01](#ac-pd-01) (hierarchy, exit-criterion coverage, slot `filled / required` coverage, source watermark, freshness, derivation reasons; the per-slot seat fields are I2-bound), the eight-state/blocked-proof truth table satisfies [AC-PD-02](#ac-pd-02), and event reconciliation plus the hourly no-change heartbeat satisfy the I1 portion of [AC-PD-04](#ac-pd-04). [AC-PORT-01](#ac-port-01) through [AC-PORT-06](#ac-port-06) prove the one-database topology, version-pinned grants, all six cross-project refusal directions, prohibited-class refusals including PHI by name, stable identities, and three disjoint Board rows.
@@ -4264,7 +4339,7 @@ Each validation command below is designated as part of the item’s deliverable.
 | CT-I1-010 | Configure one tenant/database with the `ctower`, `manibo`, and `bh-loop` Projects and commander-authored starter checkpoints; enforce one Work/Record authorization guard for exact `capture|transition|evidence` scope subsets; refuse all cross-project mutation and all five prohibited data classes by stable name. | CT-I1-009 | Engineer + CSO + three configured Commander owners + QA | CompanyBundle; kernel `access/`, `work/`, `record/`, `proof/`; refusal contracts | One-tenant/three-Project setup, owner-key configuration without roster literals, all six ordered cross-project zero-diff refusals, per-scope tests, and per-class refusal including `phi_hipaa_covered` by name | `uv run pytest tests/acceptance/increment-1/test_portfolio_isolation.py tests/contracts/security/test_prohibited_data.py -q` |
 | CT-I1-011 | Admit the reviewed 115-item `manibo` backlog one item at a time through ordinary signed intake, assigning each `(tenant, project, source kind, source ref)` identity a stable `<project>-R<nnn>` reference from the shared counter; keep bulk import absent/refusing and all legacy sources live as co-sources. | CT-I1-010 | Manibo Commander + Engineer + independent QA/Review | Generated client; kernel Work/Record; intake evidence | 115 individual command/review receipts, exact identity/dedupe reconciliation, no reuse/renumbering, no forged authority, co-source continuity, and absent/refusing bulk importer | `uv run pytest tests/acceptance/increment-1/test_manibo_ordinary_intake.py -q` |
 | CT-I1-012 | Publish the project-scoped typed event feed for issue #186 only after identities, grants, isolation, onboarding configuration, and ordinary intake are proven; expose three mutually disjoint Board rows and preserve the prohibited-data boundary in emitted payloads. | CT-I1-011 | Engineer + CSO + QA + Commander/Tech-writer review | Authored event-feed contracts; kernel Record/Projections; generated clients | Three-project feed and Board snapshots, reconnect/replay/gap proofs, project-separation negatives, prohibited-field scan, and AC-PORT-01..06 evidence bundle | `uv run pytest tests/contracts/event-feed tests/acceptance/increment-1/test_portfolio_board.py -q` |
-| CT-I1-013 | Reuse Manibo's provider-agnostic discovery/OIDC modules to add human OIDC alongside unchanged machine project-seat credentials; resolve UI session, human API bearer, and machine bearer authentication into one Actor/custody/audit model with config-driven providers, exact `operator|commander|viewer` human roles, and no new public ingress. | CT-I1-012 | Engineer + CSO + QA/UI QA + Manibo Commander reuse review | Authored auth/access/HTTP contracts; kernel Access; auth-only API/web composition roots and tests | Reuse disposition `1/1`; identity planes `2/2`; Actor/custody models `1/1`; roles `3/3`; transports `2/2`; provider-specific product branches `0`; configured providers `discovered = exercised`; PKCE/state/nonce/SSRF/cookie/CSRF/replay/revocation/project-isolation/redaction/tailnet negatives; independent CSO verdict `1/1` on the exact digest | `uv run pytest tests/contracts/auth tests/acceptance/increment-1/test_auth.py -q && pnpm run test:e2e -- tests/e2e/auth` |
+| CT-I1-013 | Reuse Manibo's provider-agnostic discovery/OIDC modules to add human OIDC alongside unchanged machine project-seat credentials; resolve UI session, human API bearer, and machine bearer authentication into one Actor/custody/audit model with operator-owned config-driven providers, operator-issued pinned human role bindings for exact `operator|commander|viewer` roles, and no new public ingress. | CT-I1-012 | Engineer + CSO + QA/UI QA + Manibo Commander reuse review | Authored auth/access/HTTP contracts; kernel Access; auth-only API/web composition roots and tests | Reuse disposition `1/1`; identity planes `2/2`; Actor/custody models `1/1`; roles `3/3`; transports `3/3`; named auth refusal codes `8/8` each with its own negative fixture and exact RFC 9457 snapshot; bounded provider egress call sites `3/3` proven by bound exhaustion; security proof groups `11/11`; provider-specific product branches `0`; configured providers `discovered = exercised`; operator-only registry/binding mutation, exact-redirect-URI, provider-token-disposition, PKCE/state/nonce/SSRF/cookie/CSRF/replay/revocation/project-isolation/redaction/tailnet negatives; independent CSO verdict `1/1` on the exact digest | `uv run pytest tests/contracts/auth tests/acceptance/increment-1/test_auth.py -q && pnpm run test:e2e -- tests/e2e/auth` |
 
 ### I2 implementation backlog
 
@@ -4274,7 +4349,7 @@ Each validation command below is designated as part of the item’s deliverable.
 | CT-I2-002 | Implement keyed documents/artifacts, full typed stage-slot Evidence/attestations/signing assignments/dependencies/invalidation, gate instances and sealed verdict attempts. | CT-I2-001, CT-I1-003 | Engineer + Review + CSO | Kernel `proof/`; `contracts/evidence/` | Self-review and signer mismatch denial, sealed reveal, selective slot/gate invalidation, quarantine promotion | `uv run pytest tests/modules/proof tests/acceptance/increment-2/test_gates.py -q` |
 | CT-I2-003 | Implement strongest-healthy Commander profile resolution and effective manifests pinning the local harness/supervisor/target/workspace/telemetry revisions, secret refs, egress/resources, and provenance. | CT-I2-001, CT-L0-007 | Engineer + CSO | Kernel `catalog/`, `runtime/`; `packs/personas/`; `apps/ctower-runner/compose.py` | Selection/failover, support-only denial, immutable local pins, and no-plaintext scans | `uv run pytest tests/modules/catalog tests/modules/runtime/test_profiles.py -q` |
 | CT-I2-004 | Implement Runtime jobs/leases/fencing/cursors/ACKs/log chunks/gaps/checkpoints/reconciler; the versioned CommandGuard required by [issue #17](https://github.com/simjak/ctower/issues/17) at every final local Harness and Supervisor command-dispatch boundary; and the justified local process/tmux plus Codex/Claude compositions. Freeze exact guard mechanics with these first real consumers, not before, and publish no general remote/image Seam. | CT-I2-001, CT-I2-003 | Engineer + DevOps + QA + CSO | Kernel `runtime/`; `packages/ctower-runner-sdk/`; `apps/ctower-runner/`; conformance tests | Forced loss/resume, stale denial, zero orphans, local composition; every registered command-dispatch Adapter's guard invocation, target resolution, zero block execution, one-use override/replay/expiry, redacted receipts, and bypass rejection; remote/image absent and not exercised | `uv run pytest tests/conformance/runner tests/chaos -q` |
-| CT-I2-005 | I2.4 browser product sub-checkpoint: consume CT-I1-013's proven session/CSRF boundary to realize D22's Home, Board, contextual Ticket, narrow Fleet/Analytics, and the rich Ticket journey; deepen them with run manifest, local placement, ACK/gap, steering, readiness refusal, typed required evidence-slot/signing-seat state, CommandGuard Attention/grant/receipt state, source-linked project proof/gates/blockers/decisions, cost/time, incidents, retro, and interactive Project Delivery projection row detail. | CT-I2-002, CT-I2-004, CT-L0-009, CT-I1-013; deferred alias CT-I1-005 | Designer + UI QA | `contracts/http/`; generated Python/TS clients; `apps/ctower-api/`; `apps/ctowerctl/`; `apps/ctower-web/src/surfaces/` | Exactly-five product routes, every-control trace, replay/gap/steer modes, reuse of the proven browser-session/CSRF/tenant-isolation contract, filled/unfilled/invalidated/unknown slot and signer browser states, generated API snapshots and CLI transcript, authorized Project Delivery projection drill-down, exact-scope guard confirmation and linked receipt views, accepted/refused zero-diff screenshots | `uv run pytest tests/acceptance/increment-2/test_guard_attention.py -q && pnpm run test:e2e` |
+| CT-I2-005 | I2.4 browser product sub-checkpoint: consume CT-I1-013's proven session/CSRF boundary to realize D22's Home, Board, contextual Ticket, narrow Fleet/Analytics, and the rich Ticket journey; deepen them with run manifest, local placement, ACK/gap, steering, readiness refusal, typed required evidence-slot/signing-seat state, CommandGuard Attention/grant/receipt state, source-linked project proof/gates/blockers/decisions, cost/time, incidents, retro, and interactive Project Delivery projection row detail. | CT-I2-002, CT-I2-004, CT-L0-009, CT-I1-013; deferred alias CT-I1-005 | Designer + UI QA | `contracts/http/`; generated Python/TS clients; `apps/ctower-api/`; `apps/ctowerctl/`; `apps/ctower-web/src/surfaces/` | Exactly-five product routes, every-control trace, replay/gap/steer modes, reuse of the proven browser-session/CSRF contract plus its own cross-tenant and cross-project Playwright isolation proof exercised against all five product surfaces, since CT-I1-013's auth-only proof covers login/callback/session/logout and does not discharge this obligation, filled/unfilled/invalidated/unknown slot and signer browser states, generated API snapshots and CLI transcript, authorized Project Delivery projection drill-down, exact-scope guard confirmation and linked receipt views, accepted/refused zero-diff screenshots | `uv run pytest tests/acceptance/increment-2/test_guard_attention.py -q && pnpm run test:e2e` |
 | CT-I2-006 | Implement package-defined classification/overlays and Execution Policy evaluation, the delivery sprint's mandatory stage gates, required perspectives, configurable limits, non-waivable independence/conflict rules, the separate declared family-diversity placement rules and their per-tier waivability, the no-progress rule, protected waivers, and software/non-engineering fixtures. | CT-I2-002..003 | Engineering Manager + Engineer + CSO | Kernel `workflow/`, `access/`; policy packs | Missing/invalid-bound/removal/client-count/independence/family-collapse denials, no-progress escalation, and coherent current-digest traces | `uv run pytest tests/modules/workflow/test_execution_policy.py -q` |
 | CT-I2-007 | Implement Effects releases/environments, one live `systemd-vps/v1` integration plus its fault-injection test implementation, scoped grants/receipts, root-owned artifact trust verification, self-restart journal recovery, and effect reconciliation. Activation must commit the signed expected-source inventory revision before the first grant/effect. Keep the boundary internal until a second real provider Adapter earns a public Seam. | CT-I2-006, CT-I2-004 | DevOps + Engineer + CSO | Kernel `effects/`; `packages/ctower-systemd-vps/`; `deploy/systemd/`; effect conformance | Wrong-target/expired/direct/provenance denials, pre-activation inventory-update proof, missing-source restore denial, crash matrix, real staging/prod digest, self-upgrade recovery, and no generalized provider Seam | `uv run pytest tests/modules/effects tests/conformance/effect-provider -q` |
 | CT-I2-008 | Implement production smoke/live-QA incident -> grant revoke -> safe containment/rollback -> exact verification -> triage-before-repair and retro linkage. | CT-I2-007 | DevOps + CSO + QA | Kernel `effects/`, `attention/`, `workflow/`; runbooks | Injected smoke/live-QA failures, rollback receipt/verification, direct-repair denial | `uv run pytest tests/acceptance/increment-2/test_incident_rollback.py -q` |
