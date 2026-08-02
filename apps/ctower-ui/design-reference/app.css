@@ -1319,3 +1319,215 @@ body:has(#f-bhloop:checked) .col:not(:has(.p-bhloop)) .col-empty { display: bloc
   .chat { padding: 8px 20px 20px; }
   .bub { max-width: 76ch; }
 }
+
+/* ═══ round 4: metrics ═════════════════════════════════════════════════════
+   Every class here is mt-prefixed. Charts are drawn from the same three chart
+   tokens and the three project marks the board already uses — a metric may not
+   introduce a colour, and a series may not be told apart by hue alone (each
+   carries its own label). Numbers are mono, units are never dropped. */
+
+/* project scope: exactly one block is mounted, chosen by the tab radios */
+.mtscope { display: none; }
+body:has(#s-all:checked)    .mtscope[data-scope="all"],
+body:has(#s-ctower:checked) .mtscope[data-scope="ctower"],
+body:has(#s-manibo:checked) .mtscope[data-scope="manibo"],
+body:has(#s-bhloop:checked) .mtscope[data-scope="bhloop"] { display: block; }
+
+/* ── DORA cards ─────────────────────────────────────────────────────────── */
+.mtgrid { display: grid; grid-template-columns: minmax(0, 1fr); gap: 12px; padding: 16px; }
+.mtcard {
+  display: flex; flex-direction: column; gap: 9px;
+  min-width: 0;
+  padding: 13px 14px;
+  border: 1px solid var(--line);
+  border-radius: var(--r-md);
+  background: var(--bg);
+}
+.mtcard .k {
+  display: flex; align-items: center; gap: 7px;
+  font-size: 10.5px; letter-spacing: .06em; text-transform: uppercase; color: var(--ink-3);
+}
+.mtcard .v {
+  display: flex; align-items: baseline; gap: 5px;
+  font-family: var(--mono); font-size: 22px; line-height: 1.1; color: var(--ink);
+}
+.mtcard .v u { font-size: 12px; color: var(--ink-3); text-decoration: none; }
+.mtcard.na .v { font-family: var(--font); font-size: 13.5px; color: var(--ink-3); }
+.mtcard .d { font-size: 11.5px; line-height: 1.45; color: var(--ink-2); }
+.mtcard .src {
+  margin-top: auto; padding-top: 2px;
+  font-family: var(--mono); font-size: 10px; color: var(--ink-4);
+  overflow-wrap: anywhere;
+}
+.mtcard.miss { border-color: var(--warn-line); }
+
+/* target chip — the bar the number is judged against, never a bare number */
+.mttgt {
+  display: inline-flex; align-items: center; gap: 5px;
+  padding: 2px 7px; border-radius: var(--r-sm);
+  border: 1px solid var(--line); background: var(--bg);
+  font-family: var(--mono); font-size: 10.5px; color: var(--ink-2);
+  white-space: nowrap;
+}
+/* a chip hugs its text — inside a flex column it would otherwise stretch into
+   a bar and read as a progress track */
+.mtcard .mttgt, .mtdef .mttgt { align-self: flex-start; }
+.mttgt.ok   { color: var(--proven-deep); border-color: var(--proven); background: var(--proven-bg); }
+.mttgt.miss { color: var(--warn);        border-color: var(--warn);   background: var(--warn-bg); }
+.mttgt.na   { color: var(--ink-4);       border-style: dashed; }
+
+/* sparkline: stretched to the card, stroke kept honest with non-scaling-stroke.
+   overflow is visible so a marker on the first or last reading keeps both
+   halves of its cap instead of being sliced by the viewBox edge */
+.mtspark { display: block; width: 100%; height: 30px; overflow: visible; }
+.mtspark .ln { fill: none; stroke: var(--chart-1); stroke-width: 1.4; stroke-linejoin: round; }
+.mtspark .ln.acc  { stroke: var(--accent); }
+.mtspark .ln.warn { stroke: var(--warn); }
+.mtspark .base { stroke: var(--line); stroke-width: 1; stroke-dasharray: 3 3; }
+/* a short VERTICAL round-capped stroke is a dot that survives the non-uniform
+   stretch (only x is scaled, and the stroke is non-scaling) — used where a
+   series has days with no reading rather than a reading of zero. A zero-length
+   segment is not reliable here: Chromium drops it. */
+.mtspark .pt { stroke: var(--chart-1); stroke-width: 4; stroke-linecap: round; }
+/* a series that is flat because every reading is zero: muted, so seven true
+   zeroes cannot shout louder than the number above them */
+.mtspark .ln.flat { stroke: var(--ink-4); stroke-width: 1; }
+.mtspark .pt.flat { stroke: var(--ink-4); stroke-width: 3; }
+.mtnospark {
+  height: 30px; display: flex; align-items: center;
+  font-size: 11px; color: var(--ink-4);
+  border-top: 1px dashed var(--line-2);
+}
+
+/* ── charts ─────────────────────────────────────────────────────────────── */
+.mtcharts { display: grid; grid-template-columns: minmax(0, 1fr); gap: 16px; }
+.mtplot { display: flex; gap: 9px; }
+.mty {
+  flex: none; width: 28px; height: 180px;
+  display: flex; flex-direction: column; justify-content: space-between; align-items: flex-end;
+  font-family: var(--mono); font-size: 10px; line-height: 1; color: var(--ink-4);
+}
+.mtline { flex: 1 1 auto; min-width: 0; height: 180px; display: block; }
+.mtline .grid { stroke: var(--line); stroke-width: 1; }
+.mtline .area { fill: var(--accent-bg); }
+.mtline .ln   { fill: none; stroke: var(--accent); stroke-width: 1.8; stroke-linejoin: round; }
+/* one series per project mark — the legend repeats the numbers so hue is never
+   the only thing telling two lines apart */
+.mtline .ln.p-ct { stroke: var(--p-ctower); }
+.mtline .ln.p-mb { stroke: var(--p-manibo); }
+.mtline .ln.p-bh { stroke: var(--p-bhloop); }
+.mtline .ask  { fill: none; stroke: var(--ink-4); stroke-width: 1.2; stroke-dasharray: 4 4; }
+.mtline .tgt  { stroke: var(--proven); stroke-width: 1.2; stroke-dasharray: 4 4; }
+.mtx {
+  display: flex; justify-content: space-between; gap: 8px;
+  margin: 8px 0 0 37px;
+  font-family: var(--mono); font-size: 10px; color: var(--ink-4);
+}
+.mtnote {
+  margin-top: 11px; padding: 7px 10px;
+  border-left: 2px solid var(--line-2);
+  font-size: 11.5px; line-height: 1.5; color: var(--ink-2);
+}
+.mtnote b { color: var(--ink); font-weight: 600; }
+
+/* merges-per-day bars — stacked by project when the scope is the portfolio */
+.mtbarwrap { position: relative; height: 180px; }
+.mtbars { display: flex; align-items: flex-end; gap: 6px; height: 100%; }
+.mtcol { flex: 1 1 0; min-width: 0; display: flex; flex-direction: column; justify-content: flex-end; height: 100%; }
+.mtbar { display: flex; flex-direction: column; border-radius: 2px 2px 0 0; overflow: hidden; }
+.mtbar span { display: block; min-height: 2px; }
+.mtbar .s-ct { background: var(--p-ctower); }
+.mtbar .s-mb { background: var(--p-manibo); }
+.mtbar .s-bh { background: var(--p-bhloop); }
+.mtbar .s-one { background: var(--chart-1); }
+.mtcol.now .mtbar { border: 1px dashed var(--line-2); border-bottom: 0; }
+.mtmean {
+  position: absolute; left: 0; right: 0;
+  border-top: 1px dashed var(--ink-4);
+  pointer-events: none;
+}
+.mtmean b {
+  position: absolute; right: 0; top: -14px;
+  font-family: var(--mono); font-size: 10px; font-weight: 400; color: var(--ink-4);
+  background: var(--bg); padding: 0 3px;
+}
+.mtxb { display: flex; gap: 6px; margin-top: 7px; }
+.mtxb > div { flex: 1 1 0; min-width: 0; text-align: center; font-family: var(--mono); font-size: 10px; color: var(--ink-4); }
+.mtxb .c { display: block; font-size: 11.5px; color: var(--ink-2); }
+.mtxb .now .c { color: var(--ink); }
+
+/* ── custom metrics ─────────────────────────────────────────────────────── */
+.mtdefs { display: grid; grid-template-columns: minmax(0, 1fr); gap: 12px; padding: 16px; }
+.mtdef { border: 1px solid var(--line); border-radius: var(--r-md); background: var(--bg); min-width: 0; }
+.mtdef > header {
+  display: flex; flex-wrap: wrap; align-items: center; gap: 8px;
+  padding: 11px 13px; border-bottom: 1px solid var(--line); background: var(--surface);
+}
+.mtdef > header h3 { font-size: 12.5px; font-weight: 600; min-width: 0; }
+.mtdef > header .mttgt { margin-left: auto; }
+/* mtbody, not body: .panel .body already owns that name and these cards sit
+   inside a panel */
+.mtdef .mtbody { display: flex; flex-direction: column; gap: 9px; padding: 13px; }
+.mtdef .v { display: flex; align-items: baseline; gap: 5px; font-family: var(--mono); font-size: 22px; line-height: 1.1; color: var(--ink); }
+.mtdef .v u { font-size: 12px; color: var(--ink-3); text-decoration: none; }
+.mtdef .d { font-size: 11.5px; line-height: 1.45; color: var(--ink-2); }
+.mtdef .src { font-family: var(--mono); font-size: 10px; color: var(--ink-4); overflow-wrap: anywhere; }
+.mtdef .spec {
+  display: flex; flex-wrap: wrap; gap: 3px 14px;
+  font-family: var(--mono); font-size: 10.5px; color: var(--ink-3);
+}
+.mtdef .spec b { color: var(--ink-2); font-weight: 500; }
+
+/* define-metric: collapsed by default, the one chevron idiom, no bespoke expander */
+.mtnew { margin: 0 16px 16px; border: 1px dashed var(--line-2); border-radius: var(--r-md); background: var(--bg); }
+.mtnew[open] { border-style: solid; border-color: var(--line); }
+.mtnew > summary {
+  display: flex; align-items: center; gap: 8px;
+  padding: 11px 13px; cursor: pointer; list-style: none;
+  font-size: 12.5px; font-weight: 500; color: var(--ink-2);
+}
+.mtnew > summary::-webkit-details-marker { display: none; }
+.mtnew > summary::before {
+  content: "\203A"; flex: none; color: var(--ink-4); font-size: 14px; line-height: 1;
+  transition: transform .12s ease;
+}
+.mtnew[open] > summary::before { transform: rotate(90deg); }
+.mtnew > summary:hover { color: var(--ink); }
+.mtnew > summary .hint { margin-left: auto; font-family: var(--mono); font-size: 10.5px; color: var(--ink-4); }
+.mtform { display: grid; grid-template-columns: minmax(0, 1fr); gap: 14px; padding: 2px 13px 13px; }
+.mtfields { display: flex; flex-direction: column; gap: 11px; min-width: 0; }
+.mtf { display: flex; flex-direction: column; gap: 5px; min-width: 0; }
+.mtf > span { font-size: 10.5px; letter-spacing: .06em; text-transform: uppercase; color: var(--ink-3); }
+.mtpair { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 11px; }
+.mtthr { display: grid; grid-template-columns: 74px minmax(0, 1fr) 84px; gap: 8px; }
+.inp, .sel {
+  width: 100%; min-width: 0;
+  font: inherit; font-size: 13px; color: var(--ink);
+  background: var(--bg);
+  border: 1px solid var(--line-2); border-radius: var(--r-md);
+  padding: 8px 10px;
+}
+.inp.mono { font-family: var(--mono); font-size: 12px; }
+/* a value this panel reads from elsewhere on the page rather than asking for
+   twice — dashed, so it never reads as an input that refuses to focus */
+.mtro {
+  padding: 8px 10px; font-size: 13px; color: var(--ink-2);
+  border: 1px dashed var(--line-2); border-radius: var(--r-md); background: var(--surface);
+}
+.inp:focus, .sel:focus { outline: 2px solid var(--accent); outline-offset: -1px; border-color: var(--accent); }
+.inp::placeholder { color: var(--ink-4); }
+.mtyaml { min-width: 0; display: flex; flex-direction: column; }
+.mtyaml .pane-head { border: 1px solid var(--line); border-bottom: 0; border-radius: var(--r-md) var(--r-md) 0 0; background: var(--surface); }
+.mtyaml .code {
+  border: 1px solid var(--line); border-radius: 0 0 var(--r-md) var(--r-md);
+  background: var(--bg); margin: 0; flex: 1 1 auto;
+}
+.mtsave { display: flex; flex-wrap: wrap; align-items: center; gap: 10px 12px; padding: 0 13px 13px; }
+.mtsave .note { flex: 1 1 220px; min-width: 0; font-size: 11.5px; color: var(--ink-3); }
+
+@media (min-width: 900px) {
+  .mtgrid  { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+  .mtcharts { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .mtdefs  { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .mtform  { grid-template-columns: minmax(0, 340px) minmax(0, 1fr); }
+}

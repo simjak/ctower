@@ -12,6 +12,7 @@ export const SECTIONS = [
   { href: "/files", label: "Files" },
   { href: "/workspace", label: "Workspace" },
   { href: "/explorer", label: "Explorer" },
+  { href: "/metrics", label: "Metrics" },
 ] as const;
 
 export type SectionLabel = (typeof SECTIONS)[number]["label"];
@@ -61,8 +62,8 @@ function Instance(): ReactElement {
 /**
  * The frame every screen shares: one identity, one nav, one theme switch.
  * `Workflow` is deliberately absent from the section list — it is the R2707
- * surface and is not built in this phase, and a nav entry that leads nowhere
- * would be a dead control.
+ * surface and is not built here, and a nav entry that leads nowhere would be a
+ * dead control. `Metrics` is the operator-approved round-4 S9 screen.
  */
 export function Chrome({
   section,

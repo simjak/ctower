@@ -81,6 +81,7 @@ client, and no screen knows a URL.
 | Files | this repository's git tree at a committed revision | — |
 | Workspace · Feed | the tmux capture bridge (`mux list`, `mux read`) | G5 session facts |
 | Explorer | `git worktree list` + `git diff <base>...HEAD` | G5 worktree facts |
+| Metrics (S9) | `git log --first-parent` per project trunk | a recorded deploy event, incident pair and metric-definition file (G5) |
 
 These are **interim, director-sanctioned** adapters, and they name a third boundary this repository
 does not otherwise cross: `SPEC.md` line 67 calls Mission Control *migration or research provenance
@@ -99,6 +100,23 @@ Three hard lines hold across all of them, and each is enforced structurally rath
 - **Redaction before render.** Every interim source must import `./redact`; the check fails closed
   on one that does not. Coordination text and terminal panes are the most exposed strings on this
   surface, and nothing guarantees a seat never pasted a credential into one.
+
+### Metrics, and the rule about numbers
+
+This is the page where a wrong number would be believed, so it carries a stricter version of the
+same rule. A card either states a measurement **and names the derivation it came from**, or it
+states that there is nothing to measure and names what would land the record. There is no third
+rendering, and in particular no zero standing in for absence.
+
+Measured: changes per day and change failure rate, both from `git log --first-parent <trunk>` —
+one entry per change that reached a trunk, so a squash and a merge commit count alike. Not
+recorded, and rendered as such: deploy frequency, lead time and MTTR all need a deploy event or an
+incident pair no project keeps; the drain burn-down exists only as prose in a status note, and
+reading a series out of prose would be a guess with a chart around it.
+
+The project scope control is the mockup's own CSS-only mechanism — four radios at body level and
+one `.mtscope` block per project — so switching a tab swaps every card, bar and legend at once and
+a number can never belong to a project the tab does not name.
 
 ### Honest empty states — and the difference between empty and unreachable
 

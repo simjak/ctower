@@ -1,5 +1,6 @@
 import { httpRecordAdapter } from "./httpRecordAdapter";
 import { readCronCadence } from "./sources/cadenceCron";
+import { readDeliveryMetrics } from "./sources/delivery";
 import { readSystemdCadence } from "./sources/cadenceSystemd";
 import { readAuthoredFiles } from "./sources/gitTree";
 import { readSeatInbox } from "./sources/inboxFile";
@@ -34,7 +35,15 @@ import type {
  */
 
 export type ScreenKey =
-  "board" | "ticket" | "inbox" | "heartbeats" | "files" | "workspace" | "explorer" | "feed";
+  | "board"
+  | "ticket"
+  | "inbox"
+  | "heartbeats"
+  | "files"
+  | "workspace"
+  | "explorer"
+  | "feed"
+  | "metrics";
 
 /** Which source answers each screen today, for the provenance foot. */
 export const SOURCE_LABELS: Readonly<Record<ScreenKey, string>> = {
@@ -47,6 +56,7 @@ export const SOURCE_LABELS: Readonly<Record<ScreenKey, string>> = {
   workspace: "tmux capture bridge · mux list + git",
   explorer: "git worktree list + diff",
   feed: "tmux capture bridge · mux read",
+  metrics: "git first-parent trunk history per project",
 };
 
 function cadenceSource(): () => Promise<CadenceRegistry> {
@@ -71,4 +81,7 @@ export const recordAdapter: RecordAdapter = {
     await reading(async () => await readSessionWorktree(worktree)),
   sessionPane: async (crew: string | null): Promise<Reading<PaneCapture>> =>
     await reading(async () => await readSessionPane(crew)),
+  // the delivery source returns its own Reading: the fan-out across projects can
+  // be partly unreadable, and that has to reach the screen, not be flattened
+  deliveryMetrics: readDeliveryMetrics,
 };

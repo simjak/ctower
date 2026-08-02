@@ -248,6 +248,59 @@ export interface PaneCapture {
   readonly crews: readonly string[];
 }
 
+/* ── S9 metrics ────────────────────────────────────────────────────────── */
+
+export interface MergeDay {
+  readonly day: string;
+  readonly count: number;
+}
+
+export interface ProjectMerges {
+  readonly key: string;
+  readonly label: string;
+  /** The ref counted, named so the derivation is inspectable. */
+  readonly trunk: string;
+  readonly days: readonly MergeDay[];
+  readonly landed: number;
+  readonly reverted: number;
+}
+
+/**
+ * One delivery card. `value === null` means the record this measure needs does
+ * not exist — the card says so and names what would land it, rather than
+ * showing a zero that reads as a measurement.
+ */
+export interface DeliveryMeasure {
+  readonly title: string;
+  readonly value: string | null;
+  readonly unit: string | null;
+  readonly target: string;
+  readonly note: string;
+  readonly source: string;
+  /** Present only when the measure has no record: what would land it. */
+  readonly lands?: string;
+}
+
+/** One project tab's worth of the page: its own cards, bars and legend. */
+export interface DeliveryScope {
+  /** `all`, or a project key; matches the scope radio the vendored CSS keys on. */
+  readonly key: string;
+  readonly label: string;
+  readonly measures: readonly DeliveryMeasure[];
+  readonly projects: readonly ProjectMerges[];
+}
+
+export interface DeliveryMetrics {
+  readonly scopes: readonly DeliveryScope[];
+  readonly projects: readonly ProjectMerges[];
+  readonly windowDays: readonly string[];
+  /** Projects whose history could not be read, so a total can be sized. */
+  readonly unread: number;
+  readonly considered: number;
+  readonly reason: string | null;
+  readonly measuredAt: string;
+}
+
 /** Which ctower instance this surface is reading, for the header and the foot. */
 export interface InstanceIdentity {
   readonly label: string;
@@ -278,6 +331,8 @@ export interface RecordAdapter {
   authoredFiles: (path: string | null) => Promise<Reading<AuthoredFiles>>;
   /** One live session pane, read-only, through the tmux capture bridge. */
   sessionPane: (crew: string | null) => Promise<Reading<PaneCapture>>;
+  /** Delivery measured per project: what the record supports, and what it does not. */
+  deliveryMetrics: () => Promise<Reading<DeliveryMetrics>>;
 }
 
 /** The subset of reads the ctower read API answers today. */
