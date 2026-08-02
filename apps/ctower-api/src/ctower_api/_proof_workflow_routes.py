@@ -52,6 +52,7 @@ from ctower_kernel.proof import (
     VerdictDecision,
 )
 from ctower_kernel.record import Actor, PrincipalKind, Record, RecordProblem
+from ctower_kernel.record.credentials import CredentialScope
 from ctower_kernel.telemetry import TelemetryContext
 from ctower_kernel.workflow import (
     ResolveClose,
@@ -86,7 +87,14 @@ def _install_freeze_route(
 ) -> None:
     @app.post("/v1/tickets/{ticket_id}/proof/criteria")
     async def freeze_criteria(ticket_id: str, request: Request) -> JSONResponse:
-        parsed = await _parse(access, recorder, request, ticket_id, FreezeCriteriaRequest)
+        parsed = await _parse(
+            access,
+            recorder,
+            request,
+            ticket_id,
+            FreezeCriteriaRequest,
+            required_scope=CredentialScope.EVIDENCE,
+        )
         if isinstance(parsed, JSONResponse):
             return parsed
         actor, ticket, command_id, payload, telemetry = parsed
@@ -117,7 +125,14 @@ def _install_evidence_route(
 ) -> None:
     @app.post("/v1/tickets/{ticket_id}/proof/evidence")
     async def record_evidence(ticket_id: str, request: Request) -> JSONResponse:
-        parsed = await _parse(access, recorder, request, ticket_id, EvidenceRequest)
+        parsed = await _parse(
+            access,
+            recorder,
+            request,
+            ticket_id,
+            EvidenceRequest,
+            required_scope=CredentialScope.EVIDENCE,
+        )
         if isinstance(parsed, JSONResponse):
             return parsed
         actor, ticket, command_id, payload, telemetry = parsed
@@ -146,7 +161,14 @@ def _install_verdict_route(
 ) -> None:
     @app.post("/v1/tickets/{ticket_id}/proof/verdict")
     async def record_verdict(ticket_id: str, request: Request) -> JSONResponse:
-        parsed = await _parse(access, recorder, request, ticket_id, VerdictRequest)
+        parsed = await _parse(
+            access,
+            recorder,
+            request,
+            ticket_id,
+            VerdictRequest,
+            required_scope=CredentialScope.EVIDENCE,
+        )
         if isinstance(parsed, JSONResponse):
             return parsed
         actor, ticket, command_id, payload, telemetry = parsed
@@ -178,7 +200,14 @@ def _install_transition_route(
 ) -> None:
     @app.post("/v1/tickets/{ticket_id}/workflow/transition")
     async def transition(ticket_id: str, request: Request) -> JSONResponse:
-        parsed = await _parse(access, recorder, request, ticket_id, WorkflowTransitionRequest)
+        parsed = await _parse(
+            access,
+            recorder,
+            request,
+            ticket_id,
+            WorkflowTransitionRequest,
+            required_scope=CredentialScope.TRANSITION,
+        )
         if isinstance(parsed, JSONResponse):
             return parsed
         actor, ticket, command_id, payload, telemetry = parsed
@@ -211,7 +240,14 @@ def _install_close_route(
 ) -> None:
     @app.post("/v1/tickets/{ticket_id}/workflow/resolve-close")
     async def resolve_close(ticket_id: str, request: Request) -> JSONResponse:
-        parsed = await _parse(access, recorder, request, ticket_id, ResolveCloseRequest)
+        parsed = await _parse(
+            access,
+            recorder,
+            request,
+            ticket_id,
+            ResolveCloseRequest,
+            required_scope=CredentialScope.TRANSITION,
+        )
         if isinstance(parsed, JSONResponse):
             return parsed
         actor, ticket, command_id, payload, telemetry = parsed
@@ -234,8 +270,15 @@ async def _parse[Payload: BaseModel](
     request: Request,
     ticket_id: str,
     model: type[Payload],
+    *,
+    required_scope: CredentialScope,
 ) -> tuple[Actor, UUID, UUID, Payload, TelemetryContext] | JSONResponse:
-    actor = _authenticate(access, recorder, request)
+    actor = _authenticate(
+        access,
+        recorder,
+        request,
+        required_scope=required_scope,
+    )
     if isinstance(actor, RecordProblem):
         return _problem_response(actor)
     try:

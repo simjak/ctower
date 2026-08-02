@@ -48,6 +48,7 @@
       "contracts/components/notification.schema.json",
       "contracts/components/persona.schema.json",
       "contracts/components/project.schema.json",
+      "contracts/components/seat-catalog.schema.json",
       "contracts/components/skill.schema.json",
       "contracts/components/supervisor.schema.json",
       "contracts/components/target.schema.json",
@@ -57,6 +58,20 @@
       "contracts/components/workspace.schema.json",
       "packs/components/agent-profiles/commander.protected-cli/v1.yaml",
       "packs/components/capabilities/control.api/v1.yaml",
+      "packs/components/checkpoints/ctower.i1-0/v1.yaml",
+      "packs/components/checkpoints/ctower.i1-1/v1.yaml",
+      "packs/components/checkpoints/ctower.i1-2/v1.yaml",
+      "packs/components/checkpoints/ctower.i1-3/v1.yaml",
+      "packs/components/checkpoints/ctower.i1-4/v1.yaml",
+      "packs/components/checkpoints/ctower.i1-5/v1.yaml",
+      "packs/components/checkpoints/ctower.i1-6/v1.yaml",
+      "packs/components/checkpoints/ctower.i1-7/v1.yaml",
+      "packs/components/checkpoints/ctower.i2-1/v1.yaml",
+      "packs/components/checkpoints/ctower.i2-2/v1.yaml",
+      "packs/components/checkpoints/ctower.i2-3/v1.yaml",
+      "packs/components/checkpoints/ctower.i2-4/v1.yaml",
+      "packs/components/checkpoints/ctower.i2-5/v1.yaml",
+      "packs/components/checkpoints/ctower.i2-6/v1.yaml",
       "packs/components/environments/local.linux/v1.yaml",
       "packs/components/goals/company.trusted-delivery/v1.yaml",
       "packs/components/harnesses/local.generated-client/v1.yaml",
@@ -270,7 +285,21 @@
       "contracts/domain/project-delivery/project-delivery.schema.json",
       "packages/ctower-kernel/migrations/0027_i17a_cutover_delivery.sql",
       "packages/ctower-kernel/migrations/0029_i17b_checkpoint_catalog_kind.sql",
-      "packages/ctower-kernel/migrations/0037_relax_checkpoint_key_domain.sql"
+      "packages/ctower-kernel/migrations/0037_relax_checkpoint_key_domain.sql",
+      "packs/components/checkpoints/ctower.i1-0/v1.yaml",
+      "packs/components/checkpoints/ctower.i1-1/v1.yaml",
+      "packs/components/checkpoints/ctower.i1-2/v1.yaml",
+      "packs/components/checkpoints/ctower.i1-3/v1.yaml",
+      "packs/components/checkpoints/ctower.i1-4/v1.yaml",
+      "packs/components/checkpoints/ctower.i1-5/v1.yaml",
+      "packs/components/checkpoints/ctower.i1-6/v1.yaml",
+      "packs/components/checkpoints/ctower.i1-7/v1.yaml",
+      "packs/components/checkpoints/ctower.i2-1/v1.yaml",
+      "packs/components/checkpoints/ctower.i2-2/v1.yaml",
+      "packs/components/checkpoints/ctower.i2-3/v1.yaml",
+      "packs/components/checkpoints/ctower.i2-4/v1.yaml",
+      "packs/components/checkpoints/ctower.i2-5/v1.yaml",
+      "packs/components/checkpoints/ctower.i2-6/v1.yaml"
     ],
     "AC-PD-02": [
       "contracts/domain/project-delivery/project-delivery-vectors.json",
@@ -292,6 +321,31 @@
     ],
     "AC-PD-06": [
       "packages/ctower-kernel/migrations/0037_relax_checkpoint_key_domain.sql"
+    ],
+    "AC-PD-07": [
+      "contracts/components/checkpoint.schema.json",
+      "contracts/components/seat-catalog.schema.json",
+      "contracts/components/versioned-component.schema.json",
+      "contracts/domain/project-delivery/project-delivery-vectors.json",
+      "contracts/domain/project-delivery/project-delivery.schema.json",
+      "contracts/http/openapi.yaml",
+      "packages/ctower-kernel/migrations/0038_project_delivery_seat_carriage.sql"
+    ],
+    "AC-PD-08": [
+      "contracts/components/checkpoint.schema.json",
+      "contracts/components/seat-catalog.schema.json",
+      "contracts/domain/project-delivery/project-delivery-vectors.json",
+      "contracts/domain/project-delivery/project-delivery.schema.json",
+      "contracts/http/openapi.yaml",
+      "packages/ctower-kernel/migrations/0038_project_delivery_seat_carriage.sql"
+    ],
+    "AC-PD-09": [
+      "contracts/components/checkpoint.schema.json",
+      "contracts/components/seat-catalog.schema.json",
+      "contracts/domain/project-delivery/project-delivery-vectors.json",
+      "contracts/domain/project-delivery/project-delivery.schema.json",
+      "contracts/http/openapi.yaml",
+      "packages/ctower-kernel/migrations/0038_project_delivery_seat_carriage.sql"
     ],
     "AC-PROD-01": [
       "contracts/domain/intake/thread-intake.schema.json",
@@ -319,7 +373,11 @@
       "contracts/domain/migration/ctower-project-import-run.schema.json",
       "contracts/domain/migration/ctower-project-source-selection.schema.json",
       "contracts/domain/migration/migration-boundary.schema.json",
-      "contracts/domain/migration/migration-vectors.json"
+      "contracts/domain/migration/migration-vectors.json",
+      "packages/ctower-kernel/migrations/0039_project_seat_credentials.sql"
+    ],
+    "AC-SEC-02": [
+      "packages/ctower-kernel/migrations/0039_project_seat_credentials.sql"
     ],
     "AC-SEC-03": [
       "contracts/domain/migration/ctower-project-alias-map-v2.schema.json",
@@ -457,7 +515,8 @@
       "contracts/bootstrap/first-tenant-request.schema.json",
       "contracts/domain/intake/thread-intake.schema.json",
       "packages/ctower-kernel/migrations/0002_ticket_slice.sql",
-      "packages/ctower-kernel/migrations/0003_privileges.sql"
+      "packages/ctower-kernel/migrations/0003_privileges.sql",
+      "packages/ctower-kernel/migrations/0039_project_seat_credentials.sql"
     ],
     "INV-03": [
       "contracts/domain/events/event-envelope.schema.json",
@@ -565,7 +624,8 @@
       "contracts/domain/migration/ctower-project-import-run.schema.json",
       "contracts/domain/migration/ctower-project-source-selection.schema.json",
       "contracts/domain/migration/migration-boundary.schema.json",
-      "contracts/domain/migration/migration-vectors.json"
+      "contracts/domain/migration/migration-vectors.json",
+      "packages/ctower-kernel/migrations/0039_project_seat_credentials.sql"
     ],
     "INV-34": [
       "contracts/domain/outbox-delivery.schema.json",
@@ -644,6 +704,7 @@
       "contracts/components/notification.schema.json",
       "contracts/components/persona.schema.json",
       "contracts/components/project.schema.json",
+      "contracts/components/seat-catalog.schema.json",
       "contracts/components/skill.schema.json",
       "contracts/components/supervisor.schema.json",
       "contracts/components/target.schema.json",
@@ -653,6 +714,20 @@
       "contracts/components/workspace.schema.json",
       "packs/components/agent-profiles/commander.protected-cli/v1.yaml",
       "packs/components/capabilities/control.api/v1.yaml",
+      "packs/components/checkpoints/ctower.i1-0/v1.yaml",
+      "packs/components/checkpoints/ctower.i1-1/v1.yaml",
+      "packs/components/checkpoints/ctower.i1-2/v1.yaml",
+      "packs/components/checkpoints/ctower.i1-3/v1.yaml",
+      "packs/components/checkpoints/ctower.i1-4/v1.yaml",
+      "packs/components/checkpoints/ctower.i1-5/v1.yaml",
+      "packs/components/checkpoints/ctower.i1-6/v1.yaml",
+      "packs/components/checkpoints/ctower.i1-7/v1.yaml",
+      "packs/components/checkpoints/ctower.i2-1/v1.yaml",
+      "packs/components/checkpoints/ctower.i2-2/v1.yaml",
+      "packs/components/checkpoints/ctower.i2-3/v1.yaml",
+      "packs/components/checkpoints/ctower.i2-4/v1.yaml",
+      "packs/components/checkpoints/ctower.i2-5/v1.yaml",
+      "packs/components/checkpoints/ctower.i2-6/v1.yaml",
       "packs/components/environments/local.linux/v1.yaml",
       "packs/components/goals/company.trusted-delivery/v1.yaml",
       "packs/components/harnesses/local.generated-client/v1.yaml",
@@ -707,7 +782,22 @@
       "contracts/components/checkpoint.schema.json",
       "contracts/domain/project-delivery/project-delivery-vectors.json",
       "contracts/domain/project-delivery/project-delivery.schema.json",
-      "packages/ctower-kernel/migrations/0027_i17a_cutover_delivery.sql"
+      "packages/ctower-kernel/migrations/0027_i17a_cutover_delivery.sql",
+      "packages/ctower-kernel/migrations/0038_project_delivery_seat_carriage.sql",
+      "packs/components/checkpoints/ctower.i1-0/v1.yaml",
+      "packs/components/checkpoints/ctower.i1-1/v1.yaml",
+      "packs/components/checkpoints/ctower.i1-2/v1.yaml",
+      "packs/components/checkpoints/ctower.i1-3/v1.yaml",
+      "packs/components/checkpoints/ctower.i1-4/v1.yaml",
+      "packs/components/checkpoints/ctower.i1-5/v1.yaml",
+      "packs/components/checkpoints/ctower.i1-6/v1.yaml",
+      "packs/components/checkpoints/ctower.i1-7/v1.yaml",
+      "packs/components/checkpoints/ctower.i2-1/v1.yaml",
+      "packs/components/checkpoints/ctower.i2-2/v1.yaml",
+      "packs/components/checkpoints/ctower.i2-3/v1.yaml",
+      "packs/components/checkpoints/ctower.i2-4/v1.yaml",
+      "packs/components/checkpoints/ctower.i2-5/v1.yaml",
+      "packs/components/checkpoints/ctower.i2-6/v1.yaml"
     ],
     "INV-60": [
       "contracts/domain/migration/ctower-project-cutover-health.schema.json",
@@ -717,6 +807,18 @@
       "packages/ctower-kernel/migrations/0029_i17b_checkpoint_catalog_kind.sql",
       "packages/ctower-kernel/migrations/0030_i17b_migration_truth_spine.sql",
       "packages/ctower-kernel/migrations/0031_i17b_bounded_truth_spine.sql"
+    ],
+    "INV-62": [
+      "packages/ctower-kernel/migrations/0038_project_delivery_seat_carriage.sql"
+    ],
+    "INV-64": [
+      "contracts/components/checkpoint.schema.json",
+      "contracts/components/seat-catalog.schema.json",
+      "contracts/components/versioned-component.schema.json",
+      "contracts/domain/project-delivery/project-delivery-vectors.json",
+      "contracts/domain/project-delivery/project-delivery.schema.json",
+      "contracts/http/openapi.yaml",
+      "packages/ctower-kernel/migrations/0038_project_delivery_seat_carriage.sql"
     ],
     "SPEC#aggregate-boundaries-and-relationships": [
       "contracts/domain/intake/thread-intake.schema.json",
@@ -866,15 +968,33 @@
       "packages/ctower-kernel/migrations/0033_development_offhost_ack.sql",
       "packages/ctower-kernel/migrations/0034_durability_finalizer_quarantine.sql",
       "packages/ctower-kernel/migrations/0035_board_source_lookup.sql",
-      "packages/ctower-kernel/migrations/0036_migration_ledger_role.sql"
+      "packages/ctower-kernel/migrations/0036_migration_ledger_role.sql",
+      "packages/ctower-kernel/migrations/0038_project_delivery_seat_carriage.sql",
+      "packages/ctower-kernel/migrations/0039_project_seat_credentials.sql"
     ],
     "SPEC#project-delivery-projection": [
       "contracts/components/checkpoint.schema.json",
+      "contracts/components/seat-catalog.schema.json",
       "contracts/domain/project-delivery/project-delivery-vectors.json",
       "contracts/domain/project-delivery/project-delivery.schema.json",
       "packages/ctower-kernel/migrations/0027_i17a_cutover_delivery.sql",
       "packages/ctower-kernel/migrations/0029_i17b_checkpoint_catalog_kind.sql",
-      "packages/ctower-kernel/migrations/0037_relax_checkpoint_key_domain.sql"
+      "packages/ctower-kernel/migrations/0037_relax_checkpoint_key_domain.sql",
+      "packages/ctower-kernel/migrations/0038_project_delivery_seat_carriage.sql",
+      "packs/components/checkpoints/ctower.i1-0/v1.yaml",
+      "packs/components/checkpoints/ctower.i1-1/v1.yaml",
+      "packs/components/checkpoints/ctower.i1-2/v1.yaml",
+      "packs/components/checkpoints/ctower.i1-3/v1.yaml",
+      "packs/components/checkpoints/ctower.i1-4/v1.yaml",
+      "packs/components/checkpoints/ctower.i1-5/v1.yaml",
+      "packs/components/checkpoints/ctower.i1-6/v1.yaml",
+      "packs/components/checkpoints/ctower.i1-7/v1.yaml",
+      "packs/components/checkpoints/ctower.i2-1/v1.yaml",
+      "packs/components/checkpoints/ctower.i2-2/v1.yaml",
+      "packs/components/checkpoints/ctower.i2-3/v1.yaml",
+      "packs/components/checkpoints/ctower.i2-4/v1.yaml",
+      "packs/components/checkpoints/ctower.i2-5/v1.yaml",
+      "packs/components/checkpoints/ctower.i2-6/v1.yaml"
     ],
     "SPEC#retention-erasure-backup-and-restore": [
       "contracts/evidence/object-manifest.schema.json",
@@ -889,6 +1009,9 @@
       "contracts/workflow/review-plan.schema.json",
       "packs/policies/execution/software-factory-v1.yaml",
       "packs/policies/gates/software-factory-v1.yaml"
+    ],
+    "SPEC#scoped-credentials-and-secret-injection": [
+      "packages/ctower-kernel/migrations/0039_project_seat_credentials.sql"
     ],
     "SPEC#security-objectives": [
       "packages/ctower-kernel/migrations/0006_narrow_head_update_privileges.sql",
@@ -931,6 +1054,7 @@
       "contracts/components/notification.schema.json",
       "contracts/components/persona.schema.json",
       "contracts/components/project.schema.json",
+      "contracts/components/seat-catalog.schema.json",
       "contracts/components/skill.schema.json",
       "contracts/components/supervisor.schema.json",
       "contracts/components/target.schema.json",
@@ -940,6 +1064,20 @@
       "contracts/components/workspace.schema.json",
       "packs/components/agent-profiles/commander.protected-cli/v1.yaml",
       "packs/components/capabilities/control.api/v1.yaml",
+      "packs/components/checkpoints/ctower.i1-0/v1.yaml",
+      "packs/components/checkpoints/ctower.i1-1/v1.yaml",
+      "packs/components/checkpoints/ctower.i1-2/v1.yaml",
+      "packs/components/checkpoints/ctower.i1-3/v1.yaml",
+      "packs/components/checkpoints/ctower.i1-4/v1.yaml",
+      "packs/components/checkpoints/ctower.i1-5/v1.yaml",
+      "packs/components/checkpoints/ctower.i1-6/v1.yaml",
+      "packs/components/checkpoints/ctower.i1-7/v1.yaml",
+      "packs/components/checkpoints/ctower.i2-1/v1.yaml",
+      "packs/components/checkpoints/ctower.i2-2/v1.yaml",
+      "packs/components/checkpoints/ctower.i2-3/v1.yaml",
+      "packs/components/checkpoints/ctower.i2-4/v1.yaml",
+      "packs/components/checkpoints/ctower.i2-5/v1.yaml",
+      "packs/components/checkpoints/ctower.i2-6/v1.yaml",
       "packs/components/environments/local.linux/v1.yaml",
       "packs/components/goals/company.trusted-delivery/v1.yaml",
       "packs/components/harnesses/local.generated-client/v1.yaml",

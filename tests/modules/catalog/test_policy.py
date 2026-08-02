@@ -3,6 +3,7 @@ from __future__ import annotations
 import hashlib
 import json
 from datetime import UTC, datetime
+from typing import cast
 from uuid import UUID
 
 import rfc8785
@@ -37,8 +38,8 @@ def test_minimal_bundle_validates_and_reordering_is_semantically_stable() -> Non
         }
     )
 
-    validated = policy.validate("example-company", bundle)
-    reordered_validation = policy.validate("example-company", reordered)
+    validated = policy.validate(bundle.company.key, bundle)
+    reordered_validation = policy.validate(bundle.company.key, reordered)
 
     assert not isinstance(validated, CatalogProblem)
     assert not isinstance(reordered_validation, CatalogProblem)
@@ -55,7 +56,7 @@ def test_minimal_bundle_validates_and_reordering_is_semantically_stable() -> Non
 def test_plan_is_deterministic_and_exact_export_replans_with_zero_actions() -> None:
     bundle = minimal_bundle()
     policy = CatalogPolicy(FileSchemas())
-    first = policy.plan("example-company", bundle, None)
+    first = policy.plan(bundle.company.key, bundle, None)
     assert not isinstance(first, CatalogProblem)
     active = ActiveBundle(
         version=1,
@@ -67,9 +68,9 @@ def test_plan_is_deterministic_and_exact_export_replans_with_zero_actions() -> N
         checks=first.checks,
     )
 
-    repeated = policy.plan("example-company", bundle, active)
+    repeated = policy.plan(bundle.company.key, bundle, active)
     reordered = policy.plan(
-        "example-company",
+        bundle.company.key,
         bundle.model_copy(update={"resources": tuple(reversed(bundle.resources))}),
         active,
     )
@@ -89,7 +90,7 @@ def test_plan_is_deterministic_and_exact_export_replans_with_zero_actions() -> N
 def test_changed_header_produces_an_explicit_pointer_action() -> None:
     bundle = minimal_bundle()
     policy = CatalogPolicy(FileSchemas())
-    initial = policy.plan("example-company", bundle, None)
+    initial = policy.plan(bundle.company.key, bundle, None)
     assert not isinstance(initial, CatalogProblem)
     active = ActiveBundle(
         version=1,
@@ -106,7 +107,7 @@ def test_changed_header_produces_an_explicit_pointer_action() -> None:
         }
     )
 
-    planned = policy.plan("example-company", changed, active)
+    planned = policy.plan(bundle.company.key, changed, active)
 
     assert not isinstance(planned, CatalogProblem)
     assert {action.kind for action in planned.actions} == {
@@ -118,7 +119,7 @@ def test_changed_header_produces_an_explicit_pointer_action() -> None:
 def test_requires_are_bundle_closed_while_supersedes_resolves_from_active() -> None:
     bundle = minimal_bundle()
     policy = CatalogPolicy(FileSchemas())
-    initial = policy.plan("example-company", bundle, None)
+    initial = policy.plan(bundle.company.key, bundle, None)
     assert not isinstance(initial, CatalogProblem)
     active = ActiveBundle(
         version=1,
@@ -131,8 +132,8 @@ def test_requires_are_bundle_closed_while_supersedes_resolves_from_active() -> N
     )
     successor = _superseding_bundle(bundle, "company.trusted-delivery")
 
-    validated = policy.validate("example-company", successor)
-    planned = policy.plan("example-company", successor, active)
+    validated = policy.validate(bundle.company.key, successor)
+    planned = policy.plan(bundle.company.key, successor, active)
 
     assert not isinstance(validated, CatalogProblem)
     assert not isinstance(planned, CatalogProblem)
@@ -144,7 +145,7 @@ def test_requires_are_bundle_closed_while_supersedes_resolves_from_active() -> N
             "bundle": successor,
         }
     )
-    repeated = policy.plan("example-company", successor, successor_active)
+    repeated = policy.plan(bundle.company.key, successor, successor_active)
     assert not isinstance(repeated, CatalogProblem)
     assert repeated.actions == ()
     dependency = next(
@@ -160,7 +161,7 @@ def test_requires_are_bundle_closed_while_supersedes_resolves_from_active() -> N
         }
     )
 
-    refused = policy.plan("example-company", incomplete, active)
+    refused = policy.plan(bundle.company.key, incomplete, active)
 
     assert isinstance(refused, CatalogProblem)
     assert refused.code == "bundle-reference-invalid"
@@ -169,7 +170,7 @@ def test_requires_are_bundle_closed_while_supersedes_resolves_from_active() -> N
 def test_activation_replans_against_the_locked_base_and_exact_plan_digest() -> None:
     bundle = minimal_bundle()
     policy = CatalogPolicy(FileSchemas())
-    planned = policy.plan("example-company", bundle, None)
+    planned = policy.plan(bundle.company.key, bundle, None)
     assert not isinstance(planned, CatalogProblem)
     command = CompanyBundleApply(
         client_command_id=_COMMAND_ID,
@@ -178,14 +179,14 @@ def test_activation_replans_against_the_locked_base_and_exact_plan_digest() -> N
         plan_digest=planned.plan_digest,
     )
 
-    assert policy.prepare_activation("example-company", command, None) == planned
+    assert policy.prepare_activation(bundle.company.key, command, None) == planned
     wrong_base = policy.prepare_activation(
-        "example-company",
+        bundle.company.key,
         command.model_copy(update={"expected_active_version": 1}),
         None,
     )
     wrong_plan = policy.prepare_activation(
-        "example-company",
+        bundle.company.key,
         command.model_copy(update={"plan_digest": "sha256:" + "0" * 64}),
         None,
     )
@@ -199,7 +200,7 @@ def test_activation_replans_against_the_locked_base_and_exact_plan_digest() -> N
 def test_activation_refuses_a_planned_removal_until_lifecycle_apply_exists() -> None:
     bundle = minimal_bundle()
     policy = CatalogPolicy(FileSchemas())
-    initial = policy.plan("example-company", bundle, None)
+    initial = policy.plan(bundle.company.key, bundle, None)
     assert not isinstance(initial, CatalogProblem)
     active = ActiveBundle(
         version=1,
@@ -219,7 +220,7 @@ def test_activation_refuses_a_planned_removal_until_lifecycle_apply_exists() -> 
             )
         }
     )
-    planned = policy.plan("example-company", removal, active)
+    planned = policy.plan(bundle.company.key, removal, active)
     assert not isinstance(planned, CatalogProblem)
     assert BundleActionKind.DEPRECATE in {action.kind for action in planned.actions}
     command = CompanyBundleApply(
@@ -229,7 +230,7 @@ def test_activation_refuses_a_planned_removal_until_lifecycle_apply_exists() -> 
         plan_digest=planned.plan_digest,
     )
 
-    refused = policy.prepare_activation("example-company", command, active)
+    refused = policy.prepare_activation(bundle.company.key, command, active)
 
     assert isinstance(refused, CatalogProblem)
     assert refused.code == "bundle-compatibility-refused"
@@ -289,7 +290,7 @@ def test_digest_schema_reference_compatibility_and_tenant_fail_closed() -> None:
     assert isinstance(tenant, CatalogProblem)
     assert tenant.code == "bundle-grant-refused"
     for candidate, expected in cases:
-        problem = policy.validate("example-company", candidate)
+        problem = policy.validate(bundle.company.key, candidate)
         assert isinstance(problem, CatalogProblem)
         assert problem.code == expected
 
@@ -303,8 +304,8 @@ def test_latest_and_secret_bearing_payloads_are_refused() -> None:
     secret_payload = {**workflow.payload, "secret": "forbidden"}
     secret = _replace_payload(bundle, workflow, secret_payload)
 
-    latest_problem = policy.validate("example-company", latest)
-    secret_problem = policy.validate("example-company", secret)
+    latest_problem = policy.validate(bundle.company.key, latest)
+    secret_problem = policy.validate(bundle.company.key, secret)
 
     assert isinstance(latest_problem, CatalogProblem)
     assert latest_problem.code == "bundle-reference-invalid"
@@ -334,8 +335,8 @@ def test_revoked_components_and_ambiguous_assignment_slots_are_refused() -> None
         }
     )
 
-    revoked_problem = policy.validate("example-company", revoked)
-    ambiguous_problem = policy.validate("example-company", ambiguous)
+    revoked_problem = policy.validate(bundle.company.key, revoked)
+    ambiguous_problem = policy.validate(bundle.company.key, ambiguous)
 
     assert isinstance(revoked_problem, CatalogProblem)
     assert revoked_problem.code == "bundle-reference-invalid"
@@ -347,30 +348,86 @@ def test_checkpoint_set_refuses_a_duplicate_project_key_and_an_unscoped_checkpoi
     """D3: both branches of the checkpoint-set rule refuse, and a clean set validates."""
 
     policy = CatalogPolicy(FileSchemas())
+    bundle = minimal_bundle()
     clean = _with_checkpoints(
-        minimal_bundle(),
-        _checkpoint_resource("first", "I1.1"),
-        _checkpoint_resource("second", "I1.2"),
+        bundle,
+        _checkpoint_resource(bundle.company.key, "first", "fixture.1"),
+        _checkpoint_resource(bundle.company.key, "second", "fixture.2"),
     )
     duplicated = _with_checkpoints(
-        minimal_bundle(),
-        _checkpoint_resource("first", "I1.1"),
-        _checkpoint_resource("second", "I1.1"),
+        bundle,
+        _checkpoint_resource(bundle.company.key, "first", "fixture.1"),
+        _checkpoint_resource(bundle.company.key, "second", "fixture.1"),
     )
     unscoped = _with_checkpoints(
-        minimal_bundle(),
-        _checkpoint_resource("first", "I1.1", project=None),
+        bundle,
+        _checkpoint_resource(bundle.company.key, "first", "fixture.1", project=None),
     )
 
-    assert not isinstance(policy.validate("example-company", clean), CatalogProblem)
-    duplicate_problem = policy.validate("example-company", duplicated)
-    unscoped_problem = policy.validate("example-company", unscoped)
+    assert not isinstance(policy.validate(bundle.company.key, clean), CatalogProblem)
+    duplicate_problem = policy.validate(bundle.company.key, duplicated)
+    unscoped_problem = policy.validate(bundle.company.key, unscoped)
 
     assert isinstance(duplicate_problem, CatalogProblem)
     assert duplicate_problem.code == "bundle-reference-invalid"
     assert "may occur only once" in duplicate_problem.detail
     assert isinstance(unscoped_problem, CatalogProblem)
     assert unscoped_problem.code == "bundle-grant-refused"
+
+
+def test_seat_catalog_is_generic_unique_data_and_assignments_pin_exact_revision() -> None:
+    policy, base = CatalogPolicy(FileSchemas()), minimal_bundle()
+    catalog = _seat_catalog_resource(
+        base.company.key, (("reviewer-a", "Reviewer A"), ("reviewer-b", "Reviewer B"))
+    )
+    checkpoint = _checkpoint_resource(base.company.key, "first", "audit-ready")
+    criteria = cast(list[dict[str, JsonValue]], checkpoint.payload["criteria"])
+    criterion = dict(criteria[0])
+    criterion["assigned_seat"] = {
+        "seat_key": "reviewer-a",
+        "catalog_key": catalog.component.key,
+        "catalog_revision": catalog.component.revision,
+        "catalog_digest": catalog.component.content_digest,
+    }
+    checkpoint_bundle = base.model_copy(update={"resources": (*base.resources, checkpoint)})
+    checkpoint = _replace_payload(
+        checkpoint_bundle,
+        checkpoint,
+        {**checkpoint.payload, "criteria": [criterion]},
+    ).resources[-1]
+    clean = base.model_copy(update={"resources": (*base.resources, catalog, checkpoint)})
+
+    assert not isinstance(policy.validate(base.company.key, clean), CatalogProblem)
+
+    missing = dict(criterion)
+    missing["assigned_seat"] = {
+        **dict(cast(dict[str, JsonValue], criterion["assigned_seat"])),
+        "seat_key": "not-configured",
+    }
+    invalid_checkpoint = _replace_payload(
+        clean,
+        checkpoint,
+        {**checkpoint.payload, "criteria": [missing]},
+    ).resources[-1]
+    invalid = clean.model_copy(
+        update={
+            "resources": tuple(
+                invalid_checkpoint if item == checkpoint else item for item in clean.resources
+            )
+        }
+    )
+    invalid_problem = policy.validate(base.company.key, invalid)
+    assert isinstance(invalid_problem, CatalogProblem)
+    assert invalid_problem.code == "bundle-reference-invalid"
+
+    duplicate = _seat_catalog_resource(
+        base.company.key,
+        (("reviewer-a", "First label"), ("reviewer-a", "Second label")),
+    )
+    duplicated = base.model_copy(update={"resources": (*base.resources, duplicate)})
+    duplicate_problem = policy.validate(base.company.key, duplicated)
+    assert isinstance(duplicate_problem, CatalogProblem)
+    assert duplicate_problem.code == "bundle-reference-invalid"
 
 
 def _with_checkpoints(
@@ -381,12 +438,38 @@ def _with_checkpoints(
 
 
 def _checkpoint_resource(
+    tenant: str,
     component_key: str,
     checkpoint_key: str,
     *,
     project: str | None = "ctower",
 ) -> CompanyBundleResource:
-    payload: dict[str, JsonValue] = {
+    payload = _checkpoint_payload(component_key, checkpoint_key)
+    digest = "sha256:" + hashlib.sha256(rfc8785.dumps(payload)).hexdigest()
+    return CompanyBundleResource.model_validate_json(
+        json.dumps(
+            {
+                "component": {
+                    "schema": "ctower.versioned-component/v1",
+                    "kind": "checkpoint",
+                    "key": f"ctower.{component_key}",
+                    "scope": {"tenant": tenant, "project": project},
+                    "revision": 1,
+                    "content_digest": digest,
+                    "schema_ref": "ctower.checkpoint/v1",
+                    "lifecycle": "published",
+                    "compatibility": {"ctower": ">=0.0.0,<1.0.0", "requires": []},
+                    "provenance": _reviewed_provenance("SPEC#project-delivery-projection", digest),
+                    "payload_ref": "object:" + digest,
+                },
+                "payload": payload,
+            }
+        )
+    )
+
+
+def _checkpoint_payload(component_key: str, checkpoint_key: str) -> dict[str, JsonValue]:
+    return {
         "schema": "ctower.checkpoint/v1",
         "key": f"ctower.{component_key}",
         "checkpoint_key": checkpoint_key,
@@ -403,33 +486,43 @@ def _checkpoint_resource(
         ],
         "dependency_refs": [],
     }
+
+
+def _seat_catalog_resource(
+    tenant: str,
+    members: tuple[tuple[str, str], ...],
+) -> CompanyBundleResource:
+    payload: dict[str, JsonValue] = {
+        "schema": "ctower.seat-catalog/v1",
+        "key": "company.delivery-seats",
+        "display_name": "Configured delivery seats",
+        "members": [{"key": key, "label": label} for key, label in members],
+    }
     digest = "sha256:" + hashlib.sha256(rfc8785.dumps(payload)).hexdigest()
     return CompanyBundleResource.model_validate_json(
         json.dumps(
             {
                 "component": {
                     "schema": "ctower.versioned-component/v1",
-                    "kind": "checkpoint",
-                    "key": f"ctower.{component_key}",
-                    "scope": {"tenant": "example-company", "project": project},
+                    "kind": "seat_catalog",
+                    "key": "company.delivery-seats",
+                    "scope": {"tenant": tenant, "project": None},
                     "revision": 1,
                     "content_digest": digest,
-                    "schema_ref": "ctower.checkpoint/v1",
+                    "schema_ref": "ctower.seat-catalog/v1",
                     "lifecycle": "published",
                     "compatibility": {"ctower": ">=0.0.0,<1.0.0", "requires": []},
-                    "provenance": [
-                        {
-                            "kind": "reviewed-contract",
-                            "source": "SPEC#project-delivery-projection",
-                            "digest": digest,
-                        }
-                    ],
+                    "provenance": _reviewed_provenance("SPEC#per-slot-seat-accountability", digest),
                     "payload_ref": "object:" + digest,
                 },
                 "payload": payload,
             }
         )
     )
+
+
+def _reviewed_provenance(source: str, digest: str) -> list[dict[str, str]]:
+    return [{"kind": "reviewed-contract", "source": source, "digest": digest}]
 
 
 def _replace_payload(

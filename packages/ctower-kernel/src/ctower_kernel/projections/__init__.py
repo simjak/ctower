@@ -22,6 +22,8 @@ from ctower_kernel.projections.project_delivery import (
     DeliveryState,
     ProjectDeliveryRow,
     ProjectDeliveryView,
+    SeatCatalogReference,
+    SeatIdentity,
     derive_project_delivery_row,
 )
 
@@ -44,6 +46,8 @@ __all__ = [
     "ProjectDeliveryView",
     "ProjectionHealth",
     "Projections",
+    "SeatCatalogReference",
+    "SeatIdentity",
     "derive_board_card",
     "derive_project_delivery_row",
 ]

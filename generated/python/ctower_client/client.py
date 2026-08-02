@@ -1,6 +1,6 @@
 """DO NOT EDIT: generated file; regenerate from declared inputs.
 
-Authored contract digest: sha256:1ca4a6823b673e720c5e1fd0e39445905a701d279b773eb99689536a8de41c62
+Authored contract digest: sha256:29a4dc94972b9c27752779112fa40d489166fe5bd05c41ca75b96eea22cb3674
 """
 
 from __future__ import annotations
@@ -56,6 +56,9 @@ from ctower_client.models import (
     ProofReceipt,
     RelationRequest,
     ResolveCloseRequest,
+    SeatCredentialIssueRequest,
+    SeatCredentialReceipt,
+    SeatCredentialRevocationRequest,
     SyntheticRunReceipt,
     SyntheticRunRequest,
     SyntheticRunResource,
@@ -74,7 +77,10 @@ from ctower_client.models import (
     WorkflowTransitionRequest,
 )
 
-__all__ = ["CtowerClient", "CtowerProblemError"]
+__all__ = ["CtowerClient", "CtowerProblemError", "ProjectKey"]
+
+
+type ProjectKey = Annotated[str, Field(pattern="^[a-z][a-z0-9-]{2,63}$")]
 
 
 class _ProblemModel(Protocol):
@@ -555,7 +561,7 @@ class CtowerClient:
     @validate_call(config=ConfigDict(strict=True, arbitrary_types_allowed=True))
     def get_project_delivery(
         self,
-        project_key: str,
+        project_key: ProjectKey,
     ) -> ProjectDeliveryView:
         response = self._http.get(
             f"/v1/projects/{quote(str(project_key), safe='')}/delivery",
@@ -615,6 +621,27 @@ class CtowerClient:
             ),
         )
         return _response(response, {200: TimelineResponse}, {401: Problem, 404: Problem, 422: Problem})
+
+    @validate_call(config=ConfigDict(strict=True, arbitrary_types_allowed=True))
+    def issue_seat_credential(
+        self,
+        request: SeatCredentialIssueRequest,
+        *,
+        command_id: UUID,
+    ) -> SeatCredentialReceipt:
+        response = self._http.post(
+            "/v1/admin/seat-credentials",
+            content=request.model_dump_json(),
+            headers=self._telemetry_headers(
+                self._context(command_id),
+                {
+                    **self._auth_headers(),
+                    "Content-Type": "application/json",
+                    "Idempotency-Key": str(command_id),
+                },
+            ),
+        )
+        return _response(response, {201: SeatCredentialReceipt, 202: SeatCredentialReceipt}, {401: Problem, 403: Problem, 409: Problem, 422: Problem})
 
     @validate_call(config=ConfigDict(strict=True, arbitrary_types_allowed=True))
     def list_ticket_assignments(
@@ -821,6 +848,28 @@ class CtowerClient:
             ),
         )
         return _response(response, {200: WorkflowReceipt, 202: WorkflowReceipt}, {401: Problem, 404: Problem, 409: Problem, 422: Problem})
+
+    @validate_call(config=ConfigDict(strict=True, arbitrary_types_allowed=True))
+    def revoke_seat_credential(
+        self,
+        credential_id: UUID,
+        request: SeatCredentialRevocationRequest,
+        *,
+        command_id: UUID,
+    ) -> SeatCredentialReceipt:
+        response = self._http.post(
+            f"/v1/admin/seat-credentials/{quote(str(credential_id), safe='')}/revocation",
+            content=request.model_dump_json(),
+            headers=self._telemetry_headers(
+                self._context(command_id),
+                {
+                    **self._auth_headers(),
+                    "Content-Type": "application/json",
+                    "Idempotency-Key": str(command_id),
+                },
+            ),
+        )
+        return _response(response, {200: SeatCredentialReceipt, 202: SeatCredentialReceipt}, {401: Problem, 403: Problem, 404: Problem, 409: Problem, 422: Problem})
 
     @validate_call(config=ConfigDict(strict=True, arbitrary_types_allowed=True))
     def run_synthetic_workflow(

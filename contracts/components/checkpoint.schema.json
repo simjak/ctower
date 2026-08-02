@@ -91,6 +91,29 @@
             "type": "string",
             "pattern": "^[a-z][a-z0-9.-]{2,127}@[1-9][0-9]*$"
           }
+        },
+        "proof_link": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["ticket_id", "criterion_key"],
+          "properties": {
+            "ticket_id": {"type": "string", "format": "uuid"},
+            "criterion_key": {
+              "type": "string",
+              "pattern": "^[a-z][a-z0-9._-]*$"
+            }
+          }
+        },
+        "assigned_seat": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["seat_key", "catalog_key", "catalog_revision", "catalog_digest"],
+          "properties": {
+            "seat_key": {"type": "string", "pattern": "^[a-z][a-z0-9._-]{1,95}$"},
+            "catalog_key": {"type": "string", "pattern": "^[a-z][a-z0-9.-]{2,127}$"},
+            "catalog_revision": {"type": "integer", "minimum": 1},
+            "catalog_digest": {"type": "string", "pattern": "^sha256:[a-f0-9]{64}$"}
+          }
         }
       }
     }

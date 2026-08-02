@@ -19,6 +19,7 @@ from ctower_client.operations import OperationSpec, SpoolPolicy, operation_for_c
 from ctowerctl import (
     _bootstrap_commands,
     _company_commands,
+    _credential_commands,
     _intake_commands,
     _migration_commands,
     _ops_commands,
@@ -41,7 +42,7 @@ from ctowerctl._output import (
 from ctowerctl._parser import parse_arguments
 from ctowerctl.spool import Spool, SpoolCommand, SpoolEntry, SpoolError, SpoolState
 
-__all__ = ["main"]
+__all__ = ["main", "write_result"]
 
 type JsonValue = str | int | float | bool | list[JsonValue] | dict[str, JsonValue] | None
 type JsonObject = dict[str, JsonValue]
@@ -98,7 +99,7 @@ def _run_command(
         identity = f"command_id={subject}" if subject is not None else "query"
         error_stream.write(f"temporary {identity}: ctower is unreachable\n")
         return int(ExitCode.TEMPORARY)
-    _write_result(arguments, result, output_stream)
+    write_result(arguments, result, output_stream)
     return int(code)
 
 
@@ -117,6 +118,8 @@ def _execute(
     if operation is None:
         raise ValueError("usage: command is absent from generated registry")
     credential = read_authority(authority_stream)
+    if namespace.area == "credential":
+        return _execute_online_credential(base_url, credential, namespace, operation)
     if namespace.area == "migration" and (operation.mutation or operation.refusal_only):
         return _execute_online_migration(base_url, credential, namespace, operation)
     if operation.mutation:
@@ -202,6 +205,22 @@ def _execute_online_migration(
     return result, ExitCode.SUCCESS
 
 
+def _execute_online_credential(
+    base_url: str,
+    credential: str,
+    arguments: argparse.Namespace,
+    operation: OperationSpec,
+) -> tuple[BaseModel, ExitCode]:
+    """Execute one operator-only credential write without replay spooling."""
+
+    if operation.spool_policy is not SpoolPolicy.FORBIDDEN:
+        raise ValueError("usage: credential operations require forbidden spool metadata")
+    with CtowerClient(base_url, credential=credential) as client:
+        result = _credential_commands.execute_online(arguments, client)
+    code = ExitCode.SUCCESS if result.durability_state == "accepted" else ExitCode.TEMPORARY
+    return result, code
+
+
 def _execute_query(arguments: object, client: CtowerClient) -> BaseModel:
     namespace = cast("argparse.Namespace", arguments)
     area = cast(str, namespace.area)
@@ -244,7 +263,9 @@ def _execute_synthetic(
     return run, ExitCode.TEMPORARY
 
 
-def _write_result(arguments: object, result: BaseModel, stream: TextIO) -> None:
+def write_result(arguments: object, result: BaseModel, stream: TextIO) -> None:
+    """Write one command result through the public CLI presentation boundary."""
+
     namespace = cast("argparse.Namespace", arguments)
     if getattr(namespace, "cli_name", None) == "company bundle export" and isinstance(
         result, CompanyBundleExportResult

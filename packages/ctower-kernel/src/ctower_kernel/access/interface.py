@@ -5,11 +5,25 @@ from __future__ import annotations
 import hashlib
 import ipaddress
 import json
-from collections.abc import Callable
+from collections.abc import Callable, Mapping
 from datetime import UTC, datetime
 from uuid import UUID
 
-from ctower_kernel.record import Actor, BootstrapCommand, BootstrapReceipt, Record, RecordProblem
+from ctower_kernel.record import (
+    Actor,
+    BootstrapCommand,
+    BootstrapReceipt,
+    PrincipalKind,
+    Record,
+    RecordProblem,
+    credential_scope_refusal,
+)
+from ctower_kernel.record.credentials import (
+    CredentialScope,
+    SeatCredentialIssue,
+    SeatCredentialReceipt,
+    SeatCredentialRevocation,
+)
 from ctower_kernel.telemetry import NoopTelemetry, Telemetry, TelemetryContext
 
 __all__ = ["Access", "digest_capability"]
@@ -98,6 +112,73 @@ class Access:
         actor = self._record.actor_for_credential(hashlib.sha256(credential.encode()).digest())
         return actor if actor is not None else _unauthorized()
 
+    def authorize_scope(
+        self,
+        actor: Actor,
+        scope: CredentialScope,
+        *,
+        command_id: UUID | None = None,
+    ) -> RecordProblem | None:
+        """Require a named mutation scope only for an issued seat bearer."""
+
+        return credential_scope_refusal(actor, scope, command_id=command_id)
+
+    def issue_seat_credential(
+        self,
+        actor: Actor,
+        command: SeatCredentialIssue,
+        *,
+        telemetry: TelemetryContext,
+    ) -> SeatCredentialReceipt | RecordProblem:
+        """Allow only the tenant operator to append a secret-free issuance."""
+
+        if actor.kind is not PrincipalKind.OPERATOR:
+            return RecordProblem(
+                code="credential-issuance-refused",
+                detail="Seat credential issuance requires operator authority.",
+                status=403,
+                title="Seat credential issuance refused",
+                command_id=command.client_command_id,
+            )
+        request_digest = hashlib.sha256(_canonical_json(command.request_payload())).digest()
+        outcome = self._record.seat_credentials.issue(
+            actor,
+            command,
+            request_digest=request_digest,
+            now=self._clock(),
+            telemetry=telemetry,
+        )
+        self._emit("access.issue_seat_credential", telemetry, outcome)
+        return outcome
+
+    def revoke_seat_credential(
+        self,
+        actor: Actor,
+        command: SeatCredentialRevocation,
+        *,
+        telemetry: TelemetryContext,
+    ) -> SeatCredentialReceipt | RecordProblem:
+        """Allow only the tenant operator to append one revocation."""
+
+        if actor.kind is not PrincipalKind.OPERATOR:
+            return RecordProblem(
+                code="credential-revocation-refused",
+                detail="Seat credential revocation requires operator authority.",
+                status=403,
+                title="Seat credential revocation refused",
+                command_id=command.client_command_id,
+            )
+        request_digest = hashlib.sha256(_canonical_json(command.request_payload())).digest()
+        outcome = self._record.seat_credentials.revoke(
+            actor,
+            command,
+            request_digest=request_digest,
+            now=self._clock(),
+            telemetry=telemetry,
+        )
+        self._emit("access.revoke_seat_credential", telemetry, outcome)
+        return outcome
+
     def authenticate_importer(
         self,
         authorization: str | None,
@@ -150,6 +231,19 @@ class Access:
         )
         return actor if actor is not None else _unauthorized()
 
+    def _emit(
+        self,
+        name: str,
+        telemetry: TelemetryContext,
+        outcome: SeatCredentialReceipt | RecordProblem,
+    ) -> None:
+        self._telemetry.emit(
+            name,
+            telemetry,
+            outcome="error" if isinstance(outcome, RecordProblem) else "ok",
+            reason=outcome.code if isinstance(outcome, RecordProblem) else "committed",
+        )
+
 
 def digest_capability(capability: str) -> bytes:
     """Reduce plaintext bootstrap authority to its one-way Record representation."""
@@ -164,7 +258,7 @@ def _is_loopback(origin: str) -> bool:
         return False
 
 
-def _canonical_json(payload: dict[str, str]) -> bytes:
+def _canonical_json(payload: Mapping[str, object]) -> bytes:
     """Encode the string-only bootstrap contract in RFC 8785 canonical order."""
 
     return json.dumps(

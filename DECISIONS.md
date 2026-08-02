@@ -955,3 +955,174 @@ Rejected alternatives:
 - Inferring a seat from stage key or ticket custodian when assignment is missing.
 - Collapsing assigned and signing into one field that rewrites history on sign-off.
 - Blocking the record when assigned and signing seats differ.
+
+## D29 — Board card context, generalized Attention, and declared delivery surface (locked 2026-07-31, operator)
+
+A build lane stopped at the escalation gate on 2026-07-30 rather than amend a canonical document to make
+its own work pass: the Board card the operator view needs was not authorized by SPEC, 'needs a human'
+had only one implemented source, and the delivery-surface declaration a card would read was stated for
+skip predicates rather than for surfaces. On 2026-07-31 the operator chose **Option A — amend the SPEC**
+and authorized exactly three bounded extensions: **(a)** extend the Board card with tenant display
+identity, change/PR reference, labels, human-waiting, and delivery-surface availability; **(b)** generalize
+the Attention projection beyond outbox-poison so 'needs a human' is a first-class consumable fact; and
+**(c)** add delivery-surface declarations to checkpoint definitions. This entry writes that grant down; it
+decides nothing further. It preserves D21's derived Project Delivery model, D24's narrow development
+cohort and no-dual-write rule, D27's fresh-start authority and fail-closed CT-I2-001 dependency, D28's
+seat model, and INV-34/37/57/59/61–64. It does not weaken CP3-D, the dual-write prohibition, or minimal
+carry-forward, and it descopes nothing already required.
+
+**Shorthand used here and in SPEC.** **#115** is the contract/projection issue that raised the escalation
+(*"Every view receives the context needed to explain the work"*); **#116** is its CLI renderer child, which
+this contract must precede. The **context set** is the Board card's five added members — tenant display
+identity, change references, applied labels, human-waiting, delivery-surface availability — named as a set
+so a criterion can quantify over them. A **finding** is one appended typed statement that a human need
+exists; the **attention-kind catalog** is the versioned configured set its `kind` is drawn from; the
+**label vocabulary** is the versioned configured set an applied label is drawn from. **Delivery-surface
+availability** is what a surface reads from a checkpoint's declaration: declared-present, declared-absent,
+or explicitly undeclared.
+
+1. **The card carries five more facts, each from an explicit record.** Tenant display identity comes from
+   the tenant's recorded display fact; change references from linked Change facts exactly as recorded;
+   labels from applied-label facts; human-waiting only from a qualifying Attention finding;
+   delivery-surface availability only from the qualifying checkpoint definition's pinned declaration. No
+   member may be inferred from an identifier's spelling, a title, a branch or repository name, a lane, a
+   stage or group key, a blocker type or age, a principal display name, or silence.
+2. **Unavailable is stated, never omitted.** Every member is present with an explicit value — empty set,
+   declared absence, no-qualifying-checkpoint, or `STATE_UNKNOWN` with its missing source — so a client
+   never invents a default. This is the same standard D28 applied to unassigned seats. The card stays a
+   disposable projection: the context set adds no writable field, no new authority, and no status patch.
+3. **Configured sets are data, and facts referencing them are revision-pinned.** The label vocabulary and
+   the attention-kind catalog are versioned configuration of the same class as the active checkpoint set
+   and the seat catalog. Membership changes through authenticated versioned commands with no product-code
+   change, proven by a mutation suite of the same class as the seat-catalog proof. Each applied-label fact
+   pins the vocabulary revision active at application time and each finding pins the catalog revision
+   active at append time, so a later revision that removes or renames a key leaves the historical fact
+   intact and visible — never re-read as unlabeled or kindless, never blocking; only new facts must draw
+   from the active revision. Normative product code, schemas, projections, packs, and tests hard-code no
+   fixed roster and branch on no label or kind key.
+4. **Human need is a typed appended finding, and the feed is its only source.** A finding carries kind,
+   subject, reason code, owner, recommendation, alternatives, consequence/default, deadline, dedupe key,
+   and source facts. Resolution, snooze, expiry, and cancellation are further appended facts with actor,
+   time, and reason: resolution is data, and a need never ends by a row disappearing. Outbox-poison becomes
+   one member of the kind catalog; AC-OPS-16's pass condition is unchanged and is not weakened. Board
+   human-waiting and Needs You derive from this one feed under the same existing policy qualification, so
+   the two surfaces cannot disagree and a blocker never coerces into a human need.
+5. **Checkpoints MAY declare a delivery surface; undeclared reads as undeclared.** A checkpoint definition
+   may declare its landing boundary, its non-production environments, and its externally effective outcome,
+   each with identity or as an explicit absence. A field its pinned definition never declared is
+   explicitly undeclared — `STATE_UNKNOWN`, neither presence nor absence — on every surface that exposes
+   it, and it still satisfies no skip predicate and no entry item. AC-WF-27's skip semantics are unchanged,
+   and AC-PD-03's I2.4 row-level placement of change/PR references stays exactly where it is.
+6. **Increment binding.** All three extensions are I1 work inside the already-scoped generated API,
+   protected CLI, Board/Ticket queries, and Attention module: they are a stricter representation and
+   derivation rule over facts I1 already owns, adding no agent dispatch, effect, browser route, or sixth
+   surface. Two boundaries are named rather than absorbed: browser rendering of every card fact remains
+   I2.4 under the existing UX criteria, and change/PR references on the interactive Project Delivery row
+   remain I2.4 under AC-PD-03. No I1 checkpoint, projection contract, or exit criterion moves increment,
+   and no exit bar is satisfied by evidence gathered against pre-amendment text.
+7. **Sequencing and bounds.** This decision authorizes the SPEC model and the narrative, aggregate,
+   invariant, acceptance, increment-placement, and exit-evidence text it requires. The complete list of
+   amended sites is: US-OP-10, US-OP-11, and US-PD-05; the Board-cards paragraph and the new
+   `#### Board card context` narrative in the task-management foundation; the checkpoint-definition
+   paragraph of the Project Delivery projection narrative (the `MAY declare` sentence); the new
+   `#### Attention findings feed` narrative under *Human gate, Needs You, and resume*; the aggregate
+   boundaries for *Project / delivery checkpoint definition* (amended) and *Attention item / finding*
+   (amended) plus the new *Ticket label vocabulary* and *Attention-kind catalog* rows; the Attention row of
+   the orthogonal state models table; INV-66 and INV-67 (appended, renumbering nothing); AC-TM-05
+   (amended) and new AC-TM-07..08; the new `### Attention` acceptance section with AC-ATT-01..02; new
+   AC-PD-10; AC-OPS-16 (amended only to name the poison kind as one catalog member); I1 included scope
+   item 6; the new **Board-card-context increment placement** paragraph; and the I1 exit-evidence bullet,
+   which gains the attention family so the new criteria are swept by an exit bar rather than orphaned.
+   `ARCHITECTURE.md` is repaired in the same change as the derived atlas `CLAUDE.md` requires; it needs no
+   grant because it may explain but never extend SPEC. No bootstrap backlog row is amended: CT-L0-008's
+   exit evidence references the AC-TM family rather than a fixed list, so it carries AC-TM-07..08 as
+   written. Contract, projection, API, and generated-client carriage is the #115 implementation lane with
+   its #116 renderer child, which resumes on this authorization. No new environment variables or feature
+   flags. D27 and CT-I2-001 remain fail-closed.
+
+Rejected alternatives:
+
+- Descoping the Board to what the pre-amendment contract could carry honestly, leaving a renderer to guess
+  or make unrelated reads (the operator considered and declined this on 2026-07-31).
+- Letting a build lane add the fields to a schema without amending SPEC first.
+- Making `human_waiting` a derivation over blockers, lanes, stage names, or blocker age instead of a
+  consumed Attention fact.
+- A product enum of attention kinds, with outbox-poison as the model rather than as one member.
+- Omitting an unavailable member, or serializing it as a bare null a client is free to interpret, instead
+  of an explicit empty/absent/unknown value.
+- Reading an undeclared delivery-surface field as an absence, or inferring the surface from stage names,
+  lanes, or delivery facts.
+- Moving AC-PD-03's I2.4 change/PR row placement onto the I1 Board card.
+
+## D30 — The portfolio joins ctower: three projects, one record (locked 2026-08-01, operator)
+
+The operator approved all seven clauses below on 2026-08-01 through the director, adopting the Commander
+draft prepared for issue #185 and PR #189. This entry preserves D21's derived Project Delivery model,
+D28's configured-seat and revision-pinning discipline, and D27's dormant bulk-import boundary. It supersedes
+D24 and D27 only to the extent that either permitted a pre-CP3-D development writer/authority epoch or
+treated the legacy corpus as frozen during shadow operation: CT-I1-008 may still record its narrow
+development `GO_WITH_LIMITS`, but that verdict stops no legacy writer and makes ctower sole authority for
+nothing. D24/D27's CP3-D protection and fail-closed CT-I2-001 dependency remain. Issue #152 remains a hard
+gate only for a future multi-database topology, not for the approved single-database portfolio.
+
+1. **Topology — one database, one tenant, three projects.** `manibo` and `bh-loop` join `ctower` as
+   Project keys inside the existing tenant and database, using the project-scoped checkpoint and delivery
+   model. No Project receives its own database or tenant. Project membership, labels, owners, and starter
+   checkpoints are versioned configured data; product code contains no three-project branch or roster
+   literal.
+2. **Shadow/cutover boundary — coordination record, not sole authority.** The instance keeps the exact
+   `SHADOW_ONLY_CP3_D_NOT_PROVEN` label. All three Projects may hold reconstructible tickets, custody,
+   Evidence, and disjoint delivery boards. Ctower becomes sole authority for nothing until CP3-D closes and
+   the operator separately accepts a portfolio authority epoch. Mission Control ledgers and applicable
+   GitHub/GitLab records remain co-sources during shadow operation; no legacy writer is frozen. Bulk import
+   stays dormant. The 115-item `manibo` backlog enters item by item through ordinary signed intake.
+3. **Prohibited data classes — loud named refusal.** Intake and Evidence refuse credentials, tokens, or
+   keys in any form; production customer data; PHI or any HIPAA-covered content; PII beyond staff names and
+   work handles; and live incident indicators. Each refusal names its stable class and produces no mutation.
+   The BH.Loop boundary permits references to D11 controls, GitHub/GitLab artifacts, and deidentified control
+   IDs, but never patient or clinical content. The forbidden-data-class exporter model therefore extends to
+   ticket intake and Evidence recording.
+4. **Per-project grants — identity is the boundary.** Each Project has a configured Commander principal and
+   project-seat credentials scoped to `(project, seat)` with an exact named subset of
+   `capture|transition|evidence`. The operator issues and revokes credentials and append-only
+   Project grants. Each grant pins the Project, seat-catalog, access-policy, and credential revisions and
+   digests; access resolves those pins server-side on every call, and revocation refuses the next call by
+   name. Custody gains a target-Project-grant input. A principal from one Project cannot mutate another
+   Project's tickets, checkpoints, or Evidence; the refusal is named and changes no state.
+
+   Authorization is exhaustive: only the operator may issue or revoke a project-seat credential or
+   grant, or apply a portfolio CompanyBundle; any active matching grant may read its Project according to
+   existing visibility rules; `capture` admits or links work and requests initial custody by an eligible
+   configured Commander; `transition` performs ordinary typed Work mutations; `evidence` records ordinary
+   allowed Evidence; and protected commands, owner surfaces, gates, effects, production, incidents, and
+   authority epochs retain their stricter existing authorization and are never implied by these three
+   scopes. Unknown, mismatched, foreign-Project, stale-version, and revoked credentials fail closed.
+
+   The initial configured owners are `ctower` → `ctower-commander`, `manibo` → `manibo-commander`, and
+   `bh-loop` → `bhloop-commander`; these are configuration values, not product vocabulary. Grant issuance
+   and revocation remain operator-only.
+5. **Stable work identity.** Source identity is project-scoped as
+   `(tenant, project, source kind, source ref)`. The shared R-counter renders stable `<project>-R<nnn>`
+   references. Ticket IDs remain instance-global ULIDs. Cross-project reuse and renumbering are forbidden.
+6. **Verification — every clause has named proof.** Setup proves one tenant with N Projects. Isolation
+   tests all six directed pairs—`manibo`↔`ctower`, `bh-loop`↔`ctower`, and
+   `manibo`↔`bh-loop`—and each foreign mutation refuses by name with zero state change. Intake and Evidence
+   test every prohibited class, including a PHI-shaped fixture refused by its exact class name. Grant tests
+   cover issuance, exact scope subsets, revocation, and the revoked credential's named next-call
+   refusal. QA proves three Project-filtered Board views render mutually disjoint rows.
+7. **Sequencing is bound.** Stable work proceeds as identities and grant-aware custody (issue #192,
+   CT-I1-009) → scopes, isolation, and each Project Commander's starter-checkpoint onboarding configuration
+   (CT-I1-010) → ordinary item-by-item intake of `manibo`'s 115 items (CT-I1-011) → the project-scoped feed
+   for issue #186 (CT-I1-012). This SPEC revision accompanies the decision. Implementation changes follow
+   the normal two-round cross-model gates; no later step may be inferred complete from an earlier step's
+   evidence.
+
+Rejected alternatives, as settled by the approved clauses:
+
+- Per-Project databases or tenants for this portfolio.
+- Any pre-CP3-D writer freeze, sole-authority claim, or migration cutover.
+- Bulk import of the `manibo` backlog or authority-bearing historical state.
+- A hard-coded Project/seat roster, unpinned grant, implicit cross-Project access, or grant-derived owner,
+  protected-command, effect, incident, or production authority.
+- Accepting a prohibited class silently, under a generic error, or as Evidence bytes/metadata rather than
+  refusing it by name.

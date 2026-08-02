@@ -33,7 +33,7 @@ from ctower_kernel.record.events import (
 from ctower_kernel.record.transaction import RecordTransaction, authority_connection
 from ctower_kernel.telemetry import TelemetryContext
 
-__all__ = ["actor_for_credential", "create_ticket", "get_ticket", "ticket_timeline"]
+__all__ = ["create_ticket", "get_ticket", "ticket_timeline"]
 
 ZERO_HASH = bytes(32)
 
@@ -43,31 +43,6 @@ class _TicketIds:
     ticket: UUID
     event: UUID
     outbox: UUID
-
-
-def actor_for_credential(dsn: str, credential_digest: bytes) -> Actor | None:
-    """Resolve an active operator or Commander under service-role grants."""
-
-    with psycopg.connect(dsn, row_factory=dict_row) as connection:
-        connection.execute("SET ROLE ctower_svc")
-        row = connection.execute(
-            """
-            SELECT p.principal_id, p.tenant_id, p.kind
-            FROM principal_credentials AS c
-            JOIN principals AS p
-              ON p.principal_id = c.principal_id AND p.tenant_id = c.tenant_id
-            WHERE c.credential_digest = %s AND c.revoked_at IS NULL AND NOT p.disabled
-              AND p.kind IN ('operator', 'commander')
-            """,
-            (credential_digest,),
-        ).fetchone()
-    if row is None:
-        return None
-    return Actor(
-        principal_id=cast(UUID, row["principal_id"]),
-        tenant_id=cast(UUID, row["tenant_id"]),
-        kind=PrincipalKind(str(row["kind"])),
-    )
 
 
 def create_ticket(
@@ -86,27 +61,18 @@ def create_ticket(
         connection.execute("SET ROLE ctower_svc")
         transaction = RecordTransaction(connection)
         identifiers = _TicketIds(*(_uuid7(now) for _ in range(3)))
-        reserved = _reserve_ticket_outcome(
+        project = _prepare_ticket(
             connection,
             transaction,
             actor,
             command,
+            identifiers,
             request_digest=request_digest,
             policy_refusal=policy_refusal,
             now=now,
         )
-        if reserved is not None:
-            return reserved
-        pending = transaction.require_durable_subjects(
-            actor.tenant_id,
-            actor.principal_id,
-            command.client_command_id,
-            request_digest,
-            (("ticket", identifiers.ticket),),
-            now=now,
-        )
-        if pending is not None:
-            return pending
+        if not isinstance(project, str):
+            return project
         ticket = Ticket(
             ticket_id=identifiers.ticket,
             title=command.title,
@@ -117,7 +83,14 @@ def create_ticket(
             created_at=now,
         )
         result = TicketCommandResult(command.client_command_id, (identifiers.event,), ticket)
-        _insert_ticket_state(connection, actor, command, identifiers=identifiers, now=now)
+        _insert_ticket_state(
+            connection,
+            actor,
+            command,
+            project_key=project,
+            identifiers=identifiers,
+            now=now,
+        )
         _append_ticket_created(
             connection,
             actor,
@@ -131,8 +104,54 @@ def create_ticket(
     return result
 
 
-def _reserve_ticket_outcome(
+def _prepare_ticket(
     connection: psycopg.Connection[dict[str, object]],
+    transaction: RecordTransaction,
+    actor: Actor,
+    command: TicketCommand,
+    identifiers: _TicketIds,
+    *,
+    request_digest: bytes,
+    policy_refusal: RecordProblem | None,
+    now: datetime,
+) -> str | TicketCommandResult | RecordProblem:
+    reserved = _reserve_ticket_outcome(
+        transaction,
+        actor,
+        command,
+        request_digest=request_digest,
+        policy_refusal=policy_refusal,
+        now=now,
+    )
+    if reserved is not None:
+        return reserved
+    project = _initial_custody_project(
+        connection, actor, command.client_command_id, command.initial_custodian_id
+    )
+    if isinstance(project, RecordProblem):
+        return _refuse(transaction, actor, command, request_digest, project, now)
+    project_refusal = transaction.require_project_mutation(
+        actor.tenant_id,
+        actor.principal_id,
+        command.client_command_id,
+        request_digest,
+        project_keys=(project,),
+        now=now,
+    )
+    if project_refusal is not None:
+        return project_refusal
+    pending = transaction.require_durable_subjects(
+        actor.tenant_id,
+        actor.principal_id,
+        command.client_command_id,
+        request_digest,
+        (("ticket", identifiers.ticket),),
+        now=now,
+    )
+    return pending if pending is not None else project
+
+
+def _reserve_ticket_outcome(
     transaction: RecordTransaction,
     actor: Actor,
     command: TicketCommand,
@@ -148,14 +167,6 @@ def _reserve_ticket_outcome(
         return _result_from_payload(existing)
     if policy_refusal is not None:
         return _refuse(transaction, actor, command, request_digest, policy_refusal, now)
-    custody_problem = _initial_custody_problem(
-        connection,
-        actor,
-        command.client_command_id,
-        command.initial_custodian_id,
-    )
-    if custody_problem is not None:
-        return _refuse(transaction, actor, command, request_digest, custody_problem, now)
     return None
 
 
@@ -239,16 +250,21 @@ def _refuse(
     return problem
 
 
-def _initial_custody_problem(
+def _initial_custody_project(
     connection: psycopg.Connection[dict[str, object]],
     actor: Actor,
     command_id: UUID,
     custodian_id: UUID,
-) -> RecordProblem | None:
+) -> str | RecordProblem:
     row = connection.execute(
         """
-        SELECT kind FROM principals
-        WHERE tenant_id = %s AND principal_id = %s AND NOT disabled
+        SELECT principal.kind, seat.project_key
+        FROM principals AS principal
+        LEFT JOIN project_seats AS seat
+          ON seat.principal_id = principal.principal_id
+         AND seat.tenant_id = principal.tenant_id
+        WHERE principal.tenant_id = %s AND principal.principal_id = %s
+          AND NOT principal.disabled
         """,
         (actor.tenant_id, custodian_id),
     ).fetchone()
@@ -258,18 +274,38 @@ def _initial_custody_problem(
         actor.kind is PrincipalKind.OPERATOR
         or (actor.kind is PrincipalKind.COMMANDER and custodian_id == actor.principal_id)
     )
-    if authorized:
-        return None
-    return RecordProblem(
-        code="unauthorized",
-        detail=(
-            "Initial custody requires Commander self-custody or an operator placing "
-            "custody with an eligible Commander."
-        ),
-        status=403,
-        title="Initial custody refused",
-        command_id=command_id,
-    )
+    if not authorized:
+        return RecordProblem(
+            code="unauthorized",
+            detail=(
+                "Initial custody requires Commander self-custody or an operator placing "
+                "custody with an eligible Commander."
+            ),
+            status=403,
+            title="Initial custody refused",
+            command_id=command_id,
+        )
+    if row["project_key"] is None:
+        return RecordProblem(
+            code="project-grant-required",
+            detail="Initial custody requires a Commander with one explicit project grant.",
+            status=403,
+            title="Project grant required",
+            command_id=command_id,
+        )
+    return str(row["project_key"])
+
+
+def _initial_custody_problem(
+    connection: psycopg.Connection[dict[str, object]],
+    actor: Actor,
+    command_id: UUID,
+    custodian_id: UUID,
+) -> RecordProblem | None:
+    """Keep intake's narrow refusal seam while ticket creation consumes the project."""
+
+    project = _initial_custody_project(connection, actor, command_id, custodian_id)
+    return project if isinstance(project, RecordProblem) else None
 
 
 def _insert_ticket_state(
@@ -277,6 +313,7 @@ def _insert_ticket_state(
     actor: Actor,
     command: TicketCommand,
     *,
+    project_key: str,
     identifiers: _TicketIds,
     now: datetime,
 ) -> None:
@@ -284,8 +321,9 @@ def _insert_ticket_state(
         """
         INSERT INTO tickets (
             ticket_id, tenant_id, title, source_kind, source_ref, priority,
-            custodian_principal_id, version, durability_state, created_by, created_at
-        ) VALUES (%s, %s, %s, %s, %s, %s, %s, 1, 'durability_pending', %s, %s)
+            custodian_principal_id, version, durability_state, created_by, created_at,
+            project_key
+        ) VALUES (%s, %s, %s, %s, %s, %s, %s, 1, 'durability_pending', %s, %s, %s)
         """,
         (
             identifiers.ticket,
@@ -297,6 +335,7 @@ def _insert_ticket_state(
             command.initial_custodian_id,
             actor.principal_id,
             now,
+            project_key,
         ),
     )
     connection.execute(
