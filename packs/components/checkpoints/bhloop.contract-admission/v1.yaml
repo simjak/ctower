@@ -1,0 +1,10 @@
+{
+  "schema": "ctower.checkpoint/v1",
+  "key": "bhloop.contract-admission",
+  "checkpoint_key": "bhloop.contract-admission",
+  "display_name": "Admit the delivery contract",
+  "outcome": "Canonical spec and decision review plus the IP-assignment prerequisite resolve before implementation.",
+  "accountable_owner": "bhloop-commander-seat",
+  "criteria": [{"key": "contract-admitted", "description": "Current review and IP-assignment evidence admits implementation.", "required": true, "evidence_policy_refs": []}],
+  "dependency_refs": []
+}

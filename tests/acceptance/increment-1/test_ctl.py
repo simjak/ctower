@@ -18,17 +18,15 @@ from uuid import UUID, uuid4
 import psycopg
 import pytest
 import uvicorn
-from ctower_contracts import CATALOG
 from fastapi import FastAPI, Response
 from fastapi.testclient import TestClient
 from support.acceptance import accept_pending_commands
-from support.catalog import MemoryObjectStore, minimal_bundle
 from support.postgres import DatabaseFixture
 from support.telemetry import telemetry_headers
 from support.tenant_fixture import TenantFixture
 
 from ctower_api.interface import create_app
-from ctower_kernel.catalog import CompanyBundle, PostgresCatalog
+from ctower_kernel.catalog import PostgresCatalog
 from ctower_kernel.record.postgres import (
     PostgresRecord,
     apply_migrations,
@@ -118,7 +116,15 @@ def test_ticket_capture_and_query_use_stable_queued_command(
         created = json.loads(created_text)
         ticket_id = UUID(created["result"]["ticket"]["ticket_id"])
         show_status, shown_text, show_error = _run(
-            ["--base-url", base_url, "ticket", "query", str(ticket_id)],
+            [
+                "--base-url",
+                base_url,
+                "ticket",
+                "query",
+                str(ticket_id),
+                "--project-key",
+                "ctower",
+            ],
             authority=tenant.operator_credential,
         )
 
@@ -305,42 +311,6 @@ def test_offline_mutation_is_durably_queued_with_caller_command_id(
     assert tenant.operator_credential not in stdout
 
 
-def test_company_bundle_cli_validate_plan_apply_export_round_trip(
-    tenant: TenantFixture,
-    cli_state: _MemoryBackend,
-    tmp_path: Path,
-) -> None:
-    del cli_state
-    bundle_file = tmp_path / "company-bundle.yaml"
-    bundle_file.write_text(
-        json.dumps(_tenant_bundle().model_dump(mode="json", by_alias=True)),
-        encoding="utf-8",
-    )
-    catalog = PostgresCatalog(
-        tenant.database.runtime_dsn,
-        CATALOG,
-        MemoryObjectStore(),
-        key_reference="vault:catalog-key",
-    )
-    with _server(tenant.database.runtime_dsn, catalog=catalog) as base_url:
-        validated, planned, applied, exported, replanned = _company_round_trip(
-            base_url,
-            bundle_file,
-            tenant.operator_credential,
-            tmp_path,
-        )
-
-    assert validated[0] == 0
-    assert json.loads(validated[1])["valid"] is True
-    assert planned[0] == 0
-    assert applied[0] == EXIT_TEMPORARY
-    assert json.loads(applied[1])["state"] == "queued"
-    assert exported[0] == 0
-    assert exported[1].endswith("\n") and not exported[1].endswith("\n\n")
-    assert "metadata:" not in exported[1]
-    assert json.loads(replanned[1])["actions"] == []
-
-
 def test_missing_keyring_blocks_mutation_before_send_but_reads_continue(
     tenant: TenantFixture,
     tmp_path: Path,
@@ -357,7 +327,15 @@ def test_missing_keyring_blocks_mutation_before_send_but_reads_continue(
             authority=tenant.operator_credential,
         )
         readable = _run(
-            ["--base-url", base_url, "ticket", "query", str(ticket_id)],
+            [
+                "--base-url",
+                base_url,
+                "ticket",
+                "query",
+                str(ticket_id),
+                "--project-key",
+                "ctower",
+            ],
             authority=tenant.operator_credential,
         )
 
@@ -385,6 +363,8 @@ def _create_arguments(base_url: str, tenant: TenantFixture, command_id: UUID) ->
         str(tenant.commander_id),
         "--priority",
         "P1",
+        "--project-key",
+        "ctower",
         "--source-kind",
         "mission-control",
         "--source-ref",
@@ -407,6 +387,8 @@ def _first_day_create_arguments(
         "create",
         "--priority",
         "P2",
+        "--project-key",
+        "ctower",
         "--source-kind",
         "mission-control",
         "--source-ref",
@@ -497,6 +479,7 @@ def _seed_ticket(tenant: TenantFixture, title: str) -> UUID:
             json={
                 "initial_custodian_id": str(tenant.commander_id),
                 "priority": "P1",
+                "project_key": "ctower",
                 "source": {"kind": "test", "ref": "test:ctl-seed"},
                 "title": title,
             },
@@ -527,78 +510,6 @@ def _run(arguments: list[str], *, authority: str) -> tuple[int, str, str]:
         stderr=stderr,
     )
     return status, stdout.getvalue(), stderr.getvalue()
-
-
-def _run_company(
-    base_url: str,
-    command: list[str],
-    authority: str,
-) -> tuple[int, str, str]:
-    return _run(
-        ["--base-url", base_url, "company", "bundle", *command],
-        authority=authority,
-    )
-
-
-def _company_round_trip(
-    base_url: str,
-    bundle_file: Path,
-    authority: str,
-    output_directory: Path,
-) -> tuple[
-    tuple[int, str, str],
-    tuple[int, str, str],
-    tuple[int, str, str],
-    tuple[int, str, str],
-    tuple[int, str, str],
-]:
-    validated = _run_company(base_url, ["validate", str(bundle_file)], authority)
-    planned = _run_company(base_url, ["plan", str(bundle_file)], authority)
-    plan = json.loads(planned[1])
-    applied = _run_company(
-        base_url,
-        [
-            "apply",
-            str(bundle_file),
-            "--command-id",
-            str(uuid4()),
-            "--expected-active-version",
-            "0",
-            "--plan-digest",
-            plan["plan_digest"],
-        ],
-        authority,
-    )
-    exported = _run_company(base_url, ["export"], authority)
-    exported_file = output_directory / "exported.yaml"
-    exported_file.write_text(exported[1], encoding="utf-8")
-    replanned = _run_company(base_url, ["plan", str(exported_file)], authority)
-    return validated, planned, applied, exported, replanned
-
-
-def _tenant_bundle() -> CompanyBundle:
-    bundle = minimal_bundle()
-    return bundle.model_copy(
-        update={
-            "company": bundle.company.model_copy(
-                update={"key": "ctower", "display_name": "Ctower"}
-            ),
-            "resources": tuple(
-                resource.model_copy(
-                    update={
-                        "component": resource.component.model_copy(
-                            update={
-                                "scope": resource.component.scope.model_copy(
-                                    update={"tenant": "ctower"}
-                                )
-                            }
-                        )
-                    }
-                )
-                for resource in bundle.resources
-            ),
-        }
-    )
 
 
 @contextmanager

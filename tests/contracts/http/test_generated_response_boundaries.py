@@ -149,10 +149,10 @@ def test_generated_python_client_enforces_authored_rfc3339_profile(
 ) -> None:
     client = _python_client(_ticket(timestamp), status=200)
     if accepted:
-        assert client.get_ticket(uuid4()).created_at.year == LEAP_YEAR
+        assert client.get_ticket(uuid4(), project_key="ctower").created_at.year == LEAP_YEAR
     else:
         with pytest.raises(ValidationError):
-            client.get_ticket(uuid4())
+            client.get_ticket(uuid4(), project_key="ctower")
     client.close()
 
 
@@ -160,14 +160,14 @@ def test_generated_python_client_enforces_lossless_json_integers() -> None:
     client = _python_client(
         _ticket("2026-07-25T20:00:00Z", version=JSON_SAFE_INTEGER_MAXIMUM), status=200
     )
-    assert client.get_ticket(uuid4()).version == JSON_SAFE_INTEGER_MAXIMUM
+    assert client.get_ticket(uuid4(), project_key="ctower").version == JSON_SAFE_INTEGER_MAXIMUM
     client.close()
 
     client = _python_client(
         _ticket("2026-07-25T20:00:00Z", version=JSON_UNSAFE_INTEGER), status=200
     )
     with pytest.raises(ValidationError):
-        client.get_ticket(uuid4())
+        client.get_ticket(uuid4(), project_key="ctower")
     client.close()
 
 
@@ -323,7 +323,7 @@ const promote = () => client.promoteIntakeEvent({{
   IdempotencyKey: "{UUID}",
   body: {{expected_thread_version: 1, intent: "create_ticket"}},
 }});
-const getTicket = () => client.getTicket({{ticketId: "{UUID}"}});
+const getTicket = () => client.getTicket({{ticketId: "{UUID}", projectKey: "ctower"}});
 async function expectTypeError(
   payload,
   operation = submit,

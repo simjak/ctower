@@ -1,0 +1,7 @@
+{
+  "schema": "ctower.project/v1",
+  "key": "bh-loop.delivery",
+  "display_name": "BH.Loop delivery",
+  "repository_ref": "repository:github/simjak/bh-loop/f0c5ed64eee237ff0d0eb4def801081397416857",
+  "goal_refs": ["company.trusted-delivery@1"]
+}

@@ -41,6 +41,7 @@ def execute_query(arguments: argparse.Namespace, client: CtowerClient) -> BaseMo
         return client.get_control_health()
     if cli_name == "board query":
         return client.get_board(
+            project_key=cast(str, arguments.project_key),
             lane=cast(str | None, arguments.lane),
             priority=cast(str | None, arguments.priority),
             stage_key=cast(str | None, arguments.stage_key),

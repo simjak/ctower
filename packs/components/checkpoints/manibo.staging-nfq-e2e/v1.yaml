@@ -1,0 +1,10 @@
+{
+  "schema": "ctower.checkpoint/v1",
+  "key": "manibo.staging-nfq-e2e",
+  "checkpoint_key": "manibo.staging-nfq-e2e",
+  "display_name": "Verify staging NFQ",
+  "outcome": "The NFQ staging end-to-end suite passes and retains its artifacts.",
+  "accountable_owner": "manibo-commander-seat",
+  "criteria": [{"key": "staging-nfq-passed", "description": "Current staging NFQ results and artifacts prove the end-to-end outcome.", "required": true, "evidence_policy_refs": []}],
+  "dependency_refs": ["manibo.staging-deployed@1"]
+}

@@ -1,0 +1,10 @@
+{
+  "schema": "ctower.checkpoint/v1",
+  "key": "bhloop.layer-1-foundation",
+  "checkpoint_key": "bhloop.layer-1-foundation",
+  "display_name": "Complete Layer 1 foundation",
+  "outcome": "The Layer 1 foundation acceptance set and synthetic PHI mechanism proofs pass.",
+  "accountable_owner": "bhloop-commander-seat",
+  "criteria": [{"key": "layer-1-proven", "description": "Current acceptance and synthetic-PHI evidence proves Layer 1.", "required": true, "evidence_policy_refs": []}],
+  "dependency_refs": ["bhloop.production-foundation@1"]
+}

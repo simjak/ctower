@@ -1,0 +1,10 @@
+{
+  "schema": "ctower.checkpoint/v1",
+  "key": "bhloop.d11-org",
+  "checkpoint_key": "bhloop.d11-org",
+  "display_name": "Prove D11 organizational controls",
+  "outcome": "The executed BAA, reviews, assessments, policies, officers, training, plans, and legal posture are linked.",
+  "accountable_owner": "bhloop-commander-seat",
+  "criteria": [{"key": "d11-org-proven", "description": "Current linked evidence proves every declared D11 organizational control.", "required": true, "evidence_policy_refs": []}],
+  "dependency_refs": ["bhloop.layer-2-staff-assistant@1"]
+}

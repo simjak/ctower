@@ -22,6 +22,7 @@ from ctower_kernel.record import RecordProblem
 
 __all__: tuple[str, ...] = ()
 _STABLE_KEY = re.compile(r"^[a-z][a-z0-9._-]*$")
+_PROJECT_KEY = re.compile(r"^[a-z][a-z0-9-]{2,63}$")
 
 
 def install_board_routes(
@@ -35,6 +36,7 @@ def install_board_routes(
     @app.get("/v1/board")
     def get_board(
         request: Request,
+        project_key: str | None = None,
         lane: str | None = None,
         priority: str | None = None,
         stage_key: str | None = None,
@@ -53,6 +55,7 @@ def install_board_routes(
             return _problem_response(actor)
         try:
             query = BoardQuery(
+                project_key=_project_filter(project_key),
                 lane=BoardLane(lane) if lane is not None else None,
                 priority=Priority(priority).value if priority is not None else None,
                 stage_key=_stage_filter(stage_key),
@@ -71,6 +74,12 @@ def install_board_routes(
 def _stage_filter(value: str | None) -> str | None:
     if value is not None and _STABLE_KEY.fullmatch(value) is None:
         raise ValueError("invalid stage filter")
+    return value
+
+
+def _project_filter(value: str | None) -> str:
+    if value is None or _PROJECT_KEY.fullmatch(value) is None:
+        raise ValueError("invalid project filter")
     return value
 
 

@@ -46,9 +46,9 @@ class PostgresWork:
         )
 
     def assignments(
-        self, actor: Actor, ticket_id: UUID
+        self, actor: Actor, ticket_id: UUID, project_key: str
     ) -> tuple[AssignmentInterval, ...] | RecordProblem:
-        return _assignments(self._dsn, actor, ticket_id)
+        return _assignments(self._dsn, actor, ticket_id, project_key)
 
     def readiness(self, actor: Actor, ticket_id: UUID) -> WorkReadiness | RecordProblem:
         return _readiness(self._dsn, actor, ticket_id)

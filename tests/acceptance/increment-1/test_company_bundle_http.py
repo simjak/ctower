@@ -199,10 +199,12 @@ def test_ticket_comment_http_appends_replays_and_appears_in_timeline_and_audit(
         )
         timeline = client.get(
             f"/v1/tickets/{ticket_id}/timeline",
+            params={"project_key": "ctower"},
             headers=_headers(tenant),
         )
         audit = client.get(
             f"/v1/tickets/{ticket_id}/audit",
+            params={"project_key": "ctower"},
             headers=_headers(tenant),
         )
 
@@ -497,6 +499,7 @@ def _create_ticket(client: TestClient, tenant: TenantFixture) -> Response:
             json={
                 "initial_custodian_id": str(tenant.commander_id),
                 "priority": "P1",
+                "project_key": "ctower",
                 "source": {"kind": "test", "ref": "test:company-bundle-http"},
                 "title": "HTTP comment authority",
             },

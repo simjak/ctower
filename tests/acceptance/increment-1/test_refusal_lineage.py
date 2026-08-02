@@ -132,7 +132,7 @@ def _assert_relation_refusal(client: CtowerClient, tenant: TenantFixture) -> Non
     assert first.code == "work-relation-exists"
     assert replay == first
     assert changed.code == "idempotency-conflict"
-    assert client.get_ticket(source).version == INDEPENDENT_TICKET_VERSION
+    assert client.get_ticket(source, project_key="ctower").version == INDEPENDENT_TICKET_VERSION
     events = _audit(client, source)
     assert len(events) == THREE_EVENT_TRACE
     assert all(event.command_id != command_id for event in events)
@@ -178,7 +178,7 @@ def _assert_blocker_refusal(client: CtowerClient, tenant: TenantFixture) -> None
     assert first.code == "work-blocker-id-conflict"
     assert replay == first
     assert changed.code == "idempotency-conflict"
-    assert client.get_ticket(ticket_id).version == INDEPENDENT_TICKET_VERSION
+    assert client.get_ticket(ticket_id, project_key="ctower").version == INDEPENDENT_TICKET_VERSION
     events = _audit(client, ticket_id)
     assert len(events) == THREE_EVENT_TRACE
     assert all(event.command_id != command_id for event in events)
@@ -303,9 +303,11 @@ def _assert_custody_refusal(client: CtowerClient, tenant: TenantFixture) -> None
     assert first.code == "version-conflict" and first.current_version == 1
     assert replay == first
     assert changed.code == "idempotency-conflict"
-    ticket = client.get_ticket(ticket_id)
+    ticket = client.get_ticket(ticket_id, project_key="ctower")
     assert (ticket.version, ticket.custodian_id) == (2, tenant.operator_id)
-    assert len(client.get_ticket_timeline(ticket_id).events) == TWO_EVENT_TRACE
+    assert (
+        len(client.get_ticket_timeline(ticket_id, project_key="ctower").events) == TWO_EVENT_TRACE
+    )
     assert all(event.command_id != command_id for event in _audit(client, ticket_id))
 
 
@@ -348,6 +350,7 @@ def _ticket_request(custodian_id: UUID, suffix: str) -> TicketCreateRequest:
     return TicketCreateRequest(
         initial_custodian_id=custodian_id,
         priority=Priority.P2,
+        project_key="ctower",
         source=SourceReference(kind="test", ref=f"test:{suffix}:{uuid4()}"),
         title=suffix,
     )
@@ -455,4 +458,4 @@ def _problem[T](operation: Callable[[], T]) -> Problem:
 
 
 def _audit(client: CtowerClient, ticket_id: UUID) -> tuple[AuditEvent, ...]:
-    return tuple(client.list_ticket_audit_events(ticket_id, limit=100).events)
+    return tuple(client.list_ticket_audit_events(ticket_id, project_key="ctower", limit=100).events)

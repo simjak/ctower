@@ -430,6 +430,47 @@ def test_seat_catalog_is_generic_unique_data_and_assignments_pin_exact_revision(
     assert duplicate_problem.code == "bundle-reference-invalid"
 
 
+def test_checkpoint_dependencies_are_exact_project_local_acyclic_pins() -> None:
+    policy = CatalogPolicy(FileSchemas())
+    bundle = minimal_bundle()
+    tenant = bundle.company.key
+    first = _checkpoint_resource(tenant, "component-first", "display-first")
+    second = _checkpoint_resource(
+        tenant,
+        "component-second",
+        "display-second",
+        dependencies=("ctower.component-first@1",),
+    )
+    clean = _with_checkpoints(bundle, first, second)
+    missing = _with_checkpoints(
+        bundle,
+        _checkpoint_resource(tenant, "missing", "display-missing", dependencies=("other@1",)),
+    )
+    cycle = _with_checkpoints(
+        bundle,
+        _checkpoint_resource(
+            tenant,
+            "cycle-a",
+            "display-a",
+            dependencies=("ctower.cycle-b@1",),
+        ),
+        _checkpoint_resource(
+            tenant,
+            "cycle-b",
+            "display-b",
+            dependencies=("ctower.cycle-a@1",),
+        ),
+    )
+
+    assert not isinstance(policy.validate(tenant, clean), CatalogProblem)
+    missing_problem = policy.validate(tenant, missing)
+    cycle_problem = policy.validate(tenant, cycle)
+    assert isinstance(missing_problem, CatalogProblem)
+    assert "resolve within" in missing_problem.detail
+    assert isinstance(cycle_problem, CatalogProblem)
+    assert "acyclic" in cycle_problem.detail
+
+
 def _with_checkpoints(
     bundle: CompanyBundle,
     *checkpoints: CompanyBundleResource,
@@ -443,8 +484,9 @@ def _checkpoint_resource(
     checkpoint_key: str,
     *,
     project: str | None = "ctower",
+    dependencies: tuple[str, ...] = (),
 ) -> CompanyBundleResource:
-    payload = _checkpoint_payload(component_key, checkpoint_key)
+    payload = _checkpoint_payload(component_key, checkpoint_key, dependencies=dependencies)
     digest = "sha256:" + hashlib.sha256(rfc8785.dumps(payload)).hexdigest()
     return CompanyBundleResource.model_validate_json(
         json.dumps(
@@ -468,7 +510,12 @@ def _checkpoint_resource(
     )
 
 
-def _checkpoint_payload(component_key: str, checkpoint_key: str) -> dict[str, JsonValue]:
+def _checkpoint_payload(
+    component_key: str,
+    checkpoint_key: str,
+    *,
+    dependencies: tuple[str, ...] = (),
+) -> dict[str, JsonValue]:
     return {
         "schema": "ctower.checkpoint/v1",
         "key": f"ctower.{component_key}",
@@ -484,7 +531,7 @@ def _checkpoint_payload(component_key: str, checkpoint_key: str) -> dict[str, Js
                 "evidence_policy_refs": [],
             }
         ],
-        "dependency_refs": [],
+        "dependency_refs": list(dependencies),
     }
 
 

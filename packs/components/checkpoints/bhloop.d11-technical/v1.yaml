@@ -1,0 +1,10 @@
+{
+  "schema": "ctower.checkpoint/v1",
+  "key": "bhloop.d11-technical",
+  "checkpoint_key": "bhloop.d11-technical",
+  "display_name": "Prove D11 technical controls",
+  "outcome": "D11 identity, data, audit, recovery, secret, and synthetic non-production controls are green.",
+  "accountable_owner": "bhloop-commander-seat",
+  "criteria": [{"key": "d11-technical-proven", "description": "Current evidence proves every declared D11 technical control.", "required": true, "evidence_policy_refs": []}],
+  "dependency_refs": ["bhloop.contract-admission@1"]
+}

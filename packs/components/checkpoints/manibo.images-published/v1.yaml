@@ -1,0 +1,10 @@
+{
+  "schema": "ctower.checkpoint/v1",
+  "key": "manibo.images-published",
+  "checkpoint_key": "manibo.images-published",
+  "display_name": "Publish release images",
+  "outcome": "All release images are published by immutable commit SHA with retained digest artifacts.",
+  "accountable_owner": "manibo-commander-seat",
+  "criteria": [{"key": "images-published", "description": "Current digest artifacts identify every published release image.", "required": true, "evidence_policy_refs": []}],
+  "dependency_refs": ["manibo.staging-infra@1"]
+}

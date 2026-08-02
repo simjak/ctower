@@ -218,6 +218,7 @@ def _link_row(
     return {
         "ticket_id": ticket_id,
         "proof_key": proof_key,
+        "project_present": True,
         "criterion_present": criterion_present,
         "proven": proven,
     }
@@ -261,7 +262,15 @@ def _reconcile_connection(
         _result(row={"due": None}),
         _result(rows=criteria),
         _result(rows=slot_rows),
-        _result(rows=[{"lane": "complete", "delivery_facts": ["staging_verified"]}]),
+        _result(
+            rows=[
+                {
+                    "ticket_id": criteria[0]["proof_ticket_id"],
+                    "lane": "complete",
+                    "delivery_facts": ["staging_verified"],
+                }
+            ]
+        ),
         _result(rows=[]),
         _result(rows=[]),
         _result(rowcount=1),
@@ -308,9 +317,8 @@ def _slot_request(connection: MagicMock) -> tuple[list[UUID], list[str]]:
         for item in connection.execute.call_args_list
         if "FROM unnest(%s::uuid[], %s::text[])" in item.args[0]
     )
-    tickets, proof_keys, _ = cast(
-        tuple[list[UUID], list[str], UUID],
-        call.args[1],
+    tickets, proof_keys, *_ = cast(
+        tuple[list[UUID], list[str], object, object, object], call.args[1]
     )
     return tickets, proof_keys
 

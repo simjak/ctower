@@ -20,6 +20,7 @@ def ticket_audit(
     dsn: str,
     actor: Actor,
     ticket_id: UUID,
+    project_key: str,
     *,
     cursor: int,
     limit: int,
@@ -31,8 +32,11 @@ def ticket_audit(
     with psycopg.connect(dsn, row_factory=dict_row) as connection:
         connection.execute("SET ROLE ctower_svc")
         exists = connection.execute(
-            "SELECT 1 FROM tickets WHERE tenant_id = %s AND ticket_id = %s",
-            (actor.tenant_id, ticket_id),
+            """
+            SELECT 1 FROM tickets
+            WHERE tenant_id = %s AND ticket_id = %s AND project_key = %s
+            """,
+            (actor.tenant_id, ticket_id, project_key),
         ).fetchone()
         if exists is None:
             return RecordProblem(

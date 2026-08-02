@@ -117,11 +117,10 @@ class _OwnershipTrace:
 class _AlwaysReady:
     def unmet_facts(
         self,
-        connection: psycopg.Connection[dict[str, object]],
-        tenant_id: UUID,
-        ticket_id: UUID,
+        _connection: psycopg.Connection[dict[str, object]],
+        _tenant_id: UUID,
+        _ticket_id: UUID,
     ) -> tuple[str, ...]:
-        del connection, tenant_id, ticket_id
         return ()
 
 
@@ -189,7 +188,7 @@ def _exercise_ownership(
         )
     with CtowerClient(base_url, credential=tenant.commander_credential) as commander:
         terminal, closed = _close_public_trace(commander, ticket_id)
-        assignments = commander.list_ticket_assignments(ticket_id)
+        assignments = commander.list_ticket_assignments(ticket_id, project_key="ctower")
         refused_id = uuid4()
         request = AssignmentChangeRequest(
             assignment_kind=MutableAssignmentKind.CURRENT_ASSIGNEE,
@@ -223,7 +222,7 @@ def _exercise_ownership(
             command_id=uuid4(),
         )
     with CtowerClient(base_url, credential=second_tenant.commander_credential) as foreign:
-        hidden = _problem(lambda: foreign.list_ticket_assignments(ticket_id))
+        hidden = _problem(lambda: foreign.list_ticket_assignments(ticket_id, project_key="ctower"))
     return _OwnershipTrace(
         verdict, terminal, closed, assignments, refused, reopened, replay, reassigned, hidden
     )
@@ -240,6 +239,7 @@ def _prepare_public_trace(
         TicketCreateRequest(
             initial_custodian_id=tenant.commander_id,
             priority=Priority.P1,
+            project_key="ctower",
             source=HttpSourceReference(kind="test", ref="test:four-stage"),
             title="Four-stage proof workflow",
         ),
@@ -433,10 +433,7 @@ def _terminal_context(
         candidate_dependent=True,
         requires_verdict=True,
     )
-    policy = fixture_proof_policy(
-        "fixture.atomic-close@1",
-        criterion,
-    )
+    policy = fixture_proof_policy("fixture.atomic-close@1", criterion)
     proof_store = fixture_proof_store(tenant.database.runtime_dsn, policy)
     workflow_store = PostgresWorkflow(
         tenant.database.runtime_dsn,
@@ -496,6 +493,7 @@ def _create_ticket(tenant: TenantFixture) -> UUID:
             client_command_id=uuid4(),
             initial_custodian_id=tenant.commander_id,
             priority="P1",
+            project_key="ctower",
             source=SourceReference("test", "test:proof-close"),
             title="Proof-gated close",
         ),

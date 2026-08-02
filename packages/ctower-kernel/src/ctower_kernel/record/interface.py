@@ -320,18 +320,22 @@ class TicketCommand:
     client_command_id: UUID
     initial_custodian_id: UUID
     priority: str
+    project_key: str | None
     source: SourceReference
     title: str
 
     def request_payload(self) -> dict[str, object]:
         """Return the request body without transport authority."""
 
-        return {
+        payload: dict[str, object] = {
             "initial_custodian_id": str(self.initial_custodian_id),
             "priority": self.priority,
             "source": asdict(self.source),
             "title": self.title,
         }
+        if self.project_key is not None:
+            payload["project_key"] = self.project_key
+        return payload
 
 
 @dataclass(frozen=True, slots=True)
@@ -584,14 +588,14 @@ class Record(Protocol):
         ...
 
     def get_ticket(
-        self, actor: Actor, ticket_id: UUID, *, telemetry: TelemetryContext
+        self, actor: Actor, ticket_id: UUID, project_key: str, *, telemetry: TelemetryContext
     ) -> Ticket | RecordProblem:
         """Read one tenant-scoped ticket without cross-tenant disclosure."""
 
         ...
 
     def ticket_timeline(
-        self, actor: Actor, ticket_id: UUID, *, telemetry: TelemetryContext
+        self, actor: Actor, ticket_id: UUID, project_key: str, *, telemetry: TelemetryContext
     ) -> TicketTimeline | RecordProblem:
         """Read the ordered tenant-scoped event timeline."""
 
@@ -601,6 +605,7 @@ class Record(Protocol):
         self,
         actor: Actor,
         ticket_id: UUID,
+        project_key: str,
         *,
         cursor: int,
         limit: int,

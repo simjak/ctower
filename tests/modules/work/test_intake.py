@@ -100,6 +100,22 @@ def test_discussion_defaults_reach_writer_with_stable_digest() -> None:
     assert writer.digests[0] == writer.digests[1]
 
 
+def test_non_mission_control_source_ref_shape_does_not_claim_project_scope() -> None:
+    writer = _Writer()
+    actor = Actor(uuid4(), uuid4(), PrincipalKind.COMMANDER)
+    command = IntakeSubmitCommand(
+        uuid4(),
+        "ctower",
+        InboundSource("github-issue", "manibo-R123"),
+        "A non-Mission-Control source",
+    )
+
+    outcome = Intake(writer).submit(actor, command, telemetry=_telemetry())
+
+    assert isinstance(outcome, IntakeCommandResult)
+    assert len(writer.digests) == 1
+
+
 def test_importer_p0_and_mixed_discussion_are_refused_before_record() -> None:
     writer = _Writer()
     tenant_id = uuid4()
