@@ -1,11 +1,13 @@
 import type { ReactElement, ReactNode } from "react";
 import { Chrome } from "@/frame/Chrome";
 import { InlineReading, NoSourceYet, Resolved } from "@/frame/Declared";
+import { Provisional } from "@/frame/Provisional";
 import { RecordFoot } from "@/frame/RecordFoot";
 import { recordAdapter } from "@/read/adapter";
 import { shortId } from "@/read/elapsed";
 import { feedFocus } from "@/read/feedFocus";
 import type { FeedFocus } from "@/read/feedFocus";
+import type { Ranked } from "@/read/selectors";
 import type { Reading, RecordEvent, TicketRecord } from "@/read/interface";
 import { Composer } from "@/surfaces/feed/Composer";
 import { FeedViews } from "@/surfaces/feed/FeedViews";
@@ -94,12 +96,13 @@ function SessionMeta({
 }
 
 function FeedBody({
-  focus,
+  ranked,
   ticket,
 }: {
-  readonly focus: FeedFocus;
+  readonly ranked: Ranked<FeedFocus>;
   readonly ticket: Reading<TicketRecord>;
 }): ReactElement {
+  const focus = ranked.chosen;
   const events = focus.events;
   return (
     <>
@@ -107,6 +110,7 @@ function FeedBody({
       <main className="page">
         <div className="wrap">
           <Lede />
+          <Provisional ranked={ranked} />
           <section className="panel" style={{ marginTop: "16px" }}>
             <FeedViews
               sessionMeta={<SessionMeta ticket={ticket} events={events} />}
@@ -127,7 +131,7 @@ function FeedBody({
           </section>
           <RecordFoot
             readPath={`/v1/tickets/${shortId(focus.ticketId)}/audit`}
-            watermark={`${events.length.toString()} appended events · the thread is the record, not a session`}
+            watermark={`${events.length.toString()} appended events · ranked over ${ranked.considered.toString()} candidates, ${ranked.unread.toString()} unread · the thread is the record, not a session`}
           />
         </div>
       </main>
@@ -135,15 +139,19 @@ function FeedBody({
   );
 }
 
-async function FocusedFeed({ focus }: { readonly focus: FeedFocus }): Promise<ReactElement> {
-  return <FeedBody focus={focus} ticket={await recordAdapter.ticket(focus.ticketId)} />;
+async function FocusedFeed({
+  ranked,
+}: {
+  readonly ranked: Ranked<FeedFocus>;
+}): Promise<ReactElement> {
+  return <FeedBody ranked={ranked} ticket={await recordAdapter.ticket(ranked.chosen.ticketId)} />;
 }
 
 export default async function FeedPage(): Promise<ReactNode> {
   const focus = await feedFocus();
   return (
     <Resolved reading={focus} frame={(declared) => <FeedFrame declared={declared} />}>
-      {(value) => <FocusedFeed focus={value} />}
+      {(value) => <FocusedFeed ranked={value} />}
     </Resolved>
   );
 }

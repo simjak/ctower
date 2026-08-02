@@ -1,95 +1,70 @@
 import { recordAdapter } from "./adapter";
 import { mapReading } from "./reading";
+import { rankCandidates } from "./selectors";
+import type { Candidate, Ranked } from "./selectors";
 import type { Reading, RecordEvent } from "./interface";
 
 /**
  * Which ticket the feed opens on.
  *
  * The closest thing the record holds to a session is a workflow run, so the
- * feed opens on the ticket whose workflow was driven most recently. When no
- * ticket has a workflow run, it falls back to the ticket whose record was
- * appended to most recently. Both are recorded facts and a stable rule, not a
- * hand-picked example.
+ * feed opens on the ticket whose workflow was driven most recently, falling
+ * back to the ticket appended to most recently.
  *
- * The result is a `Reading`. If every audit read failed, that is returned as
- * `unavailable` carrying the first failure — the feed must not report "no
- * recorded activity" when the truth is that it could not read any.
+ * The ranking runs over a fan-out of audit reads, and a fan-out can be *partly*
+ * unavailable. `rankCandidates` keeps that visible: an audit that did not
+ * answer is counted, never dropped, and the feed states on its face that the
+ * ranking is provisional. A stream this read could not see might have been the
+ * newer one, and the screen may not quietly imply otherwise.
  */
 export interface FeedFocus {
   readonly ticketId: string;
   readonly events: readonly RecordEvent[];
 }
 
-interface Stream {
-  readonly ticketId: string;
-  readonly audit: Reading<readonly RecordEvent[]>;
-}
+export type FocusReading = Reading<Ranked<FeedFocus>>;
 
-function latestAt(events: readonly RecordEvent[], kind: string | null): string | null {
+const NO_ACTIVITY = {
+  lands: "G5",
+  what: "any recorded activity to render as a thread",
+} as const;
+
+function latestAt(events: readonly RecordEvent[], kind: string | null): string {
   const matching = kind === null ? events : events.filter((event) => event.kind === kind);
-  return matching.reduce<string | null>(
-    (latest, event) =>
-      latest === null || event.occurredAt.localeCompare(latest) > 0 ? event.occurredAt : latest,
-    null
+  return matching.reduce<string>(
+    (latest, event) => (event.occurredAt.localeCompare(latest) > 0 ? event.occurredAt : latest),
+    ""
   );
 }
 
-function rank(streams: readonly Stream[]): Reading<FeedFocus> {
-  const present = streams.flatMap((stream) =>
-    stream.audit.state === "present" && stream.audit.value.length > 0
-      ? [{ ticketId: stream.ticketId, events: stream.audit.value }]
-      : []
-  );
-  if (present.length === 0) {
-    const failures = streams.flatMap((stream) =>
-      stream.audit.state === "unavailable" ? [stream.audit.failure] : []
-    );
-    const first = failures[0];
-    if (first !== undefined) {
-      return { state: "unavailable", failure: first };
-    }
-    return {
-      state: "absent",
-      source: { lands: "G5", what: "any recorded activity to render as a thread" },
-    };
-  }
-  const ordered = [...present].sort((left, right) => {
-    const leftAt = latestAt(left.events, "workflow.changed") ?? "";
-    const rightAt = latestAt(right.events, "workflow.changed") ?? "";
-    if (leftAt !== rightAt) {
-      return rightAt.localeCompare(leftAt);
-    }
-    return (latestAt(right.events, null) ?? "").localeCompare(latestAt(left.events, null) ?? "");
-  });
-  const chosen = ordered[0];
-  return chosen === undefined
-    ? {
-        state: "absent",
-        source: { lands: "G5", what: "any recorded activity to render as a thread" },
-      }
-    : { state: "present", value: chosen };
+/** Order by the last workflow move, then by the last appended event. */
+export function orderKey(events: readonly RecordEvent[]): string {
+  return `${latestAt(events, "workflow.changed")}|${latestAt(events, null)}`;
 }
 
-/**
- * Resolve the feed's focus from the board, keeping every failure typed. A board
- * read that did not answer stays unavailable; it never becomes "nothing to
- * show".
- */
-export async function feedFocus(): Promise<Reading<FeedFocus>> {
+function candidateOf(
+  ticketId: string,
+  audit: Reading<readonly RecordEvent[]>
+): Candidate<FeedFocus> {
+  return {
+    reading: mapReading(audit, (events): Reading<FeedFocus> =>
+      events.length === 0
+        ? { state: "absent", source: NO_ACTIVITY }
+        : { state: "present", value: { ticketId, events } }
+    ),
+    orderBy: audit.state === "present" ? orderKey(audit.value) : "",
+  };
+}
+
+export async function feedFocus(): Promise<FocusReading> {
   const board = await recordAdapter.board();
   if (board.state !== "present") {
-    return mapReading(board, (): Reading<FeedFocus> => ({
-      state: "absent",
-      source: { lands: "G5", what: "any recorded activity to render as a thread" },
-    }));
+    return mapReading(board, (): FocusReading => ({ state: "absent", source: NO_ACTIVITY }));
   }
-  const streams: readonly Stream[] = await Promise.all(
-    board.value.entries.map(async (entry): Promise<Stream> => {
-      return {
-        ticketId: entry.card.ticketId,
-        audit: await recordAdapter.ticketAudit(entry.card.ticketId),
-      };
-    })
+  const candidates: readonly Candidate<FeedFocus>[] = await Promise.all(
+    board.value.entries.map(async (entry): Promise<Candidate<FeedFocus>> =>
+      candidateOf(entry.card.ticketId, await recordAdapter.ticketAudit(entry.card.ticketId))
+    )
   );
-  return rank(streams);
+  return rankCandidates(candidates, NO_ACTIVITY);
 }

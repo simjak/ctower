@@ -64,6 +64,28 @@ function TicketHead({
       <div className="custody">
         <span className="k">custodian</span>
         <span className="mono">{ticket.custodianId}</span>
+        {/* a recorded assignee is a present fact and is rendered when the board
+            row carries one; round-2 review caught a refactor dropping it */}
+        <InlineReading
+          reading={card}
+          present={(row) =>
+            row.assigneeId === null ? null : (
+              <>
+                <span className="arrow">→</span>
+                <span className="k">assignee</span>
+                <span className="mono">{row.assigneeId}</span>
+              </>
+            )
+          }
+          missing={(label, detail, tone) => (
+            <>
+              <span className="k">assignee</span>
+              <span className="mono" style={tone} title={detail}>
+                board context {label}
+              </span>
+            </>
+          )}
+        />
         <span className="k">created</span>
         <span className="mono">{stampText(ticket.createdAt)}</span>
       </div>

@@ -36,7 +36,7 @@ export default async function TicketIndex(): Promise<ReactNode> {
   const newest = await newestTicketId();
   return (
     <Resolved reading={newest} frame={(declared) => <IndexFrame declared={declared} />}>
-      {(ticketId) => redirect(`/ticket/${encodeURIComponent(ticketId)}`)}
+      {(ranked) => redirect(`/ticket/${encodeURIComponent(ranked.chosen)}`)}
     </Resolved>
   );
 }
