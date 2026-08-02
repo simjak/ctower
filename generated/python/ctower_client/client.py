@@ -1,6 +1,6 @@
 """DO NOT EDIT: generated file; regenerate from declared inputs.
 
-Authored contract digest: sha256:1ca4a6823b673e720c5e1fd0e39445905a701d279b773eb99689536a8de41c62
+Authored contract digest: sha256:6aa266a7567ca03b2b3e486df91fcf19ca9b5570cf0a51b4fcf504b6bef4b044
 """
 
 from __future__ import annotations
@@ -74,7 +74,10 @@ from ctower_client.models import (
     WorkflowTransitionRequest,
 )
 
-__all__ = ["CtowerClient", "CtowerProblemError"]
+__all__ = ["CtowerClient", "CtowerProblemError", "ProjectKey"]
+
+
+type ProjectKey = Annotated[str, Field(pattern="^[a-z][a-z0-9-]{2,63}$")]
 
 
 class _ProblemModel(Protocol):
@@ -488,7 +491,7 @@ class CtowerClient:
         *,
         lane: str | None = None,
         priority: str | None = None,
-        stage_key: str | None = None,
+        stage_key: Annotated[str, Field(pattern="^[a-z][a-z0-9._-]*$")] | None = None,
         custodian_id: UUID | None = None,
         assignee_id: UUID | None = None,
         source_kind: Annotated[str, Field(min_length=1, max_length=64)] | None = None,
@@ -555,7 +558,7 @@ class CtowerClient:
     @validate_call(config=ConfigDict(strict=True, arbitrary_types_allowed=True))
     def get_project_delivery(
         self,
-        project_key: str,
+        project_key: ProjectKey,
     ) -> ProjectDeliveryView:
         response = self._http.get(
             f"/v1/projects/{quote(str(project_key), safe='')}/delivery",

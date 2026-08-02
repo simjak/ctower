@@ -2,7 +2,9 @@
 
 from __future__ import annotations
 
+import argparse
 import hashlib
+import io
 import json
 import re
 from datetime import UTC, datetime, timedelta
@@ -28,6 +30,7 @@ from ctower_kernel.projections import Projections
 from ctower_kernel.projections.postgres import PostgresProjections
 from ctower_kernel.record import Actor, PrincipalKind
 from ctowerctl import _migration_commands
+from ctowerctl.interface import write_result
 
 __all__: tuple[str, ...] = ()
 
@@ -86,12 +89,18 @@ def test_reviewed_company_bundle_materializes_ordered_meaningful_delivery_rows(
 
     assert view is not None
     assert affected == len(_CTOWER_CHECKPOINT_CRITERIA)
+    client_view = ClientProjectDeliveryView.model_validate_json(json.dumps(view.response_payload()))
+    _assert_reviewed_delivery_rows(client_view, source)
+    _assert_delivery_snapshots(client_view)
+
+
+def _assert_reviewed_delivery_rows(view: ClientProjectDeliveryView, source: int) -> None:
     assert tuple(row.checkpoint_key for row in view.rows) == tuple(_CTOWER_CHECKPOINT_CRITERIA)
     assert all("ctower checkpoint" not in row.checkpoint_label.casefold() for row in view.rows)
     assert all("establishes the declared" not in row.outcome.casefold() for row in view.rows)
     for row in view.rows:
         expected = _CTOWER_CHECKPOINT_CRITERIA[row.checkpoint_key]
-        assert (row.proven_criteria, row.declared_criteria) == (0, expected)
+        assert (row.criteria.proven, row.criteria.declared) == (0, expected)
         assert (
             row.qualifying_stage_slots_filled,
             row.qualifying_stage_slots_required,
@@ -105,18 +114,17 @@ def test_reviewed_company_bundle_materializes_ordered_meaningful_delivery_rows(
         assert row.projection_watermark == source
         assert row.derivation_reasons[-1] == "underlying_maturity:planned"
 
-    client_view = ClientProjectDeliveryView.model_validate_json(json.dumps(view.response_payload()))
-    text_runs = tuple(_migration_commands.delivery_text(client_view) for _ in range(2))
-    json_runs = tuple(_delivery_json(client_view) for _ in range(2))
+
+def _assert_delivery_snapshots(view: ClientProjectDeliveryView) -> None:
+    text_runs = tuple(_migration_commands.delivery_text(view) for _ in range(2))
+    json_runs = tuple(_delivery_json(view) for _ in range(2))
     assert text_runs[0] == text_runs[1]
     assert json_runs[0] == json_runs[1]
     snapshot_root = _ROOT / "tests/acceptance/increment-1/snapshots"
-    assert text_runs[0] == (snapshot_root / "ctower-project-delivery.txt").read_text(
-        encoding="utf-8"
-    )
-    assert json_runs[0] == (snapshot_root / "ctower-project-delivery.json").read_text(
-        encoding="utf-8"
-    )
+    text_snapshot = snapshot_root / "ctower-project-delivery.txt"
+    json_snapshot = snapshot_root / "ctower-project-delivery.json"
+    assert text_runs[0] == text_snapshot.read_text(encoding="utf-8")
+    assert json_runs[0] == json_snapshot.read_text(encoding="utf-8")
 
 
 def test_checkpoint_bundle_materializes_every_definition_and_replays_without_residue(
@@ -418,15 +426,13 @@ def _digest(payload: JsonValue) -> str:
 
 
 def _delivery_json(view: ClientProjectDeliveryView) -> str:
-    return (
-        json.dumps(
-            view.model_dump(mode="json", by_alias=True, exclude_none=True),
-            ensure_ascii=False,
-            separators=(",", ":"),
-            sort_keys=True,
-        )
-        + "\n"
+    stream = io.StringIO()
+    write_result(
+        argparse.Namespace(cli_name="project delivery query", output="json"),
+        view,
+        stream,
     )
+    return stream.getvalue()
 
 
 def _catalog(tenant: TenantFixture) -> PostgresCatalog:

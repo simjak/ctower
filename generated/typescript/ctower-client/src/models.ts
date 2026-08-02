@@ -1,5 +1,5 @@
 // DO NOT EDIT: generated file; regenerate from declared inputs.
-// Authored contract digest: sha256:1ca4a6823b673e720c5e1fd0e39445905a701d279b773eb99689536a8de41c62
+// Authored contract digest: sha256:6aa266a7567ca03b2b3e486df91fcf19ca9b5570cf0a51b4fcf504b6bef4b044
 
 export type ActivityClass = "work" | "verification";
 
@@ -872,6 +872,11 @@ export type Problem = Readonly<{
   readonly "unmet_facts"?: ReadonlyArray<string>;
 }>;
 
+export type ProjectDeliveryAssignedSeatAssignment = Readonly<{
+  readonly "seat": ProjectDeliverySeat;
+  readonly "state": "assigned";
+}>;
+
 export type ProjectDeliveryCriteria = Readonly<{
   readonly "declared": number;
   readonly "proven": number;
@@ -892,6 +897,7 @@ export type ProjectDeliveryRow = Readonly<{
   readonly "health": "CP3_D_NOT_PROVEN" | "CURRENT" | "STATE_UNKNOWN";
   readonly "outcome": string;
   readonly "projection_watermark": number;
+  readonly "qualifying_stage_slots": ReadonlyArray<ProjectDeliverySlot>;
   readonly "qualifying_stage_slots_filled": number;
   readonly "qualifying_stage_slots_required": number;
   readonly "qualifying_stage_unfilled_or_unknown_slot_keys": ReadonlyArray<string>;
@@ -902,6 +908,25 @@ export type ProjectDeliveryRow = Readonly<{
   readonly "source_ids": ReadonlyArray<string>;
   readonly "source_watermark": number;
   readonly "underlying_maturity": "planned" | "in_progress" | "ready_to_land" | "merged" | "verified" | "released";
+}>;
+
+export type ProjectDeliverySeat = Readonly<{
+  readonly "catalog_revision": SeatCatalogRevision;
+  readonly "seat_key": string;
+  readonly "seat_label": string;
+}>;
+
+export type ProjectDeliverySeatAssignment = ProjectDeliveryAssignedSeatAssignment | ProjectDeliveryUnassignedSeatAssignment;
+
+export type ProjectDeliverySlot = Readonly<{
+  readonly "assigned_seat": ProjectDeliverySeatAssignment;
+  readonly "signing_seat": ProjectDeliverySeat | null;
+  readonly "slot_key": string;
+  readonly "state": "filled" | "unfilled" | "unknown";
+}>;
+
+export type ProjectDeliveryUnassignedSeatAssignment = Readonly<{
+  readonly "state": "unassigned";
 }>;
 
 export type ProjectDeliveryView = Readonly<{
@@ -993,6 +1018,12 @@ export type ReopenedAuditData = Readonly<{
 export type ResolveCloseRequest = Readonly<{
   readonly "expected_version": number;
   readonly "workflow_ref"?: string | null;
+}>;
+
+export type SeatCatalogRevision = Readonly<{
+  readonly "catalog_key": string;
+  readonly "content_digest": string;
+  readonly "revision": number;
 }>;
 
 export type SecretBindingReference = Readonly<{

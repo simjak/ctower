@@ -86,5 +86,31 @@
       "legacy_status",
       "github_state_alone"
     ]
+  },
+  "seat_catalog_revisions": [
+    {
+      "catalog_key": "ledger.delivery-seats",
+      "revision": 1,
+      "members": [
+        {"key": "preparer", "label": "Preparer"},
+        {"key": "approver", "label": "Approver"},
+        {"key": "archivist", "label": "Archivist"}
+      ]
+    },
+    {
+      "catalog_key": "ledger.delivery-seats",
+      "revision": 2,
+      "members": [
+        {"key": "archivist", "label": "Records custodian"},
+        {"key": "observer", "label": "Observer"},
+        {"key": "preparer", "label": "Preparer"}
+      ]
+    }
+  ],
+  "seat_catalog_mutation_proof": {
+    "changes": ["add", "remove", "rename", "reorder"],
+    "product_code_edits": 0,
+    "fixed_roster": false,
+    "seat_key_branching": false
   }
 }

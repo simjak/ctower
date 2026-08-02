@@ -10,6 +10,8 @@ from jsonschema import Draft202012Validator
 from referencing import Registry, Resource
 from ruamel.yaml import YAML
 
+__all__: tuple[str, ...] = ()
+
 ROOT = Path(__file__).parents[3]
 COMPONENTS = ROOT / "contracts/components"
 _MINIMAL_RESOURCE_COUNT = 32
@@ -41,6 +43,7 @@ _PAYLOAD_FILES = {
     "ctower.notification/v1": "notification.schema.json",
     "ctower.persona/v1": "persona.schema.json",
     "ctower.project/v1": "project.schema.json",
+    "ctower.seat-catalog/v1": "seat-catalog.schema.json",
     "ctower.skill/v1": "skill.schema.json",
     "ctower.supervisor/v1": "supervisor.schema.json",
     "ctower.target/v1": "target.schema.json",
@@ -67,6 +70,7 @@ _KINDS = {
     "persona",
     "placement_policy",
     "project",
+    "seat_catalog",
     "skill",
     "supervisor",
     "target",
@@ -197,21 +201,7 @@ def test_minimal_bundle_is_portable_strict_and_content_addressed() -> None:
 
 
 def test_reviewed_ctower_bundle_declares_one_ordered_meaningful_project_hierarchy() -> None:
-    bundle = cast(
-        dict[str, object],
-        YAML(typ="safe", pure=True).load(
-            (ROOT / "company/company.bundle.yaml").read_text(encoding="utf-8")
-        ),
-    )
-    company = cast(dict[str, object], bundle["company"])
-    resources = cast(list[dict[str, object]], bundle["resources"])
-    checkpoints = [
-        resource
-        for resource in resources
-        if cast(dict[str, object], resource["component"])["kind"] == "checkpoint"
-    ]
-    payloads = [cast(dict[str, object], resource["payload"]) for resource in checkpoints]
-    assignments = cast(list[dict[str, object]], bundle["assignments"])
+    company, resources, checkpoints, payloads, assignments = _reviewed_bundle_hierarchy()
 
     assert company == {"key": "ctower", "display_name": "Ctower"}
     assert all(
@@ -239,7 +229,37 @@ def test_reviewed_ctower_bundle_declares_one_ordered_meaningful_project_hierarch
     assert all(
         "ctower checkpoint" not in str(payload["display_name"]).casefold() for payload in payloads
     )
-    disaster_safe = [
+    assert _disaster_safe_checkpoints(payloads) == ["I1.3"]
+    assert assignments[0]["subject"] == "project:ctower"
+
+
+def _reviewed_bundle_hierarchy() -> tuple[
+    dict[str, object],
+    list[dict[str, object]],
+    list[dict[str, object]],
+    list[dict[str, object]],
+    list[dict[str, object]],
+]:
+    bundle = cast(
+        dict[str, object],
+        YAML(typ="safe", pure=True).load(
+            (ROOT / "company/company.bundle.yaml").read_text(encoding="utf-8")
+        ),
+    )
+    company = cast(dict[str, object], bundle["company"])
+    resources = cast(list[dict[str, object]], bundle["resources"])
+    checkpoints = [
+        resource
+        for resource in resources
+        if cast(dict[str, object], resource["component"])["kind"] == "checkpoint"
+    ]
+    payloads = [cast(dict[str, object], resource["payload"]) for resource in checkpoints]
+    assignments = cast(list[dict[str, object]], bundle["assignments"])
+    return company, resources, checkpoints, payloads, assignments
+
+
+def _disaster_safe_checkpoints(payloads: list[dict[str, object]]) -> list[object]:
+    return [
         payload["checkpoint_key"]
         for payload in payloads
         if any(
@@ -247,8 +267,6 @@ def test_reviewed_ctower_bundle_declares_one_ordered_meaningful_project_hierarch
             for criterion in cast(list[object], payload["criteria"])
         )
     ]
-    assert disaster_safe == ["I1.3"]
-    assert assignments[0]["subject"] == "project:ctower"
 
 
 @pytest.mark.parametrize(("schema_id", "filename"), sorted(_PAYLOAD_FILES.items()))

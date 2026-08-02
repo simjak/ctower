@@ -4,7 +4,6 @@ from __future__ import annotations
 
 import argparse
 import ipaddress
-import re
 from collections.abc import Sequence
 from datetime import datetime
 from pathlib import Path
@@ -12,6 +11,9 @@ from typing import Never
 from urllib.parse import SplitResult, urlsplit
 from uuid import UUID, uuid4
 
+from pydantic import TypeAdapter
+
+from ctower_client.client import ProjectKey
 from ctower_client.models import (
     BoardLane,
     IntakeIntent,
@@ -28,8 +30,7 @@ __all__: tuple[str, ...] = ()
 _ASSIGNMENT_KINDS = ("current_assignee", "stage_owner", "reviewer")
 _BLOCKER_KINDS = ("dependency", "operator_action", "policy", "resource", "technical")
 _SPOOL_STATES = ("pending", "accepted_archive", "quarantine")
-_PROJECT_KEY = re.compile(r"^[a-z][a-z0-9.-]{2,127}$")
-_SHA256_DIGEST = re.compile(r"^sha256:[0-9a-f]{64}$")
+_PROJECT_KEY: TypeAdapter[str] = TypeAdapter(ProjectKey)
 _AUTHORED_COMMAND_NAMES = frozenset(
     {
         "bootstrap first-tenant",
@@ -510,7 +511,7 @@ def _project_parser(parser: argparse.ArgumentParser) -> None:
     )
     query = actions.add_parser("query")
     query.set_defaults(cli_name="project delivery query")
-    query.add_argument("project_key", type=_project_key)
+    query.add_argument("project_key", type=_PROJECT_KEY.validate_python)
     query.add_argument("--output", choices=("text", "json"), default="text")
 
 
@@ -569,15 +570,6 @@ def _nonnegative_int(value: str) -> int:
     return parsed
 
 
-def _project_key(value: str) -> str:
-    if _PROJECT_KEY.fullmatch(value) is None:
-        raise argparse.ArgumentTypeError(
-            "project_key must start with a lowercase letter and contain only lowercase "
-            "letters, digits, dots, or hyphens"
-        )
-    return value
-
-
 def _assertions(value: str) -> tuple[str, ...]:
     parsed = tuple(value.split(","))
     if parsed != ("resolved", "closed"):
@@ -590,14 +582,6 @@ def _aware_datetime(value: str) -> datetime:
     if parsed.tzinfo is None:
         raise argparse.ArgumentTypeError("timestamp must include a UTC offset")
     return parsed
-
-
-def _sha256_digest(value: str) -> str:
-    if _SHA256_DIGEST.fullmatch(value) is None:
-        raise argparse.ArgumentTypeError(
-            "digest must be 'sha256:' followed by exactly 64 lowercase hex digits"
-        )
-    return value
 
 
 def _safe_base_url(value: str) -> str:

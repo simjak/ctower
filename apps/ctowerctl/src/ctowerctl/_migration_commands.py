@@ -19,6 +19,10 @@ from ctower_client.models import (
     CtowerProjectImportCorrectionRequest,
     CtowerProjectImportFinalizeRequest,
     CtowerProjectImportRunCreateRequest,
+    ProjectDeliveryAssignedSeatAssignment,
+    ProjectDeliverySeat,
+    ProjectDeliverySlot,
+    ProjectDeliveryUnassignedSeatAssignment,
     ProjectDeliveryView,
 )
 
@@ -173,12 +177,35 @@ def delivery_text(view: ProjectDeliveryView) -> str:
             + f" watermark={row.projection_watermark}/{row.source_watermark} "
             + f"row_digest={row.semantic_digest}"
         )
+        lines.extend(_slot_text(slot) for slot in row.qualifying_stage_slots)
     return "\n".join(lines) + "\n"
 
 
 def _column_line(values: tuple[str, ...], widths: tuple[int, ...]) -> str:
     padded = (value.ljust(width) for value, width in zip(values[:-1], widths[:-1], strict=True))
     return "  ".join((*padded, values[-1]))
+
+
+def _slot_text(slot: ProjectDeliverySlot) -> str:
+    assignment = slot.assigned_seat
+    if assignment.state == "assigned":
+        if not isinstance(assignment, ProjectDeliveryAssignedSeatAssignment):
+            raise TypeError("assigned seat state does not match its payload shape")
+        assigned = _seat_text(assignment.seat)
+    elif assignment.state == "unassigned":
+        if not isinstance(assignment, ProjectDeliveryUnassignedSeatAssignment):
+            raise TypeError("unassigned seat state does not match its payload shape")
+        assigned = "unassigned"
+    else:
+        raise ValueError(f"unsupported seat assignment state: {assignment.state}")
+    signing = slot.signing_seat
+    signed = _seat_text(signing) if signing is not None else "-"
+    return f"  slot={slot.slot_key} state={slot.state} assigned={assigned} signed={signed}"
+
+
+def _seat_text(seat: ProjectDeliverySeat) -> str:
+    revision = seat.catalog_revision
+    return f"{seat.seat_label}[{seat.seat_key}]@{revision.catalog_key}@{revision.revision}"
 
 
 def mutation_command_names() -> frozenset[str]:

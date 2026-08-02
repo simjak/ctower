@@ -26,6 +26,9 @@ from ctower_kernel.projections._project_delivery_sources_sql import (
     qualifying_stage_slots as _qualifying_stage_slots,
 )
 from ctower_kernel.projections._project_delivery_sources_sql import (
+    signing_seat_facts as _signing_seat_facts,
+)
+from ctower_kernel.projections._project_delivery_sources_sql import (
     source_complete as _source_complete,
 )
 from ctower_kernel.projections._project_delivery_sources_sql import (
@@ -166,10 +169,23 @@ def _facts(
 ) -> tuple[CheckpointDefinition, DeliveryFacts]:
     criteria_rows = connection.execute(
         """
-        SELECT criterion_key, proof_ticket_id, proof_criterion_key, source_ids
-        FROM project_delivery_exit_criteria
-        WHERE tenant_id = %s AND checkpoint_definition_id = %s
-        ORDER BY ordinal
+        SELECT criterion.criterion_key, criterion.proof_ticket_id,
+            criterion.proof_criterion_key, criterion.source_ids,
+            criterion.assigned_seat_key,
+            member.seat_label AS assigned_seat_label,
+            catalog.catalog_key AS assigned_catalog_key,
+            catalog.catalog_revision AS assigned_catalog_revision,
+            encode(catalog.catalog_digest, 'hex') AS assigned_catalog_digest
+        FROM project_delivery_exit_criteria AS criterion
+        LEFT JOIN project_delivery_seat_catalog_members AS member
+          ON member.seat_catalog_revision_id = criterion.assigned_seat_catalog_revision_id
+         AND member.tenant_id = criterion.tenant_id
+         AND member.seat_key = criterion.assigned_seat_key
+        LEFT JOIN project_delivery_seat_catalog_revisions AS catalog
+          ON catalog.seat_catalog_revision_id = member.seat_catalog_revision_id
+         AND catalog.tenant_id = member.tenant_id
+        WHERE criterion.tenant_id = %s AND criterion.checkpoint_definition_id = %s
+        ORDER BY criterion.ordinal
         """,
         (tenant_id, row["checkpoint_definition_id"]),
     ).fetchall()
@@ -186,8 +202,17 @@ def _facts(
         if isinstance(item["proof_ticket_id"], UUID)
     )
     maturity, blockers = _ticket_facts(connection, tenant_id, ticket_ids)
-    slots = _qualifying_stage_slots(criteria_rows, link_states)
-    source_ids = _source_ids(row, criteria_rows, ticket_ids)
+    signing_seats = _signing_seat_facts(connection, tenant_id, criteria_rows)
+    slots = _qualifying_stage_slots(criteria_rows, link_states, signing_seats)
+    source_ids = tuple(
+        sorted(
+            {
+                *_source_ids(row, criteria_rows, ticket_ids),
+                *(f"evidence:{fact.evidence_id}" for fact in signing_seats.values()),
+                *(fact.assignment_source_id for fact in signing_seats.values()),
+            }
+        )
+    )
     states = frozenset(
         DeliveryState(str(value)) for value in cast(list[object], row["applicable_states"])
     )

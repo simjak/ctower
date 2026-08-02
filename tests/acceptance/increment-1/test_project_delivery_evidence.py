@@ -1,14 +1,4 @@
-"""Project Delivery evidence-slot derivation against real proof links.
-
-Every product writer of ``project_delivery_exit_criteria`` stores
-``proof_ticket_id = NULL, proof_criterion_key = NULL`` today, because the authored
-checkpoint contract has no field that expresses the link yet. Both slot/proof
-derivations in ``_project_delivery_sources_sql`` therefore short-circuit before their
-queries run, and nothing in this repository had ever sent those statements to
-PostgreSQL. This module is the chokepoint that does: it builds real tickets, workflow
-runs, frozen proof criteria, evidence and verdicts, links exit criteria to them, and
-reconciles the projection against a real database.
-"""
+"""Project Delivery proof-link and seat derivation against a real database."""
 
 from __future__ import annotations
 
@@ -21,6 +11,12 @@ from uuid import UUID, uuid4
 import psycopg
 import rfc8785
 from support.catalog import FileSchemas, MemoryObjectStore, actor_for, telemetry_for
+from support.project_delivery_evidence import (
+    activate_catalog_revision,
+    link_alpha_evidence_assignment,
+    seed_stageless_alpha_proof,
+    slot_reasons,
+)
 from support.server import fixture_proof_policy, fixture_proof_store
 from support.tenant_fixture import TenantFixture
 
@@ -121,6 +117,10 @@ _CHECKPOINT_LINKS: dict[str, tuple[tuple[str, str, str], ...]] = {
     "evidence.superseded": (("link-superseded", "superseded", "linked"),),
     "evidence.unfrozen": (("link-never-frozen", "never-frozen", "linked"),),
     "evidence.stageless": (("link-alpha", "alpha", "stageless"),),
+    "evidence.collision": (
+        ("first-alpha-slot", "alpha", "linked"),
+        ("second-alpha-slot", "alpha", "linked"),
+    ),
 }
 
 
@@ -130,7 +130,7 @@ def test_slot_denominator_is_exactly_the_configured_links(tenant: TenantFixture)
     rows = _reconciled_rows(tenant)
     row = rows["evidence.alpha"]
 
-    assert _slot_reasons(row) == ("slot_filled:alpha", f"slot_unknown:{_DECLARATION}")
+    assert slot_reasons(row) == ("slot_filled:link-alpha", f"slot_unknown:{_DECLARATION}")
     assert (row.qualifying_stage_slots_filled, row.qualifying_stage_slots_required) == (1, 2)
     assert row.qualifying_stage_unfilled_or_unknown_slot_keys == (_DECLARATION,)
 
@@ -145,37 +145,122 @@ def test_evidence_recorded_with_review_pending_is_unfilled_not_unknown(
     refused = rows["evidence.refused"]
     superseded = rows["evidence.superseded"]
 
-    assert _slot_reasons(pending) == (
-        "slot_unfilled:awaits-review",
+    assert slot_reasons(pending) == (
+        "slot_unfilled:link-awaits-review",
         f"slot_unknown:{_DECLARATION}",
     )
     assert pending.qualifying_stage_unfilled_or_unknown_slot_keys == (
-        "awaits-review",
         _DECLARATION,
+        "link-awaits-review",
     )
-    assert _slot_reasons(refused) == ("slot_unfilled:rejected", f"slot_unknown:{_DECLARATION}")
-    assert _slot_reasons(superseded) == (
-        "slot_unfilled:superseded",
+    assert slot_reasons(refused) == (
+        "slot_unfilled:link-rejected",
+        f"slot_unknown:{_DECLARATION}",
+    )
+    assert slot_reasons(superseded) == (
+        "slot_unfilled:link-superseded",
         f"slot_unknown:{_DECLARATION}",
     )
     for row in (pending, refused, superseded):
         assert (row.qualifying_stage_slots_filled, row.qualifying_stage_slots_required) == (0, 2)
 
 
-def test_unestablishable_slots_stay_unknown(tenant: TenantFixture) -> None:
-    """The honest UNKNOWN survives: no frozen criterion, and no workflow stage."""
+def test_unestablishable_link_stays_unknown_but_stageless_proof_agrees(
+    tenant: TenantFixture,
+) -> None:
+    """A missing criterion is unknown; an established proof needs no Workflow stage."""
 
     rows = _reconciled_rows(tenant)
     unfrozen = rows["evidence.unfrozen"]
     stageless = rows["evidence.stageless"]
 
-    assert _slot_reasons(unfrozen) == (
+    assert slot_reasons(unfrozen) == (
         f"slot_unknown:{_DECLARATION}",
-        "slot_unknown:never-frozen",
+        "slot_unknown:link-never-frozen",
     )
-    assert _slot_reasons(stageless) == ("slot_unknown:alpha", f"slot_unknown:{_DECLARATION}")
-    for row in (unfrozen, stageless):
-        assert (row.qualifying_stage_slots_filled, row.qualifying_stage_slots_required) == (0, 2)
+    assert slot_reasons(stageless) == (
+        "slot_filled:link-alpha",
+        f"slot_unknown:{_DECLARATION}",
+    )
+    assert (unfrozen.qualifying_stage_slots_filled, unfrozen.qualifying_stage_slots_required) == (
+        0,
+        2,
+    )
+    assert (stageless.proven_criteria, stageless.qualifying_stage_slots_filled) == (1, 1)
+
+
+def test_two_exit_criteria_linking_one_proof_key_remain_two_slots(
+    tenant: TenantFixture,
+) -> None:
+    """Issue 177: slot identity is the configured exit-criterion key."""
+
+    collision = _reconciled_rows(tenant)["evidence.collision"]
+
+    assert slot_reasons(collision) == (
+        "slot_filled:first-alpha-slot",
+        "slot_filled:second-alpha-slot",
+        f"slot_unknown:{_DECLARATION}",
+    )
+    assert (collision.proven_criteria, collision.declared_criteria) == (2, 3)
+    assert (collision.qualifying_stage_slots_filled, collision.qualifying_stage_slots_required) == (
+        2,
+        3,
+    )
+
+
+def test_assigned_unassigned_and_signing_seats_project_from_explicit_facts(
+    tenant: TenantFixture,
+) -> None:
+    """D28 seat truth comes from pins and an Evidence assignment reference."""
+
+    rows = _reconciled_rows(tenant)
+    alpha = rows["evidence.alpha"]
+    slots = {slot.key: slot for slot in alpha.qualifying_stage_slots}
+    linked = slots["link-alpha"]
+    declaration = slots[_DECLARATION]
+
+    assert linked.assigned_seat is not None
+    assert linked.signing_seat is not None
+    assert linked.assigned_seat.key == "maker"
+    assert linked.assigned_seat.label == "Maker"
+    assert linked.signing_seat.key == "reviewer"
+    assert linked.signing_seat.label == "Reviewer"
+    assert linked.assigned_seat != linked.signing_seat
+    assert declaration.assigned_seat is None
+    assert declaration.response_payload()["assigned_seat"] == {"state": "unassigned"}
+    assert f"slot_unassigned:{_DECLARATION}" in alpha.derivation_reasons
+    assert "slot_assigned_seat:link-alpha:maker" in alpha.derivation_reasons
+    assert "slot_signing_seat:link-alpha:reviewer" in alpha.derivation_reasons
+    assert any(source.startswith("evidence:") for source in alpha.source_ids)
+    assert any(source.startswith("assignment:") for source in alpha.source_ids)
+
+    _activate_catalog_without_maker(tenant)
+    _advance_source_cursor(tenant, now=datetime.now(UTC))
+    projections = Projections(PostgresProjections(tenant.database.projection_dsn))
+    now = datetime.now(UTC)
+    assert projections.reconcile_project_delivery(tenant.tenant_id, now=now) == len(
+        _CHECKPOINT_LINKS
+    )
+    after_removal = projections.project_delivery(
+        Actor(tenant.operator_id, tenant.tenant_id, PrincipalKind.OPERATOR),
+        "ctower",
+    )
+    assert after_removal is not None
+    pinned = next(row for row in after_removal.rows if row.checkpoint_key == "evidence.alpha")
+    pinned_slot = next(slot for slot in pinned.qualifying_stage_slots if slot.key == "link-alpha")
+    assert pinned_slot.assigned_seat is not None
+    assert pinned_slot.assigned_seat.label == "Maker"
+    assert projections.rebuild_project_delivery(tenant.tenant_id, now=now) == len(_CHECKPOINT_LINKS)
+    rebuilt_view = projections.project_delivery(
+        Actor(tenant.operator_id, tenant.tenant_id, PrincipalKind.OPERATOR),
+        "ctower",
+    )
+    assert rebuilt_view is not None
+    rebuilt = next(row for row in rebuilt_view.rows if row.checkpoint_key == "evidence.alpha")
+    assert rebuilt.semantic_digest == pinned.semantic_digest
+    assert rebuilt.qualifying_stage_slots == pinned.qualifying_stage_slots
+    assert rebuilt.derivation_reasons == pinned.derivation_reasons
+    assert rebuilt.source_ids == pinned.source_ids
 
 
 def test_criterion_proof_coverage_agrees_with_slot_coverage(tenant: TenantFixture) -> None:
@@ -184,23 +269,11 @@ def test_criterion_proof_coverage_agrees_with_slot_coverage(tenant: TenantFixtur
     rows = _reconciled_rows(tenant)
 
     for checkpoint_key, row in rows.items():
-        filled = sum(reason.startswith("slot_filled:") for reason in _slot_reasons(row))
+        filled = sum(reason.startswith("slot_filled:") for reason in slot_reasons(row))
         assert (row.proven_criteria, row.qualifying_stage_slots_filled) == (filled, filled), (
             checkpoint_key
         )
         assert row.declared_criteria == row.qualifying_stage_slots_required, checkpoint_key
-
-
-def _slot_reasons(row: ProjectDeliveryRow) -> tuple[str, ...]:
-    """The published per-slot derivation reasons, which name their exact state."""
-
-    return tuple(
-        sorted(
-            reason
-            for reason in row.derivation_reasons
-            if reason.startswith(("slot_filled:", "slot_unfilled:", "slot_unknown:"))
-        )
-    )
 
 
 def _reconciled_rows(tenant: TenantFixture) -> dict[str, ProjectDeliveryRow]:
@@ -211,8 +284,14 @@ def _reconciled_rows(tenant: TenantFixture) -> dict[str, ProjectDeliveryRow]:
     stageless_ticket = _ticket(tenant, "ticket without a workflow run")
     _start_workflow(tenant, linked_ticket)
     _freeze_and_prove(tenant, linked_ticket)
-    _apply_checkpoints(tenant, now=now)
-    _link_exit_criteria(tenant, linked=linked_ticket, stageless=stageless_ticket)
+    seed_stageless_alpha_proof(tenant, linked_ticket, stageless_ticket)
+    _apply_checkpoints(
+        tenant,
+        linked=linked_ticket,
+        stageless=stageless_ticket,
+        now=now,
+    )
+    link_alpha_evidence_assignment(tenant, linked_ticket)
     _advance_source_cursor(tenant, now=now)
 
     projections = Projections(PostgresProjections(tenant.database.projection_dsn))
@@ -348,7 +427,13 @@ def _apply(
     return expected_version + 1
 
 
-def _apply_checkpoints(tenant: TenantFixture, *, now: datetime) -> None:
+def _apply_checkpoints(
+    tenant: TenantFixture,
+    *,
+    linked: UUID,
+    stageless: UUID,
+    now: datetime,
+) -> None:
     actor = actor_for(tenant.tenant_id, tenant.operator_id)
     catalog = PostgresCatalog(
         tenant.database.runtime_dsn,
@@ -357,7 +442,7 @@ def _apply_checkpoints(tenant: TenantFixture, *, now: datetime) -> None:
         key_reference="vault:catalog-key",
         clock=lambda: now,
     )
-    bundle = _checkpoint_bundle()
+    bundle = _checkpoint_bundle(linked=linked, stageless=stageless)
     plan = catalog.plan(actor, bundle)
     assert not isinstance(plan, CatalogProblem), plan
     command_id = uuid4()
@@ -372,73 +457,6 @@ def _apply_checkpoints(tenant: TenantFixture, *, now: datetime) -> None:
         telemetry=telemetry_for(actor, command_id),
     )
     assert isinstance(applied, CompanyBundleCommandResult), applied
-
-
-def _link_exit_criteria(tenant: TenantFixture, *, linked: UUID, stageless: UUID) -> None:
-    """Materialize the exit-criterion proof links no contract path can express yet.
-
-    ``catalog/_checkpoint_sql`` stores ``proof_ticket_id = NULL,
-    proof_criterion_key = NULL`` because ``contracts/components/checkpoint.schema.json``
-    has no proof-link field on a criterion, and the table refuses UPDATE and DELETE
-    (``project_delivery_exit_criteria_immutable``). Appending the linked criteria beside
-    the authored one is therefore the only way the storage state the projection actually
-    reads can exist at all, and it leaves every authored fact exactly as the Catalog
-    wrote it.
-    """
-
-    tickets = {"linked": linked, "stageless": stageless}
-    definitions = _checkpoint_definition_ids(tenant)
-    inserts = tuple(
-        (
-            definitions[checkpoint_key],
-            tenant.tenant_id,
-            criterion_key,
-            ordinal,
-            f"Current proof for {proof_key}",
-            tickets[owner],
-            proof_key,
-        )
-        for checkpoint_key, links in _CHECKPOINT_LINKS.items()
-        for ordinal, (criterion_key, proof_key, owner) in enumerate(links, start=2)
-    )
-    with psycopg.connect(tenant.database.admin_dsn) as connection:
-        connection.cursor().executemany(
-            """
-            INSERT INTO project_delivery_exit_criteria (
-                checkpoint_definition_id, tenant_id, criterion_key, ordinal,
-                description, proof_ticket_id, proof_criterion_key, source_ids
-            ) VALUES (%s, %s, %s, %s, %s, %s, %s, ARRAY[]::text[])
-            """,
-            inserts,
-        )
-    assert _linked_criteria_count(tenant) == len(inserts)
-
-
-def _checkpoint_definition_ids(tenant: TenantFixture) -> dict[str, UUID]:
-    with psycopg.connect(tenant.database.admin_dsn) as connection:
-        rows = connection.execute(
-            """
-            SELECT checkpoint_key, checkpoint_definition_id
-            FROM project_delivery_checkpoint_definitions
-            WHERE tenant_id = %s
-            """,
-            (tenant.tenant_id,),
-        ).fetchall()
-    return {str(row[0]): cast(UUID, row[1]) for row in rows}
-
-
-def _linked_criteria_count(tenant: TenantFixture) -> int:
-    with psycopg.connect(tenant.database.admin_dsn) as connection:
-        row = connection.execute(
-            """
-            SELECT count(*) FROM project_delivery_exit_criteria
-            WHERE tenant_id = %s AND proof_ticket_id IS NOT NULL
-              AND proof_criterion_key IS NOT NULL
-            """,
-            (tenant.tenant_id,),
-        ).fetchone()
-    assert row is not None
-    return int(row[0])
 
 
 def _advance_source_cursor(tenant: TenantFixture, *, now: datetime) -> None:
@@ -466,8 +484,48 @@ def _advance_source_cursor(tenant: TenantFixture, *, now: datetime) -> None:
         )
 
 
-def _checkpoint_bundle() -> CompanyBundle:
-    resources = [_checkpoint_resource(checkpoint_key) for checkpoint_key in _CHECKPOINT_LINKS]
+def _activate_catalog_without_maker(tenant: TenantFixture) -> None:
+    with psycopg.connect(tenant.database.admin_dsn) as connection:
+        links = connection.execute(
+            """
+            SELECT definition.checkpoint_key, criterion.proof_ticket_id
+            FROM project_delivery_exit_criteria AS criterion
+            JOIN project_delivery_checkpoint_definitions AS definition
+              ON definition.checkpoint_definition_id = criterion.checkpoint_definition_id
+             AND definition.tenant_id = criterion.tenant_id
+            WHERE criterion.tenant_id = %s
+              AND definition.checkpoint_key IN ('evidence.alpha', 'evidence.stageless')
+              AND criterion.criterion_key = 'link-alpha'
+            """,
+            (tenant.tenant_id,),
+        ).fetchall()
+    tickets = {str(row[0]): cast(UUID, row[1]) for row in links}
+    prior_bundle = _checkpoint_bundle(
+        linked=tickets["evidence.alpha"],
+        stageless=tickets["evidence.stageless"],
+    )
+    bundle = _checkpoint_bundle(
+        linked=tickets["evidence.alpha"],
+        stageless=tickets["evidence.stageless"],
+        seat_revision=2,
+    )
+    activate_catalog_revision(tenant, prior_bundle, bundle)
+
+
+def _checkpoint_bundle(
+    *,
+    linked: UUID,
+    stageless: UUID,
+    seat_revision: int = 1,
+) -> CompanyBundle:
+    tickets = {"linked": linked, "stageless": stageless}
+    resources = [
+        _seat_catalog_resource(revision=seat_revision),
+        *(
+            _checkpoint_resource(checkpoint_key, tickets=tickets)
+            for checkpoint_key in _CHECKPOINT_LINKS
+        ),
+    ]
     return CompanyBundle.model_validate_json(
         json.dumps(
             {
@@ -481,8 +539,35 @@ def _checkpoint_bundle() -> CompanyBundle:
     )
 
 
-def _checkpoint_resource(checkpoint_key: str) -> JsonValue:
+def _checkpoint_resource(checkpoint_key: str, *, tickets: dict[str, UUID]) -> JsonValue:
     key = checkpoint_key.casefold().replace(".", "-")
+    criteria: list[JsonValue] = [
+        {
+            "key": _DECLARATION,
+            "description": f"The declared {checkpoint_key} outcome",
+            "required": True,
+            "evidence_policy_refs": [],
+        }
+    ]
+    criteria.extend(
+        {
+            "key": criterion_key,
+            "description": f"Current proof for {proof_key}",
+            "required": True,
+            "evidence_policy_refs": [],
+            "proof_link": {
+                "ticket_id": str(tickets[owner]),
+                "criterion_key": proof_key,
+            },
+            "assigned_seat": {
+                "seat_key": "maker",
+                "catalog_key": "fixture.delivery-seats",
+                "catalog_revision": 1,
+                "catalog_digest": _seat_catalog_digest(1),
+            },
+        }
+        for criterion_key, proof_key, owner in _CHECKPOINT_LINKS[checkpoint_key]
+    )
     payload: JsonValue = {
         "schema": "ctower.checkpoint/v1",
         "key": f"ctower.{key}",
@@ -490,14 +575,7 @@ def _checkpoint_resource(checkpoint_key: str) -> JsonValue:
         "display_name": f"ctower checkpoint {checkpoint_key}",
         "outcome": f"ctower establishes the declared {checkpoint_key} outcome",
         "accountable_owner": "ctower-operator",
-        "criteria": [
-            {
-                "key": _DECLARATION,
-                "description": f"The declared {checkpoint_key} outcome",
-                "required": True,
-                "evidence_policy_refs": [],
-            }
-        ],
+        "criteria": criteria,
         "dependency_refs": [],
     }
     digest = f"sha256:{hashlib.sha256(rfc8785.dumps(payload)).hexdigest()}"
@@ -523,6 +601,62 @@ def _checkpoint_resource(checkpoint_key: str) -> JsonValue:
         },
         "payload": payload,
     }
+
+
+def _seat_catalog_resource(*, revision: int) -> JsonValue:
+    payload = _seat_catalog_payload(revision)
+    digest = _seat_catalog_digest(revision)
+    component: dict[str, JsonValue] = {
+        "schema": "ctower.versioned-component/v1",
+        "kind": "seat_catalog",
+        "key": "fixture.delivery-seats",
+        "scope": {"tenant": "ctower", "project": None},
+        "revision": revision,
+        "content_digest": digest,
+        "schema_ref": "ctower.seat-catalog/v1",
+        "lifecycle": "published",
+        "compatibility": {"ctower": ">=0.0.0,<1.0.0", "requires": []},
+        "provenance": [
+            {
+                "kind": "reviewed-contract",
+                "source": "SPEC#project-delivery-projection",
+                "digest": digest,
+            }
+        ],
+        "payload_ref": f"object:{digest}",
+    }
+    if revision > 1:
+        component["supersedes"] = {
+            "kind": "seat_catalog",
+            "key": "fixture.delivery-seats",
+            "revision": revision - 1,
+            "content_digest": _seat_catalog_digest(revision - 1),
+        }
+    return {"component": component, "payload": payload}
+
+
+def _seat_catalog_payload(revision: int) -> JsonValue:
+    members: list[JsonValue]
+    if revision == 1:
+        members = [
+            {"key": "maker", "label": "Maker"},
+            {"key": "reviewer", "label": "Reviewer"},
+        ]
+    else:
+        members = [
+            {"key": "observer", "label": "Observer"},
+            {"key": "reviewer", "label": "Review lead"},
+        ]
+    return {
+        "schema": "ctower.seat-catalog/v1",
+        "key": "fixture.delivery-seats",
+        "display_name": "Fixture delivery seats",
+        "members": members,
+    }
+
+
+def _seat_catalog_digest(revision: int) -> str:
+    return f"sha256:{hashlib.sha256(rfc8785.dumps(_seat_catalog_payload(revision))).hexdigest()}"
 
 
 def _graph() -> WorkflowGraph:
