@@ -139,23 +139,51 @@ def execute_query(arguments: argparse.Namespace, client: CtowerClient) -> BaseMo
 def delivery_text(view: ProjectDeliveryView) -> str:
     """Render deterministic compact rows without percentages or hidden state."""
 
-    lines = [("CHECKPOINT  STATE       PROOF  FRESHNESS      CONFIDENCE           OWNER  OUTCOME")]
-    for row in view.rows:
-        coverage = f"{row.criteria.proven}/{row.criteria.declared}"
+    headers = ("CHECKPOINT", "STATE", "CRITERIA", "SLOTS", "UNRESOLVED")
+    summaries = tuple(
+        (
+            row.checkpoint_key,
+            row.headline_state,
+            f"{row.criteria.proven}/{row.criteria.declared}",
+            f"{row.qualifying_stage_slots_filled}/{row.qualifying_stage_slots_required}",
+            ",".join(row.qualifying_stage_unfilled_or_unknown_slot_keys) or "-",
+        )
+        for row in view.rows
+    )
+    widths = tuple(
+        max((len(header), *(len(str(values[index])) for values in summaries)))
+        for index, header in enumerate(headers)
+    )
+    lines = [
+        f"company={view.company_key} project={view.project_key} "
+        f"watermark={view.projection_record_position}/{view.source_record_position} "
+        f"reconciled_at={view.reconciled_at.isoformat()} "
+        f"freshness_due_at={view.freshness_due_at.isoformat()} "
+        f"rebuild_generation={view.rebuild_generation} "
+        f"semantic_digest={view.projection_semantic_digest}",
+        _column_line(headers, widths),
+    ]
+    for row, summary in zip(view.rows, summaries, strict=True):
+        lines.append(_column_line(summary, widths))
         lines.append(
-            f"{row.checkpoint_key:<10}  {row.headline_state:<10}  {coverage:<5}  "
-            f"{row.freshness:<13}  {row.confidence:<19}  "
-            f"{row.accountable_owner}  {row.outcome}"
+            f"  label={row.checkpoint_label} owner={row.accountable_owner} outcome={row.outcome}"
         )
         lines.append(
-            "  reasons="
-            + ",".join(row.derivation_reasons)
-            + " sources="
+            f"  freshness={row.freshness} confidence={row.confidence} health={row.health} "
+            "sources="
             + ",".join(row.source_ids)
-            + f" watermark={row.projection_watermark}/{row.source_watermark}"
+            + " reasons="
+            + ",".join(row.derivation_reasons)
+            + f" watermark={row.projection_watermark}/{row.source_watermark} "
+            + f"row_digest={row.semantic_digest}"
         )
         lines.extend(_slot_text(slot) for slot in row.qualifying_stage_slots)
     return "\n".join(lines) + "\n"
+
+
+def _column_line(values: tuple[str, ...], widths: tuple[int, ...]) -> str:
+    padded = (value.ljust(width) for value, width in zip(values[:-1], widths[:-1], strict=True))
+    return "  ".join((*padded, values[-1]))
 
 
 def _slot_text(slot: ProjectDeliverySlot) -> str:

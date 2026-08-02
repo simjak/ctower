@@ -62,6 +62,13 @@ Other stable exits are:
 Mutation JSON reports `command_id`, `state`, `reason_code`, and `sequence`; a current server result is
 included only when available. Exit `75` does not mean accepted.
 
+When the server permanently rejects a command, the mutation JSON and every later spool listing also carry
+`server_refusal` — the refusal `status` and the `name` the server gave it, taken from the authored contract's
+refusal codes. A rejection is therefore still named long after the invocation that received it has exited.
+The response body behind that name is never persisted or listed: the CLI keeps the allowlisted name only, and
+a refusal the allowlist does not name becomes the content-free sentinel `unrecognized_refusal`, which carries
+nothing derived from the refusing input.
+
 ## Inspect and recover the local spool
 
 The spool is scoped to the canonical `--base-url`, so use the same origin on every local command:

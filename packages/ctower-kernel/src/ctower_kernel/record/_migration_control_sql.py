@@ -16,11 +16,14 @@ __all__ = [
     "migration_control",
     "reconcile_database_roles",
     "retryable_database_failure",
+    "role_provisioning_control",
 ]
 
 _LOGGER = logging.getLogger(__name__)
 _RANDOM = SystemRandom()
 _MIGRATION_CONTROL_LOCK = 712040119
+_ROLE_PROVISIONING_LOCK = 712040120
+_ROLE_PROVISIONING_DATABASE = "postgres"
 _MAXIMUM_ATTEMPTS = 3
 _MAXIMUM_ELAPSED_SECONDS = 20.0
 _CONNECT_TIMEOUT_SECONDS = 2
@@ -68,15 +71,48 @@ def migration_control(
 ) -> Iterator[psycopg.Connection[tuple[object, ...]]]:
     """Own the same-database session lock for one complete migration operation."""
 
+    with _session_lock(
+        admin_dsn,
+        lock_key=_MIGRATION_CONTROL_LOCK,
+        operation="migration-control-lock",
+    ) as connection:
+        yield connection
+
+
+@contextmanager
+def role_provisioning_control(admin_dsn: str) -> Iterator[None]:
+    """Own the cluster's role-provisioning namespace through its maintenance database."""
+
+    coordination_dsn = make_conninfo(
+        admin_dsn,
+        dbname=_ROLE_PROVISIONING_DATABASE,
+    )
+    with _session_lock(
+        coordination_dsn,
+        lock_key=_ROLE_PROVISIONING_LOCK,
+        operation="role-provisioning-lock",
+    ):
+        yield
+
+
+@contextmanager
+def _session_lock(
+    dsn: str,
+    *,
+    lock_key: int,
+    operation: str,
+) -> Iterator[psycopg.Connection[tuple[object, ...]]]:
+    """Acquire one bounded session advisory lock and release it with its connection."""
+
     started = time.monotonic()
     connection: psycopg.Connection[tuple[object, ...]] | None = None
     last_failure: psycopg.Error | None = None
     for attempt in range(1, _MAXIMUM_ATTEMPTS + 1):
         try:
-            connection = psycopg.connect(_bounded_dsn(admin_dsn))
+            connection = psycopg.connect(_bounded_dsn(dsn))
             connection.execute(
                 "SELECT pg_advisory_lock(%s)",
-                (_MIGRATION_CONTROL_LOCK,),
+                (lock_key,),
             )
         except psycopg.Error as error:
             if connection is not None:
@@ -91,8 +127,8 @@ def migration_control(
             break
     if connection is None:
         if last_failure is None:
-            raise RuntimeError("migration control retry policy ended without a classified failure")
-        raise _exhausted("migration-control-lock", started, attempt, last_failure)
+            raise RuntimeError(f"{operation} retry policy ended without a classified failure")
+        raise _exhausted(operation, started, attempt, last_failure)
     with connection:
         yield connection
 

@@ -11,14 +11,18 @@ from enum import StrEnum
 from typing import TYPE_CHECKING, Annotated, Literal
 from uuid import UUID
 
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, BeforeValidator, ConfigDict, Field
+
+from ctowerctl.spool._refusals import RefusalName, refusal_name
 
 if TYPE_CHECKING:
     from ctowerctl.spool._recovery import CorruptRecord, RecoveredRecord, Session
 
 __all__ = [
+    "CanonicalRefusal",
     "JsonObject",
     "SecretMaterialError",
+    "ServerRefusal",
     "SpoolDoctorReport",
     "SpoolEntry",
     "SpoolState",
@@ -31,6 +35,7 @@ __all__ = [
     "entry_order",
     "reason_digest",
     "reject_secret_material",
+    "server_refusal",
     "spool_entry",
     "spool_status",
     "torn_entry",
@@ -76,6 +81,13 @@ class SpoolState(StrEnum):
     QUARANTINE = "quarantine"
 
 
+class ServerRefusal(_BoundaryModel):
+    """One authored refusal name, or the content-free sentinel; never response text."""
+
+    status: Annotated[int, Field(ge=400, le=599)]
+    name: RefusalName
+
+
 class SpoolEntry(_BoundaryModel):
     """Redacted command inventory row."""
 
@@ -88,6 +100,7 @@ class SpoolEntry(_BoundaryModel):
     bytes: Annotated[int, Field(ge=0)]
     reason_code: str | None = None
     artifact_digest: Annotated[str, Field(pattern=r"^[0-9a-f]{64}$")] | None = None
+    server_refusal: ServerRefusal | None = None
 
 
 class SpoolStatus(_BoundaryModel):
@@ -148,6 +161,31 @@ def reject_secret_material(value: JsonValue) -> None:
     _inspect(value, ())
 
 
+def server_refusal(status: int, code: str) -> ServerRefusal:
+    """Name one server refusal from the allowlist, discarding its response body."""
+
+    return ServerRefusal(status=status, name=refusal_name(code))
+
+
+def _canonical_refusal(value: object) -> ServerRefusal | None:
+    """Rebuild any refusal through the allowlist, whatever shape or class carried it."""
+
+    if value is None:
+        return None
+    if isinstance(value, ServerRefusal):
+        return server_refusal(value.status, value.name)
+    if isinstance(value, Mapping):
+        status, name = value.get("status"), value.get("name")
+        if isinstance(status, bool) or not isinstance(status, int) or not isinstance(name, str):
+            raise TypeError("a refusal is not one integer status and one name")
+        return server_refusal(status, name)
+    raise TypeError("a refusal is neither a mapping nor a named refusal")
+
+
+CanonicalRefusal = Annotated[ServerRefusal | None, BeforeValidator(_canonical_refusal)]
+"""A refusal field that re-derives its name, so no relaxed subclass survives the boundary."""
+
+
 def reason_digest(reason: str) -> str:
     """Return a stable non-content diagnostic for an operator reason."""
 
@@ -198,6 +236,7 @@ def spool_entry(record: RecoveredRecord, session: Session) -> SpoolEntry:
         "accepted": SpoolState.ACCEPTED_ARCHIVE,
         "quarantine": SpoolState.QUARANTINE,
     }[record.stored.directory]
+    reason_code, refusal = _quarantine_outcome(session, record)
     return SpoolEntry(
         sequence=record.stored.sequence,
         command_id=UUID(_string_field(payload, "command_id")),
@@ -206,7 +245,8 @@ def spool_entry(record: RecoveredRecord, session: Session) -> SpoolEntry:
         enqueued_at=_parse_utc(_string_field(payload, "enqueued_at")),
         expires_at=_parse_utc(_string_field(payload, "expires_at")),
         bytes=record.stored.size,
-        reason_code=_quarantine_reason(session, record),
+        reason_code=reason_code,
+        server_refusal=refusal,
     )
 
 
@@ -313,15 +353,20 @@ def _inspect(value: JsonValue, path: tuple[str, ...]) -> None:
             _inspect(child, path)
 
 
-def _quarantine_reason(session: Session, command: RecoveredRecord) -> str | None:
-    reasons: list[str] = []
+def _quarantine_outcome(
+    session: Session,
+    command: RecoveredRecord,
+) -> tuple[str | None, ServerRefusal | None]:
+    outcomes: list[tuple[str, ServerRefusal | None]] = []
     for record in session.records:
         if record.opened.header.record_type != "quarantine_receipt":
             continue
         payload = record.opened.payload
         if payload.get("command_sequence") == command.stored.sequence:
-            reasons.append(_string_field(payload, "reason_code"))
-    return reasons[-1] if reasons else None
+            outcomes.append(
+                (_string_field(payload, "reason_code"), _canonical_refusal(payload.get("refusal")))
+            )
+    return outcomes[-1] if outcomes else (None, None)
 
 
 def _oldest_age(entries: tuple[SpoolEntry, ...]) -> float | None:

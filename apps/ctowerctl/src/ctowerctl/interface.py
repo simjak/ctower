@@ -42,7 +42,7 @@ from ctowerctl._output import (
 from ctowerctl._parser import parse_arguments
 from ctowerctl.spool import Spool, SpoolCommand, SpoolEntry, SpoolError, SpoolState
 
-__all__ = ["main"]
+__all__ = ["main", "write_result"]
 
 type JsonValue = str | int | float | bool | list[JsonValue] | dict[str, JsonValue] | None
 type JsonObject = dict[str, JsonValue]
@@ -99,7 +99,7 @@ def _run_command(
         identity = f"command_id={subject}" if subject is not None else "query"
         error_stream.write(f"temporary {identity}: ctower is unreachable\n")
         return int(ExitCode.TEMPORARY)
-    _write_result(arguments, result, output_stream)
+    write_result(arguments, result, output_stream)
     return int(code)
 
 
@@ -170,6 +170,7 @@ def _execute_mutation(
         reason_code=_outcome_reason(current, report.reason_code),
         sequence=current.sequence,
         result=result,
+        server_refusal=current.server_refusal,
     )
     return outcome, _outcome_code(current.state, report.barrier_sequence)
 
@@ -263,7 +264,9 @@ def _execute_synthetic(
     return run, ExitCode.TEMPORARY
 
 
-def _write_result(arguments: object, result: BaseModel, stream: TextIO) -> None:
+def write_result(arguments: object, result: BaseModel, stream: TextIO) -> None:
+    """Write one command result through the public CLI presentation boundary."""
+
     namespace = cast("argparse.Namespace", arguments)
     if getattr(namespace, "cli_name", None) == "company bundle export" and isinstance(
         result, CompanyBundleExportResult

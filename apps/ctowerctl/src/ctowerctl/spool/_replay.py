@@ -24,7 +24,9 @@ from ctowerctl.spool._recovery import (
     utc_text,
 )
 from ctowerctl.spool._redaction import (
+    CanonicalRefusal,
     JsonObject,
+    ServerRefusal,
     digest_json,
     reject_secret_material,
 )
@@ -33,6 +35,7 @@ __all__ = [
     "DrainReport",
     "ReplayExecutor",
     "ReplayResponse",
+    "ServerRefusal",
     "SpoolCommand",
     "drain_session",
 ]
@@ -86,6 +89,7 @@ class ReplayResponse(_BoundaryModel):
     event_ids: tuple[str, ...] = ()
     acceptance_position: str | None = None
     problem_code: Annotated[str, Field(pattern=r"^[a-z][a-z0-9_]{0,63}$")] | None = None
+    refusal: CanonicalRefusal = None
 
 
 class ReplayExecutor(Protocol):
@@ -195,7 +199,7 @@ def drain_session(
             accepted += 1
             continue
         if decision is ReplayDecision.QUARANTINE:
-            _quarantine(session, record, reason, response.response)
+            _quarantine(session, record, reason, response.response, refusal=response.refusal)
             quarantined += 1
         break
     return _report(
@@ -279,14 +283,17 @@ def _quarantine(
     record: RecoveredRecord,
     reason_code: str,
     response: JsonObject | None,
+    *,
+    refusal: ServerRefusal | None = None,
 ) -> None:
     receipt = QuarantineReceipt(
-        schema_version=1,
+        schema_version=2,
         command_sequence=record.stored.sequence,
         command_hash=record.opened.record_hash,
         reason_code=_reason_code(reason_code),
         response_digest=digest_json(response) if response is not None else None,
         quarantined_at=utc_text(datetime.now(UTC)),
+        refusal=refusal,
     )
     session.append(RecordType.QUARANTINE_RECEIPT, "quarantine", receipt)
     session.move(record, "quarantine")
