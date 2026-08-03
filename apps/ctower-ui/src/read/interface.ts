@@ -80,6 +80,28 @@ export type Reading<T> =
 export interface RecordSource {
   readonly kind: string;
   readonly ref: string;
+  /**
+   * The issue this ticket was raised from, when the recorded source kind is an
+   * issue tracker and the ref parses as one of its references.
+   *
+   * The operator asked the board to reflect the issue a ticket is linked to.
+   * That link is only ever the record's own `source` — this surface resolves a
+   * URL from a kind it recognises and a ref that parses, and renders the raw ref
+   * as text otherwise. A repository guessed from an identifier's spelling would
+   * be the inference INV-66 forbids, and a URL guessed from it would be a
+   * fabricated link an operator would click.
+   */
+  readonly issue: IssueReference | null;
+}
+
+/** One resolved issue reference: where it lives, and the address to open. */
+export interface IssueReference {
+  /** `owner/repo`, exactly as the ref recorded it. */
+  readonly repository: string;
+  readonly number: number;
+  readonly url: string;
+  /** How it reads on a card: `owner/repo#123`. */
+  readonly label: string;
 }
 
 export interface BoardCard {
@@ -131,6 +153,8 @@ export interface BoardSnapshot {
   readonly health: ProjectionHealth;
   readonly projectionWatermark: number;
   readonly sourceWatermark: number;
+  /** What this read asked for, and what the record could answer with. */
+  readonly scope: BoardScope;
 }
 
 export interface RecordEvent {
@@ -516,14 +540,32 @@ export interface InstanceIdentity {
 }
 
 /**
+ * How a board read was scoped, so the screen can say what it is looking at.
+ *
+ * The read is always scoped by project key — that is the contract's required
+ * parameter. Whether the *record* can honour that scoping is a different fact,
+ * and the screen must not imply the first answers the second.
+ */
+export interface BoardScope {
+  /** The project key the read asked for. */
+  readonly projectKey: string;
+  /**
+   * Whether a returned card carries a project fact of its own. False today: the
+   * Board card has no project member, so nothing on this board can be
+   * attributed to a project, however the read was scoped.
+   */
+  readonly cardsCarryProject: boolean;
+}
+
+/**
  * Every read this surface makes. One module implements it; screens import the
  * selected implementation from `adapter.ts` and never construct their own.
  */
 export interface RecordAdapter {
   readonly instance: InstanceIdentity;
-  board: () => Promise<Reading<BoardSnapshot>>;
-  ticket: (ticketId: string) => Promise<Reading<TicketRecord>>;
-  ticketAudit: (ticketId: string) => Promise<Reading<readonly RecordEvent[]>>;
+  board: (projectKey: string) => Promise<Reading<BoardSnapshot>>;
+  ticket: (ticketId: string, projectKey: string) => Promise<Reading<TicketRecord>>;
+  ticketAudit: (ticketId: string, projectKey: string) => Promise<Reading<readonly RecordEvent[]>>;
   /** Per-session work facts: who, duration, tokens, outcome. */
   workSessions: (ticketId: string) => Promise<Reading<never>>;
   /** Registered scheduled wakes and their fire history. */

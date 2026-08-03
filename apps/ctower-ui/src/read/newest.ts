@@ -33,8 +33,8 @@ export function newestCandidates(entries: readonly BoardEntry[]): readonly Candi
   }));
 }
 
-export async function newestTicketId(): Promise<Reading<Ranked<string>>> {
-  return mapReading(await recordAdapter.board(), (snapshot) =>
+export async function newestTicketId(projectKey: string): Promise<Reading<Ranked<string>>> {
+  return mapReading(await recordAdapter.board(projectKey), (snapshot) =>
     rankStrictly(newestCandidates(snapshot.entries), NO_TICKET_ON_BOARD)
   );
 }

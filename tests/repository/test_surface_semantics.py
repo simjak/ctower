@@ -275,5 +275,21 @@ class ChatStreamTests(unittest.TestCase):
         )
 
 
+class RefusalStatusTests(unittest.TestCase):
+    """An empty board and a board you are not allowed to see must never match."""
+
+    def test_a_refusal_carries_its_status_through_the_retry_loop(self) -> None:
+        self.assertEqual(
+            _case("refusalKeepsItsStatus")["status"],
+            401,
+            "the status was dropped folding a built failure back into a classification, so a "
+            "401 reaches the screen as a generic 'the record was not reached' block and the "
+            "operator cannot tell a refusal from an outage",
+        )
+
+    def test_a_failure_with_no_status_does_not_acquire_one(self) -> None:
+        self.assertNotIn("status", _case("failureWithNoStatusStaysWithout"))
+
+
 if __name__ == "__main__":
     unittest.main()

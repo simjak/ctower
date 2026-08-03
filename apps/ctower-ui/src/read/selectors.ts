@@ -98,7 +98,7 @@ export function rankCandidates<T>(
 function buildUnavailable<T>(reason: string): Reading<Ranked<T>> {
   return {
     state: "unavailable",
-    failure: { reason, failureClass: "permanent", attempts: 1, elapsedMs: 0 },
+    failure: { reason, failureClass: "permanent", attempts: 1, elapsedMs: 0, status: null },
   };
 }
 

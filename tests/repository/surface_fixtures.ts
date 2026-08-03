@@ -20,6 +20,7 @@ import { markerCandidates } from "../../apps/ctower-ui/src/read/sources/cadenceC
 import { healthOf, registryOf } from "../../apps/ctower-ui/src/read/sources/cadenceHealth.ts";
 import { rejoined, turnsOf, unindent } from "../../apps/ctower-ui/src/read/sources/tmuxBridge.ts";
 import { noneOf, unreadOf, valueOf } from "../../apps/ctower-ui/src/read/sources/maybe.ts";
+import { reclassified } from "../../apps/ctower-ui/src/read/bounded.ts";
 import type { Beat } from "../../apps/ctower-ui/src/read/interface.ts";
 
 const results: Record<string, unknown> = {};
@@ -191,6 +192,27 @@ results.rejoinKeepsABlankLineAsABreak = rejoined(
   ["a line that ran all the way out to the pane's own wrap column and kept going", "", "after"],
   80
 );
+
+/* ── the status a refusal carries ─────────────────────────────────────────
+   The board tells "not allowed to look" from "could not reach" by the status on
+   the typed failure. The retry loop folds an already-built failure back into a
+   classification, and that fold used to drop the status — so a 401 reached the
+   screen as a generic unreachable-source block. */
+
+results.refusalKeepsItsStatus = reclassified({
+  reason: "the read API answered 401",
+  failureClass: "permanent",
+  attempts: 1,
+  elapsedMs: 13,
+  status: 401,
+});
+results.failureWithNoStatusStaysWithout = reclassified({
+  reason: "the read attempt timed out",
+  failureClass: "transient",
+  attempts: 2,
+  elapsedMs: 4000,
+  status: null,
+});
 
 // `noneOf` is exercised so the driver fails loudly if the Known constructors
 // ever stop being importable from this module

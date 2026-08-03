@@ -95,11 +95,35 @@ export function NoSourceYet({
 }
 
 /**
+ * Statuses that mean *refused*, not *unreachable*.
+ *
+ * "We could not reach it" and "we are not allowed to look" are different things
+ * to tell an operator, and only one of them is worth retrying. The status comes
+ * from the typed failure rather than from matching prose in `reason`.
+ */
+const REFUSED_STATUS = new Set([401, 403]);
+
+/**
  * A source that exists and did not answer. This is deliberately loud and
  * deliberately not the block above: it states that the record was not reached,
  * so nothing on this screen may be read as "the record does not hold it".
+ *
+ * When the instance *refused* — 401 or 403 — the block says so in those words
+ * and names what unblocks it, because an empty board and a board the reader is
+ * not authorized to see must never look alike. Issuing a credential for a
+ * project is operator-only under D30, so this is not a state the surface can
+ * retry its way out of, and it does not pretend otherwise.
  */
-export function ReadUnavailable({ failure }: { readonly failure: ReadFailure }): ReactElement {
+export function ReadUnavailable({
+  failure,
+  subject = null,
+}: {
+  readonly failure: ReadFailure;
+  /** What the read was for, when the caller can name it: `project manibo`. */
+  readonly subject?: string | null;
+}): ReactElement {
+  const refused = failure.status !== null && REFUSED_STATUS.has(failure.status);
+  const named = subject ?? "this read";
   return (
     <Frame>
       <div
@@ -108,10 +132,25 @@ export function ReadUnavailable({ failure }: { readonly failure: ReadFailure }):
       >
         <StateGlyph name="attn" />
         <div className="e">
-          <div className="k">the record was not reached</div>
+          <div className="k">
+            {refused ? `not allowed to read ${named}` : "the record was not reached"}
+          </div>
           <div className="d">
-            This source exists — this read did not reach it, so nothing is shown here. Do not read
-            this screen as evidence that the record is empty; it is evidence that the read failed.
+            {refused ? (
+              <>
+                The instance answered {String(failure.status)}: the credential this surface holds is
+                not authorized for {named}. This is a refusal, not an outage and not an empty board
+                — there may be work here that you cannot see from this surface. Issuing a scoped
+                credential is operator-only, so it unblocks when the operator issues one; no amount
+                of retrying reaches it.
+              </>
+            ) : (
+              <>
+                This source exists — this read did not reach it, so nothing is shown here. Do not
+                read this screen as evidence that the record is empty; it is evidence that the read
+                failed.
+              </>
+            )}
           </div>
           <div className="f" style={{ overflowWrap: "anywhere" }}>
             <span className="req">{failure.reason}</span>
@@ -160,12 +199,15 @@ export function Resolved<T>({
   children,
   frame = identity,
   brief = false,
+  subject = null,
 }: {
   readonly reading: Reading<T>;
   readonly children: (value: T) => ReactNode;
   readonly frame?: (declared: ReactElement) => ReactNode;
   /** A later block on a page whose first block already carried the sentence. */
   readonly brief?: boolean;
+  /** What this read was for, so a refusal can name it. */
+  readonly subject?: string | null;
 }): ReactNode {
   switch (reading.state) {
     case "present":
@@ -173,7 +215,7 @@ export function Resolved<T>({
     case "absent":
       return frame(<NoSourceYet source={reading.source} brief={brief} />);
     case "unavailable":
-      return frame(<ReadUnavailable failure={reading.failure} />);
+      return frame(<ReadUnavailable failure={reading.failure} subject={subject} />);
   }
 }
 

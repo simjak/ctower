@@ -3,6 +3,8 @@ import { Chrome } from "@/frame/Chrome";
 import { Resolved } from "@/frame/Declared";
 import { RecordFoot } from "@/frame/RecordFoot";
 import { newestTicketId } from "@/read/newest";
+import { selectedProjectKey } from "@/read/projects";
+import { readParam } from "@/surfaces/screenParams";
 import { ArrivalNote, TicketScreen } from "@/surfaces/ticket/TicketScreen";
 
 export const dynamic = "force-dynamic";
@@ -48,13 +50,23 @@ function IndexFrame({ declared }: { readonly declared: ReactElement }): ReactEle
   );
 }
 
-export default async function TicketIndex(): Promise<ReactNode> {
-  const newest = await newestTicketId();
+export default async function TicketIndex({
+  searchParams,
+}: {
+  readonly searchParams: Promise<Record<string, string | string[] | undefined>>;
+}): Promise<ReactNode> {
+  const project = selectedProjectKey(readParam(await searchParams, "project"));
+  const newest = await newestTicketId(project);
   return (
-    <Resolved reading={newest} frame={(declared) => <IndexFrame declared={declared} />}>
+    <Resolved
+      reading={newest}
+      subject={`project ${project}`}
+      frame={(declared) => <IndexFrame declared={declared} />}
+    >
       {(ranked) => (
         <TicketScreen
           ticketId={ranked.chosen}
+          projectKey={project}
           note={<ArrivalNote rule={`You are reading ${RULE}.`} ticketId={ranked.chosen} />}
         />
       )}

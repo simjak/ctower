@@ -2,6 +2,7 @@ import { randomBytes, randomUUID } from "node:crypto";
 import type { DurabilityState, Priority, ProjectionHealth, TelemetryContext } from "@ctower/client";
 import { boundedRead, ReadRefused } from "./bounded";
 import { NO_WORK_SESSIONS } from "./futureSources";
+import { issueReferenceOf } from "./issueRef";
 import { reading } from "./outcome";
 import { seatNameOf, seatNames } from "./sources/seatNames";
 import {
@@ -23,6 +24,7 @@ import type {
   Reading,
   RecordApiReads,
   RecordEvent,
+  RecordSource,
   TicketRecord,
 } from "./interface";
 
@@ -89,6 +91,8 @@ async function read(path: string): Promise<unknown> {
       failureClass: "permanent",
       attempts: 0,
       elapsedMs: 0,
+      // the API was never asked, so there is no status to report
+      status: null,
     });
   }
   return await boundedRead(`${instanceIdentity().baseUrl}${path}`, {
@@ -128,6 +132,11 @@ function toCard(value: unknown, names: Readonly<Record<string, string>>): BoardC
   };
 }
 
+/** The recorded source, plus the issue it addresses when the record names one. */
+function sourceOf(kind: string, ref: string): RecordSource {
+  return { kind, ref, issue: issueReferenceOf(kind, ref) };
+}
+
 function toTicket(value: unknown, names: Readonly<Record<string, string>>): TicketRecord {
   const row = asRecord(value, "ticket");
   const source = asRecord(row.source, "ticket.source");
@@ -140,10 +149,10 @@ function toTicket(value: unknown, names: Readonly<Record<string, string>>): Tick
     createdAt: asString(row.created_at, "ticket.created_at"),
     durabilityState: asMember(row.durability_state, "ticket.durability_state", DURABILITY),
     version: asInteger(row.version, "ticket.version"),
-    source: {
-      kind: asString(source.kind, "ticket.source.kind"),
-      ref: asString(source.ref, "ticket.source.ref"),
-    },
+    source: sourceOf(
+      asString(source.kind, "ticket.source.kind"),
+      asString(source.ref, "ticket.source.ref")
+    ),
   };
 }
 
@@ -163,13 +172,31 @@ function toEvent(value: unknown): RecordEvent {
   };
 }
 
-async function loadTicket(ticketId: string): Promise<TicketRecord> {
-  const names = await seatNames();
-  return toTicket(await read(`/v1/tickets/${encodeURIComponent(ticketId)}`), names);
+/** `project_key` is a required query parameter on every one of these paths. */
+function scoped(path: string, projectKey: string): string {
+  return `${path}?project_key=${encodeURIComponent(projectKey)}`;
 }
 
-async function loadBoard(): Promise<BoardSnapshot> {
-  const view = asRecord(await read("/v1/board"), "board");
+async function loadTicket(ticketId: string, projectKey: string): Promise<TicketRecord> {
+  const names = await seatNames();
+  return toTicket(
+    await read(scoped(`/v1/tickets/${encodeURIComponent(ticketId)}`, projectKey)),
+    names
+  );
+}
+
+/**
+ * The board for one project.
+ *
+ * The read is scoped — `project_key` is required by the contract — but the cards
+ * that come back carry no project member, so this reports `cardsCarryProject:
+ * false` and the screen says what that means rather than letting three tabs
+ * imply three different boards. That flag is derived from the card shape this
+ * module parses, not from a probe of today's behaviour: it flips when the record
+ * starts carrying the fact, and the screen changes with it.
+ */
+async function loadBoard(projectKey: string): Promise<BoardSnapshot> {
+  const view = asRecord(await read(scoped("/v1/board", projectKey)), "board");
   const names = await seatNames();
   const cards = asArray(view.cards, "board.cards").map((card) => toCard(card, names));
   const entries: readonly BoardEntry[] = await Promise.all(
@@ -177,7 +204,7 @@ async function loadBoard(): Promise<BoardSnapshot> {
       card,
       // the per-card join keeps its own reading: a card whose ticket read failed
       // must say so, not silently lose its source and its age
-      ticket: await reading(async () => await loadTicket(card.ticketId)),
+      ticket: await reading(async () => await loadTicket(card.ticketId, projectKey)),
     }))
   );
   return {
@@ -185,21 +212,38 @@ async function loadBoard(): Promise<BoardSnapshot> {
     health: asMember(view.health, "board.health", HEALTH),
     projectionWatermark: asInteger(view.projection_watermark, "board.projection_watermark"),
     sourceWatermark: asInteger(view.source_watermark, "board.source_watermark"),
+    scope: { projectKey, cardsCarryProject: CARD_CARRIES_PROJECT },
   };
 }
 
-async function loadAudit(ticketId: string): Promise<readonly RecordEvent[]> {
-  const view = asRecord(await read(`/v1/tickets/${encodeURIComponent(ticketId)}/audit`), "audit");
+/**
+ * Whether the parsed Board card carries a project of its own.
+ *
+ * `toCard` above is the whole of what this surface reads from a card, and no
+ * member of it is a project. When the contract adds one, `toCard` gains the
+ * field and this becomes true in the same edit — the two cannot drift.
+ */
+const CARD_CARRIES_PROJECT = false;
+
+async function loadAudit(ticketId: string, projectKey: string): Promise<readonly RecordEvent[]> {
+  const view = asRecord(
+    await read(scoped(`/v1/tickets/${encodeURIComponent(ticketId)}/audit`, projectKey)),
+    "audit"
+  );
   return asArray(view.events, "audit.events").map(toEvent);
 }
 
 export const httpRecordAdapter: RecordApiReads = {
   instance: instanceIdentity(),
-  board: async (): Promise<Reading<BoardSnapshot>> => await reading(loadBoard),
-  ticket: async (ticketId: string): Promise<Reading<TicketRecord>> =>
-    await reading(async () => await loadTicket(ticketId)),
-  ticketAudit: async (ticketId: string): Promise<Reading<readonly RecordEvent[]>> =>
-    await reading(async () => await loadAudit(ticketId)),
+  board: async (projectKey: string): Promise<Reading<BoardSnapshot>> =>
+    await reading(async () => await loadBoard(projectKey)),
+  ticket: async (ticketId: string, projectKey: string): Promise<Reading<TicketRecord>> =>
+    await reading(async () => await loadTicket(ticketId, projectKey)),
+  ticketAudit: async (
+    ticketId: string,
+    projectKey: string
+  ): Promise<Reading<readonly RecordEvent[]>> =>
+    await reading(async () => await loadAudit(ticketId, projectKey)),
   workSessions: (): Promise<Reading<never>> =>
     Promise.resolve({ state: "absent", source: NO_WORK_SESSIONS }),
 };

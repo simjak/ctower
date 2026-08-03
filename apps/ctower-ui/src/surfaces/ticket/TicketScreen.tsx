@@ -15,7 +15,8 @@ import {
   NO_WORKFLOW_REF_HERE,
 } from "@/read/futureSources";
 import { shortId, stampText } from "@/read/elapsed";
-import type { BoardCard, Reading, RecordEvent, TicketRecord } from "@/read/interface";
+import { namesAnIssueTracker } from "@/read/issueRef";
+import type { BoardCard, Reading, RecordEvent, RecordSource, TicketRecord } from "@/read/interface";
 import { mapReading } from "@/read/reading";
 import { isComment, isRelation, stagesFrom, workflowRefOf } from "@/surfaces/record/events";
 import { CommentsPanel, EvidencePanel, RecordStreamPanel } from "./RecordPanels";
@@ -114,6 +115,38 @@ function TicketHead({
   );
 }
 
+/**
+ * The issue this ticket was raised from, when the record addresses one.
+ *
+ * The operator asked to see the linked issue. The record's `source` is the only
+ * link there is, so this renders a real anchor when the kind names an issue
+ * tracker and the ref carries its repository, and otherwise says which of those
+ * two is missing. It never composes a URL out of a ref that does not carry a
+ * repository — that link would look right and go somewhere else.
+ */
+function SourceIssue({ source }: { readonly source: RecordSource }): ReactElement {
+  if (source.issue !== null) {
+    return (
+      <a href={source.issue.url} rel="noreferrer noopener" target="_blank">
+        {source.issue.label}
+      </a>
+    );
+  }
+  if (namesAnIssueTracker(source.kind)) {
+    return (
+      <span title={`the recorded ref is ${source.ref}`}>
+        {source.ref} — this source names an issue tracker, but the ref carries no repository, so
+        there is no address to open
+      </span>
+    );
+  }
+  return (
+    <span title={`the recorded source kind is ${source.kind}`}>
+      not raised from an issue tracker — the recorded source is {source.kind}
+    </span>
+  );
+}
+
 function HeldBanner({ card }: { readonly card: BoardCard }): ReactElement | null {
   if (card.blockerReason === null) {
     return null;
@@ -208,6 +241,12 @@ function RightRail({
           <li>
             <span className="k">source</span>
             <span className="v">{`${ticket.source.kind} · ${ticket.source.ref}`}</span>
+          </li>
+          <li>
+            <span className="k">issue</span>
+            <span className="v">
+              <SourceIssue source={ticket.source} />
+            </span>
           </li>
           <li>
             <span className="k">workflow</span>
@@ -394,15 +433,17 @@ export function ArrivalNote({
  */
 export async function TicketScreen({
   ticketId,
+  projectKey,
   note = null,
 }: {
   readonly ticketId: string;
+  readonly projectKey: string;
   readonly note?: ReactNode;
 }): Promise<ReactNode> {
   const [ticket, audit, board] = await Promise.all([
-    recordAdapter.ticket(ticketId),
-    recordAdapter.ticketAudit(ticketId),
-    recordAdapter.board(),
+    recordAdapter.ticket(ticketId, projectKey),
+    recordAdapter.ticketAudit(ticketId, projectKey),
+    recordAdapter.board(projectKey),
   ]);
   const card = cardFor(board, ticketId);
 
