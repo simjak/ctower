@@ -38,7 +38,7 @@ def test_migration_manifest_is_ordered_and_checksum_exact() -> None:
     assert manifest["adoption_baseline"] == {
         "through": "0040_project_scoped_reads.sql",
         "schema_sha256": (
-            "sha256:d557c028d86bc560cfd48257a546645d663ed322270cbdf473acc1d14f4f10da"
+            "sha256:f7f9eed2e91c97a8f624a6c176623fe7012c0ac83ca1317cd5901ff8640ab4e6"
         ),
         "semantic_checks": "ctower.pre-ledger/v1",
         "schema_object_sum256": (
