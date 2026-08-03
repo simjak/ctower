@@ -1,19 +1,26 @@
 import { readdir, readFile } from "node:fs/promises";
 import { boundedProcess } from "../bounded";
+import { stampText } from "../elapsed";
+import { readAccountability } from "./escapesLedger";
 import { scanJsonl } from "./jsonl";
+import { readLandedChanges } from "./landedChanges";
 import { attempted, noneOf, unreadOf, valueOf } from "./maybe";
 import type { Known } from "./maybe";
+import { crewNameOf, parseName } from "./crewNaming";
 import { crewLogPath, personasRoot } from "./paths";
+import { filtersOf, groupsOf, modelsOf, projectKeyOf, seatRowsOf } from "../rosterShape";
 import { redacted } from "./redact";
+import { changeReferencesIn, readCrewRecords } from "./signatures";
+import type { ChangeReference } from "./signatures";
 import { asRecord, asString, asStringOrNull } from "../json";
 import type {
   CrewActivity,
+  CrewLifecycleEntry,
+  CrewLink,
+  CrewLookup,
   CrewRoster,
   CrewRow,
-  ModelShare,
-  ProjectRoster,
-  RosterFilter,
-  SeatRow,
+  CrewUnknown,
 } from "../interface";
 
 /**
@@ -39,32 +46,6 @@ import type {
  * Read-only throughout. Every string a screen sees passes `redacted` first: a
  * crew's task line is coordination text authored by another seat.
  */
-
-/** How a crew name's persona token maps to a declared seat file. */
-const SEAT_ALIASES: Readonly<Record<string, string>> = {
-  em: "engineering-manager",
-  writer: "tech-writer",
-  release: "release-manager",
-};
-
-/**
- * How a declared seat is spelled and abbreviated on screen. This is display
- * only: the seat list itself is whatever the personas directory holds, and a
- * seat missing from this table still gets a row — spelled from its file name.
- */
-const SEAT_DISPLAY: Readonly<Record<string, readonly [string, string]>> = {
-  ceo: ["CEO", "CE"],
-  commander: ["Commander", "CM"],
-  cso: ["CSO", "CS"],
-  designer: ["Designer", "DS"],
-  devops: ["DevOps", "DO"],
-  engineer: ["Engineer", "EN"],
-  "engineering-manager": ["Eng manager", "EM"],
-  qa: ["QA", "QA"],
-  "release-manager": ["Release", "RL"],
-  review: ["Review", "RV"],
-  "tech-writer": ["Writer", "WR"],
-};
 
 /**
  * The status words the crew log actually writes, sorted into the product's
@@ -97,7 +78,6 @@ const HARNESSES: readonly (readonly [RegExp, string])[] = [
   [/^glm/u, "z.ai"],
 ];
 
-const MC_PREFIX = "mc-";
 const TASK_CAP = 220;
 
 interface LogRecord {
@@ -107,6 +87,8 @@ interface LogRecord {
   readonly task: string | null;
   readonly status: string | null;
   readonly project: string | null;
+  /** Free text the writing seat added to the entry, when it added any. */
+  readonly comment: string | null;
 }
 
 interface LiveSession {
@@ -114,6 +96,12 @@ interface LiveSession {
   readonly createdAt: number | null;
   /** The session's own `@project` tag, when the fleet set one. */
   readonly project: string | null;
+  /**
+   * When this session last produced output, as tmux records it. The roster
+   * does not show it; a profile does, because "still running" and "last said
+   * something four hours ago" are different answers to "is this crew alive".
+   */
+  readonly activityAt: number | null;
 }
 
 function logShape(value: unknown): LogRecord | null {
@@ -126,15 +114,11 @@ function logShape(value: unknown): LogRecord | null {
       task: asStringOrNull(row.task, "crew-log.task"),
       status: asStringOrNull(row.status, "crew-log.status"),
       project: asStringOrNull(row.project, "crew-log.project"),
+      comment: asStringOrNull(row.comment, "crew-log.comment"),
     };
   } catch {
     return null;
   }
-}
-
-/** The crew as the fleet names it, with the mux prefix the socket adds. */
-function crewNameOf(session: string): string {
-  return session.startsWith(MC_PREFIX) ? session.slice(MC_PREFIX.length) : session;
 }
 
 /**
@@ -172,12 +156,14 @@ async function liveSessions(): Promise<readonly LiveSession[]> {
     .map((line) => line.trim())
     .filter((line) => line.length > 0)
     .map((line): LiveSession => {
-      const [name = "", created = ""] = line.split("\t");
+      const [name = "", created = "", active = ""] = line.split("\t");
       const epoch = Number.parseInt(created, 10);
+      const last = Number.parseInt(active, 10);
       return {
         name,
         createdAt: Number.isFinite(epoch) ? epoch : null,
         project: tagged.get(name) ?? null,
+        activityAt: Number.isFinite(last) ? last : null,
       };
     })
     .filter((session) => session.name.length > 0);
@@ -201,33 +187,12 @@ async function declaredSeats(): Promise<Known<readonly string[]>> {
   }
 }
 
-function seatLabelOf(seat: string): string {
-  const declared = SEAT_DISPLAY[seat];
-  if (declared !== undefined) {
-    return declared[0];
-  }
-  return seat
-    .split("-")
-    .map((word, index) =>
-      index === 0 ? `${word.slice(0, 1).toUpperCase()}${word.slice(1)}` : word
-    )
-    .join(" ");
-}
-
-function initialsOf(seat: string): string {
-  const declared = SEAT_DISPLAY[seat];
-  if (declared !== undefined) {
-    return declared[1];
-  }
-  const parts = seat.split("-");
-  const first = parts[0] ?? "";
-  const second = parts[1];
-  return (second === undefined ? first.slice(0, 2) : `${first.slice(0, 1)}${second.slice(0, 1)}`)
-    .toUpperCase()
-    .padEnd(2, "·");
-}
-
 function harnessOf(model: Known<string>): Known<string> {
+  // the harness is derived from the model, so a missing model is stated as the
+  // reason there is no harness rather than repeated verbatim beside itself
+  if (model.known === "none") {
+    return noneOf(`${model.why}, so no harness can be derived`);
+  }
   if (model.known !== "value") {
     return model;
   }
@@ -266,39 +231,6 @@ function loggedAgo(at: string, nowMs: number): Known<string> {
   return Number.isNaN(parsed)
     ? unreadOf(`the recorded stamp ${at} could not be read as a time`)
     : valueOf(`logged ${elapsed(parsed, nowMs)} ago`);
-}
-
-/** Split `<persona>-<request>-<slug>`; a part the name omits says so. */
-function parseName(
-  crew: string,
-  seats: Known<readonly string[]>
-): Pick<CrewRow, "seat" | "seatLabel" | "seatInitials" | "request" | "slug" | "flag"> {
-  const parts = crew.split("-");
-  const token = parts[0] ?? "";
-  const declared = seats.known === "value" ? seats.value : [];
-  const candidate = SEAT_ALIASES[token] ?? token;
-  const seatKey = declared.find((entry) => entry === candidate);
-  const seat: Known<string> =
-    seats.known === "unread"
-      ? unreadOf(seats.reason)
-      : seatKey === undefined
-        ? noneOf(`no seat named ${token}`)
-        : valueOf(seatKey);
-  const request = parts[1];
-  const carriesRequest = request !== undefined && /^(?:r?[0-9]+|i[0-9]+|gh[0-9]+)$/iu.test(request);
-  const slugParts = carriesRequest ? parts.slice(2) : parts.slice(1);
-  return {
-    seat,
-    seatLabel: seat.known === "value" ? valueOf(seatLabelOf(seat.value)) : seat,
-    seatInitials: seat.known === "value" ? valueOf(initialsOf(seat.value)) : seat,
-    request: carriesRequest ? valueOf(redacted(request)) : noneOf("no request id"),
-    slug: slugParts.length === 0 ? noneOf("no slug") : valueOf(redacted(slugParts.join("-"))),
-    // the naming rule is Mission Control's, and a row that breaks it is flagged
-    // rather than normalised into looking compliant
-    flag: carriesRequest
-      ? null
-      : "this crew name carries no request id, so the name alone does not say which request it serves",
-  };
 }
 
 /**
@@ -407,80 +339,6 @@ function rowsOf(
   });
 }
 
-const NOT_RECORDED = "project not recorded";
-
-function projectKeyOf(row: CrewRow): string {
-  return row.project.known === "value" ? row.project.value : NOT_RECORDED;
-}
-
-function groupsOf(rows: readonly CrewRow[]): readonly ProjectRoster[] {
-  const keys = [...new Set(rows.map(projectKeyOf))].sort((left, right) => {
-    if (left === NOT_RECORDED) {
-      return 1;
-    }
-    if (right === NOT_RECORDED) {
-      return -1;
-    }
-    return left.localeCompare(right);
-  });
-  return keys.map((key): ProjectRoster => {
-    const crews = rows.filter((row) => projectKeyOf(row) === key);
-    return {
-      key,
-      label: key,
-      crews,
-      inFlight: crews.filter((row) => row.activity === "in-flight").length,
-      parked: crews.filter((row) => row.activity === "parked").length,
-      held: crews.filter((row) => row.activity === "held").length,
-    };
-  });
-}
-
-function seatRowsOf(
-  rows: readonly CrewRow[],
-  seats: Known<readonly string[]>,
-  columns: readonly string[]
-): readonly SeatRow[] {
-  const declared = seats.known === "value" ? seats.value : [];
-  return declared.map((seat): SeatRow => {
-    const mine = rows.filter((row) => row.seat.known === "value" && row.seat.value === seat);
-    return {
-      seat,
-      label: seatLabelOf(seat),
-      initials: initialsOf(seat),
-      perProject: columns.map(
-        (column) => mine.filter((row) => projectKeyOf(row) === column).length
-      ),
-      total: mine.length,
-    };
-  });
-}
-
-function modelsOf(rows: readonly CrewRow[]): readonly ModelShare[] {
-  const counts = new Map<string, { harness: Known<string>; count: number }>();
-  for (const row of rows) {
-    const label = row.model.known === "value" ? row.model.value : "model not recorded";
-    const current = counts.get(label);
-    counts.set(label, { harness: row.harness, count: (current?.count ?? 0) + 1 });
-  }
-  return [...counts.entries()]
-    .map(([label, entry]): ModelShare => ({ label, harness: entry.harness, count: entry.count }))
-    .sort((left, right) => right.count - left.count || left.label.localeCompare(right.label));
-}
-
-function filtersOf(rows: readonly CrewRow[], of: (row: CrewRow) => string | null): RosterFilter[] {
-  const counts = new Map<string, number>();
-  for (const row of rows) {
-    const key = of(row);
-    if (key !== null) {
-      counts.set(key, (counts.get(key) ?? 0) + 1);
-    }
-  }
-  return [...counts.entries()]
-    .map(([key, count]): RosterFilter => ({ key, label: key, count }))
-    .sort((left, right) => right.count - left.count || left.key.localeCompare(right.key));
-}
-
 export async function readCrewRoster(
   project: string | null,
   seat: string | null
@@ -554,6 +412,269 @@ export async function readCrewRoster(
       malformed: scan.malformed,
       partialTail: scan.partialTail,
       sourcePath: path,
+    },
+  };
+}
+
+/* ── one crew in full ──────────────────────────────────────────────────────
+   The same three sources the roster joins, read for a single name, plus the
+   records that seat wrote about itself. The roster answers "who is working";
+   this answers "what has this one crew done, and who stands behind it". */
+
+/** Lifecycle entries shown, newest last. A cap is stated, never silent. */
+const LIFECYCLE_CAP = 40;
+/** What ctower will record when a work session becomes a first-class fact. */
+const COST_SOURCE = {
+  lands: "#200 (G5)",
+  what: "what one work session cost — its duration, its tokens and its outcome",
+} as const;
+
+/** The pane a session is showing: its working directory and its process. */
+async function paneOf(session: string): Promise<{ cwd: Known<string>; running: Known<string> }> {
+  const panes = await attempted(
+    async () => await boundedProcess({ op: "tmux.panes" }),
+    (text) => text.trim().length === 0,
+    "tmux reported no pane for any session"
+  );
+  if (panes.known !== "value") {
+    // a pane listing that failed is not a session without a directory
+    return { cwd: panes, running: panes };
+  }
+  for (const line of panes.value.split("\n")) {
+    const [name, cwd, command] = line.split("\t");
+    if (name === session && cwd !== undefined && command !== undefined) {
+      return { cwd: valueOf(redacted(cwd)), running: valueOf(redacted(command)) };
+    }
+  }
+  const why = "tmux lists no pane for this session";
+  return { cwd: noneOf(why), running: noneOf(why) };
+}
+
+/** One git fact about the directory a crew works in, or why there is none. */
+async function gitFact(
+  cwd: Known<string>,
+  inspect: (root: string) => Promise<string>,
+  empty: string
+): Promise<Known<string>> {
+  if (cwd.known !== "value") {
+    return cwd;
+  }
+  const root = cwd.value;
+  return await attempted(
+    async () => redacted((await inspect(root)).trim()),
+    (text) => text.length === 0,
+    empty
+  );
+}
+
+function lifecycleOf(
+  records: readonly LogRecord[],
+  log: LogOutcome,
+  nowMs: number
+): readonly CrewLifecycleEntry[] {
+  const from = Math.max(0, records.length - LIFECYCLE_CAP);
+  const shown = records.slice(from);
+  return shown.map((record, index): CrewLifecycleEntry => {
+    const status = knownText(record.status, "no status recorded", log);
+    // compared against the real predecessor, not the first entry shown: a cap
+    // must not turn the oldest visible row into a task change that never was
+    const previous = records[from + index - 1];
+    return {
+      at: redacted(record.at),
+      ago: loggedAgo(record.at, nowMs),
+      status,
+      activity: activityOf(status),
+      task: knownText(record.task, "no task recorded", log),
+      model: knownText(record.model, "no model recorded", log),
+      comment: knownText(record.comment, "no comment recorded", log),
+      // the log has no engagement field; a task line that changes is the only
+      // mark the record carries for "this crew was pointed at something else"
+      opensEngagement: previous?.task !== record.task,
+    };
+  });
+}
+
+function linksOf(session: string, row: CrewRow): readonly CrewLink[] {
+  const links: CrewLink[] = [
+    { label: "Org", href: "/team", what: "every crew alive on the fleet" },
+  ];
+  if (row.seatLabel.known === "value") {
+    links.push({
+      label: `${row.seatLabel.value} crews`,
+      href: `/team?seat=${encodeURIComponent(row.seatLabel.value)}`,
+      what: "the roster filtered to this seat",
+    });
+  }
+  // both of these are keyed on the session name, which exists because this
+  // profile only renders for a session tmux is listing right now
+  links.push(
+    {
+      label: "Workspace",
+      href: `/workspace?seat=${encodeURIComponent(session)}`,
+      what: "what this session was handed at start",
+    },
+    {
+      label: "Feed",
+      href: `/feed?seat=${encodeURIComponent(session)}`,
+      what: "this session's pane, read-only",
+    }
+  );
+  return links;
+}
+
+function missingOf(
+  crew: string,
+  records: readonly LogRecord[],
+  log: LogOutcome,
+  live: number,
+  nowMs: number
+): CrewUnknown {
+  const last = records.at(-1);
+  const ago = last === undefined ? null : loggedAgo(last.at, nowMs);
+  return {
+    crew: redacted(crew),
+    logged:
+      last === undefined
+        ? knownText(null, "the crew log has never recorded this name", log)
+        : knownText(
+            `${last.status ?? "no status"} · ${last.at}${ago?.known === "value" ? ` · ${ago.value}` : ""}${
+              last.task === null ? "" : ` — ${last.task.slice(0, TASK_CAP)}`
+            }`,
+            "the crew log has never recorded this name",
+            log
+          ),
+    liveCrews: live,
+    checked: [
+      `the ${String(live)} sessions tmux is listing right now`,
+      crewLogPath(),
+      personasRoot(),
+    ],
+  };
+}
+
+/**
+ * Read one crew in full.
+ *
+ * Not finding the crew is an answer, not a failure: tmux was reached and does
+ * not list it. So the lookup stays `present` and carries what *was* found —
+ * whether the crew log has ever recorded the name, and how many crews are alive
+ * — while tmux failing to answer at all still throws, and arrives at the screen
+ * as an unreachable read.
+ */
+export async function readCrewProfile(crew: string): Promise<CrewLookup> {
+  const nowMs = Date.now();
+  const sessions = await liveSessions();
+  const seats = await declaredSeats();
+
+  const path = crewLogPath();
+  const log = await readCrewLog(path);
+  const scan = scanJsonl(log.read ? log.text : "", logShape);
+  const mine = scan.records.filter((record) => record.crew === crew);
+  const tail = {
+    totalLines: scan.totalLines,
+    malformed: scan.malformed,
+    partialTail: scan.partialTail,
+    sourcePath: path,
+  };
+
+  const session = sessions.find((entry) => crewNameOf(entry.name) === crew);
+  if (session === undefined) {
+    return {
+      found: "no-such-crew",
+      missing: missingOf(crew, mine, log, sessions.length, nowMs),
+    };
+  }
+
+  const latest = new Map<string, LogRecord>();
+  const newest = mine.at(-1);
+  if (newest !== undefined) {
+    latest.set(crew, newest);
+  }
+  const row = rowsOf([session], latest, log, seats, nowMs)[0];
+  if (row === undefined) {
+    throw new Error("the roster produced no row for a session tmux is listing");
+  }
+
+  const pane = await paneOf(session.name);
+  const [branch, head, headSubject] = await Promise.all([
+    gitFact(
+      pane.cwd,
+      async (root) => await boundedProcess({ op: "git.branch", root }),
+      "this directory is not a git checkout"
+    ),
+    gitFact(
+      pane.cwd,
+      async (root) => await boundedProcess({ op: "git.revision", root }),
+      "this directory is not a git checkout"
+    ),
+    gitFact(
+      pane.cwd,
+      async (root) => await boundedProcess({ op: "git.headSubject", root }),
+      "no commit subject is recorded"
+    ),
+  ]);
+
+  const records = await readCrewRecords(crew, row.project);
+  // each log entry carries its own project, so a reference this crew wrote
+  // while it was on another fleet's repository is checked against that trunk;
+  // an entry that left the field empty falls back to the crew's project, which
+  // the row then names as the derivation it is
+  const logged: readonly ChangeReference[] = mine.flatMap((record) => {
+    if (record.task === null) {
+      return [];
+    }
+    const own = knownText(record.project, "not recorded", log);
+    return changeReferencesIn(record.task, {
+      citedIn: "the crew log",
+      project: own.known === "value" ? own : row.project,
+      projectFromCrew: own.known !== "value",
+    });
+  });
+  const [landed, accountability] = await Promise.all([
+    readLandedChanges([...records.references, ...logged], nowMs),
+    readAccountability(row.seat.known === "value" ? row.seat.value : null, nowMs),
+  ]);
+
+  return {
+    found: "crew",
+    profile: {
+      row,
+      sessionName: redacted(session.name),
+      spawnedAt:
+        session.createdAt === null
+          ? unreadOf("tmux reported no start time for this session")
+          : valueOf(stampText(new Date(session.createdAt * 1_000).toISOString())),
+      lastOutput:
+        session.activityAt === null
+          ? unreadOf("tmux reported no last-activity time for this session")
+          : valueOf(`${elapsed(session.activityAt * 1_000, nowMs)} since tmux last saw output`),
+      worktree: pane.cwd,
+      branch,
+      head,
+      headSubject,
+      running: pane.running,
+      links: linksOf(session.name, row),
+      lifecycle: lifecycleOf(mine, log, nowMs),
+      lifecycleNote:
+        mine.length > LIFECYCLE_CAP
+          ? `the newest ${String(LIFECYCLE_CAP)} of ${String(mine.length)} entries the crew log holds for this crew`
+          : `every one of the ${String(mine.length)} ${mine.length === 1 ? "entry" : "entries"} the crew log holds for this crew`,
+      delivered: landed.changes,
+      deliveredNote: landed.note,
+      claims: records.claims,
+      signatures: records.signatures,
+      claimsNote:
+        records.outcome.known === "value"
+          ? `${records.outcome.value}${records.beyondCap === 0 ? "" : `; ${String(records.beyondCap)} older ${records.beyondCap === 1 ? "file was" : "files were"} not opened`}`
+          : records.outcome.known === "none"
+            ? records.outcome.why
+            : records.outcome.reason,
+      accountability,
+      cost: COST_SOURCE,
+      observedAt: new Date(nowMs).toISOString(),
+      sourceNote:
+        "identity and liveness from the live tmux session; model, task, status and project from the crew log; the seat from the crew name against the personas directory",
+      tail,
     },
   };
 }

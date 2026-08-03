@@ -83,6 +83,7 @@ and no screen knows a URL.
 | Explorer | `git worktree list` + `git diff <resolved trunk>...HEAD` | recorded worktree facts |
 | Metrics (S9) | `git log --first-parent` per project trunk | a recorded deploy event, incident pair and metric-definition file |
 | Org (the who layer) | live `tmux list-sessions` (liveness and `@project`) + Mission Control `state/crew-log.jsonl` + `personas/` | recorded session facts and a seat registry |
+| Crew profile | the Org sources for one name, plus that crew's `coordination/*.status.md`, `state/escapes.jsonl` and each project's first-parent trunk history | G5 session facts, a recorded ladder state, and a per-session cost event (#200) |
 
 Nothing in the "swaps to" column is cited as a work item unless one is filed for it; see
 **Citations are facts** below.
@@ -130,10 +131,39 @@ three marks is stated on the page rather than hidden in a component. Model strin
 unnormalised: two spellings of one family stay two rows rather than merging into a count nobody
 recorded.
 
-The seat and crew profile pages (`seat.html`, `crew.html`) are not built here, so the rail offers no
-per-seat entry — a nav item that leads nowhere is a dead control. Org carries both dimensions as
-filters that work instead, and each filter chip counts what clicking it would reveal *under the
-other filter*, not the fleet-wide number.
+The rail still offers no per-seat entry — a nav item that leads nowhere is a dead control, and the
+seat page (`seat.html`) is not built. Org carries both dimensions as filters that work instead, and
+each filter chip counts what clicking it would reveal *under the other filter*, not the fleet-wide
+number.
+
+### One crew in full — `/crew/<name>`
+
+Every roster row opens the crew's own profile, a 1:1 port of the approved `crew.html`. It answers the
+question the roster cannot: what has this one crew done, and who stands behind it. Identity, the
+bound task and liveness, the lifecycle the crew log holds, the changes it claims, the signatures it
+wrote, and where its seat stands on the autonomy ladder.
+
+Four things about it are worth knowing before reading the code:
+
+- **A crew that is not running is an answer, not a failure.** tmux was reached and lists no such
+  session, so the lookup stays `present` and the page says what *was* checked — including whether the
+  crew log has ever recorded the name, which is how a reaped crew is told apart from one that never
+  existed. It never renders the panels above with nothing in them: a shell with empty fields reads as
+  a crew with no work rather than as a crew that is not there.
+- **A change reference is a claim; the trunk is the verdict.** A crew names its own changes in its
+  status files and crew-log lines. Each reference is joined to the first-parent trunk history of the
+  project *its own record was filed under* — not the crew's current project, because a long-lived
+  crew moves and `#1` on one repository is a different change from `#1` on another. Where the record
+  named no project, the crew's is used and the row says so. `landed`, `not on trunk` and `no trunk
+  read` are three different claims and are never drawn as each other. No forge is reached: this
+  surface holds no credential for one and would have to invent a host to build a link.
+- **The ladder rung is derived, and says so.** `board/accountability.md` puts tiers in
+  `board/crew-kpis.md`; that file carries a model scoreboard, not a rung. So the rung comes from
+  counting `state/escapes.jsonl` against the ladder's own entry thresholds, and a seat the ledger
+  charges nothing is TRUSTED **by default** — the panel names that, because the ladder is entered by
+  five consecutive verified-clean ships and no record on this fleet counts ships.
+- **Session cost is the one panel with no record at all.** It reads `— · —` and names `#200` (G5).
+  An invented cost is the one number an operator would believe without checking.
 
 ### Metrics, and the rule about numbers
 
