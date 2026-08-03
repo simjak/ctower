@@ -15,6 +15,7 @@ __all__ = [
     "MigrationAdoptionError",
     "MigrationBaseline",
     "MigrationExecutionError",
+    "MigrationPreconditionError",
     "MigrationScript",
     "MigrationStateError",
     "apply_database_migrations",
@@ -23,7 +24,7 @@ __all__ = [
 
 _LEDGER = "ctower_schema_migrations"
 _LEDGER_ROLE = "ctower_migration_ledger"
-_SEMANTIC_CHECKS = "ctower.pre-ledger/v1"
+_SEMANTIC_CHECKS_ID = "ctower.pre-ledger/v1"
 type _SchemaRecord = tuple[str, str, str]
 type _SchemaRecords = tuple[_SchemaRecord, ...]
 
@@ -55,6 +56,21 @@ class _PendingMigration:
     application_kind: Literal["applied", "baseline"]
 
 
+@dataclass(frozen=True, slots=True)
+class _SemanticCheck:
+    """One named cheap read-only data invariant, and where it can be asked."""
+
+    name: str
+    # `adoption_only` marks a check the ledger itself already answers once the
+    # database is ledgered; see the rationale on _SEMANTIC_CHECKS.
+    adoption_only: bool
+    # The migration that creates the objects the query reads. A check is only
+    # asked once that migration is part of the applied history, so an advance
+    # from an early ledger position never probes an object that does not exist.
+    reads_from: str
+    query: str
+
+
 class MigrationStateError(ValueError):
     """The migration ledger is malformed or contradicts the authored history."""
 
@@ -68,6 +84,10 @@ class MigrationAdoptionError(MigrationStateError):
     """A pre-ledger database cannot prove the exact supported baseline."""
 
 
+class MigrationPreconditionError(MigrationStateError):
+    """A ledgered database fails an invariant the pending set requires."""
+
+
 class MigrationExecutionError(MigrationStateError):
     """Authored migration SQL failed behind a bounded data-safe error."""
 
@@ -77,7 +97,13 @@ def apply_database_migrations(
     migrations: tuple[MigrationScript, ...],
     baseline: MigrationBaseline,
 ) -> tuple[_PendingMigration, ...]:
-    """Validate and advance schema; return rows for the narrow ledger authority."""
+    """Validate and advance schema; return rows for the narrow ledger authority.
+
+    Every data invariant this module can ask is asked here, inside the caller's
+    schema transaction: adoption invariants and advance preconditions before any
+    DDL runs, and the executed-SQL invariants after the DDL but before it
+    commits. A refusal therefore always rolls the schema back untouched.
+    """
 
     ledger_exists = _ledger_exists(connection)
     if ledger_exists:
@@ -90,6 +116,7 @@ def apply_database_migrations(
     pending: list[_PendingMigration] = []
     if applied:
         _validate_recorded_application_state(connection, applied, baseline)
+        _validate_ledgered_advance(connection, applied, migrations, baseline)
     elif _has_preledger_objects(connection):
         baseline_index = _validate_preledger_database(connection, migrations, baseline)
         pending.extend(
@@ -97,9 +124,12 @@ def apply_database_migrations(
             for migration in migrations[: baseline_index + 1]
         )
         applied_count = baseline_index + 1
-    for migration in migrations[applied_count:]:
+    executed = migrations[applied_count:]
+    for migration in executed:
         _execute_migration(connection, migration)
         pending.append(_PendingMigration(migration, "applied"))
+    if executed:
+        _validate_executed_invariants(connection, migrations, baseline)
     return tuple(pending)
 
 
@@ -108,7 +138,15 @@ def record_database_migrations(
     pending: tuple[_PendingMigration, ...],
     baseline: MigrationBaseline,
 ) -> None:
-    """Attest and record completed work only as the isolated ledger role."""
+    """Attest and record completed work only as the isolated ledger role.
+
+    The schema fingerprint is the one attestation that cannot move in front of
+    the schema commit: role reconciliation runs between the two steps and the
+    grants it closes are part of what the fingerprint measures. Every data
+    invariant is asked by apply_database_migrations instead, where a refusal
+    still rolls back, so a mismatch here means the executed SQL produced a
+    schema the authored baseline does not describe.
+    """
 
     if not pending:
         return
@@ -122,13 +160,6 @@ def record_database_migrations(
             "ledger-attestation-mismatch",
             f"completed schema does not match {baseline.through}",
         )
-    if pending[-1].migration.migration_id == baseline.through:
-        semantic_rejections = _baseline_semantic_rejections(connection, baseline)
-        if semantic_rejections:
-            raise MigrationStateError(
-                "ledger-semantic-mismatch",
-                ", ".join(semantic_rejections),
-            )
     connection.execute(f"SET ROLE {_LEDGER_ROLE}")
     if _ledger_exists(connection):
         _validate_ledger_shape(connection)
@@ -169,13 +200,51 @@ def _validate_preledger_database(
                 through=baseline.through,
             ),
         )
-    semantic_rejections = _baseline_semantic_rejections(connection, baseline)
+    semantic_rejections = _semantic_rejections(connection, baseline, _SEMANTIC_CHECKS)
     if semantic_rejections:
         raise MigrationAdoptionError(
             "baseline-semantic-mismatch",
             ", ".join(semantic_rejections),
         )
     return baseline_index
+
+
+def _validate_ledgered_advance(
+    connection: psycopg.Connection[tuple[object, ...]],
+    applied: list[tuple[str, str, str, str, datetime]],
+    migrations: tuple[MigrationScript, ...],
+    baseline: MigrationBaseline,
+) -> None:
+    """Refuse a pending set before its first statement, while refusal is free."""
+
+    if len(applied) >= len(migrations):
+        return
+    rejections = _semantic_rejections(
+        connection,
+        baseline,
+        _askable_checks(tuple(row[0] for row in applied), adoption=False),
+    )
+    if rejections:
+        raise MigrationPreconditionError(
+            "advance-precondition-mismatch",
+            ", ".join(rejections),
+        )
+
+
+def _validate_executed_invariants(
+    connection: psycopg.Connection[tuple[object, ...]],
+    migrations: tuple[MigrationScript, ...],
+    baseline: MigrationBaseline,
+) -> None:
+    """Prove the SQL just executed still holds the invariants, before it commits."""
+
+    rejections = _semantic_rejections(
+        connection,
+        baseline,
+        _askable_checks(tuple(migration.migration_id for migration in migrations), adoption=False),
+    )
+    if rejections:
+        raise MigrationStateError("ledger-semantic-mismatch", ", ".join(rejections))
 
 
 def _validate_recorded_application_state(
@@ -526,20 +595,34 @@ def _record_digest(record: _SchemaRecord) -> int:
     return int.from_bytes(hashlib.sha256(canonical).digest())
 
 
-def _baseline_semantic_rejections(
+def _askable_checks(
+    applied_ids: tuple[str, ...],
+    *,
+    adoption: bool,
+) -> tuple[_SemanticCheck, ...]:
+    available = set(applied_ids)
+    return tuple(
+        check
+        for check in _SEMANTIC_CHECKS
+        if (adoption or not check.adoption_only) and check.reads_from in available
+    )
+
+
+def _semantic_rejections(
     connection: psycopg.Connection[tuple[object, ...]],
     baseline: MigrationBaseline,
+    checks: tuple[_SemanticCheck, ...],
 ) -> tuple[str, ...]:
-    if baseline.semantic_checks != _SEMANTIC_CHECKS:
+    if baseline.semantic_checks != _SEMANTIC_CHECKS_ID:
         raise MigrationStateError(
             "baseline-manifest-mismatch",
             f"unknown semantic checks: {baseline.semantic_checks}",
         )
     rejected = []
-    for name, query in _SEMANTIC_QUERIES:
-        row = connection.execute(query).fetchone()
+    for check in checks:
+        row = connection.execute(check.query).fetchone()
         if row is None or row[0] is not False:
-            rejected.append(name)
+            rejected.append(check.name)
     return tuple(rejected)
 
 
@@ -1098,29 +1181,68 @@ _SCHEMA_QUERIES = (
 )
 
 
-_SEMANTIC_QUERIES = (
-    (
+# Each check is one cheap read-only query that must answer exactly False, and it
+# belongs to whichever of the ledger's two questions it can honestly answer.
+#
+#   adoption — "did this un-ledgered database really reach the state the authored
+#              migrations would have produced?" Nothing attests its past, so the
+#              data itself has to answer, and the answer has to be exact.
+#   advance  — "is this already-ledgered database sound before more DDL runs?"
+#              Here the checksum-verified contiguous ledger prefix already
+#              attests that every authored backfill ran once, at its own
+#              position, under this module.
+#
+# `adoption_only` therefore marks the checks that mirror a backfill migration's
+# own SQL. Re-asking one of those on advance is not a stricter test, it is the
+# wrong test: the runtime keeps writing to the same projections after the
+# migration that seeded them, so the mirror drifts away from the live table by
+# design and rejects exactly the databases that have been used. Their
+# advance-time equivalent is the ledger prefix itself, proven by
+# _validated_applied_prefix before any of this runs.
+_SEMANTIC_CHECKS = (
+    # Cardinality and position-head consistency. This is not a mirror of a
+    # backfill; it is the invariant every append_event upholds transactionally,
+    # so it is true of a healthy database at any moment and is asked on both
+    # paths. It is also the provable advance-time counterpart of
+    # record-position-history-unprovable below.
+    _SemanticCheck(
         "record-position-ledger",
-        """
+        adoption_only=False,
+        reads_from="0009_transactional_record_positions.sql",
+        query="""
         SELECT
             (SELECT count(*) FROM record_position_ledger) <> 1
             OR (SELECT last_position FROM record_position_ledger WHERE singleton)
                IS DISTINCT FROM (SELECT COALESCE(max(record_position), 0) FROM events)
         """,
     ),
-    (
+    # 0009 renumbers every existing record_position by row_number(). A pre-ledger
+    # database cannot prove its history survived that rewrite, so adoption is
+    # only offered where there is no history to rewrite. On advance the question
+    # is already answered: 0009 is a checksum-verified ledger row, so the rewrite
+    # happened once, at its own position, and every position since was allocated
+    # transactionally. Emptiness proves nothing there and rejects everything.
+    _SemanticCheck(
         "record-position-history-unprovable",
-        """
+        adoption_only=True,
+        reads_from="0002_ticket_slice.sql",
+        query="""
         SELECT EXISTS (SELECT 1 FROM events)
         """,
     ),
-    (
+    # A singleton row 0013 inserts and no authored migration removes. Structural,
+    # history-independent, and asked on both paths.
+    _SemanticCheck(
         "durability-policy-singleton",
-        "SELECT (SELECT count(*) FROM durability_policy_state) <> 1",
+        adoption_only=False,
+        reads_from="0013_durability_authority.sql",
+        query="SELECT (SELECT count(*) FROM durability_policy_state) <> 1",
     ),
-    (
+    _SemanticCheck(
         "proof-verdict-sequence-backfill",
-        """
+        adoption_only=True,
+        reads_from="0005_proof_verdict_sequence.sql",
+        query="""
         SELECT EXISTS (
             SELECT 1
             FROM proof_verdicts AS verdict
@@ -1135,9 +1257,16 @@ _SEMANTIC_QUERIES = (
         )
         """,
     ),
-    (
+    # The clearest case of a mirror that only holds at adoption: this enumerates
+    # the five INSERTs 0008 runs, while append_event links whatever subjects its
+    # caller names, including the access, catalog, migration, and intake kinds
+    # later migrations added. A used database legitimately holds links this
+    # query cannot derive.
+    _SemanticCheck(
         "event-link-backfill",
-        """
+        adoption_only=True,
+        reads_from="0008_board_projection.sql",
+        query="""
         WITH expected AS (
             SELECT event_id, tenant_id,
                    CASE WHEN kind = 'work.changed' THEN 'work' ELSE 'ticket' END AS subject_kind,
@@ -1184,9 +1313,12 @@ _SEMANTIC_QUERIES = (
         )
         """,
     ),
-    (
+    # Derived from event_links, so it inherits that drift on top of its own.
+    _SemanticCheck(
         "durability-subject-head-backfill",
-        """
+        adoption_only=True,
+        reads_from="0013_durability_authority.sql",
+        query="""
         WITH expected AS (
             SELECT DISTINCT ON (link.tenant_id, link.subject_kind, link.subject_id)
                    link.tenant_id, link.subject_kind, link.subject_id,
@@ -1217,9 +1349,11 @@ _SEMANTIC_QUERIES = (
         )
         """,
     ),
-    (
+    _SemanticCheck(
         "workflow-start-fact-backfill",
-        """
+        adoption_only=True,
+        reads_from="0019_outbox_routine_health.sql",
+        query="""
         WITH expected AS (
             SELECT event.event_id, event.tenant_id, run.workflow_run_id, run.ticket_id,
                    run.activity_class, event.server_time AS recorded_at

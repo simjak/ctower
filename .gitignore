@@ -13,6 +13,9 @@ __pycache__/
 *.py[cod]
 node_modules/
 .pnpm-store/
+.next/
+next-env.d.ts
+*.tsbuildinfo
 playwright-report/
 test-results/
 site/

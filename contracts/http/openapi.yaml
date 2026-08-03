@@ -2550,6 +2550,7 @@
               "migration-source-selection-drift",
               "migration-source-tainted",
               "poison-not-found",
+              "prohibited-data-class",
               "project-delivery-unavailable",
               "project-grant-required",
               "project-scope-denied",
@@ -2608,11 +2609,25 @@
           "command_id": {"type": ["string", "null"], "format": "uuid"},
           "current_version": {"type": ["integer", "null"], "minimum": 0},
           "detail": {"type": "string"},
+          "prohibited_classes": {
+            "type": "array",
+            "items": {"$ref": "#/components/schemas/ProhibitedDataClass"}
+          },
           "status": {"type": "integer", "minimum": 400, "maximum": 599},
           "title": {"type": "string"},
           "type": {"type": "string", "format": "uri"},
           "unmet_facts": {"type": "array", "items": {"type": "string"}}
         }
+      },
+      "ProhibitedDataClass": {
+        "type": "string",
+        "enum": [
+          "credential_material",
+          "live_incident_indicator",
+          "phi_hipaa_covered",
+          "pii_beyond_staff_identity",
+          "production_customer_data"
+        ]
       },
       "SourceReference": {
         "type": "object",
