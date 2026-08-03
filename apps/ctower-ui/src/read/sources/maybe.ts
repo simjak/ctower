@@ -44,6 +44,16 @@ export async function attempted<T>(
   }
 }
 
+/**
+ * Re-shape a known value without touching either failure. A screen that needs
+ * a number as a sentence maps it here rather than branching, so the `none` and
+ * `unread` reasons survive the transformation instead of being re-authored at
+ * the call site.
+ */
+export function mapKnown<T, U>(value: Known<T>, to: (held: T) => U): Known<U> {
+  return value.known === "value" ? valueOf(to(value.value)) : value;
+}
+
 /** True when any field of a record was left unread, so a screen can say so. */
 export function anyUnread(fields: readonly Known<unknown>[]): boolean {
   return fields.some((field) => field.known === "unread");

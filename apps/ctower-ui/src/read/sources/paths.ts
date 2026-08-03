@@ -49,6 +49,23 @@ export function personasRoot(): string {
   return environment("CTOWER_UI_PERSONAS_ROOT", `${missionControlRoot()}/personas`);
 }
 
+/**
+ * Where seats write their task and status files, and the ledger that charges an
+ * escape to a seat.
+ *
+ * Neither takes an override of its own. Both are fixed positions inside Mission
+ * Control's tree, so `CTOWER_UI_MC_ROOT` already moves them together — and a
+ * profile that could be pointed at a ledger from one fleet and a coordination
+ * directory from another would be reading two different companies onto one page.
+ */
+export function coordinationRoot(): string {
+  return `${missionControlRoot()}/coordination`;
+}
+
+export function escapesPath(): string {
+  return `${missionControlRoot()}/state/escapes.jsonl`;
+}
+
 export function muxBridgePath(): string {
   return environment("CTOWER_UI_MUX_PATH", `${missionControlRoot()}/bin/mux`);
 }
