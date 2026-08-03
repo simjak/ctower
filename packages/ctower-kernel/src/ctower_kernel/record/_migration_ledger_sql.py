@@ -254,11 +254,9 @@ def _validate_recorded_application_state(
     applied: list[tuple[str, str, str, str, datetime]],
     baseline: MigrationBaseline,
 ) -> None:
-    if not _recorded_state_matches(connection, applied[-1][3]):
-        raise MigrationStateError(
-            "ledger-schema-mismatch",
-            f"schema does not match the attestation for {applied[-1][0]}",
-        )
+    mismatch = _recorded_state_matches(connection, applied[-1][0], applied[-1][3])
+    if mismatch is not None:
+        raise MigrationStateError("ledger-schema-mismatch", mismatch)
     if applied[-1][0] == baseline.through and not hmac.compare_digest(
         applied[-1][3],
         baseline.schema_sha256,
@@ -565,23 +563,31 @@ def _schema_fingerprint(records: _SchemaRecords) -> str:
 
 def _recorded_state_matches(
     connection: psycopg.Connection[tuple[object, ...]],
+    migration_id: str,
     attested: str,
-) -> bool:
-    """Answer whether the live schema is still the one the ledger attested.
+) -> str | None:
+    """Refusal detail if the live schema is no longer the one the ledger attested, else None.
 
     Two renderings can attest the same schema: the canonical one this module records now, and the
     raw one it recorded before gh#247. Accepting either lets an instance whose schema has not moved
     verify across the upgrade that introduces canonical rendering. It does not weaken the check —
     both renderings are exact over the same record set, so a schema that really has changed matches
     neither.
+
+    On mismatch the detail names the attested digest and both live renderings so an operator can
+    diff the evidence instead of trusting that canonicalization hid it.
     """
 
-    return any(
-        hmac.compare_digest(
-            _schema_fingerprint(_schema_records(connection, canonical=canonical)),
-            attested,
-        )
-        for canonical in (True, False)
+    live_canonical = _schema_fingerprint(_schema_records(connection, canonical=True))
+    live_superseded_raw = _schema_fingerprint(_schema_records(connection, canonical=False))
+    if hmac.compare_digest(live_canonical, attested) or hmac.compare_digest(
+        live_superseded_raw, attested
+    ):
+        return None
+    return (
+        f"schema does not match the attestation for {migration_id}: "
+        f"attested={attested} · live_canonical={live_canonical} · "
+        f"live_superseded_raw={live_superseded_raw}"
     )
 
 

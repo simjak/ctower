@@ -111,7 +111,12 @@ def test_a_real_schema_change_still_fails_attestation(
     migration_database: Database,
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    """Tolerating two renderings must not tolerate an actual difference."""
+    """Tolerating two renderings must not tolerate an actual difference.
+
+    A GENUINE schema difference still refuses, the refusal happens PRE-DDL (the dropped
+    constraint is still absent after the refused apply), and the diagnostic names all three
+    digests so the operator can diff the evidence.
+    """
 
     install_ledger_through(migration_database, LEDGERED_TERMINAL, monkeypatch)
     record_used_instance_history(migration_database)
@@ -121,6 +126,12 @@ def test_a_real_schema_change_still_fails_attestation(
                 sql.Identifier(REPARSED_TABLE), sql.Identifier(REPARSED_CONSTRAINT)
             )
         )
+        attested_row = connection.execute(
+            "SELECT result_schema_sha256 FROM ctower_schema_migrations WHERE migration_id = %s",
+            (LEDGERED_TERMINAL,),
+        ).fetchone()
+        assert attested_row is not None, f"{LEDGERED_TERMINAL} is missing from the ledger"
+        attested = str(attested_row[0])
 
     with pytest.raises(_migration_ledger_sql.MigrationStateError) as raised:
         apply_migrations(
@@ -129,6 +140,22 @@ def test_a_real_schema_change_still_fails_attestation(
         )
 
     assert raised.value.code == "ledger-schema-mismatch"
+    detail = raised.value.detail
+    # The diagnostic carries all three digests for an operator to diff.
+    assert f"attested={attested}" in detail
+    assert "live_canonical=" in detail
+    assert "live_superseded_raw=" in detail
+    canonical = detail.split("live_canonical=", 1)[1].split(" ", 1)[0]
+    superseded_raw = detail.split("live_superseded_raw=", 1)[1]
+    assert canonical != superseded_raw
+    assert attested not in (canonical, superseded_raw)
+    # PRE-DDL proof: the refusal happened before any migration DDL, so the dropped
+    # constraint is still absent after the refused apply — nothing re-created it.
+    with psycopg.connect(migration_database.admin_dsn) as connection:
+        row = connection.execute(
+            "SELECT 1 FROM pg_constraint WHERE conname = %s", (REPARSED_CONSTRAINT,)
+        ).fetchone()
+        assert row is None
 
 
 def _attestations(database: Database) -> tuple[str, str]:
