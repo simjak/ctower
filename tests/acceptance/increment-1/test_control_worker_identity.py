@@ -64,7 +64,7 @@ def test_bootstrap_display_collision_completes_worker_and_accepted_outbox(
     build_worker(runtime, projections, pack_root=_ROOT / "packs").tick()
 
     actor = Actor(tenant.commander_id, tenant.tenant_id, PrincipalKind.COMMANDER)
-    board = projections.board(actor, BoardQuery())
+    board = projections.board(actor, BoardQuery(project_key="ctower"))
     assert [card.ticket_id for card in board.cards] == [ticket_id]
     workers = _worker_rows(database.admin_dsn, tenant.tenant_id)
     assert len(workers) == 1
@@ -186,6 +186,7 @@ def _accepted_ticket(tenant: TenantFixture, source_ref: str) -> UUID:
             client_command_id=command_id,
             initial_custodian_id=tenant.commander_id,
             priority="P1",
+            project_key="ctower",
             source=SourceReference("test", source_ref),
             title="Accepted outbox survives worker display collision",
         ),

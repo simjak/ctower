@@ -1,6 +1,6 @@
 """DO NOT EDIT: generated file; regenerate from declared inputs.
 
-Authored contract digest: sha256:1ca4a6823b673e720c5e1fd0e39445905a701d279b773eb99689536a8de41c62
+Authored contract digest: sha256:897d0904c0761ce19e89e96d0b2d2b85485582770b37abdcc9765cbdf924e5fb
 """
 
 from __future__ import annotations
@@ -56,6 +56,9 @@ from ctower_client.models import (
     ProofReceipt,
     RelationRequest,
     ResolveCloseRequest,
+    SeatCredentialIssueRequest,
+    SeatCredentialReceipt,
+    SeatCredentialRevocationRequest,
     SyntheticRunReceipt,
     SyntheticRunRequest,
     SyntheticRunResource,
@@ -74,7 +77,10 @@ from ctower_client.models import (
     WorkflowTransitionRequest,
 )
 
-__all__ = ["CtowerClient", "CtowerProblemError"]
+__all__ = ["CtowerClient", "CtowerProblemError", "ProjectKey"]
+
+
+type ProjectKey = Annotated[str, Field(pattern="^[a-z][a-z0-9-]{2,63}$")]
 
 
 class _ProblemModel(Protocol):
@@ -486,6 +492,7 @@ class CtowerClient:
     def get_board(
         self,
         *,
+        project_key: str,
         lane: str | None = None,
         priority: str | None = None,
         stage_key: str | None = None,
@@ -496,7 +503,7 @@ class CtowerClient:
     ) -> BoardView:
         response = self._http.get(
             "/v1/board",
-            params={**({"lane": lane} if lane is not None else {}), **({"priority": priority} if priority is not None else {}), **({"stage_key": stage_key} if stage_key is not None else {}), **({"custodian_id": str(custodian_id)} if custodian_id is not None else {}), **({"assignee_id": str(assignee_id)} if assignee_id is not None else {}), **({"source_kind": source_kind} if source_kind is not None else {}), **({"source_ref": source_ref} if source_ref is not None else {})},
+            params={"project_key": project_key, **({"lane": lane} if lane is not None else {}), **({"priority": priority} if priority is not None else {}), **({"stage_key": stage_key} if stage_key is not None else {}), **({"custodian_id": str(custodian_id)} if custodian_id is not None else {}), **({"assignee_id": str(assignee_id)} if assignee_id is not None else {}), **({"source_kind": source_kind} if source_kind is not None else {}), **({"source_ref": source_ref} if source_ref is not None else {})},
             headers=self._telemetry_headers(
                 self._context(uuid4()),
                 {
@@ -555,7 +562,7 @@ class CtowerClient:
     @validate_call(config=ConfigDict(strict=True, arbitrary_types_allowed=True))
     def get_project_delivery(
         self,
-        project_key: str,
+        project_key: ProjectKey,
     ) -> ProjectDeliveryView:
         response = self._http.get(
             f"/v1/projects/{quote(str(project_key), safe='')}/delivery",
@@ -588,9 +595,12 @@ class CtowerClient:
     def get_ticket(
         self,
         ticket_id: UUID,
+        *,
+        project_key: str,
     ) -> TicketResource:
         response = self._http.get(
             f"/v1/tickets/{quote(str(ticket_id), safe='')}",
+            params={"project_key": project_key},
             headers=self._telemetry_headers(
                 self._context(uuid4(), ticket_id=ticket_id),
                 {
@@ -604,9 +614,12 @@ class CtowerClient:
     def get_ticket_timeline(
         self,
         ticket_id: UUID,
+        *,
+        project_key: str,
     ) -> TimelineResponse:
         response = self._http.get(
             f"/v1/tickets/{quote(str(ticket_id), safe='')}/timeline",
+            params={"project_key": project_key},
             headers=self._telemetry_headers(
                 self._context(uuid4(), ticket_id=ticket_id),
                 {
@@ -617,12 +630,36 @@ class CtowerClient:
         return _response(response, {200: TimelineResponse}, {401: Problem, 404: Problem, 422: Problem})
 
     @validate_call(config=ConfigDict(strict=True, arbitrary_types_allowed=True))
+    def issue_seat_credential(
+        self,
+        request: SeatCredentialIssueRequest,
+        *,
+        command_id: UUID,
+    ) -> SeatCredentialReceipt:
+        response = self._http.post(
+            "/v1/admin/seat-credentials",
+            content=request.model_dump_json(),
+            headers=self._telemetry_headers(
+                self._context(command_id),
+                {
+                    **self._auth_headers(),
+                    "Content-Type": "application/json",
+                    "Idempotency-Key": str(command_id),
+                },
+            ),
+        )
+        return _response(response, {201: SeatCredentialReceipt, 202: SeatCredentialReceipt}, {401: Problem, 403: Problem, 409: Problem, 422: Problem})
+
+    @validate_call(config=ConfigDict(strict=True, arbitrary_types_allowed=True))
     def list_ticket_assignments(
         self,
         ticket_id: UUID,
+        *,
+        project_key: str,
     ) -> AssignmentList:
         response = self._http.get(
             f"/v1/tickets/{quote(str(ticket_id), safe='')}/assignments",
+            params={"project_key": project_key},
             headers=self._telemetry_headers(
                 self._context(uuid4(), ticket_id=ticket_id),
                 {
@@ -637,12 +674,13 @@ class CtowerClient:
         self,
         ticket_id: UUID,
         *,
+        project_key: str,
         cursor: Annotated[int, Field(ge=0)] | None = None,
         limit: Annotated[int, Field(ge=1, le=100)] | None = None,
     ) -> AuditPage:
         response = self._http.get(
             f"/v1/tickets/{quote(str(ticket_id), safe='')}/audit",
-            params={**({"cursor": cursor} if cursor is not None else {}), **({"limit": limit} if limit is not None else {})},
+            params={"project_key": project_key, **({"cursor": cursor} if cursor is not None else {}), **({"limit": limit} if limit is not None else {})},
             headers=self._telemetry_headers(
                 self._context(uuid4(), ticket_id=ticket_id),
                 {
@@ -821,6 +859,28 @@ class CtowerClient:
             ),
         )
         return _response(response, {200: WorkflowReceipt, 202: WorkflowReceipt}, {401: Problem, 404: Problem, 409: Problem, 422: Problem})
+
+    @validate_call(config=ConfigDict(strict=True, arbitrary_types_allowed=True))
+    def revoke_seat_credential(
+        self,
+        credential_id: UUID,
+        request: SeatCredentialRevocationRequest,
+        *,
+        command_id: UUID,
+    ) -> SeatCredentialReceipt:
+        response = self._http.post(
+            f"/v1/admin/seat-credentials/{quote(str(credential_id), safe='')}/revocation",
+            content=request.model_dump_json(),
+            headers=self._telemetry_headers(
+                self._context(command_id),
+                {
+                    **self._auth_headers(),
+                    "Content-Type": "application/json",
+                    "Idempotency-Key": str(command_id),
+                },
+            ),
+        )
+        return _response(response, {200: SeatCredentialReceipt, 202: SeatCredentialReceipt}, {401: Problem, 403: Problem, 404: Problem, 409: Problem, 422: Problem})
 
     @validate_call(config=ConfigDict(strict=True, arbitrary_types_allowed=True))
     def run_synthetic_workflow(

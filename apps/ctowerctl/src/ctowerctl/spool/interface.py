@@ -38,6 +38,7 @@ from ctowerctl.spool._recovery import (
 from ctowerctl.spool._redaction import (
     JsonObject,
     SecretMaterialError,
+    ServerRefusal,
     SpoolDoctorReport,
     SpoolEntry,
     SpoolState,
@@ -49,6 +50,7 @@ from ctowerctl.spool._redaction import (
     doctor_failure,
     entry_order,
     reason_digest,
+    server_refusal,
     spool_entry,
     spool_status,
     torn_entry,
@@ -68,6 +70,7 @@ __all__ = [
     "DrainReport",
     "ReplayExecutor",
     "ReplayResponse",
+    "ServerRefusal",
     "Spool",
     "SpoolCommand",
     "SpoolConfig",
@@ -76,6 +79,7 @@ __all__ = [
     "SpoolError",
     "SpoolState",
     "SpoolStatus",
+    "server_refusal",
 ]
 
 _RECORD_OVERHEAD_RESERVE = 4096
@@ -269,7 +273,7 @@ class Spool:
         *,
         limit: Annotated[int, Field(ge=1)] = 1000,
     ) -> tuple[SpoolEntry, ...]:
-        """List only redacted identities/state; content never leaves."""
+        """List redacted identities/state and allowlisted refusal names; content never leaves."""
 
         if not 1 <= limit <= self._config.max_scan_entries:
             raise SpoolError("scan_limit", "requested spool list exceeds bounded policy")

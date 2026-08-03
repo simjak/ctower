@@ -1,0 +1,10 @@
+{
+  "schema": "ctower.checkpoint/v1",
+  "key": "manibo.staging-deployed",
+  "checkpoint_key": "manibo.staging-deployed",
+  "display_name": "Deploy staging",
+  "outcome": "GitOps staging promotion reaches the declared cluster and the runtime wait succeeds.",
+  "accountable_owner": "manibo-commander-seat",
+  "criteria": [{"key": "staging-deployed", "description": "Current GitOps and runtime-wait evidence proves the staging deployment.", "required": true, "evidence_policy_refs": []}],
+  "dependency_refs": ["manibo.images-published@1"]
+}

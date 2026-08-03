@@ -57,6 +57,7 @@ def test_board_fold_uses_fact_precedence_and_activity_not_stage_labels() -> None
 def _facts() -> BoardFacts:
     return BoardFacts(
         ticket_id=uuid4(),
+        project_key="ctower",
         title="Fold vector",
         priority="P2",
         lifecycle_state="open",

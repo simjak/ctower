@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import json
 from collections.abc import Callable
 from dataclasses import replace
 from datetime import UTC, datetime, timedelta
@@ -17,6 +18,9 @@ from ctower_kernel.projections import (
     CheckpointDefinition,
     DeliveryFacts,
     DeliveryState,
+    ProjectDeliveryRow,
+    SeatCatalogReference,
+    SeatIdentity,
     derive_project_delivery_row,
 )
 from ctower_kernel.projections.postgres import PostgresProjections
@@ -33,6 +37,100 @@ _CRITERIA = (
     "cp3_d",
 )
 _REBUILD_GENERATION = 7
+_COLLISION_SLOT_COUNT = 2
+
+
+def test_pinned_seat_rebuild_is_byte_identical_after_member_removal() -> None:
+    pinned_assignment = _seat_identity(
+        revision=1,
+        digest_character="1",
+        key="maker",
+        label="Maker",
+    )
+    pinned_signer = _seat_identity(
+        revision=1,
+        digest_character="1",
+        key="reviewer",
+        label="Reviewer",
+    )
+    later_catalog = {"reviewer": "Review lead", "observer": "Observer"}
+    facts = replace(
+        _facts(),
+        qualifying_stage_slots=(
+            EvidenceSlotFact(
+                "ledger-posted",
+                EvidenceSlotState.FILLED,
+                assigned_seat=pinned_assignment,
+                signing_seat=pinned_signer,
+            ),
+        ),
+    )
+
+    before = derive_project_delivery_row(_definition(), facts)
+    assert later_catalog["reviewer"] == "Review lead"
+    assert "maker" not in later_catalog
+    rebuilt = derive_project_delivery_row(_definition(), facts)
+
+    assert _row_bytes(rebuilt) == _row_bytes(before)
+    assert rebuilt.semantic_digest == before.semantic_digest
+    slot = cast(list[dict[str, object]], rebuilt.response_payload()["qualifying_stage_slots"])[0]
+    assert (
+        cast(dict[str, object], cast(dict[str, object], slot["assigned_seat"])["seat"])[
+            "seat_label"
+        ]
+        == "Maker"
+    )
+    assert cast(dict[str, object], slot["signing_seat"])["seat_label"] == "Reviewer"
+
+
+def test_seat_fact_changes_surface_and_digest_without_changing_headline() -> None:
+    assigned_seat = _seat_identity(
+        revision=1,
+        digest_character="3",
+        key="maker",
+        label="Maker",
+    )
+    unassigned = derive_project_delivery_row(_definition(), _facts())
+    assigned = derive_project_delivery_row(
+        _definition(),
+        replace(
+            _facts(),
+            qualifying_stage_slots=tuple(
+                replace(slot, assigned_seat=assigned_seat)
+                for slot in _facts().qualifying_stage_slots
+            ),
+        ),
+    )
+
+    assert assigned.headline_state is unassigned.headline_state
+    assert assigned.semantic_digest != unassigned.semantic_digest
+    assert (
+        assigned.response_payload()["qualifying_stage_slots"]
+        != unassigned.response_payload()["qualifying_stage_slots"]
+    )
+
+
+def _seat_identity(
+    *,
+    revision: int,
+    digest_character: str,
+    key: str,
+    label: str,
+) -> SeatIdentity:
+    return SeatIdentity(
+        key=key,
+        label=label,
+        catalog_revision=SeatCatalogReference(
+            catalog_key="fixture.delivery-seats",
+            revision=revision,
+            content_digest="sha256:" + digest_character * 64,
+        ),
+    )
+
+
+def _row_bytes(row: ProjectDeliveryRow) -> bytes:
+    payload = row.response_payload()
+    return json.dumps(payload, separators=(",", ":"), sort_keys=True).encode()
 
 
 def test_qualifying_stage_slots_preserve_filled_unfilled_and_unknown_facts() -> None:
@@ -53,6 +151,14 @@ def test_qualifying_stage_slots_preserve_filled_unfilled_and_unknown_facts() -> 
     ]
     criteria.append(
         {
+            "criterion_key": "checkpoint-alpha-second",
+            "proof_ticket_id": ticket_ids[0],
+            "proof_criterion_key": "alpha",
+            "source_ids": [],
+        }
+    )
+    criteria.append(
+        {
             "criterion_key": "unlinked-checkpoint-proof",
             "proof_ticket_id": None,
             "proof_criterion_key": None,
@@ -65,7 +171,7 @@ def test_qualifying_stage_slots_preserve_filled_unfilled_and_unknown_facts() -> 
     slot_rows: list[dict[str, object]] = [
         _link_row(ticket_ids[0], "alpha", proven=True),
         _link_row(ticket_ids[1], "beta", proven=False),
-        _link_row(ticket_ids[2], "delta", stage_present=False),
+        _link_row(ticket_ids[2], "delta", proven=False),
         _link_row(ticket_ids[3], "epsilon", criterion_present=False),
     ]
     connection, connect_context = _reconcile_connection(criteria, slot_rows)
@@ -77,19 +183,20 @@ def test_qualifying_stage_slots_preserve_filled_unfilled_and_unknown_facts() -> 
 
     assert affected == 1
     payload = _stored_payload(connection)
-    assert payload["qualifying_stage_slots_filled"] == 1
+    assert payload["qualifying_stage_slots_filled"] == _COLLISION_SLOT_COUNT
     assert payload["qualifying_stage_slots_required"] == len(criteria)
     assert payload["qualifying_stage_unfilled_or_unknown_slot_keys"] == [
-        "beta",
-        "delta",
-        "epsilon",
+        "checkpoint-beta",
+        "checkpoint-delta",
+        "checkpoint-epsilon",
         "unlinked-checkpoint-proof",
     ]
     assert {
-        "slot_filled:alpha",
-        "slot_unfilled:beta",
-        "slot_unknown:delta",
-        "slot_unknown:epsilon",
+        "slot_filled:checkpoint-alpha",
+        "slot_filled:checkpoint-alpha-second",
+        "slot_unfilled:checkpoint-beta",
+        "slot_unfilled:checkpoint-delta",
+        "slot_unknown:checkpoint-epsilon",
         "slot_unknown:unlinked-checkpoint-proof",
     } <= set(cast(list[str], payload["derivation_reasons"]))
     tickets, proof_keys = _slot_request(connection)
@@ -106,14 +213,13 @@ def _link_row(
     proof_key: str,
     *,
     criterion_present: bool = True,
-    stage_present: bool = True,
     proven: bool = False,
 ) -> dict[str, object]:
     return {
         "ticket_id": ticket_id,
         "proof_key": proof_key,
+        "project_present": True,
         "criterion_present": criterion_present,
-        "stage_present": stage_present,
         "proven": proven,
     }
 
@@ -156,7 +262,16 @@ def _reconcile_connection(
         _result(row={"due": None}),
         _result(rows=criteria),
         _result(rows=slot_rows),
-        _result(rows=[{"lane": "complete", "delivery_facts": ["staging_verified"]}]),
+        _result(
+            rows=[
+                {
+                    "ticket_id": criteria[0]["proof_ticket_id"],
+                    "lane": "complete",
+                    "delivery_facts": ["staging_verified"],
+                }
+            ]
+        ),
+        _result(rows=[]),
         _result(rows=[]),
         _result(rowcount=1),
         _result(),
@@ -202,9 +317,8 @@ def _slot_request(connection: MagicMock) -> tuple[list[UUID], list[str]]:
         for item in connection.execute.call_args_list
         if "FROM unnest(%s::uuid[], %s::text[])" in item.args[0]
     )
-    tickets, proof_keys, _, _ = cast(
-        tuple[list[UUID], list[str], UUID, UUID],
-        call.args[1],
+    tickets, proof_keys, *_ = cast(
+        tuple[list[UUID], list[str], object, object, object], call.args[1]
     )
     return tickets, proof_keys
 
@@ -263,6 +377,7 @@ def test_row_slot_coverage_never_comes_back_from_rendered_reasons() -> None:
         qualifying_stage_slots_filled=0,
         qualifying_stage_slots_required=0,
         qualifying_stage_unfilled_or_unknown_slot_keys=(),
+        qualifying_stage_slots=(),
     )
 
     assert (

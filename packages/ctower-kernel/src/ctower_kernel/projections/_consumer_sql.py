@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import hashlib
 import secrets
+from collections.abc import Mapping
 from datetime import UTC, datetime
 from typing import cast
 from uuid import UUID
@@ -17,6 +18,7 @@ from ctower_kernel.projections._consumer_validation import (
     safe_payload_bytes,
     validate_message,
 )
+from ctower_kernel.record.events import EventKind
 
 __all__: tuple[str, ...] = ()
 _CONSUMER = "board_projection"
@@ -43,7 +45,10 @@ def consume_one(dsn: str, tenant_id: UUID) -> bool:
             connection, tenant_id, cast(UUID, message["outbox_id"]), generation
         )
         try:
-            validate_message(message)
+            validate_message(
+                message,
+                legacy_project_key=_legacy_project_key(connection, tenant_id, message),
+            )
         except (TypeError, ValueError) as error:
             _poison(connection, tenant_id, message, generation, attempt, str(error))
             return False
@@ -67,6 +72,25 @@ def consume_one(dsn: str, tenant_id: UUID) -> bool:
         )
         _advance_if_position_drained(connection, tenant_id, message, cursor)
         return True
+
+
+def _legacy_project_key(
+    connection: psycopg.Connection[dict[str, object]],
+    tenant_id: UUID,
+    message: dict[str, object],
+) -> str | None:
+    payload = message.get("event_payload")
+    if (
+        str(message.get("kind")) != EventKind.TICKET_CREATED
+        or not isinstance(payload, Mapping)
+        or "project_key" in payload
+    ):
+        return None
+    row = connection.execute(
+        "SELECT project_key FROM tickets WHERE tenant_id = %s AND ticket_id = %s",
+        (tenant_id, message.get("aggregate_id")),
+    ).fetchone()
+    return str(row["project_key"]) if row is not None else None
 
 
 def _apply_accepted_tombstone(

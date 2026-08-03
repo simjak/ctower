@@ -227,12 +227,13 @@ owner = "CT-I1-004"
 phase = "CT-I1-004"
 status = "required"
 path = "tests/acceptance/increment-1"
-patterns = ["test_ctl.py"]
+patterns = ["test_ctl.py", "test_ctl_company_bundle.py"]
 command = [
   "{python}",
   "-m",
   "pytest",
   "tests/acceptance/increment-1/test_ctl.py",
+  "tests/acceptance/increment-1/test_ctl_company_bundle.py",
   "-q",
 ]
 timeout_seconds = 300
@@ -243,13 +244,14 @@ owner = "CT-I1-004"
 phase = "CT-I1-004"
 status = "required"
 path = "tests/acceptance/increment-1"
-patterns = ["test_intake.py", "test_intake_cli.py"]
+patterns = ["test_intake.py", "test_intake_cli.py", "test_manibo_ordinary_intake.py"]
 command = [
   "{python}",
   "-m",
   "pytest",
   "tests/acceptance/increment-1/test_intake.py",
   "tests/acceptance/increment-1/test_intake_cli.py",
+  "tests/acceptance/increment-1/test_manibo_ordinary_intake.py",
   "-q",
 ]
 timeout_seconds = 900

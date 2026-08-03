@@ -32,6 +32,11 @@ from ctower_kernel.record._bootstrap_sql import (
 )
 from ctower_kernel.record._command_root import command_snapshot as _command_snapshot
 from ctower_kernel.record._comment_sql import add_comment as _add_comment
+from ctower_kernel.record._credential_sql import actor_for_credential as _actor_for_credential
+from ctower_kernel.record._credential_sql import issue_seat_credential as _issue_seat_credential
+from ctower_kernel.record._credential_sql import (
+    revoke_seat_credential as _revoke_seat_credential,
+)
 from ctower_kernel.record._custody_sql import transfer_custody as _transfer_custody
 from ctower_kernel.record._durability_finalizer_sql import (
     FinalizerCursor,
@@ -59,11 +64,15 @@ from ctower_kernel.record._setup_sql import (
     provision_database_roles,
     provision_principal_credential,
 )
-from ctower_kernel.record._ticket_sql import actor_for_credential as _actor_for_credential
 from ctower_kernel.record._ticket_sql import create_ticket as _create_ticket
 from ctower_kernel.record._ticket_sql import get_ticket as _get_ticket
 from ctower_kernel.record._ticket_sql import ticket_timeline as _ticket_timeline
 from ctower_kernel.record.comments import TicketCommentCommand, TicketCommentResult
+from ctower_kernel.record.credentials import (
+    SeatCredentialIssue,
+    SeatCredentialReceipt,
+    SeatCredentialRevocation,
+)
 from ctower_kernel.record.intake import (
     IntakeCommandResult,
     IntakePromotionCommand,
@@ -120,6 +129,71 @@ class PostgresDurabilityFinalizer:
         return batch
 
 
+class _PostgresSeatCredentials:
+    """Postgres adapter for the cohesive credential persistence boundary."""
+
+    def __init__(self, dsn: str, *, telemetry: Telemetry) -> None:
+        self._dsn = dsn
+        self._telemetry = telemetry
+
+    def issue(
+        self,
+        actor: Actor,
+        command: SeatCredentialIssue,
+        *,
+        request_digest: bytes,
+        now: datetime,
+        telemetry: TelemetryContext,
+    ) -> SeatCredentialReceipt | RecordProblem:
+        outcome = recover_ambiguous_commit(
+            lambda: _issue_seat_credential(
+                self._dsn,
+                actor,
+                command,
+                request_digest=request_digest,
+                now=now,
+                telemetry=telemetry,
+            )
+        )
+        self._emit("record.issue_seat_credential", telemetry, outcome)
+        return outcome
+
+    def revoke(
+        self,
+        actor: Actor,
+        command: SeatCredentialRevocation,
+        *,
+        request_digest: bytes,
+        now: datetime,
+        telemetry: TelemetryContext,
+    ) -> SeatCredentialReceipt | RecordProblem:
+        outcome = recover_ambiguous_commit(
+            lambda: _revoke_seat_credential(
+                self._dsn,
+                actor,
+                command,
+                request_digest=request_digest,
+                now=now,
+                telemetry=telemetry,
+            )
+        )
+        self._emit("record.revoke_seat_credential", telemetry, outcome)
+        return outcome
+
+    def _emit(
+        self,
+        name: str,
+        telemetry: TelemetryContext,
+        outcome: SeatCredentialReceipt | RecordProblem,
+    ) -> None:
+        self._telemetry.emit(
+            name,
+            telemetry,
+            outcome="error" if isinstance(outcome, RecordProblem) else "ok",
+            reason=outcome.code if isinstance(outcome, RecordProblem) else "committed",
+        )
+
+
 class PostgresRecord:
     """Password-agnostic Postgres implementation of atomic Record commands."""
 
@@ -133,6 +207,7 @@ class PostgresRecord:
         self._dsn = dsn
         self._standby_dsn = standby_dsn
         self._telemetry = telemetry or NoopTelemetry()
+        self.seat_credentials = _PostgresSeatCredentials(dsn, telemetry=self._telemetry)
 
     def authorize_bootstrap(
         self, capability_digest: bytes, *, origin: str, now: datetime
@@ -215,7 +290,7 @@ class PostgresRecord:
                     )
         return outcome
 
-    def actor_for_credential(self, credential_digest: bytes) -> Actor | None:
+    def actor_for_credential(self, credential_digest: bytes) -> Actor | RecordProblem | None:
         """Resolve one active principal through the credential index."""
 
         return _actor_for_credential(self._dsn, credential_digest)
@@ -299,20 +374,30 @@ class PostgresRecord:
         return outcome
 
     def get_ticket(
-        self, actor: Actor, ticket_id: UUID, *, telemetry: TelemetryContext
+        self,
+        actor: Actor,
+        ticket_id: UUID,
+        project_key: str,
+        *,
+        telemetry: TelemetryContext,
     ) -> Ticket | RecordProblem:
-        """Read one tenant-scoped ticket."""
+        """Read one tenant/project-scoped ticket."""
 
-        outcome = _get_ticket(self._dsn, actor, ticket_id, telemetry=telemetry)
+        outcome = _get_ticket(self._dsn, actor, ticket_id, project_key, telemetry=telemetry)
         self._emit("record.get_ticket", telemetry, outcome)
         return outcome
 
     def ticket_timeline(
-        self, actor: Actor, ticket_id: UUID, *, telemetry: TelemetryContext
+        self,
+        actor: Actor,
+        ticket_id: UUID,
+        project_key: str,
+        *,
+        telemetry: TelemetryContext,
     ) -> TicketTimeline | RecordProblem:
-        """Read one tenant-scoped event timeline."""
+        """Read one tenant/project-scoped event timeline."""
 
-        outcome = _ticket_timeline(self._dsn, actor, ticket_id, telemetry=telemetry)
+        outcome = _ticket_timeline(self._dsn, actor, ticket_id, project_key, telemetry=telemetry)
         self._emit("record.ticket_timeline", telemetry, outcome)
         return outcome
 
@@ -320,6 +405,7 @@ class PostgresRecord:
         self,
         actor: Actor,
         ticket_id: UUID,
+        project_key: str,
         *,
         cursor: int,
         limit: int,
@@ -327,7 +413,9 @@ class PostgresRecord:
     ) -> AuditPage | RecordProblem:
         """Read explicitly linked cross-aggregate events by global position."""
 
-        outcome = _ticket_audit(self._dsn, actor, ticket_id, cursor=cursor, limit=limit)
+        outcome = _ticket_audit(
+            self._dsn, actor, ticket_id, project_key, cursor=cursor, limit=limit
+        )
         self._emit("record.ticket_audit", telemetry, outcome)
         return outcome
 
@@ -337,6 +425,7 @@ class PostgresRecord:
         command: CustodyCommand,
         *,
         request_digest: bytes,
+        policy_refusal: RecordProblem | None = None,
         now: datetime,
         telemetry: TelemetryContext,
     ) -> TicketCommandResult | RecordProblem:
@@ -348,6 +437,7 @@ class PostgresRecord:
                 actor,
                 command,
                 request_digest=request_digest,
+                policy_refusal=policy_refusal,
                 now=now,
                 telemetry=telemetry,
             )

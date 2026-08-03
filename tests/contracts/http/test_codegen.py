@@ -25,7 +25,7 @@ from tools.codegen.generator import CodegenError, check, write
 
 ROOT = Path(__file__).parents[3]
 __all__: tuple[str, ...] = ()
-_EXPECTED_OPERATION_COUNT = 41
+_EXPECTED_OPERATION_COUNT = 43
 
 
 class _MutatedClient(Protocol):
@@ -292,6 +292,7 @@ def test_generated_audit_variants_reject_unknown_and_mismatched_payloads() -> No
         {
             "custodian_id": str(uuid4()),
             "priority": "P1",
+            "project_key": "ctower",
             "source_kind": "test",
             "source_ref": "test:audit",
             "title": "Strict audit payload",
@@ -566,6 +567,7 @@ def _assert_mutated_http(generated: ModuleType, client: _MutatedClient) -> None:
     request = generated.TicketCreateRequest(
         initial_custodian_id=uuid4(),
         priority=generated.Priority.P1,
+        project_key="ctower",
         source={"kind": "test", "ref": "test:contract"},
         title="ticket",
     )
@@ -573,11 +575,11 @@ def _assert_mutated_http(generated: ModuleType, client: _MutatedClient) -> None:
         client.create_ticket(request, command_id=uuid4())
     assert type(raised.value.problem).__name__ == "TicketResource"
     with pytest.raises(ValidationError):
-        client.get_ticket(uuid4(), filter="x")
-    client.get_ticket(uuid4())
-    assert captured_query[0] == b""
-    client.get_ticket(uuid4(), filter="open")
-    assert captured_query[0] == b"filter=open"
+        client.get_ticket(uuid4(), project_key="ctower", filter="x")
+    client.get_ticket(uuid4(), project_key="ctower")
+    assert captured_query[0] == b"project_key=ctower"
+    client.get_ticket(uuid4(), project_key="ctower", filter="open")
+    assert captured_query[0] == b"project_key=ctower&filter=open"
 
 
 def _authored_problem() -> dict[str, object]:

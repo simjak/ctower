@@ -1,6 +1,6 @@
 """DO NOT EDIT: generated file; regenerate from declared inputs.
 
-Authored contract digest: sha256:1ca4a6823b673e720c5e1fd0e39445905a701d279b773eb99689536a8de41c62
+Authored contract digest: sha256:897d0904c0761ce19e89e96d0b2d2b85485582770b37abdcc9765cbdf924e5fb
 """
 
 from __future__ import annotations
@@ -370,6 +370,19 @@ OPERATIONS = MappingProxyType(
             principal=None,
             refusal_only=False,
         ),
+        "issueSeatCredential": OperationSpec(
+            operation_id="issueSeatCredential",
+            client_method="issue_seat_credential",
+            method="POST",
+            path="/v1/admin/seat-credentials",
+            request_model=_models.SeatCredentialIssueRequest,
+            response_model=_models.SeatCredentialReceipt,
+            cli_names=('credential seat issue',),
+            mutation=True,
+            spool_policy=SpoolPolicy.FORBIDDEN,
+            principal=None,
+            refusal_only=False,
+        ),
         "listTicketAssignments": OperationSpec(
             operation_id="listTicketAssignments",
             client_method="list_ticket_assignments",
@@ -500,6 +513,19 @@ OPERATIONS = MappingProxyType(
             principal=None,
             refusal_only=False,
         ),
+        "revokeSeatCredential": OperationSpec(
+            operation_id="revokeSeatCredential",
+            client_method="revoke_seat_credential",
+            method="POST",
+            path="/v1/admin/seat-credentials/{credential_id}/revocation",
+            request_model=_models.SeatCredentialRevocationRequest,
+            response_model=_models.SeatCredentialReceipt,
+            cli_names=('credential seat revoke',),
+            mutation=True,
+            spool_policy=SpoolPolicy.FORBIDDEN,
+            principal=None,
+            refusal_only=False,
+        ),
         "runSyntheticWorkflow": OperationSpec(
             operation_id="runSyntheticWorkflow",
             client_method="run_synthetic_workflow",
@@ -614,6 +640,7 @@ CLI_OPERATIONS = MappingProxyType(
         "ticket query": OPERATIONS["getTicket"],
         "ticket show": OPERATIONS["getTicket"],
         "ticket timeline": OPERATIONS["getTicketTimeline"],
+        "credential seat issue": OPERATIONS["issueSeatCredential"],
         "ticket assignments": OPERATIONS["listTicketAssignments"],
         "ticket audit": OPERATIONS["listTicketAuditEvents"],
         "company bundle plan": OPERATIONS["planCompanyBundle"],
@@ -624,6 +651,7 @@ CLI_OPERATIONS = MappingProxyType(
         "ticket gate verdict": OPERATIONS["recordProofVerdict"],
         "migration ctower-project fence observe": OPERATIONS["reportCtowerProjectFenceObservation"],
         "ticket resolve": OPERATIONS["resolveCloseWorkflow"],
+        "credential seat revoke": OPERATIONS["revokeSeatCredential"],
         "synthetic run": OPERATIONS["runSyntheticWorkflow"],
         "ticket workflow start": OPERATIONS["startTicketWorkflow"],
         "intake submit": OPERATIONS["submitIntake"],

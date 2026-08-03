@@ -1053,3 +1053,236 @@ Rejected alternatives:
 - Reading an undeclared delivery-surface field as an absence, or inferring the surface from stage names,
   lanes, or delivery facts.
 - Moving AC-PD-03's I2.4 change/PR row placement onto the I1 Board card.
+
+## D30 — The portfolio joins ctower: three projects, one record (locked 2026-08-01, operator)
+
+The operator approved all seven clauses below on 2026-08-01 through the director, adopting the Commander
+draft prepared for issue #185 and PR #189. This entry preserves D21's derived Project Delivery model,
+D28's configured-seat and revision-pinning discipline, and D27's dormant bulk-import boundary. It supersedes
+D24 and D27 only to the extent that either permitted a pre-CP3-D development writer/authority epoch or
+treated the legacy corpus as frozen during shadow operation: CT-I1-008 may still record its narrow
+development `GO_WITH_LIMITS`, but that verdict stops no legacy writer and makes ctower sole authority for
+nothing. D24/D27's CP3-D protection and fail-closed CT-I2-001 dependency remain. Issue #152 remains a hard
+gate only for a future multi-database topology, not for the approved single-database portfolio.
+
+1. **Topology — one database, one tenant, three projects.** `manibo` and `bh-loop` join `ctower` as
+   Project keys inside the existing tenant and database, using the project-scoped checkpoint and delivery
+   model. No Project receives its own database or tenant. Project membership, labels, owners, and starter
+   checkpoints are versioned configured data; product code contains no three-project branch or roster
+   literal.
+2. **Shadow/cutover boundary — coordination record, not sole authority.** The instance keeps the exact
+   `SHADOW_ONLY_CP3_D_NOT_PROVEN` label. All three Projects may hold reconstructible tickets, custody,
+   Evidence, and disjoint delivery boards. Ctower becomes sole authority for nothing until CP3-D closes and
+   the operator separately accepts a portfolio authority epoch. Mission Control ledgers and applicable
+   GitHub/GitLab records remain co-sources during shadow operation; no legacy writer is frozen. Bulk import
+   stays dormant. The 115-item `manibo` backlog enters item by item through ordinary signed intake.
+3. **Prohibited data classes — loud named refusal.** Intake and Evidence refuse credentials, tokens, or
+   keys in any form; production customer data; PHI or any HIPAA-covered content; PII beyond staff names and
+   work handles; and live incident indicators. Each refusal names its stable class and produces no mutation.
+   The BH.Loop boundary permits references to D11 controls, GitHub/GitLab artifacts, and deidentified control
+   IDs, but never patient or clinical content. The forbidden-data-class exporter model therefore extends to
+   ticket intake and Evidence recording.
+4. **Per-project grants — identity is the boundary.** Each Project has a configured Commander principal and
+   project-seat credentials scoped to `(project, seat)` with an exact named subset of
+   `capture|transition|evidence`. The operator issues and revokes credentials and append-only
+   Project grants. Each grant pins the Project, seat-catalog, access-policy, and credential revisions and
+   digests; access resolves those pins server-side on every call, and revocation refuses the next call by
+   name. Custody gains a target-Project-grant input. A principal from one Project cannot mutate another
+   Project's tickets, checkpoints, or Evidence; the refusal is named and changes no state.
+
+   Authorization is exhaustive: only the operator may issue or revoke a project-seat credential or
+   grant, or apply a portfolio CompanyBundle; any active matching grant may read its Project according to
+   existing visibility rules; `capture` admits or links work and requests initial custody by an eligible
+   configured Commander; `transition` performs ordinary typed Work mutations; `evidence` records ordinary
+   allowed Evidence; and protected commands, owner surfaces, gates, effects, production, incidents, and
+   authority epochs retain their stricter existing authorization and are never implied by these three
+   scopes. Unknown, mismatched, foreign-Project, stale-version, and revoked credentials fail closed.
+
+   The initial configured owners are `ctower` → `ctower-commander`, `manibo` → `manibo-commander`, and
+   `bh-loop` → `bhloop-commander`; these are configuration values, not product vocabulary. Grant issuance
+   and revocation remain operator-only.
+5. **Stable work identity.** Source identity is project-scoped as
+   `(tenant, project, source kind, source ref)`. The shared R-counter renders stable `<project>-R<nnn>`
+   references. Ticket IDs remain instance-global ULIDs. Cross-project reuse and renumbering are forbidden.
+6. **Verification — every clause has named proof.** Setup proves one tenant with N Projects. Isolation
+   tests all six directed pairs—`manibo`↔`ctower`, `bh-loop`↔`ctower`, and
+   `manibo`↔`bh-loop`—and each foreign mutation refuses by name with zero state change. Intake and Evidence
+   test every prohibited class, including a PHI-shaped fixture refused by its exact class name. Grant tests
+   cover issuance, exact scope subsets, revocation, and the revoked credential's named next-call
+   refusal. QA proves three Project-filtered Board views render mutually disjoint rows.
+7. **Sequencing is bound.** Stable work proceeds as identities and grant-aware custody (issue #192,
+   CT-I1-009) → scopes, isolation, and each Project Commander's starter-checkpoint onboarding configuration
+   (CT-I1-010) → ordinary item-by-item intake of `manibo`'s 115 items (CT-I1-011) → the project-scoped feed
+   for issue #186 (CT-I1-012). This SPEC revision accompanies the decision. Implementation changes follow
+   the normal two-round cross-model gates; no later step may be inferred complete from an earlier step's
+   evidence.
+
+Rejected alternatives, as settled by the approved clauses:
+
+- Per-Project databases or tenants for this portfolio.
+- Any pre-CP3-D writer freeze, sole-authority claim, or migration cutover.
+- Bulk import of the `manibo` backlog or authority-bearing historical state.
+- A hard-coded Project/seat roster, unpinned grant, implicit cross-Project access, or grant-derived owner,
+  protected-command, effect, incident, or production authority.
+- Accepting a prohibited class silently, under a generic error, or as Evidence bytes/metadata rather than
+  refusing it by name.
+
+## D31 — Two identity planes, one attributable Actor (locked 2026-08-02, operator R2728)
+
+The operator ordered proper ctower authentication after the portfolio import chain. This decision preserves
+D30's project-seat credential plane and D22's private same-origin session protections. It supersedes D23
+only to move the authentication-only login/callback/session/logout/error routes and evidence into
+`CT-I1-013`; all five browser product surfaces and their interaction evidence remain at I2.4.
+
+1. Humans authenticate through discovery-driven OIDC modeled on Manibo's provider-agnostic auth modules and
+   `wiki/systems/auth.md`; machines keep D30/#198's scoped project-seat credentials. The Manibo Commander
+   recommends contract reuse without package extraction while both consumers are changing, so ctower
+   preserves the pinned Manibo modules/behavior behind its Access Interface and shared conformance vectors.
+   Extraction may be reconsidered for a third consumer or after measured non-drift; a new OIDC flow or
+   provider fork is forbidden.
+2. Provider bindings are versioned configuration authored in the secret-free `CompanyBundle`, including exact
+   issuer/discovery/JWKS/audience/client and SecretRef inputs, the exact registered redirect URI, verified
+   discovery domains, enabled state, and optional claim-selection metadata. The registry is a trust root with
+   one owner: creating, enabling, disabling, or rotating an entry is an operator-only command, and a platform
+   administrator holds no such authority unless also authenticated as operator. The redirect URI is pinned to
+   the configured private HTTPS origin plus one fixed callback path and matched by exact string equality, so
+   no configuration change alone can deliver an authorization code outside the private boundary. Adding,
+   disabling, or rotating a provider requires no Python or TypeScript branch.
+3. Browser OIDC uses Authorization Code plus PKCE S256, state, nonce, the pinned exact redirect,
+   registered-endpoint SSRF confinement, and RS256 verification. Durable human identity is
+   `(oidc, issuer, subject)`; email and token roles/groups/tenant/project/seat claims confer no local
+   authority. Provider ID and access tokens are verified and then discarded; v1 requests no `offline_access`
+   and stores no refresh token, and an entry naming either is refused at apply time. Exactly three provider
+   egress call sites exist — discovery, token exchange, and JWKS fetch/rotation — and each declares its
+   attempt count, wall-time bound, backoff, and typed terminal outcome. Unverifiable or expired key material
+   grants no authority and performs zero mutation; cached keys are never accepted indefinitely and an unknown
+   `kid` triggers at most one bounded refetch per cooldown window.
+4. Human role vocabulary v1 is exactly `operator`, `commander`, and `viewer`, and all three are enumerated in
+   the authorization matrix. Human project authority resolves from an operator-issued, append-only, revocable
+   **human role binding** pinned to one principal, one role, its exact project keys, and the access-policy
+   revision that interprets it. It is not a project-seat grant and confers no `capture|transition|evidence`
+   scope; the two records are disjoint and neither confers the other's authority. Operator retains existing
+   protected authority, Commander remains project/custody/policy bound, and viewer is read-only within the
+   project keys its binding names and never aggregates the portfolio. Ambiguous, unprovisioned, disabled,
+   expired, revoked, replayed, or foreign scope fails closed with no mutation.
+5. UI uses the record-backed opaque Secure/HttpOnly/SameSite=Strict ctower session; direct human APIs use
+   registered-provider Bearer JWTs; machine APIs use the unchanged project-seat Bearer credential. All three
+   transports resolve the same typed Actor and durable principal used by commands, idempotency, custody,
+   assignment, Evidence, verdict, effect, and audit attribution, and `INV-73` makes that a chokepoint rather
+   than a description: a transport that introduces its own principal, custody, or attribution record is
+   forbidden.
+6. Tailnet/private HTTPS remains the network boundary. OIDC adds only exact provider-registry egress; it
+   creates no public ctower ingress. Browser bearer secrecy, CSRF, expiry, reauthentication, revocation,
+   redaction, and safe low-cardinality audit/metrics remain mandatory.
+7. `CT-I1-013` depends on `CT-I1-012` and cannot pass without an independent CSO verdict on the exact digest.
+   Exit reports fixed counters for reuse, both identity planes, the single Actor/custody model, all three
+   roles, all three UI/API auth transports, all eight named auth refusal codes, all three bounded provider
+   egress call sites, all eleven security proof groups, zero provider-specific product branches,
+   discovered-versus-exercised registry entries, and the CSO verdict.
+8. Every authentication denial refuses by a stable named problem code, never a bare 401/403:
+   `auth-provider-unavailable`, `auth-exchange-invalid`, `auth-provider-unverifiable`,
+   `auth-identity-unresolved`, `auth-session-invalid`, `reauthentication-required`, `auth-role-denied`, and
+   the existing `project-scope-denied`. `reauthentication-required` is retained from D22 with its
+   zero-reservation, zero-mutation property intact. Codes are deliberately coarse where a finer one would
+   enumerate people or configuration, and each requires its own negative fixture and exact RFC 9457 snapshot.
+
+Rejected alternatives are an OIDC implementation invented inside ctower, provider lists or role authority
+hard-coded in product code, OIDC claims treated as custody/authorization, a browser-held API bearer, a
+second human audit model, replacement of machine seat credentials, any auth-driven public exposure, a
+provider registry or human role binding that anyone but the operator may create, enable, or rotate, a
+redirect URI matched by anything looser than exact string equality, retention of provider refresh tokens or
+an `offline_access` scope, unbounded or fail-open discovery/JWKS verification, and generic unnamed 401/403
+authentication denials.
+
+## D32 — The documentation gate is unskippable, and the landing boundary reads it (locked 2026-08-03, operator)
+
+The operator observed on 2026-08-02 that `manibo` pull requests were merging with no documentation
+artifact, and ordered through R2738 (P1) that ctower make the documentation gate mechanically
+unskippable rather than a remembered process step — "that is the point of the migration." This entry
+writes that grant down and decides nothing further. It preserves D21's derived Project Delivery model,
+D28's revision-pinning discipline, D29's declared-surface and explicit-absence rules, and D30's portfolio
+boundary. It does not weaken CP3-D, the dual-write prohibition, minimal carry-forward, or the
+INV-19/INV-44 independence and waiver rules, and it authorizes no implementation by itself.
+
+**What is already true, and what is not.** `engineering.software-factory@1` already declares
+`documentation` as a `ship` stage that declares no skip predicate and therefore cannot be omitted at any
+risk tier, with required slots `revision`/`truth-check`, a mandatory documentation-truth gate,
+`sf.e07.review-documentation@1` as its only entry, and `sf.e08.documentation-preflight@1` requiring its
+completion before `release-preflight` and `merge`. That package is I2 work behind full normative I1 exit,
+so it governs no merge today. Three gaps let a documented-looking change through anyway, and this decision
+closes exactly those three. It adds no stage, edge, group, gate, evidence kind, environment variable, or
+feature flag.
+
+1. **A docs revision must answer for the change that produced it.** The `documentation.revision` slot
+   contract gains bound requirements, in the same class as `plan.criteria` and `implement.warm-gate`: the
+   current candidate digest; the identity and revision of the documentation-generating command run that
+   produced the artifact from that candidate; and the complete set of change-carried documented surfaces —
+   each operator-visible behavior, API operation, CLI command, configuration key, and runbook step the
+   candidate adds or changes — each with the documentation location that now describes it. A surface the
+   candidate carries and the revision does not answer for fails the slot contract, and `documentation`
+   does not complete. This is the machine form of "generated documentation for new functionality at PR
+   time."
+2. **A release carries its own docs fact.** `release-preflight` gains a second ordinary required slot,
+   `release-notes`: `artifact-digest`, binding the release manifest digest, the complete included-change
+   set, each included change's ticket identity and its current `documentation` completion reference, and
+   the identity and revision of the release-documentation command run that produced the artifact. An
+   included change whose documentation completion is missing, invalidated, expired, revoked, or
+   `STATE_UNKNOWN` fails the slot contract, and `release-preflight` does not complete. The stage's signing
+   slot stays `manifest` under `stage_owner`. `release-preflight` declares no skip predicate, so this fact
+   is owed on every run; binding it at preflight is deliberately earlier than "before a release closes,"
+   because a release is preflighted before it can be promoted at all.
+3. **The landing boundary reads the record: one gate, two facts.** The required status check of issue #199
+   is one check that resolves the ticket bound to the pull request and reports each fact of the
+   **landing-boundary predecessor set** separately: every stage the ticket's own pinned Workflow graph
+   places before the stage carrying the landing boundary, with every required slot of each resolved and
+   current on the candidate digest the pull-request head resolves to. The set is derived from the pinned
+   graph, never from stage-key strings, so the check adds no branch AC-WF-25 forbids; naming any package's
+   members illustrates that derivation and never replaces it. In `engineering.software-factory@1`, linear
+   into `merge`, the set runs from `intake` through `release-preflight`, and the two facts it carries at
+   that boundary — review evidence and documentation evidence over preflight — are the operator's "one
+   gate, two facts." The check is a pure reader: it writes no record state, mints no Evidence, and is not a
+   second writer.
+4. **Absence is a named refusal that changes nothing.** A missing, invalidated, expired, revoked, or
+   `STATE_UNKNOWN` docs fact is reported by its stable name, alongside every other unmet fact, and the
+   check is red — never green with a caveat in its body, never amber, never silently absent. Unknown is a
+   failure, not calm. Inside the record the existing unfilled-required-slot refusal already covers both
+   slots above with zero authoritative transition mutation and an exact unmet checklist; this decision
+   adds no refusal row and no new reason code.
+5. **Unskippable means no bypass exists.** The documentation fact is declared waivable at no risk tier.
+   No label, comment, administrator merge, re-run, follow-up ticket, green CI run, or reviewer assertion
+   that documentation exists satisfies it, and no protected operator waiver reaches it — the waivable
+   scope INV-44 permits is the family-diversity placement rule, not this fact. The only path through the
+   landing boundary is the recorded artifact.
+6. **Increment binding and reality.** The two slot contracts are I2 carriage inside already-scoped work:
+   CT-L0-004 already freezes the typed slot vocabulary and contracts generically, CT-I2-001 publishes the
+   package, and CT-I2-006 evaluates its policy. The record-backed check is repository infrastructure for
+   ctower's own repository, tracked by issue #199 and the R2738 ticket; it reads the record through the
+   existing generated API/CLI and therefore does not wait on the package. No increment moves, no exit bar
+   is satisfied by evidence gathered against pre-amendment text, and nothing here is described as live
+   until its own acceptance evidence exists.
+7. **Sequencing and bounds.** This decision authorizes the SPEC text it requires and no more. The complete
+   list of amended sites is: US-OP-12 (new); the `release-preflight` row of the required-typed-evidence-
+   slot table; the bound-requirement list under that table, which grows from four contracts to six; the
+   new `#### Record-backed landing boundary` narrative in the delivery-sprint section; the Documentation
+   and Release-preflight rows of the stage-contract projection table; AC-EVD-08 (amended); AC-REL-09
+   (new); and INV-74 (appended, renumbering nothing). `ARCHITECTURE.md` is repaired in the same change as
+   the derived atlas `CLAUDE.md` requires; it needs no grant because it may explain but never extend SPEC.
+   No bootstrap backlog row is amended. Contract, pack, and check implementation is a separate lane
+   stacked on the R2738 ticket and issue #199. D27, D30, and CT-I2-001 remain fail-closed.
+
+Rejected alternatives:
+
+- A second documentation stage or gate beside the one `engineering.software-factory@1` already declares —
+  the repository forbids a second architecture truth, and the gate was never the missing part.
+- Leaving `documentation.revision` free to be filled by a real but unrelated or superseded docs artifact,
+  which is exactly the failure the operator observed.
+- Recording the release documentation fact as a line item inside the release manifest instead of its own
+  required slot, where no slot-completeness rule quantifies over it.
+- Reporting the docs fact only in the check's body, as an advisory annotation, or as a separate optional
+  check, so a green required check can mean "review passed, documentation unknown."
+- A waiver, label, administrator override, or documentation follow-up ticket as a path through the
+  landing boundary.
+- Deriving the check's fact set by naming `documentation` and `risk-derived-review` stage keys instead of
+  the pinned graph's landing-boundary predecessors.
+- Accepting a green CI run, a reviewer's assertion, or the presence of changed files under `docs/` as the
+  documentation fact.

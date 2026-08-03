@@ -1,0 +1,10 @@
+{
+  "schema": "ctower.checkpoint/v1",
+  "key": "manibo.production-released",
+  "checkpoint_key": "manibo.production-released",
+  "display_name": "Release production",
+  "outcome": "Production infrastructure and the manually gated production deployment complete after staging NFQ.",
+  "accountable_owner": "manibo-commander-seat",
+  "criteria": [{"key": "production-released", "description": "Current infrastructure and deployment evidence proves the production release.", "required": true, "evidence_policy_refs": []}],
+  "dependency_refs": ["manibo.staging-nfq-e2e@1"]
+}

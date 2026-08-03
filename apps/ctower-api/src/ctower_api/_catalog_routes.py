@@ -9,6 +9,7 @@ from fastapi import FastAPI, Request
 from fastapi.responses import JSONResponse
 from pydantic import ValidationError
 
+from ctower_api._http_support import UnscopedAuthentication as _UnscopedAuthentication
 from ctower_api._http_support import authenticate as _authenticate
 from ctower_api._http_support import encoded as _encoded
 from ctower_api._http_support import problem_response as _problem_response
@@ -196,7 +197,12 @@ async def _parse_apply(
     recorder: TelemetryRecorder,
     request: Request,
 ) -> tuple[Actor, CompanyBundleApply, TelemetryContext] | JSONResponse:
-    actor = _authenticate(access, recorder, request)
+    actor = _authenticate(
+        access,
+        recorder,
+        request,
+        required_scope=_UnscopedAuthentication.ALLOWED,
+    )
     if isinstance(actor, RecordProblem):
         return _problem_response(actor)
     try:
@@ -220,7 +226,12 @@ def _authenticated(
     recorder: TelemetryRecorder,
     request: Request,
 ) -> tuple[Actor, TelemetryContext] | JSONResponse:
-    actor = _authenticate(access, recorder, request)
+    actor = _authenticate(
+        access,
+        recorder,
+        request,
+        required_scope=_UnscopedAuthentication.ALLOWED,
+    )
     if isinstance(actor, RecordProblem):
         return _problem_response(actor)
     try:

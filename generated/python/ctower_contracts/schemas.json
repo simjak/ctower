@@ -42,6 +42,7 @@
     "ctower.project/v1": "contracts/components/project.schema.json",
     "ctower.review-plan/v1": "contracts/workflow/review-plan.schema.json",
     "ctower.scheduling-policy/v1": "contracts/domain/task-management/scheduling-policy.schema.json",
+    "ctower.seat-catalog/v1": "contracts/components/seat-catalog.schema.json",
     "ctower.skill/v1": "contracts/components/skill.schema.json",
     "ctower.supervisor/v1": "contracts/components/supervisor.schema.json",
     "ctower.target/v1": "contracts/components/target.schema.json",
@@ -113,6 +114,7 @@
     "https://ctower.local/contracts/components/notification.schema.json": "contracts/components/notification.schema.json",
     "https://ctower.local/contracts/components/persona.schema.json": "contracts/components/persona.schema.json",
     "https://ctower.local/contracts/components/project.schema.json": "contracts/components/project.schema.json",
+    "https://ctower.local/contracts/components/seat-catalog.schema.json": "contracts/components/seat-catalog.schema.json",
     "https://ctower.local/contracts/components/skill.schema.json": "contracts/components/skill.schema.json",
     "https://ctower.local/contracts/components/supervisor.schema.json": "contracts/components/supervisor.schema.json",
     "https://ctower.local/contracts/components/target.schema.json": "contracts/components/target.schema.json",
@@ -1648,6 +1650,34 @@
         "criterion": {
           "additionalProperties": false,
           "properties": {
+            "assigned_seat": {
+              "additionalProperties": false,
+              "properties": {
+                "catalog_digest": {
+                  "pattern": "^sha256:[a-f0-9]{64}$",
+                  "type": "string"
+                },
+                "catalog_key": {
+                  "pattern": "^[a-z][a-z0-9.-]{2,127}$",
+                  "type": "string"
+                },
+                "catalog_revision": {
+                  "minimum": 1,
+                  "type": "integer"
+                },
+                "seat_key": {
+                  "pattern": "^[a-z][a-z0-9._-]{1,95}$",
+                  "type": "string"
+                }
+              },
+              "required": [
+                "seat_key",
+                "catalog_key",
+                "catalog_revision",
+                "catalog_digest"
+              ],
+              "type": "object"
+            },
             "description": {
               "maxLength": 500,
               "minLength": 1,
@@ -1665,6 +1695,24 @@
             "key": {
               "pattern": "^[a-z][a-z0-9-]{2,95}$",
               "type": "string"
+            },
+            "proof_link": {
+              "additionalProperties": false,
+              "properties": {
+                "criterion_key": {
+                  "pattern": "^[a-z][a-z0-9._-]*$",
+                  "type": "string"
+                },
+                "ticket_id": {
+                  "format": "uuid",
+                  "type": "string"
+                }
+              },
+              "required": [
+                "ticket_id",
+                "criterion_key"
+              ],
+              "type": "object"
             },
             "required": {
               "const": true
@@ -2046,6 +2094,63 @@
       "title": "ProjectComponent",
       "type": "object"
     },
+    "contracts/components/seat-catalog.schema.json": {
+      "$defs": {
+        "member": {
+          "additionalProperties": false,
+          "properties": {
+            "key": {
+              "pattern": "^[a-z][a-z0-9._-]{1,95}$",
+              "type": "string"
+            },
+            "label": {
+              "maxLength": 128,
+              "minLength": 1,
+              "type": "string"
+            }
+          },
+          "required": [
+            "key",
+            "label"
+          ],
+          "type": "object"
+        }
+      },
+      "$id": "https://ctower.local/contracts/components/seat-catalog.schema.json",
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "additionalProperties": false,
+      "properties": {
+        "display_name": {
+          "maxLength": 128,
+          "minLength": 1,
+          "type": "string"
+        },
+        "key": {
+          "pattern": "^[a-z][a-z0-9.-]{2,127}$",
+          "type": "string"
+        },
+        "members": {
+          "items": {
+            "$ref": "#/$defs/member"
+          },
+          "maxItems": 128,
+          "minItems": 1,
+          "type": "array",
+          "uniqueItems": true
+        },
+        "schema": {
+          "const": "ctower.seat-catalog/v1"
+        }
+      },
+      "required": [
+        "schema",
+        "key",
+        "display_name",
+        "members"
+      ],
+      "title": "SeatCatalogComponent",
+      "type": "object"
+    },
     "contracts/components/skill.schema.json": {
       "$id": "https://ctower.local/contracts/components/skill.schema.json",
       "$schema": "https://json-schema.org/draft/2020-12/schema",
@@ -2328,6 +2433,7 @@
             "notification",
             "integration",
             "adapter",
+            "seat_catalog",
             "checkpoint"
           ],
           "type": "string"
@@ -3133,6 +3239,72 @@
           ],
           "type": "object"
         },
+        "seatCredentialIssued": {
+          "additionalProperties": false,
+          "properties": {
+            "credential_id": {
+              "format": "uuid",
+              "type": "string"
+            },
+            "credential_ref": {
+              "maxLength": 512,
+              "minLength": 1,
+              "type": "string"
+            },
+            "principal_id": {
+              "format": "uuid",
+              "type": "string"
+            },
+            "project_key": {
+              "pattern": "^[a-z][a-z0-9-]{2,63}$",
+              "type": "string"
+            },
+            "scopes": {
+              "items": {
+                "enum": [
+                  "capture",
+                  "transition",
+                  "evidence"
+                ]
+              },
+              "minItems": 1,
+              "type": "array",
+              "uniqueItems": true
+            },
+            "seat_key": {
+              "pattern": "^[a-z][a-z0-9._-]{1,95}$",
+              "type": "string"
+            }
+          },
+          "required": [
+            "credential_id",
+            "credential_ref",
+            "principal_id",
+            "project_key",
+            "scopes",
+            "seat_key"
+          ],
+          "type": "object"
+        },
+        "seatCredentialRevoked": {
+          "additionalProperties": false,
+          "properties": {
+            "credential_id": {
+              "format": "uuid",
+              "type": "string"
+            },
+            "reason": {
+              "maxLength": 500,
+              "minLength": 1,
+              "type": "string"
+            }
+          },
+          "required": [
+            "credential_id",
+            "reason"
+          ],
+          "type": "object"
+        },
         "sha256": {
           "pattern": "^sha256:[0-9a-f]{64}$",
           "type": "string"
@@ -3174,6 +3346,10 @@
                 "P1",
                 "P2"
               ],
+              "type": "string"
+            },
+            "project_key": {
+              "pattern": "^[a-z][a-z0-9-]{2,63}$",
               "type": "string"
             },
             "source_kind": {
@@ -3587,6 +3763,38 @@
                   "pattern": "^inbound-thread:[0-9a-f-]{36}$"
                 }
               }
+            },
+            {
+              "properties": {
+                "kind": {
+                  "const": "access.seat_credential_issued"
+                },
+                "origin": {
+                  "const": "api"
+                },
+                "payload": {
+                  "$ref": "#/$defs/seatCredentialIssued"
+                },
+                "stream_id": {
+                  "pattern": "^seat-credential:[0-9a-f-]{36}$"
+                }
+              }
+            },
+            {
+              "properties": {
+                "kind": {
+                  "const": "access.seat_credential_revoked"
+                },
+                "origin": {
+                  "const": "api"
+                },
+                "payload": {
+                  "$ref": "#/$defs/seatCredentialRevoked"
+                },
+                "stream_id": {
+                  "pattern": "^seat-credential:[0-9a-f-]{36}$"
+                }
+              }
             }
           ]
         }
@@ -3633,7 +3841,9 @@
             "routine.occurrence_recorded",
             "attention.poison_disposition_recorded",
             "intake.inbound_event_recorded",
-            "intake.inbound_event_promoted"
+            "intake.inbound_event_promoted",
+            "access.seat_credential_issued",
+            "access.seat_credential_revoked"
           ],
           "type": "string"
         },
@@ -3666,7 +3876,7 @@
           "type": "string"
         },
         "stream_id": {
-          "pattern": "^(tenant:[0-9a-f-]{36}:bootstrap|ticket:[0-9a-f-]{36}|catalog:[0-9a-f-]{36}|proof:[0-9a-f-]{36}|workflow:[0-9a-f-]{36}|routine-occurrence:[0-9a-f-]{36}|poison-disposition:[0-9a-f-]{36}|inbound-thread:[0-9a-f-]{36})$",
+          "pattern": "^(tenant:[0-9a-f-]{36}:bootstrap|ticket:[0-9a-f-]{36}|catalog:[0-9a-f-]{36}|proof:[0-9a-f-]{36}|workflow:[0-9a-f-]{36}|routine-occurrence:[0-9a-f-]{36}|poison-disposition:[0-9a-f-]{36}|inbound-thread:[0-9a-f-]{36}|seat-credential:[0-9a-f-]{36})$",
           "type": "string"
         },
         "tenant_id": {
@@ -8310,6 +8520,43 @@
           ],
           "type": "object"
         },
+        "qualifyingStageSlot": {
+          "additionalProperties": false,
+          "properties": {
+            "assigned_seat": {
+              "$ref": "#/$defs/seatAssignment"
+            },
+            "signing_seat": {
+              "oneOf": [
+                {
+                  "$ref": "#/$defs/seatIdentity"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "slot_key": {
+              "pattern": "^[a-z][a-z0-9._-]*$",
+              "type": "string"
+            },
+            "state": {
+              "enum": [
+                "filled",
+                "unfilled",
+                "unknown"
+              ],
+              "type": "string"
+            }
+          },
+          "required": [
+            "slot_key",
+            "state",
+            "assigned_seat",
+            "signing_seat"
+          ],
+          "type": "object"
+        },
         "row": {
           "additionalProperties": false,
           "allOf": [
@@ -8430,6 +8677,13 @@
               "minimum": 0,
               "type": "integer"
             },
+            "qualifying_stage_slots": {
+              "items": {
+                "$ref": "#/$defs/qualifyingStageSlot"
+              },
+              "type": "array",
+              "uniqueItems": true
+            },
             "qualifying_stage_slots_filled": {
               "minimum": 0,
               "type": "integer"
@@ -8501,6 +8755,7 @@
             "qualifying_stage_slots_filled",
             "qualifying_stage_slots_required",
             "qualifying_stage_unfilled_or_unknown_slot_keys",
+            "qualifying_stage_slots",
             "source_watermark",
             "projection_watermark",
             "freshness",
@@ -8515,6 +8770,83 @@
             "rebuild_generation",
             "source_ids",
             "derivation_reasons"
+          ],
+          "type": "object"
+        },
+        "seatAssignment": {
+          "oneOf": [
+            {
+              "additionalProperties": false,
+              "properties": {
+                "seat": {
+                  "$ref": "#/$defs/seatIdentity"
+                },
+                "state": {
+                  "const": "assigned"
+                }
+              },
+              "required": [
+                "state",
+                "seat"
+              ],
+              "type": "object"
+            },
+            {
+              "additionalProperties": false,
+              "properties": {
+                "state": {
+                  "const": "unassigned"
+                }
+              },
+              "required": [
+                "state"
+              ],
+              "type": "object"
+            }
+          ]
+        },
+        "seatCatalogRevision": {
+          "additionalProperties": false,
+          "properties": {
+            "catalog_key": {
+              "pattern": "^[a-z][a-z0-9.-]{2,127}$",
+              "type": "string"
+            },
+            "content_digest": {
+              "pattern": "^sha256:[a-f0-9]{64}$",
+              "type": "string"
+            },
+            "revision": {
+              "minimum": 1,
+              "type": "integer"
+            }
+          },
+          "required": [
+            "catalog_key",
+            "revision",
+            "content_digest"
+          ],
+          "type": "object"
+        },
+        "seatIdentity": {
+          "additionalProperties": false,
+          "properties": {
+            "catalog_revision": {
+              "$ref": "#/$defs/seatCatalogRevision"
+            },
+            "seat_key": {
+              "pattern": "^[a-z][a-z0-9._-]{1,95}$",
+              "type": "string"
+            },
+            "seat_label": {
+              "minLength": 1,
+              "type": "string"
+            }
+          },
+          "required": [
+            "seat_key",
+            "seat_label",
+            "catalog_revision"
           ],
           "type": "object"
         }
@@ -8645,6 +8977,10 @@
               ],
               "type": "string"
             },
+            "project_key": {
+              "pattern": "^[a-z][a-z0-9-]{2,63}$",
+              "type": "string"
+            },
             "risk": {
               "maxLength": 64,
               "type": [
@@ -8699,6 +9035,7 @@
             "delivery_facts",
             "lane",
             "priority",
+            "project_key",
             "risk",
             "stage_key",
             "stage_label",
@@ -8749,6 +9086,10 @@
               ],
               "type": "string"
             },
+            "project_key": {
+              "pattern": "^[a-z][a-z0-9-]{2,63}$",
+              "type": "string"
+            },
             "risk": {
               "maxLength": 64,
               "type": "string"
@@ -8758,6 +9099,9 @@
               "type": "string"
             }
           },
+          "required": [
+            "project_key"
+          ],
           "type": "object"
         }
       },
@@ -11817,7 +12161,7 @@
     {
       "id": "https://ctower.local/contracts/components/checkpoint.schema.json",
       "path": "contracts/components/checkpoint.schema.json",
-      "sha256": "sha256:f95ebbab6e9d21369bd6346ea62949184c6bdabcd896ad8f9f9107222eeee44e"
+      "sha256": "sha256:1e88eb8ddb85011a9dc5282fb8b126094b916b2ce7d43e21c1e513097f99ac45"
     },
     {
       "id": "https://ctower.local/contracts/components/environment.schema.json",
@@ -11860,6 +12204,11 @@
       "sha256": "sha256:c3e0a89626f9ac0ab40266f54abfad07a9bf9b572ed5efc4a861a8fc570e303d"
     },
     {
+      "id": "https://ctower.local/contracts/components/seat-catalog.schema.json",
+      "path": "contracts/components/seat-catalog.schema.json",
+      "sha256": "sha256:b6565acc10249380cfc1f0e8b02d443d85471b4058be8fa74875ab0e438ff992"
+    },
+    {
       "id": "https://ctower.local/contracts/components/skill.schema.json",
       "path": "contracts/components/skill.schema.json",
       "sha256": "sha256:b4df26d394639a9d615b6ccc67d7ebb9ce95258083c5fe460514178dbf839b2c"
@@ -11887,7 +12236,7 @@
     {
       "id": "https://ctower.local/contracts/components/versioned-component.schema.json",
       "path": "contracts/components/versioned-component.schema.json",
-      "sha256": "sha256:ed57c67c72ae5777724d9e21162cf3f340ed7573caed2fc334c9a97f7b077504"
+      "sha256": "sha256:19e1e731414e5419895b6c3ee2564adbcdf3f891b3ecc84d83e6583ac8344e3b"
     },
     {
       "id": "https://ctower.local/contracts/components/workspace.schema.json",
@@ -11897,7 +12246,7 @@
     {
       "id": "https://ctower.dev/contracts/domain/events/event-envelope.schema.json",
       "path": "contracts/domain/events/event-envelope.schema.json",
-      "sha256": "sha256:004080b1af7a1c83345790581492d72c9c9cbe9aa9f72d8ad8a8448abc176a87"
+      "sha256": "sha256:4071a5c0adf69cb288ab2e68367e9b59bced1ab4f2190f61709ef8e13ba3e61c"
     },
     {
       "id": "https://ctower.local/contracts/domain/intake/thread-intake.schema.json",
@@ -12012,12 +12361,12 @@
     {
       "id": "https://ctower.dev/contracts/domain/project-delivery/project-delivery.schema.json",
       "path": "contracts/domain/project-delivery/project-delivery.schema.json",
-      "sha256": "sha256:4f1864da21dd74dde8af0a8708b9a20074179f17a38a2068ef2dbb07627207a2"
+      "sha256": "sha256:c8965c625274a683703249c3d8d71434226175bbfbb9a3702b1c9adecc40cecc"
     },
     {
       "id": "https://ctower.dev/contracts/domain/task-management/board-view.schema.json",
       "path": "contracts/domain/task-management/board-view.schema.json",
-      "sha256": "sha256:c8bcb47434fb331fbd6aaa4e3192a083ebd2e6a8a0cfca3e00e28053a200b6ad"
+      "sha256": "sha256:788621d304f3865aaf108deb7d9f91537004c7f8cb6a252d3a53d4e0b390c6f9"
     },
     {
       "id": "https://ctower.dev/contracts/domain/task-management/scheduling-policy.schema.json",

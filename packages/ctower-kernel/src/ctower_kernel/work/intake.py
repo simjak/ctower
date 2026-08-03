@@ -10,7 +10,13 @@ from datetime import UTC, datetime
 from typing import Protocol
 from uuid import UUID
 
-from ctower_kernel.record import Actor, PrincipalKind, RecordProblem
+from ctower_kernel.record import (
+    Actor,
+    PrincipalKind,
+    RecordProblem,
+    credential_scope_refusal,
+)
+from ctower_kernel.record.credentials import CredentialScope
 from ctower_kernel.record.intake import (
     IntakeCommandResult,
     IntakeIntent,
@@ -18,12 +24,14 @@ from ctower_kernel.record.intake import (
     IntakeSubmitCommand,
     IntakeTaint,
 )
+from ctower_kernel.record.prohibited_data import prohibited_data_refusal
 from ctower_kernel.telemetry import NoopTelemetry, Telemetry, TelemetryContext
 from ctower_kernel.work._custody_policy import initial_custody_refusal
 
 __all__ = ["Intake"]
 
 _PROJECT_KEY = re.compile(r"^[a-z][a-z0-9-]{2,63}$")
+_SCOPED_SOURCE_REF = re.compile(r"^(?P<project>[a-z][a-z0-9-]{2,63})-R[0-9]{3,}$")
 _PRIORITIES = frozenset({"P0", "P1", "P2"})
 _MAX_CONTENT_LENGTH = 65536
 _MAX_SOURCE_KIND_LENGTH = 64
@@ -121,20 +129,17 @@ def _submit_refusal(actor: Actor, command: IntakeSubmitCommand) -> RecordProblem
     capability = _capability_refusal(actor, command.client_command_id)
     if capability is not None:
         return capability
-    if (
-        _PROJECT_KEY.fullmatch(command.project_key) is None
-        or not 1 <= len(command.source.kind) <= _MAX_SOURCE_KIND_LENGTH
-        or not 1 <= len(command.source.ref) <= _MAX_SOURCE_REF_LENGTH
-        or not 1 <= len(command.content) <= _MAX_CONTENT_LENGTH
-    ):
-        return _invalid(command.client_command_id, "Invalid inbound project, source, or content")
-    if (command.thread_id is None) != (command.expected_thread_version is None):
-        return _invalid(
-            command.client_command_id,
-            "Existing thread appends require an expected version; new threads forbid one",
-        )
-    if command.expected_thread_version is not None and command.expected_thread_version < 1:
-        return _invalid(command.client_command_id, "Expected thread version must be positive")
+    # Ahead of every shape, thread, taint, and intent branch: a prohibited class must not
+    # reach the writer even as quarantined content, which is durable like any other byte.
+    prohibited = prohibited_data_refusal(
+        (command.content, command.title, command.source.kind, command.source.ref),
+        command_id=command.client_command_id,
+    )
+    if prohibited is not None:
+        return prohibited
+    shape = _shape_refusal(command)
+    if shape is not None:
+        return shape
     if command.taint is IntakeTaint.QUARANTINE_REQUIRED:
         return None
     return _intent_refusal(
@@ -149,10 +154,38 @@ def _submit_refusal(actor: Actor, command: IntakeSubmitCommand) -> RecordProblem
     )
 
 
+def _shape_refusal(command: IntakeSubmitCommand) -> RecordProblem | None:
+    if (
+        _PROJECT_KEY.fullmatch(command.project_key) is None
+        or not 1 <= len(command.source.kind) <= _MAX_SOURCE_KIND_LENGTH
+        or not 1 <= len(command.source.ref) <= _MAX_SOURCE_REF_LENGTH
+        or not 1 <= len(command.content) <= _MAX_CONTENT_LENGTH
+    ):
+        return _invalid(command.client_command_id, "Invalid inbound project, source, or content")
+    source_problem = _source_ref_refusal(command)
+    if source_problem is not None:
+        return source_problem
+    return _thread_refusal(command)
+
+
+def _thread_refusal(command: IntakeSubmitCommand) -> RecordProblem | None:
+    if (command.thread_id is None) != (command.expected_thread_version is None):
+        return _invalid(
+            command.client_command_id,
+            "Existing thread appends require an expected version; new threads forbid one",
+        )
+    if command.expected_thread_version is not None and command.expected_thread_version < 1:
+        return _invalid(command.client_command_id, "Expected thread version must be positive")
+    return None
+
+
 def _promotion_refusal(actor: Actor, command: IntakePromotionCommand) -> RecordProblem | None:
     capability = _capability_refusal(actor, command.client_command_id)
     if capability is not None:
         return capability
+    prohibited = prohibited_data_refusal((command.title,), command_id=command.client_command_id)
+    if prohibited is not None:
+        return prohibited
     if command.expected_thread_version < 1 or command.intent is IntakeIntent.DISCUSSION:
         return _invalid(command.client_command_id, "Promotion must be actionable and versioned")
     return _intent_refusal(
@@ -164,6 +197,22 @@ def _promotion_refusal(actor: Actor, command: IntakePromotionCommand) -> RecordP
         command.title,
         command.target_ticket_id,
         command.expected_ticket_version,
+    )
+
+
+def _source_ref_refusal(command: IntakeSubmitCommand) -> RecordProblem | None:
+    if command.source.kind != "mission-control-request":
+        return None
+    matched = _SCOPED_SOURCE_REF.fullmatch(command.source.ref)
+    if matched is not None and matched.group("project") == command.project_key:
+        return None
+    return RecordProblem(
+        code="intake-source-project-mismatch",
+        detail="Mission Control intake source refs must match <project>-R<nnn>.",
+        status=422,
+        title="Inbound source project mismatch",
+        command_id=command.client_command_id,
+        unmet_facts=(f"project:{command.project_key}", f"source_ref:{command.source.ref}"),
     )
 
 
@@ -273,7 +322,11 @@ def _capability_refusal(actor: Actor, command_id: UUID) -> RecordProblem | None:
         )
     if actor.kind not in {PrincipalKind.OPERATOR, PrincipalKind.COMMANDER}:
         return _unauthorized(command_id, "Inbound intake requires task authority")
-    return None
+    return credential_scope_refusal(
+        actor,
+        CredentialScope.CAPTURE,
+        command_id=command_id,
+    )
 
 
 def _invalid(command_id: UUID, detail: str) -> RecordProblem:

@@ -59,12 +59,13 @@ class _CommandRecord:
         command: CustodyCommand,
         *,
         request_digest: bytes,
+        policy_refusal: RecordProblem | None = None,
         now: datetime,
         telemetry: TelemetryContext,
-    ) -> TicketCommandResult:
+    ) -> TicketCommandResult | RecordProblem:
         del actor, command, now, telemetry
         self.custody_digest = request_digest
-        return self.result
+        return policy_refusal or self.result
 
 
 class _WorkWriter:
@@ -83,9 +84,9 @@ class _WorkWriter:
         )
 
     def assignments(
-        self, actor: Actor, ticket_id: UUID
+        self, actor: Actor, ticket_id: UUID, project_key: str
     ) -> tuple[AssignmentInterval, ...] | RecordProblem:
-        del actor, ticket_id
+        del actor, ticket_id, project_key
         return ()
 
     def readiness(self, actor: Actor, ticket_id: UUID) -> WorkReadiness | RecordProblem:
@@ -209,6 +210,7 @@ def _ticket_command(actor: Actor, *, priority: str) -> TicketCommand:
         client_command_id=uuid4(),
         initial_custodian_id=actor.principal_id,
         priority=priority,
+        project_key="ctower",
         source=SourceReference("test", "test:work"),
         title="Work policy",
     )

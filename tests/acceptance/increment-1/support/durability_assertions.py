@@ -383,6 +383,7 @@ def create_ticket(
             json={
                 "initial_custodian_id": str(tenant.commander_id),
                 "priority": "P1",
+                "project_key": "ctower",
                 "source": {"kind": "test", "ref": f"test:durability:{command_id}"},
                 "title": title,
             },

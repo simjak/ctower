@@ -17,11 +17,13 @@ from ctower_client.models import (
     EvidenceRequest,
     FreezeCriteriaRequest,
     ResolveCloseRequest,
+    SeatCredentialIssueRequest,
+    SeatCredentialRevocationRequest,
     VerdictRequest,
     WorkflowStartRequest,
 )
 from ctower_client.operations import CLI_OPERATIONS, SpoolPolicy
-from ctowerctl import _workflow_commands, main
+from ctowerctl import _credential_commands, _workflow_commands, main
 from ctowerctl._company_commands import (
     load_bundle,
 )
@@ -88,6 +90,7 @@ def test_explicit_handlers_cover_every_generated_operation_class() -> None:
         | synthetic_mutations()
         | migration_mutations()
         | intake_mutations()
+        | _credential_commands.mutation_command_names()
     )
     queries = (
         ticket_queries()
@@ -117,6 +120,8 @@ def test_explicit_handlers_cover_every_generated_operation_class() -> None:
     assert refusals == expected_refusals
     assert forbidden == {
         "bootstrap first-tenant",
+        "credential seat issue",
+        "credential seat revoke",
         "migration ctower-project inventory",
         "migration ctower-project export",
         "migration ctower-project plan",
@@ -125,6 +130,59 @@ def test_explicit_handlers_cover_every_generated_operation_class() -> None:
         "migration ctower-project correction append",
         "migration ctower-project fence observe",
     }
+
+
+def test_project_seat_credential_commands_are_strict_and_unspoolable() -> None:
+    command_id = uuid4()
+    issue = parse_arguments(
+        [
+            "--base-url",
+            "https://ctower.example",
+            "credential",
+            "seat",
+            "issue",
+            "--command-id",
+            str(command_id),
+            "--credential-digest",
+            "sha256:" + "a" * 64,
+            "--credential-ref",
+            "secret-ref:seat/manibo",
+            "--display-name",
+            "Manibo Commander",
+            "--project-key",
+            "manibo",
+            "--scope",
+            "capture",
+            "--scope",
+            "transition",
+            "--seat-key",
+            "manibo-commander",
+        ]
+    )
+    credential_id = uuid4()
+    revoke = parse_arguments(
+        [
+            "--base-url",
+            "https://ctower.example",
+            "credential",
+            "seat",
+            "revoke",
+            str(credential_id),
+            "--command-id",
+            str(uuid4()),
+            "--reason",
+            "rotation",
+        ]
+    )
+
+    issuance = _credential_commands.build_mutation(issue)
+    revocation = _credential_commands.build_mutation(revoke)
+
+    assert isinstance(issuance.request, SeatCredentialIssueRequest)
+    assert issuance.request.scopes == ("capture", "transition")
+    assert issuance.path_parameters == {}
+    assert isinstance(revocation.request, SeatCredentialRevocationRequest)
+    assert revocation.path_parameters == {"credential_id": str(credential_id)}
 
 
 def test_assignment_and_custody_build_distinct_generated_requests() -> None:
@@ -152,6 +210,8 @@ def test_ticket_create_defaults_only_derivable_identifiers() -> None:
         "create",
         "--priority",
         "P2",
+        "--project-key",
+        "ctower",
         "--source-kind",
         "mission-control",
         "--source-ref",

@@ -17,6 +17,10 @@ from ctower_kernel.record.catalog_events import (
     CatalogComponentReference,
     CatalogEventPayload,
 )
+from ctower_kernel.record.credentials import (
+    SeatCredentialIssuedPayload,
+    SeatCredentialRevokedPayload,
+)
 from ctower_kernel.record.intake_events import (
     InboundEventPromotedPayload,
     InboundEventRecordedPayload,
@@ -77,6 +81,8 @@ class EventKind(StrEnum):
     MIGRATION_CHANGED = "migration.changed"
     INBOUND_EVENT_RECORDED = "intake.inbound_event_recorded"
     INBOUND_EVENT_PROMOTED = "intake.inbound_event_promoted"
+    SEAT_CREDENTIAL_ISSUED = "access.seat_credential_issued"
+    SEAT_CREDENTIAL_REVOKED = "access.seat_credential_revoked"
 
 
 class EventOrigin(StrEnum):
@@ -96,6 +102,8 @@ _STREAM_PREFIXES = {
     EventKind.MIGRATION_CHANGED: "migration",
     EventKind.INBOUND_EVENT_RECORDED: "inbound-thread",
     EventKind.INBOUND_EVENT_PROMOTED: "inbound-thread",
+    EventKind.SEAT_CREDENTIAL_ISSUED: "seat-credential",
+    EventKind.SEAT_CREDENTIAL_REVOKED: "seat-credential",
 }
 _DIGEST_BYTES = 32
 _MAX_UTC_OFFSET_SECONDS = 64800
@@ -308,6 +316,8 @@ type EventPayload = (
     | PoisonDispositionRecordedPayload
     | MigrationChangedPayload
     | IntakeEventPayload
+    | SeatCredentialIssuedPayload
+    | SeatCredentialRevokedPayload
 )
 
 
@@ -369,11 +379,18 @@ def event_digest(event: EventEnvelope) -> bytes:
 
 
 def ticket_payload_from_mapping(
-    kind: EventKind, payload: Mapping[str, object]
+    kind: EventKind,
+    payload: Mapping[str, object],
+    *,
+    legacy_project_key: str | None = None,
 ) -> TicketEventPayload:
     """Rebuild one typed ticket payload at the persistence read boundary."""
 
-    return _ticket_payload_from_mapping(kind.value, payload)
+    return _ticket_payload_from_mapping(
+        kind.value,
+        payload,
+        legacy_project_key=legacy_project_key,
+    )
 
 
 _EVENT_VARIANTS: dict[EventKind, tuple[type[object], frozenset[EventOrigin]]] = {
@@ -416,6 +433,14 @@ _EVENT_VARIANTS: dict[EventKind, tuple[type[object], frozenset[EventOrigin]]] = 
     ),
     EventKind.INBOUND_EVENT_PROMOTED: (
         InboundEventPromotedPayload,
+        frozenset({EventOrigin.API}),
+    ),
+    EventKind.SEAT_CREDENTIAL_ISSUED: (
+        SeatCredentialIssuedPayload,
+        frozenset({EventOrigin.API}),
+    ),
+    EventKind.SEAT_CREDENTIAL_REVOKED: (
+        SeatCredentialRevokedPayload,
         frozenset({EventOrigin.API}),
     ),
 }
@@ -481,6 +506,7 @@ def _validate_event_identity(event: EventEnvelope) -> None:
     _validate_occurrence_identity(event)
     _validate_poison_identity(event)
     _validate_intake_identity(event)
+    _validate_seat_credential_identity(event)
 
 
 def _validate_bootstrap_identity(event: EventEnvelope) -> None:
@@ -524,6 +550,13 @@ def _validate_intake_identity(event: EventEnvelope) -> None:
         event.stream_id != f"inbound-thread:{event.aggregate_id}"
     ):
         raise ValueError("intake event must use its inbound thread stream")
+
+
+def _validate_seat_credential_identity(event: EventEnvelope) -> None:
+    if isinstance(event.payload, SeatCredentialIssuedPayload | SeatCredentialRevokedPayload) and (
+        event.aggregate_id != event.payload.credential_id
+    ):
+        raise ValueError("seat credential aggregate and payload identity must match")
 
 
 def _stream_id(kind: EventKind, aggregate_id: UUID) -> str:

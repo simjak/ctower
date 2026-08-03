@@ -190,22 +190,25 @@ def test_ticket_queries_call_only_the_explicit_generated_methods() -> None:
 
     for cli_name in ("ticket query", "ticket show"):
         result = _ticket_commands.execute_query(
-            argparse.Namespace(cli_name=cli_name, ticket_id=ticket_id),
+            argparse.Namespace(cli_name=cli_name, ticket_id=ticket_id, project_key="ctower"),
             cast(CtowerClient, client),
         )
         assert cast(_QueryResult, result).marker == "ticket"
     timeline = _ticket_commands.execute_query(
-        argparse.Namespace(cli_name="ticket timeline", ticket_id=ticket_id),
+        argparse.Namespace(cli_name="ticket timeline", ticket_id=ticket_id, project_key="ctower"),
         cast(CtowerClient, client),
     )
     assignments = _ticket_commands.execute_query(
-        argparse.Namespace(cli_name="ticket assignments", ticket_id=ticket_id),
+        argparse.Namespace(
+            cli_name="ticket assignments", ticket_id=ticket_id, project_key="ctower"
+        ),
         cast(CtowerClient, client),
     )
     audit = _ticket_commands.execute_query(
         argparse.Namespace(
             cli_name="ticket audit",
             ticket_id=ticket_id,
+            project_key="ctower",
             cursor=11,
             limit=7,
         ),
@@ -216,11 +219,11 @@ def test_ticket_queries_call_only_the_explicit_generated_methods() -> None:
     assert cast(_QueryResult, assignments).marker == "assignments"
     assert cast(_QueryResult, audit).marker == "audit"
     assert client.calls == [
-        ("ticket", ticket_id, None, None),
-        ("ticket", ticket_id, None, None),
-        ("timeline", ticket_id, None, None),
-        ("assignments", ticket_id, None, None),
-        ("audit", ticket_id, 11, 7),
+        ("ticket", ticket_id, "ctower", None, None),
+        ("ticket", ticket_id, "ctower", None, None),
+        ("timeline", ticket_id, "ctower", None, None),
+        ("assignments", ticket_id, "ctower", None, None),
+        ("audit", ticket_id, "ctower", 11, 7),
     ]
 
 
@@ -247,26 +250,27 @@ class _QueryResult(BaseModel):
 
 class _TicketQueryClient:
     def __init__(self) -> None:
-        self.calls: list[tuple[str, UUID, int | None, int | None]] = []
+        self.calls: list[tuple[str, UUID, str | None, int | None, int | None]] = []
 
-    def get_ticket(self, ticket_id: UUID) -> _QueryResult:
-        self.calls.append(("ticket", ticket_id, None, None))
+    def get_ticket(self, ticket_id: UUID, *, project_key: str) -> _QueryResult:
+        self.calls.append(("ticket", ticket_id, project_key, None, None))
         return _QueryResult(marker="ticket")
 
-    def get_ticket_timeline(self, ticket_id: UUID) -> _QueryResult:
-        self.calls.append(("timeline", ticket_id, None, None))
+    def get_ticket_timeline(self, ticket_id: UUID, *, project_key: str) -> _QueryResult:
+        self.calls.append(("timeline", ticket_id, project_key, None, None))
         return _QueryResult(marker="timeline")
 
-    def list_ticket_assignments(self, ticket_id: UUID) -> _QueryResult:
-        self.calls.append(("assignments", ticket_id, None, None))
+    def list_ticket_assignments(self, ticket_id: UUID, *, project_key: str) -> _QueryResult:
+        self.calls.append(("assignments", ticket_id, project_key, None, None))
         return _QueryResult(marker="assignments")
 
     def list_ticket_audit_events(
         self,
         ticket_id: UUID,
         *,
+        project_key: str,
         cursor: int | None,
         limit: int | None,
     ) -> _QueryResult:
-        self.calls.append(("audit", ticket_id, cursor, limit))
+        self.calls.append(("audit", ticket_id, project_key, cursor, limit))
         return _QueryResult(marker="audit")

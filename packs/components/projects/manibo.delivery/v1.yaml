@@ -1,0 +1,7 @@
+{
+  "schema": "ctower.project/v1",
+  "key": "manibo.delivery",
+  "display_name": "Manibo delivery",
+  "repository_ref": "repository:gitlab/lastmachines/manibo/7653119987f124348de68b597ed4485029661ce1",
+  "goal_refs": ["company.trusted-delivery@1"]
+}

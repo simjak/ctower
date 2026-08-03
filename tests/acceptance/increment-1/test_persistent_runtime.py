@@ -148,6 +148,7 @@ def test_ordinary_finalizer_reconciles_development_ack_without_cp3d_claim(
             ticket_id = pending.json()["ticket"]["ticket_id"]
             durable_ticket = client.get(
                 f"/v1/tickets/{ticket_id}",
+                params={"project_key": "ctower"},
                 headers={
                     **telemetry_headers(),
                     "Authorization": f"Bearer {authority.tenant.operator_credential}",

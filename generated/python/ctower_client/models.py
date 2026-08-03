@@ -1,6 +1,6 @@
 """DO NOT EDIT: generated file; regenerate from declared inputs.
 
-Authored contract digest: sha256:1ca4a6823b673e720c5e1fd0e39445905a701d279b773eb99689536a8de41c62
+Authored contract digest: sha256:897d0904c0761ce19e89e96d0b2d2b85485582770b37abdcc9765cbdf924e5fb
 """
 
 from __future__ import annotations
@@ -53,6 +53,7 @@ __all__ = [
     "ComponentReference",
     "ComponentScope",
     "ControlHealth",
+    "CredentialScope",
     "CtowerProjectAliasPlanBindRequest",
     "CtowerProjectCutoverHealth",
     "CtowerProjectEpochRefusalRequest",
@@ -120,8 +121,14 @@ __all__ = [
     "PriorityChangeRequest",
     "PriorityChangedAuditData",
     "Problem",
+    "ProhibitedDataClass",
+    "ProjectDeliveryAssignedSeatAssignment",
     "ProjectDeliveryCriteria",
     "ProjectDeliveryRow",
+    "ProjectDeliverySeat",
+    "ProjectDeliverySeatAssignment",
+    "ProjectDeliverySlot",
+    "ProjectDeliveryUnassignedSeatAssignment",
     "ProjectDeliveryView",
     "ProjectionHealth",
     "ProofChangedAuditEvent",
@@ -134,6 +141,10 @@ __all__ = [
     "ReopenIntent",
     "ReopenedAuditData",
     "ResolveCloseRequest",
+    "SeatCatalogRevision",
+    "SeatCredentialIssueRequest",
+    "SeatCredentialReceipt",
+    "SeatCredentialRevocationRequest",
     "SecretBindingReference",
     "SourceReference",
     "SyntheticRunReceipt",
@@ -605,6 +616,12 @@ class ComponentScope(_BoundaryModel):
     tenant: Annotated[str, Field(pattern="^[a-z][a-z0-9-]{2,63}$")]
 
 
+class CredentialScope(StrEnum):
+    CAPTURE = "capture"
+    TRANSITION = "transition"
+    EVIDENCE = "evidence"
+
+
 class CtowerProjectAliasPlanBindRequest(_BoundaryModel):
     run_id: UUID
     cutover_id: UUID
@@ -986,104 +1003,21 @@ class Priority(StrEnum):
     P2 = "P2"
 
 
-class Problem(_BoundaryModel):
-    code: Literal[
-        "bootstrap-consumed",
-        "bootstrap-expired",
-        "bootstrap-nonempty",
-        "bootstrap-origin",
-        "bundle-base-conflict",
-        "bundle-compatibility-refused",
-        "bundle-digest-mismatch",
-        "bundle-grant-refused",
-        "bundle-independence-refused",
-        "bundle-no-effect-refused",
-        "bundle-not-active",
-        "bundle-plan-mismatch",
-        "bundle-recovery-unavailable",
-        "bundle-reference-invalid",
-        "bundle-schema-invalid",
-        "bundle-security-refused",
-        "durability_pending",
-        "i1-7c-required",
-        "idempotency-conflict",
-        "intake-already-promoted",
-        "intake-promotion-ineligible",
-        "intake-source-conflict",
-        "migration-alias-conflict",
-        "migration-capability-denied",
-        "migration-correction-conflict",
-        "migration-digest-mismatch",
-        "migration-export-nondeterminism",
-        "migration-fence-detected",
-        "migration-import-finalization-refused",
-        "migration-operation-drift",
-        "migration-relation-invalid",
-        "migration-run-conflict",
-        "migration-signature-invalid",
-        "migration-source-selection-drift",
-        "migration-source-tainted",
-        "poison-not-found",
-        "project-delivery-unavailable",
-        "request-body-too-large",
-        "proof-candidate-author-mismatch",
-        "proof-candidate-digest-invalid",
-        "proof-candidate-digest-not-current",
-        "proof-candidate-unchanged",
-        "proof-criteria-already-frozen",
-        "proof-criteria-invalid",
-        "proof-criteria-policy-mismatch",
-        "proof-criterion-unknown",
-        "proof-current-evidence-missing",
-        "proof-evidence-digest-mismatch",
-        "proof-evidence-id-conflict",
-        "proof-protected-authority-required",
-        "proof-policy-mismatch",
-        "proof-policy-pin-mismatch",
-        "proof-self-review-refused",
-        "proof-verdict-id-conflict",
-        "tenant-scope-denied",
-        "ticket-comment-ineligible",
-        "ticket-comment-invalid",
-        "unauthorized",
-        "validation-error",
-        "version-conflict",
-        "work-assignment-kind-refused",
-        "work-assignment-target-ineligible",
-        "work-assignment-unchanged",
-        "work-priority-unchanged",
-        "work-blocker-already-resolved",
-        "work-blocker-id-conflict",
-        "work-blocker-owner-ineligible",
-        "work-blocker-unknown",
-        "work-intent-unmet",
-        "work-relation-cycle",
-        "work-relation-exists",
-        "work-reopen-unmet",
-        "work-ticket-terminal",
-        "workflow-already-started",
-        "workflow-pin-mismatch",
-        "workflow-predicate-unsatisfied",
-        "workflow-run-not-started",
-        "proof-incomplete",
-        "workflow-state-conflict",
-        "workflow-terminal",
-        "workflow-transition-not-declared",
-        "workflow-version-unknown",
-        "workflow-not-terminal",
-    ]
-    command_id: UUID | None = None
-    current_version: Annotated[int, Field(ge=0, le=9007199254740991)] | None = None
-    detail: str
-    status: Annotated[int, Field(ge=400, le=599)]
-    title: str
-    type_uri: _AbsoluteUri = Field(alias="type", serialization_alias="type")
-    unmet_facts: tuple[str, ...] | None = None
+class ProhibitedDataClass(StrEnum):
+    CREDENTIAL_MATERIAL = "credential_material"
+    LIVE_INCIDENT_INDICATOR = "live_incident_indicator"
+    PHI_HIPAA_COVERED = "phi_hipaa_covered"
+    PII_BEYOND_STAFF_IDENTITY = "pii_beyond_staff_identity"
+    PRODUCTION_CUSTOMER_DATA = "production_customer_data"
 
 
 class ProjectDeliveryCriteria(_BoundaryModel):
     proven: Annotated[int, Field(ge=0, le=9007199254740991)]
     declared: Annotated[int, Field(ge=1, le=9007199254740991)]
+
+
+class ProjectDeliveryUnassignedSeatAssignment(_BoundaryModel):
+    state: Literal["unassigned"]
 
 
 class ProjectionHealth(StrEnum):
@@ -1132,6 +1066,16 @@ class ReopenIntent(_BoundaryModel):
 class ResolveCloseRequest(_BoundaryModel):
     expected_version: Annotated[int, Field(ge=1, le=9007199254740991)]
     workflow_ref: Annotated[str, Field(pattern="^[a-z][a-z0-9._-]*@[1-9][0-9]*$")] | None = None
+
+
+class SeatCatalogRevision(_BoundaryModel):
+    catalog_key: Annotated[str, Field(pattern="^[a-z][a-z0-9.-]{2,127}$")]
+    revision: Annotated[int, Field(ge=1, le=9007199254740991)]
+    content_digest: Annotated[str, Field(pattern="^sha256:[0-9a-f]{64}$")]
+
+
+class SeatCredentialRevocationRequest(_BoundaryModel):
+    reason: Annotated[str, Field(min_length=1, max_length=500)]
 
 
 class SecretBindingReference(_BoundaryModel):
@@ -1258,6 +1202,7 @@ class BoardCard(_BoundaryModel):
     delivery_facts: tuple[str, ...]
     lane: BoardLane
     priority: Priority
+    project_key: Annotated[str, Field(pattern="^[a-z][a-z0-9-]{2,63}$")]
     risk: str | None
     stage_key: Annotated[str, Field(pattern="^[a-z][a-z0-9._-]*$")] | None
     stage_label: str | None
@@ -1611,44 +1556,120 @@ class PriorityChangedAuditData(_BoundaryModel):
     urgent_evidence_ref: Annotated[str, Field(min_length=1, max_length=256)] | None
 
 
-class ProjectDeliveryRow(_BoundaryModel):
-    checkpoint_key: Annotated[str, Field(pattern="^[A-Za-z0-9][A-Za-z0-9._-]{0,127}$")]
-    checkpoint_label: Annotated[str, Field(min_length=1)]
-    headline_state: Literal[
-        "planned",
-        "in_progress",
-        "ready_to_land",
-        "merged",
-        "verified",
-        "released",
-        "blocked",
-        "done",
+class Problem(_BoundaryModel):
+    code: Literal[
+        "bootstrap-consumed",
+        "bootstrap-expired",
+        "bootstrap-nonempty",
+        "bootstrap-origin",
+        "bundle-base-conflict",
+        "bundle-compatibility-refused",
+        "bundle-digest-mismatch",
+        "bundle-grant-refused",
+        "bundle-independence-refused",
+        "bundle-no-effect-refused",
+        "bundle-not-active",
+        "bundle-plan-mismatch",
+        "bundle-recovery-unavailable",
+        "bundle-reference-invalid",
+        "bundle-schema-invalid",
+        "bundle-security-refused",
+        "credential-already-revoked",
+        "credential-digest-conflict",
+        "credential-issuance-refused",
+        "credential-revocation-refused",
+        "credential-revoked",
+        "credential-scope-denied",
+        "durability_pending",
+        "i1-7c-required",
+        "idempotency-conflict",
+        "intake-already-promoted",
+        "intake-promotion-ineligible",
+        "intake-source-project-mismatch",
+        "intake-source-conflict",
+        "migration-alias-conflict",
+        "migration-capability-denied",
+        "migration-correction-conflict",
+        "migration-digest-mismatch",
+        "migration-export-nondeterminism",
+        "migration-fence-detected",
+        "migration-import-finalization-refused",
+        "migration-operation-drift",
+        "migration-relation-invalid",
+        "migration-run-conflict",
+        "migration-signature-invalid",
+        "migration-source-selection-drift",
+        "migration-source-tainted",
+        "poison-not-found",
+        "prohibited-data-class",
+        "project-delivery-unavailable",
+        "project-grant-required",
+        "project-scope-denied",
+        "request-body-too-large",
+        "proof-candidate-author-mismatch",
+        "proof-candidate-digest-invalid",
+        "proof-candidate-digest-not-current",
+        "proof-candidate-unchanged",
+        "proof-criteria-already-frozen",
+        "proof-criteria-invalid",
+        "proof-criteria-policy-mismatch",
+        "proof-criterion-unknown",
+        "proof-current-evidence-missing",
+        "proof-evidence-digest-mismatch",
+        "proof-evidence-id-conflict",
+        "proof-protected-authority-required",
+        "proof-policy-mismatch",
+        "proof-policy-pin-mismatch",
+        "proof-self-review-refused",
+        "proof-verdict-id-conflict",
+        "seat-binding-conflict",
+        "seat-credential-active",
+        "seat-credential-unavailable",
+        "seat-display-name-conflict",
+        "tenant-scope-denied",
+        "ticket-comment-ineligible",
+        "ticket-comment-invalid",
+        "unauthorized",
+        "validation-error",
+        "version-conflict",
+        "work-assignment-kind-refused",
+        "work-assignment-target-ineligible",
+        "work-assignment-unchanged",
+        "work-priority-unchanged",
+        "work-blocker-already-resolved",
+        "work-blocker-id-conflict",
+        "work-blocker-owner-ineligible",
+        "work-blocker-unknown",
+        "work-intent-unmet",
+        "work-relation-cycle",
+        "work-relation-exists",
+        "work-reopen-unmet",
+        "work-ticket-terminal",
+        "workflow-already-started",
+        "workflow-pin-mismatch",
+        "workflow-predicate-unsatisfied",
+        "workflow-run-not-started",
+        "proof-incomplete",
+        "workflow-state-conflict",
+        "workflow-terminal",
+        "workflow-transition-not-declared",
+        "workflow-version-unknown",
+        "workflow-not-terminal",
     ]
-    underlying_maturity: Literal["planned", "in_progress", "ready_to_land", "merged", "verified", "released"]
-    outcome: Annotated[str, Field(min_length=1)]
-    accountable_owner: Annotated[str, Field(min_length=1)]
-    criteria: ProjectDeliveryCriteria
-    qualifying_stage_slots_filled: Annotated[int, Field(ge=0, le=9007199254740991)]
-    qualifying_stage_slots_required: Annotated[int, Field(ge=0, le=9007199254740991)]
-    qualifying_stage_unfilled_or_unknown_slot_keys: tuple[Annotated[str, Field(pattern="^[a-z][a-z0-9._-]*$")], ...]
-    source_watermark: Annotated[int, Field(ge=0, le=9007199254740991)]
-    projection_watermark: Annotated[int, Field(ge=0, le=9007199254740991)]
-    freshness: Literal["fresh", "stale", "STATE_UNKNOWN"]
-    confidence: Literal["development_degraded", "disaster_safe", "STATE_UNKNOWN"]
-    health: Literal["CP3_D_NOT_PROVEN", "CURRENT", "STATE_UNKNOWN"]
-    durability: Literal["CP3_D_NOT_PROVEN", "CP3_D_PROVEN", "STATE_UNKNOWN"]
-    recovery: Literal[
-        "EXTERNAL_FAILURE_DOMAIN_UNPROVEN",
-        "EXTERNAL_FAILURE_DOMAIN_PROVEN",
-        "STATE_UNKNOWN",
-    ]
-    data_class: Literal["RECONSTRUCTIBLE_ONLY", "DISASTER_SAFE_CTOWER_ENGINEERING", "STATE_UNKNOWN"]
-    semantic_digest: Annotated[str, Field(pattern="^sha256:[0-9a-f]{64}$")]
-    reconciled_at: _Rfc3339DateTime
-    freshness_due_at: _Rfc3339DateTime
-    rebuild_generation: Annotated[int, Field(ge=0, le=9007199254740991)]
-    source_ids: tuple[Annotated[str, Field(min_length=1)], ...]
-    derivation_reasons: Annotated[tuple[Annotated[str, Field(min_length=1)], ...], Field(min_length=1)]
+    command_id: UUID | None = None
+    current_version: Annotated[int, Field(ge=0, le=9007199254740991)] | None = None
+    detail: str
+    prohibited_classes: tuple[ProhibitedDataClass, ...] | None = None
+    status: Annotated[int, Field(ge=400, le=599)]
+    title: str
+    type_uri: _AbsoluteUri = Field(alias="type", serialization_alias="type")
+    unmet_facts: tuple[str, ...] | None = None
+
+
+class ProjectDeliverySeat(_BoundaryModel):
+    seat_key: Annotated[str, Field(pattern="^[a-z][a-z0-9._-]{1,95}$")]
+    seat_label: Annotated[str, Field(min_length=1)]
+    catalog_revision: SeatCatalogRevision
 
 
 class ProofChangedAuditEvent(_BoundaryModel):
@@ -1689,6 +1710,27 @@ class ReopenedAuditData(_BoundaryModel):
     episode_number: Annotated[int, Field(ge=2, le=9007199254740991)]
     priority: Priority
     reason: Annotated[str, Field(min_length=1, max_length=500)]
+
+
+class SeatCredentialIssueRequest(_BoundaryModel):
+    credential_digest: Annotated[str, Field(pattern="^sha256:[0-9a-f]{64}$")]
+    credential_ref: Annotated[str, Field(min_length=1, max_length=512)]
+    display_name: Annotated[str, Field(min_length=1, max_length=120)]
+    project_key: Annotated[str, Field(pattern="^[a-z][a-z0-9-]{2,63}$")]
+    scopes: Annotated[tuple[CredentialScope, ...], Field(min_length=1, max_length=3)]
+    seat_key: Annotated[str, Field(pattern="^[a-z][a-z0-9._-]{1,95}$")]
+
+
+class SeatCredentialReceipt(_BoundaryModel):
+    command_id: UUID
+    credential_id: UUID
+    durability_state: DurabilityState
+    event_ids: Annotated[tuple[UUID, ...], Field(min_length=1, max_length=1)]
+    principal_id: UUID
+    project_key: Annotated[str, Field(pattern="^[a-z][a-z0-9-]{2,63}$")]
+    scopes: Annotated[tuple[CredentialScope, ...], Field(min_length=1, max_length=3)]
+    seat_key: Annotated[str, Field(pattern="^[a-z][a-z0-9._-]{1,95}$")]
+    state: Literal["active", "revoked"]
 
 
 class SyntheticRunReceipt(_BoundaryModel):
@@ -1737,6 +1779,7 @@ class TicketCommentResult(_BoundaryModel):
 class TicketCreateRequest(_BoundaryModel):
     initial_custodian_id: UUID | None = None
     priority: Priority
+    project_key: Annotated[str, Field(pattern="^[a-z][a-z0-9-]{2,63}$")] | None = None
     source: SourceReference
     title: Annotated[str, Field(min_length=1, max_length=200)]
 
@@ -1744,6 +1787,7 @@ class TicketCreateRequest(_BoundaryModel):
 class TicketCreatedPayload(_BoundaryModel):
     custodian_id: UUID
     priority: Priority
+    project_key: Annotated[str, Field(pattern="^[a-z][a-z0-9-]{2,63}$")] | None = None
     source_kind: Annotated[str, Field(min_length=1, max_length=64)]
     source_ref: Annotated[str, Field(min_length=1, max_length=256)]
     title: str
@@ -1911,19 +1955,9 @@ class HealthDimension(_BoundaryModel):
     contributors: Annotated[tuple[HealthContributor, ...], Field(min_length=1)]
 
 
-class ProjectDeliveryView(_BoundaryModel):
-    schema_id: Literal["ctower.project-delivery/v1"] = Field(
-        alias="schema", serialization_alias="schema"
-    )
-    company_key: Annotated[str, Field(pattern="^[a-z][a-z0-9-]{2,63}$")]
-    project_key: Annotated[str, Field(pattern="^[a-z][a-z0-9-]{2,63}$")]
-    source_record_position: Annotated[int, Field(ge=0, le=9007199254740991)]
-    projection_record_position: Annotated[int, Field(ge=0, le=9007199254740991)]
-    reconciled_at: _Rfc3339DateTime
-    freshness_due_at: _Rfc3339DateTime
-    projection_semantic_digest: Annotated[str, Field(pattern="^sha256:[0-9a-f]{64}$")]
-    rebuild_generation: Annotated[int, Field(ge=0, le=9007199254740991)]
-    rows: tuple[ProjectDeliveryRow, ...]
+class ProjectDeliveryAssignedSeatAssignment(_BoundaryModel):
+    state: Literal["assigned"]
+    seat: ProjectDeliverySeat
 
 
 class TicketCommandResult(_BoundaryModel):
@@ -2000,6 +2034,9 @@ class CtowerProjectImportBatchRequest(_BoundaryModel):
     operations: Annotated[tuple[CtowerProjectImportOperation, ...], Field(min_length=1, max_length=64)]
 
 
+type ProjectDeliverySeatAssignment = ProjectDeliveryAssignedSeatAssignment | ProjectDeliveryUnassignedSeatAssignment
+
+
 class TimelineResponse(_BoundaryModel):
     durability_state: DurabilityState
     events: tuple[TimelineEvent, ...]
@@ -2031,6 +2068,13 @@ class CompanyBundleResource(_BoundaryModel):
     payload: _FreeFormJsonObject
 
 
+class ProjectDeliverySlot(_BoundaryModel):
+    slot_key: Annotated[str, Field(pattern="^[a-z][a-z0-9._-]*$")]
+    state: Literal["filled", "unfilled", "unknown"]
+    assigned_seat: ProjectDeliverySeatAssignment
+    signing_seat: ProjectDeliverySeat | None
+
+
 class WorkChangedAuditEvent(_BoundaryModel):
     actor_principal_id: UUID
     command_id: UUID
@@ -2057,6 +2101,47 @@ class CompanyBundleDocument(_BoundaryModel):
     secret_binding_refs: Annotated[tuple[SecretBindingReference, ...], Field(max_length=128)]
 
 
+class ProjectDeliveryRow(_BoundaryModel):
+    checkpoint_key: Annotated[str, Field(pattern="^[A-Za-z0-9][A-Za-z0-9._-]{0,127}$")]
+    checkpoint_label: Annotated[str, Field(min_length=1)]
+    headline_state: Literal[
+        "planned",
+        "in_progress",
+        "ready_to_land",
+        "merged",
+        "verified",
+        "released",
+        "blocked",
+        "done",
+    ]
+    underlying_maturity: Literal["planned", "in_progress", "ready_to_land", "merged", "verified", "released"]
+    outcome: Annotated[str, Field(min_length=1)]
+    accountable_owner: Annotated[str, Field(min_length=1)]
+    criteria: ProjectDeliveryCriteria
+    qualifying_stage_slots_filled: Annotated[int, Field(ge=0, le=9007199254740991)]
+    qualifying_stage_slots_required: Annotated[int, Field(ge=0, le=9007199254740991)]
+    qualifying_stage_unfilled_or_unknown_slot_keys: tuple[Annotated[str, Field(pattern="^[a-z][a-z0-9._-]*$")], ...]
+    qualifying_stage_slots: tuple[ProjectDeliverySlot, ...]
+    source_watermark: Annotated[int, Field(ge=0, le=9007199254740991)]
+    projection_watermark: Annotated[int, Field(ge=0, le=9007199254740991)]
+    freshness: Literal["fresh", "stale", "STATE_UNKNOWN"]
+    confidence: Literal["development_degraded", "disaster_safe", "STATE_UNKNOWN"]
+    health: Literal["CP3_D_NOT_PROVEN", "CURRENT", "STATE_UNKNOWN"]
+    durability: Literal["CP3_D_NOT_PROVEN", "CP3_D_PROVEN", "STATE_UNKNOWN"]
+    recovery: Literal[
+        "EXTERNAL_FAILURE_DOMAIN_UNPROVEN",
+        "EXTERNAL_FAILURE_DOMAIN_PROVEN",
+        "STATE_UNKNOWN",
+    ]
+    data_class: Literal["RECONSTRUCTIBLE_ONLY", "DISASTER_SAFE_CTOWER_ENGINEERING", "STATE_UNKNOWN"]
+    semantic_digest: Annotated[str, Field(pattern="^sha256:[0-9a-f]{64}$")]
+    reconciled_at: _Rfc3339DateTime
+    freshness_due_at: _Rfc3339DateTime
+    rebuild_generation: Annotated[int, Field(ge=0, le=9007199254740991)]
+    source_ids: tuple[Annotated[str, Field(min_length=1)], ...]
+    derivation_reasons: Annotated[tuple[Annotated[str, Field(min_length=1)], ...], Field(min_length=1)]
+
+
 class AuditPage(_BoundaryModel):
     events: tuple[AuditEvent, ...]
     next_cursor: Annotated[int, Field(ge=1, le=9007199254740991)] | None
@@ -2078,3 +2163,18 @@ class CompanyBundleExportResult(_BoundaryModel):
 
 class CompanyBundleRequest(_BoundaryModel):
     bundle: CompanyBundleDocument
+
+
+class ProjectDeliveryView(_BoundaryModel):
+    schema_id: Literal["ctower.project-delivery/v1"] = Field(
+        alias="schema", serialization_alias="schema"
+    )
+    company_key: Annotated[str, Field(pattern="^[a-z][a-z0-9-]{2,63}$")]
+    project_key: Annotated[str, Field(pattern="^[a-z][a-z0-9-]{2,63}$")]
+    source_record_position: Annotated[int, Field(ge=0, le=9007199254740991)]
+    projection_record_position: Annotated[int, Field(ge=0, le=9007199254740991)]
+    reconciled_at: _Rfc3339DateTime
+    freshness_due_at: _Rfc3339DateTime
+    projection_semantic_digest: Annotated[str, Field(pattern="^sha256:[0-9a-f]{64}$")]
+    rebuild_generation: Annotated[int, Field(ge=0, le=9007199254740991)]
+    rows: tuple[ProjectDeliveryRow, ...]

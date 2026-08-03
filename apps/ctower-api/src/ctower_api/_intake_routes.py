@@ -25,6 +25,7 @@ from ctower_kernel.record import (
     Record,
     RecordProblem,
 )
+from ctower_kernel.record.credentials import CredentialScope
 from ctower_kernel.record.intake import (
     InboundSource,
     IntakeIntent,
@@ -65,7 +66,12 @@ def _install_submit_route(
 ) -> None:
     @app.post("/v1/intake", status_code=201)
     async def submit(request: Request) -> JSONResponse:
-        actor = authenticate(access, recorder, request)
+        actor = authenticate(
+            access,
+            recorder,
+            request,
+            required_scope=CredentialScope.CAPTURE,
+        )
         if isinstance(actor, RecordProblem):
             return problem_response(actor)
         try:
@@ -129,7 +135,12 @@ def _install_promotion_route(
 ) -> None:
     @app.post("/v1/intake/events/{inbound_event_id}/promotion")
     async def promote(inbound_event_id: str, request: Request) -> JSONResponse:
-        actor = authenticate(access, recorder, request)
+        actor = authenticate(
+            access,
+            recorder,
+            request,
+            required_scope=CredentialScope.CAPTURE,
+        )
         if isinstance(actor, RecordProblem):
             return problem_response(actor)
         try:

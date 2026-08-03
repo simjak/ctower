@@ -20,12 +20,17 @@ __all__ = [
     "MigrationHealthDigests",
     "ProjectDeliveryRow",
     "ProjectDeliveryView",
+    "SeatCatalogReference",
+    "SeatIdentity",
     "derive_project_delivery_row",
 ]
 
 _FRESHNESS_LIMIT = timedelta(hours=1)
 _EPOCH = datetime.fromtimestamp(0, UTC)
 _SLOT_KEY = re.compile(r"^[a-z][a-z0-9._-]*$")
+_CATALOG_KEY = re.compile(r"^[a-z][a-z0-9.-]{2,127}$")
+_SEAT_KEY = re.compile(r"^[a-z][a-z0-9._-]{1,95}$")
+_DIGEST = re.compile(r"^sha256:[a-f0-9]{64}$")
 
 
 class DeliveryState(StrEnum):
@@ -50,17 +55,81 @@ class EvidenceSlotState(StrEnum):
 
 
 @dataclass(frozen=True, slots=True)
+class SeatCatalogReference:
+    """The exact catalog revision carried by a historical seat fact."""
+
+    catalog_key: str
+    revision: int
+    content_digest: str
+
+    def __post_init__(self) -> None:
+        if _CATALOG_KEY.fullmatch(self.catalog_key) is None:
+            raise ValueError("seat catalog key must be stable")
+        if self.revision < 1 or _DIGEST.fullmatch(self.content_digest) is None:
+            raise ValueError("seat catalog revision pin must be exact")
+
+    def response_payload(self) -> dict[str, object]:
+        return {
+            "catalog_key": self.catalog_key,
+            "revision": self.revision,
+            "content_digest": self.content_digest,
+        }
+
+
+@dataclass(frozen=True, slots=True)
+class SeatIdentity:
+    """A resolved seat label carried with its immutable catalog pin."""
+
+    key: str
+    label: str
+    catalog_revision: SeatCatalogReference
+
+    def __post_init__(self) -> None:
+        if _SEAT_KEY.fullmatch(self.key) is None or not self.label:
+            raise ValueError("seat identity must have a stable key and label")
+
+    def response_payload(self) -> dict[str, object]:
+        return {
+            "seat_key": self.key,
+            "seat_label": self.label,
+            "catalog_revision": self.catalog_revision.response_payload(),
+        }
+
+
+@dataclass(frozen=True, slots=True)
 class EvidenceSlotFact:
     """One stable qualifying-stage slot and its current evidence status."""
 
     key: str
     state: EvidenceSlotState
+    assigned_seat: SeatIdentity | None = None
+    signing_seat: SeatIdentity | None = None
 
     def __post_init__(self) -> None:
         if _SLOT_KEY.fullmatch(self.key) is None:
             raise ValueError("evidence slot key must be stable")
         if not isinstance(self.state, EvidenceSlotState):
             raise TypeError("evidence slot state must be explicit")
+        if self.signing_seat is not None and self.state is not EvidenceSlotState.FILLED:
+            raise ValueError("only a filled evidence slot may carry a signing seat")
+
+    def response_payload(self) -> dict[str, object]:
+        assignment: dict[str, object]
+        if self.assigned_seat is None:
+            assignment = {"state": "unassigned"}
+        else:
+            assignment = {
+                "state": "assigned",
+                "seat": self.assigned_seat.response_payload(),
+            }
+        return {
+            "slot_key": self.key,
+            "state": self.state.value,
+            "assigned_seat": assignment,
+            "signing_seat": (
+                self.signing_seat.response_payload() if self.signing_seat is not None else None
+            ),
+        }
 
 
 _MATURITY_STATES = frozenset(
@@ -160,6 +229,7 @@ class ProjectDeliveryRow:
     qualifying_stage_slots_filled: int = 0
     qualifying_stage_slots_required: int = 0
     qualifying_stage_unfilled_or_unknown_slot_keys: tuple[str, ...] = ()
+    qualifying_stage_slots: tuple[EvidenceSlotFact, ...] = ()
 
     def __post_init__(self) -> None:
         if (
@@ -172,6 +242,19 @@ class ProjectDeliveryRow:
             raise ValueError("unfilled or unknown slot keys must be unique")
         if self.qualifying_stage_slots_filled + len(keys) != self.qualifying_stage_slots_required:
             raise ValueError("qualifying-stage slot counts must account for every key")
+        slot_keys = tuple(slot.key for slot in self.qualifying_stage_slots)
+        if (
+            len(slot_keys) != len(set(slot_keys))
+            or len(slot_keys) != self.qualifying_stage_slots_required
+        ):
+            raise ValueError("qualifying-stage slot details must account for every key")
+        unresolved = tuple(
+            slot.key
+            for slot in self.qualifying_stage_slots
+            if slot.state is not EvidenceSlotState.FILLED
+        )
+        if unresolved != keys:
+            raise ValueError("qualifying-stage slot details must match coverage")
 
     def response_payload(self) -> dict[str, object]:
         return {
@@ -196,6 +279,9 @@ class ProjectDeliveryRow:
             "qualifying_stage_unfilled_or_unknown_slot_keys": list(
                 self.qualifying_stage_unfilled_or_unknown_slot_keys
             ),
+            "qualifying_stage_slots": [
+                slot.response_payload() for slot in self.qualifying_stage_slots
+            ],
             "rebuild_generation": self.rebuild_generation,
             "reconciled_at": self.reconciled_at.isoformat(),
             "recovery": self.recovery,
@@ -361,6 +447,7 @@ def derive_project_delivery_row(
         qualifying_stage_slots_filled=slots_filled,
         qualifying_stage_slots_required=len(slots),
         qualifying_stage_unfilled_or_unknown_slot_keys=unresolved_slots,
+        qualifying_stage_slots=slots,
     )
 
 
@@ -391,6 +478,12 @@ def _derivation_reasons(
         *(f"criterion_missing:{item}" for item in missing),
         *(f"effective_blocker:{item}" for item in blockers),
         *(f"slot_{slot.state.value}:{slot.key}" for slot in slots),
+        *(_seat_reason(slot) for slot in slots),
+        *(
+            f"slot_signing_seat:{slot.key}:{slot.signing_seat.key}"
+            for slot in slots
+            if slot.signing_seat is not None
+        ),
     ]
     if not facts.source_complete:
         reasons.append("source_incomplete")
@@ -435,7 +528,7 @@ def _semantic_digest(
         "headline_state": headline.value,
         "projection_watermark": facts.projection_watermark,
         "qualifying_stage_slots": tuple(
-            (slot.key, slot.state.value)
+            slot.response_payload()
             for slot in sorted(facts.qualifying_stage_slots, key=lambda item: item.key)
         ),
         "recovery": recovery,
@@ -445,3 +538,9 @@ def _semantic_digest(
     }
     content = json.dumps(payload, separators=(",", ":"), sort_keys=True).encode()
     return f"sha256:{hashlib.sha256(content).hexdigest()}"
+
+
+def _seat_reason(slot: EvidenceSlotFact) -> str:
+    if slot.assigned_seat is None:
+        return f"slot_unassigned:{slot.key}"
+    return f"slot_assigned_seat:{slot.key}:{slot.assigned_seat.key}"

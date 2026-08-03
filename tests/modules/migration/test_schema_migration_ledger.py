@@ -695,9 +695,10 @@ def _insert_mismatched_workflow_start_fact(
         """
         INSERT INTO tickets (
             ticket_id, tenant_id, title, source_kind, source_ref, priority,
-            custodian_principal_id, version, durability_state, created_by, created_at
+            custodian_principal_id, version, durability_state, created_by, created_at,
+            project_key
         ) VALUES (%s, %s, 'Probe', 'test', 'probe', 'P1', %s, 1,
-                  'durability_pending', %s, %s)
+                  'durability_pending', %s, %s, 'ctower')
         """,
         (
             ticket_id,

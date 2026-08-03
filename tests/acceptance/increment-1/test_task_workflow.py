@@ -234,13 +234,13 @@ def test_workflow_rechecks_work_readiness_before_transition(tenant: TenantFixtur
         Admit(uuid4(), ticket_id, 1, "Ready for Workflow"),
         telemetry=_telemetry(),
     )
-    before_refusal = record.get_ticket(work_actor, ticket_id, telemetry=_telemetry())
+    before_refusal = record.get_ticket(work_actor, ticket_id, "ctower", telemetry=_telemetry())
     repeated_admit = work.execute(
         work_actor,
         Admit(uuid4(), ticket_id, 2, "Already active"),
         telemetry=_telemetry(),
     )
-    after_refusal = record.get_ticket(work_actor, ticket_id, telemetry=_telemetry())
+    after_refusal = record.get_ticket(work_actor, ticket_id, "ctower", telemetry=_telemetry())
     moved = workflow.advance(
         actor,
         WorkflowMutation(uuid4(), ticket_id, graph.reference, 1, "capture", "frame"),
@@ -278,8 +278,8 @@ def test_work_priority_assignment_replay_and_orthogonal_custody(
     assigned, reassigned = _assign_twice(work, actor, ticket_id, tenant)
     replay = work.execute(actor, priority, telemetry=_telemetry())
     conflict = work.execute(actor, replace(priority, priority="P2"), telemetry=_telemetry())
-    history = work.assignments(actor, ticket_id)
-    ticket = record.get_ticket(actor, ticket_id, telemetry=_telemetry())
+    history = work.assignments(actor, ticket_id, "ctower")
+    ticket = record.get_ticket(actor, ticket_id, "ctower", telemetry=_telemetry())
     audit_events = _audit_events(record, actor, ticket_id)
 
     assert all(isinstance(outcome, WorkReceipt) for outcome in (prioritized, assigned, reassigned))
@@ -317,7 +317,7 @@ def test_work_multi_blocker_requires_every_effective_blocker_to_clear(
         telemetry=_telemetry(),
     )
     outcomes, still_blocked, ready = _exercise_two_blockers(work, actor, ticket_id, tenant)
-    ticket = record.get_ticket(actor, ticket_id, telemetry=_telemetry())
+    ticket = record.get_ticket(actor, ticket_id, "ctower", telemetry=_telemetry())
     audit_events = _audit_events(record, actor, ticket_id)
 
     assert isinstance(admitted, WorkReceipt)
@@ -394,7 +394,9 @@ def _audit_events(record: PostgresRecord, actor: Actor, ticket_id: UUID) -> list
     events: list[AuditEvent] = []
     cursor = 0
     while True:
-        page = record.ticket_audit(actor, ticket_id, cursor=cursor, limit=2, telemetry=_telemetry())
+        page = record.ticket_audit(
+            actor, ticket_id, "ctower", cursor=cursor, limit=2, telemetry=_telemetry()
+        )
         assert not isinstance(page, RecordProblem)
         events.extend(page.events)
         if page.next_cursor is None:
@@ -453,7 +455,7 @@ def test_concurrent_work_commands_have_one_cas_winner(
         history = Work(
             PostgresRecord(tenant.database.runtime_dsn),
             writer=PostgresWork(tenant.database.runtime_dsn),
-        ).assignments(actor, ticket_id)
+        ).assignments(actor, ticket_id, "ctower")
         assert not isinstance(history, RecordProblem)
         current = tuple(
             interval
@@ -535,6 +537,7 @@ def _ticket(tenant: TenantFixture) -> UUID:
             client_command_id=uuid4(),
             initial_custodian_id=tenant.commander_id,
             priority="P2",
+            project_key="ctower",
             source=SourceReference("test", f"test:workflow-start:{uuid4()}"),
             title="Explicit Workflow start",
         ),

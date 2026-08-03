@@ -361,6 +361,7 @@ def _create_accepted_ticket(tenant: TenantFixture) -> None:
             client_command_id=uuid4(),
             initial_custodian_id=tenant.commander_id,
             priority="P1",
+            project_key="ctower",
             source=SourceReference("test", f"test:recovery-integrity:{uuid4()}"),
             title="Recovery integrity acceptance",
         ),

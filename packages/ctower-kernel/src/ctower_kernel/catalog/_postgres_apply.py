@@ -19,6 +19,7 @@ from ctower_kernel.catalog._postgres_revisions import (
     insert_revisions,
     prepare_revisions,
 )
+from ctower_kernel.catalog._seat_catalog_sql import materialize_seat_catalogs
 from ctower_kernel.catalog.interface import (
     CatalogProblem,
     CompanyBundle,
@@ -56,7 +57,7 @@ def apply_bundle(
     with authority_connection(dsn) as connection:
         connection.autocommit = True
         connection.execute("SET ROLE ctower_svc")
-        with project_delivery_scope_transaction(connection, actor.tenant_id, "ctower"):
+        with project_delivery_scope_transaction(connection, actor.tenant_id, "all-projects"):
             connection.execute("SET TRANSACTION ISOLATION LEVEL SERIALIZABLE")
             transaction = RecordTransaction(connection)
             reserved = _reserve_or_replay(
@@ -201,6 +202,7 @@ def _commit_bundle(
         result=result,
         now=now,
     )
+    materialize_seat_catalogs(connection, actor, prepared, now=now)
     materialize_checkpoints(connection, actor, bundle, prepared, now=now)
     return result
 

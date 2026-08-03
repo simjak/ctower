@@ -8,6 +8,7 @@ import shutil
 import socket
 import time
 from collections.abc import Iterator
+from contextlib import contextmanager
 from dataclasses import dataclass
 from datetime import UTC, datetime
 from pathlib import Path
@@ -66,6 +67,38 @@ def isolated_database() -> Iterator[Database]:
                     sql.Identifier(database_name)
                 )
             )
+        _compose(command, environment, "down", "--volumes")
+
+
+@contextmanager
+def isolated_fresh_database_pair() -> Iterator[tuple[str, str]]:
+    """Yield two unprovisioned databases in one disposable PostgreSQL cluster."""
+
+    docker = shutil.which("docker")
+    if docker is None:
+        pytest.skip("docker is required for PostgreSQL migration tests")
+    port = _available_port()
+    project = f"ctower-role-race-{os.getpid()}-{uuid4().hex[:10]}"
+    environment = {**os.environ, "CTOWER_POSTGRES_PORT": str(port)}
+    command = [docker, "compose", "-p", project, "-f", str(COMPOSE)]
+    cluster_dsn = f"postgresql://postgres@127.0.0.1:{port}/ctower"
+    database_names = (
+        f"ctower_role_a_{uuid4().hex}",
+        f"ctower_role_b_{uuid4().hex}",
+    )
+    try:
+        _compose(command, environment, "up", "-d")
+        _wait_for_postgres(cluster_dsn)
+        with psycopg.connect(cluster_dsn, autocommit=True) as connection:
+            for database_name in database_names:
+                connection.execute(
+                    sql.SQL("CREATE DATABASE {}").format(sql.Identifier(database_name))
+                )
+        yield (
+            f"postgresql://postgres@127.0.0.1:{port}/{database_names[0]}",
+            f"postgresql://postgres@127.0.0.1:{port}/{database_names[1]}",
+        )
+    finally:
         _compose(command, environment, "down", "--volumes")
 
 
@@ -190,6 +223,14 @@ def _setup_database(
                 (operator_id, tenant_id, "operator", "Migration Operator", now),
                 (commander_id, tenant_id, "commander", "Ctower Commander", now),
             ),
+        )
+        connection.execute(
+            """
+            INSERT INTO project_seats (
+                tenant_id, project_key, seat_key, principal_id, granted_by, granted_at
+            ) VALUES (%s, 'ctower', 'commander', %s, %s, %s)
+            """,
+            (tenant_id, commander_id, operator_id, now),
         )
     return Database(
         admin_dsn,

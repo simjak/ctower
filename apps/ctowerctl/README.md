@@ -39,6 +39,17 @@ compares the current stdin credential before every send. Rotation or a different
 old command with zero network sends; restore the original identity and explicitly retry, or discard and
 re-enqueue under the new identity.
 
+A server that permanently rejects a command has named its refusal, so the quarantine receipt keeps that
+name and nothing else: the mutation output and every later `spool list` / `spool quarantine list` row carry
+`server_refusal` with the refusal `status` and one `name` taken from the authored contract's refusal codes.
+No response `title`, `detail`, or other body text is ever persisted or listed, because the CLI cannot tell
+authored server prose from whatever a reachable origin chose to send. A refusal the allowlist does not name
+is recorded as the content-free sentinel `unrecognized_refusal`, carrying nothing derived from the refusing
+input, so the durable name is always one of the authored codes or that sentinel. The replay executor is a
+caller's own object, so a refusal crossing that boundary is re-derived from the allowlist before it reaches
+a receipt rather than trusted for having been validated once already. A locally quarantined command carries
+its `reason_code` and no `server_refusal`, because no server named anything.
+
 Corrupt command ciphertext remains visible as a bounded quarantine row with its sequence, byte count, and
 artifact digest. It blocks replay until an operator discards that exact sequence and digest. The disposition
 is authenticated and append-only; the corrupt ciphertext remains as local audit evidence.

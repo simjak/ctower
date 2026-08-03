@@ -2,11 +2,11 @@
 
 | Field | Value |
 |---|---|
-| Status | Non-normative execution sequence derived from `SPEC.md` 1.11 |
+| Status | Non-normative execution sequence derived from `SPEC.md` 1.13 |
 | Product increments | Exactly two: Increment 1 and Increment 2 |
 | Work authority before development epoch | SPEC temporary bootstrap backlog / Mission Control |
 | Work authority after development epoch | ctower tickets for the reviewed cohort only |
-| Last reviewed | 2026-07-29 |
+| Last reviewed | 2026-08-02 |
 
 This roadmap makes the normative build order easier to execute. It does not create a third scope model,
 approve work, mirror ticket status, or override the stable IDs, acceptance criteria, validation commands,
@@ -46,6 +46,10 @@ INCREMENT 1 — durable task-management dogfood
  [fresh Project Delivery pilot + exact minimal carry-forward]
               |
  [CT-I1-008 development GO / GO_WITH_LIMITS]
+              |
+ [project identity -> isolation -> intake -> typed feed]
+              |
+ [two auth planes -> one Actor/custody/audit model + CSO]
               |
  [CP3-D: external ACK + keys + destructive restore + measured RPO/RTO]
               |
@@ -186,13 +190,15 @@ and contains no secrets, counters, sessions, receipts, or live work.
 **Exit:** API/CLI parity, kill/replay, two-writer, disk, poison, secret, and zero-semantic-diff round-trip
 tests pass. `durability_pending` remains a non-accepted replayable result.
 
-### I1.5 — Deferred browser realization alias
+### I1.5 — Deferred browser product realization alias
 
 **Stable work:** stable deferred alias `CT-I1-005` -> `CT-I2-005` I2.4 browser sub-checkpoint.
 
-No I1 browser implementation or evidence is authorized. D22's React/Vite, browser-session/CSRF,
-routes/navigation, Playwright, screenshots, UI QA, and narrow Fleet/Analytics presentation are realized at
-I2.4. This stable alias preserves audit history; it is not an I1 predecessor or a deleted scope item.
+No I1 browser product implementation or product evidence is authorized. CT-I1-013 is the sole earlier
+exception and owns only login/callback/session/logout/auth-error routes plus auth evidence. D22's
+React/Vite product routes/navigation, screenshots, product UI QA, and narrow Fleet/Analytics presentation
+are realized at I2.4. This stable alias preserves audit history; it is not an I1 predecessor or a deleted
+scope item.
 
 I1 retains the API/CLI semantics D22 selected: durable-thread-first explicit
 `discussion|create_ticket|link_ticket` intent/provenance; Workflow-owned append-only risk; six-lane fold;
@@ -256,7 +262,7 @@ The CT-I1-008 development verdict may be `GO_WITH_LIMITS` and may complete the d
 pilot/I1.7 checkpoint. It does not satisfy the disaster-safe authority criterion and excludes credentials,
 accounting, production authority/effects, incidents, client data, and irreplaceable artifacts. Full
 normative I1 exit remains `NO-GO` until CP3-D proves external-failure-domain acknowledgement, key recovery,
-isolated destructive restore, and measured RPO/RTO.
+isolated destructive restore, and measured RPO/RTO and CT-I1-009..013 pass.
 
 The same checkpoint establishes only the hierarchy needed to dogfood project delivery:
 
@@ -284,9 +290,31 @@ canonical eight-state precedence with proof-aware `done`/`blocked`, and expose i
 hourly no-change freshness, and stale/unknown faults without accepting a projection write. A
 `GO_WITH_LIMITS` result keeps `CP3_D_NOT_PROVEN` visible.
 
-**Full I1 exit:** remains `NO-GO` until the required CP3-D evidence passes. Only that full exit satisfies
+**Full I1 exit:** remains `NO-GO` until CT-I1-009..013 and the required CP3-D evidence pass. Only that full exit satisfies
 CT-I2-001's dependency on CT-I1-008. From the development epoch, ctower tickets—not this file or the SPEC
 table—own implementation status for the reviewed cohort.
+
+### I1.8 — portfolio import chain, then shared authentication
+
+**Stable work:** `CT-I1-009` through `CT-I1-013`.
+
+The order is fixed: immutable Project identities/grants and grant-aware custody -> exact scopes/isolation
+and Commander-authored onboarding config -> ordinary item-by-item Manibo intake -> project-scoped typed feed
+and three disjoint Board proofs -> authentication. The last step preserves Manibo's provider-agnostic OIDC
+contract at a pinned revision, following its Commander's recommendation not to extract a package while both
+consumers are changing. It adds discovery-driven human OIDC beside unchanged project-seat machine
+credentials and resolves UI session, human API bearer, and machine bearer requests into the same
+Actor/custody/audit model under INV-73. Providers and exact `operator|commander|viewer` human role bindings
+are versioned configuration that only the operator may create, enable, or rotate. Auth routes remain
+tailnet-only and do not realize the five product surfaces.
+
+**Exit:** the ticket reports reuse `1/1`, identity planes `2/2`, Actor/custody models `1/1`, roles `3/3`,
+transports `3/3`, named auth refusal codes `8/8`, bounded provider egress call sites `3/3`,
+security proof groups `11/11`, provider-specific product branches `0`, configured providers
+`discovered = exercised`,
+and independent CSO verdict `1/1`; every ambiguity, replay, revocation, foreign-project attempt, secret scan,
+and exposure check fails closed by its exact stable code, never a bare 401/403. No auth evidence can infer
+that an earlier import-chain item passed.
 
 ## Increment 2 — autonomous generic workflow and one factory golden path
 
@@ -303,6 +331,18 @@ mandatory stage gates, required perspectives, finite anti-spin bounds, stable cr
 candidate/nonpassing/repair/execution facts, typed failure routes, selective Proof invalidation, sealed
 review, readiness explanations, and protected waivers. A different four-stage non-engineering package must
 run on the same evaluator with different stages, participants, perspectives, gates, and bounds.
+
+Contract work precedes that implementation: freeze the strict S7/S8 Workflow Definition source schema,
+the five-layer Company -> Project -> Team/profile -> Ticket-schema -> Workflow resolution manifest, and the
+deterministic source-to-`ctower.workflow/v1` normalization contract. The same change adds the
+`ticket_schema` component kind to the authored component-kind enumeration and the Catalog kind constraint,
+because layer 4 has no publishable kind before it; until it lands, a bundle carrying a ticket schema is
+refused as an unknown kind and AC-ADM-01 keeps its existing publication set. The approved S8 mock is the
+source positive fixture, and its omitted group, signing-slot, gate, skip, and route members are gate
+diagnostics rather than defaults. Source validation does not authorize publication; resolution and
+publication fail closed on missing graph/layer references, on any Workflow-owned fact a complete revision
+must carry, or on any project overlay that removes/relaxes base evidence, changes the graph/owner/policy,
+or implies a D28 seat. No kernel parser/evaluator or UI editor lands ahead of that contract suite.
 
 The software-factory publication materializes the SPEC's complete `sf.e00..e15` edge table, including each
 predicate revision and accepted-input contract, and its complete stage-by-reason retry/return/wait/incident
@@ -382,7 +422,7 @@ automation becomes one precise operator action rather than status-chasing noise.
 
 **Stable work:** `CT-I2-005`, `CT-I2-009`.
 
-Realize D22's browser stack/session/CSRF boundary, then deepen Home, Board, contextual Ticket, Fleet, and
+Consume CT-I1-013's proven session/CSRF boundary, then realize and deepen Home, Board, contextual Ticket, Fleet, and
 Analytics over generated clients and rebuildable
 projections. Home/Ticket Attention adds exact-scope CommandGuard confirmation, grant state, and linked
 decision/authorization/enforcement receipts without raw sensitive command content. Ticket also adds live
@@ -390,6 +430,12 @@ structured run/steering/ACK/gap, manifest, current proof, readiness refusals, de
 retro. Fleet shows profiles, runners, jobs, workspaces, routines, capacity, budgets, and health without
 treating terminals as truth. Analytics versions attention, flow, quality, recovery, cost, release, and
 improvement queries with watermarks and anti-gaming guardrails.
+
+After CT-I2-001 publishes the Workflow Definition source/normalization contract, issue #205's approved S7
+visual stage editor and S8 YAML view may project the same resource. Visual/YAML round trips preserve the
+normalized digest; save remains a gated Git commit followed by the authenticated CompanyBundle command,
+never a browser write to Workflow state. Until that dependency passes, S7/S8 may render only an honest
+read-only source preview and validation diagnostics.
 
 Build the richer Project Delivery projection surface on the hierarchy and deterministic compact fold already
 proven at I1.7. Authorized interactive rows expose accountable owner; Workflow stage and independent Kanban/
@@ -500,8 +546,9 @@ I1/I2 expose only what real variation justifies:
 - **Internal integration:** `systemd-vps/v1` plus a fault-injection implementation inside Effects; one live
   integration and one fake do not earn a generalized provider Seam.
 - **Deferred:** Crabbox/remote runners, reusable custom images/setup terminal, warm pools/shared caches,
-  generalized effect providers, executable Extension Host/workers, plugin marketplace, visual workflow
-  editor, second production workflow, broad connectors, public SaaS, and HA control plane.
+  generalized effect providers, executable Extension Host/workers, plugin marketplace, any visual workflow
+  editor beyond issue #205's contract-gated S7/S8 pair, second production workflow, broad connectors,
+  public SaaS, and HA control plane.
 
 Deferred contracts preserve immutable pins, exact-identity cleanup, secret-free reusable state, fencing,
 reconciliation, and fail-closed observations. They must be reported `not exercised`. A future public Seam

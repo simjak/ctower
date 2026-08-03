@@ -2,12 +2,14 @@
 
 from __future__ import annotations
 
+import re
 from uuid import UUID
 
 from fastapi import FastAPI, Request
 from fastapi.responses import JSONResponse
 from pydantic import BaseModel, ValidationError
 
+from ctower_api._http_support import UnscopedAuthentication as _UnscopedAuthentication
 from ctower_api._http_support import authenticate as _authenticate
 from ctower_api._http_support import encoded as _encoded
 from ctower_api._http_support import problem_response as _problem_response
@@ -35,6 +37,7 @@ from ctower_client.models import WorkReceipt as HttpWorkReceipt
 from ctower_kernel.access import Access
 from ctower_kernel.record import Actor, Record, RecordProblem
 from ctower_kernel.record import AuditPage as KernelAuditPage
+from ctower_kernel.record.credentials import CredentialScope
 from ctower_kernel.telemetry import TelemetryContext
 from ctower_kernel.work import (
     AddRelation,
@@ -54,6 +57,7 @@ from ctower_kernel.work import (
 from ctower_kernel.workflow import Workflow, WorkflowActor, WorkflowReceipt, WorkflowStart
 
 __all__: tuple[str, ...] = ()
+_PROJECT_KEY = re.compile(r"^[a-z][a-z0-9-]{2,63}$")
 
 
 def install_task_routes(
@@ -171,12 +175,18 @@ def _install_assignment_list(
     app: FastAPI, access: Access, work: Work, recorder: TelemetryRecorder
 ) -> None:
     @app.get("/v1/tickets/{ticket_id}/assignments")
-    def assignment_list(ticket_id: str, request: Request) -> JSONResponse:
+    def assignment_list(
+        ticket_id: str, request: Request, project_key: str | None = None
+    ) -> JSONResponse:
         parsed = _read_actor(access, recorder, request, ticket_id)
         if isinstance(parsed, JSONResponse):
             return parsed
         actor, ticket, _ = parsed
-        outcome = work.assignments(actor, ticket)
+        try:
+            project = _project_key(project_key)
+        except ValueError:
+            return _problem_response(_validation_problem())
+        outcome = work.assignments(actor, ticket, project)
         if isinstance(outcome, RecordProblem):
             return _problem_response(outcome)
         boundary = AssignmentList.model_validate_json(
@@ -274,15 +284,31 @@ def _install_audit(
     app: FastAPI, access: Access, record: Record, recorder: TelemetryRecorder
 ) -> None:
     @app.get("/v1/tickets/{ticket_id}/audit")
-    def audit(ticket_id: str, request: Request, cursor: int = 0, limit: int = 50) -> JSONResponse:
+    def audit(
+        ticket_id: str,
+        request: Request,
+        project_key: str | None = None,
+        cursor: int = 0,
+        limit: int = 50,
+    ) -> JSONResponse:
         parsed = _read_actor(access, recorder, request, ticket_id)
         if isinstance(parsed, JSONResponse):
             return parsed
         actor, ticket, telemetry = parsed
+        try:
+            project = _project_key(project_key)
+        except ValueError:
+            return _problem_response(_validation_problem())
         outcome = record.ticket_audit(
-            actor, ticket, cursor=cursor, limit=limit, telemetry=telemetry
+            actor, ticket, project, cursor=cursor, limit=limit, telemetry=telemetry
         )
         return _audit_response(outcome)
+
+
+def _project_key(value: str | None) -> str:
+    if value is None or _PROJECT_KEY.fullmatch(value) is None:
+        raise ValueError("invalid project key")
+    return value
 
 
 async def _parse[Payload: BaseModel](
@@ -292,7 +318,12 @@ async def _parse[Payload: BaseModel](
     ticket_id: str,
     model: type[Payload],
 ) -> tuple[Actor, UUID, UUID, Payload, TelemetryContext] | JSONResponse:
-    actor = _authenticate(access, recorder, request)
+    actor = _authenticate(
+        access,
+        recorder,
+        request,
+        required_scope=CredentialScope.TRANSITION,
+    )
     if isinstance(actor, RecordProblem):
         return _problem_response(actor)
     try:
@@ -313,7 +344,12 @@ async def _parse[Payload: BaseModel](
 def _read_actor(
     access: Access, recorder: TelemetryRecorder, request: Request, ticket_id: str
 ) -> tuple[Actor, UUID, TelemetryContext] | JSONResponse:
-    actor = _authenticate(access, recorder, request)
+    actor = _authenticate(
+        access,
+        recorder,
+        request,
+        required_scope=_UnscopedAuthentication.ALLOWED,
+    )
     if isinstance(actor, RecordProblem):
         return _problem_response(actor)
     try:

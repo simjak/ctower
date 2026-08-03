@@ -65,6 +65,7 @@ nav:
       - Operations:
           - Current operational boundary: operations/current-boundary.md
           - Observability: operations/observability.md
+          - Project-seat credential ceremony: operations/seat-credential-issuance.md
           - Backup and anchors: operations/backup-and-anchors.md
           - Key recovery: operations/key-recovery.md
           - Isolated restore: operations/isolated-restore.md

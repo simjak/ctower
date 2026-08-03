@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import re
 from collections.abc import Awaitable, Callable
 from datetime import datetime
 from typing import cast
@@ -15,8 +16,12 @@ from starlette.responses import Response
 from ctower_api._board_routes import install_board_routes
 from ctower_api._catalog_routes import BundleCatalog, install_catalog_routes
 from ctower_api._comment_routes import install_comment_routes
+from ctower_api._credential_routes import install_credential_routes
 from ctower_api._cutover_routes import install_cutover_routes
 from ctower_api._health_routes import install_health_routes
+from ctower_api._http_support import (
+    UnscopedAuthentication as _UnscopedAuthentication,
+)
 from ctower_api._http_support import (
     authenticate as _authenticate,
 )
@@ -70,6 +75,7 @@ from ctower_kernel.record import (
     TicketCommandResult,
     TicketTimeline,
 )
+from ctower_kernel.record.credentials import CredentialScope
 from ctower_kernel.runtime import RoutineRevision
 from ctower_kernel.telemetry import TelemetryContext
 from ctower_kernel.work import Intake, Work
@@ -78,6 +84,13 @@ from ctower_kernel.workflow import Workflow
 __all__ = ["create_app"]
 
 type _MigrationImporterResolver = Callable[[bytes, UUID, UUID, str, datetime], Actor | None]
+_PROJECT_KEY = re.compile(r"^[a-z][a-z0-9-]{2,63}$")
+
+
+def _project_key(value: str | None) -> str:
+    if value is None or _PROJECT_KEY.fullmatch(value) is None:
+        raise ValueError("invalid project key")
+    return value
 
 
 def create_app(
@@ -119,7 +132,7 @@ def create_app(
         response.headers["X-Ctower-Telemetry-Health"] = recorder.health
         return response
 
-    _install_bootstrap_route(app, access, record, recorder)
+    _install_access_routes(app, access, record, recorder)
     _install_ticket_create_route(app, access, record, work_module, recorder)
     _install_custody_route(app, access, record, work_module, recorder)
     _install_ticket_read_routes(app, access, record, recorder)
@@ -146,6 +159,16 @@ def create_app(
             recorder,
         )
     return app
+
+
+def _install_access_routes(
+    app: FastAPI,
+    access: Access,
+    record: Record,
+    recorder: TelemetryRecorder,
+) -> None:
+    _install_bootstrap_route(app, access, record, recorder)
+    install_credential_routes(app, access, record, recorder)
 
 
 def _install_cutover_boundary(
@@ -241,7 +264,12 @@ def _install_ticket_create_route(
 
     @app.post("/v1/tickets", status_code=201)
     async def create_ticket(request: Request) -> JSONResponse:
-        actor = _authenticate(access, telemetry_recorder, request)
+        actor = _authenticate(
+            access,
+            telemetry_recorder,
+            request,
+            required_scope=CredentialScope.CAPTURE,
+        )
         if isinstance(actor, RecordProblem):
             return _problem_response(actor)
         try:
@@ -266,6 +294,7 @@ def _install_ticket_create_route(
                     else actor.principal_id
                 ),
                 priority=payload.priority.value,
+                project_key=payload.project_key,
                 source=SourceReference(payload.source.kind, payload.source.ref),
                 title=payload.title,
             ),
@@ -285,13 +314,21 @@ def _install_ticket_read_routes(
     """Bind tenant-scoped ticket and timeline queries."""
 
     @app.get("/v1/tickets/{ticket_id}")
-    def get_ticket(ticket_id: str, request: Request) -> JSONResponse:
-        actor = _authenticate(access, telemetry_recorder, request)
+    def get_ticket(
+        ticket_id: str, request: Request, project_key: str | None = None
+    ) -> JSONResponse:
+        actor = _authenticate(
+            access,
+            telemetry_recorder,
+            request,
+            required_scope=_UnscopedAuthentication.ALLOWED,
+        )
         if isinstance(actor, RecordProblem):
             return _problem_response(actor)
         try:
             telemetry = _telemetry(request)
             parsed_ticket_id = _uuid(ticket_id)
+            parsed_project_key = _project_key(project_key)
         except ValueError:
             return _problem_response(_validation_problem())
         telemetry = telemetry.bind(
@@ -300,16 +337,26 @@ def _install_ticket_read_routes(
             ticket_id=str(parsed_ticket_id),
         )
         telemetry_recorder.emit("access.authenticate", telemetry, outcome="ok", reason="authorized")
-        return _ticket_response(record.get_ticket(actor, parsed_ticket_id, telemetry=telemetry))
+        return _ticket_response(
+            record.get_ticket(actor, parsed_ticket_id, parsed_project_key, telemetry=telemetry)
+        )
 
     @app.get("/v1/tickets/{ticket_id}/timeline")
-    def get_ticket_timeline(ticket_id: str, request: Request) -> JSONResponse:
-        actor = _authenticate(access, telemetry_recorder, request)
+    def get_ticket_timeline(
+        ticket_id: str, request: Request, project_key: str | None = None
+    ) -> JSONResponse:
+        actor = _authenticate(
+            access,
+            telemetry_recorder,
+            request,
+            required_scope=_UnscopedAuthentication.ALLOWED,
+        )
         if isinstance(actor, RecordProblem):
             return _problem_response(actor)
         try:
             telemetry = _telemetry(request)
             parsed_ticket_id = _uuid(ticket_id)
+            parsed_project_key = _project_key(project_key)
         except ValueError:
             return _problem_response(_validation_problem())
         telemetry = telemetry.bind(
@@ -319,7 +366,7 @@ def _install_ticket_read_routes(
         )
         telemetry_recorder.emit("access.authenticate", telemetry, outcome="ok", reason="authorized")
         return _timeline_response(
-            record.ticket_timeline(actor, parsed_ticket_id, telemetry=telemetry)
+            record.ticket_timeline(actor, parsed_ticket_id, parsed_project_key, telemetry=telemetry)
         )
 
 
@@ -334,7 +381,12 @@ def _install_custody_route(
 
     @app.post("/v1/tickets/{ticket_id}/custody")
     async def transfer_ticket_custody(ticket_id: str, request: Request) -> JSONResponse:
-        actor = _authenticate(access, telemetry_recorder, request)
+        actor = _authenticate(
+            access,
+            telemetry_recorder,
+            request,
+            required_scope=CredentialScope.TRANSITION,
+        )
         if isinstance(actor, RecordProblem):
             return _problem_response(actor)
         try:

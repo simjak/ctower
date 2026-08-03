@@ -18,16 +18,15 @@ from uuid import UUID, uuid4
 import psycopg
 import pytest
 import uvicorn
-from ctower_contracts import CATALOG
+from fastapi import FastAPI, Response
 from fastapi.testclient import TestClient
 from support.acceptance import accept_pending_commands
-from support.catalog import MemoryObjectStore, minimal_bundle
 from support.postgres import DatabaseFixture
 from support.telemetry import telemetry_headers
 from support.tenant_fixture import TenantFixture
 
 from ctower_api.interface import create_app
-from ctower_kernel.catalog import CompanyBundle, PostgresCatalog
+from ctower_kernel.catalog import PostgresCatalog
 from ctower_kernel.record.postgres import (
     PostgresRecord,
     apply_migrations,
@@ -43,7 +42,18 @@ __all__: tuple[str, ...] = ()
 
 EXIT_TEMPORARY = 75
 EXIT_LOCAL_FAILURE = 74
+EXIT_PERMANENT = 69
 HTTP_PENDING = 202
+INITIAL_CUSTODY_REFUSAL = {"status": 403, "name": "unauthorized"}
+PII_MARKER = "jane.doe+ct180@example.invalid"
+BEARER_MARKER = "Bearer synthetic-refusal-probe-not-a-credential"
+MARKED_REFUSAL: dict[str, object] = {
+    "code": "unauthorized",
+    "detail": f"Initial custody refused for {PII_MARKER} presenting {BEARER_MARKER}.",
+    "status": 403,
+    "title": f"Refused for {PII_MARKER}",
+    "type": "https://ctower.example/problems/unauthorized",
+}
 
 
 class _MemoryBackend:
@@ -106,7 +116,15 @@ def test_ticket_capture_and_query_use_stable_queued_command(
         created = json.loads(created_text)
         ticket_id = UUID(created["result"]["ticket"]["ticket_id"])
         show_status, shown_text, show_error = _run(
-            ["--base-url", base_url, "ticket", "query", str(ticket_id)],
+            [
+                "--base-url",
+                base_url,
+                "ticket",
+                "query",
+                str(ticket_id),
+                "--project-key",
+                "ctower",
+            ],
             authority=tenant.operator_credential,
         )
 
@@ -141,6 +159,73 @@ def test_ticket_create_without_hand_minted_identifiers_uses_authenticated_princi
         "kind": "mission-control",
         "ref": "R2257-defaults",
     }
+
+
+def test_server_rejected_capture_carries_its_named_refusal_to_the_spool_listing(
+    tenant: TenantFixture,
+    cli_state: _MemoryBackend,
+) -> None:
+    """A refused intake must stay named after the refusing invocation has exited."""
+
+    del cli_state
+    with _server(tenant.database.runtime_dsn) as base_url:
+        status, captured_text, error = _run(
+            _first_day_create_arguments(base_url, source_ref="R2597"),
+            authority=tenant.operator_credential,
+        )
+        listing_status, listing_text, listing_error = _run(
+            ["--base-url", base_url, "spool", "quarantine", "list"],
+            authority=tenant.operator_credential,
+        )
+
+    captured = json.loads(captured_text)
+    entries = json.loads(listing_text)["entries"]
+    assert (status, listing_status) == (EXIT_PERMANENT, 0)
+    assert error == listing_error == ""
+    assert captured["state"] == "quarantined"
+    assert captured["reason_code"] == "permanent_server_rejection"
+    assert captured["server_refusal"] == INITIAL_CUSTODY_REFUSAL
+    assert [entry["command_id"] for entry in entries] == [captured["command_id"]]
+    assert entries[0]["reason_code"] == "permanent_server_rejection"
+    assert entries[0]["server_refusal"] == INITIAL_CUSTODY_REFUSAL
+    assert tenant.operator_credential not in captured_text + listing_text
+
+
+def test_refusal_body_text_never_reaches_the_quarantine_receipt_or_its_listing(
+    tmp_path: Path,
+    cli_state: _MemoryBackend,
+) -> None:
+    """A schema-valid refusal may carry anything; only its allowlisted name survives.
+
+    The refusing invocation still prints the response it just received as its own live
+    `result`; nothing of that body reaches the durable receipt or any later listing.
+    """
+
+    del cli_state
+    with _refusing_server(MARKED_REFUSAL) as base_url:
+        status, captured_text, error = _run(
+            _first_day_create_arguments(base_url, source_ref="R2597-marked"),
+            authority="synthetic-marked-refusal-identity",
+        )
+        listing_status, listing_text, listing_error = _run(
+            ["--base-url", base_url, "spool", "quarantine", "list"],
+            authority="synthetic-marked-refusal-identity",
+        )
+
+    captured = json.loads(captured_text)
+    entries = json.loads(listing_text)["entries"]
+    receipts = _state_bytes(tmp_path)
+    durable = json.dumps({key: captured[key] for key in captured if key != "result"})
+    assert (status, listing_status) == (EXIT_PERMANENT, 0)
+    assert error == listing_error == ""
+    assert captured["reason_code"] == "permanent_server_rejection"
+    assert captured["server_refusal"] == INITIAL_CUSTODY_REFUSAL
+    assert entries[0]["server_refusal"] == INITIAL_CUSTODY_REFUSAL
+    for marker in (PII_MARKER, BEARER_MARKER):
+        assert marker not in durable
+        assert marker not in listing_text
+        assert marker.encode() not in receipts
+        assert marker in captured["result"]["detail"] + captured["result"]["title"]
 
 
 def test_explicit_ticket_command_id_replay_still_deduplicates_with_default_custodian(
@@ -226,42 +311,6 @@ def test_offline_mutation_is_durably_queued_with_caller_command_id(
     assert tenant.operator_credential not in stdout
 
 
-def test_company_bundle_cli_validate_plan_apply_export_round_trip(
-    tenant: TenantFixture,
-    cli_state: _MemoryBackend,
-    tmp_path: Path,
-) -> None:
-    del cli_state
-    bundle_file = tmp_path / "company-bundle.yaml"
-    bundle_file.write_text(
-        json.dumps(_tenant_bundle().model_dump(mode="json", by_alias=True)),
-        encoding="utf-8",
-    )
-    catalog = PostgresCatalog(
-        tenant.database.runtime_dsn,
-        CATALOG,
-        MemoryObjectStore(),
-        key_reference="vault:catalog-key",
-    )
-    with _server(tenant.database.runtime_dsn, catalog=catalog) as base_url:
-        validated, planned, applied, exported, replanned = _company_round_trip(
-            base_url,
-            bundle_file,
-            tenant.operator_credential,
-            tmp_path,
-        )
-
-    assert validated[0] == 0
-    assert json.loads(validated[1])["valid"] is True
-    assert planned[0] == 0
-    assert applied[0] == EXIT_TEMPORARY
-    assert json.loads(applied[1])["state"] == "queued"
-    assert exported[0] == 0
-    assert exported[1].endswith("\n") and not exported[1].endswith("\n\n")
-    assert "metadata:" not in exported[1]
-    assert json.loads(replanned[1])["actions"] == []
-
-
 def test_missing_keyring_blocks_mutation_before_send_but_reads_continue(
     tenant: TenantFixture,
     tmp_path: Path,
@@ -278,7 +327,15 @@ def test_missing_keyring_blocks_mutation_before_send_but_reads_continue(
             authority=tenant.operator_credential,
         )
         readable = _run(
-            ["--base-url", base_url, "ticket", "query", str(ticket_id)],
+            [
+                "--base-url",
+                base_url,
+                "ticket",
+                "query",
+                str(ticket_id),
+                "--project-key",
+                "ctower",
+            ],
             authority=tenant.operator_credential,
         )
 
@@ -306,6 +363,8 @@ def _create_arguments(base_url: str, tenant: TenantFixture, command_id: UUID) ->
         str(tenant.commander_id),
         "--priority",
         "P1",
+        "--project-key",
+        "ctower",
         "--source-kind",
         "mission-control",
         "--source-ref",
@@ -328,6 +387,8 @@ def _first_day_create_arguments(
         "create",
         "--priority",
         "P2",
+        "--project-key",
+        "ctower",
         "--source-kind",
         "mission-control",
         "--source-ref",
@@ -418,6 +479,7 @@ def _seed_ticket(tenant: TenantFixture, title: str) -> UUID:
             json={
                 "initial_custodian_id": str(tenant.commander_id),
                 "priority": "P1",
+                "project_key": "ctower",
                 "source": {"kind": "test", "ref": "test:ctl-seed"},
                 "title": title,
             },
@@ -450,92 +512,42 @@ def _run(arguments: list[str], *, authority: str) -> tuple[int, str, str]:
     return status, stdout.getvalue(), stderr.getvalue()
 
 
-def _run_company(
-    base_url: str,
-    command: list[str],
-    authority: str,
-) -> tuple[int, str, str]:
-    return _run(
-        ["--base-url", base_url, "company", "bundle", *command],
-        authority=authority,
-    )
-
-
-def _company_round_trip(
-    base_url: str,
-    bundle_file: Path,
-    authority: str,
-    output_directory: Path,
-) -> tuple[
-    tuple[int, str, str],
-    tuple[int, str, str],
-    tuple[int, str, str],
-    tuple[int, str, str],
-    tuple[int, str, str],
-]:
-    validated = _run_company(base_url, ["validate", str(bundle_file)], authority)
-    planned = _run_company(base_url, ["plan", str(bundle_file)], authority)
-    plan = json.loads(planned[1])
-    applied = _run_company(
-        base_url,
-        [
-            "apply",
-            str(bundle_file),
-            "--command-id",
-            str(uuid4()),
-            "--expected-active-version",
-            "0",
-            "--plan-digest",
-            plan["plan_digest"],
-        ],
-        authority,
-    )
-    exported = _run_company(base_url, ["export"], authority)
-    exported_file = output_directory / "exported.yaml"
-    exported_file.write_text(exported[1], encoding="utf-8")
-    replanned = _run_company(base_url, ["plan", str(exported_file)], authority)
-    return validated, planned, applied, exported, replanned
-
-
-def _tenant_bundle() -> CompanyBundle:
-    bundle = minimal_bundle()
-    return bundle.model_copy(
-        update={
-            "company": bundle.company.model_copy(
-                update={"key": "ctower", "display_name": "Ctower"}
-            ),
-            "resources": tuple(
-                resource.model_copy(
-                    update={
-                        "component": resource.component.model_copy(
-                            update={
-                                "scope": resource.component.scope.model_copy(
-                                    update={"tenant": "ctower"}
-                                )
-                            }
-                        )
-                    }
-                )
-                for resource in bundle.resources
-            ),
-        }
-    )
-
-
 @contextmanager
 def _server(
     dsn: str,
     *,
     catalog: PostgresCatalog | None = None,
 ) -> Iterator[str]:
-    port = _unused_port()
     record = PostgresRecord(dsn)
+    application = create_app(
+        record,
+        work=Work(record, writer=PostgresWork(dsn)),
+        catalog=catalog,
+    )
+    with _serve(application) as base_url:
+        yield base_url
+
+
+@contextmanager
+def _refusing_server(problem: dict[str, object]) -> Iterator[str]:
+    """Serve one schema-valid refusal whose body is whatever the origin chose to send."""
+
+    application = FastAPI()
+    body = json.dumps(problem)
+
+    @application.post("/v1/tickets")
+    def _refuse() -> Response:
+        return Response(content=body, status_code=403, media_type="application/problem+json")
+
+    with _serve(application) as base_url:
+        yield base_url
+
+
+@contextmanager
+def _serve(application: FastAPI) -> Iterator[str]:
+    port = _unused_port()
     config = uvicorn.Config(
-        create_app(
-            record,
-            work=Work(record, writer=PostgresWork(dsn)),
-            catalog=catalog,
-        ),
+        application,
         host="127.0.0.1",
         port=port,
         access_log=False,
@@ -561,6 +573,10 @@ def _wait_until_started(server: uvicorn.Server, thread: threading.Thread) -> Non
         time.sleep(0.01)
     if not server.started:
         raise RuntimeError("acceptance API server did not start")
+
+
+def _state_bytes(state: Path) -> bytes:
+    return b"".join(path.read_bytes() for path in state.rglob("*") if path.is_file())
 
 
 def _unused_base_url() -> str:

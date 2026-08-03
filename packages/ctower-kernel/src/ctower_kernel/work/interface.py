@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import hashlib
 import json
+import re
 from collections.abc import Callable
 from dataclasses import asdict, dataclass
 from datetime import UTC, datetime
@@ -19,7 +20,9 @@ from ctower_kernel.record import (
     RecordProblem,
     TicketCommand,
     TicketCommandResult,
+    credential_scope_refusal,
 )
+from ctower_kernel.record.credentials import CredentialScope
 from ctower_kernel.telemetry import NoopTelemetry, Telemetry, TelemetryContext
 from ctower_kernel.work._custody_policy import initial_custody_refusal
 from ctower_kernel.work._scheduling import schedule
@@ -45,6 +48,7 @@ __all__ = [
 ]
 
 PRIORITIES = frozenset({"P0", "P1", "P2"})
+_PROJECT_KEY = re.compile(r"^[a-z][a-z0-9-]{2,63}$")
 MAX_REASON_LENGTH = 500
 
 
@@ -276,7 +280,7 @@ class _WorkWriter(Protocol):
     ) -> WorkReceipt | RecordProblem: ...
 
     def assignments(
-        self, actor: Actor, ticket_id: UUID
+        self, actor: Actor, ticket_id: UUID, project_key: str
     ) -> tuple[AssignmentInterval, ...] | RecordProblem: ...
 
     def readiness(self, actor: Actor, ticket_id: UUID) -> WorkReadiness | RecordProblem: ...
@@ -305,6 +309,13 @@ class Work:
 
         if actor.kind is PrincipalKind.MIGRATION_IMPORTER:
             return _importer_refusal(command.client_command_id)
+        scope_refusal = credential_scope_refusal(
+            actor,
+            CredentialScope.CAPTURE,
+            command_id=command.client_command_id,
+        )
+        if scope_refusal is not None:
+            return scope_refusal
         custody_refusal = initial_custody_refusal(
             actor,
             command.client_command_id,
@@ -322,8 +333,9 @@ class Work:
             )
             self._emit("work.create_ticket", telemetry, outcome)
             return outcome
-        if command.priority not in PRIORITIES:
-            return _refusal(command, "Ticket priority is outside P0/P1/P2.")
+        validation_refusal = _ticket_validation_refusal(command)
+        if validation_refusal is not None:
+            return validation_refusal
         if command.priority == "P0" and actor.kind is not PrincipalKind.OPERATOR:
             return _refusal(command, "Only an operator may create a P0 ticket.")
         request_digest = hashlib.sha256(_canonical_json(command.request_payload())).digest()
@@ -344,19 +356,31 @@ class Work:
 
         if actor.kind is PrincipalKind.MIGRATION_IMPORTER:
             return _importer_refusal(command.client_command_id)
+        scope_refusal = credential_scope_refusal(
+            actor,
+            CredentialScope.TRANSITION,
+            command_id=command.client_command_id,
+        )
+        if scope_refusal is not None:
+            return scope_refusal
+        policy_refusal: RecordProblem | None = None
         if actor.kind is not PrincipalKind.OPERATOR or not command.protected_transfer:
-            return RecordProblem(
+            refusal = RecordProblem(
                 code="unauthorized",
                 detail="Custody transfer requires protected operator authority.",
                 status=403,
                 title="Custody transfer refused",
                 command_id=command.client_command_id,
             )
+            if actor.seat_credential_id is None:
+                return refusal
+            policy_refusal = refusal
         request_digest = hashlib.sha256(_canonical_json(command.request_payload())).digest()
         outcome = self._record.transfer_custody(
             actor,
             command,
             request_digest=request_digest,
+            policy_refusal=policy_refusal,
             now=self._clock(),
             telemetry=telemetry,
         )
@@ -390,15 +414,15 @@ class Work:
         return outcome
 
     def assignments(
-        self, actor: Actor, ticket_id: UUID
+        self, actor: Actor, ticket_id: UUID, project_key: str
     ) -> tuple[AssignmentInterval, ...] | RecordProblem:
-        """Return tenant-scoped assignment interval history."""
+        """Return tenant/project-scoped assignment interval history."""
 
         if actor.kind is PrincipalKind.MIGRATION_IMPORTER:
             return _importer_refusal()
         if self._writer is None:
             raise RuntimeError("Work persistence is not configured")
-        return self._writer.assignments(actor, ticket_id)
+        return self._writer.assignments(actor, ticket_id, project_key)
 
     def readiness(self, actor: Actor, ticket_id: UUID) -> WorkReadiness | RecordProblem:
         """Return the immutable admission/blocker observation consumed by Workflow."""
@@ -441,9 +465,28 @@ def _refusal(command: TicketCommand, detail: str) -> RecordProblem:
     )
 
 
+def _validation_refusal(command: TicketCommand, detail: str) -> RecordProblem:
+    return RecordProblem(
+        code="validation-error",
+        detail=detail,
+        status=422,
+        title="Invalid ticket command",
+        command_id=command.client_command_id,
+    )
+
+
+def _ticket_validation_refusal(command: TicketCommand) -> RecordProblem | None:
+    if command.priority not in PRIORITIES:
+        return _refusal(command, "Ticket priority is outside P0/P1/P2.")
+    if command.project_key is not None and _PROJECT_KEY.fullmatch(command.project_key) is None:
+        return _validation_refusal(command, "Ticket project key is invalid.")
+    return None
+
+
 def _work_refusal(actor: Actor, command: WorkCommand) -> RecordProblem | None:
-    if actor.kind is PrincipalKind.MIGRATION_IMPORTER:
-        return _importer_refusal(command.client_command_id)
+    authority_refusal = _work_authority_refusal(actor, command.client_command_id)
+    if authority_refusal is not None:
+        return authority_refusal
     if (
         command.expected_version < 1
         or not command.reason
@@ -459,6 +502,16 @@ def _work_refusal(actor: Actor, command: WorkCommand) -> RecordProblem | None:
     if isinstance(command, Reopen) and command.priority_policy != "carry_forward":
         return _work_problem(command, "validation-error", 422, "Unsupported priority policy")
     return None
+
+
+def _work_authority_refusal(actor: Actor, command_id: UUID) -> RecordProblem | None:
+    if actor.kind is PrincipalKind.MIGRATION_IMPORTER:
+        return _importer_refusal(command_id)
+    return credential_scope_refusal(
+        actor,
+        CredentialScope.TRANSITION,
+        command_id=command_id,
+    )
 
 
 def _importer_refusal(command_id: UUID | None = None) -> RecordProblem:

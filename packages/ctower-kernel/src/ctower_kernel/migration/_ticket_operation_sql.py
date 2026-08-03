@@ -53,6 +53,7 @@ def seed_ticket(
     payload = TicketCreatedPayload(
         custodian_id=operation.initial_commander_custodian_id,
         priority="P2",
+        project_key="ctower",
         source_kind="ctower-project-import",
         source_ref=operation.source.source_digest,
         title=operation.title,
@@ -87,9 +88,10 @@ def _insert_seed_state(
         """
         INSERT INTO tickets (
             ticket_id, tenant_id, title, source_kind, source_ref, priority,
-            custodian_principal_id, version, durability_state, created_by, created_at
+            custodian_principal_id, version, durability_state, created_by, created_at,
+            project_key
         ) VALUES (%s, %s, %s, 'ctower-project-import', %s, 'P2', %s, 1,
-            'durability_pending', %s, %s)
+            'durability_pending', %s, %s, 'ctower')
         """,
         (
             ticket_id,

@@ -1,5 +1,5 @@
 // DO NOT EDIT: generated file; regenerate from declared inputs.
-// Authored contract digest: sha256:1ca4a6823b673e720c5e1fd0e39445905a701d279b773eb99689536a8de41c62
+// Authored contract digest: sha256:897d0904c0761ce19e89e96d0b2d2b85485582770b37abdcc9765cbdf924e5fb
 
 import type * as Models from "./models.js";
 import { OPERATIONS, type OperationId } from "./operations.js";
@@ -105,6 +105,7 @@ export type FreezeProofCriteriaInput = Readonly<{
 }>;
 
 export type GetBoardInput = Readonly<{
+  readonly "projectKey": string;
   readonly "lane"?: "backlog" | "ready" | "in_progress" | "in_review" | "blocked" | "complete";
   readonly "priority"?: "P0" | "P1" | "P2";
   readonly "stageKey"?: string;
@@ -136,18 +137,27 @@ export type GetSyntheticWorkflowRunInput = Readonly<{
 
 export type GetTicketInput = Readonly<{
   readonly "ticketId": string;
+  readonly "projectKey": string;
 }>;
 
 export type GetTicketTimelineInput = Readonly<{
   readonly "ticketId": string;
+  readonly "projectKey": string;
+}>;
+
+export type IssueSeatCredentialInput = Readonly<{
+  readonly "IdempotencyKey": string;
+  readonly body: Models.SeatCredentialIssueRequest;
 }>;
 
 export type ListTicketAssignmentsInput = Readonly<{
   readonly "ticketId": string;
+  readonly "projectKey": string;
 }>;
 
 export type ListTicketAuditEventsInput = Readonly<{
   readonly "ticketId": string;
+  readonly "projectKey": string;
   readonly "cursor"?: number;
   readonly "limit"?: number;
 }>;
@@ -194,6 +204,12 @@ export type ResolveCloseWorkflowInput = Readonly<{
   readonly "ticketId": string;
   readonly "IdempotencyKey": string;
   readonly body: Models.ResolveCloseRequest;
+}>;
+
+export type RevokeSeatCredentialInput = Readonly<{
+  readonly "credentialId": string;
+  readonly "IdempotencyKey": string;
+  readonly body: Models.SeatCredentialRevocationRequest;
 }>;
 
 export type RunSyntheticWorkflowInput = Readonly<{
@@ -254,6 +270,7 @@ export type OperationInputs = Readonly<{
   readonly "getSyntheticWorkflowRun": GetSyntheticWorkflowRunInput;
   readonly "getTicket": GetTicketInput;
   readonly "getTicketTimeline": GetTicketTimelineInput;
+  readonly "issueSeatCredential": IssueSeatCredentialInput;
   readonly "listTicketAssignments": ListTicketAssignmentsInput;
   readonly "listTicketAuditEvents": ListTicketAuditEventsInput;
   readonly "planCompanyBundle": PlanCompanyBundleInput;
@@ -264,6 +281,7 @@ export type OperationInputs = Readonly<{
   readonly "recordProofVerdict": RecordProofVerdictInput;
   readonly "reportCtowerProjectFenceObservation": ReportCtowerProjectFenceObservationInput;
   readonly "resolveCloseWorkflow": ResolveCloseWorkflowInput;
+  readonly "revokeSeatCredential": RevokeSeatCredentialInput;
   readonly "runSyntheticWorkflow": RunSyntheticWorkflowInput;
   readonly "startTicketWorkflow": StartTicketWorkflowInput;
   readonly "submitIntake": SubmitIntakeInput;
@@ -298,6 +316,7 @@ export type OperationResults = Readonly<{
   readonly "getSyntheticWorkflowRun": Models.SyntheticRunResource;
   readonly "getTicket": Models.TicketResource;
   readonly "getTicketTimeline": Models.TimelineResponse;
+  readonly "issueSeatCredential": Models.SeatCredentialReceipt;
   readonly "listTicketAssignments": Models.AssignmentList;
   readonly "listTicketAuditEvents": Models.AuditPage;
   readonly "planCompanyBundle": Models.CompanyBundlePlan;
@@ -308,6 +327,7 @@ export type OperationResults = Readonly<{
   readonly "recordProofVerdict": Models.ProofReceipt;
   readonly "reportCtowerProjectFenceObservation": Models.CtowerProjectMigrationReceipt;
   readonly "resolveCloseWorkflow": Models.WorkflowReceipt;
+  readonly "revokeSeatCredential": Models.SeatCredentialReceipt;
   readonly "runSyntheticWorkflow": Models.SyntheticRunReceipt;
   readonly "startTicketWorkflow": Models.WorkflowReceipt;
   readonly "submitIntake": Models.IntakeCommandResult;
@@ -485,6 +505,12 @@ export class CtowerClient {
     return this.execute("getTicketTimeline", input);
   }
 
+  public async issueSeatCredential(
+    input: IssueSeatCredentialInput,
+  ): Promise<Models.SeatCredentialReceipt> {
+    return this.execute("issueSeatCredential", input);
+  }
+
   public async listTicketAssignments(
     input: ListTicketAssignmentsInput,
   ): Promise<Models.AssignmentList> {
@@ -543,6 +569,12 @@ export class CtowerClient {
     input: ResolveCloseWorkflowInput,
   ): Promise<Models.WorkflowReceipt> {
     return this.execute("resolveCloseWorkflow", input);
+  }
+
+  public async revokeSeatCredential(
+    input: RevokeSeatCredentialInput,
+  ): Promise<Models.SeatCredentialReceipt> {
+    return this.execute("revokeSeatCredential", input);
   }
 
   public async runSyntheticWorkflow(

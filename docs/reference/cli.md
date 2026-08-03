@@ -254,6 +254,11 @@ spelling is stable and authenticated, and they always refuse. They do not import
 
 A read-only projection. See [Project Delivery](../concepts/project-delivery.md).
 
+Text output prints checkpoint summary and source/reason lines, followed by one line per qualifying slot:
+`slot=<key> state=<state> assigned=<seat>|unassigned signed=<seat>|-`. A rendered seat is
+`<label>[<seat_key>]@<catalog_key>@<revision>`. Assignment is selected by the explicit `assigned` or
+`unassigned` state in the HTTP response, and a missing signing seat renders as `-`.
+
 ## Local spool
 
 Seven commands that never leave the machine except where noted. See the
@@ -272,6 +277,11 @@ Seven commands that never leave the machine except where noted. See the
 `spool status` and `spool doctor` exit `74` when the spool is unhealthy or its state cannot be established.
 `spool drain` exits `69` at a quarantine barrier, `75` while entries remain pending, `0` when the spool is
 empty.
+
+A listed entry quarantined by the server also carries `server_refusal` (`status` and a `name` that is either
+an authored refusal code or the content-free sentinel `unrecognized_refusal`, never response body text); an
+entry quarantined locally — `credential_identity_mismatch`, `expired`, `corrupt_record` — carries its
+`reason_code` and no `server_refusal`.
 
 ## Output
 

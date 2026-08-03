@@ -96,7 +96,7 @@ def test_generated_python_accepts_exact_ticket_integer_tokens(
 ) -> None:
     client = python_client(_ticket_raw(token), status=200)
     try:
-        assert client.get_ticket(uuid4()).version == expected
+        assert client.get_ticket(uuid4(), project_key="ctower").version == expected
     finally:
         client.close()
 
@@ -108,7 +108,7 @@ def test_generated_python_rejects_inexact_or_out_of_range_ticket_tokens(
     client = python_client(_ticket_raw(token), status=200)
     try:
         with pytest.raises(ValidationError):
-            client.get_ticket(uuid4())
+            client.get_ticket(uuid4(), project_key="ctower")
     finally:
         client.close()
 
@@ -158,7 +158,7 @@ def test_generated_python_rejects_malformed_number_tokens_before_return(token: s
     client = python_client(_ticket_raw(token), status=200)
     try:
         with pytest.raises(ValidationError):
-            client.get_ticket(uuid4())
+            client.get_ticket(uuid4(), project_key="ctower")
     finally:
         client.close()
 
@@ -168,7 +168,7 @@ def test_generated_python_rejects_unescaped_json_newline_before_return() -> None
     client = python_client(raw, status=200)
     try:
         with pytest.raises(ValidationError):
-            client.get_ticket(uuid4())
+            client.get_ticket(uuid4(), project_key="ctower")
     finally:
         client.close()
 
@@ -179,7 +179,7 @@ def test_generated_python_rejects_malformed_json_strings(title_token: str) -> No
     client = python_client(raw, status=200)
     try:
         with pytest.raises(ValidationError):
-            client.get_ticket(uuid4())
+            client.get_ticket(uuid4(), project_key="ctower")
     finally:
         client.close()
 
@@ -187,13 +187,13 @@ def test_generated_python_rejects_malformed_json_strings(title_token: str) -> No
 def test_generated_python_preserves_last_duplicate_object_member() -> None:
     client = python_client(_ticket_with_duplicate_versions("0", "1"), status=200)
     try:
-        assert client.get_ticket(uuid4()).version == 1
+        assert client.get_ticket(uuid4(), project_key="ctower").version == 1
     finally:
         client.close()
     client = python_client(_ticket_with_duplicate_versions("1", "0"), status=200)
     try:
         with pytest.raises(ValidationError):
-            client.get_ticket(uuid4())
+            client.get_ticket(uuid4(), project_key="ctower")
     finally:
         client.close()
 
@@ -227,7 +227,7 @@ def test_generated_python_rejects_non_ascii_rfc3339_digit_families(zero: str) ->
     client = python_client(_ticket_raw("1", created_at=timestamp), status=200)
     try:
         with pytest.raises(ValidationError):
-            client.get_ticket(uuid4())
+            client.get_ticket(uuid4(), project_key="ctower")
     finally:
         client.close()
 
@@ -394,7 +394,7 @@ const client = new CtowerClient({{
   }},
 }});
 const enqueue = (raw, status, problem = false) => responses.push({{raw, status, problem}});
-const ticket = () => client.getTicket({{ticketId: "{UUID}"}});
+const ticket = () => client.getTicket({{ticketId: "{UUID}", projectKey: "ctower"}});
 const synthetic = () => client.getSyntheticWorkflowRun({{runId: "{UUID}"}});
 const submit = () => client.submitIntake({{
   IdempotencyKey: "{UUID}",

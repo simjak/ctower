@@ -10,6 +10,12 @@ from typing import Literal, Protocol
 from uuid import UUID
 
 from ctower_kernel.record.comments import TicketCommentCommand, TicketCommentResult
+from ctower_kernel.record.credentials import (
+    CredentialScope,
+    SeatCredentialIssue,
+    SeatCredentialReceipt,
+    SeatCredentialRevocation,
+)
 from ctower_kernel.record.events import (
     CustodyTransferredPayload,
     EventKind,
@@ -50,6 +56,7 @@ __all__ = [
     "TicketCommandResult",
     "TicketTimeline",
     "TimelineEvent",
+    "credential_scope_refusal",
 ]
 
 
@@ -172,6 +179,33 @@ class Actor:
     principal_id: UUID
     tenant_id: UUID
     kind: PrincipalKind
+    project_grants: frozenset[str] = frozenset()
+    credential_scopes: frozenset[CredentialScope] = frozenset()
+    seat_credential_id: UUID | None = None
+
+
+class SeatCredentialStore(Protocol):
+    """Cohesive persistence boundary for project-seat credentials."""
+
+    def issue(
+        self,
+        actor: Actor,
+        command: SeatCredentialIssue,
+        *,
+        request_digest: bytes,
+        now: datetime,
+        telemetry: TelemetryContext,
+    ) -> SeatCredentialReceipt | RecordProblem: ...
+
+    def revoke(
+        self,
+        actor: Actor,
+        command: SeatCredentialRevocation,
+        *,
+        request_digest: bytes,
+        now: datetime,
+        telemetry: TelemetryContext,
+    ) -> SeatCredentialReceipt | RecordProblem: ...
 
 
 @dataclass(frozen=True, slots=True)
@@ -232,6 +266,7 @@ class RecordProblem:
     command_id: UUID | None = None
     current_version: int | None = None
     unmet_facts: tuple[str, ...] = ()
+    prohibited_classes: tuple[str, ...] = ()
 
     def response_payload(self) -> dict[str, object]:
         """Return a minimal RFC 9457 object."""
@@ -249,7 +284,28 @@ class RecordProblem:
             payload["current_version"] = self.current_version
         if self.unmet_facts:
             payload["unmet_facts"] = list(self.unmet_facts)
+        if self.prohibited_classes:
+            payload["prohibited_classes"] = [str(item) for item in self.prohibited_classes]
         return payload
+
+
+def credential_scope_refusal(
+    actor: Actor,
+    scope: CredentialScope,
+    *,
+    command_id: UUID | None = None,
+) -> RecordProblem | None:
+    """Return the one stable refusal for a seat bearer missing a named scope."""
+
+    if actor.seat_credential_id is None or scope in actor.credential_scopes:
+        return None
+    return RecordProblem(
+        code="credential-scope-denied",
+        detail=f"The project-seat credential does not grant the {scope.value} scope.",
+        status=403,
+        title="Credential scope denied",
+        command_id=command_id,
+    )
 
 
 @dataclass(frozen=True, slots=True)
@@ -267,18 +323,22 @@ class TicketCommand:
     client_command_id: UUID
     initial_custodian_id: UUID
     priority: str
+    project_key: str | None
     source: SourceReference
     title: str
 
     def request_payload(self) -> dict[str, object]:
         """Return the request body without transport authority."""
 
-        return {
+        payload: dict[str, object] = {
             "initial_custodian_id": str(self.initial_custodian_id),
             "priority": self.priority,
             "source": asdict(self.source),
             "title": self.title,
         }
+        if self.project_key is not None:
+            payload["project_key"] = self.project_key
+        return payload
 
 
 @dataclass(frozen=True, slots=True)
@@ -456,6 +516,12 @@ class AuditPage:
 class Record(Protocol):
     """Small atomic persistence authority consumed by Access and Work."""
 
+    @property
+    def seat_credentials(self) -> SeatCredentialStore:
+        """Return the cohesive project-seat credential persistence boundary."""
+
+        ...
+
     def authorize_bootstrap(
         self, capability_digest: bytes, *, origin: str, now: datetime
     ) -> RecordProblem | None:
@@ -477,7 +543,7 @@ class Record(Protocol):
 
         ...
 
-    def actor_for_credential(self, credential_digest: bytes) -> Actor | None:
+    def actor_for_credential(self, credential_digest: bytes) -> Actor | RecordProblem | None:
         """Resolve one active principal without exposing credential material."""
 
         ...
@@ -525,14 +591,14 @@ class Record(Protocol):
         ...
 
     def get_ticket(
-        self, actor: Actor, ticket_id: UUID, *, telemetry: TelemetryContext
+        self, actor: Actor, ticket_id: UUID, project_key: str, *, telemetry: TelemetryContext
     ) -> Ticket | RecordProblem:
         """Read one tenant-scoped ticket without cross-tenant disclosure."""
 
         ...
 
     def ticket_timeline(
-        self, actor: Actor, ticket_id: UUID, *, telemetry: TelemetryContext
+        self, actor: Actor, ticket_id: UUID, project_key: str, *, telemetry: TelemetryContext
     ) -> TicketTimeline | RecordProblem:
         """Read the ordered tenant-scoped event timeline."""
 
@@ -542,6 +608,7 @@ class Record(Protocol):
         self,
         actor: Actor,
         ticket_id: UUID,
+        project_key: str,
         *,
         cursor: int,
         limit: int,
@@ -557,6 +624,7 @@ class Record(Protocol):
         command: CustodyCommand,
         *,
         request_digest: bytes,
+        policy_refusal: RecordProblem | None = None,
         now: datetime,
         telemetry: TelemetryContext,
     ) -> TicketCommandResult | RecordProblem:

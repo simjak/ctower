@@ -44,13 +44,16 @@ staging immutable payloads; an exact replay returns its stored result without co
 I1 additive and successor activation remains supported, but lifecycle removal/deprecation is a typed refusal
 that leaves the prior active Catalog authoritative.
 
-Thread-first intake is bounded to the already-declared `ctower` project in the tenant's Project Delivery
-hierarchy because I1 has no separate actor-to-project grant authority. Ticket creation and link validation
-use the existing immutable `ticket_project_bindings` authority for both migration and intake provenance;
-there is no intake-only project ledger. Complete sorted durability-subject locks precede thread/ticket
-locks, and only authenticated, unquarantined discussion events may be promoted. The Record package facade
-keeps core authority types at `ctower_kernel.record` and groups inbound-thread command, result, and policy
-types under the exported `ctower_kernel.record.intake` namespace instead of flattening those leaf symbols.
+Thread-first intake accepts any project already declared in the tenant's Project Delivery hierarchy;
+ordinary mutations pass through the shared project-mutation authority, which allows operators and otherwise
+requires an active matching project-seat grant. Ticket creation and link validation use the
+immutable `tickets.project_key` authority; `ticket_project_bindings` records import/intake provenance and is
+never a fallback authority. Source aliases include project in their canonical identity; there is no
+intake-only project ledger. Complete sorted durability-subject locks
+precede thread/ticket locks, and only authenticated, unquarantined discussion events may be promoted. The
+Record package facade keeps core authority types at `ctower_kernel.record` and groups inbound-thread command,
+result, and policy types under the exported `ctower_kernel.record.intake` namespace instead of flattening
+those leaf symbols.
 
 There is no executable Extension Host in I1 or I2; that runtime remains deferred until a real use case and
 two real Adapters earn its Seam. The kernel may depend on authored/generated contracts and allowlisted public

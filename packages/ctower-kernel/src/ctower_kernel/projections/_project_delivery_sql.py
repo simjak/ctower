@@ -15,9 +15,13 @@ from psycopg.rows import dict_row
 from ctower_kernel.projections.project_delivery import (
     CtowerProjectCutoverHealth,
     DeliveryState,
+    EvidenceSlotFact,
+    EvidenceSlotState,
     MigrationHealthDigests,
     ProjectDeliveryRow,
     ProjectDeliveryView,
+    SeatCatalogReference,
+    SeatIdentity,
 )
 from ctower_kernel.record import Actor
 
@@ -437,10 +441,47 @@ def _row(payload: dict[str, object], *, observed_at: datetime) -> ProjectDeliver
                 list[object], payload["qualifying_stage_unfilled_or_unknown_slot_keys"]
             )
         ),
+        qualifying_stage_slots=tuple(
+            _slot(cast(dict[str, object], item))
+            for item in cast(list[object], payload["qualifying_stage_slots"])
+        ),
     )
     if row.freshness == "fresh" and observed_at > row.freshness_due_at:
         return replace(row, freshness="stale")
     return row
+
+
+def _slot(payload: dict[str, object]) -> EvidenceSlotFact:
+    assignment = cast(dict[str, object], payload["assigned_seat"])
+    assigned_payload = assignment.get("seat")
+    signing_payload = payload["signing_seat"]
+    return EvidenceSlotFact(
+        key=str(payload["slot_key"]),
+        state=EvidenceSlotState(str(payload["state"])),
+        assigned_seat=(
+            _seat(cast(dict[str, object], assigned_payload))
+            if isinstance(assigned_payload, dict)
+            else None
+        ),
+        signing_seat=(
+            _seat(cast(dict[str, object], signing_payload))
+            if isinstance(signing_payload, dict)
+            else None
+        ),
+    )
+
+
+def _seat(payload: dict[str, object]) -> SeatIdentity:
+    revision = cast(dict[str, object], payload["catalog_revision"])
+    return SeatIdentity(
+        key=str(payload["seat_key"]),
+        label=str(payload["seat_label"]),
+        catalog_revision=SeatCatalogReference(
+            catalog_key=str(revision["catalog_key"]),
+            revision=int(cast(int, revision["revision"])),
+            content_digest=str(revision["content_digest"]),
+        ),
+    )
 
 
 def _view_digest(

@@ -22,6 +22,7 @@ from ctower_client.models import TicketCommentResult as HttpTicketCommentResult
 from ctower_kernel.access import Access
 from ctower_kernel.record import Actor, Record, RecordProblem
 from ctower_kernel.record.comments import TicketCommentCommand
+from ctower_kernel.record.credentials import CredentialScope
 from ctower_kernel.telemetry import TelemetryContext
 
 __all__: tuple[str, ...] = ()
@@ -73,7 +74,12 @@ async def _parse(
     request: Request,
     ticket_id: str,
 ) -> tuple[Actor, TicketCommentCommand, TelemetryContext] | JSONResponse:
-    actor = _authenticate(access, recorder, request)
+    actor = _authenticate(
+        access,
+        recorder,
+        request,
+        required_scope=CredentialScope.CAPTURE,
+    )
     if isinstance(actor, RecordProblem):
         return _problem_response(actor)
     try:

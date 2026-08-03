@@ -83,6 +83,31 @@ def test_generic_checkpoint_schema_accepts_configured_keys_without_status() -> N
             validator.validate({**payload, "checkpoint_key": invalid})
 
 
+def test_checkpoint_slot_can_pin_proof_link_and_assigned_seat_catalog_revision() -> None:
+    validator = _checkpoint_validator()
+    payload = _checkpoint("Q3-close.2", reference="ledger.q3-close.2")
+    criterion = cast(list[dict[str, object]], payload["criteria"])[0]
+    criterion["proof_link"] = {
+        "ticket_id": "019fae21-910f-7b58-a7c8-13322b2ae81c",
+        "criterion_key": "ledger-posted",
+    }
+    criterion["assigned_seat"] = {
+        "seat_key": "reviewer-a",
+        "catalog_key": "ledger.delivery-seats",
+        "catalog_revision": 4,
+        "catalog_digest": "sha256:" + "a" * 64,
+    }
+
+    validator.validate(payload)
+    with pytest.raises(ValidationError):
+        validator.validate(
+            {
+                **payload,
+                "criteria": [{**criterion, "proof_link": {"criterion_key": "ledger-posted"}}],
+            }
+        )
+
+
 def test_non_ctower_company_bundle_publishes_configured_checkpoints() -> None:
     resources = [
         _resource(_checkpoint("Q3-close.2", reference="ledger.q3-close.2")),
