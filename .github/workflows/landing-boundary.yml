@@ -1,0 +1,64 @@
+name: landing boundary
+
+# One required check, every fact of the landing-boundary predecessor set reported
+# separately: for `engineering.software-factory@1` that carries the review fact and the
+# documentation fact over preflight — one gate, two facts. Making this check *required*
+# in repository settings is an operator ceremony and is deliberately not performed here.
+#
+# The check is a pure reader. It resolves the ticket bound to this pull request from the
+# record's own Change fact, never from a branch name, a title, a body, or a label, and it
+# writes no authoritative state. The record's answer is supplied through
+# CTOWER_LANDING_BOUNDARY_RECORD, a path a record-read step writes on the runner. Until
+# that read surface publishes, no answer is written, every fact is STATE_UNKNOWN, and the
+# check refuses: unknown is a failure, not calm.
+
+on:
+  pull_request:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: landing-boundary-${{ github.workflow }}-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+
+env:
+  CTOWER_VERIFY_PYTHON: "3.13.14"
+
+jobs:
+  landing-boundary:
+    name: landing boundary (record-backed)
+    runs-on: ubuntu-24.04
+    steps:
+      - name: Check out exact candidate
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+          persist-credentials: false
+
+      - name: Install verification-host Python
+        uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1 # v6.3.0
+        with:
+          python-version: ${{ env.CTOWER_VERIFY_PYTHON }}
+          cache: pip
+          cache-dependency-path: requirements/verify.txt
+
+      - name: Install hash-locked Python verification dependencies
+        run: >-
+          python -m pip install --disable-pip-version-check --require-hashes
+          -r requirements/verify.txt
+
+      - name: Report every landing-boundary fact the record carries
+        env:
+          CTOWER_LANDING_BOUNDARY_RECORD: ${{ vars.CTOWER_LANDING_BOUNDARY_RECORD }}
+          CTOWER_PULL_REQUEST: ${{ github.event.pull_request.number }}
+          CTOWER_HEAD_REVISION: ${{ github.event.pull_request.head.sha }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          PYTHONPATH="packages/ctower-kernel/src:generated/python" \
+            python -m tools.landing_boundary \
+              --repository "${GITHUB_REPOSITORY}" \
+              --pull-request "${CTOWER_PULL_REQUEST}" \
+              --head-revision "${CTOWER_HEAD_REVISION}" \
+              --record "${CTOWER_LANDING_BOUNDARY_RECORD:-}"
