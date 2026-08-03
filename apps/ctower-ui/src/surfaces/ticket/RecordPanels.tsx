@@ -2,7 +2,8 @@ import type { ReactElement, ReactNode } from "react";
 import { Resolved } from "@/frame/Declared";
 import { StateGlyph } from "@/frame/StateGlyph";
 import { clockText, shortId, stampText } from "@/read/elapsed";
-import type { Reading, RecordEvent } from "@/read/interface";
+import { NO_COMMENTS_HERE, NO_EVENTS_HERE, NO_EVIDENCE_HERE } from "@/read/futureSources";
+import type { FutureSource, Reading, RecordEvent } from "@/read/interface";
 import { mapReading } from "@/read/reading";
 import { EventChip } from "@/surfaces/record/EventChip";
 import { byTime, digestOf, eventHeadline, isProof, operationOf } from "@/surfaces/record/events";
@@ -13,14 +14,11 @@ export type EventsReading = Reading<readonly RecordEvent[]>;
 function selection(
   reading: EventsReading,
   choose: (events: readonly RecordEvent[]) => readonly RecordEvent[],
-  lands: string,
-  what: string
+  source: FutureSource
 ): EventsReading {
   return mapReading(reading, (events): EventsReading => {
     const chosen = byTime(choose(events));
-    return chosen.length === 0
-      ? { state: "absent", source: { lands, what } }
-      : { state: "present", value: chosen };
+    return chosen.length === 0 ? { state: "absent", source } : { state: "present", value: chosen };
   });
 }
 
@@ -51,12 +49,7 @@ function Panel({
  * that did not answer says so rather than showing an empty evidence set.
  */
 export function EvidencePanel({ audit }: { readonly audit: EventsReading }): ReactElement {
-  const proof = selection(
-    audit,
-    (events) => events.filter(isProof),
-    "#186",
-    "typed evidence slots and their filled / required coverage on a read path"
-  );
+  const proof = selection(audit, (events) => events.filter(isProof), NO_EVIDENCE_HERE);
   return (
     <Panel title="Evidence">
       <Resolved reading={proof} brief>
@@ -96,12 +89,7 @@ export function EvidencePanel({ audit }: { readonly audit: EventsReading }): Rea
  * which position in the hash chain, and the exact payload behind each line.
  */
 export function RecordStreamPanel({ audit }: { readonly audit: EventsReading }): ReactElement {
-  const stream = selection(
-    audit,
-    (events) => events,
-    "#186",
-    "an appended event stream for this ticket"
-  );
+  const stream = selection(audit, (events) => events, NO_EVENTS_HERE);
   return (
     <Panel title="Record stream" sub="append-only">
       <Resolved reading={stream}>
@@ -147,7 +135,7 @@ export function CommentsPanel({
   readonly audit: EventsReading;
   readonly select: (events: readonly RecordEvent[]) => readonly RecordEvent[];
 }): ReactElement {
-  const comments = selection(audit, select, "#186", "ticket comments on a read path");
+  const comments = selection(audit, select, NO_COMMENTS_HERE);
   return (
     <Panel title="Comments" sub="append-only">
       <Resolved reading={comments}>

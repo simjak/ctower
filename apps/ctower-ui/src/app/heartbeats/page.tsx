@@ -17,6 +17,19 @@ const HEALTH_CLASS: Readonly<Record<BeatHealth, string>> = {
   unknown: "verdict v-filed",
 };
 
+/**
+ * What each mark is called on the row, matching its tile. `unknown` reads as
+ * "liveness unestablished" because the row is a statement about this source's
+ * marker registry, not about the beat — a beat cron holds and fires is not in an
+ * unknown state, it is in an unread one (#238).
+ */
+const HEALTH_LABEL: Readonly<Record<BeatHealth, string>> = {
+  alive: "arriving",
+  late: "late",
+  dead: "not arriving",
+  unknown: "liveness unestablished",
+};
+
 function stamp(value: string | null): string {
   return value === null ? "—" : `${dayText(value)} ${clockText(value)}`;
 }
@@ -45,7 +58,7 @@ function BeatRow({ beat }: { readonly beat: Beat }): ReactElement {
         <span className="mono">{stamp(beat.nextFire)}</span>
       </div>
       <div className="cell c-health">
-        <span className={HEALTH_CLASS[beat.health]}>{beat.health}</span>
+        <span className={HEALTH_CLASS[beat.health]}>{HEALTH_LABEL[beat.health]}</span>
       </div>
       {beat.why === null ? null : (
         <div className={beat.health === "dead" ? "why dead" : "why"}>{beat.why}</div>
@@ -54,12 +67,19 @@ function BeatRow({ beat }: { readonly beat: Beat }): ReactElement {
   );
 }
 
+/**
+ * The summary strip. Every registered beat lands in exactly one of the four
+ * marks, so the tiles add up to the registry on their face — a beat whose
+ * liveness could not be established is counted and named, not left as the
+ * difference between two numbers the reader has to subtract (#238).
+ */
 function Totals({ registry }: { readonly registry: CadenceRegistry }): ReactElement {
   const cells: readonly (readonly [string, number])[] = [
     ["Registered beats", registry.registered],
     ["Arriving", registry.arriving],
     ["Late", registry.late],
     ["Not arriving", registry.notArriving],
+    ["Liveness unestablished", registry.unaccounted],
   ];
   return (
     <div className="totals" style={{ padding: "16px 0 0" }}>
@@ -70,6 +90,20 @@ function Totals({ registry }: { readonly registry: CadenceRegistry }): ReactElem
             <div className="v">{value}</div>
           </div>
         ))}
+      </div>
+      <div className="src-line">
+        <span>
+          the last four add up to the registry: {registry.arriving} arriving + {registry.late} late
+          + {registry.notArriving} not arriving + {registry.unaccounted} unestablished ={" "}
+          {registry.registered} registered
+        </span>
+        {registry.unaccounted === 0 ? null : (
+          <span>
+            {registry.unaccounted} of these {registry.registered} write no fire marker this source
+            reads, so they can go neither green nor red here — that is a gap in the marker registry,
+            not a verdict on the beat
+          </span>
+        )}
       </div>
     </div>
   );

@@ -146,6 +146,38 @@ def _argv(invocation: dict[str, object]) -> list[str]:
     return [str(item) for item in args]
 
 
+class ObservedDefectTests(unittest.TestCase):
+    """Three commands the round-3 QA pass proved were asking the wrong question."""
+
+    def test_the_pane_listing_asks_for_the_column_the_session_wrapped_at(self) -> None:
+        argv = _argv(_accepted()["tmux.panes"])
+        self.assertIn(
+            "#{session_name}\t#{pane_current_path}\t#{pane_current_command}\t#{pane_width}",
+            argv,
+            "without the pane width the chat view cannot tell a wrapped continuation line from "
+            "a new paragraph, so the terminal's column survives into a 370px bubble (#242)",
+        )
+
+    def test_the_roster_asks_tmux_for_the_project_it_records(self) -> None:
+        argv = _argv(_accepted()["tmux.crewProjects"])
+        self.assertIn(
+            "#{session_name}\t#{@project}",
+            argv,
+            "the roster reads tmux for liveness and not for the project tag on the same "
+            "session, which is how a quarter of the fleet reached a phantom bucket (#237)",
+        )
+
+    def test_a_base_ref_is_verified_rather_than_echoed_back(self) -> None:
+        argv = _argv(_accepted()["git.refCommit"])
+        self.assertIn(
+            "--verify",
+            argv,
+            "rev-parse without --verify prints an unknown ref back and exits non-zero; the "
+            "base a diff is measured against has to be proven to exist (#236)",
+        )
+        self.assertIn("origin/main^{commit}", argv)
+
+
 class InspectionGrammarCoverageTests(unittest.TestCase):
     """Every declared operation is driven, and every one builds a read."""
 
