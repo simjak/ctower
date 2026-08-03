@@ -1,6 +1,6 @@
 import { httpRecordAdapter } from "./httpRecordAdapter";
 import { readCronCadence } from "./sources/cadenceCron";
-import { readCrewRoster } from "./sources/crewRoster";
+import { readCrewProfile, readCrewRoster } from "./sources/crewRoster";
 import { readDeliveryMetrics } from "./sources/delivery";
 import { readSystemdCadence } from "./sources/cadenceSystemd";
 import { readAuthoredFiles } from "./sources/gitTree";
@@ -12,6 +12,7 @@ import { reading } from "./outcome";
 import type {
   AuthoredFiles,
   CadenceRegistry,
+  CrewLookup,
   CrewRoster,
   SessionStream,
   RecordAdapter,
@@ -27,9 +28,9 @@ import type {
  * One source per screen, each named here and nowhere else. A screen asks the
  * adapter for its reading and never learns which source answered, so replacing
  * a source is an edit to this file alone — the component-C pattern applied to
- * reads. Board and Ticket stay on the read-API source and swap to #211's typed
- * feed when it merges; the six wave-2 screens swap to their native sources the
- * same way.
+ * reads. Board and Ticket read the instance's REST paths today and swap to a
+ * typed feed here; the six wave-2 screens swap to their native sources the same
+ * way.
  *
  * Every binding is read-only, and every one goes through `reading`, so a source
  * that refuses or cannot be reached arrives at its screen as a typed failure
@@ -46,7 +47,8 @@ export type ScreenKey =
   | "explorer"
   | "feed"
   | "metrics"
-  | "team";
+  | "team"
+  | "crew";
 
 /** Which source answers each screen today, for the provenance foot. */
 export const SOURCE_LABELS: Readonly<Record<ScreenKey, string>> = {
@@ -61,6 +63,7 @@ export const SOURCE_LABELS: Readonly<Record<ScreenKey, string>> = {
   feed: "live tmux sessions · capture-pane",
   metrics: "git first-parent trunk history per project",
   team: "live tmux sessions + mission-control state/crew-log.jsonl + personas/",
+  crew: "the team sources + mission-control coordination/*.status.md + state/escapes.jsonl + trunk history",
 };
 
 function cadenceSource(): () => Promise<CadenceRegistry> {
@@ -93,4 +96,6 @@ export const recordAdapter: RecordAdapter = {
   deliveryMetrics: readDeliveryMetrics,
   crewRoster: async (project: string | null, seat: string | null): Promise<Reading<CrewRoster>> =>
     await reading(async () => await readCrewRoster(project, seat)),
+  crewProfile: async (crew: string): Promise<Reading<CrewLookup>> =>
+    await reading(async () => await readCrewProfile(crew)),
 };

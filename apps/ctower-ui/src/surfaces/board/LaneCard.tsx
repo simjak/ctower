@@ -70,7 +70,18 @@ export function LaneCard({
           reading={ticket}
           present={(value) => (
             <>
-              <span className="chip">{value.source.kind}</span>
+              {/* the issue the ticket was raised from, when the record
+                  addresses one. It is a chip and not an anchor because the whole
+                  card is already one link, and an anchor inside an anchor is not
+                  a control a browser can render — the ticket screen carries the
+                  real link one click away */}
+              {value.source.issue === null ? (
+                <span className="chip">{value.source.kind}</span>
+              ) : (
+                <span className="chip" title={`${value.source.kind} · ${value.source.issue.url}`}>
+                  {value.source.issue.label}
+                </span>
+              )}
               {custodian}
               <span className="dur">age {elapsedSince(value.createdAt, now) ?? "unparsable"}</span>
             </>

@@ -2,6 +2,9 @@ import type { ReactElement, ReactNode } from "react";
 import { Chrome } from "@/frame/Chrome";
 import { Resolved } from "@/frame/Declared";
 import { RecordFoot } from "@/frame/RecordFoot";
+import { configuredProjects, selectedProjectKey } from "@/read/projects";
+import { ProjectTabs } from "@/surfaces/board/ProjectTabs";
+import { ScopeNote } from "@/surfaces/board/ScopeNote";
 import { StateGlyph } from "@/frame/StateGlyph";
 import { recordAdapter } from "@/read/adapter";
 import { sourceKindOf, unresolvedSources } from "@/read/boardProjection";
@@ -9,6 +12,8 @@ import type { BoardEntry, BoardSnapshot } from "@/read/interface";
 import { LaneCard } from "@/surfaces/board/LaneCard";
 import { SourceTabs } from "@/surfaces/board/SourceTabs";
 import { UnreadSources } from "@/surfaces/board/UnreadSources";
+import { readParam } from "@/surfaces/screenParams";
+import { Count } from "@/surfaces/Count";
 import type { SourceTab } from "@/surfaces/board/SourceTabs";
 import {
   ALL_SOURCES,
@@ -43,13 +48,14 @@ function tabsFor(entries: readonly BoardEntry[], kinds: readonly string[]): read
 function Counters({ entries }: { readonly entries: readonly BoardEntry[] }): ReactElement {
   return (
     <span className="counters">
+      {/* a glyph is not a label: each counter says what it counts (#239) */}
       <span className="ctr c-flight">
         <StateGlyph name="flight" />
-        <span className="n">{countInFlight(entries)}</span>
+        <Count value={countInFlight(entries)} unit="in flight" />
       </span>
       <span className="ctr c-held">
         <StateGlyph name="held" />
-        <span className="n">{countHeld(entries)}</span>
+        <Count value={countHeld(entries)} unit="held" />
       </span>
     </span>
   );
@@ -62,7 +68,7 @@ function StageJump({ entries }: { readonly entries: readonly BoardEntry[] }): Re
         <a className="sj" href={`#${column.anchor}`} key={column.lane}>
           <i className={`bar ${column.bar}`} />
           {column.title.toLowerCase()}{" "}
-          <span className="n">{inLane(entries, column.lane).length}</span>
+          <Count value={inLane(entries, column.lane).length} unit="cards" />
         </a>
       ))}
     </nav>
@@ -107,9 +113,11 @@ function Rail({
 function BoardBody({
   snapshot,
   source,
+  project,
 }: {
   readonly snapshot: BoardSnapshot;
   readonly source: string;
+  readonly project: string;
 }): ReactElement {
   const kinds = sourceKinds(snapshot.entries);
   const selected = kinds.includes(source) ? source : ALL_SOURCES;
@@ -117,11 +125,19 @@ function BoardBody({
   const now = Date.now();
   return (
     <>
+      {/* the project is the primary axis and sits in the header; source kind is
+          provenance and filters *within* a project, one row down */}
       <Chrome
         section="Board"
         counters={<Counters entries={shown} />}
-        headerExtra={<SourceTabs tabs={tabsFor(snapshot.entries, kinds)} selected={selected} />}
+        headerExtra={
+          <>
+            <ProjectTabs projects={configuredProjects()} selected={project} />
+            <SourceTabs tabs={tabsFor(snapshot.entries, kinds)} selected={selected} />
+          </>
+        }
       />
+      <ScopeNote scope={snapshot.scope} />
       <StageJump entries={shown} />
       <UnreadSources unresolved={unresolvedSources(snapshot.entries)} />
       <Rail entries={shown} now={now} />
@@ -129,7 +145,7 @@ function BoardBody({
         <div className="wrap">
           <RecordFoot
             readPath="/v1/board + /v1/tickets/{id}"
-            watermark={`projection ${snapshot.health.toLowerCase()} · watermark ${snapshot.projectionWatermark.toString()} of ${snapshot.sourceWatermark.toString()} · columns are the record's lanes, project scoping lands with #185`}
+            watermark={`projection ${snapshot.health.toLowerCase()} · watermark ${snapshot.projectionWatermark.toString()} of ${snapshot.sourceWatermark.toString()} · columns are the record's lanes · read with project_key=${snapshot.scope.projectKey}`}
           />
         </div>
       </div>
@@ -137,15 +153,24 @@ function BoardBody({
   );
 }
 
-function BoardFrame({ declared }: { readonly declared: ReactElement }): ReactElement {
+function BoardFrame({
+  declared,
+  project,
+}: {
+  readonly declared: ReactElement;
+  readonly project: string;
+}): ReactElement {
   return (
     <>
-      <Chrome section="Board" />
+      <Chrome
+        section="Board"
+        headerExtra={<ProjectTabs projects={configuredProjects()} selected={project} />}
+      />
       <main className="page">
         <div className="wrap">
           <div className="lede">
             <h1>Board</h1>
-            <p>The portfolio ticket board, read from the instance record.</p>
+            <p>The ticket board for {project}, read from the instance record.</p>
           </div>
           <section className="panel" style={{ marginTop: "16px" }}>
             <header>
@@ -165,11 +190,17 @@ export default async function BoardPage({
 }: {
   readonly searchParams: Promise<Record<string, string | string[] | undefined>>;
 }): Promise<ReactNode> {
-  const board = await recordAdapter.board();
-  const source = readSource((await searchParams).source);
+  const params = await searchParams;
+  const project = selectedProjectKey(readParam(params, "project"));
+  const board = await recordAdapter.board(project);
+  const source = readSource(params.source);
   return (
-    <Resolved reading={board} frame={(declared) => <BoardFrame declared={declared} />}>
-      {(snapshot) => <BoardBody snapshot={snapshot} source={source} />}
+    <Resolved
+      reading={board}
+      subject={`project ${project}`}
+      frame={(declared) => <BoardFrame declared={declared} project={project} />}
+    >
+      {(snapshot) => <BoardBody snapshot={snapshot} source={source} project={project} />}
     </Resolved>
   );
 }
