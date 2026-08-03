@@ -266,6 +266,7 @@ class RecordProblem:
     command_id: UUID | None = None
     current_version: int | None = None
     unmet_facts: tuple[str, ...] = ()
+    prohibited_classes: tuple[str, ...] = ()
 
     def response_payload(self) -> dict[str, object]:
         """Return a minimal RFC 9457 object."""
@@ -283,6 +284,8 @@ class RecordProblem:
             payload["current_version"] = self.current_version
         if self.unmet_facts:
             payload["unmet_facts"] = list(self.unmet_facts)
+        if self.prohibited_classes:
+            payload["prohibited_classes"] = [str(item) for item in self.prohibited_classes]
         return payload
 
 

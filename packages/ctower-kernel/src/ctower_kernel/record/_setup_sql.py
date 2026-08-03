@@ -28,6 +28,7 @@ from ctower_kernel.record._migration_ledger_sql import (
     MigrationAdoptionError,
     MigrationBaseline,
     MigrationExecutionError,
+    MigrationPreconditionError,
     MigrationScript,
     MigrationStateError,
     _migration_execution_error,
@@ -43,6 +44,7 @@ from ctower_kernel.record._uuid import uuid7 as _uuid7
 __all__ = [
     "MigrationAdoptionError",
     "MigrationExecutionError",
+    "MigrationPreconditionError",
     "MigrationStateError",
     "RecoveryRoleConfigurationError",
     "apply_migrations",
