@@ -10,14 +10,16 @@ import { redacted } from "./redact";
  * one character, and the ticket header showed a raw 36-character ULID where a
  * name belongs.
  *
- * ctower does not record a display name for a principal yet; that is AC-TM-07's
- * tenant display fact and lands with #186. So this is the seam rather than a
- * guess: it resolves from an operator-maintained map when one is configured,
- * and otherwise resolves nothing — and every screen renders `seat unnamed`
- * with the full principal in the title, instead of a ULID chopped to noise.
+ * ctower does not record a display name for a principal, and round-3 QA (#241)
+ * found this citing AC-TM-07 for it — a criterion about the *tenant's* display
+ * identity, which is a different subject. `read/futureSources.ts` now carries
+ * the honest statement: nothing is filed for this yet.
  *
- * When #186 lands, this module reads the record's display facts and no screen
- * changes.
+ * So this is the seam rather than a guess: it resolves from an operator-
+ * maintained map when one is configured, and otherwise resolves nothing — and
+ * every screen renders `seat unnamed` with the full principal in the title,
+ * instead of a ULID chopped to noise. When the record carries display facts,
+ * this module reads them and no screen changes.
  */
 
 let cached: Readonly<Record<string, string>> | null = null;
@@ -56,7 +58,4 @@ export function seatNameOf(
 }
 
 /** What would make these names resolve, for the screens that say so. */
-export const SEAT_NAME_SOURCE = {
-  lands: "#186 / AC-TM-07",
-  what: "a display name for a principal — the record carries the identifier only",
-} as const;
+export { NO_SEAT_NAME as SEAT_NAME_SOURCE } from "../futureSources";

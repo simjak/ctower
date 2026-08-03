@@ -64,6 +64,8 @@ function InboxBody({ inbox }: { readonly inbox: SeatInbox }): ReactElement {
             </p>
           </div>
 
+          {/* the tab counts unread and says so on the tab. A seat with 485 read
+              messages reads as "0 unread", not as an empty inbox (#239) */}
           <ChoiceTabs
             label="Choose a seat"
             route="/inbox"
@@ -71,7 +73,11 @@ function InboxBody({ inbox }: { readonly inbox: SeatInbox }): ReactElement {
             choices={inbox.seats.map((seat) => ({
               key: seat.seat,
               label: seat.seat,
-              count: seat.unread,
+              count: {
+                value: seat.unread,
+                unit: "unread",
+                detail: `${seat.unread.toString()} unread of ${seat.total.toString()} this seat holds`,
+              },
               title: `${seat.total.toString()} messages · ${seat.unread.toString()} unread`,
             }))}
           />
@@ -85,9 +91,12 @@ function InboxBody({ inbox }: { readonly inbox: SeatInbox }): ReactElement {
           <section className="panel" style={{ marginTop: "16px" }}>
             <header>
               <h2>Messages</h2>
+              {/* both numbers name what they count: the panel's is the seat's
+                  total held, the tab's is its unread, and they no longer sit a
+                  few pixels apart meaning different things (#239) */}
               <span className="sub">
-                {inbox.messages.length.toString()} of {inbox.held.toString()} shown, newest first ·{" "}
-                {unread.toString()} unread here
+                showing {inbox.messages.length.toString()} newest of {inbox.held.toString()}{" "}
+                messages this seat holds · {unread.toString()} of them unread
               </span>
             </header>
             <div>

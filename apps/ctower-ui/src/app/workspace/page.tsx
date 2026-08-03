@@ -1,6 +1,7 @@
 import type { ReactElement, ReactNode } from "react";
 import { Chrome } from "@/frame/Chrome";
 import { KnownValue, NoSourceYet, Resolved } from "@/frame/Declared";
+import { NO_SESSION_STATES } from "@/read/futureSources";
 import { RecordFoot } from "@/frame/RecordFoot";
 import { recordAdapter, SOURCE_LABELS } from "@/read/adapter";
 import type { SessionWorkspace } from "@/read/interface";
@@ -27,7 +28,7 @@ function Lede(): ReactElement {
  * Round-1 review of PR #215 found this page hardcoding the interim source's
  * vocabulary — `bin/mux spawn`, "tmux session" — which made the adapter-only
  * swap claim untrue. It now knows only that a workspace is a list of labelled
- * facts and an optional start command, so a native G5 source can replace the
+ * facts and an optional start command, so a native source can replace the
  * interim one without a screen edit and without a false label.
  */
 function WorkspaceBody({ workspace }: { readonly workspace: SessionWorkspace }): ReactElement {
@@ -79,13 +80,7 @@ function WorkspaceBody({ workspace }: { readonly workspace: SessionWorkspace }):
               <h2>Session states</h2>
               <span className="sub">who · what · duration · outcome</span>
             </header>
-            <NoSourceYet
-              title="no session transitions yet"
-              source={{
-                lands: "G5",
-                what: "a session's recorded state transitions — dispatched, briefed, working, gated",
-              }}
-            />
+            <NoSourceYet title="no session transitions yet" source={NO_SESSION_STATES} />
           </section>
 
           <RecordFoot

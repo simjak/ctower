@@ -230,9 +230,11 @@ export function CrewCost({ profile }: { readonly profile: CrewProfile }): ReactE
           believe without checking.
         </span>
         <span className="src">
-          <span>
-            lands with <b>{profile.cost.lands}</b> — {profile.cost.what}
-          </span>
+          {profile.cost.absence === "silence" ? null : (
+            <span>
+              lands with <b>{profile.cost.lands}</b> — {profile.cost.what}
+            </span>
+          )}
         </span>
       </div>
     </section>

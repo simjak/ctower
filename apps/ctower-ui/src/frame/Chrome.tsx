@@ -7,11 +7,11 @@ import { recordAdapter } from "@/read/adapter";
 /**
  * The page name a screen shows in the breadcrumb, and the rail item that name
  * lights. They differ where the approved IA renames a surface: the board is the
- * fleet dashboard, and one ticket belongs under Tickets.
+ * fleet dashboard, and a ticket screen lights the rail entry that reaches one.
  */
 const RAIL_OF = {
   Board: "Dashboard",
-  Ticket: "Tickets",
+  Ticket: "Latest ticket",
   Heartbeats: "Heartbeats",
   Inbox: "Inbox",
   Feed: "Feed",

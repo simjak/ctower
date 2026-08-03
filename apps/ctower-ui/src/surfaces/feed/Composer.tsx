@@ -17,8 +17,9 @@ export function Composer(): ReactElement {
         <span className="verdict v-held">read-only v1 · disabled</span>
         <span className="note">
           Sending would be an audited injection recorded on the ticket. This surface makes no
-          mutation, so the composer is inert by design until the authority story lands (#186 · D29
-          grants).
+          mutation, so the composer is inert by design. No work item is filed yet for steering a
+          session from a browser, and naming one that does not cover it would be worse than saying
+          so.
         </span>
       </div>
       <div className="steer-row">

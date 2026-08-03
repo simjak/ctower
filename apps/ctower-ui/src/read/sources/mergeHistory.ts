@@ -1,4 +1,5 @@
 import { boundedProcess } from "../bounded";
+import { configuredProjects } from "../projects";
 import { redacted } from "./redact";
 import type { Candidate } from "../selectors";
 import type { DeliveryMeasure, MergeDay, ProjectMerges, Reading } from "../interface";
@@ -29,30 +30,20 @@ export interface ProjectSource {
   readonly root: string;
 }
 
-function environment(name: string, fallback: string): string {
-  const value = process.env[name];
-  return value === undefined || value === "" ? fallback : value;
-}
-
-/** The projects this surface measures. Overridable, so a copy can be measured. */
+/**
+ * The projects this surface measures, derived from the one configured list.
+ *
+ * `key` here is the token the vendored scope stylesheet needs, and `label` the
+ * delivery-surface spelling; both come from `read/projects.ts` rather than being
+ * typed out a second time, so Metrics and the Board can never disagree about
+ * which projects exist.
+ */
 export function projectSources(): readonly ProjectSource[] {
-  return [
-    {
-      key: "ctower",
-      label: "ctower",
-      root: environment("CTOWER_UI_PROJECT_CTOWER", "/srv/projects/ctower"),
-    },
-    {
-      key: "manibo",
-      label: "lastmachines",
-      root: environment("CTOWER_UI_PROJECT_MANIBO", "/srv/projects/manibo"),
-    },
-    {
-      key: "bhloop",
-      label: "bh-loop",
-      root: environment("CTOWER_UI_PROJECT_BHLOOP", "/srv/projects/bh-loop"),
-    },
-  ];
+  return configuredProjects().map((project): ProjectSource => ({
+    key: project.scopeToken,
+    label: project.deliveryLabel,
+    root: project.root,
+  }));
 }
 
 function dayKey(iso: string): string {
@@ -134,6 +125,7 @@ export async function mergeCandidates(now: number): Promise<readonly Candidate<P
               failureClass: "permanent",
               attempts: 1,
               elapsedMs: 0,
+              status: null,
             },
           },
           orderBy: source.key,

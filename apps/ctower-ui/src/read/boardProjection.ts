@@ -1,3 +1,4 @@
+import { NO_BOARD_ROW_HERE } from "./futureSources";
 import { mapReading } from "./reading";
 import type { BoardCard, BoardEntry, BoardSnapshot, Reading } from "./interface";
 
@@ -48,10 +49,7 @@ export function cardFor(board: Reading<BoardSnapshot>, ticketId: string): Readin
   return mapReading(board, (snapshot): Reading<BoardCard> => {
     const found = snapshot.entries.find((entry) => entry.card.ticketId === ticketId);
     return found === undefined
-      ? {
-          state: "absent",
-          source: { lands: "#186", what: "a board projection row for this ticket" },
-        }
+      ? { state: "absent", source: NO_BOARD_ROW_HERE }
       : { state: "present", value: found.card };
   });
 }

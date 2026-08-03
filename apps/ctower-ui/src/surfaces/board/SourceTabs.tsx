@@ -4,6 +4,7 @@ import { useRouter } from "next/navigation";
 import { useCallback } from "react";
 import type { ReactElement } from "react";
 import { ALL_SOURCES } from "./lanes";
+import { Count } from "@/surfaces/Count";
 
 export interface SourceTab {
   readonly key: string;
@@ -36,7 +37,11 @@ export function SourceTabs({
   );
 
   return (
-    <nav className="tabs" aria-label="Filter by recorded source">
+    <nav
+      className="tabs"
+      aria-label="Filter by recorded source"
+      style={{ flexWrap: "wrap", rowGap: "8px" }}
+    >
       {tabs.map((tab) => (
         <label className="tab" key={tab.key}>
           <input
@@ -48,7 +53,14 @@ export function SourceTabs({
               choose(tab.key);
             }}
           />
-          {tab.label} <span className="n">{tab.count}</span>
+          {/* the same `.tab .n` pill the Inbox uses, and it means something else
+              there — so it says what it counts here too (#239) */}
+          {tab.label}{" "}
+          <Count
+            value={tab.count}
+            unit={tab.count === 1 ? "card" : "cards"}
+            detail={`${tab.count.toString()} cards on the board from this source`}
+          />
         </label>
       ))}
     </nav>
