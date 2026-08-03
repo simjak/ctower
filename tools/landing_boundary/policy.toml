@@ -1,0 +1,35 @@
+schema = "ctower.verdict-tier-policy/v1"
+revision = 1
+
+# Ranked signing-model tiers, strongest first. The routing chain degrades rather than
+# stalls, so a verdict can be signed at a weaker tier and still look, in the record,
+# exactly like a full signature. A model absent from every tier ranks below all of them.
+[[tier]]
+key = "policy"
+rank = 1
+models = [
+  "claude-opus-5",
+  "claude-fable-5",
+  "gpt-5.5",
+  "sol-max",
+]
+
+[[tier]]
+key = "degraded"
+rank = 2
+models = ["glm-5.2"]
+
+[[tier]]
+key = "flash"
+rank = 3
+models = ["deepseek/deepseek-v4-flash-0731"]
+
+# Verdict classes that owe a signature at or above the named tier. A class with no floor
+# is never flagged on tier grounds; its slot contract still decides whether it passes.
+[[class_floor]]
+verdict_class = "security"
+minimum_tier = "policy"
+
+[[class_floor]]
+verdict_class = "release-gating"
+minimum_tier = "policy"

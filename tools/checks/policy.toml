@@ -93,6 +93,16 @@ paths = ["tests/compatibility/**"]
 allowed_dependencies = ["compatibility-tools"]
 
 [[ownership]]
+name = "landing-boundary-tools"
+paths = ["tools/landing_boundary/**"]
+allowed_dependencies = ["kernel-workflow"]
+
+[[ownership]]
+name = "landing-boundary-tests"
+paths = ["tests/landing_boundary/**"]
+allowed_dependencies = ["kernel-workflow", "landing-boundary-tools"]
+
+[[ownership]]
 name = "http-client-codegen"
 paths = ["tools/codegen/**"]
 allowed_dependencies = ["repository-policy"]
