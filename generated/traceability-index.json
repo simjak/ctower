@@ -531,6 +531,9 @@
       "packs/policies/execution/software-factory-v1.yaml",
       "packs/policies/gates/software-factory-v1.yaml"
     ],
+    "AC-WF-28": [
+      "contracts/workflow/workflow-definition.schema.json"
+    ],
     "INV-01": [
       "contracts/domain/intake/thread-intake.schema.json",
       "packages/ctower-kernel/migrations/0001_roles.sql",
@@ -782,6 +785,7 @@
       "packs/manifests/core-v1.yaml"
     ],
     "INV-46": [
+      "contracts/workflow/workflow-definition.schema.json",
       "contracts/workflow/workflow.schema.json",
       "packs/workflows/engineering.software-factory/v1.yaml"
     ],
@@ -847,8 +851,15 @@
       "packages/ctower-kernel/migrations/0030_i17b_migration_truth_spine.sql",
       "packages/ctower-kernel/migrations/0031_i17b_bounded_truth_spine.sql"
     ],
+    "INV-61": [
+      "contracts/workflow/workflow-definition.schema.json"
+    ],
     "INV-62": [
+      "contracts/workflow/workflow-definition.schema.json",
       "packages/ctower-kernel/migrations/0038_project_delivery_seat_carriage.sql"
+    ],
+    "INV-63": [
+      "contracts/workflow/workflow-definition.schema.json"
     ],
     "INV-64": [
       "contracts/components/checkpoint.schema.json",
@@ -1174,6 +1185,9 @@
       "contracts/execution/gate-policy.schema.json",
       "contracts/http/openapi.yaml",
       "packages/ctower-kernel/migrations/0004_proof_workflow.sql"
+    ],
+    "SPEC#workflow-definition-yaml-the-five-layer-s7s8-authoring-contract": [
+      "contracts/workflow/workflow-definition.schema.json"
     ]
   },
   "schema": "ctower.traceability-index/v1",

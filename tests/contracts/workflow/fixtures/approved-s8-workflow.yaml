@@ -1,0 +1,69 @@
+# jakit-labs/ctower-config - workflows/engineering.software-factory.yaml
+# layer 5 of 5: company > projects > team > ticket-schema > workflows
+
+apiVersion: ctower/v1
+kind: Workflow
+metadata:
+  name: engineering.software-factory
+  company: jakit-labs
+  revision: 12
+  signed_by: em-185-decision
+
+spec:
+  stages:
+    - name: intake
+      owner: commander
+      evidence:
+        - key: source-reference
+          required: true
+          shape: <project>-R<nnn> | gh#<n>
+        - key: prohibited-data-scan
+          required: true
+          refuses_by_name: true          # D29 section 3
+
+    - name: build
+      owner: engineer
+      evidence:
+        - key: scoped-tests
+          required: true
+          command: just test <path>
+        - key: file-disjointness
+          required: true
+          refuses_by_name: true
+
+    - name: review
+      owner: review
+      evidence:
+        - key: code-review-verdict
+          required: true
+          reviewer_family_differs_from_author: true
+          digest_must_match_head: true
+
+    - name: qa
+      owner: qa
+      evidence:
+        - key: uses-not-loads
+          required: true
+          widths: [390, 768, 1440]
+
+  transitions:
+    - from: build
+      to: review
+      requires: [scoped-tests, file-disjointness, status-file]
+      on_missing: refuse                 # the stage does not advance
+
+overlays:
+  lastmachines:
+    qa:
+      - key: k3d-only
+        required: true
+    staging:
+      - key: real-provider-call
+        required: true
+  bh-loop:
+    intake:
+      - key: phi-fixture-refused
+        required: true
+    review:
+      - key: hipaa-d11-verdict
+        required: true
