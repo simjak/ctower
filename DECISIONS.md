@@ -1286,3 +1286,33 @@ Rejected alternatives:
   the pinned graph's landing-boundary predecessors.
 - Accepting a green CI run, a reviewer's assertion, or the presence of changed files under `docs/` as the
   documentation fact.
+
+## D33 — The fleet-lifecycle policy package: close gate first (locked 2026-08-03, operator R2764)
+
+Issue #252 and mission-control R2764 (director P1; record ticket `019fc841-344f-7ccc-8449-262a132d6ae2`)
+turn the mission-control fleet's hygiene rules — today enforced by commander memory and paging crons only,
+so nothing blocks — into a **versioned policy package**, `fleet-lifecycle@1`, evaluated by the **existing**
+Execution Policy engine (CT-I2-006). This writes that decision down, superseding nothing (append-only).
+
+**No parallel engine, no new mechanism.** The package is authored data under `packs/policies/lifecycle/`
+that binds gates only to locations the pinned Workflow already declares ([INV-46](#non-negotiable-invariants)
+— no new node or edge). Asserting a close-gate binding therefore adds no stage, edge, group, or gate
+location, and adds no evidence kind; it uses the lifecycle evidence contract class.
+
+**What it does.** On the administrative-close boundary of `engineering.software-factory@1`
+(`sf.e15.retro-resolve-close@1`), close is denied unless three current facts hold for the episode — no
+live bound crew session (`crew-session-still-live`), no worktree surviving a merged PR with merge-state
+from the PR record, never branch ancestry (`worktree-outlives-merged-pr`), and the crew-log close entry
+(`crew-log-close-entry-missing`). Episode binding (bound-crew from crew-log ticket/source-ref, bound-PR
+from the evidence manifest), freshness (reference = max(resolution event time, latest bound-PR merge
+time)), the explicit `no-crew-engagement` / `no-bound-pr` assertions for empty bound sets, and the
+`substrate-unobservable:<probe>` refusal are defined in the SPEC text. The naming, WIP-cap, and
+resource-ceilings policies are listed as spawn-side stubs (CommandGuard boundary, [INV-58](#non-negotiable-invariants))
+and deliberately not designed. Coordination-files and liveness stay paging-only by design; the existing
+paging tools become evidence sources, never parallel enforcement.
+
+**What it does NOT do.** It authorizes no implementation by itself, blocks no close today, and does not
+weaken CP3-D, the dual-write prohibition, minimal carry-forward, INV-19/44/62 independence, or the
+documentation/landing-boundary work of D32. It preserves D27, D28, D30, D31, and D32. The SPEC change is
+docs-only through the docs gate; engine evaluation rides CT-I2-006 in increment order, and the
+mission-control reporter is a separate ticket when the pack lands.
