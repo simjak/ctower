@@ -1,6 +1,7 @@
 import { readdir, readFile } from "node:fs/promises";
 import { boundedProcess } from "../bounded";
 import { stampText } from "../elapsed";
+import { NO_WORK_SESSIONS as COST_SOURCE } from "../futureSources";
 import { readAccountability } from "./escapesLedger";
 import { scanJsonl } from "./jsonl";
 import { readLandedChanges } from "./landedChanges";
@@ -423,11 +424,6 @@ export async function readCrewRoster(
 
 /** Lifecycle entries shown, newest last. A cap is stated, never silent. */
 const LIFECYCLE_CAP = 40;
-/** What ctower will record when a work session becomes a first-class fact. */
-const COST_SOURCE = {
-  lands: "#200 (G5)",
-  what: "what one work session cost — its duration, its tokens and its outcome",
-} as const;
 
 /** The pane a session is showing: its working directory and its process. */
 async function paneOf(session: string): Promise<{ cwd: Known<string>; running: Known<string> }> {
