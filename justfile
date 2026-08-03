@@ -15,16 +15,19 @@ default:
     @just --list
 
 # Warm, non-mutating developer and CI gate.
-check: python-check web-check docs-check workflow-check version-check repository-tests contract-tests codegen-check traceability-check secrets-intended-tree
+check: python-check web-check docs-check workflow-check version-check repository-tests contract-tests landing-boundary-coverage codegen-check traceability-check secrets-intended-tree
     {{python}} -m tools.checks --root . --profile fast
 
 python-check: compatibility-coverage
-    {{python}} -m ruff format --check apps/ctower-api/src apps/ctowerctl/src packages/ctower-kernel/src tools/checks tools/codegen tools/compatibility tools/development_runtime tools/process_execution.py tools/runtime_manifest tools/runtime_preflight.py tests/repository tests/contracts tests/compatibility tests/integration tests/modules tests/artifact tests/development_runtime tests/acceptance/increment-1
-    {{python}} -m ruff check --no-cache apps/ctower-api/src apps/ctowerctl/src packages/ctower-kernel/src tools/checks tools/codegen tools/compatibility tools/development_runtime tools/process_execution.py tools/runtime_manifest tools/runtime_preflight.py tests/repository tests/contracts tests/compatibility tests/integration tests/modules tests/artifact tests/development_runtime tests/acceptance/increment-1
-    {{python}} -m mypy --no-incremental apps/ctower-api/src apps/ctowerctl/src packages/ctower-kernel/src tools/checks tools/codegen tools/compatibility tools/development_runtime tools/process_execution.py tools/runtime_manifest tools/runtime_preflight.py generated/python tests/repository tests/contracts tests/compatibility tests/integration tests/modules tests/artifact tests/development_runtime tests/acceptance/increment-1
+    {{python}} -m ruff format --check apps/ctower-api/src apps/ctowerctl/src packages/ctower-kernel/src tools/checks tools/codegen tools/compatibility tools/development_runtime tools/landing_boundary tools/process_execution.py tools/runtime_manifest tools/runtime_preflight.py tests/repository tests/contracts tests/compatibility tests/integration tests/landing_boundary tests/modules tests/artifact tests/development_runtime tests/acceptance/increment-1
+    {{python}} -m ruff check --no-cache apps/ctower-api/src apps/ctowerctl/src packages/ctower-kernel/src tools/checks tools/codegen tools/compatibility tools/development_runtime tools/landing_boundary tools/process_execution.py tools/runtime_manifest tools/runtime_preflight.py tests/repository tests/contracts tests/compatibility tests/integration tests/landing_boundary tests/modules tests/artifact tests/development_runtime tests/acceptance/increment-1
+    {{python}} -m mypy --no-incremental apps/ctower-api/src apps/ctowerctl/src packages/ctower-kernel/src tools/checks tools/codegen tools/compatibility tools/development_runtime tools/landing_boundary tools/process_execution.py tools/runtime_manifest tools/runtime_preflight.py generated/python tests/repository tests/contracts tests/compatibility tests/integration tests/landing_boundary tests/modules tests/artifact tests/development_runtime tests/acceptance/increment-1
 
 compatibility-coverage:
     @coverage_file="$(mktemp)"; report_file="$(mktemp)"; trap 'rm -f -- "$coverage_file" "$report_file"' EXIT; COVERAGE_FILE="$coverage_file" {{python}} -m pytest -p no:cacheprovider --cov=tools.compatibility --cov-branch --cov-fail-under=90 --cov-report=term --cov-report=json:"$report_file" tests/compatibility; {{python}} -c "{{coverage_gate}}" "$report_file" 90
+
+landing-boundary-coverage:
+    @coverage_file="$(mktemp)"; report_file="$(mktemp)"; trap 'rm -f -- "$coverage_file" "$report_file"' EXIT; COVERAGE_FILE="$coverage_file" {{python}} -m pytest -p no:cacheprovider --cov=tools.landing_boundary --cov-branch --cov-fail-under=90 --cov-report=term --cov-report=json:"$report_file" tests/landing_boundary -q; {{python}} -c "{{coverage_gate}}" "$report_file" 90
 
 product-coverage:
     @coverage_file="$(mktemp)"; report_file="$(mktemp)"; trap 'rm -f -- "$coverage_file" "$report_file"' EXIT; COVERAGE_FILE="$coverage_file" {{python}} -m pytest -p no:cacheprovider --cov=ctower_api --cov=ctower_kernel --cov=ctowerctl --cov-branch --cov-fail-under=90 --cov-report=term --cov-report=json:"$report_file" tests/modules tests/acceptance/increment-1 -q; {{python}} -c "{{coverage_gate}}" "$report_file" 90
