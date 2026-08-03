@@ -28,6 +28,13 @@ from ctower_kernel.record.intake import (
     IntakePromotionCommand,
     IntakeSubmitCommand,
 )
+from ctower_kernel.record.sessions import (
+    ProjectSessionPage,
+    SessionFactCommand,
+    SessionReceipt,
+    SessionStartCommand,
+    TicketSessionList,
+)
 from ctower_kernel.telemetry import TelemetryContext
 
 _SHA256_PATTERN = re.compile(r"sha256:[0-9a-f]{64}")
@@ -56,6 +63,7 @@ __all__ = [
     "TicketCommandResult",
     "TicketTimeline",
     "TimelineEvent",
+    "WorkSessionStore",
     "credential_scope_refusal",
 ]
 
@@ -206,6 +214,49 @@ class SeatCredentialStore(Protocol):
         now: datetime,
         telemetry: TelemetryContext,
     ) -> SeatCredentialReceipt | RecordProblem: ...
+
+
+class WorkSessionStore(Protocol):
+    """Cohesive persistence boundary for recorded work sessions."""
+
+    def start(
+        self,
+        actor: Actor,
+        command: SessionStartCommand,
+        *,
+        request_digest: bytes,
+        now: datetime,
+        telemetry: TelemetryContext,
+    ) -> SessionReceipt | RecordProblem: ...
+
+    def record_fact(
+        self,
+        actor: Actor,
+        command: SessionFactCommand,
+        *,
+        request_digest: bytes,
+        now: datetime,
+        telemetry: TelemetryContext,
+    ) -> SessionReceipt | RecordProblem: ...
+
+    def for_ticket(
+        self,
+        actor: Actor,
+        ticket_id: UUID,
+        project_key: str,
+        *,
+        telemetry: TelemetryContext,
+    ) -> TicketSessionList | RecordProblem: ...
+
+    def for_project(
+        self,
+        actor: Actor,
+        project_key: str,
+        *,
+        cursor: int,
+        limit: int,
+        telemetry: TelemetryContext,
+    ) -> ProjectSessionPage | RecordProblem: ...
 
 
 @dataclass(frozen=True, slots=True)
@@ -519,6 +570,12 @@ class Record(Protocol):
     @property
     def seat_credentials(self) -> SeatCredentialStore:
         """Return the cohesive project-seat credential persistence boundary."""
+
+        ...
+
+    @property
+    def work_sessions(self) -> WorkSessionStore:
+        """Return the cohesive recorded-work-session persistence boundary."""
 
         ...
 

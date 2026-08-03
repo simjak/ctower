@@ -2977,6 +2977,58 @@
           ],
           "type": "object"
         },
+        "migrationChanged": {
+          "additionalProperties": false,
+          "properties": {
+            "cutover_id": {
+              "format": "uuid",
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "operation": {
+              "enum": [
+                "run_created",
+                "export_equality_bound",
+                "alias_plan_bound",
+                "import_batch_applied",
+                "pass_two_started",
+                "pass_two_noop",
+                "ticket_seed",
+                "exact_alias",
+                "ticket_relation",
+                "source_link",
+                "correction_appended",
+                "reconciled",
+                "fence_observed"
+              ]
+            },
+            "project_key": {
+              "const": "ctower"
+            },
+            "run_id": {
+              "format": "uuid",
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "target_id": {
+              "maxLength": 256,
+              "minLength": 1,
+              "type": "string"
+            }
+          },
+          "required": [
+            "cutover_id",
+            "operation",
+            "project_key",
+            "run_id",
+            "target_id"
+          ],
+          "type": "object"
+        },
         "poisonDispositionRecorded": {
           "additionalProperties": false,
           "properties": {
@@ -3302,6 +3354,157 @@
           "required": [
             "credential_id",
             "reason"
+          ],
+          "type": "object"
+        },
+        "sessionClosed": {
+          "additionalProperties": false,
+          "properties": {
+            "duration_seconds": {
+              "maximum": 31536000,
+              "minimum": 0,
+              "type": "integer"
+            },
+            "evidence_ref": {
+              "maxLength": 256,
+              "minLength": 1,
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "input_tokens": {
+              "maximum": 1000000000,
+              "minimum": 0,
+              "type": "integer"
+            },
+            "outcome": {
+              "enum": [
+                "delivered",
+                "blocked",
+                "abandoned",
+                "failed"
+              ]
+            },
+            "output_tokens": {
+              "maximum": 1000000000,
+              "minimum": 0,
+              "type": "integer"
+            },
+            "session_id": {
+              "format": "uuid",
+              "type": "string"
+            },
+            "ticket_id": {
+              "format": "uuid",
+              "type": "string"
+            }
+          },
+          "required": [
+            "duration_seconds",
+            "evidence_ref",
+            "input_tokens",
+            "outcome",
+            "output_tokens",
+            "session_id",
+            "ticket_id"
+          ],
+          "type": "object"
+        },
+        "sessionStarted": {
+          "additionalProperties": false,
+          "properties": {
+            "branch_ref": {
+              "maxLength": 256,
+              "minLength": 1,
+              "type": "string"
+            },
+            "crew_name": {
+              "pattern": "^[a-z][a-z0-9._-]{1,95}$",
+              "type": "string"
+            },
+            "harness_ref": {
+              "maxLength": 64,
+              "minLength": 1,
+              "type": "string"
+            },
+            "model_ref": {
+              "maxLength": 128,
+              "minLength": 1,
+              "type": "string"
+            },
+            "seat_key": {
+              "pattern": "^[a-z][a-z0-9._-]{1,95}$",
+              "type": "string"
+            },
+            "session_id": {
+              "format": "uuid",
+              "type": "string"
+            },
+            "ticket_id": {
+              "format": "uuid",
+              "type": "string"
+            },
+            "worktree_ref": {
+              "maxLength": 256,
+              "minLength": 1,
+              "type": "string"
+            }
+          },
+          "required": [
+            "branch_ref",
+            "crew_name",
+            "harness_ref",
+            "model_ref",
+            "seat_key",
+            "session_id",
+            "ticket_id",
+            "worktree_ref"
+          ],
+          "type": "object"
+        },
+        "sessionState": {
+          "enum": [
+            "dispatched",
+            "briefed",
+            "working",
+            "gated"
+          ]
+        },
+        "sessionTransitioned": {
+          "additionalProperties": false,
+          "properties": {
+            "from_state": {
+              "$ref": "#/$defs/sessionState"
+            },
+            "reason": {
+              "maxLength": 500,
+              "minLength": 1,
+              "type": "string"
+            },
+            "session_id": {
+              "format": "uuid",
+              "type": "string"
+            },
+            "ticket_id": {
+              "format": "uuid",
+              "type": "string"
+            },
+            "to_state": {
+              "$ref": "#/$defs/sessionState"
+            },
+            "transition_number": {
+              "minimum": 1,
+              "type": "integer"
+            }
+          },
+          "required": [
+            "from_state",
+            "reason",
+            "session_id",
+            "ticket_id",
+            "to_state",
+            "transition_number"
           ],
           "type": "object"
         },
@@ -3735,6 +3938,22 @@
             {
               "properties": {
                 "kind": {
+                  "const": "migration.changed"
+                },
+                "origin": {
+                  "const": "api"
+                },
+                "payload": {
+                  "$ref": "#/$defs/migrationChanged"
+                },
+                "stream_id": {
+                  "pattern": "^migration:[0-9a-f-]{36}$"
+                }
+              }
+            },
+            {
+              "properties": {
+                "kind": {
                   "const": "intake.inbound_event_recorded"
                 },
                 "origin": {
@@ -3795,6 +4014,54 @@
                   "pattern": "^seat-credential:[0-9a-f-]{36}$"
                 }
               }
+            },
+            {
+              "properties": {
+                "kind": {
+                  "const": "session.started"
+                },
+                "origin": {
+                  "const": "api"
+                },
+                "payload": {
+                  "$ref": "#/$defs/sessionStarted"
+                },
+                "stream_id": {
+                  "pattern": "^session:[0-9a-f-]{36}$"
+                }
+              }
+            },
+            {
+              "properties": {
+                "kind": {
+                  "const": "session.transitioned"
+                },
+                "origin": {
+                  "const": "api"
+                },
+                "payload": {
+                  "$ref": "#/$defs/sessionTransitioned"
+                },
+                "stream_id": {
+                  "pattern": "^session:[0-9a-f-]{36}$"
+                }
+              }
+            },
+            {
+              "properties": {
+                "kind": {
+                  "const": "session.closed"
+                },
+                "origin": {
+                  "const": "api"
+                },
+                "payload": {
+                  "$ref": "#/$defs/sessionClosed"
+                },
+                "stream_id": {
+                  "pattern": "^session:[0-9a-f-]{36}$"
+                }
+              }
             }
           ]
         }
@@ -3840,10 +4107,14 @@
             "workflow.changed",
             "routine.occurrence_recorded",
             "attention.poison_disposition_recorded",
+            "migration.changed",
             "intake.inbound_event_recorded",
             "intake.inbound_event_promoted",
             "access.seat_credential_issued",
-            "access.seat_credential_revoked"
+            "access.seat_credential_revoked",
+            "session.started",
+            "session.transitioned",
+            "session.closed"
           ],
           "type": "string"
         },
@@ -3876,7 +4147,7 @@
           "type": "string"
         },
         "stream_id": {
-          "pattern": "^(tenant:[0-9a-f-]{36}:bootstrap|ticket:[0-9a-f-]{36}|catalog:[0-9a-f-]{36}|proof:[0-9a-f-]{36}|workflow:[0-9a-f-]{36}|routine-occurrence:[0-9a-f-]{36}|poison-disposition:[0-9a-f-]{36}|inbound-thread:[0-9a-f-]{36}|seat-credential:[0-9a-f-]{36})$",
+          "pattern": "^(tenant:[0-9a-f-]{36}:bootstrap|ticket:[0-9a-f-]{36}|catalog:[0-9a-f-]{36}|proof:[0-9a-f-]{36}|workflow:[0-9a-f-]{36}|routine-occurrence:[0-9a-f-]{36}|poison-disposition:[0-9a-f-]{36}|migration:[0-9a-f-]{36}|inbound-thread:[0-9a-f-]{36}|seat-credential:[0-9a-f-]{36}|session:[0-9a-f-]{36})$",
           "type": "string"
         },
         "tenant_id": {
@@ -12246,7 +12517,7 @@
     {
       "id": "https://ctower.dev/contracts/domain/events/event-envelope.schema.json",
       "path": "contracts/domain/events/event-envelope.schema.json",
-      "sha256": "sha256:4071a5c0adf69cb288ab2e68367e9b59bced1ab4f2190f61709ef8e13ba3e61c"
+      "sha256": "sha256:3e44a42958e684df36cf365d93533afb042db9ca6b08079ed3bdb30d3b8c1a1d"
     },
     {
       "id": "https://ctower.local/contracts/domain/intake/thread-intake.schema.json",

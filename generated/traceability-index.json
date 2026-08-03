@@ -462,6 +462,21 @@
     "AC-SEC-12": [
       "contracts/http/openapi.yaml"
     ],
+    "AC-SES-01": [
+      "contracts/http/openapi.yaml",
+      "packages/ctower-kernel/migrations/0041_recorded_work_sessions.sql"
+    ],
+    "AC-SES-02": [
+      "contracts/domain/events/event-envelope.schema.json",
+      "contracts/http/openapi.yaml"
+    ],
+    "AC-SES-03": [
+      "contracts/http/openapi.yaml"
+    ],
+    "AC-SES-04": [
+      "contracts/http/openapi.yaml",
+      "packages/ctower-kernel/migrations/0041_recorded_work_sessions.sql"
+    ],
     "AC-TM-01": [
       "contracts/domain/task-management/task-command.schema.json",
       "contracts/http/openapi.yaml",
@@ -551,7 +566,8 @@
       "contracts/domain/intake/thread-intake.schema.json",
       "packages/ctower-kernel/migrations/0002_ticket_slice.sql",
       "packages/ctower-kernel/migrations/0003_privileges.sql",
-      "packages/ctower-kernel/migrations/0039_project_seat_credentials.sql"
+      "packages/ctower-kernel/migrations/0039_project_seat_credentials.sql",
+      "packages/ctower-kernel/migrations/0041_recorded_work_sessions.sql"
     ],
     "INV-03": [
       "contracts/domain/events/event-envelope.schema.json",
@@ -859,6 +875,11 @@
       "contracts/http/openapi.yaml",
       "packages/ctower-kernel/migrations/0038_project_delivery_seat_carriage.sql"
     ],
+    "INV-75": [
+      "contracts/domain/events/event-envelope.schema.json",
+      "contracts/http/openapi.yaml",
+      "packages/ctower-kernel/migrations/0041_recorded_work_sessions.sql"
+    ],
     "SPEC#aggregate-boundaries-and-relationships": [
       "contracts/domain/intake/thread-intake.schema.json",
       "packages/ctower-kernel/migrations/0032_thread_first_intake.sql",
@@ -1011,7 +1032,8 @@
       "packages/ctower-kernel/migrations/0036_migration_ledger_role.sql",
       "packages/ctower-kernel/migrations/0038_project_delivery_seat_carriage.sql",
       "packages/ctower-kernel/migrations/0039_project_seat_credentials.sql",
-      "packages/ctower-kernel/migrations/0040_project_scoped_reads.sql"
+      "packages/ctower-kernel/migrations/0040_project_scoped_reads.sql",
+      "packages/ctower-kernel/migrations/0041_recorded_work_sessions.sql"
     ],
     "SPEC#project-delivery-projection": [
       "contracts/components/checkpoint.schema.json",
@@ -1051,6 +1073,11 @@
       "packs/components/checkpoints/manibo.staging-infra/v1.yaml",
       "packs/components/checkpoints/manibo.staging-nfq-e2e/v1.yaml",
       "packs/components/checkpoints/manibo.verify/v1.yaml"
+    ],
+    "SPEC#recorded-work-sessions": [
+      "contracts/domain/events/event-envelope.schema.json",
+      "contracts/http/openapi.yaml",
+      "packages/ctower-kernel/migrations/0041_recorded_work_sessions.sql"
     ],
     "SPEC#retention-erasure-backup-and-restore": [
       "contracts/evidence/object-manifest.schema.json",

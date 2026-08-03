@@ -47,6 +47,7 @@ from ctower_api._intake_routes import install_intake_routes
 from ctower_api._migration_port import MigrationPort
 from ctower_api._mutation_response import mutation_response as _mutation_response
 from ctower_api._proof_workflow_routes import install_proof_workflow_routes
+from ctower_api._session_routes import install_session_routes
 from ctower_api._synthetic_routes import SyntheticRuntime, install_synthetic_routes
 from ctower_api._task_routes import install_task_routes
 from ctower_api.telemetry import TelemetryRecorder
@@ -93,6 +94,19 @@ def _project_key(value: str | None) -> str:
     return value
 
 
+def _install_telemetry_health(app: FastAPI, recorder: TelemetryRecorder) -> None:
+    """Report the recorder's own health on every response rather than in a side channel."""
+
+    @app.middleware("http")
+    async def telemetry_health(
+        request: Request,
+        call_next: Callable[[Request], Awaitable[Response]],
+    ) -> Response:
+        response = await call_next(request)
+        response.headers["X-Ctower-Telemetry-Health"] = recorder.health
+        return response
+
+
 def create_app(
     record: Record,
     *,
@@ -122,22 +136,14 @@ def create_app(
         telemetry=recorder,
     )
     work_module = work or Work(record, telemetry=recorder)
-
-    @app.middleware("http")
-    async def telemetry_health(
-        request: Request,
-        call_next: Callable[[Request], Awaitable[Response]],
-    ) -> Response:
-        response = await call_next(request)
-        response.headers["X-Ctower-Telemetry-Health"] = recorder.health
-        return response
-
+    _install_telemetry_health(app, recorder)
     _install_access_routes(app, access, record, recorder)
     _install_ticket_create_route(app, access, record, work_module, recorder)
     _install_custody_route(app, access, record, work_module, recorder)
     _install_ticket_read_routes(app, access, record, recorder)
     install_intake_routes(app, access, record, Intake(record, telemetry=recorder), recorder)
     install_comment_routes(app, access, record, recorder)
+    install_session_routes(app, access, record, recorder)
     install_task_routes(app, access, record, work_module, workflow, recorder)
     if catalog is not None:
         install_catalog_routes(app, access, record, catalog, recorder)

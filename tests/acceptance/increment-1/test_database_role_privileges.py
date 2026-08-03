@@ -162,6 +162,9 @@ APPEND_ONLY_TABLES = (
     "durability_acceptance_finalizations",
     "durability_acceptance_confirmations",
     "durability_target_observations",
+    "ticket_work_sessions",
+    "ticket_work_session_transitions",
+    "ticket_work_session_closures",
 )
 
 
@@ -285,6 +288,7 @@ def test_upgrade_database_corrects_existing_head_privileges(
             "0038_project_delivery_seat_carriage.sql",
             "0039_project_seat_credentials.sql",
             "0040_project_scoped_reads.sql",
+            "0041_recorded_work_sessions.sql",
         ):
             connection.execute((MIGRATIONS / name).read_text(encoding="utf-8"))
     provision_database_roles(database.admin_dsn)

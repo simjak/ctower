@@ -204,6 +204,12 @@ I1 retains the API/CLI semantics D22 selected: durable-thread-first explicit
 `discussion|create_ticket|link_ticket` intent/provenance; Workflow-owned append-only risk; six-lane fold;
 typed intents; health/Attention; and pending/refusal/quarantine/degraded/`STATE UNKNOWN` reporting.
 
+**Recorded-work-session placement (non-normative).** D33 puts the append-only session stream in I1 because
+ticket history, project-scoped reads, and the canonical event catalog are already I1 authority; it adds no
+projection write, browser route, provider, or execution runtime. The three operator surfaces that render an
+honest empty state today — ticket work timeline, workspace session states, and the live feed — swap to this
+source in their own lanes once the facts exist, and none of them may synthesize a session before then.
+
 ### I1.6 — Four-stage trust-spine fixture on the final evaluator
 
 **Stable work:** the integrated fixture in `CT-I1-003`, `CT-I1-006`, and `CT-I1-008`.

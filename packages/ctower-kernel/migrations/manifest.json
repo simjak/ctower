@@ -1,10 +1,10 @@
 {
   "schema": "ctower.migrations/v3",
   "adoption_baseline": {
-    "through": "0040_project_scoped_reads.sql",
-    "schema_sha256": "sha256:d557c028d86bc560cfd48257a546645d663ed322270cbdf473acc1d14f4f10da",
+    "through": "0041_recorded_work_sessions.sql",
+    "schema_sha256": "sha256:f7ecb15fb9492c9eb84744cafd7ac959f2cf21cabd16031f4065bf680a2f15d3",
     "semantic_checks": "ctower.pre-ledger/v1",
-    "schema_object_sum256": "sum256:6b5bc3a315f00c4abb8643e088ab135998b09891e3e77c9d770eb738dc640ead"
+    "schema_object_sum256": "sum256:325deaeed7298f7c5f375a0e33403c8ffdea75cc4f1e9296039538f5f2f9615a"
   },
   "migrations": [
     {
@@ -386,6 +386,15 @@
       "forward_test": "pytest:tests/acceptance/increment-1/test_project_scoping.py::test_manibo_and_ctower_boards_are_disjoint",
       "rollback_or_forward_compensation": "Keep immutable ticket project ownership and project-scoped source aliases readable; rebuild disposable Board and Project Delivery rows after reviewed forward compensation, never erase or relink ticket or intake authority.",
       "backup_checkpoint": "Before applying to a nonempty installation, capture ticket, ticket-project binding, inbound source alias, and Board projection counts grouped by tenant and project plus a verified database backup."
+    },
+    {
+      "path": "0041_recorded_work_sessions.sql",
+      "sha256": "sha256:5267913fbccc66b88cf62efb80aa44d7f355b11bb8e03f637b8d61d38e2b06da",
+      "minimum_service_version": "0.0.0",
+      "maximum_service_version": "0.0.0",
+      "forward_test": "pytest:tests/acceptance/increment-1/test_work_sessions.py::test_ticket_returns_its_sessions_ordered_with_seat_model_duration_tokens_and_outcome",
+      "rollback_or_forward_compensation": "Recorded work sessions are append-only facts with no projection to rebuild; forward compensation appends corrective session facts and never edits or deletes a committed session, transition, or closure row.",
+      "backup_checkpoint": "Before applying to a nonempty installation, capture session, transition, and closure counts grouped by tenant and project plus a verified database backup."
     }
   ]
 }

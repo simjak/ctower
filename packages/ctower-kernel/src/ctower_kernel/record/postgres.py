@@ -57,6 +57,10 @@ from ctower_kernel.record._migration_ledger_sql import (
     MigrationStateError,
     apply_database_migrations,
 )
+from ctower_kernel.record._session_read_sql import project_sessions as _project_sessions
+from ctower_kernel.record._session_read_sql import ticket_sessions as _ticket_sessions
+from ctower_kernel.record._session_sql import record_session_fact as _record_session_fact
+from ctower_kernel.record._session_sql import start_session as _start_session
 from ctower_kernel.record._setup_sql import (
     RecoveryRoleConfigurationError,
     apply_migrations,
@@ -78,6 +82,13 @@ from ctower_kernel.record.intake import (
     IntakeCommandResult,
     IntakePromotionCommand,
     IntakeSubmitCommand,
+)
+from ctower_kernel.record.sessions import (
+    ProjectSessionPage,
+    SessionFactCommand,
+    SessionReceipt,
+    SessionStartCommand,
+    TicketSessionList,
 )
 from ctower_kernel.record.transaction import recover_ambiguous_commit
 from ctower_kernel.telemetry import NoopTelemetry, Telemetry, TelemetryContext
@@ -196,6 +207,91 @@ class _PostgresSeatCredentials:
         )
 
 
+class _PostgresWorkSessions:
+    """Postgres adapter for the cohesive work-session persistence boundary."""
+
+    def __init__(self, dsn: str, *, telemetry: Telemetry) -> None:
+        self._dsn = dsn
+        self._telemetry = telemetry
+
+    def start(
+        self,
+        actor: Actor,
+        command: SessionStartCommand,
+        *,
+        request_digest: bytes,
+        now: datetime,
+        telemetry: TelemetryContext,
+    ) -> SessionReceipt | RecordProblem:
+        outcome = recover_ambiguous_commit(
+            lambda: _start_session(
+                self._dsn,
+                actor,
+                command,
+                request_digest=request_digest,
+                now=now,
+                telemetry=telemetry,
+            )
+        )
+        self._emit("record.start_session", telemetry, outcome)
+        return outcome
+
+    def record_fact(
+        self,
+        actor: Actor,
+        command: SessionFactCommand,
+        *,
+        request_digest: bytes,
+        now: datetime,
+        telemetry: TelemetryContext,
+    ) -> SessionReceipt | RecordProblem:
+        outcome = recover_ambiguous_commit(
+            lambda: _record_session_fact(
+                self._dsn,
+                actor,
+                command,
+                request_digest=request_digest,
+                now=now,
+                telemetry=telemetry,
+            )
+        )
+        self._emit("record.record_session_fact", telemetry, outcome)
+        return outcome
+
+    def for_ticket(
+        self,
+        actor: Actor,
+        ticket_id: UUID,
+        project_key: str,
+        *,
+        telemetry: TelemetryContext,
+    ) -> TicketSessionList | RecordProblem:
+        outcome = _ticket_sessions(self._dsn, actor, ticket_id, project_key)
+        self._emit("record.ticket_sessions", telemetry, outcome)
+        return outcome
+
+    def for_project(
+        self,
+        actor: Actor,
+        project_key: str,
+        *,
+        cursor: int,
+        limit: int,
+        telemetry: TelemetryContext,
+    ) -> ProjectSessionPage | RecordProblem:
+        outcome = _project_sessions(self._dsn, actor, project_key, cursor=cursor, limit=limit)
+        self._emit("record.project_sessions", telemetry, outcome)
+        return outcome
+
+    def _emit(self, name: str, telemetry: TelemetryContext, outcome: object) -> None:
+        self._telemetry.emit(
+            name,
+            telemetry,
+            outcome="error" if isinstance(outcome, RecordProblem) else "ok",
+            reason=outcome.code if isinstance(outcome, RecordProblem) else "committed",
+        )
+
+
 class PostgresRecord:
     """Password-agnostic Postgres implementation of atomic Record commands."""
 
@@ -210,6 +306,7 @@ class PostgresRecord:
         self._standby_dsn = standby_dsn
         self._telemetry = telemetry or NoopTelemetry()
         self.seat_credentials = _PostgresSeatCredentials(dsn, telemetry=self._telemetry)
+        self.work_sessions = _PostgresWorkSessions(dsn, telemetry=self._telemetry)
 
     def authorize_bootstrap(
         self, capability_digest: bytes, *, origin: str, now: datetime

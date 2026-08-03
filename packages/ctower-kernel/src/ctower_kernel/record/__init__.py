@@ -24,6 +24,7 @@ from ctower_kernel.record.interface import (
     TicketCommandResult,
     TicketTimeline,
     TimelineEvent,
+    WorkSessionStore,
     credential_scope_refusal,
 )
 
@@ -50,6 +51,7 @@ __all__ = [
     "TicketCommandResult",
     "TicketTimeline",
     "TimelineEvent",
+    "WorkSessionStore",
     "credential_scope_refusal",
     "intake",
 ]

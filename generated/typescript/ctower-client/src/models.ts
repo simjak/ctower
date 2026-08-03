@@ -1,5 +1,5 @@
 // DO NOT EDIT: generated file; regenerate from declared inputs.
-// Authored contract digest: sha256:897d0904c0761ce19e89e96d0b2d2b85485582770b37abdcc9765cbdf924e5fb
+// Authored contract digest: sha256:1f61ab130cdc302ab1fee3d1dc4170e6327c88c7f1354f83490bc5b612d95abb
 
 export type ActivityClass = "work" | "verification";
 
@@ -49,7 +49,7 @@ export type AssignmentList = Readonly<{
   readonly "ticket_id": string;
 }>;
 
-export type AuditEvent = TicketCreatedAuditEvent | CustodyTransferredAuditEvent | TicketCommentAddedAuditEvent | WorkChangedAuditEvent | WorkflowChangedAuditEvent | ProofChangedAuditEvent;
+export type AuditEvent = TicketCreatedAuditEvent | CustodyTransferredAuditEvent | TicketCommentAddedAuditEvent | WorkChangedAuditEvent | WorkflowChangedAuditEvent | ProofChangedAuditEvent | SessionStartedAuditEvent | SessionTransitionedAuditEvent | SessionClosedAuditEvent;
 
 export type AuditPage = Readonly<{
   readonly "events": ReadonlyArray<AuditEvent>;
@@ -865,7 +865,7 @@ export type PriorityChangedAuditData = Readonly<{
 }>;
 
 export type Problem = Readonly<{
-  readonly "code": "bootstrap-consumed" | "bootstrap-expired" | "bootstrap-nonempty" | "bootstrap-origin" | "bundle-base-conflict" | "bundle-compatibility-refused" | "bundle-digest-mismatch" | "bundle-grant-refused" | "bundle-independence-refused" | "bundle-no-effect-refused" | "bundle-not-active" | "bundle-plan-mismatch" | "bundle-recovery-unavailable" | "bundle-reference-invalid" | "bundle-schema-invalid" | "bundle-security-refused" | "credential-already-revoked" | "credential-digest-conflict" | "credential-issuance-refused" | "credential-revocation-refused" | "credential-revoked" | "credential-scope-denied" | "durability_pending" | "i1-7c-required" | "idempotency-conflict" | "intake-already-promoted" | "intake-promotion-ineligible" | "intake-source-project-mismatch" | "intake-source-conflict" | "migration-alias-conflict" | "migration-capability-denied" | "migration-correction-conflict" | "migration-digest-mismatch" | "migration-export-nondeterminism" | "migration-fence-detected" | "migration-import-finalization-refused" | "migration-operation-drift" | "migration-relation-invalid" | "migration-run-conflict" | "migration-signature-invalid" | "migration-source-selection-drift" | "migration-source-tainted" | "poison-not-found" | "prohibited-data-class" | "project-delivery-unavailable" | "project-grant-required" | "project-scope-denied" | "request-body-too-large" | "proof-candidate-author-mismatch" | "proof-candidate-digest-invalid" | "proof-candidate-digest-not-current" | "proof-candidate-unchanged" | "proof-criteria-already-frozen" | "proof-criteria-invalid" | "proof-criteria-policy-mismatch" | "proof-criterion-unknown" | "proof-current-evidence-missing" | "proof-evidence-digest-mismatch" | "proof-evidence-id-conflict" | "proof-protected-authority-required" | "proof-policy-mismatch" | "proof-policy-pin-mismatch" | "proof-self-review-refused" | "proof-verdict-id-conflict" | "seat-binding-conflict" | "seat-credential-active" | "seat-credential-unavailable" | "seat-display-name-conflict" | "tenant-scope-denied" | "ticket-comment-ineligible" | "ticket-comment-invalid" | "unauthorized" | "validation-error" | "version-conflict" | "work-assignment-kind-refused" | "work-assignment-target-ineligible" | "work-assignment-unchanged" | "work-priority-unchanged" | "work-blocker-already-resolved" | "work-blocker-id-conflict" | "work-blocker-owner-ineligible" | "work-blocker-unknown" | "work-intent-unmet" | "work-relation-cycle" | "work-relation-exists" | "work-reopen-unmet" | "work-ticket-terminal" | "workflow-already-started" | "workflow-pin-mismatch" | "workflow-predicate-unsatisfied" | "workflow-run-not-started" | "proof-incomplete" | "workflow-state-conflict" | "workflow-terminal" | "workflow-transition-not-declared" | "workflow-version-unknown" | "workflow-not-terminal";
+  readonly "code": "bootstrap-consumed" | "bootstrap-expired" | "bootstrap-nonempty" | "bootstrap-origin" | "bundle-base-conflict" | "bundle-compatibility-refused" | "bundle-digest-mismatch" | "bundle-grant-refused" | "bundle-independence-refused" | "bundle-no-effect-refused" | "bundle-not-active" | "bundle-plan-mismatch" | "bundle-recovery-unavailable" | "bundle-reference-invalid" | "bundle-schema-invalid" | "bundle-security-refused" | "credential-already-revoked" | "credential-digest-conflict" | "credential-issuance-refused" | "credential-revocation-refused" | "credential-revoked" | "credential-scope-denied" | "durability_pending" | "i1-7c-required" | "idempotency-conflict" | "intake-already-promoted" | "intake-promotion-ineligible" | "intake-source-project-mismatch" | "intake-source-conflict" | "migration-alias-conflict" | "migration-capability-denied" | "migration-correction-conflict" | "migration-digest-mismatch" | "migration-export-nondeterminism" | "migration-fence-detected" | "migration-import-finalization-refused" | "migration-operation-drift" | "migration-relation-invalid" | "migration-run-conflict" | "migration-signature-invalid" | "migration-source-selection-drift" | "migration-source-tainted" | "poison-not-found" | "prohibited-data-class" | "project-delivery-unavailable" | "project-grant-required" | "project-scope-denied" | "request-body-too-large" | "proof-candidate-author-mismatch" | "proof-candidate-digest-invalid" | "proof-candidate-digest-not-current" | "proof-candidate-unchanged" | "proof-criteria-already-frozen" | "proof-criteria-invalid" | "proof-criteria-policy-mismatch" | "proof-criterion-unknown" | "proof-current-evidence-missing" | "proof-evidence-digest-mismatch" | "proof-evidence-id-conflict" | "proof-protected-authority-required" | "proof-policy-mismatch" | "proof-policy-pin-mismatch" | "proof-self-review-refused" | "proof-verdict-id-conflict" | "seat-binding-conflict" | "seat-credential-active" | "seat-credential-unavailable" | "seat-display-name-conflict" | "session-ineligible" | "session-not-found" | "session-transition-invalid" | "tenant-scope-denied" | "ticket-comment-ineligible" | "ticket-comment-invalid" | "unauthorized" | "validation-error" | "version-conflict" | "work-assignment-kind-refused" | "work-assignment-target-ineligible" | "work-assignment-unchanged" | "work-priority-unchanged" | "work-blocker-already-resolved" | "work-blocker-id-conflict" | "work-blocker-owner-ineligible" | "work-blocker-unknown" | "work-intent-unmet" | "work-relation-cycle" | "work-relation-exists" | "work-reopen-unmet" | "work-ticket-terminal" | "workflow-already-started" | "workflow-pin-mismatch" | "workflow-predicate-unsatisfied" | "workflow-run-not-started" | "proof-incomplete" | "workflow-state-conflict" | "workflow-terminal" | "workflow-transition-not-declared" | "workflow-version-unknown" | "workflow-not-terminal";
   readonly "command_id"?: string | null;
   readonly "current_version"?: number | null;
   readonly "detail": string;
@@ -946,6 +946,12 @@ export type ProjectDeliveryView = Readonly<{
   readonly "rows": ReadonlyArray<ProjectDeliveryRow>;
   readonly "schema": "ctower.project-delivery/v1";
   readonly "source_record_position": number;
+}>;
+
+export type ProjectSessionPage = Readonly<{
+  readonly "next_cursor": number | null;
+  readonly "project_key": string;
+  readonly "sessions": ReadonlyArray<TicketSession>;
 }>;
 
 export type ProjectionHealth = "CURRENT" | "STATE_UNKNOWN";
@@ -1060,6 +1066,121 @@ export type SeatCredentialRevocationRequest = Readonly<{
 export type SecretBindingReference = Readonly<{
   readonly "name": string;
   readonly "reference_class": "os-credential" | "vault-path" | "runtime-binding";
+}>;
+
+export type SessionCloseFact = Readonly<{
+  readonly "evidence_ref": string | null;
+  readonly "input_tokens": number;
+  readonly "kind": "close";
+  readonly "outcome": SessionOutcome;
+  readonly "output_tokens": number;
+}>;
+
+export type SessionClosedAuditEvent = Readonly<{
+  readonly "actor_principal_id": string;
+  readonly "command_id": string;
+  readonly "event_hash": string;
+  readonly "event_id": string;
+  readonly "kind": "session.closed";
+  readonly "occurred_at": string;
+  readonly "payload": SessionClosedPayload;
+  readonly "record_position": number;
+  readonly "sequence": number;
+  readonly "stream_id": string;
+}>;
+
+export type SessionClosedPayload = Readonly<{
+  readonly "duration_seconds": number;
+  readonly "evidence_ref": string | null;
+  readonly "input_tokens": number;
+  readonly "outcome": SessionOutcome;
+  readonly "output_tokens": number;
+  readonly "session_id": string;
+  readonly "ticket_id": string;
+}>;
+
+export type SessionFactRequest = Readonly<{
+  readonly "fact": SessionTransitionFact | SessionCloseFact;
+}>;
+
+export type SessionOutcome = "delivered" | "blocked" | "abandoned" | "failed";
+
+export type SessionReceipt = Readonly<{
+  readonly "command_id": string;
+  readonly "durability_state": DurabilityState;
+  readonly "event_id": string;
+  readonly "session_id": string;
+  readonly "state": SessionState;
+  readonly "ticket_id": string;
+}>;
+
+export type SessionStartRequest = Readonly<{
+  readonly "branch_ref": string;
+  readonly "crew_name": string;
+  readonly "harness_ref": string;
+  readonly "model_ref": string;
+  readonly "seat_key": string;
+  readonly "worktree_ref": string;
+}>;
+
+export type SessionStartedAuditEvent = Readonly<{
+  readonly "actor_principal_id": string;
+  readonly "command_id": string;
+  readonly "event_hash": string;
+  readonly "event_id": string;
+  readonly "kind": "session.started";
+  readonly "occurred_at": string;
+  readonly "payload": SessionStartedPayload;
+  readonly "record_position": number;
+  readonly "sequence": number;
+  readonly "stream_id": string;
+}>;
+
+export type SessionStartedPayload = Readonly<{
+  readonly "branch_ref": string;
+  readonly "crew_name": string;
+  readonly "harness_ref": string;
+  readonly "model_ref": string;
+  readonly "seat_key": string;
+  readonly "session_id": string;
+  readonly "ticket_id": string;
+  readonly "worktree_ref": string;
+}>;
+
+export type SessionState = "dispatched" | "briefed" | "working" | "gated";
+
+export type SessionTokenUsage = Readonly<{
+  readonly "input_tokens": number;
+  readonly "output_tokens": number;
+  readonly "total_tokens": number;
+}>;
+
+export type SessionTransitionFact = Readonly<{
+  readonly "kind": "transition";
+  readonly "reason": string;
+  readonly "to_state": SessionState;
+}>;
+
+export type SessionTransitionedAuditEvent = Readonly<{
+  readonly "actor_principal_id": string;
+  readonly "command_id": string;
+  readonly "event_hash": string;
+  readonly "event_id": string;
+  readonly "kind": "session.transitioned";
+  readonly "occurred_at": string;
+  readonly "payload": SessionTransitionedPayload;
+  readonly "record_position": number;
+  readonly "sequence": number;
+  readonly "stream_id": string;
+}>;
+
+export type SessionTransitionedPayload = Readonly<{
+  readonly "from_state": SessionState;
+  readonly "reason": string;
+  readonly "session_id": string;
+  readonly "ticket_id": string;
+  readonly "to_state": SessionState;
+  readonly "transition_number": number;
 }>;
 
 export type SourceReference = Readonly<{
@@ -1198,6 +1319,31 @@ export type TicketResource = Readonly<{
   readonly "ticket_id": string;
   readonly "title": string;
   readonly "version": number;
+}>;
+
+export type TicketSession = Readonly<{
+  readonly "branch_ref": string;
+  readonly "closed_at": string | null;
+  readonly "crew_name": string;
+  readonly "duration_seconds": number | null;
+  readonly "evidence_ref": string | null;
+  readonly "harness_ref": string;
+  readonly "model_ref": string;
+  readonly "outcome": SessionOutcome | null;
+  readonly "project_key": string;
+  readonly "seat_key": string;
+  readonly "session_id": string;
+  readonly "started_at": string;
+  readonly "state": SessionState;
+  readonly "ticket_id": string;
+  readonly "tokens": SessionTokenUsage | null;
+  readonly "transition_count": number;
+  readonly "worktree_ref": string;
+}>;
+
+export type TicketSessionList = Readonly<{
+  readonly "sessions": ReadonlyArray<TicketSession>;
+  readonly "ticket_id": string;
 }>;
 
 export type TimelineEvent = Readonly<{

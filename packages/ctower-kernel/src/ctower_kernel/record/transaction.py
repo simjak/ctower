@@ -28,22 +28,27 @@ __all__ = [
     "lock_project_delivery_scope",
     "project_delivery_scope_transaction",
     "project_mutation_refusal",
+    "project_scope_refusal",
     "recover_ambiguous_commit",
 ]
 
 _CONNECT_TIMEOUT_SECONDS = 2
 
 
-def project_mutation_refusal(
+def project_scope_refusal(
     connection: psycopg.Connection[dict[str, object]],
     *,
     tenant_id: UUID,
     principal_id: UUID,
-    command_id: UUID,
-    ticket_ids: tuple[UUID, ...] = (),
-    project_keys: tuple[str, ...] = (),
+    project_keys: tuple[str, ...],
+    command_id: UUID | None = None,
 ) -> RecordProblem | None:
-    """Refuse a non-operator mutation outside its persisted project-seat grant."""
+    """Refuse a non-operator principal reaching outside its persisted project grants.
+
+    This is the one place `project-scope-denied` is constructed. The mutation seam
+    below resolves ticket ownership first and then asks exactly this question, so a
+    read and a write can never disagree about who may see one project's facts.
+    """
 
     principal = connection.execute(
         "SELECT kind FROM principals WHERE tenant_id = %s AND principal_id = %s",
@@ -51,15 +56,7 @@ def project_mutation_refusal(
     ).fetchone()
     if principal is not None and principal["kind"] == "operator":
         return None
-    rows = connection.execute(
-        """
-        SELECT DISTINCT project_key
-        FROM tickets
-        WHERE tenant_id = %s AND ticket_id = ANY(%s)
-        """,
-        (tenant_id, list(ticket_ids)),
-    ).fetchall()
-    requested = {str(row["project_key"]) for row in rows} | set(project_keys)
+    requested = set(project_keys)
     if not requested:
         return None
     grants = {
@@ -77,9 +74,38 @@ def project_mutation_refusal(
         return None
     return RecordProblem(
         code="project-scope-denied",
-        detail="The authenticated project seat cannot mutate a ticket from another project.",
+        detail="The authenticated project seat cannot reach a ticket from another project.",
         status=403,
         title="Project scope denied",
+        command_id=command_id,
+    )
+
+
+def project_mutation_refusal(
+    connection: psycopg.Connection[dict[str, object]],
+    *,
+    tenant_id: UUID,
+    principal_id: UUID,
+    command_id: UUID,
+    ticket_ids: tuple[UUID, ...] = (),
+    project_keys: tuple[str, ...] = (),
+) -> RecordProblem | None:
+    """Refuse a non-operator mutation outside its persisted project-seat grant."""
+
+    rows = connection.execute(
+        """
+        SELECT DISTINCT project_key
+        FROM tickets
+        WHERE tenant_id = %s AND ticket_id = ANY(%s)
+        """,
+        (tenant_id, list(ticket_ids)),
+    ).fetchall()
+    requested = {str(row["project_key"]) for row in rows} | set(project_keys)
+    return project_scope_refusal(
+        connection,
+        tenant_id=tenant_id,
+        principal_id=principal_id,
+        project_keys=tuple(requested),
         command_id=command_id,
     )
 
