@@ -1,0 +1,182 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="color-scheme" content="light dark">
+<meta name="theme-color" content="#ffffff">
+<title>Heartbeats · ctower</title>
+<link rel="stylesheet" href="app.css">
+<script>
+  /* before first paint, so a dark-theme reader never sees a white flash */
+  try {
+    if (localStorage.getItem('ctower-theme') === 'dark') {
+      document.documentElement.classList.add('theme-dark');
+    }
+  } catch (e) {}
+</script>
+</head>
+<body>
+
+<header class="top">
+  <div class="top-row">
+    <span class="mark">
+      <svg width="20" height="20" viewBox="0 0 20 20" fill="none" aria-hidden="true">
+        <rect x=".75" y=".75" width="18.5" height="18.5" rx="5.25" stroke="var(--line-2)"/>
+        <circle cx="10" cy="5.4" r="1.7" fill="var(--accent)"/>
+        <path d="M10 7.8v6.4" stroke="var(--ink)" stroke-width="1.6" stroke-linecap="round"/>
+        <path d="M6.5 8.6a4.4 4.4 0 0 0 0 3.6" stroke="var(--ink-3)" stroke-width="1.3" stroke-linecap="round"/>
+        <path d="M13.5 8.6a4.4 4.4 0 0 1 0 3.6" stroke="var(--ink-3)" stroke-width="1.3" stroke-linecap="round"/>
+      </svg>
+      <b>ctower</b><span class="sep">/</span><span class="where">Heartbeats</span>
+    </span>
+    <span class="grow"></span>
+    <span class="instance"><span class="dot"></span>shadow<span class="mono">091c4b44</span></span>
+    <button class="tt" type="button" data-theme-toggle aria-label="Switch between light and dark theme">
+      <svg class="i-moon" width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden="true">
+        <path d="M14 9.3A6 6 0 0 1 6.7 2 6 6 0 1 0 14 9.3Z" stroke="currentColor" stroke-width="1.3" stroke-linejoin="round"/>
+      </svg>
+      <svg class="i-sun" width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden="true">
+        <circle cx="8" cy="8" r="3.1" stroke="currentColor" stroke-width="1.3"/>
+        <path d="M8 1v1.6M8 13.4V15M15 8h-1.6M2.6 8H1M12.95 3.05l-1.13 1.13M4.18 11.82l-1.13 1.13M12.95 12.95l-1.13-1.13M4.18 4.18L3.05 3.05"
+              stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/>
+      </svg>
+    </button>
+  </div>
+<nav class="nav" aria-label="Sections">
+  <a href="board.html">Board</a>
+  <a href="ticket.html">Ticket</a>
+  <a href="workflow.html">Workflow</a>
+  <a href="heartbeats.html" class="on" aria-current="page">Heartbeats</a>
+  <a href="metrics.html">Metrics</a>
+  <a href="inbox.html">Inbox</a>
+  <a href="feed.html">Feed</a>
+  <a href="files.html">Files</a>
+  <a href="workspace.html">Workspace</a>
+  <a href="explorer.html">Explorer</a>
+</nav>
+</header>
+
+<main class="page"><div class="wrap">
+  <div class="lede">
+    <h1>Heartbeats</h1>
+    <p>Every scheduled wake in the portfolio: which seat owns it, the schedule it is registered
+       under, when it last fired, when it fires next, and whether it is still arriving. A beat that
+       stops arriving is how a seat goes quiet without anyone noticing.</p>
+  </div>
+
+  <div class="totals" style="padding:16px 0 0">
+    <div class="tgrid">
+      <div><div class="k">Registered beats</div><div class="v">9</div></div>
+      <div><div class="k">Arriving</div><div class="v">7</div></div>
+      <div><div class="k">Late</div><div class="v">1</div></div>
+      <div><div class="k">Not arriving</div><div class="v">1</div></div>
+    </div>
+  </div>
+
+  <section class="panel" style="margin-top:16px">
+    <header><h2>Cadence registry</h2><span class="sub">4 seats · swept 08:34:10</span></header>
+    <div class="tbl">
+      <div class="tbl-head">
+        <div>Seat</div><div>Beat</div><div>Schedule</div><div>Last fire</div><div>Next fire</div><div>Health</div>
+      </div>
+      <div class="hb">
+        <div class="cell c-seat"><span class="lbl">seat</span>director</div>
+        <div class="cell c-beat"><span class="lbl">beat</span>portfolio-sweep</div>
+        <div class="cell c-cron"><span class="lbl">cron</span><span class="mono">*/30 * * * *</span></div>
+        <div class="cell c-last"><span class="lbl">last fire</span><span class="mono">08:30:04</span></div>
+        <div class="cell c-next"><span class="lbl">next fire</span><span class="mono">09:00:00</span></div>
+        <div class="cell c-health"><span class="verdict v-pass">alive</span></div>
+      </div>
+      <div class="hb">
+        <div class="cell c-seat"><span class="lbl">seat</span>ctower-commander</div>
+        <div class="cell c-beat"><span class="lbl">beat</span>ctower-migration-drive</div>
+        <div class="cell c-cron"><span class="lbl">cron</span><span class="mono">*/15 * * * *</span></div>
+        <div class="cell c-last"><span class="lbl">last fire</span><span class="mono">08:15:22</span></div>
+        <div class="cell c-next"><span class="lbl">next fire</span><span class="mono">08:30:00</span></div>
+        <div class="cell c-health"><span class="verdict v-pass">alive</span></div>
+      </div>
+      <div class="hb">
+        <div class="cell c-seat"><span class="lbl">seat</span>ctower-commander</div>
+        <div class="cell c-beat"><span class="lbl">beat</span>ctower-beat-watchdog</div>
+        <div class="cell c-cron"><span class="lbl">cron</span><span class="mono">*/9 * * * *</span></div>
+        <div class="cell c-last"><span class="lbl">last fire</span><span class="mono">08:27:01</span></div>
+        <div class="cell c-next"><span class="lbl">next fire</span><span class="mono">08:36:00</span></div>
+        <div class="cell c-health"><span class="verdict v-pass">alive</span></div>
+      </div>
+      <div class="hb">
+        <div class="cell c-seat"><span class="lbl">seat</span>manibo-commander</div>
+        <div class="cell c-beat"><span class="lbl">beat</span>delivery-beat</div>
+        <div class="cell c-cron"><span class="lbl">cron</span><span class="mono">*/20 * * * *</span></div>
+        <div class="cell c-last"><span class="lbl">last fire</span><span class="mono">08:20:11</span></div>
+        <div class="cell c-next"><span class="lbl">next fire</span><span class="mono">08:40:00</span></div>
+        <div class="cell c-health"><span class="verdict v-pass">alive</span></div>
+      </div>
+      <div class="hb">
+        <div class="cell c-seat"><span class="lbl">seat</span>commander-bhloop</div>
+        <div class="cell c-beat"><span class="lbl">beat</span>bhloop-beat</div>
+        <div class="cell c-cron"><span class="lbl">cron</span><span class="mono">*/20 * * * *</span></div>
+        <div class="cell c-last"><span class="lbl">last fire</span><span class="mono">07:41:38</span></div>
+        <div class="cell c-next"><span class="lbl">next fire</span><span class="mono">08:01:00</span></div>
+        <div class="cell c-health"><span class="verdict v-changes">late</span></div>
+        <div class="why">two fires missed — the seat is mid-turn on the #152 runner lane and has not re-armed</div>
+      </div>
+      <div class="hb">
+        <div class="cell c-seat"><span class="lbl">seat</span>devops</div>
+        <div class="cell c-beat"><span class="lbl">beat</span>platform-health-monitor</div>
+        <div class="cell c-cron"><span class="lbl">cron</span><span class="mono">*/10 * * * *</span></div>
+        <div class="cell c-last"><span class="lbl">last fire</span><span class="mono">08:30:12</span></div>
+        <div class="cell c-next"><span class="lbl">next fire</span><span class="mono">08:40:00</span></div>
+        <div class="cell c-health"><span class="verdict v-pass">alive</span></div>
+      </div>
+      <div class="hb">
+        <div class="cell c-seat"><span class="lbl">seat</span>devops</div>
+        <div class="cell c-beat"><span class="lbl">beat</span>fleet-drive (launchd)</div>
+        <div class="cell c-cron"><span class="lbl">cron</span><span class="mono">every 5m</span></div>
+        <div class="cell c-last"><span class="lbl">last fire</span><span class="mono">08:31:40</span></div>
+        <div class="cell c-next"><span class="lbl">next fire</span><span class="mono">08:36:00</span></div>
+        <div class="cell c-health"><span class="verdict v-pass">alive</span></div>
+      </div>
+      <div class="hb">
+        <div class="cell c-seat"><span class="lbl">seat</span>triage</div>
+        <div class="cell c-beat"><span class="lbl">beat</span>paperclip-health-check</div>
+        <div class="cell c-cron"><span class="lbl">cron</span><span class="mono">0 */6 * * *</span></div>
+        <div class="cell c-last"><span class="lbl">last fire</span><span class="mono">06:00:03</span></div>
+        <div class="cell c-next"><span class="lbl">next fire</span><span class="mono">12:00:00</span></div>
+        <div class="cell c-health"><span class="verdict v-pass">alive</span></div>
+      </div>
+      <div class="hb">
+        <div class="cell c-seat"><span class="lbl">seat</span>commander</div>
+        <div class="cell c-beat"><span class="lbl">beat</span>silent-crew floor</div>
+        <div class="cell c-cron"><span class="lbl">cron</span><span class="mono">37 * * * *</span></div>
+        <div class="cell c-last"><span class="lbl">last fire</span><span class="mono">03:37:02</span></div>
+        <div class="cell c-next"><span class="lbl">next fire</span><span class="mono">08:37:00</span></div>
+        <div class="cell c-health"><span class="verdict v-held">dead</span></div>
+        <div class="why dead">five fires missed — cron is registered but the seat's session is gone; respawn to re-arm</div>
+      </div>
+    </div>
+  </section>
+
+  <div class="foot">
+    <span>ctower · shadow instance 091c4b44</span>
+    <span>SHADOW_ONLY_CP3_D_NOT_PROVEN</span>
+    <span>2026-08-02 08:34 Europe/Vilnius</span>
+  </div>
+</div></main>
+
+<script>
+  (function () {
+    var btn = document.querySelector('[data-theme-toggle]');
+    var root = document.documentElement;
+    var sync = function () { btn.setAttribute('aria-pressed', String(root.classList.contains('theme-dark'))); };
+    btn.addEventListener('click', function () {
+      var dark = root.classList.toggle('theme-dark');
+      try { localStorage.setItem('ctower-theme', dark ? 'dark' : 'light'); } catch (e) {}
+      sync();
+    });
+    sync();
+  })();
+</script>
+
+</body>
+</html>

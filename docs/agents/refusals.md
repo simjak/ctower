@@ -1,8 +1,11 @@
 # Refusals
 
 ctower refuses with a typed problem document rather than a generic error. The `code` field is a closed
-enumeration of **83 values** declared in `contracts/http/openapi.yaml`. If you see a code that is not on this
-page, the contract changed and this page is a defect.
+enumeration of **96 values** declared in `contracts/http/openapi.yaml`. If you see a code that is not on this
+page, the contract changed and this page is a defect. Twelve codes from the project-seat credential surface
+(`credential-*`, `seat-*`, `project-grant-required`, `project-scope-denied`) are not yet grouped below; the
+ones you are most likely to meet are described in
+[Seat credential issuance](../operations/seat-credential-issuance.md).
 
 The point of the enumeration is that a caller can branch on it. This page groups every code by **what you
 should do about it**.
@@ -14,11 +17,12 @@ should do about it**.
 | `type` | yes | URI identifying the problem type |
 | `title` | yes | Short human summary |
 | `status` | yes | HTTP status, 400–599 |
-| `code` | yes | One of the 83 values below |
+| `code` | yes | One of the 96 values below |
 | `detail` | yes | Human-readable specifics |
 | `command_id` | no | Correlates to your idempotency key |
 | `current_version` | no | The server's actual version, on version conflicts |
 | `unmet_facts` | no | Exactly which preconditions were missing |
+| `prohibited_classes` | no | Exactly which prohibited data classes were detected, by stable name |
 
 The CLI writes the problem document to **stderr** and exits `69`.
 
@@ -31,6 +35,7 @@ The CLI writes the problem document to **stderr** and exits `69`.
 | `idempotency-conflict` | Same key, different semantics | You have a bug. Do not retry. Either replay the original content or use a new key for genuinely new content |
 | `validation-error` | The request shape is wrong | Fix the request. Never retry unchanged |
 | `unauthorized`, `tenant-scope-denied` | Credential or scope problem | Escalate. Do not retry with the same credential |
+| `prohibited-data-class` | The submission carries data ctower may not hold | **Terminal for that item.** Do not redact and resubmit; record the named class and stop |
 | anything `workflow-*` | A pin, predicate, or declared-transition problem | Read `unmet_facts`. Satisfy the named fact, then act |
 | anything `proof-*` | Criteria, evidence, or verdict problem | Read below. Most are permanent until you produce different evidence |
 | anything `*-unchanged` | The mutation would be a no-op | Treat as already-done, not as failure |
@@ -161,6 +166,21 @@ response, not a transient state.
 produced. `intake-promotion-ineligible` means this event cannot become a ticket in its current state — read
 the thread rather than retrying. `intake-source-conflict` means the same source reference is already
 recorded against different content; nothing changed.
+
+### Prohibited data classes (1)
+
+`prohibited-data-class`
+
+Intake and Evidence refuse the five classes D30 clause 3 names, before any byte, event, object, Evidence, or
+outbox row commits. The refusal carries `prohibited_classes` — one or more of `credential_material`,
+`production_customer_data`, `phi_hipaa_covered`, `pii_beyond_staff_identity`, `live_incident_indicator` — and
+never echoes the offending content back to you.
+
+This one is **terminal for the item**, not for the credential: nothing was written, so there is no state to
+reconcile, and there is no flag that admits it. Carry a typed vault/credential reference instead of a secret
+value, a source-host artifact ID instead of customer content, a D11 control reference or de-identified
+control ID instead of anything clinical, a staff work handle instead of personal identity, and a
+retrospective control reference instead of a live incident indicator.
 
 ### Projections and operations (2)
 
