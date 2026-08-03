@@ -6,6 +6,7 @@ import { StateGlyph } from "@/frame/StateGlyph";
 import { recordAdapter, SOURCE_LABELS } from "@/read/adapter";
 import type { CrewRoster, CrewRow, ModelShare, ProjectRoster, TailNote } from "@/read/interface";
 import { ChoiceTabs } from "@/surfaces/ChoiceTabs";
+import type { TabCount } from "@/surfaces/ChoiceTabs";
 import { readParam } from "@/surfaces/screenParams";
 
 export const dynamic = "force-dynamic";
@@ -246,6 +247,19 @@ function Lede(): ReactElement {
   );
 }
 
+/**
+ * A filter chip's number, carrying the unit it counts in. Each one counts what
+ * clicking it would reveal *under the other filter*, which is why the detail
+ * says so rather than leaving the reader to assume a fleet-wide number.
+ */
+function crews(count: number): TabCount {
+  return {
+    value: count,
+    unit: count === 1 ? "crew" : "crews",
+    detail: `${count.toString()} live ${count === 1 ? "crew" : "crews"} this filter would show, counted under the other filter's current selection`,
+  };
+}
+
 function TeamBody({ roster }: { readonly roster: CrewRoster }): ReactElement {
   // the design audit's F-004 rule, applied to the row flag: the first offending
   // row carries the whole sentence, every later one carries the fact alone
@@ -267,11 +281,11 @@ function TeamBody({ roster }: { readonly roster: CrewRoster }): ReactElement {
             selected={roster.selectedProject ?? ""}
             keeping={keeping}
             choices={[
-              { key: "", label: "All projects", count: roster.allProjectsCount },
+              { key: "", label: "All projects", count: crews(roster.allProjectsCount) },
               ...roster.projectFilters.map((filter) => ({
                 key: filter.key,
                 label: filter.label,
-                count: filter.count,
+                count: crews(filter.count),
               })),
             ]}
           />
@@ -283,11 +297,11 @@ function TeamBody({ roster }: { readonly roster: CrewRoster }): ReactElement {
             selected={roster.selectedSeat ?? ""}
             keeping={keepingSeat}
             choices={[
-              { key: "", label: "All seats", count: roster.allSeatsCount },
+              { key: "", label: "All seats", count: crews(roster.allSeatsCount) },
               ...roster.seatFilters.map((filter) => ({
                 key: filter.key,
                 label: filter.label,
-                count: filter.count,
+                count: crews(filter.count),
               })),
             ]}
           />

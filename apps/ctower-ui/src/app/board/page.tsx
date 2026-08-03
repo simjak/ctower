@@ -2,6 +2,7 @@ import type { ReactElement, ReactNode } from "react";
 import { Chrome } from "@/frame/Chrome";
 import { Resolved } from "@/frame/Declared";
 import { RecordFoot } from "@/frame/RecordFoot";
+import { landsText, NO_PROJECT_SCOPE } from "@/read/futureSources";
 import { StateGlyph } from "@/frame/StateGlyph";
 import { recordAdapter } from "@/read/adapter";
 import { sourceKindOf, unresolvedSources } from "@/read/boardProjection";
@@ -9,6 +10,7 @@ import type { BoardEntry, BoardSnapshot } from "@/read/interface";
 import { LaneCard } from "@/surfaces/board/LaneCard";
 import { SourceTabs } from "@/surfaces/board/SourceTabs";
 import { UnreadSources } from "@/surfaces/board/UnreadSources";
+import { Count } from "@/surfaces/Count";
 import type { SourceTab } from "@/surfaces/board/SourceTabs";
 import {
   ALL_SOURCES,
@@ -43,13 +45,14 @@ function tabsFor(entries: readonly BoardEntry[], kinds: readonly string[]): read
 function Counters({ entries }: { readonly entries: readonly BoardEntry[] }): ReactElement {
   return (
     <span className="counters">
+      {/* a glyph is not a label: each counter says what it counts (#239) */}
       <span className="ctr c-flight">
         <StateGlyph name="flight" />
-        <span className="n">{countInFlight(entries)}</span>
+        <Count value={countInFlight(entries)} unit="in flight" />
       </span>
       <span className="ctr c-held">
         <StateGlyph name="held" />
-        <span className="n">{countHeld(entries)}</span>
+        <Count value={countHeld(entries)} unit="held" />
       </span>
     </span>
   );
@@ -62,7 +65,7 @@ function StageJump({ entries }: { readonly entries: readonly BoardEntry[] }): Re
         <a className="sj" href={`#${column.anchor}`} key={column.lane}>
           <i className={`bar ${column.bar}`} />
           {column.title.toLowerCase()}{" "}
-          <span className="n">{inLane(entries, column.lane).length}</span>
+          <Count value={inLane(entries, column.lane).length} unit="cards" />
         </a>
       ))}
     </nav>
@@ -129,7 +132,7 @@ function BoardBody({
         <div className="wrap">
           <RecordFoot
             readPath="/v1/board + /v1/tickets/{id}"
-            watermark={`projection ${snapshot.health.toLowerCase()} · watermark ${snapshot.projectionWatermark.toString()} of ${snapshot.sourceWatermark.toString()} · columns are the record's lanes, project scoping lands with #185`}
+            watermark={`projection ${snapshot.health.toLowerCase()} · watermark ${snapshot.projectionWatermark.toString()} of ${snapshot.sourceWatermark.toString()} · columns are the record's lanes, project scoping ${landsText(NO_PROJECT_SCOPE)}`}
           />
         </div>
       </div>

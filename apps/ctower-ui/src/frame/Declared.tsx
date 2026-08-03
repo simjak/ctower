@@ -1,5 +1,6 @@
 import type { CSSProperties, ReactElement, ReactNode } from "react";
 import { StateGlyph } from "./StateGlyph";
+import { landsText } from "@/read/futureSources";
 import type { ReadFailure } from "@/read/bounded";
 import type { FutureSource, Reading } from "@/read/interface";
 import type { Known } from "@/read/sources/maybe";
@@ -28,34 +29,63 @@ function Frame({ children }: { readonly children: ReactElement }): ReactElement 
 }
 
 /**
+ * The line that cites the work landing a missing capability — or says plainly
+ * that nothing is filed.
+ *
+ * Round-3 QA (#241) found nine panels citing one issue that covered none of
+ * them. A citation now carries the sentence saying how that item covers this
+ * exact fact, so the claim is inspectable on the surface itself; an uncited
+ * capability says so instead of borrowing the nearest number.
+ */
+function Lands({ source }: { readonly source: FutureSource }): ReactElement | null {
+  if (source.absence === "silence") {
+    return null;
+  }
+  return (
+    <span className="req" title={source.why ?? undefined}>
+      {landsText(source)}
+    </span>
+  );
+}
+
+/**
  * The design audit found this block's full sentence repeating verbatim eight
  * times on one page: honest, and unreadable by the third repeat. The rule for
  * a page is now say-it-once — the first block on a screen carries the whole
  * explanation, every later one carries the fact and the source alone. Callers
  * mark the later ones with `brief`.
+ *
+ * The block says which of the two absences it is. "ctower does not record this"
+ * and "the record answered and holds none for this ticket" are different claims,
+ * and the second needs no roadmap pointer at all — the fact arrives the moment
+ * someone appends one.
  */
 export function NoSourceYet({
   source,
-  title = "no data source yet",
+  title,
   brief = false,
 }: {
   readonly source: FutureSource;
   readonly title?: string;
   readonly brief?: boolean;
 }): ReactElement {
+  const silent = source.absence === "silence";
+  const heading = title ?? (silent ? "the record holds none here" : "no data source yet");
+  const said = silent
+    ? `The record answered and holds no ${source.what}.`
+    : `ctower does not record ${source.what}.`;
+  const whole = silent
+    ? " The layout above is the shape this panel takes the moment one is appended; nothing below it is filled in from a guess."
+    : " The layout above is the approved shape this screen takes the moment that record exists; nothing below it is filled in from a guess.";
   return (
     <Frame>
       <div className="slot open">
         <StateGlyph name="open" />
         <div className="e">
-          <div className="k">{title}</div>
-          <div className="d">
-            {brief
-              ? `ctower does not record ${source.what}.`
-              : `ctower does not record ${source.what}. The layout above is the approved shape this screen takes the moment that record exists; nothing below it is filled in from a guess.`}
-          </div>
+          <div className="k">{heading}</div>
+          <div className="d">{brief ? said : `${said}${whole}`}</div>
           <div className="f">
-            <span className="req">lands with {source.lands}</span>
+            <Lands source={source} />
             {brief ? null : <span>read-only v1</span>}
           </div>
         </div>
@@ -153,6 +183,16 @@ const NOT_REACHED = {
   color: "var(--warn)",
 } as const;
 
+/** The same honesty as `Lands`, folded into one line for an inline hover. */
+function detailOf(source: FutureSource): string {
+  if (source.absence === "silence") {
+    return `the record answered and holds no ${source.what}`;
+  }
+  return source.why === null
+    ? `ctower does not record ${source.what} · ${landsText(source)}`
+    : `${source.why} · ${landsText(source)}`;
+}
+
 /**
  * The compact boundary, for a reading that belongs inside a row rather than in
  * a panel of its own — a board card's source and age, say.
@@ -175,7 +215,7 @@ export function InlineReading<T>({
     case "present":
       return present(reading.value);
     case "absent":
-      return missing("not recorded", `lands with ${reading.source.lands}`, {});
+      return missing("not recorded", detailOf(reading.source), {});
     case "unavailable":
       return missing("not reached", reading.failure.reason, NOT_REACHED);
   }

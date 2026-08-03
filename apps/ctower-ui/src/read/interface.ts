@@ -5,9 +5,9 @@ import type { Known } from "./sources/maybe";
 /**
  * The record-read contract this surface renders.
  *
- * Phase 1 reads the shadow instance's existing read API. When the #186 typed
- * feed lands, only `src/read/adapter.ts` changes: every screen already speaks
- * these functions and this `Reading` union, so no surface is edited to swap the
+ * Phase 1 reads the shadow instance's existing read API. When a typed feed
+ * lands, only `src/read/adapter.ts` changes: every screen already speaks these
+ * functions and this `Reading` union, so no surface is edited to swap the
  * source.
  *
  * Lane, priority, durability and projection-health are the generated contract's
@@ -26,13 +26,37 @@ export const LANES: readonly BoardLane[] = [
   "complete",
 ];
 
-/** A fact ctower does not record yet, named by the work that will record it. */
-export interface FutureSource {
-  /** The work item that lands the source, e.g. `#186` or `G5`. */
-  readonly lands: string;
-  /** What that work will start recording, in operator language. */
-  readonly what: string;
-}
+/**
+ * A fact this surface has nothing to show for, and *why* it has nothing.
+ *
+ * The two reasons are opposite claims to an operator and are never merged:
+ *
+ * * `capability` — ctower records no fact of this class yet. When a work item is
+ *   filed to land it, `lands` names that item and `why` says how it covers this
+ *   exact fact. When none is filed, `lands` is `null` and the surface says so —
+ *   round-3 QA (#241) found nine unrelated panels all citing one issue that
+ *   covered none of them, which is worse than citing nothing.
+ * * `silence` — ctower does record this class of fact and holds none for this
+ *   subject. Nothing needs to land, so there is nothing to cite.
+ *
+ * Every instance is declared once in `read/futureSources.ts`; no screen builds
+ * one inline, so a citation cannot be minted without passing that table.
+ */
+export type FutureSource =
+  | {
+      readonly absence: "capability";
+      /** What ctower does not record, in operator language. */
+      readonly what: string;
+      /** The work item that would land it, or `null` when none is filed. */
+      readonly lands: string | null;
+      /** How that item covers this fact; `null` when nothing is cited. */
+      readonly why: string | null;
+    }
+  | {
+      readonly absence: "silence";
+      /** The recorded fact this subject holds none of, in operator language. */
+      readonly what: string;
+    };
 
 /**
  * One read outcome.
@@ -182,6 +206,13 @@ export interface CadenceRegistry {
   readonly arriving: number;
   readonly late: number;
   readonly notArriving: number;
+  /**
+   * Beats whose liveness could not be established, counted rather than left as
+   * the remainder of a subtraction. Round-3 QA (#238) found four tiles summing
+   * to four of five registered beats, so the operator had to notice the missing
+   * one by arithmetic.
+   */
+  readonly unaccounted: number;
   /** Which source answered — `crontab` or `systemd user timers`. */
   readonly sourceLabel: string;
   readonly sweptAt: string;
@@ -251,6 +282,24 @@ export interface DiffLine {
   readonly kind: "add" | "del" | "hunk" | "file" | "context";
 }
 
+/**
+ * What a worktree diff was measured against.
+ *
+ * A base is not a constant. Round-3 QA (#236) found every diff taken against the
+ * checkout's bare local `main`, which was 25 commits behind the trunk, so a
+ * six-file branch rendered as 267 files. The base therefore carries its own
+ * commit and the sentence explaining how it was chosen, and both are printed —
+ * a stale base is visible rather than silent.
+ */
+export interface DiffBase {
+  /** The ref git was asked to diff against, when one resolved. */
+  readonly ref: Known<string>;
+  /** That ref's own commit, so the reader can see how old the base is. */
+  readonly head: Known<string>;
+  /** How this base was chosen, in operator language. */
+  readonly note: string;
+}
+
 export interface SessionWorktree {
   readonly root: string;
   /** Worktrees git still lists whose directory is gone; reaped, not shown. */
@@ -260,7 +309,7 @@ export interface SessionWorktree {
   readonly openDiffRead: Known<string>;
   readonly branch: Known<string>;
   readonly head: Known<string>;
-  readonly base: string;
+  readonly base: DiffBase;
   readonly files: readonly WorktreeFile[];
   /** Whether the file stat answered — an unread stat is not a clean tree. */
   readonly filesRead: Known<string>;
@@ -274,6 +323,13 @@ export interface SessionWorktree {
 export interface StreamTurn {
   readonly body: readonly string[];
   readonly tools: readonly StreamTool[];
+  /**
+   * The source's own status lines — a spinner, an elapsed-time tick, a scheduled
+   * wake. They are attached to the turn they interrupt rather than promoted to
+   * turns of their own: round-3 QA (#242) found five of eleven bubbles on one
+   * screenful carrying nothing a reader wants.
+   */
+  readonly notes: readonly string[];
 }
 
 export interface StreamTool {
@@ -283,7 +339,7 @@ export interface StreamTool {
 
 /**
  * A session as a stream of turns. Source-neutral: a terminal capture and a
- * typed G5 turn stream both satisfy it, and the screen renders `header`,
+ * typed turn stream both satisfy it, and the screen renders `header`,
  * `turns` and `rawLines` without knowing which answered.
  */
 export interface SessionStream {

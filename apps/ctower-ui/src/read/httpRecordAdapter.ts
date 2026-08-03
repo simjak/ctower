@@ -1,6 +1,7 @@
 import { randomBytes, randomUUID } from "node:crypto";
 import type { DurabilityState, Priority, ProjectionHealth, TelemetryContext } from "@ctower/client";
 import { boundedRead, ReadRefused } from "./bounded";
+import { NO_WORK_SESSIONS } from "./futureSources";
 import { reading } from "./outcome";
 import { seatNameOf, seatNames } from "./sources/seatNames";
 import {
@@ -192,10 +193,6 @@ async function loadAudit(ticketId: string): Promise<readonly RecordEvent[]> {
   return asArray(view.events, "audit.events").map(toEvent);
 }
 
-function absent(lands: string, what: string): Reading<never> {
-  return { state: "absent", source: { lands, what } };
-}
-
 export const httpRecordAdapter: RecordApiReads = {
   instance: instanceIdentity(),
   board: async (): Promise<Reading<BoardSnapshot>> => await reading(loadBoard),
@@ -204,7 +201,5 @@ export const httpRecordAdapter: RecordApiReads = {
   ticketAudit: async (ticketId: string): Promise<Reading<readonly RecordEvent[]>> =>
     await reading(async () => await loadAudit(ticketId)),
   workSessions: (): Promise<Reading<never>> =>
-    Promise.resolve(
-      absent("#186 / G5", "per-session work facts — seat, duration, tokens and outcome")
-    ),
+    Promise.resolve({ state: "absent", source: NO_WORK_SESSIONS }),
 };

@@ -20,11 +20,35 @@ import type { Beat, CadenceRegistry } from "../interface";
  * Nothing here writes a crontab or touches a marker.
  */
 
-const MARKER_CANDIDATES = (name: string): readonly string[] => [
-  `${missionControlRoot()}/state/logs/${name}.log`,
-  `${missionControlRoot()}/state/.${name}.last`,
-  `${missionControlRoot()}/state/.${name}.heartbeat`,
-];
+/**
+ * Beats whose fire marker is not one of the three conventional names.
+ *
+ * Round-3 QA (#238) found `ctower-feed-notify` rendered as never-fired while it
+ * was firing every ten minutes: it writes `state/ctower-feed-cursor.json` on
+ * every run — reached, quiet or not-reached alike — and sends its stdout to
+ * `/dev/null`, so none of the three guessed filenames could ever exist. A row
+ * that can go neither green nor red carries no signal at all, which is the
+ * "a check that reports clean because it didn't look" failure in its quiet form.
+ *
+ * A beat is registered here by the file it actually touches, so the guess is a
+ * fallback rather than the whole rule. A beat in neither the table nor the
+ * convention is named as a registry gap on the surface, not shrugged at.
+ */
+const REGISTERED_MARKERS: Readonly<Record<string, string>> = {
+  "ctower-feed-notify": "state/ctower-feed-cursor.json",
+};
+
+/** Every path this source will accept as `<name>` having fired, best first. */
+export function markerCandidates(name: string): readonly string[] {
+  const root = missionControlRoot();
+  const registered = REGISTERED_MARKERS[name];
+  return [
+    ...(registered === undefined ? [] : [`${root}/${registered}`]),
+    `${root}/state/logs/${name}.log`,
+    `${root}/state/.${name}.last`,
+    `${root}/state/.${name}.heartbeat`,
+  ];
+}
 
 interface CronEntry {
   readonly schedule: string;
@@ -98,7 +122,7 @@ function nextFireAt(schedule: string, now: number): string | null {
  * which turns an I/O failure into a claim about the beat.
  */
 async function lastFireAt(name: string): Promise<Known<number>> {
-  for (const candidate of MARKER_CANDIDATES(name)) {
+  for (const candidate of markerCandidates(name)) {
     try {
       return valueOf((await stat(candidate)).mtimeMs);
     } catch (error: unknown) {
@@ -111,7 +135,11 @@ async function lastFireAt(name: string): Promise<Known<number>> {
       );
     }
   }
-  return noneOf("no fire marker exists for this beat yet");
+  // this is a statement about the registry, not about the beat: cron holds the
+  // beat, and no file this source knows to look at records its fires
+  return noneOf(
+    `no fire marker exists for ${name} yet — cron registers it, and none of the ${markerCandidates(name).length.toString()} paths this source reads has ever been written, so its liveness cannot be established here`
+  );
 }
 
 function beatName(command: string): string {
@@ -127,10 +155,16 @@ export async function readCronCadence(): Promise<CadenceRegistry> {
       const name = beatName(entry.command);
       const last = await lastFireAt(name);
       const lastMs = last.known === "value" ? last.value : null;
+      // an unread marker and a marker that was never written are different
+      // claims, and each carries its own sentence rather than collapsing into
+      // one generic "no last fire is recorded"
       const { health, why } =
-        last.known === "unread"
-          ? ({ health: "unknown", why: last.reason } as const)
-          : healthOf(lastMs, intervalMs(entry.schedule), now);
+        last.known === "value"
+          ? healthOf(last.value, intervalMs(entry.schedule), now)
+          : ({
+              health: "unknown",
+              why: last.known === "unread" ? last.reason : last.why,
+            } as const);
       return {
         seat: redacted(owner),
         beat: redacted(name),

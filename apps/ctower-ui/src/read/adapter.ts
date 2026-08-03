@@ -27,9 +27,9 @@ import type {
  * One source per screen, each named here and nowhere else. A screen asks the
  * adapter for its reading and never learns which source answered, so replacing
  * a source is an edit to this file alone — the component-C pattern applied to
- * reads. Board and Ticket stay on the read-API source and swap to #211's typed
- * feed when it merges; the six wave-2 screens swap to their native sources the
- * same way.
+ * reads. Board and Ticket read the instance's REST paths today and swap to a
+ * typed feed here; the six wave-2 screens swap to their native sources the same
+ * way.
  *
  * Every binding is read-only, and every one goes through `reading`, so a source
  * that refuses or cannot be reached arrives at its screen as a typed failure

@@ -1,6 +1,7 @@
 import type { ReactElement, ReactNode } from "react";
 import { Chrome } from "@/frame/Chrome";
 import { NoSourceYet, Resolved } from "@/frame/Declared";
+import { NO_DRAIN_SERIES, NO_METRIC_DEFINITIONS } from "@/read/futureSources";
 import { INERT_CONTROL, INERT_FIELD } from "@/frame/inert";
 import { RecordFoot } from "@/frame/RecordFoot";
 import { StateGlyph } from "@/frame/StateGlyph";
@@ -204,13 +205,7 @@ function MetricsBody({ metrics }: { readonly metrics: DeliveryMetrics }): ReactE
                 <span className="sub">open items over time</span>
               </header>
               <div className="body">
-                <NoSourceYet
-                  title="no series to draw"
-                  source={{
-                    lands: "#186 / G5",
-                    what: "the drain ledger as a machine-readable series — it exists today only as prose in the migration status note, and reading a burn-down out of prose would be a guess with a chart around it",
-                  }}
-                />
+                <NoSourceYet title="no series to draw" source={NO_DRAIN_SERIES} />
               </div>
             </section>
           </div>
@@ -221,13 +216,7 @@ function MetricsBody({ metrics }: { readonly metrics: DeliveryMetrics }): ReactE
               <span className="sub">none defined</span>
             </header>
             <div className="mtdefs">
-              <NoSourceYet
-                title="no metric defined"
-                source={{
-                  lands: "#186 / G5",
-                  what: "a metric definition file the kernel reads, and the deploy and per-session token records the proposed examples would join against",
-                }}
-              />
+              <NoSourceYet title="no metric defined" source={NO_METRIC_DEFINITIONS} />
               <DefineMetric />
             </div>
           </section>

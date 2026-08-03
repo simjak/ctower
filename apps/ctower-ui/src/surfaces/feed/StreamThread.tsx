@@ -4,10 +4,18 @@ import type { SessionStream } from "@/read/interface";
 /**
  * A session stream in the approved chat layout.
  *
- * The component knows only that a stream is turns, each with a body and some
- * collapsed tool blocks. It does not know whether a terminal capture or a typed
- * G5 turn stream produced them, so replacing the source needs no edit here —
- * that was round-1 review's F4, and this is the contract that answers it.
+ * The component knows only that a stream is turns, each with a body, some
+ * collapsed tool blocks and the source's own status lines. It does not know
+ * whether a terminal capture or a recorded turn stream produced them, so
+ * replacing the source needs no edit here — that was round-1 review's F4, and
+ * this is the contract that answers it.
+ *
+ * The bubble wraps to its own width. Round-3 QA (#242) found it rendering with
+ * `pre-wrap`, which preserved the terminal's ~135-column hard breaks inside a
+ * 370px bubble and re-wrapped them there, so every paragraph broke mid-sentence
+ * with a hanging indent. The source hands over lines the pane wrapped already
+ * rejoined; a paragraph is therefore one line, and the bubble is the only thing
+ * wrapping it. The raw view keeps the terminal's own shape.
  */
 export function StreamThread({ stream }: { readonly stream: SessionStream }): ReactElement {
   return (
@@ -15,7 +23,7 @@ export function StreamThread({ stream }: { readonly stream: SessionStream }): Re
       {stream.turns.map((turn, index) => (
         <div
           className="turn"
-          key={`${index.toString()}:${turn.body[0] ?? turn.tools[0]?.summary ?? ""}`}
+          key={`${index.toString()}:${turn.body[0] ?? turn.tools[0]?.summary ?? turn.notes[0] ?? ""}`}
         >
           <span className="who">
             <i className="av">SS</i>
@@ -25,8 +33,17 @@ export function StreamThread({ stream }: { readonly stream: SessionStream }): Re
               <span className="seat">{stream.chosen}</span>
             </div>
             {turn.body.length === 0 ? null : (
-              <div className="bub" style={{ whiteSpace: "pre-wrap" }}>
-                {turn.body.join("\n")}
+              <div className="bub">
+                {/* one paragraph per line the source handed over: the bubble
+                    wraps them, the terminal's column does not (#242) */}
+                {turn.body.map((line, position) => (
+                  <p
+                    key={`${position.toString()}:${line}`}
+                    style={{ margin: position === 0 ? 0 : "6px 0 0" }}
+                  >
+                    {line}
+                  </p>
+                ))}
               </div>
             )}
             {turn.tools.length === 0 ? null : (
@@ -37,9 +54,30 @@ export function StreamThread({ stream }: { readonly stream: SessionStream }): Re
                       <span className="kind">tool</span>
                       <span className="arg">{tool.summary.slice(0, 120)}</span>
                     </summary>
-                    <div className="out">{tool.output.join("\n")}</div>
+                    <div className="out" style={{ whiteSpace: "pre-wrap" }}>
+                      {tool.output.join("\n")}
+                    </div>
                   </details>
                 ))}
+              </div>
+            )}
+            {turn.notes.length === 0 ? null : (
+              <div className="tools">
+                {/* the spinner ticks and scheduled-wake lines, folded onto the
+                    turn they interrupted instead of becoming bubbles of their
+                    own — collapsed, counted, and still readable (#242) */}
+                <details className="toolchip">
+                  <summary>
+                    <span className="kind">status</span>
+                    <span className="arg">
+                      {turn.notes.length} {turn.notes.length === 1 ? "line" : "lines"} from the
+                      session itself
+                    </span>
+                  </summary>
+                  <div className="out" style={{ whiteSpace: "pre-wrap" }}>
+                    {turn.notes.join("\n")}
+                  </div>
+                </details>
               </div>
             )}
           </div>

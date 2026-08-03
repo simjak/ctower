@@ -1,7 +1,7 @@
 import { readdir, readFile } from "node:fs/promises";
 import { boundedProcess } from "../bounded";
 import { scanJsonl } from "./jsonl";
-import { noneOf, unreadOf, valueOf } from "./maybe";
+import { attempted, noneOf, unreadOf, valueOf } from "./maybe";
 import type { Known } from "./maybe";
 import { crewLogPath, personasRoot } from "./paths";
 import { redacted } from "./redact";
@@ -23,9 +23,10 @@ import type {
  *
  * Three sources, three different failure modes, kept apart on purpose:
  *
- * * **tmux** says which crews are *alive*. If it does not answer there is no
- *   roster at all, so that failure fails the whole reading — an empty roster
- *   would read as "nobody is working", which is the opposite claim.
+ * * **tmux** says which crews are *alive*, and carries the `@project` tag the
+ *   fleet sets when it spawns one. If it does not answer there is no roster at
+ *   all, so that failure fails the whole reading — an empty roster would read as
+ *   "nobody is working", which is the opposite claim.
  * * **the crew log** says what each crew is *doing*. It is appended to by every
  *   seat on the fleet while this page renders, so it is scanned tolerantly and
  *   its mid-write tail is counted. A crew the log has never mentioned is
@@ -111,6 +112,8 @@ interface LogRecord {
 interface LiveSession {
   readonly name: string;
   readonly createdAt: number | null;
+  /** The session's own `@project` tag, when the fleet set one. */
+  readonly project: string | null;
 }
 
 function logShape(value: unknown): LogRecord | null {
@@ -134,8 +137,36 @@ function crewNameOf(session: string): string {
   return session.startsWith(MC_PREFIX) ? session.slice(MC_PREFIX.length) : session;
 }
 
+/**
+ * The `@project` tag per session, keyed by session name.
+ *
+ * This is a second `list-sessions` rather than a wider format on the first: the
+ * liveness listing is the reading that must not fail, and a tag lookup that
+ * cannot answer must not be able to empty the roster. A tmux without the option
+ * prints an empty field, which is a session with no tag — not a failed read.
+ */
+async function sessionProjects(): Promise<ReadonlyMap<string, string>> {
+  const tagged = new Map<string, string>();
+  const listing = await attempted(
+    async () => await boundedProcess({ op: "tmux.crewProjects" }),
+    (text) => text.trim().length === 0,
+    "tmux reported no session tag"
+  );
+  if (listing.known !== "value") {
+    return tagged;
+  }
+  for (const line of listing.value.split("\n")) {
+    const [name = "", project = ""] = line.split("\t");
+    if (name.trim().length > 0 && project.trim().length > 0) {
+      tagged.set(name.trim(), project.trim());
+    }
+  }
+  return tagged;
+}
+
 async function liveSessions(): Promise<readonly LiveSession[]> {
   const listing = await boundedProcess({ op: "tmux.crews" });
+  const tagged = await sessionProjects();
   return listing
     .split("\n")
     .map((line) => line.trim())
@@ -143,7 +174,11 @@ async function liveSessions(): Promise<readonly LiveSession[]> {
     .map((line): LiveSession => {
       const [name = "", created = ""] = line.split("\t");
       const epoch = Number.parseInt(created, 10);
-      return { name, createdAt: Number.isFinite(epoch) ? epoch : null };
+      return {
+        name,
+        createdAt: Number.isFinite(epoch) ? epoch : null,
+        project: tagged.get(name) ?? null,
+      };
     })
     .filter((session) => session.name.length > 0);
 }
@@ -297,6 +332,39 @@ function knownText(value: string | null, why: string, log: LogOutcome): Known<st
   return value === null || value.trim().length === 0 ? noneOf(why) : valueOf(redacted(value));
 }
 
+/**
+ * Which project a crew is on, from the two sources that record one.
+ *
+ * The crew log is preferred: it is the crew's own declaration, written as it
+ * works. The session tag is the fallback, and it is a *recorded* fact too — the
+ * fleet sets `@project` when it spawns the session. Round-3 QA (#237) found the
+ * roster reading only the log and filing four of seventeen live crews under
+ * "project not recorded" while tmux, which this source already shells out to for
+ * liveness, held the project for three of them.
+ *
+ * Nothing is inferred from the crew's *name*. A session with neither a logged
+ * project nor a tag stays "not recorded", because guessing a project from the
+ * spelling of an identifier is the inference SPEC INV-66 forbids by name — and a
+ * phantom bucket of one honest row is better than three rows filed under a
+ * project nobody recorded.
+ */
+export function projectOf(
+  logged: string | null,
+  tagged: string | null,
+  log: LogOutcome
+): Known<string> {
+  const fromLog = knownText(logged, "not recorded", log);
+  if (fromLog.known === "value") {
+    return fromLog;
+  }
+  if (tagged !== null && tagged.trim().length > 0) {
+    return valueOf(redacted(tagged.trim()));
+  }
+  // an unread log stays unread: the tag did not answer either, so this surface
+  // does not know whether a project is recorded for this crew
+  return fromLog;
+}
+
 function rowsOf(
   sessions: readonly LiveSession[],
   latest: ReadonlyMap<string, LogRecord>,
@@ -320,7 +388,7 @@ function rowsOf(
     return {
       ...parsed,
       name: redacted(crew),
-      project: knownText(record?.project ?? null, "not recorded", log),
+      project: projectOf(record?.project ?? null, session.project, log),
       model,
       harness: harnessOf(model),
       task,
@@ -480,7 +548,7 @@ export async function readCrewRoster(
         : "the seat list was not read, so the grid below has no rows to put crews in",
     activityRule: ACTIVITY_RULE,
     sourceNote:
-      "live tmux sessions (liveness) joined to the crew log (model, task, status, project); the seat comes from the crew name",
+      "live tmux sessions (liveness and the session's @project tag) joined to the crew log (model, task, status, project); the project is the log's when it recorded one and the session tag otherwise; the seat comes from the crew name and is never guessed from it",
     tail: {
       totalLines: scan.totalLines,
       malformed: scan.malformed,

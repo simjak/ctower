@@ -1,4 +1,4 @@
-import type { Reading } from "./interface";
+import type { FutureSource, Reading } from "./interface";
 
 /**
  * Ranking over readings that may be partly unavailable.
@@ -38,10 +38,11 @@ export interface Candidate<T> {
   readonly orderBy: string;
 }
 
-export interface AbsentSource {
-  readonly lands: string;
-  readonly what: string;
-}
+/**
+ * What a wholly-empty fan-out declares. It is the surface's one absence type,
+ * imported as a type only so this module stays runtime-pure.
+ */
+export type AbsentSource = FutureSource;
 
 function firstFailure<T>(candidates: readonly Candidate<T>[]): string | null {
   for (const candidate of candidates) {

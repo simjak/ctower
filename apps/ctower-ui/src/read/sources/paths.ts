@@ -4,9 +4,9 @@
  * Wave 2 wires the remaining screens against control-plane sources that already
  * exist: Mission Control's append-only state files, the crontab, the systemd
  * user timers, this repository's git tree and worktrees, and the tmux capture
- * bridge. They are **interim**: each screen swaps to its native or #186 source
- * when that lands, and nothing outside `src/read/sources/` knows any of these
- * paths exist.
+ * bridge. They are **interim**: each screen swaps to its native source when one
+ * lands, and nothing outside `src/read/sources/` knows any of these paths
+ * exist.
  *
  * Every one is read-only. This app opens these files for reading and runs
  * inspection commands; it never writes, locks, truncates, renames or appends to

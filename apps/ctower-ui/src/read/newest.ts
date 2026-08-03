@@ -19,7 +19,7 @@ import type { BoardEntry, Reading } from "./interface";
  * every join failed, falling back to the first board card — a known answer
  * fabricated from a creation time nobody read.
  */
-const NO_TICKET = { lands: "#186", what: "any ticket on the board projection" } as const;
+import { NO_TICKET_ON_BOARD } from "./futureSources";
 
 export function newestCandidates(entries: readonly BoardEntry[]): readonly Candidate<string>[] {
   return entries.map((entry) => ({
@@ -35,6 +35,6 @@ export function newestCandidates(entries: readonly BoardEntry[]): readonly Candi
 
 export async function newestTicketId(): Promise<Reading<Ranked<string>>> {
   return mapReading(await recordAdapter.board(), (snapshot) =>
-    rankStrictly(newestCandidates(snapshot.entries), NO_TICKET)
+    rankStrictly(newestCandidates(snapshot.entries), NO_TICKET_ON_BOARD)
   );
 }
