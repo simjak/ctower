@@ -784,6 +784,17 @@
       ]
     },
     {
+      "path": "contracts/workflow/workflow-definition.schema.json",
+      "references": [
+        "SPEC#workflow-definition-yaml-the-five-layer-s7s8-authoring-contract",
+        "INV-46",
+        "INV-61",
+        "INV-62",
+        "INV-63",
+        "AC-WF-28"
+      ]
+    },
+    {
       "path": "contracts/workflow/workflow.schema.json",
       "references": [
         "SPEC#versioned-workflow-and-execution-policy-contract",

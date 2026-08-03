@@ -12,7 +12,7 @@
         },
         {
           "path": "contracts/traceability/sources.json",
-          "sha256": "sha256:cebad974f943183d935a5405d9a5e68b17cdf51431fe0326d886c0cd2331c732"
+          "sha256": "sha256:fe3f39064fcaacbb8aca4f7426cc8849a4841797ade1fa42b04205a385db8ad3"
         },
         {
           "path": "contracts/traceability/traceability-sources.schema.json",
@@ -38,7 +38,7 @@
       "outputs": [
         {
           "path": "generated/traceability-index.json",
-          "sha256": "sha256:af1e79c49e9b982f0340b8ce52636e98bad9bac00a9fabccbee1fb760e24dcd5"
+          "sha256": "sha256:0876eba7de49f5aabe5b4180b6ea0751b04a177178a96b2e081ed24220395bc1"
         }
       ],
       "tool_version": "2"
@@ -329,6 +329,10 @@
           "sha256": "sha256:2cd3a99e04c6bbae56579b841cd73479aed54dd1f899dcfd2cb71210eb7f0e7c"
         },
         {
+          "path": "contracts/workflow/workflow-definition.schema.json",
+          "sha256": "sha256:c0a118fa1471f134b5bd36ff7bbbbf884fc8e9f4d30dbe69d11e081562e4180b"
+        },
+        {
           "path": "contracts/workflow/workflow.schema.json",
           "sha256": "sha256:bc2fb7e3a99ffd3dacd98f5ba4e05aa9781b192be6a7c36a1dbfc17060b8f3aa"
         },
@@ -432,7 +436,7 @@
         },
         {
           "path": "generated/python/ctower_contracts/schemas.json",
-          "sha256": "sha256:d2cbee343adc53b915e7d9b20ff46084f8915efce76a2b5e34d2ea7869859eb3"
+          "sha256": "sha256:43368460f184b572dfcc3ad291d21f21dc3cb6e3ac5f7705184eecbc83d6856f"
         },
         {
           "path": "generated/typescript/ctower-client/package.json",

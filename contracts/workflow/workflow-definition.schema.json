@@ -1,0 +1,175 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://ctower.local/contracts/workflow/workflow-definition.schema.json",
+  "title": "WorkflowDefinition",
+  "description": "Strict S7/S8 authored Workflow configuration source. This is gate 1 of the three named gates: it decides source-schema validity only. Bundle/layer resolution (gate 2) and the publishable normalized ctower.workflow/v1 payload (gate 3) are separate and are never called merely valid.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["apiVersion", "kind", "metadata", "spec"],
+  "properties": {
+    "apiVersion": {"const": "ctower/v1"},
+    "kind": {"const": "Workflow"},
+    "metadata": {"$ref": "#/$defs/metadata"},
+    "spec": {"$ref": "#/$defs/spec"},
+    "overlays": {
+      "description": "Monotonic per-project additions keyed by the layer-2 project key.",
+      "type": "object",
+      "minProperties": 1,
+      "propertyNames": {"$ref": "#/$defs/publishedComponentKey"},
+      "additionalProperties": {"$ref": "#/$defs/projectOverlay"}
+    }
+  },
+  "$defs": {
+    "publishedComponentKey": {
+      "description": "A key that becomes a Catalog component key. The authored component contract decides it by reference; this source never restates that pattern.",
+      "$ref": "../components/versioned-component.schema.json#/properties/key"
+    },
+    "publishedCompanyKey": {
+      "description": "A layer-1 company key decided by the authored company contract by reference.",
+      "$ref": "../company/company-bundle.schema.json#/properties/company/properties/key"
+    },
+    "sourceKey": {
+      "description": "A source-local key that never becomes a Catalog component key, so a stage key as short as qa is legal.",
+      "type": "string",
+      "pattern": "^[a-z][a-z0-9._-]{0,127}$"
+    },
+    "assertion": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 512
+    },
+    "narrowing": {
+      "description": "A v1 assertion may only narrow or exactly restate the resolved layer-4 definition, so the negative form is not authorable.",
+      "const": true
+    },
+    "metadata": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["name", "company", "revision", "signed_by"],
+      "properties": {
+        "name": {"$ref": "#/$defs/publishedComponentKey"},
+        "company": {"$ref": "#/$defs/publishedCompanyKey"},
+        "revision": {"type": "integer", "minimum": 1},
+        "signed_by": {
+          "description": "Source-attribution label for review display only; never authentication, a principal, a seat, or publication authority.",
+          "$ref": "#/$defs/assertion"
+        }
+      }
+    },
+    "spec": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["stages", "transitions"],
+      "properties": {
+        "stage_groups": {
+          "type": "array",
+          "minItems": 1,
+          "uniqueItems": true,
+          "items": {"$ref": "#/$defs/sourceKey"}
+        },
+        "stages": {
+          "type": "array",
+          "minItems": 1,
+          "uniqueItems": true,
+          "items": {"$ref": "#/$defs/stage"}
+        },
+        "transitions": {
+          "type": "array",
+          "minItems": 1,
+          "uniqueItems": true,
+          "items": {"$ref": "#/$defs/transition"}
+        }
+      }
+    },
+    "stage": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["name", "owner", "evidence"],
+      "properties": {
+        "name": {"$ref": "#/$defs/sourceKey"},
+        "owner": {
+          "description": "Eligible responsibility/capability key. It grants no authority and is never an assigned or signing seat.",
+          "$ref": "#/$defs/sourceKey"
+        },
+        "group": {"$ref": "#/$defs/sourceKey"},
+        "evidence": {"$ref": "#/$defs/evidenceList"},
+        "signs": {
+          "description": "The one key of this stage's own ordinary evidence list that carries the signing slot.",
+          "$ref": "#/$defs/sourceKey"
+        },
+        "gate": {
+          "description": "Gate location only. It never activates a gate, names a perspective, selects a verifier, or records a verdict.",
+          "$ref": "#/$defs/sourceKey"
+        },
+        "skip": {"$ref": "#/$defs/skip"},
+        "failure_routes": {
+          "description": "Typed failure reason to the declared stage name that reason routes to.",
+          "type": "object",
+          "minProperties": 1,
+          "propertyNames": {"$ref": "#/$defs/sourceKey"},
+          "additionalProperties": {"$ref": "#/$defs/sourceKey"}
+        }
+      }
+    },
+    "skip": {
+      "description": "The alternative slot set that replaces the ordinary set on a skipped disposition; the two are never a union.",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["predicate", "evidence"],
+      "properties": {
+        "predicate": {"$ref": "#/$defs/sourceKey"},
+        "evidence": {"$ref": "#/$defs/evidenceList"},
+        "signs": {"$ref": "#/$defs/sourceKey"}
+      }
+    },
+    "evidenceList": {
+      "type": "array",
+      "minItems": 1,
+      "uniqueItems": true,
+      "items": {"$ref": "#/$defs/evidenceItem"}
+    },
+    "evidenceItem": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["key", "required"],
+      "properties": {
+        "key": {"$ref": "#/$defs/sourceKey"},
+        "required": {"$ref": "#/$defs/narrowing"},
+        "shape": {"$ref": "#/$defs/assertion"},
+        "refuses_by_name": {"$ref": "#/$defs/narrowing"},
+        "command": {"$ref": "#/$defs/assertion"},
+        "reviewer_family_differs_from_author": {"$ref": "#/$defs/narrowing"},
+        "digest_must_match_head": {"$ref": "#/$defs/narrowing"},
+        "widths": {
+          "type": "array",
+          "minItems": 1,
+          "uniqueItems": true,
+          "items": {"type": "integer", "minimum": 240, "maximum": 7680}
+        }
+      }
+    },
+    "transition": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["from", "to", "requires", "on_missing"],
+      "properties": {
+        "from": {"$ref": "#/$defs/sourceKey"},
+        "to": {"$ref": "#/$defs/sourceKey"},
+        "requires": {
+          "description": "A restatement of the normalized ordinary slot set of `from`, in that exact order; it never defines that set.",
+          "type": "array",
+          "minItems": 1,
+          "uniqueItems": true,
+          "items": {"$ref": "#/$defs/sourceKey"}
+        },
+        "on_missing": {"const": "refuse"}
+      }
+    },
+    "projectOverlay": {
+      "type": "object",
+      "minProperties": 1,
+      "propertyNames": {"$ref": "#/$defs/sourceKey"},
+      "additionalProperties": {"$ref": "#/$defs/evidenceList"}
+    }
+  }
+}
