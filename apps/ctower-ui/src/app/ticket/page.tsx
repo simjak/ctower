@@ -10,7 +10,7 @@ export const dynamic = "force-dynamic";
 function IndexFrame({ declared }: { readonly declared: ReactElement }): ReactElement {
   return (
     <>
-      <Chrome section="Ticket" back />
+      <Chrome section="Ticket" back={{ href: "/board", label: "Board" }} />
       <main className="page">
         <div className="wrap">
           <div className="lede">
