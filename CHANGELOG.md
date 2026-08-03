@@ -1,5 +1,19 @@
 # Changelog
 
+## [0.6.0](https://github.com/simjak/ctower/compare/v0.5.0...v0.6.0) (2026-08-03)
+
+
+### Features
+
+* **cli:** render stable evidence-backed delivery rows ([#190](https://github.com/simjak/ctower/issues/190)) ([ff96078](https://github.com/simjak/ctower/commit/ff9607883f685033e27c3b0f2383f4c7d58e3573))
+* **runtime:** checkpoint, list, and restore verbs for the shadow instance ([#223](https://github.com/simjak/ctower/issues/223)) ([699b9f5](https://github.com/simjak/ctower/commit/699b9f55a6ee12f85a1d875f10cff9f747ed75db))
+* **scopes:** isolate three project read models ([#197](https://github.com/simjak/ctower/issues/197)) ([831a264](https://github.com/simjak/ctower/commit/831a26415e9aae1ff6e71845f1409296f861b04a))
+
+
+### Bug Fixes
+
+* serialize role provisioning across the cluster ([#188](https://github.com/simjak/ctower/issues/188)) ([cf4a313](https://github.com/simjak/ctower/commit/cf4a3136d6f18e9de97017e90155b62ffe3678de))
+
 ## [0.5.0](https://github.com/simjak/ctower/compare/v0.4.1...v0.5.0) (2026-08-02)
 
 
