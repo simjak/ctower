@@ -2232,8 +2232,19 @@ PAGING-ONLY BY DESIGN. The coordination-files and liveness rules are deliberatel
 coordination files are mission-control-local ephemera invisible to ctower custody, and liveness
 classification is a wake-loop duty whose output feeds evidence rather than a transition to block. The
 existing paging tools stay the enforcement of record on the mission-control side and become **evidence
-sources** for the gate — `crew-health`/`idle-alarm` feed fact (a), `worktree-reap`/`resource-check` feed
-(b), `crew-log`/`coordination-gc` feed (c). The engine blocks; they observe.
+sources** for the gate; none gains blocking power — **the engine blocks, they observe.**
+
+The reporter runs these exact probes, whose outcomes are the typed observation outcomes the close-gate
+slots accept:
+
+| Fact | Probe (command + target) | Outcome shape | Source tool logic reused |
+|---|---|---|---|
+| (a) no live bound session | `tmux -L mc list-sessions -F '#{session_name}'` + per-session `@project` and crew-log binding lookup | `no-live-session` / `crew-session-still-live:<session>` / `substrate-unobservable:tmux` | `crew-health` |
+| (b) worktree gone after merge | `git -C <repo> worktree list --porcelain` cross-checked against `gh pr view <n> --json state,mergeCommit` per bound PR | `worktrees-clear` / `worktree-outlives-merged-pr:<path>` / `no-bound-pr` / `substrate-unobservable:git\|gh` | `worktree-reap` (merge-state from the PR, never branch ancestry) |
+| (c) crew-log close entry | last entry for each bound crew in `state/crew-log.jsonl` | `close-entry-present` / `crew-log-close-entry-missing:<crew>` / `substrate-unobservable:crew-log` | `crew-log` |
+
+`idle-alarm`, `wip-alarm`, `resource-check`, `coordination-gc`, and the watchdog keep paging exactly as
+today; they contribute no transition authority and remain evidence sources where applicable.
 
 ### ASCII enforcement model: autonomous movement and bounded verification
 
