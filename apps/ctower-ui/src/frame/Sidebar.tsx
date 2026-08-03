@@ -1,5 +1,9 @@
 import Link from "next/link";
+import { Fragment } from "react";
 import type { ReactElement, ReactNode } from "react";
+import { INERT_CONTROL } from "./inert";
+import { NEW_TICKET_INERT, RAIL } from "./rail";
+import type { RailItem } from "./rail";
 
 /**
  * The frame's navigation, as the operator-approved R2736 information
@@ -19,9 +23,7 @@ import type { ReactElement, ReactNode } from "react";
  * missing badge claims nothing; a wrong one claims a number.
  */
 
-interface Item {
-  readonly href: string;
-  readonly label: string;
+interface Item extends RailItem {
   readonly icon: ReactNode;
 }
 
@@ -33,10 +35,9 @@ const icon = (path: ReactNode): ReactElement => (
   </span>
 );
 
-const DASHBOARD: Item = {
-  href: "/board",
-  label: "Dashboard",
-  icon: icon(
+/** One icon per destination, keyed by the href the rail contract declares. */
+const ICONS: Readonly<Record<string, ReactNode>> = {
+  "/board": icon(
     <path
       d="M2.5 3.5h5v9h-5zM10 3.5h5v4.5h-5zM10 10.5h5v2h-5z"
       stroke="currentColor"
@@ -44,12 +45,7 @@ const DASHBOARD: Item = {
       strokeLinejoin="round"
     />
   ),
-};
-
-const INBOX: Item = {
-  href: "/inbox",
-  label: "Inbox",
-  icon: icon(
+  "/inbox": icon(
     <path
       d="M2 9.5 4 3.5h9l2 6M2 9.5v3h13v-3M2 9.5h3.5l1 1.5h4l1-1.5H15"
       stroke="currentColor"
@@ -57,113 +53,69 @@ const INBOX: Item = {
       strokeLinejoin="round"
     />
   ),
-};
-
-const WORK: readonly Item[] = [
-  {
-    href: "/ticket",
-    label: "Tickets",
-    icon: icon(
-      <>
-        <path
-          d="M2.5 5.5h12v2a1.5 1.5 0 0 0 0 3v2h-12v-2a1.5 1.5 0 0 0 0-3z"
-          stroke="currentColor"
-          strokeWidth="1.2"
-          strokeLinejoin="round"
-        />
-        <path d="M8.5 5.5v7" stroke="currentColor" strokeWidth="1.2" strokeDasharray="1.6 1.6" />
-      </>
-    ),
-  },
-  {
-    href: "/heartbeats",
-    label: "Heartbeats",
-    icon: icon(
+  "/ticket": icon(
+    <>
       <path
-        d="M1.5 8.5h3l1.5-4 2.5 8 2-4h4"
-        stroke="currentColor"
-        strokeWidth="1.2"
-        strokeLinejoin="round"
-        strokeLinecap="round"
-      />
-    ),
-  },
-  {
-    href: "/metrics",
-    label: "Metrics",
-    icon: icon(
-      <path
-        d="M2.5 13.5v-4M6.5 13.5v-8M10.5 13.5v-5M14.5 13.5v-10"
-        stroke="currentColor"
-        strokeWidth="1.2"
-        strokeLinecap="round"
-      />
-    ),
-  },
-];
-
-const SESSION: readonly Item[] = [
-  {
-    href: "/feed",
-    label: "Feed",
-    icon: icon(
-      <path
-        d="M2.5 3.5h11v8h-6l-3 2.5v-2.5h-2z"
+        d="M2.5 5.5h12v2a1.5 1.5 0 0 0 0 3v2h-12v-2a1.5 1.5 0 0 0 0-3z"
         stroke="currentColor"
         strokeWidth="1.2"
         strokeLinejoin="round"
       />
-    ),
-  },
-  {
-    href: "/workspace",
-    label: "Workspace",
-    icon: icon(
-      <>
-        <path
-          d="M2.5 4.5h11v8h-11zM2.5 7h11"
-          stroke="currentColor"
-          strokeWidth="1.2"
-          strokeLinejoin="round"
-        />
-        <circle cx="4.6" cy="5.75" r=".6" fill="currentColor" />
-      </>
-    ),
-  },
-  {
-    href: "/explorer",
-    label: "Explorer",
-    icon: icon(
+      <path d="M8.5 5.5v7" stroke="currentColor" strokeWidth="1.2" strokeDasharray="1.6 1.6" />
+    </>
+  ),
+  "/heartbeats": icon(
+    <path
+      d="M1.5 8.5h3l1.5-4 2.5 8 2-4h4"
+      stroke="currentColor"
+      strokeWidth="1.2"
+      strokeLinejoin="round"
+      strokeLinecap="round"
+    />
+  ),
+  "/metrics": icon(
+    <path
+      d="M2.5 13.5v-4M6.5 13.5v-8M10.5 13.5v-5M14.5 13.5v-10"
+      stroke="currentColor"
+      strokeWidth="1.2"
+      strokeLinecap="round"
+    />
+  ),
+  "/feed": icon(
+    <path
+      d="M2.5 3.5h11v8h-6l-3 2.5v-2.5h-2z"
+      stroke="currentColor"
+      strokeWidth="1.2"
+      strokeLinejoin="round"
+    />
+  ),
+  "/workspace": icon(
+    <>
       <path
-        d="M6 3.5 2.5 8 6 12.5M10 3.5 13.5 8 10 12.5"
+        d="M2.5 4.5h11v8h-11zM2.5 7h11"
         stroke="currentColor"
         strokeWidth="1.2"
-        strokeLinecap="round"
         strokeLinejoin="round"
       />
-    ),
-  },
-  {
-    href: "/files",
-    label: "Files",
-    icon: icon(
-      <>
-        <path
-          d="M4 2.5h5l3 3v8H4z"
-          stroke="currentColor"
-          strokeWidth="1.2"
-          strokeLinejoin="round"
-        />
-        <path d="M9 2.5v3h3" stroke="currentColor" strokeWidth="1.2" strokeLinejoin="round" />
-      </>
-    ),
-  },
-];
-
-const ORG: Item = {
-  href: "/team",
-  label: "Org",
-  icon: icon(
+      <circle cx="4.6" cy="5.75" r=".6" fill="currentColor" />
+    </>
+  ),
+  "/explorer": icon(
+    <path
+      d="M6 3.5 2.5 8 6 12.5M10 3.5 13.5 8 10 12.5"
+      stroke="currentColor"
+      strokeWidth="1.2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    />
+  ),
+  "/files": icon(
+    <>
+      <path d="M4 2.5h5l3 3v8H4z" stroke="currentColor" strokeWidth="1.2" strokeLinejoin="round" />
+      <path d="M9 2.5v3h3" stroke="currentColor" strokeWidth="1.2" strokeLinejoin="round" />
+    </>
+  ),
+  "/team": icon(
     <>
       <path
         d="M8 2.5v3M3.5 13.5v-3h9v3M8 5.5v5"
@@ -178,8 +130,17 @@ const ORG: Item = {
   ),
 };
 
-/** Every item the rail offers, so a test can assert the set without scraping. */
-export const RAIL_ITEMS: readonly Item[] = [DASHBOARD, INBOX, ...WORK, ...SESSION, ORG];
+/**
+ * Every item the rail offers. The destinations and their labels come from
+ * `rail.ts`, which a test reads directly; this file only dresses them.
+ */
+export const RAIL_ITEMS: readonly Item[] = RAIL.map((item) => ({
+  ...item,
+  icon: ICONS[item.href] ?? null,
+}));
+
+const inGroup = (group: string | null): readonly Item[] =>
+  RAIL_ITEMS.filter((item) => item.group === group);
 
 function Rail({ item, here }: { readonly item: Item; readonly here: string }): ReactElement {
   const on = item.label === here;
@@ -244,34 +205,55 @@ export function Sidebar({ here }: { readonly here: string }): ReactElement {
           </label>
         </div>
 
+        {/* the one action that starts work, and the surface cannot honour it.
+            A real disabled button, the same verdict chip the Feed composer
+            carries, and the reason printed here rather than hidden in a hover
+            (#240) — the operator sees it is unavailable before clicking, not
+            after nothing happens */}
         <div className="side-act">
-          {/* the one action that starts work, inert while the surface is
-              read-only — the caveat is on the control, not in a banner */}
-          <span
+          <button
             className="sact"
-            title="Phase 1 is read-only — creating a ticket lands with the write API (#186)"
+            type="button"
+            disabled
+            style={INERT_CONTROL}
+            aria-describedby="new-ticket-readonly"
           >
             <span className="plus" />
-            New ticket
+            {NEW_TICKET_INERT.label}
+          </button>
+          <span
+            className="verdict v-held"
+            style={{ display: "inline-flex", marginTop: "8px" }}
+            aria-hidden
+          >
+            {NEW_TICKET_INERT.verdict}
           </span>
+          <p
+            id="new-ticket-readonly"
+            style={{
+              margin: "6px 0 0",
+              fontSize: "11.5px",
+              lineHeight: 1.45,
+              color: "var(--ink-3)",
+            }}
+          >
+            {NEW_TICKET_INERT.reason}
+          </p>
         </div>
 
         <nav className="side-nav">
-          <Rail item={DASHBOARD} here={here} />
-          <Rail item={INBOX} here={here} />
-
-          <div className="sgrp">Work</div>
-          {WORK.map((item) => (
+          {inGroup(null).map((item) => (
             <Rail key={item.href} item={item} here={here} />
           ))}
 
-          <div className="sgrp">Session</div>
-          {SESSION.map((item) => (
-            <Rail key={item.href} item={item} here={here} />
+          {["Work", "Session", "Company"].map((group) => (
+            <Fragment key={group}>
+              <div className="sgrp">{group}</div>
+              {inGroup(group).map((item) => (
+                <Rail key={item.href} item={item} here={here} />
+              ))}
+            </Fragment>
           ))}
-
-          <div className="sgrp">Company</div>
-          <Rail item={ORG} here={here} />
         </nav>
       </aside>
     </>

@@ -105,10 +105,26 @@ export function isProof(event: RecordEvent): boolean {
   return event.kind === "proof.changed";
 }
 
+/**
+ * A comment is `ticket.comment_added`, the kind the record actually appends.
+ *
+ * Round-3 QA (#241) traced the Comments panel's "lands with #186" to this
+ * filter: it matched `comment.*`, which is in no event enum, so the panel could
+ * only ever render "ctower does not record ticket comments" — a false claim
+ * about the record, standing behind a citation for an unrelated issue. The
+ * record has carried `EventKind.TICKET_COMMENT_ADDED` all along.
+ */
 export function isComment(event: RecordEvent): boolean {
-  return event.kind.startsWith("comment.");
+  return event.kind === "ticket.comment_added";
 }
 
+/**
+ * A relation is a `work.changed` whose recorded operation is `relation_added`.
+ *
+ * Same defect as `isComment`: this matched `relation.*`, a kind that does not
+ * exist, so "Depends on" could never fill in. Relations are an *operation* on
+ * the work-changed kind, per the authored event envelope.
+ */
 export function isRelation(event: RecordEvent): boolean {
-  return event.kind.startsWith("relation.");
+  return event.kind === "work.changed" && operationOf(event) === "relation_added";
 }

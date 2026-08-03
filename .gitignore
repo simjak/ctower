@@ -28,3 +28,4 @@ build/
 state/
 /workspaces/
 /spool/
+.gstack/

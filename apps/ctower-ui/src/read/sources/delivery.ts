@@ -1,3 +1,4 @@
+import { NO_PROJECT_HISTORY } from "../futureSources";
 import { rankCandidates } from "../selectors";
 import { changeFailureRate, mergeCandidates, windowDays } from "./mergeHistory";
 import { redacted } from "./redact";
@@ -29,7 +30,7 @@ const DEPLOY_FREQUENCY: DeliveryMeasure = {
   target: "no target yet",
   note: "No project in this portfolio records a deploy event, so there is nothing to count. ctower's pipeline ends at merge; the others deploy but keep no ledger this surface can read.",
   source: "src: —",
-  lands: "a recorded deploy event (G5)",
+  lands: "a recorded deploy event, which no work item is filed to add",
 };
 
 const LEAD_TIME: DeliveryMeasure = {
@@ -39,7 +40,7 @@ const LEAD_TIME: DeliveryMeasure = {
   target: "no target yet",
   note: "Half of this join exists: the merge is on the trunk and timed. The promotion it would be timed against is not recorded anywhere, so no interval can be stated.",
   source: "src: trunk history + deploy runs · deploy half missing",
-  lands: "a recorded deploy event (G5)",
+  lands: "a recorded deploy event, which no work item is filed to add",
 };
 
 const MTTR: DeliveryMeasure = {
@@ -49,16 +50,13 @@ const MTTR: DeliveryMeasure = {
   target: "no target yet",
   note: "An incident open and its close are both needed to time a recovery. Neither is recorded as a typed fact, and reading them out of prose would be a guess with a number attached.",
   source: "src: —",
-  lands: "a recorded incident open/close pair (G5)",
+  lands: "a recorded incident open/close pair, which no work item is filed to add",
 };
 
 export async function readDeliveryMetrics(): Promise<Reading<DeliveryMetrics>> {
   const now = Date.now();
   const candidates = await mergeCandidates(now);
-  const ranked = rankCandidates(candidates, {
-    lands: "G5",
-    what: "any project history this surface can measure",
-  });
+  const ranked = rankCandidates(candidates, NO_PROJECT_HISTORY);
   if (ranked.state !== "present") {
     return ranked;
   }
