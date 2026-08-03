@@ -506,6 +506,16 @@ verify the real endpoint/digest independently, record the retro, and server-vali
 is reconstructable from ctower IDs without Mission Control ledgers, task/status files, raw terminal state,
 or vendor sessions; the production golden ticket passes the exact I2 validation contract in the SPEC.
 
+## Backlog beyond the increments (sequenced, not scheduled)
+
+- **Operator chatbot via a harness adapter** (ticket `019fc85b-d9e1-743c-a25e-69fa7164424b`,
+  source-ref `R2766-chatbot-adapter`, operator 2026-08-03 — explicitly not a priority): an
+  operator chat UI with image upload that reaches a commander seat with on-par harness
+  functionality. Chat message maps to seat input; slash skills and file-path commands pass
+  through; an uploaded image lands as a workspace file handed to the seat as an at-path; the
+  live pane/feed streams back as a natural fourth consumer of the feed work. Sequenced behind
+  the UI epic and the R2764/R2765 gate work; no spec activity until those land.
+
 ## Workflow and Execution Policy are different configuration concepts
 
 Every package composes the same two platform concepts:

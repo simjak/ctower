@@ -41,6 +41,7 @@ export class InspectionRefused extends Error {
 export type Inspection =
   | { readonly op: "git.revision"; readonly root: string }
   | { readonly op: "git.trunkRef"; readonly root: string }
+  | { readonly op: "git.refCommit"; readonly root: string; readonly ref: string }
   | { readonly op: "git.branch"; readonly root: string }
   | { readonly op: "git.headSubject"; readonly root: string }
   | { readonly op: "git.toplevel"; readonly root: string }
@@ -72,6 +73,7 @@ export type Inspection =
   | { readonly op: "tmux.sessions" }
   | { readonly op: "tmux.crews" }
   | { readonly op: "tmux.panes" }
+  | { readonly op: "tmux.crewProjects" }
   | { readonly op: "tmux.capture"; readonly session: string; readonly lines: number };
 
 export interface Invocation {
@@ -153,6 +155,14 @@ export function invocationFor(inspection: Inspection): Invocation {
       return git(
         inspection.root,
         ["symbolic-ref", "--short", "refs/remotes/origin/HEAD"],
+        inspection.op
+      );
+    case "git.refCommit":
+      // `--verify` refuses rather than echoing an unknown ref back as if it
+      // resolved, and `^{commit}` is a fixed suffix on an already-validated ref
+      return git(
+        inspection.root,
+        ["rev-parse", "--verify", "--short=8", `${ref(inspection.ref, "ref")}^{commit}`],
         inspection.op
       );
     case "git.branch":
@@ -261,6 +271,17 @@ export function invocationFor(inspection: Inspection): Invocation {
         maxBytes: 200_000,
         label: inspection.op,
       };
+    case "tmux.crewProjects":
+      // the session's own `@project` tag. The roster already reads tmux for
+      // liveness; round-3 QA (#237) found it filing a quarter of the fleet under
+      // "project not recorded" while this option, on the same session, held it
+      return {
+        tool: "tmux",
+        executable: executableFor("tmux"),
+        args: ["list-sessions", "-F", "#{session_name}\t#{@project}"],
+        maxBytes: 200_000,
+        label: inspection.op,
+      };
     case "tmux.panes":
       return {
         tool: "tmux",
@@ -269,12 +290,18 @@ export function invocationFor(inspection: Inspection): Invocation {
           "list-panes",
           "-a",
           "-F",
-          "#{session_name}\t#{pane_current_path}\t#{pane_current_command}",
+          // the width is what the session wrapped its own prose at, and the chat
+          // view needs it to put a paragraph back together (#242)
+          "#{session_name}\t#{pane_current_path}\t#{pane_current_command}\t#{pane_width}",
         ],
         maxBytes: 400_000,
         label: inspection.op,
       };
     case "tmux.capture":
+      // deliberately without `-J`. That flag rejoins lines the *terminal grid*
+      // wrapped, and the sessions this reads soft-wrap in the application and
+      // emit their own newlines — measured on this host, `-J` changes nothing
+      // and would only strip the trailing-space stripping the unwrap relies on
       return {
         tool: "tmux",
         executable: executableFor("tmux"),

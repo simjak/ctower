@@ -1,5 +1,6 @@
 import type { ReactElement } from "react";
 import { NoSourceYet } from "@/frame/Declared";
+import { NO_WORK_SESSIONS } from "@/read/futureSources";
 
 const TOTALS = ["Sessions", "Work time", "Tokens", "Seats"] as const;
 
@@ -26,13 +27,7 @@ export function WorkTimeline(): ReactElement {
           ))}
         </div>
       </div>
-      <NoSourceYet
-        title="no session data yet"
-        source={{
-          lands: "#186 / G5",
-          what: "per-session work facts — seat, duration, tokens and outcome",
-        }}
-      />
+      <NoSourceYet title="no session data yet" source={NO_WORK_SESSIONS} />
     </section>
   );
 }

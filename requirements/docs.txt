@@ -136,9 +136,9 @@ jinja2==3.1.6 \
     # via
     #   mkdocs
     #   mkdocs-material
-markdown==3.10.2 \
-    --hash=sha256:994d51325d25ad8aa7ce4ebaec003febcce822c3f8c911e3b17c52f7f589f950 \
-    --hash=sha256:e91464b71ae3ee7afd3017d9f358ef0baf158fd9a298db92f1d4761133824c36
+markdown==3.10.3 \
+    --hash=sha256:3589362618f743188b4d955b874402bc814f4f83f544dc207719f4baa7d9c45f \
+    --hash=sha256:fa6c92a00a4a3c98b22728c64a935ae1928250ae65058a6ded814d2cc29a4cea
     # via
     #   mkdocs
     #   mkdocs-material
@@ -269,9 +269,9 @@ pathspec==1.1.1 \
     --hash=sha256:17db5ecd524104a120e173814c90367a96a98d07c45b2e10c2f3919fff91bf5a \
     --hash=sha256:a00ce642f577bf7f473932318056212bc4f8bfdf53128c78bbd5af0b9b20b189
     # via mkdocs
-platformdirs==4.10.1 \
-    --hash=sha256:0e4eff26be2d75293977f7cddc153fd9b8eaa7fb0c7b64ffe4076cb443117443 \
-    --hash=sha256:ceab4084426fe6319ce18e86deada8ab1b7487c7aee7040c55e277c9ae793695
+platformdirs==4.11.0 \
+    --hash=sha256:0555d18370482847566ffabcaa53ad7c6c1c29f195989ae1ed634a05f76ea1e0 \
+    --hash=sha256:360ccded2b7fce0af0ff80cc8f5942a1c5d99b0e856033acb030bfc634709e74
     # via mkdocs-get-deps
 pygments==2.20.0 \
     --hash=sha256:6757cd03768053ff99f3039c1a36d6c0aa0b263438fcab17520b30a303a82b5f \

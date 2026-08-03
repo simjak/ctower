@@ -29,6 +29,7 @@ from ctowerctl.spool._redaction import (
     ServerRefusal,
     digest_json,
     reject_secret_material,
+    spool_entry,
 )
 
 __all__ = [
@@ -108,6 +109,7 @@ class DrainReport(_BoundaryModel):
     remaining_pending: Annotated[int, Field(ge=0)]
     barrier_sequence: int | None
     reason_code: str
+    server_refusal: CanonicalRefusal = None
 
 
 class ReplayDecision(StrEnum):
@@ -316,7 +318,25 @@ def _report(
         remaining_pending=remaining,
         barrier_sequence=barrier_sequence,
         reason_code=_reason_code(reason_code),
+        server_refusal=_barrier_refusal(session, barrier_sequence),
     )
+
+
+def _barrier_refusal(session: Session, barrier_sequence: int | None) -> ServerRefusal | None:
+    """Surface the named refusal of the barrier command, if the barrier is a server rejection."""
+    if barrier_sequence is None:
+        return None
+    record = next(
+        (
+            item
+            for item in session.commands()
+            if item.stored.directory == "quarantine" and item.stored.sequence == barrier_sequence
+        ),
+        None,
+    )
+    if record is None:
+        return None
+    return spool_entry(record, session).server_refusal
 
 
 def _barrier(session: Session) -> int | None:

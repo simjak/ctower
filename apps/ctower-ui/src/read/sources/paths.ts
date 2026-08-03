@@ -4,9 +4,9 @@
  * Wave 2 wires the remaining screens against control-plane sources that already
  * exist: Mission Control's append-only state files, the crontab, the systemd
  * user timers, this repository's git tree and worktrees, and the tmux capture
- * bridge. They are **interim**: each screen swaps to its native or #186 source
- * when that lands, and nothing outside `src/read/sources/` knows any of these
- * paths exist.
+ * bridge. They are **interim**: each screen swaps to its native source when one
+ * lands, and nothing outside `src/read/sources/` knows any of these paths
+ * exist.
  *
  * Every one is read-only. This app opens these files for reading and runs
  * inspection commands; it never writes, locks, truncates, renames or appends to
@@ -47,6 +47,23 @@ export function crewLogPath(): string {
 /** The directory whose files declare the seats the fleet can dispatch. */
 export function personasRoot(): string {
   return environment("CTOWER_UI_PERSONAS_ROOT", `${missionControlRoot()}/personas`);
+}
+
+/**
+ * Where seats write their task and status files, and the ledger that charges an
+ * escape to a seat.
+ *
+ * Neither takes an override of its own. Both are fixed positions inside Mission
+ * Control's tree, so `CTOWER_UI_MC_ROOT` already moves them together — and a
+ * profile that could be pointed at a ledger from one fleet and a coordination
+ * directory from another would be reading two different companies onto one page.
+ */
+export function coordinationRoot(): string {
+  return `${missionControlRoot()}/coordination`;
+}
+
+export function escapesPath(): string {
+  return `${missionControlRoot()}/state/escapes.jsonl`;
 }
 
 export function muxBridgePath(): string {

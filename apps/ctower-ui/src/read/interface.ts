@@ -5,9 +5,9 @@ import type { Known } from "./sources/maybe";
 /**
  * The record-read contract this surface renders.
  *
- * Phase 1 reads the shadow instance's existing read API. When the #186 typed
- * feed lands, only `src/read/adapter.ts` changes: every screen already speaks
- * these functions and this `Reading` union, so no surface is edited to swap the
+ * Phase 1 reads the shadow instance's existing read API. When a typed feed
+ * lands, only `src/read/adapter.ts` changes: every screen already speaks these
+ * functions and this `Reading` union, so no surface is edited to swap the
  * source.
  *
  * Lane, priority, durability and projection-health are the generated contract's
@@ -26,13 +26,37 @@ export const LANES: readonly BoardLane[] = [
   "complete",
 ];
 
-/** A fact ctower does not record yet, named by the work that will record it. */
-export interface FutureSource {
-  /** The work item that lands the source, e.g. `#186` or `G5`. */
-  readonly lands: string;
-  /** What that work will start recording, in operator language. */
-  readonly what: string;
-}
+/**
+ * A fact this surface has nothing to show for, and *why* it has nothing.
+ *
+ * The two reasons are opposite claims to an operator and are never merged:
+ *
+ * * `capability` — ctower records no fact of this class yet. When a work item is
+ *   filed to land it, `lands` names that item and `why` says how it covers this
+ *   exact fact. When none is filed, `lands` is `null` and the surface says so —
+ *   round-3 QA (#241) found nine unrelated panels all citing one issue that
+ *   covered none of them, which is worse than citing nothing.
+ * * `silence` — ctower does record this class of fact and holds none for this
+ *   subject. Nothing needs to land, so there is nothing to cite.
+ *
+ * Every instance is declared once in `read/futureSources.ts`; no screen builds
+ * one inline, so a citation cannot be minted without passing that table.
+ */
+export type FutureSource =
+  | {
+      readonly absence: "capability";
+      /** What ctower does not record, in operator language. */
+      readonly what: string;
+      /** The work item that would land it, or `null` when none is filed. */
+      readonly lands: string | null;
+      /** How that item covers this fact; `null` when nothing is cited. */
+      readonly why: string | null;
+    }
+  | {
+      readonly absence: "silence";
+      /** The recorded fact this subject holds none of, in operator language. */
+      readonly what: string;
+    };
 
 /**
  * One read outcome.
@@ -56,6 +80,28 @@ export type Reading<T> =
 export interface RecordSource {
   readonly kind: string;
   readonly ref: string;
+  /**
+   * The issue this ticket was raised from, when the recorded source kind is an
+   * issue tracker and the ref parses as one of its references.
+   *
+   * The operator asked the board to reflect the issue a ticket is linked to.
+   * That link is only ever the record's own `source` — this surface resolves a
+   * URL from a kind it recognises and a ref that parses, and renders the raw ref
+   * as text otherwise. A repository guessed from an identifier's spelling would
+   * be the inference INV-66 forbids, and a URL guessed from it would be a
+   * fabricated link an operator would click.
+   */
+  readonly issue: IssueReference | null;
+}
+
+/** One resolved issue reference: where it lives, and the address to open. */
+export interface IssueReference {
+  /** `owner/repo`, exactly as the ref recorded it. */
+  readonly repository: string;
+  readonly number: number;
+  readonly url: string;
+  /** How it reads on a card: `owner/repo#123`. */
+  readonly label: string;
 }
 
 export interface BoardCard {
@@ -107,6 +153,8 @@ export interface BoardSnapshot {
   readonly health: ProjectionHealth;
   readonly projectionWatermark: number;
   readonly sourceWatermark: number;
+  /** What this read asked for, and what the record could answer with. */
+  readonly scope: BoardScope;
 }
 
 export interface RecordEvent {
@@ -182,6 +230,13 @@ export interface CadenceRegistry {
   readonly arriving: number;
   readonly late: number;
   readonly notArriving: number;
+  /**
+   * Beats whose liveness could not be established, counted rather than left as
+   * the remainder of a subtraction. Round-3 QA (#238) found four tiles summing
+   * to four of five registered beats, so the operator had to notice the missing
+   * one by arithmetic.
+   */
+  readonly unaccounted: number;
   /** Which source answered — `crontab` or `systemd user timers`. */
   readonly sourceLabel: string;
   readonly sweptAt: string;
@@ -251,6 +306,24 @@ export interface DiffLine {
   readonly kind: "add" | "del" | "hunk" | "file" | "context";
 }
 
+/**
+ * What a worktree diff was measured against.
+ *
+ * A base is not a constant. Round-3 QA (#236) found every diff taken against the
+ * checkout's bare local `main`, which was 25 commits behind the trunk, so a
+ * six-file branch rendered as 267 files. The base therefore carries its own
+ * commit and the sentence explaining how it was chosen, and both are printed —
+ * a stale base is visible rather than silent.
+ */
+export interface DiffBase {
+  /** The ref git was asked to diff against, when one resolved. */
+  readonly ref: Known<string>;
+  /** That ref's own commit, so the reader can see how old the base is. */
+  readonly head: Known<string>;
+  /** How this base was chosen, in operator language. */
+  readonly note: string;
+}
+
 export interface SessionWorktree {
   readonly root: string;
   /** Worktrees git still lists whose directory is gone; reaped, not shown. */
@@ -260,7 +333,7 @@ export interface SessionWorktree {
   readonly openDiffRead: Known<string>;
   readonly branch: Known<string>;
   readonly head: Known<string>;
-  readonly base: string;
+  readonly base: DiffBase;
   readonly files: readonly WorktreeFile[];
   /** Whether the file stat answered — an unread stat is not a clean tree. */
   readonly filesRead: Known<string>;
@@ -274,6 +347,13 @@ export interface SessionWorktree {
 export interface StreamTurn {
   readonly body: readonly string[];
   readonly tools: readonly StreamTool[];
+  /**
+   * The source's own status lines — a spinner, an elapsed-time tick, a scheduled
+   * wake. They are attached to the turn they interrupt rather than promoted to
+   * turns of their own: round-3 QA (#242) found five of eleven bubbles on one
+   * screenful carrying nothing a reader wants.
+   */
+  readonly notes: readonly string[];
 }
 
 export interface StreamTool {
@@ -283,7 +363,7 @@ export interface StreamTool {
 
 /**
  * A session as a stream of turns. Source-neutral: a terminal capture and a
- * typed G5 turn stream both satisfy it, and the screen renders `header`,
+ * typed turn stream both satisfy it, and the screen renders `header`,
  * `turns` and `rawLines` without knowing which answered.
  */
 export interface SessionStream {
@@ -399,6 +479,147 @@ export interface CrewRoster {
   readonly tail: TailNote;
 }
 
+/* ── one crew in full ──────────────────────────────────────────────────────
+   The roster answers "who is working". A profile answers "what has this one
+   crew done, and who stands behind it". Same three sources, plus the records a
+   seat writes about itself: its status files, and the ledger that charges an
+   escape to its seat. Nothing here is derived from a name the way a shell page
+   would be — a field no record carries is `none` with the reason, and a field
+   whose read failed is `unread`. */
+
+/** One recorded step of a crew's life, as the crew log holds it. */
+export interface CrewLifecycleEntry {
+  /** The stamp the log wrote, verbatim. */
+  readonly at: string;
+  readonly ago: Known<string>;
+  readonly status: Known<string>;
+  readonly activity: CrewActivity;
+  readonly task: Known<string>;
+  readonly model: Known<string>;
+  readonly comment: Known<string>;
+  /** This entry's task differs from the one before it: a new engagement. */
+  readonly opensEngagement: boolean;
+}
+
+/**
+ * Whether a project's trunk carries a change this crew's own records claim.
+ * `unchecked` is its own case: no trunk was read, so nothing is being said
+ * about the change either way.
+ */
+export type LandedVerdict = "landed" | "not-on-trunk" | "unchecked";
+
+export interface DeliveredChange {
+  /** The reference as the crew wrote it, e.g. `#215`. */
+  readonly reference: string;
+  /** Which of the crew's own records named it. */
+  readonly citedIn: string;
+  /** The project that record was filed under: whose trunk decided the verdict. */
+  readonly project: Known<string>;
+  /** True when that project is the crew's, because the record named none. */
+  readonly projectFromCrew: boolean;
+  readonly verdict: LandedVerdict;
+  readonly verdictLabel: string;
+  /** The trunk entry that carries it, or why no verdict could be reached. */
+  readonly detail: Known<string>;
+}
+
+/** One `SIGNED-OFF` block, quoted from the file the crew wrote it in. */
+export interface SignedClaim {
+  readonly file: string;
+  readonly seat: Known<string>;
+  readonly model: Known<string>;
+  readonly claim: Known<string>;
+  readonly stoodUnder: Known<string>;
+  readonly ifThisBreaks: Known<string>;
+}
+
+/** The three rungs of the fleet's autonomy ladder, in descending trust. */
+export type LadderRung = "TRUSTED" | "WATCHED" | "GROUNDED";
+
+export interface LadderStep {
+  readonly rung: LadderRung;
+  readonly label: string;
+  /** What the rung permits, in the ladder's own words. */
+  readonly what: string;
+  readonly entered: string;
+}
+
+export interface Accountability {
+  readonly rung: LadderRung;
+  readonly steps: readonly LadderStep[];
+  readonly escapes: Known<number>;
+  /**
+   * False when the ledger charges this seat nothing and the rung is therefore
+   * the ladder's default rather than a state anybody recorded. The screen says
+   * which it is; a default drawn as a measurement is the lie this flag exists
+   * to stop.
+   */
+  readonly counted: boolean;
+  readonly defaultNote: string | null;
+  /** The escapes charged to this seat, quoted. */
+  readonly charged: readonly string[];
+  readonly ledgerSource: string;
+  readonly ruleSource: string;
+  readonly scopeNote: string;
+}
+
+/** A destination inside this surface that exists for this crew. */
+export interface CrewLink {
+  readonly label: string;
+  readonly href: string;
+  readonly what: string;
+}
+
+export interface CrewProfile {
+  /** The identity facts, in exactly the shape the roster row carries them. */
+  readonly row: CrewRow;
+  readonly sessionName: string;
+  readonly spawnedAt: Known<string>;
+  /** How long since this session last produced output, as tmux records it. */
+  readonly lastOutput: Known<string>;
+  readonly worktree: Known<string>;
+  readonly branch: Known<string>;
+  readonly head: Known<string>;
+  readonly headSubject: Known<string>;
+  readonly running: Known<string>;
+  readonly links: readonly CrewLink[];
+  readonly lifecycle: readonly CrewLifecycleEntry[];
+  /** How many entries the log holds for this crew, and how many are shown. */
+  readonly lifecycleNote: string;
+  readonly delivered: readonly DeliveredChange[];
+  readonly deliveredNote: string;
+  readonly claims: readonly SignedClaim[];
+  /** Every signature found, so quoting a few never reads as quoting them all. */
+  readonly signatures: number;
+  readonly claimsNote: string;
+  readonly accountability: Accountability;
+  /** What would record this crew's cost. Always absent; never a number. */
+  readonly cost: FutureSource;
+  readonly observedAt: string;
+  readonly sourceNote: string;
+  readonly tail: TailNote;
+}
+
+/** A name the fleet does not run, and everything that was checked for it. */
+export interface CrewUnknown {
+  readonly crew: string;
+  /** What the crew log holds for the name, when it holds anything. */
+  readonly logged: Known<string>;
+  readonly liveCrews: number;
+  /** The sources consulted, named, so the answer can be re-derived by hand. */
+  readonly checked: readonly string[];
+}
+
+/**
+ * A profile read. Not finding a crew is an answer, not a failure: the sources
+ * were reached and none of them runs this name. It stays inside `present` so
+ * the screen can say what *was* found, and an unreachable tmux stays a separate
+ * `unavailable` claim.
+ */
+export type CrewLookup =
+  | { readonly found: "crew"; readonly profile: CrewProfile }
+  | { readonly found: "no-such-crew"; readonly missing: CrewUnknown };
+
 /* ── S9 metrics ────────────────────────────────────────────────────────── */
 
 export interface MergeDay {
@@ -460,14 +681,32 @@ export interface InstanceIdentity {
 }
 
 /**
+ * How a board read was scoped, so the screen can say what it is looking at.
+ *
+ * The read is always scoped by project key — that is the contract's required
+ * parameter. Whether the *record* can honour that scoping is a different fact,
+ * and the screen must not imply the first answers the second.
+ */
+export interface BoardScope {
+  /** The project key the read asked for. */
+  readonly projectKey: string;
+  /**
+   * Whether a returned card carries a project fact of its own. False today: the
+   * Board card has no project member, so nothing on this board can be
+   * attributed to a project, however the read was scoped.
+   */
+  readonly cardsCarryProject: boolean;
+}
+
+/**
  * Every read this surface makes. One module implements it; screens import the
  * selected implementation from `adapter.ts` and never construct their own.
  */
 export interface RecordAdapter {
   readonly instance: InstanceIdentity;
-  board: () => Promise<Reading<BoardSnapshot>>;
-  ticket: (ticketId: string) => Promise<Reading<TicketRecord>>;
-  ticketAudit: (ticketId: string) => Promise<Reading<readonly RecordEvent[]>>;
+  board: (projectKey: string) => Promise<Reading<BoardSnapshot>>;
+  ticket: (ticketId: string, projectKey: string) => Promise<Reading<TicketRecord>>;
+  ticketAudit: (ticketId: string, projectKey: string) => Promise<Reading<readonly RecordEvent[]>>;
   /** Per-session work facts: who, duration, tokens, outcome. */
   workSessions: (ticketId: string) => Promise<Reading<never>>;
   /** Registered scheduled wakes and their fire history. */
@@ -489,6 +728,8 @@ export interface RecordAdapter {
   deliveryMetrics: () => Promise<Reading<DeliveryMetrics>>;
   /** Who is working, on what: seats down, projects across, then every live crew. */
   crewRoster: (project: string | null, seat: string | null) => Promise<Reading<CrewRoster>>;
+  /** One crew in full: what it is, what it has done, and who stands behind it. */
+  crewProfile: (crew: string) => Promise<Reading<CrewLookup>>;
 }
 
 /** The subset of reads the ctower read API answers today. */

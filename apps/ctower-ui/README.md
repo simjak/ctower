@@ -68,21 +68,25 @@ bounds, or when an application value-imports the generated client's single-shot 
 `/v1/tickets/{id}` and `/v1/tickets/{id}/audit`. `src/read/adapter.ts` binds the one that is
 active.
 
-Landing the #186 typed feed changes `adapter.ts` and nothing else: no screen constructs a
-client, and no screen knows a URL.
+Swapping to a typed feed changes `adapter.ts` and nothing else: no screen constructs a client,
+and no screen knows a URL.
 
 ### Wave 2 — every screen on a live source
 
 | Screen | Source today | Swaps to |
 |---|---|---|
-| Board · Ticket | ctower read API (`/v1/board`, `/v1/tickets/{id}`, `/audit`) | #211's typed feed |
-| Inbox | Mission Control `state/inbox.jsonl`, read-only | #186 notification channel |
+| Board · Ticket | ctower read API (`/v1/board`, `/v1/tickets/{id}`, `/audit`) | a typed feed, through `adapter.ts` alone |
+| Inbox | Mission Control `state/inbox.jsonl`, read-only | #186's operator channel |
 | Heartbeats | host `crontab -l` + `state/` fire markers — or `systemctl --user list-timers` | a native cadence registry |
 | Files | this repository's git tree at a committed revision | — |
-| Workspace · Feed | the tmux capture bridge (`mux list`, `mux read`) | G5 session facts |
-| Explorer | `git worktree list` + `git diff <base>...HEAD` | G5 worktree facts |
-| Metrics (S9) | `git log --first-parent` per project trunk | a recorded deploy event, incident pair and metric-definition file (G5) |
-| Org (the who layer) | live `tmux list-sessions` + Mission Control `state/crew-log.jsonl` + `personas/` | G5 session facts and a recorded seat registry |
+| Workspace · Feed | tmux `list-sessions` / `list-panes` / `capture-pane -p -J` | recorded session facts |
+| Explorer | `git worktree list` + `git diff <resolved trunk>...HEAD` | recorded worktree facts |
+| Metrics (S9) | `git log --first-parent` per project trunk | a recorded deploy event, incident pair and metric-definition file |
+| Org (the who layer) | live `tmux list-sessions` (liveness and `@project`) + Mission Control `state/crew-log.jsonl` + `personas/` | recorded session facts and a seat registry |
+| Crew profile | the Org sources for one name, plus that crew's `coordination/*.status.md`, `state/escapes.jsonl` and each project's first-parent trunk history | G5 session facts, a recorded ladder state, and a per-session cost event (#200) |
+
+Nothing in the "swaps to" column is cited as a work item unless one is filed for it; see
+**Citations are facts** below.
 
 These are **interim, director-sanctioned** adapters, and they name a third boundary this repository
 does not otherwise cross: `SPEC.md` line 67 calls Mission Control *migration or research provenance
@@ -127,10 +131,39 @@ three marks is stated on the page rather than hidden in a component. Model strin
 unnormalised: two spellings of one family stay two rows rather than merging into a count nobody
 recorded.
 
-The seat and crew profile pages (`seat.html`, `crew.html`) are not built here, so the rail offers no
-per-seat entry — a nav item that leads nowhere is a dead control. Org carries both dimensions as
-filters that work instead, and each filter chip counts what clicking it would reveal *under the
-other filter*, not the fleet-wide number.
+The rail still offers no per-seat entry — a nav item that leads nowhere is a dead control, and the
+seat page (`seat.html`) is not built. Org carries both dimensions as filters that work instead, and
+each filter chip counts what clicking it would reveal *under the other filter*, not the fleet-wide
+number.
+
+### One crew in full — `/crew/<name>`
+
+Every roster row opens the crew's own profile, a 1:1 port of the approved `crew.html`. It answers the
+question the roster cannot: what has this one crew done, and who stands behind it. Identity, the
+bound task and liveness, the lifecycle the crew log holds, the changes it claims, the signatures it
+wrote, and where its seat stands on the autonomy ladder.
+
+Four things about it are worth knowing before reading the code:
+
+- **A crew that is not running is an answer, not a failure.** tmux was reached and lists no such
+  session, so the lookup stays `present` and the page says what *was* checked — including whether the
+  crew log has ever recorded the name, which is how a reaped crew is told apart from one that never
+  existed. It never renders the panels above with nothing in them: a shell with empty fields reads as
+  a crew with no work rather than as a crew that is not there.
+- **A change reference is a claim; the trunk is the verdict.** A crew names its own changes in its
+  status files and crew-log lines. Each reference is joined to the first-parent trunk history of the
+  project *its own record was filed under* — not the crew's current project, because a long-lived
+  crew moves and `#1` on one repository is a different change from `#1` on another. Where the record
+  named no project, the crew's is used and the row says so. `landed`, `not on trunk` and `no trunk
+  read` are three different claims and are never drawn as each other. No forge is reached: this
+  surface holds no credential for one and would have to invent a host to build a link.
+- **The ladder rung is derived, and says so.** `board/accountability.md` puts tiers in
+  `board/crew-kpis.md`; that file carries a model scoreboard, not a rung. So the rung comes from
+  counting `state/escapes.jsonl` against the ladder's own entry thresholds, and a seat the ledger
+  charges nothing is TRUSTED **by default** — the panel names that, because the ladder is entered by
+  five consecutive verified-clean ships and no record on this fleet counts ships.
+- **Session cost is the one panel with no record at all.** It reads `— · —` and names `#200` (G5).
+  An invented cost is the one number an operator would believe without checking.
 
 ### Metrics, and the rule about numbers
 
@@ -153,9 +186,25 @@ a number can never belong to a project the tab does not name.
 
 Board and Ticket render live record facts. Heartbeats, Inbox, Feed session facts, Files,
 Workspace and Explorer have no source in ctower today, so each renders its approved layout and
-an explicit block naming the work that lands its source (`#186` / `G5`). No screen invents a
-number, a name, a duration or a token count. The ticket work timeline in particular reads
-`no session data yet` and totals `—` until G5 session events exist.
+an explicit block naming what is missing. No screen invents a number, a name, a duration or a
+token count. The ticket work timeline in particular reads `no session data yet` and totals `—`
+until #200's per-session work facts exist.
+
+The block also says **which kind of nothing** it is. `ticket.comment_added`, `proof.changed`,
+`workflow.changed` and `work.changed` are recorded kinds: a ticket carrying none of them is a
+record that answered and holds none, not a capability ctower lacks, and it says so rather than
+naming work that would land something already landed.
+
+### Citations are facts
+
+Every `lands with …` line comes from `src/read/futureSources.ts` and nowhere else. Round-3 QA
+found nine panels across three screens all citing **#186**, which is the operator-channel feed and
+covers none of them — a pointer that points everywhere points nowhere, and these panels are only
+worth something if the pointer is right. So each entry carries the sentence saying how that work
+item covers *that exact fact*, and that sentence is the chip's hover; where nothing is filed, the
+panel reads **no work item is filed for this yet** rather than borrowing the nearest number.
+`tests/repository/test_declared_sources.py` fails closed on a citation minted outside the table
+and on one work item standing behind two unrelated facts.
 
 **A source that exists and did not answer is never rendered as one that does not exist.** These are
 opposite claims to an operator, so they are different states, different blocks and different words:
@@ -167,10 +216,18 @@ Inline, the two read `not recorded` and `not reached` rather than a bare dash.
 
 ### Read-only v1
 
-The steering composer (Feed) and the Save/Revert controls (Files) render as visibly disabled
-affordances with the reason on the control itself, never as a page banner and never as a
-dead-looking control. View switches — Chat/Raw, File/Diff, the board source filter — choose a
-reading rather than issue a command, so they stay live.
+The steering composer (Feed), the Save/Revert controls (Files) and the sidebar's `New ticket`
+render as visibly disabled affordances — a real `disabled` control, the shared
+`read-only v1 · disabled` chip, and the reason printed on the control itself, never as a page
+banner, never in a hover alone, and never as a dead-looking control. `New ticket` names what the
+operator can do instead: capture through `ctowerctl ticket capture`, and the board shows it on the
+next read. View switches — Chat/Raw, File/Diff, the board source filter — choose a reading rather
+than issue a command, so they stay live.
+
+Counts carry their unit. `surfaces/Count.tsx` is the only place the `.n` pill is written and its
+type pairs every number with what it counts, because the same pill meant *unread* on the Inbox and
+*cards* on the Board with the unit only in a `title` — and a seat holding 485 read messages
+rendered as a bare `0`.
 
 ## Running it
 
@@ -208,3 +265,10 @@ the phase-1 status note; the two structural ones are:
 
 The section nav carries the eight screens in this phase. `Workflow` (R2707) is not built here,
 and a nav entry that leads nowhere would be a dead control.
+
+3. **The rail's ticket entry is `Latest ticket`**, not `Tickets`. `/ticket` opens the most
+   recently created ticket on record: that is one record, not a list, and the previous label
+   promised an index the route never showed. The route now renders that ticket in place with the
+   rule and the ticket's own stable link stated above it, rather than redirecting to an id the
+   operator never chose. The board is the list. `src/frame/rail.ts` is the contract, and
+   `tests/repository/test_declared_sources.py` reads it.

@@ -1,11 +1,13 @@
+import Link from "next/link";
 import type { ReactElement, ReactNode } from "react";
 import { Chrome } from "@/frame/Chrome";
 import { KnownValue, Resolved } from "@/frame/Declared";
 import { RecordFoot } from "@/frame/RecordFoot";
-import { StateGlyph } from "@/frame/StateGlyph";
 import { recordAdapter, SOURCE_LABELS } from "@/read/adapter";
 import type { CrewRoster, CrewRow, ModelShare, ProjectRoster, TailNote } from "@/read/interface";
 import { ChoiceTabs } from "@/surfaces/ChoiceTabs";
+import type { TabCount } from "@/surfaces/ChoiceTabs";
+import { ActivityMark } from "@/surfaces/crew/marks";
 import { readParam } from "@/surfaces/screenParams";
 
 export const dynamic = "force-dynamic";
@@ -24,8 +26,6 @@ export const dynamic = "force-dynamic";
  * never drawn the same way.
  */
 
-const GLYPH = { "in-flight": "flight", parked: "parked", held: "held" } as const;
-
 /**
  * Which of the three chart tokens a model's band uses. Keyed on the model name
  * so the same family keeps the same colour between reads; the legend repeats
@@ -39,28 +39,6 @@ function bandOf(model: ModelShare): string {
   return name.startsWith("fable") ? "m-fable" : "m-sol";
 }
 
-function ActivityMark({ row }: { readonly row: CrewRow }): ReactElement {
-  if (row.activity === "unrecorded") {
-    return (
-      <span className="c-stat idle">
-        <KnownValue value={row.status} />
-      </span>
-    );
-  }
-  const tone =
-    row.activity === "held"
-      ? "c-stat blocked"
-      : row.activity === "parked"
-        ? "c-stat idle"
-        : "c-stat";
-  return (
-    <span className={tone}>
-      <StateGlyph name={GLYPH[row.activity]} />
-      <KnownValue value={row.status} />
-    </span>
-  );
-}
-
 function Crew({
   row,
   spellOut,
@@ -68,8 +46,11 @@ function Crew({
   readonly row: CrewRow;
   readonly spellOut: boolean;
 }): ReactElement {
+  // the whole row is the link, as the approved roster has it: the crew name is
+  // the only thing on it that identifies the profile, and a link on the name
+  // alone would leave most of a 90px-tall row unclickable
   return (
-    <div className="crow">
+    <Link className="crow" href={`/crew/${encodeURIComponent(row.name)}`}>
       <i className="av">
         <KnownValue value={row.seatInitials} render={(mark) => mark} />
       </i>
@@ -105,7 +86,7 @@ function Crew({
       <span className="c-task">
         <KnownValue value={row.task} />
       </span>
-      <ActivityMark row={row} />
+      <ActivityMark activity={row.activity} status={row.status} />
       <span className="c-live">
         <span>
           <KnownValue value={row.upFor} />
@@ -119,7 +100,7 @@ function Crew({
           {spellOut ? row.flag : "no request id"}
         </span>
       )}
-    </div>
+    </Link>
   );
 }
 
@@ -246,6 +227,19 @@ function Lede(): ReactElement {
   );
 }
 
+/**
+ * A filter chip's number, carrying the unit it counts in. Each one counts what
+ * clicking it would reveal *under the other filter*, which is why the detail
+ * says so rather than leaving the reader to assume a fleet-wide number.
+ */
+function crews(count: number): TabCount {
+  return {
+    value: count,
+    unit: count === 1 ? "crew" : "crews",
+    detail: `${count.toString()} live ${count === 1 ? "crew" : "crews"} this filter would show, counted under the other filter's current selection`,
+  };
+}
+
 function TeamBody({ roster }: { readonly roster: CrewRoster }): ReactElement {
   // the design audit's F-004 rule, applied to the row flag: the first offending
   // row carries the whole sentence, every later one carries the fact alone
@@ -267,11 +261,11 @@ function TeamBody({ roster }: { readonly roster: CrewRoster }): ReactElement {
             selected={roster.selectedProject ?? ""}
             keeping={keeping}
             choices={[
-              { key: "", label: "All projects", count: roster.allProjectsCount },
+              { key: "", label: "All projects", count: crews(roster.allProjectsCount) },
               ...roster.projectFilters.map((filter) => ({
                 key: filter.key,
                 label: filter.label,
-                count: filter.count,
+                count: crews(filter.count),
               })),
             ]}
           />
@@ -283,11 +277,11 @@ function TeamBody({ roster }: { readonly roster: CrewRoster }): ReactElement {
             selected={roster.selectedSeat ?? ""}
             keeping={keepingSeat}
             choices={[
-              { key: "", label: "All seats", count: roster.allSeatsCount },
+              { key: "", label: "All seats", count: crews(roster.allSeatsCount) },
               ...roster.seatFilters.map((filter) => ({
                 key: filter.key,
                 label: filter.label,
-                count: filter.count,
+                count: crews(filter.count),
               })),
             ]}
           />
