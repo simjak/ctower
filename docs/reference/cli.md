@@ -13,15 +13,14 @@ dispatcher.
 | Journey | Status | Current surface |
 |---|---|---|
 | Check the app is running | **Available** | `control health`; executed against the disposable loopback API by `just quickstart` |
-| Create a project | **Unavailable** | No create-project operation or parser command exists. `project delivery query` is a read; it accepts any project key but cannot bring one into being |
-| Create a team or onboard another member | **Partially available** | There is no team or general member-management command. An Operator can issue or revoke one credential for an already configured project-seat identity with `credential seat issue/revoke` |
+| Onboard a project | **Available to an Operator, as configuration** | Through the CompanyBundle: `company bundle validate` → `plan` → `apply`. There is no `project create` command and no self-serve path — see [Onboard a project](#onboard-a-project) |
+| Create a team or onboard another member | **Partially available** | There is no team or general member-management command. A project's starter checkpoints and their accountable seat keys are bundle resources; an Operator then binds one credential per already-configured project-seat identity with `credential seat issue/revoke` |
 | Create a ticket | **Available** | `ticket create` or its alias `ticket capture` |
 | Run the full workflow | **Available as a development fixture** | The tested path below reaches durable `resolved` and `closed` facts |
 
-The unavailable rows are API and domain gaps, not undocumented flags. Adding examples for them would be
-fiction. Self-served project onboarding is tracked as
-[issue #212](https://github.com/simjak/ctower/issues/212); projects enter today only through migration and
-configuration paths.
+The partially-available row is an API and domain gap, not an undocumented flag; adding examples for it
+would be fiction. Onboarding is not a gap — it is a deliberate shape. Self-serve project onboarding, the
+thing that does not exist, is tracked as [issue #212](https://github.com/simjak/ctower/issues/212).
 
 ## Run the executable reference
 
@@ -73,7 +72,126 @@ result when one exists. Exit `75` never means “try the same intent with a new 
 | `bootstrap first-tenant` | `--command-id`, `--tenant-name`, `--tenant-slug`, `--operator-name`, `--operator-credential-ref`, `--operator-vault-ref`, `--commander-name`, `--commander-vault-ref` |
 
 This online-only, one-use ceremony creates the initial tenant and two principals. Every `*-ref` value is a
-reference, never a secret value. It does not create a reusable onboarding flow.
+reference, never a secret value. It is not itself the onboarding flow: projects arrive through the
+CompanyBundle below.
+
+## Onboard a project
+
+| Command | Input |
+|---|---|
+| `company bundle validate` | `<bundle_file>` |
+| `company bundle plan` | `<bundle_file>` |
+| `company bundle apply` | `<bundle_file>`, `--command-id`, `--expected-active-version`, `--plan-digest` |
+| `company bundle export` | none |
+
+A project is not created by a command. It is a `kind: project` resource inside the CompanyBundle, published
+by an Operator over the same authenticated command API the UI uses. The checked-in
+`company/company.bundle.yaml` carries the three configured projects — `ctower.control-plane`,
+`manibo.delivery`, `bh-loop.delivery` — beside the `kind: checkpoint` resources that give each project its
+starter checkpoints and name the seat accountable for each.
+
+Adding a project therefore means adding its `project` resource, its checkpoints, and their assignments to
+the bundle, then running validate → plan → apply. Nothing about the sequence is project-specific.
+
+### The run
+
+Against a disposable loopback instance and the checked-in bundle. Authority is one bounded line on stdin,
+never a flag.
+
+```console
+$ ctl --base-url http://127.0.0.1:38677 company bundle validate company/company.bundle.yaml
+{"bundle_digest":"sha256:3550c774...","checks":[{"code":"schema.closed","status":"passed"},
+{"code":"digest.canonical","status":"passed"},{"code":"reference.exact","status":"passed"},
+{"code":"compatibility.current","status":"passed"},{"code":"security.secret-free","status":"passed"}],
+"valid":true,"warnings":[]}
+```
+
+`validate` is a pure read. Its five named checks are the whole verdict; `valid` is never inferred from an
+absent error.
+
+```console
+$ ctl --base-url http://127.0.0.1:38677 company bundle plan company/company.bundle.yaml
+{"actions":[ ... {"component":{"key":"bh-loop.delivery","kind":"project","revision":1},"kind":"create"},
+{"component":{"key":"ctower.control-plane","kind":"project","revision":1},"kind":"create"},
+{"component":{"key":"manibo.delivery","kind":"project","revision":1},"kind":"create"} ... ],
+"base_version":0,"plan_digest":"sha256:b65365a5...","proposed_bundle_digest":"sha256:3550c774...",
+"warnings":[]}
+```
+
+`plan` is also a read, and it is where a project's arrival is visible: three `create` actions on `kind:
+project` components, beside the `create` actions for the checkpoint set. `base_version` is the currently
+active bundle version — `0` when no bundle has ever been applied.
+
+```console
+$ ctl --base-url http://127.0.0.1:38677 company bundle apply company/company.bundle.yaml \
+    --command-id 9bcccc10-1eba-40ec-b10b-103b77bc8316 \
+    --expected-active-version 0 \
+    --plan-digest sha256:b65365a5...
+{"command_id":"9bcccc10-...","reason_code":"durability_pending","state":"queued",
+ "result":{"active_version":1,"bundle_digest":"sha256:3550c774...","durability_state":"durability_pending",
+ "event_ids":[...],"plan_digest":"sha256:b65365a5..."},"sequence":1}
+```
+
+Exit `75`, not `0`. `apply` is a durable mutation: it enters the encrypted spool, reports
+`durability_pending`, and is completed by `spool drain` with the same command ID. `--plan-digest` must be
+the `plan_digest` printed by the plan you actually read, and `--expected-active-version` must be the
+version that plan reported; either one stale is a refusal, not a silent re-plan.
+
+```console
+$ ctl --base-url http://127.0.0.1:38677 company bundle export
+assignments:
+- component:
+    content_digest: sha256:17288c4f...
+    key: commander.protected-cli
+    kind: agent_profile
+    revision: 1
+  slot: agent_profile
+  subject: principal:commander
+company:
+  display_name: Ctower
+  key: ctower
+resources:
+...
+```
+
+`export` emits the active bundle as canonical YAML with no runtime state. Planning that export against the
+same instance returns `{"actions":[]}` at `base_version: 1` — the round trip carries zero semantic diff,
+which is what makes the exported file a safe starting point for the next revision.
+
+CompanyBundle moves one future-only Catalog pointer. It does not activate teams, runners, effects, or a
+production configuration.
+
+### Why there is no `project create`
+
+This is a specified shape, not a missing feature.
+
+- `docs/internal/SPEC.md`, *Portfolio topology, shadow boundary, and project grants*: the configured project
+  keys "are ordinary Project component data under one CompanyBundle, not product-code branches, separate
+  tenants, or separate databases."
+- The same section's authorization table, row *Apply Project/checkpoint/seat configuration*: it is an
+  "Operator-only CompanyBundle command." A project Commander "may author/propose a revision but cannot apply
+  it," and the `capture` scope is explicitly not granted "Catalog/CompanyBundle apply."
+- INV-47 states the general rule: CompanyBundle is transport — validate, plan, apply, and export through
+  authenticated commands.
+
+The CLI cannot drift from that on its own.
+`tests/modules/ctowerctl/test_cli_boundaries.py::test_parser_exposes_every_authored_name_without_operation_dispatch`
+asserts `authored_command_names() == frozenset(CLI_OPERATIONS)`: the parser's closed command set must equal
+the generated contract's operation set exactly. A `project create` command cannot be added by editing the
+parser; it would need an authored HTTP operation, which the specification does not grant.
+
+[Issue #212](https://github.com/simjak/ctower/issues/212) holds the open question — whether a project
+commander should be able to self-serve onboarding — as an operator decision between two options, not as an
+implementation task:
+
+- **(a)** the CompanyBundle path above is *the* onboarding route, documented as such. This page is that
+  answer written down.
+- **(b)** a specification amendment authorizes a self-serve create-project under D30's per-project grants.
+  That is a change to the rows quoted above, because it moves project creation out of operator-only
+  CompanyBundle apply, and it would then need an authored HTTP operation before any CLI command could exist.
+
+Until (b) is decided and amended, (a) is what the product does, and the sequence on this page is the
+onboarding path.
 
 ## Project-seat credentials
 
@@ -83,7 +201,8 @@ reference, never a secret value. It does not create a reusable onboarding flow.
 | `credential seat revoke <credential_id>` | `--command-id` and `--reason` |
 
 These are online-only Operator mutations and are never written to the replay spool. They bind or revoke a
-credential for one configured `(project_key, seat_key)` identity; they do not create a project or team.
+credential for one configured `(project_key, seat_key)` identity; the project and the seat must already
+exist in the applied bundle, and these commands do not create either, nor a team.
 `--credential-ref` is an opaque secret-manager reference and `--credential-digest` is the lowercase
 `sha256:` digest of bearer bytes retained outside ctower. Never put the bearer itself in a command,
 environment variable, file, or documentation transcript.
@@ -196,7 +315,8 @@ explicit complete selection.
 | `project delivery query <project_key>` | optional `--output {text,json}` |
 | `control health` | none |
 
-All are online reads and never spooled. `project delivery query` does not create or configure a project.
+All are online reads and never spooled. `project delivery query` does not create or configure a project;
+that is [Onboard a project](#onboard-a-project).
 
 `<project_key>` is validated against the generated contract pattern `^[a-z][a-z0-9-]{2,63}$` before the
 request leaves your machine; a key outside it exits `64`. A well-formed key with no authorized rows is
@@ -216,18 +336,6 @@ A rendered seat is `<label>[<seat_key>]@<catalog_key>@<revision>`. Assignment fo
 `assigned` or `unassigned` state in the response and is never inferred from the presence of a seat; a
 missing signing seat renders as `-`. `--output json` emits the same view as the deterministic structured
 document.
-
-## Company bundle
-
-| Command | Input |
-|---|---|
-| `company bundle validate` | `<bundle_file>` |
-| `company bundle plan` | `<bundle_file>` |
-| `company bundle apply` | `<bundle_file>`, `--command-id`, `--expected-active-version`, `--plan-digest` |
-| `company bundle export` | none |
-
-CompanyBundle moves one future-only Catalog pointer. It does not activate teams, runners, effects, or a
-production configuration.
 
 ## Synthetic workflow
 

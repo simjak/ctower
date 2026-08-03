@@ -52,6 +52,34 @@ For the exact command families and current gaps, read the [CLI reference](refere
 repository work, install the complete verification toolchain described in
 [Repository setup](start-here/repository-setup.md) and use `just check` while developing.
 
+## Onboarding a project
+
+The quickstart works a ticket in an already-configured project. Onboarding a new one is a different,
+Operator-only path, and it is worth knowing before you go looking for a command that does not exist.
+
+There is no `project create`. A project is a `kind: project` resource in the CompanyBundle — the secret-free
+YAML desired state checked in at `company/company.bundle.yaml` — published over the same authenticated
+command API the UI uses:
+
+```bash
+ctl --base-url <url> company bundle validate company/company.bundle.yaml
+ctl --base-url <url> company bundle plan company/company.bundle.yaml
+ctl --base-url <url> company bundle apply company/company.bundle.yaml \
+    --command-id <uuid> --expected-active-version <n> --plan-digest <digest from plan>
+```
+
+`validate` and `plan` are reads; `plan` is where a new project is visible as a `create` action on a
+`kind: project` component, beside the checkpoint components that give it its starter checkpoints and name
+each checkpoint's accountable seat. `apply` is a durable mutation and exits `75` with
+`durability_pending` before the spool drains — that is the normal path, not an error.
+
+Only an Operator may apply. A project Commander may author or propose a bundle revision but cannot apply
+it, so onboarding cannot be self-served today. Whether it should be is
+[issue #212](https://github.com/simjak/ctower/issues/212), an open operator decision; granting it would
+require amending the specification, not just adding a command. The
+[CLI reference](reference/cli.md#onboard-a-project) carries the full sequence, the real output, and the
+exact specification rows.
+
 ## Common failures
 
 | Symptom | Meaning |
