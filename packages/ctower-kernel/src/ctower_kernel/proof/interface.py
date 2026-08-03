@@ -12,6 +12,7 @@ from enum import StrEnum
 from typing import TYPE_CHECKING, Literal, Protocol
 from uuid import UUID
 
+from ctower_kernel.record.prohibited_data import prohibited_data_refusal
 from ctower_kernel.telemetry import TelemetryContext
 
 if TYPE_CHECKING:
@@ -260,6 +261,12 @@ class Proof:
 
         if self._writer is None:
             raise RuntimeError("proof persistence is not configured")
+        prohibited = prohibited_data_refusal(
+            _authored_evidence_values(mutation.command),
+            command_id=mutation.client_command_id,
+        )
+        if prohibited is not None:
+            return prohibited
         request_digest = hashlib.sha256(_canonical_json(mutation.request_payload())).digest()
         return self._writer.mutate_proof(
             self,
@@ -487,6 +494,14 @@ class Proof:
             )
         )
         return bool(applicable) and applicable[-1].decision is VerdictDecision.PASSING
+
+
+def _authored_evidence_values(command: ProofCommand) -> tuple[str, ...]:
+    """Return exactly the caller-authored Evidence text D30 clause 3 governs."""
+
+    if isinstance(command, RecordEvidence):
+        return (command.criterion_key, command.content.decode("utf-8", errors="replace"))
+    return ()
 
 
 def _refusal(reason: str, snapshot: ProofSnapshot) -> ProofDecision:

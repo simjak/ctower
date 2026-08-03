@@ -183,6 +183,7 @@ _EXPECTED_PROBLEM_CODES = {
     "migration-source-selection-drift",
     "migration-source-tainted",
     "poison-not-found",
+    "prohibited-data-class",
     "project-delivery-unavailable",
     "project-grant-required",
     "project-scope-denied",

@@ -244,13 +244,14 @@ owner = "CT-I1-004"
 phase = "CT-I1-004"
 status = "required"
 path = "tests/acceptance/increment-1"
-patterns = ["test_intake.py", "test_intake_cli.py"]
+patterns = ["test_intake.py", "test_intake_cli.py", "test_manibo_ordinary_intake.py"]
 command = [
   "{python}",
   "-m",
   "pytest",
   "tests/acceptance/increment-1/test_intake.py",
   "tests/acceptance/increment-1/test_intake_cli.py",
+  "tests/acceptance/increment-1/test_manibo_ordinary_intake.py",
   "-q",
 ]
 timeout_seconds = 900
