@@ -231,6 +231,26 @@ def test_public_spool_round_trip_cannot_persist_or_list_an_unknown_refusal_code(
     _assert_no_marker_survives(listed, _all_spool_bytes(state))
 
 
+def test_drain_and_listing_surface_the_quarantined_refusal_payload(
+    tmp_path: Path,
+    secure_keyring: _MemoryBackend,
+) -> None:
+    """A server rejection's status+name rides the drain report and the listed entry."""
+    del secure_keyring
+    state = tmp_path / "state"
+    spool = _spool(state)
+    spool.enqueue(_command(uuid4(), {"title": "refused"}))
+    refusal = server_refusal(403, "unauthorized")
+
+    report = spool.drain(_Executor(_refused(refusal)))
+
+    assert report.quarantined == 1
+    assert report.barrier_sequence is not None
+    assert report.server_refusal == ServerRefusal(status=403, name="unauthorized")
+    listed = _unbound_spool(state).list_entries(SpoolState.QUARANTINE)
+    assert listed[0].server_refusal == ServerRefusal(status=403, name="unauthorized")
+
+
 def test_command_held_behind_a_quarantined_head_later_gets_its_own_refusal_name(
     tmp_path: Path,
     secure_keyring: _MemoryBackend,
