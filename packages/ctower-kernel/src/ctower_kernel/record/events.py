@@ -27,6 +27,12 @@ from ctower_kernel.record.intake_events import (
     IntakeEventPayload,
 )
 from ctower_kernel.record.migration_events import MigrationChangedPayload
+from ctower_kernel.record.session_events import (
+    SessionClosedPayload,
+    SessionEventPayload,
+    SessionStartedPayload,
+    SessionTransitionedPayload,
+)
 from ctower_kernel.record.ticket_events import (
     CustodyTransferredPayload,
     TicketCommentAddedPayload,
@@ -61,6 +67,7 @@ __all__ = [
     "WorkChangedPayload",
     "WorkflowChangedPayload",
     "canonical_event_bytes",
+    "event_catalog",
     "event_digest",
     "ticket_payload_from_mapping",
 ]
@@ -83,6 +90,9 @@ class EventKind(StrEnum):
     INBOUND_EVENT_PROMOTED = "intake.inbound_event_promoted"
     SEAT_CREDENTIAL_ISSUED = "access.seat_credential_issued"
     SEAT_CREDENTIAL_REVOKED = "access.seat_credential_revoked"
+    SESSION_STARTED = "session.started"
+    SESSION_TRANSITIONED = "session.transitioned"
+    SESSION_CLOSED = "session.closed"
 
 
 class EventOrigin(StrEnum):
@@ -92,19 +102,6 @@ class EventOrigin(StrEnum):
     MIGRATION_IMPORTER = "migration_importer"
 
 
-_STREAM_PREFIXES = {
-    EventKind.CATALOG_BUNDLE_ACTIVATED: "catalog",
-    EventKind.CATALOG_COMPONENT_PUBLISHED: "catalog",
-    EventKind.POISON_DISPOSITION_RECORDED: "poison-disposition",
-    EventKind.PROOF_CHANGED: "proof",
-    EventKind.ROUTINE_OCCURRENCE_RECORDED: "routine-occurrence",
-    EventKind.WORKFLOW_CHANGED: "workflow",
-    EventKind.MIGRATION_CHANGED: "migration",
-    EventKind.INBOUND_EVENT_RECORDED: "inbound-thread",
-    EventKind.INBOUND_EVENT_PROMOTED: "inbound-thread",
-    EventKind.SEAT_CREDENTIAL_ISSUED: "seat-credential",
-    EventKind.SEAT_CREDENTIAL_REVOKED: "seat-credential",
-}
 _DIGEST_BYTES = 32
 _MAX_UTC_OFFSET_SECONDS = 64800
 _DIGEST_TEXT = re.compile(r"^sha256:[0-9a-f]{64}$")
@@ -318,6 +315,7 @@ type EventPayload = (
     | IntakeEventPayload
     | SeatCredentialIssuedPayload
     | SeatCredentialRevokedPayload
+    | SessionEventPayload
 )
 
 
@@ -393,66 +391,110 @@ def ticket_payload_from_mapping(
     )
 
 
-_EVENT_VARIANTS: dict[EventKind, tuple[type[object], frozenset[EventOrigin]]] = {
-    EventKind.BOOTSTRAP_CREATED: (BootstrapCreatedPayload, frozenset({EventOrigin.BOOTSTRAP})),
-    EventKind.TICKET_CREATED: (
-        TicketCreatedPayload,
-        frozenset({EventOrigin.API, EventOrigin.MIGRATION_IMPORTER}),
-    ),
-    EventKind.CUSTODY_TRANSFERRED: (CustodyTransferredPayload, frozenset({EventOrigin.API})),
-    EventKind.TICKET_COMMENT_ADDED: (TicketCommentAddedPayload, frozenset({EventOrigin.API})),
-    EventKind.CATALOG_COMPONENT_PUBLISHED: (
-        CatalogComponentPublishedPayload,
-        frozenset({EventOrigin.API}),
-    ),
-    EventKind.CATALOG_BUNDLE_ACTIVATED: (
-        CatalogBundleActivatedPayload,
-        frozenset({EventOrigin.API}),
-    ),
-    EventKind.PROOF_CHANGED: (ProofChangedPayload, frozenset({EventOrigin.API})),
-    EventKind.WORKFLOW_CHANGED: (WorkflowChangedPayload, frozenset({EventOrigin.API})),
-    EventKind.WORK_CHANGED: (
-        WorkChangedPayload,
-        frozenset({EventOrigin.API, EventOrigin.MIGRATION_IMPORTER}),
-    ),
-    EventKind.ROUTINE_OCCURRENCE_RECORDED: (
-        RoutineOccurrenceRecordedPayload,
-        frozenset({EventOrigin.CONTROL_WORKER}),
-    ),
-    EventKind.POISON_DISPOSITION_RECORDED: (
-        PoisonDispositionRecordedPayload,
-        frozenset({EventOrigin.API}),
-    ),
-    EventKind.MIGRATION_CHANGED: (
-        MigrationChangedPayload,
-        frozenset({EventOrigin.API, EventOrigin.MIGRATION_IMPORTER}),
-    ),
-    EventKind.INBOUND_EVENT_RECORDED: (
-        InboundEventRecordedPayload,
-        frozenset({EventOrigin.API}),
-    ),
-    EventKind.INBOUND_EVENT_PROMOTED: (
-        InboundEventPromotedPayload,
-        frozenset({EventOrigin.API}),
-    ),
-    EventKind.SEAT_CREDENTIAL_ISSUED: (
-        SeatCredentialIssuedPayload,
-        frozenset({EventOrigin.API}),
-    ),
-    EventKind.SEAT_CREDENTIAL_REVOKED: (
-        SeatCredentialRevokedPayload,
-        frozenset({EventOrigin.API}),
-    ),
+@dataclass(frozen=True, slots=True)
+class EventCatalogEntry:
+    """One authoritative catalog row: the payload, stream, and origins a kind may use.
+
+    This catalog is the single authority every derived kind set reads. A reader that
+    needs "the session kinds" or "the stream prefix for a kind" derives it here rather
+    than re-typing a second enum in API, CLI, SQL, browser, or test code; a kind added
+    here with no authored contract branch fails the catalog/contract parity guard.
+    """
+
+    kind: EventKind
+    payload_type: type[object]
+    stream_prefix: str
+    origins: frozenset[EventOrigin] = frozenset({EventOrigin.API})
+    session_fact: bool = False
+
+
+_BOOTSTRAP = frozenset({EventOrigin.BOOTSTRAP})
+_WORKER = frozenset({EventOrigin.CONTROL_WORKER})
+_API_OR_IMPORT = frozenset({EventOrigin.API, EventOrigin.MIGRATION_IMPORTER})
+_SESSION = "session"
+
+# THE authoritative event catalog. Rows default to the API origin; a row states its
+# origins only where the kind is also reachable from bootstrap, the control worker, or
+# the migration importer.
+_EVENT_CATALOG: dict[EventKind, EventCatalogEntry] = {
+    entry.kind: entry
+    for entry in (
+        EventCatalogEntry(
+            EventKind.BOOTSTRAP_CREATED, BootstrapCreatedPayload, "tenant", _BOOTSTRAP
+        ),
+        EventCatalogEntry(EventKind.TICKET_CREATED, TicketCreatedPayload, "ticket", _API_OR_IMPORT),
+        EventCatalogEntry(EventKind.CUSTODY_TRANSFERRED, CustodyTransferredPayload, "ticket"),
+        EventCatalogEntry(EventKind.TICKET_COMMENT_ADDED, TicketCommentAddedPayload, "ticket"),
+        EventCatalogEntry(
+            EventKind.CATALOG_COMPONENT_PUBLISHED, CatalogComponentPublishedPayload, "catalog"
+        ),
+        EventCatalogEntry(
+            EventKind.CATALOG_BUNDLE_ACTIVATED, CatalogBundleActivatedPayload, "catalog"
+        ),
+        EventCatalogEntry(EventKind.PROOF_CHANGED, ProofChangedPayload, "proof"),
+        EventCatalogEntry(EventKind.WORKFLOW_CHANGED, WorkflowChangedPayload, "workflow"),
+        EventCatalogEntry(EventKind.WORK_CHANGED, WorkChangedPayload, "ticket", _API_OR_IMPORT),
+        EventCatalogEntry(
+            EventKind.ROUTINE_OCCURRENCE_RECORDED,
+            RoutineOccurrenceRecordedPayload,
+            "routine-occurrence",
+            _WORKER,
+        ),
+        EventCatalogEntry(
+            EventKind.POISON_DISPOSITION_RECORDED,
+            PoisonDispositionRecordedPayload,
+            "poison-disposition",
+        ),
+        EventCatalogEntry(
+            EventKind.MIGRATION_CHANGED, MigrationChangedPayload, "migration", _API_OR_IMPORT
+        ),
+        EventCatalogEntry(
+            EventKind.INBOUND_EVENT_RECORDED, InboundEventRecordedPayload, "inbound-thread"
+        ),
+        EventCatalogEntry(
+            EventKind.INBOUND_EVENT_PROMOTED, InboundEventPromotedPayload, "inbound-thread"
+        ),
+        EventCatalogEntry(
+            EventKind.SEAT_CREDENTIAL_ISSUED, SeatCredentialIssuedPayload, "seat-credential"
+        ),
+        EventCatalogEntry(
+            EventKind.SEAT_CREDENTIAL_REVOKED, SeatCredentialRevokedPayload, "seat-credential"
+        ),
+        EventCatalogEntry(
+            EventKind.SESSION_STARTED, SessionStartedPayload, _SESSION, session_fact=True
+        ),
+        EventCatalogEntry(
+            EventKind.SESSION_TRANSITIONED, SessionTransitionedPayload, _SESSION, session_fact=True
+        ),
+        EventCatalogEntry(
+            EventKind.SESSION_CLOSED, SessionClosedPayload, _SESSION, session_fact=True
+        ),
+    )
 }
+
+if frozenset(_EVENT_CATALOG) != frozenset(EventKind):
+    raise RuntimeError("the authoritative event catalog must cover every event kind exactly once")
+
+
+def event_catalog() -> tuple[EventCatalogEntry, ...]:
+    """Return the authoritative event catalog in its authored order.
+
+    Every derived kind set — the envelope enum and union, the HTTP audit union, the
+    generated clients, the CLI, and SQL — reads this and never re-types a second enum.
+    Session membership is the `session_fact` column, so a reader asking for "the session
+    kinds" filters this catalog rather than declaring its own list.
+    """
+
+    return tuple(_EVENT_CATALOG.values())
 
 
 def _validate_variant(event: EventEnvelope) -> None:
     if not isinstance(event.kind, EventKind) or not isinstance(event.origin, EventOrigin):
         raise TypeError("event kind and origin must use authored enums")
-    expected_payload, expected_origins = _EVENT_VARIANTS[event.kind]
-    if not isinstance(event.payload, expected_payload):
-        raise TypeError(f"{event.kind} requires {expected_payload.__name__}")
-    if event.origin not in expected_origins:
+    entry = _EVENT_CATALOG[event.kind]
+    if not isinstance(event.payload, entry.payload_type):
+        raise TypeError(f"{event.kind} requires {entry.payload_type.__name__}")
+    if event.origin not in entry.origins:
         raise ValueError(f"{event.kind} has an unauthorized origin")
 
 
@@ -507,6 +549,7 @@ def _validate_event_identity(event: EventEnvelope) -> None:
     _validate_poison_identity(event)
     _validate_intake_identity(event)
     _validate_seat_credential_identity(event)
+    _validate_session_identity(event)
 
 
 def _validate_bootstrap_identity(event: EventEnvelope) -> None:
@@ -559,10 +602,21 @@ def _validate_seat_credential_identity(event: EventEnvelope) -> None:
         raise ValueError("seat credential aggregate and payload identity must match")
 
 
+def _validate_session_identity(event: EventEnvelope) -> None:
+    if (
+        isinstance(
+            event.payload,
+            SessionStartedPayload | SessionTransitionedPayload | SessionClosedPayload,
+        )
+        and event.aggregate_id != event.payload.session_id
+    ):
+        raise ValueError("session aggregate and payload identity must match")
+
+
 def _stream_id(kind: EventKind, aggregate_id: UUID) -> str:
     if kind is EventKind.BOOTSTRAP_CREATED:
         return f"tenant:{aggregate_id}:bootstrap"
-    return f"{_STREAM_PREFIXES.get(kind, 'ticket')}:{aggregate_id}"
+    return f"{_EVENT_CATALOG[kind].stream_prefix}:{aggregate_id}"
 
 
 def _bounded(label: str, value: object, *, minimum: int, maximum: int | None = None) -> None:

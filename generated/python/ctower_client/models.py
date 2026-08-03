@@ -1,6 +1,6 @@
 """DO NOT EDIT: generated file; regenerate from declared inputs.
 
-Authored contract digest: sha256:897d0904c0761ce19e89e96d0b2d2b85485582770b37abdcc9765cbdf924e5fb
+Authored contract digest: sha256:1f61ab130cdc302ab1fee3d1dc4170e6327c88c7f1354f83490bc5b612d95abb
 """
 
 from __future__ import annotations
@@ -130,6 +130,7 @@ __all__ = [
     "ProjectDeliverySlot",
     "ProjectDeliveryUnassignedSeatAssignment",
     "ProjectDeliveryView",
+    "ProjectSessionPage",
     "ProjectionHealth",
     "ProofChangedAuditEvent",
     "ProofChangedAuditPayload",
@@ -146,6 +147,20 @@ __all__ = [
     "SeatCredentialReceipt",
     "SeatCredentialRevocationRequest",
     "SecretBindingReference",
+    "SessionCloseFact",
+    "SessionClosedAuditEvent",
+    "SessionClosedPayload",
+    "SessionFactRequest",
+    "SessionOutcome",
+    "SessionReceipt",
+    "SessionStartRequest",
+    "SessionStartedAuditEvent",
+    "SessionStartedPayload",
+    "SessionState",
+    "SessionTokenUsage",
+    "SessionTransitionFact",
+    "SessionTransitionedAuditEvent",
+    "SessionTransitionedPayload",
     "SourceReference",
     "SyntheticRunReceipt",
     "SyntheticRunRequest",
@@ -162,6 +177,8 @@ __all__ = [
     "TicketCreatedPayload",
     "TicketIntentRequest",
     "TicketResource",
+    "TicketSession",
+    "TicketSessionList",
     "TimelineEvent",
     "TimelineResponse",
     "UnblockIntent",
@@ -1083,6 +1100,46 @@ class SecretBindingReference(_BoundaryModel):
     reference_class: Literal["os-credential", "vault-path", "runtime-binding"]
 
 
+class SessionOutcome(StrEnum):
+    DELIVERED = "delivered"
+    BLOCKED = "blocked"
+    ABANDONED = "abandoned"
+    FAILED = "failed"
+
+
+class SessionStartRequest(_BoundaryModel):
+    branch_ref: Annotated[str, Field(min_length=1, max_length=256)]
+    crew_name: Annotated[str, Field(pattern="^[a-z][a-z0-9._-]{1,95}$")]
+    harness_ref: Annotated[str, Field(min_length=1, max_length=64)]
+    model_ref: Annotated[str, Field(min_length=1, max_length=128)]
+    seat_key: Annotated[str, Field(pattern="^[a-z][a-z0-9._-]{1,95}$")]
+    worktree_ref: Annotated[str, Field(min_length=1, max_length=256)]
+
+
+class SessionStartedPayload(_BoundaryModel):
+    branch_ref: Annotated[str, Field(min_length=1, max_length=256)]
+    crew_name: Annotated[str, Field(pattern="^[a-z][a-z0-9._-]{1,95}$")]
+    harness_ref: Annotated[str, Field(min_length=1, max_length=64)]
+    model_ref: Annotated[str, Field(min_length=1, max_length=128)]
+    seat_key: Annotated[str, Field(pattern="^[a-z][a-z0-9._-]{1,95}$")]
+    session_id: UUID
+    ticket_id: UUID
+    worktree_ref: Annotated[str, Field(min_length=1, max_length=256)]
+
+
+class SessionState(StrEnum):
+    DISPATCHED = "dispatched"
+    BRIEFED = "briefed"
+    WORKING = "working"
+    GATED = "gated"
+
+
+class SessionTokenUsage(_BoundaryModel):
+    input_tokens: Annotated[int, Field(ge=0, le=1000000000)]
+    output_tokens: Annotated[int, Field(ge=0, le=1000000000)]
+    total_tokens: Annotated[int, Field(ge=0, le=2000000000)]
+
+
 class SourceReference(_BoundaryModel):
     kind: Annotated[str, Field(min_length=1, max_length=64)]
     ref: Annotated[str, Field(min_length=1, max_length=256)]
@@ -1626,6 +1683,9 @@ class Problem(_BoundaryModel):
         "seat-credential-active",
         "seat-credential-unavailable",
         "seat-display-name-conflict",
+        "session-ineligible",
+        "session-not-found",
+        "session-transition-invalid",
         "tenant-scope-denied",
         "ticket-comment-ineligible",
         "ticket-comment-invalid",
@@ -1733,6 +1793,61 @@ class SeatCredentialReceipt(_BoundaryModel):
     state: Literal["active", "revoked"]
 
 
+class SessionCloseFact(_BoundaryModel):
+    evidence_ref: Annotated[str, Field(min_length=1, max_length=256)] | None
+    input_tokens: Annotated[int, Field(ge=0, le=1000000000)]
+    kind: Literal["close"]
+    outcome: SessionOutcome
+    output_tokens: Annotated[int, Field(ge=0, le=1000000000)]
+
+
+class SessionClosedPayload(_BoundaryModel):
+    duration_seconds: Annotated[int, Field(ge=0, le=31536000)]
+    evidence_ref: Annotated[str, Field(min_length=1, max_length=256)] | None
+    input_tokens: Annotated[int, Field(ge=0, le=1000000000)]
+    outcome: SessionOutcome
+    output_tokens: Annotated[int, Field(ge=0, le=1000000000)]
+    session_id: UUID
+    ticket_id: UUID
+
+
+class SessionReceipt(_BoundaryModel):
+    command_id: UUID
+    durability_state: DurabilityState
+    event_id: UUID
+    session_id: UUID
+    state: SessionState
+    ticket_id: UUID
+
+
+class SessionStartedAuditEvent(_BoundaryModel):
+    actor_principal_id: UUID
+    command_id: UUID
+    event_hash: Annotated[str, Field(pattern="^sha256:[0-9a-f]{64}$")]
+    event_id: UUID
+    kind: Literal["session.started"]
+    occurred_at: _Rfc3339DateTime
+    payload: SessionStartedPayload
+    record_position: Annotated[int, Field(ge=1, le=9007199254740991)]
+    sequence: Annotated[int, Field(ge=1, le=9007199254740991)]
+    stream_id: Annotated[str, Field(pattern="^session:[0-9a-f-]{36}$")]
+
+
+class SessionTransitionFact(_BoundaryModel):
+    kind: Literal["transition"]
+    reason: Annotated[str, Field(min_length=1, max_length=500)]
+    to_state: SessionState
+
+
+class SessionTransitionedPayload(_BoundaryModel):
+    from_state: SessionState
+    reason: Annotated[str, Field(min_length=1, max_length=500)]
+    session_id: UUID
+    ticket_id: UUID
+    to_state: SessionState
+    transition_number: Annotated[int, Field(ge=1, le=9007199254740991)]
+
+
 class SyntheticRunReceipt(_BoundaryModel):
     command_id: UUID
     durability_state: DurabilityState
@@ -1806,6 +1921,26 @@ class TicketResource(_BoundaryModel):
     ticket_id: UUID
     title: str
     version: Annotated[int, Field(ge=1, le=9007199254740991)]
+
+
+class TicketSession(_BoundaryModel):
+    branch_ref: Annotated[str, Field(min_length=1, max_length=256)]
+    closed_at: _Rfc3339DateTime | None
+    crew_name: Annotated[str, Field(pattern="^[a-z][a-z0-9._-]{1,95}$")]
+    duration_seconds: Annotated[int, Field(ge=0, le=31536000)] | None
+    evidence_ref: Annotated[str, Field(min_length=1, max_length=256)] | None
+    harness_ref: Annotated[str, Field(min_length=1, max_length=64)]
+    model_ref: Annotated[str, Field(min_length=1, max_length=128)]
+    outcome: SessionOutcome | None
+    project_key: Annotated[str, Field(pattern="^[a-z][a-z0-9-]{2,63}$")]
+    seat_key: Annotated[str, Field(pattern="^[a-z][a-z0-9._-]{1,95}$")]
+    session_id: UUID
+    started_at: _Rfc3339DateTime
+    state: SessionState
+    ticket_id: UUID
+    tokens: SessionTokenUsage | None
+    transition_count: Annotated[int, Field(ge=0, le=9007199254740991)]
+    worktree_ref: Annotated[str, Field(min_length=1, max_length=256)]
 
 
 class VerdictRequest(_BoundaryModel):
@@ -1960,6 +2095,42 @@ class ProjectDeliveryAssignedSeatAssignment(_BoundaryModel):
     seat: ProjectDeliverySeat
 
 
+class ProjectSessionPage(_BoundaryModel):
+    next_cursor: Annotated[int, Field(ge=1, le=9007199254740991)] | None
+    project_key: Annotated[str, Field(pattern="^[a-z][a-z0-9-]{2,63}$")]
+    sessions: tuple[TicketSession, ...]
+
+
+class SessionClosedAuditEvent(_BoundaryModel):
+    actor_principal_id: UUID
+    command_id: UUID
+    event_hash: Annotated[str, Field(pattern="^sha256:[0-9a-f]{64}$")]
+    event_id: UUID
+    kind: Literal["session.closed"]
+    occurred_at: _Rfc3339DateTime
+    payload: SessionClosedPayload
+    record_position: Annotated[int, Field(ge=1, le=9007199254740991)]
+    sequence: Annotated[int, Field(ge=1, le=9007199254740991)]
+    stream_id: Annotated[str, Field(pattern="^session:[0-9a-f-]{36}$")]
+
+
+class SessionFactRequest(_BoundaryModel):
+    fact: SessionTransitionFact | SessionCloseFact
+
+
+class SessionTransitionedAuditEvent(_BoundaryModel):
+    actor_principal_id: UUID
+    command_id: UUID
+    event_hash: Annotated[str, Field(pattern="^sha256:[0-9a-f]{64}$")]
+    event_id: UUID
+    kind: Literal["session.transitioned"]
+    occurred_at: _Rfc3339DateTime
+    payload: SessionTransitionedPayload
+    record_position: Annotated[int, Field(ge=1, le=9007199254740991)]
+    sequence: Annotated[int, Field(ge=1, le=9007199254740991)]
+    stream_id: Annotated[str, Field(pattern="^session:[0-9a-f-]{36}$")]
+
+
 class TicketCommandResult(_BoundaryModel):
     command_id: UUID
     durability_state: DurabilityState
@@ -1978,6 +2149,11 @@ class TicketCreatedAuditEvent(_BoundaryModel):
     record_position: Annotated[int, Field(ge=1, le=9007199254740991)]
     sequence: Annotated[int, Field(ge=1, le=9007199254740991)]
     stream_id: Annotated[str, Field(pattern="^ticket:[0-9a-f-]{36}$")]
+
+
+class TicketSessionList(_BoundaryModel):
+    sessions: tuple[TicketSession, ...]
+    ticket_id: UUID
 
 
 class TimelineEvent(_BoundaryModel):
@@ -2088,7 +2264,7 @@ class WorkChangedAuditEvent(_BoundaryModel):
     stream_id: Annotated[str, Field(pattern="^ticket:[0-9a-f-]{36}$")]
 
 
-type AuditEvent = TicketCreatedAuditEvent | CustodyTransferredAuditEvent | TicketCommentAddedAuditEvent | WorkChangedAuditEvent | WorkflowChangedAuditEvent | ProofChangedAuditEvent
+type AuditEvent = TicketCreatedAuditEvent | CustodyTransferredAuditEvent | TicketCommentAddedAuditEvent | WorkChangedAuditEvent | WorkflowChangedAuditEvent | ProofChangedAuditEvent | SessionStartedAuditEvent | SessionTransitionedAuditEvent | SessionClosedAuditEvent
 
 
 class CompanyBundleDocument(_BoundaryModel):

@@ -3,8 +3,8 @@
 | Field | Value |
 |---|---|
 | Status | Canonical target-system truth |
-| Version | 1.13 |
-| Date | 2026-08-02 |
+| Version | 1.14 |
+| Date | 2026-08-03 |
 | Owners | Operator/CEO (product and human gates), Commander (orchestration contract), Engineering Manager (architecture and risk contract) |
 | Decision authority | [`DECISIONS.md`](DECISIONS.md) |
 
@@ -1467,6 +1467,7 @@ The ticket is the human join point, not the transaction boundary for the entire 
 72. <a id="inv-72"></a>**INV-72 — Shadow coordination is not cutover.** While `SHADOW_ONLY_CP3_D_NOT_PROVEN` applies, all three projects may hold only reconstructible coordination records and disjoint views; Mission Control and the applicable GitHub/GitLab records remain co-sources, no writer is frozen, and no production, incident, credential-value, customer/PHI, irreplaceable, or sole-copy authority moves to ctower. Only accepted CP3-D evidence may authorize the portfolio authority epoch. Bulk import remains dormant; ordinary signed item-by-item intake is the only onboarding path.
 73. <a id="inv-73"></a>**INV-73 — One authenticated request, one Actor, one authority record per plane.** Every authenticated request, on the human OIDC plane or the machine project-seat plane, resolves exactly one durable principal and one typed Actor context, and every command, idempotency key, custody interval, assignment, Evidence item, verdict, effect, and audit fact attributes to that one context. Authority is never claimed by the request: the machine plane resolves the version-pinned project grant of [INV-69](#inv-69), and the human plane resolves an operator-issued, append-only, revocable **human role binding** pinned to one principal, one `operator|commander|viewer` role, its exact project keys, and the access-policy revision that interprets it. The two records are disjoint — neither confers the other's authority — and a request resolving zero or more than one record for its plane refuses by name with zero mutation. No browser session, OIDC subject, provider claim, seat key, model, harness, or process creates a second custody or attribution model. A later authentication transport may be added only by resolving this same Actor context and one of these two records; a transport that introduces its own principal, custody, or attribution record violates this invariant.
 74. <a id="inv-74"></a>**INV-74 — The landing boundary is record-backed and documentation is one of its facts.** A change lands only while one required check reports every fact of its ticket's landing-boundary predecessor set — every stage the pinned Workflow graph places before the stage carrying the landing boundary, with each required slot filled, valid, and current on the head revision's candidate digest — as passing. The documented-surface fact is one of them and is waivable at no tier: no label, comment, administrator merge, re-run, follow-up ticket, passing repository quality gate, reviewer assertion, or protected operator waiver substitutes for it, and `STATE_UNKNOWN` is a failure rather than a caveat. The set derives from the pinned graph, never from stage-key, group-key, or evidence-kind strings. The check is a pure reader: it writes no authoritative state, mints no Evidence, fills no slot, passes no gate, and is never itself proof.
+75. <a id="inv-75"></a>**INV-75 — Work sessions are recorded facts, never observed processes.** Every stretch of accountable work on a ticket is an append-only session stream carrying its own durable ctower identity: one start fact naming the seat, crew, model, harness, worktree, branch, and bound ticket; zero or more typed state facts drawn from the authored `dispatched|briefed|working|gated` lifecycle; and at most one close fact carrying outcome and the operator's cost facts. Session cost is Record-owned: duration is the committed close time minus the committed start time and is never a caller claim, while token counts are bounded typed external payload values. A session never becomes identity under [INV-15](#non-negotiable-invariants) — no process, tmux name, pane, or vendor handle enters a session fact, and no surface may synthesize a session from transport activity, terminal capture, or silence. Sessions inherit every existing custody, project, and prohibited-class rule without exception: they are scoped by their ticket's authoritative project under [INV-69](#non-negotiable-invariants), and the five classes of [INV-70](#non-negotiable-invariants) are refused by name over every caller-authored session field before any row, event, or outbox byte commits. The session kind set and every derived wire union come from the canonical Record event catalog, never a second enum.
 
 ## Workflow and verification architecture
 
@@ -3453,6 +3454,20 @@ The service role has no `UPDATE`/`DELETE` grant on event, verdict, receipt, atte
 
 Structured execution events are the control protocol. A terminal transcript may help a human understand a run but cannot establish assignment, success, or completion on its own.
 
+#### Recorded work sessions
+
+A work session is the Record's answer to "who worked on this, for how long, at what cost, and how did it
+end". It is an ordinary append-only event stream on its own `session:<uuid>` aggregate whose facts link to
+the bound ticket, so ticket history, project reads, and any later event feed carry sessions through the
+paths they already use rather than through a second source. The start fact carries seat, crew, model,
+harness, worktree, and branch; state facts move the session through the authored
+`dispatched|briefed|working|gated` lifecycle and refuse every unauthored pair by name; the close fact
+carries outcome plus token counts, and the Record computes duration from its own committed timestamps.
+A vendor session ID, PID, tmux name, or pane never appears in a session fact, and no adapter may infer a
+session from terminal activity — an unrecorded stretch of work is honestly absent, never reconstructed.
+Adding a session kind requires one change to the authoritative event catalog plus its named strict contract
+branch, with a mutation test proving catalog/contract equality.
+
 ### Failure recovery
 
 | Failure | Detection | Automatic recovery | Escalation boundary |
@@ -3916,6 +3931,15 @@ Each criterion is pass/fail. Evidence must be attached to the ctower build ticke
 | <a id="ac-tm-07"></a>AC-TM-07 | The Board card exposes its five-member context set on the same contract path as the rest of the card: tenant display identity from the tenant's recorded display fact; change references from linked Change facts exactly as recorded; applied labels drawn from the versioned configured label vocabulary, each applied-label fact pinning the vocabulary revision active at application time; human-waiting per [AC-TM-08](#ac-tm-08); and delivery-surface availability per [AC-PD-10](#ac-pd-10). Every unavailable member is explicit — empty set, declared absence, no-qualifying-checkpoint, or `STATE_UNKNOWN` with its missing source — and never omitted so a client invents a default. No member is inferred from an identifier's spelling, a title, a branch or repository name, a lane, a stage or group key, a blocker type or age, a principal display name, or silence. The label vocabulary is configured data: adding, removing, renaming, or reordering members requires no product-code change, no normative product code, schema, projection, pack, or test branches on a label key, and a member removed in a later revision leaves historical applied-label facts intact and visible. Generated Python and TypeScript clients round-trip every member unchanged, no member is writable, and tenant/project authorization is unchanged — an unauthorized card is absent, never redacted-but-present. | Context-set field inventory; per-member complete/absent/unknown matrices; name-inference anti-fixtures for each member; omission anti-fixture; label-vocabulary add/remove/rename/reorder mutation suite that fails if product code must change; member-removal leaves-historical-fact-intact fixture; generated-client round-trip; deterministic CLI text/JSON parity; cross-tenant authorization negatives; no-status-patch privilege inventory |
 | <a id="ac-tm-08"></a>AC-TM-08 | A card is human-waiting only when a current Attention finding for that ticket meets the Needs You qualification — `open` state, operator-owned effective ownership, pinned policy classifying the action as human-owned, and an unresolved linked gate, incident, or decision on the current digest. Fixtures prove an ordinary `blocked` card with no qualifying finding is not human-waiting, a human-waiting card whose lane is `in_progress`, and that resolution, expiry, supersession, or an ownership change clears the flag within the 60-second freshness SLO while the appended finding history stays queryable. Coercing a blocker, blocker age, lane, stage key, queue position, or silence into human-waiting fails a mutation test, and Board and Needs You never disagree about the same finding. | Blocked-but-not-waiting and waiting-while-in-progress fixtures; blocker-to-human coercion mutation test; Board/Needs You cross-projection equality query; freshness clock test; API snapshots and deterministic CLI transcript |
 
+### Recorded work sessions
+
+| ID | Pass condition | Evidence capture |
+|---|---|---|
+| <a id="ac-ses-01"></a>AC-SES-01 | A ticket with real work sessions returns them ordered oldest start first, each carrying seat, crew, model, harness, worktree, branch, current lifecycle state, transition count, and — once closed — outcome, evidence reference, duration, and input/output/total token counts. An open session states every cost fact as explicitly absent rather than zero, and a half-closed session is impossible. Duration equals the Record's own committed close time minus its committed start time; no request field can supply, inflate, or shorten it. | Disposable-Postgres ticket-session transcript with an open and a closed session, committed-timestamp duration comparison, and a half-closed refusal fixture |
+| <a id="ac-ses-02"></a>AC-SES-02 | The exact session kind set is derived from the canonical Record event catalog. Adding a kind to the catalog without its authored envelope branch, authoring a branch with no catalog kind, or dropping a session branch from the generated HTTP union each fails the catalog/contract parity guard by name with no product-code change. Every session envelope, payload, and wire alternative is a named strict schema reached only through `$ref`. | Catalog/contract parity chokepoint with both-direction mutation proofs, stream-prefix and origin parity assertions, and a clean deterministic generated manifest |
+| <a id="ac-ses-03"></a>AC-SES-03 | Session reads are bound to one project. Reading another project's ticket sessions returns the same no-disclosure `tenant-scope-denied` 404 the rest of the ticket surface returns, and a project seat paging another project's sessions returns `project-scope-denied` 403; the `ctower`/`manibo`, `ctower`/`bh-loop`, and `manibo`/`bh-loop` pairs each prove both directions and expose no foreign session. A project page walks its own sessions once, in record order, without repeating or skipping one. | Three project-pair refusal matrices in both directions, own-project positive control, and a one-item cursor walk |
+| <a id="ac-ses-04"></a>AC-SES-04 | A session command carrying any of the five prohibited classes is refused by the class name before any session row, event, or outbox byte exists, on the start fact and on a live session's transition reason alike; a canary carried in the refused content appears in no durable byte. The authored session lifecycle refuses an unauthored state move, a fact on an unknown session, and any fact after close, each by its own stable code with zero mutation. | Prohibited-class probes per field with durable-byte canary scan, and named lifecycle refusal fixtures for skip, unknown, and post-close facts |
+
 ### Attention
 
 | ID | Pass condition | Evidence capture |
@@ -4346,6 +4370,10 @@ or exit criterion moves increment as a result.
   exact unmet list until every typed required slot is filled and the signing Evidence matches its assignment,
   the API/CLI six-lane and Project Delivery projections render unfilled/unknown slots honestly, and forbidden
   stage-name branching fails.
+- Recorded work sessions prove [AC-SES-01](#ac-ses-01) through [AC-SES-04](#ac-ses-04): a ticket returns its
+  sessions with seat, model, duration, tokens, and outcome; the session kind set is catalog-derived with a
+  both-direction parity mutation proof; all three project pairs refuse a foreign session read by name; and a
+  prohibited-class session payload is refused before any durable byte.
 - Timed API/CLI evidence proves the operator can find, reprioritize, reassign, block/unblock, inspect proof, and close a ticket without another ledger.
 - The frozen baseline artifact contains at least five legacy working days. The clean-install first-success trial meets [AC-ADM-03](#ac-adm-03).
 - Item-by-item reconciliation accounts for every admitted shadow item, creates each project-scoped source

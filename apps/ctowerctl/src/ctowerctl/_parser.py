@@ -3,13 +3,9 @@
 from __future__ import annotations
 
 import argparse
-import ipaddress
-import re
 from collections.abc import Sequence
-from datetime import datetime
 from pathlib import Path
 from typing import Never
-from urllib.parse import SplitResult, urlsplit
 from uuid import UUID, uuid4
 
 from pydantic import TypeAdapter
@@ -23,7 +19,17 @@ from ctower_client.models import (
     PoisonDispositionAction,
     Priority,
     RelationKind,
+    SessionOutcome,
+    SessionState,
     VerdictDecision,
+)
+from ctowerctl._argument_types import (
+    _assertions,
+    _aware_datetime,
+    _nonnegative_int,
+    _positive_int,
+    _safe_base_url,
+    _sha256_digest,
 )
 
 __all__: tuple[str, ...] = ()
@@ -32,7 +38,6 @@ _ASSIGNMENT_KINDS = ("current_assignee", "stage_owner", "reviewer")
 _BLOCKER_KINDS = ("dependency", "operator_action", "policy", "resource", "technical")
 _SPOOL_STATES = ("pending", "accepted_archive", "quarantine")
 _PROJECT_KEY: TypeAdapter[str] = TypeAdapter(ProjectKey)
-_SHA256_DIGEST = re.compile(r"^sha256:[0-9a-f]{64}$")
 _AUTHORED_COMMAND_NAMES = frozenset(
     {
         "bootstrap first-tenant",
@@ -63,6 +68,11 @@ _AUTHORED_COMMAND_NAMES = frozenset(
         "ticket workflow start",
         "ticket transition",
         "ticket resolve",
+        "session start",
+        "session transition",
+        "session close",
+        "session ticket",
+        "session project",
         "board query",
         "control health",
         "ops outbox poison dispose",
@@ -124,6 +134,7 @@ def _parser() -> argparse.ArgumentParser:
     _credential_parser(areas.add_parser("credential"))
     _intake_parser(areas.add_parser("intake"))
     _ticket_parser(areas.add_parser("ticket"))
+    _session_parser(areas.add_parser("session"))
     _board_parser(areas.add_parser("board"))
     _control_parser(areas.add_parser("control"))
     _ops_parser(areas.add_parser("ops"))
@@ -541,6 +552,49 @@ def _migration_parser(parser: argparse.ArgumentParser) -> None:
     actions.add_parser("verify").set_defaults(cli_name="migration ctower-project verify")
 
 
+def _session_parser(parser: argparse.ArgumentParser) -> None:
+    actions = parser.add_subparsers(dest="session_action", required=True, parser_class=_Parser)
+    start = actions.add_parser("start")
+    start.set_defaults(cli_name="session start")
+    _ticket_id(start)
+    _command_id(start)
+    start.add_argument("--branch-ref", required=True)
+    start.add_argument("--crew-name", required=True)
+    start.add_argument("--harness-ref", required=True)
+    start.add_argument("--model-ref", required=True)
+    start.add_argument("--seat-key", required=True)
+    start.add_argument("--worktree-ref", required=True)
+
+    transition = actions.add_parser("transition")
+    transition.set_defaults(cli_name="session transition")
+    _ticket_id(transition)
+    _session_id(transition)
+    _command_id(transition)
+    transition.add_argument("--reason", required=True)
+    transition.add_argument("--to-state", required=True, choices=tuple(SessionState))
+
+    close = actions.add_parser("close")
+    close.set_defaults(cli_name="session close")
+    _ticket_id(close)
+    _session_id(close)
+    _command_id(close)
+    close.add_argument("--outcome", required=True, choices=tuple(SessionOutcome))
+    close.add_argument("--input-tokens", required=True, type=_nonnegative_int)
+    close.add_argument("--output-tokens", required=True, type=_nonnegative_int)
+    close.add_argument("--evidence-ref")
+
+    ticket = actions.add_parser("ticket")
+    ticket.set_defaults(cli_name="session ticket")
+    _ticket_id(ticket)
+    ticket.add_argument("--project-key", required=True)
+
+    project = actions.add_parser("project")
+    project.set_defaults(cli_name="session project")
+    project.add_argument("project_key", type=_PROJECT_KEY.validate_python)
+    project.add_argument("--cursor", type=_nonnegative_int)
+    project.add_argument("--limit", type=_positive_int)
+
+
 def _project_parser(parser: argparse.ArgumentParser) -> None:
     subjects = parser.add_subparsers(dest="subject", required=True, parser_class=_Parser)
     actions = subjects.add_parser("delivery").add_subparsers(
@@ -580,6 +634,10 @@ def _ticket_id(parser: argparse.ArgumentParser) -> None:
     parser.add_argument("ticket_id", type=UUID)
 
 
+def _session_id(parser: argparse.ArgumentParser) -> None:
+    parser.add_argument("session_id", type=UUID)
+
+
 def _command_id(parser: argparse.ArgumentParser) -> None:
     parser.add_argument("--command-id", required=True, type=UUID)
 
@@ -591,75 +649,3 @@ def _version(parser: argparse.ArgumentParser) -> None:
 def _version_reason(parser: argparse.ArgumentParser) -> None:
     _version(parser)
     parser.add_argument("--reason", required=True)
-
-
-def _positive_int(value: str) -> int:
-    parsed = int(value)
-    if parsed < 1:
-        raise argparse.ArgumentTypeError("value must be positive")
-    return parsed
-
-
-def _nonnegative_int(value: str) -> int:
-    parsed = int(value)
-    if parsed < 0:
-        raise argparse.ArgumentTypeError("value must not be negative")
-    return parsed
-
-
-def _assertions(value: str) -> tuple[str, ...]:
-    parsed = tuple(value.split(","))
-    if parsed != ("resolved", "closed"):
-        raise argparse.ArgumentTypeError("synthetic assertion must be resolved,closed")
-    return parsed
-
-
-def _aware_datetime(value: str) -> datetime:
-    parsed = datetime.fromisoformat(value)
-    if parsed.tzinfo is None:
-        raise argparse.ArgumentTypeError("timestamp must include a UTC offset")
-    return parsed
-
-
-def _sha256_digest(value: str) -> str:
-    if _SHA256_DIGEST.fullmatch(value) is None:
-        raise argparse.ArgumentTypeError(
-            "digest must be 'sha256:' followed by exactly 64 lowercase hex digits"
-        )
-    return value
-
-
-def _safe_base_url(value: str) -> str:
-    parsed = _split_base_url(value)
-    host = parsed.hostname
-    if parsed.scheme not in {"http", "https"}:
-        raise argparse.ArgumentTypeError("base URL must be absolute HTTP(S)")
-    if host is None:
-        raise argparse.ArgumentTypeError("base URL must be absolute HTTP(S)")
-    if _has_forbidden_url_parts(parsed):
-        raise argparse.ArgumentTypeError("base URL must not contain credentials or suffix data")
-    if parsed.scheme == "http" and not _loopback(host):
-        raise argparse.ArgumentTypeError("cleartext HTTP is permitted only for loopback")
-    return value
-
-
-def _split_base_url(value: str) -> SplitResult:
-    try:
-        parsed = urlsplit(value)
-        _ = parsed.port
-    except ValueError as error:
-        raise argparse.ArgumentTypeError("base URL syntax is invalid") from error
-    return parsed
-
-
-def _has_forbidden_url_parts(parsed: SplitResult) -> bool:
-    return any((parsed.username, parsed.password, parsed.query, parsed.fragment))
-
-
-def _loopback(host: str) -> bool:
-    if host == "localhost":
-        return True
-    try:
-        return ipaddress.ip_address(host).is_loopback
-    except ValueError:
-        return False
