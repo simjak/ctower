@@ -284,7 +284,7 @@ function TicketBody({
 }): ReactElement {
   return (
     <>
-      <Chrome section="Ticket" back />
+      <Chrome section="Ticket" back={{ href: "/board", label: "Board" }} />
       <main className="page">
         <div className="wrap">
           <TicketHead ticket={ticket} card={card} />
@@ -351,7 +351,7 @@ function TicketFrame({
 }): ReactElement {
   return (
     <>
-      <Chrome section="Ticket" back />
+      <Chrome section="Ticket" back={{ href: "/board", label: "Board" }} />
       <main className="page">
         <div className="wrap">
           <div className="lede">
