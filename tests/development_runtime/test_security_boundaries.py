@@ -19,6 +19,7 @@ import tools.development_runtime.ctl as shadow_ctl
 import tools.development_runtime.interface as runtime_interface
 import tools.process_execution as process_execution  # noqa: PLR0402
 from ctower_api.development_config import DevelopmentConfig
+from tools.development_runtime.host_commands import docker_path
 
 __all__: tuple[str, ...] = ()
 
@@ -130,7 +131,7 @@ def test_clone_timeout_removes_daemon_container_and_partial_volume(
     tmp_path: Path,
 ) -> None:
     with _clone_probe(tmp_path) as probe:
-        monkeypatch.setattr(runtime_interface, "_docker_path", lambda: str(probe.wrapper))
+        monkeypatch.setattr(runtime_interface, "docker_path", lambda: str(probe.wrapper))
         monkeypatch.setattr(runtime_interface, "_STANDBY_CLONE", probe.container)
         monkeypatch.setattr(runtime_interface, "_STANDBY_PREPARER", probe.preparer)
         monkeypatch.setattr(runtime_interface, "_STANDBY_VOLUME", probe.volume)
@@ -153,7 +154,7 @@ def test_clone_timeout_removes_daemon_container_and_partial_volume(
 
 @contextmanager
 def _password_probe() -> Iterator[_PasswordProbe]:
-    docker = runtime_interface._docker_path()
+    docker = docker_path()
     probe_id = uuid4().hex
     container = f"ctower-pr60-g3-password-{probe_id}"
     bootstrap_password = f"bootstrap-{probe_id}"
@@ -196,7 +197,7 @@ def _start_password_probe(docker: str, container: str, password: str) -> None:
 
 @contextmanager
 def _clone_probe(tmp_path: Path) -> Iterator[_CloneProbe]:
-    docker = runtime_interface._docker_path()
+    docker = docker_path()
     probe_id = uuid4().hex
     probe = _CloneProbe(
         docker,

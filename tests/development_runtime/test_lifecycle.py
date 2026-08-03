@@ -177,7 +177,7 @@ def test_primary_and_clone_use_stdin_secret_without_trust_payloads(
     attachments: list[tuple[str, str]] = []
     readiness = iter((False, True))
 
-    monkeypatch.setattr(primary_module, "_docker_path", lambda: "/usr/bin/docker")
+    monkeypatch.setattr(primary_module, "docker_path", lambda: "/usr/bin/docker")
     monkeypatch.setattr(primary_module, "load_secret", lambda _reference: credential_value)
     monkeypatch.setattr(lifecycle, "load_secret", lambda _reference: credential_value)
     monkeypatch.setattr(primary_module, "_container_exists", lambda _name: False)
@@ -243,7 +243,7 @@ def test_finalizer_cursor_rotates_past_a_refusing_head_row(
 def test_initialization_attach_requires_a_still_running_container(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    monkeypatch.setattr(primary_module, "_docker_path", lambda: "/usr/bin/docker")
+    monkeypatch.setattr(primary_module, "docker_path", lambda: "/usr/bin/docker")
     monkeypatch.setattr(
         process_execution,
         "run",
@@ -323,7 +323,7 @@ def test_observe_exposes_finalizer_liveness_as_a_separate_typed_dimension(
         "PostgresRecord",
         lambda *_args, **_kwargs: SimpleNamespace(durability_health=lambda **_values: health),
     )
-    monkeypatch.setattr(lifecycle, "_systemctl_state", lambda _name: "active")
+    monkeypatch.setattr(lifecycle, "unit_state", lambda _name: "active")
     monkeypatch.setattr(lifecycle, "_container_state", lambda _name: "running")
     monkeypatch.setattr(lifecycle, "runtime_home", lambda: runtime_home)
     monkeypatch.setattr(

@@ -38,6 +38,11 @@ from ctower_kernel.record.postgres import (
 )
 from tools.development_runtime._postgres_scram import postgres_scram_verifier
 from tools.development_runtime.bootstrap import bootstrap_instance
+from tools.development_runtime.checkpoint import (
+    add_checkpoint_commands,
+    run_checkpoint_command,
+)
+from tools.development_runtime.host_commands import docker_path, unit_state
 from tools.development_runtime.installation import (
     install_runtime,
     rollback_runtime,
@@ -77,24 +82,7 @@ _SYSTEMD_TIMEOUT_SECONDS = 60.0
 def main() -> None:
     """Execute one bounded persistent-runtime operation."""
 
-    parser = argparse.ArgumentParser(prog="ctower-private-vps")
-    commands = parser.add_subparsers(dest="command", required=True)
-    commands.add_parser("database-up")
-    units = commands.add_parser("install-units")
-    units.add_argument("--unit-root", type=Path, required=True)
-    bootstrap = commands.add_parser("bootstrap")
-    bootstrap.add_argument("--tenant-name", default="Ctower Development")
-    bootstrap.add_argument("--tenant-slug", default="ctower-development")
-    installation = commands.add_parser("install-runtime")
-    installation.add_argument("--wheel", type=Path, required=True)
-    installation.add_argument("--manifest", type=Path, required=True)
-    installation.add_argument("--packs", type=Path, required=True)
-    installation.add_argument("--python", type=Path, required=True)
-    installation.add_argument("--source-root", type=Path, required=True)
-    installation.add_argument("--replace", action="store_true")
-    commands.add_parser("rollback-runtime")
-    commands.add_parser("observe")
-    arguments = parser.parse_args()
+    arguments = _parser().parse_args()
     match arguments.command:
         case "database-up":
             database_up()
@@ -113,8 +101,32 @@ def main() -> None:
             )
         case "rollback-runtime":
             rollback_runtime()
+        case "checkpoint" | "restore":
+            print(run_checkpoint_command(arguments))
         case _:
             print(json.dumps(observe(), sort_keys=True))
+
+
+def _parser() -> argparse.ArgumentParser:
+    parser = argparse.ArgumentParser(prog="ctower-private-vps")
+    commands = parser.add_subparsers(dest="command", required=True)
+    commands.add_parser("database-up")
+    units = commands.add_parser("install-units")
+    units.add_argument("--unit-root", type=Path, required=True)
+    bootstrap = commands.add_parser("bootstrap")
+    bootstrap.add_argument("--tenant-name", default="Ctower Development")
+    bootstrap.add_argument("--tenant-slug", default="ctower-development")
+    installation = commands.add_parser("install-runtime")
+    installation.add_argument("--wheel", type=Path, required=True)
+    installation.add_argument("--manifest", type=Path, required=True)
+    installation.add_argument("--packs", type=Path, required=True)
+    installation.add_argument("--python", type=Path, required=True)
+    installation.add_argument("--source-root", type=Path, required=True)
+    installation.add_argument("--replace", action="store_true")
+    commands.add_parser("rollback-runtime")
+    add_checkpoint_commands(commands)
+    commands.add_parser("observe")
+    return parser
 
 
 def database_up() -> None:
@@ -235,14 +247,14 @@ def observe() -> dict[str, object]:
         development_dsn(config, "ctower_runtime"),
         standby_dsn=development_dsn(config, "postgres", standby=True),
     ).durability_health(now=datetime.now(UTC))
-    worker_state = _systemctl_state("ctower-development-worker.service")
+    worker_state = unit_state("ctower-development-worker.service")
     finalizer_health = observe_finalizer_health(worker_state)
     return {
         "schema": "ctower.development-observation/v1",
         "label": config.label,
-        "api": _systemctl_state("ctower-development-api.service"),
+        "api": unit_state("ctower-development-api.service"),
         "worker": worker_state,
-        "database": _systemctl_state("ctower-development-db.service"),
+        "database": unit_state("ctower-development-db.service"),
         "primary_container": _container_state(_PRIMARY),
         "standby_container": _container_state(_STANDBY),
         "policy": list(policy) if policy is not None else None,
@@ -372,7 +384,7 @@ def _start_standby(config: DevelopmentConfig) -> None:
 def _enable_replication_hba() -> None:
     _run(
         [
-            _docker_path(),
+            docker_path(),
             "exec",
             _PRIMARY,
             "sh",
@@ -417,7 +429,7 @@ def _enable_sync(config: DevelopmentConfig) -> None:
 def _replace_hba(container: str) -> None:
     _run(
         [
-            _docker_path(),
+            docker_path(),
             "exec",
             "-i",
             container,
@@ -476,7 +488,7 @@ def _verify_local_image() -> None:
 
 def _container_exists(name: str) -> bool:
     result = process_execution.run(
-        [_docker_path(), "container", "inspect", name],
+        [docker_path(), "container", "inspect", name],
         timeout_seconds=_INSPECT_TIMEOUT_SECONDS,
         check=False,
         discard_output=True,
@@ -498,19 +510,9 @@ def _unit_known(name: str) -> bool:
     return result.returncode == 0
 
 
-def _systemctl_state(name: str) -> str:
-    result = process_execution.run(
-        ["/usr/bin/systemctl", "--user", "is-active", name],
-        timeout_seconds=_INSPECT_TIMEOUT_SECONDS,
-        check=False,
-        capture_output=True,
-    )
-    return result.stdout.strip()
-
-
 def _docker(*arguments: str) -> str:
     return _run(
-        [_docker_path(), *arguments],
+        [docker_path(), *arguments],
         timeout_seconds=_LIFECYCLE_TIMEOUT_SECONDS,
         capture=True,
     )
@@ -524,7 +526,7 @@ def _run_owned_container(
 ) -> None:
     try:
         _run(
-            [_docker_path(), "run", "--rm", "--name", name, *arguments],
+            [docker_path(), "run", "--rm", "--name", name, *arguments],
             timeout_seconds=_LIFECYCLE_TIMEOUT_SECONDS,
             input_text=input_text,
         )
@@ -535,18 +537,11 @@ def _run_owned_container(
 
 def _force_remove_container(name: str) -> None:
     process_execution.run(
-        [_docker_path(), "container", "rm", "--force", name],
+        [docker_path(), "container", "rm", "--force", name],
         timeout_seconds=_LIFECYCLE_TIMEOUT_SECONDS,
         check=False,
         discard_output=True,
     )
-
-
-def _docker_path() -> str:
-    docker = shutil.which("docker")
-    if docker is None:
-        raise RuntimeError("docker is required for the persistent development database")
-    return str(Path(docker).resolve(strict=True))
 
 
 def _systemctl(*arguments: str) -> None:
