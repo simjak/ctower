@@ -20,6 +20,8 @@ const RAIL_OF = {
   Explorer: "Explorer",
   Metrics: "Metrics",
   Org: "Org",
+  // one crew belongs under Org the way one ticket belongs under Tickets
+  Crew: "Org",
 } as const;
 
 export type SectionLabel = keyof typeof RAIL_OF;
@@ -79,12 +81,13 @@ function Instance(): ReactElement {
  */
 export function Chrome({
   section,
-  back = false,
+  back = null,
   counters = null,
   headerExtra = null,
 }: {
   readonly section: SectionLabel;
-  readonly back?: boolean;
+  /** Where a detail screen goes back to: the list it was opened from. */
+  readonly back?: { readonly href: string; readonly label: string } | null;
   readonly counters?: ReactNode;
   readonly headerExtra?: ReactNode;
 }): ReactElement {
@@ -103,12 +106,12 @@ export function Chrome({
               />
             </svg>
           </label>
-          <Mark where={back ? null : section} />
-          {back ? (
-            <Link className="back" href="/board">
-              ← Board
+          <Mark where={back === null ? section : null} />
+          {back === null ? null : (
+            <Link className="back" href={back.href}>
+              ← {back.label}
             </Link>
-          ) : null}
+          )}
           <span className="grow" />
           {counters}
           <Instance />
