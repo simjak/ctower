@@ -19,7 +19,15 @@ ROOT = Path(__file__).parents[2]
 _PRODUCTION_ROOTS = ("apps", "packages", "tools")
 _ADAPTER = Path("tools/process_execution.py")
 _EXPECTED_DIRECT_SITE = (_ADAPTER, "subprocess.Popen")
-_EXPECTED_ADAPTER_CALLS = 14
+_BOUNDED_ENTRY_POINTS = ("pipeline", "run")
+_BOUNDED_REFERENCES = frozenset(f"tools.process_execution.{name}" for name in _BOUNDED_ENTRY_POINTS)
+_TERMINAL_REFERENCES = _BOUNDED_REFERENCES | {
+    "subprocess",
+    "subprocess.Popen",
+    "subprocess.run",
+    "tools.process_execution",
+}
+_EXPECTED_ADAPTER_CALLS = {"pipeline": 2, "run": 15}
 type _ResolvedReference = str | None
 
 
@@ -47,12 +55,18 @@ class BoundedProcessExecutionTests(unittest.TestCase):
 def _assert_production_process_inventory() -> None:
     sites = _process_sites(ROOT)
 
-    direct = {(site.path, site.operation) for site in sites if site.operation != "run"}
+    direct = {
+        (site.path, site.operation) for site in sites if site.operation not in _BOUNDED_ENTRY_POINTS
+    }
     unbounded = tuple(site for site in sites if not site.bounded)
+    calls = {
+        name: len(tuple(site for site in sites if site.operation == name))
+        for name in _BOUNDED_ENTRY_POINTS
+    }
 
     assert direct == {_EXPECTED_DIRECT_SITE}
     assert unbounded == ()
-    assert len(tuple(site for site in sites if site.operation == "run")) == _EXPECTED_ADAPTER_CALLS
+    assert calls == _EXPECTED_ADAPTER_CALLS
 
 
 def _assert_inventory_rejects_unbounded_site(tmp_path: Path) -> None:
@@ -256,13 +270,7 @@ def _resolve_reference(
 ) -> _ResolvedReference:
     if reference is None or reference in seen:
         return reference
-    if reference in {
-        "subprocess",
-        "subprocess.Popen",
-        "subprocess.run",
-        "tools.process_execution",
-        "tools.process_execution.run",
-    }:
+    if reference in _TERMINAL_REFERENCES:
         return reference
     for module in sorted(exports, key=len, reverse=True):
         prefix = f"{module}."
@@ -334,9 +342,10 @@ class _SiteVisitor(ast.NodeVisitor):
                     self._path == _ADAPTER,
                 )
             )
-        elif reference == "tools.process_execution.run":
+        elif reference in _BOUNDED_REFERENCES:
             has_timeout = any(keyword.arg == "timeout_seconds" for keyword in node.keywords)
-            self._sites.append(_ProcessSite(self._path, node.lineno, "run", has_timeout))
+            entry_point = reference.rpartition(".")[2]
+            self._sites.append(_ProcessSite(self._path, node.lineno, entry_point, has_timeout))
         self.generic_visit(node)
 
     def _visit_function(self, node: ast.FunctionDef | ast.AsyncFunctionDef) -> None:

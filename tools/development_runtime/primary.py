@@ -2,13 +2,12 @@
 
 from __future__ import annotations
 
-import shutil
 import time
-from pathlib import Path
 
 import tools.process_execution as process_execution  # noqa: PLR0402
 from ctower_api.development_config import DevelopmentConfig
 from ctower_api.development_secrets import load_secret
+from tools.development_runtime.host_commands import docker_path
 
 __all__ = ["start_primary"]
 
@@ -95,7 +94,7 @@ def _run_primary(config: DevelopmentConfig) -> None:
 
 def _container_exists(name: str) -> bool:
     result = process_execution.run(
-        [_docker_path(), "container", "inspect", name],
+        [docker_path(), "container", "inspect", name],
         timeout_seconds=_INSPECT_TIMEOUT_SECONDS,
         check=False,
         discard_output=True,
@@ -109,7 +108,7 @@ def _container_state(name: str) -> str:
 
 def _container_database_ready() -> bool:
     result = process_execution.run(
-        [_docker_path(), "exec", _INITIALIZER, "pg_isready", "-U", "postgres"],
+        [docker_path(), "exec", _INITIALIZER, "pg_isready", "-U", "postgres"],
         timeout_seconds=_INSPECT_TIMEOUT_SECONDS,
         check=False,
         discard_output=True,
@@ -129,7 +128,7 @@ def _wait_for_database() -> None:
 def _attach_container_input(value: str) -> None:
     try:
         result = process_execution.run(
-            [_docker_path(), "attach", "--sig-proxy=false", _INITIALIZER],
+            [docker_path(), "attach", "--sig-proxy=false", _INITIALIZER],
             timeout_seconds=_ATTACH_SECONDS,
             check=False,
             input_text=value,
@@ -144,16 +143,9 @@ def _attach_container_input(value: str) -> None:
 
 def _docker(*arguments: str) -> str:
     result = process_execution.run(
-        [_docker_path(), *arguments],
+        [docker_path(), *arguments],
         timeout_seconds=_LIFECYCLE_TIMEOUT_SECONDS,
         check=True,
         capture_output=True,
     )
     return result.stdout or ""
-
-
-def _docker_path() -> str:
-    docker = shutil.which("docker")
-    if docker is None:
-        raise RuntimeError("docker is required for the persistent development database")
-    return str(Path(docker).resolve(strict=True))
