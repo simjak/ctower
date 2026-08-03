@@ -64,6 +64,7 @@ nav:
       - Exercise the development walking slice: getting-started.md
       - Operations:
           - Current operational boundary: operations/current-boundary.md
+          - Record-backed landing boundary check: operations/landing-boundary-check.md
           - Observability: operations/observability.md
           - Project-seat credential ceremony: operations/seat-credential-issuance.md
           - Backup and anchors: operations/backup-and-anchors.md

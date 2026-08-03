@@ -31,6 +31,16 @@ command = ["{python}", "-m", "unittest", "discover", "-s", "tests/repository", "
 timeout_seconds = 120
 
 [[suite]]
+id = "landing-boundary-check"
+owner = "CT-L0-007"
+phase = "CT-L0-007"
+status = "required"
+path = "tests/landing_boundary"
+patterns = ["test_*.py"]
+command = ["{python}", "-m", "pytest", "tests/landing_boundary", "-q"]
+timeout_seconds = 120
+
+[[suite]]
 id = "l0-authored-contracts"
 owner = "CT-L0-007"
 phase = "CT-L0-007"
