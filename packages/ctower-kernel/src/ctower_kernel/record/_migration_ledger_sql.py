@@ -24,6 +24,8 @@ __all__ = [
 
 _LEDGER = "ctower_schema_migrations"
 _LEDGER_ROLE = "ctower_migration_ledger"
+# Substituted into every deparser in _SCHEMA_QUERY_TEMPLATES to select the rendering mode.
+_CANONICAL_RENDER = "__CTOWER_CANONICAL__"
 _SEMANTIC_CHECKS_ID = "ctower.pre-ledger/v1"
 type _SchemaRecord = tuple[str, str, str]
 type _SchemaRecords = tuple[_SchemaRecord, ...]
@@ -252,12 +254,9 @@ def _validate_recorded_application_state(
     applied: list[tuple[str, str, str, str, datetime]],
     baseline: MigrationBaseline,
 ) -> None:
-    actual_fingerprint = _schema_fingerprint(_schema_records(connection))
-    if not hmac.compare_digest(actual_fingerprint, applied[-1][3]):
-        raise MigrationStateError(
-            "ledger-schema-mismatch",
-            f"schema does not match the attestation for {applied[-1][0]}",
-        )
+    mismatch = _recorded_state_matches(connection, applied[-1][0], applied[-1][3])
+    if mismatch is not None:
+        raise MigrationStateError("ledger-schema-mismatch", mismatch)
     if applied[-1][0] == baseline.through and not hmac.compare_digest(
         applied[-1][3],
         baseline.schema_sha256,
@@ -400,7 +399,7 @@ def _validate_ledger_shape(connection: psycopg.Connection[tuple[object, ...]]) -
     constraints = connection.execute(
         """
         SELECT constraint_row.conname, constraint_row.contype,
-               pg_get_constraintdef(constraint_row.oid, false)
+               pg_get_constraintdef(constraint_row.oid, true)
         FROM pg_constraint AS constraint_row
         JOIN pg_class AS class ON class.oid = constraint_row.conrelid
         JOIN pg_namespace AS namespace ON namespace.oid = class.relnamespace
@@ -409,27 +408,30 @@ def _validate_ledger_shape(connection: psycopg.Connection[tuple[object, ...]]) -
         """,
         (_LEDGER,),
     ).fetchall()
+    # Rendered canonically, for the reason in _rendered_schema_queries: the raw deparse of an
+    # untouched constraint can change across a dump/restore, and the ledger's own table is as
+    # exposed to that as any measured one.
     expected_constraints = [
         (
             "ctower_schema_migrations_application_kind_check",
             "c",
-            "CHECK ((application_kind = ANY (ARRAY['applied'::text, 'baseline'::text])))",
+            "CHECK (application_kind = ANY (ARRAY['applied'::text, 'baseline'::text]))",
         ),
         (
             "ctower_schema_migrations_migration_id_check",
             "c",
-            "CHECK ((migration_id ~ '^[0-9]{4}_[a-z0-9_]+[.]sql$'::text))",
+            "CHECK (migration_id ~ '^[0-9]{4}_[a-z0-9_]+[.]sql$'::text)",
         ),
         ("ctower_schema_migrations_pkey", "p", "PRIMARY KEY (migration_id)"),
         (
             "ctower_schema_migrations_result_schema_sha256_check",
             "c",
-            "CHECK ((result_schema_sha256 ~ '^sha256:[0-9a-f]{64}$'::text))",
+            "CHECK (result_schema_sha256 ~ '^sha256:[0-9a-f]{64}$'::text)",
         ),
         (
             "ctower_schema_migrations_sha256_check",
             "c",
-            "CHECK ((sha256 ~ '^sha256:[0-9a-f]{64}$'::text))",
+            "CHECK (sha256 ~ '^sha256:[0-9a-f]{64}$'::text)",
         ),
     ]
     nonowner_access = connection.execute(
@@ -544,9 +546,11 @@ def _close_ledger_privileges(connection: psycopg.Connection[tuple[object, ...]])
 
 def _schema_records(
     connection: psycopg.Connection[tuple[object, ...]],
+    *,
+    canonical: bool = True,
 ) -> _SchemaRecords:
     records: list[_SchemaRecord] = []
-    for query in _SCHEMA_QUERIES:
+    for query in _SCHEMA_QUERIES if canonical else _SUPERSEDED_SCHEMA_QUERIES:
         parameters = tuple(_LEDGER for _ in range(query.count("%s")))
         records.extend(cast(list[_SchemaRecord], connection.execute(query, parameters).fetchall()))
     return tuple(sorted(records))
@@ -555,6 +559,36 @@ def _schema_records(
 def _schema_fingerprint(records: _SchemaRecords) -> str:
     canonical = json.dumps(records, ensure_ascii=True, separators=(",", ":")).encode()
     return f"sha256:{hashlib.sha256(canonical).hexdigest()}"
+
+
+def _recorded_state_matches(
+    connection: psycopg.Connection[tuple[object, ...]],
+    migration_id: str,
+    attested: str,
+) -> str | None:
+    """Refusal detail if the live schema is no longer the one the ledger attested, else None.
+
+    Two renderings can attest the same schema: the canonical one this module records now, and the
+    raw one it recorded before gh#247. Accepting either lets an instance whose schema has not moved
+    verify across the upgrade that introduces canonical rendering. It does not weaken the check —
+    both renderings are exact over the same record set, so a schema that really has changed matches
+    neither.
+
+    On mismatch the detail names the attested digest and both live renderings so an operator can
+    diff the evidence instead of trusting that canonicalization hid it.
+    """
+
+    live_canonical = _schema_fingerprint(_schema_records(connection, canonical=True))
+    live_superseded_raw = _schema_fingerprint(_schema_records(connection, canonical=False))
+    if hmac.compare_digest(live_canonical, attested) or hmac.compare_digest(
+        live_superseded_raw, attested
+    ):
+        return None
+    return (
+        f"schema does not match the attestation for {migration_id}: "
+        f"attested={attested} · live_canonical={live_canonical} · "
+        f"live_superseded_raw={live_superseded_raw}"
+    )
 
 
 def _schema_difference(
@@ -630,7 +664,7 @@ def _semantic_rejections(
 # in pg_depend. Starting at every user schema and following the dependency graph makes
 # PostgreSQL itself define the object-kind denominator. The private ledger and all of
 # its dependent catalog objects are removed as a dependency-discovered subtree.
-_SCHEMA_QUERIES = (
+_SCHEMA_QUERY_TEMPLATES = (
     """
     WITH RECURSIVE user_schemas(classid, objid, objsubid) AS (
         SELECT 'pg_catalog.pg_namespace'::regclass::oid, namespace.oid, 0
@@ -756,14 +790,17 @@ _SCHEMA_QUERIES = (
                    WHERE inheritance.inhrelid = class.oid
                ), '[]'::jsonb),
                'partition_key', COALESCE(pg_get_partkeydef(class.oid), ''),
-               'partition_bound', COALESCE(pg_get_expr(class.relpartbound, class.oid), ''),
+               'partition_bound', COALESCE(
+                   pg_get_expr(class.relpartbound, class.oid, __CTOWER_CANONICAL__), ''
+               ),
                'foreign_server', COALESCE(foreign_server.srvname, ''),
                'foreign_options', COALESCE((
                    SELECT jsonb_agg(option ORDER BY option)
                    FROM unnest(foreign_table.ftoptions) AS option
                ), '[]'::jsonb),
                'view_definition', CASE
-                   WHEN class.relkind IN ('v', 'm') THEN pg_get_viewdef(class.oid, false)
+                   WHEN class.relkind IN ('v', 'm')
+                       THEN pg_get_viewdef(class.oid, __CTOWER_CANONICAL__)
                    ELSE ''
                END
            )::text
@@ -792,8 +829,12 @@ _SCHEMA_QUERIES = (
                    )
                    FROM unnest(policy.polroles) AS role_id
                ), '[]'::jsonb),
-               'using', COALESCE(pg_get_expr(policy.polqual, policy.polrelid), ''),
-               'check', COALESCE(pg_get_expr(policy.polwithcheck, policy.polrelid), '')
+               'using', COALESCE(
+                   pg_get_expr(policy.polqual, policy.polrelid, __CTOWER_CANONICAL__), ''
+               ),
+               'check', COALESCE(
+                   pg_get_expr(policy.polwithcheck, policy.polrelid, __CTOWER_CANONICAL__), ''
+               )
            )::text
     FROM pg_policy AS policy
     JOIN pg_class AS class ON class.oid = policy.polrelid
@@ -808,7 +849,9 @@ _SCHEMA_QUERIES = (
                'not_null', attribute.attnotnull,
                'identity', attribute.attidentity,
                'generated', attribute.attgenerated,
-               'default', COALESCE(pg_get_expr(default_value.adbin, default_value.adrelid), ''),
+               'default', COALESCE(
+                   pg_get_expr(default_value.adbin, default_value.adrelid, __CTOWER_CANONICAL__), ''
+               ),
                'collation', CASE WHEN attribute.attcollation = 0 THEN ''
                    ELSE attribute.attcollation::regcollation::text END,
                'storage', attribute.attstorage,
@@ -834,7 +877,7 @@ _SCHEMA_QUERIES = (
                'deferred', constraint_row.condeferred,
                'validated', constraint_row.convalidated,
                'no_inherit', constraint_row.connoinherit,
-               'definition', pg_get_constraintdef(constraint_row.oid, false)
+               'definition', pg_get_constraintdef(constraint_row.oid, __CTOWER_CANONICAL__)
            )::text
     FROM pg_constraint AS constraint_row
     JOIN pg_namespace AS namespace ON namespace.oid = constraint_row.connamespace
@@ -847,7 +890,7 @@ _SCHEMA_QUERIES = (
     """
     SELECT 'index', table_class.relname || '.' || index_class.relname,
            jsonb_build_object(
-               'definition', pg_get_indexdef(index.indexrelid, 0, false),
+               'definition', pg_get_indexdef(index.indexrelid, 0, __CTOWER_CANONICAL__),
                'unique', index.indisunique,
                'primary', index.indisprimary,
                'exclusion', index.indisexclusion,
@@ -888,7 +931,7 @@ _SCHEMA_QUERIES = (
     """
     SELECT 'trigger', class.relname || '.' || trigger.tgname,
            jsonb_build_object(
-               'definition', pg_get_triggerdef(trigger.oid, false),
+               'definition', pg_get_triggerdef(trigger.oid, __CTOWER_CANONICAL__),
                'enabled', trigger.tgenabled
            )::text
     FROM pg_trigger AS trigger
@@ -1022,7 +1065,7 @@ _SCHEMA_QUERIES = (
                'kinds', statistics.stxkind,
                'keys', statistics.stxkeys::text,
                'expressions', COALESCE(pg_get_expr(
-                   statistics.stxexprs, statistics.stxrelid
+                   statistics.stxexprs, statistics.stxrelid, __CTOWER_CANONICAL__
                ), ''),
                'definition', pg_get_statisticsobjdef(statistics.oid)
            )::text
@@ -1073,7 +1116,9 @@ _SCHEMA_QUERIES = (
                        jsonb_build_object(
                            'name', member_namespace.nspname || '.' || member.relname,
                            'filter', COALESCE(
-                               pg_get_expr(membership.prqual, membership.prrelid), ''
+                               pg_get_expr(
+                                   membership.prqual, membership.prrelid, __CTOWER_CANONICAL__
+                               ), ''
                            ),
                            'columns', COALESCE((
                                SELECT jsonb_agg(attribute.attname ORDER BY attribute.attnum)
@@ -1179,6 +1224,29 @@ _SCHEMA_QUERIES = (
              entry.privilege_type, pg_get_userbyid(entry.grantor)
     """,
 )
+
+
+def _rendered_schema_queries(*, canonical: bool) -> tuple[str, ...]:
+    """Bind every deparser in the measurement to one rendering mode.
+
+    PostgreSQL's raw deparse is not a fixed point: re-parsing its output can return a
+    different-but-equivalent node tree, so the raw text of an untouched object changes across
+    any dump/restore. The pretty renderer omits the grouping parentheses that carry no meaning,
+    which makes it stable under that round trip. See gh#247.
+    """
+
+    return tuple(
+        query.replace(_CANONICAL_RENDER, "true" if canonical else "false")
+        for query in _SCHEMA_QUERY_TEMPLATES
+    )
+
+
+# The measurement, and the superseded one. A ledger row records which rendering attested it by
+# construction: rows written before gh#247 hold a raw-rendered digest, rows written after hold a
+# canonical one, and _recorded_state_matches accepts either so an instance that has never drifted
+# keeps verifying across the upgrade that introduces this.
+_SCHEMA_QUERIES = _rendered_schema_queries(canonical=True)
+_SUPERSEDED_SCHEMA_QUERIES = _rendered_schema_queries(canonical=False)
 
 
 # Each check is one cheap read-only query that must answer exactly False, and it
