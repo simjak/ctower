@@ -1,0 +1,378 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="color-scheme" content="light dark">
+<meta name="theme-color" content="#ffffff">
+<title>Workflow · ctower</title>
+<link rel="stylesheet" href="app.css">
+<script>
+  /* before first paint, so a dark-theme reader never sees a white flash */
+  try {
+    if (localStorage.getItem('ctower-theme') === 'dark') {
+      document.documentElement.classList.add('theme-dark');
+    }
+  } catch (e) {}
+</script>
+</head>
+<body>
+
+<header class="top">
+  <div class="top-row">
+    <span class="mark">
+      <svg width="20" height="20" viewBox="0 0 20 20" fill="none" aria-hidden="true">
+        <rect x=".75" y=".75" width="18.5" height="18.5" rx="5.25" stroke="var(--line-2)"/>
+        <circle cx="10" cy="5.4" r="1.7" fill="var(--accent)"/>
+        <path d="M10 7.8v6.4" stroke="var(--ink)" stroke-width="1.6" stroke-linecap="round"/>
+        <path d="M6.5 8.6a4.4 4.4 0 0 0 0 3.6" stroke="var(--ink-3)" stroke-width="1.3" stroke-linecap="round"/>
+        <path d="M13.5 8.6a4.4 4.4 0 0 1 0 3.6" stroke="var(--ink-3)" stroke-width="1.3" stroke-linecap="round"/>
+      </svg>
+      <b>ctower</b><span class="sep">/</span><span class="where">Workflow</span>
+    </span>
+    <span class="grow"></span>
+    <span class="instance"><span class="dot"></span>shadow<span class="mono">091c4b44</span></span>
+    <button class="tt" type="button" data-theme-toggle aria-label="Switch between light and dark theme">
+      <svg class="i-moon" width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden="true">
+        <path d="M14 9.3A6 6 0 0 1 6.7 2 6 6 0 1 0 14 9.3Z" stroke="currentColor" stroke-width="1.3" stroke-linejoin="round"/>
+      </svg>
+      <svg class="i-sun" width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden="true">
+        <circle cx="8" cy="8" r="3.1" stroke="currentColor" stroke-width="1.3"/>
+        <path d="M8 1v1.6M8 13.4V15M15 8h-1.6M2.6 8H1M12.95 3.05l-1.13 1.13M4.18 11.82l-1.13 1.13M12.95 12.95l-1.13-1.13M4.18 4.18L3.05 3.05"
+              stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/>
+      </svg>
+    </button>
+  </div>
+<nav class="nav" aria-label="Sections">
+  <a href="board.html">Board</a>
+  <a href="ticket.html">Ticket</a>
+  <a href="workflow.html" class="on" aria-current="page">Workflow</a>
+  <a href="heartbeats.html">Heartbeats</a>
+  <a href="metrics.html">Metrics</a>
+  <a href="inbox.html">Inbox</a>
+  <a href="feed.html">Feed</a>
+  <a href="files.html">Files</a>
+  <a href="workspace.html">Workspace</a>
+  <a href="explorer.html">Explorer</a>
+</nav>
+</header>
+
+<main class="page"><div class="wrap">
+  <div class="lede">
+    <h1>Workflow</h1>
+    <p>The stages a ticket moves through, and what each one must produce before it may be left. This
+       is configuration, not code: the file the kernel reads is the file edited here, and a stage
+       missing its evidence does not advance &mdash; the system declines to record the step.</p>
+  </div>
+
+  <nav class="tabs" aria-label="Overlay" style="padding-left:0;padding-right:0;padding-top:16px">
+    <label class="tab"><input type="radio" name="ovl" id="ov-base" checked>Base workflow</label>
+    <label class="tab t-manibo"><input type="radio" name="ovl" id="ov-manibo"><i class="swatch"></i>lastmachines overlay</label>
+    <label class="tab t-bhloop"><input type="radio" name="ovl" id="ov-bhloop"><i class="swatch"></i>bh-loop overlay</label>
+  </nav>
+
+  <section class="panel" style="margin-top:16px">
+    <header>
+      <h2>engineering.software-factory</h2>
+      <span class="sub">revision 12</span>
+      <span class="seg" style="margin-left:12px">
+        <label><input type="radio" name="wfview" id="w-stages" checked>Stages</label>
+        <label><input type="radio" name="wfview" id="w-yaml">YAML</label>
+      </span>
+    </header>
+
+    <div data-wfview="stages">
+      <div class="wfrail">
+        <span class="wfchip" title="reordering is a config commit through the same review gate">
+          <span class="grip" aria-hidden="true">&#8942;&#8942;</span>
+          <i class="bar b-intake"></i>
+          <span class="nm">intake</span>
+          <span class="ct" data-chipcount="intake">2</span>
+        </span>
+        <span class="wfarrow">&rarr;</span>
+        <span class="wfchip" title="reordering is a config commit through the same review gate">
+          <span class="grip" aria-hidden="true">&#8942;&#8942;</span>
+          <i class="bar b-triage"></i>
+          <span class="nm">triage</span>
+          <span class="ct" data-chipcount="triage">3</span>
+        </span>
+        <span class="wfarrow">&rarr;</span>
+        <span class="wfchip" title="reordering is a config commit through the same review gate">
+          <span class="grip" aria-hidden="true">&#8942;&#8942;</span>
+          <i class="bar b-build"></i>
+          <span class="nm">build</span>
+          <span class="ct" data-chipcount="build">3</span>
+        </span>
+        <span class="wfarrow">&rarr;</span>
+        <span class="wfchip" title="reordering is a config commit through the same review gate">
+          <span class="grip" aria-hidden="true">&#8942;&#8942;</span>
+          <i class="bar b-review"></i>
+          <span class="nm">review</span>
+          <span class="ct" data-chipcount="review">3</span>
+        </span>
+        <span class="wfarrow">&rarr;</span>
+        <span class="wfchip" title="reordering is a config commit through the same review gate">
+          <span class="grip" aria-hidden="true">&#8942;&#8942;</span>
+          <i class="bar b-qa"></i>
+          <span class="nm">qa</span>
+          <span class="ct" data-chipcount="qa">3</span>
+        </span>
+        <span class="wfarrow">&rarr;</span>
+        <span class="wfchip" title="reordering is a config commit through the same review gate">
+          <span class="grip" aria-hidden="true">&#8942;&#8942;</span>
+          <i class="bar b-staging"></i>
+          <span class="nm">staging</span>
+          <span class="ct" data-chipcount="staging">2</span>
+        </span>
+        <span class="wfarrow">&rarr;</span>
+        <span class="wfchip" title="reordering is a config commit through the same review gate">
+          <span class="grip" aria-hidden="true">&#8942;&#8942;</span>
+          <i class="bar b-released"></i>
+          <span class="nm">released</span>
+          <span class="ct" data-chipcount="released">4</span>
+        </span>
+        <span class="wfadd" title="adding a stage is a config commit through the same review gate">+ stage</span>
+      </div>
+      <div class="stagegrid">
+      <section class="scard" data-stage="intake">
+        <header>
+          <i class="bar b-intake"></i><h3>intake</h3>
+          <span class="grip" aria-hidden="true" title="reordering is a config commit through the same review gate">&#8942;&#8942;</span>
+        </header>
+        <div class="owner">owner: commander &middot; <span data-cardcount="intake">2</span> required to exit</div>
+        <ul class="reqs">
+          <li>
+            <span class="g g-done">&#9679;</span>
+            <div><div class="t">source reference recorded on the ticket</div><div class="how">intake record &middot; &lt;project&gt;-R&lt;nnn&gt; or gh#&lt;n&gt;</div></div>
+          </li>
+          <li>
+            <span class="g g-done">&#9679;</span>
+            <div><div class="t">prohibited-data scan passes</div><div class="how">one refusal test per class &middot; D29 &sect;3</div></div>
+          </li>
+          <li class="ovl ovl-bhloop">
+            <span class="g g-done">&#9679;</span>
+            <div><div class="t">a PHI-shaped fixture is refused BY NAME<span class="ovltag">bh-loop</span></div><div class="how">test_refuses_phi_fixture &middot; D11</div></div>
+          </li>
+        </ul>
+      </section>
+      <section class="scard" data-stage="triage">
+        <header>
+          <i class="bar b-triage"></i><h3>triage</h3>
+          <span class="grip" aria-hidden="true" title="reordering is a config commit through the same review gate">&#8942;&#8942;</span>
+        </header>
+        <div class="owner">owner: engineering-manager &middot; <span data-cardcount="triage">3</span> required to exit</div>
+        <ul class="reqs">
+          <li>
+            <span class="g g-done">&#9679;</span>
+            <div><div class="t">acceptance criteria written in observable terms</div><div class="how">spec checklist &sect;2 &middot; never &ldquo;implement X&rdquo;</div></div>
+          </li>
+          <li>
+            <span class="g g-done">&#9679;</span>
+            <div><div class="t">verification named per criterion</div><div class="how">spec checklist &sect;3 &middot; the command or the artifact</div></div>
+          </li>
+          <li>
+            <span class="g g-done">&#9679;</span>
+            <div><div class="t">routed to a persona and a harness</div><div class="how">board/model-routing-policy.md</div></div>
+          </li>
+        </ul>
+      </section>
+      <section class="scard" data-stage="build">
+        <header>
+          <i class="bar b-build"></i><h3>build</h3>
+          <span class="grip" aria-hidden="true" title="reordering is a config commit through the same review gate">&#8942;&#8942;</span>
+        </header>
+        <div class="owner">owner: engineer &middot; <span data-cardcount="build">3</span> required to exit</div>
+        <ul class="reqs">
+          <li>
+            <span class="g g-done">&#9679;</span>
+            <div><div class="t">scoped tests green at head</div><div class="how">just test &lt;path&gt;</div></div>
+          </li>
+          <li>
+            <span class="g g-done">&#9679;</span>
+            <div><div class="t">file-disjointness holds</div><div class="how">no contested file edited &middot; refuses by name</div></div>
+          </li>
+          <li>
+            <span class="g g-done">&#9679;</span>
+            <div><div class="t">status file written after dispatch</div><div class="how">paired .status.md, mtime after dispatch</div></div>
+          </li>
+        </ul>
+      </section>
+      <section class="scard" data-stage="review">
+        <header>
+          <i class="bar b-review"></i><h3>review</h3>
+          <span class="grip" aria-hidden="true" title="reordering is a config commit through the same review gate">&#8942;&#8942;</span>
+        </header>
+        <div class="owner">owner: review &middot; <span data-cardcount="review">3</span> required to exit</div>
+        <ul class="reqs">
+          <li>
+            <span class="g g-done">&#9679;</span>
+            <div><div class="t">a cross-family APPROVE at head</div><div class="how">reviewer model family &ne; author family</div></div>
+          </li>
+          <li>
+            <span class="g g-done">&#9679;</span>
+            <div><div class="t">the verdict names the exact candidate digest</div><div class="how">verdict sha == PR head sha</div></div>
+          </li>
+          <li>
+            <span class="g g-done">&#9679;</span>
+            <div><div class="t">every review thread resolved</div><div class="how">gh pr view --json reviewThreads</div></div>
+          </li>
+          <li class="ovl ovl-bhloop">
+            <span class="g g-done">&#9679;</span>
+            <div><div class="t">CSO returns a per-control D11 HIPAA verdict table<span class="ovltag">bh-loop</span></div><div class="how">one row per control &middot; no blanket pass</div></div>
+          </li>
+        </ul>
+      </section>
+      <section class="scard" data-stage="qa">
+        <header>
+          <i class="bar b-qa"></i><h3>qa</h3>
+          <span class="grip" aria-hidden="true" title="reordering is a config commit through the same review gate">&#8942;&#8942;</span>
+        </header>
+        <div class="owner">owner: qa &middot; <span data-cardcount="qa">3</span> required to exit</div>
+        <ul class="reqs">
+          <li>
+            <span class="g g-done">&#9679;</span>
+            <div><div class="t">uses-not-loads proof</div><div class="how">every control driven, the outcome captured</div></div>
+          </li>
+          <li>
+            <span class="g g-done">&#9679;</span>
+            <div><div class="t">rendered at 390 / 768 / 1440</div><div class="how">screenshots attached to the ticket</div></div>
+          </li>
+          <li>
+            <span class="g g-done">&#9679;</span>
+            <div><div class="t">tenant-isolation login proof</div><div class="how">two tenants, no cross-read</div></div>
+          </li>
+          <li class="ovl ovl-manibo">
+            <span class="g g-done">&#9679;</span>
+            <div><div class="t">run on the k3d env, never dev-live.sh<span class="ovltag">lastmachines</span></div><div class="how">wrong topology is rejected as proof</div></div>
+          </li>
+        </ul>
+      </section>
+      <section class="scard" data-stage="staging">
+        <header>
+          <i class="bar b-staging"></i><h3>staging</h3>
+          <span class="grip" aria-hidden="true" title="reordering is a config commit through the same review gate">&#8942;&#8942;</span>
+        </header>
+        <div class="owner">owner: devops &middot; <span data-cardcount="staging">2</span> required to exit</div>
+        <ul class="reqs">
+          <li>
+            <span class="g g-done">&#9679;</span>
+            <div><div class="t">deployed digest matches the merged commit</div><div class="how">pod-image digest == merge sha</div></div>
+          </li>
+          <li>
+            <span class="g g-done">&#9679;</span>
+            <div><div class="t">e2e green on the deployed env</div><div class="how">the deployed env, not a local run</div></div>
+          </li>
+          <li class="ovl ovl-manibo">
+            <span class="g g-done">&#9679;</span>
+            <div><div class="t">a real-provider call completes on staging<span class="ovltag">lastmachines</span></div><div class="how">real STT / LLM / TTS / telephony transcript</div></div>
+          </li>
+        </ul>
+      </section>
+      <section class="scard" data-stage="released">
+        <header>
+          <i class="bar b-released"></i><h3>released</h3>
+          <span class="grip" aria-hidden="true" title="reordering is a config commit through the same review gate">&#8942;&#8942;</span>
+        </header>
+        <div class="owner">owner: release-manager &middot; <span data-cardcount="released">4</span> required to exit</div>
+        <ul class="reqs">
+          <li>
+            <span class="g g-done">&#9679;</span>
+            <div><div class="t">prod pod-image digest verified</div><div class="how">read from the cluster, never inferred</div></div>
+          </li>
+          <li>
+            <span class="g g-done">&#9679;</span>
+            <div><div class="t">headline use-proof on production</div><div class="how">the feature used, the outcome captured</div></div>
+          </li>
+          <li>
+            <span class="g g-done">&#9679;</span>
+            <div><div class="t">dark-flag audit: nothing shipped behind an unset flag</div><div class="how">env diff against the release record</div></div>
+          </li>
+          <li>
+            <span class="g g-done">&#9679;</span>
+            <div><div class="t">retro filed with the gate change it earned</div><div class="how">state/escapes.jsonl + a checklist line</div></div>
+          </li>
+        </ul>
+      </section>
+      </div>
+    </div>
+
+    <div data-wfview="yaml" style="display:none">
+      <div class="layers">
+        <span class="layer"><span class="i">1</span>company &middot; jakit-labs</span>
+        <span class="layer"><span class="i">2</span>projects &middot; 3</span>
+        <span class="layer"><span class="i">3</span>team &middot; 10 souls</span>
+        <span class="layer"><span class="i">4</span>ticket-schema</span>
+        <span class="layer here"><span class="i">5</span>workflows</span>
+      </div>
+      <div class="pane-head">
+        <span class="path">workflows/engineering.software-factory.yaml</span>
+        <span class="spacer"></span>
+        <span class="meta">revision 12 &middot; read-only</span>
+      </div>
+      <pre class="code"><span class="l"><span class="c"># jakit-labs/ctower-config - workflows/engineering.software-factory.yaml</span></span><span class="l"><span class="c"># layer 5 of 5: company &gt; projects &gt; team &gt; ticket-schema &gt; workflows</span></span><span class="l"></span><span class="l"><span class="yml-k">apiVersion</span>: <span class="yml-s">ctower/v1</span></span><span class="l"><span class="yml-k">kind</span>: <span class="yml-s">Workflow</span></span><span class="l"><span class="yml-k">metadata</span>:</span><span class="l">  <span class="yml-k">name</span>: <span class="yml-s">engineering.software-factory</span></span><span class="l">  <span class="yml-k">company</span>: <span class="yml-s">jakit-labs</span></span><span class="l">  <span class="yml-k">revision</span>: <span class="yml-n">12</span></span><span class="l">  <span class="yml-k">signed_by</span>: <span class="yml-s">em-185-decision</span></span><span class="l"></span><span class="l"><span class="yml-k">spec</span>:</span><span class="l">  <span class="yml-k">stages</span>:</span><span class="l">    - <span class="yml-k">name</span>: <span class="yml-s">intake</span></span><span class="l">      <span class="yml-k">owner</span>: <span class="yml-s">commander</span></span><span class="l">      <span class="yml-k">evidence</span>:</span><span class="l">        - <span class="yml-k">key</span>: <span class="yml-s">source-reference</span></span><span class="l">          <span class="yml-k">required</span>: <span class="yml-n">true</span></span><span class="l">          <span class="yml-k">shape</span>: <span class="yml-s">&lt;project&gt;-R&lt;nnn&gt; | gh#&lt;n&gt;</span></span><span class="l">        - <span class="yml-k">key</span>: <span class="yml-s">prohibited-data-scan</span></span><span class="l">          <span class="yml-k">required</span>: <span class="yml-n">true</span></span><span class="l">          <span class="yml-k">refuses_by_name</span>: <span class="yml-n">true</span><span class="c">          # D29 section 3</span></span><span class="l"></span><span class="l">    - <span class="yml-k">name</span>: <span class="yml-s">build</span></span><span class="l">      <span class="yml-k">owner</span>: <span class="yml-s">engineer</span></span><span class="l">      <span class="yml-k">evidence</span>:</span><span class="l">        - <span class="yml-k">key</span>: <span class="yml-s">scoped-tests</span></span><span class="l">          <span class="yml-k">required</span>: <span class="yml-n">true</span></span><span class="l">          <span class="yml-k">command</span>: <span class="yml-s">just test &lt;path&gt;</span></span><span class="l">        - <span class="yml-k">key</span>: <span class="yml-s">file-disjointness</span></span><span class="l">          <span class="yml-k">required</span>: <span class="yml-n">true</span></span><span class="l">          <span class="yml-k">refuses_by_name</span>: <span class="yml-n">true</span></span><span class="l"></span><span class="l">    - <span class="yml-k">name</span>: <span class="yml-s">review</span></span><span class="l">      <span class="yml-k">owner</span>: <span class="yml-s">review</span></span><span class="l">      <span class="yml-k">evidence</span>:</span><span class="l">        - <span class="yml-k">key</span>: <span class="yml-s">code-review-verdict</span></span><span class="l">          <span class="yml-k">required</span>: <span class="yml-n">true</span></span><span class="l">          <span class="yml-k">reviewer_family_differs_from_author</span>: <span class="yml-n">true</span></span><span class="l">          <span class="yml-k">digest_must_match_head</span>: <span class="yml-n">true</span></span><span class="l"></span><span class="l">    - <span class="yml-k">name</span>: <span class="yml-s">qa</span></span><span class="l">      <span class="yml-k">owner</span>: <span class="yml-s">qa</span></span><span class="l">      <span class="yml-k">evidence</span>:</span><span class="l">        - <span class="yml-k">key</span>: <span class="yml-s">uses-not-loads</span></span><span class="l">          <span class="yml-k">required</span>: <span class="yml-n">true</span></span><span class="l">          <span class="yml-k">widths</span>: <span class="yml-s">[390, 768, 1440]</span></span><span class="l"></span><span class="l">  <span class="yml-k">transitions</span>:</span><span class="l">    - <span class="yml-k">from</span>: <span class="yml-s">build</span></span><span class="l">      <span class="yml-k">to</span>: <span class="yml-s">review</span></span><span class="l">      <span class="yml-k">requires</span>: <span class="yml-s">[scoped-tests, file-disjointness, status-file]</span></span><span class="l">      <span class="yml-k">on_missing</span>: <span class="yml-s">refuse</span><span class="c">                 # the stage does not advance</span></span><span class="l"></span><span class="l"><span class="yml-k">overlays</span>:</span><span class="l">  <span class="yml-k">lastmachines</span>:</span><span class="l">    <span class="yml-k">qa</span>:</span><span class="l">      - <span class="yml-k">key</span>: <span class="yml-s">k3d-only</span></span><span class="l">        <span class="yml-k">required</span>: <span class="yml-n">true</span></span><span class="l">    <span class="yml-k">staging</span>:</span><span class="l">      - <span class="yml-k">key</span>: <span class="yml-s">real-provider-call</span></span><span class="l">        <span class="yml-k">required</span>: <span class="yml-n">true</span></span><span class="l">  <span class="yml-k">bh-loop</span>:</span><span class="l">    <span class="yml-k">intake</span>:</span><span class="l">      - <span class="yml-k">key</span>: <span class="yml-s">phi-fixture-refused</span></span><span class="l">        <span class="yml-k">required</span>: <span class="yml-n">true</span></span><span class="l">    <span class="yml-k">review</span>:</span><span class="l">      - <span class="yml-k">key</span>: <span class="yml-s">hipaa-d11-verdict</span></span><span class="l">        <span class="yml-k">required</span>: <span class="yml-n">true</span></span><span class="l"></span></pre>
+      <div class="gate-note show" style="background:var(--surface);color:var(--ink-3)">
+        editing this file is a commit on a branch and a pull request against protected main &mdash;
+        cross-family review, then the kernel re-reads the pack on merge. There is no live-edit path.
+      </div>
+    </div>
+  </section>
+
+  <div class="foot">
+    <span>ctower · shadow instance 091c4b44</span>
+    <span>SHADOW_ONLY_CP3_D_NOT_PROVEN</span>
+    <span>2026-08-02 08:34 Europe/Vilnius</span>
+  </div>
+</div></main>
+
+<script>
+  (function () {
+    var btn = document.querySelector('[data-theme-toggle]');
+    var root = document.documentElement;
+    var sync = function () { btn.setAttribute('aria-pressed', String(root.classList.contains('theme-dark'))); };
+    btn.addEventListener('click', function () {
+      var dark = root.classList.toggle('theme-dark');
+      try { localStorage.setItem('ctower-theme', dark ? 'dark' : 'light'); } catch (e) {}
+      sync();
+    });
+    sync();
+  })();
+</script>
+
+<script>
+  /* two real controls: the Stages / YAML switch, and the project overlay, which
+     reveals what a project adds AND recomputes every count from the rows that
+     are actually visible, so a badge cannot drift from its list */
+  (function () {
+    var views = [].slice.call(document.querySelectorAll('[data-wfview]'));
+    function view() {
+      var yaml = document.getElementById('w-yaml').checked;
+      views.forEach(function (v) {
+        v.style.display = v.dataset.wfview === (yaml ? 'yaml' : 'stages') ? '' : 'none';
+      });
+    }
+    [].slice.call(document.querySelectorAll('input[name="wfview"]'))
+      .forEach(function (r) { r.addEventListener('change', view); });
+    view();
+
+    function overlay() {
+      var id = document.querySelector('input[name="ovl"]:checked').id;
+      var on = id === 'ov-manibo' ? 'manibo' : (id === 'ov-bhloop' ? 'bhloop' : null);
+      [].slice.call(document.querySelectorAll('.reqs li.ovl')).forEach(function (li) {
+        li.style.display = (on && li.classList.contains('ovl-' + on)) ? '' : 'none';
+      });
+      [].slice.call(document.querySelectorAll('.scard')).forEach(function (card) {
+        var n = [].slice.call(card.querySelectorAll('.reqs li')).filter(function (li) {
+          return getComputedStyle(li).display !== 'none';
+        }).length;
+        card.querySelector('[data-cardcount]').textContent = n;
+        var chip = document.querySelector('[data-chipcount="' + card.dataset.stage + '"]');
+        if (chip) chip.textContent = n;
+      });
+    }
+    [].slice.call(document.querySelectorAll('input[name="ovl"]'))
+      .forEach(function (r) { r.addEventListener('change', overlay); });
+    overlay();
+  })();
+</script>
+</body>
+</html>
