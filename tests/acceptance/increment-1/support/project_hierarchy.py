@@ -8,11 +8,17 @@ from uuid import uuid4
 import psycopg
 from support.tenant_fixture import TenantFixture
 
-__all__ = ["declare_ctower_project"]
+__all__ = ["declare_ctower_project", "declare_project"]
 
 
 def declare_ctower_project(tenant: TenantFixture) -> None:
     """Declare the bounded I1 project through its canonical hierarchy table."""
+
+    declare_project(tenant, "ctower")
+
+
+def declare_project(tenant: TenantFixture, project_key: str) -> None:
+    """Declare one portfolio project; D30 keeps the roster configured, never coded."""
 
     with psycopg.connect(tenant.database.admin_dsn) as connection:
         event = connection.execute(
@@ -34,7 +40,7 @@ def declare_ctower_project(tenant: TenantFixture) -> None:
                 catalog_revision, catalog_digest, event_id, actor_principal_id,
                 recorded_at
             ) VALUES (
-                %s, %s, 'ctower', 'ctower', 'I1.0', 1, 1,
+                %s, %s, 'ctower', %s, 'I1.0', 1, 1,
                 'intake authority fixture', 'declared project authority',
                 'ctower-operator', ARRAY['planned', 'done']::text[],
                 'ctower.intake-authority@1', %s, %s, %s, %s
@@ -44,6 +50,7 @@ def declare_ctower_project(tenant: TenantFixture) -> None:
             (
                 uuid4(),
                 tenant.tenant_id,
+                project_key,
                 hashlib.sha256(b"ctower.intake-authority@1").digest(),
                 event[0],
                 event[1],

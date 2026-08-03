@@ -1,0 +1,797 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="color-scheme" content="light dark">
+<meta name="theme-color" content="#ffffff">
+<title>Metrics · ctower</title>
+<link rel="stylesheet" href="app.css">
+<script>
+  /* before first paint, so a dark-theme reader never sees a white flash */
+  try {
+    if (localStorage.getItem('ctower-theme') === 'dark') {
+      document.documentElement.classList.add('theme-dark');
+    }
+  } catch (e) {}
+</script>
+</head>
+<body>
+
+<header class="top">
+  <div class="top-row">
+    <span class="mark">
+      <svg width="20" height="20" viewBox="0 0 20 20" fill="none" aria-hidden="true">
+        <rect x=".75" y=".75" width="18.5" height="18.5" rx="5.25" stroke="var(--line-2)"/>
+        <circle cx="10" cy="5.4" r="1.7" fill="var(--accent)"/>
+        <path d="M10 7.8v6.4" stroke="var(--ink)" stroke-width="1.6" stroke-linecap="round"/>
+        <path d="M6.5 8.6a4.4 4.4 0 0 0 0 3.6" stroke="var(--ink-3)" stroke-width="1.3" stroke-linecap="round"/>
+        <path d="M13.5 8.6a4.4 4.4 0 0 1 0 3.6" stroke="var(--ink-3)" stroke-width="1.3" stroke-linecap="round"/>
+      </svg>
+      <b>ctower</b><span class="sep">/</span><span class="where">Metrics</span>
+    </span>
+    <span class="grow"></span>
+    <span class="instance"><span class="dot"></span>shadow<span class="mono">091c4b44</span></span>
+    <button class="tt" type="button" data-theme-toggle aria-label="Switch between light and dark theme">
+      <svg class="i-moon" width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden="true">
+        <path d="M14 9.3A6 6 0 0 1 6.7 2 6 6 0 1 0 14 9.3Z" stroke="currentColor" stroke-width="1.3" stroke-linejoin="round"/>
+      </svg>
+      <svg class="i-sun" width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden="true">
+        <circle cx="8" cy="8" r="3.1" stroke="currentColor" stroke-width="1.3"/>
+        <path d="M8 1v1.6M8 13.4V15M15 8h-1.6M2.6 8H1M12.95 3.05l-1.13 1.13M4.18 11.82l-1.13 1.13M12.95 12.95l-1.13-1.13M4.18 4.18L3.05 3.05"
+              stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/>
+      </svg>
+    </button>
+  </div>
+<nav class="nav" aria-label="Sections">
+  <a href="board.html">Board</a>
+  <a href="ticket.html">Ticket</a>
+  <a href="workflow.html">Workflow</a>
+  <a href="heartbeats.html">Heartbeats</a>
+  <a href="metrics.html" class="on" aria-current="page">Metrics</a>
+  <a href="inbox.html">Inbox</a>
+  <a href="feed.html">Feed</a>
+  <a href="files.html">Files</a>
+  <a href="workspace.html">Workspace</a>
+  <a href="explorer.html">Explorer</a>
+</nav>
+</header>
+
+<main class="page"><div class="wrap">
+  <div class="lede">
+    <h1>Metrics</h1>
+    <p>How fast each factory ships, how often it breaks, and how long it takes to recover &mdash;
+       over the backlog it is burning down and the merges that burned it. Every number names the
+       record it is read from, and a project with no environment says so instead of showing a zero.</p>
+  </div>
+
+  <nav class="tabs" aria-label="Project" style="padding-left:0;padding-right:0;padding-top:16px">
+    <label class="tab" title="All three projects on one scale">
+      <input type="radio" name="scope" id="s-all" checked>All projects</label>
+    <label class="tab t-ctower" title="ctower — the control plane itself">
+      <input type="radio" name="scope" id="s-ctower"><i class="swatch"></i>ctower</label>
+    <label class="tab t-manibo" title="lastmachines — the clinic voice platform">
+      <input type="radio" name="scope" id="s-manibo"><i class="swatch"></i>lastmachines</label>
+    <label class="tab t-bhloop" title="bh-loop — the behavioural health platform">
+      <input type="radio" name="scope" id="s-bhloop"><i class="swatch"></i>bh-loop</label>
+  </nav>
+
+  <!-- ── DORA ────────────────────────────────────────────────────────────── -->
+  <section class="panel" style="margin-top:16px">
+    <header>
+      <h2>Delivery</h2>
+      <span class="sub">7 days to 17:05 &middot; merges measured, deploys proposed</span>
+    </header>
+
+    <div class="mtscope" data-scope="all">
+      <div class="mtgrid">
+        <div class="mtcard">
+          <div class="k">Deploy frequency</div>
+          <div class="v">2.1<u>/day</u></div>
+          <svg class="mtspark" viewBox="0 0 100 30" preserveAspectRatio="none" aria-hidden="true">
+            <polyline class="ln" vector-effect="non-scaling-stroke"
+              points="0,19.3 16.7,10.7 33.3,2 50,19.3 66.7,19.3 83.3,28 100,19.3"/>
+          </svg>
+          <span class="mttgt ok" title="A project should reach an environment at least once a day">target &ge; 1/day</span>
+          <div class="d">Two of the three projects deploy at all; ctower has nowhere to deploy to.</div>
+          <div class="src">src: pipeline runs &middot; not in the ledger yet</div>
+        </div>
+        <div class="mtcard miss">
+          <div class="k">Lead time &middot; merge &rarr; staging</div>
+          <div class="v">6<u>h</u> 12<u>m</u></div>
+          <svg class="mtspark" viewBox="0 0 100 30" preserveAspectRatio="none" aria-hidden="true">
+            <polyline class="ln warn" vector-effect="non-scaling-stroke"
+              points="0,23.2 16.7,28 33.3,17.1 50,22.5 66.7,12.9 83.3,8.2 100,2"/>
+          </svg>
+          <span class="mttgt miss" title="Merged work should reach an environment within the hour">target &le; 1h</span>
+          <div class="d">The portfolio merges faster than it promotes: thirteen merges today against
+            one promotion, and the gap has widened every day this week.</div>
+          <div class="src">src: merge record + deploy runs &middot; deploy half missing</div>
+        </div>
+        <div class="mtcard">
+          <div class="k">Change failure rate</div>
+          <div class="v">11<u>%</u></div>
+          <svg class="mtspark" viewBox="0 0 100 30" preserveAspectRatio="none" aria-hidden="true">
+            <polyline class="ln" vector-effect="non-scaling-stroke"
+              points="0,23.7 16.7,15 33.3,28 50,2 66.7,21.5 83.3,15 100,17.2"/>
+          </svg>
+          <span class="mttgt ok" title="Share of promotions that needed a revert or a follow-up fix">target &le; 15%</span>
+          <div class="d">Two of eighteen promotions needed a follow-up fix this week.</div>
+          <div class="src">src: merges + a revert label the record does not carry</div>
+        </div>
+        <div class="mtcard">
+          <div class="k">MTTR</div>
+          <div class="v">3<u>h</u> 40<u>m</u></div>
+          <svg class="mtspark" viewBox="0 0 100 30" preserveAspectRatio="none" aria-hidden="true">
+            <polyline class="ln" vector-effect="non-scaling-stroke"
+              points="0,2 16.7,24.8 33.3,10.7 50,28 66.7,16.1 83.3,13.9 100,18.3"/>
+          </svg>
+          <span class="mttgt ok" title="First alert to the fix merging, measured within one working stretch">target &le; 4h</span>
+          <div class="d">Measured to the fix merging, not to the fix deploying &mdash; the promotion
+            gap above is counted once, in lead time.</div>
+          <div class="src">src: incident records &middot; not in the ledger yet</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="mtscope" data-scope="ctower">
+      <div class="mtgrid">
+        <div class="mtcard na">
+          <div class="k">Deploy frequency</div>
+          <div class="v">no environment</div>
+          <div class="mtnospark">ctower's pipeline ends at merge</div>
+          <span class="mttgt na" title="A target is set once there is an environment to deploy to">no target yet</span>
+          <div class="d">There is no staging and no production; gap story G5 stands one up.</div>
+          <div class="src">src: &mdash;</div>
+        </div>
+        <div class="mtcard na">
+          <div class="k">Lead time &middot; merge &rarr; staging</div>
+          <div class="v">no environment</div>
+          <div class="mtnospark">nothing to lead to</div>
+          <span class="mttgt na" title="A target is set once there is an environment to deploy to">no target yet</span>
+          <div class="d">Merged is the last honest word ctower can say about its own work today.</div>
+          <div class="src">src: &mdash;</div>
+        </div>
+        <div class="mtcard">
+          <div class="k">Change failure rate</div>
+          <div class="v">0<u>%</u></div>
+          <svg class="mtspark" viewBox="0 0 100 30" preserveAspectRatio="none" aria-hidden="true">
+            <polyline class="ln flat" vector-effect="non-scaling-stroke"
+              points="0,26 16.7,26 33.3,26 50,26 66.7,26 83.3,26 100,26"/>
+            <g class="pt flat">
+              <line x1="0" y1="25.1" x2="0" y2="26.9" vector-effect="non-scaling-stroke"/>
+              <line x1="16.7" y1="25.1" x2="16.7" y2="26.9" vector-effect="non-scaling-stroke"/>
+              <line x1="33.3" y1="25.1" x2="33.3" y2="26.9" vector-effect="non-scaling-stroke"/>
+              <line x1="50" y1="25.1" x2="50" y2="26.9" vector-effect="non-scaling-stroke"/>
+              <line x1="66.7" y1="25.1" x2="66.7" y2="26.9" vector-effect="non-scaling-stroke"/>
+              <line x1="83.3" y1="25.1" x2="83.3" y2="26.9" vector-effect="non-scaling-stroke"/>
+              <line x1="100" y1="25.1" x2="100" y2="26.9" vector-effect="non-scaling-stroke"/>
+            </g>
+          </svg>
+          <span class="mttgt ok" title="Share of merges that needed a revert or a follow-up fix">target &le; 15%</span>
+          <div class="d">Forty-seven merges in seven days, none reverted &mdash; but the gates catch
+            it before merge, so this measures the reviewer, not the runtime.</div>
+          <div class="src">src: merge record &middot; reverts read by hand</div>
+        </div>
+        <div class="mtcard">
+          <div class="k">MTTR</div>
+          <div class="v">13<u>m</u></div>
+          <svg class="mtspark" viewBox="0 0 100 30" preserveAspectRatio="none" aria-hidden="true">
+            <line class="base" x1="0" y1="28" x2="100" y2="28" vector-effect="non-scaling-stroke"/>
+            <polyline class="ln" vector-effect="non-scaling-stroke" points="83.3,2 100,21.5"/>
+            <line class="pt" x1="83.3" y1="1.1" x2="83.3" y2="2.9" vector-effect="non-scaling-stroke"/>
+            <line class="pt" x1="100" y1="20.6" x2="100" y2="22.4" vector-effect="non-scaling-stroke"/>
+          </svg>
+          <span class="mttgt ok" title="First alert to the fix merging, measured within one working stretch">target &le; 4h</span>
+          <div class="d">Both incidents this week were the watchdog's own. The false wolf at 16:02
+            was fixed at both ends by 16:15; the line covers only the days that had one.</div>
+          <div class="src">src: beat journal &middot; incidents filed by hand</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="mtscope" data-scope="manibo">
+      <div class="mtgrid">
+        <div class="mtcard">
+          <div class="k">Deploy frequency</div>
+          <div class="v">1.3<u>/day</u></div>
+          <svg class="mtspark" viewBox="0 0 100 30" preserveAspectRatio="none" aria-hidden="true">
+            <polyline class="ln" vector-effect="non-scaling-stroke"
+              points="0,19.3 16.7,10.7 33.3,2 50,19.3 66.7,19.3 83.3,28 100,19.3"/>
+          </svg>
+          <span class="mttgt ok" title="A project should reach an environment at least once a day">target &ge; 1/day</span>
+          <div class="d">Eight promotions in seven days. Today's is held at an operator decision on
+            the production freeze, not at a gate.</div>
+          <div class="src">src: pipeline runs &middot; not in the ledger yet</div>
+        </div>
+        <div class="mtcard miss">
+          <div class="k">Lead time &middot; merge &rarr; staging</div>
+          <div class="v">6<u>h</u> 55<u>m</u></div>
+          <svg class="mtspark" viewBox="0 0 100 30" preserveAspectRatio="none" aria-hidden="true">
+            <polyline class="ln warn" vector-effect="non-scaling-stroke"
+              points="0,24.1 16.7,28 33.3,17.8 50,22.5 66.7,10.7 83.3,5.2 100,2"/>
+          </svg>
+          <span class="mttgt miss" title="Merged work should reach an environment within the hour">target &le; 1h</span>
+          <div class="d">Nine merges today. The oldest &mdash; the web-artifact CI fix &mdash; landed
+            07:10Z and is still waiting; the queue eats faster than it cooks.</div>
+          <div class="src">src: merge record + deploy runs &middot; deploy half missing</div>
+        </div>
+        <div class="mtcard">
+          <div class="k">Change failure rate</div>
+          <div class="v">12<u>%</u></div>
+          <svg class="mtspark" viewBox="0 0 100 30" preserveAspectRatio="none" aria-hidden="true">
+            <polyline class="ln" vector-effect="non-scaling-stroke"
+              points="0,15 16.7,8.5 33.3,21.5 50,2 66.7,28 83.3,15 100,15"/>
+          </svg>
+          <span class="mttgt ok" title="Share of promotions that needed a revert or a follow-up fix">target &le; 15%</span>
+          <div class="d">Two of seventeen: the recurring production 503 and the duration-SLO false
+            fire. Both were fixed at source today rather than patched.</div>
+          <div class="src">src: merges + a revert label the record does not carry</div>
+        </div>
+        <div class="mtcard miss">
+          <div class="k">MTTR</div>
+          <div class="v">5<u>h</u> 20<u>m</u></div>
+          <svg class="mtspark" viewBox="0 0 100 30" preserveAspectRatio="none" aria-hidden="true">
+            <polyline class="ln warn" vector-effect="non-scaling-stroke"
+              points="0,2 16.7,20.3 33.3,12.6 50,28 66.7,14.5 83.3,13.6 100,9.7"/>
+          </svg>
+          <span class="mttgt miss" title="First alert to the fix merging, measured within one working stretch">target &le; 4h</span>
+          <div class="d">The 503 blip recurred for days before one fresh-context turn root-caused all
+            three layers of it; that fix merged 10:14Z.</div>
+          <div class="src">src: incident records &middot; not in the ledger yet</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="mtscope" data-scope="bhloop">
+      <div class="mtgrid">
+        <div class="mtcard miss">
+          <div class="k">Deploy frequency</div>
+          <div class="v">0.7<u>/day</u></div>
+          <svg class="mtspark" viewBox="0 0 100 30" preserveAspectRatio="none" aria-hidden="true">
+            <polyline class="ln warn" vector-effect="non-scaling-stroke"
+              points="0,28 16.7,28 33.3,28 50,28 66.7,2 83.3,28 100,28"/>
+          </svg>
+          <span class="mttgt miss" title="A project should reach an environment at least once a day">target &ge; 1/day</span>
+          <div class="d">app.bh-labs.com went live today: TLS terminated, every surface answering 200.</div>
+          <div class="src">src: pipeline runs &middot; not in the ledger yet</div>
+        </div>
+        <div class="mtcard miss">
+          <div class="k">Lead time &middot; merge &rarr; staging</div>
+          <div class="v">2<u>h</u> 20<u>m</u></div>
+          <svg class="mtspark" viewBox="0 0 100 30" preserveAspectRatio="none" aria-hidden="true">
+            <polyline class="ln warn" vector-effect="non-scaling-stroke"
+              points="0,8.5 16.7,2 33.3,21.5 50,12.8 66.7,28 83.3,17.2 100,19.3"/>
+          </svg>
+          <span class="mttgt miss" title="Merged work should reach an environment within the hour">target &le; 1h</span>
+          <div class="d">One merge today, the port and image identity fix, at 04:50Z.</div>
+          <div class="src">src: merge record + deploy runs &middot; deploy half missing</div>
+        </div>
+        <div class="mtcard">
+          <div class="k">Change failure rate</div>
+          <div class="v">6<u>%</u></div>
+          <svg class="mtspark" viewBox="0 0 100 30" preserveAspectRatio="none" aria-hidden="true">
+            <polyline class="ln" vector-effect="non-scaling-stroke"
+              points="0,15 16.7,28 33.3,28 50,2 66.7,15 83.3,15 100,15"/>
+          </svg>
+          <span class="mttgt ok" title="Share of promotions that needed a revert or a follow-up fix">target &le; 15%</span>
+          <div class="d">One of sixteen: the billing budget defect at foundation.tf:171, which the
+            converge surfaced rather than the runtime.</div>
+          <div class="src">src: merges + a revert label the record does not carry</div>
+        </div>
+        <div class="mtcard">
+          <div class="k">MTTR</div>
+          <div class="v">1<u>h</u> 55<u>m</u></div>
+          <svg class="mtspark" viewBox="0 0 100 30" preserveAspectRatio="none" aria-hidden="true">
+            <line class="base" x1="0" y1="28" x2="100" y2="28" vector-effect="non-scaling-stroke"/>
+            <polyline class="ln" vector-effect="non-scaling-stroke" points="0,15.8 16.7,28"/>
+            <polyline class="ln" vector-effect="non-scaling-stroke" points="66.7,2 83.3,9.6 100,20.4"/>
+            <line class="pt" x1="0" y1="14.9" x2="0" y2="16.7" vector-effect="non-scaling-stroke"/>
+            <line class="pt" x1="66.7" y1="1.1" x2="66.7" y2="2.9" vector-effect="non-scaling-stroke"/>
+            <line class="pt" x1="100" y1="19.5" x2="100" y2="21.3" vector-effect="non-scaling-stroke"/>
+          </svg>
+          <span class="mttgt ok" title="First alert to the fix merging, measured within one working stretch">target &le; 4h</span>
+          <div class="d">Five incidents this week, all in the Terraform foundation lane; the line
+            covers only the days that had one.</div>
+          <div class="src">src: incident records &middot; not in the ledger yet</div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ── the two portfolio charts ────────────────────────────────────────── -->
+  <div class="mtcharts" style="margin-top:16px">
+
+    <section class="panel">
+      <header>
+        <h2>Drain burn-down</h2>
+        <span class="sub">open items &middot; since 2026-08-01 16:35</span>
+      </header>
+      <div class="body">
+
+        <div class="mtscope" data-scope="all">
+          <div class="mtplot">
+            <div class="mty"><span>120</span><span>90</span><span>60</span><span>30</span><span>0</span></div>
+            <svg class="mtline" viewBox="0 0 640 180" preserveAspectRatio="none" role="img"
+                 aria-label="Open items over time for three project ledgers">
+              <g class="grid" vector-effect="non-scaling-stroke">
+                <line x1="0" y1="0" x2="640" y2="0" vector-effect="non-scaling-stroke"/>
+                <line x1="0" y1="45" x2="640" y2="45" vector-effect="non-scaling-stroke"/>
+                <line x1="0" y1="90" x2="640" y2="90" vector-effect="non-scaling-stroke"/>
+                <line x1="0" y1="135" x2="640" y2="135" vector-effect="non-scaling-stroke"/>
+                <line x1="0" y1="179" x2="640" y2="179" vector-effect="non-scaling-stroke"/>
+              </g>
+              <polyline class="ln p-mb" vector-effect="non-scaling-stroke"
+                points="0,7.5 26,60 86,63 199,57 251,60 373,51 399,40.5 449,39 573,46.5 586,52.5 618,57 640,57"/>
+              <polyline class="ln p-ct" vector-effect="non-scaling-stroke"
+                points="521,73.5 549,73.5 583,148.5 640,148.5"/>
+              <polyline class="ln p-bh" vector-effect="non-scaling-stroke"
+                points="20,163.5 112,178.5 640,178.5"/>
+            </svg>
+          </div>
+          <div class="mtx"><span>Aug 1 16:35</span><span>00:12</span><span>08:00</span><span>now 17:05</span></div>
+          <div class="legend">
+            <span><i style="background:var(--p-manibo)"></i>lastmachines 115 &rarr; 82</span>
+            <span><i style="background:var(--p-ctower)"></i>ctower 71 &rarr; 21</span>
+            <span><i style="background:var(--p-bhloop)"></i>bh-loop 11 &rarr; 0</span>
+          </div>
+          <div class="mtnote">The three ledgers sit on one scale, so the shapes are comparable:
+            lastmachines is the long grind, ctower's deep clean is one afternoon, bh-loop's refile
+            pass finished last night and has stayed empty.</div>
+        </div>
+
+        <div class="mtscope" data-scope="ctower">
+          <div class="mtplot">
+            <div class="mty"><span>120</span><span>90</span><span>60</span><span>30</span><span>0</span></div>
+            <svg class="mtline" viewBox="0 0 640 180" preserveAspectRatio="none" role="img"
+                 aria-label="ctower deep-clean backlog over time">
+              <g class="grid">
+                <line x1="0" y1="0" x2="640" y2="0" vector-effect="non-scaling-stroke"/>
+                <line x1="0" y1="45" x2="640" y2="45" vector-effect="non-scaling-stroke"/>
+                <line x1="0" y1="90" x2="640" y2="90" vector-effect="non-scaling-stroke"/>
+                <line x1="0" y1="135" x2="640" y2="135" vector-effect="non-scaling-stroke"/>
+                <line x1="0" y1="179" x2="640" y2="179" vector-effect="non-scaling-stroke"/>
+              </g>
+              <line class="tgt" x1="0" y1="166.5" x2="640" y2="166.5" vector-effect="non-scaling-stroke"/>
+              <line class="ask" x1="521" y1="0" x2="521" y2="180" vector-effect="non-scaling-stroke"/>
+              <polyline class="ln p-ct" vector-effect="non-scaling-stroke"
+                points="521,73.5 549,73.5 583,148.5 640,148.5"/>
+            </svg>
+          </div>
+          <div class="mtx"><span>Aug 1 16:35</span><span>00:12</span><span>08:00</span><span>now 17:05</span></div>
+          <div class="legend">
+            <span><i style="background:var(--p-ctower)"></i>deep clean 71 &rarr; 21</span>
+            <span><i style="background:var(--proven)"></i>target 9</span>
+            <span><i style="background:var(--ink-4)"></i>ledger starts 12:32</span>
+          </div>
+          <div class="mtnote">The ledger only starts where the deep-clean crew was dispatched at
+            <b>12:32</b>; fifty items cleared in the two hours after. The last twelve are the ones
+            that need a judgment, not a sweep.</div>
+        </div>
+
+        <div class="mtscope" data-scope="manibo">
+          <div class="mtplot">
+            <div class="mty"><span>120</span><span>90</span><span>60</span><span>30</span><span>0</span></div>
+            <svg class="mtline" viewBox="0 0 640 180" preserveAspectRatio="none" role="img"
+                 aria-label="lastmachines drain: open items over time against the five-per-hour ask">
+              <g class="grid">
+                <line x1="0" y1="0" x2="640" y2="0" vector-effect="non-scaling-stroke"/>
+                <line x1="0" y1="45" x2="640" y2="45" vector-effect="non-scaling-stroke"/>
+                <line x1="0" y1="90" x2="640" y2="90" vector-effect="non-scaling-stroke"/>
+                <line x1="0" y1="135" x2="640" y2="135" vector-effect="non-scaling-stroke"/>
+                <line x1="0" y1="179" x2="640" y2="179" vector-effect="non-scaling-stroke"/>
+              </g>
+              <path class="area"
+                d="M0,7.5 L26,60 L86,63 L199,57 L251,60 L373,51 L399,40.5 L449,39 L573,46.5 L586,52.5 L618,57 L640,57 L640,180 L0,180 Z"/>
+              <line class="ask" x1="0" y1="7.5" x2="601" y2="180" vector-effect="non-scaling-stroke"/>
+              <polyline class="ln" vector-effect="non-scaling-stroke"
+                points="0,7.5 26,60 86,63 199,57 251,60 373,51 399,40.5 449,39 573,46.5 586,52.5 618,57 640,57"/>
+            </svg>
+          </div>
+          <div class="mtx"><span>Aug 1 16:35</span><span>00:12</span><span>08:00</span><span>now 17:05</span></div>
+          <div class="legend">
+            <span><i style="background:var(--accent)"></i>open items 115 &rarr; 82</span>
+            <span><i style="background:var(--ink-4)"></i>the 5/hr ask</span>
+          </div>
+          <div class="mtnote">Hour one took thirty-five items &mdash; the cheap half. The climb back
+            to <b>94</b> is not a regression: it is the ledger refilling as monitors and reviews file
+            new work faster than the honest closures land. Net for the day is <b>-33</b>.</div>
+        </div>
+
+        <div class="mtscope" data-scope="bhloop">
+          <div class="mtplot">
+            <div class="mty"><span>120</span><span>90</span><span>60</span><span>30</span><span>0</span></div>
+            <svg class="mtline" viewBox="0 0 640 180" preserveAspectRatio="none" role="img"
+                 aria-label="bh-loop refile pass: open items over time">
+              <g class="grid">
+                <line x1="0" y1="0" x2="640" y2="0" vector-effect="non-scaling-stroke"/>
+                <line x1="0" y1="45" x2="640" y2="45" vector-effect="non-scaling-stroke"/>
+                <line x1="0" y1="90" x2="640" y2="90" vector-effect="non-scaling-stroke"/>
+                <line x1="0" y1="135" x2="640" y2="135" vector-effect="non-scaling-stroke"/>
+                <line x1="0" y1="179" x2="640" y2="179" vector-effect="non-scaling-stroke"/>
+              </g>
+              <polyline class="ln p-bh" vector-effect="non-scaling-stroke"
+                points="20,163.5 112,178.5 640,178.5"/>
+            </svg>
+          </div>
+          <div class="mtx"><span>Aug 1 16:35</span><span>00:12</span><span>08:00</span><span>now 17:05</span></div>
+          <div class="legend">
+            <span><i style="background:var(--p-bhloop)"></i>open items 11 &rarr; 0</span>
+          </div>
+          <div class="mtnote">The refile pass closed at <b>20:52</b> last night and the ledger has
+            stayed empty since. Zero were refiled: every one of the eleven was a duplicate of work
+            already merged or already carried in the request ledger.</div>
+        </div>
+
+      </div>
+    </section>
+
+    <section class="panel">
+      <header>
+        <h2>Merges per day</h2>
+        <span class="sub">to main &middot; read from the repositories</span>
+      </header>
+      <div class="body">
+
+        <div class="mtscope" data-scope="all">
+          <div class="mtbarwrap">
+            <div class="mtbars">
+              <div class="mtcol"><div class="mtbar" style="height:61%"><span class="s-ct" style="flex:9"></span><span class="s-mb" style="flex:9"></span><span class="s-bh" style="flex:7"></span></div></div>
+              <div class="mtcol"><div class="mtbar" style="height:78%"><span class="s-ct" style="flex:10"></span><span class="s-mb" style="flex:15"></span><span class="s-bh" style="flex:7"></span></div></div>
+              <div class="mtcol"><div class="mtbar" style="height:100%"><span class="s-ct" style="flex:6"></span><span class="s-mb" style="flex:32"></span><span class="s-bh" style="flex:3"></span></div></div>
+              <div class="mtcol"><div class="mtbar" style="height:78%"><span class="s-ct" style="flex:12"></span><span class="s-mb" style="flex:17"></span><span class="s-bh" style="flex:3"></span></div></div>
+              <div class="mtcol"><div class="mtbar" style="height:56%"><span class="s-ct" style="flex:5"></span><span class="s-mb" style="flex:9"></span><span class="s-bh" style="flex:9"></span></div></div>
+              <div class="mtcol"><div class="mtbar" style="height:41%"><span class="s-ct" style="flex:2"></span><span class="s-mb" style="flex:9"></span><span class="s-bh" style="flex:6"></span></div></div>
+              <div class="mtcol now"><div class="mtbar" style="height:32%"><span class="s-ct" style="flex:3"></span><span class="s-mb" style="flex:9"></span><span class="s-bh" style="flex:1"></span></div></div>
+            </div>
+            <div class="mtmean" style="bottom:63.7%"><b>mean 26</b></div>
+          </div>
+          <div class="mtxb">
+            <div><span class="c">25</span>Jul 27</div>
+            <div><span class="c">32</span>Jul 28</div>
+            <div><span class="c">41</span>Jul 29</div>
+            <div><span class="c">32</span>Jul 30</div>
+            <div><span class="c">23</span>Jul 31</div>
+            <div><span class="c">17</span>Aug 1</div>
+            <div class="now"><span class="c">13</span>today</div>
+          </div>
+          <div class="legend">
+            <span><i style="background:var(--p-ctower)"></i>ctower 47</span>
+            <span><i style="background:var(--p-manibo)"></i>lastmachines 100</span>
+            <span><i style="background:var(--p-bhloop)"></i>bh-loop 36</span>
+          </div>
+          <div class="mtnote">183 merges in seven days. Today's bar is dashed because the day is
+            still running &mdash; it is <b>13 by 17:05</b>, not a finished 13.</div>
+        </div>
+
+        <div class="mtscope" data-scope="ctower">
+          <div class="mtbarwrap">
+            <div class="mtbars">
+              <div class="mtcol"><div class="mtbar" style="height:75%"><span class="s-ct" style="flex:1"></span></div></div>
+              <div class="mtcol"><div class="mtbar" style="height:83%"><span class="s-ct" style="flex:1"></span></div></div>
+              <div class="mtcol"><div class="mtbar" style="height:50%"><span class="s-ct" style="flex:1"></span></div></div>
+              <div class="mtcol"><div class="mtbar" style="height:100%"><span class="s-ct" style="flex:1"></span></div></div>
+              <div class="mtcol"><div class="mtbar" style="height:42%"><span class="s-ct" style="flex:1"></span></div></div>
+              <div class="mtcol"><div class="mtbar" style="height:17%"><span class="s-ct" style="flex:1"></span></div></div>
+              <div class="mtcol now"><div class="mtbar" style="height:25%"><span class="s-ct" style="flex:1"></span></div></div>
+            </div>
+            <div class="mtmean" style="bottom:55.9%"><b>mean 6.7</b></div>
+          </div>
+          <div class="mtxb">
+            <div><span class="c">9</span>Jul 27</div>
+            <div><span class="c">10</span>Jul 28</div>
+            <div><span class="c">6</span>Jul 29</div>
+            <div><span class="c">12</span>Jul 30</div>
+            <div><span class="c">5</span>Jul 31</div>
+            <div><span class="c">2</span>Aug 1</div>
+            <div class="now"><span class="c">3</span>today</div>
+          </div>
+          <div class="legend"><span><i style="background:var(--p-ctower)"></i>ctower 47 in 7 days</span></div>
+          <div class="mtnote">The Aug 1 trough is real work, not a quiet day: nine PRs sat green and
+            unmerged behind a release gate. The first <b>autonomous merge</b> &mdash; a cron landing
+            a reviewed PR with no human in the loop &mdash; is in today's bar.</div>
+        </div>
+
+        <div class="mtscope" data-scope="manibo">
+          <div class="mtbarwrap">
+            <div class="mtbars">
+              <div class="mtcol"><div class="mtbar" style="height:28%"><span class="s-mb" style="flex:1"></span></div></div>
+              <div class="mtcol"><div class="mtbar" style="height:47%"><span class="s-mb" style="flex:1"></span></div></div>
+              <div class="mtcol"><div class="mtbar" style="height:100%"><span class="s-mb" style="flex:1"></span></div></div>
+              <div class="mtcol"><div class="mtbar" style="height:53%"><span class="s-mb" style="flex:1"></span></div></div>
+              <div class="mtcol"><div class="mtbar" style="height:28%"><span class="s-mb" style="flex:1"></span></div></div>
+              <div class="mtcol"><div class="mtbar" style="height:28%"><span class="s-mb" style="flex:1"></span></div></div>
+              <div class="mtcol now"><div class="mtbar" style="height:28%"><span class="s-mb" style="flex:1"></span></div></div>
+            </div>
+            <div class="mtmean" style="bottom:44.6%"><b>mean 14.3</b></div>
+          </div>
+          <div class="mtxb">
+            <div><span class="c">9</span>Jul 27</div>
+            <div><span class="c">15</span>Jul 28</div>
+            <div><span class="c">32</span>Jul 29</div>
+            <div><span class="c">17</span>Jul 30</div>
+            <div><span class="c">9</span>Jul 31</div>
+            <div><span class="c">9</span>Aug 1</div>
+            <div class="now"><span class="c">9</span>today</div>
+          </div>
+          <div class="legend"><span><i style="background:var(--p-manibo)"></i>lastmachines 100 in 7 days</span></div>
+          <div class="mtnote">Nine a day, four days running &mdash; but today's nine are the first to
+            land through the check gate rather than a human click, and the four conditions each one
+            had to satisfy are on the ticket.</div>
+        </div>
+
+        <div class="mtscope" data-scope="bhloop">
+          <div class="mtbarwrap">
+            <div class="mtbars">
+              <div class="mtcol"><div class="mtbar" style="height:78%"><span class="s-bh" style="flex:1"></span></div></div>
+              <div class="mtcol"><div class="mtbar" style="height:78%"><span class="s-bh" style="flex:1"></span></div></div>
+              <div class="mtcol"><div class="mtbar" style="height:33%"><span class="s-bh" style="flex:1"></span></div></div>
+              <div class="mtcol"><div class="mtbar" style="height:33%"><span class="s-bh" style="flex:1"></span></div></div>
+              <div class="mtcol"><div class="mtbar" style="height:100%"><span class="s-bh" style="flex:1"></span></div></div>
+              <div class="mtcol"><div class="mtbar" style="height:67%"><span class="s-bh" style="flex:1"></span></div></div>
+              <div class="mtcol now"><div class="mtbar" style="height:11%"><span class="s-bh" style="flex:1"></span></div></div>
+            </div>
+            <div class="mtmean" style="bottom:57.1%"><b>mean 5.1</b></div>
+          </div>
+          <div class="mtxb">
+            <div><span class="c">7</span>Jul 27</div>
+            <div><span class="c">7</span>Jul 28</div>
+            <div><span class="c">3</span>Jul 29</div>
+            <div><span class="c">3</span>Jul 30</div>
+            <div><span class="c">9</span>Jul 31</div>
+            <div><span class="c">6</span>Aug 1</div>
+            <div class="now"><span class="c">1</span>today</div>
+          </div>
+          <div class="legend"><span><i style="background:var(--p-bhloop)"></i>bh-loop 36 in 7 days</span></div>
+          <div class="mtnote">One merge today is the honest reading of a day spent on the GCP
+            foundation converge and the live domain cutover, neither of which is a pull request.</div>
+        </div>
+
+      </div>
+    </section>
+  </div>
+
+  <!-- ── custom metrics ──────────────────────────────────────────────────── -->
+  <section class="panel" style="margin-top:16px">
+    <header>
+      <h2>Custom metrics</h2>
+      <span class="sub">2 defined &middot; each carries its own scope</span>
+    </header>
+
+    <div class="mtdefs">
+      <article class="mtdef">
+        <header>
+          <h3>staging lead time p95</h3>
+          <span class="chip proj manibo">lastmachines</span>
+          <span class="mttgt miss" title="The worst-case promotion, not the typical one">target &le; 2h</span>
+        </header>
+        <div class="mtbody">
+          <div class="v">9<u>h</u> 04<u>m</u></div>
+          <svg class="mtspark" viewBox="0 0 100 30" preserveAspectRatio="none" aria-hidden="true">
+            <polyline class="ln warn" vector-effect="non-scaling-stroke"
+              points="0,21 16.7,25 33.3,14 50,18 66.7,9 83.3,5 100,2"/>
+          </svg>
+          <div class="d">The tail of the same promotion queue the lead-time card measures at the
+            median: one merge in twenty waits most of a working day.</div>
+          <div class="spec">
+            <span><b>source</b> merges &#8904; deploy runs</span>
+            <span><b>window</b> 7d</span>
+            <span><b>agg</b> p95</span>
+            <span><b>chart</b> line</span>
+          </div>
+          <div class="src">src: deploy runs &middot; not in the ledger yet, read from pipeline logs</div>
+        </div>
+      </article>
+
+      <article class="mtdef">
+        <header>
+          <h3>tokens per merged PR</h3>
+          <span class="chip proj">all projects</span>
+          <span class="mttgt ok" title="What one merged change is allowed to cost in model tokens">target &le; 500k</span>
+        </header>
+        <div class="mtbody">
+          <div class="v">412<u>k tok</u></div>
+          <svg class="mtspark" viewBox="0 0 100 30" preserveAspectRatio="none" aria-hidden="true">
+            <polyline class="ln acc" vector-effect="non-scaling-stroke"
+              points="0,6 16.7,11 33.3,4 50,15 66.7,12 83.3,19 100,17"/>
+          </svg>
+          <div class="d">Falling as review rounds land first time. A repair lineage costs roughly
+            twice a clean one, which is what makes this worth watching rather than a vanity number.</div>
+          <div class="spec">
+            <span><b>source</b> sessions &#8904; merged PRs</span>
+            <span><b>window</b> 7d</span>
+            <span><b>agg</b> mean</span>
+            <span><b>chart</b> bar</span>
+          </div>
+          <div class="src">src: per-session tokens &middot; the one new fact the record would have to start carrying</div>
+        </div>
+      </article>
+    </div>
+
+    <details class="mtnew">
+      <summary>
+        Define a metric
+        <span class="hint">writes metrics/&lt;name&gt;.yaml</span>
+      </summary>
+      <div class="mtform">
+        <div class="mtfields">
+          <label class="mtf">
+            <span>Name</span>
+            <input class="inp" id="mx-name" type="text" value="review round-trip p50"
+                   title="What this metric is called on the board and in the file name">
+          </label>
+          <div class="mtf">
+            <span>Scope</span>
+            <div class="mtro" id="mx-scope" title="A metric is defined for whichever project is selected in the tabs at the top of this page">All projects</div>
+          </div>
+          <label class="mtf">
+            <span>Source</span>
+            <select class="sel" id="mx-source" title="Which record the metric reads. A source the ledger does not carry yet cannot be selected.">
+              <option>merges</option>
+              <option selected>review verdicts</option>
+              <option>tickets</option>
+              <option>heartbeats</option>
+              <option disabled>deploy runs &mdash; not recorded yet</option>
+              <option disabled>incidents &mdash; not recorded yet</option>
+            </select>
+          </label>
+          <label class="mtf">
+            <span>Query</span>
+            <input class="inp mono" id="mx-query" type="text" value="verdict_at - review_requested_at"
+                   title="The expression evaluated per row of the source before aggregation">
+          </label>
+          <div class="mtpair">
+            <label class="mtf">
+              <span>Aggregation</span>
+              <select class="sel" id="mx-agg" title="How the per-row values are reduced to one number">
+                <option>p50</option><option>p95</option><option>mean</option>
+                <option>sum</option><option>count</option><option>rate</option>
+              </select>
+            </label>
+            <label class="mtf">
+              <span>Window</span>
+              <select class="sel" id="mx-window" title="How far back each computation looks">
+                <option>24h</option><option selected>7d</option><option>30d</option>
+              </select>
+            </label>
+          </div>
+          <div class="mtf">
+            <span>Threshold</span>
+            <div class="mtthr">
+              <select class="sel" id="mx-op" title="Which side of the threshold counts as healthy" aria-label="Comparison">
+                <option value="lte">&le;</option>
+                <option value="gte">&ge;</option>
+              </select>
+              <input class="inp mono" id="mx-value" type="text" value="4" aria-label="Threshold value"
+                     title="The number the metric is judged against">
+              <select class="sel" id="mx-unit" title="The unit shown beside every value of this metric" aria-label="Unit">
+                <option>h</option><option>m</option><option>%</option>
+                <option>/day</option><option>count</option><option>tok</option>
+              </select>
+            </div>
+          </div>
+          <label class="mtf">
+            <span>Chart</span>
+            <select class="sel" id="mx-chart" title="How the series is drawn on this page">
+              <option>line</option><option>bar</option><option>sparkline</option><option>single number</option>
+            </select>
+          </label>
+        </div>
+
+        <div class="mtyaml">
+          <div class="pane-head">
+            <span class="path" id="mx-path">metrics/review-round-trip-p50.yaml</span>
+            <span class="spacer"></span>
+            <span class="meta">new file</span>
+          </div>
+          <pre class="code" id="mx-yaml"></pre>
+        </div>
+      </div>
+      <div class="mtsave">
+        <button class="btn" type="button" id="mx-save">Save metric</button>
+        <span class="note">Saving opens a pull request; it does not change what this page shows.</span>
+      </div>
+      <div class="gate-note" id="mx-gate">
+        branch <span style="color:var(--ink-2)">metrics/review-round-trip-p50</span> &rarr; pull request against protected main
+        &rarr; cross-family review &rarr; the kernel re-reads the metric pack on merge.
+        There is no live-edit path, and a metric whose source is not recorded will not compute.
+      </div>
+    </details>
+  </section>
+
+  <div class="foot">
+    <span>ctower · shadow instance 091c4b44</span>
+    <span>SHADOW_ONLY_CP3_D_NOT_PROVEN</span>
+    <span>2026-08-02 17:05 Europe/Vilnius</span>
+  </div>
+</div></main>
+
+<script>
+  (function () {
+    var btn = document.querySelector('[data-theme-toggle]');
+    var root = document.documentElement;
+    var sync = function () { btn.setAttribute('aria-pressed', String(root.classList.contains('theme-dark'))); };
+    btn.addEventListener('click', function () {
+      var dark = root.classList.toggle('theme-dark');
+      try { localStorage.setItem('ctower-theme', dark ? 'dark' : 'light'); } catch (e) {}
+      sync();
+    });
+    sync();
+  })();
+</script>
+
+<script>
+  /* the define-metric form writes the file it would commit, live: the operator
+     sees the YAML the kernel will read, not a promise that one will be written */
+  (function () {
+    var ids = ['name', 'source', 'query', 'agg', 'window', 'op', 'value', 'unit', 'chart'];
+    var f = {};
+    ids.forEach(function (k) { f[k] = document.getElementById('mx-' + k); });
+    var out = document.getElementById('mx-yaml');
+    var path = document.getElementById('mx-path');
+    var gate = document.getElementById('mx-gate');
+    var scopeOut = document.getElementById('mx-scope');
+    /* a metric belongs to the project the page is showing — the tab at the top
+       is the scope control, so this panel reads it rather than asking twice */
+    var scopes = { 's-all': 'all projects', 's-ctower': 'ctower',
+                   's-manibo': 'lastmachines', 's-bhloop': 'bh-loop' };
+    function scope() {
+      var on = document.querySelector('input[name="scope"]:checked');
+      return scopes[on && on.id] || 'all projects';
+    }
+
+    function esc(s) {
+      return String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+    }
+    function slug(s) {
+      return String(s).toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '') || 'unnamed';
+    }
+    function line(indent, key, val, cls) {
+      return '<span class="l">' + indent + '<span class="yml-k">' + esc(key) + '</span>: ' +
+             (val === '' ? '' : '<span class="' + (cls || 'yml-s') + '">' + esc(val) + '</span>') + '</span>';
+    }
+    function render() {
+      var name = f.name.value.trim() || 'unnamed metric';
+      var id = slug(name);
+      path.textContent = 'metrics/' + id + '.yaml';
+      gate.firstElementChild.textContent = 'metrics/' + id;
+      scopeOut.textContent = scope() === 'all projects' ? 'All projects' : scope();
+
+      var html = '';
+      html += '<span class="l"><span class="c"># jakit-labs/ctower-config - metrics/' + esc(id) + '.yaml</span></span>';
+      html += '<span class="l"></span>';
+      html += line('', 'apiVersion', 'ctower/v1');
+      html += line('', 'kind', 'Metric');
+      html += '<span class="l"><span class="yml-k">metadata</span>:</span>';
+      html += line('  ', 'name', id);
+      html += line('  ', 'title', name);
+      html += line('  ', 'scope', scope());
+      html += '<span class="l"></span>';
+      html += '<span class="l"><span class="yml-k">spec</span>:</span>';
+      html += line('  ', 'source', f.source.value);
+      html += line('  ', 'query', f.query.value.trim() || '(empty)');
+      html += line('  ', 'aggregation', f.agg.value);
+      html += line('  ', 'window', f.window.value);
+      html += '<span class="l">  <span class="yml-k">threshold</span>:</span>';
+      html += line('    ', 'op', f.op.value);
+      html += line('    ', 'value', f.value.value.trim() || '0', 'yml-n');
+      html += line('    ', 'unit', f.unit.value);
+      html += line('  ', 'chart', f.chart.value);
+      out.innerHTML = html;
+    }
+    ids.forEach(function (k) {
+      f[k].addEventListener('input', render);
+      f[k].addEventListener('change', render);
+    });
+    [].slice.call(document.querySelectorAll('input[name="scope"]'))
+      .forEach(function (r) { r.addEventListener('change', render); });
+    render();
+
+    document.getElementById('mx-save').addEventListener('click', function () {
+      gate.classList.add('show');
+    });
+  })();
+</script>
+
+</body>
+</html>

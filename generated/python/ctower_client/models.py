@@ -1,6 +1,6 @@
 """DO NOT EDIT: generated file; regenerate from declared inputs.
 
-Authored contract digest: sha256:f60c60abf7b56369685daa3af01218710c7d02d68be196a7d1f0ebce74b0c771
+Authored contract digest: sha256:897d0904c0761ce19e89e96d0b2d2b85485582770b37abdcc9765cbdf924e5fb
 """
 
 from __future__ import annotations
@@ -121,6 +121,7 @@ __all__ = [
     "PriorityChangeRequest",
     "PriorityChangedAuditData",
     "Problem",
+    "ProhibitedDataClass",
     "ProjectDeliveryAssignedSeatAssignment",
     "ProjectDeliveryCriteria",
     "ProjectDeliveryRow",
@@ -1002,112 +1003,12 @@ class Priority(StrEnum):
     P2 = "P2"
 
 
-class Problem(_BoundaryModel):
-    code: Literal[
-        "bootstrap-consumed",
-        "bootstrap-expired",
-        "bootstrap-nonempty",
-        "bootstrap-origin",
-        "bundle-base-conflict",
-        "bundle-compatibility-refused",
-        "bundle-digest-mismatch",
-        "bundle-grant-refused",
-        "bundle-independence-refused",
-        "bundle-no-effect-refused",
-        "bundle-not-active",
-        "bundle-plan-mismatch",
-        "bundle-recovery-unavailable",
-        "bundle-reference-invalid",
-        "bundle-schema-invalid",
-        "bundle-security-refused",
-        "credential-already-revoked",
-        "credential-digest-conflict",
-        "credential-issuance-refused",
-        "credential-revocation-refused",
-        "credential-revoked",
-        "credential-scope-denied",
-        "durability_pending",
-        "i1-7c-required",
-        "idempotency-conflict",
-        "intake-already-promoted",
-        "intake-promotion-ineligible",
-        "intake-source-project-mismatch",
-        "intake-source-conflict",
-        "migration-alias-conflict",
-        "migration-capability-denied",
-        "migration-correction-conflict",
-        "migration-digest-mismatch",
-        "migration-export-nondeterminism",
-        "migration-fence-detected",
-        "migration-import-finalization-refused",
-        "migration-operation-drift",
-        "migration-relation-invalid",
-        "migration-run-conflict",
-        "migration-signature-invalid",
-        "migration-source-selection-drift",
-        "migration-source-tainted",
-        "poison-not-found",
-        "project-delivery-unavailable",
-        "project-grant-required",
-        "project-scope-denied",
-        "request-body-too-large",
-        "proof-candidate-author-mismatch",
-        "proof-candidate-digest-invalid",
-        "proof-candidate-digest-not-current",
-        "proof-candidate-unchanged",
-        "proof-criteria-already-frozen",
-        "proof-criteria-invalid",
-        "proof-criteria-policy-mismatch",
-        "proof-criterion-unknown",
-        "proof-current-evidence-missing",
-        "proof-evidence-digest-mismatch",
-        "proof-evidence-id-conflict",
-        "proof-protected-authority-required",
-        "proof-policy-mismatch",
-        "proof-policy-pin-mismatch",
-        "proof-self-review-refused",
-        "proof-verdict-id-conflict",
-        "seat-binding-conflict",
-        "seat-credential-active",
-        "seat-credential-unavailable",
-        "seat-display-name-conflict",
-        "tenant-scope-denied",
-        "ticket-comment-ineligible",
-        "ticket-comment-invalid",
-        "unauthorized",
-        "validation-error",
-        "version-conflict",
-        "work-assignment-kind-refused",
-        "work-assignment-target-ineligible",
-        "work-assignment-unchanged",
-        "work-priority-unchanged",
-        "work-blocker-already-resolved",
-        "work-blocker-id-conflict",
-        "work-blocker-owner-ineligible",
-        "work-blocker-unknown",
-        "work-intent-unmet",
-        "work-relation-cycle",
-        "work-relation-exists",
-        "work-reopen-unmet",
-        "work-ticket-terminal",
-        "workflow-already-started",
-        "workflow-pin-mismatch",
-        "workflow-predicate-unsatisfied",
-        "workflow-run-not-started",
-        "proof-incomplete",
-        "workflow-state-conflict",
-        "workflow-terminal",
-        "workflow-transition-not-declared",
-        "workflow-version-unknown",
-        "workflow-not-terminal",
-    ]
-    command_id: UUID | None = None
-    current_version: Annotated[int, Field(ge=0, le=9007199254740991)] | None = None
-    detail: str
-    status: Annotated[int, Field(ge=400, le=599)]
-    title: str
-    type_uri: _AbsoluteUri = Field(alias="type", serialization_alias="type")
-    unmet_facts: tuple[str, ...] | None = None
+class ProhibitedDataClass(StrEnum):
+    CREDENTIAL_MATERIAL = "credential_material"
+    LIVE_INCIDENT_INDICATOR = "live_incident_indicator"
+    PHI_HIPAA_COVERED = "phi_hipaa_covered"
+    PII_BEYOND_STAFF_IDENTITY = "pii_beyond_staff_identity"
+    PRODUCTION_CUSTOMER_DATA = "production_customer_data"
 
 
 class ProjectDeliveryCriteria(_BoundaryModel):
@@ -1653,6 +1554,116 @@ class PriorityChangedAuditData(_BoundaryModel):
     reason: Annotated[str, Field(min_length=1, max_length=500)]
     to_priority: Priority
     urgent_evidence_ref: Annotated[str, Field(min_length=1, max_length=256)] | None
+
+
+class Problem(_BoundaryModel):
+    code: Literal[
+        "bootstrap-consumed",
+        "bootstrap-expired",
+        "bootstrap-nonempty",
+        "bootstrap-origin",
+        "bundle-base-conflict",
+        "bundle-compatibility-refused",
+        "bundle-digest-mismatch",
+        "bundle-grant-refused",
+        "bundle-independence-refused",
+        "bundle-no-effect-refused",
+        "bundle-not-active",
+        "bundle-plan-mismatch",
+        "bundle-recovery-unavailable",
+        "bundle-reference-invalid",
+        "bundle-schema-invalid",
+        "bundle-security-refused",
+        "credential-already-revoked",
+        "credential-digest-conflict",
+        "credential-issuance-refused",
+        "credential-revocation-refused",
+        "credential-revoked",
+        "credential-scope-denied",
+        "durability_pending",
+        "i1-7c-required",
+        "idempotency-conflict",
+        "intake-already-promoted",
+        "intake-promotion-ineligible",
+        "intake-source-project-mismatch",
+        "intake-source-conflict",
+        "migration-alias-conflict",
+        "migration-capability-denied",
+        "migration-correction-conflict",
+        "migration-digest-mismatch",
+        "migration-export-nondeterminism",
+        "migration-fence-detected",
+        "migration-import-finalization-refused",
+        "migration-operation-drift",
+        "migration-relation-invalid",
+        "migration-run-conflict",
+        "migration-signature-invalid",
+        "migration-source-selection-drift",
+        "migration-source-tainted",
+        "poison-not-found",
+        "prohibited-data-class",
+        "project-delivery-unavailable",
+        "project-grant-required",
+        "project-scope-denied",
+        "request-body-too-large",
+        "proof-candidate-author-mismatch",
+        "proof-candidate-digest-invalid",
+        "proof-candidate-digest-not-current",
+        "proof-candidate-unchanged",
+        "proof-criteria-already-frozen",
+        "proof-criteria-invalid",
+        "proof-criteria-policy-mismatch",
+        "proof-criterion-unknown",
+        "proof-current-evidence-missing",
+        "proof-evidence-digest-mismatch",
+        "proof-evidence-id-conflict",
+        "proof-protected-authority-required",
+        "proof-policy-mismatch",
+        "proof-policy-pin-mismatch",
+        "proof-self-review-refused",
+        "proof-verdict-id-conflict",
+        "seat-binding-conflict",
+        "seat-credential-active",
+        "seat-credential-unavailable",
+        "seat-display-name-conflict",
+        "tenant-scope-denied",
+        "ticket-comment-ineligible",
+        "ticket-comment-invalid",
+        "unauthorized",
+        "validation-error",
+        "version-conflict",
+        "work-assignment-kind-refused",
+        "work-assignment-target-ineligible",
+        "work-assignment-unchanged",
+        "work-priority-unchanged",
+        "work-blocker-already-resolved",
+        "work-blocker-id-conflict",
+        "work-blocker-owner-ineligible",
+        "work-blocker-unknown",
+        "work-intent-unmet",
+        "work-relation-cycle",
+        "work-relation-exists",
+        "work-reopen-unmet",
+        "work-ticket-terminal",
+        "workflow-already-started",
+        "workflow-pin-mismatch",
+        "workflow-predicate-unsatisfied",
+        "workflow-run-not-started",
+        "proof-incomplete",
+        "workflow-state-conflict",
+        "workflow-terminal",
+        "workflow-transition-not-declared",
+        "workflow-version-unknown",
+        "workflow-not-terminal",
+    ]
+    command_id: UUID | None = None
+    current_version: Annotated[int, Field(ge=0, le=9007199254740991)] | None = None
+    detail: str
+    prohibited_classes: tuple[ProhibitedDataClass, ...] | None = None
+    status: Annotated[int, Field(ge=400, le=599)]
+    title: str
+    type_uri: _AbsoluteUri = Field(alias="type", serialization_alias="type")
+    unmet_facts: tuple[str, ...] | None = None
 
 
 class ProjectDeliverySeat(_BoundaryModel):
