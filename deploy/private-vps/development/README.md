@@ -769,7 +769,13 @@ stop for an operator decision. Do not retry `database-up`, replace the runtime, 
 or restore the archive in the same attempt.
 
 On success, capture and assert the ledger row, resulting constraints, and unchanged stored keys before
-replacing the runtime. Replace both path placeholders with the same concrete values used above:
+replacing the runtime. The predecessor runtime is still selected and serving through this whole window, and
+its `ProjectDeliveryLoop.tick` (`control_worker.py:70,173`) rewrites `checkpoint_key` rows on every control
+cycle, so a reported difference below is not proof that migration 0037 changed anything — it may just be the
+predecessor's own reconcile work landing between the two exports. Before treating a difference as a migration
+defect, re-run the pre/post export with the predecessor quiesced, or diff the changed keys against the
+predecessor's tick log for this window to see whether its own reconcile explains them. Replace both path
+placeholders with the same concrete values used above:
 
 ```bash
 set -euo pipefail
@@ -879,13 +885,22 @@ if observed != expected:
 print("post-0037 constraint definitions: PASS")
 PY
 
+pre_checkpoint_rows="$(($(wc -l < "$migration_evidence/pre-checkpoint-keys.csv") - 1))"
+post_checkpoint_rows="$(($(wc -l < "$migration_evidence/post-checkpoint-keys.csv") - 1))"
+if [ "$pre_checkpoint_rows" -le 0 ] || [ "$post_checkpoint_rows" -le 0 ]; then
+  printf 'checkpoint_key comparison is vacuous: pre=%s post=%s data rows (need at least 1 on each side)\n' \
+    "$pre_checkpoint_rows" "$post_checkpoint_rows" >&2
+  exit 1
+fi
 if ! cmp --silent \
     "$migration_evidence/pre-checkpoint-keys.csv" \
     "$migration_evidence/post-checkpoint-keys.csv"; then
-  printf 'stored checkpoint_key values changed while applying migration 0037\n' >&2
+  printf 'stored checkpoint_key values changed while applying migration 0037 (pre=%s post=%s data rows); diff:\n' \
+    "$pre_checkpoint_rows" "$post_checkpoint_rows" >&2
+  diff "$migration_evidence/pre-checkpoint-keys.csv" "$migration_evidence/post-checkpoint-keys.csv" >&2 || true
   exit 1
 fi
-printf 'post-0037 stored checkpoint_key values: unchanged\n'
+printf 'post-0037 stored checkpoint_key values: unchanged (%s data rows compared)\n' "$post_checkpoint_rows"
 
 sync -f "$migration_evidence/post-ledger.csv"
 sync -f "$migration_evidence/post-constraints.csv"
