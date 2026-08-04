@@ -27,6 +27,7 @@ from __future__ import annotations
 
 import ast
 import copy
+import hashlib
 import inspect
 import json
 import re
@@ -256,6 +257,40 @@ def _schema_names(schema: dict[str, Any]) -> set[str]:
         if isinstance(node.get("const"), str):
             names.add(node["const"])
     return names
+
+
+_DOC_ONLY_SCHEMA_KEYS = frozenset({"title", "description", "$comment"})
+
+
+def _normative_shape(node: object) -> object:
+    """Strip doc-only keys so prose edits never trip the version lock (DECISIONS.md D37)."""
+
+    if isinstance(node, dict):
+        return {
+            key: _normative_shape(value)
+            for key, value in node.items()
+            if key not in _DOC_ONLY_SCHEMA_KEYS
+        }
+    if isinstance(node, list):
+        return [_normative_shape(item) for item in node]
+    return node
+
+
+def _normative_shape_digest(schema: dict[str, Any]) -> str:
+    """CHOKEPOINT: the published-shape fingerprint a version const answers for."""
+
+    canonical = json.dumps(_normative_shape(schema), sort_keys=True, separators=(",", ":"))
+    return hashlib.sha256(canonical.encode("utf-8")).hexdigest()
+
+
+# DECISIONS.md D37: a published schema shape is immutable. Each entry is the normative-shape
+# digest `schema.const` answered for at the moment it was locked; a further incompatible edit
+# under the same const must fail TestSchemaVersioningDiscipline by name instead of landing quietly.
+_SCHEMA_VERSION_LOCKS: dict[str, str] = {
+    "ctower.evidence-manifest/v1": (
+        "5a39f8b379ca0d51890b92c1bb880839791edd65c17c006efa661b54061d0d60"
+    ),
+}
 
 
 def _validator() -> Draft202012Validator:
@@ -675,6 +710,64 @@ class TestSchemaCarriesNoRoster:
         for node in _schema_nodes(_schema()):
             assert set(node.get("properties", {})) != roster, "the four-name roster is back"
         assert "deferred_sources" not in _schema_names(_schema())
+
+
+class TestSchemaVersioningDiscipline:
+    """DECISIONS.md D37: a published schema shape is immutable. An incompatible change
+    must bump `schema.const`/`$id` to a new file, never edit the committed shape in place
+    — the debt gh#175 named after `ctower.evidence-manifest/v1` absorbed several
+    unversioned breaks across PR #171's review."""
+
+    def test_committed_schema_shape_matches_its_recorded_version_lock(self) -> None:
+        schema = _schema()
+        const = schema["properties"]["schema"]["const"]
+        assert const in _SCHEMA_VERSION_LOCKS, (
+            f"{const}: no recorded version lock; record one alongside the bump"
+        )
+        assert _normative_shape_digest(schema) == _SCHEMA_VERSION_LOCKS[const], (
+            f"{const}: the committed schema shape no longer matches its recorded version lock. "
+            "A published shape is immutable (contracts/README.md; DECISIONS.md D37) — bump "
+            "schema.const and $id to a new evidence-manifest-vN.schema.json (see the "
+            "contracts/domain/migration/*-v2.schema.json precedent) instead of editing this "
+            "file's normative shape in place."
+        )
+
+
+class TestSchemaVersionLockMutationProof:
+    """The lock digest is sensitive to exactly the shapes gh#174 will need to touch, so
+    its future per-row verdict-binding change cannot land as another silent in-place edit."""
+
+    def test_a_dropped_required_field_changes_the_digest(self) -> None:
+        schema = _schema()
+        mutated = copy.deepcopy(schema)
+        mutated["required"].remove("verdict_ids")
+        assert _normative_shape_digest(mutated) != _normative_shape_digest(schema)
+
+    def test_a_new_required_row_field_changes_the_digest(self) -> None:
+        """The exact shape gh#174 needs: verdict_id/candidate_digest per criterion row."""
+
+        schema = _schema()
+        mutated = copy.deepcopy(schema)
+        row = mutated["$defs"]["criterionDisposition"]
+        row["required"].append("verdict_id")
+        row["properties"]["verdict_id"] = {"type": "string", "format": "uuid"}
+        assert _normative_shape_digest(mutated) != _normative_shape_digest(schema)
+
+    def test_a_renamed_property_changes_the_digest(self) -> None:
+        schema = _schema()
+        mutated = copy.deepcopy(schema)
+        mutated["properties"]["criteria"] = mutated["properties"].pop("deferred_suites")
+        assert _normative_shape_digest(mutated) != _normative_shape_digest(schema)
+
+    def test_a_doc_only_edit_does_not_change_the_digest(self) -> None:
+        """Prose stays free to edit; only the normative shape is locked."""
+
+        schema = _schema()
+        mutated = copy.deepcopy(schema)
+        mutated["description"] = "rewritten prose, no shape change"
+        mutated["$comment"] = "a fresh history note"
+        mutated["$defs"]["criterionDisposition"]["properties"]["reason"]["description"] = "new"
+        assert _normative_shape_digest(mutated) == _normative_shape_digest(schema)
 
 
 class TestRegistryFailuresAreNamed:

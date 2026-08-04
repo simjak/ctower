@@ -254,7 +254,7 @@
         },
         {
           "path": "contracts/evidence/evidence-manifest.schema.json",
-          "sha256": "sha256:0bb3833ebb26fd1d8cb40c2d0dab7d5bc5e0cc17be15fb3a1825cab4e0b89ca2"
+          "sha256": "sha256:ee651b3bb91992e959faf23fa837d636e0a9d46e1c3d1cddd3b33be12f778872"
         },
         {
           "path": "contracts/evidence/object-manifest.schema.json",
@@ -436,7 +436,7 @@
         },
         {
           "path": "generated/python/ctower_contracts/schemas.json",
-          "sha256": "sha256:43368460f184b572dfcc3ad291d21f21dc3cb6e3ac5f7705184eecbc83d6856f"
+          "sha256": "sha256:7b58ab1afbcfefa36346ba6e609caa090c579869ff737af3ae679222a0a50ef1"
         },
         {
           "path": "generated/typescript/ctower-client/package.json",
