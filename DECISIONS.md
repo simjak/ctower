@@ -1362,3 +1362,58 @@ weaken CP3-D, the dual-write prohibition, minimal carry-forward, INV-19/44/62 in
 documentation/landing-boundary work of D32. It preserves D27, D28, D30, D31, and D32. The SPEC change is
 docs-only through the docs gate; engine evaluation rides CT-I2-006 in increment order, and the
 mission-control reporter is a separate ticket when the pack lands.
+
+## D35 — Assignment model visibility is substrate truth, not self-report (locked 2026-08-04, operator R2768)
+
+Issue #257 and mission-control R2768 (record ticket `019fc8aa-02a8-714b-b899-481af3fcf7e4`) lock the model
+and harness visibility story for assigned crews. A **seat** is the durable principal; a **crew** is one
+engagement of that seat and never becomes a principal. This decision preserves D30's project-seat grant
+model, D33's recorded work-session facts, D34's reporter/refusal discipline, INV-09 custody, INV-15 session
+non-identity, INV-69 project grants, and INV-73's one-Actor model.
+
+**Two-step anchor.** Before CT-I1-009/R2761 project-seat principal records exist, dispatch-time assignment
+stamps come from mission-control `crew-log` plus Hermes gateway/provider logs through a bridge reporter.
+After project-seat principals land, the same assignment stamp shape promotes to the seat principal/project
+grant anchor. Historical bridge facts stay readable; the crew remains engagement identity and evented facts,
+not a new principal object.
+
+**Events, not a field.** The dispatch stamp is immutable. Later fallback or degradation appends
+`model_changed` on the assignment with `from`, `to`, `observed_at`, `source`, and probe evidence. The
+current effective model is a fold over those events; no implementation may overwrite a mutable model field
+and erase the degradation that the operator needs to see.
+
+**Substrate-reported only.** The only accepted sources are mission-control crew-log and Hermes
+gateway/provider logs. Seat or crew self-report is refused, because a forced model can report itself as the
+primary. The reporter uses the R2764/D34 pattern and fails loudly by exact name, including
+`substrate-unobservable:<probe>`, rather than turning missing substrate into silence or green state.
+
+**G5 seam.** Assignment stamps are dispatch-time facts. D33/#258 recorded work sessions are execution-time
+facts whose merged code already records `ticket_id`, `seat_key`, `crew_name`, `harness_ref`, `model_ref`,
+`worktree_ref`, and `branch_ref`. The exact durable join is the Work assignment key
+`(ticket_id, assignment_kind, scope_ref, interval_sequence)` when it is carried end to end; until then the
+cross-check uses the dispatch tuple under interval containment. A mismatch creates visible evidence and
+rewrites neither side.
+
+**R2765 parity.** Acceptance names both planes: `ctl ticket assignments` must show the dispatch stamp plus
+append-only model-change history, and the Board card must show the assignment-visibility chip with current
+model plus a degraded marker when the latest event differs from the dispatch stamp.
+
+**R2781 harness independence.** Harness is an open enum on assignment stamps, `model_changed` events, and
+session facts. `claude-code`, `hermes`, `codex`, and `qwen-code` are baseline known values, not the closed
+universe. Unknown harness values are carried and displayed exactly as observed, included in cross-checks, and
+never rejected or collapsed to `other`. This also names the Harness Independence invariant: no custody,
+event, status, reporter, Board, CLI, Evidence, or session integration may assume one harness's session shape.
+Reporter facts come from substrate-visible tmux/process metadata where authorized, crew-log, gateway logs,
+and provider logs; they do not parse Claude Code, Hermes, Codex, Qwen Code, or future harness-private session
+internals to infer custody, status, model changes, or costs.
+
+Rejected alternatives:
+
+- A mutable `current_model` assignment field that overwrites the original dispatch truth.
+- A crew principal object separate from the seat principal/project grant model.
+- Seat, crew, prompt, terminal, or model self-report as evidence of actual harness/model.
+- A reporter that treats missing crew-log or gateway substrate as absent data rather than
+  `substrate-unobservable:<probe>`.
+- Implementing only CLI or only UI visibility and calling parity satisfied.
+- A closed harness enum, an `other` harness bucket, or any harness-specific session/transcript parser hidden
+  behind a generic reporter interface.
