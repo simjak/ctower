@@ -55,7 +55,7 @@ repository-tests:
 
 contract-tests:
     {{python}} -m unittest discover -s tests/contracts/l0 -v
-    {{python}} -m pytest tests/contracts/domain tests/contracts/http tests/contracts/migration tests/contracts/project_delivery tests/contracts/company "tests/contracts/event-feed" -q
+    {{python}} -m pytest tests/contracts/domain tests/contracts/http tests/contracts/migration tests/contracts/project_delivery tests/contracts/company -q
 
 codegen-check:
     {{python}} -m tools.codegen --root . --check

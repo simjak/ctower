@@ -114,7 +114,6 @@ ignore = ["D", "PLR0913", "PLR0917", "TRY003"]
 "tests/**/*.py" = ["S101"]
 "tests/acceptance/increment-1/**/*.py" = ["INP001"]
 "tests/contracts/task-management/**/*.py" = ["INP001"]
-"tests/contracts/event-feed/**/*.py" = ["INP001"]
 
 [tool.ruff.lint.isort]
 known-first-party = ["ctower_api", "ctower_client", "ctower_kernel", "ctowerctl", "tools"]
