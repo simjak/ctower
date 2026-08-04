@@ -22,23 +22,80 @@ class _Expectation:
     criteria_digest: str
 
 
-def matches(
+@dataclass(frozen=True, slots=True)
+class CheckpointMismatch:
+    """One checkpoint expectation the live Catalog projection does not currently satisfy."""
+
+    checkpoint_key: str
+    detail: str
+
+
+def mismatches(
     connection: psycopg.Connection[dict[str, object]],
     run_id: UUID,
     snapshot_body: dict[str, object],
-) -> bool:
-    """Compare the verified plan with independently derived current Catalog facts."""
+) -> tuple[CheckpointMismatch, ...]:
+    """Name every checkpoint whose signed expectation the current Catalog fails to satisfy.
+
+    An empty result means every signed checkpoint expectation is satisfied exactly.
+    """
 
     expected = _stored(connection, run_id)
+    if not expected:
+        return (
+            CheckpointMismatch("(unsigned)", "no checkpoint expectations are signed for this run"),
+        )
     definitions = cast(list[dict[str, object]], snapshot_body["checkpoint_definitions"])
     actual = _current(snapshot_body)
-    signed_actual = _signed_current(expected, actual)
+    shape_failures = (
+        *_duplicate_failures("signed", expected),
+        *_duplicate_failures("observed", actual),
+        *(
+            CheckpointMismatch(str(row["checkpoint_key"]), "checkpoint has no accountable owner")
+            for row in definitions
+            if not str(row["accountable_owner"]).strip()
+        ),
+    )
+    if shape_failures:
+        return shape_failures
+    return _key_mismatches(expected, _signed_current(expected, actual))
+
+
+def _duplicate_failures(
+    scope: str,
+    expectations: Iterable[_Expectation],
+) -> tuple[CheckpointMismatch, ...]:
+    keys = [item.checkpoint_key for item in expectations]
+    duplicated = sorted({key for key in keys if keys.count(key) > 1})
+    return tuple(
+        CheckpointMismatch(key, f"checkpoint is duplicated in the {scope} set")
+        for key in duplicated
+    )
+
+
+def _key_mismatches(
+    expected: Iterable[_Expectation],
+    signed_actual: Iterable[_Expectation],
+) -> tuple[CheckpointMismatch, ...]:
+    by_expected = {item.checkpoint_key: item for item in expected}
+    by_actual = {item.checkpoint_key: item for item in signed_actual}
+    failures: list[CheckpointMismatch] = []
+    for key in sorted(set(by_expected) | set(by_actual)):
+        left, right = by_expected.get(key), by_actual.get(key)
+        if left != right:
+            failures.append(
+                CheckpointMismatch(key, f"expected {_describe(left)}, observed {_describe(right)}")
+            )
+    return tuple(failures)
+
+
+def _describe(item: _Expectation | None) -> str:
+    if item is None:
+        return "missing"
     return (
-        bool(expected)
-        and _unique_checkpoint_keys(expected)
-        and _unique_checkpoint_keys(actual)
-        and all(str(row["accountable_owner"]).strip() for row in definitions)
-        and expected == signed_actual
+        f"catalog_revision={item.catalog_revision} "
+        f"definition_digest={item.definition_digest} "
+        f"criteria_digest={item.criteria_digest}"
     )
 
 
@@ -48,11 +105,6 @@ def _signed_current(
 ) -> tuple[_Expectation, ...]:
     expected_keys = {item.checkpoint_key for item in expected}
     return tuple(sorted(item for item in actual if item.checkpoint_key in expected_keys))
-
-
-def _unique_checkpoint_keys(expectations: Iterable[_Expectation]) -> bool:
-    keys = [item.checkpoint_key for item in expectations]
-    return len(keys) == len(set(keys))
 
 
 def signed_keys(
