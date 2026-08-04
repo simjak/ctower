@@ -9,12 +9,13 @@ from dataclasses import dataclass
 from datetime import datetime, timedelta
 from pathlib import Path
 from types import SimpleNamespace
-from typing import cast
+from typing import Any, cast
 from uuid import UUID, uuid4
 
 import psycopg
 import pytest
 from fastapi.testclient import TestClient
+from support.catalog import minimal_bundle
 from support.durability_assertions import create_ticket
 from support.postgres import (
     DatabaseFixture,
@@ -32,6 +33,7 @@ from ctower_api import development_runtime
 from ctower_api.development_finalizer import DevelopmentFinalizerProgress
 from ctower_api.interface import create_app
 from ctower_api.synthetic_handler import SyntheticRetryError
+from ctower_kernel.catalog import CompanyBundle
 from ctower_kernel.record import DurabilityHealthStatus, RecordProblem
 from ctower_kernel.record import _durability_finalizer_sql as finalizer_sql
 from ctower_kernel.record.postgres import PostgresRecord
@@ -39,6 +41,7 @@ from ctower_kernel.record.postgres import PostgresRecord
 __all__: tuple[str, ...] = ()
 _HTTP_ACCEPTED = 202
 _HTTP_CREATED = 201
+_HTTP_OK = 200
 _REFUSAL_ATTEMPTS = 3
 _WORKER_SCANS_PAST_BOUND = 7
 _PACKS = Path(__file__).parents[3] / "packs"
@@ -109,6 +112,34 @@ class _RefusingReconciler:
             command_id,
             now=now,
         )
+
+
+def test_development_api_mounts_company_bundle_routes_and_plan_handler(
+    monkeypatch: pytest.MonkeyPatch,
+    tmp_path: Path,
+) -> None:
+    observed: dict[str, object] = {}
+    with _development_authority() as authority:
+        _patch_api_dependencies(authority, monkeypatch, tmp_path)
+        monkeypatch.setenv("XDG_STATE_HOME", str(tmp_path / "state"))
+        monkeypatch.setattr(
+            "ctower_api.development_runtime.uvicorn.run",
+            lambda app, **_kwargs: observed.update(app=app),
+        )
+
+        development_runtime.api_main()
+        with TestClient(cast(Any, observed["app"])) as client:
+            planned = client.post(
+                "/v1/company/bundle/plan",
+                json={"bundle": _tenant_bundle().model_dump(mode="json", by_alias=True)},
+                headers={
+                    "Authorization": f"Bearer {authority.tenant.operator_credential}",
+                    **telemetry_headers(),
+                },
+            )
+
+    assert planned.status_code == _HTTP_OK
+    assert planned.json()["plan_digest"].startswith("sha256:")
 
 
 def test_ordinary_finalizer_reconciles_development_ack_without_cp3d_claim(
@@ -273,6 +304,32 @@ def _patch_worker_dependencies(
     )
 
 
+def _patch_api_dependencies(
+    authority: _DevelopmentAuthority,
+    monkeypatch: pytest.MonkeyPatch,
+    tmp_path: Path,
+) -> None:
+    config = SimpleNamespace(api_host="127.0.0.1", api_port=8091)
+    dsn_by_role = {
+        ("ctower_runtime", False): authority.database.runtime_dsn,
+        ("ctower_projection_runtime", False): authority.database.projection_dsn,
+        ("postgres", True): authority.standby_dsn,
+    }
+    monkeypatch.setattr(development_runtime, "load_config", lambda: config)
+    monkeypatch.setattr(
+        development_runtime,
+        "development_dsn",
+        lambda _config, role, *, standby=False: dsn_by_role[(role, standby)],
+    )
+    monkeypatch.setattr(development_runtime, "_pack_root", lambda: _PACKS)
+    monkeypatch.setattr(
+        development_runtime,
+        "load_routine_revisions",
+        lambda _packs: (SimpleNamespace(routine_ref="ctower.i1.synthetic-four-stage@1"),),
+    )
+    monkeypatch.setenv("XDG_STATE_HOME", str(tmp_path / "state"))
+
+
 def _create_refusal_fixture(
     authority: _DevelopmentAuthority,
     record: PostgresRecord,
@@ -356,3 +413,28 @@ def _database_now(dsn: str) -> datetime:
     if row is None:
         raise RuntimeError("database clock is unavailable")
     return cast(datetime, row[0])
+
+
+def _tenant_bundle() -> CompanyBundle:
+    bundle = minimal_bundle()
+    return bundle.model_copy(
+        update={
+            "company": bundle.company.model_copy(
+                update={"key": "ctower", "display_name": "Ctower"}
+            ),
+            "resources": tuple(
+                resource.model_copy(
+                    update={
+                        "component": resource.component.model_copy(
+                            update={
+                                "scope": resource.component.scope.model_copy(
+                                    update={"tenant": "ctower"}
+                                )
+                            }
+                        )
+                    }
+                )
+                for resource in bundle.resources
+            ),
+        }
+    )

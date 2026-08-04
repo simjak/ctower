@@ -161,7 +161,7 @@ def _mutation_and_spool(
         raise ValueError(f"{operation_id} lacks exact x-ctower-spool policy")
     if not mutation and spool != "forbidden":
         raise ValueError(f"query operation {operation_id} cannot be spooled")
-    return mutation, spool
+    return mutation, cast(_SpoolPolicy, spool)
 
 
 def _principal_and_refusal(

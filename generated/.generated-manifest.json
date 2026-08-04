@@ -374,7 +374,7 @@
         },
         {
           "path": "tools/codegen/_operation_codegen.py",
-          "sha256": "sha256:d90a7a095277ddf2ebd10cb171b2ebeab6dfba99d43a18138b2eefe1edca551d"
+          "sha256": "sha256:b467f18d3919cd68691727dd9a28700f626b982ab615cb8e90ee84c1c42cc5df"
         },
         {
           "path": "tools/codegen/_rfc3339_codegen.py",
