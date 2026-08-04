@@ -36,7 +36,7 @@ __all__ = [
     "VersionedComponent",
 ]
 
-type JsonValue = str | int | float | bool | None | list["JsonValue"] | dict[str, "JsonValue"]
+type JsonValue = str | int | float | bool | list["JsonValue"] | dict[str, "JsonValue"] | None
 type Digest = Annotated[str, StringConstraints(pattern=r"^sha256:[0-9a-f]{64}$")]
 type ComponentKey = Annotated[str, StringConstraints(pattern=r"^[a-z][a-z0-9.-]{2,127}$")]
 type ComponentSchema = Annotated[
