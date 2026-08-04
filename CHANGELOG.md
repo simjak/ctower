@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.7.1](https://github.com/simjak/ctower/compare/v0.7.0...v0.7.1) (2026-08-04)
+
+
+### Bug Fixes
+
+* **deps:** three held bumps via the canonical lock flow — cryptography 50 (security), uvicorn 0.52, pre-commit 4.6.1 ([#262](https://github.com/simjak/ctower/issues/262)) ([7d64a47](https://github.com/simjak/ctower/commit/7d64a478d8c79e8d15466a11d4540ca48b71171f))
+
 ## [0.7.0](https://github.com/simjak/ctower/compare/v0.6.0...v0.7.0) (2026-08-03)
 
 
