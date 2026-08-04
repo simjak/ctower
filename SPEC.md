@@ -3,8 +3,8 @@
 | Field | Value |
 |---|---|
 | Status | Canonical target-system truth |
-| Version | 1.14 |
-| Date | 2026-08-03 |
+| Version | 1.15 |
+| Date | 2026-08-05 |
 | Owners | Operator/CEO (product and human gates), Commander (orchestration contract), Engineering Manager (architecture and risk contract) |
 | Decision authority | [`DECISIONS.md`](DECISIONS.md) |
 
@@ -1471,6 +1471,7 @@ The ticket is the human join point, not the transaction boundary for the entire 
 75. <a id="inv-75"></a>**INV-75 — Work sessions are recorded facts, never observed processes.** Every stretch of accountable work on a ticket is an append-only session stream carrying its own durable ctower identity: one start fact naming the seat, crew, model, harness, worktree, branch, and bound ticket; zero or more typed state facts drawn from the authored `dispatched|briefed|working|gated` lifecycle; and at most one close fact carrying outcome and the operator's cost facts. Session cost is Record-owned: duration is the committed close time minus the committed start time and is never a caller claim, while token counts are bounded typed external payload values. A session never becomes identity under [INV-15](#non-negotiable-invariants) — no process, tmux name, pane, or vendor handle enters a session fact, and no surface may synthesize a session from transport activity, terminal capture, or silence. Sessions inherit every existing custody, project, and prohibited-class rule without exception: they are scoped by their ticket's authoritative project under [INV-69](#non-negotiable-invariants), and the five classes of [INV-70](#non-negotiable-invariants) are refused by name over every caller-authored session field before any row, event, or outbox byte commits. The session kind set and every derived wire union come from the canonical Record event catalog, never a second enum.
 76. <a id="inv-76"></a>**INV-76 — Assignment model visibility is substrate-reported and append-only.** A seat is the durable principal; a crew is one engagement of that seat and never a principal. Every dispatch-capable assignment carries one immutable assignment stamp observed from the substrate, initially mission-control `crew-log` bridged by a reporter and later promoted to the version-pinned project-seat principal record of [INV-69](#inv-69) when CT-I1-009 lands. The stamp names the assignment key, seat key/principal reference, crew name, harness, model, observed dispatch time, source, reporter principal, and probe evidence. Model changes are appended as `model_changed` observations on that assignment with `from`, `to`, `observed_at`, `source`, and probe evidence; no current-model field is overwritten. Seat or crew self-report never satisfies the stamp or change event. If the reporter cannot observe a required substrate, it refuses by exact `substrate-unobservable:<probe>` and surfaces degraded/`STATE_UNKNOWN`; silence, terminal text, or a model's claim cannot become visibility truth.
 77. <a id="inv-77"></a>**INV-77 — Harness independence.** Assignment stamps, `model_changed` events, and session facts carry harness as an open enum whose required baseline values are `claude-code`, `hermes`, `codex`, and `qwen-code`. Unknown harness values are preserved byte-for-byte, displayed as observed, included in equality/cross-checks, and never rejected, normalized, downgraded, or collapsed to `other`. No custody, event, status, reporter, Board, CLI, Evidence, or session integration may assume one harness's session shape or internal transcript format. Reporter facts derive only from substrate-visible dispatch/process/log facts — tmux/process supervision metadata where authorized, mission-control crew-log, and gateway/provider logs — and never from Claude Code, Hermes, Codex, Qwen Code, or any other harness-specific session internals.
+78. <a id="inv-78"></a>**INV-78 — Project event feeds are catalog-derived and scope-bound.** A project event feed contains only canonical events whose authoritative linked ticket, via the same `event_links` subject join Record's ticket audit read already proves, belongs to the requested tenant and project. Project scope is applied in the Record query before event materialization, and every read additionally evaluates the caller's active project grant under [INV-69](#inv-69); a caller without a grant on the requested project refuses `project-scope-denied` with zero rows disclosed. Feed membership is derived from the canonical Record event catalog's `project_feed` metadata, never copied into a second enum or inferred from payload shape; a kind added to the catalog with no feed decision defaults to absent, never silently included. Every wire variant and payload is a strict named schema, and the page orders by record position with a `limit + 1` peek cursor identical to the session and audit read paths.
 
 ## Workflow and verification architecture
 
@@ -3628,6 +3629,24 @@ stamp is a bridge fact from mission-control crew-log and gateway logs; after pro
 available, the same shape binds to the operator-issued seat principal/project grant while historical bridge
 facts remain readable.
 
+#### Project event feed
+
+The I1 Record read Interface exposes a strict project-scoped page of catalog-derived typed events for
+generated API/protected-CLI clients and a mission-control notifier consumer ([#186](https://github.com/simjak/ctower/issues/186)).
+It reuses the same `event_links` subject join Record's ticket audit read already proves — scoped to a
+project's tickets rather than one ticket — and orders by record position with a `limit + 1` peek cursor
+identical to the session and audit read paths, never a project-encoded opaque cursor. Every project-scoped
+read additionally evaluates the caller's active project grant under [INV-69](#inv-69); a caller without a
+grant on the requested project refuses `project-scope-denied` with zero rows disclosed, matching the
+existing project-session and Board isolation proofs. The current catalog-derived feed set is
+`ticket.created`, `ticket.custody_transferred`, `ticket.comment_added`, `work.changed`, `workflow.changed`,
+and `proof.changed` — the accepted facts needed to prove deterministic Board and ticket replay. Session and
+heartbeat variants and records are explicitly absent until canonical producers are implemented under
+[#200](https://github.com/simjak/ctower/issues/200); adapters must not invent either kind, infer one from
+transport activity, or emit placeholder facts. Adding a project-feed kind requires one change to the
+authoritative event catalog's `project_feed` column plus its named strict contract branch, with a mutation
+test proving catalog/contract equality ([INV-78](#inv-78)).
+
 ### Failure recovery
 
 | Failure | Detection | Automatic recovery | Escalation boundary |
@@ -4546,6 +4565,7 @@ or exit criterion moves increment as a result.
   exercised, and an independent CSO verdict `1/1`; denial/replay/revocation and tailnet scans change no
   authoritative state or exposure.
 - The three Project hierarchies and disjoint compact Project Delivery projections satisfy the pre-seat portion of [AC-PD-01](#ac-pd-01) (hierarchy, exit-criterion coverage, slot `filled / required` coverage, source watermark, freshness, derivation reasons; the per-slot seat fields are I2-bound), the eight-state/blocked-proof truth table satisfies [AC-PD-02](#ac-pd-02), and event reconciliation plus the hourly no-change heartbeat satisfy the I1 portion of [AC-PD-04](#ac-pd-04). [AC-PORT-01](#ac-port-01) through [AC-PORT-06](#ac-port-06) prove the one-database topology, version-pinned grants, all six cross-project refusal directions, prohibited-class refusals including PHI by name, stable identities, and three disjoint Board rows.
+- CT-I1-012's project event feed ([#186](https://github.com/simjak/ctower/issues/186), [INV-78](#inv-78)) proves a three-project feed replay byte-equivalent to the independently derived Board fold, a cursor reconnect/resume that neither gaps nor duplicates a page boundary, all three project pairs refusing a foreign feed read as `project-scope-denied`, and a prohibited-class canary scan proving no `credential_material`/`production_customer_data`/`phi_hipaa_covered`/`pii_beyond_staff_identity`/`live_incident_indicator` content reaches a feed payload, bundled with the [AC-PORT-01](#ac-port-01) through [AC-PORT-06](#ac-port-06) evidence above.
 - Full normative I1 exit remains `NO-GO` until accepted evidence proves CP3-D
   external-failure-domain acknowledgement, key recovery, isolated destructive restore, and measured
   RPO/RTO and CT-I1-013 has passed. Only that full exit satisfies CT-I2-001's CT-I1-008 dependency.

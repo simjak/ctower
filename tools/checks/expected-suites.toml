@@ -16,6 +16,7 @@ phase_order = [
   "CT-I1-006",
   "CT-I1-007",
   "CT-I1-008",
+  "CT-I1-012",
   "CT-I2-005",
   "CT-I2-010",
 ]
@@ -499,6 +500,16 @@ path = "tests/acceptance/increment-1"
 patterns = ["test_*.py"]
 command = ["{python}", "-m", "pytest", "tests/acceptance/increment-1", "-q"]
 timeout_seconds = 900
+
+[[suite]]
+id = "event-feed-contracts"
+owner = "CT-I1-012"
+phase = "CT-I1-012"
+status = "deferred"
+path = "tests/contracts/event-feed"
+patterns = ["test_*.py"]
+command = ["{python}", "-m", "pytest", "tests/contracts/event-feed", "-q"]
+timeout_seconds = 120
 
 [[suite]]
 id = "browser-e2e"

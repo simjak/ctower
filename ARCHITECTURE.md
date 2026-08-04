@@ -3,9 +3,9 @@
 | Field | Value |
 |---|---|
 | Status | Compact derived operator and implementer map |
-| Normative authority | [`SPEC.md`](SPEC.md), version 1.13 |
+| Normative authority | [`SPEC.md`](SPEC.md), version 1.15 |
 | Decision history | [`DECISIONS.md`](DECISIONS.md) |
-| Last reviewed | 2026-08-02 |
+| Last reviewed | 2026-08-05 |
 
 This is the sole terminal-safe derived architecture atlas. It explains the canonical specification; it
 does not add requirements, authorize work, or define exact schemas, operations, DDL, package values, or
@@ -280,7 +280,7 @@ ports.
 
 | Deep Module | Authority hidden behind its Interface |
 |---|---|
-| Access / Record | Authentication, revision-pinned Project grants, authorization, prohibited-class refusal, idempotency-before-CAS, streams, hash chain, outbox, durability result |
+| Access / Record | Authentication, revision-pinned Project grants, authorization, prohibited-class refusal, idempotency-before-CAS, streams, hash chain, outbox, durability result, project-scoped typed event feed |
 | Catalog | One `VersionedComponent` lifecycle, compatibility, provenance, exact pins, future-only active pointers |
 | Work | Permanent tickets, lifecycle episodes, custody, relations, priorities, blockers, typed Board intents |
 | Proof | Criteria, artifacts, evidence DAG, independence, gate instances/verdicts, invalidation |
@@ -293,6 +293,14 @@ ports.
 There is no `Factory`, `TaskManager`, status service, generic provider manager, or microservice per table.
 The software factory is data interpreted by Workflow. Public Interfaces stay small; private validators,
 folds, SQL, and Adapter mechanics remain local to the owning Module.
+
+The project event feed stays inside Record: it reuses the same `event_links` subject join `ticket_audit`
+already proves, scoped to a project's tickets instead of one ticket, and orders by record position with a
+`limit + 1` peek cursor identical to the session and audit read paths. Membership is derived from the
+authoritative event catalog's `project_feed` column, never a second hand-maintained kind list; the catalog
+import-time invariant makes an uncatalogued kind unimportable, so a feed decision cannot be silently
+skipped. Today's derived set is the six ticket, Work, Workflow, and Proof kinds needed to replay Board/ticket
+facts; session and heartbeat kinds remain absent pending [#200](https://github.com/simjak/ctower/issues/200).
 
 ## Workflow and Execution Policy compose at runtime
 

@@ -57,6 +57,7 @@ from ctower_kernel.record._migration_ledger_sql import (
     MigrationStateError,
     apply_database_migrations,
 )
+from ctower_kernel.record._project_event_sql import project_events as _project_events
 from ctower_kernel.record._session_read_sql import project_sessions as _project_sessions
 from ctower_kernel.record._session_read_sql import ticket_sessions as _ticket_sessions
 from ctower_kernel.record._session_sql import record_session_fact as _record_session_fact
@@ -83,6 +84,7 @@ from ctower_kernel.record.intake import (
     IntakePromotionCommand,
     IntakeSubmitCommand,
 )
+from ctower_kernel.record.project_events import ProjectEventPage
 from ctower_kernel.record.sessions import (
     ProjectSessionPage,
     SessionFactCommand,
@@ -292,6 +294,51 @@ class _PostgresWorkSessions:
         )
 
 
+class _PostgresEventAudit:
+    """Postgres adapter for the cohesive canonical-event cursor-read boundary."""
+
+    def __init__(self, dsn: str, *, telemetry: Telemetry) -> None:
+        self._dsn = dsn
+        self._telemetry = telemetry
+
+    def ticket_audit(
+        self,
+        actor: Actor,
+        ticket_id: UUID,
+        project_key: str,
+        *,
+        cursor: int,
+        limit: int,
+        telemetry: TelemetryContext,
+    ) -> AuditPage | RecordProblem:
+        outcome = _ticket_audit(
+            self._dsn, actor, ticket_id, project_key, cursor=cursor, limit=limit
+        )
+        self._emit("record.ticket_audit", telemetry, outcome)
+        return outcome
+
+    def project_events(
+        self,
+        actor: Actor,
+        project_key: str,
+        *,
+        cursor: int,
+        limit: int,
+        telemetry: TelemetryContext,
+    ) -> ProjectEventPage | RecordProblem:
+        outcome = _project_events(self._dsn, actor, project_key, cursor=cursor, limit=limit)
+        self._emit("record.project_events", telemetry, outcome)
+        return outcome
+
+    def _emit(self, name: str, telemetry: TelemetryContext, outcome: object) -> None:
+        self._telemetry.emit(
+            name,
+            telemetry,
+            outcome="error" if isinstance(outcome, RecordProblem) else "ok",
+            reason=outcome.code if isinstance(outcome, RecordProblem) else "committed",
+        )
+
+
 class PostgresRecord:
     """Password-agnostic Postgres implementation of atomic Record commands."""
 
@@ -307,6 +354,7 @@ class PostgresRecord:
         self._telemetry = telemetry or NoopTelemetry()
         self.seat_credentials = _PostgresSeatCredentials(dsn, telemetry=self._telemetry)
         self.work_sessions = _PostgresWorkSessions(dsn, telemetry=self._telemetry)
+        self.event_audit = _PostgresEventAudit(dsn, telemetry=self._telemetry)
 
     def authorize_bootstrap(
         self, capability_digest: bytes, *, origin: str, now: datetime
@@ -498,24 +546,6 @@ class PostgresRecord:
 
         outcome = _ticket_timeline(self._dsn, actor, ticket_id, project_key, telemetry=telemetry)
         self._emit("record.ticket_timeline", telemetry, outcome)
-        return outcome
-
-    def ticket_audit(
-        self,
-        actor: Actor,
-        ticket_id: UUID,
-        project_key: str,
-        *,
-        cursor: int,
-        limit: int,
-        telemetry: TelemetryContext,
-    ) -> AuditPage | RecordProblem:
-        """Read explicitly linked cross-aggregate events by global position."""
-
-        outcome = _ticket_audit(
-            self._dsn, actor, ticket_id, project_key, cursor=cursor, limit=limit
-        )
-        self._emit("record.ticket_audit", telemetry, outcome)
         return outcome
 
     def transfer_custody(
