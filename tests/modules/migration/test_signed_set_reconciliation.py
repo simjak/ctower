@@ -12,6 +12,7 @@ import pytest
 from ctower_kernel.migration import (
     _artifact_sql,
     _checkpoint_expectation_sql,
+    _operation_sql,
     _pass_two_sql,
     _reconciliation_sql,
 )
@@ -22,29 +23,32 @@ __all__: tuple[str, ...] = ()
 def test_exact_signed_set_accepts_authored_expansion_without_product_edit() -> None:
     expected, snapshot = _exact_graph()
 
-    assert _matches(expected, snapshot)
+    assert not _mismatches(expected, snapshot)
 
 
 def test_authored_target_extension_outside_signed_source_set_is_current() -> None:
     expected, snapshot = _exact_graph()
 
-    assert _matches(expected[:-1], snapshot)
+    assert not _mismatches(expected[:-1], snapshot)
 
 
 def test_signed_set_substitution_fails_closed_by_name() -> None:
     expected, snapshot = _exact_graph()
-    assert _matches(expected, snapshot)
+    assert not _mismatches(expected, snapshot)
     definitions = cast(list[dict[str, object]], snapshot["checkpoint_definitions"])
     definitions[0]["catalog_digest"] = f"sha256:{'f' * 64}"
 
-    assert not _matches(expected, snapshot)
+    found = _mismatches(expected, snapshot)
+    assert [item.checkpoint_key for item in found] == ["I1.0"]
+    assert "expected" in found[0].detail and "observed" in found[0].detail
 
 
 def test_signed_set_missing_member_fails_closed_by_name() -> None:
     expected, snapshot = _exact_graph()
-    assert _matches(expected, snapshot)
+    assert not _mismatches(expected, snapshot)
     definitions = cast(list[dict[str, object]], snapshot["checkpoint_definitions"])
     missing = definitions.pop()
+    missing_key = str(missing["checkpoint_key"])
     criteria = cast(list[dict[str, object]], snapshot["checkpoint_criteria"])
     criteria[:] = [
         row
@@ -52,41 +56,51 @@ def test_signed_set_missing_member_fails_closed_by_name() -> None:
         if row["checkpoint_definition_id"] != missing["checkpoint_definition_id"]
     ]
 
-    assert not _matches(expected, snapshot)
+    found = _mismatches(expected, snapshot)
+    assert [item.checkpoint_key for item in found] == [missing_key]
+    assert "observed missing" in found[0].detail
 
 
 def test_signed_set_extra_member_fails_closed_by_name() -> None:
     expected, snapshot = _exact_graph()
-    assert _matches(expected, snapshot)
+    assert not _mismatches(expected, snapshot)
     extra_expected, _ = _checkpoint("I1.extra", 99)
     expected.extend(extra_expected)
 
-    assert not _matches(expected, snapshot)
+    found = _mismatches(expected, snapshot)
+    assert [item.checkpoint_key for item in found] == ["I1.extra"]
+    assert "observed missing" in found[0].detail
 
 
 def test_signed_set_duplicate_member_fails_closed_by_name() -> None:
     expected, snapshot = _exact_graph()
-    assert _matches(expected, snapshot)
+    assert not _mismatches(expected, snapshot)
     definitions = cast(list[dict[str, object]], snapshot["checkpoint_definitions"])
     criteria = cast(list[dict[str, object]], snapshot["checkpoint_criteria"])
+    duplicated_key = str(definitions[0]["checkpoint_key"])
     definitions.append(deepcopy(definitions[0]))
     criteria.append(deepcopy(criteria[0]))
 
-    assert not _matches(expected, snapshot)
+    found = _mismatches(expected, snapshot)
+    assert [item.checkpoint_key for item in found] == [duplicated_key]
+    assert "duplicated" in found[0].detail
 
 
 def test_signed_set_same_count_wrong_member_fails_closed_by_name() -> None:
     expected, snapshot = _exact_graph()
-    assert _matches(expected, snapshot)
+    assert not _mismatches(expected, snapshot)
     _, replacement = _checkpoint("I1.wrong-member", 100)
     definitions = cast(list[dict[str, object]], snapshot["checkpoint_definitions"])
     criteria = cast(list[dict[str, object]], snapshot["checkpoint_criteria"])
     replaced_id = definitions[-1]["checkpoint_definition_id"]
+    replaced_key = str(definitions[-1]["checkpoint_key"])
     definitions[-1] = cast(list[dict[str, object]], replacement["checkpoint_definitions"])[0]
     criteria[-1] = cast(list[dict[str, object]], replacement["checkpoint_criteria"])[0]
     assert criteria[-1]["checkpoint_definition_id"] != replaced_id
 
-    assert not _matches(expected, snapshot)
+    found = _mismatches(expected, snapshot)
+    assert [item.checkpoint_key for item in found] == [replaced_key]
+    assert "observed missing" in found[0].detail
 
 
 def test_signed_source_set_accepts_authored_expansion_without_product_edit() -> None:
@@ -216,15 +230,110 @@ def test_finalization_rechecks_signed_set_currentness(
     monkeypatch.setattr(_pass_two_sql, "graph", lambda _body: {"graph": "exact"})
     monkeypatch.setattr(
         _checkpoint_expectation_sql,
-        "matches",
-        lambda _connection, _run_id, _body: True,
+        "mismatches",
+        lambda _connection, _run_id, _body: (),
     )
 
-    assert not _reconciliation_sql._current_target_matches(
+    result = _reconciliation_sql._current_target_matches(
         cast(Any, object()),
         uuid4(),
         {"graph": "exact"},
     )
+
+    assert not result.matches
+    assert not result.checkpoint_mismatches
+
+
+def test_finalization_names_checkpoint_mismatch(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    current = SimpleNamespace(body={"current": True}, project_delivery_current=True)
+    mismatch = _checkpoint_expectation_sql.CheckpointMismatch(
+        "I1.0",
+        "expected catalog_revision=ctower.I1.0@1, observed catalog_revision=ctower.I1.0@2",
+    )
+    monkeypatch.setattr(_pass_two_sql, "capture", lambda _connection, _run_id: current)
+    monkeypatch.setattr(_pass_two_sql, "graph", lambda _body: {"graph": "exact"})
+    monkeypatch.setattr(
+        _checkpoint_expectation_sql,
+        "mismatches",
+        lambda _connection, _run_id, _body: (mismatch,),
+    )
+
+    result = _reconciliation_sql._current_target_matches(
+        cast(Any, object()),
+        uuid4(),
+        {"graph": "exact"},
+    )
+
+    assert not result.matches
+    assert result.checkpoint_mismatches == (mismatch,)
+
+    refused = _reconciliation_sql._checkpoint_conflict(uuid4(), result.checkpoint_mismatches)
+    assert refused.code == "migration-import-finalization-refused"
+    assert "I1.0" in refused.detail
+    assert refused.unmet_facts == ("checkpoint:I1.0",)
+
+
+def test_pass_two_readiness_names_checkpoint_mismatch(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    mismatch = _checkpoint_expectation_sql.CheckpointMismatch(
+        "I1.0",
+        "expected catalog_revision=ctower.I1.0@1, observed catalog_revision=ctower.I1.0@2",
+    )
+    snapshot = SimpleNamespace(body={"current": True}, project_delivery_current=True)
+    monkeypatch.setattr(
+        _pass_two_sql,
+        "graph",
+        lambda _body: {"unexpected": [], "forbidden": [], "unresolved": [], "cycles": []},
+    )
+    monkeypatch.setattr(
+        _checkpoint_expectation_sql,
+        "mismatches",
+        lambda _connection, _run_id, _body: (mismatch,),
+    )
+
+    readiness = _pass_two_sql.ready_for_pass_two(cast(Any, object()), uuid4(), cast(Any, snapshot))
+
+    assert not readiness.ready
+    assert readiness.checkpoint_mismatches == (mismatch,)
+
+    refused = _operation_sql._checkpoint_conflict(
+        "Project Delivery target is not current for pass two",
+        readiness.checkpoint_mismatches,
+    )
+    assert refused.code == "migration-run-conflict"
+    assert "I1.0" in refused.detail
+    assert refused.unmet_facts == ("checkpoint:I1.0",)
+
+
+def test_pass_two_readiness_keeps_generic_refusal_without_checkpoint_cause(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    snapshot = SimpleNamespace(body={"current": True}, project_delivery_current=False)
+    monkeypatch.setattr(
+        _pass_two_sql,
+        "graph",
+        lambda _body: {"unexpected": [], "forbidden": [], "unresolved": [], "cycles": []},
+    )
+    monkeypatch.setattr(
+        _checkpoint_expectation_sql,
+        "mismatches",
+        lambda _connection, _run_id, _body: (),
+    )
+
+    readiness = _pass_two_sql.ready_for_pass_two(cast(Any, object()), uuid4(), cast(Any, snapshot))
+
+    assert not readiness.ready
+    assert not readiness.checkpoint_mismatches
+
+    refused = _operation_sql._checkpoint_conflict(
+        "Project Delivery target is not current for pass two",
+        readiness.checkpoint_mismatches,
+    )
+    assert refused.detail == "Project Delivery target is not current for pass two"
+    assert refused.unmet_facts == ()
 
 
 def _run_and_request() -> tuple[Any, Any]:
@@ -322,12 +431,12 @@ def _checkpoint(
     }
 
 
-def _matches(
+def _mismatches(
     expected: list[dict[str, object]],
     snapshot: dict[str, object],
-) -> bool:
+) -> tuple[_checkpoint_expectation_sql.CheckpointMismatch, ...]:
     connection = _Connection(expected)
-    return _checkpoint_expectation_sql.matches(
+    return _checkpoint_expectation_sql.mismatches(
         cast(Any, connection),
         cast(Any, "run-id"),
         deepcopy(snapshot),
