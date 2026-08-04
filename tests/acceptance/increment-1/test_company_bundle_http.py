@@ -29,13 +29,20 @@ from support.http import operator_headers as _headers
 from support.telemetry import telemetry_headers
 from support.tenant_fixture import TenantFixture
 
+from ctower_api.interface import create_app
 from ctower_kernel.catalog import (
+    BundleValidation,
     CatalogProblem,
     CompanyBundle,
     CompanyBundleApply,
     CompanyBundleCommandResult,
+    CompanyBundleExport,
+    CompanyBundlePlan,
     PostgresCatalog,
 )
+from ctower_kernel.record import Actor
+from ctower_kernel.record.postgres import PostgresRecord
+from ctower_kernel.telemetry import TelemetryContext
 
 __all__: tuple[str, ...] = ()
 
@@ -46,6 +53,39 @@ HTTP_CONFLICT = 409
 HTTP_UNAUTHORIZED = 401
 HTTP_NOT_FOUND = 404
 HTTP_UNPROCESSABLE_ENTITY = 422
+
+
+class _ReadUnavailableCatalog:
+    def validate(self, actor: Actor, bundle: CompanyBundle) -> BundleValidation | CatalogProblem:
+        del actor, bundle
+        return _read_unavailable_problem()
+
+    def plan(self, actor: Actor, bundle: CompanyBundle) -> CompanyBundlePlan | CatalogProblem:
+        del actor, bundle
+        return _read_unavailable_problem()
+
+    def apply(
+        self,
+        actor: Actor,
+        command: CompanyBundleApply,
+        *,
+        telemetry: TelemetryContext,
+    ) -> CompanyBundleCommandResult | CatalogProblem:
+        del actor, command, telemetry
+        raise AssertionError("read-route regression must not call apply")
+
+    def export(self, actor: Actor) -> CompanyBundleExport | CatalogProblem:
+        del actor
+        return _read_unavailable_problem()
+
+
+def _read_unavailable_problem() -> CatalogProblem:
+    return CatalogProblem(
+        code="bundle-recovery-unavailable",
+        detail="Catalog recovery state is unavailable.",
+        status=503,
+        title="Bundle unavailable",
+    )
 
 
 def test_company_bundle_http_round_trip_preserves_read_only_and_atomic_boundaries(
@@ -85,6 +125,35 @@ def test_company_bundle_http_round_trip_preserves_read_only_and_atomic_boundarie
     assert replanned.status_code == HTTP_OK
     assert replanned.json()["actions"] == []
     assert replanned.json()["proposed_bundle_digest"] == applied.json()["bundle_digest"]
+
+
+def test_company_bundle_validate_and_plan_route_failures_stay_in_declared_problem_family(
+    tenant: TenantFixture,
+) -> None:
+    request = {"bundle": _tenant_bundle().model_dump(mode="json", by_alias=True)}
+    app = create_app(
+        PostgresRecord(tenant.database.runtime_dsn),
+        catalog=_ReadUnavailableCatalog(),
+    )
+
+    with TestClient(app) as client:
+        validated = client.post(
+            "/v1/company/bundle/validate",
+            json=request,
+            headers=_headers(tenant),
+        )
+        planned = client.post(
+            "/v1/company/bundle/plan",
+            json=request,
+            headers=_headers(tenant),
+        )
+
+    for response in (validated, planned):
+        assert response.status_code == HTTP_UNPROCESSABLE_ENTITY
+        assert response.headers["content-type"].startswith("application/problem+json")
+        body = response.json()
+        assert body["code"] == "bundle-recovery-unavailable"
+        assert body["status"] == HTTP_UNPROCESSABLE_ENTITY
 
 
 def _exercise_bundle_round_trip(
