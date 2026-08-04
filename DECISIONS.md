@@ -1287,7 +1287,7 @@ Rejected alternatives:
 - Accepting a green CI run, a reviewer's assertion, or the presence of changed files under `docs/` as the
   documentation fact.
 
-## D33 — The fleet-lifecycle policy package: close gate first (locked 2026-08-03, operator R2764)
+## D34 — The fleet-lifecycle policy package: close gate first (locked 2026-08-03, operator R2764)
 
 Issue #252 and mission-control R2764 (director P1; record ticket `019fc841-344f-7ccc-8449-262a132d6ae2`)
 turn the mission-control fleet's hygiene rules — today enforced by commander memory and paging crons only,
