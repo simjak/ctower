@@ -1,5 +1,13 @@
 # Changelog
 
+## [0.7.3](https://github.com/simjak/ctower/compare/v0.7.2...v0.7.3) (2026-08-04)
+
+
+### Bug Fixes
+
+* keep bundle read failures typed ([#274](https://github.com/simjak/ctower/issues/274)) ([3c7167a](https://github.com/simjak/ctower/commit/3c7167a6cafd326bb57e5211d05f89dd433bd91a))
+* **ui:** never render a 0-of-0 board answer as empty ([#276](https://github.com/simjak/ctower/issues/276)) ([763ded6](https://github.com/simjak/ctower/commit/763ded681c0c0c3222aef68d7b28ed7fd533b0de))
+
 ## [0.7.2](https://github.com/simjak/ctower/compare/v0.7.1...v0.7.2) (2026-08-04)
 
 
