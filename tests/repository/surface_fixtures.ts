@@ -21,6 +21,7 @@ import { healthOf, registryOf } from "../../apps/ctower-ui/src/read/sources/cade
 import { rejoined, turnsOf, unindent } from "../../apps/ctower-ui/src/read/sources/tmuxBridge.ts";
 import { noneOf, unreadOf, valueOf } from "../../apps/ctower-ui/src/read/sources/maybe.ts";
 import { reclassified } from "../../apps/ctower-ui/src/read/bounded.ts";
+import { boardEmptyKind } from "../../apps/ctower-ui/src/read/boardProjection.ts";
 import type { Beat } from "../../apps/ctower-ui/src/read/interface.ts";
 
 const results: Record<string, unknown> = {};
@@ -213,6 +214,43 @@ results.failureWithNoStatusStaysWithout = reclassified({
   elapsedMs: 4000,
   status: null,
 });
+
+/* ── the 0-of-0 board decision (two empties, neither blank) ────────────────
+   A scoped board that answers watermark 0 of 0 with zero cards is never
+   rendered as a normal empty board — an empty answer rendered as truth is the
+   honesty defect this surface guards, one level deeper (during the runtime
+   swap on 2026-08-04 the board said "0 of 0" while cards sat safe at a higher
+   watermark). There are TWO ways a board answers 0 of 0, told apart by the
+   portfolio's watermark in the same render:
+
+   * portfolio ALSO 0 (or the portfolio read did not answer) -> restart-fresh:
+     the API is restarting/rebuilding or the instance is genuinely fresh; this
+     is the refusal block.
+   * portfolio > 0 -> true-empty-project: the instance holds records, so THIS
+     project's import chain has not run; it renders its own named block with a
+     link to the portfolio view.
+
+   Anything else — any watermark > 0 (a genuinely empty PROJECT under a nonzero
+   watermark included) and any board that actually has cards — is normal and
+   must NOT change. */
+
+const boardProbe = (
+  projectionWatermark: number,
+  cardCount: number,
+  portfolioWatermark: number | null
+): string =>
+  boardEmptyKind({
+    projectionWatermark,
+    entries: Array.from({ length: cardCount }),
+    portfolioWatermark,
+  });
+
+results.zeroOfZeroPortfolioZeroIsRestartFresh = boardProbe(0, 0, 0);
+results.zeroOfZeroPortfolioNonzeroIsTrueEmptyProject = boardProbe(0, 0, 462);
+results.zeroOfZeroPortfolioUnreachableIsRestartFresh = boardProbe(0, 0, null);
+results.nonzeroWatermarkEmptyProjectRendersNormally = boardProbe(462, 0, 462);
+results.zeroWatermarkWithCardsRendersNormally = boardProbe(0, 3, 462);
+results.nonzeroWatermarkWithCardsRendersNormally = boardProbe(462, 279, 462);
 
 // `noneOf` is exercised so the driver fails loudly if the Known constructors
 // ever stop being importable from this module

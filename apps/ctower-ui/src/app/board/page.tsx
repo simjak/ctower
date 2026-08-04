@@ -2,16 +2,23 @@ import type { ReactElement, ReactNode } from "react";
 import { Chrome } from "@/frame/Chrome";
 import { Resolved } from "@/frame/Declared";
 import { RecordFoot } from "@/frame/RecordFoot";
-import { configuredProjects, selectedProjectKey } from "@/read/projects";
+import { configuredProjects, defaultProjectKey, selectedProjectKey } from "@/read/projects";
 import { ProjectTabs } from "@/surfaces/board/ProjectTabs";
 import { ScopeNote } from "@/surfaces/board/ScopeNote";
 import { StateGlyph } from "@/frame/StateGlyph";
 import { recordAdapter } from "@/read/adapter";
-import { sourceKindOf, unresolvedSources } from "@/read/boardProjection";
+import {
+  boardEmptyKind,
+  portfolioWatermarkFor,
+  sourceKindOf,
+  unresolvedSources,
+} from "@/read/boardProjection";
 import type { BoardEntry, BoardSnapshot } from "@/read/interface";
 import { LaneCard } from "@/surfaces/board/LaneCard";
 import { SourceTabs } from "@/surfaces/board/SourceTabs";
+import { TrueEmptyProject } from "@/surfaces/board/TrueEmptyProject";
 import { UnreadSources } from "@/surfaces/board/UnreadSources";
+import { ZeroOfZeroRefusal } from "@/surfaces/board/ZeroOfZeroRefusal";
 import { readParam } from "@/surfaces/screenParams";
 import { Count } from "@/surfaces/Count";
 import type { SourceTab } from "@/surfaces/board/SourceTabs";
@@ -114,11 +121,47 @@ function BoardBody({
   snapshot,
   source,
   project,
+  portfolioWatermark,
 }: {
   readonly snapshot: BoardSnapshot;
   readonly source: string;
   readonly project: string;
+  /** The unbounded board's projection watermark read in the same render, or
+      null when that read did not answer. Only set for a 0-of-0 scoped answer. */
+  readonly portfolioWatermark: number | null;
 }): ReactElement {
+  /* A board that answers watermark 0 of 0 with zero cards is never rendered as
+     a normal empty board: it is either a restarting/fresh instance (portfolio
+     also 0) or a genuinely not-yet-imported project (portfolio nonzero). Each
+     gets its own named block. Any watermark > 0 — a genuinely empty PROJECT
+     under a nonzero watermark included — and any board with cards renders
+     normally below. Every project tab and the unscoped (default) board pass
+     through this single body, so one guard covers them all. */
+  const kind = boardEmptyKind({
+    projectionWatermark: snapshot.projectionWatermark,
+    entries: snapshot.entries,
+    portfolioWatermark,
+  });
+  if (kind === "restart-fresh" || kind === "true-empty-project") {
+    return (
+      <>
+        <Chrome
+          section="Board"
+          headerExtra={<ProjectTabs projects={configuredProjects()} selected={project} />}
+        />
+        {kind === "restart-fresh" ? (
+          <ZeroOfZeroRefusal project={project} snapshot={snapshot} />
+        ) : (
+          <TrueEmptyProject project={project} />
+        )}
+        <div className="page">
+          <div className="wrap">
+            <RecordFoot readPath="/v1/board" />
+          </div>
+        </div>
+      </>
+    );
+  }
   const kinds = sourceKinds(snapshot.entries);
   const selected = kinds.includes(source) ? source : ALL_SOURCES;
   const shown = selectEntries(snapshot.entries, selected);
@@ -194,13 +237,30 @@ export default async function BoardPage({
   const project = selectedProjectKey(readParam(params, "project"));
   const board = await recordAdapter.board(project);
   const source = readSource(params.source);
+  /* Only a 0-of-0 scoped answer needs the portfolio watermark to tell a
+     true-empty project (import has not run, portfolio nonzero) from a
+     restarting/fresh instance (portfolio also 0). The read is lazy and lives
+     in the read layer: a normal board (watermark > 0, or cards) never pays for
+     a second read, and the surface never inspects a Reading's state directly.
+     The page is force-dynamic, so no answer is cached across renders: a
+     refusal is never served stale from an earlier board. */
+  const portfolioWatermark = await portfolioWatermarkFor(board, () =>
+    recordAdapter.board(defaultProjectKey())
+  );
   return (
     <Resolved
       reading={board}
       subject={`project ${project}`}
       frame={(declared) => <BoardFrame declared={declared} project={project} />}
     >
-      {(snapshot) => <BoardBody snapshot={snapshot} source={source} project={project} />}
+      {(snapshot) => (
+        <BoardBody
+          snapshot={snapshot}
+          source={source}
+          project={project}
+          portfolioWatermark={portfolioWatermark}
+        />
+      )}
     </Resolved>
   );
 }
