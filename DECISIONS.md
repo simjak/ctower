@@ -1417,3 +1417,43 @@ Rejected alternatives:
 - Implementing only CLI or only UI visibility and calling parity satisfied.
 - A closed harness enum, an `other` harness bucket, or any harness-specific session/transcript parser hidden
   behind a generic reporter interface.
+
+## D36 — D30 clause 5 corrected: Ticket IDs are UUIDv7, not ULID (2026-08-04, gh#210)
+
+Issue #210 (found at digest `0c28bc203a55565dd9b193cb2b8f2422cd19d33f` during PR #195 review round 2)
+flagged that `DECISIONS.md:1106` (D30 clause 5, as locked) reads "Ticket IDs remain instance-global ULIDs"
+while `SPEC.md` states UUIDv7 in nine places (INV-06, INV-71, AC-PORT-06, and six others) and every
+authored `format: uuid` JSON Schema contract agrees. Both document sides were correct on their own terms
+— D30 was correctly left unedited as an accepted decision, and SPEC.md was correctly reconciled with the
+authored contracts — but nothing recorded *why* the wording diverges, or which side reflects reality.
+
+**The ruling fact is code.** No ULID generator, library, or schema pattern exists anywhere in this
+repository. Every ticket, event, credential, session, run, and outbox identifier — Kernel-wide — is built
+by one shared constructor:
+
+- `packages/ctower-kernel/src/ctower_kernel/record/_uuid.py:12` — `def uuid7(now: datetime) -> UUID`,
+  "Shared UUIDv7 construction for Record-owned identities," building an RFC 9562 UUIDv7 bit pattern from
+  the supplied authoritative time plus 74 bits of `secrets.randbits`.
+- Every Kernel module that mints a Ticket ID calls this constructor (or a local `_uuid7` copy of the same
+  RFC 9562 shape) exclusively — for example `record/_ticket_sql.py:63`, `record/_intake_sql.py:516`, and
+  `migration/_ticket_operation_sql.py:51` — and a repository-wide search for `ulid` (case-insensitive)
+  across `.py`/`.ts`/`.tsx` finds zero generators, zero imports, and zero schema declarations; its only
+  three hits are UI comments (`apps/ctower-ui/src/read/sources/seatNames.ts:6,10,21`) using "ULID" as
+  loose prose for a long identifier, not a distinct encoding.
+- Every ticket-identity JSON Schema — e.g. `contracts/domain/task-management/board-view.schema.json:48`
+  (`"ticket_id": {"type": "string", "format": "uuid"}`) — declares `format: uuid`; none declares a ULID
+  pattern.
+
+**This entry preserves D30 in full and supersedes only clause 5's word "ULID."** Clause 5 is read going
+forward as: *"Ticket IDs remain instance-global UUIDv7 values."* Clause 5's substantive property —
+permanent, instance-global identity, with `(tenant, project, source kind, source ref)` staying the
+separate project-scoped identity plane and no cross-project reuse or renumbering — is unchanged; only the
+encoding noun was wrong, and it was wrong from D30's own lock date, not as of any later migration. No
+identifier migration is approved, proposed, or implied. Closes gh#210.
+
+Rejected alternatives:
+
+- Editing D30 clause 5 in place — DECISIONS.md is append-only; an accepted clause is superseded, never
+  rewritten.
+- Changing SPEC.md, ARCHITECTURE.md, or any contract to say ULID — the code evidence above shows that
+  would move every one of those documents away from implementation truth, not toward it.
