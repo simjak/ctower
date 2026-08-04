@@ -95,11 +95,14 @@
       "path": "contracts/domain/events/event-envelope.schema.json",
       "references": [
         "SPEC#canonical-event-and-command-contract",
+        "SPEC#recorded-work-sessions",
         "INV-03",
         "INV-04",
         "INV-05",
+        "INV-75",
         "AC-DUR-02",
-        "AC-DUR-03"
+        "AC-DUR-03",
+        "AC-SES-02"
       ]
     },
     {
@@ -543,6 +546,7 @@
         "SPEC#canonical-event-and-command-contract",
         "SPEC#client-acknowledgement-and-offline-behavior",
         "SPEC#operational-health-and-degraded-behavior",
+        "SPEC#recorded-work-sessions",
         "SPEC#task-management-foundation",
         "SPEC#workflow-and-verification-architecture",
         "INV-03",
@@ -551,6 +555,7 @@
         "INV-28",
         "INV-57",
         "INV-64",
+        "INV-75",
         "AC-ADM-02",
         "AC-DUR-01",
         "AC-DUR-02",
@@ -565,6 +570,10 @@
         "AC-TM-01",
         "AC-TM-02",
         "AC-TM-03",
+        "AC-SES-01",
+        "AC-SES-02",
+        "AC-SES-03",
+        "AC-SES-04",
         "AC-TM-04",
         "AC-TM-05"
       ]
@@ -772,6 +781,17 @@
         "INV-44",
         "AC-WF-22",
         "AC-WF-23"
+      ]
+    },
+    {
+      "path": "contracts/workflow/workflow-definition.schema.json",
+      "references": [
+        "SPEC#workflow-definition-yaml-the-five-layer-s7s8-authoring-contract",
+        "INV-46",
+        "INV-61",
+        "INV-62",
+        "INV-63",
+        "AC-WF-28"
       ]
     },
     {
@@ -1769,6 +1789,17 @@
         "INV-32",
         "AC-SEC-01",
         "AC-SEC-02"
+      ]
+    },
+    {
+      "path": "packages/ctower-kernel/migrations/0041_recorded_work_sessions.sql",
+      "references": [
+        "SPEC#persistence-authority",
+        "SPEC#recorded-work-sessions",
+        "INV-02",
+        "INV-75",
+        "AC-SES-01",
+        "AC-SES-04"
       ]
     },
     {

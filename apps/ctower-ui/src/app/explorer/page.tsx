@@ -18,7 +18,9 @@ function Lede(): ReactElement {
       <h1>Explorer</h1>
       <p>
         The session&rsquo;s own worktree, as it stands right now — and what it has actually changed
-        against main. A branch that claims work exists is not the same as a diff that shows it.
+        against the trunk. A branch that claims work exists is not the same as a diff that shows it,
+        and a diff is only as honest as the base it is measured from, so the base and its own commit
+        are printed beside the branch.
       </p>
     </div>
   );
@@ -119,9 +121,15 @@ function ExplorerBody({ worktree }: { readonly worktree: SessionWorktree }): Rea
                           −{removed.toString()}
                         </span>
                         <span className="spacer" />
-                        <span className="meta">
+                        {/* the base carries its own commit: a base 25 commits
+                            behind the trunk is what made a six-file branch read
+                            as 267 files (#236), and that is invisible unless the
+                            base's age is on the screen beside the branch's */}
+                        <span className="meta" title={worktree.base.note}>
                           <KnownValue value={worktree.branch} /> @{" "}
-                          <KnownValue value={worktree.head} /> vs {worktree.base}
+                          <KnownValue value={worktree.head} /> vs{" "}
+                          <KnownValue value={worktree.base.ref} /> @{" "}
+                          <KnownValue value={worktree.base.head} />
                         </span>
                       </div>
                       {/* the tree beside this already lists every changed file; the
@@ -153,7 +161,7 @@ function ExplorerBody({ worktree }: { readonly worktree: SessionWorktree }): Rea
 
           <RecordFoot
             readPath={SOURCE_LABELS.explorer}
-            watermark={`${worktree.worktrees.length.toString()} worktrees on disk${worktree.reaped > 0 ? `, ${worktree.reaped.toString()} reaped and not shown` : ""} · diff vs ${worktree.base}${worktree.truncated ? " · truncated" : ""}`}
+            watermark={`${worktree.worktrees.length.toString()} worktrees on disk${worktree.reaped > 0 ? `, ${worktree.reaped.toString()} reaped and not shown` : ""} · ${worktree.base.note}${worktree.truncated ? " · truncated" : ""}`}
           />
         </div>
       </main>

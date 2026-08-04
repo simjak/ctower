@@ -1,5 +1,5 @@
 // DO NOT EDIT: generated file; regenerate from declared inputs.
-// Authored contract digest: sha256:897d0904c0761ce19e89e96d0b2d2b85485582770b37abdcc9765cbdf924e5fb
+// Authored contract digest: sha256:1f61ab130cdc302ab1fee3d1dc4170e6327c88c7f1354f83490bc5b612d95abb
 
 import type * as Models from "./models.js";
 import { OPERATIONS, type OperationId } from "./operations.js";
@@ -150,6 +150,12 @@ export type IssueSeatCredentialInput = Readonly<{
   readonly body: Models.SeatCredentialIssueRequest;
 }>;
 
+export type ListProjectSessionsInput = Readonly<{
+  readonly "projectKey": string;
+  readonly "cursor"?: number;
+  readonly "limit"?: number;
+}>;
+
 export type ListTicketAssignmentsInput = Readonly<{
   readonly "ticketId": string;
   readonly "projectKey": string;
@@ -160,6 +166,11 @@ export type ListTicketAuditEventsInput = Readonly<{
   readonly "projectKey": string;
   readonly "cursor"?: number;
   readonly "limit"?: number;
+}>;
+
+export type ListTicketSessionsInput = Readonly<{
+  readonly "ticketId": string;
+  readonly "projectKey": string;
 }>;
 
 export type PlanCompanyBundleInput = Readonly<{
@@ -195,6 +206,13 @@ export type RecordProofVerdictInput = Readonly<{
   readonly body: Models.VerdictRequest;
 }>;
 
+export type RecordTicketSessionFactInput = Readonly<{
+  readonly "ticketId": string;
+  readonly "sessionId": string;
+  readonly "IdempotencyKey": string;
+  readonly body: Models.SessionFactRequest;
+}>;
+
 export type ReportCtowerProjectFenceObservationInput = Readonly<{
   readonly "IdempotencyKey": string;
   readonly body: Models.CtowerProjectFenceObservationRequest;
@@ -215,6 +233,12 @@ export type RevokeSeatCredentialInput = Readonly<{
 export type RunSyntheticWorkflowInput = Readonly<{
   readonly "IdempotencyKey": string;
   readonly body: Models.SyntheticRunRequest;
+}>;
+
+export type StartTicketSessionInput = Readonly<{
+  readonly "ticketId": string;
+  readonly "IdempotencyKey": string;
+  readonly body: Models.SessionStartRequest;
 }>;
 
 export type StartTicketWorkflowInput = Readonly<{
@@ -271,18 +295,22 @@ export type OperationInputs = Readonly<{
   readonly "getTicket": GetTicketInput;
   readonly "getTicketTimeline": GetTicketTimelineInput;
   readonly "issueSeatCredential": IssueSeatCredentialInput;
+  readonly "listProjectSessions": ListProjectSessionsInput;
   readonly "listTicketAssignments": ListTicketAssignmentsInput;
   readonly "listTicketAuditEvents": ListTicketAuditEventsInput;
+  readonly "listTicketSessions": ListTicketSessionsInput;
   readonly "planCompanyBundle": PlanCompanyBundleInput;
   readonly "prepareCtowerProjectCutover": PrepareCtowerProjectCutoverInput;
   readonly "promoteIntakeEvent": PromoteIntakeEventInput;
   readonly "recordOutboxPoisonDisposition": RecordOutboxPoisonDispositionInput;
   readonly "recordProofEvidence": RecordProofEvidenceInput;
   readonly "recordProofVerdict": RecordProofVerdictInput;
+  readonly "recordTicketSessionFact": RecordTicketSessionFactInput;
   readonly "reportCtowerProjectFenceObservation": ReportCtowerProjectFenceObservationInput;
   readonly "resolveCloseWorkflow": ResolveCloseWorkflowInput;
   readonly "revokeSeatCredential": RevokeSeatCredentialInput;
   readonly "runSyntheticWorkflow": RunSyntheticWorkflowInput;
+  readonly "startTicketSession": StartTicketSessionInput;
   readonly "startTicketWorkflow": StartTicketWorkflowInput;
   readonly "submitIntake": SubmitIntakeInput;
   readonly "transferTicketCustody": TransferTicketCustodyInput;
@@ -317,18 +345,22 @@ export type OperationResults = Readonly<{
   readonly "getTicket": Models.TicketResource;
   readonly "getTicketTimeline": Models.TimelineResponse;
   readonly "issueSeatCredential": Models.SeatCredentialReceipt;
+  readonly "listProjectSessions": Models.ProjectSessionPage;
   readonly "listTicketAssignments": Models.AssignmentList;
   readonly "listTicketAuditEvents": Models.AuditPage;
+  readonly "listTicketSessions": Models.TicketSessionList;
   readonly "planCompanyBundle": Models.CompanyBundlePlan;
   readonly "prepareCtowerProjectCutover": never;
   readonly "promoteIntakeEvent": Models.IntakeCommandResult;
   readonly "recordOutboxPoisonDisposition": Models.PoisonDispositionReceipt;
   readonly "recordProofEvidence": Models.ProofReceipt;
   readonly "recordProofVerdict": Models.ProofReceipt;
+  readonly "recordTicketSessionFact": Models.SessionReceipt;
   readonly "reportCtowerProjectFenceObservation": Models.CtowerProjectMigrationReceipt;
   readonly "resolveCloseWorkflow": Models.WorkflowReceipt;
   readonly "revokeSeatCredential": Models.SeatCredentialReceipt;
   readonly "runSyntheticWorkflow": Models.SyntheticRunReceipt;
+  readonly "startTicketSession": Models.SessionReceipt;
   readonly "startTicketWorkflow": Models.WorkflowReceipt;
   readonly "submitIntake": Models.IntakeCommandResult;
   readonly "transferTicketCustody": Models.TicketCommandResult;
@@ -511,6 +543,12 @@ export class CtowerClient {
     return this.execute("issueSeatCredential", input);
   }
 
+  public async listProjectSessions(
+    input: ListProjectSessionsInput,
+  ): Promise<Models.ProjectSessionPage> {
+    return this.execute("listProjectSessions", input);
+  }
+
   public async listTicketAssignments(
     input: ListTicketAssignmentsInput,
   ): Promise<Models.AssignmentList> {
@@ -521,6 +559,12 @@ export class CtowerClient {
     input: ListTicketAuditEventsInput,
   ): Promise<Models.AuditPage> {
     return this.execute("listTicketAuditEvents", input);
+  }
+
+  public async listTicketSessions(
+    input: ListTicketSessionsInput,
+  ): Promise<Models.TicketSessionList> {
+    return this.execute("listTicketSessions", input);
   }
 
   public async planCompanyBundle(
@@ -559,6 +603,12 @@ export class CtowerClient {
     return this.execute("recordProofVerdict", input);
   }
 
+  public async recordTicketSessionFact(
+    input: RecordTicketSessionFactInput,
+  ): Promise<Models.SessionReceipt> {
+    return this.execute("recordTicketSessionFact", input);
+  }
+
   public async reportCtowerProjectFenceObservation(
     input: ReportCtowerProjectFenceObservationInput,
   ): Promise<Models.CtowerProjectMigrationReceipt> {
@@ -581,6 +631,12 @@ export class CtowerClient {
     input: RunSyntheticWorkflowInput,
   ): Promise<Models.SyntheticRunReceipt> {
     return this.execute("runSyntheticWorkflow", input);
+  }
+
+  public async startTicketSession(
+    input: StartTicketSessionInput,
+  ): Promise<Models.SessionReceipt> {
+    return this.execute("startTicketSession", input);
   }
 
   public async startTicketWorkflow(

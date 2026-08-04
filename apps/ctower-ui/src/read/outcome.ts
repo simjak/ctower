@@ -19,6 +19,8 @@ export function readFailureOf(error: unknown): ReadFailure {
     failureClass: "permanent",
     attempts: 1,
     elapsedMs: 0,
+    // a failure that did not come from the API carries no status to report
+    status: null,
   };
 }
 

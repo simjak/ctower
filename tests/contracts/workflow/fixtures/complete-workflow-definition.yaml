@@ -1,0 +1,108 @@
+# A complete revision: it authors every Workflow-owned fact the approved excerpt omits,
+# so it resolves and normalizes instead of only source-validating.
+apiVersion: ctower/v1
+kind: Workflow
+metadata:
+  name: engineering.software-factory
+  company: jakit-labs
+  revision: 13
+  signed_by: em-185-decision
+
+spec:
+  stage_groups: [discovery, implementation, verification, delivery]
+
+  stages:
+    - name: intake
+      owner: commander
+      group: discovery
+      evidence:
+        - key: source-reference
+          required: true
+          shape: <project>-R<nnn> | gh#<n>
+        - key: prohibited-data-scan
+          required: true
+          refuses_by_name: true
+      signs: source-reference
+      gate: intake-admission
+
+    - name: build
+      owner: engineer
+      group: implementation
+      evidence:
+        - key: scoped-tests
+          required: true
+          command: just test <path>
+        - key: file-disjointness
+          required: true
+          refuses_by_name: true
+      signs: scoped-tests
+
+    - name: review
+      owner: review
+      group: verification
+      evidence:
+        - key: code-review-verdict
+          required: true
+          reviewer_family_differs_from_author: true
+          digest_must_match_head: true
+      signs: code-review-verdict
+      gate: review-verdict
+      failure_routes:
+        changes-requested: build
+
+    - name: qa
+      owner: qa
+      group: verification
+      evidence:
+        - key: uses-not-loads
+          required: true
+          widths: [390, 768, 1440]
+      signs: uses-not-loads
+      skip:
+        predicate: no-externally-effective-outcome
+        evidence:
+          - key: skip-justification
+            required: true
+        signs: skip-justification
+
+    - name: resolve-close
+      owner: commander
+      group: delivery
+      evidence:
+        - key: retro-note
+          required: true
+      signs: retro-note
+
+  transitions:
+    - from: intake
+      to: build
+      requires: [source-reference, prohibited-data-scan]
+      on_missing: refuse
+    - from: build
+      to: review
+      requires: [scoped-tests, file-disjointness]
+      on_missing: refuse
+    - from: review
+      to: qa
+      requires: [code-review-verdict]
+      on_missing: refuse
+    - from: qa
+      to: resolve-close
+      requires: [uses-not-loads]
+      on_missing: refuse
+
+overlays:
+  lastmachines:
+    qa:
+      - key: k3d-only
+        required: true
+    resolve-close:
+      - key: deployment-receipt
+        required: true
+  bh-loop:
+    intake:
+      - key: phi-fixture-refused
+        required: true
+    review:
+      - key: hipaa-d11-verdict
+        required: true

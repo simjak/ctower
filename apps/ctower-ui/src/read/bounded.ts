@@ -37,6 +37,8 @@ export type FailureClass = "transient" | "permanent";
 export interface ClassifiedFailure {
   readonly failureClass: FailureClass;
   readonly detail: string;
+  /** The status the API answered, when the failure came from one. */
+  readonly status?: number;
 }
 
 /** What a caller learns when a read does not produce a payload. */
@@ -45,6 +47,13 @@ export interface ReadFailure {
   readonly failureClass: FailureClass;
   readonly attempts: number;
   readonly elapsedMs: number;
+  /**
+   * The HTTP status behind the failure, when there was one. A screen may not
+   * parse it back out of `reason`: "not allowed to look" and "could not reach"
+   * are different things to say to an operator, and a substring match on prose
+   * is not a sound way to tell them apart.
+   */
+  readonly status: number | null;
 }
 
 export interface ReadBounds {
@@ -99,6 +108,7 @@ function classifyStatus(status: number): ClassifiedFailure {
   return {
     failureClass: RETRYABLE_STATUS.has(status) ? "transient" : "permanent",
     detail: `the read API answered ${status.toString()}`,
+    status,
   };
 }
 
@@ -140,6 +150,7 @@ function failure(
     failureClass: classified.failureClass,
     attempts,
     elapsedMs,
+    status: classified.status ?? null,
   };
 }
 
@@ -166,6 +177,23 @@ function countExhaustion(path: string, spent: ReadFailure): void {
       exhaustions: exhaustionCount,
     })}\n`
   );
+}
+
+/**
+ * A failure the loop already built, folded back into a classification.
+ *
+ * The status has to survive this fold. A screen tells "we are not allowed to
+ * look" from "we could not reach it" by the status, and re-deriving it by
+ * matching prose in `reason` is not a sound way to tell an operator which of
+ * those two happened — this dropped it before, so a 401 reached the Board as a
+ * generic unreachable-source block.
+ */
+export function reclassified(spent: ReadFailure): ClassifiedFailure {
+  return {
+    failureClass: spent.failureClass,
+    detail: spent.reason,
+    ...(spent.status === null ? {} : { status: spent.status }),
+  };
 }
 
 async function attempt(
@@ -213,10 +241,7 @@ export async function boundedRead(
     try {
       return await attempt(url, headers, Math.min(bounds.attemptTimeoutMs, remainingBefore));
     } catch (error: unknown) {
-      last =
-        error instanceof ReadRefused
-          ? { failureClass: error.failure.failureClass, detail: error.failure.reason }
-          : classifyThrown(error);
+      last = error instanceof ReadRefused ? reclassified(error.failure) : classifyThrown(error);
       if (last.failureClass === "permanent") {
         throw new ReadRefused(failure(last, attempts, Date.now() - startedAt, false));
       }

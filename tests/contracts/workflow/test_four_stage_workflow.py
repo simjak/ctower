@@ -37,7 +37,11 @@ def test_four_stage_fixture_is_a_valid_domain_neutral_graph() -> None:
 def test_workflow_contract_home_contains_only_graph_authority() -> None:
     authored = {path.name for path in (ROOT / "contracts/workflow").glob("*.schema.json")}
 
-    assert authored == {"review-plan.schema.json", "workflow.schema.json"}
+    assert authored == {
+        "review-plan.schema.json",
+        "workflow-definition.schema.json",
+        "workflow.schema.json",
+    }
 
 
 def _load(path: str) -> dict[str, Any]:

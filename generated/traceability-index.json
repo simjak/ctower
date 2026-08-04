@@ -462,6 +462,21 @@
     "AC-SEC-12": [
       "contracts/http/openapi.yaml"
     ],
+    "AC-SES-01": [
+      "contracts/http/openapi.yaml",
+      "packages/ctower-kernel/migrations/0041_recorded_work_sessions.sql"
+    ],
+    "AC-SES-02": [
+      "contracts/domain/events/event-envelope.schema.json",
+      "contracts/http/openapi.yaml"
+    ],
+    "AC-SES-03": [
+      "contracts/http/openapi.yaml"
+    ],
+    "AC-SES-04": [
+      "contracts/http/openapi.yaml",
+      "packages/ctower-kernel/migrations/0041_recorded_work_sessions.sql"
+    ],
     "AC-TM-01": [
       "contracts/domain/task-management/task-command.schema.json",
       "contracts/http/openapi.yaml",
@@ -531,6 +546,9 @@
       "packs/policies/execution/software-factory-v1.yaml",
       "packs/policies/gates/software-factory-v1.yaml"
     ],
+    "AC-WF-28": [
+      "contracts/workflow/workflow-definition.schema.json"
+    ],
     "INV-01": [
       "contracts/domain/intake/thread-intake.schema.json",
       "packages/ctower-kernel/migrations/0001_roles.sql",
@@ -551,7 +569,8 @@
       "contracts/domain/intake/thread-intake.schema.json",
       "packages/ctower-kernel/migrations/0002_ticket_slice.sql",
       "packages/ctower-kernel/migrations/0003_privileges.sql",
-      "packages/ctower-kernel/migrations/0039_project_seat_credentials.sql"
+      "packages/ctower-kernel/migrations/0039_project_seat_credentials.sql",
+      "packages/ctower-kernel/migrations/0041_recorded_work_sessions.sql"
     ],
     "INV-03": [
       "contracts/domain/events/event-envelope.schema.json",
@@ -782,6 +801,7 @@
       "packs/manifests/core-v1.yaml"
     ],
     "INV-46": [
+      "contracts/workflow/workflow-definition.schema.json",
       "contracts/workflow/workflow.schema.json",
       "packs/workflows/engineering.software-factory/v1.yaml"
     ],
@@ -847,8 +867,15 @@
       "packages/ctower-kernel/migrations/0030_i17b_migration_truth_spine.sql",
       "packages/ctower-kernel/migrations/0031_i17b_bounded_truth_spine.sql"
     ],
+    "INV-61": [
+      "contracts/workflow/workflow-definition.schema.json"
+    ],
     "INV-62": [
+      "contracts/workflow/workflow-definition.schema.json",
       "packages/ctower-kernel/migrations/0038_project_delivery_seat_carriage.sql"
+    ],
+    "INV-63": [
+      "contracts/workflow/workflow-definition.schema.json"
     ],
     "INV-64": [
       "contracts/components/checkpoint.schema.json",
@@ -858,6 +885,11 @@
       "contracts/domain/project-delivery/project-delivery.schema.json",
       "contracts/http/openapi.yaml",
       "packages/ctower-kernel/migrations/0038_project_delivery_seat_carriage.sql"
+    ],
+    "INV-75": [
+      "contracts/domain/events/event-envelope.schema.json",
+      "contracts/http/openapi.yaml",
+      "packages/ctower-kernel/migrations/0041_recorded_work_sessions.sql"
     ],
     "SPEC#aggregate-boundaries-and-relationships": [
       "contracts/domain/intake/thread-intake.schema.json",
@@ -1011,7 +1043,8 @@
       "packages/ctower-kernel/migrations/0036_migration_ledger_role.sql",
       "packages/ctower-kernel/migrations/0038_project_delivery_seat_carriage.sql",
       "packages/ctower-kernel/migrations/0039_project_seat_credentials.sql",
-      "packages/ctower-kernel/migrations/0040_project_scoped_reads.sql"
+      "packages/ctower-kernel/migrations/0040_project_scoped_reads.sql",
+      "packages/ctower-kernel/migrations/0041_recorded_work_sessions.sql"
     ],
     "SPEC#project-delivery-projection": [
       "contracts/components/checkpoint.schema.json",
@@ -1051,6 +1084,11 @@
       "packs/components/checkpoints/manibo.staging-infra/v1.yaml",
       "packs/components/checkpoints/manibo.staging-nfq-e2e/v1.yaml",
       "packs/components/checkpoints/manibo.verify/v1.yaml"
+    ],
+    "SPEC#recorded-work-sessions": [
+      "contracts/domain/events/event-envelope.schema.json",
+      "contracts/http/openapi.yaml",
+      "packages/ctower-kernel/migrations/0041_recorded_work_sessions.sql"
     ],
     "SPEC#retention-erasure-backup-and-restore": [
       "contracts/evidence/object-manifest.schema.json",
@@ -1174,6 +1212,9 @@
       "contracts/execution/gate-policy.schema.json",
       "contracts/http/openapi.yaml",
       "packages/ctower-kernel/migrations/0004_proof_workflow.sql"
+    ],
+    "SPEC#workflow-definition-yaml-the-five-layer-s7s8-authoring-contract": [
+      "contracts/workflow/workflow-definition.schema.json"
     ]
   },
   "schema": "ctower.traceability-index/v1",

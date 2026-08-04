@@ -26,6 +26,7 @@ const ROOT = "/srv/projects/ctower";
 const ACCEPTED: readonly Inspection[] = [
   { op: "git.revision", root: ROOT },
   { op: "git.trunkRef", root: ROOT },
+  { op: "git.refCommit", root: ROOT, ref: "origin/main" },
   { op: "git.branch", root: ROOT },
   { op: "git.headSubject", root: ROOT },
   { op: "git.toplevel", root: ROOT },
@@ -42,6 +43,7 @@ const ACCEPTED: readonly Inspection[] = [
   { op: "tmux.sessions" },
   { op: "tmux.crews" },
   { op: "tmux.panes" },
+  { op: "tmux.crewProjects" },
   { op: "tmux.capture", session: "designer-r2710-ui-build", lines: 120 },
 ];
 
@@ -125,6 +127,14 @@ const rejected: readonly Refusal[] = [
   ),
   refusalOf("ref/leading-dash", () =>
     invocationFor({ op: "git.tree", root: ROOT, revision: "--output=/tmp/planted" })
+  ),
+  // the resolved base ref reaches `rev-parse` with a fixed `^{commit}` suffix;
+  // the caller's half of that string is validated like every other ref
+  refusalOf("ref/commit-brace-injection", () =>
+    invocationFor({ op: "git.refCommit", root: ROOT, ref: "main^{commit} --not-a-ref" })
+  ),
+  refusalOf("ref/commit-leading-dash", () =>
+    invocationFor({ op: "git.refCommit", root: ROOT, ref: "--exec=/tmp/planted" })
   ),
 
   // ---- repoPath(): the reader-supplied path is the classic traversal ----

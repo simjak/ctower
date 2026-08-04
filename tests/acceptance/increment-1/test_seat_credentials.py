@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import hashlib
 import json
+import re
 import secrets
 from datetime import UTC, datetime
 from itertools import permutations
@@ -341,7 +342,7 @@ def test_openapi_discovered_ticket_mutations_share_one_project_refusal_seam(
             operation_id: cast(
                 Response,
                 client.post(
-                    path.replace("{ticket_id}", str(ticket_id)),
+                    _mutation_path(path, ticket_id),
                     json=_schema_value(document, schema),
                     headers={**_auth(credential), "Idempotency-Key": str(uuid4())},
                 ),
@@ -353,7 +354,7 @@ def test_openapi_discovered_ticket_mutations_share_one_project_refusal_seam(
             operation_id: cast(
                 Response,
                 client.post(
-                    path.replace("{ticket_id}", str(ticket_id)),
+                    _mutation_path(path, ticket_id),
                     json=_schema_value(document, schema),
                     headers={
                         **_auth(tenant.commander_credential),
@@ -532,6 +533,17 @@ def _ticket_mutations(
         schema = cast(dict[str, object], content["application/json"]["schema"])
         discovered.append((cast(str, operation["operationId"]), path, schema))
     return tuple(sorted(discovered))
+
+
+def _mutation_path(path: str, ticket_id: UUID) -> str:
+    """Fill every path parameter, not only the ticket.
+
+    A ticket mutation may be nested under a further identifier. Leaving that template
+    literal in the URL would make the route refuse the malformed path instead of the
+    foreign project, and the seam would look proven while never being probed.
+    """
+
+    return re.sub(r"\{[a-z_]+\}", str(uuid4()), path.replace("{ticket_id}", str(ticket_id)))
 
 
 def _schema_value(

@@ -204,6 +204,12 @@ I1 retains the API/CLI semantics D22 selected: durable-thread-first explicit
 `discussion|create_ticket|link_ticket` intent/provenance; Workflow-owned append-only risk; six-lane fold;
 typed intents; health/Attention; and pending/refusal/quarantine/degraded/`STATE UNKNOWN` reporting.
 
+**Recorded-work-session placement (non-normative).** D33 puts the append-only session stream in I1 because
+ticket history, project-scoped reads, and the canonical event catalog are already I1 authority; it adds no
+projection write, browser route, provider, or execution runtime. The three operator surfaces that render an
+honest empty state today — ticket work timeline, workspace session states, and the live feed — swap to this
+source in their own lanes once the facts exist, and none of them may synthesize a session before then.
+
 ### I1.6 — Four-stage trust-spine fixture on the final evaluator
 
 **Stable work:** the integrated fixture in `CT-I1-003`, `CT-I1-006`, and `CT-I1-008`.
@@ -499,6 +505,16 @@ verify the real endpoint/digest independently, record the retro, and server-vali
 **Exit:** `GET /v1/meta/build` and `ctl meta build` agree with the deployed release; every gate/effect/failure
 is reconstructable from ctower IDs without Mission Control ledgers, task/status files, raw terminal state,
 or vendor sessions; the production golden ticket passes the exact I2 validation contract in the SPEC.
+
+## Backlog beyond the increments (sequenced, not scheduled)
+
+- **Operator chatbot via a harness adapter** (ticket `019fc85b-d9e1-743c-a25e-69fa7164424b`,
+  source-ref `R2766-chatbot-adapter`, operator 2026-08-03 — explicitly not a priority): an
+  operator chat UI with image upload that reaches a commander seat with on-par harness
+  functionality. Chat message maps to seat input; slash skills and file-path commands pass
+  through; an uploaded image lands as a workspace file handed to the seat as an at-path; the
+  live pane/feed streams back as a natural fourth consumer of the feed work. Sequenced behind
+  the UI epic and the R2764/R2765 gate work; no spec activity until those land.
 
 ## Workflow and Execution Policy are different configuration concepts
 

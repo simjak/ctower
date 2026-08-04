@@ -50,6 +50,12 @@ from ctowerctl._ops_commands import (
     query_command_names as ops_queries,
 )
 from ctowerctl._parser import authored_command_names, parse_arguments
+from ctowerctl._session_commands import (
+    mutation_command_names as session_mutations,
+)
+from ctowerctl._session_commands import (
+    query_command_names as session_queries,
+)
 from ctowerctl._synthetic_commands import (
     mutation_command_names as synthetic_mutations,
 )
@@ -91,6 +97,7 @@ def test_explicit_handlers_cover_every_generated_operation_class() -> None:
         | migration_mutations()
         | intake_mutations()
         | _credential_commands.mutation_command_names()
+        | session_mutations()
     )
     queries = (
         ticket_queries()
@@ -98,6 +105,7 @@ def test_explicit_handlers_cover_every_generated_operation_class() -> None:
         | ops_queries()
         | synthetic_queries()
         | migration_queries()
+        | session_queries()
     )
     refusals = migration_refusals()
     expected_mutations = {name for name, operation in CLI_OPERATIONS.items() if operation.mutation}

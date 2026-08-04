@@ -1,6 +1,6 @@
 """DO NOT EDIT: generated file; regenerate from declared inputs.
 
-Authored contract digest: sha256:897d0904c0761ce19e89e96d0b2d2b85485582770b37abdcc9765cbdf924e5fb
+Authored contract digest: sha256:1f61ab130cdc302ab1fee3d1dc4170e6327c88c7f1354f83490bc5b612d95abb
 """
 
 from __future__ import annotations
@@ -53,12 +53,16 @@ from ctower_client.models import (
     PriorityChangeRequest,
     Problem,
     ProjectDeliveryView,
+    ProjectSessionPage,
     ProofReceipt,
     RelationRequest,
     ResolveCloseRequest,
     SeatCredentialIssueRequest,
     SeatCredentialReceipt,
     SeatCredentialRevocationRequest,
+    SessionFactRequest,
+    SessionReceipt,
+    SessionStartRequest,
     SyntheticRunReceipt,
     SyntheticRunRequest,
     SyntheticRunResource,
@@ -69,6 +73,7 @@ from ctower_client.models import (
     TicketCreateRequest,
     TicketIntentRequest,
     TicketResource,
+    TicketSessionList,
     TimelineResponse,
     VerdictRequest,
     WorkReceipt,
@@ -651,6 +656,26 @@ class CtowerClient:
         return _response(response, {201: SeatCredentialReceipt, 202: SeatCredentialReceipt}, {401: Problem, 403: Problem, 409: Problem, 422: Problem})
 
     @validate_call(config=ConfigDict(strict=True, arbitrary_types_allowed=True))
+    def list_project_sessions(
+        self,
+        project_key: ProjectKey,
+        *,
+        cursor: Annotated[int, Field(ge=0)] | None = None,
+        limit: Annotated[int, Field(ge=1, le=100)] | None = None,
+    ) -> ProjectSessionPage:
+        response = self._http.get(
+            f"/v1/projects/{quote(str(project_key), safe='')}/sessions",
+            params={**({"cursor": cursor} if cursor is not None else {}), **({"limit": limit} if limit is not None else {})},
+            headers=self._telemetry_headers(
+                self._context(uuid4()),
+                {
+                    **self._auth_headers(),
+                },
+            ),
+        )
+        return _response(response, {200: ProjectSessionPage}, {401: Problem, 403: Problem, 404: Problem, 422: Problem})
+
+    @validate_call(config=ConfigDict(strict=True, arbitrary_types_allowed=True))
     def list_ticket_assignments(
         self,
         ticket_id: UUID,
@@ -689,6 +714,25 @@ class CtowerClient:
             ),
         )
         return _response(response, {200: AuditPage}, {401: Problem, 404: Problem, 422: Problem})
+
+    @validate_call(config=ConfigDict(strict=True, arbitrary_types_allowed=True))
+    def list_ticket_sessions(
+        self,
+        ticket_id: UUID,
+        *,
+        project_key: str,
+    ) -> TicketSessionList:
+        response = self._http.get(
+            f"/v1/tickets/{quote(str(ticket_id), safe='')}/sessions",
+            params={"project_key": project_key},
+            headers=self._telemetry_headers(
+                self._context(uuid4(), ticket_id=ticket_id),
+                {
+                    **self._auth_headers(),
+                },
+            ),
+        )
+        return _response(response, {200: TicketSessionList}, {401: Problem, 404: Problem, 422: Problem})
 
     @validate_call(config=ConfigDict(strict=True, arbitrary_types_allowed=True))
     def plan_company_bundle(
@@ -818,6 +862,29 @@ class CtowerClient:
         return _response(response, {200: ProofReceipt, 202: ProofReceipt}, {401: Problem, 403: Problem, 404: Problem, 409: Problem, 422: Problem})
 
     @validate_call(config=ConfigDict(strict=True, arbitrary_types_allowed=True))
+    def record_ticket_session_fact(
+        self,
+        ticket_id: UUID,
+        session_id: UUID,
+        request: SessionFactRequest,
+        *,
+        command_id: UUID,
+    ) -> SessionReceipt:
+        response = self._http.post(
+            f"/v1/tickets/{quote(str(ticket_id), safe='')}/sessions/{quote(str(session_id), safe='')}/facts",
+            content=request.model_dump_json(),
+            headers=self._telemetry_headers(
+                self._context(command_id, ticket_id=ticket_id),
+                {
+                    **self._auth_headers(),
+                    "Content-Type": "application/json",
+                    "Idempotency-Key": str(command_id),
+                },
+            ),
+        )
+        return _response(response, {200: SessionReceipt, 202: SessionReceipt}, {401: Problem, 403: Problem, 404: Problem, 409: Problem, 422: Problem})
+
+    @validate_call(config=ConfigDict(strict=True, arbitrary_types_allowed=True))
     def report_ctower_project_fence_observation(
         self,
         request: CtowerProjectFenceObservationRequest,
@@ -902,6 +969,28 @@ class CtowerClient:
             ),
         )
         return _response(response, {201: SyntheticRunReceipt, 202: SyntheticRunReceipt}, {401: Problem, 403: Problem, 409: Problem, 422: Problem})
+
+    @validate_call(config=ConfigDict(strict=True, arbitrary_types_allowed=True))
+    def start_ticket_session(
+        self,
+        ticket_id: UUID,
+        request: SessionStartRequest,
+        *,
+        command_id: UUID,
+    ) -> SessionReceipt:
+        response = self._http.post(
+            f"/v1/tickets/{quote(str(ticket_id), safe='')}/sessions",
+            content=request.model_dump_json(),
+            headers=self._telemetry_headers(
+                self._context(command_id, ticket_id=ticket_id),
+                {
+                    **self._auth_headers(),
+                    "Content-Type": "application/json",
+                    "Idempotency-Key": str(command_id),
+                },
+            ),
+        )
+        return _response(response, {200: SessionReceipt, 202: SessionReceipt}, {401: Problem, 403: Problem, 404: Problem, 409: Problem, 422: Problem})
 
     @validate_call(config=ConfigDict(strict=True, arbitrary_types_allowed=True))
     def start_ticket_workflow(

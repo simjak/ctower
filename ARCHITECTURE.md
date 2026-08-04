@@ -178,7 +178,9 @@ generated Python client -> FastAPI Adapter -> Access / Work -----> Record -> Pos
 It covers one-use first-tenant bootstrap; tenant-scoped tickets; protected custody; priority, assignment,
 lifecycle/admission, blocker, and relation facts; explicit immutable Workflow/policy pins; criteria,
 evidence, and verdict proof; interpreted four-stage transitions; proof-gated resolve/close; linked cursor
-audit; three fixed Routine revisions; an accepted-only, rebuildable six-lane Board; immutable delivery and
+audit; append-only recorded work sessions carrying seat, crew, model, harness, worktree, branch, the
+authored `dispatched|briefed|working|gated` lifecycle, and a Record-computed duration beside
+caller-observed token counts; three fixed Routine revisions; an accepted-only, rebuildable six-lane Board; immutable delivery and
 poison evidence; canonical, acceptance-gated recovery dispositions; and contributor-level health. Record owns idempotent append, hash-chained
 events, links, positions, transactional outbox writes, canonical command roots, subject durability heads,
 and typed pending/accepted reconciliation. Work, Proof, and Workflow own their authority above Record;

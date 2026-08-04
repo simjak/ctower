@@ -1287,6 +1287,52 @@ Rejected alternatives:
 - Accepting a green CI run, a reviewer's assertion, or the presence of changed files under `docs/` as the
   documentation fact.
 
+## D33 — Work sessions become recorded facts (locked 2026-08-03, operator R2698-G5)
+
+The operator authorized [#200](https://github.com/simjak/ctower/issues/200) as the next real product
+increment: three operator surfaces — the ticket work timeline, the workspace session states, and the live
+feed — each render an honest empty state naming the same missing fact, because ctower does not record that
+work happened. This decision creates that fact. It preserves D27 fresh-start authority, D30's project
+topology and prohibited-class barrier, INV-15's session-is-never-identity rule, INV-34's disposable
+projections, and the existing canonical Record event log. It creates no second event authority, no
+writable projection, no browser route, no provider or runtime event, no feature flag, and no environment
+variable.
+
+1. **A session is a Record fact, not an observed process.** A work session has its own durable ctower UUID
+   and its own `session:<uuid>` append-only stream: one start fact, zero or more authored state facts, and
+   at most one close fact. Process IDs, tmux names, panes, and vendor session handles are refused entry;
+   [INV-15](SPEC.md#non-negotiable-invariants) is unchanged and a terminal capture is never promoted to a
+   session.
+2. **The authored lifecycle is closed.** A started session is `dispatched`; the only authored moves are
+   `dispatched -> briefed -> working -> gated` and `gated -> working`. Every other pair, a fact on an
+   unknown session, and any fact after close refuse by their own stable codes with zero mutation.
+3. **Cost facts have two different owners.** Duration is Record-owned and derived from the committed start
+   and close timestamps, so a caller cannot claim a cost the record does not already prove. Token counts
+   are caller-supplied because only the harness observes them, and they are bounded, typed, strict external
+   payload values like every other one.
+4. **Sessions inherit every existing rule.** Project scope is applied in the Record query before a session
+   is materialized; foreign ticket reads stay non-disclosing 404s and a foreign project page refuses
+   `project-scope-denied`. D30 clause 3's five prohibited classes are checked over every caller-authored
+   session field ahead of any row, event, or outbox byte.
+5. **One authoritative type catalog.** Session membership, payload type, stream prefix, and permitted
+   origins are metadata on the canonical Record event catalog. Every derived kind set — envelope schema,
+   HTTP union, generated clients, CLI, SQL, tests — is derived from it, and a both-direction parity
+   mutation proof refuses drift. Repairing the pre-existing omission of `migration.changed` from the
+   authored envelope schema is part of this decision, because the guard that proves the rule found it.
+6. **Sequencing and bounds.** This decision authorizes only the SPEC 1.14 amendments at INV-75, the
+   recorded-work-sessions architecture narrative, AC-SES-01..04, and the I1 exit-evidence bullet;
+   `ARCHITECTURE.md` and `IMPLEMENTATION-ROADMAP.md` are repaired as derived explanations. Backend
+   Record/API/contracts/generated clients/CLI belong to #200. The three waiting operator surfaces swap to
+   this source in their own lanes and are explicitly out of scope here.
+
+Rejected alternatives:
+
+- A session-specific kind enum in API, CLI, browser, query code, or tests that can drift from the catalog.
+- Caller-supplied duration, or a duration inferred from anything other than committed Record timestamps.
+- Treating a tmux name, PID, pane, or vendor session ID as session identity or as evidence a session exists.
+- Synthesizing a session, a heartbeat, or a state from terminal capture, transport activity, or silence.
+- A mutable session row whose state is updated in place instead of appended.
+
 ## D34 — The fleet-lifecycle policy package: close gate first (locked 2026-08-03, operator R2764)
 
 Issue #252 and mission-control R2764 (director P1; record ticket `019fc841-344f-7ccc-8449-262a132d6ae2`)
