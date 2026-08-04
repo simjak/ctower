@@ -94,21 +94,9 @@
         "relations": {"$ref": "#/$defs/stringSet"},
         "relation_endpoints": {"$ref": "#/$defs/stringSet"},
         "source_links": {"$ref": "#/$defs/stringSet"},
-        "checkpoint_definitions": {
-          "type": "array",
-          "minItems": 14,
-          "maxItems": 14,
-          "uniqueItems": true,
-          "items": {"type": "string", "minLength": 1, "maxLength": 8192}
-        },
+        "checkpoint_definitions": {"$ref": "#/$defs/stringSet"},
         "checkpoint_criteria": {"$ref": "#/$defs/stringSet"},
-        "project_delivery_rows": {
-          "type": "array",
-          "minItems": 14,
-          "maxItems": 14,
-          "uniqueItems": true,
-          "items": {"type": "string", "minLength": 1, "maxLength": 8192}
-        },
+        "project_delivery_rows": {"$ref": "#/$defs/stringSet"},
         "events": {"$ref": "#/$defs/stringSet"},
         "outbox_rows": {"$ref": "#/$defs/stringSet"},
         "unexpected": {"type": "array", "maxItems": 0},
