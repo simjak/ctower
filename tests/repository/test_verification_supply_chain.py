@@ -114,6 +114,31 @@ class VerificationSupplyChainTests(unittest.TestCase):
         self.assertFalse((self.root / ".python-version").exists())
         self.assertFalse((self.root / "uv.lock").exists())
 
+    def test_lock_stale_against_input(self) -> None:
+        direct_input = self._read("requirements/verify.in")
+        compiled = self._read("requirements/verify.txt")
+        direct = [line for line in direct_input.splitlines() if line and not line.startswith("#")]
+        # Resolved definitions in the compiled lock: `name==version` (name and any
+        # extras are normalized by uv: coverage[toml] -> coverage, SecretStorage ->
+        # secretstorage, ruamel.yaml -> ruamel-yaml). The version is the token before
+        # any platform marker or the trailing backslash.
+        resolved = dict(re.findall(r"^([A-Za-z0-9_.\-\[\]]+)==([^ \\\n]+)", compiled, re.MULTILINE))
+
+        def _normalize(name: str) -> str:
+            return re.sub(r"\[.*\]", "", name).lower().replace("_", "-").replace(".", "-")
+
+        stale = [
+            pin
+            for pin in direct
+            if resolved.get(_normalize(pin.split("==", 1)[0])) != pin.split("==", 1)[1]
+        ]
+        self.assertFalse(
+            stale,
+            "lock-stale-against-input: requirements/verify.txt is not a current "
+            "compile of requirements/verify.in — these direct pins do not match the "
+            f"locked version: {stale}",
+        )
+
     def test_remote_precommit_hooks_are_immutable_commit_pins(self) -> None:
         source = self._read(".pre-commit-config.yaml")
         remote_repositories = 0

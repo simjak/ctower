@@ -261,15 +261,11 @@ def test_consecutive_discard_tombstones_bridge_chain_and_missing_or_forged_refus
     forged = tmp_path / "forged"
     shutil.copytree(state, missing)
     shutil.copytree(state, forged)
-    missing_tombstone = sorted(
-        _origin_root(missing).joinpath("quarantine").glob("*.disposition.rec")
-    )[0]
+    missing_tombstone = min(_origin_root(missing).joinpath("quarantine").glob("*.disposition.rec"))
     missing_tombstone.unlink()
     assert _unbound_spool(missing).status().reason_codes == ("chain_integrity",)
 
-    forged_tombstone = sorted(
-        _origin_root(forged).joinpath("quarantine").glob("*.disposition.rec")
-    )[0]
+    forged_tombstone = min(_origin_root(forged).joinpath("quarantine").glob("*.disposition.rec"))
     forged_bytes = bytearray(forged_tombstone.read_bytes())
     forged_bytes[len(forged_bytes) // 2] ^= 1
     forged_tombstone.write_bytes(forged_bytes)
