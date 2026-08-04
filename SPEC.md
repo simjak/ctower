@@ -1652,6 +1652,26 @@ Later vocabularies require a reviewed schema revision and compatible readers; an
 publication or evidence attachment. A narrative such as “E2E passed” may be rationale on Evidence but is
 never the slot value.
 
+#### Lifecycle evidence contract class (fleet-lifecycle@1)
+
+A **lifecycle substrate fact** is a typed, strict (`extra="forbid"`, frozen) fact about the operator
+fleet's mission-control substrate (tmux sessions, git worktrees, and the crew-log ledger), which the
+record tier cannot itself observe. Each fact records, at minimum: `observed_at`; the **probe** — the
+exact command and target that produced the observation; the **observing principal**; and the typed
+**observation outcome**. It binds the probe's output (command + target + observed time), so a slot is
+filled only by what the probe actually read, never by prose.
+
+A fact whose substrate **could not be observed** is a named refusal, `substrate-unobservable:<probe>`,
+never a pass and never an omission. A gate that passes on silence recreates the failure this class
+exists to close; `STATE_UNKNOWN` remains a failure.
+
+**Supplier independence** follows the existing verifier-independence vocabulary: the evidence supplier
+must not be the lifecycle episode's custodian principal. The expected first supplier is an
+authenticated mission-control reporter principal — holding the `lifecycle.evidence.supply` capability
+under the existing access vocabulary — observing tmux, git worktrees, and the crew-log ledger.
+Freshness and invalidation reuse the existing Gate/Evidence Policy vocabulary unchanged on any later
+merge or reopen.
+
 Evidence fills a slot only when it names the pinned stage instance, slot key, criterion version, and exact
 kind and satisfies the slot's full evidence contract. Slot state is derived, never patched:
 
@@ -2162,6 +2182,70 @@ The resulting required path is:
 non-architecture change. “Production deploy” remains a distinct stage even for an internal service. A
 stage may be skipped only when the pinned definition names the skip predicate and evidence; an agent cannot
 declare a stage irrelevant ad hoc.
+
+### The fleet-lifecycle policy package (close gate first)
+
+The mission-control fleet's hygiene rules — today enforced by commander memory and paging crons only,
+so nothing blocks — become a **versioned policy package**, `fleet-lifecycle@1`, authored under
+`packs/policies/lifecycle/` and evaluated by the same Execution Policy engine as every other package
+(CT-I2-006). It is package data, not a new engine and not a new mechanism: it binds gates only to
+locations the pinned Workflow already declares ([INV-46](#non-negotiable-invariants) — no new node or
+edge). It supplies the lifecycle evidence contract class for its slots (§"Lifecycle evidence contract
+class"). The package is authored data; like the software-factory package it governs nothing until
+CT-I2-006 evaluates it, so it blocks no close today.
+
+TICKET-CLOSE GATE. On the administrative-close boundary of the pinned workflow — for
+`engineering.software-factory@1`, `sf.e15.retro-resolve-close@1` — close is denied unless three current
+facts hold for the lifecycle episode:
+
+- **(a) no live crew session bound to the episode** — refusal `crew-session-still-live`;
+- **(b) no worktree bound to the episode survives a merged PR** — merge-state from the PR record, never
+  branch ancestry; refusal `worktree-outlives-merged-pr`;
+- **(c) the crew-log close entry for the bound crew exists** — refusal `crew-log-close-entry-missing`.
+
+**Episode binding (defined).** The bound-crew set is every crew whose crew-log entries carry the
+episode's ticket id or its source ref; the bound-PR set is every PR recorded on the episode's evidence
+manifest. The reporter derives both sets and includes the derivation in the evidence payload. An
+episode whose bound sets are empty **requires explicit assertions** — `no-crew-engagement` and
+`no-bound-pr`, respectively. An assertion carries the same fields as a positive fact (the probe that
+returned empty, `observed_at`, and the observing principal) and is evidence of checked absence, never
+absence of evidence. A gate that passes on silence recreates the very failure the pack exists to close.
+
+**Freshness (defined).** The freshness reference is `max(resolution event time, latest bound-PR merge
+time)`. Each fact is current only if its `observed_at` is later than the reference. Fact (b) is
+evaluated once per bound merged PR; zero bound PRs yields the explicit `no-bound-pr` outcome, asserted
+by the reporter, never inferred from missing evidence. Existing Gate/Evidence Policy invalidation
+applies unchanged on any later merge or reopen. A fact whose substrate cannot be observed is the named
+refusal `substrate-unobservable:<probe>` and close stays denied; `STATE_UNKNOWN` is never satisfaction.
+
+**Reporter identity and independence.** The supplier authenticates as a dedicated principal holding the
+`lifecycle.evidence.supply` capability under the existing access vocabulary; the package's independence
+rule refuses evidence supplied by the episode's custodian principal ([INV-19](#non-negotiable-invariants),
+[INV-62](#non-negotiable-invariants)).
+
+SPAWN-SIDE STUBS (named only, not designed). `crew-naming` (persona-request-slug parseability), `wip-cap`,
+and `resource-ceilings` (20 target / 35 hard crews) are listed as **future revisions of the same
+package**, each with its enforcement location declared as the CommandGuard pre-dispatch boundary
+([INV-58](#non-negotiable-invariants)) — so no assignment to an unparseable crew name and no new lane
+past the cap can dispatch. Nothing else about them is designed here.
+
+PAGING-ONLY BY DESIGN. The coordination-files and liveness rules are deliberately not transition gates:
+coordination files are mission-control-local ephemera invisible to ctower custody, and liveness
+classification is a wake-loop duty whose output feeds evidence rather than a transition to block. The
+existing paging tools stay the enforcement of record on the mission-control side and become **evidence
+sources** for the gate; none gains blocking power — **the engine blocks, they observe.**
+
+The reporter runs these exact probes, whose outcomes are the typed observation outcomes the close-gate
+slots accept:
+
+| Fact | Probe (command + target) | Outcome shape | Source tool logic reused |
+|---|---|---|---|
+| (a) no live bound session | `tmux -L mc list-sessions -F '#{session_name}'` + per-session `@project` and crew-log binding lookup | `no-live-session` / `crew-session-still-live:<session>` / `substrate-unobservable:tmux` | `crew-health` |
+| (b) worktree gone after merge | `git -C <repo> worktree list --porcelain` cross-checked against `gh pr view <n> --json state,mergeCommit` per bound PR | `worktrees-clear` / `worktree-outlives-merged-pr:<path>` / `no-bound-pr` / `substrate-unobservable:git\|gh` | `worktree-reap` (merge-state from the PR, never branch ancestry) |
+| (c) crew-log close entry | last entry for each bound crew in `state/crew-log.jsonl` | `close-entry-present` / `crew-log-close-entry-missing:<crew>` / `substrate-unobservable:crew-log` | `crew-log` |
+
+`idle-alarm`, `wip-alarm`, `resource-check`, `coordination-gc`, and the watchdog keep paging exactly as
+today; they contribute no transition authority and remain evidence sources where applicable.
 
 ### ASCII enforcement model: autonomous movement and bounded verification
 
@@ -4558,7 +4642,7 @@ Each validation command below is designated as part of the item’s deliverable.
 | CT-I2-003 | Implement strongest-healthy Commander profile resolution and effective manifests pinning the local harness/supervisor/target/workspace/telemetry revisions, secret refs, egress/resources, and provenance. | CT-I2-001, CT-L0-007 | Engineer + CSO | Kernel `catalog/`, `runtime/`; `packs/personas/`; `apps/ctower-runner/compose.py` | Selection/failover, support-only denial, immutable local pins, and no-plaintext scans | `uv run pytest tests/modules/catalog tests/modules/runtime/test_profiles.py -q` |
 | CT-I2-004 | Implement Runtime jobs/leases/fencing/cursors/ACKs/log chunks/gaps/checkpoints/reconciler; the versioned CommandGuard required by [issue #17](https://github.com/simjak/ctower/issues/17) at every final local Harness and Supervisor command-dispatch boundary; and the justified local process/tmux plus Codex/Claude compositions. Freeze exact guard mechanics with these first real consumers, not before, and publish no general remote/image Seam. | CT-I2-001, CT-I2-003 | Engineer + DevOps + QA + CSO | Kernel `runtime/`; `packages/ctower-runner-sdk/`; `apps/ctower-runner/`; conformance tests | Forced loss/resume, stale denial, zero orphans, local composition; every registered command-dispatch Adapter's guard invocation, target resolution, zero block execution, one-use override/replay/expiry, redacted receipts, and bypass rejection; remote/image absent and not exercised | `uv run pytest tests/conformance/runner tests/chaos -q` |
 | CT-I2-005 | I2.4 browser product sub-checkpoint: consume CT-I1-013's proven session/CSRF boundary to realize D22's Home, Board, contextual Ticket, narrow Fleet/Analytics, and the rich Ticket journey; deepen them with run manifest, local placement, ACK/gap, steering, readiness refusal, typed required evidence-slot/signing-seat state, CommandGuard Attention/grant/receipt state, source-linked project proof/gates/blockers/decisions, cost/time, incidents, retro, and interactive Project Delivery projection row detail. | CT-I2-002, CT-I2-004, CT-L0-009, CT-I1-013; deferred alias CT-I1-005 | Designer + UI QA | `contracts/http/`; generated Python/TS clients; `apps/ctower-api/`; `apps/ctowerctl/`; `apps/ctower-web/src/surfaces/` | Exactly-five product routes, every-control trace, replay/gap/steer modes, reuse of the proven browser-session/CSRF contract plus its own cross-tenant and cross-project Playwright isolation proof exercised against all five product surfaces, since CT-I1-013's auth-only proof covers login/callback/session/logout and does not discharge this obligation, filled/unfilled/invalidated/unknown slot and signer browser states, generated API snapshots and CLI transcript, authorized Project Delivery projection drill-down, exact-scope guard confirmation and linked receipt views, accepted/refused zero-diff screenshots | `uv run pytest tests/acceptance/increment-2/test_guard_attention.py -q && pnpm run test:e2e` |
-| CT-I2-006 | Implement package-defined classification/overlays and Execution Policy evaluation, the delivery sprint's mandatory stage gates, required perspectives, configurable limits, non-waivable independence/conflict rules, the separate declared family-diversity placement rules and their per-tier waivability, the no-progress rule, protected waivers, and software/non-engineering fixtures. | CT-I2-002..003 | Engineering Manager + Engineer + CSO | Kernel `workflow/`, `access/`; policy packs | Missing/invalid-bound/removal/client-count/independence/family-collapse denials, no-progress escalation, and coherent current-digest traces | `uv run pytest tests/modules/workflow/test_execution_policy.py -q` |
+| CT-I2-006 | Implement package-defined classification/overlays and Execution Policy evaluation, the delivery sprint's mandatory stage gates, required perspectives, configurable limits, non-waivable independence/conflict rules, the separate declared family-diversity placement rules and their per-tier waivability, the no-progress rule, protected waivers, and software/non-engineering fixtures; the `fleet-lifecycle@1` package (§"The fleet-lifecycle policy package") adds its close-gate lifecycle fixtures — a resolved ticket with a live bound crew session is DENIED close with `crew-session-still-live`; the same ticket closes once the reporter supplies the episode's three current facts; a reporter outage yields `substrate-unobservable:<probe>` and close stays denied. | CT-I2-002..003 | Engineering Manager + Engineer + CSO | Kernel `workflow/`, `access/`; policy packs | Missing/invalid-bound/removal/client-count/independence/family-collapse denials, no-progress escalation, coherent current-digest traces, and the deny-then-close lifecycle fixtures | `uv run pytest tests/modules/workflow/test_execution_policy.py -q` |
 | CT-I2-007 | Implement Effects releases/environments, one live `systemd-vps/v1` integration plus its fault-injection test implementation, scoped grants/receipts, root-owned artifact trust verification, self-restart journal recovery, and effect reconciliation. Activation must commit the signed expected-source inventory revision before the first grant/effect. Keep the boundary internal until a second real provider Adapter earns a public Seam. | CT-I2-006, CT-I2-004 | DevOps + Engineer + CSO | Kernel `effects/`; `packages/ctower-systemd-vps/`; `deploy/systemd/`; effect conformance | Wrong-target/expired/direct/provenance denials, pre-activation inventory-update proof, missing-source restore denial, crash matrix, real staging/prod digest, self-upgrade recovery, and no generalized provider Seam | `uv run pytest tests/modules/effects tests/conformance/effect-provider -q` |
 | CT-I2-008 | Implement production smoke/live-QA incident -> grant revoke -> safe containment/rollback -> exact verification -> triage-before-repair and retro linkage. | CT-I2-007 | DevOps + CSO + QA | Kernel `effects/`, `attention/`, `workflow/`; runbooks | Injected smoke/live-QA failures, rollback receipt/verification, direct-repair denial | `uv run pytest tests/acceptance/increment-2/test_incident_rollback.py -q` |
 | CT-I2-009 | Implement Projections/Analytics for cost allocation, attention baseline, approved task-flow/priority/blocker measures, stage/recovery/release/stream/local-placement KPIs, Project Delivery projection visualizations/trends/cost-time and cross-domain views, retro, and improvement evaluation. | CT-I2-001..008 | Engineer + Commander/Tech-writer review | Kernel `projections/`, `work/`; Analytics surface | Allocation=1, precision, WIP provenance, KPI watermarks, Project Delivery projection invalidation/restore/cross-domain proofs, baseline/absolute targets, and retro evaluation | `uv run pytest tests/modules/projections tests/acceptance/increment-2/test_metrics.py -q` |

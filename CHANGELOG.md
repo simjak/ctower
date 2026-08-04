@@ -1,5 +1,25 @@
 # Changelog
 
+## [0.7.0](https://github.com/simjak/ctower/compare/v0.6.0...v0.7.0) (2026-08-03)
+
+
+### Features
+
+* **gate:** one required check, two record-backed facts ([#224](https://github.com/simjak/ctower/issues/224)) ([4d238a6](https://github.com/simjak/ctower/commit/4d238a6dfb5cdab6900b415466666c407ae57b6c))
+* **intake:** refuse the five prohibited data classes by name ([#222](https://github.com/simjak/ctower/issues/222)) ([3a5e87c](https://github.com/simjak/ctower/commit/3a5e87cec8623db9bcf5c190c503e7095978546a))
+* **record:** work sessions become facts the record can prove ([#258](https://github.com/simjak/ctower/issues/258)) ([2a0a98e](https://github.com/simjak/ctower/commit/2a0a98ed81d03aed48f70ef74cbe1bc8ad68a1ce))
+* **ui:** one crew in full — the profile behind every roster row ([#234](https://github.com/simjak/ctower/issues/234)) ([83a9bdb](https://github.com/simjak/ctower/commit/83a9bdb39ab78eb61959c93b1eca944e4f902648))
+* **ui:** the read-only operator surface over the shadow record ([#207](https://github.com/simjak/ctower/issues/207)) ([f8f73c5](https://github.com/simjak/ctower/commit/f8f73c5bc88b0caec67b6884e8044627ae4c72a0))
+* **workflow:** read the authored S7/S8 workflow definition ([#225](https://github.com/simjak/ctower/issues/225)) ([44bcc6e](https://github.com/simjak/ctower/commit/44bcc6e2a05194515976532f8f9709bc15cec8a3))
+
+
+### Bug Fixes
+
+* **record:** history must not block upgrade — scope migration invariants to the path that can prove them ([#244](https://github.com/simjak/ctower/issues/244)) ([de817c0](https://github.com/simjak/ctower/commit/de817c027d6b56a8a5c8c94e9065bf31ded9db20))
+* **record:** render the schema attestation canonically so a re-parse cannot fail it ([#248](https://github.com/simjak/ctower/issues/248)) ([528d38b](https://github.com/simjak/ctower/commit/528d38b2f1d03b1d70519c35371c871a436a6c35))
+* **spool:** surface the refusal payload on spool drain ([#256](https://github.com/simjak/ctower/issues/256)) ([5c89151](https://github.com/simjak/ctower/commit/5c89151348745c3d26a80ae2e8ac61d222f6c5bb))
+* **ui:** the eight defects QA found by using the board ([#246](https://github.com/simjak/ctower/issues/246)) ([96d3fdc](https://github.com/simjak/ctower/commit/96d3fdc8c8f2b3736422f070384fe9458eb64ad1))
+
 ## [0.6.0](https://github.com/simjak/ctower/compare/v0.5.0...v0.6.0) (2026-08-03)
 
 
