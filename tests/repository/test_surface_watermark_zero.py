@@ -139,8 +139,7 @@ class WatermarkZeroWiringTests(unittest.TestCase):
         self.assertIn(
             "defaultProjectKey()",
             source,
-            "the page never reads the portfolio, so the two empty cases cannot be "
-            "told apart",
+            "the page never reads the portfolio, so the two empty cases cannot be told apart",
         )
         self.assertIn(
             "portfolioWatermark",
