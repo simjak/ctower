@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from collections.abc import Callable, Mapping
 from datetime import datetime
 from typing import cast
 from uuid import UUID
@@ -15,30 +16,23 @@ from ctower_kernel.record.events import EventKind
 
 __all__: tuple[str, ...] = ()
 
+_FoldHandler = Callable[
+    [psycopg.Connection[dict[str, object]], UUID, dict[str, object], dict[str, object], int],
+    None,
+]
+
 
 def apply_message(
     connection: psycopg.Connection[dict[str, object]],
     tenant_id: UUID,
     message: dict[str, object],
 ) -> None:
-    kind = EventKind(str(message["kind"]))
+    handler = _FOLD_DISPATCH.get(EventKind(str(message["kind"])))
+    if handler is None:
+        return
     payload = cast(dict[str, object], message["event_payload"])
     position = int(cast(int, message["acceptance_position"]))
-    if kind is EventKind.TICKET_CREATED:
-        _create_card(connection, tenant_id, message, payload, position)
-    elif kind is EventKind.CUSTODY_TRANSFERRED:
-        _update_card(
-            connection,
-            tenant_id,
-            cast(UUID, message["aggregate_id"]),
-            position,
-            "custodian_id = %s, ticket_version = %s",
-            (UUID(str(payload["to_custodian_id"])), int(cast(int, message["sequence"]))),
-        )
-    elif kind is EventKind.WORK_CHANGED:
-        _apply_work(connection, tenant_id, message, payload, position)
-    elif kind is EventKind.WORKFLOW_CHANGED:
-        _apply_workflow(connection, tenant_id, message, payload, position)
+    handler(connection, tenant_id, message, payload, position)
 
 
 def read_view(dsn: str, tenant_id: UUID, query: BoardQuery | None, *, source: int) -> BoardView:
@@ -185,15 +179,14 @@ def _project_source(
         (
             tenant_id,
             project_key,
-            [
-                EventKind.TICKET_CREATED.value,
-                EventKind.CUSTODY_TRANSFERRED.value,
-                EventKind.WORK_CHANGED.value,
-                EventKind.WORKFLOW_CHANGED.value,
-            ],
+            [kind.value for kind in _board_source_event_kinds()],
         ),
     ).fetchone()
     return int(cast(int, row["value"])) if row is not None else 0
+
+
+def _board_source_event_kinds() -> tuple[EventKind, ...]:
+    return tuple(_FOLD_DISPATCH)
 
 
 def _create_card(
@@ -244,6 +237,23 @@ def _created_project(
     if row is None:
         raise ValueError("legacy ticket event has no authoritative project binding")
     return str(row["project_key"])
+
+
+def _apply_custody_transfer(
+    connection: psycopg.Connection[dict[str, object]],
+    tenant_id: UUID,
+    message: dict[str, object],
+    payload: dict[str, object],
+    position: int,
+) -> None:
+    _update_card(
+        connection,
+        tenant_id,
+        cast(UUID, message["aggregate_id"]),
+        position,
+        "custodian_id = %s, ticket_version = %s",
+        (UUID(str(payload["to_custodian_id"])), int(cast(int, message["sequence"]))),
+    )
 
 
 def _apply_work(
@@ -324,6 +334,14 @@ def _apply_workflow(
         """,
         (payload["stage"], activity, lane, lane, position, tenant_id, ticket_id),
     )
+
+
+_FOLD_DISPATCH: Mapping[EventKind, _FoldHandler] = {
+    EventKind.TICKET_CREATED: _create_card,
+    EventKind.CUSTODY_TRANSFERRED: _apply_custody_transfer,
+    EventKind.WORK_CHANGED: _apply_work,
+    EventKind.WORKFLOW_CHANGED: _apply_workflow,
+}
 
 
 def _set_lane(
