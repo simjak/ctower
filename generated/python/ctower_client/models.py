@@ -1,6 +1,6 @@
 """DO NOT EDIT: generated file; regenerate from declared inputs.
 
-Authored contract digest: sha256:1f61ab130cdc302ab1fee3d1dc4170e6327c88c7f1354f83490bc5b612d95abb
+Authored contract digest: sha256:d00b8f09df904b386fb961880d89046e3ee6e1f426ff317118ee8dc50738eb8c
 """
 
 from __future__ import annotations
@@ -793,10 +793,10 @@ class MigrationAliasCorrection(_BoundaryModel):
 
 class MigrationConservation(_BoundaryModel):
     selected_logical_items: Annotated[int, Field(ge=1, le=9007199254740991)]
-    selected_request_logical: Literal[86]
-    selected_request_physical_snapshots: Literal[243]
-    stable_aliases: Literal[27]
-    checkpoint_definitions: Literal[14]
+    selected_request_logical: Annotated[int, Field(ge=1, le=9007199254740991)]
+    selected_request_physical_snapshots: Annotated[int, Field(ge=1, le=9007199254740991)]
+    stable_aliases: Annotated[int, Field(ge=1, le=9007199254740991)]
+    checkpoint_definitions: Annotated[int, Field(ge=1, le=9007199254740991)]
     unresolved_aliases: Literal[0]
     alias_forks_or_cycles: Literal[0]
     missing_relation_endpoints: Literal[0]
@@ -934,9 +934,9 @@ class MigrationReconciliationGraph(_BoundaryModel):
     relations: tuple[Annotated[str, Field(min_length=1, max_length=8192)], ...]
     relation_endpoints: tuple[Annotated[str, Field(min_length=1, max_length=8192)], ...]
     source_links: tuple[Annotated[str, Field(min_length=1, max_length=8192)], ...]
-    checkpoint_definitions: Annotated[tuple[Annotated[str, Field(min_length=1, max_length=8192)], ...], Field(min_length=14, max_length=14)]
+    checkpoint_definitions: tuple[Annotated[str, Field(min_length=1, max_length=8192)], ...]
     checkpoint_criteria: tuple[Annotated[str, Field(min_length=1, max_length=8192)], ...]
-    project_delivery_rows: Annotated[tuple[Annotated[str, Field(min_length=1, max_length=8192)], ...], Field(min_length=14, max_length=14)]
+    project_delivery_rows: tuple[Annotated[str, Field(min_length=1, max_length=8192)], ...]
     events: tuple[Annotated[str, Field(min_length=1, max_length=8192)], ...]
     outbox_rows: tuple[Annotated[str, Field(min_length=1, max_length=8192)], ...]
     unexpected: Annotated[tuple[str, ...], Field(max_length=0)]

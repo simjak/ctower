@@ -223,16 +223,20 @@
           "minimum": 1
         },
         "selected_request_logical": {
-          "const": 86
+          "type": "integer",
+          "minimum": 1
         },
         "selected_request_physical_snapshots": {
-          "const": 243
+          "type": "integer",
+          "minimum": 1
         },
         "stable_aliases": {
-          "const": 27
+          "type": "integer",
+          "minimum": 1
         },
         "checkpoint_definitions": {
-          "const": 14
+          "type": "integer",
+          "minimum": 1
         },
         "unresolved_aliases": {
           "$ref": "#/$defs/zero"

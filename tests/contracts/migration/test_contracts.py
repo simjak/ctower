@@ -188,17 +188,23 @@ def test_cutover_health_preserves_degraded_truth_and_fail_closed_fence() -> None
             validator.validate(payload)
 
 
-def test_source_selection_freezes_exact_scope_counts_and_safe_paths() -> None:
+def test_source_selection_enforces_scope_and_safe_paths_but_not_exact_counts() -> None:
+    """gh#173: the schema no longer freezes selected_request_ids/stable_item_ids/
+    checkpoint_keys at the current corpus's exact size (86/27/14) — S5's signed-set
+    reconciliation is what proves the selection is exact, not a schema-level count."""
     validator = _validator("ctower-project-source-selection.schema.json")
     source = VECTOR["sealed_source"]
     inventories = _source_inventories()
     payload = _selection_payload()
     scope = dict(cast(dict[str, object], payload["cutover_scope"]))
     validator.validate(payload)
+    validator.validate(
+        {**payload, "selected_request_ids": source["mission_control_request_ids"][:-1]}
+    )
     invalid = (
         {**payload, "cutover_scope": {**scope, "project_key": "other"}},
         {**payload, "selected_task_ids": ["T1"]},
-        {**payload, "selected_request_ids": source["mission_control_request_ids"][:-1]},
+        {**payload, "selected_request_ids": []},
         {
             **payload,
             "source_inventories": [
@@ -210,6 +216,120 @@ def test_source_selection_freezes_exact_scope_counts_and_safe_paths() -> None:
     for candidate in invalid:
         with pytest.raises(ValidationError):
             validator.validate(candidate)
+
+
+def _field_schema(schema_name: str, *pointer: str) -> Draft202012Validator:
+    """A standalone validator for one field's subschema, resolved by absolute $ref
+    against the full cross-file registry so relative refs inside it (digest,
+    stringSet, ...) still resolve correctly in isolation."""
+    schemas, registry = _schemas_and_registry()
+    full = next(item for item in schemas if cast(str, item["$id"]).endswith(f"/{schema_name}"))
+    wrapper = {"$ref": f"{full['$id']}#/{'/'.join(pointer)}"}
+    return Draft202012Validator(wrapper, registry=registry)
+
+
+_REQUEST_IDS_40 = [f"R{i}" for i in range(1, 41)]
+_STABLE_IDS_9 = [f"CT-L0-{i:03d}" for i in range(1, 10)]
+_CHECKPOINT_KEYS_3 = [f"I1.{i}" for i in range(1, 4)]
+
+# (schema, json-pointer to the field, differently-sized valid corpus, still requires >=1 item)
+_CLEARED_ARRAY_SITES = (
+    (
+        "ctower-project-source-selection.schema.json",
+        ("properties", "selected_request_ids"),
+        _REQUEST_IDS_40,
+        True,
+    ),
+    (
+        "ctower-project-source-selection.schema.json",
+        ("properties", "stable_item_ids"),
+        _STABLE_IDS_9,
+        True,
+    ),
+    (
+        "ctower-project-source-selection.schema.json",
+        ("properties", "checkpoint_keys"),
+        _CHECKPOINT_KEYS_3,
+        True,
+    ),
+    (
+        "ctower-project-fence-registry.schema.json",
+        ("properties", "selected_request_ids"),
+        _REQUEST_IDS_40,
+        True,
+    ),
+    (
+        "ctower-project-fence-registry-v2.schema.json",
+        ("properties", "selected_request_ids"),
+        _REQUEST_IDS_40,
+        True,
+    ),
+    (
+        "ctower-project-alias-map-v2.schema.json",
+        ("properties", "stable_aliases"),
+        [{"stable_item_id": item, "target_ticket_id": str(uuid4())} for item in _STABLE_IDS_9],
+        True,
+    ),
+    (
+        "ctower-project-import-plan-v2.schema.json",
+        ("properties", "checkpoint_definitions"),
+        [
+            {
+                "checkpoint_key": key,
+                "catalog_revision": "synthetic-1",
+                "definition_digest": ZERO_DIGEST,
+                "criteria_digest": ZERO_DIGEST,
+            }
+            for key in _CHECKPOINT_KEYS_3
+        ],
+        True,
+    ),
+    (
+        "ctower-project-reconciliation-v2.schema.json",
+        ("$defs", "graph", "properties", "checkpoint_definitions"),
+        [f"checkpoint-{i}" for i in range(3)],
+        False,
+    ),
+    (
+        "ctower-project-reconciliation-v2.schema.json",
+        ("$defs", "graph", "properties", "project_delivery_rows"),
+        [f"delivery-{i}" for i in range(3)],
+        False,
+    ),
+)
+
+_CLEARED_CONSERVATION_INT_SITES = (
+    "selected_request_logical",
+    "selected_request_physical_snapshots",
+    "stable_aliases",
+    "checkpoint_definitions",
+)
+
+
+def test_cleared_array_cardinality_sites_accept_a_differently_sized_corpus() -> None:
+    """gh#173 tail: every remaining minItems/maxItems site that pinned an array at
+    86/27/14 items now accepts a differently-sized corpus, while the structural
+    invariant each field legitimately keeps (non-empty, unique) still fails closed."""
+    for schema_name, pointer, alt_corpus, requires_non_empty in _CLEARED_ARRAY_SITES:
+        field = _field_schema(schema_name, *pointer)
+        field.validate(alt_corpus)
+        if requires_non_empty:
+            with pytest.raises(ValidationError):
+                field.validate([])
+        else:
+            field.validate([])
+
+
+def test_cleared_conservation_const_sites_accept_a_differently_sized_corpus() -> None:
+    """gh#173 tail: the conservation counts that pinned const 86/243/27/14 now accept
+    any positive count, no longer just the current corpus's own size."""
+    for name in _CLEARED_CONSERVATION_INT_SITES:
+        field = _field_schema(
+            "ctower-project-reconciliation.schema.json", "$defs", "conservation", "properties", name
+        )
+        field.validate(5)
+        with pytest.raises(ValidationError):
+            field.validate(0)
 
 
 def test_import_batch_is_a_closed_64_item_union_without_proof_authority() -> None:
@@ -312,7 +432,7 @@ def test_fence_observations_can_degrade_but_never_enable_writes() -> None:
         fence.validate({**observation, "may_enable_writes": True})
 
 
-def _validator(name: str) -> Draft202012Validator:
+def _schemas_and_registry() -> tuple[list[dict[str, object]], Registry]:
     schemas = [
         json.loads(path.read_text(encoding="utf-8"))
         for path in sorted(CONTRACTS.glob("*.schema.json"))
@@ -320,7 +440,12 @@ def _validator(name: str) -> Draft202012Validator:
     registry = Registry().with_resources(
         (schema["$id"], Resource.from_contents(schema)) for schema in schemas
     )
-    schema = next(item for item in schemas if item["$id"].endswith(f"/{name}"))
+    return schemas, registry
+
+
+def _validator(name: str) -> Draft202012Validator:
+    schemas, registry = _schemas_and_registry()
+    schema = next(item for item in schemas if cast(str, item["$id"]).endswith(f"/{name}"))
     return Draft202012Validator(schema, registry=registry, format_checker=FormatChecker())
 
 

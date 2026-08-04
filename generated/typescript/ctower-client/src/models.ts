@@ -1,5 +1,5 @@
 // DO NOT EDIT: generated file; regenerate from declared inputs.
-// Authored contract digest: sha256:1f61ab130cdc302ab1fee3d1dc4170e6327c88c7f1354f83490bc5b612d95abb
+// Authored contract digest: sha256:d00b8f09df904b386fb961880d89046e3ee6e1f426ff317118ee8dc50738eb8c
 
 export type ActivityClass = "work" | "verification";
 
@@ -629,7 +629,7 @@ export type MigrationAliasCorrection = Readonly<{
 
 export type MigrationConservation = Readonly<{
   readonly "alias_forks_or_cycles": 0;
-  readonly "checkpoint_definitions": 14;
+  readonly "checkpoint_definitions": number;
   readonly "forbidden_data_items": 0;
   readonly "forbidden_relation_cycles": 0;
   readonly "missing_relation_endpoints": 0;
@@ -639,9 +639,9 @@ export type MigrationConservation = Readonly<{
   readonly "pass_two_projection_semantic_delta": 0;
   readonly "pass_two_record_position_delta": 0;
   readonly "selected_logical_items": number;
-  readonly "selected_request_logical": 86;
-  readonly "selected_request_physical_snapshots": 243;
-  readonly "stable_aliases": 27;
+  readonly "selected_request_logical": number;
+  readonly "selected_request_physical_snapshots": number;
+  readonly "stable_aliases": number;
   readonly "unexpected_sources": 0;
   readonly "unresolved_active_claims": 0;
   readonly "unresolved_aliases": 0;
