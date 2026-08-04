@@ -9,6 +9,8 @@ from typing import Any, cast
 
 import rfc8785
 
+from ctower_kernel.migration import _checkpoint_expectation_sql
+
 _ROOT = Path(__file__).parents[3]
 
 
@@ -85,11 +87,17 @@ def checkpoint_resource(
 
 
 def checkpoint_identity(checkpoint_key: str) -> dict[str, str]:
+    """Identity for `checkpoint_key`, with `criteria_digest` produced by the real kernel hash.
+
+    `criteria_digest` calls `_checkpoint_expectation_sql._criteria_digest` — the exact function
+    the server compares against at reconciliation — rather than a fixture-local reimplementation
+    of its material shape and hash, so a drift in the kernel's digest definition shows up here too.
+    """
     resource = checkpoint_resource(checkpoint_key)
     component = cast(dict[str, Any], resource["component"])
     payload = cast(dict[str, Any], resource["payload"])
     criteria = cast(list[dict[str, Any]], payload["criteria"])
-    material = [
+    rows: list[dict[str, object]] = [
         {
             "ordinal": ordinal,
             "criterion_key": criterion["key"],
@@ -103,5 +111,5 @@ def checkpoint_identity(checkpoint_key: str) -> dict[str, str]:
     return {
         "catalog_revision": f"{component['key']}@{component['revision']}",
         "definition_digest": str(component["content_digest"]),
-        "criteria_digest": f"sha256:{hashlib.sha256(rfc8785.dumps(material)).hexdigest()}",
+        "criteria_digest": _checkpoint_expectation_sql._criteria_digest(rows),
     }
