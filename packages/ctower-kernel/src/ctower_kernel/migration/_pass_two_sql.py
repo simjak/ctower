@@ -17,6 +17,7 @@ from psycopg.types.json import Jsonb
 from ctower_kernel.migration import _checkpoint_expectation_sql, _target_anomaly
 
 __all__ = [
+    "PassTwoReadiness",
     "TargetSnapshot",
     "capture",
     "evidence",
@@ -435,22 +436,34 @@ def zero_delta(before: TargetSnapshot, after: TargetSnapshot) -> bool:
     return before.digest == after.digest and before.body == after.body
 
 
+@dataclass(frozen=True, slots=True)
+class PassTwoReadiness:
+    """Whether pass two may start, with any checkpoint expectations it disagrees on."""
+
+    ready: bool
+    checkpoint_mismatches: tuple[_checkpoint_expectation_sql.CheckpointMismatch, ...]
+
+
 def ready_for_pass_two(
     connection: psycopg.Connection[dict[str, object]],
     run_id: UUID,
     snapshot: TargetSnapshot,
-) -> bool:
+) -> PassTwoReadiness:
     """Require the complete reviewed alias/Catalog projection at the run watermark."""
 
     measured = graph(snapshot.body)
-    return (
+    checkpoint_mismatches = _checkpoint_expectation_sql.mismatches(
+        connection, run_id, snapshot.body
+    )
+    ready = (
         snapshot.project_delivery_current
-        and _checkpoint_expectation_sql.matches(connection, run_id, snapshot.body)
+        and not checkpoint_mismatches
         and not any(
             cast(list[object], measured[key])
             for key in ("unexpected", "forbidden", "unresolved", "cycles")
         )
     )
+    return PassTwoReadiness(ready, checkpoint_mismatches)
 
 
 def evidence(
