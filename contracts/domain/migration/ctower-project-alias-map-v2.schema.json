@@ -27,8 +27,7 @@
     "created_at": {"type": "string", "format": "date-time"},
     "stable_aliases": {
       "type": "array",
-      "minItems": 27,
-      "maxItems": 27,
+      "minItems": 1,
       "uniqueItems": true,
       "items": {
         "type": "object",
