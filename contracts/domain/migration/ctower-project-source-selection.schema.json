@@ -67,8 +67,7 @@
     },
     "stable_item_ids": {
       "type": "array",
-      "minItems": 27,
-      "maxItems": 27,
+      "minItems": 1,
       "uniqueItems": true,
       "items": {
         "type": "string",
@@ -77,8 +76,7 @@
     },
     "checkpoint_keys": {
       "type": "array",
-      "minItems": 14,
-      "maxItems": 14,
+      "minItems": 1,
       "uniqueItems": true,
       "items": {
         "type": "string",
@@ -87,8 +85,7 @@
     },
     "selected_request_ids": {
       "type": "array",
-      "minItems": 86,
-      "maxItems": 86,
+      "minItems": 1,
       "uniqueItems": true,
       "items": {
         "type": "string",

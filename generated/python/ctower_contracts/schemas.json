@@ -4489,8 +4489,7 @@
             ],
             "type": "object"
           },
-          "maxItems": 27,
-          "minItems": 27,
+          "minItems": 1,
           "type": "array",
           "uniqueItems": true
         }
@@ -5939,8 +5938,7 @@
             "pattern": "^R[1-9][0-9]*$",
             "type": "string"
           },
-          "maxItems": 86,
-          "minItems": 86,
+          "minItems": 1,
           "type": "array",
           "uniqueItems": true
         },
@@ -6099,8 +6097,7 @@
             "pattern": "^R[1-9][0-9]*$",
             "type": "string"
           },
-          "maxItems": 86,
-          "minItems": 86,
+          "minItems": 1,
           "type": "array",
           "uniqueItems": true
         },
@@ -6786,8 +6783,7 @@
             ],
             "type": "object"
           },
-          "maxItems": 14,
-          "minItems": 14,
+          "minItems": 1,
           "type": "array",
           "uniqueItems": true
         },
@@ -7470,15 +7466,7 @@
               "$ref": "#/$defs/stringSet"
             },
             "checkpoint_definitions": {
-              "items": {
-                "maxLength": 8192,
-                "minLength": 1,
-                "type": "string"
-              },
-              "maxItems": 14,
-              "minItems": 14,
-              "type": "array",
-              "uniqueItems": true
+              "$ref": "#/$defs/stringSet"
             },
             "custody_intervals": {
               "$ref": "#/$defs/stringSet"
@@ -7513,15 +7501,7 @@
               "$ref": "#/$defs/stringSet"
             },
             "project_delivery_rows": {
-              "items": {
-                "maxLength": 8192,
-                "minLength": 1,
-                "type": "string"
-              },
-              "maxItems": 14,
-              "minItems": 14,
-              "type": "array",
-              "uniqueItems": true
+              "$ref": "#/$defs/stringSet"
             },
             "relation_endpoints": {
               "$ref": "#/$defs/stringSet"
@@ -7790,7 +7770,8 @@
               "$ref": "#/$defs/zero"
             },
             "checkpoint_definitions": {
-              "const": 14
+              "minimum": 1,
+              "type": "integer"
             },
             "forbidden_data_items": {
               "$ref": "#/$defs/zero"
@@ -7821,13 +7802,16 @@
               "type": "integer"
             },
             "selected_request_logical": {
-              "const": 86
+              "minimum": 1,
+              "type": "integer"
             },
             "selected_request_physical_snapshots": {
-              "const": 243
+              "minimum": 1,
+              "type": "integer"
             },
             "stable_aliases": {
-              "const": 27
+              "minimum": 1,
+              "type": "integer"
             },
             "unexpected_sources": {
               "$ref": "#/$defs/zero"
@@ -8198,8 +8182,7 @@
             "pattern": "^I[12]\\.[0-9]+$",
             "type": "string"
           },
-          "maxItems": 14,
-          "minItems": 14,
+          "minItems": 1,
           "type": "array",
           "uniqueItems": true
         },
@@ -8303,8 +8286,7 @@
             "pattern": "^R[1-9][0-9]*$",
             "type": "string"
           },
-          "maxItems": 86,
-          "minItems": 86,
+          "minItems": 1,
           "type": "array",
           "uniqueItems": true
         },
@@ -8406,8 +8388,7 @@
             "pattern": "^CT-(?:L0|I1|I2)-[0-9]{3}$",
             "type": "string"
           },
-          "maxItems": 27,
-          "minItems": 27,
+          "minItems": 1,
           "type": "array",
           "uniqueItems": true
         }
@@ -12807,7 +12788,7 @@
     {
       "id": "https://ctower.dev/contracts/domain/migration/ctower-project-alias-map-v2.schema.json",
       "path": "contracts/domain/migration/ctower-project-alias-map-v2.schema.json",
-      "sha256": "sha256:f3b065dd93697c1a7ea4253d7daddbd44b6bf78fd7052b23cf9de39431eb5e39"
+      "sha256": "sha256:8bca608ef4a2d0bc75b4dc0bc6a5bc57f8476bd720c555514192515ec5819dd3"
     },
     {
       "id": "https://ctower.dev/contracts/domain/migration/ctower-project-alias-map.schema.json",
@@ -12842,12 +12823,12 @@
     {
       "id": "https://ctower.dev/contracts/domain/migration/ctower-project-fence-registry-v2.schema.json",
       "path": "contracts/domain/migration/ctower-project-fence-registry-v2.schema.json",
-      "sha256": "sha256:5f0e8d08df4e0da0b636e03e3e280a98803119f9e981d1ef5eca3a45d6035f45"
+      "sha256": "sha256:b671b5c29fc2f5fd5b77df5eebb5e00c27bc64ad16cfef797bce9384cd5fb366"
     },
     {
       "id": "https://ctower.dev/contracts/domain/migration/ctower-project-fence-registry.schema.json",
       "path": "contracts/domain/migration/ctower-project-fence-registry.schema.json",
-      "sha256": "sha256:0b710ce622371b41dda81df74121a7ade2d31486854c61b599b817342aa09db2"
+      "sha256": "sha256:74a4f01aee643c410efb9235302861d267904b02cff1afdfb85e0271e48290d9"
     },
     {
       "id": "https://ctower.dev/contracts/domain/migration/ctower-project-import-batch.schema.json",
@@ -12862,7 +12843,7 @@
     {
       "id": "https://ctower.dev/contracts/domain/migration/ctower-project-import-plan-v2.schema.json",
       "path": "contracts/domain/migration/ctower-project-import-plan-v2.schema.json",
-      "sha256": "sha256:10eea7c9e7c633a941c60ab94240fdb58798fe0f1e9895103ae173044827104a"
+      "sha256": "sha256:24ae684938c9479fb84b6d42dfc9211f87971ec2bab62b8f12c77f97dc833ce7"
     },
     {
       "id": "https://ctower.dev/contracts/domain/migration/ctower-project-import-plan.schema.json",
@@ -12882,12 +12863,12 @@
     {
       "id": "https://ctower.dev/contracts/domain/migration/ctower-project-reconciliation-v2.schema.json",
       "path": "contracts/domain/migration/ctower-project-reconciliation-v2.schema.json",
-      "sha256": "sha256:4777fbecc08bcd63a71c6b59d795013b605fcb944c2e4ad47f3a0f5a3689ffad"
+      "sha256": "sha256:e15a062fd038cfeaecd9659e1eb9071d8782b72b6c7700b0148f0a260113e0d6"
     },
     {
       "id": "https://ctower.dev/contracts/domain/migration/ctower-project-reconciliation.schema.json",
       "path": "contracts/domain/migration/ctower-project-reconciliation.schema.json",
-      "sha256": "sha256:afe0ba1f1d844b2150b419687f34eaebd128d09e686c0de461cce26ffd408325"
+      "sha256": "sha256:0363b2e3f17ecbc0940a75f497250dfbe6933c4cbce5f08348e8eaa15a73020a"
     },
     {
       "id": "https://ctower.dev/contracts/domain/migration/ctower-project-source-link.schema.json",
@@ -12897,7 +12878,7 @@
     {
       "id": "https://ctower.dev/contracts/domain/migration/ctower-project-source-selection.schema.json",
       "path": "contracts/domain/migration/ctower-project-source-selection.schema.json",
-      "sha256": "sha256:66c8f18844ccc1a51a033906025e82989ca72d56fa40d9e8b6a19aecccea1199"
+      "sha256": "sha256:5c9a06a3e2808cd7bf80975dc1646e303bb9f3325995f30a9a8abd86d5cefcc8"
     },
     {
       "id": "https://ctower.dev/contracts/domain/migration/migration-boundary.schema.json",
