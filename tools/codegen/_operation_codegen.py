@@ -159,9 +159,10 @@ def _mutation_and_spool(
     spool = value.get("x-ctower-spool")
     if spool not in {"allowed", "forbidden"}:
         raise ValueError(f"{operation_id} lacks exact x-ctower-spool policy")
-    if not mutation and spool != "forbidden":
+    spool_policy: _SpoolPolicy = "allowed" if spool == "allowed" else "forbidden"
+    if not mutation and spool_policy != "forbidden":
         raise ValueError(f"query operation {operation_id} cannot be spooled")
-    return mutation, cast(_SpoolPolicy, spool)
+    return mutation, spool_policy
 
 
 def _principal_and_refusal(
