@@ -1457,3 +1457,54 @@ Rejected alternatives:
   rewritten.
 - Changing SPEC.md, ARCHITECTURE.md, or any contract to say ULID — the code evidence above shows that
   would move every one of those documents away from implementation truth, not toward it.
+
+## D37 — A published contract shape is immutable; version it instead of editing it in place (engineering clarification, 2026-08-04, gh#175)
+
+This is an implementation-consistency clarification, not a new operator-locked product choice and not a
+rewrite of D1–D36. `contracts/README.md` already says contracts are "versioned, immutable after
+publication"; this decision operationalizes that sentence for `contracts/evidence/evidence-manifest.schema.json`
+after gh#175 found it had not been followed, and fixes the mechanism so the next contract change cannot
+repeat the same silent break.
+
+**What happened.** PR #171's own branch commits already renamed `artifacts`→`criteria` and
+`deferred_sources`→`deferred_capabilities`, and the squash-merge that landed as `25f07b3` went further
+still — `deferred_capabilities`→`deferred_suites`, `criterionDisposition`'s required fields gained
+`criterion_source` and dropped `applicability_reason`, and `criterion_key`/`owner` moved from a single
+`stableKey` pattern to the source-typed `gatePolicyCriterionKey`/`acceptanceCriterionCode`/`ownerTicket`
+patterns in use today. All of this happened under the one unchanged `$id` and `schema.const:
+"ctower.evidence-manifest/v1"`. Zero consumers existed at the time (gh#175), so nothing broke in
+production, but the version identifier never signaled that the contract had changed shape at all — the
+next consumer would have inherited that ambiguity for free.
+
+**Going forward.** A schema's `schema.const`/`$id` marks a published shape. Once a schema file is merged
+to `main`, its normative shape — `required`, `properties`, `$defs`, and any `pattern`/`type`/`const`/`enum`/
+`$ref` therein — is immutable. `title`, `description`, and `$comment` stay free to edit; they carry no
+contract. An incompatible change (an added/removed/renamed required field, a narrowed or widened
+`pattern`/`type`/`enum`/`const`, a retargeted `$ref`) is published as a new version: a new file
+(`evidence-manifest-v2.schema.json`) with `$id` and `schema.const` bumped to `/v2`, mirroring the existing
+`contracts/domain/migration/ctower-project-*-v2.schema.json` precedent. It is never expressed by editing the
+`/v1` file's normative shape in place.
+
+**Mechanism.** `tests/contracts/evidence/test_evidence_manifest.py::TestSchemaVersioningDiscipline` locks
+the committed schema's normative shape to a recorded digest keyed by its declared `schema.const`. A future
+edit to that shape without a matching new version and a new recorded lock fails that test by name, naming
+the stale const and pointing at the `-v2.schema.json` precedent instead of another silent in-place edit.
+
+**Does not build gh#174.** gh#174 (binding `verdict_id`/`candidate_digest` onto each `criterionDisposition`
+row instead of a flat manifest-level `verdict_ids` array) remains queued behind this decision and is not
+implemented here. This decision only ensures that when gh#174 lands, it is expressible as a `/v2` bump
+under the mechanism above, not another change absorbed silently into `/v1`.
+
+Rejected alternatives:
+
+- Bumping `evidence-manifest` to `/v2` right now for gh#175 itself. Rejected: gh#175 confirms zero
+  consumers exist, so there is no live shape to protect by forking the file today, and the current `/v1`
+  shape is otherwise coherent and fully covered by `tests/contracts/evidence`. Documenting the discipline
+  and locking it mechanically is the smaller change that still satisfies gh#175's acceptance.
+- A schema-wide byte-identical lock (hashing the whole file, docstrings included). Rejected: it would force
+  a version bump for prose-only edits, which is not what "incompatible" means and would make the lock
+  something engineers route around instead of respecting.
+- Bumping `schema.const` to `/v2` inside the existing `evidence-manifest.schema.json` file rather than
+  publishing a new file. Rejected: it repeats exactly the defect this decision closes — a version string
+  that changes without a discoverable diff between two files — and breaks the file-per-version precedent
+  already established under `contracts/domain/migration/`.
