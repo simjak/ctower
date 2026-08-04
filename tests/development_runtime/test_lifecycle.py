@@ -314,6 +314,46 @@ def test_readiness_deadline_error_survives_a_cleanup_failure(
     assert "docker daemon unreachable" in notes
 
 
+def test_force_remove_container_succeeds_once_readback_confirms_absence(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    rm_calls: list[tuple[str, ...]] = []
+
+    def run(arguments: list[str], **_kwargs: object) -> SimpleNamespace:
+        rm_calls.append(tuple(arguments))
+        return SimpleNamespace(returncode=0)
+
+    monkeypatch.setattr(process_execution, "run", run)
+    monkeypatch.setattr(lifecycle, "docker_path", lambda: "/usr/bin/docker")
+    monkeypatch.setattr(lifecycle, "_container_exists", lambda _name: False)
+
+    lifecycle._force_remove_container("ctower-test-gone")
+
+    assert rm_calls == [("/usr/bin/docker", "container", "rm", "--force", "ctower-test-gone")]
+
+
+def test_force_remove_container_refuses_by_name_when_container_lingers(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Revert-probe: pre-fix `_force_remove_container` returned here silently."""
+    rm_calls: list[tuple[str, ...]] = []
+
+    def run(arguments: list[str], **_kwargs: object) -> SimpleNamespace:
+        rm_calls.append(tuple(arguments))
+        return SimpleNamespace(returncode=0)
+
+    monkeypatch.setattr(process_execution, "run", run)
+    monkeypatch.setattr(lifecycle, "docker_path", lambda: "/usr/bin/docker")
+    monkeypatch.setattr(lifecycle, "_container_exists", lambda _name: True)
+    monkeypatch.setattr(lifecycle, "_container_state", lambda _name: "running")
+
+    with pytest.raises(RuntimeError, match="ctower-test-stuck") as raised:
+        lifecycle._force_remove_container("ctower-test-stuck")
+
+    assert len(rm_calls) == lifecycle._FORCE_REMOVE_ATTEMPTS
+    assert "running" in str(raised.value)
+
+
 class _BootstrapClient:
     attempts: ClassVar[list[tuple[UUID, str]]] = []
     fail_first = True
