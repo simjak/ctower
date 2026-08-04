@@ -22,3 +22,9 @@ updates:
     commit-message:
       prefix: deps
       include: scope
+    # The canonical lock (requirements/verify.txt) is owned by the repo's own
+    # uv flow (docs/contributing/development.md). Exclude it from Dependabot so
+    # it bumps requirements/verify.in only and never recompiles the lock with
+    # its own resolver (which drops direct pins, e.g. setuptools). gh#251.
+    exclude-paths:
+      - verify.txt
