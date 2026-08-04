@@ -15,6 +15,7 @@ from uuid import uuid4
 
 import pytest
 import uvicorn
+from ctower_contracts import CATALOG
 
 from ctower_api import (
     development_config as config_module,
@@ -429,6 +430,7 @@ def test_development_api_composes_only_typed_same_artifact_adapters(
         "PostgresWork",
         "PostgresWorkflow",
         "PostgresRuntime",
+        "PostgresCatalog",
         "PostgresProjections",
         "PostgresAttention",
         "Proof",
@@ -448,6 +450,7 @@ def test_development_api_composes_only_typed_same_artifact_adapters(
         "create_app",
         lambda *args, **kwargs: observed.update(app=(args, kwargs)) or "app",
     )
+    monkeypatch.setattr(runtime_module, "development_catalog_store", lambda: "catalog-store")
     monkeypatch.setattr(
         uvicorn,
         "run",
@@ -464,6 +467,12 @@ def test_development_api_composes_only_typed_same_artifact_adapters(
         "log_level": "info",
         "access_log": False,
     }
+    app = cast(tuple[object, dict[str, object]], observed["app"])
+    assert app[1]["catalog"] == (
+        "PostgresCatalog",
+        ("ctower_runtime:False", CATALOG, "catalog-store"),
+        {"key_reference": "vault:development-catalog-key"},
+    )
 
 
 def test_development_worker_composes_finalizer_and_stops_by_signal(

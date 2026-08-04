@@ -12,7 +12,9 @@ from pathlib import Path
 from threading import Event
 
 import uvicorn
+from ctower_contracts import CATALOG
 
+from ctower_api._development_catalog_store import development_catalog_store
 from ctower_api._routine_loop import load_routine_revisions
 from ctower_api.control_worker import build_worker
 from ctower_api.development_config import load_config, load_state
@@ -27,6 +29,7 @@ from ctower_api.synthetic_handler import SyntheticFourStageHandler, SyntheticPol
 from ctower_client import CtowerClient
 from ctower_kernel.attention import Attention
 from ctower_kernel.attention.postgres import PostgresAttention
+from ctower_kernel.catalog import PostgresCatalog
 from ctower_kernel.projections import Projections
 from ctower_kernel.projections.postgres import PostgresProjections
 from ctower_kernel.proof import Proof, ProofPolicy
@@ -127,6 +130,12 @@ def api_main() -> None:
                 policy_digests=_policy_digests(packs),
             ),
             work=Work(record, writer=PostgresWork(runtime_dsn)),
+            catalog=PostgresCatalog(
+                runtime_dsn,
+                CATALOG,
+                development_catalog_store(),
+                key_reference="vault:development-catalog-key",
+            ),
             projections=Projections(PostgresProjections(projection_dsn)),
             attention=Attention(PostgresAttention(runtime_dsn)),
             synthetic_runtime=FixedOperations(runtime_store),

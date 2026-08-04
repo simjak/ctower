@@ -71,7 +71,7 @@ def test_product_code_has_no_configured_seat_key_branch() -> None:
         for path in root.rglob("*.py"):
             tree = ast.parse(path.read_text(encoding="utf-8"), filename=str(path))
             hits.extend(
-                f"{path.relative_to(ROOT)}:{node.lineno}:{node.value}"
+                f"{path.relative_to(ROOT)}:{node.lineno}:{node.value!s}"
                 for node in ast.walk(tree)
                 if isinstance(node, ast.Constant) and node.value in configured_keys
             )
