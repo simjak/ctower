@@ -24,6 +24,7 @@ from ctower_client.models import (
     MigrationImportOperationResult,
 )
 from ctower_kernel.migration import (
+    _checkpoint_expectation_sql,
     _link_sql,
     _pass_state_sql,
     _pass_two_sql,
@@ -383,11 +384,11 @@ def _prepare_pass_two(
         if request.batch_index != 0:
             return _problem(None, "migration-run-conflict", "Pass two must start at batch zero")
         start = _pass_two_sql.capture(connection, request.run_id)
-        if not _pass_two_sql.ready_for_pass_two(connection, request.run_id, start):
-            return _problem(
-                None,
-                "migration-run-conflict",
+        readiness = _pass_two_sql.ready_for_pass_two(connection, request.run_id, start)
+        if not readiness.ready:
+            return _checkpoint_conflict(
                 "Project Delivery target is not current for pass two",
+                readiness.checkpoint_mismatches,
             )
         _pass_state_sql.transition(
             connection,
@@ -665,6 +666,25 @@ def _operation_drift(operation: CtowerProjectImportOperation, title: str) -> Rec
 
 def _problem(command_id: UUID | None, code: str, title: str, status: int = 409) -> RecordProblem:
     return RecordProblem(code, title, status, title, command_id)
+
+
+def _checkpoint_conflict(
+    title: str,
+    mismatches: tuple[_checkpoint_expectation_sql.CheckpointMismatch, ...],
+) -> RecordProblem:
+    if not mismatches:
+        return _problem(None, "migration-run-conflict", title)
+    detail = f"{title}: " + "; ".join(
+        f"{item.checkpoint_key} ({item.detail})" for item in mismatches
+    )
+    return RecordProblem(
+        "migration-run-conflict",
+        detail,
+        409,
+        title,
+        None,
+        unmet_facts=tuple(f"checkpoint:{item.checkpoint_key}" for item in mismatches),
+    )
 
 
 def _uuid7(now: datetime) -> UUID:
