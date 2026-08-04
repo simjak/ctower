@@ -7,6 +7,7 @@ import json
 import secrets
 from collections.abc import Iterator
 from contextlib import contextmanager
+from dataclasses import dataclass
 from datetime import datetime
 from typing import Any, cast
 from uuid import UUID
@@ -97,19 +98,18 @@ def _finalize(
             return _problem(command_id, "migration-import-finalization-refused")
         _lock_run_tickets(connection, actor, request.run_id)
         graph, pass_two = _pass_two_sql.evidence(connection, request.run_id)
-        if (
-            graph is None
-            or pass_two is None
-            or not _current_target_matches(connection, request.run_id, graph)
-            or not _artifact_matches(
-                artifact,
-                run,
-                graph,
-                pass_two,
-                report_digest,
-            )
-        ):
-            return _problem(command_id, "migration-import-finalization-refused")
+        refusal = _target_refusal(
+            connection,
+            request.run_id,
+            run,
+            graph,
+            pass_two,
+            artifact,
+            report_digest,
+            command_id,
+        )
+        if refusal is not None:
+            return refusal
         event_id, position = _commit_reconciliation(
             connection,
             actor,
@@ -134,18 +134,46 @@ def _finalize(
         return result
 
 
+@dataclass(frozen=True, slots=True)
+class _TargetMatch:
+    matches: bool
+    checkpoint_mismatches: tuple[_checkpoint_expectation_sql.CheckpointMismatch, ...]
+
+
+def _target_refusal(
+    connection: psycopg.Connection[dict[str, object]],
+    run_id: UUID,
+    run: CtowerProjectImportRun,
+    graph: dict[str, object] | None,
+    pass_two: dict[str, object] | None,
+    artifact: dict[str, Any],
+    report_digest: str,
+    command_id: UUID,
+) -> RecordProblem | None:
+    if graph is None or pass_two is None:
+        return _problem(command_id, "migration-import-finalization-refused")
+    target = _current_target_matches(connection, run_id, graph)
+    if target.matches and _artifact_matches(artifact, run, graph, pass_two, report_digest):
+        return None
+    if target.checkpoint_mismatches:
+        return _checkpoint_conflict(command_id, target.checkpoint_mismatches)
+    return _problem(command_id, "migration-import-finalization-refused")
+
+
 def _current_target_matches(
     connection: psycopg.Connection[dict[str, object]],
     run_id: UUID,
     expected_graph: dict[str, object],
-) -> bool:
+) -> _TargetMatch:
     current = _pass_two_sql.capture(connection, run_id)
     actual_graph = _pass_two_sql.graph(current.body)
-    return (
+    checkpoint_mismatches = _checkpoint_expectation_sql.mismatches(connection, run_id, current.body)
+    matches = (
         current.project_delivery_current
-        and _checkpoint_expectation_sql.matches(connection, run_id, current.body)
+        and not checkpoint_mismatches
         and actual_graph == expected_graph
     )
+    return _TargetMatch(matches, checkpoint_mismatches)
 
 
 def _retry_serialization(
@@ -504,6 +532,23 @@ def _problem(command_id: UUID, code: str) -> RecordProblem:
         409,
         "Finalization refused",
         command_id,
+    )
+
+
+def _checkpoint_conflict(
+    command_id: UUID,
+    mismatches: tuple[_checkpoint_expectation_sql.CheckpointMismatch, ...],
+) -> RecordProblem:
+    detail = "Import run finalization refused: " + "; ".join(
+        f"{item.checkpoint_key} ({item.detail})" for item in mismatches
+    )
+    return RecordProblem(
+        "migration-import-finalization-refused",
+        detail,
+        409,
+        "Finalization refused",
+        command_id,
+        unmet_facts=tuple(f"checkpoint:{item.checkpoint_key}" for item in mismatches),
     )
 
 
