@@ -69,8 +69,7 @@
     },
     "selected_request_ids": {
       "type": "array",
-      "minItems": 86,
-      "maxItems": 86,
+      "minItems": 1,
       "uniqueItems": true,
       "items": {
         "type": "string",
