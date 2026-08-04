@@ -30,7 +30,7 @@ from __future__ import annotations
 
 import unittest
 from pathlib import Path
-from typing import TYPE_CHECKING, Any, cast
+from typing import TYPE_CHECKING, Any
 
 if TYPE_CHECKING:
     from repository import _typescript_modules as ts
@@ -57,7 +57,7 @@ def _kind(name: str) -> str:
     case = _outcomes()[name]
     if not isinstance(case, str):
         raise TypeError(f"watermark-zero case {name} is not a string kind")
-    return cast("str", case)
+    return case
 
 
 class WatermarkZeroDecisionTests(unittest.TestCase):
