@@ -22,7 +22,7 @@ pytest-cov==7.1.0
 referencing==0.37.0
 rfc8785==0.1.4
 ruff==0.15.22
-ruamel.yaml==0.18.14
+ruamel.yaml==0.19.1
 SecretStorage==3.5.0
 setuptools==83.0.0
 types-jsonschema==4.26.0.20260518
