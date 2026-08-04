@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.7.2](https://github.com/simjak/ctower/compare/v0.7.1...v0.7.2) (2026-08-04)
+
+
+### Bug Fixes
+
+* **deps:** four held bumps via the canonical lock flow + lock-freshness catch — fastapi 0.141.1, uv 0.12.1, ruamel-yaml 0.19.1, ruff 0.16.1 ([#271](https://github.com/simjak/ctower/issues/271)) ([b76e406](https://github.com/simjak/ctower/commit/b76e4068da8f0feee025e517319308cad39d263e))
+
 ## [0.7.1](https://github.com/simjak/ctower/compare/v0.7.0...v0.7.1) (2026-08-04)
 
 
