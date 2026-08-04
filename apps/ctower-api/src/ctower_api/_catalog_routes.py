@@ -95,7 +95,11 @@ def _install_validate(
             return parsed
         actor, bundle, _ = parsed
         outcome = catalog.validate(actor, bundle)
-        return _catalog_response(outcome, CompanyBundleValidationResult)
+        return _catalog_response(
+            outcome,
+            CompanyBundleValidationResult,
+            problem_statuses=frozenset({401, 403, 422}),
+        )
 
 
 def _install_plan(
@@ -111,7 +115,11 @@ def _install_plan(
             return parsed
         actor, bundle, _ = parsed
         outcome = catalog.plan(actor, bundle)
-        return _catalog_response(outcome, HttpCompanyBundlePlan)
+        return _catalog_response(
+            outcome,
+            HttpCompanyBundlePlan,
+            problem_statuses=frozenset({401, 403, 409, 422}),
+        )
 
 
 def _install_apply(
@@ -268,10 +276,22 @@ def _kernel_bundle(document: CompanyBundleDocument) -> CompanyBundle:
 def _catalog_response(
     outcome: BundleValidation | CompanyBundlePlan | CatalogProblem,
     boundary_model: type[CompanyBundleValidationResult | HttpCompanyBundlePlan],
+    *,
+    problem_statuses: frozenset[int],
 ) -> JSONResponse:
     if isinstance(outcome, CatalogProblem):
-        return _problem_response(outcome)
+        return _catalog_problem_response(outcome, allowed_statuses=problem_statuses)
     boundary = boundary_model.model_validate_json(
         _encoded(outcome.model_dump(mode="json", by_alias=True))
     )
     return JSONResponse(content=boundary.model_dump(mode="json", by_alias=True))
+
+
+def _catalog_problem_response(
+    problem: CatalogProblem,
+    *,
+    allowed_statuses: frozenset[int],
+) -> JSONResponse:
+    if problem.status in allowed_statuses:
+        return _problem_response(problem)
+    return _problem_response(problem.model_copy(update={"status": 422}))
