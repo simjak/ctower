@@ -405,7 +405,9 @@
         "AC-PD-04",
         "AC-PD-07",
         "AC-PD-08",
-        "AC-PD-09"
+        "AC-PD-09",
+        "INV-66",
+        "AC-PD-10"
       ]
     },
     {
@@ -421,7 +423,9 @@
         "AC-PD-05",
         "AC-PD-07",
         "AC-PD-08",
-        "AC-PD-09"
+        "AC-PD-09",
+        "INV-66",
+        "AC-PD-10"
       ]
     },
     {
@@ -440,7 +444,13 @@
         "INV-34",
         "INV-57",
         "AC-TM-02",
-        "AC-TM-05"
+        "AC-TM-05",
+        "SPEC#board-card-context",
+        "INV-66",
+        "INV-67",
+        "AC-TM-07",
+        "AC-TM-08",
+        "AC-PD-10"
       ]
     },
     {
@@ -625,7 +635,10 @@
         "AC-PD-01",
         "AC-PD-07",
         "AC-PD-08",
-        "AC-PD-09"
+        "AC-PD-09",
+        "SPEC#board-card-context",
+        "INV-66",
+        "AC-PD-10"
       ]
     },
     {
@@ -1833,6 +1846,68 @@
         "SPEC#executable-authority-and-requirement-traceability",
         "AC-DUR-06",
         "AC-DUR-07"
+      ]
+    },
+    {
+      "path": "contracts/components/label-vocabulary.schema.json",
+      "references": [
+        "SPEC#universal-versionedcomponent-catalog-and-company-desired-state",
+        "SPEC#board-card-context",
+        "INV-45",
+        "INV-66",
+        "AC-COMP-01",
+        "AC-TM-07"
+      ]
+    },
+    {
+      "path": "contracts/components/attention-kind-catalog.schema.json",
+      "references": [
+        "SPEC#universal-versionedcomponent-catalog-and-company-desired-state",
+        "SPEC#attention-findings-feed",
+        "INV-45",
+        "INV-67",
+        "AC-COMP-01",
+        "AC-ATT-01"
+      ]
+    },
+    {
+      "path": "packages/ctower-kernel/migrations/0042_checkpoint_delivery_surface.sql",
+      "references": [
+        "SPEC#project-delivery-projection",
+        "SPEC#board-card-context",
+        "INV-66",
+        "AC-PD-10"
+      ]
+    },
+    {
+      "path": "packages/ctower-kernel/migrations/0043_context_set_catalogs.sql",
+      "references": [
+        "SPEC#board-card-context",
+        "SPEC#attention-findings-feed",
+        "INV-45",
+        "INV-66",
+        "INV-67",
+        "AC-TM-07",
+        "AC-ATT-01"
+      ]
+    },
+    {
+      "path": "packages/ctower-kernel/migrations/0044_ticket_change_and_label_facts.sql",
+      "references": [
+        "SPEC#board-card-context",
+        "SPEC#task-management-foundation",
+        "INV-66",
+        "AC-TM-07"
+      ]
+    },
+    {
+      "path": "packages/ctower-kernel/migrations/0045_attention_findings.sql",
+      "references": [
+        "SPEC#attention-findings-feed",
+        "SPEC#human-gate-needs-you-and-resume",
+        "INV-67",
+        "AC-ATT-01",
+        "AC-ATT-02"
       ]
     }
   ]

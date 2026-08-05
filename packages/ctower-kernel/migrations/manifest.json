@@ -1,10 +1,10 @@
 {
   "schema": "ctower.migrations/v3",
   "adoption_baseline": {
-    "through": "0041_recorded_work_sessions.sql",
-    "schema_sha256": "sha256:ad3f2248693670242dfeea80db39d9ad542caf83302e1ea7a24719444eaf58aa",
+    "through": "0045_attention_findings.sql",
+    "schema_sha256": "sha256:49fb02c1288d712afa969ba0a626b582ec515406b8b30ba08b25398355467b5c",
     "semantic_checks": "ctower.pre-ledger/v1",
-    "schema_object_sum256": "sum256:325deaeed7298f7c5f375a0e33403c8ffdea75cc4f1e9296039538f5f2f9615a"
+    "schema_object_sum256": "sum256:ca28b65a617c0ff60086c41c8b9d7e655792528e43cf2d37f20cc077ac538522"
   },
   "migrations": [
     {
@@ -395,6 +395,42 @@
       "forward_test": "pytest:tests/acceptance/increment-1/test_work_sessions.py::test_ticket_returns_its_sessions_ordered_with_seat_model_duration_tokens_and_outcome",
       "rollback_or_forward_compensation": "Recorded work sessions are append-only facts with no projection to rebuild; forward compensation appends corrective session facts and never edits or deletes a committed session, transition, or closure row.",
       "backup_checkpoint": "Before applying to a nonempty installation, capture session, transition, and closure counts grouped by tenant and project plus a verified database backup."
+    },
+    {
+      "path": "0042_checkpoint_delivery_surface.sql",
+      "sha256": "sha256:5341c25e16cd7804710c2ee5eb408aa726a566e5475d11c1a2f96ac8a011507c",
+      "minimum_service_version": "0.0.0",
+      "maximum_service_version": "0.0.0",
+      "forward_test": "pytest:tests/modules/projections/test_project_delivery_fold.py::test_delivery_surface_declaration_reads_three_explicit_states",
+      "rollback_or_forward_compensation": "The three delivery-surface columns are nullable additive columns read only by new code; forward compensation appends a corrective checkpoint definition revision and never edits or deletes an accepted one.",
+      "backup_checkpoint": "Before applying to a nonempty installation, capture a verified database backup; the added columns default to NULL (undeclared) for every existing row."
+    },
+    {
+      "path": "0043_context_set_catalogs.sql",
+      "sha256": "sha256:9ea642ec0b8f4088dc55b9a2cc29877ac023b1597a7e5b2df6d35a6e3fd9cde2",
+      "minimum_service_version": "0.0.0",
+      "maximum_service_version": "0.0.0",
+      "forward_test": "pytest:tests/contracts/components/test_label_vocabulary_catalog.py::test_label_vocabulary_mutation_changes_surface_without_product_code_edit",
+      "rollback_or_forward_compensation": "New catalog kinds and empty revision/member tables; forward compensation appends a corrective CompanyBundle publication and never edits or deletes an accepted catalog revision.",
+      "backup_checkpoint": "Before applying to a nonempty installation, capture a verified database backup; both new catalogs start with zero published revisions."
+    },
+    {
+      "path": "0044_ticket_change_and_label_facts.sql",
+      "sha256": "sha256:928ec1b01b3d3a65ce8a0d09399f7c6647fc033970b96eb411cadd235fd4f07b",
+      "minimum_service_version": "0.0.0",
+      "maximum_service_version": "0.0.0",
+      "forward_test": "pytest:tests/acceptance/increment-1/test_board_context_set.py::test_change_references_and_applied_labels_are_recorded_exactly",
+      "rollback_or_forward_compensation": "Change references and applied labels are append-only ticket facts with no projection to rebuild; forward compensation appends a corrective fact and never edits or deletes a committed one.",
+      "backup_checkpoint": "Before applying to a nonempty installation, capture a verified database backup; both new tables start empty for every existing ticket."
+    },
+    {
+      "path": "0045_attention_findings.sql",
+      "sha256": "sha256:d675b845a28278c21c2de36bb0e2ee50e0e28fd219edc9f6faa11a2ab08b1b5a",
+      "minimum_service_version": "0.0.0",
+      "maximum_service_version": "0.0.0",
+      "forward_test": "pytest:tests/acceptance/increment-1/test_board_context_set.py::test_human_waiting_qualifies_only_from_an_open_operator_owned_finding",
+      "rollback_or_forward_compensation": "Findings and dispositions are append-only facts with no projection to rebuild; forward compensation appends a corrective finding or disposition and never edits or deletes a committed one.",
+      "backup_checkpoint": "Before applying to a nonempty installation, capture a verified database backup; both new tables start empty."
     }
   ]
 }

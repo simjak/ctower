@@ -15,6 +15,7 @@ __all__ = [
     "CtowerProjectCutoverHealth",
     "DeliveryFacts",
     "DeliveryState",
+    "DeliverySurfaceDeclaration",
     "EvidenceSlotFact",
     "EvidenceSlotState",
     "MigrationHealthDigests",
@@ -22,6 +23,10 @@ __all__ = [
     "ProjectDeliveryView",
     "SeatCatalogReference",
     "SeatIdentity",
+    "SurfaceDeclarationState",
+    "SurfaceEnvironmentsField",
+    "SurfaceIdentityField",
+    "delivery_surface_from_columns",
     "derive_project_delivery_row",
 ]
 
@@ -144,6 +149,117 @@ _MATURITY_STATES = frozenset(
 )
 
 
+class SurfaceDeclarationState(StrEnum):
+    """AC-PD-10's exact three states for one delivery-surface field."""
+
+    DECLARED_PRESENT = "declared_present"
+    DECLARED_ABSENT = "declared_absent"
+    UNDECLARED = "undeclared"
+
+
+@dataclass(frozen=True, slots=True)
+class SurfaceIdentityField:
+    """A landing-boundary or externally-effective-outcome declaration."""
+
+    state: SurfaceDeclarationState
+    identity: str | None = None
+
+    def __post_init__(self) -> None:
+        has_identity = self.identity is not None
+        if (self.state is SurfaceDeclarationState.DECLARED_PRESENT) != has_identity:
+            raise ValueError("a present surface field carries identity, and only a present one")
+
+    def response_payload(self) -> dict[str, object]:
+        return {"state": self.state.value, "identity": self.identity}
+
+
+@dataclass(frozen=True, slots=True)
+class SurfaceEnvironmentsField:
+    """A non-production-environments declaration."""
+
+    state: SurfaceDeclarationState
+    environments: tuple[str, ...] = ()
+
+    def __post_init__(self) -> None:
+        has_environments = len(self.environments) > 0
+        if (self.state is SurfaceDeclarationState.DECLARED_PRESENT) != has_environments:
+            raise ValueError(
+                "a present environments field carries environments, and only a present one"
+            )
+
+    def response_payload(self) -> dict[str, object]:
+        return {"state": self.state.value, "environments": list(self.environments)}
+
+
+_UNDECLARED_IDENTITY = SurfaceIdentityField(SurfaceDeclarationState.UNDECLARED)
+_UNDECLARED_ENVIRONMENTS = SurfaceEnvironmentsField(SurfaceDeclarationState.UNDECLARED)
+
+
+@dataclass(frozen=True, slots=True)
+class DeliverySurfaceDeclaration:
+    """A checkpoint's own pinned delivery-surface declaration, AC-PD-10."""
+
+    landing_boundary: SurfaceIdentityField = _UNDECLARED_IDENTITY
+    non_production_environments: SurfaceEnvironmentsField = _UNDECLARED_ENVIRONMENTS
+    externally_effective_outcome: SurfaceIdentityField = _UNDECLARED_IDENTITY
+
+    def response_payload(self) -> dict[str, object]:
+        return {
+            "landing_boundary": self.landing_boundary.response_payload(),
+            "non_production_environments": self.non_production_environments.response_payload(),
+            "externally_effective_outcome": self.externally_effective_outcome.response_payload(),
+        }
+
+
+def delivery_surface_from_columns(
+    landing_boundary: object,
+    non_production_environments: object,
+    externally_effective_outcome: object,
+) -> DeliverySurfaceDeclaration:
+    """Parse the three nullable jsonb declaration columns AC-PD-10 defines."""
+
+    return DeliverySurfaceDeclaration(
+        landing_boundary=_identity_field(landing_boundary),
+        non_production_environments=_environments_field(non_production_environments),
+        externally_effective_outcome=_identity_field(externally_effective_outcome),
+    )
+
+
+def _identity_field(declaration: object) -> SurfaceIdentityField:
+    if declaration is None:
+        return SurfaceIdentityField(SurfaceDeclarationState.UNDECLARED)
+    value = _mapping(declaration)
+    if str(value["declared"]) == "absent":
+        return SurfaceIdentityField(SurfaceDeclarationState.DECLARED_ABSENT)
+    return SurfaceIdentityField(
+        SurfaceDeclarationState.DECLARED_PRESENT, identity=str(value["identity"])
+    )
+
+
+def _environments_field(declaration: object) -> SurfaceEnvironmentsField:
+    if declaration is None:
+        return SurfaceEnvironmentsField(SurfaceDeclarationState.UNDECLARED)
+    value = _mapping(declaration)
+    if str(value["declared"]) == "absent":
+        return SurfaceEnvironmentsField(SurfaceDeclarationState.DECLARED_ABSENT)
+    return SurfaceEnvironmentsField(
+        SurfaceDeclarationState.DECLARED_PRESENT,
+        environments=tuple(str(item) for item in _sequence(value["environments"])),
+    )
+
+
+def _mapping(value: object) -> dict[str, object]:
+    if not isinstance(value, dict):
+        raise TypeError("a delivery-surface declaration column must decode to an object")
+    return value
+
+
+def _sequence(value: object) -> list[object]:
+    if not isinstance(value, list):
+        raise TypeError("a delivery-surface environments field must decode to an array")
+    return value
+
+
 @dataclass(frozen=True, slots=True)
 class CheckpointDefinition:
     """Versioned checkpoint semantics, never a mutable status row."""
@@ -154,6 +270,7 @@ class CheckpointDefinition:
     accountable_owner: str
     criteria: tuple[str, ...]
     applicable_states: frozenset[DeliveryState]
+    delivery_surface: DeliverySurfaceDeclaration = DeliverySurfaceDeclaration()
 
     def __post_init__(self) -> None:
         if not self.criteria or len(set(self.criteria)) != len(self.criteria):
@@ -230,6 +347,7 @@ class ProjectDeliveryRow:
     qualifying_stage_slots_required: int = 0
     qualifying_stage_unfilled_or_unknown_slot_keys: tuple[str, ...] = ()
     qualifying_stage_slots: tuple[EvidenceSlotFact, ...] = ()
+    delivery_surface: DeliverySurfaceDeclaration = DeliverySurfaceDeclaration()
 
     def __post_init__(self) -> None:
         if (
@@ -266,6 +384,7 @@ class ProjectDeliveryRow:
                 "declared": self.declared_criteria,
                 "proven": self.proven_criteria,
             },
+            "delivery_surface": self.delivery_surface.response_payload(),
             "derivation_reasons": list(self.derivation_reasons),
             "durability": self.durability,
             "freshness": self.freshness,
@@ -448,6 +567,7 @@ def derive_project_delivery_row(
         qualifying_stage_slots_required=len(slots),
         qualifying_stage_unfilled_or_unknown_slot_keys=unresolved_slots,
         qualifying_stage_slots=slots,
+        delivery_surface=definition.delivery_surface,
     )
 
 
@@ -523,6 +643,7 @@ def _semantic_digest(
         "checkpoint_key": definition.key,
         "criteria": {"declared": len(definition.criteria), "proven": len(proven)},
         "data_class": data_class,
+        "delivery_surface": definition.delivery_surface.response_payload(),
         "derivation_reasons": reasons,
         "durability": durability,
         "headline_state": headline.value,

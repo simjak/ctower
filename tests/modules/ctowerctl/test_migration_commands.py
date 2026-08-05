@@ -29,9 +29,13 @@ from ctower_client.models import (
     ProjectDeliveryRow,
     ProjectDeliverySeat,
     ProjectDeliverySlot,
+    ProjectDeliverySurfaceDeclaration,
     ProjectDeliveryUnassignedSeatAssignment,
     ProjectDeliveryView,
     SeatCatalogRevision,
+    SurfaceDeclarationState,
+    SurfaceEnvironmentsField,
+    SurfaceIdentityField,
 )
 from ctowerctl import _migration_commands, interface
 from ctowerctl._output import ExitCode
@@ -76,6 +80,17 @@ def _epoch(run_id: UUID, cutover_id: UUID) -> CtowerProjectEpochRefusalRequest:
         cutover_id=cutover_id,
         reconciliation_digest=ZERO_DIGEST,
         fence_registry_digest=ZERO_DIGEST,
+    )
+
+
+def _undeclared_surface() -> ProjectDeliverySurfaceDeclaration:
+    undeclared = SurfaceIdentityField(state=SurfaceDeclarationState.UNDECLARED, identity=None)
+    return ProjectDeliverySurfaceDeclaration(
+        landing_boundary=undeclared,
+        non_production_environments=SurfaceEnvironmentsField(
+            state=SurfaceDeclarationState.UNDECLARED, environments=()
+        ),
+        externally_effective_outcome=undeclared,
     )
 
 
@@ -389,6 +404,7 @@ class _MigrationClient:
                     outcome="reviewed reconstructible engineering work",
                     accountable_owner="operator",
                     criteria=ProjectDeliveryCriteria(proven=5, declared=6),
+                    delivery_surface=_undeclared_surface(),
                     qualifying_stage_slots_filled=1,
                     qualifying_stage_slots_required=2,
                     qualifying_stage_unfilled_or_unknown_slot_keys=("cp3-d-proof",),

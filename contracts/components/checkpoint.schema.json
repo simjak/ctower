@@ -58,9 +58,62 @@
         "type": "string",
         "pattern": "^[a-z][a-z0-9.-]{2,127}@[1-9][0-9]*$"
       }
+    },
+    "delivery_surface": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "landing_boundary": {"$ref": "#/$defs/surface_identity_field"},
+        "non_production_environments": {"$ref": "#/$defs/surface_environments_field"},
+        "externally_effective_outcome": {"$ref": "#/$defs/surface_identity_field"}
+      }
     }
   },
   "$defs": {
+    "surface_identity_field": {
+      "oneOf": [
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["declared"],
+          "properties": {"declared": {"const": "absent"}}
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["declared", "identity"],
+          "properties": {
+            "declared": {"const": "present"},
+            "identity": {"type": "string", "minLength": 1, "maxLength": 200}
+          }
+        }
+      ]
+    },
+    "surface_environments_field": {
+      "oneOf": [
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["declared"],
+          "properties": {"declared": {"const": "absent"}}
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["declared", "environments"],
+          "properties": {
+            "declared": {"const": "present"},
+            "environments": {
+              "type": "array",
+              "minItems": 1,
+              "maxItems": 32,
+              "uniqueItems": true,
+              "items": {"type": "string", "minLength": 1, "maxLength": 64}
+            }
+          }
+        }
+      ]
+    },
     "criterion": {
       "type": "object",
       "additionalProperties": false,

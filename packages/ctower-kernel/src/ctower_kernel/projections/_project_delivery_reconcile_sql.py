@@ -44,6 +44,8 @@ from ctower_kernel.projections.project_delivery import (
     CheckpointDefinition,
     DeliveryFacts,
     DeliveryState,
+    DeliverySurfaceDeclaration,
+    delivery_surface_from_columns,
     derive_project_delivery_row,
 )
 from ctower_kernel.record.transaction import project_delivery_scope_transaction
@@ -179,28 +181,7 @@ def _facts(
     cutover: dict[str, str],
     now: datetime,
 ) -> tuple[CheckpointDefinition, DeliveryFacts]:
-    criteria_rows = connection.execute(
-        """
-        SELECT criterion.criterion_key, criterion.proof_ticket_id,
-            criterion.proof_criterion_key, criterion.source_ids,
-            criterion.assigned_seat_key,
-            member.seat_label AS assigned_seat_label,
-            catalog.catalog_key AS assigned_catalog_key,
-            catalog.catalog_revision AS assigned_catalog_revision,
-            encode(catalog.catalog_digest, 'hex') AS assigned_catalog_digest
-        FROM project_delivery_exit_criteria AS criterion
-        LEFT JOIN project_delivery_seat_catalog_members AS member
-          ON member.seat_catalog_revision_id = criterion.assigned_seat_catalog_revision_id
-         AND member.tenant_id = criterion.tenant_id
-         AND member.seat_key = criterion.assigned_seat_key
-        LEFT JOIN project_delivery_seat_catalog_revisions AS catalog
-          ON catalog.seat_catalog_revision_id = member.seat_catalog_revision_id
-         AND catalog.tenant_id = member.tenant_id
-        WHERE criterion.tenant_id = %s AND criterion.checkpoint_definition_id = %s
-        ORDER BY criterion.ordinal
-        """,
-        (tenant_id, row["checkpoint_definition_id"]),
-    ).fetchall()
+    criteria_rows = _criteria_rows(connection, tenant_id, row)
     criteria = tuple(str(item["criterion_key"]) for item in criteria_rows)
     # One shared read of every configured proof link; criterion coverage and slot
     # coverage are two compositions of the same resolved facts, never two predicates.
@@ -239,6 +220,7 @@ def _facts(
         accountable_owner=str(row["accountable_owner"]),
         criteria=criteria,
         applicable_states=states,
+        delivery_surface=_delivery_surface(row),
     )
     facts = DeliveryFacts(
         maturity=maturity,
@@ -258,6 +240,35 @@ def _facts(
         rebuild_generation=generation,
     )
     return definition, facts
+
+
+def _criteria_rows(
+    connection: psycopg.Connection[dict[str, object]],
+    tenant_id: UUID,
+    row: dict[str, object],
+) -> list[dict[str, object]]:
+    return connection.execute(
+        """
+        SELECT criterion.criterion_key, criterion.proof_ticket_id,
+            criterion.proof_criterion_key, criterion.source_ids,
+            criterion.assigned_seat_key,
+            member.seat_label AS assigned_seat_label,
+            catalog.catalog_key AS assigned_catalog_key,
+            catalog.catalog_revision AS assigned_catalog_revision,
+            encode(catalog.catalog_digest, 'hex') AS assigned_catalog_digest
+        FROM project_delivery_exit_criteria AS criterion
+        LEFT JOIN project_delivery_seat_catalog_members AS member
+          ON member.seat_catalog_revision_id = criterion.assigned_seat_catalog_revision_id
+         AND member.tenant_id = criterion.tenant_id
+         AND member.seat_key = criterion.assigned_seat_key
+        LEFT JOIN project_delivery_seat_catalog_revisions AS catalog
+          ON catalog.seat_catalog_revision_id = member.seat_catalog_revision_id
+         AND catalog.tenant_id = member.tenant_id
+        WHERE criterion.tenant_id = %s AND criterion.checkpoint_definition_id = %s
+        ORDER BY criterion.ordinal
+        """,
+        (tenant_id, row["checkpoint_definition_id"]),
+    ).fetchall()
 
 
 def _delete_inactive_rows(
@@ -392,3 +403,11 @@ def _next_generation(
     tenant_id: UUID,
 ) -> int:
     return _current_generation(connection, tenant_id) + 1
+
+
+def _delivery_surface(row: dict[str, object]) -> DeliverySurfaceDeclaration:
+    return delivery_surface_from_columns(
+        row["landing_boundary"],
+        row["non_production_environments"],
+        row["externally_effective_outcome"],
+    )

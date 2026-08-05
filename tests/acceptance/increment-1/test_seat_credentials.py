@@ -21,6 +21,8 @@ from support.telemetry import telemetry_headers
 from support.tenant_fixture import TenantFixture
 
 from ctower_api.interface import create_app
+from ctower_kernel.board_context import BoardContextFacts
+from ctower_kernel.board_context.postgres import PostgresBoardContextFacts
 from ctower_kernel.proof import Proof
 from ctower_kernel.proof.postgres import PostgresProof
 from ctower_kernel.record.postgres import PostgresRecord
@@ -484,6 +486,7 @@ def _full_client(tenant: TenantFixture) -> TestClient:
             record,
             work=Work(record, writer=PostgresWork(runtime_dsn)),
             proof=Proof(writer=proof_store),
+            board_context=BoardContextFacts(PostgresBoardContextFacts(runtime_dsn)),
             workflow=Workflow(
                 (graph,),
                 writer=PostgresWorkflow(

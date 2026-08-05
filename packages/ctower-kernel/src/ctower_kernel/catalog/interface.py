@@ -82,6 +82,8 @@ class ComponentKind(StrEnum):
     ADAPTER = "adapter"
     SEAT_CATALOG = "seat_catalog"
     CHECKPOINT = "checkpoint"
+    LABEL_VOCABULARY = "label_vocabulary"
+    ATTENTION_KIND_CATALOG = "attention_kind_catalog"
 
 
 class ComponentLifecycle(StrEnum):

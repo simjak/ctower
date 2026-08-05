@@ -38,8 +38,17 @@
       "contracts/http/openapi.yaml",
       "packages/ctower-kernel/migrations/0002_ticket_slice.sql"
     ],
+    "AC-ATT-01": [
+      "contracts/components/attention-kind-catalog.schema.json",
+      "packages/ctower-kernel/migrations/0043_context_set_catalogs.sql",
+      "packages/ctower-kernel/migrations/0045_attention_findings.sql"
+    ],
+    "AC-ATT-02": [
+      "packages/ctower-kernel/migrations/0045_attention_findings.sql"
+    ],
     "AC-COMP-01": [
       "contracts/components/agent-profile.schema.json",
+      "contracts/components/attention-kind-catalog.schema.json",
       "contracts/components/capability.schema.json",
       "contracts/components/checkpoint.schema.json",
       "contracts/components/environment.schema.json",
@@ -47,6 +56,7 @@
       "contracts/components/harness.schema.json",
       "contracts/components/image.schema.json",
       "contracts/components/integration.schema.json",
+      "contracts/components/label-vocabulary.schema.json",
       "contracts/components/notification.schema.json",
       "contracts/components/persona.schema.json",
       "contracts/components/project.schema.json",
@@ -384,6 +394,13 @@
       "contracts/http/openapi.yaml",
       "packages/ctower-kernel/migrations/0038_project_delivery_seat_carriage.sql"
     ],
+    "AC-PD-10": [
+      "contracts/components/checkpoint.schema.json",
+      "contracts/domain/project-delivery/project-delivery-vectors.json",
+      "contracts/domain/project-delivery/project-delivery.schema.json",
+      "contracts/domain/task-management/board-view.schema.json",
+      "packages/ctower-kernel/migrations/0042_checkpoint_delivery_surface.sql"
+    ],
     "AC-PROD-01": [
       "contracts/domain/intake/thread-intake.schema.json",
       "packages/ctower-kernel/migrations/0035_board_source_lookup.sql",
@@ -512,6 +529,15 @@
     "AC-TM-06": [
       "contracts/domain/task-management/scheduling-policy.schema.json",
       "packs/policies/scheduling/i1-priority-aging-v1.yaml"
+    ],
+    "AC-TM-07": [
+      "contracts/components/label-vocabulary.schema.json",
+      "contracts/domain/task-management/board-view.schema.json",
+      "packages/ctower-kernel/migrations/0043_context_set_catalogs.sql",
+      "packages/ctower-kernel/migrations/0044_ticket_change_and_label_facts.sql"
+    ],
+    "AC-TM-08": [
+      "contracts/domain/task-management/board-view.schema.json"
     ],
     "AC-WF-01": [
       "contracts/execution/execution-policy.schema.json",
@@ -755,6 +781,7 @@
     ],
     "INV-45": [
       "contracts/components/agent-profile.schema.json",
+      "contracts/components/attention-kind-catalog.schema.json",
       "contracts/components/capability.schema.json",
       "contracts/components/checkpoint.schema.json",
       "contracts/components/environment.schema.json",
@@ -762,6 +789,7 @@
       "contracts/components/harness.schema.json",
       "contracts/components/image.schema.json",
       "contracts/components/integration.schema.json",
+      "contracts/components/label-vocabulary.schema.json",
       "contracts/components/notification.schema.json",
       "contracts/components/persona.schema.json",
       "contracts/components/project.schema.json",
@@ -773,6 +801,7 @@
       "contracts/components/tool.schema.json",
       "contracts/components/versioned-component.schema.json",
       "contracts/components/workspace.schema.json",
+      "packages/ctower-kernel/migrations/0043_context_set_catalogs.sql",
       "packs/components/agent-profiles/commander.protected-cli/v1.yaml",
       "packs/components/capabilities/control.api/v1.yaml",
       "packs/components/checkpoints/ctower.i1-0/v1.yaml",
@@ -891,6 +920,22 @@
       "contracts/http/openapi.yaml",
       "packages/ctower-kernel/migrations/0038_project_delivery_seat_carriage.sql"
     ],
+    "INV-66": [
+      "contracts/components/checkpoint.schema.json",
+      "contracts/components/label-vocabulary.schema.json",
+      "contracts/domain/project-delivery/project-delivery-vectors.json",
+      "contracts/domain/project-delivery/project-delivery.schema.json",
+      "contracts/domain/task-management/board-view.schema.json",
+      "packages/ctower-kernel/migrations/0042_checkpoint_delivery_surface.sql",
+      "packages/ctower-kernel/migrations/0043_context_set_catalogs.sql",
+      "packages/ctower-kernel/migrations/0044_ticket_change_and_label_facts.sql"
+    ],
+    "INV-67": [
+      "contracts/components/attention-kind-catalog.schema.json",
+      "contracts/domain/task-management/board-view.schema.json",
+      "packages/ctower-kernel/migrations/0043_context_set_catalogs.sql",
+      "packages/ctower-kernel/migrations/0045_attention_findings.sql"
+    ],
     "INV-75": [
       "contracts/domain/events/event-envelope.schema.json",
       "contracts/http/openapi.yaml",
@@ -902,6 +947,11 @@
       "packages/ctower-kernel/migrations/0035_board_source_lookup.sql",
       "packages/ctower-kernel/migrations/0040_project_scoped_reads.sql"
     ],
+    "SPEC#attention-findings-feed": [
+      "contracts/components/attention-kind-catalog.schema.json",
+      "packages/ctower-kernel/migrations/0043_context_set_catalogs.sql",
+      "packages/ctower-kernel/migrations/0045_attention_findings.sql"
+    ],
     "SPEC#backup-restore-and-reboot-drills": [
       "contracts/operations/backup-manifest.schema.json",
       "contracts/operations/expected-source-inventory.schema.json",
@@ -910,6 +960,14 @@
       "packages/ctower-kernel/migrations/0021_object_backup_anchor.sql",
       "packages/ctower-kernel/migrations/0022_restore_inventory.sql",
       "packages/ctower-kernel/migrations/0023_cp3c_privileges.sql"
+    ],
+    "SPEC#board-card-context": [
+      "contracts/components/checkpoint.schema.json",
+      "contracts/components/label-vocabulary.schema.json",
+      "contracts/domain/task-management/board-view.schema.json",
+      "packages/ctower-kernel/migrations/0042_checkpoint_delivery_surface.sql",
+      "packages/ctower-kernel/migrations/0043_context_set_catalogs.sql",
+      "packages/ctower-kernel/migrations/0044_ticket_change_and_label_facts.sql"
     ],
     "SPEC#canonical-event-and-command-contract": [
       "contracts/domain/events/canonical-vectors.json",
@@ -973,6 +1031,9 @@
     "SPEC#first-tenant-trust-root-ceremony": [
       "contracts/bootstrap/first-tenant-request.schema.json",
       "packages/ctower-kernel/migrations/0002_ticket_slice.sql"
+    ],
+    "SPEC#human-gate-needs-you-and-resume": [
+      "packages/ctower-kernel/migrations/0045_attention_findings.sql"
     ],
     "SPEC#i1-four-stage-fixture": [
       "packs/policies/evidence/trust-spine-four-stage-v1.yaml",
@@ -1062,6 +1123,7 @@
       "packages/ctower-kernel/migrations/0037_relax_checkpoint_key_domain.sql",
       "packages/ctower-kernel/migrations/0038_project_delivery_seat_carriage.sql",
       "packages/ctower-kernel/migrations/0040_project_scoped_reads.sql",
+      "packages/ctower-kernel/migrations/0042_checkpoint_delivery_surface.sql",
       "packs/components/checkpoints/bhloop.biomarker-rail/v1.yaml",
       "packs/components/checkpoints/bhloop.contract-admission/v1.yaml",
       "packs/components/checkpoints/bhloop.d11-org/v1.yaml",
@@ -1136,6 +1198,7 @@
       "packages/ctower-kernel/migrations/0008_board_projection.sql",
       "packages/ctower-kernel/migrations/0009_transactional_record_positions.sql",
       "packages/ctower-kernel/migrations/0010_custody_episode_intervals.sql",
+      "packages/ctower-kernel/migrations/0044_ticket_change_and_label_facts.sql",
       "packs/policies/scheduling/i1-priority-aging-v1.yaml",
       "packs/workflows/engineering.software-factory/v1.yaml"
     ],
@@ -1145,6 +1208,7 @@
     ],
     "SPEC#universal-versionedcomponent-catalog-and-company-desired-state": [
       "contracts/components/agent-profile.schema.json",
+      "contracts/components/attention-kind-catalog.schema.json",
       "contracts/components/capability.schema.json",
       "contracts/components/checkpoint.schema.json",
       "contracts/components/environment.schema.json",
@@ -1152,6 +1216,7 @@
       "contracts/components/harness.schema.json",
       "contracts/components/image.schema.json",
       "contracts/components/integration.schema.json",
+      "contracts/components/label-vocabulary.schema.json",
       "contracts/components/notification.schema.json",
       "contracts/components/persona.schema.json",
       "contracts/components/project.schema.json",

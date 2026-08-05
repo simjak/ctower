@@ -2,6 +2,7 @@
   "_notice": "DO NOT EDIT: generated file; regenerate from declared inputs.",
   "aliases": {
     "ctower.agent-profile/v1": "contracts/components/agent-profile.schema.json",
+    "ctower.attention-kind-catalog/v1": "contracts/components/attention-kind-catalog.schema.json",
     "ctower.bootstrap.first-tenant-request/v1": "contracts/bootstrap/first-tenant-request.schema.json",
     "ctower.capability/v1": "contracts/components/capability.schema.json",
     "ctower.checkpoint/v1": "contracts/components/checkpoint.schema.json",
@@ -37,6 +38,7 @@
     "ctower.harness/v1": "contracts/components/harness.schema.json",
     "ctower.image/v1": "contracts/components/image.schema.json",
     "ctower.integration/v1": "contracts/components/integration.schema.json",
+    "ctower.label-vocabulary/v1": "contracts/components/label-vocabulary.schema.json",
     "ctower.notification/v1": "contracts/components/notification.schema.json",
     "ctower.persona/v1": "contracts/components/persona.schema.json",
     "ctower.project-delivery/v1": "contracts/domain/project-delivery/project-delivery.schema.json",
@@ -106,6 +108,7 @@
     "https://ctower.local/contracts/bootstrap/first-tenant-request.schema.json": "contracts/bootstrap/first-tenant-request.schema.json",
     "https://ctower.local/contracts/company/company-bundle.schema.json": "contracts/company/company-bundle.schema.json",
     "https://ctower.local/contracts/components/agent-profile.schema.json": "contracts/components/agent-profile.schema.json",
+    "https://ctower.local/contracts/components/attention-kind-catalog.schema.json": "contracts/components/attention-kind-catalog.schema.json",
     "https://ctower.local/contracts/components/capability.schema.json": "contracts/components/capability.schema.json",
     "https://ctower.local/contracts/components/checkpoint.schema.json": "contracts/components/checkpoint.schema.json",
     "https://ctower.local/contracts/components/environment.schema.json": "contracts/components/environment.schema.json",
@@ -113,6 +116,7 @@
     "https://ctower.local/contracts/components/harness.schema.json": "contracts/components/harness.schema.json",
     "https://ctower.local/contracts/components/image.schema.json": "contracts/components/image.schema.json",
     "https://ctower.local/contracts/components/integration.schema.json": "contracts/components/integration.schema.json",
+    "https://ctower.local/contracts/components/label-vocabulary.schema.json": "contracts/components/label-vocabulary.schema.json",
     "https://ctower.local/contracts/components/notification.schema.json": "contracts/components/notification.schema.json",
     "https://ctower.local/contracts/components/persona.schema.json": "contracts/components/persona.schema.json",
     "https://ctower.local/contracts/components/project.schema.json": "contracts/components/project.schema.json",
@@ -1613,6 +1617,63 @@
       "title": "AgentProfileComponent",
       "type": "object"
     },
+    "contracts/components/attention-kind-catalog.schema.json": {
+      "$defs": {
+        "member": {
+          "additionalProperties": false,
+          "properties": {
+            "key": {
+              "pattern": "^[a-z][a-z0-9._-]{1,95}$",
+              "type": "string"
+            },
+            "label": {
+              "maxLength": 128,
+              "minLength": 1,
+              "type": "string"
+            }
+          },
+          "required": [
+            "key",
+            "label"
+          ],
+          "type": "object"
+        }
+      },
+      "$id": "https://ctower.local/contracts/components/attention-kind-catalog.schema.json",
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "additionalProperties": false,
+      "properties": {
+        "display_name": {
+          "maxLength": 128,
+          "minLength": 1,
+          "type": "string"
+        },
+        "key": {
+          "pattern": "^[a-z][a-z0-9.-]{2,127}$",
+          "type": "string"
+        },
+        "members": {
+          "items": {
+            "$ref": "#/$defs/member"
+          },
+          "maxItems": 128,
+          "minItems": 1,
+          "type": "array",
+          "uniqueItems": true
+        },
+        "schema": {
+          "const": "ctower.attention-kind-catalog/v1"
+        }
+      },
+      "required": [
+        "schema",
+        "key",
+        "display_name",
+        "members"
+      ],
+      "title": "AttentionKindCatalogComponent",
+      "type": "object"
+    },
     "contracts/components/capability.schema.json": {
       "$id": "https://ctower.local/contracts/components/capability.schema.json",
       "$schema": "https://json-schema.org/draft/2020-12/schema",
@@ -1728,6 +1789,80 @@
             "evidence_policy_refs"
           ],
           "type": "object"
+        },
+        "surface_environments_field": {
+          "oneOf": [
+            {
+              "additionalProperties": false,
+              "properties": {
+                "declared": {
+                  "const": "absent"
+                }
+              },
+              "required": [
+                "declared"
+              ],
+              "type": "object"
+            },
+            {
+              "additionalProperties": false,
+              "properties": {
+                "declared": {
+                  "const": "present"
+                },
+                "environments": {
+                  "items": {
+                    "maxLength": 64,
+                    "minLength": 1,
+                    "type": "string"
+                  },
+                  "maxItems": 32,
+                  "minItems": 1,
+                  "type": "array",
+                  "uniqueItems": true
+                }
+              },
+              "required": [
+                "declared",
+                "environments"
+              ],
+              "type": "object"
+            }
+          ]
+        },
+        "surface_identity_field": {
+          "oneOf": [
+            {
+              "additionalProperties": false,
+              "properties": {
+                "declared": {
+                  "const": "absent"
+                }
+              },
+              "required": [
+                "declared"
+              ],
+              "type": "object"
+            },
+            {
+              "additionalProperties": false,
+              "properties": {
+                "declared": {
+                  "const": "present"
+                },
+                "identity": {
+                  "maxLength": 200,
+                  "minLength": 1,
+                  "type": "string"
+                }
+              },
+              "required": [
+                "declared",
+                "identity"
+              ],
+              "type": "object"
+            }
+          ]
         }
       },
       "$id": "https://ctower.local/contracts/components/checkpoint.schema.json",
@@ -1751,6 +1886,21 @@
           "minItems": 1,
           "type": "array",
           "uniqueItems": true
+        },
+        "delivery_surface": {
+          "additionalProperties": false,
+          "properties": {
+            "externally_effective_outcome": {
+              "$ref": "#/$defs/surface_identity_field"
+            },
+            "landing_boundary": {
+              "$ref": "#/$defs/surface_identity_field"
+            },
+            "non_production_environments": {
+              "$ref": "#/$defs/surface_environments_field"
+            }
+          },
+          "type": "object"
         },
         "dependency_refs": {
           "items": {
@@ -1991,6 +2141,63 @@
         "execution"
       ],
       "title": "IntegrationComponent",
+      "type": "object"
+    },
+    "contracts/components/label-vocabulary.schema.json": {
+      "$defs": {
+        "member": {
+          "additionalProperties": false,
+          "properties": {
+            "key": {
+              "pattern": "^[a-z][a-z0-9._-]{1,95}$",
+              "type": "string"
+            },
+            "label": {
+              "maxLength": 128,
+              "minLength": 1,
+              "type": "string"
+            }
+          },
+          "required": [
+            "key",
+            "label"
+          ],
+          "type": "object"
+        }
+      },
+      "$id": "https://ctower.local/contracts/components/label-vocabulary.schema.json",
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "additionalProperties": false,
+      "properties": {
+        "display_name": {
+          "maxLength": 128,
+          "minLength": 1,
+          "type": "string"
+        },
+        "key": {
+          "pattern": "^[a-z][a-z0-9.-]{2,127}$",
+          "type": "string"
+        },
+        "members": {
+          "items": {
+            "$ref": "#/$defs/member"
+          },
+          "maxItems": 128,
+          "minItems": 1,
+          "type": "array",
+          "uniqueItems": true
+        },
+        "schema": {
+          "const": "ctower.label-vocabulary/v1"
+        }
+      },
+      "required": [
+        "schema",
+        "key",
+        "display_name",
+        "members"
+      ],
+      "title": "LabelVocabularyComponent",
       "type": "object"
     },
     "contracts/components/notification.schema.json": {
@@ -2639,6 +2846,131 @@
           ],
           "type": "object"
         },
+        "attentionFindingAppended": {
+          "additionalProperties": false,
+          "properties": {
+            "alternatives": {
+              "items": {
+                "maxLength": 500,
+                "minLength": 1,
+                "type": "string"
+              },
+              "type": "array"
+            },
+            "catalog_digest": {
+              "$ref": "#/$defs/sha256"
+            },
+            "catalog_key": {
+              "pattern": "^[a-z][a-z0-9._-]{1,95}$",
+              "type": "string"
+            },
+            "catalog_revision": {
+              "minimum": 1,
+              "type": "integer"
+            },
+            "consequence": {
+              "maxLength": 500,
+              "minLength": 1,
+              "type": "string"
+            },
+            "deadline": {
+              "format": "date-time",
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "dedupe_key": {
+              "pattern": "^[a-z][a-z0-9._-]{1,127}$",
+              "type": "string"
+            },
+            "effective_owner": {
+              "enum": [
+                "operator",
+                "commander"
+              ]
+            },
+            "finding_id": {
+              "format": "uuid",
+              "type": "string"
+            },
+            "kind_key": {
+              "pattern": "^[a-z][a-z0-9._-]{1,95}$",
+              "type": "string"
+            },
+            "reason_code": {
+              "pattern": "^[a-z][a-z0-9._-]*$",
+              "type": "string"
+            },
+            "recommendation": {
+              "maxLength": 500,
+              "minLength": 1,
+              "type": "string"
+            },
+            "source_facts": {
+              "items": {
+                "minLength": 1,
+                "type": "string"
+              },
+              "type": "array"
+            },
+            "subject_ticket_id": {
+              "format": "uuid",
+              "type": "string"
+            }
+          },
+          "required": [
+            "alternatives",
+            "catalog_digest",
+            "catalog_key",
+            "catalog_revision",
+            "consequence",
+            "deadline",
+            "dedupe_key",
+            "effective_owner",
+            "finding_id",
+            "kind_key",
+            "reason_code",
+            "recommendation",
+            "source_facts",
+            "subject_ticket_id"
+          ],
+          "type": "object"
+        },
+        "attentionFindingDispositionRecorded": {
+          "additionalProperties": false,
+          "properties": {
+            "disposition_id": {
+              "format": "uuid",
+              "type": "string"
+            },
+            "finding_id": {
+              "format": "uuid",
+              "type": "string"
+            },
+            "outcome": {
+              "enum": [
+                "resolved",
+                "snoozed",
+                "expired",
+                "superseded",
+                "cancelled"
+              ]
+            },
+            "reason": {
+              "maxLength": 500,
+              "minLength": 1,
+              "type": "string"
+            }
+          },
+          "required": [
+            "disposition_id",
+            "finding_id",
+            "outcome",
+            "reason"
+          ],
+          "type": "object"
+        },
         "blockerOpened": {
           "additionalProperties": false,
           "properties": {
@@ -2781,6 +3113,42 @@
             "component",
             "object_version",
             "payload_ref"
+          ],
+          "type": "object"
+        },
+        "changeReferenceRecorded": {
+          "additionalProperties": false,
+          "properties": {
+            "change_identity": {
+              "maxLength": 128,
+              "minLength": 1,
+              "type": "string"
+            },
+            "change_reference_id": {
+              "format": "uuid",
+              "type": "string"
+            },
+            "reference": {
+              "maxLength": 256,
+              "minLength": 1,
+              "type": "string"
+            },
+            "repository": {
+              "maxLength": 256,
+              "minLength": 1,
+              "type": "string"
+            },
+            "ticket_id": {
+              "format": "uuid",
+              "type": "string"
+            }
+          },
+          "required": [
+            "change_identity",
+            "change_reference_id",
+            "reference",
+            "repository",
+            "ticket_id"
           ],
           "type": "object"
         },
@@ -2977,6 +3345,43 @@
             "source_ref",
             "taint",
             "ticket_id"
+          ],
+          "type": "object"
+        },
+        "labelApplied": {
+          "additionalProperties": false,
+          "properties": {
+            "catalog_digest": {
+              "$ref": "#/$defs/sha256"
+            },
+            "catalog_key": {
+              "pattern": "^[a-z][a-z0-9._-]{1,95}$",
+              "type": "string"
+            },
+            "catalog_revision": {
+              "minimum": 1,
+              "type": "integer"
+            },
+            "label_key": {
+              "pattern": "^[a-z][a-z0-9._-]{1,95}$",
+              "type": "string"
+            },
+            "ticket_id": {
+              "format": "uuid",
+              "type": "string"
+            },
+            "ticket_label_id": {
+              "format": "uuid",
+              "type": "string"
+            }
+          },
+          "required": [
+            "catalog_digest",
+            "catalog_key",
+            "catalog_revision",
+            "label_key",
+            "ticket_id",
+            "ticket_label_id"
           ],
           "type": "object"
         },
@@ -4065,6 +4470,70 @@
                   "pattern": "^session:[0-9a-f-]{36}$"
                 }
               }
+            },
+            {
+              "properties": {
+                "kind": {
+                  "const": "ticket.change_reference_recorded"
+                },
+                "origin": {
+                  "const": "api"
+                },
+                "payload": {
+                  "$ref": "#/$defs/changeReferenceRecorded"
+                },
+                "stream_id": {
+                  "pattern": "^ticket:[0-9a-f-]{36}$"
+                }
+              }
+            },
+            {
+              "properties": {
+                "kind": {
+                  "const": "ticket.label_applied"
+                },
+                "origin": {
+                  "const": "api"
+                },
+                "payload": {
+                  "$ref": "#/$defs/labelApplied"
+                },
+                "stream_id": {
+                  "pattern": "^ticket:[0-9a-f-]{36}$"
+                }
+              }
+            },
+            {
+              "properties": {
+                "kind": {
+                  "const": "attention.finding_appended"
+                },
+                "origin": {
+                  "const": "api"
+                },
+                "payload": {
+                  "$ref": "#/$defs/attentionFindingAppended"
+                },
+                "stream_id": {
+                  "pattern": "^attention-finding:[0-9a-f-]{36}$"
+                }
+              }
+            },
+            {
+              "properties": {
+                "kind": {
+                  "const": "attention.finding_disposition_recorded"
+                },
+                "origin": {
+                  "const": "api"
+                },
+                "payload": {
+                  "$ref": "#/$defs/attentionFindingDispositionRecorded"
+                },
+                "stream_id": {
+                  "pattern": "^attention-finding-disposition:[0-9a-f-]{36}$"
+                }
+              }
             }
           ]
         }
@@ -4117,7 +4586,11 @@
             "access.seat_credential_revoked",
             "session.started",
             "session.transitioned",
-            "session.closed"
+            "session.closed",
+            "ticket.change_reference_recorded",
+            "ticket.label_applied",
+            "attention.finding_appended",
+            "attention.finding_disposition_recorded"
           ],
           "type": "string"
         },
@@ -4150,7 +4623,7 @@
           "type": "string"
         },
         "stream_id": {
-          "pattern": "^(tenant:[0-9a-f-]{36}:bootstrap|ticket:[0-9a-f-]{36}|catalog:[0-9a-f-]{36}|proof:[0-9a-f-]{36}|workflow:[0-9a-f-]{36}|routine-occurrence:[0-9a-f-]{36}|poison-disposition:[0-9a-f-]{36}|migration:[0-9a-f-]{36}|inbound-thread:[0-9a-f-]{36}|seat-credential:[0-9a-f-]{36}|session:[0-9a-f-]{36})$",
+          "pattern": "^(tenant:[0-9a-f-]{36}:bootstrap|ticket:[0-9a-f-]{36}|catalog:[0-9a-f-]{36}|proof:[0-9a-f-]{36}|workflow:[0-9a-f-]{36}|routine-occurrence:[0-9a-f-]{36}|poison-disposition:[0-9a-f-]{36}|migration:[0-9a-f-]{36}|inbound-thread:[0-9a-f-]{36}|seat-credential:[0-9a-f-]{36}|session:[0-9a-f-]{36}|attention-finding:[0-9a-f-]{36}|attention-finding-disposition:[0-9a-f-]{36})$",
           "type": "string"
         },
         "tenant_id": {
@@ -8775,6 +9248,80 @@
           ],
           "type": "object"
         },
+        "deliverySurface": {
+          "additionalProperties": false,
+          "properties": {
+            "externally_effective_outcome": {
+              "$ref": "#/$defs/deliverySurfaceField"
+            },
+            "landing_boundary": {
+              "$ref": "#/$defs/deliverySurfaceField"
+            },
+            "non_production_environments": {
+              "$ref": "#/$defs/deliverySurfaceEnvironments"
+            }
+          },
+          "required": [
+            "landing_boundary",
+            "non_production_environments",
+            "externally_effective_outcome"
+          ],
+          "type": "object"
+        },
+        "deliverySurfaceEnvironments": {
+          "additionalProperties": false,
+          "properties": {
+            "environments": {
+              "items": {
+                "minLength": 1,
+                "type": "string"
+              },
+              "type": "array",
+              "uniqueItems": true
+            },
+            "state": {
+              "$ref": "#/$defs/deliverySurfaceState"
+            }
+          },
+          "required": [
+            "state",
+            "environments"
+          ],
+          "type": "object"
+        },
+        "deliverySurfaceField": {
+          "additionalProperties": false,
+          "properties": {
+            "identity": {
+              "oneOf": [
+                {
+                  "maxLength": 200,
+                  "minLength": 1,
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "state": {
+              "$ref": "#/$defs/deliverySurfaceState"
+            }
+          },
+          "required": [
+            "state",
+            "identity"
+          ],
+          "type": "object"
+        },
+        "deliverySurfaceState": {
+          "enum": [
+            "declared_present",
+            "declared_absent",
+            "undeclared"
+          ],
+          "type": "string"
+        },
         "qualifyingStageSlot": {
           "additionalProperties": false,
           "properties": {
@@ -8873,6 +9420,9 @@
                 "STATE_UNKNOWN"
               ],
               "type": "string"
+            },
+            "delivery_surface": {
+              "$ref": "#/$defs/deliverySurface"
             },
             "derivation_reasons": {
               "items": {
@@ -9007,6 +9557,7 @@
             "outcome",
             "accountable_owner",
             "criteria",
+            "delivery_surface",
             "qualifying_stage_slots_filled",
             "qualifying_stage_slots_required",
             "qualifying_stage_unfilled_or_unknown_slot_keys",
@@ -9169,6 +9720,35 @@
     },
     "contracts/domain/task-management/board-view.schema.json": {
       "$defs": {
+        "applied_label": {
+          "additionalProperties": false,
+          "properties": {
+            "applied_at": {
+              "format": "date-time",
+              "type": "string"
+            },
+            "label": {
+              "maxLength": 128,
+              "minLength": 1,
+              "type": "string"
+            },
+            "label_key": {
+              "pattern": "^[a-z][a-z0-9._-]{1,95}$",
+              "type": "string"
+            },
+            "vocabulary_revision": {
+              "minimum": 1,
+              "type": "integer"
+            }
+          },
+          "required": [
+            "label_key",
+            "label",
+            "vocabulary_revision",
+            "applied_at"
+          ],
+          "type": "object"
+        },
         "card": {
           "additionalProperties": false,
           "properties": {
@@ -9182,6 +9762,12 @@
                 "string",
                 "null"
               ]
+            },
+            "applied_labels": {
+              "items": {
+                "$ref": "#/$defs/applied_label"
+              },
+              "type": "array"
             },
             "assignee_id": {
               "format": "uuid",
@@ -9203,6 +9789,12 @@
                 "null"
               ]
             },
+            "change_references": {
+              "items": {
+                "$ref": "#/$defs/change_reference"
+              },
+              "type": "array"
+            },
             "custodian_id": {
               "format": "uuid",
               "type": "string"
@@ -9220,6 +9812,12 @@
               },
               "type": "array",
               "uniqueItems": true
+            },
+            "delivery_surface_availability": {
+              "$ref": "#/$defs/delivery_surface_availability"
+            },
+            "human_waiting": {
+              "$ref": "#/$defs/human_waiting"
             },
             "lane": {
               "$ref": "#/$defs/lane"
@@ -9257,6 +9855,9 @@
                 "null"
               ]
             },
+            "tenant_display_identity": {
+              "$ref": "#/$defs/tenant_display_identity"
+            },
             "ticket_id": {
               "format": "uuid",
               "type": "string"
@@ -9283,17 +9884,22 @@
           },
           "required": [
             "activity_class",
+            "applied_labels",
             "assignee_id",
             "blocker_opened_at",
             "blocker_reason",
+            "change_references",
             "custodian_id",
             "delivery_facts",
+            "delivery_surface_availability",
+            "human_waiting",
             "lane",
             "priority",
             "project_key",
             "risk",
             "stage_key",
             "stage_label",
+            "tenant_display_identity",
             "ticket_id",
             "title",
             "underlying_lane",
@@ -9301,12 +9907,131 @@
           ],
           "type": "object"
         },
+        "change_reference": {
+          "additionalProperties": false,
+          "properties": {
+            "change_identity": {
+              "maxLength": 128,
+              "minLength": 1,
+              "type": "string"
+            },
+            "recorded_at": {
+              "format": "date-time",
+              "type": "string"
+            },
+            "reference": {
+              "maxLength": 256,
+              "minLength": 1,
+              "type": "string"
+            },
+            "repository": {
+              "maxLength": 256,
+              "minLength": 1,
+              "type": "string"
+            }
+          },
+          "required": [
+            "repository",
+            "change_identity",
+            "reference",
+            "recorded_at"
+          ],
+          "type": "object"
+        },
+        "delivery_surface_availability": {
+          "oneOf": [
+            {
+              "additionalProperties": false,
+              "properties": {
+                "state": {
+                  "const": "no_qualifying_checkpoint"
+                }
+              },
+              "required": [
+                "state"
+              ],
+              "type": "object"
+            },
+            {
+              "additionalProperties": false,
+              "properties": {
+                "checkpoint_key": {
+                  "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]{0,127}$",
+                  "type": "string"
+                },
+                "externally_effective_outcome": {
+                  "$ref": "#/$defs/surface_identity_field"
+                },
+                "landing_boundary": {
+                  "$ref": "#/$defs/surface_identity_field"
+                },
+                "non_production_environments": {
+                  "$ref": "#/$defs/surface_environments_field"
+                },
+                "state": {
+                  "const": "qualifying_checkpoint"
+                }
+              },
+              "required": [
+                "state",
+                "checkpoint_key",
+                "landing_boundary",
+                "non_production_environments",
+                "externally_effective_outcome"
+              ],
+              "type": "object"
+            }
+          ]
+        },
         "health": {
           "enum": [
             "CURRENT",
             "STATE_UNKNOWN"
           ],
           "type": "string"
+        },
+        "human_waiting": {
+          "oneOf": [
+            {
+              "additionalProperties": false,
+              "properties": {
+                "finding_id": {
+                  "format": "uuid",
+                  "type": "string"
+                },
+                "kind_key": {
+                  "pattern": "^[a-z][a-z0-9._-]{1,95}$",
+                  "type": "string"
+                },
+                "reason_code": {
+                  "pattern": "^[a-z][a-z0-9._-]*$",
+                  "type": "string"
+                },
+                "state": {
+                  "const": "waiting"
+                }
+              },
+              "required": [
+                "state",
+                "finding_id",
+                "kind_key",
+                "reason_code"
+              ],
+              "type": "object"
+            },
+            {
+              "additionalProperties": false,
+              "properties": {
+                "state": {
+                  "const": "not_waiting"
+                }
+              },
+              "required": [
+                "state"
+              ],
+              "type": "object"
+            }
+          ]
         },
         "lane": {
           "enum": [
@@ -9358,6 +10083,98 @@
             "project_key"
           ],
           "type": "object"
+        },
+        "surface_declaration_state": {
+          "enum": [
+            "declared_present",
+            "declared_absent",
+            "undeclared"
+          ],
+          "type": "string"
+        },
+        "surface_environments_field": {
+          "additionalProperties": false,
+          "properties": {
+            "environments": {
+              "items": {
+                "minLength": 1,
+                "type": "string"
+              },
+              "type": "array"
+            },
+            "state": {
+              "$ref": "#/$defs/surface_declaration_state"
+            }
+          },
+          "required": [
+            "state",
+            "environments"
+          ],
+          "type": "object"
+        },
+        "surface_identity_field": {
+          "additionalProperties": false,
+          "properties": {
+            "identity": {
+              "oneOf": [
+                {
+                  "maxLength": 200,
+                  "minLength": 1,
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "state": {
+              "$ref": "#/$defs/surface_declaration_state"
+            }
+          },
+          "required": [
+            "state",
+            "identity"
+          ],
+          "type": "object"
+        },
+        "tenant_display_identity": {
+          "oneOf": [
+            {
+              "additionalProperties": false,
+              "properties": {
+                "display_name": {
+                  "maxLength": 128,
+                  "minLength": 1,
+                  "type": "string"
+                },
+                "state": {
+                  "const": "known"
+                }
+              },
+              "required": [
+                "state",
+                "display_name"
+              ],
+              "type": "object"
+            },
+            {
+              "additionalProperties": false,
+              "properties": {
+                "missing_source": {
+                  "minLength": 1,
+                  "type": "string"
+                },
+                "state": {
+                  "const": "unknown"
+                }
+              },
+              "required": [
+                "state",
+                "missing_source"
+              ],
+              "type": "object"
+            }
+          ]
         }
       },
       "$id": "https://ctower.dev/contracts/domain/task-management/board-view.schema.json",
@@ -12909,6 +13726,11 @@
       "sha256": "sha256:9c910ebd63de2235eac1dea7369d303ea115ab328300a4963e10756eded3369d"
     },
     {
+      "id": "https://ctower.local/contracts/components/attention-kind-catalog.schema.json",
+      "path": "contracts/components/attention-kind-catalog.schema.json",
+      "sha256": "sha256:afe56296690f335dfa19b865a365e857d766c0263dc7190569068a3910e69ce5"
+    },
+    {
       "id": "https://ctower.local/contracts/components/capability.schema.json",
       "path": "contracts/components/capability.schema.json",
       "sha256": "sha256:0e427932f6030c781a51138c6fd4ce6d4ae3bdea76ccf43ebecc4d705047a96e"
@@ -12916,7 +13738,7 @@
     {
       "id": "https://ctower.local/contracts/components/checkpoint.schema.json",
       "path": "contracts/components/checkpoint.schema.json",
-      "sha256": "sha256:1e88eb8ddb85011a9dc5282fb8b126094b916b2ce7d43e21c1e513097f99ac45"
+      "sha256": "sha256:ddb0791d13846c63719a3e3d45be4b537b1c0b7aa13636c85f2860d617e8673a"
     },
     {
       "id": "https://ctower.local/contracts/components/environment.schema.json",
@@ -12942,6 +13764,11 @@
       "id": "https://ctower.local/contracts/components/integration.schema.json",
       "path": "contracts/components/integration.schema.json",
       "sha256": "sha256:a3e206c7b7664a24d6e1ec5306f1aa9112c704d1c398d6d5e96423c57ce9725b"
+    },
+    {
+      "id": "https://ctower.local/contracts/components/label-vocabulary.schema.json",
+      "path": "contracts/components/label-vocabulary.schema.json",
+      "sha256": "sha256:6406942e8f171b7ee5972a00bb896efaa10f7ccd868a7d546f64768fb6020564"
     },
     {
       "id": "https://ctower.local/contracts/components/notification.schema.json",
@@ -13001,7 +13828,7 @@
     {
       "id": "https://ctower.dev/contracts/domain/events/event-envelope.schema.json",
       "path": "contracts/domain/events/event-envelope.schema.json",
-      "sha256": "sha256:3e44a42958e684df36cf365d93533afb042db9ca6b08079ed3bdb30d3b8c1a1d"
+      "sha256": "sha256:418d229910f38ef777092ea48da7a11ef3022101685029c9c6448ba76eb04686"
     },
     {
       "id": "https://ctower.local/contracts/domain/intake/thread-intake.schema.json",
@@ -13116,12 +13943,12 @@
     {
       "id": "https://ctower.dev/contracts/domain/project-delivery/project-delivery.schema.json",
       "path": "contracts/domain/project-delivery/project-delivery.schema.json",
-      "sha256": "sha256:c8965c625274a683703249c3d8d71434226175bbfbb9a3702b1c9adecc40cecc"
+      "sha256": "sha256:e96ca0974ead055648212fb98d3ea2f0b4451da4cb10c3f4efed72a1753f61d0"
     },
     {
       "id": "https://ctower.dev/contracts/domain/task-management/board-view.schema.json",
       "path": "contracts/domain/task-management/board-view.schema.json",
-      "sha256": "sha256:788621d304f3865aaf108deb7d9f91537004c7f8cb6a252d3a53d4e0b390c6f9"
+      "sha256": "sha256:90dd3e5ca99c11c874f27fec0547a0902a26c1c7393c2fdcdd6f84c18156a054"
     },
     {
       "id": "https://ctower.dev/contracts/domain/task-management/scheduling-policy.schema.json",

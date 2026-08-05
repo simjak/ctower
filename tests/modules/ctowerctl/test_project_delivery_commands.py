@@ -15,9 +15,13 @@ from ctower_client.models import (
     ProjectDeliveryRow,
     ProjectDeliverySeat,
     ProjectDeliverySlot,
+    ProjectDeliverySurfaceDeclaration,
     ProjectDeliveryUnassignedSeatAssignment,
     ProjectDeliveryView,
     SeatCatalogRevision,
+    SurfaceDeclarationState,
+    SurfaceEnvironmentsField,
+    SurfaceIdentityField,
 )
 from ctowerctl import _migration_commands, interface
 from ctowerctl._parser import parse_arguments
@@ -99,6 +103,17 @@ def _ledger_delivery_view() -> ProjectDeliveryView:
     )
 
 
+def _undeclared_surface() -> ProjectDeliverySurfaceDeclaration:
+    undeclared = SurfaceIdentityField(state=SurfaceDeclarationState.UNDECLARED, identity=None)
+    return ProjectDeliverySurfaceDeclaration(
+        landing_boundary=undeclared,
+        non_production_environments=SurfaceEnvironmentsField(
+            state=SurfaceDeclarationState.UNDECLARED, environments=()
+        ),
+        externally_effective_outcome=undeclared,
+    )
+
+
 def _ledger_delivery_row() -> ProjectDeliveryRow:
     return ProjectDeliveryRow(
         checkpoint_key="Q3-close.2",
@@ -108,6 +123,7 @@ def _ledger_delivery_row() -> ProjectDeliveryRow:
         outcome="The quarter close is approved and archived",
         accountable_owner="controller",
         criteria=ProjectDeliveryCriteria(proven=2, declared=3),
+        delivery_surface=_undeclared_surface(),
         qualifying_stage_slots_filled=1,
         qualifying_stage_slots_required=3,
         qualifying_stage_unfilled_or_unknown_slot_keys=("approval-receipt", "archive-proof"),

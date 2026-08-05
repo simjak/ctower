@@ -7,6 +7,7 @@ from typing import cast
 from uuid import UUID
 
 import psycopg
+from psycopg.types.json import Jsonb
 
 from ctower_kernel.catalog._postgres_revisions import RevisionState
 from ctower_kernel.catalog.interface import CompanyBundle, CompanyBundleResource, ComponentKind
@@ -100,6 +101,7 @@ def _insert_definition(
     if publication_event_id is None or component.scope.project is None:
         raise RuntimeError("new checkpoint publication facts are incomplete")
     position = positions[(component.scope.project, checkpoint_key)]
+    delivery_surface = cast(dict[str, object], payload.get("delivery_surface", {}))
     connection.execute(
         """
         INSERT INTO project_delivery_checkpoint_definitions (
@@ -107,10 +109,11 @@ def _insert_definition(
             checkpoint_key, definition_revision, ordered_position,
             checkpoint_label, outcome, accountable_owner, applicable_states,
             catalog_revision, catalog_digest, event_id, actor_principal_id,
-            recorded_at
+            recorded_at, landing_boundary, non_production_environments,
+            externally_effective_outcome
         ) VALUES (
             %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s,
-            %s, %s, %s, %s, %s
+            %s, %s, %s, %s, %s, %s, %s, %s
         )
         """,
         (
@@ -130,6 +133,9 @@ def _insert_definition(
             publication_event_id,
             actor.principal_id,
             now,
+            _surface_json(delivery_surface.get("landing_boundary")),
+            _surface_json(delivery_surface.get("non_production_environments")),
+            _surface_json(delivery_surface.get("externally_effective_outcome")),
         ),
     )
     criteria = cast(list[dict[str, object]], payload["criteria"])
@@ -199,3 +205,9 @@ def _seat_pin(
     if row is None:
         raise RuntimeError("assigned seat catalog revision was not materialized")
     return cast(UUID, row["seat_catalog_revision_id"]), str(assigned_seat["seat_key"])
+
+
+def _surface_json(declaration: object) -> Jsonb | None:
+    if declaration is None:
+        return None
+    return Jsonb(declaration)

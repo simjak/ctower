@@ -25,8 +25,12 @@ from ctower_client.models import (
     ProjectDeliveryCriteria,
     ProjectDeliveryRow,
     ProjectDeliverySlot,
+    ProjectDeliverySurfaceDeclaration,
     ProjectDeliveryUnassignedSeatAssignment,
     ProjectDeliveryView,
+    SurfaceDeclarationState,
+    SurfaceEnvironmentsField,
+    SurfaceIdentityField,
 )
 from tools.migration.ctower_project.ctower_project_source.canonical import (
     canonical_bytes,
@@ -453,6 +457,17 @@ def _conservation() -> MigrationConservation:
     )
 
 
+def _undeclared_surface() -> ProjectDeliverySurfaceDeclaration:
+    undeclared = SurfaceIdentityField(state=SurfaceDeclarationState.UNDECLARED, identity=None)
+    return ProjectDeliverySurfaceDeclaration(
+        landing_boundary=undeclared,
+        non_production_environments=SurfaceEnvironmentsField(
+            state=SurfaceDeclarationState.UNDECLARED, environments=()
+        ),
+        externally_effective_outcome=undeclared,
+    )
+
+
 def _delivery(fixture: SyntheticFixture, run: CtowerProjectImportRun) -> ProjectDeliveryView:
     rows = tuple(
         ProjectDeliveryRow(
@@ -463,6 +478,7 @@ def _delivery(fixture: SyntheticFixture, run: CtowerProjectImportRun) -> Project
             outcome=f"Reviewed outcome {key}",
             accountable_owner="ctower-engineering",
             criteria=ProjectDeliveryCriteria(proven=0, declared=1),
+            delivery_surface=_undeclared_surface(),
             qualifying_stage_slots_filled=0,
             qualifying_stage_slots_required=1,
             qualifying_stage_unfilled_or_unknown_slot_keys=("declared-outcome",),

@@ -1,0 +1,23 @@
+{
+  "schema": "ctower.label-vocabulary-vectors/v1",
+  "label_vocabulary_revisions": [
+    {
+      "catalog_key": "board.ticket-labels",
+      "revision": 1,
+      "members": [
+        {"key": "customer-facing", "label": "Customer facing"},
+        {"key": "needs-design", "label": "Needs design"},
+        {"key": "security", "label": "Security"}
+      ]
+    },
+    {
+      "catalog_key": "board.ticket-labels",
+      "revision": 2,
+      "members": [
+        {"key": "security", "label": "Security review required"},
+        {"key": "infra", "label": "Infra"},
+        {"key": "customer-facing", "label": "Customer facing"}
+      ]
+    }
+  ]
+}

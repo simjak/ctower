@@ -13,6 +13,8 @@ from fastapi.responses import JSONResponse
 from pydantic import ValidationError
 from starlette.responses import Response
 
+from ctower_api._attention_finding_routes import install_attention_finding_routes
+from ctower_api._board_context_routes import install_board_context_routes
 from ctower_api._board_routes import install_board_routes
 from ctower_api._catalog_routes import BundleCatalog, install_catalog_routes
 from ctower_api._comment_routes import install_comment_routes
@@ -63,6 +65,7 @@ from ctower_client.models import (
 from ctower_client.models import TicketCommandResult as HttpTicketCommandResult
 from ctower_kernel.access import Access
 from ctower_kernel.attention import Attention
+from ctower_kernel.board_context import BoardContextFacts
 from ctower_kernel.projections import Projections
 from ctower_kernel.proof import Proof
 from ctower_kernel.record import (
@@ -116,6 +119,7 @@ def create_app(
     work: Work | None = None,
     projections: Projections | None = None,
     attention: Attention | None = None,
+    board_context: BoardContextFacts | None = None,
     catalog: BundleCatalog | None = None,
     synthetic_runtime: SyntheticRuntime | None = None,
     synthetic_revision: RoutineRevision | None = None,
@@ -147,14 +151,59 @@ def create_app(
     install_session_routes(app, access, record, recorder)
     install_project_event_routes(app, access, record, recorder)
     install_task_routes(app, access, record, work_module, workflow, recorder)
+    _install_optional_routes(
+        app,
+        access,
+        record,
+        proof=proof,
+        workflow=workflow,
+        projections=projections,
+        attention=attention,
+        board_context=board_context,
+        catalog=catalog,
+        recorder=recorder,
+    )
+    _install_cutover_boundary(app, access, record, projections, migration, recorder)
+    _install_synthetic_boundary(
+        app, access, record, synthetic_runtime, synthetic_revision, recorder
+    )
+    return app
+
+
+def _install_optional_routes(
+    app: FastAPI,
+    access: Access,
+    record: Record,
+    *,
+    proof: Proof | None,
+    workflow: Workflow | None,
+    projections: Projections | None,
+    attention: Attention | None,
+    board_context: BoardContextFacts | None,
+    catalog: BundleCatalog | None,
+    recorder: TelemetryRecorder,
+) -> None:
     if catalog is not None:
         install_catalog_routes(app, access, record, catalog, recorder)
     if proof is not None and workflow is not None:
         install_proof_workflow_routes(app, access, record, proof, workflow, recorder)
+    if board_context is not None:
+        install_board_context_routes(app, access, record, board_context, recorder)
+    if attention is not None:
+        install_attention_finding_routes(app, access, record, attention, recorder)
     if projections is not None:
         install_board_routes(app, access, projections, recorder)
         install_health_routes(app, access, record, projections, recorder, attention)
-    _install_cutover_boundary(app, access, record, projections, migration, recorder)
+
+
+def _install_synthetic_boundary(
+    app: FastAPI,
+    access: Access,
+    record: Record,
+    synthetic_runtime: SyntheticRuntime | None,
+    synthetic_revision: RoutineRevision | None,
+    recorder: TelemetryRecorder,
+) -> None:
     if (synthetic_runtime is None) is not (synthetic_revision is None):
         raise ValueError("synthetic runtime and revision must be composed together")
     if synthetic_runtime is not None and synthetic_revision is not None:
@@ -166,7 +215,6 @@ def create_app(
             synthetic_revision,
             recorder,
         )
-    return app
 
 
 def _install_access_routes(

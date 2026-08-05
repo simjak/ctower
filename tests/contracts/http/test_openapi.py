@@ -13,6 +13,7 @@ MAX_IMPORT_ITEMS = 64
 _EXPECTED_OPERATION_METADATA: dict[str, tuple[object, bool, str, object, bool]] = {
     "addTicketComment": ("ticket comment add", True, "allowed", None, False),
     "addTicketRelation": ("ticket relation add", True, "allowed", None, False),
+    "appendAttentionFinding": ("attention finding append", True, "allowed", None, False),
     "appendCtowerProjectImportCorrection": (
         "migration ctower-project correction append",
         True,
@@ -35,6 +36,7 @@ _EXPECTED_OPERATION_METADATA: dict[str, tuple[object, bool, str, object, bool]] 
         None,
         False,
     ),
+    "applyTicketLabel": ("ticket label apply", True, "allowed", None, False),
     "bindCtowerProjectAliasPlan": (
         "migration ctower-project plan",
         True,
@@ -129,8 +131,22 @@ _EXPECTED_OPERATION_METADATA: dict[str, tuple[object, bool, str, object, bool]] 
         True,
     ),
     "promoteIntakeEvent": ("intake promote", True, "allowed", None, False),
+    "recordAttentionFindingDisposition": (
+        "attention finding disposition",
+        True,
+        "allowed",
+        None,
+        False,
+    ),
     "recordOutboxPoisonDisposition": (
         "ops outbox poison dispose",
+        True,
+        "allowed",
+        None,
+        False,
+    ),
+    "recordTicketChangeReference": (
+        "ticket change-reference add",
         True,
         "allowed",
         None,
@@ -163,6 +179,9 @@ _EXPECTED_OPERATION_METADATA: dict[str, tuple[object, bool, str, object, bool]] 
     "validateCompanyBundle": ("company bundle validate", False, "forbidden", None, False),
 }
 _EXPECTED_PROBLEM_CODES = {
+    "attention-finding-already-disposed",
+    "attention-finding-not-found",
+    "attention-kind-unrecognized",
     "bootstrap-consumed",
     "bootstrap-expired",
     "bootstrap-nonempty",
@@ -179,6 +198,7 @@ _EXPECTED_PROBLEM_CODES = {
     "bundle-reference-invalid",
     "bundle-schema-invalid",
     "bundle-security-refused",
+    "change-reference-duplicate",
     "credential-already-revoked",
     "credential-authentication-unavailable",
     "credential-digest-conflict",
@@ -193,6 +213,8 @@ _EXPECTED_PROBLEM_CODES = {
     "intake-promotion-ineligible",
     "intake-source-project-mismatch",
     "intake-source-conflict",
+    "label-already-applied",
+    "label-key-unrecognized",
     "migration-alias-conflict",
     "migration-capability-denied",
     "migration-correction-conflict",

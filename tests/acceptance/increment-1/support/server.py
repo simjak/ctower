@@ -25,6 +25,10 @@ from ctower_client import (
     TicketIntentRequest,
     WorkflowStartRequest,
 )
+from ctower_kernel.attention import Attention
+from ctower_kernel.attention.postgres import PostgresAttention
+from ctower_kernel.board_context import BoardContextFacts
+from ctower_kernel.board_context.postgres import PostgresBoardContextFacts
 from ctower_kernel.catalog import PostgresCatalog
 from ctower_kernel.projections import Projections
 from ctower_kernel.projections.postgres import PostgresProjections
@@ -261,6 +265,8 @@ def _serve(
                 if projection_dsn is not None
                 else None
             ),
+            attention=Attention(PostgresAttention(runtime_dsn)),
+            board_context=BoardContextFacts(PostgresBoardContextFacts(runtime_dsn)),
             telemetry=recorder,
         ),
         host=host,
