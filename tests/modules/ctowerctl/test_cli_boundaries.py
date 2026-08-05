@@ -12,9 +12,13 @@ from uuid import uuid4
 import pytest
 
 from ctower_client.models import (
+    AppendFindingRequest,
+    ApplyLabelRequest,
     AssignmentChangeRequest,
+    ChangeReferenceRequest,
     CustodyTransferRequest,
     EvidenceRequest,
+    FindingDispositionRequest,
     FreezeCriteriaRequest,
     ResolveCloseRequest,
     SeatCredentialIssueRequest,
@@ -24,6 +28,7 @@ from ctower_client.models import (
 )
 from ctower_client.operations import CLI_OPERATIONS, SpoolPolicy
 from ctowerctl import _credential_commands, _workflow_commands, main
+from ctowerctl._attention_commands import build_mutation as build_attention_mutation
 from ctowerctl._attention_commands import (
     mutation_command_names as attention_mutations,
 )
@@ -212,6 +217,101 @@ def test_assignment_and_custody_build_distinct_generated_requests() -> None:
     assert assignment_payload.request.assignment_kind == "reviewer_assignment"
     assert custody.cli_name == "ticket custody transfer"
     assert isinstance(custody_payload.request, CustodyTransferRequest)
+
+
+def test_context_set_and_attention_commands_build_distinct_generated_requests() -> None:
+    ticket_id = uuid4()
+    change_reference = parse_arguments(
+        [
+            "--base-url",
+            "https://ctower.example",
+            "ticket",
+            "change-reference",
+            "add",
+            str(ticket_id),
+            "--command-id",
+            str(uuid4()),
+            "--repository",
+            "simjak/ctower",
+            "--change-identity",
+            "284",
+            "--reference",
+            "https://github.com/simjak/ctower/pull/284",
+        ]
+    )
+    label = parse_arguments(
+        [
+            "--base-url",
+            "https://ctower.example",
+            "ticket",
+            "label",
+            "apply",
+            str(ticket_id),
+            "--command-id",
+            str(uuid4()),
+            "--label-key",
+            "security",
+        ]
+    )
+    append = parse_arguments(
+        [
+            "--base-url",
+            "https://ctower.example",
+            "attention",
+            "finding",
+            "append",
+            "--command-id",
+            str(uuid4()),
+            "--subject-ticket-id",
+            str(ticket_id),
+            "--kind-key",
+            "needs_decision",
+            "--reason-code",
+            "gate_decision",
+            "--effective-owner",
+            "operator",
+            "--recommendation",
+            "Approve the release train",
+            "--alternative",
+            "Defer to next window",
+            "--consequence",
+            "Release stays blocked",
+            "--dedupe-key",
+            "release-gate-1",
+            "--source-fact",
+            "gate:release-1",
+        ]
+    )
+    disposition = parse_arguments(
+        [
+            "--base-url",
+            "https://ctower.example",
+            "attention",
+            "finding",
+            "disposition",
+            str(uuid4()),
+            "--command-id",
+            str(uuid4()),
+            "--outcome",
+            "resolved",
+            "--reason",
+            "Decision made",
+        ]
+    )
+
+    change_reference_payload = build_mutation(change_reference)
+    label_payload = build_mutation(label)
+    append_payload = build_attention_mutation(append)
+    disposition_payload = build_attention_mutation(disposition)
+
+    assert isinstance(change_reference_payload.request, ChangeReferenceRequest)
+    assert change_reference_payload.path_parameters == {"ticket_id": str(ticket_id)}
+    assert isinstance(label_payload.request, ApplyLabelRequest)
+    assert label_payload.request.label_key == "security"
+    assert isinstance(append_payload.request, AppendFindingRequest)
+    assert append_payload.path_parameters == {}
+    assert isinstance(disposition_payload.request, FindingDispositionRequest)
+    assert disposition_payload.request.outcome == "resolved"
 
 
 def test_ticket_create_defaults_only_derivable_identifiers() -> None:
