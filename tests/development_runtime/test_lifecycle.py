@@ -261,6 +261,58 @@ def test_initialization_attach_requires_a_still_running_container(
         primary_module._attach_container_input("value")
 
 
+def test_initializer_is_removed_when_the_readiness_deadline_is_missed(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    docker_calls: list[tuple[str, ...]] = []
+
+    monkeypatch.setattr(primary_module, "_container_exists", lambda _name: True)
+    monkeypatch.setattr(primary_module, "_container_state", lambda _name: "running")
+    monkeypatch.setattr(primary_module, "_container_database_ready", lambda: True)
+    monkeypatch.setattr(
+        primary_module,
+        "_wait_for_database",
+        lambda: (_ for _ in ()).throw(
+            RuntimeError("development PostgreSQL initializer did not become ready")
+        ),
+    )
+    monkeypatch.setattr(primary_module, "_docker", partial(_observe_docker, docker_calls))
+
+    with pytest.raises(RuntimeError, match="did not become ready"):
+        primary_module._initialize_volume(_config())
+
+    assert ("stop", "--time", "30", primary_module._INITIALIZER) in docker_calls
+    assert ("rm", primary_module._INITIALIZER) in docker_calls
+
+
+def test_readiness_deadline_error_survives_a_cleanup_failure(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    def failing_docker(*arguments: str) -> str:
+        if arguments[:1] == ("stop",):
+            raise RuntimeError("docker daemon unreachable")
+        return ""
+
+    monkeypatch.setattr(primary_module, "_container_exists", lambda _name: True)
+    monkeypatch.setattr(primary_module, "_container_state", lambda _name: "running")
+    monkeypatch.setattr(primary_module, "_container_database_ready", lambda: True)
+    monkeypatch.setattr(
+        primary_module,
+        "_wait_for_database",
+        lambda: (_ for _ in ()).throw(
+            RuntimeError("development PostgreSQL initializer did not become ready")
+        ),
+    )
+    monkeypatch.setattr(primary_module, "_docker", failing_docker)
+
+    with pytest.raises(RuntimeError, match="did not become ready") as excinfo:
+        primary_module._initialize_volume(_config())
+
+    notes = "\n".join(getattr(excinfo.value, "__notes__", ()))
+    assert primary_module._INITIALIZER in notes
+    assert "docker daemon unreachable" in notes
+
+
 class _BootstrapClient:
     attempts: ClassVar[list[tuple[UUID, str]]] = []
     fail_first = True
