@@ -65,7 +65,7 @@ Full semantics, including what to retry: [the agent operating contract](../agent
 
 | Flag | Applies to | Notes |
 |---|---|---|
-| `--command-id` | Mutations; optional for `ticket capture`, `ticket create`, and `synthetic run` | Caller-supplied UUID becomes the idempotency key. The three optional commands generate and print one when omitted |
+| `--command-id` | Every mutation | Caller-supplied UUID becomes the idempotency key. Optional on every mutation; the CLI generates and prints one client-side when omitted |
 | `--expected-version` | Version-guarded mutations | Optimistic concurrency; a mismatch is `version-conflict` |
 | `--reason` | Authority and work mutations | Bounded metadata, never secret material |
 
@@ -133,9 +133,9 @@ timestamp is rejected.
 
 | Command | Positional | Flags |
 |---|---|---|
-| `ticket criteria freeze` | `<ticket_id>` | required: `--command-id`, `--expected-version` (≥ 0), exactly one of `--candidate-content` or `--candidate-digest`; optional: `--criteria-file` |
-| `ticket evidence add` | `<ticket_id>` | required: `--command-id`, `--expected-version` (≥ 1), `--evidence-id`, exactly one of `--content` or `--content-file`; optional: `--criterion-key`, `--candidate-digest`, `--artifact-digest` |
-| `ticket gate verdict` | `<ticket_id>` | required: `--command-id`, `--expected-version` (≥ 1), `--verdict-id`, `--decision {pass,fail}`; optional: `--criterion-key`, `--candidate-digest` |
+| `ticket criteria freeze` | `<ticket_id>` | required: `--expected-version` (≥ 0), exactly one of `--candidate-content` or `--candidate-digest`; optional: `--command-id`, `--criteria-file` |
+| `ticket evidence add` | `<ticket_id>` | required: `--expected-version` (≥ 1), `--evidence-id`, exactly one of `--content` or `--content-file`; optional: `--command-id`, `--criterion-key`, `--candidate-digest`, `--artifact-digest` |
+| `ticket gate verdict` | `<ticket_id>` | required: `--expected-version` (≥ 1), `--verdict-id`, `--decision {pass,fail}`; optional: `--command-id`, `--criterion-key`, `--candidate-digest` |
 
 Digests are `sha256:` followed by exactly 64 lowercase hex characters. Candidate and evidence literal
 content is hashed as exact UTF-8 bytes. With one installed Workflow revision and one criterion,
@@ -175,8 +175,8 @@ explicit complete selection.
 
 | Command | Positional | Flags |
 |---|---|---|
-| `intake submit` | — | required: `--command-id`, `--project-key`, `--source-kind`, `--source-ref`, `--content-file`; optional: `--intent {discussion,create_ticket,link_ticket}` (default `discussion`), `--taint {authenticated,external_untrusted,quarantine_required}` (default `authenticated`), `--thread-id`, `--expected-thread-version`, plus the ticket fields below |
-| `intake promote` | `<inbound_event_id>` | required: `--command-id`, `--expected-thread-version`, `--intent {create_ticket,link_ticket}`; optional: the ticket fields below |
+| `intake submit` | — | required: `--project-key`, `--source-kind`, `--source-ref`, `--content-file`; optional: `--command-id`, `--intent {discussion,create_ticket,link_ticket}` (default `discussion`), `--taint {authenticated,external_untrusted,quarantine_required}` (default `authenticated`), `--thread-id`, `--expected-thread-version`, plus the ticket fields below |
+| `intake promote` | `<inbound_event_id>` | required: `--expected-thread-version`, `--intent {create_ticket,link_ticket}`; optional: `--command-id`, the ticket fields below |
 
 Both accept the same optional ticket fields: `--initial-custodian-id`, `--priority {P0,P1,P2}`, `--title`,
 `--target-ticket-id`, `--expected-ticket-version`. Both are mutations and are spoolable.
