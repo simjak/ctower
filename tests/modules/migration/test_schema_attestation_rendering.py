@@ -26,6 +26,7 @@ from ._ledger_support import (
     install_ledger_through,
     ledger_rows,
     record_used_instance_history,
+    rewrite_terminal_attestation,
 )
 from ._postgres import Database
 
@@ -96,7 +97,7 @@ def test_an_attestation_recorded_before_canonical_rendering_still_verifies(
     record_used_instance_history(migration_database)
     superseded, canonical = _attestations(migration_database)
     assert superseded != canonical
-    _rewrite_terminal_attestation(migration_database, superseded)
+    rewrite_terminal_attestation(migration_database, superseded)
 
     apply_migrations(
         migration_database.migrator_dsn,
@@ -200,14 +201,3 @@ def _definition(connection: psycopg.Connection[tuple[object, ...]]) -> str:
     ).fetchone()
     assert row is not None, f"{REPARSED_CONSTRAINT} is missing from the catalog"
     return str(row[0])
-
-
-def _rewrite_terminal_attestation(database: Database, attestation: str) -> None:
-    """Put a pre-gh#247 digest back in the ledger, as an instance upgraded from one holds."""
-
-    with psycopg.connect(database.admin_dsn, autocommit=True) as connection:
-        connection.execute(sql.SQL("SET ROLE {}").format(sql.Identifier("ctower_migration_ledger")))
-        connection.execute(
-            "UPDATE ctower_schema_migrations SET result_schema_sha256 = %s WHERE migration_id = %s",
-            (attestation, LEDGERED_TERMINAL),
-        )

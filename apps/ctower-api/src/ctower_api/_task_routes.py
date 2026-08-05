@@ -299,7 +299,7 @@ def _install_audit(
             project = _project_key(project_key)
         except ValueError:
             return _problem_response(_validation_problem())
-        outcome = record.ticket_audit(
+        outcome = record.event_audit.ticket_audit(
             actor, ticket, project, cursor=cursor, limit=limit, telemetry=telemetry
         )
         return _audit_response(outcome)

@@ -426,6 +426,7 @@ def source_complete(
     tenant_id: UUID,
     project_definitions: list[dict[str, object]],
     source_watermark: int,
+    active_events: frozenset[UUID],
 ) -> bool:
     streams = connection.execute(
         """
@@ -454,16 +455,17 @@ def source_complete(
         and board["health"] == "CURRENT"
         and int(cast(int, board["acceptance_position"])) >= source_watermark
     )
-    # `active_checkpoint_event_ids` is tenant-wide by necessity: an event's owning
-    # project is recorded only on its own `project_delivery_checkpoint_definitions`
-    # row, and that row is exactly what a genuine materialization gap would be
-    # missing. A not-yet-materialized checkpoint is therefore unattributable to any
-    # project from projection-scoped data alone, so this check reads in ONE direction
-    # only — this project's own materialized checkpoints must still be active. That
-    # direction can never flip on another project's checkpoints, materialized or not:
-    # adding events this project doesn't reference only grows the active set, which
-    # can only make the subset check easier to satisfy, never harder.
-    active_events = set(active_checkpoint_event_ids(connection, tenant_id))
+    # `active_events` is tenant-wide by necessity: an event's owning project is
+    # recorded only on its own `project_delivery_checkpoint_definitions` row, and
+    # that row is exactly what a genuine materialization gap would be missing. A
+    # not-yet-materialized checkpoint is therefore unattributable to any project
+    # from projection-scoped data alone, so this check reads in ONE direction only
+    # — this project's own materialized checkpoints must still be active. That
+    # direction can never flip on another project's checkpoints, materialized or
+    # not: adding events this project doesn't reference only grows the active set,
+    # which can only make the subset check easier to satisfy, never harder. That is
+    # also why the caller may safely read the active set once per reconcile pass
+    # and reuse it for every project instead of re-reading it per project.
     materialized_events = {cast(UUID, row["event_id"]) for row in project_definitions}
     checkpoint_complete = materialized_events <= active_events
     return contiguous and board_complete and checkpoint_complete
