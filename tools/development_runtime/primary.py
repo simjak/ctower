@@ -55,9 +55,27 @@ def _initialize_volume(config: DevelopmentConfig) -> None:
         _docker("start", _INITIALIZER)
     if not _container_database_ready():
         _attach_container_input(load_secret(config.postgres_admin_secret_ref))
-    _wait_for_database()
-    _docker("stop", "--time", "30", _INITIALIZER)
-    _docker("rm", _INITIALIZER)
+    try:
+        _wait_for_database()
+    except Exception as error:
+        _remove_initializer(on_error=error)
+        raise
+    _remove_initializer(on_error=None)
+
+
+def _remove_initializer(*, on_error: Exception | None) -> None:
+    """Stop and remove the initializer, without letting a cleanup failure mask ``on_error``."""
+
+    try:
+        _docker("stop", "--time", "30", _INITIALIZER)
+        _docker("rm", _INITIALIZER)
+    except Exception as cleanup_error:
+        if on_error is None:
+            raise
+        on_error.add_note(
+            f"cleanup of {_INITIALIZER!r} also failed: "
+            f"{type(cleanup_error).__name__}: {cleanup_error}"
+        )
 
 
 def _run_primary(config: DevelopmentConfig) -> None:

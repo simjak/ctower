@@ -14,7 +14,13 @@ import httpx
 from pydantic import BaseModel, ValidationError
 
 from ctower_client import CtowerClient, CtowerProblemError
-from ctower_client.models import CompanyBundleExportResult, Problem, ProjectDeliveryView
+from ctower_client.models import (
+    CompanyBundleExportResult,
+    ControlHealth,
+    HealthStatus,
+    Problem,
+    ProjectDeliveryView,
+)
 from ctower_client.operations import OperationSpec, SpoolPolicy, operation_for_cli
 from ctowerctl import (
     _bootstrap_commands,
@@ -41,6 +47,7 @@ from ctowerctl._output import (
     write_text,
 )
 from ctowerctl._parser import parse_arguments
+from ctowerctl.discovery import DiscoveryError, resolve_base_url
 from ctowerctl.spool import Spool, SpoolCommand, SpoolEntry, SpoolError, SpoolState
 
 __all__ = ["main", "write_result"]
@@ -66,6 +73,12 @@ def main(
     except (TypeError, ValueError):
         error_stream.write("usage: invalid command input or missing stdin authority\n")
         return int(ExitCode.USAGE)
+    if arguments.base_url is None:
+        try:
+            arguments.base_url = resolve_base_url()
+        except DiscoveryError as error:
+            error_stream.write(f"usage: {error}\n")
+            return int(ExitCode.USAGE)
     return _run_command(arguments, input_stream, output_stream, error_stream)
 
 
@@ -128,7 +141,16 @@ def _execute(
             return _execute_synthetic(base_url, credential, namespace, operation)
         return _execute_mutation(base_url, credential, namespace, operation)
     with CtowerClient(base_url, credential=credential) as client:
-        return _execute_query(namespace, client), ExitCode.SUCCESS
+        query_result = _execute_query(namespace, client)
+        return query_result, _query_exit_code(query_result)
+
+
+def _query_exit_code(result: BaseModel) -> ExitCode:
+    """A degraded or unknown `control health` read succeeded; its exit must not say `HEALTHY`."""
+
+    if isinstance(result, ControlHealth) and result.status is not HealthStatus.HEALTHY:
+        return ExitCode.PERMANENT
+    return ExitCode.SUCCESS
 
 
 def _execute_local(
