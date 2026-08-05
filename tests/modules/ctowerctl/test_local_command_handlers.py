@@ -13,7 +13,15 @@ import pytest
 from pydantic import BaseModel, ConfigDict
 
 from ctower_client import CtowerClient, CtowerProblemError
-from ctower_client.models import PoisonDispositionRequest, Problem
+from ctower_client.models import (
+    ControlHealth,
+    HealthContributor,
+    HealthContributorKey,
+    HealthDimension,
+    HealthStatus,
+    PoisonDispositionRequest,
+    Problem,
+)
 from ctower_client.operations import OperationSpec, operation_for_cli
 from ctowerctl import _ops_commands, _spool_commands, interface
 from ctowerctl._generated_replay import ReplayObservation
@@ -270,6 +278,22 @@ def test_interface_dispatch_fails_closed(
         )
 
 
+def test_query_exit_code_treats_only_healthy_control_health_as_success() -> None:
+    now = datetime(2026, 8, 5, tzinfo=UTC)
+    assert (
+        interface._query_exit_code(_control_health(HealthStatus.HEALTHY, now)) is ExitCode.SUCCESS
+    )
+    assert (
+        interface._query_exit_code(_control_health(HealthStatus.DEGRADED, now))
+        is ExitCode.PERMANENT
+    )
+    assert (
+        interface._query_exit_code(_control_health(HealthStatus.STATE_UNKNOWN, now))
+        is ExitCode.PERMANENT
+    )
+    assert interface._query_exit_code(_Result(marker="board")) is ExitCode.SUCCESS
+
+
 def test_interface_outcome_helpers_fail_closed() -> None:
     spool = _FakeSpool()
     outbox_id = uuid4()
@@ -379,6 +403,27 @@ class _Result(BaseModel):
     model_config = ConfigDict(extra="forbid", frozen=True, strict=True)
 
     marker: str
+
+
+def _control_health(status: HealthStatus, now: datetime) -> ControlHealth:
+    contributor = HealthContributor(
+        key=HealthContributorKey.DURABILITY,
+        status=status,
+        watermark=1,
+        threshold_seconds=60,
+        observed_at=now,
+        owner="record",
+        reason="synthetic",
+    )
+    dimension = HealthDimension(status=status, contributors=(contributor,))
+    return ControlHealth(
+        schema_id="ctower.health/v1",
+        status=status,
+        observed_at=now,
+        availability=dimension,
+        completeness=dimension,
+        integrity=dimension,
+    )
 
 
 class _OperationsClient:

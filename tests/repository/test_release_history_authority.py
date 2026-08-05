@@ -18,6 +18,7 @@ class ReleaseHistoryAuthorityTests(unittest.TestCase):
     root = Path(__file__).parents[2]
     gate_source = root / "tests/repository/test_release_foundation.py"
     authority_source = root / "tests/repository/_release_history.py"
+    telemetry_source = root / "tests/repository/_release_telemetry.py"
     protected_feature = "79e292e437457f92bb6a39bfbfdb2a3a62146529"
     first_release = "171b49242e8abe0e3084552e6dac6939732bb738"
 
@@ -188,6 +189,7 @@ class ReleaseHistoryAuthorityTests(unittest.TestCase):
         sources = (
             self.gate_source,
             self.authority_source,
+            self.telemetry_source,
             self.root / "release-please-config.json",
             self.root / ".release-please-manifest.json",
             self.root / ".github/workflows/release-please.yml",

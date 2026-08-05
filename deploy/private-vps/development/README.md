@@ -84,7 +84,15 @@ First install:
   --unit-root deploy/private-vps/development/systemd
 ~/.local/share/ctower-development/runtime/venv/bin/ctower-private-vps bootstrap
 ~/.local/share/ctower-development/runtime/venv/bin/ctower-private-vps observe
+~/.local/share/ctower-development/runtime/venv/bin/ctower-private-vps expose-cli
 ```
+
+`expose-cli` is additive and touches no serving process: it links `ctowerctl`, `ctl`, and
+`ctower-shadow-ctl` onto `~/.local/bin` and writes the owner-only
+`~/.config/ctower/cli-instances.json` catalog from the installed runtime's own configuration, so any crew
+or operator on this box can run the protected CLI from any directory with no repo checkout and no
+`--base-url`. It is idempotent — rerun it any time after `database-up`, and again after a runtime
+replacement, to keep the links current.
 
 Bootstrap persists only a command ID and Secret Service reference until the first-tenant operation,
 credential bindings, state write, and service activation finish. Re-running the same command resumes that
@@ -104,6 +112,11 @@ Drive the instance only through the protected public CLI wrapper:
   --workflow ctower.trust-spine-four-stage@1 \
   --wait --assert resolved,closed
 ```
+
+This runbook always spells out that installed path, never a bare command name, so it never depends on
+what happens to be on `PATH` (see the note above the disposable-bootstrap block). Day to day, after
+`expose-cli` has run, the same wrapper also answers to its bare name from any directory on `PATH`, with no
+`--base-url`: `ctower-shadow-ctl ticket query TICKET_ID`.
 
 The Docker containers use `--restart unless-stopped`, the user units are enabled under
 `default.target`, and user lingering is a host prerequisite. A service restart is proven in this slice;

@@ -2,13 +2,14 @@
 
 from __future__ import annotations
 
+import json
 import subprocess
 import sys
 from datetime import UTC, datetime
 from functools import partial
 from pathlib import Path
 from types import SimpleNamespace
-from typing import ClassVar, Self, TextIO
+from typing import ClassVar, Self, TextIO, cast
 from uuid import UUID, uuid4
 
 import psycopg
@@ -259,6 +260,58 @@ def test_initialization_attach_requires_a_still_running_container(
     )
     with pytest.raises(RuntimeError, match="exited"):
         primary_module._attach_container_input("value")
+
+
+def test_initializer_is_removed_when_the_readiness_deadline_is_missed(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    docker_calls: list[tuple[str, ...]] = []
+
+    monkeypatch.setattr(primary_module, "_container_exists", lambda _name: True)
+    monkeypatch.setattr(primary_module, "_container_state", lambda _name: "running")
+    monkeypatch.setattr(primary_module, "_container_database_ready", lambda: True)
+    monkeypatch.setattr(
+        primary_module,
+        "_wait_for_database",
+        lambda: (_ for _ in ()).throw(
+            RuntimeError("development PostgreSQL initializer did not become ready")
+        ),
+    )
+    monkeypatch.setattr(primary_module, "_docker", partial(_observe_docker, docker_calls))
+
+    with pytest.raises(RuntimeError, match="did not become ready"):
+        primary_module._initialize_volume(_config())
+
+    assert ("stop", "--time", "30", primary_module._INITIALIZER) in docker_calls
+    assert ("rm", primary_module._INITIALIZER) in docker_calls
+
+
+def test_readiness_deadline_error_survives_a_cleanup_failure(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    def failing_docker(*arguments: str) -> str:
+        if arguments[:1] == ("stop",):
+            raise RuntimeError("docker daemon unreachable")
+        return ""
+
+    monkeypatch.setattr(primary_module, "_container_exists", lambda _name: True)
+    monkeypatch.setattr(primary_module, "_container_state", lambda _name: "running")
+    monkeypatch.setattr(primary_module, "_container_database_ready", lambda: True)
+    monkeypatch.setattr(
+        primary_module,
+        "_wait_for_database",
+        lambda: (_ for _ in ()).throw(
+            RuntimeError("development PostgreSQL initializer did not become ready")
+        ),
+    )
+    monkeypatch.setattr(primary_module, "_docker", failing_docker)
+
+    with pytest.raises(RuntimeError, match="did not become ready") as excinfo:
+        primary_module._initialize_volume(_config())
+
+    notes = "\n".join(getattr(excinfo.value, "__notes__", ()))
+    assert primary_module._INITIALIZER in notes
+    assert "docker daemon unreachable" in notes
 
 
 class _BootstrapClient:
@@ -590,3 +643,84 @@ def test_service_units_select_only_the_fixed_runtime_installation() -> None:
 
 def test_missing_existing_secret_has_a_distinct_typed_failure() -> None:
     assert issubclass(SecretReferenceMissingError, RuntimeError)
+
+
+def _installed_runtime_binaries(tmp_path: Path, *, generation: str = "data") -> Path:
+    binary_directory = tmp_path / generation / "ctower-development/runtime/venv/bin"
+    binary_directory.mkdir(parents=True)
+    for name in lifecycle._OPERATOR_FACING_VERBS:
+        script = binary_directory / name
+        script.write_text("#!/bin/sh\n", encoding="utf-8")
+        script.chmod(0o700)
+    return binary_directory
+
+
+def test_expose_cli_links_operator_verbs_and_declares_the_instance(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    binary_directory = _installed_runtime_binaries(tmp_path)
+    bin_home = tmp_path / "bin"
+    config_home = tmp_path / "config"
+    monkeypatch.setattr(installation_module, "_data_home", lambda: tmp_path / "data")
+    monkeypatch.setattr(lifecycle, "_bin_home", lambda: bin_home)
+    monkeypatch.setattr(lifecycle, "load_config", _config)
+    monkeypatch.setenv("XDG_CONFIG_HOME", str(config_home))
+
+    result = lifecycle.expose_cli()
+
+    for name in lifecycle._OPERATOR_FACING_VERBS:
+        linked = bin_home / name
+        assert linked.is_symlink()
+        assert linked.resolve() == (binary_directory / name).resolve()
+    linked_paths = cast("list[str]", result["linked"])
+    assert sorted(linked_paths) == sorted(
+        str(bin_home / name) for name in lifecycle._OPERATOR_FACING_VERBS
+    )
+    catalog_path = config_home / "ctower" / "cli-instances.json"
+    assert result["catalog"] == str(catalog_path)
+    catalog = json.loads(catalog_path.read_text(encoding="utf-8"))
+    assert catalog == {
+        "schema": "ctower.cli-instances/v1",
+        "instances": [{"name": "development", "base_url": "http://127.0.0.1:8091"}],
+    }
+
+
+def test_expose_cli_relinks_idempotently_across_a_runtime_replacement(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    _installed_runtime_binaries(tmp_path)
+    bin_home = tmp_path / "bin"
+    monkeypatch.setattr(installation_module, "_data_home", lambda: tmp_path / "data")
+    monkeypatch.setattr(lifecycle, "_bin_home", lambda: bin_home)
+    monkeypatch.setattr(lifecycle, "load_config", _config)
+    monkeypatch.setenv("XDG_CONFIG_HOME", str(tmp_path / "config"))
+    lifecycle.expose_cli()
+
+    replacement = _installed_runtime_binaries(tmp_path, generation="data2")
+    monkeypatch.setattr(installation_module, "_data_home", lambda: tmp_path / "data2")
+    lifecycle.expose_cli()
+
+    for name in lifecycle._OPERATOR_FACING_VERBS:
+        assert (bin_home / name).resolve() == (replacement / name).resolve()
+
+
+def test_expose_cli_refuses_when_the_runtime_is_not_installed(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    monkeypatch.setattr(installation_module, "_data_home", lambda: tmp_path / "data")
+
+    with pytest.raises(RuntimeError, match="not installed"):
+        lifecycle.expose_cli()
+
+
+def test_expose_cli_refuses_when_an_entry_point_is_missing(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    binary_directory = tmp_path / "data/ctower-development/runtime/venv/bin"
+    binary_directory.mkdir(parents=True)
+    (binary_directory / "ctowerctl").write_text("#!/bin/sh\n", encoding="utf-8")
+    monkeypatch.setattr(installation_module, "_data_home", lambda: tmp_path / "data")
+    monkeypatch.setattr(lifecycle, "_bin_home", lambda: tmp_path / "bin")
+
+    with pytest.raises(RuntimeError, match="missing the ctl entry point"):
+        lifecycle.expose_cli()

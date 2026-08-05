@@ -3,7 +3,9 @@
 from __future__ import annotations
 
 import time
+from collections.abc import Iterator
 from concurrent.futures import ThreadPoolExecutor
+from contextlib import contextmanager
 from dataclasses import dataclass
 from typing import Protocol, cast
 from uuid import UUID, uuid4
@@ -30,6 +32,7 @@ _ADVISORY_KEY = 7_221_643
 _BOUND_SECONDS = 8.0
 _HTTP_OK = 200
 _HTTP_PENDING = 202
+_BLOCKED_COMMIT_DEADLINE_MS = 3_000
 
 
 class AuthorityFixture(Protocol):
@@ -63,6 +66,7 @@ def create_ambiguous_finalization(
     _install_barrier(authority.database.admin_dsn)
     try:
         with (
+            _raised_commit_deadline(authority.database.admin_dsn),
             psycopg.connect(authority.database.admin_dsn, autocommit=True) as blocker,
             ThreadPoolExecutor(max_workers=1) as executor,
         ):
@@ -225,6 +229,44 @@ def assert_promoted_replay(authority: AuthorityFixture, ambiguity: AmbiguousFina
             ),
         ).fetchone()
     assert facts == (True, False)
+
+
+@contextmanager
+def _raised_commit_deadline(dsn: str) -> Iterator[None]:
+    """Widen commit_deadline_ms for the deliberately advisory-lock-blocked
+    finalization statement below.
+
+    ``_set_remote_apply`` (``ctower_kernel.record._durability_sql``) arms
+    ``commit_deadline_ms`` as this connection's ``statement_timeout`` before the
+    finalization INSERT executes, not only before the remote-apply COMMIT that
+    follows it. This scenario intentionally holds that INSERT blocked on
+    ``_ADVISORY_KEY`` while it confirms ack replay and stops the standby, so
+    the same statement_timeout also covers that barrier-detect-and-stop
+    overhead -- under a loaded runner the default (1500ms) can expire while
+    the INSERT is still queued on the test's own lock, aborting the
+    transaction before it ever reaches COMMIT and permanently dropping the
+    finalization row (durability_finalization.py#309's strike).
+    """
+
+    with psycopg.connect(dsn) as connection:
+        original = connection.execute(
+            "SELECT commit_deadline_ms FROM durability_policy_state WHERE singleton"
+        ).fetchone()
+        assert original is not None
+        connection.execute("SET LOCAL synchronous_commit = local")
+        connection.execute(
+            "UPDATE durability_policy_state SET commit_deadline_ms = %s WHERE singleton",
+            (_BLOCKED_COMMIT_DEADLINE_MS,),
+        )
+    try:
+        yield
+    finally:
+        with psycopg.connect(dsn) as connection:
+            connection.execute("SET LOCAL synchronous_commit = local")
+            connection.execute(
+                "UPDATE durability_policy_state SET commit_deadline_ms = %s WHERE singleton",
+                (original[0],),
+            )
 
 
 def _install_barrier(dsn: str) -> None:
