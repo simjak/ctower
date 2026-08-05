@@ -89,7 +89,8 @@ def _reconcile(
     now: datetime,
     rebuild_generation: int | None,
 ) -> int:
-    definitions = _definitions(connection, tenant_id)
+    active_events = frozenset(_active_checkpoint_event_ids(connection, tenant_id))
+    definitions = _definitions(connection, tenant_id, active_events)
     removed = _delete_inactive_rows(connection, tenant_id, definitions)
     if not definitions:
         return removed
@@ -99,7 +100,9 @@ def _reconcile(
         project_definitions = [row for row in definitions if str(row["project_key"]) == project_key]
         event_ids = tuple(cast(UUID, row["event_id"]) for row in project_definitions)
         source = _source_position(connection, tenant_id, project_key, event_ids)
-        complete = _source_complete(connection, tenant_id, project_definitions, source)
+        complete = _source_complete(
+            connection, tenant_id, project_definitions, source, active_events
+        )
         projection = source if complete else _prior_projection(connection, tenant_id, project_key)
         project_states.append((project_key, project_definitions, source, complete, projection))
     generation = (
@@ -149,8 +152,8 @@ def _reconcile(
 def _definitions(
     connection: psycopg.Connection[dict[str, object]],
     tenant_id: UUID,
+    event_ids: frozenset[UUID],
 ) -> list[dict[str, object]]:
-    event_ids = _active_checkpoint_event_ids(connection, tenant_id)
     if not event_ids:
         return []
     return connection.execute(
