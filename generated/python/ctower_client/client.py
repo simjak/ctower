@@ -1,6 +1,6 @@
 """DO NOT EDIT: generated file; regenerate from declared inputs.
 
-Authored contract digest: sha256:1f61ab130cdc302ab1fee3d1dc4170e6327c88c7f1354f83490bc5b612d95abb
+Authored contract digest: sha256:b6f186fea835671be5435034ff923a159509771497f5452972eb99d434f8a153
 """
 
 from __future__ import annotations
@@ -653,7 +653,7 @@ class CtowerClient:
                 },
             ),
         )
-        return _response(response, {201: SeatCredentialReceipt, 202: SeatCredentialReceipt}, {401: Problem, 403: Problem, 409: Problem, 422: Problem})
+        return _response(response, {201: SeatCredentialReceipt, 202: SeatCredentialReceipt}, {401: Problem, 403: Problem, 409: Problem, 422: Problem, 503: Problem})
 
     @validate_call(config=ConfigDict(strict=True, arbitrary_types_allowed=True))
     def list_project_sessions(
@@ -947,7 +947,7 @@ class CtowerClient:
                 },
             ),
         )
-        return _response(response, {200: SeatCredentialReceipt, 202: SeatCredentialReceipt}, {401: Problem, 403: Problem, 404: Problem, 409: Problem, 422: Problem})
+        return _response(response, {200: SeatCredentialReceipt, 202: SeatCredentialReceipt}, {401: Problem, 403: Problem, 404: Problem, 409: Problem, 422: Problem, 503: Problem})
 
     @validate_call(config=ConfigDict(strict=True, arbitrary_types_allowed=True))
     def run_synthetic_workflow(
