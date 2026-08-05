@@ -2862,6 +2862,9 @@
           "code": {
             "type": "string",
             "enum": [
+              "attention-finding-already-disposed",
+              "attention-finding-not-found",
+              "attention-kind-unrecognized",
               "bootstrap-consumed",
               "bootstrap-expired",
               "bootstrap-nonempty",
@@ -2878,6 +2881,7 @@
               "bundle-reference-invalid",
               "bundle-schema-invalid",
               "bundle-security-refused",
+              "change-reference-duplicate",
               "credential-already-revoked",
               "credential-authentication-unavailable",
               "credential-digest-conflict",
@@ -2892,6 +2896,8 @@
               "intake-promotion-ineligible",
               "intake-source-project-mismatch",
               "intake-source-conflict",
+              "label-already-applied",
+              "label-key-unrecognized",
               "migration-alias-conflict",
               "migration-capability-denied",
               "migration-correction-conflict",
