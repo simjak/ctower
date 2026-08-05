@@ -179,6 +179,9 @@ _EXPECTED_OPERATION_METADATA: dict[str, tuple[object, bool, str, object, bool]] 
     "validateCompanyBundle": ("company bundle validate", False, "forbidden", None, False),
 }
 _EXPECTED_PROBLEM_CODES = {
+    "attention-finding-already-disposed",
+    "attention-finding-not-found",
+    "attention-kind-unrecognized",
     "bootstrap-consumed",
     "bootstrap-expired",
     "bootstrap-nonempty",
@@ -195,6 +198,7 @@ _EXPECTED_PROBLEM_CODES = {
     "bundle-reference-invalid",
     "bundle-schema-invalid",
     "bundle-security-refused",
+    "change-reference-duplicate",
     "credential-already-revoked",
     "credential-authentication-unavailable",
     "credential-digest-conflict",
@@ -209,6 +213,8 @@ _EXPECTED_PROBLEM_CODES = {
     "intake-promotion-ineligible",
     "intake-source-project-mismatch",
     "intake-source-conflict",
+    "label-already-applied",
+    "label-key-unrecognized",
     "migration-alias-conflict",
     "migration-capability-denied",
     "migration-correction-conflict",
