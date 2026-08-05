@@ -46,6 +46,7 @@ from ctower_kernel.record._durability_finalizer_sql import (
 )
 from ctower_kernel.record._durability_health_sql import durability_health as _durability_health
 from ctower_kernel.record._durability_sql import reconcile_durability as _reconcile_durability
+from ctower_kernel.record._human_identity_adapter import PostgresHumanIdentity
 from ctower_kernel.record._intake_sql import promote_intake as _promote_intake
 from ctower_kernel.record._intake_sql import submit_intake as _submit_intake
 from ctower_kernel.record._migration_ledger_sql import (
@@ -355,6 +356,7 @@ class PostgresRecord:
         self.seat_credentials = _PostgresSeatCredentials(dsn, telemetry=self._telemetry)
         self.work_sessions = _PostgresWorkSessions(dsn, telemetry=self._telemetry)
         self.event_audit = _PostgresEventAudit(dsn, telemetry=self._telemetry)
+        self.human_identity = PostgresHumanIdentity(dsn, telemetry=self._telemetry)
 
     def authorize_bootstrap(
         self, capability_digest: bytes, *, origin: str, now: datetime

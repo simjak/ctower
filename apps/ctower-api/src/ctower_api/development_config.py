@@ -7,14 +7,16 @@ import re
 from datetime import datetime
 from pathlib import Path
 from typing import Literal
+from urllib.parse import urlsplit
 from uuid import UUID
 
-from pydantic import BaseModel, ConfigDict, Field, field_validator
+from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
 
 __all__ = [
     "DevelopmentBootstrapCheckpoint",
     "DevelopmentConfig",
     "DevelopmentState",
+    "OidcProviderConfig",
     "bootstrap_checkpoint_path",
     "config_path",
     "delete_bootstrap_checkpoint",
@@ -30,8 +32,47 @@ __all__ = [
 _REFERENCE = re.compile(r"^secret-service:ctower-development/[a-z0-9-]{3,64}$")
 
 
+def _private_https_url(value: str) -> str:
+    """Require https, except for the loopback origin the dev runtime itself binds to."""
+
+    parts = urlsplit(value)
+    if parts.scheme == "https" and parts.hostname:
+        return value
+    if parts.scheme == "http" and parts.hostname in {"127.0.0.1", "localhost"}:
+        return value
+    raise ValueError("OIDC endpoints must be https, or http on loopback for local fixtures")
+
+
 class _StrictModel(BaseModel):
     model_config = ConfigDict(extra="forbid", frozen=True, strict=True)
+
+
+class OidcProviderConfig(_StrictModel):
+    """One operator-provisioned OIDC provider registration.
+
+    Discovery-document-driven and provider-agnostic: no vendor SDK, no
+    Entra/Google/Okta-specific field. ``enabled`` defaults false, and an empty
+    ``oidc_providers`` tuple is the pre-provider-binding default state.
+    """
+
+    provider_key: str = Field(pattern=r"^[a-z][a-z0-9-]{1,63}$")
+    issuer: str
+    client_id: str = Field(min_length=1, max_length=255)
+    client_secret_ref: str
+    redirect_uri: str
+    enabled: bool = False
+
+    @field_validator("client_secret_ref")
+    @classmethod
+    def _secret_reference(cls, value: str) -> str:
+        if _REFERENCE.fullmatch(value) is None:
+            raise ValueError("the OIDC client secret must be a Secret Service reference")
+        return value
+
+    @field_validator("issuer", "redirect_uri")
+    @classmethod
+    def _https_or_loopback(cls, value: str) -> str:
+        return _private_https_url(value)
 
 
 class DevelopmentConfig(_StrictModel):
@@ -52,6 +93,9 @@ class DevelopmentConfig(_StrictModel):
     projection_secret_ref: str
     operator_secret_ref: str
     commander_secret_ref: str
+    login_attempt_signing_secret_ref: str | None = None
+    oidc_providers: tuple[OidcProviderConfig, ...] = ()
+    login_gate_enforcing: bool = False
 
     @field_validator(
         "postgres_admin_secret_ref",
@@ -67,12 +111,38 @@ class DevelopmentConfig(_StrictModel):
             raise ValueError("development secrets must be Secret Service references")
         return value
 
+    @field_validator("login_attempt_signing_secret_ref")
+    @classmethod
+    def _optional_secret_reference(cls, value: str | None) -> str | None:
+        if value is not None and _REFERENCE.fullmatch(value) is None:
+            raise ValueError("the login-attempt signing key must be a Secret Service reference")
+        return value
+
     @field_validator("postgres_image")
     @classmethod
     def _pinned_postgres(cls, value: str) -> str:
         if re.fullmatch(r"postgres@sha256:[0-9a-f]{64}", value) is None:
             raise ValueError("development PostgreSQL image must use one immutable digest")
         return value
+
+    @field_validator("oidc_providers")
+    @classmethod
+    def _unique_provider_keys(
+        cls, value: tuple[OidcProviderConfig, ...]
+    ) -> tuple[OidcProviderConfig, ...]:
+        keys = [provider.provider_key for provider in value]
+        if len(set(keys)) != len(keys):
+            raise ValueError("OIDC provider keys must be unique")
+        return value
+
+    @model_validator(mode="after")
+    def _enabled_providers_need_a_signing_key(self) -> DevelopmentConfig:
+        if self.login_gate_enforcing and self.login_attempt_signing_secret_ref is None:
+            raise ValueError("an enforcing login gate requires a login-attempt signing key")
+        has_enabled_provider = any(provider.enabled for provider in self.oidc_providers)
+        if has_enabled_provider and self.login_attempt_signing_secret_ref is None:
+            raise ValueError("an enabled OIDC provider requires a login-attempt signing key")
+        return self
 
 
 class DevelopmentState(_StrictModel):

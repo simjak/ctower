@@ -57,13 +57,14 @@ _EXPECTED_MIGRATION_PATHS = [
     "0043_context_set_catalogs.sql",
     "0044_ticket_change_and_label_facts.sql",
     "0045_attention_findings.sql",
+    "0046_human_oidc_identity.sql",
 ]
 _EXPECTED_ADOPTION_BASELINE = {
-    "through": "0045_attention_findings.sql",
-    "schema_sha256": ("sha256:49fb02c1288d712afa969ba0a626b582ec515406b8b30ba08b25398355467b5c"),
+    "through": "0046_human_oidc_identity.sql",
+    "schema_sha256": ("sha256:094bef3be1f862a490ef58dd27436e79fd8c79451dc4eb175f016e7d02a3c516"),
     "semantic_checks": "ctower.pre-ledger/v1",
     "schema_object_sum256": (
-        "sum256:ca28b65a617c0ff60086c41c8b9d7e655792528e43cf2d37f20cc077ac538522"
+        "sum256:3214a7ebfd01854174742a6eb42c3be41f332367d723c5238b66ab43d1fb9711"
     ),
 }
 _DURABILITY_RECOVERY_CONTRACT = {

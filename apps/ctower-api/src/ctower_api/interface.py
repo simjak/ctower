@@ -4,16 +4,19 @@ from __future__ import annotations
 
 import re
 from collections.abc import Awaitable, Callable
+from dataclasses import dataclass
 from datetime import datetime
 from typing import cast
 from uuid import UUID
 
+import httpx
 from fastapi import FastAPI, Request
 from fastapi.responses import JSONResponse
 from pydantic import ValidationError
 from starlette.responses import Response
 
 from ctower_api._attention_finding_routes import install_attention_finding_routes
+from ctower_api._auth_routes import install_auth_routes
 from ctower_api._board_context_routes import install_board_context_routes
 from ctower_api._board_routes import install_board_routes
 from ctower_api._catalog_routes import BundleCatalog, install_catalog_routes
@@ -46,6 +49,7 @@ from ctower_api._http_support import (
     validation_problem as _validation_problem,
 )
 from ctower_api._intake_routes import install_intake_routes
+from ctower_api._login_gate import install_login_gate
 from ctower_api._migration_port import MigrationPort
 from ctower_api._mutation_response import mutation_response as _mutation_response
 from ctower_api._project_event_routes import install_project_event_routes
@@ -64,6 +68,7 @@ from ctower_client.models import (
 )
 from ctower_client.models import TicketCommandResult as HttpTicketCommandResult
 from ctower_kernel.access import Access
+from ctower_kernel.access.oidc import OidcProvider
 from ctower_kernel.attention import Attention
 from ctower_kernel.board_context import BoardContextFacts
 from ctower_kernel.projections import Projections
@@ -86,10 +91,23 @@ from ctower_kernel.telemetry import TelemetryContext
 from ctower_kernel.work import Intake, Work
 from ctower_kernel.workflow import Workflow
 
-__all__ = ["create_app"]
+__all__ = ["OidcRuntimeConfig", "create_app"]
 
 type _MigrationImporterResolver = Callable[[bytes, UUID, UUID, str, datetime], Actor | None]
 _PROJECT_KEY = re.compile(r"^[a-z][a-z0-9-]{2,63}$")
+
+
+@dataclass(frozen=True, slots=True)
+class OidcRuntimeConfig:
+    """Deploy-time human OIDC wiring; absent fields mean no configured providers."""
+
+    providers: dict[str, OidcProvider] | None = None
+    http_client_factory: Callable[[], httpx.Client] | None = None
+    login_attempt_signing_key: bytes | None = None
+    gate_enforcing: bool = False
+
+
+_DARK_OIDC_CONFIG = OidcRuntimeConfig()
 
 
 def _project_key(value: str | None) -> str:
@@ -111,6 +129,27 @@ def _install_telemetry_health(app: FastAPI, recorder: TelemetryRecorder) -> None
         return response
 
 
+def _build_access(
+    record: Record,
+    recorder: TelemetryRecorder,
+    oidc: OidcRuntimeConfig,
+    *,
+    migration_importer_resolver: _MigrationImporterResolver | None,
+    migration_importer_credential_resolver: Callable[[bytes, datetime], Actor | None] | None,
+    fence_observer_resolver: Callable[[bytes, datetime], Actor | None] | None,
+) -> Access:
+    return Access(
+        record,
+        importer_resolver=migration_importer_resolver,
+        importer_credential_resolver=migration_importer_credential_resolver,
+        fence_observer_resolver=fence_observer_resolver,
+        oidc_providers=oidc.providers,
+        oidc_http_client_factory=oidc.http_client_factory,
+        login_attempt_signing_key=oidc.login_attempt_signing_key,
+        telemetry=recorder,
+    )
+
+
 def create_app(
     record: Record,
     *,
@@ -127,21 +166,25 @@ def create_app(
     migration_importer_resolver: _MigrationImporterResolver | None = None,
     migration_importer_credential_resolver: Callable[[bytes, datetime], Actor | None] | None = None,
     fence_observer_resolver: Callable[[bytes, datetime], Actor | None] | None = None,
+    oidc: OidcRuntimeConfig = _DARK_OIDC_CONFIG,
     telemetry: TelemetryRecorder | None = None,
 ) -> FastAPI:
     """Compose the private command API without embedding durable decisions."""
 
     app = FastAPI(title="ctower control API", version="0.0.0")
     recorder = telemetry or TelemetryRecorder()
-    access = Access(
+    access = _build_access(
         record,
-        importer_resolver=migration_importer_resolver,
-        importer_credential_resolver=migration_importer_credential_resolver,
+        recorder,
+        oidc,
+        migration_importer_resolver=migration_importer_resolver,
+        migration_importer_credential_resolver=migration_importer_credential_resolver,
         fence_observer_resolver=fence_observer_resolver,
-        telemetry=recorder,
     )
     work_module = work or Work(record, telemetry=recorder)
     _install_telemetry_health(app, recorder)
+    install_auth_routes(app, access, recorder)
+    install_login_gate(app, enforcing=oidc.gate_enforcing)
     _install_access_routes(app, access, record, recorder)
     _install_ticket_create_route(app, access, record, work_module, recorder)
     _install_custody_route(app, access, record, work_module, recorder)

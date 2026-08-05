@@ -1,10 +1,10 @@
 {
   "schema": "ctower.migrations/v3",
   "adoption_baseline": {
-    "through": "0045_attention_findings.sql",
-    "schema_sha256": "sha256:49fb02c1288d712afa969ba0a626b582ec515406b8b30ba08b25398355467b5c",
+    "through": "0046_human_oidc_identity.sql",
+    "schema_sha256": "sha256:094bef3be1f862a490ef58dd27436e79fd8c79451dc4eb175f016e7d02a3c516",
     "semantic_checks": "ctower.pre-ledger/v1",
-    "schema_object_sum256": "sum256:ca28b65a617c0ff60086c41c8b9d7e655792528e43cf2d37f20cc077ac538522"
+    "schema_object_sum256": "sum256:3214a7ebfd01854174742a6eb42c3be41f332367d723c5238b66ab43d1fb9711"
   },
   "migrations": [
     {
@@ -431,6 +431,15 @@
       "forward_test": "pytest:tests/acceptance/increment-1/test_board_context_set.py::test_human_waiting_qualifies_only_from_an_open_operator_owned_finding",
       "rollback_or_forward_compensation": "Findings and dispositions are append-only facts with no projection to rebuild; forward compensation appends a corrective finding or disposition and never edits or deletes a committed one.",
       "backup_checkpoint": "Before applying to a nonempty installation, capture a verified database backup; both new tables start empty."
+    },
+    {
+      "path": "0046_human_oidc_identity.sql",
+      "sha256": "sha256:90289be2c4d79c8760e663ee8b29063e23cd6539a84c792d2dd2685dfc72451f",
+      "minimum_service_version": "0.0.0",
+      "maximum_service_version": "0.0.0",
+      "forward_test": "pytest:tests/acceptance/increment-1/test_human_role_bindings.py::test_bound_identity_resolves_a_session_that_a_revocation_ends",
+      "rollback_or_forward_compensation": "Human role bindings and sessions are append-only facts with no projection to rebuild; forward compensation appends a corrective binding, revocation, or session fact and never edits or deletes a committed row.",
+      "backup_checkpoint": "Before applying to a nonempty installation, capture human_role_bindings, human_role_binding_revocations, human_sessions, and human_session_revocations counts grouped by tenant plus a verified database backup."
     }
   ]
 }

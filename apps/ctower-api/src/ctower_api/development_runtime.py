@@ -17,16 +17,17 @@ from ctower_contracts import CATALOG
 from ctower_api._development_catalog_store import development_catalog_store
 from ctower_api._routine_loop import load_routine_revisions
 from ctower_api.control_worker import build_worker
-from ctower_api.development_config import load_config, load_state
+from ctower_api.development_config import DevelopmentConfig, load_config, load_state
 from ctower_api.development_finalizer import (
     DevelopmentFinalizerProgress,
     load_finalizer_progress,
     write_finalizer_progress,
 )
 from ctower_api.development_secrets import development_dsn, load_secret
-from ctower_api.interface import create_app
+from ctower_api.interface import OidcRuntimeConfig, create_app
 from ctower_api.synthetic_handler import SyntheticFourStageHandler, SyntheticPolicyPins
 from ctower_client import CtowerClient
+from ctower_kernel.access.oidc import OidcProvider
 from ctower_kernel.attention import Attention
 from ctower_kernel.attention.postgres import PostgresAttention
 from ctower_kernel.board_context import BoardContextFacts
@@ -143,6 +144,11 @@ def api_main() -> None:
             board_context=BoardContextFacts(PostgresBoardContextFacts(runtime_dsn)),
             synthetic_runtime=FixedOperations(runtime_store),
             synthetic_revision=_synthetic_revision(revisions),
+            oidc=OidcRuntimeConfig(
+                providers=_enabled_oidc_providers(config),
+                login_attempt_signing_key=_login_attempt_signing_key(config),
+                gate_enforcing=config.login_gate_enforcing,
+            ),
         ),
         host=config.api_host,
         port=config.api_port,
@@ -226,6 +232,26 @@ def _policy_digests(packs: Path) -> dict[str, str]:
 
 def _digest(path: Path) -> str:
     return f"sha256:{hashlib.sha256(path.read_bytes()).hexdigest()}"
+
+
+def _enabled_oidc_providers(config: DevelopmentConfig) -> dict[str, OidcProvider]:
+    return {
+        provider.provider_key: OidcProvider(
+            provider_key=provider.provider_key,
+            issuer=provider.issuer,
+            client_id=provider.client_id,
+            client_secret=load_secret(provider.client_secret_ref),
+            redirect_uri=provider.redirect_uri,
+        )
+        for provider in config.oidc_providers
+        if provider.enabled
+    }
+
+
+def _login_attempt_signing_key(config: DevelopmentConfig) -> bytes | None:
+    if config.login_attempt_signing_secret_ref is None:
+        return None
+    return load_secret(config.login_attempt_signing_secret_ref).encode("utf-8")
 
 
 def _synthetic_revision(revisions: tuple[RoutineRevision, ...]) -> RoutineRevision:
