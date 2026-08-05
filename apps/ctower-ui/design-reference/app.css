@@ -1905,3 +1905,97 @@ body:has(#f-bhloop:checked) .pgroup:not(.gr-bhloop) { display: none; }
   display: flex; flex-wrap: wrap; align-items: center; gap: 8px;
   font-family: var(--mono); font-size: 11px; color: var(--ink-3);
 }
+
+/* ── live terminal pane (Inc 1, R2804) ────────────────────────────────────
+   A terminal pane keeps one fixed dark palette in both app themes — the same
+   deliberate, disclosed exception the approved mockup states: literal dark-
+   theme colours below, never the --surface/--ink pair that flips with the
+   toggle, so a captured pane never goes light-on-light. */
+.term-frame {
+  border: 1px solid #232c3c;
+  border-radius: var(--r-md);
+  background: #0a0d13;
+  overflow: hidden;
+  margin-bottom: 16px;
+}
+.term-frame header {
+  display: flex; flex-wrap: wrap; align-items: center; gap: 10px;
+  padding: 10px 14px;
+  border-bottom: 1px solid #232c3c;
+  background: #11161f;
+}
+.term-who { display: inline-flex; align-items: center; gap: 8px; font-size: 13px; color: #e9edf5; }
+.term-who .av { border-color: #2e394d; background: #151b26; color: #a7b2c6; }
+.term-frame .live { color: #7ad3a0; }
+.term-frame .live .pulse { background: #4fbf7b; }
+.term-ro {
+  font-family: var(--mono); font-size: 10.5px; letter-spacing: .04em; text-transform: uppercase;
+  color: #6d7a90; border: 1px solid #2e394d; border-radius: var(--r-sm); padding: 2px 7px;
+}
+.term-frame .chip {
+  margin-left: auto;
+  font-family: var(--mono); font-size: 10.5px; color: #a7b2c6;
+  border: 1px solid #2e394d; border-radius: var(--r-sm); padding: 2px 7px;
+}
+.term-body {
+  margin: 0; padding: 14px 16px;
+  font-family: var(--mono); font-size: 11.5px; line-height: 1.75;
+  color: #c7cede; background: #0a0d13;
+  max-height: 420px; overflow: auto; scrollbar-width: thin;
+  white-space: pre-wrap; overflow-wrap: anywhere;
+}
+.term-frame footer {
+  display: flex; flex-wrap: wrap; gap: 3px 14px;
+  padding: 9px 14px;
+  border-top: 1px solid #232c3c;
+  background: #11161f;
+  font-family: var(--mono); font-size: 10.5px; color: #5b6880;
+}
+.term-empty {
+  display: flex; flex-direction: column; align-items: center; gap: 6px;
+  padding: 30px 16px;
+  text-align: center;
+}
+.term-empty .g { font-size: 18px; color: #6d7a90; }
+.term-empty b { color: #e9edf5; font-size: 13px; }
+.term-empty .d { font-size: 12px; color: #6d7a90; max-width: 46ch; }
+
+/* seat aggregate: CSS-only tab switch over up to eight panes, no script —
+   the same technique the Metrics scope radios already use (`.mtscope`),
+   applied to a dynamic list instead of a fixed enum via sibling position
+   rather than a per-value id. An engagement past the eighth is counted and
+   named rather than silently dropped; see the seat page's own stated cap. */
+.term-tabgroup { border: 1px solid var(--line); border-radius: var(--r-md); overflow: hidden; }
+.term-tab-radio {
+  position: absolute; width: 1px; height: 1px; margin: -1px; padding: 0;
+  overflow: hidden; clip: rect(0, 0, 0, 0); white-space: nowrap; border: 0;
+}
+.term-tabs { display: flex; flex-wrap: wrap; gap: 1px; background: var(--line); }
+.term-tab {
+  flex: 1 1 160px; min-width: 0;
+  display: flex; flex-direction: column; gap: 2px;
+  padding: 9px 12px;
+  background: var(--surface-2);
+  cursor: pointer;
+}
+.term-tab b { font-size: 12.5px; color: var(--ink); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.term-tab .p { font-family: var(--mono); font-size: 10.5px; color: var(--ink-3); }
+.term-pane { display: none; }
+.term-tabgroup:has(.term-tab-radio:nth-of-type(1):checked) .term-pane:nth-of-type(1),
+.term-tabgroup:has(.term-tab-radio:nth-of-type(2):checked) .term-pane:nth-of-type(2),
+.term-tabgroup:has(.term-tab-radio:nth-of-type(3):checked) .term-pane:nth-of-type(3),
+.term-tabgroup:has(.term-tab-radio:nth-of-type(4):checked) .term-pane:nth-of-type(4),
+.term-tabgroup:has(.term-tab-radio:nth-of-type(5):checked) .term-pane:nth-of-type(5),
+.term-tabgroup:has(.term-tab-radio:nth-of-type(6):checked) .term-pane:nth-of-type(6),
+.term-tabgroup:has(.term-tab-radio:nth-of-type(7):checked) .term-pane:nth-of-type(7),
+.term-tabgroup:has(.term-tab-radio:nth-of-type(8):checked) .term-pane:nth-of-type(8) { display: block; }
+.term-tabgroup:has(.term-tab-radio:nth-of-type(1):checked) .term-tab:nth-of-type(1),
+.term-tabgroup:has(.term-tab-radio:nth-of-type(2):checked) .term-tab:nth-of-type(2),
+.term-tabgroup:has(.term-tab-radio:nth-of-type(3):checked) .term-tab:nth-of-type(3),
+.term-tabgroup:has(.term-tab-radio:nth-of-type(4):checked) .term-tab:nth-of-type(4),
+.term-tabgroup:has(.term-tab-radio:nth-of-type(5):checked) .term-tab:nth-of-type(5),
+.term-tabgroup:has(.term-tab-radio:nth-of-type(6):checked) .term-tab:nth-of-type(6),
+.term-tabgroup:has(.term-tab-radio:nth-of-type(7):checked) .term-tab:nth-of-type(7),
+.term-tabgroup:has(.term-tab-radio:nth-of-type(8):checked) .term-tab:nth-of-type(8) {
+  background: var(--accent-bg); color: var(--accent-deep);
+}
