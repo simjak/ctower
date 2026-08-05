@@ -165,7 +165,14 @@ function Matrix({ roster }: { readonly roster: CrewRoster }): ReactElement {
         <span className="t">all</span>
       </div>
       {roster.seats.map((seat) => (
-        <div className="org-row" key={seat.seat} style={columns}>
+        // the whole row is the link, the same choice the crew roster made: the
+        // seat label alone would leave most of a tall row unclickable
+        <Link
+          className="org-row"
+          href={`/team/${encodeURIComponent(seat.label)}`}
+          key={seat.seat}
+          style={columns}
+        >
           <span className="s">
             <i className="av">{seat.initials}</i>
             <span className="nm">{seat.label}</span>
@@ -179,7 +186,7 @@ function Matrix({ roster }: { readonly roster: CrewRoster }): ReactElement {
             </span>
           ))}
           <span className={seat.total === 0 ? "c t" : "c t on"}>{seat.total}</span>
-        </div>
+        </Link>
       ))}
       <div className="org-row org-total" style={{ ...columns, background: "var(--surface)" }}>
         <span

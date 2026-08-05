@@ -435,6 +435,22 @@ command = [
 timeout_seconds = 900
 
 [[suite]]
+id = "operations-completion-join"
+owner = "CT-I1-006"
+phase = "CT-I1-006"
+status = "required"
+path = "tests/acceptance/increment-1"
+patterns = ["test_operations_completion_join.py"]
+command = [
+  "{python}",
+  "-m",
+  "pytest",
+  "tests/acceptance/increment-1/test_operations_completion_join.py",
+  "-q",
+]
+timeout_seconds = 900
+
+[[suite]]
 id = "persistent-shadow-runtime-acceptance"
 owner = "CT-I1-006"
 phase = "CT-I1-006"

@@ -110,8 +110,9 @@ def _replace_runtime(
         replacement = home.with_name(f"runtime-replacement-{uuid4().hex}")
         _create_runtime(replacement, wheel, manifest_path, packs, python)
         previous = runtime_previous()
+        retired = home.with_name(f"runtime-retired-{uuid4().hex}")
+        retired_previous = _retire_previous(previous, retired, lock=lock)
         try:
-            _discard_previous(previous, current=home, lock=lock)
             previous.symlink_to(replacement.name, target_is_directory=True)
             _exchange_paths(home, previous)
         except Exception:
@@ -119,7 +120,11 @@ def _replace_runtime(
                 previous.unlink()
             if replacement.exists():
                 shutil.rmtree(replacement)
+            if retired_previous:
+                retired.rename(previous)
             raise
+        if retired_previous:
+            _discard_previous(retired, current=home, lock=lock)
 
 
 @contextmanager
@@ -165,6 +170,27 @@ def _require_installed_runtime(path: Path, *, label: str) -> None:
         raise RuntimeError(f"the {label} persistent runtime is incomplete")
     if not os.access(entrypoint, os.X_OK):
         raise RuntimeError(f"the {label} persistent runtime entry point is not executable")
+
+
+def _retire_previous(
+    previous: Path,
+    retired: Path,
+    *,
+    lock: _RuntimeChangeLock | None = None,
+) -> bool:
+    """Move any retained predecessor aside so its pathname is free, without discarding it.
+
+    Returns whether a predecessor existed to retire. The caller discards the retired
+    directory only after the new candidate has committed, and renames it back on failure,
+    so a refused replacement never loses the version it would have rolled back to.
+    """
+
+    if lock is None or lock.parent != previous.parent:
+        raise RuntimeError("runtime predecessor retirement requires the runtime change lock")
+    if not previous.is_symlink() and not previous.exists():
+        return False
+    previous.rename(retired)
+    return True
 
 
 def _discard_previous(

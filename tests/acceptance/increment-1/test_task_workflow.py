@@ -394,7 +394,7 @@ def _audit_events(record: PostgresRecord, actor: Actor, ticket_id: UUID) -> list
     events: list[AuditEvent] = []
     cursor = 0
     while True:
-        page = record.ticket_audit(
+        page = record.event_audit.ticket_audit(
             actor, ticket_id, "ctower", cursor=cursor, limit=2, telemetry=_telemetry()
         )
         assert not isinstance(page, RecordProblem)

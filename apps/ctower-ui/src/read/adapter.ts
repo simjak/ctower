@@ -14,6 +14,7 @@ import type {
   CadenceRegistry,
   CrewLookup,
   CrewRoster,
+  CrewRow,
   SessionStream,
   RecordAdapter,
   Reading,
@@ -99,3 +100,62 @@ export const recordAdapter: RecordAdapter = {
   crewProfile: async (crew: string): Promise<Reading<CrewLookup>> =>
     await reading(async () => await readCrewProfile(crew)),
 };
+
+/**
+ * The crew profile page's own terminal read.
+ *
+ * The pane's bytes are a second, independent read from the identity lookup
+ * above: a lookup that did not find a live crew has no session name to ask
+ * for, and a lookup that did is read again rather than reusing a value the
+ * profile source did not carry. `Reading` is unwrapped here, inside the read
+ * boundary, so no screen has to branch on `reading.state` to decide whether
+ * it has a session name to read a pane for.
+ */
+export async function crewTerminalStream(
+  lookup: Reading<CrewLookup>
+): Promise<Reading<SessionStream>> {
+  if (lookup.state !== "present" || lookup.value.found !== "crew") {
+    return {
+      state: "absent",
+      source: { absence: "silence", what: "a pane for a crew this lookup did not find" },
+    };
+  }
+  return await recordAdapter.sessionStream(lookup.value.profile.sessionName);
+}
+
+/**
+ * The seat aggregate's own terminal reads: every crew this seat has live,
+ * each with its own independently read pane, zipped together so a screen
+ * never indexes two arrays by hand to line a crew back up with its stream.
+ *
+ * A roster read that did not land yet has no crews to read a pane for, so
+ * this returns the empty list rather than inspecting `reading.state` a
+ * second time outside the boundary that is allowed to.
+ */
+export async function seatTerminalStreams(
+  roster: Reading<CrewRoster>,
+  seatLabel: string
+): Promise<readonly { readonly crew: CrewRow; readonly stream: Reading<SessionStream> }[]> {
+  if (roster.state !== "present") {
+    return [];
+  }
+  const crews = roster.value.groups
+    .flatMap((group) => group.crews)
+    .filter((row) => row.seatLabel.known === "value" && row.seatLabel.value === seatLabel);
+  const streams = await Promise.all(
+    crews.map((crew) => recordAdapter.sessionStream(crew.sessionName))
+  );
+  return crews.map((crew, index) => ({
+    crew,
+    stream: streams[index] ?? {
+      state: "unavailable",
+      failure: {
+        reason: "no pane read was attempted for this tab",
+        failureClass: "permanent",
+        attempts: 0,
+        elapsedMs: 0,
+        status: null,
+      },
+    },
+  }));
+}
