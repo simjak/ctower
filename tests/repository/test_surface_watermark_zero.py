@@ -160,6 +160,68 @@ class WatermarkZeroWiringTests(unittest.TestCase):
         self.assertIn("portfolio view", source, "the block does not point at the portfolio")
         self.assertIn('href="/board"', source, "the block has no link to the unscoped board")
 
+    def test_the_board_page_reads_the_portfolio_entries_in_the_same_render(self) -> None:
+        source = _BOARD_PAGE.read_text(encoding="utf-8")
+        self.assertIn(
+            "portfolioEntriesFor",
+            source,
+            "the true-empty-project block has no cross-project entries to render below the banner",
+        )
+        self.assertIn(
+            "portfolioEntries",
+            source,
+            "the portfolio's own entries are not passed to the true-empty-project block",
+        )
+
+
+class PortfolioViewPromiseTests(unittest.TestCase):
+    """gh#319 direction-a — the promised view now actually renders.
+
+    Round-5 QA (#319) found this block's copy claiming "the portfolio view
+    below shows every imported card across projects" while nothing rendered
+    below the banner. #323 (branch fix/318-319-ui-fixes, still open at the
+    time this lane built) took the honest-fallback direction and dropped the
+    sentence instead. This lane took the other honest direction #319 itself
+    names as preferred: gh#115 landed a tenant fact per card (D29's five-member
+    context set), so the promised view is now a trivial unfiltered render —
+    this class pins that the promise this file's `main` copy already carried
+    is kept, not merely re-worded.
+    """
+
+    def test_the_block_still_promises_a_portfolio_view_below_the_banner(self) -> None:
+        source = _TRUE_EMPTY_BLOCK.read_text(encoding="utf-8")
+        self.assertIn(
+            "The portfolio view below shows every imported card",
+            source,
+            "the block dropped its own promise instead of making it true",
+        )
+
+    def test_the_block_renders_a_real_panel_below_the_banner(self) -> None:
+        source = _TRUE_EMPTY_BLOCK.read_text(encoding="utf-8")
+        self.assertIn(
+            'className="panel"',
+            source,
+            "the promised portfolio view still has no panel of its own below the banner",
+        )
+
+    def test_the_panel_renders_every_portfolio_entry_it_is_given(self) -> None:
+        source = _TRUE_EMPTY_BLOCK.read_text(encoding="utf-8")
+        self.assertIn(
+            "portfolioEntries.map",
+            source,
+            "the panel does not render the portfolio's own entries — a promise kept "
+            "by a hardcoded or truncated list is the same lie as an empty one",
+        )
+
+    def test_the_panel_shows_each_card_s_tenant_fact(self) -> None:
+        source = _TRUE_EMPTY_BLOCK.read_text(encoding="utf-8")
+        self.assertIn(
+            "showTenant",
+            source,
+            "the cross-project view does not show the tenant fact #115 added — "
+            "without it the list is an undifferentiated pile, not a cross-project view",
+        )
+
 
 class TrueEmptyProjectPromiseTests(unittest.TestCase):
     """gh#319 — an empty-state's copy may only promise what its own DOM carries.

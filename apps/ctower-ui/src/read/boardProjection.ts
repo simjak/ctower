@@ -1,6 +1,12 @@
 import { NO_BOARD_ROW_HERE } from "./futureSources";
 import { mapReading } from "./reading";
-import type { BoardCard, BoardEntry, BoardSnapshot, Reading } from "./interface";
+import type {
+  BoardCard,
+  BoardEntry,
+  BoardSnapshot,
+  Reading,
+  TenantDisplayIdentity,
+} from "./interface";
 
 /**
  * Projections over the board's per-card ticket readings.
@@ -96,6 +102,26 @@ export async function portfolioWatermarkFor(
 }
 
 /**
+ * The portfolio's own entries, for the true-empty-project case's cross-project
+ * view (gh#319 direction-a). Gated on `portfolioWatermarkFor`'s own verdict
+ * rather than re-deciding when to read: a `null` watermark means either a
+ * normal board (no portfolio read happened) or the restart-fresh refusal
+ * (portfolio unreadable or 0), and neither needs entries. `readPortfolio`
+ * should be the same memoized thunk passed to `portfolioWatermarkFor`, so a
+ * true-empty-project answer never pays for the portfolio board twice.
+ */
+export async function portfolioEntriesFor(
+  readPortfolio: () => Promise<Reading<BoardSnapshot> | null>,
+  portfolioWatermark: number | null
+): Promise<readonly BoardEntry[]> {
+  if (portfolioWatermark === null) {
+    return [];
+  }
+  const portfolio = await readPortfolio();
+  return portfolio?.state === "present" ? portfolio.value.entries : [];
+}
+
+/**
  * The recorded source kind, or `null` when this card's ticket read did not
  * produce one. `null` means "not resolvable", never "no source recorded".
  */
@@ -120,6 +146,25 @@ export function unresolvedSources(entries: readonly BoardEntry[]): UnresolvedSou
     unreached: reasons.length,
     reason: reasons[0] ?? null,
   };
+}
+
+/** The tenant chip's already-decided text, so a surface never narrows the union itself. */
+export interface TenantChipFacts {
+  readonly label: string;
+  /** Why the tenant is unrecorded, for a `title` attribute; `undefined` when known. */
+  readonly title: string | undefined;
+}
+
+/**
+ * `tenantDisplayIdentity`'s `known`/`unknown` states, resolved to the text a
+ * card renders. Lives here, not in the surface, for the same reason
+ * `boardEmptyKind` does: this module is the one place outside
+ * `frame/Declared.tsx` that may inspect a `.state` discriminant.
+ */
+export function tenantChipFor(identity: TenantDisplayIdentity): TenantChipFacts {
+  return identity.state === "known"
+    ? { label: identity.displayName, title: undefined }
+    : { label: "tenant unrecorded", title: identity.missingSource };
 }
 
 /**

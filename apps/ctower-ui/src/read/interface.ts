@@ -104,6 +104,22 @@ export interface IssueReference {
   readonly label: string;
 }
 
+/**
+ * The tenant a ticket's work is for, per gh#115/D29 — one of the Board card's
+ * five context-set members. `known`/`unknown` are both explicit facts: an
+ * unattributed ticket says so rather than rendering blank, the same rule
+ * INV-66 already holds every other member of this set to.
+ *
+ * This is not the `project` axis `BoardScope.cardsCarryProject` guards — D29
+ * fixes the card's context set at five members and `project` (which of
+ * ctower/manibo/bh-loop) is deliberately not one of them (see
+ * `futureSources.ts`'s `NO_PROJECT_SCOPE`). `tenant_display_identity` is the
+ * client/company a ticket's work is for, a different axis entirely.
+ */
+export type TenantDisplayIdentity =
+  | { readonly state: "known"; readonly displayName: string }
+  | { readonly state: "unknown"; readonly missingSource: string };
+
 export interface BoardCard {
   readonly ticketId: string;
   readonly title: string;
@@ -121,6 +137,7 @@ export interface BoardCard {
   readonly blockerOpenedAt: string | null;
   readonly risk: string | null;
   readonly deliveryFacts: readonly string[];
+  readonly tenantDisplayIdentity: TenantDisplayIdentity;
   readonly version: number;
 }
 
