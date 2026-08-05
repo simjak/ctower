@@ -56,7 +56,9 @@ EXPECTED_SUITES = "tools/checks/expected-suites.toml"
 CAPABILITIES_DIR = "packs/components/capabilities"
 TRACEABILITY_AUTHORITY = "tools/checks/_impl/traceability.py"
 _EXPECTED_SUITES_PATH = ROOT / EXPECTED_SUITES
-_SCHEMA_PATH = ROOT / "contracts/evidence/evidence-manifest.schema.json"
+_SCHEMA_V1_PATH = ROOT / "contracts/evidence/evidence-manifest.schema.json"
+_SCHEMA_PATH = ROOT / "contracts/evidence/evidence-manifest-v2.schema.json"
+_PUBLISHED_SCHEMA_PATHS: tuple[Path, ...] = (_SCHEMA_V1_PATH, _SCHEMA_PATH)
 _FIXTURE_PATH = Path(__file__).parent / "fixtures" / "i1-complete-manifest.json"
 
 GATE_POLICY = "gate-policy"
@@ -227,8 +229,12 @@ def _deferred_suite_errors(manifest: dict[str, Any], root: Path = ROOT) -> list[
     )
 
 
+def _schema_at(path: Path) -> dict[str, Any]:
+    return cast(dict[str, Any], json.loads(path.read_text(encoding="utf-8")))
+
+
 def _schema() -> dict[str, Any]:
-    return cast(dict[str, Any], json.loads(_SCHEMA_PATH.read_text(encoding="utf-8")))
+    return _schema_at(_SCHEMA_PATH)
 
 
 def _schema_nodes(schema: dict[str, Any]) -> list[dict[str, Any]]:
@@ -289,6 +295,9 @@ def _normative_shape_digest(schema: dict[str, Any]) -> str:
 _SCHEMA_VERSION_LOCKS: dict[str, str] = {
     "ctower.evidence-manifest/v1": (
         "5a39f8b379ca0d51890b92c1bb880839791edd65c17c006efa661b54061d0d60"
+    ),
+    "ctower.evidence-manifest/v2": (
+        "6b89aa360c84337dc020238cf89caf6c56ac39291f9dc4e0c782cc97a0c0976e"
     ),
 }
 
@@ -379,7 +388,7 @@ class TestCriterionDenominatorIsDerived:
 class TestSchemaEnforcesTheDenominatorContract:
     """Emptiness and repetition are illegal in the contract, not only in one test."""
 
-    @pytest.mark.parametrize("array", ["criteria", "verdict_ids", "deferred_suites"])
+    @pytest.mark.parametrize("array", ["criteria", "deferred_suites"])
     def test_empty_array_is_refused_by_the_schema(self, array: str) -> None:
         candidate = _committed_manifest()
         candidate[array] = []
@@ -393,9 +402,16 @@ class TestSchemaEnforcesTheDenominatorContract:
         with pytest.raises(ValidationError):
             _validator().validate(candidate)
 
-    def test_repeated_verdict_id_is_refused_by_the_schema(self) -> None:
+    def test_a_v1_shaped_manifest_under_the_v2_schema_fails_by_name(self) -> None:
+        """DECISIONS.md D37 hard constraint: a manifest that declares /v2 but still carries
+        /v1's flat top-level verdict_ids roster, with no per-row verdict_id/candidate_digest,
+        must fail — never silently validate as if the version bump never happened."""
+
         candidate = _committed_manifest()
-        candidate["verdict_ids"].append(candidate["verdict_ids"][0])
+        for row in candidate["criteria"]:
+            del row["verdict_id"]
+            del row["candidate_digest"]
+        candidate["verdict_ids"] = ["00000000-0000-4000-8000-000000000003"]
         with pytest.raises(ValidationError):
             _validator().validate(candidate)
 
@@ -433,6 +449,8 @@ class TestCriterionSchemaVectors:
             ("environment", ""),
             ("proof_digest", "not-a-digest"),
             ("verifier", "not-a-uuid"),
+            ("verdict_id", "not-a-uuid"),
+            ("candidate_digest", "not-a-digest"),
         ],
     )
     def test_criterion_invalid_field_fails(self, field: str, bad_value: object) -> None:
@@ -441,9 +459,10 @@ class TestCriterionSchemaVectors:
         with pytest.raises(ValidationError):
             _validator().validate(candidate)
 
-    def test_criterion_missing_required_field_fails(self) -> None:
+    @pytest.mark.parametrize("field", ["verifier", "verdict_id", "candidate_digest"])
+    def test_criterion_missing_required_field_fails(self, field: str) -> None:
         candidate = _committed_manifest()
-        del candidate["criteria"][0]["verifier"]
+        del candidate["criteria"][0][field]
         with pytest.raises(ValidationError):
             _validator().validate(candidate)
 
@@ -716,10 +735,12 @@ class TestSchemaVersioningDiscipline:
     """DECISIONS.md D37: a published schema shape is immutable. An incompatible change
     must bump `schema.const`/`$id` to a new file, never edit the committed shape in place
     — the debt gh#175 named after `ctower.evidence-manifest/v1` absorbed several
-    unversioned breaks across PR #171's review."""
+    unversioned breaks across PR #171's review. gh#174 is /v2's first customer: every
+    published file, /v1 frozen for history and /v2 now active, locks to its own digest."""
 
-    def test_committed_schema_shape_matches_its_recorded_version_lock(self) -> None:
-        schema = _schema()
+    @pytest.mark.parametrize("path", _PUBLISHED_SCHEMA_PATHS, ids=["v1", "v2"])
+    def test_committed_schema_shape_matches_its_recorded_version_lock(self, path: Path) -> None:
+        schema = _schema_at(path)
         const = schema["properties"]["schema"]["const"]
         assert const in _SCHEMA_VERSION_LOCKS, (
             f"{const}: no recorded version lock; record one alongside the bump"
@@ -734,23 +755,21 @@ class TestSchemaVersioningDiscipline:
 
 
 class TestSchemaVersionLockMutationProof:
-    """The lock digest is sensitive to exactly the shapes gh#174 will need to touch, so
-    its future per-row verdict-binding change cannot land as another silent in-place edit."""
+    """The lock digest is sensitive to exactly the shapes a version bump touches, so an
+    incompatible change to the active schema cannot land as another silent in-place edit."""
 
     def test_a_dropped_required_field_changes_the_digest(self) -> None:
         schema = _schema()
         mutated = copy.deepcopy(schema)
-        mutated["required"].remove("verdict_ids")
+        mutated["required"].remove("deferred_suites")
         assert _normative_shape_digest(mutated) != _normative_shape_digest(schema)
 
     def test_a_new_required_row_field_changes_the_digest(self) -> None:
-        """The exact shape gh#174 needs: verdict_id/candidate_digest per criterion row."""
-
         schema = _schema()
         mutated = copy.deepcopy(schema)
         row = mutated["$defs"]["criterionDisposition"]
-        row["required"].append("verdict_id")
-        row["properties"]["verdict_id"] = {"type": "string", "format": "uuid"}
+        row["required"].append("reviewer_note")
+        row["properties"]["reviewer_note"] = {"type": "string"}
         assert _normative_shape_digest(mutated) != _normative_shape_digest(schema)
 
     def test_a_renamed_property_changes_the_digest(self) -> None:
