@@ -528,16 +528,39 @@ def _wait_for_sender(pair: DurabilityPair, *, streaming: bool) -> None:
 
 
 def _wait_for_replay_current(pair: DurabilityPair) -> None:
+    """Wait until the standby's own watermark AND the primary's live
+    replication-feedback watermark for that standby both reach the primary
+    flush watermark.
+
+    ``durability_health()`` (``_durability_health_sql._live_target_failure``)
+    requires ``pg_stat_replication.replay_lsn`` -- the PRIMARY's feedback view
+    of the standby, refreshed only when the standby's walreceiver next reports
+    status -- to have caught up, not only the standby's own directly-queried
+    ``pg_last_wal_replay_lsn()``. Waiting on the standby's self-report alone
+    leaves a window, wider under a loaded runner, where a caller asserting
+    live health immediately after this returns observes a stale
+    ``replay_not_current`` (durability_health.py#100's strike) even though the
+    standby itself is already current.
+    """
+
     deadline = time.monotonic() + 15
     while time.monotonic() < deadline:
         with psycopg.connect(pair.primary_admin_dsn) as primary:
-            primary_lsn = primary.execute("SELECT pg_current_wal_flush_lsn()::text").fetchone()
+            evidence = primary.execute(
+                "SELECT pg_current_wal_flush_lsn()::text,"
+                " (SELECT replay_lsn::text FROM pg_stat_replication"
+                "  WHERE application_name = 'ctower_i1_ack')"
+            ).fetchone()
         with psycopg.connect(pair.standby_admin_dsn) as standby:
             standby_lsn = standby.execute("SELECT pg_last_wal_replay_lsn()::text").fetchone()
         if (
-            primary_lsn is not None
+            evidence is not None
+            and evidence[0] is not None
+            and evidence[1] is not None
             and standby_lsn is not None
-            and _lsn_position(str(standby_lsn[0])) >= _lsn_position(str(primary_lsn[0]))
+            and standby_lsn[0] is not None
+            and _lsn_position(str(evidence[1])) >= _lsn_position(str(evidence[0]))
+            and _lsn_position(str(standby_lsn[0])) >= _lsn_position(str(evidence[0]))
         ):
             return
         time.sleep(0.05)

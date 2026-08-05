@@ -28,6 +28,7 @@ from ctower_kernel.record.intake import (
     IntakePromotionCommand,
     IntakeSubmitCommand,
 )
+from ctower_kernel.record.project_events import ProjectEventPage
 from ctower_kernel.record.sessions import (
     ProjectSessionPage,
     SessionFactCommand,
@@ -257,6 +258,31 @@ class WorkSessionStore(Protocol):
         limit: int,
         telemetry: TelemetryContext,
     ) -> ProjectSessionPage | RecordProblem: ...
+
+
+class EventAuditStore(Protocol):
+    """Cohesive persistence boundary for cursor reads over canonical events."""
+
+    def ticket_audit(
+        self,
+        actor: Actor,
+        ticket_id: UUID,
+        project_key: str,
+        *,
+        cursor: int,
+        limit: int,
+        telemetry: TelemetryContext,
+    ) -> AuditPage | RecordProblem: ...
+
+    def project_events(
+        self,
+        actor: Actor,
+        project_key: str,
+        *,
+        cursor: int,
+        limit: int,
+        telemetry: TelemetryContext,
+    ) -> ProjectEventPage | RecordProblem: ...
 
 
 @dataclass(frozen=True, slots=True)
@@ -579,6 +605,12 @@ class Record(Protocol):
 
         ...
 
+    @property
+    def event_audit(self) -> EventAuditStore:
+        """Return the cohesive canonical-event cursor-read persistence boundary."""
+
+        ...
+
     def authorize_bootstrap(
         self, capability_digest: bytes, *, origin: str, now: datetime
     ) -> RecordProblem | None:
@@ -658,20 +690,6 @@ class Record(Protocol):
         self, actor: Actor, ticket_id: UUID, project_key: str, *, telemetry: TelemetryContext
     ) -> TicketTimeline | RecordProblem:
         """Read the ordered tenant-scoped event timeline."""
-
-        ...
-
-    def ticket_audit(
-        self,
-        actor: Actor,
-        ticket_id: UUID,
-        project_key: str,
-        *,
-        cursor: int,
-        limit: int,
-        telemetry: TelemetryContext,
-    ) -> AuditPage | RecordProblem:
-        """Read one cursor page from explicitly linked canonical events."""
 
         ...
 

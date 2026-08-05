@@ -424,7 +424,7 @@ def active_checkpoint_event_ids(
 def source_complete(
     connection: psycopg.Connection[dict[str, object]],
     tenant_id: UUID,
-    definitions: list[dict[str, object]],
+    project_definitions: list[dict[str, object]],
     source_watermark: int,
 ) -> bool:
     streams = connection.execute(
@@ -454,9 +454,18 @@ def source_complete(
         and board["health"] == "CURRENT"
         and int(cast(int, board["acceptance_position"])) >= source_watermark
     )
+    # `active_checkpoint_event_ids` is tenant-wide by necessity: an event's owning
+    # project is recorded only on its own `project_delivery_checkpoint_definitions`
+    # row, and that row is exactly what a genuine materialization gap would be
+    # missing. A not-yet-materialized checkpoint is therefore unattributable to any
+    # project from projection-scoped data alone, so this check reads in ONE direction
+    # only — this project's own materialized checkpoints must still be active. That
+    # direction can never flip on another project's checkpoints, materialized or not:
+    # adding events this project doesn't reference only grows the active set, which
+    # can only make the subset check easier to satisfy, never harder.
     active_events = set(active_checkpoint_event_ids(connection, tenant_id))
-    materialized_events = {cast(UUID, row["event_id"]) for row in definitions}
-    checkpoint_complete = active_events == materialized_events
+    materialized_events = {cast(UUID, row["event_id"]) for row in project_definitions}
+    checkpoint_complete = materialized_events <= active_events
     return contiguous and board_complete and checkpoint_complete
 
 

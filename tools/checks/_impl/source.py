@@ -6,6 +6,7 @@ import ast
 import fnmatch
 import io
 import tokenize
+from collections.abc import Iterator
 from pathlib import Path
 
 from tools.checks._impl.model import (
@@ -150,10 +151,41 @@ def _class_metrics(tree: ast.Module) -> tuple[ClassMetric, ...]:
     )
 
 
+def _module_scope_statements(tree: ast.Module) -> Iterator[tuple[ast.stmt, bool]]:
+    """Yield every statement that executes at module scope, descending through
+    nested control flow (If/For/While/Try/With/Match) but never into a
+    function or class body, which introduces its own scope."""
+
+    def walk(body: list[ast.stmt], *, top_level: bool) -> Iterator[tuple[ast.stmt, bool]]:
+        for stmt in body:
+            yield stmt, top_level
+            if isinstance(stmt, _NESTING_NODES):
+                for nested_body in _nested_bodies(stmt):
+                    yield from walk(nested_body, top_level=False)
+
+    yield from walk(tree.body, top_level=True)
+
+
+def _nested_bodies(node: ast.stmt) -> Iterator[list[ast.stmt]]:
+    match node:
+        case ast.If() | ast.For() | ast.AsyncFor() | ast.While():
+            yield node.body
+            yield node.orelse
+        case ast.Try():
+            yield node.body
+            yield from (handler.body for handler in node.handlers)
+            yield node.orelse
+            yield node.finalbody
+        case ast.With() | ast.AsyncWith():
+            yield node.body
+        case ast.Match():
+            yield from (case.body for case in node.cases)
+
+
 def _public_exports(tree: ast.Module) -> tuple[str, ...]:
     if any(
         isinstance(node, ast.ImportFrom) and any(alias.name == "*" for alias in node.names)
-        for node in tree.body
+        for node, _ in _module_scope_statements(tree)
     ):
         raise ValueError("star re-exports make the public surface unresolvable")
     declared = _declared_all(tree)
@@ -171,10 +203,8 @@ def _public_exports(tree: ast.Module) -> tuple[str, ...]:
 
 def _declared_all(tree: ast.Module) -> set[str] | None:
     declaration: ast.expr | None = None
-    for node in tree.body:
-        if isinstance(node, ast.AugAssign) and _is_all_target(node.target):
-            raise ValueError("augmented __all__ is not statically resolvable")
-        value = _declared_all_value(node)
+    for node, top_level in _module_scope_statements(tree):
+        value = _resolve_all_declaration(node, top_level=top_level)
         if value is None:
             continue
         if declaration is not None:
@@ -182,6 +212,23 @@ def _declared_all(tree: ast.Module) -> set[str] | None:
         declaration = value
     if declaration is None:
         return None
+    return _all_string_literals(declaration)
+
+
+def _resolve_all_declaration(node: ast.stmt, *, top_level: bool) -> ast.expr | None:
+    if isinstance(node, ast.AugAssign) and _is_all_target(node.target):
+        raise ValueError("augmented __all__ is not statically resolvable")
+    if _is_all_mutation(node):
+        raise ValueError("mutated __all__ is not statically resolvable")
+    value = _declared_all_value(node)
+    if value is None:
+        return None
+    if not top_level:
+        raise ValueError("conditional __all__ is not statically resolvable")
+    return value
+
+
+def _all_string_literals(declaration: ast.expr) -> set[str]:
     if not isinstance(declaration, ast.List | ast.Tuple | ast.Set):
         raise TypeError("dynamic __all__ is not statically resolvable")
     values = {
@@ -192,6 +239,13 @@ def _declared_all(tree: ast.Module) -> set[str] | None:
     if len(values) != len(declaration.elts):
         raise ValueError("__all__ must contain only unique string literals")
     return values
+
+
+def _is_all_mutation(node: ast.stmt) -> bool:
+    if not isinstance(node, ast.Expr) or not isinstance(node.value, ast.Call):
+        return False
+    func = node.value.func
+    return isinstance(func, ast.Attribute) and _is_all_target(func.value)
 
 
 def _declared_all_value(node: ast.stmt) -> ast.expr | None:
