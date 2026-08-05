@@ -8,6 +8,7 @@ import shutil
 import subprocess
 import sys
 import tempfile
+import time
 import unittest
 from contextlib import chdir
 from pathlib import Path
@@ -75,6 +76,44 @@ class PlaywrightGateTests(unittest.TestCase):
             ):
                 playwright_main()
 
+    def test_timeout_terminates_the_process_tree_and_fails(self) -> None:
+        with (
+            tempfile.TemporaryDirectory() as checkout_name,
+            tempfile.TemporaryDirectory() as bin_name,
+            tempfile.TemporaryDirectory() as marker_name,
+        ):
+            checkout = Path(checkout_name)
+            child_pid_file = Path(marker_name) / "child.pid"
+            fake_pnpm = Path(bin_name) / "pnpm"
+            fake_pnpm.write_text(self._hanging_fake_pnpm(), encoding="utf-8")
+            fake_pnpm.chmod(0o755)
+            environment = os.environ.copy()
+            environment["PATH"] = f"{bin_name}{os.pathsep}{environment['PATH']}"
+            environment["FAKE_PLAYWRIGHT_CHILD_PID_FILE"] = str(child_pid_file)
+
+            with (
+                chdir(checkout),
+                patch.dict(os.environ, environment, clear=True),
+                patch("tools.checks.playwright._TIMEOUT_SECONDS", 0.2),
+            ):
+                started = time.monotonic()
+                observed = playwright_main()
+                elapsed = time.monotonic() - started
+
+            self.assertEqual(observed, 124)
+            self.assertLess(elapsed, 5.0)
+            child_pid = int(child_pid_file.read_text(encoding="utf-8").strip())
+            with self.assertRaises(ProcessLookupError):
+                os.kill(child_pid, 0)
+
+    def _hanging_fake_pnpm(self) -> str:
+        return """#!/bin/sh
+set -eu
+sleep 100 &
+echo $! > "$FAKE_PLAYWRIGHT_CHILD_PID_FILE"
+wait
+"""
+
     def _assert_copied_checkout_is_unchanged(self, expected_exit: int) -> None:
         with (
             tempfile.TemporaryDirectory() as checkout_name,
@@ -121,6 +160,9 @@ class PlaywrightGateTests(unittest.TestCase):
         (checkout / "tools/__init__.py").write_text("", encoding="utf-8")
         (module_root / "__init__.py").write_text("", encoding="utf-8")
         shutil.copyfile(self.root / "tools/checks/playwright.py", module_root / "playwright.py")
+        shutil.copyfile(
+            self.root / "tools/checks/owned_processes.py", module_root / "owned_processes.py"
+        )
 
     def _snapshot(self, root: Path) -> dict[str, tuple[str, bytes]]:
         return {
