@@ -3,7 +3,8 @@
 Python composition root for the development walking slice. Its FastAPI handlers validate generated HTTP
 models and call the public Access, Catalog, Work, Record, Proof, Workflow, Projections, and Attention
 Interfaces for bootstrap, ticket create/read/comment, protected custody transfer, typed task commands,
-assignment/audit queries, CompanyBundle validate/plan/apply/export, explicit Workflow start,
+assignment/audit queries, the project-scoped typed event feed, CompanyBundle validate/plan/apply/export,
+explicit Workflow start,
 server-policy-pinned proof commands, legal transitions, ownership-releasing proof-gated close, and the
 read-only Board projection. The API also exposes explicit
 `discussion|create_ticket|link_ticket` thread-first intake and one-time discussion promotion. Both intake

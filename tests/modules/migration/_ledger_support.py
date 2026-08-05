@@ -9,6 +9,7 @@ from uuid import UUID, uuid4
 
 import psycopg
 import pytest
+from psycopg import sql
 
 from ctower_kernel.record import _migration_ledger_sql, _setup_sql
 from ctower_kernel.record.postgres import (
@@ -235,3 +236,14 @@ def schema_snapshot(database: Database) -> tuple[str, tuple[tuple[str, str, str]
     with psycopg.connect(database.admin_dsn) as connection:
         records = _migration_ledger_sql._schema_records(connection)
     return (_migration_ledger_sql._schema_fingerprint(records), records)
+
+
+def rewrite_terminal_attestation(database: Database, attestation: str) -> None:
+    """Put a superseded digest back in the ledger, as an instance upgraded from one holds."""
+
+    with psycopg.connect(database.admin_dsn, autocommit=True) as connection:
+        connection.execute(sql.SQL("SET ROLE {}").format(sql.Identifier("ctower_migration_ledger")))
+        connection.execute(
+            "UPDATE ctower_schema_migrations SET result_schema_sha256 = %s WHERE migration_id = %s",
+            (attestation, LEDGERED_TERMINAL),
+        )
