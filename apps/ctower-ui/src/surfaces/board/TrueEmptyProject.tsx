@@ -34,8 +34,8 @@ export function TrueEmptyProject({ project }: { readonly project: string }): Rea
                 The record answered <span className="mono">watermark 0 of 0</span> for {project}{" "}
                 while the portfolio holds a nonzero watermark — so this is not an outage and not an
                 empty portfolio. {project}&rsquo;s import chain has not run yet; the import fills
-                this project&rsquo;s board. The portfolio view below shows every imported card
-                across projects.
+                this project&rsquo;s board. Every imported card across projects is visible in the
+                portfolio view, linked below.
               </div>
               <div className="f">
                 <a href="/board">the portfolio view (all cards)</a>

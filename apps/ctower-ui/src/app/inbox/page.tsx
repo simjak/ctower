@@ -7,12 +7,9 @@ import { clockText, dayText } from "@/read/elapsed";
 import type { InboxMessage, SeatInbox, TailNote } from "@/read/interface";
 import { ChoiceTabs } from "@/surfaces/ChoiceTabs";
 import { readParam } from "@/surfaces/screenParams";
+import { severityClass, severityLabel } from "@/surfaces/severity";
 
 export const dynamic = "force-dynamic";
-
-function severityClass(severity: string): string {
-  return severity.toUpperCase().startsWith("P") ? "verdict v-changes" : "verdict v-filed";
-}
 
 function Message({ message }: { readonly message: InboxMessage }): ReactElement {
   return (
@@ -23,7 +20,7 @@ function Message({ message }: { readonly message: InboxMessage }): ReactElement 
         {dayText(message.at)} {clockText(message.at)}
       </div>
       <div className="meta">
-        <span className={severityClass(message.severity)}>{message.severity}</span>
+        <span className={severityClass(message.severity)}>{severityLabel(message.severity)}</span>
         <span>from {message.from}</span>
         {message.project === null ? null : <span>{message.project}</span>}
         <span>{message.read ? "read" : "unread"}</span>
