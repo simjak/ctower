@@ -36,6 +36,7 @@ from ctower_kernel.record.postgres import (
     configure_development_durability,
     provision_database_roles,
 )
+from ctowerctl.discovery import CliInstanceCatalog, write_catalog
 from tools.development_runtime._postgres_scram import postgres_scram_verifier
 from tools.development_runtime.bootstrap import bootstrap_instance
 from tools.development_runtime.checkpoint import (
@@ -101,6 +102,8 @@ def main() -> None:
             )
         case "rollback-runtime":
             rollback_runtime()
+        case "expose-cli":
+            print(json.dumps(expose_cli(), sort_keys=True))
         case "checkpoint" | "restore":
             print(run_checkpoint_command(arguments))
         case _:
@@ -124,6 +127,7 @@ def _parser() -> argparse.ArgumentParser:
     installation.add_argument("--source-root", type=Path, required=True)
     installation.add_argument("--replace", action="store_true")
     commands.add_parser("rollback-runtime")
+    commands.add_parser("expose-cli")
     add_checkpoint_commands(commands)
     commands.add_parser("observe")
     return parser
@@ -217,6 +221,57 @@ def install_units(unit_root: Path) -> None:
         "ctower-development-db.service",
         "ctower-development-api.service",
     )
+
+
+_OPERATOR_FACING_VERBS = ("ctowerctl", "ctl", "ctower-shadow-ctl")
+
+
+def expose_cli() -> dict[str, object]:
+    """Link the installed operator-facing verbs onto PATH and declare this instance."""
+
+    binary_directory = runtime_home() / "venv" / "bin"
+    if not binary_directory.is_dir():
+        raise RuntimeError("the persistent runtime is not installed")
+    target_directory = _bin_home()
+    target_directory.mkdir(parents=True, exist_ok=True)
+    linked: list[Path] = []
+    for name in _OPERATOR_FACING_VERBS:
+        source = binary_directory / name
+        if not source.is_file():
+            raise RuntimeError(f"the installed runtime is missing the {name} entry point")
+        destination = target_directory / name
+        _atomic_symlink(source, destination)
+        linked.append(destination)
+    config = load_config()
+    catalog_path = write_catalog(
+        CliInstanceCatalog.model_validate(
+            {
+                "schema": "ctower.cli-instances/v1",
+                "instances": (
+                    {
+                        "name": "development",
+                        "base_url": f"http://{config.api_host}:{config.api_port}",
+                    },
+                ),
+            }
+        )
+    )
+    return {
+        "schema": "ctower.cli-exposure/v1",
+        "linked": [str(path) for path in linked],
+        "catalog": str(catalog_path),
+    }
+
+
+def _atomic_symlink(source: Path, destination: Path) -> None:
+    temporary = destination.with_name(destination.name + ".tmp")
+    temporary.unlink(missing_ok=True)
+    temporary.symlink_to(source)
+    temporary.replace(destination)
+
+
+def _bin_home() -> Path:
+    return Path.home() / ".local" / "bin"
 
 
 def keyring_unlock_main() -> None:
