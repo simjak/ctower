@@ -155,6 +155,7 @@ pythonpath = [
   "apps/ctowerctl/src",
   "generated/python",
   "packages/ctower-kernel/src",
+  "tests",
 ]
 
 [tool.coverage.run]

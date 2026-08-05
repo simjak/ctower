@@ -38,6 +38,8 @@ _CRITERIA = (
 )
 _REBUILD_GENERATION = 7
 _COLLISION_SLOT_COUNT = 2
+_DELETED_STALE_ROWS = 3
+_STORED_ROWS = 1
 
 
 def test_pinned_seat_rebuild_is_byte_identical_after_member_removal() -> None:
@@ -208,6 +210,44 @@ def test_qualifying_stage_slots_preserve_filled_unfilled_and_unknown_facts() -> 
     ]
 
 
+def test_delete_inactive_rows_rowcount_is_folded_into_the_reconcile_total() -> None:
+    """D5: `_delete_inactive_rows`'s rowcount must not go unchecked.
+
+    Every acceptance scenario only ever grows or replaces the active checkpoint set, so
+    the NOT EXISTS delete branch never has a real stale row to remove there, and its
+    rowcount is never observed non-zero. This isolates the delete branch directly: when
+    it reports rows made inactive since the prior pass, that count must still surface in
+    `reconcile_project_delivery`'s returned total, not be silently dropped.
+    """
+
+    ticket_id = uuid4()
+    criteria: list[dict[str, object]] = [
+        {
+            "criterion_key": "checkpoint-alpha",
+            "proof_ticket_id": ticket_id,
+            "proof_criterion_key": "alpha",
+            "source_ids": [],
+        }
+    ]
+    slot_rows = [_link_row(ticket_id, "alpha", proven=True)]
+    connection, connect_context = _reconcile_connection(
+        criteria, slot_rows, deleted=_DELETED_STALE_ROWS
+    )
+    with patch.object(psycopg, "connect", return_value=connect_context):
+        affected = PostgresProjections("postgresql://projection").reconcile_project_delivery(
+            uuid4(),
+            now=datetime(2026, 7, 30, 12, tzinfo=UTC),
+        )
+
+    assert affected == _DELETED_STALE_ROWS + _STORED_ROWS
+    delete_call = next(
+        item
+        for item in connection.execute.call_args_list
+        if "DELETE FROM project_delivery_projection_rows" in item.args[0]
+    )
+    assert "NOT EXISTS" in delete_call.args[0]
+
+
 def _link_row(
     ticket_id: UUID,
     proof_key: str,
@@ -227,6 +267,8 @@ def _link_row(
 def _reconcile_connection(
     criteria: list[dict[str, object]],
     slot_rows: list[dict[str, object]],
+    *,
+    deleted: int = 0,
 ) -> tuple[MagicMock, MagicMock]:
     event_id = uuid4()
     definition = {
@@ -246,7 +288,7 @@ def _reconcile_connection(
         _result(),
         _result(rows=[{"event_id": event_id}]),
         _result(rows=[definition]),
-        _result(rowcount=0),
+        _result(rowcount=deleted),
         _result(row={"value": 10}),
         _result(rows=[{"minimum": 1, "maximum": 10, "count": 10}]),
         _result(
