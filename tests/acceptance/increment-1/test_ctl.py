@@ -27,6 +27,8 @@ from support.tenant_fixture import TenantFixture
 
 from ctower_api.interface import create_app
 from ctower_kernel.catalog import PostgresCatalog
+from ctower_kernel.projections import Projections
+from ctower_kernel.projections.postgres import PostgresProjections
 from ctower_kernel.record.postgres import (
     PostgresRecord,
     apply_migrations,
@@ -159,6 +161,60 @@ def test_ticket_create_without_hand_minted_identifiers_uses_authenticated_princi
         "kind": "mission-control",
         "ref": "R2257-defaults",
     }
+
+
+def test_board_query_by_source_ref_returns_the_ticket_carrying_that_source(
+    tenant: TenantFixture,
+    cli_state: _MemoryBackend,
+) -> None:
+    del cli_state
+    with _server(
+        tenant.database.runtime_dsn,
+        projections_dsn=tenant.database.projection_dsn,
+    ) as base_url:
+        create_status, created_text, create_error = _run(
+            _first_day_create_arguments(base_url, source_ref="R74-live-hit"),
+            authority=tenant.commander_credential,
+        )
+        accept_pending_commands(tenant.database.admin_dsn, tenant.tenant_id)
+        Projections(PostgresProjections(tenant.database.projection_dsn)).catch_up(tenant.tenant_id)
+        query_status, query_text, query_error = _run(
+            _board_query_arguments(base_url, source_ref="R74-live-hit"),
+            authority=tenant.commander_credential,
+        )
+
+    created = json.loads(created_text)
+    board = json.loads(query_text)
+    assert (create_status, query_status) == (EXIT_TEMPORARY, 0)
+    assert create_error == query_error == ""
+    assert [card["ticket_id"] for card in board["cards"]] == [
+        created["result"]["ticket"]["ticket_id"]
+    ]
+
+
+def test_board_query_by_source_ref_returns_no_rows_for_an_unrecognized_source(
+    tenant: TenantFixture,
+    cli_state: _MemoryBackend,
+) -> None:
+    del cli_state
+    with _server(
+        tenant.database.runtime_dsn,
+        projections_dsn=tenant.database.projection_dsn,
+    ) as base_url:
+        create_status, _, create_error = _run(
+            _first_day_create_arguments(base_url, source_ref="R74-live-miss-seed"),
+            authority=tenant.commander_credential,
+        )
+        accept_pending_commands(tenant.database.admin_dsn, tenant.tenant_id)
+        Projections(PostgresProjections(tenant.database.projection_dsn)).catch_up(tenant.tenant_id)
+        query_status, query_text, query_error = _run(
+            _board_query_arguments(base_url, source_ref="R74-live-miss-unknown"),
+            authority=tenant.commander_credential,
+        )
+
+    assert (create_status, query_status) == (EXIT_TEMPORARY, 0)
+    assert create_error == query_error == ""
+    assert json.loads(query_text)["cards"] == []
 
 
 def test_server_rejected_capture_carries_its_named_refusal_to_the_spool_listing(
@@ -351,6 +407,29 @@ def test_missing_keyring_blocks_mutation_before_send_but_reads_continue(
     assert _ticket_count(tenant.database.admin_dsn) == before
 
 
+def test_control_health_exits_nonzero_while_a_contributor_is_unknown(
+    tenant: TenantFixture,
+) -> None:
+    with _server(
+        tenant.database.runtime_dsn,
+        projections_dsn=tenant.database.projection_dsn,
+    ) as base_url:
+        status, output, error = _run(
+            ["--base-url", base_url, "control", "health"],
+            authority=tenant.operator_credential,
+        )
+
+    health = json.loads(output)
+    assert status == EXIT_PERMANENT
+    assert error == ""
+    assert health["status"] != "HEALTHY"
+    assert any(
+        contributor["status"] == "STATE_UNKNOWN"
+        for dimension in ("availability", "completeness", "integrity")
+        for contributor in health[dimension]["contributors"]
+    )
+
+
 def _create_arguments(base_url: str, tenant: TenantFixture, command_id: UUID) -> list[str]:
     return [
         "--base-url",
@@ -399,6 +478,18 @@ def _first_day_create_arguments(
     if command_id is not None:
         arguments.extend(("--command-id", str(command_id)))
     return arguments
+
+
+def _board_query_arguments(base_url: str, *, source_ref: str) -> list[str]:
+    return [
+        "--base-url",
+        base_url,
+        "board",
+        "query",
+        "ctower",
+        "--source-ref",
+        source_ref,
+    ]
 
 
 def _bootstrap_arguments(base_url: str, command_id: UUID) -> list[str]:
@@ -517,12 +608,18 @@ def _server(
     dsn: str,
     *,
     catalog: PostgresCatalog | None = None,
+    projections_dsn: str | None = None,
 ) -> Iterator[str]:
     record = PostgresRecord(dsn)
     application = create_app(
         record,
         work=Work(record, writer=PostgresWork(dsn)),
         catalog=catalog,
+        projections=(
+            Projections(PostgresProjections(projections_dsn))
+            if projections_dsn is not None
+            else None
+        ),
     )
     with _serve(application) as base_url:
         yield base_url
