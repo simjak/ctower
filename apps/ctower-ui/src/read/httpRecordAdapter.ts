@@ -25,6 +25,7 @@ import type {
   RecordApiReads,
   RecordEvent,
   RecordSource,
+  TenantDisplayIdentity,
   TicketRecord,
 } from "./interface";
 
@@ -107,6 +108,29 @@ function optionalText(value: unknown, field: string): string | null {
   return text === null || text === "None" ? null : text;
 }
 
+const TENANT_DISPLAY_STATES = ["known", "unknown"] as const;
+
+function toTenantDisplayIdentity(value: unknown): TenantDisplayIdentity {
+  const row = asRecord(value, "board.card.tenant_display_identity");
+  const state = asMember(
+    row.state,
+    "board.card.tenant_display_identity.state",
+    TENANT_DISPLAY_STATES
+  );
+  return state === "known"
+    ? {
+        state,
+        displayName: asString(row.display_name, "board.card.tenant_display_identity.display_name"),
+      }
+    : {
+        state,
+        missingSource: asString(
+          row.missing_source,
+          "board.card.tenant_display_identity.missing_source"
+        ),
+      };
+}
+
 function toCard(value: unknown, names: Readonly<Record<string, string>>): BoardCard {
   const row = asRecord(value, "board.card");
   return {
@@ -128,6 +152,7 @@ function toCard(value: unknown, names: Readonly<Record<string, string>>): BoardC
     blockerOpenedAt: asStringOrNull(row.blocker_opened_at, "board.card.blocker_opened_at"),
     risk: optionalText(row.risk, "board.card.risk"),
     deliveryFacts: asStringList(row.delivery_facts ?? [], "board.card.delivery_facts"),
+    tenantDisplayIdentity: toTenantDisplayIdentity(row.tenant_display_identity),
     version: asInteger(row.version, "board.card.version"),
   };
 }

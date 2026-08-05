@@ -1,5 +1,7 @@
 import type { ReactElement } from "react";
 import { StateGlyph } from "@/frame/StateGlyph";
+import type { BoardEntry } from "@/read/interface";
+import { LaneCard } from "@/surfaces/board/LaneCard";
 
 /**
  * The named block for a true-empty project — the second way a board can answer
@@ -17,8 +19,22 @@ import { StateGlyph } from "@/frame/StateGlyph";
  * surface renders `ZeroOfZeroRefusal`, never this. The decision lives in
  * `read/boardProjection.ts` (`boardEmptyKind`); this component is the one place
  * its "true-empty-project" verdict is rendered.
+ *
+ * gh#319 (direction-a): the copy above promises a portfolio view below the
+ * banner, and this used to be the whole of the block — nothing rendered below
+ * it, the "everything visible is wired" defect QA found. Now that #115 has
+ * landed a tenant fact per card, the promised view is a real, unfiltered
+ * render of `portfolioEntries` — the same set every project tab's board read
+ * answers with, since the record does not yet filter `/v1/board` by project
+ * (see `read/futureSources.ts`'s `NO_PROJECT_SCOPE`).
  */
-export function TrueEmptyProject({ project }: { readonly project: string }): ReactElement {
+export function TrueEmptyProject({
+  project,
+  portfolioEntries,
+}: {
+  readonly project: string;
+  readonly portfolioEntries: readonly BoardEntry[];
+}): ReactElement {
   return (
     <main className="page">
       <div className="wrap" style={{ paddingTop: "16px" }}>
@@ -44,6 +60,23 @@ export function TrueEmptyProject({ project }: { readonly project: string }): Rea
             </div>
           </div>
         </div>
+        <section className="panel" style={{ marginTop: "16px" }}>
+          <header>
+            <h2>Portfolio</h2>
+            <span className="sub">{portfolioEntries.length.toString()} cards across projects</span>
+          </header>
+          <div className="body">
+            {portfolioEntries.length === 0 ? (
+              <p>the portfolio watermark is nonzero but this read returned no cards</p>
+            ) : (
+              <div className="stack">
+                {portfolioEntries.map((entry) => (
+                  <LaneCard entry={entry} key={entry.card.ticketId} now={Date.now()} showTenant />
+                ))}
+              </div>
+            )}
+          </div>
+        </section>
       </div>
     </main>
   );

@@ -9,11 +9,12 @@ import { StateGlyph } from "@/frame/StateGlyph";
 import { recordAdapter } from "@/read/adapter";
 import {
   boardEmptyKind,
+  portfolioEntriesFor,
   portfolioWatermarkFor,
   sourceKindOf,
   unresolvedSources,
 } from "@/read/boardProjection";
-import type { BoardEntry, BoardSnapshot } from "@/read/interface";
+import type { BoardEntry, BoardSnapshot, Reading } from "@/read/interface";
 import { LaneCard } from "@/surfaces/board/LaneCard";
 import { SourceTabs } from "@/surfaces/board/SourceTabs";
 import { TrueEmptyProject } from "@/surfaces/board/TrueEmptyProject";
@@ -122,6 +123,7 @@ function BoardBody({
   source,
   project,
   portfolioWatermark,
+  portfolioEntries,
 }: {
   readonly snapshot: BoardSnapshot;
   readonly source: string;
@@ -129,6 +131,9 @@ function BoardBody({
   /** The unbounded board's projection watermark read in the same render, or
       null when that read did not answer. Only set for a 0-of-0 scoped answer. */
   readonly portfolioWatermark: number | null;
+  /** The unbounded board's own entries, read in the same render as
+      `portfolioWatermark`. Empty except for a true-empty-project answer. */
+  readonly portfolioEntries: readonly BoardEntry[];
 }): ReactElement {
   /* A board that answers watermark 0 of 0 with zero cards is never rendered as
      a normal empty board: it is either a restarting/fresh instance (portfolio
@@ -152,7 +157,7 @@ function BoardBody({
         {kind === "restart-fresh" ? (
           <ZeroOfZeroRefusal project={project} snapshot={snapshot} />
         ) : (
-          <TrueEmptyProject project={project} />
+          <TrueEmptyProject project={project} portfolioEntries={portfolioEntries} />
         )}
         <div className="page">
           <div className="wrap">
@@ -243,10 +248,18 @@ export default async function BoardPage({
      in the read layer: a normal board (watermark > 0, or cards) never pays for
      a second read, and the surface never inspects a Reading's state directly.
      The page is force-dynamic, so no answer is cached across renders: a
-     refusal is never served stale from an earlier board. */
-  const portfolioWatermark = await portfolioWatermarkFor(board, () =>
-    recordAdapter.board(defaultProjectKey())
-  );
+     refusal is never served stale from an earlier board.
+
+     `readPortfolio` is memoized so the true-empty-project case, which needs
+     both the portfolio's watermark AND its entries (gh#319 direction-a's
+     cross-project view), pays for exactly one extra read, not two. */
+  let portfolioReading: Promise<Reading<BoardSnapshot>> | null = null;
+  const readPortfolio = (): Promise<Reading<BoardSnapshot>> => {
+    portfolioReading ??= recordAdapter.board(defaultProjectKey());
+    return portfolioReading;
+  };
+  const portfolioWatermark = await portfolioWatermarkFor(board, readPortfolio);
+  const portfolioEntries = await portfolioEntriesFor(readPortfolio, portfolioWatermark);
   return (
     <Resolved
       reading={board}
@@ -259,6 +272,7 @@ export default async function BoardPage({
           source={source}
           project={project}
           portfolioWatermark={portfolioWatermark}
+          portfolioEntries={portfolioEntries}
         />
       )}
     </Resolved>

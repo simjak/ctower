@@ -3,10 +3,30 @@ import type { ReactElement } from "react";
 import { InlineReading } from "@/frame/Declared";
 import { laneGlyph, StateGlyph } from "@/frame/StateGlyph";
 import { elapsedSince, shortId } from "@/read/elapsed";
-import type { BoardEntry } from "@/read/interface";
+import { tenantChipFor } from "@/read/boardProjection";
+import type { BoardCard, BoardEntry } from "@/read/interface";
 
 function priorityClass(priority: string): string {
   return `pri ${priority.toLowerCase()}`;
+}
+
+/**
+ * The tenant chip, when the caller asks for it (gh#319's cross-project
+ * portfolio view — the normal per-project rail never sets `showTenant`,
+ * because every card on it is already known to be this project's own read).
+ * `known`/`unknown` both render: an unattributed ticket says so, the `title`
+ * carries why, rather than the row silently dropping the fact. The
+ * `known`/`unknown` union itself is narrowed in `read/boardProjection.ts`
+ * (`tenantChipFor`), not here — a surface may not inspect a fact's own
+ * discriminant, the same rule `frame/Declared.tsx` holds for a `Reading`.
+ */
+function tenantChip(card: BoardCard): ReactElement {
+  const facts = tenantChipFor(card.tenantDisplayIdentity);
+  return (
+    <span className="chip" title={facts.title}>
+      {facts.label}
+    </span>
+  );
 }
 
 /**
@@ -23,9 +43,12 @@ function priorityClass(priority: string): string {
 export function LaneCard({
   entry,
   now,
+  showTenant,
 }: {
   readonly entry: BoardEntry;
   readonly now: number;
+  /** Render the tenant chip. Defaults to unset (the per-project rail omits it). */
+  readonly showTenant?: boolean;
 }): ReactElement {
   const { card, ticket } = entry;
   const change = card.deliveryFacts[0];
@@ -66,6 +89,7 @@ export function LaneCard({
         </div>
       )}
       <div className="card-foot">
+        {showTenant === true ? tenantChip(card) : null}
         <InlineReading
           reading={ticket}
           present={(value) => (
