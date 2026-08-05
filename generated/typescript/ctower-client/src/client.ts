@@ -1,5 +1,5 @@
 // DO NOT EDIT: generated file; regenerate from declared inputs.
-// Authored contract digest: sha256:b6f186fea835671be5435034ff923a159509771497f5452972eb99d434f8a153
+// Authored contract digest: sha256:48887e6455e99650ab296dbc75dc7faf312a6fb3fe72e1937024d1ee6b95b446
 
 import type * as Models from "./models.js";
 import { OPERATIONS, type OperationId } from "./operations.js";
@@ -150,6 +150,12 @@ export type IssueSeatCredentialInput = Readonly<{
   readonly body: Models.SeatCredentialIssueRequest;
 }>;
 
+export type ListProjectEventsInput = Readonly<{
+  readonly "projectKey": string;
+  readonly "cursor"?: number;
+  readonly "limit"?: number;
+}>;
+
 export type ListProjectSessionsInput = Readonly<{
   readonly "projectKey": string;
   readonly "cursor"?: number;
@@ -295,6 +301,7 @@ export type OperationInputs = Readonly<{
   readonly "getTicket": GetTicketInput;
   readonly "getTicketTimeline": GetTicketTimelineInput;
   readonly "issueSeatCredential": IssueSeatCredentialInput;
+  readonly "listProjectEvents": ListProjectEventsInput;
   readonly "listProjectSessions": ListProjectSessionsInput;
   readonly "listTicketAssignments": ListTicketAssignmentsInput;
   readonly "listTicketAuditEvents": ListTicketAuditEventsInput;
@@ -345,6 +352,7 @@ export type OperationResults = Readonly<{
   readonly "getTicket": Models.TicketResource;
   readonly "getTicketTimeline": Models.TimelineResponse;
   readonly "issueSeatCredential": Models.SeatCredentialReceipt;
+  readonly "listProjectEvents": Models.ProjectEventPage;
   readonly "listProjectSessions": Models.ProjectSessionPage;
   readonly "listTicketAssignments": Models.AssignmentList;
   readonly "listTicketAuditEvents": Models.AuditPage;
@@ -541,6 +549,12 @@ export class CtowerClient {
     input: IssueSeatCredentialInput,
   ): Promise<Models.SeatCredentialReceipt> {
     return this.execute("issueSeatCredential", input);
+  }
+
+  public async listProjectEvents(
+    input: ListProjectEventsInput,
+  ): Promise<Models.ProjectEventPage> {
+    return this.execute("listProjectEvents", input);
   }
 
   public async listProjectSessions(

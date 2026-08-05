@@ -94,6 +94,7 @@ _AUTHORED_COMMAND_NAMES = frozenset(
         "migration ctower-project commit-development-epoch",
         "migration ctower-project verify",
         "project delivery query",
+        "project events",
     }
 )
 
@@ -128,7 +129,7 @@ def authored_command_names() -> frozenset[str]:
 
 def _parser() -> argparse.ArgumentParser:
     parser = _Parser(prog="ctowerctl", allow_abbrev=False)
-    parser.add_argument("--base-url", required=True, type=_safe_base_url)
+    parser.add_argument("--base-url", required=False, default=None, type=_safe_base_url)
     areas = parser.add_subparsers(dest="area", required=True, parser_class=_Parser)
     _bootstrap_parser(areas.add_parser("bootstrap"))
     _credential_parser(areas.add_parser("credential"))
@@ -604,6 +605,12 @@ def _project_parser(parser: argparse.ArgumentParser) -> None:
     query.set_defaults(cli_name="project delivery query")
     query.add_argument("project_key", type=_PROJECT_KEY.validate_python)
     query.add_argument("--output", choices=("text", "json"), default="text")
+
+    events = subjects.add_parser("events")
+    events.set_defaults(cli_name="project events")
+    events.add_argument("project_key", type=_PROJECT_KEY.validate_python)
+    events.add_argument("--cursor", type=_nonnegative_int)
+    events.add_argument("--limit", type=_positive_int)
 
 
 def _spool_parser(parser: argparse.ArgumentParser) -> None:
