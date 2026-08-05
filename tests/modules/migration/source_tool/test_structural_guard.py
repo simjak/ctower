@@ -1,10 +1,18 @@
 """Structural guard: no fixture-corpus cardinality literals in product code.
 
-This guard walks both authored migration product trees and
-asserts that the four fixture-corpus cardinality values (86, 243, 27, 14)
-do not appear as module-level assignment literals in any product .py file.
-They are permitted only in contracts/domain/migration/ (the JSON schemas)
-and the frozen vectors (migration-vectors.json) — not in product code.
+This guard walks the authored migration product trees (the source tool and
+the kernel's server-side reconciliation) and asserts that the four
+fixture-corpus cardinality values (86, 243, 27, 14) do not appear as
+module-level assignment literals in any product .py file. They are permitted
+in contracts/domain/migration/ (the JSON schemas), the frozen vectors
+(migration-vectors.json), and generated/python/ctower_client/models.py — the
+generated boundary model whose ``Field(min_length=14, max_length=14)`` pins on
+``checkpoint_definitions``/``project_delivery_rows`` are the structural
+enforcement of the signed checkpoint set at finalization
+(``_reconciliation_sql.py``'s ``model_validate_json`` call), not a restatement
+a reviewer should flag. That file is included below so the guard's coverage
+matches this docstring's claim rather than the two authored trees leaving it
+unscanned by omission.
 
 This is a structural guard, not a grep: it uses AST parsing to discover
 module-level constant assignments by value, regardless of the name the
@@ -25,12 +33,15 @@ __all__: tuple[str, ...] = ()
 # module-level assignment literals in migration product code.
 _FORBIDDEN_CARDINALITIES = {86, 243, 27, 14}
 
-# The product trees to scan. Both the source tool and server reconciliation
-# consume the same signed corpus and neither may restate its cardinality.
+# The product trees to scan, plus the one generated file that legitimately
+# pins the same cardinality (see module docstring). Both the source tool and
+# server reconciliation consume the same signed corpus and neither may
+# restate its cardinality as a bare module-level literal.
 _REPOSITORY_ROOT = Path(__file__).resolve().parents[4]
 _PRODUCT_ROOTS = (
     _REPOSITORY_ROOT / "tools" / "migration",
     _REPOSITORY_ROOT / "packages" / "ctower-kernel" / "src" / "ctower_kernel" / "migration",
+    _REPOSITORY_ROOT / "generated" / "python" / "ctower_client" / "models.py",
 )
 
 # Number of forbidden-cardinality hits the renamed-literal test expects.
@@ -65,10 +76,15 @@ def _check_assign(
     return hits
 
 
+def _product_files(root: Path) -> list[Path]:
+    """A root is either a directory to walk or a single file to scan directly."""
+    return [root] if root.is_file() else sorted(root.rglob("*.py"))
+
+
 def _scan_product_tree(root: Path) -> list[_ForbiddenHit]:
     """Walk all .py files under root, find module-level assignments of forbidden cardinalities."""
     hits: list[_ForbiddenHit] = []
-    for py_file in sorted(root.rglob("*.py")):
+    for py_file in _product_files(root):
         try:
             tree = ast.parse(py_file.read_text(encoding="utf-8"), filename=str(py_file))
         except SyntaxError:
@@ -100,11 +116,12 @@ def test_no_fixture_cardinality_literals_in_product_code() -> None:
     This is a structural AST-based guard, not a string grep. It discovers
     assignments by value regardless of the variable name, so a renamed
     literal like ``_EXPECTED_CHECKPOINTS = 14`` gating the delivery check
-    will fail this guard. The four values are permitted only in
-    contracts/domain/migration/ schemas and migration-vectors.json.
+    will fail this guard. The four values are permitted in
+    contracts/domain/migration/ schemas, migration-vectors.json, and
+    generated/python/ctower_client/models.py (see module docstring).
     """
-    scanned = [candidate for root in _PRODUCT_ROOTS for candidate in root.rglob("*.py")]
-    assert all(any(root.rglob("*.py")) for root in _PRODUCT_ROOTS), (
+    scanned = [candidate for root in _PRODUCT_ROOTS for candidate in _product_files(root)]
+    assert all(_product_files(root) for root in _PRODUCT_ROOTS), (
         "guard scanned zero Python files under a configured product root "
         "(root missing or path broke) — a guard that scans nothing cannot fail"
     )
@@ -113,6 +130,10 @@ def test_no_fixture_cardinality_literals_in_product_code() -> None:
         f"  {hit.file}:{hit.line}  {hit.target} = {hit.value}" for hit in hits
     )
     assert any(path.name == "_pass_two_sql.py" for path in scanned)
+    assert any(path.name == "models.py" for path in scanned), (
+        "guard's docstring claims generated/python/ctower_client/models.py as a permitted "
+        "home for these cardinalities — it must actually be scanned, not just named"
+    )
 
 
 def test_guard_detects_renamed_literal_gating_delivery(tmp_path: Path) -> None:
