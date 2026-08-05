@@ -244,6 +244,7 @@ paths = [
   "tests/modules/__init__.py",
   "tests/modules/access/**",
   "tests/modules/attention/**",
+  "tests/modules/board_context/**",
   "tests/modules/catalog/**",
   "tests/modules/migration/**",
   "tests/modules/objects/**",
@@ -254,7 +255,7 @@ paths = [
   "tests/modules/work/**",
   "tests/modules/workflow/**",
 ]
-allowed_dependencies = ["control-api", "kernel-access", "kernel-attention", "kernel-catalog", "kernel-migration", "kernel-objects", "kernel-projections", "kernel-proof", "kernel-record", "kernel-runtime", "kernel-telemetry", "kernel-work", "kernel-workflow"]
+allowed_dependencies = ["control-api", "kernel-access", "kernel-attention", "kernel-board-context", "kernel-catalog", "kernel-migration", "kernel-objects", "kernel-projections", "kernel-proof", "kernel-record", "kernel-runtime", "kernel-telemetry", "kernel-work", "kernel-workflow"]
 
 [[ownership]]
 name = "web"

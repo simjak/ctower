@@ -219,7 +219,7 @@ def test_assignment_and_custody_build_distinct_generated_requests() -> None:
     assert isinstance(custody_payload.request, CustodyTransferRequest)
 
 
-def test_context_set_and_attention_commands_build_distinct_generated_requests() -> None:
+def test_ticket_context_set_commands_build_distinct_generated_requests() -> None:
     ticket_id = uuid4()
     change_reference = parse_arguments(
         [
@@ -253,6 +253,17 @@ def test_context_set_and_attention_commands_build_distinct_generated_requests() 
             "security",
         ]
     )
+
+    change_reference_payload = build_mutation(change_reference)
+    label_payload = build_mutation(label)
+
+    assert isinstance(change_reference_payload.request, ChangeReferenceRequest)
+    assert change_reference_payload.path_parameters == {"ticket_id": str(ticket_id)}
+    assert isinstance(label_payload.request, ApplyLabelRequest)
+    assert label_payload.request.label_key == "security"
+
+
+def test_attention_commands_build_distinct_generated_requests() -> None:
     append = parse_arguments(
         [
             "--base-url",
@@ -263,7 +274,7 @@ def test_context_set_and_attention_commands_build_distinct_generated_requests() 
             "--command-id",
             str(uuid4()),
             "--subject-ticket-id",
-            str(ticket_id),
+            str(uuid4()),
             "--kind-key",
             "needs_decision",
             "--reason-code",
@@ -299,15 +310,9 @@ def test_context_set_and_attention_commands_build_distinct_generated_requests() 
         ]
     )
 
-    change_reference_payload = build_mutation(change_reference)
-    label_payload = build_mutation(label)
     append_payload = build_attention_mutation(append)
     disposition_payload = build_attention_mutation(disposition)
 
-    assert isinstance(change_reference_payload.request, ChangeReferenceRequest)
-    assert change_reference_payload.path_parameters == {"ticket_id": str(ticket_id)}
-    assert isinstance(label_payload.request, ApplyLabelRequest)
-    assert label_payload.request.label_key == "security"
     assert isinstance(append_payload.request, AppendFindingRequest)
     assert append_payload.path_parameters == {}
     assert isinstance(disposition_payload.request, FindingDispositionRequest)
