@@ -46,6 +46,7 @@ from ctower_api._http_support import (
 from ctower_api._intake_routes import install_intake_routes
 from ctower_api._migration_port import MigrationPort
 from ctower_api._mutation_response import mutation_response as _mutation_response
+from ctower_api._project_event_routes import install_project_event_routes
 from ctower_api._proof_workflow_routes import install_proof_workflow_routes
 from ctower_api._session_routes import install_session_routes
 from ctower_api._synthetic_routes import SyntheticRuntime, install_synthetic_routes
@@ -144,6 +145,7 @@ def create_app(
     install_intake_routes(app, access, record, Intake(record, telemetry=recorder), recorder)
     install_comment_routes(app, access, record, recorder)
     install_session_routes(app, access, record, recorder)
+    install_project_event_routes(app, access, record, recorder)
     install_task_routes(app, access, record, work_module, workflow, recorder)
     if catalog is not None:
         install_catalog_routes(app, access, record, catalog, recorder)

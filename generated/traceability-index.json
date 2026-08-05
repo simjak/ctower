@@ -123,6 +123,7 @@
       "packages/ctower-kernel/migrations/0032_thread_first_intake.sql"
     ],
     "AC-DUR-05": [
+      "contracts/evidence/evidence-manifest-v2.schema.json",
       "contracts/evidence/evidence-manifest.schema.json",
       "contracts/operations/anchor.schema.json",
       "contracts/operations/backup-manifest.schema.json",
@@ -168,6 +169,7 @@
       "packages/ctower-kernel/migrations/manifest.json"
     ],
     "AC-EVD-01": [
+      "contracts/evidence/evidence-manifest-v2.schema.json",
       "contracts/evidence/evidence-manifest.schema.json",
       "contracts/execution/evidence-policy.schema.json",
       "packs/policies/evidence/trust-spine-four-stage-v1.yaml"
@@ -182,6 +184,7 @@
       "packs/policies/gates/trust-spine-four-stage-v1.yaml"
     ],
     "AC-EVD-06": [
+      "contracts/evidence/evidence-manifest-v2.schema.json",
       "contracts/evidence/evidence-manifest.schema.json",
       "contracts/evidence/object-manifest.schema.json",
       "contracts/execution/evidence-policy.schema.json",
@@ -618,6 +621,7 @@
       "packs/workflows/ctower.trust-spine-four-stage/v1.yaml"
     ],
     "INV-16": [
+      "contracts/evidence/evidence-manifest-v2.schema.json",
       "contracts/evidence/evidence-manifest.schema.json",
       "contracts/execution/gate-policy.schema.json",
       "contracts/http/openapi.yaml",
@@ -630,6 +634,7 @@
       "packages/ctower-kernel/migrations/0004_proof_workflow.sql"
     ],
     "INV-18": [
+      "contracts/evidence/evidence-manifest-v2.schema.json",
       "contracts/evidence/evidence-manifest.schema.json",
       "contracts/execution/evidence-policy.schema.json",
       "packages/ctower-kernel/migrations/0004_proof_workflow.sql",
@@ -943,6 +948,7 @@
       "packages/ctower-kernel/migrations/0011_persisted_command_refusals.sql"
     ],
     "SPEC#durable-job-run-evidence-gate-and-effect-sequence": [
+      "contracts/evidence/evidence-manifest-v2.schema.json",
       "contracts/evidence/evidence-manifest.schema.json"
     ],
     "SPEC#event-driven-default-and-routine-revisions": [
@@ -1134,6 +1140,7 @@
       "packs/workflows/engineering.software-factory/v1.yaml"
     ],
     "SPEC#test-and-evidence-matrix": [
+      "contracts/evidence/evidence-manifest-v2.schema.json",
       "contracts/evidence/evidence-manifest.schema.json"
     ],
     "SPEC#universal-versionedcomponent-catalog-and-company-desired-state": [
