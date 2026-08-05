@@ -77,6 +77,19 @@ class RepositoryPolicyEdgeTests(unittest.TestCase):
                     report = verify(root, "fast")
                 self.assertIn("source.parse", {item.rule_id for item in report.errors})
 
+    def test_nested_module_scope_export_authority_fails_closed(self) -> None:
+        cases = {
+            "nested star import": "if True:\n    from package import *\n",
+            "conditional __all__": 'if True:\n    __all__ = ["export_a"]\n',
+            "__all__.extend": '__all__ = ["export_a"]\n__all__.extend(["export_b"])\n',
+        }
+        for label, source in cases.items():
+            with self.subTest(label=label):
+                with self._repository() as root:
+                    (root / "app/public.py").write_text(source, encoding="utf-8")
+                    report = verify(root, "fast")
+                self.assertIn("source.parse", {item.rule_id for item in report.errors})
+
     def test_parse_error_warning_budget_and_ambiguous_owner_are_visible(self) -> None:
         with self._repository() as root:
             (root / "app/broken.py").write_text("def broken(:\n", encoding="utf-8")
