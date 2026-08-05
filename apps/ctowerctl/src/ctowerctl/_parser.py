@@ -115,15 +115,7 @@ def parse_arguments(argv: Sequence[str] | None = None) -> argparse.Namespace:
     """Parse only explicit authored commands; unknown operations are usage errors."""
 
     parsed = _parser().parse_args(argv)
-    if (
-        getattr(parsed, "cli_name", None)
-        in {
-            "synthetic run",
-            "ticket capture",
-            "ticket create",
-        }
-        and parsed.command_id is None
-    ):
+    if getattr(parsed, "command_id", None) is None and hasattr(parsed, "command_id"):
         parsed.command_id = uuid4()
     return parsed
 
@@ -242,7 +234,7 @@ def _ticket_capture_and_reads(actions: argparse._SubParsersAction[_Parser]) -> N
     for name in ("capture", "create"):
         capture = actions.add_parser(name)
         capture.set_defaults(cli_name=f"ticket {name}")
-        capture.add_argument("--command-id", type=UUID)
+        _command_id(capture)
         capture.add_argument("--initial-custodian-id", type=UUID)
         capture.add_argument("--priority", required=True, choices=tuple(Priority))
         capture.add_argument("--project-key", required=True)
@@ -513,7 +505,7 @@ def _synthetic_parser(parser: argparse.ArgumentParser) -> None:
         required=True,
         choices=("ctower.trust-spine-four-stage@1",),
     )
-    run.add_argument("--command-id", type=UUID)
+    _command_id(run)
     run.add_argument("--wait", action="store_true", required=True)
     run.add_argument("--assert", dest="assertions", required=True, type=_assertions)
     query = actions.add_parser("query")

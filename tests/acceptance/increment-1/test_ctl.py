@@ -345,6 +345,26 @@ def test_assignment_and_protected_custody_are_distinct_generated_commands(
     assert transferred["result"]["ticket"]["ticket_id"] == str(custody_ticket)
 
 
+def test_ticket_assign_without_hand_minted_command_id_derives_one(
+    tenant: TenantFixture,
+    cli_state: _MemoryBackend,
+) -> None:
+    del cli_state
+    ticket_id = _seed_ticket(tenant, "Derived command id assignment")
+    with _server(tenant.database.runtime_dsn) as base_url:
+        status, assigned_text, error = _run(
+            _assign_arguments(base_url, tenant, ticket_id),
+            authority=tenant.operator_credential,
+        )
+
+    assigned = json.loads(assigned_text)
+    assert status == EXIT_TEMPORARY
+    assert error == ""
+    assert UUID(assigned["command_id"])
+    assert assigned["result"]["operation"] == "assignment_changed"
+    assert assigned["result"]["ticket_id"] == str(ticket_id)
+
+
 def test_offline_mutation_is_durably_queued_with_caller_command_id(
     tenant: TenantFixture,
     cli_state: _MemoryBackend,
@@ -518,49 +538,29 @@ def _bootstrap_arguments(base_url: str, command_id: UUID) -> list[str]:
 
 
 def _assign_arguments(
-    base_url: str, tenant: TenantFixture, ticket_id: UUID, command_id: UUID
+    base_url: str,
+    tenant: TenantFixture,
+    ticket_id: UUID,
+    command_id: UUID | None = None,
 ) -> list[str]:
-    return [
-        "--base-url",
-        base_url,
-        "ticket",
-        "assign",
-        str(ticket_id),
-        "--command-id",
-        str(command_id),
-        "--expected-version",
-        "1",
-        "--kind",
-        "current_assignee",
-        "--to-principal-id",
-        str(tenant.operator_id),
-        "--reason",
-        "Ordinary CLI assignment",
-    ]
+    arguments = ["--base-url", base_url, "ticket", "assign", str(ticket_id)]
+    arguments += ["--expected-version", "1", "--kind", "current_assignee"]
+    arguments += ["--to-principal-id", str(tenant.operator_id)]
+    arguments += ["--reason", "Ordinary CLI assignment"]
+    if command_id is not None:
+        arguments.extend(("--command-id", str(command_id)))
+    return arguments
 
 
 def _custody_arguments(
     base_url: str, tenant: TenantFixture, ticket_id: UUID, command_id: UUID
 ) -> list[str]:
-    return [
-        "--base-url",
-        base_url,
-        "ticket",
-        "custody",
-        "transfer",
-        str(ticket_id),
-        "--command-id",
-        str(command_id),
-        "--expected-version",
-        "1",
-        "--from-custodian-id",
-        str(tenant.commander_id),
-        "--to-custodian-id",
-        str(tenant.operator_id),
-        "--reason",
-        "Protected CLI transfer",
-        "--protected-transfer",
-    ]
+    arguments = ["--base-url", base_url, "ticket", "custody", "transfer", str(ticket_id)]
+    arguments += ["--command-id", str(command_id), "--expected-version", "1"]
+    arguments += ["--from-custodian-id", str(tenant.commander_id)]
+    arguments += ["--to-custodian-id", str(tenant.operator_id)]
+    arguments += ["--reason", "Protected CLI transfer", "--protected-transfer"]
+    return arguments
 
 
 def _seed_ticket(tenant: TenantFixture, title: str) -> UUID:
