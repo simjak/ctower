@@ -321,6 +321,7 @@ function rowsOf(
     return {
       ...parsed,
       name: redacted(crew),
+      sessionName: redacted(session.name),
       project: projectOf(record?.project ?? null, session.project, log),
       model,
       harness: harnessOf(model),

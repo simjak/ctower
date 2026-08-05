@@ -393,8 +393,10 @@ export type CrewActivity = "in-flight" | "parked" | "held" | "unrecorded";
 
 /** One live crew, as the fleet holds it. */
 export interface CrewRow {
-  /** The session name, verbatim. */
+  /** The crew name the naming rule parses, with the mux prefix already removed. */
   readonly name: string;
+  /** The tmux session name, unstripped — what a pane read must ask tmux for. */
+  readonly sessionName: string;
   /** What the name parses to. A name that does not parse says so, per part. */
   readonly seat: Known<string>;
   readonly seatLabel: Known<string>;
