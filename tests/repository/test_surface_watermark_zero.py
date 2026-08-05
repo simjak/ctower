@@ -179,21 +179,27 @@ class PortfolioViewPromiseTests(unittest.TestCase):
 
     Round-5 QA (#319) found this block's copy claiming "the portfolio view
     below shows every imported card across projects" while nothing rendered
-    below the banner. #323 (branch fix/318-319-ui-fixes, still open at the
-    time this lane built) took the honest-fallback direction and dropped the
-    sentence instead. This lane took the other honest direction #319 itself
-    names as preferred: gh#115 landed a tenant fact per card (D29's five-member
-    context set), so the promised view is now a trivial unfiltered render —
-    this class pins that the promise this file's `main` copy already carried
-    is kept, not merely re-worded.
+    below the banner. #323 (branch fix/318-319-ui-fixes, open when this lane
+    built and merged to main before it) took the honest-fallback direction and
+    re-worded that sentence to describe the link the block actually rendered.
+    This lane takes the other honest direction #319 itself names as preferred:
+    gh#115 landed a tenant fact per card (D29's five-member context set), so
+    the promised view is now a trivial unfiltered render. `main`'s wording is
+    kept — this class pins that the portfolio promise its copy carries is made
+    true by a real render, never merely pointed at.
     """
 
-    def test_the_block_still_promises_a_portfolio_view_below_the_banner(self) -> None:
+    def test_the_block_keeps_its_portfolio_promise_by_rendering_it(self) -> None:
         source = _TRUE_EMPTY_BLOCK.read_text(encoding="utf-8")
         self.assertIn(
-            "The portfolio view below shows every imported card",
+            "Every imported card across projects is visible",
             source,
-            "the block dropped its own promise instead of making it true",
+            "the block dropped the portfolio promise from its copy instead of keeping it",
+        )
+        self.assertIn(
+            "<h2>Portfolio</h2>",
+            source,
+            "the block's copy promises a portfolio view its own render never carries",
         )
 
     def test_the_block_renders_a_real_panel_below_the_banner(self) -> None:
