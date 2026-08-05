@@ -6,6 +6,7 @@ import ast
 import sys
 import tempfile
 import unittest
+from collections.abc import Iterator
 from dataclasses import dataclass
 from pathlib import Path
 
@@ -21,13 +22,50 @@ _ADAPTER = Path("tools/process_execution.py")
 _EXPECTED_DIRECT_SITE = (_ADAPTER, "subprocess.Popen")
 _BOUNDED_ENTRY_POINTS = ("pipeline", "run")
 _BOUNDED_REFERENCES = frozenset(f"tools.process_execution.{name}" for name in _BOUNDED_ENTRY_POINTS)
-_TERMINAL_REFERENCES = _BOUNDED_REFERENCES | {
-    "subprocess",
-    "subprocess.Popen",
-    "subprocess.run",
-    "tools.process_execution",
-}
+# Async subprocess creation (asyncio.create_subprocess_exec/_shell) never takes a timeout
+# argument itself; the deadline is only real if the site's enclosing function also carries
+# an asyncio.wait_for(..., timeout=...) or `async with asyncio.timeout(...)` whose deadline
+# argument is not the literal `None` (both stdlib APIs treat a `None` deadline as unbounded).
+_ASYNC_SUBPROCESS_REFERENCES = frozenset(
+    {"asyncio.create_subprocess_exec", "asyncio.create_subprocess_shell"}
+)
+_ASYNC_DEADLINE_REFERENCES = frozenset({"asyncio.wait_for", "asyncio.timeout"})
+_TERMINAL_REFERENCES = (
+    _BOUNDED_REFERENCES
+    | _ASYNC_SUBPROCESS_REFERENCES
+    | _ASYNC_DEADLINE_REFERENCES
+    | {
+        "asyncio",
+        "subprocess",
+        "subprocess.Popen",
+        "subprocess.run",
+        "tools.process_execution",
+    }
+)
 _EXPECTED_ADAPTER_CALLS = {"pipeline": 2, "run": 15}
+# Every authored async subprocess creation site production-wide, keyed by (path, operation).
+# A new call site must be added here deliberately, alongside proof it is bounded — the
+# assertion below fails loudly on an unreviewed addition instead of silently inventorying it.
+_EXPECTED_ASYNC_SITES = frozenset(
+    {
+        (
+            Path("apps/ctower-api/src/ctower_api/_backup_adapter.py"),
+            "asyncio.create_subprocess_exec",
+        ),
+        (Path("tools/checks/_impl/suites.py"), "asyncio.create_subprocess_exec"),
+        (Path("tools/checks/playwright.py"), "asyncio.create_subprocess_exec"),
+    }
+)
+# Sites reviewed and accepted as temporarily unbounded, keyed by (path, operation). Empty in
+# steady state: every authored async subprocess site must resolve to an approved bounded
+# interface. Populate only with an exact, sourced reason tied to a tracked fix in flight; the
+# `stale_exceptions` assertion in _assert_production_process_inventory fails loudly once the
+# named site becomes bounded, forcing the entry's removal in the same change that fixes it.
+#
+# gh#113's tools/checks/playwright.py exception is gone: PR simjak/ctower#307 (bound the
+# Playwright gate's process wait with a deadline) merged into main, so that site now wraps
+# process.wait() in asyncio.wait_for(..., timeout=_TIMEOUT_SECONDS) and is bounded.
+_ASYNC_EXCEPTIONS: frozenset[tuple[Path, str]] = frozenset()
 type _ResolvedReference = str | None
 
 
@@ -47,6 +85,10 @@ class BoundedProcessExecutionTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as name:
             _assert_inventory_rejects_unbounded_site(Path(name))
 
+    def test_inventory_rejects_a_new_unbounded_async_site(self) -> None:
+        with tempfile.TemporaryDirectory() as name:
+            _assert_inventory_rejects_unbounded_async_site(Path(name))
+
     def test_process_deadline_is_required_and_terminates_descendants(self) -> None:
         with tempfile.TemporaryDirectory() as name:
             _assert_deadline_terminates_descendants(Path(name))
@@ -54,19 +96,32 @@ class BoundedProcessExecutionTests(unittest.TestCase):
 
 def _assert_production_process_inventory() -> None:
     sites = _process_sites(ROOT)
+    sync_sites = tuple(site for site in sites if site.operation not in _ASYNC_SUBPROCESS_REFERENCES)
+    async_sites = tuple(site for site in sites if site.operation in _ASYNC_SUBPROCESS_REFERENCES)
 
     direct = {
-        (site.path, site.operation) for site in sites if site.operation not in _BOUNDED_ENTRY_POINTS
+        (site.path, site.operation)
+        for site in sync_sites
+        if site.operation not in _BOUNDED_ENTRY_POINTS
     }
-    unbounded = tuple(site for site in sites if not site.bounded)
+    unbounded_sync = tuple(site for site in sync_sites if not site.bounded)
     calls = {
-        name: len(tuple(site for site in sites if site.operation == name))
+        name: len(tuple(site for site in sync_sites if site.operation == name))
         for name in _BOUNDED_ENTRY_POINTS
     }
+    async_inventory = {(site.path, site.operation) for site in async_sites}
+    unbounded_async = tuple(site for site in async_sites if not site.bounded)
+    unreviewed_async = tuple(
+        site for site in unbounded_async if (site.path, site.operation) not in _ASYNC_EXCEPTIONS
+    )
+    stale_exceptions = _ASYNC_EXCEPTIONS - {(site.path, site.operation) for site in unbounded_async}
 
     assert direct == {_EXPECTED_DIRECT_SITE}
-    assert unbounded == ()
+    assert unbounded_sync == ()
     assert calls == _EXPECTED_ADAPTER_CALLS
+    assert async_inventory == _EXPECTED_ASYNC_SITES
+    assert unreviewed_async == ()
+    assert stale_exceptions == set(), f"exception no longer applies, remove it: {stale_exceptions}"
 
 
 def _assert_inventory_rejects_unbounded_site(tmp_path: Path) -> None:
@@ -107,6 +162,85 @@ def _assert_inventory_rejects_unbounded_site(tmp_path: Path) -> None:
             "reexport.py",
         )
     )
+
+
+_UNBOUNDED_ASYNC_FIXTURES = {
+    "aliased_from.py": (
+        "from asyncio import create_subprocess_exec as spawn\n"
+        "async def run() -> None:\n"
+        "    return await spawn('/usr/bin/false')\n"
+    ),
+    "aliased_module.py": (
+        "import asyncio as aio\n"
+        "async def run() -> None:\n"
+        "    return await aio.create_subprocess_exec('/usr/bin/false')\n"
+    ),
+    "from_import.py": (
+        "from asyncio import create_subprocess_exec\n"
+        "async def run() -> None:\n"
+        "    return await create_subprocess_exec('/usr/bin/false')\n"
+    ),
+    "literal_module.py": (
+        "import asyncio\n"
+        "async def run() -> None:\n"
+        "    return await asyncio.create_subprocess_exec('/usr/bin/false')\n"
+    ),
+    "literal_shell.py": (
+        "import asyncio\n"
+        "async def run() -> None:\n"
+        "    return await asyncio.create_subprocess_shell('/usr/bin/false')\n"
+    ),
+    "process_alias.py": "from asyncio import create_subprocess_exec as exported_spawn\n",
+    "reexport.py": (
+        "from tools.process_alias import exported_spawn\n"
+        "async def run() -> None:\n"
+        "    return await exported_spawn('/usr/bin/false')\n"
+    ),
+    "none_deadline.py": (
+        "import asyncio\n"
+        "async def run() -> None:\n"
+        "    process = await asyncio.create_subprocess_exec('/usr/bin/false')\n"
+        "    return await asyncio.wait_for(process.wait(), timeout=None)\n"
+    ),
+}
+_BOUNDED_ASYNC_FIXTURES = {
+    "bounded_wait_for.py": (
+        "import asyncio\n"
+        "async def run(deadline: float) -> int:\n"
+        "    process = await asyncio.create_subprocess_exec('/usr/bin/false')\n"
+        "    return await asyncio.wait_for(process.wait(), timeout=deadline)\n"
+    ),
+    "bounded_timeout_context.py": (
+        "import asyncio\n"
+        "async def run(deadline: float) -> None:\n"
+        "    process = await asyncio.create_subprocess_exec('/usr/bin/false')\n"
+        "    async with asyncio.timeout(deadline):\n"
+        "        await process.wait()\n"
+    ),
+}
+
+
+def _assert_inventory_rejects_unbounded_async_site(tmp_path: Path) -> None:
+    source_root = tmp_path / "tools"
+    source_root.mkdir()
+    fixtures = {**_UNBOUNDED_ASYNC_FIXTURES, **_BOUNDED_ASYNC_FIXTURES}
+    for name, source in fixtures.items():
+        (source_root / name).write_text(source, encoding="utf-8")
+
+    async_sites = {
+        (site.path, site.line): site.bounded
+        for site in _process_sites(tmp_path)
+        if site.operation in _ASYNC_SUBPROCESS_REFERENCES
+    }
+    expected_unbounded = {
+        (Path("tools") / name, 3)
+        for name in _UNBOUNDED_ASYNC_FIXTURES
+        if name != "process_alias.py"
+    }
+    expected_bounded = {(Path("tools") / name, 3) for name in _BOUNDED_ASYNC_FIXTURES}
+
+    assert {key for key, bounded in async_sites.items() if not bounded} == expected_unbounded
+    assert {key for key, bounded in async_sites.items() if bounded} == expected_bounded
 
 
 def _assert_deadline_terminates_descendants(tmp_path: Path) -> None:
@@ -287,6 +421,44 @@ def _resolve_reference(
     return reference
 
 
+def _function_has_async_deadline(
+    node: ast.AsyncFunctionDef,
+    module: str,
+    exports: dict[str, dict[str, _ResolvedReference]],
+) -> bool:
+    scope = [dict(exports[module])]
+    for child in _iter_without_nested_functions(node):
+        if not isinstance(child, ast.Call):
+            continue
+        reference = _resolve_reference(_expression_reference(child.func, scope), exports)
+        if reference == "asyncio.wait_for" and _has_live_deadline(
+            child, position=1, keyword="timeout"
+        ):
+            return True
+        if reference == "asyncio.timeout" and _has_live_deadline(
+            child, position=0, keyword="delay"
+        ):
+            return True
+    return False
+
+
+def _has_live_deadline(call: ast.Call, *, position: int, keyword: str) -> bool:
+    value = next((entry.value for entry in call.keywords if entry.arg == keyword), None)
+    if value is None and position < len(call.args):
+        value = call.args[position]
+    if value is None:
+        return False
+    return not (isinstance(value, ast.Constant) and value.value is None)
+
+
+def _iter_without_nested_functions(node: ast.AST) -> Iterator[ast.AST]:
+    for child in ast.iter_child_nodes(node):
+        if isinstance(child, (ast.FunctionDef, ast.AsyncFunctionDef, ast.Lambda)):
+            continue
+        yield child
+        yield from _iter_without_nested_functions(child)
+
+
 class _SiteVisitor(ast.NodeVisitor):
     def __init__(
         self,
@@ -301,6 +473,7 @@ class _SiteVisitor(ast.NodeVisitor):
         self._is_package = is_package
         self._exports = exports
         self._scopes: list[dict[str, _ResolvedReference]] = [dict(exports[module])]
+        self._async_bounded: list[bool] = [False]
         self._sites: list[_ProcessSite] = []
 
     def collect(self, tree: ast.Module) -> tuple[_ProcessSite, ...]:
@@ -323,10 +496,11 @@ class _SiteVisitor(ast.NodeVisitor):
         _bind_assignment(node, self._scopes[-1])
 
     def visit_FunctionDef(self, node: ast.FunctionDef) -> None:
-        self._visit_function(node)
+        self._visit_function(node, async_bounded=False)
 
     def visit_AsyncFunctionDef(self, node: ast.AsyncFunctionDef) -> None:
-        self._visit_function(node)
+        bounded = _function_has_async_deadline(node, self._module, self._exports)
+        self._visit_function(node, async_bounded=bounded)
 
     def visit_Call(self, node: ast.Call) -> None:
         reference = _resolve_reference(
@@ -346,9 +520,15 @@ class _SiteVisitor(ast.NodeVisitor):
             has_timeout = any(keyword.arg == "timeout_seconds" for keyword in node.keywords)
             entry_point = reference.rpartition(".")[2]
             self._sites.append(_ProcessSite(self._path, node.lineno, entry_point, has_timeout))
+        elif reference in _ASYNC_SUBPROCESS_REFERENCES:
+            self._sites.append(
+                _ProcessSite(self._path, node.lineno, reference, self._async_bounded[-1])
+            )
         self.generic_visit(node)
 
-    def _visit_function(self, node: ast.FunctionDef | ast.AsyncFunctionDef) -> None:
+    def _visit_function(
+        self, node: ast.FunctionDef | ast.AsyncFunctionDef, *, async_bounded: bool
+    ) -> None:
         for decorator in node.decorator_list:
             self.visit(decorator)
         for default in (*node.args.defaults, *node.args.kw_defaults):
@@ -365,6 +545,8 @@ class _SiteVisitor(ast.NodeVisitor):
         if node.args.kwarg:
             scope[node.args.kwarg.arg] = None
         self._scopes.append(scope)
+        self._async_bounded.append(async_bounded)
         for statement in node.body:
             self.visit(statement)
+        self._async_bounded.pop()
         self._scopes.pop()
