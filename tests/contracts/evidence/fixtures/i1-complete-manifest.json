@@ -1,5 +1,5 @@
 {
-  "schema": "ctower.evidence-manifest/v1",
+  "schema": "ctower.evidence-manifest/v2",
   "status": "development_only",
   "tenant_id": "00000000-0000-4000-8000-000000000001",
   "ticket_id": "00000000-0000-4000-8000-000000000002",
@@ -15,7 +15,9 @@
       "source_sha": "sha256:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
       "environment": "disposable-development",
       "proof_digest": "sha256:cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
-      "verifier": "00000000-0000-4000-8000-000000000003"
+      "verifier": "00000000-0000-4000-8000-000000000003",
+      "verdict_id": "00000000-0000-4000-8000-000000000004",
+      "candidate_digest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
     },
     {
       "criterion_source": "acceptance-criterion",
@@ -26,7 +28,9 @@
       "source_sha": "sha256:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
       "environment": "disposable-development",
       "proof_digest": "sha256:cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
-      "verifier": "00000000-0000-4000-8000-000000000003"
+      "verifier": "00000000-0000-4000-8000-000000000003",
+      "verdict_id": "00000000-0000-4000-8000-000000000004",
+      "candidate_digest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
     },
     {
       "criterion_source": "acceptance-criterion",
@@ -37,7 +41,9 @@
       "source_sha": "sha256:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
       "environment": "disposable-development",
       "proof_digest": "sha256:cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
-      "verifier": "00000000-0000-4000-8000-000000000003"
+      "verifier": "00000000-0000-4000-8000-000000000003",
+      "verdict_id": "00000000-0000-4000-8000-000000000004",
+      "candidate_digest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
     },
     {
       "criterion_source": "acceptance-criterion",
@@ -48,7 +54,9 @@
       "source_sha": "sha256:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
       "environment": "disposable-development",
       "proof_digest": "sha256:cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
-      "verifier": "00000000-0000-4000-8000-000000000003"
+      "verifier": "00000000-0000-4000-8000-000000000003",
+      "verdict_id": "00000000-0000-4000-8000-000000000004",
+      "candidate_digest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
     },
     {
       "criterion_source": "acceptance-criterion",
@@ -59,7 +67,9 @@
       "source_sha": "sha256:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
       "environment": "disposable-development",
       "proof_digest": "sha256:cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
-      "verifier": "00000000-0000-4000-8000-000000000003"
+      "verifier": "00000000-0000-4000-8000-000000000003",
+      "verdict_id": "00000000-0000-4000-8000-000000000004",
+      "candidate_digest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
     },
     {
       "criterion_source": "acceptance-criterion",
@@ -70,7 +80,9 @@
       "source_sha": "sha256:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
       "environment": "disposable-development",
       "proof_digest": "sha256:cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
-      "verifier": "00000000-0000-4000-8000-000000000003"
+      "verifier": "00000000-0000-4000-8000-000000000003",
+      "verdict_id": "00000000-0000-4000-8000-000000000004",
+      "candidate_digest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
     },
     {
       "criterion_source": "acceptance-criterion",
@@ -81,7 +93,9 @@
       "source_sha": "sha256:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
       "environment": "disposable-development",
       "proof_digest": "sha256:cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
-      "verifier": "00000000-0000-4000-8000-000000000003"
+      "verifier": "00000000-0000-4000-8000-000000000003",
+      "verdict_id": "00000000-0000-4000-8000-000000000004",
+      "candidate_digest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
     },
     {
       "criterion_source": "acceptance-criterion",
@@ -92,7 +106,9 @@
       "source_sha": "sha256:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
       "environment": "disposable-development",
       "proof_digest": "sha256:cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
-      "verifier": "00000000-0000-4000-8000-000000000003"
+      "verifier": "00000000-0000-4000-8000-000000000003",
+      "verdict_id": "00000000-0000-4000-8000-000000000004",
+      "candidate_digest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
     },
     {
       "criterion_source": "acceptance-criterion",
@@ -103,7 +119,9 @@
       "source_sha": "sha256:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
       "environment": "disposable-development",
       "proof_digest": "sha256:cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
-      "verifier": "00000000-0000-4000-8000-000000000003"
+      "verifier": "00000000-0000-4000-8000-000000000003",
+      "verdict_id": "00000000-0000-4000-8000-000000000004",
+      "candidate_digest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
     },
     {
       "criterion_source": "acceptance-criterion",
@@ -114,7 +132,9 @@
       "source_sha": "sha256:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
       "environment": "disposable-development",
       "proof_digest": "sha256:cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
-      "verifier": "00000000-0000-4000-8000-000000000003"
+      "verifier": "00000000-0000-4000-8000-000000000003",
+      "verdict_id": "00000000-0000-4000-8000-000000000004",
+      "candidate_digest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
     },
     {
       "criterion_source": "acceptance-criterion",
@@ -125,7 +145,9 @@
       "source_sha": "sha256:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
       "environment": "disposable-development",
       "proof_digest": "sha256:cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
-      "verifier": "00000000-0000-4000-8000-000000000003"
+      "verifier": "00000000-0000-4000-8000-000000000003",
+      "verdict_id": "00000000-0000-4000-8000-000000000004",
+      "candidate_digest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
     },
     {
       "criterion_source": "acceptance-criterion",
@@ -136,7 +158,9 @@
       "source_sha": "sha256:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
       "environment": "disposable-development",
       "proof_digest": "sha256:cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
-      "verifier": "00000000-0000-4000-8000-000000000003"
+      "verifier": "00000000-0000-4000-8000-000000000003",
+      "verdict_id": "00000000-0000-4000-8000-000000000004",
+      "candidate_digest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
     },
     {
       "criterion_source": "acceptance-criterion",
@@ -147,7 +171,9 @@
       "source_sha": "sha256:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
       "environment": "disposable-development",
       "proof_digest": "sha256:cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
-      "verifier": "00000000-0000-4000-8000-000000000003"
+      "verifier": "00000000-0000-4000-8000-000000000003",
+      "verdict_id": "00000000-0000-4000-8000-000000000004",
+      "candidate_digest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
     },
     {
       "criterion_source": "acceptance-criterion",
@@ -158,7 +184,9 @@
       "source_sha": "sha256:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
       "environment": "disposable-development",
       "proof_digest": "sha256:cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
-      "verifier": "00000000-0000-4000-8000-000000000003"
+      "verifier": "00000000-0000-4000-8000-000000000003",
+      "verdict_id": "00000000-0000-4000-8000-000000000004",
+      "candidate_digest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
     },
     {
       "criterion_source": "acceptance-criterion",
@@ -169,7 +197,9 @@
       "source_sha": "sha256:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
       "environment": "disposable-development",
       "proof_digest": "sha256:cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
-      "verifier": "00000000-0000-4000-8000-000000000003"
+      "verifier": "00000000-0000-4000-8000-000000000003",
+      "verdict_id": "00000000-0000-4000-8000-000000000004",
+      "candidate_digest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
     },
     {
       "criterion_source": "acceptance-criterion",
@@ -180,7 +210,9 @@
       "source_sha": "sha256:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
       "environment": "disposable-development",
       "proof_digest": "sha256:cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
-      "verifier": "00000000-0000-4000-8000-000000000003"
+      "verifier": "00000000-0000-4000-8000-000000000003",
+      "verdict_id": "00000000-0000-4000-8000-000000000004",
+      "candidate_digest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
     },
     {
       "criterion_source": "acceptance-criterion",
@@ -191,7 +223,9 @@
       "source_sha": "sha256:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
       "environment": "disposable-development",
       "proof_digest": "sha256:cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
-      "verifier": "00000000-0000-4000-8000-000000000003"
+      "verifier": "00000000-0000-4000-8000-000000000003",
+      "verdict_id": "00000000-0000-4000-8000-000000000004",
+      "candidate_digest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
     },
     {
       "criterion_source": "acceptance-criterion",
@@ -202,7 +236,9 @@
       "source_sha": "sha256:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
       "environment": "disposable-development",
       "proof_digest": "sha256:cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
-      "verifier": "00000000-0000-4000-8000-000000000003"
+      "verifier": "00000000-0000-4000-8000-000000000003",
+      "verdict_id": "00000000-0000-4000-8000-000000000004",
+      "candidate_digest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
     },
     {
       "criterion_source": "acceptance-criterion",
@@ -213,7 +249,9 @@
       "source_sha": "sha256:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
       "environment": "disposable-development",
       "proof_digest": "sha256:cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
-      "verifier": "00000000-0000-4000-8000-000000000003"
+      "verifier": "00000000-0000-4000-8000-000000000003",
+      "verdict_id": "00000000-0000-4000-8000-000000000004",
+      "candidate_digest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
     },
     {
       "criterion_source": "acceptance-criterion",
@@ -224,7 +262,9 @@
       "source_sha": "sha256:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
       "environment": "disposable-development",
       "proof_digest": "sha256:cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
-      "verifier": "00000000-0000-4000-8000-000000000003"
+      "verifier": "00000000-0000-4000-8000-000000000003",
+      "verdict_id": "00000000-0000-4000-8000-000000000004",
+      "candidate_digest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
     },
     {
       "criterion_source": "acceptance-criterion",
@@ -235,7 +275,9 @@
       "source_sha": "sha256:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
       "environment": "disposable-development",
       "proof_digest": "sha256:cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
-      "verifier": "00000000-0000-4000-8000-000000000003"
+      "verifier": "00000000-0000-4000-8000-000000000003",
+      "verdict_id": "00000000-0000-4000-8000-000000000004",
+      "candidate_digest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
     },
     {
       "criterion_source": "acceptance-criterion",
@@ -246,7 +288,9 @@
       "source_sha": "sha256:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
       "environment": "disposable-development",
       "proof_digest": "sha256:cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
-      "verifier": "00000000-0000-4000-8000-000000000003"
+      "verifier": "00000000-0000-4000-8000-000000000003",
+      "verdict_id": "00000000-0000-4000-8000-000000000004",
+      "candidate_digest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
     },
     {
       "criterion_source": "acceptance-criterion",
@@ -257,7 +301,9 @@
       "source_sha": "sha256:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
       "environment": "disposable-development",
       "proof_digest": "sha256:cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
-      "verifier": "00000000-0000-4000-8000-000000000003"
+      "verifier": "00000000-0000-4000-8000-000000000003",
+      "verdict_id": "00000000-0000-4000-8000-000000000004",
+      "candidate_digest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
     },
     {
       "criterion_source": "acceptance-criterion",
@@ -268,7 +314,9 @@
       "source_sha": "sha256:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
       "environment": "disposable-development",
       "proof_digest": "sha256:cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
-      "verifier": "00000000-0000-4000-8000-000000000003"
+      "verifier": "00000000-0000-4000-8000-000000000003",
+      "verdict_id": "00000000-0000-4000-8000-000000000004",
+      "candidate_digest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
     },
     {
       "criterion_source": "acceptance-criterion",
@@ -279,7 +327,9 @@
       "source_sha": "sha256:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
       "environment": "disposable-development",
       "proof_digest": "sha256:cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
-      "verifier": "00000000-0000-4000-8000-000000000003"
+      "verifier": "00000000-0000-4000-8000-000000000003",
+      "verdict_id": "00000000-0000-4000-8000-000000000004",
+      "candidate_digest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
     },
     {
       "criterion_source": "acceptance-criterion",
@@ -290,7 +340,9 @@
       "source_sha": "sha256:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
       "environment": "disposable-development",
       "proof_digest": "sha256:cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
-      "verifier": "00000000-0000-4000-8000-000000000003"
+      "verifier": "00000000-0000-4000-8000-000000000003",
+      "verdict_id": "00000000-0000-4000-8000-000000000004",
+      "candidate_digest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
     },
     {
       "criterion_source": "acceptance-criterion",
@@ -301,7 +353,9 @@
       "source_sha": "sha256:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
       "environment": "disposable-development",
       "proof_digest": "sha256:cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
-      "verifier": "00000000-0000-4000-8000-000000000003"
+      "verifier": "00000000-0000-4000-8000-000000000003",
+      "verdict_id": "00000000-0000-4000-8000-000000000004",
+      "candidate_digest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
     },
     {
       "criterion_source": "acceptance-criterion",
@@ -312,7 +366,9 @@
       "source_sha": "sha256:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
       "environment": "disposable-development",
       "proof_digest": "sha256:cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
-      "verifier": "00000000-0000-4000-8000-000000000003"
+      "verifier": "00000000-0000-4000-8000-000000000003",
+      "verdict_id": "00000000-0000-4000-8000-000000000004",
+      "candidate_digest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
     },
     {
       "criterion_source": "acceptance-criterion",
@@ -323,7 +379,9 @@
       "source_sha": "sha256:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
       "environment": "disposable-development",
       "proof_digest": "sha256:cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
-      "verifier": "00000000-0000-4000-8000-000000000003"
+      "verifier": "00000000-0000-4000-8000-000000000003",
+      "verdict_id": "00000000-0000-4000-8000-000000000004",
+      "candidate_digest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
     },
     {
       "criterion_source": "acceptance-criterion",
@@ -334,7 +392,9 @@
       "source_sha": "sha256:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
       "environment": "disposable-development",
       "proof_digest": "sha256:cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
-      "verifier": "00000000-0000-4000-8000-000000000003"
+      "verifier": "00000000-0000-4000-8000-000000000003",
+      "verdict_id": "00000000-0000-4000-8000-000000000004",
+      "candidate_digest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
     },
     {
       "criterion_source": "acceptance-criterion",
@@ -345,7 +405,9 @@
       "source_sha": "sha256:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
       "environment": "disposable-development",
       "proof_digest": "sha256:cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
-      "verifier": "00000000-0000-4000-8000-000000000003"
+      "verifier": "00000000-0000-4000-8000-000000000003",
+      "verdict_id": "00000000-0000-4000-8000-000000000004",
+      "candidate_digest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
     },
     {
       "criterion_source": "acceptance-criterion",
@@ -356,7 +418,9 @@
       "source_sha": "sha256:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
       "environment": "disposable-development",
       "proof_digest": "sha256:cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
-      "verifier": "00000000-0000-4000-8000-000000000003"
+      "verifier": "00000000-0000-4000-8000-000000000003",
+      "verdict_id": "00000000-0000-4000-8000-000000000004",
+      "candidate_digest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
     },
     {
       "criterion_source": "acceptance-criterion",
@@ -367,7 +431,9 @@
       "source_sha": "sha256:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
       "environment": "disposable-development",
       "proof_digest": "sha256:cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
-      "verifier": "00000000-0000-4000-8000-000000000003"
+      "verifier": "00000000-0000-4000-8000-000000000003",
+      "verdict_id": "00000000-0000-4000-8000-000000000004",
+      "candidate_digest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
     },
     {
       "criterion_source": "acceptance-criterion",
@@ -378,7 +444,9 @@
       "source_sha": "sha256:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
       "environment": "disposable-development",
       "proof_digest": "sha256:cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
-      "verifier": "00000000-0000-4000-8000-000000000003"
+      "verifier": "00000000-0000-4000-8000-000000000003",
+      "verdict_id": "00000000-0000-4000-8000-000000000004",
+      "candidate_digest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
     },
     {
       "criterion_source": "acceptance-criterion",
@@ -389,7 +457,9 @@
       "source_sha": "sha256:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
       "environment": "disposable-development",
       "proof_digest": "sha256:cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
-      "verifier": "00000000-0000-4000-8000-000000000003"
+      "verifier": "00000000-0000-4000-8000-000000000003",
+      "verdict_id": "00000000-0000-4000-8000-000000000004",
+      "candidate_digest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
     },
     {
       "criterion_source": "acceptance-criterion",
@@ -400,7 +470,9 @@
       "source_sha": "sha256:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
       "environment": "disposable-development",
       "proof_digest": "sha256:cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
-      "verifier": "00000000-0000-4000-8000-000000000003"
+      "verifier": "00000000-0000-4000-8000-000000000003",
+      "verdict_id": "00000000-0000-4000-8000-000000000004",
+      "candidate_digest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
     },
     {
       "criterion_source": "acceptance-criterion",
@@ -411,7 +483,9 @@
       "source_sha": "sha256:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
       "environment": "disposable-development",
       "proof_digest": "sha256:cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
-      "verifier": "00000000-0000-4000-8000-000000000003"
+      "verifier": "00000000-0000-4000-8000-000000000003",
+      "verdict_id": "00000000-0000-4000-8000-000000000004",
+      "candidate_digest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
     },
     {
       "criterion_source": "acceptance-criterion",
@@ -422,7 +496,9 @@
       "source_sha": "sha256:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
       "environment": "disposable-development",
       "proof_digest": "sha256:cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
-      "verifier": "00000000-0000-4000-8000-000000000003"
+      "verifier": "00000000-0000-4000-8000-000000000003",
+      "verdict_id": "00000000-0000-4000-8000-000000000004",
+      "candidate_digest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
     },
     {
       "criterion_source": "acceptance-criterion",
@@ -433,7 +509,9 @@
       "source_sha": "sha256:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
       "environment": "disposable-development",
       "proof_digest": "sha256:cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
-      "verifier": "00000000-0000-4000-8000-000000000003"
+      "verifier": "00000000-0000-4000-8000-000000000003",
+      "verdict_id": "00000000-0000-4000-8000-000000000004",
+      "candidate_digest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
     },
     {
       "criterion_source": "acceptance-criterion",
@@ -444,7 +522,9 @@
       "source_sha": "sha256:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
       "environment": "disposable-development",
       "proof_digest": "sha256:cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
-      "verifier": "00000000-0000-4000-8000-000000000003"
+      "verifier": "00000000-0000-4000-8000-000000000003",
+      "verdict_id": "00000000-0000-4000-8000-000000000004",
+      "candidate_digest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
     },
     {
       "criterion_source": "acceptance-criterion",
@@ -455,7 +535,9 @@
       "source_sha": "sha256:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
       "environment": "disposable-development",
       "proof_digest": "sha256:cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
-      "verifier": "00000000-0000-4000-8000-000000000003"
+      "verifier": "00000000-0000-4000-8000-000000000003",
+      "verdict_id": "00000000-0000-4000-8000-000000000004",
+      "candidate_digest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
     },
     {
       "criterion_source": "acceptance-criterion",
@@ -466,7 +548,9 @@
       "source_sha": "sha256:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
       "environment": "disposable-development",
       "proof_digest": "sha256:cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
-      "verifier": "00000000-0000-4000-8000-000000000003"
+      "verifier": "00000000-0000-4000-8000-000000000003",
+      "verdict_id": "00000000-0000-4000-8000-000000000004",
+      "candidate_digest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
     },
     {
       "criterion_source": "acceptance-criterion",
@@ -477,7 +561,9 @@
       "source_sha": "sha256:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
       "environment": "disposable-development",
       "proof_digest": "sha256:cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
-      "verifier": "00000000-0000-4000-8000-000000000003"
+      "verifier": "00000000-0000-4000-8000-000000000003",
+      "verdict_id": "00000000-0000-4000-8000-000000000004",
+      "candidate_digest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
     },
     {
       "criterion_source": "acceptance-criterion",
@@ -488,7 +574,9 @@
       "source_sha": "sha256:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
       "environment": "disposable-development",
       "proof_digest": "sha256:cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
-      "verifier": "00000000-0000-4000-8000-000000000003"
+      "verifier": "00000000-0000-4000-8000-000000000003",
+      "verdict_id": "00000000-0000-4000-8000-000000000004",
+      "candidate_digest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
     },
     {
       "criterion_source": "acceptance-criterion",
@@ -499,7 +587,9 @@
       "source_sha": "sha256:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
       "environment": "disposable-development",
       "proof_digest": "sha256:cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
-      "verifier": "00000000-0000-4000-8000-000000000003"
+      "verifier": "00000000-0000-4000-8000-000000000003",
+      "verdict_id": "00000000-0000-4000-8000-000000000004",
+      "candidate_digest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
     },
     {
       "criterion_source": "acceptance-criterion",
@@ -510,7 +600,9 @@
       "source_sha": "sha256:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
       "environment": "disposable-development",
       "proof_digest": "sha256:cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
-      "verifier": "00000000-0000-4000-8000-000000000003"
+      "verifier": "00000000-0000-4000-8000-000000000003",
+      "verdict_id": "00000000-0000-4000-8000-000000000004",
+      "candidate_digest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
     },
     {
       "criterion_source": "acceptance-criterion",
@@ -521,7 +613,9 @@
       "source_sha": "sha256:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
       "environment": "disposable-development",
       "proof_digest": "sha256:cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
-      "verifier": "00000000-0000-4000-8000-000000000003"
+      "verifier": "00000000-0000-4000-8000-000000000003",
+      "verdict_id": "00000000-0000-4000-8000-000000000004",
+      "candidate_digest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
     },
     {
       "criterion_source": "acceptance-criterion",
@@ -532,7 +626,9 @@
       "source_sha": "sha256:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
       "environment": "disposable-development",
       "proof_digest": "sha256:cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
-      "verifier": "00000000-0000-4000-8000-000000000003"
+      "verifier": "00000000-0000-4000-8000-000000000003",
+      "verdict_id": "00000000-0000-4000-8000-000000000004",
+      "candidate_digest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
     },
     {
       "criterion_source": "acceptance-criterion",
@@ -543,7 +639,9 @@
       "source_sha": "sha256:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
       "environment": "disposable-development",
       "proof_digest": "sha256:cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
-      "verifier": "00000000-0000-4000-8000-000000000003"
+      "verifier": "00000000-0000-4000-8000-000000000003",
+      "verdict_id": "00000000-0000-4000-8000-000000000004",
+      "candidate_digest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
     },
     {
       "criterion_source": "acceptance-criterion",
@@ -554,7 +652,9 @@
       "source_sha": "sha256:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
       "environment": "disposable-development",
       "proof_digest": "sha256:cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
-      "verifier": "00000000-0000-4000-8000-000000000003"
+      "verifier": "00000000-0000-4000-8000-000000000003",
+      "verdict_id": "00000000-0000-4000-8000-000000000004",
+      "candidate_digest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
     },
     {
       "criterion_source": "acceptance-criterion",
@@ -565,7 +665,9 @@
       "source_sha": "sha256:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
       "environment": "disposable-development",
       "proof_digest": "sha256:cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
-      "verifier": "00000000-0000-4000-8000-000000000003"
+      "verifier": "00000000-0000-4000-8000-000000000003",
+      "verdict_id": "00000000-0000-4000-8000-000000000004",
+      "candidate_digest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
     },
     {
       "criterion_source": "acceptance-criterion",
@@ -576,7 +678,9 @@
       "source_sha": "sha256:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
       "environment": "disposable-development",
       "proof_digest": "sha256:cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
-      "verifier": "00000000-0000-4000-8000-000000000003"
+      "verifier": "00000000-0000-4000-8000-000000000003",
+      "verdict_id": "00000000-0000-4000-8000-000000000004",
+      "candidate_digest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
     },
     {
       "criterion_source": "acceptance-criterion",
@@ -587,7 +691,9 @@
       "source_sha": "sha256:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
       "environment": "disposable-development",
       "proof_digest": "sha256:cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
-      "verifier": "00000000-0000-4000-8000-000000000003"
+      "verifier": "00000000-0000-4000-8000-000000000003",
+      "verdict_id": "00000000-0000-4000-8000-000000000004",
+      "candidate_digest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
     },
     {
       "criterion_source": "acceptance-criterion",
@@ -598,7 +704,9 @@
       "source_sha": "sha256:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
       "environment": "disposable-development",
       "proof_digest": "sha256:cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
-      "verifier": "00000000-0000-4000-8000-000000000003"
+      "verifier": "00000000-0000-4000-8000-000000000003",
+      "verdict_id": "00000000-0000-4000-8000-000000000004",
+      "candidate_digest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
     },
     {
       "criterion_source": "acceptance-criterion",
@@ -609,7 +717,9 @@
       "source_sha": "sha256:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
       "environment": "disposable-development",
       "proof_digest": "sha256:cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
-      "verifier": "00000000-0000-4000-8000-000000000003"
+      "verifier": "00000000-0000-4000-8000-000000000003",
+      "verdict_id": "00000000-0000-4000-8000-000000000004",
+      "candidate_digest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
     },
     {
       "criterion_source": "acceptance-criterion",
@@ -620,7 +730,9 @@
       "source_sha": "sha256:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
       "environment": "disposable-development",
       "proof_digest": "sha256:cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
-      "verifier": "00000000-0000-4000-8000-000000000003"
+      "verifier": "00000000-0000-4000-8000-000000000003",
+      "verdict_id": "00000000-0000-4000-8000-000000000004",
+      "candidate_digest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
     },
     {
       "criterion_source": "acceptance-criterion",
@@ -631,7 +743,9 @@
       "source_sha": "sha256:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
       "environment": "disposable-development",
       "proof_digest": "sha256:cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
-      "verifier": "00000000-0000-4000-8000-000000000003"
+      "verifier": "00000000-0000-4000-8000-000000000003",
+      "verdict_id": "00000000-0000-4000-8000-000000000004",
+      "candidate_digest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
     },
     {
       "criterion_source": "acceptance-criterion",
@@ -642,7 +756,9 @@
       "source_sha": "sha256:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
       "environment": "disposable-development",
       "proof_digest": "sha256:cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
-      "verifier": "00000000-0000-4000-8000-000000000003"
+      "verifier": "00000000-0000-4000-8000-000000000003",
+      "verdict_id": "00000000-0000-4000-8000-000000000004",
+      "candidate_digest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
     },
     {
       "criterion_source": "acceptance-criterion",
@@ -653,7 +769,9 @@
       "source_sha": "sha256:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
       "environment": "disposable-development",
       "proof_digest": "sha256:cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
-      "verifier": "00000000-0000-4000-8000-000000000003"
+      "verifier": "00000000-0000-4000-8000-000000000003",
+      "verdict_id": "00000000-0000-4000-8000-000000000004",
+      "candidate_digest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
     },
     {
       "criterion_source": "acceptance-criterion",
@@ -664,7 +782,9 @@
       "source_sha": "sha256:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
       "environment": "disposable-development",
       "proof_digest": "sha256:cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
-      "verifier": "00000000-0000-4000-8000-000000000003"
+      "verifier": "00000000-0000-4000-8000-000000000003",
+      "verdict_id": "00000000-0000-4000-8000-000000000004",
+      "candidate_digest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
     },
     {
       "criterion_source": "acceptance-criterion",
@@ -675,7 +795,9 @@
       "source_sha": "sha256:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
       "environment": "disposable-development",
       "proof_digest": "sha256:cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
-      "verifier": "00000000-0000-4000-8000-000000000003"
+      "verifier": "00000000-0000-4000-8000-000000000003",
+      "verdict_id": "00000000-0000-4000-8000-000000000004",
+      "candidate_digest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
     },
     {
       "criterion_source": "acceptance-criterion",
@@ -686,7 +808,9 @@
       "source_sha": "sha256:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
       "environment": "disposable-development",
       "proof_digest": "sha256:cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
-      "verifier": "00000000-0000-4000-8000-000000000003"
+      "verifier": "00000000-0000-4000-8000-000000000003",
+      "verdict_id": "00000000-0000-4000-8000-000000000004",
+      "candidate_digest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
     },
     {
       "criterion_source": "acceptance-criterion",
@@ -697,7 +821,9 @@
       "source_sha": "sha256:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
       "environment": "disposable-development",
       "proof_digest": "sha256:cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
-      "verifier": "00000000-0000-4000-8000-000000000003"
+      "verifier": "00000000-0000-4000-8000-000000000003",
+      "verdict_id": "00000000-0000-4000-8000-000000000004",
+      "candidate_digest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
     },
     {
       "criterion_source": "acceptance-criterion",
@@ -708,7 +834,9 @@
       "source_sha": "sha256:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
       "environment": "disposable-development",
       "proof_digest": "sha256:cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
-      "verifier": "00000000-0000-4000-8000-000000000003"
+      "verifier": "00000000-0000-4000-8000-000000000003",
+      "verdict_id": "00000000-0000-4000-8000-000000000004",
+      "candidate_digest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
     },
     {
       "criterion_source": "acceptance-criterion",
@@ -719,7 +847,9 @@
       "source_sha": "sha256:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
       "environment": "disposable-development",
       "proof_digest": "sha256:cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
-      "verifier": "00000000-0000-4000-8000-000000000003"
+      "verifier": "00000000-0000-4000-8000-000000000003",
+      "verdict_id": "00000000-0000-4000-8000-000000000004",
+      "candidate_digest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
     },
     {
       "criterion_source": "acceptance-criterion",
@@ -730,7 +860,9 @@
       "source_sha": "sha256:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
       "environment": "disposable-development",
       "proof_digest": "sha256:cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
-      "verifier": "00000000-0000-4000-8000-000000000003"
+      "verifier": "00000000-0000-4000-8000-000000000003",
+      "verdict_id": "00000000-0000-4000-8000-000000000004",
+      "candidate_digest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
     },
     {
       "criterion_source": "acceptance-criterion",
@@ -741,7 +873,9 @@
       "source_sha": "sha256:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
       "environment": "disposable-development",
       "proof_digest": "sha256:cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
-      "verifier": "00000000-0000-4000-8000-000000000003"
+      "verifier": "00000000-0000-4000-8000-000000000003",
+      "verdict_id": "00000000-0000-4000-8000-000000000004",
+      "candidate_digest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
     },
     {
       "criterion_source": "acceptance-criterion",
@@ -752,7 +886,9 @@
       "source_sha": "sha256:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
       "environment": "disposable-development",
       "proof_digest": "sha256:cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
-      "verifier": "00000000-0000-4000-8000-000000000003"
+      "verifier": "00000000-0000-4000-8000-000000000003",
+      "verdict_id": "00000000-0000-4000-8000-000000000004",
+      "candidate_digest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
     },
     {
       "criterion_source": "acceptance-criterion",
@@ -763,7 +899,9 @@
       "source_sha": "sha256:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
       "environment": "disposable-development",
       "proof_digest": "sha256:cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
-      "verifier": "00000000-0000-4000-8000-000000000003"
+      "verifier": "00000000-0000-4000-8000-000000000003",
+      "verdict_id": "00000000-0000-4000-8000-000000000004",
+      "candidate_digest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
     },
     {
       "criterion_source": "acceptance-criterion",
@@ -774,7 +912,9 @@
       "source_sha": "sha256:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
       "environment": "disposable-development",
       "proof_digest": "sha256:cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
-      "verifier": "00000000-0000-4000-8000-000000000003"
+      "verifier": "00000000-0000-4000-8000-000000000003",
+      "verdict_id": "00000000-0000-4000-8000-000000000004",
+      "candidate_digest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
     },
     {
       "criterion_source": "acceptance-criterion",
@@ -785,7 +925,9 @@
       "source_sha": "sha256:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
       "environment": "disposable-development",
       "proof_digest": "sha256:cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
-      "verifier": "00000000-0000-4000-8000-000000000003"
+      "verifier": "00000000-0000-4000-8000-000000000003",
+      "verdict_id": "00000000-0000-4000-8000-000000000004",
+      "candidate_digest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
     },
     {
       "criterion_source": "acceptance-criterion",
@@ -796,7 +938,9 @@
       "source_sha": "sha256:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
       "environment": "disposable-development",
       "proof_digest": "sha256:cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
-      "verifier": "00000000-0000-4000-8000-000000000003"
+      "verifier": "00000000-0000-4000-8000-000000000003",
+      "verdict_id": "00000000-0000-4000-8000-000000000004",
+      "candidate_digest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
     },
     {
       "criterion_source": "acceptance-criterion",
@@ -807,7 +951,9 @@
       "source_sha": "sha256:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
       "environment": "disposable-development",
       "proof_digest": "sha256:cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
-      "verifier": "00000000-0000-4000-8000-000000000003"
+      "verifier": "00000000-0000-4000-8000-000000000003",
+      "verdict_id": "00000000-0000-4000-8000-000000000004",
+      "candidate_digest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
     },
     {
       "criterion_source": "acceptance-criterion",
@@ -818,7 +964,9 @@
       "source_sha": "sha256:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
       "environment": "disposable-development",
       "proof_digest": "sha256:cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
-      "verifier": "00000000-0000-4000-8000-000000000003"
+      "verifier": "00000000-0000-4000-8000-000000000003",
+      "verdict_id": "00000000-0000-4000-8000-000000000004",
+      "candidate_digest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
     },
     {
       "criterion_source": "acceptance-criterion",
@@ -829,7 +977,9 @@
       "source_sha": "sha256:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
       "environment": "disposable-development",
       "proof_digest": "sha256:cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
-      "verifier": "00000000-0000-4000-8000-000000000003"
+      "verifier": "00000000-0000-4000-8000-000000000003",
+      "verdict_id": "00000000-0000-4000-8000-000000000004",
+      "candidate_digest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
     },
     {
       "criterion_source": "acceptance-criterion",
@@ -840,7 +990,9 @@
       "source_sha": "sha256:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
       "environment": "disposable-development",
       "proof_digest": "sha256:cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
-      "verifier": "00000000-0000-4000-8000-000000000003"
+      "verifier": "00000000-0000-4000-8000-000000000003",
+      "verdict_id": "00000000-0000-4000-8000-000000000004",
+      "candidate_digest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
     },
     {
       "criterion_source": "acceptance-criterion",
@@ -851,7 +1003,9 @@
       "source_sha": "sha256:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
       "environment": "disposable-development",
       "proof_digest": "sha256:cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
-      "verifier": "00000000-0000-4000-8000-000000000003"
+      "verifier": "00000000-0000-4000-8000-000000000003",
+      "verdict_id": "00000000-0000-4000-8000-000000000004",
+      "candidate_digest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
     },
     {
       "criterion_source": "acceptance-criterion",
@@ -862,7 +1016,9 @@
       "source_sha": "sha256:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
       "environment": "disposable-development",
       "proof_digest": "sha256:cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
-      "verifier": "00000000-0000-4000-8000-000000000003"
+      "verifier": "00000000-0000-4000-8000-000000000003",
+      "verdict_id": "00000000-0000-4000-8000-000000000004",
+      "candidate_digest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
     },
     {
       "criterion_source": "acceptance-criterion",
@@ -873,7 +1029,9 @@
       "source_sha": "sha256:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
       "environment": "disposable-development",
       "proof_digest": "sha256:cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
-      "verifier": "00000000-0000-4000-8000-000000000003"
+      "verifier": "00000000-0000-4000-8000-000000000003",
+      "verdict_id": "00000000-0000-4000-8000-000000000004",
+      "candidate_digest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
     },
     {
       "criterion_source": "acceptance-criterion",
@@ -884,7 +1042,9 @@
       "source_sha": "sha256:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
       "environment": "disposable-development",
       "proof_digest": "sha256:cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
-      "verifier": "00000000-0000-4000-8000-000000000003"
+      "verifier": "00000000-0000-4000-8000-000000000003",
+      "verdict_id": "00000000-0000-4000-8000-000000000004",
+      "candidate_digest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
     },
     {
       "criterion_source": "acceptance-criterion",
@@ -895,7 +1055,9 @@
       "source_sha": "sha256:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
       "environment": "disposable-development",
       "proof_digest": "sha256:cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
-      "verifier": "00000000-0000-4000-8000-000000000003"
+      "verifier": "00000000-0000-4000-8000-000000000003",
+      "verdict_id": "00000000-0000-4000-8000-000000000004",
+      "candidate_digest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
     },
     {
       "criterion_source": "acceptance-criterion",
@@ -906,7 +1068,9 @@
       "source_sha": "sha256:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
       "environment": "disposable-development",
       "proof_digest": "sha256:cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
-      "verifier": "00000000-0000-4000-8000-000000000003"
+      "verifier": "00000000-0000-4000-8000-000000000003",
+      "verdict_id": "00000000-0000-4000-8000-000000000004",
+      "candidate_digest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
     },
     {
       "criterion_source": "acceptance-criterion",
@@ -917,7 +1081,9 @@
       "source_sha": "sha256:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
       "environment": "disposable-development",
       "proof_digest": "sha256:cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
-      "verifier": "00000000-0000-4000-8000-000000000003"
+      "verifier": "00000000-0000-4000-8000-000000000003",
+      "verdict_id": "00000000-0000-4000-8000-000000000004",
+      "candidate_digest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
     },
     {
       "criterion_source": "acceptance-criterion",
@@ -928,7 +1094,9 @@
       "source_sha": "sha256:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
       "environment": "disposable-development",
       "proof_digest": "sha256:cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
-      "verifier": "00000000-0000-4000-8000-000000000003"
+      "verifier": "00000000-0000-4000-8000-000000000003",
+      "verdict_id": "00000000-0000-4000-8000-000000000004",
+      "candidate_digest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
     },
     {
       "criterion_source": "acceptance-criterion",
@@ -939,7 +1107,9 @@
       "source_sha": "sha256:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
       "environment": "disposable-development",
       "proof_digest": "sha256:cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
-      "verifier": "00000000-0000-4000-8000-000000000003"
+      "verifier": "00000000-0000-4000-8000-000000000003",
+      "verdict_id": "00000000-0000-4000-8000-000000000004",
+      "candidate_digest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
     },
     {
       "criterion_source": "acceptance-criterion",
@@ -950,7 +1120,9 @@
       "source_sha": "sha256:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
       "environment": "disposable-development",
       "proof_digest": "sha256:cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
-      "verifier": "00000000-0000-4000-8000-000000000003"
+      "verifier": "00000000-0000-4000-8000-000000000003",
+      "verdict_id": "00000000-0000-4000-8000-000000000004",
+      "candidate_digest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
     },
     {
       "criterion_source": "acceptance-criterion",
@@ -961,7 +1133,9 @@
       "source_sha": "sha256:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
       "environment": "disposable-development",
       "proof_digest": "sha256:cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
-      "verifier": "00000000-0000-4000-8000-000000000003"
+      "verifier": "00000000-0000-4000-8000-000000000003",
+      "verdict_id": "00000000-0000-4000-8000-000000000004",
+      "candidate_digest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
     },
     {
       "criterion_source": "acceptance-criterion",
@@ -972,7 +1146,9 @@
       "source_sha": "sha256:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
       "environment": "disposable-development",
       "proof_digest": "sha256:cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
-      "verifier": "00000000-0000-4000-8000-000000000003"
+      "verifier": "00000000-0000-4000-8000-000000000003",
+      "verdict_id": "00000000-0000-4000-8000-000000000004",
+      "candidate_digest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
     },
     {
       "criterion_source": "acceptance-criterion",
@@ -983,7 +1159,9 @@
       "source_sha": "sha256:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
       "environment": "disposable-development",
       "proof_digest": "sha256:cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
-      "verifier": "00000000-0000-4000-8000-000000000003"
+      "verifier": "00000000-0000-4000-8000-000000000003",
+      "verdict_id": "00000000-0000-4000-8000-000000000004",
+      "candidate_digest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
     },
     {
       "criterion_source": "acceptance-criterion",
@@ -994,7 +1172,9 @@
       "source_sha": "sha256:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
       "environment": "disposable-development",
       "proof_digest": "sha256:cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
-      "verifier": "00000000-0000-4000-8000-000000000003"
+      "verifier": "00000000-0000-4000-8000-000000000003",
+      "verdict_id": "00000000-0000-4000-8000-000000000004",
+      "candidate_digest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
     },
     {
       "criterion_source": "acceptance-criterion",
@@ -1005,7 +1185,9 @@
       "source_sha": "sha256:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
       "environment": "disposable-development",
       "proof_digest": "sha256:cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
-      "verifier": "00000000-0000-4000-8000-000000000003"
+      "verifier": "00000000-0000-4000-8000-000000000003",
+      "verdict_id": "00000000-0000-4000-8000-000000000004",
+      "candidate_digest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
     },
     {
       "criterion_source": "acceptance-criterion",
@@ -1016,7 +1198,9 @@
       "source_sha": "sha256:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
       "environment": "disposable-development",
       "proof_digest": "sha256:cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
-      "verifier": "00000000-0000-4000-8000-000000000003"
+      "verifier": "00000000-0000-4000-8000-000000000003",
+      "verdict_id": "00000000-0000-4000-8000-000000000004",
+      "candidate_digest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
     },
     {
       "criterion_source": "acceptance-criterion",
@@ -1027,7 +1211,9 @@
       "source_sha": "sha256:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
       "environment": "disposable-development",
       "proof_digest": "sha256:cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
-      "verifier": "00000000-0000-4000-8000-000000000003"
+      "verifier": "00000000-0000-4000-8000-000000000003",
+      "verdict_id": "00000000-0000-4000-8000-000000000004",
+      "candidate_digest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
     },
     {
       "criterion_source": "acceptance-criterion",
@@ -1038,7 +1224,9 @@
       "source_sha": "sha256:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
       "environment": "disposable-development",
       "proof_digest": "sha256:cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
-      "verifier": "00000000-0000-4000-8000-000000000003"
+      "verifier": "00000000-0000-4000-8000-000000000003",
+      "verdict_id": "00000000-0000-4000-8000-000000000004",
+      "candidate_digest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
     },
     {
       "criterion_source": "acceptance-criterion",
@@ -1049,7 +1237,9 @@
       "source_sha": "sha256:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
       "environment": "disposable-development",
       "proof_digest": "sha256:cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
-      "verifier": "00000000-0000-4000-8000-000000000003"
+      "verifier": "00000000-0000-4000-8000-000000000003",
+      "verdict_id": "00000000-0000-4000-8000-000000000004",
+      "candidate_digest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
     },
     {
       "criterion_source": "acceptance-criterion",
@@ -1060,7 +1250,9 @@
       "source_sha": "sha256:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
       "environment": "disposable-development",
       "proof_digest": "sha256:cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
-      "verifier": "00000000-0000-4000-8000-000000000003"
+      "verifier": "00000000-0000-4000-8000-000000000003",
+      "verdict_id": "00000000-0000-4000-8000-000000000004",
+      "candidate_digest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
     },
     {
       "criterion_source": "acceptance-criterion",
@@ -1071,7 +1263,9 @@
       "source_sha": "sha256:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
       "environment": "disposable-development",
       "proof_digest": "sha256:cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
-      "verifier": "00000000-0000-4000-8000-000000000003"
+      "verifier": "00000000-0000-4000-8000-000000000003",
+      "verdict_id": "00000000-0000-4000-8000-000000000004",
+      "candidate_digest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
     },
     {
       "criterion_source": "acceptance-criterion",
@@ -1082,7 +1276,9 @@
       "source_sha": "sha256:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
       "environment": "disposable-development",
       "proof_digest": "sha256:cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
-      "verifier": "00000000-0000-4000-8000-000000000003"
+      "verifier": "00000000-0000-4000-8000-000000000003",
+      "verdict_id": "00000000-0000-4000-8000-000000000004",
+      "candidate_digest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
     },
     {
       "criterion_source": "acceptance-criterion",
@@ -1093,7 +1289,9 @@
       "source_sha": "sha256:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
       "environment": "disposable-development",
       "proof_digest": "sha256:cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
-      "verifier": "00000000-0000-4000-8000-000000000003"
+      "verifier": "00000000-0000-4000-8000-000000000003",
+      "verdict_id": "00000000-0000-4000-8000-000000000004",
+      "candidate_digest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
     },
     {
       "criterion_source": "acceptance-criterion",
@@ -1104,7 +1302,9 @@
       "source_sha": "sha256:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
       "environment": "disposable-development",
       "proof_digest": "sha256:cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
-      "verifier": "00000000-0000-4000-8000-000000000003"
+      "verifier": "00000000-0000-4000-8000-000000000003",
+      "verdict_id": "00000000-0000-4000-8000-000000000004",
+      "candidate_digest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
     },
     {
       "criterion_source": "acceptance-criterion",
@@ -1115,7 +1315,9 @@
       "source_sha": "sha256:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
       "environment": "disposable-development",
       "proof_digest": "sha256:cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
-      "verifier": "00000000-0000-4000-8000-000000000003"
+      "verifier": "00000000-0000-4000-8000-000000000003",
+      "verdict_id": "00000000-0000-4000-8000-000000000004",
+      "candidate_digest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
     },
     {
       "criterion_source": "acceptance-criterion",
@@ -1126,7 +1328,9 @@
       "source_sha": "sha256:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
       "environment": "disposable-development",
       "proof_digest": "sha256:cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
-      "verifier": "00000000-0000-4000-8000-000000000003"
+      "verifier": "00000000-0000-4000-8000-000000000003",
+      "verdict_id": "00000000-0000-4000-8000-000000000004",
+      "candidate_digest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
     },
     {
       "criterion_source": "acceptance-criterion",
@@ -1137,7 +1341,9 @@
       "source_sha": "sha256:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
       "environment": "disposable-development",
       "proof_digest": "sha256:cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
-      "verifier": "00000000-0000-4000-8000-000000000003"
+      "verifier": "00000000-0000-4000-8000-000000000003",
+      "verdict_id": "00000000-0000-4000-8000-000000000004",
+      "candidate_digest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
     },
     {
       "criterion_source": "acceptance-criterion",
@@ -1148,7 +1354,9 @@
       "source_sha": "sha256:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
       "environment": "disposable-development",
       "proof_digest": "sha256:cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
-      "verifier": "00000000-0000-4000-8000-000000000003"
+      "verifier": "00000000-0000-4000-8000-000000000003",
+      "verdict_id": "00000000-0000-4000-8000-000000000004",
+      "candidate_digest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
     },
     {
       "criterion_source": "acceptance-criterion",
@@ -1159,7 +1367,9 @@
       "source_sha": "sha256:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
       "environment": "disposable-development",
       "proof_digest": "sha256:cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
-      "verifier": "00000000-0000-4000-8000-000000000003"
+      "verifier": "00000000-0000-4000-8000-000000000003",
+      "verdict_id": "00000000-0000-4000-8000-000000000004",
+      "candidate_digest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
     },
     {
       "criterion_source": "acceptance-criterion",
@@ -1170,7 +1380,9 @@
       "source_sha": "sha256:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
       "environment": "disposable-development",
       "proof_digest": "sha256:cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
-      "verifier": "00000000-0000-4000-8000-000000000003"
+      "verifier": "00000000-0000-4000-8000-000000000003",
+      "verdict_id": "00000000-0000-4000-8000-000000000004",
+      "candidate_digest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
     },
     {
       "criterion_source": "acceptance-criterion",
@@ -1181,7 +1393,9 @@
       "source_sha": "sha256:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
       "environment": "disposable-development",
       "proof_digest": "sha256:cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
-      "verifier": "00000000-0000-4000-8000-000000000003"
+      "verifier": "00000000-0000-4000-8000-000000000003",
+      "verdict_id": "00000000-0000-4000-8000-000000000004",
+      "candidate_digest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
     },
     {
       "criterion_source": "acceptance-criterion",
@@ -1192,7 +1406,9 @@
       "source_sha": "sha256:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
       "environment": "disposable-development",
       "proof_digest": "sha256:cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
-      "verifier": "00000000-0000-4000-8000-000000000003"
+      "verifier": "00000000-0000-4000-8000-000000000003",
+      "verdict_id": "00000000-0000-4000-8000-000000000004",
+      "candidate_digest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
     },
     {
       "criterion_source": "acceptance-criterion",
@@ -1203,7 +1419,9 @@
       "source_sha": "sha256:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
       "environment": "disposable-development",
       "proof_digest": "sha256:cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
-      "verifier": "00000000-0000-4000-8000-000000000003"
+      "verifier": "00000000-0000-4000-8000-000000000003",
+      "verdict_id": "00000000-0000-4000-8000-000000000004",
+      "candidate_digest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
     },
     {
       "criterion_source": "acceptance-criterion",
@@ -1214,7 +1432,9 @@
       "source_sha": "sha256:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
       "environment": "disposable-development",
       "proof_digest": "sha256:cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
-      "verifier": "00000000-0000-4000-8000-000000000003"
+      "verifier": "00000000-0000-4000-8000-000000000003",
+      "verdict_id": "00000000-0000-4000-8000-000000000004",
+      "candidate_digest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
     },
     {
       "criterion_source": "acceptance-criterion",
@@ -1225,7 +1445,9 @@
       "source_sha": "sha256:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
       "environment": "disposable-development",
       "proof_digest": "sha256:cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
-      "verifier": "00000000-0000-4000-8000-000000000003"
+      "verifier": "00000000-0000-4000-8000-000000000003",
+      "verdict_id": "00000000-0000-4000-8000-000000000004",
+      "candidate_digest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
     },
     {
       "criterion_source": "acceptance-criterion",
@@ -1236,7 +1458,9 @@
       "source_sha": "sha256:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
       "environment": "disposable-development",
       "proof_digest": "sha256:cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
-      "verifier": "00000000-0000-4000-8000-000000000003"
+      "verifier": "00000000-0000-4000-8000-000000000003",
+      "verdict_id": "00000000-0000-4000-8000-000000000004",
+      "candidate_digest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
     },
     {
       "criterion_source": "acceptance-criterion",
@@ -1247,7 +1471,9 @@
       "source_sha": "sha256:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
       "environment": "disposable-development",
       "proof_digest": "sha256:cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
-      "verifier": "00000000-0000-4000-8000-000000000003"
+      "verifier": "00000000-0000-4000-8000-000000000003",
+      "verdict_id": "00000000-0000-4000-8000-000000000004",
+      "candidate_digest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
     },
     {
       "criterion_source": "acceptance-criterion",
@@ -1258,7 +1484,9 @@
       "source_sha": "sha256:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
       "environment": "disposable-development",
       "proof_digest": "sha256:cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
-      "verifier": "00000000-0000-4000-8000-000000000003"
+      "verifier": "00000000-0000-4000-8000-000000000003",
+      "verdict_id": "00000000-0000-4000-8000-000000000004",
+      "candidate_digest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
     },
     {
       "criterion_source": "acceptance-criterion",
@@ -1269,7 +1497,9 @@
       "source_sha": "sha256:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
       "environment": "disposable-development",
       "proof_digest": "sha256:cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
-      "verifier": "00000000-0000-4000-8000-000000000003"
+      "verifier": "00000000-0000-4000-8000-000000000003",
+      "verdict_id": "00000000-0000-4000-8000-000000000004",
+      "candidate_digest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
     },
     {
       "criterion_source": "acceptance-criterion",
@@ -1280,7 +1510,9 @@
       "source_sha": "sha256:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
       "environment": "disposable-development",
       "proof_digest": "sha256:cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
-      "verifier": "00000000-0000-4000-8000-000000000003"
+      "verifier": "00000000-0000-4000-8000-000000000003",
+      "verdict_id": "00000000-0000-4000-8000-000000000004",
+      "candidate_digest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
     },
     {
       "criterion_source": "acceptance-criterion",
@@ -1291,7 +1523,9 @@
       "source_sha": "sha256:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
       "environment": "disposable-development",
       "proof_digest": "sha256:cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
-      "verifier": "00000000-0000-4000-8000-000000000003"
+      "verifier": "00000000-0000-4000-8000-000000000003",
+      "verdict_id": "00000000-0000-4000-8000-000000000004",
+      "candidate_digest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
     },
     {
       "criterion_source": "acceptance-criterion",
@@ -1302,7 +1536,9 @@
       "source_sha": "sha256:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
       "environment": "disposable-development",
       "proof_digest": "sha256:cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
-      "verifier": "00000000-0000-4000-8000-000000000003"
+      "verifier": "00000000-0000-4000-8000-000000000003",
+      "verdict_id": "00000000-0000-4000-8000-000000000004",
+      "candidate_digest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
     },
     {
       "criterion_source": "acceptance-criterion",
@@ -1313,7 +1549,9 @@
       "source_sha": "sha256:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
       "environment": "disposable-development",
       "proof_digest": "sha256:cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
-      "verifier": "00000000-0000-4000-8000-000000000003"
+      "verifier": "00000000-0000-4000-8000-000000000003",
+      "verdict_id": "00000000-0000-4000-8000-000000000004",
+      "candidate_digest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
     },
     {
       "criterion_source": "acceptance-criterion",
@@ -1324,7 +1562,9 @@
       "source_sha": "sha256:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
       "environment": "disposable-development",
       "proof_digest": "sha256:cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
-      "verifier": "00000000-0000-4000-8000-000000000003"
+      "verifier": "00000000-0000-4000-8000-000000000003",
+      "verdict_id": "00000000-0000-4000-8000-000000000004",
+      "candidate_digest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
     },
     {
       "criterion_source": "acceptance-criterion",
@@ -1335,7 +1575,9 @@
       "source_sha": "sha256:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
       "environment": "disposable-development",
       "proof_digest": "sha256:cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
-      "verifier": "00000000-0000-4000-8000-000000000003"
+      "verifier": "00000000-0000-4000-8000-000000000003",
+      "verdict_id": "00000000-0000-4000-8000-000000000004",
+      "candidate_digest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
     },
     {
       "criterion_source": "acceptance-criterion",
@@ -1346,7 +1588,9 @@
       "source_sha": "sha256:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
       "environment": "disposable-development",
       "proof_digest": "sha256:cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
-      "verifier": "00000000-0000-4000-8000-000000000003"
+      "verifier": "00000000-0000-4000-8000-000000000003",
+      "verdict_id": "00000000-0000-4000-8000-000000000004",
+      "candidate_digest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
     },
     {
       "criterion_source": "acceptance-criterion",
@@ -1357,7 +1601,9 @@
       "source_sha": "sha256:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
       "environment": "disposable-development",
       "proof_digest": "sha256:cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
-      "verifier": "00000000-0000-4000-8000-000000000003"
+      "verifier": "00000000-0000-4000-8000-000000000003",
+      "verdict_id": "00000000-0000-4000-8000-000000000004",
+      "candidate_digest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
     },
     {
       "criterion_source": "acceptance-criterion",
@@ -1368,7 +1614,9 @@
       "source_sha": "sha256:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
       "environment": "disposable-development",
       "proof_digest": "sha256:cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
-      "verifier": "00000000-0000-4000-8000-000000000003"
+      "verifier": "00000000-0000-4000-8000-000000000003",
+      "verdict_id": "00000000-0000-4000-8000-000000000004",
+      "candidate_digest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
     },
     {
       "criterion_source": "acceptance-criterion",
@@ -1379,7 +1627,9 @@
       "source_sha": "sha256:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
       "environment": "disposable-development",
       "proof_digest": "sha256:cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
-      "verifier": "00000000-0000-4000-8000-000000000003"
+      "verifier": "00000000-0000-4000-8000-000000000003",
+      "verdict_id": "00000000-0000-4000-8000-000000000004",
+      "candidate_digest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
     },
     {
       "criterion_source": "acceptance-criterion",
@@ -1390,7 +1640,9 @@
       "source_sha": "sha256:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
       "environment": "disposable-development",
       "proof_digest": "sha256:cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
-      "verifier": "00000000-0000-4000-8000-000000000003"
+      "verifier": "00000000-0000-4000-8000-000000000003",
+      "verdict_id": "00000000-0000-4000-8000-000000000004",
+      "candidate_digest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
     },
     {
       "criterion_source": "acceptance-criterion",
@@ -1401,7 +1653,9 @@
       "source_sha": "sha256:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
       "environment": "disposable-development",
       "proof_digest": "sha256:cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
-      "verifier": "00000000-0000-4000-8000-000000000003"
+      "verifier": "00000000-0000-4000-8000-000000000003",
+      "verdict_id": "00000000-0000-4000-8000-000000000004",
+      "candidate_digest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
     },
     {
       "criterion_source": "acceptance-criterion",
@@ -1412,7 +1666,9 @@
       "source_sha": "sha256:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
       "environment": "disposable-development",
       "proof_digest": "sha256:cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
-      "verifier": "00000000-0000-4000-8000-000000000003"
+      "verifier": "00000000-0000-4000-8000-000000000003",
+      "verdict_id": "00000000-0000-4000-8000-000000000004",
+      "candidate_digest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
     },
     {
       "criterion_source": "acceptance-criterion",
@@ -1423,7 +1679,9 @@
       "source_sha": "sha256:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
       "environment": "disposable-development",
       "proof_digest": "sha256:cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
-      "verifier": "00000000-0000-4000-8000-000000000003"
+      "verifier": "00000000-0000-4000-8000-000000000003",
+      "verdict_id": "00000000-0000-4000-8000-000000000004",
+      "candidate_digest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
     },
     {
       "criterion_source": "acceptance-criterion",
@@ -1434,7 +1692,9 @@
       "source_sha": "sha256:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
       "environment": "disposable-development",
       "proof_digest": "sha256:cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
-      "verifier": "00000000-0000-4000-8000-000000000003"
+      "verifier": "00000000-0000-4000-8000-000000000003",
+      "verdict_id": "00000000-0000-4000-8000-000000000004",
+      "candidate_digest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
     },
     {
       "criterion_source": "acceptance-criterion",
@@ -1445,7 +1705,9 @@
       "source_sha": "sha256:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
       "environment": "disposable-development",
       "proof_digest": "sha256:cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
-      "verifier": "00000000-0000-4000-8000-000000000003"
+      "verifier": "00000000-0000-4000-8000-000000000003",
+      "verdict_id": "00000000-0000-4000-8000-000000000004",
+      "candidate_digest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
     },
     {
       "criterion_source": "acceptance-criterion",
@@ -1456,7 +1718,9 @@
       "source_sha": "sha256:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
       "environment": "disposable-development",
       "proof_digest": "sha256:cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
-      "verifier": "00000000-0000-4000-8000-000000000003"
+      "verifier": "00000000-0000-4000-8000-000000000003",
+      "verdict_id": "00000000-0000-4000-8000-000000000004",
+      "candidate_digest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
     },
     {
       "criterion_source": "acceptance-criterion",
@@ -1467,7 +1731,9 @@
       "source_sha": "sha256:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
       "environment": "disposable-development",
       "proof_digest": "sha256:cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
-      "verifier": "00000000-0000-4000-8000-000000000003"
+      "verifier": "00000000-0000-4000-8000-000000000003",
+      "verdict_id": "00000000-0000-4000-8000-000000000004",
+      "candidate_digest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
     },
     {
       "criterion_source": "acceptance-criterion",
@@ -1478,7 +1744,9 @@
       "source_sha": "sha256:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
       "environment": "disposable-development",
       "proof_digest": "sha256:cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
-      "verifier": "00000000-0000-4000-8000-000000000003"
+      "verifier": "00000000-0000-4000-8000-000000000003",
+      "verdict_id": "00000000-0000-4000-8000-000000000004",
+      "candidate_digest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
     },
     {
       "criterion_source": "acceptance-criterion",
@@ -1489,7 +1757,9 @@
       "source_sha": "sha256:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
       "environment": "disposable-development",
       "proof_digest": "sha256:cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
-      "verifier": "00000000-0000-4000-8000-000000000003"
+      "verifier": "00000000-0000-4000-8000-000000000003",
+      "verdict_id": "00000000-0000-4000-8000-000000000004",
+      "candidate_digest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
     },
     {
       "criterion_source": "acceptance-criterion",
@@ -1500,7 +1770,9 @@
       "source_sha": "sha256:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
       "environment": "disposable-development",
       "proof_digest": "sha256:cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
-      "verifier": "00000000-0000-4000-8000-000000000003"
+      "verifier": "00000000-0000-4000-8000-000000000003",
+      "verdict_id": "00000000-0000-4000-8000-000000000004",
+      "candidate_digest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
     },
     {
       "criterion_source": "acceptance-criterion",
@@ -1511,7 +1783,9 @@
       "source_sha": "sha256:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
       "environment": "disposable-development",
       "proof_digest": "sha256:cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
-      "verifier": "00000000-0000-4000-8000-000000000003"
+      "verifier": "00000000-0000-4000-8000-000000000003",
+      "verdict_id": "00000000-0000-4000-8000-000000000004",
+      "candidate_digest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
     },
     {
       "criterion_source": "acceptance-criterion",
@@ -1522,7 +1796,9 @@
       "source_sha": "sha256:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
       "environment": "disposable-development",
       "proof_digest": "sha256:cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
-      "verifier": "00000000-0000-4000-8000-000000000003"
+      "verifier": "00000000-0000-4000-8000-000000000003",
+      "verdict_id": "00000000-0000-4000-8000-000000000004",
+      "candidate_digest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
     },
     {
       "criterion_source": "acceptance-criterion",
@@ -1533,7 +1809,9 @@
       "source_sha": "sha256:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
       "environment": "disposable-development",
       "proof_digest": "sha256:cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
-      "verifier": "00000000-0000-4000-8000-000000000003"
+      "verifier": "00000000-0000-4000-8000-000000000003",
+      "verdict_id": "00000000-0000-4000-8000-000000000004",
+      "candidate_digest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
     },
     {
       "criterion_source": "acceptance-criterion",
@@ -1544,7 +1822,9 @@
       "source_sha": "sha256:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
       "environment": "disposable-development",
       "proof_digest": "sha256:cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
-      "verifier": "00000000-0000-4000-8000-000000000003"
+      "verifier": "00000000-0000-4000-8000-000000000003",
+      "verdict_id": "00000000-0000-4000-8000-000000000004",
+      "candidate_digest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
     },
     {
       "criterion_source": "acceptance-criterion",
@@ -1555,7 +1835,9 @@
       "source_sha": "sha256:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
       "environment": "disposable-development",
       "proof_digest": "sha256:cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
-      "verifier": "00000000-0000-4000-8000-000000000003"
+      "verifier": "00000000-0000-4000-8000-000000000003",
+      "verdict_id": "00000000-0000-4000-8000-000000000004",
+      "candidate_digest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
     },
     {
       "criterion_source": "acceptance-criterion",
@@ -1566,7 +1848,9 @@
       "source_sha": "sha256:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
       "environment": "disposable-development",
       "proof_digest": "sha256:cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
-      "verifier": "00000000-0000-4000-8000-000000000003"
+      "verifier": "00000000-0000-4000-8000-000000000003",
+      "verdict_id": "00000000-0000-4000-8000-000000000004",
+      "candidate_digest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
     },
     {
       "criterion_source": "acceptance-criterion",
@@ -1577,7 +1861,9 @@
       "source_sha": "sha256:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
       "environment": "disposable-development",
       "proof_digest": "sha256:cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
-      "verifier": "00000000-0000-4000-8000-000000000003"
+      "verifier": "00000000-0000-4000-8000-000000000003",
+      "verdict_id": "00000000-0000-4000-8000-000000000004",
+      "candidate_digest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
     },
     {
       "criterion_source": "acceptance-criterion",
@@ -1588,7 +1874,9 @@
       "source_sha": "sha256:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
       "environment": "disposable-development",
       "proof_digest": "sha256:cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
-      "verifier": "00000000-0000-4000-8000-000000000003"
+      "verifier": "00000000-0000-4000-8000-000000000003",
+      "verdict_id": "00000000-0000-4000-8000-000000000004",
+      "candidate_digest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
     },
     {
       "criterion_source": "acceptance-criterion",
@@ -1599,7 +1887,9 @@
       "source_sha": "sha256:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
       "environment": "disposable-development",
       "proof_digest": "sha256:cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
-      "verifier": "00000000-0000-4000-8000-000000000003"
+      "verifier": "00000000-0000-4000-8000-000000000003",
+      "verdict_id": "00000000-0000-4000-8000-000000000004",
+      "candidate_digest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
     },
     {
       "criterion_source": "acceptance-criterion",
@@ -1610,7 +1900,9 @@
       "source_sha": "sha256:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
       "environment": "disposable-development",
       "proof_digest": "sha256:cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
-      "verifier": "00000000-0000-4000-8000-000000000003"
+      "verifier": "00000000-0000-4000-8000-000000000003",
+      "verdict_id": "00000000-0000-4000-8000-000000000004",
+      "candidate_digest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
     },
     {
       "criterion_source": "acceptance-criterion",
@@ -1621,7 +1913,9 @@
       "source_sha": "sha256:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
       "environment": "disposable-development",
       "proof_digest": "sha256:cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
-      "verifier": "00000000-0000-4000-8000-000000000003"
+      "verifier": "00000000-0000-4000-8000-000000000003",
+      "verdict_id": "00000000-0000-4000-8000-000000000004",
+      "candidate_digest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
     },
     {
       "criterion_source": "acceptance-criterion",
@@ -1632,7 +1926,9 @@
       "source_sha": "sha256:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
       "environment": "disposable-development",
       "proof_digest": "sha256:cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
-      "verifier": "00000000-0000-4000-8000-000000000003"
+      "verifier": "00000000-0000-4000-8000-000000000003",
+      "verdict_id": "00000000-0000-4000-8000-000000000004",
+      "candidate_digest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
     },
     {
       "criterion_source": "acceptance-criterion",
@@ -1643,7 +1939,9 @@
       "source_sha": "sha256:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
       "environment": "disposable-development",
       "proof_digest": "sha256:cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
-      "verifier": "00000000-0000-4000-8000-000000000003"
+      "verifier": "00000000-0000-4000-8000-000000000003",
+      "verdict_id": "00000000-0000-4000-8000-000000000004",
+      "candidate_digest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
     },
     {
       "criterion_source": "acceptance-criterion",
@@ -1654,7 +1952,9 @@
       "source_sha": "sha256:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
       "environment": "disposable-development",
       "proof_digest": "sha256:cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
-      "verifier": "00000000-0000-4000-8000-000000000003"
+      "verifier": "00000000-0000-4000-8000-000000000003",
+      "verdict_id": "00000000-0000-4000-8000-000000000004",
+      "candidate_digest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
     },
     {
       "criterion_source": "acceptance-criterion",
@@ -1665,7 +1965,9 @@
       "source_sha": "sha256:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
       "environment": "disposable-development",
       "proof_digest": "sha256:cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
-      "verifier": "00000000-0000-4000-8000-000000000003"
+      "verifier": "00000000-0000-4000-8000-000000000003",
+      "verdict_id": "00000000-0000-4000-8000-000000000004",
+      "candidate_digest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
     },
     {
       "criterion_source": "acceptance-criterion",
@@ -1676,7 +1978,9 @@
       "source_sha": "sha256:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
       "environment": "disposable-development",
       "proof_digest": "sha256:cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
-      "verifier": "00000000-0000-4000-8000-000000000003"
+      "verifier": "00000000-0000-4000-8000-000000000003",
+      "verdict_id": "00000000-0000-4000-8000-000000000004",
+      "candidate_digest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
     },
     {
       "criterion_source": "acceptance-criterion",
@@ -1687,7 +1991,9 @@
       "source_sha": "sha256:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
       "environment": "disposable-development",
       "proof_digest": "sha256:cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
-      "verifier": "00000000-0000-4000-8000-000000000003"
+      "verifier": "00000000-0000-4000-8000-000000000003",
+      "verdict_id": "00000000-0000-4000-8000-000000000004",
+      "candidate_digest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
     },
     {
       "criterion_source": "acceptance-criterion",
@@ -1698,7 +2004,9 @@
       "source_sha": "sha256:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
       "environment": "disposable-development",
       "proof_digest": "sha256:cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
-      "verifier": "00000000-0000-4000-8000-000000000003"
+      "verifier": "00000000-0000-4000-8000-000000000003",
+      "verdict_id": "00000000-0000-4000-8000-000000000004",
+      "candidate_digest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
     },
     {
       "criterion_source": "acceptance-criterion",
@@ -1709,7 +2017,9 @@
       "source_sha": "sha256:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
       "environment": "disposable-development",
       "proof_digest": "sha256:cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
-      "verifier": "00000000-0000-4000-8000-000000000003"
+      "verifier": "00000000-0000-4000-8000-000000000003",
+      "verdict_id": "00000000-0000-4000-8000-000000000004",
+      "candidate_digest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
     },
     {
       "criterion_source": "acceptance-criterion",
@@ -1720,7 +2030,9 @@
       "source_sha": "sha256:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
       "environment": "disposable-development",
       "proof_digest": "sha256:cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
-      "verifier": "00000000-0000-4000-8000-000000000003"
+      "verifier": "00000000-0000-4000-8000-000000000003",
+      "verdict_id": "00000000-0000-4000-8000-000000000004",
+      "candidate_digest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
     },
     {
       "criterion_source": "acceptance-criterion",
@@ -1731,7 +2043,9 @@
       "source_sha": "sha256:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
       "environment": "disposable-development",
       "proof_digest": "sha256:cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
-      "verifier": "00000000-0000-4000-8000-000000000003"
+      "verifier": "00000000-0000-4000-8000-000000000003",
+      "verdict_id": "00000000-0000-4000-8000-000000000004",
+      "candidate_digest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
     },
     {
       "criterion_source": "acceptance-criterion",
@@ -1742,7 +2056,9 @@
       "source_sha": "sha256:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
       "environment": "disposable-development",
       "proof_digest": "sha256:cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
-      "verifier": "00000000-0000-4000-8000-000000000003"
+      "verifier": "00000000-0000-4000-8000-000000000003",
+      "verdict_id": "00000000-0000-4000-8000-000000000004",
+      "candidate_digest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
     },
     {
       "criterion_source": "acceptance-criterion",
@@ -1753,7 +2069,9 @@
       "source_sha": "sha256:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
       "environment": "disposable-development",
       "proof_digest": "sha256:cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
-      "verifier": "00000000-0000-4000-8000-000000000003"
+      "verifier": "00000000-0000-4000-8000-000000000003",
+      "verdict_id": "00000000-0000-4000-8000-000000000004",
+      "candidate_digest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
     },
     {
       "criterion_source": "acceptance-criterion",
@@ -1764,7 +2082,9 @@
       "source_sha": "sha256:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
       "environment": "disposable-development",
       "proof_digest": "sha256:cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
-      "verifier": "00000000-0000-4000-8000-000000000003"
+      "verifier": "00000000-0000-4000-8000-000000000003",
+      "verdict_id": "00000000-0000-4000-8000-000000000004",
+      "candidate_digest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
     },
     {
       "criterion_source": "acceptance-criterion",
@@ -1775,7 +2095,9 @@
       "source_sha": "sha256:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
       "environment": "disposable-development",
       "proof_digest": "sha256:cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
-      "verifier": "00000000-0000-4000-8000-000000000003"
+      "verifier": "00000000-0000-4000-8000-000000000003",
+      "verdict_id": "00000000-0000-4000-8000-000000000004",
+      "candidate_digest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
     },
     {
       "criterion_source": "acceptance-criterion",
@@ -1786,7 +2108,9 @@
       "source_sha": "sha256:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
       "environment": "disposable-development",
       "proof_digest": "sha256:cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
-      "verifier": "00000000-0000-4000-8000-000000000003"
+      "verifier": "00000000-0000-4000-8000-000000000003",
+      "verdict_id": "00000000-0000-4000-8000-000000000004",
+      "candidate_digest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
     },
     {
       "criterion_source": "acceptance-criterion",
@@ -1797,7 +2121,9 @@
       "source_sha": "sha256:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
       "environment": "disposable-development",
       "proof_digest": "sha256:cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
-      "verifier": "00000000-0000-4000-8000-000000000003"
+      "verifier": "00000000-0000-4000-8000-000000000003",
+      "verdict_id": "00000000-0000-4000-8000-000000000004",
+      "candidate_digest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
     },
     {
       "criterion_source": "acceptance-criterion",
@@ -1808,7 +2134,9 @@
       "source_sha": "sha256:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
       "environment": "disposable-development",
       "proof_digest": "sha256:cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
-      "verifier": "00000000-0000-4000-8000-000000000003"
+      "verifier": "00000000-0000-4000-8000-000000000003",
+      "verdict_id": "00000000-0000-4000-8000-000000000004",
+      "candidate_digest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
     },
     {
       "criterion_source": "acceptance-criterion",
@@ -1819,7 +2147,9 @@
       "source_sha": "sha256:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
       "environment": "disposable-development",
       "proof_digest": "sha256:cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
-      "verifier": "00000000-0000-4000-8000-000000000003"
+      "verifier": "00000000-0000-4000-8000-000000000003",
+      "verdict_id": "00000000-0000-4000-8000-000000000004",
+      "candidate_digest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
     },
     {
       "criterion_source": "acceptance-criterion",
@@ -1830,7 +2160,9 @@
       "source_sha": "sha256:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
       "environment": "disposable-development",
       "proof_digest": "sha256:cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
-      "verifier": "00000000-0000-4000-8000-000000000003"
+      "verifier": "00000000-0000-4000-8000-000000000003",
+      "verdict_id": "00000000-0000-4000-8000-000000000004",
+      "candidate_digest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
     },
     {
       "criterion_source": "acceptance-criterion",
@@ -1841,7 +2173,9 @@
       "source_sha": "sha256:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
       "environment": "disposable-development",
       "proof_digest": "sha256:cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
-      "verifier": "00000000-0000-4000-8000-000000000003"
+      "verifier": "00000000-0000-4000-8000-000000000003",
+      "verdict_id": "00000000-0000-4000-8000-000000000004",
+      "candidate_digest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
     },
     {
       "criterion_source": "acceptance-criterion",
@@ -1852,7 +2186,9 @@
       "source_sha": "sha256:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
       "environment": "disposable-development",
       "proof_digest": "sha256:cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
-      "verifier": "00000000-0000-4000-8000-000000000003"
+      "verifier": "00000000-0000-4000-8000-000000000003",
+      "verdict_id": "00000000-0000-4000-8000-000000000004",
+      "candidate_digest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
     },
     {
       "criterion_source": "acceptance-criterion",
@@ -1863,7 +2199,9 @@
       "source_sha": "sha256:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
       "environment": "disposable-development",
       "proof_digest": "sha256:cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
-      "verifier": "00000000-0000-4000-8000-000000000003"
+      "verifier": "00000000-0000-4000-8000-000000000003",
+      "verdict_id": "00000000-0000-4000-8000-000000000004",
+      "candidate_digest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
     },
     {
       "criterion_source": "acceptance-criterion",
@@ -1874,7 +2212,9 @@
       "source_sha": "sha256:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
       "environment": "disposable-development",
       "proof_digest": "sha256:cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
-      "verifier": "00000000-0000-4000-8000-000000000003"
+      "verifier": "00000000-0000-4000-8000-000000000003",
+      "verdict_id": "00000000-0000-4000-8000-000000000004",
+      "candidate_digest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
     },
     {
       "criterion_source": "acceptance-criterion",
@@ -1885,7 +2225,9 @@
       "source_sha": "sha256:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
       "environment": "disposable-development",
       "proof_digest": "sha256:cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
-      "verifier": "00000000-0000-4000-8000-000000000003"
+      "verifier": "00000000-0000-4000-8000-000000000003",
+      "verdict_id": "00000000-0000-4000-8000-000000000004",
+      "candidate_digest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
     },
     {
       "criterion_source": "acceptance-criterion",
@@ -1896,7 +2238,9 @@
       "source_sha": "sha256:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
       "environment": "disposable-development",
       "proof_digest": "sha256:cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
-      "verifier": "00000000-0000-4000-8000-000000000003"
+      "verifier": "00000000-0000-4000-8000-000000000003",
+      "verdict_id": "00000000-0000-4000-8000-000000000004",
+      "candidate_digest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
     },
     {
       "criterion_source": "acceptance-criterion",
@@ -1907,11 +2251,10 @@
       "source_sha": "sha256:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
       "environment": "disposable-development",
       "proof_digest": "sha256:cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
-      "verifier": "00000000-0000-4000-8000-000000000003"
+      "verifier": "00000000-0000-4000-8000-000000000003",
+      "verdict_id": "00000000-0000-4000-8000-000000000004",
+      "candidate_digest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
     }
-  ],
-  "verdict_ids": [
-    "00000000-0000-4000-8000-000000000003"
   ],
   "deferred_suites": [
     {

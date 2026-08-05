@@ -12,7 +12,7 @@
         },
         {
           "path": "contracts/traceability/sources.json",
-          "sha256": "sha256:fe3f39064fcaacbb8aca4f7426cc8849a4841797ade1fa42b04205a385db8ad3"
+          "sha256": "sha256:db790aa3e0681f32ca577532b73102cb9bb31f83833fc5d28507aac546b5b31c"
         },
         {
           "path": "contracts/traceability/traceability-sources.schema.json",
@@ -38,7 +38,7 @@
       "outputs": [
         {
           "path": "generated/traceability-index.json",
-          "sha256": "sha256:0876eba7de49f5aabe5b4180b6ea0751b04a177178a96b2e081ed24220395bc1"
+          "sha256": "sha256:ae1ff3feb43abeb2ee49c1abc0306c553ddc9e96bc24215bf599b4a7bc701580"
         }
       ],
       "tool_version": "2"
@@ -253,6 +253,10 @@
           "sha256": "sha256:4524d9f0d807ba90b2524e7c9a679069fdd917b7adff7b478ae028bf8b2a9ba1"
         },
         {
+          "path": "contracts/evidence/evidence-manifest-v2.schema.json",
+          "sha256": "sha256:81eb6dc99f57a3c6ddd200b42af28359757dd275641e369f7423082f959fa170"
+        },
+        {
           "path": "contracts/evidence/evidence-manifest.schema.json",
           "sha256": "sha256:ee651b3bb91992e959faf23fa837d636e0a9d46e1c3d1cddd3b33be12f778872"
         },
@@ -436,7 +440,7 @@
         },
         {
           "path": "generated/python/ctower_contracts/schemas.json",
-          "sha256": "sha256:834e472e7ce20da58fbcea5464b8ae45a1add041b7bf7f30effec4e8aeefc981"
+          "sha256": "sha256:af115242aba3b94b17618836ed48f99a9c116f7232ce289ad73f3981d89869f4"
         },
         {
           "path": "generated/typescript/ctower-client/package.json",
