@@ -173,6 +173,7 @@ _EXPECTED_PROBLEM_CODES = {
     "bundle-schema-invalid",
     "bundle-security-refused",
     "credential-already-revoked",
+    "credential-authentication-unavailable",
     "credential-digest-conflict",
     "credential-issuance-refused",
     "credential-revocation-refused",

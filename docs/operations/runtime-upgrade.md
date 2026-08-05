@@ -31,10 +31,19 @@ to its secured predecessor and live verified healthy. The attempt is archived at
 7. Any failure after step 2: restore the checkpoint, reactivate the predecessor runtime, verify
    live matches the pre-sequence state, page P0.
 
-## Until gh#259 lands, this rule is procedural
+## gh#259: the rule is mechanical, not only procedural
 
-gh#259 makes it mechanical from both sides: schema-coupled code paths refuse by name
-(`credential-authentication-unavailable: requires generation >= 0039`) instead of throwing from
-protected reads, and the rehearsal harness gains the serve-on-old-schema case so a
-schema-forward runtime fails rehearsal before it ever reaches a live box. Until then, this
-document is the gate: an upgrade that serves before its migrations has skipped a named step.
+Schema-coupled code paths refuse by name instead of throwing `UndefinedTable` from a protected
+read. `record/_credential_sql.py`'s `actor_for_credential`, `issue_seat_credential`, and
+`revoke_seat_credential` each probe the schema (one zero-privilege `to_regclass` catalog lookup,
+cached per dsn once confirmed — never a per-request query storm) and return the typed
+`credential-authentication-unavailable: requires generation >= 0039` refusal in place of the
+2026-08-03 failure, on every generation short of 0039.
+
+An earlier version of this section named a `tools/ctower-upgrade-rehearsal` harness as the
+intended home for the serve-on-old-schema case; that tool was never committed to this
+repository. This repository's own catch is instead a committed migration-contract test,
+`tests/modules/migration/test_credential_generation_gate.py`, which ledgers a disposable database
+through the pre-0039 generation and proves all three entry points above refuse by name rather
+than propagate `UndefinedTable`. Step 4's rehearsal gate is a separate, externally-owned check
+against a live-now database; it is unchanged by gh#259.
