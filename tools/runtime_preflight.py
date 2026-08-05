@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import subprocess
 import tomllib
 from collections.abc import Mapping, Sequence
 from pathlib import Path
@@ -175,12 +176,20 @@ def _probe(python: Path, scripts: Mapping[str, str]) -> tuple[dict[str, str | No
         None,
     )
     if result.returncode != 0 or payload_line is None:
-        detail = output.strip() or f"candidate interpreter exited {result.returncode}"
+        detail = _crash_detail(result, output)
         raise RuntimeError(f"candidate interpreter probe failed: {detail}")
     payload = json.loads(payload_line.removeprefix(_RESULT_PREFIX))
     if not isinstance(payload, dict) or not isinstance(payload.get("checks"), list):
         raise TypeError("candidate interpreter returned a malformed probe result")
     return tuple(_check(item) for item in payload["checks"])
+
+
+def _crash_detail(result: subprocess.CompletedProcess[str], output: str) -> str:
+    return (
+        output.strip()
+        or (result.stderr or "").strip()
+        or f"candidate interpreter exited {result.returncode}"
+    )
 
 
 def _check(value: object) -> dict[str, str | None]:
