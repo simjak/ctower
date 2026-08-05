@@ -27,12 +27,48 @@ __all__ = ["actor_for_credential", "issue_seat_credential", "revoke_seat_credent
 
 _ZERO_HASH = bytes(32)
 
+# Presence of a 0039-created table is a monotonic fact: schema generation only advances,
+# never rolls back, so a positive probe is cached for the dsn's process lifetime and never
+# re-asked. A negative probe stays cheap enough — one zero-privilege catalog lookup on the
+# connection already open for the call, no separate round trip — to retry on every request,
+# so a schema-forward runtime starts serving the instant migration 0039 lands (gh#101),
+# without needing a restart to notice.
+_seat_credential_generation_confirmed: set[str] = set()
+
+
+def _seat_credential_generation_refusal(
+    connection: psycopg.Connection[dict[str, object]],
+    dsn: str,
+    *,
+    command_id: UUID | None = None,
+) -> RecordProblem | None:
+    """Refuse by name, in place of UndefinedTable, until generation 0039 is live."""
+
+    if dsn in _seat_credential_generation_confirmed:
+        return None
+    row = connection.execute(
+        "SELECT to_regclass('public.seat_credential_issuances') IS NOT NULL AS available"
+    ).fetchone()
+    if row is not None and bool(row["available"]):
+        _seat_credential_generation_confirmed.add(dsn)
+        return None
+    return RecordProblem(
+        code="credential-authentication-unavailable",
+        detail="Credential authentication requires generation >= 0039.",
+        status=503,
+        title="Credential authentication unavailable",
+        command_id=command_id,
+    )
+
 
 def actor_for_credential(dsn: str, credential_digest: bytes) -> Actor | RecordProblem | None:
     """Resolve active bearer authority and preserve a named revocation refusal."""
 
     with psycopg.connect(dsn, row_factory=dict_row) as connection:
         connection.execute("SET ROLE ctower_svc")
+        unavailable = _seat_credential_generation_refusal(connection, dsn)
+        if unavailable is not None:
+            return unavailable
         row = connection.execute(
             """
             SELECT principal.principal_id, principal.tenant_id, principal.kind,
@@ -123,6 +159,7 @@ def issue_seat_credential(
             transaction,
             actor,
             command,
+            dsn=dsn,
             request_digest=request_digest,
             now=now,
             telemetry=telemetry,
@@ -159,6 +196,7 @@ def revoke_seat_credential(
             transaction,
             actor,
             command,
+            dsn=dsn,
             request_digest=request_digest,
             now=now,
             telemetry=telemetry,
@@ -192,10 +230,21 @@ def _append_issuance(
     actor: Actor,
     command: SeatCredentialIssue,
     *,
+    dsn: str,
     request_digest: bytes,
     now: datetime,
     telemetry: TelemetryContext,
 ) -> SeatCredentialReceipt | RecordProblem:
+    # Not persisted through `_refuse`: command_results only ever holds a committed
+    # success or a client (4xx) refusal (migration 0011's check constraint), because
+    # both are durable facts about this exact command. A generation gap is neither —
+    # it is a transient fact about the environment, so a retry of this same command
+    # once generation 0039 lands must actually proceed, not replay a cached 503.
+    unavailable = _seat_credential_generation_refusal(
+        connection, dsn, command_id=command.client_command_id
+    )
+    if unavailable is not None:
+        return unavailable
     connection.execute(
         "SELECT pg_advisory_xact_lock(hashtextextended(%s, 0))",
         (f"seat:{actor.tenant_id}:{command.project_key}:{command.seat_key}",),
@@ -329,10 +378,18 @@ def _append_revocation(
     actor: Actor,
     command: SeatCredentialRevocation,
     *,
+    dsn: str,
     request_digest: bytes,
     now: datetime,
     telemetry: TelemetryContext,
 ) -> SeatCredentialReceipt | RecordProblem:
+    # See _append_issuance: a generation gap is transient, so it is returned directly
+    # rather than persisted as a durable command_results outcome.
+    unavailable = _seat_credential_generation_refusal(
+        connection, dsn, command_id=command.client_command_id
+    )
+    if unavailable is not None:
+        return unavailable
     connection.execute(
         "SELECT pg_advisory_xact_lock(hashtextextended(%s, 0))",
         (f"seat-credential:{actor.tenant_id}:{command.credential_id}",),
