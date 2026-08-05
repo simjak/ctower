@@ -9,8 +9,12 @@ from uuid import UUID
 
 import psycopg
 
+from ctower_kernel.catalog._attention_kind_catalog_sql import (
+    materialize_attention_kind_catalogs,
+)
 from ctower_kernel.catalog._canonical import normalized_bundle
 from ctower_kernel.catalog._checkpoint_sql import materialize_checkpoints
+from ctower_kernel.catalog._label_vocabulary_sql import materialize_label_vocabularies
 from ctower_kernel.catalog._postgres_activation import insert_activation_facts
 from ctower_kernel.catalog._postgres_events import catalog_events
 from ctower_kernel.catalog._postgres_read import ActiveCatalog, load_active_catalog
@@ -204,6 +208,8 @@ def _commit_bundle(
     )
     materialize_seat_catalogs(connection, actor, prepared, now=now)
     materialize_checkpoints(connection, actor, bundle, prepared, now=now)
+    materialize_label_vocabularies(connection, actor, prepared, now=now)
+    materialize_attention_kind_catalogs(connection, actor, prepared, now=now)
     return result
 
 

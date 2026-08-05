@@ -88,6 +88,51 @@
       "required": ["slot_key", "state", "assigned_seat", "signing_seat"],
       "type": "object"
     },
+    "deliverySurfaceState": {
+      "enum": ["declared_present", "declared_absent", "undeclared"],
+      "type": "string"
+    },
+    "deliverySurfaceField": {
+      "additionalProperties": false,
+      "properties": {
+        "state": {"$ref": "#/$defs/deliverySurfaceState"},
+        "identity": {
+          "oneOf": [
+            {"type": "string", "minLength": 1, "maxLength": 200},
+            {"type": "null"}
+          ]
+        }
+      },
+      "required": ["state", "identity"],
+      "type": "object"
+    },
+    "deliverySurfaceEnvironments": {
+      "additionalProperties": false,
+      "properties": {
+        "state": {"$ref": "#/$defs/deliverySurfaceState"},
+        "environments": {
+          "items": {"minLength": 1, "type": "string"},
+          "type": "array",
+          "uniqueItems": true
+        }
+      },
+      "required": ["state", "environments"],
+      "type": "object"
+    },
+    "deliverySurface": {
+      "additionalProperties": false,
+      "properties": {
+        "landing_boundary": {"$ref": "#/$defs/deliverySurfaceField"},
+        "non_production_environments": {"$ref": "#/$defs/deliverySurfaceEnvironments"},
+        "externally_effective_outcome": {"$ref": "#/$defs/deliverySurfaceField"}
+      },
+      "required": [
+        "landing_boundary",
+        "non_production_environments",
+        "externally_effective_outcome"
+      ],
+      "type": "object"
+    },
     "row": {
       "additionalProperties": false,
       "properties": {
@@ -133,6 +178,9 @@
         },
         "criteria": {
           "$ref": "#/$defs/criteriaCoverage"
+        },
+        "delivery_surface": {
+          "$ref": "#/$defs/deliverySurface"
         },
         "qualifying_stage_slots_filled": {
           "minimum": 0,
@@ -253,6 +301,7 @@
         "outcome",
         "accountable_owner",
         "criteria",
+        "delivery_surface",
         "qualifying_stage_slots_filled",
         "qualifying_stage_slots_required",
         "qualifying_stage_unfilled_or_unknown_slot_keys",

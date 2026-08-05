@@ -786,6 +786,128 @@
         }
       }
     },
+    "/v1/tickets/{ticket_id}/change-references": {
+      "post": {
+        "operationId": "recordTicketChangeReference",
+        "x-ctower-cli": "ticket change-reference add",
+        "x-ctower-mutation": true,
+        "x-ctower-spool": "allowed",
+        "security": [{"bearerAuth": []}],
+        "parameters": [
+          {"$ref": "#/components/parameters/TicketId"},
+          {"$ref": "#/components/parameters/IdempotencyKey"}
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {"application/json": {"schema": {"$ref": "#/components/schemas/ChangeReferenceRequest"}}}
+        },
+        "responses": {
+          "202": {
+            "description": "Change reference fact committed; off-host durability acknowledgement pending",
+            "headers": {"Retry-After": {"$ref": "#/components/headers/RetryAfter"}},
+            "content": {"application/json": {"schema": {"$ref": "#/components/schemas/ChangeReferenceResult"}}}
+          },
+          "200": {
+            "description": "Change reference fact accepted off host",
+            "content": {"application/json": {"schema": {"$ref": "#/components/schemas/ChangeReferenceResult"}}}
+          },
+          "401": {"$ref": "#/components/responses/ProblemResponse"},
+          "403": {"$ref": "#/components/responses/ProblemResponse"},
+          "404": {"$ref": "#/components/responses/ProblemResponse"},
+          "409": {"$ref": "#/components/responses/ProblemResponse"},
+          "422": {"$ref": "#/components/responses/ProblemResponse"}
+        }
+      }
+    },
+    "/v1/tickets/{ticket_id}/labels": {
+      "post": {
+        "operationId": "applyTicketLabel",
+        "x-ctower-cli": "ticket label apply",
+        "x-ctower-mutation": true,
+        "x-ctower-spool": "allowed",
+        "security": [{"bearerAuth": []}],
+        "parameters": [
+          {"$ref": "#/components/parameters/TicketId"},
+          {"$ref": "#/components/parameters/IdempotencyKey"}
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {"application/json": {"schema": {"$ref": "#/components/schemas/ApplyLabelRequest"}}}
+        },
+        "responses": {
+          "202": {
+            "description": "Label application fact committed; off-host durability acknowledgement pending",
+            "headers": {"Retry-After": {"$ref": "#/components/headers/RetryAfter"}},
+            "content": {"application/json": {"schema": {"$ref": "#/components/schemas/ApplyLabelResult"}}}
+          },
+          "200": {
+            "description": "Label application fact accepted off host",
+            "content": {"application/json": {"schema": {"$ref": "#/components/schemas/ApplyLabelResult"}}}
+          },
+          "401": {"$ref": "#/components/responses/ProblemResponse"},
+          "403": {"$ref": "#/components/responses/ProblemResponse"},
+          "404": {"$ref": "#/components/responses/ProblemResponse"},
+          "409": {"$ref": "#/components/responses/ProblemResponse"},
+          "422": {"$ref": "#/components/responses/ProblemResponse"}
+        }
+      }
+    },
+    "/v1/attention/findings": {
+      "post": {
+        "operationId": "appendAttentionFinding",
+        "x-ctower-cli": "attention finding append",
+        "x-ctower-mutation": true,
+        "x-ctower-spool": "allowed",
+        "security": [{"bearerAuth": []}],
+        "parameters": [
+          {"$ref": "#/components/parameters/IdempotencyKey"}
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {"application/json": {"schema": {"$ref": "#/components/schemas/AppendFindingRequest"}}}
+        },
+        "responses": {
+          "202": {
+            "description": "Attention finding committed; off-host durability acknowledgement pending",
+            "headers": {"Retry-After": {"$ref": "#/components/headers/RetryAfter"}},
+            "content": {"application/json": {"schema": {"$ref": "#/components/schemas/AttentionFindingResult"}}}
+          },
+          "401": {"$ref": "#/components/responses/ProblemResponse"},
+          "403": {"$ref": "#/components/responses/ProblemResponse"},
+          "404": {"$ref": "#/components/responses/ProblemResponse"},
+          "422": {"$ref": "#/components/responses/ProblemResponse"}
+        }
+      }
+    },
+    "/v1/attention/findings/{finding_id}/disposition": {
+      "post": {
+        "operationId": "recordAttentionFindingDisposition",
+        "x-ctower-cli": "attention finding disposition",
+        "x-ctower-mutation": true,
+        "x-ctower-spool": "allowed",
+        "security": [{"bearerAuth": []}],
+        "parameters": [
+          {"$ref": "#/components/parameters/FindingId"},
+          {"$ref": "#/components/parameters/IdempotencyKey"}
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {"application/json": {"schema": {"$ref": "#/components/schemas/FindingDispositionRequest"}}}
+        },
+        "responses": {
+          "202": {
+            "description": "Finding disposition committed; off-host durability acknowledgement pending",
+            "headers": {"Retry-After": {"$ref": "#/components/headers/RetryAfter"}},
+            "content": {"application/json": {"schema": {"$ref": "#/components/schemas/FindingDispositionResult"}}}
+          },
+          "401": {"$ref": "#/components/responses/ProblemResponse"},
+          "403": {"$ref": "#/components/responses/ProblemResponse"},
+          "404": {"$ref": "#/components/responses/ProblemResponse"},
+          "409": {"$ref": "#/components/responses/ProblemResponse"},
+          "422": {"$ref": "#/components/responses/ProblemResponse"}
+        }
+      }
+    },
     "/v1/company/bundle/validate": {
       "post": {
         "operationId": "validateCompanyBundle",
@@ -1318,6 +1440,12 @@
       },
       "SessionId": {
         "name": "session_id",
+        "in": "path",
+        "required": true,
+        "schema": {"type": "string", "format": "uuid"}
+      },
+      "FindingId": {
+        "name": "finding_id",
         "in": "path",
         "required": true,
         "schema": {"type": "string", "format": "uuid"}
@@ -2077,7 +2205,7 @@
       "ProjectDeliveryRow": {
         "type": "object",
         "additionalProperties": false,
-        "required": ["checkpoint_key", "checkpoint_label", "headline_state", "underlying_maturity", "outcome", "accountable_owner", "criteria", "qualifying_stage_slots_filled", "qualifying_stage_slots_required", "qualifying_stage_unfilled_or_unknown_slot_keys", "qualifying_stage_slots", "source_watermark", "projection_watermark", "freshness", "confidence", "health", "durability", "recovery", "data_class", "semantic_digest", "reconciled_at", "freshness_due_at", "rebuild_generation", "source_ids", "derivation_reasons"],
+        "required": ["checkpoint_key", "checkpoint_label", "headline_state", "underlying_maturity", "outcome", "accountable_owner", "criteria", "delivery_surface", "qualifying_stage_slots_filled", "qualifying_stage_slots_required", "qualifying_stage_unfilled_or_unknown_slot_keys", "qualifying_stage_slots", "source_watermark", "projection_watermark", "freshness", "confidence", "health", "durability", "recovery", "data_class", "semantic_digest", "reconciled_at", "freshness_due_at", "rebuild_generation", "source_ids", "derivation_reasons"],
         "properties": {
           "checkpoint_key": {"type": "string", "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]{0,127}$"},
           "checkpoint_label": {"type": "string", "minLength": 1},
@@ -2086,6 +2214,7 @@
           "outcome": {"type": "string", "minLength": 1},
           "accountable_owner": {"type": "string", "minLength": 1},
           "criteria": {"$ref": "#/components/schemas/ProjectDeliveryCriteria"},
+          "delivery_surface": {"$ref": "#/components/schemas/ProjectDeliverySurfaceDeclaration"},
           "qualifying_stage_slots_filled": {"type": "integer", "minimum": 0},
           "qualifying_stage_slots_required": {"type": "integer", "minimum": 0},
           "qualifying_stage_unfilled_or_unknown_slot_keys": {
@@ -2636,6 +2765,92 @@
           "durability_state": {"$ref": "#/components/schemas/DurabilityState"},
           "event_id": {"type": "string", "format": "uuid"},
           "ticket_id": {"type": "string", "format": "uuid"}
+        }
+      },
+      "ChangeReferenceRequest": {
+        "type": "object", "additionalProperties": false,
+        "required": ["repository", "change_identity", "reference"],
+        "properties": {
+          "repository": {"type": "string", "minLength": 1, "maxLength": 256},
+          "change_identity": {"type": "string", "minLength": 1, "maxLength": 128},
+          "reference": {"type": "string", "minLength": 1, "maxLength": 256}
+        }
+      },
+      "ChangeReferenceResult": {
+        "type": "object", "additionalProperties": false,
+        "required": ["command_id", "change_reference_id", "durability_state", "event_id", "ticket_id"],
+        "properties": {
+          "command_id": {"type": "string", "format": "uuid"},
+          "change_reference_id": {"type": "string", "format": "uuid"},
+          "durability_state": {"$ref": "#/components/schemas/DurabilityState"},
+          "event_id": {"type": "string", "format": "uuid"},
+          "ticket_id": {"type": "string", "format": "uuid"}
+        }
+      },
+      "ApplyLabelRequest": {
+        "type": "object", "additionalProperties": false,
+        "required": ["label_key"],
+        "properties": {
+          "label_key": {"type": "string", "pattern": "^[a-z][a-z0-9._-]{1,95}$"}
+        }
+      },
+      "ApplyLabelResult": {
+        "type": "object", "additionalProperties": false,
+        "required": ["command_id", "ticket_label_id", "durability_state", "event_id", "ticket_id", "label_key"],
+        "properties": {
+          "command_id": {"type": "string", "format": "uuid"},
+          "ticket_label_id": {"type": "string", "format": "uuid"},
+          "durability_state": {"$ref": "#/components/schemas/DurabilityState"},
+          "event_id": {"type": "string", "format": "uuid"},
+          "ticket_id": {"type": "string", "format": "uuid"},
+          "label_key": {"type": "string", "pattern": "^[a-z][a-z0-9._-]{1,95}$"}
+        }
+      },
+      "AppendFindingRequest": {
+        "type": "object", "additionalProperties": false,
+        "required": ["subject_ticket_id", "kind_key", "reason_code", "effective_owner", "recommendation", "alternatives", "consequence", "deadline", "dedupe_key", "source_facts"],
+        "properties": {
+          "subject_ticket_id": {"type": "string", "format": "uuid"},
+          "kind_key": {"type": "string", "pattern": "^[a-z][a-z0-9._-]{1,95}$"},
+          "reason_code": {"type": "string", "pattern": "^[a-z][a-z0-9._-]*$"},
+          "effective_owner": {"type": "string", "enum": ["operator", "commander"]},
+          "recommendation": {"type": "string", "minLength": 1, "maxLength": 500},
+          "alternatives": {"type": "array", "items": {"type": "string", "minLength": 1, "maxLength": 500}},
+          "consequence": {"type": "string", "minLength": 1, "maxLength": 500},
+          "deadline": {"oneOf": [{"type": "string", "format": "date-time"}, {"type": "null"}]},
+          "dedupe_key": {"type": "string", "pattern": "^[a-z][a-z0-9._-]{1,127}$"},
+          "source_facts": {"type": "array", "items": {"type": "string", "minLength": 1}}
+        }
+      },
+      "AttentionFindingResult": {
+        "type": "object", "additionalProperties": false,
+        "required": ["command_id", "finding_id", "durability_state", "event_ids", "recorded_at"],
+        "properties": {
+          "command_id": {"type": "string", "format": "uuid"},
+          "finding_id": {"type": "string", "format": "uuid"},
+          "durability_state": {"$ref": "#/components/schemas/DurabilityState"},
+          "event_ids": {"type": "array", "items": {"type": "string", "format": "uuid"}},
+          "recorded_at": {"type": "string", "format": "date-time"}
+        }
+      },
+      "FindingDispositionRequest": {
+        "type": "object", "additionalProperties": false,
+        "required": ["outcome", "reason"],
+        "properties": {
+          "outcome": {"type": "string", "enum": ["resolved", "snoozed", "expired", "superseded", "cancelled"]},
+          "reason": {"type": "string", "minLength": 1, "maxLength": 500}
+        }
+      },
+      "FindingDispositionResult": {
+        "type": "object", "additionalProperties": false,
+        "required": ["command_id", "finding_id", "outcome", "durability_state", "event_ids", "recorded_at"],
+        "properties": {
+          "command_id": {"type": "string", "format": "uuid"},
+          "finding_id": {"type": "string", "format": "uuid"},
+          "outcome": {"type": "string", "enum": ["resolved", "snoozed", "expired", "superseded", "cancelled"]},
+          "durability_state": {"$ref": "#/components/schemas/DurabilityState"},
+          "event_ids": {"type": "array", "items": {"type": "string", "format": "uuid"}},
+          "recorded_at": {"type": "string", "format": "date-time"}
         }
       },
       "Priority": {"type": "string", "enum": ["P0", "P1", "P2"]},
@@ -3295,22 +3510,134 @@
         "enum": ["backlog", "ready", "in_progress", "in_review", "blocked", "complete"]
       },
       "ProjectionHealth": {"type": "string", "enum": ["CURRENT", "STATE_UNKNOWN"]},
+      "TenantDisplayIdentityKnown": {
+        "type": "object", "additionalProperties": false,
+        "required": ["state", "display_name"],
+        "properties": {"state": {"const": "known"}, "display_name": {"type": "string", "minLength": 1, "maxLength": 128}}
+      },
+      "TenantDisplayIdentityUnknown": {
+        "type": "object", "additionalProperties": false,
+        "required": ["state", "missing_source"],
+        "properties": {"state": {"const": "unknown"}, "missing_source": {"type": "string", "minLength": 1}}
+      },
+      "TenantDisplayIdentity": {
+        "oneOf": [
+          {"$ref": "#/components/schemas/TenantDisplayIdentityKnown"},
+          {"$ref": "#/components/schemas/TenantDisplayIdentityUnknown"}
+        ]
+      },
+      "ChangeReference": {
+        "type": "object", "additionalProperties": false,
+        "required": ["repository", "change_identity", "reference", "recorded_at"],
+        "properties": {
+          "repository": {"type": "string", "minLength": 1, "maxLength": 256},
+          "change_identity": {"type": "string", "minLength": 1, "maxLength": 128},
+          "reference": {"type": "string", "minLength": 1, "maxLength": 256},
+          "recorded_at": {"type": "string", "format": "date-time"}
+        }
+      },
+      "AppliedLabel": {
+        "type": "object", "additionalProperties": false,
+        "required": ["label_key", "label", "vocabulary_revision", "applied_at"],
+        "properties": {
+          "label_key": {"type": "string", "pattern": "^[a-z][a-z0-9._-]{1,95}$"},
+          "label": {"type": "string", "minLength": 1, "maxLength": 128},
+          "vocabulary_revision": {"type": "integer", "minimum": 1},
+          "applied_at": {"type": "string", "format": "date-time"}
+        }
+      },
+      "HumanWaitingWaiting": {
+        "type": "object", "additionalProperties": false,
+        "required": ["state", "finding_id", "kind_key", "reason_code"],
+        "properties": {
+          "state": {"const": "waiting"},
+          "finding_id": {"type": "string", "format": "uuid"},
+          "kind_key": {"type": "string", "pattern": "^[a-z][a-z0-9._-]{1,95}$"},
+          "reason_code": {"type": "string", "pattern": "^[a-z][a-z0-9._-]*$"}
+        }
+      },
+      "HumanWaitingNotWaiting": {
+        "type": "object", "additionalProperties": false,
+        "required": ["state"],
+        "properties": {"state": {"const": "not_waiting"}}
+      },
+      "HumanWaiting": {
+        "oneOf": [
+          {"$ref": "#/components/schemas/HumanWaitingWaiting"},
+          {"$ref": "#/components/schemas/HumanWaitingNotWaiting"}
+        ]
+      },
+      "SurfaceDeclarationState": {
+        "type": "string", "enum": ["declared_present", "declared_absent", "undeclared"]
+      },
+      "SurfaceIdentityField": {
+        "type": "object", "additionalProperties": false,
+        "required": ["state", "identity"],
+        "properties": {
+          "state": {"$ref": "#/components/schemas/SurfaceDeclarationState"},
+          "identity": {"oneOf": [{"type": "string", "minLength": 1, "maxLength": 200}, {"type": "null"}]}
+        }
+      },
+      "SurfaceEnvironmentsField": {
+        "type": "object", "additionalProperties": false,
+        "required": ["state", "environments"],
+        "properties": {
+          "state": {"$ref": "#/components/schemas/SurfaceDeclarationState"},
+          "environments": {"type": "array", "items": {"type": "string", "minLength": 1}}
+        }
+      },
+      "ProjectDeliverySurfaceDeclaration": {
+        "type": "object", "additionalProperties": false,
+        "required": ["landing_boundary", "non_production_environments", "externally_effective_outcome"],
+        "properties": {
+          "landing_boundary": {"$ref": "#/components/schemas/SurfaceIdentityField"},
+          "non_production_environments": {"$ref": "#/components/schemas/SurfaceEnvironmentsField"},
+          "externally_effective_outcome": {"$ref": "#/components/schemas/SurfaceIdentityField"}
+        }
+      },
+      "DeliverySurfaceAvailabilityNoQualifyingCheckpoint": {
+        "type": "object", "additionalProperties": false,
+        "required": ["state"],
+        "properties": {"state": {"const": "no_qualifying_checkpoint"}}
+      },
+      "DeliverySurfaceAvailabilityQualifyingCheckpoint": {
+        "type": "object", "additionalProperties": false,
+        "required": ["state", "checkpoint_key", "landing_boundary", "non_production_environments", "externally_effective_outcome"],
+        "properties": {
+          "state": {"const": "qualifying_checkpoint"},
+          "checkpoint_key": {"type": "string", "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]{0,127}$"},
+          "landing_boundary": {"$ref": "#/components/schemas/SurfaceIdentityField"},
+          "non_production_environments": {"$ref": "#/components/schemas/SurfaceEnvironmentsField"},
+          "externally_effective_outcome": {"$ref": "#/components/schemas/SurfaceIdentityField"}
+        }
+      },
+      "DeliverySurfaceAvailability": {
+        "oneOf": [
+          {"$ref": "#/components/schemas/DeliverySurfaceAvailabilityNoQualifyingCheckpoint"},
+          {"$ref": "#/components/schemas/DeliverySurfaceAvailabilityQualifyingCheckpoint"}
+        ]
+      },
       "BoardCard": {
         "type": "object", "additionalProperties": false,
-        "required": ["activity_class", "assignee_id", "blocker_opened_at", "blocker_reason", "custodian_id", "delivery_facts", "lane", "priority", "project_key", "risk", "stage_key", "stage_label", "ticket_id", "title", "underlying_lane", "version"],
+        "required": ["activity_class", "applied_labels", "assignee_id", "blocker_opened_at", "blocker_reason", "change_references", "custodian_id", "delivery_facts", "delivery_surface_availability", "human_waiting", "lane", "priority", "project_key", "risk", "stage_key", "stage_label", "tenant_display_identity", "ticket_id", "title", "underlying_lane", "version"],
         "properties": {
           "activity_class": {"type": ["string", "null"], "enum": ["work", "verification", null]},
+          "applied_labels": {"type": "array", "items": {"$ref": "#/components/schemas/AppliedLabel"}},
           "assignee_id": {"type": ["string", "null"], "format": "uuid"},
           "blocker_opened_at": {"type": ["string", "null"], "format": "date-time"},
           "blocker_reason": {"type": ["string", "null"]},
+          "change_references": {"type": "array", "items": {"$ref": "#/components/schemas/ChangeReference"}},
           "custodian_id": {"type": "string", "format": "uuid"},
           "delivery_facts": {"type": "array", "items": {"type": "string"}},
+          "delivery_surface_availability": {"$ref": "#/components/schemas/DeliverySurfaceAvailability"},
+          "human_waiting": {"$ref": "#/components/schemas/HumanWaiting"},
           "lane": {"$ref": "#/components/schemas/BoardLane"},
           "priority": {"$ref": "#/components/schemas/Priority"},
           "project_key": {"type": "string", "pattern": "^[a-z][a-z0-9-]{2,63}$"},
           "risk": {"type": ["string", "null"]},
           "stage_key": {"type": ["string", "null"], "pattern": "^[a-z][a-z0-9._-]*$"},
           "stage_label": {"type": ["string", "null"]},
+          "tenant_display_identity": {"$ref": "#/components/schemas/TenantDisplayIdentity"},
           "ticket_id": {"type": "string", "format": "uuid"},
           "title": {"type": "string"},
           "underlying_lane": {"type": ["string", "null"], "enum": ["backlog", "ready", "in_progress", "in_review", "complete", null]},

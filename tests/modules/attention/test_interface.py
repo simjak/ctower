@@ -8,7 +8,11 @@ from uuid import UUID, uuid4
 import pytest
 
 from ctower_kernel.attention import (
+    AppendFinding,
     Attention,
+    AttentionFindingReceipt,
+    FindingDisposition,
+    FindingDispositionReceipt,
     PoisonDisposition,
     PoisonDispositionAction,
     PoisonDispositionReceipt,
@@ -28,6 +32,16 @@ class _Store:
             command,
             datetime(2026, 7, 22, tzinfo=UTC),
         )
+
+    def append_finding(
+        self, actor: Actor, command: AppendFinding
+    ) -> AttentionFindingReceipt | RecordProblem:
+        raise NotImplementedError("unused by this poison-disposition test double")
+
+    def record_finding_disposition(
+        self, actor: Actor, command: FindingDisposition
+    ) -> FindingDispositionReceipt | RecordProblem:
+        raise NotImplementedError("unused by this poison-disposition test double")
 
 
 def test_retry_and_tombstone_are_the_only_typed_recovery_actions() -> None:

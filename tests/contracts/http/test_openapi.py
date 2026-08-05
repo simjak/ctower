@@ -13,6 +13,7 @@ MAX_IMPORT_ITEMS = 64
 _EXPECTED_OPERATION_METADATA: dict[str, tuple[object, bool, str, object, bool]] = {
     "addTicketComment": ("ticket comment add", True, "allowed", None, False),
     "addTicketRelation": ("ticket relation add", True, "allowed", None, False),
+    "appendAttentionFinding": ("attention finding append", True, "allowed", None, False),
     "appendCtowerProjectImportCorrection": (
         "migration ctower-project correction append",
         True,
@@ -35,6 +36,7 @@ _EXPECTED_OPERATION_METADATA: dict[str, tuple[object, bool, str, object, bool]] 
         None,
         False,
     ),
+    "applyTicketLabel": ("ticket label apply", True, "allowed", None, False),
     "bindCtowerProjectAliasPlan": (
         "migration ctower-project plan",
         True,
@@ -129,8 +131,22 @@ _EXPECTED_OPERATION_METADATA: dict[str, tuple[object, bool, str, object, bool]] 
         True,
     ),
     "promoteIntakeEvent": ("intake promote", True, "allowed", None, False),
+    "recordAttentionFindingDisposition": (
+        "attention finding disposition",
+        True,
+        "allowed",
+        None,
+        False,
+    ),
     "recordOutboxPoisonDisposition": (
         "ops outbox poison dispose",
+        True,
+        "allowed",
+        None,
+        False,
+    ),
+    "recordTicketChangeReference": (
+        "ticket change-reference add",
         True,
         "allowed",
         None,

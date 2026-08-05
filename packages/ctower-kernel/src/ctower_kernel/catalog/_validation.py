@@ -52,6 +52,8 @@ _EXPECTED_SCHEMAS: dict[ComponentKind, str] = {
     ComponentKind.INTEGRATION: "ctower.integration/v1",
     ComponentKind.SEAT_CATALOG: "ctower.seat-catalog/v1",
     ComponentKind.CHECKPOINT: "ctower.checkpoint/v1",
+    ComponentKind.LABEL_VOCABULARY: "ctower.label-vocabulary/v1",
+    ComponentKind.ATTENTION_KIND_CATALOG: "ctower.attention-kind-catalog/v1",
 }
 _FORBIDDEN_KEYS = frozenset(
     {
@@ -93,6 +95,10 @@ def validate_bundle(
         failure = _validate_checkpoint_set(bundle)
     if failure is None:
         failure = _validate_seat_catalog_set(bundle, existing_refs)
+    if failure is None:
+        failure = _validate_single_catalog_set(bundle, ComponentKind.LABEL_VOCABULARY)
+    if failure is None:
+        failure = _validate_single_catalog_set(bundle, ComponentKind.ATTENTION_KIND_CATALOG)
     if failure is None:
         failure = _validate_references(bundle, existing_refs)
     if failure is None:
@@ -250,6 +256,33 @@ def _validate_seat_catalogs(
             return _problem(
                 "bundle-reference-invalid",
                 "A seat key may occur only once in one catalog revision.",
+            )
+    return None
+
+
+def _validate_single_catalog_set(
+    bundle: CompanyBundle, kind: ComponentKind
+) -> CatalogProblem | None:
+    """Label vocabulary and attention-kind catalogs are tenant-wide, like seats."""
+
+    catalogs = tuple(resource for resource in bundle.resources if resource.component.kind is kind)
+    if len(catalogs) > 1:
+        return _problem(
+            "bundle-reference-invalid",
+            f"An active bundle may name only one {kind.value}.",
+        )
+    if catalogs and catalogs[0].component.scope.project is not None:
+        return _problem(
+            "bundle-grant-refused",
+            f"The tenant {kind.value} must not be scoped to one project.",
+        )
+    for catalog in catalogs:
+        members = cast(list[dict[str, object]], catalog.payload["members"])
+        keys = tuple(str(member["key"]) for member in members)
+        if len(keys) != len(set(keys)):
+            return _problem(
+                "bundle-reference-invalid",
+                f"A {kind.value} key may occur only once in one catalog revision.",
             )
     return None
 

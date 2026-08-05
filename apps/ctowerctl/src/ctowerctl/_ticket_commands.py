@@ -15,8 +15,10 @@ from pydantic import BaseModel
 from ctower_client import CtowerClient
 from ctower_client.models import (
     AdmitIntent,
+    ApplyLabelRequest,
     AssignmentChangeRequest,
     BlockIntent,
+    ChangeReferenceRequest,
     CustodyTransferRequest,
     DeferIntent,
     EvidenceRequest,
@@ -192,6 +194,19 @@ def _unblock(arguments: argparse.Namespace) -> MutationPayload:
     return _ticket_payload(arguments, TicketIntentRequest(intent=intent))
 
 
+def _change_reference(arguments: argparse.Namespace) -> MutationPayload:
+    request = ChangeReferenceRequest(
+        repository=cast(str, arguments.repository),
+        change_identity=cast(str, arguments.change_identity),
+        reference=cast(str, arguments.reference),
+    )
+    return _ticket_payload(arguments, request)
+
+
+def _apply_label(arguments: argparse.Namespace) -> MutationPayload:
+    return _ticket_payload(arguments, ApplyLabelRequest(label_key=cast(str, arguments.label_key)))
+
+
 def _relation(arguments: argparse.Namespace) -> MutationPayload:
     request = RelationRequest(
         expected_version=cast(int, arguments.expected_version),
@@ -354,6 +369,8 @@ _MUTATION_BUILDERS: dict[str, Callable[[argparse.Namespace], MutationPayload]] =
     "ticket capture": _capture,
     "ticket create": _capture,
     "ticket comment add": _comment,
+    "ticket change-reference add": _change_reference,
+    "ticket label apply": _apply_label,
     "ticket assign": _assignment,
     "ticket custody transfer": _custody,
     "ticket prioritize": _priority,

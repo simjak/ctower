@@ -24,6 +24,9 @@ from ctower_client.models import (
 )
 from ctower_client.operations import CLI_OPERATIONS, SpoolPolicy
 from ctowerctl import _credential_commands, _workflow_commands, main
+from ctowerctl._attention_commands import (
+    mutation_command_names as attention_mutations,
+)
 from ctowerctl._company_commands import (
     load_bundle,
 )
@@ -98,6 +101,7 @@ def test_explicit_handlers_cover_every_generated_operation_class() -> None:
         | intake_mutations()
         | _credential_commands.mutation_command_names()
         | session_mutations()
+        | attention_mutations()
     )
     queries = (
         ticket_queries()

@@ -11,6 +11,61 @@ from typing import cast
 ROOT = Path(__file__).parents[3]
 MIGRATIONS = ROOT / "packages/ctower-kernel/migrations"
 LIVE_EVIDENCE_FUNCTIONS = 2
+_EXPECTED_MIGRATION_PATHS = [
+    "0001_roles.sql",
+    "0002_ticket_slice.sql",
+    "0003_privileges.sql",
+    "0004_proof_workflow.sql",
+    "0005_proof_verdict_sequence.sql",
+    "0006_narrow_head_update_privileges.sql",
+    "0007_task_management_facts.sql",
+    "0008_board_projection.sql",
+    "0009_transactional_record_positions.sql",
+    "0010_custody_episode_intervals.sql",
+    "0011_persisted_command_refusals.sql",
+    "0012_projection_runtime_role.sql",
+    "0013_durability_authority.sql",
+    "0014_durability_acceptance_finalization.sql",
+    "0015_durability_probe_role.sql",
+    "0016_durability_finalization_confirmation.sql",
+    "0017_durability_probe_schema_boundary.sql",
+    "0018_durability_probe_search_path.sql",
+    "0019_outbox_routine_health.sql",
+    "0020_recovery_roles.sql",
+    "0021_object_backup_anchor.sql",
+    "0022_restore_inventory.sql",
+    "0023_cp3c_privileges.sql",
+    "0024_catalog_authority.sql",
+    "0025_ticket_comment_event.sql",
+    "0026_fixed_operation_attempt_receipts.sql",
+    "0027_i17a_cutover_delivery.sql",
+    "0028_i17b_importer_isolation.sql",
+    "0029_i17b_checkpoint_catalog_kind.sql",
+    "0030_i17b_migration_truth_spine.sql",
+    "0031_i17b_bounded_truth_spine.sql",
+    "0032_thread_first_intake.sql",
+    "0033_development_offhost_ack.sql",
+    "0034_durability_finalizer_quarantine.sql",
+    "0035_board_source_lookup.sql",
+    "0036_migration_ledger_role.sql",
+    "0037_relax_checkpoint_key_domain.sql",
+    "0038_project_delivery_seat_carriage.sql",
+    "0039_project_seat_credentials.sql",
+    "0040_project_scoped_reads.sql",
+    "0041_recorded_work_sessions.sql",
+    "0042_checkpoint_delivery_surface.sql",
+    "0043_context_set_catalogs.sql",
+    "0044_ticket_change_and_label_facts.sql",
+    "0045_attention_findings.sql",
+]
+_EXPECTED_ADOPTION_BASELINE = {
+    "through": "0045_attention_findings.sql",
+    "schema_sha256": ("sha256:49fb02c1288d712afa969ba0a626b582ec515406b8b30ba08b25398355467b5c"),
+    "semantic_checks": "ctower.pre-ledger/v1",
+    "schema_object_sum256": (
+        "sum256:ca28b65a617c0ff60086c41c8b9d7e655792528e43cf2d37f20cc077ac538522"
+    ),
+}
 _DURABILITY_RECOVERY_CONTRACT = {
     "pre_migration_backup": {
         "isolated_recovery": True,
@@ -35,60 +90,9 @@ def test_migration_manifest_is_ordered_and_checksum_exact() -> None:
 
     assert set(manifest) == {"adoption_baseline", "migrations", "schema"}
     assert manifest["schema"] == "ctower.migrations/v3"
-    assert manifest["adoption_baseline"] == {
-        "through": "0041_recorded_work_sessions.sql",
-        "schema_sha256": (
-            "sha256:ad3f2248693670242dfeea80db39d9ad542caf83302e1ea7a24719444eaf58aa"
-        ),
-        "semantic_checks": "ctower.pre-ledger/v1",
-        "schema_object_sum256": (
-            "sum256:325deaeed7298f7c5f375a0e33403c8ffdea75cc4f1e9296039538f5f2f9615a"
-        ),
-    }
+    assert manifest["adoption_baseline"] == _EXPECTED_ADOPTION_BASELINE
     assert names == sorted(names)
-    assert names == [
-        "0001_roles.sql",
-        "0002_ticket_slice.sql",
-        "0003_privileges.sql",
-        "0004_proof_workflow.sql",
-        "0005_proof_verdict_sequence.sql",
-        "0006_narrow_head_update_privileges.sql",
-        "0007_task_management_facts.sql",
-        "0008_board_projection.sql",
-        "0009_transactional_record_positions.sql",
-        "0010_custody_episode_intervals.sql",
-        "0011_persisted_command_refusals.sql",
-        "0012_projection_runtime_role.sql",
-        "0013_durability_authority.sql",
-        "0014_durability_acceptance_finalization.sql",
-        "0015_durability_probe_role.sql",
-        "0016_durability_finalization_confirmation.sql",
-        "0017_durability_probe_schema_boundary.sql",
-        "0018_durability_probe_search_path.sql",
-        "0019_outbox_routine_health.sql",
-        "0020_recovery_roles.sql",
-        "0021_object_backup_anchor.sql",
-        "0022_restore_inventory.sql",
-        "0023_cp3c_privileges.sql",
-        "0024_catalog_authority.sql",
-        "0025_ticket_comment_event.sql",
-        "0026_fixed_operation_attempt_receipts.sql",
-        "0027_i17a_cutover_delivery.sql",
-        "0028_i17b_importer_isolation.sql",
-        "0029_i17b_checkpoint_catalog_kind.sql",
-        "0030_i17b_migration_truth_spine.sql",
-        "0031_i17b_bounded_truth_spine.sql",
-        "0032_thread_first_intake.sql",
-        "0033_development_offhost_ack.sql",
-        "0034_durability_finalizer_quarantine.sql",
-        "0035_board_source_lookup.sql",
-        "0036_migration_ledger_role.sql",
-        "0037_relax_checkpoint_key_domain.sql",
-        "0038_project_delivery_seat_carriage.sql",
-        "0039_project_seat_credentials.sql",
-        "0040_project_scoped_reads.sql",
-        "0041_recorded_work_sessions.sql",
-    ]
+    assert names == _EXPECTED_MIGRATION_PATHS
     for entry in entries:
         digest = hashlib.sha256((MIGRATIONS / entry["path"]).read_bytes()).hexdigest()
         assert entry["sha256"] == f"sha256:{digest}"

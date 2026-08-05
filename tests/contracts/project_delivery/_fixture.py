@@ -20,6 +20,7 @@ def project_delivery_row() -> dict[str, object]:
         "outcome": "The quarter close is approved and archived",
         "accountable_owner": "controller",
         "criteria": {"proven": 2, "declared": 3},
+        "delivery_surface": _undeclared_surface(),
         "qualifying_stage_slots_filled": 1,
         "qualifying_stage_slots_required": 3,
         "qualifying_stage_unfilled_or_unknown_slot_keys": [
@@ -45,6 +46,15 @@ def project_delivery_row() -> dict[str, object]:
             "slot_unknown:archive-proof",
             "underlying_maturity:verified",
         ],
+    }
+
+
+def _undeclared_surface() -> dict[str, object]:
+    undeclared_identity = {"state": "undeclared", "identity": None}
+    return {
+        "landing_boundary": undeclared_identity,
+        "non_production_environments": {"state": "undeclared", "environments": []},
+        "externally_effective_outcome": undeclared_identity,
     }
 
 

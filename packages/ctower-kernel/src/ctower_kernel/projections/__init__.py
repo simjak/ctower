@@ -2,6 +2,8 @@
 
 from ctower_kernel.projections.interface import (
     BoardCard,
+    BoardDeliverySurfaceAvailability,
+    BoardDeliverySurfaceState,
     BoardFacts,
     BoardLane,
     BoardQuery,
@@ -29,6 +31,8 @@ from ctower_kernel.projections.project_delivery import (
 
 __all__ = [
     "BoardCard",
+    "BoardDeliverySurfaceAvailability",
+    "BoardDeliverySurfaceState",
     "BoardFacts",
     "BoardLane",
     "BoardQuery",

@@ -11,11 +11,19 @@ from datetime import UTC, datetime
 from enum import StrEnum
 from uuid import UUID
 
+from ctower_kernel.record.attention_events import (
+    AttentionFindingAppendedPayload,
+    AttentionFindingDispositionRecordedPayload,
+)
 from ctower_kernel.record.catalog_events import (
     CatalogBundleActivatedPayload,
     CatalogComponentPublishedPayload,
     CatalogComponentReference,
     CatalogEventPayload,
+)
+from ctower_kernel.record.context_set_events import (
+    ChangeReferenceRecordedPayload,
+    LabelAppliedPayload,
 )
 from ctower_kernel.record.credentials import (
     SeatCredentialIssuedPayload,
@@ -93,6 +101,10 @@ class EventKind(StrEnum):
     SESSION_STARTED = "session.started"
     SESSION_TRANSITIONED = "session.transitioned"
     SESSION_CLOSED = "session.closed"
+    CHANGE_REFERENCE_RECORDED = "ticket.change_reference_recorded"
+    LABEL_APPLIED = "ticket.label_applied"
+    ATTENTION_FINDING_APPENDED = "attention.finding_appended"
+    ATTENTION_FINDING_DISPOSITION_RECORDED = "attention.finding_disposition_recorded"
 
 
 class EventOrigin(StrEnum):
@@ -316,6 +328,10 @@ type EventPayload = (
     | SeatCredentialIssuedPayload
     | SeatCredentialRevokedPayload
     | SessionEventPayload
+    | ChangeReferenceRecordedPayload
+    | LabelAppliedPayload
+    | AttentionFindingAppendedPayload
+    | AttentionFindingDispositionRecordedPayload
 )
 
 
@@ -487,6 +503,20 @@ _EVENT_CATALOG: dict[EventKind, EventCatalogEntry] = {
         ),
         EventCatalogEntry(
             EventKind.SESSION_CLOSED, SessionClosedPayload, _SESSION, session_fact=True
+        ),
+        EventCatalogEntry(
+            EventKind.CHANGE_REFERENCE_RECORDED, ChangeReferenceRecordedPayload, "ticket"
+        ),
+        EventCatalogEntry(EventKind.LABEL_APPLIED, LabelAppliedPayload, "ticket"),
+        EventCatalogEntry(
+            EventKind.ATTENTION_FINDING_APPENDED,
+            AttentionFindingAppendedPayload,
+            "attention-finding",
+        ),
+        EventCatalogEntry(
+            EventKind.ATTENTION_FINDING_DISPOSITION_RECORDED,
+            AttentionFindingDispositionRecordedPayload,
+            "attention-finding-disposition",
         ),
     )
 }

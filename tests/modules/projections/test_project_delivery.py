@@ -281,6 +281,9 @@ def _reconcile_connection(
         "accountable_owner": "fixture-owner",
         "applicable_states": [state.value for state in DeliveryState],
         "catalog_revision": "fixture-revision",
+        "landing_boundary": None,
+        "non_production_environments": None,
+        "externally_effective_outcome": None,
     }
     results = [
         _result(),

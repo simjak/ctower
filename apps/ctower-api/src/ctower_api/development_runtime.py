@@ -29,6 +29,8 @@ from ctower_api.synthetic_handler import SyntheticFourStageHandler, SyntheticPol
 from ctower_client import CtowerClient
 from ctower_kernel.attention import Attention
 from ctower_kernel.attention.postgres import PostgresAttention
+from ctower_kernel.board_context import BoardContextFacts
+from ctower_kernel.board_context.postgres import PostgresBoardContextFacts
 from ctower_kernel.catalog import PostgresCatalog
 from ctower_kernel.projections import Projections
 from ctower_kernel.projections.postgres import PostgresProjections
@@ -138,6 +140,7 @@ def api_main() -> None:
             ),
             projections=Projections(PostgresProjections(projection_dsn)),
             attention=Attention(PostgresAttention(runtime_dsn)),
+            board_context=BoardContextFacts(PostgresBoardContextFacts(runtime_dsn)),
             synthetic_runtime=FixedOperations(runtime_store),
             synthetic_revision=_synthetic_revision(revisions),
         ),

@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from collections.abc import Callable, Mapping
+from dataclasses import dataclass
 from datetime import datetime
 from typing import cast
 from uuid import UUID
@@ -11,10 +12,41 @@ import psycopg
 from psycopg import sql
 from psycopg.rows import dict_row
 
-from ctower_kernel.projections import BoardCard, BoardLane, BoardQuery, BoardView, ProjectionHealth
+from ctower_kernel.projections import (
+    BoardCard,
+    BoardDeliverySurfaceAvailability,
+    BoardDeliverySurfaceState,
+    BoardLane,
+    BoardQuery,
+    BoardView,
+    ProjectionHealth,
+)
+from ctower_kernel.projections import _board_context_sql as _context
+from ctower_kernel.projections.interface import (
+    AppliedLabel,
+    ChangeReference,
+    HumanWaiting,
+    HumanWaitingState,
+    TenantDisplayIdentity,
+)
 from ctower_kernel.record.events import EventKind
 
 __all__: tuple[str, ...] = ()
+
+_NOT_WAITING = HumanWaiting(HumanWaitingState.NOT_WAITING)
+_NO_QUALIFYING_CHECKPOINT = BoardDeliverySurfaceAvailability(
+    BoardDeliverySurfaceState.NO_QUALIFYING_CHECKPOINT
+)
+
+
+@dataclass(frozen=True, slots=True)
+class _ContextSets:
+    tenant_display_identity: TenantDisplayIdentity
+    change_references: dict[UUID, tuple[ChangeReference, ...]]
+    applied_labels: dict[UUID, tuple[AppliedLabel, ...]]
+    human_waiting: dict[UUID, HumanWaiting]
+    delivery_surface: dict[UUID, BoardDeliverySurfaceAvailability]
+
 
 _FoldHandler = Callable[
     [psycopg.Connection[dict[str, object]], UUID, dict[str, object], dict[str, object], int],
@@ -82,6 +114,7 @@ def read_view(dsn: str, tenant_id: UUID, query: BoardQuery | None, *, source: in
             """,
             (tenant_id, project_key, project_key),
         ).fetchone()
+        context = _read_context_sets(connection, tenant_id, rows)
     global_projection = _cursor_position(cursor)
     view_source, projection = _scoped_watermarks(
         project_key,
@@ -101,7 +134,7 @@ def read_view(dsn: str, tenant_id: UUID, query: BoardQuery | None, *, source: in
         expected_cards=expected_cards,
     )
     return BoardView(
-        cards=_matching_cards(rows, query),
+        cards=_matching_cards(rows, query, context),
         health=ProjectionHealth.CURRENT if current else ProjectionHealth.STATE_UNKNOWN,
         source_watermark=view_source,
         projection_watermark=projection,
@@ -146,10 +179,27 @@ def _is_current(
     )
 
 
+def _read_context_sets(
+    connection: psycopg.Connection[dict[str, object]],
+    tenant_id: UUID,
+    rows: list[dict[str, object]],
+) -> _ContextSets:
+    ticket_ids = tuple(cast(UUID, row["ticket_id"]) for row in rows)
+    return _ContextSets(
+        tenant_display_identity=_context.tenant_display_identity(connection, tenant_id),
+        change_references=_context.change_references_by_ticket(connection, tenant_id, ticket_ids),
+        applied_labels=_context.applied_labels_by_ticket(connection, tenant_id, ticket_ids),
+        human_waiting=_context.human_waiting_by_ticket(connection, tenant_id, ticket_ids),
+        delivery_surface=_context.delivery_surface_by_ticket(connection, tenant_id, ticket_ids),
+    )
+
+
 def _matching_cards(
-    rows: list[dict[str, object]], query: BoardQuery | None
+    rows: list[dict[str, object]], query: BoardQuery | None, context: _ContextSets
 ) -> tuple[BoardCard, ...]:
-    cards = tuple(_card(row) for row in rows if query is None or _matches_source(row, query))
+    cards = tuple(
+        _card(row, context) for row in rows if query is None or _matches_source(row, query)
+    )
     return tuple(card for card in cards if query is None or _matches(card, query))
 
 
@@ -446,10 +496,11 @@ def _update_card(
     connection.execute(query, (*values, position, tenant_id, ticket_id))
 
 
-def _card(row: dict[str, object]) -> BoardCard:
+def _card(row: dict[str, object], context: _ContextSets) -> BoardCard:
     delivery = cast(list[object], row["delivery_facts"])
+    ticket_id = cast(UUID, row["ticket_id"])
     return BoardCard(
-        ticket_id=cast(UUID, row["ticket_id"]),
+        ticket_id=ticket_id,
         project_key=str(row["project_key"]),
         title=str(row["title"]),
         lane=BoardLane(str(row["lane"])),
@@ -466,6 +517,13 @@ def _card(row: dict[str, object]) -> BoardCard:
         risk=cast(str | None, row["risk"]),
         delivery_facts=tuple(str(item) for item in delivery),
         version=int(cast(int, row["ticket_version"])),
+        tenant_display_identity=context.tenant_display_identity,
+        change_references=context.change_references.get(ticket_id, ()),
+        applied_labels=context.applied_labels.get(ticket_id, ()),
+        human_waiting=context.human_waiting.get(ticket_id, _NOT_WAITING),
+        delivery_surface_availability=context.delivery_surface.get(
+            ticket_id, _NO_QUALIFYING_CHECKPOINT
+        ),
     )
 
 
