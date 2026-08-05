@@ -158,6 +158,30 @@ def test_replace_keeps_old_runtime_when_swap_is_interrupted(
     assert _replacement_homes() == []
 
 
+def test_replace_keeps_retained_predecessor_when_swap_is_interrupted(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    inputs = _runtime_fixture(monkeypatch, tmp_path)
+    _replace(inputs)
+    _assert_runtime_version(current="new", previous="old")
+
+    inputs.manifest.write_text('{"version": "newer"}\n', encoding="utf-8")
+    _write_toolchain(inputs.python, tmp_path / "uv", entrypoint_exit=0, version="newer")
+    monkeypatch.setattr(
+        installation,
+        "_exchange_paths",
+        lambda *_args: (_ for _ in ()).throw(
+            OSError("injected swap interruption before renameat2")
+        ),
+    )
+
+    with pytest.raises(OSError, match="swap interruption"):
+        _replace(inputs)
+
+    _assert_runtime_version(current="new", previous="old")
+    assert len(_replacement_homes()) == 1
+
+
 def test_replace_executes_entrypoint_before_atomic_swap_and_rolls_back(
     monkeypatch: pytest.MonkeyPatch, tmp_path: Path
 ) -> None:
