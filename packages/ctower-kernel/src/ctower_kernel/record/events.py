@@ -35,6 +35,7 @@ from ctower_kernel.record.intake_events import (
     IntakeEventPayload,
 )
 from ctower_kernel.record.migration_events import MigrationChangedPayload
+from ctower_kernel.record.poison_events import PoisonDispositionRecordedPayload
 from ctower_kernel.record.session_events import (
     SessionClosedPayload,
     SessionEventPayload,
@@ -281,34 +282,6 @@ def _validate_routine_occurrence_decision(payload: RoutineOccurrenceRecordedPayl
         raise ValueError("nonexistent Routine civil time must be visibly skipped")
     if (payload.outcome == "queued") != (payload.job_id is not None):
         raise ValueError("only a queued Routine occurrence carries a fixed job")
-
-
-@dataclass(frozen=True, slots=True)
-class PoisonDispositionRecordedPayload:
-    outbox_id: UUID
-    consumer_key: str
-    topic: str
-    action: str
-    reason: str
-
-    def __post_init__(self) -> None:
-        _require_uuid_fields(self, ("outbox_id",))
-        if _STABLE_KEY.fullmatch(self.consumer_key) is None:
-            raise ValueError("poison consumer key is outside the authored event contract")
-        if _STABLE_KEY.fullmatch(self.topic) is None:
-            raise ValueError("poison topic is outside the authored event contract")
-        if self.action not in {"retry", "tombstone"}:
-            raise ValueError("poison action is outside the authored event contract")
-        _bounded("reason", self.reason, minimum=1, maximum=500)
-
-    def to_mapping(self) -> dict[str, object]:
-        return {
-            "action": self.action,
-            "consumer_key": self.consumer_key,
-            "outbox_id": str(self.outbox_id),
-            "reason": self.reason,
-            "topic": self.topic,
-        }
 
 
 type EventPayload = (
