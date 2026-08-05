@@ -1,6 +1,6 @@
 """DO NOT EDIT: generated file; regenerate from declared inputs.
 
-Authored contract digest: sha256:d00b8f09df904b386fb961880d89046e3ee6e1f426ff317118ee8dc50738eb8c
+Authored contract digest: sha256:b6f186fea835671be5435034ff923a159509771497f5452972eb99d434f8a153
 """
 
 from __future__ import annotations
@@ -1632,6 +1632,7 @@ class Problem(_BoundaryModel):
         "bundle-schema-invalid",
         "bundle-security-refused",
         "credential-already-revoked",
+        "credential-authentication-unavailable",
         "credential-digest-conflict",
         "credential-issuance-refused",
         "credential-revocation-refused",
