@@ -29,6 +29,7 @@
     "ctower.ctower-project-source-selection/v1": "contracts/domain/migration/ctower-project-source-selection.schema.json",
     "ctower.environment/v1": "contracts/components/environment.schema.json",
     "ctower.evidence-manifest/v1": "contracts/evidence/evidence-manifest.schema.json",
+    "ctower.evidence-manifest/v2": "contracts/evidence/evidence-manifest-v2.schema.json",
     "ctower.evidence-policy/v1": "contracts/execution/evidence-policy.schema.json",
     "ctower.execution-policy/v1": "contracts/execution/execution-policy.schema.json",
     "ctower.gate-policy/v1": "contracts/execution/gate-policy.schema.json",
@@ -94,6 +95,7 @@
     "https://ctower.dev/contracts/runtime/operation-job.schema.json": "contracts/runtime/operation-job.schema.json",
     "https://ctower.dev/contracts/runtime/routine-occurrence.schema.json": "contracts/runtime/routine-occurrence.schema.json",
     "https://ctower.dev/contracts/runtime/routine.schema.json": "contracts/runtime/routine.schema.json",
+    "https://ctower.invalid/contracts/evidence/evidence-manifest-v2.schema.json": "contracts/evidence/evidence-manifest-v2.schema.json",
     "https://ctower.invalid/contracts/evidence/evidence-manifest.schema.json": "contracts/evidence/evidence-manifest.schema.json",
     "https://ctower.invalid/contracts/execution/evidence-policy.schema.json": "contracts/execution/evidence-policy.schema.json",
     "https://ctower.invalid/contracts/execution/execution-policy.schema.json": "contracts/execution/execution-policy.schema.json",
@@ -10018,6 +10020,227 @@
       "title": "TicketEventPayload",
       "type": "object"
     },
+    "contracts/evidence/evidence-manifest-v2.schema.json": {
+      "$comment": "DECISIONS.md D37 (gh#174): /v2 publishes evidence-manifest.schema.json's first incompatible successor. It drops the manifest-level verdict_ids roster and instead binds verdict_id and candidate_digest onto each criterionDisposition row, so a row's evidence is traceable to the exact verdict and the exact candidate digest that produced it, matching evidence_policy.candidate_binding: current_digest at the row level. /v1 stays committed, unedited, and locked to its own recorded shape digest by tests/contracts/evidence/test_evidence_manifest.py::TestSchemaVersioningDiscipline; this file is that same test's lock target for schema.const ctower.evidence-manifest/v2. title/description/$comment stay free to edit.",
+      "$defs": {
+        "acceptanceCriterionCode": {
+          "pattern": "^AC-[A-Z0-9]+-[0-9]{2}$",
+          "type": "string"
+        },
+        "criterionDisposition": {
+          "additionalProperties": false,
+          "allOf": [
+            {
+              "if": {
+                "properties": {
+                  "criterion_source": {
+                    "const": "gate-policy"
+                  }
+                },
+                "required": [
+                  "criterion_source"
+                ]
+              },
+              "then": {
+                "properties": {
+                  "criterion_key": {
+                    "$ref": "#/$defs/gatePolicyCriterionKey"
+                  }
+                }
+              }
+            },
+            {
+              "if": {
+                "properties": {
+                  "criterion_source": {
+                    "const": "acceptance-criterion"
+                  }
+                },
+                "required": [
+                  "criterion_source"
+                ]
+              },
+              "then": {
+                "properties": {
+                  "criterion_key": {
+                    "$ref": "#/$defs/acceptanceCriterionCode"
+                  }
+                }
+              }
+            }
+          ],
+          "properties": {
+            "candidate_digest": {
+              "$ref": "#/$defs/sha256"
+            },
+            "criterion_key": {
+              "minLength": 1,
+              "type": "string"
+            },
+            "criterion_source": {
+              "$ref": "#/$defs/criterionSource"
+            },
+            "disposition": {
+              "$ref": "#/$defs/disposition"
+            },
+            "environment": {
+              "minLength": 1,
+              "type": "string"
+            },
+            "owner": {
+              "$ref": "#/$defs/ownerTicket"
+            },
+            "proof_digest": {
+              "$ref": "#/$defs/sha256"
+            },
+            "reason": {
+              "minLength": 1,
+              "type": "string"
+            },
+            "source_sha": {
+              "minLength": 1,
+              "type": "string"
+            },
+            "verdict_id": {
+              "format": "uuid",
+              "type": "string"
+            },
+            "verifier": {
+              "format": "uuid",
+              "type": "string"
+            }
+          },
+          "required": [
+            "criterion_source",
+            "criterion_key",
+            "disposition",
+            "reason",
+            "owner",
+            "source_sha",
+            "environment",
+            "proof_digest",
+            "verifier",
+            "verdict_id",
+            "candidate_digest"
+          ],
+          "type": "object"
+        },
+        "criterionSource": {
+          "enum": [
+            "gate-policy",
+            "acceptance-criterion"
+          ],
+          "type": "string"
+        },
+        "deferredSuite": {
+          "additionalProperties": false,
+          "properties": {
+            "reason": {
+              "minLength": 1,
+              "type": "string"
+            },
+            "source_count": {
+              "const": 0
+            },
+            "status": {
+              "const": "not_exercised"
+            },
+            "suite_id": {
+              "$ref": "#/$defs/suiteId"
+            }
+          },
+          "required": [
+            "suite_id",
+            "status",
+            "source_count",
+            "reason"
+          ],
+          "type": "object"
+        },
+        "disposition": {
+          "enum": [
+            "applicable",
+            "satisfied_by_superseding_evidence",
+            "deferred",
+            "failed"
+          ],
+          "type": "string"
+        },
+        "gatePolicyCriterionKey": {
+          "pattern": "^[a-z][a-z0-9.-]{2,127}$",
+          "type": "string"
+        },
+        "ownerTicket": {
+          "pattern": "^ct-(?:l0|i[1-9][0-9]*)-[0-9]{3}$",
+          "type": "string"
+        },
+        "sha256": {
+          "pattern": "^sha256:[0-9a-f]{64}$",
+          "type": "string"
+        },
+        "suiteId": {
+          "pattern": "^[a-z][a-z0-9-]{2,63}$",
+          "type": "string"
+        }
+      },
+      "$id": "https://ctower.invalid/contracts/evidence/evidence-manifest-v2.schema.json",
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "additionalProperties": false,
+      "description": "Development-only CP-1 typed evidence denominator. The criterion denominator is what this increment owes: the criteria frozen by the authored gate policies plus every acceptance criterion SPEC.md declares, and each one carries exactly one typed disposition, its own verdict id, and its own candidate-digest binding. The generated traceability index is a coverage map, not a source of obligations, and is not read. The deferred denominator is the deferred suites of the expected-suite registry; capability components are not a denominator source, so an exercised capability is never forced to declare itself unexercised. Gate-policy criterion keys, acceptance-criterion codes and suite ids each keep their own namespace.",
+      "properties": {
+        "candidate_digest": {
+          "$ref": "#/$defs/sha256"
+        },
+        "criteria": {
+          "$comment": "uniqueItems refuses an identical repeated row. JSON Schema 2020-12 cannot express uniqueness by key, so a repeated criterion carrying a different payload is refused by name at the criterion chokepoint in tests/contracts/evidence.",
+          "items": {
+            "$ref": "#/$defs/criterionDisposition"
+          },
+          "minItems": 1,
+          "type": "array",
+          "uniqueItems": true
+        },
+        "criteria_revision": {
+          "minimum": 1,
+          "type": "integer"
+        },
+        "deferred_suites": {
+          "$comment": "minItems refuses an empty deferred roster while the expected-suite registry still defers a suite; uniqueItems refuses an identical repeated row. A repeated suite id carrying a different payload is refused by name at the deferred-suite chokepoint in tests/contracts/evidence.",
+          "items": {
+            "$ref": "#/$defs/deferredSuite"
+          },
+          "minItems": 1,
+          "type": "array",
+          "uniqueItems": true
+        },
+        "schema": {
+          "const": "ctower.evidence-manifest/v2"
+        },
+        "status": {
+          "const": "development_only"
+        },
+        "tenant_id": {
+          "format": "uuid",
+          "type": "string"
+        },
+        "ticket_id": {
+          "format": "uuid",
+          "type": "string"
+        }
+      },
+      "required": [
+        "schema",
+        "status",
+        "tenant_id",
+        "ticket_id",
+        "candidate_digest",
+        "criteria_revision",
+        "criteria",
+        "deferred_suites"
+      ],
+      "title": "EvidenceManifestConsumerSubset v2",
+      "type": "object"
+    },
     "contracts/evidence/evidence-manifest.schema.json": {
       "$comment": "DECISIONS.md D37 (gh#175): this v1 shape absorbed several unversioned incompatible edits during PR #171's review (artifacts->criteria, deferred_sources->deferred_capabilities->deferred_suites, criterionDisposition's required set and key patterns) before any consumer existed. Its normative shape (required/properties/$defs) is now locked to schema.const by tests/contracts/evidence/test_evidence_manifest.py::TestSchemaVersioningDiscipline; a future incompatible change (gh#174 included) publishes a new evidence-manifest-v2.schema.json with $id/schema.const bumped to /v2, per the contracts/domain/migration/*-v2.schema.json precedent, and never edits this file's normative shape in place. title/description/$comment stay free to edit.",
       "$defs": {
@@ -12914,6 +13137,11 @@
       "id": "https://ctower.dev/contracts/domain/tickets/ticket-event.schema.json",
       "path": "contracts/domain/tickets/ticket-event.schema.json",
       "sha256": "sha256:4524d9f0d807ba90b2524e7c9a679069fdd917b7adff7b478ae028bf8b2a9ba1"
+    },
+    {
+      "id": "https://ctower.invalid/contracts/evidence/evidence-manifest-v2.schema.json",
+      "path": "contracts/evidence/evidence-manifest-v2.schema.json",
+      "sha256": "sha256:81eb6dc99f57a3c6ddd200b42af28359757dd275641e369f7423082f959fa170"
     },
     {
       "id": "https://ctower.invalid/contracts/evidence/evidence-manifest.schema.json",

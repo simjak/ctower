@@ -44,6 +44,18 @@
       ]
     },
     {
+      "path": "contracts/evidence/evidence-manifest-v2.schema.json",
+      "references": [
+        "SPEC#test-and-evidence-matrix",
+        "SPEC#durable-job-run-evidence-gate-and-effect-sequence",
+        "INV-16",
+        "INV-18",
+        "AC-DUR-05",
+        "AC-EVD-01",
+        "AC-EVD-06"
+      ]
+    },
+    {
       "path": "contracts/evidence/object-manifest.schema.json",
       "references": [
         "SPEC#retention-erasure-backup-and-restore",
