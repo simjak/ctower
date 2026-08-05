@@ -1,6 +1,6 @@
 """DO NOT EDIT: generated file; regenerate from declared inputs.
 
-Authored contract digest: sha256:b6f186fea835671be5435034ff923a159509771497f5452972eb99d434f8a153
+Authored contract digest: sha256:48887e6455e99650ab296dbc75dc7faf312a6fb3fe72e1937024d1ee6b95b446
 """
 
 from __future__ import annotations
@@ -130,6 +130,8 @@ __all__ = [
     "ProjectDeliverySlot",
     "ProjectDeliveryUnassignedSeatAssignment",
     "ProjectDeliveryView",
+    "ProjectEvent",
+    "ProjectEventPage",
     "ProjectSessionPage",
     "ProjectionHealth",
     "ProofChangedAuditEvent",
@@ -2319,6 +2321,9 @@ class ProjectDeliveryRow(_BoundaryModel):
     derivation_reasons: Annotated[tuple[Annotated[str, Field(min_length=1)], ...], Field(min_length=1)]
 
 
+type ProjectEvent = TicketCreatedAuditEvent | CustodyTransferredAuditEvent | TicketCommentAddedAuditEvent | WorkChangedAuditEvent | WorkflowChangedAuditEvent | ProofChangedAuditEvent
+
+
 class AuditPage(_BoundaryModel):
     events: tuple[AuditEvent, ...]
     next_cursor: Annotated[int, Field(ge=1, le=9007199254740991)] | None
@@ -2355,3 +2360,9 @@ class ProjectDeliveryView(_BoundaryModel):
     projection_semantic_digest: Annotated[str, Field(pattern="^sha256:[0-9a-f]{64}$")]
     rebuild_generation: Annotated[int, Field(ge=0, le=9007199254740991)]
     rows: tuple[ProjectDeliveryRow, ...]
+
+
+class ProjectEventPage(_BoundaryModel):
+    events: tuple[ProjectEvent, ...]
+    next_cursor: Annotated[int, Field(ge=1, le=9007199254740991)] | None
+    project_key: Annotated[str, Field(pattern="^[a-z][a-z0-9-]{2,63}$")]
