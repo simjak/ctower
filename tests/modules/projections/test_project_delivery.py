@@ -256,7 +256,6 @@ def _reconcile_connection(
                 "blocked_outbox_id": None,
             }
         ),
-        _result(rows=[{"event_id": event_id}]),
         _result(row={"value": 0}),
         _result(row=None),
         _result(row={"due": None}),
