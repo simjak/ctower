@@ -1,5 +1,10 @@
 # Quickstart
 
+**Already dogfooding on this box?** No checkout, no `--base-url`: once the private-VPS runtime has run
+`ctower-private-vps expose-cli`, `ctowerctl`/`ctl`/`ctower-shadow-ctl` are on `PATH` and resolve their
+instance from `~/.config/ctower/cli-instances.json` — run `ctower-shadow-ctl ticket query TICKET_ID` from
+any directory. Skip to [What the commands look like](#6-what-the-commands-look-like).
+
 By the end of this page you will have a verified checkout and you will have watched one ticket travel the
 complete four-stage lifecycle — capture, frame, verify, close — against a real PostgreSQL 17 database,
 ending in the immutable facts `resolved` and `closed`.
@@ -125,6 +130,11 @@ The private-VPS E2 shadow runtime drives work through the same `ctowerctl` inter
 `ctowerctl` and `ctl`, with a local `ctower-shadow-ctl` secret-reference wrapper). The shapes below are
 exact — every flag is checked against `apps/ctowerctl/src/ctowerctl/_parser.py` — but they remain
 development-only examples, not a stable external API.
+
+`--base-url` is explicit below so every shape is self-contained, but it is optional: omit it and the CLI
+resolves the one instance declared in `~/.config/ctower/cli-instances.json` (written by
+`ctower-private-vps expose-cli`, never an environment variable). Zero or more than one declared instance
+refuses by name — usage exit `64` — instead of guessing.
 
 Authority is always one line on stdin, never an argument or an environment variable:
 

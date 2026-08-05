@@ -24,7 +24,7 @@
         },
         {
           "path": "tools/checks/_impl/generated_inventory.py",
-          "sha256": "sha256:f1984c3d3829bd9f800d515e70cf9647ef35cceb0e9fd8915a1b8bdb518f2217"
+          "sha256": "sha256:86f11def9193a6b984a89ff2247eb55220f5ef6ba623ecbcd574327119bf4f52"
         },
         {
           "path": "tools/checks/_impl/traceability.py",

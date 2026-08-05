@@ -41,6 +41,7 @@ from ctowerctl._output import (
     write_text,
 )
 from ctowerctl._parser import parse_arguments
+from ctowerctl.discovery import DiscoveryError, resolve_base_url
 from ctowerctl.spool import Spool, SpoolCommand, SpoolEntry, SpoolError, SpoolState
 
 __all__ = ["main", "write_result"]
@@ -66,6 +67,12 @@ def main(
     except (TypeError, ValueError):
         error_stream.write("usage: invalid command input or missing stdin authority\n")
         return int(ExitCode.USAGE)
+    if arguments.base_url is None:
+        try:
+            arguments.base_url = resolve_base_url()
+        except DiscoveryError as error:
+            error_stream.write(f"usage: {error}\n")
+            return int(ExitCode.USAGE)
     return _run_command(arguments, input_stream, output_stream, error_stream)
 
 

@@ -129,7 +129,7 @@ def authored_command_names() -> frozenset[str]:
 
 def _parser() -> argparse.ArgumentParser:
     parser = _Parser(prog="ctowerctl", allow_abbrev=False)
-    parser.add_argument("--base-url", required=True, type=_safe_base_url)
+    parser.add_argument("--base-url", required=False, default=None, type=_safe_base_url)
     areas = parser.add_subparsers(dest="area", required=True, parser_class=_Parser)
     _bootstrap_parser(areas.add_parser("bootstrap"))
     _credential_parser(areas.add_parser("credential"))

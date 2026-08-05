@@ -32,8 +32,16 @@ def enumerate_generated_outputs(root: Path, output_root: str, manifest_path: str
     inventory: set[str] = set()
     for candidate in candidates:
         relative = PurePosixPath(candidate.relative_to(canonical_root).as_posix())
+        if _is_bytecode_artifact(relative):
+            continue
         _record_candidate(inventory, candidate, relative, manifest_relative)
     return frozenset(inventory)
+
+
+def _is_bytecode_artifact(relative: PurePosixPath) -> bool:
+    """Codegen never owns interpreter bytecode; the inventory must not see it either."""
+
+    return "__pycache__" in relative.parts or relative.suffix == ".pyc"
 
 
 def _record_candidate(
