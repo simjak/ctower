@@ -42,6 +42,23 @@ class GeneratedInventoryTests(unittest.TestCase):
 
             self._assert_inventory_error(report, relative)
 
+    def test_bytecode_under_generated_is_not_inventory(self) -> None:
+        with self._repository() as root:
+            output = root / "generated/nested/output.py"
+            output.parent.mkdir()
+            output.write_text("VALUE = 1\n", encoding="utf-8")
+            self._write_manifest(root, (("first", (output,)),))
+            pycache = root / "generated/__pycache__"
+            pycache.mkdir()
+            (pycache / "x.pyc").write_bytes(b"\x00")
+            nested_pycache = root / "generated/nested/__pycache__"
+            nested_pycache.mkdir()
+            (nested_pycache / "output.cpython-312.pyc").write_bytes(b"\x00")
+
+            report = verify(root, "full")
+
+        self.assertTrue(report.ok, report.findings)
+
     def test_output_path_cannot_be_owned_by_multiple_artifacts(self) -> None:
         with self._repository() as root:
             output = root / "generated/output.py"

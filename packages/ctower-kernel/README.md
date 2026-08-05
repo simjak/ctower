@@ -10,7 +10,9 @@ invalidation; explicitly pinned legal graph movement plus proof-gated atomic res
 every current-episode ownership interval; and a disposable six-lane
 Board fold over accepted outbox records; immutable delivery attempts, poison, deduplicated Attention findings,
 canonical acceptance-gated recovery dispositions; fixed Routine occurrences/jobs with event/result/outbox
-lineage; and independently attributable health.
+lineage; independently attributable health; and a project-scoped typed event feed whose exact kind set is
+derived from the authoritative event catalog's `project_feed` column, reusing the same `event_links`
+subject join `ticket_audit` already proves rather than a second query shape.
 
 Record is the lower append Interface and depends only on Telemetry. Work, Proof, and Workflow each own their
 SQL implementation and depend downward on Record; Workflow imports neither Work nor Proof. Composition

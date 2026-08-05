@@ -3,6 +3,15 @@
 The `ctl`/`ctowerctl` wheel is a verified development artifact. It is not published, and this page is not a
 production install or operations procedure. Use only synthetic data and a disposable verifier API.
 
+## Instance discovery
+
+`--base-url` is optional. Omit it and the CLI resolves the one instance declared in the owner-only
+`~/.config/ctower/cli-instances.json` catalog — never an environment variable. `ctower-private-vps
+expose-cli` writes that catalog from the installed runtime's own configuration and links `ctowerctl`, `ctl`,
+and `ctower-shadow-ctl` onto `~/.local/bin`. A catalog with zero or with more than one declared instance
+both refuse by name — usage exit `64` — rather than guessing; pass `--base-url` explicitly to reach a
+different instance or to disambiguate.
+
 ## Security prerequisites
 
 All commands read one bounded authority line from stdin. Spoolable mutations — the ones whose generated
@@ -49,13 +58,15 @@ falling back to a default.
 
 Every non-bootstrap mutation carries a command ID. `ticket capture`, `ticket create`, and `synthetic run`
 generate one client-side when it is omitted; other mutations require `--command-id`. A successful read or
-accepted mutation exits `0`.
+accepted mutation exits `0`, with one exception: `control health` exits non-zero whenever its reported
+`status` is not `HEALTHY`, even though the read itself succeeded — an absence of observations must never
+look like a healthy system.
 Other stable exits are:
 
 | Exit | Meaning |
 |---:|---|
 | `64` | Invalid command or bounded input |
-| `69` | Permanent server rejection or quarantine barrier |
+| `69` | Permanent server rejection, quarantine barrier, or a `DEGRADED`/`STATE_UNKNOWN` `control health` result |
 | `74` | Local spool, keyring, filesystem, or integrity failure |
 | `75` | Durably queued, temporarily unreachable, or server `durability_pending` |
 

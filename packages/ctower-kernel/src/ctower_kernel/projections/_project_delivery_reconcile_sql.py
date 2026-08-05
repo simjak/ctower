@@ -99,7 +99,7 @@ def _reconcile(
         project_definitions = [row for row in definitions if str(row["project_key"]) == project_key]
         event_ids = tuple(cast(UUID, row["event_id"]) for row in project_definitions)
         source = _source_position(connection, tenant_id, project_key, event_ids)
-        complete = _source_complete(connection, tenant_id, definitions, source)
+        complete = _source_complete(connection, tenant_id, project_definitions, source)
         projection = source if complete else _prior_projection(connection, tenant_id, project_key)
         project_states.append((project_key, project_definitions, source, complete, projection))
     generation = (
