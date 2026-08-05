@@ -1,5 +1,5 @@
 // DO NOT EDIT: generated file; regenerate from declared inputs.
-// Authored contract digest: sha256:48887e6455e99650ab296dbc75dc7faf312a6fb3fe72e1937024d1ee6b95b446
+// Authored contract digest: sha256:d958a8bba3c1a8a189d56a61fc4ae03c4cf42130faedd8bffa32efcd799a0d86
 
 export type ActivityClass = "work" | "verification";
 
@@ -12,6 +12,39 @@ export type AdmitIntent = Readonly<{
 export type AdmittedAuditData = Readonly<{
   readonly "episode_number": number;
   readonly "reason": string;
+}>;
+
+export type AppendFindingRequest = Readonly<{
+  readonly "alternatives": ReadonlyArray<string>;
+  readonly "consequence": string;
+  readonly "deadline": string | null;
+  readonly "dedupe_key": string;
+  readonly "effective_owner": "operator" | "commander";
+  readonly "kind_key": string;
+  readonly "reason_code": string;
+  readonly "recommendation": string;
+  readonly "source_facts": ReadonlyArray<string>;
+  readonly "subject_ticket_id": string;
+}>;
+
+export type AppliedLabel = Readonly<{
+  readonly "applied_at": string;
+  readonly "label": string;
+  readonly "label_key": string;
+  readonly "vocabulary_revision": number;
+}>;
+
+export type ApplyLabelRequest = Readonly<{
+  readonly "label_key": string;
+}>;
+
+export type ApplyLabelResult = Readonly<{
+  readonly "command_id": string;
+  readonly "durability_state": DurabilityState;
+  readonly "event_id": string;
+  readonly "label_key": string;
+  readonly "ticket_id": string;
+  readonly "ticket_label_id": string;
 }>;
 
 export type AssignmentChangeRequest = Readonly<{
@@ -47,6 +80,14 @@ export type AssignmentKind = "ticket_custodian" | "current_assignee" | "stage_ow
 export type AssignmentList = Readonly<{
   readonly "assignments": ReadonlyArray<AssignmentInterval>;
   readonly "ticket_id": string;
+}>;
+
+export type AttentionFindingResult = Readonly<{
+  readonly "command_id": string;
+  readonly "durability_state": DurabilityState;
+  readonly "event_ids": ReadonlyArray<string>;
+  readonly "finding_id": string;
+  readonly "recorded_at": string;
 }>;
 
 export type AuditEvent = TicketCreatedAuditEvent | CustodyTransferredAuditEvent | TicketCommentAddedAuditEvent | WorkChangedAuditEvent | WorkflowChangedAuditEvent | ProofChangedAuditEvent | SessionStartedAuditEvent | SessionTransitionedAuditEvent | SessionClosedAuditEvent;
@@ -87,17 +128,22 @@ export type BlockerResolvedAuditData = Readonly<{
 
 export type BoardCard = Readonly<{
   readonly "activity_class": "work" | "verification" | null;
+  readonly "applied_labels": ReadonlyArray<AppliedLabel>;
   readonly "assignee_id": string | null;
   readonly "blocker_opened_at": string | null;
   readonly "blocker_reason": string | null;
+  readonly "change_references": ReadonlyArray<ChangeReference>;
   readonly "custodian_id": string;
   readonly "delivery_facts": ReadonlyArray<string>;
+  readonly "delivery_surface_availability": DeliverySurfaceAvailability;
+  readonly "human_waiting": HumanWaiting;
   readonly "lane": BoardLane;
   readonly "priority": Priority;
   readonly "project_key": string;
   readonly "risk": string | null;
   readonly "stage_key": string | null;
   readonly "stage_label": string | null;
+  readonly "tenant_display_identity": TenantDisplayIdentity;
   readonly "ticket_id": string;
   readonly "title": string;
   readonly "underlying_lane": "backlog" | "ready" | "in_progress" | "in_review" | "complete" | null;
@@ -143,6 +189,27 @@ export type BundleActionKind = "create" | "reuse_exact" | "supersede" | "depreca
 export type BundleCheck = Readonly<{
   readonly "code": string;
   readonly "status": "passed" | "warning";
+}>;
+
+export type ChangeReference = Readonly<{
+  readonly "change_identity": string;
+  readonly "recorded_at": string;
+  readonly "reference": string;
+  readonly "repository": string;
+}>;
+
+export type ChangeReferenceRequest = Readonly<{
+  readonly "change_identity": string;
+  readonly "reference": string;
+  readonly "repository": string;
+}>;
+
+export type ChangeReferenceResult = Readonly<{
+  readonly "change_reference_id": string;
+  readonly "command_id": string;
+  readonly "durability_state": DurabilityState;
+  readonly "event_id": string;
+  readonly "ticket_id": string;
 }>;
 
 export type CompanyBundleApplyRequest = Readonly<{
@@ -537,6 +604,20 @@ export type DeferredAuditData = Readonly<{
   readonly "review_after": string;
 }>;
 
+export type DeliverySurfaceAvailability = DeliverySurfaceAvailabilityNoQualifyingCheckpoint | DeliverySurfaceAvailabilityQualifyingCheckpoint;
+
+export type DeliverySurfaceAvailabilityNoQualifyingCheckpoint = Readonly<{
+  readonly "state": "no_qualifying_checkpoint";
+}>;
+
+export type DeliverySurfaceAvailabilityQualifyingCheckpoint = Readonly<{
+  readonly "checkpoint_key": string;
+  readonly "externally_effective_outcome": SurfaceIdentityField;
+  readonly "landing_boundary": SurfaceIdentityField;
+  readonly "non_production_environments": SurfaceEnvironmentsField;
+  readonly "state": "qualifying_checkpoint";
+}>;
+
 export type DurabilityState = "durability_pending" | "accepted";
 
 export type EvidenceRequest = Readonly<{
@@ -546,6 +627,20 @@ export type EvidenceRequest = Readonly<{
   readonly "criterion_key": string;
   readonly "evidence_id": string;
   readonly "expected_version": number;
+}>;
+
+export type FindingDispositionRequest = Readonly<{
+  readonly "outcome": "resolved" | "snoozed" | "expired" | "superseded" | "cancelled";
+  readonly "reason": string;
+}>;
+
+export type FindingDispositionResult = Readonly<{
+  readonly "command_id": string;
+  readonly "durability_state": DurabilityState;
+  readonly "event_ids": ReadonlyArray<string>;
+  readonly "finding_id": string;
+  readonly "outcome": "resolved" | "snoozed" | "expired" | "superseded" | "cancelled";
+  readonly "recorded_at": string;
 }>;
 
 export type FreezeCriteriaRequest = Readonly<{
@@ -572,6 +667,19 @@ export type HealthDimension = Readonly<{
 }>;
 
 export type HealthStatus = "HEALTHY" | "DEGRADED" | "STATE_UNKNOWN";
+
+export type HumanWaiting = HumanWaitingWaiting | HumanWaitingNotWaiting;
+
+export type HumanWaitingNotWaiting = Readonly<{
+  readonly "state": "not_waiting";
+}>;
+
+export type HumanWaitingWaiting = Readonly<{
+  readonly "finding_id": string;
+  readonly "kind_key": string;
+  readonly "reason_code": string;
+  readonly "state": "waiting";
+}>;
 
 export type IntakeCommandResult = Readonly<{
   readonly "command_id": string;
@@ -865,7 +973,7 @@ export type PriorityChangedAuditData = Readonly<{
 }>;
 
 export type Problem = Readonly<{
-  readonly "code": "bootstrap-consumed" | "bootstrap-expired" | "bootstrap-nonempty" | "bootstrap-origin" | "bundle-base-conflict" | "bundle-compatibility-refused" | "bundle-digest-mismatch" | "bundle-grant-refused" | "bundle-independence-refused" | "bundle-no-effect-refused" | "bundle-not-active" | "bundle-plan-mismatch" | "bundle-recovery-unavailable" | "bundle-reference-invalid" | "bundle-schema-invalid" | "bundle-security-refused" | "credential-already-revoked" | "credential-authentication-unavailable" | "credential-digest-conflict" | "credential-issuance-refused" | "credential-revocation-refused" | "credential-revoked" | "credential-scope-denied" | "durability_pending" | "i1-7c-required" | "idempotency-conflict" | "intake-already-promoted" | "intake-promotion-ineligible" | "intake-source-project-mismatch" | "intake-source-conflict" | "migration-alias-conflict" | "migration-capability-denied" | "migration-correction-conflict" | "migration-digest-mismatch" | "migration-export-nondeterminism" | "migration-fence-detected" | "migration-import-finalization-refused" | "migration-operation-drift" | "migration-relation-invalid" | "migration-run-conflict" | "migration-signature-invalid" | "migration-source-selection-drift" | "migration-source-tainted" | "poison-not-found" | "prohibited-data-class" | "project-delivery-unavailable" | "project-grant-required" | "project-scope-denied" | "request-body-too-large" | "proof-candidate-author-mismatch" | "proof-candidate-digest-invalid" | "proof-candidate-digest-not-current" | "proof-candidate-unchanged" | "proof-criteria-already-frozen" | "proof-criteria-invalid" | "proof-criteria-policy-mismatch" | "proof-criterion-unknown" | "proof-current-evidence-missing" | "proof-evidence-digest-mismatch" | "proof-evidence-id-conflict" | "proof-protected-authority-required" | "proof-policy-mismatch" | "proof-policy-pin-mismatch" | "proof-self-review-refused" | "proof-verdict-id-conflict" | "seat-binding-conflict" | "seat-credential-active" | "seat-credential-unavailable" | "seat-display-name-conflict" | "session-ineligible" | "session-not-found" | "session-transition-invalid" | "tenant-scope-denied" | "ticket-comment-ineligible" | "ticket-comment-invalid" | "unauthorized" | "validation-error" | "version-conflict" | "work-assignment-kind-refused" | "work-assignment-target-ineligible" | "work-assignment-unchanged" | "work-priority-unchanged" | "work-blocker-already-resolved" | "work-blocker-id-conflict" | "work-blocker-owner-ineligible" | "work-blocker-unknown" | "work-intent-unmet" | "work-relation-cycle" | "work-relation-exists" | "work-reopen-unmet" | "work-ticket-terminal" | "workflow-already-started" | "workflow-pin-mismatch" | "workflow-predicate-unsatisfied" | "workflow-run-not-started" | "proof-incomplete" | "workflow-state-conflict" | "workflow-terminal" | "workflow-transition-not-declared" | "workflow-version-unknown" | "workflow-not-terminal";
+  readonly "code": "attention-finding-already-disposed" | "attention-finding-not-found" | "attention-kind-unrecognized" | "bootstrap-consumed" | "bootstrap-expired" | "bootstrap-nonempty" | "bootstrap-origin" | "bundle-base-conflict" | "bundle-compatibility-refused" | "bundle-digest-mismatch" | "bundle-grant-refused" | "bundle-independence-refused" | "bundle-no-effect-refused" | "bundle-not-active" | "bundle-plan-mismatch" | "bundle-recovery-unavailable" | "bundle-reference-invalid" | "bundle-schema-invalid" | "bundle-security-refused" | "change-reference-duplicate" | "credential-already-revoked" | "credential-authentication-unavailable" | "credential-digest-conflict" | "credential-issuance-refused" | "credential-revocation-refused" | "credential-revoked" | "credential-scope-denied" | "durability_pending" | "i1-7c-required" | "idempotency-conflict" | "intake-already-promoted" | "intake-promotion-ineligible" | "intake-source-project-mismatch" | "intake-source-conflict" | "label-already-applied" | "label-key-unrecognized" | "migration-alias-conflict" | "migration-capability-denied" | "migration-correction-conflict" | "migration-digest-mismatch" | "migration-export-nondeterminism" | "migration-fence-detected" | "migration-import-finalization-refused" | "migration-operation-drift" | "migration-relation-invalid" | "migration-run-conflict" | "migration-signature-invalid" | "migration-source-selection-drift" | "migration-source-tainted" | "poison-not-found" | "prohibited-data-class" | "project-delivery-unavailable" | "project-grant-required" | "project-scope-denied" | "request-body-too-large" | "proof-candidate-author-mismatch" | "proof-candidate-digest-invalid" | "proof-candidate-digest-not-current" | "proof-candidate-unchanged" | "proof-criteria-already-frozen" | "proof-criteria-invalid" | "proof-criteria-policy-mismatch" | "proof-criterion-unknown" | "proof-current-evidence-missing" | "proof-evidence-digest-mismatch" | "proof-evidence-id-conflict" | "proof-protected-authority-required" | "proof-policy-mismatch" | "proof-policy-pin-mismatch" | "proof-self-review-refused" | "proof-verdict-id-conflict" | "seat-binding-conflict" | "seat-credential-active" | "seat-credential-unavailable" | "seat-display-name-conflict" | "session-ineligible" | "session-not-found" | "session-transition-invalid" | "tenant-scope-denied" | "ticket-comment-ineligible" | "ticket-comment-invalid" | "unauthorized" | "validation-error" | "version-conflict" | "work-assignment-kind-refused" | "work-assignment-target-ineligible" | "work-assignment-unchanged" | "work-priority-unchanged" | "work-blocker-already-resolved" | "work-blocker-id-conflict" | "work-blocker-owner-ineligible" | "work-blocker-unknown" | "work-intent-unmet" | "work-relation-cycle" | "work-relation-exists" | "work-reopen-unmet" | "work-ticket-terminal" | "workflow-already-started" | "workflow-pin-mismatch" | "workflow-predicate-unsatisfied" | "workflow-run-not-started" | "proof-incomplete" | "workflow-state-conflict" | "workflow-terminal" | "workflow-transition-not-declared" | "workflow-version-unknown" | "workflow-not-terminal";
   readonly "command_id"?: string | null;
   readonly "current_version"?: number | null;
   readonly "detail": string;
@@ -895,6 +1003,7 @@ export type ProjectDeliveryRow = Readonly<{
   readonly "confidence": "development_degraded" | "disaster_safe" | "STATE_UNKNOWN";
   readonly "criteria": ProjectDeliveryCriteria;
   readonly "data_class": "RECONSTRUCTIBLE_ONLY" | "DISASTER_SAFE_CTOWER_ENGINEERING" | "STATE_UNKNOWN";
+  readonly "delivery_surface": ProjectDeliverySurfaceDeclaration;
   readonly "derivation_reasons": ReadonlyArray<string>;
   readonly "durability": "CP3_D_NOT_PROVEN" | "CP3_D_PROVEN" | "STATE_UNKNOWN";
   readonly "freshness": "fresh" | "stale" | "STATE_UNKNOWN";
@@ -929,6 +1038,12 @@ export type ProjectDeliverySlot = Readonly<{
   readonly "signing_seat": ProjectDeliverySeat | null;
   readonly "slot_key": string;
   readonly "state": "filled" | "unfilled" | "unknown";
+}>;
+
+export type ProjectDeliverySurfaceDeclaration = Readonly<{
+  readonly "externally_effective_outcome": SurfaceIdentityField;
+  readonly "landing_boundary": SurfaceIdentityField;
+  readonly "non_production_environments": SurfaceEnvironmentsField;
 }>;
 
 export type ProjectDeliveryUnassignedSeatAssignment = Readonly<{
@@ -1196,6 +1311,18 @@ export type SourceReference = Readonly<{
   readonly "ref": string;
 }>;
 
+export type SurfaceDeclarationState = "declared_present" | "declared_absent" | "undeclared";
+
+export type SurfaceEnvironmentsField = Readonly<{
+  readonly "environments": ReadonlyArray<string>;
+  readonly "state": SurfaceDeclarationState;
+}>;
+
+export type SurfaceIdentityField = Readonly<{
+  readonly "identity": string | null;
+  readonly "state": SurfaceDeclarationState;
+}>;
+
 export type SyntheticRunReceipt = Readonly<{
   readonly "command_id": string;
   readonly "durability_state": DurabilityState;
@@ -1244,6 +1371,18 @@ export type TelemetryContext = Readonly<{
   readonly "trace_id": string;
   readonly "trace_state"?: string | null;
   readonly "workflow_run_id"?: string | null;
+}>;
+
+export type TenantDisplayIdentity = TenantDisplayIdentityKnown | TenantDisplayIdentityUnknown;
+
+export type TenantDisplayIdentityKnown = Readonly<{
+  readonly "display_name": string;
+  readonly "state": "known";
+}>;
+
+export type TenantDisplayIdentityUnknown = Readonly<{
+  readonly "missing_source": string;
+  readonly "state": "unknown";
 }>;
 
 export type TicketCommandResult = Readonly<{

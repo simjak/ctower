@@ -1,6 +1,6 @@
 """DO NOT EDIT: generated file; regenerate from declared inputs.
 
-Authored contract digest: sha256:48887e6455e99650ab296dbc75dc7faf312a6fb3fe72e1937024d1ee6b95b446
+Authored contract digest: sha256:d958a8bba3c1a8a189d56a61fc4ae03c4cf42130faedd8bffa32efcd799a0d86
 """
 
 from __future__ import annotations
@@ -16,12 +16,18 @@ import httpx
 from pydantic import BaseModel, ConfigDict, Field, validate_call
 
 from ctower_client.models import (
+    AppendFindingRequest,
+    ApplyLabelRequest,
+    ApplyLabelResult,
     AssignmentChangeRequest,
     AssignmentList,
+    AttentionFindingResult,
     AuditPage,
     BoardView,
     BootstrapReceipt,
     BootstrapRequest,
+    ChangeReferenceRequest,
+    ChangeReferenceResult,
     CompanyBundleApplyRequest,
     CompanyBundleCommandResult,
     CompanyBundleExportResult,
@@ -44,6 +50,8 @@ from ctower_client.models import (
     CtowerProjectReconciliationResult,
     CustodyTransferRequest,
     EvidenceRequest,
+    FindingDispositionRequest,
+    FindingDispositionResult,
     FreezeCriteriaRequest,
     IntakeCommandResult,
     IntakePromotionRequest,
@@ -180,6 +188,27 @@ class CtowerClient:
         return _response(response, {200: WorkReceipt, 202: WorkReceipt}, {401: Problem, 404: Problem, 409: Problem, 422: Problem})
 
     @validate_call(config=ConfigDict(strict=True, arbitrary_types_allowed=True))
+    def append_attention_finding(
+        self,
+        request: AppendFindingRequest,
+        *,
+        command_id: UUID,
+    ) -> AttentionFindingResult:
+        response = self._http.post(
+            "/v1/attention/findings",
+            content=request.model_dump_json(),
+            headers=self._telemetry_headers(
+                self._context(command_id),
+                {
+                    **self._auth_headers(),
+                    "Content-Type": "application/json",
+                    "Idempotency-Key": str(command_id),
+                },
+            ),
+        )
+        return _response(response, {202: AttentionFindingResult}, {401: Problem, 403: Problem, 404: Problem, 422: Problem})
+
+    @validate_call(config=ConfigDict(strict=True, arbitrary_types_allowed=True))
     def append_ctower_project_import_correction(
         self,
         request: CtowerProjectImportCorrectionRequest,
@@ -263,6 +292,28 @@ class CtowerClient:
             ),
         )
         return _response(response, {200: WorkReceipt, 202: WorkReceipt}, {401: Problem, 404: Problem, 409: Problem, 422: Problem})
+
+    @validate_call(config=ConfigDict(strict=True, arbitrary_types_allowed=True))
+    def apply_ticket_label(
+        self,
+        ticket_id: UUID,
+        request: ApplyLabelRequest,
+        *,
+        command_id: UUID,
+    ) -> ApplyLabelResult:
+        response = self._http.post(
+            f"/v1/tickets/{quote(str(ticket_id), safe='')}/labels",
+            content=request.model_dump_json(),
+            headers=self._telemetry_headers(
+                self._context(command_id, ticket_id=ticket_id),
+                {
+                    **self._auth_headers(),
+                    "Content-Type": "application/json",
+                    "Idempotency-Key": str(command_id),
+                },
+            ),
+        )
+        return _response(response, {200: ApplyLabelResult, 202: ApplyLabelResult}, {401: Problem, 403: Problem, 404: Problem, 409: Problem, 422: Problem})
 
     @validate_call(config=ConfigDict(strict=True, arbitrary_types_allowed=True))
     def bind_ctower_project_alias_plan(
@@ -817,6 +868,28 @@ class CtowerClient:
         return _response(response, {200: IntakeCommandResult, 202: IntakeCommandResult}, {401: Problem, 403: Problem, 404: Problem, 409: Problem, 413: Problem, 422: Problem})
 
     @validate_call(config=ConfigDict(strict=True, arbitrary_types_allowed=True))
+    def record_attention_finding_disposition(
+        self,
+        finding_id: UUID,
+        request: FindingDispositionRequest,
+        *,
+        command_id: UUID,
+    ) -> FindingDispositionResult:
+        response = self._http.post(
+            f"/v1/attention/findings/{quote(str(finding_id), safe='')}/disposition",
+            content=request.model_dump_json(),
+            headers=self._telemetry_headers(
+                self._context(command_id),
+                {
+                    **self._auth_headers(),
+                    "Content-Type": "application/json",
+                    "Idempotency-Key": str(command_id),
+                },
+            ),
+        )
+        return _response(response, {202: FindingDispositionResult}, {401: Problem, 403: Problem, 404: Problem, 409: Problem, 422: Problem})
+
+    @validate_call(config=ConfigDict(strict=True, arbitrary_types_allowed=True))
     def record_outbox_poison_disposition(
         self,
         outbox_id: UUID,
@@ -881,6 +954,28 @@ class CtowerClient:
             ),
         )
         return _response(response, {200: ProofReceipt, 202: ProofReceipt}, {401: Problem, 403: Problem, 404: Problem, 409: Problem, 422: Problem})
+
+    @validate_call(config=ConfigDict(strict=True, arbitrary_types_allowed=True))
+    def record_ticket_change_reference(
+        self,
+        ticket_id: UUID,
+        request: ChangeReferenceRequest,
+        *,
+        command_id: UUID,
+    ) -> ChangeReferenceResult:
+        response = self._http.post(
+            f"/v1/tickets/{quote(str(ticket_id), safe='')}/change-references",
+            content=request.model_dump_json(),
+            headers=self._telemetry_headers(
+                self._context(command_id, ticket_id=ticket_id),
+                {
+                    **self._auth_headers(),
+                    "Content-Type": "application/json",
+                    "Idempotency-Key": str(command_id),
+                },
+            ),
+        )
+        return _response(response, {200: ChangeReferenceResult, 202: ChangeReferenceResult}, {401: Problem, 403: Problem, 404: Problem, 409: Problem, 422: Problem})
 
     @validate_call(config=ConfigDict(strict=True, arbitrary_types_allowed=True))
     def record_ticket_session_fact(
