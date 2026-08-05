@@ -62,16 +62,10 @@ _EXPECTED_ASYNC_SITES = frozenset(
 # `stale_exceptions` assertion in _assert_production_process_inventory fails loudly once the
 # named site becomes bounded, forcing the entry's removal in the same change that fixes it.
 #
-# tools/checks/playwright.py: gh#114 (PR simjak/ctower#307, reviewed APPROVE, mergeable) already
-# wraps this exact call in asyncio.wait_for(process.wait(), timeout=_TIMEOUT_SECONDS) plus
-# owned-process tree termination — #307 is pinned-unmerged as of gh#113's own build (see
-# coordination/2026-08-05_1430--engineer-r113-process-vocab--policy-tool.status.md), so this
-# repository's `origin/main` still carries the pre-fix bare `await process.wait()`. Remove this
-# entry in the same change that observes #307 has merged (the stale-exception assertion above
-# will fail and name it).
-_ASYNC_EXCEPTIONS: frozenset[tuple[Path, str]] = frozenset(
-    {(Path("tools/checks/playwright.py"), "asyncio.create_subprocess_exec")}
-)
+# gh#113's tools/checks/playwright.py exception is gone: PR simjak/ctower#307 (bound the
+# Playwright gate's process wait with a deadline) merged into main, so that site now wraps
+# process.wait() in asyncio.wait_for(..., timeout=_TIMEOUT_SECONDS) and is bounded.
+_ASYNC_EXCEPTIONS: frozenset[tuple[Path, str]] = frozenset()
 type _ResolvedReference = str | None
 
 
