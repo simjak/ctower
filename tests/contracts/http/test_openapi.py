@@ -105,6 +105,13 @@ _EXPECTED_OPERATION_METADATA: dict[str, tuple[object, bool, str, object, bool]] 
     "issueSeatCredential": ("credential seat issue", True, "forbidden", None, False),
     "listTicketAssignments": ("ticket assignments", False, "forbidden", None, False),
     "listTicketAuditEvents": ("ticket audit", False, "forbidden", None, False),
+    "listProjectEvents": (
+        "project events",
+        False,
+        "forbidden",
+        "authenticated",
+        False,
+    ),
     "listProjectSessions": (
         "session project",
         False,

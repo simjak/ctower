@@ -1508,3 +1508,57 @@ Rejected alternatives:
   publishing a new file. Rejected: it repeats exactly the defect this decision closes — a version string
   that changes without a discoverable diff between two files — and breaks the file-per-version precedent
   already established under `contracts/domain/migration/`.
+
+## D38 — Project event feed reuses the ticket-audit read shape; no project-encoded cursor (engineering, 2026-08-05, gh#186)
+
+CT-I1-012 (SPEC.md `INV-78`, [#186](https://github.com/simjak/ctower/issues/186)) is built against today's
+Record read conventions rather than the design an earlier, never-landed attempt at this feature carried on
+a stacked branch that was lost before reaching `main` (a squashed commit, `63dd169`, merged into a
+since-deleted intermediate branch whose own head never became an ancestor of `main`). That attempt predates
+several Record read paths this decision now reuses instead of re-deriving.
+
+1. **The feed is a project-scoped variant of the existing ticket-audit query, not a new query shape.**
+   `Record.ticket_audit` already unions every project-feed-eligible kind for one ticket through one
+   `event_links` subject join (`link.subject_kind = 'ticket'`); the new `Record.project_events` runs the
+   identical join scoped by `tickets.project_key` instead of one `ticket_id`, restricted to the catalog's
+   `project_feed`-tagged kinds. No `aggregate-ticket` versus `linked-ticket` distinction is threaded through
+   the SQL layer — `event_links` already carries that distinction for every eligible kind.
+2. **Authorization is the existing project-grant refusal, not a project-encoded cursor.** `Record.project_events`
+   calls the same `project_scope_refusal` (INV-69) that `Record.work_sessions.for_project` already calls;
+   a caller without an active grant on the requested project refuses `project-scope-denied` before any row
+   is read. The cursor itself is a plain `record_position` integer, identical to `ticket_audit` and
+   `project_sessions` — it carries no project identity to protect, because every call re-evaluates the
+   grant and re-applies the project predicate in SQL regardless of the cursor value presented.
+3. **Feed membership is one boolean column, not a link-strategy enum.** `EventCatalogEntry.project_feed:
+   bool` extends the catalog already introduced for `session_fact`; `project_event_kinds()` derives the
+   feed's kind set by filtering that column, mirroring the existing session-kind derivation. Today's six
+   `project_feed=True` kinds are exactly the six non-session branches of the existing `AuditEvent` union
+   (`ticket.created`, `ticket.custody_transferred`, `ticket.comment_added`, `work.changed`,
+   `workflow.changed`, `proof.changed`); the wire schema reuses those six existing named OpenAPI components
+   (`TicketCreatedAuditEvent` etc.) under a new `ProjectEvent` `oneOf`, rather than declaring six duplicate
+   schemas. Session and heartbeat kinds carry `project_feed=False` and remain absent pending
+   [#200](https://github.com/simjak/ctower/issues/200).
+4. **No new environment variable, flag, or writable authority.** The route is a read composed the same way
+   `list_project_sessions` is composed; `ctowerctl project events` follows the existing `project delivery
+   query` CLI home. This decision authorizes only SPEC.md `INV-78`, the "Project event feed" architecture
+   narrative, and the CT-I1-012 I1-exit-evidence bullet at SPEC 1.15.
+
+Rejected alternatives:
+
+- Recovering the dangling `63dd169`/`fe510de` commits by cherry-pick. Rejected after attempting it: the
+  base they were built on (`feat/185-scopes` at a pre-#197 commit) has since diverged from `main` on the
+  same surfaces this feature touches — `SPEC.md` invariant numbering (their `INV-68` collides with today's
+  unrelated `INV-68`), `DECISIONS.md` `D30` (their `D30` collides with today's unrelated `D30`), and every
+  `generated/` file — producing a conflict-resolution patch larger and riskier than a fresh, small diff
+  against today's actual Record conventions.
+- A project-encoded opaque cursor (`v1:<project>:<accepted>:<record>`) binding the requested project into
+  the cursor value itself. Rejected: no other project-scoped Record read in this codebase does this
+  (`project_sessions` uses a plain integer); the grant check already re-runs on every call, so a
+  cross-project cursor replay changes which project's rows a query returns, not whether the caller is
+  authorized to see them — the authorization boundary is the grant, not the cursor shape.
+- A strict "accepted-only" filter distinguishing durability-pending events from committed ones inside the
+  feed query. Rejected: no existing Record read path (`ticket_audit`, `project_sessions`, `ticket_timeline`)
+  applies such a filter — Postgres transaction visibility already means a row a read query can see is
+  committed; "pending" in this codebase describes off-host acknowledgement receipts, not local commit
+  visibility. Introducing a feed-only filter for a distinction no sibling read path makes would be
+  speculative complexity the current requirements do not need.

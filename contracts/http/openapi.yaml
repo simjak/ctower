@@ -1247,6 +1247,28 @@
         }
       }
     },
+    "/v1/projects/{project_key}/events": {
+      "get": {
+        "operationId": "listProjectEvents",
+        "x-ctower-cli": "project events",
+        "x-ctower-mutation": false,
+        "x-ctower-spool": "forbidden",
+        "x-ctower-principal": "authenticated",
+        "security": [{"bearerAuth": []}],
+        "parameters": [
+          {"$ref": "#/components/parameters/ProjectKey"},
+          {"$ref": "#/components/parameters/AuditCursor"},
+          {"$ref": "#/components/parameters/AuditLimit"}
+        ],
+        "responses": {
+          "200": {"description": "Cursor page of catalog-derived typed events for one project", "content": {"application/json": {"schema": {"$ref": "#/components/schemas/ProjectEventPage"}}}},
+          "401": {"$ref": "#/components/responses/ProblemResponse"},
+          "403": {"$ref": "#/components/responses/ProblemResponse"},
+          "404": {"$ref": "#/components/responses/ProblemResponse"},
+          "422": {"$ref": "#/components/responses/ProblemResponse"}
+        }
+      }
+    },
     "/v1/projects/{project_key}/delivery": {
       "get": {
         "operationId": "getProjectDelivery",
@@ -3837,6 +3859,25 @@
           "events": {"type": "array", "items": {"$ref": "#/components/schemas/AuditEvent"}},
           "next_cursor": {"type": ["integer", "null"], "minimum": 1},
           "ticket_id": {"type": "string", "format": "uuid"}
+        }
+      },
+      "ProjectEvent": {
+        "oneOf": [
+          {"$ref": "#/components/schemas/TicketCreatedAuditEvent"},
+          {"$ref": "#/components/schemas/CustodyTransferredAuditEvent"},
+          {"$ref": "#/components/schemas/TicketCommentAddedAuditEvent"},
+          {"$ref": "#/components/schemas/WorkChangedAuditEvent"},
+          {"$ref": "#/components/schemas/WorkflowChangedAuditEvent"},
+          {"$ref": "#/components/schemas/ProofChangedAuditEvent"}
+        ]
+      },
+      "ProjectEventPage": {
+        "type": "object", "additionalProperties": false,
+        "required": ["events", "next_cursor", "project_key"],
+        "properties": {
+          "events": {"type": "array", "items": {"$ref": "#/components/schemas/ProjectEvent"}},
+          "next_cursor": {"type": ["integer", "null"], "minimum": 1},
+          "project_key": {"type": "string", "pattern": "^[a-z][a-z0-9-]{2,63}$"}
         }
       },
       "TimelineEvent": {
