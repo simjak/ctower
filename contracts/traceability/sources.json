@@ -1851,6 +1851,17 @@
       ]
     },
     {
+      "path": "packages/ctower-kernel/migrations/0047_board_source_index.sql",
+      "references": [
+        "SPEC#aggregate-boundaries-and-relationships",
+        "SPEC#persistence-authority",
+        "SPEC#portfolio-shadow-onboarding",
+        "INV-34",
+        "INV-71",
+        "AC-PORT-06"
+      ]
+    },
+    {
       "path": "packages/ctower-kernel/migrations/manifest.json",
       "references": [
         "SPEC#executable-authority-and-requirement-traceability",
