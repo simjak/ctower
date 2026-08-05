@@ -108,7 +108,8 @@
           "401": {"$ref": "#/components/responses/ProblemResponse"},
           "403": {"$ref": "#/components/responses/ProblemResponse"},
           "409": {"$ref": "#/components/responses/ProblemResponse"},
-          "422": {"$ref": "#/components/responses/ProblemResponse"}
+          "422": {"$ref": "#/components/responses/ProblemResponse"},
+          "503": {"$ref": "#/components/responses/ProblemResponse"}
         }
       }
     },
@@ -148,7 +149,8 @@
           "403": {"$ref": "#/components/responses/ProblemResponse"},
           "404": {"$ref": "#/components/responses/ProblemResponse"},
           "409": {"$ref": "#/components/responses/ProblemResponse"},
-          "422": {"$ref": "#/components/responses/ProblemResponse"}
+          "422": {"$ref": "#/components/responses/ProblemResponse"},
+          "503": {"$ref": "#/components/responses/ProblemResponse"}
         }
       }
     },
@@ -2640,6 +2642,7 @@
               "bundle-schema-invalid",
               "bundle-security-refused",
               "credential-already-revoked",
+              "credential-authentication-unavailable",
               "credential-digest-conflict",
               "credential-issuance-refused",
               "credential-revocation-refused",
