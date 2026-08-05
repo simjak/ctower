@@ -49,13 +49,15 @@ falling back to a default.
 
 Every non-bootstrap mutation carries a command ID. `ticket capture`, `ticket create`, and `synthetic run`
 generate one client-side when it is omitted; other mutations require `--command-id`. A successful read or
-accepted mutation exits `0`.
+accepted mutation exits `0`, with one exception: `control health` exits non-zero whenever its reported
+`status` is not `HEALTHY`, even though the read itself succeeded — an absence of observations must never
+look like a healthy system.
 Other stable exits are:
 
 | Exit | Meaning |
 |---:|---|
 | `64` | Invalid command or bounded input |
-| `69` | Permanent server rejection or quarantine barrier |
+| `69` | Permanent server rejection, quarantine barrier, or a `DEGRADED`/`STATE_UNKNOWN` `control health` result |
 | `74` | Local spool, keyring, filesystem, or integrity failure |
 | `75` | Durably queued, temporarily unreachable, or server `durability_pending` |
 

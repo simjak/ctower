@@ -27,6 +27,8 @@ from support.tenant_fixture import TenantFixture
 
 from ctower_api.interface import create_app
 from ctower_kernel.catalog import PostgresCatalog
+from ctower_kernel.projections import Projections
+from ctower_kernel.projections.postgres import PostgresProjections
 from ctower_kernel.record.postgres import (
     PostgresRecord,
     apply_migrations,
@@ -351,6 +353,29 @@ def test_missing_keyring_blocks_mutation_before_send_but_reads_continue(
     assert _ticket_count(tenant.database.admin_dsn) == before
 
 
+def test_control_health_exits_nonzero_while_a_contributor_is_unknown(
+    tenant: TenantFixture,
+) -> None:
+    with _server(
+        tenant.database.runtime_dsn,
+        projections_dsn=tenant.database.projection_dsn,
+    ) as base_url:
+        status, output, error = _run(
+            ["--base-url", base_url, "control", "health"],
+            authority=tenant.operator_credential,
+        )
+
+    health = json.loads(output)
+    assert status == EXIT_PERMANENT
+    assert error == ""
+    assert health["status"] != "HEALTHY"
+    assert any(
+        contributor["status"] == "STATE_UNKNOWN"
+        for dimension in ("availability", "completeness", "integrity")
+        for contributor in health[dimension]["contributors"]
+    )
+
+
 def _create_arguments(base_url: str, tenant: TenantFixture, command_id: UUID) -> list[str]:
     return [
         "--base-url",
@@ -517,12 +542,18 @@ def _server(
     dsn: str,
     *,
     catalog: PostgresCatalog | None = None,
+    projections_dsn: str | None = None,
 ) -> Iterator[str]:
     record = PostgresRecord(dsn)
     application = create_app(
         record,
         work=Work(record, writer=PostgresWork(dsn)),
         catalog=catalog,
+        projections=(
+            Projections(PostgresProjections(projections_dsn))
+            if projections_dsn is not None
+            else None
+        ),
     )
     with _serve(application) as base_url:
         yield base_url

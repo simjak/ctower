@@ -56,7 +56,9 @@ is authenticated and append-only; the corrupt ciphertext remains as local audit 
 
 Exit meanings are stable: `0` read/accepted, `64` usage/input, `69` permanent rejection or quarantine,
 `74` local/keyring/integrity failure, and `75` queued, unreachable, or `durability_pending`. Exit `75` never
-claims server acceptance. Mutation output always identifies the stable command ID and local state.
+claims server acceptance. Mutation output always identifies the stable command ID and local state. `control
+health` is the one read whose exit reflects its content rather than request success alone: a `DEGRADED` or
+`STATE_UNKNOWN` status exits `69` even though the read itself succeeded.
 
 The E2 private-VPS install adds `ctower-shadow-ctl`, a local wrapper that resolves one operator or Commander
 reference from Secret Service and calls this exact public CLI in-process; it adds no operations or
