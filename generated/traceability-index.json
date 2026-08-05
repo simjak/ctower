@@ -480,7 +480,8 @@
       "packages/ctower-kernel/migrations/0022_restore_inventory.sql"
     ],
     "AC-SEC-12": [
-      "contracts/http/openapi.yaml"
+      "contracts/http/openapi.yaml",
+      "packages/ctower-kernel/migrations/0046_human_oidc_identity.sql"
     ],
     "AC-SES-01": [
       "contracts/http/openapi.yaml",
@@ -599,7 +600,8 @@
       "packages/ctower-kernel/migrations/0002_ticket_slice.sql",
       "packages/ctower-kernel/migrations/0003_privileges.sql",
       "packages/ctower-kernel/migrations/0039_project_seat_credentials.sql",
-      "packages/ctower-kernel/migrations/0041_recorded_work_sessions.sql"
+      "packages/ctower-kernel/migrations/0041_recorded_work_sessions.sql",
+      "packages/ctower-kernel/migrations/0046_human_oidc_identity.sql"
     ],
     "INV-03": [
       "contracts/domain/events/event-envelope.schema.json",
@@ -936,6 +938,9 @@
       "packages/ctower-kernel/migrations/0043_context_set_catalogs.sql",
       "packages/ctower-kernel/migrations/0045_attention_findings.sql"
     ],
+    "INV-73": [
+      "packages/ctower-kernel/migrations/0046_human_oidc_identity.sql"
+    ],
     "INV-75": [
       "contracts/domain/events/event-envelope.schema.json",
       "contracts/http/openapi.yaml",
@@ -1111,7 +1116,11 @@
       "packages/ctower-kernel/migrations/0038_project_delivery_seat_carriage.sql",
       "packages/ctower-kernel/migrations/0039_project_seat_credentials.sql",
       "packages/ctower-kernel/migrations/0040_project_scoped_reads.sql",
-      "packages/ctower-kernel/migrations/0041_recorded_work_sessions.sql"
+      "packages/ctower-kernel/migrations/0041_recorded_work_sessions.sql",
+      "packages/ctower-kernel/migrations/0046_human_oidc_identity.sql"
+    ],
+    "SPEC#principals-and-authentication": [
+      "packages/ctower-kernel/migrations/0046_human_oidc_identity.sql"
     ],
     "SPEC#project-delivery-projection": [
       "contracts/components/checkpoint.schema.json",

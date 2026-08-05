@@ -1841,6 +1841,16 @@
       ]
     },
     {
+      "path": "packages/ctower-kernel/migrations/0046_human_oidc_identity.sql",
+      "references": [
+        "SPEC#persistence-authority",
+        "SPEC#principals-and-authentication",
+        "INV-02",
+        "INV-73",
+        "AC-SEC-12"
+      ]
+    },
+    {
       "path": "packages/ctower-kernel/migrations/manifest.json",
       "references": [
         "SPEC#executable-authority-and-requirement-traceability",

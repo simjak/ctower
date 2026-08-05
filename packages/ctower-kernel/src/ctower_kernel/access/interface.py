@@ -7,8 +7,13 @@ import ipaddress
 import json
 from collections.abc import Callable, Mapping
 from datetime import UTC, datetime
+from typing import cast
 from uuid import UUID
 
+import httpx
+
+from ctower_kernel.access import oidc
+from ctower_kernel.access.human_auth import HumanAuthentication, HumanLoginResult, LoginStart
 from ctower_kernel.record import (
     Actor,
     BootstrapCommand,
@@ -24,9 +29,12 @@ from ctower_kernel.record.credentials import (
     SeatCredentialReceipt,
     SeatCredentialRevocation,
 )
+from ctower_kernel.record.human_identity import HumanIdentityRecord
 from ctower_kernel.telemetry import NoopTelemetry, Telemetry, TelemetryContext
 
-__all__ = ["Access", "digest_capability"]
+__all__ = ["Access", "HumanLoginResult", "LoginStart", "digest_capability"]
+
+_DEFAULT_SESSION_TTL_SECONDS = 43_200
 
 
 class Access:
@@ -39,6 +47,10 @@ class Access:
         importer_resolver: Callable[[bytes, UUID, UUID, str, datetime], Actor | None] | None = None,
         importer_credential_resolver: Callable[[bytes, datetime], Actor | None] | None = None,
         fence_observer_resolver: Callable[[bytes, datetime], Actor | None] | None = None,
+        oidc_providers: Mapping[str, oidc.OidcProvider] | None = None,
+        oidc_http_client_factory: Callable[[], httpx.Client] | None = None,
+        login_attempt_signing_key: bytes | None = None,
+        session_ttl_seconds: int = _DEFAULT_SESSION_TTL_SECONDS,
         clock: Callable[[], datetime] | None = None,
         telemetry: Telemetry | None = None,
     ) -> None:
@@ -48,6 +60,15 @@ class Access:
         self._fence_observer_resolver = fence_observer_resolver
         self._clock = clock or (lambda: datetime.now(UTC))
         self._telemetry = telemetry or NoopTelemetry()
+        self.human = HumanAuthentication(
+            cast(HumanIdentityRecord, record),
+            oidc_providers=oidc_providers,
+            oidc_http_client_factory=oidc_http_client_factory,
+            login_attempt_signing_key=login_attempt_signing_key,
+            session_ttl_seconds=session_ttl_seconds,
+            clock=self._clock,
+            telemetry=telemetry,
+        )
 
     def bootstrap_first_tenant(
         self,

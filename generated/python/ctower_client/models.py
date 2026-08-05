@@ -1,6 +1,6 @@
 """DO NOT EDIT: generated file; regenerate from declared inputs.
 
-Authored contract digest: sha256:d958a8bba3c1a8a189d56a61fc4ae03c4cf42130faedd8bffa32efcd799a0d86
+Authored contract digest: sha256:f6c0cd0431bb6d0ce6c2ae48acd75990b6717d0b5fcb2ae0d61f729075a3e21c
 """
 
 from __future__ import annotations
@@ -1734,6 +1734,12 @@ class Problem(_BoundaryModel):
         "attention-finding-already-disposed",
         "attention-finding-not-found",
         "attention-kind-unrecognized",
+        "auth-exchange-invalid",
+        "auth-identity-unresolved",
+        "auth-provider-unavailable",
+        "auth-provider-unverifiable",
+        "auth-role-denied",
+        "auth-session-invalid",
         "bootstrap-consumed",
         "bootstrap-expired",
         "bootstrap-nonempty",
@@ -1785,6 +1791,7 @@ class Problem(_BoundaryModel):
         "project-delivery-unavailable",
         "project-grant-required",
         "project-scope-denied",
+        "reauthentication-required",
         "request-body-too-large",
         "proof-candidate-author-mismatch",
         "proof-candidate-digest-invalid",

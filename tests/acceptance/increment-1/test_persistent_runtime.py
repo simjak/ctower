@@ -309,7 +309,13 @@ def _patch_api_dependencies(
     monkeypatch: pytest.MonkeyPatch,
     tmp_path: Path,
 ) -> None:
-    config = SimpleNamespace(api_host="127.0.0.1", api_port=8091)
+    config = SimpleNamespace(
+        api_host="127.0.0.1",
+        api_port=8091,
+        oidc_providers=(),
+        login_attempt_signing_secret_ref=None,
+        login_gate_enforcing=False,
+    )
     dsn_by_role = {
         ("ctower_runtime", False): authority.database.runtime_dsn,
         ("ctower_projection_runtime", False): authority.database.projection_dsn,
