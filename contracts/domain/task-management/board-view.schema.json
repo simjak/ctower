@@ -21,15 +21,24 @@
       "type": "object",
       "additionalProperties": false,
       "required": [
-        "activity_class", "assignee_id", "blocker_opened_at", "blocker_reason",
-        "custodian_id", "delivery_facts", "lane", "priority", "project_key", "risk", "stage_key",
-        "stage_label", "ticket_id", "title", "underlying_lane", "version"
+        "activity_class", "applied_labels", "assignee_id", "blocker_opened_at", "blocker_reason",
+        "change_references", "custodian_id", "delivery_facts", "delivery_surface_availability",
+        "human_waiting", "lane", "priority", "project_key", "risk", "stage_key",
+        "stage_label", "tenant_display_identity", "ticket_id", "title", "underlying_lane", "version"
       ],
       "properties": {
         "activity_class": {"type": ["string", "null"], "enum": ["work", "verification", null]},
+        "applied_labels": {
+          "type": "array",
+          "items": {"$ref": "#/$defs/applied_label"}
+        },
         "assignee_id": {"type": ["string", "null"], "format": "uuid"},
         "blocker_opened_at": {"type": ["string", "null"], "format": "date-time"},
         "blocker_reason": {"type": ["string", "null"]},
+        "change_references": {
+          "type": "array",
+          "items": {"$ref": "#/$defs/change_reference"}
+        },
         "custodian_id": {"type": "string", "format": "uuid"},
         "delivery_facts": {
           "type": "array",
@@ -39,17 +48,122 @@
           },
           "uniqueItems": true
         },
+        "delivery_surface_availability": {"$ref": "#/$defs/delivery_surface_availability"},
+        "human_waiting": {"$ref": "#/$defs/human_waiting"},
         "lane": {"$ref": "#/$defs/lane"},
         "priority": {"type": "string", "enum": ["P0", "P1", "P2"]},
         "project_key": {"type": "string", "pattern": "^[a-z][a-z0-9-]{2,63}$"},
         "risk": {"type": ["string", "null"], "maxLength": 64},
         "stage_key": {"type": ["string", "null"], "pattern": "^[a-z][a-z0-9._-]*$"},
         "stage_label": {"type": ["string", "null"], "maxLength": 120},
+        "tenant_display_identity": {"$ref": "#/$defs/tenant_display_identity"},
         "ticket_id": {"type": "string", "format": "uuid"},
         "title": {"type": "string", "minLength": 1, "maxLength": 200},
         "underlying_lane": {"oneOf": [{"$ref": "#/$defs/lane"}, {"type": "null"}]},
         "version": {"type": "integer", "minimum": 1}
       }
+    },
+    "tenant_display_identity": {
+      "oneOf": [
+        {
+          "type": "object", "additionalProperties": false,
+          "required": ["state", "display_name"],
+          "properties": {
+            "state": {"const": "known"},
+            "display_name": {"type": "string", "minLength": 1, "maxLength": 128}
+          }
+        },
+        {
+          "type": "object", "additionalProperties": false,
+          "required": ["state", "missing_source"],
+          "properties": {
+            "state": {"const": "unknown"},
+            "missing_source": {"type": "string", "minLength": 1}
+          }
+        }
+      ]
+    },
+    "change_reference": {
+      "type": "object", "additionalProperties": false,
+      "required": ["repository", "change_identity", "reference", "recorded_at"],
+      "properties": {
+        "repository": {"type": "string", "minLength": 1, "maxLength": 256},
+        "change_identity": {"type": "string", "minLength": 1, "maxLength": 128},
+        "reference": {"type": "string", "minLength": 1, "maxLength": 256},
+        "recorded_at": {"type": "string", "format": "date-time"}
+      }
+    },
+    "applied_label": {
+      "type": "object", "additionalProperties": false,
+      "required": ["label_key", "label", "vocabulary_revision", "applied_at"],
+      "properties": {
+        "label_key": {"type": "string", "pattern": "^[a-z][a-z0-9._-]{1,95}$"},
+        "label": {"type": "string", "minLength": 1, "maxLength": 128},
+        "vocabulary_revision": {"type": "integer", "minimum": 1},
+        "applied_at": {"type": "string", "format": "date-time"}
+      }
+    },
+    "human_waiting": {
+      "oneOf": [
+        {
+          "type": "object", "additionalProperties": false,
+          "required": ["state", "finding_id", "kind_key", "reason_code"],
+          "properties": {
+            "state": {"const": "waiting"},
+            "finding_id": {"type": "string", "format": "uuid"},
+            "kind_key": {"type": "string", "pattern": "^[a-z][a-z0-9._-]{1,95}$"},
+            "reason_code": {"type": "string", "pattern": "^[a-z][a-z0-9._-]*$"}
+          }
+        },
+        {
+          "type": "object", "additionalProperties": false,
+          "required": ["state"],
+          "properties": {"state": {"const": "not_waiting"}}
+        }
+      ]
+    },
+    "surface_declaration_state": {
+      "type": "string",
+      "enum": ["declared_present", "declared_absent", "undeclared"]
+    },
+    "surface_identity_field": {
+      "type": "object", "additionalProperties": false,
+      "required": ["state", "identity"],
+      "properties": {
+        "state": {"$ref": "#/$defs/surface_declaration_state"},
+        "identity": {"oneOf": [{"type": "string", "minLength": 1, "maxLength": 200}, {"type": "null"}]}
+      }
+    },
+    "surface_environments_field": {
+      "type": "object", "additionalProperties": false,
+      "required": ["state", "environments"],
+      "properties": {
+        "state": {"$ref": "#/$defs/surface_declaration_state"},
+        "environments": {"type": "array", "items": {"type": "string", "minLength": 1}}
+      }
+    },
+    "delivery_surface_availability": {
+      "oneOf": [
+        {
+          "type": "object", "additionalProperties": false,
+          "required": ["state"],
+          "properties": {"state": {"const": "no_qualifying_checkpoint"}}
+        },
+        {
+          "type": "object", "additionalProperties": false,
+          "required": [
+            "state", "checkpoint_key", "landing_boundary",
+            "non_production_environments", "externally_effective_outcome"
+          ],
+          "properties": {
+            "state": {"const": "qualifying_checkpoint"},
+            "checkpoint_key": {"type": "string", "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]{0,127}$"},
+            "landing_boundary": {"$ref": "#/$defs/surface_identity_field"},
+            "non_production_environments": {"$ref": "#/$defs/surface_environments_field"},
+            "externally_effective_outcome": {"$ref": "#/$defs/surface_identity_field"}
+          }
+        }
+      ]
     },
     "query": {
       "type": "object",

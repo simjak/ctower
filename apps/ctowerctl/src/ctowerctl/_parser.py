@@ -5,7 +5,6 @@ from __future__ import annotations
 import argparse
 from collections.abc import Sequence
 from pathlib import Path
-from typing import Never
 from uuid import UUID, uuid4
 
 from pydantic import TypeAdapter
@@ -31,6 +30,15 @@ from ctowerctl._argument_types import (
     _safe_base_url,
     _sha256_digest,
 )
+from ctowerctl._context_set_parser import attention_parser, ticket_context_sets
+from ctowerctl._parser_support import (
+    _command_id,
+    _Parser,
+    _session_id,
+    _ticket_id,
+    _version,
+    _version_reason,
+)
 
 __all__: tuple[str, ...] = ()
 
@@ -53,6 +61,8 @@ _AUTHORED_COMMAND_NAMES = frozenset(
         "ticket audit",
         "ticket assignments",
         "ticket comment add",
+        "ticket change-reference add",
+        "ticket label apply",
         "ticket assign",
         "ticket custody transfer",
         "ticket prioritize",
@@ -95,13 +105,10 @@ _AUTHORED_COMMAND_NAMES = frozenset(
         "migration ctower-project verify",
         "project delivery query",
         "project events",
+        "attention finding append",
+        "attention finding disposition",
     }
 )
-
-
-class _Parser(argparse.ArgumentParser):
-    def error(self, message: str) -> Never:
-        raise ValueError(f"usage: {message}")
 
 
 def parse_arguments(argv: Sequence[str] | None = None) -> argparse.Namespace:
@@ -144,6 +151,7 @@ def _parser() -> argparse.ArgumentParser:
     _migration_parser(areas.add_parser("migration"))
     _project_parser(areas.add_parser("project"))
     _spool_parser(areas.add_parser("spool"))
+    attention_parser(areas.add_parser("attention"))
     return parser
 
 
@@ -195,6 +203,7 @@ def _ticket_parser(parser: argparse.ArgumentParser) -> None:
     _ticket_work(actions)
     _ticket_proof(actions)
     _ticket_workflow(actions)
+    ticket_context_sets(actions)
 
 
 def _intake_parser(parser: argparse.ArgumentParser) -> None:
@@ -635,24 +644,3 @@ def _spool_parser(parser: argparse.ArgumentParser) -> None:
         disposition.add_argument("--reason", required=True)
         if name == "discard":
             disposition.add_argument("--artifact-digest")
-
-
-def _ticket_id(parser: argparse.ArgumentParser) -> None:
-    parser.add_argument("ticket_id", type=UUID)
-
-
-def _session_id(parser: argparse.ArgumentParser) -> None:
-    parser.add_argument("session_id", type=UUID)
-
-
-def _command_id(parser: argparse.ArgumentParser) -> None:
-    parser.add_argument("--command-id", required=True, type=UUID)
-
-
-def _version(parser: argparse.ArgumentParser) -> None:
-    parser.add_argument("--expected-version", required=True, type=_positive_int)
-
-
-def _version_reason(parser: argparse.ArgumentParser) -> None:
-    _version(parser)
-    parser.add_argument("--reason", required=True)

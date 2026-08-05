@@ -6,7 +6,7 @@ import argparse
 import json
 import sys
 import time
-from collections.abc import Sequence
+from collections.abc import Callable, Sequence
 from typing import Literal, TextIO, cast
 from uuid import UUID
 
@@ -23,6 +23,7 @@ from ctower_client.models import (
 )
 from ctower_client.operations import OperationSpec, SpoolPolicy, operation_for_cli
 from ctowerctl import (
+    _attention_commands,
     _bootstrap_commands,
     _company_commands,
     _credential_commands,
@@ -198,22 +199,24 @@ def _execute_mutation(
     return outcome, _outcome_code(current.state, report.barrier_sequence)
 
 
+_MUTATION_FAMILIES: dict[str, Callable[[argparse.Namespace], MutationPayload]] = {
+    "ticket": _ticket_commands.build_mutation,
+    "intake": _intake_commands.build_mutation,
+    "company": _company_commands.build_mutation,
+    "ops": _ops_commands.build_mutation,
+    "session": _session_commands.build_mutation,
+    "synthetic": _synthetic_commands.build_mutation,
+    "attention": _attention_commands.build_mutation,
+}
+
+
 def _build_mutation(arguments: object) -> MutationPayload:
     namespace = cast("argparse.Namespace", arguments)
     area = cast(str, namespace.area)
-    if area == "ticket":
-        return _ticket_commands.build_mutation(namespace)
-    if area == "intake":
-        return _intake_commands.build_mutation(namespace)
-    if area == "company":
-        return _company_commands.build_mutation(namespace)
-    if area == "ops":
-        return _ops_commands.build_mutation(namespace)
-    if area == "session":
-        return _session_commands.build_mutation(namespace)
-    if area == "synthetic":
-        return _synthetic_commands.build_mutation(namespace)
-    raise ValueError("usage: unsupported mutation family")
+    builder = _MUTATION_FAMILIES.get(area)
+    if builder is None:
+        raise ValueError("usage: unsupported mutation family")
+    return builder(namespace)
 
 
 def _execute_online_migration(

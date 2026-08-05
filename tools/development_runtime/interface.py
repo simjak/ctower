@@ -50,6 +50,7 @@ from tools.development_runtime.installation import (
     runtime_home,
 )
 from tools.development_runtime.primary import start_primary
+from tools.development_runtime.reconcile import reconcile_runtime
 
 __all__ = ["keyring_unlock_main", "main"]
 
@@ -102,6 +103,8 @@ def main() -> None:
             )
         case "rollback-runtime":
             rollback_runtime()
+        case "reconcile-runtime":
+            print(json.dumps(reconcile_runtime(), sort_keys=True))
         case "expose-cli":
             print(json.dumps(expose_cli(), sort_keys=True))
         case "checkpoint" | "restore":
@@ -127,6 +130,7 @@ def _parser() -> argparse.ArgumentParser:
     installation.add_argument("--source-root", type=Path, required=True)
     installation.add_argument("--replace", action="store_true")
     commands.add_parser("rollback-runtime")
+    commands.add_parser("reconcile-runtime")
     commands.add_parser("expose-cli")
     add_checkpoint_commands(commands)
     commands.add_parser("observe")

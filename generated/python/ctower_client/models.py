@@ -1,6 +1,6 @@
 """DO NOT EDIT: generated file; regenerate from declared inputs.
 
-Authored contract digest: sha256:48887e6455e99650ab296dbc75dc7faf312a6fb3fe72e1937024d1ee6b95b446
+Authored contract digest: sha256:d958a8bba3c1a8a189d56a61fc4ae03c4cf42130faedd8bffa32efcd799a0d86
 """
 
 from __future__ import annotations
@@ -18,11 +18,16 @@ __all__ = [
     "ActivityClass",
     "AdmitIntent",
     "AdmittedAuditData",
+    "AppendFindingRequest",
+    "AppliedLabel",
+    "ApplyLabelRequest",
+    "ApplyLabelResult",
     "AssignmentChangeRequest",
     "AssignmentChangedAuditData",
     "AssignmentInterval",
     "AssignmentKind",
     "AssignmentList",
+    "AttentionFindingResult",
     "AuditEvent",
     "AuditPage",
     "BlockIntent",
@@ -36,6 +41,9 @@ __all__ = [
     "BundleAction",
     "BundleActionKind",
     "BundleCheck",
+    "ChangeReference",
+    "ChangeReferenceRequest",
+    "ChangeReferenceResult",
     "CompanyBundleApplyRequest",
     "CompanyBundleAssignment",
     "CompanyBundleCommandResult",
@@ -77,13 +85,21 @@ __all__ = [
     "CustodyTransferredPayload",
     "DeferIntent",
     "DeferredAuditData",
+    "DeliverySurfaceAvailability",
+    "DeliverySurfaceAvailabilityNoQualifyingCheckpoint",
+    "DeliverySurfaceAvailabilityQualifyingCheckpoint",
     "DurabilityState",
     "EvidenceRequest",
+    "FindingDispositionRequest",
+    "FindingDispositionResult",
     "FreezeCriteriaRequest",
     "HealthContributor",
     "HealthContributorKey",
     "HealthDimension",
     "HealthStatus",
+    "HumanWaiting",
+    "HumanWaitingNotWaiting",
+    "HumanWaitingWaiting",
     "IntakeCommandResult",
     "IntakeIntent",
     "IntakeOutcome",
@@ -128,6 +144,7 @@ __all__ = [
     "ProjectDeliverySeat",
     "ProjectDeliverySeatAssignment",
     "ProjectDeliverySlot",
+    "ProjectDeliverySurfaceDeclaration",
     "ProjectDeliveryUnassignedSeatAssignment",
     "ProjectDeliveryView",
     "ProjectEvent",
@@ -164,11 +181,17 @@ __all__ = [
     "SessionTransitionedAuditEvent",
     "SessionTransitionedPayload",
     "SourceReference",
+    "SurfaceDeclarationState",
+    "SurfaceEnvironmentsField",
+    "SurfaceIdentityField",
     "SyntheticRunReceipt",
     "SyntheticRunRequest",
     "SyntheticRunResource",
     "SyntheticRunState",
     "TelemetryContext",
+    "TenantDisplayIdentity",
+    "TenantDisplayIdentityKnown",
+    "TenantDisplayIdentityUnknown",
     "TicketCommandResult",
     "TicketCommentAddedAuditEvent",
     "TicketCommentAddedPayload",
@@ -513,6 +536,30 @@ class AdmittedAuditData(_BoundaryModel):
     reason: Annotated[str, Field(min_length=1, max_length=500)]
 
 
+class AppendFindingRequest(_BoundaryModel):
+    subject_ticket_id: UUID
+    kind_key: Annotated[str, Field(pattern="^[a-z][a-z0-9._-]{1,95}$")]
+    reason_code: Annotated[str, Field(pattern="^[a-z][a-z0-9._-]*$")]
+    effective_owner: Literal["operator", "commander"]
+    recommendation: Annotated[str, Field(min_length=1, max_length=500)]
+    alternatives: tuple[Annotated[str, Field(min_length=1, max_length=500)], ...]
+    consequence: Annotated[str, Field(min_length=1, max_length=500)]
+    deadline: _Rfc3339DateTime | None
+    dedupe_key: Annotated[str, Field(pattern="^[a-z][a-z0-9._-]{1,127}$")]
+    source_facts: tuple[Annotated[str, Field(min_length=1)], ...]
+
+
+class AppliedLabel(_BoundaryModel):
+    label_key: Annotated[str, Field(pattern="^[a-z][a-z0-9._-]{1,95}$")]
+    label: Annotated[str, Field(min_length=1, max_length=128)]
+    vocabulary_revision: Annotated[int, Field(ge=1, le=9007199254740991)]
+    applied_at: _Rfc3339DateTime
+
+
+class ApplyLabelRequest(_BoundaryModel):
+    label_key: Annotated[str, Field(pattern="^[a-z][a-z0-9._-]{1,95}$")]
+
+
 class AssignmentChangedAuditData(_BoundaryModel):
     assignment_kind: Literal["current_assignee", "stage_owner", "reviewer_assignment"]
     from_principal_id: UUID | None
@@ -589,6 +636,19 @@ class BundleActionKind(StrEnum):
 class BundleCheck(_BoundaryModel):
     code: Annotated[str, Field(pattern="^[a-z][a-z0-9._-]{1,95}$")]
     status: Literal["passed", "warning"]
+
+
+class ChangeReference(_BoundaryModel):
+    repository: Annotated[str, Field(min_length=1, max_length=256)]
+    change_identity: Annotated[str, Field(min_length=1, max_length=128)]
+    reference: Annotated[str, Field(min_length=1, max_length=256)]
+    recorded_at: _Rfc3339DateTime
+
+
+class ChangeReferenceRequest(_BoundaryModel):
+    repository: Annotated[str, Field(min_length=1, max_length=256)]
+    change_identity: Annotated[str, Field(min_length=1, max_length=128)]
+    reference: Annotated[str, Field(min_length=1, max_length=256)]
 
 
 class CompanyIdentity(_BoundaryModel):
@@ -732,6 +792,10 @@ class DeferredAuditData(_BoundaryModel):
     review_after: _Rfc3339DateTime
 
 
+class DeliverySurfaceAvailabilityNoQualifyingCheckpoint(_BoundaryModel):
+    state: Literal["no_qualifying_checkpoint"]
+
+
 class DurabilityState(StrEnum):
     DURABILITY_PENDING = "durability_pending"
     ACCEPTED = "accepted"
@@ -744,6 +808,11 @@ class EvidenceRequest(_BoundaryModel):
     candidate_digest: Annotated[str, Field(pattern="^sha256:[0-9a-f]{64}$")] | None = None
     artifact_digest: Annotated[str, Field(pattern="^sha256:[0-9a-f]{64}$")]
     content: Annotated[str, Field(min_length=1, max_length=100000)]
+
+
+class FindingDispositionRequest(_BoundaryModel):
+    outcome: Literal["resolved", "snoozed", "expired", "superseded", "cancelled"]
+    reason: Annotated[str, Field(min_length=1, max_length=500)]
 
 
 class HealthContributorKey(StrEnum):
@@ -761,6 +830,17 @@ class HealthStatus(StrEnum):
     HEALTHY = "HEALTHY"
     DEGRADED = "DEGRADED"
     STATE_UNKNOWN = "STATE_UNKNOWN"
+
+
+class HumanWaitingNotWaiting(_BoundaryModel):
+    state: Literal["not_waiting"]
+
+
+class HumanWaitingWaiting(_BoundaryModel):
+    state: Literal["waiting"]
+    finding_id: UUID
+    kind_key: Annotated[str, Field(pattern="^[a-z][a-z0-9._-]{1,95}$")]
+    reason_code: Annotated[str, Field(pattern="^[a-z][a-z0-9._-]*$")]
 
 
 class IntakeIntent(StrEnum):
@@ -1147,6 +1227,12 @@ class SourceReference(_BoundaryModel):
     ref: Annotated[str, Field(min_length=1, max_length=256)]
 
 
+class SurfaceDeclarationState(StrEnum):
+    DECLARED_PRESENT = "declared_present"
+    DECLARED_ABSENT = "declared_absent"
+    UNDECLARED = "undeclared"
+
+
 class SyntheticRunRequest(_BoundaryModel):
     workflow_ref: Literal["ctower.trust-spine-four-stage@1"]
 
@@ -1180,6 +1266,16 @@ class TelemetryContext(_BoundaryModel):
     effect_id: Annotated[str, Field(min_length=1, max_length=128)] | None = None
     component_revision_id: Annotated[str, Field(min_length=1, max_length=128)] | None = None
     deployment_id: Annotated[str, Field(min_length=1, max_length=128)] | None = None
+
+
+class TenantDisplayIdentityKnown(_BoundaryModel):
+    state: Literal["known"]
+    display_name: Annotated[str, Field(min_length=1, max_length=128)]
+
+
+class TenantDisplayIdentityUnknown(_BoundaryModel):
+    state: Literal["unknown"]
+    missing_source: Annotated[str, Field(min_length=1)]
 
 
 class TicketCommentAddedPayload(_BoundaryModel):
@@ -1232,6 +1328,15 @@ class WorkflowTransitionRequest(_BoundaryModel):
     destination_stage: Annotated[str, Field(pattern="^[a-z][a-z0-9._-]*$")]
 
 
+class ApplyLabelResult(_BoundaryModel):
+    command_id: UUID
+    ticket_label_id: UUID
+    durability_state: DurabilityState
+    event_id: UUID
+    ticket_id: UUID
+    label_key: Annotated[str, Field(pattern="^[a-z][a-z0-9._-]{1,95}$")]
+
+
 class AssignmentChangeRequest(_BoundaryModel):
     assignment_kind: MutableAssignmentKind
     expected_version: Annotated[int, Field(ge=1, le=9007199254740991)]
@@ -1252,23 +1357,12 @@ class AssignmentInterval(_BoundaryModel):
     sequence: Annotated[int, Field(ge=1, le=9007199254740991)]
 
 
-class BoardCard(_BoundaryModel):
-    activity_class: Literal["work", "verification", "None"] | None
-    assignee_id: UUID | None
-    blocker_opened_at: _Rfc3339DateTime | None
-    blocker_reason: str | None
-    custodian_id: UUID
-    delivery_facts: tuple[str, ...]
-    lane: BoardLane
-    priority: Priority
-    project_key: Annotated[str, Field(pattern="^[a-z][a-z0-9-]{2,63}$")]
-    risk: str | None
-    stage_key: Annotated[str, Field(pattern="^[a-z][a-z0-9._-]*$")] | None
-    stage_label: str | None
-    ticket_id: UUID
-    title: str
-    underlying_lane: Literal["backlog", "ready", "in_progress", "in_review", "complete", "None"] | None
-    version: Annotated[int, Field(ge=1, le=9007199254740991)]
+class AttentionFindingResult(_BoundaryModel):
+    command_id: UUID
+    finding_id: UUID
+    durability_state: DurabilityState
+    event_ids: tuple[UUID, ...]
+    recorded_at: _Rfc3339DateTime
 
 
 class BootstrapReceipt(_BoundaryModel):
@@ -1279,6 +1373,14 @@ class BootstrapReceipt(_BoundaryModel):
     operator_id: UUID
     receipt_digest: Annotated[str, Field(pattern="^sha256:[0-9a-f]{64}$")]
     tenant_id: UUID
+
+
+class ChangeReferenceResult(_BoundaryModel):
+    command_id: UUID
+    change_reference_id: UUID
+    durability_state: DurabilityState
+    event_id: UUID
+    ticket_id: UUID
 
 
 class CompanyBundleCommandResult(_BoundaryModel):
@@ -1524,6 +1626,15 @@ class CustodyTransferredAuditEvent(_BoundaryModel):
     stream_id: Annotated[str, Field(pattern="^ticket:[0-9a-f-]{36}$")]
 
 
+class FindingDispositionResult(_BoundaryModel):
+    command_id: UUID
+    finding_id: UUID
+    outcome: Literal["resolved", "snoozed", "expired", "superseded", "cancelled"]
+    durability_state: DurabilityState
+    event_ids: tuple[UUID, ...]
+    recorded_at: _Rfc3339DateTime
+
+
 class FreezeCriteriaRequest(_BoundaryModel):
     expected_version: Annotated[int, Field(ge=0, le=9007199254740991)]
     candidate_digest: Annotated[str, Field(pattern="^sha256:[0-9a-f]{64}$")]
@@ -1538,6 +1649,9 @@ class HealthContributor(_BoundaryModel):
     observed_at: _Rfc3339DateTime
     owner: Annotated[str, Field(min_length=1, max_length=128)]
     reason: Annotated[str, Field(min_length=1, max_length=500)]
+
+
+type HumanWaiting = HumanWaitingWaiting | HumanWaitingNotWaiting
 
 
 class IntakeCommandResult(_BoundaryModel):
@@ -1617,6 +1731,9 @@ class PriorityChangedAuditData(_BoundaryModel):
 
 class Problem(_BoundaryModel):
     code: Literal[
+        "attention-finding-already-disposed",
+        "attention-finding-not-found",
+        "attention-kind-unrecognized",
         "bootstrap-consumed",
         "bootstrap-expired",
         "bootstrap-nonempty",
@@ -1633,6 +1750,7 @@ class Problem(_BoundaryModel):
         "bundle-reference-invalid",
         "bundle-schema-invalid",
         "bundle-security-refused",
+        "change-reference-duplicate",
         "credential-already-revoked",
         "credential-authentication-unavailable",
         "credential-digest-conflict",
@@ -1647,6 +1765,8 @@ class Problem(_BoundaryModel):
         "intake-promotion-ineligible",
         "intake-source-project-mismatch",
         "intake-source-conflict",
+        "label-already-applied",
+        "label-key-unrecognized",
         "migration-alias-conflict",
         "migration-capability-denied",
         "migration-correction-conflict",
@@ -1851,6 +1971,16 @@ class SessionTransitionedPayload(_BoundaryModel):
     transition_number: Annotated[int, Field(ge=1, le=9007199254740991)]
 
 
+class SurfaceEnvironmentsField(_BoundaryModel):
+    state: SurfaceDeclarationState
+    environments: tuple[Annotated[str, Field(min_length=1)], ...]
+
+
+class SurfaceIdentityField(_BoundaryModel):
+    state: SurfaceDeclarationState
+    identity: Annotated[str, Field(min_length=1, max_length=200)] | None
+
+
 class SyntheticRunReceipt(_BoundaryModel):
     command_id: UUID
     durability_state: DurabilityState
@@ -1871,6 +2001,9 @@ class SyntheticRunResource(_BoundaryModel):
     state: SyntheticRunState
     ticket_id: UUID | None
     workflow_ref: Literal["ctower.trust-spine-four-stage@1"]
+
+
+type TenantDisplayIdentity = TenantDisplayIdentityKnown | TenantDisplayIdentityUnknown
 
 
 class TicketCommentAddedAuditEvent(_BoundaryModel):
@@ -2045,13 +2178,6 @@ class AssignmentList(_BoundaryModel):
     ticket_id: UUID
 
 
-class BoardView(_BoundaryModel):
-    cards: tuple[BoardCard, ...]
-    health: ProjectionHealth
-    projection_watermark: Annotated[int, Field(ge=0, le=9007199254740991)]
-    source_watermark: Annotated[int, Field(ge=0, le=9007199254740991)]
-
-
 class BundleAction(_BoundaryModel):
     component: ComponentReference
     kind: BundleActionKind
@@ -2088,6 +2214,14 @@ class CtowerProjectImportCorrectionRequest(_BoundaryModel):
 type CtowerProjectImportOperation = CtowerProjectTicketSeedOperation | CtowerProjectExactAliasOperation | CtowerProjectTicketRelationOperation | CtowerProjectSourceLinkOperation
 
 
+class DeliverySurfaceAvailabilityQualifyingCheckpoint(_BoundaryModel):
+    state: Literal["qualifying_checkpoint"]
+    checkpoint_key: Annotated[str, Field(pattern="^[A-Za-z0-9][A-Za-z0-9._-]{0,127}$")]
+    landing_boundary: SurfaceIdentityField
+    non_production_environments: SurfaceEnvironmentsField
+    externally_effective_outcome: SurfaceIdentityField
+
+
 class HealthDimension(_BoundaryModel):
     status: HealthStatus
     contributors: Annotated[tuple[HealthContributor, ...], Field(min_length=1)]
@@ -2096,6 +2230,12 @@ class HealthDimension(_BoundaryModel):
 class ProjectDeliveryAssignedSeatAssignment(_BoundaryModel):
     state: Literal["assigned"]
     seat: ProjectDeliverySeat
+
+
+class ProjectDeliverySurfaceDeclaration(_BoundaryModel):
+    landing_boundary: SurfaceIdentityField
+    non_production_environments: SurfaceEnvironmentsField
+    externally_effective_outcome: SurfaceIdentityField
 
 
 class ProjectSessionPage(_BoundaryModel):
@@ -2213,6 +2353,9 @@ class CtowerProjectImportBatchRequest(_BoundaryModel):
     operations: Annotated[tuple[CtowerProjectImportOperation, ...], Field(min_length=1, max_length=64)]
 
 
+type DeliverySurfaceAvailability = DeliverySurfaceAvailabilityNoQualifyingCheckpoint | DeliverySurfaceAvailabilityQualifyingCheckpoint
+
+
 type ProjectDeliverySeatAssignment = ProjectDeliveryAssignedSeatAssignment | ProjectDeliveryUnassignedSeatAssignment
 
 
@@ -2240,6 +2383,30 @@ class VersionedComponent(_BoundaryModel):
 
 
 type WorkChangedAuditPayload = WorkPriorityChangedAuditPayload | WorkAssignmentChangedAuditPayload | WorkAdmittedAuditPayload | WorkDeferredAuditPayload | WorkBlockerOpenedAuditPayload | WorkBlockerResolvedAuditPayload | WorkReopenedAuditPayload | WorkRelationAddedAuditPayload
+
+
+class BoardCard(_BoundaryModel):
+    activity_class: Literal["work", "verification", "None"] | None
+    applied_labels: tuple[AppliedLabel, ...]
+    assignee_id: UUID | None
+    blocker_opened_at: _Rfc3339DateTime | None
+    blocker_reason: str | None
+    change_references: tuple[ChangeReference, ...]
+    custodian_id: UUID
+    delivery_facts: tuple[str, ...]
+    delivery_surface_availability: DeliverySurfaceAvailability
+    human_waiting: HumanWaiting
+    lane: BoardLane
+    priority: Priority
+    project_key: Annotated[str, Field(pattern="^[a-z][a-z0-9-]{2,63}$")]
+    risk: str | None
+    stage_key: Annotated[str, Field(pattern="^[a-z][a-z0-9._-]*$")] | None
+    stage_label: str | None
+    tenant_display_identity: TenantDisplayIdentity
+    ticket_id: UUID
+    title: str
+    underlying_lane: Literal["backlog", "ready", "in_progress", "in_review", "complete", "None"] | None
+    version: Annotated[int, Field(ge=1, le=9007199254740991)]
 
 
 class CompanyBundleResource(_BoundaryModel):
@@ -2270,6 +2437,13 @@ class WorkChangedAuditEvent(_BoundaryModel):
 type AuditEvent = TicketCreatedAuditEvent | CustodyTransferredAuditEvent | TicketCommentAddedAuditEvent | WorkChangedAuditEvent | WorkflowChangedAuditEvent | ProofChangedAuditEvent | SessionStartedAuditEvent | SessionTransitionedAuditEvent | SessionClosedAuditEvent
 
 
+class BoardView(_BoundaryModel):
+    cards: tuple[BoardCard, ...]
+    health: ProjectionHealth
+    projection_watermark: Annotated[int, Field(ge=0, le=9007199254740991)]
+    source_watermark: Annotated[int, Field(ge=0, le=9007199254740991)]
+
+
 class CompanyBundleDocument(_BoundaryModel):
     assignments: Annotated[tuple[CompanyBundleAssignment, ...], Field(max_length=512)]
     company: CompanyIdentity
@@ -2297,6 +2471,7 @@ class ProjectDeliveryRow(_BoundaryModel):
     outcome: Annotated[str, Field(min_length=1)]
     accountable_owner: Annotated[str, Field(min_length=1)]
     criteria: ProjectDeliveryCriteria
+    delivery_surface: ProjectDeliverySurfaceDeclaration
     qualifying_stage_slots_filled: Annotated[int, Field(ge=0, le=9007199254740991)]
     qualifying_stage_slots_required: Annotated[int, Field(ge=0, le=9007199254740991)]
     qualifying_stage_unfilled_or_unknown_slot_keys: tuple[Annotated[str, Field(pattern="^[a-z][a-z0-9._-]*$")], ...]

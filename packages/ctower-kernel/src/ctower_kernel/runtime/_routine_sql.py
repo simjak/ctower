@@ -160,8 +160,12 @@ def _plans(
         dict[str, object],
         connection.execute(
             """
-            SELECT count(*) AS value FROM operation_jobs
-            WHERE tenant_id = %s AND operation = %s AND state = 'pending'
+            SELECT count(*) AS value FROM operation_jobs AS job
+            WHERE job.tenant_id = %s AND job.operation = %s AND job.state = 'pending'
+              AND NOT EXISTS (
+                  SELECT 1 FROM fixed_operation_results AS result
+                  WHERE result.job_id = job.job_id
+              )
             """,
             (tenant_id, revision.handler_kind),
         ).fetchone(),

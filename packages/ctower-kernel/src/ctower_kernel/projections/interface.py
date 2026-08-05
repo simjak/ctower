@@ -10,23 +10,32 @@ from uuid import UUID
 
 from ctower_kernel.projections.project_delivery import (
     CtowerProjectCutoverHealth,
+    DeliverySurfaceDeclaration,
     ProjectDeliveryView,
 )
 from ctower_kernel.record import Actor, DurabilityHealth
 
 __all__ = [
+    "AppliedLabel",
     "BoardCard",
+    "BoardDeliverySurfaceAvailability",
+    "BoardDeliverySurfaceState",
     "BoardFacts",
     "BoardLane",
     "BoardQuery",
     "BoardView",
+    "ChangeReference",
     "ControlHealth",
     "HealthContributor",
     "HealthContributorKey",
     "HealthDimension",
     "HealthStatus",
+    "HumanWaiting",
+    "HumanWaitingState",
     "ProjectionHealth",
     "Projections",
+    "TenantDisplayIdentity",
+    "TenantDisplayState",
     "derive_board_card",
 ]
 _MAX_HEALTH_OWNER_LENGTH = 128
@@ -166,6 +175,142 @@ class BoardFacts:
     version: int
 
 
+class TenantDisplayState(StrEnum):
+    KNOWN = "known"
+    UNKNOWN = "unknown"
+
+
+@dataclass(frozen=True, slots=True)
+class TenantDisplayIdentity:
+    """INV-66: the tenant's recorded display fact, or an explicit unknown."""
+
+    state: TenantDisplayState
+    display_name: str | None = None
+    missing_source: str | None = None
+
+    def __post_init__(self) -> None:
+        if self.state is TenantDisplayState.KNOWN and not self.display_name:
+            raise ValueError("a known tenant display identity must carry a display name")
+        if self.state is TenantDisplayState.UNKNOWN and not self.missing_source:
+            raise ValueError("an unknown tenant display identity must name its missing source")
+
+    def response_payload(self) -> dict[str, object]:
+        if self.state is TenantDisplayState.KNOWN:
+            return {"state": "known", "display_name": self.display_name}
+        return {"state": "unknown", "missing_source": self.missing_source}
+
+
+@dataclass(frozen=True, slots=True)
+class ChangeReference:
+    """INV-66: a linked Change fact, exposed exactly as recorded."""
+
+    repository: str
+    change_identity: str
+    reference: str
+    recorded_at: datetime
+
+    def response_payload(self) -> dict[str, object]:
+        return {
+            "change_identity": self.change_identity,
+            "reference": self.reference,
+            "recorded_at": self.recorded_at.isoformat(),
+            "repository": self.repository,
+        }
+
+
+@dataclass(frozen=True, slots=True)
+class AppliedLabel:
+    """D29(b): an applied-label fact, pinned to its vocabulary revision."""
+
+    label_key: str
+    label: str
+    vocabulary_revision: int
+    applied_at: datetime
+
+    def response_payload(self) -> dict[str, object]:
+        return {
+            "applied_at": self.applied_at.isoformat(),
+            "label": self.label,
+            "label_key": self.label_key,
+            "vocabulary_revision": self.vocabulary_revision,
+        }
+
+
+class HumanWaitingState(StrEnum):
+    WAITING = "waiting"
+    NOT_WAITING = "not_waiting"
+
+
+@dataclass(frozen=True, slots=True)
+class HumanWaiting:
+    """AC-TM-08: human-waiting derives only from a qualifying Attention finding."""
+
+    state: HumanWaitingState
+    finding_id: UUID | None = None
+    kind_key: str | None = None
+    reason_code: str | None = None
+
+    def __post_init__(self) -> None:
+        waiting = self.state is HumanWaitingState.WAITING
+        complete = (
+            self.finding_id is not None
+            and self.kind_key is not None
+            and self.reason_code is not None
+        )
+        if waiting != complete:
+            raise ValueError("human-waiting must carry its finding, and only while waiting")
+
+    def response_payload(self) -> dict[str, object]:
+        if self.state is HumanWaitingState.NOT_WAITING:
+            return {"state": "not_waiting"}
+        return {
+            "finding_id": str(self.finding_id),
+            "kind_key": self.kind_key,
+            "reason_code": self.reason_code,
+            "state": "waiting",
+        }
+
+
+class BoardDeliverySurfaceState(StrEnum):
+    NO_QUALIFYING_CHECKPOINT = "no_qualifying_checkpoint"
+    QUALIFYING_CHECKPOINT = "qualifying_checkpoint"
+
+
+@dataclass(frozen=True, slots=True)
+class BoardDeliverySurfaceAvailability:
+    """AC-PD-10: the ticket's qualifying checkpoint's pinned declaration."""
+
+    state: BoardDeliverySurfaceState
+    checkpoint_key: str | None = None
+    declaration: DeliverySurfaceDeclaration | None = None
+
+    def __post_init__(self) -> None:
+        qualifying = self.state is BoardDeliverySurfaceState.QUALIFYING_CHECKPOINT
+        complete = self.checkpoint_key is not None and self.declaration is not None
+        if qualifying != complete:
+            raise ValueError(
+                "delivery-surface availability must carry its checkpoint, "
+                "and only while one qualifies"
+            )
+
+    def response_payload(self) -> dict[str, object]:
+        if self.state is BoardDeliverySurfaceState.NO_QUALIFYING_CHECKPOINT:
+            return {"state": "no_qualifying_checkpoint"}
+        if self.declaration is None:
+            raise RuntimeError("qualifying delivery surface is missing its declaration")
+        payload = self.declaration.response_payload()
+        payload["checkpoint_key"] = self.checkpoint_key
+        payload["state"] = "qualifying_checkpoint"
+        return payload
+
+
+_TENANT_UNKNOWN = TenantDisplayIdentity(TenantDisplayState.UNKNOWN, missing_source="not_derived")
+_NOT_WAITING = HumanWaiting(HumanWaitingState.NOT_WAITING)
+_NO_QUALIFYING_CHECKPOINT = BoardDeliverySurfaceAvailability(
+    BoardDeliverySurfaceState.NO_QUALIFYING_CHECKPOINT
+)
+
+
 @dataclass(frozen=True, slots=True)
 class BoardCard:
     ticket_id: UUID
@@ -183,23 +328,33 @@ class BoardCard:
     risk: str | None
     delivery_facts: tuple[str, ...]
     version: int
+    tenant_display_identity: TenantDisplayIdentity = _TENANT_UNKNOWN
+    change_references: tuple[ChangeReference, ...] = ()
+    applied_labels: tuple[AppliedLabel, ...] = ()
+    human_waiting: HumanWaiting = _NOT_WAITING
+    delivery_surface_availability: BoardDeliverySurfaceAvailability = _NO_QUALIFYING_CHECKPOINT
 
     def response_payload(self) -> dict[str, object]:
         return {
             "activity_class": self.activity_class,
+            "applied_labels": [item.response_payload() for item in self.applied_labels],
             "assignee_id": str(self.assignee_id) if self.assignee_id else None,
             "blocker_opened_at": (
                 self.blocker_opened_at.isoformat() if self.blocker_opened_at else None
             ),
             "blocker_reason": self.blocker_reason,
+            "change_references": [item.response_payload() for item in self.change_references],
             "custodian_id": str(self.custodian_id),
             "delivery_facts": list(self.delivery_facts),
+            "delivery_surface_availability": self.delivery_surface_availability.response_payload(),
+            "human_waiting": self.human_waiting.response_payload(),
             "lane": self.lane.value,
             "priority": self.priority,
             "project_key": self.project_key,
             "risk": self.risk,
             "stage_key": self.stage_key,
             "stage_label": self.stage_key,
+            "tenant_display_identity": self.tenant_display_identity.response_payload(),
             "ticket_id": str(self.ticket_id),
             "title": self.title,
             "underlying_lane": (self.underlying_lane.value if self.underlying_lane else None),

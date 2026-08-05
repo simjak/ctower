@@ -5,8 +5,8 @@ import { Chrome } from "@/frame/Chrome";
 import { KnownValue, Resolved } from "@/frame/Declared";
 import { RecordFoot } from "@/frame/RecordFoot";
 import { StateGlyph } from "@/frame/StateGlyph";
-import { recordAdapter, SOURCE_LABELS } from "@/read/adapter";
-import type { CrewProfile, CrewUnknown, TailNote } from "@/read/interface";
+import { crewTerminalStream, recordAdapter, SOURCE_LABELS } from "@/read/adapter";
+import type { CrewProfile, CrewUnknown, Reading, SessionStream, TailNote } from "@/read/interface";
 import { redacted } from "@/read/sources/redact";
 import { CrewCurrent } from "@/surfaces/crew/CrewCurrent";
 import { CrewHead } from "@/surfaces/crew/CrewHead";
@@ -18,6 +18,8 @@ import {
   CrewRepair,
   CrewWhere,
 } from "@/surfaces/crew/CrewRail";
+import { LivePoll } from "@/surfaces/terminal/LivePoll";
+import { IdleTerminalPane, LiveTerminalPane } from "@/surfaces/terminal/TerminalPane";
 
 export const dynamic = "force-dynamic";
 
@@ -44,16 +46,45 @@ function Foot({ tail }: { readonly tail: TailNote }): ReactElement {
   return <span>{notes.join(" · ")}</span>;
 }
 
-function Profile({ profile }: { readonly profile: CrewProfile }): ReactElement {
+function Profile({
+  profile,
+  stream,
+}: {
+  readonly profile: CrewProfile;
+  readonly stream: Reading<SessionStream>;
+}): ReactElement {
+  const identity = {
+    crew: profile.row.name,
+    seatInitials:
+      profile.row.seatInitials.known === "value" ? profile.row.seatInitials.value : "··",
+  };
   return (
     <>
       <Chrome section="Crew" back={{ href: "/team", label: "Org" }} />
+      <LivePoll />
       <main className="page">
         <div className="wrap">
           <CrewHead profile={profile} />
 
           <div className="cols">
             <div className="main">
+              <Resolved reading={stream} subject="this crew's pane">
+                {(value) =>
+                  value.chosen === profile.sessionName ? (
+                    <LiveTerminalPane identity={identity} stream={value} />
+                  ) : (
+                    <IdleTerminalPane
+                      identity={identity}
+                      headline="This crew's pane could not be confirmed"
+                      detail="the pane read answered for a different session than tmux listed for
+                        this crew a moment earlier; showing it would risk another crew's screen on
+                        this page, so this treats it the same as unavailable"
+                      sourceLine="live tmux pane, capture-pane -p"
+                      chip="mismatched read"
+                    />
+                  )
+                }
+              </Resolved>
               <CrewCurrent profile={profile} />
               <CrewLifecycle profile={profile} />
               <CrewClaims profile={profile} />
@@ -94,6 +125,10 @@ function Profile({ profile }: { readonly profile: CrewProfile }): ReactElement {
  * work rather than as a crew that is not there.
  */
 function NotFound({ missing }: { readonly missing: CrewUnknown }): ReactElement {
+  // a name the crew log has recorded, with no live session behind it now, is
+  // a real reaped crew — the same honest-empty state the terminal pane
+  // demonstrates on the approved mockup, reachable here rather than invented
+  const reaped = missing.logged.known === "value";
   return (
     <>
       <Chrome section="Crew" back={{ href: "/team", label: "Org" }} />
@@ -115,7 +150,24 @@ function NotFound({ missing }: { readonly missing: CrewUnknown }): ReactElement 
             </div>
           </div>
 
-          <section className="panel" style={{ marginTop: "18px" }}>
+          {reaped ? (
+            <section className="panel" style={{ marginTop: "18px" }}>
+              <header>
+                <h2>Live terminal</h2>
+                <span className="sub">this crew's tmux session has ended</span>
+              </header>
+              <div style={{ padding: "0 16px 16px" }}>
+                <IdleTerminalPane
+                  identity={{ crew: missing.crew, seatInitials: "··" }}
+                  detail="the crew log has recorded this name, and tmux lists no session for it
+                    now — reaped, not invented"
+                  sourceLine="tmux list-sessions — no live pane on the fleet"
+                />
+              </div>
+            </section>
+          ) : null}
+
+          <section className="panel" style={{ marginTop: reaped ? "16px" : "18px" }}>
             <header>
               <h2>What the record holds for this name</h2>
             </header>
@@ -225,11 +277,12 @@ export default async function CrewPage({
 }): Promise<ReactNode> {
   const { crewName } = await params;
   const lookup = await recordAdapter.crewProfile(crewName);
+  const stream = await crewTerminalStream(lookup);
   return (
     <Resolved reading={lookup} frame={(declared) => <Frame crew={crewName} declared={declared} />}>
       {(value) =>
         value.found === "crew" ? (
-          <Profile profile={value.profile} />
+          <Profile profile={value.profile} stream={stream} />
         ) : (
           <NotFound missing={value.missing} />
         )

@@ -1,5 +1,5 @@
 // DO NOT EDIT: generated file; regenerate from declared inputs.
-// Authored contract digest: sha256:48887e6455e99650ab296dbc75dc7faf312a6fb3fe72e1937024d1ee6b95b446
+// Authored contract digest: sha256:d958a8bba3c1a8a189d56a61fc4ae03c4cf42130faedd8bffa32efcd799a0d86
 
 import type * as Models from "./models.js";
 import { OPERATIONS, type OperationId } from "./operations.js";
@@ -25,6 +25,11 @@ export type AddTicketRelationInput = Readonly<{
   readonly body: Models.RelationRequest;
 }>;
 
+export type AppendAttentionFindingInput = Readonly<{
+  readonly "IdempotencyKey": string;
+  readonly body: Models.AppendFindingRequest;
+}>;
+
 export type AppendCtowerProjectImportCorrectionInput = Readonly<{
   readonly "IdempotencyKey": string;
   readonly body: Models.CtowerProjectImportCorrectionRequest;
@@ -44,6 +49,12 @@ export type ApplyTicketIntentInput = Readonly<{
   readonly "ticketId": string;
   readonly "IdempotencyKey": string;
   readonly body: Models.TicketIntentRequest;
+}>;
+
+export type ApplyTicketLabelInput = Readonly<{
+  readonly "ticketId": string;
+  readonly "IdempotencyKey": string;
+  readonly body: Models.ApplyLabelRequest;
 }>;
 
 export type BindCtowerProjectAliasPlanInput = Readonly<{
@@ -194,6 +205,12 @@ export type PromoteIntakeEventInput = Readonly<{
   readonly body: Models.IntakePromotionRequest;
 }>;
 
+export type RecordAttentionFindingDispositionInput = Readonly<{
+  readonly "findingId": string;
+  readonly "IdempotencyKey": string;
+  readonly body: Models.FindingDispositionRequest;
+}>;
+
 export type RecordOutboxPoisonDispositionInput = Readonly<{
   readonly "outboxId": string;
   readonly "IdempotencyKey": string;
@@ -210,6 +227,12 @@ export type RecordProofVerdictInput = Readonly<{
   readonly "ticketId": string;
   readonly "IdempotencyKey": string;
   readonly body: Models.VerdictRequest;
+}>;
+
+export type RecordTicketChangeReferenceInput = Readonly<{
+  readonly "ticketId": string;
+  readonly "IdempotencyKey": string;
+  readonly body: Models.ChangeReferenceRequest;
 }>;
 
 export type RecordTicketSessionFactInput = Readonly<{
@@ -277,10 +300,12 @@ export type ValidateCompanyBundleInput = Readonly<{
 export type OperationInputs = Readonly<{
   readonly "addTicketComment": AddTicketCommentInput;
   readonly "addTicketRelation": AddTicketRelationInput;
+  readonly "appendAttentionFinding": AppendAttentionFindingInput;
   readonly "appendCtowerProjectImportCorrection": AppendCtowerProjectImportCorrectionInput;
   readonly "applyCompanyBundle": ApplyCompanyBundleInput;
   readonly "applyCtowerProjectImportBatch": ApplyCtowerProjectImportBatchInput;
   readonly "applyTicketIntent": ApplyTicketIntentInput;
+  readonly "applyTicketLabel": ApplyTicketLabelInput;
   readonly "bindCtowerProjectAliasPlan": BindCtowerProjectAliasPlanInput;
   readonly "bindCtowerProjectExportEquality": BindCtowerProjectExportEqualityInput;
   readonly "bootstrapFirstTenant": BootstrapFirstTenantInput;
@@ -309,9 +334,11 @@ export type OperationInputs = Readonly<{
   readonly "planCompanyBundle": PlanCompanyBundleInput;
   readonly "prepareCtowerProjectCutover": PrepareCtowerProjectCutoverInput;
   readonly "promoteIntakeEvent": PromoteIntakeEventInput;
+  readonly "recordAttentionFindingDisposition": RecordAttentionFindingDispositionInput;
   readonly "recordOutboxPoisonDisposition": RecordOutboxPoisonDispositionInput;
   readonly "recordProofEvidence": RecordProofEvidenceInput;
   readonly "recordProofVerdict": RecordProofVerdictInput;
+  readonly "recordTicketChangeReference": RecordTicketChangeReferenceInput;
   readonly "recordTicketSessionFact": RecordTicketSessionFactInput;
   readonly "reportCtowerProjectFenceObservation": ReportCtowerProjectFenceObservationInput;
   readonly "resolveCloseWorkflow": ResolveCloseWorkflowInput;
@@ -328,10 +355,12 @@ export type OperationInputs = Readonly<{
 export type OperationResults = Readonly<{
   readonly "addTicketComment": Models.TicketCommentResult;
   readonly "addTicketRelation": Models.WorkReceipt;
+  readonly "appendAttentionFinding": Models.AttentionFindingResult;
   readonly "appendCtowerProjectImportCorrection": Models.CtowerProjectMigrationReceipt;
   readonly "applyCompanyBundle": Models.CompanyBundleCommandResult;
   readonly "applyCtowerProjectImportBatch": Models.CtowerProjectImportBatchResult;
   readonly "applyTicketIntent": Models.WorkReceipt;
+  readonly "applyTicketLabel": Models.ApplyLabelResult;
   readonly "bindCtowerProjectAliasPlan": Models.CtowerProjectImportRun;
   readonly "bindCtowerProjectExportEquality": Models.CtowerProjectImportRun;
   readonly "bootstrapFirstTenant": Models.BootstrapReceipt;
@@ -360,9 +389,11 @@ export type OperationResults = Readonly<{
   readonly "planCompanyBundle": Models.CompanyBundlePlan;
   readonly "prepareCtowerProjectCutover": never;
   readonly "promoteIntakeEvent": Models.IntakeCommandResult;
+  readonly "recordAttentionFindingDisposition": Models.FindingDispositionResult;
   readonly "recordOutboxPoisonDisposition": Models.PoisonDispositionReceipt;
   readonly "recordProofEvidence": Models.ProofReceipt;
   readonly "recordProofVerdict": Models.ProofReceipt;
+  readonly "recordTicketChangeReference": Models.ChangeReferenceResult;
   readonly "recordTicketSessionFact": Models.SessionReceipt;
   readonly "reportCtowerProjectFenceObservation": Models.CtowerProjectMigrationReceipt;
   readonly "resolveCloseWorkflow": Models.WorkflowReceipt;
@@ -407,6 +438,12 @@ export class CtowerClient {
     return this.execute("addTicketRelation", input);
   }
 
+  public async appendAttentionFinding(
+    input: AppendAttentionFindingInput,
+  ): Promise<Models.AttentionFindingResult> {
+    return this.execute("appendAttentionFinding", input);
+  }
+
   public async appendCtowerProjectImportCorrection(
     input: AppendCtowerProjectImportCorrectionInput,
   ): Promise<Models.CtowerProjectMigrationReceipt> {
@@ -429,6 +466,12 @@ export class CtowerClient {
     input: ApplyTicketIntentInput,
   ): Promise<Models.WorkReceipt> {
     return this.execute("applyTicketIntent", input);
+  }
+
+  public async applyTicketLabel(
+    input: ApplyTicketLabelInput,
+  ): Promise<Models.ApplyLabelResult> {
+    return this.execute("applyTicketLabel", input);
   }
 
   public async bindCtowerProjectAliasPlan(
@@ -599,6 +642,12 @@ export class CtowerClient {
     return this.execute("promoteIntakeEvent", input);
   }
 
+  public async recordAttentionFindingDisposition(
+    input: RecordAttentionFindingDispositionInput,
+  ): Promise<Models.FindingDispositionResult> {
+    return this.execute("recordAttentionFindingDisposition", input);
+  }
+
   public async recordOutboxPoisonDisposition(
     input: RecordOutboxPoisonDispositionInput,
   ): Promise<Models.PoisonDispositionReceipt> {
@@ -615,6 +664,12 @@ export class CtowerClient {
     input: RecordProofVerdictInput,
   ): Promise<Models.ProofReceipt> {
     return this.execute("recordProofVerdict", input);
+  }
+
+  public async recordTicketChangeReference(
+    input: RecordTicketChangeReferenceInput,
+  ): Promise<Models.ChangeReferenceResult> {
+    return this.execute("recordTicketChangeReference", input);
   }
 
   public async recordTicketSessionFact(

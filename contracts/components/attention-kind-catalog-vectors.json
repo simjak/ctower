@@ -1,0 +1,23 @@
+{
+  "schema": "ctower.attention-kind-catalog-vectors/v1",
+  "attention_kind_catalog_revisions": [
+    {
+      "catalog_key": "attention.needs-you-kinds",
+      "revision": 1,
+      "members": [
+        {"key": "outbox_poison", "label": "Outbox poison"},
+        {"key": "gate_decision", "label": "Gate decision"},
+        {"key": "incident_response", "label": "Incident response"}
+      ]
+    },
+    {
+      "catalog_key": "attention.needs-you-kinds",
+      "revision": 2,
+      "members": [
+        {"key": "gate_decision", "label": "Human gate decision"},
+        {"key": "budget_approval", "label": "Budget approval"},
+        {"key": "outbox_poison", "label": "Outbox poison"}
+      ]
+    }
+  ]
+}

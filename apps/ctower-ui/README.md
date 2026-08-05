@@ -272,3 +272,15 @@ and a nav entry that leads nowhere would be a dead control.
    rule and the ticket's own stable link stated above it, rather than redirecting to an id the
    operator never chose. The board is the list. `src/frame/rail.ts` is the contract, and
    `tests/repository/test_declared_sources.py` reads it.
+4. **The Inbox info-tier chip reads `NOTE`**, not the mockup's own `info` (gh#318). Mission
+   Control's `tools/notify` sends exactly `P0`, `P1` or `info`, and its own `--help` text calls an
+   info-severity message "a terse note" — `info` is also the literal generic word the operator's
+   no-generic-status-labels rule bans, so this surface renders that tier's own vocabulary instead
+   of the record's raw word. `src/surfaces/severity.ts` is the one place a severity resolves to a
+   chip label; `P0`/`P1` are unchanged.
+5. **The true-empty-project block no longer promises a portfolio view "below" it** (gh#319). The
+   only portfolio-view element on this page is the link in `src/surfaces/board/TrueEmptyProject.tsx`
+   — nothing renders below the banner — so the copy now describes that link instead of claiming an
+   embedded view the DOM never carried. gh#115's project-fact work has not landed (no PR as of this
+   fix), so wiring the promised embedded view was not yet composable; this is the honest fallback
+   the ticket names, not the preferred direction.

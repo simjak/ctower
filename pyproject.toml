@@ -47,6 +47,7 @@ packages = [
   "ctower_kernel",
   "ctower_kernel.access",
   "ctower_kernel.attention",
+  "ctower_kernel.board_context",
   "ctower_kernel.catalog",
   "ctower_kernel.migration",
   "ctower_kernel.migrations",
@@ -155,6 +156,7 @@ pythonpath = [
   "apps/ctowerctl/src",
   "generated/python",
   "packages/ctower-kernel/src",
+  "tests",
 ]
 
 [tool.coverage.run]

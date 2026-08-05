@@ -50,7 +50,11 @@
         "access.seat_credential_revoked",
         "session.started",
         "session.transitioned",
-        "session.closed"
+        "session.closed",
+        "ticket.change_reference_recorded",
+        "ticket.label_applied",
+        "attention.finding_appended",
+        "attention.finding_disposition_recorded"
       ]
     },
     "origin": {"type": "string", "enum": ["api", "bootstrap", "control_worker"]},
@@ -62,7 +66,7 @@
     "server_time": {"type": "string", "format": "date-time"},
     "stream_id": {
       "type": "string",
-      "pattern": "^(tenant:[0-9a-f-]{36}:bootstrap|ticket:[0-9a-f-]{36}|catalog:[0-9a-f-]{36}|proof:[0-9a-f-]{36}|workflow:[0-9a-f-]{36}|routine-occurrence:[0-9a-f-]{36}|poison-disposition:[0-9a-f-]{36}|migration:[0-9a-f-]{36}|inbound-thread:[0-9a-f-]{36}|seat-credential:[0-9a-f-]{36}|session:[0-9a-f-]{36})$"
+      "pattern": "^(tenant:[0-9a-f-]{36}:bootstrap|ticket:[0-9a-f-]{36}|catalog:[0-9a-f-]{36}|proof:[0-9a-f-]{36}|workflow:[0-9a-f-]{36}|routine-occurrence:[0-9a-f-]{36}|poison-disposition:[0-9a-f-]{36}|migration:[0-9a-f-]{36}|inbound-thread:[0-9a-f-]{36}|seat-credential:[0-9a-f-]{36}|session:[0-9a-f-]{36}|attention-finding:[0-9a-f-]{36}|attention-finding-disposition:[0-9a-f-]{36})$"
     },
     "tenant_id": {"type": "string", "format": "uuid"}
   },
@@ -219,6 +223,38 @@
             "origin": {"const": "api"},
             "stream_id": {"pattern": "^session:[0-9a-f-]{36}$"},
             "payload": {"$ref": "#/$defs/sessionClosed"}
+          }
+        },
+        {
+          "properties": {
+            "kind": {"const": "ticket.change_reference_recorded"},
+            "origin": {"const": "api"},
+            "stream_id": {"pattern": "^ticket:[0-9a-f-]{36}$"},
+            "payload": {"$ref": "#/$defs/changeReferenceRecorded"}
+          }
+        },
+        {
+          "properties": {
+            "kind": {"const": "ticket.label_applied"},
+            "origin": {"const": "api"},
+            "stream_id": {"pattern": "^ticket:[0-9a-f-]{36}$"},
+            "payload": {"$ref": "#/$defs/labelApplied"}
+          }
+        },
+        {
+          "properties": {
+            "kind": {"const": "attention.finding_appended"},
+            "origin": {"const": "api"},
+            "stream_id": {"pattern": "^attention-finding:[0-9a-f-]{36}$"},
+            "payload": {"$ref": "#/$defs/attentionFindingAppended"}
+          }
+        },
+        {
+          "properties": {
+            "kind": {"const": "attention.finding_disposition_recorded"},
+            "origin": {"const": "api"},
+            "stream_id": {"pattern": "^attention-finding-disposition:[0-9a-f-]{36}$"},
+            "payload": {"$ref": "#/$defs/attentionFindingDispositionRecorded"}
           }
         }
       ]
@@ -735,6 +771,67 @@
         "relation_kind": {"enum": ["parent_of", "depends_on", "blocks", "duplicates", "relates_to", "caused_by"]},
         "reason": {"type": "string", "minLength": 1, "maxLength": 500},
         "target_ticket_id": {"type": "string", "format": "uuid"}
+      }
+    },
+    "changeReferenceRecorded": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["change_identity", "change_reference_id", "reference", "repository", "ticket_id"],
+      "properties": {
+        "change_identity": {"type": "string", "minLength": 1, "maxLength": 128},
+        "change_reference_id": {"type": "string", "format": "uuid"},
+        "reference": {"type": "string", "minLength": 1, "maxLength": 256},
+        "repository": {"type": "string", "minLength": 1, "maxLength": 256},
+        "ticket_id": {"type": "string", "format": "uuid"}
+      }
+    },
+    "labelApplied": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["catalog_digest", "catalog_key", "catalog_revision", "label_key", "ticket_id", "ticket_label_id"],
+      "properties": {
+        "catalog_digest": {"$ref": "#/$defs/sha256"},
+        "catalog_key": {"type": "string", "pattern": "^[a-z][a-z0-9._-]{1,95}$"},
+        "catalog_revision": {"type": "integer", "minimum": 1},
+        "label_key": {"type": "string", "pattern": "^[a-z][a-z0-9._-]{1,95}$"},
+        "ticket_id": {"type": "string", "format": "uuid"},
+        "ticket_label_id": {"type": "string", "format": "uuid"}
+      }
+    },
+    "attentionFindingAppended": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "alternatives", "catalog_digest", "catalog_key", "catalog_revision", "consequence",
+        "deadline", "dedupe_key", "effective_owner", "finding_id", "kind_key", "reason_code",
+        "recommendation", "source_facts", "subject_ticket_id"
+      ],
+      "properties": {
+        "alternatives": {"type": "array", "items": {"type": "string", "minLength": 1, "maxLength": 500}},
+        "catalog_digest": {"$ref": "#/$defs/sha256"},
+        "catalog_key": {"type": "string", "pattern": "^[a-z][a-z0-9._-]{1,95}$"},
+        "catalog_revision": {"type": "integer", "minimum": 1},
+        "consequence": {"type": "string", "minLength": 1, "maxLength": 500},
+        "deadline": {"type": ["string", "null"], "format": "date-time"},
+        "dedupe_key": {"type": "string", "pattern": "^[a-z][a-z0-9._-]{1,127}$"},
+        "effective_owner": {"enum": ["operator", "commander"]},
+        "finding_id": {"type": "string", "format": "uuid"},
+        "kind_key": {"type": "string", "pattern": "^[a-z][a-z0-9._-]{1,95}$"},
+        "reason_code": {"type": "string", "pattern": "^[a-z][a-z0-9._-]*$"},
+        "recommendation": {"type": "string", "minLength": 1, "maxLength": 500},
+        "source_facts": {"type": "array", "items": {"type": "string", "minLength": 1}},
+        "subject_ticket_id": {"type": "string", "format": "uuid"}
+      }
+    },
+    "attentionFindingDispositionRecorded": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["disposition_id", "finding_id", "outcome", "reason"],
+      "properties": {
+        "disposition_id": {"type": "string", "format": "uuid"},
+        "finding_id": {"type": "string", "format": "uuid"},
+        "outcome": {"enum": ["resolved", "snoozed", "expired", "superseded", "cancelled"]},
+        "reason": {"type": "string", "minLength": 1, "maxLength": 500}
       }
     }
   }
