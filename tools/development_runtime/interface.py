@@ -80,6 +80,7 @@ _INSPECT_TIMEOUT_SECONDS = 10.0
 _LIFECYCLE_TIMEOUT_SECONDS = 120.0
 _SYSTEMD_TIMEOUT_SECONDS = 60.0
 _FORCE_REMOVE_ATTEMPTS = 2
+_CONTAINER_NOT_FOUND_MARKER = "No such container"
 
 
 def main() -> None:
@@ -547,13 +548,28 @@ def _verify_local_image() -> None:
 
 
 def _container_exists(name: str) -> bool:
+    """Discriminate a real absence from an unreadable daemon.
+
+    `docker container inspect` exits non-zero both when the container is genuinely
+    gone and when the daemon itself could not be reached (down, unauthorized,
+    timed out). Only the former is "gone" — the latter is UNKNOWN and must not be
+    read as absence, so it is raised by name instead of collapsed to `False`.
+    """
     result = process_execution.run(
         [docker_path(), "container", "inspect", name],
         timeout_seconds=_INSPECT_TIMEOUT_SECONDS,
         check=False,
-        discard_output=True,
+        capture_output=True,
     )
-    return result.returncode == 0
+    if result.returncode == 0:
+        return True
+    if _CONTAINER_NOT_FOUND_MARKER in (result.stderr or ""):
+        return False
+    raise RuntimeError(
+        f"container {name} state is unknown: `docker container inspect` failed "
+        f"(exit={result.returncode}) for a reason other than the container being "
+        f"absent: {(result.stderr or '').strip() or '<no stderr>'}"
+    )
 
 
 def _container_state(name: str) -> str:
