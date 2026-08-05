@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import hashlib
 import json
+from collections.abc import Mapping, Sequence
 from datetime import UTC, datetime
 from unittest.mock import patch
 from uuid import uuid4
@@ -13,8 +14,6 @@ import rfc8785
 from support.catalog import FileSchemas, MemoryObjectStore, actor_for, telemetry_for
 from support.tenant_fixture import TenantFixture
 
-import ctower_kernel.projections._project_delivery_reconcile_sql as _reconcile_sql
-import ctower_kernel.projections._project_delivery_sources_sql as _sources_sql
 from ctower_kernel.catalog import (
     CatalogProblem,
     CompanyBundle,
@@ -44,28 +43,34 @@ _THREE_PROJECT_CHECKPOINTS: dict[str, tuple[str, ...]] = {
 def test_reconcile_reads_the_active_checkpoint_snapshot_exactly_once_for_a_three_project_portfolio(
     tenant: TenantFixture,
 ) -> None:
-    """D9 regression: whatever the active project count, `active_checkpoint_event_ids`
-    must be read exactly once per reconcile pass — not once globally plus once per
-    project. This wraps the real repository function (not a mock), so the assertion
-    runs against production behavior, and the reconcile outcome is still checked for
-    full per-project correctness (same-outcome proof) alongside the read count."""
+    """D9 regression: whatever the active project count, the active-checkpoint
+    snapshot (`active_checkpoint_event_ids`'s query, distinguished below by the
+    `member_event_ids` fragment unique to it in this module) must be read exactly
+    once per reconcile pass — not once globally plus once per project. Counting is
+    done at the `psycopg.Connection.execute` boundary (public API), not by importing
+    the kernel's private reconcile modules, so this stays outside the architecture
+    boundary those modules are private against. The reconcile outcome is also
+    checked for full per-project correctness (same-outcome proof) alongside the
+    read count."""
 
     now = datetime.now(UTC)
     _apply_three_project_checkpoints(tenant, now=now)
     _advance_source_cursor(tenant, now=now)
 
     reads: list[None] = []
-    real_active_checkpoint_event_ids = _sources_sql.active_checkpoint_event_ids
+    real_execute = psycopg.Connection.execute
 
-    def _counting_wrapper(connection: object, tenant_id: object) -> tuple[object, ...]:
-        reads.append(None)
-        return real_active_checkpoint_event_ids(connection, tenant_id)  # type: ignore[arg-type]
+    def _counting_execute(
+        self: psycopg.Connection[dict[str, object]],
+        query: str,
+        params: Sequence[object] | Mapping[str, object] | None = None,
+    ) -> psycopg.Cursor[dict[str, object]]:
+        if isinstance(query, str) and "member_event_ids" in query:
+            reads.append(None)
+        return real_execute(self, query, params)
 
     projections = Projections(PostgresProjections(tenant.database.projection_dsn))
-    with (
-        patch.object(_sources_sql, "active_checkpoint_event_ids", side_effect=_counting_wrapper),
-        patch.object(_reconcile_sql, "_active_checkpoint_event_ids", side_effect=_counting_wrapper),
-    ):
+    with patch.object(psycopg.Connection, "execute", new=_counting_execute):
         affected = projections.reconcile_project_delivery(tenant.tenant_id, now=now)
 
     assert len(reads) == 1, (
