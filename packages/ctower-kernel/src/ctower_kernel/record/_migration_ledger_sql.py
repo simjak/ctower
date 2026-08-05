@@ -30,6 +30,42 @@ _SEMANTIC_CHECKS_ID = "ctower.pre-ledger/v1"
 type _SchemaRecord = tuple[str, str, str]
 type _SchemaRecords = tuple[_SchemaRecord, ...]
 
+# The 'column' measurement exactly as it read before gh#80 added 'statistics_target'. Frozen —
+# never edited again — so _pre_attstattarget_schema_records can reproduce the digest a row
+# recorded before gh#80 holds. See _recorded_state_matches.
+_PRE_ATTSTATTARGET_COLUMN_QUERY_TEMPLATE = """
+    SELECT 'column', class.relname || '.' || attribute.attnum || '.' || attribute.attname,
+           jsonb_build_object(
+               'type', format_type(attribute.atttypid, attribute.atttypmod),
+               'not_null', attribute.attnotnull,
+               'identity', attribute.attidentity,
+               'generated', attribute.attgenerated,
+               'default', COALESCE(
+                   pg_get_expr(default_value.adbin, default_value.adrelid, __CTOWER_CANONICAL__), ''
+               ),
+               'collation', CASE WHEN attribute.attcollation = 0 THEN ''
+                   ELSE attribute.attcollation::regcollation::text END,
+               'storage', attribute.attstorage,
+               'compression', attribute.attcompression
+           )::text
+    FROM pg_attribute AS attribute
+    JOIN pg_class AS class ON class.oid = attribute.attrelid
+    JOIN pg_namespace AS namespace ON namespace.oid = class.relnamespace
+    LEFT JOIN pg_attrdef AS default_value
+      ON default_value.adrelid = attribute.attrelid
+     AND default_value.adnum = attribute.attnum
+    WHERE namespace.nspname = 'public' AND class.relname <> %s
+      AND class.relkind IN ('r', 'p', 'v', 'm', 'S', 'f')
+      AND attribute.attnum > 0 AND NOT attribute.attisdropped
+    ORDER BY class.relname, attribute.attnum
+    """
+_PRE_ATTSTATTARGET_COLUMN_QUERY_CANONICAL = _PRE_ATTSTATTARGET_COLUMN_QUERY_TEMPLATE.replace(
+    _CANONICAL_RENDER, "true"
+)
+_PRE_ATTSTATTARGET_COLUMN_QUERY_RAW = _PRE_ATTSTATTARGET_COLUMN_QUERY_TEMPLATE.replace(
+    _CANONICAL_RENDER, "false"
+)
+
 
 @dataclass(frozen=True, slots=True)
 class MigrationScript:
@@ -561,6 +597,28 @@ def _schema_fingerprint(records: _SchemaRecords) -> str:
     return f"sha256:{hashlib.sha256(canonical).hexdigest()}"
 
 
+def _pre_attstattarget_schema_records(
+    connection: psycopg.Connection[tuple[object, ...]],
+    current: _SchemaRecords,
+    *,
+    canonical: bool,
+) -> _SchemaRecords:
+    """The same live schema, measured as it read before gh#80 added 'statistics_target'.
+
+    Every other query is unaffected by that change, so this re-measures only 'column' — the one
+    gh#80 touched — with its frozen pre-gh#80 text, and reuses the rest of `current` as-is.
+    """
+
+    query = (
+        _PRE_ATTSTATTARGET_COLUMN_QUERY_CANONICAL
+        if canonical
+        else _PRE_ATTSTATTARGET_COLUMN_QUERY_RAW
+    )
+    parameters = tuple(_LEDGER for _ in range(query.count("%s")))
+    columns = cast(list[_SchemaRecord], connection.execute(query, parameters).fetchall())
+    return tuple(sorted([record for record in current if record[0] != "column"] + columns))
+
+
 def _recorded_state_matches(
     connection: psycopg.Connection[tuple[object, ...]],
     migration_id: str,
@@ -568,20 +626,35 @@ def _recorded_state_matches(
 ) -> str | None:
     """Refusal detail if the live schema is no longer the one the ledger attested, else None.
 
-    Two renderings can attest the same schema: the canonical one this module records now, and the
-    raw one it recorded before gh#247. Accepting either lets an instance whose schema has not moved
-    verify across the upgrade that introduces canonical rendering. It does not weaken the check —
-    both renderings are exact over the same record set, so a schema that really has changed matches
-    neither.
+    Two independent axes of superseded measurement can still attest a schema that has not moved:
+    the raw-vs-canonical rendering from gh#247, and the pre/post-'statistics_target' column shape
+    from gh#80. A ledger row was written with whichever combination was live when it was recorded,
+    so accepting every combination lets an instance whose schema has not moved keep verifying
+    across both upgrades. It does not weaken the check — every combination is exact over the same
+    record set, so a schema that really has changed matches none of them.
 
-    On mismatch the detail names the attested digest and both live renderings so an operator can
-    diff the evidence instead of trusting that canonicalization hid it.
+    On mismatch the detail names the attested digest and both current-shape renderings so an
+    operator can diff the evidence instead of trusting that a fallback hid it.
     """
 
-    live_canonical = _schema_fingerprint(_schema_records(connection, canonical=True))
-    live_superseded_raw = _schema_fingerprint(_schema_records(connection, canonical=False))
-    if hmac.compare_digest(live_canonical, attested) or hmac.compare_digest(
-        live_superseded_raw, attested
+    live_records_canonical = _schema_records(connection, canonical=True)
+    live_records_raw = _schema_records(connection, canonical=False)
+    live_canonical = _schema_fingerprint(live_records_canonical)
+    live_superseded_raw = _schema_fingerprint(live_records_raw)
+    live_pre_attstattarget_canonical = _schema_fingerprint(
+        _pre_attstattarget_schema_records(connection, live_records_canonical, canonical=True)
+    )
+    live_pre_attstattarget_raw = _schema_fingerprint(
+        _pre_attstattarget_schema_records(connection, live_records_raw, canonical=False)
+    )
+    if any(
+        hmac.compare_digest(live, attested)
+        for live in (
+            live_canonical,
+            live_superseded_raw,
+            live_pre_attstattarget_canonical,
+            live_pre_attstattarget_raw,
+        )
     ):
         return None
     return (
@@ -855,7 +928,8 @@ _SCHEMA_QUERY_TEMPLATES = (
                'collation', CASE WHEN attribute.attcollation = 0 THEN ''
                    ELSE attribute.attcollation::regcollation::text END,
                'storage', attribute.attstorage,
-               'compression', attribute.attcompression
+               'compression', attribute.attcompression,
+               'statistics_target', attribute.attstattarget
            )::text
     FROM pg_attribute AS attribute
     JOIN pg_class AS class ON class.oid = attribute.attrelid

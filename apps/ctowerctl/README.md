@@ -22,6 +22,14 @@ current-candidate and sole-criterion resolution. Proof receipts name the resolve
 the artifact digest for evidence. Explicit values are never replaced; server validation still refuses a
 stale candidate or a content/digest mismatch.
 
+`--base-url` may be omitted. When it is, `ctowerctl._discovery` resolves the one instance declared in the
+owner-only `~/.config/ctower/cli-instances.json` catalog — never an environment variable. Zero declared
+instances or more than one both refuse by name (usage exit `64`) instead of guessing; an explicit
+`--base-url` always takes priority and skips discovery entirely. `ctower-private-vps expose-cli` writes
+that catalog from the installed runtime's own configuration and links `ctowerctl`, `ctl`, and
+`ctower-shadow-ctl` onto `~/.local/bin`, so any crew or operator on the box can run them from any directory
+with no repo checkout.
+
 Bearer authority and the one-use bootstrap capability are read as one bounded line from stdin. They are
 never accepted as arguments or environment configuration, written to the spool, or echoed. Server
 authentication, authorization, validation, idempotency, CAS, and durability decisions remain authoritative.
@@ -56,7 +64,9 @@ is authenticated and append-only; the corrupt ciphertext remains as local audit 
 
 Exit meanings are stable: `0` read/accepted, `64` usage/input, `69` permanent rejection or quarantine,
 `74` local/keyring/integrity failure, and `75` queued, unreachable, or `durability_pending`. Exit `75` never
-claims server acceptance. Mutation output always identifies the stable command ID and local state.
+claims server acceptance. Mutation output always identifies the stable command ID and local state. `control
+health` is the one read whose exit reflects its content rather than request success alone: a `DEGRADED` or
+`STATE_UNKNOWN` status exits `69` even though the read itself succeeded.
 
 The E2 private-VPS install adds `ctower-shadow-ctl`, a local wrapper that resolves one operator or Commander
 reference from Secret Service and calls this exact public CLI in-process; it adds no operations or

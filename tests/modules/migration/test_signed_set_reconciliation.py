@@ -13,6 +13,7 @@ from ctower_kernel.migration import (
     _artifact_sql,
     _checkpoint_expectation_sql,
     _operation_sql,
+    _pass_two_graph,
     _pass_two_sql,
     _reconciliation_sql,
 )
@@ -212,7 +213,7 @@ def test_reconciliation_graph_projects_only_signed_checkpoint_source_set() -> No
         ],
     }
 
-    signed = _pass_two_sql._signed_checkpoint_snapshot(snapshot)
+    signed = _pass_two_graph._signed_checkpoint_snapshot(snapshot)
     definitions = cast(list[dict[str, object]], signed["checkpoint_definitions"])
     criteria = cast(list[dict[str, object]], signed["checkpoint_criteria"])
     delivery_rows = cast(list[dict[str, object]], signed["project_delivery_rows"])
@@ -227,7 +228,7 @@ def test_finalization_rechecks_signed_set_currentness(
 ) -> None:
     current = SimpleNamespace(body={"current": True}, project_delivery_current=False)
     monkeypatch.setattr(_pass_two_sql, "capture", lambda _connection, _run_id: current)
-    monkeypatch.setattr(_pass_two_sql, "graph", lambda _body: {"graph": "exact"})
+    monkeypatch.setattr(_pass_two_graph, "graph", lambda _body: {"graph": "exact"})
     monkeypatch.setattr(
         _checkpoint_expectation_sql,
         "mismatches",
@@ -253,7 +254,7 @@ def test_finalization_names_checkpoint_mismatch(
         "expected catalog_revision=ctower.I1.0@1, observed catalog_revision=ctower.I1.0@2",
     )
     monkeypatch.setattr(_pass_two_sql, "capture", lambda _connection, _run_id: current)
-    monkeypatch.setattr(_pass_two_sql, "graph", lambda _body: {"graph": "exact"})
+    monkeypatch.setattr(_pass_two_graph, "graph", lambda _body: {"graph": "exact"})
     monkeypatch.setattr(
         _checkpoint_expectation_sql,
         "mismatches",
@@ -284,7 +285,7 @@ def test_pass_two_readiness_names_checkpoint_mismatch(
     )
     snapshot = SimpleNamespace(body={"current": True}, project_delivery_current=True)
     monkeypatch.setattr(
-        _pass_two_sql,
+        _pass_two_graph,
         "graph",
         lambda _body: {"unexpected": [], "forbidden": [], "unresolved": [], "cycles": []},
     )
@@ -313,7 +314,7 @@ def test_pass_two_readiness_keeps_generic_refusal_without_checkpoint_cause(
 ) -> None:
     snapshot = SimpleNamespace(body={"current": True}, project_delivery_current=False)
     monkeypatch.setattr(
-        _pass_two_sql,
+        _pass_two_graph,
         "graph",
         lambda _body: {"unexpected": [], "forbidden": [], "unresolved": [], "cycles": []},
     )

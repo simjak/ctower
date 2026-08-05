@@ -406,6 +406,7 @@ class EventCatalogEntry:
     stream_prefix: str
     origins: frozenset[EventOrigin] = frozenset({EventOrigin.API})
     session_fact: bool = False
+    project_feed: bool = False
 
 
 _BOOTSTRAP = frozenset({EventOrigin.BOOTSTRAP})
@@ -422,18 +423,36 @@ _EVENT_CATALOG: dict[EventKind, EventCatalogEntry] = {
         EventCatalogEntry(
             EventKind.BOOTSTRAP_CREATED, BootstrapCreatedPayload, "tenant", _BOOTSTRAP
         ),
-        EventCatalogEntry(EventKind.TICKET_CREATED, TicketCreatedPayload, "ticket", _API_OR_IMPORT),
-        EventCatalogEntry(EventKind.CUSTODY_TRANSFERRED, CustodyTransferredPayload, "ticket"),
-        EventCatalogEntry(EventKind.TICKET_COMMENT_ADDED, TicketCommentAddedPayload, "ticket"),
+        EventCatalogEntry(
+            EventKind.TICKET_CREATED,
+            TicketCreatedPayload,
+            "ticket",
+            _API_OR_IMPORT,
+            project_feed=True,
+        ),
+        EventCatalogEntry(
+            EventKind.CUSTODY_TRANSFERRED, CustodyTransferredPayload, "ticket", project_feed=True
+        ),
+        EventCatalogEntry(
+            EventKind.TICKET_COMMENT_ADDED, TicketCommentAddedPayload, "ticket", project_feed=True
+        ),
         EventCatalogEntry(
             EventKind.CATALOG_COMPONENT_PUBLISHED, CatalogComponentPublishedPayload, "catalog"
         ),
         EventCatalogEntry(
             EventKind.CATALOG_BUNDLE_ACTIVATED, CatalogBundleActivatedPayload, "catalog"
         ),
-        EventCatalogEntry(EventKind.PROOF_CHANGED, ProofChangedPayload, "proof"),
-        EventCatalogEntry(EventKind.WORKFLOW_CHANGED, WorkflowChangedPayload, "workflow"),
-        EventCatalogEntry(EventKind.WORK_CHANGED, WorkChangedPayload, "ticket", _API_OR_IMPORT),
+        EventCatalogEntry(EventKind.PROOF_CHANGED, ProofChangedPayload, "proof", project_feed=True),
+        EventCatalogEntry(
+            EventKind.WORKFLOW_CHANGED, WorkflowChangedPayload, "workflow", project_feed=True
+        ),
+        EventCatalogEntry(
+            EventKind.WORK_CHANGED,
+            WorkChangedPayload,
+            "ticket",
+            _API_OR_IMPORT,
+            project_feed=True,
+        ),
         EventCatalogEntry(
             EventKind.ROUTINE_OCCURRENCE_RECORDED,
             RoutineOccurrenceRecordedPayload,
@@ -486,6 +505,17 @@ def event_catalog() -> tuple[EventCatalogEntry, ...]:
     """
 
     return tuple(_EVENT_CATALOG.values())
+
+
+def project_event_kinds() -> tuple[EventKind, ...]:
+    """Return the catalog-derived kind set exposed by the project-scoped event feed.
+
+    Project-feed membership is the `project_feed` column, so a reader asking for "the
+    project-feed kinds" filters this catalog rather than declaring its own list — a kind
+    added here with no feed decision defaults to absent, never silently included.
+    """
+
+    return tuple(kind for kind, entry in _EVENT_CATALOG.items() if entry.project_feed)
 
 
 def _validate_variant(event: EventEnvelope) -> None:

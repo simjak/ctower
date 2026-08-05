@@ -15,11 +15,11 @@ operation-ID escape hatch: an unrecognized command is a usage error, not a passt
 ## Invocation shape
 
 ```text
-ctl --base-url <url> <area> <action> [<positional>] [--flags]
+ctl [--base-url <url>] <area> <action> [<positional>] [--flags]
 ```
 
-`--base-url` is required on **every** invocation, including local spool commands, because the spool is
-scoped per origin.
+`--base-url` scopes every invocation, including local spool commands, because the spool is scoped per
+origin. It may be omitted; see [Instance discovery](#instance-discovery).
 
 ### `--base-url` rules
 
@@ -28,6 +28,15 @@ scoped per origin.
 - Must not carry userinfo, a query string, or a fragment.
 
 Violations are usage errors (exit `64`).
+
+### Instance discovery
+
+Omit `--base-url` and the CLI resolves the one instance declared in the owner-only
+`~/.config/ctower/cli-instances.json` catalog — never an environment variable. `ctower-private-vps
+expose-cli` writes that catalog from the installed runtime's own configuration. A catalog with zero
+declared instances, or with more than one, both refuse by name (usage exit `64`) instead of guessing; pass
+`--base-url` explicitly to reach a different instance or to disambiguate. An explicit `--base-url` always
+takes priority and skips discovery entirely.
 
 ### Authority
 
