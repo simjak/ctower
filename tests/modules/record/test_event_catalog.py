@@ -59,6 +59,12 @@ def _catalog_session_kinds() -> frozenset[str]:
     return frozenset(entry.kind.value for entry in event_catalog() if entry.session_fact)
 
 
+def _catalog_project_feed_kinds() -> frozenset[str]:
+    """Derive the project-feed kind set from the catalog's own membership column."""
+
+    return frozenset(entry.kind.value for entry in event_catalog() if entry.project_feed)
+
+
 def _envelope_kinds() -> frozenset[str]:
     return frozenset(_envelope()["properties"]["kind"]["enum"])
 
@@ -71,6 +77,12 @@ def _envelope_branch_kinds() -> frozenset[str]:
 def _audit_branch_kinds() -> frozenset[str]:
     schemas = _openapi()["components"]["schemas"]
     names = [item["$ref"].rsplit("/", 1)[-1] for item in schemas["AuditEvent"]["oneOf"]]
+    return frozenset(schemas[name]["properties"]["kind"]["const"] for name in names)
+
+
+def _project_event_branch_kinds() -> frozenset[str]:
+    schemas = _openapi()["components"]["schemas"]
+    names = [item["$ref"].rsplit("/", 1)[-1] for item in schemas["ProjectEvent"]["oneOf"]]
     return frozenset(schemas[name]["properties"]["kind"]["const"] for name in names)
 
 
@@ -135,6 +147,45 @@ def test_a_session_kind_with_no_authored_http_branch_fails_by_name() -> None:
     assert _parity_errors(mutated, authored, "the session audit union") == [
         f"the session audit union omits catalog kind {PHANTOM}"
     ]
+
+
+def test_the_project_feed_kind_set_is_derived_rather_than_retyped() -> None:
+    """The project event feed's kind set is exactly the catalog's `project_feed` column."""
+
+    derived = _catalog_project_feed_kinds()
+
+    assert derived == _project_event_branch_kinds()
+    assert derived == {
+        "ticket.created",
+        "ticket.custody_transferred",
+        "ticket.comment_added",
+        "work.changed",
+        "workflow.changed",
+        "proof.changed",
+    }
+    # Session/heartbeat kinds stay off the project feed pending #200 (SPEC INV-78).
+    assert derived.isdisjoint(_catalog_session_kinds())
+
+
+def test_a_project_feed_kind_with_no_authored_http_branch_fails_by_name() -> None:
+    """A catalog `project_feed` addition with no `ProjectEvent` branch drifts by name."""
+
+    mutated = _catalog_project_feed_kinds() | {PHANTOM}
+
+    assert _parity_errors(mutated, _project_event_branch_kinds(), "the project event union") == [
+        f"the project event union omits catalog kind {PHANTOM}"
+    ]
+
+
+def test_the_project_event_union_reuses_the_existing_audit_branches() -> None:
+    """`ProjectEvent` must not declare six duplicate schemas beside `AuditEvent`'s."""
+
+    schemas = _openapi()["components"]["schemas"]
+    project_refs = {item["$ref"] for item in schemas["ProjectEvent"]["oneOf"]}
+    audit_refs = {item["$ref"] for item in schemas["AuditEvent"]["oneOf"]}
+
+    assert project_refs <= audit_refs
+    assert project_refs == {ref for ref in audit_refs if "Session" not in ref}
 
 
 def test_an_authored_branch_with_no_catalog_kind_fails_by_name() -> None:

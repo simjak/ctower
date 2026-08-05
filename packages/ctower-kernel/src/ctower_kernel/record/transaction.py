@@ -3,10 +3,13 @@
 from __future__ import annotations
 
 import hashlib
+import logging
+import time
 from collections.abc import Callable, Iterator
 from contextlib import contextmanager, suppress
 from dataclasses import dataclass
 from datetime import datetime
+from random import SystemRandom
 from threading import Timer
 from typing import cast
 from uuid import UUID
@@ -22,6 +25,7 @@ from ctower_kernel.record.events import EventEnvelope
 from ctower_kernel.telemetry import TelemetryContext
 
 __all__ = [
+    "AmbiguousCommitExhaustedError",
     "EventCommit",
     "RecordTransaction",
     "authority_connection",
@@ -32,7 +36,13 @@ __all__ = [
     "recover_ambiguous_commit",
 ]
 
+_LOGGER = logging.getLogger(__name__)
+_RANDOM = SystemRandom()
 _CONNECT_TIMEOUT_SECONDS = 2
+_MAXIMUM_ATTEMPTS = 3
+_MAXIMUM_ELAPSED_SECONDS = 20.0
+_INITIAL_BACKOFF_SECONDS = 0.05
+_MAXIMUM_BACKOFF_SECONDS = 0.5
 
 
 def project_scope_refusal(
@@ -169,13 +179,89 @@ def arm_remote_apply_deadline(
     connection.arm_commit_deadline(milliseconds)
 
 
-def recover_ambiguous_commit[Outcome](operation: Callable[[], Outcome]) -> Outcome:
-    """Discard the failed connection and replay once through command idempotency authority."""
+class AmbiguousCommitExhaustedError(RuntimeError):
+    """A retryable ambiguous-commit recovery spent its finite policy."""
 
-    try:
-        return operation()
-    except (psycopg.errors.QueryCanceled, psycopg.OperationalError):
-        return operation()
+    def __init__(
+        self,
+        *,
+        attempt_count: int,
+        elapsed_seconds: float,
+        last_failure: psycopg.Error,
+    ) -> None:
+        self.attempt_count = attempt_count
+        self.elapsed_seconds = elapsed_seconds
+        self.last_failure = last_failure
+        sqlstate = last_failure.sqlstate or "unavailable"
+        super().__init__(
+            f"ambiguous-commit recovery exhausted after {attempt_count} attempts in "
+            f"{elapsed_seconds:.3f}s; last failure {type(last_failure).__name__} "
+            f"SQLSTATE {sqlstate}"
+        )
+
+
+def recover_ambiguous_commit[Outcome](operation: Callable[[], Outcome]) -> Outcome:
+    """Discard the failed connection and replay through command idempotency authority.
+
+    Every attempt re-runs the caller's full reserve-then-mutate ``operation``, which
+    checks the command's idempotency key before it mutates anything (see
+    ``reserve_command``). A retry therefore can only ever observe its own prior
+    commit through that key -- it can never re-apply it -- so bounding the number of
+    attempts or spacing them out with backoff cannot turn an ambiguous commit into a
+    double-apply; the same idempotency check runs before every attempt, first or last.
+    """
+
+    started = time.monotonic()
+    last_failure: psycopg.Error | None = None
+    attempt = 0
+    for attempt in range(1, _MAXIMUM_ATTEMPTS + 1):
+        try:
+            return operation()
+        except (psycopg.errors.QueryCanceled, psycopg.OperationalError) as error:
+            last_failure = error
+            if not _back_off(started, attempt):
+                break
+    if last_failure is None:
+        raise RuntimeError("ambiguous commit retry policy ended without a classified failure")
+    raise _ambiguous_commit_exhausted(started, attempt, last_failure) from last_failure
+
+
+def _back_off(started: float, attempt: int) -> bool:
+    """Sleep one capped, jittered, deadline-constrained backoff interval."""
+
+    if attempt >= _MAXIMUM_ATTEMPTS:
+        return False
+    remaining = _MAXIMUM_ELAPSED_SECONDS - (time.monotonic() - started)
+    if remaining <= 0:
+        return False
+    ceiling = min(
+        _INITIAL_BACKOFF_SECONDS * (2 ** (attempt - 1)),
+        _MAXIMUM_BACKOFF_SECONDS,
+        remaining,
+    )
+    time.sleep(_RANDOM.uniform(ceiling / 2, ceiling))
+    return time.monotonic() - started < _MAXIMUM_ELAPSED_SECONDS
+
+
+def _ambiguous_commit_exhausted(
+    started: float, attempt_count: int, last_failure: psycopg.Error
+) -> AmbiguousCommitExhaustedError:
+    elapsed = time.monotonic() - started
+    exhausted = AmbiguousCommitExhaustedError(
+        attempt_count=attempt_count,
+        elapsed_seconds=elapsed,
+        last_failure=last_failure,
+    )
+    _LOGGER.error(
+        "ambiguous commit recovery exhausted",
+        extra={
+            "attempt_count": attempt_count,
+            "elapsed_seconds": elapsed,
+            "last_failure_type": type(last_failure).__name__,
+            "last_sqlstate": last_failure.sqlstate,
+        },
+    )
+    return exhausted
 
 
 def lock_project_delivery_scope(
@@ -526,14 +612,15 @@ class RecordTransaction:
         if policy is None:
             raise RuntimeError("durability policy is unavailable")
         self._mode = str(policy["mode"])
+        deadline_ms = int(cast(int, policy["commit_deadline_ms"]))
+        self._connection.execute(
+            "SELECT set_config('statement_timeout', %s, true)",
+            (f"{deadline_ms}ms",),
+        )
         if self._mode != "cutover_rpo0":
             return
         self._connection.execute("SELECT set_config('synchronous_commit', 'remote_apply', true)")
-        self._connection.execute(
-            "SELECT set_config('statement_timeout', %s, true)",
-            (f"{int(cast(int, policy['commit_deadline_ms']))}ms",),
-        )
-        arm_remote_apply_deadline(self._connection, int(cast(int, policy["commit_deadline_ms"])))
+        arm_remote_apply_deadline(self._connection, deadline_ms)
 
     @staticmethod
     def _ordered_subjects(subjects: tuple[EventSubject, ...]) -> tuple[EventSubject, ...]:

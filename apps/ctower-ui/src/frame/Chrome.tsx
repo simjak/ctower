@@ -22,6 +22,8 @@ const RAIL_OF = {
   Org: "Org",
   // one crew belongs under Org the way one ticket belongs under Tickets
   Crew: "Org",
+  // a seat's aggregate belongs under Org the same way
+  Seat: "Org",
 } as const;
 
 export type SectionLabel = keyof typeof RAIL_OF;

@@ -21,7 +21,7 @@ from ctower_client.models import (
     CtowerProjectImportRun,
     CtowerProjectReconciliationResult,
 )
-from ctower_kernel.migration import _checkpoint_expectation_sql, _pass_two_sql
+from ctower_kernel.migration import _checkpoint_expectation_sql, _pass_two_graph, _pass_two_sql
 from ctower_kernel.migration._artifact import (
     ArtifactError,
     TrustedReviewerKeys,
@@ -166,7 +166,7 @@ def _current_target_matches(
     expected_graph: dict[str, object],
 ) -> _TargetMatch:
     current = _pass_two_sql.capture(connection, run_id)
-    actual_graph = _pass_two_sql.graph(current.body)
+    actual_graph = _pass_two_graph.graph(current.body)
     checkpoint_mismatches = _checkpoint_expectation_sql.mismatches(connection, run_id, current.body)
     matches = (
         current.project_delivery_current

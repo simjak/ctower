@@ -132,6 +132,23 @@ def test_checkout_source_cannot_hide_an_unimportable_installed_entry_point(
     assert "ModuleNotFoundError" in output
 
 
+def test_preflight_surfaces_stderr_when_the_candidate_interpreter_crashes(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    pyproject = _pyproject(tmp_path, {"example": "fixture_cli:main"})
+    crashing_interpreter = tmp_path / "crashing-interpreter"
+    crashing_interpreter.write_text(
+        "#!/bin/sh\necho 'candidate interpreter traceback: boom' >&2\nexit 1\n",
+        encoding="utf-8",
+    )
+    crashing_interpreter.chmod(0o700)
+
+    assert main(["--pyproject", str(pyproject), "--python", str(crashing_interpreter)]) == 1
+    output = _output(capsys)
+    assert "candidate interpreter traceback: boom" in output
+    assert "candidate interpreter exited" not in output
+
+
 def test_runbook_preflights_before_every_persistent_runtime_command() -> None:
     runbook = (Path(__file__).parents[2] / "deploy/private-vps/development/README.md").read_text(
         encoding="utf-8"
