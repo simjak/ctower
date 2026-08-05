@@ -20,7 +20,7 @@ from ctower_client.models import (
     CtowerProjectImportRun,
     CtowerProjectReconciliationResult,
 )
-from ctower_kernel.migration import Migration, PostgresMigration, _pass_two_sql
+from ctower_kernel.migration import Migration, PostgresMigration, _pass_two_graph, _pass_two_sql
 from ctower_kernel.record import Actor, PrincipalKind, RecordProblem, SourceReference, TicketCommand
 from ctower_kernel.record.postgres import PostgresRecord
 from ctower_kernel.telemetry import TelemetryContext
@@ -239,7 +239,7 @@ def test_unexpected_run_source_link_blocks_pass_two_with_exact_identity(
             ),
         )
     with psycopg.connect(migration_database.admin_dsn, row_factory=dict_row) as connection:
-        measured = _pass_two_sql.graph(
+        measured = _pass_two_graph.graph(
             _pass_two_sql.capture(connection, context.created.run_id).body
         )
     assert measured["unexpected"] == [
