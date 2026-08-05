@@ -161,6 +161,51 @@ class WatermarkZeroWiringTests(unittest.TestCase):
         self.assertIn('href="/board"', source, "the block has no link to the unscoped board")
 
 
+class TrueEmptyProjectPromiseTests(unittest.TestCase):
+    """gh#319 — an empty-state's copy may only promise what its own DOM carries.
+
+    Round-5 QA found this block's copy claiming "the portfolio view below
+    shows every imported card across projects" while nothing rendered below
+    the banner: the block's only portfolio-view element is the link at its
+    foot, not an embedded view. gh#115's project-fact work (which would make
+    an embedded portfolio view a trivial unfiltered render) had no PR open at
+    the time of this fix, so the honest fallback applies: the copy now
+    describes the link it actually renders, never a view the DOM does not
+    carry.
+    """
+
+    def test_the_block_no_longer_claims_a_view_renders_below_the_banner(self) -> None:
+        source = _TRUE_EMPTY_BLOCK.read_text(encoding="utf-8")
+        self.assertNotIn(
+            "The portfolio view below shows every imported card",
+            source,
+            "the block still promises an embedded portfolio view its own render never "
+            "carries below the banner",
+        )
+
+    def test_the_block_renders_no_second_panel_below_the_banner(self) -> None:
+        source = _TRUE_EMPTY_BLOCK.read_text(encoding="utf-8")
+        self.assertEqual(
+            source.count('className="slot"'),
+            1,
+            "a second panel appeared below the banner; if it is the promised portfolio "
+            "view the copy should say it renders, not that it is linked",
+        )
+
+    def test_the_only_portfolio_view_element_is_the_link_the_copy_names(self) -> None:
+        source = _TRUE_EMPTY_BLOCK.read_text(encoding="utf-8")
+        self.assertIn(
+            "linked below",
+            source,
+            "the copy no longer names the link as what is below it",
+        )
+        self.assertIn(
+            '<a href="/board">the portfolio view (all cards)</a>',
+            source,
+            "the link the copy points at is not the block's only portfolio-view element",
+        )
+
+
 class RecordRouteCachingTests(unittest.TestCase):
     """No record-reading route may cache an answer across renders.
 
