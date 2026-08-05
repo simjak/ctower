@@ -3,6 +3,15 @@
 The `ctl`/`ctowerctl` wheel is a verified development artifact. It is not published, and this page is not a
 production install or operations procedure. Use only synthetic data and a disposable verifier API.
 
+## Instance discovery
+
+`--base-url` is optional. Omit it and the CLI resolves the one instance declared in the owner-only
+`~/.config/ctower/cli-instances.json` catalog — never an environment variable. `ctower-private-vps
+expose-cli` writes that catalog from the installed runtime's own configuration and links `ctowerctl`, `ctl`,
+and `ctower-shadow-ctl` onto `~/.local/bin`. A catalog with zero or with more than one declared instance
+both refuse by name — usage exit `64` — rather than guessing; pass `--base-url` explicitly to reach a
+different instance or to disambiguate.
+
 ## Security prerequisites
 
 All commands read one bounded authority line from stdin. Spoolable mutations — the ones whose generated

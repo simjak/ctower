@@ -163,6 +163,60 @@ def test_ticket_create_without_hand_minted_identifiers_uses_authenticated_princi
     }
 
 
+def test_board_query_by_source_ref_returns_the_ticket_carrying_that_source(
+    tenant: TenantFixture,
+    cli_state: _MemoryBackend,
+) -> None:
+    del cli_state
+    with _server(
+        tenant.database.runtime_dsn,
+        projections_dsn=tenant.database.projection_dsn,
+    ) as base_url:
+        create_status, created_text, create_error = _run(
+            _first_day_create_arguments(base_url, source_ref="R74-live-hit"),
+            authority=tenant.commander_credential,
+        )
+        accept_pending_commands(tenant.database.admin_dsn, tenant.tenant_id)
+        Projections(PostgresProjections(tenant.database.projection_dsn)).catch_up(tenant.tenant_id)
+        query_status, query_text, query_error = _run(
+            _board_query_arguments(base_url, source_ref="R74-live-hit"),
+            authority=tenant.commander_credential,
+        )
+
+    created = json.loads(created_text)
+    board = json.loads(query_text)
+    assert (create_status, query_status) == (EXIT_TEMPORARY, 0)
+    assert create_error == query_error == ""
+    assert [card["ticket_id"] for card in board["cards"]] == [
+        created["result"]["ticket"]["ticket_id"]
+    ]
+
+
+def test_board_query_by_source_ref_returns_no_rows_for_an_unrecognized_source(
+    tenant: TenantFixture,
+    cli_state: _MemoryBackend,
+) -> None:
+    del cli_state
+    with _server(
+        tenant.database.runtime_dsn,
+        projections_dsn=tenant.database.projection_dsn,
+    ) as base_url:
+        create_status, _, create_error = _run(
+            _first_day_create_arguments(base_url, source_ref="R74-live-miss-seed"),
+            authority=tenant.commander_credential,
+        )
+        accept_pending_commands(tenant.database.admin_dsn, tenant.tenant_id)
+        Projections(PostgresProjections(tenant.database.projection_dsn)).catch_up(tenant.tenant_id)
+        query_status, query_text, query_error = _run(
+            _board_query_arguments(base_url, source_ref="R74-live-miss-unknown"),
+            authority=tenant.commander_credential,
+        )
+
+    assert (create_status, query_status) == (EXIT_TEMPORARY, 0)
+    assert create_error == query_error == ""
+    assert json.loads(query_text)["cards"] == []
+
+
 def test_server_rejected_capture_carries_its_named_refusal_to_the_spool_listing(
     tenant: TenantFixture,
     cli_state: _MemoryBackend,
@@ -424,6 +478,18 @@ def _first_day_create_arguments(
     if command_id is not None:
         arguments.extend(("--command-id", str(command_id)))
     return arguments
+
+
+def _board_query_arguments(base_url: str, *, source_ref: str) -> list[str]:
+    return [
+        "--base-url",
+        base_url,
+        "board",
+        "query",
+        "ctower",
+        "--source-ref",
+        source_ref,
+    ]
 
 
 def _bootstrap_arguments(base_url: str, command_id: UUID) -> list[str]:
