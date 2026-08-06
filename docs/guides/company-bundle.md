@@ -32,7 +32,8 @@ ordered actions/checks, and exact `plan_digest`.
 
 ## Apply the exact plan
 
-Apply requires the plan's exact digest/base plus a caller-stable command ID:
+Apply requires the plan's exact digest/base. `--command-id` is optional: omit it to have the CLI derive and
+print one client-side, or supply a caller-stable value when controlling an idempotent retry explicitly:
 
 ```bash
 printf '%s\n' "${authority}" |

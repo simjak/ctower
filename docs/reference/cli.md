@@ -69,7 +69,7 @@ result when one exists. Exit `75` never means “try the same intent with a new 
 
 | Command | Required flags |
 |---|---|
-| `bootstrap first-tenant` | `--command-id`, `--tenant-name`, `--tenant-slug`, `--operator-name`, `--operator-credential-ref`, `--operator-vault-ref`, `--commander-name`, `--commander-vault-ref` |
+| `bootstrap first-tenant` | `--tenant-name`, `--tenant-slug`, `--operator-name`, `--operator-credential-ref`, `--operator-vault-ref`, `--commander-name`, `--commander-vault-ref`; optional `--command-id` |
 
 This online-only, one-use ceremony creates the initial tenant and two principals. Every `*-ref` value is a
 reference, never a secret value. It is not itself the onboarding flow: projects arrive through the
@@ -81,7 +81,7 @@ CompanyBundle below.
 |---|---|
 | `company bundle validate` | `<bundle_file>` |
 | `company bundle plan` | `<bundle_file>` |
-| `company bundle apply` | `<bundle_file>`, `--command-id`, `--expected-active-version`, `--plan-digest` |
+| `company bundle apply` | `<bundle_file>`, `--expected-active-version`, `--plan-digest`; optional `--command-id` |
 | `company bundle export` | none |
 
 A project is not created by a command. It is a `kind: project` resource inside the CompanyBundle, published
@@ -197,8 +197,8 @@ onboarding path.
 
 | Command | Required input |
 |---|---|
-| `credential seat issue` | `--command-id`, `--credential-digest`, `--credential-ref`, `--display-name`, `--project-key`, one or more `--scope {capture,transition,evidence}`, and `--seat-key` |
-| `credential seat revoke <credential_id>` | `--command-id` and `--reason` |
+| `credential seat issue` | `--credential-digest`, `--credential-ref`, `--display-name`, `--project-key`, one or more `--scope {capture,transition,evidence}`, and `--seat-key`; optional `--command-id` |
+| `credential seat revoke <credential_id>` | `--reason`; optional `--command-id` |
 
 These are online-only Operator mutations and are never written to the replay spool. They bind or revoke a
 credential for one configured `(project_key, seat_key)` identity; the project and the seat must already
@@ -219,18 +219,18 @@ environment variable, file, or documentation transcript.
 | `ticket audit` | `<ticket_id>` | optional `--cursor`, `--limit` |
 | `ticket assignments` | `<ticket_id>` | — |
 
-Create generates a command ID when omitted. A Commander may establish their own initial custody. An
+The CLI generates a command ID when omitted. A Commander may establish their own initial custody. An
 Operator must explicitly name an eligible Commander.
 
 ### Ownership and work
 
 | Command | Required flags beyond `<ticket_id>` |
 |---|---|
-| `ticket comment add` | `--command-id`, `--body` |
-| `ticket assign` | `--command-id`, `--expected-version`, `--reason`, `--kind`, `--to-principal-id`; optional `--scope-ref` |
-| `ticket custody transfer` | `--command-id`, `--expected-version`, `--reason`, `--from-custodian-id`, `--to-custodian-id`, `--protected-transfer` |
-| `ticket prioritize` | `--command-id`, `--expected-version`, `--reason`, `--priority`; optional `--urgent-evidence-ref` |
-| `ticket admit`, `ticket reopen` | `--command-id`, `--expected-version`, `--reason` |
+| `ticket comment add` | `--body`; optional `--command-id` |
+| `ticket assign` | `--expected-version`, `--reason`, `--kind`, `--to-principal-id`; optional `--command-id`, `--scope-ref` |
+| `ticket custody transfer` | `--expected-version`, `--reason`, `--from-custodian-id`, `--to-custodian-id`, `--protected-transfer`; optional `--command-id` |
+| `ticket prioritize` | `--expected-version`, `--reason`, `--priority`; optional `--command-id`, `--urgent-evidence-ref` |
+| `ticket admit`, `ticket reopen` | `--expected-version`, `--reason`; optional `--command-id` |
 | `ticket defer` | the common mutation flags plus `--review-after` with a UTC offset |
 | `ticket block` | the common mutation flags plus blocker ID/kind, reason class, owner, source, resolution condition, and an explicit board-impact choice |
 | `ticket unblock` | the common mutation flags plus `--blocker-id`, `--resolution-evidence-ref` |
@@ -243,10 +243,10 @@ principal and is a protected atomic transfer.
 
 | Command | Required input |
 |---|---|
-| `ticket change-reference add <ticket_id>` | `--command-id`, `--repository`, `--change-identity`, `--reference` |
-| `ticket label apply <ticket_id>` | `--command-id`, `--label-key` |
-| `attention finding append` | `--command-id`, `--subject-ticket-id`, `--kind-key`, `--reason-code`, `--effective-owner {operator,commander}`, `--recommendation`, one or more `--alternative`, `--consequence`, `--dedupe-key`, one or more `--source-fact`; optional `--deadline` |
-| `attention finding disposition <finding_id>` | `--command-id`, `--outcome {resolved,snoozed,expired,superseded,cancelled}`, `--reason` |
+| `ticket change-reference add <ticket_id>` | `--repository`, `--change-identity`, `--reference`; optional `--command-id` |
+| `ticket label apply <ticket_id>` | `--label-key`; optional `--command-id` |
+| `attention finding append` | `--subject-ticket-id`, `--kind-key`, `--reason-code`, `--effective-owner {operator,commander}`, `--recommendation`, one or more `--alternative`, `--consequence`, `--dedupe-key`, one or more `--source-fact`; optional `--command-id`, `--deadline` |
+| `attention finding disposition <finding_id>` | `--outcome {resolved,snoozed,expired,superseded,cancelled}`, `--reason`; optional `--command-id` |
 
 Change references and labels populate recorded Board-card context; they are never inferred from repository
 names or arbitrary label text. An Attention finding is an append-only, typed request for an exact human
@@ -257,12 +257,12 @@ action. Disposition records its outcome instead of making the finding disappear.
 | Command | Required input |
 |---|---|
 | `ticket workflow list` | none; local installed-pack discovery |
-| `ticket workflow start <ticket_id>` | `--command-id`; optional complete set of four ref/digest pairs |
-| `ticket transition <ticket_id>` | `--command-id`, `--expected-version`, `--workflow-ref`, `--source-stage`, `--destination-stage` |
-| `ticket criteria freeze <ticket_id>` | `--command-id`, `--expected-version`, exactly one candidate content/digest; optional criteria file |
-| `ticket evidence add <ticket_id>` | `--command-id`, `--expected-version`, `--evidence-id`, exactly one content/file; optional criterion and digests |
-| `ticket gate verdict <ticket_id>` | `--command-id`, `--expected-version`, `--verdict-id`, `--decision {pass,fail}`; optional criterion/candidate digest |
-| `ticket resolve <ticket_id>` | `--command-id`, `--expected-version`; optional workflow ref |
+| `ticket workflow start <ticket_id>` | optional `--command-id` and complete set of four ref/digest pairs |
+| `ticket transition <ticket_id>` | `--expected-version`, `--workflow-ref`, `--source-stage`, `--destination-stage`; optional `--command-id` |
+| `ticket criteria freeze <ticket_id>` | `--expected-version`, exactly one candidate content/digest; optional `--command-id`, criteria file |
+| `ticket evidence add <ticket_id>` | `--expected-version`, `--evidence-id`, exactly one content/file; optional `--command-id`, criterion and digests |
+| `ticket gate verdict <ticket_id>` | `--expected-version`, `--verdict-id`, `--decision {pass,fail}`; optional `--command-id`, criterion/candidate digest |
+| `ticket resolve <ticket_id>` | `--expected-version`; optional `--command-id`, workflow ref |
 
 With exactly one installed executable workflow, start and proof commands can resolve the sole authored
 revision and criterion. Explicit refs and digests remain authoritative and are refused on mismatch.
@@ -298,9 +298,9 @@ operator authority, or the request is refused as `proof-protected-authority-requ
 | Command | Positional | Flags |
 |---|---|---|
 | `ticket workflow list` | — | — |
-| `ticket workflow start` | `<ticket_id>` | `--command-id`; optionally all four ref/digest pairs (`--workflow-ref`, `--workflow-digest`, …) |
-| `ticket transition` | `<ticket_id>` | `--command-id`, `--expected-version`, `--workflow-ref`, `--source-stage`, `--destination-stage` |
-| `ticket resolve` | `<ticket_id>` | `--command-id`, `--expected-version`; optional `--workflow-ref` |
+| `ticket workflow start` | `<ticket_id>` | optional `--command-id` and all four ref/digest pairs (`--workflow-ref`, `--workflow-digest`, …) |
+| `ticket transition` | `<ticket_id>` | `--expected-version`, `--workflow-ref`, `--source-stage`, `--destination-stage`; optional `--command-id` |
+| `ticket resolve` | `<ticket_id>` | `--expected-version`; optional `--command-id`, `--workflow-ref` |
 
 Refs match `<key>@<revision>`, for example `ctower.trust-spine-four-stage@1`. Digests must match the pinned
 revision's canonical graph digest, not the digest of the pack file on disk. See
@@ -362,7 +362,8 @@ individual public CLI steps so each boundary remains visible.
 
 ## Operations and migration
 
-`ops outbox poison dispose` requires an outbox ID, command ID, consumer key, topic, action, and reason.
+`ops outbox poison dispose` requires an outbox ID, consumer key, topic, action, and reason; `--command-id`
+is optional under the common mutation rule.
 
 The `migration ctower-project` family contains `inventory`, `export`, `plan`, `import`, `reconcile`,
 `run get`, `correction append`, `fence observe`, `prepare`, `commit-development-epoch`, and `verify`. These
