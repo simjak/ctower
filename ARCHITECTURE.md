@@ -164,6 +164,7 @@ The implemented development tracer currently has this narrower shape:
 generated Python client -> FastAPI Adapter -> Access / Work -----> Record -> Postgres 17 primary fixture
                                          \-> Proof ---------------> Record
                                          \-> Workflow ------------> Record
+                                         \-> Inbox ---------------> Record
                                          \-> Projections ---------> stored disposable Board reads
                                               ^ injected Work-readiness + Proof-current capabilities
                                               | (no Workflow -> Work/Proof imports)
@@ -178,7 +179,8 @@ generated Python client -> FastAPI Adapter -> Access / Work -----> Record -> Pos
 It covers one-use first-tenant bootstrap; tenant-scoped tickets; protected custody; priority, assignment,
 lifecycle/admission, blocker, and relation facts; explicit immutable Workflow/policy pins; criteria,
 evidence, and verdict proof; interpreted four-stage transitions; proof-gated resolve/close; linked cursor
-audit; append-only recorded work sessions carrying seat, crew, model, harness, worktree, branch, the
+audit; two-party native Inbox threads with ordered messages, per-recipient unread cursors, and immutable
+thread-to-ticket links visible from Board cards; append-only recorded work sessions carrying seat, crew, model, harness, worktree, branch, the
 authored `dispatched|briefed|working|gated` lifecycle, and a Record-computed duration beside
 caller-observed token counts; three fixed Routine revisions; an accepted-only, rebuildable six-lane Board; immutable delivery and
 poison evidence; canonical, acceptance-gated recovery dispositions; and contributor-level health. Record owns idempotent append, hash-chained
@@ -273,7 +275,7 @@ forbidden:
 ```
 
 The implemented kernel dependency edges are acyclic:
-`Work|Proof|Workflow|Attention|Runtime -> Record -> Telemetry`. Record imports none of those owners, and
+`Inbox|Work|Proof|Workflow|Attention|Runtime -> Record -> Telemetry`. Record imports none of those owners, and
 Workflow imports neither Work nor Proof. The repository policy validates edge allowlists and the entire
 ownership graph for cycles; composition satisfies Workflow's structural Work-readiness and current-proof
 ports.
@@ -281,6 +283,7 @@ ports.
 | Deep Module | Authority hidden behind its Interface |
 |---|---|
 | Access / Record | Authentication, revision-pinned Project grants, authorization, prohibited-class refusal, idempotency-before-CAS, streams, hash chain, outbox, durability result, project-scoped typed event feed |
+| Inbox | Two-principal threads, append-only ordered messages, immutable ticket promotion links, recipient-scoped unread/read projection |
 | Catalog | One `VersionedComponent` lifecycle, compatibility, provenance, exact pins, future-only active pointers |
 | Work | Permanent tickets, lifecycle episodes, custody, relations, priorities, blockers, typed Board intents |
 | Proof | Criteria, artifacts, evidence DAG, independence, gate instances/verdicts, invalidation |

@@ -10,8 +10,8 @@ import psycopg
 
 from ctower_kernel.record import Actor, RecordProblem
 from ctower_kernel.record._lifecycle import TERMINAL_TICKET_STATES
-from ctower_kernel.record._uuid import uuid7 as _uuid7
 from ctower_kernel.record.events import EventEnvelope, EventKind, EventOrigin
+from ctower_kernel.record.identifiers import uuid7 as _uuid7
 from ctower_kernel.record.prohibited_data import prohibited_data_refusal
 from ctower_kernel.record.session_events import (
     INITIAL_SESSION_STATE,

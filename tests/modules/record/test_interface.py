@@ -28,6 +28,12 @@ from ctower_kernel.record.events import (
     event_digest,
     ticket_payload_from_mapping,
 )
+from ctower_kernel.record.inbox_events import (
+    InboxMessageAppendedPayload,
+    InboxParticipant,
+    InboxThreadOpenedPayload,
+    InboxThreadPromotedToTicketPayload,
+)
 from ctower_kernel.record.postgres import PostgresRecord, provision_bootstrap
 
 ROOT = Path(__file__).parents[3]
@@ -236,6 +242,9 @@ def _vector_payload(
     | WorkChangedPayload
     | RoutineOccurrenceRecordedPayload
     | PoisonDispositionRecordedPayload
+    | InboxThreadOpenedPayload
+    | InboxMessageAppendedPayload
+    | InboxThreadPromotedToTicketPayload
 ):
     if kind is EventKind.BOOTSTRAP_CREATED:
         return BootstrapCreatedPayload(
@@ -280,4 +289,39 @@ def _vector_payload(
             action=str(payload["action"]),
             reason=str(payload["reason"]),
         )
+    if kind in {
+        EventKind.INBOX_THREAD_OPENED,
+        EventKind.INBOX_MESSAGE_APPENDED,
+        EventKind.INBOX_THREAD_PROMOTED_TO_TICKET,
+    }:
+        return _inbox_vector_payload(kind, payload)
     return ticket_payload_from_mapping(kind, payload)
+
+
+def _inbox_vector_payload(
+    kind: EventKind, payload: dict[str, object]
+) -> InboxThreadOpenedPayload | InboxMessageAppendedPayload | InboxThreadPromotedToTicketPayload:
+    if kind is EventKind.INBOX_THREAD_OPENED:
+        return InboxThreadOpenedPayload(
+            _inbox_participant(cast(dict[str, object], payload["opener"])),
+            _inbox_participant(cast(dict[str, object], payload["recipient"])),
+            UUID(str(payload["thread_id"])),
+        )
+    if kind is EventKind.INBOX_MESSAGE_APPENDED:
+        return InboxMessageAppendedPayload(
+            UUID(str(payload["message_id"])),
+            int(cast(int, payload["position"])),
+            _inbox_participant(cast(dict[str, object], payload["recipient"])),
+            _inbox_participant(cast(dict[str, object], payload["sender"])),
+            str(payload["text"]),
+            UUID(str(payload["thread_id"])),
+        )
+    if kind is EventKind.INBOX_THREAD_PROMOTED_TO_TICKET:
+        return InboxThreadPromotedToTicketPayload(
+            UUID(str(payload["thread_id"])), UUID(str(payload["ticket_id"]))
+        )
+    raise ValueError("not an inbox event kind")
+
+
+def _inbox_participant(payload: dict[str, object]) -> InboxParticipant:
+    return InboxParticipant(UUID(str(payload["principal_id"])), str(payload["seat_key"]))

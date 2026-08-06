@@ -1,6 +1,6 @@
 """DO NOT EDIT: generated file; regenerate from declared inputs.
 
-Authored contract digest: sha256:f6c0cd0431bb6d0ce6c2ae48acd75990b6717d0b5fcb2ae0d61f729075a3e21c
+Authored contract digest: sha256:58c506c7dc1755f416adb38de169d6a52c2afbb898b67c8c6ed5caf072ac15ec
 """
 
 from __future__ import annotations
@@ -100,6 +100,12 @@ __all__ = [
     "HumanWaiting",
     "HumanWaitingNotWaiting",
     "HumanWaitingWaiting",
+    "InboxMessage",
+    "InboxSendRequest",
+    "InboxSendResult",
+    "InboxThread",
+    "InboxThreadList",
+    "InboxThreadSummary",
     "IntakeCommandResult",
     "IntakeIntent",
     "IntakeOutcome",
@@ -841,6 +847,32 @@ class HumanWaitingWaiting(_BoundaryModel):
     finding_id: UUID
     kind_key: Annotated[str, Field(pattern="^[a-z][a-z0-9._-]{1,95}$")]
     reason_code: Annotated[str, Field(pattern="^[a-z][a-z0-9._-]*$")]
+
+
+class InboxMessage(_BoundaryModel):
+    from_: Annotated[str, Field(pattern="^[a-z][a-z0-9._-]{1,95}$")] = Field(
+        alias="from", serialization_alias="from"
+    )
+    message_id: UUID
+    position: Annotated[int, Field(ge=1, le=9007199254740991)]
+    sent_at: _Rfc3339DateTime
+    text: Annotated[str, Field(min_length=1, max_length=65536)]
+    to: Annotated[str, Field(pattern="^[a-z][a-z0-9._-]{1,95}$")]
+
+
+class InboxSendRequest(_BoundaryModel):
+    to: Annotated[str, Field(pattern="^[a-z][a-z0-9._-]{1,95}$")]
+    thread_id: UUID | None = None
+    text: Annotated[str, Field(min_length=1, max_length=65536)]
+
+
+class InboxThreadSummary(_BoundaryModel):
+    last_message_at: _Rfc3339DateTime
+    last_message_preview: Annotated[str, Field(min_length=1, max_length=500)]
+    other_agent: Annotated[str, Field(pattern="^[a-z][a-z0-9._-]{1,95}$")]
+    promoted_ticket_id: UUID | None
+    thread_id: UUID
+    unread_count: Annotated[int, Field(ge=0, le=9007199254740991)]
 
 
 class IntakeIntent(StrEnum):
@@ -1654,6 +1686,36 @@ class HealthContributor(_BoundaryModel):
 type HumanWaiting = HumanWaitingWaiting | HumanWaitingNotWaiting
 
 
+class InboxSendResult(_BoundaryModel):
+    command_id: UUID
+    durability_state: DurabilityState
+    event_ids: Annotated[tuple[UUID, ...], Field(min_length=1, max_length=2)]
+    from_: Annotated[str, Field(pattern="^[a-z][a-z0-9._-]{1,95}$")] = Field(
+        alias="from", serialization_alias="from"
+    )
+    message_id: UUID
+    position: Annotated[int, Field(ge=1, le=9007199254740991)]
+    sent_at: _Rfc3339DateTime
+    thread_id: UUID
+    thread_version: Annotated[int, Field(ge=2, le=9007199254740991)]
+    to: Annotated[str, Field(pattern="^[a-z][a-z0-9._-]{1,95}$")]
+
+
+class InboxThread(_BoundaryModel):
+    messages: Annotated[tuple[InboxMessage, ...], Field(min_length=1)]
+    participants: Annotated[tuple[Annotated[str, Field(pattern="^[a-z][a-z0-9._-]{1,95}$")], ...], Field(min_length=2, max_length=2)]
+    promoted_ticket_id: UUID | None
+    read_through_position: Annotated[int, Field(ge=1, le=9007199254740991)]
+    thread_id: UUID
+
+
+class InboxThreadList(_BoundaryModel):
+    recipient: Annotated[str, Field(pattern="^[a-z][a-z0-9._-]{1,95}$")]
+    threads: tuple[InboxThreadSummary, ...]
+    total_unread: Annotated[int, Field(ge=0, le=9007199254740991)]
+    unread_only: bool
+
+
 class IntakeCommandResult(_BoundaryModel):
     command_id: UUID
     durability_state: DurabilityState
@@ -1767,6 +1829,12 @@ class Problem(_BoundaryModel):
         "durability_pending",
         "i1-7c-required",
         "idempotency-conflict",
+        "inbox-already-promoted",
+        "inbox-recipient-ambiguous",
+        "inbox-recipient-not-found",
+        "inbox-recipient-self",
+        "inbox-sender-unaddressable",
+        "inbox-thread-participant-mismatch",
         "intake-already-promoted",
         "intake-promotion-ineligible",
         "intake-source-project-mismatch",
@@ -2403,6 +2471,7 @@ class BoardCard(_BoundaryModel):
     delivery_facts: tuple[str, ...]
     delivery_surface_availability: DeliverySurfaceAvailability
     human_waiting: HumanWaiting
+    inbox_thread_ids: tuple[UUID, ...]
     lane: BoardLane
     priority: Priority
     project_key: Annotated[str, Field(pattern="^[a-z][a-z0-9-]{2,63}$")]

@@ -180,6 +180,98 @@
       },
       "canonical_json": "{\"actor_principal_id\":\"018f0d5e-7b9a-7c01-8000-000000000003\",\"aggregate_id\":\"018f0d5e-7b9a-7c01-8000-000000000500\",\"causation_id\":null,\"client_command_id\":\"018f0d5e-7b9a-7c01-8000-000000000500\",\"correlation_id\":\"018f0d5e-7b9a-7c01-8000-000000000500\",\"event_id\":\"018f0d5e-7b9a-7c01-8000-000000000501\",\"kind\":\"attention.poison_disposition_recorded\",\"origin\":\"api\",\"payload\":{\"action\":\"tombstone\",\"consumer_key\":\"board_projection\",\"outbox_id\":\"018f0d5e-7b9a-7c01-8000-000000000402\",\"reason\":\"Policy-authorized invalid historical payload tombstone\",\"topic\":\"record.events\"},\"prev_hash\":\"sha256:0000000000000000000000000000000000000000000000000000000000000000\",\"request_sha256\":\"sha256:cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc\",\"schema_version\":1,\"sequence\":1,\"server_time\":\"2026-07-22T14:44:00.000000Z\",\"stream_id\":\"poison-disposition:018f0d5e-7b9a-7c01-8000-000000000500\",\"tenant_id\":\"018f0d5e-7b9a-7c01-8000-000000000001\"}",
       "event_hash": "sha256:82cae08e021a6bd8eaa075993a85cfed3bae0d9a0b44b7e607a836a39cfc998a"
+    },
+    {
+      "event": {
+        "actor_principal_id": "018f0d5e-7b9a-7c01-8000-000000000003",
+        "aggregate_id": "018f0d5e-7b9a-7c01-8000-000000000600",
+        "causation_id": null,
+        "client_command_id": "018f0d5e-7b9a-7c01-8000-000000000600",
+        "correlation_id": "018f0d5e-7b9a-7c01-8000-000000000600",
+        "event_id": "018f0d5e-7b9a-7c01-8000-000000000601",
+        "kind": "thread.opened",
+        "origin": "api",
+        "payload": {
+          "opener": {
+            "principal_id": "018f0d5e-7b9a-7c01-8000-000000000003",
+            "seat_key": "engineer-r330"
+          },
+          "recipient": {
+            "principal_id": "018f0d5e-7b9a-7c01-8000-000000000004",
+            "seat_key": "qa-agent"
+          },
+          "thread_id": "018f0d5e-7b9a-7c01-8000-000000000600"
+        },
+        "prev_hash": "sha256:0000000000000000000000000000000000000000000000000000000000000000",
+        "request_sha256": "sha256:dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd",
+        "schema_version": 1,
+        "sequence": 1,
+        "server_time": "2026-08-06T12:00:00.000000Z",
+        "stream_id": "inbox-thread:018f0d5e-7b9a-7c01-8000-000000000600",
+        "tenant_id": "018f0d5e-7b9a-7c01-8000-000000000001"
+      },
+      "canonical_json": "{\"actor_principal_id\":\"018f0d5e-7b9a-7c01-8000-000000000003\",\"aggregate_id\":\"018f0d5e-7b9a-7c01-8000-000000000600\",\"causation_id\":null,\"client_command_id\":\"018f0d5e-7b9a-7c01-8000-000000000600\",\"correlation_id\":\"018f0d5e-7b9a-7c01-8000-000000000600\",\"event_id\":\"018f0d5e-7b9a-7c01-8000-000000000601\",\"kind\":\"thread.opened\",\"origin\":\"api\",\"payload\":{\"opener\":{\"principal_id\":\"018f0d5e-7b9a-7c01-8000-000000000003\",\"seat_key\":\"engineer-r330\"},\"recipient\":{\"principal_id\":\"018f0d5e-7b9a-7c01-8000-000000000004\",\"seat_key\":\"qa-agent\"},\"thread_id\":\"018f0d5e-7b9a-7c01-8000-000000000600\"},\"prev_hash\":\"sha256:0000000000000000000000000000000000000000000000000000000000000000\",\"request_sha256\":\"sha256:dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd\",\"schema_version\":1,\"sequence\":1,\"server_time\":\"2026-08-06T12:00:00.000000Z\",\"stream_id\":\"inbox-thread:018f0d5e-7b9a-7c01-8000-000000000600\",\"tenant_id\":\"018f0d5e-7b9a-7c01-8000-000000000001\"}",
+      "event_hash": "sha256:9b4e6f056f5065cbc599effe5d0eb61efe61a043c05a218aa695923e04b3ac02"
+    },
+    {
+      "event": {
+        "actor_principal_id": "018f0d5e-7b9a-7c01-8000-000000000003",
+        "aggregate_id": "018f0d5e-7b9a-7c01-8000-000000000600",
+        "causation_id": null,
+        "client_command_id": "018f0d5e-7b9a-7c01-8000-000000000601",
+        "correlation_id": "018f0d5e-7b9a-7c01-8000-000000000600",
+        "event_id": "018f0d5e-7b9a-7c01-8000-000000000602",
+        "kind": "message.appended",
+        "origin": "api",
+        "payload": {
+          "message_id": "018f0d5e-7b9a-7c01-8000-000000000602",
+          "position": 1,
+          "recipient": {
+            "principal_id": "018f0d5e-7b9a-7c01-8000-000000000004",
+            "seat_key": "qa-agent"
+          },
+          "sender": {
+            "principal_id": "018f0d5e-7b9a-7c01-8000-000000000003",
+            "seat_key": "engineer-r330"
+          },
+          "text": "Native inbox vector",
+          "thread_id": "018f0d5e-7b9a-7c01-8000-000000000600"
+        },
+        "prev_hash": "sha256:9b4e6f056f5065cbc599effe5d0eb61efe61a043c05a218aa695923e04b3ac02",
+        "request_sha256": "sha256:eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee",
+        "schema_version": 1,
+        "sequence": 2,
+        "server_time": "2026-08-06T12:01:00.000000Z",
+        "stream_id": "inbox-thread:018f0d5e-7b9a-7c01-8000-000000000600",
+        "tenant_id": "018f0d5e-7b9a-7c01-8000-000000000001"
+      },
+      "canonical_json": "{\"actor_principal_id\":\"018f0d5e-7b9a-7c01-8000-000000000003\",\"aggregate_id\":\"018f0d5e-7b9a-7c01-8000-000000000600\",\"causation_id\":null,\"client_command_id\":\"018f0d5e-7b9a-7c01-8000-000000000601\",\"correlation_id\":\"018f0d5e-7b9a-7c01-8000-000000000600\",\"event_id\":\"018f0d5e-7b9a-7c01-8000-000000000602\",\"kind\":\"message.appended\",\"origin\":\"api\",\"payload\":{\"message_id\":\"018f0d5e-7b9a-7c01-8000-000000000602\",\"position\":1,\"recipient\":{\"principal_id\":\"018f0d5e-7b9a-7c01-8000-000000000004\",\"seat_key\":\"qa-agent\"},\"sender\":{\"principal_id\":\"018f0d5e-7b9a-7c01-8000-000000000003\",\"seat_key\":\"engineer-r330\"},\"text\":\"Native inbox vector\",\"thread_id\":\"018f0d5e-7b9a-7c01-8000-000000000600\"},\"prev_hash\":\"sha256:9b4e6f056f5065cbc599effe5d0eb61efe61a043c05a218aa695923e04b3ac02\",\"request_sha256\":\"sha256:eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee\",\"schema_version\":1,\"sequence\":2,\"server_time\":\"2026-08-06T12:01:00.000000Z\",\"stream_id\":\"inbox-thread:018f0d5e-7b9a-7c01-8000-000000000600\",\"tenant_id\":\"018f0d5e-7b9a-7c01-8000-000000000001\"}",
+      "event_hash": "sha256:472e752d2748a1e153b0b14e44033e074b536bf544915c69d35c91abbb80ad8c"
+    },
+    {
+      "event": {
+        "actor_principal_id": "018f0d5e-7b9a-7c01-8000-000000000003",
+        "aggregate_id": "018f0d5e-7b9a-7c01-8000-000000000600",
+        "causation_id": null,
+        "client_command_id": "018f0d5e-7b9a-7c01-8000-000000000602",
+        "correlation_id": "018f0d5e-7b9a-7c01-8000-000000000600",
+        "event_id": "018f0d5e-7b9a-7c01-8000-000000000603",
+        "kind": "thread.promoted_to_ticket",
+        "origin": "api",
+        "payload": {
+          "thread_id": "018f0d5e-7b9a-7c01-8000-000000000600",
+          "ticket_id": "018f0d5e-7b9a-7c01-8000-000000000010"
+        },
+        "prev_hash": "sha256:472e752d2748a1e153b0b14e44033e074b536bf544915c69d35c91abbb80ad8c",
+        "request_sha256": "sha256:ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff",
+        "schema_version": 1,
+        "sequence": 3,
+        "server_time": "2026-08-06T12:02:00.000000Z",
+        "stream_id": "inbox-thread:018f0d5e-7b9a-7c01-8000-000000000600",
+        "tenant_id": "018f0d5e-7b9a-7c01-8000-000000000001"
+      },
+      "canonical_json": "{\"actor_principal_id\":\"018f0d5e-7b9a-7c01-8000-000000000003\",\"aggregate_id\":\"018f0d5e-7b9a-7c01-8000-000000000600\",\"causation_id\":null,\"client_command_id\":\"018f0d5e-7b9a-7c01-8000-000000000602\",\"correlation_id\":\"018f0d5e-7b9a-7c01-8000-000000000600\",\"event_id\":\"018f0d5e-7b9a-7c01-8000-000000000603\",\"kind\":\"thread.promoted_to_ticket\",\"origin\":\"api\",\"payload\":{\"thread_id\":\"018f0d5e-7b9a-7c01-8000-000000000600\",\"ticket_id\":\"018f0d5e-7b9a-7c01-8000-000000000010\"},\"prev_hash\":\"sha256:472e752d2748a1e153b0b14e44033e074b536bf544915c69d35c91abbb80ad8c\",\"request_sha256\":\"sha256:ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff\",\"schema_version\":1,\"sequence\":3,\"server_time\":\"2026-08-06T12:02:00.000000Z\",\"stream_id\":\"inbox-thread:018f0d5e-7b9a-7c01-8000-000000000600\",\"tenant_id\":\"018f0d5e-7b9a-7c01-8000-000000000001\"}",
+      "event_hash": "sha256:bc89be5d5eccc182334d41d6c1937748003a87bc07fc0b8db80f927f16f8cb4e"
     }
   ]
 }

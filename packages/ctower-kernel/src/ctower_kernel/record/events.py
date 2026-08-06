@@ -29,10 +29,22 @@ from ctower_kernel.record.credentials import (
     SeatCredentialIssuedPayload,
     SeatCredentialRevokedPayload,
 )
+from ctower_kernel.record.inbox_events import (
+    InboxEventPayload,
+    InboxMessageAppendedPayload,
+    InboxThreadOpenedPayload,
+    InboxThreadPromotedToTicketPayload,
+)
+from ctower_kernel.record.inbox_events import (
+    _validate_identity as _validate_inbox_identity,
+)
 from ctower_kernel.record.intake_events import (
     InboundEventPromotedPayload,
     InboundEventRecordedPayload,
     IntakeEventPayload,
+)
+from ctower_kernel.record.intake_events import (
+    _validate_identity as _validate_intake_identity,
 )
 from ctower_kernel.record.migration_events import MigrationChangedPayload
 from ctower_kernel.record.poison_events import PoisonDispositionRecordedPayload
@@ -97,6 +109,9 @@ class EventKind(StrEnum):
     MIGRATION_CHANGED = "migration.changed"
     INBOUND_EVENT_RECORDED = "intake.inbound_event_recorded"
     INBOUND_EVENT_PROMOTED = "intake.inbound_event_promoted"
+    INBOX_THREAD_OPENED = "thread.opened"
+    INBOX_MESSAGE_APPENDED = "message.appended"
+    INBOX_THREAD_PROMOTED_TO_TICKET = "thread.promoted_to_ticket"
     SEAT_CREDENTIAL_ISSUED = "access.seat_credential_issued"
     SEAT_CREDENTIAL_REVOKED = "access.seat_credential_revoked"
     SESSION_STARTED = "session.started"
@@ -298,6 +313,7 @@ type EventPayload = (
     | PoisonDispositionRecordedPayload
     | MigrationChangedPayload
     | IntakeEventPayload
+    | InboxEventPayload
     | SeatCredentialIssuedPayload
     | SeatCredentialRevokedPayload
     | SessionEventPayload
@@ -462,6 +478,15 @@ _EVENT_CATALOG: dict[EventKind, EventCatalogEntry] = {
         EventCatalogEntry(
             EventKind.INBOUND_EVENT_PROMOTED, InboundEventPromotedPayload, "inbound-thread"
         ),
+        EventCatalogEntry(EventKind.INBOX_THREAD_OPENED, InboxThreadOpenedPayload, "inbox-thread"),
+        EventCatalogEntry(
+            EventKind.INBOX_MESSAGE_APPENDED, InboxMessageAppendedPayload, "inbox-thread"
+        ),
+        EventCatalogEntry(
+            EventKind.INBOX_THREAD_PROMOTED_TO_TICKET,
+            InboxThreadPromotedToTicketPayload,
+            "inbox-thread",
+        ),
         EventCatalogEntry(
             EventKind.SEAT_CREDENTIAL_ISSUED, SeatCredentialIssuedPayload, "seat-credential"
         ),
@@ -580,7 +605,8 @@ def _validate_event_identity(event: EventEnvelope) -> None:
     _validate_catalog_identity(event)
     _validate_occurrence_identity(event)
     _validate_poison_identity(event)
-    _validate_intake_identity(event)
+    _validate_intake_identity(event.payload, event.stream_id, event.aggregate_id)
+    _validate_inbox_identity(event.payload, event.aggregate_id)
     _validate_seat_credential_identity(event)
     _validate_session_identity(event)
 
@@ -619,13 +645,6 @@ def _validate_poison_identity(event: EventEnvelope) -> None:
         event.aggregate_id != event.client_command_id
     ):
         raise ValueError("poison disposition aggregate must be its command identity")
-
-
-def _validate_intake_identity(event: EventEnvelope) -> None:
-    if isinstance(event.payload, InboundEventRecordedPayload | InboundEventPromotedPayload) and (
-        event.stream_id != f"inbound-thread:{event.aggregate_id}"
-    ):
-        raise ValueError("intake event must use its inbound thread stream")
 
 
 def _validate_seat_credential_identity(event: EventEnvelope) -> None:

@@ -16,6 +16,12 @@ from ctower_kernel.record.events import (
     WorkflowChangedPayload,
     ticket_payload_from_mapping,
 )
+from ctower_kernel.record.inbox_events import (
+    InboxMessageAppendedPayload,
+    InboxParticipant,
+    InboxThreadOpenedPayload,
+    InboxThreadPromotedToTicketPayload,
+)
 from ctower_kernel.record.work_events import WorkChangedPayload
 
 __all__: tuple[str, ...] = ()
@@ -114,6 +120,41 @@ def _validate_payload(
             outcome=str(payload["outcome"]),
             ticket_id=UUID(str(payload["ticket_id"])),
         )
+        return
+    if kind in {
+        EventKind.INBOX_THREAD_OPENED,
+        EventKind.INBOX_MESSAGE_APPENDED,
+        EventKind.INBOX_THREAD_PROMOTED_TO_TICKET,
+    }:
+        _validate_inbox_payload(kind, payload)
+
+
+def _validate_inbox_payload(kind: EventKind, payload: Mapping[str, object]) -> None:
+    if kind is EventKind.INBOX_THREAD_OPENED:
+        InboxThreadOpenedPayload(
+            _participant(cast(Mapping[str, object], payload["opener"])),
+            _participant(cast(Mapping[str, object], payload["recipient"])),
+            UUID(str(payload["thread_id"])),
+        )
+        return
+    if kind is EventKind.INBOX_MESSAGE_APPENDED:
+        InboxMessageAppendedPayload(
+            UUID(str(payload["message_id"])),
+            int(cast(int, payload["position"])),
+            _participant(cast(Mapping[str, object], payload["recipient"])),
+            _participant(cast(Mapping[str, object], payload["sender"])),
+            str(payload["text"]),
+            UUID(str(payload["thread_id"])),
+        )
+        return
+    if kind is EventKind.INBOX_THREAD_PROMOTED_TO_TICKET:
+        InboxThreadPromotedToTicketPayload(
+            UUID(str(payload["thread_id"])), UUID(str(payload["ticket_id"]))
+        )
+
+
+def _participant(payload: Mapping[str, object]) -> InboxParticipant:
+    return InboxParticipant(UUID(str(payload["principal_id"])), str(payload["seat_key"]))
 
 
 def _validate_workflow_payload(payload: Mapping[str, object]) -> None:

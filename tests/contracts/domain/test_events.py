@@ -13,7 +13,7 @@ from jsonschema import Draft202012Validator
 from jsonschema.exceptions import ValidationError
 
 ROOT = Path(__file__).parents[3]
-VECTOR_COUNT = 6
+VECTOR_COUNT = 9
 
 
 def test_event_envelope_is_strict_and_hash_vectors_are_canonical() -> None:

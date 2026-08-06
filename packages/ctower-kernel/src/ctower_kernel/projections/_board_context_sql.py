@@ -71,6 +71,29 @@ def change_references_by_ticket(
     return {ticket_id: tuple(items) for ticket_id, items in result.items()}
 
 
+def inbox_threads_by_ticket(
+    connection: psycopg.Connection[dict[str, object]],
+    tenant_id: UUID,
+    ticket_ids: tuple[UUID, ...],
+) -> dict[UUID, tuple[UUID, ...]]:
+    """Read the authoritative reverse link written by inbox promotion."""
+
+    if not ticket_ids:
+        return {}
+    rows = connection.execute(
+        """
+        SELECT ticket_id, thread_id FROM inbox_ticket_links
+        WHERE tenant_id = %s AND ticket_id = ANY(%s)
+        ORDER BY ticket_id, promoted_at, thread_id
+        """,
+        (tenant_id, list(ticket_ids)),
+    ).fetchall()
+    result: dict[UUID, list[UUID]] = {}
+    for row in rows:
+        result.setdefault(cast(UUID, row["ticket_id"]), []).append(cast(UUID, row["thread_id"]))
+    return {ticket_id: tuple(thread_ids) for ticket_id, thread_ids in result.items()}
+
+
 def applied_labels_by_ticket(
     connection: psycopg.Connection[dict[str, object]],
     tenant_id: UUID,

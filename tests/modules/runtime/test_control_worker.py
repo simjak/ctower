@@ -26,6 +26,7 @@ from ctower_kernel.projections import (
     ProjectionHealth,
     Projections,
 )
+from ctower_kernel.projections.interface import InboxThread, InboxThreadList
 from ctower_kernel.record import Actor, DurabilityFinalizationBatch, DurabilityHealth
 from ctower_kernel.runtime import (
     FixedOperationAttempt,
@@ -81,6 +82,12 @@ class _ProjectionStore:
         return BoardView((), ProjectionHealth.CURRENT, 0, 0)
 
     def board(self, actor: Actor, query: BoardQuery) -> BoardView:
+        raise NotImplementedError
+
+    def list_inbox(self, actor: Actor, *, unread: bool) -> InboxThreadList:
+        raise NotImplementedError
+
+    def read_inbox(self, actor: Actor, thread_id: UUID, *, now: datetime) -> InboxThread | None:
         raise NotImplementedError
 
     def rebuild(self, tenant_id: UUID) -> BoardView:

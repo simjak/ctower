@@ -20,7 +20,6 @@ from psycopg.types.json import Jsonb
 
 from ctower_kernel.record import Actor, PrincipalKind, RecordProblem
 from ctower_kernel.record._commands import reserve_command
-from ctower_kernel.record._uuid import uuid7 as _uuid7
 from ctower_kernel.record.human_identity import (
     HumanRole,
     HumanRoleBindingIssue,
@@ -28,6 +27,7 @@ from ctower_kernel.record.human_identity import (
     HumanRoleBindingRevocation,
     HumanSessionReceipt,
 )
+from ctower_kernel.record.identifiers import uuid7 as _uuid7
 from ctower_kernel.record.transaction import authority_connection
 
 __all__ = [

@@ -1,6 +1,6 @@
 """DO NOT EDIT: generated file; regenerate from declared inputs.
 
-Authored contract digest: sha256:f6c0cd0431bb6d0ce6c2ae48acd75990b6717d0b5fcb2ae0d61f729075a3e21c
+Authored contract digest: sha256:58c506c7dc1755f416adb38de169d6a52c2afbb898b67c8c6ed5caf072ac15ec
 """
 
 from __future__ import annotations
@@ -409,6 +409,19 @@ OPERATIONS = MappingProxyType(
             principal=None,
             refusal_only=False,
         ),
+        "listInboxThreads": OperationSpec(
+            operation_id="listInboxThreads",
+            client_method="list_inbox_threads",
+            method="GET",
+            path="/v1/inbox/threads",
+            request_model=None,
+            response_model=_models.InboxThreadList,
+            cli_names=('inbox list',),
+            mutation=False,
+            spool_policy=SpoolPolicy.FORBIDDEN,
+            principal=None,
+            refusal_only=False,
+        ),
         "listProjectEvents": OperationSpec(
             operation_id="listProjectEvents",
             client_method="list_project_events",
@@ -510,6 +523,19 @@ OPERATIONS = MappingProxyType(
             cli_names=('intake promote',),
             mutation=True,
             spool_policy=SpoolPolicy.ALLOWED,
+            principal=None,
+            refusal_only=False,
+        ),
+        "readInboxThread": OperationSpec(
+            operation_id="readInboxThread",
+            client_method="read_inbox_thread",
+            method="GET",
+            path="/v1/inbox/threads/{thread_id}",
+            request_model=None,
+            response_model=_models.InboxThread,
+            cli_names=('inbox read',),
+            mutation=False,
+            spool_policy=SpoolPolicy.FORBIDDEN,
             principal=None,
             refusal_only=False,
         ),
@@ -643,6 +669,19 @@ OPERATIONS = MappingProxyType(
             principal=None,
             refusal_only=False,
         ),
+        "sendInboxMessage": OperationSpec(
+            operation_id="sendInboxMessage",
+            client_method="send_inbox_message",
+            method="POST",
+            path="/v1/inbox/messages",
+            request_model=_models.InboxSendRequest,
+            response_model=_models.InboxSendResult,
+            cli_names=('inbox send',),
+            mutation=True,
+            spool_policy=SpoolPolicy.ALLOWED,
+            principal=None,
+            refusal_only=False,
+        ),
         "startTicketSession": OperationSpec(
             operation_id="startTicketSession",
             client_method="start_ticket_session",
@@ -760,6 +799,7 @@ CLI_OPERATIONS = MappingProxyType(
         "ticket show": OPERATIONS["getTicket"],
         "ticket timeline": OPERATIONS["getTicketTimeline"],
         "credential seat issue": OPERATIONS["issueSeatCredential"],
+        "inbox list": OPERATIONS["listInboxThreads"],
         "project events": OPERATIONS["listProjectEvents"],
         "session project": OPERATIONS["listProjectSessions"],
         "ticket assignments": OPERATIONS["listTicketAssignments"],
@@ -768,6 +808,7 @@ CLI_OPERATIONS = MappingProxyType(
         "company bundle plan": OPERATIONS["planCompanyBundle"],
         "migration ctower-project prepare": OPERATIONS["prepareCtowerProjectCutover"],
         "intake promote": OPERATIONS["promoteIntakeEvent"],
+        "inbox read": OPERATIONS["readInboxThread"],
         "attention finding disposition": OPERATIONS["recordAttentionFindingDisposition"],
         "ops outbox poison dispose": OPERATIONS["recordOutboxPoisonDisposition"],
         "ticket evidence add": OPERATIONS["recordProofEvidence"],
@@ -779,6 +820,7 @@ CLI_OPERATIONS = MappingProxyType(
         "ticket resolve": OPERATIONS["resolveCloseWorkflow"],
         "credential seat revoke": OPERATIONS["revokeSeatCredential"],
         "synthetic run": OPERATIONS["runSyntheticWorkflow"],
+        "inbox send": OPERATIONS["sendInboxMessage"],
         "session start": OPERATIONS["startTicketSession"],
         "ticket workflow start": OPERATIONS["startTicketWorkflow"],
         "intake submit": OPERATIONS["submitIntake"],

@@ -18,6 +18,7 @@ from ctower_kernel.projections._consumer_validation import (
     safe_payload_bytes,
     validate_message,
 )
+from ctower_kernel.projections._inbox_sql import apply_message as apply_inbox_message
 from ctower_kernel.record.events import EventKind
 
 __all__: tuple[str, ...] = ()
@@ -55,6 +56,7 @@ def consume_one(dsn: str, tenant_id: UUID) -> bool:
         try:
             with connection.transaction():
                 apply_message(connection, tenant_id, message)
+                apply_inbox_message(connection, tenant_id, message)
         except psycopg.Error as error:
             _retryable_failure(connection, tenant_id, message, generation, attempt, error)
             return False
@@ -132,6 +134,13 @@ def reset_projection(dsn: str, tenant_id: UUID) -> None:
     with psycopg.connect(dsn, row_factory=dict_row) as connection:
         connection.execute("SET ROLE ctower_projection")
         connection.execute("DELETE FROM board_projection_rows WHERE tenant_id = %s", (tenant_id,))
+        connection.execute("DELETE FROM inbox_projection_reads WHERE tenant_id = %s", (tenant_id,))
+        connection.execute(
+            "DELETE FROM inbox_projection_messages WHERE tenant_id = %s", (tenant_id,)
+        )
+        connection.execute(
+            "DELETE FROM inbox_projection_threads WHERE tenant_id = %s", (tenant_id,)
+        )
         connection.execute(
             """
             INSERT INTO outbox_consumer_cursors (

@@ -27,6 +27,7 @@ from ctowerctl import (
     _bootstrap_commands,
     _company_commands,
     _credential_commands,
+    _inbox_commands,
     _intake_commands,
     _migration_commands,
     _ops_commands,
@@ -202,6 +203,7 @@ def _execute_mutation(
 _MUTATION_FAMILIES: dict[str, Callable[[argparse.Namespace], MutationPayload]] = {
     "ticket": _ticket_commands.build_mutation,
     "intake": _intake_commands.build_mutation,
+    "inbox": _inbox_commands.build_mutation,
     "company": _company_commands.build_mutation,
     "ops": _ops_commands.build_mutation,
     "session": _session_commands.build_mutation,
@@ -253,8 +255,8 @@ def _execute_online_credential(
 def _execute_query(arguments: object, client: CtowerClient) -> BaseModel:
     namespace = cast("argparse.Namespace", arguments)
     area = cast(str, namespace.area)
-    if area == "ticket":
-        return _ticket_commands.execute_query(namespace, client)
+    if area in {"ticket", "inbox"}:
+        return _execute_agent_query(namespace, client)
     if area == "company":
         return _company_commands.execute_query(namespace, client)
     if area in {"board", "control"}:
@@ -263,8 +265,18 @@ def _execute_query(arguments: object, client: CtowerClient) -> BaseModel:
         return _session_commands.execute_query(namespace, client)
     if area == "synthetic":
         return _synthetic_commands.execute_query(namespace, client)
-    if area in {"migration", "project"}:
-        return _migration_commands.execute_query(namespace, client)
+    return _execute_project_query(namespace, client)
+
+
+def _execute_agent_query(arguments: argparse.Namespace, client: CtowerClient) -> BaseModel:
+    if arguments.area == "ticket":
+        return _ticket_commands.execute_query(arguments, client)
+    return _inbox_commands.execute_query(arguments, client)
+
+
+def _execute_project_query(arguments: argparse.Namespace, client: CtowerClient) -> BaseModel:
+    if arguments.area in {"migration", "project"}:
+        return _migration_commands.execute_query(arguments, client)
     raise ValueError("usage: unsupported query family")
 
 

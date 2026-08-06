@@ -1,7 +1,7 @@
 # ctower-kernel boundary
 
 Trusted modular-monolith artifact. The development walking slice implements small Access, Catalog, Record,
-Work, Proof, Workflow, Runtime, Projections, Attention, and generic Object Interfaces: authentication and
+Inbox, Work, Proof, Workflow, Runtime, Projections, Attention, and generic Object Interfaces: authentication and
 bootstrap authority; atomic Postgres command/event/outbox persistence; ticket lifecycle, comments, priority,
 custody, assignment, blocker, relation, and typed-intent policy; universal component/bundle
 validation/planning plus an atomic future-only Catalog pointer; server-pinned frozen criteria, digest-bound
@@ -56,6 +56,11 @@ precede thread/ticket locks, and only authenticated, unquarantined discussion ev
 Record package facade keeps core authority types at `ctower_kernel.record` and groups inbound-thread command,
 result, and policy types under the exported `ctower_kernel.record.intake` namespace instead of flattening
 those leaf symbols.
+
+Native Inbox is a two-principal thread aggregate. Record atomically appends `thread.opened`,
+`message.appended`, and `thread.promoted_to_ticket` facts; promotion writes one immutable link exposed from
+both the thread projection and the Board card. Ordered messages and promotion links remain authoritative,
+while recipient unread/read cursors and list/read rows are disposable and rebuildable.
 
 There is no executable Extension Host in I1 or I2; that runtime remains deferred until a real use case and
 two real Adapters earn its Seam. The kernel may depend on authored/generated contracts and allowlisted public

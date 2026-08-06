@@ -7,6 +7,9 @@ spool inspection/recovery. Thread-first intake uses only the authored
 `discussion|create_ticket|link_ticket` commands and one-time discussion promotion through that same
 generated-client and encrypted-spool path. There is no arbitrary operation dispatcher or client-side
 authorization engine.
+Native agent messaging is the closed `inbox send --to <agent> [--thread <id>] <text>`, `inbox list
+[--unread]`, and `inbox read <thread>` family. Send uses the protected spool; list and read call the
+generated client directly and never queue.
 
 `ticket workflow list` is the one local Workflow read: it enumerates coherent active revisions from the
 installed pack tree without a network request. With exactly one revision, omitted start pins expand to that

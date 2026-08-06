@@ -1,4 +1,4 @@
-"""Shared UUIDv7 construction for Record-owned identities."""
+"""Shared RFC 9562 identity construction for Record-owned aggregates."""
 
 from __future__ import annotations
 
@@ -6,11 +6,11 @@ import secrets
 from datetime import datetime
 from uuid import UUID
 
-__all__: tuple[str, ...] = ()
+__all__ = ["uuid7"]
 
 
 def uuid7(now: datetime) -> UUID:
-    """Return one RFC 9562 UUIDv7 using the supplied authoritative time."""
+    """Return one UUIDv7 using the supplied authoritative time."""
 
     milliseconds = int(now.timestamp() * 1000) & ((1 << 48) - 1)
     random_bits = secrets.randbits(74)

@@ -48,6 +48,7 @@ from ctower_api._http_support import (
 from ctower_api._http_support import (
     validation_problem as _validation_problem,
 )
+from ctower_api._inbox_routes import install_inbox_routes
 from ctower_api._intake_routes import install_intake_routes
 from ctower_api._login_gate import install_login_gate
 from ctower_api._migration_port import MigrationPort
@@ -71,6 +72,7 @@ from ctower_kernel.access import Access
 from ctower_kernel.access.oidc import OidcProvider
 from ctower_kernel.attention import Attention
 from ctower_kernel.board_context import BoardContextFacts
+from ctower_kernel.inbox import Inbox
 from ctower_kernel.projections import Projections
 from ctower_kernel.proof import Proof
 from ctower_kernel.record import (
@@ -159,6 +161,7 @@ def create_app(
     projections: Projections | None = None,
     attention: Attention | None = None,
     board_context: BoardContextFacts | None = None,
+    inbox: Inbox | None = None,
     catalog: BundleCatalog | None = None,
     synthetic_runtime: SyntheticRuntime | None = None,
     synthetic_revision: RoutineRevision | None = None,
@@ -203,6 +206,7 @@ def create_app(
         projections=projections,
         attention=attention,
         board_context=board_context,
+        inbox=inbox,
         catalog=catalog,
         recorder=recorder,
     )
@@ -223,6 +227,7 @@ def _install_optional_routes(
     projections: Projections | None,
     attention: Attention | None,
     board_context: BoardContextFacts | None,
+    inbox: Inbox | None,
     catalog: BundleCatalog | None,
     recorder: TelemetryRecorder,
 ) -> None:
@@ -237,6 +242,8 @@ def _install_optional_routes(
     if projections is not None:
         install_board_routes(app, access, projections, recorder)
         install_health_routes(app, access, record, projections, recorder, attention)
+    if inbox is not None and projections is not None:
+        install_inbox_routes(app, access, record, inbox, projections, recorder)
 
 
 def _install_synthetic_boundary(

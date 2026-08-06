@@ -32,6 +32,10 @@ __all__ = [
     "HealthStatus",
     "HumanWaiting",
     "HumanWaitingState",
+    "InboxMessage",
+    "InboxThread",
+    "InboxThreadList",
+    "InboxThreadSummary",
     "ProjectionHealth",
     "Projections",
     "TenantDisplayIdentity",
@@ -333,6 +337,7 @@ class BoardCard:
     applied_labels: tuple[AppliedLabel, ...] = ()
     human_waiting: HumanWaiting = _NOT_WAITING
     delivery_surface_availability: BoardDeliverySurfaceAvailability = _NO_QUALIFYING_CHECKPOINT
+    inbox_thread_ids: tuple[UUID, ...] = ()
 
     def response_payload(self) -> dict[str, object]:
         return {
@@ -348,6 +353,7 @@ class BoardCard:
             "delivery_facts": list(self.delivery_facts),
             "delivery_surface_availability": self.delivery_surface_availability.response_payload(),
             "human_waiting": self.human_waiting.response_payload(),
+            "inbox_thread_ids": [str(item) for item in self.inbox_thread_ids],
             "lane": self.lane.value,
             "priority": self.priority,
             "project_key": self.project_key,
@@ -391,10 +397,92 @@ class BoardView:
         }
 
 
+@dataclass(frozen=True, slots=True)
+class InboxThreadSummary:
+    last_message_at: datetime
+    last_message_preview: str
+    other_agent: str
+    promoted_ticket_id: UUID | None
+    thread_id: UUID
+    unread_count: int
+
+    def response_payload(self) -> dict[str, object]:
+        return {
+            "last_message_at": self.last_message_at.isoformat(),
+            "last_message_preview": self.last_message_preview,
+            "other_agent": self.other_agent,
+            "promoted_ticket_id": (
+                str(self.promoted_ticket_id) if self.promoted_ticket_id is not None else None
+            ),
+            "thread_id": str(self.thread_id),
+            "unread_count": self.unread_count,
+        }
+
+
+@dataclass(frozen=True, slots=True)
+class InboxThreadList:
+    recipient: str
+    threads: tuple[InboxThreadSummary, ...]
+    total_unread: int
+    unread_only: bool
+
+    def response_payload(self) -> dict[str, object]:
+        return {
+            "recipient": self.recipient,
+            "threads": [item.response_payload() for item in self.threads],
+            "total_unread": self.total_unread,
+            "unread_only": self.unread_only,
+        }
+
+
+@dataclass(frozen=True, slots=True)
+class InboxMessage:
+    from_seat: str
+    message_id: UUID
+    position: int
+    sent_at: datetime
+    text: str
+    to: str
+
+    def response_payload(self) -> dict[str, object]:
+        return {
+            "from": self.from_seat,
+            "message_id": str(self.message_id),
+            "position": self.position,
+            "sent_at": self.sent_at.isoformat(),
+            "text": self.text,
+            "to": self.to,
+        }
+
+
+@dataclass(frozen=True, slots=True)
+class InboxThread:
+    messages: tuple[InboxMessage, ...]
+    participants: tuple[str, str]
+    promoted_ticket_id: UUID | None
+    read_through_position: int
+    thread_id: UUID
+
+    def response_payload(self) -> dict[str, object]:
+        return {
+            "messages": [item.response_payload() for item in self.messages],
+            "participants": list(self.participants),
+            "promoted_ticket_id": (
+                str(self.promoted_ticket_id) if self.promoted_ticket_id is not None else None
+            ),
+            "read_through_position": self.read_through_position,
+            "thread_id": str(self.thread_id),
+        }
+
+
 class _ProjectionStore(Protocol):
     def catch_up(self, tenant_id: UUID, through_watermark: int | None = None) -> BoardView: ...
 
     def board(self, actor: Actor, query: BoardQuery) -> BoardView: ...
+
+    def list_inbox(self, actor: Actor, *, unread: bool) -> InboxThreadList: ...
+
+    def read_inbox(self, actor: Actor, thread_id: UUID, *, now: datetime) -> InboxThread | None: ...
 
     def rebuild(self, tenant_id: UUID) -> BoardView: ...
 
@@ -422,6 +510,12 @@ class Projections:
 
     def board(self, actor: Actor, query: BoardQuery) -> BoardView:
         return self._store.board(actor, query)
+
+    def list_inbox(self, actor: Actor, *, unread: bool = False) -> InboxThreadList:
+        return self._store.list_inbox(actor, unread=unread)
+
+    def read_inbox(self, actor: Actor, thread_id: UUID, *, now: datetime) -> InboxThread | None:
+        return self._store.read_inbox(actor, thread_id, now=now)
 
     def rebuild(self, tenant_id: UUID) -> BoardView:
         return self._store.rebuild(tenant_id)

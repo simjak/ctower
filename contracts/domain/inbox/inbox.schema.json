@@ -1,0 +1,83 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://ctower.local/contracts/domain/inbox/inbox.schema.json",
+  "title": "Ctower native agent inbox aggregate",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema", "thread", "messages", "promotion"],
+  "properties": {
+    "schema": {"const": "ctower.inbox/v1"},
+    "thread": {"$ref": "#/$defs/thread"},
+    "messages": {
+      "type": "array",
+      "items": {"$ref": "#/$defs/message"}
+    },
+    "promotion": {
+      "oneOf": [
+        {"type": "null"},
+        {"$ref": "#/$defs/promotion"}
+      ]
+    }
+  },
+  "$defs": {
+    "seatKey": {
+      "type": "string",
+      "pattern": "^[a-z][a-z0-9._-]{1,95}$"
+    },
+    "participant": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["principal_id", "seat_key"],
+      "properties": {
+        "principal_id": {"type": "string", "format": "uuid"},
+        "seat_key": {"$ref": "#/$defs/seatKey"}
+      }
+    },
+    "thread": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["thread_id", "tenant_id", "participants", "version"],
+      "properties": {
+        "thread_id": {"type": "string", "format": "uuid"},
+        "tenant_id": {"type": "string", "format": "uuid"},
+        "participants": {
+          "type": "array",
+          "minItems": 2,
+          "maxItems": 2,
+          "items": {"$ref": "#/$defs/participant"}
+        },
+        "version": {"type": "integer", "minimum": 2}
+      }
+    },
+    "message": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "message_id",
+        "thread_id",
+        "position",
+        "sender",
+        "recipient",
+        "text"
+      ],
+      "properties": {
+        "message_id": {"type": "string", "format": "uuid"},
+        "thread_id": {"type": "string", "format": "uuid"},
+        "position": {"type": "integer", "minimum": 1},
+        "sender": {"$ref": "#/$defs/participant"},
+        "recipient": {"$ref": "#/$defs/participant"},
+        "text": {"type": "string", "minLength": 1, "maxLength": 65536}
+      }
+    },
+    "promotion": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["thread_id", "ticket_id", "command_id"],
+      "properties": {
+        "thread_id": {"type": "string", "format": "uuid"},
+        "ticket_id": {"type": "string", "format": "uuid"},
+        "command_id": {"type": "string", "format": "uuid"}
+      }
+    }
+  }
+}

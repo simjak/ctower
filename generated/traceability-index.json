@@ -583,6 +583,7 @@
       "contracts/workflow/workflow-definition.schema.json"
     ],
     "INV-01": [
+      "contracts/domain/inbox/inbox.schema.json",
       "contracts/domain/intake/thread-intake.schema.json",
       "packages/ctower-kernel/migrations/0001_roles.sql",
       "packages/ctower-kernel/migrations/0002_ticket_slice.sql",
@@ -608,12 +609,14 @@
     ],
     "INV-03": [
       "contracts/domain/events/event-envelope.schema.json",
+      "contracts/domain/inbox/inbox.schema.json",
       "contracts/domain/intake/thread-intake.schema.json",
       "contracts/http/openapi.yaml",
       "packages/ctower-kernel/migrations/0002_ticket_slice.sql",
       "packages/ctower-kernel/migrations/0032_thread_first_intake.sql",
       "packages/ctower-kernel/migrations/0035_board_source_lookup.sql",
-      "packages/ctower-kernel/migrations/0040_project_scoped_reads.sql"
+      "packages/ctower-kernel/migrations/0040_project_scoped_reads.sql",
+      "packages/ctower-kernel/migrations/0048_native_inbox.sql"
     ],
     "INV-04": [
       "contracts/domain/events/event-envelope.schema.json",
@@ -719,6 +722,7 @@
       "packages/ctower-kernel/migrations/0039_project_seat_credentials.sql"
     ],
     "INV-34": [
+      "contracts/domain/inbox/inbox.schema.json",
       "contracts/domain/outbox-delivery.schema.json",
       "contracts/domain/task-management/board-view.schema.json",
       "packages/ctower-kernel/migrations/0008_board_projection.sql",
@@ -726,7 +730,8 @@
       "packages/ctower-kernel/migrations/0019_outbox_routine_health.sql",
       "packages/ctower-kernel/migrations/0035_board_source_lookup.sql",
       "packages/ctower-kernel/migrations/0040_project_scoped_reads.sql",
-      "packages/ctower-kernel/migrations/0047_board_source_index.sql"
+      "packages/ctower-kernel/migrations/0047_board_source_index.sql",
+      "packages/ctower-kernel/migrations/0048_native_inbox.sql"
     ],
     "INV-35": [
       "contracts/domain/migration/ctower-project-cutover-health.schema.json",
@@ -960,6 +965,10 @@
       "packages/ctower-kernel/migrations/0040_project_scoped_reads.sql",
       "packages/ctower-kernel/migrations/0047_board_source_index.sql"
     ],
+    "SPEC#assignment-model-visibility-reporter": [
+      "contracts/domain/inbox/inbox.schema.json",
+      "packages/ctower-kernel/migrations/0048_native_inbox.sql"
+    ],
     "SPEC#attention-findings-feed": [
       "contracts/components/attention-kind-catalog.schema.json",
       "packages/ctower-kernel/migrations/0043_context_set_catalogs.sql",
@@ -985,6 +994,7 @@
     "SPEC#canonical-event-and-command-contract": [
       "contracts/domain/events/canonical-vectors.json",
       "contracts/domain/events/event-envelope.schema.json",
+      "contracts/domain/inbox/inbox.schema.json",
       "contracts/domain/migration/ctower-project-import-batch.schema.json",
       "contracts/domain/migration/ctower-project-import-correction.schema.json",
       "contracts/domain/migration/ctower-project-import-plan-v2.schema.json",
@@ -998,7 +1008,8 @@
       "packages/ctower-kernel/migrations/0028_i17b_importer_isolation.sql",
       "packages/ctower-kernel/migrations/0030_i17b_migration_truth_spine.sql",
       "packages/ctower-kernel/migrations/0031_i17b_bounded_truth_spine.sql",
-      "packages/ctower-kernel/migrations/0032_thread_first_intake.sql"
+      "packages/ctower-kernel/migrations/0032_thread_first_intake.sql",
+      "packages/ctower-kernel/migrations/0048_native_inbox.sql"
     ],
     "SPEC#client-acknowledgement-and-offline-behavior": [
       "contracts/http/openapi.yaml",
@@ -1126,7 +1137,8 @@
       "packages/ctower-kernel/migrations/0040_project_scoped_reads.sql",
       "packages/ctower-kernel/migrations/0041_recorded_work_sessions.sql",
       "packages/ctower-kernel/migrations/0046_human_oidc_identity.sql",
-      "packages/ctower-kernel/migrations/0047_board_source_index.sql"
+      "packages/ctower-kernel/migrations/0047_board_source_index.sql",
+      "packages/ctower-kernel/migrations/0048_native_inbox.sql"
     ],
     "SPEC#portfolio-shadow-onboarding": [
       "packages/ctower-kernel/migrations/0047_board_source_index.sql"

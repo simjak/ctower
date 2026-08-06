@@ -262,6 +262,84 @@
         }
       }
     },
+    "/v1/inbox/messages": {
+      "post": {
+        "operationId": "sendInboxMessage",
+        "x-ctower-cli": "inbox send",
+        "x-ctower-mutation": true,
+        "x-ctower-spool": "allowed",
+        "security": [{"bearerAuth": []}],
+        "parameters": [{"$ref": "#/components/parameters/IdempotencyKey"}],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {"schema": {"$ref": "#/components/schemas/InboxSendRequest"}}
+          }
+        },
+        "responses": {
+          "202": {
+            "description": "Inbox message committed; off-host durability acknowledgement pending",
+            "headers": {"Retry-After": {"$ref": "#/components/headers/RetryAfter"}},
+            "content": {"application/json": {"schema": {"$ref": "#/components/schemas/InboxSendResult"}}}
+          },
+          "201": {
+            "description": "Inbox message accepted off host",
+            "content": {"application/json": {"schema": {"$ref": "#/components/schemas/InboxSendResult"}}}
+          },
+          "401": {"$ref": "#/components/responses/ProblemResponse"},
+          "403": {"$ref": "#/components/responses/ProblemResponse"},
+          "404": {"$ref": "#/components/responses/ProblemResponse"},
+          "409": {"$ref": "#/components/responses/ProblemResponse"},
+          "422": {"$ref": "#/components/responses/ProblemResponse"}
+        }
+      }
+    },
+    "/v1/inbox/threads": {
+      "get": {
+        "operationId": "listInboxThreads",
+        "x-ctower-cli": "inbox list",
+        "x-ctower-mutation": false,
+        "x-ctower-spool": "forbidden",
+        "security": [{"bearerAuth": []}],
+        "parameters": [
+          {
+            "name": "unread",
+            "in": "query",
+            "required": false,
+            "schema": {"type": "boolean", "default": false}
+          }
+        ],
+        "responses": {
+          "200": {"description": "Recipient-scoped native inbox threads", "content": {"application/json": {"schema": {"$ref": "#/components/schemas/InboxThreadList"}}}},
+          "401": {"$ref": "#/components/responses/ProblemResponse"},
+          "404": {"$ref": "#/components/responses/ProblemResponse"},
+          "422": {"$ref": "#/components/responses/ProblemResponse"}
+        }
+      }
+    },
+    "/v1/inbox/threads/{thread_id}": {
+      "get": {
+        "operationId": "readInboxThread",
+        "x-ctower-cli": "inbox read",
+        "x-ctower-mutation": false,
+        "x-ctower-spool": "forbidden",
+        "security": [{"bearerAuth": []}],
+        "parameters": [
+          {
+            "name": "thread_id",
+            "in": "path",
+            "required": true,
+            "schema": {"type": "string", "format": "uuid"}
+          }
+        ],
+        "responses": {
+          "200": {"description": "Ordered thread messages; advances this recipient's disposable read cursor", "content": {"application/json": {"schema": {"$ref": "#/components/schemas/InboxThread"}}}},
+          "401": {"$ref": "#/components/responses/ProblemResponse"},
+          "404": {"$ref": "#/components/responses/ProblemResponse"},
+          "422": {"$ref": "#/components/responses/ProblemResponse"}
+        }
+      }
+    },
     "/v1/tickets/{ticket_id}": {
       "get": {
         "operationId": "getTicket",
@@ -2898,6 +2976,12 @@
               "durability_pending",
               "i1-7c-required",
               "idempotency-conflict",
+              "inbox-already-promoted",
+              "inbox-recipient-ambiguous",
+              "inbox-recipient-not-found",
+              "inbox-recipient-self",
+              "inbox-sender-unaddressable",
+              "inbox-thread-participant-mismatch",
               "intake-already-promoted",
               "intake-promotion-ineligible",
               "intake-source-project-mismatch",
@@ -3104,6 +3188,82 @@
           "thread_version": {"type": "integer", "minimum": 1},
           "ticket_id": {"type": ["string", "null"], "format": "uuid"},
           "ticket_version": {"type": ["integer", "null"], "minimum": 1}
+        }
+      },
+      "InboxSendRequest": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["to", "text"],
+        "properties": {
+          "to": {"type": "string", "pattern": "^[a-z][a-z0-9._-]{1,95}$"},
+          "thread_id": {"type": ["string", "null"], "format": "uuid"},
+          "text": {"type": "string", "minLength": 1, "maxLength": 65536}
+        }
+      },
+      "InboxSendResult": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["command_id", "durability_state", "event_ids", "from", "message_id", "position", "sent_at", "thread_id", "thread_version", "to"],
+        "properties": {
+          "command_id": {"type": "string", "format": "uuid"},
+          "durability_state": {"$ref": "#/components/schemas/DurabilityState"},
+          "event_ids": {"type": "array", "minItems": 1, "maxItems": 2, "items": {"type": "string", "format": "uuid"}},
+          "from": {"type": "string", "pattern": "^[a-z][a-z0-9._-]{1,95}$"},
+          "message_id": {"type": "string", "format": "uuid"},
+          "position": {"type": "integer", "minimum": 1},
+          "sent_at": {"type": "string", "format": "date-time"},
+          "thread_id": {"type": "string", "format": "uuid"},
+          "thread_version": {"type": "integer", "minimum": 2},
+          "to": {"type": "string", "pattern": "^[a-z][a-z0-9._-]{1,95}$"}
+        }
+      },
+      "InboxThreadSummary": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["last_message_at", "last_message_preview", "other_agent", "promoted_ticket_id", "thread_id", "unread_count"],
+        "properties": {
+          "last_message_at": {"type": "string", "format": "date-time"},
+          "last_message_preview": {"type": "string", "minLength": 1, "maxLength": 500},
+          "other_agent": {"type": "string", "pattern": "^[a-z][a-z0-9._-]{1,95}$"},
+          "promoted_ticket_id": {"type": ["string", "null"], "format": "uuid"},
+          "thread_id": {"type": "string", "format": "uuid"},
+          "unread_count": {"type": "integer", "minimum": 0}
+        }
+      },
+      "InboxThreadList": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["recipient", "threads", "total_unread", "unread_only"],
+        "properties": {
+          "recipient": {"type": "string", "pattern": "^[a-z][a-z0-9._-]{1,95}$"},
+          "threads": {"type": "array", "items": {"$ref": "#/components/schemas/InboxThreadSummary"}},
+          "total_unread": {"type": "integer", "minimum": 0},
+          "unread_only": {"type": "boolean"}
+        }
+      },
+      "InboxMessage": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["from", "message_id", "position", "sent_at", "text", "to"],
+        "properties": {
+          "from": {"type": "string", "pattern": "^[a-z][a-z0-9._-]{1,95}$"},
+          "message_id": {"type": "string", "format": "uuid"},
+          "position": {"type": "integer", "minimum": 1},
+          "sent_at": {"type": "string", "format": "date-time"},
+          "text": {"type": "string", "minLength": 1, "maxLength": 65536},
+          "to": {"type": "string", "pattern": "^[a-z][a-z0-9._-]{1,95}$"}
+        }
+      },
+      "InboxThread": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["messages", "participants", "promoted_ticket_id", "read_through_position", "thread_id"],
+        "properties": {
+          "messages": {"type": "array", "minItems": 1, "items": {"$ref": "#/components/schemas/InboxMessage"}},
+          "participants": {"type": "array", "minItems": 2, "maxItems": 2, "items": {"type": "string", "pattern": "^[a-z][a-z0-9._-]{1,95}$"}},
+          "promoted_ticket_id": {"type": ["string", "null"], "format": "uuid"},
+          "read_through_position": {"type": "integer", "minimum": 1},
+          "thread_id": {"type": "string", "format": "uuid"}
         }
       },
       "TicketCreateRequest": {
@@ -3632,7 +3792,7 @@
       },
       "BoardCard": {
         "type": "object", "additionalProperties": false,
-        "required": ["activity_class", "applied_labels", "assignee_id", "blocker_opened_at", "blocker_reason", "change_references", "custodian_id", "delivery_facts", "delivery_surface_availability", "human_waiting", "lane", "priority", "project_key", "risk", "stage_key", "stage_label", "tenant_display_identity", "ticket_id", "title", "underlying_lane", "version"],
+        "required": ["activity_class", "applied_labels", "assignee_id", "blocker_opened_at", "blocker_reason", "change_references", "custodian_id", "delivery_facts", "delivery_surface_availability", "human_waiting", "inbox_thread_ids", "lane", "priority", "project_key", "risk", "stage_key", "stage_label", "tenant_display_identity", "ticket_id", "title", "underlying_lane", "version"],
         "properties": {
           "activity_class": {"type": ["string", "null"], "enum": ["work", "verification", null]},
           "applied_labels": {"type": "array", "items": {"$ref": "#/components/schemas/AppliedLabel"}},
@@ -3644,6 +3804,7 @@
           "delivery_facts": {"type": "array", "items": {"type": "string"}},
           "delivery_surface_availability": {"$ref": "#/components/schemas/DeliverySurfaceAvailability"},
           "human_waiting": {"$ref": "#/components/schemas/HumanWaiting"},
+          "inbox_thread_ids": {"type": "array", "items": {"type": "string", "format": "uuid"}},
           "lane": {"$ref": "#/components/schemas/BoardLane"},
           "priority": {"$ref": "#/components/schemas/Priority"},
           "project_key": {"type": "string", "pattern": "^[a-z][a-z0-9-]{2,63}$"},

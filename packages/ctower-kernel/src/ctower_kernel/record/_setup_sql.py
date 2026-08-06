@@ -39,7 +39,7 @@ from ctower_kernel.record._recovery_role_shape_sql import (
     RecoveryRoleConfigurationError,
     validate_recovery_role_shapes,
 )
-from ctower_kernel.record._uuid import uuid7 as _uuid7
+from ctower_kernel.record.identifiers import uuid7 as _uuid7
 
 __all__ = [
     "MigrationAdoptionError",

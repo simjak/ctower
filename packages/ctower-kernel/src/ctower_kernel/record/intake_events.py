@@ -91,6 +91,13 @@ class InboundEventPromotedPayload:
 type IntakeEventPayload = InboundEventRecordedPayload | InboundEventPromotedPayload
 
 
+def _validate_identity(payload: object, stream_id: str, aggregate_id: UUID) -> None:
+    if isinstance(payload, InboundEventRecordedPayload | InboundEventPromotedPayload) and (
+        stream_id != f"inbound-thread:{aggregate_id}"
+    ):
+        raise ValueError("intake event must use its inbound thread stream")
+
+
 def _validate_common(project_key: str, source_kind: str, source_ref: str) -> None:
     if _PROJECT_KEY.fullmatch(project_key) is None:
         raise ValueError("inbound project key is outside the contract")

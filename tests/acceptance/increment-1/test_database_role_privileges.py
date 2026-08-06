@@ -146,6 +146,21 @@ DURABILITY_HEAD_UPDATE_COLUMNS = {
     }
 }
 
+INBOX_HEAD_UPDATE_COLUMNS = {
+    "inbox_threads": {
+        "thread_id": False,
+        "tenant_id": False,
+        "participant_a_id": False,
+        "participant_a_seat": False,
+        "participant_b_id": False,
+        "participant_b_seat": False,
+        "version": True,
+        "last_event_hash": True,
+        "opened_by": False,
+        "opened_at": False,
+    }
+}
+
 APPEND_ONLY_TABLES = (
     "proof_criteria",
     "proof_objects",
@@ -165,6 +180,8 @@ APPEND_ONLY_TABLES = (
     "ticket_work_sessions",
     "ticket_work_session_transitions",
     "ticket_work_session_closures",
+    "inbox_messages",
+    "inbox_ticket_links",
 )
 
 
@@ -290,6 +307,7 @@ def test_upgrade_database_corrects_existing_head_privileges(
             "0040_project_scoped_reads.sql",
             "0041_recorded_work_sessions.sql",
             "0047_board_source_index.sql",
+            "0048_native_inbox.sql",
         ):
             connection.execute((MIGRATIONS / name).read_text(encoding="utf-8"))
     provision_database_roles(database.admin_dsn)
@@ -464,6 +482,7 @@ def _assert_runtime_role_privileges(dsn: str) -> None:
             **HEAD_UPDATE_COLUMNS,
             **CP2_HEAD_UPDATE_COLUMNS,
             **DURABILITY_HEAD_UPDATE_COLUMNS,
+            **INBOX_HEAD_UPDATE_COLUMNS,
         }
         for table, expected_columns in head_tables.items():
             columns = connection.execute(

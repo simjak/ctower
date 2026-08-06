@@ -1,5 +1,5 @@
 // DO NOT EDIT: generated file; regenerate from declared inputs.
-// Authored contract digest: sha256:f6c0cd0431bb6d0ce6c2ae48acd75990b6717d0b5fcb2ae0d61f729075a3e21c
+// Authored contract digest: sha256:58c506c7dc1755f416adb38de169d6a52c2afbb898b67c8c6ed5caf072ac15ec
 
 export type ActivityClass = "work" | "verification";
 
@@ -137,6 +137,7 @@ export type BoardCard = Readonly<{
   readonly "delivery_facts": ReadonlyArray<string>;
   readonly "delivery_surface_availability": DeliverySurfaceAvailability;
   readonly "human_waiting": HumanWaiting;
+  readonly "inbox_thread_ids": ReadonlyArray<string>;
   readonly "lane": BoardLane;
   readonly "priority": Priority;
   readonly "project_key": string;
@@ -681,6 +682,58 @@ export type HumanWaitingWaiting = Readonly<{
   readonly "state": "waiting";
 }>;
 
+export type InboxMessage = Readonly<{
+  readonly "from": string;
+  readonly "message_id": string;
+  readonly "position": number;
+  readonly "sent_at": string;
+  readonly "text": string;
+  readonly "to": string;
+}>;
+
+export type InboxSendRequest = Readonly<{
+  readonly "text": string;
+  readonly "thread_id"?: string | null;
+  readonly "to": string;
+}>;
+
+export type InboxSendResult = Readonly<{
+  readonly "command_id": string;
+  readonly "durability_state": DurabilityState;
+  readonly "event_ids": ReadonlyArray<string>;
+  readonly "from": string;
+  readonly "message_id": string;
+  readonly "position": number;
+  readonly "sent_at": string;
+  readonly "thread_id": string;
+  readonly "thread_version": number;
+  readonly "to": string;
+}>;
+
+export type InboxThread = Readonly<{
+  readonly "messages": ReadonlyArray<InboxMessage>;
+  readonly "participants": ReadonlyArray<string>;
+  readonly "promoted_ticket_id": string | null;
+  readonly "read_through_position": number;
+  readonly "thread_id": string;
+}>;
+
+export type InboxThreadList = Readonly<{
+  readonly "recipient": string;
+  readonly "threads": ReadonlyArray<InboxThreadSummary>;
+  readonly "total_unread": number;
+  readonly "unread_only": boolean;
+}>;
+
+export type InboxThreadSummary = Readonly<{
+  readonly "last_message_at": string;
+  readonly "last_message_preview": string;
+  readonly "other_agent": string;
+  readonly "promoted_ticket_id": string | null;
+  readonly "thread_id": string;
+  readonly "unread_count": number;
+}>;
+
 export type IntakeCommandResult = Readonly<{
   readonly "command_id": string;
   readonly "durability_state": DurabilityState;
@@ -973,7 +1026,7 @@ export type PriorityChangedAuditData = Readonly<{
 }>;
 
 export type Problem = Readonly<{
-  readonly "code": "attention-finding-already-disposed" | "attention-finding-not-found" | "attention-kind-unrecognized" | "auth-exchange-invalid" | "auth-identity-unresolved" | "auth-provider-unavailable" | "auth-provider-unverifiable" | "auth-role-denied" | "auth-session-invalid" | "bootstrap-consumed" | "bootstrap-expired" | "bootstrap-nonempty" | "bootstrap-origin" | "bundle-base-conflict" | "bundle-compatibility-refused" | "bundle-digest-mismatch" | "bundle-grant-refused" | "bundle-independence-refused" | "bundle-no-effect-refused" | "bundle-not-active" | "bundle-plan-mismatch" | "bundle-recovery-unavailable" | "bundle-reference-invalid" | "bundle-schema-invalid" | "bundle-security-refused" | "change-reference-duplicate" | "credential-already-revoked" | "credential-authentication-unavailable" | "credential-digest-conflict" | "credential-issuance-refused" | "credential-revocation-refused" | "credential-revoked" | "credential-scope-denied" | "durability_pending" | "i1-7c-required" | "idempotency-conflict" | "intake-already-promoted" | "intake-promotion-ineligible" | "intake-source-project-mismatch" | "intake-source-conflict" | "label-already-applied" | "label-key-unrecognized" | "migration-alias-conflict" | "migration-capability-denied" | "migration-correction-conflict" | "migration-digest-mismatch" | "migration-export-nondeterminism" | "migration-fence-detected" | "migration-import-finalization-refused" | "migration-operation-drift" | "migration-relation-invalid" | "migration-run-conflict" | "migration-signature-invalid" | "migration-source-selection-drift" | "migration-source-tainted" | "poison-not-found" | "prohibited-data-class" | "project-delivery-unavailable" | "project-grant-required" | "project-scope-denied" | "reauthentication-required" | "request-body-too-large" | "proof-candidate-author-mismatch" | "proof-candidate-digest-invalid" | "proof-candidate-digest-not-current" | "proof-candidate-unchanged" | "proof-criteria-already-frozen" | "proof-criteria-invalid" | "proof-criteria-policy-mismatch" | "proof-criterion-unknown" | "proof-current-evidence-missing" | "proof-evidence-digest-mismatch" | "proof-evidence-id-conflict" | "proof-protected-authority-required" | "proof-policy-mismatch" | "proof-policy-pin-mismatch" | "proof-self-review-refused" | "proof-verdict-id-conflict" | "seat-binding-conflict" | "seat-credential-active" | "seat-credential-unavailable" | "seat-display-name-conflict" | "session-ineligible" | "session-not-found" | "session-transition-invalid" | "tenant-scope-denied" | "ticket-comment-ineligible" | "ticket-comment-invalid" | "unauthorized" | "validation-error" | "version-conflict" | "work-assignment-kind-refused" | "work-assignment-target-ineligible" | "work-assignment-unchanged" | "work-priority-unchanged" | "work-blocker-already-resolved" | "work-blocker-id-conflict" | "work-blocker-owner-ineligible" | "work-blocker-unknown" | "work-intent-unmet" | "work-relation-cycle" | "work-relation-exists" | "work-reopen-unmet" | "work-ticket-terminal" | "workflow-already-started" | "workflow-pin-mismatch" | "workflow-predicate-unsatisfied" | "workflow-run-not-started" | "proof-incomplete" | "workflow-state-conflict" | "workflow-terminal" | "workflow-transition-not-declared" | "workflow-version-unknown" | "workflow-not-terminal";
+  readonly "code": "attention-finding-already-disposed" | "attention-finding-not-found" | "attention-kind-unrecognized" | "auth-exchange-invalid" | "auth-identity-unresolved" | "auth-provider-unavailable" | "auth-provider-unverifiable" | "auth-role-denied" | "auth-session-invalid" | "bootstrap-consumed" | "bootstrap-expired" | "bootstrap-nonempty" | "bootstrap-origin" | "bundle-base-conflict" | "bundle-compatibility-refused" | "bundle-digest-mismatch" | "bundle-grant-refused" | "bundle-independence-refused" | "bundle-no-effect-refused" | "bundle-not-active" | "bundle-plan-mismatch" | "bundle-recovery-unavailable" | "bundle-reference-invalid" | "bundle-schema-invalid" | "bundle-security-refused" | "change-reference-duplicate" | "credential-already-revoked" | "credential-authentication-unavailable" | "credential-digest-conflict" | "credential-issuance-refused" | "credential-revocation-refused" | "credential-revoked" | "credential-scope-denied" | "durability_pending" | "i1-7c-required" | "idempotency-conflict" | "inbox-already-promoted" | "inbox-recipient-ambiguous" | "inbox-recipient-not-found" | "inbox-recipient-self" | "inbox-sender-unaddressable" | "inbox-thread-participant-mismatch" | "intake-already-promoted" | "intake-promotion-ineligible" | "intake-source-project-mismatch" | "intake-source-conflict" | "label-already-applied" | "label-key-unrecognized" | "migration-alias-conflict" | "migration-capability-denied" | "migration-correction-conflict" | "migration-digest-mismatch" | "migration-export-nondeterminism" | "migration-fence-detected" | "migration-import-finalization-refused" | "migration-operation-drift" | "migration-relation-invalid" | "migration-run-conflict" | "migration-signature-invalid" | "migration-source-selection-drift" | "migration-source-tainted" | "poison-not-found" | "prohibited-data-class" | "project-delivery-unavailable" | "project-grant-required" | "project-scope-denied" | "reauthentication-required" | "request-body-too-large" | "proof-candidate-author-mismatch" | "proof-candidate-digest-invalid" | "proof-candidate-digest-not-current" | "proof-candidate-unchanged" | "proof-criteria-already-frozen" | "proof-criteria-invalid" | "proof-criteria-policy-mismatch" | "proof-criterion-unknown" | "proof-current-evidence-missing" | "proof-evidence-digest-mismatch" | "proof-evidence-id-conflict" | "proof-protected-authority-required" | "proof-policy-mismatch" | "proof-policy-pin-mismatch" | "proof-self-review-refused" | "proof-verdict-id-conflict" | "seat-binding-conflict" | "seat-credential-active" | "seat-credential-unavailable" | "seat-display-name-conflict" | "session-ineligible" | "session-not-found" | "session-transition-invalid" | "tenant-scope-denied" | "ticket-comment-ineligible" | "ticket-comment-invalid" | "unauthorized" | "validation-error" | "version-conflict" | "work-assignment-kind-refused" | "work-assignment-target-ineligible" | "work-assignment-unchanged" | "work-priority-unchanged" | "work-blocker-already-resolved" | "work-blocker-id-conflict" | "work-blocker-owner-ineligible" | "work-blocker-unknown" | "work-intent-unmet" | "work-relation-cycle" | "work-relation-exists" | "work-reopen-unmet" | "work-ticket-terminal" | "workflow-already-started" | "workflow-pin-mismatch" | "workflow-predicate-unsatisfied" | "workflow-run-not-started" | "proof-incomplete" | "workflow-state-conflict" | "workflow-terminal" | "workflow-transition-not-declared" | "workflow-version-unknown" | "workflow-not-terminal";
   readonly "command_id"?: string | null;
   readonly "current_version"?: number | null;
   readonly "detail": string;

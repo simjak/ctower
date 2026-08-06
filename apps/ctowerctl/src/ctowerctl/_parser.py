@@ -53,6 +53,9 @@ _AUTHORED_COMMAND_NAMES = frozenset(
         "credential seat revoke",
         "intake promote",
         "intake submit",
+        "inbox send",
+        "inbox list",
+        "inbox read",
         "ticket capture",
         "ticket create",
         "ticket query",
@@ -133,6 +136,7 @@ def _parser() -> argparse.ArgumentParser:
     _bootstrap_parser(areas.add_parser("bootstrap"))
     _credential_parser(areas.add_parser("credential"))
     _intake_parser(areas.add_parser("intake"))
+    _inbox_parser(areas.add_parser("inbox"))
     _ticket_parser(areas.add_parser("ticket"))
     _session_parser(areas.add_parser("session"))
     _board_parser(areas.add_parser("board"))
@@ -220,6 +224,22 @@ def _intake_parser(parser: argparse.ArgumentParser) -> None:
     promote.add_argument("--expected-thread-version", required=True, type=_positive_int)
     promote.add_argument("--intent", required=True, choices=tuple(IntakePromotionIntent))
     _intake_ticket_fields(promote)
+
+
+def _inbox_parser(parser: argparse.ArgumentParser) -> None:
+    actions = parser.add_subparsers(dest="action", required=True, parser_class=_Parser)
+    send = actions.add_parser("send")
+    send.set_defaults(cli_name="inbox send")
+    _command_id(send)
+    send.add_argument("--to", required=True)
+    send.add_argument("--thread", dest="thread_id", type=UUID)
+    send.add_argument("text")
+    list_parser = actions.add_parser("list")
+    list_parser.set_defaults(cli_name="inbox list")
+    list_parser.add_argument("--unread", action="store_true")
+    read = actions.add_parser("read")
+    read.set_defaults(cli_name="inbox read")
+    read.add_argument("thread_id", type=UUID)
 
 
 def _intake_ticket_fields(parser: argparse.ArgumentParser) -> None:
