@@ -315,6 +315,73 @@ def test_generated_board_source_lookup_returns_hit_and_empty_miss(
     assert miss.cards == ()
 
 
+def test_source_lookup_matches_the_pre_index_filter_across_a_seeded_corpus(
+    tenant: TenantFixture,
+) -> None:
+    corpus = [
+        ("alpha", "R1", "duplicate-a"),
+        ("alpha", "R1", "duplicate-b"),
+        ("alpha", "R2", "kind-match-only"),
+        ("beta", "R1", "ref-match-only"),
+        ("Alpha", "R1", "case-sensitive"),
+        ("a", "r", "min-length"),
+        ("k" * 64, "x" * 256, "max-length"),
+    ]
+    with running_api(
+        tenant.database.runtime_dsn, projection_dsn=tenant.database.projection_dsn
+    ) as base_url:
+        client = CtowerClient(base_url, credential=tenant.commander_credential)
+        created = {
+            title: client.create_ticket(
+                TicketCreateRequest(
+                    initial_custodian_id=tenant.commander_id,
+                    priority=Priority.P2,
+                    project_key="ctower",
+                    source=SourceReference(kind=item_kind, ref=item_ref),
+                    title=title,
+                ),
+                command_id=uuid4(),
+            ).ticket.ticket_id
+            for item_kind, item_ref, title in corpus
+        }
+        _refresh_board(tenant, client)
+
+        queries = (
+            {(item_kind, item_ref) for item_kind, item_ref, _ in corpus}
+            | {(item_kind, None) for item_kind, _, _ in corpus}
+            | {(None, item_ref) for _, item_ref, _ in corpus}
+            | {(None, None)}
+        )
+        for query_kind, query_ref in queries:
+            oracle = {
+                created[title]
+                for item_kind, item_ref, title in corpus
+                if (query_kind is None or item_kind == query_kind)
+                and (query_ref is None or item_ref == query_ref)
+            }
+            observed = {
+                card.ticket_id
+                for card in client.get_board(
+                    project_key="ctower", source_kind=query_kind, source_ref=query_ref
+                ).cards
+                if card.ticket_id in created.values()
+            }
+            assert observed == oracle, (query_kind, query_ref)
+
+        # revert-probe: the migration must stay a plain (non-unique) index — two tickets
+        # sharing one source reference is a legitimate, undecided-ownership state (gh#68),
+        # and both must still surface from a lookup scoped to that exact pair.
+        duplicate_pair = client.get_board(
+            project_key="ctower", source_kind="alpha", source_ref="R1"
+        )
+        assert {card.ticket_id for card in duplicate_pair.cards} == {
+            created["duplicate-a"],
+            created["duplicate-b"],
+        }
+
+        client.close()
+
+
 def _new_ticket(client: CtowerClient, custodian_id: UUID, suffix: str) -> UUID:
     return client.create_ticket(
         TicketCreateRequest(

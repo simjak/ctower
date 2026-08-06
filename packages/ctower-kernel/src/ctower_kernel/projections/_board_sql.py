@@ -69,6 +69,8 @@ def apply_message(
 
 def read_view(dsn: str, tenant_id: UUID, query: BoardQuery | None, *, source: int) -> BoardView:
     project_key = query.project_key if query is not None else None
+    source_kind = query.source_kind if query is not None else None
+    source_ref = query.source_ref if query is not None else None
     with psycopg.connect(dsn, row_factory=dict_row) as connection:
         connection.execute("SET ROLE ctower_projection")
         cursor = connection.execute(
@@ -80,14 +82,33 @@ def read_view(dsn: str, tenant_id: UUID, query: BoardQuery | None, *, source: in
             """,
             (tenant_id,),
         ).fetchone()
+        row_count = connection.execute(
+            """
+            SELECT count(*) AS value
+            FROM board_projection_rows
+            WHERE tenant_id = %s
+              AND (%s::text IS NULL OR project_key = %s)
+            """,
+            (tenant_id, project_key, project_key),
+        ).fetchone()
         rows = connection.execute(
             """
             SELECT * FROM board_projection_rows
             WHERE tenant_id = %s
               AND (%s::text IS NULL OR project_key = %s)
+              AND (%s::text IS NULL OR source_kind = %s)
+              AND (%s::text IS NULL OR source_ref = %s)
             ORDER BY ticket_id
             """,
-            (tenant_id, project_key, project_key),
+            (
+                tenant_id,
+                project_key,
+                project_key,
+                source_kind,
+                source_kind,
+                source_ref,
+                source_ref,
+            ),
         ).fetchall()
         expected_row = connection.execute(
             """
@@ -124,13 +145,14 @@ def read_view(dsn: str, tenant_id: UUID, query: BoardQuery | None, *, source: in
         scoped_projection=scoped_projection,
     )
     expected_cards = int(cast(int, expected_row["value"])) if expected_row else 0
+    actual_cards = int(cast(int, row_count["value"])) if row_count else 0
     current = _is_current(
         cursor,
         global_projection=global_projection,
         source=source,
         projection=projection,
         view_source=view_source,
-        actual_cards=len(rows),
+        actual_cards=actual_cards,
         expected_cards=expected_cards,
     )
     return BoardView(
@@ -197,9 +219,7 @@ def _read_context_sets(
 def _matching_cards(
     rows: list[dict[str, object]], query: BoardQuery | None, context: _ContextSets
 ) -> tuple[BoardCard, ...]:
-    cards = tuple(
-        _card(row, context) for row in rows if query is None or _matches_source(row, query)
-    )
+    cards = tuple(_card(row, context) for row in rows)
     return tuple(card for card in cards if query is None or _matches(card, query))
 
 
@@ -537,10 +557,4 @@ def _matches(card: BoardCard, query: BoardQuery) -> bool:
             query.assignee_id is None or card.assignee_id == query.assignee_id,
             query.risk is None or card.risk == query.risk,
         )
-    )
-
-
-def _matches_source(row: dict[str, object], query: BoardQuery) -> bool:
-    return (query.source_kind is None or str(row["source_kind"]) == query.source_kind) and (
-        query.source_ref is None or str(row["source_ref"]) == query.source_ref
     )

@@ -58,10 +58,11 @@ _EXPECTED_MIGRATION_PATHS = [
     "0044_ticket_change_and_label_facts.sql",
     "0045_attention_findings.sql",
     "0046_human_oidc_identity.sql",
+    "0047_board_source_index.sql",
 ]
 _EXPECTED_ADOPTION_BASELINE = {
-    "through": "0046_human_oidc_identity.sql",
-    "schema_sha256": ("sha256:094bef3be1f862a490ef58dd27436e79fd8c79451dc4eb175f016e7d02a3c516"),
+    "through": "0047_board_source_index.sql",
+    "schema_sha256": ("sha256:eed045d7084165120180b1d06708657f6632f96a1b015f11b2bd8b9dce123785"),
     "semantic_checks": "ctower.pre-ledger/v1",
     "schema_object_sum256": (
         "sum256:3214a7ebfd01854174742a6eb42c3be41f332367d723c5238b66ab43d1fb9711"
