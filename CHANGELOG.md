@@ -1,5 +1,49 @@
 # Changelog
 
+## [0.8.0](https://github.com/simjak/ctower/compare/v0.7.4...v0.8.0) (2026-08-06)
+
+
+### Features
+
+* **access:** provider-agnostic OIDC two-plane login scaffold (gh[#214](https://github.com/simjak/ctower/issues/214)) ([#324](https://github.com/simjak/ctower/issues/324)) ([280ce5f](https://github.com/simjak/ctower/commit/280ce5f60a13ac66eb6915640196b24134de3705))
+* **board:** wire INV-66/67 context-set fields into the Board card ([#326](https://github.com/simjak/ctower/issues/326)) ([4f52c8e](https://github.com/simjak/ctower/commit/4f52c8e705d5c894cea85c33e71ddcb6df92dbf0))
+* **checks:** add async subprocess vocabulary to the process inventory ([#309](https://github.com/simjak/ctower/issues/309)) ([80fca4f](https://github.com/simjak/ctower/commit/80fca4f790aaf63864dfc3ab45ace937e476802d))
+* **cli:** ctowerctl installs anywhere and finds its instance ([#286](https://github.com/simjak/ctower/issues/286)) ([f0ac4ff](https://github.com/simjak/ctower/commit/f0ac4ff1469e9c048919ce2d9d671afe46106a3f)), closes [#193](https://github.com/simjak/ctower/issues/193)
+* **contracts:** bind verdict_id + candidate_digest per criterion row (evidence-manifest/v2) ([#295](https://github.com/simjak/ctower/issues/295)) ([081137b](https://github.com/simjak/ctower/commit/081137bad0c8a141855f6e6366f152fbaa58d5b2)), closes [#174](https://github.com/simjak/ctower/issues/174)
+* **events:** publish the project-scoped typed event feed (CT-I1-012) ([#299](https://github.com/simjak/ctower/issues/299)) ([bad5043](https://github.com/simjak/ctower/commit/bad5043669f651fe347929e18ac9337ac1d1bc84)), closes [#186](https://github.com/simjak/ctower/issues/186)
+* **ui:** wire the live terminal into the crew profile and seat aggregate ([#322](https://github.com/simjak/ctower/issues/322)) ([abd2f93](https://github.com/simjak/ctower/commit/abd2f935189de359d2b22d302377f3d12e9c10a3))
+* **ui:** wire the promised cross-project portfolio view (gh[#319](https://github.com/simjak/ctower/issues/319) direction-a) ([#327](https://github.com/simjak/ctower/issues/327)) ([26651e3](https://github.com/simjak/ctower/commit/26651e3bed27bd5cc9035f28e44ddbddd92c1433))
+
+
+### Bug Fixes
+
+* **checks:** bound the Playwright gate's process wait with a deadline ([#307](https://github.com/simjak/ctower/issues/307)) ([1ba9f16](https://github.com/simjak/ctower/commit/1ba9f16097b5cceb5c46763cc2f97a4eb72f531d)), closes [#114](https://github.com/simjak/ctower/issues/114)
+* **checks:** exclude interpreter bytecode from generated inventory ([#298](https://github.com/simjak/ctower/issues/298)) ([15e298c](https://github.com/simjak/ctower/commit/15e298c9a67b6c8b1513002192d1f04296e3236c)), closes [#94](https://github.com/simjak/ctower/issues/94)
+* **checks:** fail closed on nested star-imports and conditional/mutated __all__ ([#304](https://github.com/simjak/ctower/issues/304)) ([b0feae7](https://github.com/simjak/ctower/commit/b0feae72afbfb1c9d4d9390f4bd1688abb3dd1a7)), closes [#1](https://github.com/simjak/ctower/issues/1)
+* **ci:** render observe-mode landing-boundary as neutral, not FAILURE ([#283](https://github.com/simjak/ctower/issues/283)) ([a87958c](https://github.com/simjak/ctower/commit/a87958cb372c93227dca1d1eac120813e6442405)), closes [#277](https://github.com/simjak/ctower/issues/277)
+* clear gh[#165](https://github.com/simjak/ctower/issues/165)'s D5 (delete rowcount) + D8 (broken suite collection) ([#311](https://github.com/simjak/ctower/issues/311)) ([a332759](https://github.com/simjak/ctower/commit/a33275969011a089189267260cbbb242f5b58e53))
+* **cli:** control health fails loud instead of masking unknown state ([#306](https://github.com/simjak/ctower/issues/306)) ([5b26837](https://github.com/simjak/ctower/commit/5b268370929db23cc00b17cf2df7a743f4a5be9a))
+* **cli:** derive --command-id for every mutation, not just three ([#325](https://github.com/simjak/ctower/issues/325)) ([a400f28](https://github.com/simjak/ctower/commit/a400f286a16260c5c39282a8158ba1e5db03217f))
+* **contracts:** lock evidence-manifest/v1's shape and version it going forward ([#287](https://github.com/simjak/ctower/issues/287)) ([f3dc555](https://github.com/simjak/ctower/commit/f3dc55508dddac9345bcbe0aed88818b4d84fb0d))
+* **contracts:** unfreeze corpus cardinality in migration schemas ([#293](https://github.com/simjak/ctower/issues/293)) ([e08931c](https://github.com/simjak/ctower/commit/e08931cb0e073549575630d187442ba464f8c941))
+* **dev-runtime:** readback-verify forced container removal ([#297](https://github.com/simjak/ctower/issues/297)) ([74064f6](https://github.com/simjak/ctower/commit/74064f608f63a32f0dcc2d19f31d5e25c6324495)), closes [#70](https://github.com/simjak/ctower/issues/70)
+* **dev-runtime:** reconcile orphaned runtime-replacement directories ([#321](https://github.com/simjak/ctower/issues/321)) ([b0f5f92](https://github.com/simjak/ctower/commit/b0f5f921101c818b9908321d3e017787595ca682)), closes [#127](https://github.com/simjak/ctower/issues/127)
+* **dev-runtime:** remove the primary initializer on a readiness-deadline miss ([#301](https://github.com/simjak/ctower/issues/301)) ([cfa621b](https://github.com/simjak/ctower/commit/cfa621bafa47c1993de857fdf6f23895f2787d3e)), closes [#72](https://github.com/simjak/ctower/issues/72)
+* **dev-runtime:** retire the predecessor instead of deleting it before commit ([#308](https://github.com/simjak/ctower/issues/308)) ([dbd9dc8](https://github.com/simjak/ctower/commit/dbd9dc812a4dfa661be86b86d6e870431e74ece6)), closes [#121](https://github.com/simjak/ctower/issues/121)
+* **dev-runtime:** surface the candidate interpreter's stderr on a preflight crash ([#315](https://github.com/simjak/ctower/issues/315)) ([45e8d98](https://github.com/simjak/ctower/commit/45e8d985340896388053e0339c9d2d52841a88cc))
+* gate the credential path on schema generation 0039 (gh[#259](https://github.com/simjak/ctower/issues/259)) ([#296](https://github.com/simjak/ctower/issues/296)) ([a444cff](https://github.com/simjak/ctower/commit/a444cff787453b4a6f89821684f16fe358f6d160))
+* **kernel:** bound ambiguous-commit recovery with backoff and cap ordinary-mode statement time ([#302](https://github.com/simjak/ctower/issues/302)) ([2f385fa](https://github.com/simjak/ctower/commit/2f385fafc7bd8f3e1ccfec4230cb44534fd3f6e8)), closes [#88](https://github.com/simjak/ctower/issues/88)
+* **kernel:** derive Board project-source event kinds from the fold dispatch ([#284](https://github.com/simjak/ctower/issues/284)) ([e66f5b3](https://github.com/simjak/ctower/commit/e66f5b302de02cc1d68f74eb1e21fec76891b738)), closes [#204](https://github.com/simjak/ctower/issues/204)
+* **kernel:** index Board source-reference lookup instead of Python-filtering a full fetch ([#310](https://github.com/simjak/ctower/issues/310)) ([37c6dda](https://github.com/simjak/ctower/commit/37c6dda028fda5fd8aecc07ac18799d5f3327baa))
+* **kernel:** join fixed_operation_results into the Routine pending-jobs count ([#316](https://github.com/simjak/ctower/issues/316)) ([ca10d69](https://github.com/simjak/ctower/commit/ca10d69a695c8c532d4d75529e19d39abd2ede05))
+* **kernel:** read the active-checkpoint snapshot once per reconcile ([#313](https://github.com/simjak/ctower/issues/313)) ([cb53231](https://github.com/simjak/ctower/commit/cb532316f0e9e4a5b518bed70b21b78b491cd1eb)), closes [#165](https://github.com/simjak/ctower/issues/165)
+* **kernel:** scope checkpoint materialization completeness per project ([#285](https://github.com/simjak/ctower/issues/285)) ([532c130](https://github.com/simjak/ctower/commit/532c130d98db4d689cc6e19ebd03c1c398d8081f))
+* **migration:** name the checkpoint expectation a cutover refusal fails on ([#292](https://github.com/simjak/ctower/issues/292)) ([962d541](https://github.com/simjak/ctower/commit/962d541012599a98a13f9e56330f9ab3987229b1)), closes [#183](https://github.com/simjak/ctower/issues/183)
+* **migration:** split _pass_two_sql.py's graph projection (D2) + document empty-signed-set fallback (D5) ([#312](https://github.com/simjak/ctower/issues/312)) ([12008b4](https://github.com/simjak/ctower/commit/12008b4780724c80007d4105ec2b791f8534bfd8))
+* **record:** add the column statistics target to the adoption fingerprint ([#305](https://github.com/simjak/ctower/issues/305)) ([84792d2](https://github.com/simjak/ctower/commit/84792d2d02b0203b88eef67ca5b454f420439ee4)), closes [#80](https://github.com/simjak/ctower/issues/80)
+* **tests:** redact secret-shaped values from pytest failure output ([#294](https://github.com/simjak/ctower/issues/294)) ([474eea3](https://github.com/simjak/ctower/commit/474eea37fd3b0bd23767d9cd467b709044485807)), closes [#290](https://github.com/simjak/ctower/issues/290)
+* **ui:** brand the Inbox info chip and drop the kept-unkept board promise ([#323](https://github.com/simjak/ctower/issues/323)) ([360bba9](https://github.com/simjak/ctower/commit/360bba928bda8d3cf71067a9d5e3fa9581be018b))
+
 ## [0.7.4](https://github.com/simjak/ctower/compare/v0.7.3...v0.7.4) (2026-08-04)
 
 
