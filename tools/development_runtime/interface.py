@@ -79,6 +79,8 @@ host all all ::/0 scram-sha-256
 _INSPECT_TIMEOUT_SECONDS = 10.0
 _LIFECYCLE_TIMEOUT_SECONDS = 120.0
 _SYSTEMD_TIMEOUT_SECONDS = 60.0
+_FORCE_REMOVE_ATTEMPTS = 2
+_CONTAINER_NOT_FOUND_MARKER = "No such container"
 
 
 def main() -> None:
@@ -546,13 +548,28 @@ def _verify_local_image() -> None:
 
 
 def _container_exists(name: str) -> bool:
+    """Discriminate a real absence from an unreadable daemon.
+
+    `docker container inspect` exits non-zero both when the container is genuinely
+    gone and when the daemon itself could not be reached (down, unauthorized,
+    timed out). Only the former is "gone" — the latter is UNKNOWN and must not be
+    read as absence, so it is raised by name instead of collapsed to `False`.
+    """
     result = process_execution.run(
         [docker_path(), "container", "inspect", name],
         timeout_seconds=_INSPECT_TIMEOUT_SECONDS,
         check=False,
-        discard_output=True,
+        capture_output=True,
     )
-    return result.returncode == 0
+    if result.returncode == 0:
+        return True
+    if _CONTAINER_NOT_FOUND_MARKER in (result.stderr or ""):
+        return False
+    raise RuntimeError(
+        f"container {name} state is unknown: `docker container inspect` failed "
+        f"(exit={result.returncode}) for a reason other than the container being "
+        f"absent: {(result.stderr or '').strip() or '<no stderr>'}"
+    )
 
 
 def _container_state(name: str) -> str:
@@ -590,16 +607,33 @@ def _run_owned_container(
             input_text=input_text,
         )
     except process_execution.ProcessTimeoutError:
+        # A lingering container here raises RuntimeError instead of reaching `raise`
+        # below — deliberately: a container stuck after cleanup is a louder, more
+        # actionable signal than the timeout that triggered the cleanup.
         _force_remove_container(name)
         raise
 
 
 def _force_remove_container(name: str) -> None:
-    process_execution.run(
-        [docker_path(), "container", "rm", "--force", name],
-        timeout_seconds=_LIFECYCLE_TIMEOUT_SECONDS,
-        check=False,
-        discard_output=True,
+    """Force-remove `name` and prove absence by readback, not by the rm exit code.
+
+    A `docker rm --force` can report success while the container lingers in a bad
+    state, or report failure while the container is already gone. Only a follow-up
+    `docker container inspect` tells the truth, so this refuses by name instead of
+    trusting the removal command's own verdict.
+    """
+    for _attempt in range(_FORCE_REMOVE_ATTEMPTS):
+        process_execution.run(
+            [docker_path(), "container", "rm", "--force", name],
+            timeout_seconds=_LIFECYCLE_TIMEOUT_SECONDS,
+            check=False,
+            discard_output=True,
+        )
+        if not _container_exists(name):
+            return
+    raise RuntimeError(
+        f"container {name} still exists (state={_container_state(name)}) after forced "
+        "removal and one retry"
     )
 
 
