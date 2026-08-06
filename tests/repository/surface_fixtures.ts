@@ -21,8 +21,11 @@ import { healthOf, registryOf } from "../../apps/ctower-ui/src/read/sources/cade
 import { rejoined, turnsOf, unindent } from "../../apps/ctower-ui/src/read/sources/tmuxBridge.ts";
 import { noneOf, unreadOf, valueOf } from "../../apps/ctower-ui/src/read/sources/maybe.ts";
 import { reclassified } from "../../apps/ctower-ui/src/read/bounded.ts";
-import { boardEmptyKind } from "../../apps/ctower-ui/src/read/boardProjection.ts";
-import type { Beat } from "../../apps/ctower-ui/src/read/interface.ts";
+import {
+  boardCardContextFor,
+  boardEmptyKind,
+} from "../../apps/ctower-ui/src/read/boardProjection.ts";
+import type { Beat, BoardCard } from "../../apps/ctower-ui/src/read/interface.ts";
 
 const results: Record<string, unknown> = {};
 
@@ -251,6 +254,49 @@ results.zeroOfZeroPortfolioUnreachableIsRestartFresh = boardProbe(0, 0, null);
 results.nonzeroWatermarkEmptyProjectRendersNormally = boardProbe(462, 0, 462);
 results.zeroWatermarkWithCardsRendersNormally = boardProbe(0, 3, 462);
 results.nonzeroWatermarkWithCardsRendersNormally = boardProbe(462, 279, 462);
+
+/* ── #337 · every Board-card context member is rendered from its own fact ──
+   The API response carries all five members. The surface used only tenant
+   identity (and only in the portfolio fallback), substituted delivery facts
+   for change references, and discarded labels, human-waiting, and delivery
+   availability entirely. Drive the exact QA fixture through the pure display
+   projection so component markup cannot need to reinterpret discriminants. */
+
+const contextCard = {
+  tenantDisplayIdentity: { state: "known", displayName: "Ctower" },
+  changeReferences: [
+    {
+      repository: "simjak/ctower",
+      change_identity: "326",
+      reference: "https://github.com/simjak/ctower/pull/326",
+      recorded_at: "2026-08-06T12:00:00Z",
+    },
+  ],
+  appliedLabels: [
+    {
+      label_key: "visual-gate",
+      label: "Visual gate",
+      vocabulary_revision: 1,
+      applied_at: "2026-08-06T12:01:00Z",
+    },
+  ],
+  humanWaiting: {
+    state: "waiting",
+    finding_id: "01989d83-bf65-7db0-8598-9a4407bde5b5",
+    kind_key: "needs_visual_qa",
+    reason_code: "vision_path_deferred",
+  },
+  deliverySurfaceAvailability: { state: "no_qualifying_checkpoint" },
+} as unknown as BoardCard;
+
+results.boardCardContextSet = boardCardContextFor(contextCard);
+results.boardCardExplicitEmptyContextSet = boardCardContextFor({
+  tenantDisplayIdentity: { state: "unknown", missingSource: "tenant.display_name" },
+  changeReferences: [],
+  appliedLabels: [],
+  humanWaiting: { state: "not_waiting" },
+  deliverySurfaceAvailability: { state: "no_qualifying_checkpoint" },
+} as unknown as BoardCard);
 
 // `noneOf` is exercised so the driver fails loudly if the Known constructors
 // ever stop being importable from this module

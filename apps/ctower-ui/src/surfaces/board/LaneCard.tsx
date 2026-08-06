@@ -3,37 +3,45 @@ import type { ReactElement } from "react";
 import { InlineReading } from "@/frame/Declared";
 import { laneGlyph, StateGlyph } from "@/frame/StateGlyph";
 import { elapsedSince, shortId } from "@/read/elapsed";
-import { tenantChipFor } from "@/read/boardProjection";
-import type { BoardCard, BoardEntry } from "@/read/interface";
+import { boardCardContextFor } from "@/read/boardProjection";
+import type { BoardContextValue } from "@/read/boardProjection";
+import type { BoardEntry } from "@/read/interface";
 
 function priorityClass(priority: string): string {
   return `pri ${priority.toLowerCase()}`;
 }
 
-/**
- * The tenant chip, when the caller asks for it (gh#319's cross-project
- * portfolio view — the normal per-project rail never sets `showTenant`,
- * because every card on it is already known to be this project's own read).
- * `known`/`unknown` both render: an unattributed ticket says so, the `title`
- * carries why, rather than the row silently dropping the fact. The
- * `known`/`unknown` union itself is narrowed in `read/boardProjection.ts`
- * (`tenantChipFor`), not here — a surface may not inspect a fact's own
- * discriminant, the same rule `frame/Declared.tsx` holds for a `Reading`.
- */
-function tenantChip(card: BoardCard): ReactElement {
-  const facts = tenantChipFor(card.tenantDisplayIdentity);
+function ContextRow({
+  label,
+  values,
+  attention = false,
+}: {
+  readonly label: string;
+  readonly values: readonly BoardContextValue[];
+  readonly attention?: boolean;
+}): ReactElement {
   return (
-    <span className="chip" title={facts.title}>
-      {facts.label}
-    </span>
+    <div className={attention ? "context-row attn" : "context-row"}>
+      <span className="context-key">{label}</span>
+      <span className="context-values">
+        {values.map((fact, index) => (
+          <span
+            className="context-value"
+            key={`${fact.value}-${index.toString()}`}
+            title={fact.detail}
+          >
+            {fact.value}
+          </span>
+        ))}
+      </span>
+    </div>
   );
 }
 
 /**
  * One board card. Every line is a fact `/v1/board` or `/v1/tickets/{id}`
- * returned; the change reference reads `PR —` when `delivery_facts` is the
- * empty set the record actually holds, exactly as the mockup renders an absent
- * change reference.
+ * returned. The five context rows are always present because their contract
+ * distinguishes an empty/absent/unknown value from omission.
  *
  * The source and the age come from a second read that can fail on its own. When
  * it does the card says `source not reached` and `age not reached` in the warn
@@ -43,15 +51,12 @@ function tenantChip(card: BoardCard): ReactElement {
 export function LaneCard({
   entry,
   now,
-  showTenant,
 }: {
   readonly entry: BoardEntry;
   readonly now: number;
-  /** Render the tenant chip. Defaults to unset (the per-project rail omits it). */
-  readonly showTenant?: boolean;
 }): ReactElement {
   const { card, ticket } = entry;
-  const change = card.deliveryFacts[0];
+  const context = boardCardContextFor(card);
   // F-001a: the seat name when the record resolves one, and an honest
   // "seat unnamed" otherwise — never a ULID truncated to a single character by
   // the column, which is what the audit found
@@ -66,13 +71,6 @@ export function LaneCard({
       <div className="card-top">
         <span className="tid">{shortId(card.ticketId)}</span>
         <span className={priorityClass(card.priority)}>{card.priority}</span>
-        {/* the audit found a dash chip on all thirteen cards: a change
-            reference the record does not carry is simply not shown */}
-        {change === undefined ? null : (
-          <span className="right">
-            <span className="pr live">{change}</span>
-          </span>
-        )}
       </div>
       <h3 className="card-title">
         <StateGlyph name={laneGlyph(card.lane, card.blockerReason !== null)} />
@@ -88,8 +86,24 @@ export function LaneCard({
           {card.activityClass === null ? "" : ` · ${card.activityClass}`}
         </div>
       )}
+      <div className="card-context" aria-label="Board card context">
+        <ContextRow label="Tenant" values={[context.tenant]} />
+        <ContextRow label="Changes" values={context.changes} />
+        <ContextRow label="Labels" values={context.labels} />
+        <ContextRow
+          label="Human waiting"
+          values={[context.humanWaiting]}
+          attention={context.humanWaiting.attention}
+        />
+        <ContextRow
+          label="Delivery surface"
+          values={[
+            context.deliverySurface,
+            ...(context.deliverySurface.details ?? []).map((value) => ({ value })),
+          ]}
+        />
+      </div>
       <div className="card-foot">
-        {showTenant === true ? tenantChip(card) : null}
         <InlineReading
           reading={ticket}
           present={(value) => (

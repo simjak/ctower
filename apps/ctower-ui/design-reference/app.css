@@ -382,11 +382,13 @@ body:has(#f-bhloop:checked) .col:not(:has(.p-bhloop)) .col-empty { display: bloc
 .stagejump {
   position: sticky; top: 0; z-index: 20;
   display: flex; gap: 8px;
+  width: 100%; max-width: 100%; min-width: 0;
   padding: 10px 16px;
   background: var(--scrim);
   backdrop-filter: blur(8px);
   border-bottom: 1px solid var(--line);
   overflow-x: auto;
+  overscroll-behavior-inline: contain;
   scrollbar-width: none;
 }
 .stagejump::-webkit-scrollbar { display: none; }
@@ -449,6 +451,7 @@ body:has(#f-bhloop:checked) .col:not(:has(.p-bhloop)) .col-empty { display: bloc
 
 .card {
   display: flex; flex-direction: column; gap: 10px;
+  min-width: 0;
   padding: 14px;
   background: var(--surface-2);
   border: 1px solid var(--line);
@@ -478,8 +481,26 @@ body:has(#f-bhloop:checked) .col:not(:has(.p-bhloop)) .col-empty { display: bloc
 .card-note.held    { border-left-color: var(--refuse); color: var(--refuse-deep); background: var(--refuse-bg); }
 .card-note.changes { border-left-color: var(--warn);   color: var(--warn);        background: var(--warn-bg); }
 .card-note.attn    { border-left-color: var(--warn);   color: var(--warn);        background: var(--warn-bg); }
+.card-context {
+  display: flex; flex-direction: column;
+  border-top: 1px solid var(--line);
+}
+.context-row {
+  display: grid; grid-template-columns: minmax(72px, 88px) minmax(0, 1fr); gap: 8px;
+  padding: 6px 0;
+  border-bottom: 1px solid var(--line);
+  font-size: 11.5px; line-height: 1.4;
+}
+.context-key {
+  color: var(--ink-3); font-size: 10.5px; font-weight: 600;
+  letter-spacing: .04em; text-transform: uppercase;
+}
+.context-values { display: flex; flex-direction: column; gap: 3px; min-width: 0; }
+.context-value { color: var(--ink-2); overflow-wrap: anywhere; min-width: 0; }
+.context-row.attn .context-value { color: var(--warn); }
 .card-foot {
-  display: flex; align-items: center; gap: 8px;
+  display: flex; align-items: center; flex-wrap: wrap; gap: 8px;
+  min-width: 0;
   padding-top: 2px;
   font-size: 12px; color: var(--ink-3);
 }

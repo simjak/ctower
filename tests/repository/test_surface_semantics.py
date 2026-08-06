@@ -291,5 +291,31 @@ class RefusalStatusTests(unittest.TestCase):
         self.assertNotIn("status", _case("failureWithNoStatusStaysWithout"))
 
 
+class BoardCardContextTests(unittest.TestCase):
+    """#337 — the five API-present context members must reach the card."""
+
+    def test_the_qa_fixture_keeps_all_five_context_members_visible(self) -> None:
+        context = _case("boardCardContextSet")
+        self.assertEqual(context["tenant"]["value"], "Ctower")
+        self.assertEqual(
+            context["changes"][0]["value"],
+            "simjak/ctower #326 · https://github.com/simjak/ctower/pull/326",
+        )
+        self.assertEqual(context["labels"][0]["value"], "Visual gate")
+        self.assertEqual(
+            context["humanWaiting"]["value"],
+            "needs_visual_qa · vision_path_deferred",
+        )
+        self.assertEqual(context["deliverySurface"]["value"], "no qualifying checkpoint")
+
+    def test_empty_or_unavailable_members_are_explicit_instead_of_omitted(self) -> None:
+        context = _case("boardCardExplicitEmptyContextSet")
+        self.assertEqual(context["tenant"]["value"], "STATE_UNKNOWN · tenant.display_name")
+        self.assertEqual(context["changes"], [{"value": "none recorded"}])
+        self.assertEqual(context["labels"], [{"value": "none applied"}])
+        self.assertEqual(context["humanWaiting"]["value"], "not waiting")
+        self.assertEqual(context["deliverySurface"]["value"], "no qualifying checkpoint")
+
+
 if __name__ == "__main__":
     unittest.main()

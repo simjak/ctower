@@ -260,8 +260,9 @@ the phase-1 status note; the two structural ones are:
 1. **Board columns are the record's lanes**, not the mockup's seven pipeline stage names. The
    shadow instance runs `ctower.trust-spine-four-stage@1` and every card carries `lane`;
    painting stage names over lane data would have been an invented mapping.
-2. **The filter dimension is `source.kind`**, not project. The record carries no project fact
-   yet (#185 / D29); `source.kind` is recorded and is a first-class `/v1/board` query filter.
+2. **Project is the primary Board dimension; `source.kind` is its secondary filter.** Every
+   `/v1/board` read is scoped by required `project_key`, every returned card carries that same project
+   fact, and the adapter refuses a mismatched card instead of rendering it under the selected tab.
 
 The section nav carries the eight screens in this phase. `Workflow` (R2707) is not built here,
 and a nav entry that leads nowhere would be a dead control.

@@ -1,5 +1,16 @@
 import { randomBytes, randomUUID } from "node:crypto";
-import type { DurabilityState, Priority, ProjectionHealth, TelemetryContext } from "@ctower/client";
+import type {
+  AppliedLabel,
+  ChangeReference,
+  DeliverySurfaceAvailability,
+  DurabilityState,
+  HumanWaiting,
+  Priority,
+  ProjectionHealth,
+  SurfaceEnvironmentsField,
+  SurfaceIdentityField,
+  TelemetryContext,
+} from "@ctower/client";
 import { boundedRead, ReadRefused } from "./bounded";
 import { NO_WORK_SESSIONS } from "./futureSources";
 import { issueReferenceOf } from "./issueRef";
@@ -131,10 +142,93 @@ function toTenantDisplayIdentity(value: unknown): TenantDisplayIdentity {
       };
 }
 
+function toChangeReference(value: unknown): ChangeReference {
+  const row = asRecord(value, "board.card.change_references[]");
+  return {
+    repository: asString(row.repository, "board.card.change_references[].repository"),
+    change_identity: asString(
+      row.change_identity,
+      "board.card.change_references[].change_identity"
+    ),
+    reference: asString(row.reference, "board.card.change_references[].reference"),
+    recorded_at: asString(row.recorded_at, "board.card.change_references[].recorded_at"),
+  };
+}
+
+function toAppliedLabel(value: unknown): AppliedLabel {
+  const row = asRecord(value, "board.card.applied_labels[]");
+  return {
+    label_key: asString(row.label_key, "board.card.applied_labels[].label_key"),
+    label: asString(row.label, "board.card.applied_labels[].label"),
+    vocabulary_revision: asInteger(
+      row.vocabulary_revision,
+      "board.card.applied_labels[].vocabulary_revision"
+    ),
+    applied_at: asString(row.applied_at, "board.card.applied_labels[].applied_at"),
+  };
+}
+
+const HUMAN_WAITING_STATES = ["waiting", "not_waiting"] as const;
+
+function toHumanWaiting(value: unknown): HumanWaiting {
+  const row = asRecord(value, "board.card.human_waiting");
+  const state = asMember(row.state, "board.card.human_waiting.state", HUMAN_WAITING_STATES);
+  return state === "waiting"
+    ? {
+        state,
+        finding_id: asString(row.finding_id, "board.card.human_waiting.finding_id"),
+        kind_key: asString(row.kind_key, "board.card.human_waiting.kind_key"),
+        reason_code: asString(row.reason_code, "board.card.human_waiting.reason_code"),
+      }
+    : { state };
+}
+
+const SURFACE_DECLARATION_STATES = ["declared_present", "declared_absent", "undeclared"] as const;
+
+function toSurfaceIdentity(value: unknown, field: string): SurfaceIdentityField {
+  const row = asRecord(value, field);
+  return {
+    state: asMember(row.state, `${field}.state`, SURFACE_DECLARATION_STATES),
+    identity: asStringOrNull(row.identity, `${field}.identity`),
+  };
+}
+
+function toSurfaceEnvironments(value: unknown, field: string): SurfaceEnvironmentsField {
+  const row = asRecord(value, field);
+  return {
+    state: asMember(row.state, `${field}.state`, SURFACE_DECLARATION_STATES),
+    environments: asStringList(row.environments, `${field}.environments`),
+  };
+}
+
+const DELIVERY_SURFACE_STATES = ["no_qualifying_checkpoint", "qualifying_checkpoint"] as const;
+
+function toDeliverySurfaceAvailability(value: unknown): DeliverySurfaceAvailability {
+  const field = "board.card.delivery_surface_availability";
+  const row = asRecord(value, field);
+  const state = asMember(row.state, `${field}.state`, DELIVERY_SURFACE_STATES);
+  return state === "no_qualifying_checkpoint"
+    ? { state }
+    : {
+        state,
+        checkpoint_key: asString(row.checkpoint_key, `${field}.checkpoint_key`),
+        landing_boundary: toSurfaceIdentity(row.landing_boundary, `${field}.landing_boundary`),
+        non_production_environments: toSurfaceEnvironments(
+          row.non_production_environments,
+          `${field}.non_production_environments`
+        ),
+        externally_effective_outcome: toSurfaceIdentity(
+          row.externally_effective_outcome,
+          `${field}.externally_effective_outcome`
+        ),
+      };
+}
+
 function toCard(value: unknown, names: Readonly<Record<string, string>>): BoardCard {
   const row = asRecord(value, "board.card");
   return {
     ticketId: asString(row.ticket_id, "board.card.ticket_id"),
+    projectKey: asString(row.project_key, "board.card.project_key"),
     title: asString(row.title, "board.card.title"),
     lane: asMember(row.lane, "board.card.lane", LANES),
     priority: asMember(row.priority, "board.card.priority", PRIORITIES),
@@ -153,6 +247,12 @@ function toCard(value: unknown, names: Readonly<Record<string, string>>): BoardC
     risk: optionalText(row.risk, "board.card.risk"),
     deliveryFacts: asStringList(row.delivery_facts ?? [], "board.card.delivery_facts"),
     tenantDisplayIdentity: toTenantDisplayIdentity(row.tenant_display_identity),
+    changeReferences: asArray(row.change_references, "board.card.change_references").map(
+      toChangeReference
+    ),
+    appliedLabels: asArray(row.applied_labels, "board.card.applied_labels").map(toAppliedLabel),
+    humanWaiting: toHumanWaiting(row.human_waiting),
+    deliverySurfaceAvailability: toDeliverySurfaceAvailability(row.delivery_surface_availability),
     version: asInteger(row.version, "board.card.version"),
   };
 }
@@ -210,20 +310,17 @@ async function loadTicket(ticketId: string, projectKey: string): Promise<TicketR
   );
 }
 
-/**
- * The board for one project.
- *
- * The read is scoped — `project_key` is required by the contract — but the cards
- * that come back carry no project member, so this reports `cardsCarryProject:
- * false` and the screen says what that means rather than letting three tabs
- * imply three different boards. That flag is derived from the card shape this
- * module parses, not from a probe of today's behaviour: it flips when the record
- * starts carrying the fact, and the screen changes with it.
- */
+/** The board for one project, with every returned card checked against it. */
 async function loadBoard(projectKey: string): Promise<BoardSnapshot> {
   const view = asRecord(await read(scoped("/v1/board", projectKey)), "board");
   const names = await seatNames();
   const cards = asArray(view.cards, "board.cards").map((card) => toCard(card, names));
+  const foreignCard = cards.find((card) => card.projectKey !== projectKey);
+  if (foreignCard !== undefined) {
+    throw new TypeError(
+      `board.card.project_key was ${foreignCard.projectKey}; scoped read asked for ${projectKey}`
+    );
+  }
   const entries: readonly BoardEntry[] = await Promise.all(
     cards.map(async (card): Promise<BoardEntry> => ({
       card,
@@ -237,18 +334,9 @@ async function loadBoard(projectKey: string): Promise<BoardSnapshot> {
     health: asMember(view.health, "board.health", HEALTH),
     projectionWatermark: asInteger(view.projection_watermark, "board.projection_watermark"),
     sourceWatermark: asInteger(view.source_watermark, "board.source_watermark"),
-    scope: { projectKey, cardsCarryProject: CARD_CARRIES_PROJECT },
+    scope: { projectKey },
   };
 }
-
-/**
- * Whether the parsed Board card carries a project of its own.
- *
- * `toCard` above is the whole of what this surface reads from a card, and no
- * member of it is a project. When the contract adds one, `toCard` gains the
- * field and this becomes true in the same edit — the two cannot drift.
- */
-const CARD_CARRIES_PROJECT = false;
 
 async function loadAudit(ticketId: string, projectKey: string): Promise<readonly RecordEvent[]> {
   const view = asRecord(

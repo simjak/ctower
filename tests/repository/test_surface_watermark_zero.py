@@ -43,6 +43,7 @@ _APP = _ROOT / "apps/ctower-ui/src/app"
 _BOARD_PAGE = _APP / "board/page.tsx"
 _REFUSAL_BLOCK = _ROOT / "apps/ctower-ui/src/surfaces/board/ZeroOfZeroRefusal.tsx"
 _TRUE_EMPTY_BLOCK = _ROOT / "apps/ctower-ui/src/surfaces/board/TrueEmptyProject.tsx"
+_LANE_CARD = _ROOT / "apps/ctower-ui/src/surfaces/board/LaneCard.tsx"
 
 _OUTCOMES: dict[str, Any] = {}
 
@@ -220,9 +221,9 @@ class PortfolioViewPromiseTests(unittest.TestCase):
         )
 
     def test_the_panel_shows_each_card_s_tenant_fact(self) -> None:
-        source = _TRUE_EMPTY_BLOCK.read_text(encoding="utf-8")
+        source = _LANE_CARD.read_text(encoding="utf-8")
         self.assertIn(
-            "showTenant",
+            "context.tenant",
             source,
             "the cross-project view does not show the tenant fact #115 added — "
             "without it the list is an undifferentiated pile, not a cross-project view",

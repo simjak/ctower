@@ -100,18 +100,6 @@ export const NO_SEAT_NAME = capability(
   null
 );
 
-/**
- * The one citation this surface already had right, kept and moved here so it is
- * reviewed beside the rest. #185 — *"ctower serves three projects: manibo,
- * ctower, and BH.Loop share one delivery system"* — is what puts a project fact
- * on a ticket; until it lands, the board filters on `source.kind`, which the
- * record does carry.
- */
-export const NO_PROJECT_SCOPE = capability("a project fact on a ticket to scope the board by", [
-  "#185 · D29",
-  "#185 gives ctower three projects sharing one delivery system, which is the fact a board column or filter would scope by; D29 fixes the card's context set at five members and project is not one of them, so the board filters on the recorded source kind instead",
-]);
-
 export const NO_TICKET_BRIEF = capability(
   "a ticket brief beyond the recorded title, priority and source",
   null
@@ -166,7 +154,6 @@ export const DECLARED_SOURCES: Readonly<Record<string, FutureSource>> = {
   NO_WORK_SESSIONS,
   NO_LABELS,
   NO_SEAT_NAME,
-  NO_PROJECT_SCOPE,
   NO_TICKET_BRIEF,
   NO_ACCEPTANCE_CRITERIA,
   NO_SESSION_STATES,

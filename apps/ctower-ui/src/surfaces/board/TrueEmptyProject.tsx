@@ -22,11 +22,8 @@ import { LaneCard } from "@/surfaces/board/LaneCard";
  *
  * gh#319 (direction-a): the copy above promises a portfolio view below the
  * banner, and this used to be the whole of the block — nothing rendered below
- * it, the "everything visible is wired" defect QA found. Now that #115 has
- * landed a tenant fact per card, the promised view is a real, unfiltered
- * render of `portfolioEntries` — the same set every project tab's board read
- * answers with, since the record does not yet filter `/v1/board` by project
- * (see `read/futureSources.ts`'s `NO_PROJECT_SCOPE`).
+ * it, the "everything visible is wired" defect QA found. The promised view is
+ * now a real render of `portfolioEntries`.
  */
 export function TrueEmptyProject({
   project,
@@ -71,7 +68,7 @@ export function TrueEmptyProject({
             ) : (
               <div className="stack">
                 {portfolioEntries.map((entry) => (
-                  <LaneCard entry={entry} key={entry.card.ticketId} now={Date.now()} showTenant />
+                  <LaneCard entry={entry} key={entry.card.ticketId} now={Date.now()} />
                 ))}
               </div>
             )}
