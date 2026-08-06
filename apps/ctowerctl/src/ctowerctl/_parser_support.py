@@ -25,7 +25,7 @@ def _session_id(parser: argparse.ArgumentParser) -> None:
 
 
 def _command_id(parser: argparse.ArgumentParser) -> None:
-    parser.add_argument("--command-id", required=True, type=UUID)
+    parser.add_argument("--command-id", type=UUID)
 
 
 def _version(parser: argparse.ArgumentParser) -> None:

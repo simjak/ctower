@@ -56,11 +56,11 @@ state the candidate digest and, for evidence, the artifact digest. You can still
 criteria files, and criterion keys; explicit values are authoritative, and mismatches refuse rather than
 falling back to a default.
 
-Every non-bootstrap mutation carries a command ID. `ticket capture`, `ticket create`, and `synthetic run`
-generate one client-side when it is omitted; other mutations require `--command-id`. A successful read or
-accepted mutation exits `0`, with one exception: `control health` exits non-zero whenever its reported
-`status` is not `HEALTHY`, even though the read itself succeeded — an absence of observations must never
-look like a healthy system.
+Every mutation carries a command ID. Omit `--command-id` and the CLI generates one client-side; supply it
+explicitly to control replay identity yourself (for example to prove idempotent retry), and the explicit
+value is always authoritative. A successful read or accepted mutation exits `0`, with one exception:
+`control health` exits non-zero whenever its reported `status` is not `HEALTHY`, even though the read itself
+succeeded — an absence of observations must never look like a healthy system.
 Other stable exits are:
 
 | Exit | Meaning |
