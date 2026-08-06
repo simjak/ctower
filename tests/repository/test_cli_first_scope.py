@@ -65,7 +65,11 @@ class CliFirstScopeTests(unittest.TestCase):
         public_readme = (self.root / "README.md").read_text(encoding="utf-8")
         normalized_readme = " ".join(public_readme.replace(">", "").split())
         self.assertIn(
-            "There is no supported public deployment, browser UI, runner",
+            "There is no supported public deployment, browser product, runner",
+            normalized_readme,
+        )
+        self.assertIn(
+            "The read-only operator UI is development dogfood, not the I2.4 product surface.",
             normalized_readme,
         )
 

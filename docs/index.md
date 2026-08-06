@@ -21,14 +21,17 @@ Use synthetic data only.
 - making custody transfer explicit, atomic, and auditable;
 - refusing workflow moves whose declared preconditions are missing;
 - binding evidence and verdicts to an exact candidate digest;
-- deriving Board and delivery views from accepted facts.
+- deriving Board and delivery views from accepted facts;
+- reading the shadow instance through a separate operator UI, including a cross-project portfolio view.
 
 ## What it does not do yet
 
-There is no browser UI, remote runner, external effect provider, general project/team administration,
-composed application stack, supported backup/recovery path, or internet-facing deployment. Self-hosting
-means one loopback-only instance on a host you control. Declared packs and generated clients are
-development artifacts, not proof that those surfaces are available.
+The repository's operator UI is read-only development dogfood, not the supported I2.4 browser product, and
+the self-hosting path does not install it. The provider-agnostic OIDC login/session scaffold is dark by
+default and has no supported provider binding. There is no remote runner, external effect provider, general
+project/team administration, composed application stack, supported backup/recovery path, or internet-facing
+deployment. Self-hosting means one loopback-only instance on a host you control. Declared packs and generated
+clients are development artifacts, not proof that those surfaces are available.
 
 ## Read by task
 

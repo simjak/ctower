@@ -8,7 +8,7 @@ read-only operator dogfood surface over the running shadow instance, ordered by 
 
 | | |
 |---|---|
-| Is | A Next.js server that reads the shadow instance's existing read API and renders eight approved screens. |
+| Is | A Next.js server that reads the shadow instance's existing read API and renders the operator dogfood screens. |
 | Is | Read-only. Every path it calls is a `GET`. There is no mutation function in this boundary to call by accident. |
 | Is not | The I2.4 browser product. `apps/ctower-web` remains untouched, and D22 §1 (React 19 / React Router 7 / Vite static, no SSR) still governs it. |
 | Is not | An authority. The browser receives no API bearer, no session and no credential of any kind; every read happens server-side. The instance's API origin *is* printed, deliberately, in the provenance foot of every screen — see below. |
@@ -33,7 +33,7 @@ design-reference/   the approved mockups, vendored verbatim; app.css is imported
 src/read/           the record-read contract and its one implementation
 src/frame/          the chrome every screen shares: mark, nav, theme, provenance foot
 src/surfaces/       one directory per screen family
-src/app/            the eight routes
+src/app/            the read-only route handlers, including stable Ticket and crew detail routes
 ```
 
 ### What the browser is and is not given
@@ -278,9 +278,7 @@ and a nav entry that leads nowhere would be a dead control.
    no-generic-status-labels rule bans, so this surface renders that tier's own vocabulary instead
    of the record's raw word. `src/surfaces/severity.ts` is the one place a severity resolves to a
    chip label; `P0`/`P1` are unchanged.
-5. **The true-empty-project block no longer promises a portfolio view "below" it** (gh#319). The
-   only portfolio-view element on this page is the link in `src/surfaces/board/TrueEmptyProject.tsx`
-   — nothing renders below the banner — so the copy now describes that link instead of claiming an
-   embedded view the DOM never carried. gh#115's project-fact work has not landed (no PR as of this
-   fix), so wiring the promised embedded view was not yet composable; this is the honest fallback
-   the ticket names, not the preferred direction.
+5. **The true-empty-project block keeps its portfolio promise** (gh#319). It reads the unscoped portfolio
+   alongside the selected project and renders every returned card below the banner with the recorded tenant
+   identity. The link still returns to the ordinary all-cards Board; it is no longer standing in for a view
+   the page failed to render.

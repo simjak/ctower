@@ -44,8 +44,9 @@ def test_cli_reports_running_api_health(
             ["control", "health"],
         )
 
-    assert status == 0
+    assert status == EXIT_PERMANENT
     assert health["schema_id"] == "ctower.health/v1"
+    assert health["status"] == "STATE_UNKNOWN"
 
 
 def test_cli_reaches_resolved_closed_with_installed_defaults(

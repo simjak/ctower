@@ -5,8 +5,9 @@ That instance is loopback-only and explicitly labeled `SHADOW_ONLY_CP3_D_NOT_PRO
 what self-hosting means in this revision.
 
 You cannot yet run ctower as an internet-facing service. There is no published runtime artifact, no TLS or
-external endpoint, no browser UI, no off-host durability proof, and no compatibility promise. Those are
-missing product capabilities, not missing instructions — [what still blocks
+external endpoint, no installed browser UI, no off-host durability proof, and no compatibility promise. The
+repository's separate read-only operator UI is development dogfood and is not installed or served by this
+topology. Those are missing product capabilities, not missing instructions — [what still blocks
 production](#what-still-blocks-production) lists them exactly.
 
 !!! danger "Reconstructible work only"
@@ -22,7 +23,7 @@ production](#what-still-blocks-production) lists them exactly.
 | A private ticket record you drive from the CLI on one host | Yes — that is exactly its job |
 | To dogfood ctower on real but low-value work | Yes, with reconstructible work only |
 | A team-shared service reachable over a network | No — it binds `127.0.0.1` and creates no external listener |
-| A browser UI | No — none exists yet |
+| A browser UI from this install | No — the repository's read-only operator UI is a separate dogfood surface |
 | Durability against losing the host | No — the acknowledging standby is on the same host |
 
 ## What gets installed
@@ -167,7 +168,8 @@ A future production guide needs accepted, repeatable evidence for all of these. 
    RPO/RTO;
 5. migration, upgrade, rollback, and incident procedures tested against the released artifact;
 6. health, telemetry, alerting, and operator ownership that fail closed on unknown state;
-7. a supported browser UI, or an explicit CLI/API-only production contract.
+7. promotion or replacement of the read-only operator UI with a supported browser product, or an explicit
+   CLI/API-only production contract;
 
 Until they land, the single-host instance above is the honest ceiling, and this page will not describe a
 production deployment ctower cannot yet stand behind.

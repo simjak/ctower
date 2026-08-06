@@ -12,7 +12,9 @@ roadmap item.
 - Running a supported backup, restore, recovery, monitoring, or incident procedure.
 - Managing real tenants, tickets, credentials, or production work.
 - Treating the development CompanyBundle pointer as runtime/effect activation or a production rollout.
-- Using a browser UI, runner, local/remote agent adapter, or external effect provider.
+- Treating the read-only operator UI as the supported I2.4 browser product, a write authority, or part of
+  the self-hosted install; using a runner, local/remote agent adapter, or external effect provider.
+- Treating the dark-by-default OIDC scaffold as an activated, supported human-provider login path.
 - Depending on a published package, stable Python runtime, compatibility promise, or production release.
 
 The checked-in Compose file supports disposable PostgreSQL fixtures only. Read

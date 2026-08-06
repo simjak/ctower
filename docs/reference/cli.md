@@ -239,6 +239,19 @@ Operator must explicitly name an eligible Commander.
 Assignment and custody are different. Assignment names a worker role; custody names the single accountable
 principal and is a protected atomic transfer.
 
+### Board context and Attention
+
+| Command | Required input |
+|---|---|
+| `ticket change-reference add <ticket_id>` | `--command-id`, `--repository`, `--change-identity`, `--reference` |
+| `ticket label apply <ticket_id>` | `--command-id`, `--label-key` |
+| `attention finding append` | `--command-id`, `--subject-ticket-id`, `--kind-key`, `--reason-code`, `--effective-owner {operator,commander}`, `--recommendation`, one or more `--alternative`, `--consequence`, `--dedupe-key`, one or more `--source-fact`; optional `--deadline` |
+| `attention finding disposition <finding_id>` | `--command-id`, `--outcome {resolved,snoozed,expired,superseded,cancelled}`, `--reason` |
+
+Change references and labels populate recorded Board-card context; they are never inferred from repository
+names or arbitrary label text. An Attention finding is an append-only, typed request for an exact human
+action. Disposition records its outcome instead of making the finding disappear.
+
 ### Workflow and proof
 
 | Command | Required input |

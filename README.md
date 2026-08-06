@@ -17,7 +17,8 @@ ticket through `capture → frame → verify → close`, checks API health, and 
 maintainer toolchain it completes in about a minute.
 
 > **Pre-alpha.** The repository has a tested development slice, not a production service. There is no
-> supported public deployment, browser UI, runner, or hosted offering yet. Use synthetic data only.
+> supported public deployment, browser product, runner, or hosted offering yet. The read-only operator UI
+> is development dogfood, not the I2.4 product surface. Use synthetic data only.
 
 ## Why ctower exists
 
@@ -34,7 +35,7 @@ Use it to build systems where:
 - the board and audit trail are derived from accepted facts, not status prose.
 
 The implemented slice is deliberately narrow. It proves the trust spine before adding breadth such as
-remote runners, integrations, or a browser.
+remote runners, integrations, or an authoritative browser product.
 
 ## The four ideas
 
@@ -54,7 +55,7 @@ one custodian. Those are three facts, not three spellings of “status.”
 human or agent
       │
       ▼
-CLI / typed HTTP client ──► loopback API
+CLI / typed HTTP client / read-only operator UI ──► loopback API
                                 │
              ┌──────────────────┼──────────────────┐
              ▼                  ▼                  ▼
@@ -78,13 +79,18 @@ the kernel to write record-tier persistence.
 - one four-stage workflow with frozen criteria, candidate-bound evidence, an independent protected verdict,
   and proof-gated closure;
 - a read-only six-lane Board and project-delivery projection;
+- a separate read-only operator UI over the shadow instance, including Board, Ticket, session/host views,
+  and an honest cross-project portfolio view;
 - a strict generated HTTP client and protected `ctowerctl`/`ctl` command surface;
 - operator-only issuance and revocation for credentials bound to configured project-seat identities;
+- a provider-agnostic OIDC login/session scaffold whose gate is dark by default and has no supported
+  provider binding yet;
 - an encrypted local mutation spool and typed refusal/exit semantics;
 - a loopback-only, shadow development runtime for low-value reconstructible dogfood.
 
 Not available today: creating arbitrary projects or teams through the CLI, a composed API + PostgreSQL + UI
-developer stack, remote agents, effects, production backup/recovery, or an internet-facing deployment.
+developer stack, an authoritative or writable browser product, activated supported human-provider login,
+remote agents, effects, production backup/recovery, or an internet-facing deployment.
 Self-hosting today means one loopback-only instance on a host you control. The docs name those gaps
 directly so a visible schema or directory is never mistaken for a product promise.
 
