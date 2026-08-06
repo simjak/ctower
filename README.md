@@ -24,7 +24,9 @@ maintainer toolchain it completes in about a minute.
 
 Agentic work tends to disappear into the process doing it. A session ends and nobody can answer who owns
 the task, what changed, or whether “done” referred to the current artifact. ctower makes those answers
-durable.
+durable. Its purpose is to let an agentic workforce complete more verified work with less operator
+attention—not by hiding work, but by making ownership, policy, evidence, and the exact reasons for human
+intervention trustworthy.
 
 Use it to build systems where:
 
@@ -52,25 +54,53 @@ one custodian. Those are three facts, not three spellings of “status.”
 ## How it fits together
 
 ```text
-human or agent
-      │
-      ▼
-CLI / typed HTTP client / read-only operator UI ──► loopback API
-                                │
-             ┌──────────────────┼──────────────────┐
-             ▼                  ▼                  ▼
-        Work + custody     Workflow + proof    Read models
-             └──────────────────┬──────────────────┘
-                                ▼
-                    append-only Record module
-                                │
-                                ▼
-                           PostgreSQL
+┌─────────────────────────────────────────────────────────────────────┐
+│ Adapters — plug-and-play harness, supervisor, target, workspace,   │
+│            telemetry, and effect implementations                    │
+├─────────────────────────────────────────────────────────────────────┤
+│ Surfaces — UI for operators · typed API and CLI for agents          │
+├─────────────────────────────────────────────────────────────────────┤
+│ Kernel — deep modules owning access, records, catalog, work, proof, │
+│          attention, workflow, runtime, effects, and projections     │
+└─────────────────────────────────────────────────────────────────────┘
 ```
 
-Python owns the trusted control plane and CLI. TypeScript is reserved for the browser. Authored contracts
-under `contracts/` generate strict clients under `generated/`; browser, CLI, and provider code never bypass
-the kernel to write record-tier persistence.
+The Kernel owns truth behind small module interfaces. Surfaces present that truth without becoming another
+authority. Adapters connect replaceable tools and providers without teaching the Kernel about a vendor.
+Python owns the trusted control plane and CLI; TypeScript is reserved for the browser. Authored contracts
+under `contracts/` generate strict clients under `generated/`, and no surface or adapter bypasses the Kernel
+to write record-tier persistence.
+
+The product vocabulary maps onto those layers; it does not create a fourth architecture:
+
+| Component group | Architectural home |
+|---|---|
+| **Ticket** | Kernel: Work holds the permanent case file; Proof and Workflow hold its criteria, evidence, and process. Ticket detail is its operator surface. |
+| **Board** | Kernel: a rebuildable Projections read over accepted facts, shown through the Board surface—not a second status store. |
+| **Routines** | Kernel: versioned Catalog triggers interpreted by Workflow and Runtime scheduling. |
+| **Agents** | Kernel Catalog holds profiles; Runtime holds replaceable sessions; harnesses belong in Adapters; Fleet exposes the view. |
+| **Integrations** | Adapters connect external systems; Kernel Attention and Effects retain notification and side-effect authority. |
+| **Knowledge base** | Named gap, sequenced after inbox-as-product; ctower does not pretend an artifact store is a knowledge system. |
+| **Communication** | Kernel inbound threads provide durable async transport; operator UI and agent CLI expose them. A thread may promote into a Ticket. |
+| **Workflows** | Kernel Workflow interprets pinned graphs and policies; surfaces explain readiness and refusals. |
+| **Metrics / KPIs** | Kernel Projections derives versioned measures from recorded facts; Analytics presents them. |
+| **Observability** | Telemetry Adapters report execution; Kernel Runtime and Projections preserve attributable facts. Usage-limit observability remains a named gap. |
+| **Templates** | Kernel Catalog: a curated starter-bundle library over `CompanyBundle` and existing `VersionedComponent` revisions—not a new catalog kind. |
+| **Organizations / projects** | Kernel Access, Catalog, and Projections own configured scope and portfolio truth; surfaces provide the views. |
+| **Access control** | Kernel Access owns both human and machine authority; UI and CLI remain clients of the same policy. |
+| **Editor + file explorer** | A planned operator-side Workspace surface, sequenced after inbox-as-product—not a new authority or primary layer. |
+
+Harness adapters are the worked example for plug-and-play design. A run pins independently versioned harness,
+supervisor, target, workspace, and telemetry choices. Unknown or incompatible choices fail closed. A public
+Seam is earned only when two real adapters pass the same conformance suite; the planned direct-process and
+tmux supervisor adapters are the first such pair. This adapter runtime is designed, not available today.
+
+Dogfooding is the test of the structure: ctower must run its own delivery before asking another team to trust
+it. The next planned increment is inbox-as-product, replacing loose coordination files with durable threads
+and Tickets: the inbox is the async agent-to-agent transport, while a Ticket contains the goal and acceptance
+criteria that used to live in `task.md`. Operators use the UI, agents use the CLI, and either follows the
+same recorded facts. See the [structural constitution](docs/STRUCTURAL.md) for the detailed rationale and
+phasing.
 
 ## What works today
 
