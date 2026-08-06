@@ -9,9 +9,10 @@ win (D8, D16). It does not amend scope, activate backlog, or supersede
 **The seed.** The operator's own component taxonomy and constraints, captured verbatim in
 `mission-control/board/ctower-structural-doc-brief.md`, are the authoritative reference for what belongs in
 this document. His wording carries intent; this document regroups only where structure genuinely improves,
-and states why every time it does. It names 13 top-level component groups, not 14 — Templates is marked
-`(?)` in his own text, which is likely why the task brief rounded to 14. All 13 are preserved verbatim below;
-none is dropped, and no scope beyond his brief is invented.
+and states why every time it does. The seed names 13 top-level component groups. R2824 adds a fourteenth,
+**Editor and file explorer**, immediately after inbox/Communication in the operator sequence and maps it to
+a Workspace surface. All 14 are preserved below; Templates remains one of them but does not become a new
+Catalog kind.
 
 ---
 
@@ -58,12 +59,12 @@ make trust a property of the record rather than a feeling about the last transcr
 
 ### The structural model
 
-Fourteen — thirteen, corrected above — named groups is a workable taxonomy for describing the system to a
-human, but it is not an implementation boundary: several of the operator's groups are facets of the *same*
+The fourteen named groups are a workable taxonomy for describing the system to a human, but they are not
+implementation boundaries: several of the operator's groups are facets of the *same*
 underlying authority speaking through different surfaces (Board is a read of Ticket+Workflow facts, not a
 second store), and a few name a UI page rather than a Module. `ARCHITECTURE.md` already derives a smaller,
 cleaner set of **nine Deep Modules** from the same requirements the operator is describing from the outside.
-This document regroups his 13 groups onto that existing three-layer architecture rather than inventing a
+This document regroups his 14 groups onto that existing three-layer architecture rather than inventing a
 fourth taxonomy, because a fourth taxonomy is exactly the kind of "second source of truth" `DECISIONS.md`
 D8/D21/D28 repeatedly forbid.
 
@@ -140,7 +141,7 @@ and the tmux Supervisor Adapter earn the first public Seam together; Claude Code
 Harness Seam the same way. This is the actual mechanism by which "harness adapters" stay modular instead of
 becoming another place-specific integration — and it is currently **designed, not built** (see Part 3).
 
-### Mapping the operator's 13 groups onto this model
+### Mapping the operator's 14 groups onto this model
 
 | His group | Lands in | Regroup rationale |
 |---|---|---|
@@ -149,13 +150,14 @@ becoming another place-specific integration — and it is currently **designed, 
 | **Routines** | A contract shared by Catalog + Workflow + Runtime, not a Module of its own | A Routine is a versioned trigger revision (Catalog data) that a deterministic scheduler beat (Workflow/Runtime) turns into a wake intent. It doesn't own execution or storage independently, so it isn't a tenth Module — it's the wiring between three existing ones (`SPEC.md` §"Wake, reasoning-heartbeat, routine, cron, and watchdog contract"). |
 | **Agents** | Splits three ways, deliberately | *Profiles/Harness/Skills* declaration → Catalog (`Agent Profile`, `Persona`, `Skill`, `Tool/Capability` component kinds). *Disposable workers* → Runtime's `Execution run/session` (stateless, replaceable). *Durable commanders* → Access's durable Commander principal + custody (D9) — structurally different from a worker session: a Commander survives model swaps, context resets, and process restarts; a worker session does not outlive its job. *Harness/Supervisor/Target/Workspace/Telemetry* → Layer 3 Adapters. *Scripts and tools* → `Tool/Capability` Catalog kind + `ctowerctl` itself. *Memory* has no ctower home yet — see the gap noted in Part 3. |
 | **Integrations and plugins** | Thinner than it looks | *External/system events* → Inbound thread ingestion (Communication, below). *Notifications* → Attention's Needs You delivery. What's left — genuine third-party plugin execution — is the deliberately deferred Extension Host (`DECISIONS.md` D11): a manifest is data, not code; nothing executes until an isolated invocation-scoped grant exists. |
-| **Knowledge base** | No current ctower home | Zero hits for "knowledge base" anywhere in `SPEC.md`. The closest kernel primitive is the `Artifact / document / revision` aggregate (content-addressed, immutable revisions), but there is no retrieval/semantic layer, no per-org/per-project KB concept, and no MCP-based external connector. README lists this plainly on the "designed, not built" side ("Memory that lets a worker recall how something was solved months ago"). A genuine gap — not a regroup. |
-| **Communication** | Splits cleanly | *Inbox (agent-to-agent)* and *Chat (human steering)* → the `Inbound thread/conversation` aggregate, one durable channel-neutral event log. *Terminal* → Runtime's live structured event stream, with the raw terminal kept only as a compatibility view (`SPEC.md` §"Live observation, steering, interruption, and reassignment"). *Comments* → typed events on that same thread, linked to a ticket. The embedded question — task.md vs. inbox — is Part 2 Q1. |
+| **Knowledge base** | Planned gap over Catalog/Proof plus an earned Adapter Seam | The closest current primitive is the `Artifact / document / revision` aggregate, but there is no retrieval layer, org/project document scope, or MCP/API adapter. [#332](https://github.com/simjak/ctower/issues/332) now names that work after inbox: static scoped documents first, then one real external source plus conformance through an earned Seam. The ticket is a priority decision, not activation of product scope. |
+| **Communication** | Splits cleanly | *Inbox (agent-to-agent)* and *Chat (human steering)* → the `Inbound thread/conversation` aggregate, one durable channel-neutral event log that can promote a thread into a Ticket with a durable link in both directions. *Terminal* → Runtime's live structured event stream, with the raw terminal kept only as a compatibility view (`SPEC.md` §"Live observation, steering, interruption, and reassignment"). *Comments* → typed events on that same thread, linked to a ticket. The task.md/inbox verdict and the two-part inbox dogfood increment are in Part 2 Q1. |
+| **Editor and file explorer** | Workspace surface (Layer 2), after inbox | Browse/open belongs to a contextual Workspace view over a pinned Workspace Adapter; edit/save must use an authenticated command and append an audit fact rather than writing around Record authority. It is not a tenth Deep Module, a new persistent authority, or—without a SPEC change—a sixth primary surface. R2824 orders [#335](https://github.com/simjak/ctower/issues/335) after the inbox, knowledge, limits, and templates slices. |
 | **Workflows** | Workflow (Layer 1) | Stages → the pinned graph. Commanders and custody → the Assignment/custody interval aggregate plus D9's orchestration-plan revision. Dispatchers → wake/job dispatch inside Runtime, triggered by Workflow readiness. |
 | **Metrics and KPIs** | Projections (Layer 1) | Not a separate store — versioned SQL/query artifacts over the same event log Board reads (`SPEC.md` §"KPIs"). Tokens/cost/duration/review-rounds/model-quality are named KPI rows already, not a new component. |
-| **Observability** | Splits three ways | *Skill-usage effectiveness* → Retro/process-improvement facts. *LLM reasoning/tool/decision observability* → the Telemetry Adapter plus an Execution run's ordered event cursor. *Usage/subscription limits tracking* has no ctower home and arguably shouldn't get one — see Part 4's closing note. |
-| **Templates (?)** | Formalizes an existing pattern, not a new one | Part 2 Q2. |
-| **Organization and projects** | Access + Catalog + Projections | Commander-per-project → the configured Commander principal per Project grant. Company/project workspace → the `Workspace/checkpoint` aggregate. Knowledge base per org/project → same gap as above. Director-per-organization/portfolio-manager and editor/file-explorer are **named gaps** — see Part 3. |
+| **Observability** | Splits three ways | *Skill-usage effectiveness* → Retro/process-improvement facts. *LLM reasoning/tool/decision observability* → the Telemetry Adapter plus an Execution run's ordered event cursor. *Usage/subscription limits tracking* → the planned provider-window facts, limits projection, and Attention breach in [#333](https://github.com/simjak/ctower/issues/333), after knowledge-base work. |
+| **Templates (?)** | A curated starter-bundle library over CompanyBundle, not a new kind | Part 2 Q2 and [#334](https://github.com/simjak/ctower/issues/334). |
+| **Organization and projects** | Access + Catalog + Projections | Commander-per-project → the configured Commander principal per Project grant. Company/project workspace → the `Workspace/checkpoint` aggregate. Knowledge base per org/project → the planned #332 scoped-document capability. Director-per-organization/portfolio-manager remains a named gap; editor/file-explorer is now its own operator group and maps to the Workspace surface above. |
 | **Access control** | Access (Layer 1) | Project-scoped grants (machine plane, built) and OIDC human role bindings (`operator`/`commander`/`viewer`, scaffolded) are the two disjoint authority planes D31 locked; neither implies the other. |
 
 ### The reasoning behind this structure
@@ -191,8 +193,9 @@ produced the question.
 
 - **The inbox is the async MESSAGE TRANSPORT.** In ctower's domain model this is the `Inbound
   thread/conversation` aggregate: a durable, channel-neutral, ordered log of dispatch pointers, findings,
-  and pages. Its whole contract is capture-before-classify — nothing is lost, nothing is summarized away,
-  and a message may or may not ever become a ticket (`SPEC.md` §"Omnibox classification and promotion").
+  and pages. Its whole contract is capture-before-classify — nothing is lost, nothing is summarized away.
+  A thread may remain discussion-only or be promoted into a Ticket; promotion carries the thread context
+  and records a durable link in both directions (`SPEC.md` §"Omnibox classification and promotion").
   Mission Control's `state/inbox.jsonl` is the operational precursor to exactly this aggregate today.
 - **task.md is the durable WORK CONTRACT.** Goal, acceptance criteria, verification, stop condition — the
   thing a crew is *held to*, not merely informed by. The operator's own Ticket taxonomy names this as facet
@@ -227,10 +230,16 @@ that project (already true for `manibo` per D30/CT-I1-011). The inbox does not g
 Inbound thread, carrying exactly the message-transport role it always had, now durably linked to the tickets
 it creates or references instead of living beside them as a separate, unlinked ledger.
 
+**Next dogfood increment.** R2824 makes this the next product slice. [#330](https://github.com/simjak/ctower/issues/330)
+is the I1 agent/CLI half: thread events and projection, `inbox send/list/read`, API routes, and promotion.
+[#331](https://github.com/simjak/ctower/issues/331) is the later I2 operator half: `/inbox` renders those real
+threads and makes promotion work end to end. UI operators and CLI agents therefore share one Record; neither
+Mission Control's inbox nor a task.md file remains a second authority after the native path is proven.
+
 ### Q2 — Do Templates earn a place?
 
-**Verdict: yes, but as the formalization of an instantiation layer the Catalog already has the bones of —
-not as a fifteenth Catalog component kind — and sequenced after the core primitives, not before them.**
+**Verdict: Templates is a curated starter-bundle library over CompanyBundle and existing
+`VersionedComponent` kinds. It is not a new Catalog kind or a parallel revision authority.**
 
 Modular, plug-and-play architecture genuinely requires an instantiation layer: a project is cloned from a
 project template, a workflow is a stage-set template, a task class needs an AC/verification template. The
@@ -258,26 +267,29 @@ with the `VersionedComponent` envelope that already owns identity, lifecycle, an
 them. The correct move is to recognize that **reusability is already a property of the existing kinds**, not
 a missing kind.
 
-**What is actually missing** is ergonomics: a curated, named, versioned library of starter bundles ("
-software-factory-starter", "research-starter") and a one-line instantiation path (`ctl company bundle init
---from <starter>`), so "start a new project" doesn't mean hand-writing YAML from scratch. That is real,
-worth building, and correctly scoped as **data plus a CLI convenience**, not a new architectural component.
+**What is actually missing** is ergonomics: a curated, named, versioned library of starter bundles
+(`software-factory-starter`, `research-starter`) and a one-line instantiation path
+(`ctl company bundle init --from <starter>`), so "start a new project" does not mean hand-writing YAML from
+scratch. That is real, worth building, and correctly scoped as **data plus CLI and Admin-surface
+ergonomics**, not a new architectural component.
 
-**Sequencing.** A starter-bundle library is worthless before there is a coherent thing to template — the
-`ticket_schema` layer (CT-I2-001) and a working S7/S8 workflow-authoring round trip need to exist first, or
-the "template" would just be a workflow with nothing yet to resolve its evidence definitions against. Land
-it alongside the I2.4 Admin/CompanyBundle UI surface, after the core primitives it templates are real. Part 4
-places it there explicitly.
+**Sequencing.** [#334](https://github.com/simjak/ctower/issues/334) lands with the I2.4
+Admin/CompanyBundle surface, after inbox [#330](https://github.com/simjak/ctower/issues/330)–[#331](https://github.com/simjak/ctower/issues/331),
+knowledge [#332](https://github.com/simjak/ctower/issues/332), and usage-limit observability
+[#333](https://github.com/simjak/ctower/issues/333), and before the Workspace editor/explorer
+[#335](https://github.com/simjak/ctower/issues/335). The core CompanyBundle and Workflow primitives it
+instantiates still have to be real first; priority does not waive their checkpoint dependencies.
 
 ---
 
 ## Part 3 — Built pieces mapped to the structure
 
-Evidence below is checked against `origin/main` (`2f385fa`, current at authoring time — the local checkout
-lagged 22 commits and is not authoritative for this section). Status labels reuse `docs/project-status.md`'s
-own vocabulary where they apply: **Development fixture** (code + tests exist, not a supported product path),
-**Development shadow** (operator-installable, loopback-only, non-authoritative), **Planned** (specified, not
-built), plus **BUILT / PARTIAL / NOT-STARTED** for pieces the canonical status page doesn't itself track.
+Evidence below was refreshed on 2026-08-06 against fetched `origin/main` at `77b9550`, the `v0.8.0` release
+commit. Every cited GitHub state was re-read live during that refresh. Status labels reuse
+`docs/project-status.md`'s own vocabulary where they apply: **Development fixture** (code + tests exist, not
+a supported product path), **Development shadow** (operator-installable, loopback-only,
+non-authoritative), **Planned** (specified, not built), plus **BUILT / PARTIAL / NOT-STARTED** for pieces the
+canonical status page does not itself track.
 
 ### Kernel (Layer 1)
 
@@ -287,7 +299,8 @@ built), plus **BUILT / PARTIAL / NOT-STARTED** for pieces the canonical status p
 | **Board fold (six lanes)** | Development fixture | `packages/ctower-kernel/src/ctower_kernel/projections/_board_sql.py:214-407`; `tests/modules/projections/test_board_fold.py`; API: `apps/ctower-api/src/ctower_api/_board_routes.py` | The lane derivation from `activity_class` is genuinely implemented and unit-tested, not a mockup |
 | **Board — #207 "read-only operator surface over the shadow record"** | **BUILT**, merged | `gh pr view 207` → MERGED 2026-08-03, `f8f73c5` | Real: a 10+ route Next.js surface reading `/v1/board` |
 | **Board — #234 "one crew in full — the profile behind every roster row"** | **BUILT**, merged | `gh pr view 234` → MERGED 2026-08-03, `83a9bdb` | Crew-profile pages, not board projection per se — correctly cited as a Board-adjacent PR, not the fold itself |
-| **Board — #326 "wire INV-66/67 context-set fields"** | **NOT MERGED**, in flight | `gh pr view 326` → OPEN; `label_vocabulary`/`attention_kind_catalog`/`change_reference` absent from `origin/main` | The claim "in flight" is accurate; the context set (tenant identity, change refs, labels, human-waiting, delivery-surface availability) is speced but not yet on main |
+| **Board — #326 "wire INV-66/67 context-set fields"** | **BUILT**, merged | `gh pr view 326` → MERGED 2026-08-05, `4f52c8e`; migrations 0043/0044 and `_board_context_sql.py` are on `v0.8.0` | The five-member context set—tenant identity, change references, labels, human-waiting, and delivery-surface availability—is now folded into Board reads rather than merely specified |
+| **Board portfolio — #327 "wire the promised cross-project portfolio view"** | **BUILT**, merged | `gh pr view 327` → MERGED 2026-08-05, `26651e3`; `board/page.tsx` and `boardProjection.ts` read the unscoped portfolio fold | A true-empty project can now distinguish an empty instance from a nonempty portfolio and render the cross-project cards; this is a read projection, not a second portfolio status store |
 | **Proof / Evidence** | Development fixture | README: "proof tied to the exact version of the work it checked... change the work and proof stops counting" | Built and enforced at resolve/close; not yet at every stage (`[planned]` in `docs/concepts/map.md` step 7a) |
 | **Attention / Needs You** | **PARTIAL** | `docs/concepts/map.md` step 12a: "Present in the kernel, with no API to read it yet" | The typed findings feed exists in the kernel; there is no way to read Needs You from outside it yet |
 | **Workflow evaluator + four-stage fixture** | Development fixture | `packs/workflows/ctower.trust-spine-four-stage/v1.yaml`; `tests/acceptance/increment-1/test_four_stage_workflow.py` | `capture -> frame -> verify -> close` genuinely runs against real Postgres through the generic evaluator, not a hard-coded state machine |
@@ -301,10 +314,10 @@ built), plus **BUILT / PARTIAL / NOT-STARTED** for pieces the canonical status p
 | Component | Status | Evidence | Reality |
 |---|---|---|---|
 | **Protected CLI (`ctowerctl`/`ctl`)** | Development fixture | `docs/agents/operating-contract.md`; encrypted owner-only spool with crash/torn-write/quarantine handling | Real, and the actual reference implementation of "CLI for agents" — every exit code and refusal is typed |
-| **Terminal — #322 "wire the live terminal into the crew profile and seat aggregate"** | **NOT MERGED**, in flight | `gh pr view 322` → OPEN | The "pinned, both-gates-green" framing in the seed brief does not hold at time of writing — it's an open PR |
-| **Terminal — underlying tmux capture** | **BUILT**, but scoped narrower than claimed | `apps/ctower-ui/src/read/sources/tmuxBridge.ts` (uses `tmux list-sessions`/`capture-pane -p`), wired only into the `/feed` route (`apps/ctower-ui/src/app/feed/page.tsx:98`) via #207 | Live tmux capture is real and tailnet-bound, but today it feeds the thread/feed view — not the crew/seat terminal panels #322 is adding |
+| **Terminal — #322 "wire the live terminal into the crew profile and seat aggregate"** | **BUILT**, merged | `gh pr view 322` → MERGED 2026-08-05, `abd2f93`; the crew and team routes both import `LiveTerminalPane` | Crew profiles and seat aggregates now render their real read-only tmux panes and honest idle/unavailable states |
+| **Terminal — underlying tmux capture** | **BUILT**, transitional source | `apps/ctower-ui/src/read/sources/tmuxBridge.ts` uses bounded `tmux list-sessions`/`capture-pane -p`; #322 adds consumers beyond #207's feed | The live view is real and tailnet-bound, but it remains an interim read-only tmux bridge rather than Runtime's durable structured event stream |
 | **Chatbot composer** | **Mockup, by design** | `apps/ctower-ui/src/surfaces/feed/Composer.tsx` — deliberately disabled textarea/button, comment: "Read-only v1 has no mutation path... inert by design" | Confirmed: taste-only mockup, zero backend, no LLM wiring anywhere in the repo |
-| **`apps/ctower-ui` — the whole surface** | **Worth the operator's attention** | 12+ route surfaces exist (`ticket`, `crew`, `board`, `feed`, `inbox`, `team`, `explorer`, `metrics`, `heartbeats`, `files`, `workspace`, `tree`) on Next.js 16 / React 19, with two merged "feat(ui)" PRs | `README.md`'s "what works today" table lists no web interface at all, and D22/D23 explicitly say I1 "introduces no browser product route." Both are stale against reality: a real browser surface is already running ahead of the SPEC's own I2.4 gate. This is not flagged as wrong — the operator may well want early UI dogfood — but it is a genuine documentation/canonical-status drift worth a decision, not a silent gap. |
+| **`apps/ctower-ui` — the whole surface** | **Worth the operator's attention** | 12+ route surfaces exist (`ticket`, `crew`, `board`, `feed`, `inbox`, `team`, `explorer`, `metrics`, `heartbeats`, `files`, `workspace`, `tree`) on Next.js 16 / React 19; #207, #234, #322, and #327 are all merged | `docs/project-status.md` still classifies Browser UI as Planned, and D22/D23 say I1 introduces no browser product route. The taste surface is therefore real and ahead of the SPEC's formal I2.4 product gate; it must not be mistaken for supported product authority |
 | **`apps/ctower-web`** | **NOT-STARTED** | `apps/ctower-web/src/architecture.ts` is the entire source tree | A real stub, not a second product; confirms the memory that `ctower-ui` and `ctower-web` are not interchangeable names for the same thing |
 
 ### Adapters (Layer 3)
@@ -319,17 +332,17 @@ built), plus **BUILT / PARTIAL / NOT-STARTED** for pieces the canonical status p
 | Component | Status | Evidence | Reality |
 |---|---|---|---|
 | **Project-seat machine credentials** | **BUILT**, merged | `#198` "issue scoped project-seat credentials" (0.5.0), `#191` "carry the seat facts" (0.5.0); migration 0039 | Real, scoped, revocable |
-| **OIDC scaffold — #324** | **PARTIAL**, open | `gh pr view 324` → OPEN; own description: "Stops at provider binding"; `packages/ctower-kernel/src/ctower_kernel/access/oidc.py`, `_login_gate.py` with `enforcing=False` by default | Provider-agnostic OIDC machinery exists and is dark by default; human login is not live |
+| **OIDC scaffold — #324** | **PARTIAL**, merged | `gh pr view 324` → MERGED 2026-08-05, `280ce5f`; its merged description says "Stops at provider binding"; `_login_gate.py` remains `enforcing=False` by default | Provider-agnostic discovery, PKCE, session, role-binding, and auth routes are on `v0.8.0`, but no provider is bound, the gate is dark by default, and full CT-I1-013 closure remains unproven |
 
 ### Organization and projects
 
 | Component | Status | Evidence | Reality |
 |---|---|---|---|
-| **Portfolio topology (D30): `ctower`/`manibo`/`bh-loop` as Projects** | **PARTIAL** | Issue #185 (epic, open) → #189 (merged docs plan) → #192/#198 (merged credentials) → #197 (merged read-model isolation) → #222 (merged prohibited-data-class refusal) | The topology and isolation are real and tested (`tests/acceptance/increment-1/test_manibo_ordinary_intake.py`) |
+| **Portfolio topology (D30): `ctower`/`manibo`/`bh-loop` as Projects** | **PARTIAL** | Issue #185 (epic, open) → #189 (merged docs plan) → #192 (closed issue)/#198 (merged credentials) → #197 (merged read-model isolation) → #222 (merged prohibited-data-class refusal) | The topology and isolation are real and tested (`tests/acceptance/increment-1/test_manibo_ordinary_intake.py`) |
 | **Manibo import ("53 cards serving")** | **PARTIAL, with a named limitation** | Crew-log evidence cited in issues #317/#320 (both open, filed 2026-08-05): 59 submitted / 53 accepted | Imported cards carry only their **import-time** backlog stage — there is no live-lane sync from the source board back into ctower, "by design, not a code defect" per #317/#320. Worth stating precisely rather than as a flat "migration machinery" claim. |
 | **Director / portfolio-manager role** | **NOT-STARTED, named gap** | No portfolio-spanning principal exists in Access's authority model — only a per-project Commander and the single operator | Today's "Portfolio Director" is a Mission Control crew-profile role (`board/crew-profiles.md`), not a ctower Access concept. The operator's own "director per organization (portfolio manager)" sub-item has no kernel home yet. |
 | **Company/project/product workspace** | **PARTIAL** | Only `packs/components/workspaces/local.checkout/v1.yaml` exists | A real primitive with one concrete instance, no browsable workspace surface (that's I2.4's Fleet contextual view) |
-| **Editor and file explorer** | **NOT-STARTED, explicitly deferred** | `SPEC.md` §"Explicit do-not-build-yet list": "browser IDE replacement" | Named out of scope for both increments, not merely unstarted |
+| **Editor and file explorer** | **NOT-STARTED, prioritized but not activated** | `gh issue view 335` → OPEN; `SPEC.md` still lists "browser IDE replacement" under "Explicit do-not-build-yet" | R2824 now maps it to a Workspace surface after inbox and the intervening priority slices. Because this document and the roadmap cannot override `SPEC.md`, edit/save product work still requires a canonical scope/acceptance update before implementation |
 
 ### Workflows / gates / dogfood tooling
 
@@ -346,7 +359,10 @@ built), plus **BUILT / PARTIAL / NOT-STARTED** for pieces the canonical status p
 |---|---|---|
 | Personas/souls (Agents > Profiles) | **Mission Control-native today; ctower-declarable only** | `personas/*.md` + `crew/roles/*/soul.md` (10 seats) vs. `packs/components/personas/`, `packs/components/agent-profiles/` (declared, inert) |
 | Crew/commander sessions (disposable vs. durable) | **Split status** | Session facts BUILT (D33/#258, merged, 0.7.0: "record: work sessions become facts the record can prove"); the Runtime that would actually run a disposable worker is NOT-STARTED (see above) |
-| The inbox | **BUILT in kernel, unmigrated operationally** | `project-status.md`: "Inbound threads and intake — Development fixture"; Mission Control's `state/inbox.jsonl` remains the live operational instance |
+| The inbox | **Development fixture; native product slice next** | `project-status.md`: "Inbound threads and intake — Development fixture"; `gh issue view 330` and `331` → OPEN; Mission Control's `state/inbox.jsonl` remains the live operational instance |
+| Knowledge base | **NOT-STARTED, prioritized** | `gh issue view 332` → OPEN; no current retrieval/MCP implementation |
+| Usage-limit observability | **NOT-STARTED, prioritized** | `gh issue view 333` → OPEN; the external Mission Control capacity tools remain the current mechanism |
+| Templates starter-bundle library | **NOT-STARTED, prioritized** | `gh issue view 334` → OPEN; CompanyBundle round-trip exists, but no curated library/Admin path does |
 | Request/crew-log ledgers | **Explicit co-source, not yet superseded** | `SPEC.md:482-484` names "the shared Mission Control R-counter" directly as the source-reference scheme ctower's own intake still relies on |
 | KPIs/crew-log scoreboards | **Speced in ctower; running only in Mission Control** | `SPEC.md` §"KPIs" fully defines 25+ versioned metrics; no dashboard/API surfaces them yet. `board/crew-kpis.md` and `board/factory-kpis.md` are the live proto today |
 | Capacity-sentinel/model-watch | **NOT-STARTED in ctower; live externally** | `tools/capacity-sentinel`, `tools/crew-model-watch`, `tools/claude-model-watch`, `state/capacity.json` — real, running, but outside ctower's kernel boundary entirely |
@@ -369,13 +385,38 @@ per phase; all five surfaces realize together at I2.4, over the same generated c
 Phases before I2.4 are agent/CLI-first by explicit SPEC choice, not by omission — `apps/ctower-ui`'s early,
 parallel build (Part 3) is the one place this is already being anticipated ahead of schedule.
 
+### R2824 operator-priority phases
+
+R2824 rephases product slices **inside** the existing I1/I2 checkpoint framework; it does not replace that
+framework or authorize a ticket whose canonical SPEC dependencies are not active. The operator counts
+acceptance tasks, not elapsed time. Counts below are therefore the numbered acceptance outcomes on each
+named GitHub ticket, not duration estimates:
+
+| Priority phase | Ticket and checkpoint envelope | Acceptance tasks | Ordered exit |
+|---|---|---:|---|
+| **1 — Inbox-as-product I1** | [#330](https://github.com/simjak/ctower/issues/330), I1 API/protected-CLI lane before full I1 exit | **3** | CLI send/list/read works; thread promotion creates a bidirectional Ticket link; thread/message facts are append-only and the list is a projection |
+| **2 — Inbox-as-product I2** | [#331](https://github.com/simjak/ctower/issues/331), I2.4 browser lane after full I1 exit and its inherited dependencies | **2** | `/inbox` renders real unread threads; open/read/promote works end to end against #330's API |
+| **3 — Knowledge base** | [#332](https://github.com/simjak/ctower/issues/332), I2 Catalog/Artifact plus earned-Adapter lane after #331 | **2** | scoped static documents work through API/CLI; one external source works through the Adapter Seam and conformance contract |
+| **4 — Usage-limit observability** | [#333](https://github.com/simjak/ctower/issues/333), I2 Telemetry/Projections/Attention lane after #332 | **3** | windowed usage facts are recorded; per-provider limit proximity is projected; a breach creates an Attention finding |
+| **5 — Templates library + Admin** | [#334](https://github.com/simjak/ctower/issues/334), I2.4 CompanyBundle/Admin lane after #333 | **2** | one starter instantiates with zero semantic diff; the curated library is listable/manageable without a new Catalog kind |
+| **6 — Editor + file explorer** | [#335](https://github.com/simjak/ctower/issues/335), contextual Workspace lane after #334 | **2** | browse/open works; edit/save round-trips with an audit fact, once `SPEC.md` authorizes that product behavior |
+
+**Total: 14 operator-priority acceptance tasks.** The old roadmap had no dedicated native-inbox product
+phase, left knowledge and usage limits unscheduled, placed template ergonomics generically at I2.4, and
+kept editor/explorer in deferred scope. The agreed decisions change that to
+**#330 → #331 → #332 → #333 → #334 → #335** because communication must become native before ctower absorbs
+adjacent knowledge and capacity functions, starter reuse follows those primitives, and steering/inbox
+precedes workspace editing. Mandatory checkpoint closure work still runs whenever it is a dependency of the
+next eligible priority phase.
+
 ### Phase 0 — what exists today
 
 Restated compactly from Part 3: Ticket/Work/Proof/Board fold/Feed/CompanyBundle are development fixtures;
-project-seat access control and portfolio topology are real with named limits; OIDC, Runtime, Effects, and
-harness adapters are speced but not built; `apps/ctower-ui` is a real early surface running ahead of the
-formal I2.4 gate. Mission Control's personas, inbox, R-counter, KPI scoreboards, merge-train, and
-capacity-sentinel remain the live operational substrate ctower has not yet absorbed.
+project-seat access control and portfolio topology are real with named limits; #322, #326, and #327 are on
+`v0.8.0`; OIDC #324 is merged but remains a dark, unbound scaffold; Runtime, Effects, and harness adapters
+are not built. `apps/ctower-ui` is a real early taste surface running ahead of the formal I2.4 gate. Mission
+Control's personas, inbox, R-counter, KPI scoreboards, merge-train, and capacity-sentinel remain the live
+operational substrate ctower has not yet absorbed.
 
 ### Phase 1 — durability + spool-CLI closure (I1.3–I1.4)
 
@@ -437,7 +478,8 @@ capacity-sentinel remain the live operational substrate ctower has not yet absor
 20. A non-engineering package (a different four-stage graph) runs on the same evaluator, proving the engine
     has no hidden software-factory branch.
 
-*4 tasks — and the first point where a starter-bundle "template" library becomes worth building, per Q2.*
+*4 tasks. This checkpoint makes the template inputs coherent; R2824 still orders #334 after #330–#333 and
+places its Admin experience at I2.4.*
 
 ### Phase 6 — Runtime, CommandGuard, and the harness-adapter Seam (I2.2)
 
@@ -466,16 +508,16 @@ actually gets built**, not merely designed.
 
 ### Phase 8 — browser realization + Metrics/Observability surfaces (I2.4)
 
-**Component focus:** Board/Ticket/Fleet/Analytics UI parity, Metrics and KPIs, Observability, the Templates
-starter-library UX.
+**Component focus:** Board/Ticket/Fleet/Analytics UI parity, Metrics and KPIs, and the base Admin/browser
+contracts on which R2824 priority phases 2–6 depend.
 
 27. All five primary surfaces realize over generated clients with full run reconstruction after restart.
 28. Needs You precision/recall targets are met with no false-calm state.
 29. The Analytics surface exposes the already-specified KPI definitions (tokens, cost/stage, duration/stage,
     review rounds) as real queries, not prose.
 30. Project Delivery interactive row detail ships with per-slot seat visibility.
-31. A curated starter-CompanyBundle library and `company bundle init --from <starter>` ship in the Admin
-    surface (this document's Q2 verdict).
+31. Cross-domain Project Delivery views preserve the same eight-state fold, authorization, watermark, and
+    proof-invalidation behavior.
 
 *5 tasks.*
 
@@ -510,13 +552,10 @@ structural reading of the same locked sequence, sized for conversation with the 
 
 ### What this roadmap deliberately does not schedule
 
-- **Knowledge base and general Observability (usage/subscription-limits tracking)** have no phase above
-  because they have no architectural home yet, and forcing one in would be inventing scope the operator
-  didn't ask for. The honest options, for the operator's taste pass: (a) knowledge base becomes a future
-  Catalog/Artifact extension once the Extension Host (D11) is earned, since RAG-style retrieval is a natural
-  first executable extension; (b) usage/subscription-limits tracking may simply stay outside ctower's kernel
-  boundary permanently — it is provider-quota infrastructure, not ticket/workflow truth, and Mission
-  Control's `capacity-sentinel` already does this job adequately as external tooling.
+- The R2824 priority table schedules **knowledge, usage-limit observability, templates, and the Workspace
+  editor/explorer** at planning level. That scheduling does not itself amend `SPEC.md`: #332's external
+  source must obey the earned-Seam rule, and #335's edit/save path remains blocked by the current explicit
+  browser-IDE deferral until canonical scope and acceptance criteria supersede it.
 - **The Director/portfolio-manager role** has no phase because there is no proposed Access-model change to
   attach it to yet — naming the gap in Part 3 is the deliverable here; deciding whether it becomes a fourth
   human role (beside operator/commander/viewer) is the operator's call, not this document's.

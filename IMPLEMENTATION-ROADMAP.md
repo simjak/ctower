@@ -6,7 +6,7 @@
 | Product increments | Exactly two: Increment 1 and Increment 2 |
 | Work authority before development epoch | SPEC temporary bootstrap backlog / Mission Control |
 | Work authority after development epoch | ctower tickets for the reviewed cohort only |
-| Last reviewed | 2026-08-05 |
+| Last reviewed | 2026-08-06 (R2824 priority rephase) |
 
 This roadmap makes the normative build order easier to execute. It does not create a third scope model,
 approve work, mirror ticket status, or override the stable IDs, acceptance criteria, validation commands,
@@ -51,6 +51,8 @@ INCREMENT 1 — durable task-management dogfood
               |
  [two auth planes -> one Actor/custody/audit model + CSO]
               |
+ [inbox-as-product I1: native thread/API/CLI path, gh#330]
+              |
  [CP3-D: external ACK + keys + destructive restore + measured RPO/RTO]
               |
 ============== FULL NORMATIVE I1 EXIT ==============
@@ -63,7 +65,10 @@ INCREMENT 2 — autonomous generic workflow + one golden path
               |
  [activate durable Commander orchestration]
               |
- [I2.4 browser realization: five surfaces + Project Delivery detail/analytics + Effects/release]
+ [I2.4 browser base + R2824 lane:
+  gh#331 -> gh#332 -> gh#333 -> gh#334 -> gh#335]
+              |
+ [Effects/release + incident recovery]
               |
  [one software-factory production golden ticket]
 ```
@@ -73,6 +78,42 @@ the reviewed reconstructible cohort and remains visibly `CP3_D_NOT_PROVEN`. Full
 `NO-GO` until CP3-D passes, and only that exit authorizes CT-I2-001. Always-on scheduling, reconciliation,
 restart, and restore proof precede unattended Commander autonomy. The I1 fixture uses the same generic
 Workflow Module Interface that I2 deepens; no temporary stage-name engine is allowed.
+
+## R2824 task-counted priority overlay
+
+R2824 changes the order of the next product slices without changing the two increments, stable checkpoint
+IDs, or their dependency gates. The operator sizes these phases by acceptance tasks, not calendar time.
+The counts below are the acceptance outcomes on the named GitHub tickets; they are planning units, not a
+second work authority and not permission to bypass `SPEC.md` activation.
+
+| Priority phase | Ticket | Checkpoint envelope and dependency | Acceptance tasks and count basis |
+|---|---|---|---:|
+| **1 — Inbox-as-product I1** | [gh#330](https://github.com/simjak/ctower/issues/330) | I1 API/protected-CLI lane; must finish before full normative I1 exit | **3** — send/list/read; promote with a bidirectional Ticket link; append-only thread facts plus projection |
+| **2 — Inbox-as-product I2** | [gh#331](https://github.com/simjak/ctower/issues/331) | I2.4 browser lane; requires full normative I1 exit and CT-I2-005's inherited dependencies | **2** — real unread thread list; open/read/promote control works end to end |
+| **3 — Knowledge base** | [gh#332](https://github.com/simjak/ctower/issues/332) | I2 Catalog/Artifact plus Adapter lane; after gh#331, with one real Adapter and conformance evidence | **2** — scoped static document API/CLI; one external source through the Seam |
+| **4 — Usage-limit observability** | [gh#333](https://github.com/simjak/ctower/issues/333) | I2 Telemetry/Projections/Attention lane; after gh#332 | **3** — windowed usage facts; limit-proximity projection; breach finding |
+| **5 — Templates library + Admin** | [gh#334](https://github.com/simjak/ctower/issues/334) | I2.4 CompanyBundle/Admin lane; after gh#333 and the CompanyBundle/Workflow contracts it instantiates | **2** — zero-diff starter instantiation; curated library listing/management |
+| **6 — Editor + file explorer** | [gh#335](https://github.com/simjak/ctower/issues/335) | Contextual Workspace lane; after gh#334 and only after canonical scope authorizes edit/save | **2** — browse/open; audited edit/save |
+
+**Ordered total: 14 acceptance tasks — gh#330 → gh#331 → gh#332 → gh#333 → gh#334 → gh#335.**
+"After" is a hard product-priority edge. Existing checkpoint prerequisites still run when they are required
+to make the next phase eligible; for example, gh#331 cannot pull browser product behavior before full I1
+exit and CT-I2-005's dependencies.
+
+### Prior roadmap → R2824 delta
+
+| Capability | Prior roadmap | R2824 phasing | Reason |
+|---|---|---|---|
+| Inbox | Durable-thread semantics existed in I1, but no dedicated native product phase was ordered | gh#330 I1 agent/API/CLI path, then gh#331 I2 operator UI | The inbox is first-class thread transport that can promote; native ctower coordination is the next dogfood increment |
+| Knowledge | Unscheduled/deferred gap | gh#332 immediately after both inbox phases | Product/project/company/process knowledge is the first named gap after native coordination |
+| Usage limits | General observability was left outside or unscheduled | gh#333 after knowledge | Provider-window capacity must become visible and breach into Attention |
+| Templates | Generic starter-bundle ergonomics were placed at I2.4 with no ordered ticket | gh#334 after usage limits, explicitly with the Admin surface | Templates are a curated library over CompanyBundle, not a new kind |
+| Editor/explorer | Explicitly deferred with no roadmap phase | gh#335 last in this priority lane, mapped to Workspace | Steering and inbox precede editing; audit-bound workspace changes follow the reusable starter path |
+
+This file cannot supersede the canonical do-not-build-yet list. In particular, gh#335's edit/save behavior
+remains planning-only until `SPEC.md` supplies an active stable CT contract that replaces the current
+browser-IDE deferral; gh#332's external source must satisfy the existing earned-Seam law. No compatibility
+layer, provisional alternate authority, or sixth primary-surface claim is implied.
 
 ## Checkpoint exit contract
 
@@ -203,6 +244,11 @@ scope item.
 I1 retains the API/CLI semantics D22 selected: durable-thread-first explicit
 `discussion|create_ticket|link_ticket` intent/provenance; Workflow-owned append-only risk; six-lane fold;
 typed intents; health/Attention; and pending/refusal/quarantine/degraded/`STATE UNKNOWN` reporting.
+
+**R2824 priority slice:** gh#330 turns those existing semantics into the native inbox product for agents
+before full I1 exit. It adds the thread event/projection contract, API routes, and protected-CLI
+`inbox send|list|read`; promotion creates one Ticket carrying the thread context and records the link in
+both directions. This is still an I1 API/CLI capability and does not authorize gh#331's browser route.
 
 **Recorded-work-session placement (non-normative).** D33 puts the append-only session stream in I1 because
 ticket history, project-scoped reads, and the canonical event catalog are already I1 authority; it adds no
@@ -451,6 +497,13 @@ versus actual cost/time; and last verified/reconciled time with confidence/fresh
 visualizations, trends, cost/time analytics, and reusable views for software, accounting, compliance, hiring,
 and other configured Workflows. It remains contextual to the five surfaces and never creates a writable
 status authority or third product increment.
+
+**R2824 ordered product lane:** after the I2.4 base and each ticket's inherited prerequisites are eligible,
+execute gh#331 inbox UI → gh#332 scoped knowledge → gh#333 provider-window usage observability → gh#334
+starter-bundle library with its Admin surface → gh#335 contextual Workspace editor/explorer. Each phase
+must finish its acceptance tasks before the next begins. These are contextual capabilities over the same
+generated clients and kernel authorities; they do not create writable projection state or a second
+CompanyBundle/Template authority.
 
 **Exit:** exactly five primary surfaces, complete run reconstruction after restart, allocation fractions=1,
 Needs You precision/recall, exact-scope guard confirmation and linked receipt views, no false calm, and KPI
