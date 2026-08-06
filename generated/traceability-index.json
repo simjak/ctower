@@ -401,6 +401,9 @@
       "contracts/domain/task-management/board-view.schema.json",
       "packages/ctower-kernel/migrations/0042_checkpoint_delivery_surface.sql"
     ],
+    "AC-PORT-06": [
+      "packages/ctower-kernel/migrations/0047_board_source_index.sql"
+    ],
     "AC-PROD-01": [
       "contracts/domain/intake/thread-intake.schema.json",
       "packages/ctower-kernel/migrations/0035_board_source_lookup.sql",
@@ -722,7 +725,8 @@
       "packages/ctower-kernel/migrations/0009_transactional_record_positions.sql",
       "packages/ctower-kernel/migrations/0019_outbox_routine_health.sql",
       "packages/ctower-kernel/migrations/0035_board_source_lookup.sql",
-      "packages/ctower-kernel/migrations/0040_project_scoped_reads.sql"
+      "packages/ctower-kernel/migrations/0040_project_scoped_reads.sql",
+      "packages/ctower-kernel/migrations/0047_board_source_index.sql"
     ],
     "INV-35": [
       "contracts/domain/migration/ctower-project-cutover-health.schema.json",
@@ -938,6 +942,9 @@
       "packages/ctower-kernel/migrations/0043_context_set_catalogs.sql",
       "packages/ctower-kernel/migrations/0045_attention_findings.sql"
     ],
+    "INV-71": [
+      "packages/ctower-kernel/migrations/0047_board_source_index.sql"
+    ],
     "INV-73": [
       "packages/ctower-kernel/migrations/0046_human_oidc_identity.sql"
     ],
@@ -950,7 +957,8 @@
       "contracts/domain/intake/thread-intake.schema.json",
       "packages/ctower-kernel/migrations/0032_thread_first_intake.sql",
       "packages/ctower-kernel/migrations/0035_board_source_lookup.sql",
-      "packages/ctower-kernel/migrations/0040_project_scoped_reads.sql"
+      "packages/ctower-kernel/migrations/0040_project_scoped_reads.sql",
+      "packages/ctower-kernel/migrations/0047_board_source_index.sql"
     ],
     "SPEC#attention-findings-feed": [
       "contracts/components/attention-kind-catalog.schema.json",
@@ -1117,7 +1125,11 @@
       "packages/ctower-kernel/migrations/0039_project_seat_credentials.sql",
       "packages/ctower-kernel/migrations/0040_project_scoped_reads.sql",
       "packages/ctower-kernel/migrations/0041_recorded_work_sessions.sql",
-      "packages/ctower-kernel/migrations/0046_human_oidc_identity.sql"
+      "packages/ctower-kernel/migrations/0046_human_oidc_identity.sql",
+      "packages/ctower-kernel/migrations/0047_board_source_index.sql"
+    ],
+    "SPEC#portfolio-shadow-onboarding": [
+      "packages/ctower-kernel/migrations/0047_board_source_index.sql"
     ],
     "SPEC#principals-and-authentication": [
       "packages/ctower-kernel/migrations/0046_human_oidc_identity.sql"
