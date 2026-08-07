@@ -13,12 +13,21 @@ from uuid import UUID, uuid4
 import httpx
 import psycopg
 import pytest
+from fastapi.testclient import TestClient
 from psycopg.rows import dict_row
 from support.acceptance import accept_pending_commands
 from support.server import running_api
 from support.telemetry import telemetry_headers
 from support.tenant_fixture import TenantFixture, provision_credential
 
+from ctower_api.interface import create_app
+from ctower_kernel.knowledge import (
+    Knowledge,
+    PostgresKnowledge,
+    StaticFileKnowledgeSource,
+    bundled_static_root,
+)
+from ctower_kernel.record.postgres import PostgresRecord
 from ctowerctl import main
 
 __all__: tuple[str, ...] = ()
@@ -26,6 +35,8 @@ __all__: tuple[str, ...] = ()
 EXIT_SUCCESS = 0
 EXIT_PERMANENT = 69
 EXIT_TEMPORARY = 75
+HTTP_OK = 200
+HTTP_CREATED = 201
 
 
 class _MemoryBackend:
@@ -58,6 +69,158 @@ def test_knowledge_cli_roundtrip_preserves_org_and_project_scope(
     entries = _exercise_roundtrip(tenant, monkeypatch, tmp_path)
     _assert_roundtrip(tenant, entries)
     _print_transcript(**entries)
+
+
+def test_knowledge_http_routes_execute_in_process(tenant: TenantFixture) -> None:
+    """Credit the strict HTTP and SQL paths while retaining real PostgreSQL authority."""
+
+    record = PostgresRecord(tenant.database.runtime_dsn)
+    knowledge = Knowledge(
+        PostgresKnowledge(
+            tenant.database.runtime_dsn,
+            source=StaticFileKnowledgeSource(bundled_static_root()),
+        )
+    )
+    with TestClient(create_app(record, knowledge=knowledge)) as client:
+        responses = _exercise_http_mutations(client, tenant)
+        document_id = cast(str, responses["accepted"].json()["document_id"])
+        responses.update(_exercise_http_reads(client, tenant, document_id))
+    _assert_http_responses(responses)
+
+
+def _exercise_http_mutations(
+    client: TestClient, tenant: TenantFixture
+) -> dict[str, httpx.Response]:
+    command_id = uuid4()
+    operator_headers = _http_headers(tenant.operator_credential, command_id=command_id)
+    payload = {
+        "body": None,
+        "project_key": None,
+        "scope": "org",
+        "source_ref": "ctower-knowledge",
+        "title": None,
+    }
+    responses = {
+        "unauthenticated": client.get("/v1/knowledge/documents", params={"scope": "org"}),
+        "malformed": client.post(
+            "/v1/knowledge/documents",
+            headers=_http_headers(tenant.operator_credential, command_id=uuid4()),
+            json={**payload, "body": "Direct body", "title": "Ambiguous"},
+        ),
+        "denied": client.post(
+            "/v1/knowledge/documents",
+            headers=_http_headers(tenant.commander_credential, command_id=uuid4()),
+            json={**payload, "body": "Denied body", "source_ref": None, "title": "Denied"},
+        ),
+        "pending": client.post("/v1/knowledge/documents", headers=operator_headers, json=payload),
+    }
+    accept_pending_commands(tenant.database.admin_dsn, tenant.tenant_id)
+    responses["accepted"] = client.post(
+        "/v1/knowledge/documents", headers=operator_headers, json=payload
+    )
+    assert responses["accepted"].status_code == HTTP_CREATED, responses["accepted"].text
+    return responses
+
+
+def _exercise_http_reads(
+    client: TestClient, tenant: TenantFixture, document_id: str
+) -> dict[str, httpx.Response]:
+    headers = _http_headers(tenant.commander_credential)
+    return {
+        "listing": client.get("/v1/knowledge/documents", headers=headers, params={"scope": "org"}),
+        "fetched": client.get(
+            f"/v1/knowledge/documents/{document_id}",
+            headers=headers,
+            params={"scope": "org"},
+        ),
+        "invalid_id": client.get(
+            "/v1/knowledge/documents/not-a-uuid",
+            headers=headers,
+            params={"scope": "org"},
+        ),
+        "unavailable": client.get(
+            f"/v1/knowledge/documents/{uuid4()}",
+            headers=headers,
+            params={"scope": "org"},
+        ),
+        "invalid_scope": client.get(
+            "/v1/knowledge/documents", headers=headers, params={"scope": "team"}
+        ),
+        "invalid_project": client.get(
+            "/v1/knowledge/documents", headers=headers, params={"scope": "project"}
+        ),
+    }
+
+
+def _assert_http_responses(responses: dict[str, httpx.Response]) -> None:
+    assert (
+        responses["unauthenticated"].status_code,
+        responses["unauthenticated"].json()["code"],
+    ) == (
+        401,
+        "unauthorized",
+    )
+    assert (responses["malformed"].status_code, responses["malformed"].json()["code"]) == (
+        422,
+        "validation-error",
+    )
+    assert (responses["denied"].status_code, responses["denied"].json()["code"]) == (
+        403,
+        "auth-role-denied",
+    )
+    assert (
+        responses["pending"].status_code,
+        responses["pending"].json()["durability_state"],
+    ) == (
+        202,
+        "durability_pending",
+    )
+    assert (
+        responses["accepted"].status_code,
+        responses["accepted"].json()["durability_state"],
+    ) == (
+        HTTP_CREATED,
+        "accepted",
+    )
+    assert responses["listing"].status_code == HTTP_OK
+    assert responses["listing"].json()["documents"] == [responses["fetched"].json()]
+    assert responses["fetched"].status_code == HTTP_OK
+    assert responses["fetched"].json()["source_ref"] == "ctower-knowledge"
+    assert (
+        responses["invalid_id"].status_code,
+        responses["invalid_id"].json()["code"],
+    ) == (422, "validation-error")
+    assert (
+        responses["unavailable"].status_code,
+        responses["unavailable"].json()["code"],
+    ) == (
+        404,
+        "tenant-scope-denied",
+    )
+    assert (
+        responses["invalid_scope"].status_code,
+        responses["invalid_scope"].json()["code"],
+    ) == (
+        422,
+        "knowledge-invalid-scope",
+    )
+    assert (
+        responses["invalid_project"].status_code,
+        responses["invalid_project"].json()["code"],
+    ) == (
+        422,
+        "knowledge-invalid-project",
+    )
+
+
+def _http_headers(credential: str, *, command_id: UUID | None = None) -> dict[str, str]:
+    headers = {
+        "Authorization": f"Bearer {credential}",
+        **telemetry_headers(command_id),
+    }
+    if command_id is not None:
+        headers["Idempotency-Key"] = str(command_id)
+    return headers
 
 
 def _exercise_roundtrip(

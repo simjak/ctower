@@ -85,6 +85,59 @@ def test_static_file_source_raises_on_missing_heading(tmp_path: Path) -> None:
         source.get(scope="org", ref="naked")
 
 
+@pytest.mark.parametrize(
+    "contents",
+    (
+        b"\xff\xfe",
+        b"# Empty document\n",
+        b"# \nBody without a title.\n",
+        b"# Oversized document\n" + b"x" * 1_050_001,
+    ),
+)
+def test_static_file_source_rejects_unavailable_file_content(
+    tmp_path: Path, contents: bytes
+) -> None:
+    org = tmp_path / "org"
+    org.mkdir()
+    (org / "invalid.md").write_bytes(contents)
+
+    with pytest.raises(KnowledgeSourceUnavailableError):
+        StaticFileKnowledgeSource(tmp_path).get(scope="org", ref="invalid")
+
+
+def test_static_file_source_rejects_symlinked_scope_and_file(tmp_path: Path) -> None:
+    actual = tmp_path / "actual"
+    actual.mkdir()
+    _write_markdown(actual, "document.md", "# Document\n\nBody.\n")
+    (tmp_path / "org").symlink_to(actual, target_is_directory=True)
+
+    source = StaticFileKnowledgeSource(tmp_path)
+    with pytest.raises(KnowledgeSourceUnavailableError):
+        source.list(scope="org")
+
+    (tmp_path / "org").unlink()
+    (tmp_path / "org").mkdir()
+    (tmp_path / "org" / "document.md").symlink_to(actual / "document.md")
+    assert source.list(scope="org") == ()
+    assert source.get(scope="org", ref="document") is None
+
+
+@pytest.mark.parametrize(
+    ("scope", "ref", "title", "body"),
+    (
+        ("team", "document", "Document", "Body."),
+        ("org", "../document", "Document", "Body."),
+        ("org", "document", "", "Body."),
+        ("org", "document", "Document", ""),
+    ),
+)
+def test_source_document_rejects_values_outside_authored_contract(
+    scope: str, ref: str, title: str, body: str
+) -> None:
+    with pytest.raises(ValueError):
+        KnowledgeSourceDocument(scope=scope, ref=ref, title=title, body=body)
+
+
 class _InMemoryKnowledgeSource:
     """Trivial in-memory fake implementing the KnowledgeSource contract."""
 
