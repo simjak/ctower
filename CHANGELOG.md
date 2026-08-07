@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.9.0](https://github.com/simjak/ctower/compare/v0.8.1...v0.9.0) (2026-08-07)
+
+
+### Features
+
+* add native agent inbox ([#336](https://github.com/simjak/ctower/issues/336)) ([8987df4](https://github.com/simjak/ctower/commit/8987df43f18d6089c1721b3db478b77d0aa4d418))
+
 ## [0.8.1](https://github.com/simjak/ctower/compare/v0.8.0...v0.8.1) (2026-08-07)
 
 
