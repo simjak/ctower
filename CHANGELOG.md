@@ -1,5 +1,13 @@
 # Changelog
 
+## [0.8.1](https://github.com/simjak/ctower/compare/v0.8.0...v0.8.1) (2026-08-07)
+
+
+### Bug Fixes
+
+* **auth:** render unavailable login page ([#342](https://github.com/simjak/ctower/issues/342)) ([5b8a9f5](https://github.com/simjak/ctower/commit/5b8a9f5095d0a71b00277b7ce00de601ca5b8b44))
+* **ui:** render board card context and contain mobile lanes ([#340](https://github.com/simjak/ctower/issues/340)) ([e353907](https://github.com/simjak/ctower/commit/e3539074460ffd55286c75d1209027da91295c34))
+
 ## [0.8.0](https://github.com/simjak/ctower/compare/v0.7.4...v0.8.0) (2026-08-06)
 
 
