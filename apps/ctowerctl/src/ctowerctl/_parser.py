@@ -34,6 +34,7 @@ from ctowerctl._context_set_parser import attention_parser, ticket_context_sets
 from ctowerctl._parser_support import (
     _command_id,
     _Parser,
+    _review_dispatch,
     _session_id,
     _ticket_id,
     _version,
@@ -81,6 +82,8 @@ _AUTHORED_COMMAND_NAMES = frozenset(
         "ticket workflow start",
         "ticket transition",
         "ticket resolve",
+        "ticket review-dispatch consume",
+        "ticket review-dispatch list",
         "session start",
         "session transition",
         "session close",
@@ -199,6 +202,7 @@ def _ticket_parser(parser: argparse.ArgumentParser) -> None:
     _ticket_work(actions)
     _ticket_proof(actions)
     _ticket_workflow(actions)
+    _review_dispatch(actions)
     ticket_context_sets(actions)
 
 

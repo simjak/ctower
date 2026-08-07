@@ -10,8 +10,12 @@ from fastapi.responses import JSONResponse
 from pydantic import BaseModel, ValidationError
 
 from ctower_api._http_support import (
+    UnscopedAuthentication as _UnscopedAuthentication,
+)
+from ctower_api._http_support import (
     authenticate as _authenticate,
 )
+from ctower_api._http_support import encoded as _encoded
 from ctower_api._http_support import (
     problem_response as _problem_response,
 )
@@ -30,6 +34,7 @@ from ctower_client.models import (
     EvidenceRequest,
     FreezeCriteriaRequest,
     ResolveCloseRequest,
+    ReviewDispatchEffectList,
     VerdictRequest,
     WorkflowTransitionRequest,
 )
@@ -80,6 +85,43 @@ def install_proof_workflow_routes(
     _install_verdict_route(app, access, record, proof, recorder)
     _install_transition_route(app, access, record, workflow, recorder)
     _install_close_route(app, access, record, workflow, recorder)
+    _install_review_dispatch_list(app, access, workflow, recorder)
+
+
+def _install_review_dispatch_list(
+    app: FastAPI,
+    access: Access,
+    workflow: Workflow,
+    recorder: TelemetryRecorder,
+) -> None:
+    @app.get("/v1/tickets/{ticket_id}/workflow/review-dispatches")
+    def list_review_dispatches(ticket_id: str, request: Request) -> JSONResponse:
+        actor = _authenticate(
+            access,
+            recorder,
+            request,
+            required_scope=_UnscopedAuthentication.ALLOWED,
+        )
+        if isinstance(actor, RecordProblem):
+            return _problem_response(actor)
+        try:
+            ticket = _uuid(ticket_id)
+        except ValueError:
+            return _problem_response(_validation_problem())
+        outcome = workflow.review_dispatches(
+            WorkflowActor(actor.principal_id, actor.tenant_id), ticket
+        )
+        if isinstance(outcome, RecordProblem):
+            return _problem_response(outcome)
+        boundary = ReviewDispatchEffectList.model_validate_json(
+            _encoded(
+                {
+                    "ticket_id": str(ticket),
+                    "effects": [item.response_payload() for item in outcome],
+                }
+            )
+        )
+        return JSONResponse(content=boundary.model_dump(mode="json"))
 
 
 def _install_freeze_route(

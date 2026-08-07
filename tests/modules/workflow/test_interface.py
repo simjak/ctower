@@ -16,11 +16,13 @@ from ctower_kernel.workflow import (
     Workflow,
     WorkflowCommand,
     WorkflowContextSnapshot,
+    WorkflowEntryEffect,
     WorkflowGraph,
     WorkflowStart,
 )
 
 ROOT = Path(__file__).parents[3]
+_REVIEW_STAGE_INDEX = 2
 __all__: tuple[str, ...] = ()
 
 
@@ -196,6 +198,47 @@ def test_authored_fixture_loads_and_uses_pinned_graph_data() -> None:
     assert graph.reference == "ctower.trust-spine-four-stage@1"
     assert decision.accepted is True
     assert decision.activity_class is ActivityClass.VERIFICATION
+
+
+def test_v2_stage_entry_effect_is_declared_data_not_a_stage_name_branch() -> None:
+    payload = json.loads(
+        (ROOT / "packs/workflows/ctower.trust-spine-four-stage/v1.yaml").read_text(encoding="utf-8")
+    )
+    payload["schema"] = "ctower.workflow/v2"
+    payload["key"] = "fixture.review-effect"
+    payload["revision"] = 1
+    payload["stages"] = [
+        {
+            **stage,
+            "entry_effects": (
+                [{"kind": "review_crew_dispatch"}] if index == _REVIEW_STAGE_INDEX else []
+            ),
+        }
+        for index, stage in enumerate(payload["stages"])
+    ]
+    graph = WorkflowGraph.from_mapping(payload)
+
+    decision = Workflow((graph,)).evaluate(
+        WorkflowContextSnapshot(
+            workflow_ref=graph.reference,
+            current_stage="frame",
+            satisfied_predicates=frozenset({"criteria.frozen@1"}),
+            run_started=True,
+        ),
+        WorkflowCommand(destination_stage="verify"),
+    )
+
+    assert decision.accepted is True
+    assert decision.entry_effects == (WorkflowEntryEffect.REVIEW_CREW_DISPATCH,)
+    assert (
+        graph.digest
+        != WorkflowGraph.from_mapping(
+            {
+                **payload,
+                "stages": [{**stage, "entry_effects": []} for stage in payload["stages"]],
+            }
+        ).digest
+    )
 
 
 def test_workflow_implementation_contains_no_fixture_stage_name_literals() -> None:

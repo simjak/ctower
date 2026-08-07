@@ -308,6 +308,7 @@ def test_upgrade_database_corrects_existing_head_privileges(
             "0041_recorded_work_sessions.sql",
             "0047_board_source_index.sql",
             "0048_native_inbox.sql",
+            "0049_review_dispatch_effect.sql",
         ):
             connection.execute((MIGRATIONS / name).read_text(encoding="utf-8"))
     provision_database_roles(database.admin_dsn)

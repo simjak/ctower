@@ -14,6 +14,7 @@ from typing import Protocol
 from uuid import UUID, uuid4
 
 import uvicorn
+from fastapi import FastAPI
 from support.catalog import FileSchemas, MemoryObjectStore
 
 from ctower_api.catalog_resolver import CatalogComponentResolver
@@ -176,6 +177,9 @@ def running_api(
     telemetry_failure: bool = False,
     projection_dsn: str | None = None,
     catalog_backed: bool = False,
+    workflow_graph: WorkflowGraph | None = None,
+    proof_policy_override: ProofPolicy | None = None,
+    execution_policy_digest: str | None = None,
 ) -> Iterator[str]:
     """Run the composed API in another process and yield its loopback URL."""
 
@@ -192,6 +196,9 @@ def running_api(
             telemetry_capture,
             int(telemetry_failure),
             int(catalog_backed),
+            workflow_graph,
+            proof_policy_override,
+            execution_policy_digest,
         ),
         daemon=True,
     )
@@ -216,9 +223,38 @@ def _serve(
     telemetry_capture: Path | None,
     telemetry_failure: int,
     catalog_backed: int,
+    workflow_graph: WorkflowGraph | None,
+    proof_policy_override: ProofPolicy | None,
+    execution_policy_digest: str | None,
 ) -> None:
+    app = application(
+        runtime_dsn,
+        standby_dsn=standby_dsn,
+        projection_dsn=projection_dsn,
+        telemetry_capture=telemetry_capture,
+        telemetry_failure=bool(telemetry_failure),
+        catalog_backed=bool(catalog_backed),
+        workflow_graph=workflow_graph,
+        proof_policy_override=proof_policy_override,
+        execution_policy_digest=execution_policy_digest,
+    )
+    uvicorn.run(app, host=host, port=port, log_level="error", access_log=False)
+
+
+def application(
+    runtime_dsn: str,
+    *,
+    standby_dsn: str | None = None,
+    projection_dsn: str | None = None,
+    telemetry_capture: Path | None = None,
+    telemetry_failure: bool = False,
+    catalog_backed: bool = False,
+    workflow_graph: WorkflowGraph | None = None,
+    proof_policy_override: ProofPolicy | None = None,
+    execution_policy_digest: str | None = None,
+) -> FastAPI:
     recorder = TelemetryRecorder(
-        _exporter(telemetry_capture, fail=bool(telemetry_failure))
+        _exporter(telemetry_capture, fail=telemetry_failure)
         if telemetry_capture is not None or telemetry_failure
         else None
     )
@@ -231,13 +267,55 @@ def _serve(
         telemetry=recorder,
     )
     resolver = CatalogComponentResolver(catalog) if catalog_backed else None
+    selected_policy = proof_policy_override or proof_policy()
     proof_store = PostgresProof(
         runtime_dsn,
-        policies=() if catalog_backed else (proof_policy(),),
+        policies=() if catalog_backed else (selected_policy,),
         policy_pins=PostgresWorkflowPolicyPins(),
         policy_resolver=resolver,
         telemetry=recorder,
     )
+    record = PostgresRecord(runtime_dsn, standby_dsn=standby_dsn, telemetry=recorder)
+    work = Work(record, writer=PostgresWork(runtime_dsn), telemetry=recorder)
+    workflow = _workflow(
+        runtime_dsn,
+        proof_store,
+        resolver,
+        recorder,
+        catalog_backed=catalog_backed,
+        workflow_graph=workflow_graph,
+        proof_policy_override=proof_policy_override,
+        selected_policy=selected_policy,
+        execution_policy_digest=execution_policy_digest,
+    )
+    return create_app(
+        record,
+        proof=Proof(writer=proof_store),
+        workflow=workflow,
+        work=work,
+        catalog=catalog if catalog_backed else None,
+        projections=(
+            Projections(PostgresProjections(projection_dsn)) if projection_dsn is not None else None
+        ),
+        attention=Attention(PostgresAttention(runtime_dsn)),
+        board_context=BoardContextFacts(PostgresBoardContextFacts(runtime_dsn)),
+        inbox=(Inbox(PostgresInbox(runtime_dsn)) if projection_dsn is not None else None),
+        telemetry=recorder,
+    )
+
+
+def _workflow(
+    runtime_dsn: str,
+    proof_store: PostgresProof,
+    resolver: CatalogComponentResolver | None,
+    recorder: TelemetryRecorder,
+    *,
+    catalog_backed: bool,
+    workflow_graph: WorkflowGraph | None,
+    proof_policy_override: ProofPolicy | None,
+    selected_policy: ProofPolicy,
+    execution_policy_digest: str | None,
+) -> Workflow:
     workflow_store = PostgresWorkflow(
         runtime_dsn,
         proof_gate=proof_store,
@@ -247,35 +325,35 @@ def _serve(
     graph_payload = json.loads(
         (ROOT / "packs/workflows/ctower.trust-spine-four-stage/v1.yaml").read_text(encoding="utf-8")
     )
-    record = PostgresRecord(runtime_dsn, standby_dsn=standby_dsn, telemetry=recorder)
-    work = Work(record, writer=PostgresWork(runtime_dsn), telemetry=recorder)
-    uvicorn.run(
-        create_app(
-            record,
-            proof=Proof(writer=proof_store),
-            workflow=Workflow(
-                () if catalog_backed else (WorkflowGraph.from_mapping(graph_payload),),
-                writer=workflow_store,
-                policy_digests={} if catalog_backed else _policy_digests(),
-                resolver=resolver,
-            ),
-            work=work,
-            catalog=catalog if catalog_backed else None,
-            projections=(
-                Projections(PostgresProjections(projection_dsn))
-                if projection_dsn is not None
-                else None
-            ),
-            attention=Attention(PostgresAttention(runtime_dsn)),
-            board_context=BoardContextFacts(PostgresBoardContextFacts(runtime_dsn)),
-            inbox=(Inbox(PostgresInbox(runtime_dsn)) if projection_dsn is not None else None),
-            telemetry=recorder,
-        ),
-        host=host,
-        port=port,
-        log_level="error",
-        access_log=False,
+    graph = workflow_graph or WorkflowGraph.from_mapping(graph_payload)
+    policy_digests = _selected_policy_digests(
+        graph, proof_policy_override, selected_policy, execution_policy_digest
     )
+    return Workflow(
+        () if catalog_backed else (graph,),
+        writer=workflow_store,
+        policy_digests={} if catalog_backed else policy_digests,
+        resolver=resolver,
+    )
+
+
+def _selected_policy_digests(
+    graph: WorkflowGraph,
+    override: ProofPolicy | None,
+    selected: ProofPolicy,
+    execution_policy_digest: str | None,
+) -> dict[str, str]:
+    if override is None:
+        return _policy_digests()
+    if execution_policy_digest is None:
+        raise ValueError("proof policy override requires an execution policy digest")
+    if graph.execution_policy_ref is None:
+        raise ValueError("proof policy override requires an execution policy reference")
+    return {
+        graph.execution_policy_ref: execution_policy_digest,
+        selected.gate_policy_ref: selected.gate_policy_digest,
+        selected.evidence_policy_ref: selected.evidence_policy_digest,
+    }
 
 
 def _exporter(capture: Path | None, *, fail: bool) -> Callable[[dict[str, object]], None]:

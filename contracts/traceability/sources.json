@@ -830,6 +830,17 @@
       ]
     },
     {
+      "path": "contracts/workflow/workflow-v2.schema.json",
+      "references": [
+        "SPEC#versioned-workflow-and-execution-policy-contract",
+        "SPEC#review-rounds-lineages-generations-and-budgets",
+        "INV-19",
+        "INV-43",
+        "AC-WF-06",
+        "AC-EVD-04"
+      ]
+    },
+    {
       "path": "contracts/workflow/workflow.schema.json",
       "references": [
         "SPEC#versioned-workflow-and-execution-policy-contract",
@@ -1879,6 +1890,19 @@
         "SPEC#persistence-authority",
         "INV-03",
         "INV-34"
+      ]
+    },
+    {
+      "path": "packages/ctower-kernel/migrations/0049_review_dispatch_effect.sql",
+      "references": [
+        "SPEC#versioned-workflow-and-execution-policy-contract",
+        "SPEC#review-rounds-lineages-generations-and-budgets",
+        "SPEC#persistence-authority",
+        "INV-03",
+        "INV-19",
+        "INV-43",
+        "AC-WF-06",
+        "AC-EVD-04"
       ]
     },
     {

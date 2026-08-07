@@ -1,5 +1,5 @@
 // DO NOT EDIT: generated file; regenerate from declared inputs.
-// Authored contract digest: sha256:58c506c7dc1755f416adb38de169d6a52c2afbb898b67c8c6ed5caf072ac15ec
+// Authored contract digest: sha256:b71392111bdb294c855f76a29951d7f81cd3477cfc3707ecb396dacfc7a36961
 
 import type * as Models from "./models.js";
 import { OPERATIONS, type OperationId } from "./operations.js";
@@ -90,6 +90,13 @@ export type CommitCtowerProjectDevelopmentEpochInput = Readonly<{
   readonly body: Models.CtowerProjectEpochRefusalRequest;
 }>;
 
+export type ConsumeReviewDispatchEffectInput = Readonly<{
+  readonly "ticketId": string;
+  readonly "effectId": string;
+  readonly "IdempotencyKey": string;
+  readonly body: Models.ReviewDispatchConsumeRequest;
+}>;
+
 export type CreateCtowerProjectImportRunInput = Readonly<{
   readonly "IdempotencyKey": string;
   readonly body: Models.CtowerProjectImportRunCreateRequest;
@@ -175,6 +182,10 @@ export type ListProjectSessionsInput = Readonly<{
   readonly "projectKey": string;
   readonly "cursor"?: number;
   readonly "limit"?: number;
+}>;
+
+export type ListReviewDispatchEffectsInput = Readonly<{
+  readonly "ticketId": string;
 }>;
 
 export type ListTicketAssignmentsInput = Readonly<{
@@ -325,6 +336,7 @@ export type OperationInputs = Readonly<{
   readonly "changeTicketAssignment": ChangeTicketAssignmentInput;
   readonly "changeTicketPriority": ChangeTicketPriorityInput;
   readonly "commitCtowerProjectDevelopmentEpoch": CommitCtowerProjectDevelopmentEpochInput;
+  readonly "consumeReviewDispatchEffect": ConsumeReviewDispatchEffectInput;
   readonly "createCtowerProjectImportRun": CreateCtowerProjectImportRunInput;
   readonly "createTicket": CreateTicketInput;
   readonly "exportCompanyBundle": ExportCompanyBundleInput;
@@ -342,6 +354,7 @@ export type OperationInputs = Readonly<{
   readonly "listInboxThreads": ListInboxThreadsInput;
   readonly "listProjectEvents": ListProjectEventsInput;
   readonly "listProjectSessions": ListProjectSessionsInput;
+  readonly "listReviewDispatchEffects": ListReviewDispatchEffectsInput;
   readonly "listTicketAssignments": ListTicketAssignmentsInput;
   readonly "listTicketAuditEvents": ListTicketAuditEventsInput;
   readonly "listTicketSessions": ListTicketSessionsInput;
@@ -383,6 +396,7 @@ export type OperationResults = Readonly<{
   readonly "changeTicketAssignment": Models.WorkReceipt;
   readonly "changeTicketPriority": Models.WorkReceipt;
   readonly "commitCtowerProjectDevelopmentEpoch": never;
+  readonly "consumeReviewDispatchEffect": Models.WorkReceipt;
   readonly "createCtowerProjectImportRun": Models.CtowerProjectImportRun;
   readonly "createTicket": Models.TicketCommandResult;
   readonly "exportCompanyBundle": Models.CompanyBundleExportResult;
@@ -400,6 +414,7 @@ export type OperationResults = Readonly<{
   readonly "listInboxThreads": Models.InboxThreadList;
   readonly "listProjectEvents": Models.ProjectEventPage;
   readonly "listProjectSessions": Models.ProjectSessionPage;
+  readonly "listReviewDispatchEffects": Models.ReviewDispatchEffectList;
   readonly "listTicketAssignments": Models.AssignmentList;
   readonly "listTicketAuditEvents": Models.AuditPage;
   readonly "listTicketSessions": Models.TicketSessionList;
@@ -529,6 +544,12 @@ export class CtowerClient {
     return this.execute("commitCtowerProjectDevelopmentEpoch", input);
   }
 
+  public async consumeReviewDispatchEffect(
+    input: ConsumeReviewDispatchEffectInput,
+  ): Promise<Models.WorkReceipt> {
+    return this.execute("consumeReviewDispatchEffect", input);
+  }
+
   public async createCtowerProjectImportRun(
     input: CreateCtowerProjectImportRunInput,
   ): Promise<Models.CtowerProjectImportRun> {
@@ -629,6 +650,12 @@ export class CtowerClient {
     input: ListProjectSessionsInput,
   ): Promise<Models.ProjectSessionPage> {
     return this.execute("listProjectSessions", input);
+  }
+
+  public async listReviewDispatchEffects(
+    input: ListReviewDispatchEffectsInput,
+  ): Promise<Models.ReviewDispatchEffectList> {
+    return this.execute("listReviewDispatchEffects", input);
   }
 
   public async listTicketAssignments(

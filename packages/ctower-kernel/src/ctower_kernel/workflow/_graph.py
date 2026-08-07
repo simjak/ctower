@@ -9,7 +9,7 @@ from collections.abc import Mapping
 from dataclasses import dataclass
 from enum import StrEnum
 
-__all__ = ["ActivityClass", "Stage", "Transition", "WorkflowGraph"]
+__all__ = ["ActivityClass", "Stage", "Transition", "WorkflowEntryEffect", "WorkflowGraph"]
 
 _STABLE_KEY = re.compile(r"^[a-z][a-z0-9._-]*$")
 _VERSIONED_REFERENCE = re.compile(r"^[a-z][a-z0-9._-]*@[1-9][0-9]*$")
@@ -22,16 +22,25 @@ class ActivityClass(StrEnum):
     VERIFICATION = "verification"
 
 
+class WorkflowEntryEffect(StrEnum):
+    """Authored intents emitted when a transition enters a stage."""
+
+    REVIEW_CREW_DISPATCH = "review_crew_dispatch"
+
+
 @dataclass(frozen=True, slots=True)
 class Stage:
     """One authored graph node."""
 
     key: str
     activity_class: ActivityClass
+    entry_effects: tuple[WorkflowEntryEffect, ...] = ()
 
     def __post_init__(self) -> None:
         if _STABLE_KEY.fullmatch(self.key) is None:
             raise ValueError("stage key must be stable")
+        if len(set(self.entry_effects)) != len(self.entry_effects):
+            raise ValueError("stage entry effects must be unique")
 
 
 @dataclass(frozen=True, slots=True)
@@ -83,6 +92,7 @@ class WorkflowGraph:
     transitions: tuple[Transition, ...]
     execution_policy_ref: str | None = None
     gate_policy_ref: str | None = None
+    schema: str = "ctower.workflow/v1"
 
     def __post_init__(self) -> None:
         if _STABLE_KEY.fullmatch(self.key) is None:
@@ -101,6 +111,18 @@ class WorkflowGraph:
     def digest(self) -> str:
         """Return an exact digest over fields that control graph evaluation."""
 
+        stages: list[dict[str, object]] = [
+            {"activity_class": stage.activity_class.value, "key": stage.key}
+            for stage in self.stages
+        ]
+        if self.schema == "ctower.workflow/v2":
+            stages = [
+                {
+                    **stage_payload,
+                    "entry_effects": [effect.value for effect in stage.entry_effects],
+                }
+                for stage_payload, stage in zip(stages, self.stages, strict=True)
+            ]
         payload = {
             "initial_stage": self.initial_stage,
             "policy_refs": {
@@ -108,10 +130,7 @@ class WorkflowGraph:
                 "gates": self.gate_policy_ref,
             },
             "reference": self.reference,
-            "stages": [
-                {"activity_class": stage.activity_class.value, "key": stage.key}
-                for stage in self.stages
-            ],
+            "stages": stages,
             "transitions": [
                 {
                     "from": edge.source,
@@ -145,22 +164,27 @@ class WorkflowGraph:
                 "note",
             },
         )
-        policy_refs = _validate_metadata(payload)
+        schema = _validate_metadata(payload)
+        policy_refs = _object(payload["policy_refs"], "policy_refs")
         return cls(
             key=_string(payload["key"], "key"),
             revision=_integer(payload["revision"], "revision"),
             initial_stage=_string(payload["initial_stage"], "initial_stage"),
-            stages=tuple(_stage(item) for item in _objects(payload["stages"], "stages")),
+            stages=tuple(
+                _stage(item, schema=schema) for item in _objects(payload["stages"], "stages")
+            ),
             transitions=tuple(
                 _transition(item) for item in _objects(payload["transitions"], "transitions")
             ),
             execution_policy_ref=_string(policy_refs["execution"], "execution"),
             gate_policy_ref=_string(policy_refs["gates"], "gates"),
+            schema=schema,
         )
 
 
-def _validate_metadata(payload: Mapping[str, object]) -> Mapping[str, object]:
-    if payload["schema"] != "ctower.workflow/v1":
+def _validate_metadata(payload: Mapping[str, object]) -> str:
+    schema = _string(payload["schema"], "schema")
+    if schema not in {"ctower.workflow/v1", "ctower.workflow/v2"}:
         raise ValueError("workflow schema is unsupported")
     if payload["status"] not in {"draft", "staged", "published", "superseded", "revoked"}:
         raise ValueError("workflow status is unsupported")
@@ -178,7 +202,7 @@ def _validate_metadata(payload: Mapping[str, object]) -> Mapping[str, object]:
         raise ValueError("workflow policy references must be versioned")
     for route in _objects(payload["failure_routes"], "failure_routes"):
         _validate_failure_route(route)
-    return policy_refs
+    return schema
 
 
 def _validate_failure_route(payload: Mapping[str, object]) -> None:
@@ -197,12 +221,28 @@ def _validate_failure_route(payload: Mapping[str, object]) -> None:
         raise ValueError("failure route class must be versioned")
 
 
-def _stage(payload: Mapping[str, object]) -> Stage:
-    _require_keys(payload, {"key", "activity_class"})
+def _stage(payload: Mapping[str, object], *, schema: str) -> Stage:
+    expected = (
+        {"key", "activity_class", "entry_effects"}
+        if schema == "ctower.workflow/v2"
+        else {"key", "activity_class"}
+    )
+    _require_keys(payload, expected)
+    effects = (
+        tuple(_entry_effect(item) for item in _objects(payload["entry_effects"], "entry_effects"))
+        if schema == "ctower.workflow/v2"
+        else ()
+    )
     return Stage(
         key=_string(payload["key"], "stage.key"),
         activity_class=ActivityClass(_string(payload["activity_class"], "activity_class")),
+        entry_effects=effects,
     )
+
+
+def _entry_effect(payload: Mapping[str, object]) -> WorkflowEntryEffect:
+    _require_keys(payload, {"kind"})
+    return WorkflowEntryEffect(_string(payload["kind"], "entry_effect.kind"))
 
 
 def _transition(payload: Mapping[str, object]) -> Transition:

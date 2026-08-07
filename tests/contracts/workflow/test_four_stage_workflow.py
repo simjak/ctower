@@ -40,6 +40,7 @@ def test_workflow_contract_home_contains_only_graph_authority() -> None:
     assert authored == {
         "review-plan.schema.json",
         "workflow-definition.schema.json",
+        "workflow-v2.schema.json",
         "workflow.schema.json",
     }
 

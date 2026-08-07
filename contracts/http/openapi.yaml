@@ -447,6 +447,47 @@
         }
       }
     },
+    "/v1/tickets/{ticket_id}/workflow/review-dispatches": {
+      "get": {
+        "operationId": "listReviewDispatchEffects",
+        "x-ctower-cli": "ticket review-dispatch list",
+        "x-ctower-mutation": false,
+        "x-ctower-spool": "forbidden",
+        "security": [{"bearerAuth": []}],
+        "parameters": [{"$ref": "#/components/parameters/TicketId"}],
+        "responses": {
+          "200": {"description": "Review dispatch effects with consumption and verdict links", "content": {"application/json": {"schema": {"$ref": "#/components/schemas/ReviewDispatchEffectList"}}}},
+          "401": {"$ref": "#/components/responses/ProblemResponse"},
+          "403": {"$ref": "#/components/responses/ProblemResponse"},
+          "404": {"$ref": "#/components/responses/ProblemResponse"},
+          "422": {"$ref": "#/components/responses/ProblemResponse"}
+        }
+      }
+    },
+    "/v1/tickets/{ticket_id}/workflow/review-dispatches/{effect_id}/consume": {
+      "post": {
+        "operationId": "consumeReviewDispatchEffect",
+        "x-ctower-cli": "ticket review-dispatch consume",
+        "x-ctower-mutation": true,
+        "x-ctower-spool": "allowed",
+        "security": [{"bearerAuth": []}],
+        "parameters": [
+          {"$ref": "#/components/parameters/TicketId"},
+          {"name": "effect_id", "in": "path", "required": true, "schema": {"type": "string", "format": "uuid"}},
+          {"$ref": "#/components/parameters/IdempotencyKey"}
+        ],
+        "requestBody": {"required": true, "content": {"application/json": {"schema": {"$ref": "#/components/schemas/ReviewDispatchConsumeRequest"}}}},
+        "responses": {
+          "202": {"description": "Semantic result committed; off-host durability acknowledgement pending", "headers": {"Retry-After": {"$ref": "#/components/headers/RetryAfter"}}, "content": {"application/json": {"schema": {"$ref": "#/components/schemas/WorkReceipt"}}}},
+          "200": {"description": "Review dispatch consumption accepted off host", "content": {"application/json": {"schema": {"$ref": "#/components/schemas/WorkReceipt"}}}},
+          "401": {"$ref": "#/components/responses/ProblemResponse"},
+          "403": {"$ref": "#/components/responses/ProblemResponse"},
+          "404": {"$ref": "#/components/responses/ProblemResponse"},
+          "409": {"$ref": "#/components/responses/ProblemResponse"},
+          "422": {"$ref": "#/components/responses/ProblemResponse"}
+        }
+      }
+    },
     "/v1/tickets/{ticket_id}/priority": {
       "post": {
         "operationId": "changeTicketPriority",
@@ -3024,6 +3065,13 @@
               "proof-policy-pin-mismatch",
               "proof-self-review-refused",
               "proof-verdict-id-conflict",
+              "review-dispatch-already-consumed",
+              "review-dispatch-family-conflict",
+              "review-dispatch-incomplete",
+              "review-dispatch-input-missing",
+              "review-dispatch-model-unbound",
+              "review-dispatch-self-review",
+              "review-dispatch-unavailable",
               "seat-binding-conflict",
               "seat-credential-active",
               "seat-credential-unavailable",
@@ -3676,6 +3724,61 @@
           "operation": {"type": "string", "enum": ["priority_changed", "assignment_changed", "admitted", "deferred", "blocker_opened", "blocker_resolved", "reopened", "relation_added"]},
           "ticket_id": {"type": "string", "format": "uuid"},
           "version": {"type": "integer", "minimum": 2}
+        }
+      },
+      "ReviewDispatchConsumeRequest": {
+        "type": "object", "additionalProperties": false,
+        "required": ["expected_version", "reason", "crew_name"],
+        "properties": {
+          "expected_version": {"type": "integer", "minimum": 1},
+          "reason": {"type": "string", "minLength": 1, "maxLength": 500},
+          "crew_name": {"type": "string", "pattern": "^[a-z][a-z0-9._-]{1,95}$"}
+        }
+      },
+      "ReviewDispatchConsumption": {
+        "type": "object", "additionalProperties": false,
+        "required": ["reviewer_principal_id", "author_family", "reviewer_model_ref", "reviewer_family", "crew_name", "consumed_by", "consumed_at"],
+        "properties": {
+          "reviewer_principal_id": {"type": "string", "format": "uuid"},
+          "author_family": {"type": "string", "pattern": "^[a-z][a-z0-9._-]{1,95}$"},
+          "reviewer_model_ref": {"type": "string", "minLength": 1, "maxLength": 128},
+          "reviewer_family": {"type": "string", "pattern": "^[a-z][a-z0-9._-]{1,95}$"},
+          "crew_name": {"type": "string", "pattern": "^[a-z][a-z0-9._-]{1,95}$"},
+          "consumed_by": {"type": "string", "format": "uuid"},
+          "consumed_at": {"type": "string", "format": "date-time"}
+        }
+      },
+      "ReviewDispatchEffect": {
+        "type": "object", "additionalProperties": false,
+        "required": ["effect_id", "workflow_run_id", "ticket_id", "workflow_version", "destination_stage", "candidate_digest", "author_principal_id", "author_model_ref", "author_family", "repository", "change_identity", "pr_reference", "routing_policy_ref", "reviewer_family_rule", "lenses", "emitted_at", "consumption", "verdict_ids", "status"],
+        "properties": {
+          "effect_id": {"type": "string", "format": "uuid"},
+          "workflow_run_id": {"type": "string", "format": "uuid"},
+          "ticket_id": {"type": "string", "format": "uuid"},
+          "workflow_version": {"type": "integer", "minimum": 2},
+          "destination_stage": {"type": "string", "pattern": "^[a-z][a-z0-9._-]*$"},
+          "candidate_digest": {"type": "string", "pattern": "^sha256:[a-f0-9]{64}$"},
+          "author_principal_id": {"type": "string", "format": "uuid"},
+          "author_model_ref": {"type": "string", "minLength": 1, "maxLength": 128},
+          "author_family": {"type": "string", "pattern": "^[a-z][a-z0-9._-]{1,95}$"},
+          "repository": {"type": "string", "minLength": 1, "maxLength": 256},
+          "change_identity": {"type": "string", "minLength": 1, "maxLength": 128},
+          "pr_reference": {"type": "string", "minLength": 1, "maxLength": 256},
+          "routing_policy_ref": {"type": "string", "pattern": "^[a-z][a-z0-9._-]*@[1-9][0-9]*$"},
+          "reviewer_family_rule": {"const": "different_from_author"},
+          "lenses": {"type": "array", "minItems": 1, "uniqueItems": true, "items": {"type": "string", "pattern": "^[a-z][a-z0-9._-]*$"}},
+          "emitted_at": {"type": "string", "format": "date-time"},
+          "consumption": {"oneOf": [{"$ref": "#/components/schemas/ReviewDispatchConsumption"}, {"type": "null"}]},
+          "verdict_ids": {"type": "array", "uniqueItems": true, "items": {"type": "string", "format": "uuid"}},
+          "status": {"type": "string", "enum": ["emitted", "consumed", "verdict_linked"]}
+        }
+      },
+      "ReviewDispatchEffectList": {
+        "type": "object", "additionalProperties": false,
+        "required": ["ticket_id", "effects"],
+        "properties": {
+          "ticket_id": {"type": "string", "format": "uuid"},
+          "effects": {"type": "array", "items": {"$ref": "#/components/schemas/ReviewDispatchEffect"}}
         }
       },
       "BoardLane": {

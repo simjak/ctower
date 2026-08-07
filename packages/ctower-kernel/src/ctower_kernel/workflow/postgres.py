@@ -13,6 +13,7 @@ from ctower_kernel.record.transaction import recover_ambiguous_commit
 from ctower_kernel.telemetry import NoopTelemetry, Telemetry, TelemetryContext
 from ctower_kernel.workflow import (
     ResolveClose,
+    ReviewDispatchEffect,
     Workflow,
     WorkflowActor,
     WorkflowMutation,
@@ -22,6 +23,7 @@ from ctower_kernel.workflow import (
 from ctower_kernel.workflow._close_sql import close_workflow as _close
 from ctower_kernel.workflow._postgres_sql import ProofGate, WorkReadinessGate
 from ctower_kernel.workflow._postgres_sql import advance_workflow as _advance
+from ctower_kernel.workflow._review_dispatch_sql import review_dispatches as _review_dispatches
 from ctower_kernel.workflow._start_sql import start_workflow as _start
 
 __all__ = ["PostgresWorkflow", "PostgresWorkflowPolicyPins"]
@@ -160,6 +162,13 @@ class PostgresWorkflow:
         )
         self._emit("workflow.close", telemetry, outcome)
         return outcome
+
+    def review_dispatches(
+        self, actor: WorkflowActor, ticket_id: UUID
+    ) -> tuple[ReviewDispatchEffect, ...] | RecordProblem:
+        """Return ticket-visible review dispatch joins."""
+
+        return _review_dispatches(self._dsn, actor, ticket_id)
 
     def _emit(self, name: str, telemetry: TelemetryContext, outcome: object) -> None:
         self._telemetry.emit(

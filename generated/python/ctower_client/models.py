@@ -1,6 +1,6 @@
 """DO NOT EDIT: generated file; regenerate from declared inputs.
 
-Authored contract digest: sha256:58c506c7dc1755f416adb38de169d6a52c2afbb898b67c8c6ed5caf072ac15ec
+Authored contract digest: sha256:b71392111bdb294c855f76a29951d7f81cd3477cfc3707ecb396dacfc7a36961
 """
 
 from __future__ import annotations
@@ -167,6 +167,10 @@ __all__ = [
     "ReopenIntent",
     "ReopenedAuditData",
     "ResolveCloseRequest",
+    "ReviewDispatchConsumeRequest",
+    "ReviewDispatchConsumption",
+    "ReviewDispatchEffect",
+    "ReviewDispatchEffectList",
     "SeatCatalogRevision",
     "SeatCredentialIssueRequest",
     "SeatCredentialReceipt",
@@ -1199,6 +1203,22 @@ class ResolveCloseRequest(_BoundaryModel):
     workflow_ref: Annotated[str, Field(pattern="^[a-z][a-z0-9._-]*@[1-9][0-9]*$")] | None = None
 
 
+class ReviewDispatchConsumeRequest(_BoundaryModel):
+    expected_version: Annotated[int, Field(ge=1, le=9007199254740991)]
+    reason: Annotated[str, Field(min_length=1, max_length=500)]
+    crew_name: Annotated[str, Field(pattern="^[a-z][a-z0-9._-]{1,95}$")]
+
+
+class ReviewDispatchConsumption(_BoundaryModel):
+    reviewer_principal_id: UUID
+    author_family: Annotated[str, Field(pattern="^[a-z][a-z0-9._-]{1,95}$")]
+    reviewer_model_ref: Annotated[str, Field(min_length=1, max_length=128)]
+    reviewer_family: Annotated[str, Field(pattern="^[a-z][a-z0-9._-]{1,95}$")]
+    crew_name: Annotated[str, Field(pattern="^[a-z][a-z0-9._-]{1,95}$")]
+    consumed_by: UUID
+    consumed_at: _Rfc3339DateTime
+
+
 class SeatCatalogRevision(_BoundaryModel):
     catalog_key: Annotated[str, Field(pattern="^[a-z][a-z0-9.-]{2,127}$")]
     revision: Annotated[int, Field(ge=1, le=9007199254740991)]
@@ -1877,6 +1897,13 @@ class Problem(_BoundaryModel):
         "proof-policy-pin-mismatch",
         "proof-self-review-refused",
         "proof-verdict-id-conflict",
+        "review-dispatch-already-consumed",
+        "review-dispatch-family-conflict",
+        "review-dispatch-incomplete",
+        "review-dispatch-input-missing",
+        "review-dispatch-model-unbound",
+        "review-dispatch-self-review",
+        "review-dispatch-unavailable",
         "seat-binding-conflict",
         "seat-credential-active",
         "seat-credential-unavailable",
@@ -1968,6 +1995,28 @@ class ReopenedAuditData(_BoundaryModel):
     episode_number: Annotated[int, Field(ge=2, le=9007199254740991)]
     priority: Priority
     reason: Annotated[str, Field(min_length=1, max_length=500)]
+
+
+class ReviewDispatchEffect(_BoundaryModel):
+    effect_id: UUID
+    workflow_run_id: UUID
+    ticket_id: UUID
+    workflow_version: Annotated[int, Field(ge=2, le=9007199254740991)]
+    destination_stage: Annotated[str, Field(pattern="^[a-z][a-z0-9._-]*$")]
+    candidate_digest: Annotated[str, Field(pattern="^sha256:[a-f0-9]{64}$")]
+    author_principal_id: UUID
+    author_model_ref: Annotated[str, Field(min_length=1, max_length=128)]
+    author_family: Annotated[str, Field(pattern="^[a-z][a-z0-9._-]{1,95}$")]
+    repository: Annotated[str, Field(min_length=1, max_length=256)]
+    change_identity: Annotated[str, Field(min_length=1, max_length=128)]
+    pr_reference: Annotated[str, Field(min_length=1, max_length=256)]
+    routing_policy_ref: Annotated[str, Field(pattern="^[a-z][a-z0-9._-]*@[1-9][0-9]*$")]
+    reviewer_family_rule: Literal["different_from_author"]
+    lenses: Annotated[tuple[Annotated[str, Field(pattern="^[a-z][a-z0-9._-]*$")], ...], Field(min_length=1)]
+    emitted_at: _Rfc3339DateTime
+    consumption: ReviewDispatchConsumption | None
+    verdict_ids: tuple[UUID, ...]
+    status: Literal["emitted", "consumed", "verdict_linked"]
 
 
 class SeatCredentialIssueRequest(_BoundaryModel):
@@ -2317,6 +2366,11 @@ class ProjectSessionPage(_BoundaryModel):
     next_cursor: Annotated[int, Field(ge=1, le=9007199254740991)] | None
     project_key: Annotated[str, Field(pattern="^[a-z][a-z0-9-]{2,63}$")]
     sessions: tuple[TicketSession, ...]
+
+
+class ReviewDispatchEffectList(_BoundaryModel):
+    ticket_id: UUID
+    effects: tuple[ReviewDispatchEffect, ...]
 
 
 class SessionClosedAuditEvent(_BoundaryModel):
