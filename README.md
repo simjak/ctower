@@ -24,6 +24,7 @@ that records what happened.
 > [What works today](#what-works-today) is the honest split.
 
 **Right now you can:** [see exactly what works](#what-works-today) ·
+[read the operator quickstart](docs/QUICKSTART.md) ·
 [clone it and run its checks](#getting-started) ·
 [read the docs](https://simjak.github.io/ctower/) · [see the whole design in one map](docs/concepts/map.md)
 
