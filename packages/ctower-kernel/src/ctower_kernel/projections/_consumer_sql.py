@@ -134,7 +134,6 @@ def reset_projection(dsn: str, tenant_id: UUID) -> None:
     with psycopg.connect(dsn, row_factory=dict_row) as connection:
         connection.execute("SET ROLE ctower_projection")
         connection.execute("DELETE FROM board_projection_rows WHERE tenant_id = %s", (tenant_id,))
-        connection.execute("DELETE FROM inbox_projection_reads WHERE tenant_id = %s", (tenant_id,))
         connection.execute(
             "DELETE FROM inbox_projection_messages WHERE tenant_id = %s", (tenant_id,)
         )

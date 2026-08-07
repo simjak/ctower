@@ -1,6 +1,6 @@
 """DO NOT EDIT: generated file; regenerate from declared inputs.
 
-Authored contract digest: sha256:bf47097d1b5c8bd6e460b44d2c139d66ddfbf2d7a5d83e24c6b423cdbeb985d8
+Authored contract digest: sha256:aa5d49950e972e14cd877c942731becfaf9d0f98b0451b1b3c66902ab0953253
 """
 
 from __future__ import annotations
@@ -45,6 +45,19 @@ class OperationSpec:
 
 OPERATIONS = MappingProxyType(
     {
+        "acknowledgeInboxMessage": OperationSpec(
+            operation_id="acknowledgeInboxMessage",
+            client_method="acknowledge_inbox_message",
+            method="POST",
+            path="/v1/inbox/messages/{message_id}/ack",
+            request_model=_models.InboxAcknowledgeRequest,
+            response_model=_models.InboxAcknowledgeResult,
+            cli_names=('inbox ack',),
+            mutation=True,
+            spool_policy=SpoolPolicy.ALLOWED,
+            principal=None,
+            refusal_only=False,
+        ),
         "addKnowledgeDocument": OperationSpec(
             operation_id="addKnowledgeDocument",
             client_method="add_knowledge_document",
@@ -591,6 +604,19 @@ OPERATIONS = MappingProxyType(
             principal=None,
             refusal_only=False,
         ),
+        "readInboxMessageState": OperationSpec(
+            operation_id="readInboxMessageState",
+            client_method="read_inbox_message_state",
+            method="GET",
+            path="/v1/inbox/threads/{thread_id}/read-state",
+            request_model=None,
+            response_model=_models.InboxReadState,
+            cli_names=('inbox read-state',),
+            mutation=False,
+            spool_policy=SpoolPolicy.FORBIDDEN,
+            principal=None,
+            refusal_only=False,
+        ),
         "readInboxThread": OperationSpec(
             operation_id="readInboxThread",
             client_method="read_inbox_thread",
@@ -830,6 +856,7 @@ OPERATIONS = MappingProxyType(
 
 CLI_OPERATIONS = MappingProxyType(
     {
+        "inbox ack": OPERATIONS["acknowledgeInboxMessage"],
         "knowledge add": OPERATIONS["addKnowledgeDocument"],
         "ticket comment add": OPERATIONS["addTicketComment"],
         "ticket relation add": OPERATIONS["addTicketRelation"],
@@ -878,6 +905,7 @@ CLI_OPERATIONS = MappingProxyType(
         "company bundle plan": OPERATIONS["planCompanyBundle"],
         "migration ctower-project prepare": OPERATIONS["prepareCtowerProjectCutover"],
         "intake promote": OPERATIONS["promoteIntakeEvent"],
+        "inbox read-state": OPERATIONS["readInboxMessageState"],
         "inbox read": OPERATIONS["readInboxThread"],
         "attention finding disposition": OPERATIONS["recordAttentionFindingDisposition"],
         "ops outbox poison dispose": OPERATIONS["recordOutboxPoisonDisposition"],

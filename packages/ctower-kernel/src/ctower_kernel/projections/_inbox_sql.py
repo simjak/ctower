@@ -9,6 +9,11 @@ from uuid import UUID
 import psycopg
 from psycopg.rows import dict_row
 
+from ctower_kernel.projections.inbox import (
+    InboxDeliveryState,
+    InboxMessageReadState,
+    InboxReadState,
+)
 from ctower_kernel.projections.interface import (
     InboxMessage,
     InboxThread,
@@ -32,6 +37,15 @@ def apply_message(
         _open_thread(connection, tenant_id, payload)
     elif kind is EventKind.INBOX_MESSAGE_APPENDED:
         _append_message(connection, tenant_id, payload, cast(datetime, message["server_time"]))
+    elif kind in {EventKind.INBOX_MESSAGE_DELIVERED, EventKind.INBOX_MESSAGE_READ}:
+        _apply_delivery(
+            connection,
+            tenant_id,
+            kind,
+            payload,
+            cast(UUID, message["event_id"]),
+            cast(datetime, message["server_time"]),
+        )
     elif kind is EventKind.INBOX_THREAD_PROMOTED_TO_TICKET:
         connection.execute(
             """
@@ -54,15 +68,11 @@ def list_threads(dsn: str, actor: Actor, *, unread: bool) -> InboxThreadList:
                      THEN thread.participant_b_seat
                      ELSE thread.participant_a_seat END AS other_agent,
                 count(message.message_id) FILTER (
-                    WHERE message.recipient_id = %s
-                      AND message.position > COALESCE(read.through_position, 0)
+                    WHERE message.recipient_id = %s AND message.read_at IS NULL
                 ) AS unread_count
             FROM inbox_projection_threads AS thread
             LEFT JOIN inbox_projection_messages AS message
               ON message.tenant_id = thread.tenant_id AND message.thread_id = thread.thread_id
-            LEFT JOIN inbox_projection_reads AS read
-              ON read.tenant_id = thread.tenant_id AND read.thread_id = thread.thread_id
-             AND read.principal_id = %s
             WHERE thread.tenant_id = %s
               AND %s IN (thread.participant_a_id, thread.participant_b_id)
             GROUP BY thread.thread_id, thread.promoted_ticket_id,
@@ -71,7 +81,6 @@ def list_threads(dsn: str, actor: Actor, *, unread: bool) -> InboxThreadList:
             ORDER BY thread.last_message_at DESC, thread.thread_id
             """,
             (
-                actor.principal_id,
                 actor.principal_id,
                 actor.principal_id,
                 actor.tenant_id,
@@ -91,8 +100,6 @@ def read_thread(
     dsn: str,
     actor: Actor,
     thread_id: UUID,
-    *,
-    now: datetime,
 ) -> InboxThread | None:
     with psycopg.connect(dsn, row_factory=dict_row) as connection:
         connection.execute("SET ROLE ctower_projection")
@@ -115,19 +122,15 @@ def read_thread(
         ).fetchall()
         if not rows:
             raise RuntimeError("projected inbox thread has no message")
-        through = max(int(cast(int, row["position"])) for row in rows)
-        connection.execute(
-            """
-            INSERT INTO inbox_projection_reads (
-                tenant_id, thread_id, principal_id, through_position, read_at
-            ) VALUES (%s, %s, %s, %s, %s)
-            ON CONFLICT (tenant_id, thread_id, principal_id) DO UPDATE SET
-                through_position = GREATEST(
-                    inbox_projection_reads.through_position, EXCLUDED.through_position
-                ),
-                read_at = EXCLUDED.read_at
-            """,
-            (actor.tenant_id, thread_id, actor.principal_id, through, now),
+        incoming_unread = [
+            int(cast(int, row["position"]))
+            for row in rows
+            if row["recipient_id"] == actor.principal_id and row["read_at"] is None
+        ]
+        through = (
+            min(incoming_unread) - 1
+            if incoming_unread
+            else max(int(cast(int, row["position"])) for row in rows)
         )
         return InboxThread(
             messages=tuple(_message(row) for row in rows),
@@ -136,6 +139,29 @@ def read_thread(
             read_through_position=through,
             thread_id=thread_id,
         )
+
+
+def read_state(dsn: str, actor: Actor, thread_id: UUID) -> InboxReadState | None:
+    with psycopg.connect(dsn, row_factory=dict_row) as connection:
+        connection.execute("SET ROLE ctower_projection")
+        thread = connection.execute(
+            """
+            SELECT 1 FROM inbox_projection_threads
+            WHERE tenant_id = %s AND thread_id = %s
+              AND %s IN (participant_a_id, participant_b_id)
+            """,
+            (actor.tenant_id, thread_id, actor.principal_id),
+        ).fetchone()
+        if thread is None:
+            return None
+        rows = connection.execute(
+            """
+            SELECT * FROM inbox_projection_messages
+            WHERE tenant_id = %s AND thread_id = %s ORDER BY position
+            """,
+            (actor.tenant_id, thread_id),
+        ).fetchall()
+    return InboxReadState(tuple(_read_state(row) for row in rows), thread_id)
 
 
 def _open_thread(
@@ -203,6 +229,57 @@ def _append_message(
     )
 
 
+def _apply_delivery(
+    connection: psycopg.Connection[dict[str, object]],
+    tenant_id: UUID,
+    kind: EventKind,
+    payload: dict[str, object],
+    event_id: UUID,
+    recorded_at: datetime,
+) -> None:
+    is_read = kind is EventKind.INBOX_MESSAGE_READ
+    if is_read:
+        existing = connection.execute(
+            """
+            SELECT delivered_event_id FROM inbox_projection_messages
+            WHERE tenant_id = %s AND message_id = %s
+            """,
+            (tenant_id, UUID(str(payload["message_id"]))),
+        ).fetchone()
+        if existing is None or existing["delivered_event_id"] is None:
+            raise ValueError("inbox read fact requires a projected delivery fact")
+    values = (
+        event_id,
+        recorded_at,
+        tenant_id,
+        UUID(str(payload["thread_id"])),
+        UUID(str(payload["message_id"])),
+        UUID(str(cast(dict[str, object], payload["recipient"])["principal_id"])),
+    )
+    if is_read:
+        connection.execute(
+            """
+            UPDATE inbox_projection_messages
+            SET read_event_id = COALESCE(read_event_id, %s),
+                read_at = COALESCE(read_at, %s)
+            WHERE tenant_id = %s AND thread_id = %s AND message_id = %s
+              AND recipient_id = %s
+            """,
+            values,
+        )
+    else:
+        connection.execute(
+            """
+            UPDATE inbox_projection_messages
+            SET delivered_event_id = COALESCE(delivered_event_id, %s),
+                delivered_at = COALESCE(delivered_at, %s)
+            WHERE tenant_id = %s AND thread_id = %s AND message_id = %s
+              AND recipient_id = %s
+            """,
+            values,
+        )
+
+
 def _seat_key(connection: psycopg.Connection[dict[str, object]], actor: Actor) -> str:
     row = connection.execute(
         "SELECT seat_key FROM project_seats WHERE tenant_id = %s AND principal_id = %s",
@@ -230,4 +307,24 @@ def _message(row: dict[str, object]) -> InboxMessage:
         sent_at=cast(datetime, row["sent_at"]),
         text=str(row["content"]),
         to=str(row["recipient_seat"]),
+    )
+
+
+def _read_state(row: dict[str, object]) -> InboxMessageReadState:
+    state = (
+        InboxDeliveryState.READ
+        if row["read_event_id"] is not None
+        else InboxDeliveryState.DELIVERED
+        if row["delivered_event_id"] is not None
+        else InboxDeliveryState.SENT
+    )
+    return InboxMessageReadState(
+        delivered_at=cast(datetime | None, row["delivered_at"]),
+        delivered_event_id=cast(UUID | None, row["delivered_event_id"]),
+        message_id=cast(UUID, row["message_id"]),
+        position=int(cast(int, row["position"])),
+        read_at=cast(datetime | None, row["read_at"]),
+        read_event_id=cast(UUID | None, row["read_event_id"]),
+        recipient=str(row["recipient_seat"]),
+        state=state,
     )

@@ -18,6 +18,9 @@ import pytest
 
 import ctower_kernel.inbox.postgres as inbox_postgres
 from ctower_kernel.inbox import (
+    InboxAcknowledgeCommand,
+    InboxAcknowledgementState,
+    InboxAcknowledgeResult,
     InboxPromotionCommand,
     InboxPromotionResult,
     InboxSendCommand,
@@ -77,6 +80,20 @@ def _promotion_result() -> InboxPromotionResult:
     )
 
 
+def _acknowledge_result() -> InboxAcknowledgeResult:
+    now = datetime.now(UTC)
+    return InboxAcknowledgeResult(
+        command_id=uuid4(),
+        delivered_at=now,
+        event_ids=(uuid4(), uuid4()),
+        message_id=uuid4(),
+        read_at=now,
+        state=InboxAcknowledgementState.READ,
+        thread_id=uuid4(),
+        thread_version=4,
+    )
+
+
 def test_send_replays_through_recover_ambiguous_commit(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
@@ -124,6 +141,34 @@ def test_promote_replays_through_recover_ambiguous_commit(
     outcome = inbox.promote(
         _actor(),
         InboxPromotionCommand(uuid4(), 2, uuid4(), uuid4()),
+        request_digest=bytes(32),
+        now=datetime.now(UTC),
+        telemetry=_telemetry(),
+    )
+
+    assert outcome is durable
+    assert calls == _REPLAY_ATTEMPTS
+
+
+def test_acknowledge_replays_through_recover_ambiguous_commit(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    durable = _acknowledge_result()
+    calls = 0
+
+    def flaky_acknowledge_message(*_args: object, **_kwargs: object) -> InboxAcknowledgeResult:
+        nonlocal calls
+        calls += 1
+        if calls == 1:
+            raise psycopg.OperationalError("connection lost after COMMIT was sent")
+        return durable
+
+    monkeypatch.setattr(inbox_postgres, "acknowledge_message", flaky_acknowledge_message)
+    inbox = PostgresInbox(_DSN)
+
+    outcome = inbox.acknowledge(
+        _actor(),
+        InboxAcknowledgeCommand(uuid4(), uuid4(), InboxAcknowledgementState.READ),
         request_digest=bytes(32),
         now=datetime.now(UTC),
         telemetry=_telemetry(),

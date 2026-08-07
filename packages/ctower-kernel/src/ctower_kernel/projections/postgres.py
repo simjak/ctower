@@ -12,6 +12,7 @@ from ctower_kernel.projections import (
 )
 from ctower_kernel.projections._health_sql import health as _health
 from ctower_kernel.projections._inbox_sql import list_threads as _list_threads
+from ctower_kernel.projections._inbox_sql import read_state as _read_state
 from ctower_kernel.projections._inbox_sql import read_thread as _read_thread
 from ctower_kernel.projections._postgres_sql import board as _board
 from ctower_kernel.projections._postgres_sql import catch_up as _catch_up
@@ -26,6 +27,7 @@ from ctower_kernel.projections._project_delivery_sql import cutover_health as _c
 from ctower_kernel.projections._project_delivery_sql import (
     project_delivery as _project_delivery,
 )
+from ctower_kernel.projections.inbox import InboxReadState
 from ctower_kernel.projections.interface import InboxThread, InboxThreadList
 from ctower_kernel.projections.project_delivery import (
     CtowerProjectCutoverHealth,
@@ -51,8 +53,11 @@ class PostgresProjections:
     def list_inbox(self, actor: Actor, *, unread: bool) -> InboxThreadList:
         return _list_threads(self._dsn, actor, unread=unread)
 
-    def read_inbox(self, actor: Actor, thread_id: UUID, *, now: datetime) -> InboxThread | None:
-        return _read_thread(self._dsn, actor, thread_id, now=now)
+    def read_inbox(self, actor: Actor, thread_id: UUID) -> InboxThread | None:
+        return _read_thread(self._dsn, actor, thread_id)
+
+    def inbox_read_state(self, actor: Actor, thread_id: UUID) -> InboxReadState | None:
+        return _read_state(self._dsn, actor, thread_id)
 
     def rebuild(self, tenant_id: UUID) -> BoardView:
         return _rebuild(self._dsn, tenant_id)

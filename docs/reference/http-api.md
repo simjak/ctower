@@ -105,6 +105,37 @@ server authorizes the actor before accepting it.
 already produced a ticket returns that ticket rather than creating a second one, and an event that is not
 eligible is refused as `intake-promotion-ineligible` without changing anything.
 
+### Inbox
+
+| Method | Path | Operation | CLI | Kind | Spool | Responses |
+|---|---|---|---|---|---|---|
+| `POST` | `/v1/inbox/messages` | `sendInboxMessage` | `inbox send` | mutation | allowed | `201`, `202`, `401`, `403`, `404`, `409`, `422` |
+| `POST` | `/v1/inbox/messages/{message_id}/ack` | `acknowledgeInboxMessage` | `inbox ack` | mutation | allowed | `200`, `202`, `401`, `403`, `404`, `409`, `422` |
+| `GET` | `/v1/inbox/threads` | `listInboxThreads` | `inbox list` | query | forbidden | `200`, `401`, `404`, `422` |
+| `GET` | `/v1/inbox/threads/{thread_id}` | `readInboxThread` | `inbox read` | query | forbidden | `200`, `401`, `404`, `422` |
+| `GET` | `/v1/inbox/threads/{thread_id}/read-state` | `readInboxMessageState` | `inbox read-state` | query | forbidden | `200`, `401`, `404`, `422` |
+
+`InboxSendRequest` addresses a project seat with `to`, carries 1–65536 characters of `text`, and optionally
+names an existing `thread_id`. Omission starts a two-party thread; an existing thread accepts only the other
+participant as recipient. `InboxAcknowledgeRequest.state` is `delivered` or `read`, and only the recorded
+message recipient may write it. State advances monotonically: a direct `read` acknowledgement appends the
+missing `delivered` fact before the `read` fact. A request that repeats the current state, or requests
+`delivered` after `read`, changes nothing and is refused as `inbox-acknowledgement-not-advancing`.
+
+Exact mutation replay returns the original result; the same `Idempotency-Key` with different semantics is
+`idempotency-conflict`. Other Inbox mutation refusals are `inbox-message-recipient-mismatch`,
+`inbox-sender-unaddressable`, `inbox-recipient-not-found`, `inbox-recipient-ambiguous`,
+`inbox-recipient-self`, and `inbox-thread-participant-mismatch`. Invalid payloads are `invalid-request`;
+missing or participant-inaccessible messages and threads are `tenant-scope-denied`. Every refusal leaves
+Inbox state unchanged.
+
+All three reads consume accepted projection state and append no acknowledgement or cursor fact.
+`listInboxThreads` is participant-scoped; its optional `unread` query defaults to `false`, and `true` keeps
+only threads with unread incoming messages. `readInboxThread` returns messages in position order plus the
+fact-derived `read_through_position`; reading does not advance it or reduce unread counts.
+`readInboxMessageState` is likewise pure and returns every message's fact-derived `sent`, `delivered`, or
+`read` state with nullable delivery/read event IDs and timestamps.
+
 ### Projections and health
 
 | Method | Path | Operation | CLI | Kind | Spool | Responses |

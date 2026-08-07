@@ -2,11 +2,11 @@
 
 | Field | Value |
 |---|---|
-| Status | Non-normative execution sequence derived from `SPEC.md` 1.15 |
+| Status | Non-normative execution sequence derived from `SPEC.md` 1.16 |
 | Product increments | Exactly two: Increment 1 and Increment 2 |
 | Work authority before development epoch | SPEC temporary bootstrap backlog / Mission Control |
 | Work authority after development epoch | ctower tickets for the reviewed cohort only |
-| Last reviewed | 2026-08-05 |
+| Last reviewed | 2026-08-07 |
 
 This roadmap makes the normative build order easier to execute. It does not create a third scope model,
 approve work, mirror ticket status, or override the stable IDs, acceptance criteria, validation commands,
@@ -236,6 +236,11 @@ This is an acceptance target, not current behavior.
 **Stable work:** `CT-I1-007`, `CT-I1-008`.
 
 Deliver this checkpoint in reviewable parts:
+
+- **Native inbox delivery/read facts:** extend the existing two-party inbox with recipient-only monotonic
+  `delivered|read` acknowledgements, canonical events, fact-derived unread/read-state projection, generated
+  API/CLI send-to-ack-to-read-state evidence, and a fully attested next migration. Thread reads stay pure;
+  no parallel message or cursor authority is introduced.
 
 - **Current I1.7A visibility boundary:** development-only authority truth, cutover-health and Project
   Delivery contracts, generated read clients, minimal append-only storage, a pure read-only fold, and

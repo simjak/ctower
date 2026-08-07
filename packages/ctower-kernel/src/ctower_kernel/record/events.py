@@ -31,10 +31,8 @@ from ctower_kernel.record.credentials import (
     SeatCredentialRevokedPayload,
 )
 from ctower_kernel.record.inbox_events import (
+    INBOX_EVENT_TYPES,
     InboxEventPayload,
-    InboxMessageAppendedPayload,
-    InboxThreadOpenedPayload,
-    InboxThreadPromotedToTicketPayload,
 )
 from ctower_kernel.record.inbox_events import (
     _validate_identity as _validate_inbox_identity,
@@ -119,6 +117,8 @@ class EventKind(StrEnum):
     INBOUND_EVENT_PROMOTED = "intake.inbound_event_promoted"
     INBOX_THREAD_OPENED = "thread.opened"
     INBOX_MESSAGE_APPENDED = "message.appended"
+    INBOX_MESSAGE_DELIVERED = "message.delivered"
+    INBOX_MESSAGE_READ = "message.read"
     INBOX_THREAD_PROMOTED_TO_TICKET = "thread.promoted_to_ticket"
     SEAT_CREDENTIAL_ISSUED = "access.seat_credential_issued"
     SEAT_CREDENTIAL_REVOKED = "access.seat_credential_revoked"
@@ -456,14 +456,9 @@ _EVENT_CATALOG: dict[EventKind, EventCatalogEntry] = {
         EventCatalogEntry(
             EventKind.INBOUND_EVENT_PROMOTED, InboundEventPromotedPayload, "inbound-thread"
         ),
-        EventCatalogEntry(EventKind.INBOX_THREAD_OPENED, InboxThreadOpenedPayload, "inbox-thread"),
-        EventCatalogEntry(
-            EventKind.INBOX_MESSAGE_APPENDED, InboxMessageAppendedPayload, "inbox-thread"
-        ),
-        EventCatalogEntry(
-            EventKind.INBOX_THREAD_PROMOTED_TO_TICKET,
-            InboxThreadPromotedToTicketPayload,
-            "inbox-thread",
+        *(
+            EventCatalogEntry(EventKind(kind), payload_type, "inbox-thread")
+            for kind, payload_type in INBOX_EVENT_TYPES
         ),
         EventCatalogEntry(
             EventKind.SEAT_CREDENTIAL_ISSUED, SeatCredentialIssuedPayload, "seat-credential"

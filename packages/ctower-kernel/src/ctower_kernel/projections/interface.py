@@ -8,6 +8,7 @@ from enum import StrEnum
 from typing import Protocol
 from uuid import UUID
 
+from ctower_kernel.projections.inbox import InboxReadState as _InboxReadState
 from ctower_kernel.projections.project_delivery import (
     CtowerProjectCutoverHealth,
     DeliverySurfaceDeclaration,
@@ -482,7 +483,9 @@ class _ProjectionStore(Protocol):
 
     def list_inbox(self, actor: Actor, *, unread: bool) -> InboxThreadList: ...
 
-    def read_inbox(self, actor: Actor, thread_id: UUID, *, now: datetime) -> InboxThread | None: ...
+    def read_inbox(self, actor: Actor, thread_id: UUID) -> InboxThread | None: ...
+
+    def inbox_read_state(self, actor: Actor, thread_id: UUID) -> _InboxReadState | None: ...
 
     def rebuild(self, tenant_id: UUID) -> BoardView: ...
 
@@ -514,8 +517,11 @@ class Projections:
     def list_inbox(self, actor: Actor, *, unread: bool = False) -> InboxThreadList:
         return self._store.list_inbox(actor, unread=unread)
 
-    def read_inbox(self, actor: Actor, thread_id: UUID, *, now: datetime) -> InboxThread | None:
-        return self._store.read_inbox(actor, thread_id, now=now)
+    def read_inbox(self, actor: Actor, thread_id: UUID) -> InboxThread | None:
+        return self._store.read_inbox(actor, thread_id)
+
+    def inbox_read_state(self, actor: Actor, thread_id: UUID) -> _InboxReadState | None:
+        return self._store.inbox_read_state(actor, thread_id)
 
     def rebuild(self, tenant_id: UUID) -> BoardView:
         return self._store.rebuild(tenant_id)

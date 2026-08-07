@@ -1,5 +1,5 @@
 // DO NOT EDIT: generated file; regenerate from declared inputs.
-// Authored contract digest: sha256:bf47097d1b5c8bd6e460b44d2c139d66ddfbf2d7a5d83e24c6b423cdbeb985d8
+// Authored contract digest: sha256:aa5d49950e972e14cd877c942731becfaf9d0f98b0451b1b3c66902ab0953253
 
 import type * as Models from "./models.js";
 import { OPERATIONS, type OperationId } from "./operations.js";
@@ -11,6 +11,12 @@ export type ClientOptions = Readonly<{
   credential?: string;
   telemetry: () => Models.TelemetryContext;
   fetch?: typeof globalThis.fetch;
+}>;
+
+export type AcknowledgeInboxMessageInput = Readonly<{
+  readonly "messageId": string;
+  readonly "IdempotencyKey": string;
+  readonly body: Models.InboxAcknowledgeRequest;
 }>;
 
 export type AddKnowledgeDocumentInput = Readonly<{
@@ -236,6 +242,10 @@ export type PromoteIntakeEventInput = Readonly<{
   readonly body: Models.IntakePromotionRequest;
 }>;
 
+export type ReadInboxMessageStateInput = Readonly<{
+  readonly "threadId": string;
+}>;
+
 export type ReadInboxThreadInput = Readonly<{
   readonly "threadId": string;
 }>;
@@ -338,6 +348,7 @@ export type ValidateCompanyBundleInput = Readonly<{
 }>;
 
 export type OperationInputs = Readonly<{
+  readonly "acknowledgeInboxMessage": AcknowledgeInboxMessageInput;
   readonly "addKnowledgeDocument": AddKnowledgeDocumentInput;
   readonly "addTicketComment": AddTicketCommentInput;
   readonly "addTicketRelation": AddTicketRelationInput;
@@ -380,6 +391,7 @@ export type OperationInputs = Readonly<{
   readonly "planCompanyBundle": PlanCompanyBundleInput;
   readonly "prepareCtowerProjectCutover": PrepareCtowerProjectCutoverInput;
   readonly "promoteIntakeEvent": PromoteIntakeEventInput;
+  readonly "readInboxMessageState": ReadInboxMessageStateInput;
   readonly "readInboxThread": ReadInboxThreadInput;
   readonly "recordAttentionFindingDisposition": RecordAttentionFindingDispositionInput;
   readonly "recordOutboxPoisonDisposition": RecordOutboxPoisonDispositionInput;
@@ -401,6 +413,7 @@ export type OperationInputs = Readonly<{
 }>;
 
 export type OperationResults = Readonly<{
+  readonly "acknowledgeInboxMessage": Models.InboxAcknowledgeResult;
   readonly "addKnowledgeDocument": Models.KnowledgeAddResult;
   readonly "addTicketComment": Models.TicketCommentResult;
   readonly "addTicketRelation": Models.WorkReceipt;
@@ -443,6 +456,7 @@ export type OperationResults = Readonly<{
   readonly "planCompanyBundle": Models.CompanyBundlePlan;
   readonly "prepareCtowerProjectCutover": never;
   readonly "promoteIntakeEvent": Models.IntakeCommandResult;
+  readonly "readInboxMessageState": Models.InboxReadState;
   readonly "readInboxThread": Models.InboxThread;
   readonly "recordAttentionFindingDisposition": Models.FindingDispositionResult;
   readonly "recordOutboxPoisonDisposition": Models.PoisonDispositionReceipt;
@@ -480,6 +494,12 @@ export class CtowerClient {
     this.#credential = options.credential;
     this.#telemetry = options.telemetry;
     this.#fetch = options.fetch ?? globalThis.fetch;
+  }
+
+  public async acknowledgeInboxMessage(
+    input: AcknowledgeInboxMessageInput,
+  ): Promise<Models.InboxAcknowledgeResult> {
+    return this.execute("acknowledgeInboxMessage", input);
   }
 
   public async addKnowledgeDocument(
@@ -732,6 +752,12 @@ export class CtowerClient {
     input: PromoteIntakeEventInput,
   ): Promise<Models.IntakeCommandResult> {
     return this.execute("promoteIntakeEvent", input);
+  }
+
+  public async readInboxMessageState(
+    input: ReadInboxMessageStateInput,
+  ): Promise<Models.InboxReadState> {
+    return this.execute("readInboxMessageState", input);
   }
 
   public async readInboxThread(

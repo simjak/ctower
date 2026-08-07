@@ -549,6 +549,16 @@ command = [
 timeout_seconds = 900
 
 [[suite]]
+id = "native-inbox-modules"
+owner = "CT-I1-007"
+phase = "CT-I1-007"
+status = "required"
+path = "tests/modules/inbox"
+patterns = ["test_*.py"]
+command = ["{python}", "-m", "pytest", "tests/modules/inbox", "-q"]
+timeout_seconds = 120
+
+[[suite]]
 id = "increment-1-acceptance"
 owner = "CT-I1-008"
 phase = "CT-I1-008"

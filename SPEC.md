@@ -3,8 +3,8 @@
 | Field | Value |
 |---|---|
 | Status | Canonical target-system truth |
-| Version | 1.15 |
-| Date | 2026-08-05 |
+| Version | 1.16 |
+| Date | 2026-08-07 |
 | Owners | Operator/CEO (product and human gates), Commander (orchestration contract), Engineering Manager (architecture and risk contract) |
 | Decision authority | [`DECISIONS.md`](DECISIONS.md) |
 
@@ -1472,6 +1472,7 @@ The ticket is the human join point, not the transaction boundary for the entire 
 76. <a id="inv-76"></a>**INV-76 — Assignment model visibility is substrate-reported and append-only.** A seat is the durable principal; a crew is one engagement of that seat and never a principal. Every dispatch-capable assignment carries one immutable assignment stamp observed from the substrate, initially mission-control `crew-log` bridged by a reporter and later promoted to the version-pinned project-seat principal record of [INV-69](#inv-69) when CT-I1-009 lands. The stamp names the assignment key, seat key/principal reference, crew name, harness, model, observed dispatch time, source, reporter principal, and probe evidence. Model changes are appended as `model_changed` observations on that assignment with `from`, `to`, `observed_at`, `source`, and probe evidence; no current-model field is overwritten. Seat or crew self-report never satisfies the stamp or change event. If the reporter cannot observe a required substrate, it refuses by exact `substrate-unobservable:<probe>` and surfaces degraded/`STATE_UNKNOWN`; silence, terminal text, or a model's claim cannot become visibility truth.
 77. <a id="inv-77"></a>**INV-77 — Harness independence.** Assignment stamps, `model_changed` events, and session facts carry harness as an open enum whose required baseline values are `claude-code`, `hermes`, `codex`, and `qwen-code`. Unknown harness values are preserved byte-for-byte, displayed as observed, included in equality/cross-checks, and never rejected, normalized, downgraded, or collapsed to `other`. No custody, event, status, reporter, Board, CLI, Evidence, or session integration may assume one harness's session shape or internal transcript format. Reporter facts derive only from substrate-visible dispatch/process/log facts — tmux/process supervision metadata where authorized, mission-control crew-log, and gateway/provider logs — and never from Claude Code, Hermes, Codex, Qwen Code, or any other harness-specific session internals.
 78. <a id="inv-78"></a>**INV-78 — Project event feeds are catalog-derived and scope-bound.** A project event feed contains only canonical events whose authoritative linked ticket, via the same `event_links` subject join Record's ticket audit read already proves, belongs to the requested tenant and project. Project scope is applied in the Record query before event materialization, and every read additionally evaluates the caller's active project grant under [INV-69](#inv-69); a caller without a grant on the requested project refuses `project-scope-denied` with zero rows disclosed. Feed membership is derived from the canonical Record event catalog's `project_feed` metadata, never copied into a second enum or inferred from payload shape; a kind added to the catalog with no feed decision defaults to absent, never silently included. Every wire variant and payload is a strict named schema, and the page orders by record position with a `limit + 1` peek cursor identical to the session and audit read paths.
+79. <a id="inv-79"></a>**INV-79 — Inbox delivery and read state are recipient-authored append-only facts.** Every native inbox message begins in derived `sent` state. Only its recorded recipient may advance it monotonically through `message.delivered` and `message.read`; a direct read acknowledgement records the missing delivered fact first in the same command. Repeated, regressive, sender-authored, foreign-tenant, or unknown-message acknowledgements refuse by stable name with no fact. Thread reads are pure. Per-message state, per-recipient unread counts, and read-through position derive only from accepted canonical events and rebuild identically; no cursor, browser open, caller claim, or projection write creates delivery or read truth.
 
 ## Workflow and verification architecture
 
@@ -3588,6 +3589,21 @@ notification surface first-class Record behavior. The native end-state tickets a
 `019fcbc6-5d90` (`native-inbox`) and `019fcbc6-7d40` (`mc-deprecation`); mission-control remains
 deprecation-bound until those native paths replace the bridge.
 
+### Native inbox delivery and read facts
+
+Native two-party inbox threads use the existing Inbox aggregate and canonical `inbox-thread:<uuid>` stream.
+`thread.opened` and `message.appended` create an ordered message in `sent` state. The recorded recipient may
+append `message.delivered` and then `message.read`; `read` may atomically append both facts when delivery has
+not yet been recorded. Those facts advance the same thread version and hash chain and are immutable alongside
+the message and optional ticket-promotion link. Sender and recipient may query the same per-message state;
+only the recipient may mutate it.
+
+The API and generated CLI expose `inbox ack` as a protected spool-backed mutation and `inbox read-state` as
+a pure query. `inbox read` is also pure: it returns ordered content and a fact-derived read-through position
+but never marks content read. The disposable inbox projection folds delivery/read event IDs and timestamps
+onto its existing message rows. Recipient unread counts are messages addressed to that recipient without an
+accepted read fact. Projection reset/rebuild discards no authority and reproduces the same state.
+
 Harness is deliberately not a closed catalog. The open enum's baseline known values are `claude-code`,
 `hermes`, `codex`, and `qwen-code`, but any unknown harness string observed on an assignment stamp,
 `model_changed` event, or session fact is carried, displayed, and compared exactly as observed. Unknown
@@ -4109,6 +4125,14 @@ Each criterion is pass/fail. Evidence must be attached to the ctower build ticke
 | <a id="ac-tm-06"></a>AC-TM-06 | Scheduler dispatches only hard-eligible work, improves service order for higher priority, gives eligible P1/P2 service within the published bound under sustained P0 load, preserves age/fairness across restart/reassignment, and preempts only from a verified checkpoint. | Deterministic-clock queue properties, P0 flood/restart/preemption trace and selection explanations |
 | <a id="ac-tm-07"></a>AC-TM-07 | The Board card exposes its five-member context set on the same contract path as the rest of the card: tenant display identity from the tenant's recorded display fact; change references from linked Change facts exactly as recorded; applied labels drawn from the versioned configured label vocabulary, each applied-label fact pinning the vocabulary revision active at application time; human-waiting per [AC-TM-08](#ac-tm-08); and delivery-surface availability per [AC-PD-10](#ac-pd-10). Every unavailable member is explicit — empty set, declared absence, no-qualifying-checkpoint, or `STATE_UNKNOWN` with its missing source — and never omitted so a client invents a default. No member is inferred from an identifier's spelling, a title, a branch or repository name, a lane, a stage or group key, a blocker type or age, a principal display name, or silence. The label vocabulary is configured data: adding, removing, renaming, or reordering members requires no product-code change, no normative product code, schema, projection, pack, or test branches on a label key, and a member removed in a later revision leaves historical applied-label facts intact and visible. Generated Python and TypeScript clients round-trip every member unchanged, no member is writable, and tenant/project authorization is unchanged — an unauthorized card is absent, never redacted-but-present. | Context-set field inventory; per-member complete/absent/unknown matrices; name-inference anti-fixtures for each member; omission anti-fixture; label-vocabulary add/remove/rename/reorder mutation suite that fails if product code must change; member-removal leaves-historical-fact-intact fixture; generated-client round-trip; deterministic CLI text/JSON parity; cross-tenant authorization negatives; no-status-patch privilege inventory |
 | <a id="ac-tm-08"></a>AC-TM-08 | A card is human-waiting only when a current Attention finding for that ticket meets the Needs You qualification — `open` state, operator-owned effective ownership, pinned policy classifying the action as human-owned, and an unresolved linked gate, incident, or decision on the current digest. Fixtures prove an ordinary `blocked` card with no qualifying finding is not human-waiting, a human-waiting card whose lane is `in_progress`, and that resolution, expiry, supersession, or an ownership change clears the flag within the 60-second freshness SLO while the appended finding history stays queryable. Coercing a blocker, blocker age, lane, stage key, queue position, or silence into human-waiting fails a mutation test, and Board and Needs You never disagree about the same finding. | Blocked-but-not-waiting and waiting-while-in-progress fixtures; blocker-to-human coercion mutation test; Board/Needs You cross-projection equality query; freshness clock test; API snapshots and deterministic CLI transcript |
+
+### Native inbox
+
+| ID | Pass condition | Evidence capture |
+|---|---|---|
+| <a id="ac-inbox-01"></a>AC-INBOX-01 | A generated-client and protected-CLI roundtrip sends one native inbox message, records recipient-only `delivered` and `read` acknowledgements in order, and queries exact per-message `sent -> delivered -> read` state including immutable event IDs and server timestamps. Direct `read` records both missing facts atomically; exact replay returns the same result. | Real PostgreSQL API/CLI send/ack/read-state transcript, authority/event query, replay assertion |
+| <a id="ac-inbox-02"></a>AC-INBOX-02 | Recipient unread count remains nonzero after a pure thread read and becomes zero only after the accepted read fact. Projection catch-up and full rebuild reproduce the same per-message state, unread count, promotion link, and fact-derived read-through position without reading an authority table directly or persisting a read cursor. | Before/after unread snapshots, projection privilege inventory, deterministic rebuild equality |
+| <a id="ac-inbox-03"></a>AC-INBOX-03 | Delivery/read facts, canonical events, command results, and outbox rows are append-only. A sender acknowledgement, repeated/regressive acknowledgement, unknown message, and foreign scope each refuse by exact stable code with no mutation; the new contract, migration, module, and acceptance suites are registered and required. | Refusal/state-diff matrix, immutable-trigger test, canonical vectors, expected-suite manifest, clean codegen/check/verify logs |
 
 ### Recorded work sessions
 

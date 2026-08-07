@@ -69,6 +69,8 @@
         "intake.inbound_event_promoted",
         "thread.opened",
         "message.appended",
+        "message.delivered",
+        "message.read",
         "thread.promoted_to_ticket",
         "access.seat_credential_issued",
         "access.seat_credential_revoked",
@@ -364,6 +366,22 @@
         },
         {
           "properties": {
+            "kind": {"const": "message.delivered"},
+            "origin": {"const": "api"},
+            "stream_id": {"pattern": "^inbox-thread:[0-9a-f-]{36}$"},
+            "payload": {"$ref": "#/$defs/inboxMessageDelivery"}
+          }
+        },
+        {
+          "properties": {
+            "kind": {"const": "message.read"},
+            "origin": {"const": "api"},
+            "stream_id": {"pattern": "^inbox-thread:[0-9a-f-]{36}$"},
+            "payload": {"$ref": "#/$defs/inboxMessageDelivery"}
+          }
+        },
+        {
+          "properties": {
             "kind": {"const": "thread.promoted_to_ticket"},
             "origin": {"const": "api"},
             "stream_id": {"pattern": "^inbox-thread:[0-9a-f-]{36}$"},
@@ -556,6 +574,16 @@
         "recipient": {"$ref": "#/$defs/inboxParticipant"},
         "sender": {"$ref": "#/$defs/inboxParticipant"},
         "text": {"type": "string", "minLength": 1, "maxLength": 65536},
+        "thread_id": {"type": "string", "format": "uuid"}
+      }
+    },
+    "inboxMessageDelivery": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["message_id", "recipient", "thread_id"],
+      "properties": {
+        "message_id": {"type": "string", "format": "uuid"},
+        "recipient": {"$ref": "#/$defs/inboxParticipant"},
         "thread_id": {"type": "string", "format": "uuid"}
       }
     },

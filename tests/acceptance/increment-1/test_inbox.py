@@ -3,10 +3,8 @@
 from __future__ import annotations
 
 import hashlib
-import io
 import json
 import secrets
-from dataclasses import dataclass
 from datetime import UTC, datetime
 from pathlib import Path
 from typing import cast
@@ -14,6 +12,8 @@ from uuid import UUID, uuid4
 
 import psycopg
 import pytest
+from _inbox_cli_roundtrip import RoundTrip as _RoundTrip
+from _inbox_cli_roundtrip import roundtrip as _roundtrip
 from psycopg.rows import dict_row
 from support.acceptance import accept_pending_commands
 from support.server import running_api
@@ -22,6 +22,9 @@ from support.tenant_fixture import TenantFixture, provision_credential
 from ctower_client import BoardView, CtowerClient
 from ctower_kernel.inbox import (
     Inbox,
+    InboxAcknowledgeCommand,
+    InboxAcknowledgementState,
+    InboxAcknowledgeResult,
     InboxPromotionCommand,
     InboxPromotionResult,
     InboxSendCommand,
@@ -34,13 +37,11 @@ from ctower_kernel.record import Actor, PrincipalKind, RecordProblem, SourceRefe
 from ctower_kernel.record.postgres import PostgresRecord
 from ctower_kernel.telemetry import TelemetryContext
 from ctower_kernel.work import Work
-from ctowerctl import main
 
 __all__: tuple[str, ...] = ()
 
-EXIT_SUCCESS = 0
-EXIT_TEMPORARY = 75
 REPLY_POSITION = 2
+DELIVERY_AND_READ_EVENT_COUNT = 2
 
 
 class _MemoryBackend:
@@ -52,18 +53,6 @@ class _MemoryBackend:
 
     def set_password(self, service: str, username: str, password: str) -> None:
         self.values[(service, username)] = password
-
-
-@dataclass(frozen=True, slots=True)
-class _RoundTrip:
-    commander_list: dict[str, object]
-    commander_read: dict[str, object]
-    first: dict[str, object]
-    projections: Projections
-    qa_list: dict[str, object]
-    qa_read: dict[str, object]
-    reply: dict[str, object]
-    thread_id: UUID
 
 
 @pytest.fixture
@@ -82,7 +71,8 @@ def test_native_inbox_cli_roundtrip_and_promotion_links_both_ways(
     """A1/A2/V1/V2: two agents exchange, read, reply, and promote one thread."""
 
     del protected_state
-    roundtrip = _roundtrip(tenant, monkeypatch, tmp_path)
+    _qa_id, qa_credential = _provision_qa_seat(tenant)
+    roundtrip = _roundtrip(tenant, monkeypatch, tmp_path, qa_credential)
     _assert_roundtrip(roundtrip)
     promoted, ticket_id = _promote(tenant, roundtrip)
     _assert_promotion(tenant, roundtrip, promoted, ticket_id)
@@ -162,9 +152,45 @@ def _assert_recipient_projection(
     projections.catch_up(tenant.tenant_id)
     unread = projections.list_inbox(qa, unread=True)
     assert unread.total_unread == 1
-    read = projections.read_inbox(qa, first.thread_id, now=datetime.now(UTC))
-    assert read is not None and read.read_through_position == 1
+    read = projections.read_inbox(qa, first.thread_id)
+    assert read is not None and read.read_through_position == 0
+    assert projections.list_inbox(qa).total_unread == 1
+    acknowledged = _invoke_ack(
+        inbox,
+        qa,
+        InboxAcknowledgeCommand(uuid4(), first.message_id, InboxAcknowledgementState.READ),
+    )
+    assert isinstance(acknowledged, InboxAcknowledgeResult)
+    assert len(acknowledged.event_ids) == DELIVERY_AND_READ_EVENT_COUNT
+    accept_pending_commands(tenant.database.admin_dsn, tenant.tenant_id)
+    projections.catch_up(tenant.tenant_id)
     assert projections.list_inbox(qa).total_unread == 0
+    state = projections.inbox_read_state(qa, first.thread_id)
+    assert state is not None and state.messages[0].state.value == "read"
+    _assert_problem(
+        _invoke_ack(
+            inbox,
+            commander,
+            InboxAcknowledgeCommand(uuid4(), first.message_id, InboxAcknowledgementState.DELIVERED),
+        ),
+        "inbox-message-recipient-mismatch",
+    )
+    _assert_problem(
+        _invoke_ack(
+            inbox,
+            qa,
+            InboxAcknowledgeCommand(uuid4(), first.message_id, InboxAcknowledgementState.READ),
+        ),
+        "inbox-acknowledgement-not-advancing",
+    )
+    _assert_problem(
+        _invoke_ack(
+            inbox,
+            qa,
+            InboxAcknowledgeCommand(uuid4(), uuid4(), InboxAcknowledgementState.READ),
+        ),
+        "tenant-scope-denied",
+    )
     reply = _invoke_send(
         inbox,
         qa,
@@ -174,101 +200,32 @@ def _assert_recipient_projection(
     accept_pending_commands(tenant.database.admin_dsn, tenant.tenant_id)
     projections.catch_up(tenant.tenant_id)
     assert projections.list_inbox(commander, unread=True).total_unread == 1
-    commander_read = projections.read_inbox(commander, first.thread_id, now=datetime.now(UTC))
+    commander_read = projections.read_inbox(commander, first.thread_id)
     assert commander_read is not None and len(commander_read.messages) == REPLY_POSITION
     _assert_promotion_refusals_and_replay(tenant, inbox, projections, commander, qa, reply)
 
 
-def _roundtrip(
-    tenant: TenantFixture,
-    monkeypatch: pytest.MonkeyPatch,
-    tmp_path: Path,
-) -> _RoundTrip:
-    _qa_id, qa_credential = _provision_qa_seat(tenant)
-    projections = Projections(PostgresProjections(tenant.database.projection_dsn))
-    commander_state, qa_state = tmp_path / "commander", tmp_path / "qa"
-    with running_api(
-        tenant.database.runtime_dsn,
-        projection_dsn=tenant.database.projection_dsn,
-    ) as base_url:
-        first = _accepted_send(
-            tenant,
-            monkeypatch,
-            state=commander_state,
-            base_url=base_url,
-            credential=tenant.commander_credential,
-            to="qa-agent",
-            text="Please verify the native inbox roundtrip.",
-        )
-        first_result = cast(dict[str, object], first["result"])
-        thread_id = UUID(str(first_result["thread_id"]))
-        projections.catch_up(tenant.tenant_id)
-        qa_list = _query(
-            monkeypatch,
-            qa_state,
-            qa_credential,
-            ["--base-url", base_url, "inbox", "list", "--unread"],
-        )
-        qa_read = _query(
-            monkeypatch,
-            qa_state,
-            qa_credential,
-            ["--base-url", base_url, "inbox", "read", str(thread_id)],
-        )
-        reply = _accepted_send(
-            tenant,
-            monkeypatch,
-            state=qa_state,
-            base_url=base_url,
-            credential=qa_credential,
-            to="ctower-commander",
-            text="Verified; the reply is durable.",
-            thread_id=thread_id,
-        )
-        projections.catch_up(tenant.tenant_id)
-        commander_list, commander_read = _commander_queries(
-            tenant, monkeypatch, commander_state, base_url, thread_id
-        )
-    return _RoundTrip(
-        commander_list,
-        commander_read,
-        first,
-        projections,
-        qa_list,
-        qa_read,
-        reply,
-        thread_id,
-    )
-
-
-def _commander_queries(
-    tenant: TenantFixture,
-    monkeypatch: pytest.MonkeyPatch,
-    state: Path,
-    base_url: str,
-    thread_id: UUID,
-) -> tuple[dict[str, object], dict[str, object]]:
-    listed = _query(
-        monkeypatch,
-        state,
-        tenant.commander_credential,
-        ["--base-url", base_url, "inbox", "list", "--unread"],
-    )
-    read = _query(
-        monkeypatch,
-        state,
-        tenant.commander_credential,
-        ["--base-url", base_url, "inbox", "read", str(thread_id)],
-    )
-    return listed, read
-
-
 def _assert_roundtrip(roundtrip: _RoundTrip) -> None:
     assert roundtrip.qa_list["total_unread"] == 1
+    acknowledgements = roundtrip.acknowledgements
+    initial = cast(list[dict[str, object]], acknowledgements.initial_state["messages"])[0]
+    delivered = cast(list[dict[str, object]], acknowledgements.delivered_state["messages"])[0]
+    read_state = cast(list[dict[str, object]], acknowledgements.read_state["messages"])[0]
+    assert initial["state"] == "sent"
+    assert "delivered_event_id" not in initial and "read_event_id" not in initial
+    assert cast(dict[str, object], acknowledgements.delivered_ack["result"])["state"] == "delivered"
+    assert delivered["state"] == "delivered" and delivered["delivered_event_id"] is not None
+    assert "read_event_id" not in delivered
+    assert cast(dict[str, object], acknowledgements.read_ack["result"])["state"] == "read"
+    assert read_state["state"] == "read"
+    assert read_state["delivered_event_id"] == delivered["delivered_event_id"]
+    assert read_state["read_event_id"] is not None
+    assert acknowledgements.after_ack["total_unread"] == 0
     qa_messages = cast(list[dict[str, object]], roundtrip.qa_read["messages"])
     reply_result = cast(dict[str, object], roundtrip.reply["result"])
     commander_messages = cast(list[dict[str, object]], roundtrip.commander_read["messages"])
     assert qa_messages[0]["text"] == "Please verify the native inbox roundtrip."
+    assert roundtrip.qa_read["read_through_position"] == 1
     assert reply_result["position"] == REPLY_POSITION
     assert roundtrip.commander_list["total_unread"] == 1
     assert [item["text"] for item in commander_messages] == [
@@ -284,7 +241,10 @@ def _promote(
     ticket_id = _ticket(tenant)
     accept_pending_commands(tenant.database.admin_dsn, tenant.tenant_id)
     actor = Actor(tenant.commander_id, tenant.tenant_id, PrincipalKind.COMMANDER)
-    command = InboxPromotionCommand(uuid4(), 3, roundtrip.thread_id, ticket_id)
+    reply_result = cast(dict[str, object], roundtrip.reply["result"])
+    command = InboxPromotionCommand(
+        uuid4(), int(cast(int, reply_result["thread_version"])), roundtrip.thread_id, ticket_id
+    )
     promoted = Inbox(PostgresInbox(tenant.database.runtime_dsn)).promote(
         actor,
         command,
@@ -313,8 +273,10 @@ def _assert_promotion(
     assert events == [
         {"kind": "thread.opened", "sequence": 1},
         {"kind": "message.appended", "sequence": 2},
-        {"kind": "message.appended", "sequence": 3},
-        {"kind": "thread.promoted_to_ticket", "sequence": 4},
+        {"kind": "message.delivered", "sequence": 3},
+        {"kind": "message.read", "sequence": 4},
+        {"kind": "message.appended", "sequence": 5},
+        {"kind": "thread.promoted_to_ticket", "sequence": 6},
     ]
     assert subjects == [
         {"subject_kind": "inbox_thread", "subject_id": roundtrip.thread_id},
@@ -324,7 +286,7 @@ def _assert_promotion(
     rebuilt_card = next(item for item in rebuilt.cards if item.ticket_id == ticket_id)
     assert rebuilt_card.inbox_thread_ids == (roundtrip.thread_id,)
     authority_after = _authority_counts(tenant, roundtrip.thread_id)
-    assert authority_before == authority_after == {"messages": 2, "links": 1}
+    assert authority_before == authority_after == {"delivery_facts": 2, "messages": 2, "links": 1}
 
 
 def _api_board(tenant: TenantFixture) -> BoardView:
@@ -366,19 +328,28 @@ def _authority_counts(tenant: TenantFixture, thread_id: UUID) -> dict[str, objec
         return connection.execute(
             """
             SELECT (SELECT count(*) FROM inbox_messages WHERE thread_id = %s) AS messages,
-                   (SELECT count(*) FROM inbox_ticket_links WHERE thread_id = %s) AS links
+                   (SELECT count(*) FROM inbox_ticket_links WHERE thread_id = %s) AS links,
+                   (SELECT count(*) FROM inbox_message_delivery_facts WHERE thread_id = %s)
+                       AS delivery_facts
             """,
-            (thread_id, thread_id),
+            (thread_id, thread_id, thread_id),
         ).fetchone()
 
 
 def _print_transcript(roundtrip: _RoundTrip, promoted: InboxPromotionResult) -> None:
+    acknowledgements = roundtrip.acknowledgements
     print(
         "REAL_INBOX_TRANSCRIPT "
         + json.dumps(
             {
                 "commander_send": roundtrip.first["result"],
                 "qa_list_unread": roundtrip.qa_list,
+                "qa_initial_read_state": acknowledgements.initial_state,
+                "qa_ack_delivered": acknowledgements.delivered_ack["result"],
+                "qa_delivered_read_state": acknowledgements.delivered_state,
+                "qa_ack_read": acknowledgements.read_ack["result"],
+                "qa_final_read_state": acknowledgements.read_state,
+                "qa_list_after_ack": acknowledgements.after_ack,
                 "qa_read": roundtrip.qa_read,
                 "qa_reply": roundtrip.reply["result"],
                 "commander_list_unread": roundtrip.commander_list,
@@ -462,6 +433,20 @@ def _invoke_send(
     )
 
 
+def _invoke_ack(
+    inbox: Inbox,
+    actor: Actor,
+    command: InboxAcknowledgeCommand,
+) -> InboxAcknowledgeResult | RecordProblem:
+    return inbox.acknowledge(
+        actor,
+        command,
+        request_digest=_digest(command.request_payload()),
+        now=datetime.now(UTC),
+        telemetry=_telemetry(),
+    )
+
+
 def _invoke_promotion(
     inbox: Inbox,
     actor: Actor,
@@ -484,65 +469,6 @@ def _invoke_promotion(
 def _assert_problem(outcome: object, code: str) -> None:
     assert isinstance(outcome, RecordProblem)
     assert outcome.code == code
-
-
-def _accepted_send(
-    tenant: TenantFixture,
-    monkeypatch: pytest.MonkeyPatch,
-    *,
-    state: Path,
-    base_url: str,
-    credential: str,
-    to: str,
-    text: str,
-    thread_id: UUID | None = None,
-) -> dict[str, object]:
-    command_id = uuid4()
-    arguments = [
-        "--base-url",
-        base_url,
-        "inbox",
-        "send",
-        "--command-id",
-        str(command_id),
-        "--to",
-        to,
-    ]
-    if thread_id is not None:
-        arguments.extend(("--thread", str(thread_id)))
-    arguments.append(text)
-    pending_status, pending = _run(monkeypatch, state, credential, arguments)
-    assert pending_status == EXIT_TEMPORARY
-    assert pending["state"] == "queued"
-    accept_pending_commands(tenant.database.admin_dsn, tenant.tenant_id)
-    accepted_status, accepted = _run(monkeypatch, state, credential, arguments)
-    assert accepted_status == EXIT_SUCCESS
-    assert accepted["state"] == "accepted"
-    return accepted
-
-
-def _query(
-    monkeypatch: pytest.MonkeyPatch,
-    state: Path,
-    credential: str,
-    arguments: list[str],
-) -> dict[str, object]:
-    status, payload = _run(monkeypatch, state, credential, arguments)
-    assert status == EXIT_SUCCESS
-    return payload
-
-
-def _run(
-    monkeypatch: pytest.MonkeyPatch,
-    state: Path,
-    credential: str,
-    arguments: list[str],
-) -> tuple[int, dict[str, object]]:
-    monkeypatch.setenv("XDG_STATE_HOME", str(state))
-    stdout, stderr = io.StringIO(), io.StringIO()
-    status = main(arguments, stdin=io.StringIO(credential + "\n"), stdout=stdout, stderr=stderr)
-    assert stderr.getvalue() == ""
-    return status, cast(dict[str, object], json.loads(stdout.getvalue()))
 
 
 def _provision_qa_seat(tenant: TenantFixture) -> tuple[UUID, str]:

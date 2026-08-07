@@ -204,6 +204,23 @@
       "packages/ctower-kernel/migrations/0021_object_backup_anchor.sql",
       "packs/policies/evidence/trust-spine-four-stage-v1.yaml"
     ],
+    "AC-INBOX-01": [
+      "contracts/domain/events/canonical-vectors.json",
+      "contracts/domain/events/event-envelope.schema.json",
+      "contracts/domain/inbox/inbox-v2.schema.json",
+      "packages/ctower-kernel/migrations/0051_inbox_delivery_read_facts.sql",
+      "packages/ctower-kernel/migrations/0052_knowledge_inbox_event_kinds.sql"
+    ],
+    "AC-INBOX-02": [
+      "packages/ctower-kernel/migrations/0051_inbox_delivery_read_facts.sql"
+    ],
+    "AC-INBOX-03": [
+      "contracts/domain/events/canonical-vectors.json",
+      "contracts/domain/events/event-envelope.schema.json",
+      "contracts/domain/inbox/inbox-v2.schema.json",
+      "packages/ctower-kernel/migrations/0051_inbox_delivery_read_facts.sql",
+      "packages/ctower-kernel/migrations/0052_knowledge_inbox_event_kinds.sql"
+    ],
     "AC-MIG-01": [
       "contracts/domain/migration/ctower-project-export-equality.schema.json",
       "contracts/domain/migration/ctower-project-export-manifest.schema.json",
@@ -603,7 +620,8 @@
       "packages/ctower-kernel/migrations/0020_recovery_roles.sql",
       "packages/ctower-kernel/migrations/0023_cp3c_privileges.sql",
       "packages/ctower-kernel/migrations/0032_thread_first_intake.sql",
-      "packages/ctower-kernel/migrations/0050_knowledge_documents.sql"
+      "packages/ctower-kernel/migrations/0050_knowledge_documents.sql",
+      "packages/ctower-kernel/migrations/0052_knowledge_inbox_event_kinds.sql"
     ],
     "INV-02": [
       "contracts/bootstrap/first-tenant-request.schema.json",
@@ -616,6 +634,7 @@
     ],
     "INV-03": [
       "contracts/domain/events/event-envelope.schema.json",
+      "contracts/domain/inbox/inbox-v2.schema.json",
       "contracts/domain/inbox/inbox.schema.json",
       "contracts/domain/intake/thread-intake.schema.json",
       "contracts/http/openapi.yaml",
@@ -624,7 +643,9 @@
       "packages/ctower-kernel/migrations/0035_board_source_lookup.sql",
       "packages/ctower-kernel/migrations/0040_project_scoped_reads.sql",
       "packages/ctower-kernel/migrations/0048_native_inbox.sql",
-      "packages/ctower-kernel/migrations/0049_review_dispatch_effect.sql"
+      "packages/ctower-kernel/migrations/0049_review_dispatch_effect.sql",
+      "packages/ctower-kernel/migrations/0051_inbox_delivery_read_facts.sql",
+      "packages/ctower-kernel/migrations/0052_knowledge_inbox_event_kinds.sql"
     ],
     "INV-04": [
       "contracts/domain/events/event-envelope.schema.json",
@@ -743,7 +764,9 @@
       "packages/ctower-kernel/migrations/0040_project_scoped_reads.sql",
       "packages/ctower-kernel/migrations/0047_board_source_index.sql",
       "packages/ctower-kernel/migrations/0048_native_inbox.sql",
-      "packages/ctower-kernel/migrations/0050_knowledge_documents.sql"
+      "packages/ctower-kernel/migrations/0050_knowledge_documents.sql",
+      "packages/ctower-kernel/migrations/0051_inbox_delivery_read_facts.sql",
+      "packages/ctower-kernel/migrations/0052_knowledge_inbox_event_kinds.sql"
     ],
     "INV-35": [
       "contracts/domain/migration/ctower-project-cutover-health.schema.json",
@@ -976,6 +999,13 @@
       "contracts/http/openapi.yaml",
       "packages/ctower-kernel/migrations/0041_recorded_work_sessions.sql"
     ],
+    "INV-79": [
+      "contracts/domain/events/canonical-vectors.json",
+      "contracts/domain/events/event-envelope.schema.json",
+      "contracts/domain/inbox/inbox-v2.schema.json",
+      "packages/ctower-kernel/migrations/0051_inbox_delivery_read_facts.sql",
+      "packages/ctower-kernel/migrations/0052_knowledge_inbox_event_kinds.sql"
+    ],
     "SPEC#aggregate-boundaries-and-relationships": [
       "contracts/domain/intake/thread-intake.schema.json",
       "packages/ctower-kernel/migrations/0032_thread_first_intake.sql",
@@ -1012,6 +1042,7 @@
     "SPEC#canonical-event-and-command-contract": [
       "contracts/domain/events/canonical-vectors.json",
       "contracts/domain/events/event-envelope.schema.json",
+      "contracts/domain/inbox/inbox-v2.schema.json",
       "contracts/domain/inbox/inbox.schema.json",
       "contracts/domain/knowledge/knowledge.schema.json",
       "contracts/domain/migration/ctower-project-import-batch.schema.json",
@@ -1029,7 +1060,8 @@
       "packages/ctower-kernel/migrations/0031_i17b_bounded_truth_spine.sql",
       "packages/ctower-kernel/migrations/0032_thread_first_intake.sql",
       "packages/ctower-kernel/migrations/0048_native_inbox.sql",
-      "packages/ctower-kernel/migrations/0050_knowledge_documents.sql"
+      "packages/ctower-kernel/migrations/0050_knowledge_documents.sql",
+      "packages/ctower-kernel/migrations/0052_knowledge_inbox_event_kinds.sql"
     ],
     "SPEC#client-acknowledgement-and-offline-behavior": [
       "contracts/http/openapi.yaml",
@@ -1088,6 +1120,11 @@
     "SPEC#language-allocation-and-runtime-acceptance": [
       "contracts/compatibility/matrix-input.schema.json",
       "contracts/compatibility/matrix-result.schema.json"
+    ],
+    "SPEC#native-inbox-delivery-and-read-facts": [
+      "contracts/domain/inbox/inbox-v2.schema.json",
+      "packages/ctower-kernel/migrations/0051_inbox_delivery_read_facts.sql",
+      "packages/ctower-kernel/migrations/0052_knowledge_inbox_event_kinds.sql"
     ],
     "SPEC#observability-from-day-one": [
       "contracts/observability/telemetry-context.schema.json"
@@ -1159,7 +1196,9 @@
       "packages/ctower-kernel/migrations/0046_human_oidc_identity.sql",
       "packages/ctower-kernel/migrations/0047_board_source_index.sql",
       "packages/ctower-kernel/migrations/0048_native_inbox.sql",
-      "packages/ctower-kernel/migrations/0049_review_dispatch_effect.sql"
+      "packages/ctower-kernel/migrations/0049_review_dispatch_effect.sql",
+      "packages/ctower-kernel/migrations/0051_inbox_delivery_read_facts.sql",
+      "packages/ctower-kernel/migrations/0052_knowledge_inbox_event_kinds.sql"
     ],
     "SPEC#portfolio-shadow-onboarding": [
       "packages/ctower-kernel/migrations/0047_board_source_index.sql"

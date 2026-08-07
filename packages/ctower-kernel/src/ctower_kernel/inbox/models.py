@@ -4,14 +4,58 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from datetime import datetime
+from enum import StrEnum
 from uuid import UUID
 
 __all__ = [
+    "InboxAcknowledgeCommand",
+    "InboxAcknowledgeResult",
+    "InboxAcknowledgementState",
     "InboxPromotionCommand",
     "InboxPromotionResult",
     "InboxSendCommand",
     "InboxSendResult",
 ]
+
+
+class InboxAcknowledgementState(StrEnum):
+    DELIVERED = "delivered"
+    READ = "read"
+
+
+@dataclass(frozen=True, slots=True)
+class InboxAcknowledgeCommand:
+    client_command_id: UUID
+    message_id: UUID
+    state: InboxAcknowledgementState
+
+    def request_payload(self) -> dict[str, object]:
+        return {"message_id": str(self.message_id), "state": self.state.value}
+
+
+@dataclass(frozen=True, slots=True)
+class InboxAcknowledgeResult:
+    command_id: UUID
+    delivered_at: datetime
+    event_ids: tuple[UUID, ...]
+    message_id: UUID
+    read_at: datetime | None
+    state: InboxAcknowledgementState
+    thread_id: UUID
+    thread_version: int
+
+    def response_payload(self) -> dict[str, object]:
+        return {
+            "command_id": str(self.command_id),
+            "delivered_at": self.delivered_at.isoformat(),
+            "durability_state": "durability_pending",
+            "event_ids": [str(item) for item in self.event_ids],
+            "message_id": str(self.message_id),
+            "read_at": self.read_at.isoformat() if self.read_at is not None else None,
+            "state": self.state.value,
+            "thread_id": str(self.thread_id),
+            "thread_version": self.thread_version,
+        }
 
 
 @dataclass(frozen=True, slots=True)

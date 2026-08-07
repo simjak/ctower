@@ -181,6 +181,7 @@ APPEND_ONLY_TABLES = (
     "ticket_work_session_transitions",
     "ticket_work_session_closures",
     "inbox_messages",
+    "inbox_message_delivery_facts",
     "inbox_ticket_links",
 )
 
@@ -309,6 +310,7 @@ def test_upgrade_database_corrects_existing_head_privileges(
             "0047_board_source_index.sql",
             "0048_native_inbox.sql",
             "0049_review_dispatch_effect.sql",
+            "0051_inbox_delivery_read_facts.sql",
         ):
             connection.execute((MIGRATIONS / name).read_text(encoding="utf-8"))
     provision_database_roles(database.admin_dsn)
