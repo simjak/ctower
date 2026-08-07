@@ -21,8 +21,16 @@ __all__: tuple[str, ...] = ()
 
 _HTML_ACCEPT = {"accept": "text/html"}
 _JSON_ACCEPT = {"accept": "application/json"}
+_PROBLEM_ACCEPT = {"accept": "application/problem+json"}
 _BEARER = {"authorization": "Bearer opaque-machine-credential"}
 _SESSION_COOKIE = "__Host-ctower_session"
+_UNCONFIGURED_PROVIDER_PROBLEM = {
+    "code": "auth-provider-unavailable",
+    "detail": "The requested OIDC provider is not configured.",
+    "status": 503,
+    "title": "OIDC provider unavailable",
+    "type": "https://ctower.dev/problems/auth-provider-unavailable",
+}
 
 
 def _build_app(*, enforcing: bool) -> FastAPI:
@@ -77,11 +85,39 @@ def test_enforcing_never_gates_the_auth_routes_themselves() -> None:
     with TestClient(_build_app(enforcing=True), follow_redirects=False) as client:
         response = client.get("/auth/login", headers=_HTML_ACCEPT)
 
-    # Unconfigured providers still refuse (no redirect loop), but as the auth route's
-    # own named refusal, never the gate's redirect/401.
+    # Unconfigured providers still report the auth route's own unavailable state, never
+    # the gate's redirect/401, while presenting it as a human page rather than raw JSON.
     assert response.status_code == HTTPStatus.SERVICE_UNAVAILABLE
-    payload = response.json()
-    assert payload["code"] == "auth-provider-unavailable"
+    assert response.headers["content-type"].partition(";")[0] == "text/html"
+    assert "Sign-in isn't available yet" in response.text
+
+
+def test_unconfigured_provider_browser_gets_human_empty_state() -> None:
+    with TestClient(_build_app(enforcing=False), follow_redirects=False) as client:
+        response = client.get("/auth/login", headers=_HTML_ACCEPT)
+
+    assert response.status_code == HTTPStatus.SERVICE_UNAVAILABLE
+    assert response.headers["content-type"].partition(";")[0] == "text/html"
+    assert "Sign-in isn't available yet" in response.text
+    assert "Contact the operator or try again later." in response.text
+    assert "--bg" in response.text
+    assert "--ink" in response.text
+    assert "auth-provider-unavailable" not in response.text
+    assert "application/problem+json" not in response.text
+    assert "OIDC" not in response.text
+
+
+def test_unconfigured_provider_api_accepts_keep_exact_problem_document() -> None:
+    with TestClient(_build_app(enforcing=False), follow_redirects=False) as client:
+        responses = (
+            client.get("/auth/login", headers=_JSON_ACCEPT),
+            client.get("/auth/login", headers=_PROBLEM_ACCEPT),
+        )
+
+    for response in responses:
+        assert response.status_code == HTTPStatus.SERVICE_UNAVAILABLE
+        assert response.headers["content-type"].partition(";")[0] == "application/problem+json"
+        assert response.json() == _UNCONFIGURED_PROVIDER_PROBLEM
 
 
 def test_dark_state_never_enforces_regardless_of_credential_or_accept() -> None:
