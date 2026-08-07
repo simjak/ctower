@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.10.1](https://github.com/simjak/ctower/compare/v0.10.0...v0.10.1) (2026-08-07)
+
+
+### Bug Fixes
+
+* **ui:** contain the instance revision chip ([#360](https://github.com/simjak/ctower/issues/360)) ([f5e9b9b](https://github.com/simjak/ctower/commit/f5e9b9bda937da17fdd9334129da80283c79ad85)), closes [#338](https://github.com/simjak/ctower/issues/338)
+
 ## [0.10.0](https://github.com/simjak/ctower/compare/v0.9.0...v0.10.0) (2026-08-07)
 
 
