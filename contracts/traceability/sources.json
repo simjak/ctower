@@ -1956,6 +1956,20 @@
       ]
     },
     {
+      "path": "packages/ctower-kernel/migrations/0052_knowledge_inbox_event_kinds.sql",
+      "references": [
+        "SPEC#canonical-event-and-command-contract",
+        "SPEC#native-inbox-delivery-and-read-facts",
+        "SPEC#persistence-authority",
+        "INV-01",
+        "INV-03",
+        "INV-34",
+        "INV-79",
+        "AC-INBOX-01",
+        "AC-INBOX-03"
+      ]
+    },
+    {
       "path": "packages/ctower-kernel/migrations/manifest.json",
       "references": [
         "SPEC#executable-authority-and-requirement-traceability",

@@ -63,10 +63,11 @@ _EXPECTED_MIGRATION_PATHS = [
     "0049_review_dispatch_effect.sql",
     "0050_knowledge_documents.sql",
     "0051_inbox_delivery_read_facts.sql",
+    "0052_knowledge_inbox_event_kinds.sql",
 ]
 _EXPECTED_ADOPTION_BASELINE = {
-    "through": "0051_inbox_delivery_read_facts.sql",
-    "schema_sha256": ("sha256:99cf39028b321a382f442a07c13372c57638eb07dfa95b2b97d888c492639256"),
+    "through": "0052_knowledge_inbox_event_kinds.sql",
+    "schema_sha256": ("sha256:07a2ecb2db4d0c76a962a5abe1d604e131151149f1847bea8bf52bbc6a1b6eca"),
     "semantic_checks": "ctower.pre-ledger/v1",
     "schema_object_sum256": (
         "sum256:b03a7d66eafdb0889fa471b60f74670d7a3a5bd1c03a1c42fc6308555d1a19fe"
