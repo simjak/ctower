@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.10.0](https://github.com/simjak/ctower/compare/v0.9.0...v0.10.0) (2026-08-07)
+
+
+### Features
+
+* **ui:** read native inbox projections ([#348](https://github.com/simjak/ctower/issues/348)) ([eb34954](https://github.com/simjak/ctower/commit/eb349546144d289ed13047e62318d3b745e3a5c7)), closes [#331](https://github.com/simjak/ctower/issues/331)
+
 ## [0.9.0](https://github.com/simjak/ctower/compare/v0.8.1...v0.9.0) (2026-08-07)
 
 
