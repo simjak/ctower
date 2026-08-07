@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.11.0](https://github.com/simjak/ctower/compare/v0.10.1...v0.11.0) (2026-08-07)
+
+
+### Features
+
+* emit review dispatch effects ([#362](https://github.com/simjak/ctower/issues/362)) ([02ce228](https://github.com/simjak/ctower/commit/02ce22835a512f418f2eb3c2b70b9b6b2f9a8f2a))
+
 ## [0.10.1](https://github.com/simjak/ctower/compare/v0.10.0...v0.10.1) (2026-08-07)
 
 
