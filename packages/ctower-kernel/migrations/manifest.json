@@ -1,10 +1,10 @@
 {
   "schema": "ctower.migrations/v3",
   "adoption_baseline": {
-    "through": "0049_review_dispatch_effect.sql",
-    "schema_sha256": "sha256:ace3b0c4a4253ecd232b514582fe4f549e6d56dc5d146a93f0f45843d931494a",
+    "through": "0050_knowledge_documents.sql",
+    "schema_sha256": "sha256:0000000000000000000000000000000000000000000000000000000000000000",
     "semantic_checks": "ctower.pre-ledger/v1",
-    "schema_object_sum256": "sum256:6a6792c31f2f26ac3ff81c6809196f27ae90a44f0cdb8155ece551c6bf9dbf5c"
+    "schema_object_sum256": "sum256:0000000000000000000000000000000000000000000000000000000000000000"
   },
   "migrations": [
     {
@@ -467,6 +467,15 @@
       "forward_test": "pytest:tests/acceptance/increment-1/test_review_dispatch_effect.py::test_review_transition_dispatch_consumption_and_verdict_link",
       "rollback_or_forward_compensation": "Preserve immutable review-model bindings, emitted dispatch intents, lens sets, consumptions, reviewer assignments, linked verdicts, canonical events, command results, and outbox rows; append reviewed forward compensation and never edit or delete an accepted review-routing fact.",
       "backup_checkpoint": "Before applying to a nonempty installation, capture review-model binding, workflow run, proof bundle, verdict, assignment, event, command-result, and outbox counts grouped by tenant plus a verified database backup; all five new tables start empty."
+    },
+    {
+      "path": "0050_knowledge_documents.sql",
+      "sha256": "sha256:2a64bec02ce5b0478bebbada63bbe040763021036200342f2eb16060b5b98d9c",
+      "minimum_service_version": "0.0.0",
+      "maximum_service_version": "0.0.0",
+      "forward_test": "pytest:tests/modules/knowledge/source/test_conformance.py::test_static_file_source_passes_conformance",
+      "rollback_or_forward_compensation": "Preserve append-only knowledge documents, canonical events, durability heads, and disposable projections; append reviewed forward compensation and rebuild the knowledge projection, never edit or delete an accepted knowledge fact.",
+      "backup_checkpoint": "Before applying to a nonempty installation, capture knowledge document, event, durability-head, and projection counts grouped by tenant plus a verified database backup."
     }
   ]
 }

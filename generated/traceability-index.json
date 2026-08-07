@@ -176,6 +176,7 @@
       "packages/ctower-kernel/migrations/0024_catalog_authority.sql",
       "packages/ctower-kernel/migrations/0035_board_source_lookup.sql",
       "packages/ctower-kernel/migrations/0036_migration_ledger_role.sql",
+      "packages/ctower-kernel/migrations/0050_knowledge_documents.sql",
       "packages/ctower-kernel/migrations/manifest.json"
     ],
     "AC-EVD-01": [
@@ -600,7 +601,8 @@
       "packages/ctower-kernel/migrations/0018_durability_probe_search_path.sql",
       "packages/ctower-kernel/migrations/0020_recovery_roles.sql",
       "packages/ctower-kernel/migrations/0023_cp3c_privileges.sql",
-      "packages/ctower-kernel/migrations/0032_thread_first_intake.sql"
+      "packages/ctower-kernel/migrations/0032_thread_first_intake.sql",
+      "packages/ctower-kernel/migrations/0050_knowledge_documents.sql"
     ],
     "INV-02": [
       "contracts/bootstrap/first-tenant-request.schema.json",
@@ -635,7 +637,8 @@
     "INV-05": [
       "contracts/domain/events/canonical-vectors.json",
       "contracts/domain/events/event-envelope.schema.json",
-      "packages/ctower-kernel/migrations/0032_thread_first_intake.sql"
+      "packages/ctower-kernel/migrations/0032_thread_first_intake.sql",
+      "packages/ctower-kernel/migrations/0050_knowledge_documents.sql"
     ],
     "INV-06": [
       "contracts/domain/intake/thread-intake.schema.json",
@@ -738,7 +741,8 @@
       "packages/ctower-kernel/migrations/0035_board_source_lookup.sql",
       "packages/ctower-kernel/migrations/0040_project_scoped_reads.sql",
       "packages/ctower-kernel/migrations/0047_board_source_index.sql",
-      "packages/ctower-kernel/migrations/0048_native_inbox.sql"
+      "packages/ctower-kernel/migrations/0048_native_inbox.sql",
+      "packages/ctower-kernel/migrations/0050_knowledge_documents.sql"
     ],
     "INV-35": [
       "contracts/domain/migration/ctower-project-cutover-health.schema.json",
@@ -1018,7 +1022,8 @@
       "packages/ctower-kernel/migrations/0030_i17b_migration_truth_spine.sql",
       "packages/ctower-kernel/migrations/0031_i17b_bounded_truth_spine.sql",
       "packages/ctower-kernel/migrations/0032_thread_first_intake.sql",
-      "packages/ctower-kernel/migrations/0048_native_inbox.sql"
+      "packages/ctower-kernel/migrations/0048_native_inbox.sql",
+      "packages/ctower-kernel/migrations/0050_knowledge_documents.sql"
     ],
     "SPEC#client-acknowledgement-and-offline-behavior": [
       "contracts/http/openapi.yaml",

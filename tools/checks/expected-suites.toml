@@ -181,6 +181,16 @@ command = ["{python}", "-m", "pytest", "tests/modules/projections", "-q"]
 timeout_seconds = 300
 
 [[suite]]
+id = "knowledge-module"
+owner = "CT-I1-007"
+phase = "CT-I1-007"
+status = "required"
+path = "tests/modules/knowledge"
+patterns = ["test_*.py"]
+command = ["{python}", "-m", "pytest", "tests/modules/knowledge", "-q"]
+timeout_seconds = 300
+
+[[suite]]
 id = "bootstrap-acceptance"
 owner = "CT-I1-001"
 phase = "CT-I1-001"

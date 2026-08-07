@@ -203,6 +203,11 @@ paths = ["packages/ctower-kernel/src/ctower_kernel/attention/**"]
 allowed_dependencies = ["kernel-record"]
 
 [[ownership]]
+name = "kernel-knowledge"
+paths = ["packages/ctower-kernel/src/ctower_kernel/knowledge/**"]
+allowed_dependencies = ["kernel-record", "kernel-telemetry"]
+
+[[ownership]]
 name = "kernel-board-context"
 paths = ["packages/ctower-kernel/src/ctower_kernel/board_context/**"]
 allowed_dependencies = ["kernel-record", "kernel-telemetry"]
@@ -252,6 +257,7 @@ paths = [
   "tests/modules/board_context/**",
   "tests/modules/catalog/**",
   "tests/modules/inbox/**",
+  "tests/modules/knowledge/**",
   "tests/modules/migration/**",
   "tests/modules/objects/**",
   "tests/modules/projections/**",
@@ -261,7 +267,7 @@ paths = [
   "tests/modules/work/**",
   "tests/modules/workflow/**",
 ]
-allowed_dependencies = ["control-api", "kernel-access", "kernel-attention", "kernel-board-context", "kernel-catalog", "kernel-inbox", "kernel-migration", "kernel-objects", "kernel-projections", "kernel-proof", "kernel-record", "kernel-runtime", "kernel-telemetry", "kernel-work", "kernel-workflow"]
+allowed_dependencies = ["control-api", "kernel-access", "kernel-attention", "kernel-board-context", "kernel-catalog", "kernel-inbox", "kernel-knowledge", "kernel-migration", "kernel-objects", "kernel-projections", "kernel-proof", "kernel-record", "kernel-runtime", "kernel-telemetry", "kernel-work", "kernel-workflow"]
 
 [[ownership]]
 name = "web"

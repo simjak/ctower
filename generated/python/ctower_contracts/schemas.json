@@ -3446,6 +3446,48 @@
           ],
           "type": "object"
         },
+        "knowledgeDocumentRegistered": {
+          "additionalProperties": false,
+          "properties": {
+            "body": {
+              "maxLength": 1048576,
+              "minLength": 1,
+              "type": "string"
+            },
+            "document_id": {
+              "format": "uuid",
+              "type": "string"
+            },
+            "registered_at": {
+              "format": "date-time",
+              "type": "string"
+            },
+            "registered_by": {
+              "format": "uuid",
+              "type": "string"
+            },
+            "scope": {
+              "enum": [
+                "org",
+                "project"
+              ]
+            },
+            "title": {
+              "maxLength": 1024,
+              "minLength": 1,
+              "type": "string"
+            }
+          },
+          "required": [
+            "body",
+            "document_id",
+            "registered_by",
+            "registered_at",
+            "scope",
+            "title"
+          ],
+          "type": "object"
+        },
         "labelApplied": {
           "additionalProperties": false,
           "properties": {
@@ -4680,6 +4722,22 @@
                   "pattern": "^attention-finding-disposition:[0-9a-f-]{36}$"
                 }
               }
+            },
+            {
+              "properties": {
+                "kind": {
+                  "const": "knowledge.document_registered"
+                },
+                "origin": {
+                  "const": "api"
+                },
+                "payload": {
+                  "$ref": "#/$defs/knowledgeDocumentRegistered"
+                },
+                "stream_id": {
+                  "pattern": "^knowledge-document:[0-9a-f-]{36}$"
+                }
+              }
             }
           ]
         }
@@ -4739,7 +4797,8 @@
             "ticket.change_reference_recorded",
             "ticket.label_applied",
             "attention.finding_appended",
-            "attention.finding_disposition_recorded"
+            "attention.finding_disposition_recorded",
+            "knowledge.document_registered"
           ],
           "type": "string"
         },
@@ -4772,7 +4831,7 @@
           "type": "string"
         },
         "stream_id": {
-          "pattern": "^(tenant:[0-9a-f-]{36}:bootstrap|ticket:[0-9a-f-]{36}|catalog:[0-9a-f-]{36}|proof:[0-9a-f-]{36}|workflow:[0-9a-f-]{36}|routine-occurrence:[0-9a-f-]{36}|poison-disposition:[0-9a-f-]{36}|migration:[0-9a-f-]{36}|inbound-thread:[0-9a-f-]{36}|inbox-thread:[0-9a-f-]{36}|seat-credential:[0-9a-f-]{36}|session:[0-9a-f-]{36}|attention-finding:[0-9a-f-]{36}|attention-finding-disposition:[0-9a-f-]{36})$",
+          "pattern": "^(tenant:[0-9a-f-]{36}:bootstrap|ticket:[0-9a-f-]{36}|catalog:[0-9a-f-]{36}|proof:[0-9a-f-]{36}|workflow:[0-9a-f-]{36}|routine-occurrence:[0-9a-f-]{36}|poison-disposition:[0-9a-f-]{36}|migration:[0-9a-f-]{36}|inbound-thread:[0-9a-f-]{36}|inbox-thread:[0-9a-f-]{36}|seat-credential:[0-9a-f-]{36}|session:[0-9a-f-]{36}|attention-finding:[0-9a-f-]{36}|attention-finding-disposition:[0-9a-f-]{36}|knowledge-document:[0-9a-f-]{36})$",
           "type": "string"
         },
         "tenant_id": {
@@ -14313,7 +14372,7 @@
     {
       "id": "https://ctower.dev/contracts/domain/events/event-envelope.schema.json",
       "path": "contracts/domain/events/event-envelope.schema.json",
-      "sha256": "sha256:337cbab7f2413653762305e0f8c321549bd01aba3ef3281ae4f10b090d63f3c7"
+      "sha256": "sha256:47826d109e0fda4419ab6be4c09b558fb612f0b950ca355bbe59b04fe0ab1eb1"
     },
     {
       "id": "https://ctower.local/contracts/domain/inbox/inbox.schema.json",
