@@ -2,9 +2,9 @@
   "schema": "ctower.migrations/v3",
   "adoption_baseline": {
     "through": "0050_knowledge_documents.sql",
-    "schema_sha256": "sha256:0000000000000000000000000000000000000000000000000000000000000000",
+    "schema_sha256": "sha256:4d252ed9747a285793d267e7b4010f198078101c42818ddd5c2363e774ccc253",
     "semantic_checks": "ctower.pre-ledger/v1",
-    "schema_object_sum256": "sum256:0000000000000000000000000000000000000000000000000000000000000000"
+    "schema_object_sum256": "sum256:b8b5b0c2757490e1cbdbad061479b0e5936e856979eb829be5143293252f284f"
   },
   "migrations": [
     {
