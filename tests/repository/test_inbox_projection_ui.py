@@ -34,6 +34,13 @@ class InboxProjectionParserTests(unittest.TestCase):
         self.assertEqual(thread["promotedTicketId"], "018f0d5e-7b9a-7c01-8000-000000000010")
         self.assertTrue(outcomes["rejectsNonBooleanUnreadOnly"]["thrown"])
         self.assertTrue(outcomes["rejectsNonIntegerUnreadCount"]["thrown"])
+        accepts_explicit_null = cast("dict[str, Any]", outcomes["acceptsExplicitNullPromotion"])
+        self.assertIsNone(accepts_explicit_null["projection"]["threads"][0]["promotedTicketId"])
+        self.assertIsNone(accepts_explicit_null["thread"]["promotedTicketId"])
+        self.assertTrue(outcomes["rejectsMissingProjectionPromotion"]["thrown"])
+        self.assertTrue(outcomes["rejectsMissingThreadPromotion"]["thrown"])
+        self.assertTrue(outcomes["rejectsMalformedProjectionPromotion"]["thrown"])
+        self.assertTrue(outcomes["rejectsMalformedThreadPromotion"]["thrown"])
 
 
 class InboxProjectionWiringTests(unittest.TestCase):

@@ -26,6 +26,7 @@ import {
   asString,
   asStringList,
   asStringOrNull,
+  PayloadRefusal,
 } from "./json";
 import { LANES } from "./interface";
 import type {
@@ -208,6 +209,17 @@ function toSurfaceEnvironments(value: unknown, field: string): SurfaceEnvironmen
 
 const DELIVERY_SURFACE_STATES = ["no_qualifying_checkpoint", "qualifying_checkpoint"] as const;
 
+function requiredStringOrNull(
+  row: Readonly<Record<string, unknown>>,
+  property: string,
+  field: string
+): string | null {
+  if (!Object.hasOwn(row, property)) {
+    throw new PayloadRefusal(field, "a string or null");
+  }
+  return asStringOrNull(row[property], field);
+}
+
 function toDeliverySurfaceAvailability(value: unknown): DeliverySurfaceAvailability {
   const field = "board.card.delivery_surface_availability";
   const row = asRecord(value, field);
@@ -311,7 +323,11 @@ function toInboxThreadSummary(value: unknown): InboxThreadSummary {
     lastMessagePreview: asString(row.last_message_preview, "inbox.threads[].last_message_preview"),
     lastMessageAt: asString(row.last_message_at, "inbox.threads[].last_message_at"),
     unreadCount: asInteger(row.unread_count, "inbox.threads[].unread_count"),
-    promotedTicketId: asStringOrNull(row.promoted_ticket_id, "inbox.threads[].promoted_ticket_id"),
+    promotedTicketId: requiredStringOrNull(
+      row,
+      "promoted_ticket_id",
+      "inbox.threads[].promoted_ticket_id"
+    ),
   };
 }
 
@@ -344,7 +360,11 @@ export function inboxThreadFrom(value: unknown): InboxThread {
     participants: asStringList(row.participants, "inbox.thread.participants"),
     messages: asArray(row.messages, "inbox.thread.messages").map(toInboxMessage),
     readThroughPosition: asInteger(row.read_through_position, "inbox.thread.read_through_position"),
-    promotedTicketId: asStringOrNull(row.promoted_ticket_id, "inbox.thread.promoted_ticket_id"),
+    promotedTicketId: requiredStringOrNull(
+      row,
+      "promoted_ticket_id",
+      "inbox.thread.promoted_ticket_id"
+    ),
   };
 }
 

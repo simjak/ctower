@@ -44,6 +44,10 @@ const thread = {
   promoted_ticket_id: "018f0d5e-7b9a-7c01-8000-000000000010",
 };
 
+const { promoted_ticket_id: _projectionPromotion, ...projectionWithoutPromotion } =
+  projection.threads[0];
+const { promoted_ticket_id: _threadPromotion, ...threadWithoutPromotion } = thread;
+
 process.stdout.write(
   JSON.stringify({
     projection: inboxProjectionFrom(projection),
@@ -56,6 +60,26 @@ process.stdout.write(
         ...projection,
         threads: [{ ...projection.threads[0], unread_count: "one" }],
       })
+    ),
+    acceptsExplicitNullPromotion: {
+      projection: inboxProjectionFrom({
+        ...projection,
+        threads: [{ ...projection.threads[0], promoted_ticket_id: null }],
+      }),
+      thread: inboxThreadFrom({ ...thread, promoted_ticket_id: null }),
+    },
+    rejectsMissingProjectionPromotion: outcome(() =>
+      inboxProjectionFrom({ ...projection, threads: [projectionWithoutPromotion] })
+    ),
+    rejectsMissingThreadPromotion: outcome(() => inboxThreadFrom(threadWithoutPromotion)),
+    rejectsMalformedProjectionPromotion: outcome(() =>
+      inboxProjectionFrom({
+        ...projection,
+        threads: [{ ...projection.threads[0], promoted_ticket_id: 1 }],
+      })
+    ),
+    rejectsMalformedThreadPromotion: outcome(() =>
+      inboxThreadFrom({ ...thread, promoted_ticket_id: 1 })
     ),
   })
 );
