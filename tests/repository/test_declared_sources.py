@@ -291,15 +291,12 @@ class ProjectBoardTests(unittest.TestCase):
             "the board is read unscoped, though project_key is a required parameter",
         )
 
-    def test_the_board_says_when_a_card_carries_no_project_of_its_own(self) -> None:
-        note = _code(_SURFACE / "surfaces/board/ScopeNote.tsx")
-        self.assertIn("cardsCarryProject", note)
-        self.assertIn(
-            "portfolio",
-            note,
-            "three project tabs over one unattributed set must say that the set is the "
-            "portfolio's, or they claim a split the record does not make",
-        )
+    def test_a_scoped_board_does_not_contradict_its_project_filter(self) -> None:
+        note = _SURFACE / "surfaces/board/ScopeNote.tsx"
+        page = _code(_SURFACE / "app/board/page.tsx")
+        self.assertFalse(note.exists(), "the obsolete false project-scope warning still exists")
+        self.assertNotIn("ScopeNote", page)
+        self.assertNotIn("these are not", page)
 
     def test_a_refusal_is_not_rendered_as_an_empty_board(self) -> None:
         declared = _code(_SURFACE / "frame/Declared.tsx")
@@ -310,6 +307,29 @@ class ProjectBoardTests(unittest.TestCase):
             "the refusal is told apart by matching prose in the reason rather than by the "
             "status the typed failure carries",
         )
+
+
+class BoardContextRenderingTests(unittest.TestCase):
+    def test_the_phone_lane_jump_contains_its_own_horizontal_scroll(self) -> None:
+        stylesheet = (_ROOT / "apps/ctower-ui/design-reference/app.css").read_text(encoding="utf-8")
+        stagejump = re.search(r"\.stagejump\s*\{([^}]+)\}", stylesheet, re.DOTALL)
+        self.assertIsNotNone(stagejump, "the lane-jump row has no shared style rule")
+        assert stagejump is not None
+        rule = stagejump.group(1)
+        self.assertIn("overflow-x: auto", rule)
+        self.assertIn("max-width: 100%", rule)
+        self.assertIn("min-width: 0", rule)
+
+    def test_the_board_card_consumes_each_projected_context_member(self) -> None:
+        card = _code(_SURFACE / "surfaces/board/LaneCard.tsx")
+        self.assertIn("boardCardContextFor(card)", card)
+        for member in ("tenant", "changes", "labels", "humanWaiting", "deliverySurface"):
+            with self.subTest(member=member):
+                self.assertIn(
+                    f"context.{member}",
+                    card,
+                    f"the card projection carries {member}, but the component drops it",
+                )
 
 
 class IssueLinkTests(unittest.TestCase):

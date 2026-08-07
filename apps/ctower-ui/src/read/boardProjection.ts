@@ -1,12 +1,6 @@
 import { NO_BOARD_ROW_HERE } from "./futureSources";
 import { mapReading } from "./reading";
-import type {
-  BoardCard,
-  BoardEntry,
-  BoardSnapshot,
-  Reading,
-  TenantDisplayIdentity,
-} from "./interface";
+import type { BoardCard, BoardEntry, BoardSnapshot, Reading } from "./interface";
 
 /**
  * Projections over the board's per-card ticket readings.
@@ -148,23 +142,112 @@ export function unresolvedSources(entries: readonly BoardEntry[]): UnresolvedSou
   };
 }
 
-/** The tenant chip's already-decided text, so a surface never narrows the union itself. */
-export interface TenantChipFacts {
-  readonly label: string;
-  /** Why the tenant is unrecorded, for a `title` attribute; `undefined` when known. */
-  readonly title: string | undefined;
+/** One already-decided value for the Board-card context renderer. */
+export interface BoardContextValue {
+  readonly value: string;
+  readonly detail?: string | undefined;
 }
 
 /**
- * `tenantDisplayIdentity`'s `known`/`unknown` states, resolved to the text a
- * card renders. Lives here, not in the surface, for the same reason
- * `boardEmptyKind` does: this module is the one place outside
- * `frame/Declared.tsx` that may inspect a `.state` discriminant.
+ * The five-member Board-card context set, projected into display facts.
+ *
+ * This is the only browser module that narrows the contract discriminants. A
+ * component receives strings that are ready to render and cannot accidentally
+ * flatten `unknown`, `not_waiting`, declared absence, or
+ * `no_qualifying_checkpoint` into an omitted row.
  */
-export function tenantChipFor(identity: TenantDisplayIdentity): TenantChipFacts {
-  return identity.state === "known"
-    ? { label: identity.displayName, title: undefined }
-    : { label: "tenant unrecorded", title: identity.missingSource };
+export interface BoardCardContext {
+  readonly tenant: BoardContextValue;
+  readonly changes: readonly BoardContextValue[];
+  readonly labels: readonly BoardContextValue[];
+  readonly humanWaiting: BoardContextValue & { readonly attention: boolean };
+  readonly deliverySurface: BoardContextValue & { readonly details?: readonly string[] };
+}
+
+function contextValue(value: string, detail?: string): BoardContextValue {
+  return detail === undefined ? { value } : { value, detail };
+}
+
+function changeIdentity(identity: string): string {
+  return /^\d+$/.test(identity) ? `#${identity}` : identity;
+}
+
+function identitySurface(
+  name: string,
+  field: {
+    readonly state: "declared_present" | "declared_absent" | "undeclared";
+    readonly identity: string | null;
+  }
+): string {
+  if (field.state === "undeclared") {
+    return `${name} · STATE_UNKNOWN (undeclared)`;
+  }
+  if (field.state === "declared_absent") {
+    return `${name} · declared absent`;
+  }
+  return `${name} · ${field.identity ?? "STATE_UNKNOWN (identity missing)"}`;
+}
+
+function environmentSurface(field: {
+  readonly state: "declared_present" | "declared_absent" | "undeclared";
+  readonly environments: readonly string[];
+}): string {
+  if (field.state === "undeclared") {
+    return "non-production environments · STATE_UNKNOWN (undeclared)";
+  }
+  if (field.state === "declared_absent") {
+    return "non-production environments · declared absent";
+  }
+  return `non-production environments · ${field.environments.join(", ")}`;
+}
+
+export function boardCardContextFor(card: BoardCard): BoardCardContext {
+  const tenant =
+    card.tenantDisplayIdentity.state === "known"
+      ? contextValue(card.tenantDisplayIdentity.displayName)
+      : contextValue(`STATE_UNKNOWN · ${card.tenantDisplayIdentity.missingSource}`);
+  const changes =
+    card.changeReferences.length === 0
+      ? [contextValue("none recorded")]
+      : card.changeReferences.map((change) =>
+          contextValue(
+            `${change.repository} ${changeIdentity(change.change_identity)} · ${change.reference}`,
+            `recorded ${change.recorded_at}`
+          )
+        );
+  const labels =
+    card.appliedLabels.length === 0
+      ? [contextValue("none applied")]
+      : card.appliedLabels.map((label) =>
+          contextValue(
+            label.label,
+            `${label.label_key} · vocabulary ${label.vocabulary_revision.toString()} · applied ${label.applied_at}`
+          )
+        );
+  const humanWaiting =
+    card.humanWaiting.state === "waiting"
+      ? {
+          value: `${card.humanWaiting.kind_key} · ${card.humanWaiting.reason_code}`,
+          detail: `finding ${card.humanWaiting.finding_id}`,
+          attention: true,
+        }
+      : { value: "not waiting", attention: false };
+  const availability = card.deliverySurfaceAvailability;
+  const deliverySurface =
+    availability.state === "no_qualifying_checkpoint"
+      ? { value: "no qualifying checkpoint" }
+      : {
+          value: `checkpoint ${availability.checkpoint_key}`,
+          details: [
+            identitySurface("landing boundary", availability.landing_boundary),
+            environmentSurface(availability.non_production_environments),
+            identitySurface(
+              "externally effective outcome",
+              availability.externally_effective_outcome
+            ),
+          ],
+        };
+  return { tenant, changes, labels, humanWaiting, deliverySurface };
 }
 
 /**

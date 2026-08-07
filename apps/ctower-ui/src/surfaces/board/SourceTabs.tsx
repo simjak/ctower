@@ -13,9 +13,8 @@ export interface SourceTab {
 }
 
 /**
- * The board filter. The record carries no project fact yet — project scoping
- * is #185 / D29 — so the dimension this filters on is `source.kind`, which the
- * record does carry and which `/v1/board` accepts as a query filter.
+ * The board's secondary filter. Project is the primary axis above; this filters
+ * its cards by the independent recorded `source.kind` provenance dimension.
  *
  * The selection lives in the URL, so the counts, the column counts and the
  * empty columns are all computed on the server from the same choice and cannot

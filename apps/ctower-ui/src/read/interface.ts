@@ -1,4 +1,13 @@
-import type { BoardLane, DurabilityState, Priority, ProjectionHealth } from "@ctower/client";
+import type {
+  AppliedLabel,
+  BoardLane,
+  ChangeReference,
+  DeliverySurfaceAvailability,
+  DurabilityState,
+  HumanWaiting,
+  Priority,
+  ProjectionHealth,
+} from "@ctower/client";
 import type { ReadFailure } from "./bounded";
 import type { Known } from "./sources/maybe";
 
@@ -110,11 +119,9 @@ export interface IssueReference {
  * unattributed ticket says so rather than rendering blank, the same rule
  * INV-66 already holds every other member of this set to.
  *
- * This is not the `project` axis `BoardScope.cardsCarryProject` guards — D29
- * fixes the card's context set at five members and `project` (which of
- * ctower/manibo/bh-loop) is deliberately not one of them (see
- * `futureSources.ts`'s `NO_PROJECT_SCOPE`). `tenant_display_identity` is the
- * client/company a ticket's work is for, a different axis entirely.
+ * This is not the `project` axis: `tenant_display_identity` is the
+ * client/company a ticket's work is for, while `project_key` says which
+ * configured project owns the ticket.
  */
 export type TenantDisplayIdentity =
   | { readonly state: "known"; readonly displayName: string }
@@ -122,6 +129,7 @@ export type TenantDisplayIdentity =
 
 export interface BoardCard {
   readonly ticketId: string;
+  readonly projectKey: string;
   readonly title: string;
   readonly lane: BoardLane;
   readonly priority: Priority;
@@ -138,6 +146,10 @@ export interface BoardCard {
   readonly risk: string | null;
   readonly deliveryFacts: readonly string[];
   readonly tenantDisplayIdentity: TenantDisplayIdentity;
+  readonly changeReferences: readonly ChangeReference[];
+  readonly appliedLabels: readonly AppliedLabel[];
+  readonly humanWaiting: HumanWaiting;
+  readonly deliverySurfaceAvailability: DeliverySurfaceAvailability;
   readonly version: number;
 }
 
@@ -703,18 +715,11 @@ export interface InstanceIdentity {
  * How a board read was scoped, so the screen can say what it is looking at.
  *
  * The read is always scoped by project key — that is the contract's required
- * parameter. Whether the *record* can honour that scoping is a different fact,
- * and the screen must not imply the first answers the second.
+ * parameter — and every parsed Board card carries the same project fact.
  */
 export interface BoardScope {
   /** The project key the read asked for. */
   readonly projectKey: string;
-  /**
-   * Whether a returned card carries a project fact of its own. False today: the
-   * Board card has no project member, so nothing on this board can be
-   * attributed to a project, however the read was scoped.
-   */
-  readonly cardsCarryProject: boolean;
 }
 
 /**

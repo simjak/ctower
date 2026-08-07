@@ -4,7 +4,6 @@ import { Resolved } from "@/frame/Declared";
 import { RecordFoot } from "@/frame/RecordFoot";
 import { configuredProjects, defaultProjectKey, selectedProjectKey } from "@/read/projects";
 import { ProjectTabs } from "@/surfaces/board/ProjectTabs";
-import { ScopeNote } from "@/surfaces/board/ScopeNote";
 import { StateGlyph } from "@/frame/StateGlyph";
 import { recordAdapter } from "@/read/adapter";
 import {
@@ -185,7 +184,6 @@ function BoardBody({
           </>
         }
       />
-      <ScopeNote scope={snapshot.scope} />
       <StageJump entries={shown} />
       <UnreadSources unresolved={unresolvedSources(snapshot.entries)} />
       <Rail entries={shown} now={now} />
