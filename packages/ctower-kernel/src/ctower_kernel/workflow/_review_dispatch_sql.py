@@ -28,6 +28,7 @@ class _ReviewDispatchInputs:
     candidate_digest: bytes
     author_principal_id: UUID
     author_model_ref: str
+    author_family: str
     repository: str
     change_identity: str
     pr_reference: str
@@ -55,9 +56,9 @@ def emit_review_dispatch(
         INSERT INTO workflow_review_dispatch_effects (
             effect_id, workflow_run_id, tenant_id, ticket_id, workflow_version,
             destination_stage, candidate_digest, author_principal_id, author_model_ref,
-            repository, change_identity, pr_reference, routing_policy_ref,
+            author_family, repository, change_identity, pr_reference, routing_policy_ref,
             reviewer_family_rule, emitted_at
-        ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s,
+        ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s,
                   'different_from_author', %s)
         ON CONFLICT (workflow_run_id, destination_stage, candidate_digest) DO NOTHING
         RETURNING effect_id
@@ -72,6 +73,7 @@ def emit_review_dispatch(
             inputs.candidate_digest,
             inputs.author_principal_id,
             inputs.author_model_ref,
+            inputs.author_family,
             inputs.repository,
             inputs.change_identity,
             inputs.pr_reference,
@@ -137,9 +139,15 @@ def _review_dispatch_inputs(
         missing.append("record.change-reference@1")
     session = connection.execute(
         """
-        SELECT model_ref FROM ticket_work_sessions
-        WHERE tenant_id = %s AND ticket_id = %s AND started_by = %s
-        ORDER BY started_at DESC, session_id DESC LIMIT 1
+        SELECT session.model_ref, binding.model_family
+        FROM ticket_work_sessions AS session
+        JOIN workflow_review_model_bindings AS binding
+          ON binding.tenant_id = session.tenant_id
+         AND binding.principal_id = session.started_by
+         AND binding.model_ref = session.model_ref
+        WHERE session.tenant_id = %s AND session.ticket_id = %s
+          AND session.started_by = %s
+        ORDER BY session.started_at DESC, session.session_id DESC LIMIT 1
         """,
         (actor.tenant_id, ticket_id, bundle["candidate_author_id"]),
     ).fetchone()
@@ -153,6 +161,7 @@ def _review_dispatch_inputs(
         candidate_digest=bytes(cast(bytes, bundle["candidate_digest"])),
         author_principal_id=cast(UUID, bundle["candidate_author_id"]),
         author_model_ref=str(session["model_ref"]),
+        author_family=str(session["model_family"]),
         repository=str(change["repository"]),
         change_identity=str(change["change_identity"]),
         pr_reference=str(change["reference"]),
@@ -186,7 +195,9 @@ def review_dispatches(
         rows = connection.execute(
             """
             SELECT effect.*, consumption.reviewer_principal_id,
-                consumption.author_family, consumption.reviewer_family,
+                consumption.author_family AS consumption_author_family,
+                consumption.reviewer_model_ref,
+                consumption.reviewer_family,
                 consumption.crew_name, consumption.consumed_by, consumption.consumed_at
             FROM workflow_review_dispatch_effects AS effect
             LEFT JOIN workflow_review_dispatch_consumptions AS consumption
@@ -269,7 +280,8 @@ def _effect(
         if row["reviewer_principal_id"] is None
         else ReviewDispatchConsumption(
             reviewer_principal_id=cast(UUID, row["reviewer_principal_id"]),
-            author_family=str(row["author_family"]),
+            author_family=str(row["consumption_author_family"]),
+            reviewer_model_ref=str(row["reviewer_model_ref"]),
             reviewer_family=str(row["reviewer_family"]),
             crew_name=str(row["crew_name"]),
             consumed_by=cast(UUID, row["consumed_by"]),
@@ -285,6 +297,7 @@ def _effect(
         candidate_digest="sha256:" + bytes(cast(bytes, row["candidate_digest"])).hex(),
         author_principal_id=cast(UUID, row["author_principal_id"]),
         author_model_ref=str(row["author_model_ref"]),
+        author_family=str(row["author_family"]),
         repository=str(row["repository"]),
         change_identity=str(row["change_identity"]),
         pr_reference=str(row["pr_reference"]),

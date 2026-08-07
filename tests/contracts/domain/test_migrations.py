@@ -64,10 +64,10 @@ _EXPECTED_MIGRATION_PATHS = [
 ]
 _EXPECTED_ADOPTION_BASELINE = {
     "through": "0049_review_dispatch_effect.sql",
-    "schema_sha256": ("sha256:e55b476463e6eade0bc1cf2c48487ca7d9c802e1e60d8956ce05117403e47762"),
+    "schema_sha256": ("sha256:ace3b0c4a4253ecd232b514582fe4f549e6d56dc5d146a93f0f45843d931494a"),
     "semantic_checks": "ctower.pre-ledger/v1",
     "schema_object_sum256": (
-        "sum256:b5b1322bd6d6fa7a43612ffb23124bb9817e20fd6d634d8c9637b0ed619febf0"
+        "sum256:6a6792c31f2f26ac3ff81c6809196f27ae90a44f0cdb8155ece551c6bf9dbf5c"
     ),
 }
 _DURABILITY_RECOVERY_CONTRACT = {

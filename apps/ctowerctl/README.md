@@ -16,8 +16,9 @@ installed pack tree without a network request. With exactly one revision, omitte
 exact installed revision before enqueue. The existing resolve operation derives an omitted ref from the
 persisted run. Complete explicit pins and refs remain supported and server validation remains authoritative.
 `ticket review-dispatch list` reads the emitted review intent, consumption, and verdict links, while
-`ticket review-dispatch consume` records the executing substrate's independent reviewer routing through the
-same encrypted-spool path as other protected Work mutations. Neither command launches a reviewer.
+`ticket review-dispatch consume` records routing for the authenticated principal's registered model identity
+through the same encrypted-spool path as other protected Work mutations. Neither command accepts model-family
+labels or launches a reviewer.
 
 The same installed-policy rule closes the Proof input loop. Criteria freeze accepts either an explicit
 candidate digest or literal candidate content, hashing the latter as exact UTF-8 bytes, and defaults omitted

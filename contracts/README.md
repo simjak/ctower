@@ -13,8 +13,9 @@ composition.
 The development-only CP-1 consumer subset keeps graph and transition authority under `workflow/`, owns its
 execution, gate, and evidence policy schemas under the single `execution/` home, and owns the strict
 current-proof/deferred-source manifest under `evidence/`. Workflow v2 adds declared stage-entry
-review-dispatch intents, while the HTTP contract exposes their substrate consumption and ticket-visible
-verdict join. This records control-plane intent only; it does not activate remote execution, images,
+review-dispatch intents, while the HTTP contract exposes their substrate consumption without accepting
+caller-authored family labels, plus the bound model-family facts and ticket-visible verdict join. This
+records control-plane intent only; it does not activate remote execution, images,
 executable extensions, or off-host durability.
 
 The CP2 task-management contracts under `domain/task-management/` fix typed Work commands, five assignment

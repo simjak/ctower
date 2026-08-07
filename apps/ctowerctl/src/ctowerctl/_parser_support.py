@@ -50,6 +50,4 @@ def _review_dispatch(actions: argparse._SubParsersAction[_Parser]) -> None:
     consume.add_argument("effect_id", type=UUID)
     _command_id(consume)
     _version_reason(consume)
-    consume.add_argument("--reviewer-principal-id", required=True, type=UUID)
-    for name in ("author-family", "reviewer-family", "crew-name"):
-        consume.add_argument(f"--{name}", required=True)
+    consume.add_argument("--crew-name", required=True)

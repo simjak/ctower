@@ -38,8 +38,10 @@ cannot mutate authority. Runtime materializes only the three authored fixed-oper
 dispatch them. The neutral Object port is shared by injected Proof and Catalog capabilities; Proof retains
 digest-bound inline/external object metadata, safe backfill, and durable erasure tombstones without owning
 the generic protocol. Record owns immutable backup/anchor/inventory/restore evidence and exact
-installation/report enablement policy. Review dispatch is intent-only: the kernel never launches the
-reviewer. The local recovery checkpoint does not activate production objects, backups, executable effects,
+installation/report enablement policy. Review dispatch binds the emitted author model family and derives the
+reviewer model family from the authenticated principal's immutable registration; it remains intent-only and
+the kernel never launches the reviewer. The local recovery checkpoint does not activate production objects,
+backups, executable effects,
 or external targets; Catalog declarations do not activate Effects, synthetic
 handlers, or the remaining I1/I2 runtimes.
 CompanyBundle validate, plan, and export remain authenticated read operations, including for Commander,

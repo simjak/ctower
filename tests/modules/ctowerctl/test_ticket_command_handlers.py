@@ -163,14 +163,10 @@ def test_builds_each_protected_workflow_request() -> None:
         _arguments("ticket resolve", workflow_ref="release@1")
     )
     effect_id = uuid4()
-    reviewer_id = uuid4()
     consumption = _ticket_commands.build_mutation(
         _arguments(
             "ticket review-dispatch consume",
             effect_id=effect_id,
-            reviewer_principal_id=reviewer_id,
-            author_family="codex",
-            reviewer_family="claude",
             crew_name="review-release",
         )
     )
@@ -182,7 +178,7 @@ def test_builds_each_protected_workflow_request() -> None:
     assert isinstance(resolve.request, ResolveCloseRequest)
     assert resolve.request.workflow_ref == "release@1"
     assert isinstance(consumption.request, ReviewDispatchConsumeRequest)
-    assert consumption.request.reviewer_principal_id == reviewer_id
+    assert consumption.request.crew_name == "review-release"
     assert consumption.path_parameters == {
         "ticket_id": str(_TICKET_ID),
         "effect_id": str(effect_id),

@@ -179,8 +179,9 @@ generated Python client -> FastAPI Adapter -> Access / Work -----> Record -> Pos
 It covers one-use first-tenant bootstrap; tenant-scoped tickets; protected custody; priority, assignment,
 lifecycle/admission, blocker, and relation facts; explicit immutable Workflow/policy pins; criteria,
 evidence, and verdict proof; interpreted graph transitions; declared review-stage entry intents carrying the
-current PR, proof lenses, author model reference, execution-policy pin, and a
-`different_from_author` family rule; Work-owned substrate consumption as a reviewer assignment; linked
+current PR, proof lenses, an immutable author model/family binding, execution-policy pin, and a
+`different_from_author` family rule; Work-owned substrate consumption that derives the reviewer model/family
+from the authenticated principal's immutable registration and records the reviewer assignment; linked
 verdict readback and a close-time completeness check; proof-gated resolve/close; linked cursor
 audit; two-party native Inbox threads with ordered messages, per-recipient unread cursors, and immutable
 thread-to-ticket links visible from Board cards; append-only recorded work sessions carrying seat, crew, model, harness, worktree, branch, the

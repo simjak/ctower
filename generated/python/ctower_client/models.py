@@ -1,6 +1,6 @@
 """DO NOT EDIT: generated file; regenerate from declared inputs.
 
-Authored contract digest: sha256:d246e6d84a56da02401fda3c162c4416e0e82e986cd7100eb22538d424318c97
+Authored contract digest: sha256:b71392111bdb294c855f76a29951d7f81cd3477cfc3707ecb396dacfc7a36961
 """
 
 from __future__ import annotations
@@ -1206,15 +1206,13 @@ class ResolveCloseRequest(_BoundaryModel):
 class ReviewDispatchConsumeRequest(_BoundaryModel):
     expected_version: Annotated[int, Field(ge=1, le=9007199254740991)]
     reason: Annotated[str, Field(min_length=1, max_length=500)]
-    reviewer_principal_id: UUID
-    author_family: Annotated[str, Field(pattern="^[a-z][a-z0-9._-]{1,95}$")]
-    reviewer_family: Annotated[str, Field(pattern="^[a-z][a-z0-9._-]{1,95}$")]
     crew_name: Annotated[str, Field(pattern="^[a-z][a-z0-9._-]{1,95}$")]
 
 
 class ReviewDispatchConsumption(_BoundaryModel):
     reviewer_principal_id: UUID
     author_family: Annotated[str, Field(pattern="^[a-z][a-z0-9._-]{1,95}$")]
+    reviewer_model_ref: Annotated[str, Field(min_length=1, max_length=128)]
     reviewer_family: Annotated[str, Field(pattern="^[a-z][a-z0-9._-]{1,95}$")]
     crew_name: Annotated[str, Field(pattern="^[a-z][a-z0-9._-]{1,95}$")]
     consumed_by: UUID
@@ -1903,6 +1901,7 @@ class Problem(_BoundaryModel):
         "review-dispatch-family-conflict",
         "review-dispatch-incomplete",
         "review-dispatch-input-missing",
+        "review-dispatch-model-unbound",
         "review-dispatch-self-review",
         "review-dispatch-unavailable",
         "seat-binding-conflict",
@@ -2007,6 +2006,7 @@ class ReviewDispatchEffect(_BoundaryModel):
     candidate_digest: Annotated[str, Field(pattern="^sha256:[a-f0-9]{64}$")]
     author_principal_id: UUID
     author_model_ref: Annotated[str, Field(min_length=1, max_length=128)]
+    author_family: Annotated[str, Field(pattern="^[a-z][a-z0-9._-]{1,95}$")]
     repository: Annotated[str, Field(min_length=1, max_length=256)]
     change_identity: Annotated[str, Field(min_length=1, max_length=128)]
     pr_reference: Annotated[str, Field(min_length=1, max_length=256)]

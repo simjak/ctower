@@ -3,8 +3,11 @@
 from __future__ import annotations
 
 import hashlib
+import secrets
+from datetime import UTC, datetime
 from uuid import UUID, uuid4
 
+import psycopg
 import pytest
 from fastapi.testclient import TestClient
 from support.server import application, fixture_proof_policy, running_api
@@ -43,6 +46,7 @@ from ctower_kernel.workflow import (
 __all__: tuple[str, ...] = ()
 _EXECUTION_DIGEST = "sha256:" + "1" * 64
 _REVIEW_LENS_COUNT = 2
+_HTTP_UNPROCESSABLE_CONTENT = 422
 
 
 def test_review_transition_dispatch_consumption_and_verdict_link(
@@ -50,6 +54,7 @@ def test_review_transition_dispatch_consumption_and_verdict_link(
 ) -> None:
     graph, policy = _review_contract()
     candidate_digest = "sha256:" + "a" * 64
+    same_family_credential = _register_review_models(tenant)
     with (
         running_api(
             tenant.database.runtime_dsn,
@@ -59,12 +64,22 @@ def test_review_transition_dispatch_consumption_and_verdict_link(
         ) as base_url,
         CtowerClient(base_url, credential=tenant.commander_credential) as commander,
         CtowerClient(base_url, credential=tenant.operator_credential) as reviewer,
+        CtowerClient(base_url, credential=same_family_credential) as same_family_reviewer,
     ):
-        _run_transcript(commander, reviewer, tenant, graph, policy, candidate_digest)
+        _run_transcript(
+            commander,
+            reviewer,
+            same_family_reviewer,
+            tenant,
+            graph,
+            policy,
+            candidate_digest,
+        )
 
 
 def test_in_process_review_dispatch_path_is_covered(tenant: TenantFixture) -> None:
     graph, policy = _review_contract()
+    same_family_credential = _register_review_models(tenant)
     with TestClient(
         application(
             tenant.database.runtime_dsn,
@@ -75,12 +90,22 @@ def test_in_process_review_dispatch_path_is_covered(tenant: TenantFixture) -> No
     ) as transport:
         commander = _transport_client(transport, tenant.commander_credential)
         reviewer = _transport_client(transport, tenant.operator_credential)
-        _run_transcript(commander, reviewer, tenant, graph, policy, "sha256:" + "b" * 64)
+        same_family_reviewer = _transport_client(transport, same_family_credential)
+        _run_transcript(
+            commander,
+            reviewer,
+            same_family_reviewer,
+            tenant,
+            graph,
+            policy,
+            "sha256:" + "b" * 64,
+        )
 
 
 def _run_transcript(
     commander: CtowerClient,
     reviewer: CtowerClient,
+    same_family_reviewer: CtowerClient,
     tenant: TenantFixture,
     graph: WorkflowGraph,
     policy: ProofPolicy,
@@ -91,7 +116,7 @@ def _run_transcript(
     effect = _enter_review_twice(commander, ticket_id, graph)
     _complete_proof(commander, reviewer, ticket_id, candidate_digest)
     _assert_close_waits_for_consumption(commander, ticket_id, graph)
-    _consume_and_close(commander, tenant, ticket_id, graph, effect)
+    _consume_and_close(commander, reviewer, same_family_reviewer, tenant, ticket_id, graph, effect)
 
 
 def _review_contract() -> tuple[WorkflowGraph, ProofPolicy]:
@@ -143,6 +168,7 @@ def _enter_review_twice(
     assert effect.pr_reference == "https://github.com/simjak/ctower/pull/347"
     assert effect.lenses == ("correctness", "security")
     assert effect.author_model_ref == "openai/gpt-5-codex"
+    assert effect.author_family == "codex"
     assert effect.routing_policy_ref == "fixture.review-routing@1"
     assert effect.reviewer_family_rule == "different_from_author"
     return effect
@@ -166,22 +192,33 @@ def _assert_close_waits_for_consumption(
 
 def _consume_and_close(
     commander: CtowerClient,
+    reviewer: CtowerClient,
+    same_family_reviewer: CtowerClient,
     tenant: TenantFixture,
     ticket_id: UUID,
     graph: WorkflowGraph,
     effect: ReviewDispatchEffect,
 ) -> None:
+    _assert_free_family_labels_refused(same_family_reviewer, ticket_id, effect.effect_id)
     with pytest.raises(CtowerProblemError) as same_family:
-        commander.consume_review_dispatch_effect(
+        same_family_reviewer.consume_review_dispatch_effect(
             ticket_id,
             effect.effect_id,
-            _consume(tenant, author_family="codex", reviewer_family="codex"),
+            _consume(),
             command_id=uuid4(),
         )
-    consumed = commander.consume_review_dispatch_effect(
+    with pytest.raises(CtowerProblemError) as unbound:
+        reviewer.consume_review_dispatch_effect(
+            ticket_id,
+            effect.effect_id,
+            _consume(),
+            command_id=uuid4(),
+        )
+    _register_reviewer_model(tenant)
+    consumed = reviewer.consume_review_dispatch_effect(
         ticket_id,
         effect.effect_id,
-        _consume(tenant, author_family="codex", reviewer_family="claude"),
+        _consume(),
         command_id=uuid4(),
     )
     linked = commander.list_review_dispatch_effects(ticket_id).effects[0]
@@ -191,10 +228,12 @@ def _consume_and_close(
         command_id=uuid4(),
     )
     assert same_family.value.problem.code == "review-dispatch-family-conflict"
+    assert unbound.value.problem.code == "review-dispatch-model-unbound"
     assert consumed.operation == "assignment_changed"
     assert linked.status == "verdict_linked"
     assert linked.consumption is not None
     assert linked.consumption.reviewer_principal_id == tenant.operator_id
+    assert linked.consumption.reviewer_model_ref == "anthropic/claude-sonnet-5"
     assert linked.consumption.reviewer_family == "claude"
     assert len(linked.verdict_ids) == _REVIEW_LENS_COUNT
     assert closed.lifecycle_facts == ("resolved", "closed")
@@ -361,14 +400,110 @@ def _transition(
     )
 
 
-def _consume(
-    tenant: TenantFixture, *, author_family: str, reviewer_family: str
-) -> ReviewDispatchConsumeRequest:
+def _consume() -> ReviewDispatchConsumeRequest:
     return ReviewDispatchConsumeRequest(
         expected_version=3,
         reason="Route an independent review crew",
-        reviewer_principal_id=tenant.operator_id,
-        author_family=author_family,
-        reviewer_family=reviewer_family,
         crew_name="review-r347-review-effect",
     )
+
+
+def _assert_free_family_labels_refused(
+    reviewer: CtowerClient, ticket_id: UUID, effect_id: UUID
+) -> None:
+    for author_family, reviewer_family in (("codex", "claude"), ("codex", "codex")):
+        command_id = uuid4()
+        payload = {
+            **_consume().model_dump(mode="json"),
+            "author_family": author_family,
+            "reviewer_family": reviewer_family,
+        }
+        response = reviewer._http.post(
+            f"/v1/tickets/{ticket_id}/workflow/review-dispatches/{effect_id}/consume",
+            json=payload,
+            headers=reviewer._telemetry_headers(
+                reviewer._context(command_id, ticket_id=ticket_id),
+                {
+                    **reviewer._auth_headers(),
+                    "Content-Type": "application/json",
+                    "Idempotency-Key": str(command_id),
+                },
+            ),
+        )
+        assert response.status_code == _HTTP_UNPROCESSABLE_CONTENT
+        assert response.json()["code"] == "validation-error"
+
+
+def _register_review_models(tenant: TenantFixture) -> str:
+    """Install immutable substrate bindings outside the consumer's request authority."""
+
+    same_family_reviewer_id = uuid4()
+    same_family_credential = secrets.token_urlsafe(32)
+    now = datetime.now(UTC)
+    with psycopg.connect(tenant.database.admin_dsn) as connection:
+        connection.execute(
+            """
+            INSERT INTO principals (
+                principal_id, tenant_id, kind, display_name, disabled,
+                credential_ref, vault_ref, created_at
+            ) VALUES (%s, %s, 'operator', 'Same-family Review Fixture', false,
+                NULL, NULL, %s)
+            """,
+            (same_family_reviewer_id, tenant.tenant_id, now),
+        )
+        connection.execute(
+            """
+            INSERT INTO principal_credentials (
+                credential_id, principal_id, tenant_id, credential_digest, created_at
+            ) VALUES (%s, %s, %s, %s, %s)
+            """,
+            (
+                uuid4(),
+                same_family_reviewer_id,
+                tenant.tenant_id,
+                hashlib.sha256(same_family_credential.encode()).digest(),
+                now,
+            ),
+        )
+        connection.cursor().executemany(
+            """
+            INSERT INTO workflow_review_model_bindings (
+                tenant_id, principal_id, model_ref, model_family, bound_at
+            ) VALUES (%s, %s, %s, %s, %s)
+            """,
+            (
+                (
+                    tenant.tenant_id,
+                    tenant.commander_id,
+                    "openai/gpt-5-codex",
+                    "codex",
+                    now,
+                ),
+                (
+                    tenant.tenant_id,
+                    same_family_reviewer_id,
+                    "openai/gpt-5.6-terra",
+                    "codex",
+                    now,
+                ),
+            ),
+        )
+    return same_family_credential
+
+
+def _register_reviewer_model(tenant: TenantFixture) -> None:
+    with psycopg.connect(tenant.database.admin_dsn) as connection:
+        connection.execute(
+            """
+            INSERT INTO workflow_review_model_bindings (
+                tenant_id, principal_id, model_ref, model_family, bound_at
+            ) VALUES (%s, %s, %s, %s, %s)
+            """,
+            (
+                tenant.tenant_id,
+                tenant.operator_id,
+                "anthropic/claude-sonnet-5",
+                "claude",
+                datetime.now(UTC),
+            ),
+        )

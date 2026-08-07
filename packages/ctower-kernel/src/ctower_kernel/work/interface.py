@@ -126,19 +126,13 @@ class ConsumeReviewDispatch(WorkMutation):
     """Record the executing substrate's reviewer routing decision."""
 
     effect_id: UUID
-    reviewer_principal_id: UUID
-    author_family: str
-    reviewer_family: str
     crew_name: str
 
     def request_payload(self) -> dict[str, object]:
         return {
             **self._payload("consume_review_dispatch"),
-            "author_family": self.author_family,
             "crew_name": self.crew_name,
             "effect_id": str(self.effect_id),
-            "reviewer_family": self.reviewer_family,
-            "reviewer_principal_id": str(self.reviewer_principal_id),
         }
 
 
@@ -537,9 +531,9 @@ def _typed_command_refusal(actor: Actor, command: WorkCommand) -> RecordProblem 
         return _priority_refusal(actor, command)
     if isinstance(command, ChangeAssignment):
         return _assignment_refusal(command)
-    if isinstance(command, ConsumeReviewDispatch) and any(
-        _STABLE_FAMILY.fullmatch(value) is None
-        for value in (command.author_family, command.reviewer_family, command.crew_name)
+    if (
+        isinstance(command, ConsumeReviewDispatch)
+        and _STABLE_FAMILY.fullmatch(command.crew_name) is None
     ):
         return _work_problem(command, "validation-error", 422, "Invalid review routing facts")
     return None

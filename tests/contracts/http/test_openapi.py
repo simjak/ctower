@@ -285,6 +285,7 @@ _EXPECTED_PROBLEM_CODES = {
     "review-dispatch-family-conflict",
     "review-dispatch-incomplete",
     "review-dispatch-input-missing",
+    "review-dispatch-model-unbound",
     "review-dispatch-self-review",
     "review-dispatch-unavailable",
     "seat-binding-conflict",

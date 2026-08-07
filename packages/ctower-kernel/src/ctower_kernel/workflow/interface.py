@@ -196,6 +196,7 @@ class ReviewDispatchConsumption:
 
     reviewer_principal_id: UUID
     author_family: str
+    reviewer_model_ref: str
     reviewer_family: str
     crew_name: str
     consumed_by: UUID
@@ -207,6 +208,7 @@ class ReviewDispatchConsumption:
             "consumed_at": self.consumed_at.isoformat(),
             "consumed_by": str(self.consumed_by),
             "crew_name": self.crew_name,
+            "reviewer_model_ref": self.reviewer_model_ref,
             "reviewer_family": self.reviewer_family,
             "reviewer_principal_id": str(self.reviewer_principal_id),
         }
@@ -224,6 +226,7 @@ class ReviewDispatchEffect:
     candidate_digest: str
     author_principal_id: UUID
     author_model_ref: str
+    author_family: str
     repository: str
     change_identity: str
     pr_reference: str
@@ -244,6 +247,7 @@ class ReviewDispatchEffect:
         )
         return {
             "author_model_ref": self.author_model_ref,
+            "author_family": self.author_family,
             "author_principal_id": str(self.author_principal_id),
             "candidate_digest": self.candidate_digest,
             "change_identity": self.change_identity,

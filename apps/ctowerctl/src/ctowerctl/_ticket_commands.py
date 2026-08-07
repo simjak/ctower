@@ -331,9 +331,6 @@ def _consume_review_dispatch(arguments: argparse.Namespace) -> MutationPayload:
     request = ReviewDispatchConsumeRequest(
         expected_version=cast(int, arguments.expected_version),
         reason=cast(str, arguments.reason),
-        reviewer_principal_id=cast(UUID, arguments.reviewer_principal_id),
-        author_family=cast(str, arguments.author_family),
-        reviewer_family=cast(str, arguments.reviewer_family),
         crew_name=cast(str, arguments.crew_name),
     )
     return _payload(

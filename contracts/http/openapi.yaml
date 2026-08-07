@@ -3069,6 +3069,7 @@
               "review-dispatch-family-conflict",
               "review-dispatch-incomplete",
               "review-dispatch-input-missing",
+              "review-dispatch-model-unbound",
               "review-dispatch-self-review",
               "review-dispatch-unavailable",
               "seat-binding-conflict",
@@ -3727,22 +3728,20 @@
       },
       "ReviewDispatchConsumeRequest": {
         "type": "object", "additionalProperties": false,
-        "required": ["expected_version", "reason", "reviewer_principal_id", "author_family", "reviewer_family", "crew_name"],
+        "required": ["expected_version", "reason", "crew_name"],
         "properties": {
           "expected_version": {"type": "integer", "minimum": 1},
           "reason": {"type": "string", "minLength": 1, "maxLength": 500},
-          "reviewer_principal_id": {"type": "string", "format": "uuid"},
-          "author_family": {"type": "string", "pattern": "^[a-z][a-z0-9._-]{1,95}$"},
-          "reviewer_family": {"type": "string", "pattern": "^[a-z][a-z0-9._-]{1,95}$"},
           "crew_name": {"type": "string", "pattern": "^[a-z][a-z0-9._-]{1,95}$"}
         }
       },
       "ReviewDispatchConsumption": {
         "type": "object", "additionalProperties": false,
-        "required": ["reviewer_principal_id", "author_family", "reviewer_family", "crew_name", "consumed_by", "consumed_at"],
+        "required": ["reviewer_principal_id", "author_family", "reviewer_model_ref", "reviewer_family", "crew_name", "consumed_by", "consumed_at"],
         "properties": {
           "reviewer_principal_id": {"type": "string", "format": "uuid"},
           "author_family": {"type": "string", "pattern": "^[a-z][a-z0-9._-]{1,95}$"},
+          "reviewer_model_ref": {"type": "string", "minLength": 1, "maxLength": 128},
           "reviewer_family": {"type": "string", "pattern": "^[a-z][a-z0-9._-]{1,95}$"},
           "crew_name": {"type": "string", "pattern": "^[a-z][a-z0-9._-]{1,95}$"},
           "consumed_by": {"type": "string", "format": "uuid"},
@@ -3751,7 +3750,7 @@
       },
       "ReviewDispatchEffect": {
         "type": "object", "additionalProperties": false,
-        "required": ["effect_id", "workflow_run_id", "ticket_id", "workflow_version", "destination_stage", "candidate_digest", "author_principal_id", "author_model_ref", "repository", "change_identity", "pr_reference", "routing_policy_ref", "reviewer_family_rule", "lenses", "emitted_at", "consumption", "verdict_ids", "status"],
+        "required": ["effect_id", "workflow_run_id", "ticket_id", "workflow_version", "destination_stage", "candidate_digest", "author_principal_id", "author_model_ref", "author_family", "repository", "change_identity", "pr_reference", "routing_policy_ref", "reviewer_family_rule", "lenses", "emitted_at", "consumption", "verdict_ids", "status"],
         "properties": {
           "effect_id": {"type": "string", "format": "uuid"},
           "workflow_run_id": {"type": "string", "format": "uuid"},
@@ -3761,6 +3760,7 @@
           "candidate_digest": {"type": "string", "pattern": "^sha256:[a-f0-9]{64}$"},
           "author_principal_id": {"type": "string", "format": "uuid"},
           "author_model_ref": {"type": "string", "minLength": 1, "maxLength": 128},
+          "author_family": {"type": "string", "pattern": "^[a-z][a-z0-9._-]{1,95}$"},
           "repository": {"type": "string", "minLength": 1, "maxLength": 256},
           "change_identity": {"type": "string", "minLength": 1, "maxLength": 128},
           "pr_reference": {"type": "string", "minLength": 1, "maxLength": 256},
