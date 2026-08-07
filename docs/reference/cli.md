@@ -188,6 +188,38 @@ never becomes a ticket on submission. Promotion is idempotent — promoting an e
 ticket returns the same ticket instead of creating another, and an ineligible event is refused without
 changing anything.
 
+## Inbox
+
+| Command | Positional | Flags |
+|---|---|---|
+| `inbox send` | `<text>` | required: `--to <seat_key>`; optional: `--command-id`, `--thread <thread_id>` |
+| `inbox ack` | `<message_id>` | required: `--state {delivered,read}`; optional: `--command-id` |
+| `inbox list` | — | `--unread` |
+| `inbox read` | `<thread_id>` | — |
+| `inbox read-state` | `<thread_id>` | — |
+
+`send` starts a two-party thread when `--thread` is omitted. On an existing thread, `--to` must name the
+other participant. `send` and `ack` are protected, spoolable mutations; an exact command replay returns its
+original result, while reusing the command ID with different input is refused as `idempotency-conflict`.
+
+Only the recorded recipient may acknowledge a message. Acknowledgements advance monotonically from `sent`
+to `delivered` to `read`; acknowledging `read` before `delivered` records both facts in that order. Repeating
+the current state, or requesting `delivered` after `read`, is refused as
+`inbox-acknowledgement-not-advancing`. A participant who is not the message recipient is refused as
+`inbox-message-recipient-mismatch`; a missing message or one outside the authenticated participant scope is
+reported as `tenant-scope-denied`.
+
+The three reads are online-only queries and never record delivery or read facts. `list` is scoped to the
+authenticated participant and reports per-thread and total unread counts; `--unread` filters out threads
+with no unread incoming message. `read` returns the ordered messages and the fact-derived
+`read_through_position`, but opening the thread does not change it. `read-state` returns each message's
+fact-derived `sent|delivered|read` state and its recorded delivery/read event IDs and timestamps.
+
+Send-specific refusals are `inbox-sender-unaddressable`, `inbox-recipient-not-found`,
+`inbox-recipient-ambiguous`, `inbox-recipient-self`, and `inbox-thread-participant-mismatch`. Invalid text or
+identifiers are `invalid-request`; an unavailable or out-of-scope thread is `tenant-scope-denied`. Refusals
+change no Inbox state.
+
 ## Board and health {#board-and-health}
 
 | Command | Flags |
