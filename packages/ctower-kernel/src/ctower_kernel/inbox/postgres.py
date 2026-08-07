@@ -12,6 +12,7 @@ from ctower_kernel.inbox.models import (
     InboxSendResult,
 )
 from ctower_kernel.record import Actor, RecordProblem
+from ctower_kernel.record.transaction import recover_ambiguous_commit
 from ctower_kernel.telemetry import TelemetryContext
 
 __all__ = ["PostgresInbox"]
@@ -30,13 +31,15 @@ class PostgresInbox:
         now: datetime,
         telemetry: TelemetryContext,
     ) -> InboxSendResult | RecordProblem:
-        return send_message(
-            self._dsn,
-            actor,
-            command,
-            request_digest=request_digest,
-            now=now,
-            telemetry=telemetry,
+        return recover_ambiguous_commit(
+            lambda: send_message(
+                self._dsn,
+                actor,
+                command,
+                request_digest=request_digest,
+                now=now,
+                telemetry=telemetry,
+            )
         )
 
     def promote(
@@ -48,11 +51,13 @@ class PostgresInbox:
         now: datetime,
         telemetry: TelemetryContext,
     ) -> InboxPromotionResult | RecordProblem:
-        return promote_thread(
-            self._dsn,
-            actor,
-            command,
-            request_digest=request_digest,
-            now=now,
-            telemetry=telemetry,
+        return recover_ambiguous_commit(
+            lambda: promote_thread(
+                self._dsn,
+                actor,
+                command,
+                request_digest=request_digest,
+                now=now,
+                telemetry=telemetry,
+            )
         )
