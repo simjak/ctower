@@ -9,7 +9,7 @@ from uuid import UUID
 from pydantic import BaseModel
 
 from ctower_client import CtowerClient
-from ctower_client.models import InboxAcknowledgeRequest, InboxSendRequest
+from ctower_client.models import InboxAcknowledgeRequest, InboxPromotionRequest, InboxSendRequest
 from ctowerctl._command_types import MutationPayload
 
 __all__: tuple[str, ...] = ()
@@ -33,11 +33,16 @@ def build_mutation(arguments: argparse.Namespace) -> MutationPayload:
             ),
             path_parameters={"message_id": str(cast(UUID, arguments.message_id))},
         )
+    if cli_name == "inbox promote":
+        return MutationPayload(
+            request=InboxPromotionRequest(ticket_id=cast(UUID | None, arguments.ticket_id)),
+            path_parameters={"thread_id": str(cast(UUID, arguments.thread_id))},
+        )
     raise ValueError("usage: unsupported inbox mutation")
 
 
 def mutation_command_names() -> frozenset[str]:
-    return frozenset({"inbox ack", "inbox send"})
+    return frozenset({"inbox ack", "inbox promote", "inbox send"})
 
 
 def query_command_names() -> frozenset[str]:

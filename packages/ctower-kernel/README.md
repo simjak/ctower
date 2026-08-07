@@ -70,9 +70,11 @@ source records; composition decides whether to mount it. Authority facts retain 
 and resolved content, while list/get consume a disposable projection.
 
 Native Inbox is a two-principal thread aggregate. Record atomically appends `thread.opened`,
-`message.appended`, and `thread.promoted_to_ticket` facts; promotion writes one immutable link exposed from
-both the thread projection and the Board card. Ordered messages and promotion links remain authoritative,
-while recipient unread/read cursors and list/read rows are disposable and rebuildable.
+`message.appended`, and `thread.promoted_to_ticket` facts; promotion either composes a Record-owned P2 ticket
+creation from the immutable thread head under ordinary initial-custody policy or binds an existing in-scope
+ticket, then writes one immutable link exposed from both the thread projection and the Board card. Ordered
+messages and promotion links remain authoritative, while recipient unread/read cursors and list/read rows
+are disposable and rebuildable.
 
 There is no executable Extension Host in I1 or I2; that runtime remains deferred until a real use case and
 two real Adapters earn its Seam. The kernel may depend on authored/generated contracts and allowlisted public

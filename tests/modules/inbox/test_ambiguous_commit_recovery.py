@@ -22,6 +22,7 @@ from ctower_kernel.inbox import (
     InboxAcknowledgementState,
     InboxAcknowledgeResult,
     InboxPromotionCommand,
+    InboxPromotionOutcome,
     InboxPromotionResult,
     InboxSendCommand,
     InboxSendResult,
@@ -73,7 +74,8 @@ def _send_result() -> InboxSendResult:
 def _promotion_result() -> InboxPromotionResult:
     return InboxPromotionResult(
         command_id=uuid4(),
-        event_id=uuid4(),
+        event_ids=(uuid4(),),
+        outcome=InboxPromotionOutcome.TICKET_LINKED,
         thread_id=uuid4(),
         thread_version=3,
         ticket_id=uuid4(),
@@ -140,7 +142,7 @@ def test_promote_replays_through_recover_ambiguous_commit(
 
     outcome = inbox.promote(
         _actor(),
-        InboxPromotionCommand(uuid4(), 2, uuid4(), uuid4()),
+        InboxPromotionCommand(uuid4(), uuid4(), uuid4()),
         request_digest=bytes(32),
         now=datetime.now(UTC),
         telemetry=_telemetry(),

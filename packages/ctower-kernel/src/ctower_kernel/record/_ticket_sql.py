@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-from dataclasses import dataclass
 from datetime import datetime
 from typing import cast
 from uuid import UUID
@@ -13,7 +12,6 @@ from psycopg.rows import dict_row
 from ctower_kernel.record import (
     Actor,
     DurabilityState,
-    PrincipalKind,
     RecordProblem,
     SourceReference,
     Ticket,
@@ -22,27 +20,18 @@ from ctower_kernel.record import (
     TicketTimeline,
     TimelineEvent,
 )
-from ctower_kernel.record.events import (
-    EventEnvelope,
-    EventKind,
-    EventOrigin,
-    TicketCreatedPayload,
-    ticket_payload_from_mapping,
+from ctower_kernel.record.events import EventKind, ticket_payload_from_mapping
+from ctower_kernel.record.ticket_creation import (
+    TicketCreationIds,
+    initial_custody_project,
+    insert_ticket_state,
+    new_ticket_creation_ids,
+    ticket_created_commit,
 )
-from ctower_kernel.record.identifiers import uuid7 as _uuid7
 from ctower_kernel.record.transaction import RecordTransaction, authority_connection
 from ctower_kernel.telemetry import TelemetryContext
 
 __all__ = ["create_ticket", "get_ticket", "ticket_timeline"]
-
-ZERO_HASH = bytes(32)
-
-
-@dataclass(frozen=True, slots=True)
-class _TicketIds:
-    ticket: UUID
-    event: UUID
-    outbox: UUID
 
 
 def create_ticket(
@@ -60,7 +49,7 @@ def create_ticket(
     with authority_connection(dsn) as connection:
         connection.execute("SET ROLE ctower_svc")
         transaction = RecordTransaction(connection)
-        identifiers = _TicketIds(*(_uuid7(now) for _ in range(3)))
+        identifiers = new_ticket_creation_ids(now)
         project = _prepare_ticket(
             connection,
             transaction,
@@ -83,7 +72,7 @@ def create_ticket(
             created_at=now,
         )
         result = TicketCommandResult(command.client_command_id, (identifiers.event,), ticket)
-        _insert_ticket_state(
+        insert_ticket_state(
             connection,
             actor,
             command,
@@ -110,7 +99,7 @@ def _prepare_ticket(
     transaction: RecordTransaction,
     actor: Actor,
     command: TicketCommand,
-    identifiers: _TicketIds,
+    identifiers: TicketCreationIds,
     *,
     request_digest: bytes,
     policy_refusal: RecordProblem | None,
@@ -126,7 +115,7 @@ def _prepare_ticket(
     )
     if reserved is not None:
         return reserved
-    project = _initial_custody_project(
+    project = initial_custody_project(
         connection, actor, command.client_command_id, command.initial_custodian_id
     )
     if isinstance(project, RecordProblem):
@@ -277,159 +266,6 @@ def _refuse(
     return problem
 
 
-def _initial_custody_project(
-    connection: psycopg.Connection[dict[str, object]],
-    actor: Actor,
-    command_id: UUID,
-    custodian_id: UUID,
-) -> str | RecordProblem:
-    row = connection.execute(
-        """
-        SELECT principal.kind, seat.project_key
-        FROM principals AS principal
-        LEFT JOIN project_seats AS seat
-          ON seat.principal_id = principal.principal_id
-         AND seat.tenant_id = principal.tenant_id
-        WHERE principal.tenant_id = %s AND principal.principal_id = %s
-          AND NOT principal.disabled
-        """,
-        (actor.tenant_id, custodian_id),
-    ).fetchone()
-    if row is None:
-        return _scope_problem(command_id)
-    authorized = str(row["kind"]) == PrincipalKind.COMMANDER.value and (
-        actor.kind is PrincipalKind.OPERATOR
-        or (actor.kind is PrincipalKind.COMMANDER and custodian_id == actor.principal_id)
-    )
-    if not authorized:
-        return RecordProblem(
-            code="unauthorized",
-            detail=(
-                "Initial custody requires Commander self-custody or an operator placing "
-                "custody with an eligible Commander."
-            ),
-            status=403,
-            title="Initial custody refused",
-            command_id=command_id,
-        )
-    if row["project_key"] is None:
-        return RecordProblem(
-            code="project-grant-required",
-            detail="Initial custody requires a Commander with one explicit project grant.",
-            status=403,
-            title="Project grant required",
-            command_id=command_id,
-        )
-    return str(row["project_key"])
-
-
-def _initial_custody_problem(
-    connection: psycopg.Connection[dict[str, object]],
-    actor: Actor,
-    command_id: UUID,
-    custodian_id: UUID,
-) -> RecordProblem | None:
-    """Keep intake's narrow refusal seam while ticket creation consumes the project."""
-
-    project = _initial_custody_project(connection, actor, command_id, custodian_id)
-    return project if isinstance(project, RecordProblem) else None
-
-
-def _insert_ticket_state(
-    connection: psycopg.Connection[dict[str, object]],
-    actor: Actor,
-    command: TicketCommand,
-    *,
-    project_key: str,
-    identifiers: _TicketIds,
-    now: datetime,
-) -> None:
-    connection.execute(
-        """
-        INSERT INTO tickets (
-            ticket_id, tenant_id, title, source_kind, source_ref, priority,
-            custodian_principal_id, version, durability_state, created_by, created_at,
-            project_key
-        ) VALUES (%s, %s, %s, %s, %s, %s, %s, 1, 'durability_pending', %s, %s, %s)
-        """,
-        (
-            identifiers.ticket,
-            actor.tenant_id,
-            command.title,
-            command.source.kind,
-            command.source.ref,
-            command.priority,
-            command.initial_custodian_id,
-            actor.principal_id,
-            now,
-            project_key,
-        ),
-    )
-    connection.execute(
-        """
-        INSERT INTO lifecycle_episodes (
-            ticket_id, tenant_id, episode_number, state, opened_at
-        ) VALUES (%s, %s, 1, 'open', %s)
-        """,
-        (identifiers.ticket, actor.tenant_id, now),
-    )
-    _insert_initial_custody(connection, actor, command, identifiers=identifiers, now=now)
-    _insert_initial_priority(connection, actor, command, identifiers=identifiers, now=now)
-
-
-def _insert_initial_custody(
-    connection: psycopg.Connection[dict[str, object]],
-    actor: Actor,
-    command: TicketCommand,
-    *,
-    identifiers: _TicketIds,
-    now: datetime,
-) -> None:
-    connection.execute(
-        """
-        INSERT INTO assignment_intervals (
-            ticket_id, tenant_id, interval_sequence, assignment_kind, principal_id,
-            assigned_at, released_at, changed_by, reason, client_command_id, episode_number
-        ) VALUES (%s, %s, 1, 'ticket_custodian', %s, %s, NULL, %s,
-            'initial eligible custodian', %s, 1)
-        """,
-        (
-            identifiers.ticket,
-            actor.tenant_id,
-            command.initial_custodian_id,
-            now,
-            actor.principal_id,
-            command.client_command_id,
-        ),
-    )
-
-
-def _insert_initial_priority(
-    connection: psycopg.Connection[dict[str, object]],
-    actor: Actor,
-    command: TicketCommand,
-    *,
-    identifiers: _TicketIds,
-    now: datetime,
-) -> None:
-    connection.execute(
-        """
-        INSERT INTO priority_facts (
-            ticket_id, tenant_id, fact_sequence, priority, changed_by,
-            reason, client_command_id, recorded_at
-        ) VALUES (%s, %s, 1, %s, %s, 'initial priority', %s, %s)
-        """,
-        (
-            identifiers.ticket,
-            actor.tenant_id,
-            command.priority,
-            actor.principal_id,
-            command.client_command_id,
-            now,
-        ),
-    )
-
-
 def _append_ticket_created(
     connection: psycopg.Connection[dict[str, object]],
     actor: Actor,
@@ -437,38 +273,23 @@ def _append_ticket_created(
     result: TicketCommandResult,
     *,
     project_key: str,
-    identifiers: _TicketIds,
+    identifiers: TicketCreationIds,
     request_digest: bytes,
     now: datetime,
     telemetry: TelemetryContext,
 ) -> None:
-    event = EventEnvelope(
-        actor_principal_id=actor.principal_id,
-        aggregate_id=identifiers.ticket,
-        causation_id=None,
-        client_command_id=command.client_command_id,
-        correlation_id=telemetry.correlation_uuid(command.client_command_id),
-        event_id=identifiers.event,
-        kind=EventKind.TICKET_CREATED,
-        origin=EventOrigin.API,
-        payload=TicketCreatedPayload(
-            custodian_id=command.initial_custodian_id,
-            priority=command.priority,
-            project_key=project_key,
-            source_kind=command.source.kind,
-            source_ref=command.source.ref,
-            title=command.title,
-        ),
-        prev_hash=ZERO_HASH,
-        request_sha256=request_digest,
-        sequence=1,
-        server_time=now,
-        stream_id=f"ticket:{identifiers.ticket}",
-        tenant_id=actor.tenant_id,
+    commit = ticket_created_commit(
+        actor,
+        command,
+        identifiers,
+        project_key=project_key,
+        request_digest=request_digest,
+        now=now,
+        telemetry=telemetry,
     )
     RecordTransaction(connection).commit(
-        event,
-        outbox_id=identifiers.outbox,
+        commit.event,
+        outbox_id=commit.outbox_id,
         response_body=result.response_payload(),
         status_code=201,
         telemetry=telemetry.bind(

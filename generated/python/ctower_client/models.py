@@ -1,6 +1,6 @@
 """DO NOT EDIT: generated file; regenerate from declared inputs.
 
-Authored contract digest: sha256:aa5d49950e972e14cd877c942731becfaf9d0f98b0451b1b3c66902ab0953253
+Authored contract digest: sha256:7aec1d424376a21845a4ecb5948f5a56e67fe62b8e2e02504d1d5e2185bd8140
 """
 
 from __future__ import annotations
@@ -104,6 +104,9 @@ __all__ = [
     "InboxAcknowledgeResult",
     "InboxMessage",
     "InboxMessageReadState",
+    "InboxPromotionOutcome",
+    "InboxPromotionRequest",
+    "InboxPromotionResult",
     "InboxReadState",
     "InboxSendRequest",
     "InboxSendResult",
@@ -886,6 +889,15 @@ class InboxMessageReadState(_BoundaryModel):
     read_event_id: UUID | None
     recipient: Annotated[str, Field(pattern="^[a-z][a-z0-9._-]{1,95}$")]
     state: Literal["sent", "delivered", "read"]
+
+
+class InboxPromotionOutcome(StrEnum):
+    TICKET_CREATED = "ticket_created"
+    TICKET_LINKED = "ticket_linked"
+
+
+class InboxPromotionRequest(_BoundaryModel):
+    ticket_id: UUID | None = None
 
 
 class InboxSendRequest(_BoundaryModel):
@@ -1747,6 +1759,16 @@ class InboxAcknowledgeResult(_BoundaryModel):
     thread_version: Annotated[int, Field(ge=3, le=9007199254740991)]
 
 
+class InboxPromotionResult(_BoundaryModel):
+    command_id: UUID
+    durability_state: DurabilityState
+    event_ids: Annotated[tuple[UUID, ...], Field(min_length=1, max_length=2)]
+    outcome: InboxPromotionOutcome
+    thread_id: UUID
+    thread_version: Annotated[int, Field(ge=3, le=9007199254740991)]
+    ticket_id: UUID
+
+
 class InboxReadState(_BoundaryModel):
     messages: Annotated[tuple[InboxMessageReadState, ...], Field(min_length=1)]
     thread_id: UUID
@@ -1933,6 +1955,7 @@ class Problem(_BoundaryModel):
         "inbox-recipient-not-found",
         "inbox-recipient-self",
         "inbox-sender-unaddressable",
+        "inbox-thread-head-invalid",
         "inbox-thread-participant-mismatch",
         "intake-already-promoted",
         "intake-promotion-ineligible",

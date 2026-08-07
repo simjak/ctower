@@ -184,7 +184,8 @@ current PR, proof lenses, an immutable author model/family binding, execution-po
 from the authenticated principal's immutable registration and records the reviewer assignment; linked
 verdict readback and a close-time completeness check; proof-gated resolve/close; linked cursor
 audit; two-party native Inbox threads with ordered messages, per-recipient unread cursors, and immutable
-thread-to-ticket links visible from Board cards; append-only recorded work sessions carrying seat, crew, model, harness, worktree, branch, the
+thread-to-ticket links visible from Board cards, including atomic public promotion that either creates a P2
+ticket from the thread head under ordinary initial custody or links an existing ticket; append-only recorded work sessions carrying seat, crew, model, harness, worktree, branch, the
 authored `dispatched|briefed|working|gated` lifecycle, and a Record-computed duration beside
 caller-observed token counts; three fixed Routine revisions; an accepted-only, rebuildable six-lane Board; immutable delivery and
 poison evidence; canonical, acceptance-gated recovery dispositions; and contributor-level health. Record owns idempotent append, hash-chained
@@ -288,7 +289,7 @@ ports.
 | Deep Module | Authority hidden behind its Interface |
 |---|---|
 | Access / Record | Authentication, revision-pinned Project grants, authorization, prohibited-class refusal, idempotency-before-CAS, streams, hash chain, outbox, durability result, project-scoped typed event feed |
-| Inbox | Two-principal threads, append-only ordered messages and recipient delivery/read facts, immutable ticket promotion links, fact-derived per-message state and unread projection |
+| Inbox | Two-principal threads, append-only ordered messages and recipient delivery/read facts, atomic create-or-link ticket promotion, immutable promotion links, fact-derived per-message state and unread projection |
 | Catalog | One `VersionedComponent` lifecycle, compatibility, provenance, exact pins, future-only active pointers |
 | Work | Permanent tickets, lifecycle episodes, custody, relations, priorities, blockers, typed Board intents |
 | Proof | Criteria, artifacts, evidence DAG, independence, gate instances/verdicts, invalidation |

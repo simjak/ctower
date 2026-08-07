@@ -15,19 +15,17 @@ from ctower_kernel.record.events import (
     EventOrigin,
     InboundEventPromotedPayload,
     InboundEventRecordedPayload,
-    TicketCreatedPayload,
 )
 from ctower_kernel.record.intake import (
     IntakeCommandResult,
     IntakePromotionCommand,
     IntakeSubmitCommand,
 )
+from ctower_kernel.record.ticket_creation import ticket_created_commit
 from ctower_kernel.record.transaction import EventCommit
 from ctower_kernel.telemetry import TelemetryContext
 
 __all__: tuple[str, ...] = ()
-
-_ZERO_HASH = bytes(32)
 
 
 def submit_commits(
@@ -74,7 +72,6 @@ def submit_commits(
     commits = [EventCommit(intake_event, outbox_id)]
     ticket = _ticket_commit(
         actor,
-        command.client_command_id,
         action,
         request_digest=request_digest,
         now=now,
@@ -126,7 +123,6 @@ def promotion_commits(
     commits = [EventCommit(event, outbox_id)]
     ticket = _ticket_commit(
         actor,
-        command.client_command_id,
         action,
         request_digest=request_digest,
         now=now,
@@ -139,7 +135,6 @@ def promotion_commits(
 
 def _ticket_commit(
     actor: Actor,
-    command_id: UUID,
     action: IntakeAction,
     *,
     request_digest: bytes,
@@ -151,28 +146,12 @@ def _ticket_commit(
     command = action.ticket_command
     if command.project_key is None:
         raise RuntimeError("create-ticket intake project scope is unavailable")
-    event = EventEnvelope(
-        actor_principal_id=actor.principal_id,
-        aggregate_id=action.ticket_ids.ticket,
-        causation_id=None,
-        client_command_id=command_id,
-        correlation_id=telemetry.correlation_uuid(command_id),
-        event_id=action.ticket_ids.event,
-        kind=EventKind.TICKET_CREATED,
-        origin=EventOrigin.API,
-        payload=TicketCreatedPayload(
-            custodian_id=command.initial_custodian_id,
-            priority=command.priority,
-            project_key=command.project_key,
-            source_kind=command.source.kind,
-            source_ref=command.source.ref,
-            title=command.title,
-        ),
-        prev_hash=_ZERO_HASH,
-        request_sha256=request_digest,
-        sequence=1,
-        server_time=now,
-        stream_id=f"ticket:{action.ticket_ids.ticket}",
-        tenant_id=actor.tenant_id,
+    return ticket_created_commit(
+        actor,
+        command,
+        action.ticket_ids,
+        project_key=command.project_key,
+        request_digest=request_digest,
+        now=now,
+        telemetry=telemetry,
     )
-    return EventCommit(event, action.ticket_ids.outbox)

@@ -1,6 +1,6 @@
 """DO NOT EDIT: generated file; regenerate from declared inputs.
 
-Authored contract digest: sha256:aa5d49950e972e14cd877c942731becfaf9d0f98b0451b1b3c66902ab0953253
+Authored contract digest: sha256:7aec1d424376a21845a4ecb5948f5a56e67fe62b8e2e02504d1d5e2185bd8140
 """
 
 from __future__ import annotations
@@ -591,6 +591,19 @@ OPERATIONS = MappingProxyType(
             principal='operator',
             refusal_only=True,
         ),
+        "promoteInboxThread": OperationSpec(
+            operation_id="promoteInboxThread",
+            client_method="promote_inbox_thread",
+            method="POST",
+            path="/v1/inbox/threads/{thread_id}/promotion",
+            request_model=_models.InboxPromotionRequest,
+            response_model=_models.InboxPromotionResult,
+            cli_names=('inbox promote',),
+            mutation=True,
+            spool_policy=SpoolPolicy.ALLOWED,
+            principal=None,
+            refusal_only=False,
+        ),
         "promoteIntakeEvent": OperationSpec(
             operation_id="promoteIntakeEvent",
             client_method="promote_intake_event",
@@ -904,6 +917,7 @@ CLI_OPERATIONS = MappingProxyType(
         "session ticket": OPERATIONS["listTicketSessions"],
         "company bundle plan": OPERATIONS["planCompanyBundle"],
         "migration ctower-project prepare": OPERATIONS["prepareCtowerProjectCutover"],
+        "inbox promote": OPERATIONS["promoteInboxThread"],
         "intake promote": OPERATIONS["promoteIntakeEvent"],
         "inbox read-state": OPERATIONS["readInboxMessageState"],
         "inbox read": OPERATIONS["readInboxThread"],
