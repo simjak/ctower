@@ -51,7 +51,7 @@ _FORMAT_CHECKER = Draft202012Validator.FORMAT_CHECKER
 
 ROOT = Path(__file__).parents[3]
 GATE_POLICY_DIR = "packs/policies/gates"
-SPEC = "SPEC.md"
+SPEC = "docs/internal/SPEC.md"
 EXPECTED_SUITES = "tools/checks/expected-suites.toml"
 CAPABILITIES_DIR = "packs/components/capabilities"
 TRACEABILITY_AUTHORITY = "tools/checks/_impl/traceability.py"
@@ -528,6 +528,7 @@ def _scratch_registries(tmp_path: Path, *, spec_extra: str = "", drop: str = "")
     spec = (ROOT / SPEC).read_text(encoding="utf-8")
     if drop:
         spec = spec.replace(f"</a>{drop} |", "</a>WITHDRAWN |")
+    (root / SPEC).parent.mkdir(parents=True, exist_ok=True)
     (root / SPEC).write_text(spec + spec_extra, encoding="utf-8")
     return root
 

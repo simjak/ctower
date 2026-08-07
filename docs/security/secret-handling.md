@@ -13,8 +13,9 @@ standing credential merely because it can request work.
 Secret references are metadata, not proof that the credential is valid or that an effect succeeded. External
 mutations still require idempotency, receipts, and reconciliation.
 
-For the development-shadow operator procedure that binds only a digest and reference to one project seat, see
-[Project-seat credential ceremony](../operations/seat-credential-issuance.md).
+For the development-shadow surface, the operator-only
+[`credential seat issue`](../reference/cli.md#project-seat-credentials) command binds only a digest and an
+opaque secret-manager reference to one configured project seat. The bearer stays outside ctower.
 
 ## Protected CLI boundary
 

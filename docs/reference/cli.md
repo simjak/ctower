@@ -1,67 +1,50 @@
 # CLI reference
 
-`ctowerctl` — also installed as `ctl` — is the complete command surface. There are **47 authored server
-commands**, **7 local spool commands**, and one local installed-Workflow discovery command. There is no
-operation-ID escape hatch: an unrecognized command is a usage error, not a passthrough.
+`ctowerctl`—also installed as `ctl`—is the protected development CLI. It exposes a closed set of authored
+commands backed by the generated client. Unknown commands are usage errors; there is no arbitrary operation
+dispatcher.
 
-!!! info "Where this page comes from"
-    Every command name, flag, and choice list on this page is derived from
-    `apps/ctowerctl/src/ctowerctl/_parser.py`. Server commands are contract-bound: the test
-    `test_parser_exposes_every_authored_name_without_operation_dispatch` in
-    `tests/modules/ctowerctl/test_cli_boundaries.py` asserts the parser's authored server names equal the
-    generated registry `CLI_OPERATIONS`, which is generated from `contracts/http/openapi.yaml`. The local
-    Workflow discovery command reads the installed pack tree and performs no network request.
+!!! warning "Development surface"
+    The CLI is built and exercised as a verified wheel, but it is not published as a supported product
+    package. The tested API is loopback-only and uses synthetic data.
 
-## Invocation shape
+## Requested journey: what is actually available
 
-```text
-ctl [--base-url <url>] <area> <action> [<positional>] [--flags]
-```
+| Journey | Status | Current surface |
+|---|---|---|
+| Check the app is running | **Available** | `control health`; executed against the disposable loopback API by `just quickstart` |
+| Onboard a project | **Available to an Operator, as configuration** | Through the CompanyBundle: `company bundle validate` → `plan` → `apply`. There is no `project create` command and no self-serve path — see [Onboard a project](#onboard-a-project) |
+| Create a team or onboard another member | **Partially available** | There is no team or general member-management command. A project's starter checkpoints and their accountable seat keys are bundle resources; an Operator then binds one credential per already-configured project-seat identity with `credential seat issue/revoke` |
+| Create a ticket | **Available** | `ticket create` or its alias `ticket capture` |
+| Run the full workflow | **Available as a development fixture** | The tested path below reaches durable `resolved` and `closed` facts |
 
-`--base-url` scopes every invocation, including local spool commands, because the spool is scoped per
-origin. It may be omitted; see [Instance discovery](#instance-discovery).
+The partially-available row is an API and domain gap, not an undocumented flag; adding examples for it
+would be fiction. Onboarding is not a gap — it is a deliberate shape. Self-serve project onboarding, the
+thing that does not exist, is tracked as [issue #212](https://github.com/simjak/ctower/issues/212).
 
-### `--base-url` rules
-
-- Must be absolute `http` or `https`.
-- Cleartext `http` is permitted **only** for loopback (`localhost`, or any loopback IP).
-- Must not carry userinfo, a query string, or a fragment.
-
-Violations are usage errors (exit `64`).
-
-### Instance discovery
-
-Omit `--base-url` and the CLI resolves the one instance declared in the owner-only
-`~/.config/ctower/cli-instances.json` catalog — never an environment variable. `ctower-private-vps
-expose-cli` writes that catalog from the installed runtime's own configuration. A catalog with zero
-declared instances, or with more than one, both refuse by name (usage exit `64`) instead of guessing; pass
-`--base-url` explicitly to reach a different instance or to disambiguate. An explicit `--base-url` always
-takes priority and skips discovery entirely.
-
-### Authority
-
-Every server command reads one authority line from **stdin**. It is never a flag and never an environment
-variable. Maximum 8192 characters; the trailing newline is stripped.
+## Run the executable reference
 
 ```bash
-printf '%s\n' "${authority}" | ctl --base-url http://127.0.0.1:8080 control health
+just quickstart
 ```
 
-Missing or oversized authority is a usage error.
+The run installs the CLI outside the checkout and executes `control health`, discovery, ticket creation,
+admission, workflow start, all three transitions, criteria freeze, evidence, protected verdict, resolve,
+and spool drains against a disposable PostgreSQL/API fixture. It ends with `4 passed` and removes its
+temporary environment.
 
-### Exit codes
+## Invocation
 
-| Exit | Meaning |
-|---:|---|
-| `0` | Query succeeded, or mutation accepted |
-| `64` | Invalid command, invalid input, or missing stdin authority |
-| `69` | Permanent server refusal, quarantine barrier, or failed assertion |
-| `74` | Local spool, keyring, filesystem, or integrity failure |
-| `75` | Durably queued, server unreachable, or `durability_pending` |
+The grammar is `ctl [--base-url <url>] <area> <action> [<positional>] [--flags]`.
 
-Full semantics, including what to retry: [the agent operating contract](../agents/operating-contract.md).
+`--base-url` scopes every invocation, including local spool commands, because the spool is scoped per
+origin. It may be omitted when the owner-only `~/.config/ctower/cli-instances.json` catalog declares exactly
+one instance. Zero or multiple declared instances refuse with exit `64`; an explicit URL disambiguates. The
+value must be absolute HTTP(S), may not contain credentials, query data, or a fragment, and may use cleartext
+HTTP only on loopback.
 
-### Common flags
+Server commands read one bounded authority line from stdin. Authority is never a flag, environment value,
+or output field. Commands in the tables below show grammar, not credential examples.
 
 | Flag | Applies to | Notes |
 |---|---|---|
@@ -69,67 +52,226 @@ Full semantics, including what to retry: [the agent operating contract](../agent
 | `--expected-version` | Version-guarded mutations | Optimistic concurrency; a mismatch is `version-conflict` |
 | `--reason` | Authority and work mutations | Bounded metadata, never secret material |
 
-`<ticket_id>`, `<run_id>`, `<outbox_id>`, and `<sequence>` are positional.
+## Exit codes
+
+| Exit | Meaning | Safe response |
+|---:|---|---|
+| `0` | Read succeeded or mutation was accepted | Continue |
+| `64` | Invocation or bounded input is invalid | Fix the command; nothing was sent |
+| `69` | Typed permanent refusal or quarantine barrier | Read the problem code; do not retry unchanged |
+| `74` | Local keyring, spool, filesystem, or integrity failure | Fix the local boundary; the command was not sent |
+| `75` | Queued, temporarily unreachable, or `durability_pending` | Reuse the same command ID after waiting |
+
+A mutation prints its `command_id`, local `state`, `reason_code`, and spool `sequence`, plus a current server
+result when one exists. Exit `75` never means “try the same intent with a new ID.”
 
 ## Bootstrap
 
-One-time first-tenant ceremony. Not spooled.
-
-| Command | Flags |
+| Command | Required flags |
 |---|---|
-| `bootstrap first-tenant` | `--command-id`, `--tenant-name`, `--tenant-slug`, `--operator-name`, `--operator-credential-ref`, `--operator-vault-ref`, `--commander-name`, `--commander-vault-ref` |
+| `bootstrap first-tenant` | `--tenant-name`, `--tenant-slug`, `--operator-name`, `--operator-credential-ref`, `--operator-vault-ref`, `--commander-name`, `--commander-vault-ref`; optional `--command-id` |
 
-All `*-ref` values are references. Never pass a credential value.
+This online-only, one-use ceremony creates the initial tenant and two principals. Every `*-ref` value is a
+reference, never a secret value. It is not itself the onboarding flow: projects arrive through the
+CompanyBundle below.
 
-## Ticket: capture and reads
+## Onboard a project
+
+| Command | Input |
+|---|---|
+| `company bundle validate` | `<bundle_file>` |
+| `company bundle plan` | `<bundle_file>` |
+| `company bundle apply` | `<bundle_file>`, `--expected-active-version`, `--plan-digest`; optional `--command-id` |
+| `company bundle export` | none |
+
+A project is not created by a command. It is a `kind: project` resource inside the CompanyBundle, published
+by an Operator over the same authenticated command API the UI uses. The checked-in
+`company/company.bundle.yaml` carries the three configured projects — `ctower.control-plane`,
+`manibo.delivery`, `bh-loop.delivery` — beside the `kind: checkpoint` resources that give each project its
+starter checkpoints and name the seat accountable for each.
+
+Adding a project therefore means adding its `project` resource, its checkpoints, and their assignments to
+the bundle, then running validate → plan → apply. Nothing about the sequence is project-specific.
+
+### The run
+
+Against a disposable loopback instance and the checked-in bundle. Authority is one bounded line on stdin,
+never a flag.
+
+```console
+$ ctl --base-url http://127.0.0.1:38677 company bundle validate company/company.bundle.yaml
+{"bundle_digest":"sha256:3550c774...","checks":[{"code":"schema.closed","status":"passed"},
+{"code":"digest.canonical","status":"passed"},{"code":"reference.exact","status":"passed"},
+{"code":"compatibility.current","status":"passed"},{"code":"security.secret-free","status":"passed"}],
+"valid":true,"warnings":[]}
+```
+
+`validate` is a pure read. Its five named checks are the whole verdict; `valid` is never inferred from an
+absent error.
+
+```console
+$ ctl --base-url http://127.0.0.1:38677 company bundle plan company/company.bundle.yaml
+{"actions":[ ... {"component":{"key":"bh-loop.delivery","kind":"project","revision":1},"kind":"create"},
+{"component":{"key":"ctower.control-plane","kind":"project","revision":1},"kind":"create"},
+{"component":{"key":"manibo.delivery","kind":"project","revision":1},"kind":"create"} ... ],
+"base_version":0,"plan_digest":"sha256:b65365a5...","proposed_bundle_digest":"sha256:3550c774...",
+"warnings":[]}
+```
+
+`plan` is also a read, and it is where a project's arrival is visible: three `create` actions on `kind:
+project` components, beside the `create` actions for the checkpoint set. `base_version` is the currently
+active bundle version — `0` when no bundle has ever been applied.
+
+```console
+$ ctl --base-url http://127.0.0.1:38677 company bundle apply company/company.bundle.yaml \
+    --command-id 9bcccc10-1eba-40ec-b10b-103b77bc8316 \
+    --expected-active-version 0 \
+    --plan-digest sha256:b65365a5...
+{"command_id":"9bcccc10-...","reason_code":"durability_pending","state":"queued",
+ "result":{"active_version":1,"bundle_digest":"sha256:3550c774...","durability_state":"durability_pending",
+ "event_ids":[...],"plan_digest":"sha256:b65365a5..."},"sequence":1}
+```
+
+Exit `75`, not `0`. `apply` is a durable mutation: it enters the encrypted spool, reports
+`durability_pending`, and is completed by `spool drain` with the same command ID. `--plan-digest` must be
+the `plan_digest` printed by the plan you actually read, and `--expected-active-version` must be the
+version that plan reported; either one stale is a refusal, not a silent re-plan.
+
+```console
+$ ctl --base-url http://127.0.0.1:38677 company bundle export
+assignments:
+- component:
+    content_digest: sha256:17288c4f...
+    key: commander.protected-cli
+    kind: agent_profile
+    revision: 1
+  slot: agent_profile
+  subject: principal:commander
+company:
+  display_name: Ctower
+  key: ctower
+resources:
+...
+```
+
+`export` emits the active bundle as canonical YAML with no runtime state. Planning that export against the
+same instance returns `{"actions":[]}` at `base_version: 1` — the round trip carries zero semantic diff,
+which is what makes the exported file a safe starting point for the next revision.
+
+CompanyBundle moves one future-only Catalog pointer. It does not activate teams, runners, effects, or a
+production configuration.
+
+### Why there is no `project create`
+
+This is a specified shape, not a missing feature.
+
+- `docs/internal/SPEC.md`, *Portfolio topology, shadow boundary, and project grants*: the configured project
+  keys "are ordinary Project component data under one CompanyBundle, not product-code branches, separate
+  tenants, or separate databases."
+- The same section's authorization table, row *Apply Project/checkpoint/seat configuration*: it is an
+  "Operator-only CompanyBundle command." A project Commander "may author/propose a revision but cannot apply
+  it," and the `capture` scope is explicitly not granted "Catalog/CompanyBundle apply."
+- INV-47 states the general rule: CompanyBundle is transport — validate, plan, apply, and export through
+  authenticated commands.
+
+The CLI cannot drift from that on its own.
+`tests/modules/ctowerctl/test_cli_boundaries.py::test_parser_exposes_every_authored_name_without_operation_dispatch`
+asserts `authored_command_names() == frozenset(CLI_OPERATIONS)`: the parser's closed command set must equal
+the generated contract's operation set exactly. A `project create` command cannot be added by editing the
+parser; it would need an authored HTTP operation, which the specification does not grant.
+
+[Issue #212](https://github.com/simjak/ctower/issues/212) holds the open question — whether a project
+commander should be able to self-serve onboarding — as an operator decision between two options, not as an
+implementation task:
+
+- **(a)** the CompanyBundle path above is *the* onboarding route, documented as such. This page is that
+  answer written down.
+- **(b)** a specification amendment authorizes a self-serve create-project under D30's per-project grants.
+  That is a change to the rows quoted above, because it moves project creation out of operator-only
+  CompanyBundle apply, and it would then need an authored HTTP operation before any CLI command could exist.
+
+Until (b) is decided and amended, (a) is what the product does, and the sequence on this page is the
+onboarding path.
+
+## Project-seat credentials
+
+| Command | Required input |
+|---|---|
+| `credential seat issue` | `--credential-digest`, `--credential-ref`, `--display-name`, `--project-key`, one or more `--scope {capture,transition,evidence}`, and `--seat-key`; optional `--command-id` |
+| `credential seat revoke <credential_id>` | `--reason`; optional `--command-id` |
+
+These are online-only Operator mutations and are never written to the replay spool. They bind or revoke a
+credential for one configured `(project_key, seat_key)` identity; the project and the seat must already
+exist in the applied bundle, and these commands do not create either, nor a team.
+`--credential-ref` is an opaque secret-manager reference and `--credential-digest` is the lowercase
+`sha256:` digest of bearer bytes retained outside ctower. Never put the bearer itself in a command,
+environment variable, file, or documentation transcript.
+
+## Ticket commands
+
+### Create and read
 
 | Command | Positional | Flags |
 |---|---|---|
-| `ticket capture` | — | required: `--priority {P0,P1,P2}`, `--source-kind`, `--source-ref`, `--title`; optional: `--command-id`, `--initial-custodian-id` |
-| `ticket create` | — | identical to `ticket capture` |
-| `ticket query` | `<ticket_id>` | — |
-| `ticket show` | `<ticket_id>` | identical to `ticket query` |
+| `ticket create`, `ticket capture` | — | required `--priority {P0,P1,P2}`, `--source-kind`, `--source-ref`, `--title`; optional `--command-id`, `--initial-custodian-id` |
+| `ticket query`, `ticket show` | `<ticket_id>` | — |
 | `ticket timeline` | `<ticket_id>` | — |
+| `ticket audit` | `<ticket_id>` | optional `--cursor`, `--limit` |
 | `ticket assignments` | `<ticket_id>` | — |
-| `ticket audit` | `<ticket_id>` | `--cursor` (≥ 0), `--limit` (≥ 1, server max 100) |
 
-`capture`/`create` and `query`/`show` are aliases of the same operations, `createTicket` and `getTicket`.
-When `--command-id` is omitted, the CLI generates it before encrypted spool enqueue and prints it. Use
-`spool drain` for a queued retry; entering the create command again without the printed key starts a new
-intent. When `--initial-custodian-id` is omitted, the authenticated principal becomes the requested initial
-custodian. A Commander may establish only self-custody; an operator omission is refused and an operator
-must explicitly name an eligible Commander. Explicit values are authorization requests, not authority.
+The CLI generates a command ID when omitted. A Commander may establish their own initial custody. An
+Operator must explicitly name an eligible Commander.
 
-## Ticket: authority
+### Ownership and work
 
-| Command | Positional | Flags |
-|---|---|---|
-| `ticket comment add` | `<ticket_id>` | `--command-id`, `--body` |
-| `ticket assign` | `<ticket_id>` | `--command-id`, `--expected-version`, `--reason`, `--kind {current_assignee,stage_owner,reviewer}`, `--to-principal-id`, `--scope-ref` (optional) |
-| `ticket custody transfer` | `<ticket_id>` | `--command-id`, `--expected-version`, `--reason`, `--from-custodian-id`, `--to-custodian-id`, `--protected-transfer` (required flag) |
+| Command | Required flags beyond `<ticket_id>` |
+|---|---|
+| `ticket comment add` | `--body`; optional `--command-id` |
+| `ticket assign` | `--expected-version`, `--reason`, `--kind`, `--to-principal-id`; optional `--command-id`, `--scope-ref` |
+| `ticket custody transfer` | `--expected-version`, `--reason`, `--from-custodian-id`, `--to-custodian-id`, `--protected-transfer`; optional `--command-id` |
+| `ticket prioritize` | `--expected-version`, `--reason`, `--priority`; optional `--command-id`, `--urgent-evidence-ref` |
+| `ticket admit`, `ticket reopen` | `--expected-version`, `--reason`; optional `--command-id` |
+| `ticket defer` | the common mutation flags plus `--review-after` with a UTC offset |
+| `ticket block` | the common mutation flags plus blocker ID/kind, reason class, owner, source, resolution condition, and an explicit board-impact choice |
+| `ticket unblock` | the common mutation flags plus `--blocker-id`, `--resolution-evidence-ref` |
+| `ticket relation add` | the common mutation flags plus `--kind`, `--target-ticket-id` |
 
-`--protected-transfer` is mandatory and has no negative form. Custody transfer is a protected operation,
-distinct from assignment. See [custody](../concepts/tickets.md#custody).
+Assignment and custody are different. Assignment names a worker role; custody names the single accountable
+principal and is a protected atomic transfer.
 
-## Ticket: work and intents
+### Board context and Attention
 
-| Command | Positional | Flags |
-|---|---|---|
-| `ticket prioritize` | `<ticket_id>` | `--command-id`, `--expected-version`, `--reason`, `--priority {P0,P1,P2}`, `--urgent-evidence-ref` (optional) |
-| `ticket admit` | `<ticket_id>` | `--command-id`, `--expected-version`, `--reason` |
-| `ticket reopen` | `<ticket_id>` | `--command-id`, `--expected-version`, `--reason` |
-| `ticket defer` | `<ticket_id>` | `--command-id`, `--expected-version`, `--reason`, `--review-after` |
-| `ticket block` | `<ticket_id>` | `--command-id`, `--expected-version`, `--reason`, `--blocker-id`, `--blocker-kind {dependency,operator_action,policy,resource,technical}`, `--reason-class`, `--owner-principal-id`, `--source-ref`, `--resolution-condition`, `--board-impact` / `--no-board-impact`, plus optional `--affected-stage`, `--next-check-at`, `--dependency-ref` |
-| `ticket unblock` | `<ticket_id>` | `--command-id`, `--expected-version`, `--reason`, `--blocker-id`, `--resolution-evidence-ref` |
-| `ticket relation add` | `<ticket_id>` | `--command-id`, `--expected-version`, `--reason`, `--kind {parent_of,depends_on,blocks,duplicates,relates_to,caused_by}`, `--target-ticket-id` |
+| Command | Required input |
+|---|---|
+| `ticket change-reference add <ticket_id>` | `--repository`, `--change-identity`, `--reference`; optional `--command-id` |
+| `ticket label apply <ticket_id>` | `--label-key`; optional `--command-id` |
+| `attention finding append` | `--subject-ticket-id`, `--kind-key`, `--reason-code`, `--effective-owner {operator,commander}`, `--recommendation`, one or more `--alternative`, `--consequence`, `--dedupe-key`, one or more `--source-fact`; optional `--command-id`, `--deadline` |
+| `attention finding disposition <finding_id>` | `--outcome {resolved,snoozed,expired,superseded,cancelled}`, `--reason`; optional `--command-id` |
 
-`--review-after` and `--next-check-at` are ISO-8601 timestamps that **must** carry a UTC offset. A naive
-timestamp is rejected.
+Change references and labels populate recorded Board-card context; they are never inferred from repository
+names or arbitrary label text. An Attention finding is an append-only, typed request for an exact human
+action. Disposition records its outcome instead of making the finding disappear.
 
-`--board-impact` uses argparse's boolean-optional form: pass either `--board-impact` or
-`--no-board-impact`. Omitting both is an error.
+### Workflow and proof
 
-## Ticket: proof
+| Command | Required input |
+|---|---|
+| `ticket workflow list` | none; local installed-pack discovery |
+| `ticket workflow start <ticket_id>` | optional `--command-id` and complete set of four ref/digest pairs |
+| `ticket transition <ticket_id>` | `--expected-version`, `--workflow-ref`, `--source-stage`, `--destination-stage`; optional `--command-id` |
+| `ticket criteria freeze <ticket_id>` | `--expected-version`, exactly one candidate content/digest; optional `--command-id`, criteria file |
+| `ticket evidence add <ticket_id>` | `--expected-version`, `--evidence-id`, exactly one content/file; optional `--command-id`, criterion and digests |
+| `ticket gate verdict <ticket_id>` | `--expected-version`, `--verdict-id`, `--decision {pass,fail}`; optional `--command-id`, criterion/candidate digest |
+| `ticket resolve <ticket_id>` | `--expected-version`; optional `--command-id`, workflow ref |
+
+With exactly one installed executable workflow, start and proof commands can resolve the sole authored
+revision and criterion. Explicit refs and digests remain authoritative and are refused on mismatch.
+
+The shipped workflow is:
+
+```text
+capture --entry.ready@1--> frame --criteria.frozen@1--> verify --proof.current@1--> close
+```
 
 | Command | Positional | Flags |
 |---|---|---|
@@ -156,9 +298,9 @@ operator authority, or the request is refused as `proof-protected-authority-requ
 | Command | Positional | Flags |
 |---|---|---|
 | `ticket workflow list` | — | — |
-| `ticket workflow start` | `<ticket_id>` | `--command-id`; optionally all four ref/digest pairs (`--workflow-ref`, `--workflow-digest`, …) |
-| `ticket transition` | `<ticket_id>` | `--command-id`, `--expected-version`, `--workflow-ref`, `--source-stage`, `--destination-stage` |
-| `ticket resolve` | `<ticket_id>` | `--command-id`, `--expected-version`; optional `--workflow-ref` |
+| `ticket workflow start` | `<ticket_id>` | optional `--command-id` and all four ref/digest pairs (`--workflow-ref`, `--workflow-digest`, …) |
+| `ticket transition` | `<ticket_id>` | `--expected-version`, `--workflow-ref`, `--source-stage`, `--destination-stage`; optional `--command-id` |
+| `ticket resolve` | `<ticket_id>` | `--expected-version`; optional `--command-id`, `--workflow-ref` |
 
 Refs match `<key>@<revision>`, for example `ctower.trust-spine-four-stage@1`. Digests must match the pinned
 revision's canonical graph digest, not the digest of the pack file on disk. See
@@ -178,134 +320,79 @@ explicit complete selection.
 | `intake submit` | — | required: `--project-key`, `--source-kind`, `--source-ref`, `--content-file`; optional: `--command-id`, `--intent {discussion,create_ticket,link_ticket}` (default `discussion`), `--taint {authenticated,external_untrusted,quarantine_required}` (default `authenticated`), `--thread-id`, `--expected-thread-version`, plus the ticket fields below |
 | `intake promote` | `<inbound_event_id>` | required: `--expected-thread-version`, `--intent {create_ticket,link_ticket}`; optional: `--command-id`, the ticket fields below |
 
-Both accept the same optional ticket fields: `--initial-custodian-id`, `--priority {P0,P1,P2}`, `--title`,
-`--target-ticket-id`, `--expected-ticket-version`. Both are mutations and are spoolable.
-
-Submitting without `--thread-id` starts a new thread; supplying one appends to that thread and then
-`--expected-thread-version` is required. Supplying exactly one of the pair is a usage refusal, not a guess.
-Content submitted as `--taint quarantine_required` is stored and held: it is recorded as quarantined and
-never becomes a ticket on submission. Promotion is idempotent — promoting an event that already produced a
-ticket returns the same ticket instead of creating another, and an ineligible event is refused without
-changing anything.
-
-## Board and health {#board-and-health}
+## Board and project reads
 
 | Command | Flags |
 |---|---|
-| `board query` | all optional: `--lane {backlog,ready,in_progress,in_review,blocked,complete}`, `--priority {P0,P1,P2}`, `--stage-key`, `--custodian-id`, `--assignee-id`, `--source-kind`, `--source-ref` |
-| `control health` | — |
+| `board query` | optional lane, priority, stage, custodian, assignee, source kind/ref |
+| `project delivery query <project_key>` | optional `--output {text,json}` |
+| `control health` | none |
 
-Both are queries and are never spooled.
+All are online reads and never spooled. `project delivery query` does not create or configure a project;
+that is [Onboard a project](#onboard-a-project).
 
-For mirroring, query the exact source pair first and create only on an empty `cards` result. This is a
-check-then-create workflow with a race window: source lookup does not assert uniqueness or ownership, and
-independent creators can produce duplicates. See
-[Source lookup and the mirroring race](../agents/operating-contract.md#source-lookup-and-the-mirroring-race).
+`<project_key>` is validated against the generated contract pattern `^[a-z][a-z0-9-]{2,63}$` before the
+request leaves your machine; a key outside it exits `64`. A well-formed key with no authorized rows is
+refused with `project-delivery-unavailable`, never answered with an empty view.
 
-## Operations
+`--output text` prints one header line carrying company, project, projection/source watermarks,
+`reconciled_at`, `freshness_due_at`, `rebuild_generation`, and the projection's semantic digest, then a
+`CHECKPOINT STATE CRITERIA SLOTS UNRESOLVED` table. Each row is followed by its
+`label`/`owner`/`outcome` line, a `freshness`/`confidence`/`health`/`sources`/`reasons`/`watermark`/
+`row_digest` line, and one line per qualifying-stage slot:
 
-| Command | Positional | Flags |
-|---|---|---|
-| `ops outbox poison dispose` | `<outbox_id>` | `--command-id`, `--consumer-key`, `--topic`, `--action {retry,tombstone}`, `--reason` |
+```text
+  slot=<slot_key> state=<state> assigned=<seat>|unassigned signed=<seat>|-
+```
 
-## Company bundle
+A rendered seat is `<label>[<seat_key>]@<catalog_key>@<revision>`. Assignment follows the explicit
+`assigned` or `unassigned` state in the response and is never inferred from the presence of a seat; a
+missing signing seat renders as `-`. `--output json` emits the same view as the deterministic structured
+document.
 
-| Command | Positional | Flags |
-|---|---|---|
-| `company bundle validate` | `<bundle_file>` | — |
-| `company bundle plan` | `<bundle_file>` | — |
-| `company bundle apply` | `<bundle_file>` | `--command-id`, `--expected-active-version` (≥ 0), `--plan-digest` |
-| `company bundle export` | — | — |
+## Synthetic workflow
 
-`validate` and `plan` are read-only. `apply` moves one future-only Catalog pointer and requires the exact
-digest from the plan you are applying. See the [CompanyBundle guide](../guides/company-bundle.md).
+| Command | Input |
+|---|---|
+| `synthetic run` | `--workflow ctower.trust-spine-four-stage@1`, `--wait`, `--assert resolved,closed`; optional `--command-id` |
+| `synthetic query` | `<run_id>` |
 
-## Synthetic
+`synthetic run` is the server-side whole-lifecycle operation. The quickstart instead exercises the
+individual public CLI steps so each boundary remains visible.
 
-| Command | Positional | Flags |
-|---|---|---|
-| `synthetic run` | — | `--workflow {ctower.trust-spine-four-stage@1}`, `--wait` (required), `--assert` (required, must be exactly `resolved,closed`), `--command-id` (optional, generated if omitted) |
-| `synthetic query` | `<run_id>` | — |
+## Operations and migration
 
-`synthetic run` is the one public command that drives the whole four-stage lifecycle server-side. `--wait`
-and `--assert` are both mandatory, and `--assert` accepts only the literal `resolved,closed` — the contract
-does not let you assert a weaker outcome.
+`ops outbox poison dispose` requires an outbox ID, consumer key, topic, action, and reason; `--command-id`
+is optional under the common mutation rule.
 
-Waiting polls for up to 60 seconds. A run that ends `failed`, or that succeeds with lifecycle facts other
-than those asserted, exits `69`. A timeout exits `75`.
-
-## Migration (ctower-project)
-
-All eleven commands are authenticated and online-only. They are **not** spoolable.
-
-| Command | Positional | Flags |
-|---|---|---|
-| `migration ctower-project inventory` | — | `--command-id`, `--request-file` |
-| `migration ctower-project export` | — | `--command-id`, `--request-file` |
-| `migration ctower-project plan` | — | `--command-id`, `--request-file` |
-| `migration ctower-project import` | — | `--command-id`, `--request-file` |
-| `migration ctower-project reconcile` | — | `--command-id`, `--request-file` |
-| `migration ctower-project prepare` | — | `--command-id`, `--request-file` |
-| `migration ctower-project commit-development-epoch` | — | `--command-id`, `--request-file` |
-| `migration ctower-project correction append` | — | `--command-id`, `--request-file` |
-| `migration ctower-project fence observe` | — | `--command-id`, `--request-file` |
-| `migration ctower-project run get` | `<run_id>` | — |
-| `migration ctower-project verify` | — | — |
-
-`prepare` and `commit-development-epoch` are **refusal-only** in the generated registry: they exist so the
-spelling is stable and authenticated, and they always refuse. They do not import, fence, or rewire anything.
-
-## Project delivery
-
-| Command | Positional | Flags |
-|---|---|---|
-| `project delivery query` | `<project_key>` (only `ctower` is accepted) | `--output {text,json}` (default `text`) |
-
-A read-only projection. See [Project Delivery](../concepts/project-delivery.md).
-
-Text output prints checkpoint summary and source/reason lines, followed by one line per qualifying slot:
-`slot=<key> state=<state> assigned=<seat>|unassigned signed=<seat>|-`. A rendered seat is
-`<label>[<seat_key>]@<catalog_key>@<revision>`. Assignment is selected by the explicit `assigned` or
-`unassigned` state in the HTTP response, and a missing signing seat renders as `-`.
+The `migration ctower-project` family contains `inventory`, `export`, `plan`, `import`, `reconcile`,
+`run get`, `correction append`, `fence observe`, `prepare`, `commit-development-epoch`, and `verify`. These
+commands are online-only. `prepare` and `commit-development-epoch` are intentional refusal-only surfaces;
+they do not activate cutover.
 
 ## Local spool
 
-Seven commands that never leave the machine except where noted. See the
-[protected CLI guide](../guides/protected-cli.md) for the recovery procedures.
+| Command | Purpose |
+|---|---|
+| `spool status` | Count pending, archived, and quarantined records |
+| `spool list` | List records, optionally by state |
+| `spool quarantine list` | List bounded quarantine rows |
+| `spool doctor` | Verify local chain and keyring health |
+| `spool drain` | Replay in order with current stdin authority |
+| `spool retry <sequence>` | Explicitly release one quarantined sequence with a reason |
+| `spool discard <sequence>` | Append a discard disposition; optional exact artifact digest |
 
-| Command | Positional | Flags |
-|---|---|---|
-| `spool status` | — | — |
-| `spool list` | — | `--state {pending,accepted_archive,quarantine}`, `--limit` (default 1000) |
-| `spool quarantine list` | — | `--limit` (default 1000) |
-| `spool doctor` | — | — |
-| `spool drain` | — | — (reads stdin authority and sends) |
-| `spool retry` | `<sequence>` | `--reason` |
-| `spool discard` | `<sequence>` | `--reason`, `--artifact-digest` (optional) |
-
-`spool status` and `spool doctor` exit `74` when the spool is unhealthy or its state cannot be established.
-`spool drain` exits `69` at a quarantine barrier, `75` while entries remain pending, `0` when the spool is
-empty.
+The spool is encrypted, origin-scoped, owner-only, and durable-before-send for allowed mutations. Never edit,
+copy, or delete its files manually.
 
 A listed entry quarantined by the server also carries `server_refusal` (`status` and a `name` that is either
 an authored refusal code or the content-free sentinel `unrecognized_refusal`, never response body text); an
 entry quarantined locally — `credential_identity_mismatch`, `expired`, `corrupt_record` — carries its
 `reason_code` and no `server_refusal`.
 
-## Output
+## Contract sources
 
-Machine output is one JSON object per invocation: deterministic key order, no ASCII escaping, compact
-separators, and a single trailing newline. Two exceptions render text instead: `company bundle export`
-emits YAML, and `project delivery query --output text` emits the compact delivery projection.
-
-A mutation prints `command_id`, `state` (`accepted`, `queued`, `quarantined`, or `local_failure`),
-`reason_code`, and `sequence`, plus `result` when a current server result is available. A refusal prints the
-[problem document](../agents/refusals.md) on stderr.
-
-Authority values never appear in output.
-
-## Related
-
-- [HTTP API reference](http-api.md) — the operation each command calls.
-- [Generated clients and contracts](clients.md) — using the same surface from code.
-- [For agents](../agents/operating-contract.md) — replay, idempotency, and refusal handling.
+- Parser and flag truth: `apps/ctowerctl/src/ctowerctl/_parser.py`
+- HTTP operation truth: `contracts/http/openapi.yaml`
+- Generated replay policy: `generated/python/ctower_client/operations.py`
+- Agent retry/refusal rules: [Agent operating contract](../agents/operating-contract.md)

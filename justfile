@@ -14,6 +14,10 @@ coverage_gate := "import json, sys; total = json.load(open(sys.argv[1], encoding
 default:
     @just --list
 
+# One-command disposable product tour for humans and agents.
+quickstart:
+    @quickstart_root="$(mktemp -d /tmp/ctower-quickstart.XXXXXX)"; test -n "$quickstart_root"; case "$quickstart_root" in /tmp/ctower-quickstart.*) ;; *) exit 97 ;; esac; trap 'case "$quickstart_root" in /tmp/ctower-quickstart.*) rm -rf -- "$quickstart_root" ;; *) exit 97 ;; esac' EXIT; uv venv "$quickstart_root/venv" --python {{python}}; uv pip install --python "$quickstart_root/venv/bin/python" --require-hashes -r requirements/verify.txt; "$quickstart_root/venv/bin/python" -m pytest -p no:cacheprovider tests/acceptance/increment-1/test_workflow_cli.py -q
+
 # Warm, non-mutating developer and CI gate.
 check: python-check web-check docs-check workflow-check version-check repository-tests contract-tests landing-boundary-coverage codegen-check traceability-check secrets-intended-tree
     {{python}} -m tools.checks --root . --profile fast

@@ -132,9 +132,10 @@ No historical document is an alternate implementation spec. If executable code a
 
 | Home | Content | Mutation rule |
 |---|---|---|
-| `SPEC.md` | Current product and system truth; stable increment definitions; temporary bootstrap backlog through shadow onboarding and the eventual accepted portfolio authority epoch | Reviewed revision; contradictions removed rather than accumulated |
-| `DECISIONS.md` | Append-only operator decisions and rationale, including superseded reasoning | Append only; prior entries are never rewritten |
-| `ARCHITECTURE.md` | One compact, terminal-safe ASCII atlas derived from this specification | Updated with `SPEC.md`; never creates requirements, execution authority, or a second architecture truth |
+| `docs/internal/SPEC.md` | Current product and system truth; stable increment definitions; temporary bootstrap backlog through shadow onboarding and the eventual accepted portfolio authority epoch | Reviewed revision; contradictions removed rather than accumulated |
+| `docs/internal/DECISIONS.md` | Append-only operator decisions and rationale, including superseded reasoning | Append only; prior entries are never rewritten |
+| `ARCHITECTURE.md` | One compact, terminal-safe ASCII atlas derived from this specification | Updated with `docs/internal/SPEC.md`; never creates requirements, execution authority, or a second architecture truth |
+| `docs/internal/IMPLEMENTATION-ROADMAP.md` | Non-normative sequencing proposal | Does not approve scope, activate backlog items, or authorize implementation |
 | Temporary bootstrap backlog in this file | Stable work IDs, dependency order, ownership, exit evidence, and designated validation commands before ctower has authority for its own work | Reviewed reconstructible items enter through ordinary signed commands with project-scoped source identities; only after CP3-D and a separately accepted authority epoch does ticket state live solely in ctower while this section retains definitions, not live status |
 | Executable contracts and traceability index | Exact DDL, OpenAPI, schemas, packs, policy fixtures, protocol conformance tests, and generated SPEC/AC/INV links | Authored in their one declared home; reviewed against stable IDs; the sole generated index is never hand-edited |
 | Historical documents | Provenance, discarded alternatives, research evidence, and review history | Read-only except for the standardized historical banner |

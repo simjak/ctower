@@ -21,7 +21,7 @@ Start with the page that matches your question:
     Below is the vocabulary `SPEC.md`, the contracts, and the CLI share. Several of these terms name
     designed behaviour that has no runtime here, and each one says so where it appears. For what is
     actually implemented, the linked pages carry an implementation-status section, and
-    [Delivery state](../project-status.md) is the unsoftened list.
+    [What is deliberately unavailable](../start-here/availability.md) is the unsoftened list.
 
 ### Company and project
 
@@ -115,7 +115,7 @@ silently rewrite task history.
 ## Normative sources
 
 These pages explain; they never define. For binding definitions and invariants use the
-[system specification](https://github.com/simjak/ctower/blob/main/SPEC.md); for component and infrastructure
+[system specification](https://github.com/simjak/ctower/blob/main/docs/internal/SPEC.md); for component and infrastructure
 relationships use the
 [architecture atlas](https://github.com/simjak/ctower/blob/main/ARCHITECTURE.md). Where an explanation here
 disagrees with a contract in

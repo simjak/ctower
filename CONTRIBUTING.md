@@ -11,7 +11,7 @@ are all valuable.
 - Search existing issues and pull requests.
 - Discuss large domain, architecture, persistence, security-boundary, or public-interface changes before
   implementation.
-- Read the canonical [`SPEC.md`](SPEC.md), [`DECISIONS.md`](DECISIONS.md), and relevant
+- Read the canonical [`SPEC.md`](docs/internal/SPEC.md), [`DECISIONS.md`](docs/internal/DECISIONS.md), and relevant
   [coding standards](docs/contributing/CODING_STANDARDS.md).
 
 ## Development workflow

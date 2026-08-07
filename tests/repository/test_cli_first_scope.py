@@ -28,7 +28,7 @@ class CliFirstScopeTests(unittest.TestCase):
         self.assertEqual(browser_suite["status"], "deferred")
 
     def test_d23_preserves_i1_semantics_and_defers_only_browser_realization(self) -> None:
-        decisions = (self.root / "DECISIONS.md").read_text(encoding="utf-8")
+        decisions = (self.root / "docs/internal/DECISIONS.md").read_text(encoding="utf-8")
 
         self.assertIn("## D23 — CLI-first I1 and deferred browser realization", decisions)
         self.assertIn(
@@ -38,8 +38,9 @@ class CliFirstScopeTests(unittest.TestCase):
 
     def test_current_guidance_keeps_browser_after_cli_first_cutover(self) -> None:
         current_guidance = {
-            "README.md": (self.root / "README.md").read_text(encoding="utf-8"),
-            "project status": (self.root / "docs/project-status.md").read_text(encoding="utf-8"),
+            "project status": (self.root / "docs/internal/project-status.md").read_text(
+                encoding="utf-8"
+            ),
             "coding standards": (self.root / "docs/contributing/CODING_STANDARDS.md").read_text(
                 encoding="utf-8"
             ),
@@ -57,13 +58,20 @@ class CliFirstScopeTests(unittest.TestCase):
                 self.assertIn(browser_activation, normalized_guidance)
 
         self.assertNotIn(
-            "Add the CLI and thin Board/Ticket UI, then cut ctower's own backlog over",
-            current_guidance["README.md"],
-        )
-        self.assertNotIn(
             "CLI + thin UI -> source-of-truth cutover", current_guidance["project status"]
         )
         self.assertNotIn("browser E2E before CT-I1-008", current_guidance["coding standards"])
+
+        public_readme = (self.root / "README.md").read_text(encoding="utf-8")
+        normalized_readme = " ".join(public_readme.replace(">", "").split())
+        self.assertIn(
+            "There is no supported public deployment, browser product, runner",
+            normalized_readme,
+        )
+        self.assertIn(
+            "The read-only operator UI is development dogfood, not the I2.4 product surface.",
+            normalized_readme,
+        )
 
 
 if __name__ == "__main__":

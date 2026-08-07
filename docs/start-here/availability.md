@@ -6,15 +6,19 @@ roadmap item.
 
 ## Do not attempt these yet
 
-- Installing or deploying ctower as a service, with Docker Compose or otherwise.
-- Running a supported backup, restore, migration, recovery, monitoring, or incident procedure.
+- Deploying ctower as a networked or internet-facing service. The one supported self-hosted shape is a
+  single-host, loopback-only instance for reconstructible work; see [Self-hosting](../self-hosting.md).
+- Composing an application stack from `deploy/development/compose.yaml`; it publishes a database only.
+- Running a supported backup, restore, recovery, monitoring, or incident procedure.
 - Managing real tenants, tickets, credentials, or production work.
 - Treating the development CompanyBundle pointer as runtime/effect activation or a production rollout.
-- Using a browser UI, runner, local/remote agent adapter, or external effect provider.
+- Treating the read-only operator UI as the supported I2.4 browser product, a write authority, or part of
+  the self-hosted install; using a runner, local/remote agent adapter, or external effect provider.
+- Treating the dark-by-default OIDC scaffold as an activated, supported human-provider login path.
 - Depending on a published package, stable Python runtime, compatibility promise, or production release.
 
-The checked-in Compose file supports disposable PostgreSQL acceptance tests only. Read
-[Current operational boundary](../operations/current-boundary.md) before treating it as infrastructure.
+The checked-in Compose file supports disposable PostgreSQL fixtures only. Read
+[Local development](../local-development.md) before treating it as infrastructure.
 
 ## What is safe to do
 
@@ -24,6 +28,5 @@ The checked-in Compose file supports disposable PostgreSQL acceptance tests only
 - Improve documentation, contracts, tests, or one complete development vertical through the contribution
   process.
 
-For precise current evidence, use [Project status](../project-status.md). For planned sequence and exit
-criteria, use the [implementation roadmap](https://github.com/simjak/ctower/blob/main/IMPLEMENTATION-ROADMAP.md)
-and [system specification](https://github.com/simjak/ctower/blob/main/SPEC.md).
+For the working path, use [Getting started](../getting-started.md). For the current product boundary, use
+the [Overview](../index.md) and [Self-hosting](../self-hosting.md).

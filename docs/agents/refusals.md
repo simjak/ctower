@@ -1,11 +1,9 @@
 # Refusals
 
 ctower refuses with a typed problem document rather than a generic error. The `code` field is a closed
-enumeration of **96 values** declared in `contracts/http/openapi.yaml`. If you see a code that is not on this
-page, the contract changed and this page is a defect. Twelve codes from the project-seat credential surface
-(`credential-*`, `seat-*`, `project-grant-required`, `project-scope-denied`) are not yet grouped below; the
-ones you are most likely to meet are described in
-[Seat credential issuance](../operations/seat-credential-issuance.md).
+enumeration of **114 values** declared in `contracts/http/openapi.yaml`. If you see a code that is not on this
+page, the contract changed and this page is a defect. The project-seat credential ceremony is described in
+[Seat credential issuance](https://github.com/simjak/ctower/blob/main/docs/internal/operations/seat-credential-issuance.md).
 
 The point of the enumeration is that a caller can branch on it. This page groups every code by **what you
 should do about it**.
@@ -158,14 +156,50 @@ active base. Re-plan and apply the fresh `plan_digest`; the active pointer was n
 `i1-7c-required` is the refusal returned by the refusal-only cutover operations. It is the designed
 response, not a transient state.
 
-### Intake (3)
+### Intake (4)
 
-`intake-already-promoted`, `intake-promotion-ineligible`, `intake-source-conflict`
+`intake-already-promoted`, `intake-promotion-ineligible`, `intake-source-conflict`,
+`intake-source-project-mismatch`
 
 `intake-already-promoted` is usually success arriving twice: read the event and use the ticket it already
 produced. `intake-promotion-ineligible` means this event cannot become a ticket in its current state — read
 the thread rather than retrying. `intake-source-conflict` means the same source reference is already
 recorded against different content; nothing changed.
+
+### Human authentication (7)
+
+`auth-exchange-invalid`, `auth-identity-unresolved`, `auth-provider-unavailable`,
+`auth-provider-unverifiable`, `auth-role-denied`, `auth-session-invalid`, `reauthentication-required`
+
+The OIDC scaffold is provider-agnostic and dark by default. Provider/discovery failures are not permission
+to fall back to an unverified identity. An unresolved identity or denied role needs Operator configuration;
+an invalid or expired session needs a fresh login.
+
+### Project-seat credentials (12)
+
+`credential-already-revoked`, `credential-authentication-unavailable`, `credential-digest-conflict`,
+`credential-issuance-refused`, `credential-revocation-refused`, `credential-revoked`,
+`credential-scope-denied`, `seat-binding-conflict`, `seat-credential-active`,
+`seat-credential-unavailable`, `seat-display-name-conflict`, `project-grant-required`
+
+These are Operator-managed bindings to an already configured project and seat. They never create a project,
+seat, team, or authority outside the credential's pinned scope. `project-scope-denied` is grouped with the
+general authorization refusals above.
+
+### Board context and Attention (6)
+
+`attention-finding-already-disposed`, `attention-finding-not-found`, `attention-kind-unrecognized`,
+`change-reference-duplicate`, `label-already-applied`, `label-key-unrecognized`
+
+Context facts and findings are append-only. Read the current fact or catalog before retrying; do not invent a
+new key or finding ID to bypass the refusal.
+
+### Recorded work sessions (3)
+
+`session-ineligible`, `session-not-found`, `session-transition-invalid`
+
+Read the ticket's current session facts and use a declared transition. A missing or ineligible session is
+not repaired by creating a second identity for the same work.
 
 ### Prohibited data classes (1)
 

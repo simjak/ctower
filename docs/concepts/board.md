@@ -84,4 +84,4 @@ never spooled, and returns exit `0` on success.
 - [Ticket and lifecycle episode](tickets.md) — the facts the fold reads.
 - [Project Delivery projection](project-delivery.md) — the other projection, at checkpoint rather than
   ticket granularity.
-- [CLI reference](../reference/cli.md#board-and-health) — the exact flags.
+- [CLI reference](../reference/cli.md#board-and-project-reads) — the exact flags.
