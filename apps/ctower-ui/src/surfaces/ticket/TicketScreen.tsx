@@ -147,6 +147,21 @@ function SourceIssue({ source }: { readonly source: RecordSource }): ReactElemen
   );
 }
 
+function InboxThreadLinks({ threadIds }: { readonly threadIds: readonly string[] }): ReactElement {
+  if (threadIds.length === 0) {
+    return <span>no inbox thread linked</span>;
+  }
+  return (
+    <span style={{ display: "flex", flexDirection: "column", gap: "4px" }}>
+      {threadIds.map((threadId) => (
+        <Link className="v" href={`/inbox?thread=${encodeURIComponent(threadId)}`} key={threadId}>
+          thread {shortId(threadId)}
+        </Link>
+      ))}
+    </span>
+  );
+}
+
 function HeldBanner({ card }: { readonly card: BoardCard }): ReactElement | null {
   if (card.blockerReason === null) {
     return null;
@@ -241,6 +256,16 @@ function RightRail({
           <li>
             <span className="k">source</span>
             <span className="v">{`${ticket.source.kind} · ${ticket.source.ref}`}</span>
+          </li>
+          <li>
+            <span className="k">inbox</span>
+            <span className="v">
+              <InlineReading
+                reading={card}
+                present={(row) => <InboxThreadLinks threadIds={row.inboxThreadIds} />}
+                missing={(label, detail) => <span title={detail}>inbox links {label}</span>}
+              />
+            </span>
           </li>
           <li>
             <span className="k">issue</span>

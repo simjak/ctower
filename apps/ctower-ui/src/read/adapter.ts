@@ -4,7 +4,6 @@ import { readCrewProfile, readCrewRoster } from "./sources/crewRoster";
 import { readDeliveryMetrics } from "./sources/delivery";
 import { readSystemdCadence } from "./sources/cadenceSystemd";
 import { readAuthoredFiles } from "./sources/gitTree";
-import { readSeatInbox } from "./sources/inboxFile";
 import { cadenceSourceName } from "./sources/paths";
 import { readSessionStream, readSessionWorkspace } from "./sources/tmuxBridge";
 import { readSessionWorktree } from "./sources/worktrees";
@@ -18,7 +17,6 @@ import type {
   SessionStream,
   RecordAdapter,
   Reading,
-  SeatInbox,
   SessionWorkspace,
   SessionWorktree,
 } from "./interface";
@@ -55,7 +53,7 @@ export type ScreenKey =
 export const SOURCE_LABELS: Readonly<Record<ScreenKey, string>> = {
   board: "ctower read API · /v1/board",
   ticket: "ctower read API · /v1/tickets/{id} + /audit",
-  inbox: "mission-control state/inbox.jsonl",
+  inbox: "ctower read API · /v1/inbox/threads + /v1/inbox/threads/{id}",
   heartbeats:
     cadenceSourceName() === "systemd" ? "systemd user timers" : "host crontab + state markers",
   files: "git tree",
@@ -77,10 +75,10 @@ export const recordAdapter: RecordAdapter = {
   ticket: httpRecordAdapter.ticket,
   ticketAudit: httpRecordAdapter.ticketAudit,
   workSessions: httpRecordAdapter.workSessions,
+  inbox: httpRecordAdapter.inbox,
+  inboxThread: httpRecordAdapter.inboxThread,
 
   cadenceRegistry: async (): Promise<Reading<CadenceRegistry>> => await reading(cadenceSource()),
-  seatInbox: async (seat: string | null): Promise<Reading<SeatInbox>> =>
-    await reading(async () => await readSeatInbox(seat)),
   authoredFiles: async (path: string | null): Promise<Reading<AuthoredFiles>> =>
     await reading(async () => await readAuthoredFiles(path)),
   sessionWorkspace: async (crew: string | null): Promise<Reading<SessionWorkspace>> =>

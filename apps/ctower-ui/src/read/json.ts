@@ -56,6 +56,13 @@ export function asIntegerOrNull(value: unknown, field: string): number | null {
   return asInteger(value, field);
 }
 
+export function asBoolean(value: unknown, field: string): boolean {
+  if (typeof value !== "boolean") {
+    throw new PayloadRefusal(field, "a boolean");
+  }
+  return value;
+}
+
 export function asStringList(value: unknown, field: string): readonly string[] {
   return asArray(value, field).map((item, index) =>
     asString(item, `${field}[${index.toString()}]`)

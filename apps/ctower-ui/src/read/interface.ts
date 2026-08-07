@@ -145,6 +145,8 @@ export interface BoardCard {
   readonly blockerOpenedAt: string | null;
   readonly risk: string | null;
   readonly deliveryFacts: readonly string[];
+  /** Immutable thread links recorded when an inbox thread is promoted to this ticket. */
+  readonly inboxThreadIds: readonly string[];
   readonly tenantDisplayIdentity: TenantDisplayIdentity;
   readonly changeReferences: readonly ChangeReference[];
   readonly appliedLabels: readonly AppliedLabel[];
@@ -211,32 +213,43 @@ export interface TailNote {
   readonly sourcePath: string;
 }
 
-export interface InboxMessage {
-  readonly at: string;
+/** One recipient-scoped row from the inbox threads projection. */
+export interface InboxThreadSummary {
+  readonly threadId: string;
+  readonly otherAgent: string;
+  readonly lastMessagePreview: string;
+  readonly lastMessageAt: string;
+  readonly unreadCount: number;
+  /** The immutable ticket link, when this thread was promoted. */
+  readonly promotedTicketId: string | null;
+}
+
+/** One ordered, durable message returned when the thread is opened. */
+export interface InboxThreadMessage {
+  readonly messageId: string;
+  readonly position: number;
   readonly from: string;
-  readonly severity: string;
-  readonly project: string | null;
-  readonly subject: string;
-  readonly body: string | null;
-  readonly read: boolean;
-  readonly wasRedacted: boolean;
+  readonly to: string;
+  readonly text: string;
+  readonly sentAt: string;
 }
 
-export interface SeatSummary {
-  readonly seat: string;
-  readonly total: number;
-  readonly unread: number;
+/** The full thread projection. Reading it advances only the recipient's read cursor. */
+export interface InboxThread {
+  readonly threadId: string;
+  readonly participants: readonly string[];
+  readonly messages: readonly InboxThreadMessage[];
+  readonly readThroughPosition: number;
+  /** The immutable ticket link, when this thread was promoted. */
+  readonly promotedTicketId: string | null;
 }
 
-export interface SeatInbox {
-  readonly seats: readonly SeatSummary[];
-  /** How many this seat holds in total, so a capped page never reads as all of them. */
-  readonly held: number;
-  readonly selected: string;
-  /** The exact line that reaches this seat, quoted from the notify tool. */
-  readonly addressing: string;
-  readonly messages: readonly InboxMessage[];
-  readonly tail: TailNote;
+/** The authenticated principal's inbox projection. */
+export interface InboxProjection {
+  readonly recipient: string;
+  readonly threads: readonly InboxThreadSummary[];
+  readonly totalUnread: number;
+  readonly unreadOnly: boolean;
 }
 
 export type BeatHealth = "alive" | "late" | "dead" | "unknown";
@@ -735,8 +748,10 @@ export interface RecordAdapter {
   workSessions: (ticketId: string) => Promise<Reading<never>>;
   /** Registered scheduled wakes and their fire history. */
   cadenceRegistry: () => Promise<Reading<CadenceRegistry>>;
-  /** One seat's durable inbox and its addressing name. */
-  seatInbox: (seat: string | null) => Promise<Reading<SeatInbox>>;
+  /** The authenticated principal's durable inbox threads projection. */
+  inbox: () => Promise<Reading<InboxProjection>>;
+  /** One durable inbox thread; this recipient read advances its own cursor. */
+  inboxThread: (threadId: string) => Promise<Reading<InboxThread>>;
   /** What a session was handed at start. */
   sessionWorkspace: (crew: string | null) => Promise<Reading<SessionWorkspace>>;
   /** A session worktree's files and its diff against its base. */
@@ -759,5 +774,5 @@ export interface RecordAdapter {
 /** The subset of reads the ctower read API answers today. */
 export type RecordApiReads = Pick<
   RecordAdapter,
-  "instance" | "board" | "ticket" | "ticketAudit" | "workSessions"
+  "instance" | "board" | "ticket" | "ticketAudit" | "workSessions" | "inbox" | "inboxThread"
 >;

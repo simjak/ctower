@@ -157,14 +157,14 @@ class LabelledCountTests(unittest.TestCase):
 
     def test_the_inbox_tab_counts_unread_and_says_so(self) -> None:
         inbox = _code(_SURFACE / "app/inbox/page.tsx")
-        self.assertIn('unit: "unread"', inbox)
+        self.assertIn('unit="unread"', inbox)
 
-    def test_the_inbox_panel_names_what_its_own_number_counts(self) -> None:
+    def test_the_inbox_panel_names_thread_and_unread_counts(self) -> None:
         inbox = _code(_SURFACE / "app/inbox/page.tsx")
         self.assertIn(
-            "messages this seat holds",
+            "threads ·",
             inbox,
-            "the panel prints a total a few pixels from a tab printing unread, unlabelled",
+            "the panel prints an unread count without saying it is a thread projection",
         )
 
     def test_the_tab_row_wraps_rather_than_clipping_its_last_tab(self) -> None:

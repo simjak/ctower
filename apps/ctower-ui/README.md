@@ -6,18 +6,18 @@ read-only operator dogfood surface over the running shadow instance, ordered by 
 
 ## What it is, and what it is not
 
-| | |
-|---|---|
-| Is | A Next.js server that reads the shadow instance's existing read API and renders eight approved screens. |
-| Is | Read-only. Every path it calls is a `GET`. There is no mutation function in this boundary to call by accident. |
-| Is not | The I2.4 browser product. `apps/ctower-web` remains untouched, and D22 §1 (React 19 / React Router 7 / Vite static, no SSR) still governs it. |
-| Is not | An authority. The browser receives no API bearer, no session and no credential of any kind; every read happens server-side. The instance's API origin *is* printed, deliberately, in the provenance foot of every screen — see below. |
+|        |                                                                                                                                                                                                                                       |
+| ------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Is     | A Next.js server that reads the shadow instance's existing read API and renders eight approved screens.                                                                                                                               |
+| Is     | Read-only. Every path it calls is a `GET`. There is no mutation function in this boundary to call by accident.                                                                                                                        |
+| Is not | The I2.4 browser product. `apps/ctower-web` remains untouched, and D22 §1 (React 19 / React Router 7 / Vite static, no SSR) still governs it.                                                                                         |
+| Is not | An authority. The browser receives no API bearer, no session and no credential of any kind; every read happens server-side. The instance's API origin _is_ printed, deliberately, in the provenance foot of every screen — see below. |
 
 Two repository facts this boundary deliberately does **not** decide, and which need an operator
 decision entry before it merges as anything other than a dogfood surface:
 
-- `SPEC.md` `CT-I1-005` reads *"No I1 browser implementation, route, placeholder, or browser
-  evidence is authorized."* This boundary is a browser implementation. It exists because the
+- `SPEC.md` `CT-I1-005` reads _"No I1 browser implementation, route, placeholder, or browser
+  evidence is authorized."_ This boundary is a browser implementation. It exists because the
   operator dispatched it; it does not consume `CT-I1-005`/`CT-I2-005`, and it claims none of
   their evidence.
 - `DECISIONS.md` D22 §1 selected React Router 7 + Vite for `ctower-web`. Next.js here is a
@@ -39,7 +39,7 @@ src/app/            the eight routes
 ### What the browser is and is not given
 
 No bearer, no session cookie, no CSRF token and no credential reaches the page: `src/read/` runs
-only on the server. What the page *does* carry is the instance's API origin, printed in the
+only on the server. What the page _does_ carry is the instance's API origin, printed in the
 provenance foot next to the posture and the render time. That is deliberate — a capture from one
 instance would otherwise be indistinguishable from a capture from another, which is the failure
 mode the foot exists to prevent. The origin is not a credential and grants a reader nothing; if a
@@ -48,7 +48,7 @@ future deployment wants it hidden, `frame/RecordFoot.tsx` is the one place to ch
 ### Bounded reads (O10)
 
 `src/read/bounded.ts` is the only module in `apps/` that names `fetch`. Every record read goes
-through it under a bounded policy: a per-attempt timeout, a finite attempt count *and* a finite
+through it under a bounded policy: a per-attempt timeout, a finite attempt count _and_ a finite
 elapsed deadline, full-jittered exponential backoff capped and clamped to the remaining deadline, a
 typed transient/permanent predicate with no catch-all branch, and a typed `ReadExhausted` outcome
 that preserves the attempt count, elapsed time and last classified failure and is counted and
@@ -65,33 +65,34 @@ bounds, or when an application value-imports the generated client's single-shot 
 `src/read/interface.ts` declares every read this surface makes as a typed function returning
 `Reading<T>` — `present`, `absent` (with the work item that will land the source), or
 `unavailable`. `src/read/httpRecordAdapter.ts` implements it against `/v1/board`,
-`/v1/tickets/{id}` and `/v1/tickets/{id}/audit`. `src/read/adapter.ts` binds the one that is
-active.
+`/v1/tickets/{id}`, `/v1/tickets/{id}/audit`, and the recipient-scoped inbox projection
+(`GET /v1/inbox/threads`, `GET /v1/inbox/threads/{id}`). `src/read/adapter.ts` binds the one
+that is active.
 
 Swapping to a typed feed changes `adapter.ts` and nothing else: no screen constructs a client,
 and no screen knows a URL.
 
 ### Wave 2 — every screen on a live source
 
-| Screen | Source today | Swaps to |
-|---|---|---|
-| Board · Ticket | ctower read API (`/v1/board`, `/v1/tickets/{id}`, `/audit`) | a typed feed, through `adapter.ts` alone |
-| Inbox | Mission Control `state/inbox.jsonl`, read-only | #186's operator channel |
-| Heartbeats | host `crontab -l` + `state/` fire markers — or `systemctl --user list-timers` | a native cadence registry |
-| Files | this repository's git tree at a committed revision | — |
-| Workspace · Feed | tmux `list-sessions` / `list-panes` / `capture-pane -p -J` | recorded session facts |
-| Explorer | `git worktree list` + `git diff <resolved trunk>...HEAD` | recorded worktree facts |
-| Metrics (S9) | `git log --first-parent` per project trunk | a recorded deploy event, incident pair and metric-definition file |
-| Org (the who layer) | live `tmux list-sessions` (liveness and `@project`) + Mission Control `state/crew-log.jsonl` + `personas/` | recorded session facts and a seat registry |
-| Crew profile | the Org sources for one name, plus that crew's `coordination/*.status.md`, `state/escapes.jsonl` and each project's first-parent trunk history | G5 session facts, a recorded ladder state, and a per-session cost event (#200) |
+| Screen              | Source today                                                                                                                                   | Swaps to                                                                       |
+| ------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------ |
+| Board · Ticket      | ctower read API (`/v1/board`, `/v1/tickets/{id}`, `/audit`)                                                                                    | a typed feed, through `adapter.ts` alone                                       |
+| Inbox               | ctower read API (`/v1/inbox/threads`, `/v1/inbox/threads/{id}`)                                                                                | —                                                                              |
+| Heartbeats          | host `crontab -l` + `state/` fire markers — or `systemctl --user list-timers`                                                                  | a native cadence registry                                                      |
+| Files               | this repository's git tree at a committed revision                                                                                             | —                                                                              |
+| Workspace · Feed    | tmux `list-sessions` / `list-panes` / `capture-pane -p -J`                                                                                     | recorded session facts                                                         |
+| Explorer            | `git worktree list` + `git diff <resolved trunk>...HEAD`                                                                                       | recorded worktree facts                                                        |
+| Metrics (S9)        | `git log --first-parent` per project trunk                                                                                                     | a recorded deploy event, incident pair and metric-definition file              |
+| Org (the who layer) | live `tmux list-sessions` (liveness and `@project`) + Mission Control `state/crew-log.jsonl` + `personas/`                                     | recorded session facts and a seat registry                                     |
+| Crew profile        | the Org sources for one name, plus that crew's `coordination/*.status.md`, `state/escapes.jsonl` and each project's first-parent trunk history | G5 session facts, a recorded ladder state, and a per-session cost event (#200) |
 
 Nothing in the "swaps to" column is cited as a work item unless one is filed for it; see
 **Citations are facts** below.
 
 These are **interim, director-sanctioned** adapters, and they name a third boundary this repository
-does not otherwise cross: `SPEC.md` line 67 calls Mission Control *migration or research provenance
-only, not a runtime dependency*. Wiring the Inbox, Heartbeats, Workspace, Feed and Org to its live
-state makes it one for those five screens. It exists because the operator escalated (R2710 wave 2), every
+does not otherwise cross: `SPEC.md` line 67 calls Mission Control _migration or research provenance
+only, not a runtime dependency_. Wiring Heartbeats, Workspace, Feed and Org to its live
+state makes it one for those four screens. It exists because the operator escalated (R2710 wave 2), every
 path is overridable, and nothing outside `src/read/sources/` knows any of them — but it belongs in
 the operator's decision entry beside the two boundaries above.
 
@@ -99,9 +100,6 @@ Three hard lines hold across all of them, and each is enforced structurally rath
 
 - **Read-only, including other repositories' files.** No module under `apps/` may call a filesystem
   write; `test_browser_network_chokepoint.py` fails the gate if one appears.
-- **Concurrent appends.** `state/inbox.jsonl` is appended to while this surface reads it, so a
-  mid-write final line is skipped *and counted*, and the screen states the count. Reading N-1 lines
-  and calling that the inbox would be a lie of omission.
 - **Redaction before render.** Every interim source must import `./redact`; the check fails closed
   on one that does not. Coordination text and terminal panes are the most exposed strings on this
   surface, and nothing guarantees a seat never pasted a credential into one.
@@ -133,7 +131,7 @@ recorded.
 
 The rail still offers no per-seat entry — a nav item that leads nowhere is a dead control, and the
 seat page (`seat.html`) is not built. Org carries both dimensions as filters that work instead, and
-each filter chip counts what clicking it would reveal *under the other filter*, not the fleet-wide
+each filter chip counts what clicking it would reveal _under the other filter_, not the fleet-wide
 number.
 
 ### One crew in full — `/crew/<name>`
@@ -146,16 +144,16 @@ wrote, and where its seat stands on the autonomy ladder.
 Four things about it are worth knowing before reading the code:
 
 - **A crew that is not running is an answer, not a failure.** tmux was reached and lists no such
-  session, so the lookup stays `present` and the page says what *was* checked — including whether the
+  session, so the lookup stays `present` and the page says what _was_ checked — including whether the
   crew log has ever recorded the name, which is how a reaped crew is told apart from one that never
   existed. It never renders the panels above with nothing in them: a shell with empty fields reads as
   a crew with no work rather than as a crew that is not there.
 - **A change reference is a claim; the trunk is the verdict.** A crew names its own changes in its
   status files and crew-log lines. Each reference is joined to the first-parent trunk history of the
-  project *its own record was filed under* — not the crew's current project, because a long-lived
+  project _its own record was filed under_ — not the crew's current project, because a long-lived
   crew moves and `#1` on one repository is a different change from `#1` on another. Where the record
   named no project, the crew's is used and the row says so. `landed`, `not on trunk` and `no trunk
-  read` are three different claims and are never drawn as each other. No forge is reached: this
+read` are three different claims and are never drawn as each other. No forge is reached: this
   surface holds no credential for one and would have to invent a host to build a link.
 - **The ladder rung is derived, and says so.** `board/accountability.md` puts tiers in
   `board/crew-kpis.md`; that file carries a model scoreboard, not a rung. So the rung comes from
@@ -184,8 +182,8 @@ a number can never belong to a project the tab does not name.
 
 ### Honest empty states — and the difference between empty and unreachable
 
-Board and Ticket render live record facts. Heartbeats, Inbox, Feed session facts, Files,
-Workspace and Explorer have no source in ctower today, so each renders its approved layout and
+Board, Ticket and Inbox render live record facts. Heartbeats, Feed session facts, Files, Workspace
+and Explorer have no source in ctower today, so each renders its approved layout and
 an explicit block naming what is missing. No screen invents a number, a name, a duration or a
 token count. The ticket work timeline in particular reads `no session data yet` and totals `—`
 until #200's per-session work facts exist.
@@ -201,7 +199,7 @@ Every `lands with …` line comes from `src/read/futureSources.ts` and nowhere e
 found nine panels across three screens all citing **#186**, which is the operator-channel feed and
 covers none of them — a pointer that points everywhere points nowhere, and these panels are only
 worth something if the pointer is right. So each entry carries the sentence saying how that work
-item covers *that exact fact*, and that sentence is the chip's hover; where nothing is filed, the
+item covers _that exact fact_, and that sentence is the chip's hover; where nothing is filed, the
 panel reads **no work item is filed for this yet** rather than borrowing the nearest number.
 `tests/repository/test_declared_sources.py` fails closed on a citation minted outside the table
 and on one work item standing behind two unrelated facts.
@@ -225,9 +223,8 @@ next read. View switches — Chat/Raw, File/Diff, the board source filter — ch
 than issue a command, so they stay live.
 
 Counts carry their unit. `surfaces/Count.tsx` is the only place the `.n` pill is written and its
-type pairs every number with what it counts, because the same pill meant *unread* on the Inbox and
-*cards* on the Board with the unit only in a `title` — and a seat holding 485 read messages
-rendered as a bare `0`.
+type pairs every number with what it counts, so Inbox unread-message counts and Board card counts
+cannot appear as bare, ambiguous numbers.
 
 ## Running it
 
@@ -239,14 +236,14 @@ The script resolves the operator credential from the Secret Service reference th
 already uses and exports it for the life of the Node process. It is never written to a file,
 never passed as an argument, and never reaches the browser.
 
-| Variable | Default | Meaning |
-|---|---|---|
-| `CTOWER_UI_API_BASE_URL` | `http://127.0.0.1:8091` | The loopback read API. |
-| `CTOWER_UI_API_TOKEN` | — | Bearer for the read path. Required; there is no anonymous read. |
-| `CTOWER_UI_INSTANCE_LABEL` | `shadow` | Shown in the header chip. |
-| `CTOWER_UI_INSTANCE_POSTURE` | `SHADOW_ONLY_CP3_D_NOT_PROVEN` | Shown in the provenance foot. |
-| `CTOWER_UI_INSTANCE_REVISION` | served commit | Shown beside the instance label. |
-| `CTOWER_UI_PORT` | `3117` | Listen port. |
+| Variable                      | Default                        | Meaning                                                         |
+| ----------------------------- | ------------------------------ | --------------------------------------------------------------- |
+| `CTOWER_UI_API_BASE_URL`      | `http://127.0.0.1:8091`        | The loopback read API.                                          |
+| `CTOWER_UI_API_TOKEN`         | —                              | Bearer for the read path. Required; there is no anonymous read. |
+| `CTOWER_UI_INSTANCE_LABEL`    | `shadow`                       | Shown in the header chip.                                       |
+| `CTOWER_UI_INSTANCE_POSTURE`  | `SHADOW_ONLY_CP3_D_NOT_PROVEN` | Shown in the provenance foot.                                   |
+| `CTOWER_UI_INSTANCE_REVISION` | served commit                  | Shown beside the instance label.                                |
+| `CTOWER_UI_PORT`              | `3117`                         | Listen port.                                                    |
 
 Build first with `pnpm --filter @ctower/ui build`. The repository gates
 (`pnpm run format:check`, `pnpm run lint`, `pnpm run typecheck`) cover this boundary and are
@@ -273,13 +270,7 @@ and a nav entry that leads nowhere would be a dead control.
    rule and the ticket's own stable link stated above it, rather than redirecting to an id the
    operator never chose. The board is the list. `src/frame/rail.ts` is the contract, and
    `tests/repository/test_declared_sources.py` reads it.
-4. **The Inbox info-tier chip reads `NOTE`**, not the mockup's own `info` (gh#318). Mission
-   Control's `tools/notify` sends exactly `P0`, `P1` or `info`, and its own `--help` text calls an
-   info-severity message "a terse note" — `info` is also the literal generic word the operator's
-   no-generic-status-labels rule bans, so this surface renders that tier's own vocabulary instead
-   of the record's raw word. `src/surfaces/severity.ts` is the one place a severity resolves to a
-   chip label; `P0`/`P1` are unchanged.
-5. **The true-empty-project block no longer promises a portfolio view "below" it** (gh#319). The
+4. **The true-empty-project block no longer promises a portfolio view "below" it** (gh#319). The
    only portfolio-view element on this page is the link in `src/surfaces/board/TrueEmptyProject.tsx`
    — nothing renders below the banner — so the copy now describes that link instead of claiming an
    embedded view the DOM never carried. gh#115's project-fact work has not landed (no PR as of this
