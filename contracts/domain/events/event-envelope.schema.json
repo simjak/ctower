@@ -46,6 +46,9 @@
         "migration.changed",
         "intake.inbound_event_recorded",
         "intake.inbound_event_promoted",
+        "thread.opened",
+        "message.appended",
+        "thread.promoted_to_ticket",
         "access.seat_credential_issued",
         "access.seat_credential_revoked",
         "session.started",
@@ -66,7 +69,7 @@
     "server_time": {"type": "string", "format": "date-time"},
     "stream_id": {
       "type": "string",
-      "pattern": "^(tenant:[0-9a-f-]{36}:bootstrap|ticket:[0-9a-f-]{36}|catalog:[0-9a-f-]{36}|proof:[0-9a-f-]{36}|workflow:[0-9a-f-]{36}|routine-occurrence:[0-9a-f-]{36}|poison-disposition:[0-9a-f-]{36}|migration:[0-9a-f-]{36}|inbound-thread:[0-9a-f-]{36}|seat-credential:[0-9a-f-]{36}|session:[0-9a-f-]{36}|attention-finding:[0-9a-f-]{36}|attention-finding-disposition:[0-9a-f-]{36})$"
+      "pattern": "^(tenant:[0-9a-f-]{36}:bootstrap|ticket:[0-9a-f-]{36}|catalog:[0-9a-f-]{36}|proof:[0-9a-f-]{36}|workflow:[0-9a-f-]{36}|routine-occurrence:[0-9a-f-]{36}|poison-disposition:[0-9a-f-]{36}|migration:[0-9a-f-]{36}|inbound-thread:[0-9a-f-]{36}|inbox-thread:[0-9a-f-]{36}|seat-credential:[0-9a-f-]{36}|session:[0-9a-f-]{36}|attention-finding:[0-9a-f-]{36}|attention-finding-disposition:[0-9a-f-]{36})$"
     },
     "tenant_id": {"type": "string", "format": "uuid"}
   },
@@ -187,6 +190,30 @@
         },
         {
           "properties": {
+            "kind": {"const": "thread.opened"},
+            "origin": {"const": "api"},
+            "stream_id": {"pattern": "^inbox-thread:[0-9a-f-]{36}$"},
+            "payload": {"$ref": "#/$defs/inboxThreadOpened"}
+          }
+        },
+        {
+          "properties": {
+            "kind": {"const": "message.appended"},
+            "origin": {"const": "api"},
+            "stream_id": {"pattern": "^inbox-thread:[0-9a-f-]{36}$"},
+            "payload": {"$ref": "#/$defs/inboxMessageAppended"}
+          }
+        },
+        {
+          "properties": {
+            "kind": {"const": "thread.promoted_to_ticket"},
+            "origin": {"const": "api"},
+            "stream_id": {"pattern": "^inbox-thread:[0-9a-f-]{36}$"},
+            "payload": {"$ref": "#/$defs/inboxThreadPromotedToTicket"}
+          }
+        },
+        {
+          "properties": {
             "kind": {"const": "access.seat_credential_issued"},
             "origin": {"const": "api"},
             "stream_id": {"pattern": "^seat-credential:[0-9a-f-]{36}$"},
@@ -262,6 +289,47 @@
   ],
   "$defs": {
     "sha256": {"type": "string", "pattern": "^sha256:[0-9a-f]{64}$"},
+    "inboxParticipant": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["principal_id", "seat_key"],
+      "properties": {
+        "principal_id": {"type": "string", "format": "uuid"},
+        "seat_key": {"type": "string", "pattern": "^[a-z][a-z0-9._-]{1,95}$"}
+      }
+    },
+    "inboxThreadOpened": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["opener", "recipient", "thread_id"],
+      "properties": {
+        "opener": {"$ref": "#/$defs/inboxParticipant"},
+        "recipient": {"$ref": "#/$defs/inboxParticipant"},
+        "thread_id": {"type": "string", "format": "uuid"}
+      }
+    },
+    "inboxMessageAppended": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["message_id", "position", "recipient", "sender", "text", "thread_id"],
+      "properties": {
+        "message_id": {"type": "string", "format": "uuid"},
+        "position": {"type": "integer", "minimum": 1},
+        "recipient": {"$ref": "#/$defs/inboxParticipant"},
+        "sender": {"$ref": "#/$defs/inboxParticipant"},
+        "text": {"type": "string", "minLength": 1, "maxLength": 65536},
+        "thread_id": {"type": "string", "format": "uuid"}
+      }
+    },
+    "inboxThreadPromotedToTicket": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["thread_id", "ticket_id"],
+      "properties": {
+        "thread_id": {"type": "string", "format": "uuid"},
+        "ticket_id": {"type": "string", "format": "uuid"}
+      }
+    },
     "bootstrapCreated": {
       "type": "object",
       "additionalProperties": false,

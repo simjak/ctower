@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+import keyword
 import re
 from collections.abc import Mapping
 from typing import cast
@@ -251,14 +252,14 @@ def _render_field(name: str, schema: Mapping[str, object], *, required: bool) ->
     if not required and "None" not in expression.split(" | "):
         expression += " | None"
     aliases = {"type": "type_uri", "schema": "schema_id"}
-    python_name = aliases.get(name, name)
+    python_name = aliases.get(name, f"{name}_" if keyword.iskeyword(name) else name)
     suffix = ""
-    if name in aliases:
+    if python_name != name:
         suffix = f' = Field(alias="{name}", serialization_alias="{name}")'
     elif not required:
         suffix = " = None"
     rendered = f"    {python_name}: {expression}{suffix}"
-    if len(rendered) <= _MAX_LINE_WIDTH or name not in aliases:
+    if len(rendered) <= _MAX_LINE_WIDTH or python_name == name:
         return rendered
     return (
         f"    {python_name}: {expression} = Field(\n"

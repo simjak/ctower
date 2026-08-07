@@ -10,6 +10,9 @@ read-only Board projection. The API also exposes explicit
 `discussion|create_ticket|link_ticket` thread-first intake and one-time discussion promotion. Both intake
 routes authenticate before reading a body, then enforce the same 524,288-byte streaming limit without
 trusting `Content-Length`.
+The separately composed native Inbox surface exposes exactly message send, recipient-scoped thread list,
+and ordered thread read. Send is a protected durable mutation; list and read consume only accepted disposable
+projection state, and read advances only that authenticated principal's disposable cursor.
 Durable decisions remain in the owning kernel Modules; the API never connects around those Interfaces.
 Work and Proof implementations are injected into Workflow only as narrow readiness/current-proof
 capabilities at composition. Board reads return only stored accepted-state projection rows; request handlers

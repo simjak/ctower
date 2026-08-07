@@ -10,7 +10,6 @@ import psycopg
 from psycopg.rows import dict_row
 
 from ctower_kernel.record import Actor, PrincipalKind, RecordProblem
-from ctower_kernel.record._uuid import uuid7 as _uuid7
 from ctower_kernel.record.credentials import (
     CredentialScope,
     SeatCredentialIssue,
@@ -20,6 +19,7 @@ from ctower_kernel.record.credentials import (
     SeatCredentialRevokedPayload,
 )
 from ctower_kernel.record.events import EventEnvelope, EventKind, EventOrigin
+from ctower_kernel.record.identifiers import uuid7 as _uuid7
 from ctower_kernel.record.transaction import RecordTransaction, authority_connection
 from ctower_kernel.telemetry import TelemetryContext
 

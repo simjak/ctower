@@ -1,10 +1,10 @@
 {
   "schema": "ctower.migrations/v3",
   "adoption_baseline": {
-    "through": "0047_board_source_index.sql",
-    "schema_sha256": "sha256:eed045d7084165120180b1d06708657f6632f96a1b015f11b2bd8b9dce123785",
+    "through": "0048_native_inbox.sql",
+    "schema_sha256": "sha256:8ce8ebeaaefe434ae7897a636022b85c46c93b4e3f597c903e0c65a825ad5b8f",
     "semantic_checks": "ctower.pre-ledger/v1",
-    "schema_object_sum256": "sum256:3214a7ebfd01854174742a6eb42c3be41f332367d723c5238b66ab43d1fb9711"
+    "schema_object_sum256": "sum256:4ddd8910b85befeb99bbb59bc8773707f989301ea8f76774cabdcf9a6da138f0"
   },
   "migrations": [
     {
@@ -449,6 +449,15 @@
       "forward_test": "pytest:tests/acceptance/increment-1/test_task_board_client.py::test_source_lookup_matches_the_pre_index_filter_across_a_seeded_corpus",
       "rollback_or_forward_compensation": "Board projection rows remain disposable and rebuildable; drop the added index or append reviewed forward compensation, never restore ticket source-reference uniqueness (gh#68).",
       "backup_checkpoint": "Before applying to a nonempty installation, capture Board projection row counts grouped by tenant and project key plus a verified database backup; the migration adds no column and changes no stored value."
+    },
+    {
+      "path": "0048_native_inbox.sql",
+      "sha256": "sha256:6308e8de55ab590c4c31c35a8aefc59cb9416372960f779397cdfbf5a3b3cce4",
+      "minimum_service_version": "0.0.0",
+      "maximum_service_version": "0.0.0",
+      "forward_test": "pytest:tests/acceptance/increment-1/test_inbox.py::test_native_inbox_cli_roundtrip_and_promotion_links_both_ways",
+      "rollback_or_forward_compensation": "Preserve append-only inbox messages, promotion links, canonical events, command results, and outbox rows; rebuild disposable inbox and Board projections or append reviewed forward compensation, never edit or delete an accepted inbox fact.",
+      "backup_checkpoint": "Before applying to a nonempty installation, capture inbox thread, message, promotion-link, event, outbox, and projection counts grouped by tenant plus a verified database backup."
     }
   ]
 }

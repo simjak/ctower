@@ -41,6 +41,8 @@ from ctowerctl._company_commands import (
 from ctowerctl._company_commands import (
     query_command_names as company_queries,
 )
+from ctowerctl._inbox_commands import mutation_command_names as inbox_mutations
+from ctowerctl._inbox_commands import query_command_names as inbox_queries
 from ctowerctl._intake_commands import mutation_command_names as intake_mutations
 from ctowerctl._migration_commands import (
     mutation_command_names as migration_mutations,
@@ -104,6 +106,7 @@ def test_explicit_handlers_cover_every_generated_operation_class() -> None:
         | synthetic_mutations()
         | migration_mutations()
         | intake_mutations()
+        | inbox_mutations()
         | _credential_commands.mutation_command_names()
         | session_mutations()
         | attention_mutations()
@@ -114,6 +117,7 @@ def test_explicit_handlers_cover_every_generated_operation_class() -> None:
         | ops_queries()
         | synthetic_queries()
         | migration_queries()
+        | inbox_queries()
         | session_queries()
     )
     refusals = migration_refusals()

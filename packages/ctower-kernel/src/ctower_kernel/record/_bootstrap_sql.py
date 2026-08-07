@@ -14,13 +14,13 @@ import psycopg
 from psycopg.types.json import Jsonb
 
 from ctower_kernel.record import BootstrapCommand, BootstrapReceipt, RecordProblem
-from ctower_kernel.record._uuid import uuid7 as _uuid7
 from ctower_kernel.record.events import (
     BootstrapCreatedPayload,
     EventEnvelope,
     EventKind,
     EventOrigin,
 )
+from ctower_kernel.record.identifiers import uuid7 as _uuid7
 from ctower_kernel.record.transaction import RecordTransaction, authority_connection
 from ctower_kernel.telemetry import TelemetryContext
 

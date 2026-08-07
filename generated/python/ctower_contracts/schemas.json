@@ -37,6 +37,7 @@
     "ctower.goal/v1": "contracts/components/goal.schema.json",
     "ctower.harness/v1": "contracts/components/harness.schema.json",
     "ctower.image/v1": "contracts/components/image.schema.json",
+    "ctower.inbox/v1": "contracts/domain/inbox/inbox.schema.json",
     "ctower.integration/v1": "contracts/components/integration.schema.json",
     "ctower.label-vocabulary/v1": "contracts/components/label-vocabulary.schema.json",
     "ctower.notification/v1": "contracts/components/notification.schema.json",
@@ -128,6 +129,7 @@
     "https://ctower.local/contracts/components/tool.schema.json": "contracts/components/tool.schema.json",
     "https://ctower.local/contracts/components/versioned-component.schema.json": "contracts/components/versioned-component.schema.json",
     "https://ctower.local/contracts/components/workspace.schema.json": "contracts/components/workspace.schema.json",
+    "https://ctower.local/contracts/domain/inbox/inbox.schema.json": "contracts/domain/inbox/inbox.schema.json",
     "https://ctower.local/contracts/domain/intake/thread-intake.schema.json": "contracts/domain/intake/thread-intake.schema.json",
     "https://ctower.local/contracts/observability/telemetry-context.schema.json": "contracts/observability/telemetry-context.schema.json",
     "https://ctower.local/contracts/workflow/workflow-definition.schema.json": "contracts/workflow/workflow-definition.schema.json"
@@ -3348,6 +3350,100 @@
           ],
           "type": "object"
         },
+        "inboxMessageAppended": {
+          "additionalProperties": false,
+          "properties": {
+            "message_id": {
+              "format": "uuid",
+              "type": "string"
+            },
+            "position": {
+              "minimum": 1,
+              "type": "integer"
+            },
+            "recipient": {
+              "$ref": "#/$defs/inboxParticipant"
+            },
+            "sender": {
+              "$ref": "#/$defs/inboxParticipant"
+            },
+            "text": {
+              "maxLength": 65536,
+              "minLength": 1,
+              "type": "string"
+            },
+            "thread_id": {
+              "format": "uuid",
+              "type": "string"
+            }
+          },
+          "required": [
+            "message_id",
+            "position",
+            "recipient",
+            "sender",
+            "text",
+            "thread_id"
+          ],
+          "type": "object"
+        },
+        "inboxParticipant": {
+          "additionalProperties": false,
+          "properties": {
+            "principal_id": {
+              "format": "uuid",
+              "type": "string"
+            },
+            "seat_key": {
+              "pattern": "^[a-z][a-z0-9._-]{1,95}$",
+              "type": "string"
+            }
+          },
+          "required": [
+            "principal_id",
+            "seat_key"
+          ],
+          "type": "object"
+        },
+        "inboxThreadOpened": {
+          "additionalProperties": false,
+          "properties": {
+            "opener": {
+              "$ref": "#/$defs/inboxParticipant"
+            },
+            "recipient": {
+              "$ref": "#/$defs/inboxParticipant"
+            },
+            "thread_id": {
+              "format": "uuid",
+              "type": "string"
+            }
+          },
+          "required": [
+            "opener",
+            "recipient",
+            "thread_id"
+          ],
+          "type": "object"
+        },
+        "inboxThreadPromotedToTicket": {
+          "additionalProperties": false,
+          "properties": {
+            "thread_id": {
+              "format": "uuid",
+              "type": "string"
+            },
+            "ticket_id": {
+              "format": "uuid",
+              "type": "string"
+            }
+          },
+          "required": [
+            "thread_id",
+            "ticket_id"
+          ],
+          "type": "object"
+        },
         "labelApplied": {
           "additionalProperties": false,
           "properties": {
@@ -4394,6 +4490,54 @@
             {
               "properties": {
                 "kind": {
+                  "const": "thread.opened"
+                },
+                "origin": {
+                  "const": "api"
+                },
+                "payload": {
+                  "$ref": "#/$defs/inboxThreadOpened"
+                },
+                "stream_id": {
+                  "pattern": "^inbox-thread:[0-9a-f-]{36}$"
+                }
+              }
+            },
+            {
+              "properties": {
+                "kind": {
+                  "const": "message.appended"
+                },
+                "origin": {
+                  "const": "api"
+                },
+                "payload": {
+                  "$ref": "#/$defs/inboxMessageAppended"
+                },
+                "stream_id": {
+                  "pattern": "^inbox-thread:[0-9a-f-]{36}$"
+                }
+              }
+            },
+            {
+              "properties": {
+                "kind": {
+                  "const": "thread.promoted_to_ticket"
+                },
+                "origin": {
+                  "const": "api"
+                },
+                "payload": {
+                  "$ref": "#/$defs/inboxThreadPromotedToTicket"
+                },
+                "stream_id": {
+                  "pattern": "^inbox-thread:[0-9a-f-]{36}$"
+                }
+              }
+            },
+            {
+              "properties": {
+                "kind": {
                   "const": "access.seat_credential_issued"
                 },
                 "origin": {
@@ -4582,6 +4726,9 @@
             "migration.changed",
             "intake.inbound_event_recorded",
             "intake.inbound_event_promoted",
+            "thread.opened",
+            "message.appended",
+            "thread.promoted_to_ticket",
             "access.seat_credential_issued",
             "access.seat_credential_revoked",
             "session.started",
@@ -4623,7 +4770,7 @@
           "type": "string"
         },
         "stream_id": {
-          "pattern": "^(tenant:[0-9a-f-]{36}:bootstrap|ticket:[0-9a-f-]{36}|catalog:[0-9a-f-]{36}|proof:[0-9a-f-]{36}|workflow:[0-9a-f-]{36}|routine-occurrence:[0-9a-f-]{36}|poison-disposition:[0-9a-f-]{36}|migration:[0-9a-f-]{36}|inbound-thread:[0-9a-f-]{36}|seat-credential:[0-9a-f-]{36}|session:[0-9a-f-]{36}|attention-finding:[0-9a-f-]{36}|attention-finding-disposition:[0-9a-f-]{36})$",
+          "pattern": "^(tenant:[0-9a-f-]{36}:bootstrap|ticket:[0-9a-f-]{36}|catalog:[0-9a-f-]{36}|proof:[0-9a-f-]{36}|workflow:[0-9a-f-]{36}|routine-occurrence:[0-9a-f-]{36}|poison-disposition:[0-9a-f-]{36}|migration:[0-9a-f-]{36}|inbound-thread:[0-9a-f-]{36}|inbox-thread:[0-9a-f-]{36}|seat-credential:[0-9a-f-]{36}|session:[0-9a-f-]{36}|attention-finding:[0-9a-f-]{36}|attention-finding-disposition:[0-9a-f-]{36})$",
           "type": "string"
         },
         "tenant_id": {
@@ -4650,6 +4797,158 @@
         "tenant_id"
       ],
       "title": "CtowerEventEnvelope",
+      "type": "object"
+    },
+    "contracts/domain/inbox/inbox.schema.json": {
+      "$defs": {
+        "message": {
+          "additionalProperties": false,
+          "properties": {
+            "message_id": {
+              "format": "uuid",
+              "type": "string"
+            },
+            "position": {
+              "minimum": 1,
+              "type": "integer"
+            },
+            "recipient": {
+              "$ref": "#/$defs/participant"
+            },
+            "sender": {
+              "$ref": "#/$defs/participant"
+            },
+            "text": {
+              "maxLength": 65536,
+              "minLength": 1,
+              "type": "string"
+            },
+            "thread_id": {
+              "format": "uuid",
+              "type": "string"
+            }
+          },
+          "required": [
+            "message_id",
+            "thread_id",
+            "position",
+            "sender",
+            "recipient",
+            "text"
+          ],
+          "type": "object"
+        },
+        "participant": {
+          "additionalProperties": false,
+          "properties": {
+            "principal_id": {
+              "format": "uuid",
+              "type": "string"
+            },
+            "seat_key": {
+              "$ref": "#/$defs/seatKey"
+            }
+          },
+          "required": [
+            "principal_id",
+            "seat_key"
+          ],
+          "type": "object"
+        },
+        "promotion": {
+          "additionalProperties": false,
+          "properties": {
+            "command_id": {
+              "format": "uuid",
+              "type": "string"
+            },
+            "thread_id": {
+              "format": "uuid",
+              "type": "string"
+            },
+            "ticket_id": {
+              "format": "uuid",
+              "type": "string"
+            }
+          },
+          "required": [
+            "thread_id",
+            "ticket_id",
+            "command_id"
+          ],
+          "type": "object"
+        },
+        "seatKey": {
+          "pattern": "^[a-z][a-z0-9._-]{1,95}$",
+          "type": "string"
+        },
+        "thread": {
+          "additionalProperties": false,
+          "properties": {
+            "participants": {
+              "items": {
+                "$ref": "#/$defs/participant"
+              },
+              "maxItems": 2,
+              "minItems": 2,
+              "type": "array"
+            },
+            "tenant_id": {
+              "format": "uuid",
+              "type": "string"
+            },
+            "thread_id": {
+              "format": "uuid",
+              "type": "string"
+            },
+            "version": {
+              "minimum": 2,
+              "type": "integer"
+            }
+          },
+          "required": [
+            "thread_id",
+            "tenant_id",
+            "participants",
+            "version"
+          ],
+          "type": "object"
+        }
+      },
+      "$id": "https://ctower.local/contracts/domain/inbox/inbox.schema.json",
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "additionalProperties": false,
+      "properties": {
+        "messages": {
+          "items": {
+            "$ref": "#/$defs/message"
+          },
+          "type": "array"
+        },
+        "promotion": {
+          "oneOf": [
+            {
+              "type": "null"
+            },
+            {
+              "$ref": "#/$defs/promotion"
+            }
+          ]
+        },
+        "schema": {
+          "const": "ctower.inbox/v1"
+        },
+        "thread": {
+          "$ref": "#/$defs/thread"
+        }
+      },
+      "required": [
+        "schema",
+        "thread",
+        "messages",
+        "promotion"
+      ],
+      "title": "Ctower native agent inbox aggregate",
       "type": "object"
     },
     "contracts/domain/intake/thread-intake.schema.json": {
@@ -13828,7 +14127,12 @@
     {
       "id": "https://ctower.dev/contracts/domain/events/event-envelope.schema.json",
       "path": "contracts/domain/events/event-envelope.schema.json",
-      "sha256": "sha256:418d229910f38ef777092ea48da7a11ef3022101685029c9c6448ba76eb04686"
+      "sha256": "sha256:337cbab7f2413653762305e0f8c321549bd01aba3ef3281ae4f10b090d63f3c7"
+    },
+    {
+      "id": "https://ctower.local/contracts/domain/inbox/inbox.schema.json",
+      "path": "contracts/domain/inbox/inbox.schema.json",
+      "sha256": "sha256:95e3ff0f3eb405058480c74d7048c1d442a87cdbfc3a88a32c6429b5d4c4cb77"
     },
     {
       "id": "https://ctower.local/contracts/domain/intake/thread-intake.schema.json",

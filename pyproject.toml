@@ -49,6 +49,7 @@ packages = [
   "ctower_kernel.attention",
   "ctower_kernel.board_context",
   "ctower_kernel.catalog",
+  "ctower_kernel.inbox",
   "ctower_kernel.migration",
   "ctower_kernel.migrations",
   "ctower_kernel.objects",

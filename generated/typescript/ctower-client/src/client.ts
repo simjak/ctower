@@ -1,5 +1,5 @@
 // DO NOT EDIT: generated file; regenerate from declared inputs.
-// Authored contract digest: sha256:f6c0cd0431bb6d0ce6c2ae48acd75990b6717d0b5fcb2ae0d61f729075a3e21c
+// Authored contract digest: sha256:58c506c7dc1755f416adb38de169d6a52c2afbb898b67c8c6ed5caf072ac15ec
 
 import type * as Models from "./models.js";
 import { OPERATIONS, type OperationId } from "./operations.js";
@@ -161,6 +161,10 @@ export type IssueSeatCredentialInput = Readonly<{
   readonly body: Models.SeatCredentialIssueRequest;
 }>;
 
+export type ListInboxThreadsInput = Readonly<{
+  readonly "unread"?: boolean;
+}>;
+
 export type ListProjectEventsInput = Readonly<{
   readonly "projectKey": string;
   readonly "cursor"?: number;
@@ -203,6 +207,10 @@ export type PromoteIntakeEventInput = Readonly<{
   readonly "inboundEventId": string;
   readonly "IdempotencyKey": string;
   readonly body: Models.IntakePromotionRequest;
+}>;
+
+export type ReadInboxThreadInput = Readonly<{
+  readonly "threadId": string;
 }>;
 
 export type RecordAttentionFindingDispositionInput = Readonly<{
@@ -262,6 +270,11 @@ export type RevokeSeatCredentialInput = Readonly<{
 export type RunSyntheticWorkflowInput = Readonly<{
   readonly "IdempotencyKey": string;
   readonly body: Models.SyntheticRunRequest;
+}>;
+
+export type SendInboxMessageInput = Readonly<{
+  readonly "IdempotencyKey": string;
+  readonly body: Models.InboxSendRequest;
 }>;
 
 export type StartTicketSessionInput = Readonly<{
@@ -326,6 +339,7 @@ export type OperationInputs = Readonly<{
   readonly "getTicket": GetTicketInput;
   readonly "getTicketTimeline": GetTicketTimelineInput;
   readonly "issueSeatCredential": IssueSeatCredentialInput;
+  readonly "listInboxThreads": ListInboxThreadsInput;
   readonly "listProjectEvents": ListProjectEventsInput;
   readonly "listProjectSessions": ListProjectSessionsInput;
   readonly "listTicketAssignments": ListTicketAssignmentsInput;
@@ -334,6 +348,7 @@ export type OperationInputs = Readonly<{
   readonly "planCompanyBundle": PlanCompanyBundleInput;
   readonly "prepareCtowerProjectCutover": PrepareCtowerProjectCutoverInput;
   readonly "promoteIntakeEvent": PromoteIntakeEventInput;
+  readonly "readInboxThread": ReadInboxThreadInput;
   readonly "recordAttentionFindingDisposition": RecordAttentionFindingDispositionInput;
   readonly "recordOutboxPoisonDisposition": RecordOutboxPoisonDispositionInput;
   readonly "recordProofEvidence": RecordProofEvidenceInput;
@@ -344,6 +359,7 @@ export type OperationInputs = Readonly<{
   readonly "resolveCloseWorkflow": ResolveCloseWorkflowInput;
   readonly "revokeSeatCredential": RevokeSeatCredentialInput;
   readonly "runSyntheticWorkflow": RunSyntheticWorkflowInput;
+  readonly "sendInboxMessage": SendInboxMessageInput;
   readonly "startTicketSession": StartTicketSessionInput;
   readonly "startTicketWorkflow": StartTicketWorkflowInput;
   readonly "submitIntake": SubmitIntakeInput;
@@ -381,6 +397,7 @@ export type OperationResults = Readonly<{
   readonly "getTicket": Models.TicketResource;
   readonly "getTicketTimeline": Models.TimelineResponse;
   readonly "issueSeatCredential": Models.SeatCredentialReceipt;
+  readonly "listInboxThreads": Models.InboxThreadList;
   readonly "listProjectEvents": Models.ProjectEventPage;
   readonly "listProjectSessions": Models.ProjectSessionPage;
   readonly "listTicketAssignments": Models.AssignmentList;
@@ -389,6 +406,7 @@ export type OperationResults = Readonly<{
   readonly "planCompanyBundle": Models.CompanyBundlePlan;
   readonly "prepareCtowerProjectCutover": never;
   readonly "promoteIntakeEvent": Models.IntakeCommandResult;
+  readonly "readInboxThread": Models.InboxThread;
   readonly "recordAttentionFindingDisposition": Models.FindingDispositionResult;
   readonly "recordOutboxPoisonDisposition": Models.PoisonDispositionReceipt;
   readonly "recordProofEvidence": Models.ProofReceipt;
@@ -399,6 +417,7 @@ export type OperationResults = Readonly<{
   readonly "resolveCloseWorkflow": Models.WorkflowReceipt;
   readonly "revokeSeatCredential": Models.SeatCredentialReceipt;
   readonly "runSyntheticWorkflow": Models.SyntheticRunReceipt;
+  readonly "sendInboxMessage": Models.InboxSendResult;
   readonly "startTicketSession": Models.SessionReceipt;
   readonly "startTicketWorkflow": Models.WorkflowReceipt;
   readonly "submitIntake": Models.IntakeCommandResult;
@@ -594,6 +613,12 @@ export class CtowerClient {
     return this.execute("issueSeatCredential", input);
   }
 
+  public async listInboxThreads(
+    input: ListInboxThreadsInput,
+  ): Promise<Models.InboxThreadList> {
+    return this.execute("listInboxThreads", input);
+  }
+
   public async listProjectEvents(
     input: ListProjectEventsInput,
   ): Promise<Models.ProjectEventPage> {
@@ -640,6 +665,12 @@ export class CtowerClient {
     input: PromoteIntakeEventInput,
   ): Promise<Models.IntakeCommandResult> {
     return this.execute("promoteIntakeEvent", input);
+  }
+
+  public async readInboxThread(
+    input: ReadInboxThreadInput,
+  ): Promise<Models.InboxThread> {
+    return this.execute("readInboxThread", input);
   }
 
   public async recordAttentionFindingDisposition(
@@ -700,6 +731,12 @@ export class CtowerClient {
     input: RunSyntheticWorkflowInput,
   ): Promise<Models.SyntheticRunReceipt> {
     return this.execute("runSyntheticWorkflow", input);
+  }
+
+  public async sendInboxMessage(
+    input: SendInboxMessageInput,
+  ): Promise<Models.InboxSendResult> {
+    return this.execute("sendInboxMessage", input);
   }
 
   public async startTicketSession(

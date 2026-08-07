@@ -46,6 +46,7 @@ class _ContextSets:
     applied_labels: dict[UUID, tuple[AppliedLabel, ...]]
     human_waiting: dict[UUID, HumanWaiting]
     delivery_surface: dict[UUID, BoardDeliverySurfaceAvailability]
+    inbox_threads: dict[UUID, tuple[UUID, ...]]
 
 
 _FoldHandler = Callable[
@@ -213,6 +214,7 @@ def _read_context_sets(
         applied_labels=_context.applied_labels_by_ticket(connection, tenant_id, ticket_ids),
         human_waiting=_context.human_waiting_by_ticket(connection, tenant_id, ticket_ids),
         delivery_surface=_context.delivery_surface_by_ticket(connection, tenant_id, ticket_ids),
+        inbox_threads=_context.inbox_threads_by_ticket(connection, tenant_id, ticket_ids),
     )
 
 
@@ -544,6 +546,7 @@ def _card(row: dict[str, object], context: _ContextSets) -> BoardCard:
         delivery_surface_availability=context.delivery_surface.get(
             ticket_id, _NO_QUALIFYING_CHECKPOINT
         ),
+        inbox_thread_ids=context.inbox_threads.get(ticket_id, ()),
     )
 
 

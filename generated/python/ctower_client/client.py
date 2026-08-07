@@ -1,6 +1,6 @@
 """DO NOT EDIT: generated file; regenerate from declared inputs.
 
-Authored contract digest: sha256:f6c0cd0431bb6d0ce6c2ae48acd75990b6717d0b5fcb2ae0d61f729075a3e21c
+Authored contract digest: sha256:58c506c7dc1755f416adb38de169d6a52c2afbb898b67c8c6ed5caf072ac15ec
 """
 
 from __future__ import annotations
@@ -53,6 +53,10 @@ from ctower_client.models import (
     FindingDispositionRequest,
     FindingDispositionResult,
     FreezeCriteriaRequest,
+    InboxSendRequest,
+    InboxSendResult,
+    InboxThread,
+    InboxThreadList,
     IntakeCommandResult,
     IntakePromotionRequest,
     IntakeSubmitRequest,
@@ -708,6 +712,24 @@ class CtowerClient:
         return _response(response, {201: SeatCredentialReceipt, 202: SeatCredentialReceipt}, {401: Problem, 403: Problem, 409: Problem, 422: Problem, 503: Problem})
 
     @validate_call(config=ConfigDict(strict=True, arbitrary_types_allowed=True))
+    def list_inbox_threads(
+        self,
+        *,
+        unread: bool | None = None,
+    ) -> InboxThreadList:
+        response = self._http.get(
+            "/v1/inbox/threads",
+            params={**({"unread": unread} if unread is not None else {})},
+            headers=self._telemetry_headers(
+                self._context(uuid4()),
+                {
+                    **self._auth_headers(),
+                },
+            ),
+        )
+        return _response(response, {200: InboxThreadList}, {401: Problem, 404: Problem, 422: Problem})
+
+    @validate_call(config=ConfigDict(strict=True, arbitrary_types_allowed=True))
     def list_project_events(
         self,
         project_key: ProjectKey,
@@ -866,6 +888,22 @@ class CtowerClient:
             ),
         )
         return _response(response, {200: IntakeCommandResult, 202: IntakeCommandResult}, {401: Problem, 403: Problem, 404: Problem, 409: Problem, 413: Problem, 422: Problem})
+
+    @validate_call(config=ConfigDict(strict=True, arbitrary_types_allowed=True))
+    def read_inbox_thread(
+        self,
+        thread_id: UUID,
+    ) -> InboxThread:
+        response = self._http.get(
+            f"/v1/inbox/threads/{quote(str(thread_id), safe='')}",
+            headers=self._telemetry_headers(
+                self._context(uuid4()),
+                {
+                    **self._auth_headers(),
+                },
+            ),
+        )
+        return _response(response, {200: InboxThread}, {401: Problem, 404: Problem, 422: Problem})
 
     @validate_call(config=ConfigDict(strict=True, arbitrary_types_allowed=True))
     def record_attention_finding_disposition(
@@ -1085,6 +1123,27 @@ class CtowerClient:
             ),
         )
         return _response(response, {201: SyntheticRunReceipt, 202: SyntheticRunReceipt}, {401: Problem, 403: Problem, 409: Problem, 422: Problem})
+
+    @validate_call(config=ConfigDict(strict=True, arbitrary_types_allowed=True))
+    def send_inbox_message(
+        self,
+        request: InboxSendRequest,
+        *,
+        command_id: UUID,
+    ) -> InboxSendResult:
+        response = self._http.post(
+            "/v1/inbox/messages",
+            content=request.model_dump_json(),
+            headers=self._telemetry_headers(
+                self._context(command_id),
+                {
+                    **self._auth_headers(),
+                    "Content-Type": "application/json",
+                    "Idempotency-Key": str(command_id),
+                },
+            ),
+        )
+        return _response(response, {201: InboxSendResult, 202: InboxSendResult}, {401: Problem, 403: Problem, 404: Problem, 409: Problem, 422: Problem})
 
     @validate_call(config=ConfigDict(strict=True, arbitrary_types_allowed=True))
     def start_ticket_session(
