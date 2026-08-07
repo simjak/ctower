@@ -1,6 +1,6 @@
 """DO NOT EDIT: generated file; regenerate from declared inputs.
 
-Authored contract digest: sha256:bf47097d1b5c8bd6e460b44d2c139d66ddfbf2d7a5d83e24c6b423cdbeb985d8
+Authored contract digest: sha256:aa5d49950e972e14cd877c942731becfaf9d0f98b0451b1b3c66902ab0953253
 """
 
 from __future__ import annotations
@@ -53,6 +53,9 @@ from ctower_client.models import (
     FindingDispositionRequest,
     FindingDispositionResult,
     FreezeCriteriaRequest,
+    InboxAcknowledgeRequest,
+    InboxAcknowledgeResult,
+    InboxReadState,
     InboxSendRequest,
     InboxSendResult,
     InboxThread,
@@ -152,6 +155,28 @@ class CtowerClient:
 
     def close(self) -> None:
         self._http.close()
+
+    @validate_call(config=ConfigDict(strict=True, arbitrary_types_allowed=True))
+    def acknowledge_inbox_message(
+        self,
+        message_id: UUID,
+        request: InboxAcknowledgeRequest,
+        *,
+        command_id: UUID,
+    ) -> InboxAcknowledgeResult:
+        response = self._http.post(
+            f"/v1/inbox/messages/{quote(str(message_id), safe='')}/ack",
+            content=request.model_dump_json(),
+            headers=self._telemetry_headers(
+                self._context(command_id),
+                {
+                    **self._auth_headers(),
+                    "Content-Type": "application/json",
+                    "Idempotency-Key": str(command_id),
+                },
+            ),
+        )
+        return _response(response, {200: InboxAcknowledgeResult, 202: InboxAcknowledgeResult}, {401: Problem, 403: Problem, 404: Problem, 409: Problem, 422: Problem})
 
     @validate_call(config=ConfigDict(strict=True, arbitrary_types_allowed=True))
     def add_knowledge_document(
@@ -993,6 +1018,22 @@ class CtowerClient:
             ),
         )
         return _response(response, {200: IntakeCommandResult, 202: IntakeCommandResult}, {401: Problem, 403: Problem, 404: Problem, 409: Problem, 413: Problem, 422: Problem})
+
+    @validate_call(config=ConfigDict(strict=True, arbitrary_types_allowed=True))
+    def read_inbox_message_state(
+        self,
+        thread_id: UUID,
+    ) -> InboxReadState:
+        response = self._http.get(
+            f"/v1/inbox/threads/{quote(str(thread_id), safe='')}/read-state",
+            headers=self._telemetry_headers(
+                self._context(uuid4()),
+                {
+                    **self._auth_headers(),
+                },
+            ),
+        )
+        return _response(response, {200: InboxReadState}, {401: Problem, 404: Problem, 422: Problem})
 
     @validate_call(config=ConfigDict(strict=True, arbitrary_types_allowed=True))
     def read_inbox_thread(

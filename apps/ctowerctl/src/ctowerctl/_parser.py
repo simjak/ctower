@@ -33,6 +33,7 @@ from ctowerctl._argument_types import (
 from ctowerctl._context_set_parser import attention_parser, ticket_context_sets
 from ctowerctl._knowledge_parser import knowledge_parser
 from ctowerctl._parser_support import (
+    AUTHORED_COMMAND_NAMES,
     _command_id,
     _Parser,
     _review_dispatch,
@@ -48,79 +49,6 @@ _ASSIGNMENT_KINDS = ("current_assignee", "stage_owner", "reviewer")
 _BLOCKER_KINDS = ("dependency", "operator_action", "policy", "resource", "technical")
 _SPOOL_STATES = ("pending", "accepted_archive", "quarantine")
 _PROJECT_KEY: TypeAdapter[str] = TypeAdapter(ProjectKey)
-_AUTHORED_COMMAND_NAMES = frozenset(
-    {
-        "bootstrap first-tenant",
-        "credential seat issue",
-        "credential seat revoke",
-        "intake promote",
-        "intake submit",
-        "inbox send",
-        "inbox ack",
-        "inbox list",
-        "inbox read",
-        "inbox read-state",
-        "knowledge add",
-        "knowledge list",
-        "knowledge get",
-        "ticket capture",
-        "ticket create",
-        "ticket query",
-        "ticket show",
-        "ticket timeline",
-        "ticket audit",
-        "ticket assignments",
-        "ticket comment add",
-        "ticket change-reference add",
-        "ticket label apply",
-        "ticket assign",
-        "ticket custody transfer",
-        "ticket prioritize",
-        "ticket admit",
-        "ticket defer",
-        "ticket block",
-        "ticket unblock",
-        "ticket reopen",
-        "ticket relation add",
-        "ticket criteria freeze",
-        "ticket evidence add",
-        "ticket gate verdict",
-        "ticket workflow start",
-        "ticket transition",
-        "ticket resolve",
-        "ticket review-dispatch consume",
-        "ticket review-dispatch list",
-        "session start",
-        "session transition",
-        "session close",
-        "session ticket",
-        "session project",
-        "board query",
-        "control health",
-        "ops outbox poison dispose",
-        "company bundle validate",
-        "company bundle plan",
-        "company bundle apply",
-        "company bundle export",
-        "synthetic query",
-        "synthetic run",
-        "migration ctower-project inventory",
-        "migration ctower-project export",
-        "migration ctower-project plan",
-        "migration ctower-project import",
-        "migration ctower-project reconcile",
-        "migration ctower-project run get",
-        "migration ctower-project correction append",
-        "migration ctower-project fence observe",
-        "migration ctower-project prepare",
-        "migration ctower-project commit-development-epoch",
-        "migration ctower-project verify",
-        "project delivery query",
-        "project events",
-        "attention finding append",
-        "attention finding disposition",
-    }
-)
 
 
 def parse_arguments(argv: Sequence[str] | None = None) -> argparse.Namespace:
@@ -135,7 +63,7 @@ def parse_arguments(argv: Sequence[str] | None = None) -> argparse.Namespace:
 def authored_command_names() -> frozenset[str]:
     """Expose the closed command inventory for generated-contract parity tests."""
 
-    return _AUTHORED_COMMAND_NAMES
+    return AUTHORED_COMMAND_NAMES
 
 
 def _parser() -> argparse.ArgumentParser:

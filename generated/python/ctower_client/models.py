@@ -1,6 +1,6 @@
 """DO NOT EDIT: generated file; regenerate from declared inputs.
 
-Authored contract digest: sha256:bf47097d1b5c8bd6e460b44d2c139d66ddfbf2d7a5d83e24c6b423cdbeb985d8
+Authored contract digest: sha256:aa5d49950e972e14cd877c942731becfaf9d0f98b0451b1b3c66902ab0953253
 """
 
 from __future__ import annotations
@@ -100,7 +100,11 @@ __all__ = [
     "HumanWaiting",
     "HumanWaitingNotWaiting",
     "HumanWaitingWaiting",
+    "InboxAcknowledgeRequest",
+    "InboxAcknowledgeResult",
     "InboxMessage",
+    "InboxMessageReadState",
+    "InboxReadState",
     "InboxSendRequest",
     "InboxSendResult",
     "InboxThread",
@@ -858,6 +862,10 @@ class HumanWaitingWaiting(_BoundaryModel):
     reason_code: Annotated[str, Field(pattern="^[a-z][a-z0-9._-]*$")]
 
 
+class InboxAcknowledgeRequest(_BoundaryModel):
+    state: Literal["delivered", "read"]
+
+
 class InboxMessage(_BoundaryModel):
     from_: Annotated[str, Field(pattern="^[a-z][a-z0-9._-]{1,95}$")] = Field(
         alias="from", serialization_alias="from"
@@ -867,6 +875,17 @@ class InboxMessage(_BoundaryModel):
     sent_at: _Rfc3339DateTime
     text: Annotated[str, Field(min_length=1, max_length=65536)]
     to: Annotated[str, Field(pattern="^[a-z][a-z0-9._-]{1,95}$")]
+
+
+class InboxMessageReadState(_BoundaryModel):
+    delivered_at: _Rfc3339DateTime | None
+    delivered_event_id: UUID | None
+    message_id: UUID
+    position: Annotated[int, Field(ge=1, le=9007199254740991)]
+    read_at: _Rfc3339DateTime | None
+    read_event_id: UUID | None
+    recipient: Annotated[str, Field(pattern="^[a-z][a-z0-9._-]{1,95}$")]
+    state: Literal["sent", "delivered", "read"]
 
 
 class InboxSendRequest(_BoundaryModel):
@@ -1716,6 +1735,23 @@ class HealthContributor(_BoundaryModel):
 type HumanWaiting = HumanWaitingWaiting | HumanWaitingNotWaiting
 
 
+class InboxAcknowledgeResult(_BoundaryModel):
+    command_id: UUID
+    delivered_at: _Rfc3339DateTime
+    durability_state: DurabilityState
+    event_ids: Annotated[tuple[UUID, ...], Field(min_length=1, max_length=2)]
+    message_id: UUID
+    read_at: _Rfc3339DateTime | None
+    state: Literal["delivered", "read"]
+    thread_id: UUID
+    thread_version: Annotated[int, Field(ge=3, le=9007199254740991)]
+
+
+class InboxReadState(_BoundaryModel):
+    messages: Annotated[tuple[InboxMessageReadState, ...], Field(min_length=1)]
+    thread_id: UUID
+
+
 class InboxSendResult(_BoundaryModel):
     command_id: UUID
     durability_state: DurabilityState
@@ -1735,7 +1771,7 @@ class InboxThread(_BoundaryModel):
     messages: Annotated[tuple[InboxMessage, ...], Field(min_length=1)]
     participants: Annotated[tuple[Annotated[str, Field(pattern="^[a-z][a-z0-9._-]{1,95}$")], ...], Field(min_length=2, max_length=2)]
     promoted_ticket_id: UUID | None
-    read_through_position: Annotated[int, Field(ge=1, le=9007199254740991)]
+    read_through_position: Annotated[int, Field(ge=0, le=9007199254740991)]
     thread_id: UUID
 
 
@@ -1891,6 +1927,8 @@ class Problem(_BoundaryModel):
         "i1-7c-required",
         "idempotency-conflict",
         "inbox-already-promoted",
+        "inbox-acknowledgement-not-advancing",
+        "inbox-message-recipient-mismatch",
         "inbox-recipient-ambiguous",
         "inbox-recipient-not-found",
         "inbox-recipient-self",
