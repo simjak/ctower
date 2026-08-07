@@ -1,52 +1,59 @@
+import Link from "next/link";
 import type { ReactElement, ReactNode } from "react";
 import { Chrome } from "@/frame/Chrome";
 import { Resolved } from "@/frame/Declared";
 import { RecordFoot } from "@/frame/RecordFoot";
-import { recordAdapter, SOURCE_LABELS } from "@/read/adapter";
-import { clockText, dayText } from "@/read/elapsed";
-import type { InboxMessage, SeatInbox, TailNote } from "@/read/interface";
-import { ChoiceTabs } from "@/surfaces/ChoiceTabs";
+import { SOURCE_LABELS, recordAdapter } from "@/read/adapter";
+import { shortId, stampText } from "@/read/elapsed";
+import type {
+  InboxProjection,
+  InboxThread,
+  InboxThreadMessage,
+  InboxThreadSummary,
+} from "@/read/interface";
+import { Count } from "@/surfaces/Count";
 import { readParam } from "@/surfaces/screenParams";
-import { severityClass, severityLabel } from "@/surfaces/severity";
 
 export const dynamic = "force-dynamic";
 
-function Message({ message }: { readonly message: InboxMessage }): ReactElement {
+function threadHref(threadId: string): string {
+  return `/inbox?thread=${encodeURIComponent(threadId)}`;
+}
+
+function ticketHref(ticketId: string): string {
+  return `/ticket/${encodeURIComponent(ticketId)}`;
+}
+
+function TicketLink({ ticketId }: { readonly ticketId: string }): ReactElement {
   return (
-    <div className={message.read ? "msg" : "msg unread"}>
-      <span className="dot" />
-      <div className="subj">{message.subject}</div>
-      <div className="when">
-        {dayText(message.at)} {clockText(message.at)}
-      </div>
-      <div className="meta">
-        <span className={severityClass(message.severity)}>{severityLabel(message.severity)}</span>
-        <span>from {message.from}</span>
-        {message.project === null ? null : <span>{message.project}</span>}
-        <span>{message.read ? "read" : "unread"}</span>
-        {message.wasRedacted ? <span>redacted before render</span> : null}
-      </div>
-      {message.body === null || message.body === message.subject ? null : (
-        <div className="body">
-          <p>{message.body}</p>
-        </div>
-      )}
-    </div>
+    <Link className="name" href={ticketHref(ticketId)}>
+      ticket {shortId(ticketId)}
+    </Link>
   );
 }
 
-/** What a mid-write tail did to this read, stated rather than hidden. */
-function TailLine({ tail }: { readonly tail: TailNote }): ReactElement {
-  const notes = [
-    `${tail.totalLines.toString()} complete lines`,
-    tail.partialTail ? "1 line at the tail was mid-write and is not shown" : "no partial tail",
-    tail.malformed === 0 ? "none malformed" : `${tail.malformed.toString()} malformed`,
-  ];
-  return <span>{notes.join(" · ")}</span>;
+function ThreadRow({ thread }: { readonly thread: InboxThreadSummary }): ReactElement {
+  const unread = thread.unreadCount > 0;
+  return (
+    <Link className={unread ? "msg unread" : "msg"} href={threadHref(thread.threadId)}>
+      <span className="dot" />
+      <div className="subj">{thread.lastMessagePreview}</div>
+      <div className="when">{stampText(thread.lastMessageAt)}</div>
+      <div className="meta">
+        <span>with {thread.otherAgent}</span>
+        <Count
+          value={thread.unreadCount}
+          unit="unread"
+          detail={`${thread.unreadCount.toString()} unread messages in this thread`}
+        />
+        {thread.promotedTicketId === null ? null : <span>ticket linked</span>}
+        <span className="mono">thread {shortId(thread.threadId)}</span>
+      </div>
+    </Link>
+  );
 }
 
-function InboxBody({ inbox }: { readonly inbox: SeatInbox }): ReactElement {
-  const unread = inbox.messages.filter((message) => !message.read).length;
+function InboxList({ inbox }: { readonly inbox: InboxProjection }): ReactElement {
   return (
     <>
       <Chrome section="Inbox" />
@@ -55,65 +62,109 @@ function InboxBody({ inbox }: { readonly inbox: SeatInbox }): ReactElement {
           <div className="lede">
             <h1>Inbox</h1>
             <p>
-              Each seat has one durable inbox. Messages are addressed to the seat by name, never to
-              a session, so a compaction or a closed tab cannot lose one — and the read cursor is
-              the seat&rsquo;s, not the reader&rsquo;s.
+              Durable threads addressed to this principal, with unread state from the projection.
             </p>
           </div>
 
-          {/* the tab counts unread and says so on the tab. A seat with 485 read
-              messages reads as "0 unread", not as an empty inbox (#239) */}
-          <ChoiceTabs
-            label="Choose a seat"
-            route="/inbox"
-            selected={inbox.selected}
-            choices={inbox.seats.map((seat) => ({
-              key: seat.seat,
-              label: seat.seat,
-              count: {
-                value: seat.unread,
-                unit: "unread",
-                detail: `${seat.unread.toString()} unread of ${seat.total.toString()} this seat holds`,
-              },
-              title: `${seat.total.toString()} messages · ${seat.unread.toString()} unread`,
-            }))}
-          />
-
           <div className="addr">
-            <span className="k">Address as</span>
-            <span className="name">{inbox.selected}</span>
-            <span className="how">{inbox.addressing}</span>
+            <span className="k">Addressed to</span>
+            <span className="name">{inbox.recipient}</span>
+            <span className="how">recipient-scoped inbox projection</span>
           </div>
 
           <section className="panel" style={{ marginTop: "16px" }}>
             <header>
-              <h2>Messages</h2>
-              {/* both numbers name what they count: the panel's is the seat's
-                  total held, the tab's is its unread, and they no longer sit a
-                  few pixels apart meaning different things (#239) */}
+              <h2>Threads</h2>
               <span className="sub">
-                showing {inbox.messages.length.toString()} newest of {inbox.held.toString()}{" "}
-                messages this seat holds · {unread.toString()} of them unread
+                {inbox.threads.length.toString()} threads · {inbox.totalUnread.toString()} unread
               </span>
             </header>
-            <div>
-              {inbox.messages.map((message) => (
-                <Message
-                  key={`${message.at}-${message.from}-${message.subject}`}
-                  message={message}
-                />
-              ))}
-            </div>
+            {inbox.threads.length === 0 ? (
+              <div className="body">
+                <p>The record answered: no threads are addressed to this principal.</p>
+              </div>
+            ) : (
+              <div>
+                {inbox.threads.map((thread) => (
+                  <ThreadRow key={thread.threadId} thread={thread} />
+                ))}
+              </div>
+            )}
           </section>
 
-          <RecordFoot readPath={SOURCE_LABELS.inbox} watermark={<TailLine tail={inbox.tail} />} />
+          <RecordFoot readPath={SOURCE_LABELS.inbox} />
         </div>
       </main>
     </>
   );
 }
 
-function InboxFrame({ declared }: { readonly declared: ReactElement }): ReactElement {
+function ThreadMessage({ message }: { readonly message: InboxThreadMessage }): ReactElement {
+  return (
+    <div className="msg">
+      <span className="dot" />
+      <div className="subj">{message.text}</div>
+      <div className="when">{stampText(message.sentAt)}</div>
+      <div className="meta">
+        <span>from {message.from}</span>
+        <span>to {message.to}</span>
+        <span>message {message.position.toString()}</span>
+      </div>
+    </div>
+  );
+}
+
+function InboxThreadBody({ thread }: { readonly thread: InboxThread }): ReactElement {
+  return (
+    <>
+      <Chrome section="Inbox" back={{ href: "/inbox", label: "Inbox" }} />
+      <main className="page">
+        <div className="wrap">
+          <div className="lede">
+            <h1>Thread</h1>
+            <p>
+              Ordered durable messages for this recipient. Opening the thread updates only this
+              recipient&rsquo;s read cursor.
+            </p>
+          </div>
+
+          <div className="addr">
+            <span className="k">Participants</span>
+            <span className="name">{thread.participants.join(" · ")}</span>
+            <span className="how">thread {thread.threadId}</span>
+          </div>
+
+          {thread.promotedTicketId === null ? null : (
+            <div className="addr">
+              <span className="k">Promoted ticket</span>
+              <TicketLink ticketId={thread.promotedTicketId} />
+              <span className="how">immutable inbox-to-ticket link from the projection</span>
+            </div>
+          )}
+
+          <section className="panel" style={{ marginTop: "16px" }}>
+            <header>
+              <h2>Messages</h2>
+              <span className="sub">
+                {thread.messages.length.toString()} messages · read through{" "}
+                {thread.readThroughPosition.toString()}
+              </span>
+            </header>
+            <div>
+              {thread.messages.map((message) => (
+                <ThreadMessage key={message.messageId} message={message} />
+              ))}
+            </div>
+          </section>
+
+          <RecordFoot readPath={SOURCE_LABELS.inbox} />
+        </div>
+      </main>
+    </>
+  );
+}
+
+function InboxListFrame({ declared }: { readonly declared: ReactElement }): ReactElement {
   return (
     <>
       <Chrome section="Inbox" />
@@ -121,15 +172,30 @@ function InboxFrame({ declared }: { readonly declared: ReactElement }): ReactEle
         <div className="wrap">
           <div className="lede">
             <h1>Inbox</h1>
-            <p>Each seat has one durable inbox, addressed by name.</p>
+            <p>Durable threads addressed to this principal.</p>
           </div>
-          <div className="addr">
-            <span className="k">Address as</span>
-            <span className="name">—</span>
-            <span className="how">
-              the seat addressing name and the exact line that reaches it are the loudest thing on
-              this screen once a source answers
-            </span>
+          <section className="panel" style={{ marginTop: "16px" }}>
+            <header>
+              <h2>Threads</h2>
+            </header>
+            {declared}
+          </section>
+          <RecordFoot readPath={SOURCE_LABELS.inbox} />
+        </div>
+      </main>
+    </>
+  );
+}
+
+function InboxThreadFrame({ declared }: { readonly declared: ReactElement }): ReactElement {
+  return (
+    <>
+      <Chrome section="Inbox" back={{ href: "/inbox", label: "Inbox" }} />
+      <main className="page">
+        <div className="wrap">
+          <div className="lede">
+            <h1>Thread</h1>
+            <p>Ordered durable messages for this recipient.</p>
           </div>
           <section className="panel" style={{ marginTop: "16px" }}>
             <header>
@@ -149,10 +215,19 @@ export default async function InboxPage({
 }: {
   readonly searchParams: Promise<Record<string, string | string[] | undefined>>;
 }): Promise<ReactNode> {
-  const inbox = await recordAdapter.seatInbox(readParam(await searchParams, "seat"));
+  const threadId = readParam(await searchParams, "thread");
+  if (threadId !== null) {
+    const thread = await recordAdapter.inboxThread(threadId);
+    return (
+      <Resolved reading={thread} frame={(declared) => <InboxThreadFrame declared={declared} />}>
+        {(value) => <InboxThreadBody thread={value} />}
+      </Resolved>
+    );
+  }
+  const inbox = await recordAdapter.inbox();
   return (
-    <Resolved reading={inbox} frame={(declared) => <InboxFrame declared={declared} />}>
-      {(value) => <InboxBody inbox={value} />}
+    <Resolved reading={inbox} frame={(declared) => <InboxListFrame declared={declared} />}>
+      {(value) => <InboxList inbox={value} />}
     </Resolved>
   );
 }

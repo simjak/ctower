@@ -18,6 +18,7 @@ import { reading } from "./outcome";
 import { seatNameOf, seatNames } from "./sources/seatNames";
 import {
   asArray,
+  asBoolean,
   asInteger,
   asIntegerOrNull,
   asMember,
@@ -31,6 +32,10 @@ import type {
   BoardCard,
   BoardEntry,
   BoardSnapshot,
+  InboxProjection,
+  InboxThread,
+  InboxThreadMessage,
+  InboxThreadSummary,
   InstanceIdentity,
   Reading,
   RecordApiReads,
@@ -246,6 +251,7 @@ function toCard(value: unknown, names: Readonly<Record<string, string>>): BoardC
     blockerOpenedAt: asStringOrNull(row.blocker_opened_at, "board.card.blocker_opened_at"),
     risk: optionalText(row.risk, "board.card.risk"),
     deliveryFacts: asStringList(row.delivery_facts ?? [], "board.card.delivery_facts"),
+    inboxThreadIds: asStringList(row.inbox_thread_ids, "board.card.inbox_thread_ids"),
     tenantDisplayIdentity: toTenantDisplayIdentity(row.tenant_display_identity),
     changeReferences: asArray(row.change_references, "board.card.change_references").map(
       toChangeReference
@@ -294,6 +300,51 @@ function toEvent(value: unknown): RecordEvent {
     eventHash: asStringOrNull(row.event_hash, "audit.event.event_hash"),
     recordPosition: asIntegerOrNull(row.record_position, "audit.event.record_position"),
     payload: asRecord(row.payload ?? {}, "audit.event.payload"),
+  };
+}
+
+function toInboxThreadSummary(value: unknown): InboxThreadSummary {
+  const row = asRecord(value, "inbox.threads[]");
+  return {
+    threadId: asString(row.thread_id, "inbox.threads[].thread_id"),
+    otherAgent: asString(row.other_agent, "inbox.threads[].other_agent"),
+    lastMessagePreview: asString(row.last_message_preview, "inbox.threads[].last_message_preview"),
+    lastMessageAt: asString(row.last_message_at, "inbox.threads[].last_message_at"),
+    unreadCount: asInteger(row.unread_count, "inbox.threads[].unread_count"),
+    promotedTicketId: asStringOrNull(row.promoted_ticket_id, "inbox.threads[].promoted_ticket_id"),
+  };
+}
+
+function toInboxMessage(value: unknown): InboxThreadMessage {
+  const row = asRecord(value, "inbox.thread.messages[]");
+  return {
+    messageId: asString(row.message_id, "inbox.thread.messages[].message_id"),
+    position: asInteger(row.position, "inbox.thread.messages[].position"),
+    from: asString(row.from, "inbox.thread.messages[].from"),
+    to: asString(row.to, "inbox.thread.messages[].to"),
+    text: asString(row.text, "inbox.thread.messages[].text"),
+    sentAt: asString(row.sent_at, "inbox.thread.messages[].sent_at"),
+  };
+}
+
+export function inboxProjectionFrom(value: unknown): InboxProjection {
+  const row = asRecord(value, "inbox");
+  return {
+    recipient: asString(row.recipient, "inbox.recipient"),
+    threads: asArray(row.threads, "inbox.threads").map(toInboxThreadSummary),
+    totalUnread: asInteger(row.total_unread, "inbox.total_unread"),
+    unreadOnly: asBoolean(row.unread_only, "inbox.unread_only"),
+  };
+}
+
+export function inboxThreadFrom(value: unknown): InboxThread {
+  const row = asRecord(value, "inbox.thread");
+  return {
+    threadId: asString(row.thread_id, "inbox.thread.thread_id"),
+    participants: asStringList(row.participants, "inbox.thread.participants"),
+    messages: asArray(row.messages, "inbox.thread.messages").map(toInboxMessage),
+    readThroughPosition: asInteger(row.read_through_position, "inbox.thread.read_through_position"),
+    promotedTicketId: asStringOrNull(row.promoted_ticket_id, "inbox.thread.promoted_ticket_id"),
   };
 }
 
@@ -346,6 +397,14 @@ async function loadAudit(ticketId: string, projectKey: string): Promise<readonly
   return asArray(view.events, "audit.events").map(toEvent);
 }
 
+async function loadInbox(): Promise<InboxProjection> {
+  return inboxProjectionFrom(await read("/v1/inbox/threads"));
+}
+
+async function loadInboxThread(threadId: string): Promise<InboxThread> {
+  return inboxThreadFrom(await read(`/v1/inbox/threads/${encodeURIComponent(threadId)}`));
+}
+
 export const httpRecordAdapter: RecordApiReads = {
   instance: instanceIdentity(),
   board: async (projectKey: string): Promise<Reading<BoardSnapshot>> =>
@@ -357,6 +416,9 @@ export const httpRecordAdapter: RecordApiReads = {
     projectKey: string
   ): Promise<Reading<readonly RecordEvent[]>> =>
     await reading(async () => await loadAudit(ticketId, projectKey)),
+  inbox: async (): Promise<Reading<InboxProjection>> => await reading(loadInbox),
+  inboxThread: async (threadId: string): Promise<Reading<InboxThread>> =>
+    await reading(async () => await loadInboxThread(threadId)),
   workSessions: (): Promise<Reading<never>> =>
     Promise.resolve({ state: "absent", source: NO_WORK_SESSIONS }),
 };
