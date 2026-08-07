@@ -1,6 +1,6 @@
 """DO NOT EDIT: generated file; regenerate from declared inputs.
 
-Authored contract digest: sha256:b71392111bdb294c855f76a29951d7f81cd3477cfc3707ecb396dacfc7a36961
+Authored contract digest: sha256:bf47097d1b5c8bd6e460b44d2c139d66ddfbf2d7a5d83e24c6b423cdbeb985d8
 """
 
 from __future__ import annotations
@@ -45,6 +45,19 @@ class OperationSpec:
 
 OPERATIONS = MappingProxyType(
     {
+        "addKnowledgeDocument": OperationSpec(
+            operation_id="addKnowledgeDocument",
+            client_method="add_knowledge_document",
+            method="POST",
+            path="/v1/knowledge/documents",
+            request_model=_models.KnowledgeAddRequest,
+            response_model=_models.KnowledgeAddResult,
+            cli_names=('knowledge add',),
+            mutation=True,
+            spool_policy=SpoolPolicy.ALLOWED,
+            principal=None,
+            refusal_only=False,
+        ),
         "addTicketComment": OperationSpec(
             operation_id="addTicketComment",
             client_method="add_ticket_comment",
@@ -357,6 +370,19 @@ OPERATIONS = MappingProxyType(
             principal='operator',
             refusal_only=False,
         ),
+        "getKnowledgeDocument": OperationSpec(
+            operation_id="getKnowledgeDocument",
+            client_method="get_knowledge_document",
+            method="GET",
+            path="/v1/knowledge/documents/{document_id}",
+            request_model=None,
+            response_model=_models.KnowledgeDocument,
+            cli_names=('knowledge get',),
+            mutation=False,
+            spool_policy=SpoolPolicy.FORBIDDEN,
+            principal=None,
+            refusal_only=False,
+        ),
         "getProjectDelivery": OperationSpec(
             operation_id="getProjectDelivery",
             client_method="get_project_delivery",
@@ -430,6 +456,19 @@ OPERATIONS = MappingProxyType(
             request_model=None,
             response_model=_models.InboxThreadList,
             cli_names=('inbox list',),
+            mutation=False,
+            spool_policy=SpoolPolicy.FORBIDDEN,
+            principal=None,
+            refusal_only=False,
+        ),
+        "listKnowledgeDocuments": OperationSpec(
+            operation_id="listKnowledgeDocuments",
+            client_method="list_knowledge_documents",
+            method="GET",
+            path="/v1/knowledge/documents",
+            request_model=None,
+            response_model=_models.KnowledgeDocumentList,
+            cli_names=('knowledge list',),
             mutation=False,
             spool_policy=SpoolPolicy.FORBIDDEN,
             principal=None,
@@ -791,6 +830,7 @@ OPERATIONS = MappingProxyType(
 
 CLI_OPERATIONS = MappingProxyType(
     {
+        "knowledge add": OPERATIONS["addKnowledgeDocument"],
         "ticket comment add": OPERATIONS["addTicketComment"],
         "ticket relation add": OPERATIONS["addTicketRelation"],
         "attention finding append": OPERATIONS["appendAttentionFinding"],
@@ -820,6 +860,7 @@ CLI_OPERATIONS = MappingProxyType(
         "control health": OPERATIONS["getControlHealth"],
         "migration ctower-project verify": OPERATIONS["getCtowerProjectCutoverHealth"],
         "migration ctower-project run get": OPERATIONS["getCtowerProjectImportRun"],
+        "knowledge get": OPERATIONS["getKnowledgeDocument"],
         "project delivery query": OPERATIONS["getProjectDelivery"],
         "synthetic query": OPERATIONS["getSyntheticWorkflowRun"],
         "ticket query": OPERATIONS["getTicket"],
@@ -827,6 +868,7 @@ CLI_OPERATIONS = MappingProxyType(
         "ticket timeline": OPERATIONS["getTicketTimeline"],
         "credential seat issue": OPERATIONS["issueSeatCredential"],
         "inbox list": OPERATIONS["listInboxThreads"],
+        "knowledge list": OPERATIONS["listKnowledgeDocuments"],
         "project events": OPERATIONS["listProjectEvents"],
         "session project": OPERATIONS["listProjectSessions"],
         "ticket review-dispatch list": OPERATIONS["listReviewDispatchEffects"],

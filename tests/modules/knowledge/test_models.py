@@ -60,21 +60,26 @@ def test_command_result_and_documents_have_stable_wire_payloads() -> None:
         "document_id": str(DOCUMENT_ID),
         "durability_state": "durability_pending",
         "event_ids": [str(EVENT_ID)],
+        "project_key": None,
         "registered_at": NOW.isoformat(),
         "scope": "org",
+        "source_ref": None,
         "title": "Operations handbook",
     }
     assert add_result_from_committed(result.response_payload()) == result
     assert document.response_payload() == {
         "body": "Keep the runbook current.",
         "document_id": str(DOCUMENT_ID),
+        "project_key": None,
         "registered_at": NOW.isoformat(),
         "registered_by": str(PRINCIPAL_ID),
         "scope": "org",
+        "source_ref": None,
         "title": "Operations handbook",
     }
     assert KnowledgeDocumentListResult("org", (document,)).response_payload() == {
         "documents": [document.response_payload()],
+        "project_key": None,
         "scope": "org",
     }
 
@@ -84,6 +89,21 @@ def test_command_rejects_malformed_fields() -> None:
         _command(client_command_id=cast(UUID, "not-a-uuid"))
     with pytest.raises(ValueError, match="scope must be org or project"):
         _command(scope="team")
+    with pytest.raises(ValueError, match=r"requires exactly body\+title or source_ref"):
+        _command(source_ref="operations")
+    with pytest.raises(ValueError, match="body is outside"):
+        _command(body=None)
+    with pytest.raises(ValueError, match="source_ref is outside"):
+        _command(body=None, source_ref="../escape", title=None)
+    assert _command(body=None, source_ref="operations", title=None).request_payload() == {
+        "scope": "org",
+        "source_ref": "operations",
+    }
+    with pytest.raises(ValueError, match="project scope requires"):
+        _command(scope="project")
+    assert _command(scope="project", project_key="ctower").request_payload()["project_key"] == (
+        "ctower"
+    )
     with pytest.raises(ValueError, match="title is outside"):
         _command(title="")
     with pytest.raises(ValueError, match="title is outside"):
@@ -116,14 +136,17 @@ def test_registered_payload_is_strict_and_serializes_exactly() -> None:
         registered_at=NOW,
         scope="project",
         title="Operations handbook",
+        project_key="ctower",
     )
 
     assert payload.to_mapping() == {
         "body": "Keep the runbook current.",
         "document_id": str(DOCUMENT_ID),
+        "project_key": "ctower",
         "registered_by": str(PRINCIPAL_ID),
         "registered_at": NOW.isoformat(),
         "scope": "project",
+        "source_ref": None,
         "title": "Operations handbook",
     }
     with pytest.raises(TypeError, match="document_id must be a UUID"):
@@ -146,6 +169,28 @@ def test_registered_payload_is_strict_and_serializes_exactly() -> None:
         replace(payload, body="b" * 1_048_577)
 
 
+def test_registered_payload_rejects_string_and_naive_registered_at() -> None:
+    with pytest.raises(TypeError, match="registered_at must be a datetime"):
+        KnowledgeDocumentRegisteredPayload(
+            body="Keep the runbook current.",
+            document_id=DOCUMENT_ID,
+            registered_by=PRINCIPAL_ID,
+            registered_at=cast(datetime, NOW.isoformat()),  # a string, not a datetime
+            scope="org",
+            title="Operations handbook",
+        )
+    naive = datetime(2026, 8, 7, 13, 37)  # noqa: DTZ001
+    with pytest.raises(ValueError, match="registered_at must be timezone-aware"):
+        KnowledgeDocumentRegisteredPayload(
+            body="Keep the runbook current.",
+            document_id=DOCUMENT_ID,
+            registered_by=PRINCIPAL_ID,
+            registered_at=naive,
+            scope="org",
+            title="Operations handbook",
+        )
+
+
 def test_public_interface_forwards_typed_commands_and_reads() -> None:
     actor = Actor(PRINCIPAL_ID, TENANT_ID, PrincipalKind.COMMANDER)
     store = _Store()
@@ -164,7 +209,7 @@ def test_public_interface_forwards_typed_commands_and_reads() -> None:
     assert knowledge.list_by_scope(actor, "org") == KnowledgeDocumentListResult(
         "org", (store.document,)
     )
-    assert knowledge.get(actor, DOCUMENT_ID) == store.document
+    assert knowledge.get(actor, DOCUMENT_ID, scope="org") == store.document
 
 
 def _command(**overrides: object) -> KnowledgeAddCommand:
@@ -228,10 +273,24 @@ class _Store:
         )
         return self.result
 
-    def list_by_scope(self, actor: Actor, scope: str) -> KnowledgeDocumentListResult:
-        assert (actor.tenant_id, scope) == (TENANT_ID, "org")
+    def list_by_scope(
+        self, actor: Actor, scope: str, project_key: str | None = None
+    ) -> KnowledgeDocumentListResult:
+        assert (actor.tenant_id, scope, project_key) == (TENANT_ID, "org", None)
         return KnowledgeDocumentListResult(scope, (self.document,))
 
-    def get(self, actor: Actor, document_id: UUID) -> KnowledgeDocument | None:
-        assert (actor.tenant_id, document_id) == (TENANT_ID, DOCUMENT_ID)
+    def get(
+        self,
+        actor: Actor,
+        document_id: UUID,
+        *,
+        scope: str,
+        project_key: str | None = None,
+    ) -> KnowledgeDocument:
+        assert (actor.tenant_id, document_id, scope, project_key) == (
+            TENANT_ID,
+            DOCUMENT_ID,
+            "org",
+            None,
+        )
         return self.document

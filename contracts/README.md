@@ -10,6 +10,11 @@ runtime behavior. The one-use first-tenant body contract lives under `bootstrap/
 contract is authored in OpenAPI and implemented by the current setup helper, API, Access, and Record
 composition.
 
+The Knowledge contract under `domain/knowledge/` defines strict org/project scope, stable source references,
+direct-versus-source registration, immutable document snapshots, and add/list/get payloads. OpenAPI owns the
+three public operations and their CLI metadata; deterministic generation produces the Python and TypeScript
+models and clients used by the API and protected CLI.
+
 The development-only CP-1 consumer subset keeps graph and transition authority under `workflow/`, owns its
 execution, gate, and evidence policy schemas under the single `execution/` home, and owns the strict
 current-proof/deferred-source manifest under `evidence/`. Workflow v2 adds declared stage-entry

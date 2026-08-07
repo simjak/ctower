@@ -1,7 +1,7 @@
 # ctower-api boundary
 
 Python composition root for the development walking slice. Its FastAPI handlers validate generated HTTP
-models and call the public Access, Catalog, Work, Record, Proof, Workflow, Projections, and Attention
+models and call the public Access, Catalog, Knowledge, Work, Record, Proof, Workflow, Projections, and Attention
 Interfaces for bootstrap, ticket create/read/comment, protected custody transfer, typed task commands,
 assignment/audit queries, the project-scoped typed event feed, CompanyBundle validate/plan/apply/export,
 explicit Workflow start,
@@ -13,6 +13,10 @@ trusting `Content-Length`.
 The separately composed native Inbox surface exposes exactly message send, recipient-scoped thread list,
 and ordered thread read. Send is a protected durable mutation; list and read consume only accepted disposable
 projection state, and read advances only that authenticated principal's disposable cursor.
+The Knowledge surface exposes explicit document add/list/get operations. Registration accepts either a
+bounded direct snapshot or a stable static-source reference, persists the resolved snapshot as an immutable
+fact, and authorizes project scope from the persisted project-seat authority. The development composition
+mounts the kernel's bundled static-file Adapter; handlers never read arbitrary filesystem paths.
 Durable decisions remain in the owning kernel Modules; the API never connects around those Interfaces.
 Work and Proof implementations are injected into Workflow only as narrow readiness/current-proof
 capabilities at composition. Board reads return only stored accepted-state projection rows; request handlers

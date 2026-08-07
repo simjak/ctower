@@ -34,6 +34,12 @@ from ctower_kernel.board_context import BoardContextFacts
 from ctower_kernel.board_context.postgres import PostgresBoardContextFacts
 from ctower_kernel.catalog import PostgresCatalog
 from ctower_kernel.inbox import Inbox, PostgresInbox
+from ctower_kernel.knowledge import (
+    Knowledge,
+    PostgresKnowledge,
+    StaticFileKnowledgeSource,
+    bundled_static_root,
+)
 from ctower_kernel.projections import Projections
 from ctower_kernel.projections.postgres import PostgresProjections
 from ctower_kernel.proof import Proof, ProofPolicy
@@ -144,6 +150,12 @@ def api_main() -> None:
             attention=Attention(PostgresAttention(runtime_dsn)),
             board_context=BoardContextFacts(PostgresBoardContextFacts(runtime_dsn)),
             inbox=Inbox(PostgresInbox(runtime_dsn)),
+            knowledge=Knowledge(
+                PostgresKnowledge(
+                    runtime_dsn,
+                    source=StaticFileKnowledgeSource(bundled_static_root()),
+                )
+            ),
             synthetic_runtime=FixedOperations(runtime_store),
             synthetic_revision=_synthetic_revision(revisions),
             oidc=OidcRuntimeConfig(

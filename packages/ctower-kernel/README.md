@@ -1,7 +1,7 @@
 # ctower-kernel boundary
 
 Trusted modular-monolith artifact. The development walking slice implements small Access, Catalog, Record,
-Inbox, Work, Proof, Workflow, Runtime, Projections, Attention, and generic Object Interfaces: authentication and
+Inbox, Knowledge, Work, Proof, Workflow, Runtime, Projections, Attention, and generic Object Interfaces: authentication and
 bootstrap authority; atomic Postgres command/event/outbox persistence; ticket lifecycle, comments, priority,
 custody, assignment, blocker, relation, and typed-intent policy; universal component/bundle
 validation/planning plus an atomic future-only Catalog pointer; server-pinned frozen criteria, digest-bound
@@ -61,6 +61,12 @@ precede thread/ticket locks, and only authenticated, unquarantined discussion ev
 Record package facade keeps core authority types at `ctower_kernel.record` and groups inbound-thread command,
 result, and policy types under the exported `ctower_kernel.record.intake` namespace instead of flattening
 those leaf symbols.
+
+Knowledge registers immutable org- or project-scoped document snapshots through its small public Interface.
+Org writes require operator authority; project writes and reads reuse Record's persisted project-seat checks.
+The static-file Adapter resolves only bounded UTF-8 Markdown below its injected scope root and returns typed
+source records; composition decides whether to mount it. Authority facts retain the stable source reference
+and resolved content, while list/get consume a disposable projection.
 
 Native Inbox is a two-principal thread aggregate. Record atomically appends `thread.opened`,
 `message.appended`, and `thread.promoted_to_ticket` facts; promotion writes one immutable link exposed from

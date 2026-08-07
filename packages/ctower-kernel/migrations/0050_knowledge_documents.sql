@@ -1,7 +1,7 @@
 -- gh#332 (IS-07 decision 7): the knowledge base. A registered document is one
--- append-only control fact; its title/body/scope are immutable. Retrieval goes
--- through the knowledge_projection_documents projection (list by scope, get one).
--- The external-source MCP/adapter seam is a later phase (D10: one impl now).
+-- append-only control fact; its title/body/scope/project identity are immutable.
+-- A static source reference is retained with the resolved snapshot. Retrieval
+-- goes through the disposable knowledge_projection_documents projection.
 ALTER TABLE events DROP CONSTRAINT events_kind_check;
 ALTER TABLE events ADD CONSTRAINT events_kind_check CHECK (kind IN (
     'bootstrap.first_tenant_created', 'ticket.created', 'ticket.custody_transferred',
@@ -47,12 +47,18 @@ CREATE TABLE knowledge_documents (
     document_id uuid PRIMARY KEY,
     tenant_id uuid NOT NULL REFERENCES tenants(tenant_id),
     scope text NOT NULL CHECK (scope IN ('org', 'project')),
+    project_key text CHECK (project_key ~ '^[a-z][a-z0-9-]{2,63}$'),
     title text NOT NULL CHECK (length(title) BETWEEN 1 AND 1024),
     body text NOT NULL CHECK (length(body) BETWEEN 1 AND 1048576),
+    source_ref text CHECK (source_ref ~ '^[a-z][a-z0-9._-]{0,127}$'),
     registered_by uuid NOT NULL,
     registered_at timestamptz NOT NULL,
     event_id uuid NOT NULL,
     UNIQUE (document_id, tenant_id),
+    CHECK (
+        (scope = 'org' AND project_key IS NULL)
+        OR (scope = 'project' AND project_key IS NOT NULL)
+    ),
     FOREIGN KEY (event_id, tenant_id) REFERENCES events(event_id, tenant_id),
     FOREIGN KEY (registered_by, tenant_id)
         REFERENCES principals(principal_id, tenant_id)
@@ -64,16 +70,22 @@ CREATE TABLE knowledge_projection_documents (
     tenant_id uuid NOT NULL,
     document_id uuid NOT NULL,
     scope text NOT NULL CHECK (scope IN ('org', 'project')),
+    project_key text CHECK (project_key ~ '^[a-z][a-z0-9-]{2,63}$'),
     title text NOT NULL CHECK (length(title) BETWEEN 1 AND 1024),
     body text NOT NULL CHECK (length(body) BETWEEN 1 AND 1048576),
+    source_ref text CHECK (source_ref ~ '^[a-z][a-z0-9._-]{0,127}$'),
     registered_by uuid NOT NULL,
     registered_at timestamptz NOT NULL,
     PRIMARY KEY (tenant_id, document_id),
+    CHECK (
+        (scope = 'org' AND project_key IS NULL)
+        OR (scope = 'project' AND project_key IS NOT NULL)
+    ),
     FOREIGN KEY (document_id, tenant_id)
         REFERENCES knowledge_documents(document_id, tenant_id)
 );
 CREATE INDEX knowledge_projection_documents_scope_idx
-    ON knowledge_projection_documents (tenant_id, scope, registered_at);
+    ON knowledge_projection_documents (tenant_id, scope, project_key, registered_at);
 
 CREATE TRIGGER knowledge_documents_immutable
     BEFORE UPDATE OR DELETE ON knowledge_documents

@@ -31,6 +31,7 @@ from ctowerctl._argument_types import (
     _sha256_digest,
 )
 from ctowerctl._context_set_parser import attention_parser, ticket_context_sets
+from ctowerctl._knowledge_parser import knowledge_parser
 from ctowerctl._parser_support import (
     _command_id,
     _Parser,
@@ -57,6 +58,9 @@ _AUTHORED_COMMAND_NAMES = frozenset(
         "inbox send",
         "inbox list",
         "inbox read",
+        "knowledge add",
+        "knowledge list",
+        "knowledge get",
         "ticket capture",
         "ticket create",
         "ticket query",
@@ -140,6 +144,7 @@ def _parser() -> argparse.ArgumentParser:
     _credential_parser(areas.add_parser("credential"))
     _intake_parser(areas.add_parser("intake"))
     _inbox_parser(areas.add_parser("inbox"))
+    knowledge_parser(areas.add_parser("knowledge"))
     _ticket_parser(areas.add_parser("ticket"))
     _session_parser(areas.add_parser("session"))
     _board_parser(areas.add_parser("board"))

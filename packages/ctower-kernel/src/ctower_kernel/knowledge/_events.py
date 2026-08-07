@@ -22,6 +22,9 @@ def _document_registered_event(
     request_digest: bytes,
     now: datetime,
     telemetry: TelemetryContext,
+    *,
+    body: str,
+    title: str,
 ) -> EventEnvelope:
     event_id = uuid7(now)
     registered_at = now
@@ -35,12 +38,14 @@ def _document_registered_event(
         kind=EventKind.KNOWLEDGE_DOCUMENT_REGISTERED,
         origin=EventOrigin.API,
         payload=KnowledgeDocumentRegisteredPayload(
-            body=command.body,
+            body=body,
             document_id=document_id,
             registered_by=actor.principal_id,
             registered_at=registered_at,
             scope=command.scope,
-            title=command.title,
+            title=title,
+            project_key=command.project_key,
+            source_ref=command.source_ref,
         ),
         prev_hash=bytes(32),
         request_sha256=request_digest,

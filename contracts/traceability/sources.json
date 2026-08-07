@@ -1906,6 +1906,16 @@
       ]
     },
     {
+      "path": "contracts/domain/knowledge/knowledge.schema.json",
+      "references": [
+        "SPEC#canonical-event-and-command-contract",
+        "SPEC#tenant-project-and-runner-scope",
+        "INV-01",
+        "INV-37",
+        "INV-69"
+      ]
+    },
+    {
       "path": "packages/ctower-kernel/migrations/0050_knowledge_documents.sql",
       "references": [
         "SPEC#canonical-event-and-command-contract",

@@ -13,8 +13,8 @@ from pathlib import Path
 import pytest
 
 from ctower_kernel.knowledge.source import (
-    KnowledgeDocument,
     KnowledgeSource,
+    KnowledgeSourceDocument,
     KnowledgeSourceUnavailableError,
     StaticFileKnowledgeSource,
 )
@@ -88,16 +88,16 @@ def test_static_file_source_raises_on_missing_heading(tmp_path: Path) -> None:
 class _InMemoryKnowledgeSource:
     """Trivial in-memory fake implementing the KnowledgeSource contract."""
 
-    def __init__(self, documents: dict[tuple[str, str], KnowledgeDocument]) -> None:
+    def __init__(self, documents: dict[tuple[str, str], KnowledgeSourceDocument]) -> None:
         self._documents = documents
 
-    def list(self, *, scope: str) -> tuple[KnowledgeDocument, ...]:
+    def list(self, *, scope: str) -> tuple[KnowledgeSourceDocument, ...]:
         if scope not in {"org", "project"}:
             raise KnowledgeSourceUnavailableError(f"scope {scope!r} unserved")
         matching = [doc for doc in self._documents.values() if doc.scope == scope]
         return tuple(sorted(matching, key=lambda doc: doc.ref))
 
-    def get(self, *, scope: str, ref: str) -> KnowledgeDocument | None:
+    def get(self, *, scope: str, ref: str) -> KnowledgeSourceDocument | None:
         if scope not in {"org", "project"}:
             raise KnowledgeSourceUnavailableError(f"scope {scope!r} unserved")
         if "/" in ref or "\\" in ref or ".." in ref:
@@ -108,10 +108,10 @@ class _InMemoryKnowledgeSource:
 def test_in_memory_fake_source_passes_conformance() -> None:
     source = _InMemoryKnowledgeSource(
         {
-            ("org", "zeta"): KnowledgeDocument(
+            ("org", "zeta"): KnowledgeSourceDocument(
                 scope="org", ref="zeta", title="Zeta", body="Body of zeta."
             ),
-            ("org", "alpha"): KnowledgeDocument(
+            ("org", "alpha"): KnowledgeSourceDocument(
                 scope="org", ref="alpha", title="Alpha", body="Body of alpha."
             ),
         }

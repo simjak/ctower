@@ -590,6 +590,7 @@
     "INV-01": [
       "contracts/domain/inbox/inbox.schema.json",
       "contracts/domain/intake/thread-intake.schema.json",
+      "contracts/domain/knowledge/knowledge.schema.json",
       "packages/ctower-kernel/migrations/0001_roles.sql",
       "packages/ctower-kernel/migrations/0002_ticket_slice.sql",
       "packages/ctower-kernel/migrations/0003_privileges.sql",
@@ -768,6 +769,7 @@
       "packages/ctower-kernel/migrations/0034_durability_finalizer_quarantine.sql"
     ],
     "INV-37": [
+      "contracts/domain/knowledge/knowledge.schema.json",
       "contracts/domain/migration/ctower-project-alias-map-v2.schema.json",
       "contracts/domain/migration/ctower-project-alias-map.schema.json",
       "contracts/domain/migration/ctower-project-export-manifest.schema.json",
@@ -960,6 +962,9 @@
       "packages/ctower-kernel/migrations/0043_context_set_catalogs.sql",
       "packages/ctower-kernel/migrations/0045_attention_findings.sql"
     ],
+    "INV-69": [
+      "contracts/domain/knowledge/knowledge.schema.json"
+    ],
     "INV-71": [
       "packages/ctower-kernel/migrations/0047_board_source_index.sql"
     ],
@@ -1008,6 +1013,7 @@
       "contracts/domain/events/canonical-vectors.json",
       "contracts/domain/events/event-envelope.schema.json",
       "contracts/domain/inbox/inbox.schema.json",
+      "contracts/domain/knowledge/knowledge.schema.json",
       "contracts/domain/migration/ctower-project-import-batch.schema.json",
       "contracts/domain/migration/ctower-project-import-correction.schema.json",
       "contracts/domain/migration/ctower-project-import-plan-v2.schema.json",
@@ -1251,6 +1257,9 @@
       "packages/ctower-kernel/migrations/0044_ticket_change_and_label_facts.sql",
       "packs/policies/scheduling/i1-priority-aging-v1.yaml",
       "packs/workflows/engineering.software-factory/v1.yaml"
+    ],
+    "SPEC#tenant-project-and-runner-scope": [
+      "contracts/domain/knowledge/knowledge.schema.json"
     ],
     "SPEC#test-and-evidence-matrix": [
       "contracts/evidence/evidence-manifest-v2.schema.json",

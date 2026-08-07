@@ -340,6 +340,74 @@
         }
       }
     },
+    "/v1/knowledge/documents": {
+      "post": {
+        "operationId": "addKnowledgeDocument",
+        "x-ctower-cli": "knowledge add",
+        "x-ctower-mutation": true,
+        "x-ctower-spool": "allowed",
+        "security": [{"bearerAuth": []}],
+        "parameters": [{"$ref": "#/components/parameters/IdempotencyKey"}],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {"schema": {"$ref": "#/components/schemas/KnowledgeAddRequest"}}
+          }
+        },
+        "responses": {
+          "202": {
+            "description": "Knowledge document committed; off-host durability acknowledgement pending",
+            "headers": {"Retry-After": {"$ref": "#/components/headers/RetryAfter"}},
+            "content": {"application/json": {"schema": {"$ref": "#/components/schemas/KnowledgeAddResult"}}}
+          },
+          "201": {"description": "Knowledge document accepted off host", "content": {"application/json": {"schema": {"$ref": "#/components/schemas/KnowledgeAddResult"}}}},
+          "401": {"$ref": "#/components/responses/ProblemResponse"},
+          "403": {"$ref": "#/components/responses/ProblemResponse"},
+          "404": {"$ref": "#/components/responses/ProblemResponse"},
+          "409": {"$ref": "#/components/responses/ProblemResponse"},
+          "422": {"$ref": "#/components/responses/ProblemResponse"},
+          "503": {"$ref": "#/components/responses/ProblemResponse"}
+        }
+      },
+      "get": {
+        "operationId": "listKnowledgeDocuments",
+        "x-ctower-cli": "knowledge list",
+        "x-ctower-mutation": false,
+        "x-ctower-spool": "forbidden",
+        "security": [{"bearerAuth": []}],
+        "parameters": [
+          {"$ref": "#/components/parameters/KnowledgeScopeQuery"},
+          {"$ref": "#/components/parameters/KnowledgeProjectQuery"}
+        ],
+        "responses": {
+          "200": {"description": "Authorized knowledge documents in one exact scope", "content": {"application/json": {"schema": {"$ref": "#/components/schemas/KnowledgeDocumentList"}}}},
+          "401": {"$ref": "#/components/responses/ProblemResponse"},
+          "403": {"$ref": "#/components/responses/ProblemResponse"},
+          "422": {"$ref": "#/components/responses/ProblemResponse"}
+        }
+      }
+    },
+    "/v1/knowledge/documents/{document_id}": {
+      "get": {
+        "operationId": "getKnowledgeDocument",
+        "x-ctower-cli": "knowledge get",
+        "x-ctower-mutation": false,
+        "x-ctower-spool": "forbidden",
+        "security": [{"bearerAuth": []}],
+        "parameters": [
+          {"$ref": "#/components/parameters/KnowledgeDocumentId"},
+          {"$ref": "#/components/parameters/KnowledgeScopeQuery"},
+          {"$ref": "#/components/parameters/KnowledgeProjectQuery"}
+        ],
+        "responses": {
+          "200": {"description": "One authorized registered knowledge document", "content": {"application/json": {"schema": {"$ref": "#/components/schemas/KnowledgeDocument"}}}},
+          "401": {"$ref": "#/components/responses/ProblemResponse"},
+          "403": {"$ref": "#/components/responses/ProblemResponse"},
+          "404": {"$ref": "#/components/responses/ProblemResponse"},
+          "422": {"$ref": "#/components/responses/ProblemResponse"}
+        }
+      }
+    },
     "/v1/tickets/{ticket_id}": {
       "get": {
         "operationId": "getTicket",
@@ -1597,6 +1665,24 @@
         "name": "project_key",
         "in": "query",
         "required": true,
+        "schema": {"type": "string", "pattern": "^[a-z][a-z0-9-]{2,63}$"}
+      },
+      "KnowledgeDocumentId": {
+        "name": "document_id",
+        "in": "path",
+        "required": true,
+        "schema": {"type": "string", "format": "uuid"}
+      },
+      "KnowledgeScopeQuery": {
+        "name": "scope",
+        "in": "query",
+        "required": true,
+        "schema": {"type": "string", "enum": ["org", "project"]}
+      },
+      "KnowledgeProjectQuery": {
+        "name": "project_key",
+        "in": "query",
+        "required": false,
         "schema": {"type": "string", "pattern": "^[a-z][a-z0-9-]{2,63}$"}
       },
       "AuditCursor": {
@@ -3027,6 +3113,10 @@
               "intake-promotion-ineligible",
               "intake-source-project-mismatch",
               "intake-source-conflict",
+              "knowledge-invalid-project",
+              "knowledge-invalid-scope",
+              "knowledge-source-not-found",
+              "knowledge-source-unavailable",
               "label-already-applied",
               "label-key-unrecognized",
               "migration-alias-conflict",
@@ -3312,6 +3402,68 @@
           "promoted_ticket_id": {"type": ["string", "null"], "format": "uuid"},
           "read_through_position": {"type": "integer", "minimum": 1},
           "thread_id": {"type": "string", "format": "uuid"}
+        }
+      },
+      "KnowledgeScope": {"type": "string", "enum": ["org", "project"]},
+      "KnowledgeAddRequest": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["project_key", "scope"],
+        "properties": {
+          "body": {"type": ["string", "null"], "minLength": 1, "maxLength": 1048576},
+          "project_key": {"type": ["string", "null"], "pattern": "^[a-z][a-z0-9-]{2,63}$"},
+          "scope": {"$ref": "#/components/schemas/KnowledgeScope"},
+          "source_ref": {"type": ["string", "null"], "pattern": "^[a-z][a-z0-9._-]{0,127}$"},
+          "title": {"type": ["string", "null"], "minLength": 1, "maxLength": 1024}
+        },
+        "allOf": [
+          {
+            "oneOf": [
+              {"required": ["body", "title"], "properties": {"source_ref": {"type": "null"}}},
+              {"required": ["source_ref"], "properties": {"body": {"type": "null"}, "title": {"type": "null"}}}
+            ]
+          }
+        ]
+      },
+      "KnowledgeAddResult": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["command_id", "document_id", "durability_state", "event_ids", "project_key", "registered_at", "scope", "source_ref", "title"],
+        "properties": {
+          "command_id": {"type": "string", "format": "uuid"},
+          "document_id": {"type": "string", "format": "uuid"},
+          "durability_state": {"$ref": "#/components/schemas/DurabilityState"},
+          "event_ids": {"type": "array", "minItems": 1, "maxItems": 1, "items": {"type": "string", "format": "uuid"}},
+          "project_key": {"type": ["string", "null"], "pattern": "^[a-z][a-z0-9-]{2,63}$"},
+          "registered_at": {"type": "string", "format": "date-time"},
+          "scope": {"$ref": "#/components/schemas/KnowledgeScope"},
+          "source_ref": {"type": ["string", "null"], "pattern": "^[a-z][a-z0-9._-]{0,127}$"},
+          "title": {"type": "string", "minLength": 1, "maxLength": 1024}
+        }
+      },
+      "KnowledgeDocument": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["body", "document_id", "project_key", "registered_at", "registered_by", "scope", "source_ref", "title"],
+        "properties": {
+          "body": {"type": "string", "minLength": 1, "maxLength": 1048576},
+          "document_id": {"type": "string", "format": "uuid"},
+          "project_key": {"type": ["string", "null"], "pattern": "^[a-z][a-z0-9-]{2,63}$"},
+          "registered_at": {"type": "string", "format": "date-time"},
+          "registered_by": {"type": "string", "format": "uuid"},
+          "scope": {"$ref": "#/components/schemas/KnowledgeScope"},
+          "source_ref": {"type": ["string", "null"], "pattern": "^[a-z][a-z0-9._-]{0,127}$"},
+          "title": {"type": "string", "minLength": 1, "maxLength": 1024}
+        }
+      },
+      "KnowledgeDocumentList": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["documents", "project_key", "scope"],
+        "properties": {
+          "documents": {"type": "array", "items": {"$ref": "#/components/schemas/KnowledgeDocument"}},
+          "project_key": {"type": ["string", "null"], "pattern": "^[a-z][a-z0-9-]{2,63}$"},
+          "scope": {"$ref": "#/components/schemas/KnowledgeScope"}
         }
       },
       "TicketCreateRequest": {

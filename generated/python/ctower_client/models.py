@@ -1,6 +1,6 @@
 """DO NOT EDIT: generated file; regenerate from declared inputs.
 
-Authored contract digest: sha256:b71392111bdb294c855f76a29951d7f81cd3477cfc3707ecb396dacfc7a36961
+Authored contract digest: sha256:bf47097d1b5c8bd6e460b44d2c139d66ddfbf2d7a5d83e24c6b423cdbeb985d8
 """
 
 from __future__ import annotations
@@ -113,6 +113,11 @@ __all__ = [
     "IntakePromotionRequest",
     "IntakeSubmitRequest",
     "IntakeTaint",
+    "KnowledgeAddRequest",
+    "KnowledgeAddResult",
+    "KnowledgeDocument",
+    "KnowledgeDocumentList",
+    "KnowledgeScope",
     "MigrationAliasCorrection",
     "MigrationConservation",
     "MigrationCorrectionReplacement",
@@ -901,6 +906,11 @@ class IntakeTaint(StrEnum):
     AUTHENTICATED = "authenticated"
     EXTERNAL_UNTRUSTED = "external_untrusted"
     QUARANTINE_REQUIRED = "quarantine_required"
+
+
+class KnowledgeScope(StrEnum):
+    ORG = "org"
+    PROJECT = "project"
 
 
 class MigrationAliasCorrection(_BoundaryModel):
@@ -1776,6 +1786,37 @@ class IntakeSubmitRequest(_BoundaryModel):
     title: Annotated[str, Field(min_length=1, max_length=200)] | None = None
 
 
+class KnowledgeAddRequest(_BoundaryModel):
+    body: Annotated[str, Field(min_length=1, max_length=1048576)] | None = None
+    project_key: Annotated[str, Field(pattern="^[a-z][a-z0-9-]{2,63}$")] | None
+    scope: KnowledgeScope
+    source_ref: Annotated[str, Field(pattern="^[a-z][a-z0-9._-]{0,127}$")] | None = None
+    title: Annotated[str, Field(min_length=1, max_length=1024)] | None = None
+
+
+class KnowledgeAddResult(_BoundaryModel):
+    command_id: UUID
+    document_id: UUID
+    durability_state: DurabilityState
+    event_ids: Annotated[tuple[UUID, ...], Field(min_length=1, max_length=1)]
+    project_key: Annotated[str, Field(pattern="^[a-z][a-z0-9-]{2,63}$")] | None
+    registered_at: _Rfc3339DateTime
+    scope: KnowledgeScope
+    source_ref: Annotated[str, Field(pattern="^[a-z][a-z0-9._-]{0,127}$")] | None
+    title: Annotated[str, Field(min_length=1, max_length=1024)]
+
+
+class KnowledgeDocument(_BoundaryModel):
+    body: Annotated[str, Field(min_length=1, max_length=1048576)]
+    document_id: UUID
+    project_key: Annotated[str, Field(pattern="^[a-z][a-z0-9-]{2,63}$")] | None
+    registered_at: _Rfc3339DateTime
+    registered_by: UUID
+    scope: KnowledgeScope
+    source_ref: Annotated[str, Field(pattern="^[a-z][a-z0-9._-]{0,127}$")] | None
+    title: Annotated[str, Field(min_length=1, max_length=1024)]
+
+
 type MigrationCorrectionReplacement = MigrationAliasCorrection | MigrationSourceLinkCorrection | MigrationRelationCorrection
 
 
@@ -1859,6 +1900,10 @@ class Problem(_BoundaryModel):
         "intake-promotion-ineligible",
         "intake-source-project-mismatch",
         "intake-source-conflict",
+        "knowledge-invalid-project",
+        "knowledge-invalid-scope",
+        "knowledge-source-not-found",
+        "knowledge-source-unavailable",
         "label-already-applied",
         "label-key-unrecognized",
         "migration-alias-conflict",
@@ -2349,6 +2394,12 @@ class DeliverySurfaceAvailabilityQualifyingCheckpoint(_BoundaryModel):
 class HealthDimension(_BoundaryModel):
     status: HealthStatus
     contributors: Annotated[tuple[HealthContributor, ...], Field(min_length=1)]
+
+
+class KnowledgeDocumentList(_BoundaryModel):
+    documents: tuple[KnowledgeDocument, ...]
+    project_key: Annotated[str, Field(pattern="^[a-z][a-z0-9-]{2,63}$")] | None
+    scope: KnowledgeScope
 
 
 class ProjectDeliveryAssignedSeatAssignment(_BoundaryModel):

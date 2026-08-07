@@ -29,9 +29,18 @@ class _KnowledgeStore(Protocol):
         telemetry: TelemetryContext,
     ) -> KnowledgeAddResult | RecordProblem: ...
 
-    def list_by_scope(self, actor: Actor, scope: str) -> KnowledgeDocumentListResult: ...
+    def list_by_scope(
+        self, actor: Actor, scope: str, project_key: str | None = None
+    ) -> KnowledgeDocumentListResult | RecordProblem: ...
 
-    def get(self, actor: Actor, document_id: UUID) -> KnowledgeDocument | None: ...
+    def get(
+        self,
+        actor: Actor,
+        document_id: UUID,
+        *,
+        scope: str,
+        project_key: str | None = None,
+    ) -> KnowledgeDocument | RecordProblem: ...
 
 
 class Knowledge:
@@ -53,8 +62,17 @@ class Knowledge:
             actor, command, request_digest=request_digest, now=now, telemetry=telemetry
         )
 
-    def list_by_scope(self, actor: Actor, scope: str) -> KnowledgeDocumentListResult:
-        return self._store.list_by_scope(actor, scope)
+    def list_by_scope(
+        self, actor: Actor, scope: str, project_key: str | None = None
+    ) -> KnowledgeDocumentListResult | RecordProblem:
+        return self._store.list_by_scope(actor, scope, project_key)
 
-    def get(self, actor: Actor, document_id: UUID) -> KnowledgeDocument | None:
-        return self._store.get(actor, document_id)
+    def get(
+        self,
+        actor: Actor,
+        document_id: UUID,
+        *,
+        scope: str,
+        project_key: str | None = None,
+    ) -> KnowledgeDocument | RecordProblem:
+        return self._store.get(actor, document_id, scope=scope, project_key=project_key)

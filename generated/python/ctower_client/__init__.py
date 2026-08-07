@@ -1,6 +1,6 @@
 """DO NOT EDIT: generated file; regenerate from declared inputs.
 
-Authored contract digest: sha256:b71392111bdb294c855f76a29951d7f81cd3477cfc3707ecb396dacfc7a36961
+Authored contract digest: sha256:bf47097d1b5c8bd6e460b44d2c139d66ddfbf2d7a5d83e24c6b423cdbeb985d8
 """
 
 from ctower_client.client import CtowerClient, CtowerProblemError
@@ -103,6 +103,11 @@ from ctower_client.models import (
     IntakePromotionRequest,
     IntakeSubmitRequest,
     IntakeTaint,
+    KnowledgeAddRequest,
+    KnowledgeAddResult,
+    KnowledgeDocument,
+    KnowledgeDocumentList,
+    KnowledgeScope,
     MigrationAliasCorrection,
     MigrationConservation,
     MigrationCorrectionReplacement,
@@ -329,6 +334,11 @@ __all__ = [
     "IntakePromotionRequest",
     "IntakeSubmitRequest",
     "IntakeTaint",
+    "KnowledgeAddRequest",
+    "KnowledgeAddResult",
+    "KnowledgeDocument",
+    "KnowledgeDocumentList",
+    "KnowledgeScope",
     "MigrationAliasCorrection",
     "MigrationConservation",
     "MigrationCorrectionReplacement",
