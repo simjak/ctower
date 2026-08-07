@@ -15,6 +15,7 @@ from ctower_kernel.record.attention_events import (
     AttentionFindingAppendedPayload,
     AttentionFindingDispositionRecordedPayload,
 )
+from ctower_kernel.record.bootstrap_events import BootstrapCreatedPayload
 from ctower_kernel.record.catalog_events import (
     CatalogBundleActivatedPayload,
     CatalogComponentPublishedPayload,
@@ -45,6 +46,13 @@ from ctower_kernel.record.intake_events import (
 )
 from ctower_kernel.record.intake_events import (
     _validate_identity as _validate_intake_identity,
+)
+from ctower_kernel.record.knowledge_events import (
+    KnowledgeDocumentRegisteredPayload,
+    KnowledgeEventPayload,
+)
+from ctower_kernel.record.knowledge_events import (
+    _validate_identity as _validate_knowledge_identity,
 )
 from ctower_kernel.record.migration_events import MigrationChangedPayload
 from ctower_kernel.record.poison_events import PoisonDispositionRecordedPayload
@@ -121,6 +129,7 @@ class EventKind(StrEnum):
     LABEL_APPLIED = "ticket.label_applied"
     ATTENTION_FINDING_APPENDED = "attention.finding_appended"
     ATTENTION_FINDING_DISPOSITION_RECORDED = "attention.finding_disposition_recorded"
+    KNOWLEDGE_DOCUMENT_REGISTERED = "knowledge.document_registered"
 
 
 class EventOrigin(StrEnum):
@@ -135,38 +144,6 @@ _MAX_UTC_OFFSET_SECONDS = 64800
 _DIGEST_TEXT = re.compile(r"^sha256:[0-9a-f]{64}$")
 _STABLE_KEY = re.compile(r"^[a-z][a-z0-9._-]*$")
 _VERSIONED_REFERENCE = re.compile(r"^[a-z][a-z0-9._-]*@[1-9][0-9]*$")
-
-
-@dataclass(frozen=True, slots=True)
-class BootstrapCreatedPayload:
-    commander_id: UUID
-    commander_vault_ref: str
-    operator_credential_ref: str
-    operator_id: UUID
-    operator_vault_ref: str
-    tenant_id: UUID
-    tenant_slug: str
-
-    def __post_init__(self) -> None:
-        _require_uuid_fields(
-            self,
-            ("commander_id", "operator_id", "tenant_id"),
-        )
-        _bounded("commander_vault_ref", self.commander_vault_ref, minimum=1)
-        _bounded("operator_credential_ref", self.operator_credential_ref, minimum=1)
-        _bounded("operator_vault_ref", self.operator_vault_ref, minimum=1)
-        _bounded("tenant_slug", self.tenant_slug, minimum=2, maximum=63)
-
-    def to_mapping(self) -> dict[str, object]:
-        return {
-            "commander_id": str(self.commander_id),
-            "commander_vault_ref": self.commander_vault_ref,
-            "operator_credential_ref": self.operator_credential_ref,
-            "operator_id": str(self.operator_id),
-            "operator_vault_ref": self.operator_vault_ref,
-            "tenant_id": str(self.tenant_id),
-            "tenant_slug": self.tenant_slug,
-        }
 
 
 @dataclass(frozen=True, slots=True)
@@ -314,6 +291,7 @@ type EventPayload = (
     | MigrationChangedPayload
     | IntakeEventPayload
     | InboxEventPayload
+    | KnowledgeEventPayload
     | SeatCredentialIssuedPayload
     | SeatCredentialRevokedPayload
     | SessionEventPayload
@@ -516,6 +494,11 @@ _EVENT_CATALOG: dict[EventKind, EventCatalogEntry] = {
             AttentionFindingDispositionRecordedPayload,
             "attention-finding-disposition",
         ),
+        EventCatalogEntry(
+            EventKind.KNOWLEDGE_DOCUMENT_REGISTERED,
+            KnowledgeDocumentRegisteredPayload,
+            "knowledge-document",
+        ),
     )
 }
 
@@ -607,6 +590,7 @@ def _validate_event_identity(event: EventEnvelope) -> None:
     _validate_poison_identity(event)
     _validate_intake_identity(event.payload, event.stream_id, event.aggregate_id)
     _validate_inbox_identity(event.payload, event.aggregate_id)
+    _validate_knowledge_identity(event.payload, event.aggregate_id)
     _validate_seat_credential_identity(event)
     _validate_session_identity(event)
 

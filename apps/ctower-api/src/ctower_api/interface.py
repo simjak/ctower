@@ -50,6 +50,7 @@ from ctower_api._http_support import (
 )
 from ctower_api._inbox_routes import install_inbox_routes
 from ctower_api._intake_routes import install_intake_routes
+from ctower_api._knowledge_routes import install_knowledge_routes
 from ctower_api._login_gate import install_login_gate
 from ctower_api._migration_port import MigrationPort
 from ctower_api._mutation_response import mutation_response as _mutation_response
@@ -73,6 +74,7 @@ from ctower_kernel.access.oidc import OidcProvider
 from ctower_kernel.attention import Attention
 from ctower_kernel.board_context import BoardContextFacts
 from ctower_kernel.inbox import Inbox
+from ctower_kernel.knowledge import Knowledge
 from ctower_kernel.projections import Projections
 from ctower_kernel.proof import Proof
 from ctower_kernel.record import (
@@ -162,6 +164,7 @@ def create_app(
     attention: Attention | None = None,
     board_context: BoardContextFacts | None = None,
     inbox: Inbox | None = None,
+    knowledge: Knowledge | None = None,
     catalog: BundleCatalog | None = None,
     synthetic_runtime: SyntheticRuntime | None = None,
     synthetic_revision: RoutineRevision | None = None,
@@ -207,6 +210,7 @@ def create_app(
         attention=attention,
         board_context=board_context,
         inbox=inbox,
+        knowledge=knowledge,
         catalog=catalog,
         recorder=recorder,
     )
@@ -228,6 +232,7 @@ def _install_optional_routes(
     attention: Attention | None,
     board_context: BoardContextFacts | None,
     inbox: Inbox | None,
+    knowledge: Knowledge | None,
     catalog: BundleCatalog | None,
     recorder: TelemetryRecorder,
 ) -> None:
@@ -244,6 +249,8 @@ def _install_optional_routes(
         install_health_routes(app, access, record, projections, recorder, attention)
     if inbox is not None and projections is not None:
         install_inbox_routes(app, access, record, inbox, projections, recorder)
+    if knowledge is not None:
+        install_knowledge_routes(app, access, record, knowledge, recorder)
 
 
 def _install_synthetic_boundary(

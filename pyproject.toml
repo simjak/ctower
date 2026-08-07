@@ -50,6 +50,7 @@ packages = [
   "ctower_kernel.board_context",
   "ctower_kernel.catalog",
   "ctower_kernel.inbox",
+  "ctower_kernel.knowledge",
   "ctower_kernel.migration",
   "ctower_kernel.migrations",
   "ctower_kernel.objects",
@@ -81,6 +82,7 @@ tools = "tools"
 [tool.setuptools.package-data]
 ctower_contracts = ["schemas.json"]
 "ctower_kernel.migrations" = ["manifest.json", "*.sql"]
+ctower_kernel = ["knowledge/static/**/*.md"]
 
 [dependency-groups]
 dev = [

@@ -1,6 +1,6 @@
 """DO NOT EDIT: generated file; regenerate from declared inputs.
 
-Authored contract digest: sha256:b71392111bdb294c855f76a29951d7f81cd3477cfc3707ecb396dacfc7a36961
+Authored contract digest: sha256:bf47097d1b5c8bd6e460b44d2c139d66ddfbf2d7a5d83e24c6b423cdbeb985d8
 """
 
 from __future__ import annotations
@@ -60,6 +60,10 @@ from ctower_client.models import (
     IntakeCommandResult,
     IntakePromotionRequest,
     IntakeSubmitRequest,
+    KnowledgeAddRequest,
+    KnowledgeAddResult,
+    KnowledgeDocument,
+    KnowledgeDocumentList,
     PoisonDispositionReceipt,
     PoisonDispositionRequest,
     PriorityChangeRequest,
@@ -148,6 +152,27 @@ class CtowerClient:
 
     def close(self) -> None:
         self._http.close()
+
+    @validate_call(config=ConfigDict(strict=True, arbitrary_types_allowed=True))
+    def add_knowledge_document(
+        self,
+        request: KnowledgeAddRequest,
+        *,
+        command_id: UUID,
+    ) -> KnowledgeAddResult:
+        response = self._http.post(
+            "/v1/knowledge/documents",
+            content=request.model_dump_json(),
+            headers=self._telemetry_headers(
+                self._context(command_id),
+                {
+                    **self._auth_headers(),
+                    "Content-Type": "application/json",
+                    "Idempotency-Key": str(command_id),
+                },
+            ),
+        )
+        return _response(response, {201: KnowledgeAddResult, 202: KnowledgeAddResult}, {401: Problem, 403: Problem, 404: Problem, 409: Problem, 422: Problem, 503: Problem})
 
     @validate_call(config=ConfigDict(strict=True, arbitrary_types_allowed=True))
     def add_ticket_comment(
@@ -646,6 +671,26 @@ class CtowerClient:
         return _response(response, {200: CtowerProjectImportRun}, {401: Problem, 404: Problem})
 
     @validate_call(config=ConfigDict(strict=True, arbitrary_types_allowed=True))
+    def get_knowledge_document(
+        self,
+        document_id: UUID,
+        *,
+        scope: str,
+        project_key: str | None = None,
+    ) -> KnowledgeDocument:
+        response = self._http.get(
+            f"/v1/knowledge/documents/{quote(str(document_id), safe='')}",
+            params={"scope": scope, **({"project_key": project_key} if project_key is not None else {})},
+            headers=self._telemetry_headers(
+                self._context(uuid4()),
+                {
+                    **self._auth_headers(),
+                },
+            ),
+        )
+        return _response(response, {200: KnowledgeDocument}, {401: Problem, 403: Problem, 404: Problem, 422: Problem})
+
+    @validate_call(config=ConfigDict(strict=True, arbitrary_types_allowed=True))
     def get_project_delivery(
         self,
         project_key: ProjectKey,
@@ -753,6 +798,25 @@ class CtowerClient:
             ),
         )
         return _response(response, {200: InboxThreadList}, {401: Problem, 404: Problem, 422: Problem})
+
+    @validate_call(config=ConfigDict(strict=True, arbitrary_types_allowed=True))
+    def list_knowledge_documents(
+        self,
+        *,
+        scope: str,
+        project_key: str | None = None,
+    ) -> KnowledgeDocumentList:
+        response = self._http.get(
+            "/v1/knowledge/documents",
+            params={"scope": scope, **({"project_key": project_key} if project_key is not None else {})},
+            headers=self._telemetry_headers(
+                self._context(uuid4()),
+                {
+                    **self._auth_headers(),
+                },
+            ),
+        )
+        return _response(response, {200: KnowledgeDocumentList}, {401: Problem, 403: Problem, 422: Problem})
 
     @validate_call(config=ConfigDict(strict=True, arbitrary_types_allowed=True))
     def list_project_events(

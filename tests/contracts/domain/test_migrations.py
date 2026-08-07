@@ -61,13 +61,14 @@ _EXPECTED_MIGRATION_PATHS = [
     "0047_board_source_index.sql",
     "0048_native_inbox.sql",
     "0049_review_dispatch_effect.sql",
+    "0050_knowledge_documents.sql",
 ]
 _EXPECTED_ADOPTION_BASELINE = {
-    "through": "0049_review_dispatch_effect.sql",
-    "schema_sha256": ("sha256:ace3b0c4a4253ecd232b514582fe4f549e6d56dc5d146a93f0f45843d931494a"),
+    "through": "0050_knowledge_documents.sql",
+    "schema_sha256": ("sha256:4d252ed9747a285793d267e7b4010f198078101c42818ddd5c2363e774ccc253"),
     "semantic_checks": "ctower.pre-ledger/v1",
     "schema_object_sum256": (
-        "sum256:6a6792c31f2f26ac3ff81c6809196f27ae90a44f0cdb8155ece551c6bf9dbf5c"
+        "sum256:b8b5b0c2757490e1cbdbad061479b0e5936e856979eb829be5143293252f284f"
     ),
 }
 _DURABILITY_RECOVERY_CONTRACT = {

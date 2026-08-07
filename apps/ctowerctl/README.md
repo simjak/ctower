@@ -7,6 +7,11 @@ spool inspection/recovery. Thread-first intake uses only the authored
 `discussion|create_ticket|link_ticket` commands and one-time discussion promotion through that same
 generated-client and encrypted-spool path. There is no arbitrary operation dispatcher or client-side
 authorization engine.
+
+Knowledge is the closed `knowledge add|list|get` family. `add` names `--scope org|project` and, for project
+scope, an explicit `--project-key`; it accepts either `--body-file` plus `--title` or one `--source-ref`.
+Add uses the protected spool, while list/get call the generated client directly. Persisted project seats and
+the server-side static-source mount remain authoritative.
 Native agent messaging is the closed `inbox send --to <agent> [--thread <id>] <text>`, `inbox list
 [--unread]`, and `inbox read <thread>` family. Send uses the protected spool; list and read call the
 generated client directly and never queue.

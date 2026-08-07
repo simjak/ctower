@@ -39,6 +39,7 @@
     "ctower.image/v1": "contracts/components/image.schema.json",
     "ctower.inbox/v1": "contracts/domain/inbox/inbox.schema.json",
     "ctower.integration/v1": "contracts/components/integration.schema.json",
+    "ctower.knowledge-document/v1": "contracts/domain/knowledge/knowledge.schema.json",
     "ctower.label-vocabulary/v1": "contracts/components/label-vocabulary.schema.json",
     "ctower.notification/v1": "contracts/components/notification.schema.json",
     "ctower.persona/v1": "contracts/components/persona.schema.json",
@@ -133,6 +134,7 @@
     "https://ctower.local/contracts/components/workspace.schema.json": "contracts/components/workspace.schema.json",
     "https://ctower.local/contracts/domain/inbox/inbox.schema.json": "contracts/domain/inbox/inbox.schema.json",
     "https://ctower.local/contracts/domain/intake/thread-intake.schema.json": "contracts/domain/intake/thread-intake.schema.json",
+    "https://ctower.local/contracts/domain/knowledge/knowledge.schema.json": "contracts/domain/knowledge/knowledge.schema.json",
     "https://ctower.local/contracts/observability/telemetry-context.schema.json": "contracts/observability/telemetry-context.schema.json",
     "https://ctower.local/contracts/workflow/workflow-definition.schema.json": "contracts/workflow/workflow-definition.schema.json"
   },
@@ -3446,6 +3448,64 @@
           ],
           "type": "object"
         },
+        "knowledgeDocumentRegistered": {
+          "additionalProperties": false,
+          "properties": {
+            "body": {
+              "maxLength": 1048576,
+              "minLength": 1,
+              "type": "string"
+            },
+            "document_id": {
+              "format": "uuid",
+              "type": "string"
+            },
+            "project_key": {
+              "pattern": "^[a-z][a-z0-9-]{2,63}$",
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "registered_at": {
+              "format": "date-time",
+              "type": "string"
+            },
+            "registered_by": {
+              "format": "uuid",
+              "type": "string"
+            },
+            "scope": {
+              "enum": [
+                "org",
+                "project"
+              ]
+            },
+            "source_ref": {
+              "pattern": "^[a-z][a-z0-9._-]{0,127}$",
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "title": {
+              "maxLength": 1024,
+              "minLength": 1,
+              "type": "string"
+            }
+          },
+          "required": [
+            "body",
+            "document_id",
+            "project_key",
+            "registered_by",
+            "registered_at",
+            "scope",
+            "source_ref",
+            "title"
+          ],
+          "type": "object"
+        },
         "labelApplied": {
           "additionalProperties": false,
           "properties": {
@@ -4680,6 +4740,22 @@
                   "pattern": "^attention-finding-disposition:[0-9a-f-]{36}$"
                 }
               }
+            },
+            {
+              "properties": {
+                "kind": {
+                  "const": "knowledge.document_registered"
+                },
+                "origin": {
+                  "const": "api"
+                },
+                "payload": {
+                  "$ref": "#/$defs/knowledgeDocumentRegistered"
+                },
+                "stream_id": {
+                  "pattern": "^knowledge-document:[0-9a-f-]{36}$"
+                }
+              }
             }
           ]
         }
@@ -4739,7 +4815,8 @@
             "ticket.change_reference_recorded",
             "ticket.label_applied",
             "attention.finding_appended",
-            "attention.finding_disposition_recorded"
+            "attention.finding_disposition_recorded",
+            "knowledge.document_registered"
           ],
           "type": "string"
         },
@@ -4772,7 +4849,7 @@
           "type": "string"
         },
         "stream_id": {
-          "pattern": "^(tenant:[0-9a-f-]{36}:bootstrap|ticket:[0-9a-f-]{36}|catalog:[0-9a-f-]{36}|proof:[0-9a-f-]{36}|workflow:[0-9a-f-]{36}|routine-occurrence:[0-9a-f-]{36}|poison-disposition:[0-9a-f-]{36}|migration:[0-9a-f-]{36}|inbound-thread:[0-9a-f-]{36}|inbox-thread:[0-9a-f-]{36}|seat-credential:[0-9a-f-]{36}|session:[0-9a-f-]{36}|attention-finding:[0-9a-f-]{36}|attention-finding-disposition:[0-9a-f-]{36})$",
+          "pattern": "^(tenant:[0-9a-f-]{36}:bootstrap|ticket:[0-9a-f-]{36}|catalog:[0-9a-f-]{36}|proof:[0-9a-f-]{36}|workflow:[0-9a-f-]{36}|routine-occurrence:[0-9a-f-]{36}|poison-disposition:[0-9a-f-]{36}|migration:[0-9a-f-]{36}|inbound-thread:[0-9a-f-]{36}|inbox-thread:[0-9a-f-]{36}|seat-credential:[0-9a-f-]{36}|session:[0-9a-f-]{36}|attention-finding:[0-9a-f-]{36}|attention-finding-disposition:[0-9a-f-]{36}|knowledge-document:[0-9a-f-]{36})$",
           "type": "string"
         },
         "tenant_id": {
@@ -5154,6 +5231,102 @@
         "quarantine"
       ],
       "title": "Ctower durable inbound-thread authority",
+      "type": "object"
+    },
+    "contracts/domain/knowledge/knowledge.schema.json": {
+      "$id": "https://ctower.local/contracts/domain/knowledge/knowledge.schema.json",
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "additionalProperties": false,
+      "allOf": [
+        {
+          "else": {
+            "properties": {
+              "project_key": {
+                "type": "string"
+              }
+            }
+          },
+          "if": {
+            "properties": {
+              "scope": {
+                "const": "org"
+              }
+            }
+          },
+          "then": {
+            "properties": {
+              "project_key": {
+                "type": "null"
+              }
+            }
+          }
+        }
+      ],
+      "properties": {
+        "body": {
+          "maxLength": 1048576,
+          "minLength": 1,
+          "type": "string"
+        },
+        "document_id": {
+          "format": "uuid",
+          "type": "string"
+        },
+        "project_key": {
+          "pattern": "^[a-z][a-z0-9-]{2,63}$",
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "registered_at": {
+          "format": "date-time",
+          "type": "string"
+        },
+        "registered_by": {
+          "format": "uuid",
+          "type": "string"
+        },
+        "schema": {
+          "const": "ctower.knowledge-document/v1"
+        },
+        "scope": {
+          "enum": [
+            "org",
+            "project"
+          ],
+          "type": "string"
+        },
+        "source_ref": {
+          "pattern": "^[a-z][a-z0-9._-]{0,127}$",
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "tenant_id": {
+          "format": "uuid",
+          "type": "string"
+        },
+        "title": {
+          "maxLength": 1024,
+          "minLength": 1,
+          "type": "string"
+        }
+      },
+      "required": [
+        "schema",
+        "document_id",
+        "tenant_id",
+        "scope",
+        "project_key",
+        "title",
+        "body",
+        "source_ref",
+        "registered_by",
+        "registered_at"
+      ],
+      "title": "Ctower registered knowledge document",
       "type": "object"
     },
     "contracts/domain/migration/ctower-project-alias-map-v2.schema.json": {
@@ -14313,7 +14486,7 @@
     {
       "id": "https://ctower.dev/contracts/domain/events/event-envelope.schema.json",
       "path": "contracts/domain/events/event-envelope.schema.json",
-      "sha256": "sha256:337cbab7f2413653762305e0f8c321549bd01aba3ef3281ae4f10b090d63f3c7"
+      "sha256": "sha256:4a6e7040e092c51f21e9ba6869775af6f05190da56cc11b0ccd5509a8c2674ae"
     },
     {
       "id": "https://ctower.local/contracts/domain/inbox/inbox.schema.json",
@@ -14324,6 +14497,11 @@
       "id": "https://ctower.local/contracts/domain/intake/thread-intake.schema.json",
       "path": "contracts/domain/intake/thread-intake.schema.json",
       "sha256": "sha256:a0614a311131ca13ab14a8100821445d0a3e805b6596e7cd7775b24595fb5f99"
+    },
+    {
+      "id": "https://ctower.local/contracts/domain/knowledge/knowledge.schema.json",
+      "path": "contracts/domain/knowledge/knowledge.schema.json",
+      "sha256": "sha256:576841e16512bcb0621fc7e63a4542d3d45779cebc4509e029000a871818b7bd"
     },
     {
       "id": "https://ctower.dev/contracts/domain/migration/ctower-project-alias-map-v2.schema.json",

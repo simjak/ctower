@@ -11,6 +11,7 @@ ROOT = Path(__file__).parents[3]
 MAX_IMPORT_ITEMS = 64
 
 _EXPECTED_OPERATION_METADATA: dict[str, tuple[object, bool, str, object, bool]] = {
+    "addKnowledgeDocument": ("knowledge add", True, "allowed", None, False),
     "addTicketComment": ("ticket comment add", True, "allowed", None, False),
     "addTicketRelation": ("ticket relation add", True, "allowed", None, False),
     "appendAttentionFinding": ("attention finding append", True, "allowed", None, False),
@@ -87,6 +88,7 @@ _EXPECTED_OPERATION_METADATA: dict[str, tuple[object, bool, str, object, bool]] 
     "freezeProofCriteria": ("ticket criteria freeze", True, "allowed", None, False),
     "getBoard": ("board query", False, "forbidden", None, False),
     "getControlHealth": ("control health", False, "forbidden", None, False),
+    "getKnowledgeDocument": ("knowledge get", False, "forbidden", None, False),
     "getCtowerProjectCutoverHealth": (
         "migration ctower-project verify",
         False,
@@ -113,6 +115,7 @@ _EXPECTED_OPERATION_METADATA: dict[str, tuple[object, bool, str, object, bool]] 
     "getTicketTimeline": ("ticket timeline", False, "forbidden", None, False),
     "issueSeatCredential": ("credential seat issue", True, "forbidden", None, False),
     "listInboxThreads": ("inbox list", False, "forbidden", None, False),
+    "listKnowledgeDocuments": ("knowledge list", False, "forbidden", None, False),
     "listTicketAssignments": ("ticket assignments", False, "forbidden", None, False),
     "listTicketAuditEvents": ("ticket audit", False, "forbidden", None, False),
     "listProjectEvents": (
@@ -236,6 +239,10 @@ _EXPECTED_PROBLEM_CODES = {
     "intake-promotion-ineligible",
     "intake-source-project-mismatch",
     "intake-source-conflict",
+    "knowledge-invalid-project",
+    "knowledge-invalid-scope",
+    "knowledge-source-not-found",
+    "knowledge-source-unavailable",
     "inbox-already-promoted",
     "inbox-recipient-ambiguous",
     "inbox-recipient-not-found",

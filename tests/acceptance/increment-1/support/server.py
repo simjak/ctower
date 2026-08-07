@@ -32,6 +32,12 @@ from ctower_kernel.board_context import BoardContextFacts
 from ctower_kernel.board_context.postgres import PostgresBoardContextFacts
 from ctower_kernel.catalog import PostgresCatalog
 from ctower_kernel.inbox import Inbox, PostgresInbox
+from ctower_kernel.knowledge import (
+    Knowledge,
+    PostgresKnowledge,
+    StaticFileKnowledgeSource,
+    bundled_static_root,
+)
 from ctower_kernel.projections import Projections
 from ctower_kernel.projections.postgres import PostgresProjections
 from ctower_kernel.proof import Criterion, Proof, ProofPolicy
@@ -253,11 +259,7 @@ def application(
     proof_policy_override: ProofPolicy | None = None,
     execution_policy_digest: str | None = None,
 ) -> FastAPI:
-    recorder = TelemetryRecorder(
-        _exporter(telemetry_capture, fail=telemetry_failure)
-        if telemetry_capture is not None or telemetry_failure
-        else None
-    )
+    recorder = _recorder(telemetry_capture, telemetry_failure)
     catalog_store = MemoryObjectStore()
     catalog = PostgresCatalog(
         runtime_dsn,
@@ -300,6 +302,7 @@ def application(
         attention=Attention(PostgresAttention(runtime_dsn)),
         board_context=BoardContextFacts(PostgresBoardContextFacts(runtime_dsn)),
         inbox=(Inbox(PostgresInbox(runtime_dsn)) if projection_dsn is not None else None),
+        knowledge=_knowledge(runtime_dsn),
         telemetry=recorder,
     )
 
@@ -354,6 +357,20 @@ def _selected_policy_digests(
         selected.gate_policy_ref: selected.gate_policy_digest,
         selected.evidence_policy_ref: selected.evidence_policy_digest,
     }
+
+
+def _knowledge(runtime_dsn: str) -> Knowledge:
+    return Knowledge(
+        PostgresKnowledge(
+            runtime_dsn,
+            source=StaticFileKnowledgeSource(bundled_static_root()),
+        )
+    )
+
+
+def _recorder(capture: Path | None, failure: int) -> TelemetryRecorder:
+    exporter = _exporter(capture, fail=bool(failure)) if capture is not None or failure else None
+    return TelemetryRecorder(exporter)
 
 
 def _exporter(capture: Path | None, *, fail: bool) -> Callable[[dict[str, object]], None]:

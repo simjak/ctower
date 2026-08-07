@@ -176,6 +176,7 @@
       "packages/ctower-kernel/migrations/0024_catalog_authority.sql",
       "packages/ctower-kernel/migrations/0035_board_source_lookup.sql",
       "packages/ctower-kernel/migrations/0036_migration_ledger_role.sql",
+      "packages/ctower-kernel/migrations/0050_knowledge_documents.sql",
       "packages/ctower-kernel/migrations/manifest.json"
     ],
     "AC-EVD-01": [
@@ -589,6 +590,7 @@
     "INV-01": [
       "contracts/domain/inbox/inbox.schema.json",
       "contracts/domain/intake/thread-intake.schema.json",
+      "contracts/domain/knowledge/knowledge.schema.json",
       "packages/ctower-kernel/migrations/0001_roles.sql",
       "packages/ctower-kernel/migrations/0002_ticket_slice.sql",
       "packages/ctower-kernel/migrations/0003_privileges.sql",
@@ -600,7 +602,8 @@
       "packages/ctower-kernel/migrations/0018_durability_probe_search_path.sql",
       "packages/ctower-kernel/migrations/0020_recovery_roles.sql",
       "packages/ctower-kernel/migrations/0023_cp3c_privileges.sql",
-      "packages/ctower-kernel/migrations/0032_thread_first_intake.sql"
+      "packages/ctower-kernel/migrations/0032_thread_first_intake.sql",
+      "packages/ctower-kernel/migrations/0050_knowledge_documents.sql"
     ],
     "INV-02": [
       "contracts/bootstrap/first-tenant-request.schema.json",
@@ -635,7 +638,8 @@
     "INV-05": [
       "contracts/domain/events/canonical-vectors.json",
       "contracts/domain/events/event-envelope.schema.json",
-      "packages/ctower-kernel/migrations/0032_thread_first_intake.sql"
+      "packages/ctower-kernel/migrations/0032_thread_first_intake.sql",
+      "packages/ctower-kernel/migrations/0050_knowledge_documents.sql"
     ],
     "INV-06": [
       "contracts/domain/intake/thread-intake.schema.json",
@@ -738,7 +742,8 @@
       "packages/ctower-kernel/migrations/0035_board_source_lookup.sql",
       "packages/ctower-kernel/migrations/0040_project_scoped_reads.sql",
       "packages/ctower-kernel/migrations/0047_board_source_index.sql",
-      "packages/ctower-kernel/migrations/0048_native_inbox.sql"
+      "packages/ctower-kernel/migrations/0048_native_inbox.sql",
+      "packages/ctower-kernel/migrations/0050_knowledge_documents.sql"
     ],
     "INV-35": [
       "contracts/domain/migration/ctower-project-cutover-health.schema.json",
@@ -764,6 +769,7 @@
       "packages/ctower-kernel/migrations/0034_durability_finalizer_quarantine.sql"
     ],
     "INV-37": [
+      "contracts/domain/knowledge/knowledge.schema.json",
       "contracts/domain/migration/ctower-project-alias-map-v2.schema.json",
       "contracts/domain/migration/ctower-project-alias-map.schema.json",
       "contracts/domain/migration/ctower-project-export-manifest.schema.json",
@@ -956,6 +962,9 @@
       "packages/ctower-kernel/migrations/0043_context_set_catalogs.sql",
       "packages/ctower-kernel/migrations/0045_attention_findings.sql"
     ],
+    "INV-69": [
+      "contracts/domain/knowledge/knowledge.schema.json"
+    ],
     "INV-71": [
       "packages/ctower-kernel/migrations/0047_board_source_index.sql"
     ],
@@ -1004,6 +1013,7 @@
       "contracts/domain/events/canonical-vectors.json",
       "contracts/domain/events/event-envelope.schema.json",
       "contracts/domain/inbox/inbox.schema.json",
+      "contracts/domain/knowledge/knowledge.schema.json",
       "contracts/domain/migration/ctower-project-import-batch.schema.json",
       "contracts/domain/migration/ctower-project-import-correction.schema.json",
       "contracts/domain/migration/ctower-project-import-plan-v2.schema.json",
@@ -1018,7 +1028,8 @@
       "packages/ctower-kernel/migrations/0030_i17b_migration_truth_spine.sql",
       "packages/ctower-kernel/migrations/0031_i17b_bounded_truth_spine.sql",
       "packages/ctower-kernel/migrations/0032_thread_first_intake.sql",
-      "packages/ctower-kernel/migrations/0048_native_inbox.sql"
+      "packages/ctower-kernel/migrations/0048_native_inbox.sql",
+      "packages/ctower-kernel/migrations/0050_knowledge_documents.sql"
     ],
     "SPEC#client-acknowledgement-and-offline-behavior": [
       "contracts/http/openapi.yaml",
@@ -1246,6 +1257,9 @@
       "packages/ctower-kernel/migrations/0044_ticket_change_and_label_facts.sql",
       "packs/policies/scheduling/i1-priority-aging-v1.yaml",
       "packs/workflows/engineering.software-factory/v1.yaml"
+    ],
+    "SPEC#tenant-project-and-runner-scope": [
+      "contracts/domain/knowledge/knowledge.schema.json"
     ],
     "SPEC#test-and-evidence-matrix": [
       "contracts/evidence/evidence-manifest-v2.schema.json",

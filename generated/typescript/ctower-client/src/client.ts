@@ -1,5 +1,5 @@
 // DO NOT EDIT: generated file; regenerate from declared inputs.
-// Authored contract digest: sha256:b71392111bdb294c855f76a29951d7f81cd3477cfc3707ecb396dacfc7a36961
+// Authored contract digest: sha256:bf47097d1b5c8bd6e460b44d2c139d66ddfbf2d7a5d83e24c6b423cdbeb985d8
 
 import type * as Models from "./models.js";
 import { OPERATIONS, type OperationId } from "./operations.js";
@@ -11,6 +11,11 @@ export type ClientOptions = Readonly<{
   credential?: string;
   telemetry: () => Models.TelemetryContext;
   fetch?: typeof globalThis.fetch;
+}>;
+
+export type AddKnowledgeDocumentInput = Readonly<{
+  readonly "IdempotencyKey": string;
+  readonly body: Models.KnowledgeAddRequest;
 }>;
 
 export type AddTicketCommentInput = Readonly<{
@@ -145,6 +150,12 @@ export type GetCtowerProjectImportRunInput = Readonly<{
   readonly "runId": string;
 }>;
 
+export type GetKnowledgeDocumentInput = Readonly<{
+  readonly "documentId": string;
+  readonly "scope": "org" | "project";
+  readonly "projectKey"?: string;
+}>;
+
 export type GetProjectDeliveryInput = Readonly<{
   readonly "projectKey": string;
 }>;
@@ -170,6 +181,11 @@ export type IssueSeatCredentialInput = Readonly<{
 
 export type ListInboxThreadsInput = Readonly<{
   readonly "unread"?: boolean;
+}>;
+
+export type ListKnowledgeDocumentsInput = Readonly<{
+  readonly "scope": "org" | "project";
+  readonly "projectKey"?: string;
 }>;
 
 export type ListProjectEventsInput = Readonly<{
@@ -322,6 +338,7 @@ export type ValidateCompanyBundleInput = Readonly<{
 }>;
 
 export type OperationInputs = Readonly<{
+  readonly "addKnowledgeDocument": AddKnowledgeDocumentInput;
   readonly "addTicketComment": AddTicketCommentInput;
   readonly "addTicketRelation": AddTicketRelationInput;
   readonly "appendAttentionFinding": AppendAttentionFindingInput;
@@ -346,12 +363,14 @@ export type OperationInputs = Readonly<{
   readonly "getControlHealth": GetControlHealthInput;
   readonly "getCtowerProjectCutoverHealth": GetCtowerProjectCutoverHealthInput;
   readonly "getCtowerProjectImportRun": GetCtowerProjectImportRunInput;
+  readonly "getKnowledgeDocument": GetKnowledgeDocumentInput;
   readonly "getProjectDelivery": GetProjectDeliveryInput;
   readonly "getSyntheticWorkflowRun": GetSyntheticWorkflowRunInput;
   readonly "getTicket": GetTicketInput;
   readonly "getTicketTimeline": GetTicketTimelineInput;
   readonly "issueSeatCredential": IssueSeatCredentialInput;
   readonly "listInboxThreads": ListInboxThreadsInput;
+  readonly "listKnowledgeDocuments": ListKnowledgeDocumentsInput;
   readonly "listProjectEvents": ListProjectEventsInput;
   readonly "listProjectSessions": ListProjectSessionsInput;
   readonly "listReviewDispatchEffects": ListReviewDispatchEffectsInput;
@@ -382,6 +401,7 @@ export type OperationInputs = Readonly<{
 }>;
 
 export type OperationResults = Readonly<{
+  readonly "addKnowledgeDocument": Models.KnowledgeAddResult;
   readonly "addTicketComment": Models.TicketCommentResult;
   readonly "addTicketRelation": Models.WorkReceipt;
   readonly "appendAttentionFinding": Models.AttentionFindingResult;
@@ -406,12 +426,14 @@ export type OperationResults = Readonly<{
   readonly "getControlHealth": Models.ControlHealth;
   readonly "getCtowerProjectCutoverHealth": Models.CtowerProjectCutoverHealth;
   readonly "getCtowerProjectImportRun": Models.CtowerProjectImportRun;
+  readonly "getKnowledgeDocument": Models.KnowledgeDocument;
   readonly "getProjectDelivery": Models.ProjectDeliveryView;
   readonly "getSyntheticWorkflowRun": Models.SyntheticRunResource;
   readonly "getTicket": Models.TicketResource;
   readonly "getTicketTimeline": Models.TimelineResponse;
   readonly "issueSeatCredential": Models.SeatCredentialReceipt;
   readonly "listInboxThreads": Models.InboxThreadList;
+  readonly "listKnowledgeDocuments": Models.KnowledgeDocumentList;
   readonly "listProjectEvents": Models.ProjectEventPage;
   readonly "listProjectSessions": Models.ProjectSessionPage;
   readonly "listReviewDispatchEffects": Models.ReviewDispatchEffectList;
@@ -458,6 +480,12 @@ export class CtowerClient {
     this.#credential = options.credential;
     this.#telemetry = options.telemetry;
     this.#fetch = options.fetch ?? globalThis.fetch;
+  }
+
+  public async addKnowledgeDocument(
+    input: AddKnowledgeDocumentInput,
+  ): Promise<Models.KnowledgeAddResult> {
+    return this.execute("addKnowledgeDocument", input);
   }
 
   public async addTicketComment(
@@ -604,6 +632,12 @@ export class CtowerClient {
     return this.execute("getCtowerProjectImportRun", input);
   }
 
+  public async getKnowledgeDocument(
+    input: GetKnowledgeDocumentInput,
+  ): Promise<Models.KnowledgeDocument> {
+    return this.execute("getKnowledgeDocument", input);
+  }
+
   public async getProjectDelivery(
     input: GetProjectDeliveryInput,
   ): Promise<Models.ProjectDeliveryView> {
@@ -638,6 +672,12 @@ export class CtowerClient {
     input: ListInboxThreadsInput,
   ): Promise<Models.InboxThreadList> {
     return this.execute("listInboxThreads", input);
+  }
+
+  public async listKnowledgeDocuments(
+    input: ListKnowledgeDocumentsInput,
+  ): Promise<Models.KnowledgeDocumentList> {
+    return this.execute("listKnowledgeDocuments", input);
   }
 
   public async listProjectEvents(
