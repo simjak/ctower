@@ -476,6 +476,15 @@
       "forward_test": "pytest:tests/acceptance/increment-1/test_knowledge.py::test_knowledge_cli_roundtrip_preserves_org_and_project_scope",
       "rollback_or_forward_compensation": "Preserve append-only knowledge documents, canonical events, durability heads, and disposable projections; append reviewed forward compensation and rebuild the knowledge projection, never edit or delete an accepted knowledge fact.",
       "backup_checkpoint": "Before applying to a nonempty installation, capture knowledge document, event, durability-head, and projection counts grouped by tenant plus a verified database backup."
+    },
+    {
+      "path": "0051_inbox_delivery_read_facts.sql",
+      "sha256": "sha256:0d6e9fd7a0a022d5543e89c3a4194ebf5a03de24fb3c39b9e2c1ce5303b33e1f",
+      "minimum_service_version": "0.0.0",
+      "maximum_service_version": "0.0.0",
+      "forward_test": "pytest:tests/acceptance/increment-1/test_inbox.py::test_native_inbox_cli_roundtrip_and_promotion_links_both_ways",
+      "rollback_or_forward_compensation": "Preserve append-only delivery/read facts, canonical events, command results, and outbox rows; rebuild disposable inbox projections or append reviewed forward compensation, never edit or delete an accepted acknowledgement fact.",
+      "backup_checkpoint": "Before applying to a nonempty installation, capture inbox message and delivery-fact counts by tenant and state plus event, outbox, and projection counts and a verified database backup."
     }
   ]
 }

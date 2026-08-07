@@ -100,6 +100,9 @@
       "references": [
         "SPEC#canonical-event-and-command-contract",
         "INV-05",
+        "INV-79",
+        "AC-INBOX-01",
+        "AC-INBOX-03",
         "AC-DUR-03"
       ]
     },
@@ -112,8 +115,11 @@
         "INV-04",
         "INV-05",
         "INV-75",
+        "INV-79",
         "AC-DUR-02",
         "AC-DUR-03",
+        "AC-INBOX-01",
+        "AC-INBOX-03",
         "AC-SES-02"
       ]
     },
@@ -139,6 +145,17 @@
         "INV-01",
         "INV-03",
         "INV-34"
+      ]
+    },
+    {
+      "path": "contracts/domain/inbox/inbox-v2.schema.json",
+      "references": [
+        "SPEC#native-inbox-delivery-and-read-facts",
+        "SPEC#canonical-event-and-command-contract",
+        "INV-03",
+        "INV-79",
+        "AC-INBOX-01",
+        "AC-INBOX-03"
       ]
     },
     {
@@ -1923,6 +1940,19 @@
         "INV-05",
         "INV-34",
         "AC-DUR-07"
+      ]
+    },
+    {
+      "path": "packages/ctower-kernel/migrations/0051_inbox_delivery_read_facts.sql",
+      "references": [
+        "SPEC#native-inbox-delivery-and-read-facts",
+        "SPEC#persistence-authority",
+        "INV-03",
+        "INV-34",
+        "INV-79",
+        "AC-INBOX-01",
+        "AC-INBOX-02",
+        "AC-INBOX-03"
       ]
     },
     {

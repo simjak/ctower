@@ -3,9 +3,9 @@
 | Field | Value |
 |---|---|
 | Status | Compact derived operator and implementer map |
-| Normative authority | [`SPEC.md`](SPEC.md), version 1.15 |
+| Normative authority | [`SPEC.md`](SPEC.md), version 1.16 |
 | Decision history | [`DECISIONS.md`](DECISIONS.md) |
-| Last reviewed | 2026-08-05 |
+| Last reviewed | 2026-08-07 |
 
 This is the sole terminal-safe derived architecture atlas. It explains the canonical specification; it
 does not add requirements, authorize work, or define exact schemas, operations, DDL, package values, or
@@ -288,7 +288,7 @@ ports.
 | Deep Module | Authority hidden behind its Interface |
 |---|---|
 | Access / Record | Authentication, revision-pinned Project grants, authorization, prohibited-class refusal, idempotency-before-CAS, streams, hash chain, outbox, durability result, project-scoped typed event feed |
-| Inbox | Two-principal threads, append-only ordered messages, immutable ticket promotion links, recipient-scoped unread/read projection |
+| Inbox | Two-principal threads, append-only ordered messages and recipient delivery/read facts, immutable ticket promotion links, fact-derived per-message state and unread projection |
 | Catalog | One `VersionedComponent` lifecycle, compatibility, provenance, exact pins, future-only active pointers |
 | Work | Permanent tickets, lifecycle episodes, custody, relations, priorities, blockers, typed Board intents |
 | Proof | Criteria, artifacts, evidence DAG, independence, gate instances/verdicts, invalidation |

@@ -18,6 +18,8 @@ from ctower_kernel.record.events import (
 )
 from ctower_kernel.record.inbox_events import (
     InboxMessageAppendedPayload,
+    InboxMessageDeliveredPayload,
+    InboxMessageReadPayload,
     InboxParticipant,
     InboxThreadOpenedPayload,
     InboxThreadPromotedToTicketPayload,
@@ -124,6 +126,8 @@ def _validate_payload(
     if kind in {
         EventKind.INBOX_THREAD_OPENED,
         EventKind.INBOX_MESSAGE_APPENDED,
+        EventKind.INBOX_MESSAGE_DELIVERED,
+        EventKind.INBOX_MESSAGE_READ,
         EventKind.INBOX_THREAD_PROMOTED_TO_TICKET,
     }:
         _validate_inbox_payload(kind, payload)
@@ -144,6 +148,18 @@ def _validate_inbox_payload(kind: EventKind, payload: Mapping[str, object]) -> N
             _participant(cast(Mapping[str, object], payload["recipient"])),
             _participant(cast(Mapping[str, object], payload["sender"])),
             str(payload["text"]),
+            UUID(str(payload["thread_id"])),
+        )
+        return
+    if kind in {EventKind.INBOX_MESSAGE_DELIVERED, EventKind.INBOX_MESSAGE_READ}:
+        payload_type = (
+            InboxMessageDeliveredPayload
+            if kind is EventKind.INBOX_MESSAGE_DELIVERED
+            else InboxMessageReadPayload
+        )
+        payload_type(
+            UUID(str(payload["message_id"])),
+            _participant(cast(Mapping[str, object], payload["recipient"])),
             UUID(str(payload["thread_id"])),
         )
         return

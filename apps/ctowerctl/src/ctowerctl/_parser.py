@@ -56,8 +56,10 @@ _AUTHORED_COMMAND_NAMES = frozenset(
         "intake promote",
         "intake submit",
         "inbox send",
+        "inbox ack",
         "inbox list",
         "inbox read",
+        "inbox read-state",
         "knowledge add",
         "knowledge list",
         "knowledge get",
@@ -243,12 +245,20 @@ def _inbox_parser(parser: argparse.ArgumentParser) -> None:
     send.add_argument("--to", required=True)
     send.add_argument("--thread", dest="thread_id", type=UUID)
     send.add_argument("text")
+    acknowledge = actions.add_parser("ack")
+    acknowledge.set_defaults(cli_name="inbox ack")
+    _command_id(acknowledge)
+    acknowledge.add_argument("--state", required=True, choices=("delivered", "read"))
+    acknowledge.add_argument("message_id", type=UUID)
     list_parser = actions.add_parser("list")
     list_parser.set_defaults(cli_name="inbox list")
     list_parser.add_argument("--unread", action="store_true")
     read = actions.add_parser("read")
     read.set_defaults(cli_name="inbox read")
     read.add_argument("thread_id", type=UUID)
+    read_state = actions.add_parser("read-state")
+    read_state.set_defaults(cli_name="inbox read-state")
+    read_state.add_argument("thread_id", type=UUID)
 
 
 def _intake_ticket_fields(parser: argparse.ArgumentParser) -> None:

@@ -5,12 +5,13 @@ Inbox, Knowledge, Work, Proof, Workflow, Runtime, Projections, Attention, and ge
 bootstrap authority; atomic Postgres command/event/outbox persistence; ticket lifecycle, comments, priority,
 custody, assignment, blocker, relation, and typed-intent policy; universal component/bundle
 validation/planning plus an atomic future-only Catalog pointer; server-pinned frozen criteria, digest-bound
-evidence, protected verdicts and selective
-invalidation; explicitly pinned legal graph movement; declared stage-entry review-dispatch intents whose
+evidence, protected verdicts and selective invalidation; explicitly pinned legal graph movement; declared
+stage-entry review-dispatch intents whose
 PR, proof lenses, routing-policy pin, independent-family rule, substrate consumption, and linked verdicts
 remain visible on the ticket; proof-gated atomic resolve/close that also rejects incomplete dispatch joins
 and releases every current-episode ownership interval; and a disposable six-lane
-Board fold over accepted outbox records; immutable delivery attempts, poison, deduplicated Attention findings,
+Board fold over accepted outbox records; native two-party inbox messages with append-only recipient
+delivery/read facts and fact-derived unread state; immutable delivery attempts, poison, deduplicated Attention findings,
 canonical acceptance-gated recovery dispositions; fixed Routine occurrences/jobs with event/result/outbox
 lineage; independently attributable health; and a project-scoped typed event feed whose exact kind set is
 derived from the authoritative event catalog's `project_feed` column, reusing the same `event_links`

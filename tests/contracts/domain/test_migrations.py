@@ -62,6 +62,7 @@ _EXPECTED_MIGRATION_PATHS = [
     "0048_native_inbox.sql",
     "0049_review_dispatch_effect.sql",
     "0050_knowledge_documents.sql",
+    "0051_inbox_delivery_read_facts.sql",
 ]
 _EXPECTED_ADOPTION_BASELINE = {
     "through": "0050_knowledge_documents.sql",

@@ -10,9 +10,10 @@ read-only Board projection. The API also exposes explicit
 `discussion|create_ticket|link_ticket` thread-first intake and one-time discussion promotion. Both intake
 routes authenticate before reading a body, then enforce the same 524,288-byte streaming limit without
 trusting `Content-Length`.
-The separately composed native Inbox surface exposes exactly message send, recipient-scoped thread list,
-and ordered thread read. Send is a protected durable mutation; list and read consume only accepted disposable
-projection state, and read advances only that authenticated principal's disposable cursor.
+The separately composed native Inbox surface exposes message send, recipient-only delivery/read
+acknowledgement, recipient-scoped thread list, ordered thread read, and per-message read-state. Send and
+acknowledgement are protected durable mutations. The reads consume only accepted disposable projection
+state and never advance a cursor; unread and read-through derive from append-only recipient facts.
 The Knowledge surface exposes explicit document add/list/get operations. Registration accepts either a
 bounded direct snapshot or a stable static-source reference, persists the resolved snapshot as an immutable
 fact, and authorizes project scope from the persisted project-seat authority. The development composition

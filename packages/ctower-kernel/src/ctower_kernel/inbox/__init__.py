@@ -2,6 +2,9 @@
 
 from ctower_kernel.inbox.interface import Inbox
 from ctower_kernel.inbox.models import (
+    InboxAcknowledgeCommand,
+    InboxAcknowledgementState,
+    InboxAcknowledgeResult,
     InboxPromotionCommand,
     InboxPromotionResult,
     InboxSendCommand,
@@ -11,6 +14,9 @@ from ctower_kernel.inbox.postgres import PostgresInbox
 
 __all__ = [
     "Inbox",
+    "InboxAcknowledgeCommand",
+    "InboxAcknowledgeResult",
+    "InboxAcknowledgementState",
     "InboxPromotionCommand",
     "InboxPromotionResult",
     "InboxSendCommand",

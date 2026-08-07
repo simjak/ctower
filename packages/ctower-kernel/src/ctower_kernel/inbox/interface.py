@@ -6,6 +6,8 @@ from datetime import datetime
 from typing import Protocol
 
 from ctower_kernel.inbox.models import (
+    InboxAcknowledgeCommand,
+    InboxAcknowledgeResult,
     InboxPromotionCommand,
     InboxPromotionResult,
     InboxSendCommand,
@@ -18,6 +20,16 @@ __all__ = ["Inbox"]
 
 
 class _InboxStore(Protocol):
+    def acknowledge(
+        self,
+        actor: Actor,
+        command: InboxAcknowledgeCommand,
+        *,
+        request_digest: bytes,
+        now: datetime,
+        telemetry: TelemetryContext,
+    ) -> InboxAcknowledgeResult | RecordProblem: ...
+
     def send(
         self,
         actor: Actor,
@@ -44,6 +56,19 @@ class Inbox:
 
     def __init__(self, store: _InboxStore) -> None:
         self._store = store
+
+    def acknowledge(
+        self,
+        actor: Actor,
+        command: InboxAcknowledgeCommand,
+        *,
+        request_digest: bytes,
+        now: datetime,
+        telemetry: TelemetryContext,
+    ) -> InboxAcknowledgeResult | RecordProblem:
+        return self._store.acknowledge(
+            actor, command, request_digest=request_digest, now=now, telemetry=telemetry
+        )
 
     def send(
         self,

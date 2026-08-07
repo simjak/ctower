@@ -30,6 +30,8 @@ from ctower_kernel.record.events import (
 )
 from ctower_kernel.record.inbox_events import (
     InboxMessageAppendedPayload,
+    InboxMessageDeliveredPayload,
+    InboxMessageReadPayload,
     InboxParticipant,
     InboxThreadOpenedPayload,
     InboxThreadPromotedToTicketPayload,
@@ -244,6 +246,8 @@ def _vector_payload(
     | PoisonDispositionRecordedPayload
     | InboxThreadOpenedPayload
     | InboxMessageAppendedPayload
+    | InboxMessageDeliveredPayload
+    | InboxMessageReadPayload
     | InboxThreadPromotedToTicketPayload
 ):
     if kind is EventKind.BOOTSTRAP_CREATED:
@@ -292,6 +296,8 @@ def _vector_payload(
     if kind in {
         EventKind.INBOX_THREAD_OPENED,
         EventKind.INBOX_MESSAGE_APPENDED,
+        EventKind.INBOX_MESSAGE_DELIVERED,
+        EventKind.INBOX_MESSAGE_READ,
         EventKind.INBOX_THREAD_PROMOTED_TO_TICKET,
     }:
         return _inbox_vector_payload(kind, payload)
@@ -300,7 +306,13 @@ def _vector_payload(
 
 def _inbox_vector_payload(
     kind: EventKind, payload: dict[str, object]
-) -> InboxThreadOpenedPayload | InboxMessageAppendedPayload | InboxThreadPromotedToTicketPayload:
+) -> (
+    InboxThreadOpenedPayload
+    | InboxMessageAppendedPayload
+    | InboxMessageDeliveredPayload
+    | InboxMessageReadPayload
+    | InboxThreadPromotedToTicketPayload
+):
     if kind is EventKind.INBOX_THREAD_OPENED:
         return InboxThreadOpenedPayload(
             _inbox_participant(cast(dict[str, object], payload["opener"])),
@@ -314,6 +326,17 @@ def _inbox_vector_payload(
             _inbox_participant(cast(dict[str, object], payload["recipient"])),
             _inbox_participant(cast(dict[str, object], payload["sender"])),
             str(payload["text"]),
+            UUID(str(payload["thread_id"])),
+        )
+    if kind in {EventKind.INBOX_MESSAGE_DELIVERED, EventKind.INBOX_MESSAGE_READ}:
+        payload_type = (
+            InboxMessageDeliveredPayload
+            if kind is EventKind.INBOX_MESSAGE_DELIVERED
+            else InboxMessageReadPayload
+        )
+        return payload_type(
+            UUID(str(payload["message_id"])),
+            _inbox_participant(cast(dict[str, object], payload["recipient"])),
             UUID(str(payload["thread_id"])),
         )
     if kind is EventKind.INBOX_THREAD_PROMOTED_TO_TICKET:

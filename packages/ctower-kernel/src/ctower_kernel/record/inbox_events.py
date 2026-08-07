@@ -7,8 +7,11 @@ from dataclasses import dataclass
 from uuid import UUID
 
 __all__ = [
+    "INBOX_EVENT_TYPES",
     "InboxEventPayload",
     "InboxMessageAppendedPayload",
+    "InboxMessageDeliveredPayload",
+    "InboxMessageReadPayload",
     "InboxParticipant",
     "InboxThreadOpenedPayload",
     "InboxThreadPromotedToTicketPayload",
@@ -86,6 +89,40 @@ class InboxMessageAppendedPayload:
 
 
 @dataclass(frozen=True, slots=True)
+class InboxMessageDeliveredPayload:
+    message_id: UUID
+    recipient: InboxParticipant
+    thread_id: UUID
+
+    def __post_init__(self) -> None:
+        _validate_delivery_payload(self.message_id, self.recipient, self.thread_id)
+
+    def to_mapping(self) -> dict[str, object]:
+        return {
+            "message_id": str(self.message_id),
+            "recipient": self.recipient.to_mapping(),
+            "thread_id": str(self.thread_id),
+        }
+
+
+@dataclass(frozen=True, slots=True)
+class InboxMessageReadPayload:
+    message_id: UUID
+    recipient: InboxParticipant
+    thread_id: UUID
+
+    def __post_init__(self) -> None:
+        _validate_delivery_payload(self.message_id, self.recipient, self.thread_id)
+
+    def to_mapping(self) -> dict[str, object]:
+        return {
+            "message_id": str(self.message_id),
+            "recipient": self.recipient.to_mapping(),
+            "thread_id": str(self.thread_id),
+        }
+
+
+@dataclass(frozen=True, slots=True)
 class InboxThreadPromotedToTicketPayload:
     thread_id: UUID
     ticket_id: UUID
@@ -100,7 +137,19 @@ class InboxThreadPromotedToTicketPayload:
 
 
 type InboxEventPayload = (
-    InboxThreadOpenedPayload | InboxMessageAppendedPayload | InboxThreadPromotedToTicketPayload
+    InboxThreadOpenedPayload
+    | InboxMessageAppendedPayload
+    | InboxMessageDeliveredPayload
+    | InboxMessageReadPayload
+    | InboxThreadPromotedToTicketPayload
+)
+
+INBOX_EVENT_TYPES: tuple[tuple[str, type[object]], ...] = (
+    ("thread.opened", InboxThreadOpenedPayload),
+    ("message.appended", InboxMessageAppendedPayload),
+    ("message.delivered", InboxMessageDeliveredPayload),
+    ("message.read", InboxMessageReadPayload),
+    ("thread.promoted_to_ticket", InboxThreadPromotedToTicketPayload),
 )
 
 
@@ -110,6 +159,8 @@ def _validate_identity(payload: object, aggregate_id: UUID) -> None:
             payload,
             InboxThreadOpenedPayload
             | InboxMessageAppendedPayload
+            | InboxMessageDeliveredPayload
+            | InboxMessageReadPayload
             | InboxThreadPromotedToTicketPayload,
         )
         and aggregate_id != payload.thread_id
@@ -127,3 +178,11 @@ def _validate_participants(sender: InboxParticipant, recipient: InboxParticipant
 def _thread_id(value: object) -> None:
     if not isinstance(value, UUID):
         raise TypeError("inbox thread_id must be a UUID")
+
+
+def _validate_delivery_payload(message_id: object, recipient: object, thread_id: object) -> None:
+    if not isinstance(message_id, UUID):
+        raise TypeError("inbox message_id must be a UUID")
+    if not isinstance(recipient, InboxParticipant):
+        raise TypeError("inbox recipient must use InboxParticipant")
+    _thread_id(thread_id)

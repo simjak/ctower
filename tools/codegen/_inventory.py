@@ -6,6 +6,7 @@ __all__: tuple[str, ...] = ()
 
 EXPECTED_OPERATIONS = frozenset(
     {
+        "acknowledgeInboxMessage",
         "addTicketComment",
         "addTicketRelation",
         "addKnowledgeDocument",
@@ -49,6 +50,7 @@ EXPECTED_OPERATIONS = frozenset(
         "prepareCtowerProjectCutover",
         "promoteIntakeEvent",
         "readInboxThread",
+        "readInboxMessageState",
         "recordAttentionFindingDisposition",
         "recordOutboxPoisonDisposition",
         "recordProofEvidence",
@@ -169,6 +171,10 @@ EXPECTED_SCHEMAS = frozenset(
         "KnowledgeDocumentList",
         "KnowledgeScope",
         "InboxMessage",
+        "InboxMessageReadState",
+        "InboxAcknowledgeRequest",
+        "InboxAcknowledgeResult",
+        "InboxReadState",
         "InboxSendRequest",
         "InboxSendResult",
         "InboxThread",

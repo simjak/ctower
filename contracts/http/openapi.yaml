@@ -294,6 +294,46 @@
         }
       }
     },
+    "/v1/inbox/messages/{message_id}/ack": {
+      "post": {
+        "operationId": "acknowledgeInboxMessage",
+        "x-ctower-cli": "inbox ack",
+        "x-ctower-mutation": true,
+        "x-ctower-spool": "allowed",
+        "security": [{"bearerAuth": []}],
+        "parameters": [
+          {
+            "name": "message_id",
+            "in": "path",
+            "required": true,
+            "schema": {"type": "string", "format": "uuid"}
+          },
+          {"$ref": "#/components/parameters/IdempotencyKey"}
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {"schema": {"$ref": "#/components/schemas/InboxAcknowledgeRequest"}}
+          }
+        },
+        "responses": {
+          "202": {
+            "description": "Inbox acknowledgement committed; off-host durability acknowledgement pending",
+            "headers": {"Retry-After": {"$ref": "#/components/headers/RetryAfter"}},
+            "content": {"application/json": {"schema": {"$ref": "#/components/schemas/InboxAcknowledgeResult"}}}
+          },
+          "200": {
+            "description": "Inbox acknowledgement accepted off host",
+            "content": {"application/json": {"schema": {"$ref": "#/components/schemas/InboxAcknowledgeResult"}}}
+          },
+          "401": {"$ref": "#/components/responses/ProblemResponse"},
+          "403": {"$ref": "#/components/responses/ProblemResponse"},
+          "404": {"$ref": "#/components/responses/ProblemResponse"},
+          "409": {"$ref": "#/components/responses/ProblemResponse"},
+          "422": {"$ref": "#/components/responses/ProblemResponse"}
+        }
+      }
+    },
     "/v1/inbox/threads": {
       "get": {
         "operationId": "listInboxThreads",
@@ -333,7 +373,30 @@
           }
         ],
         "responses": {
-          "200": {"description": "Ordered thread messages; advances this recipient's disposable read cursor", "content": {"application/json": {"schema": {"$ref": "#/components/schemas/InboxThread"}}}},
+          "200": {"description": "Ordered thread messages and fact-derived recipient read position", "content": {"application/json": {"schema": {"$ref": "#/components/schemas/InboxThread"}}}},
+          "401": {"$ref": "#/components/responses/ProblemResponse"},
+          "404": {"$ref": "#/components/responses/ProblemResponse"},
+          "422": {"$ref": "#/components/responses/ProblemResponse"}
+        }
+      }
+    },
+    "/v1/inbox/threads/{thread_id}/read-state": {
+      "get": {
+        "operationId": "readInboxMessageState",
+        "x-ctower-cli": "inbox read-state",
+        "x-ctower-mutation": false,
+        "x-ctower-spool": "forbidden",
+        "security": [{"bearerAuth": []}],
+        "parameters": [
+          {
+            "name": "thread_id",
+            "in": "path",
+            "required": true,
+            "schema": {"type": "string", "format": "uuid"}
+          }
+        ],
+        "responses": {
+          "200": {"description": "Per-message append-only delivery and read state", "content": {"application/json": {"schema": {"$ref": "#/components/schemas/InboxReadState"}}}},
           "401": {"$ref": "#/components/responses/ProblemResponse"},
           "404": {"$ref": "#/components/responses/ProblemResponse"},
           "422": {"$ref": "#/components/responses/ProblemResponse"}
@@ -3104,6 +3167,8 @@
               "i1-7c-required",
               "idempotency-conflict",
               "inbox-already-promoted",
+              "inbox-acknowledgement-not-advancing",
+              "inbox-message-recipient-mismatch",
               "inbox-recipient-ambiguous",
               "inbox-recipient-not-found",
               "inbox-recipient-self",
@@ -3338,6 +3403,28 @@
           "text": {"type": "string", "minLength": 1, "maxLength": 65536}
         }
       },
+      "InboxAcknowledgeRequest": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["state"],
+        "properties": {"state": {"type": "string", "enum": ["delivered", "read"]}}
+      },
+      "InboxAcknowledgeResult": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["command_id", "delivered_at", "durability_state", "event_ids", "message_id", "read_at", "state", "thread_id", "thread_version"],
+        "properties": {
+          "command_id": {"type": "string", "format": "uuid"},
+          "delivered_at": {"type": "string", "format": "date-time"},
+          "durability_state": {"$ref": "#/components/schemas/DurabilityState"},
+          "event_ids": {"type": "array", "minItems": 1, "maxItems": 2, "items": {"type": "string", "format": "uuid"}},
+          "message_id": {"type": "string", "format": "uuid"},
+          "read_at": {"type": ["string", "null"], "format": "date-time"},
+          "state": {"type": "string", "enum": ["delivered", "read"]},
+          "thread_id": {"type": "string", "format": "uuid"},
+          "thread_version": {"type": "integer", "minimum": 3}
+        }
+      },
       "InboxSendResult": {
         "type": "object",
         "additionalProperties": false,
@@ -3400,7 +3487,31 @@
           "messages": {"type": "array", "minItems": 1, "items": {"$ref": "#/components/schemas/InboxMessage"}},
           "participants": {"type": "array", "minItems": 2, "maxItems": 2, "items": {"type": "string", "pattern": "^[a-z][a-z0-9._-]{1,95}$"}},
           "promoted_ticket_id": {"type": ["string", "null"], "format": "uuid"},
-          "read_through_position": {"type": "integer", "minimum": 1},
+          "read_through_position": {"type": "integer", "minimum": 0},
+          "thread_id": {"type": "string", "format": "uuid"}
+        }
+      },
+      "InboxMessageReadState": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["delivered_at", "delivered_event_id", "message_id", "position", "read_at", "read_event_id", "recipient", "state"],
+        "properties": {
+          "delivered_at": {"type": ["string", "null"], "format": "date-time"},
+          "delivered_event_id": {"type": ["string", "null"], "format": "uuid"},
+          "message_id": {"type": "string", "format": "uuid"},
+          "position": {"type": "integer", "minimum": 1},
+          "read_at": {"type": ["string", "null"], "format": "date-time"},
+          "read_event_id": {"type": ["string", "null"], "format": "uuid"},
+          "recipient": {"type": "string", "pattern": "^[a-z][a-z0-9._-]{1,95}$"},
+          "state": {"type": "string", "enum": ["sent", "delivered", "read"]}
+        }
+      },
+      "InboxReadState": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["messages", "thread_id"],
+        "properties": {
+          "messages": {"type": "array", "minItems": 1, "items": {"$ref": "#/components/schemas/InboxMessageReadState"}},
           "thread_id": {"type": "string", "format": "uuid"}
         }
       },
