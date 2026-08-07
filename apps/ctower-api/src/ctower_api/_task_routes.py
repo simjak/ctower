@@ -28,6 +28,7 @@ from ctower_client.models import (
     PriorityChangeRequest,
     RelationRequest,
     ReopenIntent,
+    ReviewDispatchConsumeRequest,
     TicketIntentRequest,
     UnblockIntent,
     WorkflowStartRequest,
@@ -46,6 +47,7 @@ from ctower_kernel.work import (
     Block,
     ChangeAssignment,
     ChangePriority,
+    ConsumeReviewDispatch,
     Defer,
     RelationKind,
     Reopen,
@@ -72,6 +74,7 @@ def install_task_routes(
 
     _install_priority(app, access, record, work, recorder)
     _install_assignment(app, access, record, work, recorder)
+    _install_review_dispatch_consumption(app, access, record, work, recorder)
     _install_assignment_list(app, access, work, recorder)
     _install_intent(app, access, record, work, recorder)
     _install_relation(app, access, record, work, recorder)
@@ -162,6 +165,44 @@ def _install_assignment(
                     AssignmentKind(payload.assignment_kind.value),
                     payload.to_principal_id,
                     payload.scope_ref,
+                ),
+                telemetry=telemetry,
+            ),
+            actor,
+            command_id,
+            telemetry,
+        )
+
+
+def _install_review_dispatch_consumption(
+    app: FastAPI, access: Access, record: Record, work: Work, recorder: TelemetryRecorder
+) -> None:
+    @app.post("/v1/tickets/{ticket_id}/workflow/review-dispatches/{effect_id}/consume")
+    async def consume_review_dispatch(
+        ticket_id: str, effect_id: str, request: Request
+    ) -> JSONResponse:
+        parsed = await _parse(access, recorder, request, ticket_id, ReviewDispatchConsumeRequest)
+        if isinstance(parsed, JSONResponse):
+            return parsed
+        actor, ticket, command_id, payload, telemetry = parsed
+        try:
+            effect = _uuid(effect_id)
+        except ValueError:
+            return _problem_response(_validation_problem())
+        return _work_response(
+            record,
+            work.execute(
+                actor,
+                ConsumeReviewDispatch(
+                    command_id,
+                    ticket,
+                    payload.expected_version,
+                    payload.reason,
+                    effect,
+                    payload.reviewer_principal_id,
+                    payload.author_family,
+                    payload.reviewer_family,
+                    payload.crew_name,
                 ),
                 telemetry=telemetry,
             ),

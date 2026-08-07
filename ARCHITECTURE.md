@@ -178,7 +178,10 @@ generated Python client -> FastAPI Adapter -> Access / Work -----> Record -> Pos
 
 It covers one-use first-tenant bootstrap; tenant-scoped tickets; protected custody; priority, assignment,
 lifecycle/admission, blocker, and relation facts; explicit immutable Workflow/policy pins; criteria,
-evidence, and verdict proof; interpreted four-stage transitions; proof-gated resolve/close; linked cursor
+evidence, and verdict proof; interpreted graph transitions; declared review-stage entry intents carrying the
+current PR, proof lenses, author model reference, execution-policy pin, and a
+`different_from_author` family rule; Work-owned substrate consumption as a reviewer assignment; linked
+verdict readback and a close-time completeness check; proof-gated resolve/close; linked cursor
 audit; two-party native Inbox threads with ordered messages, per-recipient unread cursors, and immutable
 thread-to-ticket links visible from Board cards; append-only recorded work sessions carrying seat, crew, model, harness, worktree, branch, the
 authored `dispatched|briefed|working|gated` lifecycle, and a Record-computed duration beside
@@ -191,9 +194,10 @@ the cursor; the separately launched same-artifact worker performs catch-up. Ever
 remains `durability_pending`; a verifier-owned two-PostgreSQL fixture proves the named-standby ACK path,
 including complete receipt-bound finalization, standby-read confirmation, promotion ambiguity, and typed
 degradation for unreadable live evidence. Its no-login evidence role is quarantined before adoption and
-retains neither schema-CREATE nor role-assumption paths after its two fixed probes exist. There is no
-configured production off-host target, real fixed-job effects, backup/restore proof, web surface, or
-production deployment.
+retains neither schema-CREATE nor role-assumption paths after its two fixed probes exist. The review intent
+is an append-only control-plane fact: ctower records emission, consumption, and verdict linkage but never
+launches the reviewer. There is no configured production off-host target, real fixed-job execution,
+backup/restore proof, web surface, or production deployment.
 
 ### I1: co-located trust spine
 

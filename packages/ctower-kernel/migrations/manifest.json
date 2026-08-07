@@ -1,10 +1,10 @@
 {
   "schema": "ctower.migrations/v3",
   "adoption_baseline": {
-    "through": "0048_native_inbox.sql",
-    "schema_sha256": "sha256:8ce8ebeaaefe434ae7897a636022b85c46c93b4e3f597c903e0c65a825ad5b8f",
+    "through": "0049_review_dispatch_effect.sql",
+    "schema_sha256": "sha256:e55b476463e6eade0bc1cf2c48487ca7d9c802e1e60d8956ce05117403e47762",
     "semantic_checks": "ctower.pre-ledger/v1",
-    "schema_object_sum256": "sum256:4ddd8910b85befeb99bbb59bc8773707f989301ea8f76774cabdcf9a6da138f0"
+    "schema_object_sum256": "sum256:b5b1322bd6d6fa7a43612ffb23124bb9817e20fd6d634d8c9637b0ed619febf0"
   },
   "migrations": [
     {
@@ -458,6 +458,15 @@
       "forward_test": "pytest:tests/acceptance/increment-1/test_inbox.py::test_native_inbox_cli_roundtrip_and_promotion_links_both_ways",
       "rollback_or_forward_compensation": "Preserve append-only inbox messages, promotion links, canonical events, command results, and outbox rows; rebuild disposable inbox and Board projections or append reviewed forward compensation, never edit or delete an accepted inbox fact.",
       "backup_checkpoint": "Before applying to a nonempty installation, capture inbox thread, message, promotion-link, event, outbox, and projection counts grouped by tenant plus a verified database backup."
+    },
+    {
+      "path": "0049_review_dispatch_effect.sql",
+      "sha256": "sha256:7a3ecbf2ca801c01baf19a6eb05e51e70cbe726ebda67319666ee4bd69da7f20",
+      "minimum_service_version": "0.0.0",
+      "maximum_service_version": "0.0.0",
+      "forward_test": "pytest:tests/acceptance/increment-1/test_review_dispatch_effect.py::test_review_transition_dispatch_consumption_and_verdict_link",
+      "rollback_or_forward_compensation": "Preserve emitted dispatch intents, lens sets, consumptions, reviewer assignments, linked verdicts, canonical events, command results, and outbox rows; append reviewed forward compensation and never edit or delete an accepted review-routing fact.",
+      "backup_checkpoint": "Before applying to a nonempty installation, capture workflow run, proof bundle, verdict, assignment, event, command-result, and outbox counts grouped by tenant plus a verified database backup; all four new tables start empty."
     }
   ]
 }

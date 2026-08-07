@@ -30,6 +30,7 @@ from ctower_client.models import (
     RelationRequest,
     ReopenIntent,
     ResolveCloseRequest,
+    ReviewDispatchConsumeRequest,
     SourceReference,
     TicketCommentRequest,
     TicketCreateRequest,
@@ -326,6 +327,22 @@ def _resolve(arguments: argparse.Namespace) -> MutationPayload:
     return _ticket_payload(arguments, request)
 
 
+def _consume_review_dispatch(arguments: argparse.Namespace) -> MutationPayload:
+    request = ReviewDispatchConsumeRequest(
+        expected_version=cast(int, arguments.expected_version),
+        reason=cast(str, arguments.reason),
+        reviewer_principal_id=cast(UUID, arguments.reviewer_principal_id),
+        author_family=cast(str, arguments.author_family),
+        reviewer_family=cast(str, arguments.reviewer_family),
+        crew_name=cast(str, arguments.crew_name),
+    )
+    return _payload(
+        request,
+        ticket_id=str(cast(UUID, arguments.ticket_id)),
+        effect_id=str(cast(UUID, arguments.effect_id)),
+    )
+
+
 def _ticket_payload(arguments: argparse.Namespace, request: BaseModel) -> MutationPayload:
     return _payload(request, ticket_id=str(cast(UUID, arguments.ticket_id)))
 
@@ -365,6 +382,10 @@ def _audit(client: CtowerClient, arguments: argparse.Namespace) -> BaseModel:
     )
 
 
+def _review_dispatches(client: CtowerClient, arguments: argparse.Namespace) -> BaseModel:
+    return client.list_review_dispatch_effects(cast(UUID, arguments.ticket_id))
+
+
 _MUTATION_BUILDERS: dict[str, Callable[[argparse.Namespace], MutationPayload]] = {
     "ticket capture": _capture,
     "ticket create": _capture,
@@ -386,6 +407,7 @@ _MUTATION_BUILDERS: dict[str, Callable[[argparse.Namespace], MutationPayload]] =
     "ticket workflow start": _workflow_start,
     "ticket transition": _transition,
     "ticket resolve": _resolve,
+    "ticket review-dispatch consume": _consume_review_dispatch,
 }
 
 _QUERY_HANDLERS: dict[str, Callable[[CtowerClient, argparse.Namespace], BaseModel]] = {
@@ -394,4 +416,5 @@ _QUERY_HANDLERS: dict[str, Callable[[CtowerClient, argparse.Namespace], BaseMode
     "ticket timeline": _timeline,
     "ticket assignments": _assignments,
     "ticket audit": _audit,
+    "ticket review-dispatch list": _review_dispatches,
 }

@@ -21,6 +21,7 @@ from ctower_kernel.workflow import (
 )
 from ctower_kernel.workflow._event_sql import append_change
 from ctower_kernel.workflow._postgres_sql import ProofGate
+from ctower_kernel.workflow._review_dispatch_sql import review_dispatches_complete
 
 __all__: tuple[str, ...] = ()
 
@@ -199,6 +200,30 @@ def _refusal(
             "workflow-not-terminal",
             409,
             "Workflow terminal state required",
+            current_version=current_version,
+        )
+    return _completion_refusal(
+        proof_gate, actor, command, run, connection, current_version=current_version
+    )
+
+
+def _completion_refusal(
+    proof_gate: ProofGate,
+    actor: WorkflowActor,
+    command: ResolveClose,
+    run: dict[str, object],
+    connection: psycopg.Connection[dict[str, object]],
+    *,
+    current_version: int,
+) -> RecordProblem | None:
+    if not review_dispatches_complete(
+        connection, actor.tenant_id, cast(UUID, run["workflow_run_id"])
+    ):
+        return _problem(
+            command,
+            "review-dispatch-incomplete",
+            409,
+            "Review dispatch consumption and verdict links are incomplete",
             current_version=current_version,
         )
     if not proof_gate.is_current(connection, actor.tenant_id, command.ticket_id):

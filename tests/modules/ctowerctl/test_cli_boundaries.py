@@ -153,6 +153,40 @@ def test_explicit_handlers_cover_every_generated_operation_class() -> None:
     }
 
 
+def test_review_dispatch_commands_parse_the_exact_effect_and_routing_facts() -> None:
+    ticket_id = uuid4()
+    effect_id = uuid4()
+    reviewer_id = uuid4()
+    listed = parse_arguments(["ticket", "review-dispatch", "list", str(ticket_id)])
+    consumed = parse_arguments(
+        [
+            "ticket",
+            "review-dispatch",
+            "consume",
+            str(ticket_id),
+            str(effect_id),
+            "--expected-version",
+            "3",
+            "--reason",
+            "Independent review routing",
+            "--reviewer-principal-id",
+            str(reviewer_id),
+            "--author-family",
+            "codex",
+            "--reviewer-family",
+            "claude",
+            "--crew-name",
+            "review-r347",
+        ]
+    )
+
+    assert listed.cli_name == "ticket review-dispatch list"
+    assert listed.ticket_id == ticket_id
+    assert consumed.cli_name == "ticket review-dispatch consume"
+    assert consumed.effect_id == effect_id
+    assert consumed.reviewer_principal_id == reviewer_id
+
+
 def test_project_seat_credential_commands_are_strict_and_unspoolable() -> None:
     command_id = uuid4()
     issue = parse_arguments(

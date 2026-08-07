@@ -1,6 +1,6 @@
 """DO NOT EDIT: generated file; regenerate from declared inputs.
 
-Authored contract digest: sha256:58c506c7dc1755f416adb38de169d6a52c2afbb898b67c8c6ed5caf072ac15ec
+Authored contract digest: sha256:d246e6d84a56da02401fda3c162c4416e0e82e986cd7100eb22538d424318c97
 """
 
 from __future__ import annotations
@@ -227,6 +227,19 @@ OPERATIONS = MappingProxyType(
             principal='operator',
             refusal_only=True,
         ),
+        "consumeReviewDispatchEffect": OperationSpec(
+            operation_id="consumeReviewDispatchEffect",
+            client_method="consume_review_dispatch_effect",
+            method="POST",
+            path="/v1/tickets/{ticket_id}/workflow/review-dispatches/{effect_id}/consume",
+            request_model=_models.ReviewDispatchConsumeRequest,
+            response_model=_models.WorkReceipt,
+            cli_names=('ticket review-dispatch consume',),
+            mutation=True,
+            spool_policy=SpoolPolicy.ALLOWED,
+            principal=None,
+            refusal_only=False,
+        ),
         "createCtowerProjectImportRun": OperationSpec(
             operation_id="createCtowerProjectImportRun",
             client_method="create_ctower_project_import_run",
@@ -446,6 +459,19 @@ OPERATIONS = MappingProxyType(
             mutation=False,
             spool_policy=SpoolPolicy.FORBIDDEN,
             principal='authenticated',
+            refusal_only=False,
+        ),
+        "listReviewDispatchEffects": OperationSpec(
+            operation_id="listReviewDispatchEffects",
+            client_method="list_review_dispatch_effects",
+            method="GET",
+            path="/v1/tickets/{ticket_id}/workflow/review-dispatches",
+            request_model=None,
+            response_model=_models.ReviewDispatchEffectList,
+            cli_names=('ticket review-dispatch list',),
+            mutation=False,
+            spool_policy=SpoolPolicy.FORBIDDEN,
+            principal=None,
             refusal_only=False,
         ),
         "listTicketAssignments": OperationSpec(
@@ -783,6 +809,7 @@ CLI_OPERATIONS = MappingProxyType(
         "ticket assign": OPERATIONS["changeTicketAssignment"],
         "ticket prioritize": OPERATIONS["changeTicketPriority"],
         "migration ctower-project commit-development-epoch": OPERATIONS["commitCtowerProjectDevelopmentEpoch"],
+        "ticket review-dispatch consume": OPERATIONS["consumeReviewDispatchEffect"],
         "migration ctower-project inventory": OPERATIONS["createCtowerProjectImportRun"],
         "ticket capture": OPERATIONS["createTicket"],
         "ticket create": OPERATIONS["createTicket"],
@@ -802,6 +829,7 @@ CLI_OPERATIONS = MappingProxyType(
         "inbox list": OPERATIONS["listInboxThreads"],
         "project events": OPERATIONS["listProjectEvents"],
         "session project": OPERATIONS["listProjectSessions"],
+        "ticket review-dispatch list": OPERATIONS["listReviewDispatchEffects"],
         "ticket assignments": OPERATIONS["listTicketAssignments"],
         "ticket audit": OPERATIONS["listTicketAuditEvents"],
         "session ticket": OPERATIONS["listTicketSessions"],

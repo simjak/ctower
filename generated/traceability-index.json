@@ -190,7 +190,9 @@
     "AC-EVD-04": [
       "contracts/execution/gate-policy.schema.json",
       "contracts/http/openapi.yaml",
+      "contracts/workflow/workflow-v2.schema.json",
       "packages/ctower-kernel/migrations/0004_proof_workflow.sql",
+      "packages/ctower-kernel/migrations/0049_review_dispatch_effect.sql",
       "packs/policies/gates/trust-spine-four-stage-v1.yaml"
     ],
     "AC-EVD-06": [
@@ -558,6 +560,8 @@
     ],
     "AC-WF-06": [
       "contracts/execution/gate-policy.schema.json",
+      "contracts/workflow/workflow-v2.schema.json",
+      "packages/ctower-kernel/migrations/0049_review_dispatch_effect.sql",
       "packs/policies/gates/software-factory-v1.yaml",
       "packs/policies/gates/trust-spine-four-stage-v1.yaml"
     ],
@@ -616,7 +620,8 @@
       "packages/ctower-kernel/migrations/0032_thread_first_intake.sql",
       "packages/ctower-kernel/migrations/0035_board_source_lookup.sql",
       "packages/ctower-kernel/migrations/0040_project_scoped_reads.sql",
-      "packages/ctower-kernel/migrations/0048_native_inbox.sql"
+      "packages/ctower-kernel/migrations/0048_native_inbox.sql",
+      "packages/ctower-kernel/migrations/0049_review_dispatch_effect.sql"
     ],
     "INV-04": [
       "contracts/domain/events/event-envelope.schema.json",
@@ -677,7 +682,9 @@
     "INV-19": [
       "contracts/execution/gate-policy.schema.json",
       "contracts/http/openapi.yaml",
+      "contracts/workflow/workflow-v2.schema.json",
       "packages/ctower-kernel/migrations/0004_proof_workflow.sql",
+      "packages/ctower-kernel/migrations/0049_review_dispatch_effect.sql",
       "packs/policies/gates/software-factory-v1.yaml",
       "packs/policies/gates/trust-spine-four-stage-v1.yaml"
     ],
@@ -782,6 +789,8 @@
     ],
     "INV-43": [
       "contracts/workflow/review-plan.schema.json",
+      "contracts/workflow/workflow-v2.schema.json",
+      "packages/ctower-kernel/migrations/0049_review_dispatch_effect.sql",
       "packs/policies/execution/software-factory-v1.yaml",
       "packs/policies/gates/software-factory-v1.yaml"
     ],
@@ -1138,7 +1147,8 @@
       "packages/ctower-kernel/migrations/0041_recorded_work_sessions.sql",
       "packages/ctower-kernel/migrations/0046_human_oidc_identity.sql",
       "packages/ctower-kernel/migrations/0047_board_source_index.sql",
-      "packages/ctower-kernel/migrations/0048_native_inbox.sql"
+      "packages/ctower-kernel/migrations/0048_native_inbox.sql",
+      "packages/ctower-kernel/migrations/0049_review_dispatch_effect.sql"
     ],
     "SPEC#portfolio-shadow-onboarding": [
       "packages/ctower-kernel/migrations/0047_board_source_index.sql"
@@ -1202,6 +1212,8 @@
     ],
     "SPEC#review-rounds-lineages-generations-and-budgets": [
       "contracts/workflow/review-plan.schema.json",
+      "contracts/workflow/workflow-v2.schema.json",
+      "packages/ctower-kernel/migrations/0049_review_dispatch_effect.sql",
       "packs/policies/execution/software-factory-v1.yaml",
       "packs/policies/gates/software-factory-v1.yaml"
     ],
@@ -1309,7 +1321,9 @@
     ],
     "SPEC#versioned-workflow-and-execution-policy-contract": [
       "contracts/execution/execution-policy.schema.json",
+      "contracts/workflow/workflow-v2.schema.json",
       "contracts/workflow/workflow.schema.json",
+      "packages/ctower-kernel/migrations/0049_review_dispatch_effect.sql",
       "packs/workflows/engineering.software-factory/v1.yaml"
     ],
     "SPEC#workflow-and-verification-architecture": [

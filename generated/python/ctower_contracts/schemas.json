@@ -57,6 +57,7 @@
     "ctower.traceability-sources/v1": "contracts/traceability/traceability-sources.schema.json",
     "ctower.versioned-component/v1": "contracts/components/versioned-component.schema.json",
     "ctower.workflow/v1": "contracts/workflow/workflow.schema.json",
+    "ctower.workflow/v2": "contracts/workflow/workflow-v2.schema.json",
     "ctower.workspace/v1": "contracts/components/workspace.schema.json",
     "https://ctower.dev/contracts/compatibility/matrix-input/v1": "contracts/compatibility/matrix-input.schema.json",
     "https://ctower.dev/contracts/compatibility/matrix-result/v1": "contracts/compatibility/matrix-result.schema.json",
@@ -105,6 +106,7 @@
     "https://ctower.invalid/contracts/execution/gate-policy.schema.json": "contracts/execution/gate-policy.schema.json",
     "https://ctower.invalid/contracts/traceability/traceability-sources.schema.json": "contracts/traceability/traceability-sources.schema.json",
     "https://ctower.invalid/contracts/workflow/review-plan.schema.json": "contracts/workflow/review-plan.schema.json",
+    "https://ctower.invalid/contracts/workflow/workflow-v2.schema.json": "contracts/workflow/workflow-v2.schema.json",
     "https://ctower.invalid/contracts/workflow/workflow.schema.json": "contracts/workflow/workflow.schema.json",
     "https://ctower.local/contracts/bootstrap/first-tenant-request.schema.json": "contracts/bootstrap/first-tenant-request.schema.json",
     "https://ctower.local/contracts/company/company-bundle.schema.json": "contracts/company/company-bundle.schema.json",
@@ -13832,6 +13834,190 @@
       "title": "WorkflowDefinition",
       "type": "object"
     },
+    "contracts/workflow/workflow-v2.schema.json": {
+      "$defs": {
+        "activityClass": {
+          "enum": [
+            "work",
+            "verification"
+          ]
+        },
+        "entryEffect": {
+          "additionalProperties": false,
+          "properties": {
+            "kind": {
+              "const": "review_crew_dispatch"
+            }
+          },
+          "required": [
+            "kind"
+          ],
+          "type": "object"
+        },
+        "failureRoute": {
+          "additionalProperties": false,
+          "properties": {
+            "failure_class_ref": {
+              "$ref": "#/$defs/versionedReference"
+            },
+            "from": {
+              "$ref": "#/$defs/stableKey"
+            },
+            "to": {
+              "$ref": "#/$defs/stableKey"
+            }
+          },
+          "required": [
+            "from",
+            "failure_class_ref",
+            "to"
+          ],
+          "type": "object"
+        },
+        "stableKey": {
+          "pattern": "^[a-z][a-z0-9._-]*$",
+          "type": "string"
+        },
+        "stage": {
+          "additionalProperties": false,
+          "properties": {
+            "activity_class": {
+              "$ref": "#/$defs/activityClass"
+            },
+            "entry_effects": {
+              "items": {
+                "$ref": "#/$defs/entryEffect"
+              },
+              "type": "array",
+              "uniqueItems": true
+            },
+            "key": {
+              "$ref": "#/$defs/stableKey"
+            }
+          },
+          "required": [
+            "key",
+            "activity_class",
+            "entry_effects"
+          ],
+          "type": "object"
+        },
+        "transition": {
+          "additionalProperties": false,
+          "properties": {
+            "from": {
+              "$ref": "#/$defs/stableKey"
+            },
+            "predicate_ref": {
+              "$ref": "#/$defs/versionedReference"
+            },
+            "to": {
+              "$ref": "#/$defs/stableKey"
+            }
+          },
+          "required": [
+            "from",
+            "to",
+            "predicate_ref"
+          ],
+          "type": "object"
+        },
+        "versionedReference": {
+          "pattern": "^[a-z][a-z0-9._-]*@[1-9][0-9]*$",
+          "type": "string"
+        }
+      },
+      "$id": "https://ctower.invalid/contracts/workflow/workflow-v2.schema.json",
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "additionalProperties": false,
+      "description": "Domain-neutral workflow graph metadata with declared stage-entry effects.",
+      "properties": {
+        "failure_routes": {
+          "items": {
+            "$ref": "#/$defs/failureRoute"
+          },
+          "type": "array"
+        },
+        "initial_stage": {
+          "$ref": "#/$defs/stableKey"
+        },
+        "input_contract": {
+          "$ref": "#/$defs/stableKey"
+        },
+        "key": {
+          "$ref": "#/$defs/stableKey"
+        },
+        "note": {
+          "minLength": 1,
+          "type": "string"
+        },
+        "policy_refs": {
+          "additionalProperties": false,
+          "properties": {
+            "execution": {
+              "$ref": "#/$defs/versionedReference"
+            },
+            "gates": {
+              "$ref": "#/$defs/versionedReference"
+            }
+          },
+          "required": [
+            "execution",
+            "gates"
+          ],
+          "type": "object"
+        },
+        "revision": {
+          "minimum": 1,
+          "type": "integer"
+        },
+        "schema": {
+          "const": "ctower.workflow/v2"
+        },
+        "stages": {
+          "items": {
+            "$ref": "#/$defs/stage"
+          },
+          "minItems": 1,
+          "type": "array",
+          "uniqueItems": true
+        },
+        "status": {
+          "enum": [
+            "draft",
+            "staged",
+            "published",
+            "superseded",
+            "revoked"
+          ]
+        },
+        "terminal_contract": {
+          "$ref": "#/$defs/stableKey"
+        },
+        "transitions": {
+          "items": {
+            "$ref": "#/$defs/transition"
+          },
+          "type": "array"
+        }
+      },
+      "required": [
+        "schema",
+        "status",
+        "key",
+        "revision",
+        "initial_stage",
+        "input_contract",
+        "terminal_contract",
+        "policy_refs",
+        "stages",
+        "transitions",
+        "failure_routes",
+        "note"
+      ],
+      "title": "Workflow v2",
+      "type": "object"
+    },
     "contracts/workflow/workflow.schema.json": {
       "$defs": {
         "activityClass": {
@@ -14368,6 +14554,11 @@
       "id": "https://ctower.local/contracts/workflow/workflow-definition.schema.json",
       "path": "contracts/workflow/workflow-definition.schema.json",
       "sha256": "sha256:c0a118fa1471f134b5bd36ff7bbbbf884fc8e9f4d30dbe69d11e081562e4180b"
+    },
+    {
+      "id": "https://ctower.invalid/contracts/workflow/workflow-v2.schema.json",
+      "path": "contracts/workflow/workflow-v2.schema.json",
+      "sha256": "sha256:852a1c12ad8f3c52899d20f7db8fd3b80fae67a9b28971a29f97121d23f5efa3"
     },
     {
       "id": "https://ctower.invalid/contracts/workflow/workflow.schema.json",

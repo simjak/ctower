@@ -12,9 +12,10 @@ composition.
 
 The development-only CP-1 consumer subset keeps graph and transition authority under `workflow/`, owns its
 execution, gate, and evidence policy schemas under the single `execution/` home, and owns the strict
-current-proof/deferred-source manifest under `evidence/`. These schemas exercise only the four-stage local
-fixture. They do not activate remote execution, images, effects, executable extensions, or off-host
-durability.
+current-proof/deferred-source manifest under `evidence/`. Workflow v2 adds declared stage-entry
+review-dispatch intents, while the HTTP contract exposes their substrate consumption and ticket-visible
+verdict join. This records control-plane intent only; it does not activate remote execution, images,
+executable extensions, or off-host durability.
 
 The CP2 task-management contracts under `domain/task-management/` fix typed Work commands, five assignment
 kinds, the six-lane Board view and watermark health, and a deterministic priority-aging selection policy.
@@ -29,4 +30,4 @@ The I1.4 CompanyBundle contract under `company/` carries strict portable desired
 complete VersionedComponent envelopes, inline non-secret payloads, assignments, and secret-reference names.
 Category schemas include the current configuration kinds, while generated `ctower_contracts` packages them
 as a local-only runtime resource with network/path-escape `$ref` refusal. Contract presence does not
-activate runners, effects, external targets, or production configuration.
+activate runners, executable effects, external targets, or production configuration.

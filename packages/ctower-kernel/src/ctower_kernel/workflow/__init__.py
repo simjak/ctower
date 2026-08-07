@@ -3,6 +3,8 @@
 from ctower_kernel.workflow.interface import (
     ActivityClass,
     ResolveClose,
+    ReviewDispatchConsumption,
+    ReviewDispatchEffect,
     Stage,
     Transition,
     Workflow,
@@ -11,6 +13,7 @@ from ctower_kernel.workflow.interface import (
     WorkflowComponentResolver,
     WorkflowContextSnapshot,
     WorkflowDecision,
+    WorkflowEntryEffect,
     WorkflowGraph,
     WorkflowMutation,
     WorkflowReceipt,
@@ -20,6 +23,8 @@ from ctower_kernel.workflow.interface import (
 __all__ = [
     "ActivityClass",
     "ResolveClose",
+    "ReviewDispatchConsumption",
+    "ReviewDispatchEffect",
     "Stage",
     "Transition",
     "Workflow",
@@ -28,6 +33,7 @@ __all__ = [
     "WorkflowComponentResolver",
     "WorkflowContextSnapshot",
     "WorkflowDecision",
+    "WorkflowEntryEffect",
     "WorkflowGraph",
     "WorkflowMutation",
     "WorkflowReceipt",

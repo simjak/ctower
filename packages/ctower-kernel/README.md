@@ -6,8 +6,10 @@ bootstrap authority; atomic Postgres command/event/outbox persistence; ticket li
 custody, assignment, blocker, relation, and typed-intent policy; universal component/bundle
 validation/planning plus an atomic future-only Catalog pointer; server-pinned frozen criteria, digest-bound
 evidence, protected verdicts and selective
-invalidation; explicitly pinned legal graph movement plus proof-gated atomic resolve/close that releases
-every current-episode ownership interval; and a disposable six-lane
+invalidation; explicitly pinned legal graph movement; declared stage-entry review-dispatch intents whose
+PR, proof lenses, routing-policy pin, independent-family rule, substrate consumption, and linked verdicts
+remain visible on the ticket; proof-gated atomic resolve/close that also rejects incomplete dispatch joins
+and releases every current-episode ownership interval; and a disposable six-lane
 Board fold over accepted outbox records; immutable delivery attempts, poison, deduplicated Attention findings,
 canonical acceptance-gated recovery dispositions; fixed Routine occurrences/jobs with event/result/outbox
 lineage; independently attributable health; and a project-scoped typed event feed whose exact kind set is
@@ -36,8 +38,9 @@ cannot mutate authority. Runtime materializes only the three authored fixed-oper
 dispatch them. The neutral Object port is shared by injected Proof and Catalog capabilities; Proof retains
 digest-bound inline/external object metadata, safe backfill, and durable erasure tombstones without owning
 the generic protocol. Record owns immutable backup/anchor/inventory/restore evidence and exact
-installation/report enablement policy. The local recovery checkpoint does not activate production
-objects, backups, effects, or external targets; Catalog declarations do not activate Effects, synthetic
+installation/report enablement policy. Review dispatch is intent-only: the kernel never launches the
+reviewer. The local recovery checkpoint does not activate production objects, backups, executable effects,
+or external targets; Catalog declarations do not activate Effects, synthetic
 handlers, or the remaining I1/I2 runtimes.
 CompanyBundle validate, plan, and export remain authenticated read operations, including for Commander,
 while apply requires current operator/platform-administrator authority. Apply resolves exact

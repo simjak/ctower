@@ -35,6 +35,7 @@ __all__ = [
     "Block",
     "ChangeAssignment",
     "ChangePriority",
+    "ConsumeReviewDispatch",
     "Defer",
     "RelationKind",
     "Reopen",
@@ -49,6 +50,7 @@ __all__ = [
 
 PRIORITIES = frozenset({"P0", "P1", "P2"})
 _PROJECT_KEY = re.compile(r"^[a-z][a-z0-9-]{2,63}$")
+_STABLE_FAMILY = re.compile(r"^[a-z][a-z0-9._-]{1,95}$")
 MAX_REASON_LENGTH = 500
 
 
@@ -116,6 +118,27 @@ class ChangeAssignment(WorkMutation):
             "assignment_kind": self.assignment_kind.value,
             "scope_ref": self.scope_ref,
             "to_principal_id": str(self.to_principal_id),
+        }
+
+
+@dataclass(frozen=True, slots=True)
+class ConsumeReviewDispatch(WorkMutation):
+    """Record the executing substrate's reviewer routing decision."""
+
+    effect_id: UUID
+    reviewer_principal_id: UUID
+    author_family: str
+    reviewer_family: str
+    crew_name: str
+
+    def request_payload(self) -> dict[str, object]:
+        return {
+            **self._payload("consume_review_dispatch"),
+            "author_family": self.author_family,
+            "crew_name": self.crew_name,
+            "effect_id": str(self.effect_id),
+            "reviewer_family": self.reviewer_family,
+            "reviewer_principal_id": str(self.reviewer_principal_id),
         }
 
 
@@ -193,7 +216,15 @@ class AddRelation(WorkMutation):
 
 
 type WorkCommand = (
-    ChangePriority | ChangeAssignment | Admit | Defer | Block | Unblock | Reopen | AddRelation
+    ChangePriority
+    | ChangeAssignment
+    | ConsumeReviewDispatch
+    | Admit
+    | Defer
+    | Block
+    | Unblock
+    | Reopen
+    | AddRelation
 )
 
 
@@ -493,14 +524,24 @@ def _work_refusal(actor: Actor, command: WorkCommand) -> RecordProblem | None:
         or len(command.reason) > MAX_REASON_LENGTH
     ):
         return _work_problem(command, "validation-error", 422, "Invalid Work command")
-    if isinstance(command, ChangePriority):
-        priority_refusal = _priority_refusal(actor, command)
-        if priority_refusal is not None:
-            return priority_refusal
-    if isinstance(command, ChangeAssignment):
-        return _assignment_refusal(command)
+    command_refusal = _typed_command_refusal(actor, command)
+    if command_refusal is not None:
+        return command_refusal
     if isinstance(command, Reopen) and command.priority_policy != "carry_forward":
         return _work_problem(command, "validation-error", 422, "Unsupported priority policy")
+    return None
+
+
+def _typed_command_refusal(actor: Actor, command: WorkCommand) -> RecordProblem | None:
+    if isinstance(command, ChangePriority):
+        return _priority_refusal(actor, command)
+    if isinstance(command, ChangeAssignment):
+        return _assignment_refusal(command)
+    if isinstance(command, ConsumeReviewDispatch) and any(
+        _STABLE_FAMILY.fullmatch(value) is None
+        for value in (command.author_family, command.reviewer_family, command.crew_name)
+    ):
+        return _work_problem(command, "validation-error", 422, "Invalid review routing facts")
     return None
 
 

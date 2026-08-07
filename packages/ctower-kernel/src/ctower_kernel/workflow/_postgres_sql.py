@@ -19,10 +19,12 @@ from ctower_kernel.workflow import (
     WorkflowCommand,
     WorkflowContextSnapshot,
     WorkflowDecision,
+    WorkflowEntryEffect,
     WorkflowMutation,
     WorkflowReceipt,
 )
 from ctower_kernel.workflow._event_sql import append_change as _append_change
+from ctower_kernel.workflow._review_dispatch_sql import emit_review_dispatch
 
 __all__: tuple[str, ...] = ()
 
@@ -75,48 +77,162 @@ def advance_workflow(
         )
         if reserved is not None:
             return reserved
-        if not _lock_open_ticket(connection, actor, mutation.ticket_id):
-            return _refuse(
-                transaction,
-                actor,
-                mutation,
-                request_digest,
-                _problem(mutation, "tenant-scope-denied", 404, "Open ticket not found"),
-                now,
-            )
-        run = _lock_run(connection, actor, mutation.ticket_id)
-        refusal = _transition_refusal(evaluator, actor, mutation, run)
-        if refusal is not None:
-            return _refuse(transaction, actor, mutation, request_digest, refusal, now)
-        decision, unmet_facts = _evaluate_transition(
-            connection, evaluator, proof_gate, readiness_gate, actor, mutation, run
-        )
-        if not decision.accepted:
-            return _refuse(
-                transaction,
-                actor,
-                mutation,
-                request_digest,
-                _problem(
-                    mutation,
-                    f"workflow-{decision.reason}",
-                    409,
-                    "Workflow transition refused",
-                    current_version=_run_version(run),
-                    unmet_facts=unmet_facts,
-                ),
-                now,
-            )
-        return _commit_transition(
+        return _advance_reserved(
             connection,
+            transaction,
+            evaluator,
+            proof_gate,
+            readiness_gate,
             actor,
             mutation,
-            run,
-            decision,
             request_digest=request_digest,
             now=now,
             telemetry=telemetry,
         )
+
+
+def _advance_reserved(
+    connection: psycopg.Connection[dict[str, object]],
+    transaction: RecordTransaction,
+    evaluator: Workflow,
+    proof_gate: ProofGate,
+    readiness_gate: WorkReadinessGate,
+    actor: WorkflowActor,
+    mutation: WorkflowMutation,
+    *,
+    request_digest: bytes,
+    now: datetime,
+    telemetry: TelemetryContext,
+) -> WorkflowReceipt | RecordProblem:
+    """Evaluate and commit after the command key is durably reserved."""
+
+    if not _lock_open_ticket(connection, actor, mutation.ticket_id):
+        return _refuse(
+            transaction,
+            actor,
+            mutation,
+            request_digest,
+            _problem(mutation, "tenant-scope-denied", 404, "Open ticket not found"),
+            now,
+        )
+    run = _lock_run(connection, actor, mutation.ticket_id)
+    refusal = _transition_refusal(evaluator, actor, mutation, run)
+    if refusal is not None:
+        return _refuse(transaction, actor, mutation, request_digest, refusal, now)
+    decision, unmet_facts = _evaluate_transition(
+        connection, evaluator, proof_gate, readiness_gate, actor, mutation, run
+    )
+    if not decision.accepted:
+        return _refuse_transition(
+            transaction,
+            actor,
+            mutation,
+            request_digest,
+            decision,
+            unmet_facts,
+            run,
+            now,
+        )
+    effect_unmet = _emit_entry_effects(
+        connection,
+        actor,
+        mutation,
+        cast(dict[str, object], run),
+        decision,
+        now=now,
+    )
+    if effect_unmet:
+        return _refuse_effect_inputs(
+            transaction, actor, mutation, request_digest, effect_unmet, run, now
+        )
+    return _commit_transition(
+        connection,
+        actor,
+        mutation,
+        run,
+        decision,
+        request_digest=request_digest,
+        now=now,
+        telemetry=telemetry,
+    )
+
+
+def _refuse_transition(
+    transaction: RecordTransaction,
+    actor: WorkflowActor,
+    mutation: WorkflowMutation,
+    request_digest: bytes,
+    decision: WorkflowDecision,
+    unmet_facts: tuple[str, ...],
+    run: dict[str, object] | None,
+    now: datetime,
+) -> RecordProblem:
+    return _refuse(
+        transaction,
+        actor,
+        mutation,
+        request_digest,
+        _problem(
+            mutation,
+            f"workflow-{decision.reason}",
+            409,
+            "Workflow transition refused",
+            current_version=_run_version(run),
+            unmet_facts=unmet_facts,
+        ),
+        now,
+    )
+
+
+def _refuse_effect_inputs(
+    transaction: RecordTransaction,
+    actor: WorkflowActor,
+    mutation: WorkflowMutation,
+    request_digest: bytes,
+    unmet_facts: tuple[str, ...],
+    run: dict[str, object] | None,
+    now: datetime,
+) -> RecordProblem:
+    return _refuse(
+        transaction,
+        actor,
+        mutation,
+        request_digest,
+        _problem(
+            mutation,
+            "review-dispatch-input-missing",
+            409,
+            "Review dispatch input is incomplete",
+            current_version=_run_version(run),
+            unmet_facts=unmet_facts,
+        ),
+        now,
+    )
+
+
+def _emit_entry_effects(
+    connection: psycopg.Connection[dict[str, object]],
+    actor: WorkflowActor,
+    mutation: WorkflowMutation,
+    run: dict[str, object],
+    decision: WorkflowDecision,
+    *,
+    now: datetime,
+) -> tuple[str, ...]:
+    for effect in decision.entry_effects:
+        if effect is WorkflowEntryEffect.REVIEW_CREW_DISPATCH:
+            unmet = emit_review_dispatch(
+                connection,
+                actor,
+                mutation,
+                workflow_run_id=cast(UUID, run["workflow_run_id"]),
+                workflow_version=_run_version(run) + 1,
+                routing_policy_ref=str(run["execution_policy_ref"]),
+                now=now,
+            )
+            if unmet:
+                return unmet
+    return ()
 
 
 def _reserve_workflow_outcome(

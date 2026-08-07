@@ -12,7 +12,13 @@ from typing import TYPE_CHECKING, Protocol
 from uuid import UUID
 
 from ctower_kernel.telemetry import TelemetryContext
-from ctower_kernel.workflow._graph import ActivityClass, Stage, Transition, WorkflowGraph
+from ctower_kernel.workflow._graph import (
+    ActivityClass,
+    Stage,
+    Transition,
+    WorkflowEntryEffect,
+    WorkflowGraph,
+)
 
 if TYPE_CHECKING:
     from ctower_kernel.record import RecordProblem
@@ -20,6 +26,8 @@ if TYPE_CHECKING:
 __all__ = [
     "ActivityClass",
     "ResolveClose",
+    "ReviewDispatchConsumption",
+    "ReviewDispatchEffect",
     "Stage",
     "Transition",
     "Workflow",
@@ -28,6 +36,7 @@ __all__ = [
     "WorkflowComponentResolver",
     "WorkflowContextSnapshot",
     "WorkflowDecision",
+    "WorkflowEntryEffect",
     "WorkflowGraph",
     "WorkflowMutation",
     "WorkflowReceipt",
@@ -66,6 +75,7 @@ class WorkflowDecision:
     activity_class: ActivityClass | None = None
     predicate_ref: str | None = None
     initial_stage: str | None = None
+    entry_effects: tuple[WorkflowEntryEffect, ...] = ()
 
 
 @dataclass(frozen=True, slots=True)
@@ -180,6 +190,82 @@ class WorkflowReceipt:
         }
 
 
+@dataclass(frozen=True, slots=True)
+class ReviewDispatchConsumption:
+    """Execution-substrate facts recorded against one emitted intent."""
+
+    reviewer_principal_id: UUID
+    author_family: str
+    reviewer_family: str
+    crew_name: str
+    consumed_by: UUID
+    consumed_at: datetime
+
+    def response_payload(self) -> dict[str, object]:
+        return {
+            "author_family": self.author_family,
+            "consumed_at": self.consumed_at.isoformat(),
+            "consumed_by": str(self.consumed_by),
+            "crew_name": self.crew_name,
+            "reviewer_family": self.reviewer_family,
+            "reviewer_principal_id": str(self.reviewer_principal_id),
+        }
+
+
+@dataclass(frozen=True, slots=True)
+class ReviewDispatchEffect:
+    """Visible review intent, consumption, and linked verdict facts."""
+
+    effect_id: UUID
+    workflow_run_id: UUID
+    ticket_id: UUID
+    workflow_version: int
+    destination_stage: str
+    candidate_digest: str
+    author_principal_id: UUID
+    author_model_ref: str
+    repository: str
+    change_identity: str
+    pr_reference: str
+    routing_policy_ref: str
+    reviewer_family_rule: str
+    lenses: tuple[str, ...]
+    emitted_at: datetime
+    consumption: ReviewDispatchConsumption | None
+    verdict_ids: tuple[UUID, ...]
+
+    def response_payload(self) -> dict[str, object]:
+        status = (
+            "verdict_linked"
+            if self.verdict_ids
+            else "consumed"
+            if self.consumption is not None
+            else "emitted"
+        )
+        return {
+            "author_model_ref": self.author_model_ref,
+            "author_principal_id": str(self.author_principal_id),
+            "candidate_digest": self.candidate_digest,
+            "change_identity": self.change_identity,
+            "consumption": (
+                self.consumption.response_payload() if self.consumption is not None else None
+            ),
+            "destination_stage": self.destination_stage,
+            "effect_id": str(self.effect_id),
+            "emitted_at": self.emitted_at.isoformat(),
+            "lenses": list(self.lenses),
+            "pr_reference": self.pr_reference,
+            "repository": self.repository,
+            "reviewer_family_rule": self.reviewer_family_rule,
+            "routing_policy_ref": self.routing_policy_ref,
+            "status": status,
+            "ticket_id": str(self.ticket_id),
+            "verdict_ids": [str(item) for item in self.verdict_ids],
+            "workflow_run_id": str(self.workflow_run_id),
+            "workflow_version": self.workflow_version,
+        }
+
+
 class _WorkflowWriter(Protocol):
     def start_workflow(
         self,
@@ -213,6 +299,10 @@ class _WorkflowWriter(Protocol):
         now: datetime,
         telemetry: TelemetryContext,
     ) -> WorkflowReceipt | RecordProblem: ...
+
+    def review_dispatches(
+        self, actor: WorkflowActor, ticket_id: UUID
+    ) -> tuple[ReviewDispatchEffect, ...] | RecordProblem: ...
 
 
 class WorkflowComponentResolver(Protocol):
@@ -371,6 +461,15 @@ class Workflow:
             telemetry=telemetry,
         )
 
+    def review_dispatches(
+        self, actor: WorkflowActor, ticket_id: UUID
+    ) -> tuple[ReviewDispatchEffect, ...] | RecordProblem:
+        """Return the review intent and its consumption/verdict linkage."""
+
+        if self._writer is None:
+            raise RuntimeError("workflow persistence is not configured")
+        return self._writer.review_dispatches(actor, ticket_id)
+
     def evaluate(
         self, snapshot: WorkflowContextSnapshot, command: WorkflowCommand
     ) -> WorkflowDecision:
@@ -402,15 +501,16 @@ class Workflow:
                 reason="predicate-unsatisfied",
                 predicate_ref=edge.predicate_ref,
             )
-        activity = next(
-            stage.activity_class for stage in graph.stages if stage.key == command.destination_stage
+        destination = next(
+            stage for stage in graph.stages if stage.key == command.destination_stage
         )
         return WorkflowDecision(
             accepted=True,
             reason="accepted",
-            activity_class=activity,
+            activity_class=destination.activity_class,
             predicate_ref=edge.predicate_ref,
             initial_stage=graph.initial_stage,
+            entry_effects=destination.entry_effects,
         )
 
     def is_terminal(

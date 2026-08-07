@@ -20,6 +20,7 @@ from ctower_kernel.work import (
     Block,
     ChangeAssignment,
     ChangePriority,
+    ConsumeReviewDispatch,
     Defer,
     Reopen,
     Unblock,
@@ -33,6 +34,7 @@ from ctower_kernel.work._event_sql import append_change
 from ctower_kernel.work._intents import admit, defer, reopen
 from ctower_kernel.work._priority import change_priority
 from ctower_kernel.work._relations import add_relation
+from ctower_kernel.work._review_dispatch import consume_review_dispatch
 
 __all__: tuple[str, ...] = ()
 
@@ -266,15 +268,22 @@ def _mutate(
     ticket: dict[str, object],
     now: datetime,
 ) -> tuple[str, dict[str, object] | RecordProblem]:
-    if isinstance(command, ChangeAssignment) and ticket["lifecycle_state"] in {
+    if isinstance(command, ChangeAssignment | ConsumeReviewDispatch) and ticket[
+        "lifecycle_state"
+    ] in {
         "closed",
         "cancelled",
     }:
+        title = (
+            "Closed ticket requires a legal reopen before assignment"
+            if isinstance(command, ChangeAssignment)
+            else "Closed ticket cannot consume a review dispatch"
+        )
         return "assignment_changed", _problem(
             command,
             "work-ticket-terminal",
             409,
-            "Closed ticket requires a legal reopen before assignment",
+            title,
         )
     if isinstance(command, ChangePriority):
         if command.priority == str(ticket["priority"]):
@@ -291,6 +300,8 @@ def _mutate(
         )
     if isinstance(command, ChangeAssignment):
         return "assignment_changed", change_assignment(connection, actor, command, now=now)
+    if isinstance(command, ConsumeReviewDispatch):
+        return "assignment_changed", consume_review_dispatch(connection, actor, command, now=now)
     return _mutate_intent(connection, actor, command, ticket=ticket, now=now)
 
 

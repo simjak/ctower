@@ -1,6 +1,6 @@
 """DO NOT EDIT: generated file; regenerate from declared inputs.
 
-Authored contract digest: sha256:58c506c7dc1755f416adb38de169d6a52c2afbb898b67c8c6ed5caf072ac15ec
+Authored contract digest: sha256:d246e6d84a56da02401fda3c162c4416e0e82e986cd7100eb22538d424318c97
 """
 
 from __future__ import annotations
@@ -70,6 +70,8 @@ from ctower_client.models import (
     ProofReceipt,
     RelationRequest,
     ResolveCloseRequest,
+    ReviewDispatchConsumeRequest,
+    ReviewDispatchEffectList,
     SeatCredentialIssueRequest,
     SeatCredentialReceipt,
     SeatCredentialRevocationRequest,
@@ -450,6 +452,29 @@ class CtowerClient:
         _refusal(response, {401: Problem, 409: Problem, 422: Problem})
 
     @validate_call(config=ConfigDict(strict=True, arbitrary_types_allowed=True))
+    def consume_review_dispatch_effect(
+        self,
+        ticket_id: UUID,
+        effect_id: UUID,
+        request: ReviewDispatchConsumeRequest,
+        *,
+        command_id: UUID,
+    ) -> WorkReceipt:
+        response = self._http.post(
+            f"/v1/tickets/{quote(str(ticket_id), safe='')}/workflow/review-dispatches/{quote(str(effect_id), safe='')}/consume",
+            content=request.model_dump_json(),
+            headers=self._telemetry_headers(
+                self._context(command_id, ticket_id=ticket_id),
+                {
+                    **self._auth_headers(),
+                    "Content-Type": "application/json",
+                    "Idempotency-Key": str(command_id),
+                },
+            ),
+        )
+        return _response(response, {200: WorkReceipt, 202: WorkReceipt}, {401: Problem, 403: Problem, 404: Problem, 409: Problem, 422: Problem})
+
+    @validate_call(config=ConfigDict(strict=True, arbitrary_types_allowed=True))
     def create_ctower_project_import_run(
         self,
         request: CtowerProjectImportRunCreateRequest,
@@ -768,6 +793,22 @@ class CtowerClient:
             ),
         )
         return _response(response, {200: ProjectSessionPage}, {401: Problem, 403: Problem, 404: Problem, 422: Problem})
+
+    @validate_call(config=ConfigDict(strict=True, arbitrary_types_allowed=True))
+    def list_review_dispatch_effects(
+        self,
+        ticket_id: UUID,
+    ) -> ReviewDispatchEffectList:
+        response = self._http.get(
+            f"/v1/tickets/{quote(str(ticket_id), safe='')}/workflow/review-dispatches",
+            headers=self._telemetry_headers(
+                self._context(uuid4(), ticket_id=ticket_id),
+                {
+                    **self._auth_headers(),
+                },
+            ),
+        )
+        return _response(response, {200: ReviewDispatchEffectList}, {401: Problem, 403: Problem, 404: Problem, 422: Problem})
 
     @validate_call(config=ConfigDict(strict=True, arbitrary_types_allowed=True))
     def list_ticket_assignments(

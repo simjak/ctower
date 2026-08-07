@@ -1,0 +1,110 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://ctower.invalid/contracts/workflow/workflow-v2.schema.json",
+  "title": "Workflow v2",
+  "description": "Domain-neutral workflow graph metadata with declared stage-entry effects.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema",
+    "status",
+    "key",
+    "revision",
+    "initial_stage",
+    "input_contract",
+    "terminal_contract",
+    "policy_refs",
+    "stages",
+    "transitions",
+    "failure_routes",
+    "note"
+  ],
+  "properties": {
+    "schema": {"const": "ctower.workflow/v2"},
+    "status": {"enum": ["draft", "staged", "published", "superseded", "revoked"]},
+    "key": {"$ref": "#/$defs/stableKey"},
+    "revision": {"type": "integer", "minimum": 1},
+    "initial_stage": {"$ref": "#/$defs/stableKey"},
+    "input_contract": {"$ref": "#/$defs/stableKey"},
+    "terminal_contract": {"$ref": "#/$defs/stableKey"},
+    "policy_refs": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["execution", "gates"],
+      "properties": {
+        "execution": {"$ref": "#/$defs/versionedReference"},
+        "gates": {"$ref": "#/$defs/versionedReference"}
+      }
+    },
+    "stages": {
+      "type": "array",
+      "minItems": 1,
+      "uniqueItems": true,
+      "items": {"$ref": "#/$defs/stage"}
+    },
+    "transitions": {
+      "type": "array",
+      "items": {"$ref": "#/$defs/transition"}
+    },
+    "failure_routes": {
+      "type": "array",
+      "items": {"$ref": "#/$defs/failureRoute"}
+    },
+    "note": {"type": "string", "minLength": 1}
+  },
+  "$defs": {
+    "stableKey": {
+      "type": "string",
+      "pattern": "^[a-z][a-z0-9._-]*$"
+    },
+    "versionedReference": {
+      "type": "string",
+      "pattern": "^[a-z][a-z0-9._-]*@[1-9][0-9]*$"
+    },
+    "activityClass": {
+      "enum": ["work", "verification"]
+    },
+    "entryEffect": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["kind"],
+      "properties": {
+        "kind": {"const": "review_crew_dispatch"}
+      }
+    },
+    "stage": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["key", "activity_class", "entry_effects"],
+      "properties": {
+        "key": {"$ref": "#/$defs/stableKey"},
+        "activity_class": {"$ref": "#/$defs/activityClass"},
+        "entry_effects": {
+          "type": "array",
+          "uniqueItems": true,
+          "items": {"$ref": "#/$defs/entryEffect"}
+        }
+      }
+    },
+    "transition": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["from", "to", "predicate_ref"],
+      "properties": {
+        "from": {"$ref": "#/$defs/stableKey"},
+        "to": {"$ref": "#/$defs/stableKey"},
+        "predicate_ref": {"$ref": "#/$defs/versionedReference"}
+      }
+    },
+    "failureRoute": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["from", "failure_class_ref", "to"],
+      "properties": {
+        "from": {"$ref": "#/$defs/stableKey"},
+        "failure_class_ref": {"$ref": "#/$defs/versionedReference"},
+        "to": {"$ref": "#/$defs/stableKey"}
+      }
+    }
+  }
+}

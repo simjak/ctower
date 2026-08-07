@@ -12,7 +12,7 @@
         },
         {
           "path": "contracts/traceability/sources.json",
-          "sha256": "sha256:61a0e6fde098981287c7f7f5abd64f3496eaeda0ec7e905ad526d4f8ed21ef77"
+          "sha256": "sha256:1312075aa148953dba489933bc023ba610f35e8275ed76767cc9aae71286c3cc"
         },
         {
           "path": "contracts/traceability/traceability-sources.schema.json",
@@ -38,7 +38,7 @@
       "outputs": [
         {
           "path": "generated/traceability-index.json",
-          "sha256": "sha256:7a526721e51d88dca36c71dc2de4003ce6cbd9db13fbae501e8945a5823c67fc"
+          "sha256": "sha256:646996c50faccb54be039ebbe045ef56518ca5075b4d5fe4e4b1ab591e686f23"
         }
       ],
       "tool_version": "2"
@@ -290,7 +290,7 @@
         },
         {
           "path": "contracts/http/openapi.yaml",
-          "sha256": "sha256:9abc59661a1ac7d52e36d50736e5c4b94e1d72105239f75c22c28ebcdcf84756"
+          "sha256": "sha256:9f9542f6c3efa869e5f9ff4a369584b8b0137f505dc236262f387f9e006a8f99"
         },
         {
           "path": "contracts/observability/telemetry-context.schema.json",
@@ -349,6 +349,10 @@
           "sha256": "sha256:c0a118fa1471f134b5bd36ff7bbbbf884fc8e9f4d30dbe69d11e081562e4180b"
         },
         {
+          "path": "contracts/workflow/workflow-v2.schema.json",
+          "sha256": "sha256:852a1c12ad8f3c52899d20f7db8fd3b80fae67a9b28971a29f97121d23f5efa3"
+        },
+        {
           "path": "contracts/workflow/workflow.schema.json",
           "sha256": "sha256:bc2fb7e3a99ffd3dacd98f5ba4e05aa9781b192be6a7c36a1dbfc17060b8f3aa"
         },
@@ -378,7 +382,7 @@
         },
         {
           "path": "tools/codegen/_inventory.py",
-          "sha256": "sha256:06ba01fe5eec4122f08abc9d244b034ba9a54004621e47f16453e5c88fc28a00"
+          "sha256": "sha256:7018eafc74ecf66be39ef4753c65bcfe9d1b9291a721dd48b98a673aeab8e719"
         },
         {
           "path": "tools/codegen/_json_integer_codegen.py",
@@ -424,35 +428,35 @@
         },
         {
           "path": "generated/python/ctower_client/__init__.py",
-          "sha256": "sha256:685b2af60c4763890fbb3dab3e7e8adc4fd78be4169fa706b3ad4b346b44bbea"
+          "sha256": "sha256:9c3d3763436b196ae955590c8d18d6390f5e7db2f03097833c05838ece1e1e49"
         },
         {
           "path": "generated/python/ctower_client/client.py",
-          "sha256": "sha256:a2bd07776b576e290a9c1d1344f1a6f421b11e394766db990b199368be02eddd"
+          "sha256": "sha256:179718006058fafd14f4768dbe14dea5546470f3144114423423e19852fa5032"
         },
         {
           "path": "generated/python/ctower_client/models.py",
-          "sha256": "sha256:11a2b65b8e6301a38ca4046e8380747e9b45e4917052a984c998de2387041b00"
+          "sha256": "sha256:5c96b894fbaacf62b1a4524ae277a6acc05c972edaaefbc4d731a404eac4b177"
         },
         {
           "path": "generated/python/ctower_client/operations.py",
-          "sha256": "sha256:f050ab9ef0ab54259917402ea2e13651400de64d0adca35c80c148289a845fce"
+          "sha256": "sha256:c17c53a409bc39501f9802eb145bb9e778f95c3c58c420177e01c2db457dd5ef"
         },
         {
           "path": "generated/python/ctower_contracts/__init__.py",
-          "sha256": "sha256:3d8a1b3293d00801983abd18f842b97e53a1176f6f63330f19c778559f9c663b"
+          "sha256": "sha256:91b97e4ec4f8a7e1f5966919a00fa74eaa78eb6c43b777a880af72b234c86c03"
         },
         {
           "path": "generated/python/ctower_contracts/__main__.py",
-          "sha256": "sha256:5b29ffe7053ba7c988ddccb21660022f179f9533a293f84a4e48de7312da24f5"
+          "sha256": "sha256:229e4621f3e36ed90c3976474e97ea7f74b3d2747690938d0c6cacf4803f89ca"
         },
         {
           "path": "generated/python/ctower_contracts/catalog.py",
-          "sha256": "sha256:93d1cacf6b2f3ca733b7640911273a9d67a18f500cfcee6267a8c8fdb82e6167"
+          "sha256": "sha256:a4f39a87bcdb1cc5e23529cc472f29a5b1fb5167f636914a3fd2483ff57a35b4"
         },
         {
           "path": "generated/python/ctower_contracts/schemas.json",
-          "sha256": "sha256:27b38ad0741b7b7541a491b6881984df915dcec98ecf6d18851ee69d92db478b"
+          "sha256": "sha256:b8940005aa5d11f14e86224fa01fe5e576e10c34955422a251b03f6d4f678554"
         },
         {
           "path": "generated/typescript/ctower-client/package.json",
@@ -460,27 +464,27 @@
         },
         {
           "path": "generated/typescript/ctower-client/src/client.ts",
-          "sha256": "sha256:2ae806ea7e7e1381dfbc8e0804c6219a6796b38157a2713ea7f9ee6e17248886"
+          "sha256": "sha256:4b5c5497c5e38ba8c48e079771614953042d4614ff049ee687ebd637486f2fc2"
         },
         {
           "path": "generated/typescript/ctower-client/src/index.ts",
-          "sha256": "sha256:f1bfe2e9cac1206c2dbc225e864a656aa269e6be416e06d6dccc6b3a8c015a91"
+          "sha256": "sha256:82e9de949392961a6afad3aec16fbde63eb00d80e7d29d6ff09807efb5175a93"
         },
         {
           "path": "generated/typescript/ctower-client/src/models.ts",
-          "sha256": "sha256:421dac02eec08e4646dca3fe8507247ba8f3ead736271eeff7a7608e4f0b78a6"
+          "sha256": "sha256:598f64d856b1d9ab85c3808bb536e3fb3fdb5beb0061a898f062541bb1104f43"
         },
         {
           "path": "generated/typescript/ctower-client/src/operations.ts",
-          "sha256": "sha256:c4ed7c9639376a77a430e6cd67c19da23e9ccf0206ba4fca3056b5e4ddb36e1e"
+          "sha256": "sha256:929f8669ad11d048bb94423477294904d61c219683b50a2d0338074ae44c730b"
         },
         {
           "path": "generated/typescript/ctower-client/src/response-json.ts",
-          "sha256": "sha256:9a46dee47c3283de003fbd543888156a89f9040c0a3755fe1bc7f7e519913ef7"
+          "sha256": "sha256:dfb41313b7e8b02f846e727bf456db7acd0490f2d68ad56e78d632637399e497"
         },
         {
           "path": "generated/typescript/ctower-client/src/validators.ts",
-          "sha256": "sha256:f31f06f150c6b8215bd2dbe8bbe48002452dd1dc5911461024cfb2f5aad068ec"
+          "sha256": "sha256:d0d8d5e8178967c44fb97e011f4fb46d5d953c2d031404e7642ff02fa2d3d29c"
         },
         {
           "path": "generated/typescript/ctower-client/tsconfig.json",

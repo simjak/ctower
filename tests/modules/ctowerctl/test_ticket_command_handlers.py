@@ -19,6 +19,7 @@ from ctower_client.models import (
     PriorityChangeRequest,
     RelationRequest,
     ResolveCloseRequest,
+    ReviewDispatchConsumeRequest,
     TicketIntentRequest,
     VerdictRequest,
     WorkflowStartRequest,
@@ -161,6 +162,18 @@ def test_builds_each_protected_workflow_request() -> None:
     resolve = _ticket_commands.build_mutation(
         _arguments("ticket resolve", workflow_ref="release@1")
     )
+    effect_id = uuid4()
+    reviewer_id = uuid4()
+    consumption = _ticket_commands.build_mutation(
+        _arguments(
+            "ticket review-dispatch consume",
+            effect_id=effect_id,
+            reviewer_principal_id=reviewer_id,
+            author_family="codex",
+            reviewer_family="claude",
+            crew_name="review-release",
+        )
+    )
 
     assert isinstance(workflow.request, WorkflowStartRequest)
     assert workflow.request.workflow_ref == "release@1"
@@ -168,8 +181,16 @@ def test_builds_each_protected_workflow_request() -> None:
     assert transition.request.destination_stage == "verify"
     assert isinstance(resolve.request, ResolveCloseRequest)
     assert resolve.request.workflow_ref == "release@1"
-    payloads = [workflow, transition, resolve]
-    assert all(payload.path_parameters == {"ticket_id": str(_TICKET_ID)} for payload in payloads)
+    assert isinstance(consumption.request, ReviewDispatchConsumeRequest)
+    assert consumption.request.reviewer_principal_id == reviewer_id
+    assert consumption.path_parameters == {
+        "ticket_id": str(_TICKET_ID),
+        "effect_id": str(effect_id),
+    }
+    assert all(
+        payload.path_parameters == {"ticket_id": str(_TICKET_ID)}
+        for payload in (workflow, transition, resolve)
+    )
 
 
 def test_ticket_dispatch_refuses_unknown_mutation_query_and_intent() -> None:
@@ -214,16 +235,22 @@ def test_ticket_queries_call_only_the_explicit_generated_methods() -> None:
         ),
         cast(CtowerClient, client),
     )
+    dispatches = _ticket_commands.execute_query(
+        argparse.Namespace(cli_name="ticket review-dispatch list", ticket_id=ticket_id),
+        cast(CtowerClient, client),
+    )
 
     assert cast(_QueryResult, timeline).marker == "timeline"
     assert cast(_QueryResult, assignments).marker == "assignments"
     assert cast(_QueryResult, audit).marker == "audit"
+    assert cast(_QueryResult, dispatches).marker == "review-dispatches"
     assert client.calls == [
         ("ticket", ticket_id, "ctower", None, None),
         ("ticket", ticket_id, "ctower", None, None),
         ("timeline", ticket_id, "ctower", None, None),
         ("assignments", ticket_id, "ctower", None, None),
         ("audit", ticket_id, "ctower", 11, 7),
+        ("review-dispatches", ticket_id, None, None, None),
     ]
 
 
@@ -274,3 +301,7 @@ class _TicketQueryClient:
     ) -> _QueryResult:
         self.calls.append(("audit", ticket_id, project_key, cursor, limit))
         return _QueryResult(marker="audit")
+
+    def list_review_dispatch_effects(self, ticket_id: UUID) -> _QueryResult:
+        self.calls.append(("review-dispatches", ticket_id, None, None, None))
+        return _QueryResult(marker="review-dispatches")
