@@ -194,13 +194,25 @@ changing anything.
 |---|---|---|
 | `inbox send` | `<text>` | required: `--to <seat_key>`; optional: `--command-id`, `--thread <thread_id>` |
 | `inbox ack` | `<message_id>` | required: `--state {delivered,read}`; optional: `--command-id` |
+| `inbox promote` | `<thread_id>` | optional: `--command-id`, `--ticket <ticket_id>` |
 | `inbox list` | — | `--unread` |
 | `inbox read` | `<thread_id>` | — |
 | `inbox read-state` | `<thread_id>` | — |
 
 `send` starts a two-party thread when `--thread` is omitted. On an existing thread, `--to` must name the
-other participant. `send` and `ack` are protected, spoolable mutations; an exact command replay returns its
-original result, while reusing the command ID with different input is refused as `idempotency-conflict`.
+other participant. `send`, `ack`, and `promote` are protected, spoolable mutations; an exact command replay
+returns its original result, while reusing the command ID with different input is refused as
+`idempotency-conflict`.
+
+`promote` has two modes. Without `--ticket`, it atomically creates a P2 ticket whose title is the thread's
+immutable first message, establishes ordinary initial custody for the authenticated eligible principal,
+and links the thread and ticket. With `--ticket`, it leaves the existing in-scope ticket unchanged and adds
+the same bidirectional link. The result reports the explicit outcome `ticket_created` or `ticket_linked`
+and the resulting ticket ID. A thread may be promoted only once: exact replay of the original command
+returns its original result, but a new promotion command is refused as `inbox-already-promoted`. A missing
+or out-of-scope thread or ticket is `tenant-scope-denied`; creation is refused as
+`inbox-thread-head-invalid` when the first message cannot be used as a ticket title. Every refusal leaves
+the thread and ticket unchanged.
 
 Only the recorded recipient may acknowledge a message. Acknowledgements advance monotonically from `sent`
 to `delivered` to `read`; acknowledging `read` before `delivered` records both facts in that order. Repeating

@@ -13,6 +13,7 @@ from uuid import UUID, uuid4
 import psycopg
 import pytest
 from _inbox_cli_roundtrip import RoundTrip as _RoundTrip
+from _inbox_cli_roundtrip import promote as _promote_cli
 from _inbox_cli_roundtrip import roundtrip as _roundtrip
 from psycopg.rows import dict_row
 from support.acceptance import accept_pending_commands
@@ -26,6 +27,7 @@ from ctower_kernel.inbox import (
     InboxAcknowledgementState,
     InboxAcknowledgeResult,
     InboxPromotionCommand,
+    InboxPromotionOutcome,
     InboxPromotionResult,
     InboxSendCommand,
     InboxSendResult,
@@ -42,6 +44,7 @@ __all__: tuple[str, ...] = ()
 
 REPLY_POSITION = 2
 DELIVERY_AND_READ_EVENT_COUNT = 2
+CREATE_PROMOTION_EVENT_COUNT = 2
 
 
 class _MemoryBackend:
@@ -68,14 +71,46 @@ def test_native_inbox_cli_roundtrip_and_promotion_links_both_ways(
     tmp_path: Path,
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    """A1/A2/V1/V2: two agents exchange, read, reply, and promote one thread."""
+    """A1/V1: promotion without a ticket creates from the head and links both ways."""
 
     del protected_state
     _qa_id, qa_credential = _provision_qa_seat(tenant)
     roundtrip = _roundtrip(tenant, monkeypatch, tmp_path, qa_credential)
     _assert_roundtrip(roundtrip)
-    promoted, ticket_id = _promote(tenant, roundtrip)
+    accepted = _promote_cli(tenant, monkeypatch, tmp_path, roundtrip.thread_id)
+    promoted = cast(dict[str, object], accepted["result"])
+    ticket_id = UUID(str(promoted["ticket_id"]))
+    assert promoted["outcome"] == "ticket_created"
+    assert len(cast(list[object], promoted["event_ids"])) == CREATE_PROMOTION_EVENT_COUNT
+    _assert_created_ticket(tenant, roundtrip.thread_id, ticket_id)
     _assert_promotion(tenant, roundtrip, promoted, ticket_id)
+    _print_transcript(roundtrip, promoted)
+
+
+def test_inbox_cli_promote_with_ticket_links_existing_ticket_both_ways(
+    tenant: TenantFixture,
+    protected_state: None,
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """A2/V2: --ticket preserves the ticket and records the bidirectional context link."""
+
+    del protected_state
+    _qa_id, qa_credential = _provision_qa_seat(tenant)
+    roundtrip = _roundtrip(tenant, monkeypatch, tmp_path, qa_credential)
+    ticket_id = _ticket(tenant)
+    accept_pending_commands(tenant.database.admin_dsn, tenant.tenant_id)
+    accepted = _promote_cli(
+        tenant,
+        monkeypatch,
+        tmp_path,
+        roundtrip.thread_id,
+        ticket_id=ticket_id,
+    )
+    promoted = cast(dict[str, object], accepted["result"])
+    _assert_promotion(tenant, roundtrip, promoted, ticket_id)
+    assert promoted["outcome"] == "ticket_linked"
+    assert len(cast(list[object], promoted["event_ids"])) == 1
     _print_transcript(roundtrip, promoted)
 
 
@@ -86,7 +121,7 @@ def test_native_inbox_authority_replay_refusals_and_recipient_projection(
     inbox = Inbox(PostgresInbox(tenant.database.runtime_dsn))
     commander = Actor(tenant.commander_id, tenant.tenant_id, PrincipalKind.COMMANDER)
     qa = Actor(qa_id, tenant.tenant_id, PrincipalKind.COMMANDER)
-    command = InboxSendCommand(uuid4(), "qa-agent", "Direct authority and replay coverage.")
+    command = InboxSendCommand(uuid4(), "qa-agent", "x" * 201)
     first = _invoke_send(inbox, commander, command)
     assert isinstance(first, InboxSendResult)
     assert _invoke_send(inbox, commander, command) == first
@@ -96,6 +131,10 @@ def test_native_inbox_authority_replay_refusals_and_recipient_projection(
         InboxSendCommand(command.client_command_id, "qa-agent", "Changed replay body."),
     )
     _assert_problem(conflict, "idempotency-conflict")
+    _assert_problem(
+        _invoke_promotion(inbox, commander, first.thread_id, None),
+        "inbox-thread-head-invalid",
+    )
     _assert_send_refusals(tenant, inbox, commander, first.thread_id)
     _assert_recipient_projection(tenant, inbox, commander, qa, first)
 
@@ -234,39 +273,19 @@ def _assert_roundtrip(roundtrip: _RoundTrip) -> None:
     ]
 
 
-def _promote(
-    tenant: TenantFixture,
-    roundtrip: _RoundTrip,
-) -> tuple[InboxPromotionResult, UUID]:
-    ticket_id = _ticket(tenant)
-    accept_pending_commands(tenant.database.admin_dsn, tenant.tenant_id)
-    actor = Actor(tenant.commander_id, tenant.tenant_id, PrincipalKind.COMMANDER)
-    reply_result = cast(dict[str, object], roundtrip.reply["result"])
-    command = InboxPromotionCommand(
-        uuid4(), int(cast(int, reply_result["thread_version"])), roundtrip.thread_id, ticket_id
-    )
-    promoted = Inbox(PostgresInbox(tenant.database.runtime_dsn)).promote(
-        actor,
-        command,
-        request_digest=_digest(command.request_payload()),
-        now=datetime.now(UTC),
-        telemetry=_telemetry(),
-    )
-    assert isinstance(promoted, InboxPromotionResult)
-    accept_pending_commands(tenant.database.admin_dsn, tenant.tenant_id)
-    roundtrip.projections.catch_up(tenant.tenant_id)
-    return promoted, ticket_id
-
-
 def _assert_promotion(
     tenant: TenantFixture,
     roundtrip: _RoundTrip,
-    promoted: InboxPromotionResult,
+    promoted: dict[str, object],
     ticket_id: UUID,
 ) -> None:
+    accept_pending_commands(tenant.database.admin_dsn, tenant.tenant_id)
+    roundtrip.projections.catch_up(tenant.tenant_id)
     board = _api_board(tenant)
     events, subjects, authority_before = _promotion_evidence(
-        tenant, roundtrip.thread_id, promoted.event_id
+        tenant,
+        roundtrip.thread_id,
+        UUID(str(cast(list[object], promoted["event_ids"])[0])),
     )
     card = next(item for item in board.cards if item.ticket_id == ticket_id)
     assert card.inbox_thread_ids == (roundtrip.thread_id,)
@@ -287,6 +306,35 @@ def _assert_promotion(
     assert rebuilt_card.inbox_thread_ids == (roundtrip.thread_id,)
     authority_after = _authority_counts(tenant, roundtrip.thread_id)
     assert authority_before == authority_after == {"delivery_facts": 2, "messages": 2, "links": 1}
+
+
+def _assert_created_ticket(tenant: TenantFixture, thread_id: UUID, ticket_id: UUID) -> None:
+    with psycopg.connect(tenant.database.admin_dsn, row_factory=dict_row) as connection:
+        ticket = connection.execute(
+            """
+            SELECT title, project_key, source_kind, source_ref, priority,
+                   custodian_principal_id, version
+            FROM tickets WHERE tenant_id = %s AND ticket_id = %s
+            """,
+            (tenant.tenant_id, ticket_id),
+        ).fetchone()
+        created_events = connection.execute(
+            """
+            SELECT count(*) AS count FROM events
+            WHERE tenant_id = %s AND aggregate_id = %s AND kind = 'ticket.created'
+            """,
+            (tenant.tenant_id, ticket_id),
+        ).fetchone()
+    assert ticket == {
+        "title": "Please verify the native inbox roundtrip.",
+        "project_key": "ctower",
+        "source_kind": "inbox",
+        "source_ref": f"thread:{thread_id}",
+        "priority": "P2",
+        "custodian_principal_id": tenant.commander_id,
+        "version": 1,
+    }
+    assert created_events == {"count": 1}
 
 
 def _api_board(tenant: TenantFixture) -> BoardView:
@@ -336,7 +384,7 @@ def _authority_counts(tenant: TenantFixture, thread_id: UUID) -> dict[str, objec
         ).fetchone()
 
 
-def _print_transcript(roundtrip: _RoundTrip, promoted: InboxPromotionResult) -> None:
+def _print_transcript(roundtrip: _RoundTrip, promoted: dict[str, object]) -> None:
     acknowledgements = roundtrip.acknowledgements
     print(
         "REAL_INBOX_TRANSCRIPT "
@@ -354,7 +402,7 @@ def _print_transcript(roundtrip: _RoundTrip, promoted: InboxPromotionResult) -> 
                 "qa_reply": roundtrip.reply["result"],
                 "commander_list_unread": roundtrip.commander_list,
                 "commander_read": roundtrip.commander_read,
-                "promotion": promoted.response_payload(),
+                "promotion": promoted,
             },
             separators=(",", ":"),
             sort_keys=True,
@@ -372,34 +420,37 @@ def _assert_promotion_refusals_and_replay(
 ) -> None:
     ticket_id = _ticket(tenant)
     accept_pending_commands(tenant.database.admin_dsn, tenant.tenant_id)
-    unavailable_ticket = _invoke_promotion(
-        inbox, commander, reply.thread_id, uuid4(), expected_version=reply.thread_version
-    )
+    unavailable_ticket = _invoke_promotion(inbox, commander, reply.thread_id, uuid4())
     _assert_problem(unavailable_ticket, "tenant-scope-denied")
     outsider = _invoke_promotion(
         inbox,
         Actor(tenant.operator_id, tenant.tenant_id, PrincipalKind.OPERATOR),
         reply.thread_id,
         ticket_id,
-        expected_version=reply.thread_version,
     )
     _assert_problem(outsider, "tenant-scope-denied")
+    create_without_custody = _invoke_promotion(
+        inbox,
+        Actor(tenant.operator_id, tenant.tenant_id, PrincipalKind.OPERATOR),
+        reply.thread_id,
+        None,
+    )
+    _assert_problem(create_without_custody, "unauthorized")
     command_id = uuid4()
     promoted = _invoke_promotion(
         inbox,
         commander,
         reply.thread_id,
         ticket_id,
-        expected_version=reply.thread_version,
         command_id=command_id,
     )
     assert isinstance(promoted, InboxPromotionResult)
+    assert promoted.outcome is InboxPromotionOutcome.TICKET_LINKED
     replay = _invoke_promotion(
         inbox,
         commander,
         reply.thread_id,
         ticket_id,
-        expected_version=reply.thread_version,
         command_id=command_id,
     )
     assert replay == promoted
@@ -407,15 +458,9 @@ def _assert_promotion_refusals_and_replay(
     projections.catch_up(tenant.tenant_id)
     listed = projections.list_inbox(qa)
     assert listed.threads[0].promoted_ticket_id == ticket_id
-    stale = _invoke_promotion(
-        inbox, commander, reply.thread_id, ticket_id, expected_version=reply.thread_version
-    )
-    _assert_problem(stale, "version-conflict")
-    already = _invoke_promotion(
-        inbox, commander, reply.thread_id, ticket_id, expected_version=promoted.thread_version
-    )
+    already = _invoke_promotion(inbox, commander, reply.thread_id, ticket_id)
     _assert_problem(already, "inbox-already-promoted")
-    missing = _invoke_promotion(inbox, commander, uuid4(), ticket_id, expected_version=1)
+    missing = _invoke_promotion(inbox, commander, uuid4(), ticket_id)
     _assert_problem(missing, "tenant-scope-denied")
 
 
@@ -451,12 +496,11 @@ def _invoke_promotion(
     inbox: Inbox,
     actor: Actor,
     thread_id: UUID,
-    ticket_id: UUID,
+    ticket_id: UUID | None,
     *,
-    expected_version: int,
     command_id: UUID | None = None,
 ) -> InboxPromotionResult | RecordProblem:
-    command = InboxPromotionCommand(command_id or uuid4(), expected_version, thread_id, ticket_id)
+    command = InboxPromotionCommand(command_id or uuid4(), thread_id, ticket_id)
     return inbox.promote(
         actor,
         command,

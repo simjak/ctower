@@ -8,10 +8,8 @@ from uuid import UUID
 
 import psycopg
 
-from ctower_kernel.inbox._events import _message_event, _opened_event, _promotion_event
+from ctower_kernel.inbox._events import _message_event, _opened_event
 from ctower_kernel.inbox.models import (
-    InboxPromotionCommand,
-    InboxPromotionResult,
     InboxSendCommand,
     InboxSendResult,
 )
@@ -23,7 +21,6 @@ from ctower_kernel.record.transaction import (
     EventCommit,
     RecordTransaction,
     authority_connection,
-    project_mutation_refusal,
 )
 from ctower_kernel.telemetry import TelemetryContext
 
@@ -94,109 +91,6 @@ def send_message(
             is_new=thread is None,
         )
         return result
-
-
-def promote_thread(
-    dsn: str,
-    actor: Actor,
-    command: InboxPromotionCommand,
-    *,
-    request_digest: bytes,
-    now: datetime,
-    telemetry: TelemetryContext,
-) -> InboxPromotionResult | RecordProblem:
-    with authority_connection(dsn) as connection:
-        connection.execute("SET ROLE ctower_svc")
-        transaction = RecordTransaction(connection)
-        replay = transaction.reserve(actor.principal_id, command.client_command_id, request_digest)
-        if replay is not None:
-            return replay if isinstance(replay, RecordProblem) else _promotion_result(replay)
-        thread = _lock_thread(connection, actor.tenant_id, command.thread_id)
-        problem = _promotion_problem(connection, actor, command, thread)
-        if problem is not None:
-            return _refuse(
-                transaction, actor, command.client_command_id, request_digest, problem, now
-            )
-        durable = transaction.require_durable_subjects(
-            actor.tenant_id,
-            actor.principal_id,
-            command.client_command_id,
-            request_digest,
-            (("inbox_thread", command.thread_id), ("ticket", command.ticket_id)),
-            now=now,
-        )
-        if durable is not None:
-            return durable
-        locked = cast(dict[str, object], thread)
-        return _commit_promotion(
-            connection,
-            transaction,
-            actor,
-            command,
-            last_hash=bytes(cast(bytes, locked["last_event_hash"])),
-            request_digest=request_digest,
-            now=now,
-            telemetry=telemetry,
-        )
-
-
-def _commit_promotion(
-    connection: psycopg.Connection[dict[str, object]],
-    transaction: RecordTransaction,
-    actor: Actor,
-    command: InboxPromotionCommand,
-    *,
-    last_hash: bytes,
-    request_digest: bytes,
-    now: datetime,
-    telemetry: TelemetryContext,
-) -> InboxPromotionResult:
-    event, outbox_id = _promotion_event(actor, command, last_hash, request_digest, now, telemetry)
-    result = InboxPromotionResult(
-        command.client_command_id,
-        event.event_id,
-        command.thread_id,
-        event.sequence,
-        command.ticket_id,
-    )
-    subjects = (("inbox_thread", command.thread_id), ("ticket", command.ticket_id))
-    transaction.commit_batch(
-        (EventCommit(event, outbox_id),),
-        response_body=result.response_payload(),
-        status_code=200,
-        telemetry=telemetry,
-        now=now,
-        subjects=subjects,
-    )
-    connection.execute(
-        """
-        UPDATE inbox_threads SET version = %s, last_event_hash = %s
-        WHERE tenant_id = %s AND thread_id = %s AND version = %s
-        """,
-        (
-            result.thread_version,
-            event_digest(event),
-            actor.tenant_id,
-            command.thread_id,
-            command.expected_thread_version,
-        ),
-    )
-    connection.execute(
-        """
-        INSERT INTO inbox_ticket_links (
-            thread_id, tenant_id, ticket_id, event_id, promoted_by, promoted_at
-        ) VALUES (%s, %s, %s, %s, %s, %s)
-        """,
-        (
-            command.thread_id,
-            actor.tenant_id,
-            command.ticket_id,
-            event.event_id,
-            actor.principal_id,
-            now,
-        ),
-    )
-    return result
 
 
 def _validate_send(
@@ -461,60 +355,6 @@ def _persist_message(
     )
 
 
-def _promotion_problem(
-    connection: psycopg.Connection[dict[str, object]],
-    actor: Actor,
-    command: InboxPromotionCommand,
-    thread: dict[str, object] | None,
-) -> RecordProblem | None:
-    if thread is None or actor.principal_id not in {
-        thread.get("participant_a_id"),
-        thread.get("participant_b_id"),
-    }:
-        return _unavailable(command.client_command_id)
-    current = int(cast(int, thread["version"]))
-    if current != command.expected_thread_version:
-        return RecordProblem(
-            "version-conflict",
-            "The inbox thread version does not match the expected version.",
-            409,
-            "Inbox thread version conflict",
-            command.client_command_id,
-            current,
-        )
-    if (
-        connection.execute(
-            "SELECT 1 FROM inbox_ticket_links WHERE tenant_id = %s AND thread_id = %s",
-            (actor.tenant_id, command.thread_id),
-        ).fetchone()
-        is not None
-    ):
-        return _problem(
-            command.client_command_id,
-            "inbox-already-promoted",
-            409,
-            "The inbox thread is already linked to a ticket.",
-        )
-    scope = project_mutation_refusal(
-        connection,
-        tenant_id=actor.tenant_id,
-        principal_id=actor.principal_id,
-        command_id=command.client_command_id,
-        ticket_ids=(command.ticket_id,),
-    )
-    if scope is not None:
-        return scope
-    if (
-        connection.execute(
-            "SELECT 1 FROM tickets WHERE tenant_id = %s AND ticket_id = %s",
-            (actor.tenant_id, command.ticket_id),
-        ).fetchone()
-        is None
-    ):
-        return _unavailable(command.client_command_id)
-    return None
-
-
 def _send_result(payload: dict[str, object]) -> InboxSendResult:
     sent_at = datetime.fromisoformat(str(payload["sent_at"]))
     return InboxSendResult(
@@ -527,17 +367,6 @@ def _send_result(payload: dict[str, object]) -> InboxSendResult:
         UUID(str(payload["thread_id"])),
         int(cast(int, payload["thread_version"])),
         str(payload["to"]),
-    )
-
-
-def _promotion_result(payload: dict[str, object]) -> InboxPromotionResult:
-    event_ids = cast(list[object], payload["event_ids"])
-    return InboxPromotionResult(
-        UUID(str(payload["command_id"])),
-        UUID(str(event_ids[0])),
-        UUID(str(payload["thread_id"])),
-        int(cast(int, payload["thread_version"])),
-        UUID(str(payload["ticket_id"])),
     )
 
 

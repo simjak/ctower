@@ -1,5 +1,5 @@
 // DO NOT EDIT: generated file; regenerate from declared inputs.
-// Authored contract digest: sha256:aa5d49950e972e14cd877c942731becfaf9d0f98b0451b1b3c66902ab0953253
+// Authored contract digest: sha256:7aec1d424376a21845a4ecb5948f5a56e67fe62b8e2e02504d1d5e2185bd8140
 
 import type * as Models from "./models.js";
 import { OPERATIONS, type OperationId } from "./operations.js";
@@ -236,6 +236,12 @@ export type PrepareCtowerProjectCutoverInput = Readonly<{
   readonly body: Models.CtowerProjectEpochRefusalRequest;
 }>;
 
+export type PromoteInboxThreadInput = Readonly<{
+  readonly "threadId": string;
+  readonly "IdempotencyKey": string;
+  readonly body: Models.InboxPromotionRequest;
+}>;
+
 export type PromoteIntakeEventInput = Readonly<{
   readonly "inboundEventId": string;
   readonly "IdempotencyKey": string;
@@ -390,6 +396,7 @@ export type OperationInputs = Readonly<{
   readonly "listTicketSessions": ListTicketSessionsInput;
   readonly "planCompanyBundle": PlanCompanyBundleInput;
   readonly "prepareCtowerProjectCutover": PrepareCtowerProjectCutoverInput;
+  readonly "promoteInboxThread": PromoteInboxThreadInput;
   readonly "promoteIntakeEvent": PromoteIntakeEventInput;
   readonly "readInboxMessageState": ReadInboxMessageStateInput;
   readonly "readInboxThread": ReadInboxThreadInput;
@@ -455,6 +462,7 @@ export type OperationResults = Readonly<{
   readonly "listTicketSessions": Models.TicketSessionList;
   readonly "planCompanyBundle": Models.CompanyBundlePlan;
   readonly "prepareCtowerProjectCutover": never;
+  readonly "promoteInboxThread": Models.InboxPromotionResult;
   readonly "promoteIntakeEvent": Models.IntakeCommandResult;
   readonly "readInboxMessageState": Models.InboxReadState;
   readonly "readInboxThread": Models.InboxThread;
@@ -746,6 +754,12 @@ export class CtowerClient {
     input: PrepareCtowerProjectCutoverInput,
   ): Promise<never> {
     return this.execute("prepareCtowerProjectCutover", input);
+  }
+
+  public async promoteInboxThread(
+    input: PromoteInboxThreadInput,
+  ): Promise<Models.InboxPromotionResult> {
+    return this.execute("promoteInboxThread", input);
   }
 
   public async promoteIntakeEvent(

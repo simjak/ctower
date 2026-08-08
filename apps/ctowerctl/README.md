@@ -13,8 +13,10 @@ Add uses the protected spool, while list/get call the generated client directly.
 the server-side static-source mount remain authoritative.
 Native agent messaging is the closed `inbox send --to <agent> [--thread <id>] <text>`, `inbox ack
 --state delivered|read <message>`, `inbox list [--unread]`, `inbox read <thread>`, and `inbox read-state
-<thread>` family. Send and recipient-only acknowledgement use the protected spool. The three reads call the
-generated client directly and never queue; opening a thread never records a read fact.
+<thread>` family, plus `inbox promote <thread> [--ticket <id>]`. Promotion creates a P2 ticket from the
+thread head when `--ticket` is absent and links the named existing ticket otherwise. Send, recipient-only
+acknowledgement, and promotion use the protected spool. The three reads call the generated client directly
+and never queue; opening a thread never records a read fact.
 
 `ticket workflow list` is the one local Workflow read: it enumerates coherent active revisions from the
 installed pack tree without a network request. With exactly one revision, omitted start pins expand to that

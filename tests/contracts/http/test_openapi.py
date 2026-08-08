@@ -150,6 +150,7 @@ _EXPECTED_OPERATION_METADATA: dict[str, tuple[object, bool, str, object, bool]] 
         True,
     ),
     "promoteIntakeEvent": ("intake promote", True, "allowed", None, False),
+    "promoteInboxThread": ("inbox promote", True, "allowed", None, False),
     "readInboxThread": ("inbox read", False, "forbidden", None, False),
     "readInboxMessageState": ("inbox read-state", False, "forbidden", None, False),
     "recordAttentionFindingDisposition": (
@@ -252,6 +253,7 @@ _EXPECTED_PROBLEM_CODES = {
     "inbox-recipient-not-found",
     "inbox-recipient-self",
     "inbox-sender-unaddressable",
+    "inbox-thread-head-invalid",
     "inbox-thread-participant-mismatch",
     "label-already-applied",
     "label-key-unrecognized",

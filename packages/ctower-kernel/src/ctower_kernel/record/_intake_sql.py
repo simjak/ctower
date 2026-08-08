@@ -68,7 +68,6 @@ from ctower_kernel.record._intake_state_sql import (
 from ctower_kernel.record._intake_state_sql import (
     reserve_source_alias as _reserve_source_alias,
 )
-from ctower_kernel.record._ticket_sql import _insert_ticket_state, _TicketIds
 from ctower_kernel.record.intake import (
     InboundSource,
     IntakeCommandResult,
@@ -77,6 +76,11 @@ from ctower_kernel.record.intake import (
     IntakePromotionCommand,
     IntakeSubmitCommand,
     IntakeTaint,
+)
+from ctower_kernel.record.ticket_creation import (
+    TicketCreationIds,
+    insert_ticket_state,
+    new_ticket_creation_ids,
 )
 from ctower_kernel.record.transaction import RecordTransaction, authority_connection
 from ctower_kernel.telemetry import TelemetryContext
@@ -376,7 +380,7 @@ def _prepare_promotion_after_durability(
     actor: Actor,
     command: IntakePromotionCommand,
     resolved: UUID,
-    ticket_ids: _TicketIds | None,
+    ticket_ids: TicketCreationIds | None,
     *,
     request_digest: bytes,
     now: datetime,
@@ -510,10 +514,8 @@ def _submit_ids(command: IntakeSubmitCommand, now: datetime) -> _SubmitIds:
     )
 
 
-def _new_ticket_ids(intent: IntakeIntent, now: datetime) -> _TicketIds | None:
-    if intent is not IntakeIntent.CREATE_TICKET:
-        return None
-    return _TicketIds(*(_uuid7(now) for _ in range(3)))
+def _new_ticket_ids(intent: IntakeIntent, now: datetime) -> TicketCreationIds | None:
+    return new_ticket_creation_ids(now) if intent is IntakeIntent.CREATE_TICKET else None
 
 
 def _insert_inbound_event(
@@ -594,7 +596,7 @@ def _apply_action_state(
     now: datetime,
 ) -> None:
     if action.ticket_command is not None and action.ticket_ids is not None:
-        _insert_ticket_state(
+        insert_ticket_state(
             connection,
             actor,
             action.ticket_command,

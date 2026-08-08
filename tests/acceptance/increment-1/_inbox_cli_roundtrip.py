@@ -48,6 +48,51 @@ class RoundTrip:
     thread_id: UUID
 
 
+def promote(
+    tenant: TenantFixture,
+    monkeypatch: pytest.MonkeyPatch,
+    tmp_path: Path,
+    thread_id: UUID,
+    *,
+    ticket_id: UUID | None = None,
+) -> dict[str, object]:
+    """Drive the public CLI promotion mutation through pending and accepted states."""
+
+    with running_api(
+        tenant.database.runtime_dsn,
+        projection_dsn=tenant.database.projection_dsn,
+    ) as base_url:
+        arguments = [
+            "--base-url",
+            base_url,
+            "inbox",
+            "promote",
+            "--command-id",
+            str(uuid4()),
+            str(thread_id),
+        ]
+        if ticket_id is not None:
+            arguments.extend(("--ticket", str(ticket_id)))
+        pending_status, pending = _run(
+            monkeypatch,
+            tmp_path / "commander",
+            tenant.commander_credential,
+            arguments,
+        )
+        assert pending_status == EXIT_TEMPORARY
+        assert pending["state"] == "queued"
+        accept_pending_commands(tenant.database.admin_dsn, tenant.tenant_id)
+        accepted_status, accepted = _run(
+            monkeypatch,
+            tmp_path / "commander",
+            tenant.commander_credential,
+            arguments,
+        )
+    assert accepted_status == EXIT_SUCCESS
+    assert accepted["state"] == "accepted"
+    return accepted
+
+
 def roundtrip(
     tenant: TenantFixture,
     monkeypatch: pytest.MonkeyPatch,

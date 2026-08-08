@@ -5,7 +5,8 @@ from __future__ import annotations
 from datetime import datetime
 
 from ctower_kernel.inbox._delivery_sql import acknowledge_message
-from ctower_kernel.inbox._sql import promote_thread, send_message
+from ctower_kernel.inbox._promotion_sql import promote_thread
+from ctower_kernel.inbox._sql import send_message
 from ctower_kernel.inbox.models import (
     InboxAcknowledgeCommand,
     InboxAcknowledgeResult,

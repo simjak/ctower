@@ -15,13 +15,13 @@ from ctower_kernel.record import (
     RecordProblem,
     TicketCommand,
 )
-from ctower_kernel.record._ticket_sql import _TicketIds
 from ctower_kernel.record.intake import (
     InboundSource,
     IntakeCommandResult,
     IntakeOutcome,
     IntakePromotionCommand,
 )
+from ctower_kernel.record.ticket_creation import TicketCreationIds
 from ctower_kernel.record.transaction import RecordTransaction
 
 __all__: tuple[str, ...] = ()
@@ -42,14 +42,14 @@ class IntakeAction:
     ticket_id: UUID | None
     ticket_version: int | None
     ticket_command: TicketCommand | None
-    ticket_ids: _TicketIds | None
+    ticket_ids: TicketCreationIds | None
 
 
 @dataclass(frozen=True, slots=True)
 class _SubmitIds:
     thread: UUID
     inbound_event: UUID
-    ticket: _TicketIds | None
+    ticket: TicketCreationIds | None
     ticket_subject: UUID | None
 
 

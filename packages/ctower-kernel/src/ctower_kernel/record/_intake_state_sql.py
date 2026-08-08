@@ -17,10 +17,6 @@ from ctower_kernel.record import (
 from ctower_kernel.record._intake_command_sql import IntakeAction, IntakeThreadState
 from ctower_kernel.record._intake_command_sql import scope_problem as _scope_problem
 from ctower_kernel.record._intake_command_sql import version_problem as _version_problem
-from ctower_kernel.record._ticket_sql import (
-    _initial_custody_problem,
-    _TicketIds,
-)
 from ctower_kernel.record.intake import (
     InboundSource,
     IntakeIntent,
@@ -28,6 +24,12 @@ from ctower_kernel.record.intake import (
     IntakePromotionCommand,
     IntakeSubmitCommand,
     IntakeTaint,
+)
+from ctower_kernel.record.ticket_creation import (
+    TicketCreationIds,
+)
+from ctower_kernel.record.ticket_creation import (
+    initial_custody_problem as _initial_custody_problem,
 )
 
 __all__: tuple[str, ...] = ()
@@ -187,7 +189,7 @@ def prepare_action(
     *,
     project_key: str | None = None,
     source: InboundSource | None = None,
-    ticket_ids: _TicketIds | None = None,
+    ticket_ids: TicketCreationIds | None = None,
 ) -> IntakeAction | RecordProblem:
     if (
         isinstance(command, IntakeSubmitCommand)
@@ -215,7 +217,7 @@ def _prepare_create_action(
     *,
     project_key: str | None,
     source: InboundSource | None,
-    ticket_ids: _TicketIds | None,
+    ticket_ids: TicketCreationIds | None,
 ) -> IntakeAction | RecordProblem:
     if command.initial_custodian_id is None or command.priority is None or command.title is None:
         raise RuntimeError("Work admitted incomplete create-ticket intake")

@@ -111,6 +111,7 @@ eligible is refused as `intake-promotion-ineligible` without changing anything.
 |---|---|---|---|---|---|---|
 | `POST` | `/v1/inbox/messages` | `sendInboxMessage` | `inbox send` | mutation | allowed | `201`, `202`, `401`, `403`, `404`, `409`, `422` |
 | `POST` | `/v1/inbox/messages/{message_id}/ack` | `acknowledgeInboxMessage` | `inbox ack` | mutation | allowed | `200`, `202`, `401`, `403`, `404`, `409`, `422` |
+| `POST` | `/v1/inbox/threads/{thread_id}/promotion` | `promoteInboxThread` | `inbox promote` | mutation | allowed | `200`, `202`, `401`, `403`, `404`, `409`, `422` |
 | `GET` | `/v1/inbox/threads` | `listInboxThreads` | `inbox list` | query | forbidden | `200`, `401`, `404`, `422` |
 | `GET` | `/v1/inbox/threads/{thread_id}` | `readInboxThread` | `inbox read` | query | forbidden | `200`, `401`, `404`, `422` |
 | `GET` | `/v1/inbox/threads/{thread_id}/read-state` | `readInboxMessageState` | `inbox read-state` | query | forbidden | `200`, `401`, `404`, `422` |

@@ -594,6 +594,7 @@
       "references": [
         "SPEC#canonical-event-and-command-contract",
         "SPEC#client-acknowledgement-and-offline-behavior",
+        "SPEC#native-inbox-delivery-and-read-facts",
         "SPEC#operational-health-and-degraded-behavior",
         "SPEC#recorded-work-sessions",
         "SPEC#task-management-foundation",
@@ -608,6 +609,7 @@
         "AC-ADM-02",
         "AC-DUR-01",
         "AC-DUR-02",
+        "AC-INBOX-04",
         "AC-EVD-04",
         "AC-QUAL-05",
         "AC-OPS-01",
@@ -1906,7 +1908,8 @@
         "SPEC#canonical-event-and-command-contract",
         "SPEC#persistence-authority",
         "INV-03",
-        "INV-34"
+        "INV-34",
+        "AC-INBOX-04"
       ]
     },
     {

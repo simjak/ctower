@@ -3604,6 +3604,14 @@ but never marks content read. The disposable inbox projection folds delivery/rea
 onto its existing message rows. Recipient unread counts are messages addressed to that recipient without an
 accepted read fact. Projection reset/rebuild discards no authority and reproduces the same state.
 
+The public promotion operation is `inbox promote <thread> [--ticket <id>]` over the generated API/client and
+protected spool. With `--ticket`, it links the participant-visible thread to that existing in-scope ticket.
+Without `--ticket`, it atomically creates a P2 ticket whose title is the immutable thread-head message, whose
+source reference is that inbox thread, and whose initial custody follows the ordinary per-operation custody
+policy, then records the same one-time thread-to-ticket link. Creation and promotion events, ticket state,
+command result, outbox rows, subject links, and both navigation directions commit or refuse together. There
+is no classifier, title truncation, compatibility path, or browser promotion control in I1.
+
 Harness is deliberately not a closed catalog. The open enum's baseline known values are `claude-code`,
 `hermes`, `codex`, and `qwen-code`, but any unknown harness string observed on an assignment stamp,
 `model_changed` event, or session fact is carried, displayed, and compared exactly as observed. Unknown
@@ -4133,6 +4141,7 @@ Each criterion is pass/fail. Evidence must be attached to the ctower build ticke
 | <a id="ac-inbox-01"></a>AC-INBOX-01 | A generated-client and protected-CLI roundtrip sends one native inbox message, records recipient-only `delivered` and `read` acknowledgements in order, and queries exact per-message `sent -> delivered -> read` state including immutable event IDs and server timestamps. Direct `read` records both missing facts atomically; exact replay returns the same result. | Real PostgreSQL API/CLI send/ack/read-state transcript, authority/event query, replay assertion |
 | <a id="ac-inbox-02"></a>AC-INBOX-02 | Recipient unread count remains nonzero after a pure thread read and becomes zero only after the accepted read fact. Projection catch-up and full rebuild reproduce the same per-message state, unread count, promotion link, and fact-derived read-through position without reading an authority table directly or persisting a read cursor. | Before/after unread snapshots, projection privilege inventory, deterministic rebuild equality |
 | <a id="ac-inbox-03"></a>AC-INBOX-03 | Delivery/read facts, canonical events, command results, and outbox rows are append-only. A sender acknowledgement, repeated/regressive acknowledgement, unknown message, and foreign scope each refuse by exact stable code with no mutation; the new contract, migration, module, and acceptance suites are registered and required. | Refusal/state-diff matrix, immutable-trigger test, canonical vectors, expected-suite manifest, clean codegen/check/verify logs |
+| <a id="ac-inbox-04"></a>AC-INBOX-04 | `inbox promote <thread>` creates one P2 ticket from the immutable thread head under ordinary initial-custody policy and links both directions atomically; `--ticket <id>` links an existing in-scope ticket without changing it. Both protected CLI paths return an explicit `ticket_created|ticket_linked` result, replay exactly, and the one-time promotion refuses by stable code. No browser control exists. | Real PostgreSQL generated-client/CLI transcripts for both modes, ticket/source/custody query, event/subject/link query, Board projection and rebuild equality, replay/refusal assertions |
 
 ### Recorded work sessions
 

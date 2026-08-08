@@ -334,6 +334,46 @@
         }
       }
     },
+    "/v1/inbox/threads/{thread_id}/promotion": {
+      "post": {
+        "operationId": "promoteInboxThread",
+        "x-ctower-cli": "inbox promote",
+        "x-ctower-mutation": true,
+        "x-ctower-spool": "allowed",
+        "security": [{"bearerAuth": []}],
+        "parameters": [
+          {
+            "name": "thread_id",
+            "in": "path",
+            "required": true,
+            "schema": {"type": "string", "format": "uuid"}
+          },
+          {"$ref": "#/components/parameters/IdempotencyKey"}
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {"schema": {"$ref": "#/components/schemas/InboxPromotionRequest"}}
+          }
+        },
+        "responses": {
+          "202": {
+            "description": "Inbox promotion committed; off-host durability acknowledgement pending",
+            "headers": {"Retry-After": {"$ref": "#/components/headers/RetryAfter"}},
+            "content": {"application/json": {"schema": {"$ref": "#/components/schemas/InboxPromotionResult"}}}
+          },
+          "200": {
+            "description": "Inbox promotion accepted off host",
+            "content": {"application/json": {"schema": {"$ref": "#/components/schemas/InboxPromotionResult"}}}
+          },
+          "401": {"$ref": "#/components/responses/ProblemResponse"},
+          "403": {"$ref": "#/components/responses/ProblemResponse"},
+          "404": {"$ref": "#/components/responses/ProblemResponse"},
+          "409": {"$ref": "#/components/responses/ProblemResponse"},
+          "422": {"$ref": "#/components/responses/ProblemResponse"}
+        }
+      }
+    },
     "/v1/inbox/threads": {
       "get": {
         "operationId": "listInboxThreads",
@@ -3173,6 +3213,7 @@
               "inbox-recipient-not-found",
               "inbox-recipient-self",
               "inbox-sender-unaddressable",
+              "inbox-thread-head-invalid",
               "inbox-thread-participant-mismatch",
               "intake-already-promoted",
               "intake-promotion-ineligible",
@@ -3408,6 +3449,31 @@
         "additionalProperties": false,
         "required": ["state"],
         "properties": {"state": {"type": "string", "enum": ["delivered", "read"]}}
+      },
+      "InboxPromotionRequest": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "ticket_id": {"type": ["string", "null"], "format": "uuid"}
+        }
+      },
+      "InboxPromotionOutcome": {
+        "type": "string",
+        "enum": ["ticket_created", "ticket_linked"]
+      },
+      "InboxPromotionResult": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["command_id", "durability_state", "event_ids", "outcome", "thread_id", "thread_version", "ticket_id"],
+        "properties": {
+          "command_id": {"type": "string", "format": "uuid"},
+          "durability_state": {"$ref": "#/components/schemas/DurabilityState"},
+          "event_ids": {"type": "array", "minItems": 1, "maxItems": 2, "items": {"type": "string", "format": "uuid"}},
+          "outcome": {"$ref": "#/components/schemas/InboxPromotionOutcome"},
+          "thread_id": {"type": "string", "format": "uuid"},
+          "thread_version": {"type": "integer", "minimum": 3},
+          "ticket_id": {"type": "string", "format": "uuid"}
+        }
       },
       "InboxAcknowledgeResult": {
         "type": "object",

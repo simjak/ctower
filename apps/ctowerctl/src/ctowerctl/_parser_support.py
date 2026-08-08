@@ -20,6 +20,7 @@ AUTHORED_COMMAND_NAMES = frozenset(
         "inbox send",
         "inbox ack",
         "inbox list",
+        "inbox promote",
         "inbox read",
         "inbox read-state",
         "knowledge add",

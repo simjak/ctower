@@ -1,6 +1,6 @@
 """DO NOT EDIT: generated file; regenerate from declared inputs.
 
-Authored contract digest: sha256:aa5d49950e972e14cd877c942731becfaf9d0f98b0451b1b3c66902ab0953253
+Authored contract digest: sha256:7aec1d424376a21845a4ecb5948f5a56e67fe62b8e2e02504d1d5e2185bd8140
 """
 
 from __future__ import annotations
@@ -55,6 +55,8 @@ from ctower_client.models import (
     FreezeCriteriaRequest,
     InboxAcknowledgeRequest,
     InboxAcknowledgeResult,
+    InboxPromotionRequest,
+    InboxPromotionResult,
     InboxReadState,
     InboxSendRequest,
     InboxSendResult,
@@ -996,6 +998,28 @@ class CtowerClient:
             ),
         )
         _refusal(response, {401: Problem, 409: Problem, 422: Problem})
+
+    @validate_call(config=ConfigDict(strict=True, arbitrary_types_allowed=True))
+    def promote_inbox_thread(
+        self,
+        thread_id: UUID,
+        request: InboxPromotionRequest,
+        *,
+        command_id: UUID,
+    ) -> InboxPromotionResult:
+        response = self._http.post(
+            f"/v1/inbox/threads/{quote(str(thread_id), safe='')}/promotion",
+            content=request.model_dump_json(),
+            headers=self._telemetry_headers(
+                self._context(command_id),
+                {
+                    **self._auth_headers(),
+                    "Content-Type": "application/json",
+                    "Idempotency-Key": str(command_id),
+                },
+            ),
+        )
+        return _response(response, {200: InboxPromotionResult, 202: InboxPromotionResult}, {401: Problem, 403: Problem, 404: Problem, 409: Problem, 422: Problem})
 
     @validate_call(config=ConfigDict(strict=True, arbitrary_types_allowed=True))
     def promote_intake_event(

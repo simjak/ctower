@@ -12,6 +12,7 @@ __all__ = [
     "InboxAcknowledgeResult",
     "InboxAcknowledgementState",
     "InboxPromotionCommand",
+    "InboxPromotionOutcome",
     "InboxPromotionResult",
     "InboxSendCommand",
     "InboxSendResult",
@@ -21,6 +22,11 @@ __all__ = [
 class InboxAcknowledgementState(StrEnum):
     DELIVERED = "delivered"
     READ = "read"
+
+
+class InboxPromotionOutcome(StrEnum):
+    TICKET_CREATED = "ticket_created"
+    TICKET_LINKED = "ticket_linked"
 
 
 @dataclass(frozen=True, slots=True)
@@ -103,22 +109,21 @@ class InboxSendResult:
 @dataclass(frozen=True, slots=True)
 class InboxPromotionCommand:
     client_command_id: UUID
-    expected_thread_version: int
     thread_id: UUID
-    ticket_id: UUID
+    ticket_id: UUID | None = None
 
     def request_payload(self) -> dict[str, object]:
         return {
-            "expected_thread_version": self.expected_thread_version,
             "thread_id": str(self.thread_id),
-            "ticket_id": str(self.ticket_id),
+            "ticket_id": str(self.ticket_id) if self.ticket_id is not None else None,
         }
 
 
 @dataclass(frozen=True, slots=True)
 class InboxPromotionResult:
     command_id: UUID
-    event_id: UUID
+    event_ids: tuple[UUID, ...]
+    outcome: InboxPromotionOutcome
     thread_id: UUID
     thread_version: int
     ticket_id: UUID
@@ -127,7 +132,8 @@ class InboxPromotionResult:
         return {
             "command_id": str(self.command_id),
             "durability_state": "durability_pending",
-            "event_ids": [str(self.event_id)],
+            "event_ids": [str(item) for item in self.event_ids],
+            "outcome": self.outcome.value,
             "thread_id": str(self.thread_id),
             "thread_version": self.thread_version,
             "ticket_id": str(self.ticket_id),

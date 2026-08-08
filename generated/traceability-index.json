@@ -221,6 +221,10 @@
       "packages/ctower-kernel/migrations/0051_inbox_delivery_read_facts.sql",
       "packages/ctower-kernel/migrations/0052_knowledge_inbox_event_kinds.sql"
     ],
+    "AC-INBOX-04": [
+      "contracts/http/openapi.yaml",
+      "packages/ctower-kernel/migrations/0048_native_inbox.sql"
+    ],
     "AC-MIG-01": [
       "contracts/domain/migration/ctower-project-export-equality.schema.json",
       "contracts/domain/migration/ctower-project-export-manifest.schema.json",
@@ -1123,6 +1127,7 @@
     ],
     "SPEC#native-inbox-delivery-and-read-facts": [
       "contracts/domain/inbox/inbox-v2.schema.json",
+      "contracts/http/openapi.yaml",
       "packages/ctower-kernel/migrations/0051_inbox_delivery_read_facts.sql",
       "packages/ctower-kernel/migrations/0052_knowledge_inbox_event_kinds.sql"
     ],
