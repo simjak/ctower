@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.14.0](https://github.com/simjak/ctower/compare/v0.13.0...v0.14.0) (2026-08-08)
+
+
+### Features
+
+* **inbox:** expose public thread promotion ([#367](https://github.com/simjak/ctower/issues/367)) ([59b6b3f](https://github.com/simjak/ctower/commit/59b6b3f5036d0dc1b8dbc2d9dceaebc96343060f))
+
 ## [0.13.0](https://github.com/simjak/ctower/compare/v0.12.0...v0.13.0) (2026-08-07)
 
 
