@@ -1607,3 +1607,83 @@ Rejected alternatives:
   the proof-gated lifecycle authority that ctower exists to protect.
 - Editing `ctower.integration/v1` in place. Rejected by D37; the incompatible active shape is published as
   v2 and v1 remains byte-for-byte available to historical readers.
+
+## D40 — Separate server-mediated Inbox promotion dogfood boundary (locked 2026-08-08, operator)
+
+The operator permits one narrow exception to D23's no-I1-browser-artifact timing: `apps/ctower-ui` may
+remain a separate, local shadow-instance dogfood server and expose one Inbox control over the already
+authored `POST /v1/inbox/threads/{thread_id}/promotion` operation. This entry supersedes only D23's and
+the prior I1 Inbox wording's blanket prohibition as applied to that exact non-product dogfood control. D22,
+D23, D31, CT-I1-005, and CT-I2-005 still reserve every product browser route, browser authentication
+surface, Playwright suite, and five-surface realization for I2.4.
+
+1. **One existing command, no client authority.** The dogfood control may create a ticket from the immutable
+   thread head or link an in-scope ticket only by calling the existing generated command endpoint. Its browser
+   receives no API bearer, session, CSRF token, credential, actor, project, scope, custody, or authorization
+   claim. A server action holds the existing server-side bearer and sends only `{}` or `{ticket_id}`; the API
+   remains the sole authentication and authorization authority.
+2. **The transport stays bounded and replay-safe.** The action creates one `Idempotency-Key` before its first
+   attempt and reuses that exact key for every retry. `408`, `425`, `429`, and the declared transient `5xx`
+   statuses re-enter the finite, deadline-bounded, capped full-jitter loop. A permanent problem document is
+   terminal and its validated human `detail` is the only server-provided refusal copy the control renders.
+3. **Copy names the real scope.** The `New ticket` rail affordance remains visibly disabled and names only
+   its own unavailable capture path. Shared Inbox provenance copy names the server-authorized promotion path;
+   it must not claim that no mutation path exists on the surface.
+4. **The exception earns no product scope.** This separate Next.js dogfood server is neither `ctower-web` nor
+   an I1 product route. It introduces no product session design, direct browser API client, record-tier
+   connection, new command, contract, role, test-suite activation, capability flag, deployment promise, or
+   CT-I1-005/CT-I2-005 evidence. It remains for low-value reconstructible shadow dogfood only.
+
+Rejected alternatives:
+
+- Treating the control as an early I2.4 browser product or a general exception for browser mutations. It is
+  one server-mediated command on one explicitly separate dogfood boundary.
+- Passing a bearer, session credential, CSRF token, or claimed authority fact to browser JavaScript, DOM,
+  storage, URL, telemetry, or screenshots. The existing API authorization boundary is retained.
+- Leaving a global read-only claim beside the working control, or enabling `New ticket` by association. Each
+  rendered affordance must state only the capability it actually has.
+
+## D41 — The dogfood exception activates one verification suite, and only that (engineering, 2026-08-08, gh#379)
+
+D40 clause 4 disclaimed any `test-suite activation`, and the same candidate registered
+`dogfood-inbox-promotion` as a `status = "required"` suite that `just verify` executes and counts. Both
+halves cannot be true. The registration is the correct half — an exception that ships a working control
+and then proves nothing about it is not a smaller commitment, it is an unverified one — so the contract
+text is what is repaired. This entry preserves D40 and supersedes only clause 4's "test-suite activation"
+disclaimer, and only for the one suite named here.
+
+1. **One activated suite, named.** The exception activates exactly one required verification suite,
+   `dogfood-inbox-promotion`, owned by `CT-I1-007`. It proves the dogfood boundary's own claims: the bounded,
+   replay-safe transport, and the rendered copy clause 3 governs. No other suite changes status, and a second
+   dogfood suite is a new decision, not a reading of this one.
+2. **The rendered claim is proved in a browser, on the dogfood boundary only.** Clause 3 is about a sentence
+   an operator reads, which is composed at render time from a frame component, a rail constant and a screen;
+   reading those files proves nothing about the page. The suite may therefore build the separate dogfood
+   server, serve it on an ephemeral loopback port against a local stub record source on another, and drive
+   the rendered Inbox surface in a headless browser at the design bar's three widths. It reads: it never
+   submits the promotion command from a browser, and it never addresses a running instance, an operator's
+   port, or any credential.
+3. **The product browser scope stays reserved.** `browser-e2e` stays deferred to `CT-I2-005`, and D22, D23,
+   D31, CT-I1-005 and CT-I2-005 still reserve every product browser route, browser authentication surface,
+   product Playwright suite, and five-surface realization for I2.4. A browser used as a read instrument
+   against a non-product dogfood server is not a browser product, and this entry authorizes no browser
+   evidence for any `CT-I1-005` or `CT-I2-005` obligation.
+4. **The verification host declares its browser.** The suite's browser is the Chromium build pinned by
+   `@playwright/test` in `pnpm-lock.yaml`, installed by the verify workflow before the gates run. A host
+   without it fails the suite by name; it is never skipped, and a missing browser never passes quietly.
+5. **Everything else clause 4 withheld is still withheld.** The exception still introduces no product session
+   design, direct browser API client, record-tier connection, new command, contract, role, capability flag,
+   or deployment promise, and remains for low-value reconstructible shadow dogfood only.
+
+Rejected alternatives:
+
+- Unregistering `dogfood-inbox-promotion` to make clause 4 true as written. That resolves the contradiction
+  by deleting the verification, leaving a shipped control whose bounded transport and rendered copy no gate
+  proves.
+- Editing D40 clause 4 in place. `DECISIONS.md` is append-only; an accepted clause is superseded, never
+  rewritten (D36).
+- Activating `browser-e2e` or filing the render assertion under `tests/e2e`. That is the product browser
+  suite `CT-I2-005` owns, and borrowing it would grant the I2.4 scope D40 disclaims.
+- Asserting the rendered copy by reading `RecordFoot.tsx` and `rail.ts` from disk. A source-text search
+  passes while the composed page still carries a retired claim, which is exactly the escape that produced
+  this entry.

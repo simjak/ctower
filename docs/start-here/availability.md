@@ -10,7 +10,8 @@ roadmap item.
 - Running a supported backup, restore, migration, recovery, monitoring, or incident procedure.
 - Managing real tenants, tickets, credentials, or production work.
 - Treating the development CompanyBundle pointer as runtime/effect activation or a production rollout.
-- Using a browser UI, runner, local/remote agent adapter, or external effect provider.
+- Using a product browser UI, runner, local/remote agent adapter, or external effect provider. The separate
+  [ctower-ui Inbox dogfood control](../reference/dogfood-inbox-promotion.md) is not a supported product UI.
 - Depending on a published package, stable Python runtime, compatibility promise, or production release.
 
 The checked-in Compose file supports disposable PostgreSQL acceptance tests only. Read

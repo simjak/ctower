@@ -27,7 +27,7 @@ export function RecordFoot({
         {recordAdapter.instance.baseUrl}
       </span>
       <span>{recordAdapter.instance.posture}</span>
-      <span>read-only v1 · no mutation path exists on this surface</span>
+      <span>server-authorized Inbox promotion path · browser holds no write authority</span>
       {readPath === null ? null : <span>read {readPath}</span>}
       {watermark === null ? null : <span>{watermark}</span>}
       <span>rendered {stampText(new Date().toISOString())}</span>
