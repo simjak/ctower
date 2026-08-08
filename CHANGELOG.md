@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.19.0](https://github.com/simjak/ctower/compare/v0.18.0...v0.19.0) (2026-08-08)
+
+
+### Features
+
+* **ui:** add the director's cross-project portfolio view ([#385](https://github.com/simjak/ctower/issues/385)) ([e53e27e](https://github.com/simjak/ctower/commit/e53e27ec269ad3f2a9b74cda5361401093fd13b8))
+
 ## [0.18.0](https://github.com/simjak/ctower/compare/v0.17.0...v0.18.0) (2026-08-08)
 
 
