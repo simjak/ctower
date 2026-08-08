@@ -15,9 +15,9 @@ Native agent messaging is the closed `inbox send --to <agent> [--thread <id>] <t
 --state delivered|read <message>`, `inbox list [--unread]`, `inbox read <thread>`, and `inbox read-state
 <thread>` family, plus `inbox notify --to <agent> <text>` and `inbox promote <thread> [--ticket <id>]`.
 `notify` uses the stable notification delivery UUID as `--command-id`, derives sender identity server-side,
-and groups both directions of a seat pair into one thread. `DualRailNotifyBridge` calls an injected existing
-durable delivery first, then this generated-client operation; typed refusal or unavailability is returned as
-a non-blocking mirror outcome. Promotion creates a P2 ticket from the
+and groups both directions of a seat pair into one thread. Mission Control's production `tools/notify`
+appends its durable row first, then invokes this protected command; refusal, retry exhaustion, or local
+unavailability remains an explicit non-blocking rail-2 outcome. Promotion creates a P2 ticket from the
 thread head when `--ticket` is absent and links the named existing ticket otherwise. Send, recipient-only
 acknowledgement, and promotion use the protected spool. The three reads call the generated client directly
 and never queue; opening a thread never records a read fact.
@@ -88,7 +88,10 @@ artifact digest. It blocks replay until an operator discards that exact sequence
 is authenticated and append-only; the corrupt ciphertext remains as local audit evidence.
 
 Exit meanings are stable: `0` read/accepted, `64` usage/input, `69` permanent rejection or quarantine,
-`74` local/keyring/integrity failure, and `75` queued, unreachable, or `durability_pending`. Exit `75` never
+`74` local/keyring/integrity failure, and `75` queued, unreachable, `durability_pending`, or bounded retry
+exhaustion. Notification mirroring uses at most four attempts within ten seconds with capped exponential
+jitter; exhaustion leaves the same encrypted pending command and sequence available for explicit
+reconciliation. Exit `75` never
 claims server acceptance. Mutation output always identifies the stable command ID and local state. `control
 health` is the one read whose exit reflects its content rather than request success alone: a `DEGRADED` or
 `STATE_UNKNOWN` status exits `69` even though the read itself succeeded.

@@ -28,24 +28,16 @@ from ctower_kernel.inbox import Inbox, InboxSendCommand, PostgresInbox
 from ctower_kernel.inbox import InboxSendResult as KernelInboxSendResult
 from ctower_kernel.record import Actor, PrincipalKind, RecordProblem
 from ctower_kernel.telemetry import TelemetryContext
-from ctowerctl.notify_bridge import (
-    DualRailNotifyBridge,
-    Notification,
-    NotificationDelivery,
-    NotificationMirrorState,
-)
 
 __all__: tuple[str, ...] = ()
 
 _EXPECTED_COMMAND_EVENTS = 2
-_EXPECTED_LEGACY_DELIVERIES = 3
 _EXPECTED_PAIR_MESSAGES = 2
 
 
 @dataclass(frozen=True, slots=True)
 class _Notification:
     delivery_id: UUID
-    sender_label: str
     to: str
     subject: str
     body: str
@@ -55,44 +47,11 @@ class _Notification:
         return f"{self.subject}\n\n{self.body}"
 
 
-class _ToolsNotifyFixture:
-    """The existing append runs first; the ctower transport is best effort and typed."""
-
-    def __init__(
-        self,
-        bridge: DualRailNotifyBridge,
-        legacy_rows: list[_Notification],
-    ) -> None:
-        self._bridge = bridge
-        self._legacy_rows = legacy_rows
-
-    def send(self, notification: _Notification) -> NotificationDelivery:
-        return self._bridge.deliver(
-            _bridge_notification(notification),
-            deliver_rail1=lambda: self._legacy_rows.append(notification),
-        )
-
-    def redeliver(self, notification: _Notification) -> NotificationDelivery:
-        return self._bridge.redeliver(_bridge_notification(notification))
-
-
-class _UnavailableClient:
-    def ingest_inbox_notification(
-        self,
-        request: InboxNotificationRequest,
-        *,
-        command_id: UUID,
-    ) -> InboxSendResult:
-        del request, command_id
-        raise OSError("fixture transport unavailable")
-
-
-def test_notify_bridge_is_idempotent_and_groups_an_unordered_seat_pair(
+def test_notification_ingest_is_idempotent_and_groups_an_unordered_seat_pair(
     tenant: TenantFixture,
 ) -> None:
     qa_id, qa_credential = _provision_seat(tenant, "qa-agent")
     _designer_id, _designer_credential = _provision_seat(tenant, "designer-agent")
-    legacy_rows: list[_Notification] = []
     first_notification = _notification("qa-agent", subject="First handoff")
     reply_notification = _notification("ctower-commander", subject="Reply")
     distinct_notification = _notification("designer-agent", subject="Design handoff")
@@ -105,32 +64,17 @@ def test_notify_bridge_is_idempotent_and_groups_an_unordered_seat_pair(
         CtowerClient(base_url, credential=tenant.commander_credential) as commander_client,
         CtowerClient(base_url, credential=qa_credential) as qa_client,
     ):
-        commander_notify = _ToolsNotifyFixture(
-            DualRailNotifyBridge(commander_client),
-            legacy_rows,
-        )
-        qa_notify = _ToolsNotifyFixture(DualRailNotifyBridge(qa_client), legacy_rows)
-        first = commander_notify.send(first_notification)
-        replay = commander_notify.redeliver(first_notification)
-        reply = qa_notify.send(reply_notification)
-        distinct = commander_notify.send(distinct_notification)
+        first = _ingest(commander_client, first_notification)
+        replay = _ingest(commander_client, first_notification)
+        reply = _ingest(qa_client, reply_notification)
+        distinct = _ingest(commander_client, distinct_notification)
 
-    assert first.mirror_state is NotificationMirrorState.MIRRORED
-    assert replay.mirror_state is NotificationMirrorState.MIRRORED
-    assert reply.mirror_state is NotificationMirrorState.MIRRORED
-    assert distinct.mirror_state is NotificationMirrorState.MIRRORED
-    assert first.rail1_delivered is True and replay.rail1_delivered is False
-    assert first.ctower_result is not None
-    assert replay.ctower_result == first.ctower_result
-    assert reply.ctower_result is not None
-    assert distinct.ctower_result is not None
-    assert len(legacy_rows) == _EXPECTED_LEGACY_DELIVERIES
-    first_thread = first.ctower_result.thread_id
-    assert reply.ctower_result.thread_id == first_thread
-    assert distinct.ctower_result.thread_id != first_thread
-    assert first.ctower_result.from_ == "ctower-commander"
-    assert reply.ctower_result.from_ == "qa-agent"
-    assert first_notification.sender_label == "caller-asserted-label-is-not-authority"
+    assert replay == first
+    first_thread = first.thread_id
+    assert reply.thread_id == first_thread
+    assert distinct.thread_id != first_thread
+    assert first.from_ == "ctower-commander"
+    assert reply.from_ == "qa-agent"
 
     trace = _pair_trace(tenant, first_notification.delivery_id, first_thread)
     assert trace["command_events"] == _EXPECTED_COMMAND_EVENTS
@@ -138,14 +82,13 @@ def test_notify_bridge_is_idempotent_and_groups_an_unordered_seat_pair(
     assert trace["messages"] == _EXPECTED_PAIR_MESSAGES
     assert trace["positions"] == [1, 2]
     assert trace["participant_ids"] == sorted([str(tenant.commander_id), str(qa_id)])
-    assert trace["message_id"] == str(first.ctower_result.message_id)
+    assert trace["message_id"] == str(first.message_id)
     print("REAL_NOTIFY_BRIDGE_DOUBLE_INGEST " + json.dumps(trace, sort_keys=True))
 
 
-def test_notify_bridge_records_unknown_seat_refusal_after_legacy_delivery(
+def test_notification_ingest_records_unknown_seat_refusal(
     tenant: TenantFixture,
 ) -> None:
-    legacy_rows: list[_Notification] = []
     notification = _notification("unknown-agent", subject="Unknown destination")
 
     with (
@@ -154,17 +97,11 @@ def test_notify_bridge_records_unknown_seat_refusal_after_legacy_delivery(
             projection_dsn=tenant.database.projection_dsn,
         ) as base_url,
         CtowerClient(base_url, credential=tenant.commander_credential) as client,
+        pytest.raises(CtowerProblemError) as raised,
     ):
-        result = _ToolsNotifyFixture(
-            DualRailNotifyBridge(client),
-            legacy_rows,
-        ).send(notification)
+        _ingest(client, notification)
 
-    assert len(legacy_rows) == 1
-    assert legacy_rows[0] == notification
-    assert result.rail1_delivered is True
-    assert result.mirror_state is NotificationMirrorState.REFUSED
-    assert result.refusal_code == "inbox-recipient-not-found"
+    assert raised.value.problem.code == "inbox-recipient-not-found"
     refusal = _refusal_trace(tenant, notification.delivery_id)
     assert refusal == {
         "event_count": 0,
@@ -172,21 +109,6 @@ def test_notify_bridge_records_unknown_seat_refusal_after_legacy_delivery(
         "problem_code": "inbox-recipient-not-found",
         "status_code": 404,
     }
-
-
-def test_notify_bridge_keeps_legacy_delivery_when_ctower_is_unavailable() -> None:
-    legacy_rows: list[_Notification] = []
-    notification = _notification("qa-agent", subject="Unavailable mirror")
-
-    result = _ToolsNotifyFixture(
-        DualRailNotifyBridge(_UnavailableClient()),
-        legacy_rows,
-    ).send(notification)
-
-    assert legacy_rows == [notification]
-    assert result.rail1_delivered is True
-    assert result.mirror_state is NotificationMirrorState.UNAVAILABLE
-    assert result.refusal_code == "notification-bridge-unavailable"
 
 
 def test_notification_command_key_cannot_replay_a_standard_inbox_send(
@@ -235,15 +157,17 @@ def test_concurrent_first_notifications_share_one_pair_thread(tenant: TenantFixt
 def _notification(to: str, *, subject: str) -> _Notification:
     return _Notification(
         delivery_id=uuid4(),
-        sender_label="caller-asserted-label-is-not-authority",
         to=to,
         subject=subject,
         body="Strict bridge acceptance payload.",
     )
 
 
-def _bridge_notification(notification: _Notification) -> Notification:
-    return Notification(notification.delivery_id, notification.to, notification.text)
+def _ingest(client: CtowerClient, notification: _Notification) -> InboxSendResult:
+    return client.ingest_inbox_notification(
+        InboxNotificationRequest(to=notification.to, text=notification.text),
+        command_id=notification.delivery_id,
+    )
 
 
 def _provision_seat(tenant: TenantFixture, seat_key: str) -> tuple[UUID, str]:
