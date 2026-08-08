@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.17.0](https://github.com/simjak/ctower/compare/v0.16.0...v0.17.0) (2026-08-08)
+
+
+### Features
+
+* **inbox:** add pair-grouped notification transport ([#383](https://github.com/simjak/ctower/issues/383)) ([9c6e53b](https://github.com/simjak/ctower/commit/9c6e53bdc4876abc43d02173a5cf1b026b1d193b))
+
 ## [0.16.0](https://github.com/simjak/ctower/compare/v0.15.0...v0.16.0) (2026-08-08)
 
 
