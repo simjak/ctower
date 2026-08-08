@@ -59,6 +59,8 @@ nav:
   - Advanced and internals:
       - internals.md
       - Delivery state: project-status.md
+      - Epic specifications:
+          - Issue connector framework: specs/connectors.md
       - What is deliberately unavailable: start-here/availability.md
       - Repository setup: start-here/repository-setup.md
       - Exercise the development walking slice: getting-started.md
