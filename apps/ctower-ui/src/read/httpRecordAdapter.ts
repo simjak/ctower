@@ -29,11 +29,13 @@ import {
   PayloadRefusal,
 } from "./json";
 import { LANES } from "./interface";
+import { defaultProjectKey } from "./projects";
 import type {
   BoardCard,
   BoardEntry,
   BoardSnapshot,
   InboxProjection,
+  InboxPromotionPicker,
   InboxThread,
   InboxThreadMessage,
   InboxThreadSummary,
@@ -425,6 +427,31 @@ async function loadInboxThread(threadId: string): Promise<InboxThread> {
   return inboxThreadFrom(await read(`/v1/inbox/threads/${encodeURIComponent(threadId)}`));
 }
 
+/**
+ * The target picker uses the same project-scoped Board record as the Board
+ * screen. A failed read remains visible to the user, while creating a ticket
+ * from the thread stays available because that operation needs no target.
+ */
+async function loadInboxPromotionPicker(): Promise<InboxPromotionPicker> {
+  try {
+    const snapshot = await loadBoard(defaultProjectKey());
+    return {
+      choices: snapshot.entries.map(({ card }) => ({
+        ticketId: card.ticketId,
+        projectKey: card.projectKey,
+        title: card.title,
+      })),
+      notice: null,
+    };
+  } catch {
+    return {
+      choices: [],
+      notice:
+        "Existing ticket choices could not be loaded. You can still create a new ticket from this thread.",
+    };
+  }
+}
+
 export const httpRecordAdapter: RecordApiReads = {
   instance: instanceIdentity(),
   board: async (projectKey: string): Promise<Reading<BoardSnapshot>> =>
@@ -439,6 +466,7 @@ export const httpRecordAdapter: RecordApiReads = {
   inbox: async (): Promise<Reading<InboxProjection>> => await reading(loadInbox),
   inboxThread: async (threadId: string): Promise<Reading<InboxThread>> =>
     await reading(async () => await loadInboxThread(threadId)),
+  inboxPromotionPicker: loadInboxPromotionPicker,
   workSessions: (): Promise<Reading<never>> =>
     Promise.resolve({ state: "absent", source: NO_WORK_SESSIONS }),
 };

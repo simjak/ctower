@@ -1,10 +1,11 @@
 #!/usr/bin/env bash
-# Serve the read-only phase-1 surface against the local shadow instance.
+# Serve the phase-1 surface against the local shadow instance.
 #
 # The operator credential is resolved from the Secret Service reference the
 # instance already uses and handed to the Node process as an environment value
 # for the life of that process. It is never written to a file, never passed as
-# an argument, and never reaches the browser: every read is server-side.
+# an argument, and never reaches the browser: reads and the one Inbox promotion
+# request are server-side, and the API remains the authorization authority.
 #
 #   apps/ctower-ui/serve-development.sh          # production server on :3117
 #   CTOWER_UI_PORT=3117 apps/ctower-ui/serve-development.sh
