@@ -85,7 +85,7 @@ runs in the development slice.
 | Watch a ticket go capture → resolved/closed against real PostgreSQL | Yes, inside the acceptance gate — see the [Quickstart](quickstart.md) |
 | Call the HTTP API or drive `ctowerctl` against your own instance | Yes, only through the [private-VPS E2 shadow runtime](https://github.com/simjak/ctower/tree/main/deploy/private-vps/development) for low-value reconstructible dogfood |
 | Install, deploy, or host ctower | Private-VPS loopback shadow only; no hosted, external/product, or production deployment |
-| Use a product browser UI, a runner, or a remote agent adapter | No — product browser work starts at `CT-I2-005` / I2.4. The separate [ctower-ui dogfood Inbox control](reference/dogfood-inbox-promotion.md) is the narrow D40 exception, not a supported product surface. |
+| Use a product browser UI, a runner, or a remote agent adapter | No — product browser work starts at `CT-I2-005` / I2.4. The separate [ctower-ui dogfood Inbox control](reference/dogfood-inbox-promotion.md) is the narrow D41 exception, not a supported product surface. |
 | Put real tenants, production credentials, or authoritative/irreplaceable work into it | No |
 
 Nothing here is a stability promise: the HTTP surface is a development contract, not a supported external

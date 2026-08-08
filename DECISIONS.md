@@ -1608,7 +1608,38 @@ Rejected alternatives:
 - Editing `ctower.integration/v1` in place. Rejected by D37; the incompatible active shape is published as
   v2 and v1 remains byte-for-byte available to historical readers.
 
-## D40 — Separate server-mediated Inbox promotion dogfood boundary (locked 2026-08-08, operator)
+## D40 — Notification mirroring reuses native Inbox with a derived pair thread (engineering, 2026-08-08, gh#355)
+
+Issue #355 activates one transitional transport from mission-control `tools/notify` into the native Inbox.
+It preserves D31's one-Actor identity chokepoint, D35's seat-as-principal rule, INV-79's append-only delivery
+facts, and the existing durable mission-control inbox during shadow operation. It authorizes no cutover,
+credential provisioning, feature flag, browser surface, or new message authority.
+
+1. **Rail 1 completes first.** The existing durable append remains unchanged and authoritative for its rail.
+   Only after it succeeds does the adapter attempt ctower. A typed refusal, malformed response, unavailable
+   endpoint, or client failure returns a visible `refused|unavailable` mirror outcome but cannot block or
+   reverse rail 1.
+2. **The request carries no sender authority.** Rail 2 contains recipient seat and text, with the original
+   delivery UUID as its idempotency key. Ctower resolves the sender from the authenticated Actor and the
+   recipient from the persisted project-seat registry. Unknown, ambiguous, unaddressable, and self seats
+   reuse the ordinary recorded Inbox refusals and create no principal or event.
+3. **Grouping is derived, not stored twice.** Ctower derives one opaque thread UUID from tenant plus the
+   unordered pair of principal IDs. The first delivery opens that native thread and later traffic in either
+   direction appends to it. The existing Inbox thread, messages, canonical events, command result, and
+   outbox remain the only authorities; there is no pair map, bridge ledger, cursor, or writable projection.
+4. **Replay is the existing command law.** Exact delivery-ID replay returns the original command result;
+   changed semantics under that UUID refuse as `idempotency-conflict`. The new strict HTTP/generated-client/
+   protected-CLI operation composes the same Inbox Interface and durability protocol rather than creating a
+   second ingestion engine.
+
+Rejected alternatives:
+
+- Trusting `--from`, a sender field, crew name, or process label as identity.
+- Keeping a mission-control pair-to-thread mapping file or a ctower bridge-specific store.
+- Coupling both rails in one transaction or allowing rail-2 failure to change rail-1 success.
+- Adding a cutover flag, environment variable, automatic seat creation, or a new notification event kind.
+
+## D41 — Separate server-mediated Inbox promotion dogfood boundary (locked 2026-08-08, operator)
 
 The operator permits one narrow exception to D23's no-I1-browser-artifact timing: `apps/ctower-ui` may
 remain a separate, local shadow-instance dogfood server and expose one Inbox control over the already
@@ -1643,13 +1674,13 @@ Rejected alternatives:
 - Leaving a global read-only claim beside the working control, or enabling `New ticket` by association. Each
   rendered affordance must state only the capability it actually has.
 
-## D41 — The dogfood exception activates one verification suite, and only that (engineering, 2026-08-08, gh#379)
+## D42 — The dogfood exception activates one verification suite, and only that (engineering, 2026-08-08, gh#379)
 
-D40 clause 4 disclaimed any `test-suite activation`, and the same candidate registered
+D41 clause 4 disclaimed any `test-suite activation`, and the same candidate registered
 `dogfood-inbox-promotion` as a `status = "required"` suite that `just verify` executes and counts. Both
 halves cannot be true. The registration is the correct half — an exception that ships a working control
 and then proves nothing about it is not a smaller commitment, it is an unverified one — so the contract
-text is what is repaired. This entry preserves D40 and supersedes only clause 4's "test-suite activation"
+text is what is repaired. This entry preserves D41 and supersedes only clause 4's "test-suite activation"
 disclaimer, and only for the one suite named here.
 
 1. **One activated suite, named.** The exception activates exactly one required verification suite,
@@ -1680,10 +1711,10 @@ Rejected alternatives:
 - Unregistering `dogfood-inbox-promotion` to make clause 4 true as written. That resolves the contradiction
   by deleting the verification, leaving a shipped control whose bounded transport and rendered copy no gate
   proves.
-- Editing D40 clause 4 in place. `DECISIONS.md` is append-only; an accepted clause is superseded, never
+- Editing D41 clause 4 in place. `DECISIONS.md` is append-only; an accepted clause is superseded, never
   rewritten (D36).
 - Activating `browser-e2e` or filing the render assertion under `tests/e2e`. That is the product browser
-  suite `CT-I2-005` owns, and borrowing it would grant the I2.4 scope D40 disclaims.
+  suite `CT-I2-005` owns, and borrowing it would grant the I2.4 scope D41 disclaims.
 - Asserting the rendered copy by reading `RecordFoot.tsx` and `rail.ts` from disk. A source-text search
   passes while the composed page still carries a retired claim, which is exactly the escape that produced
   this entry.

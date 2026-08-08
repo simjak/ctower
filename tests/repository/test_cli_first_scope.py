@@ -30,12 +30,12 @@ class CliFirstScopeTests(unittest.TestCase):
     def test_the_dogfood_suite_activation_is_named_by_a_superseding_decision(self) -> None:
         """A required suite the canonical record disclaims is a contradiction.
 
-        D40 clause 4 said the dogfood exception introduces no ``test-suite
+        D41 clause 4 said the dogfood exception introduces no ``test-suite
         activation`` while the same candidate registered
         ``dogfood-inbox-promotion`` as a required suite that ``just verify``
         executes and counts. ``DECISIONS.md`` is append-only, so the repair is a
         superseding entry that names the activation and its limits — not an edit
-        to D40, and not unregistering the verification the exception owes.
+        to D41, and not unregistering the verification the exception owes.
         """
         manifest = tomllib.loads(
             (self.root / "tools/checks/expected-suites.toml").read_text(encoding="utf-8")
@@ -52,9 +52,9 @@ class CliFirstScopeTests(unittest.TestCase):
         for suite_id in activated:
             self.assertIn(f"`{suite_id}`", decisions)
 
-        self.assertIn("## D41 — The dogfood exception activates one verification suite", decisions)
+        self.assertIn("## D42 — The dogfood exception activates one verification suite", decisions)
         self.assertIn(
-            'This entry preserves D40 and supersedes only clause 4\'s "test-suite activation"',
+            'This entry preserves D41 and supersedes only clause 4\'s "test-suite activation"',
             decisions,
         )
         self.assertIn("`browser-e2e` stays deferred to `CT-I2-005`", decisions)
@@ -87,7 +87,7 @@ class CliFirstScopeTests(unittest.TestCase):
                 normalized_guidance = " ".join(guidance.split())
                 self.assertIn(canonical_order, normalized_guidance)
                 self.assertIn(browser_activation, normalized_guidance)
-                self.assertIn("D40", normalized_guidance)
+                self.assertIn("D41", normalized_guidance)
 
         self.assertNotIn(
             "Add the CLI and thin Board/Ticket UI, then cut ctower's own backlog over",

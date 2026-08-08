@@ -1,6 +1,6 @@
 """What the dogfood Inbox surface actually renders, read out of a real browser.
 
-The copy D40 clause 3 governs is not a fact about any one file. It is composed
+The copy D41 clause 3 governs is not a fact about any one file. It is composed
 at render time from a frame component, a rail constant and a screen, so a test
 that greps those sources can pass while the page an operator looks at still
 carries a retired claim. This suite therefore builds the separate dogfood
@@ -11,9 +11,9 @@ Nothing here touches a running instance. The record source is a local stub, both
 ports are ephemeral, and the browser only reads: the promotion transport is
 proved against the real module in ``tests/repository/test_inbox_promotion_ui``,
 and a browser that submitted the command would be exactly the product browser
-authority D40 withholds.
+authority D41 withholds.
 
-This is the one suite the D40/D41 dogfood exception activates. It is deliberately
+This is the one suite the D41/D42 dogfood exception activates. It is deliberately
 outside ``tests/repository`` so the warm ``just check`` gate never pays for a
 production build and a browser; the release gate runs it through the expected-
 suite manifest.

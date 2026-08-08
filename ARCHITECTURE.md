@@ -3,7 +3,7 @@
 | Field | Value |
 |---|---|
 | Status | Compact derived operator and implementer map |
-| Normative authority | [`SPEC.md`](SPEC.md), version 1.17 |
+| Normative authority | [`SPEC.md`](SPEC.md), version 1.18 |
 | Decision history | [`DECISIONS.md`](DECISIONS.md) |
 | Last reviewed | 2026-08-08 |
 
@@ -15,8 +15,8 @@ Implementation labels are strict:
 
 - **Current walking slice** means the development-only bootstrap, CP2 task/Board, CP-1 Proof/Workflow,
   CP3-A durability-authority fixture, CP3-B deterministic scheduler/accepted-outbox/health paths, and the
-  narrow GitLab Issue integration implemented in this repository. They are development evidence, not a
-  deployed product.
+  narrow GitLab Issue integration and additive Mission Control notification transport implemented in this
+  repository. They are development evidence, not a deployed product.
 - **I1** and **I2** otherwise remain committed target increments, not claims that the full behavior exists.
 - **Deferred** means invariants may be recorded, but the runtime, product surface, and public Seam do not
   exist in I1/I2.
@@ -235,9 +235,9 @@ one configured, bounded GitLab Issue co-source loop inside that existing worker.
 control worker share one kernel artifact; Access, Record, Catalog, Integrations, Work, Proof, Attention, the limited
 generic Workflow evaluator, and Projections remain logical responsibilities behind Module Interfaces.
 React/Vite product routes, the five surfaces, and product Playwright evidence begin at I2.4 under D22/D31.
-D40's separate `ctower-ui` dogfood server is not a product surface: it holds the API bearer only on its
+D41's separate `ctower-ui` dogfood server is not a product surface: it holds the API bearer only on its
 server side and exposes one bounded, idempotent call to the existing Inbox promotion endpoint. It adds no
-browser authority, product route, record-tier connection, or I1/I2.4 completion claim. D41 activates one
+browser authority, product route, record-tier connection, or I1/I2.4 completion claim. D42 activates one
 required suite for that boundary, `dogfood-inbox-promotion`, which drives it in a headless browser on
 ephemeral loopback ports; the product `browser-e2e` suite stays deferred to CT-I2-005.
 Service-per-noun units such as a separate reconciler are not implied.
@@ -300,7 +300,7 @@ ports.
 | Deep Module | Authority hidden behind its Interface |
 |---|---|
 | Access / Record | Authentication, revision-pinned Project grants, authorization, prohibited-class refusal, idempotency-before-CAS, streams, hash chain, outbox, durability result, project-scoped typed event feed |
-| Inbox | Two-principal threads, append-only ordered messages and recipient delivery/read facts, atomic create-or-link ticket promotion, immutable promotion links, fact-derived per-message state and unread projection |
+| Inbox | Two-principal threads, append-only ordered messages and recipient delivery/read facts, pair-grouped notification ingestion, atomic create-or-link ticket promotion, immutable promotion links, fact-derived per-message state and unread projection |
 | Catalog | One `VersionedComponent` lifecycle, compatibility, provenance, exact pins, future-only active pointers |
 | Integrations | Catalog-revision-pinned bounded source cursors, immutable external issue/ticket custody links and observations, and proof-gated outbound delivery receipts; no provider credential values or lifecycle authority |
 | Work | Permanent tickets, lifecycle episodes, custody, relations, priorities, blockers, typed Board intents |
@@ -314,6 +314,15 @@ ports.
 There is no `Factory`, `TaskManager`, status service, generic provider manager, or microservice per table.
 The software factory is data interpreted by Workflow. Public Interfaces stay small; private validators,
 folds, SQL, and Adapter mechanics remain local to the owning Module.
+
+Mission Control notification delivery remains two ordered transports. Its existing durable inbox is rail 1
+and completes before the additive generated-client Adapter attempts rail 2. The rail-2 request contains
+only one stable delivery UUID, recipient seat key, and text; the authenticated Actor supplies sender
+identity and the persisted seat registry resolves the recipient. Inbox derives one direction-independent
+thread ID per principal pair and reuses the existing command/event/outbox authority, so literal retry
+returns the original result without another message fact. A typed unknown-seat refusal and any rail-2
+outage are observable Adapter outcomes but never undo rail 1. There is no pair registry, parallel message
+store, configuration switch, or authority cutover.
 
 The project event feed stays inside Record: it reuses the same `event_links` subject join `ticket_audit`
 already proves, scoped to a project's tickets instead of one ticket, and orders by record position with a
@@ -886,6 +895,9 @@ Before either increment is complete, applicable tests must show that:
 14. Intake and Evidence refuse every prohibited class by exact name, including a PHI-shaped fixture, while
     allowed deidentified BH.Loop control and artifact references remain usable.
 15. Remote/image/extension fixtures cannot be presented as an exercised runtime or public Seam.
+16. Notification replay appends zero duplicate message facts, unknown seats refuse without creating an
+    identity, and messages group by the unordered authenticated sender/recipient pair while rail 1 remains
+    successful.
 
 Tmux is useful for same-host continuity and operator visibility. Durability comes from acknowledged records,
 committed events/outbox entries, fenced leases, replayable cursors, immutable evidence, checkpoints,

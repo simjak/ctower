@@ -1,7 +1,7 @@
 # ctower-ui dogfood Inbox promotion
 
 `apps/ctower-ui` is a local shadow-instance dogfood server, not the `ctower-web` product and not a
-supported browser UI. [D40 and D41](https://github.com/simjak/ctower/blob/main/DECISIONS.md) permit it to
+supported browser UI. [D41 and D42](https://github.com/simjak/ctower/blob/main/DECISIONS.md) permit it to
 present one existing Inbox promotion command, and activate one verification suite for it, while
 `CT-I2-005` remains the first product-browser checkpoint.
 
@@ -29,7 +29,7 @@ path; it does not describe the Inbox promotion control.
 
 ## How it is verified
 
-D41 activates exactly one required suite for this boundary, `dogfood-inbox-promotion`. It proves the
+D42 activates exactly one required suite for this boundary, `dogfood-inbox-promotion`. It proves the
 transport against the real modules — retry, exhaustion, one reused `Idempotency-Key`, and a transient
 status that arrives as `text/plain` or with no body at all — and it proves the rendered copy by building
 this dogfood server, serving it on an ephemeral loopback port against a local stub record source, and

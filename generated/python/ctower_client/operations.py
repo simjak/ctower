@@ -1,6 +1,6 @@
 """DO NOT EDIT: generated file; regenerate from declared inputs.
 
-Authored contract digest: sha256:4c89e45623980facc1ea619596b565d449ba3b9568d8c15437ea3487afde5bc5
+Authored contract digest: sha256:384c0197ccd1a704198d4038a20efa6f9c1852edfc1410468b292c3a06cc5c60
 """
 
 from __future__ import annotations
@@ -458,6 +458,19 @@ OPERATIONS = MappingProxyType(
             cli_names=('ticket timeline',),
             mutation=False,
             spool_policy=SpoolPolicy.FORBIDDEN,
+            principal=None,
+            refusal_only=False,
+        ),
+        "ingestInboxNotification": OperationSpec(
+            operation_id="ingestInboxNotification",
+            client_method="ingest_inbox_notification",
+            method="POST",
+            path="/v1/inbox/notifications",
+            request_model=_models.InboxNotificationRequest,
+            response_model=_models.InboxSendResult,
+            cli_names=('inbox notify',),
+            mutation=True,
+            spool_policy=SpoolPolicy.ALLOWED,
             principal=None,
             refusal_only=False,
         ),
@@ -933,6 +946,7 @@ CLI_OPERATIONS = MappingProxyType(
         "ticket query": OPERATIONS["getTicket"],
         "ticket show": OPERATIONS["getTicket"],
         "ticket timeline": OPERATIONS["getTicketTimeline"],
+        "inbox notify": OPERATIONS["ingestInboxNotification"],
         "credential seat issue": OPERATIONS["issueSeatCredential"],
         "dream-dispatch list": OPERATIONS["listDreamDispatchEffects"],
         "inbox list": OPERATIONS["listInboxThreads"],

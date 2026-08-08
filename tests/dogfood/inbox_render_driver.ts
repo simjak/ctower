@@ -19,7 +19,7 @@
  * Everything here is a read. The driver never submits the promotion form: the
  * transport is proved against the real module in `tests/repository`, and a
  * browser that posted a command would be exactly the product browser authority
- * D40 withholds.
+ * D41 withholds.
  *
  * Usage: `node --no-warnings inbox_render_driver.ts <base-url> <thread-id> <screenshot-dir>`
  */

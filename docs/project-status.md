@@ -33,7 +33,7 @@ planned work so a visible package, schema, or directory is not mistaken for an a
 
 Public API + protected CLI precede I1 source-of-truth cutover. Product browser implementation, browser
 evidence, and browser E2E first activate at CT-I2-005 / I2.4. The separate `ctower-ui` Inbox dogfood
-control is the narrow D40 exception.
+control is the narrow D41 exception.
 
 I1.7B will implement reviewed source selection/import/reconciliation and the permanent legacy fence.
 I1.7C will commit the narrow reconstructible-data development epoch and run the first API/CLI dogfood

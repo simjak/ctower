@@ -89,7 +89,7 @@ class VerificationSupplyChainTests(unittest.TestCase):
     def test_the_verification_host_browser_is_chosen_by_the_javascript_lock(self) -> None:
         """The one gate input that is not URL-and-digest pinned, and what pins it.
 
-        ``dogfood-inbox-promotion`` (DECISIONS D41) drives the separate dogfood
+        ``dogfood-inbox-promotion`` (DECISIONS D42) drives the separate dogfood
         server in a browser, and Playwright publishes no per-build checksum for a
         browser download, so the browser cannot join the fetch/sha256 list above.
         What pins it instead is the resolved ``@playwright/test`` entry in
