@@ -13,6 +13,8 @@ import type {
 } from "@/read/interface";
 import { Count } from "@/surfaces/Count";
 import { readParam } from "@/surfaces/screenParams";
+import { promoteThreadAction } from "./actions";
+import { PromoteThread } from "@/surfaces/inbox/PromoteThread";
 
 export const dynamic = "force-dynamic";
 
@@ -114,7 +116,14 @@ function ThreadMessage({ message }: { readonly message: InboxThreadMessage }): R
   );
 }
 
-function InboxThreadBody({ thread }: { readonly thread: InboxThread }): ReactElement {
+function InboxThreadBody({
+  thread,
+  picker,
+}: {
+  readonly thread: InboxThread;
+  readonly picker: Awaited<ReturnType<typeof recordAdapter.inboxPromotionPicker>>;
+}): ReactElement {
+  const promote = promoteThreadAction.bind(null, thread.threadId);
   return (
     <>
       <Chrome section="Inbox" back={{ href: "/inbox", label: "Inbox" }} />
@@ -141,6 +150,10 @@ function InboxThreadBody({ thread }: { readonly thread: InboxThread }): ReactEle
               <span className="how">immutable inbox-to-ticket link from the projection</span>
             </div>
           )}
+
+          {thread.promotedTicketId === null ? (
+            <PromoteThread action={promote} choices={picker.choices} pickerNotice={picker.notice} />
+          ) : null}
 
           <section className="panel" style={{ marginTop: "16px" }}>
             <header>
@@ -217,10 +230,13 @@ export default async function InboxPage({
 }): Promise<ReactNode> {
   const threadId = readParam(await searchParams, "thread");
   if (threadId !== null) {
-    const thread = await recordAdapter.inboxThread(threadId);
+    const [thread, picker] = await Promise.all([
+      recordAdapter.inboxThread(threadId),
+      recordAdapter.inboxPromotionPicker(),
+    ]);
     return (
       <Resolved reading={thread} frame={(declared) => <InboxThreadFrame declared={declared} />}>
-        {(value) => <InboxThreadBody thread={value} />}
+        {(value) => <InboxThreadBody picker={picker} thread={value} />}
       </Resolved>
     );
   }

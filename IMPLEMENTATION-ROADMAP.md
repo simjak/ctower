@@ -244,7 +244,9 @@ Deliver this checkpoint in reviewable parts:
   API/CLI send-to-ack-to-read-state evidence, and a fully attested next migration. Thread reads stay pure;
   no parallel message or cursor authority is introduced. Complete the public promotion seam with one
   generated protected command: omission of a ticket creates a P2 ticket from the thread head and links it
-  atomically, while an explicit ticket preserves the existing link-only behavior; no browser control is added.
+  atomically, while an explicit ticket preserves the existing link-only behavior. D41 permits only the
+  separate `ctower-ui` server-mediated dogfood control for this existing command; no I1 product browser
+  control is added.
   Add the Mission Control notification Adapter after its existing durable delivery: one stable delivery UUID
   becomes the Inbox command key, the authenticated Actor and seat registry resolve the pair, and Inbox groups
   both directions in one derived thread. Retry appends no duplicate message, typed refusal never blocks the

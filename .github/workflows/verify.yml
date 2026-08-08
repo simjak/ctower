@@ -135,6 +135,13 @@ jobs:
       - name: Install frozen JavaScript verification dependencies
         run: pnpm install --frozen-lockfile --ignore-scripts
 
+      # The Chromium build is chosen by the `@playwright/test` version the
+      # lockfile pins, so this resolves to one exact browser per candidate.
+      # `dogfood-inbox-promotion` (DECISIONS D42 clause 4) drives the separate
+      # dogfood server with it; without the browser that suite fails by name.
+      - name: Install lockfile-pinned verification-host browser
+        run: pnpm exec playwright install --with-deps chromium
+
       - name: Establish complete repository graph
         shell: bash
         run: |

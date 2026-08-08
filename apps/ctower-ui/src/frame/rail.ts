@@ -50,5 +50,5 @@ export const NEW_TICKET_INERT = {
   label: "New ticket",
   verdict: "read-only v1 · disabled",
   reason:
-    "This surface holds no write authority, so it cannot capture a ticket. The ctower CLI does: ctowerctl ticket capture. A ticket captured there appears on this board on the next read.",
+    "New ticket is unavailable here. Capture it with ctowerctl ticket capture; it appears on this board on the next read.",
 } as const;

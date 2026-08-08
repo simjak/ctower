@@ -9,6 +9,7 @@ import type {
   ProjectionHealth,
 } from "@ctower/client";
 import type { ReadFailure } from "./bounded";
+import type { InboxPromotionTicketChoice } from "@/mutate/types";
 import type { Known } from "./sources/maybe";
 
 /**
@@ -267,6 +268,13 @@ export interface InboxProjection {
   readonly threads: readonly InboxThreadSummary[];
   readonly totalUnread: number;
   readonly unreadOnly: boolean;
+}
+
+/** Ticket choices the current principal's Board read made available for Inbox linking. */
+export interface InboxPromotionPicker {
+  readonly choices: readonly InboxPromotionTicketChoice[];
+  /** A failed Board read never becomes an empty ticket list without this explanation. */
+  readonly notice: string | null;
 }
 
 export type BeatHealth = "alive" | "late" | "dead" | "unknown";
@@ -900,6 +908,8 @@ export interface RecordAdapter {
   inbox: () => Promise<Reading<InboxProjection>>;
   /** One durable inbox thread; this recipient read advances its own cursor. */
   inboxThread: (threadId: string) => Promise<Reading<InboxThread>>;
+  /** Existing tickets available to link when promoting a thread. */
+  inboxPromotionPicker: () => Promise<InboxPromotionPicker>;
   /** What a session was handed at start. */
   sessionWorkspace: (crew: string | null) => Promise<Reading<SessionWorkspace>>;
   /** A session worktree's files and its diff against its base. */
@@ -930,4 +940,5 @@ export type RecordApiReads = Pick<
   | "workSessions"
   | "inbox"
   | "inboxThread"
+  | "inboxPromotionPicker"
 >;

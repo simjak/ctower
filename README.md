@@ -19,7 +19,7 @@ that records what happened.
 > [!IMPORTANT]
 > **Status: pre-alpha, version `0.0.0`.** The only supported install is the private-VPS, loopback-only E2
 > shadow runtime for low-value reconstructible dogfood. There is no release, published package, hosted
-> service, external/product deployment, backup/restore product, browser UI, runner, CP3-D deployment, or
+> service, external/product deployment, backup/restore product, product browser UI, runner, CP3-D deployment, or
 > source-of-truth authority. Do not use this to manage real work yet.
 > [What works today](#what-works-today) is the honest split.
 
@@ -207,12 +207,13 @@ them:
 
 > Public API + protected CLI precede I1 source-of-truth cutover.
 >
-> Browser implementation, browser evidence, and browser E2E first activate at CT-I2-005 / I2.4.
+> Product browser implementation, browser evidence, and browser E2E first activate at CT-I2-005 / I2.4.
 
 In plain terms: the HTTP API and the command line are built first, and ctower does not become the system of
-record for its own work until they hold up. Browser work — the interface, its tests, and its proof — starts
-later, at a planned point the roadmap calls I2.4. `I1`, `I2.4` and `CT-I2-005` are stage names from
-[IMPLEMENTATION-ROADMAP.md](IMPLEMENTATION-ROADMAP.md), not version numbers.
+record for its own work until they hold up. Product browser work — the interface, its tests, and its proof —
+starts later, at a planned point the roadmap calls I2.4. The separate server-mediated `ctower-ui` Inbox
+dogfood control is D41's narrow exception, not a supported product UI. `I1`, `I2.4` and `CT-I2-005` are
+stage names from [IMPLEMENTATION-ROADMAP.md](IMPLEMENTATION-ROADMAP.md), not version numbers.
 
 ## Go deeper
 
