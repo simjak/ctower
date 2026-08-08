@@ -31,9 +31,11 @@ import type {
  * typed feed here; the six wave-2 screens swap to their native sources the same
  * way.
  *
- * Every binding is read-only, and every one goes through `reading`, so a source
- * that refuses or cannot be reached arrives at its screen as a typed failure
- * rather than as an empty value.
+ * Read bindings go through `reading`, so a source that refuses or cannot be
+ * reached arrives at its screen as a typed failure rather than as an empty
+ * value. The Inbox promotion action is deliberately separate: it asks the
+ * existing server-authoritative mutation path and never grants authority in
+ * the browser.
  */
 
 export type ScreenKey =
@@ -53,7 +55,7 @@ export type ScreenKey =
 export const SOURCE_LABELS: Readonly<Record<ScreenKey, string>> = {
   board: "ctower read API · /v1/board",
   ticket: "ctower read API · /v1/tickets/{id} + /audit",
-  inbox: "ctower read API · /v1/inbox/threads + /v1/inbox/threads/{id}",
+  inbox: "ctower API · /v1/inbox/threads + /v1/inbox/threads/{id} + /promotion",
   heartbeats:
     cadenceSourceName() === "systemd" ? "systemd user timers" : "host crontab + state markers",
   files: "git tree",
@@ -77,6 +79,7 @@ export const recordAdapter: RecordAdapter = {
   workSessions: httpRecordAdapter.workSessions,
   inbox: httpRecordAdapter.inbox,
   inboxThread: httpRecordAdapter.inboxThread,
+  inboxPromotionPicker: httpRecordAdapter.inboxPromotionPicker,
 
   cadenceRegistry: async (): Promise<Reading<CadenceRegistry>> => await reading(cadenceSource()),
   authoredFiles: async (path: string | null): Promise<Reading<AuthoredFiles>> =>

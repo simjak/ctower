@@ -49,7 +49,8 @@ class InboxProjectionWiringTests(unittest.TestCase):
         page = (_SURFACE / "app/inbox/page.tsx").read_text(encoding="utf-8")
 
         self.assertIn(
-            'inbox: "ctower read API · /v1/inbox/threads + /v1/inbox/threads/{id}"', adapter
+            'inbox: "ctower API · /v1/inbox/threads + /v1/inbox/threads/{id} + /promotion"',
+            adapter,
         )
         self.assertIn("inbox: httpRecordAdapter.inbox", adapter)
         self.assertIn("inboxThread: httpRecordAdapter.inboxThread", adapter)
