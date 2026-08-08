@@ -27,6 +27,13 @@ Routine v2 adds the four exact nightly dream packs and a strict dream-dispatch e
 contract. Consumption carries only the output digest; the emitted effect owns model requirements and the
 kernel copies executing-lane facts from substrate bindings.
 
+The GitLab Issue integration contracts under `domain/integrations/` define the strict normalized provider
+issue, durable cursor, proof-gated close command, and delivery receipt. The published reference-only
+`ctower.integration/v1` component remains unchanged; `integration-v2.schema.json` publishes the incompatible
+active GitLab configuration shape with bounded poll/page settings and only a deployment secret-binding
+reference. Neither contract carries resolved credential bytes or grants provider state ctower lifecycle
+authority.
+
 The CP2 task-management contracts under `domain/task-management/` fix typed Work commands, five assignment
 kinds, the six-lane Board view and watermark health, and a deterministic priority-aging selection policy.
 The scheduling pack selects among eligible work only; it neither dispatches jobs nor advances Workflow.

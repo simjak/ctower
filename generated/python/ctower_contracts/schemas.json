@@ -40,6 +40,7 @@
     "ctower.inbox/v1": "contracts/domain/inbox/inbox.schema.json",
     "ctower.inbox/v2": "contracts/domain/inbox/inbox-v2.schema.json",
     "ctower.integration/v1": "contracts/components/integration.schema.json",
+    "ctower.integration/v2": "contracts/components/integration-v2.schema.json",
     "ctower.knowledge-document/v1": "contracts/domain/knowledge/knowledge.schema.json",
     "ctower.label-vocabulary/v1": "contracts/components/label-vocabulary.schema.json",
     "ctower.notification/v1": "contracts/components/notification.schema.json",
@@ -122,6 +123,7 @@
     "https://ctower.local/contracts/components/goal.schema.json": "contracts/components/goal.schema.json",
     "https://ctower.local/contracts/components/harness.schema.json": "contracts/components/harness.schema.json",
     "https://ctower.local/contracts/components/image.schema.json": "contracts/components/image.schema.json",
+    "https://ctower.local/contracts/components/integration-v2.schema.json": "contracts/components/integration-v2.schema.json",
     "https://ctower.local/contracts/components/integration.schema.json": "contracts/components/integration.schema.json",
     "https://ctower.local/contracts/components/label-vocabulary.schema.json": "contracts/components/label-vocabulary.schema.json",
     "https://ctower.local/contracts/components/notification.schema.json": "contracts/components/notification.schema.json",
@@ -138,6 +140,7 @@
     "https://ctower.local/contracts/domain/inbox/inbox-v2.schema.json": "contracts/domain/inbox/inbox-v2.schema.json",
     "https://ctower.local/contracts/domain/inbox/inbox.schema.json": "contracts/domain/inbox/inbox.schema.json",
     "https://ctower.local/contracts/domain/intake/thread-intake.schema.json": "contracts/domain/intake/thread-intake.schema.json",
+    "https://ctower.local/contracts/domain/integrations/gitlab-issue-sync.schema.json": "contracts/domain/integrations/gitlab-issue-sync.schema.json",
     "https://ctower.local/contracts/domain/knowledge/knowledge.schema.json": "contracts/domain/knowledge/knowledge.schema.json",
     "https://ctower.local/contracts/observability/telemetry-context.schema.json": "contracts/observability/telemetry-context.schema.json",
     "https://ctower.local/contracts/workflow/workflow-definition.schema.json": "contracts/workflow/workflow-definition.schema.json"
@@ -2118,6 +2121,123 @@
         "execution"
       ],
       "title": "ImageComponent",
+      "type": "object"
+    },
+    "contracts/components/integration-v2.schema.json": {
+      "$id": "https://ctower.local/contracts/components/integration-v2.schema.json",
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "additionalProperties": false,
+      "properties": {
+        "adapter": {
+          "const": "gitlab-issues"
+        },
+        "authority": {
+          "const": "co_source"
+        },
+        "ctower": {
+          "additionalProperties": false,
+          "properties": {
+            "initial_custodian_id": {
+              "format": "uuid",
+              "type": "string"
+            },
+            "project_key": {
+              "pattern": "^[a-z][a-z0-9-]{2,63}$",
+              "type": "string"
+            }
+          },
+          "required": [
+            "project_key",
+            "initial_custodian_id"
+          ],
+          "type": "object"
+        },
+        "execution": {
+          "const": "standing_sync"
+        },
+        "gitlab": {
+          "additionalProperties": false,
+          "properties": {
+            "base_url": {
+              "format": "uri",
+              "pattern": "^https://",
+              "type": "string"
+            },
+            "import_updated_after": {
+              "format": "date-time",
+              "type": "string"
+            },
+            "page_size": {
+              "maximum": 100,
+              "minimum": 1,
+              "type": "integer"
+            },
+            "poll_interval_seconds": {
+              "maximum": 3600,
+              "minimum": 15,
+              "type": "integer"
+            },
+            "project_id": {
+              "minimum": 1,
+              "type": "integer"
+            }
+          },
+          "required": [
+            "base_url",
+            "project_id",
+            "import_updated_after",
+            "page_size",
+            "poll_interval_seconds"
+          ],
+          "type": "object"
+        },
+        "key": {
+          "pattern": "^[a-z][a-z0-9.-]{2,127}$",
+          "type": "string"
+        },
+        "label_map": {
+          "items": {
+            "additionalProperties": false,
+            "properties": {
+              "ctower": {
+                "pattern": "^[a-z][a-z0-9._-]{1,95}$",
+                "type": "string"
+              },
+              "gitlab": {
+                "maxLength": 255,
+                "minLength": 1,
+                "type": "string"
+              }
+            },
+            "required": [
+              "gitlab",
+              "ctower"
+            ],
+            "type": "object"
+          },
+          "maxItems": 100,
+          "type": "array"
+        },
+        "schema": {
+          "const": "ctower.integration/v2"
+        },
+        "token_binding": {
+          "pattern": "^[A-Z][A-Z0-9_]{2,127}$",
+          "type": "string"
+        }
+      },
+      "required": [
+        "schema",
+        "key",
+        "adapter",
+        "authority",
+        "execution",
+        "gitlab",
+        "ctower",
+        "label_map",
+        "token_binding"
+      ],
+      "title": "GitLabIssueIntegrationComponent",
       "type": "object"
     },
     "contracts/components/integration.schema.json": {
@@ -5536,6 +5656,189 @@
       ],
       "title": "Ctower durable inbound-thread authority",
       "type": "object"
+    },
+    "contracts/domain/integrations/gitlab-issue-sync.schema.json": {
+      "$defs": {
+        "awareDateTime": {
+          "format": "date-time",
+          "type": "string"
+        },
+        "closeCommand": {
+          "additionalProperties": false,
+          "properties": {
+            "comment": {
+              "maxLength": 4000,
+              "minLength": 1,
+              "type": "string"
+            },
+            "delivery_id": {
+              "format": "uuid",
+              "type": "string"
+            },
+            "schema": {
+              "const": "ctower.gitlab-close-command/v1"
+            }
+          },
+          "required": [
+            "schema",
+            "delivery_id",
+            "comment"
+          ],
+          "type": "object"
+        },
+        "closeReceipt": {
+          "additionalProperties": false,
+          "properties": {
+            "comment_created": {
+              "type": "boolean"
+            },
+            "delivery_id": {
+              "format": "uuid",
+              "type": "string"
+            },
+            "issue_closed": {
+              "type": "boolean"
+            },
+            "schema": {
+              "const": "ctower.gitlab-close-receipt/v1"
+            }
+          },
+          "required": [
+            "schema",
+            "delivery_id",
+            "comment_created",
+            "issue_closed"
+          ],
+          "type": "object"
+        },
+        "cursor": {
+          "additionalProperties": false,
+          "properties": {
+            "page": {
+              "minimum": 1,
+              "type": "integer"
+            },
+            "project_event_cursor": {
+              "minimum": 0,
+              "type": "integer"
+            },
+            "schema": {
+              "const": "ctower.gitlab-issue-cursor/v1"
+            },
+            "updated_after": {
+              "$ref": "#/$defs/awareDateTime"
+            }
+          },
+          "required": [
+            "schema",
+            "updated_after",
+            "page",
+            "project_event_cursor"
+          ],
+          "type": "object"
+        },
+        "issue": {
+          "additionalProperties": false,
+          "properties": {
+            "body": {
+              "maxLength": 60000,
+              "type": "string"
+            },
+            "iid": {
+              "minimum": 1,
+              "type": "integer"
+            },
+            "labels": {
+              "items": {
+                "maxLength": 255,
+                "minLength": 1,
+                "type": "string"
+              },
+              "maxItems": 100,
+              "type": "array",
+              "uniqueItems": true
+            },
+            "project_id": {
+              "minimum": 1,
+              "type": "integer"
+            },
+            "reporter": {
+              "$ref": "#/$defs/reporter"
+            },
+            "schema": {
+              "const": "ctower.gitlab-issue/v1"
+            },
+            "state": {
+              "enum": [
+                "opened",
+                "closed"
+              ]
+            },
+            "title": {
+              "maxLength": 200,
+              "minLength": 1,
+              "type": "string"
+            },
+            "updated_at": {
+              "$ref": "#/$defs/awareDateTime"
+            },
+            "web_url": {
+              "format": "uri",
+              "pattern": "^https://",
+              "type": "string"
+            }
+          },
+          "required": [
+            "schema",
+            "project_id",
+            "iid",
+            "title",
+            "body",
+            "labels",
+            "reporter",
+            "state",
+            "web_url",
+            "updated_at"
+          ],
+          "type": "object"
+        },
+        "reporter": {
+          "additionalProperties": false,
+          "properties": {
+            "name": {
+              "maxLength": 255,
+              "minLength": 1,
+              "type": "string"
+            },
+            "username": {
+              "pattern": "^[A-Za-z0-9_.-]{1,255}$",
+              "type": "string"
+            }
+          },
+          "required": [
+            "username",
+            "name"
+          ],
+          "type": "object"
+        }
+      },
+      "$id": "https://ctower.local/contracts/domain/integrations/gitlab-issue-sync.schema.json",
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "oneOf": [
+        {
+          "$ref": "#/$defs/cursor"
+        },
+        {
+          "$ref": "#/$defs/issue"
+        },
+        {
+          "$ref": "#/$defs/closeCommand"
+        },
+        {
+          "$ref": "#/$defs/closeReceipt"
+        }
+      ],
+      "title": "GitLabIssueSyncContract"
     },
     "contracts/domain/knowledge/knowledge.schema.json": {
       "$id": "https://ctower.local/contracts/domain/knowledge/knowledge.schema.json",
@@ -15126,6 +15429,11 @@
       "sha256": "sha256:a6f46847f4e3bb615fc1fe10bceb6fb7e43b65e27246952d54d31bd9da8eff4c"
     },
     {
+      "id": "https://ctower.local/contracts/components/integration-v2.schema.json",
+      "path": "contracts/components/integration-v2.schema.json",
+      "sha256": "sha256:73b24957d8bf7c3deb369d7bb69c98eb00f513cefe12c3b0811c98a452e4a968"
+    },
+    {
       "id": "https://ctower.local/contracts/components/integration.schema.json",
       "path": "contracts/components/integration.schema.json",
       "sha256": "sha256:a3e206c7b7664a24d6e1ec5306f1aa9112c704d1c398d6d5e96423c57ce9725b"
@@ -15209,6 +15517,11 @@
       "id": "https://ctower.local/contracts/domain/intake/thread-intake.schema.json",
       "path": "contracts/domain/intake/thread-intake.schema.json",
       "sha256": "sha256:a0614a311131ca13ab14a8100821445d0a3e805b6596e7cd7775b24595fb5f99"
+    },
+    {
+      "id": "https://ctower.local/contracts/domain/integrations/gitlab-issue-sync.schema.json",
+      "path": "contracts/domain/integrations/gitlab-issue-sync.schema.json",
+      "sha256": "sha256:7df6b8271e996e0893d344b28bfca233e7b24a6efd390cd19919b98a023300ee"
     },
     {
       "id": "https://ctower.local/contracts/domain/knowledge/knowledge.schema.json",

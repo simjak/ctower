@@ -55,6 +55,7 @@
       "contracts/components/goal.schema.json",
       "contracts/components/harness.schema.json",
       "contracts/components/image.schema.json",
+      "contracts/components/integration-v2.schema.json",
       "contracts/components/integration.schema.json",
       "contracts/components/label-vocabulary.schema.json",
       "contracts/components/notification.schema.json",
@@ -178,6 +179,7 @@
       "packages/ctower-kernel/migrations/0036_migration_ledger_role.sql",
       "packages/ctower-kernel/migrations/0050_knowledge_documents.sql",
       "packages/ctower-kernel/migrations/0053_dream_dispatch_effect.sql",
+      "packages/ctower-kernel/migrations/0054_gitlab_issue_integration.sql",
       "packages/ctower-kernel/migrations/manifest.json"
     ],
     "AC-EVD-01": [
@@ -204,6 +206,20 @@
       "contracts/execution/evidence-policy.schema.json",
       "packages/ctower-kernel/migrations/0021_object_backup_anchor.sql",
       "packs/policies/evidence/trust-spine-four-stage-v1.yaml"
+    ],
+    "AC-GL-01": [
+      "contracts/components/integration-v2.schema.json",
+      "contracts/domain/integrations/gitlab-issue-sync.schema.json",
+      "packages/ctower-kernel/migrations/0054_gitlab_issue_integration.sql"
+    ],
+    "AC-GL-02": [
+      "contracts/domain/integrations/gitlab-issue-sync.schema.json",
+      "packages/ctower-kernel/migrations/0054_gitlab_issue_integration.sql"
+    ],
+    "AC-GL-03": [
+      "contracts/components/integration-v2.schema.json",
+      "contracts/domain/integrations/gitlab-issue-sync.schema.json",
+      "packages/ctower-kernel/migrations/0054_gitlab_issue_integration.sql"
     ],
     "AC-INBOX-01": [
       "contracts/domain/events/canonical-vectors.json",
@@ -621,6 +637,7 @@
     "INV-01": [
       "contracts/domain/inbox/inbox.schema.json",
       "contracts/domain/intake/thread-intake.schema.json",
+      "contracts/domain/integrations/gitlab-issue-sync.schema.json",
       "contracts/domain/knowledge/knowledge.schema.json",
       "packages/ctower-kernel/migrations/0001_roles.sql",
       "packages/ctower-kernel/migrations/0002_ticket_slice.sql",
@@ -659,7 +676,8 @@
       "packages/ctower-kernel/migrations/0048_native_inbox.sql",
       "packages/ctower-kernel/migrations/0049_review_dispatch_effect.sql",
       "packages/ctower-kernel/migrations/0051_inbox_delivery_read_facts.sql",
-      "packages/ctower-kernel/migrations/0052_knowledge_inbox_event_kinds.sql"
+      "packages/ctower-kernel/migrations/0052_knowledge_inbox_event_kinds.sql",
+      "packages/ctower-kernel/migrations/0054_gitlab_issue_integration.sql"
     ],
     "INV-04": [
       "contracts/domain/events/event-envelope.schema.json",
@@ -852,6 +870,7 @@
       "contracts/components/goal.schema.json",
       "contracts/components/harness.schema.json",
       "contracts/components/image.schema.json",
+      "contracts/components/integration-v2.schema.json",
       "contracts/components/integration.schema.json",
       "contracts/components/label-vocabulary.schema.json",
       "contracts/components/notification.schema.json",
@@ -1006,6 +1025,10 @@
     "INV-71": [
       "packages/ctower-kernel/migrations/0047_board_source_index.sql"
     ],
+    "INV-72": [
+      "contracts/domain/integrations/gitlab-issue-sync.schema.json",
+      "packages/ctower-kernel/migrations/0054_gitlab_issue_integration.sql"
+    ],
     "INV-73": [
       "packages/ctower-kernel/migrations/0046_human_oidc_identity.sql"
     ],
@@ -1068,6 +1091,7 @@
       "contracts/domain/events/event-envelope.schema.json",
       "contracts/domain/inbox/inbox-v2.schema.json",
       "contracts/domain/inbox/inbox.schema.json",
+      "contracts/domain/integrations/gitlab-issue-sync.schema.json",
       "contracts/domain/knowledge/knowledge.schema.json",
       "contracts/domain/migration/ctower-project-import-batch.schema.json",
       "contracts/domain/migration/ctower-project-import-correction.schema.json",
@@ -1231,7 +1255,8 @@
       "packages/ctower-kernel/migrations/0049_review_dispatch_effect.sql",
       "packages/ctower-kernel/migrations/0051_inbox_delivery_read_facts.sql",
       "packages/ctower-kernel/migrations/0052_knowledge_inbox_event_kinds.sql",
-      "packages/ctower-kernel/migrations/0053_dream_dispatch_effect.sql"
+      "packages/ctower-kernel/migrations/0053_dream_dispatch_effect.sql",
+      "packages/ctower-kernel/migrations/0054_gitlab_issue_integration.sql"
     ],
     "SPEC#portfolio-shadow-onboarding": [
       "packages/ctower-kernel/migrations/0047_board_source_index.sql"
@@ -1346,6 +1371,7 @@
       "contracts/components/goal.schema.json",
       "contracts/components/harness.schema.json",
       "contracts/components/image.schema.json",
+      "contracts/components/integration-v2.schema.json",
       "contracts/components/integration.schema.json",
       "contracts/components/label-vocabulary.schema.json",
       "contracts/components/notification.schema.json",

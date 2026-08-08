@@ -46,8 +46,9 @@ decided on the evidence.
 
 ```
   SOMETHING NEEDS DOING
-  today: an authenticated HTTP call, or a command you type
-  planned: email, chat, webhooks, a schedule
+  today: an authenticated HTTP call, a command you type, or one
+         configured GitLab feedback issue sync
+  planned: email, chat, generic webhooks, other source hosts, a schedule
         |
         v
   IT BECOMES A THREAD
@@ -138,10 +139,11 @@ project's own checks. Everything in the right column is specified and designed, 
 |---|---|
 | Open a ticket, set its priority, assign it, block and unblock it, defer it, comment on it, link it to other tickets, resolve and close it | Any hosted or external/product deployment |
 | A four-step flow — take it in, agree what "done" means, check it, close it — where every move is refused unless the flow declares it and its rule is met, and where the move into the last step, and resolving or closing the ticket, require proof that is current for this exact version of the work and a pass recorded by someone other than the principal who froze the criteria for that candidate | A web interface. The command line is the only one, on purpose, for now |
-| Proof tied to the exact version of the work it checked: change the work and the proof that depended on the old version stops counting | Anything that reaches the outside world: real deploys, messages, payments, receipts, incident recovery |
+| Proof tied to the exact version of the work it checked: change the work and the proof that depended on the old version stops counting | General external effects: real deploys, arbitrary messages, payments, incident recovery |
 | A board with six lanes, the full history of every ticket, and a per-project delivery view, all rebuilt from recorded facts | Fleets of agents working in parallel, with permissions that expire and automatic resume after a crash |
-| A command line that writes every ticket, intake, native inbox, and workflow change to an encrypted local queue before it sends it, so an interrupted change is not lost if the server or the network is down. Reads, first-time setup and the migration commands go straight to the server and are not queued | Connectors that read from email, chat, or a source host |
+| A command line that writes every ticket, intake, native inbox, and workflow change to an encrypted local queue before it sends it, so an interrupted change is not lost if the server or the network is down. Reads, first-time setup and the migration commands go straight to the server and are not queued | Connectors that read from email, chat, GitHub, arbitrary GitLab objects, or other source hosts |
 | Inbound messages stored durably with their source, and a step that turns one into a ticket without duplicating it if the request is retried | Memory that lets a worker recall how something was solved months ago |
+| One configured GitLab feedback project: bounded standing issue ingestion creates one source-linked P2 ticket, later issue changes become ticket comments, and only a proof-gated ctower close comments on and closes the GitLab issue | A generic connector or webhook framework, bulk source import, or treating provider state as ctower proof/lifecycle authority |
 | A self-test that drives one ticket through the whole four-step flow against a real PostgreSQL database | Proof required at *every* step, with each step naming the kinds of proof it accepts — see [typed evidence slots](https://simjak.github.io/ctower/concepts/proof/#typed-evidence-slots) — plus richer process authoring than the flow above |
 | An operator-installed private-VPS E2 shadow runtime with supervised loopback services, an ordinary durability finalizer, and the explicit `SHADOW_ONLY_CP3_D_NOT_PROVEN` label | A production runtime, CP3-D activation, authoritative or irreplaceable work, and release lifecycle |
 | — | `[planned]` Refusing a pass from whoever authored or fixed the candidate, or recorded its evidence. Today the verdict writer is compared only with the principal who froze the candidate criteria — see [verdicts and independence](https://simjak.github.io/ctower/concepts/proof/#verdicts-and-independence) |

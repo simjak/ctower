@@ -50,6 +50,7 @@ packages = [
   "ctower_kernel.board_context",
   "ctower_kernel.catalog",
   "ctower_kernel.inbox",
+  "ctower_kernel.integrations",
   "ctower_kernel.knowledge",
   "ctower_kernel.migration",
   "ctower_kernel.migrations",

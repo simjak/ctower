@@ -39,7 +39,7 @@ _PAYLOAD_FILES = {
     "ctower.goal/v1": "goal.schema.json",
     "ctower.harness/v1": "harness.schema.json",
     "ctower.image/v1": "image.schema.json",
-    "ctower.integration/v1": "integration.schema.json",
+    "ctower.integration/v2": "integration-v2.schema.json",
     "ctower.notification/v1": "notification.schema.json",
     "ctower.persona/v1": "persona.schema.json",
     "ctower.project/v1": "project.schema.json",

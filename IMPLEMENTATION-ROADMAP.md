@@ -2,11 +2,11 @@
 
 | Field | Value |
 |---|---|
-| Status | Non-normative execution sequence derived from `SPEC.md` 1.16 |
+| Status | Non-normative execution sequence derived from `SPEC.md` 1.17 |
 | Product increments | Exactly two: Increment 1 and Increment 2 |
 | Work authority before development epoch | SPEC temporary bootstrap backlog / Mission Control |
 | Work authority after development epoch | ctower tickets for the reviewed cohort only |
-| Last reviewed | 2026-08-07 |
+| Last reviewed | 2026-08-08 |
 
 This roadmap makes the normative build order easier to execute. It does not create a third scope model,
 approve work, mirror ticket status, or override the stable IDs, acceptance criteria, validation commands,
@@ -50,6 +50,8 @@ INCREMENT 1 — durable task-management dogfood
  [project identity -> isolation -> intake -> typed feed]
               |
  [two auth planes -> one Actor/custody/audit model + CSO]
+              |
+ [one bounded GitLab Issue co-source + custody/close receipts]
               |
  [CP3-D: external ACK + keys + destructive restore + measured RPO/RTO]
               |
@@ -275,7 +277,7 @@ The CT-I1-008 development verdict may be `GO_WITH_LIMITS` and may complete the d
 pilot/I1.7 checkpoint. It does not satisfy the disaster-safe authority criterion and excludes credentials,
 accounting, production authority/effects, incidents, client data, and irreplaceable artifacts. Full
 normative I1 exit remains `NO-GO` until CP3-D proves external-failure-domain acknowledgement, key recovery,
-isolated destructive restore, and measured RPO/RTO and CT-I1-009..013 pass.
+isolated destructive restore, and measured RPO/RTO and CT-I1-009..014 pass.
 
 The same checkpoint establishes only the hierarchy needed to dogfood project delivery:
 
@@ -303,23 +305,29 @@ canonical eight-state precedence with proof-aware `done`/`blocked`, and expose i
 hourly no-change freshness, and stale/unknown faults without accepting a projection write. A
 `GO_WITH_LIMITS` result keeps `CP3_D_NOT_PROVEN` visible.
 
-**Full I1 exit:** remains `NO-GO` until CT-I1-009..013 and the required CP3-D evidence pass. Only that full exit satisfies
+**Full I1 exit:** remains `NO-GO` until CT-I1-009..014 and the required CP3-D evidence pass. Only that full exit satisfies
 CT-I2-001's dependency on CT-I1-008. From the development epoch, ctower tickets—not this file or the SPEC
 table—own implementation status for the reviewed cohort.
 
-### I1.8 — portfolio import chain, then shared authentication
+### I1.8 — portfolio import chain, shared authentication, then narrow GitLab co-source
 
-**Stable work:** `CT-I1-009` through `CT-I1-013`.
+**Stable work:** `CT-I1-009` through `CT-I1-014`.
 
 The order is fixed: immutable Project identities/grants and grant-aware custody -> exact scopes/isolation
 and Commander-authored onboarding config -> ordinary item-by-item Manibo intake -> project-scoped typed feed
-and three disjoint Board proofs -> authentication. The last step preserves Manibo's provider-agnostic OIDC
-contract at a pinned revision, following its Commander's recommendation not to extract a package while both
+and three disjoint Board proofs -> authentication -> one configured GitLab Issue co-source. Authentication
+preserves Manibo's provider-agnostic OIDC contract at a pinned revision, following its Commander's
+recommendation not to extract a package while both
 consumers are changing. It adds discovery-driven human OIDC beside unchanged project-seat machine
 credentials and resolves UI session, human API bearer, and machine bearer requests into the same
 Actor/custody/audit model under INV-73. Providers and exact `operator|commander|viewer` human role bindings
 are versioned configuration that only the operator may create, enable, or rotate. Auth routes remain
 tailnet-only and do not realize the five product surfaces.
+
+The final narrow integration step publishes a v2 secret-reference-only Catalog component, one real GitLab
+HTTP Adapter, one conformance fake, bounded durable issue/event cursors, immutable issue/thread/ticket
+custody, update comments, and only proof-gated replay-safe provider comment/closure. Email, chat, GitHub,
+arbitrary GitLab objects, generic webhooks, and a provider-general connector framework remain deferred.
 
 **Exit:** the ticket reports reuse `1/1`, identity planes `2/2`, Actor/custody models `1/1`, roles `3/3`,
 transports `3/3`, named auth refusal codes `8/8`, bounded provider egress call sites `3/3`,
@@ -327,7 +335,10 @@ security proof groups `11/11`, provider-specific product branches `0`, configure
 `discovered = exercised`,
 and independent CSO verdict `1/1`; every ambiguity, replay, revocation, foreign-project attempt, secret scan,
 and exposure check fails closed by its exact stable code, never a bare 401/403. No auth evidence can infer
-that an earlier import-chain item passed.
+that an earlier import-chain item passed. The following GitLab proof retains one private provider fixture,
+maps one real issue to one ticket without intervention, applies a real update as a ticket comment, closes
+the provider issue only from a current-proof-gated ctower close, and proves one custody chain plus bounded
+poll/replay behavior with no comment or polling storm.
 
 ## Increment 2 — autonomous generic workflow and one factory golden path
 

@@ -1,10 +1,10 @@
 {
   "schema": "ctower.migrations/v3",
   "adoption_baseline": {
-    "through": "0053_dream_dispatch_effect.sql",
-    "schema_sha256": "sha256:20907921771b465fe7f26643c7ce205202b86bd5bb959471b1c0fa7304b4f9fa",
+    "through": "0054_gitlab_issue_integration.sql",
+    "schema_sha256": "sha256:32cd05a4c8fb76bd51db1d4413b1812d1ef4a22a8dd7886b9ec3e54f1c0e0801",
     "semantic_checks": "ctower.pre-ledger/v1",
-    "schema_object_sum256": "sum256:a1a67cc88e0283b9a63196c65e1331e2d72101a2ad7154799a3e91de4846b092"
+    "schema_object_sum256": "sum256:9a41210cef53dd096cb37bf53c080d6f30e0acab954299805769855e5b447a1d"
   },
   "migrations": [
     {
@@ -503,6 +503,15 @@
       "forward_test": "pytest:tests/acceptance/increment-1/test_dream_dispatch_effect.py::test_nightly_dream_dispatch_stage_walk",
       "rollback_or_forward_compensation": "Preserve Routine dream specifications, emitted effects, substrate lane bindings, consumptions, output links, canonical events, command results, and outbox rows; append reviewed forward compensation and never edit or delete accepted dream custody facts.",
       "backup_checkpoint": "Before applying to a nonempty installation, capture Routine revision, occurrence, fixed-job, event, command-result, outbox, and lane-binding counts grouped by tenant plus a verified database backup; all four new tables start empty."
+    },
+    {
+      "path": "0054_gitlab_issue_integration.sql",
+      "sha256": "sha256:4f07bd2f807ce574aa2cee602a3b1c42b7fa06cd54c885ddbc16555bd610ad4d",
+      "minimum_service_version": "0.0.0",
+      "maximum_service_version": "0.0.0",
+      "forward_test": "pytest:tests/acceptance/increment-1/test_gitlab_integration.py::test_gitlab_issue_roundtrip_preserves_one_custody_chain_and_proof_gated_close",
+      "rollback_or_forward_compensation": "Preserve immutable GitLab issue/ticket custody links, source observations, proof-gated close delivery receipts, Catalog revisions, canonical ticket facts, and events; append reviewed forward compensation and never edit or delete an accepted custody or delivery fact.",
+      "backup_checkpoint": "Before applying to a nonempty installation, capture integration progress, issue-link, observation, close-delivery, Catalog revision, ticket-source, inbound-thread, event, command-result, and outbox counts grouped by tenant plus a verified database backup; all four new integration tables start empty."
     }
   ]
 }

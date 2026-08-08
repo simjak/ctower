@@ -2102,6 +2102,39 @@
         "INV-76",
         "AC-OPS-13"
       ]
+    },
+    {
+      "path": "contracts/components/integration-v2.schema.json",
+      "references": [
+        "SPEC#universal-versionedcomponent-catalog-and-company-desired-state",
+        "INV-45",
+        "AC-COMP-01",
+        "AC-GL-01",
+        "AC-GL-03"
+      ]
+    },
+    {
+      "path": "contracts/domain/integrations/gitlab-issue-sync.schema.json",
+      "references": [
+        "SPEC#canonical-event-and-command-contract",
+        "INV-01",
+        "INV-72",
+        "AC-GL-01",
+        "AC-GL-02",
+        "AC-GL-03"
+      ]
+    },
+    {
+      "path": "packages/ctower-kernel/migrations/0054_gitlab_issue_integration.sql",
+      "references": [
+        "SPEC#persistence-authority",
+        "INV-03",
+        "INV-72",
+        "AC-DUR-07",
+        "AC-GL-01",
+        "AC-GL-02",
+        "AC-GL-03"
+      ]
     }
   ]
 }
