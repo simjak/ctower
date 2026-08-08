@@ -12,7 +12,10 @@ routes authenticate before reading a body, then enforce the same 524,288-byte st
 trusting `Content-Length`.
 The separately composed native Inbox surface exposes message send, recipient-only delivery/read
 acknowledgement, participant-only ticket promotion, recipient-scoped thread list, ordered thread read, and
-per-message read-state. Promotion atomically creates a P2 ticket from the thread head when no ticket is
+per-message read-state. Its notification ingress accepts only recipient seat and text, derives the sender
+from the authenticated Actor, resolves the recipient from the persisted seat registry, and groups messages
+in the direction-independent thread for that principal pair. The request's idempotency key is the stable
+notification delivery UUID, so retry returns the original result. Promotion atomically creates a P2 ticket from the thread head when no ticket is
 named, or links an existing in-scope ticket when one is named. Send, acknowledgement, and promotion are
 protected durable mutations. The reads consume only accepted disposable projection state and never advance
 a cursor; unread and read-through derive from append-only recipient facts.

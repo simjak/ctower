@@ -3,14 +3,15 @@
 | Field | Value |
 |---|---|
 | Status | Canonical target-system truth |
-| Version | 1.17 |
+| Version | 1.18 |
 | Date | 2026-08-08 |
 | Owners | Operator/CEO (product and human gates), Commander (orchestration contract), Engineering Manager (architecture and risk contract) |
 | Decision authority | [`DECISIONS.md`](DECISIONS.md) |
 
 **Implementation reality:** The repository now contains a tested, pre-alpha development walking slice for
 the API, protected CLI, Record/Work/Proof/Workflow/Catalog responsibilities, deterministic control loops,
-the narrow standing GitLab Issue co-source integration, and verifier-only recovery evidence. It is not a
+the narrow standing GitLab Issue co-source integration, additive mission-control notification transport,
+and verifier-only recovery evidence. It is not a
 supported installation or deployment. Mission
 Control/Control Tower and the applicable GitHub/GitLab records remain writable co-sources for all three
 projects during the approved shadow dual-run. Existing I1.7A contracts, read-only visibility, and refusing
@@ -1474,6 +1475,7 @@ The ticket is the human join point, not the transaction boundary for the entire 
 77. <a id="inv-77"></a>**INV-77 — Harness independence.** Assignment stamps, `model_changed` events, and session facts carry harness as an open enum whose required baseline values are `claude-code`, `hermes`, `codex`, and `qwen-code`. Unknown harness values are preserved byte-for-byte, displayed as observed, included in equality/cross-checks, and never rejected, normalized, downgraded, or collapsed to `other`. No custody, event, status, reporter, Board, CLI, Evidence, or session integration may assume one harness's session shape or internal transcript format. Reporter facts derive only from substrate-visible dispatch/process/log facts — tmux/process supervision metadata where authorized, mission-control crew-log, and gateway/provider logs — and never from Claude Code, Hermes, Codex, Qwen Code, or any other harness-specific session internals.
 78. <a id="inv-78"></a>**INV-78 — Project event feeds are catalog-derived and scope-bound.** A project event feed contains only canonical events whose authoritative linked ticket, via the same `event_links` subject join Record's ticket audit read already proves, belongs to the requested tenant and project. Project scope is applied in the Record query before event materialization, and every read additionally evaluates the caller's active project grant under [INV-69](#inv-69); a caller without a grant on the requested project refuses `project-scope-denied` with zero rows disclosed. Feed membership is derived from the canonical Record event catalog's `project_feed` metadata, never copied into a second enum or inferred from payload shape; a kind added to the catalog with no feed decision defaults to absent, never silently included. Every wire variant and payload is a strict named schema, and the page orders by record position with a `limit + 1` peek cursor identical to the session and audit read paths.
 79. <a id="inv-79"></a>**INV-79 — Inbox delivery and read state are recipient-authored append-only facts.** Every native inbox message begins in derived `sent` state. Only its recorded recipient may advance it monotonically through `message.delivered` and `message.read`; a direct read acknowledgement records the missing delivered fact first in the same command. Repeated, regressive, sender-authored, foreign-tenant, or unknown-message acknowledgements refuse by stable name with no fact. Thread reads are pure. Per-message state, per-recipient unread counts, and read-through position derive only from accepted canonical events and rebuild identically; no cursor, browser open, caller claim, or projection write creates delivery or read truth.
+80. <a id="inv-80"></a>**INV-80 — Notification mirroring is additive, identity-bound, and pair-grouped.** A mission-control notification reaches its existing durable inbox before the ctower mirror is attempted. The mirror carries one stable delivery UUID, recipient seat, and text; ctower derives the sender solely from the authenticated Actor, resolves the recipient from the persisted project-seat registry, and derives one direction-independent thread identity from the two principal IDs. Exact replay returns the original result without another message fact. Unknown, ambiguous, unaddressable, or self recipients persist the ordinary typed Inbox refusal with zero event, and no mirror refusal or transport failure can reverse or block the existing inbox delivery. No caller-supplied sender, mapping store, feature flag, automatic seat creation, or cutover authority exists.
 
 ## Workflow and verification architecture
 
@@ -3613,6 +3615,27 @@ policy, then records the same one-time thread-to-ticket link. Creation and promo
 command result, outbox rows, subject links, and both navigation directions commit or refuse together. There
 is no classifier, title truncation, compatibility path, or browser promotion control in I1.
 
+### Mission-control notification transport
+
+The transitional mission-control adapter is a second transport after the existing durable `tools/notify`
+append, never a replacement or a coupled dual write. Its strict rail-2 request contains only `to`, `text`,
+and the original delivery UUID as the idempotency key. The authenticated project-seat credential resolves
+the sender Actor; a caller label, `--from` value, process name, or message field cannot assert identity.
+The recipient must already exist as exactly one persisted project seat. An unknown or ambiguous seat is the
+ordinary recorded Inbox refusal and creates no thread, principal, event, or projection row.
+
+`POST /v1/inbox/notifications` and protected `inbox notify` ingest into the existing Inbox aggregate. The
+server derives an opaque, direction-independent UUID from tenant and the unordered pair of principal IDs,
+opens that native thread on the first delivery, and appends later messages for the same pair. This creates
+no pair-mapping table, notification ledger, event kind, cursor, or writable projection. The original
+`thread.opened` and `message.appended` facts remain the only message authority. Exact delivery-ID replay
+returns the original command result; a changed payload under that ID is `idempotency-conflict`.
+
+The adapter reports `mirrored|refused|unavailable` after rail 1 succeeds. A typed ctower refusal or any
+rail-2 client/transport failure is visible to its caller but cannot change the already-completed durable
+append. This slice authorizes no cutover, parity flag, environment setting, browser surface, or live
+credential provisioning.
+
 Harness is deliberately not a closed catalog. The open enum's baseline known values are `claude-code`,
 `hermes`, `codex`, and `qwen-code`, but any unknown harness string observed on an assignment stamp,
 `model_changed` event, or session fact is carried, displayed, and compared exactly as observed. Unknown
@@ -4143,6 +4166,7 @@ Each criterion is pass/fail. Evidence must be attached to the ctower build ticke
 | <a id="ac-inbox-02"></a>AC-INBOX-02 | Recipient unread count remains nonzero after a pure thread read and becomes zero only after the accepted read fact. Projection catch-up and full rebuild reproduce the same per-message state, unread count, promotion link, and fact-derived read-through position without reading an authority table directly or persisting a read cursor. | Before/after unread snapshots, projection privilege inventory, deterministic rebuild equality |
 | <a id="ac-inbox-03"></a>AC-INBOX-03 | Delivery/read facts, canonical events, command results, and outbox rows are append-only. A sender acknowledgement, repeated/regressive acknowledgement, unknown message, and foreign scope each refuse by exact stable code with no mutation; the new contract, migration, module, and acceptance suites are registered and required. | Refusal/state-diff matrix, immutable-trigger test, canonical vectors, expected-suite manifest, clean codegen/check/verify logs |
 | <a id="ac-inbox-04"></a>AC-INBOX-04 | `inbox promote <thread>` creates one P2 ticket from the immutable thread head under ordinary initial-custody policy and links both directions atomically; `--ticket <id>` links an existing in-scope ticket without changing it. Both protected CLI paths return an explicit `ticket_created|ticket_linked` result, replay exactly, and the one-time promotion refuses by stable code. No browser control exists. | Real PostgreSQL generated-client/CLI transcripts for both modes, ticket/source/custody query, event/subject/link query, Board projection and rebuild equality, replay/refusal assertions |
+| <a id="ac-inbox-05"></a>AC-INBOX-05 | An additive `tools/notify` fixture completes its existing durable append before mirroring one authenticated message into the native Inbox. Literal double ingest under the same delivery UUID returns the same result and leaves exactly one `message.appended` fact; messages in either direction for one principal pair share one thread, while a distinct pair does not. A caller-supplied sender label cannot affect the recorded sender. An unknown recipient persists `inbox-recipient-not-found` with zero events while rail 1 remains delivered, and an unavailable mirror never turns rail-1 success into failure. | Real PostgreSQL adapter/API trace, command-result/event/message cardinality query, reverse-direction grouping, distinct-pair query, unknown-seat refusal row, generated API/CLI and reference-doc parity |
 
 ### Recorded work sessions
 
@@ -4599,6 +4623,10 @@ or exit criterion moves increment as a result.
   sessions with seat, model, duration, tokens, and outcome; the session kind set is catalog-derived with a
   both-direction parity mutation proof; all three project pairs refuse a foreign session read by name; and a
   prohibited-class session payload is refused before any durable byte.
+- The transitional notification transport proves [AC-INBOX-05](#ac-inbox-05): one legacy-first fixture
+  mirrors through an authenticated Actor, literal replay creates no second message fact, unordered seat
+  pairs group without a mapping store, and an unknown recipient leaves a persisted zero-event refusal while
+  the durable mission-control row remains delivered.
 - Timed API/CLI evidence proves the operator can find, reprioritize, reassign, block/unblock, inspect proof, and close a ticket without another ledger.
 - The frozen baseline artifact contains at least five legacy working days. The clean-install first-success trial meets [AC-ADM-03](#ac-adm-03).
 - Item-by-item reconciliation accounts for every admitted shadow item, creates each project-scoped source

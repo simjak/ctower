@@ -2,7 +2,7 @@
 
 | Field | Value |
 |---|---|
-| Status | Non-normative execution sequence derived from `SPEC.md` 1.17 |
+| Status | Non-normative execution sequence derived from `SPEC.md` 1.18 |
 | Product increments | Exactly two: Increment 1 and Increment 2 |
 | Work authority before development epoch | SPEC temporary bootstrap backlog / Mission Control |
 | Work authority after development epoch | ctower tickets for the reviewed cohort only |
@@ -245,6 +245,10 @@ Deliver this checkpoint in reviewable parts:
   no parallel message or cursor authority is introduced. Complete the public promotion seam with one
   generated protected command: omission of a ticket creates a P2 ticket from the thread head and links it
   atomically, while an explicit ticket preserves the existing link-only behavior; no browser control is added.
+  Add the Mission Control notification Adapter after its existing durable delivery: one stable delivery UUID
+  becomes the Inbox command key, the authenticated Actor and seat registry resolve the pair, and Inbox groups
+  both directions in one derived thread. Retry appends no duplicate message, typed refusal never blocks the
+  first transport, and no new identity, store, switch, or cutover is introduced.
 
 - **Current I1.7A visibility boundary:** development-only authority truth, cutover-health and Project
   Delivery contracts, generated read clients, minimal append-only storage, a pure read-only fold, and

@@ -124,6 +124,34 @@ def test_send_replays_through_recover_ambiguous_commit(
     assert calls == _REPLAY_ATTEMPTS
 
 
+def test_notification_replays_through_recover_ambiguous_commit(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    durable = _send_result()
+    calls = 0
+
+    def flaky_ingest_notification(*_args: object, **_kwargs: object) -> InboxSendResult:
+        nonlocal calls
+        calls += 1
+        if calls == 1:
+            raise psycopg.errors.QueryCanceled("connection lost after COMMIT was sent")
+        return durable
+
+    monkeypatch.setattr(inbox_postgres, "ingest_notification", flaky_ingest_notification)
+    inbox = PostgresInbox(_DSN)
+
+    outcome = inbox.ingest_notification(
+        _actor(),
+        InboxSendCommand(uuid4(), "qa-agent", "durable notification replay"),
+        request_digest=bytes(32),
+        now=datetime.now(UTC),
+        telemetry=_telemetry(),
+    )
+
+    assert outcome is durable
+    assert calls == _REPLAY_ATTEMPTS
+
+
 def test_promote_replays_through_recover_ambiguous_commit(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:

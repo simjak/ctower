@@ -9,7 +9,12 @@ from uuid import UUID
 from pydantic import BaseModel
 
 from ctower_client import CtowerClient
-from ctower_client.models import InboxAcknowledgeRequest, InboxPromotionRequest, InboxSendRequest
+from ctower_client.models import (
+    InboxAcknowledgeRequest,
+    InboxNotificationRequest,
+    InboxPromotionRequest,
+    InboxSendRequest,
+)
 from ctowerctl._command_types import MutationPayload
 
 __all__: tuple[str, ...] = ()
@@ -22,6 +27,14 @@ def build_mutation(arguments: argparse.Namespace) -> MutationPayload:
             request=InboxSendRequest(
                 to=cast(str, arguments.to),
                 thread_id=cast(UUID | None, arguments.thread_id),
+                text=cast(str, arguments.text),
+            ),
+            path_parameters={},
+        )
+    if cli_name == "inbox notify":
+        return MutationPayload(
+            request=InboxNotificationRequest(
+                to=cast(str, arguments.to),
                 text=cast(str, arguments.text),
             ),
             path_parameters={},
@@ -42,7 +55,7 @@ def build_mutation(arguments: argparse.Namespace) -> MutationPayload:
 
 
 def mutation_command_names() -> frozenset[str]:
-    return frozenset({"inbox ack", "inbox promote", "inbox send"})
+    return frozenset({"inbox ack", "inbox notify", "inbox promote", "inbox send"})
 
 
 def query_command_names() -> frozenset[str]:

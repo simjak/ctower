@@ -1,5 +1,5 @@
 // DO NOT EDIT: generated file; regenerate from declared inputs.
-// Authored contract digest: sha256:4c89e45623980facc1ea619596b565d449ba3b9568d8c15437ea3487afde5bc5
+// Authored contract digest: sha256:384c0197ccd1a704198d4038a20efa6f9c1852edfc1410468b292c3a06cc5c60
 
 import type * as Models from "./models.js";
 import { OPERATIONS, type OperationId } from "./operations.js";
@@ -184,6 +184,11 @@ export type GetTicketInput = Readonly<{
 export type GetTicketTimelineInput = Readonly<{
   readonly "ticketId": string;
   readonly "projectKey": string;
+}>;
+
+export type IngestInboxNotificationInput = Readonly<{
+  readonly "IdempotencyKey": string;
+  readonly body: Models.InboxNotificationRequest;
 }>;
 
 export type IssueSeatCredentialInput = Readonly<{
@@ -396,6 +401,7 @@ export type OperationInputs = Readonly<{
   readonly "getSyntheticWorkflowRun": GetSyntheticWorkflowRunInput;
   readonly "getTicket": GetTicketInput;
   readonly "getTicketTimeline": GetTicketTimelineInput;
+  readonly "ingestInboxNotification": IngestInboxNotificationInput;
   readonly "issueSeatCredential": IssueSeatCredentialInput;
   readonly "listDreamDispatchEffects": ListDreamDispatchEffectsInput;
   readonly "listInboxThreads": ListInboxThreadsInput;
@@ -464,6 +470,7 @@ export type OperationResults = Readonly<{
   readonly "getSyntheticWorkflowRun": Models.SyntheticRunResource;
   readonly "getTicket": Models.TicketResource;
   readonly "getTicketTimeline": Models.TimelineResponse;
+  readonly "ingestInboxNotification": Models.InboxSendResult;
   readonly "issueSeatCredential": Models.SeatCredentialReceipt;
   readonly "listDreamDispatchEffects": Models.DreamDispatchEffectList;
   readonly "listInboxThreads": Models.InboxThreadList;
@@ -708,6 +715,12 @@ export class CtowerClient {
     input: GetTicketTimelineInput,
   ): Promise<Models.TimelineResponse> {
     return this.execute("getTicketTimeline", input);
+  }
+
+  public async ingestInboxNotification(
+    input: IngestInboxNotificationInput,
+  ): Promise<Models.InboxSendResult> {
+    return this.execute("ingestInboxNotification", input);
   }
 
   public async issueSeatCredential(
