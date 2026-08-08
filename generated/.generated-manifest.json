@@ -97,6 +97,10 @@
           "sha256": "sha256:a6f46847f4e3bb615fc1fe10bceb6fb7e43b65e27246952d54d31bd9da8eff4c"
         },
         {
+          "path": "contracts/components/integration-v2.schema.json",
+          "sha256": "sha256:73b24957d8bf7c3deb369d7bb69c98eb00f513cefe12c3b0811c98a452e4a968"
+        },
+        {
           "path": "contracts/components/integration.schema.json",
           "sha256": "sha256:a3e206c7b7664a24d6e1ec5306f1aa9112c704d1c398d6d5e96423c57ce9725b"
         },
@@ -163,6 +167,10 @@
         {
           "path": "contracts/domain/intake/thread-intake.schema.json",
           "sha256": "sha256:a0614a311131ca13ab14a8100821445d0a3e805b6596e7cd7775b24595fb5f99"
+        },
+        {
+          "path": "contracts/domain/integrations/gitlab-issue-sync.schema.json",
+          "sha256": "sha256:7df6b8271e996e0893d344b28bfca233e7b24a6efd390cd19919b98a023300ee"
         },
         {
           "path": "contracts/domain/knowledge/knowledge.schema.json",
@@ -472,7 +480,7 @@
         },
         {
           "path": "generated/python/ctower_contracts/schemas.json",
-          "sha256": "sha256:56be7f02d931279afbbf04b17bc0a586595d2bebc73ff948038b9b181b7e8bf3"
+          "sha256": "sha256:a5721fd7ecfc7621aaa26afba80dd8e19eb8e667eaf4a03ea72ed52aba4a47ed"
         },
         {
           "path": "generated/typescript/ctower-client/package.json",

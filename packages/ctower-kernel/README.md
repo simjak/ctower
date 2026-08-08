@@ -1,7 +1,7 @@
 # ctower-kernel boundary
 
 Trusted modular-monolith artifact. The development walking slice implements small Access, Catalog, Record,
-Inbox, Knowledge, Work, Proof, Workflow, Runtime, Projections, Attention, and generic Object Interfaces: authentication and
+Inbox, Knowledge, Integrations, Work, Proof, Workflow, Runtime, Projections, Attention, and generic Object Interfaces: authentication and
 bootstrap authority; atomic Postgres command/event/outbox persistence; ticket lifecycle, comments, priority,
 custody, assignment, blocker, relation, and typed-intent policy; universal component/bundle
 validation/planning plus an atomic future-only Catalog pointer; server-pinned frozen criteria, digest-bound
@@ -77,6 +77,15 @@ creation from the immutable thread head under ordinary initial-custody policy or
 ticket, then writes one immutable link exposed from both the thread projection and the Board card. Ordered
 messages and promotion links remain authoritative, while recipient unread/read cursors and list/read rows
 are disposable and rebuildable.
+
+Integrations owns one deliberately narrow GitLab Issue sync Interface and its PostgreSQL cursor/custody/
+observation/delivery store. A due tick processes at most one issue page and one project-event page. New
+issues enter through ordinary external-untrusted Work intake, labels through BoardContext, and changes
+through Record comments. An external issue state never changes ctower lifecycle. Only Record's canonical
+proof-gated `resolve_close` event may request the API-owned Adapter to comment and close the provider issue;
+an immutable event receipt and marker make replay converge. Cursor rows are usable only while their exact
+Catalog component revision and digest remain active. The Module contains no HTTP/provider credential or
+app import, and exposes no provider-general plugin framework.
 
 There is no executable Extension Host in I1 or I2; that runtime remains deferred until a real use case and
 two real Adapters earn its Seam. The kernel may depend on authored/generated contracts and allowlisted public

@@ -34,6 +34,12 @@ the authenticated principal's persisted Project scope; only an operator receives
 effect. Consumption accepts only an output digest, refuses foreign-Project and non-operator fleet effects
 before mutation, and records substrate-bound lane/model facts plus the Routine occurrence link through the
 Runtime Interface.
+The artifact contains the one real GitLab v4 HTTP Adapter and a standing-loop composition for the narrow
+GitLab Issue co-source. A strict Catalog v2 payload becomes an immutable runtime binding plus an unresolved
+secret-reference name; deployment supplies the resolved token directly to composition, never to Catalog or
+persistence. The existing control worker accepts bound standing loops and ticks them once per worker tick;
+the integration's durable next-poll cursor suppresses early work and bounds provider/event pages. The HTTP
+Adapter has no record-tier connection, and the kernel sync service has no provider import.
 The separately approved E2 composition exposes `ctower-development-api` and
 `ctower-development-worker`. It resolves Secret Service references in-process, binds the API to loopback,
 and adds Record's bounded ordinary durability finalizer to the same worker loop. Its

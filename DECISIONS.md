@@ -1562,3 +1562,48 @@ Rejected alternatives:
   committed; "pending" in this codebase describes off-host acknowledgement receipts, not local commit
   visibility. Introducing a feed-only filter for a distinction no sibling read path makes would be
   speculative complexity the current requirements do not need.
+
+## D39 — One narrow GitLab Issue co-source, without a connector framework (engineering, 2026-08-08, gh#346)
+
+CT-I1-014 activates one configured GitLab feedback project as a standing issue co-source during
+`SHADOW_ONLY_CP3_D_NOT_PROVEN`. This supersedes only the earlier broad deferral of source-host connectors
+for this exact GitLab Issue path. Email, chat, GitHub ingestion, arbitrary GitLab objects, generic webhooks,
+provider-general SCM abstractions, bulk import, and source-of-truth cutover remain deferred.
+
+1. **The mapping uses ordinary authority.** One normalized GitLab issue becomes an
+   `external_untrusted` ordinary intake with a stable `gitlab:<project_id>:<iid>` source reference, P2
+   priority, configured Commander custody, title, body, labels, reporter, and HTTPS source link. An
+   immutable relation joins issue, inbound thread, and ticket; it is the sole dedupe/custody chain across
+   later configuration revisions. Provider changes append ticket comments. Provider closure is observed
+   as a change but cannot resolve ctower work or manufacture proof.
+2. **Ctower closure remains proof-gated.** Only the canonical project event produced by a successful
+   `resolve_close` with lifecycle facts `resolved,closed` may deliver a marker-bound comment and close the
+   linked GitLab issue. The event-bound immutable receipt plus provider marker makes retry converge without
+   a duplicate comment or close storm. No GitLab label, state, comment, webhook, or operator action at the
+   provider bypasses Workflow or Proof.
+3. **Standing means bounded durable progress.** One due tick reads at most one GitLab issue page (maximum
+   100) and one ctower project-event page (maximum 100), then advances an aware `updated_after`/page/event
+   cursor pinned to the exact active Catalog component revision and digest. The next-poll time prevents a
+   tight loop; failures use a bounded retry delay and count. Pagination and replay are explicit. No
+   unbounded tailer, scan, queue, or per-integration process is introduced.
+4. **The Seam is specific and internal.** The kernel owns a small GitLab-issue Adapter Interface and
+   durable integration-store Interface; the API artifact supplies one real GitLab HTTP Adapter and the
+   standing composition, while the same conformance suite exercises the real Adapter through an honest
+   HTTP transport fixture and a deterministic fake. This follows D10's small-Interface/conformance shape
+   without claiming a generalized public provider Seam or plugin framework from one real provider.
+5. **Configuration is revision-pinned and secret-free.** The already-published
+   `ctower.integration/v1` reference-only shape remains immutable under D37. The active shape is the new
+   `ctower.integration/v2` file, containing only the HTTPS origin, numeric project, bounded import/poll
+   settings, ctower project/custodian, label map, and an uppercase deployment secret-binding reference.
+   Deployment resolves the token outside Catalog; resolved credential bytes enter no contract, durable
+   row, exception, log, receipt, or telemetry.
+
+Rejected alternatives:
+
+- A webhook-first service or generic source-connector host. Rejected because a bounded cursor in the
+  existing control worker is the smallest standing end-to-end product and does not create another ingress,
+  queue, runtime, or extension authority.
+- Treating GitLab `closed` as ctower completion. Rejected because it would let an external co-source forge
+  the proof-gated lifecycle authority that ctower exists to protect.
+- Editing `ctower.integration/v1` in place. Rejected by D37; the incompatible active shape is published as
+  v2 and v1 remains byte-for-byte available to historical readers.

@@ -1,0 +1,91 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://ctower.local/contracts/domain/integrations/gitlab-issue-sync.schema.json",
+  "title": "GitLabIssueSyncContract",
+  "oneOf": [
+    { "$ref": "#/$defs/cursor" },
+    { "$ref": "#/$defs/issue" },
+    { "$ref": "#/$defs/closeCommand" },
+    { "$ref": "#/$defs/closeReceipt" }
+  ],
+  "$defs": {
+    "awareDateTime": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "cursor": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["schema", "updated_after", "page", "project_event_cursor"],
+      "properties": {
+        "schema": { "const": "ctower.gitlab-issue-cursor/v1" },
+        "updated_after": { "$ref": "#/$defs/awareDateTime" },
+        "page": { "type": "integer", "minimum": 1 },
+        "project_event_cursor": { "type": "integer", "minimum": 0 }
+      }
+    },
+    "reporter": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["username", "name"],
+      "properties": {
+        "username": { "type": "string", "pattern": "^[A-Za-z0-9_.-]{1,255}$" },
+        "name": { "type": "string", "minLength": 1, "maxLength": 255 }
+      }
+    },
+    "issue": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "schema",
+        "project_id",
+        "iid",
+        "title",
+        "body",
+        "labels",
+        "reporter",
+        "state",
+        "web_url",
+        "updated_at"
+      ],
+      "properties": {
+        "schema": { "const": "ctower.gitlab-issue/v1" },
+        "project_id": { "type": "integer", "minimum": 1 },
+        "iid": { "type": "integer", "minimum": 1 },
+        "title": { "type": "string", "minLength": 1, "maxLength": 200 },
+        "body": { "type": "string", "maxLength": 60000 },
+        "labels": {
+          "type": "array",
+          "maxItems": 100,
+          "uniqueItems": true,
+          "items": { "type": "string", "minLength": 1, "maxLength": 255 }
+        },
+        "reporter": { "$ref": "#/$defs/reporter" },
+        "state": { "enum": ["opened", "closed"] },
+        "web_url": { "type": "string", "format": "uri", "pattern": "^https://" },
+        "updated_at": { "$ref": "#/$defs/awareDateTime" }
+      }
+    },
+    "closeCommand": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["schema", "delivery_id", "comment"],
+      "properties": {
+        "schema": { "const": "ctower.gitlab-close-command/v1" },
+        "delivery_id": { "type": "string", "format": "uuid" },
+        "comment": { "type": "string", "minLength": 1, "maxLength": 4000 }
+      }
+    },
+    "closeReceipt": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["schema", "delivery_id", "comment_created", "issue_closed"],
+      "properties": {
+        "schema": { "const": "ctower.gitlab-close-receipt/v1" },
+        "delivery_id": { "type": "string", "format": "uuid" },
+        "comment_created": { "type": "boolean" },
+        "issue_closed": { "type": "boolean" }
+      }
+    }
+  }
+}

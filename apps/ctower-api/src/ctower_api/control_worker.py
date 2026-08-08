@@ -49,6 +49,10 @@ class _DurabilityProgressRecorder(Protocol):
     def failed(self) -> None: ...
 
 
+class _StandingIntegration(Protocol):
+    def tick(self) -> object: ...
+
+
 @dataclass(frozen=True, slots=True)
 class ControlWorker:
     """Coordinate separately owned loops without owning their durable decisions."""
@@ -61,6 +65,7 @@ class ControlWorker:
     durability_progress: _DurabilityProgressRecorder | None = None
     fixed_operations: FixedOperations | None = None
     synthetic_handler: _SyntheticHandler | None = None
+    standing_integrations: tuple[_StandingIntegration, ...] = ()
 
     def tick(self) -> None:
         self._tick_finalizer()
@@ -68,6 +73,8 @@ class ControlWorker:
         self.routine_loop.tick(tenant_ids)
         self.outbox_loop.tick(tenant_ids)
         self.project_delivery_loop.tick(tenant_ids)
+        for integration in self.standing_integrations:
+            integration.tick()
         self._tick_synthetic()
 
     def _tick_finalizer(self) -> None:
@@ -163,6 +170,7 @@ def build_worker(
     synthetic_handler: _SyntheticHandler | None = None,
     durability_finalizer: DurabilityFinalizer | None = None,
     durability_progress: _DurabilityProgressRecorder | None = None,
+    standing_integrations: tuple[_StandingIntegration, ...] = (),
 ) -> ControlWorker:
     """Compose the same worker around public kernel Interfaces."""
 
@@ -175,6 +183,7 @@ def build_worker(
         durability_progress,
         fixed_operations,
         synthetic_handler,
+        standing_integrations,
     )
 
 

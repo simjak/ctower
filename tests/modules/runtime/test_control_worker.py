@@ -191,6 +191,15 @@ class _FinalizerProgress:
         self.failures += 1
 
 
+class _StandingIntegration:
+    def __init__(self) -> None:
+        self.ticks = 0
+
+    def tick(self) -> object:
+        self.ticks += 1
+        return object()
+
+
 class _RaisedProblem:
     def __init__(self) -> None:
         self.code = "workflow-pin-mismatch"
@@ -226,6 +235,22 @@ def test_worker_loads_exact_fixed_packs_and_ticks_each_owned_loop() -> None:
     assert projection_store.delivery_tenants == [tenant_id, tenant_id]
     with pytest.raises(ValueError, match="interval"):
         worker.run(Event(), interval_seconds=0.0)
+
+
+def test_worker_ticks_each_injected_standing_integration_once() -> None:
+    tenant_id = uuid4()
+    first = _StandingIntegration()
+    second = _StandingIntegration()
+    worker = build_worker(
+        Routine(_RoutineStore(tenant_id)),
+        Projections(_ProjectionStore()),
+        pack_root=ROOT / "packs",
+        standing_integrations=(first, second),
+    )
+
+    worker.tick()
+
+    assert first.ticks == 1 and second.ticks == 1
 
 
 def test_worker_tick_claims_executes_and_completes_synthetic_operation() -> None:
