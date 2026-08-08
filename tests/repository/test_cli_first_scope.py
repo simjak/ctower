@@ -27,6 +27,38 @@ class CliFirstScopeTests(unittest.TestCase):
         self.assertEqual(browser_suite["phase"], "CT-I2-005")
         self.assertEqual(browser_suite["status"], "deferred")
 
+    def test_the_dogfood_suite_activation_is_named_by_a_superseding_decision(self) -> None:
+        """A required suite the canonical record disclaims is a contradiction.
+
+        D40 clause 4 said the dogfood exception introduces no ``test-suite
+        activation`` while the same candidate registered
+        ``dogfood-inbox-promotion`` as a required suite that ``just verify``
+        executes and counts. ``DECISIONS.md`` is append-only, so the repair is a
+        superseding entry that names the activation and its limits — not an edit
+        to D40, and not unregistering the verification the exception owes.
+        """
+        manifest = tomllib.loads(
+            (self.root / "tools/checks/expected-suites.toml").read_text(encoding="utf-8")
+        )
+        suites = cast(list[dict[str, Any]], manifest["suite"])
+        decisions = (self.root / "DECISIONS.md").read_text(encoding="utf-8")
+
+        activated = sorted(
+            suite["id"]
+            for suite in suites
+            if suite["id"].startswith("dogfood-") and suite["status"] == "required"
+        )
+        self.assertEqual(activated, ["dogfood-inbox-promotion"])
+        for suite_id in activated:
+            self.assertIn(f"`{suite_id}`", decisions)
+
+        self.assertIn("## D41 — The dogfood exception activates one verification suite", decisions)
+        self.assertIn(
+            'This entry preserves D40 and supersedes only clause 4\'s "test-suite activation"',
+            decisions,
+        )
+        self.assertIn("`browser-e2e` stays deferred to `CT-I2-005`", decisions)
+
     def test_d23_preserves_i1_semantics_and_defers_only_browser_realization(self) -> None:
         decisions = (self.root / "DECISIONS.md").read_text(encoding="utf-8")
 

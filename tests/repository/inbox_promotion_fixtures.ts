@@ -89,6 +89,55 @@ async function main(): Promise<void> {
     retryableStatusKeys.push({ status, keys });
   }
 
+  // A proxy in front of the API answers `text/plain`, not a problem document.
+  // The status still has to reach the retry predicate.
+  const plainTextKeys: string[] = [];
+  let plainTextResponses = 0;
+  globalThis.fetch = async (_input, init): Promise<Response> => {
+    plainTextResponses += 1;
+    plainTextKeys.push(new Headers(init?.headers).get("Idempotency-Key") ?? "");
+    if (plainTextResponses === 1) {
+      return new Response("service unavailable", {
+        status: 503,
+        headers: { "content-type": "text/plain" },
+      });
+    }
+    return new Response(JSON.stringify(promoted), { status: 200 });
+  };
+  const plainTextRetryThenSuccess = await boundedMutation(
+    "http://127.0.0.1:8091/v1/inbox/threads/plain-text/promotion",
+    { "Idempotency-Key": "promotion-plain-text-key" },
+    "{}",
+    { attemptTimeoutMs: 50, maxAttempts: 3, maxElapsedMs: 1_000, baseDelayMs: 0, maxDelayMs: 0 }
+  );
+
+  // The same crossing with no body at all, retried until both bounds are spent.
+  const emptyBodyKeys: string[] = [];
+  globalThis.fetch = async (_input, init): Promise<Response> => {
+    emptyBodyKeys.push(new Headers(init?.headers).get("Idempotency-Key") ?? "");
+    return new Response(null, { status: 503 });
+  };
+  let emptyBodyExhaustion: ReadExhausted | null = null;
+  try {
+    await boundedMutation(
+      "http://127.0.0.1:8091/v1/inbox/threads/empty-body/promotion",
+      { "Idempotency-Key": "promotion-empty-body-key" },
+      "{}",
+      { attemptTimeoutMs: 50, maxAttempts: 3, maxElapsedMs: 1_000, baseDelayMs: 0, maxDelayMs: 0 }
+    );
+  } catch (error: unknown) {
+    if (!(error instanceof ReadExhausted)) {
+      throw error;
+    }
+    emptyBodyExhaustion = error;
+  }
+
+  // A terminal refusal without a problem document stays terminal, and the
+  // control says so in plain words rather than repeating a parser's complaint.
+  globalThis.fetch = async (): Promise<Response> =>
+    new Response("conflict", { status: 409, headers: { "content-type": "text/plain" } });
+  const plainTextRefusal = await promoteInboxThread(threadId, null);
+
   const exhaustionKeys: string[] = [];
   globalThis.fetch = async (_input, init): Promise<Response> => {
     exhaustionKeys.push(new Headers(init?.headers).get("Idempotency-Key") ?? "");
@@ -116,6 +165,12 @@ async function main(): Promise<void> {
       request: requests[0],
       retryThenSuccess: { result: retryThenSuccess, keys: retryKeys },
       retryableStatusKeys,
+      plainTextRetryThenSuccess: { result: plainTextRetryThenSuccess, keys: plainTextKeys },
+      emptyBodyExhaustion: {
+        failure: emptyBodyExhaustion === null ? null : emptyBodyExhaustion.failure,
+        keys: emptyBodyKeys,
+      },
+      plainTextRefusal,
       exhaustion: exhaustion === null ? null : exhaustion.failure,
       exhaustionKeys,
     })

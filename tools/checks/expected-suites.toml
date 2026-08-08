@@ -569,10 +569,10 @@ id = "dogfood-inbox-promotion"
 owner = "CT-I1-007"
 phase = "CT-I1-007"
 status = "required"
-path = "tests/repository"
-patterns = ["test_inbox_promotion_ui.py"]
-command = ["{python}", "-m", "pytest", "tests/repository/test_inbox_promotion_ui.py", "-q"]
-timeout_seconds = 120
+path = "tests/dogfood"
+patterns = ["test_*.py"]
+command = ["{python}", "-m", "pytest", "tests/dogfood", "-q"]
+timeout_seconds = 900
 
 [[suite]]
 id = "dream-dispatch-contracts"

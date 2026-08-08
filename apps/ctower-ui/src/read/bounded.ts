@@ -229,6 +229,26 @@ async function attempt(
   return await response.json();
 }
 
+/**
+ * A refusal body, read without letting the read decide the classification.
+ *
+ * Only a success carries a contract-shaped payload. A refusal may carry a
+ * problem document, a proxy's `text/plain` sentence, or nothing at all, and
+ * which of those arrived says nothing about whether the status is retryable.
+ * Parsing it eagerly used to throw a `SyntaxError` before the status reached
+ * `classifyStatus`, so a proxy 503 was classified permanent and the mutation
+ * stopped after one attempt; the text is preserved instead, and the caller's
+ * problem-document validator refuses it as the non-document it is.
+ */
+function refusalDocument(body: string): unknown {
+  try {
+    const parsed: unknown = JSON.parse(body);
+    return parsed;
+  } catch {
+    return body;
+  }
+}
+
 async function mutationAttempt(
   url: string,
   headers: Readonly<Record<string, string>>,
@@ -242,10 +262,11 @@ async function mutationAttempt(
     cache: "no-store",
     signal: AbortSignal.timeout(timeoutMs),
   });
-  const payload: unknown = await response.json();
+  const answered = await response.text();
   if (!response.ok) {
-    throw new MutationRefused(response.status, payload);
+    throw new MutationRefused(response.status, refusalDocument(answered));
   }
+  const payload: unknown = JSON.parse(answered);
   return payload;
 }
 

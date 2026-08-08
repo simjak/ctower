@@ -77,6 +77,49 @@ class InboxPromotionTransportTests(unittest.TestCase):
             ["promotion-exhaustion-key", "promotion-exhaustion-key", "promotion-exhaustion-key"],
         )
 
+    def test_a_transient_status_retries_when_the_body_is_not_a_problem_document(self) -> None:
+        """A `text/plain` or empty 5xx is a transient status, not a parse failure.
+
+        A proxy in front of the API answers `503 service unavailable` as text.
+        Reading that body as JSON before the status was classified turned a
+        retryable crossing into a terminal `SyntaxError` and the mutation
+        stopped after one attempt.
+        """
+        outcomes = ts.drive(_FIXTURE)
+        plain_text = cast("dict[str, Any]", outcomes["plainTextRetryThenSuccess"])
+        empty_body = cast("dict[str, Any]", outcomes["emptyBodyExhaustion"])
+        refusal = cast("dict[str, Any]", outcomes["plainTextRefusal"])
+
+        self.assertEqual(
+            plain_text["result"],
+            {
+                "command_id": "018f0d5e-7b9a-7c01-8000-000000000700",
+                "durability_state": "accepted",
+                "event_ids": ["018f0d5e-7b9a-7c01-8000-000000000701"],
+                "outcome": "ticket_linked",
+                "thread_id": "018f0d5e-7b9a-7c01-8000-000000000600",
+                "thread_version": 3,
+                "ticket_id": "018f0d5e-7b9a-7c01-8000-000000000010",
+            },
+        )
+        self.assertEqual(
+            plain_text["keys"], ["promotion-plain-text-key", "promotion-plain-text-key"]
+        )
+
+        failure = cast("dict[str, Any]", empty_body["failure"])
+        self.assertEqual(failure["attempts"], 3)
+        self.assertEqual(failure["status"], 503)
+        self.assertEqual(failure["failureClass"], "transient")
+        self.assertEqual(
+            empty_body["keys"],
+            ["promotion-empty-body-key", "promotion-empty-body-key", "promotion-empty-body-key"],
+        )
+
+        self.assertEqual(refusal["kind"], "refused")
+        self.assertEqual(
+            refusal["message"], "The server refused the promotion without a usable explanation."
+        )
+
 
 class InboxPromotionComponentTests(unittest.TestCase):
     def test_the_client_has_local_action_state_but_no_credential_or_network_client(self) -> None:

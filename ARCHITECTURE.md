@@ -237,7 +237,9 @@ generic Workflow evaluator, and Projections remain logical responsibilities behi
 React/Vite product routes, the five surfaces, and product Playwright evidence begin at I2.4 under D22/D31.
 D40's separate `ctower-ui` dogfood server is not a product surface: it holds the API bearer only on its
 server side and exposes one bounded, idempotent call to the existing Inbox promotion endpoint. It adds no
-browser authority, product route, record-tier connection, or I1/I2.4 completion claim.
+browser authority, product route, record-tier connection, or I1/I2.4 completion claim. D41 activates one
+required suite for that boundary, `dogfood-inbox-promotion`, which drives it in a headless browser on
+ephemeral loopback ports; the product `browser-e2e` suite stays deferred to CT-I2-005.
 Service-per-noun units such as a separate reconciler are not implied.
 
 ### I2/target: separately deployable contract clients

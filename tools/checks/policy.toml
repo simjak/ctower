@@ -83,6 +83,11 @@ paths = ["tests/repository/**"]
 allowed_dependencies = ["process-execution-tools", "repository-policy"]
 
 [[ownership]]
+name = "dogfood-tests"
+paths = ["tests/dogfood/**"]
+allowed_dependencies = []
+
+[[ownership]]
 name = "compatibility-tools"
 paths = ["tools/compatibility/**"]
 allowed_dependencies = []

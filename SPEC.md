@@ -81,8 +81,8 @@ GitHub/GitLab records remain co-sources and bulk import stays dormant. Version-p
 disjoint access and prohibited-class refusal. A four-stage workflow fixture proves the same generic engine
 contract that Increment 2 completes; it is not a temporary special-case engine. I1 provides its Project
 Delivery evidence through read-only CLI text projections with optional deterministic JSON; product browser
-implementation and evidence begin at I2.4. D40 alone permits the separate, non-product `ctower-ui` Inbox
-promotion dogfood boundary described below.
+implementation and evidence begin at I2.4. D40 and D41 alone permit the separate, non-product `ctower-ui` Inbox
+promotion dogfood boundary described below, and the one required suite that verifies it.
 **Increment 2** adds the production generic Workflow/Runtime/Commander/release path and executes one real
 software-factory ticket end to end on `bin/mux`, including independent gates, effect-brokered staging and
 production, live verification, runner-loss recovery, retro, and closure. General-purpose Catalog editors,
