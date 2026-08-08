@@ -5,7 +5,7 @@
 | Status | Proposed; specification only; no product behavior is authorized |
 | Contract | [GitHub issue #371](https://github.com/simjak/ctower/issues/371) |
 | Review gate | Independent CSO approval of the exact candidate digest before any build ticket activates |
-| Engineering-manager model | `gpt-5.6-sol` (`max` reasoning effort) |
+| Engineering-manager model | GPT-5 (Codex runtime) |
 
 This document is a subordinate proposal. It does not override the canonical
 [system specification](https://github.com/simjak/ctower/blob/main/SPEC.md), append-only
@@ -58,6 +58,11 @@ does not add a sixth primary surface or a top-level `/console` destination.
   [migration status](https://github.com/simjak/mission-control/blob/main/board/ctower-migration-status.md#L349),
   and canonical `CT-I1-013` narrows it further: login, session, and API routes remain private HTTPS reachable
   only across the tailnet, with no public ctower ingress.
+- Mission Control's deployed
+  [cadence v1.21 rule](https://github.com/simjak/mission-control/blob/main/board/checklists/cadence.md)
+  requires every operator-facing serve to bind the configured tailnet address explicitly and uses a recurring
+  `ss -tlnp` sweep to detect wildcard listeners, including third-party `docker-proxy` listeners. Phase 1 adopts
+  that standing bind rule and sweep as deployment evidence rather than treating configuration prose as proof.
 
 ## Scope
 
@@ -104,6 +109,26 @@ request refuses by a stable code. It never guesses from the current tmux list.
 
 The grouping projection may show an observed substrate-only crew before its durable session join exists, but
 that row is explicitly **unbound** and offers neither view nor type. No first viewer can claim it.
+
+### Console-visible session fence
+
+A session is console-visible only when all of these facts agree at read time:
+
+1. the durable seat is a non-Commander crew seat with a current assignment and recorded work-session or
+   runtime-attempt join;
+2. the live tmux session carries an `@project` stamp exactly equal to the durable project key;
+3. an append-only `console_session_allowed` fact binds that exact project, seat, crew engagement, assignment
+   interval, session incarnation, runner epoch, backend-target digest, and console-policy revision; and
+4. no later session, runner, project, or global console revocation fact applies.
+
+Commander-seat sessions are never eligible, even when their `@project` stamp matches and even when the human
+opening the console has the `commander` role. The allowlist fact is eligibility, not authority: Access must
+still mint an exact view or type grant for the human Actor. A missing, blank, changed, or mismatched
+`@project` stamp; an absent or stale allowlist fact; a reused tmux name; a Commander seat; or an incomplete
+identity join makes the session absent from console discovery and refuses a direct request. A general Fleet
+roster may still show an unbound or `STATE_UNKNOWN` crew, but it exposes no console panel or output. The
+adapter rechecks the stamp, allowlist, incarnation, and runner epoch before snapshot/replay and continuously
+while streaming; a mismatch revokes the exact session and closes its streams within 5 seconds.
 
 ## The new security boundary
 
@@ -152,7 +177,7 @@ not-before, absolute expiry, revocation state, maximum uses, and nonce. Payload 
 |---|---|---|
 | Capability | Open/reconnect one output stream and fetch its bounded replay window | Execute one exact `paste_text` or `submit` command |
 | Role floor | Read-authorized human in the exact project; policy may narrow further | Operator or project Commander only; `viewer` always refuses |
-| Lifetime | At most 5 minutes; one concurrent stream for the exact Actor/session/incarnation | At most 60 seconds; one presentation and one exact action |
+| Lifetime | At most 5 minutes; one concurrent stream for the exact grant and Actor/session/incarnation | At most 60 seconds; one presentation and one exact action |
 | Reauthentication | Current valid browser session; at most 30 minutes of continuous viewing before a fresh authenticated policy decision | Protected-command reauthentication no older than canonical 10-minute freshness, followed by a fresh exact-command confirmation |
 | Payload binding | Session/cursor bounds only | Action, canonical input-object digest, byte count, and submit policy |
 | Side effects | None | Only the exact bound input action; no session lifecycle or shell authority |
@@ -162,7 +187,9 @@ incarnation, assignment interval, runner epoch, policy revision, expiry, and rev
 create type authority. The total continuous viewing period is capped at 30 minutes, after which a fresh
 authenticated policy decision is mandatory. Disconnect does not widen or transfer a grant. Reconnect after
 grant expiry, role-binding revocation, session replacement, assignment change, runner fencing, or the
-continuous-viewing cap requires the applicable new decision.
+continuous-viewing cap requires the applicable new decision. One SSE connection is bound to one view-grant
+ID and ends no later than that grant's absolute expiry; renewal mints a new grant and opens a new stream from
+an authorized cursor rather than replacing authority underneath a live connection.
 
 A type grant binds one exact action, input-object digest, and byte count. It can be presented once only, and
 a new command requires a new grant. Grant minting requires protected reauthentication no more than 10 minutes
@@ -245,10 +272,30 @@ that a canary secret appears in no ordinary surface.
 
 ### Output confidentiality and truth
 
-Terminal output is runner-untrusted, may contain secrets or customer data, and is not Record truth. The
-viewer consumes the canonical Runtime raw-log path: raw bytes remain content-addressed, access-scoped,
-retention-limited forensic material, while chunk metadata and cursor/gap facts persist before broadcast.
-Structured events remain the control protocol.
+All pane output is **RESTRICTED**, runner-untrusted forensic material. It may contain credentials, customer
+data, hostile control sequences, or prompt-injected links, and terminal content can never downgrade that
+classification or become Record truth. Phase 1 is disabled for `bh-loop` and every project classified for
+customer, regulated, or higher-sensitivity content; a later operator/CSO-approved policy revision and fresh
+CSO verdict are required before either can receive a `console_session_allowed` fact.
+
+Output uses the same custody family as exact input. Each raw output object is envelope-encrypted with its own
+data-encryption-key reference. Ordinary Fleet and Ticket projections/timelines, Inbox, logs, URLs, error
+bodies, telemetry, screenshots, notifications, and exports expose only chunk/object metadata, byte counts,
+digests, cursors, classification, and gap state. Content is available only through the dedicated
+`console_output_reader` path embedded in the contextual console panel or through its separately authorized
+forensic-read operation. That path requires the exact Actor/project/session/grant decision above, and every
+stream open, reconnect, replay request, and forensic object read appends an access fact with Actor, policy,
+session incarnation, cursor/object range, purpose, time, and outcome. Revocation never deletes output or
+reader-access facts.
+
+The browser receives only bounded base64-encoded chunks and renders decoded bytes as inert terminal text.
+Executable HTML, ANSI/OSC commands, terminal hyperlinks, image/file escapes, and automatically followed
+links are stripped or quarantined before rendering and cannot create browser navigation or execution. The
+versioned console policy supplies raw-output retention and crypto-erasure, permitted reader roles, redaction
+and quarantine rules, and export approval; policy publication refuses a missing value. The viewer consumes
+the canonical Runtime raw-log path: restricted raw bytes remain content-addressed and retention-limited,
+while safe metadata and cursor/gap facts persist before broadcast. Structured events remain the control
+protocol.
 
 The tmux adapter may use `capture-pane` for an initial snapshot and the existing `pipe-pane` log as a byte
 source, but it must turn observations into ordered chunks with a durable cursor before sending them to a
@@ -269,6 +316,73 @@ chunk latency, reconnect recovery, memory per stream, maximum concurrent streams
 backpressure, and bounded replay before reconsidering WebSocket. A transport change cannot change grant,
 audit, idempotency, cursor, or acknowledgement semantics.
 
+### Phase 1 SSE limits
+
+SSE is a server-authorized read channel, never a bearer channel. Its URL contains no grant, session,
+capability, cursor content, or other credential material; the server resolves the opaque secure browser
+session and exact view grant. The response is exact-origin with credentialed CORS disabled,
+`Cache-Control: no-store`, proxy buffering disabled, and compression disabled.
+
+The limits are fixed for Phase 1:
+
+- one concurrent SSE connection per view grant and per exact Actor/session/incarnation;
+- one grant and stream last at most 5 minutes, with no in-place lease substitution;
+- at most 16 KiB of decoded output bytes per chunk;
+- at most 1 MiB of output delivered per grant in any rolling 60 seconds;
+- a replay window containing at most 1 MiB and at most the preceding 60 seconds; and
+- at most 256 KiB of unsent pending data per stream.
+
+Crossing the delivery-rate or pending-data cap closes the stream with a typed `rate_limited` or
+`slow_consumer` terminal event and a labelled gap cursor; it never drops bytes invisibly or expands memory.
+Cursor loss, malformed event data, unavailable output custody, or an unprovable range produces a labelled
+gap and requires a new authorized snapshot/replay decision. Expiry closes the stream at the grant's exact
+absolute deadline; session/global revocation closes it within 5 seconds. Reconnect cannot reuse an expired or
+revoked grant.
+
+## Private-network and direct-path proof
+
+The console origin binds only the configured loopback or tailnet address, never `0.0.0.0`, `::`, or an
+unspecified/default host. This is the console instance of Mission Control's standing cadence v1.21
+tailnet-bind rule. Every deploy archives an `ss -tlnp` listener inventory proving the expected process and
+exact address, and the already-deployed recurring sweep searches both seat-owned and third-party listeners
+for wildcard or newly published console ports. A wildcard listener, public A/AAAA route, Tailscale Funnel,
+unexpected Caddy origin/host, firewall drift, or new console port fails the deploy or pages as a blocking
+security defect.
+
+The same proof pack contains Caddy, firewall, DNS, and Tailscale/Funnel inventories, an allowed private
+same-origin probe, and public-network and foreign-project negative probes. The tmux socket and `bin/mux` are
+reachable only by the registered adapter workload identity. A route/schema/bundle and process-boundary
+inventory proves that the browser, web handlers, ttyd, generic process endpoints, and unregistered workloads
+have no direct path. Tailnet reachability never substitutes for OIDC session, CSRF, project, session, or
+grant authorization.
+
+## Runaway and misuse containment
+
+Containment is versioned policy backed by append-only facts, not an in-memory flag:
+
+- An operator-only `console_kill_switch_activated` fact stops all view/type grant minting and renewal,
+  revokes every live console grant, closes every stream within 5 seconds, disables adapter admission, and
+  leaves ordinary Fleet, Ticket, and Inbox operation available. Recovery requires a later
+  `console_kill_switch_cleared` fact that names the resolved incident and approved policy revision; process
+  restart cannot clear it.
+- A `console_session_revoked` fact binds one exact `ConsoleSessionRef` and cause. It immediately refuses new
+  grants and adapter admission for that incarnation and closes only its active streams within 5 seconds.
+  Assignment change, `@project` mismatch, session-name reuse, runner fencing, output-rate breach, or policy
+  revocation emits this fact rather than relying on connection loss.
+- Adapter identity/epoch failure, injection-plan/receipt mismatch, unexplained mux invocation, or suspected
+  duplicate injection quarantines the runner, revokes every console session/grant on that runner, disables
+  type issuance for it, and appends an incident before repair or reuse.
+- Three denied or cross-project grant attempts by one Actor in any 5 minutes append a 15-minute
+  Actor-scoped issuance suspension and notify the operator. Every prohibited-data detection, output-custody
+  denial, audit-object read, unexplained terminal byte range, or gap beyond the replay proof appends a
+  security finding with the containment outcome.
+
+Every activation, automatic trigger, grant/session revocation, stream-close attempt/result, quarantine,
+suspension, notification attempt, and clear action is an immutable audit fact carrying Actor or containment
+principal, scope, reason, policy revision, incident/finding ID, server time, and affected grant/stream IDs.
+Operator notification is attempted at most three times within 5 minutes; exhaustion appends a visible
+`notification_delivery_failed` fact and does not relax containment.
+
 ## Incremental delivery
 
 Each phase is a complete, independently releasable capability. There is no dormant writable route, hidden
@@ -276,14 +390,17 @@ feature flag, or dark-shipped bridge in an earlier phase.
 
 ### Phase 1 — read-only viewer
 
-Prerequisites are the accepted identity/session join, canonical browser auth boundary, Runtime cursor/log-gap
-contracts, registered fleet adapter, approved full-frame mockup, and CSO approval of view grants and output
-handling.
+Prerequisites are the accepted identity/session join and explicit session-allowlist fact, canonical browser
+auth boundary, Runtime cursor/log-gap contracts, registered fleet adapter, approved full-frame mockup, the
+tailnet/direct-path proof, published containment matrix, and CSO approval of the exact Phase 1 candidate.
 
 - Fleet groups authorized rows project -> seat -> crew. Ticket detail may link to the same panel when the
   session fact names that ticket.
 - Opening the panel obtains an exact view grant, then receives an initial labelled snapshot and ordered SSE
   chunks with cursor, watermark, freshness, connection, retention-window, and gap state.
+- The panel is the dedicated RESTRICTED output-reader path. Ordinary surfaces expose metadata/digests only,
+  and `bh-loop`, regulated projects, Commander seats, untagged/mistagged sessions, and sessions without the
+  exact allowlist fact have no console-visible session.
 - The delivered assets, OpenAPI, generated client, server routes, and adapter contain no type command, writable
   ttyd bridge, input field, or input grant.
 - Revocation, project/assignment changes, runner fencing, session replacement, expiry, and cursor loss close
@@ -329,18 +446,18 @@ SPEC and activation of stable build tickets.
 
 | ID | Testable criterion | Exact proof artifact | Accountable verifier |
 |---|---|---|---|
-| CC-01 | Two projects, at least two seats, and at least three crews group only from accepted project/seat/assignment/session facts; unbound, ambiguous, renamed, removed, and reused tmux-session fixtures never create identity or authority | Projection fixture matrix, source-watermark snapshot, mutation test changing facts without product-code changes, cross-project read denial | QA plus Engineering Manager |
-| CC-02 | Only Access/control-plane policy can mint grants; view grants last no more than 5 minutes, permit one exact Actor/session/incarnation stream, and force a fresh decision after 30 continuous minutes; type grants last no more than 60 seconds, bind one action/digest/count, require fresh exact-command confirmation, present once, and enforce four `paste_text` plus six `submit` actions per minute | Controlled-clock matrix covering issuer bypass, renewal, tab/concurrency, role/project, assignment, runner epoch, reauthentication/confirmation, replay, parallel use, reissue, stale policy, delayed revocation, expiry boundaries, and exact RFC 9457 snapshots; before/after output and mux-byte comparisons prove zero disclosure/injection | CSO plus QA |
-| CC-03 | Phase 1 has no writable browser, API, client, adapter, or ttyd path, and every stream stops on authority/incarnation loss | Route/schema/bundle inventory diff, static boundary test, revocation/expiry/fencing recording | CSO plus UI QA |
+| CC-01 | Two projects, at least two non-Commander seats, and at least three crews group only from accepted project/seat/assignment/session facts; only exact `@project`-matching sessions with current `console_session_allowed` facts are console-visible; Commander-seat, unbound, untagged, mistagged, ambiguous, renamed, removed, and reused tmux-session fixtures never create visibility, identity, or authority | Projection/eligibility fixture matrix, live-tag/source-watermark snapshot, allowlist and tag mutation tests changing the exact console surface without product-code changes, Commander-session absence, cross-project read denial | QA plus Engineering Manager |
+| CC-02 | Only Access/control-plane policy can mint grants; view grants last no more than 5 minutes, permit one SSE stream for one exact grant and Actor/session/incarnation, cannot substitute a lease under a live connection, and force a fresh decision after 30 continuous minutes; type grants last no more than 60 seconds, bind one action/digest/count, require fresh exact-command confirmation, present once, and enforce four `paste_text` plus six `submit` actions per minute | Controlled-clock matrix covering issuer bypass, renewal, tab/concurrency, role/project, assignment, runner epoch, reauthentication/confirmation, replay, parallel use, reissue, stale policy, delayed revocation, stream-at-expiry, expiry boundaries, and exact RFC 9457 snapshots; before/after output and mux-byte comparisons prove zero disclosure/injection | CSO plus QA |
+| CC-03 | Phase 1 has no writable browser, API, client, adapter, or ttyd path, and every stream stops at its lease deadline or within 5 seconds of authority, allowlist, project-stamp, incarnation, runner, session, or kill-switch revocation | Route/schema/bundle inventory diff, static boundary test, controlled-clock expiry and per-scope revocation/fencing recordings, immutable revocation/stream-close audit query | CSO plus UI QA |
 | CC-04 | Every accepted action atomically stores command, event, outbox, requested bytes, and deterministic planned bytes; one linearizable admission CAS keyed by `(grant_id, client_command_id, runner_epoch)` binds that plan at the final pre-mux boundary; admission, receipt, reconciliation, and terminal facts append without mutation; duplicate delivery, competing worker, restart, and fencing invoke mux at most once, while admission-to-receipt crash terminates `state_unknown` without reinjection | Complete commit/admission/invocation/receipt crash matrix, duplicate/same-key-different-body and competing-worker tests, mux-wrapper byte log, and audit reconstruction by command ID with distinct requested/planned/adapter-dispatch/harness-acknowledged vectors including mux's leading space | QA plus independent audit reviewer |
-| CC-05 | Each exact input object uses envelope encryption and a distinct per-object data-key reference; only `console_input_audit_reader` can recover it and every read attempt appends an access fact; ordinary Fleet, Ticket, Inbox, logs, URLs, errors, telemetry, screenshots, and exports expose metadata/digests only; Phase 2 publication refuses an incomplete custody policy | Policy-schema refusal tests for retention, jurisdiction/classification, legal hold/crypto erasure, reader, and export-approval values; authorized recovery, unauthorized denial, append-only reader-access, expiry/erasure, and canary-secret ordinary-surface scan | CSO |
-| CC-06 | Output resumes from the last durable cursor without duplicate display; any unprovable range is a visible bounded gap; slow consumers cannot cause unbounded memory or cross-session bytes | SSE reconnect/restart/proxy-buffer/backpressure/load suite with cursor/object audit and responsive browser recording | QA plus SRE |
-| CC-07 | No console route is reachable from the public interface, `0.0.0.0`, or Tailscale Funnel; unauthenticated, CSRF-invalid, cross-origin, expired-session, and cross-project requests disclose nothing and mutate nothing | Listener/firewall/Caddy/Tailscale inventory, public-network negative probe, auth/CSRF/Origin Playwright contexts, same-origin private positive probe | CSO plus SRE |
+| CC-05 | Every input and output content object is RESTRICTED, envelope-encrypted, and bound to a distinct per-object data-key reference; only its dedicated input/output reader can recover it and every access attempt appends a fact; ordinary Fleet/Ticket projections, Inbox, logs, URLs, errors, telemetry, screenshots, notifications, and exports expose metadata/digests only; Phase 1 refuses output-policy or Phase 2 input-policy publication when any custody value is missing | Policy-schema refusal tests; authorized output/input recovery, unauthorized denial, append-only reader-access, expiry/erasure; hostile-output safe-render corpus; canary-secret ordinary-surface scan; `bh-loop`/regulated-project console absence | CSO |
+| CC-06 | SSE carries no bearer material, one stream cannot outlive its exact grant, decoded chunks are at most 16 KiB, delivery is at most 1 MiB per rolling 60 seconds per grant, replay is at most 1 MiB/60 seconds, and pending data is at most 256 KiB; reconnect resumes without duplicate display, while rate, slow-consumer, malformed, cursor-loss, and unprovable-range cases close with a typed result and visible bounded gap without cross-session bytes | Controlled-clock SSE URL/header/cache/compression suite; exact-boundary chunk/rate/replay/pending tests; reconnect/restart/proxy-buffer/backpressure/load suite with cursor/object audit and responsive browser recording | QA plus SRE |
+| CC-07 | No console route is reachable from the public interface, wildcard listener, or Tailscale Funnel; each deploy and recurring `ss -tlnp` sweep proves exact loopback/tailnet binds and alerts on new seat or third-party wildcard listeners; only the registered adapter identity can reach tmux/`bin/mux`; unauthenticated, CSRF-invalid, cross-origin, expired-session, and cross-project requests disclose nothing and mutate nothing | Archived deploy and recurring `ss -tlnp` inventories; listener/firewall/Caddy/DNS/Tailscale inventory; route/schema/bundle and process-boundary direct-path proof; public-network/foreign-project negative probes; auth/CSRF/Origin browser contexts; same-origin private positive probe | CSO plus SRE |
 | CC-08 | Phase order is enforced: viewer ships without input; type ships only after viewer and its new CSO verdict; chat ships on #336/#363/#355 without requiring type or falling back to it | Dependency graph assertion, per-phase API/bundle inventory, release facts and production smoke recordings | Engineering Manager plus release verifier |
 | CC-09 | Chat creates exactly one native message and renders independent sent/delivered/read states; retries, bridge outage, and unread recovery do not duplicate or invent state | Inbox/recipient-fact state matrix, bridge idempotency and outage tests, browser recording | QA |
 | CC-10 | The console remains contextual within the locked five-surface product and matches an operator-approved 1:1 full-platform-frame mockup at desktop and mobile widths | Route inventory, full-frame reference and side-by-side screenshots, keyboard/screen-reader/accessibility run using every visible control | Designer plus UI QA; operator approves taste |
 | CC-11 | Terminal bytes, pane state, socket state, chat delivery, and bridge receipt never satisfy workflow, evidence, completion, health, or delivery truth | Mutation/anti-inference tests and Record state diff across deceptive transcript fixtures | Engineering Manager plus QA |
-| CC-12 | Disabling console grant issuance stops new access, closes active streams, drains/refuses queued input without duplicate injection, preserves audit, and leaves ordinary Fleet/Ticket/inbox operation healthy | Staged rollback exercise with pending-command matrix, retained audit query, and post-rollback smoke evidence | SRE plus CSO |
+| CC-12 | Appending the global kill-switch fact stops grant issuance/renewal and adapter admission and closes every stream within 5 seconds; per-session revocation closes only the exact session streams; threshold-triggered Actor suspension and runner quarantine follow the fixed incident matrix; every trigger/revocation/close/notification/clear remains append-only while queued input drains/refuses without duplicate injection and ordinary Fleet/Ticket/Inbox stays healthy | Controlled-clock containment matrix, staged global/per-session/runner rollback exercise, pending-command matrix, immutable revocation and notification audit query, restart-persistence check, and post-containment smoke evidence | SRE plus CSO |
 
 Every proof records baseline and candidate digests and verifies the named changed property directly. A green
 unrelated suite, page-load-only screenshot, prose assertion, tmux transcript, or mock response does not
@@ -351,7 +468,10 @@ satisfy a criterion.
 Before any phase is called shipped, UI QA uses the candidate in the private deployed environment with two
 real project-scoped human bindings and separate authenticated browser contexts. The run must open an allowed stream,
 prove a foreign project absent, interrupt and recover the stream, rotate or revoke a grant, replace/fence the
-session incarnation, and observe the required gap/closure states. Phase 2 additionally types a unique canary,
+session incarnation, remove its allowlist or `@project` stamp, trigger the exact rate and slow-consumer caps,
+exercise per-session revocation and the global kill switch, and observe the required gap/closure and audit
+states within the stated deadlines. The run also proves Commander-seat and `bh-loop` sessions absent and
+archives the deploy plus recurring `ss -tlnp` listener evidence. Phase 2 additionally types a unique canary,
 retries across a forced disconnect, proves one injection and its complete audit chain, exercises explicit
 submit, and proves a viewer and foreign project inject zero bytes. Phase 3 proves sent -> delivered -> read and
 a bridge outage/recovery against the real rails. This deployed E2E is a hard blocker, not an optional smoke.
@@ -364,47 +484,39 @@ No plaintext secret or reusable token is added. The build needs these configured
 |---|---|---|
 | Existing private HTTPS origin, tailnet listener/firewall policy, and explicit absence of public/Funnel routes | Test and production-like private VPS | SRE; independently checked by CSO |
 | Existing OIDC provider registry, human role bindings, browser-session and CSRF configuration from `CT-I1-013` | Deployed E2E and production | Operator provisions authority; SRE provisions secret references |
-| Operator/CSO-approved versioned console policy with issuer, byte, TTL, replay, rate, role, retention-period, jurisdiction/classification, legal-hold/crypto-erasure, permitted-reader, and export-approval values | Test and production | Operator applies accepted configuration after CSO verdict; publication refuses any missing value |
+| Operator/CSO-approved versioned console policy with issuer; session allowlist; RESTRICTED output class and ineligible project classes; safe-render/quarantine; exact chunk, delivery-rate, replay, pending-byte, TTL, revocation, input-rate, role, retention-period, jurisdiction, legal-hold/crypto-erasure, permitted-reader, export-approval, containment-threshold, and notification values | Test and production | Operator applies accepted configuration after CSO verdict; publication refuses any missing value |
 | Registered fleet-adapter workload identity, allowed project/target scope, runner protocol and adapter revisions | Test and production | Platform administrator/SRE; ctower stores references and revisions only |
-| Envelope-encryption key reference and dedicated `console_input_audit_reader` policy for exact input objects | Test and production | SRE provisions key references; CSO approves access and retention; operator grants readers |
+| Envelope-encryption key references and dedicated `console_output_reader` plus `console_input_audit_reader` policy for restricted content objects | Test and production | SRE provisions key references; CSO approves access and retention; operator grants readers |
 
 There is no feature flag. Each phase ships by adding only its approved contracts/routes/assets after its
-dependencies pass. The release inventory proves that later-phase capabilities are absent. Rollback revokes
-grant issuance and removes the phase's routes/assets on the next release; it never deletes append-only audit,
-rewrites message facts, exposes ttyd, or falls back to direct mux calls. Pending input is deterministically
-drained if already injected or refused if it has not crossed the adapter boundary.
+dependencies pass. The release inventory proves that later-phase capabilities are absent. Immediate
+containment appends the global kill-switch fact; release rollback additionally removes the phase's
+routes/assets on the next release. Neither path deletes append-only audit, rewrites message facts, exposes
+ttyd, or falls back to direct mux calls. Pending input is deterministically drained if already injected or
+refused if it has not crossed the adapter boundary.
 
-## CSO adjudication and remaining decisions
+## CSO adjudication and phase boundary
 
 The prior candidate received an approve-with-conditions verdict. Its sole-issuer/view-lease bounds,
-type-grant bounds, linearizable final admission, truthful append-only audit semantics, and restricted
-exact-byte custody are now normative in the security and acceptance contracts above rather than questions or
-implementation latitude. The amended exact digest still requires CSO delta re-adjudication before any build
-ticket activates.
+type-grant bounds, linearizable final admission, truthful append-only audit semantics, and restricted exact
+input-byte custody were folded first. The Phase 1 residuals are now normative too: RESTRICTED output custody
+and safe rendering, exact session eligibility, standing tailnet/direct-path proof, fixed SSE abuse bounds,
+and append-only containment. They are decisions, not implementation latitude. The amended exact digest still
+requires CSO delta re-adjudication before a Phase 1 build ticket activates.
 
-The remaining named blocking questions are:
+Two questions remain **open by design**, each blocking only its own later phase:
 
 3. **CSO-Q3 — Input vocabulary:** Approve the UTF-8/size policy, `paste_text` and `submit` actions, prohibited
    control characters, multiline/paste handling, and whether any later interrupt/control-key action deserves
-   its own grant class.
-4. **CSO-Q4 — Output confidentiality:** Decide output classification, redaction/quarantine, access and
-   retention when pane bytes can contain credentials, customer data, malicious ANSI, or prompt-injected
-   links. Decide whether any project class must disable console viewing entirely.
-5. **CSO-Q5 — Session fencing:** Approve the exact `ConsoleSessionRef` join and the revocation behavior for
-   assignment change, tmux-name reuse, runner restart, epoch change, and incomplete identity-chain data.
-6. **CSO-Q6 — Network proof:** Approve the listener/firewall/Caddy/Tailscale evidence that demonstrates
-   tailnet-only private HTTPS, explicit no-Funnel/no-public-ingress posture, and continuous detection of
-   `0.0.0.0` regressions.
-7. **CSO-Q7 — Streaming abuse:** Set replay-window, maximum chunk/stream, slow-consumer, compression,
-   backpressure, concurrent-session, ANSI sanitization, and denial-of-service bounds for SSE.
-8. **CSO-Q8 — Incident response:** Define alert thresholds and automatic containment for repeated denied
-   grants, cross-project attempts, secret/prohibited-data detections, audit-object access, adapter mismatch,
-   duplicate-injection suspicion, and unexplained terminal bytes.
+   its own grant class. This blocks Phase 2 typed input, not Phase 1.
 9. **CSO-Q9 — Chat correlation:** Approve what terminal/session metadata may be attached to native inbox
-   messages without leaking output or creating a second transcript authority.
+   messages without leaking output or creating a second transcript authority. This blocks Phase 3 chat, not
+   Phase 1.
 
 Any adverse answer changes this proposal through the canonical process and requires a new exact-digest CSO
-verdict. No build begins on an unresolved question.
+verdict. Phase 1 may proceed only after CSO approves this exact Phase 1 candidate and its prerequisite
+canonical contracts/deployed proof. Phase 2 cannot begin while Q3 is open; Phase 3 cannot begin while Q9 is
+open. Neither open question authorizes a fallback path or blocks an otherwise approved Phase 1 viewer.
 
 ## Engineering-manager checklist disposition
 
@@ -415,8 +527,8 @@ verdict. No build begins on an unresolved question.
 5. **Provisioning:** Every required configuration/secret reference and owner is listed; raw secrets are absent.
 6. **No dark ship:** No flag; each phase's route/schema/bundle inventory proves later capabilities absent.
 7. **Scope/non-goals:** Bounded explicitly, including no sixth surface and no direct ttyd/tmux product path.
-8. **Security boundary:** Five CSO conditions are normative above; the remaining seven named decisions still
-   block build activation.
+8. **Security boundary:** The first five CSO conditions and all Phase 1 Q4-Q8 answers are normative above;
+   Q3 blocks only Phase 2 and Q9 blocks only Phase 3.
 9. **Design gate:** A 1:1 full real-platform-frame mockup, responsive variants, operator approval, and UI QA are
    required before build.
 10. **Rollback:** Grant revocation, route removal, pending-command disposition, audit preservation, and smoke
@@ -428,9 +540,9 @@ verdict. No build begins on an unresolved question.
 ```text
 SIGNED-OFF
   seat:      engineering-manager
-  crew:      em-r371-console-spec
-  model:     gpt-5.6-sol (max)
-  claim:     #371 is specified as three gated increments with a testable identity, authorization, audit, transport, and rollback boundary.
-  stood-under: full #371/dependency review; canonical SPEC/DECISIONS/ARCHITECTURE/ROADMAP review; bin/mux and ttyd-bridge inspection; CC-01..CC-12 and the initial nine-question CSO review surface
-  if-this-breaks: re-summon engineering-manager crew em-r371-console-spec on issue #371 before implementation proceeds
+  crew:      em-r371-q-pass
+  model:     GPT-5 (Codex runtime)
+  claim:     #371 now gives concrete normative Phase 1 answers for output custody, session eligibility, private-network proof, SSE abuse bounds, and containment while leaving Q3/Q9 scoped to their later phases.
+  stood-under: exact console candidate; original and delta CSO adjudications; canonical SPEC/DECISIONS/ARCHITECTURE/ROADMAP and root README; Mission Control cadence v1.21 tailnet-bind/ss-sweep evidence; CC-01..CC-12 testability review
+  if-this-breaks: re-summon engineering-manager crew em-r371-q-pass on issue #371 / PR #373 before implementation proceeds
 ```
