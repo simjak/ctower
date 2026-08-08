@@ -132,6 +132,13 @@ human role binding for that plane. Session grants are short-lived capability dec
 Actor, role binding, policy, and exact resource; they are not a third identity or authority record and confer
 no custody, project-seat machine scope, or effect permission.
 
+### Sole grant issuer
+
+Only the trusted Access/control-plane issuer, acting under an operator-approved versioned console policy,
+may mint either grant. The browser, runner, fleet adapter, tmux, and Mission Control may not mint, extend, or
+transfer one. The adapter's only grant-related control-plane operation is the narrow authenticated admission
+operation specified below; it provides neither Record-tier persistence access nor a grant-minting path.
+
 ### Distinct grants
 
 `ConsoleViewGrant` and `ConsoleTypeGrant` are separate strict contract variants. Neither implies the other,
@@ -145,15 +152,29 @@ not-before, absolute expiry, revocation state, maximum uses, and nonce. Payload 
 |---|---|---|
 | Capability | Open/reconnect one output stream and fetch its bounded replay window | Execute one exact `paste_text` or `submit` command |
 | Role floor | Read-authorized human in the exact project; policy may narrow further | Operator or project Commander only; `viewer` always refuses |
-| Lifetime | Short renewable lease, closed immediately at expiry/revocation/session-epoch change | Single use, short expiry, consumed at the last trusted pre-injection boundary |
-| Reauthentication | Current valid browser session | Protected-command reauthentication no older than canonical 10-minute freshness, followed by exact command confirmation |
+| Lifetime | At most 5 minutes; one concurrent stream for the exact Actor/session/incarnation | At most 60 seconds; one presentation and one exact action |
+| Reauthentication | Current valid browser session; at most 30 minutes of continuous viewing before a fresh authenticated policy decision | Protected-command reauthentication no older than canonical 10-minute freshness, followed by a fresh exact-command confirmation |
 | Payload binding | Session/cursor bounds only | Action, canonical input-object digest, byte count, and submit policy |
 | Side effects | None | Only the exact bound input action; no session lifecycle or shell authority |
 
-Grant creation and every use re-evaluate project scope, role, session incarnation, assignment interval,
-policy revision, expiry, and revocation. Disconnect does not widen or transfer a grant. Reconnect after grant
-expiry, role-binding revocation, session replacement, assignment change, or runner fencing requires a new
-decision. Any mismatch refuses with zero injection.
+A view-grant renewal re-evaluates Actor, human-role-binding revision, project scope, role, exact session
+incarnation, assignment interval, runner epoch, policy revision, expiry, and revocation. Renewal cannot
+create type authority. The total continuous viewing period is capped at 30 minutes, after which a fresh
+authenticated policy decision is mandatory. Disconnect does not widen or transfer a grant. Reconnect after
+grant expiry, role-binding revocation, session replacement, assignment change, runner fencing, or the
+continuous-viewing cap requires the applicable new decision.
+
+A type grant binds one exact action, input-object digest, and byte count. It can be presented once only, and
+a new command requires a new grant. Grant minting requires protected reauthentication no more than 10 minutes
+old and a fresh confirmation of that exact command; neither confirmation nor reauthentication is reusable as
+command authority. Per exact Actor/session/incarnation, policy permits at most four `paste_text` and six
+`submit` actions in any minute. Revocation refuses new dispatches immediately and closes an affected view
+stream within 5 seconds. Any bound mismatch refuses with zero injection.
+
+The authorization suite uses a controlled clock. It covers every view renewal, tab/concurrency,
+role/project, assignment, runner-epoch, revocation, and expiry combination and proves zero extra output
+disclosure. It also proves that type-grant replay, parallel use, reissue, stale policy, and delayed revocation
+inject zero bytes at the exact expiry and revocation boundaries.
 
 ### Typed input and durable audit
 
@@ -176,33 +197,51 @@ and when** without relying on a tmux log:
 2. In one authoritative transaction, ctower stores the accepted command, canonical requested bytes, and the
    exact planned injected bytes under the pinned adapter revision; appends `console_input_accepted`; and
    inserts the outbox item before responding or dispatching. The current mux plan therefore includes its
-   leading ASCII space. Sensitive payload bytes use the canonical contract's protected object reference while
-   the append-only envelope remains hashable. The fact binds Actor, role-binding and grant revisions, project,
-   seat, crew engagement, exact session/assignment/runner epoch, action, requested and planned byte counts and
-   digests, server time, command ID, adapter/policy revisions, and causation.
-3. The fleet consumer verifies its workload identity and current epoch, deduplicates the command ID, resolves
-   the opaque backend target, verifies that its deterministic injection plan matches the stored digest,
-   consumes the single-use grant at the final boundary, records `dispatch_started`, and invokes only the
-   registered adapter action. A plan mismatch injects nothing.
-4. The adapter returns a strict receipt containing start/end times, backend target digest, requested-byte
-   digest, **actual injected-byte digest**, adapter revision, subprocess result, and its limited observation.
-   The receipt must match the planned digest. Requested and injected bytes may intentionally differ because
-   the first mux adapter accounts for `bin/mux send`'s leading ASCII space. A crash after `dispatch_started`
-   but before the receipt leaves the outcome explicitly unknown while retaining the exact bytes that may have
-   crossed the boundary. The bytes remain retrievable under the restricted audit policy; general timelines,
-   logs, URLs, telemetry, and screenshots expose only safe metadata and digests.
-5. ctower appends the result and reconciliation facts. Retries with the same command ID do not inject again;
-   a changed body conflicts; an expired, replayed, stale-epoch, or already-consumed grant injects nothing.
+   leading ASCII space. Exact bytes use the protected object contract below while the append-only envelope
+   remains hashable. The fact binds Actor, role-binding and grant revisions, project, seat, crew engagement,
+   exact session/assignment/runner epoch, action, requested and planned byte counts and digests, server time,
+   command ID, adapter/policy revisions, and causation.
+3. The fleet consumer verifies its workload identity and current epoch, resolves the opaque backend target,
+   and deterministically reproduces the stored injection-plan digest. At the final pre-mux boundary,
+   immediately before any subprocess execution, it invokes the one authenticated durable adapter-admission
+   operation keyed by `(grant_id, client_command_id, runner_epoch)`. That operation performs a linearizable
+   compare-and-set from unconsumed to admitted, binds the stored injection-plan digest, and appends the
+   admission fact. Only a newly admitted result permits the registered adapter action. The adapter uses this
+   narrow operation but never Record-tier persistence or a grant-minting path.
+4. A successful adapter invocation returns a strict receipt containing start/end times, backend-target
+   digest, adapter revision, subprocess result, and the count, digest, and protected object reference for the
+   exact **adapter-dispatch bytes handed to `bin/mux`**. Canonical requested bytes, deterministic planned
+   bytes, adapter-dispatch bytes, and any separately specified harness-acknowledged bytes/digests remain four
+   distinct audit fields. A receipt mismatch cannot be accepted as success.
+5. ctower appends receipt, reconciliation, and terminal-state facts without mutating or deleting the accepted
+   command, event, outbox, admission, or any prior fact. A crash between admission and receipt becomes the
+   terminal machine state `state_unknown`; it is never automatically reinjected. Duplicate delivery,
+   competing workers, adapter restart, or a fenced runner epoch must produce at most one mux invocation. A
+   changed body conflicts; an expired, replayed, stale-epoch, or already-consumed grant injects nothing. The
+   conformance oracle is the mux-wrapper byte log together with the complete command/audit chain.
 
 The UI distinguishes `unsent`, `durability pending`, `accepted`, `dispatching`, `injected (unacknowledged)`,
 `acknowledged`, `refused`, `expired`, and `state unknown`. A zero exit status from `paste-buffer` or
 `send-keys` supports only `injected (unacknowledged)`. `acknowledged` requires the harness command ID/ACK from
 the canonical runner protocol. Where the harness cannot provide it, acknowledgement remains unsupported;
-pane echo, silence, prompt changes, and transcript text never upgrade the state.
+pane echo, silence, prompt changes, and transcript text never upgrade the state. Requested, planned,
+adapter-dispatch, and harness-acknowledged fields must be reconstructable by command ID across the complete
+crash matrix.
 
-Audit rows and protected input objects are append-only and survive grant/session revocation. Retention,
-privileged retrieval, encryption-key ownership, output redaction, and incident export require CSO decisions
-listed below; implementation may not pick defaults silently.
+### Restricted exact-byte custody
+
+Audit rows and protected input objects are append-only and survive grant/session revocation. Every exact
+input object is envelope-encrypted with a distinct per-object data-encryption-key reference. Exact-byte reads
+use only the dedicated `console_input_audit_reader` authorization path, and every attempted reader access
+appends a reader-access fact. Ordinary Fleet, Ticket, Inbox, logs, URLs, error bodies, telemetry, screenshots,
+and exports expose metadata and digests only.
+
+Before Phase 2 publication, an operator/CSO-approved versioned policy names the retention period,
+jurisdiction and classification, legal-hold and crypto-erasure behavior, permitted readers, and export
+approval path. Console-policy and Phase 2 publication both refuse if any value is missing; implementation
+supplies no default. The custody proof recovers exact bytes through an authorized reader, denies an
+unauthorized reader, verifies append-only access logging, exercises expiry and erasure behavior, and proves
+that a canary secret appears in no ordinary surface.
 
 ### Output confidentiality and truth
 
@@ -256,10 +295,13 @@ Prerequisites are phase 1 production verification and an additional CSO verdict 
 input-policy, audit-retention, and incident-response contracts.
 
 - The composer supports bounded `paste_text` and explicit `submit`, each as a protected, idempotent command
-  tied to a single-use type grant and strong reauthentication.
-- ctower persists exact accepted/requested and actual injected content under restricted audit before and
-  after the adapter boundary, respectively. No injected command lacks Actor, project, seat, crew, session,
-  grant, policy, and time attribution.
+  tied to a one-presentation, at-most-60-second type grant, 10-minute-or-fresher protected reauthentication,
+  and a fresh confirmation of the exact command.
+- ctower persists exact requested and deterministic planned content atomically before dispatch, then appends
+  admission and the exact adapter-dispatch content handed to `bin/mux`. Harness-acknowledged content remains
+  a separate field and exists only when the canonical runner protocol supplies that acknowledgement. No
+  command that reaches adapter admission lacks Actor, project, seat, crew, session, grant, policy, and time
+  attribution.
 - Cross-project, stale-incarnation, stale-epoch, viewer-role, revoked, replayed, mismatched, forbidden-data,
   rate-limit, and adapter-unknown cases dispatch zero bytes.
 - The UI never calls injection “delivered” or “acknowledged” without the corresponding canonical fact.
@@ -288,10 +330,10 @@ SPEC and activation of stable build tickets.
 | ID | Testable criterion | Exact proof artifact | Accountable verifier |
 |---|---|---|---|
 | CC-01 | Two projects, at least two seats, and at least three crews group only from accepted project/seat/assignment/session facts; unbound, ambiguous, renamed, removed, and reused tmux-session fixtures never create identity or authority | Projection fixture matrix, source-watermark snapshot, mutation test changing facts without product-code changes, cross-project read denial | QA plus Engineering Manager |
-| CC-02 | View and type are non-inheriting per-session grants; viewer/type, view-only/input, type-only/stream, wrong-project, wrong-session, revoked, expired, stale-assignment, and stale-runner-epoch cases all fail closed with zero unauthorized bytes/rows | Authorization matrix and exact RFC 9457 snapshots; before/after Record, output, and tmux-pane byte comparisons | CSO plus QA |
+| CC-02 | Only Access/control-plane policy can mint grants; view grants last no more than 5 minutes, permit one exact Actor/session/incarnation stream, and force a fresh decision after 30 continuous minutes; type grants last no more than 60 seconds, bind one action/digest/count, require fresh exact-command confirmation, present once, and enforce four `paste_text` plus six `submit` actions per minute | Controlled-clock matrix covering issuer bypass, renewal, tab/concurrency, role/project, assignment, runner epoch, reauthentication/confirmation, replay, parallel use, reissue, stale policy, delayed revocation, expiry boundaries, and exact RFC 9457 snapshots; before/after output and mux-byte comparisons prove zero disclosure/injection | CSO plus QA |
 | CC-03 | Phase 1 has no writable browser, API, client, adapter, or ttyd path, and every stream stops on authority/incarnation loss | Route/schema/bundle inventory diff, static boundary test, revocation/expiry/fencing recording | CSO plus UI QA |
-| CC-04 | Every injected action has one durable accepted command and one append chain that proves Actor, requested and actual bytes, project, seat, crew, session incarnation, grant, policy, and server/adapter times; retries inject once | Crash-before/after-commit and crash-before/after-inject matrix, duplicate/same-key-different-body tests, audit reconstruction by command ID, exact requested-vs-injected byte vectors including mux's leading space | QA plus independent audit reviewer |
-| CC-05 | Forbidden data and control inputs are refused before storage/injection; accepted input is absent from ordinary views, URLs, logs, telemetry, screenshots, and error bodies while remaining exactly retrievable by the approved audit role | Prohibited-class corpus, canary-secret scan, subprocess-argument/process-list capture, privileged audit retrieval and unauthorized denial | CSO |
+| CC-04 | Every accepted action atomically stores command, event, outbox, requested bytes, and deterministic planned bytes; one linearizable admission CAS keyed by `(grant_id, client_command_id, runner_epoch)` binds that plan at the final pre-mux boundary; admission, receipt, reconciliation, and terminal facts append without mutation; duplicate delivery, competing worker, restart, and fencing invoke mux at most once, while admission-to-receipt crash terminates `state_unknown` without reinjection | Complete commit/admission/invocation/receipt crash matrix, duplicate/same-key-different-body and competing-worker tests, mux-wrapper byte log, and audit reconstruction by command ID with distinct requested/planned/adapter-dispatch/harness-acknowledged vectors including mux's leading space | QA plus independent audit reviewer |
+| CC-05 | Each exact input object uses envelope encryption and a distinct per-object data-key reference; only `console_input_audit_reader` can recover it and every read attempt appends an access fact; ordinary Fleet, Ticket, Inbox, logs, URLs, errors, telemetry, screenshots, and exports expose metadata/digests only; Phase 2 publication refuses an incomplete custody policy | Policy-schema refusal tests for retention, jurisdiction/classification, legal hold/crypto erasure, reader, and export-approval values; authorized recovery, unauthorized denial, append-only reader-access, expiry/erasure, and canary-secret ordinary-surface scan | CSO |
 | CC-06 | Output resumes from the last durable cursor without duplicate display; any unprovable range is a visible bounded gap; slow consumers cannot cause unbounded memory or cross-session bytes | SSE reconnect/restart/proxy-buffer/backpressure/load suite with cursor/object audit and responsive browser recording | QA plus SRE |
 | CC-07 | No console route is reachable from the public interface, `0.0.0.0`, or Tailscale Funnel; unauthenticated, CSRF-invalid, cross-origin, expired-session, and cross-project requests disclose nothing and mutate nothing | Listener/firewall/Caddy/Tailscale inventory, public-network negative probe, auth/CSRF/Origin Playwright contexts, same-origin private positive probe | CSO plus SRE |
 | CC-08 | Phase order is enforced: viewer ships without input; type ships only after viewer and its new CSO verdict; chat ships on #336/#363/#355 without requiring type or falling back to it | Dependency graph assertion, per-phase API/bundle inventory, release facts and production smoke recordings | Engineering Manager plus release verifier |
@@ -322,9 +364,9 @@ No plaintext secret or reusable token is added. The build needs these configured
 |---|---|---|
 | Existing private HTTPS origin, tailnet listener/firewall policy, and explicit absence of public/Funnel routes | Test and production-like private VPS | SRE; independently checked by CSO |
 | Existing OIDC provider registry, human role bindings, browser-session and CSRF configuration from `CT-I1-013` | Deployed E2E and production | Operator provisions authority; SRE provisions secret references |
-| Versioned console grant/input/output policy with byte, TTL, replay, rate, retention, and role bounds | Test and production | Operator applies accepted configuration after CSO verdict |
+| Operator/CSO-approved versioned console policy with issuer, byte, TTL, replay, rate, role, retention-period, jurisdiction/classification, legal-hold/crypto-erasure, permitted-reader, and export-approval values | Test and production | Operator applies accepted configuration after CSO verdict; publication refuses any missing value |
 | Registered fleet-adapter workload identity, allowed project/target scope, runner protocol and adapter revisions | Test and production | Platform administrator/SRE; ctower stores references and revisions only |
-| Encryption-key reference and restricted audit-reader policy for input payload objects | Test and production | SRE provisions key reference; CSO approves access and retention; operator grants readers |
+| Envelope-encryption key reference and dedicated `console_input_audit_reader` policy for exact input objects | Test and production | SRE provisions key references; CSO approves access and retention; operator grants readers |
 
 There is no feature flag. Each phase ships by adding only its approved contracts/routes/assets after its
 dependencies pass. The release inventory proves that later-phase capabilities are absent. Rollback revokes
@@ -332,16 +374,16 @@ grant issuance and removes the phase's routes/assets on the next release; it nev
 rewrites message facts, exposes ttyd, or falls back to direct mux calls. Pending input is deterministically
 drained if already injected or refused if it has not crossed the adapter boundary.
 
-## CSO adjudication required
+## CSO adjudication and remaining decisions
 
-These are named blocking questions, not implementation latitude:
+The prior candidate received an approve-with-conditions verdict. Its sole-issuer/view-lease bounds,
+type-grant bounds, linearizable final admission, truthful append-only audit semantics, and restricted
+exact-byte custody are now normative in the security and acceptance contracts above rather than questions or
+implementation latitude. The amended exact digest still requires CSO delta re-adjudication before any build
+ticket activates.
 
-1. **CSO-Q1 — Grant issuer and bounds:** Is operator-issued policy the sole issuer, is a view lease allowed,
-   and are single-use type grants plus 10-minute protected-command freshness sufficiently narrow? Set exact
-   view/type TTL, maximum concurrent views, input rate, and revocation propagation bound.
-2. **CSO-Q2 — Exact input audit:** Approve where exact requested and injected bytes live, encryption and key
-   separation, privileged-reader roles, retention/erasure rules, export controls, and whether any jurisdiction
-   forbids the proposed durable content. Full audit may not be weakened to digests alone.
+The remaining named blocking questions are:
+
 3. **CSO-Q3 — Input vocabulary:** Approve the UTF-8/size policy, `paste_text` and `submit` actions, prohibited
    control characters, multiline/paste handling, and whether any later interrupt/control-key action deserves
    its own grant class.
@@ -373,7 +415,8 @@ verdict. No build begins on an unresolved question.
 5. **Provisioning:** Every required configuration/secret reference and owner is listed; raw secrets are absent.
 6. **No dark ship:** No flag; each phase's route/schema/bundle inventory proves later capabilities absent.
 7. **Scope/non-goals:** Bounded explicitly, including no sixth surface and no direct ttyd/tmux product path.
-8. **Security boundary:** New web-to-terminal view/type boundary is routed to nine named CSO decisions.
+8. **Security boundary:** Five CSO conditions are normative above; the remaining seven named decisions still
+   block build activation.
 9. **Design gate:** A 1:1 full real-platform-frame mockup, responsive variants, operator approval, and UI QA are
    required before build.
 10. **Rollback:** Grant revocation, route removal, pending-command disposition, audit preservation, and smoke
@@ -388,6 +431,6 @@ SIGNED-OFF
   crew:      em-r371-console-spec
   model:     gpt-5.6-sol (max)
   claim:     #371 is specified as three gated increments with a testable identity, authorization, audit, transport, and rollback boundary.
-  stood-under: full #371/dependency review; canonical SPEC/DECISIONS/ARCHITECTURE/ROADMAP review; bin/mux and ttyd-bridge inspection; CC-01..CC-12 and CSO-Q1..Q9
+  stood-under: full #371/dependency review; canonical SPEC/DECISIONS/ARCHITECTURE/ROADMAP review; bin/mux and ttyd-bridge inspection; CC-01..CC-12 and the initial nine-question CSO review surface
   if-this-breaks: re-summon engineering-manager crew em-r371-console-spec on issue #371 before implementation proceeds
 ```
