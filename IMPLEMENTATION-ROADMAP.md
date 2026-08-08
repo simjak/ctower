@@ -331,9 +331,11 @@ are versioned configuration that only the operator may create, enable, or rotate
 tailnet-only and do not realize the five product surfaces.
 
 The final narrow integration step publishes a v2 secret-reference-only Catalog component, one real GitLab
-HTTP Adapter, one conformance fake, bounded durable issue/event cursors, immutable issue/thread/ticket
-custody, update comments, and only proof-gated replay-safe provider comment/closure. Email, chat, GitHub,
-arbitrary GitLab objects, generic webhooks, and a provider-general connector framework remain deferred.
+HTTP Adapter behind a provider-neutral internal connector seam, one conformance fake, bounded durable opaque
+issue/event cursors, immutable issue/thread/ticket custody, update comments, and only proof-gated replay-safe
+provider comment/closure. Multiple active GitLab registrations compose as isolated loops. Email, chat,
+GitHub, arbitrary GitLab objects, generic webhooks, additional provider product scope, and dynamic connector
+plugins remain deferred.
 
 **Exit:** the ticket reports reuse `1/1`, identity planes `2/2`, Actor/custody models `1/1`, roles `3/3`,
 transports `3/3`, named auth refusal codes `8/8`, bounded provider egress call sites `3/3`,

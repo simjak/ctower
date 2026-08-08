@@ -1,17 +1,18 @@
 # Issue connector framework proposal
 
-Status: subordinate proposal for [GitHub issue #381](https://github.com/simjak/ctower/issues/381), not an
-implemented or accepted product contract.
+Status: subordinate proposal for [GitHub issue #381](https://github.com/simjak/ctower/issues/381). Its
+Phase-1 internal extraction is adopted by `SPEC.md` and D43 in this candidate. The later product phases
+remain proposals and are not activated.
 
 This document proposes how ctower can turn the shipped GitLab issue integration into one narrow issue-
 connector framework, add GitHub Issues as the second implementation, and put every connector-created ticket
 through explicit project-commander triage. It is deliberately limited to issue trackers with the proven
 poll, normalize, update, and proof-gated close-back shape.
 
-`SPEC.md` remains authoritative. Today it accepts only the GitLab-specific D39 seam and defers a generic
-connector framework and GitHub integration. Implementation cannot begin merely because this proposal is
-merged. Activation requires stable CT tickets and dependencies in `SPEC.md`, an append-only decision that
-supersedes the D39 deferral, and corresponding repairs to `ARCHITECTURE.md` and
+`SPEC.md` remains authoritative. Today it accepts only GitLab product behavior under D39 and the
+provider-neutral internal ownership seam under D43. GitHub and later phases remain deferred; their
+activation requires stable CT tickets and dependencies in `SPEC.md`, an append-only decision that
+supersedes D43's product-scope deferral, and corresponding repairs to `ARCHITECTURE.md` and
 `IMPLEMENTATION-ROADMAP.md`.
 
 ## Outcome
@@ -29,7 +30,8 @@ After all four proposed phases are accepted:
 - credentials remain deployment-resolved references. No provider token enters Catalog, Work, Record,
   Proof, logs, browser state, or connector cursors.
 
-This proposal does not claim that any of that behavior exists yet.
+Only the Phase-1 core/adapter extraction and multi-registration composition described below exist in this
+candidate. GitHub, triage/priority, connector-N validation, and the corresponding product scope do not.
 
 ## Evidence and current boundary
 
@@ -44,9 +46,11 @@ including its follow-up cure commit `f68110e`. That code already proves:
   reconciliation after an ambiguous provider write; and
 - shared fake/HTTP conformance plus a real-PostgreSQL `MockTransport` round trip.
 
-The current implementation is intentionally GitLab-shaped in names, cursor fields, normalized values,
-configuration schema, and worker composition. Phase 1 extracts those proven rules in place. It does not put
-a generic wrapper around the existing GitLab loop and does not keep old and new execution paths alive.
+The Phase-1 candidate replaces the GitLab-shaped core names, cursor fields, normalized values, persistence,
+and worker composition in place. GitLab-only transport, mapping, config, external identity, cursor codec,
+classification, and reconciliation live under `ctower_api.connectors.gitlab`; provider-neutral authority,
+retry, tick, and persistence live under `ctower_kernel.integrations`. The superseded GitLab loop and adapter
+paths are removed rather than wrapped or retained as compatibility execution paths.
 
 ## Scope and non-goals
 
@@ -514,11 +518,12 @@ adapter and changing URLs is not conformance.
 
 ## Security and credential custody
 
-D39 follows D10's small-Interface and shared-conformance shape for one narrow GitLab integration; it is not
-provider-general authorization. D39 expressly keeps GitHub and a general connector framework deferred.
+D39 follows D10's small-Interface and shared-conformance shape for one narrow GitLab integration; D43
+extracts its provider-neutral internal seam without granting provider-general product authorization. D43
+expressly keeps GitHub and any public/general connector product deferred.
 GitHub is therefore a **NEW BOUNDARY** under `SPEC.md`'s security-boundary rule, not a transport-only change:
 it introduces GitHub App private-key and installation-token custody plus a new `api.github.com` egress
-destination. This proposal cannot supersede D39. Canonical adoption requires an append-only superseding
+destination. This proposal cannot supersede D43. Canonical adoption requires an append-only superseding
 decision plus aligned `SPEC.md`, `ARCHITECTURE.md`, and `IMPLEMENTATION-ROADMAP.md` changes before any GitHub
 build ticket may activate.
 
@@ -601,7 +606,7 @@ Acceptance:
 ### Phase 2 — Add GitHub Issues
 
 **Security prerequisite:** before a Phase-2 build ticket activates, canonical `SPEC.md` adoption and an
-append-only D39 supersession must be accepted, and an independent CSO review must approve the exact candidate
+append-only D43 product-scope supersession must be accepted, and an independent CSO review must approve the exact candidate
 digest. Its evidence covers GitHub App private-key minting/rotation/revocation custody, short-lived
 installation-token lifetime and repository-installation scope, `api.github.com:443` egress and redirect/
 destination enforcement, provider response and authorization-header redaction, secret scans, and fail-closed
@@ -719,5 +724,6 @@ claim of existing implementation.
 
 ## Sign-off
 
-This proposal is ready for architecture, security, product-authority, and sequencing review. It is not an
-implementation authorization and does not supersede `SPEC.md` or D39.
+Phase 1 is implemented under `SPEC.md` and D43. The later phases remain ready for architecture, security,
+product-authority, and sequencing review; this proposal does not authorize or supersede their canonical
+activation requirements.

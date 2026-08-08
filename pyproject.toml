@@ -42,6 +42,8 @@ ctower-shadow-ctl = "tools.development_runtime.ctl:main"
 include-package-data = false
 packages = [
   "ctower_api",
+  "ctower_api.connectors",
+  "ctower_api.connectors.gitlab",
   "ctower_client",
   "ctower_contracts",
   "ctower_kernel",

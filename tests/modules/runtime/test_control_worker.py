@@ -403,7 +403,7 @@ def test_worker_records_a_terminal_failed_result_for_public_semantic_problem() -
     ]
 
 
-def test_worker_main_injects_the_active_gitlab_loop(
+def test_worker_main_injects_all_active_connector_loops(
     monkeypatch: pytest.MonkeyPatch, tmp_path: Path
 ) -> None:
     observed: dict[str, object] = {}
@@ -426,7 +426,7 @@ def test_worker_main_injects_the_active_gitlab_loop(
         observed["standing_integrations"] = standing_integrations
         return _MainWorker(observed)
 
-    def fake_build_active_gitlab_sync_loops(
+    def fake_build_active_connector_loops(
         catalog_export: object,
         *,
         actor: Actor,
@@ -444,8 +444,8 @@ def test_worker_main_injects_the_active_gitlab_loop(
     monkeypatch.setattr(control_worker_module, "CtowerClient", _MainClient)
     monkeypatch.setattr(
         control_worker_module,
-        "build_active_gitlab_sync_loops",
-        fake_build_active_gitlab_sync_loops,
+        "build_active_connector_loops",
+        fake_build_active_connector_loops,
         raising=False,
     )
     monkeypatch.setattr(signal, "signal", lambda *_args: None)

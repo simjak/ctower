@@ -282,7 +282,7 @@ plan and targets.
 
  runner app ---> runner SDK ---> generated runner contracts
  systemd-vps Adapter ----------> Effects port + generated effect contracts
- GitLab HTTP Adapter ----------> Integrations port -> Work/Record/Board public Interfaces
+ GitLab Issue Connector -------> Integrations port -> Work/Record/Board public Interfaces
 
 forbidden:
    kernel -> app, web, CLI, runner, or provider implementation
@@ -296,6 +296,12 @@ The implemented kernel dependency edges are acyclic:
 Workflow imports neither Work nor Proof. The repository policy validates edge allowlists and the entire
 ownership graph for cycles; composition satisfies Workflow's structural Work-readiness and current-proof
 ports.
+
+Integrations is provider-neutral internally: it owns the strict `IssueConnector` result seam, bounded retry
+executor, leased/fenced tick, opaque progress, closed-world custody, observations, and delivery receipts.
+The API-owned closed registry currently admits only GitLab and composes each active Catalog registration as
+an isolated loop. This internal extraction does not activate GitHub, general provider product scope, dynamic
+plugins, or any new network boundary.
 
 | Deep Module | Authority hidden behind its Interface |
 |---|---|
@@ -332,14 +338,16 @@ import-time invariant makes an uncatalogued kind unimportable, so a feed decisio
 skipped. Today's derived set is the six ticket, Work, Workflow, and Proof kinds needed to replay Board/ticket
 facts; session and heartbeat kinds remain absent pending [#200](https://github.com/simjak/ctower/issues/200).
 
-The GitLab issue path stays deliberately narrower than a source-host framework. Catalog v2 names one
-GitLab project, an initial aware watermark, bounded page/poll values, ctower project/custodian, label map,
-and a deployment token-binding reference. The control worker injects one bound sync loop. Each due tick
-claims the exact active Catalog revision, reads one issue page, maps changes through public Work/Record/
-Board Interfaces, reads one project-event page, and commits cursor progress. The API-owned HTTP Adapter
+The active product path stays deliberately narrower than a multi-provider source-host product. Catalog v2
+names one GitLab project per registration, an initial aware watermark, bounded page/poll values, ctower
+project/custodian, label map, and a deployment token-binding reference. The control worker composes every
+supported active registration as an isolated loop through the closed registry. Each due tick claims the
+exact active Catalog revision, reads one issue page, maps changes through public Work/Record/Board
+Interfaces, reads one project-event page, and commits opaque cursor progress. The API-owned HTTP Adapter
 knows GitLab v4; the kernel does not. Provider state cannot close a ctower ticket. Only a canonical
 proof-gated `resolve_close` event can create one event-marker comment and provider closure, and the
-immutable delivery receipt makes replay converge.
+immutable delivery receipt makes replay converge. Additional providers, public connector APIs, webhooks,
+and dynamic plugins remain deferred.
 
 ## Workflow and Execution Policy compose at runtime
 

@@ -4,178 +4,200 @@ from datetime import UTC, datetime, timedelta
 from uuid import UUID, uuid4
 
 import pytest
+from pydantic import TypeAdapter, ValidationError
 
+from ctower_api.connectors.gitlab.adapter import GitLabCursor
 from ctower_kernel.integrations import (
-    GitLabCloseCommand,
-    GitLabCloseReceipt,
-    GitLabCursor,
-    GitLabIssue,
-    GitLabIssueLink,
-    GitLabIssuePage,
-    GitLabReporter,
-    GitLabSyncBinding,
+    AmbiguousWrite,
+    CloseExternalIssue,
+    CloseExternalIssueResult,
+    CloseFailure,
+    ConnectorAttempt,
+    ConnectorCursorToken,
+    ConnectorLabelMapping,
+    ConnectorReceipt,
+    ConnectorRegistration,
+    ExternalIssue,
+    ExternalIssuePage,
+    FetchFailure,
+    FetchIssuePage,
+    FetchIssuePageResult,
 )
 
 __all__: tuple[str, ...] = ()
 
 _AWARE = datetime(2026, 8, 8, 8, tzinfo=UTC)
-_EVENT_CURSOR = 41
 _NAIVE = _AWARE.replace(tzinfo=None)
+_CORE_ATTEMPT_LIMIT = 4
 
 
-def _issue(**changes: object) -> GitLabIssue:
+def _issue(**changes: object) -> ExternalIssue:
     values: dict[str, object] = {
-        "project_id": 42,
-        "iid": 7,
+        "connector_kind": "gitlab-issue",
+        "external_ref": "gitlab:42:7",
         "title": "Feedback title",
-        "body": "Feedback body",
-        "labels": ("bug",),
-        "reporter": GitLabReporter("reporter", "Report Person"),
-        "state": "opened",
-        "web_url": "https://gitlab.example.test/group/project/-/issues/7",
+        "description": "Feedback body",
+        "source_labels": ("bug",),
+        "reporter_reference": "@reporter",
+        "reporter_display_name": "Report Person",
+        "external_state": "opened",
+        "display_url": "https://gitlab.example.test/group/project/-/issues/7",
         "updated_at": _AWARE,
     }
     values.update(changes)
-    return GitLabIssue(**values)  # type: ignore[arg-type]
+    return ExternalIssue(**values)  # type: ignore[arg-type]
 
 
-def _binding(**changes: object) -> GitLabSyncBinding:
+def _registration(**changes: object) -> ConnectorRegistration:
     values: dict[str, object] = {
-        "integration_key": "gitlab.feedback",
+        "registration_key": "gitlab.feedback",
         "revision_id": UUID("22222222-2222-4222-8222-222222222222"),
         "revision_digest": "sha256:" + "a" * 64,
-        "project_id": 42,
+        "connector_kind": "gitlab-issue",
+        "source_display_name": "GitLab",
         "project_key": "ctower",
         "initial_custodian_id": UUID("11111111-1111-4111-8111-111111111111"),
-        "import_updated_after": _AWARE,
+        "initial_cursor": ConnectorCursorToken(
+            value=GitLabCursor(updated_after=_AWARE, page=1).encode()
+        ),
         "page_size": 50,
         "poll_interval": timedelta(seconds=60),
-        "label_map": (("bug", "type.bug"),),
+        "label_map": (ConnectorLabelMapping(source="bug", target="type.bug"),),
     }
     values.update(changes)
-    return GitLabSyncBinding(**values)  # type: ignore[arg-type]
+    return ConnectorRegistration(**values)  # type: ignore[arg-type]
 
 
 def test_gitlab_types_reject_unbounded_or_secret_bearing_values() -> None:
-    reporter = GitLabReporter(username="reporter", name="Report Person")
-    issue = _issue(reporter=reporter)
+    issue = _issue()
+    registration = _registration()
 
-    assert issue.source_ref == "gitlab:42:7"
-    assert issue.to_mapping()["reporter"] == {
-        "username": "reporter",
-        "name": "Report Person",
-    }
-    binding = _binding()
-    assert binding.label_key("bug") == "type.bug"
-    assert "token" not in binding.to_mapping()
+    assert issue.external_ref == "gitlab:42:7"
+    assert issue.to_mapping()["reporter_reference"] == "@reporter"
+    assert registration.label_key("bug") == "type.bug"
+    assert "token" not in registration.to_mapping()
+    assert "base_url" not in registration.to_mapping()
 
-
-def test_gitlab_type_identity_rejects_wrong_project_and_unstable_configuration() -> None:
-    try:
-        GitLabSyncBinding(
-            integration_key="bad",
-            revision_id=uuid4(),
-            revision_digest="sha256:" + "a" * 64,
-            project_id=0,
-            project_key="ctower",
-            initial_custodian_id=uuid4(),
-            import_updated_after=datetime.now(UTC),
-            page_size=101,
-            poll_interval=timedelta(seconds=1),
-            label_map=(),
-        )
-    except ValueError as error:
-        assert "GitLab" in str(error) or "poll" in str(error)
-    else:
-        raise AssertionError("invalid GitLab binding was accepted")
-
-
-@pytest.mark.parametrize(
-    "username,name",
-    [
-        ("not a handle", "Report Person"),
-        ("reporter", ""),
-    ],
-)
-def test_reporter_refuses_each_invalid_identity_shape(username: str, name: str) -> None:
-    with pytest.raises(ValueError, match="reporter"):
-        GitLabReporter(username, name)
+    boundary_reporter = _issue(reporter_reference="@" + "r" * 255)
+    assert len(boundary_reporter.reporter_reference) == len("@" + "r" * 255)
+    with pytest.raises(ValidationError):
+        _issue(reporter_reference="@" + "r" * 256)
 
 
 @pytest.mark.parametrize(
     "changes",
     [
-        {"project_id": False},
-        {"project_id": 0},
-        {"iid": False},
-        {"iid": 0},
+        {"connector_kind": "BAD"},
+        {"connector_kind": "a" * 65},
+        {"external_ref": ""},
+        {"external_ref": "x" * 257},
         {"title": ""},
-        {"body": "x" * 60_001},
-        {"state": "merged"},
-        {"labels": tuple(f"label-{index}" for index in range(101))},
-        {"labels": ("bug", "bug")},
-        {"labels": ("",)},
-        {"labels": ("x" * 256,)},
-        {"web_url": "http://gitlab.example.test/issues/7"},
-        {"web_url": "https:///issues/7"},
+        {"description": "x" * 60_001},
+        {"source_labels": tuple(f"label-{index}" for index in range(101))},
+        {"source_labels": ("bug", "bug")},
+        {"source_labels": ("",)},
+        {"reporter_reference": ""},
+        {"reporter_display_name": ""},
+        {"external_state": ""},
+        {"external_state": "done"},
+        {"display_url": "http://gitlab.example.test/issues/7"},
         {"updated_at": _NAIVE},
     ],
 )
-def test_issue_refuses_each_untrusted_boundary_violation(changes: dict[str, object]) -> None:
-    with pytest.raises(ValueError, match="GitLab"):
+def test_issue_refuses_each_untrusted_boundary_violation(
+    changes: dict[str, object],
+) -> None:
+    with pytest.raises(ValidationError):
         _issue(**changes)
 
 
 @pytest.mark.parametrize(
-    "changes,error_type",
+    "changes",
     [
-        ({"integration_key": "BAD"}, ValueError),
-        ({"revision_id": "not-a-uuid"}, TypeError),
-        ({"revision_digest": "sha256:nope"}, ValueError),
-        ({"project_id": False}, ValueError),
-        ({"project_id": 0}, ValueError),
-        ({"project_key": "UPPER"}, ValueError),
-        ({"import_updated_after": _NAIVE}, ValueError),
-        ({"page_size": 0}, ValueError),
-        ({"page_size": 101}, ValueError),
-        ({"poll_interval": timedelta(seconds=14)}, ValueError),
-        ({"poll_interval": timedelta(seconds=3601)}, ValueError),
-        ({"label_map": tuple((str(index), "type.bug") for index in range(101))}, ValueError),
-        ({"label_map": (("bug", "type.bug"), ("bug", "type.other"))}, ValueError),
-        ({"label_map": (("", "type.bug"),)}, ValueError),
-        ({"label_map": (("bug", "BAD"),)}, ValueError),
+        {"registration_key": "BAD"},
+        {"revision_id": "not-a-uuid"},
+        {"revision_digest": "sha256:nope"},
+        {"connector_kind": "BAD"},
+        {"connector_kind": "a" * 65},
+        {"source_display_name": ""},
+        {"project_key": "UPPER"},
+        {"initial_cursor": "x" * 4097},
+        {"page_size": 0},
+        {"page_size": 101},
+        {"poll_interval": timedelta(seconds=14)},
+        {"poll_interval": timedelta(seconds=3601)},
+        {
+            "label_map": (
+                ConnectorLabelMapping(source="bug", target="type.bug"),
+                ConnectorLabelMapping(source="bug", target="type.other"),
+            )
+        },
     ],
 )
 def test_binding_refuses_each_catalog_boundary_violation(
-    changes: dict[str, object], error_type: type[Exception]
+    changes: dict[str, object],
 ) -> None:
-    with pytest.raises(error_type, match="GitLab"):
-        _binding(**changes)
+    with pytest.raises((ValidationError, TypeError)):
+        _registration(**changes)
 
 
 def test_cursor_page_close_and_receipt_values_are_strict_and_serializable() -> None:
-    with pytest.raises(ValueError, match="timezone-aware"):
-        GitLabCursor(_NAIVE, 1, 0)
-    with pytest.raises(ValueError, match="positions"):
-        GitLabCursor(_AWARE, 0, 0)
-    with pytest.raises(ValueError, match="positions"):
-        GitLabCursor(_AWARE, 1, -1)
-    with pytest.raises(ValueError, match="next page"):
-        GitLabIssuePage((_issue(),), 1)
-    with pytest.raises(ValueError, match="close comment"):
-        GitLabCloseCommand(uuid4(), "")
-    with pytest.raises(ValueError, match="close comment"):
-        GitLabCloseCommand(uuid4(), "   ")
-
-    cursor = GitLabCursor(_AWARE, 2, _EVENT_CURSOR)
-    link = GitLabIssueLink(
-        uuid4(), "gitlab.feedback", "sha256:" + "a" * 64, 42, 7, uuid4(), uuid4(), "https://x"
+    token = ConnectorCursorToken(value=GitLabCursor(updated_after=_AWARE, page=2).encode())
+    request = FetchIssuePage(cursor=token, page_size=50)
+    attempt = ConnectorAttempt(
+        attempt_number=1,
+        max_attempts=4,
+        deadline_remaining_milliseconds=10_000,
     )
-    command = GitLabCloseCommand(uuid4(), "Proof-gated close")
-    receipt = GitLabCloseReceipt(command.delivery_id, comment_created=True, issue_closed=True)
+    command_id = uuid4()
+    receipt = ConnectorReceipt(command_id=command_id, comment_created=True)
 
-    assert cursor.to_mapping()["project_event_cursor"] == _EVENT_CURSOR
-    assert link.source_ref == "gitlab:42:7"
-    assert command.marker in f"marker={command.marker}"
-    assert command.to_mapping()["delivery_id"] == str(command.delivery_id)
-    assert receipt.to_mapping()["issue_closed"] is True
+    assert request.cursor == token
+    assert attempt.max_attempts == _CORE_ATTEMPT_LIMIT
+    assert receipt.issue_closed and receipt.marker_present
+    with pytest.raises(ValidationError):
+        CloseExternalIssue(
+            external_ref="gitlab:42:7",
+            command_id=command_id,
+            marker="wrong",
+            comment="Proof-gated close",
+        )
+
+
+def test_strict_result_unions_are_discriminated_and_operation_specific() -> None:
+    fetch_adapter: TypeAdapter[FetchIssuePageResult] = TypeAdapter(FetchIssuePageResult)
+    close_adapter: TypeAdapter[CloseExternalIssueResult] = TypeAdapter(CloseExternalIssueResult)
+    page = ExternalIssuePage(
+        issues=(_issue(),),
+        next_cursor=ConnectorCursorToken(
+            value=GitLabCursor(updated_after=_AWARE + timedelta(seconds=1), page=1).encode()
+        ),
+        exhausted=True,
+    )
+    fetch_failure = FetchFailure(retry_class="retryable", reason="timeout")
+    close_failure = CloseFailure(
+        retry_class="retryable",
+        reason="transport_read",
+        write_disposition="reconciled_absent",
+    )
+
+    assert fetch_adapter.validate_python(page).kind == "page"
+    assert fetch_adapter.validate_python(fetch_failure).kind == "fetch_failure"
+    assert close_adapter.validate_python(close_failure).kind == "close_failure"
+    assert close_adapter.validate_python(AmbiguousWrite()).kind == "ambiguous_write"
+    with pytest.raises(ValidationError):
+        fetch_adapter.validate_python(close_failure)
+    with pytest.raises(ValidationError):
+        close_adapter.validate_python(fetch_failure)
+
+
+@pytest.mark.parametrize(
+    "value",
+    [
+        {"retry_class": "retryable", "reason": "authentication"},
+        {"retry_class": "terminal", "reason": "timeout"},
+    ],
+)
+def test_failure_reason_and_retry_class_are_a_closed_pair(value: dict[str, str]) -> None:
+    with pytest.raises(ValidationError, match="retry class"):
+        FetchFailure.model_validate(value)

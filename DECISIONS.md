@@ -1718,3 +1718,38 @@ Rejected alternatives:
 - Asserting the rendered copy by reading `RecordFoot.tsx` and `rail.ts` from disk. A source-text search
   passes while the composed page still carries a retired claim, which is exactly the escape that produced
   this entry.
+## D43 — Provider-neutral internal issue-connector seam, with GitLab-only product scope (engineering, 2026-08-08, gh#381)
+
+Phase 1 of issue #381 supersedes D39 only where D39 made the internal Adapter, progress shape, and standing
+composition GitLab-specific. D39's accepted GitLab product behavior, ordinary Work/Record authority,
+proof-gated close rule, credential custody, and deferral of every other provider/product capability remain
+in force.
+
+1. **The internal seam is provider-neutral and exact.** Kernel Integrations owns strict normalized issue,
+   opaque cursor, typed result/failure, registration, claim, custody, observation, and delivery-receipt
+   values; a core-owned bounded retry executor; and one leased/fenced tick service. The complete adapter
+   protocol has only `fetch_page` and `comment_and_close`. Provider transport, payload mapping, external
+   identity, cursor codec, classification, and ambiguous-write marker reconciliation remain in the API-owned
+   provider implementation.
+2. **Registration is closed and revision-pinned.** The API composition root uses a static first-party
+   registry that rejects duplicate adapter kinds and schema identifiers, verifies the parser's echoed
+   Catalog key/revision/digest, resolves only declared runtime credential bindings, and composes every
+   supported active registration independently. There is no import string, dynamic package, entry point,
+   connector-supplied SQL, or public plugin surface.
+3. **Generic persistence replaces provider-shaped execution state.** Migration 0055 preserves every 0054
+   progress cursor/fence, immutable issue/thread/ticket link, normalized observation, and proof-close
+   receipt before removing the GitLab-shaped tables. Core stores a bounded opaque cursor and exact
+   `(tenant, registration, external_ref)` custody without interpreting provider identifiers or pagination.
+4. **Product scope does not expand.** GitLab remains the only registered and accepted connector. GitHub,
+   other source hosts, public connector APIs, webhooks, arbitrary provider effects, and dynamic plugins stay
+   deferred. Adding another provider requires its own activated ticket and security review and must pass the
+   unchanged shared conformance and real-PostgreSQL admission traces without editing the frozen core seam.
+
+Rejected alternatives:
+
+- Wrapping the D39 GitLab-specific core behind a generic facade. Rejected because it would preserve two
+  execution paths, leave provider cursor and persistence semantics in kernel authority, and provide no
+  credible second-provider freeze boundary.
+- Treating an internal provider-neutral Interface as authorization for GitHub or a marketplace. Rejected
+  because implementation structure does not activate product behavior, credentials, egress, or public
+  extension authority.
