@@ -149,6 +149,18 @@ export const NO_PROJECT_HISTORY = silence(
 
 export const NO_TICKET_ON_BOARD = silence("ticket on the board projection");
 
+/**
+ * An escalation is an undisposed attention finding the record already carries
+ * per ticket. Every project board that answered holding none is a measurement,
+ * not a missing capability — so this is silence, and it cites nothing.
+ */
+export const NO_OPEN_ESCALATIONS = silence(
+  "open escalation on the project boards that answered — an attention finding owned by the operator and not yet disposed"
+);
+
+/** Threads are a recorded kind; a principal with none simply holds none. */
+export const NO_THREADS_HERE = silence("durable thread addressed to this principal");
+
 /** Every declared source, so a test can assert the table without scraping. */
 export const DECLARED_SOURCES: Readonly<Record<string, FutureSource>> = {
   NO_WORK_SESSIONS,
@@ -168,4 +180,6 @@ export const DECLARED_SOURCES: Readonly<Record<string, FutureSource>> = {
   NO_BOARD_ROW_HERE,
   NO_PROJECT_HISTORY,
   NO_TICKET_ON_BOARD,
+  NO_OPEN_ESCALATIONS,
+  NO_THREADS_HERE,
 };
