@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.16.0](https://github.com/simjak/ctower/compare/v0.15.0...v0.16.0) (2026-08-08)
+
+
+### Features
+
+* sync GitLab feedback issues into ctower ([#377](https://github.com/simjak/ctower/issues/377)) ([3964aec](https://github.com/simjak/ctower/commit/3964aecfedd5b994318e2cbb6644ba97aeedd463)), closes [#346](https://github.com/simjak/ctower/issues/346)
+
 ## [0.15.0](https://github.com/simjak/ctower/compare/v0.14.0...v0.15.0) (2026-08-08)
 
 
