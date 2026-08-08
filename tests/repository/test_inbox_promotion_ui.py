@@ -38,6 +38,45 @@ class InboxPromotionTransportTests(unittest.TestCase):
         self.assertEqual(refusal["message"], "The inbox thread is already linked to a ticket.")
         self.assertNotIn("{", refusal["message"])
 
+    def test_retryable_responses_retry_with_one_key_and_exhaust_under_the_bound(self) -> None:
+        outcomes = ts.drive(_FIXTURE)
+        retry = cast("dict[str, Any]", outcomes["retryThenSuccess"])
+        exhaustion = cast("dict[str, Any]", outcomes["exhaustion"])
+
+        self.assertEqual(
+            retry["result"],
+            {
+                "command_id": "018f0d5e-7b9a-7c01-8000-000000000700",
+                "durability_state": "accepted",
+                "event_ids": ["018f0d5e-7b9a-7c01-8000-000000000701"],
+                "outcome": "ticket_linked",
+                "thread_id": "018f0d5e-7b9a-7c01-8000-000000000600",
+                "thread_version": 3,
+                "ticket_id": "018f0d5e-7b9a-7c01-8000-000000000010",
+            },
+        )
+        self.assertEqual(retry["keys"], ["promotion-retry-key", "promotion-retry-key"])
+        retryable_status_keys = cast("list[dict[str, Any]]", outcomes["retryableStatusKeys"])
+        self.assertEqual(
+            [entry["status"] for entry in retryable_status_keys],
+            [408, 425, 429, 500, 502, 503, 504],
+        )
+        for entry in retryable_status_keys:
+            self.assertEqual(
+                entry["keys"],
+                [
+                    f"promotion-retry-{entry['status']}-key",
+                    f"promotion-retry-{entry['status']}-key",
+                ],
+            )
+        self.assertEqual(exhaustion["attempts"], 3)
+        self.assertEqual(exhaustion["status"], 503)
+        self.assertEqual(exhaustion["failureClass"], "transient")
+        self.assertEqual(
+            outcomes["exhaustionKeys"],
+            ["promotion-exhaustion-key", "promotion-exhaustion-key", "promotion-exhaustion-key"],
+        )
+
 
 class InboxPromotionComponentTests(unittest.TestCase):
     def test_the_client_has_local_action_state_but_no_credential_or_network_client(self) -> None:
@@ -55,6 +94,15 @@ class InboxPromotionComponentTests(unittest.TestCase):
         self.assertIn("promoteInboxThread(threadId, ticketId)", action)
         self.assertIn("<PromoteThread", page)
         self.assertIn("thread.promotedTicketId === null", page)
+
+    def test_inbox_copy_scopes_read_only_to_the_disabled_new_ticket_affordance(self) -> None:
+        foot = (_SURFACE / "frame/RecordFoot.tsx").read_text(encoding="utf-8")
+        rail = (_SURFACE / "frame/rail.ts").read_text(encoding="utf-8")
+
+        self.assertNotIn("read-only v1 · no mutation path exists on this surface", foot)
+        self.assertIn("server-authorized Inbox promotion path", foot)
+        self.assertIn('label: "New ticket"', rail)
+        self.assertIn('verdict: "read-only v1 · disabled"', rail)
 
 
 if __name__ == "__main__":

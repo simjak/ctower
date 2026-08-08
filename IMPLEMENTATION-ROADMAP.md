@@ -244,7 +244,9 @@ Deliver this checkpoint in reviewable parts:
   API/CLI send-to-ack-to-read-state evidence, and a fully attested next migration. Thread reads stay pure;
   no parallel message or cursor authority is introduced. Complete the public promotion seam with one
   generated protected command: omission of a ticket creates a P2 ticket from the thread head and links it
-  atomically, while an explicit ticket preserves the existing link-only behavior; no browser control is added.
+  atomically, while an explicit ticket preserves the existing link-only behavior. D40 permits only the
+  separate `ctower-ui` server-mediated dogfood control for this existing command; no I1 product browser
+  control is added.
 
 - **Current I1.7A visibility boundary:** development-only authority truth, cutover-health and Project
   Delivery contracts, generated read clients, minimal append-only storage, a pure read-only fold, and

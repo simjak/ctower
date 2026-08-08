@@ -46,7 +46,7 @@ class CliFirstScopeTests(unittest.TestCase):
         }
         canonical_order = "Public API + protected CLI precede I1 source-of-truth cutover."
         browser_activation = (
-            "Browser implementation, browser evidence, and browser E2E first activate "
+            "Product browser implementation, browser evidence, and browser E2E first activate "
             "at CT-I2-005 / I2.4."
         )
 
@@ -55,6 +55,7 @@ class CliFirstScopeTests(unittest.TestCase):
                 normalized_guidance = " ".join(guidance.split())
                 self.assertIn(canonical_order, normalized_guidance)
                 self.assertIn(browser_activation, normalized_guidance)
+                self.assertIn("D40", normalized_guidance)
 
         self.assertNotIn(
             "Add the CLI and thin Board/Ticket UI, then cut ctower's own backlog over",

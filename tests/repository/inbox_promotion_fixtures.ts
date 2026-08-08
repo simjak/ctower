@@ -1,3 +1,4 @@
+import { boundedMutation, ReadExhausted } from "../../apps/ctower-ui/src/read/bounded.ts";
 import { promoteInboxThread } from "../../apps/ctower-ui/src/mutate/inboxPromotion.ts";
 
 const threadId = "018f0d5e-7b9a-7c01-8000-000000000600";
@@ -48,7 +49,77 @@ async function main(): Promise<void> {
     });
   const refusal = await promoteInboxThread(threadId, null);
 
-  process.stdout.write(JSON.stringify({ success, refusal, request: requests[0] }));
+  const retryKeys: string[] = [];
+  let retryResponses = 0;
+  globalThis.fetch = async (_input, init): Promise<Response> => {
+    retryResponses += 1;
+    retryKeys.push(new Headers(init?.headers).get("Idempotency-Key") ?? "");
+    if (retryResponses === 1) {
+      return new Response(JSON.stringify({ status: 503 }), { status: 503 });
+    }
+    return new Response(JSON.stringify(promoted), { status: 200 });
+  };
+  const retryThenSuccess = await boundedMutation(
+    "http://127.0.0.1:8091/v1/inbox/threads/retry/promotion",
+    { "Idempotency-Key": "promotion-retry-key" },
+    "{}",
+    { attemptTimeoutMs: 50, maxAttempts: 3, maxElapsedMs: 1_000, baseDelayMs: 0, maxDelayMs: 0 }
+  );
+
+  const retryableStatuses = [408, 425, 429, 500, 502, 503, 504];
+  const retryableStatusKeys: Array<{ readonly status: number; readonly keys: readonly string[] }> =
+    [];
+  for (const status of retryableStatuses) {
+    const keys: string[] = [];
+    let responses = 0;
+    globalThis.fetch = async (_input, init): Promise<Response> => {
+      responses += 1;
+      keys.push(new Headers(init?.headers).get("Idempotency-Key") ?? "");
+      if (responses === 1) {
+        return new Response(JSON.stringify({ status }), { status });
+      }
+      return new Response(JSON.stringify(promoted), { status: 200 });
+    };
+    await boundedMutation(
+      `http://127.0.0.1:8091/v1/inbox/threads/retry-${status.toString()}/promotion`,
+      { "Idempotency-Key": `promotion-retry-${status.toString()}-key` },
+      "{}",
+      { attemptTimeoutMs: 50, maxAttempts: 3, maxElapsedMs: 1_000, baseDelayMs: 0, maxDelayMs: 0 }
+    );
+    retryableStatusKeys.push({ status, keys });
+  }
+
+  const exhaustionKeys: string[] = [];
+  globalThis.fetch = async (_input, init): Promise<Response> => {
+    exhaustionKeys.push(new Headers(init?.headers).get("Idempotency-Key") ?? "");
+    return new Response(JSON.stringify({ status: 503 }), { status: 503 });
+  };
+  let exhaustion: ReadExhausted | null = null;
+  try {
+    await boundedMutation(
+      "http://127.0.0.1:8091/v1/inbox/threads/exhaust/promotion",
+      { "Idempotency-Key": "promotion-exhaustion-key" },
+      "{}",
+      { attemptTimeoutMs: 50, maxAttempts: 3, maxElapsedMs: 1_000, baseDelayMs: 0, maxDelayMs: 0 }
+    );
+  } catch (error: unknown) {
+    if (!(error instanceof ReadExhausted)) {
+      throw error;
+    }
+    exhaustion = error;
+  }
+
+  process.stdout.write(
+    JSON.stringify({
+      success,
+      refusal,
+      request: requests[0],
+      retryThenSuccess: { result: retryThenSuccess, keys: retryKeys },
+      retryableStatusKeys,
+      exhaustion: exhaustion === null ? null : exhaustion.failure,
+      exhaustionKeys,
+    })
+  );
 }
 
 void main();

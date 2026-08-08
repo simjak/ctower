@@ -235,6 +235,9 @@ one configured, bounded GitLab Issue co-source loop inside that existing worker.
 control worker share one kernel artifact; Access, Record, Catalog, Integrations, Work, Proof, Attention, the limited
 generic Workflow evaluator, and Projections remain logical responsibilities behind Module Interfaces.
 React/Vite product routes, the five surfaces, and product Playwright evidence begin at I2.4 under D22/D31.
+D40's separate `ctower-ui` dogfood server is not a product surface: it holds the API bearer only on its
+server side and exposes one bounded, idempotent call to the existing Inbox promotion endpoint. It adds no
+browser authority, product route, record-tier connection, or I1/I2.4 completion claim.
 Service-per-noun units such as a separate reconciler are not implied.
 
 ### I2/target: separately deployable contract clients

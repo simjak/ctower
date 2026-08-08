@@ -117,10 +117,13 @@ export function exhaustions(): number {
 
 const RETRYABLE_STATUS = new Set([408, 425, 429, 500, 502, 503, 504]);
 
-function classifyStatus(status: number): ClassifiedFailure {
+function classifyStatus(
+  status: number,
+  operation: "read" | "mutation" = "read"
+): ClassifiedFailure {
   return {
     failureClass: RETRYABLE_STATUS.has(status) ? "transient" : "permanent",
-    detail: `the read API answered ${status.toString()}`,
+    detail: `the ${operation} API answered ${status.toString()}`,
     status,
   };
 }
@@ -295,9 +298,9 @@ export async function boundedRead(
  * Call one server-authoritative mutation under the same bounded policy.
  *
  * The serialized body and `Idempotency-Key` are supplied once and then reused
- * unchanged on every retry. A server problem document is terminal: it is the
- * authority's answer, not an unreachable attempt, and the caller renders its
- * human `detail` rather than treating it as transport noise.
+ * unchanged on every retry. Retryable HTTP response statuses re-enter the
+ * bounded loop; a permanent server problem document is terminal and the caller
+ * renders its human `detail` rather than treating it as transport noise.
  */
 export async function boundedMutation(
   url: string,
@@ -331,9 +334,13 @@ export async function boundedMutation(
       );
     } catch (error: unknown) {
       if (error instanceof MutationRefused) {
-        throw error;
+        last = classifyStatus(error.status, "mutation");
+        if (last.failureClass === "permanent") {
+          throw error;
+        }
+      } else {
+        last = error instanceof ReadRefused ? reclassified(error.failure) : classifyThrown(error);
       }
-      last = error instanceof ReadRefused ? reclassified(error.failure) : classifyThrown(error);
       if (last.failureClass === "permanent") {
         throw new ReadRefused(failure(last, attempts, Date.now() - startedAt, false));
       }
