@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.15.0](https://github.com/simjak/ctower/compare/v0.14.0...v0.15.0) (2026-08-08)
+
+
+### Features
+
+* **runtime:** emit nightly dream-dispatch effects ([#374](https://github.com/simjak/ctower/issues/374)) ([135b3e1](https://github.com/simjak/ctower/commit/135b3e1fce2d0fa1afdf06dbf687141e387800bd))
+
 ## [0.14.0](https://github.com/simjak/ctower/compare/v0.13.0...v0.14.0) (2026-08-08)
 
 
