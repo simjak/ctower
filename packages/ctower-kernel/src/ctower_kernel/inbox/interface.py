@@ -40,6 +40,16 @@ class _InboxStore(Protocol):
         telemetry: TelemetryContext,
     ) -> InboxSendResult | RecordProblem: ...
 
+    def ingest_notification(
+        self,
+        actor: Actor,
+        command: InboxSendCommand,
+        *,
+        request_digest: bytes,
+        now: datetime,
+        telemetry: TelemetryContext,
+    ) -> InboxSendResult | RecordProblem: ...
+
     def promote(
         self,
         actor: Actor,
@@ -80,6 +90,19 @@ class Inbox:
         telemetry: TelemetryContext,
     ) -> InboxSendResult | RecordProblem:
         return self._store.send(
+            actor, command, request_digest=request_digest, now=now, telemetry=telemetry
+        )
+
+    def ingest_notification(
+        self,
+        actor: Actor,
+        command: InboxSendCommand,
+        *,
+        request_digest: bytes,
+        now: datetime,
+        telemetry: TelemetryContext,
+    ) -> InboxSendResult | RecordProblem:
+        return self._store.ingest_notification(
             actor, command, request_digest=request_digest, now=now, telemetry=telemetry
         )
 

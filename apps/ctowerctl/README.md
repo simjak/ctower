@@ -13,7 +13,11 @@ Add uses the protected spool, while list/get call the generated client directly.
 the server-side static-source mount remain authoritative.
 Native agent messaging is the closed `inbox send --to <agent> [--thread <id>] <text>`, `inbox ack
 --state delivered|read <message>`, `inbox list [--unread]`, `inbox read <thread>`, and `inbox read-state
-<thread>` family, plus `inbox promote <thread> [--ticket <id>]`. Promotion creates a P2 ticket from the
+<thread>` family, plus `inbox notify --to <agent> <text>` and `inbox promote <thread> [--ticket <id>]`.
+`notify` uses the stable notification delivery UUID as `--command-id`, derives sender identity server-side,
+and groups both directions of a seat pair into one thread. `DualRailNotifyBridge` calls an injected existing
+durable delivery first, then this generated-client operation; typed refusal or unavailability is returned as
+a non-blocking mirror outcome. Promotion creates a P2 ticket from the
 thread head when `--ticket` is absent and links the named existing ticket otherwise. Send, recipient-only
 acknowledgement, and promotion use the protected spool. The three reads call the generated client directly
 and never queue; opening a thread never records a read fact.
