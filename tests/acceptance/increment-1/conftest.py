@@ -5,6 +5,7 @@ from __future__ import annotations
 from collections.abc import Iterator
 
 import pytest
+from modules.integrations._legacy_gitlab_shims.install import install
 from support.postgres import (
     DatabaseFixture,
     PostgresServer,
@@ -16,6 +17,8 @@ from support.postgres import (
 from support.tenant_fixture import TenantFixture, create_first_tenant, create_second_tenant
 
 __all__: tuple[str, ...] = ()
+
+install()
 
 
 @pytest.fixture(scope="session", autouse=True)

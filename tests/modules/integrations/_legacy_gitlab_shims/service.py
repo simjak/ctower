@@ -1,4 +1,4 @@
-"""Protected #377 service facade backed by the provider-neutral connector core."""
+"""Frozen #377 service shape mapped onto the real provider-neutral service."""
 
 from __future__ import annotations
 
@@ -6,7 +6,24 @@ from collections.abc import Callable
 from datetime import datetime, timedelta
 from uuid import UUID
 
-from ctower_kernel.integrations.gitlab import (
+from ctower_kernel.integrations.interface import (
+    CloseExternalIssue,
+    CloseExternalIssueResult,
+    ConnectorAttempt,
+    ConnectorClaim,
+    ConnectorCursorToken,
+    ConnectorLink,
+    ConnectorReceipt,
+    ConnectorRegistration,
+    ConnectorSyncError,
+    ExternalIssue,
+    ExternalIssuePage,
+    FetchIssuePage,
+    FetchIssuePageResult,
+)
+from ctower_kernel.integrations.service import IssueConnectorService
+from ctower_kernel.record import Actor
+from modules.integrations._legacy_gitlab_shims.values import (
     GitLabIntegrationStore,
     GitLabIssueAdapter,
     GitLabIssueLink,
@@ -28,28 +45,11 @@ from ctower_kernel.integrations.gitlab import (
     _gitlab_receipt,
     _registration,
 )
-from ctower_kernel.integrations.interface import (
-    CloseExternalIssue,
-    CloseExternalIssueResult,
-    ConnectorAttempt,
-    ConnectorClaim,
-    ConnectorCursorToken,
-    ConnectorLink,
-    ConnectorReceipt,
-    ConnectorRegistration,
-    ConnectorSyncError,
-    ExternalIssue,
-    ExternalIssuePage,
-    FetchIssuePage,
-    FetchIssuePageResult,
-)
-from ctower_kernel.integrations.service import IssueConnectorService
-from ctower_kernel.record import Actor
 
 __all__ = ["GitLabIssueSync"]
 
 
-class _GitLabConnectorFacade:
+class _TraceConnectorMap:
     def __init__(
         self,
         adapter: GitLabIssueAdapter,
@@ -109,7 +109,7 @@ class _GitLabConnectorFacade:
             raise
 
 
-class _GitLabStoreFacade:
+class _TraceStoreMap:
     def __init__(self, store: GitLabIntegrationStore, binding: GitLabSyncBinding) -> None:
         self._store = store
         self._binding = binding
@@ -265,10 +265,10 @@ class GitLabIssueSync:
         self._claim_owner = claim_owner
 
     def tick(self, actor: Actor, binding: GitLabSyncBinding) -> GitLabSyncBatch:
-        connector = _GitLabConnectorFacade(self._adapter, self._store, actor, binding)
+        connector = _TraceConnectorMap(self._adapter, self._store, actor, binding)
         service = IssueConnectorService(
             connector,
-            _GitLabStoreFacade(self._store, binding),
+            _TraceStoreMap(self._store, binding),
             self._intake,  # type: ignore[arg-type]
             self._comments,  # type: ignore[arg-type]
             self._event_audit,  # type: ignore[arg-type]

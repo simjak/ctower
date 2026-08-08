@@ -3,6 +3,7 @@ schema = "ctower.repository-policy/v1"
 [source]
 extensions = [".py", ".ts", ".tsx"]
 module_roots = [
+  "tests/type_overlays",
   "apps/ctower-api/src",
   "apps/ctowerctl/src",
   "generated/python",
@@ -96,6 +97,11 @@ allowed_dependencies = []
 name = "compatibility-tests"
 paths = ["tests/compatibility/**"]
 allowed_dependencies = ["compatibility-tools"]
+
+[[ownership]]
+name = "legacy-trace-imports"
+paths = ["tests/type_overlays/**"]
+allowed_dependencies = []
 
 [[ownership]]
 name = "landing-boundary-tools"
@@ -256,7 +262,7 @@ allowed_dependencies = ["runtime-manifest-tools"]
 [[ownership]]
 name = "increment-1-acceptance-tests"
 paths = ["tests/acceptance/increment-1/**"]
-allowed_dependencies = ["control-api", "control-cli", "kernel-access", "kernel-attention", "kernel-board-context", "kernel-catalog", "kernel-inbox", "kernel-integrations", "kernel-knowledge", "kernel-migration", "kernel-objects", "kernel-projections", "kernel-proof", "kernel-record", "kernel-runtime", "kernel-telemetry", "kernel-work", "kernel-workflow"]
+allowed_dependencies = ["control-api", "control-cli", "kernel-access", "kernel-attention", "kernel-board-context", "kernel-catalog", "kernel-inbox", "kernel-integrations", "kernel-knowledge", "kernel-migration", "kernel-objects", "kernel-projections", "kernel-proof", "kernel-record", "kernel-runtime", "kernel-telemetry", "kernel-work", "kernel-workflow", "legacy-trace-imports"]
 
 [[ownership]]
 name = "kernel-module-tests"
@@ -278,7 +284,7 @@ paths = [
   "tests/modules/work/**",
   "tests/modules/workflow/**",
 ]
-allowed_dependencies = ["control-api", "kernel-access", "kernel-attention", "kernel-board-context", "kernel-catalog", "kernel-inbox", "kernel-integrations", "kernel-knowledge", "kernel-migration", "kernel-objects", "kernel-projections", "kernel-proof", "kernel-record", "kernel-runtime", "kernel-telemetry", "kernel-work", "kernel-workflow"]
+allowed_dependencies = ["control-api", "kernel-access", "kernel-attention", "kernel-board-context", "kernel-catalog", "kernel-inbox", "kernel-integrations", "kernel-knowledge", "kernel-migration", "kernel-objects", "kernel-projections", "kernel-proof", "kernel-record", "kernel-runtime", "kernel-telemetry", "kernel-work", "kernel-workflow", "legacy-trace-imports"]
 
 [[ownership]]
 name = "web"

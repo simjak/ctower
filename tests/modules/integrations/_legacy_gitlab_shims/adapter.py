@@ -1,4 +1,4 @@
-"""Protected #377 GitLab HTTP seam backed by the extracted connector."""
+"""Frozen #377 HTTP shape mapped onto the real GitLab connector."""
 
 from __future__ import annotations
 
@@ -19,6 +19,8 @@ from ctower_kernel.integrations import (
     ConnectorRetryExecutor,
     FetchFailure,
     FetchIssuePage,
+)
+from modules.integrations._legacy_gitlab_shims.values import (
     GitLabCloseCommand,
     GitLabCloseReceipt,
     GitLabCursor,
@@ -26,8 +28,6 @@ from ctower_kernel.integrations import (
     GitLabIssuePage,
     GitLabSyncBinding,
     GitLabSyncError,
-)
-from ctower_kernel.integrations.gitlab import (
     _cursor_token,
     _gitlab_issue,
     _gitlab_receipt,

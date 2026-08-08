@@ -1,4 +1,4 @@
-"""Protected #377 runtime-revision seam over the static connector registration."""
+"""Frozen #377 runtime shape mapped onto the real static registration."""
 
 from __future__ import annotations
 
@@ -8,7 +8,7 @@ from uuid import UUID
 from ctower_api.connectors.gitlab.adapter import GitLabCursor
 from ctower_api.connectors.gitlab.registration import GitLabRuntimeRegistration
 from ctower_kernel.catalog.interface import JsonValue
-from ctower_kernel.integrations import GitLabSyncBinding
+from modules.integrations._legacy_gitlab_shims.values import GitLabSyncBinding
 
 __all__ = ["GitLabRuntimeRevision"]
 

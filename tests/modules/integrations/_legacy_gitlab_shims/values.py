@@ -1,4 +1,4 @@
-"""Protected GitLab #377 value seam over the provider-neutral connector core."""
+"""Frozen #377 trace shapes mapped onto the extracted connector values."""
 
 from __future__ import annotations
 

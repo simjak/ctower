@@ -110,7 +110,7 @@ class GitLabIssueConnector:
 
     @property
     def diagnostic(self) -> str | None:
-        """Return the last bounded provider diagnostic for the protected #377 facade."""
+        """Return the last bounded provider diagnostic for operation-level reporting."""
 
         return self._diagnostic
 
