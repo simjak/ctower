@@ -560,8 +560,8 @@ timeout_seconds = 120
 
 [[suite]]
 id = "dream-dispatch-contracts"
-owner = "gh#368"
-phase = "current"
+owner = "CT-I1-006"
+phase = "CT-I1-006"
 status = "required"
 path = "tests/contracts/runtime"
 patterns = ["test_*.py"]
@@ -570,8 +570,8 @@ timeout_seconds = 120
 
 [[suite]]
 id = "dream-dispatch-acceptance"
-owner = "gh#368"
-phase = "current"
+owner = "CT-I1-006"
+phase = "CT-I1-006"
 status = "required"
 path = "tests/acceptance/increment-1"
 patterns = ["test_dream_dispatch_effect.py"]
