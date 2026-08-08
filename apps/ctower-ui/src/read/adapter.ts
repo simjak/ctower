@@ -5,6 +5,7 @@ import { readDeliveryMetrics } from "./sources/delivery";
 import { readSystemdCadence } from "./sources/cadenceSystemd";
 import { readAuthoredFiles } from "./sources/gitTree";
 import { cadenceSourceName } from "./sources/paths";
+import { readPortfolio } from "./portfolio";
 import { readSessionStream, readSessionWorkspace } from "./sources/tmuxBridge";
 import { readSessionWorktree } from "./sources/worktrees";
 import { reading } from "./outcome";
@@ -38,6 +39,7 @@ import type {
 
 export type ScreenKey =
   | "board"
+  | "portfolio"
   | "ticket"
   | "inbox"
   | "heartbeats"
@@ -52,6 +54,7 @@ export type ScreenKey =
 /** Which source answers each screen today, for the provenance foot. */
 export const SOURCE_LABELS: Readonly<Record<ScreenKey, string>> = {
   board: "ctower read API · /v1/board",
+  portfolio: "ctower read API · /v1/board per project + /v1/inbox/threads",
   ticket: "ctower read API · /v1/tickets/{id} + /audit",
   inbox: "ctower read API · /v1/inbox/threads + /v1/inbox/threads/{id}",
   heartbeats:
@@ -72,6 +75,10 @@ function cadenceSource(): () => Promise<CadenceRegistry> {
 export const recordAdapter: RecordAdapter = {
   instance: httpRecordAdapter.instance,
   board: httpRecordAdapter.board,
+  boardCards: httpRecordAdapter.boardCards,
+  // the portfolio composes the reads above rather than adding a source: one
+  // card-only board per configured project, plus the one inbox projection
+  portfolio: readPortfolio,
   ticket: httpRecordAdapter.ticket,
   ticketAudit: httpRecordAdapter.ticketAudit,
   workSessions: httpRecordAdapter.workSessions,

@@ -274,9 +274,20 @@ export function KnownValue({
   readonly value: Known<string>;
   readonly render?: (text: string) => ReactNode;
 }): ReactNode {
+  return value.known === "value" ? render(value.value) : <KnownAbsence value={value} />;
+}
+
+/**
+ * The same two non-value states, for a sub-read whose value is not text — a
+ * project's lane counts, say. The caller renders the value case itself and
+ * hands the absence here, so "the record holds none" and "this read failed"
+ * keep one wording and one treatment across the app instead of being
+ * re-authored per screen.
+ */
+export function KnownAbsence({ value }: { readonly value: Known<unknown> }): ReactNode {
   switch (value.known) {
     case "value":
-      return render(value.value);
+      return null;
     case "none":
       return <span title={value.why}>{value.why}</span>;
     case "unread":

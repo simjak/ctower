@@ -8,7 +8,7 @@ read-only operator dogfood surface over the running shadow instance, ordered by 
 
 |        |                                                                                                                                                                                                                                       |
 | ------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Is     | A Next.js server that reads the shadow instance's existing read API and renders eight approved screens.                                                                                                                               |
+| Is     | A Next.js server that reads the shadow instance's existing read API and renders the approved screen set.                                                                                                                              |
 | Is     | Read-only. Every path it calls is a `GET`. There is no mutation function in this boundary to call by accident.                                                                                                                        |
 | Is not | The I2.4 browser product. `apps/ctower-web` remains untouched, and D22 §1 (React 19 / React Router 7 / Vite static, no SSR) still governs it.                                                                                         |
 | Is not | An authority. The browser receives no API bearer, no session and no credential of any kind; every read happens server-side. The instance's API origin _is_ printed, deliberately, in the provenance foot of every screen — see below. |
@@ -33,7 +33,7 @@ design-reference/   the approved mockups, vendored verbatim; app.css is imported
 src/read/           the record-read contract and its one implementation
 src/frame/          the chrome every screen shares: mark, nav, theme, provenance foot
 src/surfaces/       one directory per screen family
-src/app/            the eight routes
+src/app/            the routes
 ```
 
 ### What the browser is and is not given
@@ -69,6 +69,11 @@ bounds, or when an application value-imports the generated client's single-shot 
 (`GET /v1/inbox/threads`, `GET /v1/inbox/threads/{id}`). `src/read/adapter.ts` binds the one
 that is active.
 
+Two board reads are declared, not one. `board` joins every card to the ticket read behind it, so a
+card can show its recorded source and age; `boardCards` returns the cards alone. The Portfolio
+counts four hundred cards across three projects and shows neither, so it takes the second — the
+join would be four hundred requests spent on nothing that reaches the screen.
+
 Swapping to a typed feed changes `adapter.ts` and nothing else: no screen constructs a client,
 and no screen knows a URL.
 
@@ -77,6 +82,7 @@ and no screen knows a URL.
 | Screen              | Source today                                                                                                                                   | Swaps to                                                                       |
 | ------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------ |
 | Board · Ticket      | ctower read API (`/v1/board`, `/v1/tickets/{id}`, `/audit`)                                                                                    | a typed feed, through `adapter.ts` alone                                       |
+| Portfolio           | ctower read API (`/v1/board` once per configured project, `/v1/inbox/threads`)                                                                 | the same typed feed, through `adapter.ts` alone                                |
 | Inbox               | ctower read API (`/v1/inbox/threads`, `/v1/inbox/threads/{id}`)                                                                                | —                                                                              |
 | Heartbeats          | host `crontab -l` + `state/` fire markers — or `systemctl --user list-timers`                                                                  | a native cadence registry                                                      |
 | Files               | this repository's git tree at a committed revision                                                                                             | —                                                                              |
@@ -180,6 +186,38 @@ The project scope control is the mockup's own CSS-only mechanism — four radios
 one `.mtscope` block per project — so switching a tab swaps every card, bar and legend at once and
 a number can never belong to a project the tab does not name.
 
+### Portfolio, and the three ways a zero can lie
+
+The per-project Board answers one project's question; the director supervises three and was reading
+git, gh and tmux to get the fleet's. `/portfolio` asks the same record the Board asks — one
+card-only board read per configured project, plus one inbox read — and folds the answers into
+tickets by lane per project, the escalations waiting on a human, and the unread seat comms. The
+project list is `read/projects.ts` and nowhere else, so a fourth project is one entry there and one
+more row here, with no screen edit.
+
+The fold is `read/portfolioProjection.ts`, and it is pure: `tests/repository/
+test_portfolio_projection.py` drives it over fixed payloads and recounts every number in Python
+rather than re-running the same expression. Three rules in it are worth knowing, because each is a
+place where the convenient number and the true one differ.
+
+- **A board that did not answer is not a project with no work.** Its row draws one spanning
+  not-reached cell rather than six dashes across the lanes — six dashes read as six zeroes — it is
+  excluded from every total, it takes no unread attribution (without its cards there is nothing to
+  attribute a thread by), and the page says `N of 3 project boards answered`.
+- **`unaddressable` is not an empty inbox.** The inbox projection resolves its recipient from the
+  project-seat registry and names a principal with no seat row `unaddressable`. This surface's
+  credential is one today, so its unread total is `0` for an address that cannot receive. The tile
+  reads `—`, the panel says so in a sentence, and the per-project split is not drawn at all — a row
+  of zeroes there would put back exactly the reading the dash removes.
+- **A thread belongs to a project only where a card says so.** Attribution is the board card's own
+  `inbox_thread_ids` and nothing else; mail on threads no card links is counted apart, so the
+  per-project numbers plus the unlinked number equal the projection's own total.
+
+Columns are the record's lanes, for the same reason the Board's are (deviation 1 below), and the
+panel prints how many of the counted cards carry a recorded workflow stage so the reader can see
+why. The view is read-only by scope: the operator's UI-may-mutate ruling permits controls and this
+one carries none, which the suite asserts rather than assumes.
+
 ### Honest empty states — and the difference between empty and unreachable
 
 Board, Ticket and Inbox render live record facts. Heartbeats, Feed session facts, Files, Workspace
@@ -261,8 +299,8 @@ the phase-1 status note; the two structural ones are:
    `/v1/board` read is scoped by required `project_key`, every returned card carries that same project
    fact, and the adapter refuses a mismatched card instead of rendering it under the selected tab.
 
-The section nav carries the eight screens in this phase. `Workflow` (R2707) is not built here,
-and a nav entry that leads nowhere would be a dead control.
+The section nav carries every screen this phase built, and only those. `Workflow` (R2707) is not
+built here, and a nav entry that leads nowhere would be a dead control.
 
 3. **The rail's ticket entry is `Latest ticket`**, not `Tickets`. `/ticket` opens the most
    recently created ticket on record: that is one record, not a list, and the previous label
@@ -275,4 +313,6 @@ and a nav entry that leads nowhere would be a dead control.
    — nothing renders below the banner — so the copy now describes that link instead of claiming an
    embedded view the DOM never carried. gh#115's project-fact work has not landed (no PR as of this
    fix), so wiring the promised embedded view was not yet composable; this is the honest fallback
-   the ticket names, not the preferred direction.
+   the ticket names, not the preferred direction. That block's link still points at `/board`, and
+   its panel still renders the default project's entries rather than the fleet's; the cross-project
+   view now lives at `/portfolio` and repointing that block is gh#319's to settle, not this one's.

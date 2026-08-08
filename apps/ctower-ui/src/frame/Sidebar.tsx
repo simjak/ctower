@@ -37,6 +37,14 @@ const icon = (path: ReactNode): ReactElement => (
 
 /** One icon per destination, keyed by the href the rail contract declares. */
 const ICONS: Readonly<Record<string, ReactNode>> = {
+  // three stacked project rows, which is what the screen behind it is
+  "/portfolio": icon(
+    <>
+      <rect x="2" y="2.5" width="12" height="3" rx=".8" stroke="currentColor" strokeWidth="1.2" />
+      <rect x="2" y="6.5" width="12" height="3" rx=".8" stroke="currentColor" strokeWidth="1.2" />
+      <rect x="2" y="10.5" width="12" height="3" rx=".8" stroke="currentColor" strokeWidth="1.2" />
+    </>
+  ),
   "/board": icon(
     <path
       d="M2.5 3.5h5v9h-5zM10 3.5h5v4.5h-5zM10 10.5h5v2h-5z"

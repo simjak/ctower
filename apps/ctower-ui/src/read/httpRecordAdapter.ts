@@ -31,6 +31,7 @@ import {
 import { LANES } from "./interface";
 import type {
   BoardCard,
+  BoardCards,
   BoardEntry,
   BoardSnapshot,
   InboxProjection,
@@ -381,8 +382,8 @@ async function loadTicket(ticketId: string, projectKey: string): Promise<TicketR
   );
 }
 
-/** The board for one project, with every returned card checked against it. */
-async function loadBoard(projectKey: string): Promise<BoardSnapshot> {
+/** The cards for one project, with every returned card checked against it. */
+async function loadBoardCards(projectKey: string): Promise<BoardCards> {
   const view = asRecord(await read(scoped("/v1/board", projectKey)), "board");
   const names = await seatNames();
   const cards = asArray(view.cards, "board.cards").map((card) => toCard(card, names));
@@ -392,6 +393,18 @@ async function loadBoard(projectKey: string): Promise<BoardSnapshot> {
       `board.card.project_key was ${foreignCard.projectKey}; scoped read asked for ${projectKey}`
     );
   }
+  return {
+    cards,
+    health: asMember(view.health, "board.health", HEALTH),
+    projectionWatermark: asInteger(view.projection_watermark, "board.projection_watermark"),
+    sourceWatermark: asInteger(view.source_watermark, "board.source_watermark"),
+    scope: { projectKey },
+  };
+}
+
+/** The board for one project, each card joined to the ticket read behind it. */
+async function loadBoard(projectKey: string): Promise<BoardSnapshot> {
+  const { cards, ...view } = await loadBoardCards(projectKey);
   const entries: readonly BoardEntry[] = await Promise.all(
     cards.map(async (card): Promise<BoardEntry> => ({
       card,
@@ -400,13 +413,7 @@ async function loadBoard(projectKey: string): Promise<BoardSnapshot> {
       ticket: await reading(async () => await loadTicket(card.ticketId, projectKey)),
     }))
   );
-  return {
-    entries,
-    health: asMember(view.health, "board.health", HEALTH),
-    projectionWatermark: asInteger(view.projection_watermark, "board.projection_watermark"),
-    sourceWatermark: asInteger(view.source_watermark, "board.source_watermark"),
-    scope: { projectKey },
-  };
+  return { ...view, entries };
 }
 
 async function loadAudit(ticketId: string, projectKey: string): Promise<readonly RecordEvent[]> {
@@ -429,6 +436,8 @@ export const httpRecordAdapter: RecordApiReads = {
   instance: instanceIdentity(),
   board: async (projectKey: string): Promise<Reading<BoardSnapshot>> =>
     await reading(async () => await loadBoard(projectKey)),
+  boardCards: async (projectKey: string): Promise<Reading<BoardCards>> =>
+    await reading(async () => await loadBoardCards(projectKey)),
   ticket: async (ticketId: string, projectKey: string): Promise<Reading<TicketRecord>> =>
     await reading(async () => await loadTicket(ticketId, projectKey)),
   ticketAudit: async (
