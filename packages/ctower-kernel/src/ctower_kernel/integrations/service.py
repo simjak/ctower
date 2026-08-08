@@ -316,23 +316,44 @@ def _initial_content(issue: GitLabIssue) -> str:
 
 
 def _update_comment(previous: GitLabIssue | None, issue: GitLabIssue) -> str:
-    changed: list[str] = []
-    if previous is None or previous.title != issue.title:
-        changed.append(f"Title: {issue.title}")
-    if previous is None or previous.state != issue.state:
-        changed.append(f"State: {issue.state}")
-    if previous is None or previous.labels != issue.labels:
-        changed.append(f"Labels: {', '.join(issue.labels) if issue.labels else '(none)'}")
-    if previous is None or previous.reporter != issue.reporter:
-        changed.append(f"Reporter: {issue.reporter.name} (@{issue.reporter.username})")
-    if previous is None or previous.body != issue.body:
-        changed.append(f"Body:\n{issue.body or '(No GitLab description.)'}")
+    changed = _changed_issue_fields(previous, issue)
     prefix = f"GitLab issue updated: {issue.web_url}\n\n"
     body = prefix + "\n\n".join(changed)
     if len(body) <= _MAX_COMMENT_BODY:
         return body
     suffix = "\n\n[GitLab update truncated; follow the source link for the complete body.]"
     return body[: _MAX_COMMENT_BODY - len(suffix)] + suffix
+
+
+def _changed_issue_fields(previous: GitLabIssue | None, issue: GitLabIssue) -> list[str]:
+    if previous is None:
+        return [
+            f"Title: {issue.title}",
+            f"State: {issue.state}",
+            f"Labels: {_labels_text(issue.labels)}",
+            f"Reporter: {issue.reporter.name} (@{issue.reporter.username})",
+            f"Body:\n{_body_text(issue.body)}",
+        ]
+    changed: list[str] = []
+    if previous.title != issue.title:
+        changed.append(f"Title: {issue.title}")
+    if previous.state != issue.state:
+        changed.append(f"State: {issue.state}")
+    if previous.labels != issue.labels:
+        changed.append(f"Labels: {_labels_text(issue.labels)}")
+    if previous.reporter != issue.reporter:
+        changed.append(f"Reporter: {issue.reporter.name} (@{issue.reporter.username})")
+    if previous.body != issue.body:
+        changed.append(f"Body:\n{_body_text(issue.body)}")
+    return changed
+
+
+def _labels_text(labels: tuple[str, ...]) -> str:
+    return ", ".join(labels) if labels else "(none)"
+
+
+def _body_text(body: str) -> str:
+    return body or "(No GitLab description.)"
 
 
 def _issue_digest(issue: GitLabIssue) -> str:

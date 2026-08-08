@@ -78,25 +78,10 @@ class GitLabIssue:
     updated_at: datetime
 
     def __post_init__(self) -> None:
-        if isinstance(self.project_id, bool) or self.project_id < 1:
-            raise ValueError("GitLab project identity is outside the authored contract")
-        if isinstance(self.iid, bool) or self.iid < 1:
-            raise ValueError("GitLab issue identity is outside the authored contract")
-        if not 1 <= len(self.title) <= _MAX_TITLE_LENGTH or len(self.body) > _MAX_BODY_LENGTH:
-            raise ValueError("GitLab issue content is outside the authored contract")
-        if (
-            len(self.labels) > _MAX_LABELS
-            or len(set(self.labels)) != len(self.labels)
-            or any(not 1 <= len(label) <= _MAX_LABEL_LENGTH for label in self.labels)
-        ):
-            raise ValueError("GitLab labels are outside the authored contract")
-        if self.state not in {"opened", "closed"}:
-            raise ValueError("GitLab issue state is outside the authored contract")
-        url = urlsplit(self.web_url)
-        if url.scheme != "https" or not url.hostname:
-            raise ValueError("GitLab issue URL must be absolute HTTPS")
-        if self.updated_at.tzinfo is None or self.updated_at.utcoffset() is None:
-            raise ValueError("GitLab issue updated_at must be timezone-aware")
+        _validate_issue_identity(self)
+        _validate_issue_content(self)
+        _validate_issue_labels(self.labels)
+        _validate_issue_source(self)
 
     @property
     def source_ref(self) -> str:
@@ -115,6 +100,37 @@ class GitLabIssue:
             "web_url": self.web_url,
             "updated_at": self.updated_at.isoformat(),
         }
+
+
+def _validate_issue_identity(issue: GitLabIssue) -> None:
+    if isinstance(issue.project_id, bool) or issue.project_id < 1:
+        raise ValueError("GitLab project identity is outside the authored contract")
+    if isinstance(issue.iid, bool) or issue.iid < 1:
+        raise ValueError("GitLab issue identity is outside the authored contract")
+
+
+def _validate_issue_content(issue: GitLabIssue) -> None:
+    if not 1 <= len(issue.title) <= _MAX_TITLE_LENGTH or len(issue.body) > _MAX_BODY_LENGTH:
+        raise ValueError("GitLab issue content is outside the authored contract")
+    if issue.state not in {"opened", "closed"}:
+        raise ValueError("GitLab issue state is outside the authored contract")
+
+
+def _validate_issue_labels(labels: tuple[str, ...]) -> None:
+    if (
+        len(labels) > _MAX_LABELS
+        or len(set(labels)) != len(labels)
+        or any(not 1 <= len(label) <= _MAX_LABEL_LENGTH for label in labels)
+    ):
+        raise ValueError("GitLab labels are outside the authored contract")
+
+
+def _validate_issue_source(issue: GitLabIssue) -> None:
+    url = urlsplit(issue.web_url)
+    if url.scheme != "https" or not url.hostname:
+        raise ValueError("GitLab issue URL must be absolute HTTPS")
+    if issue.updated_at.tzinfo is None or issue.updated_at.utcoffset() is None:
+        raise ValueError("GitLab issue updated_at must be timezone-aware")
 
 
 @dataclass(frozen=True, slots=True)

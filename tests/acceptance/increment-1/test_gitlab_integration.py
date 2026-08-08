@@ -388,18 +388,7 @@ def _proof_gate_close(tenant: TenantFixture, ticket_id: UUID) -> UUID:
     )
     policy = fixture_proof_policy("fixture.gitlab-close@1", criterion)
     proof_store = fixture_proof_store(tenant.database.runtime_dsn, policy)
-    graph = WorkflowGraph(
-        key="fixture.gitlab-close",
-        revision=1,
-        initial_stage="start",
-        stages=(
-            Stage("start", ActivityClass.WORK),
-            Stage("terminal", ActivityClass.WORK),
-        ),
-        transitions=(Transition("start", "terminal", "entry.ready@1"),),
-        execution_policy_ref="fixture.execution@1",
-        gate_policy_ref="fixture.gates@1",
-    )
+    graph = _gitlab_close_graph()
     workflow = Workflow(
         (graph,),
         writer=PostgresWorkflow(
@@ -453,6 +442,25 @@ def _proof_gate_close(tenant: TenantFixture, ticket_id: UUID) -> UUID:
     )
     assert isinstance(closed, WorkflowReceipt)
     assert closed.lifecycle_facts == ("resolved", "closed")
+    return _recorded_close_event_id(tenant, close_id)
+
+
+def _gitlab_close_graph() -> WorkflowGraph:
+    return WorkflowGraph(
+        key="fixture.gitlab-close",
+        revision=1,
+        initial_stage="start",
+        stages=(
+            Stage("start", ActivityClass.WORK),
+            Stage("terminal", ActivityClass.WORK),
+        ),
+        transitions=(Transition("start", "terminal", "entry.ready@1"),),
+        execution_policy_ref="fixture.execution@1",
+        gate_policy_ref="fixture.gates@1",
+    )
+
+
+def _recorded_close_event_id(tenant: TenantFixture, close_id: UUID) -> UUID:
     with psycopg.connect(tenant.database.admin_dsn, row_factory=dict_row) as connection:
         event = connection.execute(
             """
@@ -463,7 +471,7 @@ def _proof_gate_close(tenant: TenantFixture, ticket_id: UUID) -> UUID:
             (tenant.tenant_id, close_id),
         ).fetchone()
     assert event is not None
-    return cast(UUID, event["event_id"])
+    return UUID(str(event["event_id"]))
 
 
 def _complete_proof(store: PostgresProof, tenant: TenantFixture, ticket_id: UUID) -> None:
