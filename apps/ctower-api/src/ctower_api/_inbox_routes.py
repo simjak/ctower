@@ -23,6 +23,7 @@ from ctower_api._mutation_response import mutation_response
 from ctower_api.telemetry import TelemetryRecorder
 from ctower_client.models import (
     InboxAcknowledgeRequest,
+    InboxNotificationRequest,
     InboxPromotionRequest,
     InboxReadState,
     InboxSendRequest,
@@ -55,12 +56,56 @@ def install_inbox_routes(
     projections: Projections,
     recorder: TelemetryRecorder,
 ) -> None:
+    _install_notification_route(app, access, record, inbox, recorder)
     _install_send_route(app, access, record, inbox, recorder)
     _install_acknowledge_route(app, access, record, inbox, recorder)
     _install_promotion_route(app, access, record, inbox, recorder)
     _install_list_route(app, access, projections, recorder)
     _install_read_state_route(app, access, projections, recorder)
     _install_read_route(app, access, projections, recorder)
+
+
+def _install_notification_route(
+    app: FastAPI,
+    access: Access,
+    record: Record,
+    inbox: Inbox,
+    recorder: TelemetryRecorder,
+) -> None:
+    @app.post("/v1/inbox/notifications", status_code=201)
+    async def ingest_notification(request: Request) -> JSONResponse:
+        actor = authenticate(access, recorder, request, required_scope=CredentialScope.CAPTURE)
+        if isinstance(actor, RecordProblem):
+            return problem_response(actor)
+        try:
+            command_id = uuid_value(request.headers.get("Idempotency-Key"))
+            payload = InboxNotificationRequest.model_validate_json(await request.body())
+            telemetry = telemetry_context(request).bind(
+                tenant_id=str(actor.tenant_id),
+                actor_id=str(actor.principal_id),
+                command_id=str(command_id),
+            )
+            command = InboxSendCommand(command_id, payload.to, payload.text)
+        except (ValidationError, ValueError):
+            return problem_response(validation_problem())
+        recorder.emit("access.authenticate", telemetry, outcome="ok", reason="authorized")
+        outcome = inbox.ingest_notification(
+            actor,
+            command,
+            request_digest=_notification_digest(command),
+            now=datetime.now(UTC),
+            telemetry=telemetry,
+        )
+        return mutation_response(
+            record,
+            outcome,
+            tenant_id=actor.tenant_id,
+            principal_id=actor.principal_id,
+            command_id=command_id,
+            telemetry=telemetry,
+            boundary_model=HttpInboxSendResult,
+            accepted_status=201,
+        )
 
 
 def _install_acknowledge_route(
@@ -282,3 +327,12 @@ def _digest(payload: dict[str, object]) -> bytes:
     return hashlib.sha256(
         json.dumps(payload, ensure_ascii=False, separators=(",", ":"), sort_keys=True).encode()
     ).digest()
+
+
+def _notification_digest(command: InboxSendCommand) -> bytes:
+    return _digest(
+        {
+            "operation": "ingestInboxNotification",
+            "payload": command.request_payload(),
+        }
+    )

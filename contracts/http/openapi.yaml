@@ -294,6 +294,38 @@
         }
       }
     },
+    "/v1/inbox/notifications": {
+      "post": {
+        "operationId": "ingestInboxNotification",
+        "x-ctower-cli": "inbox notify",
+        "x-ctower-mutation": true,
+        "x-ctower-spool": "allowed",
+        "security": [{"bearerAuth": []}],
+        "parameters": [{"$ref": "#/components/parameters/IdempotencyKey"}],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {"schema": {"$ref": "#/components/schemas/InboxNotificationRequest"}}
+          }
+        },
+        "responses": {
+          "202": {
+            "description": "Pair-grouped notification committed; off-host durability acknowledgement pending",
+            "headers": {"Retry-After": {"$ref": "#/components/headers/RetryAfter"}},
+            "content": {"application/json": {"schema": {"$ref": "#/components/schemas/InboxSendResult"}}}
+          },
+          "201": {
+            "description": "Pair-grouped notification accepted off host",
+            "content": {"application/json": {"schema": {"$ref": "#/components/schemas/InboxSendResult"}}}
+          },
+          "401": {"$ref": "#/components/responses/ProblemResponse"},
+          "403": {"$ref": "#/components/responses/ProblemResponse"},
+          "404": {"$ref": "#/components/responses/ProblemResponse"},
+          "409": {"$ref": "#/components/responses/ProblemResponse"},
+          "422": {"$ref": "#/components/responses/ProblemResponse"}
+        }
+      }
+    },
     "/v1/inbox/messages/{message_id}/ack": {
       "post": {
         "operationId": "acknowledgeInboxMessage",
@@ -3484,6 +3516,15 @@
         "properties": {
           "to": {"type": "string", "pattern": "^[a-z][a-z0-9._-]{1,95}$"},
           "thread_id": {"type": ["string", "null"], "format": "uuid"},
+          "text": {"type": "string", "minLength": 1, "maxLength": 65536}
+        }
+      },
+      "InboxNotificationRequest": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["to", "text"],
+        "properties": {
+          "to": {"type": "string", "pattern": "^[a-z][a-z0-9._-]{1,95}$"},
           "text": {"type": "string", "minLength": 1, "maxLength": 65536}
         }
       },

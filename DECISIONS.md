@@ -1607,3 +1607,34 @@ Rejected alternatives:
   the proof-gated lifecycle authority that ctower exists to protect.
 - Editing `ctower.integration/v1` in place. Rejected by D37; the incompatible active shape is published as
   v2 and v1 remains byte-for-byte available to historical readers.
+
+## D40 — Notification mirroring reuses native Inbox with a derived pair thread (engineering, 2026-08-08, gh#355)
+
+Issue #355 activates one transitional transport from mission-control `tools/notify` into the native Inbox.
+It preserves D31's one-Actor identity chokepoint, D35's seat-as-principal rule, INV-79's append-only delivery
+facts, and the existing durable mission-control inbox during shadow operation. It authorizes no cutover,
+credential provisioning, feature flag, browser surface, or new message authority.
+
+1. **Rail 1 completes first.** The existing durable append remains unchanged and authoritative for its rail.
+   Only after it succeeds does the adapter attempt ctower. A typed refusal, malformed response, unavailable
+   endpoint, or client failure returns a visible `refused|unavailable` mirror outcome but cannot block or
+   reverse rail 1.
+2. **The request carries no sender authority.** Rail 2 contains recipient seat and text, with the original
+   delivery UUID as its idempotency key. Ctower resolves the sender from the authenticated Actor and the
+   recipient from the persisted project-seat registry. Unknown, ambiguous, unaddressable, and self seats
+   reuse the ordinary recorded Inbox refusals and create no principal or event.
+3. **Grouping is derived, not stored twice.** Ctower derives one opaque thread UUID from tenant plus the
+   unordered pair of principal IDs. The first delivery opens that native thread and later traffic in either
+   direction appends to it. The existing Inbox thread, messages, canonical events, command result, and
+   outbox remain the only authorities; there is no pair map, bridge ledger, cursor, or writable projection.
+4. **Replay is the existing command law.** Exact delivery-ID replay returns the original command result;
+   changed semantics under that UUID refuse as `idempotency-conflict`. The new strict HTTP/generated-client/
+   protected-CLI operation composes the same Inbox Interface and durability protocol rather than creating a
+   second ingestion engine.
+
+Rejected alternatives:
+
+- Trusting `--from`, a sender field, crew name, or process label as identity.
+- Keeping a mission-control pair-to-thread mapping file or a ctower bridge-specific store.
+- Coupling both rails in one transaction or allowing rail-2 failure to change rail-1 success.
+- Adding a cutover flag, environment variable, automatic seat creation, or a new notification event kind.

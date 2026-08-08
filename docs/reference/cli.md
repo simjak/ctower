@@ -193,6 +193,7 @@ changing anything.
 | Command | Positional | Flags |
 |---|---|---|
 | `inbox send` | `<text>` | required: `--to <seat_key>`; optional: `--command-id`, `--thread <thread_id>` |
+| `inbox notify` | `<text>` | required: `--to <seat_key>`; optional: `--command-id` |
 | `inbox ack` | `<message_id>` | required: `--state {delivered,read}`; optional: `--command-id` |
 | `inbox promote` | `<thread_id>` | optional: `--command-id`, `--ticket <ticket_id>` |
 | `inbox list` | — | `--unread` |
@@ -203,6 +204,14 @@ changing anything.
 other participant. `send`, `ack`, and `promote` are protected, spoolable mutations; an exact command replay
 returns its original result, while reusing the command ID with different input is refused as
 `idempotency-conflict`.
+
+`notify` is the narrow Mission Control transport. The existing durable delivery completes first; its stable
+delivery UUID must be reused as `--command-id` for this additive attempt. The request carries only `--to`
+and text: sender identity comes from the authenticated Actor and the recipient must already exist in the
+persisted seat registry. Both directions of one seat pair share a derived thread, while a different pair
+uses a different thread. Exact retry appends no message; an unknown seat is
+`inbox-recipient-not-found`. That refusal or an unavailable ctower service never reverses the existing
+delivery, and there is no configuration switch or identity auto-creation.
 
 `promote` has two modes. Without `--ticket`, it atomically creates a P2 ticket whose title is the thread's
 immutable first message, establishes ordinary initial custody for the authenticated eligible principal,

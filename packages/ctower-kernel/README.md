@@ -76,7 +76,10 @@ Native Inbox is a two-principal thread aggregate. Record atomically appends `thr
 creation from the immutable thread head under ordinary initial-custody policy or binds an existing in-scope
 ticket, then writes one immutable link exposed from both the thread projection and the Board card. Ordered
 messages and promotion links remain authoritative, while recipient unread/read cursors and list/read rows
-are disposable and rebuildable.
+are disposable and rebuildable. The notification ingress is a second, narrow command shape over that same
+authority: it resolves sender from the authenticated Actor, recipient from the persisted seat registry, and
+derives one direction-independent thread per principal pair. A stable delivery UUID is the existing command
+idempotency key; it does not add a pair store, message kind, caller-supplied sender, or identity creation.
 
 Integrations owns one deliberately narrow GitLab Issue sync Interface and its PostgreSQL cursor/custody/
 observation/delivery store. A due tick processes at most one issue page and one project-event page. New

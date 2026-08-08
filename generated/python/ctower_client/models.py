@@ -1,6 +1,6 @@
 """DO NOT EDIT: generated file; regenerate from declared inputs.
 
-Authored contract digest: sha256:4c89e45623980facc1ea619596b565d449ba3b9568d8c15437ea3487afde5bc5
+Authored contract digest: sha256:384c0197ccd1a704198d4038a20efa6f9c1852edfc1410468b292c3a06cc5c60
 """
 
 from __future__ import annotations
@@ -112,6 +112,7 @@ __all__ = [
     "InboxAcknowledgeResult",
     "InboxMessage",
     "InboxMessageReadState",
+    "InboxNotificationRequest",
     "InboxPromotionOutcome",
     "InboxPromotionRequest",
     "InboxPromotionResult",
@@ -924,6 +925,11 @@ class InboxMessageReadState(_BoundaryModel):
     read_event_id: UUID | None
     recipient: Annotated[str, Field(pattern="^[a-z][a-z0-9._-]{1,95}$")]
     state: Literal["sent", "delivered", "read"]
+
+
+class InboxNotificationRequest(_BoundaryModel):
+    to: Annotated[str, Field(pattern="^[a-z][a-z0-9._-]{1,95}$")]
+    text: Annotated[str, Field(min_length=1, max_length=65536)]
 
 
 class InboxPromotionOutcome(StrEnum):

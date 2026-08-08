@@ -42,6 +42,7 @@ from ctowerctl import (
 from ctowerctl._auth import read_authority
 from ctowerctl._command_types import MutationPayload
 from ctowerctl._generated_replay import GeneratedReplayExecutor, ReplayObservation
+from ctowerctl._mutation_retry import drain_with_retry
 from ctowerctl._output import (
     CommandOutcome,
     ExitCode,
@@ -58,6 +59,8 @@ __all__ = ["main", "write_result"]
 
 type JsonValue = str | int | float | bool | list[JsonValue] | dict[str, JsonValue] | None
 type JsonObject = dict[str, JsonValue]
+
+_NOTIFICATION_OPERATION_ID = "ingestInboxNotification"
 
 
 def main(
@@ -187,14 +190,24 @@ def _execute_mutation(
     spool.enqueue(command)
     with CtowerClient(base_url, credential=credential) as client:
         executor = GeneratedReplayExecutor(client)
-        report = spool.drain(executor)
-    current = _current_entry(spool, command_id)
+        if operation.operation_id == _NOTIFICATION_OPERATION_ID:
+            retry = drain_with_retry(spool, executor, command_id)
+            report = retry.report
+            current = retry.entry
+            retry_exhausted = retry.exhausted
+        else:
+            report = spool.drain(executor)
+            current = _current_entry(spool, command_id)
+            retry_exhausted = False
     observation = executor.observations.get(command_id)
     result = _observation_result(observation)
     outcome = CommandOutcome(
         command_id=command_id,
         state=_outcome_state(current.state),
-        reason_code=_outcome_reason(current, report.reason_code),
+        reason_code=_outcome_reason(
+            current,
+            "retry_exhausted" if retry_exhausted else report.reason_code,
+        ),
         sequence=current.sequence,
         result=result,
         server_refusal=current.server_refusal,

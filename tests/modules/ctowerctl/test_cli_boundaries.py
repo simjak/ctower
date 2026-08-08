@@ -20,6 +20,7 @@ from ctower_client.models import (
     EvidenceRequest,
     FindingDispositionRequest,
     FreezeCriteriaRequest,
+    InboxNotificationRequest,
     ResolveCloseRequest,
     SeatCredentialIssueRequest,
     SeatCredentialRevocationRequest,
@@ -45,6 +46,7 @@ from ctowerctl._dream_dispatch_commands import (
     mutation_command_names as dream_dispatch_mutations,
 )
 from ctowerctl._dream_dispatch_commands import query_command_names as dream_dispatch_queries
+from ctowerctl._inbox_commands import build_mutation as build_inbox_mutation
 from ctowerctl._inbox_commands import mutation_command_names as inbox_mutations
 from ctowerctl._inbox_commands import query_command_names as inbox_queries
 from ctowerctl._intake_commands import mutation_command_names as intake_mutations
@@ -161,6 +163,31 @@ def test_explicit_handlers_cover_every_generated_operation_class() -> None:
         "migration ctower-project correction append",
         "migration ctower-project fence observe",
     }
+
+
+def test_inbox_notify_builds_the_strict_generated_request() -> None:
+    arguments = parse_arguments(
+        [
+            "--base-url",
+            "https://ctower.example",
+            "inbox",
+            "notify",
+            "--command-id",
+            str(uuid4()),
+            "--to",
+            "qa-agent",
+            "Strict notification body.",
+        ]
+    )
+
+    payload = build_inbox_mutation(arguments)
+
+    assert isinstance(payload.request, InboxNotificationRequest)
+    assert payload.request.model_dump(mode="json") == {
+        "text": "Strict notification body.",
+        "to": "qa-agent",
+    }
+    assert payload.path_parameters == {}
 
 
 def test_review_dispatch_commands_parse_the_exact_effect_and_routing_facts() -> None:

@@ -207,6 +207,7 @@ _EXPECTED_OPERATION_METADATA: dict[str, tuple[object, bool, str, object, bool]] 
     "resolveCloseWorkflow": ("ticket resolve", True, "allowed", None, False),
     "revokeSeatCredential": ("credential seat revoke", True, "forbidden", None, False),
     "runSyntheticWorkflow": ("synthetic run", True, "allowed", None, False),
+    "ingestInboxNotification": ("inbox notify", True, "allowed", None, False),
     "sendInboxMessage": ("inbox send", True, "allowed", None, False),
     "startTicketSession": ("session start", True, "allowed", None, False),
     "startTicketWorkflow": ("ticket workflow start", True, "allowed", None, False),

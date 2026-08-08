@@ -5,6 +5,7 @@ from __future__ import annotations
 from datetime import datetime
 
 from ctower_kernel.inbox._delivery_sql import acknowledge_message
+from ctower_kernel.inbox._notification_sql import ingest_notification
 from ctower_kernel.inbox._promotion_sql import promote_thread
 from ctower_kernel.inbox._sql import send_message
 from ctower_kernel.inbox.models import (
@@ -57,6 +58,26 @@ class PostgresInbox:
     ) -> InboxSendResult | RecordProblem:
         return recover_ambiguous_commit(
             lambda: send_message(
+                self._dsn,
+                actor,
+                command,
+                request_digest=request_digest,
+                now=now,
+                telemetry=telemetry,
+            )
+        )
+
+    def ingest_notification(
+        self,
+        actor: Actor,
+        command: InboxSendCommand,
+        *,
+        request_digest: bytes,
+        now: datetime,
+        telemetry: TelemetryContext,
+    ) -> InboxSendResult | RecordProblem:
+        return recover_ambiguous_commit(
+            lambda: ingest_notification(
                 self._dsn,
                 actor,
                 command,
