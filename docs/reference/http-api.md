@@ -1,7 +1,7 @@
 # HTTP API reference
 
 The authored HTTP contract is `contracts/http/openapi.yaml` — an OpenAPI 3.1.0 document titled *ctower first
-durable-ticket slice*, version `0.0.0`. It declares **41 operations**.
+durable-ticket slice*, version `0.0.0`. It declares **65 operations**.
 
 !!! warning "Development contract, not a supported API"
     This surface exists so the CLI, the generated clients, and the tests share one definition. It is not a
@@ -45,7 +45,7 @@ closed enumeration of 96 values, plus the optional diagnostic fields `command_id
 
 | Parameter | In | Constraint |
 |---|---|---|
-| `ticket_id`, `outbox_id`, `run_id` | path | UUID |
+| `ticket_id`, `outbox_id`, `run_id`, `effect_id` | path | UUID |
 | `project_key` | path | `^[a-z][a-z0-9-]{2,63}$` |
 | `cursor` | query | integer ≥ 0, default 0 |
 | `limit` | query | integer 1–100, default 50 |
@@ -171,6 +171,24 @@ Project Delivery rows expose `qualifying_stage_slots[]`. Each item has `slot_key
 |---|---|---|---|---|---|---|
 | `POST` | `/v1/control/synthetic-runs` | `runSyntheticWorkflow` | `synthetic run` | mutation | allowed | `201`, `202`, `401`, `403`, `409`, `422` |
 | `GET` | `/v1/control/synthetic-runs/{run_id}` | `getSyntheticWorkflowRun` | `synthetic query` | query | forbidden | `200`, `401`, `404`, `422` |
+
+### Dream dispatch
+
+| Method | Path | Operation | CLI | Kind | Spool | Responses |
+|---|---|---|---|---|---|---|
+| `GET` | `/v1/runtime/dream-dispatches` | `listDreamDispatchEffects` | `dream-dispatch list` | query | forbidden | `200`, `401`, `403` |
+| `POST` | `/v1/runtime/dream-dispatches/{effect_id}/consume` | `consumeDreamDispatchEffect` | `dream-dispatch consume` | mutation | allowed | `200`, `202`, `401`, `403`, `404`, `409`, `422` |
+
+The list is filtered by persisted authority before response materialization. Project seats receive only
+their own Project effect and never the fleet effect; operators receive all Project effects and the fleet
+effect. Consumption derives scope from the stored effect before checking whether it was consumed or whether
+the caller has a qualifying lane/model binding. Foreign Project consumption and non-operator fleet
+consumption return `project-scope-denied` without recording an event, outbox row, or consumption.
+
+`DreamDispatchConsumeRequest` contains only `output_digest`, a lowercase SHA-256 digest. The server copies
+lane, crew, harness, model, family, effort, and tier from the authenticated principal's persisted substrate
+binding; none is accepted from the request. The `202` response uses the ordinary durability-pending and
+`Retry-After` contract.
 
 ### Migration (ctower-project)
 

@@ -1355,7 +1355,7 @@
         "x-ctower-spool": "forbidden",
         "security": [{"bearerAuth": []}],
         "responses": {
-          "200": {"description": "Tenant-scoped nightly dream effects with executing-lane and output custody", "content": {"application/json": {"schema": {"$ref": "#/components/schemas/DreamDispatchEffectList"}}}},
+          "200": {"description": "Project-authorized nightly dream effects, plus operator-only fleet output custody", "content": {"application/json": {"schema": {"$ref": "#/components/schemas/DreamDispatchEffectList"}}}},
           "401": {"$ref": "#/components/responses/ProblemResponse"},
           "403": {"$ref": "#/components/responses/ProblemResponse"}
         }

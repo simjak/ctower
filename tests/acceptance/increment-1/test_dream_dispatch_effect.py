@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from datetime import UTC, datetime, timedelta
+from itertools import permutations
 from pathlib import Path
 from uuid import UUID, uuid4
 
@@ -26,6 +27,7 @@ from ctower_kernel.runtime.postgres import PostgresRuntime
 __all__: tuple[str, ...] = ()
 _OUTPUT_DIGEST = "sha256:" + "d" * 64
 _DREAM_EFFECT_COUNT = 4
+_PROJECTS = ("ctower", "manibo", "bh-loop")
 
 
 def test_nightly_dream_dispatch_stage_walk(tenant: TenantFixture) -> None:
@@ -39,7 +41,8 @@ def test_nightly_dream_dispatch_stage_walk(tenant: TenantFixture) -> None:
         reasoning_effort="max",
         model_tier="hard",
     )
-    _assert_named_refusals(store, tenant, effects[0].effect_id)
+    ctower_effect = next(effect for effect in effects if effect.spec.project_key == "ctower")
+    _assert_named_refusals(store, tenant, ctower_effect.effect_id, project_key="ctower")
     consumed = _consume_effects(tenant, store)
     assert all(effect.consumption is not None for effect in consumed.effects)
     assert all(
@@ -48,6 +51,155 @@ def test_nightly_dream_dispatch_stage_walk(tenant: TenantFixture) -> None:
         if effect.consumption
     )
     _assert_output_custody(tenant)
+
+
+def test_dream_dispatch_list_and_consumption_are_bound_to_persisted_project_scope(
+    tenant: TenantFixture,
+) -> None:
+    store, effects = _emit_nightly_effects(tenant)
+    project_effects = {
+        effect.spec.project_key: effect for effect in effects if effect.spec.scope_kind == "project"
+    }
+    fleet_effect = next(effect for effect in effects if effect.spec.scope_kind == "fleet")
+    principals = {project: _project_principal(tenant, project) for project in _PROJECTS}
+    _bind_project_lanes(tenant, principals)
+    _assert_scoped_lists(store, tenant, effects, principals)
+    _assert_cross_scope_refusals(store, tenant, project_effects, fleet_effect, principals)
+    project_commands = _consume_authorized_effects(
+        store, tenant, project_effects, fleet_effect, principals
+    )
+    _assert_replay_and_terminal_refusals(
+        store, tenant, project_effects, project_commands, principals
+    )
+
+
+def _bind_project_lanes(tenant: TenantFixture, principals: dict[str, UUID]) -> None:
+    for project, principal_id in principals.items():
+        _bind_lane(
+            tenant,
+            principal_id,
+            lane_ref=f"dream-lane:{project}",
+            model_ref="gpt-5.6-sol",
+            model_family="codex",
+            reasoning_effort="max",
+            model_tier="hard",
+        )
+
+
+def _assert_scoped_lists(
+    store: PostgresRuntime,
+    tenant: TenantFixture,
+    effects: tuple[DreamDispatchEffect, ...],
+    principals: dict[str, UUID],
+) -> None:
+    operator_effects = store.list_dream_dispatches(
+        Actor(tenant.operator_id, tenant.tenant_id, PrincipalKind.OPERATOR)
+    )
+    assert {effect.effect_id for effect in operator_effects} == {
+        effect.effect_id for effect in effects
+    }
+    for project, principal_id in principals.items():
+        listed = store.list_dream_dispatches(
+            Actor(principal_id, tenant.tenant_id, PrincipalKind.COMMANDER)
+        )
+        assert [(effect.spec.scope_kind, effect.spec.project_key) for effect in listed] == [
+            ("project", project)
+        ]
+
+
+def _assert_cross_scope_refusals(
+    store: PostgresRuntime,
+    tenant: TenantFixture,
+    project_effects: dict[str | None, DreamDispatchEffect],
+    fleet_effect: DreamDispatchEffect,
+    principals: dict[str, UUID],
+) -> None:
+    for source, target in permutations(_PROJECTS, 2):
+        refused = store.consume_dream_dispatch(
+            Actor(principals[source], tenant.tenant_id, PrincipalKind.COMMANDER),
+            DreamDispatchConsumeCommand(uuid4(), project_effects[target].effect_id, _OUTPUT_DIGEST),
+        )
+        assert isinstance(refused, RecordProblem) and refused.code == "project-scope-denied"
+    for principal_id in principals.values():
+        refused = store.consume_dream_dispatch(
+            Actor(principal_id, tenant.tenant_id, PrincipalKind.COMMANDER),
+            DreamDispatchConsumeCommand(uuid4(), fleet_effect.effect_id, _OUTPUT_DIGEST),
+        )
+        assert isinstance(refused, RecordProblem) and refused.code == "project-scope-denied"
+    assert _consumption_count(tenant) == 0
+
+
+def _consume_authorized_effects(
+    store: PostgresRuntime,
+    tenant: TenantFixture,
+    project_effects: dict[str | None, DreamDispatchEffect],
+    fleet_effect: DreamDispatchEffect,
+    principals: dict[str, UUID],
+) -> dict[str, DreamDispatchConsumeCommand]:
+    project_commands: dict[str, DreamDispatchConsumeCommand] = {}
+    for project, principal_id in principals.items():
+        command = DreamDispatchConsumeCommand(
+            uuid4(), project_effects[project].effect_id, _OUTPUT_DIGEST
+        )
+        project_commands[project] = command
+        receipt = store.consume_dream_dispatch(
+            Actor(principal_id, tenant.tenant_id, PrincipalKind.COMMANDER),
+            command,
+        )
+        assert not isinstance(receipt, RecordProblem)
+    _bind_lane(
+        tenant,
+        tenant.operator_id,
+        lane_ref="dream-lane:fleet",
+        model_ref="gpt-5.6-sol",
+        model_family="codex",
+        reasoning_effort="max",
+        model_tier="hard",
+    )
+    fleet_receipt = store.consume_dream_dispatch(
+        Actor(tenant.operator_id, tenant.tenant_id, PrincipalKind.OPERATOR),
+        DreamDispatchConsumeCommand(uuid4(), fleet_effect.effect_id, _OUTPUT_DIGEST),
+    )
+    assert not isinstance(fleet_receipt, RecordProblem)
+    assert _consumption_count(tenant) == _DREAM_EFFECT_COUNT
+    return project_commands
+
+
+def _assert_replay_and_terminal_refusals(
+    store: PostgresRuntime,
+    tenant: TenantFixture,
+    project_effects: dict[str | None, DreamDispatchEffect],
+    project_commands: dict[str, DreamDispatchConsumeCommand],
+    principals: dict[str, UUID],
+) -> None:
+    ctower_actor = Actor(principals["ctower"], tenant.tenant_id, PrincipalKind.COMMANDER)
+    replayed = store.consume_dream_dispatch(ctower_actor, project_commands["ctower"])
+    assert not isinstance(replayed, RecordProblem)
+    conflicting = store.consume_dream_dispatch(
+        ctower_actor,
+        DreamDispatchConsumeCommand(
+            project_commands["ctower"].client_command_id,
+            project_effects["ctower"].effect_id,
+            "sha256:" + "e" * 64,
+        ),
+    )
+    assert isinstance(conflicting, RecordProblem) and conflicting.code == "idempotency-conflict"
+    already_consumed = store.consume_dream_dispatch(
+        ctower_actor,
+        DreamDispatchConsumeCommand(uuid4(), project_effects["ctower"].effect_id, _OUTPUT_DIGEST),
+    )
+    assert (
+        isinstance(already_consumed, RecordProblem)
+        and already_consumed.code == "dream-dispatch-already-consumed"
+    )
+    unavailable = store.consume_dream_dispatch(
+        ctower_actor,
+        DreamDispatchConsumeCommand(uuid4(), uuid4(), _OUTPUT_DIGEST),
+    )
+    assert (
+        isinstance(unavailable, RecordProblem) and unavailable.code == "dream-dispatch-unavailable"
+    )
+    assert _consumption_count(tenant) == _DREAM_EFFECT_COUNT
 
 
 def _emit_nightly_effects(
@@ -141,7 +293,13 @@ def _assert_output_custody(tenant: TenantFixture) -> None:
     assert linked is not None and linked["value"] == _DREAM_EFFECT_COUNT
 
 
-def _assert_named_refusals(store: PostgresRuntime, tenant: TenantFixture, effect_id: UUID) -> None:
+def _assert_named_refusals(
+    store: PostgresRuntime,
+    tenant: TenantFixture,
+    effect_id: UUID,
+    *,
+    project_key: str,
+) -> None:
     cases = (
         ("unbound", None, "dream-dispatch-lane-unbound"),
         ("excluded", ("gpt-5.6-sol", "claude", "max", "hard"), "dream-dispatch-family-excluded"),
@@ -153,7 +311,7 @@ def _assert_named_refusals(store: PostgresRuntime, tenant: TenantFixture, effect
         ),
     )
     for label, binding, code in cases:
-        principal_id = _principal(tenant, label)
+        principal_id = _principal(tenant, label, project_key=project_key)
         if binding is not None:
             _bind_lane(
                 tenant,
@@ -171,7 +329,7 @@ def _assert_named_refusals(store: PostgresRuntime, tenant: TenantFixture, effect
         assert isinstance(outcome, RecordProblem) and outcome.code == code
 
 
-def _principal(tenant: TenantFixture, label: str) -> UUID:
+def _principal(tenant: TenantFixture, label: str, *, project_key: str | None = None) -> UUID:
     principal_id = uuid4()
     with psycopg.connect(tenant.database.admin_dsn) as connection:
         connection.execute(
@@ -183,7 +341,38 @@ def _principal(tenant: TenantFixture, label: str) -> UUID:
             """,
             (principal_id, tenant.tenant_id, f"Dream {label}", f"vault:dream/{label}"),
         )
+        if project_key is not None:
+            connection.execute(
+                """
+                INSERT INTO project_seats (
+                    principal_id, tenant_id, project_key, seat_key, granted_by, granted_at
+                ) VALUES (%s, %s, %s, %s, %s, transaction_timestamp())
+                """,
+                (
+                    principal_id,
+                    tenant.tenant_id,
+                    project_key,
+                    f"dream-{label}",
+                    tenant.operator_id,
+                ),
+            )
     return principal_id
+
+
+def _project_principal(tenant: TenantFixture, project_key: str) -> UUID:
+    if project_key == "ctower":
+        return tenant.commander_id
+    return _principal(tenant, project_key, project_key=project_key)
+
+
+def _consumption_count(tenant: TenantFixture) -> int:
+    with psycopg.connect(tenant.database.admin_dsn) as connection:
+        row = connection.execute(
+            "SELECT count(*) FROM runtime_dream_dispatch_consumptions WHERE tenant_id = %s",
+            (tenant.tenant_id,),
+        ).fetchone()
+    assert row is not None
+    return int(row[0])
 
 
 def _bind_lane(

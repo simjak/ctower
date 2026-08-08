@@ -15,7 +15,11 @@ from psycopg.rows import dict_row
 from ctower_kernel.record import Actor, RecordProblem
 from ctower_kernel.record.dream_dispatch_events import DreamDispatchConsumedPayload
 from ctower_kernel.record.events import EventEnvelope, EventKind, EventOrigin
-from ctower_kernel.record.transaction import RecordTransaction, authority_connection
+from ctower_kernel.record.transaction import (
+    RecordTransaction,
+    authority_connection,
+    project_scope_refusal,
+)
 from ctower_kernel.runtime import (
     DreamDispatchConsumeCommand,
     DreamDispatchConsumption,
@@ -32,6 +36,14 @@ def list_dream_dispatches(dsn: str, actor: Actor) -> tuple[DreamDispatchEffect, 
         connection.execute("SET ROLE ctower_svc")
         rows = connection.execute(
             """
+            WITH authenticated_scope AS (
+                SELECT principal.kind, seat.project_key
+                FROM principals AS principal
+                LEFT JOIN project_seats AS seat
+                  ON seat.tenant_id = principal.tenant_id
+                 AND seat.principal_id = principal.principal_id
+                WHERE principal.tenant_id = %s AND principal.principal_id = %s
+            )
             SELECT effect.*, consumption.executor_principal_id, consumption.lane_ref,
                 consumption.crew_name, consumption.harness_ref, consumption.model_ref,
                 consumption.model_family, consumption.reasoning_effort,
@@ -41,9 +53,21 @@ def list_dream_dispatches(dsn: str, actor: Actor) -> tuple[DreamDispatchEffect, 
               ON consumption.effect_id = effect.effect_id
              AND consumption.tenant_id = effect.tenant_id
             WHERE effect.tenant_id = %s
+              AND (
+                EXISTS (
+                    SELECT 1 FROM authenticated_scope WHERE kind = 'operator'
+                )
+                OR (
+                    effect.scope_kind = 'project'
+                    AND EXISTS (
+                        SELECT 1 FROM authenticated_scope
+                        WHERE project_key = effect.project_key
+                    )
+                )
+              )
             ORDER BY effect.scheduled_for, effect.effect_id
             """,
-            (actor.tenant_id,),
+            (actor.tenant_id, actor.principal_id, actor.tenant_id),
         ).fetchall()
     return tuple(_effect(row) for row in rows)
 
@@ -179,6 +203,9 @@ def _consumption_problem(
 ) -> RecordProblem | None:
     if effect is None:
         return _problem(command, "dream-dispatch-unavailable", "Dream dispatch unavailable", 404)
+    scope_refusal = _scope_refusal(connection, actor, command, effect)
+    if scope_refusal is not None:
+        return scope_refusal
     consumed = connection.execute(
         "SELECT 1 FROM runtime_dream_dispatch_consumptions WHERE effect_id = %s",
         (command.effect_id,),
@@ -197,6 +224,33 @@ def _consumption_problem(
     if binding is None:
         return _problem(command, "dream-dispatch-lane-unbound", "Dream lane is unbound", 403)
     return _binding_problem(command, effect, binding)
+
+
+def _scope_refusal(
+    connection: psycopg.Connection[dict[str, object]],
+    actor: Actor,
+    command: DreamDispatchConsumeCommand,
+    effect: dict[str, object],
+) -> RecordProblem | None:
+    scope_kind = str(effect["scope_kind"])
+    if scope_kind == "fleet":
+        return project_scope_refusal(
+            connection,
+            tenant_id=actor.tenant_id,
+            principal_id=actor.principal_id,
+            project_keys=(),
+            command_id=command.client_command_id,
+            operator_only=True,
+        )
+    if scope_kind != "project" or effect["project_key"] is None:
+        raise RuntimeError("dream dispatch carries an invalid persisted scope")
+    return project_scope_refusal(
+        connection,
+        tenant_id=actor.tenant_id,
+        principal_id=actor.principal_id,
+        project_keys=(str(effect["project_key"]),),
+        command_id=command.client_command_id,
+    )
 
 
 def _binding_problem(

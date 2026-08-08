@@ -27,9 +27,12 @@ persisted run. Complete explicit pins and refs remain supported and server valid
 through the same encrypted-spool path as other protected Work mutations. Neither command accepts model-family
 labels or launches a reviewer.
 
-`dream-dispatch list` reads the four project/fleet nightly effects and their output custody.
+`dream-dispatch list` reads only the authenticated project seat's nightly effect and output custody; an
+operator reads all Project effects plus the operator-only fleet effect.
 `dream-dispatch consume <effect> --output-digest <sha256>` is spool-protected and accepts no lane, crew,
 harness, model, family, effort, or tier labels; those facts come from the authenticated substrate binding.
+Foreign-Project and non-operator fleet consumption refuse as `project-scope-denied` before any custody is
+recorded.
 
 The same installed-policy rule closes the Proof input loop. Criteria freeze accepts either an explicit
 candidate digest or literal candidate content, hashing the latter as exact UTF-8 bytes, and defaults omitted

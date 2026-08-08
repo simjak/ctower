@@ -1,6 +1,6 @@
 # CLI reference
 
-`ctowerctl` — also installed as `ctl` — is the complete command surface. There are **47 authored server
+`ctowerctl` — also installed as `ctl` — is the complete command surface. There are **72 authored server
 commands**, **7 local spool commands**, and one local installed-Workflow discovery command. There is no
 operation-ID escape hatch: an unrecognized command is a usage error, not a passthrough.
 
@@ -277,6 +277,24 @@ does not let you assert a weaker outcome.
 
 Waiting polls for up to 60 seconds. A run that ends `failed`, or that succeeds with lifecycle facts other
 than those asserted, exits `69`. A timeout exits `75`.
+
+## Dream dispatch
+
+| Command | Positional | Flags |
+|---|---|---|
+| `dream-dispatch list` | — | — |
+| `dream-dispatch consume` | `<effect_id>` | required: `--output-digest <sha256>`; optional: `--command-id` |
+
+`list` is an online-only query and is never spooled. A project-seat principal receives only the effect for
+its persisted Project grant; foreign Project effects and the fleet effect are absent. An operator receives
+all Project effects plus the fleet effect.
+
+`consume` is a protected, spoolable mutation. The output digest must be `sha256:` followed by exactly 64
+lowercase hexadecimal characters. The server derives the effect's Project scope before checking
+consumption or lane/model policy: a foreign Project or fleet request by a project seat refuses as
+`project-scope-denied` with no consumption. Fleet consumption is operator-only. The command accepts no
+lane, crew, harness, model, family, effort, or tier flags; those facts come from the persisted substrate
+binding and are joined to the Routine occurrence and output digest.
 
 ## Migration (ctower-project)
 
