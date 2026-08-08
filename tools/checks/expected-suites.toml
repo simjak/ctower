@@ -565,6 +565,16 @@ command = ["{python}", "-m", "pytest", "tests/modules/inbox", "-q"]
 timeout_seconds = 120
 
 [[suite]]
+id = "dogfood-inbox-promotion"
+owner = "CT-I1-007"
+phase = "CT-I1-007"
+status = "required"
+path = "tests/repository"
+patterns = ["test_inbox_promotion_ui.py"]
+command = ["{python}", "-m", "pytest", "tests/repository/test_inbox_promotion_ui.py", "-q"]
+timeout_seconds = 120
+
+[[suite]]
 id = "dream-dispatch-contracts"
 owner = "CT-I1-006"
 phase = "CT-I1-006"
