@@ -29,6 +29,9 @@ configuration remains `pending_only`. The same artifact exposes `ctower-control-
 fixed Routine scan and accepted-outbox projection loops. Authenticated health reports independent
 contributors, and the optional Attention composition exposes canonical, acceptance-gated append-only
 retry/tombstone poison recovery with exact command replay.
+The development composition also exposes the four nightly dream-dispatch effects. Listing is a pure
+tenant read; consumption accepts only an output digest and records substrate-bound lane/model facts plus
+the Routine occurrence link through the Runtime Interface.
 The separately approved E2 composition exposes `ctower-development-api` and
 `ctower-development-worker`. It resolves Secret Service references in-process, binds the API to loopback,
 and adds Record's bounded ordinary durability finalizer to the same worker loop. Its

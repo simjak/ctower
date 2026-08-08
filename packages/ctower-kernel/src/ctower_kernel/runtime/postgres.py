@@ -5,8 +5,11 @@ from __future__ import annotations
 from datetime import datetime
 from uuid import UUID
 
-from ctower_kernel.record import RecordProblem
+from ctower_kernel.record import Actor, RecordProblem
 from ctower_kernel.runtime import (
+    DreamDispatchConsumeCommand,
+    DreamDispatchEffect,
+    DreamDispatchReceipt,
     FixedOperationAttempt,
     FixedOperationCompletion,
     FixedOperationResult,
@@ -15,6 +18,12 @@ from ctower_kernel.runtime import (
     SyntheticRun,
     SyntheticRunCommand,
     SyntheticRunReceipt,
+)
+from ctower_kernel.runtime._dream_dispatch_sql import (
+    consume_dream_dispatch as _consume_dream_dispatch,
+)
+from ctower_kernel.runtime._dream_dispatch_sql import (
+    list_dream_dispatches as _list_dream_dispatches,
 )
 from ctower_kernel.runtime._routine_sql import register as _register
 from ctower_kernel.runtime._routine_sql import scan as _scan
@@ -47,6 +56,14 @@ class PostgresRuntime:
 
     def tenant_ids(self) -> tuple[UUID, ...]:
         return _tenant_ids(self._dsn)
+
+    def list_dream_dispatches(self, actor: Actor) -> tuple[DreamDispatchEffect, ...]:
+        return _list_dream_dispatches(self._dsn, actor)
+
+    def consume_dream_dispatch(
+        self, actor: Actor, command: DreamDispatchConsumeCommand
+    ) -> DreamDispatchReceipt | RecordProblem:
+        return _consume_dream_dispatch(self._dsn, actor, command)
 
     def start_synthetic(
         self,

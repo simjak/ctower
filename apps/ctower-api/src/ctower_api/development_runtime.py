@@ -158,6 +158,7 @@ def api_main() -> None:
             ),
             synthetic_runtime=FixedOperations(runtime_store),
             synthetic_revision=_synthetic_revision(revisions),
+            dream_dispatch_runtime=runtime_store,
             oidc=OidcRuntimeConfig(
                 providers=_enabled_oidc_providers(config),
                 login_attempt_signing_key=_login_attempt_signing_key(config),

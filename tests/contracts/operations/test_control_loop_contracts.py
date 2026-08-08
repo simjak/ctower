@@ -23,6 +23,10 @@ def test_runtime_and_outbox_contracts_are_strict_and_fixed_operation_only() -> N
         dict[str, object], cast(dict[str, object], routine["properties"])["handler_kind"]
     )
     assert handler["enum"] == ["synthetic_four_stage", "daily_backup", "record_anchor"]
+    assert cast(dict[str, object], job["properties"])["operation"] == {
+        "type": "string",
+        "enum": ["synthetic_four_stage", "daily_backup", "record_anchor"],
+    }
     assert occurrence["additionalProperties"] is False
     assert job["additionalProperties"] is False
     assert delivery["additionalProperties"] is False

@@ -1,5 +1,5 @@
 // DO NOT EDIT: generated file; regenerate from declared inputs.
-// Authored contract digest: sha256:7aec1d424376a21845a4ecb5948f5a56e67fe62b8e2e02504d1d5e2185bd8140
+// Authored contract digest: sha256:f63f278172a14f1f9accbbc6a606cd3367ce27ea2dc7409783da389060210589
 
 export type ActivityClass = "work" | "verification";
 
@@ -619,6 +619,65 @@ export type DeliverySurfaceAvailabilityQualifyingCheckpoint = Readonly<{
   readonly "state": "qualifying_checkpoint";
 }>;
 
+export type DreamDispatchConsumeRequest = Readonly<{
+  readonly "output_digest": string;
+}>;
+
+export type DreamDispatchConsumption = Readonly<{
+  readonly "consumed_at": string;
+  readonly "crew_name": string;
+  readonly "executor_principal_id": string;
+  readonly "harness_ref": string;
+  readonly "lane_ref": string;
+  readonly "model_family": string;
+  readonly "model_ref": string;
+  readonly "model_tier": "cheap" | "hard";
+  readonly "output_digest": string;
+  readonly "reasoning_effort": string;
+}>;
+
+export type DreamDispatchEffect = Readonly<{
+  readonly "consumption": null | DreamDispatchConsumption;
+  readonly "effect_id": string;
+  readonly "emitted_at": string;
+  readonly "model_requirement": DreamModelRequirement;
+  readonly "occurrence_id": string;
+  readonly "revision_digest": string;
+  readonly "routine_ref": string;
+  readonly "scheduled_for": string;
+  readonly "scope": DreamDispatchScope;
+  readonly "skill_path": "skills/dreamer/SKILL.md";
+}>;
+
+export type DreamDispatchEffectList = Readonly<{
+  readonly "effects": ReadonlyArray<DreamDispatchEffect>;
+}>;
+
+export type DreamDispatchReceipt = Readonly<{
+  readonly "command_id": string;
+  readonly "durability_state": DurabilityState;
+  readonly "effect_id": string;
+  readonly "event_id": string;
+  readonly "output_digest": string;
+}>;
+
+export type DreamDispatchScope = Readonly<{
+  readonly "kind": "project" | "fleet";
+  readonly "project_key": string | null;
+}>;
+
+export type DreamModelRequirement = Readonly<{
+  readonly "excluded_families": ReadonlyArray<"claude">;
+  readonly "fallback": DreamModelSelection;
+  readonly "minimum_tier": "hard";
+  readonly "primary": DreamModelSelection;
+}>;
+
+export type DreamModelSelection = Readonly<{
+  readonly "model_ref": string;
+  readonly "reasoning_effort": "max";
+}>;
+
 export type DurabilityState = "durability_pending" | "accepted";
 
 export type EvidenceRequest = Readonly<{
@@ -1113,7 +1172,7 @@ export type PriorityChangedAuditData = Readonly<{
 }>;
 
 export type Problem = Readonly<{
-  readonly "code": "attention-finding-already-disposed" | "attention-finding-not-found" | "attention-kind-unrecognized" | "auth-exchange-invalid" | "auth-identity-unresolved" | "auth-provider-unavailable" | "auth-provider-unverifiable" | "auth-role-denied" | "auth-session-invalid" | "bootstrap-consumed" | "bootstrap-expired" | "bootstrap-nonempty" | "bootstrap-origin" | "bundle-base-conflict" | "bundle-compatibility-refused" | "bundle-digest-mismatch" | "bundle-grant-refused" | "bundle-independence-refused" | "bundle-no-effect-refused" | "bundle-not-active" | "bundle-plan-mismatch" | "bundle-recovery-unavailable" | "bundle-reference-invalid" | "bundle-schema-invalid" | "bundle-security-refused" | "change-reference-duplicate" | "credential-already-revoked" | "credential-authentication-unavailable" | "credential-digest-conflict" | "credential-issuance-refused" | "credential-revocation-refused" | "credential-revoked" | "credential-scope-denied" | "durability_pending" | "i1-7c-required" | "idempotency-conflict" | "inbox-already-promoted" | "inbox-acknowledgement-not-advancing" | "inbox-message-recipient-mismatch" | "inbox-recipient-ambiguous" | "inbox-recipient-not-found" | "inbox-recipient-self" | "inbox-sender-unaddressable" | "inbox-thread-head-invalid" | "inbox-thread-participant-mismatch" | "intake-already-promoted" | "intake-promotion-ineligible" | "intake-source-project-mismatch" | "intake-source-conflict" | "knowledge-invalid-project" | "knowledge-invalid-scope" | "knowledge-source-not-found" | "knowledge-source-unavailable" | "label-already-applied" | "label-key-unrecognized" | "migration-alias-conflict" | "migration-capability-denied" | "migration-correction-conflict" | "migration-digest-mismatch" | "migration-export-nondeterminism" | "migration-fence-detected" | "migration-import-finalization-refused" | "migration-operation-drift" | "migration-relation-invalid" | "migration-run-conflict" | "migration-signature-invalid" | "migration-source-selection-drift" | "migration-source-tainted" | "poison-not-found" | "prohibited-data-class" | "project-delivery-unavailable" | "project-grant-required" | "project-scope-denied" | "reauthentication-required" | "request-body-too-large" | "proof-candidate-author-mismatch" | "proof-candidate-digest-invalid" | "proof-candidate-digest-not-current" | "proof-candidate-unchanged" | "proof-criteria-already-frozen" | "proof-criteria-invalid" | "proof-criteria-policy-mismatch" | "proof-criterion-unknown" | "proof-current-evidence-missing" | "proof-evidence-digest-mismatch" | "proof-evidence-id-conflict" | "proof-protected-authority-required" | "proof-policy-mismatch" | "proof-policy-pin-mismatch" | "proof-self-review-refused" | "proof-verdict-id-conflict" | "review-dispatch-already-consumed" | "review-dispatch-family-conflict" | "review-dispatch-incomplete" | "review-dispatch-input-missing" | "review-dispatch-model-unbound" | "review-dispatch-self-review" | "review-dispatch-unavailable" | "seat-binding-conflict" | "seat-credential-active" | "seat-credential-unavailable" | "seat-display-name-conflict" | "session-ineligible" | "session-not-found" | "session-transition-invalid" | "tenant-scope-denied" | "ticket-comment-ineligible" | "ticket-comment-invalid" | "unauthorized" | "validation-error" | "version-conflict" | "work-assignment-kind-refused" | "work-assignment-target-ineligible" | "work-assignment-unchanged" | "work-priority-unchanged" | "work-blocker-already-resolved" | "work-blocker-id-conflict" | "work-blocker-owner-ineligible" | "work-blocker-unknown" | "work-intent-unmet" | "work-relation-cycle" | "work-relation-exists" | "work-reopen-unmet" | "work-ticket-terminal" | "workflow-already-started" | "workflow-pin-mismatch" | "workflow-predicate-unsatisfied" | "workflow-run-not-started" | "proof-incomplete" | "workflow-state-conflict" | "workflow-terminal" | "workflow-transition-not-declared" | "workflow-version-unknown" | "workflow-not-terminal";
+  readonly "code": "attention-finding-already-disposed" | "attention-finding-not-found" | "attention-kind-unrecognized" | "auth-exchange-invalid" | "auth-identity-unresolved" | "auth-provider-unavailable" | "auth-provider-unverifiable" | "auth-role-denied" | "auth-session-invalid" | "bootstrap-consumed" | "bootstrap-expired" | "bootstrap-nonempty" | "bootstrap-origin" | "bundle-base-conflict" | "bundle-compatibility-refused" | "bundle-digest-mismatch" | "bundle-grant-refused" | "bundle-independence-refused" | "bundle-no-effect-refused" | "bundle-not-active" | "bundle-plan-mismatch" | "bundle-recovery-unavailable" | "bundle-reference-invalid" | "bundle-schema-invalid" | "bundle-security-refused" | "change-reference-duplicate" | "credential-already-revoked" | "credential-authentication-unavailable" | "credential-digest-conflict" | "credential-issuance-refused" | "credential-revocation-refused" | "credential-revoked" | "credential-scope-denied" | "dream-dispatch-already-consumed" | "dream-dispatch-family-excluded" | "dream-dispatch-lane-unbound" | "dream-dispatch-model-requirement-mismatch" | "dream-dispatch-tier-refused" | "dream-dispatch-unavailable" | "durability_pending" | "i1-7c-required" | "idempotency-conflict" | "inbox-already-promoted" | "inbox-acknowledgement-not-advancing" | "inbox-message-recipient-mismatch" | "inbox-recipient-ambiguous" | "inbox-recipient-not-found" | "inbox-recipient-self" | "inbox-sender-unaddressable" | "inbox-thread-head-invalid" | "inbox-thread-participant-mismatch" | "intake-already-promoted" | "intake-promotion-ineligible" | "intake-source-project-mismatch" | "intake-source-conflict" | "knowledge-invalid-project" | "knowledge-invalid-scope" | "knowledge-source-not-found" | "knowledge-source-unavailable" | "label-already-applied" | "label-key-unrecognized" | "migration-alias-conflict" | "migration-capability-denied" | "migration-correction-conflict" | "migration-digest-mismatch" | "migration-export-nondeterminism" | "migration-fence-detected" | "migration-import-finalization-refused" | "migration-operation-drift" | "migration-relation-invalid" | "migration-run-conflict" | "migration-signature-invalid" | "migration-source-selection-drift" | "migration-source-tainted" | "poison-not-found" | "prohibited-data-class" | "project-delivery-unavailable" | "project-grant-required" | "project-scope-denied" | "reauthentication-required" | "request-body-too-large" | "proof-candidate-author-mismatch" | "proof-candidate-digest-invalid" | "proof-candidate-digest-not-current" | "proof-candidate-unchanged" | "proof-criteria-already-frozen" | "proof-criteria-invalid" | "proof-criteria-policy-mismatch" | "proof-criterion-unknown" | "proof-current-evidence-missing" | "proof-evidence-digest-mismatch" | "proof-evidence-id-conflict" | "proof-protected-authority-required" | "proof-policy-mismatch" | "proof-policy-pin-mismatch" | "proof-self-review-refused" | "proof-verdict-id-conflict" | "review-dispatch-already-consumed" | "review-dispatch-family-conflict" | "review-dispatch-incomplete" | "review-dispatch-input-missing" | "review-dispatch-model-unbound" | "review-dispatch-self-review" | "review-dispatch-unavailable" | "seat-binding-conflict" | "seat-credential-active" | "seat-credential-unavailable" | "seat-display-name-conflict" | "session-ineligible" | "session-not-found" | "session-transition-invalid" | "tenant-scope-denied" | "ticket-comment-ineligible" | "ticket-comment-invalid" | "unauthorized" | "validation-error" | "version-conflict" | "work-assignment-kind-refused" | "work-assignment-target-ineligible" | "work-assignment-unchanged" | "work-priority-unchanged" | "work-blocker-already-resolved" | "work-blocker-id-conflict" | "work-blocker-owner-ineligible" | "work-blocker-unknown" | "work-intent-unmet" | "work-relation-cycle" | "work-relation-exists" | "work-reopen-unmet" | "work-ticket-terminal" | "workflow-already-started" | "workflow-pin-mismatch" | "workflow-predicate-unsatisfied" | "workflow-run-not-started" | "proof-incomplete" | "workflow-state-conflict" | "workflow-terminal" | "workflow-transition-not-declared" | "workflow-version-unknown" | "workflow-not-terminal";
   readonly "command_id"?: string | null;
   readonly "current_version"?: number | null;
   readonly "detail": string;

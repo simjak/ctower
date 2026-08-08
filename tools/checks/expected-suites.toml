@@ -559,6 +559,32 @@ command = ["{python}", "-m", "pytest", "tests/modules/inbox", "-q"]
 timeout_seconds = 120
 
 [[suite]]
+id = "dream-dispatch-contracts"
+owner = "gh#368"
+phase = "current"
+status = "required"
+path = "tests/contracts/runtime"
+patterns = ["test_*.py"]
+command = ["{python}", "-m", "pytest", "tests/contracts/runtime", "-q"]
+timeout_seconds = 120
+
+[[suite]]
+id = "dream-dispatch-acceptance"
+owner = "gh#368"
+phase = "current"
+status = "required"
+path = "tests/acceptance/increment-1"
+patterns = ["test_dream_dispatch_effect.py"]
+command = [
+  "{python}",
+  "-m",
+  "pytest",
+  "tests/acceptance/increment-1/test_dream_dispatch_effect.py",
+  "-q",
+]
+timeout_seconds = 900
+
+[[suite]]
 id = "increment-1-acceptance"
 owner = "CT-I1-008"
 phase = "CT-I1-008"

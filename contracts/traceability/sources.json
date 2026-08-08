@@ -2041,6 +2041,67 @@
         "AC-ATT-01",
         "AC-ATT-02"
       ]
+    },
+    {
+      "path": "contracts/runtime/dream-dispatch-effect.schema.json",
+      "references": [
+        "SPEC#event-driven-default-and-routine-revisions",
+        "INV-76",
+        "AC-OPS-13",
+        "AC-OPS-14"
+      ]
+    },
+    {
+      "path": "contracts/runtime/routine-v2.schema.json",
+      "references": [
+        "SPEC#event-driven-default-and-routine-revisions",
+        "INV-76",
+        "AC-OPS-13"
+      ]
+    },
+    {
+      "path": "packages/ctower-kernel/migrations/0053_dream_dispatch_effect.sql",
+      "references": [
+        "SPEC#persistence-authority",
+        "SPEC#event-driven-default-and-routine-revisions",
+        "INV-28",
+        "INV-76",
+        "AC-DUR-07",
+        "AC-OPS-13",
+        "AC-OPS-14"
+      ]
+    },
+    {
+      "path": "packs/routines/ctower.dream.bh-loop/v1.yaml",
+      "references": [
+        "SPEC#event-driven-default-and-routine-revisions",
+        "INV-76",
+        "AC-OPS-13"
+      ]
+    },
+    {
+      "path": "packs/routines/ctower.dream.ctower/v1.yaml",
+      "references": [
+        "SPEC#event-driven-default-and-routine-revisions",
+        "INV-76",
+        "AC-OPS-13"
+      ]
+    },
+    {
+      "path": "packs/routines/ctower.dream.fleet/v1.yaml",
+      "references": [
+        "SPEC#event-driven-default-and-routine-revisions",
+        "INV-76",
+        "AC-OPS-13"
+      ]
+    },
+    {
+      "path": "packs/routines/ctower.dream.manibo/v1.yaml",
+      "references": [
+        "SPEC#event-driven-default-and-routine-revisions",
+        "INV-76",
+        "AC-OPS-13"
+      ]
     }
   ]
 }

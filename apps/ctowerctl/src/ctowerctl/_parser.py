@@ -86,7 +86,19 @@ def _parser() -> argparse.ArgumentParser:
     _project_parser(areas.add_parser("project"))
     _spool_parser(areas.add_parser("spool"))
     attention_parser(areas.add_parser("attention"))
+    _dream_dispatch_parser(areas.add_parser("dream-dispatch"))
     return parser
+
+
+def _dream_dispatch_parser(parser: argparse.ArgumentParser) -> None:
+    actions = parser.add_subparsers(dest="action", required=True, parser_class=_Parser)
+    list_parser = actions.add_parser("list")
+    list_parser.set_defaults(cli_name="dream-dispatch list")
+    consume = actions.add_parser("consume")
+    consume.set_defaults(cli_name="dream-dispatch consume")
+    _command_id(consume)
+    consume.add_argument("effect_id", type=UUID)
+    consume.add_argument("--output-digest", required=True, type=_sha256_digest)
 
 
 def _bootstrap_parser(parser: argparse.ArgumentParser) -> None:

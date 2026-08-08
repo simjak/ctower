@@ -1,6 +1,6 @@
 """DO NOT EDIT: generated file; regenerate from declared inputs.
 
-Authored contract digest: sha256:7aec1d424376a21845a4ecb5948f5a56e67fe62b8e2e02504d1d5e2185bd8140
+Authored contract digest: sha256:f63f278172a14f1f9accbbc6a606cd3367ce27ea2dc7409783da389060210589
 """
 
 from __future__ import annotations
@@ -253,6 +253,19 @@ OPERATIONS = MappingProxyType(
             principal='operator',
             refusal_only=True,
         ),
+        "consumeDreamDispatchEffect": OperationSpec(
+            operation_id="consumeDreamDispatchEffect",
+            client_method="consume_dream_dispatch_effect",
+            method="POST",
+            path="/v1/runtime/dream-dispatches/{effect_id}/consume",
+            request_model=_models.DreamDispatchConsumeRequest,
+            response_model=_models.DreamDispatchReceipt,
+            cli_names=('dream-dispatch consume',),
+            mutation=True,
+            spool_policy=SpoolPolicy.ALLOWED,
+            principal=None,
+            refusal_only=False,
+        ),
         "consumeReviewDispatchEffect": OperationSpec(
             operation_id="consumeReviewDispatchEffect",
             client_method="consume_review_dispatch_effect",
@@ -457,6 +470,19 @@ OPERATIONS = MappingProxyType(
             response_model=_models.SeatCredentialReceipt,
             cli_names=('credential seat issue',),
             mutation=True,
+            spool_policy=SpoolPolicy.FORBIDDEN,
+            principal=None,
+            refusal_only=False,
+        ),
+        "listDreamDispatchEffects": OperationSpec(
+            operation_id="listDreamDispatchEffects",
+            client_method="list_dream_dispatch_effects",
+            method="GET",
+            path="/v1/runtime/dream-dispatches",
+            request_model=None,
+            response_model=_models.DreamDispatchEffectList,
+            cli_names=('dream-dispatch list',),
+            mutation=False,
             spool_policy=SpoolPolicy.FORBIDDEN,
             principal=None,
             refusal_only=False,
@@ -889,6 +915,7 @@ CLI_OPERATIONS = MappingProxyType(
         "ticket assign": OPERATIONS["changeTicketAssignment"],
         "ticket prioritize": OPERATIONS["changeTicketPriority"],
         "migration ctower-project commit-development-epoch": OPERATIONS["commitCtowerProjectDevelopmentEpoch"],
+        "dream-dispatch consume": OPERATIONS["consumeDreamDispatchEffect"],
         "ticket review-dispatch consume": OPERATIONS["consumeReviewDispatchEffect"],
         "migration ctower-project inventory": OPERATIONS["createCtowerProjectImportRun"],
         "ticket capture": OPERATIONS["createTicket"],
@@ -907,6 +934,7 @@ CLI_OPERATIONS = MappingProxyType(
         "ticket show": OPERATIONS["getTicket"],
         "ticket timeline": OPERATIONS["getTicketTimeline"],
         "credential seat issue": OPERATIONS["issueSeatCredential"],
+        "dream-dispatch list": OPERATIONS["listDreamDispatchEffects"],
         "inbox list": OPERATIONS["listInboxThreads"],
         "knowledge list": OPERATIONS["listKnowledgeDocuments"],
         "project events": OPERATIONS["listProjectEvents"],

@@ -105,7 +105,7 @@ def test_routine_revision_rejects_invalid_authored_contract_values() -> None:
         replace(routine, revision_digest="not-a-digest")
     with pytest.raises(ValueError, match="components"):
         replace(routine, component_digests=())
-    with pytest.raises(ValueError, match="fixed I1 subset"):
+    with pytest.raises(ValueError, match="authored fixed subset"):
         replace(routine, handler_kind="arbitrary_effect")
     with pytest.raises(ValueError, match="catch-up cap"):
         replace(routine, catch_up_cap=0)

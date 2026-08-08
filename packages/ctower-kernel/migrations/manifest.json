@@ -1,10 +1,10 @@
 {
   "schema": "ctower.migrations/v3",
   "adoption_baseline": {
-    "through": "0052_knowledge_inbox_event_kinds.sql",
-    "schema_sha256": "sha256:07a2ecb2db4d0c76a962a5abe1d604e131151149f1847bea8bf52bbc6a1b6eca",
+    "through": "0053_dream_dispatch_effect.sql",
+    "schema_sha256": "sha256:20907921771b465fe7f26643c7ce205202b86bd5bb959471b1c0fa7304b4f9fa",
     "semantic_checks": "ctower.pre-ledger/v1",
-    "schema_object_sum256": "sum256:b03a7d66eafdb0889fa471b60f74670d7a3a5bd1c03a1c42fc6308555d1a19fe"
+    "schema_object_sum256": "sum256:a1a67cc88e0283b9a63196c65e1331e2d72101a2ad7154799a3e91de4846b092"
   },
   "migrations": [
     {
@@ -494,6 +494,15 @@
       "forward_test": "pytest:tests/acceptance/increment-1/test_knowledge.py::test_knowledge_cli_roundtrip_preserves_org_and_project_scope",
       "rollback_or_forward_compensation": "Preserve the accepted Knowledge and Inbox event-kind union; append reviewed forward compensation for later event kinds and never edit an accepted migration or canonical event.",
       "backup_checkpoint": "Before applying to a nonempty installation, capture the events constraint definition and event counts grouped by kind plus a verified database backup; the migration changes no stored row."
+    },
+    {
+      "path": "0053_dream_dispatch_effect.sql",
+      "sha256": "sha256:be46c81a00b68a6396482041e589e5212b344e33c7d803e7a1be60a766d40377",
+      "minimum_service_version": "0.0.0",
+      "maximum_service_version": "0.0.0",
+      "forward_test": "pytest:tests/acceptance/increment-1/test_dream_dispatch_effect.py::test_nightly_dream_dispatch_stage_walk",
+      "rollback_or_forward_compensation": "Preserve Routine dream specifications, emitted effects, substrate lane bindings, consumptions, output links, canonical events, command results, and outbox rows; append reviewed forward compensation and never edit or delete accepted dream custody facts.",
+      "backup_checkpoint": "Before applying to a nonempty installation, capture Routine revision, occurrence, fixed-job, event, command-result, outbox, and lane-binding counts grouped by tenant plus a verified database backup; all four new tables start empty."
     }
   ]
 }

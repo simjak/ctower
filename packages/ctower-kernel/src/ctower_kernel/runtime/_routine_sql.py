@@ -21,6 +21,8 @@ from ctower_kernel.record.transaction import RecordTransaction, authority_connec
 from ctower_kernel.runtime import (
     CatchUpPolicy,
     ConcurrencyPolicy,
+    DreamDispatchEffect,
+    DreamDispatchSpec,
     FixedOperationJob,
     OccurrenceOutcome,
     OccurrencePlan,
@@ -72,8 +74,18 @@ def register(
                 [_digest(item) for item in revision.component_digests],
             ),
         )
+        _register_dream_spec(connection, revision)
         stored = connection.execute(
-            "SELECT * FROM routine_revisions WHERE revision_digest = %s",
+            """
+            SELECT revision.*, spec.scope_kind, spec.project_key, spec.skill_path,
+                spec.primary_model_ref, spec.primary_reasoning_effort,
+                spec.fallback_model_ref, spec.fallback_reasoning_effort,
+                spec.minimum_model_tier, spec.excluded_model_families
+            FROM routine_revisions AS revision
+            LEFT JOIN routine_dream_dispatch_specs AS spec
+              ON spec.revision_digest = revision.revision_digest
+            WHERE revision.revision_digest = %s
+            """,
             (_digest(revision.revision_digest),),
         ).fetchone()
         if stored is None or _revision(stored) != revision:
@@ -103,10 +115,15 @@ def scan(dsn: str, tenant_id: UUID) -> SchedulerScan:
         actor_principal_id = _control_worker_principal(connection, tenant_id, now)
         rows = connection.execute(
             """
-            SELECT trigger.next_fire_at, revision.*
+            SELECT trigger.next_fire_at, revision.*, spec.scope_kind, spec.project_key,
+                spec.skill_path, spec.primary_model_ref, spec.primary_reasoning_effort,
+                spec.fallback_model_ref, spec.fallback_reasoning_effort,
+                spec.minimum_model_tier, spec.excluded_model_families
             FROM routine_triggers AS trigger
             JOIN routine_revisions AS revision
               ON revision.revision_digest = trigger.revision_digest
+            LEFT JOIN routine_dream_dispatch_specs AS spec
+              ON spec.revision_digest = revision.revision_digest
             WHERE trigger.tenant_id = %s AND trigger.next_fire_at <= %s
             ORDER BY trigger.next_fire_at, revision.revision_digest
             FOR UPDATE OF trigger
@@ -115,11 +132,12 @@ def scan(dsn: str, tenant_id: UUID) -> SchedulerScan:
         ).fetchall()
         occurrences: list[RoutineOccurrence] = []
         jobs: list[FixedOperationJob] = []
+        dream_dispatches: list[DreamDispatchEffect] = []
         for row in rows:
             revision = _revision(row)
             plans, next_fire = _plans(connection, tenant_id, revision, row, now)
             for plan in plans:
-                occurrence, job = _persist_plan(
+                occurrence, job, dream_dispatch = _persist_plan(
                     connection,
                     tenant_id,
                     actor_principal_id,
@@ -131,6 +149,8 @@ def scan(dsn: str, tenant_id: UUID) -> SchedulerScan:
                     occurrences.append(occurrence)
                 if job is not None:
                     jobs.append(job)
+                if dream_dispatch is not None:
+                    dream_dispatches.append(dream_dispatch)
             connection.execute(
                 """
                 UPDATE routine_triggers SET next_fire_at = %s, updated_at = %s
@@ -139,7 +159,9 @@ def scan(dsn: str, tenant_id: UUID) -> SchedulerScan:
                 (next_fire, now, tenant_id, _digest(revision.revision_digest)),
             )
         watermark = _scheduler_watermark(connection, tenant_id, now)
-    return SchedulerScan(tenant_id, watermark, now, tuple(occurrences), tuple(jobs))
+    return SchedulerScan(
+        tenant_id, watermark, now, tuple(occurrences), tuple(jobs), tuple(dream_dispatches)
+    )
 
 
 def _plans(
@@ -181,7 +203,7 @@ def _persist_plan(
     revision: RoutineRevision,
     plan: OccurrencePlan,
     now: datetime,
-) -> tuple[RoutineOccurrence | None, FixedOperationJob | None]:
+) -> tuple[RoutineOccurrence | None, FixedOperationJob | None, DreamDispatchEffect | None]:
     occurrence_id, command_id, event_id, outbox_id, job_id = _occurrence_ids(
         tenant_id, revision, plan
     )
@@ -190,7 +212,7 @@ def _persist_plan(
     transaction = RecordTransaction(connection)
     existing = transaction.reserve(actor_principal_id, command_id, request_digest)
     if existing is not None:
-        return None, None
+        return None, None, None
     event = _occurrence_event(
         tenant_id,
         actor_principal_id,
@@ -210,8 +232,101 @@ def _persist_plan(
     job = None
     if job_id is not None:
         job = _insert_job(connection, tenant_id, occurrence_id, job_id, revision, now)
+    dream_dispatch = _insert_dream_dispatch(
+        connection, tenant_id, occurrence_id, revision, plan, now
+    )
     occurrence = _routine_occurrence(tenant_id, occurrence_id, revision, plan, job_id)
-    return occurrence, job
+    return occurrence, job, dream_dispatch
+
+
+def _register_dream_spec(
+    connection: psycopg.Connection[dict[str, object]], revision: RoutineRevision
+) -> None:
+    spec = revision.dream_dispatch
+    if spec is None:
+        return
+    connection.execute(
+        """
+        INSERT INTO routine_dream_dispatch_specs (
+            revision_digest, scope_kind, project_key, skill_path,
+            primary_model_ref, primary_reasoning_effort,
+            fallback_model_ref, fallback_reasoning_effort,
+            minimum_model_tier, excluded_model_families
+        ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+        ON CONFLICT (revision_digest) DO NOTHING
+        """,
+        (
+            _digest(revision.revision_digest),
+            spec.scope_kind,
+            spec.project_key,
+            spec.skill_path,
+            spec.primary_model_ref,
+            spec.primary_reasoning_effort,
+            spec.fallback_model_ref,
+            spec.fallback_reasoning_effort,
+            spec.minimum_model_tier,
+            list(spec.excluded_model_families),
+        ),
+    )
+
+
+def _insert_dream_dispatch(
+    connection: psycopg.Connection[dict[str, object]],
+    tenant_id: UUID,
+    occurrence_id: UUID,
+    revision: RoutineRevision,
+    plan: OccurrencePlan,
+    now: datetime,
+) -> DreamDispatchEffect | None:
+    spec = revision.dream_dispatch
+    if spec is None or plan.outcome is not OccurrenceOutcome.QUEUED:
+        return None
+    effect_id = _stable_uuid7(
+        plan.scheduled_for,
+        b"dream-dispatch",
+        tenant_id.bytes,
+        _digest(revision.revision_digest),
+        plan.scheduled_for.isoformat().encode("ascii"),
+    )
+    connection.execute(
+        """
+        INSERT INTO runtime_dream_dispatch_effects (
+            effect_id, occurrence_id, tenant_id, revision_digest, routine_ref,
+            scheduled_for, scope_kind, project_key, skill_path,
+            primary_model_ref, primary_reasoning_effort,
+            fallback_model_ref, fallback_reasoning_effort,
+            minimum_model_tier, excluded_model_families, emitted_at
+        ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+        """,
+        (
+            effect_id,
+            occurrence_id,
+            tenant_id,
+            _digest(revision.revision_digest),
+            revision.routine_ref,
+            plan.scheduled_for,
+            spec.scope_kind,
+            spec.project_key,
+            spec.skill_path,
+            spec.primary_model_ref,
+            spec.primary_reasoning_effort,
+            spec.fallback_model_ref,
+            spec.fallback_reasoning_effort,
+            spec.minimum_model_tier,
+            list(spec.excluded_model_families),
+            now,
+        ),
+    )
+    return DreamDispatchEffect(
+        effect_id,
+        occurrence_id,
+        tenant_id,
+        revision.routine_ref,
+        revision.revision_digest,
+        plan.scheduled_for,
+        spec,
+        now,
+    )
 
 
 def _occurrence_ids(
@@ -529,6 +644,19 @@ def _revision(row: dict[str, object]) -> RoutineRevision:
     local_time = row["local_time"]
     if local_time is not None and not isinstance(local_time, time):
         raise TypeError("stored Routine local time is invalid")
+    dream_dispatch = None
+    if row.get("scope_kind") is not None:
+        dream_dispatch = DreamDispatchSpec(
+            scope_kind=str(row["scope_kind"]),
+            project_key=str(row["project_key"]) if row["project_key"] is not None else None,
+            skill_path=str(row["skill_path"]),
+            primary_model_ref=str(row["primary_model_ref"]),
+            primary_reasoning_effort=str(row["primary_reasoning_effort"]),
+            fallback_model_ref=str(row["fallback_model_ref"]),
+            fallback_reasoning_effort=str(row["fallback_reasoning_effort"]),
+            minimum_model_tier=str(row["minimum_model_tier"]),
+            excluded_model_families=tuple(cast(list[str], row["excluded_model_families"])),
+        )
     return RoutineRevision(
         routine_ref=str(row["routine_ref"]),
         revision_digest="sha256:" + bytes(cast(bytes, row["revision_digest"])).hex(),
@@ -544,6 +672,7 @@ def _revision(row: dict[str, object]) -> RoutineRevision:
             "sha256:" + bytes(cast(bytes, item)).hex()
             for item in cast(list[object], row["component_digests"])
         ),
+        dream_dispatch=dream_dispatch,
     )
 
 

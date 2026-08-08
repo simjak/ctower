@@ -23,6 +23,10 @@ caller-authored family labels, plus the bound model-family facts and ticket-visi
 records control-plane intent only; it does not activate remote execution, images,
 executable extensions, or off-host durability.
 
+Routine v2 adds the four exact nightly dream packs and a strict dream-dispatch effect/read/consume HTTP
+contract. Consumption carries only the output digest; the emitted effect owns model requirements and the
+kernel copies executing-lane facts from substrate bindings.
+
 The CP2 task-management contracts under `domain/task-management/` fix typed Work commands, five assignment
 kinds, the six-lane Board view and watermark health, and a deterministic priority-aging selection policy.
 The scheduling pack selects among eligible work only; it neither dispatches jobs nor advances Workflow.

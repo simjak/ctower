@@ -1,0 +1,71 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://ctower.dev/contracts/runtime/dream-dispatch-effect.schema.json",
+  "title": "DreamDispatchEffect",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "effect_id", "occurrence_id", "routine_ref", "revision_digest", "scheduled_for",
+    "scope", "skill_path", "model_requirement", "emitted_at", "consumption"
+  ],
+  "properties": {
+    "effect_id": {"type": "string", "format": "uuid"},
+    "occurrence_id": {"type": "string", "format": "uuid"},
+    "routine_ref": {"type": "string", "pattern": "^[a-z][a-z0-9._-]*@[1-9][0-9]*$"},
+    "revision_digest": {"type": "string", "pattern": "^sha256:[0-9a-f]{64}$"},
+    "scheduled_for": {"type": "string", "format": "date-time"},
+    "scope": {"$ref": "#/$defs/scope"},
+    "skill_path": {"const": "skills/dreamer/SKILL.md"},
+    "model_requirement": {"$ref": "#/$defs/modelRequirement"},
+    "emitted_at": {"type": "string", "format": "date-time"},
+    "consumption": {"oneOf": [{"type": "null"}, {"$ref": "#/$defs/consumption"}]}
+  },
+  "$defs": {
+    "digest": {"type": "string", "pattern": "^sha256:[0-9a-f]{64}$"},
+    "modelSelection": {
+      "type": "object", "additionalProperties": false,
+      "required": ["model_ref", "reasoning_effort"],
+      "properties": {
+        "model_ref": {"type": "string", "minLength": 1, "maxLength": 128},
+        "reasoning_effort": {"const": "max"}
+      }
+    },
+    "modelRequirement": {
+      "type": "object", "additionalProperties": false,
+      "required": ["primary", "fallback", "minimum_tier", "excluded_families"],
+      "properties": {
+        "primary": {"$ref": "#/$defs/modelSelection"},
+        "fallback": {"$ref": "#/$defs/modelSelection"},
+        "minimum_tier": {"const": "hard"},
+        "excluded_families": {"type": "array", "const": ["claude"]}
+      }
+    },
+    "scope": {
+      "type": "object", "additionalProperties": false,
+      "required": ["kind", "project_key"],
+      "properties": {
+        "kind": {"enum": ["project", "fleet"]},
+        "project_key": {"type": ["string", "null"], "pattern": "^[a-z][a-z0-9._-]*$"}
+      }
+    },
+    "consumption": {
+      "type": "object", "additionalProperties": false,
+      "required": [
+        "executor_principal_id", "lane_ref", "crew_name", "harness_ref", "model_ref",
+        "model_family", "reasoning_effort", "model_tier", "consumed_at", "output_digest"
+      ],
+      "properties": {
+        "executor_principal_id": {"type": "string", "format": "uuid"},
+        "lane_ref": {"type": "string", "minLength": 1, "maxLength": 128},
+        "crew_name": {"type": "string", "pattern": "^[a-z][a-z0-9._-]{1,95}$"},
+        "harness_ref": {"type": "string", "minLength": 1, "maxLength": 128},
+        "model_ref": {"type": "string", "minLength": 1, "maxLength": 128},
+        "model_family": {"type": "string", "pattern": "^[a-z][a-z0-9._-]*$"},
+        "reasoning_effort": {"type": "string", "minLength": 1, "maxLength": 32},
+        "model_tier": {"type": "string", "enum": ["cheap", "hard"]},
+        "consumed_at": {"type": "string", "format": "date-time"},
+        "output_digest": {"$ref": "#/$defs/digest"}
+      }
+    }
+  }
+}

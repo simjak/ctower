@@ -30,7 +30,7 @@ from ctower_kernel.runtime import (
 )
 from ctower_kernel.runtime.postgres import PostgresRuntime
 
-__all__ = ["ControlWorker", "build_worker", "main"]
+__all__ = ["ControlWorker", "build_worker", "load_routine_revisions", "main"]
 
 _ROOT = Path(__file__).parents[4]
 _MIN_INTERVAL_SECONDS = 0.1

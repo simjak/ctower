@@ -13,6 +13,7 @@ from uuid import UUID
 from ctower_kernel.runtime import (
     CatchUpPolicy,
     ConcurrencyPolicy,
+    DreamDispatchSpec,
     Routine,
     RoutineRevision,
     ScheduleKind,
@@ -25,8 +26,12 @@ _PACK_PATHS = (
     "routines/ctower.i1.synthetic-four-stage/v1.yaml",
     "routines/ctower.i1.daily-backup/v1.yaml",
     "routines/ctower.i1.record-anchor/v1.yaml",
+    "routines/ctower.dream.manibo/v1.yaml",
+    "routines/ctower.dream.ctower/v1.yaml",
+    "routines/ctower.dream.bh-loop/v1.yaml",
+    "routines/ctower.dream.fleet/v1.yaml",
 )
-_TOP_LEVEL_KEYS = frozenset(
+_TOP_LEVEL_KEYS_V1 = frozenset(
     {
         "schema_id",
         "routine_ref",
@@ -41,7 +46,11 @@ _TOP_LEVEL_KEYS = frozenset(
         "component_digests",
     }
 )
+_TOP_LEVEL_KEYS_V2 = _TOP_LEVEL_KEYS_V1 | {"dream_dispatch"}
 _SCHEDULE_KEYS = frozenset({"kind", "timezone", "local_time"})
+_DREAM_KEYS = frozenset({"scope_kind", "project_key", "skill_path", "model_requirement"})
+_MODEL_KEYS = frozenset({"primary", "fallback", "minimum_tier", "excluded_families"})
+_MODEL_SELECTION_KEYS = frozenset({"model_ref", "reasoning_effort"})
 
 
 @dataclass(frozen=True, slots=True)
@@ -61,7 +70,7 @@ class RoutineLoop:
 
 
 def load_routine_revisions(pack_root: Path) -> tuple[RoutineRevision, ...]:
-    """Load only the three authored packs and reject every untyped field."""
+    """Load only the seven authored packs and reject every untyped field."""
 
     revisions = tuple(_load_revision(pack_root / relative) for relative in _PACK_PATHS)
     references = {revision.routine_ref for revision in revisions}
@@ -69,6 +78,10 @@ def load_routine_revisions(pack_root: Path) -> tuple[RoutineRevision, ...]:
         "ctower.i1.synthetic-four-stage@1",
         "ctower.i1.daily-backup@1",
         "ctower.i1.record-anchor@1",
+        "ctower.dream.manibo@1",
+        "ctower.dream.ctower@1",
+        "ctower.dream.bh-loop@1",
+        "ctower.dream.fleet@1",
     }
     if references != expected:
         raise ValueError("Routine packs do not declare the exact I1 revision set")
@@ -78,12 +91,17 @@ def load_routine_revisions(pack_root: Path) -> tuple[RoutineRevision, ...]:
 def _load_revision(path: Path) -> RoutineRevision:
     raw: object = json.loads(path.read_text(encoding="utf-8"))
     pack = _mapping(raw, "Routine pack")
-    if frozenset(pack) != _TOP_LEVEL_KEYS:
+    schema_id = pack.get("schema_id")
+    expected_keys = _TOP_LEVEL_KEYS_V2 if schema_id == "ctower.routine/v2" else _TOP_LEVEL_KEYS_V1
+    if frozenset(pack) != expected_keys:
         raise ValueError(f"Routine pack has unknown or missing fields: {path}")
     schedule = _mapping(pack["schedule"], "Routine schedule")
     if frozenset(schedule) != _SCHEDULE_KEYS:
         raise ValueError(f"Routine schedule has unknown or missing fields: {path}")
-    if pack["schema_id"] != "ctower.routine/v1" or pack["dst_policy"] != "wall_clock_once":
+    if (
+        schema_id not in {"ctower.routine/v1", "ctower.routine/v2"}
+        or pack["dst_policy"] != "wall_clock_once"
+    ):
         raise ValueError(f"Routine pack declares an unsupported contract or DST policy: {path}")
     declared_digest = _string(pack["revision_digest"], "revision_digest")
     authored = {key: value for key, value in pack.items() if key != "revision_digest"}
@@ -91,6 +109,9 @@ def _load_revision(path: Path) -> RoutineRevision:
     if declared_digest != computed_digest:
         raise ValueError(f"Routine revision digest does not match authored content: {path}")
     local_time = _local_time(schedule["local_time"])
+    dream_dispatch = _dream_dispatch(pack.get("dream_dispatch"))
+    if (schema_id == "ctower.routine/v2") != (dream_dispatch is not None):
+        raise ValueError(f"Routine contract version and effect facts do not match: {path}")
     return RoutineRevision(
         routine_ref=_string(pack["routine_ref"], "routine_ref"),
         revision_digest=declared_digest,
@@ -103,6 +124,44 @@ def _load_revision(path: Path) -> RoutineRevision:
         handler_kind=_string(pack["handler_kind"], "handler_kind"),
         timeout_seconds=_integer(pack["timeout_seconds"], "timeout_seconds"),
         component_digests=_strings(pack["component_digests"], "component_digests"),
+        dream_dispatch=dream_dispatch,
+    )
+
+
+def _dream_dispatch(value: object) -> DreamDispatchSpec | None:
+    if value is None:
+        return None
+    effect = _mapping(value, "dream_dispatch")
+    if frozenset(effect) != _DREAM_KEYS:
+        raise ValueError("dream_dispatch has unknown or missing fields")
+    requirement = _mapping(effect["model_requirement"], "model_requirement")
+    if frozenset(requirement) != _MODEL_KEYS:
+        raise ValueError("model_requirement has unknown or missing fields")
+    primary = _selection(requirement["primary"], "primary")
+    fallback = _selection(requirement["fallback"], "fallback")
+    project_key = effect["project_key"]
+    if project_key is not None:
+        project_key = _string(project_key, "project_key")
+    return DreamDispatchSpec(
+        scope_kind=_string(effect["scope_kind"], "scope_kind"),
+        project_key=project_key,
+        skill_path=_string(effect["skill_path"], "skill_path"),
+        primary_model_ref=primary[0],
+        primary_reasoning_effort=primary[1],
+        fallback_model_ref=fallback[0],
+        fallback_reasoning_effort=fallback[1],
+        minimum_model_tier=_string(requirement["minimum_tier"], "minimum_tier"),
+        excluded_model_families=_strings(requirement["excluded_families"], "excluded_families"),
+    )
+
+
+def _selection(value: object, field: str) -> tuple[str, str]:
+    selection = _mapping(value, field)
+    if frozenset(selection) != _MODEL_SELECTION_KEYS:
+        raise ValueError(f"{field} has unknown or missing fields")
+    return (
+        _string(selection["model_ref"], f"{field}.model_ref"),
+        _string(selection["reasoning_effort"], f"{field}.reasoning_effort"),
     )
 
 

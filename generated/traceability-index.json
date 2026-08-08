@@ -177,6 +177,7 @@
       "packages/ctower-kernel/migrations/0035_board_source_lookup.sql",
       "packages/ctower-kernel/migrations/0036_migration_ledger_role.sql",
       "packages/ctower-kernel/migrations/0050_knowledge_documents.sql",
+      "packages/ctower-kernel/migrations/0053_dream_dispatch_effect.sql",
       "packages/ctower-kernel/migrations/manifest.json"
     ],
     "AC-EVD-01": [
@@ -297,20 +298,29 @@
       "packages/ctower-kernel/migrations/0023_cp3c_privileges.sql"
     ],
     "AC-OPS-13": [
+      "contracts/runtime/dream-dispatch-effect.schema.json",
       "contracts/runtime/operation-job.schema.json",
       "contracts/runtime/routine-occurrence.schema.json",
+      "contracts/runtime/routine-v2.schema.json",
       "contracts/runtime/routine-vectors.json",
       "contracts/runtime/routine.schema.json",
       "packages/ctower-kernel/migrations/0019_outbox_routine_health.sql",
       "packages/ctower-kernel/migrations/0026_fixed_operation_attempt_receipts.sql",
+      "packages/ctower-kernel/migrations/0053_dream_dispatch_effect.sql",
+      "packs/routines/ctower.dream.bh-loop/v1.yaml",
+      "packs/routines/ctower.dream.ctower/v1.yaml",
+      "packs/routines/ctower.dream.fleet/v1.yaml",
+      "packs/routines/ctower.dream.manibo/v1.yaml",
       "packs/routines/ctower.i1.daily-backup/v1.yaml",
       "packs/routines/ctower.i1.record-anchor/v1.yaml",
       "packs/routines/ctower.i1.synthetic-four-stage/v1.yaml"
     ],
     "AC-OPS-14": [
+      "contracts/runtime/dream-dispatch-effect.schema.json",
       "contracts/runtime/operation-job.schema.json",
       "contracts/runtime/routine-vectors.json",
-      "packages/ctower-kernel/migrations/0026_fixed_operation_attempt_receipts.sql"
+      "packages/ctower-kernel/migrations/0026_fixed_operation_attempt_receipts.sql",
+      "packages/ctower-kernel/migrations/0053_dream_dispatch_effect.sql"
     ],
     "AC-OPS-15": [
       "contracts/operations/health.schema.json"
@@ -732,7 +742,8 @@
       "contracts/operations/health.schema.json",
       "packages/ctower-kernel/migrations/0017_durability_probe_schema_boundary.sql",
       "packages/ctower-kernel/migrations/0018_durability_probe_search_path.sql",
-      "packages/ctower-kernel/migrations/0019_outbox_routine_health.sql"
+      "packages/ctower-kernel/migrations/0019_outbox_routine_health.sql",
+      "packages/ctower-kernel/migrations/0053_dream_dispatch_effect.sql"
     ],
     "INV-31": [
       "contracts/domain/migration/ctower-project-export-equality.schema.json",
@@ -1003,6 +1014,15 @@
       "contracts/http/openapi.yaml",
       "packages/ctower-kernel/migrations/0041_recorded_work_sessions.sql"
     ],
+    "INV-76": [
+      "contracts/runtime/dream-dispatch-effect.schema.json",
+      "contracts/runtime/routine-v2.schema.json",
+      "packages/ctower-kernel/migrations/0053_dream_dispatch_effect.sql",
+      "packs/routines/ctower.dream.bh-loop/v1.yaml",
+      "packs/routines/ctower.dream.ctower/v1.yaml",
+      "packs/routines/ctower.dream.fleet/v1.yaml",
+      "packs/routines/ctower.dream.manibo/v1.yaml"
+    ],
     "INV-79": [
       "contracts/domain/events/canonical-vectors.json",
       "contracts/domain/events/event-envelope.schema.json",
@@ -1090,11 +1110,18 @@
       "contracts/evidence/evidence-manifest.schema.json"
     ],
     "SPEC#event-driven-default-and-routine-revisions": [
+      "contracts/runtime/dream-dispatch-effect.schema.json",
       "contracts/runtime/operation-job.schema.json",
       "contracts/runtime/routine-occurrence.schema.json",
+      "contracts/runtime/routine-v2.schema.json",
       "contracts/runtime/routine-vectors.json",
       "contracts/runtime/routine.schema.json",
       "packages/ctower-kernel/migrations/0026_fixed_operation_attempt_receipts.sql",
+      "packages/ctower-kernel/migrations/0053_dream_dispatch_effect.sql",
+      "packs/routines/ctower.dream.bh-loop/v1.yaml",
+      "packs/routines/ctower.dream.ctower/v1.yaml",
+      "packs/routines/ctower.dream.fleet/v1.yaml",
+      "packs/routines/ctower.dream.manibo/v1.yaml",
       "packs/routines/ctower.i1.daily-backup/v1.yaml",
       "packs/routines/ctower.i1.record-anchor/v1.yaml",
       "packs/routines/ctower.i1.synthetic-four-stage/v1.yaml"
@@ -1203,7 +1230,8 @@
       "packages/ctower-kernel/migrations/0048_native_inbox.sql",
       "packages/ctower-kernel/migrations/0049_review_dispatch_effect.sql",
       "packages/ctower-kernel/migrations/0051_inbox_delivery_read_facts.sql",
-      "packages/ctower-kernel/migrations/0052_knowledge_inbox_event_kinds.sql"
+      "packages/ctower-kernel/migrations/0052_knowledge_inbox_event_kinds.sql",
+      "packages/ctower-kernel/migrations/0053_dream_dispatch_effect.sql"
     ],
     "SPEC#portfolio-shadow-onboarding": [
       "packages/ctower-kernel/migrations/0047_board_source_index.sql"

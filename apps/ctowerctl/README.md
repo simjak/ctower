@@ -27,6 +27,10 @@ persisted run. Complete explicit pins and refs remain supported and server valid
 through the same encrypted-spool path as other protected Work mutations. Neither command accepts model-family
 labels or launches a reviewer.
 
+`dream-dispatch list` reads the four project/fleet nightly effects and their output custody.
+`dream-dispatch consume <effect> --output-digest <sha256>` is spool-protected and accepts no lane, crew,
+harness, model, family, effort, or tier labels; those facts come from the authenticated substrate binding.
+
 The same installed-policy rule closes the Proof input loop. Criteria freeze accepts either an explicit
 candidate digest or literal candidate content, hashing the latter as exact UTF-8 bytes, and defaults omitted
 criteria to the sole installed gate policy. Evidence add accepts literal content or a bounded content file,
