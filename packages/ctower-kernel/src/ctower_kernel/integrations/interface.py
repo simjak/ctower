@@ -23,6 +23,7 @@ __all__ = [
     "GitLabReporter",
     "GitLabSyncBatch",
     "GitLabSyncBinding",
+    "GitLabSyncClaim",
     "GitLabSyncError",
 ]
 
@@ -228,6 +229,22 @@ class GitLabCursor:
 
 
 @dataclass(frozen=True, slots=True)
+class GitLabSyncClaim:
+    """One durable owner/fence lease over a cursor snapshot."""
+
+    cursor: GitLabCursor
+    owner_id: UUID
+    fence: int
+    expires_at: datetime
+
+    def __post_init__(self) -> None:
+        if not isinstance(self.owner_id, UUID) or self.fence < 1:
+            raise ValueError("GitLab claim owner and fence are invalid")
+        if self.expires_at.tzinfo is None or self.expires_at.utcoffset() is None:
+            raise ValueError("GitLab claim expiry must be timezone-aware")
+
+
+@dataclass(frozen=True, slots=True)
 class GitLabIssuePage:
     issues: tuple[GitLabIssue, ...]
     next_page: int | None
@@ -312,8 +329,13 @@ class GitLabIntegrationStore(Protocol):
     """Durable links, observations, delivery receipts, and bounded cursor coordination."""
 
     def claim(
-        self, actor: Actor, binding: GitLabSyncBinding, *, now: datetime
-    ) -> GitLabCursor | None: ...
+        self,
+        actor: Actor,
+        binding: GitLabSyncBinding,
+        *,
+        owner_id: UUID,
+        now: datetime,
+    ) -> GitLabSyncClaim | None: ...
 
     def issue_link(
         self, actor: Actor, binding: GitLabSyncBinding, issue_iid: int
@@ -363,9 +385,17 @@ class GitLabIntegrationStore(Protocol):
         self,
         actor: Actor,
         binding: GitLabSyncBinding,
+        claim: GitLabSyncClaim,
         cursor: GitLabCursor,
         *,
         now: datetime,
     ) -> None: ...
 
-    def fail(self, actor: Actor, binding: GitLabSyncBinding, *, now: datetime) -> None: ...
+    def fail(
+        self,
+        actor: Actor,
+        binding: GitLabSyncBinding,
+        claim: GitLabSyncClaim,
+        *,
+        now: datetime,
+    ) -> None: ...

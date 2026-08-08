@@ -12,6 +12,7 @@ from ctower_kernel.integrations.interface import (
     GitLabIssue,
     GitLabIssueLink,
     GitLabSyncBinding,
+    GitLabSyncClaim,
 )
 from ctower_kernel.record import Actor
 
@@ -25,9 +26,28 @@ class PostgresGitLabIntegrationStore:
         self._dsn = dsn
 
     def claim(
-        self, actor: Actor, binding: GitLabSyncBinding, *, now: datetime
-    ) -> GitLabCursor | None:
-        return _postgres_sql.claim(self._dsn, actor, binding, now=now)
+        self,
+        actor: Actor,
+        binding: GitLabSyncBinding,
+        *,
+        owner_id: UUID,
+        now: datetime,
+    ) -> GitLabSyncClaim | None:
+        return _postgres_sql.claim(self._dsn, actor, binding, owner_id=owner_id, now=now)
+
+    def active_revision_id(
+        self,
+        actor: Actor,
+        *,
+        integration_key: str,
+        revision_digest: str,
+    ) -> UUID | None:
+        return _postgres_sql.active_revision_id(
+            self._dsn,
+            actor,
+            integration_key=integration_key,
+            revision_digest=revision_digest,
+        )
 
     def issue_link(
         self, actor: Actor, binding: GitLabSyncBinding, issue_iid: int
@@ -99,11 +119,19 @@ class PostgresGitLabIntegrationStore:
         self,
         actor: Actor,
         binding: GitLabSyncBinding,
+        claim: GitLabSyncClaim,
         cursor: GitLabCursor,
         *,
         now: datetime,
     ) -> None:
-        _postgres_sql.complete(self._dsn, actor, binding, cursor, now=now)
+        _postgres_sql.complete(self._dsn, actor, binding, claim, cursor, now=now)
 
-    def fail(self, actor: Actor, binding: GitLabSyncBinding, *, now: datetime) -> None:
-        _postgres_sql.fail(self._dsn, actor, binding, now=now)
+    def fail(
+        self,
+        actor: Actor,
+        binding: GitLabSyncBinding,
+        claim: GitLabSyncClaim,
+        *,
+        now: datetime,
+    ) -> None:
+        _postgres_sql.fail(self._dsn, actor, binding, claim, now=now)

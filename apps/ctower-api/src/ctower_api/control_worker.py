@@ -13,6 +13,7 @@ from uuid import UUID
 from ctower_api._outbox_loop import OutboxLoop
 from ctower_api._project_delivery_loop import ProjectDeliveryLoop
 from ctower_api._routine_loop import RoutineLoop, load_routine_revisions
+from ctower_api.gitlab_loop import build_active_gitlab_sync_loops
 from ctower_api.synthetic_handler import (
     SyntheticFourStageHandler,
     SyntheticPolicyPins,
@@ -21,7 +22,12 @@ from ctower_api.synthetic_handler import (
 from ctower_client import CtowerClient, CtowerProblemError
 from ctower_kernel.projections import Projections
 from ctower_kernel.projections.postgres import PostgresProjections
-from ctower_kernel.record import DurabilityFinalizationBatch, DurabilityFinalizer
+from ctower_kernel.record import (
+    Actor,
+    DurabilityFinalizationBatch,
+    DurabilityFinalizer,
+    PrincipalKind,
+)
 from ctower_kernel.runtime import (
     FixedOperationAttempt,
     FixedOperationCompletion,
@@ -132,6 +138,7 @@ def main() -> None:
     if author_credential == reviewer_credential:
         raise RuntimeError("synthetic author and reviewer credentials must be distinct")
     author_id = _required_uuid("CTOWER_SYNTHETIC_AUTHOR_ID")
+    tenant_id = _required_uuid("CTOWER_TENANT_ID")
     pins = SyntheticPolicyPins(
         workflow_digest=_required_digest("CTOWER_SYNTHETIC_WORKFLOW_DIGEST"),
         execution_policy_digest=_required_digest("CTOWER_SYNTHETIC_EXECUTION_POLICY_DIGEST"),
@@ -148,12 +155,19 @@ def main() -> None:
         CtowerClient(api_base_url, credential=author_credential) as author,
         CtowerClient(api_base_url, credential=reviewer_credential) as reviewer,
     ):
+        standing_integrations = build_active_gitlab_sync_loops(
+            author.export_company_bundle(),
+            actor=Actor(author_id, tenant_id, PrincipalKind.COMMANDER),
+            runtime_dsn=runtime_dsn,
+            resolve_secret=_required_environment,
+        )
         worker = build_worker(
             runtime,
             projections,
             pack_root=pack_root,
             fixed_operations=fixed_operations,
             synthetic_handler=SyntheticFourStageHandler(author, reviewer, author_id, pins),
+            standing_integrations=standing_integrations,
         )
         stop = Event()
         signal.signal(signal.SIGTERM, lambda _signum, _frame: stop.set())

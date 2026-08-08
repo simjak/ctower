@@ -7,7 +7,7 @@ import json
 from collections.abc import Callable
 from datetime import UTC, datetime, timedelta
 from typing import Protocol
-from uuid import NAMESPACE_URL, UUID, uuid5
+from uuid import NAMESPACE_URL, UUID, uuid4, uuid5
 
 from ctower_kernel.board_context.labels import ApplyLabelCommand
 from ctower_kernel.integrations.interface import (
@@ -95,6 +95,7 @@ class GitLabIssueSync:
         board_context: _BoardContext,
         *,
         clock: Callable[[], datetime] | None = None,
+        claim_owner: UUID | None = None,
     ) -> None:
         self._adapter = adapter
         self._store = store
@@ -103,12 +104,14 @@ class GitLabIssueSync:
         self._event_audit = event_audit
         self._board_context = board_context
         self._clock = clock or (lambda: datetime.now(UTC))
+        self._claim_owner = claim_owner or uuid4()
 
     def tick(self, actor: Actor, binding: GitLabSyncBinding) -> GitLabSyncBatch:
         now = self._clock()
-        cursor = self._store.claim(actor, binding, now=now)
-        if cursor is None:
+        claim = self._store.claim(actor, binding, owner_id=self._claim_owner, now=now)
+        if claim is None:
             return GitLabSyncBatch(claimed=False)
+        cursor = claim.cursor
         try:
             page = self._adapter.list_issues(binding, cursor)
             created = 0
@@ -124,7 +127,7 @@ class GitLabIssueSync:
                 page=page.next_page or 1,
                 project_event_cursor=event_cursor,
             )
-            self._store.complete(actor, binding, completed, now=now)
+            self._store.complete(actor, binding, claim, completed, now=self._clock())
             return GitLabSyncBatch(
                 claimed=True,
                 issues_seen=len(page.issues),
@@ -133,7 +136,7 @@ class GitLabIssueSync:
                 closures_delivered=closures,
             )
         except Exception:
-            self._store.fail(actor, binding, now=now)
+            self._store.fail(actor, binding, claim, now=self._clock())
             raise
 
     def _sync_issue(

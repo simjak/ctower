@@ -17,6 +17,7 @@ from ctower_kernel.integrations import (
     GitLabIssueSync,
     GitLabReporter,
     GitLabSyncBinding,
+    GitLabSyncClaim,
     GitLabSyncError,
 )
 from ctower_kernel.record import Actor, AuditEvent, PrincipalKind, RecordProblem
@@ -111,14 +112,29 @@ class _Store:
         self.link: GitLabIssueLink | None = None
         self.deliveries: set[UUID] = set()
         self.failures = 0
+        self.fence = 0
+        self.active_claim: GitLabSyncClaim | None = None
 
     def claim(
-        self, _actor: Actor, binding: GitLabSyncBinding, *, now: datetime
-    ) -> GitLabCursor | None:
-        if now < self.next_due:
+        self,
+        _actor: Actor,
+        binding: GitLabSyncBinding,
+        *,
+        owner_id: UUID,
+        now: datetime,
+    ) -> GitLabSyncClaim | None:
+        if now < self.next_due or (
+            self.active_claim is not None and self.active_claim.expires_at > now
+        ):
             return None
-        self.next_due = now + binding.poll_interval
-        return self.cursor
+        self.fence += 1
+        self.active_claim = GitLabSyncClaim(
+            self.cursor,
+            owner_id,
+            self.fence,
+            now + (binding.poll_interval * 2),
+        )
+        return self.active_claim
 
     def issue_link(
         self, _actor: Actor, _binding: GitLabSyncBinding, issue_iid: int
@@ -190,16 +206,28 @@ class _Store:
     def complete(
         self,
         _actor: Actor,
-        _binding: GitLabSyncBinding,
+        binding: GitLabSyncBinding,
+        claim: GitLabSyncClaim,
         cursor: GitLabCursor,
         *,
         now: datetime,
     ) -> None:
-        del now
+        assert self.active_claim == claim
         self.cursor = cursor
+        self.next_due = now + binding.poll_interval
+        self.active_claim = None
 
-    def fail(self, _actor: Actor, _binding: GitLabSyncBinding, *, now: datetime) -> None:
+    def fail(
+        self,
+        _actor: Actor,
+        _binding: GitLabSyncBinding,
+        claim: GitLabSyncClaim,
+        *,
+        now: datetime,
+    ) -> None:
         del now
+        assert self.active_claim == claim
+        self.active_claim = None
         self.failures += 1
 
 

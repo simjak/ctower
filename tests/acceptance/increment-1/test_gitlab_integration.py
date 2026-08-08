@@ -11,6 +11,7 @@ from uuid import UUID, uuid4
 
 import httpx
 import psycopg
+import pytest
 import rfc8785
 from psycopg.rows import dict_row
 from support.acceptance import accept_pending_commands
@@ -30,7 +31,7 @@ from ctower_kernel.board_context import BoardContextFacts
 from ctower_kernel.board_context.postgres import PostgresBoardContextFacts
 from ctower_kernel.catalog import CatalogProblem, CompanyBundle, CompanyBundleApply, PostgresCatalog
 from ctower_kernel.catalog.interface import JsonValue
-from ctower_kernel.integrations import GitLabIssueSync
+from ctower_kernel.integrations import GitLabIssueSync, GitLabSyncError
 from ctower_kernel.integrations.postgres import PostgresGitLabIntegrationStore
 from ctower_kernel.proof import (
     Criterion,
@@ -156,6 +157,76 @@ def test_gitlab_issue_roundtrip_preserves_one_custody_chain_and_proof_gated_clos
     assert reflected_close.ticket_updates == 0 and reflected_close.closures_delivered == 0
     assert provider.note_posts == 1 and provider.close_puts == 1
     _assert_single_custody_and_delivery(tenant, ticket_id, close_event_id)
+
+
+def test_gitlab_claim_lease_blocks_then_expires_and_fences_the_stale_worker(
+    tenant: TenantFixture,
+) -> None:
+    revision_id, revision_digest = _activate_catalog_configuration(tenant)
+    binding = GitLabRuntimeRevision.from_catalog(
+        _integration_payload(tenant.commander_id),
+        revision_id=revision_id,
+        revision_digest=revision_digest,
+    ).binding
+    actor = Actor(tenant.commander_id, tenant.tenant_id, PrincipalKind.COMMANDER)
+    first_store = PostgresGitLabIntegrationStore(tenant.database.runtime_dsn)
+    second_store = PostgresGitLabIntegrationStore(tenant.database.runtime_dsn)
+    started_at = datetime(2026, 8, 8, 8, 2, tzinfo=UTC)
+
+    first_claim = first_store.claim(actor, binding, owner_id=uuid4(), now=started_at)
+    concurrent = second_store.claim(
+        actor,
+        binding,
+        owner_id=uuid4(),
+        now=started_at + binding.poll_interval,
+    )
+
+    assert first_claim is not None
+    assert concurrent is None
+    replacement = second_store.claim(
+        actor,
+        binding,
+        owner_id=uuid4(),
+        now=first_claim.expires_at,
+    )
+    assert replacement is not None
+    assert replacement.fence > first_claim.fence
+    with pytest.raises(GitLabSyncError, match="stale or unavailable"):
+        first_store.complete(
+            actor,
+            binding,
+            first_claim,
+            first_claim.cursor,
+            now=first_claim.expires_at,
+        )
+    with pytest.raises(GitLabSyncError, match="stale, expired, or unavailable"):
+        first_store.fail(actor, binding, first_claim, now=first_claim.expires_at)
+
+
+def test_gitlab_failures_persist_an_increasing_retry_delay(tenant: TenantFixture) -> None:
+    revision_id, revision_digest = _activate_catalog_configuration(tenant)
+    binding = GitLabRuntimeRevision.from_catalog(
+        _integration_payload(tenant.commander_id),
+        revision_id=revision_id,
+        revision_digest=revision_digest,
+    ).binding
+    actor = Actor(tenant.commander_id, tenant.tenant_id, PrincipalKind.COMMANDER)
+    store = PostgresGitLabIntegrationStore(tenant.database.runtime_dsn)
+    started_at = datetime(2026, 8, 8, 8, 2, tzinfo=UTC)
+
+    first_claim = store.claim(actor, binding, owner_id=uuid4(), now=started_at)
+    assert first_claim is not None
+    store.fail(actor, binding, first_claim, now=started_at)
+    first_due, first_failures = _retry_state(tenant)
+    first_delay = first_due - started_at
+    second_claim = store.claim(actor, binding, owner_id=uuid4(), now=first_due)
+    assert second_claim is not None
+    store.fail(actor, binding, second_claim, now=first_due)
+    second_due, second_failures = _retry_state(tenant)
+    second_delay = second_due - first_due
+
+    assert (first_failures, second_failures) == (1, 2)
+    assert second_delay > first_delay
 
 
 class _ProviderFixture:
@@ -555,6 +626,20 @@ def _assert_single_custody_and_delivery(
             ),
         ).fetchone()
     assert counts == {"tickets": 1, "links": 1, "deliveries": 1}
+
+
+def _retry_state(tenant: TenantFixture) -> tuple[datetime, int]:
+    with psycopg.connect(tenant.database.admin_dsn, row_factory=dict_row) as connection:
+        row = connection.execute(
+            """
+            SELECT next_poll_at, consecutive_failures
+            FROM integration_gitlab_sync_progress
+            WHERE tenant_id = %s AND integration_key = %s
+            """,
+            (tenant.tenant_id, _INTEGRATION_KEY),
+        ).fetchone()
+    assert row is not None
+    return cast(datetime, row["next_poll_at"]), int(cast(int, row["consecutive_failures"]))
 
 
 def _telemetry() -> TelemetryContext:

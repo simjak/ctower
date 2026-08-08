@@ -2,7 +2,7 @@
   "schema": "ctower.migrations/v3",
   "adoption_baseline": {
     "through": "0054_gitlab_issue_integration.sql",
-    "schema_sha256": "sha256:6683e2f9e91f4a5d8946a917ee4b6ab85ef22297fb541f03974e450daa15d515",
+    "schema_sha256": "sha256:32cd05a4c8fb76bd51db1d4413b1812d1ef4a22a8dd7886b9ec3e54f1c0e0801",
     "semantic_checks": "ctower.pre-ledger/v1",
     "schema_object_sum256": "sum256:9a41210cef53dd096cb37bf53c080d6f30e0acab954299805769855e5b447a1d"
   },
@@ -506,7 +506,7 @@
     },
     {
       "path": "0054_gitlab_issue_integration.sql",
-      "sha256": "sha256:8eccdcf83a69f8992897857ed676b4570493b5fceba321f05d7aa43d4090c1cd",
+      "sha256": "sha256:4f07bd2f807ce574aa2cee602a3b1c42b7fa06cd54c885ddbc16555bd610ad4d",
       "minimum_service_version": "0.0.0",
       "maximum_service_version": "0.0.0",
       "forward_test": "pytest:tests/acceptance/increment-1/test_gitlab_integration.py::test_gitlab_issue_roundtrip_preserves_one_custody_chain_and_proof_gated_close",

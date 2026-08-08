@@ -3,14 +3,16 @@
 from __future__ import annotations
 
 import json
+from collections.abc import Callable
 from dataclasses import dataclass
 from datetime import datetime, timedelta
-from typing import Literal
+from typing import Literal, cast
 from uuid import UUID
 
 from pydantic import BaseModel, ConfigDict, Field
 
 from ctower_api.gitlab_adapter import GitLabHttpAdapter
+from ctower_client import CompanyBundleExportResult, ComponentKind
 from ctower_kernel.board_context import BoardContextFacts
 from ctower_kernel.board_context.postgres import PostgresBoardContextFacts
 from ctower_kernel.catalog.interface import JsonValue
@@ -20,7 +22,12 @@ from ctower_kernel.record import Actor
 from ctower_kernel.record.postgres import PostgresRecord
 from ctower_kernel.work import Intake
 
-__all__ = ["GitLabRuntimeRevision", "GitLabSyncLoop", "build_gitlab_sync_loop"]
+__all__ = [
+    "GitLabRuntimeRevision",
+    "GitLabSyncLoop",
+    "build_active_gitlab_sync_loops",
+    "build_gitlab_sync_loop",
+]
 
 
 class _GitLabSection(BaseModel):
@@ -110,6 +117,61 @@ class GitLabSyncLoop:
 
     def tick(self) -> GitLabSyncBatch:
         return self.sync.tick(self.actor, self.binding)
+
+
+def build_active_gitlab_sync_loops(
+    catalog_export: CompanyBundleExportResult,
+    *,
+    actor: Actor,
+    runtime_dsn: str,
+    resolve_secret: Callable[[str], str],
+) -> tuple[GitLabSyncLoop, ...]:
+    """Compose the one active v2 GitLab revision with its deployment secret."""
+
+    runtime_bindings = {
+        item.name
+        for item in catalog_export.bundle.secret_binding_refs
+        if item.reference_class == "runtime-binding"
+    }
+    store = PostgresGitLabIntegrationStore(runtime_dsn)
+    loops: list[GitLabSyncLoop] = []
+    for resource in catalog_export.bundle.resources:
+        component = resource.component
+        payload = resource.payload
+        if (
+            component.kind is not ComponentKind.INTEGRATION
+            or component.schema_ref != "ctower.integration/v2"
+            or payload.get("adapter") != "gitlab-issues"
+        ):
+            continue
+        integration_key = payload.get("key")
+        if integration_key != component.key:
+            raise RuntimeError("active GitLab payload key does not match its Catalog component")
+        revision_id = store.active_revision_id(
+            actor,
+            integration_key=component.key,
+            revision_digest=component.content_digest,
+        )
+        if revision_id is None:
+            raise RuntimeError("active GitLab Catalog revision identity is unavailable")
+        revision = GitLabRuntimeRevision.from_catalog(
+            cast(dict[str, JsonValue], payload),
+            revision_id=revision_id,
+            revision_digest=component.content_digest,
+        )
+        if revision.token_binding not in runtime_bindings:
+            raise RuntimeError("active GitLab token binding is not declared for deployment")
+        loops.append(
+            build_gitlab_sync_loop(
+                revision,
+                resolved_token=resolve_secret(revision.token_binding),
+                actor=actor,
+                runtime_dsn=runtime_dsn,
+            )
+        )
+    if len(loops) != 1:
+        raise RuntimeError("deployment requires exactly one active GitLab v2 integration")
+    return tuple(loops)
 
 
 def build_gitlab_sync_loop(

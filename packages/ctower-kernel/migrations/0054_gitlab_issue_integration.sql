@@ -16,13 +16,18 @@ CREATE TABLE integration_gitlab_sync_progress (
     consecutive_failures integer NOT NULL DEFAULT 0 CHECK (
         consecutive_failures BETWEEN 0 AND 8
     ),
+    claim_owner uuid,
+    claim_fence bigint NOT NULL DEFAULT 0 CHECK (claim_fence >= 0),
+    claim_expires_at timestamptz,
     claimed_at timestamptz,
     completed_at timestamptz,
     PRIMARY KEY (tenant_id, integration_key, component_revision_id),
     FOREIGN KEY (component_revision_id, tenant_id)
         REFERENCES catalog_component_revisions(component_revision_id, tenant_id),
     UNIQUE (tenant_id, integration_key, revision_digest),
-    CHECK (completed_at IS NULL OR claimed_at IS NULL OR completed_at >= claimed_at)
+    CHECK (completed_at IS NULL OR claimed_at IS NULL OR completed_at >= claimed_at),
+    CHECK ((claim_owner IS NULL) = (claim_expires_at IS NULL)),
+    CHECK (claim_owner IS NULL OR claim_fence > 0)
 );
 
 CREATE TABLE integration_gitlab_issue_links (
@@ -129,7 +134,8 @@ REVOKE ALL ON integration_gitlab_sync_progress,
 GRANT SELECT, INSERT ON integration_gitlab_sync_progress TO ctower_svc;
 GRANT UPDATE (
     updated_after, page, project_event_cursor, next_poll_at,
-    consecutive_failures, claimed_at, completed_at
+    consecutive_failures, claim_owner, claim_fence, claim_expires_at,
+    claimed_at, completed_at
 ) ON integration_gitlab_sync_progress TO ctower_svc;
 GRANT SELECT, INSERT ON integration_gitlab_issue_links,
     integration_gitlab_issue_observations, integration_gitlab_close_deliveries

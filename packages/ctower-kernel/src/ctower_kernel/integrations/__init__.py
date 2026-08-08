@@ -12,6 +12,7 @@ from ctower_kernel.integrations.interface import (
     GitLabReporter,
     GitLabSyncBatch,
     GitLabSyncBinding,
+    GitLabSyncClaim,
     GitLabSyncError,
 )
 from ctower_kernel.integrations.service import GitLabIssueSync
@@ -29,5 +30,6 @@ __all__ = [
     "GitLabReporter",
     "GitLabSyncBatch",
     "GitLabSyncBinding",
+    "GitLabSyncClaim",
     "GitLabSyncError",
 ]

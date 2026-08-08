@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from datetime import UTC, datetime, timedelta
+from typing import cast
 from uuid import UUID, uuid4
 
 import httpx
@@ -28,6 +29,10 @@ DELIVERY_ID = UUID("22222222-2222-4222-8222-222222222222")
 PROJECT_ID = 42
 ISSUE_IID = 7
 EXPECTED_CLOSE_CALLS = 2
+EXPECTED_RETRY_ATTEMPTS = 4
+SECOND_RETRY_ATTEMPT = 2
+THIRD_RETRY_ATTEMPT = 3
+RETRY_DEADLINE_SECONDS = 10.0
 NEXT_PAGE = 2
 
 
@@ -302,7 +307,7 @@ def test_real_adapter_accepts_link_pagination_and_ignores_unrelated_links() -> N
 
 
 def test_real_adapter_wraps_http_and_non_json_failures() -> None:
-    response = httpx.Response(500, json={"message": "failed"})
+    response = httpx.Response(400, json={"message": "failed"})
     client = httpx.Client(transport=httpx.MockTransport(lambda _request: response))
     adapter = GitLabHttpAdapter("https://gitlab.example.test", token=str(uuid4()), client=client)
     with pytest.raises(GitLabSyncError, match="GET request failed"):
@@ -314,6 +319,134 @@ def test_real_adapter_wraps_http_and_non_json_failures() -> None:
     adapter = GitLabHttpAdapter("https://gitlab.example.test", token=str(uuid4()), client=client)
     with pytest.raises(GitLabSyncError, match="not JSON"):
         adapter.list_issues(_binding(), GitLabCursor(datetime(2026, 8, 8, 8, tzinfo=UTC), 1, 0))
+
+
+class _RetryClock:
+    def __init__(self) -> None:
+        self.now = 0.0
+        self.sleeps: list[float] = []
+
+    def monotonic(self) -> float:
+        return self.now
+
+    def sleep(self, seconds: float) -> None:
+        self.sleeps.append(seconds)
+        self.now += seconds
+
+
+def test_real_adapter_retries_timeout_429_and_5xx_with_bounded_jitter() -> None:
+    attempts = 0
+    clock = _RetryClock()
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        nonlocal attempts
+        attempts += 1
+        if attempts == 1:
+            raise httpx.ReadTimeout("ambiguous read timeout", request=request)
+        if attempts == SECOND_RETRY_ATTEMPT:
+            return httpx.Response(429, request=request)
+        if attempts == THIRD_RETRY_ATTEMPT:
+            return httpx.Response(503, request=request)
+        return httpx.Response(200, request=request, json=_provider_issue())
+
+    adapter = GitLabHttpAdapter(
+        "https://gitlab.example.test",
+        token=str(uuid4()),
+        client=httpx.Client(transport=httpx.MockTransport(handler)),
+        sleep=clock.sleep,
+        monotonic=clock.monotonic,
+        jitter=lambda maximum: maximum / 2,
+    )
+
+    page = adapter.list_issues(_binding(), GitLabCursor(datetime(2026, 8, 8, 8, tzinfo=UTC), 1, 0))
+
+    assert page.issues == (_issue(),)
+    assert attempts == EXPECTED_RETRY_ATTEMPTS
+    assert clock.sleeps == sorted(clock.sleeps)
+    assert len(clock.sleeps) == EXPECTED_RETRY_ATTEMPTS - 1
+    assert all(delay > 0 for delay in clock.sleeps)
+
+
+def test_real_adapter_retry_exhaustion_is_capped() -> None:
+    attempts = 0
+    clock = _RetryClock()
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        nonlocal attempts
+        attempts += 1
+        return httpx.Response(503, request=request)
+
+    adapter = GitLabHttpAdapter(
+        "https://gitlab.example.test",
+        token=str(uuid4()),
+        client=httpx.Client(transport=httpx.MockTransport(handler)),
+        sleep=clock.sleep,
+        monotonic=clock.monotonic,
+        jitter=lambda maximum: maximum,
+    )
+
+    with pytest.raises(GitLabSyncError, match="retry exhausted"):
+        adapter.list_issues(_binding(), GitLabCursor(datetime(2026, 8, 8, 8, tzinfo=UTC), 1, 0))
+
+    assert attempts == EXPECTED_RETRY_ATTEMPTS
+    assert len(clock.sleeps) == EXPECTED_RETRY_ATTEMPTS - 1
+    assert clock.sleeps == sorted(clock.sleeps)
+
+
+def test_real_adapter_retry_deadline_bounds_request_timeouts() -> None:
+    clock = _RetryClock()
+    timeouts: list[float] = []
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        timeout = cast(dict[str, float], request.extensions["timeout"])["read"]
+        timeouts.append(timeout)
+        clock.now += timeout
+        raise httpx.ReadTimeout("request consumed its remaining deadline", request=request)
+
+    adapter = GitLabHttpAdapter(
+        "https://gitlab.example.test",
+        token=str(uuid4()),
+        client=httpx.Client(transport=httpx.MockTransport(handler)),
+        sleep=clock.sleep,
+        monotonic=clock.monotonic,
+        jitter=lambda maximum: maximum,
+    )
+
+    with pytest.raises(GitLabSyncError, match="retry exhausted"):
+        adapter.list_issues(_binding(), GitLabCursor(datetime(2026, 8, 8, 8, tzinfo=UTC), 1, 0))
+
+    assert timeouts == [5.0, 4.75]
+    assert clock.now == RETRY_DEADLINE_SECONDS
+
+
+def test_real_adapter_reconciles_marker_after_ambiguous_note_write() -> None:
+    command = GitLabCloseCommand(DELIVERY_ID, "Proof-gated close")
+    notes: list[str] = []
+    note_posts = 0
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        nonlocal note_posts
+        if request.method == "GET" and request.url.path.endswith("/notes"):
+            return httpx.Response(200, request=request, json=[{"body": body} for body in notes])
+        if request.method == "POST" and request.url.path.endswith("/notes"):
+            note_posts += 1
+            notes.append(f"Proof-gated close\n\n{command.marker}")
+            raise httpx.ReadTimeout("response lost after write", request=request)
+        if request.method == "PUT":
+            return httpx.Response(200, request=request, json={"state": "closed"})
+        raise AssertionError(f"unexpected request {request.method} {request.url}")
+
+    adapter = GitLabHttpAdapter(
+        "https://gitlab.example.test",
+        token=str(uuid4()),
+        client=httpx.Client(transport=httpx.MockTransport(handler)),
+        sleep=lambda _seconds: None,
+    )
+
+    receipt = adapter.comment_and_close(_link(), command)
+
+    assert receipt.comment_created and receipt.issue_closed
+    assert note_posts == 1
 
 
 @pytest.mark.parametrize("notes", [{"not": "an array"}, [{"body": "note"}] * 101])

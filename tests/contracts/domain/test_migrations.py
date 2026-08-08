@@ -69,7 +69,7 @@ _EXPECTED_MIGRATION_PATHS = [
 ]
 _EXPECTED_ADOPTION_BASELINE = {
     "through": "0054_gitlab_issue_integration.sql",
-    "schema_sha256": ("sha256:6683e2f9e91f4a5d8946a917ee4b6ab85ef22297fb541f03974e450daa15d515"),
+    "schema_sha256": ("sha256:32cd05a4c8fb76bd51db1d4413b1812d1ef4a22a8dd7886b9ec3e54f1c0e0801"),
     "semantic_checks": "ctower.pre-ledger/v1",
     "schema_object_sum256": (
         "sum256:9a41210cef53dd096cb37bf53c080d6f30e0acab954299805769855e5b447a1d"

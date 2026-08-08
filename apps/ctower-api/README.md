@@ -37,7 +37,8 @@ Runtime Interface.
 The artifact contains the one real GitLab v4 HTTP Adapter and a standing-loop composition for the narrow
 GitLab Issue co-source. A strict Catalog v2 payload becomes an immutable runtime binding plus an unresolved
 secret-reference name; deployment supplies the resolved token directly to composition, never to Catalog or
-persistence. The existing control worker accepts bound standing loops and ticks them once per worker tick;
+persistence. The control-worker entry point exports the active bundle, resolves its declared runtime binding,
+and injects exactly one pinned GitLab loop, which the worker ticks once per worker tick;
 the integration's durable next-poll cursor suppresses early work and bounds provider/event pages. The HTTP
 Adapter has no record-tier connection, and the kernel sync service has no provider import.
 The separately approved E2 composition exposes `ctower-development-api` and

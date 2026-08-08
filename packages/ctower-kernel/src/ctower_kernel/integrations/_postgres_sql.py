@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import hashlib
 import json
-from datetime import datetime, timedelta
+from datetime import datetime
 from typing import cast
 from uuid import UUID
 
@@ -18,6 +18,7 @@ from ctower_kernel.integrations.interface import (
     GitLabIssueLink,
     GitLabReporter,
     GitLabSyncBinding,
+    GitLabSyncClaim,
     GitLabSyncError,
 )
 from ctower_kernel.record import Actor
@@ -26,9 +27,14 @@ __all__: tuple[str, ...] = ()
 
 
 def claim(
-    dsn: str, actor: Actor, binding: GitLabSyncBinding, *, now: datetime
-) -> GitLabCursor | None:
-    due = now + binding.poll_interval
+    dsn: str,
+    actor: Actor,
+    binding: GitLabSyncBinding,
+    *,
+    owner_id: UUID,
+    now: datetime,
+) -> GitLabSyncClaim | None:
+    expires_at = now + (binding.poll_interval * 2)
     with psycopg.connect(dsn, row_factory=dict_row) as connection:
         connection.execute("SET ROLE ctower_svc")
         connection.execute(
@@ -76,13 +82,15 @@ def claim(
         row = connection.execute(
             """
             UPDATE integration_gitlab_sync_progress AS progress
-            SET next_poll_at = %s, claimed_at = %s, completed_at = NULL
+            SET claim_owner = %s, claim_fence = claim_fence + 1,
+                claim_expires_at = %s, claimed_at = %s, completed_at = NULL
             WHERE progress.tenant_id = %s
               AND progress.integration_key = %s
               AND progress.component_revision_id = %s
               AND progress.revision_digest = %s
               AND progress.gitlab_project_id = %s
               AND progress.next_poll_at <= %s
+              AND (progress.claim_owner IS NULL OR progress.claim_expires_at <= %s)
               AND EXISTS (
                   SELECT 1
                   FROM company_bundle_active AS active
@@ -92,10 +100,12 @@ def claim(
                   WHERE active.tenant_id = progress.tenant_id
                     AND member.component_revision_id = progress.component_revision_id
               )
-            RETURNING updated_after, page, project_event_cursor
+            RETURNING updated_after, page, project_event_cursor,
+                claim_owner, claim_fence, claim_expires_at
             """,
             (
-                due,
+                owner_id,
+                expires_at,
                 now,
                 actor.tenant_id,
                 binding.integration_key,
@@ -103,9 +113,42 @@ def claim(
                 _digest_bytes(binding.revision_digest),
                 binding.project_id,
                 now,
+                now,
             ),
         ).fetchone()
-    return _cursor(row) if row is not None else None
+    return _claim(row) if row is not None else None
+
+
+def active_revision_id(
+    dsn: str,
+    actor: Actor,
+    *,
+    integration_key: str,
+    revision_digest: str,
+) -> UUID | None:
+    with psycopg.connect(dsn, row_factory=dict_row) as connection:
+        connection.execute("SET ROLE ctower_svc")
+        row = connection.execute(
+            """
+            SELECT revision.component_revision_id
+            FROM company_bundle_active AS active
+            JOIN company_bundle_members AS member
+              ON member.tenant_id = active.tenant_id
+             AND member.bundle_revision_id = active.bundle_revision_id
+            JOIN catalog_component_revisions AS revision
+              ON revision.tenant_id = member.tenant_id
+             AND revision.component_revision_id = member.component_revision_id
+            JOIN catalog_components AS component
+              ON component.tenant_id = revision.tenant_id
+             AND component.component_id = revision.component_id
+            WHERE active.tenant_id = %s
+              AND component.kind = 'integration'
+              AND component.component_key = %s
+              AND revision.content_digest = %s
+            """,
+            (actor.tenant_id, integration_key, _digest_bytes(revision_digest)),
+        ).fetchone()
+    return cast(UUID, row["component_revision_id"]) if row is not None else None
 
 
 def issue_link(
@@ -320,6 +363,7 @@ def complete(
     dsn: str,
     actor: Actor,
     binding: GitLabSyncBinding,
+    claim: GitLabSyncClaim,
     cursor: GitLabCursor,
     *,
     now: datetime,
@@ -330,9 +374,12 @@ def complete(
             """
             UPDATE integration_gitlab_sync_progress
             SET updated_after = %s, page = %s, project_event_cursor = %s,
-                consecutive_failures = 0, completed_at = %s
+                next_poll_at = %s, consecutive_failures = 0,
+                claim_owner = NULL, claim_expires_at = NULL, completed_at = %s
             WHERE tenant_id = %s AND integration_key = %s
               AND component_revision_id = %s
+              AND claim_owner = %s AND claim_fence = %s
+              AND claim_expires_at > %s
               AND updated_after <= %s
               AND project_event_cursor <= %s
             """,
@@ -340,10 +387,14 @@ def complete(
                 cursor.updated_after,
                 cursor.page,
                 cursor.project_event_cursor,
+                now + binding.poll_interval,
                 now,
                 actor.tenant_id,
                 binding.integration_key,
                 binding.revision_id,
+                claim.owner_id,
+                claim.fence,
+                now,
                 cursor.updated_after,
                 cursor.project_event_cursor,
             ),
@@ -352,25 +403,46 @@ def complete(
             raise GitLabSyncError("GitLab cursor completion was stale or unavailable")
 
 
-def fail(dsn: str, actor: Actor, binding: GitLabSyncBinding, *, now: datetime) -> None:
-    retry_seconds = min(int(binding.poll_interval.total_seconds()) * 2, 3600)
+def fail(
+    dsn: str,
+    actor: Actor,
+    binding: GitLabSyncBinding,
+    claim: GitLabSyncClaim,
+    *,
+    now: datetime,
+) -> None:
+    poll_seconds = int(binding.poll_interval.total_seconds())
     with psycopg.connect(dsn, row_factory=dict_row) as connection:
         connection.execute("SET ROLE ctower_svc")
-        connection.execute(
+        result = connection.execute(
             """
-            UPDATE integration_gitlab_sync_progress
-            SET next_poll_at = %s,
-                consecutive_failures = LEAST(consecutive_failures + 1, 8)
+            UPDATE integration_gitlab_sync_progress AS progress
+            SET next_poll_at = %s + make_interval(
+                    secs => LEAST(
+                        %s * power(2, LEAST(progress.consecutive_failures + 1, 8)),
+                        3600
+                    )::double precision
+                ),
+                consecutive_failures = LEAST(progress.consecutive_failures + 1, 8),
+                claim_owner = NULL, claim_expires_at = NULL
             WHERE tenant_id = %s AND integration_key = %s
               AND component_revision_id = %s
+              AND claim_owner = %s AND claim_fence = %s
+              AND claim_expires_at > %s
             """,
             (
-                now + timedelta(seconds=retry_seconds),
+                now,
+                poll_seconds,
                 actor.tenant_id,
                 binding.integration_key,
                 binding.revision_id,
+                claim.owner_id,
+                claim.fence,
+                now,
             ),
         )
+        if result.rowcount != 1:
+            raise GitLabSyncError("GitLab cursor failure was stale, expired, or unavailable")
 
 
 def _record_observation(
@@ -416,6 +488,15 @@ def _cursor(row: dict[str, object]) -> GitLabCursor:
         cast(datetime, row["updated_after"]),
         int(cast(int, row["page"])),
         int(cast(int, row["project_event_cursor"])),
+    )
+
+
+def _claim(row: dict[str, object]) -> GitLabSyncClaim:
+    return GitLabSyncClaim(
+        cursor=_cursor(row),
+        owner_id=cast(UUID, row["claim_owner"]),
+        fence=int(cast(int, row["claim_fence"])),
+        expires_at=cast(datetime, row["claim_expires_at"]),
     )
 
 
