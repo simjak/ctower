@@ -1,5 +1,5 @@
 // DO NOT EDIT: generated file; regenerate from declared inputs.
-// Authored contract digest: sha256:7aec1d424376a21845a4ecb5948f5a56e67fe62b8e2e02504d1d5e2185bd8140
+// Authored contract digest: sha256:4c89e45623980facc1ea619596b565d449ba3b9568d8c15437ea3487afde5bc5
 
 import type * as Models from "./models.js";
 import { OPERATIONS, type OperationId } from "./operations.js";
@@ -101,6 +101,12 @@ export type CommitCtowerProjectDevelopmentEpochInput = Readonly<{
   readonly body: Models.CtowerProjectEpochRefusalRequest;
 }>;
 
+export type ConsumeDreamDispatchEffectInput = Readonly<{
+  readonly "effectId": string;
+  readonly "IdempotencyKey": string;
+  readonly body: Models.DreamDispatchConsumeRequest;
+}>;
+
 export type ConsumeReviewDispatchEffectInput = Readonly<{
   readonly "ticketId": string;
   readonly "effectId": string;
@@ -183,6 +189,10 @@ export type GetTicketTimelineInput = Readonly<{
 export type IssueSeatCredentialInput = Readonly<{
   readonly "IdempotencyKey": string;
   readonly body: Models.SeatCredentialIssueRequest;
+}>;
+
+export type ListDreamDispatchEffectsInput = Readonly<{
+
 }>;
 
 export type ListInboxThreadsInput = Readonly<{
@@ -370,6 +380,7 @@ export type OperationInputs = Readonly<{
   readonly "changeTicketAssignment": ChangeTicketAssignmentInput;
   readonly "changeTicketPriority": ChangeTicketPriorityInput;
   readonly "commitCtowerProjectDevelopmentEpoch": CommitCtowerProjectDevelopmentEpochInput;
+  readonly "consumeDreamDispatchEffect": ConsumeDreamDispatchEffectInput;
   readonly "consumeReviewDispatchEffect": ConsumeReviewDispatchEffectInput;
   readonly "createCtowerProjectImportRun": CreateCtowerProjectImportRunInput;
   readonly "createTicket": CreateTicketInput;
@@ -386,6 +397,7 @@ export type OperationInputs = Readonly<{
   readonly "getTicket": GetTicketInput;
   readonly "getTicketTimeline": GetTicketTimelineInput;
   readonly "issueSeatCredential": IssueSeatCredentialInput;
+  readonly "listDreamDispatchEffects": ListDreamDispatchEffectsInput;
   readonly "listInboxThreads": ListInboxThreadsInput;
   readonly "listKnowledgeDocuments": ListKnowledgeDocumentsInput;
   readonly "listProjectEvents": ListProjectEventsInput;
@@ -436,6 +448,7 @@ export type OperationResults = Readonly<{
   readonly "changeTicketAssignment": Models.WorkReceipt;
   readonly "changeTicketPriority": Models.WorkReceipt;
   readonly "commitCtowerProjectDevelopmentEpoch": never;
+  readonly "consumeDreamDispatchEffect": Models.DreamDispatchReceipt;
   readonly "consumeReviewDispatchEffect": Models.WorkReceipt;
   readonly "createCtowerProjectImportRun": Models.CtowerProjectImportRun;
   readonly "createTicket": Models.TicketCommandResult;
@@ -452,6 +465,7 @@ export type OperationResults = Readonly<{
   readonly "getTicket": Models.TicketResource;
   readonly "getTicketTimeline": Models.TimelineResponse;
   readonly "issueSeatCredential": Models.SeatCredentialReceipt;
+  readonly "listDreamDispatchEffects": Models.DreamDispatchEffectList;
   readonly "listInboxThreads": Models.InboxThreadList;
   readonly "listKnowledgeDocuments": Models.KnowledgeDocumentList;
   readonly "listProjectEvents": Models.ProjectEventPage;
@@ -600,6 +614,12 @@ export class CtowerClient {
     return this.execute("commitCtowerProjectDevelopmentEpoch", input);
   }
 
+  public async consumeDreamDispatchEffect(
+    input: ConsumeDreamDispatchEffectInput,
+  ): Promise<Models.DreamDispatchReceipt> {
+    return this.execute("consumeDreamDispatchEffect", input);
+  }
+
   public async consumeReviewDispatchEffect(
     input: ConsumeReviewDispatchEffectInput,
   ): Promise<Models.WorkReceipt> {
@@ -694,6 +714,12 @@ export class CtowerClient {
     input: IssueSeatCredentialInput,
   ): Promise<Models.SeatCredentialReceipt> {
     return this.execute("issueSeatCredential", input);
+  }
+
+  public async listDreamDispatchEffects(
+    input: ListDreamDispatchEffectsInput,
+  ): Promise<Models.DreamDispatchEffectList> {
+    return this.execute("listDreamDispatchEffects", input);
   }
 
   public async listInboxThreads(

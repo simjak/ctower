@@ -187,7 +187,9 @@ audit; two-party native Inbox threads with ordered messages, per-recipient unrea
 thread-to-ticket links visible from Board cards, including atomic public promotion that either creates a P2
 ticket from the thread head under ordinary initial custody or links an existing ticket; append-only recorded work sessions carrying seat, crew, model, harness, worktree, branch, the
 authored `dispatched|briefed|working|gated` lifecycle, and a Record-computed duration beside
-caller-observed token counts; three fixed Routine revisions; an accepted-only, rebuildable six-lane Board; immutable delivery and
+caller-observed token counts; seven fixed Routine revisions (three I1 maintenance revisions plus four
+nightly dream-dispatch revisions for `manibo`, `ctower`, `bh-loop`, and fleet); an accepted-only,
+rebuildable six-lane Board; immutable delivery and
 poison evidence; canonical, acceptance-gated recovery dispositions; and contributor-level health. Record owns idempotent append, hash-chained
 events, links, positions, transactional outbox writes, canonical command roots, subject durability heads,
 and typed pending/accepted reconciliation. Work, Proof, and Workflow own their authority above Record;
@@ -633,6 +635,13 @@ and `next_fire_at` commit together before acceptance-gated dispatch. Nonexistent
 skips and repeated times use the earlier offset. One logical scheduler owns Routine truth; there is no OS cron process per agent or
 Routine. Scheduler completeness, runner liveness, ticket progress, and effect/reconciliation watermarks
 are independent and make health `STATE UNKNOWN` when stale.
+
+Each of the four nightly dream Routines emits exactly one immutable `dream_dispatch` effect at its UTC
+boundary. The effect carries the project-or-fleet scope, `skills/dreamer/SKILL.md`, and the hard-model
+requirement (`gpt-5.6-sol` at max, with `qwen3.8-max` at max as fallback and Claude excluded). Consumption
+accepts only an output digest. Lane, crew, harness, actual model/family/effort/tier, and probe facts come
+from the substrate-bound principal record and are copied into the consumption, so caller labels cannot
+satisfy policy. The output digest remains joined through effect -> occurrence -> Routine custody.
 
 ## Guarded harness command dispatch
 

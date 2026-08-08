@@ -1,6 +1,6 @@
 """DO NOT EDIT: generated file; regenerate from declared inputs.
 
-Authored contract digest: sha256:7aec1d424376a21845a4ecb5948f5a56e67fe62b8e2e02504d1d5e2185bd8140
+Authored contract digest: sha256:4c89e45623980facc1ea619596b565d449ba3b9568d8c15437ea3487afde5bc5
 """
 
 from __future__ import annotations
@@ -49,6 +49,9 @@ from ctower_client.models import (
     CtowerProjectMigrationReceipt,
     CtowerProjectReconciliationResult,
     CustodyTransferRequest,
+    DreamDispatchConsumeRequest,
+    DreamDispatchEffectList,
+    DreamDispatchReceipt,
     EvidenceRequest,
     FindingDispositionRequest,
     FindingDispositionResult,
@@ -504,6 +507,28 @@ class CtowerClient:
         _refusal(response, {401: Problem, 409: Problem, 422: Problem})
 
     @validate_call(config=ConfigDict(strict=True, arbitrary_types_allowed=True))
+    def consume_dream_dispatch_effect(
+        self,
+        effect_id: UUID,
+        request: DreamDispatchConsumeRequest,
+        *,
+        command_id: UUID,
+    ) -> DreamDispatchReceipt:
+        response = self._http.post(
+            f"/v1/runtime/dream-dispatches/{quote(str(effect_id), safe='')}/consume",
+            content=request.model_dump_json(),
+            headers=self._telemetry_headers(
+                self._context(command_id),
+                {
+                    **self._auth_headers(),
+                    "Content-Type": "application/json",
+                    "Idempotency-Key": str(command_id),
+                },
+            ),
+        )
+        return _response(response, {200: DreamDispatchReceipt, 202: DreamDispatchReceipt}, {401: Problem, 403: Problem, 404: Problem, 409: Problem, 422: Problem})
+
+    @validate_call(config=ConfigDict(strict=True, arbitrary_types_allowed=True))
     def consume_review_dispatch_effect(
         self,
         ticket_id: UUID,
@@ -807,6 +832,21 @@ class CtowerClient:
             ),
         )
         return _response(response, {201: SeatCredentialReceipt, 202: SeatCredentialReceipt}, {401: Problem, 403: Problem, 409: Problem, 422: Problem, 503: Problem})
+
+    @validate_call(config=ConfigDict(strict=True, arbitrary_types_allowed=True))
+    def list_dream_dispatch_effects(
+        self,
+    ) -> DreamDispatchEffectList:
+        response = self._http.get(
+            "/v1/runtime/dream-dispatches",
+            headers=self._telemetry_headers(
+                self._context(uuid4()),
+                {
+                    **self._auth_headers(),
+                },
+            ),
+        )
+        return _response(response, {200: DreamDispatchEffectList}, {401: Problem, 403: Problem})
 
     @validate_call(config=ConfigDict(strict=True, arbitrary_types_allowed=True))
     def list_inbox_threads(

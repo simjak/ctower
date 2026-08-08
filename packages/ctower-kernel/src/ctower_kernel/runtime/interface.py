@@ -16,6 +16,11 @@ if TYPE_CHECKING:
 __all__ = [
     "CatchUpPolicy",
     "ConcurrencyPolicy",
+    "DreamDispatchConsumeCommand",
+    "DreamDispatchConsumption",
+    "DreamDispatchEffect",
+    "DreamDispatchReceipt",
+    "DreamDispatchSpec",
     "FixedOperationAttempt",
     "FixedOperationCompletion",
     "FixedOperationJob",
@@ -38,6 +43,7 @@ __all__ = [
 _DIGEST = re.compile(r"^sha256:[0-9a-f]{64}$")
 _REFERENCE = re.compile(r"^[a-z][a-z0-9._-]*@[1-9][0-9]*$")
 _FIXED_HANDLERS = frozenset({"synthetic_four_stage", "daily_backup", "record_anchor"})
+_HANDLERS = _FIXED_HANDLERS | {"dream_dispatch"}
 _MAX_CATCH_UP = 100
 _MAX_TIMEOUT_SECONDS = 86400
 
@@ -106,6 +112,134 @@ class FixedOperationJob:
     timeout_seconds: int
     component_digests: tuple[str, ...]
     created_at: datetime
+
+
+@dataclass(frozen=True, slots=True)
+class DreamDispatchSpec:
+    scope_kind: str
+    project_key: str | None
+    skill_path: str
+    primary_model_ref: str
+    primary_reasoning_effort: str
+    fallback_model_ref: str
+    fallback_reasoning_effort: str
+    minimum_model_tier: str
+    excluded_model_families: tuple[str, ...]
+
+    def __post_init__(self) -> None:
+        if self.scope_kind not in {"project", "fleet"} or (self.scope_kind == "project") != (
+            self.project_key is not None
+        ):
+            raise ValueError("dream scope and project identity do not match")
+        if self.skill_path != "skills/dreamer/SKILL.md":
+            raise ValueError("dream dispatch must pin the authored dreamer skill")
+        requirement = (
+            self.primary_model_ref,
+            self.primary_reasoning_effort,
+            self.fallback_model_ref,
+            self.fallback_reasoning_effort,
+            self.minimum_model_tier,
+            self.excluded_model_families,
+        )
+        if requirement != ("gpt-5.6-sol", "max", "qwen3.8-max", "max", "hard", ("claude",)):
+            raise ValueError("dream dispatch model requirement is outside gh#368")
+
+
+@dataclass(frozen=True, slots=True)
+class DreamDispatchEffect:
+    effect_id: UUID
+    occurrence_id: UUID
+    tenant_id: UUID
+    routine_ref: str
+    revision_digest: str
+    scheduled_for: datetime
+    spec: DreamDispatchSpec
+    emitted_at: datetime
+    consumption: DreamDispatchConsumption | None = None
+
+    def response_payload(self) -> dict[str, object]:
+        return {
+            "effect_id": str(self.effect_id),
+            "occurrence_id": str(self.occurrence_id),
+            "routine_ref": self.routine_ref,
+            "revision_digest": self.revision_digest,
+            "scheduled_for": self.scheduled_for.isoformat(),
+            "scope": {"kind": self.spec.scope_kind, "project_key": self.spec.project_key},
+            "skill_path": self.spec.skill_path,
+            "model_requirement": {
+                "primary": {
+                    "model_ref": self.spec.primary_model_ref,
+                    "reasoning_effort": self.spec.primary_reasoning_effort,
+                },
+                "fallback": {
+                    "model_ref": self.spec.fallback_model_ref,
+                    "reasoning_effort": self.spec.fallback_reasoning_effort,
+                },
+                "minimum_tier": self.spec.minimum_model_tier,
+                "excluded_families": list(self.spec.excluded_model_families),
+            },
+            "emitted_at": self.emitted_at.isoformat(),
+            "consumption": self.consumption.response_payload() if self.consumption else None,
+        }
+
+
+@dataclass(frozen=True, slots=True)
+class DreamDispatchConsumption:
+    executor_principal_id: UUID
+    lane_ref: str
+    crew_name: str
+    harness_ref: str
+    model_ref: str
+    model_family: str
+    reasoning_effort: str
+    model_tier: str
+    consumed_at: datetime
+    output_digest: str
+
+    def response_payload(self) -> dict[str, object]:
+        return {
+            "executor_principal_id": str(self.executor_principal_id),
+            "lane_ref": self.lane_ref,
+            "crew_name": self.crew_name,
+            "harness_ref": self.harness_ref,
+            "model_ref": self.model_ref,
+            "model_family": self.model_family,
+            "reasoning_effort": self.reasoning_effort,
+            "model_tier": self.model_tier,
+            "consumed_at": self.consumed_at.isoformat(),
+            "output_digest": self.output_digest,
+        }
+
+
+@dataclass(frozen=True, slots=True)
+class DreamDispatchConsumeCommand:
+    client_command_id: UUID
+    effect_id: UUID
+    output_digest: str
+
+    def __post_init__(self) -> None:
+        if _DIGEST.fullmatch(self.output_digest) is None:
+            raise ValueError("dream output digest must be content addressed")
+
+    def request_payload(self) -> dict[str, object]:
+        return {"effect_id": str(self.effect_id), "output_digest": self.output_digest}
+
+
+@dataclass(frozen=True, slots=True)
+class DreamDispatchReceipt:
+    command_id: UUID
+    event_id: UUID
+    effect_id: UUID
+    output_digest: str
+
+    def response_payload(self) -> dict[str, object]:
+        return {
+            "command_id": str(self.command_id),
+            "effect_id": str(self.effect_id),
+            "durability_state": "durability_pending",
+            "event_id": str(self.event_id),
+            "output_digest": self.output_digest,
+        }
 
 
 class SyntheticRunState(StrEnum):
@@ -196,6 +330,7 @@ class SchedulerScan:
     observed_at: datetime
     occurrences: tuple[RoutineOccurrence, ...]
     jobs: tuple[FixedOperationJob, ...]
+    dream_dispatches: tuple[DreamDispatchEffect, ...] = ()
 
 
 class _RoutineStore(Protocol):
@@ -296,6 +431,7 @@ class RoutineRevision:
     handler_kind: str
     timeout_seconds: int
     component_digests: tuple[str, ...]
+    dream_dispatch: DreamDispatchSpec | None = None
 
     def __post_init__(self) -> None:
         _validate_revision_identity(self)
@@ -349,8 +485,10 @@ def _validate_revision_identity(revision: RoutineRevision) -> None:
         _DIGEST.fullmatch(item) is None for item in revision.component_digests
     ):
         raise ValueError("Routine components must be content addressed")
-    if revision.handler_kind not in _FIXED_HANDLERS:
-        raise ValueError("Routine handler is outside the fixed I1 subset")
+    if revision.handler_kind not in _HANDLERS:
+        raise ValueError("Routine handler is outside the authored fixed subset")
+    if (revision.handler_kind == "dream_dispatch") != (revision.dream_dispatch is not None):
+        raise ValueError("only a dream-dispatch Routine carries effect facts")
 
 
 def _validate_revision_limits(revision: RoutineRevision) -> None:

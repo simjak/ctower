@@ -3,6 +3,11 @@
 from ctower_kernel.runtime.interface import (
     CatchUpPolicy,
     ConcurrencyPolicy,
+    DreamDispatchConsumeCommand,
+    DreamDispatchConsumption,
+    DreamDispatchEffect,
+    DreamDispatchReceipt,
+    DreamDispatchSpec,
     FixedOperationAttempt,
     FixedOperationCompletion,
     FixedOperationJob,
@@ -25,6 +30,11 @@ from ctower_kernel.runtime.interface import (
 __all__ = [
     "CatchUpPolicy",
     "ConcurrencyPolicy",
+    "DreamDispatchConsumeCommand",
+    "DreamDispatchConsumption",
+    "DreamDispatchEffect",
+    "DreamDispatchReceipt",
+    "DreamDispatchSpec",
     "FixedOperationAttempt",
     "FixedOperationCompletion",
     "FixedOperationJob",

@@ -1,6 +1,6 @@
 """DO NOT EDIT: generated file; regenerate from declared inputs.
 
-Authored contract digest: sha256:7aec1d424376a21845a4ecb5948f5a56e67fe62b8e2e02504d1d5e2185bd8140
+Authored contract digest: sha256:4c89e45623980facc1ea619596b565d449ba3b9568d8c15437ea3487afde5bc5
 """
 
 from ctower_client.client import CtowerClient, CtowerProblemError
@@ -78,6 +78,14 @@ from ctower_client.models import (
     DeliverySurfaceAvailability,
     DeliverySurfaceAvailabilityNoQualifyingCheckpoint,
     DeliverySurfaceAvailabilityQualifyingCheckpoint,
+    DreamDispatchConsumeRequest,
+    DreamDispatchConsumption,
+    DreamDispatchEffect,
+    DreamDispatchEffectList,
+    DreamDispatchReceipt,
+    DreamDispatchScope,
+    DreamModelRequirement,
+    DreamModelSelection,
     DurabilityState,
     EvidenceRequest,
     FindingDispositionRequest,
@@ -316,6 +324,14 @@ __all__ = [
     "DeliverySurfaceAvailability",
     "DeliverySurfaceAvailabilityNoQualifyingCheckpoint",
     "DeliverySurfaceAvailabilityQualifyingCheckpoint",
+    "DreamDispatchConsumeRequest",
+    "DreamDispatchConsumption",
+    "DreamDispatchEffect",
+    "DreamDispatchEffectList",
+    "DreamDispatchReceipt",
+    "DreamDispatchScope",
+    "DreamModelRequirement",
+    "DreamModelSelection",
     "DurabilityState",
     "EvidenceRequest",
     "FindingDispositionRequest",

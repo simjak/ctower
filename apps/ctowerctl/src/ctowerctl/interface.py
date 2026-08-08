@@ -27,6 +27,7 @@ from ctowerctl import (
     _bootstrap_commands,
     _company_commands,
     _credential_commands,
+    _dream_dispatch_commands,
     _inbox_commands,
     _intake_commands,
     _knowledge_commands,
@@ -211,6 +212,7 @@ _MUTATION_FAMILIES: dict[str, Callable[[argparse.Namespace], MutationPayload]] =
     "session": _session_commands.build_mutation,
     "synthetic": _synthetic_commands.build_mutation,
     "attention": _attention_commands.build_mutation,
+    "dream-dispatch": _dream_dispatch_commands.build_mutation,
 }
 
 
@@ -257,7 +259,7 @@ def _execute_online_credential(
 def _execute_query(arguments: object, client: CtowerClient) -> BaseModel:
     namespace = cast("argparse.Namespace", arguments)
     area = cast(str, namespace.area)
-    if area in {"ticket", "inbox", "knowledge"}:
+    if area in {"ticket", "inbox", "knowledge", "dream-dispatch"}:
         return _execute_agent_query(namespace, client)
     if area == "company":
         return _company_commands.execute_query(namespace, client)
@@ -275,6 +277,8 @@ def _execute_agent_query(arguments: argparse.Namespace, client: CtowerClient) ->
         return _ticket_commands.execute_query(arguments, client)
     if arguments.area == "knowledge":
         return _knowledge_commands.execute_query(arguments, client)
+    if arguments.area == "dream-dispatch":
+        return _dream_dispatch_commands.execute_query(arguments, client)
     return _inbox_commands.execute_query(arguments, client)
 
 

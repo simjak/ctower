@@ -1,0 +1,22 @@
+{
+  "schema_id": "ctower.routine/v2",
+  "routine_ref": "ctower.dream.ctower@1",
+  "revision_digest": "sha256:c42d8b39986b41f90552a44c75e714618b2c12ffb86481214fde74c85e6954f8",
+  "schedule": {"kind": "daily", "timezone": "UTC", "local_time": "02:00:00"},
+  "dst_policy": "wall_clock_once",
+  "concurrency": "always_enqueue_bounded",
+  "catch_up": "skip_missed",
+  "catch_up_cap": 1,
+  "timeout_seconds": 14400,
+  "handler_kind": "dream_dispatch",
+  "component_digests": ["sha256:66343f5ee42d5e70a6aaf2de82c278d08af9db53c0694eb6e916b90a36f7620e"],
+  "dream_dispatch": {
+    "scope_kind": "project", "project_key": "ctower",
+    "skill_path": "skills/dreamer/SKILL.md",
+    "model_requirement": {
+      "primary": {"model_ref": "gpt-5.6-sol", "reasoning_effort": "max"},
+      "fallback": {"model_ref": "qwen3.8-max", "reasoning_effort": "max"},
+      "minimum_tier": "hard", "excluded_families": ["claude"]
+    }
+  }
+}

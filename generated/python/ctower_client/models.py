@@ -1,6 +1,6 @@
 """DO NOT EDIT: generated file; regenerate from declared inputs.
 
-Authored contract digest: sha256:7aec1d424376a21845a4ecb5948f5a56e67fe62b8e2e02504d1d5e2185bd8140
+Authored contract digest: sha256:4c89e45623980facc1ea619596b565d449ba3b9568d8c15437ea3487afde5bc5
 """
 
 from __future__ import annotations
@@ -88,6 +88,14 @@ __all__ = [
     "DeliverySurfaceAvailability",
     "DeliverySurfaceAvailabilityNoQualifyingCheckpoint",
     "DeliverySurfaceAvailabilityQualifyingCheckpoint",
+    "DreamDispatchConsumeRequest",
+    "DreamDispatchConsumption",
+    "DreamDispatchEffect",
+    "DreamDispatchEffectList",
+    "DreamDispatchReceipt",
+    "DreamDispatchScope",
+    "DreamModelRequirement",
+    "DreamModelSelection",
     "DurabilityState",
     "EvidenceRequest",
     "FindingDispositionRequest",
@@ -816,6 +824,33 @@ class DeferredAuditData(_BoundaryModel):
 
 class DeliverySurfaceAvailabilityNoQualifyingCheckpoint(_BoundaryModel):
     state: Literal["no_qualifying_checkpoint"]
+
+
+class DreamDispatchConsumeRequest(_BoundaryModel):
+    output_digest: Annotated[str, Field(pattern="^sha256:[0-9a-f]{64}$")]
+
+
+class DreamDispatchConsumption(_BoundaryModel):
+    executor_principal_id: UUID
+    lane_ref: Annotated[str, Field(min_length=1, max_length=128)]
+    crew_name: Annotated[str, Field(pattern="^[a-z][a-z0-9._-]{1,95}$")]
+    harness_ref: Annotated[str, Field(min_length=1, max_length=128)]
+    model_ref: Annotated[str, Field(min_length=1, max_length=128)]
+    model_family: Annotated[str, Field(pattern="^[a-z][a-z0-9._-]*$")]
+    reasoning_effort: Annotated[str, Field(min_length=1, max_length=32)]
+    model_tier: Literal["cheap", "hard"]
+    consumed_at: _Rfc3339DateTime
+    output_digest: Annotated[str, Field(pattern="^sha256:[0-9a-f]{64}$")]
+
+
+class DreamDispatchScope(_BoundaryModel):
+    kind: Literal["project", "fleet"]
+    project_key: Annotated[str, Field(pattern="^[a-z][a-z0-9._-]*$")] | None
+
+
+class DreamModelSelection(_BoundaryModel):
+    model_ref: Annotated[str, Field(min_length=1, max_length=128)]
+    reasoning_effort: Literal["max"]
 
 
 class DurabilityState(StrEnum):
@@ -1719,6 +1754,21 @@ class CustodyTransferredAuditEvent(_BoundaryModel):
     stream_id: Annotated[str, Field(pattern="^ticket:[0-9a-f-]{36}$")]
 
 
+class DreamDispatchReceipt(_BoundaryModel):
+    command_id: UUID
+    effect_id: UUID
+    durability_state: DurabilityState
+    event_id: UUID
+    output_digest: Annotated[str, Field(pattern="^sha256:[0-9a-f]{64}$")]
+
+
+class DreamModelRequirement(_BoundaryModel):
+    primary: DreamModelSelection
+    fallback: DreamModelSelection
+    minimum_tier: Literal["hard"]
+    excluded_families: Annotated[tuple[Literal["claude"], ...], Field(min_length=1, max_length=1)]
+
+
 class FindingDispositionResult(_BoundaryModel):
     command_id: UUID
     finding_id: UUID
@@ -1945,6 +1995,12 @@ class Problem(_BoundaryModel):
         "credential-revocation-refused",
         "credential-revoked",
         "credential-scope-denied",
+        "dream-dispatch-already-consumed",
+        "dream-dispatch-family-excluded",
+        "dream-dispatch-lane-unbound",
+        "dream-dispatch-model-requirement-mismatch",
+        "dream-dispatch-tier-refused",
+        "dream-dispatch-unavailable",
         "durability_pending",
         "i1-7c-required",
         "idempotency-conflict",
@@ -2452,6 +2508,19 @@ class DeliverySurfaceAvailabilityQualifyingCheckpoint(_BoundaryModel):
     externally_effective_outcome: SurfaceIdentityField
 
 
+class DreamDispatchEffect(_BoundaryModel):
+    effect_id: UUID
+    occurrence_id: UUID
+    routine_ref: Annotated[str, Field(pattern="^[a-z][a-z0-9._-]*@[1-9][0-9]*$")]
+    revision_digest: Annotated[str, Field(pattern="^sha256:[0-9a-f]{64}$")]
+    scheduled_for: _Rfc3339DateTime
+    scope: DreamDispatchScope
+    skill_path: Literal["skills/dreamer/SKILL.md"]
+    model_requirement: DreamModelRequirement
+    emitted_at: _Rfc3339DateTime
+    consumption: None | DreamDispatchConsumption
+
+
 class HealthDimension(_BoundaryModel):
     status: HealthStatus
     contributors: Annotated[tuple[HealthContributor, ...], Field(min_length=1)]
@@ -2595,6 +2664,10 @@ class CtowerProjectImportBatchRequest(_BoundaryModel):
 
 
 type DeliverySurfaceAvailability = DeliverySurfaceAvailabilityNoQualifyingCheckpoint | DeliverySurfaceAvailabilityQualifyingCheckpoint
+
+
+class DreamDispatchEffectList(_BoundaryModel):
+    effects: tuple[DreamDispatchEffect, ...]
 
 
 type ProjectDeliverySeatAssignment = ProjectDeliveryAssignedSeatAssignment | ProjectDeliveryUnassignedSeatAssignment

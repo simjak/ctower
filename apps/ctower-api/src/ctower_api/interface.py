@@ -23,6 +23,10 @@ from ctower_api._catalog_routes import BundleCatalog, install_catalog_routes
 from ctower_api._comment_routes import install_comment_routes
 from ctower_api._credential_routes import install_credential_routes
 from ctower_api._cutover_routes import install_cutover_routes
+from ctower_api._dream_dispatch_routes import (
+    DreamDispatchRuntime,
+    install_dream_dispatch_routes,
+)
 from ctower_api._health_routes import install_health_routes
 from ctower_api._http_support import (
     UnscopedAuthentication as _UnscopedAuthentication,
@@ -168,6 +172,7 @@ def create_app(
     catalog: BundleCatalog | None = None,
     synthetic_runtime: SyntheticRuntime | None = None,
     synthetic_revision: RoutineRevision | None = None,
+    dream_dispatch_runtime: DreamDispatchRuntime | None = None,
     migration: object | None = None,
     migration_importer_resolver: _MigrationImporterResolver | None = None,
     migration_importer_credential_resolver: Callable[[bytes, datetime], Actor | None] | None = None,
@@ -189,17 +194,7 @@ def create_app(
     )
     work_module = work or Work(record, telemetry=recorder)
     _install_telemetry_health(app, recorder)
-    install_auth_routes(app, access, recorder)
-    install_login_gate(app, enforcing=oidc.gate_enforcing)
-    _install_access_routes(app, access, record, recorder)
-    _install_ticket_create_route(app, access, record, work_module, recorder)
-    _install_custody_route(app, access, record, work_module, recorder)
-    _install_ticket_read_routes(app, access, record, recorder)
-    install_intake_routes(app, access, record, Intake(record, telemetry=recorder), recorder)
-    install_comment_routes(app, access, record, recorder)
-    install_session_routes(app, access, record, recorder)
-    install_project_event_routes(app, access, record, recorder)
-    install_task_routes(app, access, record, work_module, workflow, recorder)
+    _install_core_routes(app, access, record, work_module, workflow, recorder, oidc)
     _install_optional_routes(
         app,
         access,
@@ -218,7 +213,31 @@ def create_app(
     _install_synthetic_boundary(
         app, access, record, synthetic_runtime, synthetic_revision, recorder
     )
+    if dream_dispatch_runtime is not None:
+        install_dream_dispatch_routes(app, access, record, dream_dispatch_runtime, recorder)
     return app
+
+
+def _install_core_routes(
+    app: FastAPI,
+    access: Access,
+    record: Record,
+    work: Work,
+    workflow: Workflow | None,
+    recorder: TelemetryRecorder,
+    oidc: OidcRuntimeConfig,
+) -> None:
+    install_auth_routes(app, access, recorder)
+    install_login_gate(app, enforcing=oidc.gate_enforcing)
+    _install_access_routes(app, access, record, recorder)
+    _install_ticket_create_route(app, access, record, work, recorder)
+    _install_custody_route(app, access, record, work, recorder)
+    _install_ticket_read_routes(app, access, record, recorder)
+    install_intake_routes(app, access, record, Intake(record, telemetry=recorder), recorder)
+    install_comment_routes(app, access, record, recorder)
+    install_session_routes(app, access, record, recorder)
+    install_project_event_routes(app, access, record, recorder)
+    install_task_routes(app, access, record, work, workflow, recorder)
 
 
 def _install_optional_routes(

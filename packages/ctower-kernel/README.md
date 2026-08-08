@@ -13,7 +13,9 @@ and releases every current-episode ownership interval; and a disposable six-lane
 Board fold over accepted outbox records; native two-party inbox messages with append-only recipient
 delivery/read facts and fact-derived unread state; immutable delivery attempts, poison, deduplicated Attention findings,
 canonical acceptance-gated recovery dispositions; fixed Routine occurrences/jobs with event/result/outbox
-lineage; independently attributable health; and a project-scoped typed event feed whose exact kind set is
+lineage; four idempotent nightly dream effects whose consumption derives lane, crew, harness, model family,
+effort, and tier from immutable substrate bindings and links the output digest to Routine custody;
+independently attributable health; and a project-scoped typed event feed whose exact kind set is
 derived from the authoritative event catalog's `project_feed` column, reusing the same `event_links`
 subject join `ticket_audit` already proves rather than a second query shape.
 

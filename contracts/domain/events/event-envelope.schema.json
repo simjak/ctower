@@ -63,6 +63,7 @@
         "proof.changed",
         "workflow.changed",
         "routine.occurrence_recorded",
+        "runtime.dream_dispatch_consumed",
         "attention.poison_disposition_recorded",
         "migration.changed",
         "intake.inbound_event_recorded",
@@ -114,7 +115,7 @@
     },
     "stream_id": {
       "type": "string",
-      "pattern": "^(tenant:[0-9a-f-]{36}:bootstrap|ticket:[0-9a-f-]{36}|catalog:[0-9a-f-]{36}|proof:[0-9a-f-]{36}|workflow:[0-9a-f-]{36}|routine-occurrence:[0-9a-f-]{36}|poison-disposition:[0-9a-f-]{36}|migration:[0-9a-f-]{36}|inbound-thread:[0-9a-f-]{36}|inbox-thread:[0-9a-f-]{36}|seat-credential:[0-9a-f-]{36}|session:[0-9a-f-]{36}|attention-finding:[0-9a-f-]{36}|attention-finding-disposition:[0-9a-f-]{36}|knowledge-document:[0-9a-f-]{36})$"
+      "pattern": "^(tenant:[0-9a-f-]{36}:bootstrap|ticket:[0-9a-f-]{36}|catalog:[0-9a-f-]{36}|proof:[0-9a-f-]{36}|workflow:[0-9a-f-]{36}|routine-occurrence:[0-9a-f-]{36}|dream-dispatch:[0-9a-f-]{36}|poison-disposition:[0-9a-f-]{36}|migration:[0-9a-f-]{36}|inbound-thread:[0-9a-f-]{36}|inbox-thread:[0-9a-f-]{36}|seat-credential:[0-9a-f-]{36}|session:[0-9a-f-]{36}|attention-finding:[0-9a-f-]{36}|attention-finding-disposition:[0-9a-f-]{36}|knowledge-document:[0-9a-f-]{36})$"
     },
     "tenant_id": {
       "type": "string",
@@ -282,6 +283,14 @@
             "payload": {
               "$ref": "#/$defs/routineOccurrenceRecorded"
             }
+          }
+        },
+        {
+          "properties": {
+            "kind": {"const": "runtime.dream_dispatch_consumed"},
+            "origin": {"const": "api"},
+            "stream_id": {"pattern": "^dream-dispatch:[0-9a-f-]{36}$"},
+            "payload": {"$ref": "#/$defs/dreamDispatchConsumed"}
           }
         },
         {
@@ -1197,6 +1206,17 @@
           "minimum": -64800,
           "maximum": 64800
         }
+      }
+    },
+    "dreamDispatchConsumed": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["effect_id", "lane_ref", "model_ref", "output_digest"],
+      "properties": {
+        "effect_id": {"type": "string", "format": "uuid"},
+        "lane_ref": {"type": "string", "minLength": 1, "maxLength": 128},
+        "model_ref": {"type": "string", "minLength": 1, "maxLength": 128},
+        "output_digest": {"$ref": "#/$defs/sha256"}
       }
     },
     "poisonDispositionRecorded": {

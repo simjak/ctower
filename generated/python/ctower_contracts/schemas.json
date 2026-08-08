@@ -98,8 +98,10 @@
     "https://ctower.dev/contracts/operations/expected-source-inventory.schema.json": "contracts/operations/expected-source-inventory.schema.json",
     "https://ctower.dev/contracts/operations/health.schema.json": "contracts/operations/health.schema.json",
     "https://ctower.dev/contracts/operations/restore-report.schema.json": "contracts/operations/restore-report.schema.json",
+    "https://ctower.dev/contracts/runtime/dream-dispatch-effect.schema.json": "contracts/runtime/dream-dispatch-effect.schema.json",
     "https://ctower.dev/contracts/runtime/operation-job.schema.json": "contracts/runtime/operation-job.schema.json",
     "https://ctower.dev/contracts/runtime/routine-occurrence.schema.json": "contracts/runtime/routine-occurrence.schema.json",
+    "https://ctower.dev/contracts/runtime/routine-v2.schema.json": "contracts/runtime/routine-v2.schema.json",
     "https://ctower.dev/contracts/runtime/routine.schema.json": "contracts/runtime/routine.schema.json",
     "https://ctower.invalid/contracts/evidence/evidence-manifest-v2.schema.json": "contracts/evidence/evidence-manifest-v2.schema.json",
     "https://ctower.invalid/contracts/evidence/evidence-manifest.schema.json": "contracts/evidence/evidence-manifest.schema.json",
@@ -3235,6 +3237,35 @@
           ],
           "type": "object"
         },
+        "dreamDispatchConsumed": {
+          "additionalProperties": false,
+          "properties": {
+            "effect_id": {
+              "format": "uuid",
+              "type": "string"
+            },
+            "lane_ref": {
+              "maxLength": 128,
+              "minLength": 1,
+              "type": "string"
+            },
+            "model_ref": {
+              "maxLength": 128,
+              "minLength": 1,
+              "type": "string"
+            },
+            "output_digest": {
+              "$ref": "#/$defs/sha256"
+            }
+          },
+          "required": [
+            "effect_id",
+            "lane_ref",
+            "model_ref",
+            "output_digest"
+          ],
+          "type": "object"
+        },
         "inboundEventPromoted": {
           "additionalProperties": false,
           "properties": {
@@ -4512,6 +4543,22 @@
             {
               "properties": {
                 "kind": {
+                  "const": "runtime.dream_dispatch_consumed"
+                },
+                "origin": {
+                  "const": "api"
+                },
+                "payload": {
+                  "$ref": "#/$defs/dreamDispatchConsumed"
+                },
+                "stream_id": {
+                  "pattern": "^dream-dispatch:[0-9a-f-]{36}$"
+                }
+              }
+            },
+            {
+              "properties": {
+                "kind": {
                   "const": "attention.poison_disposition_recorded"
                 },
                 "origin": {
@@ -4856,6 +4903,7 @@
             "proof.changed",
             "workflow.changed",
             "routine.occurrence_recorded",
+            "runtime.dream_dispatch_consumed",
             "attention.poison_disposition_recorded",
             "migration.changed",
             "intake.inbound_event_recorded",
@@ -4907,7 +4955,7 @@
           "type": "string"
         },
         "stream_id": {
-          "pattern": "^(tenant:[0-9a-f-]{36}:bootstrap|ticket:[0-9a-f-]{36}|catalog:[0-9a-f-]{36}|proof:[0-9a-f-]{36}|workflow:[0-9a-f-]{36}|routine-occurrence:[0-9a-f-]{36}|poison-disposition:[0-9a-f-]{36}|migration:[0-9a-f-]{36}|inbound-thread:[0-9a-f-]{36}|inbox-thread:[0-9a-f-]{36}|seat-credential:[0-9a-f-]{36}|session:[0-9a-f-]{36}|attention-finding:[0-9a-f-]{36}|attention-finding-disposition:[0-9a-f-]{36}|knowledge-document:[0-9a-f-]{36})$",
+          "pattern": "^(tenant:[0-9a-f-]{36}:bootstrap|ticket:[0-9a-f-]{36}|catalog:[0-9a-f-]{36}|proof:[0-9a-f-]{36}|workflow:[0-9a-f-]{36}|routine-occurrence:[0-9a-f-]{36}|dream-dispatch:[0-9a-f-]{36}|poison-disposition:[0-9a-f-]{36}|migration:[0-9a-f-]{36}|inbound-thread:[0-9a-f-]{36}|inbox-thread:[0-9a-f-]{36}|seat-credential:[0-9a-f-]{36}|session:[0-9a-f-]{36}|attention-finding:[0-9a-f-]{36}|attention-finding-disposition:[0-9a-f-]{36}|knowledge-document:[0-9a-f-]{36})$",
           "type": "string"
         },
         "tenant_id": {
@@ -13511,6 +13559,208 @@
       "title": "Isolated restore verification report",
       "type": "object"
     },
+    "contracts/runtime/dream-dispatch-effect.schema.json": {
+      "$defs": {
+        "consumption": {
+          "additionalProperties": false,
+          "properties": {
+            "consumed_at": {
+              "format": "date-time",
+              "type": "string"
+            },
+            "crew_name": {
+              "pattern": "^[a-z][a-z0-9._-]{1,95}$",
+              "type": "string"
+            },
+            "executor_principal_id": {
+              "format": "uuid",
+              "type": "string"
+            },
+            "harness_ref": {
+              "maxLength": 128,
+              "minLength": 1,
+              "type": "string"
+            },
+            "lane_ref": {
+              "maxLength": 128,
+              "minLength": 1,
+              "type": "string"
+            },
+            "model_family": {
+              "pattern": "^[a-z][a-z0-9._-]*$",
+              "type": "string"
+            },
+            "model_ref": {
+              "maxLength": 128,
+              "minLength": 1,
+              "type": "string"
+            },
+            "model_tier": {
+              "enum": [
+                "cheap",
+                "hard"
+              ],
+              "type": "string"
+            },
+            "output_digest": {
+              "$ref": "#/$defs/digest"
+            },
+            "reasoning_effort": {
+              "maxLength": 32,
+              "minLength": 1,
+              "type": "string"
+            }
+          },
+          "required": [
+            "executor_principal_id",
+            "lane_ref",
+            "crew_name",
+            "harness_ref",
+            "model_ref",
+            "model_family",
+            "reasoning_effort",
+            "model_tier",
+            "consumed_at",
+            "output_digest"
+          ],
+          "type": "object"
+        },
+        "digest": {
+          "pattern": "^sha256:[0-9a-f]{64}$",
+          "type": "string"
+        },
+        "modelRequirement": {
+          "additionalProperties": false,
+          "properties": {
+            "excluded_families": {
+              "const": [
+                "claude"
+              ],
+              "type": "array"
+            },
+            "fallback": {
+              "$ref": "#/$defs/modelSelection"
+            },
+            "minimum_tier": {
+              "const": "hard"
+            },
+            "primary": {
+              "$ref": "#/$defs/modelSelection"
+            }
+          },
+          "required": [
+            "primary",
+            "fallback",
+            "minimum_tier",
+            "excluded_families"
+          ],
+          "type": "object"
+        },
+        "modelSelection": {
+          "additionalProperties": false,
+          "properties": {
+            "model_ref": {
+              "maxLength": 128,
+              "minLength": 1,
+              "type": "string"
+            },
+            "reasoning_effort": {
+              "const": "max"
+            }
+          },
+          "required": [
+            "model_ref",
+            "reasoning_effort"
+          ],
+          "type": "object"
+        },
+        "scope": {
+          "additionalProperties": false,
+          "properties": {
+            "kind": {
+              "enum": [
+                "project",
+                "fleet"
+              ]
+            },
+            "project_key": {
+              "pattern": "^[a-z][a-z0-9._-]*$",
+              "type": [
+                "string",
+                "null"
+              ]
+            }
+          },
+          "required": [
+            "kind",
+            "project_key"
+          ],
+          "type": "object"
+        }
+      },
+      "$id": "https://ctower.dev/contracts/runtime/dream-dispatch-effect.schema.json",
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "additionalProperties": false,
+      "properties": {
+        "consumption": {
+          "oneOf": [
+            {
+              "type": "null"
+            },
+            {
+              "$ref": "#/$defs/consumption"
+            }
+          ]
+        },
+        "effect_id": {
+          "format": "uuid",
+          "type": "string"
+        },
+        "emitted_at": {
+          "format": "date-time",
+          "type": "string"
+        },
+        "model_requirement": {
+          "$ref": "#/$defs/modelRequirement"
+        },
+        "occurrence_id": {
+          "format": "uuid",
+          "type": "string"
+        },
+        "revision_digest": {
+          "pattern": "^sha256:[0-9a-f]{64}$",
+          "type": "string"
+        },
+        "routine_ref": {
+          "pattern": "^[a-z][a-z0-9._-]*@[1-9][0-9]*$",
+          "type": "string"
+        },
+        "scheduled_for": {
+          "format": "date-time",
+          "type": "string"
+        },
+        "scope": {
+          "$ref": "#/$defs/scope"
+        },
+        "skill_path": {
+          "const": "skills/dreamer/SKILL.md"
+        }
+      },
+      "required": [
+        "effect_id",
+        "occurrence_id",
+        "routine_ref",
+        "revision_digest",
+        "scheduled_for",
+        "scope",
+        "skill_path",
+        "model_requirement",
+        "emitted_at",
+        "consumption"
+      ],
+      "title": "DreamDispatchEffect",
+      "type": "object"
+    },
     "contracts/runtime/operation-job.schema.json": {
       "$id": "https://ctower.dev/contracts/runtime/operation-job.schema.json",
       "$schema": "https://json-schema.org/draft/2020-12/schema",
@@ -13660,6 +13910,207 @@
         "job_id"
       ],
       "title": "RoutineOccurrence",
+      "type": "object"
+    },
+    "contracts/runtime/routine-v2.schema.json": {
+      "$defs": {
+        "digest": {
+          "pattern": "^sha256:[0-9a-f]{64}$",
+          "type": "string"
+        },
+        "dreamDispatch": {
+          "additionalProperties": false,
+          "oneOf": [
+            {
+              "properties": {
+                "project_key": {
+                  "$ref": "#/$defs/stableKey"
+                },
+                "scope_kind": {
+                  "const": "project"
+                }
+              }
+            },
+            {
+              "properties": {
+                "project_key": {
+                  "type": "null"
+                },
+                "scope_kind": {
+                  "const": "fleet"
+                }
+              }
+            }
+          ],
+          "properties": {
+            "model_requirement": {
+              "$ref": "#/$defs/modelRequirement"
+            },
+            "project_key": {
+              "pattern": "^[a-z][a-z0-9._-]*$",
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "scope_kind": {
+              "enum": [
+                "project",
+                "fleet"
+              ]
+            },
+            "skill_path": {
+              "const": "skills/dreamer/SKILL.md"
+            }
+          },
+          "required": [
+            "scope_kind",
+            "project_key",
+            "skill_path",
+            "model_requirement"
+          ],
+          "type": "object"
+        },
+        "modelRequirement": {
+          "additionalProperties": false,
+          "properties": {
+            "excluded_families": {
+              "const": [
+                "claude"
+              ],
+              "type": "array"
+            },
+            "fallback": {
+              "$ref": "#/$defs/modelSelection"
+            },
+            "minimum_tier": {
+              "const": "hard"
+            },
+            "primary": {
+              "$ref": "#/$defs/modelSelection"
+            }
+          },
+          "required": [
+            "primary",
+            "fallback",
+            "minimum_tier",
+            "excluded_families"
+          ],
+          "type": "object"
+        },
+        "modelSelection": {
+          "additionalProperties": false,
+          "properties": {
+            "model_ref": {
+              "maxLength": 128,
+              "minLength": 1,
+              "type": "string"
+            },
+            "reasoning_effort": {
+              "const": "max"
+            }
+          },
+          "required": [
+            "model_ref",
+            "reasoning_effort"
+          ],
+          "type": "object"
+        },
+        "schedule": {
+          "additionalProperties": false,
+          "properties": {
+            "kind": {
+              "const": "daily"
+            },
+            "local_time": {
+              "pattern": "^(?:[01][0-9]|2[0-3]):[0-5][0-9]:[0-5][0-9]$",
+              "type": "string"
+            },
+            "timezone": {
+              "const": "UTC"
+            }
+          },
+          "required": [
+            "kind",
+            "timezone",
+            "local_time"
+          ],
+          "type": "object"
+        },
+        "stableKey": {
+          "pattern": "^[a-z][a-z0-9._-]*$",
+          "type": "string"
+        }
+      },
+      "$id": "https://ctower.dev/contracts/runtime/routine-v2.schema.json",
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "additionalProperties": false,
+      "properties": {
+        "catch_up": {
+          "const": "skip_missed"
+        },
+        "catch_up_cap": {
+          "const": 1
+        },
+        "component_digests": {
+          "items": {
+            "$ref": "#/$defs/digest"
+          },
+          "minItems": 1,
+          "type": "array",
+          "uniqueItems": true
+        },
+        "concurrency": {
+          "const": "always_enqueue_bounded"
+        },
+        "dream_dispatch": {
+          "$ref": "#/$defs/dreamDispatch"
+        },
+        "dst_policy": {
+          "const": "wall_clock_once"
+        },
+        "handler_kind": {
+          "const": "dream_dispatch"
+        },
+        "revision_digest": {
+          "allOf": [
+            {
+              "$ref": "#/$defs/digest"
+            }
+          ],
+          "description": "SHA-256 of canonical UTF-8 JSON for every authored field except revision_digest; object keys sorted and separators comma/colon."
+        },
+        "routine_ref": {
+          "pattern": "^[a-z][a-z0-9._-]*@[1-9][0-9]*$",
+          "type": "string"
+        },
+        "schedule": {
+          "$ref": "#/$defs/schedule"
+        },
+        "schema_id": {
+          "const": "ctower.routine/v2"
+        },
+        "timeout_seconds": {
+          "maximum": 86400,
+          "minimum": 1,
+          "type": "integer"
+        }
+      },
+      "required": [
+        "schema_id",
+        "routine_ref",
+        "revision_digest",
+        "schedule",
+        "dst_policy",
+        "concurrency",
+        "catch_up",
+        "catch_up_cap",
+        "timeout_seconds",
+        "handler_kind",
+        "component_digests",
+        "dream_dispatch"
+      ],
+      "title": "DreamRoutineRevision",
       "type": "object"
     },
     "contracts/runtime/routine.schema.json": {
@@ -14742,7 +15193,7 @@
     {
       "id": "https://ctower.dev/contracts/domain/events/event-envelope.schema.json",
       "path": "contracts/domain/events/event-envelope.schema.json",
-      "sha256": "sha256:6081415e608e10929a9de140052e03d933aa250e1abfa7cf3b6e62cd1ee0bebf"
+      "sha256": "sha256:9c1c4ecfe767c2d320aa1dd3113a4f02770b055325d57cb91feb3a9a96f87a95"
     },
     {
       "id": "https://ctower.local/contracts/domain/inbox/inbox-v2.schema.json",
@@ -14965,6 +15416,11 @@
       "sha256": "sha256:a7cadf4b123e1cf76a4079b964c094099bc4b35b9ad1c4cc69ec098f1e85c78e"
     },
     {
+      "id": "https://ctower.dev/contracts/runtime/dream-dispatch-effect.schema.json",
+      "path": "contracts/runtime/dream-dispatch-effect.schema.json",
+      "sha256": "sha256:07c8f49c19c9c12134cef1734a5f55cb5d5634cb8b93182cefc190cef98b2eeb"
+    },
+    {
       "id": "https://ctower.dev/contracts/runtime/operation-job.schema.json",
       "path": "contracts/runtime/operation-job.schema.json",
       "sha256": "sha256:df8b67525d1d82f3e7d19d68e971b4643c56c6b699ec8b043a43f946d43e82bc"
@@ -14973,6 +15429,11 @@
       "id": "https://ctower.dev/contracts/runtime/routine-occurrence.schema.json",
       "path": "contracts/runtime/routine-occurrence.schema.json",
       "sha256": "sha256:682c4e1c3cd0248d8a10c97d2a56cfa2458ab6977db390bc33a00926bc94985f"
+    },
+    {
+      "id": "https://ctower.dev/contracts/runtime/routine-v2.schema.json",
+      "path": "contracts/runtime/routine-v2.schema.json",
+      "sha256": "sha256:6a2a5c58294304788776e398793c695a63dd5b896f467e6462506fe9cd930b0c"
     },
     {
       "id": "https://ctower.dev/contracts/runtime/routine.schema.json",
