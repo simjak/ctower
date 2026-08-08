@@ -12,6 +12,8 @@ import type {
   PortfolioProject,
   PortfolioThread,
   Reading,
+  ThreadLink,
+  UnreachedScope,
 } from "./interface";
 import type { Known } from "./sources/maybe";
 
@@ -31,13 +33,17 @@ import type { Known } from "./sources/maybe";
  * * **A board that did not answer is never a zero.** Its project row carries
  *   `unread` with the failure's own reason, the portfolio totals count only the
  *   boards that answered, and the page says how many of how many those were.
- * * **A zero that was measured says so.** Three boards answering with no
- *   escalation is a fact about the record, and it is rendered as one — never as
- *   an empty list that could equally mean nobody looked.
+ * * **A zero that was measured says so — and only then.** Three boards
+ *   answering with no escalation is a fact about the record, and it is rendered
+ *   as one. The same empty list under a board that did not answer is not that
+ *   fact, so the fold keeps the two apart and names the scopes that were not
+ *   reached rather than letting an empty list stand for either.
  * * **A thread belongs to a project only when a card says so.** The board card
  *   carries `inbox_thread_ids`; that recorded link is the only attribution used,
  *   and unread mail on threads no card links is counted apart rather than spread
- *   across projects or quietly dropped.
+ *   across projects or quietly dropped. A board that did not answer withholds
+ *   that split rather than resolving it: its unread cards could name any thread,
+ *   so *no answered board names it* is not *the record links it to nothing*.
  */
 
 /** The word the inbox projection uses for a principal that holds no seat row. */
@@ -106,8 +112,47 @@ function cardsOf(board: Reading<BoardCards>): readonly BoardCard[] {
   return board.state === "present" ? board.value.cards : [];
 }
 
-function failureOf(board: Reading<BoardCards>): string | null {
-  return board.state === "unavailable" ? board.failure.reason : null;
+/**
+ * What the escalation panel may claim, given which boards answered.
+ *
+ * Three sentences, and the empty one is where an easy answer lies: an empty
+ * findings list is what boards holding none produce *and* what boards that
+ * never answered produce, and only the first is a measurement. `unknown` is
+ * that same emptiness carrying the scopes that make it unreadable as absence.
+ */
+export type EscalationSet =
+  | {
+      readonly known: "open";
+      readonly escalations: readonly PortfolioEscalation[];
+      readonly unreached: readonly UnreachedScope[];
+    }
+  | { readonly known: "none" }
+  | { readonly known: "unknown"; readonly unreached: readonly UnreachedScope[] };
+
+/** The panel's own decision, so no screen re-derives it from a list length. */
+export function escalationsOf(portfolio: Portfolio): EscalationSet {
+  if (portfolio.escalations.length > 0) {
+    return { known: "open", escalations: portfolio.escalations, unreached: portfolio.unreached };
+  }
+  return portfolio.unreached.length === 0
+    ? { known: "none" }
+    : { known: "unknown", unreached: portfolio.unreached };
+}
+
+/**
+ * One thread's attribution: the projects that name it, or why that is unknown.
+ *
+ * A thread no answered board names is `unlinked` only where every board
+ * answered. While one did not, its unread cards could name any thread on this
+ * list, so the row says which scope is missing instead of claiming an absence.
+ */
+function linkOf(projects: readonly string[], unreached: readonly UnreachedScope[]): ThreadLink {
+  if (projects.length > 0) {
+    return { known: "linked", projects };
+  }
+  return unreached.length === 0
+    ? { known: "unlinked" }
+    : { known: "unknown", unreached: unreached.map((scope) => scope.key) };
 }
 
 /** Thread ids the cards of one project link, deduplicated. */
@@ -146,9 +191,24 @@ export interface PortfolioBoardRead {
   readonly board: Reading<BoardCards>;
 }
 
+/**
+ * Every project whose board did not answer, in the failure's own words.
+ *
+ * `absent` is deliberately not one of them: the record answering that it holds
+ * no board for a project is knowledge — no cards, so no finding and no link to
+ * miss. Only a read that did not complete leaves this page unable to say what
+ * is there.
+ */
+function unreachedOf(boards: readonly PortfolioBoardRead[]): readonly UnreachedScope[] {
+  return boards.flatMap((read) =>
+    read.board.state === "unavailable" ? [{ key: read.key, reason: read.board.failure.reason }] : []
+  );
+}
+
 function threadsOf(
   inbox: InboxProjection,
-  byProject: readonly { readonly key: string; readonly linked: ReadonlySet<string> }[]
+  byProject: readonly { readonly key: string; readonly linked: ReadonlySet<string> }[],
+  unreached: readonly UnreachedScope[]
 ): readonly PortfolioThread[] {
   return inbox.threads.map((thread) => ({
     threadId: thread.threadId,
@@ -156,20 +216,47 @@ function threadsOf(
     lastMessagePreview: thread.lastMessagePreview,
     lastMessageAt: thread.lastMessageAt,
     unreadCount: thread.unreadCount,
-    projects: byProject
-      .filter((project) => project.linked.has(thread.threadId))
-      .map((project) => project.key),
+    link: linkOf(
+      byProject
+        .filter((project) => project.linked.has(thread.threadId))
+        .map((project) => project.key),
+      unreached
+    ),
     promotedTicketId: thread.promotedTicketId,
   }));
 }
 
+/**
+ * Unread mail on threads the record links to no project — withheld entirely
+ * while a board did not answer. Under a partial read every unmatched thread is
+ * `unknown`, so this number could only come out as zero, and a zero here reads
+ * as a split that was measured.
+ */
+function unlinkedOf(
+  threads: readonly PortfolioThread[],
+  unreached: readonly UnreachedScope[]
+): Known<number> {
+  if (unreached.length > 0) {
+    return unreadOf(
+      `${unreached.map((scope) => scope.key).join(", ")} did not answer, so no thread here can ` +
+        "be called unlinked: a card on a board this read never reached could name any of them"
+    );
+  }
+  return valueOf(
+    threads
+      .filter((thread) => thread.link.known === "unlinked")
+      .reduce((total, thread) => total + thread.unreadCount, 0)
+  );
+}
+
 function commsOf(
   inbox: Reading<InboxProjection>,
-  byProject: readonly { readonly key: string; readonly linked: ReadonlySet<string> }[]
+  byProject: readonly { readonly key: string; readonly linked: ReadonlySet<string> }[],
+  unreached: readonly UnreachedScope[]
 ): Known<PortfolioComms> {
   switch (inbox.state) {
     case "present": {
-      const threads = threadsOf(inbox.value, byProject);
+      const threads = threadsOf(inbox.value, byProject, unreached);
       const addressable = inbox.value.recipient !== UNADDRESSABLE;
       return valueOf({
         recipient: inbox.value.recipient,
@@ -177,9 +264,7 @@ function commsOf(
         unaddressableWhy: addressable ? null : UNADDRESSABLE_WHY,
         threads,
         totalUnread: inbox.value.totalUnread,
-        unlinkedUnread: threads
-          .filter((thread) => thread.projects.length === 0)
-          .reduce((total, thread) => total + thread.unreadCount, 0),
+        unlinkedUnread: unlinkedOf(threads, unreached),
       });
     }
     case "absent":
@@ -209,6 +294,7 @@ export function portfolioOf(
     key: read.key,
     linked: linkedThreadIds(cardsOf(read.board)),
   }));
+  const unreached = unreachedOf(boards);
   const projects: readonly PortfolioProject[] = boards.map((read, index) => ({
     key: read.key,
     counts: countsFor(read.board),
@@ -228,10 +314,10 @@ export function portfolioOf(
     tickets: answeredCards.length,
     staged: answeredCards.filter((card) => card.stageKey !== null).length,
     escalations: projects.flatMap((project) => project.escalations),
-    comms: commsOf(inbox, linkedByProject),
+    comms: commsOf(inbox, linkedByProject, unreached),
     answered: boards.filter((read) => read.board.state === "present").length,
     considered: boards.length,
-    reason: boards.map((read) => failureOf(read.board)).find((reason) => reason !== null) ?? null,
+    unreached,
     observedAt,
   };
 }

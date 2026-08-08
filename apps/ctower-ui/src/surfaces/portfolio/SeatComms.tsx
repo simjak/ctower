@@ -1,10 +1,10 @@
 import Link from "next/link";
 import type { ReactElement } from "react";
-import { KnownAbsence, NoSourceYet } from "@/frame/Declared";
+import { KnownAbsence, NoSourceYet, NotReached } from "@/frame/Declared";
 import { NO_THREADS_HERE } from "@/read/futureSources";
 import { shortId, stampText } from "@/read/elapsed";
 import { Count } from "@/surfaces/Count";
-import type { PortfolioComms, PortfolioThread } from "@/read/interface";
+import type { PortfolioComms, PortfolioThread, ThreadLink } from "@/read/interface";
 import type { Known } from "@/read/sources/maybe";
 
 /**
@@ -25,7 +25,37 @@ import type { Known } from "@/read/sources/maybe";
  * names it. Mail on threads no card links is counted apart, so the per-project
  * numbers and the unlinked number add up to the projection's own total instead
  * of being spread across projects the record never linked.
+ *
+ * That attribution is only as complete as the boards that answered, and the row
+ * says so. A board that did not answer had its cards unread, and any of them
+ * could name the thread in front of you — so *no answered board names it* is
+ * printed as a link this page does not know, never as mail linked to nothing.
  */
+
+/** Which projects a thread belongs to, or that this read cannot tell. */
+function Linked({ link }: { readonly link: ThreadLink }): ReactElement {
+  switch (link.known) {
+    case "linked":
+      return (
+        <>
+          {link.projects.map((project) => (
+            <span className="chip" key={project}>
+              {project}
+            </span>
+          ))}
+        </>
+      );
+    case "unlinked":
+      return <span>linked to no project</span>;
+    case "unknown":
+      return (
+        <NotReached
+          label={`link unknown · ${link.unreached.join(", ")} not reached`}
+          detail={`no board that answered names this thread, and ${link.unreached.join(", ")} did not answer — a card there could name it, so this is not mail the record links to no project`}
+        />
+      );
+  }
+}
 
 function ThreadRow({ thread }: { readonly thread: PortfolioThread }): ReactElement {
   const unread = thread.unreadCount > 0;
@@ -44,15 +74,7 @@ function ThreadRow({ thread }: { readonly thread: PortfolioThread }): ReactEleme
           unit="unread"
           detail={`${thread.unreadCount.toString()} unread messages in this thread`}
         />
-        {thread.projects.length === 0 ? (
-          <span>linked to no project</span>
-        ) : (
-          thread.projects.map((project) => (
-            <span className="chip" key={project}>
-              {project}
-            </span>
-          ))
-        )}
+        <Linked link={thread.link} />
         {thread.promotedTicketId === null ? null : <span>ticket linked</span>}
         <span className="mono">thread {shortId(thread.threadId)}</span>
       </div>

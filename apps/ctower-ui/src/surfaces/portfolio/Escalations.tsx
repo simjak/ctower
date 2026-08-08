@@ -1,9 +1,10 @@
 import Link from "next/link";
 import type { ReactElement } from "react";
-import { NoSourceYet } from "@/frame/Declared";
+import { NoSourceYet, UnknownSet } from "@/frame/Declared";
+import { escalationsOf } from "@/read/portfolioProjection";
 import { NO_OPEN_ESCALATIONS } from "@/read/futureSources";
 import { shortId } from "@/read/elapsed";
-import type { Portfolio, PortfolioEscalation } from "@/read/interface";
+import type { Portfolio, PortfolioEscalation, UnreachedScope } from "@/read/interface";
 
 /**
  * What is waiting on a human, across every project board that answered.
@@ -14,10 +15,12 @@ import type { Portfolio, PortfolioEscalation } from "@/read/interface";
  * therefore states the finding's own kind and reason codes rather than a
  * severity this surface invented, and links to the ticket it is filed against.
  *
- * Empty is a measurement, and it is drawn as one. Boards that answered and hold
- * no such finding render the record-holds-none block from the reviewed
- * declared-source table, not an empty list — an empty list reads the same
- * whether the record was consulted or not.
+ * Empty is a measurement, and it is drawn as one — but only where it *is* one.
+ * The panel takes the fold's own verdict rather than reading the length of the
+ * list it was handed, because an empty list means two opposite things: every
+ * board answered and holds no such finding, or a board never answered and this
+ * page has no idea. The first is the record-holds-none block; the second names
+ * the boards that were not reached and claims nothing.
  */
 
 function Row({ escalation }: { readonly escalation: PortfolioEscalation }): ReactElement {
@@ -40,15 +43,38 @@ function Row({ escalation }: { readonly escalation: PortfolioEscalation }): Reac
   );
 }
 
-export function Escalations({ portfolio }: { readonly portfolio: Portfolio }): ReactElement {
-  if (portfolio.escalations.length === 0) {
-    return <NoSourceYet brief source={NO_OPEN_ESCALATIONS} />;
+/** The caveat under a real list that may not be the whole one. */
+function Partial({ scopes }: { readonly scopes: readonly UnreachedScope[] }): ReactElement | null {
+  if (scopes.length === 0) {
+    return null;
   }
   return (
-    <div>
-      {portfolio.escalations.map((escalation) => (
-        <Row escalation={escalation} key={escalation.findingId} />
+    <div className="src-line">
+      <span>from the project boards that answered — what the rest hold was not read</span>
+      {scopes.map((scope) => (
+        <span key={scope.key}>
+          {scope.key} not reached: {scope.reason}
+        </span>
       ))}
     </div>
   );
+}
+
+export function Escalations({ portfolio }: { readonly portfolio: Portfolio }): ReactElement {
+  const found = escalationsOf(portfolio);
+  switch (found.known) {
+    case "none":
+      return <NoSourceYet brief source={NO_OPEN_ESCALATIONS} />;
+    case "unknown":
+      return <UnknownSet what="What is waiting on a human" scopes={found.unreached} />;
+    case "open":
+      return (
+        <div>
+          {found.escalations.map((escalation) => (
+            <Row escalation={escalation} key={escalation.findingId} />
+          ))}
+          <Partial scopes={found.unreached} />
+        </div>
+      );
+  }
 }

@@ -3,11 +3,13 @@ import { Chrome } from "@/frame/Chrome";
 import { Resolved } from "@/frame/Declared";
 import { RecordFoot } from "@/frame/RecordFoot";
 import { recordAdapter, SOURCE_LABELS } from "@/read/adapter";
+import { escalationsOf } from "@/read/portfolioProjection";
 import { Count } from "@/surfaces/Count";
 import { Escalations } from "@/surfaces/portfolio/Escalations";
 import { ProjectLanes } from "@/surfaces/portfolio/ProjectLanes";
 import { SeatComms } from "@/surfaces/portfolio/SeatComms";
-import type { Portfolio } from "@/read/interface";
+import type { EscalationSet } from "@/read/portfolioProjection";
+import type { Portfolio, PortfolioComms } from "@/read/interface";
 
 export const dynamic = "force-dynamic";
 
@@ -47,8 +49,42 @@ function Lede(): ReactElement {
   );
 }
 
+/**
+ * How many escalations are open — or that no read could say.
+ *
+ * `null` is not zero and is not drawn as one: the list is built from the boards
+ * that answered, so with one of them unreached the number below it would be a
+ * floor presented as a total.
+ */
+function escalationCount(found: EscalationSet): number | null {
+  switch (found.known) {
+    case "open":
+      return found.escalations.length;
+    case "none":
+      return 0;
+    case "unknown":
+      return null;
+  }
+}
+
+/** The panel's own count, or the sentence that stands where it cannot be one. */
+function EscalationCount({ portfolio }: { readonly portfolio: Portfolio }): ReactElement {
+  const found = escalationCount(escalationsOf(portfolio));
+  if (found === null) {
+    return <span>not known: a project board did not answer</span>;
+  }
+  return (
+    <Count
+      value={found}
+      unit="waiting on a human"
+      detail="undisposed attention findings whose effective owner is the operator, across the boards that answered"
+    />
+  );
+}
+
 function Tiles({ portfolio }: { readonly portfolio: Portfolio }): ReactElement {
   const comms = portfolio.comms;
+  const escalations = escalationCount(escalationsOf(portfolio));
   return (
     <div className="totals">
       <div className="tgrid">
@@ -65,7 +101,9 @@ function Tiles({ portfolio }: { readonly portfolio: Portfolio }): ReactElement {
         </div>
         <div>
           <div className="k">Open escalations</div>
-          <div className="v">{portfolio.escalations.length}</div>
+          {/* the same dash, for the same reason as the tile beside it: a board
+              that did not answer cannot be counted as holding none */}
+          <div className="v">{escalations ?? "—"}</div>
         </div>
         <div>
           <div className="k">Unread comms</div>
@@ -95,7 +133,11 @@ function LaneSource({ portfolio }: { readonly portfolio: Portfolio }): ReactElem
       <span>
         totals count the {portfolio.answered} of {portfolio.considered} project boards that answered
       </span>
-      {portfolio.reason === null ? null : <span>first board failure: {portfolio.reason}</span>}
+      {portfolio.unreached.map((scope) => (
+        <span key={scope.key}>
+          {scope.key} not reached: {scope.reason}
+        </span>
+      ))}
     </div>
   );
 }
@@ -107,6 +149,23 @@ function LaneSource({ portfolio }: { readonly portfolio: Portfolio }): ReactElem
  * per-project zeroes under a paragraph explaining that no thread can arrive
  * here would put the misreading back that the tile above just removed.
  */
+/**
+ * How the unread mail split, where it could be split at all. While a board is
+ * unread every unmatched thread is a thread this page cannot place, so the
+ * number is withheld and the reason takes its slot rather than a `0 of 9`.
+ */
+function UnlinkedSplit({ comms }: { readonly comms: PortfolioComms }): ReactElement {
+  const unlinked = comms.unlinkedUnread;
+  if (unlinked.known === "value") {
+    return (
+      <span>
+        {unlinked.value} of {comms.totalUnread} on threads no card links
+      </span>
+    );
+  }
+  return <span>{unlinked.known === "unread" ? unlinked.reason : unlinked.why}</span>;
+}
+
 function CommsSource({ portfolio }: { readonly portfolio: Portfolio }): ReactElement | null {
   const comms = portfolio.comms;
   if (comms.known === "value" && !comms.value.addressable) {
@@ -128,14 +187,11 @@ function CommsSource({ portfolio }: { readonly portfolio: Portfolio }): ReactEle
           )}
         </span>
       ))}
-      {comms.known === "value" ? (
-        <span>
-          {comms.value.unlinkedUnread} of {comms.value.totalUnread} on threads no card links
-        </span>
-      ) : null}
+      {comms.known === "value" ? <UnlinkedSplit comms={comms.value} /> : null}
       <span>
         a thread belongs to a project only where that project&rsquo;s board card names it; mail on
-        threads no card links is counted apart, never spread across projects
+        threads no card links is counted apart, never spread across projects — and while a board is
+        unread, that split is withheld rather than guessed
       </span>
     </div>
   );
@@ -170,11 +226,7 @@ function PortfolioBody({ portfolio }: { readonly portfolio: Portfolio }): ReactE
             <header>
               <h2>Open escalations</h2>
               <span className="sub">
-                <Count
-                  value={portfolio.escalations.length}
-                  unit="waiting on a human"
-                  detail="undisposed attention findings whose effective owner is the operator, across the boards that answered"
-                />
+                <EscalationCount portfolio={portfolio} />
               </span>
             </header>
             <Escalations portfolio={portfolio} />

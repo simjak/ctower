@@ -788,6 +788,25 @@ export interface PortfolioProject {
   readonly boardHref: string;
 }
 
+/** A project whose board read did not answer, in that failure's own words. */
+export interface UnreachedScope {
+  readonly key: string;
+  readonly reason: string;
+}
+
+/**
+ * Which projects' cards name one thread — and whether that is knowable at all.
+ *
+ * The attribution is carried by the boards: a card names the threads it links.
+ * So a thread no *answered* board names is only `unlinked` when every board
+ * answered; while one did not, its unread cards could name any thread, and the
+ * honest answer is `unknown` beside the scopes that were not reached.
+ */
+export type ThreadLink =
+  | { readonly known: "linked"; readonly projects: readonly string[] }
+  | { readonly known: "unlinked" }
+  | { readonly known: "unknown"; readonly unreached: readonly string[] };
+
 /** One durable thread, with the projects whose cards link it. */
 export interface PortfolioThread {
   readonly threadId: string;
@@ -795,8 +814,7 @@ export interface PortfolioThread {
   readonly lastMessagePreview: string;
   readonly lastMessageAt: string;
   readonly unreadCount: number;
-  /** Project keys whose board cards name this thread; empty when none does. */
-  readonly projects: readonly string[];
+  readonly link: ThreadLink;
   readonly promotedTicketId: string | null;
 }
 
@@ -816,8 +834,11 @@ export interface PortfolioComms {
   readonly unaddressableWhy: string | null;
   readonly threads: readonly PortfolioThread[];
   readonly totalUnread: number;
-  /** Unread messages on threads no project's cards link. */
-  readonly unlinkedUnread: number;
+  /**
+   * Unread messages on threads no project's cards link — `unread` while a board
+   * did not answer, because no thread can be called unlinked on cards nobody read.
+   */
+  readonly unlinkedUnread: Known<number>;
 }
 
 export interface Portfolio {
@@ -832,8 +853,11 @@ export interface Portfolio {
   /** Project boards that answered, and how many were asked. */
   readonly answered: number;
   readonly considered: number;
-  /** The first board failure observed, verbatim; `null` when all answered. */
-  readonly reason: string | null;
+  /**
+   * Every project whose board did not answer, named. Empty when all did — which
+   * is the only state in which an empty set on this page is a measurement.
+   */
+  readonly unreached: readonly UnreachedScope[];
   readonly observedAt: string;
 }
 

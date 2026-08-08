@@ -15,7 +15,7 @@
 //
 // Nothing here runs a command, reads a file, opens a socket or reads a clock.
 
-import { portfolioOf } from "../../apps/ctower-ui/src/read/portfolioProjection.ts";
+import { escalationsOf, portfolioOf } from "../../apps/ctower-ui/src/read/portfolioProjection.ts";
 import type { PortfolioBoardRead } from "../../apps/ctower-ui/src/read/portfolioProjection.ts";
 import { LANES } from "../../apps/ctower-ui/src/read/interface.ts";
 import { LANE_COLUMNS } from "../../apps/ctower-ui/src/surfaces/board/lanes.ts";
@@ -186,7 +186,7 @@ results.payload = {
   inbox: INBOX,
 };
 
-results.portfolio = portfolioOf(
+const wholeFleet = portfolioOf(
   [
     boardRead("manibo", present("manibo", MANIBO)),
     boardRead("ctower", present("ctower", CTOWER)),
@@ -195,13 +195,14 @@ results.portfolio = portfolioOf(
   inboxPresent,
   OBSERVED
 );
+results.portfolio = wholeFleet;
 
 /* ── one board down ───────────────────────────────────────────────────────
    The row that failed must not contribute a zero to any total, must not be
    counted as answered, and must not silently take an unread attribution it
    has no cards to justify. */
 
-results.oneBoardUnreachable = portfolioOf(
+const oneBoardDown = portfolioOf(
   [
     boardRead("manibo", unreachable("the read API answered 503")),
     boardRead("ctower", present("ctower", CTOWER)),
@@ -210,12 +211,13 @@ results.oneBoardUnreachable = portfolioOf(
   inboxPresent,
   OBSERVED
 );
+results.oneBoardUnreachable = oneBoardDown;
 
 /* ── nothing answered ─────────────────────────────────────────────────────
    Reaching none of the sources is still an answer this screen can render:
    three rows saying not-reached and `0 of 3`. It is never an empty portfolio. */
 
-results.noBoardAnswered = portfolioOf(
+const noBoardDown = portfolioOf(
   [
     boardRead("manibo", unreachable("the read API answered 503")),
     boardRead("ctower", unreachable("the read attempt timed out")),
@@ -224,6 +226,43 @@ results.noBoardAnswered = portfolioOf(
   inboxPresent,
   OBSERVED
 );
+results.noBoardAnswered = noBoardDown;
+
+/* ── the escalation panel's empty state ───────────────────────────────────
+   That block is a claim about the record: every board answered, and none of
+   them holds an open escalation. Two shapes make the claim false while the
+   found list is still empty — one board down beside answered ones, and every
+   board down — and neither may be drawn as the measured zero. The third case
+   is the control the other two are told apart from: boards that all answered
+   and hold none. */
+
+const partialFailure = portfolioOf(
+  [
+    boardRead("manibo", unreachable("the read API answered 503")),
+    boardRead("bh-loop", present("bh-loop", BHLOOP)),
+  ],
+  inboxPresent,
+  OBSERVED
+);
+results.partialFailureWithNoWaitingCard = partialFailure;
+
+const everyBoardHoldingNone = portfolioOf(
+  [
+    boardRead("bh-loop", present("bh-loop", BHLOOP)),
+    boardRead("new-project", present("new-project", BHLOOP)),
+  ],
+  inboxPresent,
+  OBSERVED
+);
+results.everyBoardAnsweredHoldingNone = everyBoardHoldingNone;
+
+results.escalationSets = {
+  wholeFleet: escalationsOf(wholeFleet),
+  oneBoardUnreachable: escalationsOf(oneBoardDown),
+  noBoardAnswered: escalationsOf(noBoardDown),
+  partialFailureWithNoWaitingCard: escalationsOf(partialFailure),
+  everyBoardAnsweredHoldingNone: escalationsOf(everyBoardHoldingNone),
+};
 
 /* ── the inbox did not answer ─────────────────────────────────────────────  */
 

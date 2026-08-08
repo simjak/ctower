@@ -15,11 +15,16 @@ that dropped a lane, counted by index instead of by name, folded an unreachable
 board in as a zero, or attributed unread mail to a project no card linked it to
 fails without anyone having to predict which mistake it would make.
 
-Three claims get their own classes because each is a place where the honest
+Five claims get their own classes because each is a place where the honest
 answer and the convenient one differ:
 
 * a board that did not answer contributes nothing and says so — it is never a
   zero row, and the totals say how many of how many boards answered;
+* an empty escalation list is drawn as a measurement only where every board
+  answered; the same empty list under a failed read names the scope it could
+  not see and claims nothing;
+* mail no answered board links is unlinked only where every board answered,
+  because a card on an unread board could name any thread on the page;
 * a measured zero and an unaddressable principal are different states, because
   "the seats are quiet" and "this reader is not a seat" are opposite claims;
 * the column axis the screen renders is the same lane set the projection emits,
@@ -56,6 +61,31 @@ def _outcomes() -> dict[str, Any]:
 
 def _portfolio(name: str = "portfolio") -> dict[str, Any]:
     return cast("dict[str, Any]", _outcomes()[name])
+
+
+def _escalation_set(name: str) -> dict[str, Any]:
+    """What the escalation panel would draw for one case, as the fold decided it."""
+    sets = cast("dict[str, Any]", _outcomes()["escalationSets"])
+    return cast("dict[str, Any]", sets[name])
+
+
+def _unreached(name: str) -> list[str]:
+    return [cast("str", scope["key"]) for scope in _portfolio(name)["unreached"]]
+
+
+def _threads_named_by(projects: tuple[str, ...]) -> set[str]:
+    """Every thread id the payload's own cards name, for the given projects."""
+    return {
+        thread
+        for project in projects
+        for card in _cards(project)
+        for thread in cast("list[str]", card["threads"])
+    }
+
+
+def _links(name: str = "portfolio") -> dict[str, dict[str, Any]]:
+    threads = _portfolio(name)["comms"]["value"]["threads"]
+    return {cast("str", thread["threadId"]): thread["link"] for thread in threads}
 
 
 def _payload() -> dict[str, Any]:
@@ -258,7 +288,7 @@ class UnreadCommsTests(unittest.TestCase):
         )
         self.assertGreater(expected, 0, "the fixture stopped exercising the unlinked path")
         self.assertEqual(
-            _portfolio()["comms"]["value"]["unlinkedUnread"],
+            _portfolio()["comms"]["value"]["unlinkedUnread"]["value"],
             expected,
             "mail on a thread no board card links was dropped or spread across projects",
         )
@@ -269,25 +299,24 @@ class UnreadCommsTests(unittest.TestCase):
             cast("int", _row(_portfolio(), project)["unread"]["value"]) for project in _PROJECTS
         )
         self.assertEqual(
-            per_project + cast("int", comms["unlinkedUnread"]),
+            per_project + cast("int", comms["unlinkedUnread"]["value"]),
             comms["totalUnread"],
             "the numbers the panel prints do not add up to the projection's own total, so a "
             "reader checking the page against itself would find it wrong",
         )
 
     def test_each_thread_names_the_projects_whose_cards_link_it(self) -> None:
-        by_thread = {
-            cast("str", thread["threadId"]): sorted(cast("list[str]", thread["projects"]))
-            for thread in _portfolio()["comms"]["value"]["threads"]
-        }
-        for thread_id, projects in by_thread.items():
+        for thread_id, link in _links().items():
             expected = sorted(
                 project
                 for project in _PROJECTS
                 if any(thread_id in card["threads"] for card in _cards(project))
             )
             with self.subTest(thread=thread_id):
-                self.assertEqual(projects, expected)
+                if expected == []:
+                    self.assertEqual(link["known"], "unlinked")
+                else:
+                    self.assertEqual(sorted(cast("list[str]", link["projects"])), expected)
 
 
 class UnreachableBoardTests(unittest.TestCase):
@@ -312,7 +341,12 @@ class UnreachableBoardTests(unittest.TestCase):
         )
         self.assertEqual(degraded["answered"], 2)
         self.assertEqual(degraded["considered"], 3)
-        self.assertIsNotNone(degraded["reason"])
+        self.assertEqual(
+            _unreached("oneBoardUnreachable"),
+            ["manibo"],
+            "the page cannot name the project it failed to read, so every absence on it is "
+            "unattributable",
+        )
 
     def test_the_failed_project_takes_no_unread_attribution(self) -> None:
         unread = _row(_portfolio("oneBoardUnreachable"), "manibo")["unread"]
@@ -343,6 +377,200 @@ class UnreachableBoardTests(unittest.TestCase):
         for row in _portfolio("inboxUnreachable")["projects"]:
             with self.subTest(project=row["key"]):
                 self.assertEqual(row["unread"]["known"], "unread")
+
+
+class IncompleteEscalationKnowledgeTests(unittest.TestCase):
+    """An empty escalation panel is a measurement, and only sometimes a true one.
+
+    The panel's empty block says *every board answered and none holds an open
+    escalation*. The fold builds that list from the boards that answered, so
+    the sentence is false the moment one did not — and it is false in exactly
+    the case nobody looks at twice, because an unreachable board and a quiet
+    one produce the same empty list.
+    """
+
+    def test_a_partial_failure_with_no_reachable_waiting_card_is_not_a_measured_zero(
+        self,
+    ) -> None:
+        found = _escalation_set("partialFailureWithNoWaitingCard")
+        self.assertEqual(
+            _portfolio("partialFailureWithNoWaitingCard")["escalations"],
+            [],
+            "the fixture stopped exercising the empty-list-with-a-failed-board path",
+        )
+        self.assertEqual(
+            found["known"],
+            "unknown",
+            "a board that did not answer was folded into a confirmed empty escalation set; "
+            "the screen would assert an absence the projection cannot know",
+        )
+        self.assertEqual([scope["key"] for scope in found["unreached"]], ["manibo"])
+        self.assertIn(
+            "503",
+            found["unreached"][0]["reason"],
+            "the unknown state does not carry the failure's own words, so the operator "
+            "cannot tell which scope is missing or why",
+        )
+
+    def test_reaching_no_board_at_all_leaves_the_escalation_set_unknown(self) -> None:
+        found = _escalation_set("noBoardAnswered")
+        self.assertEqual(
+            found["known"],
+            "unknown",
+            "with nothing reached the page claimed the record holds no escalation; that is "
+            "the strongest form of the same false zero",
+        )
+        self.assertEqual([scope["key"] for scope in found["unreached"]], list(_PROJECTS))
+
+    def test_every_board_answering_and_holding_none_is_the_measured_empty_state(self) -> None:
+        found = _escalation_set("everyBoardAnsweredHoldingNone")
+        self.assertEqual(
+            found["known"],
+            "none",
+            "boards that all answered and hold no waiting card is a fact about the record, "
+            "and withholding it would be the opposite dishonesty",
+        )
+        self.assertEqual(_unreached("everyBoardAnsweredHoldingNone"), [])
+
+    def test_an_open_set_names_the_board_that_did_not_answer(self) -> None:
+        found = _escalation_set("oneBoardUnreachable")
+        self.assertEqual(found["known"], "open")
+        self.assertEqual(
+            len(found["escalations"]),
+            sum(
+                1
+                for project in ("ctower", "bh-loop")
+                for card in _cards(project)
+                if card["waiting"]
+            ),
+            "the escalations offered are not the waiting cards of the boards that answered",
+        )
+        self.assertEqual(
+            [scope["key"] for scope in found["unreached"]],
+            ["manibo"],
+            "a list drawn from two of three boards is presented as the whole set",
+        )
+
+    def test_the_whole_fleet_set_carries_no_unreached_scope(self) -> None:
+        found = _escalation_set("wholeFleet")
+        self.assertEqual(found["known"], "open")
+        self.assertEqual(
+            found["unreached"],
+            [],
+            "every board answered and the panel still hedges, which teaches the reader to "
+            "ignore the hedge when it matters",
+        )
+
+    def test_the_panel_decides_its_empty_state_from_the_fold_and_not_a_length(self) -> None:
+        source = _source(_SURFACE / "surfaces/portfolio/Escalations.tsx")
+        self.assertIn(
+            "escalationsOf",
+            source,
+            "the panel reads the escalation list directly again, so it cannot tell a "
+            "measured zero from an unread board",
+        )
+        self.assertNotIn("escalations.length", source)
+
+    def test_the_tile_prints_no_total_the_boards_could_not_confirm(self) -> None:
+        self.assertNotIn(
+            "portfolio.escalations.length",
+            _source(_PAGE),
+            "the tile counts the found list whatever the boards answered, so a failed read "
+            "reaches the operator as a confident number",
+        )
+
+
+class UnknownLinkAttributionTests(unittest.TestCase):
+    """Mail a board that did not answer might have linked is never called unlinked.
+
+    A thread is attributed to a project by that project's own board cards. When
+    a board did not answer its cards were never read, so a thread no *answered*
+    board names is not thereby unlinked — the record may well link it from the
+    board this read never reached.
+    """
+
+    def test_a_thread_only_the_failed_board_links_is_not_reclassified_as_unlinked(self) -> None:
+        answered = ("ctower", "bh-loop")
+        failed_only = _threads_named_by(("manibo",)) - _threads_named_by(answered)
+        self.assertNotEqual(
+            failed_only,
+            set(),
+            "the fixture stopped carrying a thread only the unreachable board links",
+        )
+        links = _links("oneBoardUnreachable")
+        for thread in sorted(failed_only):
+            with self.subTest(thread=thread):
+                self.assertEqual(
+                    links[thread]["known"],
+                    "unknown",
+                    "the only board that links this thread was never read, and the thread "
+                    "was still rendered as one the record links to no project",
+                )
+                self.assertIn("manibo", links[thread]["unreached"])
+
+    def test_no_thread_at_all_is_called_unlinked_while_a_board_is_unread(self) -> None:
+        unlinked = sorted(
+            thread
+            for thread, link in _links("oneBoardUnreachable").items()
+            if link["known"] == "unlinked"
+        )
+        self.assertEqual(
+            unlinked,
+            [],
+            "an unmatched thread was called unlinked while a board's cards went unread; any "
+            "of them could name it",
+        )
+
+    def test_a_thread_an_answered_board_links_keeps_its_attribution(self) -> None:
+        answered = ("ctower", "bh-loop")
+        links = _links("oneBoardUnreachable")
+        named = _threads_named_by(answered)
+        self.assertNotEqual(named, set(), "the fixture stopped exercising the linked path")
+        for thread in sorted(named):
+            with self.subTest(thread=thread):
+                self.assertEqual(links[thread]["known"], "linked")
+                self.assertEqual(
+                    sorted(cast("list[str]", links[thread]["projects"])),
+                    sorted(
+                        project for project in answered if thread in _threads_named_by((project,))
+                    ),
+                    "a degraded read changed which projects an answered board's cards name",
+                )
+
+    def test_the_unlinked_total_is_withheld_rather_than_reported_as_a_number(self) -> None:
+        comms = _portfolio("oneBoardUnreachable")["comms"]["value"]
+        self.assertEqual(
+            comms["unlinkedUnread"]["known"],
+            "unread",
+            "the panel printed an unlinked-mail total while a board's cards were unread, so "
+            "the split it prints cannot be the split the record holds",
+        )
+        self.assertIn("manibo", comms["unlinkedUnread"]["reason"])
+
+    def test_a_thread_no_board_links_is_unlinked_once_every_board_answered(self) -> None:
+        unmatched = {
+            cast("str", thread["threadId"]) for thread in _payload()["inbox"]["threads"]
+        } - _threads_named_by(_PROJECTS)
+        self.assertNotEqual(unmatched, set(), "the fixture stopped exercising the unlinked path")
+        links = _links()
+        for thread in sorted(unmatched):
+            with self.subTest(thread=thread):
+                self.assertEqual(
+                    links[thread]["known"],
+                    "unlinked",
+                    "every board answered and none names this thread; withholding that is "
+                    "the opposite dishonesty",
+                )
+
+    def test_the_panel_decides_a_row_from_the_fold_and_not_a_length(self) -> None:
+        source = _source(_SURFACE / "surfaces/portfolio/SeatComms.tsx")
+        self.assertIn(
+            "thread.link",
+            source,
+            "the row reads the project list directly again, so an unread board's threads "
+            "render as threads the record links to nothing",
+        )
+        self.assertNotIn("projects.length", source)
 
 
 class AddressabilityTests(unittest.TestCase):

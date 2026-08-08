@@ -2,7 +2,7 @@ import type { CSSProperties, ReactElement, ReactNode } from "react";
 import { StateGlyph } from "./StateGlyph";
 import { landsText } from "@/read/futureSources";
 import type { ReadFailure } from "@/read/bounded";
-import type { FutureSource, Reading } from "@/read/interface";
+import type { FutureSource, Reading, UnreachedScope } from "@/read/interface";
 import type { Known } from "@/read/sources/maybe";
 
 /**
@@ -291,10 +291,70 @@ export function KnownAbsence({ value }: { readonly value: Known<unknown> }): Rea
     case "none":
       return <span title={value.why}>{value.why}</span>;
     case "unread":
-      return (
-        <span style={NOT_REACHED} title={value.reason}>
-          not reached
-        </span>
-      );
+      return <NotReached label="not reached" detail={value.reason} />;
   }
+}
+
+/**
+ * The not-reached treatment for one fact inside a row, where the row itself is
+ * real. The label is what the reader sees; the detail is the reason behind it,
+ * and the label alone must already be honest — a truth that lives only in a
+ * hover is a truth on a touch screen nobody has.
+ */
+export function NotReached({
+  label,
+  detail,
+}: {
+  readonly label: string;
+  readonly detail: string;
+}): ReactElement {
+  return (
+    <span style={NOT_REACHED} title={detail}>
+      {label}
+    </span>
+  );
+}
+
+/**
+ * A set this page cannot close, because a source it folds did not answer.
+ *
+ * The empty-set block above is a measurement: the record was consulted and
+ * holds none. The trouble is that the *same* empty list arrives when nobody
+ * could look, and a page that draws the two alike spends the operator's trust
+ * on the one claim it cannot make. So this block names every scope that did not
+ * answer, in that read's own words, and claims nothing about what they hold.
+ */
+export function UnknownSet({
+  what,
+  scopes,
+}: {
+  /** The thing that is not known, as a sentence subject: `What is waiting`. */
+  readonly what: string;
+  readonly scopes: readonly UnreachedScope[];
+}): ReactElement {
+  return (
+    <Frame>
+      <div
+        className="slot"
+        style={{ borderColor: "var(--warn-line)", background: "var(--warn-bg)" }}
+      >
+        <StateGlyph name="attn" />
+        <div className="e">
+          <div className="k">{what} is not known here</div>
+          <div className="d">
+            This is not an empty set. The sources named below did not answer, so nothing here is
+            evidence that there are none — the ones that did answer hold none, and what the rest
+            hold was not read.
+          </div>
+          <div className="f" style={{ overflowWrap: "anywhere" }}>
+            {scopes.map((scope) => (
+              <span className="req" key={scope.key}>
+                {scope.key} not reached: {scope.reason}
+              </span>
+            ))}
+          </div>
+        </div>
+      </div>
+    </Frame>
+  );
 }
