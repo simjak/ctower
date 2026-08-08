@@ -67,13 +67,14 @@ _EXPECTED_MIGRATION_PATHS = [
     "0053_dream_dispatch_effect.sql",
     "0054_gitlab_issue_integration.sql",
     "0055_connector_framework.sql",
+    "0056_gitlab_trace_views.sql",
 ]
 _EXPECTED_ADOPTION_BASELINE = {
-    "through": "0055_connector_framework.sql",
-    "schema_sha256": ("sha256:2e39e49ea8fd79045cb1aed91f40a96aa545a8311fb141802439473461cd70e8"),
+    "through": "0056_gitlab_trace_views.sql",
+    "schema_sha256": ("sha256:aecd29b6392ae6792ee33c13fadc51f656ddd46f304c37695d26db3426a2c6f7"),
     "semantic_checks": "ctower.pre-ledger/v1",
     "schema_object_sum256": (
-        "sum256:f4cc119f70da442c7dd5f16db9193d24fb5ee3e860093380c6df60c1d99fcd8b"
+        "sum256:eeb8ea04a878dffea66d44943846fd180c30f86dce66504f1d9890cf47e6643b"
     ),
 }
 _DURABILITY_RECOVERY_CONTRACT = {

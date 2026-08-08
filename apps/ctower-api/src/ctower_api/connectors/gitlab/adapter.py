@@ -106,6 +106,13 @@ class GitLabIssueConnector:
         self._client = client or httpx.Client(timeout=httpx.Timeout(10.0, connect=5.0))
         self._owns_client = client is None
         self._monotonic = monotonic
+        self._diagnostic: str | None = None
+
+    @property
+    def diagnostic(self) -> str | None:
+        """Return the last bounded provider diagnostic for the protected #377 facade."""
+
+        return self._diagnostic
 
     def __enter__(self) -> Self:
         return self
@@ -125,6 +132,7 @@ class GitLabIssueConnector:
     def fetch_page(
         self, request: FetchIssuePage, attempt: ConnectorAttempt
     ) -> FetchIssuePageResult:
+        self._diagnostic = None
         cursor: GitLabCursor
         try:
             cursor = GitLabCursor.decode(request.cursor)
@@ -155,16 +163,20 @@ class GitLabIssueConnector:
                 exhausted=next_page is None,
             )
         except httpx.HTTPError as error:
+            self._diagnostic = _safe_http_diagnostic("GET", error)
             retry_class, reason = _classify(error)
             return FetchFailure(retry_class=retry_class, reason=reason)
-        except _PayloadError:
+        except _PayloadError as error:
+            self._diagnostic = str(error)
             return FetchFailure(retry_class="terminal", reason="invalid_payload")
-        except ValueError:
+        except ValueError as error:
+            self._diagnostic = f"GitLab normalized contract failed: {error}"
             return FetchFailure(retry_class="terminal", reason="contract_violation")
 
     def comment_and_close(
         self, command: CloseExternalIssue, attempt: ConnectorAttempt
     ) -> CloseExternalIssueResult:
+        self._diagnostic = None
         try:
             project_id, issue_iid = _external_identity(command.external_ref)
             _require_project(project_id, self._config.project_id)
@@ -172,8 +184,10 @@ class GitLabIssueConnector:
             notes_url = f"{self._issues_url()}/{issue_iid}/notes"
             marker_seen = self._marker_present(notes_url, command.marker, deadline=deadline)
         except httpx.HTTPError as error:
+            self._diagnostic = _safe_http_diagnostic("close preflight", error)
             return _known_close_failure(error, write_disposition="not_written")
-        except _PayloadError:
+        except _PayloadError as error:
+            self._diagnostic = str(error)
             return CloseFailure(
                 retry_class="terminal",
                 reason="invalid_payload",
@@ -207,12 +221,15 @@ class GitLabIssueConnector:
             )
             _require_created_marker(response, command.marker)
         except httpx.ConnectError as error:
+            self._diagnostic = _safe_http_diagnostic("note creation", error)
             return _known_close_failure(error, write_disposition="not_written")
         except httpx.HTTPError as error:
+            self._diagnostic = _safe_http_diagnostic("note creation", error)
             return self._reconcile_marker_failure(
                 notes_url, command.marker, error=error, deadline=deadline
             )
-        except _PayloadError:
+        except _PayloadError as error:
+            self._diagnostic = str(error)
             return self._reconcile_marker_result(
                 notes_url,
                 command.marker,
@@ -276,8 +293,10 @@ class GitLabIssueConnector:
             )
             _require_closed(response)
         except httpx.ConnectError as error:
+            self._diagnostic = _safe_http_diagnostic("issue close", error)
             return _known_close_failure(error, write_disposition="not_written")
         except httpx.HTTPError as error:
+            self._diagnostic = _safe_http_diagnostic("issue close", error)
             return self._reconcile_close_failure(
                 issue_iid,
                 notes_url,
@@ -286,7 +305,8 @@ class GitLabIssueConnector:
                 error=error,
                 deadline=deadline,
             )
-        except _PayloadError:
+        except _PayloadError as error:
+            self._diagnostic = str(error)
             return self._reconcile_close_result(
                 issue_iid,
                 notes_url,
@@ -417,7 +437,8 @@ class GitLabIssueConnector:
         return response
 
     def _deadline(self, attempt: ConnectorAttempt) -> float:
-        return self._monotonic() + (attempt.deadline_remaining_milliseconds / 1000)
+        request_budget_milliseconds = min(5000, attempt.deadline_remaining_milliseconds)
+        return self._monotonic() + (request_budget_milliseconds / 1000)
 
     def _issues_url(self) -> str:
         return f"{self._base_url}/api/v4/projects/{self._config.project_id}/issues"
@@ -451,6 +472,8 @@ def _issue(value: object, *, expected_project: int) -> ExternalIssue:
             display_url=_string(payload, "web_url"),
             updated_at=_datetime(_string(payload, "updated_at")),
         )
+    except _PayloadError:
+        raise
     except ValueError as error:
         raise _PayloadError("GitLab issue violated the normalized contract") from error
 
@@ -503,6 +526,12 @@ def _classify(error: httpx.HTTPError) -> tuple[RetryClass, FailureReason]:
     if isinstance(error, httpx.HTTPStatusError):
         return _classify_status(error.response.status_code)
     return "terminal", "contract_violation"
+
+
+def _safe_http_diagnostic(operation: str, error: httpx.HTTPError) -> str:
+    if isinstance(error, httpx.HTTPStatusError):
+        return f"GitLab {operation} request failed with status {error.response.status_code}"
+    return f"GitLab {operation} failed: {error}"
 
 
 def _classify_status(status: int) -> tuple[RetryClass, FailureReason]:
@@ -577,7 +606,7 @@ def _reporter_reference(username: str) -> str:
 
 def _external_state(state: str) -> Literal["opened", "closed"]:
     if state not in {"opened", "closed"}:
-        raise _PayloadError("GitLab issue state is outside the supported contract")
+        raise _PayloadError("GitLab issue violated the normalized contract")
     return cast(Literal["opened", "closed"], state)
 
 

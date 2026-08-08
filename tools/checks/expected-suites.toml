@@ -653,6 +653,28 @@ command = [
 timeout_seconds = 900
 
 [[suite]]
+id = "connector-framework-acceptance"
+owner = "CT-I1-014"
+phase = "CT-I1-014"
+status = "required"
+path = "tests/acceptance/increment-1"
+patterns = [
+  "test_connector_framework_migration.py",
+  "test_connector_gitlab_integration.py",
+  "test_connector_registration_isolation.py",
+]
+command = [
+  "{python}",
+  "-m",
+  "pytest",
+  "tests/acceptance/increment-1/test_connector_framework_migration.py",
+  "tests/acceptance/increment-1/test_connector_gitlab_integration.py",
+  "tests/acceptance/increment-1/test_connector_registration_isolation.py",
+  "-q",
+]
+timeout_seconds = 900
+
+[[suite]]
 id = "increment-1-acceptance"
 owner = "CT-I1-008"
 phase = "CT-I1-008"
