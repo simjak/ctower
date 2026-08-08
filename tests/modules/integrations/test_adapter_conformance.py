@@ -73,6 +73,23 @@ def _link() -> GitLabIssueLink:
     )
 
 
+def _provider_issue() -> list[dict[str, object]]:
+    return [
+        {
+            "project_id": 42,
+            "iid": 7,
+            "title": "Feedback title",
+            "description": "Feedback body",
+            "labels": ["bug"],
+            "author": {"username": "reporter", "name": "Report Person"},
+            "state": "opened",
+            "web_url": "https://gitlab.example.test/group/project/-/issues/7",
+            "updated_at": "2026-08-08T08:01:00Z",
+            "documented_but_unused_field": True,
+        }
+    ]
+
+
 def run_conformance_suite(adapter: GitLabIssueAdapter) -> None:
     cursor = GitLabCursor(datetime(2026, 8, 8, 8, tzinfo=UTC), 1, 0)
     page = adapter.list_issues(_binding(), cursor)
@@ -178,18 +195,158 @@ def test_real_adapter_advances_only_the_bounded_provider_page() -> None:
     assert page.next_page == NEXT_PAGE
 
 
-def _provider_issue() -> list[dict[str, object]]:
-    return [
-        {
-            "project_id": 42,
-            "iid": 7,
-            "title": "Feedback title",
-            "description": "Feedback body",
-            "labels": ["bug"],
-            "author": {"username": "reporter", "name": "Report Person"},
-            "state": "opened",
-            "web_url": "https://gitlab.example.test/group/project/-/issues/7",
-            "updated_at": "2026-08-08T08:01:00Z",
-            "documented_but_unused_field": True,
-        }
-    ]
+@pytest.mark.parametrize(
+    "base_url",
+    [
+        "http://gitlab.example.test",
+        "https:///missing-host",
+        "https://gitlab.example.test?query=forbidden",
+        "https://gitlab.example.test#fragment-forbidden",
+    ],
+)
+def test_real_adapter_refuses_non_origin_base_urls(base_url: str) -> None:
+    with pytest.raises(ValueError, match="base URL"):
+        GitLabHttpAdapter(base_url, token=str(uuid4()))
+
+
+@pytest.mark.parametrize("token", ["", "x" * 2049])
+def test_real_adapter_refuses_missing_or_unbounded_credentials(token: str) -> None:
+    with pytest.raises(ValueError, match="credential"):
+        GitLabHttpAdapter("https://gitlab.example.test", token=token)
+
+
+def test_real_adapter_closes_only_the_client_it_owns() -> None:
+    with GitLabHttpAdapter("https://gitlab.example.test", token=str(uuid4())) as owned:
+        owned_client = owned._client
+    assert owned_client.is_closed
+
+    external_client = httpx.Client(
+        transport=httpx.MockTransport(lambda _request: httpx.Response(200))
+    )
+    adapter = GitLabHttpAdapter(
+        "https://gitlab.example.test", token=str(uuid4()), client=external_client
+    )
+    adapter.close()
+    assert not external_client.is_closed
+    external_client.close()
+
+
+@pytest.mark.parametrize(
+    "payload,match",
+    [
+        ({"not": "an array"}, "array"),
+        (_provider_issue() * 51, "page bound"),
+        ([{**_provider_issue()[0], "labels": "bug"}], "labels"),
+        ([{**_provider_issue()[0], "labels": [1]}], "labels"),
+        ([{**_provider_issue()[0], "description": 42}], "description"),
+        ([{**_provider_issue()[0], "author": []}], "author"),
+        ([{**_provider_issue()[0], "project_id": True}], "project_id"),
+        ([{**_provider_issue()[0], "title": None}], "title"),
+        ([{**_provider_issue()[0], "updated_at": "not-a-date"}], "ISO 8601"),
+        ([{**_provider_issue()[0], "updated_at": "2026-08-08T08:01:00"}], "timezone-aware"),
+        ([{**_provider_issue()[0], "state": "merged"}], "normalized contract"),
+    ],
+)
+def test_real_adapter_refuses_malformed_issue_list_variants(payload: object, match: str) -> None:
+    client = httpx.Client(
+        transport=httpx.MockTransport(lambda _request: httpx.Response(200, json=payload))
+    )
+    adapter = GitLabHttpAdapter("https://gitlab.example.test", token=str(uuid4()), client=client)
+
+    with pytest.raises(GitLabSyncError, match=match):
+        adapter.list_issues(_binding(), GitLabCursor(datetime(2026, 8, 8, 8, tzinfo=UTC), 1, 0))
+
+
+@pytest.mark.parametrize(
+    "headers,match",
+    [
+        ({"X-Next-Page": "not-numeric"}, "X-Next-Page"),
+        ({"X-Next-Page": "1"}, "did not advance"),
+        ({"Link": '<https://gitlab.example.test/issues?page=next>; rel="next"'}, "numeric"),
+        ({"Link": '<https://gitlab.example.test/issues?page=1>; rel="next"'}, "did not advance"),
+    ],
+)
+def test_real_adapter_refuses_nonadvancing_pagination(headers: dict[str, str], match: str) -> None:
+    client = httpx.Client(
+        transport=httpx.MockTransport(
+            lambda _request: httpx.Response(200, headers=headers, json=_provider_issue())
+        )
+    )
+    adapter = GitLabHttpAdapter("https://gitlab.example.test", token=str(uuid4()), client=client)
+
+    with pytest.raises(GitLabSyncError, match=match):
+        adapter.list_issues(_binding(), GitLabCursor(datetime(2026, 8, 8, 8, tzinfo=UTC), 1, 0))
+
+
+def test_real_adapter_accepts_link_pagination_and_ignores_unrelated_links() -> None:
+    responses = iter(
+        [
+            httpx.Response(
+                200,
+                headers={"Link": '<https://gitlab.example.test/issues?page=2>; rel="next"'},
+                json=_provider_issue(),
+            ),
+            httpx.Response(
+                200,
+                headers={"Link": '<https://gitlab.example.test/issues?page=2>; rel="prev"'},
+                json=_provider_issue(),
+            ),
+        ]
+    )
+    client = httpx.Client(transport=httpx.MockTransport(lambda _request: next(responses)))
+    adapter = GitLabHttpAdapter("https://gitlab.example.test", token=str(uuid4()), client=client)
+    cursor = GitLabCursor(datetime(2026, 8, 8, 8, tzinfo=UTC), 1, 0)
+
+    assert adapter.list_issues(_binding(), cursor).next_page == NEXT_PAGE
+    assert adapter.list_issues(_binding(), cursor).next_page is None
+
+
+def test_real_adapter_wraps_http_and_non_json_failures() -> None:
+    response = httpx.Response(500, json={"message": "failed"})
+    client = httpx.Client(transport=httpx.MockTransport(lambda _request: response))
+    adapter = GitLabHttpAdapter("https://gitlab.example.test", token=str(uuid4()), client=client)
+    with pytest.raises(GitLabSyncError, match="GET request failed"):
+        adapter.list_issues(_binding(), GitLabCursor(datetime(2026, 8, 8, 8, tzinfo=UTC), 1, 0))
+
+    client = httpx.Client(
+        transport=httpx.MockTransport(lambda _request: httpx.Response(200, content=b"not-json"))
+    )
+    adapter = GitLabHttpAdapter("https://gitlab.example.test", token=str(uuid4()), client=client)
+    with pytest.raises(GitLabSyncError, match="not JSON"):
+        adapter.list_issues(_binding(), GitLabCursor(datetime(2026, 8, 8, 8, tzinfo=UTC), 1, 0))
+
+
+@pytest.mark.parametrize("notes", [{"not": "an array"}, [{"body": "note"}] * 101])
+def test_real_adapter_refuses_unbounded_note_pages(notes: object) -> None:
+    client = httpx.Client(
+        transport=httpx.MockTransport(lambda _request: httpx.Response(200, json=notes))
+    )
+    adapter = GitLabHttpAdapter("https://gitlab.example.test", token=str(uuid4()), client=client)
+
+    with pytest.raises(GitLabSyncError, match="note-list"):
+        adapter.comment_and_close(_link(), GitLabCloseCommand(DELIVERY_ID, "Proof-gated close"))
+
+
+def test_real_adapter_refuses_wrong_created_marker_and_unclosed_issue() -> None:
+    wrong_marker = iter(
+        [
+            httpx.Response(200, json=[]),
+            httpx.Response(201, json={"body": "marker missing"}),
+        ]
+    )
+    client = httpx.Client(transport=httpx.MockTransport(lambda _request: next(wrong_marker)))
+    adapter = GitLabHttpAdapter("https://gitlab.example.test", token=str(uuid4()), client=client)
+    command = GitLabCloseCommand(DELIVERY_ID, "Proof-gated close")
+    with pytest.raises(GitLabSyncError, match="wrong delivery marker"):
+        adapter.comment_and_close(_link(), command)
+
+    unclosed = iter(
+        [
+            httpx.Response(200, json=[{"body": command.marker}]),
+            httpx.Response(200, json={"state": "opened"}),
+        ]
+    )
+    client = httpx.Client(transport=httpx.MockTransport(lambda _request: next(unclosed)))
+    adapter = GitLabHttpAdapter("https://gitlab.example.test", token=str(uuid4()), client=client)
+    with pytest.raises(GitLabSyncError, match="closed state"):
+        adapter.comment_and_close(_link(), command)
