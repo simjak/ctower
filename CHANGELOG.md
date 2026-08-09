@@ -1,5 +1,19 @@
 # Changelog
 
+## [0.19.0](https://github.com/simjak/ctower/compare/v0.18.0...v0.19.0) (2026-08-08)
+
+
+### Features
+
+* **ui:** add the director's cross-project portfolio view ([#385](https://github.com/simjak/ctower/issues/385)) ([e53e27e](https://github.com/simjak/ctower/commit/e53e27ec269ad3f2a9b74cda5361401093fd13b8))
+
+## [0.18.0](https://github.com/simjak/ctower/compare/v0.17.0...v0.18.0) (2026-08-08)
+
+
+### Features
+
+* **ui:** server-authoritative inbox promote control ([#379](https://github.com/simjak/ctower/issues/379)) ([4087881](https://github.com/simjak/ctower/commit/4087881af9d70b0f5cf617ae0bd389cf3a4d3399))
+
 ## [0.17.0](https://github.com/simjak/ctower/compare/v0.16.0...v0.17.0) (2026-08-08)
 
 

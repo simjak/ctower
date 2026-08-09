@@ -10,6 +10,7 @@ import { recordAdapter } from "@/read/adapter";
  * fleet dashboard, and a ticket screen lights the rail entry that reaches one.
  */
 const RAIL_OF = {
+  Portfolio: "Portfolio",
   Board: "Dashboard",
   Ticket: "Latest ticket",
   Heartbeats: "Heartbeats",

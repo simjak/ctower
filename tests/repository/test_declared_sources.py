@@ -200,6 +200,7 @@ class RailContractTests(unittest.TestCase):
                 "/heartbeats",
                 "/inbox",
                 "/metrics",
+                "/portfolio",
                 "/team",
                 "/ticket",
                 "/workspace",
