@@ -1,359 +1,334 @@
-"""Strict values and small Interfaces for the GitLab issue integration Seam."""
+"""Strict provider-neutral values and the small IssueConnector protocol."""
 
 from __future__ import annotations
 
-import re
-from dataclasses import dataclass
 from datetime import datetime, timedelta
-from typing import Protocol
+from typing import Annotated, Literal, Protocol
 from urllib.parse import urlsplit
 from uuid import UUID
+
+from pydantic import BaseModel, ConfigDict, Field, model_validator
 
 from ctower_kernel.record import Actor
 
 __all__ = [
-    "GitLabCloseCommand",
-    "GitLabCloseReceipt",
-    "GitLabCursor",
-    "GitLabIntegrationStore",
-    "GitLabIssue",
-    "GitLabIssueAdapter",
-    "GitLabIssueLink",
-    "GitLabIssuePage",
-    "GitLabReporter",
-    "GitLabSyncBatch",
-    "GitLabSyncBinding",
-    "GitLabSyncClaim",
-    "GitLabSyncError",
+    "AmbiguousWrite",
+    "CloseExternalIssue",
+    "CloseExternalIssueResult",
+    "CloseFailure",
+    "ConnectorAttempt",
+    "ConnectorClaim",
+    "ConnectorCursorToken",
+    "ConnectorLabelMapping",
+    "ConnectorLink",
+    "ConnectorReceipt",
+    "ConnectorRegistration",
+    "ConnectorStore",
+    "ConnectorSyncBatch",
+    "ConnectorSyncError",
+    "ExternalIssue",
+    "ExternalIssuePage",
+    "FailureReason",
+    "FetchFailure",
+    "FetchIssuePage",
+    "FetchIssuePageResult",
+    "IssueConnector",
+    "RetryClass",
+    "WriteDisposition",
 ]
 
-_DIGEST = re.compile(r"^sha256:[0-9a-f]{64}$")
-_INTEGRATION_KEY = re.compile(r"^[a-z][a-z0-9.-]{2,127}$")
-_LABEL_KEY = re.compile(r"^[a-z][a-z0-9._-]{1,95}$")
-_PROJECT_KEY = re.compile(r"^[a-z][a-z0-9-]{2,63}$")
-_USERNAME = re.compile(r"^[A-Za-z0-9_.-]{1,255}$")
-_MAX_BODY_LENGTH = 60_000
-_MAX_CLOSE_COMMENT_LENGTH = 4000
+_DIGEST_PATTERN = r"^sha256:[0-9a-f]{64}$"
+_KEY_PATTERN = r"^[a-z][a-z0-9.-]{2,127}$"
+_LABEL_PATTERN = r"^[a-z][a-z0-9._-]{1,95}$"
+_PROJECT_PATTERN = r"^[a-z][a-z0-9-]{2,63}$"
+_MAX_CURSOR_LENGTH = 4096
+_MAX_DESCRIPTION_LENGTH = 60_000
+_MAX_CONNECTOR_KIND_LENGTH = 64
+_MAX_EXTERNAL_REF_LENGTH = 256
 _MAX_LABELS = 100
 _MAX_LABEL_LENGTH = 255
 _MAX_PAGE_SIZE = 100
 _MAX_POLL_SECONDS = 3600
-_MAX_REPORTER_NAME_LENGTH = 255
-_MAX_TITLE_LENGTH = 200
 _MIN_POLL_SECONDS = 15
-_SECOND_PAGE = 2
+
+RetryClass = Literal["retryable", "terminal"]
+RetryableReason = Literal[
+    "timeout",
+    "transport_connect",
+    "transport_read",
+    "transport_protocol",
+    "throttled",
+    "provider_5xx",
+]
+TerminalReason = Literal[
+    "authentication",
+    "authorization",
+    "ordinary_4xx",
+    "invalid_payload",
+    "unsupported_item",
+    "contract_violation",
+]
+FailureReason = RetryableReason | TerminalReason
+WriteDisposition = Literal["not_written", "reconciled_absent"]
+
+_RETRYABLE_REASONS = {
+    "timeout",
+    "transport_connect",
+    "transport_read",
+    "transport_protocol",
+    "throttled",
+    "provider_5xx",
+}
+_TERMINAL_REASONS = {
+    "authentication",
+    "authorization",
+    "ordinary_4xx",
+    "invalid_payload",
+    "unsupported_item",
+    "contract_violation",
+}
 
 
-class GitLabSyncError(RuntimeError):
-    """One provider, persistence, or authoritative-command sync failure."""
+class _StrictValue(BaseModel):
+    model_config = ConfigDict(extra="forbid", frozen=True, strict=True)
 
 
-@dataclass(frozen=True, slots=True)
-class GitLabReporter:
-    username: str
-    name: str
+class ConnectorCursorToken(_StrictValue):
+    """Provider-owned, non-secret, bounded opaque progress value."""
 
-    def __post_init__(self) -> None:
-        if (
-            _USERNAME.fullmatch(self.username) is None
-            or not 1 <= len(self.name) <= _MAX_REPORTER_NAME_LENGTH
-        ):
-            raise ValueError("GitLab reporter is outside the authored contract")
-
-    def to_mapping(self) -> dict[str, str]:
-        return {"username": self.username, "name": self.name}
+    value: str = Field(min_length=1, max_length=_MAX_CURSOR_LENGTH)
 
 
-@dataclass(frozen=True, slots=True)
-class GitLabIssue:
-    """Normalized provider issue; no provider-only fields cross the Seam."""
+class ConnectorAttempt(_StrictValue):
+    """Core-owned immutable budget snapshot for exactly one invocation."""
 
-    project_id: int
-    iid: int
-    title: str
-    body: str
-    labels: tuple[str, ...]
-    reporter: GitLabReporter
-    state: str
-    web_url: str
+    attempt_number: int = Field(ge=1, le=4)
+    max_attempts: Literal[4]
+    deadline_remaining_milliseconds: int = Field(ge=1, le=10_000)
+
+    @model_validator(mode="after")
+    def _attempt_is_available(self) -> ConnectorAttempt:
+        if self.attempt_number > self.max_attempts:
+            raise ValueError("connector attempt exceeds the core-owned maximum")
+        return self
+
+
+class FetchIssuePage(_StrictValue):
+    cursor: ConnectorCursorToken
+    page_size: int = Field(ge=1, le=_MAX_PAGE_SIZE)
+
+
+class ExternalIssue(_StrictValue):
+    """The complete provider-neutral issue value admitted into connector core."""
+
+    connector_kind: str = Field(pattern=_KEY_PATTERN, max_length=_MAX_CONNECTOR_KIND_LENGTH)
+    external_ref: str = Field(min_length=1, max_length=_MAX_EXTERNAL_REF_LENGTH)
+    title: str = Field(min_length=1, max_length=200)
+    description: str = Field(max_length=_MAX_DESCRIPTION_LENGTH)
+    source_labels: tuple[str, ...] = Field(max_length=_MAX_LABELS)
+    reporter_reference: str = Field(min_length=1, max_length=256)
+    reporter_display_name: str = Field(min_length=1, max_length=255)
+    external_state: Literal["opened", "closed"]
     updated_at: datetime
+    display_url: str = Field(min_length=1, max_length=2048)
 
-    def __post_init__(self) -> None:
-        _validate_issue_identity(self)
-        _validate_issue_content(self)
-        _validate_issue_labels(self.labels)
-        _validate_issue_source(self)
-
-    @property
-    def source_ref(self) -> str:
-        return f"gitlab:{self.project_id}:{self.iid}"
-
-    def to_mapping(self) -> dict[str, object]:
-        return {
-            "schema": "ctower.gitlab-issue/v1",
-            "project_id": self.project_id,
-            "iid": self.iid,
-            "title": self.title,
-            "body": self.body,
-            "labels": list(self.labels),
-            "reporter": self.reporter.to_mapping(),
-            "state": self.state,
-            "web_url": self.web_url,
-            "updated_at": self.updated_at.isoformat(),
-        }
-
-
-def _validate_issue_identity(issue: GitLabIssue) -> None:
-    if isinstance(issue.project_id, bool) or issue.project_id < 1:
-        raise ValueError("GitLab project identity is outside the authored contract")
-    if isinstance(issue.iid, bool) or issue.iid < 1:
-        raise ValueError("GitLab issue identity is outside the authored contract")
-
-
-def _validate_issue_content(issue: GitLabIssue) -> None:
-    if not 1 <= len(issue.title) <= _MAX_TITLE_LENGTH or len(issue.body) > _MAX_BODY_LENGTH:
-        raise ValueError("GitLab issue content is outside the authored contract")
-    if issue.state not in {"opened", "closed"}:
-        raise ValueError("GitLab issue state is outside the authored contract")
-
-
-def _validate_issue_labels(labels: tuple[str, ...]) -> None:
-    if (
-        len(labels) > _MAX_LABELS
-        or len(set(labels)) != len(labels)
-        or any(not 1 <= len(label) <= _MAX_LABEL_LENGTH for label in labels)
-    ):
-        raise ValueError("GitLab labels are outside the authored contract")
-
-
-def _validate_issue_source(issue: GitLabIssue) -> None:
-    url = urlsplit(issue.web_url)
-    if url.scheme != "https" or not url.hostname:
-        raise ValueError("GitLab issue URL must be absolute HTTPS")
-    if issue.updated_at.tzinfo is None or issue.updated_at.utcoffset() is None:
-        raise ValueError("GitLab issue updated_at must be timezone-aware")
-
-
-@dataclass(frozen=True, slots=True)
-class GitLabSyncBinding:
-    """One immutable Catalog integration revision, with no resolved secret value."""
-
-    integration_key: str
-    revision_id: UUID
-    revision_digest: str
-    project_id: int
-    project_key: str
-    initial_custodian_id: UUID
-    import_updated_after: datetime
-    page_size: int
-    poll_interval: timedelta
-    label_map: tuple[tuple[str, str], ...]
-
-    def __post_init__(self) -> None:
-        _validate_binding_identity(self)
-        _validate_binding_cursor(self)
-        _validate_label_map(self.label_map)
-
-    def label_key(self, source: str) -> str | None:
-        return dict(self.label_map).get(source)
+    @model_validator(mode="after")
+    def _strict_external_value(self) -> ExternalIssue:
+        if len(set(self.source_labels)) != len(self.source_labels) or any(
+            not 1 <= len(label) <= _MAX_LABEL_LENGTH for label in self.source_labels
+        ):
+            raise ValueError("connector source labels are outside the bounded contract")
+        if self.updated_at.tzinfo is None or self.updated_at.utcoffset() is None:
+            raise ValueError("connector issue updated_at must be timezone-aware")
+        parsed = urlsplit(self.display_url)
+        if parsed.scheme != "https" or not parsed.hostname:
+            raise ValueError("connector issue display URL must be absolute HTTPS")
+        return self
 
     def to_mapping(self) -> dict[str, object]:
-        return {
-            "integration_key": self.integration_key,
-            "revision_id": str(self.revision_id),
-            "revision_digest": self.revision_digest,
-            "project_id": self.project_id,
-            "project_key": self.project_key,
-            "initial_custodian_id": str(self.initial_custodian_id),
-            "import_updated_after": self.import_updated_after.isoformat(),
-            "page_size": self.page_size,
-            "poll_interval_seconds": int(self.poll_interval.total_seconds()),
-            "label_map": [
-                {"gitlab": source, "ctower": target} for source, target in self.label_map
-            ],
-        }
+        return self.model_dump(mode="json")
 
 
-def _validate_binding_identity(binding: GitLabSyncBinding) -> None:
-    if _INTEGRATION_KEY.fullmatch(binding.integration_key) is None:
-        raise ValueError("GitLab integration key is outside the authored contract")
-    if not isinstance(binding.revision_id, UUID):
-        raise TypeError("GitLab integration revision identity must be a UUID")
-    if _DIGEST.fullmatch(binding.revision_digest) is None:
-        raise ValueError("GitLab integration revision must be content addressed")
-    if isinstance(binding.project_id, bool) or binding.project_id < 1:
-        raise ValueError("GitLab project identity is outside the authored contract")
-    if _PROJECT_KEY.fullmatch(binding.project_key) is None:
-        raise ValueError("GitLab ctower project key is outside the authored contract")
+class ExternalIssuePage(_StrictValue):
+    kind: Literal["page"] = "page"
+    issues: tuple[ExternalIssue, ...] = Field(max_length=_MAX_PAGE_SIZE)
+    next_cursor: ConnectorCursorToken
+    exhausted: bool
 
 
-def _validate_binding_cursor(binding: GitLabSyncBinding) -> None:
-    if binding.import_updated_after.tzinfo is None:
-        raise ValueError("GitLab import cursor must be timezone-aware")
-    if not 1 <= binding.page_size <= _MAX_PAGE_SIZE:
-        raise ValueError("GitLab page size must be between 1 and 100")
-    if not _MIN_POLL_SECONDS <= binding.poll_interval.total_seconds() <= _MAX_POLL_SECONDS:
-        raise ValueError("GitLab poll interval must be between 15 and 3600 seconds")
+class FetchFailure(_StrictValue):
+    kind: Literal["fetch_failure"] = "fetch_failure"
+    retry_class: RetryClass
+    reason: FailureReason
+
+    @model_validator(mode="after")
+    def _reason_matches_class(self) -> FetchFailure:
+        _validate_failure_pair(self.retry_class, self.reason)
+        return self
 
 
-def _validate_label_map(label_map: tuple[tuple[str, str], ...]) -> None:
-    gitlab_labels = tuple(source for source, _target in label_map)
-    if len(label_map) > _MAX_LABELS or len(set(gitlab_labels)) != len(gitlab_labels):
-        raise ValueError("GitLab label mappings must be bounded and source-unique")
-    if any(
-        not 1 <= len(source) <= _MAX_LABEL_LENGTH or _LABEL_KEY.fullmatch(target) is None
-        for source, target in label_map
-    ):
-        raise ValueError("GitLab label mapping is outside the authored contract")
+class CloseExternalIssue(_StrictValue):
+    external_ref: str = Field(min_length=1, max_length=_MAX_EXTERNAL_REF_LENGTH)
+    command_id: UUID
+    marker: str = Field(min_length=1, max_length=200)
+    comment: str = Field(min_length=1, max_length=4000)
+
+    @model_validator(mode="after")
+    def _marker_is_deterministic(self) -> CloseExternalIssue:
+        if self.marker != f"<!-- ctower-sync:{self.command_id} -->" or not self.comment.strip():
+            raise ValueError("connector close marker or comment is outside the authored contract")
+        return self
 
 
-@dataclass(frozen=True, slots=True)
-class GitLabCursor:
-    updated_after: datetime
-    page: int
-    project_event_cursor: int
-
-    def __post_init__(self) -> None:
-        if self.updated_after.tzinfo is None or self.updated_after.utcoffset() is None:
-            raise ValueError("GitLab cursor must be timezone-aware")
-        if self.page < 1 or self.project_event_cursor < 0:
-            raise ValueError("GitLab cursor positions must be non-negative")
-
-    def to_mapping(self) -> dict[str, object]:
-        return {
-            "schema": "ctower.gitlab-issue-cursor/v1",
-            "updated_after": self.updated_after.isoformat(),
-            "page": self.page,
-            "project_event_cursor": self.project_event_cursor,
-        }
-
-
-@dataclass(frozen=True, slots=True)
-class GitLabSyncClaim:
-    """One durable owner/fence lease over a cursor snapshot."""
-
-    cursor: GitLabCursor
-    owner_id: UUID
-    fence: int
-    expires_at: datetime
-
-    def __post_init__(self) -> None:
-        if not isinstance(self.owner_id, UUID) or self.fence < 1:
-            raise ValueError("GitLab claim owner and fence are invalid")
-        if self.expires_at.tzinfo is None or self.expires_at.utcoffset() is None:
-            raise ValueError("GitLab claim expiry must be timezone-aware")
-
-
-@dataclass(frozen=True, slots=True)
-class GitLabIssuePage:
-    issues: tuple[GitLabIssue, ...]
-    next_page: int | None
-
-    def __post_init__(self) -> None:
-        if self.next_page is not None and self.next_page < _SECOND_PAGE:
-            raise ValueError("GitLab next page must advance")
-
-
-@dataclass(frozen=True, slots=True)
-class GitLabIssueLink:
-    tenant_id: UUID
-    integration_key: str
-    revision_digest: str
-    project_id: int
-    issue_iid: int
-    ticket_id: UUID
-    thread_id: UUID
-    web_url: str
-
-    @property
-    def source_ref(self) -> str:
-        return f"gitlab:{self.project_id}:{self.issue_iid}"
-
-
-@dataclass(frozen=True, slots=True)
-class GitLabCloseCommand:
-    delivery_id: UUID
-    comment: str
-
-    def __post_init__(self) -> None:
-        if not 1 <= len(self.comment) <= _MAX_CLOSE_COMMENT_LENGTH or not self.comment.strip():
-            raise ValueError("GitLab close comment is outside the authored contract")
-
-    @property
-    def marker(self) -> str:
-        return f"<!-- ctower-sync:{self.delivery_id} -->"
-
-    def to_mapping(self) -> dict[str, object]:
-        return {
-            "schema": "ctower.gitlab-close-command/v1",
-            "delivery_id": str(self.delivery_id),
-            "comment": self.comment,
-        }
-
-
-@dataclass(frozen=True, slots=True)
-class GitLabCloseReceipt:
-    delivery_id: UUID
+class ConnectorReceipt(_StrictValue):
+    kind: Literal["receipt"] = "receipt"
+    command_id: UUID
+    marker_present: Literal[True] = True
+    issue_closed: Literal[True] = True
     comment_created: bool
-    issue_closed: bool
-
-    def to_mapping(self) -> dict[str, object]:
-        return {
-            "schema": "ctower.gitlab-close-receipt/v1",
-            "delivery_id": str(self.delivery_id),
-            "comment_created": self.comment_created,
-            "issue_closed": self.issue_closed,
-        }
 
 
-@dataclass(frozen=True, slots=True)
-class GitLabSyncBatch:
-    claimed: bool
-    issues_seen: int = 0
-    tickets_created: int = 0
-    ticket_updates: int = 0
-    closures_delivered: int = 0
+class CloseFailure(_StrictValue):
+    kind: Literal["close_failure"] = "close_failure"
+    retry_class: RetryClass
+    reason: FailureReason
+    write_disposition: WriteDisposition
+
+    @model_validator(mode="after")
+    def _reason_matches_class(self) -> CloseFailure:
+        _validate_failure_pair(self.retry_class, self.reason)
+        return self
 
 
-class GitLabIssueAdapter(Protocol):
-    """Provider Seam implemented by one real HTTP Adapter and test fakes."""
+class AmbiguousWrite(_StrictValue):
+    kind: Literal["ambiguous_write"] = "ambiguous_write"
+    operation: Literal["comment_and_close"] = "comment_and_close"
+    reason: Literal["write_outcome_unknown"] = "write_outcome_unknown"
+    write_disposition: Literal["reconciliation_inconclusive"] = "reconciliation_inconclusive"
 
-    def list_issues(self, binding: GitLabSyncBinding, cursor: GitLabCursor) -> GitLabIssuePage: ...
+
+FetchIssuePageResult = Annotated[ExternalIssuePage | FetchFailure, Field(discriminator="kind")]
+CloseExternalIssueResult = Annotated[
+    ConnectorReceipt | CloseFailure | AmbiguousWrite,
+    Field(discriminator="kind"),
+]
+
+
+class IssueConnector(Protocol):
+    """The frozen two-method connector plug point; no persistence or authority enters it."""
+
+    def fetch_page(
+        self, request: FetchIssuePage, attempt: ConnectorAttempt
+    ) -> FetchIssuePageResult: ...
 
     def comment_and_close(
-        self, link: GitLabIssueLink, command: GitLabCloseCommand
-    ) -> GitLabCloseReceipt: ...
+        self, command: CloseExternalIssue, attempt: ConnectorAttempt
+    ) -> CloseExternalIssueResult: ...
 
 
-class GitLabIntegrationStore(Protocol):
-    """Durable links, observations, delivery receipts, and bounded cursor coordination."""
+class ConnectorLabelMapping(_StrictValue):
+    source: str = Field(min_length=1, max_length=_MAX_LABEL_LENGTH)
+    target: str = Field(pattern=_LABEL_PATTERN)
+
+
+class ConnectorRegistration(_StrictValue):
+    """One immutable Catalog registration plus provider-neutral core policy."""
+
+    registration_key: str = Field(pattern=_KEY_PATTERN)
+    revision_id: UUID
+    revision_digest: str = Field(pattern=_DIGEST_PATTERN)
+    connector_kind: str = Field(pattern=_KEY_PATTERN, max_length=_MAX_CONNECTOR_KIND_LENGTH)
+    source_display_name: str = Field(min_length=1, max_length=64)
+    project_key: str = Field(pattern=_PROJECT_PATTERN)
+    initial_custodian_id: UUID
+    initial_cursor: ConnectorCursorToken
+    page_size: int = Field(ge=1, le=_MAX_PAGE_SIZE)
+    poll_interval: timedelta
+    label_map: tuple[ConnectorLabelMapping, ...] = Field(max_length=_MAX_LABELS)
+
+    @model_validator(mode="after")
+    def _registration_is_bounded(self) -> ConnectorRegistration:
+        seconds = self.poll_interval.total_seconds()
+        if not _MIN_POLL_SECONDS <= seconds <= _MAX_POLL_SECONDS:
+            raise ValueError("connector poll interval must be between 15 and 3600 seconds")
+        sources = tuple(item.source for item in self.label_map)
+        if len(set(sources)) != len(sources):
+            raise ValueError("connector label mappings must be source-unique")
+        return self
+
+    def label_key(self, source: str) -> str | None:
+        return next((item.target for item in self.label_map if item.source == source), None)
+
+    def to_mapping(self) -> dict[str, object]:
+        return self.model_dump(mode="json")
+
+
+class ConnectorClaim(_StrictValue):
+    cursor: ConnectorCursorToken
+    project_event_cursor: int = Field(ge=0)
+    owner_id: UUID
+    fence: int = Field(ge=1)
+    expires_at: datetime
+
+    @model_validator(mode="after")
+    def _expiry_is_aware(self) -> ConnectorClaim:
+        if self.expires_at.tzinfo is None or self.expires_at.utcoffset() is None:
+            raise ValueError("connector claim expiry must be timezone-aware")
+        return self
+
+
+class ConnectorLink(_StrictValue):
+    tenant_id: UUID
+    registration_key: str = Field(pattern=_KEY_PATTERN)
+    revision_digest: str = Field(pattern=_DIGEST_PATTERN)
+    connector_kind: str = Field(pattern=_KEY_PATTERN, max_length=_MAX_CONNECTOR_KIND_LENGTH)
+    external_ref: str = Field(min_length=1, max_length=_MAX_EXTERNAL_REF_LENGTH)
+    ticket_id: UUID
+    thread_id: UUID
+    display_url: str
+
+
+class ConnectorSyncBatch(_StrictValue):
+    claimed: bool
+    issues_seen: int = Field(default=0, ge=0, le=_MAX_PAGE_SIZE)
+    tickets_created: int = Field(default=0, ge=0, le=_MAX_PAGE_SIZE)
+    ticket_updates: int = Field(default=0, ge=0, le=_MAX_PAGE_SIZE)
+    closures_delivered: int = Field(default=0, ge=0, le=_MAX_PAGE_SIZE)
+
+
+class ConnectorSyncError(RuntimeError):
+    """One provider, persistence, or authoritative-command tick failure."""
+
+
+class ConnectorStore(Protocol):
+    """Provider-neutral progress, custody, observations, and delivery receipts."""
 
     def claim(
         self,
         actor: Actor,
-        binding: GitLabSyncBinding,
+        registration: ConnectorRegistration,
         *,
         owner_id: UUID,
         now: datetime,
-    ) -> GitLabSyncClaim | None: ...
+    ) -> ConnectorClaim | None: ...
 
     def issue_link(
-        self, actor: Actor, binding: GitLabSyncBinding, issue_iid: int
-    ) -> GitLabIssueLink | None: ...
+        self, actor: Actor, registration: ConnectorRegistration, external_ref: str
+    ) -> ConnectorLink | None: ...
 
     def ticket_link(
-        self, actor: Actor, binding: GitLabSyncBinding, ticket_id: UUID
-    ) -> GitLabIssueLink | None: ...
+        self, actor: Actor, registration: ConnectorRegistration, ticket_id: UUID
+    ) -> ConnectorLink | None: ...
 
     def latest_issue(
-        self, actor: Actor, binding: GitLabSyncBinding, issue_iid: int
-    ) -> GitLabIssue | None: ...
+        self, actor: Actor, registration: ConnectorRegistration, external_ref: str
+    ) -> ExternalIssue | None: ...
 
     def record_issue(
         self,
         actor: Actor,
-        binding: GitLabSyncBinding,
-        issue: GitLabIssue,
+        registration: ConnectorRegistration,
+        issue: ExternalIssue,
         *,
         ticket_id: UUID,
         thread_id: UUID,
@@ -363,20 +338,22 @@ class GitLabIntegrationStore(Protocol):
     def record_observation(
         self,
         actor: Actor,
-        binding: GitLabSyncBinding,
-        issue: GitLabIssue,
+        registration: ConnectorRegistration,
+        issue: ExternalIssue,
         *,
         observed_at: datetime,
     ) -> None: ...
 
-    def delivered(self, actor: Actor, binding: GitLabSyncBinding, event_id: UUID) -> bool: ...
+    def delivered(
+        self, actor: Actor, registration: ConnectorRegistration, command_id: UUID
+    ) -> bool: ...
 
     def record_delivery(
         self,
         actor: Actor,
-        binding: GitLabSyncBinding,
-        link: GitLabIssueLink,
-        receipt: GitLabCloseReceipt,
+        registration: ConnectorRegistration,
+        link: ConnectorLink,
+        receipt: ConnectorReceipt,
         *,
         delivered_at: datetime,
     ) -> None: ...
@@ -384,9 +361,10 @@ class GitLabIntegrationStore(Protocol):
     def complete(
         self,
         actor: Actor,
-        binding: GitLabSyncBinding,
-        claim: GitLabSyncClaim,
-        cursor: GitLabCursor,
+        registration: ConnectorRegistration,
+        claim: ConnectorClaim,
+        cursor: ConnectorCursorToken,
+        project_event_cursor: int,
         *,
         now: datetime,
     ) -> None: ...
@@ -394,8 +372,15 @@ class GitLabIntegrationStore(Protocol):
     def fail(
         self,
         actor: Actor,
-        binding: GitLabSyncBinding,
-        claim: GitLabSyncClaim,
+        registration: ConnectorRegistration,
+        claim: ConnectorClaim,
         *,
         now: datetime,
     ) -> None: ...
+
+
+def _validate_failure_pair(retry_class: RetryClass, reason: FailureReason) -> None:
+    if (retry_class == "retryable" and reason not in _RETRYABLE_REASONS) or (
+        retry_class == "terminal" and reason not in _TERMINAL_REASONS
+    ):
+        raise ValueError("connector failure reason does not match its retry class")

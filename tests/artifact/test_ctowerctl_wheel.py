@@ -69,6 +69,14 @@ def test_wheel_has_explicit_packages_resources_dependencies_and_scripts(
         "tools/",
     )
     assert all(any(name.startswith(root) for name in names) for root in required_roots)
+    assert {
+        "ctower_api/connectors/__init__.py",
+        "ctower_api/connectors/registry.py",
+        "ctower_api/connectors/gitlab/__init__.py",
+        "ctower_api/connectors/gitlab/adapter.py",
+        "ctower_api/connectors/gitlab/config.py",
+        "ctower_api/connectors/gitlab/registration.py",
+    } <= names
     assert "tools/process_execution.py" in names
     assert "ctower_contracts/schemas.json" in names
     declared_migrations = {

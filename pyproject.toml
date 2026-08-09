@@ -42,6 +42,8 @@ ctower-shadow-ctl = "tools.development_runtime.ctl:main"
 include-package-data = false
 packages = [
   "ctower_api",
+  "ctower_api.connectors",
+  "ctower_api.connectors.gitlab",
   "ctower_client",
   "ctower_contracts",
   "ctower_kernel",
@@ -138,6 +140,7 @@ show_error_codes = true
 pretty = true
 exclude = ["tests/repository/fixtures/"]
 mypy_path = [
+  "tests/type_overlays",
   "apps/ctower-api/src",
   "apps/ctowerctl/src",
   "generated/python",
@@ -145,6 +148,17 @@ mypy_path = [
   "tests",
   "tests/acceptance/increment-1",
 ]
+
+# These byte-frozen traces import names installed dynamically by tests/conftest.py. Their
+# imported types remain precise through tests/type_overlays and the checked shim package.
+[[tool.mypy.overrides]]
+module = [
+  "modules.integrations.test_adapter_conformance",
+  "modules.integrations.test_gitlab_sync",
+  "modules.integrations.test_sync_service",
+  "test_gitlab_integration",
+]
+disable_error_code = ["attr-defined", "unused-ignore"]
 
 [tool.pydantic-mypy]
 init_forbid_extra = true

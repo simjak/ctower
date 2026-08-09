@@ -13,7 +13,7 @@ from uuid import UUID
 from ctower_api._outbox_loop import OutboxLoop
 from ctower_api._project_delivery_loop import ProjectDeliveryLoop
 from ctower_api._routine_loop import RoutineLoop, load_routine_revisions
-from ctower_api.gitlab_loop import build_active_gitlab_sync_loops
+from ctower_api.connector_loop import build_active_connector_loops
 from ctower_api.synthetic_handler import (
     SyntheticFourStageHandler,
     SyntheticPolicyPins,
@@ -155,7 +155,7 @@ def main() -> None:
         CtowerClient(api_base_url, credential=author_credential) as author,
         CtowerClient(api_base_url, credential=reviewer_credential) as reviewer,
     ):
-        standing_integrations = build_active_gitlab_sync_loops(
+        standing_integrations = build_active_connector_loops(
             author.export_company_bundle(),
             actor=Actor(author_id, tenant_id, PrincipalKind.COMMANDER),
             runtime_dsn=runtime_dsn,
