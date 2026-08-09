@@ -15,11 +15,15 @@ operation-ID escape hatch: an unrecognized command is a usage error, not a passt
 ## Invocation shape
 
 ```text
-ctl [--base-url <url>] <area> <action> [<positional>] [--flags]
+ctl [--base-url <url>] [--as operator] <area> <action> [<positional>] [--flags]
 ```
 
 `--base-url` scopes every invocation, including local spool commands, because the spool is scoped per
 origin. It may be omitted; see [Instance discovery](#instance-discovery).
+
+`--as operator` is required only for `dream-lane bind` and is refused on every other command. It declares
+the ceremony's required role; the server still authenticates and authorizes the stdin authority, so the
+flag cannot elevate a non-operator credential.
 
 ### `--base-url` rules
 

@@ -66,10 +66,22 @@ def test_cli_refuses_a_selection_outside_the_closed_registry() -> None:
         _dream_lane_commands.execute_online(arguments, cast("CtowerClient", _DreamLaneClient()))
 
 
+def test_cli_requires_the_operator_selector_only_for_the_binding_ceremony() -> None:
+    without_selector = _arguments(uuid4())
+    del without_selector[2:4]
+
+    with pytest.raises(ValueError, match="requires --as operator"):
+        parse_arguments(without_selector)
+    with pytest.raises(ValueError, match="only valid for dream-lane bind"):
+        parse_arguments(["--as", "operator", "control", "health"])
+
+
 def _arguments(command_id: UUID, *, model: str = "gpt-5.6-sol") -> list[str]:
     return [
         "--base-url",
         "https://ctower.example",
+        "--as",
+        "operator",
         "dream-lane",
         "bind",
         "--command-id",

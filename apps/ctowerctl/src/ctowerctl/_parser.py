@@ -55,6 +55,7 @@ def parse_arguments(argv: Sequence[str] | None = None) -> argparse.Namespace:
     """Parse only explicit authored commands; unknown operations are usage errors."""
 
     parsed = _parser().parse_args(argv)
+    _validate_ceremony_principal(parsed)
     if getattr(parsed, "command_id", None) is None and hasattr(parsed, "command_id"):
         parsed.command_id = uuid4()
     return parsed
@@ -69,6 +70,12 @@ def authored_command_names() -> frozenset[str]:
 def _parser() -> argparse.ArgumentParser:
     parser = _Parser(prog="ctowerctl", allow_abbrev=False)
     parser.add_argument("--base-url", required=False, default=None, type=_safe_base_url)
+    parser.add_argument(
+        "--as",
+        dest="ceremony_principal",
+        choices=("operator",),
+        default=None,
+    )
     areas = parser.add_subparsers(dest="area", required=True, parser_class=_Parser)
     _bootstrap_parser(areas.add_parser("bootstrap"))
     _credential_parser(areas.add_parser("credential"))
@@ -89,6 +96,16 @@ def _parser() -> argparse.ArgumentParser:
     _dream_dispatch_parser(areas.add_parser("dream-dispatch"))
     _dream_lane_parser(areas.add_parser("dream-lane"))
     return parser
+
+
+def _validate_ceremony_principal(arguments: argparse.Namespace) -> None:
+    """Keep the explicit operator selector confined to its one ceremony."""
+
+    is_binding = getattr(arguments, "cli_name", None) == "dream-lane bind"
+    if is_binding and arguments.ceremony_principal != "operator":
+        raise ValueError("usage: dream-lane bind requires --as operator")
+    if not is_binding and arguments.ceremony_principal is not None:
+        raise ValueError("usage: --as operator is only valid for dream-lane bind")
 
 
 def _dream_dispatch_parser(parser: argparse.ArgumentParser) -> None:
