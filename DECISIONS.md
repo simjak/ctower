@@ -1868,3 +1868,74 @@ Rejected alternatives:
 - Treating `202` as one more retryable status inside the bounded transport loop. It is not transport
   noise; it is the record's own answer about durability, the acknowledgement can outlast any client
   deadline, and retrying inside the loop would hide the one state the operator has to see.
+
+## D46 — First-class operator Requests replace the ledger and its Request-facing direct-intake assumptions (locked 2026-08-09, operator R2903, gh#399)
+
+The operator accepted the shape in [`docs/specs/operator-requests.md`](docs/specs/operator-requests.md)
+after PR #398's independent exact-candidate review and the R2903 `GO`. `SPEC.md` 1.19 incorporates that
+contract as `INV-81..87` and `AC-REQ-01..08`. This is Phase 0 governance only: it authorizes no product code,
+endpoint, allocator, import command, UI control, adapter, credential, egress, or writer epoch by itself.
+
+1. **Request is a distinct Work aggregate.** It owns captured intent and outcome accountability, has UUIDv7
+   identity plus a permanent tenant-wide `R<number>` operator reference, and may relate to zero or more
+   required/optional fulfillment Tickets. Ticket UUIDv7 identity, custody, workflow, Proof, and closure remain
+   independent. Request capture and discussion-to-Request promotion never create a Ticket implicitly.
+2. **Capture composes the existing authority and durability seams.** The project-seat CLI and private
+   server-mediated UI send-box idiom resolve one existing Actor and call one strict `create_request` intake
+   action. The atomic Record change includes inbound provenance, Request facts, allocator outcome, command
+   result, audit, and outbox; accepted waits for the required off-host acknowledgement. Payloads claim no
+   Actor, owner, project authority, priority, triage, relation, closure, or accepted state.
+3. **The operator state is derived.** Independent Request triage is
+   `UNTRIAGED|ACCEPTED|DUPLICATE|REJECTED`; `NEW|TRIAGED|WIP|BLOCKED|DONE` is a rebuildable read projection
+   over current disposition, Ticket relations, blockers, and Proof. It is never a mutable status.
+4. **Only the exact Request-ledger cutover earns a bulk path.** After accepted CP3-D evidence and a separately
+   accepted portfolio authority epoch, an enforced old-writer fence seals the complete Mission Control
+   ledger, advances the allocator past the full high-water, imports the exact open set through one
+   operator-authenticated signed-manifest command, reconciles every row/count/sample, and removes both the
+   old mutation path and import operation before the first portfolio capture. No Ticket/corpus importer,
+   dual writer, proxy, fallback, or second allocator is authorized.
+5. **The v1 exact design adds no new trust boundary.** Its two ordinary channels reuse the existing human
+   role-binding and machine project-seat planes, private edge, prohibited-data refusal, Record transaction,
+   off-host durability, generated clients, and projection seams, so the exact v1 architecture verdict is
+   `no-new-boundary`. Slack/Hermes is explicitly outside v1. Before that later phase activates, a new
+   append-only security decision must freeze adapter identity/custody, capability, ingress/egress, replay,
+   revocation, taint, and limits; the operator must acknowledge it; and an independent CSO must approve the
+   exact candidate digest.
+6. **Stable work and sequence are closed.** `CT-I1-015` owns the one-candidate Request authority replacement
+   and one-way ledger cutover; `CT-I2-011` owns the existing-identity UI channel and contextual Request list;
+   `CT-I2-012` is inactive until the Slack/Hermes security dependencies above are accepted. Their named
+   tests map every phase criterion. No product behavior is active because these stable IDs exist.
+
+Exact supersession:
+
+- **D27 clause 1 and clause 5** are superseded only for the sealed Mission Control Request ledger and
+  OR-06's exact open-set import. Their ordinary-command minimal Ticket carry-forward, read-only provenance,
+  and prohibition on a general bulk importer remain in force.
+- **D30 clause 2** is superseded only where it says bulk import stays dormant: the Request-only import may
+  activate after the same clause's CP3-D and separate-authority-epoch gates pass. Its shadow/co-source and
+  no-pre-CP3-D-freeze rules remain in force.
+- **D30 clause 4** is superseded only where `capture` was described as necessarily admitting/linking Ticket
+  work and requesting initial Commander custody. The same active project grant may capture a Request without
+  a Ticket or custody transfer; all server-side scope, revocation, and stricter-authority rules remain.
+- **D30 clause 5, as corrected by D36**, is superseded only in its Request-facing assignment of the shared
+  `R` counter to `<project>-R<nnn>` Ticket intake source references. After the Request authority epoch,
+  `R<number>` is the tenant-wide Request operator reference; Ticket IDs remain instance-global UUIDv7 and
+  source aliases remain separate project-scoped provenance. D36's UUIDv7 correction is preserved.
+
+D39 clause 1's current GitLab Issue-to-Ticket product path, D40's notification mirror, and D41 clause 1's
+existing Inbox create/link-Ticket promotion are not Request capture channels and are not silently repurposed
+or removed by this decision. A provider or Inbox path joins Request authority only through its own activated
+stable ticket and unchanged Request conformance contract; in particular, Slack/Hermes must pass clause 5.
+
+Rejected alternatives:
+
+- Treating Request as a Ticket alias, shadow pair, Inbox thread, workflow stage, Board row, or source
+  reference. Each collapses intent accountability into execution or projection state and recreates direct
+  intake under a new noun.
+- Keeping Mission Control's JSONL writer as a fallback, proxy, dual writer, allocator, or recovery source.
+  The 2026-08-09 loss/reissue class is killed only when accepted identity is server-held and cutover is
+  one-way.
+- Reusing the v1 `no-new-boundary` verdict for Slack/Hermes. That phase introduces adapter identity and
+  credential custody outside the accepted planes and always requires the later security decision and CSO.
+- Rewriting D27, D30, D36, D39, D40, or D41 in place. This ledger is append-only; the exact clauses above
+  are superseded here and every unaffected clause remains readable history.

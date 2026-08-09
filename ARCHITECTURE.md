@@ -3,9 +3,9 @@
 | Field | Value |
 |---|---|
 | Status | Compact derived operator and implementer map |
-| Normative authority | [`SPEC.md`](SPEC.md), version 1.18 |
+| Normative authority | [`SPEC.md`](SPEC.md), version 1.19 |
 | Decision history | [`DECISIONS.md`](DECISIONS.md) |
-| Last reviewed | 2026-08-08 |
+| Last reviewed | 2026-08-09 |
 
 This is the sole terminal-safe derived architecture atlas. It explains the canonical specification; it
 does not add requirements, authorize work, or define exact schemas, operations, DDL, package values, or
@@ -20,6 +20,9 @@ Implementation labels are strict:
 - **I1** and **I2** otherwise remain committed target increments, not claims that the full behavior exists.
 - **Deferred** means invariants may be recorded, but the runtime, product surface, and public Seam do not
   exist in I1/I2.
+
+The first-class Request aggregate is accepted target scope, not part of the current walking slice. The
+Mission Control ledger remains its authority until CT-I1-015's complete gated cutover.
 
 Authority milestones are deliberately separate. One tenant and database contain the configured `ctower`,
 `manibo`, and `bh-loop` Projects, their commander-authored checkpoints, and disjoint Project Delivery
@@ -37,8 +40,10 @@ can consider cutover only after disaster recovery is independently proven.
 
 ## Authority and system context
 
-The ticket is the human join point. Postgres, immutable object metadata, and acknowledged off-host copies
-hold authority. Models, sessions, processes, tmux panes, runners, and providers are replaceable capacity.
+The Request is the operator's intent/outcome join point; the Ticket is the executable-work join point.
+Postgres, immutable object metadata, and acknowledged off-host copies hold authority. Models, sessions,
+processes, tmux panes, runners, and providers are replaceable capacity. Request behavior remains accepted
+specification, not current implementation, until CT-I1-015 and its authority gates pass.
 
 ```text
   operator / admin                   signed source
@@ -83,9 +88,11 @@ own effects, while ctower retains grants, receipts, and reconciliation findings.
 
 ## Portfolio topology and project-grant boundary
 
-The portfolio shares infrastructure, not authority. Project is immutable on every Ticket and linked fact.
-Ticket IDs retain their authored instance-global UUIDv7 contract; source identities are `(tenant, project, source kind, source ref)` and
-render as stable `<project>-R<nnn>` references from the shared counter.
+The portfolio shares infrastructure, not authority. Project is immutable on every Request, Ticket, and linked
+fact. Ticket IDs retain their authored instance-global UUIDv7 contract. After the CT-I1-015 authority epoch,
+Requests have UUIDv7 identity plus tenant-wide permanent `R<number>` operator references; project-scoped
+source aliases remain separate provenance. Before that epoch the current `<project>-R<nnn>` Ticket intake
+source references remain shadow-era facts and never become Request or Ticket authority by reinterpretation.
 
 ```text
 one tenant / one PostgreSQL database
@@ -110,6 +117,8 @@ initial custody additionally requires an eligible configured Commander with an a
 | Apply portfolio CompanyBundle | Operator only | Versioned configured Project/seat/checkpoint data |
 | Read Ticket/Board/Delivery | Active matching grant or role binding | Existing visibility rules still apply; `viewer` is read-only inside its bound keys |
 | Intake/link/request initial custody | `capture` | Target Project and eligible Commander must match |
+| Capture Request | `capture` or bound human role allowed by INV-85 | Creates no Ticket/custody; payload supplies only text and client key under the strict channel contract |
+| Triage/priority/owner/relation/closure Request | Exact INV-85 operation matrix | Commander/operator/current-owner and expected-version rules apply independently; viewer never mutates |
 | Ordinary typed Work mutation | `transition` | Foreign Project refuses `project-scope-denied` |
 | Record ordinary allowed Evidence | `evidence` | Foreign Project and prohibited classes refuse |
 | Owner/protected/gate/effect/incident/production operation | Existing stricter authority | Never implied by a Project scope |
@@ -313,13 +322,13 @@ plugins, or any new network boundary.
 | Inbox | Two-principal threads, append-only ordered messages and recipient delivery/read facts, pair-grouped notification ingestion, atomic create-or-link ticket promotion, immutable promotion links, fact-derived per-message state and unread projection |
 | Catalog | One `VersionedComponent` lifecycle, compatibility, provenance, exact pins, future-only active pointers |
 | Integrations | Catalog-revision-pinned bounded source cursors, immutable external issue/ticket custody links and observations, and proof-gated outbound delivery receipts; no provider credential values or lifecycle authority |
-| Work | Permanent tickets, lifecycle episodes, custody, relations, priorities, blockers, typed Board intents |
+| Work | First-class Requests and their triage/owner/priority/Ticket-relation/blocker/closure rules; permanent Tickets, lifecycle episodes, custody, relations, priorities, blockers, typed Board intents |
 | Proof | Criteria, artifacts, evidence DAG, independence, gate instances/verdicts, invalidation |
 | Attention | Exact policy-qualified human actions, the typed append-only findings feed and its configured kind catalog, and Needs You projection inputs |
 | Workflow | Arbitrary pinned graph readiness, legal edges, policy selection, routes, bounds, terminal decisions |
 | Runtime | Accepted jobs, leases, fencing, cursors, ACKs, checkpoints, versioned CommandGuard decisions, local execution composition |
 | Effects | Grants, releases, provider observations, receipts, incidents, rollback, reconciliation |
-| Projections | Rebuildable Home, Board, Ticket, Fleet, Analytics, contextual Project Delivery projection, watermarks, KPIs |
+| Projections | Rebuildable Home, Board, Ticket, Fleet, Analytics, contextual Project Delivery and Request projections, watermarks, KPIs |
 
 There is no `Factory`, `TaskManager`, status service, generic provider manager, or microservice per table.
 The software factory is data interpreted by Workflow. Public Interfaces stay small; private validators,
@@ -533,6 +542,38 @@ progressing only when the outstanding set of the candidate it produced is a stri
 the candidate it replaced. Trading one open defect for another is not progress, which is the case the
 bound exists for; the count is per run, only a progressing mutation clears it, and the declared value is
 capped at the number of governed mutations the generation bound permits so it is always reachable.
+
+## One Request, zero or more fulfillment Tickets
+
+```text
+native CLI / existing-identity UI
+             |
+             v
+durable inbound event + exactly one Request (UUIDv7, tenant-wide R<number>)
+             |
+             +-- no Ticket while untriaged or awaiting decomposition
+             |
+             +-- required Ticket A ----> its own custody / Workflow / Proof / close
+             +-- required Ticket B ----> its own custody / Workflow / Proof / close
+             \-- optional Ticket C ----> its own custody / Workflow / Proof / close
+             |
+             v
+derived Request state at one Record watermark: NEW | TRIAGED | WIP | BLOCKED | DONE
+```
+
+Capture is one bounded Record transaction plus required off-host acknowledgement; analysis and projection
+catch-up are downstream. A Request closes from its current disposition, relation set, blockers, and evidence
+digest. Changing any dependency invalidates the prior evaluation, so a rebuilt row may honestly leave
+`DONE`. No mutable status exists.
+
+CT-I1-015 is a one-way authority replacement. The old Mission Control writer is fenced before the complete
+ledger denominator is signed; the exact open set is imported through one manifest-bound operator command;
+every row and count is reconciled; the old writer and import operation are removed; only then may the first
+portfolio capture allocate above the sealed high-water. General Ticket/corpus import remains dormant.
+
+V1 reuses the project-seat CLI and existing human session/CSRF plane, so its exact candidate records
+`no-new-boundary`. Slack/Hermes is absent until CT-I2-012 has a separate append-only security decision,
+operator acknowledgement, and independent exact-digest CSO verdict for its adapter identity and custody.
 
 ## One ticket, orthogonal state and changing owners
 
@@ -831,20 +872,23 @@ create fresh Company / ctower + manibo + bh-loop Projects and disjoint projectio
   -> CT-I1-013 two auth planes -> one Actor/custody/audit model + CSO gate
   -> CT-I1-014 one configured bounded GitLab Issue co-source
   -> prove CP3-D
-  -> separately accept portfolio authority; only then freeze legacy writers
+  -> separately accept portfolio authority
+  -> CT-I1-015 fence/import/reconcile Request ledger + remove old writer/import + first capture
 ```
 
-There is no unbounded tailer, corpus importer, fuzzy dedupe, or automatic backfill. CT-I1-014's one
+There is no unbounded tailer, general Ticket/corpus importer, fuzzy dedupe, or automatic backfill.
+OR-06's Request-only signed import is the exact exception approved by D46 and is unavailable outside
+CT-I1-015's fenced authority epoch. CT-I1-014's one
 configured GitLab issue cursor is the sole standing source-host exception. The ordinary command path cannot
 forge proof, gates, effects, delivery, resolution, closure, or arbitrary status. Throughout shadow
 operation the incomplete fresh database may be discarded while Mission Control and applicable
 GitHub/GitLab records remain authoritative co-sources. A separate future decision is required before any
-bulk import may activate; this decision does not pre-authorize the eventual source-of-truth cutover.
+other bulk import may activate.
 
 I1.7A installs only contracts, append-only storage shape, the read-only projection fold, generated query
 path, and refusing online migration stubs. Those artifacts establish neither portfolio authority nor
 shadow onboarding completion. CT-I1-008 owns the narrow development verdict. Passing it does not satisfy
-its CT-I2-001 dependency: that edge means full normative I1 exit, including CT-I1-009..014 and CP3-D.
+its CT-I2-001 dependency: that edge means full normative I1 exit, including CT-I1-009..015 and CP3-D.
 
 ## Build sequence and earned Seams
 
@@ -864,6 +908,7 @@ I1: L0 contracts/repository gates
      -> CT-I1-013 config-driven human OIDC + unchanged machine credentials + one Actor/audit model
      -> CT-I1-014 one bounded GitLab Issue co-source + immutable custody/delivery receipts
      -> CP3-D external-failure-domain/key/destructive-restore/RPO-RTO proof
+     -> CT-I1-015 Request authority + exact one-way Mission Control ledger cutover
      -> full normative I1 exit
 
 I2 (only after full I1 exit): deepen generic Workflow + Proof
@@ -871,6 +916,8 @@ I2 (only after full I1 exit): deepen generic Workflow + Proof
      -> activate unattended Commander on the proven always-on substrate
      -> consume CT-I1-013 auth + deepen five surfaces + Project Delivery projection detail/analytics + Effects/release
      -> one software-factory production golden ticket
+     -> CT-I2-011 existing-identity Request UI + contextual list
+     -> CT-I2-012 Slack/Hermes only after new security decision + operator acknowledgement + CSO
 ```
 
 The direct-process and tmux Supervisor Adapters both pass one conformance suite, so their local public Seam
@@ -910,6 +957,16 @@ Before either increment is complete, applicable tests must show that:
 16. Notification replay appends zero duplicate message facts, unknown seats refuse without creating an
     identity, and messages group by the unordered authenticated sender/recipient pair while rail 1 remains
     successful.
+17. Request capture under 100-way concurrency and replay creates one durable Request per key, unique permanent
+    tenant-wide `R` numbers, exact outcomes, zero implicit Tickets, and no pending/ambiguous false acceptance.
+18. Request relation, closure, blocker, duplicate/rejection, expected-version, proof-invalidation, and rebuild
+    fixtures preserve separate Ticket authority and derive the exact current operator state.
+19. Request restore reproduces streams, aliases, command outcomes, allocator high-water, facts, anchors, and
+    projections; the one-way cutover reconciles every frozen row/count/sample before both old writer and import
+    operation disappear, and first capture allocates above the sealed high-water.
+20. CLI/UI Request channels resolve one existing Actor and return exact server outcomes; Request totals stay
+    honest under unanswered/stale/unavailable/unknown projects. Slack/Hermes route, credential, and egress are
+    absent until their separately decided and exact-digest CSO-approved boundary activates.
 
 Tmux is useful for same-host continuity and operator visibility. Durability comes from acknowledged records,
 committed events/outbox entries, fenced leases, replayable cursors, immutable evidence, checkpoints,

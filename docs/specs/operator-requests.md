@@ -2,19 +2,19 @@
 
 | Field | Value |
 |---|---|
-| Status | Proposed; specification only; no product behavior is authorized |
+| Status | Accepted by `SPEC.md` 1.19 and D46; specification only; no product behavior is authorized |
 | Contract | [GitHub issue #397](https://github.com/simjak/ctower/issues/397) |
 | Review gate | Independent cross-model architecture review of the exact candidate; v1 must record `no-new-boundary`, while the separate Slack/Hermes phase requires an append-only security decision and exact-candidate CSO verdict |
 | Engineering-manager model | gpt-5.6-sol |
 
-This document is a subordinate proposal. It does not override the canonical
+This document is the accepted subordinate Request contract incorporated by `SPEC.md` 1.19 and D46. It does not independently override the canonical
 [system specification](https://github.com/simjak/ctower/blob/main/SPEC.md), append-only
 [decision log](https://github.com/simjak/ctower/blob/main/DECISIONS.md), derived
 [architecture atlas](https://github.com/simjak/ctower/blob/main/ARCHITECTURE.md), or non-normative
-[implementation roadmap](https://github.com/simjak/ctower/blob/main/IMPLEMENTATION-ROADMAP.md). Before any implementation ticket activates, the
-canonical specification must accept this aggregate and its invariants, an append-only decision must supersede
-the current direct-intake assumptions, and the atlas and roadmap must be repaired to agree. Issue #397
-authorizes this specification, not product code.
+[implementation roadmap](https://github.com/simjak/ctower/blob/main/IMPLEMENTATION-ROADMAP.md). The Phase 0
+governance chain is recorded by `SPEC.md` 1.19, D46, and the aligned atlas and roadmap. Later implementation
+still requires each stable CT ticket and dependency named there. Issue #397 and the acceptance chain authorize
+this specification, not product code.
 
 ## Plain-language outcome
 
