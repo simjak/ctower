@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.21.0](https://github.com/simjak/ctower/compare/v0.20.0...v0.21.0) (2026-08-09)
+
+
+### Features
+
+* **runtime:** add operator dream-lane binding ceremony ([#394](https://github.com/simjak/ctower/issues/394)) ([184e5d4](https://github.com/simjak/ctower/commit/184e5d484679796fc4adb9555b5204dca3030df8))
+
 ## [0.20.0](https://github.com/simjak/ctower/compare/v0.19.0...v0.20.0) (2026-08-09)
 
 
