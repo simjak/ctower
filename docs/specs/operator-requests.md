@@ -4,8 +4,8 @@
 |---|---|
 | Status | Proposed; specification only; no product behavior is authorized |
 | Contract | [GitHub issue #397](https://github.com/simjak/ctower/issues/397) |
-| Review gate | Independent cross-model architecture review of the exact candidate; CSO review only when the trigger test below fires |
-| Engineering-manager model | GPT-5 (Codex runtime, high reasoning) |
+| Review gate | Independent cross-model architecture review of the exact candidate; v1 must record `no-new-boundary`, while the separate Slack/Hermes phase requires an append-only security decision and exact-candidate CSO verdict |
+| Engineering-manager model | gpt-5.6-sol |
 
 This document is a subordinate proposal. It does not override the canonical
 [system specification](https://github.com/simjak/ctower/blob/main/SPEC.md), append-only
@@ -33,9 +33,9 @@ atomic Record commits, off-host durability states, and read-only Board projectio
 however, creates or links a Ticket directly. ctower has no Request aggregate, Request number allocator,
 Request-to-Ticket relation, Request closure rule, or Request list. Those are **NEW in #397**.
 
-[Issue #95](https://github.com/simjak/ctower/issues/95) is the delivery warning: an adapter file or successful
-unit call is not a wired channel. Each channel below must prove the real caller reaches ctower and receives an
-exactly equal typed outcome. [Issue #185](https://github.com/simjak/ctower/issues/185) is the topology prior
+[Issue #95](https://github.com/simjak/ctower/issues/95) is the delivery warning: a client file or successful
+unit call is not a wired channel. Each activated channel below must prove the real caller reaches ctower and
+receives an exactly equal typed outcome. [Issue #185](https://github.com/simjak/ctower/issues/185) is the topology prior
 art: one tenant/database holds configured projects with project-scoped principals and views; neither Request
 storage nor migration may branch on today's project names.
 
@@ -47,11 +47,12 @@ This specification adds only:
 4. one Request read model in the existing Board/portfolio context; and
 5. one bounded import and cutover from the current Mission Control ledger.
 
-It does not add a service, primary surface, identity system, record client, provider, runtime behavior,
-connector framework, compatibility API, dual writer, or shadow Request/Ticket pair. Work owns Request
-semantics; Record owns atomic storage; Access resolves authority; the existing API and generated-client seams
-carry strict payloads; TypeScript remains browser-only. Kernel authority still cannot import apps, providers,
-web, CLI, bridge code, or record-tier clients.
+The v1 scope does not add a service, primary surface, identity system, record client, provider, runtime
+behavior, connector framework, compatibility API, dual writer, or shadow Request/Ticket pair. Work owns
+Request semantics; Record owns atomic storage; Access resolves authority; the existing API and
+generated-client seams carry strict payloads; TypeScript remains browser-only. Kernel authority still cannot
+import apps, providers, web, CLI, bridge code, or record-tier clients. Slack/Hermes remains visible as the
+separately gated new-boundary phase below; this proposal does not authorize that phase or treat it as v1.
 
 ## Logical model
 
@@ -125,20 +126,21 @@ the key with another digest refuses. Sequence gaps are allowed, but reuse and re
 critical path contains only bounded validation, the Record transaction, and the durability acknowledgement,
 not model work, provider calls, Git, or projection catch-up.
 
-The strict capture contract has a discriminated source. Native CLI/UI capture sends `source.kind=native` and
-no source reference; the server derives the immutable alias from tenant, resolved Actor principal, and
-idempotency key. Exact replay therefore resolves the same alias and a different digest still refuses. Only an
-authenticated adapter/import capability may send `source.kind=external` with bounded kind/reference
-provenance; Work binds it to the server-resolved Actor and project before reserving the globally unique source
-alias. Browser text, provider identity, and caller-chosen native references never become source authority.
+The v1 strict capture contract has one native source shape. Seat CLI and UI send-box capture send
+`source.kind=native` and no source reference; the server derives the immutable alias from tenant, resolved
+Actor principal, and idempotency key. Exact replay therefore resolves the same alias and a different digest
+still refuses. Ordinary capture and promotion schemas reject `source.kind=external`; only OR-06's dedicated,
+operator-authenticated, manifest-bound import operation may carry frozen external provenance, and that
+operation is removed at cutover. Browser text, provider identity, and caller-chosen native references never
+become source authority.
 
 An accepted response names Request UUID, `R` reference, project, Record position, and `accepted`. Under the
 cutover-RPO0 policy it is returned only after the commit has received the required external-failure-domain
 durable acknowledgement. A server-observed off-host acknowledgement timeout returns `durability_pending`, not
 success: the Request is excluded from effects and accepted projections and replay under the same key is safe.
 A client transport timeout or disconnect may return no typed result at all and remains ambiguous; the UI keeps
-the draft and the CLI/import spool keeps the encrypted entry, then reconciles/replays the same key. Editing
-creates a new key. Neither client may display pending or no-response ambiguity as accepted.
+the draft and the CLI spool keeps the encrypted entry, then reconciles/replays the same key. Editing creates a
+new key. Neither client may display pending or no-response ambiguity as accepted.
 
 ### 2. OR-02 — Request owns intent; Ticket owns executable work
 
@@ -198,32 +200,25 @@ reads are trusted. It then reconciles every accepted command and latest Request 
 inventory. Missing, gapped, duplicated, or unverifiable state fails closed and stays quarantined; silence,
 client data, or a Board row cannot repair Record truth.
 
-### 5. OR-05 — Every capture channel resolves one server Actor
+### 5. OR-05 — Every v1 capture channel resolves one existing server Actor
 
 **NEW in #397; composes with merged `INV-69`, `INV-70`, `INV-73`, generated clients, and protected spools.**
-All ordinary capture channels call the same strict Request intake command and receive the same durability
-states. The one-time migration bridge first uses that inbound rail, then the manifest-bound import operation
-in OR-06 solely to carry frozen identity and state. No channel may claim Actor, submitter, owner, project grant,
-or accepted state.
+The v1 channel set is closed: the project-seat CLI and the private UI send-box idiom are the only ordinary
+capture channels. Both use identity planes and custody already admitted by the canonical specification, call
+the same strict Request intake command, and receive the same durability states. No channel may claim Actor,
+submitter, owner, project grant, or accepted state.
 
-| Channel | Identity custody and pending behavior |
+| v1 channel | Existing identity custody and pending behavior |
 |---|---|
 | Seat CLI | A protected project-seat bearer resolves one machine-plane Actor and version-pinned project grant server-side. The grant supplies project scope and capability; the payload supplies text and a client key. The encrypted spool retains pending commands and replays the same key. |
 | UI send box | The private HTTPS edge resolves one human Actor from the existing OIDC session, human-role binding, and same-origin CSRF check. The browser holds no bearer or owner claim. A project selector is only a request for server authorization. Pending keeps the text, names the uncertainty, and retries the same key. |
-| Mission Control import bridge | The bridge submits the source event as its configured Commander Actor and promotes it to Request as its configured operator Actor, matching the accepted import custody split. Deterministic keys, signed source manifest, and immutable owner provenance make the bridge auditable; it never impersonates the original owner. |
-| Slack-originated operator text | No native Slack listener, token, or webhook enters ctower in this scope. The existing Mission Control/Hermes adapter may call the same private Request API as its configured bridge Actor. Slack workspace, user, message, channel, and thread identifiers are `external_untrusted` provenance, not ctower identity or authority. |
 
-CLI, browser, adapter, runner, and import code never connect to Record-tier persistence. A refusal commits only
-the ordinary typed command outcome permitted by canonical policy and creates no accepted Request.
-
-The existing Mission Control/Hermes boundary must authenticate its source, enforce timestamp/nonce replay
-bounds and strict text limits, exclude attachments in this scope, scan prohibited and hostile content, and
-carry structural `external_untrusted` taint into ctower. ctower independently rechecks the adapter's exact
-source/project grant, replay key, limits, prohibited classes, and taint. A forged source, replay, oversized
-input, or prohibited class refuses before any authoritative or object mutation. Allowed-but-hostile or
-structurally untrusted content may be captured for accountability under visible canonical quarantine, but it
-cannot enter model analysis, Evidence, Proof, or effects until the canonical promotion policy permits it; it
-never executes silently.
+The OR-06 migration helper is not an ordinary capture channel, principal, or credential. An operator runs it
+once through the existing authenticated human `operator` role binding; its dedicated signed-manifest command
+atomically records frozen source provenance and is removed at cutover. CLI, browser, migration-helper, and
+import code never connect to Record-tier persistence. A refusal commits only the ordinary typed command
+outcome permitted by canonical policy and creates no accepted Request. Slack/Hermes is deliberately absent
+from this v1 channel set and appears only in its own new-boundary phase below.
 
 #### Request command authority
 
@@ -234,11 +229,11 @@ project Commander principal or bound human `commander`; “seat” means a non-C
 
 | Request operation | Exact authority |
 |---|---|
-| Native/external capture or discussion-to-Request promotion | Operator; matching Commander or seat with `capture`; bound human `operator|commander`; or exact source/project adapter grant. Viewer never. External provenance additionally requires the adapter capability. |
-| Project Request read/list | Operator across configured projects with source-level checks; matching project principal with any active named scope; bound human `operator|commander|viewer` for named project keys. Bridge/service receives only its exact command reconciliation result. |
-| Priority assignment | Operator; matching Commander with `transition`; or bound human `operator|commander`. Non-Commander seat, viewer, and ordinary bridge/service never. |
+| Native capture or discussion-to-Request promotion | Operator; matching Commander or seat with `capture`; or bound human `operator|commander`. Viewer never. Ordinary v1 schemas refuse external provenance. |
+| Project Request read/list | Operator across configured projects with source-level checks; matching project principal with any active named scope; bound human `operator|commander|viewer` for named project keys. |
+| Priority assignment | Operator; matching Commander with `transition`; or bound human `operator|commander`. Non-Commander seat and viewer never. |
 | `ACCEPTED|DUPLICATE|REJECTED` triage disposition | Matching project Commander with `transition` or bound human `commander` only. The manifest-bound import command below is a distinct operator authority, not triage impersonation. |
-| Accountable-owner assignment | Operator protected placement or bound human project Commander. Project-seat scopes, viewer, caller payloads, and ordinary bridge/service never grant owner authority. |
+| Accountable-owner assignment | Operator protected placement or bound human project Commander. Project-seat scopes, viewer, and caller payloads never grant owner authority. |
 | Create/link fulfillment Ticket | Existing Ticket capture authority plus Request `transition`; a non-Commander seat must also be the current Request owner. Both subjects must be same tenant/project and expected-version current. |
 | Request blocker or closure evaluation | Operator; matching Commander with `transition`; bound human `operator|commander`; or current Request-owner seat with `transition`. The command requests evaluation; Record/Proof facts alone decide derived state. |
 | Signed migration import | Operator only, bound to one accepted authority epoch, exact signed manifest/row digest, source inbound-event version, and unused deterministic operation key. Every other caller and every post-cutover call refuses. |
@@ -278,12 +273,13 @@ The cutover procedure is exact:
    normalize, invent, or replace an owner with the Commander.
 4. Advance the server sequence past the manifest's full-ledger maximum. Process strict serial batches of at
    most 25 rows. A deterministic UUIDv5 command key binds source digest, source identity, operation, and
-   attempt. For each row the bridge submits discussion as its configured Commander, then invokes one dedicated
-   signed-manifest import command as the portfolio Operator. That command alone may bind the original `R` and
-   atomically create the Request with reviewed owner, priority/triage/blocker translation, original-owner
-   provenance, source alias, command result, audit event, and outbox. It never impersonates the mapped owner and
-   creates no Ticket. Any refusal or ambiguous result stops the batch and reconciles by the same operation
-   key/source alias before retry. The import command is absent from ordinary schemas, refuses outside the exact
+   attempt. For each row the operator-run migration helper invokes one dedicated signed-manifest import command
+   through the existing authenticated human `operator` role binding. That command alone may bind the original
+   `R` and atomically create the source inbound event and Request with reviewed owner,
+   priority/triage/blocker translation, original-owner provenance, source alias, command result, audit event,
+   and outbox. It never claims a Commander, creates an adapter Actor, impersonates the mapped owner, or creates
+   a Ticket. Any refusal or ambiguous result stops the batch and reconciles by the same operation key/source
+   alias before retry. The import command is absent from ordinary schemas, refuses outside the exact
    epoch/manifest, and is removed with the cutover release after its audit result is sealed.
 5. At every batch boundary prove that batch's frozen source delta and the cumulative frozen prefix through that
    batch each equal their accepted imported Request and distinct source-alias counts, including the same
@@ -298,10 +294,11 @@ The cutover procedure is exact:
    Record the proof with the batch manifest.
 7. After complete count, full-row reconciliation, spot-check proof, and a final unchanged fence/digest/high-water
    proof, verify/remove the already-refusing Mission Control mutation entrypoints and activate ctower capture
-   for the seat CLI and every then-existing adapter/automation caller in the same authority epoch. Later
-   channels join ctower directly; none ever joins the sealed writer. Do not leave a proxy, fallback, dual write,
-   import operation, or second allocator. Rollback restores ctower from its signed server backup and keeps
-   capture unavailable or safely spooled; it never re-enables the old writer.
+   for the seat CLI in the same authority epoch. The existing-identity UI send box may join only in Phase 2;
+   Slack/Hermes may join only after its separate new-boundary phase passes. No later channel ever joins the
+   sealed writer. Do not leave a proxy, fallback, dual write, import operation, or second allocator. Rollback
+   restores ctower from its signed server backup and keeps capture unavailable or safely spooled; it never
+   re-enables the old writer.
 
 The manifest preserves the source status but does not grant it authority. `NEW` maps to `UNTRIAGED`. `TRIAGED`
 maps to `ACCEPTED` only with a reviewed post-intake priority fact. `BLOCKED` maps to `ACCEPTED` plus an explicit
@@ -347,11 +344,16 @@ The #385 epistemic rules bind:
 
 ## Security boundary and CSO trigger test
 
-The selected design adds **no new trust boundary**. It adds a Work aggregate and strict commands behind the
-existing private HTTPS edge, one-Actor request rule, human OIDC/session/CSRF plane, machine project-seat bearer
-plane, project grants, prohibited-data refusal, Record transaction, off-host durability, generated clients,
-and read-only projection seams. Secrets remain references. The Request body confers no identity, owner,
-project, Ticket, Proof, priority, triage, or close authority.
+The v1 design adds **no new trust boundary**. Its ordinary capture channels are only the seat CLI and UI
+send-box idiom, reusing the existing private HTTPS edge, one-Actor request rule, human OIDC/session/CSRF plane,
+machine project-seat bearer plane, project grants, prohibited-data refusal, Record transaction, off-host
+durability, generated clients, and read-only projection seams. The operator-run migration helper reuses the
+existing human `operator` binding and disappears at cutover. Secrets remain references. The Request body
+confers no identity, owner, project, Ticket, Proof, priority, triage, or close authority.
+
+The later Slack/Hermes phase is not covered by that claim. It intentionally proposes a new adapter
+identity/custody grant outside the current credential vocabulary and therefore always fires the CSO trigger,
+regardless of whether its exact transport ultimately uses a webhook, polling, or an existing external relay.
 
 Before activating any build ticket, compare its exact design to this trigger test. Stop and obtain an
 append-only security decision plus an independent CSO verdict on the exact candidate if it introduces any of:
@@ -363,8 +365,10 @@ append-only security decision plus an independent CSO verdict on the exact candi
 - retention of a prohibited data class, secret value, or unbounded external payload; or
 - a change to the canonical durability, Record, Proof, protected-effect, or recovery boundary.
 
-If none fires, ordinary independent architecture/security tests record `no-new-boundary` with the exact head;
-they do not fabricate a CSO approval requirement.
+If none fires, ordinary independent architecture/security tests record `no-new-boundary` for the v1 exact
+head; they do not fabricate a CSO approval requirement. The separate Slack/Hermes phase may never use that
+result: its new identity/custody boundary requires the decision and exact-candidate CSO verdict described
+below.
 
 ## Layered delivery and testable acceptance
 
@@ -386,10 +390,10 @@ acceptance tests; no product or generated file changes; canonical checks pass.
 
 Add Request facts and number allocation in Work/Record, the `create_request` intake action, strict HTTP
 contracts and generated clients, protected CLI capture/read/list/triage/priority/owner/link/closure-evaluation
-operations, the external Slack/Hermes adapter call, and the OR-06 import bridge. Reuse the existing transaction,
-Actor, idempotency, spool, durability, and refusal seams. Do not land this production path until CP3-D, the
-portfolio authority epoch, the signed freeze, import, reconciliation, old-writer fence, and first ctower
-capture can complete as one authority-safe candidate.
+operations, and the operator-authenticated OR-06 migration helper. Reuse the existing transaction, Actor,
+idempotency, spool, durability, and refusal seams. Do not land this production path until CP3-D, the portfolio
+authority epoch, the signed freeze, import, reconciliation, old-writer fence, and first ctower capture can
+complete as one authority-safe candidate.
 
 Acceptance:
 
@@ -406,25 +410,59 @@ Acceptance:
   outcomes, and projections in an isolated effect-disabled environment;
 - the signed migration proves exact full/per-project counts, three-request batch samples, source alias and `R`
   uniqueness, exact manifest-bound owner placement, status translation, and zero implicit Tickets; and
-- after the one authority epoch, the Mission Control writer refuses, the archive is read-only, the seat CLI and
-  each existing adapter reach ctower end to end, and new capture allocates strictly above the sealed high-water.
+- after the one authority epoch, the Mission Control writer refuses, the archive is read-only, the seat CLI
+  reaches ctower end to end, the migration operation is absent, and new capture allocates strictly above the
+  sealed high-water.
 
 ### Phase 2 — UI channel and Board list
 
-Add the private server-mediated UI send box and contextual Request list on the already-single ctower authority.
-Keep the same command and Actor contracts; add no native Slack ingress.
+Add the private server-mediated UI send-box idiom and contextual Request list on the already-single ctower
+authority. Keep the same command and existing human Actor contract; add no adapter identity or Slack ingress.
 
 Acceptance:
 
-- CLI, UI, bridge, and Slack-originated adapter fixtures attribute the exact server-resolved Actor and project;
-- an end-to-end probe from each real caller reaches the Request command and returns the exact server result,
-  so an installed-but-uninvoked adapter fails acceptance;
-- every channel proves accepted, pending, same-key replay, changed-draft/new-key, refusal, offline spool, and
-  cross-project denial behavior;
+- CLI and UI fixtures attribute the exact server-resolved existing Actor and project;
+- an end-to-end probe from each real v1 caller reaches the Request command and returns the exact server result,
+  so an installed-but-uninvoked client path fails acceptance;
+- both v1 channels prove accepted, pending, same-key replay, changed-draft/new-key, refusal, protected
+  spool/draft retention, and cross-project denial behavior;
 - the list passes #385 answered/unanswered, stale, unavailable, unknown, unlinked, total, and rebuild fixtures
   at 375, 768, and 1440 CSS-pixel widths; and
-- the exact-head trigger test records `no-new-boundary`, or the phase stays inactive until the triggered
-  decision and CSO verdict are accepted.
+- the v1 exact-head trigger test records `no-new-boundary`.
+
+### Phase 3 — Slack/Hermes external adapter — **NEW BOUNDARY; mandatory CSO gate**
+
+Keep Slack-originated operator text visible as a candidate channel, but not as v1 capability. This phase adds
+an adapter identity/custody grant that the current human-role and project-seat credential vocabulary does not
+contain. Before any implementation ticket or network path activates, an append-only security decision must
+define the exact adapter principal, credential custody and lifecycle, project binding, permitted Request
+capability, ingress/egress shape, replay boundary, and revocation behavior. The operator must acknowledge that
+boundary, the canonical documents must adopt it, and an independent CSO must approve the exact candidate
+digest. Use the explicit boundary statement, controls, named negative tests, freeze set, digest invalidation,
+and operator-acknowledgment pattern in
+[`docs/security/connector-phase2-cso.md`](../security/connector-phase2-cso.md) as the precedent shape. That
+precedent is not clearance for this adapter.
+
+The future adapter must resolve one server Actor without impersonating a human, Commander, operator, or
+project seat. Slack workspace, user, message, channel, and thread identifiers remain `external_untrusted`
+provenance, never ctower identity or authority. The exact candidate must authenticate its source, enforce
+timestamp/nonce replay bounds and strict text limits, exclude attachments unless separately admitted, scan
+prohibited and hostile content, and preserve structural taint. Ctower must independently validate the exact
+project-bound adapter grant, replay key, limits, prohibited classes, and taint before mutation. Allowed hostile
+content may enter only visible canonical quarantine and may not reach model analysis, Evidence, Proof, or
+effects until canonical promotion policy admits it.
+
+Acceptance:
+
+- the append-only security decision, operator acknowledgment, aligned canonical documents, stable ticket, and
+  exact-digest CSO verdict are accepted before activation;
+- the candidate names and tests the new adapter Actor, credential custody/lifecycle, least-privilege
+  project-bound Request capability, revocation, ingress/egress, replay, taint, and zero-impersonation rules;
+- one end-to-end Slack/Hermes probe reaches the Request command and returns the exact server result, and its
+  accepted, pending, same-key replay, changed-message/new-key, refusal, spool, and cross-project denial paths
+  pass; and
+- any credential, grant, ingress, egress, or custody change invalidates the verdict and returns the phase to
+  the operator and CSO. Until all criteria pass, the phase is inactive and no Slack/Hermes capture path exists.
 
 ## Traceability
 
@@ -437,7 +475,7 @@ activated stable tickets. Existing citations are composition points, not claims 
 | OR-02 | **NEW #397** | Existing direct Ticket action is intentionally superseded for Requests: `packages/ctower-kernel/src/ctower_kernel/record/_intake_sql.py:502-518,598-650`; promotion contract `contracts/http/openapi.yaml:224-255`; independent triage composition `docs/specs/connectors.md:359-391` |
 | OR-03 | **NEW #397** | Current source-reference/Ticket split `SPEC.md:1471`; UUIDv7 Ticket allocation `packages/ctower-kernel/src/ctower_kernel/record/identifiers.py:12-22`; new Request UUID/sequence/high-water and collision tests required |
 | OR-04 | **NEW #397** | Record transaction/cutover pending enforcement `packages/ctower-kernel/src/ctower_kernel/record/transaction.py:401-513`; canonical backup/restore contract `SPEC.md:3738-3757`; exact 2026-08-09 Mission Control incident reproduced in OR-04 |
-| OR-05 | **NEW #397** | One Actor and project grants `SPEC.md:1469-1473`; protected intake API `contracts/http/openapi.yaml:191-255`; new Request command and channel identity fixtures required |
+| OR-05 | **NEW #397** | Existing human/session and project-seat Actor planes `SPEC.md:1469-1473`; protected intake API `contracts/http/openapi.yaml:191-255`; v1 CLI/UI identity fixtures required; Slack/Hermes remains a separately decided and CSO-reviewed new boundary following `docs/security/connector-phase2-cso.md` |
 | OR-06 | **NEW #397** | Current shadow/bulk-import prohibition `SPEC.md:1472`; existing intake source/project guard `packages/ctower-kernel/src/ctower_kernel/work/intake.py:203-216`; new enforced fence, signed freeze, manifest-bound Request import, full-row/count/sample reconciliation, and one-way cutover proofs required |
 | OR-07 | **NEW #397** | Existing read-only epistemic fold `apps/ctower-ui/src/read/portfolioProjection.ts:20-46,97-185,229-322`; existing rendering `apps/ctower-ui/src/app/portfolio/page.tsx:85-140`; new Request projection/list and responsive fixtures required |
 
@@ -445,7 +483,8 @@ activated stable tickets. Existing citations are composition points, not claims 
 
 - [ ] The canonical documents adopt all seven invariants and supersede every conflicting direct-intake rule.
 - [ ] Independent cross-model architecture review approves the exact digest.
-- [ ] The CSO trigger test is recorded; any triggered boundary has an accepted decision and exact-digest verdict.
+- [ ] The v1 exact head records `no-new-boundary`; the inactive Slack/Hermes phase has its own accepted
+      append-only security decision, operator acknowledgment, and exact-digest CSO verdict before activation.
 - [ ] Stable implementation tickets map every phase criterion to a named test and keep product scope inactive
       until their dependencies are accepted.
 - [ ] No compatibility layer, dual writer, source-ledger fallback, second allocator, or sixth surface remains.
@@ -456,8 +495,8 @@ activated stable tickets. Existing citations are composition points, not claims 
 SIGNED-OFF
   seat: engineer (hard-architecture specification)
   crew: engineer-r2902-requests-spec
-  model: GPT-5 (Codex runtime, high reasoning)
-  claim: This proposal defines the seven first-class Request invariants, the one-way migration, and testable layered delivery without authorizing product code.
-  stood-under: Issue #397; canonical intake, identity, durability, restore, connector-triage, and portfolio-projection contracts; Mission Control's current request tool/import bridge and 2026-08-09 ledger incident.
+  model: gpt-5.6-sol
+  claim: This proposal defines the seven first-class Request invariants, the one-way migration, existing-identity v1 capture, and a separately gated Slack/Hermes new-boundary phase without authorizing product code.
+  stood-under: Issue #397; canonical intake, identity, durability, restore, connector-triage, and portfolio-projection contracts; the connector Phase-2 CSO precedent; Mission Control's current request tool/migration helper and 2026-08-09 ledger incident.
   if-this-breaks: I own architecture errors or omitted failure modes in this candidate and will repair the subordinate spec before canonical adoption or implementation activation.
 ```
