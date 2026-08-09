@@ -1,7 +1,8 @@
 # Chat
 
-Ctower **chat** is a two-person Inbox thread between project seats. A **thread** is the ordered list of
-messages shared by the same two participants.
+Ctower **chat** is a two-person thread in **Inbox**, the place for durable messages that are not Board
+work, between **project seats**, durable project-scoped roles that can send and receive those messages. A
+**thread** is the ordered list of messages shared by the same two participants.
 
 ## Why chat exists
 

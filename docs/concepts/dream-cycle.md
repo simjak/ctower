@@ -1,16 +1,20 @@
 # Dream cycle
 
-The **dream cycle** is a nightly review routine. It asks a high-capability model to review recent work and
-produce a durable output for one project or for the whole portfolio.
+The **dream cycle** is a nightly review **routine**: a versioned definition of recurring work and its
+schedule. It asks a high-capability model to review recent work and produce a durable output for one
+project or for the whole portfolio.
 
 ## Why the dream cycle exists
 
 Teams repeat mistakes when lessons remain in chat or in one person's memory. The dream cycle creates a
-scheduled review effect and joins its output fingerprint back to the exact routine occurrence that asked
-for it.
+scheduled review **effect**, a recorded request for authorized consumption, and joins its output
+fingerprint back to the exact **routine occurrence**, the saved record of the scheduled run that asked for
+it.
 
-The schedule creates an effect. It does not trust a caller to state which project, crew, model, or lane is
-authorized. Ctower reads those facts from saved scope and binding records.
+The schedule creates an effect. It does not trust a caller to state which project, crew, model, or
+**lane**—the named execution route—is authorized. Ctower reads those facts from saved **scope** records,
+which limit who and what the effect applies to, and **binding** records, which tie the effect to an approved
+lane.
 
 ## What happens each night
 

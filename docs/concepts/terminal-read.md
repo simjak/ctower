@@ -1,7 +1,7 @@
 # Terminal read
 
 A **terminal read** is a read-only capture of a live crew's terminal pane. A pane is one visible terminal
-area managed by `tmux`.
+area managed by `tmux`, a program that keeps terminal sessions running and arranges them into panes.
 
 ## Why terminal read exists
 

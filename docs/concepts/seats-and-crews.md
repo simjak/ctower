@@ -1,7 +1,7 @@
 # Seats and crews
 
-A **seat** is a durable role and principal. It can hold authority and remain accountable across many pieces
-of work. A **crew** is one temporary engagement of a seat.
+A **seat** is a durable accountable role. A **principal** is the authenticated human or machine identity
+that holds the seat and acts through it. A **crew** is one temporary engagement of a seat.
 
 ## Why ctower keeps them separate
 
