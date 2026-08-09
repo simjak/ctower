@@ -3,7 +3,7 @@
 | Field | Value |
 |---|---|
 | Status | Canonical target-system truth |
-| Version | 1.19 |
+| Version | 1.20 |
 | Date | 2026-08-09 |
 | Owners | Operator/CEO (product and human gates), Commander (orchestration contract), Engineering Manager (architecture and risk contract) |
 | Decision authority | [`DECISIONS.md`](DECISIONS.md) |
@@ -693,9 +693,12 @@ remains a later deepening, not fabricated I1 behavior.
 ### Accepted first-class operator Request contract
 
 The complete contract in [`docs/specs/operator-requests.md`](docs/specs/operator-requests.md) is accepted
-into this specification by D46. Its seven `OR-01..OR-07` invariants are canonical as `INV-81..INV-87`
-below. This is specification acceptance only: no Request endpoint, allocator, migration command, UI control,
-adapter, or product behavior exists until its stable backlog item and every dependency pass.
+into this specification by D46 and clarified by D47. Its seven `OR-01..OR-07` invariants are canonical as
+`INV-81..INV-87` below. This is specification acceptance only: no Request endpoint, allocator, migration
+command, UI control, adapter, or product behavior exists until its stable backlog item and every dependency
+pass. Phase 0 changes only the subordinate specification and canonical adoption documents, plus the
+deterministic generated traceability metadata and acceptance-criterion ownership/denominator fixture required
+to keep this SPEC revision verifiable; it changes no product implementation.
 
 ```text
 authenticated Actor + project + text + idempotency key

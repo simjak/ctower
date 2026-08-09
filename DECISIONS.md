@@ -1939,3 +1939,29 @@ Rejected alternatives:
   credential custody outside the accepted planes and always requires the later security decision and CSO.
 - Rewriting D27, D30, D36, D39, D40, or D41 in place. This ledger is append-only; the exact clauses above
   are superseded here and every unaffected clause remains readable history.
+
+## D47 — Phase 0 changes governance artifacts, not product implementation (2026-08-09, PR #406 review)
+
+The independent Terra review of PR #406 at candidate `1156b32251650df512e038ac032ae88fccd02836`
+(`2026-08-09_2327--review-406-terra--governance-chain.status.md`) found one P1 contradiction: the accepted
+Phase-0 clause prohibited generated-file changes even though the same canonical SPEC revision necessarily
+regenerated the machine-owned SPEC digest in `generated/.generated-manifest.json` and extended the
+acceptance-criterion ownership/denominator fixture for `AC-REQ-01..08`. The candidate could not truthfully
+satisfy its own acceptance text.
+
+This entry preserves D46 and supersedes only that Phase-0 change-set description. Phase 0 changes no product
+implementation and authorizes no product behavior. Its exact work is the subordinate Request specification,
+canonical adoption documents, and the deterministic generated traceability metadata and acceptance-criterion
+ownership/denominator fixture required to keep that SPEC revision internally verifiable. Those generated and
+test-fixture updates are governance traceability/ownership artifacts, not product implementation, and omitting
+them would make the canonical revision drift from its manifest or acceptance denominator. `SPEC.md` 1.20 and
+the amended Phase-0 acceptance clause carry this clarification in the same candidate. Every other D46 scope,
+dependency, security gate, and no-product-activation statement remains unchanged.
+
+Rejected alternatives:
+
+- Leaving the generated manifest or acceptance denominator stale to satisfy the literal old clause. That
+  would pass prose by breaking deterministic traceability and the repository's verification contract.
+- Editing D46 in place. Accepted decisions remain append-only history and are superseded by a later entry.
+- Treating governance regeneration as permission for product code, contracts, endpoints, runtime behavior,
+  or compatibility work. Phase 0 remains canonical adoption only.

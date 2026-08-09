@@ -3,7 +3,7 @@
 | Field | Value |
 |---|---|
 | Status | Compact derived operator and implementer map |
-| Normative authority | [`SPEC.md`](SPEC.md), version 1.19 |
+| Normative authority | [`SPEC.md`](SPEC.md), version 1.20 |
 | Decision history | [`DECISIONS.md`](DECISIONS.md) |
 | Last reviewed | 2026-08-09 |
 
