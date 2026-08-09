@@ -270,6 +270,23 @@ export interface InboxProjection {
   readonly unreadOnly: boolean;
 }
 
+/**
+ * Who one thread is between, as the recipient-scoped projection itself names
+ * them — never as this surface infers them.
+ *
+ * A message needs an address, and the address is an identity. So it is read
+ * back from the server rather than assembled here or accepted from a form: the
+ * projection says which seat the authenticated principal holds and which seat
+ * is on the other end of this thread, and the send path asks for that answer
+ * again at submit time rather than trusting one a browser round-tripped.
+ */
+export interface InboxCorrespondent {
+  /** The seat this surface's authenticated principal holds. */
+  readonly sender: string;
+  /** The other participant: where a message on this thread is addressed. */
+  readonly recipient: string;
+}
+
 /** Ticket choices the current principal's Board read made available for Inbox linking. */
 export interface InboxPromotionPicker {
   readonly choices: readonly InboxPromotionTicketChoice[];
@@ -908,6 +925,8 @@ export interface RecordAdapter {
   inbox: () => Promise<Reading<InboxProjection>>;
   /** One durable inbox thread; this recipient read advances its own cursor. */
   inboxThread: (threadId: string) => Promise<Reading<InboxThread>>;
+  /** The two seats one thread is between, for addressing a message on it. */
+  inboxCorrespondent: (threadId: string) => Promise<Reading<InboxCorrespondent>>;
   /** Existing tickets available to link when promoting a thread. */
   inboxPromotionPicker: () => Promise<InboxPromotionPicker>;
   /** What a session was handed at start. */
@@ -940,5 +959,6 @@ export type RecordApiReads = Pick<
   | "workSessions"
   | "inbox"
   | "inboxThread"
+  | "inboxCorrespondent"
   | "inboxPromotionPicker"
 >;

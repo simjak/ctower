@@ -143,7 +143,7 @@ class InboxPromotionComponentTests(unittest.TestCase):
         rail = (_SURFACE / "frame/rail.ts").read_text(encoding="utf-8")
 
         self.assertNotIn("read-only v1 · no mutation path exists on this surface", foot)
-        self.assertIn("server-authorized Inbox promotion path", foot)
+        self.assertIn("server-authorized Inbox send and promotion paths", foot)
         self.assertIn('label: "New ticket"', rail)
         self.assertIn('verdict: "read-only v1 · disabled"', rail)
 

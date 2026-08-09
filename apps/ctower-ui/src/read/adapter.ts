@@ -34,9 +34,9 @@ import type {
  *
  * Read bindings go through `reading`, so a source that refuses or cannot be
  * reached arrives at its screen as a typed failure rather than as an empty
- * value. The Inbox promotion action is deliberately separate: it asks the
- * existing server-authoritative mutation path and never grants authority in
- * the browser.
+ * value. The Inbox send and promotion actions are deliberately separate: each
+ * asks an existing server-authoritative mutation path and neither grants any
+ * authority in the browser.
  */
 
 export type ScreenKey =
@@ -58,7 +58,8 @@ export const SOURCE_LABELS: Readonly<Record<ScreenKey, string>> = {
   board: "ctower read API · /v1/board",
   portfolio: "ctower read API · /v1/board per project + /v1/inbox/threads",
   ticket: "ctower read API · /v1/tickets/{id} + /audit",
-  inbox: "ctower API · /v1/inbox/threads + /v1/inbox/threads/{id} + /promotion",
+  inbox:
+    "ctower API · /v1/inbox/threads + /v1/inbox/threads/{id} + /v1/inbox/messages + /promotion",
   heartbeats:
     cadenceSourceName() === "systemd" ? "systemd user timers" : "host crontab + state markers",
   files: "git tree",
@@ -86,6 +87,7 @@ export const recordAdapter: RecordAdapter = {
   workSessions: httpRecordAdapter.workSessions,
   inbox: httpRecordAdapter.inbox,
   inboxThread: httpRecordAdapter.inboxThread,
+  inboxCorrespondent: httpRecordAdapter.inboxCorrespondent,
   inboxPromotionPicker: httpRecordAdapter.inboxPromotionPicker,
 
   cadenceRegistry: async (): Promise<Reading<CadenceRegistry>> => await reading(cadenceSource()),
