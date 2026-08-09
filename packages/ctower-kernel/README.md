@@ -1,7 +1,7 @@
 # ctower-kernel boundary
 
 Trusted modular-monolith artifact. The development walking slice implements small Access, Catalog, Record,
-Inbox, Knowledge, Work, Proof, Workflow, Runtime, Projections, Attention, and generic Object Interfaces: authentication and
+Inbox, Knowledge, Integrations, Work, Proof, Workflow, Runtime, Projections, Attention, and generic Object Interfaces: authentication and
 bootstrap authority; atomic Postgres command/event/outbox persistence; ticket lifecycle, comments, priority,
 custody, assignment, blocker, relation, and typed-intent policy; universal component/bundle
 validation/planning plus an atomic future-only Catalog pointer; server-pinned frozen criteria, digest-bound
@@ -76,7 +76,20 @@ Native Inbox is a two-principal thread aggregate. Record atomically appends `thr
 creation from the immutable thread head under ordinary initial-custody policy or binds an existing in-scope
 ticket, then writes one immutable link exposed from both the thread projection and the Board card. Ordered
 messages and promotion links remain authoritative, while recipient unread/read cursors and list/read rows
-are disposable and rebuildable.
+are disposable and rebuildable. The notification ingress is a second, narrow command shape over that same
+authority: it resolves sender from the authenticated Actor, recipient from the persisted seat registry, and
+derives one direction-independent thread per principal pair. A stable delivery UUID is the existing command
+idempotency key; it does not add a pair store, message kind, caller-supplied sender, or identity creation.
+
+Integrations owns the provider-neutral two-method `IssueConnector` Interface and its PostgreSQL cursor/
+custody/observation/delivery store. Its only composed implementation is the deliberately narrow GitLab Issue
+co-source. A due tick processes at most one issue page and one project-event page under a leased, fenced
+claim. New issues enter through ordinary external-untrusted Work intake, labels through BoardContext, and
+changes through Record comments. An external issue state never changes ctower lifecycle. Only Record's
+canonical proof-gated `resolve_close` event may request the API-owned Adapter to comment and close the
+provider issue; an immutable event receipt and marker make replay converge. Cursor rows are usable only
+while their exact Catalog component revision and digest remain active. The Module contains no provider
+config, cursor interpretation, HTTP/credential handling, app import, or dynamic plugin framework.
 
 There is no executable Extension Host in I1 or I2; that runtime remains deferred until a real use case and
 two real Adapters earn its Seam. The kernel may depend on authored/generated contracts and allowlisted public

@@ -1,5 +1,47 @@
 # Changelog
 
+## [0.20.0](https://github.com/simjak/ctower/compare/v0.19.0...v0.20.0) (2026-08-09)
+
+
+### Features
+
+* **ui:** add the server-authoritative inbox chat send box ([#390](https://github.com/simjak/ctower/issues/390)) ([4edf515](https://github.com/simjak/ctower/commit/4edf5152a59b16746caf3b4d313f089044fd198d))
+
+## [0.19.0](https://github.com/simjak/ctower/compare/v0.18.0...v0.19.0) (2026-08-08)
+
+
+### Features
+
+* **ui:** add the director's cross-project portfolio view ([#385](https://github.com/simjak/ctower/issues/385)) ([e53e27e](https://github.com/simjak/ctower/commit/e53e27ec269ad3f2a9b74cda5361401093fd13b8))
+
+## [0.18.0](https://github.com/simjak/ctower/compare/v0.17.0...v0.18.0) (2026-08-08)
+
+
+### Features
+
+* **ui:** server-authoritative inbox promote control ([#379](https://github.com/simjak/ctower/issues/379)) ([4087881](https://github.com/simjak/ctower/commit/4087881af9d70b0f5cf617ae0bd389cf3a4d3399))
+
+## [0.17.0](https://github.com/simjak/ctower/compare/v0.16.0...v0.17.0) (2026-08-08)
+
+
+### Features
+
+* **inbox:** add pair-grouped notification transport ([#383](https://github.com/simjak/ctower/issues/383)) ([9c6e53b](https://github.com/simjak/ctower/commit/9c6e53bdc4876abc43d02173a5cf1b026b1d193b))
+
+## [0.16.0](https://github.com/simjak/ctower/compare/v0.15.0...v0.16.0) (2026-08-08)
+
+
+### Features
+
+* sync GitLab feedback issues into ctower ([#377](https://github.com/simjak/ctower/issues/377)) ([3964aec](https://github.com/simjak/ctower/commit/3964aecfedd5b994318e2cbb6644ba97aeedd463)), closes [#346](https://github.com/simjak/ctower/issues/346)
+
+## [0.15.0](https://github.com/simjak/ctower/compare/v0.14.0...v0.15.0) (2026-08-08)
+
+
+### Features
+
+* **runtime:** emit nightly dream-dispatch effects ([#374](https://github.com/simjak/ctower/issues/374)) ([135b3e1](https://github.com/simjak/ctower/commit/135b3e1fce2d0fa1afdf06dbf687141e387800bd))
+
 ## [0.14.0](https://github.com/simjak/ctower/compare/v0.13.0...v0.14.0) (2026-08-08)
 
 

@@ -22,7 +22,7 @@ __all__: tuple[str, ...] = ()
 
 ROOT = Path(__file__).parents[3]
 AUTHORED_INTEGER_OCCURRENCES = 157
-AUTHORED_OPERATION_COUNT = 65
+AUTHORED_OPERATION_COUNT = 66
 RESPONSE_INTEGER_NODES = 124
 PROFILE_KEYS = (
     "x-ctower-rfc3339-profile",

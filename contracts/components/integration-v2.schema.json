@@ -1,0 +1,66 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://ctower.local/contracts/components/integration-v2.schema.json",
+  "title": "GitLabIssueIntegrationComponent",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema",
+    "key",
+    "adapter",
+    "authority",
+    "execution",
+    "gitlab",
+    "ctower",
+    "label_map",
+    "token_binding"
+  ],
+  "properties": {
+    "schema": { "const": "ctower.integration/v2" },
+    "key": { "type": "string", "pattern": "^[a-z][a-z0-9.-]{2,127}$" },
+    "adapter": { "const": "gitlab-issues" },
+    "authority": { "const": "co_source" },
+    "execution": { "const": "standing_sync" },
+    "gitlab": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "base_url",
+        "project_id",
+        "import_updated_after",
+        "page_size",
+        "poll_interval_seconds"
+      ],
+      "properties": {
+        "base_url": { "type": "string", "format": "uri", "pattern": "^https://" },
+        "project_id": { "type": "integer", "minimum": 1 },
+        "import_updated_after": { "type": "string", "format": "date-time" },
+        "page_size": { "type": "integer", "minimum": 1, "maximum": 100 },
+        "poll_interval_seconds": { "type": "integer", "minimum": 15, "maximum": 3600 }
+      }
+    },
+    "ctower": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["project_key", "initial_custodian_id"],
+      "properties": {
+        "project_key": { "type": "string", "pattern": "^[a-z][a-z0-9-]{2,63}$" },
+        "initial_custodian_id": { "type": "string", "format": "uuid" }
+      }
+    },
+    "label_map": {
+      "type": "array",
+      "maxItems": 100,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["gitlab", "ctower"],
+        "properties": {
+          "gitlab": { "type": "string", "minLength": 1, "maxLength": 255 },
+          "ctower": { "type": "string", "pattern": "^[a-z][a-z0-9._-]{1,95}$" }
+        }
+      }
+    },
+    "token_binding": { "type": "string", "pattern": "^[A-Z][A-Z0-9_]{2,127}$" }
+  }
+}

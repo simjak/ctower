@@ -29,11 +29,15 @@ import {
   PayloadRefusal,
 } from "./json";
 import { LANES } from "./interface";
+import { defaultProjectKey } from "./projects";
 import type {
   BoardCard,
+  BoardCards,
   BoardEntry,
   BoardSnapshot,
+  InboxCorrespondent,
   InboxProjection,
+  InboxPromotionPicker,
   InboxThread,
   InboxThreadMessage,
   InboxThreadSummary,
@@ -381,8 +385,8 @@ async function loadTicket(ticketId: string, projectKey: string): Promise<TicketR
   );
 }
 
-/** The board for one project, with every returned card checked against it. */
-async function loadBoard(projectKey: string): Promise<BoardSnapshot> {
+/** The cards for one project, with every returned card checked against it. */
+async function loadBoardCards(projectKey: string): Promise<BoardCards> {
   const view = asRecord(await read(scoped("/v1/board", projectKey)), "board");
   const names = await seatNames();
   const cards = asArray(view.cards, "board.cards").map((card) => toCard(card, names));
@@ -392,6 +396,18 @@ async function loadBoard(projectKey: string): Promise<BoardSnapshot> {
       `board.card.project_key was ${foreignCard.projectKey}; scoped read asked for ${projectKey}`
     );
   }
+  return {
+    cards,
+    health: asMember(view.health, "board.health", HEALTH),
+    projectionWatermark: asInteger(view.projection_watermark, "board.projection_watermark"),
+    sourceWatermark: asInteger(view.source_watermark, "board.source_watermark"),
+    scope: { projectKey },
+  };
+}
+
+/** The board for one project, each card joined to the ticket read behind it. */
+async function loadBoard(projectKey: string): Promise<BoardSnapshot> {
+  const { cards, ...view } = await loadBoardCards(projectKey);
   const entries: readonly BoardEntry[] = await Promise.all(
     cards.map(async (card): Promise<BoardEntry> => ({
       card,
@@ -400,13 +416,7 @@ async function loadBoard(projectKey: string): Promise<BoardSnapshot> {
       ticket: await reading(async () => await loadTicket(card.ticketId, projectKey)),
     }))
   );
-  return {
-    entries,
-    health: asMember(view.health, "board.health", HEALTH),
-    projectionWatermark: asInteger(view.projection_watermark, "board.projection_watermark"),
-    sourceWatermark: asInteger(view.source_watermark, "board.source_watermark"),
-    scope: { projectKey },
-  };
+  return { ...view, entries };
 }
 
 async function loadAudit(ticketId: string, projectKey: string): Promise<readonly RecordEvent[]> {
@@ -425,10 +435,55 @@ async function loadInboxThread(threadId: string): Promise<InboxThread> {
   return inboxThreadFrom(await read(`/v1/inbox/threads/${encodeURIComponent(threadId)}`));
 }
 
+/**
+ * The two seats one thread is between, taken from the server's own answer.
+ *
+ * The projection is recipient-scoped: it names the authenticated principal's
+ * seat once and the other participant per thread, so neither identity is
+ * inferred here from a participant list or accepted from a browser. A thread
+ * this principal is not a participant of is absent from the projection and
+ * refuses by name rather than resolving to a guess.
+ */
+export async function loadInboxCorrespondent(threadId: string): Promise<InboxCorrespondent> {
+  const projection = await loadInbox();
+  const summary = projection.threads.find((thread) => thread.threadId === threadId);
+  if (summary === undefined) {
+    throw new PayloadRefusal("inbox.threads", "a thread this principal participates in");
+  }
+  return { sender: projection.recipient, recipient: summary.otherAgent };
+}
+
+/**
+ * The target picker uses the same project-scoped Board record as the Board
+ * screen. A failed read remains visible to the user, while creating a ticket
+ * from the thread stays available because that operation needs no target.
+ */
+async function loadInboxPromotionPicker(): Promise<InboxPromotionPicker> {
+  try {
+    const snapshot = await loadBoard(defaultProjectKey());
+    return {
+      choices: snapshot.entries.map(({ card }) => ({
+        ticketId: card.ticketId,
+        projectKey: card.projectKey,
+        title: card.title,
+      })),
+      notice: null,
+    };
+  } catch {
+    return {
+      choices: [],
+      notice:
+        "Existing ticket choices could not be loaded. You can still create a new ticket from this thread.",
+    };
+  }
+}
+
 export const httpRecordAdapter: RecordApiReads = {
   instance: instanceIdentity(),
   board: async (projectKey: string): Promise<Reading<BoardSnapshot>> =>
     await reading(async () => await loadBoard(projectKey)),
+  boardCards: async (projectKey: string): Promise<Reading<BoardCards>> =>
+    await reading(async () => await loadBoardCards(projectKey)),
   ticket: async (ticketId: string, projectKey: string): Promise<Reading<TicketRecord>> =>
     await reading(async () => await loadTicket(ticketId, projectKey)),
   ticketAudit: async (
@@ -439,6 +494,9 @@ export const httpRecordAdapter: RecordApiReads = {
   inbox: async (): Promise<Reading<InboxProjection>> => await reading(loadInbox),
   inboxThread: async (threadId: string): Promise<Reading<InboxThread>> =>
     await reading(async () => await loadInboxThread(threadId)),
+  inboxCorrespondent: async (threadId: string): Promise<Reading<InboxCorrespondent>> =>
+    await reading(async () => await loadInboxCorrespondent(threadId)),
+  inboxPromotionPicker: loadInboxPromotionPicker,
   workSessions: (): Promise<Reading<never>> =>
     Promise.resolve({ state: "absent", source: NO_WORK_SESSIONS }),
 };

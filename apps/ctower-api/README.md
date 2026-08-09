@@ -12,7 +12,10 @@ routes authenticate before reading a body, then enforce the same 524,288-byte st
 trusting `Content-Length`.
 The separately composed native Inbox surface exposes message send, recipient-only delivery/read
 acknowledgement, participant-only ticket promotion, recipient-scoped thread list, ordered thread read, and
-per-message read-state. Promotion atomically creates a P2 ticket from the thread head when no ticket is
+per-message read-state. Its notification ingress accepts only recipient seat and text, derives the sender
+from the authenticated Actor, resolves the recipient from the persisted seat registry, and groups messages
+in the direction-independent thread for that principal pair. The request's idempotency key is the stable
+notification delivery UUID, so retry returns the original result. Promotion atomically creates a P2 ticket from the thread head when no ticket is
 named, or links an existing in-scope ticket when one is named. Send, acknowledgement, and promotion are
 protected durable mutations. The reads consume only accepted disposable projection state and never advance
 a cursor; unread and read-through derive from append-only recipient facts.
@@ -34,6 +37,15 @@ the authenticated principal's persisted Project scope; only an operator receives
 effect. Consumption accepts only an output digest, refuses foreign-Project and non-operator fleet effects
 before mutation, and records substrate-bound lane/model facts plus the Routine occurrence link through the
 Runtime Interface.
+The artifact contains a closed first-party connector registry whose only admitted implementation is the real
+GitLab v4 HTTP Adapter for the narrow GitLab Issue co-source. A strict Catalog v2 payload becomes an
+immutable runtime binding plus an unresolved secret-reference name; deployment supplies the resolved token
+directly to composition, never to Catalog or persistence. The control-worker entry point exports the active
+bundle, resolves each declared runtime binding, and injects one independently pinned loop per active GitLab
+registration, which the worker ticks once per worker tick. Each registration's durable opaque cursor
+suppresses early work and bounds provider/event pages. The HTTP Adapter has no record-tier connection, and
+the provider-neutral kernel sync service has no provider import. No other provider or dynamic plugin loading
+is active.
 The separately approved E2 composition exposes `ctower-development-api` and
 `ctower-development-worker`. It resolves Secret Service references in-process, binds the API to loopback,
 and adds Record's bounded ordinary durability finalizer to the same worker loop. Its

@@ -1,6 +1,6 @@
 schema = "ctower.expected-suites/v1"
 manifest_version = 1
-active_phase = "CT-I1-007"
+active_phase = "CT-I1-014"
 phase_order = [
   "CT-L0-007",
   "CT-L0-001",
@@ -15,6 +15,12 @@ phase_order = [
   "CT-I1-003",
   "CT-I1-006",
   "CT-I1-007",
+  "CT-I1-009",
+  "CT-I1-010",
+  "CT-I1-011",
+  "CT-I1-012",
+  "CT-I1-013",
+  "CT-I1-014",
   "CT-I1-008",
   "CT-I2-005",
   "CT-I2-010",
@@ -559,6 +565,32 @@ command = ["{python}", "-m", "pytest", "tests/modules/inbox", "-q"]
 timeout_seconds = 120
 
 [[suite]]
+id = "notification-transport-acceptance"
+owner = "CT-I1-007"
+phase = "CT-I1-007"
+status = "required"
+path = "tests/acceptance/increment-1"
+patterns = ["test_notify_bridge.py"]
+command = [
+  "{python}",
+  "-m",
+  "pytest",
+  "tests/acceptance/increment-1/test_notify_bridge.py",
+  "-q",
+]
+timeout_seconds = 900
+
+[[suite]]
+id = "dogfood-inbox-controls"
+owner = "CT-I1-007"
+phase = "CT-I1-007"
+status = "required"
+path = "tests/dogfood"
+patterns = ["test_*.py"]
+command = ["{python}", "-m", "pytest", "tests/dogfood", "-q"]
+timeout_seconds = 900
+
+[[suite]]
 id = "dream-dispatch-contracts"
 owner = "CT-I1-006"
 phase = "CT-I1-006"
@@ -580,6 +612,64 @@ command = [
   "-m",
   "pytest",
   "tests/acceptance/increment-1/test_dream_dispatch_effect.py",
+  "-q",
+]
+timeout_seconds = 900
+
+[[suite]]
+id = "gitlab-integration-contracts"
+owner = "CT-I1-014"
+phase = "CT-I1-014"
+status = "required"
+path = "tests/contracts/integrations"
+patterns = ["test_*.py"]
+command = ["{python}", "-m", "pytest", "tests/contracts/integrations", "-q"]
+timeout_seconds = 120
+
+[[suite]]
+id = "gitlab-integration-modules"
+owner = "CT-I1-014"
+phase = "CT-I1-014"
+status = "required"
+path = "tests/modules/integrations"
+patterns = ["test_*.py"]
+command = ["{python}", "-m", "pytest", "tests/modules/integrations", "-q"]
+timeout_seconds = 300
+
+[[suite]]
+id = "gitlab-integration-acceptance"
+owner = "CT-I1-014"
+phase = "CT-I1-014"
+status = "required"
+path = "tests/acceptance/increment-1"
+patterns = ["test_gitlab_integration.py"]
+command = [
+  "{python}",
+  "-m",
+  "pytest",
+  "tests/acceptance/increment-1/test_gitlab_integration.py",
+  "-q",
+]
+timeout_seconds = 900
+
+[[suite]]
+id = "connector-framework-acceptance"
+owner = "CT-I1-014"
+phase = "CT-I1-014"
+status = "required"
+path = "tests/acceptance/increment-1"
+patterns = [
+  "test_connector_framework_migration.py",
+  "test_connector_gitlab_integration.py",
+  "test_connector_registration_isolation.py",
+]
+command = [
+  "{python}",
+  "-m",
+  "pytest",
+  "tests/acceptance/increment-1/test_connector_framework_migration.py",
+  "tests/acceptance/increment-1/test_connector_gitlab_integration.py",
+  "tests/acceptance/increment-1/test_connector_registration_isolation.py",
   "-q",
 ]
 timeout_seconds = 900

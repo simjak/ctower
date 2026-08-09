@@ -10,6 +10,7 @@ from pathlib import Path
 from typing import cast
 from uuid import UUID, uuid4
 
+import httpx
 import psycopg
 import pytest
 from _inbox_cli_roundtrip import RoundTrip as _RoundTrip
@@ -18,6 +19,7 @@ from _inbox_cli_roundtrip import roundtrip as _roundtrip
 from psycopg.rows import dict_row
 from support.acceptance import accept_pending_commands
 from support.server import running_api
+from support.telemetry import telemetry_headers
 from support.tenant_fixture import TenantFixture, provision_credential
 
 from ctower_client import BoardView, CtowerClient
@@ -43,6 +45,21 @@ from ctower_kernel.work import Work
 __all__: tuple[str, ...] = ()
 
 REPLY_POSITION = 2
+_ACCEPTED_STATUS = 201
+_DURABILITY_PENDING_STATUS = 202
+_ACCEPTED_SEND_STATUS = (_ACCEPTED_STATUS, _DURABILITY_PENDING_STATUS)
+_AUTHORED_SEND_FIELDS = (
+    "command_id",
+    "durability_state",
+    "event_ids",
+    "from",
+    "message_id",
+    "position",
+    "sent_at",
+    "thread_id",
+    "thread_version",
+    "to",
+)
 DELIVERY_AND_READ_EVENT_COUNT = 2
 CREATE_PROMOTION_EVENT_COUNT = 2
 
@@ -335,6 +352,101 @@ def _assert_created_ticket(tenant: TenantFixture, thread_id: UUID, ticket_id: UU
         "version": 1,
     }
     assert created_events == {"count": 1}
+
+
+def test_the_send_response_puts_the_authored_field_names_on_the_wire(
+    tenant: TenantFixture,
+) -> None:
+    """A boundary field whose contract name is a Python keyword still ships it.
+
+    ``InboxSendResult.from`` is aliased in the generated model because ``from``
+    is a keyword. The durability envelope used to serialize the Python name, so
+    the wire carried ``from_`` against an ``additionalProperties: false``
+    schema. Both generated clients populate by name as well as by alias, so
+    every existing roundtrip accepted it; a strict reader outside them — the
+    dogfood surface — is what found it. The assertion is therefore on the raw
+    bytes, not on a parsed model.
+    """
+    _recipient_id, _recipient_credential = _provision_seat(tenant, "wire-shape-agent")
+    command_id = uuid4()
+
+    with running_api(
+        tenant.database.runtime_dsn,
+        projection_dsn=tenant.database.projection_dsn,
+    ) as base_url:
+        response = httpx.post(
+            f"{base_url}/v1/inbox/messages",
+            headers={
+                "Accept": "application/json, application/problem+json",
+                "Authorization": f"Bearer {tenant.commander_credential}",
+                "Content-Type": "application/json",
+                "Idempotency-Key": str(command_id),
+                **telemetry_headers(command_id),
+            },
+            json={"to": "wire-shape-agent", "text": "The wire carries the authored names."},
+            timeout=30,
+        )
+
+    body = cast(dict[str, object], json.loads(response.text))
+    assert response.status_code in _ACCEPTED_SEND_STATUS
+    assert sorted(body) == sorted(_AUTHORED_SEND_FIELDS)
+    assert body["from"] == "ctower-commander"
+    assert body["to"] == "wire-shape-agent"
+    print("REAL_SEND_WIRE_SHAPE " + json.dumps(sorted(body)))
+
+
+def test_a_send_is_not_accepted_until_its_durable_receipt_commits(
+    tenant: TenantFixture,
+) -> None:
+    """The two answers a send surface has to tell apart, from the record itself.
+
+    Acceptance means a disaster-recoverable acknowledgement, so an instance
+    without one answers a fresh send with the explicit non-accepted state and a
+    ``202``. Nothing about that answer's shape says so: it carries the same
+    message identity, position and timestamp the accepted answer does, and only
+    ``durability_state`` distinguishes a recorded message from one nobody has
+    promised to keep. What makes it accepted is the receipt chain, and the same
+    command key then replays to that outcome rather than recording a second
+    message — which is exactly what a browser send box has to do with an
+    unconfirmed message it is still holding.
+    """
+    _recipient_id, _recipient_credential = _provision_seat(tenant, "durability-state-agent")
+    command_id = uuid4()
+    headers = {
+        "Accept": "application/json, application/problem+json",
+        "Authorization": f"Bearer {tenant.commander_credential}",
+        "Content-Type": "application/json",
+        "Idempotency-Key": str(command_id),
+        **telemetry_headers(command_id),
+    }
+    request = {"to": "durability-state-agent", "text": "Not sent until the record says so."}
+
+    with running_api(
+        tenant.database.runtime_dsn,
+        projection_dsn=tenant.database.projection_dsn,
+    ) as base_url:
+        unconfirmed = httpx.post(
+            f"{base_url}/v1/inbox/messages", headers=headers, json=request, timeout=30
+        )
+        accept_pending_commands(tenant.database.admin_dsn, tenant.tenant_id)
+        replayed = httpx.post(
+            f"{base_url}/v1/inbox/messages", headers=headers, json=request, timeout=30
+        )
+
+    first = cast(dict[str, object], json.loads(unconfirmed.text))
+    second = cast(dict[str, object], json.loads(replayed.text))
+    assert unconfirmed.status_code == _DURABILITY_PENDING_STATUS
+    assert first["durability_state"] == "durability_pending"
+    assert replayed.status_code == _ACCEPTED_STATUS
+    assert second["durability_state"] == "accepted"
+    # one message replayed, not a second one recorded
+    assert second["message_id"] == first["message_id"]
+    assert second["position"] == first["position"]
+    print(
+        f"REAL_SEND_DURABILITY first={unconfirmed.status_code} {first['durability_state']}"
+        f" replayed={replayed.status_code} {second['durability_state']}"
+        f" message={first['message_id']}"
+    )
 
 
 def _api_board(tenant: TenantFixture) -> BoardView:

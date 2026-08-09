@@ -22,6 +22,7 @@ export interface RailItem {
 }
 
 export const RAIL: readonly RailItem[] = [
+  { href: "/portfolio", label: "Portfolio", group: null },
   { href: "/board", label: "Dashboard", group: null },
   { href: "/inbox", label: "Inbox", group: null },
   { href: "/ticket", label: "Latest ticket", group: "Work" },
@@ -49,5 +50,5 @@ export const NEW_TICKET_INERT = {
   label: "New ticket",
   verdict: "read-only v1 · disabled",
   reason:
-    "This surface holds no write authority, so it cannot capture a ticket. The ctower CLI does: ctowerctl ticket capture. A ticket captured there appears on this board on the next read.",
+    "New ticket is unavailable here. Capture it with ctowerctl ticket capture; it appears on this board on the next read.",
 } as const;

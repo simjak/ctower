@@ -10,7 +10,10 @@ Open `/inbox` to see messages addressed to the current ctower identity. A thread
 
 On the served shadow instance checked on 7 August 2026, all five URLs returned a page: `/board`, each of its three project tabs, and `/inbox`. The pages also reported current read problems instead of showing false empty lists. The `ctower` and `manibo` tabs could not read one board field. The `bh-loop` tab received `0 of 0` and refused to call that an empty project. `/inbox` reported that its record call returned 404.
 
-The browser cannot change work. Agents act through `ctowerctl`. The New ticket control is disabled and says why. An Inbox button that turns a discussion into a ticket is also waiting for the operator's ruling on that boundary.
+The browser has no write authority. The New ticket control is disabled and says why. The separate Inbox
+controls ask the server-authorized send and promotion operations to append a message or create/link a
+ticket; their server actions hold the development credential and the API still decides authorization. See
+the [dogfood Inbox controls reference](reference/dogfood-inbox-controls.md).
 
 ## How a ticket moves
 

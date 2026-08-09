@@ -1,10 +1,10 @@
 {
   "schema": "ctower.migrations/v3",
   "adoption_baseline": {
-    "through": "0053_dream_dispatch_effect.sql",
-    "schema_sha256": "sha256:20907921771b465fe7f26643c7ce205202b86bd5bb959471b1c0fa7304b4f9fa",
+    "through": "0056_gitlab_trace_views.sql",
+    "schema_sha256": "sha256:aecd29b6392ae6792ee33c13fadc51f656ddd46f304c37695d26db3426a2c6f7",
     "semantic_checks": "ctower.pre-ledger/v1",
-    "schema_object_sum256": "sum256:a1a67cc88e0283b9a63196c65e1331e2d72101a2ad7154799a3e91de4846b092"
+    "schema_object_sum256": "sum256:eeb8ea04a878dffea66d44943846fd180c30f86dce66504f1d9890cf47e6643b"
   },
   "migrations": [
     {
@@ -503,6 +503,33 @@
       "forward_test": "pytest:tests/acceptance/increment-1/test_dream_dispatch_effect.py::test_nightly_dream_dispatch_stage_walk",
       "rollback_or_forward_compensation": "Preserve Routine dream specifications, emitted effects, substrate lane bindings, consumptions, output links, canonical events, command results, and outbox rows; append reviewed forward compensation and never edit or delete accepted dream custody facts.",
       "backup_checkpoint": "Before applying to a nonempty installation, capture Routine revision, occurrence, fixed-job, event, command-result, outbox, and lane-binding counts grouped by tenant plus a verified database backup; all four new tables start empty."
+    },
+    {
+      "path": "0054_gitlab_issue_integration.sql",
+      "sha256": "sha256:4f07bd2f807ce574aa2cee602a3b1c42b7fa06cd54c885ddbc16555bd610ad4d",
+      "minimum_service_version": "0.0.0",
+      "maximum_service_version": "0.0.0",
+      "forward_test": "pytest:tests/acceptance/increment-1/test_gitlab_integration.py::test_gitlab_issue_roundtrip_preserves_one_custody_chain_and_proof_gated_close",
+      "rollback_or_forward_compensation": "Preserve immutable GitLab issue/ticket custody links, source observations, proof-gated close delivery receipts, Catalog revisions, canonical ticket facts, and events; append reviewed forward compensation and never edit or delete an accepted custody or delivery fact.",
+      "backup_checkpoint": "Before applying to a nonempty installation, capture integration progress, issue-link, observation, close-delivery, Catalog revision, ticket-source, inbound-thread, event, command-result, and outbox counts grouped by tenant plus a verified database backup; all four new integration tables start empty."
+    },
+    {
+      "path": "0055_connector_framework.sql",
+      "sha256": "sha256:b9854e500edea42bcdbdd458bc2701de55f6044e0d418f962e4e4a31385336f8",
+      "minimum_service_version": "0.0.0",
+      "maximum_service_version": "0.0.0",
+      "forward_test": "pytest:tests/acceptance/increment-1/test_connector_framework_migration.py::test_connector_framework_migration_preserves_nonempty_gitlab_facts",
+      "rollback_or_forward_compensation": "Preserve every immutable connector external-reference custody link, normalized observation, proof-gated close delivery receipt, Catalog registration revision, canonical ticket fact, and event; append reviewed forward compensation and never restore the removed provider-shaped tables.",
+      "backup_checkpoint": "Before applying to a nonempty installation, capture the four GitLab-shaped source-table counts by tenant and registration plus Catalog revision, ticket-source, inbound-thread, event, command-result, and outbox counts and a verified database backup; verify identical provider-neutral counts and custody identities after the forward transition."
+    },
+    {
+      "path": "0056_gitlab_trace_views.sql",
+      "sha256": "sha256:30148d9f506000f50707178d1103a2f82d77e1fbd17fba688363451ccc9ad574",
+      "minimum_service_version": "0.0.0",
+      "maximum_service_version": "0.0.0",
+      "forward_test": "pytest:tests/acceptance/increment-1/test_gitlab_integration.py::test_gitlab_issue_roundtrip_preserves_one_custody_chain_and_proof_gated_close",
+      "rollback_or_forward_compensation": "The views expose no write authority and derive only from provider-neutral connector facts; drop or replace them with reviewed forward compensation while preserving every underlying custody, observation, progress, and delivery fact.",
+      "backup_checkpoint": "No data migration occurs; verify the provider-neutral table counts and run the protected #377 GitLab acceptance trace before and after creating the views."
     }
   ]
 }

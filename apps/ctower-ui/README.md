@@ -1,15 +1,15 @@
-# ctower-ui boundary — phase-1 read-only operator surface
+# ctower-ui boundary — phase-1 operator surface
 
 This is **not** `apps/ctower-web`. It is a separate, explicitly non-product boundary: a
-read-only operator dogfood surface over the running shadow instance, ordered by the operator
+operator dogfood surface over the running shadow instance, ordered by the operator
 (R2710) and built against the approved mockup set vendored under `design-reference/`.
 
 ## What it is, and what it is not
 
 |        |                                                                                                                                                                                                                                       |
 | ------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Is     | A Next.js server that reads the shadow instance's existing read API and renders eight approved screens.                                                                                                                               |
-| Is     | Read-only. Every path it calls is a `GET`. There is no mutation function in this boundary to call by accident.                                                                                                                        |
+| Is     | A Next.js server that reads the shadow instance's existing read API and renders the approved screen set.                                                                                                                              |
+| Is     | Two Inbox controls that ask existing server-authoritative operations: a send box over `POST /v1/inbox/messages`, and a promote control over `POST /v1/inbox/threads/{thread_id}/promotion`.                                            |
 | Is not | The I2.4 browser product. `apps/ctower-web` remains untouched, and D22 §1 (React 19 / React Router 7 / Vite static, no SSR) still governs it.                                                                                         |
 | Is not | An authority. The browser receives no API bearer, no session and no credential of any kind; every read happens server-side. The instance's API origin _is_ printed, deliberately, in the provenance foot of every screen — see below. |
 
@@ -33,27 +33,42 @@ design-reference/   the approved mockups, vendored verbatim; app.css is imported
 src/read/           the record-read contract and its one implementation
 src/frame/          the chrome every screen shares: mark, nav, theme, provenance foot
 src/surfaces/       one directory per screen family
-src/app/            the eight routes
+src/app/            the routes
 ```
 
 ### What the browser is and is not given
 
-No bearer, no session cookie, no CSRF token and no credential reaches the page: `src/read/` runs
-only on the server. What the page _does_ carry is the instance's API origin, printed in the
+No bearer, no session cookie, no CSRF token and no credential reaches the page: `src/read/` and
+the Inbox server action run only on the server. What the page _does_ carry is the instance's API origin, printed in the
 provenance foot next to the posture and the render time. That is deliberate — a capture from one
 instance would otherwise be indistinguishable from a capture from another, which is the failure
 mode the foot exists to prevent. The origin is not a credential and grants a reader nothing; if a
 future deployment wants it hidden, `frame/RecordFoot.tsx` is the one place to change.
 
-### Bounded reads (O10)
+### Bounded server requests (O10)
 
-`src/read/bounded.ts` is the only module in `apps/` that names `fetch`. Every record read goes
-through it under a bounded policy: a per-attempt timeout, a finite attempt count _and_ a finite
+`src/read/bounded.ts` is the only module in `apps/` that names `fetch`. Every record read and the
+two Inbox commands go through it under a bounded policy: a per-attempt timeout, a finite attempt count _and_ a finite
 elapsed deadline, full-jittered exponential backoff capped and clamped to the remaining deadline, a
 typed transient/permanent predicate with no catch-all branch, and a typed `ReadExhausted` outcome
 that preserves the attempt count, elapsed time and last classified failure and is counted and
-written once to stderr. Idempotency is satisfied by construction: the chokepoint issues `GET` and
-accepts no method or body, so no mutation call site exists here.
+written once to stderr. Each command supplies one `Idempotency-Key` before any attempt and reuses it
+unchanged for retries. `src/mutate/command.ts` holds what both commands share — the headers, the
+strict response readers, and the one validated refusal sentence. `src/mutate/inboxPromotion.ts`
+accepts only the thread and an optional target-ticket identifier. `src/mutate/inboxSend.ts` accepts
+only the thread, the message text and the answer the box last received, and reads the recipient back
+from the server's own recipient-scoped projection rather than taking one from a form: a recipient is an
+identity, and this surface asserts none. Neither sends a claimed actor, scope, custody, or authorization
+fact. The API authenticates and authorizes the server-held bearer, and every refusal is rendered from the
+server problem document's human `detail`, never raw JSON.
+
+The send box reads `durability_state` for which of two things the record just said. `accepted` draws the
+message; `durability_pending` means the durable acknowledgement acceptance requires has not committed, so
+no message is drawn at all — the words stay in the field, the line under the box says the server has not
+confirmed them, and `Retry` sends that same message under the identity the first attempt minted. The one
+field read back out of the previous answer is that identity, and it is read strictly: anything that is not
+a UUID is refused before a read or a command is made. Editing the words first mints a new identity,
+because one key for two different requests is a conflict rather than a retry.
 
 `tests/repository/test_browser_network_chokepoint.py` derives the call-site denominator from the
 repository tree — not from a hand-kept endpoint list — and fails closed when a network-capable
@@ -66,8 +81,14 @@ bounds, or when an application value-imports the generated client's single-shot 
 `Reading<T>` — `present`, `absent` (with the work item that will land the source), or
 `unavailable`. `src/read/httpRecordAdapter.ts` implements it against `/v1/board`,
 `/v1/tickets/{id}`, `/v1/tickets/{id}/audit`, and the recipient-scoped inbox projection
-(`GET /v1/inbox/threads`, `GET /v1/inbox/threads/{id}`). `src/read/adapter.ts` binds the one
-that is active.
+(`GET /v1/inbox/threads`, `GET /v1/inbox/threads/{id}`). The Inbox actions use the already-authored
+`POST /v1/inbox/messages` and `POST /v1/inbox/threads/{thread_id}/promotion` paths.
+`src/read/adapter.ts` binds the one that is active.
+
+Two board reads are declared, not one. `board` joins every card to the ticket read behind it, so a
+card can show its recorded source and age; `boardCards` returns the cards alone. The Portfolio
+counts four hundred cards across three projects and shows neither, so it takes the second — the
+join would be four hundred requests spent on nothing that reaches the screen.
 
 Swapping to a typed feed changes `adapter.ts` and nothing else: no screen constructs a client,
 and no screen knows a URL.
@@ -77,6 +98,7 @@ and no screen knows a URL.
 | Screen              | Source today                                                                                                                                   | Swaps to                                                                       |
 | ------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------ |
 | Board · Ticket      | ctower read API (`/v1/board`, `/v1/tickets/{id}`, `/audit`)                                                                                    | a typed feed, through `adapter.ts` alone                                       |
+| Portfolio           | ctower read API (`/v1/board` once per configured project, `/v1/inbox/threads`)                                                                 | the same typed feed, through `adapter.ts` alone                                |
 | Inbox               | ctower read API (`/v1/inbox/threads`, `/v1/inbox/threads/{id}`)                                                                                | —                                                                              |
 | Heartbeats          | host `crontab -l` + `state/` fire markers — or `systemctl --user list-timers`                                                                  | a native cadence registry                                                      |
 | Files               | this repository's git tree at a committed revision                                                                                             | —                                                                              |
@@ -180,6 +202,38 @@ The project scope control is the mockup's own CSS-only mechanism — four radios
 one `.mtscope` block per project — so switching a tab swaps every card, bar and legend at once and
 a number can never belong to a project the tab does not name.
 
+### Portfolio, and the three ways a zero can lie
+
+The per-project Board answers one project's question; the director supervises three and was reading
+git, gh and tmux to get the fleet's. `/portfolio` asks the same record the Board asks — one
+card-only board read per configured project, plus one inbox read — and folds the answers into
+tickets by lane per project, the escalations waiting on a human, and the unread seat comms. The
+project list is `read/projects.ts` and nowhere else, so a fourth project is one entry there and one
+more row here, with no screen edit.
+
+The fold is `read/portfolioProjection.ts`, and it is pure: `tests/repository/
+test_portfolio_projection.py` drives it over fixed payloads and recounts every number in Python
+rather than re-running the same expression. Three rules in it are worth knowing, because each is a
+place where the convenient number and the true one differ.
+
+- **A board that did not answer is not a project with no work.** Its row draws one spanning
+  not-reached cell rather than six dashes across the lanes — six dashes read as six zeroes — it is
+  excluded from every total, it takes no unread attribution (without its cards there is nothing to
+  attribute a thread by), and the page says `N of 3 project boards answered`.
+- **`unaddressable` is not an empty inbox.** The inbox projection resolves its recipient from the
+  project-seat registry and names a principal with no seat row `unaddressable`. This surface's
+  credential is one today, so its unread total is `0` for an address that cannot receive. The tile
+  reads `—`, the panel says so in a sentence, and the per-project split is not drawn at all — a row
+  of zeroes there would put back exactly the reading the dash removes.
+- **A thread belongs to a project only where a card says so.** Attribution is the board card's own
+  `inbox_thread_ids` and nothing else; mail on threads no card links is counted apart, so the
+  per-project numbers plus the unlinked number equal the projection's own total.
+
+Columns are the record's lanes, for the same reason the Board's are (deviation 1 below), and the
+panel prints how many of the counted cards carry a recorded workflow stage so the reader can see
+why. The Portfolio is read-only by scope: the operator's UI-may-mutate ruling permits controls and
+this view carries none, which the suite asserts rather than assumes.
+
 ### Honest empty states — and the difference between empty and unreachable
 
 Board, Ticket and Inbox render live record facts. Heartbeats, Feed session facts, Files, Workspace
@@ -212,9 +266,10 @@ failure and the bounded attempts that were spent. A `Reading` is unwrapped only 
 flatten a failed read into an empty one, and the structural test above fails closed if one tries.
 Inline, the two read `not recorded` and `not reached` rather than a bare dash.
 
-### Read-only v1
+### Controls still unavailable in v1
 
-The steering composer (Feed), the Save/Revert controls (Files) and the sidebar's `New ticket`
+The Inbox send box and promote control are live and ask existing authenticated server operations; the
+steering composer (Feed), the Save/Revert controls (Files) and the sidebar's `New ticket`
 render as visibly disabled affordances — a real `disabled` control, the shared
 `read-only v1 · disabled` chip, and the reason printed on the control itself, never as a page
 banner, never in a hover alone, and never as a dead-looking control. `New ticket` names what the
@@ -234,7 +289,8 @@ apps/ctower-ui/serve-development.sh          # builds nothing; serves the built 
 
 The script resolves the operator credential from the Secret Service reference the instance
 already uses and exports it for the life of the Node process. It is never written to a file,
-never passed as an argument, and never reaches the browser.
+never passed as an argument, and never reaches the browser. The server uses it for reads and for the
+two Inbox commands; the API remains the sole authority for identity and scope.
 
 | Variable                      | Default                        | Meaning                                                         |
 | ----------------------------- | ------------------------------ | --------------------------------------------------------------- |
@@ -261,8 +317,8 @@ the phase-1 status note; the two structural ones are:
    `/v1/board` read is scoped by required `project_key`, every returned card carries that same project
    fact, and the adapter refuses a mismatched card instead of rendering it under the selected tab.
 
-The section nav carries the eight screens in this phase. `Workflow` (R2707) is not built here,
-and a nav entry that leads nowhere would be a dead control.
+The section nav carries every screen this phase built, and only those. `Workflow` (R2707) is not
+built here, and a nav entry that leads nowhere would be a dead control.
 
 3. **The rail's ticket entry is `Latest ticket`**, not `Tickets`. `/ticket` opens the most
    recently created ticket on record: that is one record, not a list, and the previous label
@@ -275,4 +331,6 @@ and a nav entry that leads nowhere would be a dead control.
    — nothing renders below the banner — so the copy now describes that link instead of claiming an
    embedded view the DOM never carried. gh#115's project-fact work has not landed (no PR as of this
    fix), so wiring the promised embedded view was not yet composable; this is the honest fallback
-   the ticket names, not the preferred direction.
+   the ticket names, not the preferred direction. That block's link still points at `/board`, and
+   its panel still renders the default project's entries rather than the fleet's; the cross-project
+   view now lives at `/portfolio` and repointing that block is gh#319's to settle, not this one's.

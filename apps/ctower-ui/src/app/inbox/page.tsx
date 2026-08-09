@@ -6,13 +6,18 @@ import { RecordFoot } from "@/frame/RecordFoot";
 import { SOURCE_LABELS, recordAdapter } from "@/read/adapter";
 import { shortId, stampText } from "@/read/elapsed";
 import type {
+  InboxCorrespondent,
   InboxProjection,
   InboxThread,
-  InboxThreadMessage,
   InboxThreadSummary,
+  Reading,
 } from "@/read/interface";
 import { Count } from "@/surfaces/Count";
 import { readParam } from "@/surfaces/screenParams";
+import { promoteThreadAction, sendMessageAction } from "./actions";
+import { PromoteThread } from "@/surfaces/inbox/PromoteThread";
+import { SendMessage } from "@/surfaces/inbox/SendMessage";
+import { ThreadMessage } from "@/surfaces/inbox/ThreadMessage";
 
 export const dynamic = "force-dynamic";
 
@@ -99,22 +104,17 @@ function InboxList({ inbox }: { readonly inbox: InboxProjection }): ReactElement
   );
 }
 
-function ThreadMessage({ message }: { readonly message: InboxThreadMessage }): ReactElement {
-  return (
-    <div className="msg">
-      <span className="dot" />
-      <div className="subj">{message.text}</div>
-      <div className="when">{stampText(message.sentAt)}</div>
-      <div className="meta">
-        <span>from {message.from}</span>
-        <span>to {message.to}</span>
-        <span>message {message.position.toString()}</span>
-      </div>
-    </div>
-  );
-}
-
-function InboxThreadBody({ thread }: { readonly thread: InboxThread }): ReactElement {
+function InboxThreadBody({
+  thread,
+  picker,
+  correspondent,
+}: {
+  readonly thread: InboxThread;
+  readonly picker: Awaited<ReturnType<typeof recordAdapter.inboxPromotionPicker>>;
+  readonly correspondent: Reading<InboxCorrespondent>;
+}): ReactElement {
+  const promote = promoteThreadAction.bind(null, thread.threadId);
+  const send = sendMessageAction.bind(null, thread.threadId);
   return (
     <>
       <Chrome section="Inbox" back={{ href: "/inbox", label: "Inbox" }} />
@@ -142,6 +142,10 @@ function InboxThreadBody({ thread }: { readonly thread: InboxThread }): ReactEle
             </div>
           )}
 
+          {thread.promotedTicketId === null ? (
+            <PromoteThread action={promote} choices={picker.choices} pickerNotice={picker.notice} />
+          ) : null}
+
           <section className="panel" style={{ marginTop: "16px" }}>
             <header>
               <h2>Messages</h2>
@@ -155,6 +159,15 @@ function InboxThreadBody({ thread }: { readonly thread: InboxThread }): ReactEle
                 <ThreadMessage key={message.messageId} message={message} />
               ))}
             </div>
+            <Resolved brief reading={correspondent} subject="the seats this thread is between">
+              {(value) => (
+                <SendMessage
+                  action={send}
+                  correspondent={value}
+                  settled={thread.messages.map((message) => message.messageId)}
+                />
+              )}
+            </Resolved>
           </section>
 
           <RecordFoot readPath={SOURCE_LABELS.inbox} />
@@ -217,10 +230,16 @@ export default async function InboxPage({
 }): Promise<ReactNode> {
   const threadId = readParam(await searchParams, "thread");
   if (threadId !== null) {
-    const thread = await recordAdapter.inboxThread(threadId);
+    const [thread, picker, correspondent] = await Promise.all([
+      recordAdapter.inboxThread(threadId),
+      recordAdapter.inboxPromotionPicker(),
+      recordAdapter.inboxCorrespondent(threadId),
+    ]);
     return (
       <Resolved reading={thread} frame={(declared) => <InboxThreadFrame declared={declared} />}>
-        {(value) => <InboxThreadBody thread={value} />}
+        {(value) => (
+          <InboxThreadBody correspondent={correspondent} picker={picker} thread={value} />
+        )}
       </Resolved>
     );
   }

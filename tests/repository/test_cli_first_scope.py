@@ -27,6 +27,46 @@ class CliFirstScopeTests(unittest.TestCase):
         self.assertEqual(browser_suite["phase"], "CT-I2-005")
         self.assertEqual(browser_suite["status"], "deferred")
 
+    def test_the_dogfood_suite_activation_is_named_by_a_superseding_decision(self) -> None:
+        """A required suite the canonical record disclaims is a contradiction.
+
+        D41 clause 4 said the dogfood exception introduces no ``test-suite
+        activation`` while the same candidate registered a required suite that
+        ``just verify`` executes and counts. ``DECISIONS.md`` is append-only, so
+        the repair is a superseding entry that names the activation and its
+        limits — not an edit to D41, and not unregistering the verification the
+        exception owes.
+
+        The count is the load-bearing part: exactly one dogfood suite is
+        activated, and its exact name is spelled in the record. D44 widened the
+        boundary to the send control and renamed the suite to
+        ``dogfood-inbox-controls``; adding a second one is a new decision, not a
+        reading of D42.
+        """
+        manifest = tomllib.loads(
+            (self.root / "tools/checks/expected-suites.toml").read_text(encoding="utf-8")
+        )
+        suites = cast(list[dict[str, Any]], manifest["suite"])
+        decisions = (self.root / "DECISIONS.md").read_text(encoding="utf-8")
+
+        activated = sorted(
+            suite["id"]
+            for suite in suites
+            if suite["id"].startswith("dogfood-") and suite["status"] == "required"
+        )
+        self.assertEqual(activated, ["dogfood-inbox-controls"])
+        for suite_id in activated:
+            self.assertIn(f"`{suite_id}`", decisions)
+
+        self.assertIn("## D42 — The dogfood exception activates one verification suite", decisions)
+        self.assertIn(
+            'This entry preserves D41 and supersedes only clause 4\'s "test-suite activation"',
+            decisions,
+        )
+        self.assertIn("`browser-e2e` stays deferred to `CT-I2-005`", decisions)
+        self.assertIn("## D44 — The dogfood Inbox boundary carries the send control", decisions)
+        self.assertIn("`dogfood-inbox-promotion` becomes `dogfood-inbox-controls`", decisions)
+
     def test_d23_preserves_i1_semantics_and_defers_only_browser_realization(self) -> None:
         decisions = (self.root / "DECISIONS.md").read_text(encoding="utf-8")
 
@@ -46,7 +86,7 @@ class CliFirstScopeTests(unittest.TestCase):
         }
         canonical_order = "Public API + protected CLI precede I1 source-of-truth cutover."
         browser_activation = (
-            "Browser implementation, browser evidence, and browser E2E first activate "
+            "Product browser implementation, browser evidence, and browser E2E first activate "
             "at CT-I2-005 / I2.4."
         )
 
@@ -55,6 +95,7 @@ class CliFirstScopeTests(unittest.TestCase):
                 normalized_guidance = " ".join(guidance.split())
                 self.assertIn(canonical_order, normalized_guidance)
                 self.assertIn(browser_activation, normalized_guidance)
+                self.assertIn("D41", normalized_guidance)
 
         self.assertNotIn(
             "Add the CLI and thin Board/Ticket UI, then cut ctower's own backlog over",

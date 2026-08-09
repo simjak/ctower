@@ -3,6 +3,7 @@ schema = "ctower.repository-policy/v1"
 [source]
 extensions = [".py", ".ts", ".tsx"]
 module_roots = [
+  "tests/type_overlays",
   "apps/ctower-api/src",
   "apps/ctowerctl/src",
   "generated/python",
@@ -83,6 +84,11 @@ paths = ["tests/repository/**"]
 allowed_dependencies = ["process-execution-tools", "repository-policy"]
 
 [[ownership]]
+name = "dogfood-tests"
+paths = ["tests/dogfood/**"]
+allowed_dependencies = []
+
+[[ownership]]
 name = "compatibility-tools"
 paths = ["tools/compatibility/**"]
 allowed_dependencies = []
@@ -91,6 +97,11 @@ allowed_dependencies = []
 name = "compatibility-tests"
 paths = ["tests/compatibility/**"]
 allowed_dependencies = ["compatibility-tools"]
+
+[[ownership]]
+name = "legacy-trace-imports"
+paths = ["tests/type_overlays/**"]
+allowed_dependencies = []
 
 [[ownership]]
 name = "landing-boundary-tools"
@@ -213,6 +224,11 @@ paths = ["packages/ctower-kernel/src/ctower_kernel/board_context/**"]
 allowed_dependencies = ["kernel-record", "kernel-telemetry"]
 
 [[ownership]]
+name = "kernel-integrations"
+paths = ["packages/ctower-kernel/src/ctower_kernel/integrations/**"]
+allowed_dependencies = ["kernel-board-context", "kernel-record", "kernel-telemetry"]
+
+[[ownership]]
 name = "kernel-runtime"
 paths = ["packages/ctower-kernel/src/ctower_kernel/runtime/**"]
 allowed_dependencies = ["kernel-record"]
@@ -220,7 +236,7 @@ allowed_dependencies = ["kernel-record"]
 [[ownership]]
 name = "control-api"
 paths = ["apps/ctower-api/src/**"]
-allowed_dependencies = ["kernel-access", "kernel-attention", "kernel-board-context", "kernel-catalog", "kernel-inbox", "kernel-knowledge", "kernel-objects", "kernel-projections", "kernel-proof", "kernel-record", "kernel-runtime", "kernel-telemetry", "kernel-work", "kernel-workflow"]
+allowed_dependencies = ["kernel-access", "kernel-attention", "kernel-board-context", "kernel-catalog", "kernel-inbox", "kernel-integrations", "kernel-knowledge", "kernel-objects", "kernel-projections", "kernel-proof", "kernel-record", "kernel-runtime", "kernel-telemetry", "kernel-work", "kernel-workflow"]
 
 [[ownership]]
 name = "development-runtime-tests"
@@ -246,7 +262,7 @@ allowed_dependencies = ["runtime-manifest-tools"]
 [[ownership]]
 name = "increment-1-acceptance-tests"
 paths = ["tests/acceptance/increment-1/**"]
-allowed_dependencies = ["control-api", "control-cli", "kernel-access", "kernel-attention", "kernel-board-context", "kernel-catalog", "kernel-inbox", "kernel-knowledge", "kernel-migration", "kernel-objects", "kernel-projections", "kernel-proof", "kernel-record", "kernel-runtime", "kernel-telemetry", "kernel-work", "kernel-workflow"]
+allowed_dependencies = ["control-api", "control-cli", "kernel-access", "kernel-attention", "kernel-board-context", "kernel-catalog", "kernel-inbox", "kernel-integrations", "kernel-knowledge", "kernel-migration", "kernel-objects", "kernel-projections", "kernel-proof", "kernel-record", "kernel-runtime", "kernel-telemetry", "kernel-work", "kernel-workflow", "legacy-trace-imports"]
 
 [[ownership]]
 name = "kernel-module-tests"
@@ -257,6 +273,7 @@ paths = [
   "tests/modules/board_context/**",
   "tests/modules/catalog/**",
   "tests/modules/inbox/**",
+  "tests/modules/integrations/**",
   "tests/modules/knowledge/**",
   "tests/modules/migration/**",
   "tests/modules/objects/**",
@@ -267,7 +284,7 @@ paths = [
   "tests/modules/work/**",
   "tests/modules/workflow/**",
 ]
-allowed_dependencies = ["control-api", "kernel-access", "kernel-attention", "kernel-board-context", "kernel-catalog", "kernel-inbox", "kernel-knowledge", "kernel-migration", "kernel-objects", "kernel-projections", "kernel-proof", "kernel-record", "kernel-runtime", "kernel-telemetry", "kernel-work", "kernel-workflow"]
+allowed_dependencies = ["control-api", "kernel-access", "kernel-attention", "kernel-board-context", "kernel-catalog", "kernel-inbox", "kernel-integrations", "kernel-knowledge", "kernel-migration", "kernel-objects", "kernel-projections", "kernel-proof", "kernel-record", "kernel-runtime", "kernel-telemetry", "kernel-work", "kernel-workflow", "legacy-trace-imports"]
 
 [[ownership]]
 name = "web"

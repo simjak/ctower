@@ -3,12 +3,13 @@
 from __future__ import annotations
 
 import json
+import os
 import shutil
 import signal
 from datetime import UTC, datetime, timedelta
 from pathlib import Path
 from threading import Event
-from typing import cast
+from typing import Self, cast
 from uuid import UUID, uuid4
 
 import pytest
@@ -133,6 +134,21 @@ class _MainWorker:
         self._observed["interval"] = interval_seconds
 
 
+class _MainClient:
+    def __init__(self, base_url: str, *, credential: str) -> None:
+        self.base_url = base_url
+        self.credential = credential
+
+    def __enter__(self) -> Self:
+        return self
+
+    def __exit__(self, *_args: object) -> None:
+        return None
+
+    def export_company_bundle(self) -> object:
+        return "active-catalog-export"
+
+
 class _FixedOperations:
     def __init__(self, attempt: FixedOperationAttempt) -> None:
         self._attempt: FixedOperationAttempt | None = attempt
@@ -191,10 +207,36 @@ class _FinalizerProgress:
         self.failures += 1
 
 
+class _StandingIntegration:
+    def __init__(self) -> None:
+        self.ticks = 0
+
+    def tick(self) -> object:
+        self.ticks += 1
+        return object()
+
+
 class _RaisedProblem:
     def __init__(self) -> None:
         self.code = "workflow-pin-mismatch"
         self.detail = "Workflow pin refused"
+
+
+def _set_main_environment(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
+    monkeypatch.setenv("CTOWER_DATABASE_DSN", "postgresql://runtime-reference")
+    monkeypatch.setenv("CTOWER_PROJECTION_DSN", "postgresql://projection-reference")
+    monkeypatch.setenv("CTOWER_CONTROL_API_BASE_URL", "https://ctower.invalid")
+    monkeypatch.setenv("CTOWER_SYNTHETIC_AUTHOR_CREDENTIAL", "author-credential")
+    monkeypatch.setenv("CTOWER_SYNTHETIC_REVIEWER_CREDENTIAL", "reviewer-credential")
+    monkeypatch.setenv("CTOWER_SYNTHETIC_AUTHOR_ID", str(uuid4()))
+    monkeypatch.setenv("CTOWER_TENANT_ID", str(uuid4()))
+    digest = "sha256:" + "a" * 64
+    monkeypatch.setenv("CTOWER_SYNTHETIC_WORKFLOW_DIGEST", digest)
+    monkeypatch.setenv("CTOWER_SYNTHETIC_EXECUTION_POLICY_DIGEST", digest)
+    monkeypatch.setenv("CTOWER_SYNTHETIC_GATE_POLICY_DIGEST", digest)
+    monkeypatch.setenv("CTOWER_SYNTHETIC_EVIDENCE_POLICY_DIGEST", digest)
+    monkeypatch.setenv("CTOWER_CONTROL_INTERVAL_SECONDS", "0.5")
+    monkeypatch.setenv("CTOWER_PACK_ROOT", str(tmp_path))
 
 
 def test_worker_loads_exact_fixed_packs_and_ticks_each_owned_loop() -> None:
@@ -226,6 +268,22 @@ def test_worker_loads_exact_fixed_packs_and_ticks_each_owned_loop() -> None:
     assert projection_store.delivery_tenants == [tenant_id, tenant_id]
     with pytest.raises(ValueError, match="interval"):
         worker.run(Event(), interval_seconds=0.0)
+
+
+def test_worker_ticks_each_injected_standing_integration_once() -> None:
+    tenant_id = uuid4()
+    first = _StandingIntegration()
+    second = _StandingIntegration()
+    worker = build_worker(
+        Routine(_RoutineStore(tenant_id)),
+        Projections(_ProjectionStore()),
+        pack_root=ROOT / "packs",
+        standing_integrations=(first, second),
+    )
+
+    worker.tick()
+
+    assert first.ticks == 1 and second.ticks == 1
 
 
 def test_worker_tick_claims_executes_and_completes_synthetic_operation() -> None:
@@ -345,10 +403,11 @@ def test_worker_records_a_terminal_failed_result_for_public_semantic_problem() -
     ]
 
 
-def test_worker_main_and_environment_boundary_are_strict(
+def test_worker_main_injects_all_active_connector_loops(
     monkeypatch: pytest.MonkeyPatch, tmp_path: Path
 ) -> None:
     observed: dict[str, object] = {}
+    integration = _StandingIntegration()
 
     def fake_build_worker(
         runtime: Routine,
@@ -357,29 +416,40 @@ def test_worker_main_and_environment_boundary_are_strict(
         pack_root: Path,
         fixed_operations: FixedOperations | None = None,
         synthetic_handler: object | None = None,
+        standing_integrations: tuple[object, ...] = (),
     ) -> _MainWorker:
         observed["runtime"] = runtime
         observed["projections"] = projections
         observed["pack_root"] = pack_root
         observed["fixed_operations"] = fixed_operations
         observed["synthetic_handler"] = synthetic_handler
+        observed["standing_integrations"] = standing_integrations
         return _MainWorker(observed)
 
+    def fake_build_active_connector_loops(
+        catalog_export: object,
+        *,
+        actor: Actor,
+        runtime_dsn: str,
+        resolve_secret: object,
+    ) -> tuple[_StandingIntegration, ...]:
+        assert catalog_export == "active-catalog-export"
+        assert actor.principal_id == UUID(os.environ["CTOWER_SYNTHETIC_AUTHOR_ID"])
+        assert actor.tenant_id == UUID(os.environ["CTOWER_TENANT_ID"])
+        assert runtime_dsn == "postgresql://runtime-reference"
+        assert resolve_secret is control_worker_module._required_environment
+        return (integration,)
+
     monkeypatch.setattr(control_worker_module, "build_worker", fake_build_worker)
+    monkeypatch.setattr(control_worker_module, "CtowerClient", _MainClient)
+    monkeypatch.setattr(
+        control_worker_module,
+        "build_active_connector_loops",
+        fake_build_active_connector_loops,
+        raising=False,
+    )
     monkeypatch.setattr(signal, "signal", lambda *_args: None)
-    monkeypatch.setenv("CTOWER_DATABASE_DSN", "postgresql://runtime-reference")
-    monkeypatch.setenv("CTOWER_PROJECTION_DSN", "postgresql://projection-reference")
-    monkeypatch.setenv("CTOWER_CONTROL_API_BASE_URL", "https://ctower.invalid")
-    monkeypatch.setenv("CTOWER_SYNTHETIC_AUTHOR_CREDENTIAL", "author-credential")
-    monkeypatch.setenv("CTOWER_SYNTHETIC_REVIEWER_CREDENTIAL", "reviewer-credential")
-    monkeypatch.setenv("CTOWER_SYNTHETIC_AUTHOR_ID", str(uuid4()))
-    digest = "sha256:" + "a" * 64
-    monkeypatch.setenv("CTOWER_SYNTHETIC_WORKFLOW_DIGEST", digest)
-    monkeypatch.setenv("CTOWER_SYNTHETIC_EXECUTION_POLICY_DIGEST", digest)
-    monkeypatch.setenv("CTOWER_SYNTHETIC_GATE_POLICY_DIGEST", digest)
-    monkeypatch.setenv("CTOWER_SYNTHETIC_EVIDENCE_POLICY_DIGEST", digest)
-    monkeypatch.setenv("CTOWER_CONTROL_INTERVAL_SECONDS", "0.5")
-    monkeypatch.setenv("CTOWER_PACK_ROOT", str(tmp_path))
+    _set_main_environment(monkeypatch, tmp_path)
 
     control_worker_module.main()
 
@@ -388,6 +458,11 @@ def test_worker_main_and_environment_boundary_are_strict(
     assert isinstance(observed["stop"], Event)
     assert isinstance(observed["fixed_operations"], FixedOperations)
     assert isinstance(observed["synthetic_handler"], SyntheticFourStageHandler)
+    assert observed["standing_integrations"] == (integration,)
+
+
+def test_worker_environment_boundary_is_strict(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setenv("CTOWER_DATABASE_DSN", "configured")
     monkeypatch.delenv("CTOWER_DATABASE_DSN")
     with pytest.raises(RuntimeError, match="CTOWER_DATABASE_DSN"):
         control_worker_module._required_environment("CTOWER_DATABASE_DSN")

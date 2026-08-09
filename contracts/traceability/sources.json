@@ -594,6 +594,7 @@
       "references": [
         "SPEC#canonical-event-and-command-contract",
         "SPEC#client-acknowledgement-and-offline-behavior",
+        "SPEC#mission-control-notification-transport",
         "SPEC#native-inbox-delivery-and-read-facts",
         "SPEC#operational-health-and-degraded-behavior",
         "SPEC#recorded-work-sessions",
@@ -606,10 +607,12 @@
         "INV-57",
         "INV-64",
         "INV-75",
+        "INV-80",
         "AC-ADM-02",
         "AC-DUR-01",
         "AC-DUR-02",
         "AC-INBOX-04",
+        "AC-INBOX-05",
         "AC-EVD-04",
         "AC-QUAL-05",
         "AC-OPS-01",
@@ -2101,6 +2104,63 @@
         "SPEC#event-driven-default-and-routine-revisions",
         "INV-76",
         "AC-OPS-13"
+      ]
+    },
+    {
+      "path": "contracts/components/integration-v2.schema.json",
+      "references": [
+        "SPEC#universal-versionedcomponent-catalog-and-company-desired-state",
+        "INV-45",
+        "AC-COMP-01",
+        "AC-GL-01",
+        "AC-GL-03"
+      ]
+    },
+    {
+      "path": "contracts/domain/integrations/gitlab-issue-sync.schema.json",
+      "references": [
+        "SPEC#canonical-event-and-command-contract",
+        "INV-01",
+        "INV-72",
+        "AC-GL-01",
+        "AC-GL-02",
+        "AC-GL-03"
+      ]
+    },
+    {
+      "path": "packages/ctower-kernel/migrations/0054_gitlab_issue_integration.sql",
+      "references": [
+        "SPEC#persistence-authority",
+        "INV-03",
+        "INV-72",
+        "AC-DUR-07",
+        "AC-GL-01",
+        "AC-GL-02",
+        "AC-GL-03"
+      ]
+    },
+    {
+      "path": "packages/ctower-kernel/migrations/0055_connector_framework.sql",
+      "references": [
+        "SPEC#persistence-authority",
+        "INV-03",
+        "INV-72",
+        "AC-DUR-07",
+        "AC-GL-01",
+        "AC-GL-02",
+        "AC-GL-03"
+      ]
+    },
+    {
+      "path": "packages/ctower-kernel/migrations/0056_gitlab_trace_views.sql",
+      "references": [
+        "SPEC#persistence-authority",
+        "INV-03",
+        "INV-72",
+        "AC-DUR-07",
+        "AC-GL-01",
+        "AC-GL-02",
+        "AC-GL-03"
       ]
     }
   ]

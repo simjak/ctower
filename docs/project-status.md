@@ -26,12 +26,14 @@ planned work so a visible package, schema, or directory is not mistaken for an a
 | Local CP3-C backup and recovery evidence | Verifier-only proof | Local/verifier evidence covers digest-bound object handling, backup and anchors, key recovery, isolated restore, rollback, and recovery evidence. It does not activate external targets, a supported deployment, or CP3-D production recovery. |
 | Runtime compatibility evidence | Diagnostic only | The compatibility validator accepts a closed, sanitized external report. It does not choose a product runtime, create a lock, or establish a support promise. |
 | Persistent E2 runtime installation | Development shadow | An operator may install the verified wheel at the fixed private-VPS development path and supervise loopback-only API, worker, keyring, and database services. This path is only for low-value reconstructible dogfood and makes no production or source-of-truth claim. |
+| ctower-ui Inbox send and promotion | Development dogfood | The separate server-mediated Inbox controls may invoke the existing send and promotion endpoints for low-value shadow dogfood. They hold no browser credential or authority, assert no sender or recipient identity, and are not product browser routes. |
 | Product deployment and recovery | Unsupported | There is no published package, external/product Compose stack, container image, production backup/restore runbook, or production monitoring/incident path. |
-| Browser UI, runner, effects, and agent adapters | Planned | These surfaces remain deferred. CompanyBundle component declarations do not activate their runtime behaviour. |
+| Product browser UI, runner, effects, and agent adapters | Planned | These surfaces remain deferred. CompanyBundle component declarations do not activate their runtime behaviour. |
 | Production release | Unsupported | Release automation currently creates source tags and notes only. No ctower runtime release has been published. |
 
-Public API + protected CLI precede I1 source-of-truth cutover. Browser implementation, browser evidence,
-and browser E2E first activate at CT-I2-005 / I2.4.
+Public API + protected CLI precede I1 source-of-truth cutover. Product browser implementation, browser
+evidence, and browser E2E first activate at CT-I2-005 / I2.4. The separate `ctower-ui` Inbox dogfood
+controls are the narrow D41/D44 exception.
 
 I1.7B will implement reviewed source selection/import/reconciliation and the permanent legacy fence.
 I1.7C will commit the narrow reconstructible-data development epoch and run the first API/CLI dogfood

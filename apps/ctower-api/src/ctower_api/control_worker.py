@@ -13,6 +13,7 @@ from uuid import UUID
 from ctower_api._outbox_loop import OutboxLoop
 from ctower_api._project_delivery_loop import ProjectDeliveryLoop
 from ctower_api._routine_loop import RoutineLoop, load_routine_revisions
+from ctower_api.connector_loop import build_active_connector_loops
 from ctower_api.synthetic_handler import (
     SyntheticFourStageHandler,
     SyntheticPolicyPins,
@@ -21,7 +22,12 @@ from ctower_api.synthetic_handler import (
 from ctower_client import CtowerClient, CtowerProblemError
 from ctower_kernel.projections import Projections
 from ctower_kernel.projections.postgres import PostgresProjections
-from ctower_kernel.record import DurabilityFinalizationBatch, DurabilityFinalizer
+from ctower_kernel.record import (
+    Actor,
+    DurabilityFinalizationBatch,
+    DurabilityFinalizer,
+    PrincipalKind,
+)
 from ctower_kernel.runtime import (
     FixedOperationAttempt,
     FixedOperationCompletion,
@@ -49,6 +55,10 @@ class _DurabilityProgressRecorder(Protocol):
     def failed(self) -> None: ...
 
 
+class _StandingIntegration(Protocol):
+    def tick(self) -> object: ...
+
+
 @dataclass(frozen=True, slots=True)
 class ControlWorker:
     """Coordinate separately owned loops without owning their durable decisions."""
@@ -61,6 +71,7 @@ class ControlWorker:
     durability_progress: _DurabilityProgressRecorder | None = None
     fixed_operations: FixedOperations | None = None
     synthetic_handler: _SyntheticHandler | None = None
+    standing_integrations: tuple[_StandingIntegration, ...] = ()
 
     def tick(self) -> None:
         self._tick_finalizer()
@@ -68,6 +79,8 @@ class ControlWorker:
         self.routine_loop.tick(tenant_ids)
         self.outbox_loop.tick(tenant_ids)
         self.project_delivery_loop.tick(tenant_ids)
+        for integration in self.standing_integrations:
+            integration.tick()
         self._tick_synthetic()
 
     def _tick_finalizer(self) -> None:
@@ -125,6 +138,7 @@ def main() -> None:
     if author_credential == reviewer_credential:
         raise RuntimeError("synthetic author and reviewer credentials must be distinct")
     author_id = _required_uuid("CTOWER_SYNTHETIC_AUTHOR_ID")
+    tenant_id = _required_uuid("CTOWER_TENANT_ID")
     pins = SyntheticPolicyPins(
         workflow_digest=_required_digest("CTOWER_SYNTHETIC_WORKFLOW_DIGEST"),
         execution_policy_digest=_required_digest("CTOWER_SYNTHETIC_EXECUTION_POLICY_DIGEST"),
@@ -141,12 +155,19 @@ def main() -> None:
         CtowerClient(api_base_url, credential=author_credential) as author,
         CtowerClient(api_base_url, credential=reviewer_credential) as reviewer,
     ):
+        standing_integrations = build_active_connector_loops(
+            author.export_company_bundle(),
+            actor=Actor(author_id, tenant_id, PrincipalKind.COMMANDER),
+            runtime_dsn=runtime_dsn,
+            resolve_secret=_required_environment,
+        )
         worker = build_worker(
             runtime,
             projections,
             pack_root=pack_root,
             fixed_operations=fixed_operations,
             synthetic_handler=SyntheticFourStageHandler(author, reviewer, author_id, pins),
+            standing_integrations=standing_integrations,
         )
         stop = Event()
         signal.signal(signal.SIGTERM, lambda _signum, _frame: stop.set())
@@ -163,6 +184,7 @@ def build_worker(
     synthetic_handler: _SyntheticHandler | None = None,
     durability_finalizer: DurabilityFinalizer | None = None,
     durability_progress: _DurabilityProgressRecorder | None = None,
+    standing_integrations: tuple[_StandingIntegration, ...] = (),
 ) -> ControlWorker:
     """Compose the same worker around public kernel Interfaces."""
 
@@ -175,6 +197,7 @@ def build_worker(
         durability_progress,
         fixed_operations,
         synthetic_handler,
+        standing_integrations,
     )
 
 

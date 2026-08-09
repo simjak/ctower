@@ -47,6 +47,7 @@ nav:
       - CLI: reference/cli.md
       - HTTP API: reference/http-api.md
       - Generated clients and contracts: reference/clients.md
+      - ctower-ui dogfood Inbox controls: reference/dogfood-inbox-controls.md
       - Authored OpenAPI document: https://github.com/simjak/ctower/blob/main/contracts/http/openapi.yaml
       - Authored contracts: https://github.com/simjak/ctower/tree/main/contracts
   - For agents:
@@ -59,6 +60,8 @@ nav:
   - Advanced and internals:
       - internals.md
       - Delivery state: project-status.md
+      - Epic specifications:
+          - Issue connector framework: specs/connectors.md
       - What is deliberately unavailable: start-here/availability.md
       - Repository setup: start-here/repository-setup.md
       - Exercise the development walking slice: getting-started.md

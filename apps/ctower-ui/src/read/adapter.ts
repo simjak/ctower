@@ -5,6 +5,7 @@ import { readDeliveryMetrics } from "./sources/delivery";
 import { readSystemdCadence } from "./sources/cadenceSystemd";
 import { readAuthoredFiles } from "./sources/gitTree";
 import { cadenceSourceName } from "./sources/paths";
+import { readPortfolio } from "./portfolio";
 import { readSessionStream, readSessionWorkspace } from "./sources/tmuxBridge";
 import { readSessionWorktree } from "./sources/worktrees";
 import { reading } from "./outcome";
@@ -31,13 +32,16 @@ import type {
  * typed feed here; the six wave-2 screens swap to their native sources the same
  * way.
  *
- * Every binding is read-only, and every one goes through `reading`, so a source
- * that refuses or cannot be reached arrives at its screen as a typed failure
- * rather than as an empty value.
+ * Read bindings go through `reading`, so a source that refuses or cannot be
+ * reached arrives at its screen as a typed failure rather than as an empty
+ * value. The Inbox send and promotion actions are deliberately separate: each
+ * asks an existing server-authoritative mutation path and neither grants any
+ * authority in the browser.
  */
 
 export type ScreenKey =
   | "board"
+  | "portfolio"
   | "ticket"
   | "inbox"
   | "heartbeats"
@@ -52,8 +56,10 @@ export type ScreenKey =
 /** Which source answers each screen today, for the provenance foot. */
 export const SOURCE_LABELS: Readonly<Record<ScreenKey, string>> = {
   board: "ctower read API · /v1/board",
+  portfolio: "ctower read API · /v1/board per project + /v1/inbox/threads",
   ticket: "ctower read API · /v1/tickets/{id} + /audit",
-  inbox: "ctower read API · /v1/inbox/threads + /v1/inbox/threads/{id}",
+  inbox:
+    "ctower API · /v1/inbox/threads + /v1/inbox/threads/{id} + /v1/inbox/messages + /promotion",
   heartbeats:
     cadenceSourceName() === "systemd" ? "systemd user timers" : "host crontab + state markers",
   files: "git tree",
@@ -72,11 +78,17 @@ function cadenceSource(): () => Promise<CadenceRegistry> {
 export const recordAdapter: RecordAdapter = {
   instance: httpRecordAdapter.instance,
   board: httpRecordAdapter.board,
+  boardCards: httpRecordAdapter.boardCards,
+  // the portfolio composes the reads above rather than adding a source: one
+  // card-only board per configured project, plus the one inbox projection
+  portfolio: readPortfolio,
   ticket: httpRecordAdapter.ticket,
   ticketAudit: httpRecordAdapter.ticketAudit,
   workSessions: httpRecordAdapter.workSessions,
   inbox: httpRecordAdapter.inbox,
   inboxThread: httpRecordAdapter.inboxThread,
+  inboxCorrespondent: httpRecordAdapter.inboxCorrespondent,
+  inboxPromotionPicker: httpRecordAdapter.inboxPromotionPicker,
 
   cadenceRegistry: async (): Promise<Reading<CadenceRegistry>> => await reading(cadenceSource()),
   authoredFiles: async (path: string | null): Promise<Reading<AuthoredFiles>> =>

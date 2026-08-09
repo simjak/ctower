@@ -3,14 +3,16 @@
 | Field | Value |
 |---|---|
 | Status | Canonical target-system truth |
-| Version | 1.16 |
-| Date | 2026-08-07 |
+| Version | 1.18 |
+| Date | 2026-08-08 |
 | Owners | Operator/CEO (product and human gates), Commander (orchestration contract), Engineering Manager (architecture and risk contract) |
 | Decision authority | [`DECISIONS.md`](DECISIONS.md) |
 
 **Implementation reality:** The repository now contains a tested, pre-alpha development walking slice for
 the API, protected CLI, Record/Work/Proof/Workflow/Catalog responsibilities, deterministic control loops,
-and verifier-only recovery evidence. It is not a supported installation or deployment. Mission
+the narrow standing GitLab Issue co-source integration, additive mission-control notification transport,
+and verifier-only recovery evidence. It is not a
+supported installation or deployment. Mission
 Control/Control Tower and the applicable GitHub/GitLab records remain writable co-sources for all three
 projects during the approved shadow dual-run. Existing I1.7A contracts, read-only visibility, and refusing
 migration stubs are not authority or completion evidence.
@@ -79,8 +81,10 @@ through ordinary signed API/CLI intake with project-scoped source identities; Mi
 GitHub/GitLab records remain co-sources and bulk import stays dormant. Version-pinned Project grants enforce
 disjoint access and prohibited-class refusal. A four-stage workflow fixture proves the same generic engine
 contract that Increment 2 completes; it is not a temporary special-case engine. I1 provides its Project
-Delivery evidence through read-only CLI text projections with optional deterministic JSON; browser
-implementation and evidence begin at I2.4.
+Delivery evidence through read-only CLI text projections with optional deterministic JSON; product browser
+implementation and evidence begin at I2.4. D41, D42, D44 and D45 alone permit the separate, non-product
+`ctower-ui` Inbox send and promotion dogfood boundary described below, and the one required suite that
+verifies it.
 **Increment 2** adds the production generic Workflow/Runtime/Commander/release path and executes one real
 software-factory ticket end to end on `bin/mux`, including independent gates, effect-brokered staging and
 production, live verification, runner-loss recovery, retro, and closure. General-purpose Catalog editors,
@@ -1473,6 +1477,7 @@ The ticket is the human join point, not the transaction boundary for the entire 
 77. <a id="inv-77"></a>**INV-77 — Harness independence.** Assignment stamps, `model_changed` events, and session facts carry harness as an open enum whose required baseline values are `claude-code`, `hermes`, `codex`, and `qwen-code`. Unknown harness values are preserved byte-for-byte, displayed as observed, included in equality/cross-checks, and never rejected, normalized, downgraded, or collapsed to `other`. No custody, event, status, reporter, Board, CLI, Evidence, or session integration may assume one harness's session shape or internal transcript format. Reporter facts derive only from substrate-visible dispatch/process/log facts — tmux/process supervision metadata where authorized, mission-control crew-log, and gateway/provider logs — and never from Claude Code, Hermes, Codex, Qwen Code, or any other harness-specific session internals.
 78. <a id="inv-78"></a>**INV-78 — Project event feeds are catalog-derived and scope-bound.** A project event feed contains only canonical events whose authoritative linked ticket, via the same `event_links` subject join Record's ticket audit read already proves, belongs to the requested tenant and project. Project scope is applied in the Record query before event materialization, and every read additionally evaluates the caller's active project grant under [INV-69](#inv-69); a caller without a grant on the requested project refuses `project-scope-denied` with zero rows disclosed. Feed membership is derived from the canonical Record event catalog's `project_feed` metadata, never copied into a second enum or inferred from payload shape; a kind added to the catalog with no feed decision defaults to absent, never silently included. Every wire variant and payload is a strict named schema, and the page orders by record position with a `limit + 1` peek cursor identical to the session and audit read paths.
 79. <a id="inv-79"></a>**INV-79 — Inbox delivery and read state are recipient-authored append-only facts.** Every native inbox message begins in derived `sent` state. Only its recorded recipient may advance it monotonically through `message.delivered` and `message.read`; a direct read acknowledgement records the missing delivered fact first in the same command. Repeated, regressive, sender-authored, foreign-tenant, or unknown-message acknowledgements refuse by stable name with no fact. Thread reads are pure. Per-message state, per-recipient unread counts, and read-through position derive only from accepted canonical events and rebuild identically; no cursor, browser open, caller claim, or projection write creates delivery or read truth.
+80. <a id="inv-80"></a>**INV-80 — Notification mirroring is additive, identity-bound, and pair-grouped.** A mission-control notification reaches its existing durable inbox before the ctower mirror is attempted. The mirror carries one stable delivery UUID, recipient seat, and text; ctower derives the sender solely from the authenticated Actor, resolves the recipient from the persisted project-seat registry, and derives one direction-independent thread identity from the two principal IDs. Exact replay returns the original result without another message fact. Unknown, ambiguous, unaddressable, or self recipients persist the ordinary typed Inbox refusal with zero event, and no mirror refusal or transport failure can reverse or block the existing inbox delivery. No caller-supplied sender, mapping store, feature flag, automatic seat creation, or cutover authority exists.
 
 ## Workflow and verification architecture
 
@@ -3604,13 +3609,47 @@ but never marks content read. The disposable inbox projection folds delivery/rea
 onto its existing message rows. Recipient unread counts are messages addressed to that recipient without an
 accepted read fact. Projection reset/rebuild discards no authority and reproduces the same state.
 
+D44 and D45 permit exactly one separate, non-product `ctower-ui` dogfood send control over this existing
+`sendInboxMessage` command. The browser holds no credential or authority and submits the message text plus
+the answer it last received: the thread is bound from the route, the recipient is resolved server-side from
+the recipient-scoped projection at submit time rather than posted from a form, and the sender is derived by
+the API from the bearer alone. An accepted message re-renders the thread in place; a refusal renders the
+server's own validated `detail`. A non-accepted `durability_pending` answer renders no message at all — it
+keeps the draft visible, says the server has not confirmed it, and retries under the command identity the
+first attempt minted, which is the one field read back out of that previous answer. It is not an I1 product
+browser control and does not advance CT-I1-005 or CT-I2-005.
+
 The public promotion operation is `inbox promote <thread> [--ticket <id>]` over the generated API/client and
 protected spool. With `--ticket`, it links the participant-visible thread to that existing in-scope ticket.
 Without `--ticket`, it atomically creates a P2 ticket whose title is the immutable thread-head message, whose
 source reference is that inbox thread, and whose initial custody follows the ordinary per-operation custody
 policy, then records the same one-time thread-to-ticket link. Creation and promotion events, ticket state,
 command result, outbox rows, subject links, and both navigation directions commit or refuse together. There
-is no classifier, title truncation, compatibility path, or browser promotion control in I1.
+is no classifier, title truncation, or compatibility path. D41 permits exactly one separate, non-product
+`ctower-ui` dogfood control for this existing promotion command: the browser has no credential or authority;
+its server action supplies only an optional ticket ID to the existing protected endpoint. It is not an I1
+product browser control and does not advance CT-I1-005 or CT-I2-005.
+
+### Mission-control notification transport
+
+The transitional mission-control adapter is a second transport after the existing durable `tools/notify`
+append, never a replacement or a coupled dual write. Its strict rail-2 request contains only `to`, `text`,
+and the original delivery UUID as the idempotency key. The authenticated project-seat credential resolves
+the sender Actor; a caller label, `--from` value, process name, or message field cannot assert identity.
+The recipient must already exist as exactly one persisted project seat. An unknown or ambiguous seat is the
+ordinary recorded Inbox refusal and creates no thread, principal, event, or projection row.
+
+`POST /v1/inbox/notifications` and protected `inbox notify` ingest into the existing Inbox aggregate. The
+server derives an opaque, direction-independent UUID from tenant and the unordered pair of principal IDs,
+opens that native thread on the first delivery, and appends later messages for the same pair. This creates
+no pair-mapping table, notification ledger, event kind, cursor, or writable projection. The original
+`thread.opened` and `message.appended` facts remain the only message authority. Exact delivery-ID replay
+returns the original command result; a changed payload under that ID is `idempotency-conflict`.
+
+The adapter reports `mirrored|refused|unavailable` after rail 1 succeeds. A typed ctower refusal or any
+rail-2 client/transport failure is visible to its caller but cannot change the already-completed durable
+append. This slice authorizes no cutover, parity flag, environment setting, browser surface, or live
+credential provisioning.
 
 Harness is deliberately not a closed catalog. The open enum's baseline known values are `claude-code`,
 `hermes`, `codex`, and `qwen-code`, but any unknown harness string observed on an assignment stamp,
@@ -4138,10 +4177,11 @@ Each criterion is pass/fail. Evidence must be attached to the ctower build ticke
 
 | ID | Pass condition | Evidence capture |
 |---|---|---|
-| <a id="ac-inbox-01"></a>AC-INBOX-01 | A generated-client and protected-CLI roundtrip sends one native inbox message, records recipient-only `delivered` and `read` acknowledgements in order, and queries exact per-message `sent -> delivered -> read` state including immutable event IDs and server timestamps. Direct `read` records both missing facts atomically; exact replay returns the same result. | Real PostgreSQL API/CLI send/ack/read-state transcript, authority/event query, replay assertion |
+| <a id="ac-inbox-01"></a>AC-INBOX-01 | A generated-client and protected-CLI roundtrip sends one native inbox message, records recipient-only `delivered` and `read` acknowledgements in order, and queries exact per-message `sent -> delivered -> read` state including immutable event IDs and server timestamps. Direct `read` records both missing facts atomically; exact replay returns the same result. D44 and D45 additionally permit only `ctower-ui`'s server-mediated dogfood send box for this existing command: no browser credential/authority, only `{"text","thread_id","to"}` with a server-resolved recipient and no claimed sender, one Idempotency-Key reused across bounded retries and across a sender-pressed retry of the same unconfirmed message, terminal problem detail rendered as human copy, the accepted message rendered in the same document, and a non-accepted `durability_pending` answer rendered as no message at all with the draft kept. | Real PostgreSQL API/CLI send/ack/read-state transcript, authority/event query, replay assertion; `ctower-ui` request-shape/idempotency/refusal/durability-state tests and a rendered 375/768/1440 browser round trip covering the accepted and non-accepted answers |
 | <a id="ac-inbox-02"></a>AC-INBOX-02 | Recipient unread count remains nonzero after a pure thread read and becomes zero only after the accepted read fact. Projection catch-up and full rebuild reproduce the same per-message state, unread count, promotion link, and fact-derived read-through position without reading an authority table directly or persisting a read cursor. | Before/after unread snapshots, projection privilege inventory, deterministic rebuild equality |
 | <a id="ac-inbox-03"></a>AC-INBOX-03 | Delivery/read facts, canonical events, command results, and outbox rows are append-only. A sender acknowledgement, repeated/regressive acknowledgement, unknown message, and foreign scope each refuse by exact stable code with no mutation; the new contract, migration, module, and acceptance suites are registered and required. | Refusal/state-diff matrix, immutable-trigger test, canonical vectors, expected-suite manifest, clean codegen/check/verify logs |
-| <a id="ac-inbox-04"></a>AC-INBOX-04 | `inbox promote <thread>` creates one P2 ticket from the immutable thread head under ordinary initial-custody policy and links both directions atomically; `--ticket <id>` links an existing in-scope ticket without changing it. Both protected CLI paths return an explicit `ticket_created|ticket_linked` result, replay exactly, and the one-time promotion refuses by stable code. No browser control exists. | Real PostgreSQL generated-client/CLI transcripts for both modes, ticket/source/custody query, event/subject/link query, Board projection and rebuild equality, replay/refusal assertions |
+| <a id="ac-inbox-04"></a>AC-INBOX-04 | `inbox promote <thread>` creates one P2 ticket from the immutable thread head under ordinary initial-custody policy and links both directions atomically; `--ticket <id>` links an existing in-scope ticket without changing it. Both protected CLI paths return an explicit `ticket_created|ticket_linked` result, replay exactly, and the one-time promotion refuses by stable code. D41 additionally permits only `ctower-ui`'s server-mediated dogfood control for this existing command: no browser credential/authority, only `{}` or `{"ticket_id"}`, one Idempotency-Key reused across bounded retries, and terminal problem detail rendered as human copy. | Real PostgreSQL generated-client/CLI transcripts for both modes, ticket/source/custody query, event/subject/link query, Board projection and rebuild equality, replay/refusal assertions; `ctower-ui` retry/exhaustion/idempotency tests and rendered 375/768/1440 Inbox assertion |
+| <a id="ac-inbox-05"></a>AC-INBOX-05 | An additive `tools/notify` fixture completes its existing durable append before mirroring one authenticated message into the native Inbox. Literal double ingest under the same delivery UUID returns the same result and leaves exactly one `message.appended` fact; messages in either direction for one principal pair share one thread, while a distinct pair does not. A caller-supplied sender label cannot affect the recorded sender. An unknown recipient persists `inbox-recipient-not-found` with zero events while rail 1 remains delivered, and an unavailable mirror never turns rail-1 success into failure. | Real PostgreSQL adapter/API trace, command-result/event/message cardinality query, reverse-direction grouping, distinct-pair query, unknown-seat refusal row, generated API/CLI and reference-doc parity |
 
 ### Recorded work sessions
 
@@ -4343,6 +4383,9 @@ Each criterion is pass/fail. Evidence must be attached to the ctower build ticke
 | <a id="ac-mig-03"></a>AC-MIG-03 | Every admitted item is created exactly once through ordinary signed generated API/CLI commands and receives its reviewed project-scoped source identity without forged proof, gate, effect, delivery, resolution, closure, or arbitrary state. No bulk importer is active. | Public command/event trace, exact source-identity reconciliation, forbidden-authority negatives, and absent/refusing bulk-import inventory |
 | <a id="ac-mig-04"></a>AC-MIG-04 | Only after accepted CP3-D evidence and a separately accepted portfolio authority epoch do all in-scope API, CLI, Commander, and runner-facing clients use ctower as sole writer and reject legacy mutation. A CT-I1-008 `GO_WITH_LIMITS` cannot satisfy this condition. | CP3-D evidence, signed authority-epoch decision, endpoint logs, attempted-write denial, and split-brain monitor |
 | <a id="ac-mig-05"></a>AC-MIG-05 | Shadow items and source identities match the reviewed item-by-item intake exactly; omitted source records stay in their existing co-sources during shadow and may move to readable signed archival provenance only after the accepted authority epoch. | Human-readable intake reconciliation, co-source read proof, and post-epoch archive plan |
+| <a id="ac-gl-01"></a>AC-GL-01 | One real issue in the configured GitLab feedback project creates exactly one ctower P2 ticket without human intervention. The ticket preserves the issue title, body, labels, reporter identity, HTTPS source link, and stable `gitlab:<project_id>:<iid>` source identity; one immutable link joins that source, inbound thread, and ticket in both query directions. | Retained private GitLab fixture, real-Postgres round-trip transcript, mapping assertions, replay, and custody-link counts |
+| <a id="ac-gl-02"></a>AC-GL-02 | A later GitLab issue change appends a deterministic ticket comment. Ctower never infers resolution from provider state; only a current-proof-gated ctower `resolve_close` emits one marker-bound GitLab comment and closes the linked issue, with an immutable delivery receipt preventing retries from creating a second comment or close storm. | Provider-update comment trace, proof/refusal/close trace, marker and delivery-receipt inspection, replay and immediate-poll zero-effect assertions |
+| <a id="ac-gl-03"></a>AC-GL-03 | Each due standing tick processes at most one configured GitLab page of at most 100 issues and one ctower project-event page of at most 100 events. The durable Catalog-revision-pinned cursor uses an aware `updated_after`, page, event position, next-poll time, and bounded failure count; inactive revisions, foreign projects, malformed payloads, unreferenced secret values, and early polls fail closed or do no work. | Contract and Adapter conformance suites, real PostgreSQL migration/privilege tests, bounded-pagination/failure fixtures, Catalog activation and no-poll-storm evidence |
 
 ### Operations
 
@@ -4469,7 +4512,9 @@ Control and applicable GitHub/GitLab records remain co-sources. Bulk legacy impo
 may approve this shadow as `GO_WITH_LIMITS`; the full I1 outcome additionally requires CP3-D's external-failure-domain
 acknowledgement, key recovery, isolated destructive restore, and measured RPO/RTO. CT-I1-013 adds only the
 post-import authentication routes and auth evidence; browser product implementation and product evidence
-begin in I2.4.
+begin in I2.4. CT-I1-014 adds only the narrow configured GitLab Issue co-source described above. D43's
+provider-neutral internal issue-connector seam supports that one product capability and multiple isolated
+registrations; it does not activate another source host, a public connector surface, webhooks, or plugins.
 
 #### I1 four-stage fixture
 
@@ -4533,6 +4578,15 @@ routes and their auth evidence.
     unchanged machine project-seat credential plane. Both resolve one Actor/custody/audit model; providers
     and exact `operator|commander|viewer` human role bindings are versioned configuration; tailnet-only
     ingress remains; and an independent CSO pass gates the exact candidate digest.
+12. One Catalog-revision-pinned standing GitLab Issue integration for an explicitly configured feedback
+    project. It imports bounded pages of issue title, body, labels, reporter, state, update time, and HTTPS
+    source link through ordinary external-untrusted intake; preserves one immutable issue/thread/ticket
+    custody chain; records later provider changes as ticket comments; and posts one marker-bound comment
+    and closes the GitLab issue only after ctower records a proof-gated `resolve_close`. The deployment
+    resolves the token binding outside Catalog. Its D43 implementation uses a provider-neutral internal
+    issue-connector seam with a closed first-party registry and isolated active registrations. Only GitLab
+    product behavior is active: no additional provider, public connector, webhook, plugin, or effect
+    framework is authorized.
 
 Increment 1 has no agent stage dispatch or harness command execution and therefore neither activates nor
 claims CommandGuard implementation. It also has no autonomous Commander loop, production effect grant,
@@ -4587,6 +4641,10 @@ or exit criterion moves increment as a result.
   sessions with seat, model, duration, tokens, and outcome; the session kind set is catalog-derived with a
   both-direction parity mutation proof; all three project pairs refuse a foreign session read by name; and a
   prohibited-class session payload is refused before any durable byte.
+- The transitional notification transport proves [AC-INBOX-05](#ac-inbox-05): one legacy-first fixture
+  mirrors through an authenticated Actor, literal replay creates no second message fact, unordered seat
+  pairs group without a mapping store, and an unknown recipient leaves a persisted zero-event refusal while
+  the durable mission-control row remains delivered.
 - Timed API/CLI evidence proves the operator can find, reprioritize, reassign, block/unblock, inspect proof, and close a ticket without another ledger.
 - The frozen baseline artifact contains at least five legacy working days. The clean-install first-success trial meets [AC-ADM-03](#ac-adm-03).
 - Item-by-item reconciliation accounts for every admitted shadow item, creates each project-scoped source
@@ -4599,9 +4657,14 @@ or exit criterion moves increment as a result.
   authoritative state or exposure.
 - The three Project hierarchies and disjoint compact Project Delivery projections satisfy the pre-seat portion of [AC-PD-01](#ac-pd-01) (hierarchy, exit-criterion coverage, slot `filled / required` coverage, source watermark, freshness, derivation reasons; the per-slot seat fields are I2-bound), the eight-state/blocked-proof truth table satisfies [AC-PD-02](#ac-pd-02), and event reconciliation plus the hourly no-change heartbeat satisfy the I1 portion of [AC-PD-04](#ac-pd-04). [AC-PORT-01](#ac-port-01) through [AC-PORT-06](#ac-port-06) prove the one-database topology, version-pinned grants, all six cross-project refusal directions, prohibited-class refusals including PHI by name, stable identities, and three disjoint Board rows.
 - CT-I1-012's project event feed ([#186](https://github.com/simjak/ctower/issues/186), [INV-78](#inv-78)) proves a three-project feed replay byte-equivalent to the independently derived Board fold, a cursor reconnect/resume that neither gaps nor duplicates a page boundary, all three project pairs refusing a foreign feed read as `project-scope-denied`, and a prohibited-class canary scan proving no `credential_material`/`production_customer_data`/`phi_hipaa_covered`/`pii_beyond_staff_identity`/`live_incident_indicator` content reaches a feed payload, bundled with the [AC-PORT-01](#ac-port-01) through [AC-PORT-06](#ac-port-06) evidence above.
+- CT-I1-014 proves a real retained GitLab issue creates one linked ctower ticket with its title/body/labels/
+  reporter/source mapping, a later issue change appends one ticket comment, and a current-proof-gated
+  ctower close posts one marker-bound provider comment and closes that issue. The same evidence proves one
+  custody chain, one delivery receipt, bounded cursor progress, early-poll silence, and replay without a
+  polling or delivery storm.
 - Full normative I1 exit remains `NO-GO` until accepted evidence proves CP3-D
   external-failure-domain acknowledgement, key recovery, isolated destructive restore, and measured
-  RPO/RTO and CT-I1-013 has passed. Only that full exit satisfies CT-I2-001's CT-I1-008 dependency.
+  RPO/RTO and CT-I1-013..014 have passed. Only that full exit satisfies CT-I2-001's CT-I1-008 dependency.
 
 #### I1 designated validation commands
 
@@ -4753,15 +4816,16 @@ Each validation command below is designated as part of the item’s deliverable.
 | CT-I1-002 | Implement Access/Record/Work append, dedupe/tombstones-before-CAS, hash/outbox/cursors, ticket/lifecycle/custody/relations, and Catalog pins needed by I1. | CT-I1-001, CT-L0-002, CT-L0-007 | Engineer + independent Review | Kernel `access/`, `record/`, `work/`, `catalog/` | Concurrency, exact replay, authz/hash, outbox gap/rebuild, component pin proofs | `uv run pytest tests/modules/record tests/modules/work tests/modules/catalog -q` |
 | CT-I1-003 | Implement Proof basics plus the final generic evaluator subset for `ctower.trust-spine-four-stage@1`: criteria/freeze, typed required evidence slots and contracts, artifacts/Evidence and signing-assignment binding, human gates, invalidation, legal edges, activity metadata, and server resolve/close. | CT-I1-002, CT-L0-004..005 | Engineer + QA + CSO | Kernel `proof/`, `workflow/`; `contracts/evidence/`; four-stage pack | No-slot/no-proof-no-stage-success/close, signer mismatch, unknown/unfilled projection, protected-event, corrupt-object, invalidation, graph interpretation, and forbidden-name-branch suite | `uv run pytest tests/modules/proof tests/modules/workflow tests/acceptance/increment-1/test_four_stage_workflow.py -q` |
 | CT-I1-004 | Implement `ctowerctl`/`ctl`, generated API client, ordered spool/ACK/quarantine, CompanyBundle validate/plan/apply/export, and API/CLI parity. | CT-L0-003, CT-L0-007, CT-I1-002 | Engineer + QA | `apps/ctowerctl/`; `generated/python/ctower-client/`; `contracts/company/` | Kill/replay/two-writer/disk/poison chaos plus AC-COMP-03 | `uv run pytest tests/acceptance/increment-1/test_ctl.py tests/contracts/company -q` |
-| CT-I1-005 | Stable deferred alias to the `CT-I2-005` I2.4 browser product sub-checkpoint: realize D22's Home, Board, contextual/direct Ticket, narrow Fleet/Analytics, product routes, and product-surface Playwright evidence only after I1 API/CLI authority is proven. CT-I1-013 is the sole earlier exception and owns only login/callback/session/logout/auth-error routes plus auth-only evidence. | Deferred to CT-I2-005; no I1 critical dependency | Designer + UI QA; operator taste gate when material | `apps/ctower-web/src/surfaces/`; `routes.ts`; kernel `attention/`, `projections/` | I2.4 every-control UI QA, tenant isolation, product-route inventory, reconnect, <10 s Home, and unknown screenshots | `pnpm run test:e2e` at CT-I2-005 |
+| CT-I1-005 | Stable deferred alias to the `CT-I2-005` I2.4 browser product sub-checkpoint: realize D22's Home, Board, contextual/direct Ticket, narrow Fleet/Analytics, product routes, and product-surface Playwright evidence only after I1 API/CLI authority is proven. CT-I1-013 is the sole earlier exception and owns only login/callback/session/logout/auth-error routes plus auth-only evidence. The separate `ctower-ui` Inbox dogfood boundary permitted by D41/D42/D44/D45 is not a product route, browser-product evidence, or progress against this alias. | Deferred to CT-I2-005; no I1 critical dependency | Designer + UI QA; operator taste gate when material | `apps/ctower-web/src/surfaces/`; `routes.ts`; kernel `attention/`, `projections/` | I2.4 every-control UI QA, tenant isolation, product-route inventory, reconnect, <10 s Home, and unknown screenshots | `pnpm run test:e2e` at CT-I2-005 |
 | CT-I1-006 | Implement off-host-ack acceptance, Routine occurrence/scheduler, outbox/projection/health loops, backups/anchors, encrypted artifacts, vault/KMS recovery, poison handling, synthetic API/CLI four-stage lifecycle, signed restore expected-source inventory, fail-closed isolated journal reconciliation, and real reboot drills. | CT-I1-001..004 | DevOps + Engineer + independent QA | Control worker; kernel record/runtime/projections/attention; `packs/routines/`; `deploy/`; runbooks | Host-loss RPO0, `durability_pending`, duplicate/DST/restart and poison visibility through API/CLI, five synthetic runs, key restore, explicit I1 root/effect/provider `not_exercised`/zero-source entries, activated-source absence denial, reboot targets | `uv run pytest tests/acceptance/increment-1/test_operations.py -q` |
 | CT-I1-007 | Establish the smallest fresh-database Company -> Project -> Increment/Milestone definitions and compact read-only Project Delivery CLI text projection with optional deterministic JSON; admit only exact reviewed reconstructible shadow items through ordinary signed generated API/CLI commands with project-scoped source identities. Mission Control and applicable GitHub/GitLab records remain co-sources; no writer epoch occurs and bulk import remains dormant. | CT-I1-004, CT-I1-006 | Engineer + Commander verification + Review | Generated client; kernel Catalog/Work/Projections; operations evidence | Item-review records, signed public-command traces, exact project-scoped source identities, co-source continuity, absent/refusing bulk importer, deterministic compact checkpoint text/JSON rows with source IDs/derivation reasons/proof plus qualifying-stage slot coverage, immediate reconcile, hourly freshness, and stale/unknown faults | `uv run pytest tests/acceptance/increment-1/test_cutover.py -q` |
-| CT-I1-008 | Archive complete I1 API/CLI contracts, security, deferred-browser/deferred-capability, chaos, first-success, restore, shadow-intake, baseline, and operations evidence; issue the ctower-project **development dogfood** go/no-go, which may be `GO_WITH_LIMITS` while CP3-D is red and commits no writer epoch. Track full normative I1 exit as a separate `NO-GO` until CP3-D passes and CT-I1-009..013 complete. | CT-L0-001..009, CT-I1-001..004, CT-I1-006..007 | Independent QA + Review + CSO | `tests/acceptance/increment-1/`; evidence objects | Development cohort applicable ACs pass under `SHADOW_ONLY_CP3_D_NOT_PROVEN`; browser product, remote/image/executable-extension runtime not exercised; full-I1 additionally requires CT-I1-009..013, including the auth-only browser proof, plus CP3-D external acknowledgement, key recovery, isolated destructive restore, and measured RPO/RTO independently evidenced | `uv run pytest tests/acceptance/increment-1 tests/contracts -q` |
+| CT-I1-008 | Archive complete I1 API/CLI contracts, security, deferred-browser/deferred-capability, chaos, first-success, restore, shadow-intake, baseline, and operations evidence; issue the ctower-project **development dogfood** go/no-go, which may be `GO_WITH_LIMITS` while CP3-D is red and commits no writer epoch. Track full normative I1 exit as a separate `NO-GO` until CP3-D passes and CT-I1-009..014 complete. | CT-L0-001..009, CT-I1-001..004, CT-I1-006..007 | Independent QA + Review + CSO | `tests/acceptance/increment-1/`; evidence objects | Development cohort applicable ACs pass under `SHADOW_ONLY_CP3_D_NOT_PROVEN`; browser product, remote/image/executable-extension runtime not exercised; full-I1 additionally requires CT-I1-009..014, including the auth-only browser proof and narrow GitLab issue co-source proof, plus CP3-D external acknowledgement, key recovery, isolated destructive restore, and measured RPO/RTO independently evidenced | `uv run pytest tests/acceptance/increment-1 tests/contracts -q` |
 | CT-I1-009 | Implement immutable Ticket Project identity while retaining instance-global UUIDv7 Ticket IDs, append-only version-pinned Project grants and project-seat credentials, operator-only issue/revoke, server-side grant resolution, and grant-aware initial Commander custody. | CT-I1-002..004, CT-I1-008 development verdict | Engineer + Engineering Manager + CSO | Kernel `access/`, `work/`, `catalog/`; authored access/work contracts; generated clients | Grant issue/scope/revocation vectors, configured Commander eligibility, Project/seat-catalog/policy/credential revision pins, next-call `project-credential-revoked`, custody positives/negatives, and no owner-surface proof | `uv run pytest tests/contracts/access/test_project_grants.py tests/modules/work/test_project_custody.py -q` |
 | CT-I1-010 | Configure one tenant/database with the `ctower`, `manibo`, and `bh-loop` Projects and commander-authored starter checkpoints; enforce one Work/Record authorization guard for exact `capture|transition|evidence` scope subsets; refuse all cross-project mutation and all five prohibited data classes by stable name. | CT-I1-009 | Engineer + CSO + three configured Commander owners + QA | CompanyBundle; kernel `access/`, `work/`, `record/`, `proof/`; refusal contracts | One-tenant/three-Project setup, owner-key configuration without roster literals, all six ordered cross-project zero-diff refusals, per-scope tests, and per-class refusal including `phi_hipaa_covered` by name | `uv run pytest tests/acceptance/increment-1/test_portfolio_isolation.py tests/contracts/security/test_prohibited_data.py -q` |
 | CT-I1-011 | Admit the reviewed 115-item `manibo` backlog one item at a time through ordinary signed intake, assigning each `(tenant, project, source kind, source ref)` identity a stable `<project>-R<nnn>` reference from the shared counter; keep bulk import absent/refusing and all legacy sources live as co-sources. | CT-I1-010 | Manibo Commander + Engineer + independent QA/Review | Generated client; kernel Work/Record; intake evidence | 115 individual command/review receipts, exact identity/dedupe reconciliation, no reuse/renumbering, no forged authority, co-source continuity, and absent/refusing bulk importer | `uv run pytest tests/acceptance/increment-1/test_manibo_ordinary_intake.py -q` |
 | CT-I1-012 | Publish the project-scoped typed event feed for issue #186 only after identities, grants, isolation, onboarding configuration, and ordinary intake are proven; expose three mutually disjoint Board rows and preserve the prohibited-data boundary in emitted payloads. | CT-I1-011 | Engineer + CSO + QA + Commander/Tech-writer review | Authored event-feed contracts; kernel Record/Projections; generated clients | Three-project feed and Board snapshots, reconnect/replay/gap proofs, project-separation negatives, prohibited-field scan, and AC-PORT-01..06 evidence bundle | `uv run pytest tests/contracts/http/test_project_event_feed.py tests/acceptance/increment-1/test_portfolio_board.py -q` |
 | CT-I1-013 | Reuse Manibo's provider-agnostic discovery/OIDC modules to add human OIDC alongside unchanged machine project-seat credentials; resolve UI session, human API bearer, and machine bearer authentication into one Actor/custody/audit model with operator-owned config-driven providers, operator-issued pinned human role bindings for exact `operator|commander|viewer` roles, and no new public ingress. | CT-I1-012 | Engineer + CSO + QA/UI QA + Manibo Commander reuse review | Authored auth/access/HTTP contracts; kernel Access; auth-only API/web composition roots and tests | Reuse disposition `1/1`; identity planes `2/2`; Actor/custody models `1/1`; roles `3/3`; transports `3/3`; named auth refusal codes `8/8` each with its own negative fixture and exact RFC 9457 snapshot; bounded provider egress call sites `3/3` proven by bound exhaustion; security proof groups `11/11`; provider-specific product branches `0`; configured providers `discovered = exercised`; operator-only registry/binding mutation, exact-redirect-URI, provider-token-disposition, PKCE/state/nonce/SSRF/cookie/CSRF/replay/revocation/project-isolation/redaction/tailnet negatives; independent CSO verdict `1/1` on the exact digest | `uv run pytest tests/contracts/auth tests/acceptance/increment-1/test_auth.py -q && pnpm run test:e2e -- tests/e2e/auth` |
+| CT-I1-014 | Activate one narrow standing GitLab Issue co-source for the configured feedback project. Publish strict v2 integration and normalized cursor/issue/close contracts; map issue title/body/labels/reporter/source link through ordinary external-untrusted intake; preserve immutable issue/thread/ticket custody; append provider updates as ticket comments; and deliver only proof-gated ctower close as one replay-safe GitLab comment plus closure. D43 extracts a provider-neutral internal two-method result seam, core-owned retry/tick/persistence, a closed first-party registry, and isolated active registrations while keeping every additional provider and public/generalized connector product surface deferred. | CT-I1-013 | Engineer + QA + Security review | `contracts/domain/integrations/`; `contracts/components/integration-v2.schema.json`; kernel `integrations/`; API connector registry and GitLab Adapter/composition; migrations `0054` and `0055`; shared conformance and acceptance suites | Real retained GitLab issue-to-ticket-to-proof-gated-close transcript; mapping `6/6`; isolated registrations and immutable custody; real Adapter plus fake through one conformance suite; one issue page and one event page per due tick; pagination, retry classification/deadline/jitter, ambiguous-write reconciliation, early-poll, replay, malformed/foreign payload, inactive-revision, secret-reference, and no-storm assertions | `uv run pytest tests/contracts/integrations tests/modules/integrations tests/acceptance/increment-1/test_gitlab_integration.py -q` |
 
 ### I2 implementation backlog
 
@@ -4787,4 +4851,5 @@ accepted; and the three Board views are disjoint. Mission Control and applicable
 co-sources, and there is no bulk import or source-of-truth change. This specification may later revise
 increment definitions through reviewed versions, but it never mirrors current ticket status. Full normative
 I1 exit and authorization for CT-I2-001 remain blocked until the distinct post-import CT-I1-013 auth gate
-also completes, CP3-D passes, and the operator separately accepts a portfolio authority epoch.
+and CT-I1-014 narrow GitLab co-source gate also complete, CP3-D passes, and the operator separately accepts
+a portfolio authority epoch.

@@ -1,7 +1,7 @@
 # HTTP API reference
 
 The authored HTTP contract is `contracts/http/openapi.yaml` — an OpenAPI 3.1.0 document titled *ctower first
-durable-ticket slice*, version `0.0.0`. It declares **65 operations**.
+durable-ticket slice*, version `0.0.0`. It declares **66 operations**.
 
 !!! warning "Development contract, not a supported API"
     This surface exists so the CLI, the generated clients, and the tests share one definition. It is not a
@@ -110,6 +110,7 @@ eligible is refused as `intake-promotion-ineligible` without changing anything.
 | Method | Path | Operation | CLI | Kind | Spool | Responses |
 |---|---|---|---|---|---|---|
 | `POST` | `/v1/inbox/messages` | `sendInboxMessage` | `inbox send` | mutation | allowed | `201`, `202`, `401`, `403`, `404`, `409`, `422` |
+| `POST` | `/v1/inbox/notifications` | `ingestInboxNotification` | `inbox notify` | mutation | allowed | `201`, `202`, `401`, `403`, `404`, `409`, `422` |
 | `POST` | `/v1/inbox/messages/{message_id}/ack` | `acknowledgeInboxMessage` | `inbox ack` | mutation | allowed | `200`, `202`, `401`, `403`, `404`, `409`, `422` |
 | `POST` | `/v1/inbox/threads/{thread_id}/promotion` | `promoteInboxThread` | `inbox promote` | mutation | allowed | `200`, `202`, `401`, `403`, `404`, `409`, `422` |
 | `GET` | `/v1/inbox/threads` | `listInboxThreads` | `inbox list` | query | forbidden | `200`, `401`, `404`, `422` |
@@ -122,6 +123,13 @@ participant as recipient. `InboxAcknowledgeRequest.state` is `delivered` or `rea
 message recipient may write it. State advances monotonically: a direct `read` acknowledgement appends the
 missing `delivered` fact before the `read` fact. A request that repeats the current state, or requests
 `delivered` after `read`, changes nothing and is refused as `inbox-acknowledgement-not-advancing`.
+
+`InboxNotificationRequest` contains only `to` and `text`. The authenticated Actor supplies sender identity;
+the persisted seat registry resolves the recipient, and an unknown seat is
+`inbox-recipient-not-found` without creating one. The server derives one direction-independent thread for
+the principal pair. The caller sends the original notification delivery UUID as `Idempotency-Key`, so an
+exact retry returns the first result and appends no duplicate message event. This endpoint is additive to
+the caller's existing durable delivery and does not provide a switch or cutover mechanism.
 
 Exact mutation replay returns the original result; the same `Idempotency-Key` with different semantics is
 `idempotency-conflict`. Other Inbox mutation refusals are `inbox-message-recipient-mismatch`,

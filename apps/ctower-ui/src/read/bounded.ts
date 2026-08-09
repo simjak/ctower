@@ -21,11 +21,11 @@
  * 4. A typed exhausted outcome — `ReadExhausted` names exhaustion and preserves
  *    the attempt count, elapsed time and last classified failure; every
  *    exhaustion is counted and written once to stderr.
- * 5. Idempotency before retrying a mutation — satisfied by construction. HTTP
- *    here is `GET` with no body or method parameter, and the process reader
- *    takes a named inspection from the closed grammar in `read/commands.ts`
- *    rather than caller argv, so no mutation call site is expressible in this
- *    app and none needs a coordination key.
+ * 5. Idempotency before retrying a mutation — `boundedMutation` requires the
+ *    caller to provide the one generated `Idempotency-Key` that is reused for
+ *    every attempt. The read and process helpers remain closed: HTTP reads are
+ *    `GET`, and the process reader takes a named inspection from the closed
+ *    grammar in `read/commands.ts` rather than caller argv.
  */
 
 import { execFile } from "node:child_process";
@@ -95,6 +95,19 @@ export class ReadExhausted extends Error {
   }
 }
 
+/** A typed non-success response from the server-owned mutation path. */
+export class MutationRefused extends Error {
+  public readonly status: number;
+  public readonly document: unknown;
+
+  public constructor(status: number, document: unknown) {
+    super(`the mutation API answered ${status.toString()}`);
+    this.name = "MutationRefused";
+    this.status = status;
+    this.document = document;
+  }
+}
+
 let exhaustionCount = 0;
 
 /** Observable exhaustion tally for this process; read by the health surface. */
@@ -104,10 +117,13 @@ export function exhaustions(): number {
 
 const RETRYABLE_STATUS = new Set([408, 425, 429, 500, 502, 503, 504]);
 
-function classifyStatus(status: number): ClassifiedFailure {
+function classifyStatus(
+  status: number,
+  operation: "read" | "mutation" = "read"
+): ClassifiedFailure {
   return {
     failureClass: RETRYABLE_STATUS.has(status) ? "transient" : "permanent",
-    detail: `the read API answered ${status.toString()}`,
+    detail: `the ${operation} API answered ${status.toString()}`,
     status,
   };
 }
@@ -214,6 +230,47 @@ async function attempt(
 }
 
 /**
+ * A refusal body, read without letting the read decide the classification.
+ *
+ * Only a success carries a contract-shaped payload. A refusal may carry a
+ * problem document, a proxy's `text/plain` sentence, or nothing at all, and
+ * which of those arrived says nothing about whether the status is retryable.
+ * Parsing it eagerly used to throw a `SyntaxError` before the status reached
+ * `classifyStatus`, so a proxy 503 was classified permanent and the mutation
+ * stopped after one attempt; the text is preserved instead, and the caller's
+ * problem-document validator refuses it as the non-document it is.
+ */
+function refusalDocument(body: string): unknown {
+  try {
+    const parsed: unknown = JSON.parse(body);
+    return parsed;
+  } catch {
+    return body;
+  }
+}
+
+async function mutationAttempt(
+  url: string,
+  headers: Readonly<Record<string, string>>,
+  body: string,
+  timeoutMs: number
+): Promise<unknown> {
+  const response = await fetch(url, {
+    method: "POST",
+    headers,
+    body,
+    cache: "no-store",
+    signal: AbortSignal.timeout(timeoutMs),
+  });
+  const answered = await response.text();
+  if (!response.ok) {
+    throw new MutationRefused(response.status, refusalDocument(answered));
+  }
+  const payload: unknown = JSON.parse(answered);
+  return payload;
+}
+
+/**
  * Read one JSON payload under the bounded policy.
  *
  * Throws `ReadRefused` on a permanent classification and `ReadExhausted` when
@@ -242,6 +299,69 @@ export async function boundedRead(
       return await attempt(url, headers, Math.min(bounds.attemptTimeoutMs, remainingBefore));
     } catch (error: unknown) {
       last = error instanceof ReadRefused ? reclassified(error.failure) : classifyThrown(error);
+      if (last.failureClass === "permanent") {
+        throw new ReadRefused(failure(last, attempts, Date.now() - startedAt, false));
+      }
+    }
+    const remainingAfter = bounds.maxElapsedMs - (Date.now() - startedAt);
+    if (attempts >= bounds.maxAttempts || remainingAfter <= 0) {
+      break;
+    }
+    await pause(backoffMs(attempts, bounds, remainingAfter));
+  }
+
+  const spent = failure(last, attempts, Date.now() - startedAt, true);
+  countExhaustion(url, spent);
+  throw new ReadExhausted(spent);
+}
+
+/**
+ * Call one server-authoritative mutation under the same bounded policy.
+ *
+ * The serialized body and `Idempotency-Key` are supplied once and then reused
+ * unchanged on every retry. Retryable HTTP response statuses re-enter the
+ * bounded loop; a permanent server problem document is terminal and the caller
+ * renders its human `detail` rather than treating it as transport noise.
+ */
+export async function boundedMutation(
+  url: string,
+  headers: Readonly<Record<string, string>>,
+  body: string,
+  bounds: ReadBounds = RECORD_READ_BOUNDS
+): Promise<unknown> {
+  const idempotencyKey = headers["Idempotency-Key"];
+  if (idempotencyKey === undefined || idempotencyKey === "") {
+    throw new TypeError("a bounded mutation requires an Idempotency-Key");
+  }
+  const startedAt = Date.now();
+  let attempts = 0;
+  let last: ClassifiedFailure = {
+    failureClass: "transient",
+    detail: "the mutation made no attempt",
+  };
+
+  while (attempts < bounds.maxAttempts) {
+    const remainingBefore = bounds.maxElapsedMs - (Date.now() - startedAt);
+    if (remainingBefore <= 0) {
+      break;
+    }
+    attempts += 1;
+    try {
+      return await mutationAttempt(
+        url,
+        headers,
+        body,
+        Math.min(bounds.attemptTimeoutMs, remainingBefore)
+      );
+    } catch (error: unknown) {
+      if (error instanceof MutationRefused) {
+        last = classifyStatus(error.status, "mutation");
+        if (last.failureClass === "permanent") {
+          throw error;
+        }
+      } else {
+        last = error instanceof ReadRefused ? reclassified(error.failure) : classifyThrown(error);
+      }
       if (last.failureClass === "permanent") {
         throw new ReadRefused(failure(last, attempts, Date.now() - startedAt, false));
       }

@@ -9,6 +9,7 @@ import type {
   ProjectionHealth,
 } from "@ctower/client";
 import type { ReadFailure } from "./bounded";
+import type { InboxPromotionTicketChoice } from "@/mutate/types";
 import type { Known } from "./sources/maybe";
 
 /**
@@ -179,13 +180,30 @@ export interface BoardEntry {
   readonly ticket: Reading<TicketRecord>;
 }
 
-export interface BoardSnapshot {
-  readonly entries: readonly BoardEntry[];
+/** What one `/v1/board` answer says about itself, whatever it carries. */
+interface BoardRead {
   readonly health: ProjectionHealth;
   readonly projectionWatermark: number;
   readonly sourceWatermark: number;
   /** What this read asked for, and what the record could answer with. */
   readonly scope: BoardScope;
+}
+
+/**
+ * One project's board cards, without the per-card ticket join.
+ *
+ * The join is a second read *per card*, and the portfolio counts four hundred
+ * cards across three projects: taking it there would turn one screen into four
+ * hundred requests to render numbers the card already carries. A screen that
+ * needs a card's recorded source or age reads `BoardSnapshot`; a screen that
+ * only counts reads this.
+ */
+export interface BoardCards extends BoardRead {
+  readonly cards: readonly BoardCard[];
+}
+
+export interface BoardSnapshot extends BoardRead {
+  readonly entries: readonly BoardEntry[];
 }
 
 export interface RecordEvent {
@@ -250,6 +268,30 @@ export interface InboxProjection {
   readonly threads: readonly InboxThreadSummary[];
   readonly totalUnread: number;
   readonly unreadOnly: boolean;
+}
+
+/**
+ * Who one thread is between, as the recipient-scoped projection itself names
+ * them — never as this surface infers them.
+ *
+ * A message needs an address, and the address is an identity. So it is read
+ * back from the server rather than assembled here or accepted from a form: the
+ * projection says which seat the authenticated principal holds and which seat
+ * is on the other end of this thread, and the send path asks for that answer
+ * again at submit time rather than trusting one a browser round-tripped.
+ */
+export interface InboxCorrespondent {
+  /** The seat this surface's authenticated principal holds. */
+  readonly sender: string;
+  /** The other participant: where a message on this thread is addressed. */
+  readonly recipient: string;
+}
+
+/** Ticket choices the current principal's Board read made available for Inbox linking. */
+export interface InboxPromotionPicker {
+  readonly choices: readonly InboxPromotionTicketChoice[];
+  /** A failed Board read never becomes an empty ticket list without this explanation. */
+  readonly notice: string | null;
 }
 
 export type BeatHealth = "alive" | "late" | "dead" | "unknown";
@@ -717,6 +759,133 @@ export interface DeliveryMetrics {
   readonly measuredAt: string;
 }
 
+/* ── the portfolio ─────────────────────────────────────────────────────────
+   The per-project board answers one project's question. The director
+   supervises three and needs the fleet's answer: how much work each project
+   holds and where, what is waiting on a human, and what mail is unread. Every
+   number below is folded at read time from the same reads the per-project
+   screens already make — one `/v1/board` per configured project and one
+   recipient-scoped inbox read. There is no portfolio store, cursor or table. */
+
+/** One lane's count on one project's row. Every lane is present, zero included. */
+export interface PortfolioLane {
+  readonly lane: BoardLane;
+  readonly count: number;
+}
+
+/** What one project's board read answered, counted. */
+export interface PortfolioCounts {
+  /** One entry per `LANES` member, in that order. */
+  readonly lanes: readonly PortfolioLane[];
+  readonly tickets: number;
+  /** Cards carrying a recorded workflow stage, so the lane axis explains itself. */
+  readonly staged: number;
+  readonly health: ProjectionHealth;
+  readonly projectionWatermark: number;
+  readonly sourceWatermark: number;
+}
+
+/**
+ * One card the record says a human is waiting on: an attention finding whose
+ * effective owner is the operator and which carries no disposition. This is the
+ * same fact a board card prints as human-waiting, projected to a row.
+ */
+export interface PortfolioEscalation {
+  readonly projectKey: string;
+  readonly ticketId: string;
+  readonly title: string;
+  readonly lane: BoardLane;
+  readonly priority: Priority;
+  readonly kindKey: string;
+  readonly reasonCode: string;
+  readonly findingId: string;
+}
+
+/** One project's row on the portfolio: its counts, or why it has none. */
+export interface PortfolioProject {
+  readonly key: string;
+  /** `unread` when this project's board read did not answer; never a zero. */
+  readonly counts: Known<PortfolioCounts>;
+  readonly escalations: readonly PortfolioEscalation[];
+  /** Unread messages on threads this project's cards link. */
+  readonly unread: Known<number>;
+  /** This project's own board, so a row is a way in rather than a dead number. */
+  readonly boardHref: string;
+}
+
+/** A project whose board read did not answer, in that failure's own words. */
+export interface UnreachedScope {
+  readonly key: string;
+  readonly reason: string;
+}
+
+/**
+ * Which projects' cards name one thread — and whether that is knowable at all.
+ *
+ * The attribution is carried by the boards: a card names the threads it links.
+ * So a thread no *answered* board names is only `unlinked` when every board
+ * answered; while one did not, its unread cards could name any thread, and the
+ * honest answer is `unknown` beside the scopes that were not reached.
+ */
+export type ThreadLink =
+  | { readonly known: "linked"; readonly projects: readonly string[] }
+  | { readonly known: "unlinked" }
+  | { readonly known: "unknown"; readonly unreached: readonly string[] };
+
+/** One durable thread, with the projects whose cards link it. */
+export interface PortfolioThread {
+  readonly threadId: string;
+  readonly otherAgent: string;
+  readonly lastMessagePreview: string;
+  readonly lastMessageAt: string;
+  readonly unreadCount: number;
+  readonly link: ThreadLink;
+  readonly promotedTicketId: string | null;
+}
+
+/**
+ * The seat comms half of the portfolio.
+ *
+ * `addressable` is the distinction that stops the worst reading of this panel.
+ * The inbox projection is recipient-scoped, and it names a principal with no
+ * seat row `unaddressable`: no thread can be addressed to it at all. Rendering
+ * that as `0 unread` would tell the reader the seats are quiet when the truth
+ * is that this reader is not a seat, so the two are different states here.
+ */
+export interface PortfolioComms {
+  readonly recipient: string;
+  readonly addressable: boolean;
+  /** Why this principal holds no address, when it holds none. */
+  readonly unaddressableWhy: string | null;
+  readonly threads: readonly PortfolioThread[];
+  readonly totalUnread: number;
+  /**
+   * Unread messages on threads no project's cards link — `unread` while a board
+   * did not answer, because no thread can be called unlinked on cards nobody read.
+   */
+  readonly unlinkedUnread: Known<number>;
+}
+
+export interface Portfolio {
+  readonly projects: readonly PortfolioProject[];
+  /** One entry per `LANES` member, summed over the projects that answered. */
+  readonly laneTotals: readonly PortfolioLane[];
+  readonly tickets: number;
+  readonly staged: number;
+  readonly escalations: readonly PortfolioEscalation[];
+  /** `unread` when the inbox read did not answer; never an empty inbox. */
+  readonly comms: Known<PortfolioComms>;
+  /** Project boards that answered, and how many were asked. */
+  readonly answered: number;
+  readonly considered: number;
+  /**
+   * Every project whose board did not answer, named. Empty when all did — which
+   * is the only state in which an empty set on this page is a measurement.
+   */
+  readonly unreached: readonly UnreachedScope[];
+  readonly observedAt: string;
+}
+
 /** Which ctower instance this surface is reading, for the header and the foot. */
 export interface InstanceIdentity {
   readonly label: string;
@@ -742,6 +911,10 @@ export interface BoardScope {
 export interface RecordAdapter {
   readonly instance: InstanceIdentity;
   board: (projectKey: string) => Promise<Reading<BoardSnapshot>>;
+  /** One project's board cards alone, for a screen that counts rather than joins. */
+  boardCards: (projectKey: string) => Promise<Reading<BoardCards>>;
+  /** Every configured project's work, escalations and unread comms, in one read. */
+  portfolio: () => Promise<Reading<Portfolio>>;
   ticket: (ticketId: string, projectKey: string) => Promise<Reading<TicketRecord>>;
   ticketAudit: (ticketId: string, projectKey: string) => Promise<Reading<readonly RecordEvent[]>>;
   /** Per-session work facts: who, duration, tokens, outcome. */
@@ -752,6 +925,10 @@ export interface RecordAdapter {
   inbox: () => Promise<Reading<InboxProjection>>;
   /** One durable inbox thread; this recipient read advances its own cursor. */
   inboxThread: (threadId: string) => Promise<Reading<InboxThread>>;
+  /** The two seats one thread is between, for addressing a message on it. */
+  inboxCorrespondent: (threadId: string) => Promise<Reading<InboxCorrespondent>>;
+  /** Existing tickets available to link when promoting a thread. */
+  inboxPromotionPicker: () => Promise<InboxPromotionPicker>;
   /** What a session was handed at start. */
   sessionWorkspace: (crew: string | null) => Promise<Reading<SessionWorkspace>>;
   /** A session worktree's files and its diff against its base. */
@@ -774,5 +951,14 @@ export interface RecordAdapter {
 /** The subset of reads the ctower read API answers today. */
 export type RecordApiReads = Pick<
   RecordAdapter,
-  "instance" | "board" | "ticket" | "ticketAudit" | "workSessions" | "inbox" | "inboxThread"
+  | "instance"
+  | "board"
+  | "boardCards"
+  | "ticket"
+  | "ticketAudit"
+  | "workSessions"
+  | "inbox"
+  | "inboxThread"
+  | "inboxCorrespondent"
+  | "inboxPromotionPicker"
 >;

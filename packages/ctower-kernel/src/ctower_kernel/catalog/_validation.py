@@ -49,7 +49,7 @@ _EXPECTED_SCHEMAS: dict[ComponentKind, str] = {
     ComponentKind.TELEMETRY: "ctower.telemetry/v1",
     ComponentKind.CADENCE_POLICY: "ctower.scheduling-policy/v1",
     ComponentKind.NOTIFICATION: "ctower.notification/v1",
-    ComponentKind.INTEGRATION: "ctower.integration/v1",
+    ComponentKind.INTEGRATION: "ctower.integration/v2",
     ComponentKind.SEAT_CATALOG: "ctower.seat-catalog/v1",
     ComponentKind.CHECKPOINT: "ctower.checkpoint/v1",
     ComponentKind.LABEL_VOCABULARY: "ctower.label-vocabulary/v1",

@@ -1562,3 +1562,309 @@ Rejected alternatives:
   committed; "pending" in this codebase describes off-host acknowledgement receipts, not local commit
   visibility. Introducing a feed-only filter for a distinction no sibling read path makes would be
   speculative complexity the current requirements do not need.
+
+## D39 — One narrow GitLab Issue co-source, without a connector framework (engineering, 2026-08-08, gh#346)
+
+CT-I1-014 activates one configured GitLab feedback project as a standing issue co-source during
+`SHADOW_ONLY_CP3_D_NOT_PROVEN`. This supersedes only the earlier broad deferral of source-host connectors
+for this exact GitLab Issue path. Email, chat, GitHub ingestion, arbitrary GitLab objects, generic webhooks,
+provider-general SCM abstractions, bulk import, and source-of-truth cutover remain deferred.
+
+1. **The mapping uses ordinary authority.** One normalized GitLab issue becomes an
+   `external_untrusted` ordinary intake with a stable `gitlab:<project_id>:<iid>` source reference, P2
+   priority, configured Commander custody, title, body, labels, reporter, and HTTPS source link. An
+   immutable relation joins issue, inbound thread, and ticket; it is the sole dedupe/custody chain across
+   later configuration revisions. Provider changes append ticket comments. Provider closure is observed
+   as a change but cannot resolve ctower work or manufacture proof.
+2. **Ctower closure remains proof-gated.** Only the canonical project event produced by a successful
+   `resolve_close` with lifecycle facts `resolved,closed` may deliver a marker-bound comment and close the
+   linked GitLab issue. The event-bound immutable receipt plus provider marker makes retry converge without
+   a duplicate comment or close storm. No GitLab label, state, comment, webhook, or operator action at the
+   provider bypasses Workflow or Proof.
+3. **Standing means bounded durable progress.** One due tick reads at most one GitLab issue page (maximum
+   100) and one ctower project-event page (maximum 100), then advances an aware `updated_after`/page/event
+   cursor pinned to the exact active Catalog component revision and digest. The next-poll time prevents a
+   tight loop; failures use a bounded retry delay and count. Pagination and replay are explicit. No
+   unbounded tailer, scan, queue, or per-integration process is introduced.
+4. **The Seam is specific and internal.** The kernel owns a small GitLab-issue Adapter Interface and
+   durable integration-store Interface; the API artifact supplies one real GitLab HTTP Adapter and the
+   standing composition, while the same conformance suite exercises the real Adapter through an honest
+   HTTP transport fixture and a deterministic fake. This follows D10's small-Interface/conformance shape
+   without claiming a generalized public provider Seam or plugin framework from one real provider.
+5. **Configuration is revision-pinned and secret-free.** The already-published
+   `ctower.integration/v1` reference-only shape remains immutable under D37. The active shape is the new
+   `ctower.integration/v2` file, containing only the HTTPS origin, numeric project, bounded import/poll
+   settings, ctower project/custodian, label map, and an uppercase deployment secret-binding reference.
+   Deployment resolves the token outside Catalog; resolved credential bytes enter no contract, durable
+   row, exception, log, receipt, or telemetry.
+
+Rejected alternatives:
+
+- A webhook-first service or generic source-connector host. Rejected because a bounded cursor in the
+  existing control worker is the smallest standing end-to-end product and does not create another ingress,
+  queue, runtime, or extension authority.
+- Treating GitLab `closed` as ctower completion. Rejected because it would let an external co-source forge
+  the proof-gated lifecycle authority that ctower exists to protect.
+- Editing `ctower.integration/v1` in place. Rejected by D37; the incompatible active shape is published as
+  v2 and v1 remains byte-for-byte available to historical readers.
+
+## D40 — Notification mirroring reuses native Inbox with a derived pair thread (engineering, 2026-08-08, gh#355)
+
+Issue #355 activates one transitional transport from mission-control `tools/notify` into the native Inbox.
+It preserves D31's one-Actor identity chokepoint, D35's seat-as-principal rule, INV-79's append-only delivery
+facts, and the existing durable mission-control inbox during shadow operation. It authorizes no cutover,
+credential provisioning, feature flag, browser surface, or new message authority.
+
+1. **Rail 1 completes first.** The existing durable append remains unchanged and authoritative for its rail.
+   Only after it succeeds does the adapter attempt ctower. A typed refusal, malformed response, unavailable
+   endpoint, or client failure returns a visible `refused|unavailable` mirror outcome but cannot block or
+   reverse rail 1.
+2. **The request carries no sender authority.** Rail 2 contains recipient seat and text, with the original
+   delivery UUID as its idempotency key. Ctower resolves the sender from the authenticated Actor and the
+   recipient from the persisted project-seat registry. Unknown, ambiguous, unaddressable, and self seats
+   reuse the ordinary recorded Inbox refusals and create no principal or event.
+3. **Grouping is derived, not stored twice.** Ctower derives one opaque thread UUID from tenant plus the
+   unordered pair of principal IDs. The first delivery opens that native thread and later traffic in either
+   direction appends to it. The existing Inbox thread, messages, canonical events, command result, and
+   outbox remain the only authorities; there is no pair map, bridge ledger, cursor, or writable projection.
+4. **Replay is the existing command law.** Exact delivery-ID replay returns the original command result;
+   changed semantics under that UUID refuse as `idempotency-conflict`. The new strict HTTP/generated-client/
+   protected-CLI operation composes the same Inbox Interface and durability protocol rather than creating a
+   second ingestion engine.
+
+Rejected alternatives:
+
+- Trusting `--from`, a sender field, crew name, or process label as identity.
+- Keeping a mission-control pair-to-thread mapping file or a ctower bridge-specific store.
+- Coupling both rails in one transaction or allowing rail-2 failure to change rail-1 success.
+- Adding a cutover flag, environment variable, automatic seat creation, or a new notification event kind.
+
+## D41 — Separate server-mediated Inbox promotion dogfood boundary (locked 2026-08-08, operator)
+
+The operator permits one narrow exception to D23's no-I1-browser-artifact timing: `apps/ctower-ui` may
+remain a separate, local shadow-instance dogfood server and expose one Inbox control over the already
+authored `POST /v1/inbox/threads/{thread_id}/promotion` operation. This entry supersedes only D23's and
+the prior I1 Inbox wording's blanket prohibition as applied to that exact non-product dogfood control. D22,
+D23, D31, CT-I1-005, and CT-I2-005 still reserve every product browser route, browser authentication
+surface, Playwright suite, and five-surface realization for I2.4.
+
+1. **One existing command, no client authority.** The dogfood control may create a ticket from the immutable
+   thread head or link an in-scope ticket only by calling the existing generated command endpoint. Its browser
+   receives no API bearer, session, CSRF token, credential, actor, project, scope, custody, or authorization
+   claim. A server action holds the existing server-side bearer and sends only `{}` or `{ticket_id}`; the API
+   remains the sole authentication and authorization authority.
+2. **The transport stays bounded and replay-safe.** The action creates one `Idempotency-Key` before its first
+   attempt and reuses that exact key for every retry. `408`, `425`, `429`, and the declared transient `5xx`
+   statuses re-enter the finite, deadline-bounded, capped full-jitter loop. A permanent problem document is
+   terminal and its validated human `detail` is the only server-provided refusal copy the control renders.
+3. **Copy names the real scope.** The `New ticket` rail affordance remains visibly disabled and names only
+   its own unavailable capture path. Shared Inbox provenance copy names the server-authorized promotion path;
+   it must not claim that no mutation path exists on the surface.
+4. **The exception earns no product scope.** This separate Next.js dogfood server is neither `ctower-web` nor
+   an I1 product route. It introduces no product session design, direct browser API client, record-tier
+   connection, new command, contract, role, test-suite activation, capability flag, deployment promise, or
+   CT-I1-005/CT-I2-005 evidence. It remains for low-value reconstructible shadow dogfood only.
+
+Rejected alternatives:
+
+- Treating the control as an early I2.4 browser product or a general exception for browser mutations. It is
+  one server-mediated command on one explicitly separate dogfood boundary.
+- Passing a bearer, session credential, CSRF token, or claimed authority fact to browser JavaScript, DOM,
+  storage, URL, telemetry, or screenshots. The existing API authorization boundary is retained.
+- Leaving a global read-only claim beside the working control, or enabling `New ticket` by association. Each
+  rendered affordance must state only the capability it actually has.
+
+## D42 — The dogfood exception activates one verification suite, and only that (engineering, 2026-08-08, gh#379)
+
+D41 clause 4 disclaimed any `test-suite activation`, and the same candidate registered
+`dogfood-inbox-promotion` as a `status = "required"` suite that `just verify` executes and counts. Both
+halves cannot be true. The registration is the correct half — an exception that ships a working control
+and then proves nothing about it is not a smaller commitment, it is an unverified one — so the contract
+text is what is repaired. This entry preserves D41 and supersedes only clause 4's "test-suite activation"
+disclaimer, and only for the one suite named here.
+
+1. **One activated suite, named.** The exception activates exactly one required verification suite,
+   `dogfood-inbox-promotion`, owned by `CT-I1-007`. It proves the dogfood boundary's own claims: the bounded,
+   replay-safe transport, and the rendered copy clause 3 governs. No other suite changes status, and a second
+   dogfood suite is a new decision, not a reading of this one.
+2. **The rendered claim is proved in a browser, on the dogfood boundary only.** Clause 3 is about a sentence
+   an operator reads, which is composed at render time from a frame component, a rail constant and a screen;
+   reading those files proves nothing about the page. The suite may therefore build the separate dogfood
+   server, serve it on an ephemeral loopback port against a local stub record source on another, and drive
+   the rendered Inbox surface in a headless browser at the design bar's three widths. It reads: it never
+   submits the promotion command from a browser, and it never addresses a running instance, an operator's
+   port, or any credential.
+3. **The product browser scope stays reserved.** `browser-e2e` stays deferred to `CT-I2-005`, and D22, D23,
+   D31, CT-I1-005 and CT-I2-005 still reserve every product browser route, browser authentication surface,
+   product Playwright suite, and five-surface realization for I2.4. A browser used as a read instrument
+   against a non-product dogfood server is not a browser product, and this entry authorizes no browser
+   evidence for any `CT-I1-005` or `CT-I2-005` obligation.
+4. **The verification host declares its browser.** The suite's browser is the Chromium build pinned by
+   `@playwright/test` in `pnpm-lock.yaml`, installed by the verify workflow before the gates run. A host
+   without it fails the suite by name; it is never skipped, and a missing browser never passes quietly.
+5. **Everything else clause 4 withheld is still withheld.** The exception still introduces no product session
+   design, direct browser API client, record-tier connection, new command, contract, role, capability flag,
+   or deployment promise, and remains for low-value reconstructible shadow dogfood only.
+
+Rejected alternatives:
+
+- Unregistering `dogfood-inbox-promotion` to make clause 4 true as written. That resolves the contradiction
+  by deleting the verification, leaving a shipped control whose bounded transport and rendered copy no gate
+  proves.
+- Editing D41 clause 4 in place. `DECISIONS.md` is append-only; an accepted clause is superseded, never
+  rewritten (D36).
+- Activating `browser-e2e` or filing the render assertion under `tests/e2e`. That is the product browser
+  suite `CT-I2-005` owns, and borrowing it would grant the I2.4 scope D41 disclaims.
+- Asserting the rendered copy by reading `RecordFoot.tsx` and `rail.ts` from disk. A source-text search
+  passes while the composed page still carries a retired claim, which is exactly the escape that produced
+  this entry.
+## D43 — Provider-neutral internal issue-connector seam, with GitLab-only product scope (engineering, 2026-08-08, gh#381)
+
+Phase 1 of issue #381 supersedes D39 only where D39 made the internal Adapter, progress shape, and standing
+composition GitLab-specific. D39's accepted GitLab product behavior, ordinary Work/Record authority,
+proof-gated close rule, credential custody, and deferral of every other provider/product capability remain
+in force.
+
+1. **The internal seam is provider-neutral and exact.** Kernel Integrations owns strict normalized issue,
+   opaque cursor, typed result/failure, registration, claim, custody, observation, and delivery-receipt
+   values; a core-owned bounded retry executor; and one leased/fenced tick service. The complete adapter
+   protocol has only `fetch_page` and `comment_and_close`. Provider transport, payload mapping, external
+   identity, cursor codec, classification, and ambiguous-write marker reconciliation remain in the API-owned
+   provider implementation.
+2. **Registration is closed and revision-pinned.** The API composition root uses a static first-party
+   registry that rejects duplicate adapter kinds and schema identifiers, verifies the parser's echoed
+   Catalog key/revision/digest, resolves only declared runtime credential bindings, and composes every
+   supported active registration independently. There is no import string, dynamic package, entry point,
+   connector-supplied SQL, or public plugin surface.
+3. **Generic persistence replaces provider-shaped execution state.** Migration 0055 preserves every 0054
+   progress cursor/fence, immutable issue/thread/ticket link, normalized observation, and proof-close
+   receipt before removing the GitLab-shaped tables. Core stores a bounded opaque cursor and exact
+   `(tenant, registration, external_ref)` custody without interpreting provider identifiers or pagination.
+4. **Product scope does not expand.** GitLab remains the only registered and accepted connector. GitHub,
+   other source hosts, public connector APIs, webhooks, arbitrary provider effects, and dynamic plugins stay
+   deferred. Adding another provider requires its own activated ticket and security review and must pass the
+   unchanged shared conformance and real-PostgreSQL admission traces without editing the frozen core seam.
+
+Rejected alternatives:
+
+- Wrapping the D39 GitLab-specific core behind a generic facade. Rejected because it would preserve two
+  execution paths, leave provider cursor and persistence semantics in kernel authority, and provide no
+  credible second-provider freeze boundary.
+- Treating an internal provider-neutral Interface as authorization for GitHub or a marketplace. Rejected
+  because implementation structure does not activate product behavior, credentials, egress, or public
+  extension authority.
+
+## D44 — The dogfood Inbox boundary carries the send control, and its one suite drives it (engineering, 2026-08-09, gh#372)
+
+Operator ruling R2882 made UI surfaces mutating with authority held server-side, and named chat-send as one
+of the paths it unblocks. D41 permitted exactly one dogfood control and named the promotion endpoint; the
+send box is the second control on the same separate `ctower-ui` boundary, over the same already-authored
+Inbox rails. This entry extends that permission to `POST /v1/inbox/messages` and supersedes only the three
+clauses named below. D41's authority model, D42's one-suite rule, D22, D23, D31, CT-I1-005 and CT-I2-005
+are otherwise unchanged, and every product browser route, authentication surface and Playwright suite
+remains reserved for I2.4.
+
+1. **One more existing command, and still no client authority.** The send box calls only the authored
+   `sendInboxMessage` operation. Its browser receives no API bearer, session, CSRF token, credential,
+   actor, project, scope, custody, or authorization claim, and it submits exactly one value: the message
+   text. The thread is bound into the Server Action from the route. The recipient is an identity, so it is
+   read back from the server's own recipient-scoped projection at submit time rather than posted from a
+   form — there is no recipient field a browser could edit. The sender is never sent at all; the API
+   derives it from the bearer it validates and refuses an unaddressable principal by its own stable name.
+2. **The transport is D41 clause 2, unchanged.** One `Idempotency-Key` is minted before the first attempt
+   and reused for every retry; the declared transient statuses re-enter the finite, deadline-bounded,
+   capped full-jitter loop; a permanent problem document is terminal and its validated human `detail` is
+   the only server-provided refusal copy the box renders.
+3. **Copy names both paths.** This supersedes D41 clause 3's single-path provenance sentence only: the
+   shared Inbox provenance line now names the server-authorized send *and* promotion paths. It still must
+   not claim that no mutation path exists on the surface, and the `New ticket` rail affordance remains
+   visibly disabled and still names only its own unavailable capture path. The Feed composer gains
+   nothing by association: it is a different capability with no authored command behind it, and it stays
+   inert.
+4. **Still exactly one activated suite, renamed to what it proves.** This supersedes D42 clause 1's suite
+   *name* only. `dogfood-inbox-promotion` becomes `dogfood-inbox-controls`, owned by `CT-I1-007`, because
+   one suite now proves both controls on this boundary. No second suite is registered, no other suite
+   changes status, and `browser-e2e` stays deferred to `CT-I2-005`.
+5. **That suite may submit the send box from the browser.** This supersedes D42 clause 2's never-submits
+   restriction only for the send control, and only against the local stub record source. The claim the
+   send box exists to make is that a typed message appears in the thread without a reload; that is a
+   statement about one document's lifetime, and no source file and no server-side test can carry it. The
+   suite therefore stamps the document, submits, and proves the stamp survived. It still serves an
+   ephemeral loopback port against a local stub, never addresses a running instance or an operator's port,
+   never holds a credential, and never submits the promotion form from a browser.
+6. **Everything else D41 clause 4 and D42 clause 5 withheld is still withheld.** No product session
+   design, direct browser API client, record-tier connection, new command, new contract, new role,
+   capability flag, or deployment promise. This remains low-value reconstructible shadow dogfood.
+
+Rejected alternatives:
+
+- Posting the recipient from a hidden form field, the way the promotion control posts a chosen ticket ID.
+  A ticket ID is a target the server re-authorizes; a recipient seat is an identity, and putting one on
+  the wire from a browser would make the surface assert who a message is between. The extra loopback read
+  is the cheaper honesty.
+- Registering a second dogfood suite for the send control. D42 clause 1 requires a decision for that, and
+  this is that decision saying no: a second `next build` and browser in the release gate would buy nothing
+  the one suite cannot prove, and would double the slowest gate's cost.
+- Leaving the round trip as one session's screenshot evidence with no gate behind it. That is exactly the
+  contradiction D42 was written to repair — a shipped control whose central claim no suite proves.
+- Keeping the suite named `dogfood-inbox-promotion` while it proves two controls. An identifier that names
+  one of the things it covers is a stale name, and `DECISIONS.md` is superseded, never rewritten (D36), so
+  the rename is recorded here rather than edited into D42.
+
+## D45 — The dogfood send box tells a non-accepted answer from an accepted one (engineering, 2026-08-09, gh#372)
+
+The independent review of the send box found it reading `durability_state` only to validate it: both
+members were accepted, the discriminator was discarded, and every answer became a confirmed `just sent`
+row with the draft cleared. D17 clauses 4 and 7 and the client-acknowledgement law in `SPEC.md` say the
+opposite about one of those members — a `202`/`durability_pending` answer is explicitly *non-accepted*, stays
+visibly unsent, and is safely replayable under the same command key. The answer carries the same message
+identity, position and timestamp the accepted one does, so nothing but the discriminator distinguishes a
+recorded message from one the record has not promised to keep. This entry records the cure and supersedes
+only the two D44 clauses it changes; D41, D42, D22, D23, D31, CT-I1-005 and CT-I2-005 are unchanged.
+
+1. **Three answers, three renderings.** An accepted answer draws the message row, marked `just sent`, and
+   clears the box. A non-accepted answer draws no row at all: the typed words stay in the field, the line
+   under the box says the server has not confirmed the message, and the button offers `Retry` rather than
+   `Send`. A terminal problem document renders its own validated human `detail` and hands the words back.
+   No control on this boundary projects an unaccepted command as record truth.
+2. **The browser carries one more value, and it is not authority.** This supersedes D44 clause 1's
+   "submits exactly one value: the message text" only. The browser also returns the answer it last
+   received, and the server reads exactly one field out of it: the command identity of a send the record
+   answered without accepting. That identity names a command; it claims nothing. The API re-authorizes
+   every attempt from the server-held bearer, exact replay returns that command's original outcome, and a
+   same-key different request is refused as a conflict. It is read strictly — a value that is not a UUID
+   is refused before any read or command is made. The browser still receives no bearer, session, CSRF
+   token, credential, actor, project, scope, custody, or authorization claim, the recipient is still
+   resolved server-side, and the request body is still exactly `{"text","thread_id","to"}`.
+3. **A retry of an unconfirmed send reuses its identity; an edit mints a new one.** This supersedes D44
+   clause 2's minting sentence only. One `Idempotency-Key` is minted before the first attempt, reused by
+   every bounded transport retry, *and* reused when the sender presses the box again on a message the
+   record has not confirmed — retrying that message under a fresh identity would ask the record to keep
+   two copies of it. Editing the words first makes it a different request, so it is a different command
+   with a new identity: one key for two different requests is a conflict, not a retry.
+4. **The one suite proves the non-accepted half too.** The `dogfood-inbox-controls` suite already proved
+   that an accepted message appears without a reload; it now also submits on a thread the local stub
+   answers `202` for, and proves at each width that no row is drawn, the draft survives, the sentence is
+   on screen, and pressing the box again reaches the record under the same key. The transport fixture
+   carried only an `accepted` response before this, so the otherwise-green suite could not fail. No second
+   suite is registered and no other suite changes status.
+5. **What this still withholds.** It adds no origin-scoped draft persistence: closing or reloading the
+   document discards an unconfirmed draft and its identity, and the next send mints a new one. `SPEC.md`
+   assigns that persistence to the product browser command path, which stays deferred to `CT-I2-005`; on
+   this boundary the guarantee is bounded by one document's lifetime, and after a reload the screen still
+   says only what the record says — the message is absent, not shown as sent. It grants no new command,
+   contract, role, capability flag, product route, or deployment promise.
+
+Rejected alternatives:
+
+- Drawing the unconfirmed message as a greyed-out row with a `not confirmed` chip. It is the same row
+  component the accepted state uses, in the place a reader has learned holds recorded messages, and it
+  reduces "this may not exist" to a chip somebody has to notice. The words are the same information kept
+  where the sender can act on them.
+- Clearing the box and holding the draft only in server state until the sender asks for it back. The
+  draft in the field *is* the retry affordance; a message nobody can see is a message nobody will retry.
+- Minting a new identity on every press. That asks the record to keep two copies of one message whenever
+  the first attempt did commit, which is the duplicate this whole path exists to prevent.
+- Treating `202` as one more retryable status inside the bounded transport loop. It is not transport
+  noise; it is the record's own answer about durability, the acknowledgement can outlast any client
+  deadline, and retrying inside the loop would hide the one state the operator has to see.
