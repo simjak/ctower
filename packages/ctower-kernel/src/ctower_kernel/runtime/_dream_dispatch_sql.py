@@ -88,8 +88,11 @@ def _binding_refusal(
             403,
         )
     binding = connection.execute(
-        "SELECT 1 FROM runtime_dream_lane_bindings WHERE tenant_id = %s AND principal_id = %s",
-        (actor.tenant_id, actor.principal_id),
+        """
+        SELECT 1 FROM runtime_dream_lane_bindings
+        WHERE tenant_id = %s AND principal_id = %s AND lane_ref = %s
+        """,
+        (actor.tenant_id, actor.principal_id, command.lane_ref),
     ).fetchone()
     if binding is not None:
         return _lane_problem(command, "dream-lane-already-bound", "Dream lane is already bound")
@@ -106,6 +109,8 @@ def _commit_binding(
 ) -> DreamLaneBindingReceipt:
     event_id = _uuid7(now)
     evidence = f"sha256:{request_digest.hex()}"
+    stream_id = f"dream-lane:{actor.principal_id}"
+    previous = _binding_event_cursor(connection, actor, stream_id)
     receipt = DreamLaneBindingReceipt(
         command.client_command_id,
         event_id,
@@ -121,10 +126,35 @@ def _commit_binding(
         evidence,
         now,
     )
-    event = EventEnvelope(
+    event = _binding_event(
+        actor, command, event_id, evidence, request_digest, now, stream_id, previous
+    )
+    transaction.commit_control(
+        event,
+        outbox_id=_uuid7(now),
+        response_body=receipt.response_payload(),
+        status_code=202,
+        now=now,
+        topic="runtime.dream-lane-bindings",
+    )
+    _insert_binding(connection, actor, command, evidence, now)
+    return receipt
+
+
+def _binding_event(
+    actor: Actor,
+    command: DreamLaneBindCommand,
+    event_id: UUID,
+    evidence: str,
+    request_digest: bytes,
+    now: datetime,
+    stream_id: str,
+    previous: dict[str, object] | None,
+) -> EventEnvelope:
+    return EventEnvelope(
         actor_principal_id=actor.principal_id,
         aggregate_id=actor.principal_id,
-        causation_id=None,
+        causation_id=cast(UUID, previous["event_id"]) if previous is not None else None,
         client_command_id=command.client_command_id,
         correlation_id=command.client_command_id,
         event_id=event_id,
@@ -143,23 +173,27 @@ def _commit_binding(
             _DREAM_BINDING_SOURCE,
             evidence,
         ),
-        prev_hash=bytes(32),
+        prev_hash=bytes(cast(bytes, previous["event_hash"])) if previous is not None else bytes(32),
         request_sha256=request_digest,
-        sequence=1,
+        sequence=int(cast(int, previous["sequence"])) + 1 if previous is not None else 1,
         server_time=now,
-        stream_id=f"dream-lane:{actor.principal_id}",
+        stream_id=stream_id,
         tenant_id=actor.tenant_id,
     )
-    transaction.commit_control(
-        event,
-        outbox_id=_uuid7(now),
-        response_body=receipt.response_payload(),
-        status_code=202,
-        now=now,
-        topic="runtime.dream-lane-bindings",
-    )
-    _insert_binding(connection, actor, command, evidence, now)
-    return receipt
+
+
+def _binding_event_cursor(
+    connection: psycopg.Connection[dict[str, object]], actor: Actor, stream_id: str
+) -> dict[str, object] | None:
+    return connection.execute(
+        """
+        SELECT event_id, event_hash, sequence
+        FROM events
+        WHERE tenant_id = %s AND stream_id = %s
+        ORDER BY sequence DESC LIMIT 1
+        """,
+        (actor.tenant_id, stream_id),
+    ).fetchone()
 
 
 def _insert_binding(
@@ -274,13 +308,7 @@ def consume_dream_dispatch(
             return problem
         if effect is None:
             raise RuntimeError("dream dispatch disappeared after its refusal check")
-        binding = connection.execute(
-            """
-            SELECT * FROM runtime_dream_lane_bindings
-            WHERE tenant_id = %s AND principal_id = %s
-            """,
-            (actor.tenant_id, actor.principal_id),
-        ).fetchone()
+        binding = _current_binding(connection, actor)
         if binding is None:
             raise RuntimeError("dream lane binding disappeared after its refusal check")
         return _commit_consumption(
@@ -377,16 +405,31 @@ def _consumption_problem(
         return _problem(
             command, "dream-dispatch-already-consumed", "Dream dispatch already consumed"
         )
-    binding = connection.execute(
-        """
-        SELECT * FROM runtime_dream_lane_bindings
-        WHERE tenant_id = %s AND principal_id = %s
-        """,
-        (actor.tenant_id, actor.principal_id),
-    ).fetchone()
+    binding = _current_binding(connection, actor)
     if binding is None:
         return _problem(command, "dream-dispatch-lane-unbound", "Dream lane is unbound", 403)
     return _binding_problem(command, effect, binding)
+
+
+def _current_binding(
+    connection: psycopg.Connection[dict[str, object]], actor: Actor
+) -> dict[str, object] | None:
+    return connection.execute(
+        """
+        SELECT binding.*
+        FROM runtime_dream_lane_bindings AS binding
+        LEFT JOIN events AS bound_event
+          ON bound_event.tenant_id = binding.tenant_id
+         AND bound_event.stream_id = %s
+         AND bound_event.kind = 'runtime.dream_lane_bound'
+         AND bound_event.payload ->> 'lane_ref' = binding.lane_ref
+        WHERE binding.tenant_id = %s AND binding.principal_id = %s
+        ORDER BY bound_event.sequence DESC NULLS LAST,
+                 binding.bound_at DESC, binding.lane_ref DESC
+        LIMIT 1
+        """,
+        (f"dream-lane:{actor.principal_id}", actor.tenant_id, actor.principal_id),
+    ).fetchone()
 
 
 def _scope_refusal(

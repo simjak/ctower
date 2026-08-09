@@ -144,6 +144,73 @@ def test_operator_binding_is_immutable_refuses_nonoperators_and_enables_consumpt
     )
 
 
+def test_operator_recovers_wrong_binding_with_a_new_versioned_lane(
+    tenant: TenantFixture,
+) -> None:
+    store, effects = _emit_nightly_effects(tenant)
+    record = PostgresRecord(tenant.database.runtime_dsn)
+    wrong = DreamLaneBindRequest(
+        lane_ref="dream-lane:writer-r2881-dream",
+        crew_name="writer-r2881-wrong",
+        harness_ref="codex",
+        model_ref="gpt-5.6-sol",
+        reasoning_effort="max",
+        fallback_model_ref="qwen3.8-max",
+        model_tier="hard",
+    )
+    corrected_same_lane = wrong.model_copy(update={"crew_name": "writer-r2881-dream"})
+    recovered = corrected_same_lane.model_copy(
+        update={"lane_ref": "dream-lane:writer-r2881-dream.v2"}
+    )
+
+    with TestClient(create_app(record, dream_dispatch_runtime=store)) as transport:
+        operator = _client(transport, tenant.operator_credential)
+        operator.bind_dream_lane(wrong, command_id=uuid4())
+        with pytest.raises(CtowerProblemError) as duplicate:
+            operator.bind_dream_lane(corrected_same_lane, command_id=uuid4())
+        duplicate_problem = cast(Problem, duplicate.value.problem)
+        assert (duplicate_problem.status, duplicate_problem.code) == (
+            409,
+            "dream-lane-already-bound",
+        )
+        recovery = operator.bind_dream_lane(recovered, command_id=uuid4())
+        consumed = operator.consume_dream_dispatch_effect(
+            effects[0].effect_id,
+            DreamDispatchConsumeRequest(output_digest=_OUTPUT_DIGEST),
+            command_id=uuid4(),
+        )
+
+    assert recovery.lane_ref == "dream-lane:writer-r2881-dream.v2"
+    assert consumed.effect_id == effects[0].effect_id
+    with psycopg.connect(tenant.database.admin_dsn, row_factory=dict_row) as connection:
+        bindings = connection.execute(
+            """
+            SELECT lane_ref, crew_name
+            FROM runtime_dream_lane_bindings
+            WHERE tenant_id = %s AND principal_id = %s
+            ORDER BY bound_at, lane_ref
+            """,
+            (tenant.tenant_id, tenant.operator_id),
+        ).fetchall()
+        consumption = connection.execute(
+            """
+            SELECT lane_ref, crew_name
+            FROM runtime_dream_dispatch_consumptions
+            WHERE tenant_id = %s AND effect_id = %s
+            """,
+            (tenant.tenant_id, effects[0].effect_id),
+        ).fetchone()
+    assert [(row["lane_ref"], row["crew_name"]) for row in bindings] == [
+        ("dream-lane:writer-r2881-dream", "writer-r2881-wrong"),
+        ("dream-lane:writer-r2881-dream.v2", "writer-r2881-dream"),
+    ]
+    assert consumption is not None
+    assert (consumption["lane_ref"], consumption["crew_name"]) == (
+        "dream-lane:writer-r2881-dream.v2",
+        "writer-r2881-dream",
+    )
+
+
 def _bind_project_lanes(tenant: TenantFixture, principals: dict[str, UUID]) -> None:
     for project, principal_id in principals.items():
         _bind_lane(

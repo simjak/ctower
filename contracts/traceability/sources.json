@@ -2087,6 +2087,18 @@
       ]
     },
     {
+      "path": "packages/ctower-kernel/migrations/0058_recoverable_dream_lane_binding.sql",
+      "references": [
+        "SPEC#persistence-authority",
+        "SPEC#event-driven-default-and-routine-revisions",
+        "INV-28",
+        "INV-76",
+        "AC-DUR-07",
+        "AC-OPS-13",
+        "AC-OPS-14"
+      ]
+    },
+    {
       "path": "packs/routines/ctower.dream.bh-loop/v1.yaml",
       "references": [
         "SPEC#event-driven-default-and-routine-revisions",

@@ -1,8 +1,8 @@
 {
   "schema": "ctower.migrations/v3",
   "adoption_baseline": {
-    "through": "0057_dream_lane_binding_surface.sql",
-    "schema_sha256": "sha256:33ae5334fe1a752e7b27a8db3e3e447b6095899e85220af484b0f8b273b827e7",
+    "through": "0058_recoverable_dream_lane_binding.sql",
+    "schema_sha256": "sha256:ac7257bff6f2ce1e5cce4c45652044e09d9eb767f299ebdec33620c7d63998e2",
     "semantic_checks": "ctower.pre-ledger/v1",
     "schema_object_sum256": "sum256:eeb8ea04a878dffea66d44943846fd180c30f86dce66504f1d9890cf47e6643b"
   },
@@ -539,6 +539,15 @@
       "forward_test": "pytest:tests/acceptance/increment-1/test_dream_dispatch_effect.py::test_operator_binding_is_immutable_refuses_nonoperators_and_enables_consumption",
       "rollback_or_forward_compensation": "Preserve the accepted dream-lane-bound event kind and every immutable binding fact; append reviewed forward compensation for later event kinds and never edit an accepted migration or binding.",
       "backup_checkpoint": "Before applying to a nonempty installation, capture the events constraint definition and dream-lane binding and event counts grouped by tenant plus a verified database backup; the migration changes no stored row."
+    },
+    {
+      "path": "0058_recoverable_dream_lane_binding.sql",
+      "sha256": "sha256:771bcd102a076efa3ed1c061fad768677e2ead7b749f5551c34deca301160bff",
+      "minimum_service_version": "0.0.0",
+      "maximum_service_version": "0.0.0",
+      "forward_test": "pytest:tests/acceptance/increment-1/test_dream_dispatch_effect.py::test_operator_recovers_wrong_binding_with_a_new_versioned_lane",
+      "rollback_or_forward_compensation": "Preserve every immutable dream-lane binding and canonical binding event; recover with a new versioned lane reference or append reviewed forward compensation, never edit or delete an accepted binding.",
+      "backup_checkpoint": "Before applying to a nonempty installation, capture dream-lane binding and binding-event counts grouped by tenant and principal plus a verified database backup; verify the composite primary key and unchanged UPDATE/DELETE refusal trigger after the forward change."
     }
   ]
 }

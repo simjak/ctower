@@ -310,10 +310,28 @@ consumption or lane/model policy: a foreign Project or fleet request by a projec
 lane, crew, harness, model, family, effort, or tier flags; those facts come from the persisted substrate
 binding and are joined to the Routine occurrence and output digest.
 
-`dream-lane bind` is the online-only operator ceremony that creates exactly one immutable binding for the
-authenticated operator principal. The closed ceremony selection is `codex` with `gpt-5.6-sol` at `max`,
-`qwen3.8-max` as fallback, and the `hard` tier. A non-operator is refused as
-`dream-lane-binding-operator-required`; a second binding is refused as `dream-lane-already-bound`.
+`dream-lane bind` is the online-only operator ceremony that creates one immutable binding per lane reference
+for the authenticated operator principal. The closed ceremony selection is `codex` with `gpt-5.6-sol` at
+`max`, `qwen3.8-max` as fallback, and the `hard` tier. A non-operator is refused as
+`dream-lane-binding-operator-required`; rebinding the same lane is refused as
+`dream-lane-already-bound`.
+
+A persisted mistake is irreversible for that lane: its crew and route selection can never be updated or
+deleted. Recovery is to bind the corrected selection under a new versioned lane reference. The newest
+binding event becomes the authenticated substrate binding used by later `dream-dispatch consume` commands;
+the consume request still supplies no lane or model claims. For example, if
+`dream-lane:writer-r2881-dream` was bound incorrectly, the same-lane correction refuses and the exact
+recovery walk is:
+
+```console
+ctl --as operator dream-lane bind --lane dream-lane:writer-r2881-dream --crew writer-r2881-dream --harness codex --model gpt-5.6-sol --effort max --fallback qwen3.8-max --tier hard
+# refuses: dream-lane-already-bound
+ctl --as operator dream-lane bind --lane dream-lane:writer-r2881-dream.v2 --crew writer-r2881-dream --harness codex --model gpt-5.6-sol --effort max --fallback qwen3.8-max --tier hard
+ctl --as operator dream-dispatch consume <effect_id> --output-digest <sha256>
+```
+
+Replace `<effect_id>` and `<sha256>` with the effect identifier and lowercase SHA-256 output digest from
+the recovered run; do not reuse the mistaken lane reference for another binding attempt.
 
 Run the live ceremony only as the operator, using the exact command shape below:
 
