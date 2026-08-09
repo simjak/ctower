@@ -68,10 +68,12 @@ _EXPECTED_MIGRATION_PATHS = [
     "0054_gitlab_issue_integration.sql",
     "0055_connector_framework.sql",
     "0056_gitlab_trace_views.sql",
+    "0057_dream_lane_binding_surface.sql",
+    "0058_recoverable_dream_lane_binding.sql",
 ]
 _EXPECTED_ADOPTION_BASELINE = {
-    "through": "0056_gitlab_trace_views.sql",
-    "schema_sha256": ("sha256:aecd29b6392ae6792ee33c13fadc51f656ddd46f304c37695d26db3426a2c6f7"),
+    "through": "0058_recoverable_dream_lane_binding.sql",
+    "schema_sha256": ("sha256:ac7257bff6f2ce1e5cce4c45652044e09d9eb767f299ebdec33620c7d63998e2"),
     "semantic_checks": "ctower.pre-ledger/v1",
     "schema_object_sum256": (
         "sum256:eeb8ea04a878dffea66d44943846fd180c30f86dce66504f1d9890cf47e6643b"

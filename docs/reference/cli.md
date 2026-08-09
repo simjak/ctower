@@ -15,11 +15,15 @@ operation-ID escape hatch: an unrecognized command is a usage error, not a passt
 ## Invocation shape
 
 ```text
-ctl [--base-url <url>] <area> <action> [<positional>] [--flags]
+ctl [--base-url <url>] [--as operator] <area> <action> [<positional>] [--flags]
 ```
 
 `--base-url` scopes every invocation, including local spool commands, because the spool is scoped per
 origin. It may be omitted; see [Instance discovery](#instance-discovery).
+
+`--as operator` is required only for `dream-lane bind` and is refused on every other command. It declares
+the ceremony's required role; the server still authenticates and authorizes the stdin authority, so the
+flag cannot elevate a non-operator credential.
 
 ### `--base-url` rules
 
@@ -293,6 +297,7 @@ than those asserted, exits `69`. A timeout exits `75`.
 |---|---|---|
 | `dream-dispatch list` | — | — |
 | `dream-dispatch consume` | `<effect_id>` | required: `--output-digest <sha256>`; optional: `--command-id` |
+| `dream-lane bind` | — | required: `--lane`, `--crew`, `--harness`, `--model`, `--effort`, `--fallback`, `--tier`; optional: `--command-id` |
 
 `list` is an online-only query and is never spooled. A project-seat principal receives only the effect for
 its persisted Project grant; foreign Project effects and the fleet effect are absent. An operator receives
@@ -304,6 +309,35 @@ consumption or lane/model policy: a foreign Project or fleet request by a projec
 `project-scope-denied` with no consumption. Fleet consumption is operator-only. The command accepts no
 lane, crew, harness, model, family, effort, or tier flags; those facts come from the persisted substrate
 binding and are joined to the Routine occurrence and output digest.
+
+`dream-lane bind` is the online-only operator ceremony that creates one immutable binding per lane reference
+for the authenticated operator principal. The closed ceremony selection is `codex` with `gpt-5.6-sol` at
+`max`, `qwen3.8-max` as fallback, and the `hard` tier. A non-operator is refused as
+`dream-lane-binding-operator-required`; rebinding the same lane is refused as
+`dream-lane-already-bound`.
+
+A persisted mistake is irreversible for that lane: its crew and route selection can never be updated or
+deleted. Recovery is to bind the corrected selection under a new versioned lane reference. The newest
+binding event becomes the authenticated substrate binding used by later `dream-dispatch consume` commands;
+the consume request still supplies no lane or model claims. For example, if
+`dream-lane:writer-r2881-dream` was bound incorrectly, the same-lane correction refuses and the exact
+recovery walk is:
+
+```console
+ctl --as operator dream-lane bind --lane dream-lane:writer-r2881-dream --crew writer-r2881-dream --harness codex --model gpt-5.6-sol --effort max --fallback qwen3.8-max --tier hard
+# refuses: dream-lane-already-bound
+ctl --as operator dream-lane bind --lane dream-lane:writer-r2881-dream.v2 --crew writer-r2881-dream --harness codex --model gpt-5.6-sol --effort max --fallback qwen3.8-max --tier hard
+ctl --as operator dream-dispatch consume <effect_id> --output-digest <sha256>
+```
+
+Replace `<effect_id>` and `<sha256>` with the effect identifier and lowercase SHA-256 output digest from
+the recovered run; do not reuse the mistaken lane reference for another binding attempt.
+
+Run the live ceremony only as the operator, using the exact command shape below:
+
+```console
+ctl --as operator dream-lane bind --lane <ref> --crew writer-r2881-dream --harness codex --model gpt-5.6-sol --effort max --fallback qwen3.8-max --tier hard
+```
 
 ## Migration (ctower-project)
 

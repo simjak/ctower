@@ -1,6 +1,6 @@
 """DO NOT EDIT: generated file; regenerate from declared inputs.
 
-Authored contract digest: sha256:384c0197ccd1a704198d4038a20efa6f9c1852edfc1410468b292c3a06cc5c60
+Authored contract digest: sha256:f4e7c0ed45cdf2ab27eabf2d65a5160df1ed29836d5037c8dacd01ef7eedfe59
 """
 
 from __future__ import annotations
@@ -199,6 +199,19 @@ OPERATIONS = MappingProxyType(
             mutation=True,
             spool_policy=SpoolPolicy.FORBIDDEN,
             principal='operator',
+            refusal_only=False,
+        ),
+        "bindDreamLane": OperationSpec(
+            operation_id="bindDreamLane",
+            client_method="bind_dream_lane",
+            method="POST",
+            path="/v1/runtime/dream-lane-bindings",
+            request_model=_models.DreamLaneBindRequest,
+            response_model=_models.DreamLaneBindingReceipt,
+            cli_names=('dream-lane bind',),
+            mutation=True,
+            spool_policy=SpoolPolicy.FORBIDDEN,
+            principal=None,
             refusal_only=False,
         ),
         "bootstrapFirstTenant": OperationSpec(
@@ -924,6 +937,7 @@ CLI_OPERATIONS = MappingProxyType(
         "ticket label apply": OPERATIONS["applyTicketLabel"],
         "migration ctower-project plan": OPERATIONS["bindCtowerProjectAliasPlan"],
         "migration ctower-project export": OPERATIONS["bindCtowerProjectExportEquality"],
+        "dream-lane bind": OPERATIONS["bindDreamLane"],
         "bootstrap first-tenant": OPERATIONS["bootstrapFirstTenant"],
         "ticket assign": OPERATIONS["changeTicketAssignment"],
         "ticket prioritize": OPERATIONS["changeTicketPriority"],

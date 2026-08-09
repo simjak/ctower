@@ -36,7 +36,9 @@ The development composition also exposes the four nightly dream-dispatch effects
 the authenticated principal's persisted Project scope; only an operator receives the operator-only fleet
 effect. Consumption accepts only an output digest, refuses foreign-Project and non-operator fleet effects
 before mutation, and records substrate-bound lane/model facts plus the Routine occurrence link through the
-Runtime Interface.
+Runtime Interface. The same boundary exposes the online-only operator `dream-lane bind` ceremony: it
+derives the principal from authentication and atomically appends one event plus one immutable lane binding;
+non-operators and second bindings receive typed refusals.
 The artifact contains a closed first-party connector registry whose only admitted implementation is the real
 GitLab v4 HTTP Adapter for the narrow GitLab Issue co-source. A strict Catalog v2 payload becomes an
 immutable runtime binding plus an unresolved secret-reference name; deployment supplies the resolved token

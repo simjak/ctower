@@ -5,16 +5,25 @@ from __future__ import annotations
 from datetime import UTC, datetime, timedelta
 from itertools import permutations
 from pathlib import Path
+from typing import cast
 from uuid import UUID, uuid4
 
 import psycopg
+import pytest
 from fastapi.testclient import TestClient
 from psycopg.rows import dict_row
 from support.tenant_fixture import TenantFixture
 
 from ctower_api.control_worker import load_routine_revisions
 from ctower_api.interface import create_app
-from ctower_client import CtowerClient, DreamDispatchConsumeRequest, DreamDispatchEffectList
+from ctower_client import (
+    CtowerClient,
+    CtowerProblemError,
+    DreamDispatchConsumeRequest,
+    DreamDispatchEffectList,
+    DreamLaneBindRequest,
+    Problem,
+)
 from ctower_kernel.record import Actor, PrincipalKind, RecordProblem
 from ctower_kernel.record.postgres import PostgresRecord
 from ctower_kernel.runtime import (
@@ -70,6 +79,135 @@ def test_dream_dispatch_list_and_consumption_are_bound_to_persisted_project_scop
     )
     _assert_replay_and_terminal_refusals(
         store, tenant, project_effects, project_commands, principals
+    )
+
+
+def test_operator_binding_is_immutable_refuses_nonoperators_and_enables_consumption(
+    tenant: TenantFixture,
+) -> None:
+    store, effects = _emit_nightly_effects(tenant)
+    record = PostgresRecord(tenant.database.runtime_dsn)
+    command_id = uuid4()
+    request = DreamLaneBindRequest(
+        lane_ref="dream-lane:writer-r2881-dream",
+        crew_name="writer-r2881-dream",
+        harness_ref="codex",
+        model_ref="gpt-5.6-sol",
+        reasoning_effort="max",
+        fallback_model_ref="qwen3.8-max",
+        model_tier="hard",
+    )
+    with TestClient(create_app(record, dream_dispatch_runtime=store)) as transport:
+        operator = _client(transport, tenant.operator_credential)
+        receipt = operator.bind_dream_lane(request, command_id=command_id)
+        replay = operator.bind_dream_lane(request, command_id=command_id)
+        assert replay == receipt
+        with pytest.raises(CtowerProblemError) as duplicate:
+            operator.bind_dream_lane(request, command_id=uuid4())
+        duplicate_problem = cast(Problem, duplicate.value.problem)
+        assert (duplicate_problem.status, duplicate_problem.code) == (
+            409,
+            "dream-lane-already-bound",
+        )
+        commander = _client(transport, tenant.commander_credential)
+        with pytest.raises(CtowerProblemError) as refusal:
+            commander.bind_dream_lane(request, command_id=uuid4())
+        refusal_problem = cast(Problem, refusal.value.problem)
+        assert (refusal_problem.status, refusal_problem.code) == (
+            403,
+            "dream-lane-binding-operator-required",
+        )
+        for effect in effects:
+            consumed = operator.consume_dream_dispatch_effect(
+                effect.effect_id,
+                DreamDispatchConsumeRequest(output_digest=_OUTPUT_DIGEST),
+                command_id=uuid4(),
+            )
+            assert consumed.effect_id == effect.effect_id
+
+    assert receipt.principal_id == tenant.operator_id
+    assert receipt.lane_ref == "dream-lane:writer-r2881-dream"
+    _assert_dream_lane_binding(tenant, command_id)
+    immutability_states = _assert_dream_lane_binding_is_immutable(tenant)
+    recorded = _assert_output_custody(
+        tenant,
+        lane_ref="dream-lane:writer-r2881-dream",
+        crew_name="writer-r2881-dream",
+        harness_ref="codex",
+    )
+    print(
+        "TEST-POSTGRES binding_rows=1 binding_events=1 "
+        "operator_bind=accepted replay=same distinct_bind=dream-lane-already-bound "
+        "non_operator=dream-lane-binding-operator-required "
+        f"update_sqlstate={immutability_states[0]} delete_sqlstate={immutability_states[1]} "
+        f"generated_consume_requests={len(effects)} recorded_consumptions={recorded}"
+    )
+
+
+def test_operator_recovers_wrong_binding_with_a_new_versioned_lane(
+    tenant: TenantFixture,
+) -> None:
+    store, effects = _emit_nightly_effects(tenant)
+    record = PostgresRecord(tenant.database.runtime_dsn)
+    wrong = DreamLaneBindRequest(
+        lane_ref="dream-lane:writer-r2881-dream",
+        crew_name="writer-r2881-wrong",
+        harness_ref="codex",
+        model_ref="gpt-5.6-sol",
+        reasoning_effort="max",
+        fallback_model_ref="qwen3.8-max",
+        model_tier="hard",
+    )
+    corrected_same_lane = wrong.model_copy(update={"crew_name": "writer-r2881-dream"})
+    recovered = corrected_same_lane.model_copy(
+        update={"lane_ref": "dream-lane:writer-r2881-dream.v2"}
+    )
+
+    with TestClient(create_app(record, dream_dispatch_runtime=store)) as transport:
+        operator = _client(transport, tenant.operator_credential)
+        operator.bind_dream_lane(wrong, command_id=uuid4())
+        with pytest.raises(CtowerProblemError) as duplicate:
+            operator.bind_dream_lane(corrected_same_lane, command_id=uuid4())
+        duplicate_problem = cast(Problem, duplicate.value.problem)
+        assert (duplicate_problem.status, duplicate_problem.code) == (
+            409,
+            "dream-lane-already-bound",
+        )
+        recovery = operator.bind_dream_lane(recovered, command_id=uuid4())
+        consumed = operator.consume_dream_dispatch_effect(
+            effects[0].effect_id,
+            DreamDispatchConsumeRequest(output_digest=_OUTPUT_DIGEST),
+            command_id=uuid4(),
+        )
+
+    assert recovery.lane_ref == "dream-lane:writer-r2881-dream.v2"
+    assert consumed.effect_id == effects[0].effect_id
+    with psycopg.connect(tenant.database.admin_dsn, row_factory=dict_row) as connection:
+        bindings = connection.execute(
+            """
+            SELECT lane_ref, crew_name
+            FROM runtime_dream_lane_bindings
+            WHERE tenant_id = %s AND principal_id = %s
+            ORDER BY bound_at, lane_ref
+            """,
+            (tenant.tenant_id, tenant.operator_id),
+        ).fetchall()
+        consumption = connection.execute(
+            """
+            SELECT lane_ref, crew_name
+            FROM runtime_dream_dispatch_consumptions
+            WHERE tenant_id = %s AND effect_id = %s
+            """,
+            (tenant.tenant_id, effects[0].effect_id),
+        ).fetchone()
+    assert [(row["lane_ref"], row["crew_name"]) for row in bindings] == [
+        ("dream-lane:writer-r2881-dream", "writer-r2881-wrong"),
+        ("dream-lane:writer-r2881-dream.v2", "writer-r2881-dream"),
+    ]
+    assert consumption is not None
+    assert (consumption["lane_ref"], consumption["crew_name"]) == (
+        "dream-lane:writer-r2881-dream.v2",
+        "writer-r2881-dream",
     )
 
 
@@ -272,7 +410,85 @@ def _consume_effects(tenant: TenantFixture, store: PostgresRuntime) -> DreamDisp
     return consumed
 
 
-def _assert_output_custody(tenant: TenantFixture) -> None:
+def _client(transport: TestClient, credential: str) -> CtowerClient:
+    client = CtowerClient(str(transport.base_url), credential=credential)
+    client._http.close()
+    client._http = transport
+    return client
+
+
+def _assert_dream_lane_binding(tenant: TenantFixture, command_id: UUID) -> None:
+    with psycopg.connect(tenant.database.admin_dsn, row_factory=dict_row) as connection:
+        row = connection.execute(
+            """
+            SELECT binding.*, event.kind, event.payload, event.client_command_id,
+                   event.correlation_id, outbox.topic,
+                   count(*) OVER () AS binding_count
+            FROM runtime_dream_lane_bindings AS binding
+            JOIN events AS event
+              ON event.tenant_id = binding.tenant_id
+             AND event.aggregate_id = binding.principal_id
+             AND event.kind = 'runtime.dream_lane_bound'
+            JOIN outbox
+              ON outbox.tenant_id = event.tenant_id
+             AND outbox.event_id = event.event_id
+            WHERE binding.tenant_id = %s
+            """,
+            (tenant.tenant_id,),
+        ).fetchone()
+    assert row is not None
+    assert row["binding_count"] == 1
+    assert row["principal_id"] == tenant.operator_id
+    assert row["crew_name"] == "writer-r2881-dream"
+    assert row["harness_ref"] == "codex"
+    assert row["model_ref"] == "gpt-5.6-sol"
+    assert row["model_family"] == "codex"
+    assert row["reasoning_effort"] == "max"
+    assert row["model_tier"] == "hard"
+    assert row["binding_source"] == "operator-ceremony"
+    assert row["client_command_id"] == command_id
+    assert row["correlation_id"] == command_id
+    assert row["topic"] == "runtime.dream-lane-bindings"
+    assert row["payload"] == {
+        "binding_source": "operator-ceremony",
+        "crew_name": "writer-r2881-dream",
+        "fallback_model_ref": "qwen3.8-max",
+        "harness_ref": "codex",
+        "lane_ref": "dream-lane:writer-r2881-dream",
+        "model_family": "codex",
+        "model_ref": "gpt-5.6-sol",
+        "model_tier": "hard",
+        "principal_id": str(tenant.operator_id),
+        "probe_evidence": row["probe_evidence"],
+        "reasoning_effort": "max",
+    }
+
+
+def _assert_dream_lane_binding_is_immutable(tenant: TenantFixture) -> tuple[str, str]:
+    statements = (
+        "UPDATE runtime_dream_lane_bindings SET lane_ref = 'dream-lane:changed'",
+        "DELETE FROM runtime_dream_lane_bindings",
+    )
+    sqlstates: list[str] = []
+    for statement in statements:
+        with (
+            psycopg.connect(tenant.database.admin_dsn) as connection,
+            pytest.raises(psycopg.errors.ObjectNotInPrerequisiteState) as refusal,
+        ):
+            connection.execute(statement)
+        assert refusal.value.sqlstate is not None
+        sqlstates.append(refusal.value.sqlstate)
+    assert len(sqlstates) == len(statements)
+    return sqlstates[0], sqlstates[1]
+
+
+def _assert_output_custody(
+    tenant: TenantFixture,
+    *,
+    lane_ref: str = "dream-lane:primary",
+    crew_name: str = "dream-r368",
+    harness_ref: str = "hermes",
+) -> int:
     with psycopg.connect(tenant.database.admin_dsn, row_factory=dict_row) as connection:
         linked = connection.execute(
             """
@@ -284,13 +500,32 @@ def _assert_output_custody(tenant: TenantFixture) -> None:
             JOIN routine_occurrences AS occurrence
               ON occurrence.occurrence_id = effect.occurrence_id
              AND occurrence.tenant_id = effect.tenant_id
+            JOIN events AS event
+              ON event.event_id = consumption.event_id
+             AND event.tenant_id = consumption.tenant_id
             WHERE effect.tenant_id = %s
               AND consumption.output_digest = %s
-              AND consumption.lane_ref = 'dream-lane:primary'
+              AND consumption.executor_principal_id = %s
+              AND consumption.lane_ref = %s
+              AND consumption.crew_name = %s
+              AND consumption.harness_ref = %s
+              AND consumption.model_ref = 'gpt-5.6-sol'
+              AND consumption.model_family = 'codex'
+              AND consumption.reasoning_effort = 'max'
+              AND consumption.model_tier = 'hard'
+              AND event.kind = 'runtime.dream_dispatch_consumed'
             """,
-            (tenant.tenant_id, bytes.fromhex("d" * 64)),
+            (
+                tenant.tenant_id,
+                bytes.fromhex("d" * 64),
+                tenant.operator_id,
+                lane_ref,
+                crew_name,
+                harness_ref,
+            ),
         ).fetchone()
     assert linked is not None and linked["value"] == _DREAM_EFFECT_COUNT
+    return int(linked["value"])
 
 
 def _assert_named_refusals(

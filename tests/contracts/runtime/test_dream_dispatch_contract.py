@@ -86,5 +86,31 @@ def test_dream_effect_and_http_contracts_are_strict_and_named() -> None:
     assert expected <= set(cast(list[str], code["enum"]))
 
 
+def test_operator_dream_lane_binding_surface_is_authored() -> None:
+    document = _json("contracts/http/openapi.yaml")
+    paths = cast(dict[str, object], document["paths"])
+    operation = cast(
+        dict[str, object],
+        cast(dict[str, object], paths["/v1/runtime/dream-lane-bindings"])["post"],
+    )
+
+    assert operation["operationId"] == "bindDreamLane"
+    assert operation["x-ctower-cli"] == "dream-lane bind"
+    assert operation["security"] == [{"bearerAuth": []}]
+    assert operation["x-ctower-mutation"] is True
+
+
+def test_dream_lane_binding_refusals_are_named() -> None:
+    document = _json("contracts/http/openapi.yaml")
+    schemas = cast(dict[str, object], cast(dict[str, object], document["components"])["schemas"])
+    problem = cast(dict[str, object], schemas["Problem"])
+    code = cast(dict[str, object], cast(dict[str, object], problem["properties"])["code"])
+
+    assert {
+        "dream-lane-already-bound",
+        "dream-lane-binding-operator-required",
+    } <= set(cast(list[str], code["enum"]))
+
+
 def _json(relative: str) -> dict[str, object]:
     return cast(dict[str, object], json.loads((ROOT / relative).read_text(encoding="utf-8")))

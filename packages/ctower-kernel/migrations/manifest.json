@@ -1,8 +1,8 @@
 {
   "schema": "ctower.migrations/v3",
   "adoption_baseline": {
-    "through": "0056_gitlab_trace_views.sql",
-    "schema_sha256": "sha256:aecd29b6392ae6792ee33c13fadc51f656ddd46f304c37695d26db3426a2c6f7",
+    "through": "0058_recoverable_dream_lane_binding.sql",
+    "schema_sha256": "sha256:ac7257bff6f2ce1e5cce4c45652044e09d9eb767f299ebdec33620c7d63998e2",
     "semantic_checks": "ctower.pre-ledger/v1",
     "schema_object_sum256": "sum256:eeb8ea04a878dffea66d44943846fd180c30f86dce66504f1d9890cf47e6643b"
   },
@@ -530,6 +530,24 @@
       "forward_test": "pytest:tests/acceptance/increment-1/test_gitlab_integration.py::test_gitlab_issue_roundtrip_preserves_one_custody_chain_and_proof_gated_close",
       "rollback_or_forward_compensation": "The views expose no write authority and derive only from provider-neutral connector facts; drop or replace them with reviewed forward compensation while preserving every underlying custody, observation, progress, and delivery fact.",
       "backup_checkpoint": "No data migration occurs; verify the provider-neutral table counts and run the protected #377 GitLab acceptance trace before and after creating the views."
+    },
+    {
+      "path": "0057_dream_lane_binding_surface.sql",
+      "sha256": "sha256:a813df016b811f69886cd540c95c39bb705809dd1e0bf3a06a409e23a3edbd5a",
+      "minimum_service_version": "0.0.0",
+      "maximum_service_version": "0.0.0",
+      "forward_test": "pytest:tests/acceptance/increment-1/test_dream_dispatch_effect.py::test_operator_binding_is_immutable_refuses_nonoperators_and_enables_consumption",
+      "rollback_or_forward_compensation": "Preserve the accepted dream-lane-bound event kind and every immutable binding fact; append reviewed forward compensation for later event kinds and never edit an accepted migration or binding.",
+      "backup_checkpoint": "Before applying to a nonempty installation, capture the events constraint definition and dream-lane binding and event counts grouped by tenant plus a verified database backup; the migration changes no stored row."
+    },
+    {
+      "path": "0058_recoverable_dream_lane_binding.sql",
+      "sha256": "sha256:771bcd102a076efa3ed1c061fad768677e2ead7b749f5551c34deca301160bff",
+      "minimum_service_version": "0.0.0",
+      "maximum_service_version": "0.0.0",
+      "forward_test": "pytest:tests/acceptance/increment-1/test_dream_dispatch_effect.py::test_operator_recovers_wrong_binding_with_a_new_versioned_lane",
+      "rollback_or_forward_compensation": "Preserve every immutable dream-lane binding and canonical binding event; recover with a new versioned lane reference or append reviewed forward compensation, never edit or delete an accepted binding.",
+      "backup_checkpoint": "Before applying to a nonempty installation, capture dream-lane binding and binding-event counts grouped by tenant and principal plus a verified database backup; verify the composite primary key and unchanged UPDATE/DELETE refusal trigger after the forward change."
     }
   ]
 }

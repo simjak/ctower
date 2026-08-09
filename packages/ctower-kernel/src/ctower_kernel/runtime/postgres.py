@@ -20,6 +20,9 @@ from ctower_kernel.runtime import (
     SyntheticRunReceipt,
 )
 from ctower_kernel.runtime._dream_dispatch_sql import (
+    bind_dream_lane as _bind_dream_lane,
+)
+from ctower_kernel.runtime._dream_dispatch_sql import (
     consume_dream_dispatch as _consume_dream_dispatch,
 )
 from ctower_kernel.runtime._dream_dispatch_sql import (
@@ -32,6 +35,7 @@ from ctower_kernel.runtime._synthetic_sql import claim_synthetic as _claim_synth
 from ctower_kernel.runtime._synthetic_sql import complete_synthetic as _complete_synthetic
 from ctower_kernel.runtime._synthetic_sql import start_synthetic as _start_synthetic
 from ctower_kernel.runtime._synthetic_sql import synthetic_run as _synthetic_run
+from ctower_kernel.runtime.dream_lane import DreamLaneBindCommand, DreamLaneBindingReceipt
 
 __all__ = ["PostgresRuntime"]
 
@@ -64,6 +68,11 @@ class PostgresRuntime:
         self, actor: Actor, command: DreamDispatchConsumeCommand
     ) -> DreamDispatchReceipt | RecordProblem:
         return _consume_dream_dispatch(self._dsn, actor, command)
+
+    def bind_dream_lane(
+        self, actor: Actor, command: DreamLaneBindCommand
+    ) -> DreamLaneBindingReceipt | RecordProblem:
+        return _bind_dream_lane(self._dsn, actor, command)
 
     def start_synthetic(
         self,

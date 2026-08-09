@@ -30,7 +30,11 @@ from ctower_kernel.record.credentials import (
     SeatCredentialIssuedPayload,
     SeatCredentialRevokedPayload,
 )
-from ctower_kernel.record.dream_dispatch_events import DreamDispatchConsumedPayload
+from ctower_kernel.record.dream_dispatch_events import (
+    DreamDispatchConsumedPayload,
+    DreamLaneBoundPayload,
+    validate_dream_runtime_identity,
+)
 from ctower_kernel.record.inbox_events import (
     INBOX_EVENT_TYPES,
     InboxEventPayload,
@@ -113,6 +117,7 @@ class EventKind(StrEnum):
     WORK_CHANGED = "work.changed"
     ROUTINE_OCCURRENCE_RECORDED = "routine.occurrence_recorded"
     DREAM_DISPATCH_CONSUMED = "runtime.dream_dispatch_consumed"
+    DREAM_LANE_BOUND = "runtime.dream_lane_bound"
     POISON_DISPOSITION_RECORDED = "attention.poison_disposition_recorded"
     MIGRATION_CHANGED = "migration.changed"
     INBOUND_EVENT_RECORDED = "intake.inbound_event_recorded"
@@ -290,6 +295,7 @@ type EventPayload = (
     | WorkChangedPayload
     | RoutineOccurrenceRecordedPayload
     | DreamDispatchConsumedPayload
+    | DreamLaneBoundPayload
     | PoisonDispositionRecordedPayload
     | MigrationChangedPayload
     | IntakeEventPayload
@@ -450,6 +456,7 @@ _EVENT_CATALOG: dict[EventKind, EventCatalogEntry] = {
             DreamDispatchConsumedPayload,
             "dream-dispatch",
         ),
+        EventCatalogEntry(EventKind.DREAM_LANE_BOUND, DreamLaneBoundPayload, "dream-lane"),
         EventCatalogEntry(
             EventKind.POISON_DISPOSITION_RECORDED,
             PoisonDispositionRecordedPayload,
@@ -590,7 +597,7 @@ def _validate_event_identity(event: EventEnvelope) -> None:
     _validate_ticket_identity(event)
     _validate_catalog_identity(event)
     _validate_occurrence_identity(event)
-    _validate_dream_dispatch_identity(event)
+    validate_dream_runtime_identity(event.aggregate_id, event.payload)
     _validate_poison_identity(event)
     _validate_intake_identity(event.payload, event.stream_id, event.aggregate_id)
     _validate_inbox_identity(event.payload, event.aggregate_id)
@@ -626,13 +633,6 @@ def _validate_occurrence_identity(event: EventEnvelope) -> None:
         event.aggregate_id != event.payload.occurrence_id
     ):
         raise ValueError("Routine aggregate and occurrence identity must match")
-
-
-def _validate_dream_dispatch_identity(event: EventEnvelope) -> None:
-    if isinstance(event.payload, DreamDispatchConsumedPayload) and (
-        event.aggregate_id != event.payload.effect_id
-    ):
-        raise ValueError("dream dispatch aggregate and effect identity must match")
 
 
 def _validate_poison_identity(event: EventEnvelope) -> None:

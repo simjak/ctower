@@ -46,6 +46,7 @@ from ctowerctl._dream_dispatch_commands import (
     mutation_command_names as dream_dispatch_mutations,
 )
 from ctowerctl._dream_dispatch_commands import query_command_names as dream_dispatch_queries
+from ctowerctl._dream_lane_commands import mutation_command_names as dream_lane_mutations
 from ctowerctl._inbox_commands import build_mutation as build_inbox_mutation
 from ctowerctl._inbox_commands import mutation_command_names as inbox_mutations
 from ctowerctl._inbox_commands import query_command_names as inbox_queries
@@ -120,6 +121,7 @@ def test_explicit_handlers_cover_every_generated_operation_class() -> None:
         | session_mutations()
         | attention_mutations()
         | dream_dispatch_mutations()
+        | dream_lane_mutations()
     )
     queries = (
         ticket_queries()
@@ -155,6 +157,7 @@ def test_explicit_handlers_cover_every_generated_operation_class() -> None:
         "bootstrap first-tenant",
         "credential seat issue",
         "credential seat revoke",
+        "dream-lane bind",
         "migration ctower-project inventory",
         "migration ctower-project export",
         "migration ctower-project plan",

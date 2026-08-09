@@ -29,6 +29,7 @@ AUTHORED_COMMAND_NAMES = frozenset(
         "knowledge get",
         "dream-dispatch list",
         "dream-dispatch consume",
+        "dream-lane bind",
         "ticket capture",
         "ticket create",
         "ticket query",

@@ -1,5 +1,5 @@
 // DO NOT EDIT: generated file; regenerate from declared inputs.
-// Authored contract digest: sha256:384c0197ccd1a704198d4038a20efa6f9c1852edfc1410468b292c3a06cc5c60
+// Authored contract digest: sha256:f4e7c0ed45cdf2ab27eabf2d65a5160df1ed29836d5037c8dacd01ef7eedfe59
 
 import type * as Models from "./models.js";
 import { OPERATIONS, type OperationId } from "./operations.js";
@@ -76,6 +76,11 @@ export type BindCtowerProjectAliasPlanInput = Readonly<{
 export type BindCtowerProjectExportEqualityInput = Readonly<{
   readonly "IdempotencyKey": string;
   readonly body: Models.CtowerProjectExportEqualityBindRequest;
+}>;
+
+export type BindDreamLaneInput = Readonly<{
+  readonly "IdempotencyKey": string;
+  readonly body: Models.DreamLaneBindRequest;
 }>;
 
 export type BootstrapFirstTenantInput = Readonly<{
@@ -381,6 +386,7 @@ export type OperationInputs = Readonly<{
   readonly "applyTicketLabel": ApplyTicketLabelInput;
   readonly "bindCtowerProjectAliasPlan": BindCtowerProjectAliasPlanInput;
   readonly "bindCtowerProjectExportEquality": BindCtowerProjectExportEqualityInput;
+  readonly "bindDreamLane": BindDreamLaneInput;
   readonly "bootstrapFirstTenant": BootstrapFirstTenantInput;
   readonly "changeTicketAssignment": ChangeTicketAssignmentInput;
   readonly "changeTicketPriority": ChangeTicketPriorityInput;
@@ -450,6 +456,7 @@ export type OperationResults = Readonly<{
   readonly "applyTicketLabel": Models.ApplyLabelResult;
   readonly "bindCtowerProjectAliasPlan": Models.CtowerProjectImportRun;
   readonly "bindCtowerProjectExportEquality": Models.CtowerProjectImportRun;
+  readonly "bindDreamLane": Models.DreamLaneBindingReceipt;
   readonly "bootstrapFirstTenant": Models.BootstrapReceipt;
   readonly "changeTicketAssignment": Models.WorkReceipt;
   readonly "changeTicketPriority": Models.WorkReceipt;
@@ -595,6 +602,12 @@ export class CtowerClient {
     input: BindCtowerProjectExportEqualityInput,
   ): Promise<Models.CtowerProjectImportRun> {
     return this.execute("bindCtowerProjectExportEquality", input);
+  }
+
+  public async bindDreamLane(
+    input: BindDreamLaneInput,
+  ): Promise<Models.DreamLaneBindingReceipt> {
+    return this.execute("bindDreamLane", input);
   }
 
   public async bootstrapFirstTenant(

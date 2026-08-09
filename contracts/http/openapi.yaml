@@ -1416,6 +1416,25 @@
         }
       }
     },
+    "/v1/runtime/dream-lane-bindings": {
+      "post": {
+        "operationId": "bindDreamLane",
+        "x-ctower-cli": "dream-lane bind",
+        "x-ctower-mutation": true,
+        "x-ctower-spool": "forbidden",
+        "security": [{"bearerAuth": []}],
+        "parameters": [{"$ref": "#/components/parameters/IdempotencyKey"}],
+        "requestBody": {"required": true, "content": {"application/json": {"schema": {"$ref": "#/components/schemas/DreamLaneBindRequest"}}}},
+        "responses": {
+          "202": {"description": "Immutable operator dream-lane binding committed; off-host durability acknowledgement pending", "headers": {"Retry-After": {"$ref": "#/components/headers/RetryAfter"}}, "content": {"application/json": {"schema": {"$ref": "#/components/schemas/DreamLaneBindingReceipt"}}}},
+          "200": {"description": "Immutable operator dream-lane binding accepted off host", "content": {"application/json": {"schema": {"$ref": "#/components/schemas/DreamLaneBindingReceipt"}}}},
+          "401": {"$ref": "#/components/responses/ProblemResponse"},
+          "403": {"$ref": "#/components/responses/ProblemResponse"},
+          "409": {"$ref": "#/components/responses/ProblemResponse"},
+          "422": {"$ref": "#/components/responses/ProblemResponse"}
+        }
+      }
+    },
     "/v1/migrations/ctower-project/inventory": {
       "post": {
         "operationId": "createCtowerProjectImportRun",
@@ -3278,6 +3297,8 @@
               "dream-dispatch-model-requirement-mismatch",
               "dream-dispatch-tier-refused",
               "dream-dispatch-unavailable",
+              "dream-lane-already-bound",
+              "dream-lane-binding-operator-required",
               "durability_pending",
               "i1-7c-required",
               "idempotency-conflict",
@@ -4271,6 +4292,39 @@
           "durability_state": {"$ref": "#/components/schemas/DurabilityState"},
           "event_id": {"type": "string", "format": "uuid"},
           "output_digest": {"type": "string", "pattern": "^sha256:[0-9a-f]{64}$"}
+        }
+      },
+      "DreamLaneBindRequest": {
+        "type": "object", "additionalProperties": false,
+        "required": ["lane_ref", "crew_name", "harness_ref", "model_ref", "reasoning_effort", "fallback_model_ref", "model_tier"],
+        "properties": {
+          "lane_ref": {"type": "string", "minLength": 1, "maxLength": 128},
+          "crew_name": {"type": "string", "pattern": "^[a-z][a-z0-9._-]{1,95}$"},
+          "harness_ref": {"const": "codex"},
+          "model_ref": {"const": "gpt-5.6-sol"},
+          "reasoning_effort": {"const": "max"},
+          "fallback_model_ref": {"const": "qwen3.8-max"},
+          "model_tier": {"const": "hard"}
+        }
+      },
+      "DreamLaneBindingReceipt": {
+        "type": "object", "additionalProperties": false,
+        "required": ["binding_source", "bound_at", "command_id", "crew_name", "durability_state", "event_id", "harness_ref", "lane_ref", "model_family", "model_ref", "model_tier", "principal_id", "probe_evidence", "reasoning_effort"],
+        "properties": {
+          "binding_source": {"const": "operator-ceremony"},
+          "bound_at": {"type": "string", "format": "date-time"},
+          "command_id": {"type": "string", "format": "uuid"},
+          "crew_name": {"type": "string", "pattern": "^[a-z][a-z0-9._-]{1,95}$"},
+          "durability_state": {"$ref": "#/components/schemas/DurabilityState"},
+          "event_id": {"type": "string", "format": "uuid"},
+          "harness_ref": {"const": "codex"},
+          "lane_ref": {"type": "string", "minLength": 1, "maxLength": 128},
+          "model_family": {"const": "codex"},
+          "model_ref": {"const": "gpt-5.6-sol"},
+          "model_tier": {"const": "hard"},
+          "principal_id": {"type": "string", "format": "uuid"},
+          "probe_evidence": {"type": "string", "pattern": "^sha256:[0-9a-f]{64}$"},
+          "reasoning_effort": {"const": "max"}
         }
       },
       "BoardLane": {
