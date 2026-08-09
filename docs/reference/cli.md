@@ -1,6 +1,6 @@
 # CLI reference
 
-`ctowerctl` — also installed as `ctl` — is the complete command surface. There are **72 authored server
+`ctowerctl` — also installed as `ctl` — is the complete command surface. There are **74 authored server
 commands**, **7 local spool commands**, and one local installed-Workflow discovery command. There is no
 operation-ID escape hatch: an unrecognized command is a usage error, not a passthrough.
 
@@ -85,17 +85,27 @@ One-time first-tenant ceremony. Not spooled.
 
 All `*-ref` values are references. Never pass a credential value.
 
+## Project-seat credentials
+
+| Command | Positional | Flags |
+|---|---|---|
+| `credential seat issue` | — | required: `--credential-digest`, `--credential-ref`, `--display-name`, `--project-key`, one or more `--scope {capture,transition,evidence}`, `--seat-key`; optional: `--command-id` |
+| `credential seat revoke` | `<credential_id>` | required: `--reason`; optional: `--command-id` |
+
+Both commands are online-only and operator-authorized. They are never spooled. Credential values are not
+accepted; the issue command takes a reference and a lowercase SHA-256 digest.
+
 ## Ticket: capture and reads
 
 | Command | Positional | Flags |
 |---|---|---|
-| `ticket capture` | — | required: `--priority {P0,P1,P2}`, `--source-kind`, `--source-ref`, `--title`; optional: `--command-id`, `--initial-custodian-id` |
+| `ticket capture` | — | required: `--priority {P0,P1,P2}`, `--project-key`, `--source-kind`, `--source-ref`, `--title`; optional: `--command-id`, `--initial-custodian-id` |
 | `ticket create` | — | identical to `ticket capture` |
-| `ticket query` | `<ticket_id>` | — |
+| `ticket query` | `<ticket_id>` | required: `--project-key` |
 | `ticket show` | `<ticket_id>` | identical to `ticket query` |
-| `ticket timeline` | `<ticket_id>` | — |
-| `ticket assignments` | `<ticket_id>` | — |
-| `ticket audit` | `<ticket_id>` | `--cursor` (≥ 0), `--limit` (≥ 1, server max 100) |
+| `ticket timeline` | `<ticket_id>` | required: `--project-key` |
+| `ticket assignments` | `<ticket_id>` | required: `--project-key` |
+| `ticket audit` | `<ticket_id>` | required: `--project-key`; optional: `--cursor` (≥ 0), `--limit` (≥ 1, server max 100) |
 
 `capture`/`create` and `query`/`show` are aliases of the same operations, `createTicket` and `getTicket`.
 When `--command-id` is omitted, the CLI generates it before encrypted spool enqueue and prints it. Use
@@ -113,7 +123,20 @@ must explicitly name an eligible Commander. Explicit values are authorization re
 | `ticket custody transfer` | `<ticket_id>` | `--command-id`, `--expected-version`, `--reason`, `--from-custodian-id`, `--to-custodian-id`, `--protected-transfer` (required flag) |
 
 `--protected-transfer` is mandatory and has no negative form. Custody transfer is a protected operation,
-distinct from assignment. See [custody](../concepts/tickets.md#custody).
+distinct from assignment. See [tickets](../concepts/tickets.md#the-parts-you-will-see).
+
+## Ticket: context and review dispatch
+
+| Command | Positional | Flags |
+|---|---|---|
+| `ticket change-reference add` | `<ticket_id>` | required: `--repository`, `--change-identity`, `--reference`; optional: `--command-id` |
+| `ticket label apply` | `<ticket_id>` | required: `--label-key`; optional: `--command-id` |
+| `ticket review-dispatch list` | `<ticket_id>` | — |
+| `ticket review-dispatch consume` | `<ticket_id> <effect_id>` | required: `--expected-version`, `--reason`, `--crew-name`; optional: `--command-id` |
+
+Change references and labels add declared context. A review-dispatch effect is a recorded request for an
+independent review. Consuming it records the authenticated reviewer assignment; it does not launch a
+reviewer process.
 
 ## Ticket: work and intents
 
@@ -245,11 +268,35 @@ Send-specific refusals are `inbox-sender-unaddressable`, `inbox-recipient-not-fo
 identifiers are `invalid-request`; an unavailable or out-of-scope thread is `tenant-scope-denied`. Refusals
 change no Inbox state.
 
+## Knowledge
+
+| Command | Positional | Flags |
+|---|---|---|
+| `knowledge add` | — | required: `--scope {org,project}`, exactly one of `--body-file` or `--source-ref`; optional: `--project-key`, `--title`, `--command-id` |
+| `knowledge list` | — | required: `--scope {org,project}`; optional: `--project-key` |
+| `knowledge get` | `<document_id>` | required: `--scope {org,project}`; optional: `--project-key` |
+
+Project scope requires `--project-key`; organization scope forbids it. `add` is a protected spoolable
+mutation. The two reads are online-only.
+
+## Recorded work sessions
+
+| Command | Positional | Flags |
+|---|---|---|
+| `session start` | `<ticket_id>` | required: `--branch-ref`, `--crew-name`, `--harness-ref`, `--model-ref`, `--seat-key`, `--worktree-ref`; optional: `--command-id` |
+| `session transition` | `<ticket_id> <session_id>` | required: `--reason`, `--to-state {dispatched,briefed,working,gated}`; optional: `--command-id` |
+| `session close` | `<ticket_id> <session_id>` | required: `--outcome {delivered,blocked,abandoned,failed}`, `--input-tokens`, `--output-tokens`; optional: `--evidence-ref`, `--command-id` |
+| `session ticket` | `<ticket_id>` | required: `--project-key` |
+| `session project` | `<project_key>` | optional: `--cursor`, `--limit` |
+
+Session start, transition, and close are protected spoolable mutations. Reads are online-only. Session
+facts record work; they do not establish ticket, workflow, or proof state.
+
 ## Board and health {#board-and-health}
 
 | Command | Flags |
 |---|---|
-| `board query` | all optional: `--lane {backlog,ready,in_progress,in_review,blocked,complete}`, `--priority {P0,P1,P2}`, `--stage-key`, `--custodian-id`, `--assignee-id`, `--source-kind`, `--source-ref` |
+| `board query` | positional: `<project_key>`; all flags optional: `--lane {backlog,ready,in_progress,in_review,blocked,complete}`, `--priority {P0,P1,P2}`, `--stage-key`, `--custodian-id`, `--assignee-id`, `--source-kind`, `--source-ref` |
 | `control health` | — |
 
 Both are queries and are never spooled.
@@ -364,7 +411,8 @@ spelling is stable and authenticated, and they always refuse. They do not import
 
 | Command | Positional | Flags |
 |---|---|---|
-| `project delivery query` | `<project_key>` (only `ctower` is accepted) | `--output {text,json}` (default `text`) |
+| `project delivery query` | `<project_key>` | `--output {text,json}` (default `text`) |
+| `project events` | `<project_key>` | optional: `--cursor`, `--limit` |
 
 A read-only projection. See [Project Delivery](../concepts/project-delivery.md).
 
@@ -372,6 +420,18 @@ Text output prints checkpoint summary and source/reason lines, followed by one l
 `slot=<key> state=<state> assigned=<seat>|unassigned signed=<seat>|-`. A rendered seat is
 `<label>[<seat_key>]@<catalog_key>@<revision>`. Assignment is selected by the explicit `assigned` or
 `unassigned` state in the HTTP response, and a missing signing seat renders as `-`.
+
+`project events` returns a cursor page of typed events visible to the authenticated project principal. It
+is also read-only and online-only.
+
+## Attention findings
+
+| Command | Positional | Flags |
+|---|---|---|
+| `attention finding append` | — | required: `--subject-ticket-id`, `--kind-key`, `--reason-code`, `--effective-owner {operator,commander}`, `--recommendation`, one or more `--alternative`, `--consequence`, `--dedupe-key`, one or more `--source-fact`; optional: `--deadline`, `--command-id` |
+| `attention finding disposition` | `<finding_id>` | required: `--outcome {resolved,snoozed,expired,superseded,cancelled}`, `--reason`; optional: `--command-id` |
+
+Both commands append facts and are spoolable. A disposition does not delete the finding.
 
 ## Local spool
 
